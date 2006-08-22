@@ -172,9 +172,9 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
         markers_to_marker_list(PurityMarkers, MarkersList),
         list.foldl(add_marker, MarkersList, Markers0, Markers),
         pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
-            user(PredName), Status, goal_type_none, Markers, Types, TVarSet,
-            ExistQVars, ClassContext, Proofs, ConstraintMap, ClausesInfo,
-            PredInfo0),
+            origin_user(PredName), Status, goal_type_none, Markers, Types,
+            TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
+            ClausesInfo, PredInfo0),
         (
             predicate_table_search_pf_m_n_a(PredTable0,
                 is_fully_qualified, PredOrFunc, MNameOfPred,
@@ -362,7 +362,7 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
         PredId = PredId0
     ;
         preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
-            Arity, Status, IsClassMethod, MContext, user(PredName),
+            Arity, Status, IsClassMethod, MContext, origin_user(PredName),
             "mode declaration", PredId, !ModuleInfo, !IO)
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
@@ -449,7 +449,7 @@ preds_add_implicit_for_assertion(HeadVars, ModuleInfo, ModuleName, PredName,
     term.context_file(Context, FileName),
     term.context_line(Context, LineNum),
     preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
-        Arity, Status, Context, assertion(FileName, LineNum),
+        Arity, Status, Context, origin_assertion(FileName, LineNum),
         PredOrFunc, PredId, !PredicateTable).
 
 :- pred preds_add_implicit_2(clauses_info::in, module_info::in,

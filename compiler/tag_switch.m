@@ -40,6 +40,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.rtti.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
@@ -237,7 +238,7 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
 
     code_info.produce_variable_in_reg(Var, VarCode, VarLval, !CI),
     VarRval = lval(VarLval),
-    code_info.acquire_reg(r, PtagReg, !CI),
+    code_info.acquire_reg(reg_r, PtagReg, !CI),
     code_info.release_reg(PtagReg, !CI),
     (
         PrimaryMethod \= jump_table,
@@ -246,7 +247,7 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
         (
             NumRealRegs = 0
         ;
-            ( PtagReg = reg(r, PtagRegNo) ->
+            ( PtagReg = reg(reg_r, PtagRegNo) ->
                 PtagRegNo =< NumRealRegs
             ;
                 unexpected(this_file, "improper reg in tag switch")
@@ -350,7 +351,7 @@ generate_primary_try_me_else_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         code_info.remember_position(!.CI, BranchStart),
         code_info.get_next_label(ElseLabel, !CI),
         TestRval = binop(ne, TagRval,
-            unop(mktag, const(int_const(Primary)))),
+            unop(mktag, const(llconst_int(Primary)))),
         TestCode = node([
             if_val(TestRval, label(ElseLabel)) - "test primary tag only"
         ]),
@@ -411,7 +412,7 @@ generate_primary_try_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         code_info.remember_position(!.CI, BranchStart),
         code_info.get_next_label(ThisPtagLabel, !CI),
         TestRval = binop(eq, TagRval,
-            unop(mktag, const(int_const(Primary)))),
+            unop(mktag, const(llconst_int(Primary)))),
         TestCode = node([
             if_val(TestRval, label(ThisPtagLabel)) - "test primary tag only"
         ]),
@@ -571,7 +572,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
             LowStartStr, " to ", LowEndStr], IfComment),
         string.append_list(["code for ptags ", HighStartStr,
             " to ", HighEndStr], LabelComment),
-        LowRangeEndConst = const(int_const(LowRangeEnd)),
+        LowRangeEndConst = const(llconst_int(LowRangeEnd)),
         TestRval = binop(int_gt, PtagRval, LowRangeEndConst),
         IfCode = node([if_val(TestRval, label(NewLabel)) - IfComment]),
         LabelCode = node([label(NewLabel) - LabelComment]),
@@ -595,7 +596,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
     % use a jump table to implement the secondary switch.
     %
 :- pred generate_primary_tag_code(stag_goal_map::in, tag_bits::in,
-    int::in, stag_loc::in, rval::in, code_model::in, hlds_goal_info::in,
+    int::in, sectag_locn::in, rval::in, code_model::in, hlds_goal_info::in,
     label::in, label::in, branch_end::in, branch_end::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
@@ -604,8 +605,7 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
         !CI) :-
     map.to_assoc_list(GoalMap, GoalList),
     (
-        StagLoc = none
-    ->
+        StagLoc = sectag_none,
         % There is no secondary tag, so there is no switch on it
         ( GoalList = [-1 - stag_goal(ConsId, Goal)] ->
             Comment = "case " ++ cons_id_to_string(ConsId),
@@ -626,7 +626,11 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
             unexpected(this_file, "more than one goal for non-shared tag")
         )
     ;
-        % There is a secondary tag, so figure out how to switch on it
+        ( StagLoc = sectag_local
+        ; StagLoc = sectag_remote
+        ),
+
+        % There is a secondary tag, so figure out how to switch on it.
         code_info.get_globals(!.CI, Globals),
         globals.lookup_int_option(Globals, dense_switch_size,
             DenseSwitchSize),
@@ -643,16 +647,18 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
             SecondaryMethod = try_me_else_chain
         ),
 
-        ( StagLoc = remote ->
+        (
+            StagLoc = sectag_remote,
             OrigStagRval = lval(field(yes(Primary), Rval,
-                const(int_const(0)))),
+                const(llconst_int(0)))),
             Comment = "compute remote sec tag to switch on"
         ;
+            StagLoc = sectag_local,
             OrigStagRval = unop(unmkbody, Rval),
             Comment = "compute local sec tag to switch on"
         ),
 
-        code_info.acquire_reg(r, StagReg, !CI),
+        code_info.acquire_reg(reg_r, StagReg, !CI),
         code_info.release_reg(StagReg, !CI),
         (
             SecondaryMethod \= jump_table,
@@ -661,7 +667,7 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
             (
                 NumRealRegs = 0
             ;
-                ( StagReg = reg(r, StagRegNo) ->
+                ( StagReg = reg(reg_r, StagRegNo) ->
                     StagRegNo =< NumRealRegs
                 ;
                     unexpected(this_file, "improper reg in tag switch")
@@ -739,7 +745,7 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
         code_info.remember_position(!.CI, BranchStart),
         code_info.get_next_label(ElseLabel, !CI),
         TestCode = node([
-            if_val(binop(ne, StagRval, const(int_const(Secondary))),
+            if_val(binop(ne, StagRval, const(llconst_int(Secondary))),
                 label(ElseLabel))
                 - "test remote sec tag only"
         ]),
@@ -805,7 +811,7 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
         code_info.remember_position(!.CI, BranchStart),
         code_info.get_next_label(ThisStagLabel, !CI),
         TestCode = node([
-            if_val(binop(eq, StagRval, const(int_const(Secondary))),
+            if_val(binop(eq, StagRval, const(llconst_int(Secondary))),
                 label(ThisStagLabel))
                 - ("test remote sec tag only for " ++ Comment)
         ]),
@@ -970,7 +976,7 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             LowStartStr, " to ", LowEndStr], IfComment),
         string.append_list(["code for stags ", HighStartStr,
             " to ", HighEndStr], LabelComment),
-        LowRangeEndConst = const(int_const(LowRangeEnd)),
+        LowRangeEndConst = const(llconst_int(LowRangeEnd)),
         TestRval = binop(int_gt, StagRval, LowRangeEndConst),
         IfCode = node([if_val(TestRval, label(NewLabel)) - IfComment]),
         LabelCode = node([label(NewLabel) - LabelComment ]),

@@ -445,9 +445,9 @@ check_lval(var(Var0, _), Locals) :-
 :- pred check_const(mlds_rval_const::in, locals::in) is semidet.
 
 check_const(Const, Locals) :-
-    ( Const = code_addr_const(CodeAddr) ->
+    ( Const = mlconst_code_addr(CodeAddr) ->
         \+ function_is_local(CodeAddr, Locals)
-    ; Const = data_addr_const(DataAddr) ->
+    ; Const = mlconst_data_addr(DataAddr) ->
         DataAddr = data_addr(ModuleName, DataName),
         ( DataName = var(VarName) ->
             \+ var_is_local(qual(ModuleName, module_qual, VarName), Locals)
@@ -481,10 +481,10 @@ var_is_local(Var, Locals) :-
 
 function_is_local(CodeAddr, Locals) :-
     (
-        CodeAddr = proc(QualifiedProcLabel, _Sig),
+        CodeAddr = code_addr_proc(QualifiedProcLabel, _Sig),
         MaybeSeqNum = no
     ;
-        CodeAddr = internal(QualifiedProcLabel, SeqNum, _Sig),
+        CodeAddr = code_addr_internal(QualifiedProcLabel, SeqNum, _Sig),
         MaybeSeqNum = yes(SeqNum)
     ),
     % XXX we ignore the ModuleName -- that is safe, but might be
@@ -570,12 +570,12 @@ nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
     SubStmt = mlcall(_CallSig, Func, _This, _Args, _RetVals, CallKind),
     CallKind = ordinary_call,
     % Check if this call is a directly recursive call.
-    Func = const(code_addr_const(CodeAddr)),
+    Func = const(mlconst_code_addr(CodeAddr)),
     (
-        CodeAddr = proc(QualProcLabel, _Sig),
+        CodeAddr = code_addr_proc(QualProcLabel, _Sig),
         MaybeSeqNum = no
     ;
-        CodeAddr = internal(QualProcLabel, SeqNum, _Sig),
+        CodeAddr = code_addr_internal(QualProcLabel, SeqNum, _Sig),
         MaybeSeqNum = yes(SeqNum)
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),

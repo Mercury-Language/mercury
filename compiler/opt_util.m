@@ -401,7 +401,7 @@ next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
     Instr = Uinstr - _Comment,
     (
         Uinstr = assign(redoip_slot(lval(Fr)),
-            const(code_addr_const(Redoip0))),
+            const(llconst_code_addr(Redoip0))),
         list.member(Fr, AllowedBases)
     ->
         Redoip = Redoip0,
@@ -518,12 +518,12 @@ is_sdproceed_next_sf(Instrs0, InstrsBetween, Success) :-
         Instrs5 = Instrs3
     ),
     Instrs5 = [Instr5 | Instrs6],
-    Instr5 = assign(reg(r, 1), const(R1val)) - _,
+    Instr5 = assign(reg(reg_r, 1), const(R1val)) - _,
     (
-        R1val = true,
+        R1val = llconst_true,
         Success = yes
     ;
-        R1val = false,
+        R1val = llconst_false,
         Success = no
     ),
     skip_comments_labels(Instrs6, Instrs7),
@@ -547,19 +547,24 @@ is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
     skip_comments_labels(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
     Instr1 = Uinstr1 - _,
-    ( Uinstr1 = if_val(lval(reg(r, 1)), label(JumpLabel)) ->
+    (
+        Uinstr1 = if_val(lval(reg(reg_r, 1)), label(JumpLabel))
+    ->
         map.search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
-        filter_out_r1(BetweenJump, yes(true), BetweenTrue0),
+        filter_out_r1(BetweenJump, yes(llconst_true), BetweenTrue0),
         filter_out_livevals(BetweenTrue0, Between),
-        filter_out_r1(BetweenFall, yes(false), BetweenFalse0),
+        filter_out_r1(BetweenFall, yes(llconst_false), BetweenFalse0),
         filter_out_livevals(BetweenFalse0, Between)
-    ; Uinstr1 = if_val(unop(logical_not, lval(reg(r, 1))), label(JumpLabel)) ->
+    ;
+        Uinstr1 = if_val(unop(logical_not, lval(reg(reg_r, 1))),
+            label(JumpLabel))
+    ->
         map.search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
-        filter_out_r1(BetweenJump, yes(false), BetweenFalse0),
+        filter_out_r1(BetweenJump, yes(llconst_false), BetweenFalse0),
         filter_out_livevals(BetweenFalse0, Between),
-        filter_out_r1(BetweenFall, yes(true), BetweenTrue0),
+        filter_out_r1(BetweenFall, yes(llconst_true), BetweenTrue0),
         filter_out_livevals(BetweenTrue0, Between)
     ;
         fail
@@ -568,7 +573,7 @@ is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
 filter_out_r1([], no, []).
 filter_out_r1([Instr0 | Instrs0], Success, Instrs) :-
     filter_out_r1(Instrs0, Success0, Instrs1),
-    ( Instr0 = assign(reg(r, 1), const(Success1)) - _ ->
+    ( Instr0 = assign(reg(reg_r, 1), const(Success1)) - _ ->
         Instrs = Instrs1,
         Success = yes(Success1)
     ;
@@ -957,9 +962,9 @@ filter_in_livevals([Instr0 | Instrs0], Instrs) :-
     % The time to extend this predicate is when the rest of the compiler
     % generates more complicated constant conditions.
 is_const_condition(const(Const), Taken) :-
-    ( Const = true ->
+    ( Const = llconst_true ->
         Taken = yes
-    ; Const = false ->
+    ; Const = llconst_false ->
         Taken = no
     ;
         unexpected(this_file, "non-boolean constant as if-then-else condition")
@@ -1483,10 +1488,10 @@ count_temps_instr(pragma_c(_, _, _, _, _, _, _, _, _), !R, !F).
 count_temps_lval(Lval, !R, !F) :-
     ( Lval = temp(Type, N) ->
         (
-            Type = r,
+            Type = reg_r,
             int.max(N, !R)
         ;
-            Type = f,
+            Type = reg_f,
             int.max(N, !F)
         )
     ; Lval = field(_, Rval, FieldNum) ->
@@ -2094,18 +2099,18 @@ replace_labels_mem_ref(heap_ref(Rval0, Tag, N), ReplMap,
 :- pred replace_labels_rval_const(rval_const::in,
     map(label, label)::in, rval_const::out) is det.
 
-replace_labels_rval_const(true, _, true).
-replace_labels_rval_const(false, _, false).
-replace_labels_rval_const(int_const(N), _, int_const(N)).
-replace_labels_rval_const(float_const(N), _, float_const(N)).
-replace_labels_rval_const(string_const(S), _, string_const(S)).
-replace_labels_rval_const(multi_string_const(L, S), _,
-    multi_string_const(L, S)).
-replace_labels_rval_const(code_addr_const(Addr0), ReplMap,
-        code_addr_const(Addr)) :-
+replace_labels_rval_const(llconst_true, _, llconst_true).
+replace_labels_rval_const(llconst_false, _, llconst_false).
+replace_labels_rval_const(llconst_int(N), _, llconst_int(N)).
+replace_labels_rval_const(llconst_float(N), _, llconst_float(N)).
+replace_labels_rval_const(llconst_string(S), _, llconst_string(S)).
+replace_labels_rval_const(llconst_multi_string(L, S), _,
+        llconst_multi_string(L, S)).
+replace_labels_rval_const(llconst_code_addr(Addr0), ReplMap,
+        llconst_code_addr(Addr)) :-
     replace_labels_code_addr(Addr0, ReplMap, Addr).
-replace_labels_rval_const(data_addr_const(DataAddr, MaybeOffset), _,
-        data_addr_const(DataAddr, MaybeOffset)).
+replace_labels_rval_const(llconst_data_addr(DataAddr, MaybeOffset), _,
+        llconst_data_addr(DataAddr, MaybeOffset)).
 
 replace_labels_code_addr(label(Label0), ReplMap, label(Label)) :-
     replace_labels_label(Label0, ReplMap, Label).

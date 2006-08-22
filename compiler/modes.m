@@ -1241,7 +1241,7 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !ModeInfo, !IO) :-
         mode_info_set_context(Context, !ModeInfo)
     ),
     mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
-    ( goal_info_has_feature(GoalInfo0, duplicated_for_switch) ->
+    ( goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) ->
         mode_info_set_in_dupl_for_switch(yes, !ModeInfo)
     ;
         true
@@ -1524,7 +1524,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
     ;
         GenericCall = cast(_CastType),
         (
-            goal_info_has_feature(GoalInfo0, keep_constant_binding),
+            goal_info_has_feature(GoalInfo0, feature_keep_constant_binding),
             mode_info_get_instmap(!.ModeInfo, InstMap),
             (
                 Args0 = [Arg1Prime, _Arg2Prime],

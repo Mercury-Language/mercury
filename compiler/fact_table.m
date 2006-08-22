@@ -500,13 +500,13 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
         % the right type for this argument.
         (
             Functor = term.string(_),
-            RequiredType = yes(string)
+            RequiredType = yes(builtin_type_string)
         ;
             Functor = term.integer(_),
-            RequiredType = yes(int)
+            RequiredType = yes(builtin_type_int)
         ;
             Functor = term.float(_),
-            RequiredType = yes(float)
+            RequiredType = yes(builtin_type_float)
         ;
             Functor = term.atom(_),
             RequiredType = no
@@ -527,7 +527,7 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
             RequiredType = yes(BuiltinType),
             (
                 Types0 = [Type | Types],
-                Type = builtin(BuiltinType)
+                Type = builtin_type(BuiltinType)
             ->
                 check_fact_type_and_mode(Types, Terms, ArgNum,
                     PredOrFunc, Context0, Result, !Errors)
@@ -690,13 +690,13 @@ create_fact_table_struct([Info | Infos], I, Context, StructContents,
     Info = fact_arg_info(Type, _IsInput, IsOutput),
     (
         (
-            Type = builtin(string),
+            Type = builtin_type(builtin_type_string),
             TypeStr = "MR_ConstString"
         ;
-            Type = builtin(int),
+            Type = builtin_type(builtin_type_int),
             TypeStr = "MR_Integer"
         ;
-            Type = builtin(float),
+            Type = builtin_type(builtin_type_float),
             TypeStr = "MR_Float"
         )
     ->
@@ -1865,20 +1865,20 @@ get_output_args_list([Info | Infos], ArgStrings0, Args) :-
     is det.
 
 convert_key_string_to_arg(ArgString, Type, Arg) :-
-    ( Type = builtin(int) ->
+    ( Type = builtin_type(builtin_type_int) ->
         ( string.base_string_to_int(36, ArgString, I) ->
             Arg = term.integer(I)
         ;
             unexpected(this_file,
                 "convert_key_string_to_arg: could not convert string to int")
         )
-    ; Type = builtin(string) ->
+    ; Type = builtin_type(builtin_type_string) ->
         string.to_char_list(ArgString, Cs0),
         remove_sort_file_escapes(Cs0, [], Cs1),
         list.reverse(Cs1, Cs),
         string.from_char_list(Cs, S),
         Arg = term.string(S)
-    ; Type = builtin(float) ->
+    ; Type = builtin_type(builtin_type_float) ->
         ( string.to_float(ArgString, F) ->
             Arg = term.float(F)
         ;
@@ -2579,15 +2579,15 @@ generate_hash_code([pragma_var(_, Name, Mode, _) | PragmaVars], [Type | Types],
         FactTableSize, C_Code) :-
     NextArgNum = ArgNum + 1,
     ( mode_is_fully_input(ModuleInfo, Mode) ->
-        ( Type = builtin(int) ->
+        ( Type = builtin_type(builtin_type_int) ->
             generate_hash_int_code(Name, LabelName, LabelNum,
                 PredName, PragmaVars, Types, ModuleInfo,
                 NextArgNum, FactTableSize, C_Code0)
-        ; Type = builtin(float) ->
+        ; Type = builtin_type(builtin_type_float) ->
             generate_hash_float_code(Name, LabelName, LabelNum,
                 PredName, PragmaVars, Types, ModuleInfo,
                 NextArgNum, FactTableSize, C_Code0)
-        ; Type = builtin(string) ->
+        ; Type = builtin_type(builtin_type_string) ->
             generate_hash_string_code(Name, LabelName, LabelNum,
                 PredName, PragmaVars, Types, ModuleInfo,
                 NextArgNum, FactTableSize, C_Code0)
@@ -2780,7 +2780,7 @@ generate_fact_lookup_code(PredName,
         string.format(TableEntryTemplate,
             [s(PredName), i(FactTableSize), i(FactTableSize), i(ArgNum)],
             TableEntry),
-        ( Type = builtin(string) ->
+        ( Type = builtin_type(builtin_type_string) ->
             mode_get_insts(ModuleInfo, Mode, _, FinalInst),
             ( inst_is_not_partly_unique(ModuleInfo, FinalInst) ->
                 % Cast MR_ConstString -> MR_Word -> MR_String to avoid gcc
@@ -3080,7 +3080,7 @@ generate_test_condition_code(FactTableName, [PragmaVar | PragmaVars],
         FactTableSize, CondCode) :-
     PragmaVar = pragma_var(_, Name, Mode, _),
     ( mode_is_fully_input(ModuleInfo, Mode) ->
-        ( Type = builtin(string) ->
+        ( Type = builtin_type(builtin_type_string) ->
             Template =
                 "strcmp(%s[ind/%d][ind%%%d].V_%d, %s) != 0\n"
         ;

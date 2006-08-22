@@ -214,23 +214,23 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
     %
 :- func ok_to_duplicate(goal_feature) = bool.
 
-ok_to_duplicate(constraint) = no.
-ok_to_duplicate(from_head) = yes.
-ok_to_duplicate(not_impure_for_determinism) = no.
-ok_to_duplicate(stack_opt) = no.
-ok_to_duplicate(tuple_opt) = no.
-ok_to_duplicate(call_table_gen) = no.
-ok_to_duplicate(preserve_backtrack_into) = no.
-ok_to_duplicate(hide_debug_event) = no.
-ok_to_duplicate(tailcall) = no.
-ok_to_duplicate(keep_constant_binding) = no.
-ok_to_duplicate(save_deep_excp_vars) = no.
-ok_to_duplicate(dont_warn_singleton) = yes.
-ok_to_duplicate(duplicated_for_switch) = yes.
-ok_to_duplicate(mode_check_clauses_goal) = yes.
-ok_to_duplicate(will_not_modify_trail) = yes.
-ok_to_duplicate(will_not_call_mm_tabled) = yes.
-ok_to_duplicate(contains_trace) = yes.
+ok_to_duplicate(feature_constraint) = no.
+ok_to_duplicate(feature_from_head) = yes.
+ok_to_duplicate(feature_not_impure_for_determinism) = no.
+ok_to_duplicate(feature_stack_opt) = no.
+ok_to_duplicate(feature_tuple_opt) = no.
+ok_to_duplicate(feature_call_table_gen) = no.
+ok_to_duplicate(feature_preserve_backtrack_into) = no.
+ok_to_duplicate(feature_hide_debug_event) = no.
+ok_to_duplicate(feature_tailcall) = no.
+ok_to_duplicate(feature_keep_constant_binding) = no.
+ok_to_duplicate(feature_save_deep_excp_vars) = no.
+ok_to_duplicate(feature_dont_warn_singleton) = yes.
+ok_to_duplicate(feature_duplicated_for_switch) = yes.
+ok_to_duplicate(feature_mode_check_clauses_goal) = yes.
+ok_to_duplicate(feature_will_not_modify_trail) = yes.
+ok_to_duplicate(feature_will_not_call_mm_tabled) = yes.
+ok_to_duplicate(feature_contains_trace) = yes.
 
     % Divide a list of goals into an initial subsequence of goals
     % that construct constants, and all other goals.

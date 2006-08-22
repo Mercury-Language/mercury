@@ -158,7 +158,7 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
                             MercuryTypeSymName, MercuryParams,
                             parse_tree_foreign_type(ForeignType, no,
                                 Assertions),
-                            true))
+                            cond_true))
                     ;
                         MaybeAssertionTerm = yes(ErrorAssertionTerm)
                     ->
@@ -1004,7 +1004,7 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm, VarSet0,
                     MaybeName = no,
                     unqualify_name(PredName, UnqualName),
                     make_pred_name(ModuleName, "TypeSpecOf", MaybePredOrFunc,
-                        UnqualName, type_subst(TVarSet, TypeSubn),
+                        UnqualName, newpred_type_subst(TVarSet, TypeSubn),
                         SpecializedName)
                 ),
                 TypeSpecPragma = pragma_type_spec(PredName, SpecializedName,

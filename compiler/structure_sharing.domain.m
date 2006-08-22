@@ -826,7 +826,7 @@ predict_called_pred_is_bottom(ModuleInfo, PPId) :-
         % 3. call to a compiler generate special predicate:
         % "unify", "index", "compare" or "initialise".
         pred_info_get_origin(PredInfo, Origin),
-        Origin = special_pred(_)
+        Origin = origin_special_pred(_)
     ;
         % 4. (XXX UNSAFE!! To verify) any call to private_builtin and builtin
         % procedures.

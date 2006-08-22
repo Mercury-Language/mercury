@@ -83,35 +83,35 @@
     % This might one day be extended to support separate
     % floating-point registers.
 :- type byte_reg_type
-    --->    r.  % general-purpose (integer) register.
+    --->    byte_reg_r.  % general-purpose (integer) register.
 
 :- type byte_cons_id
-    --->    cons(byte_module_id, string, arity, byte_cons_tag)
-    ;       int_const(int)
-    ;       string_const(string)
-    ;       float_const(float)
-    ;       pred_const(byte_module_id, byte_pred_id, arity, byte_is_func,
+    --->    byte_cons(byte_module_id, string, arity, byte_cons_tag)
+    ;       byte_int_const(int)
+    ;       byte_string_const(string)
+    ;       byte_float_const(float)
+    ;       byte_char_const(char)
+    ;       byte_pred_const(byte_module_id, byte_pred_id, arity, byte_is_func,
                 byte_proc_id)
-    ;       type_ctor_info_const(byte_module_id, string, int)
-    ;       base_typeclass_info_const(byte_module_id, class_id, string)
-    ;       type_info_cell_constructor
-    ;       typeclass_info_cell_constructor
-    ;       char_const(char).
+    ;       byte_type_ctor_info_const(byte_module_id, string, int)
+    ;       byte_base_typeclass_info_const(byte_module_id, class_id, string)
+    ;       byte_type_info_cell_constructor
+    ;       byte_typeclass_info_cell_constructor.
 
 :- type byte_var_info
     --->    var_info(string, mer_type).
 
 :- type byte_cons_tag
-    --->    no_tag
-    ;       unshared_tag(tag_bits)
-    ;       shared_remote_tag(tag_bits, int)
-    ;       shared_local_tag(tag_bits, int)
-    ;       enum_tag(int).
+    --->    byte_no_tag
+    ;       byte_unshared_tag(tag_bits)
+    ;       byte_shared_remote_tag(tag_bits, int)
+    ;       byte_shared_local_tag(tag_bits, int)
+    ;       byte_enum_tag(int).
 
 :- type byte_arg
-    --->    var(byte_var)
-    ;       int_const(int)
-    ;       float_const(float).
+    --->    byte_arg_var(byte_var)
+    ;       byte_arg_int_const(int)
+    ;       byte_arg_float_const(float).
 
 :- type byte_dir
     --->    to_arg
@@ -164,9 +164,7 @@ bytecode.version(9).
 
 output_bytecode_file(FileName, ByteCodes, !IO) :-
     io.open_binary_output(FileName, Result, !IO),
-    (
-        Result = ok(FileStream)
-    ->
+    ( Result = ok(FileStream) ->
         io.set_binary_output_stream(FileStream, OutputStream, !IO),
         bytecode.version(Version),
         output_short(Version, !IO),
@@ -185,9 +183,7 @@ output_bytecode_file(FileName, ByteCodes, !IO) :-
 
 debug_bytecode_file(FileName, ByteCodes, !IO) :-
     io.open_output(FileName, Result, !IO),
-    (
-        Result = ok(FileStream)
-    ->
+    ( Result = ok(FileStream) ->
         io.set_output_stream(FileStream, OutputStream, !IO),
         bytecode.version(Version),
         io.write_string("bytecode_version ", !IO),
@@ -529,12 +525,12 @@ debug_determinism(Detism, !IO) :-
 
 :- pred output_reg(byte_reg_type::in, int::in, io::di, io::uo) is det.
 
-output_reg(r, N, !IO) :-
+output_reg(byte_reg_r, N, !IO) :-
     output_byte(N, !IO).
 
 :- pred debug_reg(byte_reg_type::in, int::in, io::di, io::uo) is det.
 
-debug_reg(r, N, !IO) :-
+debug_reg(byte_reg_r, N, !IO) :-
     debug_int(N, !IO).
 
 %---------------------------------------------------------------------------%
@@ -577,25 +573,25 @@ debug_length(Length, !IO) :-
 
 :- pred output_arg(byte_arg::in, io::di, io::uo) is det.
 
-output_arg(var(Var), !IO) :-
+output_arg(byte_arg_var(Var), !IO) :-
     output_byte(0, !IO),
     output_var(Var, !IO).
-output_arg(int_const(IntVal), !IO) :-
+output_arg(byte_arg_int_const(IntVal), !IO) :-
     output_byte(1, !IO),
     output_int(IntVal, !IO).
-output_arg(float_const(FloatVal), !IO) :-
+output_arg(byte_arg_float_const(FloatVal), !IO) :-
     output_byte(2, !IO),
     output_float(FloatVal, !IO).
 
 :- pred debug_arg(byte_arg::in, io::di, io::uo) is det.
 
-debug_arg(var(Var), !IO) :-
+debug_arg(byte_arg_var(Var), !IO) :-
     debug_string("var", !IO),
     debug_var(Var, !IO).
-debug_arg(int_const(IntVal), !IO) :-
+debug_arg(byte_arg_int_const(IntVal), !IO) :-
     debug_string("int", !IO),
     debug_int(IntVal, !IO).
-debug_arg(float_const(FloatVal), !IO) :-
+debug_arg(byte_arg_float_const(FloatVal), !IO) :-
     debug_string("float", !IO),
     debug_float(FloatVal, !IO).
 
@@ -748,80 +744,80 @@ debug_label_id(LabelId, !IO) :-
 
 :- pred output_cons_id(byte_cons_id::in, io::di, io::uo) is det.
 
-output_cons_id(cons(ModuleId, Functor, Arity, Tag), !IO) :-
+output_cons_id(byte_cons(ModuleId, Functor, Arity, Tag), !IO) :-
     output_byte(0, !IO),
     output_module_id(ModuleId, !IO),
     output_string(Functor, !IO),
     output_short(Arity, !IO),
     output_tag(Tag, !IO).
-output_cons_id(int_const(IntVal), !IO) :-
+output_cons_id(byte_int_const(IntVal), !IO) :-
     output_byte(1, !IO),
     output_int(IntVal, !IO).
-output_cons_id(string_const(StringVal), !IO) :-
+output_cons_id(byte_string_const(StringVal), !IO) :-
     output_byte(2, !IO),
     output_string(StringVal, !IO).
-output_cons_id(float_const(FloatVal), !IO) :-
+output_cons_id(byte_float_const(FloatVal), !IO) :-
     output_byte(3, !IO),
     output_float(FloatVal, !IO).
-output_cons_id(pred_const(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
+output_cons_id(byte_pred_const(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
     output_byte(4, !IO),
     output_module_id(ModuleId, !IO),
     output_pred_id(PredId, !IO),
     output_length(Arity, !IO),
     output_is_func(IsFunc, !IO),
     output_proc_id(ProcId, !IO).
-output_cons_id(type_ctor_info_const(ModuleId, TypeName, TypeArity), !IO) :-
+output_cons_id(byte_type_ctor_info_const(ModuleId, TypeName, TypeArity), !IO) :-
     output_byte(6, !IO),
     output_module_id(ModuleId, !IO),
     output_string(TypeName, !IO),
     output_byte(TypeArity, !IO).
-output_cons_id(char_const(Char), !IO) :-
+output_cons_id(byte_char_const(Char), !IO) :-
     output_byte(7, !IO),
     char.to_int(Char, Byte),
     output_byte(Byte, !IO).
     % XXX
-output_cons_id(base_typeclass_info_const(_, _, _), !IO) :-
+output_cons_id(byte_base_typeclass_info_const(_, _, _), !IO) :-
     sorry(this_file, "bytecode for typeclass not yet implemented."),
     output_byte(8, !IO).
-output_cons_id(type_info_cell_constructor, !IO) :-
+output_cons_id(byte_type_info_cell_constructor, !IO) :-
     sorry(this_file, "bytecode for type_info_cell_constructor " ++
         "not yet implemented."),
     output_byte(9, !IO).
-output_cons_id(typeclass_info_cell_constructor, !IO) :-
+output_cons_id(byte_typeclass_info_cell_constructor, !IO) :-
     sorry(this_file, "bytecode for typeclass_info_cell_constructor " ++
         "not yet implemented."),
     output_byte(10, !IO).
 
 :- pred debug_cons_id(byte_cons_id::in, io::di, io::uo) is det.
 
-debug_cons_id(cons(ModuleId, Functor, Arity, Tag), !IO) :-
+debug_cons_id(byte_cons(ModuleId, Functor, Arity, Tag), !IO) :-
     debug_string("functor", !IO),
     debug_sym_name(ModuleId, !IO),
     debug_string(Functor, !IO),
     debug_int(Arity, !IO),
     debug_tag(Tag, !IO).
-debug_cons_id(int_const(IntVal), !IO) :-
+debug_cons_id(byte_int_const(IntVal), !IO) :-
     debug_string("int_const", !IO),
     debug_int(IntVal, !IO).
-debug_cons_id(string_const(StringVal), !IO) :-
+debug_cons_id(byte_string_const(StringVal), !IO) :-
     debug_string("string_const", !IO),
     debug_cstring(StringVal, !IO).
-debug_cons_id(float_const(FloatVal), !IO) :-
+debug_cons_id(byte_float_const(FloatVal), !IO) :-
     debug_string("float_const", !IO),
     debug_float(FloatVal, !IO).
-debug_cons_id(pred_const(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
+debug_cons_id(byte_pred_const(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
     debug_string("pred_const", !IO),
     debug_module_id(ModuleId, !IO),
     debug_pred_id(PredId, !IO),
     debug_length(Arity, !IO),
     debug_is_func(IsFunc, !IO),
     debug_proc_id(ProcId, !IO).
-debug_cons_id(type_ctor_info_const(ModuleId, TypeName, TypeArity), !IO) :-
+debug_cons_id(byte_type_ctor_info_const(ModuleId, TypeName, TypeArity), !IO) :-
     debug_string("type_ctor_info_const", !IO),
     debug_module_id(ModuleId, !IO),
     debug_string(TypeName, !IO),
     debug_int(TypeArity, !IO).
-debug_cons_id(base_typeclass_info_const(ModuleId,
+debug_cons_id(byte_base_typeclass_info_const(ModuleId,
         class_id(ClassName, ClassArity), Instance), !IO) :-
     debug_string("base_typeclass_info_const", !IO),
     debug_module_id(ModuleId, !IO),
@@ -830,53 +826,53 @@ debug_cons_id(base_typeclass_info_const(ModuleId,
     debug_string("/", !IO),
     debug_int(ClassArity, !IO),
     debug_string(Instance, !IO).
-debug_cons_id(char_const(Char), !IO) :-
+debug_cons_id(byte_char_const(Char), !IO) :-
     debug_string("char_const", !IO),
     string.from_char_list([Char], String),
     debug_string(String, !IO).
-debug_cons_id(type_info_cell_constructor, !IO) :-
+debug_cons_id(byte_type_info_cell_constructor, !IO) :-
     debug_string("type_info_cell_constructor", !IO).
-debug_cons_id(typeclass_info_cell_constructor, !IO) :-
+debug_cons_id(byte_typeclass_info_cell_constructor, !IO) :-
     debug_string("typeclass_info_cell_constructor", !IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred output_tag(byte_cons_tag::in, io::di, io::uo) is det.
 
-output_tag(unshared_tag(Primary), !IO) :-
+output_tag(byte_unshared_tag(Primary), !IO) :-
     output_byte(0, !IO),
     output_byte(Primary, !IO).
-output_tag(shared_remote_tag(Primary, Secondary), !IO) :-
+output_tag(byte_shared_remote_tag(Primary, Secondary), !IO) :-
     output_byte(1, !IO),
     output_byte(Primary, !IO),
     output_int(Secondary, !IO).
-output_tag(shared_local_tag(Primary, Secondary), !IO) :-
+output_tag(byte_shared_local_tag(Primary, Secondary), !IO) :-
     output_byte(2, !IO),
     output_byte(Primary, !IO),
     output_int(Secondary, !IO).
-output_tag(enum_tag(Enum), !IO) :-
+output_tag(byte_enum_tag(Enum), !IO) :-
     output_byte(3, !IO),
     output_byte(Enum, !IO).
-output_tag(no_tag, !IO) :-
+output_tag(byte_no_tag, !IO) :-
     output_byte(4, !IO).
 
 :- pred debug_tag(byte_cons_tag::in, io::di, io::uo) is det.
 
-debug_tag(unshared_tag(Primary), !IO) :-
+debug_tag(byte_unshared_tag(Primary), !IO) :-
     debug_string("unshared_tag", !IO),
     debug_int(Primary, !IO).
-debug_tag(shared_remote_tag(Primary, Secondary), !IO) :-
+debug_tag(byte_shared_remote_tag(Primary, Secondary), !IO) :-
     debug_string("shared_remote_tag", !IO),
     debug_int(Primary, !IO),
     debug_int(Secondary, !IO).
-debug_tag(shared_local_tag(Primary, Secondary), !IO) :-
+debug_tag(byte_shared_local_tag(Primary, Secondary), !IO) :-
     debug_string("shared_local_tag", !IO),
     debug_int(Primary, !IO),
     debug_int(Secondary, !IO).
-debug_tag(enum_tag(Enum), !IO) :-
+debug_tag(byte_enum_tag(Enum), !IO) :-
     debug_string("enum_tag", !IO),
     debug_int(Enum, !IO).
-debug_tag(no_tag, !IO) :-
+debug_tag(byte_no_tag, !IO) :-
     debug_string("no_tag", !IO).
 
 %---------------------------------------------------------------------------%

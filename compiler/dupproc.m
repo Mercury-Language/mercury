@@ -121,7 +121,7 @@ find_matching_model_proc([ModelId - ModelStdProc | ModelIdProcs], Id, Proc,
 maybe_redirect_proc(Proc0, Target, MaybeProc) :-
     Instrs0 = Proc0 ^ cproc_code,
     get_prologue(Instrs0, LabelInstr, _Comments, LaterInstrs),
-    Redirect = goto(label(entry(local, Target))) -
+    Redirect = goto(label(entry(entry_label_local, Target))) -
         "Redirect to procedure with identical body",
     list.filter(disallowed_instr, LaterInstrs, DisallowedInstrs),
     list.length(LaterInstrs, NumLaterInstrs),
@@ -435,29 +435,29 @@ standardize_rval(Rval, StdRval, DupProcMap) :-
 
 standardize_rval_const(Const, StdConst, DupProcMap) :-
     (
-        Const = true,
+        Const = llconst_true,
         StdConst = Const
     ;
-        Const = false,
+        Const = llconst_false,
         StdConst = Const
     ;
-        Const = int_const(_),
+        Const = llconst_int(_),
         StdConst = Const
     ;
-        Const = float_const(_),
+        Const = llconst_float(_),
         StdConst = Const
     ;
-        Const = string_const(_),
+        Const = llconst_string(_),
         StdConst = Const
     ;
-        Const = multi_string_const(_, _),
+        Const = llconst_multi_string(_, _),
         StdConst = Const
     ;
-        Const = code_addr_const(CodeAddr),
+        Const = llconst_code_addr(CodeAddr),
         standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap),
-        StdConst = code_addr_const(StdCodeAddr)
+        StdConst = llconst_code_addr(StdCodeAddr)
     ;
-        Const = data_addr_const(_, _),
+        Const = llconst_data_addr(_, _),
         StdConst = Const
     ).
 

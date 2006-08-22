@@ -257,8 +257,9 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
         % the --target asm back-end, whereas generating the
         % appropriate MLDS instructions does.
         %
-        FuncRval = const(code_addr_const(
-            proc(qual(ModName, module_qual, ProcLabel), _FuncSignature))),
+        FuncRval = const(mlconst_code_addr(
+            code_addr_proc(qual(ModName, module_qual, ProcLabel),
+                _FuncSignature))),
         ProcLabel = mlds_proc_label(PredLabel, _ProcId),
         PredLabel = mlds_user_pred_label(predicate, _DefnModName, PredName,
             _Arity, _CodeModel, _NonOutputFunc),
@@ -418,7 +419,7 @@ optimize_func_stmt(OptInfo, statement(Stmt0, Context)) =
             %   }
             % Any tail calls in the function body will have
             % been replaced with `continue' statements.
-            Stmt = while(const(true_const),
+            Stmt = while(const(mlconst_true),
                 statement(block([],
                     [CommentStmt,
                     statement(Stmt0, Context),

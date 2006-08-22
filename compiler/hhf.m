@@ -470,20 +470,20 @@ same_type(A0, B0) :-
 
 :- pred same_type_2(mer_type::in, mer_type::in) is semidet.
 
-same_type_2(variable(_, _), variable(_, _)).
-same_type_2(defined(Name, ArgsA, _), defined(Name, ArgsB, _)) :-
+same_type_2(type_variable(_, _), type_variable(_, _)).
+same_type_2(defined_type(Name, ArgsA, _), defined_type(Name, ArgsB, _)) :-
     same_type_list(ArgsA, ArgsB).
-same_type_2(builtin(BuiltinType), builtin(BuiltinType)).
-same_type_2(higher_order(ArgsA, no, Purity, EvalMethod),
-        higher_order(ArgsB, no, Purity, EvalMethod)) :-
+same_type_2(builtin_type(BuiltinType), builtin_type(BuiltinType)).
+same_type_2(higher_order_type(ArgsA, no, Purity, EvalMethod),
+        higher_order_type(ArgsB, no, Purity, EvalMethod)) :-
     same_type_list(ArgsA, ArgsB).
-same_type_2(higher_order(ArgsA, yes(RetA), Purity, EvalMethod),
-        higher_order(ArgsB, yes(RetB), Purity, EvalMethod)) :-
+same_type_2(higher_order_type(ArgsA, yes(RetA), Purity, EvalMethod),
+        higher_order_type(ArgsB, yes(RetB), Purity, EvalMethod)) :-
     same_type_list(ArgsA, ArgsB),
     same_type(RetA, RetB).
-same_type_2(tuple(ArgsA, _), tuple(ArgsB, _)) :-
+same_type_2(tuple_type(ArgsA, _), tuple_type(ArgsB, _)) :-
     same_type_list(ArgsA, ArgsB).
-same_type_2(apply_n(_, ArgsA, _), apply_n(_, ArgsB, _)) :-
+same_type_2(apply_n_type(_, ArgsA, _), apply_n_type(_, ArgsB, _)) :-
     same_type_list(ArgsA, ArgsB).
 
 :- pred same_type_list(list(mer_type)::in, list(mer_type)::in) is semidet.

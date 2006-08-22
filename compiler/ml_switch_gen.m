@@ -141,7 +141,7 @@ ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context, Decls, Statements,
         % Check for a switch on a type whose representation
         % uses reserved addresses.
         list.member(Case, TaggedCases),
-        Case = case(_Priority, Tag, _ConsId, _Goal),
+        Case = extended_case(_Priority, Tag, _ConsId, _Goal),
         (
             Tag = reserved_address_tag(_)
         ;
@@ -324,7 +324,7 @@ ml_switch_lookup_tags(Info, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
     ml_variable_type(Info, Var, Type),
     ml_cons_id_to_tag(Info, ConsId, Type, Tag),
     Priority = switch_util.switch_priority(Tag),
-    TaggedCase = case(Priority, Tag, ConsId, Goal),
+    TaggedCase = extended_case(Priority, Tag, ConsId, Goal),
     ml_switch_lookup_tags(Info, Cases, Var, TaggedCases).
 
 %-----------------------------------------------------------------------------%
@@ -347,7 +347,7 @@ ml_switch_generate_if_else_chain([], _Var, CodeModel, CanFail, Context,
     ).
 ml_switch_generate_if_else_chain([Case | Cases], Var, CodeModel, CanFail,
         Context, Decls, Statements, !Info) :-
-    Case = case(_, _Tag, ConsId, Goal),
+    Case = extended_case(_, _Tag, ConsId, Goal),
     (
         Cases = [],
         CanFail = cannot_fail
@@ -422,11 +422,11 @@ ml_switch_generate_mlds_cases([Case | Cases], CodeModel,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_mlds_case(Case, CodeModel, MLDS_Case, !Info) :-
-    Case = case(_Priority, Tag, _ConsId, Goal),
+    Case = extended_case(_Priority, Tag, _ConsId, Goal),
     ( Tag = int_tag(Int) ->
-        Rval = const(int_const(Int))
+        Rval = const(mlconst_int(Int))
     ; Tag = string_tag(String) ->
-        Rval = const(string_const(String))
+        Rval = const(mlconst_string(String))
     ;
         unexpected(this_file, "ml_switch_gen.m: invalid tag type")
     ),

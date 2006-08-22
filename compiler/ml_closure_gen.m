@@ -143,7 +143,7 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
         NumArgs, Context, WrapperFuncRval0, WrapperFuncType0, !Info),
 
     % Compute the rval which holds the number of arguments
-    NumArgsRval0 = const(int_const(NumArgs)),
+    NumArgsRval0 = const(mlconst_int(NumArgs)),
     NumArgsType0 = mlds_native_int_type,
 
     % Put all the extra arguments of the closure together
@@ -228,7 +228,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
 ml_gen_closure_proc_id(_ModuleInfo, _Context, InitProcId, ProcIdType,
         ClosureProcIdDefns) :-
     % XXX currently we don't fill in the ProcId field!
-    InitProcId = init_obj(const(null(ProcIdType))),
+    InitProcId = init_obj(const(mlconst_null(ProcIdType))),
     ProcIdType = mlds_generic_type,
     ClosureProcIdDefns = [].
 %   module_info_get_name(ModuleInfo, ModuleName),
@@ -257,7 +257,7 @@ ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
     assoc_list.keys(ArgInitsAndTypes, ArgInits),
     assoc_list.values(ArgInitsAndTypes, ArgTypes),
     Length = list.length(ArgInits),
-    LengthRval = const(int_const(Length)),
+    LengthRval = const(mlconst_int(Length)),
     LengthType = mlds_native_int_type,
     CastLengthRval = unop(box(LengthType), LengthRval),
     ClosureArgInits = [init_obj(CastLengthRval) | ArgInits],
@@ -325,13 +325,13 @@ ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePseudoTypeInfo, Rval, Type,
 ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
     ( PseudoTypeInfo = type_var(N) ->
         % Type variables are represented just as integers.
-        Rval = const(int_const(N)),
+        Rval = const(mlconst_int(N)),
         Type = mlds_native_int_type
     ;
         ( PseudoTypeInfo = plain_arity_zero_pseudo_type_info(RttiTypeCtor0) ->
             % For zero-arity types, we just generate a reference to the
             % already-existing type_ctor_info.
-            RttiName = type_ctor_info,
+            RttiName = type_ctor_type_ctor_info,
             RttiTypeCtor0 = rtti_type_ctor(ModuleName0, _, _),
             ModuleName = fixup_builtin_module(ModuleName0),
             RttiTypeCtor = RttiTypeCtor0,
@@ -340,7 +340,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
             % For other types, we need to generate a definition of the
             % pseudo_type_info for that type, in the the current module.
             module_info_get_name(ModuleInfo, ModuleName),
-            RttiData = pseudo_type_info(PseudoTypeInfo),
+            RttiData = rtti_data_pseudo_type_info(PseudoTypeInfo),
             rtti_data_to_id(RttiData, RttiId),
             RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo, [RttiData]),
             % rtti_data_list_to_mlds assumes that the result will be
@@ -354,7 +354,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
                 arg_maybe_pseudo_type_infos(PseudoTypeInfo), !Defns)
         ),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
+        Rval = const(mlconst_data_addr(data_addr(MLDS_ModuleName,
             mlds_rtti(RttiId)))),
         Type = mlds_rtti_type(item_type(RttiId))
     ).
@@ -367,7 +367,7 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
     ( TypeInfo = plain_arity_zero_type_info(RttiTypeCtor0) ->
         % For zero-arity types, we just generate a reference to the
         % already-existing type_ctor_info.
-        RttiName = type_ctor_info,
+        RttiName = type_ctor_type_ctor_info,
         RttiTypeCtor0 = rtti_type_ctor(ModuleName0, _, _),
         ModuleName = fixup_builtin_module(ModuleName0),
         RttiId = ctor_rtti_id(RttiTypeCtor0, RttiName)
@@ -375,7 +375,7 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
         % For other types, we need to generate a definition of the type_info
         % for that type, in the the current module.
         module_info_get_name(ModuleInfo, ModuleName),
-        RttiData = type_info(TypeInfo),
+        RttiData = rtti_data_type_info(TypeInfo),
         rtti_data_to_id(RttiData, RttiId),
         RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo, [RttiData]),
         % rtti_data_list_to_mlds assumes that the result will be at file scope,
@@ -388,7 +388,7 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
             arg_type_infos(TypeInfo), !Defns)
     ),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
+    Rval = const(mlconst_data_addr(data_addr(MLDS_ModuleName,
         mlds_rtti(RttiId)))),
     Type = mlds_rtti_type(item_type(RttiId)).
 
@@ -422,7 +422,7 @@ ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
         TVarLocnMap, MLDS_Rval, ArrayType, Defns) :-
     ArrayType = mlds_array_type(mlds_native_int_type),
     ( map.is_empty(TVarLocnMap) ->
-        MLDS_Rval = const(null(ArrayType)),
+        MLDS_Rval = const(mlconst_null(ArrayType)),
         Defns = []
     ;
         Access = local,
@@ -447,7 +447,7 @@ ml_stack_layout_construct_tvar_rvals(TVarLocnMap, Vector, VectorTypes) :-
     ml_stack_layout_construct_type_param_locn_vector(TVarLocns, 1,
         TypeParamLocs),
     list.length(TypeParamLocs, TypeParamsLength),
-    LengthRval = const(int_const(TypeParamsLength)),
+    LengthRval = const(mlconst_int(TypeParamsLength)),
     Vector = [init_obj(LengthRval) | TypeParamLocs],
     VectorTypes = list.duplicate(TypeParamsLength + 1, mlds_native_int_type).
 
@@ -472,7 +472,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
             unexpected(this_file, "tvar has empty set of locations")
         ),
         stack_layout.represent_locn_as_int(Locn, LocnAsInt),
-        Rval = const(int_const(LocnAsInt)),
+        Rval = const(mlconst_int(LocnAsInt)),
         ml_stack_layout_construct_type_param_locn_vector(TVarLocns,
             NextSlot, VectorTail),
         Vector = [init_obj(Rval) | VectorTail]
@@ -480,7 +480,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
         % This slot will never be referred to.
         ml_stack_layout_construct_type_param_locn_vector(
             [TVar - Locns | TVarLocns], NextSlot, VectorTail),
-        Vector = [init_obj(const(int_const(0))) | VectorTail]
+        Vector = [init_obj(const(mlconst_int(0))) | VectorTail]
     ;
         unexpected(this_file,
             "unsorted tvars in construct_type_param_locn_vector")
@@ -873,7 +873,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     module_info_get_globals(ModuleInfo, Globals),
     (
         MaybeClosureA = yes({ClosureArgType2, ClosureArgName2}),
-        globals.get_gc_method(Globals, accurate)
+        globals.get_gc_method(Globals, gc_accurate)
     ->
         ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName2,
             ClosureArgType2, PredId, ProcId, Context, GC_Decls, !Info)
@@ -1224,7 +1224,7 @@ ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
         ClosureArgLvals = []
     ;
         % Generate `MR_field(MR_mktag(0), closure, <N>)'.
-        FieldId = offset(const(int_const(ArgNum + Offset))),
+        FieldId = offset(const(mlconst_int(ArgNum + Offset))),
         % XXX These types might not be right.
         FieldLval = field(yes(0), lval(ClosureLval), FieldId,
             mlds_generic_type, mlds_generic_type),

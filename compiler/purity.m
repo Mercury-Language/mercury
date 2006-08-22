@@ -758,7 +758,11 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
         ActualPurity = PromisedPurity,
         not pred_info_pragma_goal_type(PredInfo),
         pred_info_get_origin(PredInfo, Origin),
-        not ( Origin = transformed(_, _, _) ; Origin = created(_) )
+        not (
+            Origin = origin_transformed(_, _, _)
+        ;
+            Origin = origin_created(_)
+        )
     ->
         PurityCheckResult = unnecessary_promise_pure
     ;
@@ -873,10 +877,10 @@ compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, Purity, ContainsTrace,
     goal_info_set_purity(Purity, GoalInfo0, GoalInfo1),
     (
         ContainsTrace = contains_trace_goal,
-        goal_info_add_feature(contains_trace, GoalInfo1, GoalInfo)
+        goal_info_add_feature(feature_contains_trace, GoalInfo1, GoalInfo)
     ;
         ContainsTrace = contains_no_trace_goal,
-        goal_info_remove_feature(contains_trace, GoalInfo1, GoalInfo)
+        goal_info_remove_feature(feature_contains_trace, GoalInfo1, GoalInfo)
     ).
 
     % Compute the purity of a list of hlds_goals.  Since the purity of a

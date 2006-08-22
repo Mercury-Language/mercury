@@ -422,7 +422,7 @@ rtti_set_type_info_locn(TVar, Locn, !VarMaps) :-
 
 maybe_check_type_info_var(type_info(Var), TVar, !VarMaps) :-
     ( map.search(!.VarMaps ^ ti_type_map, Var, Type) ->
-        ( Type = variable(TVar, _) ->
+        ( Type = type_variable(TVar, _) ->
             true
         ;
             unexpected(this_file, "inconsistent info in rtti_varmaps")
@@ -563,7 +563,7 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     (
         % If the tvar is still a variable, insert it into the map with the
         % new var.
-        NewType = variable(NewTVar, _)
+        NewType = type_variable(NewTVar, _)
     ->
         % Don't abort if two old type variables map to the same new type
         % variable.

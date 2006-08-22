@@ -359,7 +359,7 @@ table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
         !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !IO) :-
     globals.io_get_target(Target, !IO),
     globals.io_get_gc_method(GC_Method, !IO),
-    ( Target = target_c, GC_Method \= accurate ->
+    ( Target = target_c, GC_Method \= gc_accurate ->
         table_gen_transform_proc(EvalMethod, PredId, ProcId,
             !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !IO)
     ;
@@ -1363,7 +1363,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         CallSaveAnswerInstMapDelta0, CallSaveAnswerInstMapDelta),
     goal_info_init_hide(CallSaveAnswerNonLocals, CallSaveAnswerInstMapDelta,
         detism_det, purity_impure, Context, CallSaveAnswerGoalInfo0),
-    goal_info_add_feature(hide_debug_event,
+    goal_info_add_feature(feature_hide_debug_event,
         CallSaveAnswerGoalInfo0, CallSaveAnswerGoalInfo),
     CallSaveAnswerGoal = CallSaveAnswerGoalExpr - CallSaveAnswerGoalInfo,
 
@@ -1507,7 +1507,8 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         case(cons(qualified(TB, "mm_active"), 0), SuspendGoal)
     ],
     SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
-    goal_info_add_feature(hide_debug_event, MainGoalInfo, SwitchGoalInfo),
+    goal_info_add_feature(feature_hide_debug_event,
+        MainGoalInfo, SwitchGoalInfo),
     SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
     GoalExpr = conj(plain_conj, [LookUpGoal, SwitchGoal]),
@@ -1779,7 +1780,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     set.insert(OrigNonLocals, GeneratorVar, NonLocals),
     goal_info_init(NonLocals, OrigInstMapDelta, Detism, purity_impure, Context,
         GoalInfo0),
-    goal_info_add_feature(hide_debug_event, GoalInfo0, GoalInfo),
+    goal_info_add_feature(feature_hide_debug_event, GoalInfo0, GoalInfo),
     Goal = GoalExpr - GoalInfo,
     proc_info_set_goal(Goal, !ProcInfo),
 
@@ -1829,7 +1830,8 @@ clone_pred_info(OrigPredId, PredInfo0, HeadVars, NumberedOutputVars,
     list.filter(filter_marker, MarkerList0, MarkerList),
     marker_list_to_markers(MarkerList, Markers),
 
-    Origin = transformed(table_generator, OrigOrigin, OrigPredId),
+    Origin = origin_transformed(transform_table_generator,
+        OrigOrigin, OrigPredId),
     pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
         Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet,
         ExistQVars, ClassContext, ClassProofs, ClassConstraintMap,
@@ -1877,7 +1879,7 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     pred_info_get_assertions(PredInfo, PredAssertions),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_create(ModuleName, NewPredName, PredOrFunc, PredContext,
-        created(io_tabling), status_local, Markers, PredArgTypes,
+        origin_created(io_tabling), status_local, Markers, PredArgTypes,
         PredTypeVarSet, PredExistQVars, PredClassContext, PredAssertions,
         NewProcInfo, NewProcId, NewPredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
@@ -2234,7 +2236,7 @@ generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
 
 attach_call_table_tip(GoalExpr - GoalInfo0, GoalExpr - GoalInfo) :-
     goal_info_get_features(GoalInfo0, Features0),
-    set.insert(Features0, call_table_gen, Features),
+    set.insert(Features0, feature_call_table_gen, Features),
     goal_info_set_features(Features, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
@@ -2951,10 +2953,10 @@ generate_call(PredName, Detism, Args, Purity, InstMapSrc, ModuleInfo, Context,
     ( Purity = purity_pure ->
         Features0 = []
     ;
-        Features0 = [not_impure_for_determinism]
+        Features0 = [feature_not_impure_for_determinism]
     ),
     ( Detism = detism_failure ->
-        Features = [preserve_backtrack_into | Features0]
+        Features = [feature_preserve_backtrack_into | Features0]
     ;
         Features = Features0
     ),
@@ -2974,10 +2976,10 @@ table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
     ( Purity = purity_pure ->
         Features0 = []
     ;
-        Features0 = [not_impure_for_determinism]
+        Features0 = [feature_not_impure_for_determinism]
     ),
     ( Detism = detism_failure ->
-        Features = [preserve_backtrack_into | Features0]
+        Features = [feature_preserve_backtrack_into | Features0]
     ;
         Features = Features0
     ),
@@ -3286,7 +3288,7 @@ goal_info_init_hide(NonLocals, InstmapDelta, Detism, Purity, Context,
         GoalInfo) :-
     goal_info_init(NonLocals, InstmapDelta, Detism, Purity, Context,
         GoalInfo0),
-    goal_info_add_feature(hide_debug_event, GoalInfo0, GoalInfo).
+    goal_info_add_feature(feature_hide_debug_event, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -3523,7 +3525,7 @@ make_generator_c_attributes = Attrs :-
 dummy_type_var = Type :-
     varset.init(DummyTVarSet0),
     varset.new_var(DummyTVarSet0, DummyTVar, _),
-    Type = variable(DummyTVar, star).
+    Type = type_variable(DummyTVar, kind_star).
 
 %-----------------------------------------------------------------------------%
 

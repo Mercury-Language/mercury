@@ -185,7 +185,7 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
         pred_info_get_exist_quant_tvars(PredInfo, []),
         pred_info_get_head_type_params(PredInfo, []),
         pred_info_get_class_context(PredInfo, constraints([], [])),
-        pred_info_get_origin(PredInfo, user(_)),
+        pred_info_get_origin(PredInfo, origin_user(_)),
         pred_info_get_arg_types(PredInfo, TypeVarSet, ExistQVars, ArgTypes),
         varset.is_empty(TypeVarSet),
         ExistQVars = [],
@@ -437,7 +437,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxPredSymName = qualified(_ModuleSpecifier, AuxPredName)
     ),
 
-    Origin = transformed(untuple(ProcNo), OrigOrigin, PredId),
+    Origin = origin_transformed(transform_untuple(ProcNo), OrigOrigin, PredId),
     hlds_pred.define_new_pred(Origin, Goal, CallAux, AuxHeadVars, _ExtraArgs,
         InitialAuxInstMap, AuxPredName, TVarSet, VarTypes, ClassContext,
         RttiVarMaps, VarSet, InstVarSet, Markers, address_is_not_taken,

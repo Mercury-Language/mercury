@@ -57,8 +57,8 @@
 generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
         EndLabel, !MaybeEnd, Code, !CI) :-
     code_info.produce_variable(Var, VarCode, VarRval, !CI),
-    code_info.acquire_reg(r, SlotReg, !CI),
-    code_info.acquire_reg(r, StringReg, !CI),
+    code_info.acquire_reg(reg_r, SlotReg, !CI),
+    code_info.acquire_reg(reg_r, StringReg, !CI),
     code_info.get_next_label(LoopLabel, !CI),
     code_info.get_next_label(FailLabel, !CI),
     code_info.get_next_label(JumpLabel, !CI),
@@ -101,14 +101,14 @@ generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
     (
         add_scalar_static_cell_natural_types(NextSlots, NextSlotsTableAddr,
             !CI),
-        NextSlotsTable = const(data_addr_const(NextSlotsTableAddr, no)),
+        NextSlotsTable = const(llconst_data_addr(NextSlotsTableAddr, no)),
         add_scalar_static_cell_natural_types(Strings, StringTableAddr, !CI),
-        StringTable = const(data_addr_const(StringTableAddr, no)),
+        StringTable = const(llconst_data_addr(StringTableAddr, no)),
         HashLookupCode = node([
             comment("hashed string switch") - "",
             assign(SlotReg,
                 binop(bitwise_and, unop(hash_string, VarRval),
-                    const(int_const(HashMask))))
+                    const(llconst_int(HashMask))))
                 - "compute the hash value of the input string",
             label(LoopLabel) - "begin hash chain loop",
             assign(StringReg,
@@ -122,7 +122,7 @@ generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
                 binop(array_index(elem_type_int),
                     NextSlotsTable, lval(SlotReg)))
                 - "not yet, so get next slot in hash chain",
-            if_val(binop(int_ge, lval(SlotReg), const(int_const(0))),
+            if_val(binop(int_ge, lval(SlotReg), const(llconst_int(0))),
                 label(LoopLabel))
                 - "keep searching until we reach the end of the chain",
             label(FailLabel) - "no match, so fail"
@@ -170,14 +170,14 @@ gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, SwitchGoalInfo,
 gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
         EndLabel, !MaybeEnd, StringRval, Label, NextSlotRval, Code, !CI) :-
     ( map.search(HashSlotMap, Slot, hash_slot(Case, Next)) ->
-        NextSlotRval = const(int_const(Next)),
-        Case = case(_, ConsTag, _, Goal),
+        NextSlotRval = const(llconst_int(Next)),
+        Case = extended_case(_, ConsTag, _, Goal),
         ( ConsTag = string_tag(String0) ->
             String = String0
         ;
             unexpected(this_file, "gen_hash_slots: string expected")
         ),
-        StringRval = const(string_const(String)),
+        StringRval = const(llconst_string(String)),
         code_info.get_next_label(Label, !CI),
         string.append_list(["case """, String, """"], Comment),
         LabelCode = node([label(Label) - Comment]),
@@ -196,9 +196,9 @@ gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
         Code = tree_list([LabelCode, TraceCode, GoalCode, SaveCode,
              FinishCode])
     ;
-        StringRval = const(int_const(0)),
+        StringRval = const(llconst_int(0)),
         Label = FailLabel,
-        NextSlotRval = const(int_const(-2)),
+        NextSlotRval = const(llconst_int(-2)),
         Code = empty
     ).
 

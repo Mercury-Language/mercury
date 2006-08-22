@@ -970,9 +970,9 @@ ml_gen_label_func_decl_flags = DeclFlags :-
 %
 
 ml_gen_and(X, Y) =
-    ( X = const(true_const) ->
+    ( X = const(mlconst_true) ->
         Y
-    ; Y = const(true_const) ->
+    ; Y = const(mlconst_true) ->
         X
     ;
         binop(logical_and, X, Y)
@@ -1311,7 +1311,7 @@ ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval, !Info) :-
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     QualProcLabel = qual(PredModule, module_qual, ProcLabel),
-    FuncLabelRval = const(code_addr_const(internal(QualProcLabel,
+    FuncLabelRval = const(mlconst_code_addr(code_addr_internal(QualProcLabel,
         FuncLabel, Signature))).
 
     % Generate the mlds_pred_label and module name for a given procedure.
@@ -1328,7 +1328,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
         _HeadVarsWithNames, _ArgModes, Detism,
         PredIsImported, _PredIsPseudoImported,
         Origin, _ProcIsExported, _ProcIsImported),
-    ( Origin = special_pred(SpecialPred - TypeCtor) ->
+    ( Origin = origin_special_pred(SpecialPred - TypeCtor) ->
         (
             % All type_ctors other than tuples here should be module qualified,
             % since builtin types are handled separately in polymorphism.m.
@@ -1624,7 +1624,7 @@ ml_gen_success(model_semi, Context, [SetSuccessTrue], !Info) :-
     % ===>
     %   succeeded = MR_TRUE;
     %
-    ml_gen_set_success(!.Info, const(true_const), Context, SetSuccessTrue).
+    ml_gen_set_success(!.Info, const(mlconst_true), Context, SetSuccessTrue).
 ml_gen_success(model_non, Context, [CallCont], !Info) :-
     %
     % nondet succeed:
@@ -1643,7 +1643,7 @@ ml_gen_failure(model_semi, Context, [SetSuccessFalse], !Info) :-
     % ===>
     %   succeeded = MR_FALSE;
     %
-    ml_gen_set_success(!.Info, const(false_const), Context, SetSuccessFalse).
+    ml_gen_set_success(!.Info, const(mlconst_false), Context, SetSuccessFalse).
 ml_gen_failure(model_non, _, Statements, !Info) :-
     %
     % nondet fail:
@@ -1838,8 +1838,8 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
         % We call the proxy function.
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
         QualProcLabel = qual(MLDS_Module, module_qual, ProcLabel),
-        ProxyFuncRval = const(code_addr_const(
-            internal(QualProcLabel, SeqNum, ProxySignature))),
+        ProxyFuncRval = const(mlconst_code_addr(
+            code_addr_internal(QualProcLabel, SeqNum, ProxySignature))),
 
         % Put it inside a block where we call it.
         Stmt = mlcall(ProxySignature, ProxyFuncRval, ObjectRval,
@@ -1907,7 +1907,7 @@ ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo, Context,
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_gc_method(Globals, GC),
     (
-        GC = accurate,
+        GC = gc_accurate,
         MLDS_DeclType = mercury_type_to_mlds_type(ModuleInfo, DeclType),
         ml_type_might_contain_pointers_for_gc(MLDS_DeclType) = yes,
         % don't generate GC tracing code in no_type_info_builtins
@@ -2012,7 +2012,7 @@ ml_type_category_might_contain_pointers(type_cat_user_ctor) = yes.
 :- pred trace_type_info_type(mer_type::in, mer_type::out) is semidet.
 
 trace_type_info_type(Type, RealType) :-
-    Type = defined(TypeName, _, _),
+    Type = defined_type(TypeName, _, _),
     TypeName = qualified(PrivateBuiltin, Name),
     mercury_private_builtin_module(PrivateBuiltin),
     ( Name = "type_info", RealType = sample_type_info_type
@@ -2119,7 +2119,8 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
         non_foreign_type(c_pointer_type)),
     ArgTypes = [mlds_pseudo_type_info_type, CPointerType],
     Signature = mlds_func_signature(ArgTypes, []),
-    FuncAddr = const(code_addr_const(proc(QualProcLabel, Signature))),
+    FuncAddr = const(mlconst_code_addr(
+        code_addr_proc(QualProcLabel, Signature))),
 
     % Generate the call
     % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
@@ -2298,7 +2299,7 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         VarName = mlds_var_name("new_obj", yes(Id)),
         VarType = mlds_array_type(mlds_generic_type),
         NullPointers = list.duplicate(list.length(ArgRvals),
-            init_obj(const(mlds.null(mlds_generic_type)))),
+            init_obj(const(mlconst_null(mlds_generic_type)))),
         Initializer = init_array(NullPointers),
         % This is used for the type_infos allocated during tracing,
         % and we don't need to trace them.
@@ -2338,7 +2339,7 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
 
 init_field_n(PointerType, PointerRval, Context, ArgRval, Statement,
         FieldNum, FieldNum + 1) :-
-    FieldId = offset(const(int_const(FieldNum))),
+    FieldId = offset(const(mlconst_int(FieldNum))),
     % XXX FieldType is wrong for --high-level-data
     FieldType = mlds_generic_type,
     MaybeTag = yes(0),

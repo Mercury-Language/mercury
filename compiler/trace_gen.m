@@ -708,7 +708,10 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
         ->
             goal_info_get_pre_deaths(GoalInfo, PreDeaths),
             goal_info_get_context(GoalInfo, Context),
-            ( goal_info_has_feature(OutsideGoalInfo, hide_debug_event) ->
+            (
+                goal_info_has_feature(OutsideGoalInfo,
+                    feature_hide_debug_event)
+            ->
                 HideEvent = yes
             ;
                 HideEvent = no
@@ -743,7 +746,7 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
         Goal = _ - GoalInfo,
         goal_info_get_goal_path(GoalInfo, Path),
         goal_info_get_context(GoalInfo, Context),
-        ( goal_info_has_feature(OutsideGoalInfo, hide_debug_event) ->
+        ( goal_info_has_feature(OutsideGoalInfo, feature_hide_debug_event) ->
             HideEvent = yes
         ;
             HideEvent = no
@@ -965,11 +968,11 @@ trace_produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
     ),
     instmap.lookup_var(InstMap, Var, Inst),
     ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
-        LldsInst = ground
+        LldsInst = llds_inst_ground
     ;
-        LldsInst = partial(Inst)
+        LldsInst = llds_inst_partial(Inst)
     ),
-    LiveType = var(Var, Name, Type, LldsInst),
+    LiveType = live_value_var(Var, Name, Type, LldsInst),
     VarInfo = layout_var_info(direct(Lval), LiveType, "trace"),
     prog_type.vars(Type, TypeVars),
     set.insert_list(!.Tvars, TypeVars, !:Tvars).

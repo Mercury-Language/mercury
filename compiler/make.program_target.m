@@ -273,7 +273,7 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         MaybePreLinkCommand = yes(PreLinkCommand),
         make_all_module_command(PreLinkCommand, MainModuleName,
             to_sorted_list(AllModules), CommandString, !IO),
-        invoke_system_command(ErrorStream, verbose, CommandString,
+        invoke_system_command(ErrorStream, cmd_verbose, CommandString,
             PreLinkSucceeded, !IO)
     ;
         MaybePreLinkCommand = no,
@@ -1115,7 +1115,7 @@ install_file(FileName, InstallDir, Succeeded, !IO) :-
     Command = string.join_list("   ", list.map(quote_arg,
         [InstallCommand, FileName, InstallDir])),
     io.output_stream(OutputStream, !IO),
-    invoke_system_command(OutputStream, verbose, Command, Succeeded, !IO).
+    invoke_system_command(OutputStream, cmd_verbose, Command, Succeeded, !IO).
 
 :- pred make_install_dirs(bool::out, bool::out, io::di, io::uo) is det.
 

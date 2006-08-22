@@ -368,8 +368,8 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
             % Do not delete deconstruction unifications inserted by
             % stack_opt.m or tupling.m, which have done a more comprehensive
             % cost analysis than common.m can do.
-            \+ goal_info_has_feature(GoalInfo, stack_opt),
-            \+ goal_info_has_feature(GoalInfo, tuple_opt),
+            \+ goal_info_has_feature(GoalInfo, feature_stack_opt),
+            \+ goal_info_has_feature(GoalInfo, feature_tuple_opt),
 
             map.search(SinceCallStructMap0, TypeCtor, ConsIdMap0),
             map.search(ConsIdMap0, ConsId, Structs),
@@ -791,11 +791,12 @@ generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
 
 :- pred types_match_exactly(mer_type::in, mer_type::in) is semidet.
 
-types_match_exactly(variable(TVar, _), variable(TVar, _)).
-types_match_exactly(defined(Name, As, _), defined(Name, Bs, _)) :-
+types_match_exactly(type_variable(TVar, _), type_variable(TVar, _)).
+types_match_exactly(defined_type(Name, As, _), defined_type(Name, Bs, _)) :-
     types_match_exactly_list(As, Bs).
-types_match_exactly(builtin(BuiltinType), builtin(BuiltinType)).
-types_match_exactly(higher_order(As, AR, P, E), higher_order(Bs, BR, P, E)) :-
+types_match_exactly(builtin_type(BuiltinType), builtin_type(BuiltinType)).
+types_match_exactly(higher_order_type(As, AR, P, E),
+        higher_order_type(Bs, BR, P, E)) :-
     types_match_exactly_list(As, Bs),
     (
         AR = yes(A),
@@ -805,11 +806,11 @@ types_match_exactly(higher_order(As, AR, P, E), higher_order(Bs, BR, P, E)) :-
         AR = no,
         BR = no
     ).
-types_match_exactly(tuple(As, _), tuple(Bs, _)) :-
+types_match_exactly(tuple_type(As, _), tuple_type(Bs, _)) :-
     types_match_exactly_list(As, Bs).
-types_match_exactly(apply_n(TVar, As, _), apply_n(TVar, Bs, _)) :-
+types_match_exactly(apply_n_type(TVar, As, _), apply_n_type(TVar, Bs, _)) :-
     types_match_exactly_list(As, Bs).
-types_match_exactly(kinded(_, _), _) :-
+types_match_exactly(kinded_type(_, _), _) :-
     unexpected(this_file, "kind annotation").
 
 :- pred types_match_exactly_list(list(mer_type)::in, list(mer_type)::in)

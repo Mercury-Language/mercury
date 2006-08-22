@@ -407,7 +407,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result,
             special_pred_name_arity(SpecialPredId, Name, _, Arity)
         ;
             pred_info_get_origin(CallPredInfo, Origin),
-            Origin = special_pred(SpecialPredId - _),
+            Origin = origin_special_pred(SpecialPredId - _),
             ( SpecialPredId = spec_pred_compare
             ; SpecialPredId = spec_pred_unify
             )

@@ -620,10 +620,11 @@ parse_underived_instance_2(ErrorTerm, ClassName, ok1(Types), TVarSet,
 
 :- pred type_is_functor_and_vars(mer_type::in) is semidet.
 
-type_is_functor_and_vars(defined(_, Args, _)) :-
+type_is_functor_and_vars(defined_type(_, Args, _)) :-
     functor_args_are_variables(Args).
-type_is_functor_and_vars(builtin(_)).
-type_is_functor_and_vars(higher_order(Args, MaybeRet, Purity, EvalMethod)) :-
+type_is_functor_and_vars(builtin_type(_)).
+type_is_functor_and_vars(higher_order_type(Args, MaybeRet, Purity,
+        EvalMethod)) :-
     % XXX We currently allow pred types to be instance arguments, but not
     % func types. Even then, the pred type must be pure and have a
     % lambda_eval_method of normal. We keep this behaviour basically
@@ -634,9 +635,9 @@ type_is_functor_and_vars(higher_order(Args, MaybeRet, Purity, EvalMethod)) :-
     Purity = purity_pure,
     EvalMethod = lambda_normal,
     functor_args_are_variables(Args).
-type_is_functor_and_vars(tuple(Args, _)) :-
+type_is_functor_and_vars(tuple_type(Args, _)) :-
     functor_args_are_variables(Args).
-type_is_functor_and_vars(kinded(Type, _)) :-
+type_is_functor_and_vars(kinded_type(Type, _)) :-
     type_is_functor_and_vars(Type).
 
 :- pred functor_args_are_variables(list(mer_type)::in) is semidet.

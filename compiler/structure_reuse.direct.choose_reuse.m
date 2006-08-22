@@ -843,7 +843,7 @@ add_degree(Match, Degree0) = Degree0 + Match ^ match_degree.
 
 :- pred empty_reuse_description(reuse_description::in) is semidet.
 
-empty_reuse_description(empty).
+empty_reuse_description(no_reuse_info).
 
 %-----------------------------------------------------------------------------%
 %

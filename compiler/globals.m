@@ -77,24 +77,25 @@
     % collection automatically.
     %
 :- type gc_method
-    --->    automatic   % It is the responsibility of the target language
-                        % that we are compiling to to handle GC.
+    --->    gc_automatic    % It is the responsibility of the target language
+                            % that we are compiling to to handle GC.
 
-    ;       none        % No garbage collection.
-                        % But memory may be recovered on backtracking,
-                        % if the --reclaim-heap-on-*failure options are set.
+    ;       gc_none         % No garbage collection.
+                            % But memory may be recovered on backtracking,
+                            % if the --reclaim-heap-on-*failure options are
+                            % set.
 
-    ;       boehm       % The Boehm et al conservative collector.
+    ;       gc_boehm        % The Boehm et al conservative collector.
 
-    ;       mps         % A different conservative collector, based on
-                        % Ravenbrook Limited's MPS (Memory Pool System) kit.
-                        % Benchmarking indicated that this one performed worse
-                        % than the Boehm collector, so we don't really
-                        % support this option anymore.
+    ;       gc_mps          % A different conservative collector, based on
+                            % Ravenbrook Limited's MPS (Memory Pool System)
+                            % kit. Benchmarking indicated that this one
+                            % performed worse than the Boehm collector,
+                            % so we don't really support this option anymore.
 
-    ;       accurate.   % Our own home-grown copying collector.
-                        % See runtime/mercury_accurate_gc.c
-                        % and compiler/ml_elim_nested.m.
+    ;       gc_accurate.    % Our own home-grown copying collector.
+                            % See runtime/mercury_accurate_gc.c
+                            % and compiler/ml_elim_nested.m.
 
     % Returns yes if the GC method is conservative, i.e. if it is `boehm'
     % or `mps'. Conservative GC methods don't support heap reclamation
@@ -103,28 +104,28 @@
 :- func gc_is_conservative(gc_method) = bool.
 
 :- type tags_method
-    --->    none
-    ;       low
-    ;       high.
+    --->    tags_none
+    ;       tags_low
+    ;       tags_high.
 
 :- type termination_norm
-    --->    simple
-    ;       total
-    ;       num_data_elems
-    ;       size_data_elems.
+    --->    norm_simple
+    ;       norm_total
+    ;       norm_num_data_elems
+    ;       norm_size_data_elems.
 
     % Map from module name to file name.
     %
 :- type source_file_map == map(module_name, string).
 
-:- type maybe_thread_safe == bool.
+:- type may_be_thread_safe == bool.
 
 :- pred convert_target(string::in, compilation_target::out) is semidet.
 :- pred convert_foreign_language(string::in, foreign_language::out) is semidet.
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
-:- pred convert_maybe_thread_safe(string::in, maybe_thread_safe::out)
+:- pred convert_maybe_thread_safe(string::in, may_be_thread_safe::out)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -135,7 +136,7 @@
 :- pred globals_init(option_table::di, compilation_target::di, gc_method::di,
     tags_method::di, termination_norm::di, termination_norm::di,
     trace_level::di, trace_suppress_items::di,
-    maybe_thread_safe::di, globals::uo) is det.
+    may_be_thread_safe::di, globals::uo) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
@@ -143,45 +144,34 @@
     list(foreign_language)::out) is det.
 :- pred get_gc_method(globals::in, gc_method::out) is det.
 :- pred get_tags_method(globals::in, tags_method::out) is det.
-:- pred get_termination_norm(globals::in, termination_norm::out)
-    is det.
-:- pred get_termination2_norm(globals::in, termination_norm::out)
-    is det.
+:- pred get_termination_norm(globals::in, termination_norm::out) is det.
+:- pred get_termination2_norm(globals::in, termination_norm::out) is det.
 :- pred get_trace_level(globals::in, trace_level::out) is det.
-:- pred get_trace_suppress(globals::in, trace_suppress_items::out)
-    is det.
-:- pred get_source_file_map(globals::in, maybe(source_file_map)::out)
-    is det.
-:- pred get_maybe_thread_safe(globals::in, maybe_thread_safe::out)
-    is det.
+:- pred get_trace_suppress(globals::in, trace_suppress_items::out) is det.
+:- pred get_source_file_map(globals::in, maybe(source_file_map)::out) is det.
+:- pred get_maybe_thread_safe(globals::in, may_be_thread_safe::out) is det.
 
-:- pred set_option(option::in, option_data::in,
-    globals::in, globals::out) is det.
-:- pred set_options(option_table::in, globals::in, globals::out)
+:- pred set_option(option::in, option_data::in, globals::in, globals::out)
     is det.
-:- pred set_gc_method(gc_method::in, globals::in, globals::out)
-    is det.
-:- pred set_tags_method(tags_method::in, globals::in, globals::out)
-    is det.
-:- pred set_trace_level(trace_level::in, globals::in, globals::out)
-    is det.
+:- pred set_options(option_table::in, globals::in, globals::out) is det.
+:- pred set_gc_method(gc_method::in, globals::in, globals::out) is det.
+:- pred set_tags_method(tags_method::in, globals::in, globals::out) is det.
+:- pred set_trace_level(trace_level::in, globals::in, globals::out) is det.
 :- pred set_trace_level_none(globals::in, globals::out) is det.
 :- pred set_source_file_map(maybe(source_file_map)::in,
     globals::in, globals::out) is det.
 
-:- pred lookup_option(globals::in, option::in, option_data::out)
-    is det.
+:- pred lookup_option(globals::in, option::in, option_data::out) is det.
 
 :- pred lookup_bool_option(globals, option, bool).
 :- mode lookup_bool_option(in, in, out) is det.
 :- mode lookup_bool_option(in, in, in) is semidet. % implied
 :- pred lookup_int_option(globals::in, option::in, int::out) is det.
-:- pred lookup_string_option(globals::in, option::in, string::out)
+:- pred lookup_string_option(globals::in, option::in, string::out) is det.
+:- pred lookup_maybe_string_option(globals::in, option::in, maybe(string)::out)
     is det.
-:- pred lookup_maybe_string_option(globals::in, option::in,
-    maybe(string)::out) is det.
-:- pred lookup_accumulating_option(globals::in, option::in,
-    list(string)::out) is det.
+:- pred lookup_accumulating_option(globals::in, option::in, list(string)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -213,7 +203,7 @@
 :- pred globals_io_init(option_table::di, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
     termination_norm::in, trace_level::in, trace_suppress_items::in,
-    maybe_thread_safe::in, io::di, io::uo) is det.
+    may_be_thread_safe::in, io::di, io::uo) is det.
 
 :- pred io_get_target(compilation_target::out, io::di, io::uo) is det.
 :- pred io_get_backend_foreign_languages(list(foreign_language)::out,
@@ -224,18 +214,16 @@
 
 :- pred io_get_gc_method(gc_method::out, io::di, io::uo) is det.
 :- pred io_get_tags_method(tags_method::out, io::di, io::uo) is det.
-:- pred io_get_termination_norm(termination_norm::out,
-    io::di, io::uo) is det.
+:- pred io_get_termination_norm(termination_norm::out, io::di, io::uo) is det.
 
-:- pred io_get_termination2_norm(termination_norm::out,
-    io::di, io::uo) is det.
+:- pred io_get_termination2_norm(termination_norm::out, io::di, io::uo) is det.
 
 :- pred io_get_trace_level(trace_level::out, io::di, io::uo) is det.
 
-:- pred io_get_trace_suppress(trace_suppress_items::out,
-    io::di, io::uo) is det.
-:- pred io_get_maybe_thread_safe(maybe_thread_safe::out,
-    io::di, io::uo) is det.
+:- pred io_get_trace_suppress(trace_suppress_items::out, io::di, io::uo)
+    is det.
+:- pred io_get_maybe_thread_safe(may_be_thread_safe::out, io::di, io::uo)
+    is det.
 
 :- pred io_get_extra_error_info(bool::out, io::di, io::uo) is det.
 
@@ -243,8 +231,7 @@
 
 :- pred io_set_globals(globals::di, io::di, io::uo) is det.
 
-:- pred io_set_option(option::in, option_data::in,
-    io::di, io::uo) is det.
+:- pred io_set_option(option::in, option_data::in, io::di, io::uo) is det.
 
 :- pred io_set_gc_method(gc_method::in, io::di, io::uo) is det.
 :- pred io_set_tags_method(tags_method::in, io::di, io::uo) is det.
@@ -252,17 +239,14 @@
 :- pred io_set_trace_level_none(io::di, io::uo) is det.
 :- pred io_set_extra_error_info(bool::in, io::di, io::uo) is det.
 
-:- pred io_lookup_option(option::in, option_data::out,
-    io::di, io::uo) is det.
+:- pred io_lookup_option(option::in, option_data::out, io::di, io::uo) is det.
 
-:- pred io_lookup_bool_option(option::in, bool::out,
-    io::di, io::uo) is det.
+:- pred io_lookup_bool_option(option::in, bool::out, io::di, io::uo) is det.
 
-:- pred io_lookup_int_option(option::in, int::out,
-    io::di, io::uo) is det.
+:- pred io_lookup_int_option(option::in, int::out, io::di, io::uo) is det.
 
-:- pred io_lookup_string_option(option::in, string::out,
-    io::di, io::uo) is det.
+:- pred io_lookup_string_option(option::in, string::out, io::di, io::uo)
+    is det.
 
 :- pred io_lookup_maybe_string_option(option::in, maybe(string)::out,
     io::di, io::uo) is det.
@@ -310,21 +294,21 @@ convert_foreign_language_2("c sharp", lang_csharp).
 convert_foreign_language_2("il", lang_il).
 convert_foreign_language_2("java", lang_java).
 
-convert_gc_method("none", none).
-convert_gc_method("conservative", boehm).
-convert_gc_method("boehm", boehm).
-convert_gc_method("mps", mps).
-convert_gc_method("accurate", accurate).
-convert_gc_method("automatic", automatic).
+convert_gc_method("none", gc_none).
+convert_gc_method("conservative", gc_boehm).
+convert_gc_method("boehm", gc_boehm).
+convert_gc_method("mps", gc_mps).
+convert_gc_method("accurate", gc_accurate).
+convert_gc_method("automatic", gc_automatic).
 
-convert_tags_method("none", none).
-convert_tags_method("low", low).
-convert_tags_method("high", high).
+convert_tags_method("none", tags_none).
+convert_tags_method("low", tags_low).
+convert_tags_method("high", tags_high).
 
-convert_termination_norm("simple", simple).
-convert_termination_norm("total", total).
-convert_termination_norm("num-data-elems", num_data_elems).
-convert_termination_norm("size-data-elems", size_data_elems).
+convert_termination_norm("simple", norm_simple).
+convert_termination_norm("total", norm_total).
+convert_termination_norm("num-data-elems", norm_num_data_elems).
+convert_termination_norm("size-data-elems", norm_size_data_elems).
 
 convert_maybe_thread_safe("yes", yes).
 convert_maybe_thread_safe("no",  no).
@@ -347,11 +331,11 @@ simple_foreign_language_string(lang_csharp) = "csharp".
 simple_foreign_language_string(lang_il) = "il".
 simple_foreign_language_string(lang_java) = "java".
 
-gc_is_conservative(boehm) = yes.
-gc_is_conservative(mps) = yes.
-gc_is_conservative(none) = no.
-gc_is_conservative(accurate) = no.
-gc_is_conservative(automatic) = no.
+gc_is_conservative(gc_boehm) = yes.
+gc_is_conservative(gc_mps) = yes.
+gc_is_conservative(gc_none) = no.
+gc_is_conservative(gc_accurate) = no.
+gc_is_conservative(gc_automatic) = no.
 
 %-----------------------------------------------------------------------------%
 
@@ -367,7 +351,7 @@ gc_is_conservative(automatic) = no.
                 trace_suppress_items    :: trace_suppress_items,
                 source_file_map         :: maybe(source_file_map),
                 have_printed_usage      :: bool,
-                maybe_thread_safe       :: bool
+                may_be_thread_safe      :: bool
             ).
 
     % Is there extra information about errors available that could be printed
@@ -392,11 +376,10 @@ get_termination2_norm(Globals, Globals ^ termination2_norm).
 get_trace_level(Globals, Globals ^ trace_level).
 get_trace_suppress(Globals, Globals ^ trace_suppress_items).
 get_source_file_map(Globals, Globals ^ source_file_map).
-get_maybe_thread_safe(Globals, Globals ^ maybe_thread_safe).
+get_maybe_thread_safe(Globals, Globals ^ may_be_thread_safe).
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
-    lookup_accumulating_option(Globals, backend_foreign_languages,
-        LangStrs),
+    lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),
     ForeignLangs = list.map(func(String) = ForeignLang :-
         ( convert_foreign_language(String, ForeignLang0) ->
             ForeignLang = ForeignLang0
@@ -414,8 +397,7 @@ set_option(Option, OptionData, !Globals) :-
 
 set_gc_method(GC_Method, Globals, Globals ^ gc_method := GC_Method).
 
-set_tags_method(Tags_Method, Globals,
-    Globals ^ tags_method := Tags_Method).
+set_tags_method(Tags_Method, Globals, Globals ^ tags_method := Tags_Method).
 
 set_trace_level(TraceLevel, Globals,
     Globals ^ trace_level := TraceLevel).
@@ -469,8 +451,8 @@ lookup_accumulating_option(Globals, Option, Value) :-
     ( OptionData = accumulating(Accumulating) ->
         Value = Accumulating
     ;
-        unexpected(this_file, "lookup_accumulating_option: "
-            ++ "invalid accumulating option")
+        unexpected(this_file,
+            "lookup_accumulating_option: invalid accumulating option")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -479,8 +461,7 @@ have_static_code_addresses(Globals, IsConst) :-
     get_options(Globals, OptionTable),
     have_static_code_addresses_2(OptionTable, IsConst).
 
-:- pred have_static_code_addresses_2(option_table::in,
-    bool::out) is det.
+:- pred have_static_code_addresses_2(option_table::in, bool::out) is det.
 
 have_static_code_addresses_2(OptionTable, IsConst) :-
     getopt_io.lookup_bool_option(OptionTable, gcc_non_local_gotos,
@@ -494,7 +475,7 @@ want_return_var_layouts(Globals, WantReturnLayouts) :-
     (
         (
             get_gc_method(Globals, GC_Method),
-            GC_Method = accurate
+            GC_Method = gc_accurate
         ;
             get_trace_level(Globals, TraceLevel),
             get_trace_suppress(Globals, TraceSuppress),

@@ -180,7 +180,7 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
         EffTraceLevel = none
     ;
         pred_info_get_origin(PredInfo, Origin),
-        ( Origin = special_pred(SpecialPred - _) ->
+        ( Origin = origin_special_pred(SpecialPred - _) ->
             % Unify and compare predicates can be called from the generic
             % unify and compare predicates in builtin.m, so they can be called
             % from outside this module even if they don't have their address
@@ -205,7 +205,7 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
                 SpecialPred = spec_pred_init,
                 EffTraceLevel = TraceLevel
             )
-        ; Origin = created(io_tabling) ->
+        ; Origin = origin_created(io_tabling) ->
             % Predicates called by a predicate that is I/O tabled should not be
             % traced. If such a predicate were allowed to generate events then
             % the event numbers of events after the I/O primitive would be

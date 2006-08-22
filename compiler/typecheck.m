@@ -650,7 +650,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     pred_origin::in, pred_origin::out) is det.
 
 rename_instance_method_constraints(Renaming, Origin0, Origin) :-
-    ( Origin0 = instance_method(Constraints0) ->
+    ( Origin0 = origin_instance_method(Constraints0) ->
         Constraints0 = instance_method_constraints(ClassId, InstanceTypes0,
             InstanceConstraints0, ClassMethodClassContext0),
         apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
@@ -661,7 +661,7 @@ rename_instance_method_constraints(Renaming, Origin0, Origin) :-
             ClassMethodClassContext0, ClassMethodClassContext),
         Constraints = instance_method_constraints(ClassId,
             InstanceTypes, InstanceConstraints, ClassMethodClassContext),
-        Origin = instance_method(Constraints)
+        Origin = origin_instance_method(Constraints)
     ;
         Origin = Origin0
     ).
@@ -810,7 +810,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
     % Check if the predicate is a compiler-generated special
     % predicate, and if so, for which type.
     pred_info_get_origin(PredInfo, Origin),
-    Origin = special_pred(SpecialPredId - TypeCtor),
+    Origin = origin_special_pred(SpecialPredId - TypeCtor),
 
     % Check that the special pred isn't one of the builtin types which don't
     % have a hlds_type_defn.
@@ -1438,7 +1438,7 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
     varset.new_var(TypeVarSet1, RetTypeVar, TypeVarSet),
     % Argument and return types always have kind `star'.
     prog_type.var_list_to_type_list(map.init, ArgTypeVars, ArgTypes),
-    RetType = variable(RetTypeVar, star),
+    RetType = type_variable(RetTypeVar, kind_star),
     construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
         FuncType).
 
@@ -2112,7 +2112,7 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
             type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
             varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
             type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign1),
-            Type = variable(TypeVar, star),
+            Type = type_variable(TypeVar, kind_star),
             map.det_insert(VarTypes0, X, Type, VarTypes1),
             ( X \= Y ->
                 map.det_insert(VarTypes1, Y, Type, VarTypes)
@@ -2291,7 +2291,7 @@ type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
         type_assign_get_typevarset(!.TypeAssign, TypeVarSet0),
         varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
         type_assign_set_typevarset(TypeVarSet, !TypeAssign),
-        Type = variable(TypeVar, star),
+        Type = type_variable(TypeVar, kind_star),
         map.det_insert(VarTypes0, Var, Type, VarTypes1),
         type_assign_set_var_types(VarTypes1, !TypeAssign)
     ),

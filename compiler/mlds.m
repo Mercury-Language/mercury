@@ -1557,20 +1557,20 @@
     ;       std_unop(builtin_ops.unary_op).
 
 :- type mlds_rval_const
-    --->    true_const
-    ;       false_const
-    ;       int_const(int)
-    ;       float_const(float)
-    ;       string_const(string)
-    ;       multi_string_const(int, string)
+    --->    mlconst_true
+    ;       mlconst_false
+    ;       mlconst_int(int)
+    ;       mlconst_float(float)
+    ;       mlconst_string(string)
+    ;       mlconst_multi_string(int, string)
             % A multi_string_const is a string containing embedded NULs,
             % whose real length is given by the integer, and not the location
             % of the first null character.
 
-    ;       code_addr_const(mlds_code_addr)
-    ;       data_addr_const(mlds_data_addr)
+    ;       mlconst_code_addr(mlds_code_addr)
+    ;       mlconst_data_addr(mlds_data_addr)
 
-    ;       null(mlds_type).
+    ;       mlconst_null(mlds_type).
             % A null value, of the given type. Usually the type will be a
             % pointer (mlds_ptr_type) but it could also be string or a
             % func_type. (Null is not a valid value of type string or
@@ -1578,11 +1578,11 @@
             % placeholders in cases where the value will never be used.)
 
 :- type mlds_code_addr
-    --->    proc(
+    --->    code_addr_proc(
                 mlds_qualified_proc_label,
                 mlds_func_signature
             )
-    ;       internal(
+    ;       code_addr_internal(
                 mlds_qualified_proc_label,
                 mlds_func_sequence_num,
                 mlds_func_signature

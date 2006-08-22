@@ -786,7 +786,7 @@ substitute_types_check_match(ExpType, TypeStuff, TypeMismatch) :-
         ;
             % There is no mismatch if the actual type of the
             % argument has no constraints on it.
-            FullArgType = defined(unqualified("<any>"), [], _)
+            FullArgType = defined_type(unqualified("<any>"), [], _)
         )
     ->
         fail
@@ -1460,7 +1460,7 @@ write_cons_type(ConsInfo, Functor, _, !IO) :-
         (
             Functor = cons(SymName, _Arity)
         ->
-            Type = defined(SymName, ArgTypes, star),
+            Type = defined_type(SymName, ArgTypes, kind_star),
             output_type(Type, TVarSet, ExistQVars, !IO)
         ;
             unexpected(this_file, "write_cons_type: invalid cons_id")
@@ -1774,7 +1774,7 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
         % This shouldn't happen - how can a variable which has
         % not yet been assigned a type variable fail to have
         % the correct type?
-        Type = defined(unqualified("<any>"), [], star)
+        Type = defined_type(unqualified("<any>"), [], kind_star)
     ),
     TypeStuff = type_stuff(Type, TVarSet, TypeBindings, HeadTypeParams),
     ( list.member(TypeStuff, TailTypeStuffs) ->
@@ -1823,7 +1823,7 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
         % This shouldn't happen - how can a variable which has
         % not yet been assigned a type variable fail to have
         % the correct type?
-        VarType = defined(unqualified("<any>"), [], star)
+        VarType = defined_type(unqualified("<any>"), [], kind_star)
     ),
     list.index0_det(ArgTypes, 0, ArgType),
     apply_rec_subst_to_type(TypeBindings, ArgType, ArgType2),

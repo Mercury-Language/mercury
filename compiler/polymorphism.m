@@ -700,7 +700,7 @@ setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
         HeadTypeVars, UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !Info) :-
     pred_info_get_origin(PredInfo, Origin),
-    ( Origin = instance_method(InstanceMethodConstraints) ->
+    ( Origin = origin_instance_method(InstanceMethodConstraints) ->
         setup_headvars_instance_method(PredInfo,
             InstanceMethodConstraints, HeadVars0, HeadVars,
             ExtraArgModes, HeadTypeVars, UnconstrainedTVars,
@@ -2476,7 +2476,7 @@ make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
     ;
         % Now handle the cases of types which are not known statically
         % (i.e. type variables)
-        ( Type = variable(TypeVar, _) ->
+        ( Type = type_variable(TypeVar, _) ->
             get_type_info_locn(TypeVar, TypeInfoLocn, !Info),
             get_type_info(TypeInfoLocn, TypeVar, ExtraGoals, Var, !Info)
         ;
@@ -2507,7 +2507,7 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
         % will fix this up when the typeclass_info is created.
         %
         get_tvar_kind(!.Info ^ tvar_kinds, TypeVar, Kind),
-        Type = variable(TypeVar, Kind),
+        Type = type_variable(TypeVar, Kind),
         new_type_info_var(Type, type_info, Var, !Info),
         TypeInfoLocn = type_info(Var),
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
@@ -2765,7 +2765,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
 make_head_vars([], _, [], !Info).
 make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars, !Info) :-
     get_tvar_kind(!.Info ^ tvar_kinds, TypeVar, Kind),
-    Type = variable(TypeVar, Kind),
+    Type = type_variable(TypeVar, Kind),
     new_type_info_var(Type, type_info, Var, !Info),
     ( varset.search_name(TypeVarSet, TypeVar, TypeVarName) ->
         poly_info_get_varset(!.Info, VarSet0),
@@ -2860,7 +2860,7 @@ gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
         Goals, TypeInfoVar, !VarSet, !VarTypes, !RttiVarMaps) :-
     make_int_const_construction_alloc(Index, yes("TypeInfoIndex"),
         IndexGoal, IndexVar, !VarSet, !VarTypes),
-    Type = variable(TypeVar, Kind),
+    Type = type_variable(TypeVar, Kind),
     new_type_info_var_raw(Type, type_info, TypeInfoVar,
         !VarSet, !VarTypes, !RttiVarMaps),
     goal_util.generate_simple_call(mercury_private_builtin_module,
@@ -2998,7 +2998,7 @@ new_typeclass_info_var(Constraint, ClassString, Var, !Info) :-
 build_typeclass_info_type(_Constraint, DictionaryType) :-
     PrivateBuiltin = mercury_private_builtin_module,
     TypeclassInfoTypeName = qualified(PrivateBuiltin, "typeclass_info"),
-    DictionaryType = defined(TypeclassInfoTypeName, [], star).
+    DictionaryType = defined_type(TypeclassInfoTypeName, [], kind_star).
 
 %---------------------------------------------------------------------------%
 

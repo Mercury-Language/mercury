@@ -144,9 +144,9 @@ make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
         % structure, a label that is usable only within the current C module
         % won't do.
         ( RttiProcLabel ^ proc_is_exported = yes ->
-            EntryType = exported
+            EntryType = entry_label_exported
         ;
-            EntryType = local
+            EntryType = entry_label_local
         ),
         Label = entry(EntryType, ProcLabel)
     ;
@@ -172,9 +172,9 @@ choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
             ProcId = CurProcId
         )
     ->
-        EntryType = c_local
+        EntryType = entry_label_c_local
     ;
-        EntryType = local
+        EntryType = entry_label_local
     ),
     Label = entry(EntryType, ProcLabel).
 
@@ -195,7 +195,7 @@ extract_proc_label_from_code_addr(CodeAddr, ProcLabel) :-
 
 %-----------------------------------------------------------------------------%
 
-arg_loc_to_register(ArgLoc, reg(r, ArgLoc)).
+arg_loc_to_register(ArgLoc, reg(reg_r, ArgLoc)).
 
 %-----------------------------------------------------------------------------%
 
@@ -206,7 +206,7 @@ max_mentioned_reg(Lvals, MaxRegNum) :-
 
 max_mentioned_reg_2([], !MaxRegNum).
 max_mentioned_reg_2([Lval | Lvals], !MaxRegNum) :-
-    ( Lval = reg(r, N) ->
+    ( Lval = reg(reg_r, N) ->
         int.max(N, !MaxRegNum)
     ;
         true
@@ -318,11 +318,11 @@ neg_rval(Rval, NegRval) :-
 
 neg_rval_2(const(Const), const(NegConst)) :-
     (
-        Const = true,
-        NegConst = false
+        Const = llconst_true,
+        NegConst = llconst_false
     ;
-        Const = false,
-        NegConst = true
+        Const = llconst_false,
+        NegConst = llconst_true
     ).
 neg_rval_2(unop(logical_not, Rval), Rval).
 neg_rval_2(binop(Op, X, Y), binop(NegOp, X, Y)) :-

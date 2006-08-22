@@ -459,8 +459,8 @@ prepare_for_body(FinalMap, !VarSet, !SInfo) :-
 finish_goals(Context, FinalSVarMap, Goals0, Goal, SInfo) :-
     goal_info_init(Context, GoalInfo),
     list.map(goal_to_conj_list, Goals0, GoalsAsConjList),
-    Unifiers = svar_unifiers(yes(dont_warn_singleton), Context, FinalSVarMap,
-        SInfo ^ dot),
+    Unifiers = svar_unifiers(yes(feature_dont_warn_singleton), Context,
+        FinalSVarMap, SInfo ^ dot),
     Goals1 = list.condense(GoalsAsConjList),
     Goals  = Goals1 ++ Unifiers,
     conj_list_to_goal(Goals, GoalInfo, Goal).
@@ -600,7 +600,7 @@ add_then_arm_specific_unifiers(Context, [StateVar | StateVars],
         % add a new unifier !:X = !.X
         Dot0 = !.SInfoT ^ dot ^ det_elem(StateVar),
         new_colon_state_var(StateVar, Dot, !VarSet, !SInfoT),
-        !:Thens = [svar_unification(yes(dont_warn_singleton), Context,
+        !:Thens = [svar_unification(yes(feature_dont_warn_singleton), Context,
             Dot, Dot0) | !.Thens],
         prepare_for_next_conjunct(set.make_singleton_set(StateVar),
             !VarSet, !SInfoT)
@@ -767,7 +767,7 @@ add_disj_unifier(Context, SInfo, SInfoX, StateVar, Unifiers) =
         DotX = SInfoX ^ dot ^ elem(StateVar),
         Dot \= DotX
     ->
-        [svar_unification(yes(dont_warn_singleton), Context, Dot, DotX)
+        [svar_unification(yes(feature_dont_warn_singleton), Context, Dot, DotX)
             | Unifiers]
     ;
         Unifiers

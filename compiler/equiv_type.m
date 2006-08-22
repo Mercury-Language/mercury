@@ -674,12 +674,12 @@ replace_in_type(EqvMap, Type0, Type, Changed, !VarSet, !Info) :-
 replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
         Changed, Circ, !VarSet, !Info) :-
     (
-        Type0 = variable(Var, Kind),
-        Type = variable(Var, Kind),
+        Type0 = type_variable(Var, Kind),
+        Type = type_variable(Var, Kind),
         Changed = no,
         Circ = no
     ;
-        Type0 = defined(SymName, TArgs0, Kind),
+        Type0 = defined_type(SymName, TArgs0, Kind),
         replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
             TArgs0, TArgs, ArgsChanged, no, Circ0, !VarSet, !Info),
         Arity = list.length(TArgs),
@@ -688,12 +688,12 @@ replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
             Type0, TypeCtor, TArgs, Kind, Type, ArgsChanged, Changed,
             Circ0, Circ, !VarSet, !Info)
     ;
-        Type0 = builtin(_),
+        Type0 = builtin_type(_),
         Type = Type0,
         Changed = no,
         Circ = no
     ;
-        Type0 = higher_order(Args0, MaybeRet0, Purity, EvalMethod),
+        Type0 = higher_order_type(Args0, MaybeRet0, Purity, EvalMethod),
         replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
             Args0, Args, ArgsChanged, no, ArgsCirc, !VarSet, !Info),
         (
@@ -711,40 +711,40 @@ replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
         ),
         (
             Changed = yes,
-            Type = higher_order(Args, MaybeRet, Purity, EvalMethod)
+            Type = higher_order_type(Args, MaybeRet, Purity, EvalMethod)
         ;
             Changed = no,
             Type = Type0
         )
     ;
-        Type0 = tuple(Args0, Kind),
+        Type0 = tuple_type(Args0, Kind),
         replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
             Args0, Args, Changed, no, Circ, !VarSet, !Info),
         (
             Changed = yes,
-            Type = tuple(Args, Kind)
+            Type = tuple_type(Args, Kind)
         ;
             Changed = no,
             Type = Type0
         )
     ;
-        Type0 = apply_n(Var, Args0, Kind),
+        Type0 = apply_n_type(Var, Args0, Kind),
         replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
             Args0, Args, Changed, no, Circ, !VarSet, !Info),
         (
             Changed = yes,
-            Type = apply_n(Var, Args, Kind)
+            Type = apply_n_type(Var, Args, Kind)
         ;
             Changed = no,
             Type = Type0
         )
     ;
-        Type0 = kinded(RawType0, Kind),
+        Type0 = kinded_type(RawType0, Kind),
         replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
             RawType0, RawType, Changed, Circ, !VarSet, !Info),
         (
             Changed = yes,
-            Type = kinded(RawType, Kind)
+            Type = kinded_type(RawType, Kind)
         ;
             Changed = no,
             Type = Type0
@@ -792,7 +792,7 @@ replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded, Type0,
         (
             !.Changed = yes,
             TypeCtor = type_ctor(SymName, _Arity),
-            Type = defined(SymName, TArgs, Kind)
+            Type = defined_type(SymName, TArgs, Kind)
         ;
             !.Changed = no,
             Type = Type0

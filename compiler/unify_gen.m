@@ -181,9 +181,9 @@ generate_test(VarA, VarB, Code, !CI) :-
     code_info.produce_variable(VarB, CodeB, ValB, !CI),
     CodeAB = tree(CodeA, CodeB),
     Type = code_info.variable_type(!.CI, VarA),
-    ( Type = builtin(string) ->
+    ( Type = builtin_type(builtin_type_string) ->
         Op = str_eq
-    ; Type = builtin(float) ->
+    ; Type = builtin_type(builtin_type_float) ->
         Op = float_eq
     ;
         Op = eq
@@ -272,13 +272,13 @@ generate_tag_test_rval(Var, ConsId, TestRval, Code, !CI) :-
 generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
     (
         ConsTag = string_tag(String),
-        TestRval = binop(str_eq, Rval, const(string_const(String)))
+        TestRval = binop(str_eq, Rval, const(llconst_string(String)))
     ;
         ConsTag = float_tag(Float),
-        TestRval = binop(float_eq, Rval, const(float_const(Float)))
+        TestRval = binop(float_eq, Rval, const(llconst_float(Float)))
     ;
         ConsTag = int_tag(Int),
-        TestRval = binop(eq, Rval, const(int_const(Int)))
+        TestRval = binop(eq, Rval, const(llconst_int(Int)))
     ;
         ConsTag = pred_closure_tag(_, _, _),
         % This should never happen, since the error will be detected
@@ -302,27 +302,27 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         unexpected(this_file, "Attempted table_io_decl_tag unification")
     ;
         ConsTag = no_tag,
-        TestRval = const(true)
+        TestRval = const(llconst_true)
     ;
         ConsTag = single_functor_tag,
-        TestRval = const(true)
+        TestRval = const(llconst_true)
     ;
         ConsTag = unshared_tag(UnsharedTag),
         VarPtag = unop(tag, Rval),
-        ConstPtag = unop(mktag, const(int_const(UnsharedTag))),
+        ConstPtag = unop(mktag, const(llconst_int(UnsharedTag))),
         TestRval = binop(eq, VarPtag, ConstPtag)
     ;
         ConsTag = shared_remote_tag(Bits, Num),
         VarPtag = unop(tag, Rval),
-        ConstPtag = unop(mktag, const(int_const(Bits))),
+        ConstPtag = unop(mktag, const(llconst_int(Bits))),
         PtagTestRval = binop(eq, VarPtag, ConstPtag),
-        VarStag = lval(field(yes(Bits), Rval, const(int_const(0)))),
-        ConstStag = const(int_const(Num)),
+        VarStag = lval(field(yes(Bits), Rval, const(llconst_int(0)))),
+        ConstStag = const(llconst_int(Num)),
         StagTestRval = binop(eq, VarStag, ConstStag),
         TestRval = binop(logical_and, PtagTestRval, StagTestRval)
     ;
         ConsTag = shared_local_tag(Bits, Num),
-        ConstStag = mkword(Bits, unop(mkbody, const(int_const(Num)))),
+        ConstStag = mkword(Bits, unop(mkbody, const(llconst_int(Num)))),
         TestRval = binop(eq, Rval, ConstStag)
     ;
         ConsTag = reserved_address_tag(RA),
@@ -343,8 +343,8 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
 
 :- func generate_reserved_address(reserved_address) = rval.
 
-generate_reserved_address(null_pointer) = const(int_const(0)).
-generate_reserved_address(small_pointer(N)) = const(int_const(N)).
+generate_reserved_address(null_pointer) = const(llconst_int(0)).
+generate_reserved_address(small_pointer(N)) = const(llconst_int(N)).
 generate_reserved_address(reserved_object(_, _, _)) = _ :-
     % These should only be used for the MLDS back-end.
     unexpected(this_file, "reserved_object").
@@ -380,15 +380,15 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         GoalInfo, Code, !CI) :-
     (
         ConsTag = string_tag(String),
-        code_info.assign_const_to_var(Var, const(string_const(String)), !CI),
+        code_info.assign_const_to_var(Var, const(llconst_string(String)), !CI),
         Code = empty
     ;
         ConsTag = int_tag(Int),
-        code_info.assign_const_to_var(Var, const(int_const(Int)), !CI),
+        code_info.assign_const_to_var(Var, const(llconst_int(Int)), !CI),
         Code = empty
     ;
         ConsTag = float_tag(Float),
-        code_info.assign_const_to_var(Var, const(float_const(Float)), !CI),
+        code_info.assign_const_to_var(Var, const(llconst_float(Float)), !CI),
         Code = empty
     ;
         ConsTag = no_tag,
@@ -429,22 +429,23 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         generate_cons_args(Args, ArgTypes, Modes, 1, 1, TakeAddr, ModuleInfo,
             MaybeRvals0, FieldAddrs, MayUseAtomic),
         % The first field holds the secondary tag.
-        MaybeRvals = [yes(const(int_const(Sectag))) | MaybeRvals0],
+        MaybeRvals = [yes(const(llconst_int(Sectag))) | MaybeRvals0],
         construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs,
             MayUseAtomic, Code, !CI)
     ;
         ConsTag = shared_local_tag(Bits1, Num1),
         code_info.assign_const_to_var(Var,
-            mkword(Bits1, unop(mkbody, const(int_const(Num1)))), !CI),
+            mkword(Bits1, unop(mkbody, const(llconst_int(Num1)))), !CI),
         Code = empty
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
         expect(unify(Args, []), this_file,
             "generate_construction_2: type_ctor_info constant has args"),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
-        DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor, type_ctor_info)),
+        DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor,
+            type_ctor_type_ctor_info)),
         code_info.assign_const_to_var(Var,
-            const(data_addr_const(DataAddr, no)), !CI),
+            const(llconst_data_addr(DataAddr, no)), !CI),
         Code = empty
     ;
         ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
@@ -452,8 +453,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             "generate_construction_2: base_typeclass_info constant has args"),
         TCName = generate_class_name(ClassId),
         code_info.assign_const_to_var(Var,
-            const(data_addr_const(rtti_addr(tc_rtti_id(TCName,
-                base_typeclass_info(ModuleName, Instance))), no)), !CI),
+            const(llconst_data_addr(rtti_addr(tc_rtti_id(TCName,
+                type_class_base_typeclass_info(ModuleName, Instance))), no)),
+                !CI),
         Code = empty
     ;
         ConsTag = tabling_info_tag(PredId, ProcId),
@@ -465,7 +467,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         DataAddr = data_addr(ModuleName,
             proc_tabling_ref(ProcLabel, tabling_info)),
         code_info.assign_const_to_var(Var,
-            const(data_addr_const(DataAddr, no)), !CI),
+            const(llconst_data_addr(DataAddr, no)), !CI),
         Code = empty
     ;
         ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
@@ -474,7 +476,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         code_info.get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         Origin = RttiProcLabel ^ pred_info_origin,
-        ( Origin = special_pred(_) ->
+        ( Origin = origin_special_pred(_) ->
             UserOrUCI = uci
         ;
             UserOrUCI = user
@@ -482,7 +484,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         ProcKind = proc_layout_proc_id(UserOrUCI),
         DataAddr = layout_addr(proc_layout(RttiProcLabel, ProcKind)),
         code_info.assign_const_to_var(Var,
-            const(data_addr_const(DataAddr, no)), !CI),
+            const(llconst_data_addr(DataAddr, no)), !CI),
         Code = empty
     ;
         ConsTag = table_io_decl_tag(PredId, ProcId),
@@ -492,7 +494,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         DataAddr = layout_addr(table_io_decl(RttiProcLabel)),
         code_info.assign_const_to_var(Var,
-            const(data_addr_const(DataAddr, no)), !CI),
+            const(llconst_data_addr(DataAddr, no)), !CI),
         Code = empty
     ;
         ConsTag = reserved_address_tag(RA),
@@ -590,17 +592,17 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             CallArgs = [_ | _],
             code_info.get_next_label(LoopStart, !CI),
             code_info.get_next_label(LoopTest, !CI),
-            code_info.acquire_reg(r, LoopCounter, !CI),
-            code_info.acquire_reg(r, NumOldArgs, !CI),
-            code_info.acquire_reg(r, NewClosure, !CI),
-            Zero = const(int_const(0)),
-            One = const(int_const(1)),
-            Two = const(int_const(2)),
-            Three = const(int_const(3)),
+            code_info.acquire_reg(reg_r, LoopCounter, !CI),
+            code_info.acquire_reg(reg_r, NumOldArgs, !CI),
+            code_info.acquire_reg(reg_r, NewClosure, !CI),
+            Zero = const(llconst_int(0)),
+            One = const(llconst_int(1)),
+            Two = const(llconst_int(2)),
+            Three = const(llconst_int(3)),
             list.length(CallArgs, NumNewArgs),
-            NumNewArgs_Rval = const(int_const(NumNewArgs)),
+            NumNewArgs_Rval = const(llconst_int(NumNewArgs)),
             NumNewArgsPlusThree = NumNewArgs + 3,
-            NumNewArgsPlusThree_Rval = const(int_const(NumNewArgsPlusThree)),
+            NumNewArgsPlusThree_Rval = const(llconst_int(NumNewArgsPlusThree)),
             code_info.produce_variable(CallPred, OldClosureCode,
                 OldClosure, !CI),
             % The new closure contains a pointer to the old closure.
@@ -656,7 +658,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         CodeAddr = code_info.make_entry_label(!.CI, ModuleInfo,
             PredId, ProcId, no),
         code_util.extract_proc_label_from_code_addr(CodeAddr, ProcLabel),
-        CodeAddrRval = const(code_addr_const(CodeAddr)),
+        CodeAddrRval = const(llconst_code_addr(CodeAddr)),
         continuation_info.generate_closure_layout( ModuleInfo, PredId, ProcId,
             ClosureInfo),
         module_info_get_name(ModuleInfo, ModuleName),
@@ -679,7 +681,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         % is never looked at.
         code_info.add_scalar_static_cell(ClosureLayoutRvalsTypes,
             ClosureDataAddr, !CI),
-        ClosureLayoutRval = const(data_addr_const(ClosureDataAddr, no)),
+        ClosureLayoutRval = const(llconst_data_addr(ClosureDataAddr, no)),
         list.length(Args, NumArgs),
         proc_info_arg_info(ProcInfo, ArgInfo),
         VarTypes = get_var_types(!.CI),
@@ -689,7 +691,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         Vector = [
             yes(ClosureLayoutRval),
             yes(CodeAddrRval),
-            yes(const(int_const(NumArgs)))
+            yes(const(llconst_int(NumArgs)))
             | PredArgs
         ],
         code_info.assign_cell_to_var(Var, no, 0, Vector, no, "closure",
@@ -703,7 +705,7 @@ generate_extra_closure_args([], _, _, empty, !CI).
 generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
         !CI) :-
     code_info.produce_variable(Var, Code0, Value, !CI),
-    One = const(int_const(1)),
+    One = const(llconst_int(1)),
     Code1 = node([
         assign(field(yes(0), lval(NewClosure), lval(LoopCounter)), Value)
             - "set new argument field",
@@ -818,7 +820,7 @@ construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, MayUseAtomic,
     (
         code_info.get_globals(!.CI, Globals),
         globals.get_gc_method(Globals, GCMethod),
-        GCMethod = accurate,
+        GCMethod = gc_accurate,
         is_introduced_type_info_type(VarType)
     ->
         ReserveWordAtStart = yes
@@ -848,7 +850,7 @@ construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, MayUseAtomic,
 generate_field_take_address_assigns([], _, _, empty, !CI).
 generate_field_take_address_assigns([FieldNum - Var | FieldAddrs],
         CellVar, CellPtag, tree(ThisCode, RestCode), !CI) :-
-    FieldNumRval = const(int_const(FieldNum)),
+    FieldNumRval = const(llconst_int(FieldNum)),
     Addr = mem_addr(heap_ref(var(CellVar), CellPtag, FieldNumRval)),
     assign_expr_to_var(Var, Addr, ThisCode, !CI),
     generate_field_take_address_assigns(FieldAddrs, CellVar, CellPtag,
@@ -875,7 +877,7 @@ var_types(CI, Vars, Types) :-
 make_fields_and_argvars([], _, _, _, [], []).
 make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
         [F | Fs], [A | As]) :-
-    F = lval(field(yes(TagNum), Rval, const(int_const(Field0)))),
+    F = lval(field(yes(TagNum), Rval, const(llconst_int(Field0)))),
     A = ref(Var),
     Field1 = Field0 + 1,
     make_fields_and_argvars(Vars, Rval, Field1, TagNum, Fs, As).
@@ -938,7 +940,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
                 % This can happen in the unify/compare routines for e.g.
                 % io.state.
                 ( variable_is_forward_live(!.CI, Arg) ->
-                    code_info.assign_const_to_var(Arg, const(int_const(0)),
+                    code_info.assign_const_to_var(Arg, const(llconst_int(0)),
                         !CI)
                 ;
                     true

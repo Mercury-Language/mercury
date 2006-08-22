@@ -370,7 +370,8 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
         (
             Purity = purity_impure
         =>
-            goal_info_has_feature(GoalInfo0, not_impure_for_determinism)
+            goal_info_has_feature(GoalInfo0,
+                feature_not_impure_for_determinism)
         )
     ->
         AddPruning = yes,
@@ -757,7 +758,7 @@ det_infer_disj_goals([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
     (
         !.MaxSolns \= at_most_zero,
         FirstMaxSolns = at_most_zero,
-        goal_info_has_feature(GoalInfo, preserve_backtrack_into)
+        goal_info_has_feature(GoalInfo, feature_preserve_backtrack_into)
     ->
         AdjFirstMaxSolns = at_most_one
     ;
@@ -816,7 +817,7 @@ det_infer_switch(Var, SwitchCanFail, Cases0, Cases, GoalInfo, InstMap0,
     ExaminesRep = yes,
     det_check_for_noncanonical_type(Var, ExaminesRep, SwitchCanFail,
         SwitchSolnContext, GoalFailingContexts0, RightFailingContexts,
-        GoalInfo, switch, DetInfo, SwitchSolns, !Msgs),
+        GoalInfo, ccuc_switch, DetInfo, SwitchSolns, !Msgs),
     det_conjunction_canfail(SwitchCanFail, CasesCanFail, CanFail),
     det_conjunction_maxsoln(SwitchSolns, CasesSolns, NumSolns),
     determinism_components(Detism, CanFail, NumSolns),
@@ -1066,7 +1067,7 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
     det_infer_unify_examines_rep(Unify, ExaminesRepresentation),
     det_check_for_noncanonical_type(LHS, ExaminesRepresentation,
         UnifyCanFail, SolnContext, RightFailingContexts, [], GoalInfo,
-        unify(UnifyContext), DetInfo, UnifyNumSolns, !Msgs),
+        ccuc_unify(UnifyContext), DetInfo, UnifyNumSolns, !Msgs),
     determinism_components(Detism, UnifyCanFail, UnifyNumSolns),
     (
         UnifyCanFail = can_fail,

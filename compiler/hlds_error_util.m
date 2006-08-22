@@ -100,7 +100,7 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, Origin),
-    ( Origin = special_pred(SpecialId - TypeCtor) ->
+    ( Origin = origin_special_pred(SpecialId - TypeCtor) ->
         special_pred_description(SpecialId, Descr),
         TypeCtor = type_ctor(TypeSymName, TypeArity),
         ( TypeArity = 0 ->

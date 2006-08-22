@@ -45,16 +45,16 @@
     % truth of an EDT node.
     %
 :- type oracle_response(T)
-    --->    oracle_answer(decl_answer(T))
-    ;       show_info(io.output_stream)
-    ;       change_search(user_search_mode)
-    ;       undo
+    --->    oracle_response_answer(decl_answer(T))
+    ;       oracle_response_show_info(io.output_stream)
+    ;       oracle_response_change_search(user_search_mode)
+    ;       oracle_response_undo
 
             % Ask the diagnoser to revert to the
             % last question it asked.
 
-    ;       exit_diagnosis(T)
-    ;       abort_diagnosis.
+    ;       oracle_response_exit_diagnosis(T)
+    ;       oracle_response_abort_diagnosis.
 
 :- pred oracle_response_undoable(oracle_response(T)::in) is semidet.
 
@@ -182,7 +182,7 @@
 
 query_oracle(Question, Response, FromUser, !Oracle, !IO) :-
     ( answer_known(!.Oracle, Question, Answer) ->
-        Response = oracle_answer(Answer),
+        Response = oracle_response_answer(Answer),
         FromUser = no
     ;
         make_user_question(!.Oracle ^ kb_revised, Question, UserQuestion),
@@ -210,8 +210,8 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
     User0 = !.Oracle ^ user_state,
     query_user(UserQuestion, UserResponse, User0, User, !IO),
     (
-        UserResponse = user_answer(Question, Answer),
-        OracleResponse = oracle_answer(Answer),
+        UserResponse = user_response_answer(Question, Answer),
+        OracleResponse = oracle_response_answer(Answer),
         Current0 = !.Oracle ^ kb_current,
         Revised0 = !.Oracle ^ kb_revised,
         retract_oracle_kb(Question, Revised0, Revised),
@@ -219,34 +219,34 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
         !:Oracle = !.Oracle ^ kb_current := Current,
         !:Oracle = !.Oracle ^ kb_revised := Revised
     ;
-        UserResponse = trust_predicate(Question),
+        UserResponse = user_response_trust_predicate(Question),
         Atom = get_decl_question_atom(Question),
         add_trusted_pred_or_func(Atom ^ proc_layout, !Oracle),
-        OracleResponse = oracle_answer(
+        OracleResponse = oracle_response_answer(
             ignore(get_decl_question_node(Question)))
     ;
-        UserResponse = trust_module(Question),
+        UserResponse = user_response_trust_module(Question),
         Atom = get_decl_question_atom(Question),
         ProcLabel = get_proc_label_from_layout(Atom ^ proc_layout),
         get_pred_attributes(ProcLabel, Module, _, _, _),
         add_trusted_module(Module, !Oracle),
-        OracleResponse = oracle_answer(
+        OracleResponse = oracle_response_answer(
             ignore(get_decl_question_node(Question)))
     ;
-        UserResponse = show_info(OutStream),
-        OracleResponse = show_info(OutStream)
+        UserResponse = user_response_show_info(OutStream),
+        OracleResponse = oracle_response_show_info(OutStream)
     ;
-        UserResponse = change_search(Mode),
-        OracleResponse = change_search(Mode)
+        UserResponse = user_response_change_search(Mode),
+        OracleResponse = oracle_response_change_search(Mode)
     ;
-        UserResponse = exit_diagnosis(Node),
-        OracleResponse = exit_diagnosis(Node)
+        UserResponse = user_response_exit_diagnosis(Node),
+        OracleResponse = oracle_response_exit_diagnosis(Node)
     ;
-        UserResponse = abort_diagnosis,
-        OracleResponse = abort_diagnosis
+        UserResponse = user_response_abort_diagnosis,
+        OracleResponse = oracle_response_abort_diagnosis
     ;
-        UserResponse = undo,
-        OracleResponse = undo
+        UserResponse = user_response_undo,
+        OracleResponse = oracle_response_undo
     ),
     !:Oracle = !.Oracle ^ user_state := User.
 
@@ -564,12 +564,12 @@ query_oracle_kb(KB, Question, Answer) :-
     map.search(XMap, Call, X),
     X = known_excp(Possible, Impossible, Inadmissible),
     ( set.member(Exception, Possible) ->
-        Answer = truth_value(Node, correct)
+        Answer = truth_value(Node, truth_correct)
     ; set.member(Exception, Impossible) ->
-        Answer = truth_value(Node, erroneous)
+        Answer = truth_value(Node, truth_erroneous)
     ;
         set.member(Exception, Inadmissible),
-        Answer = truth_value(Node, inadmissible)
+        Answer = truth_value(Node, truth_inadmissible)
     ).
 
     % assert_oracle_kb/3 assumes that the asserted fact is consistent
@@ -593,7 +593,7 @@ assert_oracle_kb(wrong_answer(_, _, Atom), truth_value(_, Truth), !KB) :-
     % erroneous with respect to one mode, but inadmissible with respect to
     % another mode.
     %
-    ( Truth = correct ->
+    ( Truth = truth_correct ->
         foldl(add_atom_to_ground_map(Truth, Atom),
             get_all_modes_for_layout(ProcLayout), Map0, Map)
     ;
@@ -618,15 +618,15 @@ assert_oracle_kb(unexpected_exception(_, Call, Exception),
         KnownExceptions0 = known_excp(Possible0, Impossible0, Inadmissible0)
     ),
     (
-        Truth = correct,
+        Truth = truth_correct,
         insert(KnownExceptions0 ^ possible, Exception, Possible),
         KnownExceptions = KnownExceptions0 ^ possible := Possible
     ;
-        Truth = erroneous,
+        Truth = truth_erroneous,
         insert(KnownExceptions0 ^ impossible, Exception, Impossible),
         KnownExceptions = KnownExceptions0 ^ impossible := Impossible
     ;
-        Truth = inadmissible,
+        Truth = truth_inadmissible,
         insert(KnownExceptions0 ^ inadmissible, Exception, Inadmissible),
         KnownExceptions = KnownExceptions0 ^ inadmissible := Inadmissible
     ),
@@ -702,8 +702,8 @@ set_oracle_testing_flag(Testing, !Oracle) :-
 
 %-----------------------------------------------------------------------------%
 
-oracle_response_undoable(oracle_answer(_)).
-oracle_response_undoable(change_search(_)).
+oracle_response_undoable(oracle_response_answer(_)).
+oracle_response_undoable(oracle_response_change_search(_)).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdb.declarative_oracle.

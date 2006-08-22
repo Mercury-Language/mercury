@@ -1070,7 +1070,7 @@ copy_file(Source, Destination, Res, !IO) :-
     Command = string.join_list("   ", list.map(quote_arg,
         [InstallCommand, Source, Destination])),
     io.output_stream(OutputStream, !IO),
-    invoke_system_command(OutputStream, verbose, Command, Succeeded, !IO),
+    invoke_system_command(OutputStream, cmd_verbose, Command, Succeeded, !IO),
     (
         Succeeded = yes,
         Res = ok

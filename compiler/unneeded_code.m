@@ -115,11 +115,12 @@
             ).
 
 :- type branch_alts
-    --->    ite             % If-then-elses always have two alternatives:
+    --->    alt_ite         % If-then-elses always have two alternatives:
                             % the then branch (numbered 1) and the else branch
                             % (numbered 2).
 
-    ;       switch(int).    % The number of alternatives in a switch is equal
+    ;       alt_switch(int).
+                            % The number of alternatives in a switch is equal
                             % to the number of function symbols in the type of
                             % the switched-on variable; this number is given by
                             % the argument. If the switch cannot_fail, then
@@ -628,7 +629,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
             unexpected(this_file, "process_goal_internal: switch count")
         ),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
-        BranchPoint = branch_point(GoalPath, switch(NumAlt)),
+        BranchPoint = branch_point(GoalPath, alt_switch(NumAlt)),
         map.map_values(demand_var_everywhere, !WhereNeededMap),
         map.init(BranchNeededMap0),
         process_cases(Cases0, Cases, BranchPoint, 1, InitInstMap, FinalInstMap,
@@ -652,7 +653,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
     ;
         GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
-        BranchPoint = branch_point(GoalPath, ite),
+        BranchPoint = branch_point(GoalPath, alt_ite),
         map.map_values(demand_var_everywhere, !WhereNeededMap),
         process_ite(Cond0, Cond, Then0, Then, Else0, Else, BranchPoint,
             InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options, GoalPath,
@@ -1104,17 +1105,17 @@ get_parent_branch_point([First | Rest], Parent, ParentStep,
     ( First = switch(Arm, NumAlts) ->
         Parent = Rest,
         ParentStep = First,
-        BranchAlt = switch(NumAlts),
+        BranchAlt = alt_switch(NumAlts),
         BranchNum = Arm
     ; First = ite_then ->
         Parent = Rest,
         ParentStep = First,
-        BranchAlt = ite,
+        BranchAlt = alt_ite,
         BranchNum = 1
     ; First = ite_else ->
         Parent = Rest,
         ParentStep = First,
-        BranchAlt = ite,
+        BranchAlt = alt_ite,
         BranchNum = 2
     ;
         get_parent_branch_point(Rest, Parent, ParentStep, BranchAlt, BranchNum)
@@ -1123,10 +1124,10 @@ get_parent_branch_point([First | Rest], Parent, ParentStep,
 :- pred branch_point_is_complete(branch_alts::in, set(int)::in)
     is semidet.
 
-branch_point_is_complete(ite, Alts) :-
+branch_point_is_complete(alt_ite, Alts) :-
     set.count(Alts, NumAlts),
     NumAlts = 2.
-branch_point_is_complete(switch(NumFunctors), Alts) :-
+branch_point_is_complete(alt_switch(NumFunctors), Alts) :-
     set.count(Alts, NumAlts),
     NumAlts = NumFunctors.
 

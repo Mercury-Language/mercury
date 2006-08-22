@@ -272,7 +272,7 @@ add_scalar_static_cell(ArgsTypes0, DataAddr, !Info) :-
     % so that the generated C structure isn't empty.
     (
         ArgsTypes0 = [],
-        ArgsTypes = [const(int_const(-1)) - integer]
+        ArgsTypes = [const(llconst_int(-1)) - integer]
     ;
         ArgsTypes0 = [_ | _],
         ArgsTypes = ArgsTypes0

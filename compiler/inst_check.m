@@ -113,8 +113,8 @@ type_is_user_visible(TypeDef) :-
 
 :- type type_defn_or_builtin
     --->    type_def(hlds_type_defn)
-    ;       builtin_type(builtin_type)
-    ;       tuple(arity).
+    ;       type_builtin(builtin_type)
+    ;       type_tuple(arity).
 
 :- pred check_inst(functors_to_types::in, inst_id::in, hlds_inst_defn::in,
     io::di, io::uo) is det.
@@ -200,7 +200,8 @@ find_types_for_functor(FunctorsToTypes, Functor, Types) :-
             Name = unqualified(NameStr),
             string.length(NameStr) = 1
         ->
-            TypesExceptTuple = [builtin_type(character) | TypesExceptChar]
+            TypesExceptTuple = [type_builtin(builtin_type_character)
+                | TypesExceptChar]
         ;
             TypesExceptTuple = TypesExceptChar
         ),
@@ -211,19 +212,19 @@ find_types_for_functor(FunctorsToTypes, Functor, Types) :-
             %
             type_ctor_is_tuple(type_ctor(Name, Arity))
         ->
-            Types = [tuple(Arity) | TypesExceptTuple]
+            Types = [type_tuple(Arity) | TypesExceptTuple]
         ;
             Types = TypesExceptTuple
         )
     ;
         Functor = int_constant,
-        Types = [builtin_type(int)]
+        Types = [type_builtin(builtin_type_int)]
     ;
         Functor = float_constant,
-        Types = [builtin_type(float)]
+        Types = [type_builtin(builtin_type_float)]
     ;
         Functor = string_constant,
-        Types = [builtin_type(string)]
+        Types = [type_builtin(builtin_type_string)]
     ).
 
 :- pred bound_inst_to_functor(bound_inst::in, bound_inst_functor::out)

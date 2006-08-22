@@ -42,7 +42,7 @@
     % need to be modified.
     %
 :- type trace_node(R)
-    --->    call(
+    --->    node_call(
                 call_preceding      :: R,
                                     % Preceding event.
 
@@ -80,7 +80,7 @@
                                     % the call.
             )
 
-    ;       exit(
+    ;       node_exit(
                 exit_preceding      :: R,
                                     % Preceding event.
 
@@ -107,7 +107,7 @@
                                     % at the time of the exit.
             )
 
-    ;       redo(
+    ;       node_redo(
                 redo_preceding      :: R,
                                     % Preceding event.
 
@@ -123,7 +123,7 @@
                                     % at the time of the redo.
             )
 
-    ;       fail(
+    ;       node_fail(
                 fail_preceding      :: R,
                                     % Preceding event.
 
@@ -142,7 +142,7 @@
                                     % at the time of the fail.
             )
 
-    ;       excp(
+    ;       node_excp(
                 excp_preceding      :: R,
                                     % Preceding event.
 
@@ -164,21 +164,21 @@
                                     % at the time of the excp.
             )
 
-    ;       switch(
+    ;       node_switch(
                 switch_preceding    :: R,
                                     % Preceding event.
 
                 switch_label        :: label_layout
             )
 
-    ;       first_disj(
+    ;       node_first_disj(
                 first_disj_preceding:: R,
                                     % Preceding event.
 
                 first_disj_label    :: label_layout
             )
 
-    ;       later_disj(
+    ;       node_later_disj(
                 later_disj_preceding:: R,
                                     % Preceding event.
 
@@ -188,7 +188,7 @@
                                     % Event of the first DISJ.
             )
 
-    ;       cond(
+    ;       node_cond(
                 cond_preceding      :: R,
                                     % Preceding event.
 
@@ -199,7 +199,7 @@
                                     % event.
             )
 
-    ;       then(
+    ;       node_then(
                 then_preceding      :: R,
                                     % Preceding event.
 
@@ -209,7 +209,7 @@
                 then_label          :: label_layout
             )
 
-    ;       else(
+    ;       node_else(
                 else_preceding      :: R,
                                     % Preceding event.
 
@@ -219,7 +219,7 @@
                 else_label          :: label_layout
             )
 
-    ;       neg(
+    ;       node_neg(
                 neg_preceding       :: R,
                                     % Preceding event.
                 neg_label           :: label_layout,
@@ -229,7 +229,7 @@
                                     % a NEGS or NEGF event.
             )
 
-    ;       neg_succ(
+    ;       node_neg_succ(
                 neg_succ_preceding  :: R,
                                     % Preceding event.
 
@@ -238,7 +238,7 @@
                 neg_succ_label      :: label_layout
             )
 
-    ;       neg_fail(
+    ;       node_neg_fail(
                 neg_fail_preceding  :: R,
                                     % Preceding event.
 
@@ -367,13 +367,13 @@
 :- pred det_trace_node_from_id(S::in, R::in, trace_node(R)::out) is det
     <= annotated_trace(S, R).
 
-:- inst trace_node_call ---> call(ground, ground, ground, ground, ground,
+:- inst trace_node_call ---> node_call(ground, ground, ground, ground, ground,
     ground, ground, ground, ground, ground).
 
 :- pred call_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_call))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_redo ---> redo(ground, ground, ground, ground, ground).
+:- inst trace_node_redo ---> node_redo(ground, ground, ground, ground, ground).
 
     % maybe_redo_node_from_id/3 fails if the argument is a
     % NULL reference.
@@ -382,31 +382,31 @@
     trace_node(R)::out(trace_node_redo)) is semidet
     <= annotated_trace(S, R).
 
-:- inst trace_node_exit ---> exit(ground, ground, ground, ground,
+:- inst trace_node_exit ---> node_exit(ground, ground, ground, ground,
     ground, ground, ground, ground).
 
 :- pred exit_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_exit))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_cond ---> cond(ground, ground, ground).
+:- inst trace_node_cond ---> node_cond(ground, ground, ground).
 
 :- pred cond_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_cond))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_neg ---> neg(ground, ground, ground).
+:- inst trace_node_neg ---> node_neg(ground, ground, ground).
 
 :- pred neg_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_neg))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_first_disj ---> first_disj(ground, ground).
+:- inst trace_node_first_disj ---> node_first_disj(ground, ground).
 
 :- pred first_disj_node_from_id(S::in, R::in,
     trace_node(R)::out(trace_node_first_disj)) is det
     <= annotated_trace(S, R).
 
 :- inst trace_node_disj
-    --->    first_disj(ground, ground)
-    ;       later_disj(ground, ground, ground).
+    --->    node_first_disj(ground, ground)
+    ;       node_later_disj(ground, ground, ground).
 
 :- pred disj_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_disj))
     is det <= annotated_trace(S, R).
@@ -593,44 +593,45 @@ cache_proc_rep(_, _).
 
 %-----------------------------------------------------------------------------%
 
-get_trace_exit_atom(exit(_, _, _, AtomArgs, _, Label, _, _)) = Atom :-
+get_trace_exit_atom(node_exit(_, _, _, AtomArgs, _, Label, _, _)) = Atom :-
     ProcLayout = get_proc_layout_from_label_layout(Label),
     Atom = atom(ProcLayout, AtomArgs).
 
-get_trace_call_atom(call(_, _, AtomArgs, _, _, _, _, Label, _, _)) = Atom :-
+get_trace_call_atom(node_call(_, _, AtomArgs, _, _, _, _, Label, _, _))
+        = Atom :-
     ProcLayout = get_proc_layout_from_label_layout(Label),
     Atom = atom(ProcLayout, AtomArgs).
 
 %-----------------------------------------------------------------------------%
 
-step_left_in_contour(Store, exit(_, Call, _, _, _, _, _, _)) = Prec :-
+step_left_in_contour(Store, node_exit(_, Call, _, _, _, _, _, _)) = Prec :-
     call_node_from_id(Store, Call, CallNode),
     Prec = CallNode ^ call_preceding.
-step_left_in_contour(Store, excp(_, Call, _, _, _, _, _)) = Prec :-
+step_left_in_contour(Store, node_excp(_, Call, _, _, _, _, _)) = Prec :-
     call_node_from_id(Store, Call, CallNode),
     Prec = CallNode ^ call_preceding.
-step_left_in_contour(_, switch(Prec, _)) = Prec.
-step_left_in_contour(_, first_disj(Prec, _)) = Prec.
-step_left_in_contour(Store, later_disj(_, _, FirstDisj)) = Prec :-
-    first_disj_node_from_id(Store, FirstDisj, first_disj(Prec, _)).
-step_left_in_contour(_, cond(Prec, _, Status)) = Node :-
+step_left_in_contour(_, node_switch(Prec, _)) = Prec.
+step_left_in_contour(_, node_first_disj(Prec, _)) = Prec.
+step_left_in_contour(Store, node_later_disj(_, _, FirstDisj)) = Prec :-
+    first_disj_node_from_id(Store, FirstDisj, node_first_disj(Prec, _)).
+step_left_in_contour(_, node_cond(Prec, _, Status)) = Node :-
     ( Status = failed ->
         throw(internal_error("step_left_in_contour", "failed COND node"))
     ;
         Node = Prec
     ).
-step_left_in_contour(_, then(Prec, _, _)) = Prec.
-step_left_in_contour(Store, else(_, Cond, _)) = Prec :-
-    cond_node_from_id(Store, Cond, cond(Prec, _, _)).
-step_left_in_contour(Store, neg_succ(_, Neg, _)) = Prec :-
-    neg_node_from_id(Store, Neg, neg(Prec, _, _)).
+step_left_in_contour(_, node_then(Prec, _, _)) = Prec.
+step_left_in_contour(Store, node_else(_, Cond, _)) = Prec :-
+    cond_node_from_id(Store, Cond, node_cond(Prec, _, _)).
+step_left_in_contour(Store, node_neg_succ(_, Neg, _)) = Prec :-
+    neg_node_from_id(Store, Neg, node_neg(Prec, _, _)).
     %
     % The following cases are possibly at the left end of a contour,
     % where we cannot step any further.
     %
-step_left_in_contour(_, call(_, _, _, _, _, _, _, _, _, _)) = _ :-
+step_left_in_contour(_, node_call(_, _, _, _, _, _, _, _, _, _)) = _ :-
     throw(internal_error("step_left_in_contour", "unexpected CALL node")).
-step_left_in_contour(_, neg(Prec, _, Status)) = Next :-
+step_left_in_contour(_, node_neg(Prec, _, Status)) = Next :-
     ( Status = undecided ->
         % An exception must have been thrown inside the negation,
         % so we don't consider it a separate context.
@@ -643,13 +644,13 @@ step_left_in_contour(_, neg(Prec, _, Status)) = Next :-
     % step to the previous contour instead.
     %
 step_left_in_contour(Store, Node) = Prec :-
-    Node = fail(_, _, _, _, _, _),
+    Node = node_fail(_, _, _, _, _, _),
     find_prev_contour(Store, Node, Prec).
 step_left_in_contour(Store, Node) = Prec :-
-    Node = redo(_, _, _, _, _),
+    Node = node_redo(_, _, _, _, _),
     find_prev_contour(Store, Node, Prec).
 step_left_in_contour(Store, Node) = Prec :-
-    Node = neg_fail(_, _, _),
+    Node = node_neg_fail(_, _, _),
     find_prev_contour(Store, Node, Prec).
 
     % Given any node which is not on a contour, find a node on
@@ -660,70 +661,68 @@ step_left_in_contour(Store, Node) = Prec :-
 :- mode find_prev_contour(in, in(trace_node_reverse), out) is det.
 
 :- inst trace_node_reverse
-    --->    fail(ground, ground, ground, ground, ground, ground)
-    ;       redo(ground, ground, ground, ground, ground)
-    ;       neg_fail(ground, ground, ground).
+    --->    node_fail(ground, ground, ground, ground, ground, ground)
+    ;       node_redo(ground, ground, ground, ground, ground)
+    ;       node_neg_fail(ground, ground, ground).
 
-find_prev_contour(Store, fail(_, Call, _, _, _, _), OnContour) :-
+find_prev_contour(Store, node_fail(_, Call, _, _, _, _), OnContour) :-
     call_node_from_id(Store, Call, CallNode),
     OnContour = CallNode ^ call_preceding.
-find_prev_contour(Store, redo(_, Exit, _, _, _), OnContour) :-
+find_prev_contour(Store, node_redo(_, Exit, _, _, _), OnContour) :-
     exit_node_from_id(Store, Exit, ExitNode),
     OnContour = ExitNode ^ exit_preceding.
-find_prev_contour(Store, neg_fail(_, Neg, _), OnContour) :-
-    neg_node_from_id(Store, Neg, neg(OnContour, _, _)).
+find_prev_contour(Store, node_neg_fail(_, Neg, _), OnContour) :-
+    neg_node_from_id(Store, Neg, node_neg(OnContour, _, _)).
     %
     % The following cases are at the left end of a contour,
     % so there are no previous contours in the same stratum.
     %
-find_prev_contour(_, call(_, _, _, _, _, _, _, _, _, _), _) :-
+find_prev_contour(_, node_call(_, _, _, _, _, _, _, _, _, _), _) :-
     throw(internal_error("find_prev_contour", "reached CALL node")).
-find_prev_contour(_, cond(_, _, _), _) :-
+find_prev_contour(_, node_cond(_, _, _), _) :-
     throw(internal_error("find_prev_contour", "reached COND node")).
-find_prev_contour(_, neg(_, _, _), _) :-
+find_prev_contour(_, node_neg(_, _, _), _) :-
     throw(internal_error("find_prev_contour", "reached NEGE node")).
 
-step_in_stratum(Store, exit(_, Call, MaybeRedo, _, _, _, _, _)) =
+step_in_stratum(Store, node_exit(_, Call, MaybeRedo, _, _, _, _, _)) =
     step_over_redo_or_call(Store, Call, MaybeRedo).
-step_in_stratum(Store, fail(_, Call, MaybeRedo, _, _, _)) =
+step_in_stratum(Store, node_fail(_, Call, MaybeRedo, _, _, _)) =
     step_over_redo_or_call(Store, Call, MaybeRedo).
-step_in_stratum(Store, excp(_, Call, MaybeRedo, _, _, _, _)) =
+step_in_stratum(Store, node_excp(_, Call, MaybeRedo, _, _, _, _)) =
     step_over_redo_or_call(Store, Call, MaybeRedo).
-step_in_stratum(Store, redo(_, Exit, _, _, _)) = Next :-
+step_in_stratum(Store, node_redo(_, Exit, _, _, _)) = Next :-
     exit_node_from_id(Store, Exit, ExitNode),
     Next = ExitNode ^ exit_preceding.
-step_in_stratum(_, switch(Next, _)) = Next.
-step_in_stratum(_, first_disj(Next, _)) = Next.
-step_in_stratum(_, later_disj(Next, _, _)) = Next.
-step_in_stratum(_, cond(Prec, _, Status)) = Next :-
-    (
-        Status = failed
-    ->
+step_in_stratum(_, node_switch(Next, _)) = Next.
+step_in_stratum(_, node_first_disj(Next, _)) = Next.
+step_in_stratum(_, node_later_disj(Next, _, _)) = Next.
+step_in_stratum(_, node_cond(Prec, _, Status)) = Next :-
+    ( Status = failed ->
         throw(internal_error("step_in_stratum", "failed COND node"))
     ;
         Next = Prec
     ).
-step_in_stratum(_, then(Next, _, _)) = Next.
-step_in_stratum(Store, else(_, Cond, _)) = Next :-
-    cond_node_from_id(Store, Cond, cond(Next, _, _)).
-step_in_stratum(Store, neg_succ(_, Neg, _)) = Next :-
-    neg_node_from_id(Store, Neg, neg(Next, _, _)).
-step_in_stratum(Store, neg_fail(_, Neg, _)) = Next :-
-    neg_node_from_id(Store, Neg, neg(Next, _, _)).
+step_in_stratum(_, node_then(Next, _, _)) = Next.
+step_in_stratum(Store, node_else(_, Cond, _)) = Next :-
+    cond_node_from_id(Store, Cond, node_cond(Next, _, _)).
+step_in_stratum(Store, node_neg_succ(_, Neg, _)) = Next :-
+    neg_node_from_id(Store, Neg, node_neg(Next, _, _)).
+step_in_stratum(Store, node_neg_fail(_, Neg, _)) = Next :-
+    neg_node_from_id(Store, Neg, node_neg(Next, _, _)).
     %
     % The following cases mark the boundary of the stratum,
     % so we cannot step any further.
     %
-step_in_stratum(_, call(_, _, _, _, _, _, _, _, _, _)) = _ :-
+step_in_stratum(_, node_call(_, _, _, _, _, _, _, _, _, _)) = _ :-
     throw(internal_error("step_in_stratum", "unexpected CALL node")).
-step_in_stratum(_, neg(_, _, _)) = _ :-
+step_in_stratum(_, node_neg(_, _, _)) = _ :-
     throw(internal_error("step_in_stratum", "unexpected NEGE node")).
 
 :- func step_over_redo_or_call(S, R, R) = R <= annotated_trace(S, R).
 
 step_over_redo_or_call(Store, Call, MaybeRedo) = Next :-
     ( maybe_redo_node_from_id(Store, MaybeRedo, Redo) ->
-        Redo = redo(Next, _, _, _, _)
+        Redo = node_redo(Next, _, _, _, _)
     ;
         call_node_from_id(Store, Call, CallNode),
         Next = CallNode ^ call_preceding
@@ -739,7 +738,7 @@ det_trace_node_from_id(Store, NodeId, Node) :-
 call_node_from_id(Store, NodeId, Node) :-
     (
         trace_node_from_id(Store, NodeId, Node0),
-        Node0 = call(_, _, _, _, _, _, _, _, _, _)
+        Node0 = node_call(_, _, _, _, _, _, _, _, _, _)
     ->
         Node = Node0
     ;
@@ -749,7 +748,7 @@ call_node_from_id(Store, NodeId, Node) :-
 maybe_redo_node_from_id(Store, NodeId, Node) :-
     trace_node_from_id(Store, NodeId, Node0),
     (
-        Node0 = redo(_, _, _, _, _)
+        Node0 = node_redo(_, _, _, _, _)
     ->
         Node = Node0
     ;
@@ -760,7 +759,7 @@ maybe_redo_node_from_id(Store, NodeId, Node) :-
 exit_node_from_id(Store, NodeId, Node) :-
     (
         trace_node_from_id(Store, NodeId, Node0),
-        Node0 = exit(_, _, _, _, _, _, _, _)
+        Node0 = node_exit(_, _, _, _, _, _, _, _)
     ->
         Node = Node0
     ;
@@ -770,7 +769,7 @@ exit_node_from_id(Store, NodeId, Node) :-
 cond_node_from_id(Store, NodeId, Node) :-
     (
         trace_node_from_id(Store, NodeId, Node0),
-        Node0 = cond(_, _, _)
+        Node0 = node_cond(_, _, _)
     ->
         Node = Node0
     ;
@@ -780,7 +779,7 @@ cond_node_from_id(Store, NodeId, Node) :-
 neg_node_from_id(Store, NodeId, Node) :-
     (
         trace_node_from_id(Store, NodeId, Node0),
-        Node0 = neg(_, _, _)
+        Node0 = node_neg(_, _, _)
     ->
         Node = Node0
     ;
@@ -790,7 +789,7 @@ neg_node_from_id(Store, NodeId, Node) :-
 first_disj_node_from_id(Store, NodeId, Node) :-
     (
         trace_node_from_id(Store, NodeId, Node0),
-        Node0 = first_disj(_, _)
+        Node0 = node_first_disj(_, _)
     ->
         Node = Node0
     ;
@@ -801,8 +800,8 @@ first_disj_node_from_id(Store, NodeId, Node) :-
 disj_node_from_id(Store, NodeId, Node) :-
     (
         trace_node_from_id(Store, NodeId, Node0),
-        ( Node0 = first_disj(_, _)
-        ; Node0 = later_disj(_, _, _)
+        ( Node0 = node_first_disj(_, _)
+        ; Node0 = node_later_disj(_, _, _)
         )
     ->
         Node = Node0
@@ -822,14 +821,16 @@ disj_node_from_id(Store, NodeId, Node) :-
     % each time the map is destructively modified (by C code), the
     % value should be incremented.
     %
-:- type trace_node_store ---> store(int).
+:- type trace_node_store
+    --->    store(int).
 
     % The implementation of the identifiers is the same as what
     % is identified.  This fact is hidden, however, to force the
     % abstract map to be explicitly used whenever a new node is
     % accessed.
     %
-:- type trace_node_id ---> id(c_pointer).
+:- type trace_node_id
+    --->    id(c_pointer).
 
 :- pred search_trace_node_store(trace_node_store::in, trace_node_id::in,
     trace_node(trace_node_id)::out) is semidet.
@@ -856,7 +857,7 @@ search_trace_node_store(_, _, _) :-
     "MR_DD_call_node_get_last_interface").
 
 call_node_get_last_interface(Call) = Last :-
-    ( Call = call(_, Last0, _, _, _, _, _, _, _, _) ->
+    ( Call = node_call(_, Last0, _, _, _, _, _, _, _, _) ->
         Last = Last0
     ;
         throw(internal_error("call_node_get_last_interface",
@@ -870,7 +871,7 @@ call_node_get_last_interface(Call) = Last :-
         "MR_DD_call_node_set_last_interface").
 
 call_node_set_last_interface(Call0, Last) = Call :-
-    ( Call0 = call(_, _, _, _, _, _, _, _, _, _) ->
+    ( Call0 = node_call(_, _, _, _, _, _, _, _, _, _) ->
         Call1 = Call0
     ;
         throw(internal_error("call_node_set_last_interface",
@@ -888,7 +889,7 @@ call_node_set_last_interface(Call0, Last) = Call :-
     "MR_DD_call_node_update_implicit_tree_info").
 
 call_node_update_implicit_tree_info(Call0, IdealDepth) = Call :-
-    ( Call0 = call(_, _, _, _, _, _, _, _, _, _) ->
+    ( Call0 = node_call(_, _, _, _, _, _, _, _, _, _) ->
         Call1 = Call0
     ;
         throw(internal_error("call_node_update_implicit_tree_info",
@@ -924,7 +925,7 @@ get_implicit_tree_ideal_depth(Call) = IdealDepth :-
     "MR_DD_cond_node_set_status").
 
 cond_node_set_status(Cond0, Status) = Cond :-
-    ( Cond0 = cond(_, _, _) ->
+    ( Cond0 = node_cond(_, _, _) ->
         Cond1 = Cond0
     ;
         throw(internal_error("cond_node_set_status", "not a COND node"))
@@ -941,7 +942,7 @@ cond_node_set_status(Cond0, Status) = Cond :-
     "MR_DD_neg_node_set_status").
 
 neg_node_set_status(Neg0, Status) = Neg :-
-    ( Neg0 = neg(_, _, _) ->
+    ( Neg0 = node_neg(_, _, _) ->
         Neg1 = Neg0
     ;
         throw(internal_error("neg_node_set_status", "not a NEGE node"))
@@ -964,20 +965,20 @@ set_trace_node_arg(Node0, FieldNum, Val, Node) :-
 :- func trace_node_port(trace_node(trace_node_id)) = trace_port.
 :- pragma export(trace_node_port(in) = out, "MR_DD_trace_node_port").
 
-trace_node_port(call(_, _, _, _, _, _, _, _, _, _)) = call.
-trace_node_port(exit(_, _, _, _, _, _, _, _))       = exit.
-trace_node_port(redo(_, _, _, _, _))        = redo.
-trace_node_port(fail(_, _, _, _, _, _))     = fail.
-trace_node_port(excp(_, _, _, _, _, _, _))  = exception.
-trace_node_port(switch(_, _))               = switch.
-trace_node_port(first_disj(_, _))           = disj.
-trace_node_port(later_disj(_, _, _))        = disj.
-trace_node_port(cond(_, _, _))              = ite_cond.
-trace_node_port(then(_, _, _))              = ite_then.
-trace_node_port(else(_, _, _))              = ite_else.
-trace_node_port(neg(_, _, _))               = neg_enter.
-trace_node_port(neg_succ(_, _, _))          = neg_success.
-trace_node_port(neg_fail(_, _, _))          = neg_failure.
+trace_node_port(node_call(_, _, _, _, _, _, _, _, _, _)) = call.
+trace_node_port(node_exit(_, _, _, _, _, _, _, _))       = exit.
+trace_node_port(node_redo(_, _, _, _, _))        = redo.
+trace_node_port(node_fail(_, _, _, _, _, _))     = fail.
+trace_node_port(node_excp(_, _, _, _, _, _, _))  = exception.
+trace_node_port(node_switch(_, _))               = switch.
+trace_node_port(node_first_disj(_, _))           = disj.
+trace_node_port(node_later_disj(_, _, _))        = disj.
+trace_node_port(node_cond(_, _, _))              = ite_cond.
+trace_node_port(node_then(_, _, _))              = ite_then.
+trace_node_port(node_else(_, _, _))              = ite_else.
+trace_node_port(node_neg(_, _, _))               = neg_enter.
+trace_node_port(node_neg_succ(_, _, _))          = neg_success.
+trace_node_port(node_neg_fail(_, _, _))          = neg_failure.
 
 :- func trace_node_path(trace_node(trace_node_id)) = goal_path_string.
 :- pragma export(trace_node_path(in) = out, "MR_DD_trace_node_path").
@@ -988,20 +989,20 @@ trace_node_path(Node) = Path :-
 
 :- func get_trace_node_label(trace_node(R)) = label_layout.
 
-get_trace_node_label(call(_, _, _, _, _, _, _, Label, _, _)) = Label.
-get_trace_node_label(exit(_, _, _, _, _, Label, _, _)) = Label.
-get_trace_node_label(redo(_, _, _, Label, _)) = Label.
-get_trace_node_label(fail(_, _, _, _, Label, _)) = Label.
-get_trace_node_label(excp(_, _, _, _, _, Label, _)) = Label.
-get_trace_node_label(switch(_, Label)) = Label.
-get_trace_node_label(first_disj(_, Label)) = Label.
-get_trace_node_label(later_disj(_, Label, _)) = Label.
-get_trace_node_label(cond(_, Label, _)) = Label.
-get_trace_node_label(then(_, _, Label)) = Label.
-get_trace_node_label(else(_, _, Label)) = Label.
-get_trace_node_label(neg(_, Label, _)) = Label.
-get_trace_node_label(neg_succ(_, _, Label)) = Label.
-get_trace_node_label(neg_fail(_, _, Label)) = Label.
+get_trace_node_label(node_call(_, _, _, _, _, _, _, Label, _, _)) = Label.
+get_trace_node_label(node_exit(_, _, _, _, _, Label, _, _)) = Label.
+get_trace_node_label(node_redo(_, _, _, Label, _)) = Label.
+get_trace_node_label(node_fail(_, _, _, _, Label, _)) = Label.
+get_trace_node_label(node_excp(_, _, _, _, _, Label, _)) = Label.
+get_trace_node_label(node_switch(_, Label)) = Label.
+get_trace_node_label(node_first_disj(_, Label)) = Label.
+get_trace_node_label(node_later_disj(_, Label, _)) = Label.
+get_trace_node_label(node_cond(_, Label, _)) = Label.
+get_trace_node_label(node_then(_, _, Label)) = Label.
+get_trace_node_label(node_else(_, _, Label)) = Label.
+get_trace_node_label(node_neg(_, Label, _)) = Label.
+get_trace_node_label(node_neg_succ(_, _, Label)) = Label.
+get_trace_node_label(node_neg_fail(_, _, Label)) = Label.
 
 :- pred trace_node_seqno(trace_node_store::in, trace_node(trace_node_id)::in,
     sequence_number::out) is semidet.
@@ -1022,12 +1023,12 @@ trace_node_seqno(S, Node, SeqNo) :-
 
 :- pragma export(trace_node_call(in, in, out), "MR_DD_trace_node_call").
 
-trace_node_call(_, exit(_, Call, _, _, _, _, _, _), Call).
-trace_node_call(S, redo(_, Exit, _, _, _), Call) :-
+trace_node_call(_, node_exit(_, Call, _, _, _, _, _, _), Call).
+trace_node_call(S, node_redo(_, Exit, _, _, _), Call) :-
     exit_node_from_id(S, Exit, ExitNode),
     Call = ExitNode ^ exit_call.
-trace_node_call(_, fail(_, Call, _, _, _, _), Call).
-trace_node_call(_, excp(_, Call, _, _, _, _, _), Call).
+trace_node_call(_, node_fail(_, Call, _, _, _, _), Call).
+trace_node_call(_, node_excp(_, Call, _, _, _, _, _), Call).
 
 :- pred trace_node_first_disj(trace_node(trace_node_id)::in,
     trace_node_id::out) is semidet.
@@ -1035,9 +1036,9 @@ trace_node_call(_, excp(_, Call, _, _, _, _, _), Call).
 :- pragma export(trace_node_first_disj(in, out),
     "MR_DD_trace_node_first_disj").
 
-trace_node_first_disj(first_disj(_, _), NULL) :-
+trace_node_first_disj(node_first_disj(_, _), NULL) :-
     null_trace_node_id(NULL).
-trace_node_first_disj(later_disj(_, _, FirstDisj), FirstDisj).
+trace_node_first_disj(node_later_disj(_, _, FirstDisj), FirstDisj).
 
     % Export a version of this function to be called by C code
     % in trace/mercury_trace_declarative.c.
@@ -1105,7 +1106,7 @@ construct_call_node(Preceding, AtomArgs, SeqNo, EventNo, AtMaxDepth,
         MaybeImplicitTreeInfo = yes(implicit_tree_info(0))
     ),
     null_trace_node_id(LastInterface),
-    Call = call(Preceding, LastInterface, AtomArgs, SeqNo, EventNo,
+    Call = node_call(Preceding, LastInterface, AtomArgs, SeqNo, EventNo,
         MaybeImplicitTreeInfo, MaybeReturnLabel, Label, IoSeqNum, Suspicion).
 
 :- func make_yes_maybe_label(label_layout) = maybe(label_layout).
@@ -1126,7 +1127,7 @@ make_no_maybe_label = no.
 
 construct_exit_node(Preceding, Call, MaybeRedo, AtomArgs, EventNo, Label,
         IoSeqNum, Suspicion) =
-    exit(Preceding, Call, MaybeRedo, AtomArgs, EventNo, Label, IoSeqNum,
+    node_exit(Preceding, Call, MaybeRedo, AtomArgs, EventNo, Label, IoSeqNum,
         Suspicion).
 
 :- func construct_redo_node(trace_node_id, trace_node_id, event_number,
@@ -1134,8 +1135,8 @@ construct_exit_node(Preceding, Call, MaybeRedo, AtomArgs, EventNo, Label,
 :- pragma export(construct_redo_node(in, in, in, in, in) = out,
     "MR_DD_construct_redo_node").
 
-construct_redo_node(Preceding, Exit, Event, Label, Suspicion)
-    = redo(Preceding, Exit, Event, Label, Suspicion).
+construct_redo_node(Preceding, Exit, Event, Label, Suspicion) =
+   node_redo(Preceding, Exit, Event, Label, Suspicion).
 
 :- func construct_fail_node(trace_node_id, trace_node_id, trace_node_id,
     event_number, label_layout, suspicion_accumulator)
@@ -1144,7 +1145,7 @@ construct_redo_node(Preceding, Exit, Event, Label, Suspicion)
     "MR_DD_construct_fail_node").
 
 construct_fail_node(Preceding, Call, Redo, EventNo, Label, Suspicion) =
-        fail(Preceding, Call, Redo, EventNo, Label, Suspicion).
+    node_fail(Preceding, Call, Redo, EventNo, Label, Suspicion).
 
 :- pred construct_excp_node(trace_node_id::in, trace_node_id::in,
     trace_node_id::in, univ::in, event_number::in, label_layout::in,
@@ -1155,7 +1156,7 @@ construct_fail_node(Preceding, Call, Redo, EventNo, Label, Suspicion) =
 construct_excp_node(Preceding, Call, MaybeRedo, Exception, EventNo, Label,
         Suspicion, Excp) :-
     term_rep.univ_to_rep(Exception, ExceptionRep),
-    Excp = excp(Preceding, Call, MaybeRedo, ExceptionRep, EventNo, Label,
+    Excp = node_excp(Preceding, Call, MaybeRedo, ExceptionRep, EventNo, Label,
         Suspicion).
 
 :- func construct_switch_node(trace_node_id, label_layout)
@@ -1163,14 +1164,15 @@ construct_excp_node(Preceding, Call, MaybeRedo, Exception, EventNo, Label,
 :- pragma export(construct_switch_node(in, in) = out,
     "MR_DD_construct_switch_node").
 
-construct_switch_node(Preceding, Label) = switch(Preceding, Label).
+construct_switch_node(Preceding, Label) = node_switch(Preceding, Label).
 
 :- func construct_first_disj_node(trace_node_id, label_layout)
     = trace_node(trace_node_id).
 :- pragma export(construct_first_disj_node(in, in) = out,
     "MR_DD_construct_first_disj_node").
 
-construct_first_disj_node(Preceding, Label) = first_disj(Preceding, Label).
+construct_first_disj_node(Preceding, Label) =
+    node_first_disj(Preceding, Label).
 
 :- func construct_later_disj_node(trace_node_store, trace_node_id,
     label_layout, trace_node_id) = trace_node(trace_node_id).
@@ -1178,13 +1180,13 @@ construct_first_disj_node(Preceding, Label) = first_disj(Preceding, Label).
     "MR_DD_construct_later_disj_node").
 
 construct_later_disj_node(Store, Preceding, Label, PrevDisj)
-        = later_disj(Preceding, Label, FirstDisj) :-
+        = node_later_disj(Preceding, Label, FirstDisj) :-
     disj_node_from_id(Store, PrevDisj, PrevDisjNode),
     (
-        PrevDisjNode = first_disj(_, _),
+        PrevDisjNode = node_first_disj(_, _),
         FirstDisj = PrevDisj
     ;
-        PrevDisjNode = later_disj(_, _, FirstDisj)
+        PrevDisjNode = node_later_disj(_, _, FirstDisj)
     ).
 
 :- func construct_cond_node(trace_node_id, label_layout)
@@ -1192,44 +1194,46 @@ construct_later_disj_node(Store, Preceding, Label, PrevDisj)
 :- pragma export(construct_cond_node(in, in) = out,
     "MR_DD_construct_cond_node").
 
-construct_cond_node(Preceding, Label) = cond(Preceding, Label, undecided).
+construct_cond_node(Preceding, Label) = node_cond(Preceding, Label, undecided).
 
 :- func construct_then_node(trace_node_id, trace_node_id, label_layout)
     = trace_node(trace_node_id).
 :- pragma export(construct_then_node(in, in, in) = out,
     "MR_DD_construct_then_node").
 
-construct_then_node(Preceding, Cond, Label) = then(Preceding, Cond, Label).
+construct_then_node(Preceding, Cond, Label) =
+    node_then(Preceding, Cond, Label).
 
 :- func construct_else_node(trace_node_id, trace_node_id, label_layout)
     = trace_node(trace_node_id).
 :- pragma export(construct_else_node(in, in, in) = out,
     "MR_DD_construct_else_node").
 
-construct_else_node(Preceding, Cond, Label) = else(Preceding, Cond, Label).
+construct_else_node(Preceding, Cond, Label) =
+    node_else(Preceding, Cond, Label).
 
 :- func construct_neg_node(trace_node_id, label_layout)
     = trace_node(trace_node_id).
 :- pragma export(construct_neg_node(in, in) = out,
     "MR_DD_construct_neg_node").
 
-construct_neg_node(Preceding, Label) = neg(Preceding, Label, undecided).
+construct_neg_node(Preceding, Label) = node_neg(Preceding, Label, undecided).
 
 :- func construct_neg_succ_node(trace_node_id, trace_node_id, label_layout)
     = trace_node(trace_node_id).
 :- pragma export(construct_neg_succ_node(in, in, in) = out,
     "MR_DD_construct_neg_succ_node").
 
-construct_neg_succ_node(Preceding, Neg, Label)
-    = neg_succ(Preceding, Neg, Label).
+construct_neg_succ_node(Preceding, Neg, Label) =
+    node_neg_succ(Preceding, Neg, Label).
 
 :- func construct_neg_fail_node(trace_node_id, trace_node_id, label_layout)
     = trace_node(trace_node_id).
 :- pragma export(construct_neg_fail_node(in, in, in) = out,
     "MR_DD_construct_neg_fail_node").
 
-construct_neg_fail_node(Preceding, Neg, Label)
-    = neg_fail(Preceding, Neg, Label).
+construct_neg_fail_node(Preceding, Neg, Label) =
+    node_neg_fail(Preceding, Neg, Label).
 
 :- pred null_trace_node_id(trace_node_id::out) is det.
 
@@ -1250,10 +1254,10 @@ null_trace_node_id(_) :-
 init_trace_atom_args = [].
 
     % add_trace_atom_arg_value(HldsNum, ProgVis, Val, !AtomArgs):
-    % Add the argument with value Val and HLDS number HldsNum to the
-    % beginning of a list of arguments for an atom.  ProgVis is a C
-    % boolean, which is true iff variable HldsNum is a user visible
-    % variable.
+    %
+    % Add the argument with value Val and HLDS number HldsNum to the beginning
+    % of a list of arguments for an atom.  ProgVis is a C boolean, which is
+    % true iff variable HldsNum is a user visible variable.
     %
 :- pred add_trace_atom_arg_value(int::in, int::in, univ::in,
     list(trace_atom_arg)::in, list(trace_atom_arg)::out) is cc_multi.
@@ -1398,20 +1402,20 @@ convert_node(_, _) :-
     %
 :- func preceding_node(trace_node(T)) = T.
 
-preceding_node(call(P, _, _, _, _, _, _, _, _, _))  = P.
-preceding_node(exit(P, _, _, _, _, _, _, _))        = P.
-preceding_node(redo(P, _, _, _, _))         = P.
-preceding_node(fail(P, _, _, _, _, _))          = P.
-preceding_node(excp(P, _, _, _, _, _, _))       = P.
-preceding_node(switch(P, _))                = P.
-preceding_node(first_disj(P, _))            = P.
-preceding_node(later_disj(P, _, _))         = P.
-preceding_node(cond(P, _, _))               = P.
-preceding_node(then(P, _, _))               = P.
-preceding_node(else(P, _, _))               = P.
-preceding_node(neg(P, _, _))                = P.
-preceding_node(neg_succ(P, _, _))           = P.
-preceding_node(neg_fail(P, _, _))           = P.
+preceding_node(node_call(P, _, _, _, _, _, _, _, _, _))  = P.
+preceding_node(node_exit(P, _, _, _, _, _, _, _))        = P.
+preceding_node(node_redo(P, _, _, _, _))         = P.
+preceding_node(node_fail(P, _, _, _, _, _))          = P.
+preceding_node(node_excp(P, _, _, _, _, _, _))       = P.
+preceding_node(node_switch(P, _))                = P.
+preceding_node(node_first_disj(P, _))            = P.
+preceding_node(node_later_disj(P, _, _))         = P.
+preceding_node(node_cond(P, _, _))               = P.
+preceding_node(node_then(P, _, _))               = P.
+preceding_node(node_else(P, _, _))               = P.
+preceding_node(node_neg(P, _, _))                = P.
+preceding_node(node_neg_succ(P, _, _))           = P.
+preceding_node(node_neg_fail(P, _, _))           = P.
 
 %-----------------------------------------------------------------------------%
 

@@ -131,7 +131,7 @@ check_goal(Goal0, Goal, !ModeInfo, !IO) :-
         mode_info_set_context(Context, !ModeInfo)
     ),
     mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
-    ( goal_info_has_feature(GoalInfo0, duplicated_for_switch) ->
+    ( goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) ->
         mode_info_set_in_dupl_for_switch(yes, !ModeInfo)
     ;
         true

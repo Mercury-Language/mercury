@@ -217,7 +217,7 @@ std_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
         mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(detism_det),
-        true /* condition */, purity_semipure, Constraints).
+        cond_true /* condition */, purity_semipure, Constraints).
 
 std_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     VarSet = varset.init,
@@ -228,7 +228,7 @@ std_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
         mutable_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(detism_det),
-        true /* condition */, purity_impure, Constraints).
+        cond_true /* condition */, purity_impure, Constraints).
 
 constant_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
     VarSet = varset.init,
@@ -239,7 +239,7 @@ constant_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
         mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(detism_det),
-        true /* condition */, purity_pure, Constraints).
+        cond_true /* condition */, purity_pure, Constraints).
 
 constant_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     VarSet = varset.init,
@@ -250,7 +250,7 @@ constant_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
         mutable_secret_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(detism_det),
-        true /* condition */, purity_impure, Constraints).
+        cond_true /* condition */, purity_impure, Constraints).
 
 io_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
     VarSet = varset.init,
@@ -263,7 +263,7 @@ io_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
         type_and_mode(io_state_type, di_mode),
         type_and_mode(io_state_type, uo_mode)],
         no /* with_type */, no /* with_inst */, yes(detism_det),
-        true /* condition */, purity_pure, Constraints).
+        cond_true /* condition */, purity_pure, Constraints).
 
 io_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     VarSet = varset.init,
@@ -276,7 +276,7 @@ io_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
         type_and_mode(io_state_type, di_mode),
         type_and_mode(io_state_type, uo_mode)],
         no /* with_type */, no /* with_inst */, yes(detism_det),
-        true /* condition */, purity_pure, Constraints).
+        cond_true /* condition */, purity_pure, Constraints).
 
 mutable_init_pred_decl(ModuleName, Name) = InitPredDecl :-
     VarSet = varset.init,
@@ -286,7 +286,7 @@ mutable_init_pred_decl(ModuleName, Name) = InitPredDecl :-
     ArgDecls = [],
     WithType = no,
     WithInst = no,
-    Condition = true,
+    Condition = cond_true,
     InitPredDecl = item_pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_init_pred_sym_name(ModuleName, Name), ArgDecls,
         WithType, WithInst, yes(detism_det), Condition,

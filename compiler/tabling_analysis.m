@@ -593,7 +593,8 @@ annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
     !.Goal = GoalExpr0 - GoalInfo0,
     annotate_goal_2(VarTypes, GoalExpr0, GoalExpr, Status, !ModuleInfo, !IO),
     ( Status = mm_tabled_will_not_call ->
-        goal_info_add_feature(will_not_call_mm_tabled, GoalInfo0, GoalInfo)
+        goal_info_add_feature(feature_will_not_call_mm_tabled,
+            GoalInfo0, GoalInfo)
     ;
         GoalInfo = GoalInfo0
     ),

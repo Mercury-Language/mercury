@@ -221,12 +221,12 @@ can_optimize_tailcall(Name, Call) :-
     ( CallKind = tail_call ; CallKind = no_return_call ),
 
     % Check if the callee address is the same as the caller.
-    FuncRval = const(code_addr_const(CodeAddr)),
+    FuncRval = const(mlconst_code_addr(CodeAddr)),
     (
-        CodeAddr = proc(QualifiedProcLabel, _Sig),
+        CodeAddr = code_addr_proc(QualifiedProcLabel, _Sig),
         MaybeSeqNum = no
     ;
-        CodeAddr = internal(QualifiedProcLabel, SeqNum, _Sig),
+        CodeAddr = code_addr_internal(QualifiedProcLabel, SeqNum, _Sig),
         MaybeSeqNum = yes(SeqNum)
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
@@ -529,7 +529,7 @@ defn_is_type_ctor_info(Defn) :-
     Body = mlds_data(Type, _, _),
     Type = mlds_rtti_type(item_type(RttiId)),
     RttiId = ctor_rtti_id(_, RttiName),
-    RttiName = type_ctor_info.
+    RttiName = type_ctor_type_ctor_info.
 
 defn_is_commit_type_var(Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
@@ -614,7 +614,7 @@ rval_contains_var(lval(Lval), Name) :-
 rval_contains_var(mkword(_Tag, Rval), Name) :-
     rval_contains_var(Rval, Name).
 rval_contains_var(const(Const), QualDataName) :-
-    Const = data_addr_const(DataAddr),
+    Const = mlconst_data_addr(DataAddr),
     DataAddr = data_addr(ModuleName, DataName),
     QualDataName = qual(ModuleName, _QualKind, DataName),
     % this is a place where we can succeed
@@ -699,17 +699,17 @@ gen_init_array(Conv, List) = init_array(list.map(Conv, List)).
 gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
 gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
 
-gen_init_null_pointer(Type) = init_obj(const(null(Type))).
+gen_init_null_pointer(Type) = init_obj(const(mlconst_null(Type))).
 
-gen_init_string(String) = init_obj(const(string_const(String))).
+gen_init_string(String) = init_obj(const(mlconst_string(String))).
 
-gen_init_int(Int) = init_obj(const(int_const(Int))).
+gen_init_int(Int) = init_obj(const(mlconst_int(Int))).
 
-gen_init_bool(no) = init_obj(const(false_const)).
-gen_init_bool(yes) = init_obj(const(true_const)).
+gen_init_bool(no) = init_obj(const(mlconst_false)).
+gen_init_bool(yes) = init_obj(const(mlconst_true)).
 
 gen_init_boxed_int(Int) =
-    init_obj(unop(box(mlds_native_int_type), const(int_const(Int)))).
+    init_obj(unop(box(mlds_native_int_type), const(mlconst_int(Int)))).
 
 gen_init_reserved_address(ModuleInfo, ReservedAddress) =
     % XXX using `mlds_generic_type' here is probably wrong

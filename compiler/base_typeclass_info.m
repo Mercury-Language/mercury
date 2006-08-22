@@ -105,7 +105,7 @@ gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
         gen_body(PredProcIds, InstanceTypes, InstanceConstraints,
             ModuleInfo, ClassId, BaseTypeClassInfo),
         TCName = generate_class_name(ClassId),
-        RttiData = base_typeclass_info(TCName, InstanceModule,
+        RttiData = rtti_data_base_typeclass_info(TCName, InstanceModule,
             InstanceString, BaseTypeClassInfo),
         !:RttiDataList = [RttiData | !.RttiDataList]
     ;

@@ -71,23 +71,24 @@
     is det.
 
 :- type simplification
-    --->    warn_simple_code        % --warn-simple-code
-    ;       warn_duplicate_calls    % --warn-duplicate-calls
-    ;       warn_known_bad_format   % --warn-known-bad-format-calls
-    ;       warn_unknown_format     % --warn-unknown-format-calls
-    ;       warn_obsolete           % --warn-obsolete
-    ;       do_once                 % run things that should be done once
-    ;       after_front_end         % run things that should be done
-                                    % at the end of the front end
-    ;       excess_assigns          % remove excess assignment unifications
-    ;       elim_removable_scopes   % remove scopes that do not need processing
-                                    % during llds code generation
-    ;       opt_duplicate_calls     % optimize duplicate calls
-    ;       constant_prop           % partially evaluate calls
-    ;       common_struct           % common structure elimination
-    ;       extra_common_struct     % do common structure elimination
-                                    % even when it might increase stack
-                                    % usage (used by deforestation).
+    --->    simp_warn_simple_code       % --warn-simple-code
+    ;       simp_warn_duplicate_calls   % --warn-duplicate-calls
+    ;       simp_warn_known_bad_format  % --warn-known-bad-format-calls
+    ;       simp_warn_unknown_format    % --warn-unknown-format-calls
+    ;       simp_warn_obsolete          % --warn-obsolete
+    ;       simp_do_once                % run things that should be done once
+    ;       simp_after_front_end        % run things that should be done
+                                        % at the end of the front end
+    ;       simp_excess_assigns         % remove excess assignment unifications
+    ;       simp_elim_removable_scopes  % remove scopes that do not need
+                                        % processing during LLDS code
+                                        % generation
+    ;       simp_opt_duplicate_calls    % optimize duplicate calls
+    ;       simp_constant_prop          % partially evaluate calls
+    ;       simp_common_struct          % common structure elimination
+    ;       simp_extra_common_struct    % do common structure elimination
+                                        % even when it might increase stack
+                                        % usage (used by deforestation).
     .
 
 :- type simplifications.
@@ -180,35 +181,35 @@ simplifications_to_list(Simplifications) = List :-
         AfterFrontEnd, ExcessAssign, ElimRemovableScopes, OptDuplicateCalls,
         ConstantProp, CommonStruct, ExtraCommonStruct),
     List =
-        ( WarnSimpleCode = yes -> [warn_simple_code] ; [] ) ++
-        ( WarnDupCalls = yes -> [warn_duplicate_calls] ; [] ) ++
-        ( WarnKnownBadFormat = yes -> [warn_known_bad_format] ; [] ) ++
-        ( WarnUnknownFormat = yes -> [warn_unknown_format] ; [] ) ++
-        ( WarnObsolete = yes -> [warn_obsolete] ; [] ) ++
-        ( DoOnce = yes -> [do_once] ; [] ) ++
-        ( AfterFrontEnd = yes -> [after_front_end] ; [] ) ++
-        ( ExcessAssign = yes -> [excess_assigns] ; [] ) ++
-        ( ElimRemovableScopes = yes -> [elim_removable_scopes] ; [] ) ++
-        ( OptDuplicateCalls = yes -> [opt_duplicate_calls] ; [] ) ++
-        ( ConstantProp = yes -> [constant_prop] ; [] ) ++
-        ( CommonStruct = yes -> [common_struct] ; [] ) ++
-        ( ExtraCommonStruct = yes -> [extra_common_struct] ; [] ).
+        ( WarnSimpleCode = yes -> [simp_warn_simple_code] ; [] ) ++
+        ( WarnDupCalls = yes -> [simp_warn_duplicate_calls] ; [] ) ++
+        ( WarnKnownBadFormat = yes -> [simp_warn_known_bad_format] ; [] ) ++
+        ( WarnUnknownFormat = yes -> [simp_warn_unknown_format] ; [] ) ++
+        ( WarnObsolete = yes -> [simp_warn_obsolete] ; [] ) ++
+        ( DoOnce = yes -> [simp_do_once] ; [] ) ++
+        ( AfterFrontEnd = yes -> [simp_after_front_end] ; [] ) ++
+        ( ExcessAssign = yes -> [simp_excess_assigns] ; [] ) ++
+        ( ElimRemovableScopes = yes -> [simp_elim_removable_scopes] ; [] ) ++
+        ( OptDuplicateCalls = yes -> [simp_opt_duplicate_calls] ; [] ) ++
+        ( ConstantProp = yes -> [simp_constant_prop] ; [] ) ++
+        ( CommonStruct = yes -> [simp_common_struct] ; [] ) ++
+        ( ExtraCommonStruct = yes -> [simp_extra_common_struct] ; [] ).
 
 list_to_simplifications(List) =
     simplifications(
-        ( list.member(warn_simple_code, List) -> yes ; no ),
-        ( list.member(warn_duplicate_calls, List) -> yes ; no ),
-        ( list.member(warn_known_bad_format, List) -> yes ; no ),
-        ( list.member(warn_unknown_format, List) -> yes ; no ),
-        ( list.member(warn_obsolete, List) -> yes ; no ),
-        ( list.member(do_once, List) -> yes ; no ),
-        ( list.member(after_front_end, List) -> yes ; no ),
-        ( list.member(excess_assigns, List) -> yes ; no ),
-        ( list.member(elim_removable_scopes, List) -> yes ; no ),
-        ( list.member(opt_duplicate_calls, List) -> yes ; no ),
-        ( list.member(constant_prop, List) -> yes ; no ),
-        ( list.member(common_struct, List) -> yes ; no ),
-        ( list.member(extra_common_struct, List) -> yes ; no )
+        ( list.member(simp_warn_simple_code, List) -> yes ; no ),
+        ( list.member(simp_warn_duplicate_calls, List) -> yes ; no ),
+        ( list.member(simp_warn_known_bad_format, List) -> yes ; no ),
+        ( list.member(simp_warn_unknown_format, List) -> yes ; no ),
+        ( list.member(simp_warn_obsolete, List) -> yes ; no ),
+        ( list.member(simp_do_once, List) -> yes ; no ),
+        ( list.member(simp_after_front_end, List) -> yes ; no ),
+        ( list.member(simp_excess_assigns, List) -> yes ; no ),
+        ( list.member(simp_elim_removable_scopes, List) -> yes ; no ),
+        ( list.member(simp_opt_duplicate_calls, List) -> yes ; no ),
+        ( list.member(simp_constant_prop, List) -> yes ; no ),
+        ( list.member(simp_common_struct, List) -> yes ; no ),
+        ( list.member(simp_extra_common_struct, List) -> yes ; no )
     ).
 
 find_simplifications(WarnThisPass, Globals, Simplifications) :-
@@ -396,7 +397,8 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         ; GoalExpr0 = switch(_, _, _)
         )
     ->
-        goal_info_add_feature(mode_check_clauses_goal, GoalInfo0, GoalInfo1),
+        goal_info_add_feature(feature_mode_check_clauses_goal,
+            GoalInfo0, GoalInfo1),
         Goal1 = GoalExpr0 - GoalInfo1
     ;
         Goal1 = Goal0
@@ -546,7 +548,7 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
     Goal0 = _ - GoalInfo0,
     simplify_info_get_inside_duplicated_for_switch(!.Info,
         InsideDuplForSwitch),
-    ( goal_info_has_feature(GoalInfo0, duplicated_for_switch) ->
+    ( goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) ->
         simplify_info_set_inside_duplicated_for_switch(yes, !Info)
     ;
         true
@@ -811,7 +813,7 @@ simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     ;
         Disjuncts = [_, _ | _],
         Goal = disj(Disjuncts),
-        ( goal_info_has_feature(GoalInfo0, mode_check_clauses_goal) ->
+        ( goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal) ->
             % Recomputing the instmap delta would take very long
             % and is very unlikely to get any better precision.
             GoalInfo = GoalInfo0
@@ -926,7 +928,7 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
     ;
         Cases = [_, _ | _],
         Goal = switch(Var, SwitchCanFail, Cases),
-        ( goal_info_has_feature(GoalInfo0, mode_check_clauses_goal) ->
+        ( goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal) ->
             % Recomputing the instmap delta would take very long and is
             % very unlikely to get any better precision.
             GoalInfo = GoalInfo0
@@ -1635,7 +1637,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
         not check_marker(ThisPredMarkers, marker_obsolete)
     ->
         goal_info_get_context(GoalInfo0, Context1),
-        ObsoleteMsg = warn_obsolete(PredId),
+        ObsoleteMsg = warn_call_to_obsolete(PredId),
         ObsoleteContextMsg = context_det_msg(Context1, ObsoleteMsg),
         simplify_info_add_det_msg(ObsoleteContextMsg, !Info)
     ;
@@ -1768,7 +1770,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
     simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_var_types(!.Info, VarTypes),
     map.lookup(VarTypes, XVar, Type),
-    ( Type = variable(TypeVar, Kind) ->
+    ( Type = type_variable(TypeVar, Kind) ->
         %
         % Convert polymorphic unifications into calls to `unify/2',
         % the general unification predicate, passing the appropriate type_info:

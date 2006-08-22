@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: interactive_query.m.
 % Author: fjh.
-% 
+%
 % A module to invoke interactive queries using dynamic linking.
 %
 % This module reads in a query, writes out Mercury code for it to the file
@@ -17,7 +17,7 @@
 % `mdb_query' from the file `libmdb_query.so', looks up the address of the
 % procedure query/2 in that module, calls that procedure, and then
 % cleans up the generated files.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

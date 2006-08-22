@@ -790,7 +790,8 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
         % Put in oven at gas mark 11 and bake.
         %
-    Origin = transformed(loop_invariant(ProcNo), OrigOrigin, PredId),
+    Origin = origin_transformed(transform_loop_invariant(ProcNo),
+        OrigOrigin, PredId),
     hlds_pred.define_new_pred(
         Origin,         % in    - The origin of this new predicate
         Goal,           % in    - The goal for the new aux proc.

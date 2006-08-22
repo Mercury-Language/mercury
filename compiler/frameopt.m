@@ -301,7 +301,7 @@ frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
             [mkframe(FrameInfo, no) - MkframeComment,
             label(KeepFrameLabel) - "tail recursion target",
             assign(redoip_slot(lval(curfr)),
-                const(code_addr_const(Redoip))) - ""],
+                const(llconst_code_addr(Redoip))) - ""],
             Instrs2], Instrs),
         Mod = yes
     ;
@@ -1282,12 +1282,12 @@ matching_label_ref(FirstLabel, GotoLabel) :-
 :- pred matching_entry_type(entry_label_type::in, entry_label_type::in)
     is semidet.
 
-matching_entry_type(exported, exported).
-matching_entry_type(exported, c_local).
-matching_entry_type(exported, local).
-matching_entry_type(local, c_local).
-matching_entry_type(local, local).
-matching_entry_type(c_local, c_local).
+matching_entry_type(entry_label_exported, entry_label_exported).
+matching_entry_type(entry_label_exported, entry_label_c_local).
+matching_entry_type(entry_label_exported, entry_label_local).
+matching_entry_type(entry_label_local, entry_label_c_local).
+matching_entry_type(entry_label_local, entry_label_local).
+matching_entry_type(entry_label_c_local, entry_label_c_local).
 
 :- pred find_redoip_labels(list(instruction)::in, proc_label::in,
     list(label)::in, list(label)::out) is det.
@@ -1296,7 +1296,8 @@ find_redoip_labels([], _, !RedoipLabels).
 find_redoip_labels([Instr | Instrs], ProcLabel, !RedoipLabels) :-
     Instr = Uinstr - _,
     (
-        Uinstr = assign(redoip_slot(_), const(code_addr_const(label(Label)))),
+        Uinstr = assign(redoip_slot(_),
+            const(llconst_code_addr(label(Label)))),
         get_proc_label(Label) = ProcLabel
     ->
         !:RedoipLabels = [Label | !.RedoipLabels]

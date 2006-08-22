@@ -570,7 +570,7 @@ report_termination_errors(SCC, Errors, !ModuleInfo, !IO) :-
 is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_origin(PredInfo, PredOrigin),
-    PredOrigin = special_pred(SpecialPredId - _),
+    PredOrigin = origin_special_pred(SpecialPredId - _),
     SpecialPredId = spec_pred_init.
 
 %----------------------------------------------------------------------------%
@@ -698,7 +698,7 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
             SpecialPredId = SpecPredId0
         ;
             pred_info_get_origin(PredInfo, Origin),
-            Origin = special_pred(SpecialPredId - _)
+            Origin = origin_special_pred(SpecialPredId - _)
         )
     ->
         set_generated_terminates(ProcIds, SpecialPredId, !ProcTable)

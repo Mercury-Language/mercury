@@ -545,13 +545,13 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
         output_rval_decls(TypeParams0, !DeclSet, !IO),
         LabelVars = label_has_var_info,
         (
-            LocnsTypes0 = const(data_addr_const(LTDataAddr, no)),
+            LocnsTypes0 = const(llconst_data_addr(LTDataAddr, no)),
             LTDataAddr = data_addr(_, scalar_common_ref(LTTypeNum, LTCellNum)),
-            VarNums0 = const(data_addr_const(VNDataAddr, no)),
+            VarNums0 = const(llconst_data_addr(VNDataAddr, no)),
             VNDataAddr = data_addr(_, scalar_common_ref(VNTypeNum, VNCellNum))
         ->
             (
-                TypeParams0 = const(data_addr_const(TPDataAddr, no)),
+                TypeParams0 = const(llconst_data_addr(TPDataAddr, no)),
                 TPDataAddr = data_addr(_,
                     scalar_common_ref(TPTypeNum, TPCellNum))
             ->
@@ -560,7 +560,7 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
                 VarNums1 = num_pair(VNTypeNum, VNCellNum),
                 TypeParams1 = num_pair(TPTypeNum, TPCellNum)
             ;
-                TypeParams0 = const(int_const(0))
+                TypeParams0 = const(llconst_int(0))
             ->
                 CommonChars = "XCC0",
                 LocnsTypes1 = num_pair(LTTypeNum, LTCellNum),
@@ -632,9 +632,9 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
 :- pred output_rval_as_addr(rval::in, io::di, io::uo) is det.
 
 output_rval_as_addr(Rval, !IO) :-
-    ( Rval = const(int_const(0)) ->
+    ( Rval = const(llconst_int(0)) ->
         io.write_string(" 0", !IO)
-    ; Rval = const(data_addr_const(DataAddr, no)) ->
+    ; Rval = const(llconst_data_addr(DataAddr, no)) ->
         ( DataAddr = data_addr(_, scalar_common_ref(_TypeNum, _CellNum)) ->
             output_data_addr(DataAddr, !IO)
         ;
@@ -1126,7 +1126,7 @@ output_proc_id(ProcLabel, Origin, !IO) :-
 
 origin_name(Origin, Name0) = Name :-
     (
-        Origin = lambda(FileName0, LineNum, SeqNo),
+        Origin = origin_lambda(FileName0, LineNum, SeqNo),
         ( string.append("IntroducedFrom", _, Name0) ->
             string.replace_all(FileName0, ".", "_", FileName),
             ( SeqNo > 1 ->
@@ -1142,7 +1142,7 @@ origin_name(Origin, Name0) = Name :-
             Name = Name0
         )
     ;
-        Origin = special_pred(_SpecialPredId - _TypeCtor),
+        Origin = origin_special_pred(_SpecialPredId - _TypeCtor),
         Name = Name0
         % We can't use the following code until we have adapted the
         % code in the runtime and trace directories to handle the names
@@ -1165,7 +1165,7 @@ origin_name(Origin, Name0) = Name :-
 %       string.format("%s_for_%s_%d",
 %           [s(SpecialName), s(TypeName), i(TypeArity)], Name)
     ;
-        Origin = transformed(Transform, OldOrigin, _),
+        Origin = origin_transformed(Transform, OldOrigin, _),
         OldName = origin_name(OldOrigin, ""),
         ( OldName = "" ->
             Name = Name0
@@ -1173,40 +1173,37 @@ origin_name(Origin, Name0) = Name :-
             Name = OldName ++ "_" ++ pred_transform_name(Transform)
         )
     ;
-        Origin = instance_method(_),
-        Name = Name0
-    ;
-        Origin = created(_),
-        Name = Name0
-    ;
-        Origin = assertion(_, _),
-        Name = Name0
-    ;
-        Origin = user(_),
+        ( Origin = origin_instance_method(_)
+        ; Origin = origin_created(_)
+        ; Origin = origin_assertion(_, _)
+        ; Origin = origin_user(_)
+        ),
         Name = Name0
     ).
 
 :- func pred_transform_name(pred_transformation) = string.
 
-pred_transform_name(higher_order_specialization(Seq)) =
+pred_transform_name(transform_higher_order_specialization(Seq)) =
     "ho" ++ int_to_string(Seq).
-pred_transform_name(higher_order_type_specialization(Proc)) =
+pred_transform_name(transform_higher_order_type_specialization(Proc)) =
     "hoproc" ++ int_to_string(Proc).
-pred_transform_name(type_specialization(Substs)) =
+pred_transform_name(transform_type_specialization(Substs)) =
     string.join_list("_", list.map(subst_to_name, Substs)).
-pred_transform_name(unused_argument_elimination(Posns)) = "ua_" ++
+pred_transform_name(transform_unused_argument_elimination(Posns)) =
+    "ua_" ++ string.join_list("_", list.map(int_to_string, Posns)).
+pred_transform_name(transform_accumulator(Posns)) = "acc_" ++
     string.join_list("_", list.map(int_to_string, Posns)).
-pred_transform_name(accumulator(Posns)) = "acc_" ++
-    string.join_list("_", list.map(int_to_string, Posns)).
-pred_transform_name(loop_invariant(Proc)) = "inv_" ++ int_to_string(Proc).
-pred_transform_name(tuple(Proc)) = "tup_" ++ int_to_string(Proc).
-pred_transform_name(untuple(Proc)) = "untup_" ++ int_to_string(Proc).
-pred_transform_name(dependent_parallel_conjunction) = "dep_par_conj_".
-pred_transform_name(return_via_ptr(ProcId, ArgPos)) =
+pred_transform_name(transform_loop_invariant(Proc)) =
+    "inv_" ++ int_to_string(Proc).
+pred_transform_name(transform_tuple(Proc)) = "tup_" ++ int_to_string(Proc).
+pred_transform_name(transform_untuple(Proc)) = "untup_" ++ int_to_string(Proc).
+pred_transform_name(transform_dependent_parallel_conjunction) =
+    "dep_par_conj_".
+pred_transform_name(transform_return_via_ptr(ProcId, ArgPos)) =
     "retptr_" ++ int_to_string(proc_id_to_int(ProcId)) ++ "_args"
         ++ ints_to_string(ArgPos).
-pred_transform_name(table_generator) = "table_gen".
-pred_transform_name(dnf(N)) = "dnf_" ++ int_to_string(N).
+pred_transform_name(transform_table_generator) = "table_gen".
+pred_transform_name(transform_dnf(N)) = "dnf_" ++ int_to_string(N).
 
 :- func ints_to_string(list(int)) = string.
 

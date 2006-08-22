@@ -17,6 +17,7 @@
 :- module backend_libs.switch_util.
 :- interface.
 
+:- import_module backend_libs.rtti.         % for sectag_locn
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
@@ -36,7 +37,8 @@
 % An extended_case is an HLDS case annotated with some additional info.
 % The first (int) field is the priority, as computed by switch_priority/2.
 
-:- type extended_case ---> case(int, cons_tag, cons_id, hlds_goal).
+:- type extended_case
+    --->    extended_case(int, cons_tag, cons_id, hlds_goal).
 :- type cases_list == list(extended_case).
 
 :- type switch_category
@@ -95,22 +97,19 @@
 % Stuff for tag switches
 %
 
-% Where is the secondary tag (if any) for this primary tag value.
-:- type stag_loc    --->    none ; local ; remote.
-
 % Map secondary tag values (-1 stands for none) to their goal.
 :- type stag_goal ---> stag_goal(cons_id, hlds_goal).
 :- type stag_goal_map   ==  map(int, stag_goal).
 :- type stag_goal_list  ==  assoc_list(int, stag_goal).
 
 % Map primary tag values to the set of their goals.
-:- type ptag_case ---> ptag_case(stag_loc, stag_goal_map).
+:- type ptag_case ---> ptag_case(sectag_locn, stag_goal_map).
 :- type ptag_case_map   ==  map(tag_bits, ptag_case).
 :- type ptag_case_list  ==  assoc_list(tag_bits, ptag_case).
 
 % Map primary tag values to the number of constructors sharing them.
-:- type ptag_count_map  ==  map(tag_bits, pair(stag_loc, int)).
-:- type ptag_count_list ==  assoc_list(tag_bits, pair(stag_loc, int)).
+:- type ptag_count_map  ==  map(tag_bits, pair(sectag_locn, int)).
+:- type ptag_count_list ==  assoc_list(tag_bits, pair(sectag_locn, int)).
 
     % Group together all the cases that depend on the given variable
     % having the same primary tag value.
@@ -164,7 +163,7 @@ string_hash_cases([], _, Map) :-
     map.init(Map).
 string_hash_cases([Case | Cases], HashMask, Map) :-
     string_hash_cases(Cases, HashMask, Map0),
-    ( Case = case(_, string_tag(String0), _, _) ->
+    ( Case = extended_case(_, string_tag(String0), _, _) ->
         String = String0
     ;
         unexpected(this_file, "string_hash_cases: non-string case?")
@@ -343,37 +342,37 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ( map.search(!.PtagCountMap, Primary, _) ->
             unexpected(this_file, "unshared tag is shared")
         ;
-            svmap.det_insert(Primary, none - (-1), !PtagCountMap)
+            svmap.det_insert(Primary, sectag_none - (-1), !PtagCountMap)
         )
     ;
         Tag = shared_remote_tag(Primary, Secondary),
         int.max(Primary, !MaxPrimary),
         ( map.search(!.PtagCountMap, Primary, Target) ->
             Target = TagType - MaxSoFar,
-            ( TagType = remote ->
+            ( TagType = sectag_remote ->
                 true
             ;
                 unexpected(this_file, "remote tag is shared with non-remote")
             ),
             int.max(Secondary, MaxSoFar, Max),
-            svmap.det_update(Primary, remote - Max, !PtagCountMap)
+            svmap.det_update(Primary, sectag_remote - Max, !PtagCountMap)
         ;
-            svmap.det_insert(Primary, remote - Secondary, !PtagCountMap)
+            svmap.det_insert(Primary, sectag_remote - Secondary, !PtagCountMap)
         )
     ;
         Tag = shared_local_tag(Primary, Secondary),
         int.max(Primary, !MaxPrimary),
         ( map.search(!.PtagCountMap, Primary, Target) ->
             Target = TagType - MaxSoFar,
-            ( TagType = local ->
+            ( TagType = sectag_local ->
                 true
             ;
                 unexpected(this_file, "local tag is shared with non-local")
             ),
             int.max(Secondary, MaxSoFar, Max),
-            svmap.det_update(Primary, local - Max, !PtagCountMap)
+            svmap.det_update(Primary, sectag_local - Max, !PtagCountMap)
         ;
-            svmap.det_insert(Primary, local - Secondary, !PtagCountMap)
+            svmap.det_insert(Primary, sectag_local - Secondary, !PtagCountMap)
         )
     ;
         ( Tag = no_tag
@@ -397,7 +396,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
 
 group_cases_by_ptag([], !PtagCaseMap).
 group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
-    Case0 = case(_Priority, Tag, ConsId, Goal),
+    Case0 = extended_case(_Priority, Tag, ConsId, Goal),
     ConsIdGoal = stag_goal(ConsId, Goal),
     (
         ( Tag = single_functor_tag, Primary = 0
@@ -408,37 +407,37 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
         ;
             map.init(StagGoalMap0),
             map.det_insert(StagGoalMap0, -1, ConsIdGoal, StagGoalMap),
-            svmap.det_insert(Primary, ptag_case(none, StagGoalMap),
+            svmap.det_insert(Primary, ptag_case(sectag_none, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
         Tag = shared_remote_tag(Primary, Secondary),
         ( map.search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
-            expect(unify(StagLoc, remote), this_file,
+            expect(unify(StagLoc, sectag_remote), this_file,
                 "remote tag is shared with non-remote"),
             map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
-            svmap.det_update(Primary, ptag_case(remote, StagGoalMap),
+            svmap.det_update(Primary, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         ;
             map.init(StagGoalMap0),
             map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
-            svmap.det_insert(Primary, ptag_case(remote, StagGoalMap),
+            svmap.det_insert(Primary, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
         Tag = shared_local_tag(Primary, Secondary),
         ( map.search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
-            expect(unify(StagLoc, local), this_file,
+            expect(unify(StagLoc, sectag_local), this_file,
                 "local tag is shared with non-local"),
             map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
-            svmap.det_update(Primary, ptag_case(local, StagGoalMap),
+            svmap.det_update(Primary, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         ;
             map.init(StagGoalMap0),
             map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
-            svmap.det_insert(Primary, ptag_case(local, StagGoalMap),
+            svmap.det_insert(Primary, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         )
     ;

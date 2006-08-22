@@ -1503,7 +1503,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
             "maxfr may differ from curfr in disj_quarter_hijack"),
         stack.top_det(ResumePoints, ResumePoint),
         pick_stack_resume_point(ResumePoint, _, StackLabel),
-        LabelConst = const(code_addr_const(StackLabel)),
+        LabelConst = const(llconst_code_addr(StackLabel)),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = node([
             assign(redoip_slot(lval(curfr)), LabelConst)
@@ -1649,7 +1649,7 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
         ThenCode = node([
             % We can't remove the frame, it may not be on top.
             assign(redoip_slot(lval(MaxfrSlot)),
-                const(code_addr_const(do_fail)))
+                const(llconst_code_addr(do_fail)))
                 - "soft cut for temp frame ite"
         ]),
         ElseCode = node([
@@ -1661,7 +1661,7 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
         HijackType = ite_quarter_hijack,
         stack.top_det(ResumePoints, ResumePoint),
         ( maybe_pick_stack_resume_point(ResumePoint, _, StackLabel) ->
-            LabelConst = const(code_addr_const(StackLabel)),
+            LabelConst = const(llconst_code_addr(StackLabel)),
             ThenCode = node([
                 assign(redoip_slot(lval(curfr)), LabelConst)
                     - "restore redoip for quarter ite hijack"
@@ -1733,7 +1733,7 @@ leave_simple_neg(GoalInfo, FailInfo, !CI) :-
 make_fake_resume_map([], ResumeMap, ResumeMap).
 make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
     % A visibly fake location.
-    set.singleton_set(Locns, reg(r, -1)),
+    set.singleton_set(Locns, reg(reg_r, -1)),
     map.det_insert(ResumeMap0, Var, Locns, ResumeMap1),
     make_fake_resume_map(Vars, ResumeMap1, ResumeMap).
 
@@ -1828,7 +1828,7 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
     set_fail_info(FailInfo, !CI),
 
     pick_stack_resume_point(NewResumePoint, _, StackLabel),
-    StackLabelConst = const(code_addr_const(StackLabel)),
+    StackLabelConst = const(llconst_code_addr(StackLabel)),
     (
         ( Allow = not_allowed ; CondEnv = inside_non_condition )
     ->
@@ -1956,7 +1956,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
         FailInfo = fail_info(ResumePoints, _, _, _, _),
         stack.top_det(ResumePoints, TopResumePoint),
         pick_stack_resume_point(TopResumePoint, _, StackLabel),
-        StackLabelConst = const(code_addr_const(StackLabel)),
+        StackLabelConst = const(llconst_code_addr(StackLabel)),
         SuccessUndoCode = node([
             assign(maxfr, lval(curfr))
                 - "restore maxfr for quarter commit hijack",
@@ -2069,7 +2069,7 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
     stack.push(ResumePoints0, ResumePoint, ResumePoints),
     ( CodeModel = model_non ->
         pick_stack_resume_point(ResumePoint, _, StackLabel),
-        LabelConst = const(code_addr_const(StackLabel)),
+        LabelConst = const(llconst_code_addr(StackLabel)),
         Code = node([
             assign(redoip_slot(lval(maxfr)), LabelConst)
                 - "hijack redoip to effect resume point"
@@ -2390,18 +2390,18 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
     get_stack_slots(!.CI, StackSlots),
     map.select(FullMap, ResumeVars, OrigMap),
     (
-        ResumeLocs = orig_only,
+        ResumeLocs = resume_locs_orig_only,
         get_next_label(OrigLabel, !CI),
         OrigAddr = label(OrigLabel),
         ResumePoint = orig_only(OrigMap, OrigAddr)
     ;
-        ResumeLocs = stack_only,
+        ResumeLocs = resume_locs_stack_only,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
         get_next_label(StackLabel, !CI),
         StackAddr = label(StackLabel),
         ResumePoint = stack_only(StackMap, StackAddr)
     ;
-        ResumeLocs = orig_and_stack,
+        ResumeLocs = resume_locs_orig_and_stack,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
         get_next_label(OrigLabel, !CI),
         OrigAddr = label(OrigLabel),
@@ -2409,7 +2409,7 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         StackAddr = label(StackLabel),
         ResumePoint = orig_and_stack(OrigMap, OrigAddr, StackMap, StackAddr)
     ;
-        ResumeLocs = stack_and_orig,
+        ResumeLocs = resume_locs_stack_and_orig,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
         get_next_label(StackLabel, !CI),
         StackAddr = label(StackLabel),
@@ -2614,13 +2614,13 @@ maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode, !CI) :-
     ;
         MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
         CommitCode = node([
-            reset_ticket(lval(TrailPtrSlot), commit)
+            reset_ticket(lval(TrailPtrSlot), reset_reason_commit)
                 - "discard trail entries and restore trail ptr",
             prune_tickets_to(lval(CounterSlot))
                 - ("restore ticket counter (but not high water mark)")
         ]),
         RestoreCode = node([
-            reset_ticket(lval(TrailPtrSlot), undo)
+            reset_ticket(lval(TrailPtrSlot), reset_reason_undo)
                 - "apply trail entries and restore trail ptr",
             discard_ticket
                 - "restore ticket counter and high water mark"
@@ -2734,7 +2734,7 @@ make_vars_forward_live_2([Var | Vars], StackSlots, N0, !VarLocnInfo) :-
         N1 = N0
     ;
         find_unused_reg(!.VarLocnInfo, N0, N1),
-        Lval = reg(r, N1)
+        Lval = reg(reg_r, N1)
     ),
     var_locn.set_magic_var_location(Var, Lval, !VarLocnInfo),
     make_vars_forward_live_2(Vars, StackSlots, N1, !VarLocnInfo).
@@ -2742,7 +2742,7 @@ make_vars_forward_live_2([Var | Vars], StackSlots, N0, !VarLocnInfo) :-
 :- pred find_unused_reg(var_locn_info::in, int::in, int::out) is det.
 
 find_unused_reg(VLI, N0, N) :-
-    ( var_locn.lval_in_use(VLI, reg(r, N0)) ->
+    ( var_locn.lval_in_use(VLI, reg(reg_r, N0)) ->
         find_unused_reg(VLI, N0 + 1, N)
     ;
         N = N0
@@ -3365,7 +3365,7 @@ record_highest_used_reg(_, AbsLocn, !HighestUsedRegNum) :-
 
 acquire_reg(Type, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    expect(unify(Type, r), this_file, "acquire_reg: unknown reg type"),
+    expect(unify(Type, reg_r), this_file, "acquire_reg: unknown reg type"),
     var_locn.acquire_reg(Lval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3378,12 +3378,13 @@ reserve_r1(Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
     var_locn.clear_r1(ModuleInfo, Code, VarLocnInfo0, VarLocnInfo1),
-    var_locn.acquire_reg_require_given(reg(r, 1), VarLocnInfo1, VarLocnInfo),
+    var_locn.acquire_reg_require_given(reg(reg_r, 1),
+        VarLocnInfo1, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 clear_r1(empty, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.release_reg(reg(r, 1), VarLocnInfo0, VarLocnInfo),
+    var_locn.release_reg(reg(reg_r, 1), VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 %---------------------------------------------------------------------------%
@@ -3816,9 +3817,9 @@ stack_variable(CI, Num, Lval) :-
 
 stack_variable_reference(CI, Num, mem_addr(Ref)) :-
     ( get_proc_model(CI) = model_non ->
-        Ref = framevar_ref(const(int_const(Num)))
+        Ref = framevar_ref(const(llconst_int(Num)))
     ;
-        Ref = stackvar_ref(const(int_const(Num)))
+        Ref = stackvar_ref(const(llconst_int(Num)))
     ).
 
 %---------------------------------------------------------------------------%

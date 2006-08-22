@@ -233,9 +233,9 @@ dump_livelist_2([], _) = "".
 dump_livelist_2([Lval | Lvallist], Prefix) =
     Prefix ++ dump_lval(Lval) ++ dump_livelist_2(Lvallist, " ").
 
-dump_reg(r, N) =
+dump_reg(reg_r, N) =
     "r" ++ int_to_string(N).
-dump_reg(f, N) =
+dump_reg(reg_f, N) =
     "f" ++ int_to_string(N).
 
 dump_lval(reg(Type, Num)) =
@@ -313,19 +313,19 @@ dump_mem_ref(heap_ref(R, T, N)) =
     "heap_ref(" ++ dump_rval(R) ++ ", " ++ int_to_string(T) ++ ", "
         ++ dump_rval(N) ++ ")".
 
-dump_const(true) = "true".
-dump_const(false) = "false".
-dump_const(int_const(I)) =
+dump_const(llconst_true) = "true".
+dump_const(llconst_false) = "false".
+dump_const(llconst_int(I)) =
     int_to_string(I).
-dump_const(float_const(F)) =
+dump_const(llconst_float(F)) =
     float_to_string(F).
-dump_const(string_const(S)) =
+dump_const(llconst_string(S)) =
     """" ++ S ++ """".
-dump_const(multi_string_const(L, _S)) =
+dump_const(llconst_multi_string(L, _S)) =
     "multi_string(" ++ int_to_string(L) ++ ")".
-dump_const(code_addr_const(CodeAddr)) =
+dump_const(llconst_code_addr(CodeAddr)) =
     "code_addr_const(" ++ dump_code_addr(CodeAddr) ++ ")".
-dump_const(data_addr_const(DataAddr, MaybeOffset)) = Str :-
+dump_const(llconst_data_addr(DataAddr, MaybeOffset)) = Str :-
     DataAddr_str = dump_data_addr(DataAddr),
     (
         MaybeOffset = no,
@@ -361,50 +361,53 @@ dump_rtti_type_ctor(rtti_type_ctor(ModuleName, TypeName, Arity)) =
     "rtti_type_ctor(" ++ sym_name_mangle(ModuleName) ++ ", "
         ++ name_mangle(TypeName) ++ int_to_string(Arity) ++ ")".
 
-dump_rtti_name(exist_locns(Ordinal)) =
+dump_rtti_name(type_ctor_exist_locns(Ordinal)) =
     "exist_locns_" ++ int_to_string(Ordinal).
-dump_rtti_name(exist_locn) = "exist_loc".
-dump_rtti_name(exist_tc_constr(Ordinal, TCCNum, Arity)) =
+dump_rtti_name(type_ctor_exist_locn) = "exist_loc".
+dump_rtti_name(type_ctor_exist_tc_constr(Ordinal, TCCNum, Arity)) =
     "exist_tc_constr_" ++ int_to_string(Ordinal) ++ "_"
         ++ int_to_string(TCCNum) ++ "_" ++ int_to_string(Arity).
-dump_rtti_name(exist_tc_constrs(Ordinal)) =
+dump_rtti_name(type_ctor_exist_tc_constrs(Ordinal)) =
     "exist_tc_constrs_" ++ int_to_string(Ordinal).
-dump_rtti_name(exist_info(Ordinal)) =
+dump_rtti_name(type_ctor_exist_info(Ordinal)) =
     "exist_info_" ++ int_to_string(Ordinal).
-dump_rtti_name(field_names(Ordinal)) =
+dump_rtti_name(type_ctor_field_names(Ordinal)) =
     "field_names_" ++ int_to_string(Ordinal).
-dump_rtti_name(field_types(Ordinal)) =
+dump_rtti_name(type_ctor_field_types(Ordinal)) =
     "field_types_" ++ int_to_string(Ordinal).
-dump_rtti_name(res_addrs) = "res_addrs".
-dump_rtti_name(res_addr_functors) = "res_addr_functors".
-dump_rtti_name(enum_functor_desc(Ordinal)) =
+dump_rtti_name(type_ctor_res_addrs) = "res_addrs".
+dump_rtti_name(type_ctor_res_addr_functors) = "res_addr_functors".
+dump_rtti_name(type_ctor_enum_functor_desc(Ordinal)) =
     "enum_functor_desc_" ++ int_to_string(Ordinal).
-dump_rtti_name(notag_functor_desc) = "notag_functor_desc_".
-dump_rtti_name(du_functor_desc(Ordinal)) =
+dump_rtti_name(type_ctor_notag_functor_desc) = "notag_functor_desc_".
+dump_rtti_name(type_ctor_du_functor_desc(Ordinal)) =
     "du_functor_desc_" ++ int_to_string(Ordinal).
-dump_rtti_name(res_functor_desc(Ordinal)) =
+dump_rtti_name(type_ctor_res_functor_desc(Ordinal)) =
     "res_functor_desc_" ++ int_to_string(Ordinal).
-dump_rtti_name(enum_name_ordered_table) = "enum_name_ordered_table".
-dump_rtti_name(enum_value_ordered_table) = "enum_value_ordered_table".
-dump_rtti_name(du_name_ordered_table) = "du_name_ordered_table".
-dump_rtti_name(du_stag_ordered_table(Ptag)) =
+dump_rtti_name(type_ctor_enum_name_ordered_table) = "enum_name_ordered_table".
+dump_rtti_name(type_ctor_enum_value_ordered_table) =
+    "enum_value_ordered_table".
+dump_rtti_name(type_ctor_du_name_ordered_table) = "du_name_ordered_table".
+dump_rtti_name(type_ctor_du_stag_ordered_table(Ptag)) =
     "du_stag_ordered_table_" ++ int_to_string(Ptag).
-dump_rtti_name(du_ptag_ordered_table) = "du_ptag_ordered_table".
-dump_rtti_name(du_ptag_layout(Ptag)) =
+dump_rtti_name(type_ctor_du_ptag_ordered_table) = "du_ptag_ordered_table".
+dump_rtti_name(type_ctor_du_ptag_layout(Ptag)) =
     "du_ptag_layout" ++ int_to_string(Ptag).
-dump_rtti_name(res_value_ordered_table) = "res_value_ordered_table".
-dump_rtti_name(res_name_ordered_table) = "res_name_ordered_table".
-dump_rtti_name(maybe_res_addr_functor_desc) = "maybe_res_addr_functor_desc".
-dump_rtti_name(type_layout) = "type_layout".
-dump_rtti_name(type_functors) = "type_functors".
-dump_rtti_name(type_ctor_info) = "type_ctor_info".
-dump_rtti_name(type_info(_TypeInfo)) = "type_info".
+dump_rtti_name(type_ctor_res_value_ordered_table) = "res_value_ordered_table".
+dump_rtti_name(type_ctor_res_name_ordered_table) = "res_name_ordered_table".
+dump_rtti_name(type_ctor_maybe_res_addr_functor_desc) =
+    "maybe_res_addr_functor_desc".
+dump_rtti_name(type_ctor_type_layout) = "type_layout".
+dump_rtti_name(type_ctor_type_functors) = "type_functors".
+dump_rtti_name(type_ctor_type_ctor_info) = "type_ctor_info".
+dump_rtti_name(type_ctor_type_info(_TypeInfo)) = "type_info".
     % XXX Should give more info than this for _TypeInfo.
-dump_rtti_name(pseudo_type_info(_PseudoTypeInfo)) = "pseudo_type_info".
+dump_rtti_name(type_ctor_pseudo_type_info(_PseudoTypeInfo)) =
+    "pseudo_type_info".
     % XXX Should give more info than this for _PseudoTypeInfo.
-dump_rtti_name(type_hashcons_pointer) = "type_hashcons_pointer".
+dump_rtti_name(type_ctor_type_hashcons_pointer) = "type_hashcons_pointer".
 
-dump_tc_rtti_name(base_typeclass_info(_ModuleName, InstanceStr)) =
+dump_tc_rtti_name(type_class_base_typeclass_info(_ModuleName, InstanceStr)) =
     "base_typeclass_info(" ++ InstanceStr ++ ")".
 dump_tc_rtti_name(type_class_id) = "type_class_id".
 dump_tc_rtti_name(type_class_decl) = "type_class_decl".

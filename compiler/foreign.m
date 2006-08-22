@@ -622,18 +622,18 @@ to_type_string(lang_java, foreign(ForeignType, _)) = Result :-
 
     % XXX does this do the right thing for high level data?
 to_type_string(lang_c, mercury(Type)) = Result :-
-    ( Type = builtin(BuiltinType) ->
+    ( Type = builtin_type(BuiltinType) ->
         (
-            BuiltinType = int,
+            BuiltinType = builtin_type_int,
             Result = "MR_Integer"
         ;
-            BuiltinType = float,
+            BuiltinType = builtin_type_float,
             Result = "MR_Float"
         ;
-            BuiltinType = string,
+            BuiltinType = builtin_type_string,
             Result = "MR_String"
         ;
-            BuiltinType = character,
+            BuiltinType = builtin_type_character,
             Result = "MR_Char"
         )
     ;
@@ -642,7 +642,7 @@ to_type_string(lang_c, mercury(Type)) = Result :-
 to_type_string(lang_csharp, mercury(_Type)) = _ :-
     sorry(this_file, "to_type_string for csharp").
 to_type_string(lang_managed_cplusplus, mercury(Type)) = TypeString :-
-    ( Type = variable(_, _) ->
+    ( Type = type_variable(_, _) ->
         TypeString = "MR_Box"
     ;
         TypeString = to_type_string(lang_c, mercury(Type))
@@ -650,18 +650,18 @@ to_type_string(lang_managed_cplusplus, mercury(Type)) = TypeString :-
 to_type_string(lang_il, mercury(_Type)) = _ :-
     sorry(this_file, "to_type_string for il").
 to_type_string(lang_java, mercury(Type)) = Result :-
-    ( Type = builtin(BuiltinType) ->
+    ( Type = builtin_type(BuiltinType) ->
         (
-            BuiltinType = int,
+            BuiltinType = builtin_type_int,
             Result = "int"
         ;
-            BuiltinType = float,
+            BuiltinType = builtin_type_float,
             Result = "double"
         ;
-            BuiltinType = string,
+            BuiltinType = builtin_type_string,
             Result = "java.lang.String"
         ;
-            BuiltinType = character,
+            BuiltinType = builtin_type_character,
             Result = "char"
         )
     ;

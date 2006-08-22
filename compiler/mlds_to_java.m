@@ -239,7 +239,7 @@ mlds_lval_type(global_var_ref(_)) = _ :-
 :- pred rval_is_int_const(mlds_rval::in) is semidet.
 
 rval_is_int_const(Rval) :-
-    Rval = const(int_const(_)).
+    Rval = const(mlconst_int(_)).
 
     % Succeeds iff the Rval represents an enumeration object in the Java
     % backend. We need to check both Rvals that are variables and Rvals
@@ -751,7 +751,7 @@ method_ptrs_in_rval(lval(Lval), !CodeAddrs) :-
 method_ptrs_in_rval(mkword(_Tag, Rval), !CodeAddrs) :-
     method_ptrs_in_rval(Rval, !CodeAddrs).
 method_ptrs_in_rval(const(RvalConst), !CodeAddrs) :-
-    ( RvalConst = code_addr_const(CodeAddr) ->
+    ( RvalConst = mlconst_code_addr(CodeAddr) ->
         !:CodeAddrs = !.CodeAddrs ++ [CodeAddr]
     ;
         true
@@ -820,10 +820,10 @@ generate_code_addr_wrappers(Indent, [CodeAddr | CodeAddrs], !Defns) :-
 
 generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
     (
-        CodeAddr = proc(ProcLabel, _FuncSig),
+        CodeAddr = code_addr_proc(ProcLabel, _FuncSig),
         MaybeSeqNum = no
     ;
-        CodeAddr = internal(ProcLabel, SeqNum, _FuncSig),
+        CodeAddr = code_addr_internal(ProcLabel, SeqNum, _FuncSig),
         MaybeSeqNum = yes(SeqNum)
     ),
     ProcLabel = qual(ModuleQualifier, QualKind,
@@ -865,9 +865,9 @@ generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
 
 generate_call_method(CodeAddr, MethodDefn) :-
     (
-        CodeAddr = proc(ProcLabel, OrigFuncSignature)
+        CodeAddr = code_addr_proc(ProcLabel, OrigFuncSignature)
     ;
-        CodeAddr = internal(ProcLabel, _SeqNum, OrigFuncSignature)
+        CodeAddr = code_addr_internal(ProcLabel, _SeqNum, OrigFuncSignature)
     ),
     OrigFuncSignature = mlds_func_signature(OrigArgTypes, OrigRetTypes),
     % XXX We should fill in the Context properly.
@@ -919,7 +919,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
     % Create the call to the original method.
     CallArgLabel = qual(ModuleName, module_qual, MethodArgVariable),
     generate_call_method_args(OrigArgTypes, CallArgLabel, 0, [], CallArgs),
-    CallRval = const(code_addr_const(CodeAddr)),
+    CallRval = const(mlconst_code_addr(CodeAddr)),
 
     % If the original method has a return type of void, then we obviously
     % cannot assign its return value to "return_value". Thus, in this
@@ -961,7 +961,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
 generate_call_method_args([], _, _, Args, Args).
 generate_call_method_args([Type | Types], Variable, Counter, Args0, Args) :-
     ArrayRval = lval(var(Variable, mlds_native_int_type)),
-    IndexRval = const(int_const(Counter)),
+    IndexRval = const(mlconst_int(Counter)),
     Rval = binop(array_index(elem_type_generic), ArrayRval, IndexRval),
     UnBoxedRval = unop(unbox(Type), Rval),
     Args1 = Args0 ++ [UnBoxedRval],
@@ -2189,7 +2189,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, while(Cond, Statement, no),
     % The contained statement is reachable iff the while statement is
     % reachable and the condition expression is not a constant expression
     % whose value is false.
-    ( Cond = const(false_const) ->
+    ( Cond = const(mlconst_false) ->
         indent_line(Indent, !IO),
         io.write_string("{  /* Unreachable code */  }\n", !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
@@ -2323,7 +2323,7 @@ output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
         %
         io.write_string("java.lang.Object [] result = ", !IO)
     ),
-    ( FuncRval = const(code_addr_const(_)) ->
+    ( FuncRval = const(mlconst_code_addr(_)) ->
         % This is a standard method call.
         (
             MaybeObject = yes(Object),
@@ -2532,7 +2532,7 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
         % XXX This is not a sufficient way of testing for a Java
         % "constant expression", though determining these accurately
         % is a little difficult to do here.
-        Cond = const(true_const),
+        Cond = const(mlconst_true),
         not set.member(can_break, BlockExitMethods)
     ->
         % Cannot complete normally
@@ -2922,7 +2922,7 @@ output_lval(ModuleInfo,
         ModuleName, !IO) :-
     (
         ( FieldType = mlds_generic_type
-        ; FieldType = mercury_type(variable(_, _), _, _))
+        ; FieldType = mercury_type(type_variable(_, _), _, _))
     ->
         true
     ;
@@ -2995,7 +2995,7 @@ output_valid_mangled_name(Name, !IO) :-
 output_call_rval(ModuleInfo, Rval, ModuleName, !IO) :-
     (
         Rval = const(Const),
-        Const = code_addr_const(CodeAddr)
+        Const = mlconst_code_addr(CodeAddr)
     ->
         IsCall = yes,
         mlds_output_code_addr(CodeAddr, IsCall, !IO)
@@ -3010,7 +3010,7 @@ output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO) :-
     (
         % If it's just a variable name, then we don't need parentheses.
         ( Rval = lval(var(_,_))
-        ; Rval = const(code_addr_const(_))
+        ; Rval = const(mlconst_code_addr(_))
         )
     ->
         output_rval(ModuleInfo, Rval, ModuleName, !IO)
@@ -3054,7 +3054,7 @@ output_unop(ModuleInfo, cast(Type), Exprn, ModuleName, !IO) :-
     % Similarly for conversions from TypeCtorInfo to TypeInfo.
     (
         Type = mlds_pseudo_type_info_type,
-        Exprn = const(int_const(_))
+        Exprn = const(mlconst_int(_))
     ->
         maybe_output_comment("cast", !IO),
         io.write_string("new mercury.runtime.PseudoTypeInfo(", !IO),
@@ -3142,15 +3142,15 @@ output_unboxed_rval(ModuleInfo, Type, Exprn, ModuleName, !IO) :-
 java_builtin_type(_, Type, "int", "java.lang.Integer", "intValue") :-
     Type = mlds_native_int_type.
 java_builtin_type(_, Type, "int", "java.lang.Integer", "intValue") :-
-    Type = mercury_type(builtin(int), _, _).
+    Type = mercury_type(builtin_type(builtin_type_int), _, _).
 java_builtin_type(_, Type, "double", "java.lang.Double", "doubleValue") :-
     Type = mlds_native_float_type.
 java_builtin_type(_, Type, "double", "java.lang.Double", "doubleValue") :-
-    Type = mercury_type(builtin(float), _, _).
+    Type = mercury_type(builtin_type(builtin_type_float), _, _).
 java_builtin_type(_, Type, "char", "java.lang.Character", "charValue") :-
     Type = mlds_native_char_type.
 java_builtin_type(_, Type, "char", "java.lang.Character", "charValue") :-
-    Type = mercury_type(builtin(character), _, _).
+    Type = mercury_type(builtin_type(builtin_type_character), _, _).
 java_builtin_type(_, Type, "boolean", "java.lang.Boolean", "booleanValue") :-
     Type = mlds_native_bool_type.
 
@@ -3162,7 +3162,7 @@ java_builtin_type(ModuleInfo, Type, "int", "java.lang.Integer", "intValue") :-
     % The test for defined/3 is logically redundant since all dummy
     % types are defined types, but enables the compiler to infer that
     % this disjunction is a switch.
-    Type = mercury_type(MercuryType @ defined(_, _, _), _, _),
+    Type = mercury_type(MercuryType @ defined_type(_, _, _), _, _),
     is_dummy_argument_type(ModuleInfo, MercuryType).
 
 :- pred output_std_unop(module_info::in, builtin_ops.unary_op::in,
@@ -3260,36 +3260,36 @@ output_binary_op(Op, !IO) :-
 
 :- pred output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
 
-output_rval_const(true_const, !IO) :-
+output_rval_const(mlconst_true, !IO) :-
     io.write_string("true", !IO).
 
-output_rval_const(false_const, !IO) :-
+output_rval_const(mlconst_false, !IO) :-
     io.write_string("false", !IO).
 
-output_rval_const(int_const(N), !IO) :-
+output_rval_const(mlconst_int(N), !IO) :-
     io.write_int(N, !IO).
 
-output_rval_const(float_const(FloatVal), !IO) :-
+output_rval_const(mlconst_float(FloatVal), !IO) :-
     c_util.output_float_literal(FloatVal, !IO).
 
-output_rval_const(string_const(String), !IO) :-
+output_rval_const(mlconst_string(String), !IO) :-
     io.write_string("""", !IO),
     c_util.output_quoted_string(String, !IO),
     io.write_string("""", !IO).
 
-output_rval_const(multi_string_const(Length, String), !IO) :-
+output_rval_const(mlconst_multi_string(Length, String), !IO) :-
     io.write_string("""", !IO),
     c_util.output_quoted_multi_string(Length, String, !IO),
     io.write_string("""", !IO).
 
-output_rval_const(code_addr_const(CodeAddr), !IO) :-
+output_rval_const(mlconst_code_addr(CodeAddr), !IO) :-
     IsCall = no,
     mlds_output_code_addr(CodeAddr, IsCall, !IO).
 
-output_rval_const(data_addr_const(DataAddr), !IO) :-
+output_rval_const(mlconst_data_addr(DataAddr), !IO) :-
     mlds_output_data_addr(DataAddr, !IO).
 
-output_rval_const(null(_), !IO) :-
+output_rval_const(mlconst_null(_), !IO) :-
    io.write_string("null", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -3297,7 +3297,7 @@ output_rval_const(null(_), !IO) :-
 :- pred mlds_output_code_addr(mlds_code_addr::in, bool::in, io::di,
     io::uo) is det.
 
-mlds_output_code_addr(proc(Label, _Sig), IsCall, !IO) :-
+mlds_output_code_addr(code_addr_proc(Label, _Sig), IsCall, !IO) :-
     (
         IsCall = no,
         % Not a function call, so we are taking the address of the
@@ -3309,7 +3309,7 @@ mlds_output_code_addr(proc(Label, _Sig), IsCall, !IO) :-
         IsCall = yes,
         output_fully_qualified_proc_label(Label, ".", !IO)
     ).
-mlds_output_code_addr(internal(Label, SeqNum, _Sig), IsCall, !IO) :-
+mlds_output_code_addr(code_addr_internal(Label, SeqNum, _Sig), IsCall, !IO) :-
     (
         IsCall = no,
         % Not a function call, so we are taking the address of the

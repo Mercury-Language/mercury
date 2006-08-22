@@ -196,37 +196,37 @@
     ;       subterm_out.
 
 :- type subterm_origin(T)
-    --->    output(T, arg_pos, term_path)
+    --->    origin_output(T, arg_pos, term_path)
             % Subterm came from an output of a child or sibling
             % call. The first argument records the child or sibling
             % edt node. The second and third arguments state which
             % part of which argument is the origin.
 
-    ;       input(arg_pos, term_path)
+    ;       origin_input(arg_pos, term_path)
             % Subterm came from an input of a parent. The
             % arguments identify which part of which argument of
             % the clause head is the origin.
 
-    ;       primitive_op(string, int, primitive_op_type)
+    ;       origin_primitive_op(string, int, primitive_op_type)
             % Subterm was constructed in the body.  We record
             % the filename, line number and type of the primitive
             % operation that constructed it.
 
-    ;       not_found
+    ;       origin_not_found
             % The origin could not be found due to missing
             % information.
 
-    ;       require_explicit_subtree.
+    ;       origin_require_explicit_subtree.
             % An explicit subtree is required.
 
     % The type of primitive operation that bound a subterm that was being
     % tracked.
     %
 :- type primitive_op_type
-    --->    foreign_proc
-    ;       builtin_call
-    ;       untraced_call
-    ;       unification.
+    --->    primop_foreign_proc
+    ;       primop_builtin_call
+    ;       primop_untraced_call
+    ;       primop_unification.
 
 :- func primitive_op_type_to_string(primitive_op_type) = string.
 
@@ -621,21 +621,20 @@
             ).
 
 :- type suspect_status
-    --->    ignored
-    ;       skipped(int)    % We record the order nodes were skipped in.
-    ;       correct
-    ;       erroneous
-    ;       inadmissible
+    --->    suspect_ignored
+    ;       suspect_skipped(int) % We record the order nodes were skipped in.
+    ;       suspect_correct
+    ;       suspect_erroneous
+    ;       suspect_inadmissible
 
-    ;       pruned
-            % The suspect is in a subtree with a correct or
-            % inadmissible root.
+    ;       suspect_pruned
+            % The suspect is in a subtree with a correct or inadmissible root.
 
-    ;       in_erroneous_subtree_complement
+    ;       suspect_in_erroneous_subtree_complement
             % The suspect was in the complement of a subtree with
             % an erroneous root.
 
-    ;       unknown.
+    ;       suspect_unknown.
 
 :- type suspect_id == int.
 
@@ -689,7 +688,7 @@ topmost_det(SearchSpace, TopMostId) :-
 suspect_correct_or_inadmissible(SearchSpace, SuspectId) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
     Status = Suspect ^ status,
-    ( Status = correct ; Status = inadmissible ).
+    ( Status = suspect_correct ; Status = suspect_inadmissible ).
 
     % Succeeds if the suspect is in a part of the search space that could
     % contain a bug.
@@ -702,23 +701,23 @@ suspect_in_buggy_subtree(SearchSpace, SuspectId) :-
 
 suspect_inadmissible(SearchSpace, SuspectId) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
-    Suspect ^ status = inadmissible.
+    Suspect ^ status = suspect_inadmissible.
 
 suspect_unknown(SearchSpace, SuspectId) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
-    Suspect ^ status = unknown.
+    Suspect ^ status = suspect_unknown.
 
 suspect_erroneous(SearchSpace, SuspectId) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
-    Suspect ^ status = erroneous.
+    Suspect ^ status = suspect_erroneous.
 
 suspect_skipped(SearchSpace, SuspectId) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
-    Suspect ^ status = skipped(_).
+    Suspect ^ status = suspect_skipped(_).
 
 suspect_ignored(SearchSpace, SuspectId) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
-    Suspect ^ status = ignored.
+    Suspect ^ status = suspect_ignored.
 
 suspect_in_excluded_subtree(SearchSpace, SuspectId) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
@@ -740,14 +739,14 @@ suspect_is_questionable(SearchSpace, SuspectId) :-
     %
 :- pred excluded_subtree(suspect_status::in, bool::out) is det.
 
-excluded_subtree(ignored, no).
-excluded_subtree(skipped(_), no).
-excluded_subtree(correct, yes).
-excluded_subtree(erroneous, no).
-excluded_subtree(inadmissible, yes).
-excluded_subtree(pruned, yes).
-excluded_subtree(in_erroneous_subtree_complement, no).
-excluded_subtree(unknown, no).
+excluded_subtree(suspect_ignored, no).
+excluded_subtree(suspect_skipped(_), no).
+excluded_subtree(suspect_correct, yes).
+excluded_subtree(suspect_erroneous, no).
+excluded_subtree(suspect_inadmissible, yes).
+excluded_subtree(suspect_pruned, yes).
+excluded_subtree(suspect_in_erroneous_subtree_complement, no).
+excluded_subtree(suspect_unknown, no).
 
     % Does the status mean we haven't got an answer from the oracle, or
     % haven't been able to infer anything about this suspect from other
@@ -755,14 +754,14 @@ excluded_subtree(unknown, no).
     %
 :- pred questionable(suspect_status::in, bool::out) is det.
 
-questionable(ignored, no).
-questionable(skipped(_), yes).
-questionable(correct, no).
-questionable(erroneous, no).
-questionable(inadmissible, no).
-questionable(pruned, no).
-questionable(in_erroneous_subtree_complement, no).
-questionable(unknown, yes).
+questionable(suspect_ignored, no).
+questionable(suspect_skipped(_), yes).
+questionable(suspect_correct, no).
+questionable(suspect_erroneous, no).
+questionable(suspect_inadmissible, no).
+questionable(suspect_pruned, no).
+questionable(suspect_in_erroneous_subtree_complement, no).
+questionable(suspect_unknown, yes).
 
 suspect_in_excluded_complement(SearchSpace, SuspectId) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
@@ -773,28 +772,28 @@ suspect_in_excluded_complement(SearchSpace, SuspectId) :-
     %
 :- pred excluded_complement(suspect_status::in, bool::out) is det.
 
-excluded_complement(ignored, no).
-excluded_complement(skipped(_), no).
-excluded_complement(correct, no).
-excluded_complement(erroneous, yes).
-excluded_complement(inadmissible, no).
-excluded_complement(pruned, no).
-excluded_complement(in_erroneous_subtree_complement, yes).
-excluded_complement(unknown, no).
+excluded_complement(suspect_ignored, no).
+excluded_complement(suspect_skipped(_), no).
+excluded_complement(suspect_correct, no).
+excluded_complement(suspect_erroneous, yes).
+excluded_complement(suspect_inadmissible, no).
+excluded_complement(suspect_pruned, no).
+excluded_complement(suspect_in_erroneous_subtree_complement, yes).
+excluded_complement(suspect_unknown, no).
 
     % Does the given status mean the suspect is in a subtree that could
     % contain a bug.
     %
 :- pred in_buggy_subtree(suspect_status::in, bool::out) is det.
 
-in_buggy_subtree(ignored, yes).
-in_buggy_subtree(skipped(_), yes).
-in_buggy_subtree(correct, no).
-in_buggy_subtree(erroneous, yes).
-in_buggy_subtree(inadmissible, no).
-in_buggy_subtree(pruned, no).
-in_buggy_subtree(in_erroneous_subtree_complement, no).
-in_buggy_subtree(unknown, yes).
+in_buggy_subtree(suspect_ignored, yes).
+in_buggy_subtree(suspect_skipped(_), yes).
+in_buggy_subtree(suspect_correct, no).
+in_buggy_subtree(suspect_erroneous, yes).
+in_buggy_subtree(suspect_inadmissible, no).
+in_buggy_subtree(suspect_pruned, no).
+in_buggy_subtree(suspect_in_erroneous_subtree_complement, no).
+in_buggy_subtree(suspect_unknown, yes).
 
     % Return the status that should be assigned to children of a suspect
     % with the given status, when the children are being added to the
@@ -802,15 +801,15 @@ in_buggy_subtree(unknown, yes).
     %
 :- func new_child_status(suspect_status) = suspect_status.
 
-new_child_status(ignored) = unknown.
-new_child_status(skipped(_)) = unknown.
-new_child_status(correct) = pruned.
-new_child_status(erroneous) = unknown.
-new_child_status(inadmissible) = pruned.
-new_child_status(pruned) = pruned.
-new_child_status(in_erroneous_subtree_complement) =
-    in_erroneous_subtree_complement.
-new_child_status(unknown) = unknown.
+new_child_status(suspect_ignored) = suspect_unknown.
+new_child_status(suspect_skipped(_)) = suspect_unknown.
+new_child_status(suspect_correct) = suspect_pruned.
+new_child_status(suspect_erroneous) = suspect_unknown.
+new_child_status(suspect_inadmissible) = suspect_pruned.
+new_child_status(suspect_pruned) = suspect_pruned.
+new_child_status(suspect_in_erroneous_subtree_complement) =
+    suspect_in_erroneous_subtree_complement.
+new_child_status(suspect_unknown) = suspect_unknown.
 
     % Return the status that should be assigned to the parent of a suspect
     % with the given status, when the parent is being added to the search
@@ -818,15 +817,15 @@ new_child_status(unknown) = unknown.
     %
 :- func new_parent_status(suspect_status) = suspect_status.
 
-new_parent_status(ignored) = unknown.
-new_parent_status(skipped(_)) = unknown.
-new_parent_status(correct) = unknown.
-new_parent_status(erroneous) = in_erroneous_subtree_complement.
-new_parent_status(inadmissible) = unknown.
-new_parent_status(pruned) = pruned.
-new_parent_status(in_erroneous_subtree_complement) =
-    in_erroneous_subtree_complement.
-new_parent_status(unknown) = unknown.
+new_parent_status(suspect_ignored) = suspect_unknown.
+new_parent_status(suspect_skipped(_)) = suspect_unknown.
+new_parent_status(suspect_correct) = suspect_unknown.
+new_parent_status(suspect_erroneous) = suspect_in_erroneous_subtree_complement.
+new_parent_status(suspect_inadmissible) = suspect_unknown.
+new_parent_status(suspect_pruned) = suspect_pruned.
+new_parent_status(suspect_in_erroneous_subtree_complement) =
+    suspect_in_erroneous_subtree_complement.
+new_parent_status(suspect_unknown) = suspect_unknown.
 
 give_up_subterm_tracking(SearchSpace, SuspectId, subterm_in) :-
     Status = get_status(SearchSpace, SuspectId),
@@ -844,8 +843,8 @@ assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
     !:SearchSpace = !.SearchSpace ^ store := SuspectStore,
     (
         Suspect ^ children = yes(Children),
-        list.foldl(propagate_status_downwards(pruned,
-            [correct, inadmissible]), Children, !SearchSpace)
+        list.foldl(propagate_status_downwards(suspect_pruned,
+            [suspect_correct, suspect_inadmissible]), Children, !SearchSpace)
     ;
         Suspect ^ children = no
     ),
@@ -858,8 +857,8 @@ assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
     % at the suspect to unknown.
     %
     ( excluded_complement(Suspect ^ status, yes) ->
-        propagate_status_upwards(unknown, [erroneous], SuspectId,
-            Lowest, !SearchSpace),
+        propagate_status_upwards(suspect_unknown, [suspect_erroneous],
+            SuspectId, Lowest, !SearchSpace),
         %
         % Update the root to the next lowest erroneous suspect.
         %
@@ -873,27 +872,28 @@ assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
     ).
 
 assert_suspect_is_inadmissible(SuspectId, !SearchSpace) :-
-    assert_suspect_is_valid(inadmissible, SuspectId, !SearchSpace).
+    assert_suspect_is_valid(suspect_inadmissible, SuspectId, !SearchSpace).
 
 assert_suspect_is_correct(SuspectId, !SearchSpace) :-
-    assert_suspect_is_valid(correct, SuspectId, !SearchSpace).
+    assert_suspect_is_valid(suspect_correct, SuspectId, !SearchSpace).
 
 assert_suspect_is_erroneous(SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
-        erroneous, Store),
+        suspect_erroneous, Store),
     !:SearchSpace = !.SearchSpace ^ store := Store,
-    propagate_status_upwards(in_erroneous_subtree_complement,
-        [erroneous, correct, inadmissible], SuspectId, _,
-        !SearchSpace),
+    propagate_status_upwards(suspect_in_erroneous_subtree_complement,
+        [suspect_erroneous, suspect_correct, suspect_inadmissible],
+        SuspectId, _, !SearchSpace),
     !:SearchSpace = !.SearchSpace ^ root := yes(SuspectId).
 
 ignore_suspect(Store, SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children,
-        ignored, !.SearchSpace, Weight, _),
+        suspect_ignored, !.SearchSpace, Weight, _),
     map.set(!.SearchSpace ^ store, SuspectId,
-        (Suspect^ status := ignored) ^ weight := Weight, SuspectStore),
+        (Suspect ^ status := suspect_ignored) ^ weight := Weight,
+        SuspectStore),
     !:SearchSpace = !.SearchSpace ^ store := SuspectStore,
     add_weight_to_ancestors(SuspectId, Weight - Suspect ^ weight,
         !SearchSpace).
@@ -903,17 +903,20 @@ skip_suspect(SuspectId, !SearchSpace) :-
     counter.allocate(N, !.SearchSpace ^ skip_counter, SkipCounter),
     !:SearchSpace = !.SearchSpace ^ skip_counter := SkipCounter,
     map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
-        skipped(N), Store),
+        suspect_skipped(N), Store),
     !:SearchSpace = !.SearchSpace ^ store := Store.
 
 revise_root(Store, !SearchSpace) :-
     (
         !.SearchSpace ^ root = yes(RootId),
-        force_propagate_status_downwards(unknown,
-            [correct, inadmissible], RootId, StopSuspects, !SearchSpace),
-        list.foldl(force_propagate_status_downwards(unknown, [correct,
-            inadmissible]), StopSuspects, !SearchSpace),
-        propagate_status_upwards(unknown, [erroneous, correct, inadmissible],
+        force_propagate_status_downwards(suspect_unknown,
+            [suspect_correct, suspect_inadmissible], RootId, StopSuspects,
+            !SearchSpace),
+        list.foldl(force_propagate_status_downwards(suspect_unknown,
+            [suspect_correct, suspect_inadmissible]), StopSuspects,
+            !SearchSpace),
+        propagate_status_upwards(suspect_unknown,
+            [suspect_erroneous, suspect_correct, suspect_inadmissible],
             RootId, Lowest, !SearchSpace),
         ( suspect_erroneous(!.SearchSpace, Lowest) ->
             !:SearchSpace = !.SearchSpace ^ root := yes(Lowest)
@@ -1041,17 +1044,17 @@ resolve_origin(Store, Oracle, Node, ArgPos, TermPath, SuspectId,
         Output, !SearchSpace, Response) :-
     edt_dependency(Store, Node, ArgPos, TermPath, _, Origin),
     (
-        Origin = primitive_op(FileName, LineNo, PrimOpType),
+        Origin = origin_primitive_op(FileName, LineNo, PrimOpType),
         Response = primitive_op(SuspectId, FileName, LineNo,
             PrimOpType, Output)
     ;
-        Origin = not_found,
+        Origin = origin_not_found,
         Response = not_found
     ;
-        Origin = input(InputArgPos, InputTermPath),
+        Origin = origin_input(InputArgPos, InputTermPath),
         Response = origin(SuspectId, InputArgPos, InputTermPath, subterm_in)
     ;
-        Origin = output(OriginNode, OutputArgPos, OutputTermPath),
+        Origin = origin_output(OriginNode, OutputArgPos, OutputTermPath),
         (
             bimap.search(!.SearchSpace ^ implicit_roots_to_explicit_roots,
                 OriginNode, ExplicitNode)
@@ -1077,7 +1080,7 @@ resolve_origin(Store, Oracle, Node, ArgPos, TermPath, SuspectId,
             Response = require_explicit_subtree
         )
     ;
-        Origin = require_explicit_subtree,
+        Origin = origin_require_explicit_subtree,
         Response = require_explicit_subtree
     ).
 
@@ -1288,8 +1291,8 @@ calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
     (
         SearchSpace ^ maybe_weighting_heuristic = yes(Weighting),
         (
-            ( Status = correct
-            ; Status = inadmissible
+            ( Status = suspect_correct
+            ; Status = suspect_inadmissible
             )
         ->
             Weight = 0,
@@ -1311,7 +1314,7 @@ calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
                     0, ChildrenOriginalWeight, 0, ChildrenExcess),
                 list.foldl(add_existing_weight, ChildrenSuspects,
                     0, ChildrenWeight),
-                ( Status = ignored ->
+                ( Status = suspect_ignored ->
                     Weight = ChildrenWeight + ChildrenExcess 
                 ;
                     Weight = OriginalWeight - ChildrenOriginalWeight
@@ -1574,9 +1577,9 @@ add_children(Store, Oracle, EDTChildren, SuspectId, Status,
     % been done by ignore_suspect/4 since the children wouldn't have been
     % available.
     %
-    ( Suspect ^ status = ignored ->
+    ( Suspect ^ status = suspect_ignored ->
         calc_suspect_weight(Store, Suspect ^ edt_node, yes(Children),
-            ignored, !.SearchSpace, Weight, _),
+            suspect_ignored, !.SearchSpace, Weight, _),
         map.set(!.SearchSpace ^ store, SuspectId,
             SuspectWithChildren ^ weight := Weight, SuspectStoreWithWeight),
         !:SearchSpace = !.SearchSpace ^ store := SuspectStoreWithWeight,
@@ -1625,7 +1628,7 @@ add_child_to_parent(ChildId, !Parent) :-
 
 adjust_suspect_status_from_oracle(Store, Oracle, SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    ( Suspect ^ status = unknown ->
+    ( Suspect ^ status = suspect_unknown ->
         edt_question(Store, Suspect ^ edt_node, Question),
         ( answer_known(Oracle, Question, Answer) ->
             (
@@ -1634,13 +1637,13 @@ adjust_suspect_status_from_oracle(Store, Oracle, SuspectId, !SearchSpace) :-
             ;
                 Answer = truth_value(_, Truth),
                 (
-                    Truth = erroneous,
+                    Truth = truth_erroneous,
                     assert_suspect_is_erroneous(SuspectId, !SearchSpace)
                 ;
-                    Truth = correct,
+                    Truth = truth_correct,
                     assert_suspect_is_correct(SuspectId, !SearchSpace)
                 ;
-                    Truth = inadmissible,
+                    Truth = truth_inadmissible,
                     assert_suspect_is_inadmissible(SuspectId, !SearchSpace)
                 )
             )
@@ -1659,7 +1662,8 @@ initialise_search_space(Store, MaybeWeighting, Node, SearchSpace) :-
         MaybeWeighting = no,
         Weight = 0
     ),
-    map.set(init, 0, suspect(no, Node, unknown, 0, no, Weight), SuspectStore),
+    map.set(init, 0, suspect(no, Node, suspect_unknown, 0, no, Weight),
+        SuspectStore),
     SearchSpace = search_space(no, yes(0), counter.init(1), 
         counter.init(0), SuspectStore, bimap.init, MaybeWeighting).
 
@@ -1830,7 +1834,7 @@ non_ignored_descendents(_, _, [], !SearchSpace, []).
 non_ignored_descendents(Store, Oracle, [SuspectId | SuspectIds],
         !SearchSpace, Descendents) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    ( Suspect ^ status = ignored ->
+    ( Suspect ^ status = suspect_ignored ->
         children(Store, Oracle, SuspectId, !SearchSpace, Children),
         non_ignored_descendents(Store, Oracle, Children, !SearchSpace,
             Descendents1)
@@ -1850,7 +1854,7 @@ choose_skipped_suspect(SearchSpace, Skipped) :-
     (
         TopMostId = Skipped
     =>
-        skipped(_) = get_status(SearchSpace, TopMostId)
+        suspect_skipped(_) = get_status(SearchSpace, TopMostId)
     ).
 
     % least_skipped(SearchSpace, SuspectId1, Suspect1, SuspectId2,
@@ -1867,13 +1871,13 @@ choose_skipped_suspect(SearchSpace, Skipped) :-
 least_skipped(SearchSpace, SuspectId1, Suspect1, SuspectId2, LeastSkipped) :-
     Status1 = Suspect1 ^ status,
     Status2 = get_status(SearchSpace, SuspectId2),
-    ( Status1 = skipped(N), Status2 = skipped(M) ->
+    ( Status1 = suspect_skipped(N), Status2 = suspect_skipped(M) ->
         ( N > M ->
             LeastSkipped = SuspectId2
         ;
             LeastSkipped = SuspectId1
         )
-    ; Status1 = skipped(_) ->
+    ; Status1 = suspect_skipped(_) ->
         LeastSkipped = SuspectId1
     ;
         LeastSkipped = SuspectId2
@@ -2025,10 +2029,10 @@ get_path(SearchSpace, BottomId, TopId, PathSoFar, Path) :-
         get_path(SearchSpace, ParentId, TopId, [BottomId | PathSoFar], Path)
     ).
 
-primitive_op_type_to_string(foreign_proc) = "foreign procedure call".
-primitive_op_type_to_string(builtin_call) = "builtin operation".
-primitive_op_type_to_string(untraced_call) = "untraced call".
-primitive_op_type_to_string(unification) = "unification".
+primitive_op_type_to_string(primop_foreign_proc) = "foreign procedure call".
+primitive_op_type_to_string(primop_builtin_call) = "builtin operation".
+primitive_op_type_to_string(primop_untraced_call) = "untraced call".
+primitive_op_type_to_string(primop_unification) = "unification".
 
 get_proc_label_for_suspect(Store, SearchSpace, SuspectId) =
     edt_proc_label(Store, get_edt_node(SearchSpace, SuspectId)).

@@ -247,7 +247,7 @@ recursively_process_requests(!Info, !IO) :-
             ).
 
 :- type request
-    --->    request(
+    --->    ho_request(
                 rq_caller           :: pred_proc_id,
                                     % calling pred
 
@@ -1381,7 +1381,8 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         find_matching_version(!.Info, CalledPred, CalledProc, Args0,
             Context, HigherOrderArgs, IsUserSpecProc, FindResult),
         (
-            FindResult = match(match(Match, _, Args1, ExtraTypeInfoTypes)),
+            FindResult = find_result_match(match(Match, _, Args1,
+                ExtraTypeInfoTypes)),
             Match = new_pred(NewPredProcId, _, _, NewName, _HOArgs,
                 _, _, _, _, _, _),
             NewPredProcId = proc(NewCalledPred, NewCalledProc),
@@ -1397,7 +1398,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         ;
             % There is a known higher order variable in the call, so we
             % put in a request for a specialized version of the pred.
-            FindResult = request(Request),
+            FindResult = find_result_request(Request),
             Result = not_specialized,
             (
                 CanRequest = yes,
@@ -1409,7 +1410,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
                 CanRequest = no
             )
         ;
-            FindResult = no_request,
+            FindResult = find_result_no_request,
             Result = not_specialized
         )
     ;
@@ -1531,9 +1532,9 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
     \+ instance_matches(ConstraintArgs0, Instance, _, _, TVarSet, _).
 
 :- type find_result
-    --->    match(match)
-    ;       request(request)
-    ;       no_request.
+    --->    find_result_match(match)
+    ;       find_result_request(request)
+    ;       find_result_no_request.
 
 :- type match
     --->    match(
@@ -1587,7 +1588,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     map.apply_to_list(Args0, VarTypes, CallArgTypes),
     pred_info_get_typevarset(PredInfo, TVarSet),
 
-    Request = request(Caller, proc(CalledPred, CalledProc), Args0,
+    Request = ho_request(Caller, proc(CalledPred, CalledProc), Args0,
         ExtraTypeInfoTVars, HigherOrderArgs, CallArgTypes,
         yes, TVarSet, IsUserSpecProc, Context),
 
@@ -1599,7 +1600,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
         search_for_version(Info, Params, ModuleInfo, Request, Versions,
             no, Match)
     ->
-        Result = match(Match)
+        Result = find_result_match(Match)
     ;
         HigherOrder = Params ^ optimize_higher_order,
         TypeSpec = Params ^ type_spec,
@@ -1631,9 +1632,9 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
             )
         )
     ->
-        Result = request(Request)
+        Result = find_result_request(Request)
     ;
-        Result = no_request
+        Result = find_result_no_request
     ).
 
     % Specializing type `T' to `list(U)' requires passing in the
@@ -1677,7 +1678,7 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
     rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
     (
         VarInfo = type_info_var(Type),
-        ( Type = variable(TVar, _) ->
+        ( Type = type_variable(TVar, _) ->
             !:TVars = [TVar | !.TVars]
         ;
             true
@@ -1689,7 +1690,7 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
         % for.
         list.filter_map(
             (pred(ClassArgType::in, ClassTVar::out) is semidet :-
-                ClassArgType = variable(ClassTVar, _)
+                ClassArgType = type_variable(ClassTVar, _)
             ), ClassArgTypes, ClassTVars),
         list.append(ClassTVars, !TVars)
     ;
@@ -1761,7 +1762,7 @@ search_for_version(Info, Params, ModuleInfo, Request, [Version | Versions],
 
 version_matches(Params, ModuleInfo, Request, Version, Match) :-
     Match = match(Version, PartialMatch, Args, ExtraTypeInfoTypes),
-    Request = request(_, Callee, Args0, _, RequestHigherOrderArgs,
+    Request = ho_request(_, Callee, Args0, _, RequestHigherOrderArgs,
         CallArgTypes, _, RequestTVarSet, _, _),
     Callee = proc(CalleePredId, _),
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
@@ -1990,7 +1991,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     special_pred_name_arity(SpecialId, PredName, _, PredArity),
     special_pred_get_type(SpecialId, Args, Var),
     map.lookup(VarTypes, Var, SpecialPredType),
-    SpecialPredType \= variable(_, _),
+    SpecialPredType \= type_variable(_, _),
 
     % Don't specialize tuple types -- the code to unify them only exists
     % in the generic unification routine in the runtime.
@@ -1998,7 +1999,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     % `private_builtin.builtin_compare_tuple/3' always abort. It might be
     % worth inlining complicated unifications of small tuples (or any
     % other small type).
-    SpecialPredType \= tuple(_, _),
+    SpecialPredType \= tuple_type(_, _),
 
     Args = [TypeInfoVar | SpecialPredArgs],
     map.search(PredVars, TypeInfoVar,
@@ -2410,7 +2411,7 @@ filter_requests(FilteredRequests, LoopRequests, !Info, !IO) :-
 
 filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
     ModuleInfo = Info ^ module_info,
-    Request = request(CallingPredProcId, CalledPredProcId, _, _, HOArgs,
+    Request = ho_request(CallingPredProcId, CalledPredProcId, _, _, HOArgs,
         _, _, _, IsUserTypeSpec, Context),
     CalledPredProcId = proc(CalledPredId, _),
     module_info_pred_info(ModuleInfo, CalledPredId, PredInfo),
@@ -2492,7 +2493,7 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
 create_new_preds([], !NewPredList, !PredsToFix, !Info, !IO).
 create_new_preds([Request | Requests], !NewPredList, !PredsToFix, !Info,
         !IO) :-
-    Request = request(CallingPredProcId, CalledPredProcId, _HOArgs,
+    Request = ho_request(CallingPredProcId, CalledPredProcId, _HOArgs,
         _CallArgs, _, _CallerArgTypes, _, _, _, _),
     set.insert(!.PredsToFix, CallingPredProcId, !:PredsToFix),
     ( map.search(!.Info ^ new_preds, CalledPredProcId, SpecVersions0) ->
@@ -2545,7 +2546,7 @@ check_loop_request(Info, Request, !PredsToFix) :-
     io::di, io::uo) is det.
 
 create_new_pred(Request, NewPred, !Info, !IO) :-
-    Request = request(Caller, CalledPredProc, CallArgs, ExtraTypeInfoTVars,
+    Request = ho_request(Caller, CalledPredProc, CallArgs, ExtraTypeInfoTVars,
         HOArgs, ArgTypes, TypeInfoLiveness, CallerTVarSet,
         IsUserTypeSpec, Context),
     Caller = proc(CallerPredId, CallerProcId),
@@ -2581,7 +2582,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
             [PredName0, "_", int_to_string(CallerProcInt), "_",
             int_to_string(higher_order_arg_order_version)]),
         SymName = qualified(PredModule, PredName),
-        Transform = higher_order_type_specialization(CallerProcInt),
+        Transform = transform_higher_order_type_specialization(CallerProcInt),
         NewProcId = CallerProcId,
         % For exported predicates the type specialization must
         % be exported.
@@ -2597,7 +2598,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         string.int_to_string(Id, IdStr),
         string.append_list([Name0, "__ho", IdStr], PredName),
         SymName = qualified(PredModule, PredName),
-        Transform = higher_order_specialization(Id),
+        Transform = transform_higher_order_specialization(Id),
         Status = status_local
     ),
 
@@ -2624,7 +2625,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
         EmptyTVarNameMap, EmptyVarTypes, [], ClausesRep,
         EmptyRttiVarMaps, no),
-    Origin = transformed(Transform, OrigOrigin, CallerPredId),
+    Origin = origin_transformed(Transform, OrigOrigin, CallerPredId),
     pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
         Status, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,
         ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,
@@ -2817,7 +2818,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     apply_rec_subst_to_tvar_list(KindMap, TypeSubn, ExistQVars1, ExistQTypes),
     ExistQVars = list.filter_map(
         (func(ExistQType) = ExistQVar is semidet :-
-            ExistQType = variable(ExistQVar, _)
+            ExistQType = type_variable(ExistQVar, _)
         ), ExistQTypes),
 
     apply_rec_subst_to_vartypes(TypeSubn, VarTypes1, VarTypes2),
@@ -3148,7 +3149,7 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
     (
         VarInfo = type_info_var(TypeInfoType),
         rtti_det_insert_type_info_type(Var, TypeInfoType, !RttiVarMaps),
-        ( TypeInfoType = variable(TVar, _) ->
+        ( TypeInfoType = type_variable(TVar, _) ->
             maybe_set_typeinfo_locn(TVar, type_info(Var), !RttiVarMaps)
         ;
             true
@@ -3171,7 +3172,7 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 update_type_info_locn(Var, ConstraintType, Index, Index + 1, !RttiVarMaps) :-
-    ( ConstraintType = variable(ConstraintTVar, _) ->
+    ( ConstraintType = type_variable(ConstraintTVar, _) ->
         maybe_set_typeinfo_locn(ConstraintTVar,
             typeclass_info(Var, Index), !RttiVarMaps)
     ;

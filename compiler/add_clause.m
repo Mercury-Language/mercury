@@ -139,8 +139,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 module_info_set_predicate_table(!.PredicateTable, !ModuleInfo)
             ;
                 preds_add_implicit_report_error(ModuleName, PredOrFunc,
-                    PredName, Arity, Status, no, Context, user(PredName),
-                    "clause", PredId, !ModuleInfo, !IO)
+                    PredName, Arity, Status, no, Context,
+                    origin_user(PredName), "clause", PredId, !ModuleInfo, !IO)
             )
         ),
             % Lookup the pred_info for this pred, add the clause to the
@@ -518,7 +518,8 @@ add_clause_transform(Subst, HeadVars, Args0, ParseBody, Context, PredOrFunc,
             insert_arg_unifications(HeadVars, Args, Context, ArgContext,
                 HeadGoal0, HeadGoal1, _, !VarSet, !ModuleInfo, !QualInfo,
                 !SInfo, !IO),
-            attach_features_to_all_goals([from_head], HeadGoal1, HeadGoal)
+            attach_features_to_all_goals([feature_from_head],
+                HeadGoal1, HeadGoal)
         ),
         prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
         transform_goal(ParseBody, Subst, BodyGoal, _, !VarSet, !ModuleInfo,

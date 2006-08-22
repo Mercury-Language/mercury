@@ -224,8 +224,8 @@
 :- pred write_marker(marker::in, io::di, io::uo) is det.
 
 :- type maybe_vartypes
-    --->    yes(tvarset, vartypes)
-    ;       no.
+    --->    varset_vartypes(tvarset, vartypes)
+    ;       no_varset_vartypes.
 
     % Convert a mode or inst to a term representation.
     %
@@ -367,7 +367,7 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         pred_info_get_origin(PredInfo, Origin),
         (
-            Origin = special_pred(SpecialId - TypeCtor)
+            Origin = origin_special_pred(SpecialId - TypeCtor)
         ->
             special_pred_description(SpecialId, Descr),
             TypeCtor = type_ctor(_TypeSymName, TypeArity),
@@ -898,8 +898,8 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
         (
             Clauses = [_ | _],
             set_dump_opts_for_clauses(SavedDumpString, !IO),
-            write_clauses(Indent, ModuleInfo, PredId, VarSet,
-                AppendVarNums, HeadVars, PredOrFunc, Clauses, no, !IO),
+            write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
+                HeadVars, PredOrFunc, Clauses, no_varset_vartypes, !IO),
             globals.io_set_option(dump_hlds_options, string(SavedDumpString),
                 !IO)
         ;
@@ -908,7 +908,7 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 
         pred_info_get_origin(PredInfo, Origin),
         (
-            Origin = instance_method(MethodConstraints),
+            Origin = origin_instance_method(MethodConstraints),
             MethodConstraints = instance_method_constraints(ClassId,
                 InstanceTypes, InstanceConstraints, ClassMethodConstraints),
             io.write_string("% instance method constraints:\n", !IO),
@@ -932,27 +932,27 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
                 mercury_output_constraint(TVarSet, AppendVarNums), !IO),
             io.nl(!IO)
         ;
-            Origin = special_pred(_),
+            Origin = origin_special_pred(_),
             io.write_string("% special pred\n", !IO)
         ;
-            Origin = transformed(Transformation, _, OrigPredId),
+            Origin = origin_transformed(Transformation, _, OrigPredId),
             io.write_string("% transformed from ", !IO),
             write_pred_id(ModuleInfo, OrigPredId, !IO),
             io.write_string(": ", !IO),
             io.write(Transformation, !IO),
             io.nl(!IO)
         ;
-            Origin = created(Creation),
+            Origin = origin_created(Creation),
             io.write_string("% created: ", !IO),
             io.write(Creation, !IO),
             io.nl(!IO)
         ;
-            Origin = assertion(_, _),
+            Origin = origin_assertion(_, _),
             io.write_string("% assertion\n", !IO)
         ;
-            Origin = lambda(_, _, _)
+            Origin = origin_lambda(_, _, _)
         ;
-            Origin = user(_)
+            Origin = origin_user(_)
         )
     ;
         true
@@ -1202,8 +1202,8 @@ write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
 
 write_goal(Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow, !IO) :-
     % Don't type qualify everything.
-    write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow, no,
-        !IO).
+    write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
+        no_varset_vartypes, !IO).
 
     % TypeQual is yes(TVarset, VarTypes) if all constructors should be
     % module qualified.
@@ -1422,7 +1422,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
             write_indent(Indent, !IO),
             write_string("% Reuse: ", !IO),
             (
-                ReuseDescription = empty,
+                ReuseDescription = no_reuse_info,
                 io.write_string("no", !IO)
             ;
                 ReuseDescription = missed_reuse(Messages),
@@ -1847,10 +1847,12 @@ write_goal_2(plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
         io.write_string(Follow, !IO),
         (
             MaybeUnifyContext = yes(CallUnifyContext),
-            ( TypeQual = yes(_, VarTypes) ->
+            (
+                TypeQual = varset_vartypes(_, VarTypes),
                 map.lookup(VarTypes, Var, UniType),
                 VarType = yes(UniType)
             ;
+                TypeQual = no_varset_vartypes,
                 VarType = no
             ),
             CallUnifyContext = call_unify_context(Var, RHS, _UnifyContext),
@@ -1874,10 +1876,12 @@ write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet, AppendVarNums,
     write_indent(Indent, !IO),
     mercury_output_var(A, VarSet, AppendVarNums, !IO),
     io.write_string(" = ", !IO),
-    ( TypeQual = yes(_, VarTypes) ->
+    (
+        TypeQual = varset_vartypes(_, VarTypes),
         map.lookup(VarTypes, A, UniType),
         VarType = yes(UniType)
     ;
+        TypeQual = no_varset_vartypes,
         VarType = no
     ),
     % XXX Fake the inst varset.
@@ -2092,16 +2096,16 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
             write_indent(Indent, !IO),
             io.write_string("% resume point ", !IO),
             (
-                Locs = orig_only,
+                Locs = resume_locs_orig_only,
                 io.write_string("orig only ", !IO)
             ;
-                Locs = stack_only,
+                Locs = resume_locs_stack_only,
                 io.write_string("stack only ", !IO)
             ;
-                Locs = orig_and_stack,
+                Locs = resume_locs_orig_and_stack,
                 io.write_string("orig and stack ", !IO)
             ;
-                Locs = stack_and_orig,
+                Locs = resume_locs_stack_and_orig,
                 io.write_string("stack and orig ", !IO)
             ),
             mercury_output_vars(ResumeVarList, VarSet, AppendVarNums, !IO),
@@ -2449,7 +2453,7 @@ write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo, ProgVarSet,
 write_unify_rhs(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
         !IO) :-
     write_unify_rhs_3(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
-        Indent, no, no, !IO).
+        Indent, no, no_varset_vartypes, !IO).
 
 :- pred write_unify_rhs_2(unify_rhs::in, module_info::in,
     prog_varset::in, inst_varset::in, bool::in, int::in, string::in,
@@ -2482,7 +2486,7 @@ write_unify_rhs_3(rhs_functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
         !IO),
     (
         MaybeType = yes(Type),
-        TypeQual = yes(TVarSet, _)
+        TypeQual = varset_vartypes(TVarSet, _)
     ->
         io.write_string(" : ", !IO),
         mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
@@ -2542,7 +2546,7 @@ write_unify_rhs_3(rhs_lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
     ),
     (
         MaybeType = yes(Type),
-        TypeQual = yes(TVarSet, _)
+        TypeQual = varset_vartypes(TVarSet, _)
     ->
         io.write_string(" : ", !IO),
         mercury_output_type(TVarSet, AppendVarNums, Type, !IO)

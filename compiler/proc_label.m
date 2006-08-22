@@ -73,7 +73,7 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
         _ProcHeadVarsWithNames, _ArgModes, _CodeModel,
         PredIsImported, _PredIsPseudoImported, Origin,
         _ProcIsExported, _ProcIsImported),
-    ( Origin = special_pred(SpecialPred - TypeCtor) ->
+    ( Origin = origin_special_pred(SpecialPred - TypeCtor) ->
         (
             % All type_ctors other than tuples here should be module qualified,
             % since builtin types are handled separately in polymorphism.m.

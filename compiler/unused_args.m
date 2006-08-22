@@ -1144,7 +1144,7 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
     ->
         (
             % Fix up special pred names.
-            OrigOrigin = special_pred(_SpecialId - TypeCtor)
+            OrigOrigin = origin_special_pred(_SpecialId - TypeCtor)
         ->
             TypeModule = type_ctor_module(ModuleInfo, TypeCtor),
             TypeName = type_ctor_name(ModuleInfo, TypeCtor),
@@ -1162,7 +1162,7 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
         Name1 = Name0
     ),
     make_pred_name(PredModule, "UnusedArgs", yes(PredOrFunc),
-        Name1, unused_args(UnusedArgs), Name2),
+        Name1, newpred_unused_args(UnusedArgs), Name2),
     % The mode number is included because we want to avoid the creation of
     % more than one predicate with the same name if more than one mode of
     % a predicate is specialized. Since the names of e.g. deep profiling
@@ -1185,8 +1185,8 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
     % constraints.
     map.init(EmptyProofs),
     map.init(EmptyConstraintMap),
-    Origin = transformed(unused_argument_elimination(UnusedArgs),
-        OrigOrigin, PredId),
+    Transform = transform_unused_argument_elimination(UnusedArgs),
+    Origin = origin_transformed(Transform, OrigOrigin, PredId),
     pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
         Status, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
         ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,

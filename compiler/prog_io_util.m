@@ -302,22 +302,22 @@ parse_type(Term, Result) :-
         Term = term.variable(Var0)
     ->
         term.coerce_var(Var0, Var),
-        Result = ok1(variable(Var, star))
+        Result = ok1(type_variable(Var, kind_star))
     ;
         parse_builtin_type(Term, BuiltinType)
     ->
-        Result = ok1(builtin(BuiltinType))
+        Result = ok1(builtin_type(BuiltinType))
     ;
         parse_higher_order_type(Term, HOArgs, MaybeRet, Purity, EvalMethod)
     ->
-        Result = ok1(higher_order(HOArgs, MaybeRet, Purity, EvalMethod))
+        Result = ok1(higher_order_type(HOArgs, MaybeRet, Purity, EvalMethod))
     ;
         Term = term.functor(term.atom("{}"), Args, _)
     ->
         parse_types(Args, ArgsResult),
         (
             ArgsResult = ok1(ArgTypes),
-            Result = ok1(tuple(ArgTypes, star))
+            Result = ok1(tuple_type(ArgTypes, kind_star))
         ;
             ArgsResult = error1(Errors),
             Result = error1(Errors)
@@ -337,7 +337,7 @@ parse_type(Term, Result) :-
             parse_types(ArgTerms, ArgsResult),
             (
                 ArgsResult = ok1(ArgTypes),
-                Result = ok1(defined(SymName, ArgTypes, star))
+                Result = ok1(defined_type(SymName, ArgTypes, kind_star))
             ;
                 ArgsResult = error1(Errors),
                 Result = error1(Errors)
@@ -403,16 +403,16 @@ parse_purity_annotation(Term0, Purity, Term) :-
         Term = Term0
     ).
 
-unparse_type(variable(TVar, _), term.variable(Var)) :-
+unparse_type(type_variable(TVar, _), term.variable(Var)) :-
     Var = term.coerce_var(TVar).
-unparse_type(defined(SymName, Args, _), Term) :-
+unparse_type(defined_type(SymName, Args, _), Term) :-
     unparse_type_list(Args, ArgTerms),
     unparse_qualified_term(SymName, ArgTerms, Term).
-unparse_type(builtin(BuiltinType), Term) :-
+unparse_type(builtin_type(BuiltinType), Term) :-
     Context = term.context_init,
     builtin_type_to_string(BuiltinType, Name),
     Term = term.functor(term.atom(Name), [], Context).
-unparse_type(higher_order(Args, MaybeRet, Purity, EvalMethod), Term) :-
+unparse_type(higher_order_type(Args, MaybeRet, Purity, EvalMethod), Term) :-
     Context = term.context_init,
     unparse_type_list(Args, ArgTerms),
     (
@@ -427,17 +427,17 @@ unparse_type(higher_order(Args, MaybeRet, Purity, EvalMethod), Term) :-
         maybe_add_lambda_eval_method(EvalMethod, Term0, Term2)
     ),
     maybe_add_purity_annotation(Purity, Term2, Term).
-unparse_type(tuple(Args, _), Term) :-
+unparse_type(tuple_type(Args, _), Term) :-
     Context = term.context_init,
     unparse_type_list(Args, ArgTerms),
     Term = term.functor(term.atom("{}"), ArgTerms, Context).
-unparse_type(apply_n(TVar, Args, _), Term) :-
+unparse_type(apply_n_type(TVar, Args, _), Term) :-
     Context = term.context_init,
     Var = term.coerce_var(TVar),
     unparse_type_list(Args, ArgTerms),
     Term = term.functor(term.atom(""), [term.variable(Var) | ArgTerms],
         Context).
-unparse_type(kinded(_, _), _) :-
+unparse_type(kinded_type(_, _), _) :-
     unexpected(this_file, "prog_io_util: kind annotation").
 
 :- pred unparse_type_list(list(mer_type)::in, list(term)::out) is det.

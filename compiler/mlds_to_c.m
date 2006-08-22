@@ -3017,7 +3017,7 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context, !IO) :-
     % For --gc accurate, we need to insert a call to GC_check()
     % before every allocation.
     globals.io_get_gc_method(GC_Method, !IO),
-    ( GC_Method = accurate ->
+    ( GC_Method = gc_accurate ->
         mlds_indent(Context, Indent + 1, !IO),
         io.write_string("MR_GC_check();\n", !IO),
         % For types which hold RTTI that will be traversed by the collector
@@ -3273,7 +3273,7 @@ mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval),
         FieldType, _ClassType), !IO) :-
     (
         ( FieldType = mlds_generic_type
-        ; FieldType = mercury_type(variable(_, _), _, _)
+        ; FieldType = mercury_type(type_variable(_, _), _, _)
         )
     ->
         io.write_string("(", !IO)
@@ -3379,7 +3379,7 @@ mlds_output_bracketed_rval(Rval, !IO) :-
     (
         % If it's just a variable name, then we don't need parentheses.
         ( Rval = lval(var(_,_))
-        ; Rval = const(code_addr_const(_))
+        ; Rval = const(mlconst_code_addr(_))
         )
     ->
         mlds_output_rval(Rval, !IO)
@@ -3505,7 +3505,7 @@ mlds_output_boxed_rval(Type, Exprn, !IO) :-
         % from pointers to integers in static initializers.
         mlds_output_boxed_rval(Type, InnerExprn, !IO)
     ;
-        ( Type = mercury_type(builtin(float), _, _)
+        ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
         ; Type = mlds_native_float_type
         )
     ->
@@ -3513,7 +3513,7 @@ mlds_output_boxed_rval(Type, Exprn, !IO) :-
         mlds_output_rval(Exprn, !IO),
         io.write_string(")", !IO)
     ;
-        ( Type = mercury_type(builtin(character), _, _)
+        ( Type = mercury_type(builtin_type(builtin_type_character), _, _)
         ; Type = mlds_native_char_type
         ; Type = mlds_native_bool_type
         ; Type = mlds_native_int_type
@@ -3541,16 +3541,16 @@ is_an_address(mkword(_Tag, Expr)) :-
 is_an_address(unop(cast(_), Expr)) :-
     is_an_address(Expr).
 is_an_address(mem_addr(_)).
-is_an_address(const(null(_))).
-is_an_address(const(code_addr_const(_))).
-is_an_address(const(data_addr_const(_))).
+is_an_address(const(mlconst_null(_))).
+is_an_address(const(mlconst_code_addr(_))).
+is_an_address(const(mlconst_data_addr(_))).
 
 :- pred mlds_output_unboxed_rval(mlds_type::in, mlds_rval::in,
     io::di, io::uo) is det.
 
 mlds_output_unboxed_rval(Type, Exprn, !IO) :-
     (
-        ( Type = mercury_type(builtin(float), _, _)
+        ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
         ; Type = mlds_native_float_type
         )
     ->
@@ -3558,7 +3558,7 @@ mlds_output_unboxed_rval(Type, Exprn, !IO) :-
         mlds_output_rval(Exprn, !IO),
         io.write_string(")", !IO)
     ;
-        ( Type = mercury_type(builtin(character), _, _)
+        ( Type = mercury_type(builtin_type(builtin_type_character), _, _)
         ; Type = mlds_native_char_type
         ; Type = mlds_native_bool_type
         ; Type = mlds_native_int_type
@@ -3681,36 +3681,36 @@ mlds_output_binary_op(Op, !IO) :-
 
 :- pred mlds_output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
 
-mlds_output_rval_const(true_const, !IO) :-
+mlds_output_rval_const(mlconst_true, !IO) :-
     io.write_string("MR_TRUE", !IO).
-mlds_output_rval_const(false_const, !IO) :-
+mlds_output_rval_const(mlconst_false, !IO) :-
     io.write_string("MR_FALSE", !IO).
-mlds_output_rval_const(int_const(N), !IO) :-
+mlds_output_rval_const(mlconst_int(N), !IO) :-
     % We need to cast to (MR_Integer) to ensure things like 1 << 32 work
     % when `Integer' is 64 bits but `int' is 32 bits.
     io.write_string("(MR_Integer) ", !IO),
     io.write_int(N, !IO).
-mlds_output_rval_const(float_const(FloatVal), !IO) :-
+mlds_output_rval_const(mlconst_float(FloatVal), !IO) :-
     % The cast to (MR_Float) here lets the C compiler do arithmetic in `float'
     % rather than `double' if `MR_Float' is `float' not `double'.
     io.write_string("(MR_Float) ", !IO),
     c_util.output_float_literal(FloatVal, !IO).
-mlds_output_rval_const(string_const(String), !IO) :-
+mlds_output_rval_const(mlconst_string(String), !IO) :-
     % The cast avoids the following gcc warning
     % "assignment discards qualifiers from pointer target type".
     io.write_string("(MR_String) ", !IO),
     io.write_string("""", !IO),
     c_util.output_quoted_string(String, !IO),
     io.write_string("""", !IO).
-mlds_output_rval_const(multi_string_const(Length, String), !IO) :-
+mlds_output_rval_const(mlconst_multi_string(Length, String), !IO) :-
     io.write_string("""", !IO),
     c_util.output_quoted_multi_string(Length, String, !IO),
     io.write_string("""", !IO).
-mlds_output_rval_const(code_addr_const(CodeAddr), !IO) :-
+mlds_output_rval_const(mlconst_code_addr(CodeAddr), !IO) :-
     mlds_output_code_addr(CodeAddr, !IO).
-mlds_output_rval_const(data_addr_const(DataAddr), !IO) :-
+mlds_output_rval_const(mlconst_data_addr(DataAddr), !IO) :-
     mlds_output_data_addr(DataAddr, !IO).
-mlds_output_rval_const(null(_), !IO) :-
+mlds_output_rval_const(mlconst_null(_), !IO) :-
     io.write_string("NULL", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -3726,9 +3726,9 @@ mlds_output_tag(Tag, !IO) :-
 
 :- pred mlds_output_code_addr(mlds_code_addr::in, io::di, io::uo) is det.
 
-mlds_output_code_addr(proc(Label, _Sig), !IO) :-
+mlds_output_code_addr(code_addr_proc(Label, _Sig), !IO) :-
     mlds_output_fully_qualified_proc_label(Label, !IO).
-mlds_output_code_addr(internal(Label, SeqNum, _Sig), !IO) :-
+mlds_output_code_addr(code_addr_internal(Label, SeqNum, _Sig), !IO) :-
     mlds_output_fully_qualified_proc_label(Label, !IO),
     io.write_string("_", !IO),
     io.write_int(SeqNum, !IO).

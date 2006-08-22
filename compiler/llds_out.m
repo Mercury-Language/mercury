@@ -1512,13 +1512,13 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
         % Declare the label itself.
         %
         (
-            Label = entry(exported, _),
+            Label = entry(entry_label_exported, _),
             DeclMacro = "MR_def_extern_entry("
         ;
-            Label = entry(local, _),
+            Label = entry(entry_label_local, _),
             DeclMacro = "MR_decl_static("
         ;
-            Label = entry(c_local, _),
+            Label = entry(entry_label_c_local, _),
             DeclMacro = "MR_decl_local("
         ;
             Label = internal(_, _),
@@ -1621,13 +1621,13 @@ output_c_label_init(StackLayoutLabels, Label, !IO) :-
         InitProcLayout = no
     ),
     (
-        Label = entry(exported, ProcLabel),
+        Label = entry(entry_label_exported, ProcLabel),
         TabInitMacro = "\tMR_init_entry1"
     ;
-        Label = entry(local, ProcLabel),
+        Label = entry(entry_label_local, ProcLabel),
         TabInitMacro = "\tMR_init_entry1"
     ;
-        Label = entry(c_local, ProcLabel),
+        Label = entry(entry_label_c_local, ProcLabel),
         TabInitMacro = "\tMR_init_local1"
     ;
         Label = internal(_, _),
@@ -1773,7 +1773,7 @@ find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
             Instr = join_and_continue(_, ContLabel)
         ;
             Instr = assign(redoip_slot(_), const(Const)),
-            Const = code_addr_const(label(ContLabel))
+            Const = llconst_code_addr(label(ContLabel))
         )
     ->
         set_tree234.insert(ContLabel, !ContLabelSet)
@@ -2143,7 +2143,7 @@ output_debug_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
     ProcLabel = ordinary_proc_label(DummyModule, predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
-    ProfInfo = entry(local, ProcLabel) - ContLabelSet,
+    ProfInfo = entry(entry_label_local, ProcLabel) - ContLabelSet,
     output_instruction_and_comment(Instr, Comment, PrintComments,
         ProfInfo, !IO).
 
@@ -2157,7 +2157,7 @@ output_debug_instruction(Instr, !IO) :-
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
     ProcLabel = ordinary_proc_label(DummyModule, predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
-    ProfInfo = entry(local, ProcLabel) - ContLabelSet,
+    ProfInfo = entry(entry_label_local, ProcLabel) - ContLabelSet,
     output_instruction(Instr, ProfInfo, !IO).
 
 :- pred output_block_start(int::in, int::in, io::di, io::uo) is det.
@@ -2710,10 +2710,10 @@ output_pragma_input(Input, !IO) :-
             MaybeForeignTypeInfo = no,
             io.write_string(VarName, !IO),
             io.write_string(" = ", !IO),
-            ( OrigType = builtin(string) ->
+            ( OrigType = builtin_type(builtin_type_string) ->
                 output_llds_type_cast(string, !IO),
                 output_rval_as_type(Rval, word, !IO)
-            ; OrigType = builtin(float) ->
+            ; OrigType = builtin_type(builtin_type_float) ->
                 output_rval_as_type(Rval, float, !IO)
             ;
                 output_rval_as_type(Rval, word, !IO)
@@ -2789,12 +2789,12 @@ output_pragma_output(Output, !IO) :-
             output_lval_as_word(Lval, !IO),
             io.write_string(" = ", !IO),
             (
-                OrigType = builtin(string)
+                OrigType = builtin_type(builtin_type_string)
             ->
                 output_llds_type_cast(word, !IO),
                 io.write_string(VarName, !IO)
             ;
-                OrigType = builtin(float)
+                OrigType = builtin_type(builtin_type_float)
             ->
                 io.write_string("MR_float_to_word(", !IO),
                 io.write_string(VarName, !IO),
@@ -2809,17 +2809,17 @@ output_pragma_output(Output, !IO) :-
 :- pred output_reset_trail_reason(reset_trail_reason::in, io::di, io::uo)
     is det.
 
-output_reset_trail_reason(undo, !IO) :-
+output_reset_trail_reason(reset_reason_undo, !IO) :-
     io.write_string("MR_undo", !IO).
-output_reset_trail_reason(commit, !IO) :-
+output_reset_trail_reason(reset_reason_commit, !IO) :-
     io.write_string("MR_commit", !IO).
-output_reset_trail_reason(solve, !IO) :-
+output_reset_trail_reason(reset_reason_solve, !IO) :-
     io.write_string("MR_solve", !IO).
-output_reset_trail_reason(exception, !IO) :-
+output_reset_trail_reason(reset_reason_exception, !IO) :-
     io.write_string("MR_exception", !IO).
-output_reset_trail_reason(retry, !IO) :-
+output_reset_trail_reason(reset_reason_retry, !IO) :-
     io.write_string("MR_retry", !IO).
-output_reset_trail_reason(gc, !IO) :-
+output_reset_trail_reason(reset_reason_gc, !IO) :-
     io.write_string("MR_gc", !IO).
 
 :- pred output_livevals(list(lval)::in, io::di, io::uo) is det.
@@ -2902,25 +2902,25 @@ output_layout_locn(Locn, !IO) :-
 
 :- pred output_live_value_type(live_value_type::in, io::di, io::uo) is det.
 
-output_live_value_type(succip, !IO) :-
+output_live_value_type(live_value_succip, !IO) :-
     io.write_string("type succip", !IO).
-output_live_value_type(curfr, !IO) :-
+output_live_value_type(live_value_curfr, !IO) :-
     io.write_string("type curfr", !IO).
-output_live_value_type(maxfr, !IO) :-
+output_live_value_type(live_value_maxfr, !IO) :-
     io.write_string("type maxfr", !IO).
-output_live_value_type(redofr, !IO) :-
+output_live_value_type(live_value_redofr, !IO) :-
     io.write_string("type redofr", !IO).
-output_live_value_type(redoip, !IO) :-
+output_live_value_type(live_value_redoip, !IO) :-
     io.write_string("type redoip", !IO).
-output_live_value_type(hp, !IO) :-
+output_live_value_type(live_value_hp, !IO) :-
     io.write_string("type hp", !IO).
-output_live_value_type(trail_ptr, !IO) :-
+output_live_value_type(live_value_trail_ptr, !IO) :-
     io.write_string("type trail_ptr", !IO).
-output_live_value_type(ticket, !IO) :-
+output_live_value_type(live_value_ticket, !IO) :-
     io.write_string("type ticket", !IO).
-output_live_value_type(unwanted, !IO) :-
+output_live_value_type(live_value_unwanted, !IO) :-
     io.write_string("unwanted", !IO).
-output_live_value_type(var(Var, Name, Type, LldsInst), !IO) :-
+output_live_value_type(live_value_var(Var, Name, Type, LldsInst), !IO) :-
     io.write_string("var(", !IO),
     term.var_to_int(Var, VarInt),
     io.write_int(VarInt, !IO),
@@ -2932,10 +2932,10 @@ output_live_value_type(var(Var, Name, Type, LldsInst), !IO) :-
     mercury_output_type(NewTVarset, no, Type, !IO),
     io.write_string(", ", !IO),
     (
-        LldsInst = ground,
+        LldsInst = llds_inst_ground,
         io.write_string("ground", !IO)
     ;
-        LldsInst = partial(Inst),
+        LldsInst = llds_inst_partial(Inst),
             % XXX Fake inst varset
         varset.init(NewIVarset),
         mercury_output_inst(Inst, NewIVarset, !IO)
@@ -2993,13 +2993,13 @@ output_rval_decls_format(mkword(_, Rval), FirstIndent, LaterIndent,
     output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
 output_rval_decls_format(const(Const), FirstIndent, LaterIndent, !N, !DeclSet,
         !IO) :-
-    ( Const = code_addr_const(CodeAddress) ->
+    ( Const = llconst_code_addr(CodeAddress) ->
         output_code_addr_decls_format(CodeAddress, FirstIndent, LaterIndent,
             !N, !DeclSet, !IO)
-    ; Const = data_addr_const(DataAddr, _) ->
+    ; Const = llconst_data_addr(DataAddr, _) ->
         output_data_addr_decls_format(DataAddr, FirstIndent, LaterIndent,
             !N, !DeclSet, !IO)
-    ; Const = float_const(FloatVal) ->
+    ; Const = llconst_float(FloatVal) ->
         %
         % If floats are boxed, and the static ground terms option is enabled,
         % then for each float constant which we might want to box we declare
@@ -3136,7 +3136,7 @@ output_mem_ref_decls_format(heap_ref(BaseRval, _, OffsetRval),
 :- pred float_const_expr_name(rval::in, string::out) is semidet.
 
 float_const_expr_name(Expr, Name) :-
-    ( Expr = const(float_const(Float)) ->
+    ( Expr = const(llconst_float(Float)) ->
         float_literal_name(Float, Name)
     ; Expr = binop(Op, Arg1, Arg2) ->
         float_const_binop_expr_name(Op, Arg1, Arg2, Name)
@@ -3348,7 +3348,7 @@ output_cons_args([], !IO).
 output_cons_args([Rval - Type | RvalsTypes], !IO) :-
     (
         direct_field_int_constant(Type) = yes,
-        Rval = const(int_const(N))
+        Rval = const(llconst_int(N))
     ->
         output_int_const(N, Type, !IO)
     ;
@@ -3453,7 +3453,7 @@ output_cons_arg_group_ints_check([Int | Ints], Type, !IO) :-
 
 :- pred project_int_constant(rval::in, int::out) is semidet.
 
-project_int_constant(const(int_const(N)), N).
+project_int_constant(const(llconst_int(N)), N).
 
 :- func check_int_const_sizes = bool.
 :- pragma inline(check_int_const_sizes/0).
@@ -3601,13 +3601,13 @@ output_code_addr_decls_format(CodeAddress, FirstIndent, LaterIndent, !N,
 
 need_code_addr_decls(label(Label), Need, !IO) :-
     (
-        Label = entry(exported, _),
+        Label = entry(entry_label_exported, _),
         Need = yes
     ;
-        Label = entry(local, _),
+        Label = entry(entry_label_local, _),
         Need = yes
     ;
-        Label = entry(c_local, _),
+        Label = entry(entry_label_c_local, _),
         Need = no
     ;
         Label = internal(_, _),
@@ -3688,12 +3688,12 @@ output_code_addr_decls(do_not_reached, !IO) :-
 
 :- pred output_label_as_code_addr_decls(label::in, io::di, io::uo) is det.
 
-output_label_as_code_addr_decls(entry(exported, ProcLabel), !IO) :-
+output_label_as_code_addr_decls(entry(entry_label_exported, ProcLabel), !IO) :-
     io.write_string("MR_decl_entry(", !IO),
-    output_label(entry(exported, ProcLabel), no, !IO),
+    output_label(entry(entry_label_exported, ProcLabel), no, !IO),
     io.write_string(");\n", !IO).
-output_label_as_code_addr_decls(entry(local, _ProcLabel), !IO).
-output_label_as_code_addr_decls(entry(c_local, _), !IO).
+output_label_as_code_addr_decls(entry(entry_label_local, _ProcLabel), !IO).
+output_label_as_code_addr_decls(entry(entry_label_c_local, _), !IO).
 output_label_as_code_addr_decls(internal(_, _), !IO).
 
 output_data_addr_decls(DataAddr, !DeclSet, !IO) :-
@@ -3854,7 +3854,7 @@ maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet, !IO) :-
     % kind of label.
 output_goto(label(Label), CallerLabel, !IO) :-
     (
-        Label = entry(exported, _),
+        Label = entry(entry_label_exported, _),
         globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
         (
             ProfileCalls = yes,
@@ -3870,7 +3870,7 @@ output_goto(label(Label), CallerLabel, !IO) :-
             io.write_string(");\n", !IO)
         )
     ;
-        Label = entry(local, _),
+        Label = entry(entry_label_local, _),
         globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
         (
             ProfileCalls = yes,
@@ -3886,7 +3886,7 @@ output_goto(label(Label), CallerLabel, !IO) :-
             io.write_string(");\n", !IO)
         )
     ;
-        Label = entry(c_local, _),
+        Label = entry(entry_label_c_local, _),
         globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
         (
             ProfileCalls = yes,
@@ -4034,21 +4034,21 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
                     NeedsPrefix, Wrapper, !IO)
             ;
                 NeedsPrefix = yes,
-                Wrapper = entry,
+                Wrapper = wrapper_entry,
                 io.write_string("MR_np_localcall_ent(", !IO),
                 output_label(Label, no, !IO),
                 io.write_string(",\n\t\t", !IO),
                 io.write_string(BaseStr, !IO)
             ;
                 NeedsPrefix = yes,
-                Wrapper = label,
+                Wrapper = wrapper_label,
                 io.write_string("MR_np_localcall_lab(", !IO),
                 output_label(Label, no, !IO),
                 io.write_string(",\n\t\t", !IO),
                 io.write_string(BaseStr, !IO)
             ;
                 NeedsPrefix = yes,
-                Wrapper = none,
+                Wrapper = wrapper_none,
                 io.write_string("MR_np_localcall(", !IO),
                 output_label(Label, no, !IO),
                 io.write_string(",\n\t\t", !IO),
@@ -4078,21 +4078,21 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
                 output_label(ContLabel, !IO)
             ;
                 NeedsPrefix = yes,
-                Wrapper = entry,
+                Wrapper = wrapper_entry,
                 io.write_string("MR_np_call_localret_ent(", !IO),
                 io.write_string(BaseStr, !IO),
                 io.write_string(",\n\t\t", !IO),
                 output_label(ContLabel, no, !IO)
             ;
                 NeedsPrefix = yes,
-                Wrapper = label,
+                Wrapper = wrapper_label,
                 % We should never get here; the conditions that lead here
                 % in this switch should have been caught by the first
                 % if-then-else condition that tests Target.
                 unexpected(this_file, "output_call: calling label")
             ;
                 NeedsPrefix = yes,
-                Wrapper = none,
+                Wrapper = wrapper_none,
                 io.write_string("MR_np_call_localret(", !IO),
                 output_code_addr_from_pieces(BaseStr,
                     NeedsPrefix, Wrapper, !IO),
@@ -4126,16 +4126,16 @@ output_code_addr(CodeAddr, !IO) :-
     output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO).
 
 :- type wrapper
-    --->    entry
-    ;       label
-    ;       none.
+    --->    wrapper_entry
+    ;       wrapper_label
+    ;       wrapper_none.
 
 :- pred output_code_addr_from_pieces(string::in, bool::in, wrapper::in,
     io::di, io::uo) is det.
 
 output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO) :-
     (
-        Wrapper = none,
+        Wrapper = wrapper_none,
         (
             NeedsPrefix = yes,
             io.write_string(mercury_label_prefix, !IO)
@@ -4144,7 +4144,7 @@ output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO) :-
         ),
         io.write_string(BaseStr, !IO)
     ;
-        Wrapper = entry,
+        Wrapper = wrapper_entry,
         (
             NeedsPrefix = yes,
             % The _AP version of the macro adds the prefix.
@@ -4158,7 +4158,7 @@ output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO) :-
             io.write_string(")", !IO)
         )
     ;
-        Wrapper = label,
+        Wrapper = wrapper_label,
         (
             NeedsPrefix = yes,
             % The _AP version of the macro adds the prefix.
@@ -4181,15 +4181,15 @@ code_addr_to_string_base(label(Label), BaseStr, yes, Wrapper) :-
     IsExternal = label_is_external_to_c_module(Label),
     (
         IsExternal = yes,
-        Wrapper = entry
+        Wrapper = wrapper_entry
     ;
         IsExternal = no,
-        Wrapper = label
+        Wrapper = wrapper_label
     ).
-code_addr_to_string_base(imported(ProcLabel), BaseStr, yes, entry) :-
+code_addr_to_string_base(imported(ProcLabel), BaseStr, yes, wrapper_entry) :-
     BaseStr = proc_label_to_c_string(ProcLabel, no).
-code_addr_to_string_base(succip, "MR_succip", no, none).
-code_addr_to_string_base(do_succeed(Last), BaseStr, no, entry) :-
+code_addr_to_string_base(succip, "MR_succip", no, wrapper_none).
+code_addr_to_string_base(do_succeed(Last), BaseStr, no, wrapper_entry) :-
     (
         Last = no,
         BaseStr = "MR_do_succeed"
@@ -4197,19 +4197,22 @@ code_addr_to_string_base(do_succeed(Last), BaseStr, no, entry) :-
         Last = yes,
         BaseStr = "MR_do_last_succeed"
     ).
-code_addr_to_string_base(do_redo, "MR_do_redo", no, entry).
-code_addr_to_string_base(do_fail, "MR_do_fail", no, entry).
-code_addr_to_string_base(do_trace_redo_fail_shallow, BaseStr, no, entry) :-
+code_addr_to_string_base(do_redo, "MR_do_redo", no, wrapper_entry).
+code_addr_to_string_base(do_fail, "MR_do_fail", no, wrapper_entry).
+code_addr_to_string_base(do_trace_redo_fail_shallow, BaseStr, no,
+        wrapper_entry) :-
     BaseStr = "MR_do_trace_redo_fail_shallow".
-code_addr_to_string_base(do_trace_redo_fail_deep, BaseStr, no, entry) :-
+code_addr_to_string_base(do_trace_redo_fail_deep, BaseStr, no, wrapper_entry) :-
     BaseStr = "MR_do_trace_redo_fail_deep".
-code_addr_to_string_base(do_call_closure(Variant), BaseStr, no, entry) :-
+code_addr_to_string_base(do_call_closure(Variant), BaseStr, no,
+        wrapper_entry) :-
     BaseStr = "mercury__do_call_closure_"
         ++ ho_call_variant_to_string(Variant).
-code_addr_to_string_base(do_call_class_method(Variant), BaseStr, no, entry) :-
+code_addr_to_string_base(do_call_class_method(Variant), BaseStr, no,
+        wrapper_entry) :-
     BaseStr = "mercury__do_call_class_method_"
         ++ ho_call_variant_to_string(Variant).
-code_addr_to_string_base(do_not_reached, BaseStr, no, entry) :-
+code_addr_to_string_base(do_not_reached, BaseStr, no, wrapper_entry) :-
     BaseStr = "MR_do_not_reached".
 
 ho_call_variant_to_string(Variant) = Str :-
@@ -4324,9 +4327,9 @@ output_label_as_code_addr(Label, !IO) :-
 
 :- func label_is_external_to_c_module(label) = bool.
 
-label_is_external_to_c_module(entry(exported, _)) = yes.
-label_is_external_to_c_module(entry(local, _)) = yes.
-label_is_external_to_c_module(entry(c_local, _)) = no.
+label_is_external_to_c_module(entry(entry_label_exported, _)) = yes.
+label_is_external_to_c_module(entry(entry_label_local, _)) = yes.
+label_is_external_to_c_module(entry(entry_label_c_local, _)) = no.
 label_is_external_to_c_module(internal(_, _)) = no.
 
 :- pred label_as_code_addr_to_string(label::in, string::out) is det.
@@ -4363,15 +4366,15 @@ output_label_list_2([Label | Labels], !IO) :-
 
 :- pred output_label_defn(label::in, io::di, io::uo) is det.
 
-output_label_defn(entry(exported, ProcLabel), !IO) :-
+output_label_defn(entry(entry_label_exported, ProcLabel), !IO) :-
     io.write_string("MR_define_entry(", !IO),
-    output_label(entry(exported, ProcLabel), !IO),
+    output_label(entry(entry_label_exported, ProcLabel), !IO),
     io.write_string(");\n", !IO).
-output_label_defn(entry(local, ProcLabel), !IO) :-
+output_label_defn(entry(entry_label_local, ProcLabel), !IO) :-
     io.write_string("MR_def_static(", !IO),
     output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(")\n", !IO).
-output_label_defn(entry(c_local, ProcLabel), !IO) :-
+output_label_defn(entry(entry_label_c_local, ProcLabel), !IO) :-
     io.write_string("MR_def_local(", !IO),
     output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(")\n", !IO).
@@ -4408,9 +4411,9 @@ label_to_c_string(internal(Num, ProcLabel), AddPrefix) = LabelStr :-
 
 :- pred output_reg(reg_type::in, int::in, io::di, io::uo) is det.
 
-output_reg(r, N, !IO) :-
-    io.write_string(reg_to_string(r, N), !IO).
-output_reg(f, _, !IO) :-
+output_reg(reg_r, N, !IO) :-
+    io.write_string(reg_to_string(reg_r, N), !IO).
+output_reg(reg_f, _, !IO) :-
     sorry(this_file, "Floating point registers not implemented").
 
 :- pred output_tag(tag::in, io::di, io::uo) is det.
@@ -4447,7 +4450,7 @@ output_rval_as_type(Rval, DesiredType, !IO) :-
             )
         ;
             (
-                Rval = const(int_const(N)),
+                Rval = const(llconst_int(N)),
                 direct_field_int_constant(DesiredType) = yes
             ->
                 % The condition above increases the runtime of
@@ -4676,7 +4679,7 @@ output_test_rval(Test, !IO) :-
 
 is_int_cmp(Test, Left, RightConst, OpStr, NegOpStr) :-
     Test = binop(Op, Left, Right),
-    Right = const(int_const(RightConst)),
+    Right = const(llconst_int(RightConst)),
     (
         Op = eq,
         OpStr = "MR_INT_EQ",
@@ -4708,7 +4711,7 @@ is_int_cmp(Test, Left, RightConst, OpStr, NegOpStr) :-
 is_ptag_test(Test, Rval, Ptag, Negated) :-
     Test = binop(Op, Left, Right),
     Left = unop(tag, Rval),
-    Right = unop(mktag, const(int_const(Ptag))),
+    Right = unop(mktag, const(llconst_int(Ptag))),
     (
         Op = eq,
         Negated = no
@@ -4722,15 +4725,15 @@ is_ptag_test(Test, Rval, Ptag, Negated) :-
 is_remote_stag_test(Test, Rval, Ptag, Stag) :-
     Test = binop(eq, Left, Right),
     Left = lval(field(yes(Ptag), Rval, Zero)),
-    Zero = const(int_const(0)),
-    Right = const(int_const(Stag)).
+    Zero = const(llconst_int(0)),
+    Right = const(llconst_int(Stag)).
 
 :- pred is_local_stag_test(rval::in, rval::out, int::out, int::out, bool::out)
     is semidet.
 
 is_local_stag_test(Test, Rval, Ptag, Stag, Negated) :-
     Test = binop(Op, Rval, Right),
-    Right = mkword(Ptag, unop(mkbody, const(int_const(Stag)))),
+    Right = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
     (
         Op = eq,
         Negated = no
@@ -4788,12 +4791,12 @@ output_rval(binop(Op, X, Y), !IO) :-
 % XXX broken for C == minint
 % (since `NewC is 0 - C' overflows)
 %       Op = (+),
-%       Y = const(int_const(C)),
+%       Y = const(llconst_int(C)),
 %       C < 0
 %   ->
 %       NewOp = (-),
 %       NewC is 0 - C,
-%       NewY = const(int_const(NewC)),
+%       NewY = const(llconst_int(NewC)),
 %       io.write_string("("),
 %       output_rval(X),
 %       io.write_string(" "),
@@ -4840,7 +4843,7 @@ output_rval(binop(Op, X, Y), !IO) :-
     ).
 output_rval(mkword(Tag, Exprn), !IO) :-
     (
-        Exprn = const(data_addr_const(DataAddr, no)),
+        Exprn = const(llconst_data_addr(DataAddr, no)),
         DataAddr = data_addr(_, DataName),
         DataName = scalar_common_ref(TypeNum, CellNum)
     ->
@@ -4852,7 +4855,7 @@ output_rval(mkword(Tag, Exprn), !IO) :-
         io.write_int(CellNum, !IO),
         io.write_string(")", !IO)
     ;
-        Exprn = unop(mkbody, const(int_const(Body)))
+        Exprn = unop(mkbody, const(llconst_int(Body)))
     ->
         io.write_string("MR_tbmkword(", !IO),
         io.write_int(Tag, !IO),
@@ -4882,7 +4885,7 @@ output_rval(lval(Lval), !IO) :-
         ),
         output_rval(Rval, !IO),
         io.write_string(", ", !IO),
-        ( FieldNumRval = const(int_const(FieldNum)) ->
+        ( FieldNumRval = const(llconst_int(FieldNum)) ->
             % Avoid emitting the (MR_Integer) cast.
             io.write_int(FieldNum, !IO)
         ;
@@ -4927,36 +4930,36 @@ output_unary_op(Op, !IO) :-
 
 :- pred output_rval_const(rval_const::in, io::di, io::uo) is det.
 
-output_rval_const(int_const(N), !IO) :-
+output_rval_const(llconst_true, !IO) :-
+    io.write_string("MR_TRUE", !IO).
+output_rval_const(llconst_false, !IO) :-
+    io.write_string("MR_FALSE", !IO).
+output_rval_const(llconst_int(N), !IO) :-
     % We need to cast to (Integer) to ensure things like 1 << 32 work
     % when `Integer' is 64 bits but `int' is 32 bits.
     output_llds_type_cast(integer, !IO),
     io.write_int(N, !IO).
-output_rval_const(float_const(FloatVal), !IO) :-
+output_rval_const(llconst_float(FloatVal), !IO) :-
     % The cast to (Float) here lets the C compiler do arithmetic in `float'
     % rather than `double' if `Float' is `float' not `double'.
     output_llds_type_cast(float, !IO),
     c_util.output_float_literal(FloatVal, !IO).
-output_rval_const(string_const(String), !IO) :-
+output_rval_const(llconst_string(String), !IO) :-
     io.write_string("MR_string_const(""", !IO),
     c_util.output_quoted_string(String, !IO),
     string.length(String, StringLength),
     io.write_string(""", ", !IO),
     io.write_int(StringLength, !IO),
     io.write_string(")", !IO).
-output_rval_const(multi_string_const(Length, String), !IO) :-
+output_rval_const(llconst_multi_string(Length, String), !IO) :-
     io.write_string("MR_string_const(""", !IO),
     c_util.output_quoted_multi_string(Length, String, !IO),
     io.write_string(""", ", !IO),
     io.write_int(Length, !IO),
     io.write_string(")", !IO).
-output_rval_const(true, !IO) :-
-    io.write_string("MR_TRUE", !IO).
-output_rval_const(false, !IO) :-
-    io.write_string("MR_FALSE", !IO).
-output_rval_const(code_addr_const(CodeAddress), !IO) :-
+output_rval_const(llconst_code_addr(CodeAddress), !IO) :-
     output_code_addr(CodeAddress, !IO).
-output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
+output_rval_const(llconst_data_addr(DataAddr, MaybeOffset), !IO) :-
     % Data addresses are all assumed to be of type `MR_Word *'; we need to
     % cast them here to avoid type errors. The offset is also in MR_Words.
     (
@@ -5140,7 +5143,7 @@ output_lval(field(MaybeTag, Rval, FieldNumRval), !IO) :-
     ),
     output_rval(Rval, !IO),
     io.write_string(", ", !IO),
-    ( FieldNumRval = const(int_const(FieldNum)) ->
+    ( FieldNumRval = const(llconst_int(FieldNum)) ->
         % Avoid emitting the (MR_Integer) cast.
         io.write_int(FieldNum, !IO)
     ;
@@ -5151,11 +5154,11 @@ output_lval(lvar(_), !IO) :-
     unexpected(this_file, "output_lval/3: illegal to output an lvar.").
 output_lval(temp(Type, Num), !IO) :-
     (
-        Type = r,
+        Type = reg_r,
         io.write_string("MR_tempr", !IO),
         io.write_int(Num, !IO)
     ;
-        Type = f,
+        Type = reg_f,
         io.write_string("MR_tempf", !IO),
         io.write_int(Num, !IO)
     ).
@@ -5170,7 +5173,8 @@ output_lval(global_var_ref(GlobalVar), !IO) :-
     is det.
 
 output_lval_for_assign(reg(RegType, Num), word, !IO) :-
-    expect(unify(RegType, r), this_file, "output_lval_for_assign: float reg"),
+    expect(unify(RegType, reg_r), this_file,
+        "output_lval_for_assign: float reg"),
     output_reg(RegType, Num, !IO).
 output_lval_for_assign(stackvar(N), word, !IO) :-
     ( N < 0 ->
@@ -5232,7 +5236,7 @@ output_lval_for_assign(field(MaybeTag, Rval, FieldNumRval), word, !IO) :-
     ),
     output_rval(Rval, !IO),
     io.write_string(", ", !IO),
-    ( FieldNumRval = const(int_const(FieldNum)) ->
+    ( FieldNumRval = const(llconst_int(FieldNum)) ->
         % Avoid emitting the (MR_Integer) cast.
         io.write_int(FieldNum, !IO)
     ;
@@ -5243,12 +5247,12 @@ output_lval_for_assign(lvar(_), _, !IO) :-
     unexpected(this_file, "output_lval_for_assign: lvar").
 output_lval_for_assign(temp(RegType, Num), Type, !IO) :-
     (
-        RegType = r,
+        RegType = reg_r,
         Type = word,
         io.write_string("MR_tempr", !IO),
         io.write_int(Num, !IO)
     ;
-        RegType = f,
+        RegType = reg_f,
         Type = float,
         io.write_string("MR_tempf", !IO),
         io.write_int(Num, !IO)
@@ -5309,7 +5313,7 @@ lval_to_string(stackvar(N)) =
 lval_to_string(reg(RegType, RegNum)) =
     "reg(" ++ reg_to_string(RegType, RegNum) ++ ")".
 
-reg_to_string(r, N) =
+reg_to_string(reg_r, N) =
     ( N =< max_real_r_reg ->
         "MR_r" ++ int_to_string(N)
     ; N =< max_virtual_r_reg ->
@@ -5317,7 +5321,7 @@ reg_to_string(r, N) =
     ;
         unexpected(this_file, "reg_to_string: register number too large")
     ).
-reg_to_string(f, N) =
+reg_to_string(reg_f, N) =
     "MR_f(" ++ int_to_string(N) ++ ")".
 
 :- func max_real_r_reg = int.

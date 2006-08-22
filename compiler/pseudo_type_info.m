@@ -115,7 +115,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
                     plain_pseudo_type_info(RttiTypeCtor, PseudoArgs)
             )
         )
-    ; Type = variable(Var, _) ->
+    ; Type = type_variable(Var, _) ->
         % In the case of a type variable, we need to assign a
         % variable number *for this constructor*, i.e. taking
         % only the existentially quantified variables of

@@ -309,7 +309,7 @@ gen_places([], _, empty).
 gen_places([Var - Loc | OutputArgs], ByteInfo, Code) :-
     gen_places(OutputArgs, ByteInfo, OtherCode),
     map_var(ByteInfo, Var, ByteVar),
-    Code = tree(node([byte_place_arg(r, Loc, ByteVar)]), OtherCode).
+    Code = tree(node([byte_place_arg(byte_reg_r, Loc, ByteVar)]), OtherCode).
 
 :- pred gen_pickups(list(pair(prog_var, arg_loc))::in,
     byte_info::in, byte_tree::out) is det.
@@ -318,7 +318,7 @@ gen_pickups([], _, empty).
 gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
     gen_pickups(OutputArgs, ByteInfo, OtherCode),
     map_var(ByteInfo, Var, ByteVar),
-    Code = tree(node([byte_pickup_arg(r, Loc, ByteVar)]), OtherCode).
+    Code = tree(node([byte_pickup_arg(byte_reg_r, Loc, ByteVar)]), OtherCode).
 
 %---------------------------------------------------------------------------%
 
@@ -460,13 +460,13 @@ map_arg(ByteInfo, Expr, ByteArg) :-
     (
         Expr = leaf(Var),
         map_var(ByteInfo, Var, ByteVar),
-        ByteArg = var(ByteVar)
+        ByteArg = byte_arg_var(ByteVar)
     ;
         Expr = int_const(IntVal),
-        ByteArg = int_const(IntVal)
+        ByteArg = byte_arg_int_const(IntVal)
     ;
         Expr = float_const(FloatVal),
-        ByteArg = float_const(FloatVal)
+        ByteArg = byte_arg_float_const(FloatVal)
     ).
 
 %---------------------------------------------------------------------------%
@@ -481,7 +481,7 @@ gen_unify(construct(Var, ConsId, Args, UniModes, _, _, _), _, _,
     map_var(ByteInfo, Var, ByteVar),
     map_vars(ByteInfo, Args, ByteArgs),
     map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
-    ( ByteConsId = pred_const(_, _, _, _, _) ->
+    ( ByteConsId = byte_pred_const(_, _, _, _, _) ->
         Code = node([byte_construct(ByteVar, ByteConsId, ByteArgs)])
     ;
         % Don't call map_uni_modes until after
@@ -698,7 +698,7 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
         ->
             string.to_char_list(FunctorName, FunctorList),
             ( FunctorList = [Char] ->
-                ByteConsId = char_const(Char)
+                ByteConsId = byte_char_const(Char)
             ;
                 unexpected(this_file, "map_cons_id: " ++
                     "unqualified cons_id is not a char_const")
@@ -712,17 +712,17 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
             ),
             ConsTag = cons_id_to_tag(ConsId, Type, ModuleInfo),
             map_cons_tag(ConsTag, ByteConsTag),
-            ByteConsId = cons(ModuleName, FunctorName, Arity, ByteConsTag)
+            ByteConsId = byte_cons(ModuleName, FunctorName, Arity, ByteConsTag)
         )
     ;
         ConsId = int_const(IntVal),
-        ByteConsId = int_const(IntVal)
+        ByteConsId = byte_int_const(IntVal)
     ;
         ConsId = string_const(StringVal),
-        ByteConsId = string_const(StringVal)
+        ByteConsId = byte_string_const(StringVal)
     ;
         ConsId = float_const(FloatVal),
-        ByteConsId = float_const(FloatVal)
+        ByteConsId = byte_float_const(FloatVal)
     ;
         ConsId = pred_const(ShroudedPredProcId, _EvalMethod),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
@@ -732,19 +732,21 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
         get_is_func(PredInfo, IsFunc),
 
         proc_id_to_int(ProcId, ProcInt),
-        ByteConsId = pred_const(ModuleName, PredName, Arity, IsFunc, ProcInt)
+        ByteConsId = byte_pred_const(ModuleName, PredName, Arity, IsFunc,
+            ProcInt)
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity),
-        ByteConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity)
+        ByteConsId = byte_type_ctor_info_const(ModuleName, TypeName, TypeArity)
     ;
         ConsId = base_typeclass_info_const(ModuleName, ClassId, _, Instance),
-        ByteConsId = base_typeclass_info_const(ModuleName, ClassId, Instance)
+        ByteConsId = byte_base_typeclass_info_const(ModuleName, ClassId,
+            Instance)
     ;
         ConsId = type_info_cell_constructor(_),
-        ByteConsId = type_info_cell_constructor
+        ByteConsId = byte_type_info_cell_constructor
     ;
         ConsId = typeclass_info_cell_constructor,
-        ByteConsId = typeclass_info_cell_constructor
+        ByteConsId = byte_typeclass_info_cell_constructor
     ;
         ConsId = tabling_info_const(_),
         sorry(this_file, "bytecode cannot implement tabling")
@@ -758,19 +760,19 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 
 :- pred map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
 
-map_cons_tag(no_tag, no_tag).
+map_cons_tag(no_tag, byte_no_tag).
     % `single_functor' is just an optimized version of `unshared_tag(0)'
     % this optimization is not important for the bytecode
-map_cons_tag(single_functor_tag, unshared_tag(0)).
-map_cons_tag(unshared_tag(Primary), unshared_tag(Primary)).
+map_cons_tag(single_functor_tag, byte_unshared_tag(0)).
+map_cons_tag(unshared_tag(Primary), byte_unshared_tag(Primary)).
 map_cons_tag(shared_remote_tag(Primary, Secondary),
-    shared_remote_tag(Primary, Secondary)).
+    byte_shared_remote_tag(Primary, Secondary)).
 map_cons_tag(shared_local_tag(Primary, Secondary),
-    shared_local_tag(Primary, Secondary)).
+    byte_shared_local_tag(Primary, Secondary)).
 map_cons_tag(string_tag(_), _) :-
     unexpected(this_file, "string_tag cons tag " ++
         "for non-string_constant cons id").
-map_cons_tag(int_tag(IntVal), enum_tag(IntVal)).
+map_cons_tag(int_tag(IntVal), byte_enum_tag(IntVal)).
 map_cons_tag(float_tag(_), _) :-
     unexpected(this_file, "float_tag cons tag " ++
         "for non-float_constant cons id").

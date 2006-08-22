@@ -184,7 +184,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             not set.member(ToLval, CompulsoryLvals)
         ->
             counter.allocate(TempNum, !TempCounter),
-            NewLval = temp(r, TempNum),
+            NewLval = temp(reg_r, TempNum),
             substitute_lval_in_defn(ToLval, NewLval, Instr0, Instr),
             list.map_foldl(
                 exprn_aux.substitute_lval_in_instr(ToLval, NewLval),
@@ -194,7 +194,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             Instrs = [Instr | TailInstrs]
         ;
             counter.allocate(TempNum, !TempCounter),
-            NewLval = temp(r, TempNum),
+            NewLval = temp(reg_r, TempNum),
             substitute_lval_in_instr_until_defn(ToLval, NewLval,
                 TailInstrs0, TailInstrs1, 0, NumSubst),
             NumSubst > 1
@@ -315,7 +315,7 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
     ->
         OrigTempCounter = !.TempCounter,
         counter.allocate(TempNum, !TempCounter),
-        TempLval = temp(r, TempNum),
+        TempLval = temp(reg_r, TempNum),
         lvals_in_lval(ChosenLval, SubChosenLvals),
         expect(unify(SubChosenLvals, []),
             this_file, "opt_access: nonempty SubChosenLvals"),
@@ -350,7 +350,7 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
 
 base_lval_worth_replacing(NumRealRRegs, Lval) :-
     (
-        Lval = reg(r, RegNum),
+        Lval = reg(reg_r, RegNum),
         RegNum > NumRealRRegs
     ;
         Lval = stackvar(_)

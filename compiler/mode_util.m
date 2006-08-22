@@ -999,7 +999,7 @@ update_module_info(P, R, !RI) :-
 
 recompute_instmap_delta_2(Atomic, switch(Var, Det, Cases0), GoalInfo,
         switch(Var, Det, Cases), VarTypes, InstMap, InstMapDelta, !RI) :-
-    ( goal_info_has_feature(GoalInfo, mode_check_clauses_goal) ->
+    ( goal_info_has_feature(GoalInfo, feature_mode_check_clauses_goal) ->
         Cases = Cases0,
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta)
     ;
@@ -1015,7 +1015,7 @@ recompute_instmap_delta_2(Atomic, conj(ConjType, Goals0), _GoalInfo,
 
 recompute_instmap_delta_2(Atomic, disj(Goals0), GoalInfo, disj(Goals),
         VarTypes, InstMap, InstMapDelta, !RI) :-
-    ( goal_info_has_feature(GoalInfo, mode_check_clauses_goal) ->
+    ( goal_info_has_feature(GoalInfo, feature_mode_check_clauses_goal) ->
         Goals = Goals0,
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta)
     ;

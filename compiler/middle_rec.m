@@ -293,16 +293,16 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         MaybeIncrSp = [],
         MaybeDecrSp = [],
         InitAuxReg = [
-            assign(AuxReg, const(int_const(0)))
+            assign(AuxReg, const(llconst_int(0)))
                 - "initialize counter register"],
         IncrAuxReg = [
-            assign(AuxReg, binop(int_add, lval(AuxReg), const(int_const(1))))
+            assign(AuxReg, binop(int_add, lval(AuxReg), const(llconst_int(1))))
                 - "increment loop counter"],
         DecrAuxReg = [
-            assign(AuxReg, binop(int_sub, lval(AuxReg), const(int_const(1))))
+            assign(AuxReg, binop(int_sub, lval(AuxReg), const(llconst_int(1))))
                 - "decrement loop counter"],
         TestAuxReg = [
-            if_val(binop(int_gt, lval(AuxReg), const(int_const(0))),
+            if_val(binop(int_gt, lval(AuxReg), const(llconst_int(0))),
                 label(Loop2Label))
                 - "test on upward loop"]
     ;
@@ -467,10 +467,10 @@ find_unused_register(Instrs, UnusedReg) :-
 
 :- pred find_unused_register_2(list(int)::in, int::in, lval::out) is det.
 
-find_unused_register_2([], N, reg(r, N)).
+find_unused_register_2([], N, reg(reg_r, N)).
 find_unused_register_2([H | T], N, Reg) :-
     ( N < H ->
-        Reg = reg(r, N)
+        Reg = reg(reg_r, N)
     ;
         N1 = N + 1,
         find_unused_register_2(T, N1, Reg)
@@ -575,7 +575,7 @@ find_used_registers_lvals([Lval | Lvals], !Used) :-
     set(int)::in, set(int)::out) is det.
 
 find_used_registers_lval(Lval, !Used) :-
-    ( Lval = reg(r, N) ->
+    ( Lval = reg(reg_r, N) ->
         copy(N, N1),
         set.insert(!.Used, N1, !:Used)
     ; Lval = field(_, Rval, FieldNum) ->

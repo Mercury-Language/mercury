@@ -337,7 +337,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
     ;
         CodeModel = model_non,
         RedoGoal0 = RedoGoalExpr - RedoGoalInfo0,
-        goal_info_add_feature(preserve_backtrack_into,
+        goal_info_add_feature(feature_preserve_backtrack_into,
             RedoGoalInfo0, RedoGoalInfo),
         RedoGoal = RedoGoalExpr - RedoGoalInfo,
 

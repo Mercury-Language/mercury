@@ -2721,13 +2721,13 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         % mercury_compile.simplify.
         %
         ProfTrans = yes,
-        SimpList1 = list.delete_all(SimpList0, constant_prop)
+        SimpList1 = list.delete_all(SimpList0, simp_constant_prop)
     ;
         ProfTrans = no,
         SimpList1 = SimpList0
     ),
 
-    SimpList = [do_once, elim_removable_scopes | SimpList1],
+    SimpList = [simp_do_once, simp_elim_removable_scopes | SimpList1],
     Simplifications = list_to_simplifications(SimpList),
     simplify_proc(Simplifications, PredId, ProcId, !HLDS, !ProcInfo, !IO),
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
@@ -3137,16 +3137,16 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
             !:SimpList = simplifications_to_list(Simplifications0),
             (
                 SimplifyPass = frontend,
-                list.cons(after_front_end, !SimpList)
+                list.cons(simp_after_front_end, !SimpList)
             ;
                 SimplifyPass = post_untuple,
-                list.cons(do_once, !SimpList)
+                list.cons(simp_do_once, !SimpList)
             ;
                 SimplifyPass = pre_prof_transforms,
-                list.cons(do_once, !SimpList)
+                list.cons(simp_do_once, !SimpList)
             ;
                 SimplifyPass = ml_backend,
-                list.cons(do_once, !SimpList)
+                list.cons(simp_do_once, !SimpList)
             ;
                 % Don't perform constant propagation if one of the
                 % profiling transformations has been applied.
@@ -3157,12 +3157,12 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
                 SimplifyPass = ll_backend,
                 (
                     IsProfPass = yes,
-                    list.delete_all(!.SimpList, constant_prop, !:SimpList)
+                    list.delete_all(!.SimpList, simp_constant_prop, !:SimpList)
                 ;
                     IsProfPass = no
                 ),
-                list.cons(do_once, !SimpList),
-                list.cons(elim_removable_scopes, !SimpList)
+                list.cons(simp_do_once, !SimpList),
+                list.cons(simp_elim_removable_scopes, !SimpList)
             ),
             Simplifications = list_to_simplifications(!.SimpList)
         ),
@@ -4448,7 +4448,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     %
 
     globals.io_get_gc_method(GC, !IO),
-    ( GC = accurate ->
+    ( GC = gc_accurate ->
         maybe_write_string(Verbose,
             "% Threading GC stack frames...\n", !IO),
         ml_elim_nested(chain_gc_stack_frames, MLDS25, MLDS30, !IO),

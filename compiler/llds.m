@@ -653,12 +653,12 @@
 
     % See runtime/mercury_trail.h.
 :- type reset_trail_reason
-    --->    undo
-    ;       commit
-    ;       solve
-    ;       exception
-    ;       retry
-    ;       gc.
+    --->    reset_reason_undo
+    ;       reset_reason_commit
+    ;       reset_reason_solve
+    ;       reset_reason_exception
+    ;       reset_reason_retry
+    ;       reset_reason_gc.
 
 :- type add_trail_ops == bool.
 
@@ -696,22 +696,23 @@
     % can be considered live.
     %
 :- type live_value_type
-    --->    succip              % A stored succip.
-    ;       curfr               % A stored curfr.
-    ;       maxfr               % A stored maxfr.
-    ;       redoip              % A stored redoip.
-    ;       redofr              % A stored redofr.
-    ;       hp                  % A stored heap pointer.
-    ;       trail_ptr           % A stored trail pointer.
-    ;       ticket              % A stored ticket.
-    ;       var(prog_var, string, mer_type, llds_inst)
-                                % A variable (the var number and name are
-                                % for execution tracing; we have to store
-                                % the name here because when we want to use
-                                % the live_value_type, we won't have access
-                                % to the varset).
-    ;       unwanted.           % Something we don't need, or at least don't
-                                % need information about.
+    --->    live_value_succip              % A stored succip.
+    ;       live_value_curfr               % A stored curfr.
+    ;       live_value_maxfr               % A stored maxfr.
+    ;       live_value_redoip              % A stored redoip.
+    ;       live_value_redofr              % A stored redofr.
+    ;       live_value_hp                  % A stored heap pointer.
+    ;       live_value_trail_ptr           % A stored trail pointer.
+    ;       live_value_ticket              % A stored ticket.
+
+    ;       live_value_var(prog_var, string, mer_type, llds_inst)
+            % A variable (the var number and name are for execution tracing;
+            % we have to store the name here because when we want to use
+            % the live_value_type, we won't have access to the varset).
+
+    ;       live_value_unwanted.
+            % Something we don't need, or at least don't need
+            % information about.
 
     % For recording information about the inst of a variable for use
     % by the garbage collector or the debugger, we don't need to know
@@ -728,15 +729,15 @@
     % the argument type of partial will have to be changed.
     %
 :- type llds_inst
-    --->    ground
-    ;       partial(mer_inst).
+    --->    llds_inst_ground
+    ;       llds_inst_partial(mer_inst).
 
 :- func stack_slot_to_lval(stack_slot) = lval.
 :- func key_stack_slot_to_lval(_, stack_slot) = lval.
 
 :- type lval_or_any_reg
-    --->    lval(lval)
-    ;       any_reg.
+    --->    loa_lval(lval)
+    ;       loa_any_reg.
 
 :- func abs_locn_to_lval_or_any_reg(abs_locn) = lval_or_any_reg.
 
@@ -883,16 +884,16 @@
     --->    env_var_ref(string).
 
 :- type rval_const
-    --->    true
-    ;       false
-    ;       int_const(int)
-    ;       float_const(float)
-    ;       string_const(string)
-    ;       multi_string_const(int, string)
+    --->    llconst_true
+    ;       llconst_false
+    ;       llconst_int(int)
+    ;       llconst_float(float)
+    ;       llconst_string(string)
+    ;       llconst_multi_string(int, string)
             % A string containing embedded NULLs, whose real length is given
             % by the integer, and not the location of the first NULL.
-    ;       code_addr_const(code_addr)
-    ;       data_addr_const(data_addr, maybe(int)).
+    ;       llconst_code_addr(code_addr)
+    ;       llconst_data_addr(data_addr, maybe(int)).
             % If the second arg is yes(Offset), then increment the address
             % of the first by Offset words.
 
@@ -919,8 +920,8 @@
     ;       proc_tabling_ref(proc_label, proc_tabling_struct_id).
 
 :- type reg_type
-    --->    r       % general-purpose (integer) regs
-    ;       f.      % floating point regs
+    --->    reg_r       % general-purpose (integer) regs
+    ;       reg_f.      % floating point regs
 
     % There are two kinds of labels: entry labels and internal labels.
     % Entry labels are the entry points of procedures; internal labels are not.
@@ -937,9 +938,12 @@
     % refer to it using a more specialized entry_label_type.
 
 :- type entry_label_type
-    --->    c_local     % proc entry; internal to a C module
-    ;       local       % proc entry; internal to a Mercury module
-    ;       exported.   % proc entry; exported from a Mercury module
+    --->    entry_label_c_local
+            % proc entry; internal to a C module
+    ;       entry_label_local
+            % proc entry; internal to a Mercury module
+    ;       entry_label_exported.
+            % proc entry; exported from a Mercury module
 
 :- type label
     --->    internal(int, proc_label)
@@ -1103,14 +1107,14 @@ stack_slot_to_lval(nondet_slot(N)) = framevar(N).
 key_stack_slot_to_lval(_, Slot) =
     stack_slot_to_lval(Slot).
 
-abs_locn_to_lval_or_any_reg(any_reg) = any_reg.
-abs_locn_to_lval_or_any_reg(abs_reg(N)) = lval(reg(r, N)).
-abs_locn_to_lval_or_any_reg(abs_stackvar(N)) = lval(stackvar(N)).
-abs_locn_to_lval_or_any_reg(abs_framevar(N)) = lval(framevar(N)).
+abs_locn_to_lval_or_any_reg(any_reg) = loa_any_reg.
+abs_locn_to_lval_or_any_reg(abs_reg(N)) = loa_lval(reg(reg_r, N)).
+abs_locn_to_lval_or_any_reg(abs_stackvar(N)) = loa_lval(stackvar(N)).
+abs_locn_to_lval_or_any_reg(abs_framevar(N)) = loa_lval(framevar(N)).
 
 abs_locn_to_lval(any_reg) = _ :-
     unexpected(this_file, "abs_locn_to_lval: any_reg").
-abs_locn_to_lval(abs_reg(N)) = reg(r, N).
+abs_locn_to_lval(abs_reg(N)) = reg(reg_r, N).
 abs_locn_to_lval(abs_stackvar(N)) = stackvar(N).
 abs_locn_to_lval(abs_framevar(N)) = framevar(N).
 
@@ -1179,14 +1183,14 @@ rval_type(binop(BinOp, _, _), Type) :-
     binop_return_type(BinOp, Type).
 rval_type(mem_addr(_), data_ptr).
 
-const_type(true, bool).
-const_type(false, bool).
-const_type(int_const(_), integer).
-const_type(float_const(_), float).
-const_type(string_const(_), string).
-const_type(multi_string_const(_, _), string).
-const_type(code_addr_const(_), code_ptr).
-const_type(data_addr_const(_, _), data_ptr).
+const_type(llconst_true, bool).
+const_type(llconst_false, bool).
+const_type(llconst_int(_), integer).
+const_type(llconst_float(_), float).
+const_type(llconst_string(_), string).
+const_type(llconst_multi_string(_, _), string).
+const_type(llconst_code_addr(_), code_ptr).
+const_type(llconst_data_addr(_, _), data_ptr).
 
 unop_return_type(mktag, word).
 unop_return_type(tag, word).
@@ -1246,8 +1250,8 @@ binop_return_type(float_le, bool).
 binop_return_type(float_ge, bool).
 binop_return_type(body, word).
 
-register_type(r, word).
-register_type(f, float).
+register_type(reg_r, word).
+register_type(reg_f, float).
 
 get_proc_label(entry(_, ProcLabel)) = ProcLabel.
 get_proc_label(internal(_, ProcLabel)) = ProcLabel.

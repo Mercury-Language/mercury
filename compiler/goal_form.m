@@ -847,7 +847,7 @@ count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
 %
 
 goal_cannot_modify_trail(GoalInfo) =
-    ( goal_info_has_feature(GoalInfo, will_not_modify_trail) ->
+    ( goal_info_has_feature(GoalInfo, feature_will_not_modify_trail) ->
         yes
     ;
         no

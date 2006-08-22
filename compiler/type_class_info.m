@@ -101,7 +101,8 @@ generate_class_decl(ModuleInfo, ClassId - ClassDefn, !RttiDatas) :-
         Supers = ClassDefn ^ class_supers,
         TCSupers = list.map(generate_class_constraint, Supers),
         TCVersion = type_class_info_rtti_version,
-        RttiData = type_class_decl(tc_decl(TCId, TCVersion, TCSupers)),
+        RttiData = rtti_data_type_class_decl(
+            tc_decl(TCId, TCVersion, TCSupers)),
         !:RttiDatas = [RttiData | !.RttiDatas]
     ;
         InThisModule = no
@@ -189,7 +190,7 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
     ),
     TCInstance = tc_instance(TCName, InstanceTCTypes, NumTypeVars,
         TCConstraints, MethodProcLabels),
-    RttiData = type_class_instance(TCInstance).
+    RttiData = rtti_data_type_class_instance(TCInstance).
 
 :- func generate_method_proc_label(module_info, hlds_class_proc) =
     rtti_proc_label.

@@ -426,7 +426,7 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
         set.insert(UsedEnvVars0, EnvVar, UsedEnvVars),
         set_used_env_vars(UsedEnvVars, !CI),
         EnvVarRval = lval(global_var_ref(env_var_ref(EnvVar))),
-        ZeroRval = const(int_const(0)),
+        ZeroRval = const(llconst_int(0)),
         CondRval = binop(ne, EnvVarRval, ZeroRval)
     ;
         Expr = trace_op(TraceOp, ExprA, ExprB),
@@ -764,7 +764,7 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     code_info.get_next_label(RetryLabel, !CI),
     ModFrameCode = node([
         assign(redoip_slot(lval(curfr)),
-            const(code_addr_const(label(RetryLabel))))
+            const(llconst_code_addr(label(RetryLabel))))
             - "Set up backtracking to retry label"
     ]),
     RetryLabelCode = node([
@@ -781,7 +781,8 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     code_info.maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot,
         !CI),
-    code_info.maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
+    code_info.maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
+        RestoreTicketCode),
     (
         FirstContext = yes(ActualFirstContext)
     ;
@@ -1435,7 +1436,7 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
         MaybeName = yes(Name),
         VarType = variable_type(CI, Var),
         ArgInfo = arg_info(N, _),
-        Reg = reg(r, N),
+        Reg = reg(reg_r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
         code_info.get_module_info(CI, ModuleInfo),
         ( is_dummy_argument_type(ModuleInfo, VarType) ->
@@ -1469,7 +1470,7 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
         MaybeName = yes(Name),
         VarType = variable_type(CI, Var),
         ArgInfo = arg_info(N, _),
-        Reg = reg(r, N),
+        Reg = reg(reg_r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
         code_info.get_module_info(CI, ModuleInfo),
         ( is_dummy_argument_type(ModuleInfo, VarType) ->

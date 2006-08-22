@@ -1507,7 +1507,8 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
         Line, Counter, SymName),
 
     OutVarNums = list.map(term.var_to_int, OutVars),
-    Origin = transformed(accumulator(OutVarNums), OldOrigin, OrigPredId),
+    Origin = origin_transformed(transform_accumulator(OutVarNums),
+        OldOrigin, OrigPredId),
     pred_info_create(ModuleName, SymName, PredOrFunc, PredContext, Origin,
         status_local, Markers, Types, TypeVarSet, ExistQVars, ClassContext,
         Assertions, NewProcInfo, NewProcId, NewPredInfo).

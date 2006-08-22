@@ -501,7 +501,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         ),
         set.init(Assertions),
         pred_info_create(ModuleName, PredName, PredOrFunc, LambdaContext,
-            lambda(OrigFile, OrigLine, LambdaCount), status_local,
+            origin_lambda(OrigFile, OrigLine, LambdaCount), status_local,
             LambdaMarkers, ArgTypes, TVarSet, ExistQVars, Constraints,
             Assertions, ProcInfo, ProcId, PredInfo),
 

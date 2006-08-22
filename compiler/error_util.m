@@ -532,7 +532,7 @@ convert_components_to_paragraphs(Components, Paras) :-
     convert_components_to_paragraphs_acc(Components, [], [], Paras).
 
 :- type word
-    --->    word(string)
+    --->    plain_word(string)
     ;       prefix_word(string)
     ;       suffix_word(string).
 
@@ -546,7 +546,7 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
         !Paras) :-
     (
         Component = fixed(Word),
-        RevWords1 = [word(Word) | RevWords0]
+        RevWords1 = [plain_word(Word) | RevWords0]
     ;
         Component = prefix(Word),
         RevWords1 = [prefix_word(Word) | RevWords0]
@@ -558,15 +558,15 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
         break_into_words(WordsStr, RevWords0, RevWords1)
     ;
         Component = sym_name(SymName),
-        RevWords1 = [word(sym_name_to_word(SymName)) | RevWords0]
+        RevWords1 = [plain_word(sym_name_to_word(SymName)) | RevWords0]
     ;
         Component = sym_name_and_arity(SymNameAndArity),
         Word = sym_name_and_arity_to_word(SymNameAndArity),
-        RevWords1 = [word(Word) | RevWords0]
+        RevWords1 = [plain_word(Word) | RevWords0]
     ;
         Component = pred_or_func(PredOrFunc),
         Word = pred_or_func_to_string(PredOrFunc),
-        RevWords1 = [word(Word) | RevWords0]
+        RevWords1 = [plain_word(Word) | RevWords0]
     ;
         Component = simple_call_id(SimpleCallId),
         WordsStr = simple_call_id_to_string(SimpleCallId),
@@ -583,7 +583,7 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
         RevWords1 = []
     ;
         Component = quote(Word),
-        RevWords1 = [word(add_quotes(Word)) | RevWords0]
+        RevWords1 = [plain_word(add_quotes(Word)) | RevWords0]
     ),
     convert_components_to_paragraphs_acc(Components, RevWords1, !Paras).
 
@@ -602,7 +602,7 @@ rev_words_to_strings(RevWords) = Strings :-
 rev_words_to_rev_plain_or_prefix([]) = [].
 rev_words_to_rev_plain_or_prefix([Word | Words]) = PorPs :-
     (
-        Word = word(String),
+        Word = plain_word(String),
         PorPs = [plain(String) | rev_words_to_rev_plain_or_prefix(Words)]
     ;
         Word = prefix_word(Prefix),
@@ -613,7 +613,7 @@ rev_words_to_rev_plain_or_prefix([Word | Words]) = PorPs :-
             Words = [],
             PorPs = [plain(Suffix)]
         ;
-            Words = [word(String) | Tail],
+            Words = [plain_word(String) | Tail],
             PorPs = [plain(String ++ Suffix)
                 | rev_words_to_rev_plain_or_prefix(Tail)]
         ;
@@ -675,7 +675,8 @@ break_into_words_from(String, Cur, Words0, Words) :-
         Length = End - Start + 1,
         string.substring(String, Start, Length, WordStr),
         Next = End + 1,
-        break_into_words_from(String, Next, [word(WordStr) | Words0], Words)
+        break_into_words_from(String, Next, [plain_word(WordStr) | Words0],
+            Words)
     ;
         Words = Words0
     ).

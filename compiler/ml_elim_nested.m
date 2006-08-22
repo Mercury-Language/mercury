@@ -956,7 +956,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     StackChain = ml_stack_chain_var,
     EnvInitializer = init_struct(EnvTypeName, [
         init_obj(lval(StackChain)),
-        init_obj(const(code_addr_const(GCTraceFuncAddr)))
+        init_obj(const(mlconst_code_addr(GCTraceFuncAddr)))
     ]),
 
     % Generate code to set the global stack chain
@@ -1001,7 +1001,8 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
             PredId),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
         QualProcLabel = qual(PredModule, module_qual, ProcLabel),
-        GCTraceFuncAddr = internal(QualProcLabel, NewSeqNum, Signature)
+        GCTraceFuncAddr =
+            code_addr_internal(QualProcLabel, NewSeqNum, Signature)
     ;
         unexpected(this_file, "gen_gc_trace_func: not a function")
     ),
@@ -2297,7 +2298,7 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 
     StackChain = ml_stack_chain_var,
     Tag = yes(0),
-    PrevFieldId = offset(const(int_const(0))),
+    PrevFieldId = offset(const(mlconst_int(0))),
     PrevFieldType = mlds_generic_type,
     PrevFieldRval = lval(field(Tag, lval(StackChain), PrevFieldId,
         PrevFieldType, EnvPtrTypeName)),

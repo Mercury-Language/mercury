@@ -629,20 +629,20 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                     opt_util.filter_out_r1(BetweenBR, yes(SuccessBR),
                         Between),
                     (
-                        SuccessFT = true,
-                        SuccessBR = false,
+                        SuccessFT = llconst_true,
+                        SuccessBR = llconst_false,
                         code_util.neg_rval(Cond, NewCond)
                     ;
-                        SuccessFT = false,
-                        SuccessBR = true,
+                        SuccessFT = llconst_false,
+                        SuccessBR = llconst_true,
                         NewCond = Cond
                     ),
-                    \+ needs_workaround(reg(r, 1), NewCond)
+                    \+ needs_workaround(reg(reg_r, 1), NewCond)
                 ->
-                    ( NewCond = lval(reg(r, 1)) ->
+                    ( NewCond = lval(reg(reg_r, 1)) ->
                         NewAssign = comment("r1 = old r1") - ""
                     ;
-                        NewAssign = assign(reg(r, 1), NewCond) -
+                        NewAssign = assign(reg(reg_r, 1), NewCond) -
                             "shortcircuit bool computation"
                     ),
                     Proceed = goto(succip) - "shortcircuit",
@@ -896,13 +896,13 @@ needs_workaround(Lval, Cond) :-
         ( Op = eq ; Op = ne ),
         (
             Right = lval(Lval),
-            ( Left = const(int_const(0))
-            ; Left = mkword(0, unop(mkbody, const(int_const(0))))
+            ( Left = const(llconst_int(0))
+            ; Left = mkword(0, unop(mkbody, const(llconst_int(0))))
             )
         ;
             Left = lval(Lval),
-            ( Right = const(int_const(0))
-            ; Right = mkword(0, unop(mkbody, const(int_const(0))))
+            ( Right = const(llconst_int(0))
+            ; Right = mkword(0, unop(mkbody, const(llconst_int(0))))
             )
         )
     ).
@@ -1005,22 +1005,23 @@ jumpopt.short_labels_rval(_, mem_addr(MemRef), mem_addr(MemRef)).
 :- pred jumpopt.short_labels_const(instrmap::in,
     rval_const::in, rval_const::out) is det.
 
-jumpopt.short_labels_const(_, true, true).
-jumpopt.short_labels_const(_, false, false).
-jumpopt.short_labels_const(_, int_const(I), int_const(I)).
-jumpopt.short_labels_const(_, float_const(F), float_const(F)).
-jumpopt.short_labels_const(_, string_const(S), string_const(S)).
-jumpopt.short_labels_const(_, multi_string_const(L, S),
-        multi_string_const(L, S)).
-jumpopt.short_labels_const(Instrmap, code_addr_const(CodeAddr0),
-        code_addr_const(CodeAddr)) :-
+jumpopt.short_labels_const(_, llconst_true, llconst_true).
+jumpopt.short_labels_const(_, llconst_false, llconst_false).
+jumpopt.short_labels_const(_, llconst_int(I), llconst_int(I)).
+jumpopt.short_labels_const(_, llconst_float(F), llconst_float(F)).
+jumpopt.short_labels_const(_, llconst_string(S), llconst_string(S)).
+jumpopt.short_labels_const(_, llconst_multi_string(L, S),
+        llconst_multi_string(L, S)).
+jumpopt.short_labels_const(Instrmap, llconst_code_addr(CodeAddr0),
+        llconst_code_addr(CodeAddr)) :-
     ( CodeAddr0 = label(Label0) ->
         jumpopt.short_label(Instrmap, Label0, Label),
         CodeAddr = label(Label)
     ;
         CodeAddr = CodeAddr0
     ).
-jumpopt.short_labels_const(_, data_addr_const(D, O), data_addr_const(D, O)).
+jumpopt.short_labels_const(_, llconst_data_addr(D, O),
+        llconst_data_addr(D, O)).
 
 :- pred jumpopt.short_labels_maybe_rvals(instrmap::in, list(maybe(rval))::in,
     list(maybe(rval))::out) is det.

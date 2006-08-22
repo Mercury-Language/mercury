@@ -1066,7 +1066,7 @@ ml_gen_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, EvalMethod,
     % (stack frame registration, and calls to MR_GC_check()) to
     % MR_make_long_lived() and MR_deep_copy() so that we do garbage collection
     % of the "global heap" which is used to store the tables.
-    expect(isnt(unify(accurate), GC_Method), this_file,
+    expect(isnt(unify(gc_accurate), GC_Method), this_file,
         "tabling and `--gc accurate'"),
 
     (
@@ -1275,7 +1275,7 @@ gen_init_enum_param(yes(NumFunctors)) = gen_init_int(NumFunctors).
 
 gen_init_tabling_name(ModuleName, ProcLabel, TablingId) = Rval :-
     DataAddr = data_addr(ModuleName, mlds_tabling_ref(ProcLabel, TablingId)),
-    Rval = init_obj(const(data_addr_const(DataAddr))).
+    Rval = init_obj(const(mlconst_data_addr(DataAddr))).
 
 :- func init_stats(proc_tabling_struct_id, table_trie_step) = mlds_initializer.
 
@@ -1783,7 +1783,7 @@ ml_gen_wrap_goal(model_semi, model_det, Context, !Statements, !Info) :-
     %   <do Goal>
     %   succeeded = MR_TRUE
     %
-    ml_gen_set_success(!.Info, const(true_const), Context, SetSuccessTrue),
+    ml_gen_set_success(!.Info, const(mlconst_true), Context, SetSuccessTrue),
     !:Statements = !.Statements ++ [SetSuccessTrue].
 
 ml_gen_wrap_goal(model_non, model_det, Context, !Statements, !Info) :-
@@ -1908,9 +1908,9 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
         GoalStatement = ml_gen_block(GoalOtherDecls, GoalStatements,
             GoalContext),
         ml_gen_info_pop_success_cont(!Info),
-        ml_gen_set_success(!.Info, const(false_const), Context,
+        ml_gen_set_success(!.Info, const(mlconst_false), Context,
             SetSuccessFalse),
-        ml_gen_set_success(!.Info, const(true_const), Context,
+        ml_gen_set_success(!.Info, const(mlconst_true), Context,
             SetSuccessTrue),
         TryCommitStmt = try_commit(CommitRefLval,
             ml_gen_block([], [GoalStatement, SetSuccessFalse], Context),
@@ -2487,7 +2487,7 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
         Expr = trace_base(trace_envvar(EnvVar)),
         ml_gen_info_add_env_var_name(EnvVar, !Info),
         EnvVarRval = lval(global_var_ref(env_var_ref(EnvVar))),
-        ZeroRval = const(int_const(0)),
+        ZeroRval = const(mlconst_int(0)),
         CondRval = binop(ne, EnvVarRval, ZeroRval)
     ;
         Expr = trace_op(TraceOp, ExprA, ExprB),
@@ -3213,7 +3213,7 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         % a dummy value for it. Using `0' here is more efficient than using
         % private_builtin.dummy_var, which is what ml_gen_var will have
         % generated for this variable.
-        ArgRval = const(int_const(0))
+        ArgRval = const(mlconst_int(0))
     ;
         ml_gen_box_or_unbox_rval(VarType, OrigType, BoxPolicy,
             lval(VarLval), ArgRval, !Info)
@@ -3256,7 +3256,7 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
             % `MR_Box' in the MLDS back-end. Except for MC++, where
             % polymorphic types are MR_Box, but we get here only if Lang
             % is c or java.
-            ( OrigType = variable(_, _) ->
+            ( OrigType = type_variable(_, _) ->
                 Cast = "(MR_Word) "
             ; MaybeCast = yes(CastPrime) ->
                 Cast = CastPrime
@@ -3451,7 +3451,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
             % polymorphic types, which are `MR_Word' in the C interface but
             % `MR_Box' in the MLDS back-end.
             (
-                ( OrigType = variable(_, _)
+                ( OrigType = type_variable(_, _)
                 ; Cast = yes
                 )
             ->
@@ -3557,7 +3557,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         ml_gen_info_new_cond_var(CondVar, !Info),
         MLDS_Context = mlds_make_context(Context),
         CondVarDecl = ml_gen_cond_var_decl(CondVar, MLDS_Context),
-        ml_gen_set_cond_var(!.Info, CondVar, const(false_const), Context,
+        ml_gen_set_cond_var(!.Info, CondVar, const(mlconst_false), Context,
             SetCondFalse),
 
         % Allocate a name for the `then_func'.
@@ -3574,7 +3574,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         % push nesting level
         Then = _ - ThenGoalInfo,
         goal_info_get_context(ThenGoalInfo, ThenContext),
-        ml_gen_set_cond_var(!.Info, CondVar, const(true_const), ThenContext,
+        ml_gen_set_cond_var(!.Info, CondVar, const(mlconst_true), ThenContext,
             SetCondTrue),
         ml_gen_goal(CodeModel, Then, ThenStatement, !Info),
         ThenFuncBody = ml_gen_block([], [SetCondTrue, ThenStatement],
@@ -3629,7 +3629,7 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
 
         CodeModel = model_semi, CondCodeModel = model_det,
         ml_gen_goal(model_det, Cond, CondDecls, CondStatements, !Info),
-        ml_gen_set_success(!.Info, const(false_const), Context,
+        ml_gen_set_success(!.Info, const(mlconst_false), Context,
             SetSuccessFalse),
         Decls = CondDecls,
         Statements = list.append(CondStatements, [SetSuccessFalse])

@@ -414,46 +414,46 @@
                         % implementation.
 
 :- type pred_transformation
-    --->    higher_order_specialization(
+    --->    transform_higher_order_specialization(
                 int % Sequence number among the higher order
                     % specializations of the original predicate.
             )
-    ;       higher_order_type_specialization(
+    ;       transform_higher_order_type_specialization(
                 int % The procedure number of the original procedure.
             )
-    ;       type_specialization(
+    ;       transform_type_specialization(
                 assoc_list(int, mer_type)
                     % The substitution from type variables (represented by
                     % the integers) to types (represented by the terms).
             )
-    ;       unused_argument_elimination(
+    ;       transform_unused_argument_elimination(
                 list(int) % The list of eliminated argument numbers.
             )
-    ;       accumulator(
+    ;       transform_accumulator(
                 list(int)
                     % The list of the numbers of the variables in the original
                     % predicate interface that have been converted to
                     % accumulators.
             )
-    ;       loop_invariant(
+    ;       transform_loop_invariant(
                 int % The procedure number of the original procedure.
             )
-    ;       tuple(
+    ;       transform_tuple(
                 int % The procedure number of the original procedure.
             )
-    ;       untuple(
+    ;       transform_untuple(
                 int % The procedure number of the original procedure.
             )
-    ;       dependent_parallel_conjunction
-    ;       return_via_ptr(
+    ;       transform_dependent_parallel_conjunction
+    ;       transform_return_via_ptr(
                 proc_id,
                     % The id of the procedure this predicate is derived from.
                 list(int)
                     % The arguments in these positions are returned via
                     % pointer.
             )
-    ;       table_generator
-    ;       dnf(
+    ;       transform_table_generator
+    ;       transform_dnf(
                 int % This predicate was originally part of a predicate
                     % transformed into disjunctive normal form; this integer
                     % gives the part number.
@@ -466,29 +466,29 @@
     ;       io_tabling.
 
 :- type pred_origin
-    --->    special_pred(special_pred)
+    --->    origin_special_pred(special_pred)
                 % If the predicate is a unify, compare, index or initialisation
                 % predicate, specify which one, and for which type constructor.
-    ;       instance_method(instance_method_constraints)
+    ;       origin_instance_method(instance_method_constraints)
                 % If this predicate is a class method implementation, record
                 % extra information about the class context to allow
                 % polymorphism.m to correctly set up the extra type_info
                 % and typeclass_info arguments.
-    ;       transformed(pred_transformation, pred_origin, pred_id)
+    ;       origin_transformed(pred_transformation, pred_origin, pred_id)
                 % The predicate is a transformed version of another predicate,
                 % whose origin and identity are given by the second and third
                 % arguments.
-    ;       created(pred_creation)
+    ;       origin_created(pred_creation)
                 % The predicate was created by the compiler, and there is no
                 % information available on where it came from.
-    ;       assertion(string, int)
+    ;       origin_assertion(string, int)
                 % The predicate represents an assertion.
-    ;       lambda(string, int, int)
+    ;       origin_lambda(string, int, int)
                 % The predicate is a higher-order manifest constant.
                 % The arguments specify its location in the source, as a
                 % filename/line number pair, and a sequence number used to
                 % distinguish multiple lambdas on the same line.
-    ;       user(sym_name).
+    ;       origin_user(sym_name).
                 % The predicate is a normal user-written predicate;
                 % the string is its name.
 
@@ -1301,7 +1301,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         ImportStatus = status_external(ExternalImportStatus),
         status_is_exported(ExternalImportStatus) = yes
     ;
-        pred_info_get_origin(PredInfo, special_pred(SpecialPred)),
+        pred_info_get_origin(PredInfo, origin_special_pred(SpecialPred)),
         SpecialPred = SpecialId - TypeCtor,
         module_info_get_type_table(ModuleInfo, TypeTable),
         % If the search fails, then TypeCtor must be a builtin type
@@ -2805,7 +2805,7 @@ is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
 prog_varset_init(VarSet) :- varset.init(VarSet).
 
 is_unify_or_compare_pred(PredInfo) :-
-    pred_info_get_origin(PredInfo, special_pred(_)). % XXX bug
+    pred_info_get_origin(PredInfo, origin_special_pred(_)). % XXX bug
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

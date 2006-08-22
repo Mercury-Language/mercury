@@ -607,9 +607,9 @@ invoke_mmc(ErrorStream, MaybeArgFileName, Args, Succeeded, !IO) :-
                 "--arg-file", quote_arg(ArgFileName)]),
 
         % We've already written the command.
-        CommandVerbosity = verbose,
-        invoke_system_command(ErrorStream,
-            CommandVerbosity, Command, Succeeded, !IO)
+        CommandVerbosity = cmd_verbose,
+        invoke_system_command(ErrorStream, CommandVerbosity, Command,
+            Succeeded, !IO)
     ;
         ArgFileOpenRes = error(Error),
         Succeeded = no,

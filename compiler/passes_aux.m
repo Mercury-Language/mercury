@@ -162,10 +162,10 @@
     ;       double.     % "
 
 :- type command_verbosity
-    --->    verbose
+    --->    cmd_verbose
             % Output the command line only with `--verbose'.
 
-    ;       verbose_commands.
+    ;       cmd_verbose_commands.
             % Output the command line with `--verbose-commands'. This should be
             % used for commands that may be of interest to the user.
 
@@ -391,10 +391,10 @@ invoke_system_command(ErrorStream, Verbosity, Command,
     io.get_exit_status(OldStatus, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     (
-        Verbosity = verbose,
+        Verbosity = cmd_verbose,
         PrintCommand = Verbose
     ;
-        Verbosity = verbose_commands,
+        Verbosity = cmd_verbose_commands,
         globals.io_lookup_bool_option(verbose_commands, PrintCommand, !IO)
     ),
     (

@@ -105,8 +105,8 @@ instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod, !.Fallthrough, Useset) :-
         (
             (
                 Label = entry(EntryType, _),
-                ( EntryType = exported
-                ; EntryType = local
+                ( EntryType = entry_label_exported
+                ; EntryType = entry_label_local
                 )
             ;
                 set.member(Label, Useset)

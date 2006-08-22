@@ -760,7 +760,7 @@ label_layout_var_number_map(LabelLayout, !VarNumMap, !Counter) :-
     VarInfos = set.to_sorted_list(VarInfoSet),
     FindVar = (pred(VarInfo::in, Var - Name::out) is semidet :-
         VarInfo = layout_var_info(_, LiveValueType, _),
-        LiveValueType = var(Var, Name, _, _)
+        LiveValueType = live_value_var(Var, Name, _, _)
     ),
     list.filter_map(FindVar, VarInfos, VarsNames),
     list.foldl2(add_named_var_to_var_number_map, VarsNames,
@@ -954,11 +954,11 @@ construct_livelval_rvals(LiveLvalSet, VarNumMap, TVarLocnMap,
 
 construct_tvar_vector(TVarLocnMap, TypeParamRval, !StaticCellInfo) :-
     ( map.is_empty(TVarLocnMap) ->
-        TypeParamRval = const(int_const(0))
+        TypeParamRval = const(llconst_int(0))
     ;
         construct_tvar_rvals(TVarLocnMap, Vector),
         add_scalar_static_cell(Vector, DataAddr, !StaticCellInfo),
-        TypeParamRval = const(data_addr_const(DataAddr, no))
+        TypeParamRval = const(llconst_data_addr(DataAddr, no))
     ).
 
 :- pred construct_tvar_rvals(map(tvar, set(layout_locn))::in,
@@ -968,7 +968,7 @@ construct_tvar_rvals(TVarLocnMap, Vector) :-
     map.to_assoc_list(TVarLocnMap, TVarLocns),
     construct_type_param_locn_vector(TVarLocns, 1, TypeParamLocs),
     list.length(TypeParamLocs, TypeParamsLength),
-    LengthRval = const(int_const(TypeParamsLength)),
+    LengthRval = const(llconst_int(TypeParamsLength)),
     Vector = [LengthRval - uint_least32 | TypeParamLocs].
 
 %---------------------------------------------------------------------------%
@@ -987,7 +987,7 @@ construct_tvar_rvals(TVarLocnMap, Vector) :-
 select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
     IsNamedReturnVar = (pred(LocnInfo::in) is semidet :-
         LocnInfo = layout_var_info(Locn, LvalType, _),
-        LvalType = var(_, Name, _, _),
+        LvalType = live_value_var(_, Name, _, _),
         Name \= "",
         ( Locn = direct(Lval) ; Locn = indirect(Lval, _)),
         ( Lval = stackvar(_) ; Lval = framevar(_) )
@@ -1009,7 +1009,7 @@ select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
 sort_livevals(OrigInfos, FinalInfos) :-
     IsNamedVar = (pred(LvalInfo::in) is semidet :-
         LvalInfo = layout_var_info(_Lval, LvalType, _),
-        LvalType = var(_, Name, _, _),
+        LvalType = live_value_var(_, Name, _, _),
         Name \= ""
     ),
     list.filter(IsNamedVar, OrigInfos, NamedVarInfos0, OtherInfos0),
@@ -1033,7 +1033,7 @@ sort_livevals(OrigInfos, FinalInfos) :-
     string::out) is det.
 
 get_name_from_live_value_type(LiveType, Name) :-
-    ( LiveType = var(_, NamePrime, _, _) ->
+    ( LiveType = live_value_var(_, NamePrime, _, _) ->
         Name = NamePrime
     ;
         Name = ""
@@ -1068,7 +1068,7 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         construct_type_param_locn_vector([TVar - Locns | TVarLocns], NextSlot,
             VectorTail),
         % This slot will never be referred to.
-        Vector = [const(int_const(0)) - uint_least32 | VectorTail]
+        Vector = [const(llconst_int(0)) - uint_least32 | VectorTail]
     ;
         unexpected(this_file,
             "unsorted tvars in construct_type_param_locn_vector")
@@ -1132,7 +1132,7 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
     get_static_cell_info(!.Info, StaticCellInfo0),
     add_scalar_static_cell(TypeLocnVectorRvalsTypes, TypeLocnVectorAddr,
         StaticCellInfo0, StaticCellInfo1),
-    TypeLocnVector = const(data_addr_const(TypeLocnVectorAddr, no)),
+    TypeLocnVector = const(llconst_data_addr(TypeLocnVectorAddr, no)),
     set_static_cell_info(StaticCellInfo1, !Info),
 
     get_trace_stack_layout(!.Info, TraceStackLayout),
@@ -1145,10 +1145,10 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
         add_scalar_static_cell(VarNumRvalsTypes, NumVectorAddr,
             StaticCellInfo2, StaticCellInfo),
         set_static_cell_info(StaticCellInfo, !Info),
-        NumVector = const(data_addr_const(NumVectorAddr, no))
+        NumVector = const(llconst_data_addr(NumVectorAddr, no))
     ;
         TraceStackLayout = no,
-        NumVector = const(int_const(0))
+        NumVector = const(llconst_int(0))
     ).
 
 :- pred associate_type(llds_type::in, rval::in, pair(rval, llds_type)::out)
@@ -1168,7 +1168,7 @@ construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
     represent_live_value_type(LiveValueType, TypeRval, TypeRvalType, !Info),
     construct_liveval_num_rval(VarNumMap, VarInfo, VarNumRval, !Info),
     (
-        LiveValueType = var(_, _, Type, _),
+        LiveValueType = live_value_var(_, _, Type, _),
         get_module_info(!.Info, ModuleInfo),
         is_dummy_argument_type(ModuleInfo, Type),
         % We want to preserve I/O states in registers
@@ -1201,11 +1201,11 @@ construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
 
 construct_liveval_num_rval(VarNumMap,
         layout_var_info(_, LiveValueType, _), VarNumRval, !Info) :-
-    ( LiveValueType = var(Var, _, _, _) ->
+    ( LiveValueType = live_value_var(Var, _, _, _) ->
         convert_var_to_int(VarNumMap, Var, VarNum),
-        VarNumRval = const(int_const(VarNum))
+        VarNumRval = const(llconst_int(VarNum))
     ;
-        VarNumRval = const(int_const(0))
+        VarNumRval = const(llconst_int(0))
     ).
 
 :- pred convert_var_to_int(var_num_map::in, prog_var::in,
@@ -1234,7 +1234,7 @@ construct_closure_layout(CallerProcLabel, SeqNo,
         closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)),
     Data = closure_proc_id_data(CallerProcLabel, SeqNo, ClosureProcLabel,
         ModuleName, FileName, LineNumber, Origin, GoalPath),
-    ProcIdRvalType = const(data_addr_const(DataAddr, no)) - data_ptr,
+    ProcIdRvalType = const(llconst_data_addr(DataAddr, no)) - data_ptr,
     ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
     construct_closure_arg_rvals(ClosureArgs,
         ClosureArgRvalsTypes, !StaticCellInfo),
@@ -1252,7 +1252,7 @@ construct_closure_arg_rvals(ClosureArgs, ClosureArgRvalsTypes,
         !StaticCellInfo),
     list.length(ArgRvalsTypes, Length),
     ClosureArgRvalsTypes =
-        [const(int_const(Length)) - integer | ArgRvalsTypes].
+        [const(llconst_int(Length)) - integer | ArgRvalsTypes].
 
 :- pred construct_closure_arg_rval(closure_arg_info::in,
     pair(rval, llds_type)::out,
@@ -1299,7 +1299,7 @@ convert_table_arg_info(TableArgInfos, NumPTIs,
     list.map_foldl(construct_table_arg_pti_rval, Args, PTIRvalsTypes,
         !StaticCellInfo),
     add_scalar_static_cell(PTIRvalsTypes, PTIVectorAddr, !StaticCellInfo),
-    PTIVectorRval = const(data_addr_const(PTIVectorAddr, no)),
+    PTIVectorRval = const(llconst_data_addr(PTIVectorAddr, no)),
     map.map_values(convert_slot_to_locn_map, TVarSlotMap, TVarLocnMap),
     construct_tvar_vector(TVarLocnMap, TVarVectorRval, !StaticCellInfo).
 
@@ -1309,10 +1309,10 @@ convert_table_arg_info(TableArgInfos, NumPTIs,
 convert_slot_to_locn_map(_TVar, SlotLocn, LvalLocns) :-
     (
         SlotLocn = direct(SlotNum),
-        LvalLocn = direct(reg(r, SlotNum))
+        LvalLocn = direct(reg(reg_r, SlotNum))
     ;
         SlotLocn = indirect(SlotNum, Offset),
-        LvalLocn = indirect(reg(r, SlotNum), Offset)
+        LvalLocn = indirect(reg(reg_r, SlotNum), Offset)
     ),
     LvalLocns = set.make_singleton_set(LvalLocn).
 
@@ -1343,25 +1343,26 @@ construct_table_arg_pti_rval(ClosureArg, ArgRval - ArgRvalType,
 :- pred represent_live_value_type(live_value_type::in, rval::out,
     llds_type::out, stack_layout_info::in, stack_layout_info::out) is det.
 
-represent_live_value_type(succip, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_succip, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("succip", Rval).
-represent_live_value_type(hp, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_hp, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("hp", Rval).
-represent_live_value_type(curfr, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_curfr, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("curfr", Rval).
-represent_live_value_type(maxfr, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_maxfr, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("maxfr", Rval).
-represent_live_value_type(redofr, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_redofr, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("redofr", Rval).
-represent_live_value_type(redoip, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_redoip, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("redoip", Rval).
-represent_live_value_type(trail_ptr, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_trail_ptr, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("trail_ptr", Rval).
-represent_live_value_type(ticket, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_ticket, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("ticket", Rval).
-represent_live_value_type(unwanted, Rval, data_ptr, !Info) :-
+represent_live_value_type(live_value_unwanted, Rval, data_ptr, !Info) :-
     represent_special_live_value_type("unwanted", Rval).
-represent_live_value_type(var(_, _, Type, _), Rval, LldsType, !Info) :-
+represent_live_value_type(live_value_var(_, _, Type, _), Rval, LldsType,
+        !Info) :-
     % For a stack layout, we can treat all type variables as universally
     % quantified. This is not the argument of a constructor, so we do not
     % need to distinguish between type variables that are and aren't in scope;
@@ -1374,18 +1375,16 @@ represent_live_value_type(var(_, _, Type, _), Rval, LldsType, !Info) :-
         Rval, LldsType),
     set_static_cell_info(StaticCellInfo, !Info).
 
-:- pred represent_special_live_value_type(string::in, rval::out)
-    is det.
+:- pred represent_special_live_value_type(string::in, rval::out) is det.
 
 represent_special_live_value_type(SpecialTypeName, Rval) :-
     RttiTypeCtor = rtti_type_ctor(unqualified(""), SpecialTypeName, 0),
-    DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor, type_ctor_info)),
-    Rval = const(data_addr_const(DataAddr, no)).
+    DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info)),
+    Rval = const(llconst_data_addr(DataAddr, no)).
 
 %---------------------------------------------------------------------------%
 
-    % Construct a representation of a variable location as a 32-bit
-    % integer.
+    % Construct a representation of a variable location as a 32-bit integer.
     %
     % Most of the time, a layout specifies a location as an lval.
     % However, a type_info variable may be hidden inside a typeclass_info,
@@ -1403,7 +1402,7 @@ represent_special_live_value_type(SpecialTypeName, Rval) :-
 
 represent_locn_as_int_rval(Locn, Rval) :-
     represent_locn_as_int(Locn, Word),
-    Rval = const(int_const(Word)).
+    Rval = const(llconst_int(Word)).
 
 represent_locn_as_int(direct(Lval), Word) :-
     represent_lval(Lval, Word).
@@ -1418,9 +1417,9 @@ represent_locn_as_int(indirect(Lval, Offset), Word) :-
     %
 :- pred represent_lval(lval::in, int::out) is det.
 
-represent_lval(reg(r, Num), Word) :-
+represent_lval(reg(reg_r, Num), Word) :-
     make_tagged_word(lval_r_reg, Num, Word).
-represent_lval(reg(f, Num), Word) :-
+represent_lval(reg(reg_f, Num), Word) :-
     make_tagged_word(lval_f_reg, Num, Word).
 represent_lval(stackvar(Num), Word) :-
     expect(Num > 0, this_file, "represent_lval: bad stackvar"),
@@ -1524,13 +1523,13 @@ represent_locn_as_byte(LayoutLocn, Rval) :-
     represent_lval_as_byte(Lval, Byte),
     0 =< Byte,
     Byte < 256,
-    Rval = const(int_const(Byte)).
+    Rval = const(llconst_int(Byte)).
 
     % Construct a representation of an lval in a byte, if possible.
     %
 :- pred represent_lval_as_byte(lval::in, int::out) is semidet.
 
-represent_lval_as_byte(reg(r, Num), Byte) :-
+represent_lval_as_byte(reg(reg_r, Num), Byte) :-
     expect(Num > 0, this_file, "represent_lval_as_byte: bad reg"),
     make_tagged_byte(0, Num, Byte).
 represent_lval_as_byte(stackvar(Num), Byte) :-
@@ -1575,7 +1574,7 @@ byte_bits = 8.
 %---------------------------------------------------------------------------%
 
 represent_determinism_rval(Detism,
-    const(int_const(code_model.represent_determinism(Detism)))).
+    const(llconst_int(code_model.represent_determinism(Detism)))).
 
 %---------------------------------------------------------------------------%
 

@@ -48,8 +48,8 @@
 %-----------------------------------------------------------------------------%
 
 :- type save_point_type
-    --->    call_site
-    ;       resume_point.
+    --->    save_point_call_site
+    ;       save_point_resume_point.
 
 :- type save_point
     --->    save_point(
@@ -58,25 +58,26 @@
             ).
 
 :- type branch_construct
-    --->    ite
-    ;       disj
-    ;       switch
-    ;       neg
-    ;       par_conj.
+    --->    branch_ite
+    ;       branch_disj
+    ;       branch_switch
+    ;       branch_neg
+    ;       branch_par_conj.
 
 :- type resume_save_status
     --->    has_resume_save
     ;       has_no_resume_save.
 
 :- type anchor
-    --->    proc_start
-    ;       proc_end
-    ;       branch_start(branch_construct, goal_path)
-    ;       cond_then(goal_path)
-    ;       branch_end(branch_construct, goal_path)
-    ;       call_site(goal_path).
+    --->    anchor_proc_start
+    ;       anchor_proc_end
+    ;       anchor_branch_start(branch_construct, goal_path)
+    ;       anchor_cond_then(goal_path)
+    ;       anchor_branch_end(branch_construct, goal_path)
+    ;       anchor_call_site(goal_path).
 
-:- type interval_id --->    interval_id(int).
+:- type interval_id
+    --->    interval_id(int).
 
 :- type branch_end_info
     --->    branch_end_info(
@@ -102,25 +103,25 @@
                 at_most_zero_calls  :: bool
             ).
 
-:- type interval_info --->
-    interval_info(
-        interval_params     :: interval_params,
-        flushed_later       :: set(prog_var),
-        accessed_later      :: set(prog_var),
-        branch_resume_map   :: map(goal_path, resume_save_status),
-        branch_end_map      :: map(goal_path, branch_end_info),
-        cond_end_map        :: map(goal_path, interval_id),
-        cur_interval        :: interval_id,
-        interval_counter    :: counter,
-        open_intervals      :: set(interval_id),
-        anchor_follow_map   :: map(anchor, anchor_follow_info),
-        model_non_anchors   :: set(anchor),
-        interval_start      :: map(interval_id, anchor),
-        interval_end        :: map(interval_id, anchor),
-        interval_succ       :: map(interval_id, list(interval_id)),
-        interval_vars       :: map(interval_id, set(prog_var)),
-        interval_delvars    :: map(interval_id, list(set(prog_var)))
-    ).
+:- type interval_info
+    --->    interval_info(
+                interval_params     :: interval_params,
+                flushed_later       :: set(prog_var),
+                accessed_later      :: set(prog_var),
+                branch_resume_map   :: map(goal_path, resume_save_status),
+                branch_end_map      :: map(goal_path, branch_end_info),
+                cond_end_map        :: map(goal_path, interval_id),
+                cur_interval        :: interval_id,
+                interval_counter    :: counter,
+                open_intervals      :: set(interval_id),
+                anchor_follow_map   :: map(anchor, anchor_follow_info),
+                model_non_anchors   :: set(anchor),
+                interval_start      :: map(interval_id, anchor),
+                interval_end        :: map(interval_id, anchor),
+                interval_succ       :: map(interval_id, list(interval_id)),
+                interval_vars       :: map(interval_id, set(prog_var)),
+                interval_delvars    :: map(interval_id, list(set(prog_var)))
+            ).
 
 :- type maybe_needs_flush
     --->    needs_flush
@@ -212,13 +213,13 @@ build_interval_info_in_goal(conj(ConjType, Goals) - _GoalInfo, !IntervalInfo,
 build_interval_info_in_goal(disj(Goals) - GoalInfo, !IntervalInfo, !Acc) :-
     (
         Goals = [FirstDisjunct | _],
-        reached_branch_end(GoalInfo, yes(FirstDisjunct), disj,
+        reached_branch_end(GoalInfo, yes(FirstDisjunct), branch_disj,
             StartAnchor, EndAnchor, BeforeId, AfterId,
             MaybeResumeVars, !IntervalInfo, !Acc),
         build_interval_info_in_disj(Goals, doesnt_need_flush,
             StartAnchor, EndAnchor, BeforeId, AfterId,
             OpenIntervals, !IntervalInfo, !Acc),
-        leave_branch_start(disj, StartAnchor, BeforeId,
+        leave_branch_start(branch_disj, StartAnchor, BeforeId,
             MaybeResumeVars, OpenIntervals, !IntervalInfo)
     ;
         Goals = [],
@@ -234,31 +235,31 @@ build_interval_info_in_goal(disj(Goals) - GoalInfo, !IntervalInfo, !Acc) :-
 
 build_interval_info_in_goal(switch(Var, _Det, Cases) - GoalInfo,
         !IntervalInfo, !Acc) :-
-    reached_branch_end(GoalInfo, no, switch,
+    reached_branch_end(GoalInfo, no, branch_switch,
         StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
         !IntervalInfo, !Acc),
     build_interval_info_in_cases(Cases, StartAnchor, EndAnchor,
         BeforeId, AfterId, OpenIntervalsList, !IntervalInfo, !Acc),
     OpenIntervals = set.union_list(OpenIntervalsList),
-    leave_branch_start(switch, StartAnchor, BeforeId, MaybeResumeVars,
+    leave_branch_start(branch_switch, StartAnchor, BeforeId, MaybeResumeVars,
         OpenIntervals, !IntervalInfo),
     require_in_regs([Var], !IntervalInfo),
     require_access([Var], !IntervalInfo).
 
 build_interval_info_in_goal(negation(Goal) - GoalInfo, !IntervalInfo, !Acc) :-
-    reached_branch_end(GoalInfo, yes(Goal), neg,
+    reached_branch_end(GoalInfo, yes(Goal), branch_neg,
         StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
         !IntervalInfo, !Acc),
     enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
     build_interval_info_in_goal(Goal, !IntervalInfo, !Acc),
     reached_branch_start(needs_flush, StartAnchor, BeforeId,
         OpenIntervals, !IntervalInfo, !Acc),
-    leave_branch_start(neg, StartAnchor, BeforeId, MaybeResumeVars,
+    leave_branch_start(branch_neg, StartAnchor, BeforeId, MaybeResumeVars,
         OpenIntervals, !IntervalInfo).
 
 build_interval_info_in_goal(if_then_else(_, Cond, Then, Else) - GoalInfo,
                 !IntervalInfo, !Acc) :-
-    reached_branch_end(GoalInfo, yes(Cond), ite, StartAnchor, EndAnchor,
+    reached_branch_end(GoalInfo, yes(Cond), branch_ite, StartAnchor, EndAnchor,
         BeforeId, AfterId, MaybeResumeVars, !IntervalInfo, !Acc),
     enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
     build_interval_info_in_goal(Then, !IntervalInfo, !Acc),
@@ -270,7 +271,7 @@ build_interval_info_in_goal(if_then_else(_, Cond, Then, Else) - GoalInfo,
     build_interval_info_in_goal(Else, !IntervalInfo, !Acc),
     reached_branch_start(needs_flush, StartAnchor, BeforeId,
         _ElseOpenIntervals, !IntervalInfo, !Acc),
-    leave_branch_start(ite, StartAnchor, BeforeId, MaybeResumeVars,
+    leave_branch_start(branch_ite, StartAnchor, BeforeId, MaybeResumeVars,
         CondOpenIntervals, !IntervalInfo).
 
 build_interval_info_in_goal(scope(_Reason, Goal) - _GoalInfo, !IntervalInfo,
@@ -358,13 +359,11 @@ build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
         ),
         require_in_regs(ArgVars, !IntervalInfo),
         require_access([CellVar | ArgVars], !IntervalInfo)
-        % use_cell(CellVar, ArgVars, ConsId, Goal - GoalInfo,
-        %   !IntervalInfo)
+        % use_cell(CellVar, ArgVars, ConsId, Goal - GoalInfo, !IntervalInfo)
         % We cannot use such cells, because some of the ArgVars
         % may need to be saved on the stack before this construction.
     ;
-        Unification = deconstruct(CellVar, ConsId, ArgVars,
-            ArgModes, _, _),
+        Unification = deconstruct(CellVar, ConsId, ArgVars, ArgModes, _, _),
         IntParams = !.IntervalInfo ^ interval_params,
         ModuleInfo = IntParams ^ module_info,
         ( shared_left_to_right_deconstruct(ModuleInfo, ArgModes) ->
@@ -419,7 +418,7 @@ build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
         VarsOnStack0 = set.union_list([ForwardVars, ResumeVars,
             NondetLiveVars]),
         goal_info_get_goal_path(GoalInfo, GoalPath),
-        CallAnchor = call_site(GoalPath),
+        CallAnchor = anchor_call_site(GoalPath),
         get_cur_interval(AfterCallId, !.IntervalInfo),
         new_interval_id(BeforeCallId, !IntervalInfo),
         record_interval_start(AfterCallId, CallAnchor, !IntervalInfo),
@@ -522,7 +521,7 @@ reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
         MaybeResumeGoal = yes(_ResumeGoalExpr - ResumeGoalInfo),
         goal_info_maybe_get_resume_point(ResumeGoalInfo, ResumePoint),
         ResumePoint = resume_point(ResumeVars, ResumeLocs),
-        ResumeLocs \= orig_only
+        ResumeLocs \= resume_locs_orig_only
     ->
         HasResumeSave = has_resume_save,
         MaybeResumeVars = yes(ResumeVars)
@@ -538,8 +537,8 @@ reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
     ;
         unexpected(this_file, "reached_branch_end: no store map")
     ),
-    EndAnchor = branch_end(Construct, GoalPath),
-    StartAnchor = branch_start(Construct, GoalPath),
+    EndAnchor = anchor_branch_end(Construct, GoalPath),
+    StartAnchor = anchor_branch_start(Construct, GoalPath),
     assign_open_intervals_to_anchor(EndAnchor, !IntervalInfo),
     goal_info_get_code_model(GoalInfo, CodeModel),
     ( CodeModel = model_non ->
@@ -588,7 +587,7 @@ reached_cond_then(GoalInfo, !IntervalInfo) :-
     get_cur_interval(ThenStartId, !.IntervalInfo),
     record_interval_start(ThenStartId, CondThenAnchor, !IntervalInfo),
     new_interval_id(CondTailId, !IntervalInfo),
-    CondThenAnchor = cond_then(GoalPath),
+    CondThenAnchor = anchor_cond_then(GoalPath),
     record_interval_end(CondTailId, CondThenAnchor, !IntervalInfo),
     record_interval_succ(CondTailId, ThenStartId, !IntervalInfo),
     set_cur_interval(CondTailId, !IntervalInfo),
@@ -850,7 +849,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
 record_decisions_in_goal(Goal0,  Goal, !VarInfo, !VarRename, InsertMap,
         MaybeFeature) :-
     Goal0 = disj(Goals0) - GoalInfo0,
-    construct_anchors(disj, Goal0, StartAnchor, EndAnchor),
+    construct_anchors(branch_disj, Goal0, StartAnchor, EndAnchor),
     ( Goals0 = [FirstGoal0 | LaterGoals0] ->
         record_decisions_in_goal(FirstGoal0, FirstGoal, !VarInfo,
             !.VarRename, _, InsertMap, MaybeFeature),
@@ -873,7 +872,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         InsertMap, MaybeFeature),
     rename_var(no, !.VarRename, Var0, Var),
     Goal1 = switch(Var, Det, Cases) - GoalInfo0,
-    construct_anchors(switch, Goal0, _StartAnchor, EndAnchor),
+    construct_anchors(branch_switch, Goal0, _StartAnchor, EndAnchor),
     lookup_inserts(InsertMap, EndAnchor, Inserts),
     insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
         MaybeFeature).
@@ -884,7 +883,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
     record_decisions_in_goal(NegGoal0, NegGoal, !VarInfo, !.VarRename, _,
         InsertMap, MaybeFeature),
     Goal1 = negation(NegGoal) - GoalInfo0,
-    construct_anchors(neg, Goal0, _StartAnchor, EndAnchor),
+    construct_anchors(branch_neg, Goal0, _StartAnchor, EndAnchor),
     lookup_inserts(InsertMap, EndAnchor, Inserts),
     % XXX
     insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
@@ -893,7 +892,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
 record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         MaybeFeature) :-
     Goal0 = if_then_else(Vars0, Cond0, Then0, Else0) - GoalInfo0,
-    construct_anchors(ite, Goal0, StartAnchor, EndAnchor),
+    construct_anchors(branch_ite, Goal0, StartAnchor, EndAnchor),
     rename_var_list(no, !.VarRename, Vars0, Vars),
     record_decisions_in_goal(Cond0, Cond, !VarInfo, !VarRename, InsertMap,
         MaybeFeature),
@@ -1098,7 +1097,7 @@ record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
         MaybeNeedAcrossCall = yes(_NeedAcrossCall)
     ->
         goal_info_get_goal_path(GoalInfo0, GoalPath),
-        Anchor = call_site(GoalPath),
+        Anchor = anchor_call_site(GoalPath),
         lookup_inserts(InsertMap, Anchor, Inserts),
         insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
             MaybeFeature)
@@ -1195,8 +1194,8 @@ build_headvar_subst([HeadVar | HeadVars], RenameMap, !Subst) :-
 construct_anchors(Construct, Goal, StartAnchor, EndAnchor) :-
     Goal = _ - GoalInfo,
     goal_info_get_goal_path(GoalInfo, GoalPath),
-    StartAnchor = branch_start(Construct, GoalPath),
-    EndAnchor = branch_end(Construct, GoalPath).
+    StartAnchor = anchor_branch_start(Construct, GoalPath),
+    EndAnchor = anchor_branch_end(Construct, GoalPath).
 
 %-----------------------------------------------------------------------------%
 

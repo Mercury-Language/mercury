@@ -525,7 +525,7 @@ attach_constraints(Goal, Constraints0) = Goal - Constraints :-
 :- func add_constraint_feature(hlds_goal) = hlds_goal.
 
 add_constraint_feature(Goal - GoalInfo0) = Goal - GoalInfo :-
-    goal_info_add_feature(constraint, GoalInfo0, GoalInfo).
+    goal_info_add_feature(feature_constraint, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -783,8 +783,8 @@ constraint_info_update_changed(Constraints, !Info) :-
 
 strip_constraint_markers(Goal - GoalInfo0) =
         strip_constraint_markers_expr(Goal) - GoalInfo :-
-    ( goal_info_has_feature(GoalInfo0, constraint) ->
-        goal_info_remove_feature(constraint, GoalInfo0, GoalInfo)
+    ( goal_info_has_feature(GoalInfo0, feature_constraint) ->
+        goal_info_remove_feature(feature_constraint, GoalInfo0, GoalInfo)
     ;
         GoalInfo = GoalInfo0
     ).

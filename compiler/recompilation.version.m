@@ -878,7 +878,7 @@ type_list_is_unchanged(TVarSet1, Types1, TVarSet2, Types2,
             map.member(Types2ToTypes1Subst, VarInItem2, SubstTerm),
             % Note that since the type comes from a substitution,
             % it will not contain a kind annotation.
-            SubstTerm = variable(VarInItem1, _)
+            SubstTerm = type_variable(VarInItem1, _)
         )
     =>
         (

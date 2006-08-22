@@ -847,7 +847,8 @@ annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
     annotate_goal_2(VarTypes, GoalInfo0, GoalExpr0, GoalExpr, Status,
         !ModuleInfo, !IO),
     ( Status = trail_will_not_modify ->
-        goal_info_add_feature(will_not_modify_trail, GoalInfo0, GoalInfo)
+        goal_info_add_feature(feature_will_not_modify_trail,
+            GoalInfo0, GoalInfo)
     ;
         GoalInfo = GoalInfo0
     ),

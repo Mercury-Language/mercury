@@ -81,9 +81,9 @@
     % in the EDT.
     %
 :- type decl_truth
-    --->    correct
-    ;       erroneous
-    ;       inadmissible.
+    --->    truth_correct
+    ;       truth_erroneous
+    ;       truth_inadmissible.
 
     % This type represents the possible responses to being
     % asked to confirm that a node is a bug.
@@ -413,15 +413,16 @@ diagnosis_2(Store, AnalysisType, Diagnoser0, {Response, Diagnoser}, !IO) :-
     diagnoser_state(R)::in, diagnoser_state(R)::out, 
     io::di, io::uo) is cc_multi <= annotated_trace(S, R).
 
-handle_analyser_response(_, no_suspects, _, no_bug_found, !Diagnoser, !IO) :-
+handle_analyser_response(_, analyser_response_no_suspects, _, no_bug_found,
+        !Diagnoser, !IO) :-
     io.write_string("No bug found.\n", !IO).
 
-handle_analyser_response(Store, bug_found(Bug, Evidence), _, Response,
-        !Diagnoser, !IO) :-
+handle_analyser_response(Store, analyser_response_bug_found(Bug, Evidence), _,
+        Response, !Diagnoser, !IO) :-
     confirm_bug(Store, Bug, Evidence, Response, !Diagnoser, !IO).
 
-handle_analyser_response(Store, oracle_question(Question), MaybeOrigin, 
-        Response, !Diagnoser, !IO) :-
+handle_analyser_response(Store, analyser_response_oracle_question(Question),
+        MaybeOrigin, Response, !Diagnoser, !IO) :-
     Oracle0 = !.Diagnoser ^ oracle_state,
     debug_origin(Flag, !IO),
     (
@@ -447,7 +448,8 @@ handle_analyser_response(Store, oracle_question(Question), MaybeOrigin,
     handle_oracle_response(Store, OracleResponse, Response, !Diagnoser,
         !IO).
 
-handle_analyser_response(Store, require_explicit_subtree(Node), _, Response,
+handle_analyser_response(Store,
+        analyser_response_require_explicit_subtree(Node), _, Response,
         Diagnoser, Diagnoser, !IO) :-
     edt_subtree_details(Store, Node, Event, Seqno, CallPreceding),
     ( trace_implicit_tree_info(wrap(Store), Node, ImplicitTreeInfo) ->
@@ -458,26 +460,28 @@ handle_analyser_response(Store, require_explicit_subtree(Node), _, Response,
     ),
     Response = require_subtree(Event, Seqno, CallPreceding, IdealDepth).
 
-handle_analyser_response(Store, require_explicit_supertree(Node), _, 
+handle_analyser_response(Store,
+        analyser_response_require_explicit_supertree(Node), _, 
         Response, Diagnoser, Diagnoser, !IO) :-
     edt_subtree_details(Store, Node, Event, Seqno, _),
     Response = require_supertree(Event, Seqno).
 
-handle_analyser_response(Store, revise(Question), _, Response, !Diagnoser, !IO)
-        :-
+handle_analyser_response(Store, analyser_response_revise(Question), _,
+        Response, !Diagnoser, !IO) :-
     Oracle0 = !.Diagnoser ^ oracle_state,
     revise_oracle(Question, Oracle0, Oracle),
     !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
-    handle_analyser_response(Store, oracle_question(Question), no,
-        Response, !Diagnoser, !IO).
+    handle_analyser_response(Store,
+        analyser_response_oracle_question(Question), no, Response,
+        !Diagnoser, !IO).
 
 :- pred handle_oracle_response(S::in, oracle_response(edt_node(R))::in,
     diagnoser_response(R)::out, diagnoser_state(R)::in,
     diagnoser_state(R)::out, io::di, io::uo) 
     is cc_multi <= annotated_trace(S, R).
 
-handle_oracle_response(Store, oracle_answer(Answer), Response, !Diagnoser, 
-        !IO) :-
+handle_oracle_response(Store, oracle_response_answer(Answer), Response,
+        !Diagnoser, !IO) :-
     Analyser0 = !.Diagnoser ^ analyser_state,
     continue_analysis(wrap(Store), !.Diagnoser ^ oracle_state, Answer, 
         AnalyserResponse, Analyser0, Analyser),
@@ -486,8 +490,8 @@ handle_oracle_response(Store, oracle_answer(Answer), Response, !Diagnoser,
     handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
         Response, !Diagnoser, !IO).
 
-handle_oracle_response(Store, show_info(OutStream), Response, !Diagnoser, !IO)
-        :-
+handle_oracle_response(Store, oracle_response_show_info(OutStream), Response,
+        !Diagnoser, !IO) :-
     Analyser = !.Diagnoser ^ analyser_state,
     show_info(wrap(Store), OutStream, Analyser, !IO),
     ( reask_last_question(wrap(Store), Analyser, AnalyserResponse0) ->
@@ -500,8 +504,8 @@ handle_oracle_response(Store, show_info(OutStream), Response, !Diagnoser, !IO)
     handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
         Response, !Diagnoser, !IO).
 
-handle_oracle_response(Store, change_search(Mode), Response, !Diagnoser,
-        !IO) :-
+handle_oracle_response(Store, oracle_response_change_search(Mode), Response,
+        !Diagnoser, !IO) :-
     Analyser0 = !.Diagnoser ^ analyser_state,
     Oracle = !.Diagnoser ^ oracle_state,
     change_search_mode(wrap(Store), Oracle, Mode, Analyser0, Analyser, 
@@ -511,7 +515,8 @@ handle_oracle_response(Store, change_search(Mode), Response, !Diagnoser,
     handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
         Response, !Diagnoser, !IO).
 
-handle_oracle_response(Store, undo, Response, !Diagnoser, !IO) :-
+handle_oracle_response(Store, oracle_response_undo, Response,
+        !Diagnoser, !IO) :-
     ( pop_diagnoser(!.Diagnoser, PoppedDiagnoser) ->
         !:Diagnoser = PoppedDiagnoser
     ;
@@ -532,12 +537,13 @@ handle_oracle_response(Store, undo, Response, !Diagnoser, !IO) :-
     handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
         Response, !Diagnoser, !IO).
 
-handle_oracle_response(Store, exit_diagnosis(Node), Response, !Diagnoser,
-        !IO) :-
+handle_oracle_response(Store, oracle_response_exit_diagnosis(Node), Response,
+        !Diagnoser, !IO) :-
     edt_subtree_details(Store, Node, Event, _, _),
     Response = symptom_found(Event).
 
-handle_oracle_response(_, abort_diagnosis, no_bug_found, !Diagnoser, !IO) :-
+handle_oracle_response(_, oracle_response_abort_diagnosis, no_bug_found,
+        !Diagnoser, !IO) :-
     io.write_string("Diagnosis aborted.\n", !IO).
 
 :- pred confirm_bug(S::in, decl_bug::in, decl_evidence(T)::in,
@@ -839,7 +845,7 @@ decl_bug_get_event_number(i_bug(IBug), Event) :-
     io::di, io::uo) is det <= annotated_trace(S, R).
 
 write_origin(wrap(Store), Origin, !IO) :-
-    ( Origin = output(dynamic(NodeId), ArgPos, TermPath) ->
+    ( Origin = origin_output(dynamic(NodeId), ArgPos, TermPath) ->
         exit_node_from_id(Store, NodeId, ExitNode),
         ProcLayout = get_proc_layout_from_label_layout(ExitNode ^ exit_label),
         ProcLabel = get_proc_label_from_layout(ProcLayout),

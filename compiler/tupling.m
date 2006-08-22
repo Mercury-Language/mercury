@@ -679,7 +679,7 @@ make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     % XXX: I haven't checked if adding this feature has any effect.
-    MaybeGoalFeature = yes(tuple_opt),
+    MaybeGoalFeature = yes(feature_tuple_opt),
     record_decisions_in_goal(Goal0, Goal1, VarSet0, VarSet1,
         VarTypes0, VarTypes1, map.init, RenameMapA, InsertMap,
         MaybeGoalFeature),
@@ -769,7 +769,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxPredSymName = qualified(_ModuleSpecifier, AuxPredName)
     ),
 
-    Origin = transformed(tuple(ProcNo), OrigOrigin, PredId),
+    Origin = origin_transformed(transform_tuple(ProcNo), OrigOrigin, PredId),
     hlds_pred.define_new_pred(
         Origin,                 % in
         Goal,                   % in
@@ -1505,7 +1505,7 @@ build_interval_info(ModuleInfo, ProcInfo, IntervalInfo) :-
     Counter0 = counter.init(1),
     counter.allocate(CurInterval, Counter0, Counter),
     CurIntervalId = interval_id(CurInterval),
-    EndMap = map.det_insert(map.init, CurIntervalId, proc_end),
+    EndMap = map.det_insert(map.init, CurIntervalId, anchor_proc_end),
     StartMap = map.init,
     SuccMap = map.det_insert(map.init, CurIntervalId, []),
     VarsMap = map.det_insert(map.init, CurIntervalId, OutputArgs),
@@ -1648,7 +1648,9 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
         % linking problems that occurred when such predicates in the
         % library were made to call tupled procedures.
         pred_info_get_origin(PredInfo, Origin),
-        ( Origin = transformed(type_specialization(_), _, _) ->
+        (
+            Origin = origin_transformed(transform_type_specialization(_), _, _)
+        ->
             true
         ;
             proc_info_get_goal(!.ProcInfo, Goal0),

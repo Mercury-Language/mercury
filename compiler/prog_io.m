@@ -1454,7 +1454,7 @@ parse_type_decl(ModuleName, VarSet, TypeDecl, Attributes, Result) :-
         Cond1 = Cond
     ;
         process_abstract_type(ModuleName, TypeDecl, Attributes, R1),
-        Cond1 = true
+        Cond1 = cond_true
     ),
     % We should check the condition for errors (don't bother at the moment,
     % since we ignore conditions anyhow :-).
@@ -2422,7 +2422,7 @@ get_with_type(Body0, Body, Result) :-
     %
 :- pred get_condition(term::in, term::out, condition::out) is det.
 
-get_condition(Body, Body, true).
+get_condition(Body, Body, cond_true).
 
 % % NU-Prolog supported type declarations of the form
 % %   :- pred p(T) where p(X) : sorted(X).
@@ -3447,7 +3447,7 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
         InstDefn = term.functor(term.atom("is"),
             [Head, term.functor(term.atom("private"), [], _)], _)
     ->
-        Condition = true,
+        Condition = cond_true,
         convert_abstract_inst_defn(ModuleName, Head, R),
         process_maybe1(make_inst_defn(VarSet, Condition), R, Result)
     ;

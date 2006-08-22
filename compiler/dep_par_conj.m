@@ -1361,7 +1361,7 @@ make_new_pred_info(FutureArgs, Status, proc(PredId, ProcId), !PredInfo) :-
     pred_info_get_arg_types(!.PredInfo, Tvars, ExistQVars, ArgTypes0),
     pred_info_get_origin(!.PredInfo, OrigOrigin),
     make_pred_name(PredModule, "Parallel", yes(PredOrFunc),
-        Name0, parallel_args(FutureArgs), Name1),
+        Name0, newpred_parallel_args(FutureArgs), Name1),
     % The mode number is included because we want to avoid the creation of
     % more than one predicate with the same name if more than one mode of
     % a predicate is parallelised. Since the names of e.g. deep profiling
@@ -1386,7 +1386,8 @@ make_new_pred_info(FutureArgs, Status, proc(PredId, ProcId), !PredInfo) :-
     % constraints.
     map.init(EmptyProofs),
     map.init(EmptyConstraintMap),
-    Origin = transformed(dependent_parallel_conjunction, OrigOrigin, PredId),
+    Origin = origin_transformed(transform_dependent_parallel_conjunction,
+        OrigOrigin, PredId),
     pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
         Status, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
         ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,

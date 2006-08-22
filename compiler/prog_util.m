@@ -139,10 +139,10 @@
     pred_or_func::in, string::in, int::in, int::in, sym_name::out) is det.
 
 :- type new_pred_id
-    --->    counter(int, int)                   % Line number, Counter
-    ;       type_subst(tvarset, type_subst)
-    ;       unused_args(list(int))
-    ;       parallel_args(list(int)).
+    --->    newpred_counter(int, int)                   % Line number, Counter
+    ;       newpred_type_subst(tvarset, type_subst)
+    ;       newpred_unused_args(list(int))
+    ;       newpred_parallel_args(list(int)).
 
 %-----------------------------------------------------------------------------%
 
@@ -538,7 +538,7 @@ transform_sym_base_name(TransformFunc, unqualified(Name0)) =
 make_pred_name_with_context(ModuleName, Prefix,
         PredOrFunc, PredName, Line, Counter, SymName) :-
     make_pred_name(ModuleName, Prefix, yes(PredOrFunc), PredName,
-        counter(Line, Counter), SymName).
+        newpred_counter(Line, Counter), SymName).
 
 make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
         NewPredId, SymName) :-
@@ -556,10 +556,10 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
         PFS = "pred_or_func"
     ),
     (
-        NewPredId = counter(Line, Counter),
+        NewPredId = newpred_counter(Line, Counter),
         string.format("%d__%d", [i(Line), i(Counter)], PredIdStr)
     ;
-        NewPredId = type_subst(VarSet, TypeSubst),
+        NewPredId = newpred_type_subst(VarSet, TypeSubst),
         SubstToString = (pred(SubstElem::in, SubstStr::out) is det :-
             SubstElem = Var - Type,
             varset.lookup_name(VarSet, Var, VarName),
@@ -568,10 +568,10 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
         ),
         list_to_string(SubstToString, TypeSubst, PredIdStr)
     ;
-        NewPredId = unused_args(Args),
+        NewPredId = newpred_unused_args(Args),
         list_to_string(int_to_string, Args, PredIdStr)
     ;
-        NewPredId = parallel_args(Args),
+        NewPredId = newpred_parallel_args(Args),
         list_to_string(int_to_string, Args, PredIdStr)
     ),
 

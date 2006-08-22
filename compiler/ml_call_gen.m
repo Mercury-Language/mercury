@@ -200,7 +200,7 @@ ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
     (
         GenericCall = higher_order(ClosureVar, _Purity, _PredOrFunc, _Arity),
         ml_gen_var(!.Info, ClosureVar, ClosureLval),
-        FieldId = offset(const(int_const(1))),
+        FieldId = offset(const(mlconst_int(1))),
         % XXX are these types right?
         FuncLval = field(yes(0), lval(ClosureLval), FieldId,
             mlds_generic_type, ClosureArgType),
@@ -216,7 +216,7 @@ ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
         ClosureLval = TypeClassInfoLval,
 
         % Extract the base_typeclass_info from the typeclass_info.
-        BaseTypeclassInfoFieldId = offset(const(int_const(0))),
+        BaseTypeclassInfoFieldId = offset(const(mlconst_int(0))),
         BaseTypeclassInfoLval = field(yes(0),
             lval(TypeClassInfoLval), BaseTypeclassInfoFieldId,
             mlds_generic_type, ClosureArgType),
@@ -224,7 +224,7 @@ ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
         % Extract the method address from the base_typeclass_info.
         Offset = ml_base_typeclass_info_method_offset,
         MethodFieldNum = MethodNum + Offset,
-        MethodFieldId = offset(const(int_const(MethodFieldNum))),
+        MethodFieldId = offset(const(mlconst_int(MethodFieldNum))),
         FuncLval = field(yes(0), lval(BaseTypeclassInfoLval),
             MethodFieldId, mlds_generic_type, mlds_generic_type),
         FuncType = mlds_func_type(Params),
@@ -600,7 +600,8 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
     Signature = mlds_get_func_signature(Params),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     QualifiedProcLabel = qual(PredModule, module_qual, ProcLabel),
-    CodeAddrRval = const(code_addr_const(proc(QualifiedProcLabel, Signature))).
+    CodeAddrRval = const(mlconst_code_addr(
+        code_addr_proc(QualifiedProcLabel, Signature))).
 
     % Generate rvals and lvals for the arguments of a procedure call
     %
@@ -661,7 +662,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
                 % generate a dummy value for it. Using `0' here is more
                 % efficient than using private_builtin.dummy_var, which is
                 % what ml_gen_var will have generated for this variable.
-                VarRval = const(int_const(0))
+                VarRval = const(mlconst_int(0))
             ;
                 VarRval = lval(VarLval)
             ),
@@ -731,30 +732,30 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
         ArgRval = VarRval
     ;
         % If converting from polymorphic type to concrete type, then unbox.
-        SourceType = variable(_, _),
-        DestType \= variable(_, _)
+        SourceType = type_variable(_, _),
+        DestType \= type_variable(_, _)
     ->
         ml_gen_type(!.Info, DestType, MLDS_DestType),
         ArgRval = unop(unbox(MLDS_DestType), VarRval)
     ;
         % If converting from concrete type to polymorphic type, then box.
-        SourceType \= variable(_, _),
-        DestType = variable(_, _)
+        SourceType \= type_variable(_, _),
+        DestType = type_variable(_, _)
     ->
         ml_gen_type(!.Info, SourceType, MLDS_SourceType),
         ArgRval = unop(box(MLDS_SourceType), VarRval)
     ;
         % If converting to float, cast to mlds_generic_type and then unbox.
-        DestType = builtin(float),
-        SourceType \= builtin(float)
+        DestType = builtin_type(builtin_type_float),
+        SourceType \= builtin_type(builtin_type_float)
     ->
         ml_gen_type(!.Info, DestType, MLDS_DestType),
         ArgRval = unop(unbox(MLDS_DestType),
             unop(cast(mlds_generic_type), VarRval))
     ;
         % If converting from float, box and then cast the result.
-        SourceType = builtin(float),
-        DestType \= builtin(float)
+        SourceType = builtin_type(builtin_type_float),
+        DestType \= builtin_type(builtin_type_float)
     ->
         ml_gen_type(!.Info, SourceType, MLDS_SourceType),
         ml_gen_type(!.Info, DestType, MLDS_DestType),
@@ -769,10 +770,10 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
         type_to_ctor_and_args(DestType, DestTypeCtor, DestTypeArgs),
         (
             type_ctor_is_array(SourceTypeCtor),
-            SourceTypeArgs = [variable(_, _)]
+            SourceTypeArgs = [type_variable(_, _)]
         ;
             type_ctor_is_array(DestTypeCtor),
-            DestTypeArgs = [variable(_, _)]
+            DestTypeArgs = [type_variable(_, _)]
         )
     ->
         ml_gen_type(!.Info, DestType, MLDS_DestType),
@@ -833,7 +834,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             % For closure wrappers, the argument type_infos are
             % stored in the `type_params' local, so we need to
             % handle the GC tracing code specially
-            ( CallerType = variable(_, _) ->
+            ( CallerType = type_variable(_, _) ->
                 ml_gen_local_for_output_arg(ArgVarName, CalleeType, ArgNum,
                     Context, ArgVarDecl, !Info)
             ;
@@ -958,8 +959,8 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
 :- func ml_gen_simple_expr(simple_expr(mlds_lval)) = mlds_rval.
 
 ml_gen_simple_expr(leaf(Lval)) = lval(Lval).
-ml_gen_simple_expr(int_const(Int)) = const(int_const(Int)).
-ml_gen_simple_expr(float_const(Float)) = const(float_const(Float)).
+ml_gen_simple_expr(int_const(Int)) = const(mlconst_int(Int)).
+ml_gen_simple_expr(float_const(Float)) = const(mlconst_float(Float)).
 ml_gen_simple_expr(unary(Op, Expr)) =
     unop(std_unop(Op), ml_gen_simple_expr(Expr)).
 ml_gen_simple_expr(binary(Op, Expr1, Expr2)) =

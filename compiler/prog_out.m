@@ -369,10 +369,10 @@ promise_to_string(exhaustive) =  "promise_exhaustive".
 promise_to_string(exclusive_exhaustive) =
         "promise_exclusive_exhaustive".
 
-builtin_type_to_string(int, "int").
-builtin_type_to_string(float, "float").
-builtin_type_to_string(string, "string").
-builtin_type_to_string(character, "character").
+builtin_type_to_string(builtin_type_int, "int").
+builtin_type_to_string(builtin_type_float, "float").
+builtin_type_to_string(builtin_type_string, "string").
+builtin_type_to_string(builtin_type_character, "character").
 
 write_promise_type(PromiseType, !IO) :-
     io.write_string(promise_to_string(PromiseType), !IO).

@@ -561,9 +561,9 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 maybe_add_type_info_locns([], _, _, !RttiVarMaps).
-maybe_add_type_info_locns([Arg | Args], Var, Num, !RttiVarMaps) :-
+maybe_add_type_info_locns([ArgType | ArgTypes], Var, Num, !RttiVarMaps) :-
     (
-        Arg = variable(TVar, _),
+        ArgType = type_variable(TVar, _),
         \+ rtti_search_type_info_locn(!.RttiVarMaps, TVar, _)
     ->
         Locn = typeclass_info(Var, Num),
@@ -571,7 +571,7 @@ maybe_add_type_info_locns([Arg | Args], Var, Num, !RttiVarMaps) :-
     ;
         true
     ),
-    maybe_add_type_info_locns(Args, Var, Num + 1, !RttiVarMaps).
+    maybe_add_type_info_locns(ArgTypes, Var, Num + 1, !RttiVarMaps).
 
 :- pred make_new_exist_cast_var(prog_var::in, prog_var::out,
     prog_varset::in, prog_varset::out) is det.

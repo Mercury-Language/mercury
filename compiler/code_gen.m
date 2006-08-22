@@ -117,7 +117,7 @@ generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
         % If tracing is not enabled, then CallTableVar isn't guaranteed
         % to have a stack slot.
         (
-            set.member(call_table_gen, Features),
+            set.member(feature_call_table_gen, Features),
             code_info.get_proc_info(!.CI, ProcInfo),
             proc_info_get_call_table_tip(ProcInfo, MaybeCallTableVar),
             MaybeCallTableVar = yes(CallTableVar),
@@ -144,7 +144,7 @@ generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
         % slots, but they won't *need* stack slots either, since there is no
         % way for such a leaf procedure to throw an exception. (Throwing
         % requires calling exception.throw, directly or indirectly.)
-        ( set.member(save_deep_excp_vars, Features) ->
+        ( set.member(feature_save_deep_excp_vars, Features) ->
             DeepSaveVars = compute_deep_save_excp_vars(ProcInfo),
             save_variables_on_stack(DeepSaveVars, DeepSaveCode, !CI),
             Code = tree(CodeUptoTip, DeepSaveCode)

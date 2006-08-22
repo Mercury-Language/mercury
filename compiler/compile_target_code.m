@@ -247,8 +247,8 @@ il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Succeeded, !IO) :-
     ),
     string.append_list([ILASM, " ", SignOpt, VerboseOpt, DebugOpt,
         TargetOpt, ILASMFlags, " /out=", TargetFile, " ", IL_File], Command),
-    invoke_system_command(ErrorStream, verbose_commands, Command, Succeeded,
-        !IO).
+    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
+        Succeeded, !IO).
 
 compile_managed_cplusplus_file(ErrorStream, MCPPFileName, DLLFileName,
         Succeeded, !IO) :-
@@ -283,7 +283,7 @@ compile_managed_cplusplus_file(ErrorStream, MCPPFileName, DLLFileName,
 
     string.append_list([MCPP, " -CLR ", DebugOpt, InclOpts, DLLDirOpts,
         MCPPFlags, " ", MCPPFileName, " -LD -o ", DLLFileName], Command),
-    invoke_system_command(ErrorStream, verbose_commands, Command,
+    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 
 compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
@@ -342,7 +342,7 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
     string.append_list([CSC, DebugOpt,
         " /t:library ", DLLDirOpts, CSCFlags, ReferencedDllsStr,
         " /out:", DLLFileName, " ", CSharpFileName], Command),
-    invoke_system_command(ErrorStream, verbose_commands, Command,
+    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -354,7 +354,7 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
     --->    gcc
     ;       lcc
     ;       cl
-    ;       unknown.
+    ;       unknown_compiler.
 
 compile_c_file(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
     module_name_to_file_name(ModuleName, ".c", yes, C_File, !IO),
@@ -455,19 +455,19 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     ),
     globals.io_get_gc_method(GC_Method, !IO),
     (
-        GC_Method = automatic,
+        GC_Method = gc_automatic,
         GC_Opt = ""
     ;
-        GC_Method = none,
+        GC_Method = gc_none,
         GC_Opt = ""
     ;
-        GC_Method = boehm,
+        GC_Method = gc_boehm,
         GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC "
     ;
-        GC_Method = mps,
+        GC_Method = gc_mps,
         GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_MPS_GC "
     ;
-        GC_Method = accurate,
+        GC_Method = gc_accurate,
         GC_Opt = "-DMR_NATIVE_GC "
     ),
     globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
@@ -550,7 +550,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     ),
 
     globals.io_get_tags_method(Tags_Method, !IO),
-    ( Tags_Method = high ->
+    ( Tags_Method = tags_high ->
         TagsOpt = "-DMR_HIGHTAGS "
     ;
         TagsOpt = ""
@@ -748,7 +748,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         CFLAGS, 
         " -c ", C_File, " ",
         NameObjectFile, O_File], Command),
-    invoke_system_command(ErrorStream, verbose_commands,
+    invoke_system_command(ErrorStream, cmd_verbose_commands,
         Command, Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -815,8 +815,8 @@ compile_java_file(ErrorStream, JavaFile, Succeeded, !IO) :-
     % Also be careful that each option is separated by spaces.
     string.append_list([JavaCompiler, " ", InclOpt, DestDir,
         Target_DebugOpt, JAVAFLAGS, " ", JavaFile], Command),
-    invoke_system_command(ErrorStream, verbose_commands, Command, Succeeded,
-        !IO).
+    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
+        Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -857,8 +857,8 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
     string.append_list([CC, " ", CFLAGS, " ", GCCFLAGS_FOR_PIC,
         GCCFLAGS_FOR_ASM, "-c ", AsmFile, " ", NameObjectFile, ObjFile],
         Command),
-    invoke_system_command(ErrorStream, verbose_commands, Command, Succeeded,
-        !IO).
+    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
+        Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -881,7 +881,7 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
                 " -k ",
                 " ", CFileNames
             ]),
-        invoke_system_command(InitFileStream, verbose, MkInitCmd, MkInitOK,
+        invoke_system_command(InitFileStream, cmd_verbose, MkInitCmd, MkInitOK,
             !IO),
        
         ( 
@@ -892,7 +892,7 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
                 MaybeInitFileCommand = yes(InitFileCommand),
                 make_all_module_command(InitFileCommand, MainModuleName,
                     AllModules, CommandString, !IO),
-                invoke_system_command(InitFileStream, verbose_commands,
+                invoke_system_command(InitFileStream, cmd_verbose_commands,
                     CommandString, Succeeded0, !IO)
             ;
                 MaybeInitFileCommand = no,
@@ -1093,7 +1093,7 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
             " ", InitFileNames, 
             " ", CFileNames
         ]),
-    invoke_system_command(ErrorStream, verbose, MkInitCmd, MkInitOK0, !IO),
+    invoke_system_command(ErrorStream, cmd_verbose, MkInitCmd, MkInitOK0, !IO),
     maybe_report_stats(Stats, !IO),
     (
         MkInitOK0 = yes,
@@ -1372,7 +1372,7 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
                 MaybeDemangleCmd = no
             ),
 
-            invoke_system_command(ErrorStream, verbose_commands, LinkCmd,
+            invoke_system_command(ErrorStream, cmd_verbose_commands, LinkCmd,
                 MaybeDemangleCmd, LinkSucceeded, !IO)
         ;
             LibrariesSucceeded = no,
@@ -1427,15 +1427,15 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
 
     % GC libraries.
     (
-        GCMethod = automatic,
+        GCMethod = gc_automatic,
         StaticGCLibs = "",
         SharedGCLibs = ""
     ;
-        GCMethod = none,
+        GCMethod = gc_none,
         StaticGCLibs = "",
         SharedGCLibs = ""
     ;
-        GCMethod = boehm,
+        GCMethod = gc_boehm,
         globals.io_lookup_bool_option(profile_time, ProfTime, !IO),
         globals.io_lookup_bool_option(profile_deep, ProfDeep, !IO),
         (
@@ -1459,12 +1459,12 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
         StaticGCLibs = quote_arg(StdLibDir/"lib"/
             ("lib" ++ GCGrade ++ LibExt))
     ;
-        GCMethod = mps,
+        GCMethod = gc_mps,
         make_link_lib(TargetType, "mps", SharedGCLibs, !IO),
         StaticGCLibs = quote_arg(StdLibDir/"lib"/
             ("libmps" ++ LibExt) )
     ;
-        GCMethod = accurate,
+        GCMethod = gc_accurate,
         StaticGCLibs = "",
         SharedGCLibs = ""
     ),
@@ -1586,7 +1586,7 @@ get_system_libs(TargetType, SystemLibs, !IO) :-
 use_thread_libs(UseThreadLibs, !IO) :-
     globals.io_lookup_bool_option(parallel, Parallel, !IO),
     globals.io_get_gc_method(GCMethod, !IO),
-    UseThreadLibs = ( ( Parallel = yes ; GCMethod = mps ) -> yes ; no ).
+    UseThreadLibs = ( ( Parallel = yes ; GCMethod = gc_mps ) -> yes ; no ).
 
 post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         Succeeded, !IO) :-
@@ -1693,7 +1693,7 @@ create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
     MakeLibCmd = string.append_list([
         ArCmd, " ", ArFlags, " ", ArOutputFlag, " ",
         LibFileName, " ", Objects]),
-    invoke_system_command(ErrorStream, verbose_commands,
+    invoke_system_command(ErrorStream, cmd_verbose_commands,
         MakeLibCmd, MakeLibCmdSucceeded, !IO),
     (
         ( RanLib = ""
@@ -1703,7 +1703,7 @@ create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
         Succeeded = MakeLibCmdSucceeded
     ;
         RanLibCmd = string.append_list([RanLib, " ", LibFileName]),
-        invoke_system_command(ErrorStream, verbose_commands, RanLibCmd,
+        invoke_system_command(ErrorStream, cmd_verbose_commands, RanLibCmd,
             Succeeded, !IO)
     ).
 
@@ -1721,7 +1721,8 @@ create_java_archive(ErrorStream, ModuleName, JarFileName, ObjectList,
     Cmd = string.append_list([
         Jar, " ", JarCreateFlags, " ", JarFileName, " ", ListClassFiles ]),
 
-    invoke_system_command(ErrorStream, verbose_commands, Cmd, Succeeded, !IO).
+    invoke_system_command(ErrorStream, cmd_verbose_commands, Cmd, Succeeded,
+        !IO).
 
 get_object_code_type(FileType, ObjectCodeType, !IO) :-
     globals.io_lookup_string_option(pic_object_file_extension, PicObjExt, !IO),

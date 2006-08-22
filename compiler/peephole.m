@@ -167,7 +167,7 @@ peephole.match(computed_goto(SelectorRval, Labels), Comment, _,
         peephole.pick_one_val_label(LabelVals1, LabelVals2, OneValLabel,
             Val, OtherLabel)
     ->
-        CondRval = binop(eq, SelectorRval, const(int_const(Val))),
+        CondRval = binop(eq, SelectorRval, const(llconst_int(Val))),
         CommentInstr = comment(Comment) - "",
         BranchInstr = if_val(CondRval, label(OneValLabel)) - "",
         GotoInstr = goto(label(OtherLabel)) - Comment,
@@ -359,10 +359,10 @@ peephole.match(assign(redoip_slot(lval(Base)), Redoip), Comment, _,
     ->
         Instrs1 = Skipped ++ Rest,
         Instrs = [assign(redoip_slot(lval(Base)),
-            const(code_addr_const(Redoip2))) - Comment | Instrs1]
+            const(llconst_code_addr(Redoip2))) - Comment | Instrs1]
     ;
         Base = curfr,
-        Redoip = const(code_addr_const(do_fail)),
+        Redoip = const(llconst_code_addr(do_fail)),
         opt_util.straight_alternative(Instrs0, Between, After),
         opt_util.touches_nondet_ctrl(Between, no),
         string.sub_string_search(Comment, "curfr==maxfr", _)
@@ -402,7 +402,7 @@ peephole.match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
 :- pred peephole.invalid_opts(gc_method::in, list(pattern)::out) is det.
 
 peephole.invalid_opts(GC_Method, InvalidPatterns) :-
-    ( GC_Method = accurate ->
+    ( GC_Method = gc_accurate ->
         InvalidPatterns = [incr_sp]
     ;
         InvalidPatterns = []

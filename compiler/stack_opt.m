@@ -246,7 +246,7 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     Counter0 = counter.init(1),
     counter.allocate(CurInterval, Counter0, Counter1),
     CurIntervalId = interval_id(CurInterval),
-    EndMap0 = map.det_insert(map.init, CurIntervalId, proc_end),
+    EndMap0 = map.det_insert(map.init, CurIntervalId, anchor_proc_end),
     InsertMap0 = map.init,
     StartMap0 = map.init,
     SuccMap0 = map.det_insert(map.init, CurIntervalId, []),
@@ -302,7 +302,7 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     ;
         record_decisions_in_goal(Goal0, Goal1, VarSet0, VarSet,
             VarTypes0, VarTypes, map.init, RenameMap,
-            InsertMap, yes(stack_opt)),
+            InsertMap, yes(feature_stack_opt)),
         apply_headvar_correction(HeadVars, RenameMap, Goal1, Goal),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(VarSet, !ProcInfo),
@@ -693,19 +693,19 @@ add_anchor_to_path(Anchor, !.Path) = !:Path :-
 
 :- func anchor_requires_close(interval_info, anchor) = bool.
 
-anchor_requires_close(_, proc_start) = no.
-anchor_requires_close(_, proc_end) = yes.
-anchor_requires_close(IntervalInfo, branch_start(_, GoalPath)) =
+anchor_requires_close(_, anchor_proc_start) = no.
+anchor_requires_close(_, anchor_proc_end) = yes.
+anchor_requires_close(IntervalInfo, anchor_branch_start(_, GoalPath)) =
         resume_save_status_requires_close(ResumeSaveStatus) :-
     map.lookup(IntervalInfo ^ branch_resume_map, GoalPath, ResumeSaveStatus).
-anchor_requires_close(_, cond_then(_)) = no.
-anchor_requires_close(_, branch_end(BranchConstruct, _)) =
-    ( BranchConstruct = neg ->
+anchor_requires_close(_, anchor_cond_then(_)) = no.
+anchor_requires_close(_, anchor_branch_end(BranchConstruct, _)) =
+    ( BranchConstruct = branch_neg ->
         no
     ;
         yes
     ).
-anchor_requires_close(_, call_site(_)) = yes.
+anchor_requires_close(_, anchor_call_site(_)) = yes.
 
 :- func resume_save_status_requires_close(resume_save_status) = bool.
 
@@ -719,12 +719,12 @@ may_have_no_successor(Anchor) :-
 
 :- pred may_have_no_successor(anchor::in, bool::out) is det.
 
-may_have_no_successor(proc_start, no).
-may_have_no_successor(proc_end, yes).
-may_have_no_successor(branch_start(_, _), no).
-may_have_no_successor(cond_then(_), no).
-may_have_no_successor(branch_end(_, _), no).
-may_have_no_successor(call_site(_), yes).   % if the call cannot succeed
+may_have_no_successor(anchor_proc_start, no).
+may_have_no_successor(anchor_proc_end, yes).
+may_have_no_successor(anchor_branch_start(_, _), no).
+may_have_no_successor(anchor_cond_then(_), no).
+may_have_no_successor(anchor_branch_end(_, _), no).
+may_have_no_successor(anchor_call_site(_), yes).   % if the call cannot succeed
 
 :- pred may_have_one_successor(anchor::in) is semidet.
 
@@ -733,12 +733,12 @@ may_have_one_successor(Anchor) :-
 
 :- pred may_have_one_successor(anchor::in, bool::out) is det.
 
-may_have_one_successor(proc_start, yes).
-may_have_one_successor(proc_end, no).
-may_have_one_successor(branch_start(_, _), yes).
-may_have_one_successor(cond_then(_), yes).
-may_have_one_successor(branch_end(_, _), yes).
-may_have_one_successor(call_site(_), yes).
+may_have_one_successor(anchor_proc_start, yes).
+may_have_one_successor(anchor_proc_end, no).
+may_have_one_successor(anchor_branch_start(_, _), yes).
+may_have_one_successor(anchor_cond_then(_), yes).
+may_have_one_successor(anchor_branch_end(_, _), yes).
+may_have_one_successor(anchor_call_site(_), yes).
 
 :- pred may_have_more_successors(anchor::in) is semidet.
 
@@ -747,17 +747,17 @@ may_have_more_successors(Anchor) :-
 
 :- pred may_have_more_successors(anchor::in, bool::out) is det.
 
-may_have_more_successors(proc_start, no).
-may_have_more_successors(proc_end, no).
-may_have_more_successors(branch_start(Type, _), MayHave) :-
-    ( Type = neg ->
+may_have_more_successors(anchor_proc_start, no).
+may_have_more_successors(anchor_proc_end, no).
+may_have_more_successors(anchor_branch_start(BranchType, _), MayHave) :-
+    ( BranchType = branch_neg ->
         MayHave = no
     ;
         MayHave = yes
     ).
-may_have_more_successors(cond_then(_), no).
-may_have_more_successors(branch_end(_, _), no).
-may_have_more_successors(call_site(_), no).
+may_have_more_successors(anchor_cond_then(_), no).
+may_have_more_successors(anchor_branch_end(_, _), no).
+may_have_more_successors(anchor_call_site(_), no).
 
 %-----------------------------------------------------------------------------%
 
@@ -815,7 +815,7 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
         ->
             !:AllPaths = !.AllPaths ^ used_after_scope := set.init
         ;
-            End = branch_end(_, EndGoalPath),
+            End = anchor_branch_end(_, EndGoalPath),
             map.lookup(IntervalInfo ^ branch_end_map, EndGoalPath,
                 BranchEndInfo),
             OnStackAfterBranch = BranchEndInfo ^ flushed_after_branch,
@@ -850,20 +850,18 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
     FullPath = StackOptParams ^ full_path,
     (
         FullPath = yes,
-        End = branch_start(disj, EndGoalPath)
+        End = anchor_branch_start(branch_disj, EndGoalPath)
     ->
-        MaybeSearchAnchor1 = yes(branch_end(disj, EndGoalPath)),
+        MaybeSearchAnchor1 = yes(anchor_branch_end(branch_disj, EndGoalPath)),
         one_after_another(RelevantVars, MaybeSearchAnchor1,
             IntervalInfo, StackOptInfo, SuccessorIds, !AllPaths),
-        map.lookup(IntervalInfo ^ branch_end_map, EndGoalPath,
-            BranchEndInfo),
+        map.lookup(IntervalInfo ^ branch_end_map, EndGoalPath, BranchEndInfo),
         ContinueId = BranchEndInfo ^ interval_after_branch,
-        apply_interval_find_all_branches(RelevantVars,
-            MaybeSearchAnchor0, IntervalInfo, StackOptInfo,
-            ContinueId, !AllPaths)
+        apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
+            IntervalInfo, StackOptInfo, ContinueId, !AllPaths)
     ;
         FullPath = yes,
-        End = branch_start(ite, EndGoalPath)
+        End = anchor_branch_start(branch_ite, EndGoalPath)
     ->
         ( SuccessorIds = [ElseStartIdPrime, CondStartIdPrime] ->
             ElseStartId = ElseStartIdPrime,
@@ -872,35 +870,32 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
             unexpected(this_file,
                 "find_all_branches_from: ite not else, cond")
         ),
-        MaybeSearchAnchorCond = yes(cond_then(EndGoalPath)),
+        MaybeSearchAnchorCond = yes(anchor_cond_then(EndGoalPath)),
         apply_interval_find_all_branches(RelevantVars,
             MaybeSearchAnchorCond, IntervalInfo, StackOptInfo,
             CondStartId, !AllPaths),
-        MaybeSearchAnchorEnd = yes(branch_end(ite, EndGoalPath)),
+        MaybeSearchAnchorEnd = yes(anchor_branch_end(branch_ite, EndGoalPath)),
         CondEndMap = IntervalInfo ^ cond_end_map,
         map.lookup(CondEndMap, EndGoalPath, ThenStartId),
         one_after_another(RelevantVars, MaybeSearchAnchorEnd,
-            IntervalInfo, StackOptInfo, [ThenStartId, ElseStartId],
-            !AllPaths),
+            IntervalInfo, StackOptInfo, [ThenStartId, ElseStartId], !AllPaths),
         map.lookup(IntervalInfo ^ branch_end_map, EndGoalPath,
             BranchEndInfo),
         ContinueId = BranchEndInfo ^ interval_after_branch,
-        apply_interval_find_all_branches(RelevantVars,
-            MaybeSearchAnchor0, IntervalInfo, StackOptInfo,
-            ContinueId, !AllPaths)
+        apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
+            IntervalInfo, StackOptInfo, ContinueId, !AllPaths)
     ;
-        End = branch_start(BranchType, EndGoalPath)
+        End = anchor_branch_start(BranchType, EndGoalPath)
     ->
-        MaybeSearchAnchor1 = yes(branch_end(BranchType, EndGoalPath)),
+        MaybeSearchAnchor1 = yes(anchor_branch_end(BranchType, EndGoalPath)),
         list.map(apply_interval_find_all_branches_map(RelevantVars,
             MaybeSearchAnchor1, IntervalInfo, StackOptInfo, !.AllPaths),
             SuccessorIds, AllPathsList),
         consolidate_after_join(AllPathsList, !:AllPaths),
         map.lookup(IntervalInfo ^ branch_end_map, EndGoalPath, BranchEndInfo),
         ContinueId = BranchEndInfo ^ interval_after_branch,
-        apply_interval_find_all_branches(RelevantVars,
-            MaybeSearchAnchor0, IntervalInfo, StackOptInfo,
-            ContinueId, !AllPaths)
+        apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
+            IntervalInfo, StackOptInfo, ContinueId, !AllPaths)
     ;
         ( SuccessorIds = [SuccessorId] ->
             apply_interval_find_all_branches(RelevantVars,
@@ -932,8 +927,7 @@ one_after_another(RelevantVars, MaybeSearchAnchor1, IntervalInfo, StackOptInfo,
     all_paths::in, interval_id::in, all_paths::out) is det.
 
 apply_interval_find_all_branches_map(RelevantVars, MaybeSearchAnchor0,
-        IntervalInfo, StackOptInfo, !.AllPaths, IntervalId,
-        !:AllPaths) :-
+        IntervalInfo, StackOptInfo, !.AllPaths, IntervalId, !:AllPaths) :-
     apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
         IntervalInfo, StackOptInfo, IntervalId, !AllPaths).
 
@@ -951,9 +945,9 @@ apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
     map.lookup(IntervalInfo ^ interval_start, IntervalId, Start),
     (
         % Check if intervals starting at Start use any RelevantVars.
-        ( Start = call_site(_)
-        ; Start = branch_end(_, _)
-        ; Start = branch_start(_, _)
+        ( Start = anchor_call_site(_)
+        ; Start = anchor_branch_end(_, _)
+        ; Start = anchor_branch_start(_, _)
         ),
         map.search(IntervalInfo ^ anchor_follow_map, Start, StartInfo),
         StartInfo = AnchorFollowVars - _,

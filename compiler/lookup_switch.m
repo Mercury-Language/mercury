@@ -194,9 +194,9 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
     % cheaper than a branch.
     list.length(TaggedCases, NumCases),
     TaggedCases = [FirstCase | _],
-    FirstCase = case(_, int_tag(FirstCaseVal), _, _),
+    FirstCase = extended_case(_, int_tag(FirstCaseVal), _, _),
     list.index1_det(TaggedCases, NumCases, LastCase),
-    LastCase = case(_, int_tag(LastCaseVal), _, _),
+    LastCase = extended_case(_, int_tag(LastCaseVal), _, _),
     Span = LastCaseVal - FirstCaseVal,
     Range = Span + 1,
     dense_switch.calc_density(NumCases, Range, Density),
@@ -302,7 +302,7 @@ project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
 
 filter_out_failing_cases([], !RevTaggedCases, !SwitchCanFail).
 filter_out_failing_cases([Case | Cases], !RevTaggedCases, !SwitchCanFail) :-
-    Case = case(_, _, _, Goal),
+    Case = extended_case(_, _, _, Goal),
     Goal = GoalExpr - _,
     ( GoalExpr = disj([]) ->
         !:SwitchCanFail = can_fail
@@ -323,13 +323,13 @@ generate_constants([], _Vars, _StoreMap, !MaybeEnd, [], no, !ResumeVars,
     !GoalTrailOps, !CI).
 generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, [CaseVal | Rest],
         MaybeLiveness, !ResumeVars, !GoalTrailOps, !CI) :-
-    Case = case(_, int_tag(CaseTag), _, Goal),
+    Case = extended_case(_, int_tag(CaseTag), _, Goal),
     Goal = GoalExpr - GoalInfo,
 
     % Goals with these features need special treatment in generate_goal.
     goal_info_get_features(GoalInfo, Features),
-    not set.member(call_table_gen, Features),
-    not set.member(save_deep_excp_vars, Features),
+    not set.member(feature_call_table_gen, Features),
+    not set.member(feature_save_deep_excp_vars, Features),
 
     ( GoalExpr = disj(Disjuncts) ->
         bool.or(goal_may_modify_trail(GoalInfo), !GoalTrailOps),
@@ -390,7 +390,7 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
     ( StartVal = 0 ->
         IndexRval = Rval
     ;
-        IndexRval = binop(int_sub, Rval, const(int_const(StartVal)))
+        IndexRval = binop(int_sub, Rval, const(llconst_int(StartVal)))
     ),
 
     % If the switch is not locally deterministic, we may need to check that
@@ -398,7 +398,8 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
     (
         NeedRangeCheck = need_range_check,
         Difference = EndVal - StartVal,
-        CmpRval = binop(unsigned_le, IndexRval, const(int_const(Difference))),
+        CmpRval = binop(unsigned_le, IndexRval,
+            const(llconst_int(Difference))),
         code_info.fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI)
     ;
         NeedRangeCheck = dont_need_range_check,
@@ -488,12 +489,12 @@ generate_simple_terms(IndexRval, OutVars, OutTypes, CaseVals, Start, BaseReg,
     construct_simple_vector(Start, OutTypes, CaseVals, VectorRvals),
     code_info.add_vector_static_cell(OutTypes, VectorRvals, VectorAddr, !CI),
 
-    VectorAddrRval = const(data_addr_const(VectorAddr, no)),
+    VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
     % IndexRval has already had Start subtracted from it.
     ( NumOutVars = 1 ->
         BaseRval = IndexRval
     ;
-        BaseRval = binop(int_mul, IndexRval, const(int_const(NumOutVars)))
+        BaseRval = binop(int_mul, IndexRval, const(llconst_int(NumOutVars)))
     ),
     Code = node([
         assign(BaseReg, mem_addr(heap_ref(VectorAddrRval, 0, BaseRval)))
@@ -568,10 +569,10 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     list.length(MainRowTypes, MainRowWidth),
     code_info.add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr,
         !CI),
-    MainVectorAddrRval = const(data_addr_const(MainVectorAddr, no)),
+    MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
     code_info.add_vector_static_cell(LLDSTypes, LaterSolnArray,
         LaterVectorAddr, !CI),
-    LaterVectorAddrRval = const(data_addr_const(LaterVectorAddr, no)),
+    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr, no)),
 
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
@@ -588,7 +589,7 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     code_info.acquire_temp_slot(lookup_switch_cur, CurSlot, !CI),
     code_info.acquire_temp_slot(lookup_switch_max, MaxSlot, !CI),
     % IndexRval has already had Start subtracted from it.
-    BaseRval = binop(int_mul, IndexRval, const(int_const(MainRowWidth))),
+    BaseRval = binop(int_mul, IndexRval, const(llconst_int(MainRowWidth))),
     BaseRegInitCode = node([
         assign(BaseReg, mem_addr(heap_ref(MainVectorAddrRval, 0, BaseRval)))
             - "Compute base address for this case"
@@ -664,10 +665,10 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
         SaveSlotsCode = node([
             assign(CurSlot,
-                lval(field(yes(0), lval(BaseReg), const(int_const(0)))))
+                lval(field(yes(0), lval(BaseReg), const(llconst_int(0)))))
                 - "Setup current slot in the later solution array",
             assign(MaxSlot,
-                lval(field(yes(0), lval(BaseReg), const(int_const(1)))))
+                lval(field(yes(0), lval(BaseReg), const(llconst_int(1)))))
                 - "Setup maximum slot in the later solution array"
         ]),
         code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode,
@@ -682,8 +683,8 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
 
         % Generate code for the non-last disjunct.
 
-        code_info.make_resume_point(ResumeVars, stack_only, ResumeMap,
-            ResumePoint, !CI),
+        code_info.make_resume_point(ResumeVars, resume_locs_stack_only,
+            ResumeMap, ResumePoint, !CI),
         code_info.effect_resume_point(ResumePoint, model_non, UpdateRedoipCode,
             !CI),
         generate_offset_assigns(OutVars, 2, BaseReg, !CI),
@@ -708,7 +709,8 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         code_info.reset_to_position(DisjEntry, !CI),
         code_info.generate_resume_point(ResumePoint, ResumePointCode, !CI),
 
-        code_info.maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
+        code_info.maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
+            RestoreTicketCode),
         code_info.maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
 
         code_info.acquire_reg_not_in_storemap(StoreMap, LaterBaseReg, !CI),
@@ -722,7 +724,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
                 label(UndoLabel))
                 - "Jump to undo hijack code if there are no more solutions",
             assign(CurSlot,
-                binop(int_add, lval(CurSlot), const(int_const(NumOutVars))))
+                binop(int_add, lval(CurSlot), const(llconst_int(NumOutVars))))
                 - "Update current slot in the later solution array",
             goto(label(AfterUndoLabel))
                 - "Jump around undo hijack code",
@@ -773,8 +775,8 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         Kinds = [_ - NextKind | _],
         code_info.get_next_label(NextKindLabel, !CI),
         TestRval = binop(TestOp,
-            lval(field(yes(0), lval(BaseReg), const(int_const(0)))),
-            const(int_const(0))),
+            lval(field(yes(0), lval(BaseReg), const(llconst_int(0)))),
+            const(llconst_int(0))),
         TestCode = node([
             if_val(TestRval, label(NextKindLabel))
                 - "skip to next kind in several_soln lookup switch",
@@ -841,7 +843,7 @@ construct_several_soln_vector(CurIndex, EndVal, !.LaterNextRow, LLDSTypes,
             !:OneSolnCaseCount = !.OneSolnCaseCount + 1,
             % The first 0 means there is exactly one solution for this case;
             % the second 0 is a dummy that won't be referenced.
-            ControlRvals = [const(int_const(0)), const(int_const(0))],
+            ControlRvals = [const(llconst_int(0)), const(llconst_int(0))],
             MainRow = ControlRvals ++ Rvals
         ;
             Soln = several_solns([]),
@@ -853,8 +855,8 @@ construct_several_soln_vector(CurIndex, EndVal, !.LaterNextRow, LLDSTypes,
             FirstRowOffset = !.LaterNextRow * NumLLDSTypes,
             LastRowOffset = (!.LaterNextRow + NumLaterSolns - 1)
                 * NumLLDSTypes,
-            ControlRvals = [const(int_const(FirstRowOffset)),
-                const(int_const(LastRowOffset))],
+            ControlRvals = [const(llconst_int(FirstRowOffset)),
+                const(llconst_int(LastRowOffset))],
             MainRow = ControlRvals ++ FirstSoln,
             list.reverse(LaterSolns, RevLaterSolns),
             !:RevLaterSolnArray = RevLaterSolns ++ !.RevLaterSolnArray,
@@ -872,7 +874,7 @@ construct_several_soln_vector(CurIndex, EndVal, !.LaterNextRow, LLDSTypes,
 construct_fail_row(LLDSTypes, MainRow, !FailCaseCount) :-
     % The -1 means no solutions for this case; the 0 is a dummy that
     % won't be referenced.
-    ControlRvals = [const(int_const(-1)), const(int_const(0))],
+    ControlRvals = [const(llconst_int(-1)), const(llconst_int(0))],
 
     % Since this argument (array element) is a place-holder and will never be
     % referenced, just fill it in with a dummy entry.
@@ -904,20 +906,21 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode, !CI) :-
         BitNum = IndexRval
     ;
         % This is the same as
-        % WordNum = binop(int_div, IndexRval, const(int_const(WordBits)))
+        % WordNum = binop(int_div, IndexRval, const(llconst_int(WordBits)))
         % except that it can generate more efficient code.
         WordNum = binop(unchecked_right_shift, IndexRval,
-            const(int_const(Log2WordBits))),
+            const(llconst_int(Log2WordBits))),
 
         Word = lval(field(yes(0), BitVecRval, WordNum)),
 
         % This is the same as
-        % BitNum = binop(int_mod, IndexRval, const(int_const(WordBits)))
+        % BitNum = binop(int_mod, IndexRval, const(llconst_int(WordBits)))
         % except that it can generate more efficient code.
-        BitNum = binop(bitwise_and, IndexRval, const(int_const(WordBits - 1)))
+        BitNum = binop(bitwise_and, IndexRval,
+            const(llconst_int(WordBits - 1)))
     ),
     HasBit = binop(bitwise_and,
-        binop(unchecked_left_shift, const(int_const(1)), BitNum), Word),
+        binop(unchecked_left_shift, const(llconst_int(1)), BitNum), Word),
     code_info.fail_if_rval_is_false(HasBit, CheckCode, !CI).
 
     % Prevent cross-compilation errors by making sure that the bitvector
@@ -956,7 +959,7 @@ generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CI) :-
     map.to_assoc_list(BitMap, WordVals),
     generate_bit_vec_args(WordVals, 0, Args),
     add_scalar_static_cell_natural_types(Args, DataAddr, !CI),
-    BitVec = const(data_addr_const(DataAddr, no)).
+    BitVec = const(llconst_data_addr(DataAddr, no)).
 
 :- pred generate_bit_vec_2(assoc_list(int, T)::in, int::in, int::in,
     map(int, int)::in, map(int, int)::out) is det.
@@ -986,7 +989,7 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
         WordVal = Bits,
         Remainder = Rest
     ),
-    Rval = const(int_const(WordVal)),
+    Rval = const(llconst_int(WordVal)),
     Count1 = Count + 1,
     generate_bit_vec_args(Remainder, Count1, Rvals).
 
@@ -997,7 +1000,7 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
 
 generate_offset_assigns([], _, _, !CI).
 generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
-    LookupLval = field(yes(0), lval(BaseReg), const(int_const(Offset))),
+    LookupLval = field(yes(0), lval(BaseReg), const(llconst_int(Offset))),
     code_info.assign_lval_to_var(Var, LookupLval, Code, !CI),
     expect(tree.is_empty(Code), this_file,
         "generate_offset_assigns: nonempty code"),
@@ -1007,20 +1010,20 @@ generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
 
 :- func default_value_for_type(llds_type) = rval.
 
-default_value_for_type(bool) = const(int_const(0)).
-default_value_for_type(int_least8) = const(int_const(0)).
-default_value_for_type(uint_least8) = const(int_const(0)).
-default_value_for_type(int_least16) = const(int_const(0)).
-default_value_for_type(uint_least16) = const(int_const(0)).
-default_value_for_type(int_least32) = const(int_const(0)).
-default_value_for_type(uint_least32) = const(int_const(0)).
-default_value_for_type(integer) = const(int_const(0)).
-default_value_for_type(unsigned) = const(int_const(0)).
-default_value_for_type(float) = const(float_const(0.0)).
-default_value_for_type(string) = const(string_const("")).
-default_value_for_type(data_ptr) = const(int_const(0)).
-default_value_for_type(code_ptr) = const(int_const(0)).
-default_value_for_type(word) = const(int_const(0)).
+default_value_for_type(bool) = const(llconst_int(0)).
+default_value_for_type(int_least8) = const(llconst_int(0)).
+default_value_for_type(uint_least8) = const(llconst_int(0)).
+default_value_for_type(int_least16) = const(llconst_int(0)).
+default_value_for_type(uint_least16) = const(llconst_int(0)).
+default_value_for_type(int_least32) = const(llconst_int(0)).
+default_value_for_type(uint_least32) = const(llconst_int(0)).
+default_value_for_type(integer) = const(llconst_int(0)).
+default_value_for_type(unsigned) = const(llconst_int(0)).
+default_value_for_type(float) = const(llconst_float(0.0)).
+default_value_for_type(string) = const(llconst_string("")).
+default_value_for_type(data_ptr) = const(llconst_int(0)).
+default_value_for_type(code_ptr) = const(llconst_int(0)).
+default_value_for_type(word) = const(llconst_int(0)).
 
 %-----------------------------------------------------------------------------%
 

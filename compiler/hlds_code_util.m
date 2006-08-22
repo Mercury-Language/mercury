@@ -98,7 +98,7 @@ cons_id_to_tag(table_io_decl(ShroudedPredProcId), _, _) =
 cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
     (
         % Handle the `character' type specially.
-        Type = builtin(character),
+        Type = builtin_type(builtin_type_character),
         Name = unqualified(ConsName),
         string.char_to_string(Char, ConsName)
     ->

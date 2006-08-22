@@ -703,7 +703,7 @@ assign_var_to_var(Var, OldVar, !VLI) :-
 
 assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
-    ( Lval0 = field(yes(Ptag), var(BaseVar), const(int_const(Offset))) ->
+    ( Lval0 = field(yes(Ptag), var(BaseVar), const(llconst_int(Offset))) ->
         get_var_state_map(!.VLI, VarStateMap0),
         map.lookup(VarStateMap0, BaseVar, BaseState),
         BaseState = state(BaseVarLvals, MaybeConstBaseVarRval,
@@ -711,7 +711,7 @@ assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code, !VLI) :-
         (
             MaybeConstBaseVarRval = yes(BaseVarRval),
             BaseVarRval = mkword(Ptag, BaseConst),
-            BaseConst = const(data_addr_const(DataAddr, MaybeBaseOffset)),
+            BaseConst = const(llconst_data_addr(DataAddr, MaybeBaseOffset)),
             % XXX We could drop the MaybeBaseOffset = no condition,
             % but this would require more complex code below.
             MaybeBaseOffset = no,
@@ -720,7 +720,7 @@ assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code, !VLI) :-
         ->
             MaybeConstRval = yes(SelectedArgRval),
             Lvals = set.map(add_field_offset(yes(Ptag),
-                const(int_const(Offset))), BaseVarLvals),
+                const(llconst_int(Offset))), BaseVarLvals),
             set.init(Using),
             State = state(Lvals, MaybeConstRval, no, Using, alive),
             map.det_insert(VarStateMap0, Var, State, VarStateMap),
@@ -813,7 +813,7 @@ assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, MaybeRvals0,
         SizeInfo = yes(SizeSource),
         (
             SizeSource = known_size(Size),
-            SizeRval = const(int_const(Size))
+            SizeRval = const(llconst_int(Size))
         ;
             SizeSource = dynamic_size(SizeVar),
             SizeRval = var(SizeVar)
@@ -829,7 +829,7 @@ assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, MaybeRvals0,
     get_exprn_opts(!.VLI, ExprnOpts),
     ( cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes) ->
         add_scalar_static_cell(RvalsTypes, DataAddr, !StaticCellInfo),
-        CellPtrConst = const(data_addr_const(DataAddr, MaybeOffset)),
+        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         CellPtrRval = mkword(Ptag, CellPtrConst),
         assign_const_to_var(Var, CellPtrRval, !VLI),
         Code = empty
@@ -869,7 +869,7 @@ assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, Vector,
     ),
     CellCode = node([
         incr_hp(Lval, yes(Ptag), TotalOffset,
-            const(int_const(TotalSize)), TypeMsg, MayUseAtomic)
+            const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic)
             - string.append("Allocating heap for ", VarName)
     ]),
     set_magic_var_location(Var, Lval, !VLI),
@@ -893,7 +893,7 @@ assign_cell_args(ModuleInfo, [MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
         Code, !VLI) :-
     (
         MaybeRval0 = yes(Rval0),
-        Target = field(Ptag, Base, const(int_const(Offset))),
+        Target = field(Ptag, Base, const(llconst_int(Offset))),
         ( Rval0 = var(Var) ->
             find_var_availability(!.VLI, Var, no, Avail),
             (
@@ -1085,10 +1085,10 @@ produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code, !VLI) :-
 %----------------------------------------------------------------------------%
 
 clear_r1(ModuleInfo, Code, !VLI) :-
-    free_up_lval(ModuleInfo, reg(r, 1), [], [], Code, !VLI),
+    free_up_lval(ModuleInfo, reg(reg_r, 1), [], [], Code, !VLI),
     get_loc_var_map(!.VLI, LocVarMap0),
     get_var_state_map(!.VLI, VarStateMap0),
-    clobber_regs_in_maps([reg(r, 1)], no,
+    clobber_regs_in_maps([reg(reg_r, 1)], no,
         LocVarMap0, LocVarMap, VarStateMap0, VarStateMap),
     set_loc_var_map(LocVarMap, !VLI),
     set_var_state_map(VarStateMap, !VLI).
@@ -1297,7 +1297,7 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
             % The code generator assumes that values in stack slots don't get
             % clobbered without an explicit assignment (via a place_var
             % operation with a stack var as a target).
-            Pref = reg(r, RegNum),
+            Pref = reg(reg_r, RegNum),
             reg_is_not_locked_for_var(!.VLI, RegNum, MovedVar)
         )
     ->
@@ -1451,7 +1451,7 @@ record_copy_for_var(Old, New, Var, !VarStateMap, !LocVarMap) :-
     map.lookup(!.VarStateMap, Var, State0),
     State0 = state(LvalSet0, MaybeConstRval, MaybeExprRval,
         Using, DeadOrAlive),
-    Token = reg(r, -42),
+    Token = reg(reg_r, -42),
     LvalSet1 = set.map(substitute_lval_in_lval(Old, Token), LvalSet0),
     set.union(LvalSet0, LvalSet1, LvalSet2),
     LvalSet3 = set.filter(lval_does_not_support_lval(New), LvalSet2),
@@ -1661,7 +1661,7 @@ select_preferred_reg(VLI, Var, CheckInUse, Avoid, Lval) :-
     ->
         (
             PrefLocn = abs_reg(N),
-            PrefLval = reg(r, N),
+            PrefLval = reg(reg_r, N),
             (
                 CheckInUse = yes,
                 \+ lval_in_use(VLI, PrefLval)
@@ -1707,7 +1707,7 @@ select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
     ->
         (
             PrefLocn = abs_reg(N),
-            PrefLval = reg(r, N),
+            PrefLval = reg(reg_r, N),
             (
                 CheckInUse = yes,
                 \+ lval_in_use(VLI, PrefLval)
@@ -1767,7 +1767,7 @@ get_spare_reg(VLI, Lval) :-
     lval::out) is det.
 
 get_spare_reg_2(VLI, Avoid, N0, Lval) :-
-    TryLval = reg(r, N0),
+    TryLval = reg(reg_r, N0),
     ( lval_in_use(VLI, TryLval) ->
         get_spare_reg_2(VLI, Avoid, N0 + 1, Lval)
     ; list.member(TryLval, Avoid) ->
@@ -1786,7 +1786,7 @@ lval_in_use(VLI, Lval) :-
     ;
         set.member(Lval, Acquired)
     ;
-        Lval = reg(r, N),
+        Lval = reg(reg_r, N),
         N =< Locked
     ).
 
@@ -1801,7 +1801,7 @@ reg_is_not_locked_for_var(VLI, RegNum, Var) :-
     get_acquired(VLI, Acquired),
     get_locked(VLI, Locked),
     get_exceptions(VLI, Exceptions),
-    Reg = reg(r, RegNum),
+    Reg = reg(reg_r, RegNum),
     \+ set.member(Reg, Acquired),
     RegNum =< Locked => list.member(Var - Reg, Exceptions).
 
@@ -1824,7 +1824,7 @@ acquire_reg_require_given(Lval, !VLI) :-
     set_acquired(Acquired, !VLI).
 
 acquire_reg_prefer_given(Pref, Lval, !VLI) :-
-    PrefLval = reg(r, Pref),
+    PrefLval = reg(reg_r, Pref),
     ( lval_in_use(!.VLI, PrefLval) ->
         get_spare_reg(!.VLI, Lval)
     ;
@@ -1835,7 +1835,7 @@ acquire_reg_prefer_given(Pref, Lval, !VLI) :-
     set_acquired(Acquired, !VLI).
 
 acquire_reg_start_at_given(Start, Lval, !VLI) :-
-    StartLval = reg(r, Start),
+    StartLval = reg(reg_r, Start),
     ( lval_in_use(!.VLI, StartLval) ->
         acquire_reg_start_at_given(Start + 1, Lval, !VLI)
     ;
@@ -2174,7 +2174,7 @@ make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
 
 :- pred is_root_lval(lval::in) is semidet.
 
-is_root_lval(reg(r, _)).
+is_root_lval(reg(reg_r, _)).
 is_root_lval(stackvar(_)).
 is_root_lval(framevar(_)).
 

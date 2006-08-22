@@ -1112,20 +1112,20 @@
     % construct a type from a type_ctor and a list of arguments.
     %
 :- type mer_type
-    --->    variable(tvar, kind)
+    --->    type_variable(tvar, kind)
             % A type variable.
 
-    ;       defined(sym_name, list(mer_type), kind)
-            % A user defined type constructor.
+    ;       defined_type(sym_name, list(mer_type), kind)
+            % A type using a user defined type constructor.
 
-    ;       builtin(builtin_type)
+    ;       builtin_type(builtin_type)
             % These are all known to have kind `star'.
 
     % The above three functors should be kept as the first three, since
     % they will be the most commonly used and therefore we want them to
     % get the primary tags on a 32-bit machine.
 
-    ;       higher_order(
+    ;       higher_order_type(
                 % A type for higher-order values. If the second argument
                 % is yes(T) then the values are functions returning T,
                 % otherwise they are predicates. The kind is always `star'.
@@ -1136,25 +1136,25 @@
                 lambda_eval_method
             )
 
-    ;       tuple(list(mer_type), kind)
+    ;       tuple_type(list(mer_type), kind)
             % Tuple types.
 
-    ;       apply_n(tvar, list(mer_type), kind)
+    ;       apply_n_type(tvar, list(mer_type), kind)
             % An apply/N expression.  `apply_n(V, [T1, ...], K)'
             % would be the representation of type `V(T1, ...)'
             % with kind K.  The list must be non-empty.
 
-    ;       kinded(mer_type, kind).
+    ;       kinded_type(mer_type, kind).
             % A type expression with an explicit kind annotation.
             % (These are not yet used.)
 
 :- type vartypes == map(prog_var, mer_type).
 
 :- type builtin_type
-    --->    int
-    ;       float
-    ;       string
-    ;       character.
+    --->    builtin_type_int
+    ;       builtin_type_float
+    ;       builtin_type_string
+    ;       builtin_type_character.
 
 :- type type_term   ==  term(tvar_type).
 
@@ -1185,8 +1185,8 @@
     % to be used by other tools, such as the debugger.
     %
 :- type condition
-    --->    true
-    ;       where(term).
+    --->    cond_true
+    ;       cond_where(term).
 
     % Similar to varset.merge_subst but produces a tvar_renaming
     % instead of a substitution, which is more suitable for types.
@@ -1209,14 +1209,14 @@
     % of constructor classes.
     %
 :- type kind
-    --->    star
+    --->    kind_star
             % An ordinary type.
 
-    ;       arrow(kind, kind)
+    ;       kind_arrow(kind, kind)
             % A type with kind `A' applied to a type with kind `arrow(A, B)'
             % will have kind `B'.
 
-    ;       variable(kvar).
+    ;       kind_variable(kvar).
             % A kind variable. These can be used during kind inference;
             % after kind inference, all remaining kind variables will be
             % bound to `star'.
@@ -1916,16 +1916,16 @@ get_tvar_kind(Map, TVar, Kind) :-
     ( map.search(Map, TVar, Kind0) ->
         Kind = Kind0
     ;
-        Kind = star
+        Kind = kind_star
     ).
 
-get_type_kind(variable(_, Kind)) = Kind.
-get_type_kind(defined(_, _, Kind)) = Kind.
-get_type_kind(builtin(_)) = star.
-get_type_kind(higher_order(_, _, _, _)) = star.
-get_type_kind(tuple(_, Kind)) = Kind.
-get_type_kind(apply_n(_, _, Kind)) = Kind.
-get_type_kind(kinded(_, Kind)) = Kind.
+get_type_kind(type_variable(_, Kind)) = Kind.
+get_type_kind(defined_type(_, _, Kind)) = Kind.
+get_type_kind(builtin_type(_)) = kind_star.
+get_type_kind(higher_order_type(_, _, _, _)) = kind_star.
+get_type_kind(tuple_type(_, Kind)) = Kind.
+get_type_kind(apply_n_type(_, _, Kind)) = Kind.
+get_type_kind(kinded_type(_, Kind)) = Kind.
 
 %-----------------------------------------------------------------------------%
 

@@ -458,7 +458,7 @@ propagate_conj_constraints([Goal0 | Goals0], NonLocals, RevGoals0, Goals,
         \+ pred_info_is_imported(PredInfo),
         list.takewhile((pred(CnstrGoal::in) is semidet :-
             CnstrGoal = _ - CnstrGoalInfo,
-            goal_info_has_feature(CnstrGoalInfo, constraint)
+            goal_info_has_feature(CnstrGoalInfo, feature_constraint)
         ), Goals0, Constraints, Goals1),
         Constraints \= []
     ->
@@ -1101,7 +1101,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         ->
             % Create the new version.
 
-            pd_info.define_new_pred(created(deforestation),
+            pd_info.define_new_pred(origin_created(deforestation),
                 DeforestGoal, PredProcId, CallGoal, !PDInfo),
             PredProcId = proc(PredId, _),
 
@@ -1636,7 +1636,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     SimpList0 = simplifications_to_list(Simplifications0),
     % Be a bit more aggressive with common structure elimination.
     % This helps achieve folding in some cases.
-    SimpList = [extra_common_struct | SimpList0],
+    SimpList = [simp_extra_common_struct | SimpList0],
     Simplifications = list_to_simplifications(SimpList),
     pd_util.pd_simplify_goal(Simplifications, Goal2, Goal3, !PDInfo, !IO),
     pd_info_set_instmap(InstMap0, !PDInfo),

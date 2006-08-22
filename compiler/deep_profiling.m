@@ -219,7 +219,7 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
             ClonePredProcId = proc(ClonePredId, CloneProcId),
             GoalExpr = plain_call(ClonePredId, CloneProcId, Args,
                 Builtin, UnifyContext, SymName),
-            goal_info_add_feature(tailcall, GoalInfo0, GoalInfo),
+            goal_info_add_feature(feature_tailcall, GoalInfo0, GoalInfo),
             Goal = GoalExpr - GoalInfo,
             !:FoundTailCall = yes
         ;
@@ -364,7 +364,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
     ;
         GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
         goal_info_get_features(GoalInfo, Features),
-        ( set.member(tailcall, Features) ->
+        ( set.member(feature_tailcall, Features) ->
             !:TailCallSites = [!.N | !.TailCallSites]
         ;
             true
@@ -579,7 +579,8 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         generate_call(ModuleInfo, "det_call_port_code_sr", 4,
             [ProcStaticVar, TopCSD, MiddleCSD, ActivationPtr1],
             [TopCSD, MiddleCSD, ActivationPtr1], CallPortCode0),
-        goal_add_feature(save_deep_excp_vars, CallPortCode0, CallPortCode),
+        goal_add_feature(feature_save_deep_excp_vars,
+            CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "det_exit_port_code_sr", 3,
             [TopCSD, MiddleCSD, ActivationPtr1], [], ExitPortCode)
     ;
@@ -587,7 +588,8 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         generate_call(ModuleInfo, "det_call_port_code_ac", 3,
             [ProcStaticVar, TopCSD, MiddleCSD],
             [TopCSD, MiddleCSD], CallPortCode0),
-        goal_add_feature(save_deep_excp_vars, CallPortCode0, CallPortCode),
+        goal_add_feature(feature_save_deep_excp_vars,
+            CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "det_exit_port_code_ac", 2,
             [TopCSD, MiddleCSD], [], ExitPortCode)
     ),
@@ -671,7 +673,7 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         generate_call(ModuleInfo, "semi_call_port_code_sr", 4,
             [ProcStaticVar, TopCSD, MiddleCSD, ActivationPtr1],
             [TopCSD, MiddleCSD, ActivationPtr1], CallPortCode0),
-        goal_add_feature(save_deep_excp_vars,
+        goal_add_feature(feature_save_deep_excp_vars,
             CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "semi_exit_port_code_sr", 3,
             [TopCSD, MiddleCSD, ActivationPtr1], [], ExitPortCode),
@@ -684,7 +686,7 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         generate_call(ModuleInfo, "semi_call_port_code_ac", 3,
             [ProcStaticVar, TopCSD, MiddleCSD],
             [TopCSD, MiddleCSD], CallPortCode0),
-        goal_add_feature(save_deep_excp_vars,
+        goal_add_feature(feature_save_deep_excp_vars,
             CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "semi_exit_port_code_ac", 2,
             [TopCSD, MiddleCSD], [], ExitPortCode),
@@ -777,7 +779,8 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             OldOutermostProcDyn2, NewOutermostProcDyn],
             [TopCSD, MiddleCSD, OldOutermostProcDyn2, NewOutermostProcDyn],
             CallPortCode0),
-        goal_add_feature(save_deep_excp_vars, CallPortCode0, CallPortCode),
+        goal_add_feature(feature_save_deep_excp_vars,
+            CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "non_exit_port_code_sr", 3,
             [TopCSD, MiddleCSD, OldOutermostProcDyn2], [],
             ExitPortCode),
@@ -794,7 +797,8 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             [ProcStaticVar, TopCSD, MiddleCSD, NewOutermostProcDyn],
             [TopCSD, MiddleCSD, NewOutermostProcDyn],
             CallPortCode0),
-        goal_add_feature(save_deep_excp_vars, CallPortCode0, CallPortCode),
+        goal_add_feature(feature_save_deep_excp_vars,
+            CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "non_exit_port_code_ac", 2,
             [TopCSD, MiddleCSD], [], ExitPortCode),
         generate_call(ModuleInfo, "non_fail_port_code_ac", 2,
@@ -806,7 +810,7 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     ),
 
     RedoPortCode0 = RedoPortExpr - RedoPortGoalInfo0,
-    goal_info_add_feature(preserve_backtrack_into,
+    goal_info_add_feature(feature_preserve_backtrack_into,
         RedoPortGoalInfo0, RedoPortGoalInfo),
     RedoPortCode = RedoPortExpr - RedoPortGoalInfo,
 
@@ -1068,7 +1072,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
     Goal0 = GoalExpr - GoalInfo0,
     ModuleInfo = !.DeepInfo ^ module_info,
     goal_info_get_features(GoalInfo0, GoalFeatures),
-    goal_info_remove_feature(tailcall, GoalInfo0, GoalInfo1),
+    goal_info_remove_feature(feature_tailcall, GoalInfo0, GoalInfo1),
     make_impure(GoalInfo1, GoalInfo),
 
     % We need to make the call itself impure. If we didn't do so,
@@ -1098,7 +1102,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
     classify_call(ModuleInfo, GoalExpr, CallKind),
     (
         CallKind = normal(PredProcId),
-        ( set.member(tailcall, GoalFeatures) ->
+        ( set.member(feature_tailcall, GoalFeatures) ->
             generate_call(ModuleInfo, "prepare_for_tail_call", 1,
                 [SiteNumVar], [], PrepareGoal)
         ;
@@ -1184,7 +1188,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
     !:DeepInfo = !.DeepInfo ^ call_sites :=
         (!.DeepInfo ^ call_sites ++ [CallSite]),
     (
-        set.member(tailcall, GoalFeatures),
+        set.member(feature_tailcall, GoalFeatures),
         !.DeepInfo ^ maybe_rec_info = yes(RecInfo),
         RecInfo ^ role = outer_proc(_)
     ->
@@ -1698,7 +1702,8 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
 impure_init_goal_info(NonLocals, InstMapDelta, Determinism) = GoalInfo :-
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
         GoalInfo0),
-    goal_info_add_feature(not_impure_for_determinism, GoalInfo0, GoalInfo).
+    goal_info_add_feature(feature_not_impure_for_determinism,
+        GoalInfo0, GoalInfo).
 
 :- func impure_reachable_init_goal_info(set(prog_var), determinism)
     = hlds_goal_info.
@@ -1715,7 +1720,8 @@ impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
     instmap_delta_init_unreachable(InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
         GoalInfo0),
-    goal_info_add_feature(not_impure_for_determinism, GoalInfo0, GoalInfo).
+    goal_info_add_feature(feature_not_impure_for_determinism,
+        GoalInfo0, GoalInfo).
 
 :- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set(prog_var))
     = hlds_goal_info.
@@ -1742,7 +1748,7 @@ make_impure(!GoalInfo) :-
         true
     ;
         goal_info_set_purity(purity_impure, !GoalInfo),
-        goal_info_add_feature(not_impure_for_determinism, !GoalInfo)
+        goal_info_add_feature(feature_not_impure_for_determinism, !GoalInfo)
     ).
 
 :- pred add_impurity_if_needed(bool::in, hlds_goal_info::in,

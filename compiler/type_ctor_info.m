@@ -407,42 +407,48 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         TypeCtorData = type_ctor_data(Version, ModuleName, TypeName, TypeArity,
             UnifyUniv, CompareUniv, !.Flags, Details)
     ),
-    RttiData = type_ctor_info(TypeCtorData).
+    RttiData = rtti_data_type_ctor_info(TypeCtorData).
 
 :- pred builtin_type_ctor(string::in, string::in, int::in, builtin_ctor::out)
     is semidet.
 
-builtin_type_ctor("builtin", "int", 0, int).
-builtin_type_ctor("builtin", "string", 0, string).
-builtin_type_ctor("builtin", "float", 0, float).
-builtin_type_ctor("builtin", "character", 0, char).
-builtin_type_ctor("builtin", "void", 0, void).
-builtin_type_ctor("builtin", "c_pointer", 0, c_pointer(is_not_stable)).
-builtin_type_ctor("builtin", "stable_c_pointer", 0, c_pointer(is_stable)).
-builtin_type_ctor("builtin", "pred", 0, pred_ctor).
-builtin_type_ctor("builtin", "func", 0, func_ctor).
-builtin_type_ctor("builtin", "tuple", 0, tuple).
-builtin_type_ctor("private_builtin", "ref", 1, ref).
-builtin_type_ctor("type_desc", "type_ctor_desc", 0, type_ctor_desc).
-builtin_type_ctor("type_desc", "pseudo_type_desc", 0, pseudo_type_desc).
-builtin_type_ctor("type_desc", "type_desc", 0, type_desc).
+builtin_type_ctor("builtin", "int", 0, builtin_ctor_int).
+builtin_type_ctor("builtin", "string", 0, builtin_ctor_string).
+builtin_type_ctor("builtin", "float", 0, builtin_ctor_float).
+builtin_type_ctor("builtin", "character", 0, builtin_ctor_char).
+builtin_type_ctor("builtin", "void", 0, builtin_ctor_void).
+builtin_type_ctor("builtin", "c_pointer", 0,
+    builtin_ctor_c_pointer(is_not_stable)).
+builtin_type_ctor("builtin", "stable_c_pointer", 0,
+    builtin_ctor_c_pointer(is_stable)).
+builtin_type_ctor("builtin", "pred", 0, builtin_ctor_pred_ctor).
+builtin_type_ctor("builtin", "func", 0, builtin_ctor_func_ctor).
+builtin_type_ctor("builtin", "tuple", 0, builtin_ctor_tuple).
+builtin_type_ctor("private_builtin", "ref", 1, builtin_ctor_ref).
+builtin_type_ctor("type_desc", "type_ctor_desc", 0,
+    builtin_ctor_type_ctor_desc).
+builtin_type_ctor("type_desc", "pseudo_type_desc", 0,
+    builtin_ctor_pseudo_type_desc).
+builtin_type_ctor("type_desc", "type_desc", 0, builtin_ctor_type_desc).
 
 :- pred impl_type_ctor(string::in, string::in, int::in, impl_ctor::out)
     is semidet.
 
-impl_type_ctor("private_builtin", "type_ctor_info", 0, type_ctor_info).
-impl_type_ctor("private_builtin", "type_info", 0, type_info).
-impl_type_ctor("private_builtin", "typeclass_info", 0, typeclass_info).
+impl_type_ctor("private_builtin", "type_ctor_info", 0,
+    impl_ctor_type_ctor_info).
+impl_type_ctor("private_builtin", "type_info", 0, impl_ctor_type_info).
+impl_type_ctor("private_builtin", "typeclass_info", 0,
+    impl_ctor_typeclass_info).
 impl_type_ctor("private_builtin", "base_typeclass_info", 0,
-    base_typeclass_info).
-impl_type_ctor("private_builtin", "heap_pointer", 0, hp).
-impl_type_ctor("private_builtin", "succip", 0, succip).
-impl_type_ctor("private_builtin", "curfr", 0, curfr).
-impl_type_ctor("private_builtin", "maxfr", 0, maxfr).
-impl_type_ctor("private_builtin", "redofr", 0, redofr).
-impl_type_ctor("private_builtin", "trail_ptr", 0, trail_ptr).
-impl_type_ctor("private_builtin", "ticket", 0, ticket).
-impl_type_ctor("table_builtin", "ml_subgoal", 0, subgoal).
+    impl_ctor_base_typeclass_info).
+impl_type_ctor("private_builtin", "heap_pointer", 0, impl_ctor_hp).
+impl_type_ctor("private_builtin", "succip", 0, impl_ctor_succip).
+impl_type_ctor("private_builtin", "curfr", 0, impl_ctor_curfr).
+impl_type_ctor("private_builtin", "maxfr", 0, impl_ctor_maxfr).
+impl_type_ctor("private_builtin", "redofr", 0, impl_ctor_redofr).
+impl_type_ctor("private_builtin", "trail_ptr", 0, impl_ctor_trail_ptr).
+impl_type_ctor("private_builtin", "ticket", 0, impl_ctor_ticket).
+impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
 
 :- pred make_rtti_proc_label(pred_proc_id::in, module_info::in,
     rtti_proc_label::out) is det.
@@ -481,7 +487,7 @@ make_pseudo_type_info_and_tables(Type, UnivTvars, ExistTvars, RttiData,
         !Tables) :-
     pseudo_type_info.construct_pseudo_type_info(Type, UnivTvars, ExistTvars,
         PseudoTypeInfo),
-    RttiData = pseudo_type_info(PseudoTypeInfo),
+    RttiData = rtti_data_pseudo_type_info(PseudoTypeInfo),
     make_pseudo_type_info_tables(PseudoTypeInfo, !Tables).
 
     % Construct rtti_data definitions for all of the non-atomic subterms
@@ -494,11 +500,11 @@ make_pseudo_type_info_and_tables(Type, UnivTvars, ExistTvars, RttiData,
 make_type_info_tables(plain_arity_zero_type_info(_), !Tables).
 make_type_info_tables(PseudoTypeInfo, !Tables) :-
     PseudoTypeInfo = plain_type_info(_, Args),
-    !:Tables = [type_info(PseudoTypeInfo) | !.Tables],
+    !:Tables = [rtti_data_type_info(PseudoTypeInfo) | !.Tables],
     list.foldl(make_type_info_tables, Args, !Tables).
 make_type_info_tables(PseudoTypeInfo, !Tables) :-
     PseudoTypeInfo = var_arity_type_info(_, Args),
-    !:Tables = [type_info(PseudoTypeInfo) | !.Tables],
+    !:Tables = [rtti_data_type_info(PseudoTypeInfo) | !.Tables],
     list.foldl(make_type_info_tables, Args, !Tables).
 
 :- pred make_pseudo_type_info_tables(rtti_pseudo_type_info::in,
@@ -507,12 +513,12 @@ make_type_info_tables(PseudoTypeInfo, !Tables) :-
 make_pseudo_type_info_tables(plain_arity_zero_pseudo_type_info(_), !Tables).
 make_pseudo_type_info_tables(PseudoTypeInfo, !Tables) :-
     PseudoTypeInfo = plain_pseudo_type_info(_, Args),
-    !:Tables = [pseudo_type_info(PseudoTypeInfo) | !.Tables],
+    !:Tables = [rtti_data_pseudo_type_info(PseudoTypeInfo) | !.Tables],
     list.foldl(make_maybe_pseudo_type_info_tables, Args,
         !Tables).
 make_pseudo_type_info_tables(PseudoTypeInfo, !Tables) :-
     PseudoTypeInfo = var_arity_pseudo_type_info(_, Args),
-    !:Tables = [pseudo_type_info(PseudoTypeInfo) | !.Tables],
+    !:Tables = [rtti_data_pseudo_type_info(PseudoTypeInfo) | !.Tables],
     list.foldl(make_maybe_pseudo_type_info_tables, Args, !Tables).
 make_pseudo_type_info_tables(type_var(_), !Tables).
 
@@ -730,16 +736,16 @@ process_cons_tag(ConsTag, ConsRep) :-
     (
         ConsTag = single_functor_tag,
         ConsPtag = 0,
-        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_none))
+        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_locn_none))
     ;
         ConsTag = unshared_tag(ConsPtag),
-        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_none))
+        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_locn_none))
     ;
         ConsTag = shared_local_tag(ConsPtag, ConsStag),
-        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_local(ConsStag)))
+        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_locn_local(ConsStag)))
     ;
         ConsTag = shared_remote_tag(ConsPtag, ConsStag),
-        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_remote(ConsStag)))
+        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_locn_remote(ConsStag)))
     ;
         ConsTag = reserved_address_tag(ReservedAddr),
         ConsRep = reserved_rep(ReservedAddr)
@@ -870,14 +876,14 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
     (
         DuRep = du_ll_rep(Ptag, SectagAndLocn),
         (
-            SectagAndLocn = sectag_none,
+            SectagAndLocn = sectag_locn_none,
             SectagLocn = sectag_none,
             Sectag = 0
         ;
-            SectagAndLocn = sectag_local(Sectag),
+            SectagAndLocn = sectag_locn_local(Sectag),
             SectagLocn = sectag_local
         ;
-            SectagAndLocn = sectag_remote(Sectag),
+            SectagAndLocn = sectag_locn_remote(Sectag),
             SectagLocn = sectag_remote
         ),
         ( map.search(!.PtagTable, Ptag, SectagTable0) ->

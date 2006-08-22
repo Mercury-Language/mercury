@@ -358,9 +358,9 @@
     % given functor in a given type.
     %
 :- type sectag_and_locn
-    --->    sectag_none
-    ;       sectag_local(int)
-    ;       sectag_remote(int).
+    --->    sectag_locn_none
+    ;       sectag_locn_local(int)
+    ;       sectag_locn_remote(int).
 
     % Information about an argument of a functor in a discriminated union
     % type.
@@ -386,37 +386,37 @@
     % Mercury language or the Mercury standard library.
     %
 :- type builtin_ctor
-    --->    int
-    ;       float
-    ;       char
-    ;       string
-    ;       void
-    ;       c_pointer(is_stable)
-    ;       pred_ctor
-    ;       func_ctor
-    ;       tuple
-    ;       ref
-    ;       type_desc
-    ;       pseudo_type_desc
-    ;       type_ctor_desc.
+    --->    builtin_ctor_int
+    ;       builtin_ctor_float
+    ;       builtin_ctor_char
+    ;       builtin_ctor_string
+    ;       builtin_ctor_void
+    ;       builtin_ctor_c_pointer(is_stable)
+    ;       builtin_ctor_pred_ctor
+    ;       builtin_ctor_func_ctor
+    ;       builtin_ctor_tuple
+    ;       builtin_ctor_ref
+    ;       builtin_ctor_type_desc
+    ;       builtin_ctor_pseudo_type_desc
+    ;       builtin_ctor_type_ctor_desc.
 
     % The list of type constructors that are used behind the scenes by
     % the Mercury implementation.
     %
 :- type impl_ctor
-    --->    hp
-    ;       succip
-    ;       maxfr
-    ;       curfr
-    ;       redofr
-    ;       redoip
-    ;       ticket
-    ;       trail_ptr
-    ;       type_info
-    ;       type_ctor_info
-    ;       typeclass_info
-    ;       base_typeclass_info
-    ;       subgoal.
+    --->    impl_ctor_hp
+    ;       impl_ctor_succip
+    ;       impl_ctor_maxfr
+    ;       impl_ctor_curfr
+    ;       impl_ctor_redofr
+    ;       impl_ctor_redoip
+    ;       impl_ctor_ticket
+    ;       impl_ctor_trail_ptr
+    ;       impl_ctor_type_info
+    ;       impl_ctor_type_ctor_info
+    ;       impl_ctor_typeclass_info
+    ;       impl_ctor_base_typeclass_info
+    ;       impl_ctor_subgoal.
 
 :- type is_stable
     --->    is_stable
@@ -552,26 +552,26 @@
 % that don't support static code initializers.
 
 :- type rtti_data
-    --->    type_ctor_info(
+    --->    rtti_data_type_ctor_info(
                 type_ctor_data
             )
-    ;       type_info(
+    ;       rtti_data_type_info(
                 rtti_type_info
             )
-    ;       pseudo_type_info(
+    ;       rtti_data_pseudo_type_info(
                 rtti_pseudo_type_info
             )
-    ;       base_typeclass_info(
+    ;       rtti_data_base_typeclass_info(
                 tc_name,        % identifies the type class
                 module_name,    % module containing instance decl.
                 string,         % encodes the names and arities of the
                                 % types in the instance declaration
                 base_typeclass_info
             )
-    ;       type_class_decl(
+    ;       rtti_data_type_class_decl(
                 tc_decl
             )
-    ;       type_class_instance(
+    ;       rtti_data_type_class_instance(
                 tc_instance
             ).
 
@@ -588,39 +588,39 @@
     ;       tc_rtti_id(tc_name, tc_rtti_name).
 
 :- type ctor_rtti_name
-    --->    exist_locns(int)                % functor ordinal
-    ;       exist_locn
-    ;       exist_tc_constr(int, int, int)  % functor ordinal,
-                                            % constraint ordinal,
-                                            % constraint arity
-    ;       exist_tc_constrs(int)           % functor ordinal
-    ;       exist_info(int)                 % functor ordinal
-    ;       field_names(int)                % functor ordinal
-    ;       field_types(int)                % functor ordinal
-    ;       res_addrs
-    ;       res_addr_functors
-    ;       enum_functor_desc(int)          % functor ordinal
-    ;       notag_functor_desc
-    ;       du_functor_desc(int)            % functor ordinal
-    ;       res_functor_desc(int)           % functor ordinal
-    ;       enum_name_ordered_table
-    ;       enum_value_ordered_table
-    ;       du_name_ordered_table
-    ;       du_stag_ordered_table(int)      % primary tag
-    ;       du_ptag_ordered_table
-    ;       du_ptag_layout(int)             % primary tag
-    ;       res_value_ordered_table
-    ;       res_name_ordered_table
-    ;       maybe_res_addr_functor_desc
-    ;       type_functors
-    ;       type_layout
-    ;       type_ctor_info
-    ;       type_info(rtti_type_info)
-    ;       pseudo_type_info(rtti_pseudo_type_info)
-    ;       type_hashcons_pointer.
+    --->    type_ctor_exist_locns(int)                  % functor ordinal
+    ;       type_ctor_exist_locn
+    ;       type_ctor_exist_tc_constr(int, int, int)    % functor ordinal,
+                                                        % constraint ordinal,
+                                                        % constraint arity
+    ;       type_ctor_exist_tc_constrs(int)             % functor ordinal
+    ;       type_ctor_exist_info(int)                   % functor ordinal
+    ;       type_ctor_field_names(int)                  % functor ordinal
+    ;       type_ctor_field_types(int)                  % functor ordinal
+    ;       type_ctor_res_addrs
+    ;       type_ctor_res_addr_functors
+    ;       type_ctor_enum_functor_desc(int)            % functor ordinal
+    ;       type_ctor_notag_functor_desc
+    ;       type_ctor_du_functor_desc(int)              % functor ordinal
+    ;       type_ctor_res_functor_desc(int)             % functor ordinal
+    ;       type_ctor_enum_name_ordered_table
+    ;       type_ctor_enum_value_ordered_table
+    ;       type_ctor_du_name_ordered_table
+    ;       type_ctor_du_stag_ordered_table(int)        % primary tag
+    ;       type_ctor_du_ptag_ordered_table
+    ;       type_ctor_du_ptag_layout(int)               % primary tag
+    ;       type_ctor_res_value_ordered_table
+    ;       type_ctor_res_name_ordered_table
+    ;       type_ctor_maybe_res_addr_functor_desc
+    ;       type_ctor_type_functors
+    ;       type_ctor_type_layout
+    ;       type_ctor_type_ctor_info
+    ;       type_ctor_type_info(rtti_type_info)
+    ;       type_ctor_pseudo_type_info(rtti_pseudo_type_info)
+    ;       type_ctor_type_hashcons_pointer.
 
 :- type tc_rtti_name
-    --->    base_typeclass_info(
+    --->    type_class_base_typeclass_info(
                 module_name,    % Module containing instance decl.
                 string          % Encodes the names and arities of the
                                 % types in the instance declaration.
@@ -953,22 +953,33 @@ encode_type_ctor_flag(reserve_tag_flag, N)    = N + 1.
 encode_type_ctor_flag(variable_arity_flag, N) = N + 2.
 encode_type_ctor_flag(kind_of_du_flag, N)     = N + 4.
 
-rtti_data_to_id(type_ctor_info(TypeCtorData),
-        ctor_rtti_id(RttiTypeCtor, type_ctor_info)) :-
-    RttiTypeCtor = tcd_get_rtti_type_ctor(TypeCtorData).
-rtti_data_to_id(type_info(TypeInfo),
-        ctor_rtti_id(RttiTypeCtor, type_info(TypeInfo))) :-
-    RttiTypeCtor = ti_get_rtti_type_ctor(TypeInfo).
-rtti_data_to_id(pseudo_type_info(PseudoTypeInfo),
-        ctor_rtti_id(RttiTypeCtor, pseudo_type_info(PseudoTypeInfo))) :-
-    RttiTypeCtor = pti_get_rtti_type_ctor(PseudoTypeInfo).
-rtti_data_to_id(base_typeclass_info(TCName, Module, Instance, _),
-        tc_rtti_id(TCName, base_typeclass_info(Module, Instance))).
-rtti_data_to_id(type_class_decl(tc_decl(TCId, _, _)),
-        tc_rtti_id(TCName, type_class_decl)) :-
-    TCId = tc_id(TCName, _, _).
-rtti_data_to_id(type_class_instance(tc_instance(TCName, TCTypes, _, _, _)),
-        tc_rtti_id(TCName, type_class_instance(TCTypes))).
+rtti_data_to_id(RttiData, RttiId) :-
+    (
+        RttiData = rtti_data_type_ctor_info(TypeCtorData),
+        RttiTypeCtor = tcd_get_rtti_type_ctor(TypeCtorData),
+        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info)
+    ;
+        RttiData = rtti_data_type_info(TypeInfo),
+        RttiTypeCtor = ti_get_rtti_type_ctor(TypeInfo),
+        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_info(TypeInfo))
+    ;
+        RttiData = rtti_data_pseudo_type_info(PseudoTypeInfo),
+        RttiTypeCtor = pti_get_rtti_type_ctor(PseudoTypeInfo),
+        RttiId = ctor_rtti_id(RttiTypeCtor,
+            type_ctor_pseudo_type_info(PseudoTypeInfo))
+    ;
+        RttiData = rtti_data_base_typeclass_info(TCName, Module, Instance, _),
+        TCId = type_class_base_typeclass_info(Module, Instance),
+        RttiId = tc_rtti_id(TCName, TCId)
+    ;
+        RttiData = rtti_data_type_class_decl(tc_decl(TCId, _, _)),
+        TCId = tc_id(TCName, _, _),
+        RttiId = tc_rtti_id(TCName, type_class_decl)
+    ;
+        RttiData = rtti_data_type_class_instance(
+            tc_instance(TCName, TCTypes, _, _, _)),
+        RttiId = tc_rtti_id(TCName, type_class_instance(TCTypes))
+    ).
 
 tcd_get_rtti_type_ctor(TypeCtorData) = RttiTypeCtor :-
     ModuleName = TypeCtorData ^ tcr_module_name,
@@ -1037,38 +1048,38 @@ rtti_id_is_exported(ctor_rtti_id(_, RttiName)) =
 rtti_id_is_exported(tc_rtti_id(_, TCRttiName)) =
     tc_rtti_name_is_exported(TCRttiName).
 
-ctor_rtti_name_is_exported(exist_locns(_))              = no.
-ctor_rtti_name_is_exported(exist_locn)                  = no.
-ctor_rtti_name_is_exported(exist_tc_constr(_, _, _))    = no.
-ctor_rtti_name_is_exported(exist_tc_constrs(_))         = no.
-ctor_rtti_name_is_exported(exist_info(_))               = no.
-ctor_rtti_name_is_exported(field_names(_))              = no.
-ctor_rtti_name_is_exported(field_types(_))              = no.
-ctor_rtti_name_is_exported(res_addrs)                   = no.
-ctor_rtti_name_is_exported(res_addr_functors)           = no.
-ctor_rtti_name_is_exported(enum_functor_desc(_))        = no.
-ctor_rtti_name_is_exported(notag_functor_desc)          = no.
-ctor_rtti_name_is_exported(du_functor_desc(_))          = no.
-ctor_rtti_name_is_exported(res_functor_desc(_))         = no.
-ctor_rtti_name_is_exported(enum_name_ordered_table)     = no.
-ctor_rtti_name_is_exported(enum_value_ordered_table)    = no.
-ctor_rtti_name_is_exported(du_name_ordered_table)       = no.
-ctor_rtti_name_is_exported(du_stag_ordered_table(_))    = no.
-ctor_rtti_name_is_exported(du_ptag_ordered_table)       = no.
-ctor_rtti_name_is_exported(du_ptag_layout(_))           = no.
-ctor_rtti_name_is_exported(res_value_ordered_table)     = no.
-ctor_rtti_name_is_exported(res_name_ordered_table)      = no.
-ctor_rtti_name_is_exported(maybe_res_addr_functor_desc) = no.
-ctor_rtti_name_is_exported(type_functors)               = no.
-ctor_rtti_name_is_exported(type_layout)                 = no.
-ctor_rtti_name_is_exported(type_ctor_info)              = yes.
-ctor_rtti_name_is_exported(type_info(TypeInfo)) =
+ctor_rtti_name_is_exported(type_ctor_exist_locns(_))              = no.
+ctor_rtti_name_is_exported(type_ctor_exist_locn)                  = no.
+ctor_rtti_name_is_exported(type_ctor_exist_tc_constr(_, _, _))    = no.
+ctor_rtti_name_is_exported(type_ctor_exist_tc_constrs(_))         = no.
+ctor_rtti_name_is_exported(type_ctor_exist_info(_))               = no.
+ctor_rtti_name_is_exported(type_ctor_field_names(_))              = no.
+ctor_rtti_name_is_exported(type_ctor_field_types(_))              = no.
+ctor_rtti_name_is_exported(type_ctor_res_addrs)                   = no.
+ctor_rtti_name_is_exported(type_ctor_res_addr_functors)           = no.
+ctor_rtti_name_is_exported(type_ctor_enum_functor_desc(_))        = no.
+ctor_rtti_name_is_exported(type_ctor_notag_functor_desc)          = no.
+ctor_rtti_name_is_exported(type_ctor_du_functor_desc(_))          = no.
+ctor_rtti_name_is_exported(type_ctor_res_functor_desc(_))         = no.
+ctor_rtti_name_is_exported(type_ctor_enum_name_ordered_table)     = no.
+ctor_rtti_name_is_exported(type_ctor_enum_value_ordered_table)    = no.
+ctor_rtti_name_is_exported(type_ctor_du_name_ordered_table)       = no.
+ctor_rtti_name_is_exported(type_ctor_du_stag_ordered_table(_))    = no.
+ctor_rtti_name_is_exported(type_ctor_du_ptag_ordered_table)       = no.
+ctor_rtti_name_is_exported(type_ctor_du_ptag_layout(_))           = no.
+ctor_rtti_name_is_exported(type_ctor_res_value_ordered_table)     = no.
+ctor_rtti_name_is_exported(type_ctor_res_name_ordered_table)      = no.
+ctor_rtti_name_is_exported(type_ctor_maybe_res_addr_functor_desc) = no.
+ctor_rtti_name_is_exported(type_ctor_type_functors)               = no.
+ctor_rtti_name_is_exported(type_ctor_type_layout)                 = no.
+ctor_rtti_name_is_exported(type_ctor_type_ctor_info)              = yes.
+ctor_rtti_name_is_exported(type_ctor_type_info(TypeInfo)) =
     type_info_is_exported(TypeInfo).
-ctor_rtti_name_is_exported(pseudo_type_info(PseudoTypeInfo)) =
+ctor_rtti_name_is_exported(type_ctor_pseudo_type_info(PseudoTypeInfo)) =
     pseudo_type_info_is_exported(PseudoTypeInfo).
-ctor_rtti_name_is_exported(type_hashcons_pointer)       = no.
+ctor_rtti_name_is_exported(type_ctor_type_hashcons_pointer)       = no.
 
-tc_rtti_name_is_exported(base_typeclass_info(_, _)) = yes.
+tc_rtti_name_is_exported(type_class_base_typeclass_info(_, _)) = yes.
 tc_rtti_name_is_exported(type_class_id) = no.
 tc_rtti_name_is_exported(type_class_id_var_names) = no.
 tc_rtti_name_is_exported(type_class_id_method_ids) = no.
@@ -1147,125 +1158,125 @@ id_to_c_identifier(tc_rtti_id(TCName, TCRttiName), Str) :-
 name_to_string(RttiTypeCtor, RttiName) = Str :-
     mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, A_str),
     (
-        RttiName = exist_locns(Ordinal),
+        RttiName = type_ctor_exist_locns(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__exist_locns_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
-        RttiName = exist_locn,
+        RttiName = type_ctor_exist_locn,
         string.append_list([ModuleName, "__exist_locn_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = exist_tc_constr(Ordinal, TCCNum, _),
+        RttiName = type_ctor_exist_tc_constr(Ordinal, TCCNum, _),
         string.int_to_string(Ordinal, O_str),
         string.int_to_string(TCCNum, N_str),
         string.append_list([ModuleName, "__exist_tc_constr_",
             TypeName, "_", A_str, "_", O_str, "_", N_str], Str)
     ;
-        RttiName = exist_tc_constrs(Ordinal),
+        RttiName = type_ctor_exist_tc_constrs(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__exist_tc_constrs_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
-        RttiName = exist_info(Ordinal),
+        RttiName = type_ctor_exist_info(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__exist_info_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
-        RttiName = field_names(Ordinal),
+        RttiName = type_ctor_field_names(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__field_names_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
-        RttiName = field_types(Ordinal),
+        RttiName = type_ctor_field_types(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__field_types_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
-        RttiName = res_addrs,
+        RttiName = type_ctor_res_addrs,
         string.append_list([ModuleName, "__reserved_addrs_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = res_addr_functors,
+        RttiName = type_ctor_res_addr_functors,
         string.append_list([ModuleName, "__reserved_addr_functors_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = enum_functor_desc(Ordinal),
+        RttiName = type_ctor_enum_functor_desc(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__enum_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
-        RttiName = notag_functor_desc,
+        RttiName = type_ctor_notag_functor_desc,
         string.append_list([ModuleName, "__notag_functor_desc_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = du_functor_desc(Ordinal),
+        RttiName = type_ctor_du_functor_desc(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__du_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
-        RttiName = res_functor_desc(Ordinal),
+        RttiName = type_ctor_res_functor_desc(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__reserved_addr_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
-        RttiName = enum_name_ordered_table,
+        RttiName = type_ctor_enum_name_ordered_table,
         string.append_list([ModuleName, "__enum_name_ordered_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = enum_value_ordered_table,
+        RttiName = type_ctor_enum_value_ordered_table,
         string.append_list([ModuleName, "__enum_value_ordered_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = du_name_ordered_table,
+        RttiName = type_ctor_du_name_ordered_table,
         string.append_list([ModuleName, "__du_name_ordered_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = du_stag_ordered_table(Ptag),
+        RttiName = type_ctor_du_stag_ordered_table(Ptag),
         string.int_to_string(Ptag, P_str),
         string.append_list([ModuleName, "__du_stag_ordered_",
             TypeName, "_", A_str, "_", P_str], Str)
     ;
-        RttiName = du_ptag_ordered_table,
+        RttiName = type_ctor_du_ptag_ordered_table,
         string.append_list([ModuleName, "__du_ptag_ordered_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = du_ptag_layout(Ptag),
+        RttiName = type_ctor_du_ptag_layout(Ptag),
         string.int_to_string(Ptag, P_str),
         string.append_list([ModuleName, "__du_ptag_layout_",
             TypeName, "_", A_str, "_", P_str], Str)
     ;
-        RttiName = res_value_ordered_table,
+        RttiName = type_ctor_res_value_ordered_table,
         string.append_list([ModuleName, "__res_layout_ordered_table_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = res_name_ordered_table,
+        RttiName = type_ctor_res_name_ordered_table,
         string.append_list([ModuleName, "__res_name_ordered_table_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = maybe_res_addr_functor_desc,
+        RttiName = type_ctor_maybe_res_addr_functor_desc,
         string.append_list([ModuleName, "__maybe_res_addr_functor_desc_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = type_functors,
+        RttiName = type_ctor_type_functors,
         string.append_list([ModuleName, "__type_functors",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = type_layout,
+        RttiName = type_ctor_type_layout,
         string.append_list([ModuleName, "__type_layout",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = type_ctor_info,
+        RttiName = type_ctor_type_ctor_info,
         string.append_list([ModuleName, "__type_ctor_info_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = type_info(TypeInfo),
+        RttiName = type_ctor_type_info(TypeInfo),
         Str = type_info_to_string(TypeInfo)
     ;
-        RttiName = pseudo_type_info(PseudoTypeInfo),
+        RttiName = type_ctor_pseudo_type_info(PseudoTypeInfo),
         Str = pseudo_type_info_to_string(PseudoTypeInfo)
     ;
-        RttiName = type_hashcons_pointer,
+        RttiName = type_ctor_type_hashcons_pointer,
         string.append_list([ModuleName, "__hashcons_ptr_",
             TypeName, "_", A_str], Str)
     ).
@@ -1273,7 +1284,7 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
 :- pred tc_name_to_string(tc_name::in, tc_rtti_name::in, string::out) is det.
 
 tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = base_typeclass_info(_ModuleName, InstanceStr),
+    TCRttiName = type_class_base_typeclass_info(_ModuleName, InstanceStr),
     Str = make_base_typeclass_info_name(TCName, InstanceStr).
 tc_name_to_string(TCName, TCRttiName, Str) :-
     TCRttiName = type_class_id,
@@ -1424,7 +1435,8 @@ mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr) :-
 type_info_to_string(TypeInfo) = Str :-
     (
         TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
-        id_to_c_identifier(ctor_rtti_id(RttiTypeCtor, type_ctor_info), Str)
+        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+        id_to_c_identifier(RttiId, Str)
     ;
         TypeInfo = plain_type_info(RttiTypeCtor, Args),
         mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr),
@@ -1443,7 +1455,8 @@ type_info_to_string(TypeInfo) = Str :-
 pseudo_type_info_to_string(PseudoTypeInfo) = Str :-
     (
         PseudoTypeInfo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
-        id_to_c_identifier(ctor_rtti_id(RttiTypeCtor, type_ctor_info), Str)
+        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+        id_to_c_identifier(RttiId, Str)
     ;
         PseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, Args),
         mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr),
@@ -1502,9 +1515,9 @@ sectag_locn_to_string(sectag_none,   "MR_SECTAG_NONE").
 sectag_locn_to_string(sectag_local,  "MR_SECTAG_LOCAL").
 sectag_locn_to_string(sectag_remote, "MR_SECTAG_REMOTE").
 
-sectag_and_locn_to_locn_string(sectag_none,      "MR_SECTAG_NONE").
-sectag_and_locn_to_locn_string(sectag_local(_),  "MR_SECTAG_LOCAL").
-sectag_and_locn_to_locn_string(sectag_remote(_), "MR_SECTAG_REMOTE").
+sectag_and_locn_to_locn_string(sectag_locn_none,      "MR_SECTAG_NONE").
+sectag_and_locn_to_locn_string(sectag_locn_local(_),  "MR_SECTAG_LOCAL").
+sectag_and_locn_to_locn_string(sectag_locn_remote(_), "MR_SECTAG_REMOTE").
 
 type_ctor_rep_to_string(TypeCtorData, RepStr) :-
     TypeCtorDetails = TypeCtorData ^ tcr_rep_details,
@@ -1604,53 +1617,57 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
 
 :- pred builtin_ctor_rep_to_string(builtin_ctor::in, string::out) is det.
 
-builtin_ctor_rep_to_string(int, "MR_TYPECTOR_REP_INT").
-builtin_ctor_rep_to_string(string, "MR_TYPECTOR_REP_STRING").
-builtin_ctor_rep_to_string(float, "MR_TYPECTOR_REP_FLOAT").
-builtin_ctor_rep_to_string(char, "MR_TYPECTOR_REP_CHAR").
-builtin_ctor_rep_to_string(void, "MR_TYPECTOR_REP_VOID").
-builtin_ctor_rep_to_string(c_pointer(is_not_stable),
+builtin_ctor_rep_to_string(builtin_ctor_int, "MR_TYPECTOR_REP_INT").
+builtin_ctor_rep_to_string(builtin_ctor_string, "MR_TYPECTOR_REP_STRING").
+builtin_ctor_rep_to_string(builtin_ctor_float, "MR_TYPECTOR_REP_FLOAT").
+builtin_ctor_rep_to_string(builtin_ctor_char, "MR_TYPECTOR_REP_CHAR").
+builtin_ctor_rep_to_string(builtin_ctor_void, "MR_TYPECTOR_REP_VOID").
+builtin_ctor_rep_to_string(builtin_ctor_c_pointer(is_not_stable),
     "MR_TYPECTOR_REP_C_POINTER").
-builtin_ctor_rep_to_string(c_pointer(is_stable),
+builtin_ctor_rep_to_string(builtin_ctor_c_pointer(is_stable),
     "MR_TYPECTOR_REP_STABLE_C_POINTER").
-builtin_ctor_rep_to_string(pred_ctor, "MR_TYPECTOR_REP_PRED").
-builtin_ctor_rep_to_string(func_ctor, "MR_TYPECTOR_REP_FUNC").
-builtin_ctor_rep_to_string(tuple, "MR_TYPECTOR_REP_TUPLE").
-builtin_ctor_rep_to_string(ref, "MR_TYPECTOR_REP_REFERENCE").
-builtin_ctor_rep_to_string(type_ctor_desc, "MR_TYPECTOR_REP_TYPECTORDESC").
-builtin_ctor_rep_to_string(pseudo_type_desc, "MR_TYPECTOR_REP_PSEUDOTYPEDESC").
-builtin_ctor_rep_to_string(type_desc, "MR_TYPECTOR_REP_TYPEDESC").
+builtin_ctor_rep_to_string(builtin_ctor_pred_ctor, "MR_TYPECTOR_REP_PRED").
+builtin_ctor_rep_to_string(builtin_ctor_func_ctor, "MR_TYPECTOR_REP_FUNC").
+builtin_ctor_rep_to_string(builtin_ctor_tuple, "MR_TYPECTOR_REP_TUPLE").
+builtin_ctor_rep_to_string(builtin_ctor_ref, "MR_TYPECTOR_REP_REFERENCE").
+builtin_ctor_rep_to_string(builtin_ctor_type_ctor_desc,
+    "MR_TYPECTOR_REP_TYPECTORDESC").
+builtin_ctor_rep_to_string(builtin_ctor_pseudo_type_desc,
+    "MR_TYPECTOR_REP_PSEUDOTYPEDESC").
+builtin_ctor_rep_to_string(builtin_ctor_type_desc, "MR_TYPECTOR_REP_TYPEDESC").
 
 :- pred impl_ctor_rep_to_string(impl_ctor::in, string::out) is det.
 
-impl_ctor_rep_to_string(type_ctor_info, "MR_TYPECTOR_REP_TYPECTORINFO").
-impl_ctor_rep_to_string(type_info, "MR_TYPECTOR_REP_TYPEINFO").
-impl_ctor_rep_to_string(typeclass_info, "MR_TYPECTOR_REP_TYPECLASSINFO").
-impl_ctor_rep_to_string(base_typeclass_info,
+impl_ctor_rep_to_string(impl_ctor_type_ctor_info,
+    "MR_TYPECTOR_REP_TYPECTORINFO").
+impl_ctor_rep_to_string(impl_ctor_type_info, "MR_TYPECTOR_REP_TYPEINFO").
+impl_ctor_rep_to_string(impl_ctor_typeclass_info,
+    "MR_TYPECTOR_REP_TYPECLASSINFO").
+impl_ctor_rep_to_string(impl_ctor_base_typeclass_info,
     "MR_TYPECTOR_REP_BASETYPECLASSINFO").
-impl_ctor_rep_to_string(hp, "MR_TYPECTOR_REP_HP").
-impl_ctor_rep_to_string(succip, "MR_TYPECTOR_REP_SUCCIP").
-impl_ctor_rep_to_string(curfr, "MR_TYPECTOR_REP_CURFR").
-impl_ctor_rep_to_string(maxfr, "MR_TYPECTOR_REP_MAXFR").
-impl_ctor_rep_to_string(redofr, "MR_TYPECTOR_REP_REDOFR").
-impl_ctor_rep_to_string(redoip, "MR_TYPECTOR_REP_REDOIP").
-impl_ctor_rep_to_string(trail_ptr, "MR_TYPECTOR_REP_TRAIL_PTR").
-impl_ctor_rep_to_string(ticket, "MR_TYPECTOR_REP_TICKET").
-impl_ctor_rep_to_string(subgoal, "MR_TYPECTOR_REP_SUBGOAL").
+impl_ctor_rep_to_string(impl_ctor_hp, "MR_TYPECTOR_REP_HP").
+impl_ctor_rep_to_string(impl_ctor_succip, "MR_TYPECTOR_REP_SUCCIP").
+impl_ctor_rep_to_string(impl_ctor_curfr, "MR_TYPECTOR_REP_CURFR").
+impl_ctor_rep_to_string(impl_ctor_maxfr, "MR_TYPECTOR_REP_MAXFR").
+impl_ctor_rep_to_string(impl_ctor_redofr, "MR_TYPECTOR_REP_REDOFR").
+impl_ctor_rep_to_string(impl_ctor_redoip, "MR_TYPECTOR_REP_REDOIP").
+impl_ctor_rep_to_string(impl_ctor_trail_ptr, "MR_TYPECTOR_REP_TRAIL_PTR").
+impl_ctor_rep_to_string(impl_ctor_ticket, "MR_TYPECTOR_REP_TICKET").
+impl_ctor_rep_to_string(impl_ctor_subgoal, "MR_TYPECTOR_REP_SUBGOAL").
 
-type_info_to_rtti_data(TypeInfo) = type_info(TypeInfo).
+type_info_to_rtti_data(TypeInfo) = rtti_data_type_info(TypeInfo).
 
 maybe_pseudo_type_info_to_rtti_data(pseudo(PseudoTypeInfo)) =
-    pseudo_type_info(PseudoTypeInfo).
+    rtti_data_pseudo_type_info(PseudoTypeInfo).
 maybe_pseudo_type_info_to_rtti_data(plain(TypeInfo)) =
-    type_info(TypeInfo).
+    rtti_data_type_info(TypeInfo).
 
 maybe_pseudo_type_info_or_self_to_rtti_data(pseudo(PseudoTypeInfo)) =
-    pseudo_type_info(PseudoTypeInfo).
+    rtti_data_pseudo_type_info(PseudoTypeInfo).
 maybe_pseudo_type_info_or_self_to_rtti_data(plain(TypeInfo)) =
-    type_info(TypeInfo).
+    rtti_data_type_info(TypeInfo).
 maybe_pseudo_type_info_or_self_to_rtti_data(self) =
-    pseudo_type_info(type_var(0)).
+    rtti_data_pseudo_type_info(type_var(0)).
 
 type_ctor_details_num_ptags(enum(_, _, _, _, _)) = -1.
 type_ctor_details_num_ptags(du(_, _, PtagMap, _)) = LastPtag + 1 :-
@@ -1691,17 +1708,18 @@ du_arg_info_type(ArgInfo) = ArgInfo ^ du_arg_type.
 project_yes(yes(X)) = X.
 
 enum_functor_rtti_name(EnumFunctor) =
-    enum_functor_desc(EnumFunctor ^ enum_ordinal).
+    type_ctor_enum_functor_desc(EnumFunctor ^ enum_ordinal).
 
-du_functor_rtti_name(DuFunctor) = du_functor_desc(DuFunctor ^ du_ordinal).
+du_functor_rtti_name(DuFunctor) =
+    type_ctor_du_functor_desc(DuFunctor ^ du_ordinal).
 
 res_functor_rtti_name(ResFunctor) =
-    res_functor_desc(ResFunctor ^ res_ordinal).
+    type_ctor_res_functor_desc(ResFunctor ^ res_ordinal).
 
 maybe_res_functor_rtti_name(du_func(DuFunctor)) =
-    du_functor_desc(DuFunctor ^ du_ordinal).
+    type_ctor_du_functor_desc(DuFunctor ^ du_ordinal).
 maybe_res_functor_rtti_name(res_func(ResFunctor)) =
-    res_functor_desc(ResFunctor ^ res_ordinal).
+    type_ctor_res_functor_desc(ResFunctor ^ res_ordinal).
 
 res_addr_rep(ResFunctor) = ResFunctor ^ res_rep.
 
@@ -1713,51 +1731,61 @@ rtti_id_would_include_code_addr(ctor_rtti_id(_, RttiName)) =
 rtti_id_would_include_code_addr(tc_rtti_id(_, TCRttiName)) =
     tc_rtti_name_would_include_code_addr(TCRttiName).
 
-ctor_rtti_name_would_include_code_addr(exist_locns(_)) =                no.
-ctor_rtti_name_would_include_code_addr(exist_locn)  =                   no.
-ctor_rtti_name_would_include_code_addr(exist_tc_constr(_, _, _)) =      no.
-ctor_rtti_name_would_include_code_addr(exist_tc_constrs(_)) =           no.
-ctor_rtti_name_would_include_code_addr(exist_info(_)) =                 no.
-ctor_rtti_name_would_include_code_addr(field_names(_)) =                no.
-ctor_rtti_name_would_include_code_addr(field_types(_)) =                no.
-ctor_rtti_name_would_include_code_addr(res_addrs) =                     no.
-ctor_rtti_name_would_include_code_addr(res_addr_functors) =             no.
-ctor_rtti_name_would_include_code_addr(enum_functor_desc(_)) =          no.
-ctor_rtti_name_would_include_code_addr(notag_functor_desc) =            no.
-ctor_rtti_name_would_include_code_addr(du_functor_desc(_)) =            no.
-ctor_rtti_name_would_include_code_addr(res_functor_desc(_)) =           no.
-ctor_rtti_name_would_include_code_addr(enum_name_ordered_table) =       no.
-ctor_rtti_name_would_include_code_addr(enum_value_ordered_table) =      no.
-ctor_rtti_name_would_include_code_addr(du_name_ordered_table) =         no.
-ctor_rtti_name_would_include_code_addr(du_stag_ordered_table(_)) =      no.
-ctor_rtti_name_would_include_code_addr(du_ptag_ordered_table) =         no.
-ctor_rtti_name_would_include_code_addr(du_ptag_layout(_)) =             no.
-ctor_rtti_name_would_include_code_addr(res_value_ordered_table) =       no.
-ctor_rtti_name_would_include_code_addr(res_name_ordered_table) =        no.
-ctor_rtti_name_would_include_code_addr(maybe_res_addr_functor_desc) =   no.
-ctor_rtti_name_would_include_code_addr(type_hashcons_pointer) =         no.
-ctor_rtti_name_would_include_code_addr(type_functors) =                 no.
-ctor_rtti_name_would_include_code_addr(type_layout) =                   no.
-ctor_rtti_name_would_include_code_addr(type_ctor_info) =                yes.
-ctor_rtti_name_would_include_code_addr(type_info(TypeInfo)) =
+ctor_rtti_name_would_include_code_addr(RttiName) =
+    % Just to make the table not overflow every line.
+    ctor_rtti_name_code_addr(RttiName).
+
+tc_rtti_name_would_include_code_addr(TCName) =
+    % Just to make the table not overflow every line.
+    tc_rtti_name_code_addr(TCName).
+
+:- func ctor_rtti_name_code_addr(ctor_rtti_name) = bool.
+
+ctor_rtti_name_code_addr(type_ctor_exist_locns(_)) =                no.
+ctor_rtti_name_code_addr(type_ctor_exist_locn)  =                   no.
+ctor_rtti_name_code_addr(type_ctor_exist_tc_constr(_, _, _)) =      no.
+ctor_rtti_name_code_addr(type_ctor_exist_tc_constrs(_)) =           no.
+ctor_rtti_name_code_addr(type_ctor_exist_info(_)) =                 no.
+ctor_rtti_name_code_addr(type_ctor_field_names(_)) =                no.
+ctor_rtti_name_code_addr(type_ctor_field_types(_)) =                no.
+ctor_rtti_name_code_addr(type_ctor_res_addrs) =                     no.
+ctor_rtti_name_code_addr(type_ctor_res_addr_functors) =             no.
+ctor_rtti_name_code_addr(type_ctor_enum_functor_desc(_)) =          no.
+ctor_rtti_name_code_addr(type_ctor_notag_functor_desc) =            no.
+ctor_rtti_name_code_addr(type_ctor_du_functor_desc(_)) =            no.
+ctor_rtti_name_code_addr(type_ctor_res_functor_desc(_)) =           no.
+ctor_rtti_name_code_addr(type_ctor_enum_name_ordered_table) =       no.
+ctor_rtti_name_code_addr(type_ctor_enum_value_ordered_table) =      no.
+ctor_rtti_name_code_addr(type_ctor_du_name_ordered_table) =         no.
+ctor_rtti_name_code_addr(type_ctor_du_stag_ordered_table(_)) =      no.
+ctor_rtti_name_code_addr(type_ctor_du_ptag_ordered_table) =         no.
+ctor_rtti_name_code_addr(type_ctor_du_ptag_layout(_)) =             no.
+ctor_rtti_name_code_addr(type_ctor_res_value_ordered_table) =       no.
+ctor_rtti_name_code_addr(type_ctor_res_name_ordered_table) =        no.
+ctor_rtti_name_code_addr(type_ctor_maybe_res_addr_functor_desc) =   no.
+ctor_rtti_name_code_addr(type_ctor_type_hashcons_pointer) =         no.
+ctor_rtti_name_code_addr(type_ctor_type_functors) =                 no.
+ctor_rtti_name_code_addr(type_ctor_type_layout) =                   no.
+ctor_rtti_name_code_addr(type_ctor_type_ctor_info) =                yes.
+ctor_rtti_name_code_addr(type_ctor_type_info(TypeInfo)) =
     type_info_would_incl_code_addr(TypeInfo).
-ctor_rtti_name_would_include_code_addr(pseudo_type_info(PseudoTypeInfo)) =
+ctor_rtti_name_code_addr(type_ctor_pseudo_type_info(PseudoTypeInfo)) =
     pseudo_type_info_would_incl_code_addr(PseudoTypeInfo).
 
-tc_rtti_name_would_include_code_addr(base_typeclass_info(_, _)) = yes.
-tc_rtti_name_would_include_code_addr(type_class_id) = no.
-tc_rtti_name_would_include_code_addr(type_class_id_var_names) = no.
-tc_rtti_name_would_include_code_addr(type_class_id_method_ids) = no.
-tc_rtti_name_would_include_code_addr(type_class_decl) = no.
-tc_rtti_name_would_include_code_addr(type_class_decl_super(_, _)) = no.
-tc_rtti_name_would_include_code_addr(type_class_decl_supers) = no.
-tc_rtti_name_would_include_code_addr(type_class_instance(_)) = no.
-tc_rtti_name_would_include_code_addr(type_class_instance_tc_type_vector(_))
-    = no.
-tc_rtti_name_would_include_code_addr(type_class_instance_constraint(_, _, _))
-    = no.
-tc_rtti_name_would_include_code_addr(type_class_instance_constraints(_)) = no.
-tc_rtti_name_would_include_code_addr(type_class_instance_methods(_)) = no.
+:- func tc_rtti_name_code_addr(tc_rtti_name) = bool.
+
+tc_rtti_name_code_addr(type_class_base_typeclass_info(_, _)) =    yes.
+tc_rtti_name_code_addr(type_class_id) =                           no.
+tc_rtti_name_code_addr(type_class_id_var_names) =                 no.
+tc_rtti_name_code_addr(type_class_id_method_ids) =                no.
+tc_rtti_name_code_addr(type_class_decl) =                         no.
+tc_rtti_name_code_addr(type_class_decl_super(_, _)) =             no.
+tc_rtti_name_code_addr(type_class_decl_supers) =                  no.
+tc_rtti_name_code_addr(type_class_instance(_)) =                  no.
+tc_rtti_name_code_addr(type_class_instance_tc_type_vector(_)) =   no.
+tc_rtti_name_code_addr(type_class_instance_constraint(_, _, _)) = no.
+tc_rtti_name_code_addr(type_class_instance_constraints(_)) =      no.
+tc_rtti_name_code_addr(type_class_instance_methods(_)) =          no.
 
 type_info_would_incl_code_addr(plain_arity_zero_type_info(_)) = yes.
 type_info_would_incl_code_addr(plain_type_info(_, _)) = no.
@@ -1886,44 +1914,69 @@ tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
     % ctor_rtti_name_type(RttiName, Type, IsArray):
 :- pred ctor_rtti_name_type(ctor_rtti_name::in, string::out, bool::out) is det.
 
-ctor_rtti_name_type(exist_locns(_),             "DuExistLocn", yes).
-ctor_rtti_name_type(exist_locn,                 "DuExistLocn", no).
-ctor_rtti_name_type(exist_tc_constr(_, _, N), TypeName, no) :-
-    TypeName = tc_constraint_type_name(N).
-ctor_rtti_name_type(exist_tc_constrs(_),        "TypeClassConstraint", yes).
-ctor_rtti_name_type(exist_info(_),              "DuExistInfo", no).
-ctor_rtti_name_type(field_names(_),             "ConstString", yes).
-ctor_rtti_name_type(field_types(_),             "PseudoTypeInfo", yes).
-ctor_rtti_name_type(res_addrs,                  "ReservedAddr", yes).
-ctor_rtti_name_type(res_addr_functors,          "ReservedAddrFunctorDescPtr",
-    yes).
-ctor_rtti_name_type(enum_functor_desc(_),       "EnumFunctorDesc", no).
-ctor_rtti_name_type(notag_functor_desc,         "NotagFunctorDesc", no).
-ctor_rtti_name_type(du_functor_desc(_),         "DuFunctorDesc", no).
-ctor_rtti_name_type(res_functor_desc(_),        "ReservedAddrFunctorDesc", no).
-ctor_rtti_name_type(enum_name_ordered_table,    "EnumFunctorDescPtr", yes).
-ctor_rtti_name_type(enum_value_ordered_table,   "EnumFunctorDescPtr", yes).
-ctor_rtti_name_type(du_name_ordered_table,      "DuFunctorDescPtr", yes).
-ctor_rtti_name_type(du_stag_ordered_table(_),   "DuFunctorDescPtr", yes).
-ctor_rtti_name_type(du_ptag_ordered_table,      "DuPtagLayout", yes).
-ctor_rtti_name_type(du_ptag_layout(_),          "DuPtagLayout", no).
-ctor_rtti_name_type(res_value_ordered_table,    "ReservedAddrTypeLayout", no).
-ctor_rtti_name_type(res_name_ordered_table,     "MaybeResAddrFunctorDesc",
-    yes).
-ctor_rtti_name_type(maybe_res_addr_functor_desc,"MaybeResAddrFunctorDesc", no).
-ctor_rtti_name_type(type_functors,              "TypeFunctors", no).
-ctor_rtti_name_type(type_layout,                "TypeLayout", no).
-ctor_rtti_name_type(type_ctor_info,             "TypeCtorInfo_Struct", no).
-ctor_rtti_name_type(type_hashcons_pointer,      "TrieNodePtr", no).
-ctor_rtti_name_type(type_info(TypeInfo), TypeName, no) :-
-    TypeName = type_info_name_type(TypeInfo).
-ctor_rtti_name_type(pseudo_type_info(PseudoTypeInfo), TypeName, no) :-
-    TypeName = pseudo_type_info_name_type(PseudoTypeInfo).
+ctor_rtti_name_type(type_ctor_exist_locns(_),
+        "DuExistLocn", yes).
+ctor_rtti_name_type(type_ctor_exist_locn,
+        "DuExistLocn", no).
+ctor_rtti_name_type(type_ctor_exist_tc_constr(_, _, N),
+        tc_constraint_type_name(N), no).
+ctor_rtti_name_type(type_ctor_exist_tc_constrs(_),
+        "TypeClassConstraint", yes).
+ctor_rtti_name_type(type_ctor_exist_info(_),
+        "DuExistInfo", no).
+ctor_rtti_name_type(type_ctor_field_names(_),
+        "ConstString", yes).
+ctor_rtti_name_type(type_ctor_field_types(_),
+        "PseudoTypeInfo", yes).
+ctor_rtti_name_type(type_ctor_res_addrs,
+        "ReservedAddr", yes).
+ctor_rtti_name_type(type_ctor_res_addr_functors,
+        "ReservedAddrFunctorDescPtr", yes).
+ctor_rtti_name_type(type_ctor_enum_functor_desc(_),
+        "EnumFunctorDesc", no).
+ctor_rtti_name_type(type_ctor_notag_functor_desc,
+        "NotagFunctorDesc", no).
+ctor_rtti_name_type(type_ctor_du_functor_desc(_),
+        "DuFunctorDesc", no).
+ctor_rtti_name_type(type_ctor_res_functor_desc(_),
+        "ReservedAddrFunctorDesc", no).
+ctor_rtti_name_type(type_ctor_enum_name_ordered_table,
+        "EnumFunctorDescPtr", yes).
+ctor_rtti_name_type(type_ctor_enum_value_ordered_table,
+        "EnumFunctorDescPtr", yes).
+ctor_rtti_name_type(type_ctor_du_name_ordered_table,
+        "DuFunctorDescPtr", yes).
+ctor_rtti_name_type(type_ctor_du_stag_ordered_table(_),
+        "DuFunctorDescPtr", yes).
+ctor_rtti_name_type(type_ctor_du_ptag_ordered_table,
+        "DuPtagLayout", yes).
+ctor_rtti_name_type(type_ctor_du_ptag_layout(_),
+        "DuPtagLayout", no).
+ctor_rtti_name_type(type_ctor_res_value_ordered_table,
+        "ReservedAddrTypeLayout", no).
+ctor_rtti_name_type(type_ctor_res_name_ordered_table,
+        "MaybeResAddrFunctorDesc", yes).
+ctor_rtti_name_type(type_ctor_maybe_res_addr_functor_desc,
+        "MaybeResAddrFunctorDesc", no).
+ctor_rtti_name_type(type_ctor_type_functors,
+        "TypeFunctors", no).
+ctor_rtti_name_type(type_ctor_type_layout,
+        "TypeLayout", no).
+ctor_rtti_name_type(type_ctor_type_ctor_info,
+        "TypeCtorInfo_Struct", no).
+ctor_rtti_name_type(type_ctor_type_hashcons_pointer,
+        "TrieNodePtr", no).
+ctor_rtti_name_type(type_ctor_type_info(TypeInfo),
+        type_info_name_type(TypeInfo), no).
+ctor_rtti_name_type(type_ctor_pseudo_type_info(PseudoTypeInfo),
+        pseudo_type_info_name_type(PseudoTypeInfo), no).
 
     % tc_rtti_name_type(RttiName, Type, IsArray):
+    %
 :- pred tc_rtti_name_type(tc_rtti_name::in, string::out, bool::out) is det.
 
-tc_rtti_name_type(base_typeclass_info(_, _),    "BaseTypeclassInfo", yes).
+tc_rtti_name_type(type_class_base_typeclass_info(_, _),
+                                                "BaseTypeclassInfo", yes).
 tc_rtti_name_type(type_class_id,                "TypeClassId", no).
 tc_rtti_name_type(type_class_id_var_names,      "ConstString", yes).
 tc_rtti_name_type(type_class_id_method_ids,     "TypeClassMethod", yes).
@@ -1992,7 +2045,7 @@ module_qualify_name_of_ctor_rtti_name(_) = yes.
 % This decision is implemented separately in tc_name_to_string.
 
 module_qualify_name_of_tc_rtti_name(TCRttiName) =
-    ( TCRttiName = base_typeclass_info(_, _) ->
+    ( TCRttiName = type_class_base_typeclass_info(_, _) ->
         no
     ;
         yes
@@ -2001,13 +2054,13 @@ module_qualify_name_of_tc_rtti_name(TCRttiName) =
 rtti_id_emits_type_ctor_info(RttiId, TypeCtor) :-
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     (
-        RttiName = type_ctor_info,
+        RttiName = type_ctor_type_ctor_info,
         TypeCtor = RttiTypeCtor
     ;
-        RttiName = type_info(TypeInfo),
+        RttiName = type_ctor_type_info(TypeInfo),
         TypeInfo = plain_arity_zero_type_info(TypeCtor)
     ;
-        RttiName = pseudo_type_info(PseudoTypeInfo),
+        RttiName = type_ctor_pseudo_type_info(PseudoTypeInfo),
         PseudoTypeInfo = plain_arity_zero_pseudo_type_info(TypeCtor)
     ).
 

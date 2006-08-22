@@ -19,10 +19,10 @@ Valid? browse 2
 browser> print
 [3, 4]
 browser> mark
-Origin: primitive_op("dependency2.m", 29, unification)
+Origin: origin_primitive_op("dependency2.m", 29, primop_unification)
 p(1)
 Valid? yes
-Origin: primitive_op("dependency2.m", 29, unification)
+Origin: origin_primitive_op("dependency2.m", 29, primop_unification)
 q(no)
 Valid? yes
 Found inadmissible call:

@@ -247,11 +247,12 @@ search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-set_functor_info(total, _ModuleInfo) = total.
-set_functor_info(simple, _ModuleInfo) = simple.
-set_functor_info(num_data_elems, ModuleInfo) = use_map_and_args(WeightMap) :-
+set_functor_info(norm_total, _ModuleInfo) = total.
+set_functor_info(norm_simple, _ModuleInfo) = simple.
+set_functor_info(norm_num_data_elems, ModuleInfo) =
+        use_map_and_args(WeightMap) :-
     find_weights(ModuleInfo, WeightMap).
-set_functor_info(size_data_elems, ModuleInfo) = use_map(WeightMap) :-
+set_functor_info(norm_size_data_elems, ModuleInfo) = use_map(WeightMap) :-
     find_weights(ModuleInfo, WeightMap).
 
 %-----------------------------------------------------------------------------%

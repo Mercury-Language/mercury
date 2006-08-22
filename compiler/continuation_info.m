@@ -523,7 +523,7 @@ filter_named_vars([LiveInfo | LiveInfos], Filtered) :-
     filter_named_vars(LiveInfos, Filtered1),
     (
         LiveInfo = live_lvalue(_, LiveType, _),
-        LiveType = var(_, Name, _, _),
+        LiveType = live_value_var(_, Name, _, _),
         Name \= ""
     ->
         Filtered = [LiveInfo | Filtered1]
@@ -622,7 +622,7 @@ generate_var_live_lvalues([Var - Lval | VarLvals], InstMap, VarLocs, ProcInfo,
     ;
         WantReturnVarLayout = no,
         map.init(Empty),
-        Live = live_lvalue(direct(Lval), unwanted, Empty)
+        Live = live_lvalue(direct(Lval), live_value_unwanted, Empty)
     ),
     generate_var_live_lvalues(VarLvals, InstMap, VarLocs, ProcInfo,
         ModuleInfo, WantReturnVarLayout, Lives).
@@ -720,11 +720,11 @@ generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
     instmap.lookup_var(InstMap, Var, Inst),
     map.lookup(VarTypes, Var, Type),
     ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
-        LldsInst = ground
+        LldsInst = llds_inst_ground
     ;
-        LldsInst = partial(Inst)
+        LldsInst = llds_inst_partial(Inst)
     ),
-    LiveValueType = var(Var, Name, Type, LldsInst),
+    LiveValueType = live_value_var(Var, Name, Type, LldsInst),
     prog_type.vars(Type, TypeVars).
 
 %---------------------------------------------------------------------------%
@@ -762,7 +762,7 @@ build_closure_info([Var | Vars], [Type | Types],
     ArgInfo = arg_info(ArgLoc, _ArgMode),
     instmap.lookup_var(InstMap, Var, Inst),
     Layout = closure_arg_info(Type, Inst),
-    set.singleton_set(Locations, reg(r, ArgLoc)),
+    set.singleton_set(Locations, reg(reg_r, ArgLoc)),
     svmap.det_insert(Var, Locations, !VarLocs),
     prog_type.vars(Type, VarTypeVars),
     svset.insert_list(VarTypeVars, !TypeVars),
@@ -868,32 +868,32 @@ find_typeinfos_for_tvars_table(TypeVars, NumberedVars, ProcInfo,
 
 :- pred live_value_type(slot_contents::in, live_value_type::out) is det.
 
-live_value_type(lval(succip), succip).
-live_value_type(lval(hp), hp).
-live_value_type(lval(maxfr), maxfr).
-live_value_type(lval(curfr), curfr).
-live_value_type(lval(succfr_slot(_)), unwanted).
-live_value_type(lval(prevfr_slot(_)), unwanted).
-live_value_type(lval(redofr_slot(_)), unwanted).
-live_value_type(lval(redoip_slot(_)), unwanted).
-live_value_type(lval(succip_slot(_)), unwanted).
-live_value_type(lval(sp), unwanted).
-live_value_type(lval(lvar(_)), unwanted).
-live_value_type(lval(field(_, _, _)), unwanted).
-live_value_type(lval(temp(_, _)), unwanted).
-live_value_type(lval(reg(_, _)), unwanted).
-live_value_type(lval(stackvar(_)), unwanted).
-live_value_type(lval(framevar(_)), unwanted).
-live_value_type(lval(mem_ref(_)), unwanted). % XXX
-live_value_type(lval(global_var_ref(_)), unwanted).
-live_value_type(ticket, unwanted).  % XXX we may need to modify this,
-                                    % if the GC is going to garbage-collect
-                                    % the trail.
-live_value_type(ticket_counter, unwanted).
-live_value_type(lookup_switch_cur, unwanted).
-live_value_type(lookup_switch_max, unwanted).
-live_value_type(sync_term, unwanted).
-live_value_type(trace_data, unwanted).
+live_value_type(lval(succip), live_value_succip).
+live_value_type(lval(hp), live_value_hp).
+live_value_type(lval(maxfr), live_value_maxfr).
+live_value_type(lval(curfr), live_value_curfr).
+live_value_type(lval(succfr_slot(_)), live_value_unwanted).
+live_value_type(lval(prevfr_slot(_)), live_value_unwanted).
+live_value_type(lval(redofr_slot(_)), live_value_unwanted).
+live_value_type(lval(redoip_slot(_)), live_value_unwanted).
+live_value_type(lval(succip_slot(_)), live_value_unwanted).
+live_value_type(lval(sp), live_value_unwanted).
+live_value_type(lval(lvar(_)), live_value_unwanted).
+live_value_type(lval(field(_, _, _)), live_value_unwanted).
+live_value_type(lval(temp(_, _)), live_value_unwanted).
+live_value_type(lval(reg(_, _)), live_value_unwanted).
+live_value_type(lval(stackvar(_)), live_value_unwanted).
+live_value_type(lval(framevar(_)), live_value_unwanted).
+live_value_type(lval(mem_ref(_)), live_value_unwanted). % XXX
+live_value_type(lval(global_var_ref(_)), live_value_unwanted).
+live_value_type(ticket, live_value_unwanted).
+    % XXX we may need to modify this, if the GC is going to garbage-collect
+    % the trail.
+live_value_type(ticket_counter, live_value_unwanted).
+live_value_type(lookup_switch_cur, live_value_unwanted).
+live_value_type(lookup_switch_max, live_value_unwanted).
+live_value_type(sync_term, live_value_unwanted).
+live_value_type(trace_data, live_value_unwanted).
 
 %-----------------------------------------------------------------------------%
 

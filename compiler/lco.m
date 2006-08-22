@@ -250,8 +250,8 @@ process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
         Name0 = pred_info_name(!.VariantPredInfo),
         pred_info_get_origin(!.VariantPredInfo, Origin0),
         create_variant_name(AddrOutArgPosns, Name0, Name),
-        Transform = return_via_ptr(ProcId, AddrOutArgPosns),
-        Origin = transformed(Transform, Origin0, PredId),
+        Transform = transform_return_via_ptr(ProcId, AddrOutArgPosns),
+        Origin = origin_transformed(Transform, Origin0, PredId),
         pred_info_set_name(Name, !VariantPredInfo),
         pred_info_set_origin(Origin, !VariantPredInfo),
 
@@ -643,7 +643,7 @@ make_address_var(Var, AddrVar, !Info) :-
 make_ref_type(FieldType) = PtrType :-
     RefTypeName = qualified(mercury_private_builtin_module,
         "store_by_ref_type"),
-    PtrType = defined(RefTypeName, [FieldType], star).
+    PtrType = defined_type(RefTypeName, [FieldType], kind_star).
 
 %-----------------------------------------------------------------------------%
 

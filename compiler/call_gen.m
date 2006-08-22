@@ -250,7 +250,7 @@ extra_livevals(FirstInput, ExtraLiveVals) :-
 
 extra_livevals_from(Reg, FirstInput, ExtraLiveVals) :-
     ( Reg < FirstInput ->
-        ExtraLiveVals = [reg(r, Reg) | ExtraLiveVals1],
+        ExtraLiveVals = [reg(reg_r, Reg) | ExtraLiveVals1],
         NextReg = Reg + 1,
         extra_livevals_from(NextReg, FirstInput, ExtraLiveVals1)
     ;
@@ -325,10 +325,10 @@ generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
         Code = empty
     ;
         HoCallVariant = unknown,
-        code_info.clobber_regs([reg(r, 2)], !CI),
+        code_info.clobber_regs([reg(reg_r, 2)], !CI),
         list.length(InVars, NInVars),
         Code = node([
-            assign(reg(r, 2), const(int_const(NInVars))) -
+            assign(reg(reg_r, 2), const(llconst_int(NInVars))) -
                 "Assign number of immediate input arguments"
         ])
     ).
@@ -336,19 +336,19 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
         InVars, _OutVars, Code, !CI) :-
     (
         HoCallVariant = known_num,
-        code_info.clobber_regs([reg(r, 2)], !CI),
+        code_info.clobber_regs([reg(reg_r, 2)], !CI),
         Code = node([
-            assign(reg(r, 2), const(int_const(Method))) -
+            assign(reg(reg_r, 2), const(llconst_int(Method))) -
                 "Index of class method in typeclass info"
         ])
     ;
         HoCallVariant = unknown,
-        code_info.clobber_regs([reg(r, 2), reg(r, 3)], !CI),
+        code_info.clobber_regs([reg(reg_r, 2), reg(reg_r, 3)], !CI),
         list.length(InVars, NInVars),
         Code = node([
-            assign(reg(r, 2), const(int_const(Method))) -
+            assign(reg(reg_r, 2), const(llconst_int(Method))) -
                 "Index of class method in typeclass info",
-            assign(reg(r, 3), const(int_const(NInVars))) -
+            assign(reg(reg_r, 3), const(llconst_int(NInVars))) -
                 "Assign number of immediate input arguments"
         ])
     ).
@@ -387,7 +387,8 @@ handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
         ;
             code_info.get_next_label(ContLab, !CI),
             FailTestCode = node([
-                if_val(lval(reg(r, 1)), label(ContLab)) - "test for success"
+                if_val(lval(reg(reg_r, 1)), label(ContLab))
+                    - "test for success"
             ]),
             code_info.generate_failure(FailCode, !CI),
             ContLabelCode = node([
@@ -564,8 +565,8 @@ generate_assign_builtin(Var, AssignExpr, Code, !CI) :-
 :- func convert_simple_expr(simple_expr(prog_var)) = rval.
 
 convert_simple_expr(leaf(Var)) = var(Var).
-convert_simple_expr(int_const(Int)) = const(int_const(Int)).
-convert_simple_expr(float_const(Float)) = const(float_const(Float)).
+convert_simple_expr(int_const(Int)) = const(llconst_int(Int)).
+convert_simple_expr(float_const(Float)) = const(llconst_float(Float)).
 convert_simple_expr(unary(UnOp, Expr)) =
     unop(UnOp, convert_simple_expr(Expr)).
 convert_simple_expr(binary(BinOp, Expr1, Expr2)) =

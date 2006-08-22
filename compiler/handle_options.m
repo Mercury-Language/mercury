@@ -201,7 +201,7 @@ postprocess_options(ok(OptionTable0), Errors, !IO) :-
 :- pred check_option_values(option_table::in, option_table::out,
     compilation_target::out, gc_method::out, tags_method::out,
     termination_norm::out, termination_norm::out, trace_level::out,
-    trace_suppress_items::out, maybe_thread_safe::out,
+    trace_suppress_items::out, may_be_thread_safe::out,
     list(string)::in, list(string)::out) is det.
 
 check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
@@ -225,7 +225,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
     ->
         GC_Method = GC_MethodPrime
     ;
-        GC_Method = none,   % dummy
+        GC_Method = gc_none,   % dummy
         add_error("Invalid GC option (must be `none', " ++
             "`conservative', `boehm', `mps', `accurate', or `automatic')",
             !Errors)
@@ -237,7 +237,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
     ->
         TagsMethod = TagsMethodPrime
     ;
-        TagsMethod = none,  % dummy
+        TagsMethod = tags_none,  % dummy
         add_error("Invalid tags option " ++
             "(must be `none', `low' or `high')", !Errors)
     ),
@@ -260,7 +260,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
     ->
         TermNorm = TermNormPrime
     ;
-        TermNorm = simple,  % dummy
+        TermNorm = norm_simple,  % dummy
         add_error("Invalid argument to option " ++
             "`--termination-norm'\n\t(must be " ++
             "`simple', `total' or `num-data-elems').", !Errors)
@@ -272,7 +272,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
     ->
         Term2Norm = Term2NormPrime
     ;
-        Term2Norm = simple, % dummy
+        Term2Norm = norm_simple, % dummy
         add_error("Invalid argument to option " ++
             "`--termination2-norm'\n\t(must be" ++
             "`simple', `total' or `num-data-elems').", !Errors)
@@ -355,7 +355,7 @@ add_error(Error, Errors0, Errors) :-
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
     termination_norm::in, trace_level::in, trace_suppress_items::in,
-    maybe_thread_safe::in, list(string)::in, list(string)::out,
+    may_be_thread_safe::in, list(string)::in, list(string)::out,
     io::di, io::uo) is det.
 
 postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
@@ -379,9 +379,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ),
 
         % --tags none implies --num-tag-bits 0.
-        ( TagsMethod0 = none ->
+        (
+            TagsMethod0 = tags_none,
             NumTagBits0 = 0
         ;
+            ( TagsMethod0 = tags_low
+            ; TagsMethod0 = tags_high
+            ),
             globals.lookup_int_option(!.Globals, num_tag_bits, NumTagBits0)
         ),
 
@@ -390,7 +394,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % (the autoconf-determined value is passed from the `mc' script
         % using the undocumented --conf-low-tag-bits option)
         (
-            TagsMethod0 = low,
+            TagsMethod0 = tags_low,
             NumTagBits0 = -1
         ->
             globals.lookup_int_option(!.Globals, conf_low_tag_bits,
@@ -415,7 +419,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         globals.set_option(num_tag_bits, int(NumTagBits), !Globals),
         ( NumTagBits = 0 ->
-            TagsMethod = none,
+            TagsMethod = tags_none,
             globals.set_tags_method(TagsMethod, !Globals)
         ;
             TagsMethod = TagsMethod0
@@ -474,7 +478,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         needed, so ensure that this dead code is removed.
 
         ( Target = target_il ->
-            globals.set_gc_method(automatic, !Globals),
+            globals.set_gc_method(gc_automatic, !Globals),
             globals.set_option(gc, string("automatic"), !Globals),
             globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
                 !Globals),
@@ -568,7 +572,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         needed, so ensure that this dead code is removed.
 
         ( Target = target_java ->
-            globals.set_gc_method(automatic, !Globals),
+            globals.set_gc_method(gc_automatic, !Globals),
             globals.set_option(gc, string("automatic"), !Globals),
             globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
                 !Globals),
@@ -1269,7 +1273,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % (e.g. `enum(var(T))'' in library/sparse_bitset.m),
         % which the current RTTI system can't handle.
         %
-        ( GC_Method = accurate ->
+        ( GC_Method = gc_accurate ->
             globals.set_option(agc_stack_layout, bool(yes), !Globals),
             globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
             globals.set_option(allow_hijacks, bool(no), !Globals),
@@ -1299,7 +1303,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             PutNondetEnvOnHeap),
         (
             HighLevel = yes,
-            GC_Method = accurate,
+            GC_Method = gc_accurate,
             PutNondetEnvOnHeap = yes
         ->
             add_error("--gc accurate is incompatible with " ++
@@ -1697,8 +1701,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             % To ensure that all constants in general du types are
             % allocated in one word, make_tags.m need to have at least one
             % tag bit left over after --reserve-tags possibly takes one.
-            ( TagsMethod = low
-            ; TagsMethod = high
+            ( TagsMethod = tags_low
+            ; TagsMethod = tags_high
             ),
             NumTagBits >= 2
         ->

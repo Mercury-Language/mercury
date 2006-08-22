@@ -591,21 +591,21 @@ argloc_to_string(RegNum, RegName) :-
     ).
 
 convert_type_to_mercury(Rval, Type, ConvertedRval) :-
-    ( Type = builtin(BuiltinType) ->
+    ( Type = builtin_type(BuiltinType) ->
         (
-            BuiltinType = string,
+            BuiltinType = builtin_type_string,
             ConvertedRval = "(MR_Word) " ++ Rval
         ;
-            BuiltinType = float,
+            BuiltinType = builtin_type_float,
             ConvertedRval = "MR_float_to_word(" ++ Rval ++ ")"
         ;
-            BuiltinType = character,
+            BuiltinType = builtin_type_character,
             % We need to explicitly cast to UnsignedChar
             % to avoid problems with C compilers for which `char'
             % is signed.
             ConvertedRval = "(UnsignedChar) " ++ Rval
         ;
-            BuiltinType = int,
+            BuiltinType = builtin_type_int,
             ConvertedRval = Rval
         )
     ;
@@ -613,9 +613,9 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
     ).
 
 convert_type_from_mercury(Rval, Type, ConvertedRval) :-
-    ( Type = builtin(string) ->
+    ( Type = builtin_type(builtin_type_string) ->
         ConvertedRval = "(MR_String) " ++ Rval
-    ; Type = builtin(float) ->
+    ; Type = builtin_type(builtin_type_float) ->
         ConvertedRval = "MR_word_to_float(" ++ Rval ++ ")"
     ;
         ConvertedRval = Rval

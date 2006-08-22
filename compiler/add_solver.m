@@ -76,7 +76,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     % We set the kinds to `star'.  This will be different when we have a
     % kind system.
     prog_type.var_list_to_type_list(map.init, TypeParams, Args),
-    SolverType        = defined(TypeSymName, Args, star),
+    SolverType        = defined_type(TypeSymName, Args, kind_star),
     Arity             = length(TypeParams),
 
     RepnType          = SolverTypeDetails ^ representation_type,

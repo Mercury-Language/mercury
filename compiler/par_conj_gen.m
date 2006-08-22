@@ -164,14 +164,14 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     code_info.get_module_info(!.CI, ModuleInfo),
     find_outputs(Variables, Initial, Final, ModuleInfo, [], Outputs),
     list.length(Goals, NumGoals),
-    code_info.acquire_reg(r, RegLval, !CI),
+    code_info.acquire_reg(reg_r, RegLval, !CI),
     code_info.acquire_temp_slot(sync_term, SyncSlot, !CI),
     code_info.acquire_temp_slot(lval(sp), SpSlot, !CI),
     MakeTerm = node([
         assign(SpSlot, lval(sp))
             - "save the parent stack pointer",
         % The may_not_use_atomic here is conservative.
-        incr_hp(RegLval, no, no, const(int_const(STSize)),
+        incr_hp(RegLval, no, no, const(llconst_int(STSize)),
             "synchronization vector", may_not_use_atomic_alloc)
             - "allocate a synchronization vector",
         init_sync_term(RegLval, NumGoals)
@@ -286,7 +286,8 @@ copy_outputs(CI, [Var | Vars], SpSlot, Code) :-
             % The stack pointer points to the last used word on the stack.
             % We want MR_sp[-0] = MR_sv(1), MR_sp[-1] = MR_sv(2), etc.
             NegSlotNum = (1 - SlotNum),
-            DestSlot = field(yes(0), lval(SpSlot), const(int_const(NegSlotNum))),
+            DestSlot = field(yes(0), lval(SpSlot),
+                const(llconst_int(NegSlotNum))),
             VarName = code_info.variable_to_string(CI, Var),
             Msg = "copy result " ++ VarName ++ " to parent stackframe",
             ThisCode = node([assign(DestSlot, lval(SrcSlot)) - Msg])

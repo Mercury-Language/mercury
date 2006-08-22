@@ -194,8 +194,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             % Reset the solver state if necessary.
             (
                 PrevBranchModifiesTrail = yes,
-                code_info.maybe_reset_ticket(MaybeTicketSlot, undo,
-                    RestoreTicketCode)
+                code_info.maybe_reset_ticket(MaybeTicketSlot,
+                    reset_reason_undo, RestoreTicketCode)
             ;
                 % Don't bother if the previous branch is known not to modify
                 % the trail.
@@ -270,7 +270,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             code_info.maybe_release_hp(MaybeHpSlot, !CI),
             % We're committing to this disjunct if it succeeds.
             code_info.maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
-                commit, PruneTicketCode, !CI),
+                reset_reason_commit, PruneTicketCode, !CI),
 
             code_info.reset_resume_known(BranchStart, !CI)
         ),
@@ -320,7 +320,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         (
             PrevBranchModifiesTrail = yes,
             code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
-                undo, RestoreTicketCode, !CI)
+                reset_reason_undo, RestoreTicketCode, !CI)
         ;
             PrevBranchModifiesTrail = no,
             code_info.maybe_discard_and_release_ticket(MaybeTicketSlot,

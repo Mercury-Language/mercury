@@ -199,7 +199,7 @@ find_first_and_last_case_2(Case, !Min, !Max) :-
 
 find_first_and_last_case_3(match_value(Rval), !Min, !Max) :-
     (
-        Rval = const(int_const(Val))
+        Rval = const(mlconst_int(Val))
     ->
         int.min(Val, !Min),
         int.max(Val, !Max)
@@ -209,8 +209,8 @@ find_first_and_last_case_3(match_value(Rval), !Min, !Max) :-
 find_first_and_last_case_3(match_range(MinRval, MaxRval),
         !Min, !Max) :-
     (
-        MinRval = const(int_const(RvalMin)),
-        MaxRval = const(int_const(RvalMax))
+        MinRval = const(mlconst_int(RvalMin)),
+        MaxRval = const(mlconst_int(RvalMax))
     ->
         int.min(RvalMin, !Min),
         int.max(RvalMax, !Max)
@@ -235,7 +235,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     ( FirstVal = 0 ->
         Index = Rval
     ;
-        Index = binop(int_sub, Rval, const(int_const(FirstVal)))
+        Index = binop(int_sub, Rval, const(mlconst_int(FirstVal)))
     ),
 
     % Now generate the jump table.
@@ -273,7 +273,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     (
         NeedRangeCheck = yes,
         Difference = LastVal - FirstVal,
-        InRange = binop(unsigned_le, Index, const(int_const(Difference))),
+        InRange = binop(unsigned_le, Index, const(mlconst_int(Difference))),
         Else = yes(statement(block([], DefaultStatements),
             MLDS_Context)),
         SwitchBody = statement(block([], [DoJump | CasesCode]),
@@ -351,7 +351,7 @@ insert_cases_into_map([Cond|Conds], ThisLabel, !CaseLabelsMap) :-
     case_labels_map::in, case_labels_map::out) is det.
 
 insert_case_into_map(match_value(Rval), ThisLabel, !CaseLabelsMap) :-
-    ( Rval = const(int_const(Val)) ->
+    ( Rval = const(mlconst_int(Val)) ->
         map.det_insert(!.CaseLabelsMap, Val, ThisLabel, !:CaseLabelsMap)
     ;
         unexpected(this_file, "insert_case_into_map: non-int case")
@@ -359,8 +359,8 @@ insert_case_into_map(match_value(Rval), ThisLabel, !CaseLabelsMap) :-
 insert_case_into_map(match_range(MinRval, MaxRval), ThisLabel,
         !CaseLabelsMap) :-
     (
-        MinRval = const(int_const(Min)),
-        MaxRval = const(int_const(Max))
+        MinRval = const(mlconst_int(Min)),
+        MaxRval = const(mlconst_int(Max))
     ->
         insert_range_into_map(Min, Max, ThisLabel, !CaseLabelsMap)
     ;
@@ -443,7 +443,7 @@ ml_switch_to_if_else_chain([Case | Cases], Default, SwitchRval, MLDS_Context) =
     %
 :- func ml_gen_case_match_conds(mlds_case_match_conds, mlds_rval) = mlds_rval.
 
-ml_gen_case_match_conds([], _) = const(false_const).
+ml_gen_case_match_conds([], _) = const(mlconst_false).
 ml_gen_case_match_conds([Cond], SwitchRval) =
     ml_gen_case_match_cond(Cond, SwitchRval).
 ml_gen_case_match_conds([Cond1, Cond2 | Conds], SwitchRval) =

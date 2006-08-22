@@ -520,7 +520,7 @@ get_existq_tvar_renaming_2(OldHeadTypeParams, TypeBindings, TVar, !Renaming) :-
 
 tvar_maps_to_tvar(TypeBindings, TVar0, TVar) :-
     ( map.search(TypeBindings, TVar0, Type) ->
-        Type = variable(TVar1, _),
+        Type = type_variable(TVar1, _),
         tvar_maps_to_tvar(TypeBindings, TVar1, TVar)
     ;
         TVar = TVar0

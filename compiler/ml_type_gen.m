@@ -239,7 +239,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
     list.length(Args, Arity),
     map.lookup(ConsTagValues, cons(Name, Arity), TagVal),
     ( TagVal = int_tag(Int) ->
-        ConstValue = const(int_const(Int))
+        ConstValue = const(mlconst_int(Int))
     ;
         unexpected(this_file,
             "ml_gen_enum_constant: enum constant needs int tag")
@@ -451,7 +451,7 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
 
         Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args),
         unqualify_name(Name, UnqualifiedName),
-        ConstValue = const(int_const(SecondaryTag)),
+        ConstValue = const(mlconst_int(SecondaryTag)),
         MLDS_Defn = mlds_defn(
             entity_data(var(mlds_var_name(UnqualifiedName, no))),
             mlds_make_context(Context),
@@ -858,7 +858,7 @@ gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context, Globals)
     ),
     Name = "data_tag",
     Type = mlds_native_int_type,
-    Val = const(int_const(TagVal)),
+    Val = const(mlconst_int(TagVal)),
     Field = field(yes(0), self(ClassType),
         named_field(qual(TagClassQualifier, type_qual, Name),
             mlds_ptr_type(SecondaryTagClassId)),
@@ -881,8 +881,8 @@ ml_gen_type_info_member(ModuleInfo, Context, TypeVar, MLDS_Defn,
     % We don't have access to the correct kind here. This won't matter though,
     % since the type will only be checked to see that it is a variable,
     % and won't be used in any other way.
-    Kind = star,
-    polymorphism.build_type_info_type(variable(TypeVar, Kind), Type),
+    Kind = kind_star,
+    polymorphism.build_type_info_type(type_variable(TypeVar, Kind), Type),
     ml_gen_field(ModuleInfo, Context, no, Type, MLDS_Defn, ArgNum0, ArgNum).
 
 :- pred ml_gen_du_ctor_field(module_info::in, prog_context::in,

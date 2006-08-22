@@ -524,7 +524,7 @@ warn_singletons(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet, Context,
         (
             SingletonVars = []
         ;
-            goal_info_has_feature(GoalInfo, dont_warn_singleton)
+            goal_info_has_feature(GoalInfo, feature_dont_warn_singleton)
         )
     ->
         true

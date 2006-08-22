@@ -553,22 +553,22 @@ rename_rval(self(Type)) = self(Type).
 
 :- func rename_const(mlds_rval_const) = mlds_rval_const.
 
-rename_const(true_const) = true_const.
-rename_const(false_const) = false_const.
-rename_const(int_const(I)) = int_const(I).
-rename_const(float_const(F)) = float_const(F).
-rename_const(string_const(S)) = string_const(S).
-rename_const(multi_string_const(I, S)) = multi_string_const(I, S).
-rename_const(code_addr_const(C)) = code_addr_const(rename_code_addr(C)).
-rename_const(data_addr_const(A)) = data_addr_const(rename_data_addr(A)).
-rename_const(null(T)) = null(T).
+rename_const(mlconst_true) = mlconst_true.
+rename_const(mlconst_false) = mlconst_false.
+rename_const(mlconst_int(I)) = mlconst_int(I).
+rename_const(mlconst_float(F)) = mlconst_float(F).
+rename_const(mlconst_string(S)) = mlconst_string(S).
+rename_const(mlconst_multi_string(I, S)) = mlconst_multi_string(I, S).
+rename_const(mlconst_code_addr(C)) = mlconst_code_addr(rename_code_addr(C)).
+rename_const(mlconst_data_addr(A)) = mlconst_data_addr(rename_data_addr(A)).
+rename_const(mlconst_null(T)) = mlconst_null(T).
 
 :- func rename_code_addr(mlds_code_addr) = mlds_code_addr.
 
-rename_code_addr(proc(Label, Signature))
-    = proc(rename_proc_label(Label), Signature).
-rename_code_addr(internal(Label, Seq, Signature))
-    = internal(rename_proc_label(Label), Seq, Signature).
+rename_code_addr(code_addr_proc(Label, Signature))
+    = code_addr_proc(rename_proc_label(Label), Signature).
+rename_code_addr(code_addr_internal(Label, Seq, Signature))
+    = code_addr_internal(rename_proc_label(Label), Seq, Signature).
 
 rename_proc_label(qual(Module, _QualKind, Name))
     = qual(mlds_append_wrapper_class(Module), type_qual, Name).
@@ -1172,7 +1172,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         ),
 
         UnivSymName = qualified(unqualified("univ"), "univ"),
-        UnivMercuryType = defined(UnivSymName, [], star),
+        UnivMercuryType = defined_type(UnivSymName, [], kind_star),
         UnivMLDSType = mercury_type(UnivMercuryType,
             type_cat_user_ctor, non_foreign_type(UnivMercuryType)),
         UnivType = mlds_type_to_ilds_type(DataRep, UnivMLDSType),
@@ -1405,7 +1405,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
 
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     ( UnqualName = entity_function(PredLabel, ProcId, _MaybeSeq, _PredId) ->
-        CodeRval = const(code_addr_const(proc(
+        CodeRval = const(mlconst_code_addr(code_addr_proc(
             qual(ModuleName, module_qual, mlds_proc_label(PredLabel, ProcId)),
             Signature)))
     ;
@@ -2108,7 +2108,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
         LoadInArray = (pred(Rval::in, I::out, Arg0::in, Arg::out) is det :-
             Arg0 = Index - S0,
             I0 = instr_node(dup),
-            load(const(int_const(Index)), I1, S0, S1),
+            load(const(mlconst_int(Index)), I1, S0, S1),
 
             % XXX the MLDS code generator is meant to be responsible for boxing
             % the args, but when compiled with the highlevel_data where we have
@@ -2327,35 +2327,35 @@ load(mkword(_Tag, _Rval), Instrs, !Info) :-
     % characters, etc.
 load(const(Const), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
-        % true and false are just the integers 1 and 0
+    % True and false are just the integers 1 and 0.
     (
-        Const = true_const,
+        Const = mlconst_true,
         Instrs = instr_node(ldc(bool, i(1)))
     ;
-        Const = false_const,
+        Const = mlconst_false,
         Instrs = instr_node(ldc(bool, i(0)))
     ;
-        Const = string_const(Str),
+        Const = mlconst_string(Str),
         Instrs = instr_node(ldstr(Str))
     ;
-        Const = int_const(Int),
+        Const = mlconst_int(Int),
         Instrs = instr_node(ldc(int32, i(Int)))
     ;
-        Const = float_const(Float),
+        Const = mlconst_float(Float),
         Instrs = instr_node(ldc(float64, f(Float)))
     ;
-        Const = multi_string_const(_Length, _MultiString),
+        Const = mlconst_multi_string(_Length, _MultiString),
         Instrs = throw_unimplemented("load multi_string_const")
     ;
-        Const = code_addr_const(CodeAddr),
+        Const = mlconst_code_addr(CodeAddr),
         MethodRef = code_addr_constant_to_methodref(DataRep, CodeAddr),
         Instrs = instr_node(ldftn(MethodRef))
     ;
-        Const = data_addr_const(DataAddr),
+        Const = mlconst_data_addr(DataAddr),
         data_addr_constant_to_fieldref(DataAddr, FieldRef),
         Instrs = instr_node(ldsfld(FieldRef))
     ;
-        Const = null(_MLDSType),
+        Const = mlconst_null(_MLDSType),
         % We might consider loading an integer for null function types.
         Instrs = instr_node(ldnull)
     ).
@@ -2458,7 +2458,7 @@ store(var(Var, VarType), Instrs, !Info) :-
 
 unaryop_to_il(std_unop(mktag), _, comment_node("mktag (a no-op)"), !Info).
 unaryop_to_il(std_unop(tag), _, Instrs, !Info) :-
-    load(const(int_const(0)), Instrs, !Info).
+    load(const(mlconst_int(0)), Instrs, !Info).
 unaryop_to_il(std_unop(unmktag), _, comment_node("unmktag (a no-op)"), !Info).
 unaryop_to_il(std_unop(strip_tag),_,comment_node("strip_tag (a no-op)"),
         !Info).
@@ -2812,12 +2812,12 @@ generate_condition(Rval, Instrs, ElseLabel, !Info) :-
     is det.
 
 const_rval_to_function(Const, MemberName) :-
-    ( Const = code_addr_const(CodeConst) ->
+    ( Const = mlconst_code_addr(CodeConst) ->
         (
-            CodeConst = proc(ProcLabel, _Sig),
+            CodeConst = code_addr_proc(ProcLabel, _Sig),
             mangle_mlds_proc_label(ProcLabel, no, ClassName, ProcLabelStr)
         ;
-            CodeConst = internal(ProcLabel, SeqNum, _Sig),
+            CodeConst = code_addr_internal(ProcLabel, SeqNum, _Sig),
             mangle_mlds_proc_label(ProcLabel, yes(SeqNum), ClassName,
                 ProcLabelStr)
         ),
@@ -3615,32 +3615,33 @@ rval_to_type(const(Const), Type) :-
 
 :- func rval_const_to_type(mlds_rval_const) = mlds_type.
 
-rval_const_to_type(data_addr_const(_)) = mlds_array_type(mlds_generic_type).
-rval_const_to_type(code_addr_const(_))
+rval_const_to_type(mlconst_data_addr(_)) = mlds_array_type(mlds_generic_type).
+rval_const_to_type(mlconst_code_addr(_))
         = mlds_func_type(mlds_func_params([], [])).
-rval_const_to_type(int_const(_))
+rval_const_to_type(mlconst_int(_))
         = mercury_type(IntType, type_cat_int, non_foreign_type(IntType)) :-
-    IntType = builtin(int).
-rval_const_to_type(float_const(_))
+    IntType = builtin_type(builtin_type_int).
+rval_const_to_type(mlconst_float(_))
         = mercury_type(FloatType, type_cat_float,
             non_foreign_type(FloatType)) :-
-    FloatType = builtin(float).
-rval_const_to_type(false_const) = mlds_native_bool_type.
-rval_const_to_type(true_const) = mlds_native_bool_type.
-rval_const_to_type(string_const(_))
+    FloatType = builtin_type(builtin_type_float).
+rval_const_to_type(mlconst_false) = mlds_native_bool_type.
+rval_const_to_type(mlconst_true) = mlds_native_bool_type.
+rval_const_to_type(mlconst_string(_))
         = mercury_type(StrType, type_cat_string, non_foreign_type(StrType)) :-
-    StrType = builtin(string).
-rval_const_to_type(multi_string_const(_, _))
+    StrType = builtin_type(builtin_type_string).
+rval_const_to_type(mlconst_multi_string(_, _))
         = mercury_type(StrType, type_cat_string, non_foreign_type(StrType)) :-
-    StrType = builtin(string).
-rval_const_to_type(null(MldsType)) = MldsType.
+    StrType = builtin_type(builtin_type_string).
+rval_const_to_type(mlconst_null(MldsType)) = MldsType.
 
 %-----------------------------------------------------------------------------%
 
 :- func code_addr_constant_to_methodref(il_data_rep, mlds_code_addr) =
     methodref.
 
-code_addr_constant_to_methodref(DataRep, proc(ProcLabel, Sig)) = MethodRef :-
+code_addr_constant_to_methodref(DataRep, code_addr_proc(ProcLabel, Sig))
+        = MethodRef :-
     mangle_mlds_proc_label(ProcLabel, no, ClassName, ProcLabelStr),
     ReturnParam = mlds_signature_to_il_return_param(DataRep, Sig),
     TypeParams = mlds_signature_to_ilds_type_params(DataRep, Sig),
@@ -3649,7 +3650,7 @@ code_addr_constant_to_methodref(DataRep, proc(ProcLabel, Sig)) = MethodRef :-
         MemberName, TypeParams).
 
 code_addr_constant_to_methodref(DataRep,
-        internal(ProcLabel, SeqNum, Sig)) = MethodRef :-
+        code_addr_internal(ProcLabel, SeqNum, Sig)) = MethodRef :-
     mangle_mlds_proc_label(ProcLabel, yes(SeqNum), ClassName, ProcLabelStr),
     TypeParams = mlds_signature_to_ilds_type_params(DataRep, Sig),
     ReturnParam = mlds_signature_to_il_return_param(DataRep, Sig),
@@ -3698,10 +3699,10 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType0, FieldRef,
     (
         FieldNum = offset(OffsetRval),
         ClassName = mlds_type_to_ilds_class_name(DataRep, ClassType),
-        ( OffsetRval = const(int_const(Num)) ->
+        ( OffsetRval = const(mlconst_int(Num)) ->
             string.format("f%d", [i(Num)], FieldId)
         ;
-            sorry(this_file, "offsets for non-int_const rvals")
+            sorry(this_file, "offsets for non-mlconst_int rvals")
         ),
         CastClassInstrs = empty
     ;

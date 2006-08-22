@@ -50,7 +50,7 @@
     ;       negated_goal_cannot_succeed
     ;       goal_cannot_succeed
     ;       det_goal_has_no_outputs
-    ;       warn_obsolete(pred_id)
+    ;       warn_call_to_obsolete(pred_id)
             % Warning about calls to predicates for which there is
             % a `:- pragma obsolete' declaration.
     ;       warn_infinite_recursion
@@ -95,8 +95,8 @@
     ;       higher_order_call.
 
 :- type cc_unify_context
-    --->    unify(unify_context)
-    ;       switch.
+    --->    ccuc_unify(unify_context)
+    ;       ccuc_switch.
 
 :- type failing_context == pair(prog_context, failing_goal).
 
@@ -929,7 +929,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
     % both out. (The latter can happen if there is a determinism error
     % in a function call inside some unification.)
 
-    ( Origin = special_pred(spec_pred_unify - _) ->
+    ( Origin = origin_special_pred(spec_pred_unify - _) ->
         (
             CallUnifyContext = yes(call_unify_context(LHS, RHS, UC)),
             First = yes,
@@ -1138,7 +1138,7 @@ det_msg_get_type(goal_cannot_succeed, simple_code_warning).
 det_msg_get_type(det_goal_has_no_outputs, simple_code_warning).
     % XXX warn_obsolete isn't really a simple code warning.
     % We should add a separate warning type for this.
-det_msg_get_type(warn_obsolete(_), simple_code_warning).
+det_msg_get_type(warn_call_to_obsolete(_), simple_code_warning).
 det_msg_get_type(warn_infinite_recursion, simple_code_warning).
 det_msg_get_type(duplicate_call(_, _), call_warning).
 det_msg_get_type(unknown_format_string(_, _), format_unknown).
@@ -1172,7 +1172,7 @@ det_msg_is_any_mode_msg(negated_goal_cannot_fail, all_modes).
 det_msg_is_any_mode_msg(negated_goal_cannot_succeed, all_modes).
 det_msg_is_any_mode_msg(goal_cannot_succeed, all_modes).
 det_msg_is_any_mode_msg(det_goal_has_no_outputs, all_modes).
-det_msg_is_any_mode_msg(warn_obsolete(_), all_modes).
+det_msg_is_any_mode_msg(warn_call_to_obsolete(_), all_modes).
 det_msg_is_any_mode_msg(warn_infinite_recursion, any_mode).
 det_msg_is_any_mode_msg(duplicate_call(_, _), any_mode).
 det_msg_is_any_mode_msg(unknown_format_string(_, _), any_mode).
@@ -1269,7 +1269,7 @@ det_report_msg(det_goal_has_no_outputs, Context, _, !IO) :-
         Pieces = Pieces0
     ),
     write_error_pieces(Context, 0, Pieces, !IO).
-det_report_msg(warn_obsolete(PredId), Context, ModuleInfo, !IO) :-
+det_report_msg(warn_call_to_obsolete(PredId), Context, ModuleInfo, !IO) :-
     PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
         PredId),
     Pieces = [words("Warning: call to obsolete")] ++ PredPieces
@@ -1317,11 +1317,11 @@ det_report_msg(bad_format(SymName, Arity, Msg), Context, _, !IO) :-
 det_report_msg(cc_unify_can_fail(_GoalInfo, Var, Type, VarSet, GoalContext),
         Context, _ModuleInfo, !IO) :-
     (
-        GoalContext = switch,
+        GoalContext = ccuc_switch,
         VarStr = mercury_var_to_string(Var, VarSet, no),
         Pieces0 = [words("In switch on variable `" ++ VarStr ++ "':"), nl]
     ;
-        GoalContext = unify(UnifyContext),
+        GoalContext = ccuc_unify(UnifyContext),
         hlds_out.unify_context_to_pieces(UnifyContext, [], Pieces0)
     ),
     ( type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) ->
@@ -1365,11 +1365,11 @@ det_report_msg(cc_unify_can_fail(_GoalInfo, Var, Type, VarSet, GoalContext),
 det_report_msg(cc_unify_in_wrong_context(_GoalInfo, Var, Type, VarSet,
         GoalContext, FailingContexts), Context, ModuleInfo, !IO) :-
     (
-        GoalContext = switch,
+        GoalContext = ccuc_switch,
         VarStr = mercury_var_to_string(Var, VarSet, no),
         Pieces0 = [words("In switch on variable `" ++ VarStr ++ "':"), nl]
     ;
-        GoalContext = unify(UnifyContext),
+        GoalContext = ccuc_unify(UnifyContext),
         hlds_out.unify_context_to_pieces(yes, _, UnifyContext, [], Pieces0)
     ),
     ( type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) ->

@@ -34,29 +34,29 @@
     ;       question_with_default(decl_question(T), decl_truth).
 
 :- type user_response(T)
-    --->    user_answer(decl_question(T), decl_answer(T))
-    ;       trust_predicate(decl_question(T))
-    ;       trust_module(decl_question(T))
+    --->    user_response_answer(decl_question(T), decl_answer(T))
+    ;       user_response_trust_predicate(decl_question(T))
+    ;       user_response_trust_module(decl_question(T))
 
-    ;       show_info(io.output_stream)
+    ;       user_response_show_info(io.output_stream)
             % Request that the analyser display some information about the
             % state of the search and the current question to the given output
             % stream.
 
-    ;       change_search(user_search_mode)
+    ;       user_response_change_search(user_search_mode)
             % Request that a new search strategy be used.
 
-    ;       undo
+    ;       user_response_undo
             % The user wants to undo the last answer they gave.
 
-    ;       exit_diagnosis(T)
-    ;       abort_diagnosis.
+    ;       user_response_exit_diagnosis(T)
+    ;       user_response_abort_diagnosis.
 
 :- type user_search_mode
-    --->    top_down
-    ;       divide_and_query
-    ;       suspicion_divide_and_query
-    ;       binary.
+    --->    user_top_down
+    ;       user_divide_and_query
+    ;       user_suspicion_divide_and_query
+    ;       user_binary.
 
 :- type user_state.
 
@@ -126,73 +126,73 @@
 %-----------------------------------------------------------------------------%
 
 :- type user_command
-    --->    yes
+    --->    user_cmd_yes
             % The node is correct.
 
-    ;       no
+    ;       user_cmd_no
             % The node is erroneous.
 
-    ;       inadmissible
+    ;       user_cmd_inadmissible
             % The node is inadmissible.
 
-    ;       skip
+    ;       user_cmd_skip
             % The user has no answer.
 
-    ;       browse_arg(maybe(int))
+    ;       user_cmd_browse_arg(maybe(int))
             % Browse the nth argument before answering.  Or browse
             % the whole predicate/function if the maybe is no.
 
-    ;       browse_xml_arg(maybe(int))
+    ;       user_cmd_browse_xml_arg(maybe(int))
             % Browse the argument using an XML browser.
 
-    ;       browse_io(int)
+    ;       user_cmd_browse_io(int)
             % Browse the nth IO action before answering.
 
-    ;       print_arg(int, int)
+    ;       user_cmd_print_arg(int, int)
             % Print the nth to the mth arguments before answering.
 
-    ;       print_io(int, int)
+    ;       user_cmd_print_io(int, int)
             % Print the nth to the mth IO actions before answering.
 
-    ;       pd
+    ;       user_cmd_pd
             % Commence procedural debugging from this point.
 
-    ;       param_command(param_cmd)
+    ;       user_cmd_param_command(param_cmd)
 
-    ;       trust_predicate
+    ;       user_cmd_trust_predicate
             % Trust the predicate being asked about.
 
-    ;       trust_module
+    ;       user_cmd_trust_module
             % Trust the module being asked about.
 
-    ;       info
+    ;       user_cmd_info
             % Print some information about the current question.
 
-    ;       undo
+    ;       user_cmd_undo
             % Undo the user's last answer.
 
-    ;       ask
+    ;       user_cmd_ask
             % The user wants the current question re-asked.
 
-    ;       change_search(user_search_mode)
+    ;       user_cmd_change_search(user_search_mode)
             % Change the current search strategy.
 
-    ;       quit
+    ;       user_cmd_quit
             % Abort this diagnosis session.
 
-    ;       help(maybe(string))
+    ;       user_cmd_help(maybe(string))
             % Request help before answering.  If the maybe argument
             % is no then a general help message is displayed,
             % otherwise help on the given command is displayed.
 
-    ;       empty_command
+    ;       user_cmd_empty
             % User just pressed return.
 
-    ;       illegal_command.
+    ;       user_cmd_illegal.
             % None of the above.
 
 :- type user_state
-    --->    user(
+    --->    user_state(
                 instr               :: io.input_stream,
                 outstr              :: io.output_stream,
                 browser             :: browser_persistent_state,
@@ -212,7 +212,7 @@
             ).
 
 user_state_init(InStr, OutStr, Browser, HelpSystem,
-    user(InStr, OutStr, Browser, yes, HelpSystem, no)).
+    user_state(InStr, OutStr, Browser, yes, HelpSystem, no)).
 
 %-----------------------------------------------------------------------------%
 
@@ -221,7 +221,8 @@ query_user(UserQuestion, Response, !User, !IO) :-
     (
         !.User ^ testing = yes,
         Node = get_decl_question_node(Question),
-        Response = user_answer(Question, truth_value(Node, erroneous))
+        Response = user_response_answer(Question,
+            truth_value(Node, truth_erroneous))
     ;
         !.User ^ testing = no,
         (
@@ -235,7 +236,7 @@ query_user(UserQuestion, Response, !User, !IO) :-
         ),
         get_command(Prompt, Command, !User, !IO),
         handle_command(Command, UserQuestion, Response, !User, !IO),
-        ( Response \= show_info(_) ->
+        ( Response \= user_response_show_info(_) ->
             !:User = !.User ^ display_question := yes
         ;
             true
@@ -246,27 +247,31 @@ query_user(UserQuestion, Response, !User, !IO) :-
     user_response(T)::out, user_state::in, user_state::out,
     io::di, io::uo) is cc_multi.
 
-handle_command(yes, UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_yes, UserQuestion, Response, !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     Node = get_decl_question_node(Question),
-    Response = user_answer(Question, truth_value(Node, correct)).
+    Response = user_response_answer(Question,
+        truth_value(Node, truth_correct)).
 
-handle_command(no, UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_no, UserQuestion, Response, !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     Node = get_decl_question_node(Question),
-    Response = user_answer(Question, truth_value(Node, erroneous)).
+    Response = user_response_answer(Question,
+        truth_value(Node, truth_erroneous)).
 
-handle_command(inadmissible, UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_inadmissible, UserQuestion, Response, !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     Node = get_decl_question_node(Question),
-    Response = user_answer(Question, truth_value(Node, inadmissible)).
+    Response = user_response_answer(Question,
+        truth_value(Node, truth_inadmissible)).
 
-handle_command(skip, UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_skip, UserQuestion, Response, !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     Node = get_decl_question_node(Question),
-    Response = user_answer(Question, skip(Node)).
+    Response = user_response_answer(Question, skip(Node)).
 
-handle_command(browse_arg(MaybeArgNum), UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_browse_arg(MaybeArgNum), UserQuestion, Response,
+        !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     edt_node_trace_atoms(Question, InitAtom, FinalAtom),
     (
@@ -282,7 +287,7 @@ handle_command(browse_arg(MaybeArgNum), UserQuestion, Response, !User, !IO) :-
             Node = get_decl_question_node(Question),
             Answer = suspicious_subterm(Node, ArgPos, TermPath, HowTrack,
                 ShouldAssertInvalid),
-            Response = user_answer(Question, Answer)
+            Response = user_response_answer(Question, Answer)
         )
     ;
         MaybeArgNum = no,
@@ -297,7 +302,7 @@ handle_command(browse_arg(MaybeArgNum), UserQuestion, Response, !User, !IO) :-
             Node = get_decl_question_node(Question),
             Answer = suspicious_subterm(Node, ArgPos, TermPath,
                 HowTrack, ShouldAssertInvalid),
-            Response = user_answer(Question, Answer)
+            Response = user_response_answer(Question, Answer)
         ;
             %
             % Tracking the entire atom doesn't make sense.
@@ -310,7 +315,7 @@ handle_command(browse_arg(MaybeArgNum), UserQuestion, Response, !User, !IO) :-
         )
     ).
 
-handle_command(browse_xml_arg(MaybeArgNum), UserQuestion, Response,
+handle_command(user_cmd_browse_xml_arg(MaybeArgNum), UserQuestion, Response,
         !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     edt_node_trace_atoms(Question, _, FinalAtom),
@@ -323,14 +328,14 @@ handle_command(browse_xml_arg(MaybeArgNum), UserQuestion, Response,
     ),
     query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(print_arg(From, To), UserQuestion, Response,
+handle_command(user_cmd_print_arg(From, To), UserQuestion, Response,
         !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     edt_node_trace_atoms(Question, _, TraceAtom),
     print_atom_arguments(TraceAtom, From, To, !.User, !IO),
     query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(param_command(ParamCommand), UserQuestion, Response,
+handle_command(user_cmd_param_command(ParamCommand), UserQuestion, Response,
         !User, !IO) :-
     Browser0 = !.User ^ browser,
     DummyTerm = synthetic_term("", [], no),
@@ -340,19 +345,20 @@ handle_command(param_command(ParamCommand), UserQuestion, Response,
     !:User = !.User ^ browser := Browser,
     query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(trust_predicate, UserQuestion, trust_predicate(Question),
-        !User, !IO) :-
+handle_command(user_cmd_trust_predicate, UserQuestion,
+        user_response_trust_predicate(Question), !User, !IO) :-
     Question = get_decl_question(UserQuestion).
 
-handle_command(trust_module, UserQuestion, trust_module(Question),
-        !User, !IO) :-
+handle_command(user_cmd_trust_module, UserQuestion,
+        user_response_trust_module(Question), !User, !IO) :-
     Question = get_decl_question(UserQuestion).
 
-handle_command(info, _, show_info(!.User ^ outstr), !User, !IO).
+handle_command(user_cmd_info, _, user_response_show_info(!.User ^ outstr),
+        !User, !IO).
 
-handle_command(undo, _, undo, !User, !IO).
+handle_command(user_cmd_undo, _, user_response_undo, !User, !IO).
 
-handle_command(browse_io(ActionNum), UserQuestion, Response,
+handle_command(user_cmd_browse_io(ActionNum), UserQuestion, Response,
         !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     edt_node_io_actions(Question, MaybeIoActions),
@@ -361,27 +367,29 @@ handle_command(browse_io(ActionNum), UserQuestion, Response,
         !User, !IO),
     query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(print_io(From, To), UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_print_io(From, To), UserQuestion, Response,
+        !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     edt_node_io_actions(Question, MaybeIoActions),
     print_chosen_io_actions(MaybeIoActions, From, To, !.User, !IO),
     query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(change_search(Mode), _, change_search(Mode), !User, !IO).
+handle_command(user_cmd_change_search(Mode), _,
+        user_response_change_search(Mode), !User, !IO).
 
-handle_command(ask, UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_ask, UserQuestion, Response, !User, !IO) :-
     !:User = !.User ^ display_question := yes,
     query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(pd, UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_pd, UserQuestion, Response, !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     Node = get_decl_question_node(Question),
-    Response = exit_diagnosis(Node).
+    Response = user_response_exit_diagnosis(Node).
 
-handle_command(quit, _, Response, !User, !IO) :-
-    Response = abort_diagnosis.
+handle_command(user_cmd_quit, _, Response, !User, !IO) :-
+    Response = user_response_abort_diagnosis.
 
-handle_command(help(MaybeCmd), UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_help(MaybeCmd), UserQuestion, Response, !User, !IO) :-
     (
         MaybeCmd = yes(Cmd),
         Path = ["decl", Cmd]
@@ -398,26 +406,26 @@ handle_command(help(MaybeCmd), UserQuestion, Response, !User, !IO) :-
     ),
     query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(empty_command, UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_empty, UserQuestion, Response, !User, !IO) :-
     (
         UserQuestion = plain_question(_),
-        Command = skip
+        Command = user_cmd_skip
     ;
         UserQuestion = question_with_default(_, Truth),
         (
-            Truth = correct,
-            Command = yes
+            Truth = truth_correct,
+            Command = user_cmd_yes
         ;
-            Truth = erroneous,
-            Command = no
+            Truth = truth_erroneous,
+            Command = user_cmd_no
         ;
-            Truth = inadmissible,
-            Command = inadmissible
+            Truth = truth_inadmissible,
+            Command = user_cmd_inadmissible
         )
     ),
     handle_command(Command, UserQuestion, Response, !User, !IO).
 
-handle_command(illegal_command, UserQuestion, Response, !User, !IO) :-
+handle_command(user_cmd_illegal, UserQuestion, Response, !User, !IO) :-
     io.write_string(!.User ^ outstr, "Unknown command, 'h' for help.\n", !IO),
     query_user(UserQuestion, Response, !User, !IO).
 
@@ -457,9 +465,9 @@ decl_question_prompt(unexpected_exception(_, _, _), "Expected? ").
 
 :- pred default_prompt(decl_truth::in, string::out) is det.
 
-default_prompt(correct, "[yes] ").
-default_prompt(erroneous, "[no] ").
-default_prompt(inadmissible, "[inadmissible] ").
+default_prompt(truth_correct, "[yes] ").
+default_prompt(truth_erroneous, "[no] ").
+default_prompt(truth_inadmissible, "[inadmissible] ").
 
     % Find the initial and final atoms for a question.  For all
     % questions besides wrong answer questions the initial and
@@ -858,49 +866,49 @@ get_command(Prompt, Command, User, User, !IO) :-
             Words = [CmdWord | CmdArgs],
             (
                 cmd_handler(CmdWord, CmdHandler),
-                CommandPrime = CmdHandler(CmdArgs)
+                CmdHandler(CmdArgs, CommandPrime)
             ->
                 Command = CommandPrime
             ;
-                Command = illegal_command
+                Command = user_cmd_illegal
             )
         ;
             Words = [],
-            Command = empty_command
+            Command = user_cmd_empty
         )
     ;
         Result = error(Error),
         io.error_message(Error, Msg),
         io.write_string(User ^ outstr, Msg, !IO),
         io.nl(User ^ outstr, !IO),
-        Command = quit
+        Command = user_cmd_quit
     ;
         Result = eof,
-        Command = quit
+        Command = user_cmd_quit
     ).
 
 :- pred cmd_handler(string::in,
-    (func(list(string)) = user_command)::out(func(in) = out is semidet))
+    (pred(list(string), user_command)::out(pred(in, out) is semidet)))
     is semidet.
 
-cmd_handler("y",        one_word_cmd(yes)).
-cmd_handler("yes",      one_word_cmd(yes)).
-cmd_handler("n",        one_word_cmd(no)).
-cmd_handler("no",       one_word_cmd(no)).
-cmd_handler("i",        one_word_cmd(inadmissible)).
-cmd_handler("inadmissible",     one_word_cmd(inadmissible)).
-cmd_handler("s",        one_word_cmd(skip)).
-cmd_handler("skip",     one_word_cmd(skip)).
-cmd_handler("pd",       one_word_cmd(pd)).
+cmd_handler("y",        one_word_cmd(user_cmd_yes)).
+cmd_handler("yes",      one_word_cmd(user_cmd_yes)).
+cmd_handler("n",        one_word_cmd(user_cmd_no)).
+cmd_handler("no",       one_word_cmd(user_cmd_no)).
+cmd_handler("i",        one_word_cmd(user_cmd_inadmissible)).
+cmd_handler("inadmissible",     one_word_cmd(user_cmd_inadmissible)).
+cmd_handler("s",        one_word_cmd(user_cmd_skip)).
+cmd_handler("skip",     one_word_cmd(user_cmd_skip)).
+cmd_handler("pd",       one_word_cmd(user_cmd_pd)).
 % `abort' is a synonym for `quit' and is just here for backwards compatibility.
-cmd_handler("a",        one_word_cmd(quit)).
-cmd_handler("abort",    one_word_cmd(quit)).
-cmd_handler("q",        one_word_cmd(quit)).
-cmd_handler("quit",     one_word_cmd(quit)).
+cmd_handler("a",        one_word_cmd(user_cmd_quit)).
+cmd_handler("abort",    one_word_cmd(user_cmd_quit)).
+cmd_handler("q",        one_word_cmd(user_cmd_quit)).
+cmd_handler("quit",     one_word_cmd(user_cmd_quit)).
 cmd_handler("?",        help_cmd).
 cmd_handler("h",        help_cmd).
 cmd_handler("help",     help_cmd).
-cmd_handler("info",     one_word_cmd(info)).
+cmd_handler("info",     one_word_cmd(user_cmd_info)).
 cmd_handler("b",        browse_arg_cmd).
 cmd_handler("browse",   browse_arg_cmd).
 cmd_handler("p",        print_arg_cmd).
@@ -917,50 +925,51 @@ cmd_handler("t",        trust_arg_cmd).
 cmd_handler("trust",    trust_arg_cmd).
 cmd_handler("mode",     search_mode_cmd).
 cmd_handler("m",        search_mode_cmd).
-cmd_handler("undo",     one_word_cmd(undo)).
-cmd_handler("params",   one_word_cmd(param_command(print_params))).
+cmd_handler("undo",     one_word_cmd(user_cmd_undo)).
+cmd_handler("params",   one_word_cmd(user_cmd_param_command(print_params))).
 
-:- func one_word_cmd(user_command::in, list(string)::in) = (user_command::out)
+:- pred one_word_cmd(user_command::in, list(string)::in, user_command::out)
     is semidet.
 
-one_word_cmd(Cmd, []) = Cmd.
+one_word_cmd(Cmd, [], Cmd).
 
-:- func browse_arg_cmd(list(string)::in) = (user_command::out) is semidet.
+:- pred browse_arg_cmd(list(string)::in, user_command::out) is semidet.
 
-browse_arg_cmd([]) = browse_arg(no).
-browse_arg_cmd([Arg]) = BrowseCmd :-
+browse_arg_cmd([], user_cmd_browse_arg(no)).
+browse_arg_cmd([Arg], BrowseCmd) :-
     ( string.to_int(Arg, ArgNum) ->
-        BrowseCmd = browse_arg(yes(ArgNum))
+        BrowseCmd = user_cmd_browse_arg(yes(ArgNum))
     ;
         ( Arg = "-x" ; Arg = "--xml" ),
-        BrowseCmd = browse_xml_arg(no)
+        BrowseCmd = user_cmd_browse_xml_arg(no)
     ).
-browse_arg_cmd(["-x", Arg]) = browse_xml_arg(yes(ArgNum)) :-
+browse_arg_cmd(["-x", Arg], user_cmd_browse_xml_arg(yes(ArgNum))) :-
     string.to_int(Arg, ArgNum).
-browse_arg_cmd(["--xml", Arg]) = browse_xml_arg(yes(ArgNum)) :-
+browse_arg_cmd(["--xml", Arg], user_cmd_browse_xml_arg(yes(ArgNum))) :-
     string.to_int(Arg, ArgNum).
-browse_arg_cmd(["io", Arg]) = browse_io(ArgNum) :-
+browse_arg_cmd(["io", Arg], user_cmd_browse_io(ArgNum)) :-
     string.to_int(Arg, ArgNum).
 
-:- func print_arg_cmd(list(string)::in) = (user_command::out) is semidet.
+:- pred print_arg_cmd(list(string)::in, user_command::out) is semidet.
 
-print_arg_cmd([]) = ask.
-print_arg_cmd([Arg]) = print_arg(From, To) :-
+print_arg_cmd([], user_cmd_ask).
+print_arg_cmd([Arg], user_cmd_print_arg(From, To)) :-
     string_to_range(Arg, From, To).
-print_arg_cmd(["io", Arg]) = print_io(From, To) :-
+print_arg_cmd(["io", Arg], user_cmd_print_io(From, To)) :-
     string_to_range(Arg, From, To).
 
-:- func format_arg_cmd(list(string)::in) = (user_command::out) is semidet.
+:- pred format_arg_cmd(list(string)::in, user_command::out) is semidet.
 
-format_arg_cmd(ArgWords) = param_command(format(MaybeOptionTable, Setting)) :-
-    ArgWords \= [],
+format_arg_cmd(ArgWords,
+        user_cmd_param_command(format(MaybeOptionTable, Setting))) :-
+    ArgWords = [_ | _],
     parse.parse(["format" | ArgWords],
         param_command(format(MaybeOptionTable, Setting))).
 
-:- func format_param_arg_cmd(string::in, list(string)::in)
-    = (user_command::out) is semidet.
+:- pred format_param_arg_cmd(string::in, list(string)::in,
+    user_command::out) is semidet.
 
-format_param_arg_cmd(Cmd, ArgWords0) = Command :-
+format_param_arg_cmd(Cmd, ArgWords0, Command) :-
     ( ArgWords0 = ["io" | ArgWords1] ->
         ArgWords = ArgWords1,
         HasIOArg = yes : bool
@@ -986,11 +995,11 @@ format_param_arg_cmd(Cmd, ArgWords0) = Command :-
         HasIOArg = no,
         MaybeOptionTable = MaybeOptionTable0
     ),
-    Command = param_command(format_param(MaybeOptionTable, Setting)). 
+    Command = user_cmd_param_command(format_param(MaybeOptionTable, Setting)). 
 
-:- func num_io_actions_cmd(list(string)::in) = (user_command::out) is semidet.
+:- pred num_io_actions_cmd(list(string)::in, user_command::out) is semidet.
 
-num_io_actions_cmd([Arg]) = param_command(num_io_actions(N)) :-
+num_io_actions_cmd([Arg], user_cmd_param_command(num_io_actions(N))) :-
     string.to_int(Arg, N).
 
 % :- func set_xml_browser_cmd_cmd(list(string)::in) = (user_command::out)
@@ -1003,32 +1012,34 @@ num_io_actions_cmd([Arg]) = param_command(num_io_actions(N)) :-
 %
 % set_xml_tmp_filename_cmd([Arg]) = param_command(xml_tmp_filename(Arg)).
 
-:- func trust_arg_cmd(list(string)::in) = (user_command::out) is semidet.
+:- pred trust_arg_cmd(list(string)::in, user_command::out) is semidet.
 
-trust_arg_cmd([]) = trust_predicate.
-trust_arg_cmd(["module"]) = trust_module.
+trust_arg_cmd([], user_cmd_trust_predicate).
+trust_arg_cmd(["module"], user_cmd_trust_module).
 
-:- func search_mode_cmd(list(string)::in) = (user_command::out) is semidet.
+:- pred search_mode_cmd(list(string)::in, user_command::out) is semidet.
 
-search_mode_cmd(["top-down"])       = change_search(top_down).
-search_mode_cmd(["top_down"])       = change_search(top_down).
-search_mode_cmd(["td"])         = change_search(top_down).
-search_mode_cmd(["divide-and-query"])   = change_search(divide_and_query).
-search_mode_cmd(["divide_and_query"])   = change_search(divide_and_query).
-search_mode_cmd(["dq"])         = change_search(divide_and_query).
-search_mode_cmd(["binary"])     = change_search(binary).
-search_mode_cmd(["b"])          = change_search(binary).
-search_mode_cmd(["suspicion-divide-and-query"]) =
-    change_search(suspicion_divide_and_query).
-search_mode_cmd(["suspicion_divide_and_query"]) =
-    change_search(suspicion_divide_and_query).
-search_mode_cmd(["sdq"]) =
-    change_search(suspicion_divide_and_query).
+search_mode_cmd(["top-down"], user_cmd_change_search(user_top_down)).
+search_mode_cmd(["top_down"], user_cmd_change_search(user_top_down)).
+search_mode_cmd(["td"], user_cmd_change_search(user_top_down)).
+search_mode_cmd(["divide-and-query"],
+    user_cmd_change_search(user_divide_and_query)).
+search_mode_cmd(["divide_and_query"],
+    user_cmd_change_search(user_divide_and_query)).
+search_mode_cmd(["dq"], user_cmd_change_search(user_divide_and_query)).
+search_mode_cmd(["binary"], user_cmd_change_search(user_binary)).
+search_mode_cmd(["b"], user_cmd_change_search(user_binary)).
+search_mode_cmd(["suspicion-divide-and-query"],
+    user_cmd_change_search(user_suspicion_divide_and_query)).
+search_mode_cmd(["suspicion_divide_and_query"],
+    user_cmd_change_search(user_suspicion_divide_and_query)).
+search_mode_cmd(["sdq"],
+    user_cmd_change_search(user_suspicion_divide_and_query)).
 
-:- func help_cmd(list(string)::in) = (user_command::out) is semidet.
+:- pred help_cmd(list(string)::in, user_command::out) is semidet.
 
-help_cmd([]) = help(no).
-help_cmd([Cmd]) = help(yes(Cmd)).
+help_cmd([], user_cmd_help(no)).
+help_cmd([Cmd], user_cmd_help(yes(Cmd))).
 
 :- pred string_to_range(string::in, int::out, int::out) is semidet.
 
@@ -1063,19 +1074,19 @@ user_confirm_bug(Bug, Response, !User, !IO) :-
         !.User ^ testing = no,
         write_decl_bug(Bug, !.User, !IO),
         get_command("Is this a bug? ", Command, !User, !IO),
-        ( Command = yes ->
+        ( Command = user_cmd_yes ->
             Response = confirm_bug
-        ; Command = no ->
+        ; Command = user_cmd_no ->
             Response = overrule_bug
-        ; Command = quit ->
+        ; Command = user_cmd_quit ->
             Response = abort_diagnosis
-        ; Command = browse_arg(MaybeArgNum) ->
+        ; Command = user_cmd_browse_arg(MaybeArgNum) ->
             browse_decl_bug(Bug, MaybeArgNum, !User, !IO),
             user_confirm_bug(Bug, Response, !User, !IO)
-        ; Command = browse_xml_arg(MaybeArgNum) ->
+        ; Command = user_cmd_browse_xml_arg(MaybeArgNum) ->
             browse_xml_decl_bug(Bug, MaybeArgNum, !.User, !IO),
             user_confirm_bug(Bug, Response, !User, !IO)
-        ; Command = browse_io(ActionNum) ->
+        ; Command = user_cmd_browse_io(ActionNum) ->
             decl_bug_io_actions(Bug, MaybeIoActions),
             browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeTrack,
                 !User, !IO),

@@ -79,9 +79,9 @@ is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
     list.length(TaggedCases, NumCases),
     NumCases > 2,
     TaggedCases = [FirstCase | _],
-    FirstCase = case(_, int_tag(FirstCaseVal), _, _),
+    FirstCase = extended_case(_, int_tag(FirstCaseVal), _, _),
     list.index1_det(TaggedCases, NumCases, LastCase),
-    LastCase = case(_, int_tag(LastCaseVal), _, _),
+    LastCase = extended_case(_, int_tag(LastCaseVal), _, _),
     Span = LastCaseVal - FirstCaseVal,
     Range = Span + 1,
     dense_switch.calc_density(NumCases, Range, Density),
@@ -143,7 +143,7 @@ generate_dense_switch(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
     ( StartVal = 0 ->
         Index = Rval
     ;
-        Index = binop(int_sub, Rval, const(int_const(StartVal)))
+        Index = binop(int_sub, Rval, const(llconst_int(StartVal)))
     ),
     % If the switch is not locally deterministic, we need to check that
     % the value of the variable lies within the appropriate range.
@@ -151,7 +151,7 @@ generate_dense_switch(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
         CanFail = can_fail,
         Difference = EndVal - StartVal,
         code_info.fail_if_rval_is_false(
-            binop(unsigned_le, Index, const(int_const(Difference))),
+            binop(unsigned_le, Index, const(llconst_int(Difference))),
             RangeCheck, !CI)
     ;
         CanFail = cannot_fail,
@@ -210,7 +210,7 @@ generate_case(!Cases, NextVal, CodeModel, SwitchGoalInfo, !MaybeEnd, Code,
         Comment, !CI) :-
     (
         !.Cases = [Case | !:Cases],
-        Case = case(_, int_tag(NextVal), _, Goal)
+        Case = extended_case(_, int_tag(NextVal), _, Goal)
     ->
         Comment = "case of dense switch",
         % We need to save the expression cache, etc.,

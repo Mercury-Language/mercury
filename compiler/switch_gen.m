@@ -104,7 +104,7 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
         % Check for a switch on a type whose representation
         % uses reserved addresses.
         list.member(Case, TaggedCases),
-        Case = case(_Priority, Tag, _ConsId, _Goal),
+        Case = extended_case(_Priority, Tag, _ConsId, _Goal),
         (
             Tag = reserved_address_tag(_)
         ;
@@ -192,7 +192,7 @@ lookup_tags(CI, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
     Case = case(ConsId, Goal),
     Tag = code_info.cons_id_to_tag(CI, Var, ConsId),
     Priority = switch_util.switch_priority(Tag),
-    TaggedCase = case(Priority, Tag, ConsId, Goal),
+    TaggedCase = extended_case(Priority, Tag, ConsId, Goal),
     lookup_tags(CI, Cases, Var, TaggedCases).
 
 %-----------------------------------------------------------------------------%
@@ -236,8 +236,8 @@ generate_all_cases(Cases0, Var, CodeModel, CanFail, GoalInfo, EndLabel,
         CodeModel = model_det,
         CanFail = cannot_fail,
         Cases0 = [Case1, Case2],
-        Case1 = case(_, _, _, Goal1),
-        Case2 = case(_, _, _, Goal2)
+        Case1 = extended_case(_, _, _, Goal1),
+        Case2 = extended_case(_, _, _, Goal2)
     ->
         code_info.get_pred_id(!.CI, PredId),
         code_info.get_proc_id(!.CI, ProcId),
@@ -283,8 +283,8 @@ generate_cases([], _Var, _CodeModel, CanFail, _GoalInfo, EndLabel, !MaybeEnd,
     EndCode = node([label(EndLabel) - "end of switch"]),
     Code = tree(FailCode, EndCode).
 
-generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel, CanFail,
-        SwitchGoalInfo, EndLabel, !MaybeEnd, CasesCode, !CI) :-
+generate_cases([extended_case(_, _, Cons, Goal) | Cases], Var, CodeModel,
+        CanFail, SwitchGoalInfo, EndLabel, !MaybeEnd, CasesCode, !CI) :-
     code_info.remember_position(!.CI, BranchStart),
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
     (

@@ -620,40 +620,40 @@ write_rval(_Lang, self(_), !IO) :-
 :- pred write_rval_const(foreign_language::in(managed_lang),
     mlds_rval_const::in, io::di, io::uo) is det.
 
-write_rval_const(_Lang, true_const, !IO) :-
+write_rval_const(_Lang, mlconst_true, !IO) :-
     io.write_string("1", !IO).
-write_rval_const(_Lang, false_const, !IO) :-
+write_rval_const(_Lang, mlconst_false, !IO) :-
     io.write_string("0", !IO).
-write_rval_const(_Lang, int_const(I), !IO) :-
+write_rval_const(_Lang, mlconst_int(I), !IO) :-
     io.write_int(I, !IO).
-write_rval_const(_Lang, float_const(F), !IO) :-
+write_rval_const(_Lang, mlconst_float(F), !IO) :-
     io.write_float(F, !IO).
     % XXX We don't quote this correctly.
-write_rval_const(_Lang, string_const(S), !IO) :-
+write_rval_const(_Lang, mlconst_string(S), !IO) :-
     io.write_string("""", !IO),
     c_util.output_quoted_string(S, !IO),
     io.write_string("""", !IO).
-write_rval_const(_Lang, multi_string_const(L, S), !IO) :-
+write_rval_const(_Lang, mlconst_multi_string(L, S), !IO) :-
     io.write_string("""", !IO),
     c_util.output_quoted_multi_string(L, S, !IO),
     io.write_string("""", !IO).
-write_rval_const(Lang, code_addr_const(CodeAddrConst), !IO) :-
+write_rval_const(Lang, mlconst_code_addr(CodeAddrConst), !IO) :-
     (
-        CodeAddrConst = proc(ProcLabel, _FuncSignature),
+        CodeAddrConst = code_addr_proc(ProcLabel, _FuncSignature),
         mangle_mlds_proc_label(ProcLabel, no, ClassName, MangledName),
         write_class_name(Lang, ClassName, !IO),
         write_field_selector(Lang, !IO),
         io.write_string(MangledName, !IO)
     ;
-        CodeAddrConst = internal(ProcLabel, SeqNum, _FuncSignature),
+        CodeAddrConst = code_addr_internal(ProcLabel, SeqNum, _FuncSignature),
         mangle_mlds_proc_label(ProcLabel, yes(SeqNum), ClassName, MangledName),
         write_class_name(Lang, ClassName, !IO),
         write_field_selector(Lang, !IO),
         io.write_string(MangledName, !IO)
     ).
-write_rval_const(_Lang, data_addr_const(_), !IO) :-
+write_rval_const(_Lang, mlconst_data_addr(_), !IO) :-
     sorry(this_file, "data_addr_const rval").
-write_rval_const(Lang, null(_), !IO) :-
+write_rval_const(Lang, mlconst_null(_), !IO) :-
     (
         Lang = lang_csharp,
         io.write_string("null", !IO)

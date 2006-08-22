@@ -39,6 +39,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.rtti.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -116,7 +117,8 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
     expect(unify(SecTagLocn, SecTagLocn1), this_file,
         "ml_tag_switch.m: secondary tag locations differ"),
     map.to_assoc_list(GoalMap, GoalList),
-    ( SecTagLocn = none ->
+    (
+        SecTagLocn = sectag_none,
         % There is no secondary tag, so there is no switch on it.
         (
             GoalList = [],
@@ -129,6 +131,9 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
             unexpected(this_file, "more than one goal for non-shared tag")
         )
     ;
+        ( SecTagLocn = sectag_local
+        ; SecTagLocn = sectag_remote
+        ),
         (
             CanFail = cannot_fail
         ->
@@ -154,13 +159,12 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
                 Var, CodeModel, CaseCanFail, Context, Statement, !Info)
         )
     ),
-    PrimaryTagRval = const(int_const(PrimaryTag)),
+    PrimaryTagRval = const(mlconst_int(PrimaryTag)),
     MLDS_Case = [match_value(PrimaryTagRval)] - Statement.
 
-:- pred gen_stag_switch(stag_goal_list::in, int::in,
-    stag_loc::in, prog_var::in, code_model::in, can_fail::in,
-    prog_context::in, statement::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred gen_stag_switch(stag_goal_list::in, int::in, sectag_locn::in,
+    prog_var::in, code_model::in, can_fail::in, prog_context::in,
+    statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_stag_switch(Cases, PrimaryTag, StagLocn, Var, CodeModel, CanFail, Context,
         Statement, !Info) :-
@@ -170,14 +174,14 @@ gen_stag_switch(Cases, PrimaryTag, StagLocn, Var, CodeModel, CanFail, Context,
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = lval(VarLval),
     (
-        StagLocn = local,
+        StagLocn = sectag_local,
         STagRval = unop(std_unop(unmkbody), VarRval)
     ;
-        StagLocn = remote,
-        STagRval = ml_gen_secondary_tag_rval(PrimaryTag,
-            VarType, ModuleInfo, VarRval)
+        StagLocn = sectag_remote,
+        STagRval = ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo,
+            VarRval)
     ;
-        StagLocn = none,
+        StagLocn = sectag_none,
         unexpected(this_file, "gen_stag_switch: no stag")
     ),
 
@@ -206,7 +210,7 @@ gen_stag_cases([Case | Cases], CodeModel, [MLDS_Case | MLDS_Cases], !Info) :-
 
 gen_stag_case(Case, CodeModel, MLDS_Case, !Info) :-
     Case = Stag - stag_goal(_ConsId, Goal),
-    StagRval = const(int_const(Stag)),
+    StagRval = const(mlconst_int(Stag)),
     ml_gen_goal(CodeModel, Goal, Statement, !Info),
     MLDS_Case = [match_value(StagRval)] - Statement.
 

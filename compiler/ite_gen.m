@@ -143,11 +143,12 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
         % into.  Nor can we prune the trail ticket that we allocated,
         % since the condition may have allocated other trail tickets
         % since then which have not yet been pruned.
-        code_info.maybe_reset_ticket(MaybeTicketSlot, solve, ResetTicketCode)
+        code_info.maybe_reset_ticket(MaybeTicketSlot, reset_reason_solve,
+            ResetTicketCode)
     ;
         code_info.maybe_release_hp(MaybeHpSlot, !CI),
-        code_info.maybe_reset_prune_and_release_ticket(
-            MaybeTicketSlot, commit, ResetTicketCode, !CI)
+        code_info.maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
+            reset_reason_commit, ResetTicketCode, !CI)
     ),
 
     goal_info_get_store_map(IteGoalInfo, StoreMap),
@@ -175,8 +176,8 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
 
     % Restore the heap pointer and solver state if necessary.
     code_info.maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
-    code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot, undo,
-        RestoreTicketCode, !CI),
+    code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
+        reset_reason_undo, RestoreTicketCode, !CI),
 
     % Generate the else branch.
     maybe_generate_internal_event_code(ElseGoal, IteGoalInfo, ElseTraceCode,
@@ -261,9 +262,9 @@ generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
         code_info.produce_variable(L, CodeL, ValL, !CI),
         code_info.produce_variable(R, CodeR, ValR, !CI),
         Type = code_info.variable_type(!.CI, L),
-        ( Type = builtin(string) ->
+        ( Type = builtin_type(builtin_type_string) ->
             Op = str_eq
-        ; Type = builtin(float) ->
+        ; Type = builtin_type(builtin_type_float) ->
             Op = float_eq
         ;
             Op = eq
@@ -341,7 +342,7 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
         % in order to properly detect floundering.
         code_info.maybe_release_hp(MaybeHpSlot, !CI),
         code_info.maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
-            commit, PruneTicketCode, !CI),
+            reset_reason_commit, PruneTicketCode, !CI),
         maybe_generate_negated_event_code(Goal, NotGoalInfo, neg_failure,
             FailTraceCode, !CI),
         code_info.generate_failure(FailCode, !CI),
@@ -358,8 +359,8 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
 
     % Restore the heap pointer and solver state if necessary.
     code_info.maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
-    code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot, undo,
-        RestoreTicketCode, !CI),
+    code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
+        reset_reason_undo, RestoreTicketCode, !CI),
     maybe_generate_negated_event_code(Goal, NotGoalInfo, neg_success,
         SuccessTraceCode, !CI),
 
@@ -409,7 +410,7 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         UseMinimalModelStackCopyPNeg),
     (
         UseMinimalModelStackCopyPNeg = yes,
-        not goal_info_has_feature(GoalInfo, will_not_call_mm_tabled)
+        not goal_info_has_feature(GoalInfo, feature_will_not_call_mm_tabled)
     ->      
         goal_info_get_context(GoalInfo, Context),
         term.context_file(Context, File),

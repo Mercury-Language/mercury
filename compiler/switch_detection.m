@@ -451,7 +451,7 @@ expand_sub_disjs(Var, [LeftGoal | LeftGoals], !Cases) :-
 
 expand_sub_disj(Var, Goal, !Cases) :-
     Goal = GoalExpr - GoalInfo0,
-    goal_info_add_feature(duplicated_for_switch, GoalInfo0, GoalInfo),
+    goal_info_add_feature(feature_duplicated_for_switch, GoalInfo0, GoalInfo),
     ( GoalExpr = conj(plain_conj, SubGoals) ->
         expand_sub_disj_process_conj(Var, SubGoals, [], GoalInfo, !Cases)
     ; GoalExpr = disj(_) ->
@@ -626,7 +626,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
         )
     ;
         Goal = Goal0,
-        ( goal_info_has_feature(GoalInfo, from_head) ->
+        ( goal_info_has_feature(GoalInfo, feature_from_head) ->
             FoundDeconstruct = before_deconstruct
         ;
             FoundDeconstruct = given_up_search

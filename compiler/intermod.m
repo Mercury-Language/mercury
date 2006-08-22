@@ -1255,7 +1255,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         Body = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
         TypeBody = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp)
     ),
-    mercury_output_item(item_type_defn(VarSet, Name, Args, TypeBody, true),
+    mercury_output_item(
+        item_type_defn(VarSet, Name, Args, TypeBody, cond_true),
         Context, !IO),
     (
         ( Body = hlds_foreign_type(ForeignTypeBody)
@@ -1271,7 +1272,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
                 item_type_defn(VarSet, Name, Args,
                     parse_tree_foreign_type(il(ILForeignType),
                         ILMaybeUserEqComp, AssertionsIL),
-                true),
+                cond_true),
                 Context, !IO)
         ;
             MaybeIL = no
@@ -1284,7 +1285,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
                 item_type_defn(VarSet, Name, Args,
                     parse_tree_foreign_type(c(CForeignType),
                         CMaybeUserEqComp, AssertionsC),
-                    true),
+                    cond_true),
                 Context, !IO)
         ;
             MaybeC = no
@@ -1297,7 +1298,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
                 item_type_defn(VarSet, Name, Args,
                     parse_tree_foreign_type(java(JavaForeignType),
                         JavaMaybeUserEqComp, AssertionsJava),
-                    true),
+                    cond_true),
                 Context, !IO)
         ;
             MaybeJava = no
@@ -1336,7 +1337,7 @@ write_mode(ModuleName, ModeId, ModeDefn, !IO) :-
         import_status_to_write(ImportStatus)
     ->
         mercury_output_item(
-            item_mode_defn(Varset, SymName, Args, eqv_mode(Mode), true),
+            item_mode_defn(Varset, SymName, Args, eqv_mode(Mode), cond_true),
             Context, !IO)
     ;
         true
@@ -1369,7 +1370,7 @@ write_inst(ModuleName, InstId, InstDefn, !IO) :-
             InstBody = abstract_inst
         ),
         mercury_output_item(item_inst_defn(Varset, SymName, Args, InstBody,
-            true), Context, !IO)
+            cond_true), Context, !IO)
     ;
         true
     ).
@@ -1556,15 +1557,15 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
 
     ( pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)) ->
         ( Clauses = [Clause] ->
-            hlds_out.write_promise(PromiseType, 0, ModuleInfo,
-                PredId, VarSet, no, HeadVars, PredOrFunc, Clause, no, !IO)
+            hlds_out.write_promise(PromiseType, 0, ModuleInfo, PredId, VarSet,
+                no, HeadVars, PredOrFunc, Clause, no_varset_vartypes, !IO)
         ;
             unexpected(this_file,
                 "write_preds: assertion not a single clause.")
         )
     ;
         pred_info_get_typevarset(PredInfo, TypeVarset),
-        MaybeVarTypes = yes(TypeVarset, VarTypes),
+        MaybeVarTypes = varset_vartypes(TypeVarset, VarTypes),
         list.foldl(write_clause(ModuleInfo, PredId, VarSet,
             HeadVars, PredOrFunc, SymName, MaybeVarTypes), Clauses, !IO)
     ),
@@ -2113,7 +2114,7 @@ set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
     ->
         (
             pred_info_get_origin(PredInfo0, Origin),
-            Origin = special_pred(spec_pred_unify - _)
+            Origin = origin_special_pred(spec_pred_unify - _)
         ->
             NewStatus = status_pseudo_exported
         ;

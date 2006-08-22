@@ -146,7 +146,7 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
         binop(logical_and,
             binop(ne,
                 lval(StringVarLval),
-                const(null(StringVarType))),
+                const(mlconst_null(StringVarType))),
             binop(str_eq,
                 lval(StringVarLval),
                 VarRval)
@@ -190,11 +190,11 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
         statement(
             atomic(assign(SlotVarLval, binop(bitwise_and,
                 unop(std_unop(hash_string), VarRval),
-                const(int_const(HashMask))))),
+                const(mlconst_int(HashMask))))),
             MLDS_Context),
         statement(atomic(comment("hash chain loop")), MLDS_Context),
         statement(
-            while(binop(int_ge, lval(SlotVarLval), const(int_const(0))),
+            while(binop(int_ge, lval(SlotVarLval), const(mlconst_int(0))),
                 LoopBody,
                 yes), % this is a do...while loop
             MLDS_Context)
@@ -246,14 +246,14 @@ gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, Context, Strings,
 gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
         init_obj(StringRval), init_obj(NextSlotRval), MLDS_Cases, !Info) :-
     ( map.search(HashSlotMap, Slot, hash_slot(Case, Next)) ->
-        NextSlotRval = const(int_const(Next)),
-        Case = case(_, ConsTag, _, Goal),
+        NextSlotRval = const(mlconst_int(Next)),
+        Case = extended_case(_, ConsTag, _, Goal),
         ( ConsTag = string_tag(String0) ->
             String = String0
         ;
             unexpected(this_file, "gen_hash_slots: string expected")
         ),
-        StringRval = const(string_const(String)),
+        StringRval = const(mlconst_string(String)),
         ml_gen_goal(CodeModel, Goal, GoalStatement, !Info),
 
         string.append_list(["case """, String, """"], CommentString),
@@ -261,10 +261,10 @@ gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
             MLDS_Context),
         CaseStatement = statement(block([], [Comment, GoalStatement]),
             MLDS_Context),
-        MLDS_Cases = [[match_value(const(int_const(Slot)))] - CaseStatement]
+        MLDS_Cases = [[match_value(const(mlconst_int(Slot)))] - CaseStatement]
     ;
-        StringRval = const(null(ml_string_type)),
-        NextSlotRval = const(int_const(-2)),
+        StringRval = const(mlconst_null(ml_string_type)),
+        NextSlotRval = const(mlconst_int(-2)),
         MLDS_Cases = []
     ).
 

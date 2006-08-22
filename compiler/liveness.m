@@ -1254,7 +1254,7 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
         goal_info_get_code_model(GoalInfo0, CodeModel),
         CodeModel \= model_non
     ->
-        CondResumeLocs = orig_only
+        CondResumeLocs = resume_locs_orig_only
     ;
         set.empty(CondResumeVars)
     ->
@@ -1262,13 +1262,13 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
         % there are no resume variables, but some parts of code_info
         % insist on a stack label if e.g. the condition contains
         % commits, which is why we choose to use stack_only here.
-        CondResumeLocs = stack_only
+        CondResumeLocs = resume_locs_stack_only
     ;
         cannot_fail_before_stack_flush(Cond1)
     ->
-        CondResumeLocs = stack_only
+        CondResumeLocs = resume_locs_stack_only
     ;
-        CondResumeLocs = stack_and_orig
+        CondResumeLocs = resume_locs_stack_and_orig
     ),
 
     % Attach the set of variables needed after the condition
@@ -1298,11 +1298,11 @@ detect_resume_points_in_goal_2(negation(Goal0), negation(Goal),
     % By minimizing the number of labels we use, we also minimize
     % the amount of data movement code we emit between such labels.
     ( cannot_stack_flush(Goal1) ->
-        ResumeLocs = orig_only
+        ResumeLocs = resume_locs_orig_only
     ; cannot_fail_before_stack_flush(Goal1) ->
-        ResumeLocs = stack_only
+        ResumeLocs = resume_locs_stack_only
     ;
-        ResumeLocs = stack_and_orig
+        ResumeLocs = resume_locs_stack_and_orig
     ),
 
     % Attach the set of variables alive after the negation
@@ -1430,13 +1430,13 @@ detect_resume_points_in_non_last_disjunct(Goal0, Goal, MayUseOrigOnly,
         MayUseOrigOnly = yes,
         cannot_stack_flush(Goal1)
     ->
-        ResumeLocs = orig_only
+        ResumeLocs = resume_locs_orig_only
     ;
         cannot_fail_before_stack_flush(Goal1)
     ->
-        ResumeLocs = stack_only
+        ResumeLocs = resume_locs_stack_only
     ;
-        ResumeLocs = stack_and_orig
+        ResumeLocs = resume_locs_stack_and_orig
     ),
 
     % Attach the set of variables needed in the following disjuncts

@@ -1010,16 +1010,17 @@ qualify_maybe_type(yes(Type0), yes(Type), !Info, !IO) :-
 :- pred qualify_type(mer_type::in, mer_type::out, mq_info::in, mq_info::out,
     io::di, io::uo) is det.
 
-qualify_type(variable(Var, Kind), variable(Var, Kind), !Info, !IO).
-qualify_type(defined(SymName0, Args0, Kind), defined(SymName, Args, Kind),
-        !Info, !IO) :-
+qualify_type(type_variable(Var, Kind), type_variable(Var, Kind), !Info, !IO).
+qualify_type(defined_type(SymName0, Args0, Kind),
+        defined_type(SymName, Args, Kind), !Info, !IO) :-
     Arity = list.length(Args0),
     TypeCtorId0 = mq_id(SymName0, Arity),
     mq_info_get_types(!.Info, Types),
     find_unique_match(TypeCtorId0, TypeCtorId, Types, type_id, !Info, !IO),
     TypeCtorId = mq_id(SymName, _),
     qualify_type_list(Args0, Args, !Info, !IO).
-qualify_type(builtin(BuiltinType), builtin(BuiltinType), !Info, !IO) :-
+qualify_type(builtin_type(BuiltinType), builtin_type(BuiltinType), !Info,
+        !IO) :-
     %
     % The types `int', `float', and `string' are builtin types, defined by
     % the compiler, but arguably they ought to be defined in int.m, float.m,
@@ -1030,27 +1031,27 @@ qualify_type(builtin(BuiltinType), builtin(BuiltinType), !Info, !IO) :-
     % `char' is used.
     %
     (
-        BuiltinType = int,
+        BuiltinType = builtin_type_int,
         mq_info_set_module_used(unqualified("int"), !Info)
     ;
-        BuiltinType = float,
+        BuiltinType = builtin_type_float,
         mq_info_set_module_used(unqualified("float"), !Info)
     ;
-        BuiltinType = string,
+        BuiltinType = builtin_type_string,
         mq_info_set_module_used(unqualified("string"), !Info)
     ;
-        BuiltinType = character
+        BuiltinType = builtin_type_character
     ).
-qualify_type(higher_order(Args0, MaybeRet0, Purity, EvalMethod),
-        higher_order(Args, MaybeRet, Purity, EvalMethod), !Info, !IO) :-
+qualify_type(higher_order_type(Args0, MaybeRet0, Purity, EvalMethod),
+        higher_order_type(Args, MaybeRet, Purity, EvalMethod), !Info, !IO) :-
     qualify_type_list(Args0, Args, !Info, !IO),
     qualify_maybe_type(MaybeRet0, MaybeRet, !Info, !IO).
-qualify_type(tuple(Args0, Kind), tuple(Args, Kind), !Info, !IO) :-
+qualify_type(tuple_type(Args0, Kind), tuple_type(Args, Kind), !Info, !IO) :-
     qualify_type_list(Args0, Args, !Info, !IO).
-qualify_type(apply_n(Var, Args0, Kind), apply_n(Var, Args, Kind), !Info,
-        !IO) :-
+qualify_type(apply_n_type(Var, Args0, Kind), apply_n_type(Var, Args, Kind),
+        !Info, !IO) :-
     qualify_type_list(Args0, Args, !Info, !IO).
-qualify_type(kinded(Type0, Kind), kinded(Type, Kind), !Info, !IO) :-
+qualify_type(kinded_type(Type0, Kind), kinded_type(Type, Kind), !Info, !IO) :-
     qualify_type(Type0, Type, !Info, !IO).
 
     % Qualify the modes in a pragma c_code(...) decl.

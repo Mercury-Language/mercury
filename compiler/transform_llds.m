@@ -78,7 +78,7 @@ transform_c_file(CFile0, CFile, Globals) :-
     % Append an end label for accurate GC.
     globals.get_gc_method(Globals, GC),
     (
-        GC = accurate,
+        GC = gc_accurate,
         Modules1 = [_ | _]
     ->
         list.last_det(Modules1, LastModule),
@@ -120,7 +120,7 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
     PredName = "ACCURATE_GC_END_LABEL",
     ProcLabel = ordinary_proc_label(ModuleName, predicate, ModuleName,
         PredName, Arity, proc_id_to_int(ProcId)),
-    Instrs = [label(entry(local, ProcLabel)) -
+    Instrs = [label(entry(entry_label_local, ProcLabel)) -
         "label to indicate end of previous procedure"],
     DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId), model_det,
         Instrs, ProcLabel, counter.init(0), must_not_alter_rtti, set.init),
@@ -211,8 +211,8 @@ split_computed_goto(Rval, Labels, Comment, Instrs, !C, MaxSize, NumLabels,
             unexpected(this_file, "split_computed_goto: list.split_list")
         ),
 
-        Index     = binop(int_sub, Rval, const(int_const(Mid))),
-        Test      = binop(int_ge,  Rval, const(int_const(Mid))),
+        Index     = binop(int_sub, Rval, const(llconst_int(Mid))),
+        Test      = binop(int_ge,  Rval, const(llconst_int(Mid))),
         ElseAddr  = label(internal(LabelNum, ProcLabel)),
         IfInstr   = if_val(Test, ElseAddr) - "binary search",
         ElseInstr = label(internal(LabelNum, ProcLabel)) - "",

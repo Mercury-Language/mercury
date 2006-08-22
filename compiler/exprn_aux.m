@@ -129,10 +129,10 @@ init_exprn_opts(Options, ExprnOpts) :-
 % determine whether it can be used as the initializer of a C static
 % constant.
 
-const_is_constant(true, _, yes).
-const_is_constant(false, _, yes).
-const_is_constant(int_const(_), _, yes).
-const_is_constant(float_const(_), ExprnOpts, IsConst) :-
+const_is_constant(llconst_true, _, yes).
+const_is_constant(llconst_false, _, yes).
+const_is_constant(llconst_int(_), _, yes).
+const_is_constant(llconst_float(_), ExprnOpts, IsConst) :-
     ExprnOpts = nlg_asm_sgt_ubf(_NLG, _ASM, StaticGroundTerms, UnboxedFloat),
     (
         UnboxedFloat = yes,
@@ -147,11 +147,11 @@ const_is_constant(float_const(_), ExprnOpts, IsConst) :-
         % this if --static-ground-terms is enabled.
         IsConst = StaticGroundTerms
     ).
-const_is_constant(string_const(_), _, yes).
-const_is_constant(multi_string_const(_, _), _, yes).
-const_is_constant(code_addr_const(CodeAddr), ExprnOpts, IsConst) :-
+const_is_constant(llconst_string(_), _, yes).
+const_is_constant(llconst_multi_string(_, _), _, yes).
+const_is_constant(llconst_code_addr(CodeAddr), ExprnOpts, IsConst) :-
     addr_is_constant(CodeAddr, ExprnOpts, IsConst).
-const_is_constant(data_addr_const(_, _), _, yes).
+const_is_constant(llconst_data_addr(_, _), _, yes).
 
 :- pred addr_is_constant(code_addr::in, exprn_opts::in, bool::out) is det.
 
@@ -173,11 +173,14 @@ addr_is_constant(do_not_reached, _, no).
 
 :- pred label_is_constant(label::in, bool::in, bool::in, bool::out) is det.
 
-label_is_constant(entry(exported, _), NonLocalGotos, AsmLabels, IsConst) :-
+label_is_constant(entry(entry_label_exported, _), NonLocalGotos, AsmLabels,
+        IsConst) :-
     globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-label_is_constant(entry(local, _), NonLocalGotos, AsmLabels, IsConst) :-
+label_is_constant(entry(entry_label_local, _), NonLocalGotos, AsmLabels,
+        IsConst) :-
     globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-label_is_constant(entry(c_local, _), _NonLocalGotos, _AsmLabels, yes).
+label_is_constant(entry(entry_label_c_local, _), _NonLocalGotos, _AsmLabels,
+        yes).
 label_is_constant(internal(_, _), _NonLocalGotos, _AsmLabels, yes).
 
 %-----------------------------------------------------------------------------%
@@ -861,10 +864,10 @@ rval_addrs(var(_Var), [], []).
 rval_addrs(mkword(_Tag, Rval), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval, CodeAddrs, DataAddrs).
 rval_addrs(const(Const), CodeAddrs, DataAddrs) :-
-    ( Const = code_addr_const(CodeAddress) ->
+    ( Const = llconst_code_addr(CodeAddress) ->
         CodeAddrs = [CodeAddress],
         DataAddrs = []
-    ; Const = data_addr_const(DataAddress, _) ->
+    ; Const = llconst_data_addr(DataAddress, _) ->
         CodeAddrs = [],
         DataAddrs = [DataAddress]
     ;

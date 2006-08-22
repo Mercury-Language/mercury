@@ -138,10 +138,10 @@ build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
 
 :- pred resume_locs_include_stack(resume_locs::in, bool::out) is det.
 
-resume_locs_include_stack(orig_only, no).
-resume_locs_include_stack(stack_only, yes).
-resume_locs_include_stack(orig_and_stack, yes).
-resume_locs_include_stack(stack_and_orig, yes).
+resume_locs_include_stack(resume_locs_orig_only, no).
+resume_locs_include_stack(resume_locs_stack_only, yes).
+resume_locs_include_stack(resume_locs_orig_and_stack, yes).
+resume_locs_include_stack(resume_locs_stack_and_orig, yes).
 
 %-----------------------------------------------------------------------------%
 
