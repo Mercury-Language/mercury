@@ -13,3 +13,4 @@ libgc.lib
 *.pdb
 gc_cpp.cpp
 libgc.dylib
+libatomic_ops-install
