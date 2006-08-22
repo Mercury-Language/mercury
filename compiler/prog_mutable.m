@@ -16,14 +16,26 @@
 %-----------------------------------------------------------------------------%
 %
 % Mutables are implemented as a source-to-source transformation on the
-% parse tree.  The basic transformation is as follows:
+% parse tree.  For non-constant mutables the transformation is as follows: 
 %
 %   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
 % 
 % ===>
 %   
-%   :- pragma foreign_decl("C", "extern <CType> mutable_<varname>;").
-%   :- pragma foreign_code("C", "<CType> mutable_<varname>;");
+%   :- pragma foreign_decl("C", "
+%           extern <CType> mutable_<varname>;
+%           #ifdef MR_THREAD_SAFE
+%               extern MercuryLock mutable_<varname>_lock;
+%           #endif
+%
+%   ").
+%   
+%   :- pragma foreign_code("C", "
+%           <CType> mutable_<varname>;
+%           #ifdef MR_THREAD_SAFE
+%               MercuryLock mutable_<varname>_lock;
+%           #endif
+%   ").
 %
 % NOTES: 
 %
@@ -37,17 +49,28 @@
 %   :- initialise initialise_mutable_<varname>/0.
 %
 %   :- impure pred initialise_mutable_<varname> is det.
-%   
+%
 %   initialise_mutable_<varname> :-
+%       impure initialise_mutex_for_mutable_<varname>,
 %       impure set_<varname>(<initval>).
 % 
+%   :- impure pred initialise_mutex_for_mutable_<varname> is det.
+%   :- pragma foreign_proc("C",
+%       initialise_mutex_for_mutable_<varname>,
+%       [will_not_call_mercury],
+%   "
+%       #ifdef MR_THREAD_SAFE
+%           pthread_init_mutex(&mutable_<varname>, MR_MUTEX_ATTR);
+%       #endif
+%   ").
+%
 %   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
 %   :- pragma foreign_proc("C",
 %       get_<varname>(X::out(<varinst>)),
 %       [promise_semipure, will_not_call_mercury],
 %   "
 %       X = mutable_<varname>;
-%   ");
+%   ").
 %   
 %   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
 %   :- pragma foreign_proc("C",
@@ -85,17 +108,17 @@
 % NOTE: we could implement the above in terms of the impure get and set
 %       predicates.  The reason we don't is so that we can use I/O 
 %       tabling.
-%       XXX If tabling of impure actions is ever implemented we should\
+%       XXX If tabling of impure actions is ever implemented we should
 %           revisit this.
 % 
-% For constant mutables (those with the `constant' attribute), the 
-% transformation is a little different:
+% For constant mutables the transformation is:
 %
 %   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [constant]).
 %
 % ===>
 %
-%   (The declarations for the global are as above.)
+%   :- pragma foreign_decl("C", "extern <CType> mutable_<varname>;").
+%   :- pragma foreign_code("C", "<CType> mutable_<varname>;").
 %
 %   :- pred get_<varname>(<vartype>::out(<varinst>)) is det.
 %   :- pragma foreign_proc("C",
@@ -117,7 +140,12 @@
 %       mutable_<varname> = X;
 %   ").
 %
-%   :- initialise secret_initialization_only_set_<varname>/0.
+%   :- initialise initialise_mutable_<varname>/0.
+%
+%   :- impure pred initialise_mutable_<varname> is det.
+%
+%   initialise_mutable_<varname> :-
+%       impure secret_initialization_only_set_<varname>(<initval>).
 %
 %-----------------------------------------------------------------------------%
 
@@ -168,6 +196,11 @@
     %
 :- func mutable_init_pred_decl(module_name, string) = item.
 
+    % Create a predmode declaration for the mutable mutex initialisation
+    % predicate.
+    %
+:- func mutable_init_mutex_pred_decl(module_name, string) = item.
+
 :- func mutable_get_pred_sym_name(sym_name, string) = sym_name.
 
 :- func mutable_set_pred_sym_name(sym_name, string) = sym_name.
@@ -186,11 +219,20 @@
     % to the structures of items. It is much simpler to use a predicate and
     % give it a name that makes it clear people shouldn't use it.
     %
-:- func mutable_secret_set_pred_sym_name(sym_name, string) = sym_name.
+:- func mutable_secret_set_pred_sym_name(module_name, string) = sym_name.
 
-:- func mutable_init_pred_sym_name(sym_name, string) = sym_name.
+:- func mutable_init_pred_sym_name(module_name, string) = sym_name.
 
-:- func mutable_c_var_name(sym_name, string) = string.
+:- func mutable_init_mutex_pred_sym_name(module_name, string) = sym_name.
+
+:- func mutable_c_var_name(module_name, string) = string.
+
+    % Returns the name of the mutex associated a given mutable.  The
+    % input to this function is the name of the mutable in the target
+    % language, i.e it is the result of a call to mutable_c_var_name/2
+    % or one of the specified foreign names for the mutable.
+    %
+:- func mutable_mutex_var_name(string) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -292,6 +334,20 @@ mutable_init_pred_decl(ModuleName, Name) = InitPredDecl :-
         WithType, WithInst, yes(detism_det), Condition,
         purity_impure, Constraints).
 
+mutable_init_mutex_pred_decl(ModuleName, Name) = InitMutexPredDecl :-
+    VarSet = varset.init,
+    InstVarSet = varset.init,
+    ExistQVars = [],
+    Constraints = constraints([], []),
+    ArgDecls = [],
+    WithType = no,
+    WithInst = no,
+    Condition = cond_true,
+    InitMutexPredDecl = item_pred_or_func(VarSet, InstVarSet, ExistQVars,
+        predicate, mutable_init_mutex_pred_sym_name(ModuleName, Name),
+        ArgDecls, WithType, WithInst, yes(detism_det), Condition,
+        purity_impure, Constraints).
+
 %-----------------------------------------------------------------------------%
 
 mutable_get_pred_sym_name(ModuleName, Name) =
@@ -306,10 +362,16 @@ mutable_secret_set_pred_sym_name(ModuleName, Name) =
 mutable_init_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "initialise_mutable_" ++ Name).
 
+mutable_init_mutex_pred_sym_name(ModuleName, Name) = 
+    qualified(ModuleName, "initialise_mutex_for_mutable_" ++ Name).
+
 mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
     RawCVarName       = "mutable_variable_" ++ Name,
     QualifiedCVarName = qualified(ModuleName, RawCVarName),
     MangledCVarName   = sym_name_mangle(QualifiedCVarName).
+
+mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
+    MutexVarName = TargetMutableVarName ++ "_lock". 
 
 %-----------------------------------------------------------------------------%
 

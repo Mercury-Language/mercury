@@ -451,7 +451,7 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
                 ** and compiler/mercury_to_mercury.m; any changes here
                 ** may require similar changes there.
                 */
-                if (isalnum(*c) ||
+                if (MR_isalnum(*c) ||
                     strchr(" !@#$%^&*()-_+=`~{}[];:'\"<>.,/?\\|", *c))
                 {
                     fputc(*c, fp);
