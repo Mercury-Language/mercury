@@ -14,52 +14,52 @@ mdb> continue
 mdb> finish -n
       E3:     C2 EXIT pred tabled_read_decl.test/4-0 (det)
 mdb> print
-test('<<c_pointer>>', 1123, _, _)
+test(c_pointer(0xXXXX), 1123, _, _)
 mdb> dd -d 3 -n 7 -a
-test('<<c_pointer>>', 1123, _, _)
+test(c_pointer(0xXXXX), 1123, _, _)
 4 tabled IO actions:
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
-read_char_code('<<c_pointer>>', 51)
-read_char_code('<<c_pointer>>', 10)
+read_char_code(c_pointer(0xXXXX), 49)
+read_char_code(c_pointer(0xXXXX), 50)
+read_char_code(c_pointer(0xXXXX), 51)
+read_char_code(c_pointer(0xXXXX), 10)
 Valid? print 1-2
-'<<c_pointer>>'
+c_pointer(0xXXXX)
 1123
 dd> p io 1-2
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
+read_char_code(c_pointer(0xXXXX), 49)
+read_char_code(c_pointer(0xXXXX), 50)
 dd> print io 2-1
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
+read_char_code(c_pointer(0xXXXX), 49)
+read_char_code(c_pointer(0xXXXX), 50)
 dd> browse io 4
 browser> print
-read_char_code('<<c_pointer>>', 10)
+read_char_code(c_pointer(0xXXXX), 10)
 browser> num_io_actions 3
 browser> quit
 dd> browse 1
 browser> num_io_actions 10
 browser> quit
 dd> no
-test_2('<<c_pointer>>', 1, 1123, _, _)
+test_2(c_pointer(0xXXXX), 1, 1123, _, _)
 4 tabled IO actions:
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
-read_char_code('<<c_pointer>>', 51)
-read_char_code('<<c_pointer>>', 10)
+read_char_code(c_pointer(0xXXXX), 49)
+read_char_code(c_pointer(0xXXXX), 50)
+read_char_code(c_pointer(0xXXXX), 51)
+read_char_code(c_pointer(0xXXXX), 10)
 Valid? yes
 Found incorrect contour:
-test_2('<<c_pointer>>', 1, 1123, _, _)
+test_2(c_pointer(0xXXXX), 1, 1123, _, _)
 4 tabled IO actions:
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
-read_char_code('<<c_pointer>>', 51)
-read_char_code('<<c_pointer>>', 10)
-test('<<c_pointer>>', 1123, _, _)
+read_char_code(c_pointer(0xXXXX), 49)
+read_char_code(c_pointer(0xXXXX), 50)
+read_char_code(c_pointer(0xXXXX), 51)
+read_char_code(c_pointer(0xXXXX), 10)
+test(c_pointer(0xXXXX), 1123, _, _)
 4 tabled IO actions:
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
-read_char_code('<<c_pointer>>', 51)
-read_char_code('<<c_pointer>>', 10)
+read_char_code(c_pointer(0xXXXX), 49)
+read_char_code(c_pointer(0xXXXX), 50)
+read_char_code(c_pointer(0xXXXX), 51)
+read_char_code(c_pointer(0xXXXX), 10)
 Is this a bug? yes
       E3:     C2 EXIT pred tabled_read_decl.test/4-0 (det)
 mdb> break tabled_read_decl.part_2
@@ -79,20 +79,20 @@ mdb> delete *
 mdb> f
       E6:     C4 EXIT pred tabled_read_decl.test/4-0 (det)
 mdb> dd -d 3 -n 7 -ad1
-test('<<c_pointer>>', 1789, _, _)
+test(c_pointer(0xXXXX), 1789, _, _)
 4 tabled IO actions:
-read_char_code('<<c_pointer>>', 55)
-read_char_code('<<c_pointer>>', 56)
-read_char_code('<<c_pointer>>', 57)
-read_char_code('<<c_pointer>>', 10)
+read_char_code(c_pointer(0xXXXX), 55)
+read_char_code(c_pointer(0xXXXX), 56)
+read_char_code(c_pointer(0xXXXX), 57)
+read_char_code(c_pointer(0xXXXX), 10)
 Valid? y
 1789
-part_2('<<c_pointer>>', _, _)
+part_2(c_pointer(0xXXXX), _, _)
 5 tabled IO actions:
-read_char_code('<<c_pointer>>', 55)
-read_char_code('<<c_pointer>>', 56)
-read_char_code('<<c_pointer>>', 57)
-read_char_code('<<c_pointer>>', 10)
+read_char_code(c_pointer(0xXXXX), 55)
+read_char_code(c_pointer(0xXXXX), 56)
+read_char_code(c_pointer(0xXXXX), 57)
+read_char_code(c_pointer(0xXXXX), 10)
 write_int(1789)
 Valid? n
 write_int(1789, _, _)
@@ -100,21 +100,21 @@ write_int(1789, _, _)
 write_int(1789)
 Valid? y
 Found incorrect contour:
-test('<<c_pointer>>', 1789, _, _)
+test(c_pointer(0xXXXX), 1789, _, _)
 4 tabled IO actions:
-read_char_code('<<c_pointer>>', 55)
-read_char_code('<<c_pointer>>', 56)
-read_char_code('<<c_pointer>>', 57)
-read_char_code('<<c_pointer>>', 10)
+read_char_code(c_pointer(0xXXXX), 55)
+read_char_code(c_pointer(0xXXXX), 56)
+read_char_code(c_pointer(0xXXXX), 57)
+read_char_code(c_pointer(0xXXXX), 10)
 write_int(1789, _, _)
 1 tabled IO action:
 write_int(1789)
-part_2('<<c_pointer>>', _, _)
+part_2(c_pointer(0xXXXX), _, _)
 5 tabled IO actions:
-read_char_code('<<c_pointer>>', 55)
-read_char_code('<<c_pointer>>', 56)
-read_char_code('<<c_pointer>>', 57)
-read_char_code('<<c_pointer>>', 10)
+read_char_code(c_pointer(0xXXXX), 55)
+read_char_code(c_pointer(0xXXXX), 56)
+read_char_code(c_pointer(0xXXXX), 57)
+read_char_code(c_pointer(0xXXXX), 10)
 write_int(1789)
 Is this a bug? y
       E7:     C3 EXIT pred tabled_read_decl.part_2/3-0 (det)

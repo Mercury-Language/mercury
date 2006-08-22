@@ -806,10 +806,7 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
 
               then
 
-                ( if   Name = "<<c_pointer>>"
-                  then text(string.format("<<0x%x>>", [i(c_pointer_addr(X))]))
-                  else text(Name)
-                )
+                text(Name)
 
               else
 
@@ -820,18 +817,6 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
                 )
             )
     ).
-
-
-% This really should be impure...
-%
-:- func c_pointer_addr(T) = int.
-
-:- pragma foreign_proc("C",
-    c_pointer_addr(X::in) = (Addr::out),
-    [promise_pure, will_not_call_mercury, will_not_modify_trail],
-"
-    Addr = (MR_Integer) X;
-").
 
 %-----------------------------------------------------------------------------%
 

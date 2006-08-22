@@ -374,9 +374,8 @@
     % io.print/4 implicitly specify `canonicalize' as the method for handling
     % non-canonical types. This means that for higher-order types, or types
     % with user-defined equality axioms, or types defined using the foreign
-    % language interface (i.e. c_pointer type or pragma foreign_type),
-    % the text output will only describe the type that is being printed,
-    % not the value.
+    % language interface (i.e. pragma foreign_type), the text output will
+    % only describe the type that is being printed, not the value.
     %
     % io.print_cc/3 is the same as io.print/3 except that it specifies
     % `include_details_cc' rather than `canonicalize'. This means that it will
@@ -4156,9 +4155,8 @@ io.write_type_ctor_desc(TypeCtorDesc, !IO) :-
 
 :- pred io.write_c_pointer(c_pointer::in, io::di, io::uo) is det.
 
-io.write_c_pointer(_C_Pointer, !IO) :-
-    % XXX What should we do here?
-    io.write_string("'<<c_pointer>>'", !IO).
+io.write_c_pointer(C_Pointer, !IO) :-
+    io.write_string(c_pointer_to_string(C_Pointer), !IO).
 
 :- pred io.write_array(array(T)::in, io::di, io::uo) is det.
 

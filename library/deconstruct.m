@@ -78,6 +78,8 @@
     %     predicate and function values created by lambda expressions.)
     %   - for tuples, the string {}.
     %   - for arrays, the string <<array>>.
+    %   - for c_pointers, the string ptr(0xXXXX) where XXXX is the
+    %     hexadecimal representation of the pointer.
     %
     % The arity that these predicates return is:
     %
@@ -95,6 +97,7 @@
     %     arguments hidden in the closure.
     %   - for tuples, the number of elements in the tuple.
     %   - for arrays, the number of elements in the array.
+    %   - for c_pointers, zero.
     %
     % Note that in the current University of Melbourne implementation,
     % the implementations of these predicates depart from the above

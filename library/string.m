@@ -175,6 +175,12 @@
     %
 :- func string.from_float(float::in) = (string::uo) is det.
 
+    % Convert a c_pointer to a string.  The format is "c_pointer(0xXXXX)"
+    % where XXXX is the hexadecimal representation of the pointer.
+    %
+:- func string.c_pointer_to_string(c_pointer::in) = (string::uo) is det.
+:- pred string.c_pointer_to_string(c_pointer::in, string::uo) is det.
+
     % string.first_char(String, Char, Rest) is true iff Char is the first
     % character of String, and Rest is the remainder.
     %
@@ -1082,6 +1088,10 @@ string.int_to_base_string_2(NegN, Base, Str) :-
         string.int_to_base_string_2(NegN1, Base, Str1),
         string.append(Str1, DigitString, Str)
     ).
+
+string.c_pointer_to_string(C_Pointer, Str) :-
+    private_builtin.unsafe_type_cast(C_Pointer, Int),
+    Str = "c_pointer(0x" ++ string.int_to_base_string(Int, 16) ++ ")".
 
 string.from_char_list(CharList, Str) :-
     string.to_char_list(Str, CharList).
@@ -3959,6 +3969,9 @@ string.int_to_base_string(N1, N2) = S2 :-
 string.float_to_string(R) = S2 :-
     string.float_to_string(R, S2).
 
+string.c_pointer_to_string(P) = S :-
+    string.c_pointer_to_string(P, S).
+
 string.replace_all(S1, S2, S3) = S4 :-
     string.replace_all(S1, S2, S3, S4).
 
@@ -4490,10 +4503,6 @@ arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 % hard-code it.
 
 comma_priority(_OpTable) = 1000.
-
-:- func c_pointer_to_string(c_pointer) = string.
-
-c_pointer_to_string(_C_Pointer) = "<<c_pointer>>".
 
 :- pred array_to_revstrings(deconstruct.noncanon_handling,
     ops.table, array(T), revstrings, revstrings).

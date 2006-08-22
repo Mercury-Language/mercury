@@ -137,7 +137,7 @@ is a &lt;string&gt;&amp;</String>
 		<write_xml-46ftype functor="&lt;&lt;foreign&gt;&gt;" type="write_xml.ftype" arity="0" />
 	</foreign--1--write_xml-46mytype>
 	<pointer--1--write_xml-46mytype functor="pointer" type="write_xml.mytype" arity="1">
-		<c_pointer functor="&lt;&lt;c_pointer&gt;&gt;" type="c_pointer" arity="0" />
+		<c_pointer functor="c_pointer(0x0)" type="c_pointer" arity="0" />
 	</pointer--1--write_xml-46mytype>
 </Array--array-46array-40write_xml-46mytype-41>
 Result 2:
@@ -524,7 +524,7 @@ is a &lt;string&gt;&amp;</String>
 											</foreign>
 											<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
 												<pointer functor="pointer" type="write_xml.mytype" arity="1">
-													<Unknown functor="&lt;&lt;c_pointer&gt;&gt;" type="c_pointer" arity="0" />
+													<Unknown functor="c_pointer(0x0)" type="c_pointer" arity="0" />
 												</pointer>
 												<Nil functor="[]" type="list.list(write_xml.mytype)" arity="0" />
 											</List>

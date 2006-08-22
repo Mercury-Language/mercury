@@ -183,12 +183,12 @@ mdb>
      E54:    C28 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          func existential_type_classes.call_my_univ_value/1-0 (det)
 mdb> P
-       Univ (arg 1)           	my_univ('<<c_pointer>>')
+       Univ (arg 1)           	my_univ(c_pointer(0xXXXX))
 mdb> 
      E55:    C29 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          func existential_type_classes.my_univ_value/1-0 (det)
 mdb> P
-       HeadVar__1             	my_univ('<<c_pointer>>')
+       HeadVar__1             	my_univ(c_pointer(0xXXXX))
 mdb> continue -a
      E56:    C29 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          func existential_type_classes.my_univ_value/1-0 (det)

@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2001-2005 The University of Melbourne.
+** Copyright (C) 2001-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -900,26 +900,36 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 ": cannot expand void types");
 
         case MR_TYPECTOR_REP_C_POINTER:
-            if (noncanon == MR_NONCANON_ABORT) {
-                /* XXX should throw an exception */
-                MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
-                    ": attempt to deconstruct noncanonical term");
-                return;
-            }
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                char    buf[500];
+                char    *str;
 
-            handle_functor_name("<<c_pointer>>");
+                data_word = *data_word_ptr;
+                sprintf(buf, "c_pointer(0x%lX)", (long) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  /* EXPAND_FUNCTOR_FIELD */
+
             handle_zero_arity_args();
             return;
 
         case MR_TYPECTOR_REP_STABLE_C_POINTER:
-            if (noncanon == MR_NONCANON_ABORT) {
-                /* XXX should throw an exception */
-                MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
-                    ": attempt to deconstruct noncanonical term");
-                return;
-            }
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                char    buf[500];
+                char    *str;
 
-            handle_functor_name("<<stable_c_pointer>>");
+                data_word = *data_word_ptr;
+                sprintf(buf, "stable_c_pointer(0x%lX)", (long) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  /* EXPAND_FUNCTOR_FIELD */
+
             handle_zero_arity_args();
             return;
 

@@ -15,25 +15,25 @@ mdb> continue
 mdb> finish -n
       57:      4  3 EXIT pred tabled_read_decl.test/5-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        SoFar (arg 2)          	0
        N (arg 3)              	123
-       DCG_2 (arg 5)          	state('<<c_pointer>>')
+       DCG_2 (arg 5)          	state(c_pointer(0xXXXX))
 mdb> retry
 Retry across I/O operations is not always safe.
 Are you sure you want to do it? y
        8:      4  3 CALL pred tabled_read_decl.test/5-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        SoFar (arg 2)          	0
-       DCG_0 (arg 4)          	state('<<c_pointer>>')
+       DCG_0 (arg 4)          	state(c_pointer(0xXXXX))
 mdb> finish -n
       57:      4  3 EXIT pred tabled_read_decl.test/5-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        SoFar (arg 2)          	0
        N (arg 3)              	123
-       DCG_2 (arg 5)          	state('<<c_pointer>>')
+       DCG_2 (arg 5)          	state(c_pointer(0xXXXX))
 mdb> break tabled_read_decl__poly_test
  1: + stop  interface pred tabled_read_decl.poly_test/6-0 (det)
 mdb> continue
@@ -42,11 +42,11 @@ mdb> continue
 mdb> finish -n
      109:     24  3 EXIT pred tabled_read_decl.poly_test/6-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        Unused (arg 2)         	['a', 'b', 'c']
        SoFar (arg 3)          	0
        N (arg 4)              	456
-       DCG_2 (arg 6)          	state('<<c_pointer>>')
+       DCG_2 (arg 6)          	state(c_pointer(0xXXXX))
 mdb> retry
 Retry across I/O operations is not always safe.
 Are you sure you want to do it? y
@@ -54,11 +54,11 @@ Are you sure you want to do it? y
 mdb> finish -n
      109:     24  3 EXIT pred tabled_read_decl.poly_test/6-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        Unused (arg 2)         	['a', 'b', 'c']
        SoFar (arg 3)          	0
        N (arg 4)              	456
-       DCG_2 (arg 6)          	state('<<c_pointer>>')
+       DCG_2 (arg 6)          	state(c_pointer(0xXXXX))
 mdb> delete *
  0: E stop  interface pred tabled_read_decl.test/5-0 (det)
  1: E stop  interface pred tabled_read_decl.poly_test/6-0 (det)
@@ -70,30 +70,30 @@ mdb> continue
 mdb> table_io end
 io tabling ended
 mdb> print action 0
-open_input("tabled_read_decl.data", 0, '<<c_pointer>>')
+open_input("tabled_read_decl.data", 0, c_pointer(0xXXXX))
 mdb> print action 1
-read_char_code('<<c_pointer>>', 49)
+read_char_code(c_pointer(0xXXXX), 49)
 mdb> browse action 1
 browser> p
-read_char_code('<<c_pointer>>', 49)
+read_char_code(c_pointer(0xXXXX), 49)
 browser> ^1
 browser> p
-'<<c_pointer>>'
+c_pointer(0xXXXX)
 browser> quit
 mdb> print action 2
-read_char_code('<<c_pointer>>', 50)
+read_char_code(c_pointer(0xXXXX), 50)
 mdb> print action 3
-read_char_code('<<c_pointer>>', 51)
+read_char_code(c_pointer(0xXXXX), 51)
 mdb> print action 4
-read_char_code('<<c_pointer>>', 10)
+read_char_code(c_pointer(0xXXXX), 10)
 mdb> print action 5
-poly_read_char_code(list(character), <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 52)
+poly_read_char_code(list(character), c_pointer(0xXXXX), [|]('a', [|]('b', [|]/2)), 52)
 mdb> print action 6
-poly_read_char_code(list(character), <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 53)
+poly_read_char_code(list(character), c_pointer(0xXXXX), [|]('a', [|]('b', [|]/2)), 53)
 mdb> print action 7
-poly_read_char_code(list(character), <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 54)
+poly_read_char_code(list(character), c_pointer(0xXXXX), [|]('a', [|]('b', [|]/2)), 54)
 mdb> print action 8
-poly_read_char_code(list(character), <<c_pointer>>, [|]('a', [|]('b', [|]/2)), 10)
+poly_read_char_code(list(character), c_pointer(0xXXXX), [|]('a', [|]('b', [|]/2)), 10)
 mdb> print action 9
 mdb: I/O action number not in range.
 mdb> continue -S

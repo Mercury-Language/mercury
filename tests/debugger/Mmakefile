@@ -354,7 +354,8 @@ existential_type_classes.out: existential_type_classes \
 	$(MDB_STD) ./existential_type_classes < existential_type_classes.inp \
 		2>&1 | sed 's/string.m:[0-9]*/string.m:NNNN/g' | \
 		sed 's/int.m:[0-9]*/int.m:NNNN/g' | \
-		sed 's/existential_type_classes.m:[0-9]*/existential_type_classes.m:NNNN/g' \
+		sed 's/existential_type_classes.m:[0-9]*/existential_type_classes.m:NNNN/g' | \
+		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
 		> existential_type_classes.out
 
 exported_eqv_type.out: exported_eqv_type exported_eqv_type.inp
@@ -374,7 +375,9 @@ implied_instance.out: implied_instance implied_instance.inp
 		> implied_instance.out 2>&1
 
 io_tab_goto.out: io_tab_goto io_tab_goto.inp
-	$(MDB_STD) ./io_tab_goto < io_tab_goto.inp > io_tab_goto.out 2>&1
+	$(MDB_STD) ./io_tab_goto < io_tab_goto.inp 2>&1 | \
+		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
+		> io_tab_goto.out 2>&1
 
 lambda_expr.out: lambda_expr lambda_expr.inp
 	$(MDB_STD) ./lambda_expr < lambda_expr.inp > lambda_expr.out 2>&1
@@ -486,7 +489,9 @@ solver_test.out: solver_test solver_test.inp
 	$(MDB_STD) ./solver_test < solver_test.inp > solver_test.out 2>&1
 
 tabled_read.out: tabled_read tabled_read.inp tabled_read.data
-	$(MDB_STD) ./tabled_read < tabled_read.inp > tabled_read.out 2>&1
+	$(MDB_STD) ./tabled_read < tabled_read.inp 2>&1 | \
+		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
+		> tabled_read.out 2>&1
 
 tabled_read_unitize.out: tabled_read_unitize.data
 
@@ -495,7 +500,8 @@ tabled_read_unitize.out: tabled_read_unitize tabled_read_unitize.inp
 		> tabled_read_unitize.out 2>&1
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.data
-	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp \
+	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp 2>&1 | \
+		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
 		> tabled_read_decl.out 2>&1
 
 term_size_cells.out: term_size_cells term_size_cells.inp

@@ -1248,15 +1248,15 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         TypeCtorRep = void,
         error("rtti_implementation.m: cannot deconstruct void types")
     ;
-        % XXX noncanonical term
         TypeCtorRep = c_pointer,
-        Functor = "<<c_pointer>>",
+        det_dynamic_cast(Term, CPtr),
+        Functor = string.c_pointer_to_string(CPtr),
         Arity = 0,
         Arguments = []
     ;
-        % XXX noncanonical term
         TypeCtorRep = stable_c_pointer,
-        Functor = "<<stable_c_pointer>>",
+        det_dynamic_cast(Term, CPtr),
+        Functor = "stable_" ++ string.c_pointer_to_string(CPtr),
         Arity = 0,
         Arguments = []
     ;

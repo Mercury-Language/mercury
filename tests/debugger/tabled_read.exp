@@ -16,18 +16,18 @@ mdb> continue
 mdb> finish -n
       E3:     C2 EXIT pred tabled_read.test/5-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        SoFar (arg 2)          	0
        N (arg 3)              	123
 mdb> retry -o -a
       E2:     C2 CALL pred tabled_read.test/5-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        SoFar (arg 2)          	0
 mdb> finish -n
       E3:     C2 EXIT pred tabled_read.test/5-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        SoFar (arg 2)          	0
        N (arg 3)              	123
 mdb> table_io end
@@ -39,7 +39,7 @@ mdb> continue
 mdb> finish -n
       E5:     C3 EXIT pred tabled_read.test/5-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        SoFar (arg 2)          	0
        N (arg 3)              	789
 mdb> retry -f
@@ -47,7 +47,7 @@ mdb> retry -f
 mdb> finish -n
       E6:     C3 EXIT pred tabled_read.test/5-0 (det)
 mdb> print *
-       Stream (arg 1)         	'<<c_pointer>>'
+       Stream (arg 1)         	c_pointer(0xXXXX)
        SoFar (arg 2)          	0
        N (arg 3)              	42
 mdb> continue -S
