@@ -22,7 +22,8 @@ TMPDIR=${TMPDIR=/tmp}
 
 # AC_CHECK_TYPES does not exist in versions of autoconf before 2.50.
 # AC_CHECK_TYPE is broken in versions of autoconf before 2.50.
-AC_PREREQ(2.50)
+# Version 7 of the Boehm gc requires at least version 2.58.
+AC_PREREQ(2.58)
 #-----------------------------------------------------------------------------#
 #
 # Ensure that all messages are saved to a file `configure.log' by
