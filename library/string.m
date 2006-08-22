@@ -181,6 +181,10 @@
 :- func string.c_pointer_to_string(c_pointer::in) = (string::uo) is det.
 :- pred string.c_pointer_to_string(c_pointer::in, string::uo) is det.
 
+    % A synonym for string.c_pointer_to_string/1.
+    %
+:- func string.from_c_pointer(c_pointer::in) = (string::uo) is det.
+
     % string.first_char(String, Char, Rest) is true iff Char is the first
     % character of String, and Rest is the remainder.
     %
@@ -3970,6 +3974,9 @@ string.float_to_string(R) = S2 :-
     string.float_to_string(R, S2).
 
 string.c_pointer_to_string(P) = S :-
+    string.c_pointer_to_string(P, S).
+
+string.from_c_pointer(P) = S :-
     string.c_pointer_to_string(P, S).
 
 string.replace_all(S1, S2, S3) = S4 :-

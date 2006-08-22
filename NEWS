@@ -17,6 +17,8 @@ Changes to the Mercury standard library:
 * We have added io.update_globals/3 which allows for atomic updates to
   the globals field in the I/O state in the presence of multiple threads.
 
+* We have added string.c_pointer_to_string/{1,2} and string.from_c_pointer/1
+  to convert c_pointers to a human readable form.
 
 DETAILED LISTING
 ================
