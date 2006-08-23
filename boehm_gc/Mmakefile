@@ -74,6 +74,7 @@ clean_local:
 	rm -f libatomic_ops-1.2/Makefile libatomic_ops-1.2/tests/Makefile
 	rm -f libatomic_ops-1.2/src/Makefile
 	rm -f libatomic_ops-1.2/src/atomic_ops/Makefile
+	rm -f libatomic_ops-1.2/src/atomic_ops/sysdeps/Makefile
 	rm -rf libatomic_ops-install
 else 
 
@@ -92,6 +93,7 @@ clean_local:
 	rm -f libatomic_ops-1.2/Makefile libatomic_ops-1.2/tests/Makefile
 	rm -f libatomic_ops-1.2/src/Makefile
 	rm -f libatomic_ops-1.2/src/atomic_ops/Makefile
+	rm -f libatomic_ops-1.2/src/atomic_ops/sysdeps/Makefile
 	rm -rf libatomic_ops-install
 
 endif
