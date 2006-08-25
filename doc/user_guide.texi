@@ -2575,7 +2575,7 @@ then only the specified subterm of the given variable is printed.
 This is a non-interactive version of the @samp{browse} command (see below).
 Various settings which affect the way that terms are printed out
 (including e.g.@: the maximum term depth)
-can be set using the @samp{set} command.
+can be set using the @samp{format_param} command.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
