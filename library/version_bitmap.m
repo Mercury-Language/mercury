@@ -291,7 +291,7 @@ difference(BMa, BMb) =
     % and 1 inclusive, destructively updating the second version_bitmap.
     %
 :- func zip(int, func(int, int) = int, version_bitmap, version_bitmap) =
-            version_bitmap.
+    version_bitmap.
 
 zip(I, Fn, BMa, BMb) =
     ( if I > 0 then

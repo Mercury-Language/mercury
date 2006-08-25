@@ -78,7 +78,7 @@
 :- func (version_array(T) ^ elem(int) := T) = version_array(T).
 
 :- pred set(int::in, T::in, version_array(T)::in, version_array(T)::out)
-            is det.
+    is det.
 
     % size(A) = N if A contains N items (i.e. the valid indices for A
     % range from 0 to N - 1).
@@ -96,7 +96,7 @@
     %
 :- func resize(version_array(T), int, T) = version_array(T).
 :- pred resize(int::in, T::in, version_array(T)::in, version_array(T)::out)
-            is det.
+    is det.
 
     % list(A) = Xs where Xs is the list of items in A
     % (i.e. A = version_array(Xs)).
@@ -241,7 +241,7 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
 
 :- pragma terminates(eq_version_array/2).
 :- pred eq_version_array(version_array(T)::in, version_array(T)::in)
-            is semidet.
+    is semidet.
 
 eq_version_array(VAa, VAb) :-
     N = max(VAa),
@@ -249,7 +249,7 @@ eq_version_array(VAa, VAb) :-
     eq_version_array_2(N, VAa, VAb).
 
 :- pred eq_version_array_2(int::in,
-            version_array(T)::in, version_array(T)::in) is semidet.
+    version_array(T)::in, version_array(T)::in) is semidet.
 
 eq_version_array_2(I, VAa, VAb) :-
     ( if I >= 0 then
@@ -261,15 +261,14 @@ eq_version_array_2(I, VAa, VAb) :-
 
 :- pragma terminates(cmp_version_array/3).
 :- pred cmp_version_array(comparison_result::uo,
-            version_array(T)::in, version_array(T)::in) is det.
+    version_array(T)::in, version_array(T)::in) is det.
 
 cmp_version_array(R, VAa, VAb) :-
     N = min(max(VAa), max(VAb)),
     cmp_version_array_2(N, VAa, VAb, R).
 
-:- pred cmp_version_array_2(int::in,
-            version_array(T)::in, version_array(T)::in, comparison_result::uo)
-                is det.
+:- pred cmp_version_array_2(int::in, version_array(T)::in,
+    version_array(T)::in, comparison_result::uo) is det.
 
 cmp_version_array_2(I, VAa, VAb, R) :-
     ( if I >= 0 then
@@ -286,21 +285,55 @@ cmp_version_array_2(I, VAa, VAb, R) :-
     version_array.empty = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
-    VA = ML_va_new_empty();
+    VA = MR_GC_NEW(struct ML_va);
+
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, 1);
+    VA->rest.array->size = 0;
 ").
 
 :- pragma foreign_proc("C",
     version_array.new(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
-    VA = ML_va_new(N, X);
+    MR_Integer  i;
+    
+    VA = MR_GC_NEW(struct ML_va);
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array->size = N;
+
+    for (i = 0; i < N; i++) {
+        VA->rest.array->elements[i] = X;
+    }
 ").
 
 :- pragma foreign_proc("C",
     resize(VA0::in, N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
-    VA = ML_va_resize(VA0, N, X);
+    MR_Integer  i;
+    MR_Integer  size_VA0;
+    MR_Integer  min;
+    
+    size_VA0 = ML_va_size(VA0);
+    min      = (N <= size_VA0 ? N : size_VA0);
+    VA       = MR_GC_NEW(struct ML_va);
+
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array->size = N;
+
+    for (i = 0; i < min; i++) {
+        (void) ML_va_get(VA0, i, &VA->rest.array->elements[i]);
+    }
+
+    for (i = min; i < N; i++) {
+        VA->rest.array->elements[i] = X;
+    }
 ").
 
 resize(N, X, VA, resize(VA, N, X)).
@@ -358,23 +391,6 @@ struct ML_va {
 };
 
     /*
-    ** Constructs a new empty version array.
-    */
-extern ML_va_ptr    ML_va_new_empty(void);
-
-    /*
-    ** Constructs a new populated version array.
-    */
-extern ML_va_ptr    ML_va_new(MR_Integer, MR_Word);
-
-    /*
-    ** Resizes a version array, populating new items with the
-    ** given default value.  The result is always a `latest'
-    ** version.
-    */
-extern ML_va_ptr    ML_va_resize(ML_va_ptr, MR_Integer, MR_Word);
-
-    /*
     ** Returns the number of items in a version array.
     */
 extern MR_Integer   ML_va_size(ML_va_ptr);
@@ -404,65 +420,6 @@ extern ML_va_ptr    ML_va_rewind(ML_va_ptr);
 :- pragma foreign_code("C", "
 
 #define ML_va_latest_version(VA)   ((VA)->index == -1)
-
-ML_va_ptr
-ML_va_new_empty(void)
-{
-    ML_va_ptr VA        = MR_GC_NEW(struct ML_va);
-
-    VA->index            = -1;
-    VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, 1);
-    VA->rest.array->size = 0;
-
-    return VA;
-}
-
-ML_va_ptr
-ML_va_new(MR_Integer N, MR_Word X)
-{
-    MR_Integer  i;
-    ML_va_ptr   VA       = MR_GC_NEW(struct ML_va);
-
-    VA->index            = -1;
-    VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
-    VA->rest.array->size = N;
-
-    for (i = 0; i < N; i++) {
-        VA->rest.array->elements[i] = X;
-    }
-
-    return VA;
-}
-
-ML_va_ptr
-ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X)
-{
-    MR_Integer  i;
-    MR_Integer  size_VA0;
-    MR_Integer  min;
-    ML_va_ptr   VA;
-
-    size_VA0 = ML_va_size(VA0);
-    min      = (N <= size_VA0 ? N : size_VA0);
-    VA       = MR_GC_NEW(struct ML_va);
-
-    VA->index            = -1;
-    VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
-    VA->rest.array->size = N;
-
-    for (i = 0; i < min; i++) {
-        (void) ML_va_get(VA0, i, &VA->rest.array->elements[i]);
-    }
-
-    for (i = min; i < N; i++) {
-        VA->rest.array->elements[i] = X;
-    }
-
-    return VA;
-}
 
 MR_Integer
 ML_va_size(ML_va_ptr VA)
