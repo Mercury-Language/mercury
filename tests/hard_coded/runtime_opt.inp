@@ -1,0 +1,4 @@
+--nondetstack-size-kwords=256
+--nondet-stack-size-kwords=256
+--detstack-size=128
+--this-is-not-a-real-option
