@@ -1047,9 +1047,13 @@ struct MR_option MR_long_opts[] = {
     { "heap-size",                      1, 0, MR_HEAP_SIZE },
     { "heap-size-kwords",               1, 0, MR_HEAP_SIZE_KWORDS },
     { "detstack-size",                  1, 0, MR_DETSTACK_SIZE },
+    { "det-stack-size",                 1, 0, MR_DETSTACK_SIZE },
     { "detstack-size-kwords",           1, 0, MR_DETSTACK_SIZE_KWORDS },
+    { "det-stack-size-kwords",          1, 0, MR_DETSTACK_SIZE_KWORDS },
     { "nondetstack-size",               1, 0, MR_NONDETSTACK_SIZE },
+    { "nondet-stack-size",              1, 0, MR_NONDETSTACK_SIZE },
     { "nondetstack-size-kwords",        1, 0, MR_NONDETSTACK_SIZE_KWORDS },
+    { "nondet-stack-size-kwords",       1, 0, MR_NONDETSTACK_SIZE_KWORDS },
     { "solutions-heap-size",            1, 0, MR_SOLUTIONS_HEAP_SIZE },
     { "solutions-heap-size-kwords",     1, 0, MR_SOLUTIONS_HEAP_SIZE_KWORDS },
     { "trail-size",                     1, 0, MR_TRAIL_SIZE },
@@ -1057,10 +1061,16 @@ struct MR_option MR_long_opts[] = {
     { "heap-redzone-size",              1, 0, MR_HEAP_REDZONE_SIZE },
     { "heap-redzone-size-kwords",       1, 0, MR_HEAP_REDZONE_SIZE_KWORDS },
     { "detstack-redzone-size",          1, 0, MR_DETSTACK_REDZONE_SIZE },
+    { "det-stack-redzone-size",         1, 0, MR_DETSTACK_REDZONE_SIZE },
     { "detstack-redzone-size-kwords",
             1, 0, MR_DETSTACK_REDZONE_SIZE_KWORDS },
+    { "det-stack-redzone-size-kwords",
+            1, 0, MR_DETSTACK_REDZONE_SIZE_KWORDS },
     { "nondetstack-redzone-size",       1, 0, MR_NONDETSTACK_REDZONE_SIZE },
+    { "nondet-stack-redzone-size",      1, 0, MR_NONDETSTACK_REDZONE_SIZE },
     { "nondetstack-redzone-size-kwords",
+            1, 0, MR_NONDETSTACK_REDZONE_SIZE_KWORDS },
+    { "nondet-stack-redzone-size-kwords",
             1, 0, MR_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "solutions-heap-redzone-size",1, 0, MR_SOLUTIONS_HEAP_REDZONE_SIZE },
     { "solutions-heap-redzone-size-kwords",
@@ -1100,7 +1110,10 @@ struct MR_option MR_long_opts[] = {
     { "tabling-statistics",             0, 0, MR_TABLING_STATISTICS_OPT },
     { "trace-count",                    0, 0, MR_TRACE_COUNT_OPT },
     { "coverage-test",                  0, 0, MR_COVERAGE_TEST_OPT },
-    { "mem-usage-report",               0, 0, MR_MEM_USAGE_REPORT }
+    { "mem-usage-report",               0, 0, MR_MEM_USAGE_REPORT },
+
+    /* This needs to be kept at the end. */
+    { NULL,                             0, 0, 0 }
 };
 
 static void
