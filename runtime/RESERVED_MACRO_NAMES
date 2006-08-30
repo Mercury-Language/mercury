@@ -34,6 +34,13 @@ LINUX_THREADS
 HIDE_POINTER
 REVEAL_POINTER
 #-----------------------------------------------------------------------------#
+# These are defined by boehm_gc/include/gc_pthread_redirects.h
+dlopen
+pthread_create
+pthread_detach
+pthread_join
+pthread_sigmask
+#-----------------------------------------------------------------------------#
 # This is defined by mps_gc/code/mercury_mps.h,
 # which uses this macro for its header guard.
 # Normally it would be better to use uppercase for header guard macro names,
