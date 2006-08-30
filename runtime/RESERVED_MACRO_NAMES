@@ -30,6 +30,7 @@ pid_t
 # These are defined by boehm_gc/gc.h.
 __GC
 _GC_H
+LINUX_THREADS
 HIDE_POINTER
 REVEAL_POINTER
 #-----------------------------------------------------------------------------#
