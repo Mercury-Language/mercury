@@ -292,12 +292,12 @@ replace_in_item(ModuleName,
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !Info).
 
 replace_in_item(ModuleName,
-        item_pred_or_func(TypeVarSet0, InstVarSet, ExistQVars, PredOrFunc,
-            PredName, TypesAndModes0, MaybeWithType0,
+        item_pred_or_func(Origin, TypeVarSet0, InstVarSet, ExistQVars,
+            PredOrFunc, PredName, TypesAndModes0, MaybeWithType0,
             MaybeWithInst0, Det0, Cond, Purity, ClassContext0),
         Context, EqvMap, EqvInstMap,
-        item_pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
-            PredName, TypesAndModes, MaybeWithType,
+        item_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
+            PredOrFunc, PredName, TypesAndModes, MaybeWithType,
             MaybeWithInst, Det, Cond, Purity, ClassContext),
         Errors, !Info) :-
     maybe_record_expanded_items(ModuleName, PredName,

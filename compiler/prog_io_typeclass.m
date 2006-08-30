@@ -273,7 +273,7 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 
 item_to_class_method(error2(Errors), _, error1(Errors)).
 item_to_class_method(ok2(Item, Context), Term, Result) :-
-    ( Item = item_pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L) ->
+    ( Item = item_pred_or_func(_Origin, A, B, C, D, E, F, G, H, I, J, K, L) ->
         Result = ok1(method_pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L,
             Context))
     ; Item = item_pred_or_func_mode(A, B, C, D, E, F, G) ->

@@ -6,8 +6,12 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: add_pred.m.
+%
 % This submodule of make_hlds handles the type and mode declarations
 % for predicates.
+%
+%-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_pred.
 :- interface.
@@ -60,6 +64,9 @@
     module_name::in, sym_name::in, arity::in, import_status::in,
     prog_context::in, pred_or_func::in, pred_id::out,
     predicate_table::in, predicate_table::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 

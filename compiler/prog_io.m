@@ -2845,9 +2845,10 @@ process_pred_or_func_2(PredOrFunc, ok2(F, As0), PredType, VarSet0,
                 get_purity(Purity, Attributes0, Attributes),
                 varset.coerce(VarSet0, TVarSet),
                 varset.coerce(VarSet0, IVarSet),
-                Result0 = ok1(item_pred_or_func(TVarSet, IVarSet, ExistQVars,
-                    PredOrFunc, F, As, WithType, WithInst, MaybeDet, Cond,
-                    Purity, ClassContext)),
+                Origin = user,
+                Result0 = ok1(item_pred_or_func(Origin, TVarSet, IVarSet,
+                    ExistQVars, PredOrFunc, F, As, WithType, WithInst,
+                    MaybeDet, Cond, Purity, ClassContext)),
                 check_no_attributes(Result0, Attributes, Result)
             )
         ;
@@ -3117,7 +3118,8 @@ process_func_3(ok2(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,
                 (
                     inst_var_constraints_are_consistent_in_type_and_modes(Args)
                 ->
-                    Result0 = ok1(item_pred_or_func(TVarSet, IVarSet,
+                    Origin = user,
+                    Result0 = ok1(item_pred_or_func(Origin, TVarSet, IVarSet,
                         ExistQVars, function, F, Args, no, no, MaybeDet, Cond,
                         Purity, ClassContext)),
                     check_no_attributes(Result0, Attributes, Result)

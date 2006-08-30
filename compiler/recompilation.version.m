@@ -397,9 +397,9 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
     % That needs to be done here as well the item list read from the interface
     % file will match the item list generated here.
     (
-        Item = item_pred_or_func(TVarSet, InstVarSet, ExistQVars, PredOrFunc,
-            PredName, TypesAndModes, WithType, WithInst, Det, Cond, Purity,
-            ClassContext),
+        Item = item_pred_or_func(Origin, TVarSet, InstVarSet, ExistQVars,
+            PredOrFunc, PredName, TypesAndModes, WithType, WithInst, Det,
+            Cond, Purity, ClassContext),
         split_types_and_modes(TypesAndModes, Types, MaybeModes),
         MaybeModes = yes(Modes),
         ( Modes = [_ | _]
@@ -408,7 +408,7 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
     ->
         TypesWithoutModes = list.map((func(Type) = type_only(Type)), Types),
         varset.init(EmptyInstVarSet),
-        PredOrFuncItem = item_pred_or_func(TVarSet, EmptyInstVarSet,
+        PredOrFuncItem = item_pred_or_func(Origin, TVarSet, EmptyInstVarSet,
             ExistQVars, PredOrFunc, PredName, TypesWithoutModes, WithType,
             no, no, Cond, Purity, ClassContext),
         (
@@ -507,7 +507,7 @@ item_to_item_id_2(item_mode_defn(_, Name, Params, _, _),
     list.length(Params, Arity).
 item_to_item_id_2(item_module_defn(_, _), no).
 item_to_item_id_2(Item, yes(item_id(ItemType, item_name(SymName, Arity)))) :-
-    Item = item_pred_or_func(_, _, _, PredOrFunc, SymName, TypesAndModes,
+    Item = item_pred_or_func(_, _, _, _, PredOrFunc, SymName, TypesAndModes,
         WithType, _, _, _, _, _),
     % For predicates or functions defined using `with_type` annotations
     % the arity here won't be correct, but equiv_type.m will record
@@ -721,11 +721,11 @@ item_is_unchanged(item_mutable(A, B, C, D, E, F), Item2) =
     ( Item2 = item_mutable(A, B, C, D, E, F) -> yes ; no ).
 
 item_is_unchanged(Item1, Item2) = Result :-
-    Item1 = item_pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
+    Item1 = item_pred_or_func(_, TVarSet1, _, ExistQVars1, PredOrFunc,
         Name, TypesAndModes1, WithType1, _,
         Det1, Cond, Purity, Constraints1),
     (
-        Item2 = item_pred_or_func(TVarSet2, _, ExistQVars2,
+        Item2 = item_pred_or_func(_, TVarSet2, _, ExistQVars2,
             PredOrFunc, Name, TypesAndModes2, WithType2,
             _, Det2, Cond, Purity, Constraints2),
 

@@ -141,6 +141,7 @@
             % This specifies the type of the predicate or function,
             % and it may optionally also specify the mode and determinism.
     ;       item_pred_or_func(
+                pf_origin                       :: item_origin,
                 pf_tvarset                      :: tvarset,
                 pf_instvarset                   :: inst_varset,
                 pf_existqvars                   :: existq_tvars,

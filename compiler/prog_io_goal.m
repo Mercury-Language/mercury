@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_io_goal.m.
 % Main authors: fjh, zs.
-
+% 
 % This module defines the predicates that parse goals.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_goal.

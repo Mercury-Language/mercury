@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_util.
 % Main author: fjh.
-
+% 
 % Various utility predicates acting on the parse tree data structure defined
 % in prog_data.m and prog_item.m
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_util.
@@ -266,6 +266,12 @@
     %
 :- func sym_name_and_args_to_term(sym_name, list(term(T)), prog_context) =
     term(T).
+
+%-----------------------------------------------------------------------------%
+
+    % Convert a list of goals into a conjunction.
+    %
+:- func goal_list_to_conj(prog_context, list(goal)) = goal.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -804,6 +810,18 @@ sym_name_and_term_to_term(qualified(ModuleNames, ModuleName), Term, Context) =
         Term],
         Context
     ).
+
+%-----------------------------------------------------------------------------%
+
+goal_list_to_conj(Context, []) = true_expr - Context.
+goal_list_to_conj(Context, [Goal | Goals]) =
+    goal_list_to_conj_2(Context, Goal, Goals).
+
+:- func goal_list_to_conj_2(prog_context, goal, list(goal)) = goal.
+
+goal_list_to_conj_2(_, Goal, []) = Goal.
+goal_list_to_conj_2(Context, Goal0, [Goal1 | Goals]) =
+    conj_expr(Goal0, goal_list_to_conj_2(Context, Goal1, Goals)) - Context.
 
 %-----------------------------------------------------------------------------%
 

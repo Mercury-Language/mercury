@@ -306,7 +306,7 @@ collect_mq_info_2(item_mode_defn(_, SymName, Params, _, _), !Info) :-
     ).
 collect_mq_info_2(item_module_defn(_, ModuleDefn), !Info) :-
     process_module_defn(ModuleDefn, !Info).
-collect_mq_info_2(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _),
+collect_mq_info_2(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _),
         !Info).
 collect_mq_info_2(item_pred_or_func_mode(_, _, _, _, _, _, _), !Info).
 collect_mq_info_2(item_pragma(_, _), !Info).
@@ -658,10 +658,11 @@ module_qualify_item(item_module_defn(A, ModuleDefn) - Context,
     update_import_status(ModuleDefn, !Info, Continue).
 
 module_qualify_item(
-        item_pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes0,
-            WithType0, WithInst0, C, D, E, Constraints0) - Context,
-        item_pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes,
-            WithType, WithInst, C, D, E, Constraints) - Context,
+        item_pred_or_func(Origin, A, IVs, B, PredOrFunc, SymName,
+            TypesAndModes0, WithType0, WithInst0, C, D, E, Constraints0)
+                - Context,
+        item_pred_or_func(Origin, A, IVs, B, PredOrFunc, SymName,
+            TypesAndModes, WithType, WithInst, C, D, E, Constraints) - Context,
         !Info, yes, !IO) :-
     list.length(TypesAndModes0, Arity),
     mq_info_set_error_context(

@@ -399,10 +399,16 @@
                         % inst_match.bound_inst_list_contains_instname and
                         % instmap.merge) would be unacceptable.
 
-    ;       marker_may_have_parallel_conj.
+    ;       marker_may_have_parallel_conj
                         % The predicate may contain parallel conjunctions.
                         % It should be run through the dependent parallel
                         % conjunction transformation.
+
+    ;       marker_mutable_access_pred.
+                        % This predicate is part of the machinery used to
+                        % access mutables.  This marker is used to inform
+                        % inlining that we should _always_ attempt to
+                        % inline this predicate across module boundaries.
 
     % An abstract set of attributes.
 :- type pred_attributes.

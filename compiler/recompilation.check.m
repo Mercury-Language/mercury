@@ -880,7 +880,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         true
     ).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        item_pred_or_func(_, _, _, PredOrFunc, Name, Args,
+        item_pred_or_func(_, _, _, _, PredOrFunc, Name, Args,
             WithType, _, _, _, _, _) - _, !Info) :-
     check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
         VersionNumbers, PredOrFunc, Name, Args, WithType, !Info).

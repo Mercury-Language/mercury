@@ -6145,8 +6145,8 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
     %
     (
         list.member(Item, Items),
-        Item = item_pred_or_func(_, _, _, predicate, Name, [_, _], WithType,
-            _, _, _, _, _) - _,
+        Item = item_pred_or_func(_, _, _, _, predicate, Name, [_, _],
+            WithType, _, _, _, _, _) - _,
         unqualify_name(Name, "main"),
 
         % XXX We should allow `main/2' to be declared using
@@ -7289,7 +7289,8 @@ item_needs_imports(item_inst_defn(_, _, _, _, _)) = yes.
 item_needs_imports(item_mode_defn(_, _, _, _, _)) = yes.
 item_needs_imports(item_module_defn(_, _)) = no.
 item_needs_imports(item_pragma(_, _)) = yes.
-item_needs_imports(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
+item_needs_imports(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _)) =
+    yes.
 item_needs_imports(item_pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
 item_needs_imports(Item @ item_typeclass(_, _, _, _, _, _)) =
     (
@@ -7654,7 +7655,8 @@ reorderable_item(item_typeclass(_, _, _, _, _, _)) = yes.
 reorderable_item(item_instance(_, _, _, _, _, _)) = yes.
 reorderable_item(item_clause(_, _, _, _, _, _)) = no.
 reorderable_item(item_nothing(_)) = no.
-reorderable_item(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = no.
+reorderable_item(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _)) =
+    no.
 reorderable_item(item_pred_or_func_mode(_, _, _, _, _, _, _)) = no.
 reorderable_item(item_initialise(_, _, _)) = no.
 reorderable_item(item_finalise(_, _, _)) = no.
@@ -7732,7 +7734,7 @@ chunkable_item(item_pragma(_, Pragma)) = Reorderable :-
 chunkable_item(item_type_defn(_, _, _, _, _)) = yes.
 chunkable_item(item_inst_defn(_, _, _, _, _)) = yes.
 chunkable_item(item_mode_defn(_, _, _, _, _)) = yes.
-chunkable_item(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
+chunkable_item(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _)) = yes.
 chunkable_item(item_pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
 chunkable_item(item_promise(_, _, _, _)) = yes.
 chunkable_item(item_typeclass(_, _, _, _, _, _)) = yes.
@@ -7750,8 +7752,8 @@ chunkable_item(item_nothing(_)) = yes.
     %
 :- pred symname_ordered(item_and_context::in, sym_name::out) is semidet.
 
-symname_ordered(item_pred_or_func(_, _, _, _, Name, _, _, _, _, _, _, _) - _,
-        Name).
+symname_ordered(item_pred_or_func(_, _, _, _, _, Name, _, _, _, _, _, _, _)
+    - _, Name).
 symname_ordered(item_pred_or_func_mode(_, _, Name, _, _, _, _) - _, Name).
 
 :- pred symname_orderable(item_and_context::in) is semidet.

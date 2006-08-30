@@ -14,7 +14,7 @@
 % * (--inline-simple and --inline-simple-threshold N)
 %   procedures whose size is below the given threshold,
 %   PLUS
-%   procedures that are flat (ie contain no branched structures)
+%   procedures that are flat (i.e. contain no branched structures)
 %   and are composed of inline builtins (eg arithmetic),
 %   and whose size is less than three times the given threshold
 %   (XXX shouldn't hard-code 3)
@@ -38,7 +38,7 @@
 % It builds the call-graph (if necessary) works from the bottom of the
 % call-graph towards the top, first performing inlining on a procedure,
 % then deciding if calls to it (higher in the call-graph) should be inlined.
-% SCCs get flattend and processed in the order returned by
+% SCCs get flattened and processed in the order returned by
 % hlds_dependency_info_get_dependency_ordering.
 %
 % There are a couple of classes of procedure that we clearly want to inline
@@ -174,6 +174,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -370,9 +371,8 @@ is_flat_simple_goal_list([Goal | Goals]) :-
 :- pred mark_proc_as_inlined(pred_proc_id::in, module_info::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out, io::di, io::uo) is det.
 
-mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
-        !InlinedProcs, !IO) :-
-    set.insert(!.InlinedProcs, proc(PredId, ProcId), !:InlinedProcs),
+mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo, !InlinedProcs, !IO) :-
+    svset.insert(proc(PredId, ProcId), !InlinedProcs),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ( pred_info_requested_inlining(PredInfo) ->
         true
@@ -383,13 +383,13 @@ mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-        % inline_info contains the information that is changed as a result
-        % of inlining. It is threaded through the inlining process, and when
-        % finished, contains the updated information associated with the new
-        % goal.
-        %
-        % It also stores some necessary information that is not updated.
-
+    % inline_info contains the information that is changed as a result
+    % of inlining. It is threaded through the inlining process, and when
+    % finished, contains the updated information associated with the new
+    % goal.
+    %
+    % It also stores some necessary information that is not updated.
+    %
 :- type inline_info
     --->    inline_info(
                 i_var_threshold     :: int,
@@ -986,7 +986,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
 ok_to_inline_language(lang_c, target_c).
 
 % ok_to_inline_language(il, il). %
-% XXX we need to fix the handling of parameter marhsalling for inlined code
+% XXX we need to fix the handling of parameter marshalling for inlined code
 % before we can enable this -- see the comments in
 % ml_gen_ordinary_pragma_il_proc in ml_code_gen.m.
 %

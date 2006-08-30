@@ -648,7 +648,7 @@ transform_goal_2(
     ),
     Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIOHLDS,
         MutableHLDSs),
-    Goal1 = goal_list_to_goal(Context, GetGoals ++ [Goal0] ++ SetGoals),
+    Goal1 = goal_list_to_conj(Context, GetGoals ++ [Goal0] ++ SetGoals),
     BeforeSInfo = !.SInfo,
     substitute_vars(StateVars0, Subst, StateVars),
     prepare_for_local_state_vars(StateVars, !VarSet, !SInfo),
@@ -855,18 +855,6 @@ extract_trace_io_var(Context, StateVar, GetGoal, SetGoal) :-
     Purity = purity_impure,
     GetGoal = call_expr(GetPredName, [SetVar], Purity) - Context,
     SetGoal = call_expr(SetPredName, [UseVar], Purity) - Context.
-
-:- func goal_list_to_goal(prog_context, list(goal)) = goal.
-
-goal_list_to_goal(Context, []) = true_expr - Context.
-goal_list_to_goal(Context, [Goal | Goals]) =
-    goal_list_to_goal_2(Context, Goal, Goals).
-
-:- func goal_list_to_goal_2(prog_context, goal, list(goal)) = goal.
-
-goal_list_to_goal_2(_, Goal, []) = Goal.
-goal_list_to_goal_2(Context, Goal0, [Goal1 | Goals]) =
-    conj_expr(Goal0, goal_list_to_goal_2(Context, Goal1, Goals)) - Context.
 
 :- pred transform_promise_eqv_goal(prog_vars::in, prog_vars::in, prog_vars::in,
     prog_substitution::in, prog_context::in, prog_vars::out,

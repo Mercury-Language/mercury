@@ -146,14 +146,14 @@ write_optfile(!ModuleInfo, !IO) :-
 
     module_info_get_name(!.ModuleInfo, ModuleName),
     module_name_to_file_name(ModuleName, ".opt.tmp", yes, TmpName, !IO),
-    io.open_output(TmpName, Result2, !IO),
+    io.open_output(TmpName, Result, !IO),
     (
-        Result2 = error(Err2),
-        io.error_message(Err2, Msg2),
-        io.write_string(Msg2, !IO),
+        Result = error(Err),
+        Msg = io.error_message(Err),
+        io.write_string(Msg, !IO),
         io.set_exit_status(1, !IO)
     ;
-        Result2 = ok(FileStream),
+        Result = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
         module_info_predids(!.ModuleInfo, RealPredIds),
         module_info_get_assertion_table(!.ModuleInfo, AssertionTable),
@@ -183,12 +183,14 @@ write_optfile(!ModuleInfo, !IO) :-
             )
         )
     ),
-    % restore the option setting that we overrode above
+    %
+    % Restore the option setting that we overrode above.
+    %
     globals.io_set_option(line_numbers, bool(LineNumbers), !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates to gather stuff to output to .opt file
+% Predicates to gather items to output to .opt file
 %
 
 :- pred gather_preds(list(pred_id)::in, bool::in, int::in, int::in, bool::in,
@@ -200,8 +202,9 @@ gather_preds(AllPredIds, CollectTypes, InlineThreshold, HigherOrderSizeLimit,
     ProcessLocalPreds = no,
     gather_pred_list(AllPredIds, ProcessLocalPreds, CollectTypes,
         InlineThreshold, HigherOrderSizeLimit, Deforestation, !Info),
-
+    %
     % Then gather preds used by exported preds (recursively).
+    %
     set.init(ExtraExportedPreds0),
     gather_preds_2(ExtraExportedPreds0, CollectTypes, InlineThreshold,
         HigherOrderSizeLimit, Deforestation, !Info).
@@ -272,8 +275,8 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
             module_info_set_preds(PredTable, ModuleInfo0, ModuleInfo),
             intermod_info_get_preds(!.Info, Preds0),
             ( pred_info_pragma_goal_type(PredInfo) ->
-                % The header code must be written since
-                % it could be used by the pragma_foreign_code.
+                % pragma foreign_decls must be written since their contents
+                % could be used by pragma foreign_procs.
                 intermod_info_set_write_header(!Info)
             ;
                 true
@@ -352,6 +355,10 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
             \+ check_marker(Markers, marker_user_marked_no_inline)
         ;
             pred_info_requested_inlining(PredInfo)
+        ;
+            % Mutable access preds should always be included in .opt files.
+            %
+            check_marker(Markers, marker_mutable_access_pred)
         ;
             has_ho_input(ModuleInfo, ProcInfo),
             clause_list_size(Clauses, GoalSize),
@@ -623,9 +630,15 @@ add_proc_2(PredId, DoWrite, !Info) :-
         % is read in. The `C = HeadVar3' unification cannot be reordered
         % with the impure goal, resulting in a mode error. Fixing this
         % in mode analysis would be tricky.
-        %
         % See tests/valid/impure_intermod.m.
-        pred_info_get_purity(PredInfo, purity_impure)
+        %
+        % NOTE: the above restriction applies to user predicates.  For
+        % the compiler generated mutable access predicates we can ensure
+        % that reordering is not necessary by construction, so it's safe
+        % to include them in .opt files.
+        %
+        pred_info_get_purity(PredInfo, purity_impure),
+        not check_marker(Markers, marker_mutable_access_pred)
     ->
         DoWrite = no
     ;
@@ -1802,6 +1815,7 @@ should_output_marker(marker_check_termination, no).
 should_output_marker(marker_calls_are_fully_qualified, no).
 should_output_marker(marker_mode_check_clauses, yes).
 should_output_marker(marker_may_have_parallel_conj, no).
+should_output_marker(marker_mutable_access_pred, no).
 
 :- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mer_mode)::in,
     prog_varset::in, prog_varset::out, list(pragma_var)::out) is det.
@@ -1838,38 +1852,34 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
 
 %-----------------------------------------------------------------------------%
 
-    % a collection of stuff to go in the .opt file
+    % A collection of stuff to go in the .opt file.
+    %
 :- type intermod_info
     --->    info(
-                im_modules              :: set(module_name),
-                                        % modules to import
+                im_modules :: set(module_name),
+                % Modules to import.              
 
-                im_preds                :: set(pred_id),
-                                        % preds to output clauses for
+                im_preds :: set(pred_id),
+                % Preds to output clauses for.
 
-                im_pred_decls           :: set(pred_id),
-                                        % preds to output decls for
+                im_pred_decls :: set(pred_id),
+                % Preds to output decls for.
 
-                im_instances            :: assoc_list(class_id,
-                                            hlds_instance_defn),
-                                        % instances declarations to write
+                im_instances :: assoc_list(class_id, hlds_instance_defn),
+                % Instances declarations to write.
 
-                im_types                :: assoc_list(type_ctor,
-                                            hlds_type_defn),
-                                        % type declarations to write
+                im_types :: assoc_list(type_ctor, hlds_type_defn),
+                % Type declarations to write.
 
-                im_module_info          :: module_info,
+                im_module_info :: module_info,
 
                 im_write_foreign_header :: bool,
-                                        % do the c_header_codes for the module
-                                        % need writing, yes if there are
-                                        % pragma_foreign_code procs being
-                                        % exported.
+                % Do the pragma foreign_decls for the module need writing,
+                % yes if there are pragma foreign_procs being exported.
 
-                im_var_types            :: vartypes,
-                im_tvarset              :: tvarset
-                                        % Vartypes and tvarset for the
-                                        % current pred.
+                im_var_types :: vartypes,
+                im_tvarset :: tvarset
+                % Vartypes and tvarset for the current pred.
             ).
 
 :- pred init_intermod_info(module_info::in, intermod_info::out) is det.

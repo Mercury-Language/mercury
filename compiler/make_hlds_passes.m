@@ -263,10 +263,9 @@ add_item_list_decls_pass_1([Item - Context | Items], !.Status, !ModuleInfo,
     % Add the type definitions and pragmas one by one to the module,
     % and add default modes for functions with no mode declaration.
     %
-    % Adding type definitions needs to come after we have added the
-    % pred declarations,
-    % since we need to have the pred_id for `index/2' and `compare/3'
-    % when we add compiler-generated clauses for `compare/3'.
+    % Adding type definitions needs to come after we have added the pred
+    % declarations, since we need to have the pred_id for `index/2' and
+    % `compare/3' when we add compiler-generated clauses for `compare/3'.
     % (And similarly for other compiler-generated predicates like that.)
     %
     % Adding pragmas needs to come after we have added the
@@ -292,10 +291,11 @@ add_item_list_decls_pass_2([Item - Context | Items], !.Status, !ModuleInfo,
     % Check that the declarations for field extraction and update functions
     % are sensible.
     %
-    % Check that predicates listed in `:- initialise' declarations exist
-    % and have the right signature, introduce pragma export declarations
-    % for them and record their exported name in the module_info so that
-    % we can tell the code generator to call it at initialisation time.
+    % Check that predicates listed in `:- initialise' and `:- finalise'
+    % declarations exist and have the correct signature, introduce
+    % pragma export declarations for them and record their exported name in
+    % the module_info so that we can tell the code generator to call it at
+    % initialisation/finalisation time.
     %
 :- pred add_item_list_clauses(item_list::in, import_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -341,13 +341,37 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, InvalidMode, !IO) :-
     module_add_mode_defn(VarSet, Name, Params, ModeDefn,
         Cond, Context, !.Status, !ModuleInfo, InvalidMode, !IO).
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
-    Item = item_pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
-        PredName, TypesAndModes, _WithType, _WithInst, MaybeDet, _Cond,
-        Purity, ClassContext),
-    init_markers(Markers),
-    module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
-        PredName, TypesAndModes, MaybeDet, Purity, ClassContext, Markers,
-        Context, !.Status, _, !ModuleInfo, !IO).
+    Item = item_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
+        PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst, MaybeDet,
+        _Cond, Purity, ClassContext),
+    init_markers(Markers0),
+    %
+    % If this predicate was added as a result of the mutable transformation
+    % then mark this predicate as a mutable access pred.  We do this
+    % so that we can tell optimizations, like inlining, to treat it
+    % specially.
+    %
+    (
+        Origin = compiler(Reason),
+        (
+            Reason = mutable_decl,
+            add_marker(marker_mutable_access_pred, Markers0, Markers)
+        ;
+            ( Reason = initialise_decl
+            ; Reason = finalise_decl
+            ; Reason = solver_type
+            ; Reason = pragma_memo_attribute
+            ; Reason = foreign_imports
+            ),
+            Markers = Markers0
+        )
+    ;
+        Origin = user,
+        Markers = Markers0
+    ),
+    module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
+        PredOrFunc, PredName, TypesAndModes, MaybeDet, Purity, ClassContext,
+        Markers, Context, !.Status, _, !ModuleInfo, !IO).
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     Item = item_pred_or_func_mode(VarSet, MaybePredOrFunc, PredName, Modes,
         _WithInst, MaybeDet, _Cond),
@@ -474,6 +498,23 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
             InitMutexPredDecl = mutable_init_mutex_pred_decl(ModuleName, Name),
             add_item_decl_pass_1(InitMutexPredDecl, Context, !Status,
                 !ModuleInfo, _, !IO),
+            % 
+            % Create the primitive access and locking predicates.
+            %
+            LockPredDecl = lock_pred_decl(ModuleName, Name),
+            add_item_decl_pass_1(LockPredDecl, Context, !Status,
+                !ModuleInfo, _, !IO),
+            UnlockPredDecl = unlock_pred_decl(ModuleName, Name),
+            add_item_decl_pass_1(UnlockPredDecl, Context, !Status,
+                !ModuleInfo, _, !IO),
+            UnsafeGetPredDecl = unsafe_get_pred_decl(ModuleName, Name,
+                Type, Inst),
+            add_item_decl_pass_1(UnsafeGetPredDecl, Context, !Status,
+                !ModuleInfo, _, !IO),
+            UnsafeSetPredDecl = unsafe_set_pred_decl(ModuleName, Name,
+                Type, Inst),
+            add_item_decl_pass_1(UnsafeSetPredDecl, Context, !Status,
+                !ModuleInfo, _, !IO),
             %
             % Create the standard, non-pure access predicates. These are
             % always created for non-constant mutables, even if the
@@ -560,7 +601,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     Item = item_pragma(Origin, Pragma),
     add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO).
 add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
-    Item = item_pred_or_func(_TypeVarSet, _InstVarSet, _ExistQVars,
+    Item = item_pred_or_func(_Origin, _TypeVarSet, _InstVarSet, _ExistQVars,
         PredOrFunc, SymName, TypesAndModes, _WithType, _WithInst,
         _MaybeDet, _Cond, _Purity, _ClassContext),
     %
@@ -694,6 +735,22 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
                 ReportErrors = yes,
                 get_global_name_from_foreign_names(ReportErrors, Context,
                     ModuleName, Name, ForeignNames, _TargetMutableName, !IO)
+            ),
+            %
+            % If we are creating the I/O version of the set predicate then we
+            % need to add a promise_pure pragma for it.  This needs to be done
+            % here (in stage 2) rather than in stage 3 where the rest of the
+            % mutable transformation is.
+            %
+            IOStateInterface = mutable_var_attach_to_io_state(MutAttrs),
+            (
+                IOStateInterface = yes,
+                SetPredName = mutable_set_pred_sym_name(ModuleName, Name),
+                IOSetPromisePurePragma = pragma_promise_pure(SetPredName, 3),
+                add_pragma(compiler(mutable_decl), IOSetPromisePurePragma,
+                    Context, !Status, !ModuleInfo, !IO)
+            ;
+                IOStateInterface = no
             )
         ;
             NYIError = [
@@ -828,7 +885,7 @@ add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !IO) :-
 add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !IO) :-
     Item = item_mode_defn(_, _, _, _, _).
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
-    Item = item_pred_or_func(_, _, _, PredOrFunc, SymName, TypesAndModes,
+    Item = item_pred_or_func(_, _, _, _, PredOrFunc, SymName, TypesAndModes,
         _WithType, _WithInst, _, _, _, _),
     (
         PredOrFunc = predicate
@@ -1221,15 +1278,16 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         decide_mutable_target_var_name(MutAttrs, ModuleName,
             MercuryMutableName, Context, TargetMutableName, !IO),
         % 
-        % Add foreign_decl and foreign_code items that declare/define
-        % the global variable.
+        % Add foreign_decl and foreign_code items that declare/define the
+        % global variable used to implement the mutable.  If the mutable is
+        % not constant then add a mutex to synchronize access to it as well.
         %
         add_mutable_defn_and_decl(TargetMutableName, Type, IsConstant,
             Context, !QualInfo, !ModuleInfo, !IO),
         %
         % Set up the default attributes for the foreign_procs used for the
         % access predicates.
-        % XXX Handle languages other than C here.
+        % XXX Handle target languages other than C here.
         % 
         Attrs0 = default_attributes(lang_c),
         globals.io_lookup_bool_option(mutable_always_boxed, AlwaysBoxed, !IO),
@@ -1254,9 +1312,11 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             IsConstant = no,
             InitSetPredName = mutable_set_pred_sym_name(ModuleName,
                 MercuryMutableName),
-            add_mutable_access_preds(TargetMutableName, ModuleName,
+            add_mutable_primitive_preds(TargetMutableName, ModuleName,
                 MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy, Context,
-                !Status, !QualInfo, !ModuleInfo, !IO)
+                !Status, !QualInfo, !ModuleInfo, !IO),
+            add_mutable_user_access_preds(ModuleName, MercuryMutableName,
+                MutAttrs, Context, !Status, !QualInfo, !ModuleInfo, !IO)
         ),
         add_mutable_initialisation(IsConstant, TargetMutableName, ModuleName,
             MercuryMutableName, MutVarset, InitSetPredName, InitTerm, Attrs,
@@ -1364,39 +1424,85 @@ add_constant_mutable_access_preds(TargetMutableName, ModuleName, Name,
     add_item_clause(ConstantSetClause, !Status, Context, !ModuleInfo,
         !QualInfo, !IO).
             
-    % Add the access predicates for a non-constant mutable.
-    % If the mutable has the `attach_to_io_state' attribute then add the
-    % versions of the access preds that take the I/O state as well.
+    % Add the foreign clauses for the mutable's primitive access and 
+    % locking predicates.
     %
-:- pred add_mutable_access_preds(string::in, module_name::in, string::in,
+:- pred add_mutable_primitive_preds(string::in, module_name::in, string::in,
     mutable_var_attributes::in, pragma_foreign_proc_attributes::in,
     mer_inst::in, box_policy::in, prog_context::in,
     import_status::in, import_status::out, qual_info::in, qual_info::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
- 
-add_mutable_access_preds(TargetMutableName, ModuleName, Name,
+
+add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
         MutAttrs, Attrs, Inst, BoxPolicy, Context, !Status, !QualInfo,
         !ModuleInfo, !IO) :-
-    varset.new_named_var(varset.init, "X", X, ProgVarSet0),
-    InstVarSet = varset.init,
+    set_thread_safe(proc_thread_safe, Attrs, LockAndUnlockAttrs),
     %
-    % Construct the semipure get predicate.
+    % Construct the lock predicate.
     %
-    set_purity(purity_semipure, Attrs, GetAttrs),
-    StdGetForeignProc = pragma_foreign_proc(GetAttrs,
-        mutable_get_pred_sym_name(ModuleName, Name),
+    MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
+    % XXX the second argument should be the name of the mercury predicate,
+    %     with chars escaped as appropriate.
+    LockForeignProcBody = string.append_list([
+        "#ifdef MR_THREAD_SAFE\n",
+        "  MR_LOCK(&" ++ MutableMutexVarName ++ ",
+            \"" ++ MutableMutexVarName ++ "\");\n" ++
+        "#endif\n"
+    ]),
+    LockForeignProc = pragma_foreign_proc(LockAndUnlockAttrs,
+        mutable_lock_pred_sym_name(ModuleName, Name),
         predicate,
-        [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
-        ProgVarSet0,
-        InstVarSet,
-        fc_impl_ordinary("X = " ++ TargetMutableName ++ ";", yes(Context))
+        [],
+        varset.init,    % Prog varset.
+        varset.init,    % Inst varset.
+        fc_impl_ordinary(LockForeignProcBody, yes(Context))
     ),
-    StdGetClause = item_pragma(compiler(mutable_decl), StdGetForeignProc),
-    add_item_clause(StdGetClause, !Status, Context, !ModuleInfo, !QualInfo,
+    LockClause = item_pragma(compiler(mutable_decl), LockForeignProc),
+    add_item_clause(LockClause, !Status, Context, !ModuleInfo, !QualInfo,
         !IO),
     %
-    % Construct the impure set predicate (by default it is trailed.)
+    % Construct the unlock predicate.
     %
+    % XXX as above regarding the second argument to MR_UNLOCK.
+    UnlockForeignProcBody = string.append_list([
+        "#ifdef MR_THREAD_SAFE\n",
+        "  MR_UNLOCK(&" ++ MutableMutexVarName ++ ",
+            \"" ++ MutableMutexVarName ++ "\");\n" ++
+        "#endif\n"
+    ]),
+    UnlockForeignProc = pragma_foreign_proc(LockAndUnlockAttrs,
+        mutable_unlock_pred_sym_name(ModuleName, Name),
+        predicate,
+        [],
+        varset.init,    % Prog varset.
+        varset.init,    % Inst varset.
+        fc_impl_ordinary(UnlockForeignProcBody, yes(Context))
+    ),
+    UnlockClause = item_pragma(compiler(mutable_decl), UnlockForeignProc),
+    add_item_clause(UnlockClause, !Status, Context, !ModuleInfo, !QualInfo,
+        !IO),
+    %
+    % Construct the semipure unsafe_get_predicate.
+    %
+    set_purity(purity_semipure, Attrs, UnsafeGetAttrs0),
+    set_thread_safe(proc_thread_safe, UnsafeGetAttrs0, UnsafeGetAttrs), 
+    varset.new_named_var(varset.init, "X", X, ProgVarSet),
+    UnsafeGetForeignProc = pragma_foreign_proc(UnsafeGetAttrs,
+        mutable_unsafe_get_pred_sym_name(ModuleName, Name),
+        predicate,
+        [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
+        ProgVarSet,
+        varset.init, % Inst varset.
+        fc_impl_ordinary("X = " ++ TargetMutableName ++ ";", yes(Context))
+    ),
+    UnsafeGetClause = item_pragma(compiler(mutable_decl),
+        UnsafeGetForeignProc),
+    add_item_clause(UnsafeGetClause, !Status, Context, !ModuleInfo, !QualInfo,
+        !IO),
+    %
+    % Construct the impure unsafe_set_predicate.
+    %
+    set_thread_safe(proc_thread_safe, Attrs, UnsafeSetAttrs),
     TrailMutableUpdates = mutable_var_trailed(MutAttrs),
     (
         TrailMutableUpdates = mutable_untrailed,
@@ -1425,69 +1531,126 @@ add_mutable_access_preds(TargetMutableName, ModuleName, Name,
             TrailCode = ""
         )
     ),
-    StdSetForeignProc = pragma_foreign_proc(Attrs,
-        mutable_set_pred_sym_name(ModuleName, Name),
+    UnsafeSetForeignProc = pragma_foreign_proc(UnsafeSetAttrs,
+        mutable_unsafe_set_pred_sym_name(ModuleName, Name),
         predicate,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
-        ProgVarSet0,
-        InstVarSet,
-        fc_impl_ordinary(TrailCode ++ TargetMutableName ++ " = X;",
+        ProgVarSet,
+        varset.init, % Inst varset.
+        fc_impl_ordinary(TrailCode ++ TargetMutableName ++ "= X;",
             yes(Context))
     ),
-    StdSetClause = item_pragma(compiler(mutable_decl),
-        StdSetForeignProc),
-    add_item_clause(StdSetClause, !Status, Context, !ModuleInfo, !QualInfo,
+    UnsafeSetClause = item_pragma(compiler(mutable_decl),
+        UnsafeSetForeignProc),
+    add_item_clause(UnsafeSetClause, !Status, Context, !ModuleInfo, !QualInfo,
+        !IO).
+
+    % Add the access predicates for a non-constant mutable.
+    % If the mutable has the `attach_to_io_state' attribute then add the
+    % versions of the access preds that take the I/O state as well.
+    %
+:- pred add_mutable_user_access_preds(module_name::in, string::in,
+    mutable_var_attributes::in, prog_context::in,
+    import_status::in, import_status::out, qual_info::in, qual_info::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+ 
+add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
+        !Status, !QualInfo, !ModuleInfo, !IO) :-
+    varset.new_named_var(varset.init, "X", X, ProgVarSet0),
+    LockPredName   = mutable_lock_pred_sym_name(ModuleName, Name),
+    UnlockPredName = mutable_unlock_pred_sym_name(ModuleName, Name),
+    SetPredName = mutable_set_pred_sym_name(ModuleName, Name),
+    GetPredName = mutable_get_pred_sym_name(ModuleName, Name),
+    CallLock   = call_expr(LockPredName, [], purity_impure) - Context,
+    CallUnlock = call_expr(UnlockPredName, [], purity_impure) - Context,
+    % 
+    % Construct the semipure get predicate.
+    %
+    UnsafeGetPredName = mutable_unsafe_get_pred_sym_name(ModuleName, Name),
+    UnsafeGetCallArgs = [variable(X)],
+    CallUnsafeGet = call_expr(UnsafeGetPredName, UnsafeGetCallArgs,
+        purity_semipure) - Context,
+    
+    GetBody = goal_list_to_conj(Context,
+        [CallLock, CallUnsafeGet, CallUnlock]),
+    StdGetBody = promise_purity_expr(dont_make_implicit_promises,
+        purity_semipure, GetBody) - Context,
+
+    StdGetClause = item_clause(
+        compiler(mutable_decl),
+        ProgVarSet0,
+        predicate,
+        GetPredName,
+        [variable(X)],
+        StdGetBody
+    ),
+    
+    add_item_clause(StdGetClause, !Status, Context, !ModuleInfo, !QualInfo,
         !IO),
     %
-    % Create access predicates for the mutable via the I/O state
-    % if requested.
+    % Construct the impure set predicate.
     %
-    % XXX We don't define these directly in terms of the non-pure
-    % access predicates because I/O tabling doesn't currently work
-    % for impure/semipure predicates.  At the moment we just generate
-    % another pair of foreign_procs.
-    %
+    UnsafeSetPredName = mutable_unsafe_set_pred_sym_name(ModuleName, Name),
+    UnsafeSetCallArgs = [variable(X)],
+    StdSetCallUnsafeSet = call_expr(UnsafeSetPredName, UnsafeSetCallArgs,
+        purity_impure) - Context,
+
+    StdSetBody = goal_list_to_conj(Context,
+        [CallLock, StdSetCallUnsafeSet, CallUnlock]),
+
+    StdSetClause = item_clause(
+        compiler(mutable_decl),
+        ProgVarSet0,
+        predicate,
+        SetPredName,
+        [variable(X)],
+        StdSetBody
+    ),
+    
+    add_item_clause(StdSetClause, !Status, Context, !ModuleInfo, !QualInfo,
+        !IO),
+    
     IOStateInterface = mutable_var_attach_to_io_state(MutAttrs),
     (
         IOStateInterface = yes,
-        IOArgs = [
-            pragma_var(IO0, "IO0", di_mode, native_if_possible),
-            pragma_var(IO,  "IO",  uo_mode, native_if_possible)
-        ],
-        set_tabled_for_io(proc_tabled_for_io, Attrs, IOIntAttrs0),
-        set_purity(purity_pure, IOIntAttrs0, IOIntAttrs),
-        varset.new_named_var(ProgVarSet0, "IO0", IO0, ProgVarSet1),
-        varset.new_named_var(ProgVarSet1, "IO",  IO,  ProgVarSet),
-        %
-        % Construct the I/O set predicate.
-        %
-        IOSetForeignProc = pragma_foreign_proc(IOIntAttrs,
-            mutable_set_pred_sym_name(ModuleName, Name),
-            predicate,
-            [ pragma_var(X, "X", in_mode(Inst), BoxPolicy) | IOArgs ],
+        varset.new_named_var(ProgVarSet0, "IO", IO, ProgVarSet),
+
+        % Construct the pure get predicate.
+        % 
+        IOGetBody = promise_purity_expr(dont_make_implicit_promises,
+            purity_pure, GetBody) - Context,
+    
+        IOGetClause = item_clause(
+            compiler(mutable_decl),
             ProgVarSet,
-            InstVarSet,
-            fc_impl_ordinary(TargetMutableName ++ " = X; IO = IO0;",
-                yes(Context))
+            predicate,
+            GetPredName,
+            [variable(X), variable(IO), variable(IO)],
+            IOGetBody
         ),
-        IOSetClause = item_pragma(compiler(mutable_decl), IOSetForeignProc),
-        add_item_clause(IOSetClause, !Status, Context, !ModuleInfo, !QualInfo,
+    
+        add_item_clause(IOGetClause, !Status, Context, !ModuleInfo, !QualInfo,
             !IO),
+
+        % Construct the pure set predicate.
         %
-        % Construct the I/O get predicate.
+        % We just use the body of impure version and attach a promise_pure
+        % pragma to the predicate.  (The purity pragma was added during
+        % stage 2.)
         %
-        IOGetForeignProc = pragma_foreign_proc(IOIntAttrs,
-            mutable_get_pred_sym_name(ModuleName, Name),
-            predicate,
-            [pragma_var(X, "X", out_mode(Inst), BoxPolicy) | IOArgs ],
+        IOSetBody = StdSetBody, 
+        
+        IOSetClause = item_clause(
+            compiler(mutable_decl),
             ProgVarSet,
-            InstVarSet,
-            fc_impl_ordinary("X = " ++ TargetMutableName ++ "; IO = IO0;",
-                yes(Context))
+            predicate,
+            SetPredName,
+            [variable(X), variable(IO), variable(IO)],
+            IOSetBody
         ),
-        IOGetClause = item_pragma(compiler(mutable_decl), IOGetForeignProc),
-        add_item_clause(IOGetClause, !Status, Context, !ModuleInfo,
-            !QualInfo, !IO)
+        
+        add_item_clause(IOSetClause, !Status, Context, !ModuleInfo, !QualInfo,
+            !IO)
     ;
         IOStateInterface = no
     ).

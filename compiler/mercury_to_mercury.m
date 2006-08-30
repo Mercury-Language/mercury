@@ -508,9 +508,9 @@ mercury_output_item(UnqualifiedItemNames,
     maybe_output_line_number(Context, !IO),
     mercury_format_mode_defn(VarSet, Name, Args, ModeDefn, Context, !IO).
 mercury_output_item(UnqualifiedItemNames,
-        item_pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
-            PredName0, TypesAndModes, WithType, WithInst, Det, _Cond, Purity,
-            ClassContext),
+        item_pred_or_func(_Origin, TypeVarSet, InstVarSet, ExistQVars,
+            PredOrFunc, PredName0, TypesAndModes, WithType, WithInst, Det,
+            _Cond, Purity, ClassContext),
         Context, !IO) :-
     maybe_unqualify_sym_name(UnqualifiedItemNames, PredName0, PredName),
     maybe_output_line_number(Context, !IO),
