@@ -5,8 +5,9 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: collect_lib.m
-% Author: jahier
+%
+% File: collect_lib.m.
+% Author: jahier.
 % Purpose:
 %   This module defines functions that are needed to implement the
 %   `collect' primitive.
@@ -74,10 +75,12 @@
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 
-:- pragma export(link_collect(in, out, out, out, out, out, out, out, di, uo),
+:- pragma foreign_export("C",
+    link_collect(in, out, out, out, out, out, out, out, di, uo),
     "ML_CL_link_collect").
 
-:- pragma export(unlink_collect(in, di, uo), "ML_CL_unlink_collect").
+:- pragma foreign_export("C", unlink_collect(in, di, uo),
+    "ML_CL_unlink_collect").
 
 % We need Handle to be able to close the shared object (dl.close) later on.
 % When the link failed, we output NULL pointers instead of maybe pointers

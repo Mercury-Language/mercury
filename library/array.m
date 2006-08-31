@@ -422,7 +422,7 @@
     % unify/2 for arrays
     %
 :- pred array_equal(array(T)::in, array(T)::in) is semidet.
-:- pragma export(array_equal(in, in), "ML_array_equal").
+:- pragma foreign_export("C", array_equal(in, in), "ML_array_equal").
 :- pragma terminates(array_equal/2).
 
 array_equal(Array1, Array2) :-
@@ -452,7 +452,7 @@ array.equal_elements(N, Size, Array1, Array2) :-
     %
 :- pred array_compare(comparison_result::uo, array(T)::in, array(T)::in)
     is det.
-:- pragma export(array_compare(uo, in, in), "ML_array_compare").
+:- pragma foreign_export("C", array_compare(uo, in, in), "ML_array_compare").
 :- pragma terminates(array_compare/3).
 
 array_compare(Result, Array1, Array2) :-

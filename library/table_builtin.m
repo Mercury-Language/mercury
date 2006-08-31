@@ -197,7 +197,8 @@
 
 :- pred get_tabling_stats(ml_proc_table_info::in, proc_table_statistics::out,
     io::di, io::uo) is det.
-:- pragma export(get_tabling_stats(in, out, di, uo), "MR_get_tabling_stats").
+:- pragma foreign_export("C", get_tabling_stats(in, out, di, uo),
+    "MR_get_tabling_stats").
 
 get_tabling_stats(Info, Statistics, !IO) :-
     get_direct_fields(Info, AnswerTable, NumInputs, NumOutputs,

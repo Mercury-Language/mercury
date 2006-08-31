@@ -114,14 +114,16 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma export(init(out), "ML_HELP_init").
-:- pragma export(add_help_node(in, in, in, in, in, out, out),
+:- pragma foreign_export("C", init(out), "ML_HELP_init").
+:- pragma foreign_export("C", add_help_node(in, in, in, in, in, out, out),
     "ML_HELP_add_help_node").
-:- pragma export(help(in, in, di, uo), "ML_HELP_help").
-:- pragma export(path(in, in, in, out, di, uo), "ML_HELP_path").
-:- pragma export(name(in, in, in, di, uo), "ML_HELP_name").
-:- pragma export(help_system_type(out), "ML_HELP_help_system_type").
-:- pragma export(result_is_error(in, out), "ML_HELP_result_is_error").
+:- pragma foreign_export("C", help(in, in, di, uo), "ML_HELP_help").
+:- pragma foreign_export("C", path(in, in, in, out, di, uo), "ML_HELP_path").
+:- pragma foreign_export("C", name(in, in, in, di, uo), "ML_HELP_name").
+:- pragma foreign_export("C", help_system_type(out),
+    "ML_HELP_help_system_type").
+:- pragma foreign_export("C", result_is_error(in, out),
+    "ML_HELP_result_is_error").
 
 %-----------------------------------------------------------------------------%
 

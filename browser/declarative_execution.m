@@ -853,7 +853,7 @@ search_trace_node_store(_, _, _) :-
 
 :- func call_node_get_last_interface(trace_node(trace_node_id))
     = trace_node_id.
-:- pragma export(call_node_get_last_interface(in) = out,
+:- pragma foreign_export("C", call_node_get_last_interface(in) = out,
     "MR_DD_call_node_get_last_interface").
 
 call_node_get_last_interface(Call) = Last :-
@@ -867,8 +867,8 @@ call_node_get_last_interface(Call) = Last :-
 :- func call_node_set_last_interface(trace_node(trace_node_id)::di,
     trace_node_id::di) = (trace_node(trace_node_id)::out) is det.
 
-:- pragma export(call_node_set_last_interface(di, di) = out,
-        "MR_DD_call_node_set_last_interface").
+:- pragma foreign_export("C", call_node_set_last_interface(di, di) = out,
+    "MR_DD_call_node_set_last_interface").
 
 call_node_set_last_interface(Call0, Last) = Call :-
     ( Call0 = node_call(_, _, _, _, _, _, _, _, _, _) ->
@@ -885,7 +885,8 @@ call_node_set_last_interface(Call0, Last) = Call :-
 :- func call_node_update_implicit_tree_info(trace_node(trace_node_id)::di,
     int::di) = (trace_node(trace_node_id)::out) is det.
 
-:- pragma export(call_node_update_implicit_tree_info(di, di) = out,
+:- pragma foreign_export("C",
+    call_node_update_implicit_tree_info(di, di) = out,
     "MR_DD_call_node_update_implicit_tree_info").
 
 call_node_update_implicit_tree_info(Call0, IdealDepth) = Call :-
@@ -902,7 +903,8 @@ call_node_update_implicit_tree_info(Call0, IdealDepth) = Call :-
 
 :- func get_implicit_tree_ideal_depth(trace_node(trace_node_id)) = int.
 
-:- pragma export(get_implicit_tree_ideal_depth(in) = out,
+:- pragma foreign_export("C",
+    get_implicit_tree_ideal_depth(in) = out,
     "MR_DD_get_implicit_tree_ideal_depth").
 
 get_implicit_tree_ideal_depth(Call) = IdealDepth :-
@@ -921,7 +923,7 @@ get_implicit_tree_ideal_depth(Call) = IdealDepth :-
 :- func cond_node_set_status(trace_node(trace_node_id)::di, goal_status::di)
     = (trace_node(trace_node_id)::out) is det.
 
-:- pragma export(cond_node_set_status(di, di) = out,
+:- pragma foreign_export("C", cond_node_set_status(di, di) = out,
     "MR_DD_cond_node_set_status").
 
 cond_node_set_status(Cond0, Status) = Cond :-
@@ -938,7 +940,7 @@ cond_node_set_status(Cond0, Status) = Cond :-
 :- func neg_node_set_status(trace_node(trace_node_id)::di, goal_status::di)
     = (trace_node(trace_node_id)::out) is det.
 
-:- pragma export(neg_node_set_status(di, di) = out,
+:- pragma foreign_export("C", neg_node_set_status(di, di) = out,
     "MR_DD_neg_node_set_status").
 
 neg_node_set_status(Neg0, Status) = Neg :-
@@ -963,7 +965,8 @@ set_trace_node_arg(Node0, FieldNum, Val, Node) :-
     store.extract_ref_value(S, Ref, Node).
 
 :- func trace_node_port(trace_node(trace_node_id)) = trace_port.
-:- pragma export(trace_node_port(in) = out, "MR_DD_trace_node_port").
+:- pragma foreign_export("C", trace_node_port(in) = out,
+    "MR_DD_trace_node_port").
 
 trace_node_port(node_call(_, _, _, _, _, _, _, _, _, _)) = call.
 trace_node_port(node_exit(_, _, _, _, _, _, _, _))       = exit.
@@ -981,7 +984,8 @@ trace_node_port(node_neg_succ(_, _, _))          = neg_success.
 trace_node_port(node_neg_fail(_, _, _))          = neg_failure.
 
 :- func trace_node_path(trace_node(trace_node_id)) = goal_path_string.
-:- pragma export(trace_node_path(in) = out, "MR_DD_trace_node_path").
+:- pragma foreign_export("C", trace_node_path(in) = out,
+    "MR_DD_trace_node_path").
 
 trace_node_path(Node) = Path :-
     Label = get_trace_node_label(Node),
@@ -1007,7 +1011,8 @@ get_trace_node_label(node_neg_fail(_, _, Label)) = Label.
 :- pred trace_node_seqno(trace_node_store::in, trace_node(trace_node_id)::in,
     sequence_number::out) is semidet.
 
-:- pragma export(trace_node_seqno(in, in, out), "MR_DD_trace_node_seqno").
+:- pragma foreign_export("C", trace_node_seqno(in, in, out),
+    "MR_DD_trace_node_seqno").
 
 trace_node_seqno(S, Node, SeqNo) :-
     ( SeqNo0 = Node ^ call_seq ->
@@ -1019,9 +1024,10 @@ trace_node_seqno(S, Node, SeqNo) :-
     ).
 
 :- pred trace_node_call(trace_node_store::in, trace_node(trace_node_id)::in,
-        trace_node_id::out) is semidet.
+    trace_node_id::out) is semidet.
 
-:- pragma export(trace_node_call(in, in, out), "MR_DD_trace_node_call").
+:- pragma foreign_export("C", trace_node_call(in, in, out),
+    "MR_DD_trace_node_call").
 
 trace_node_call(_, node_exit(_, Call, _, _, _, _, _, _), Call).
 trace_node_call(S, node_redo(_, Exit, _, _, _), Call) :-
@@ -1033,7 +1039,7 @@ trace_node_call(_, node_excp(_, Call, _, _, _, _, _), Call).
 :- pred trace_node_first_disj(trace_node(trace_node_id)::in,
     trace_node_id::out) is semidet.
 
-:- pragma export(trace_node_first_disj(in, out),
+:- pragma foreign_export("C", trace_node_first_disj(in, out),
     "MR_DD_trace_node_first_disj").
 
 trace_node_first_disj(node_first_disj(_, _), NULL) :-
@@ -1045,7 +1051,7 @@ trace_node_first_disj(node_later_disj(_, _, FirstDisj), FirstDisj).
     %
 :- func step_left_in_contour_store(trace_node_store, trace_node(trace_node_id))
     = trace_node_id.
-:- pragma export(step_left_in_contour_store(in, in) = out,
+:- pragma foreign_export("C", step_left_in_contour_store(in, in) = out,
     "MR_DD_step_left_in_contour").
 
 step_left_in_contour_store(Store, Node) = step_left_in_contour(Store, Node).
@@ -1058,7 +1064,7 @@ step_left_in_contour_store(Store, Node) = step_left_in_contour(Store, Node).
     %
 :- func find_prev_contour_store(trace_node_store, trace_node_id)
     = trace_node_id.
-:- pragma export(find_prev_contour_store(in, in) = out,
+:- pragma foreign_export("C", find_prev_contour_store(in, in) = out,
     "MR_DD_find_prev_contour").
 
 find_prev_contour_store(Store, Id) = Prev :-
@@ -1075,7 +1081,8 @@ find_prev_contour_store(Store, Id) = Prev :-
 :- pred print_trace_node(io.output_stream::in, trace_node(trace_node_id)::in,
     io::di, io::uo) is det.
 
-:- pragma export(print_trace_node(in, in, di, uo), "MR_DD_print_trace_node").
+:- pragma foreign_export("C", print_trace_node(in, in, di, uo),
+    "MR_DD_print_trace_node").
 
 print_trace_node(OutStr, Node, !IO) :-
     convert_node(Node, CNode),
@@ -1090,8 +1097,9 @@ print_trace_node(OutStr, Node, !IO) :-
 :- func construct_call_node(trace_node_id, list(trace_atom_arg),
     sequence_number, event_number, bool, maybe(label_layout),
     label_layout, int, suspicion_accumulator) = trace_node(trace_node_id).
-:- pragma export(construct_call_node(in, in, in, in, in, in, in, in, in)
-    = out, "MR_DD_construct_call_node").
+:- pragma foreign_export("C",
+    construct_call_node(in, in, in, in, in, in, in, in, in) = out,
+    "MR_DD_construct_call_node").
 
 construct_call_node(Preceding, AtomArgs, SeqNo, EventNo, AtMaxDepth,
         MaybeReturnLabel, Label, IoSeqNum, Suspicion) = Call :-
@@ -1110,19 +1118,22 @@ construct_call_node(Preceding, AtomArgs, SeqNo, EventNo, AtMaxDepth,
         MaybeImplicitTreeInfo, MaybeReturnLabel, Label, IoSeqNum, Suspicion).
 
 :- func make_yes_maybe_label(label_layout) = maybe(label_layout).
-:- pragma export(make_yes_maybe_label(in) = out, "MR_DD_make_yes_maybe_label").
+:- pragma foreign_export("C", make_yes_maybe_label(in) = out,
+    "MR_DD_make_yes_maybe_label").
 
 make_yes_maybe_label(Label) = yes(Label).
 
 :- func make_no_maybe_label = maybe(label_layout).
-:- pragma export(make_no_maybe_label = out, "MR_DD_make_no_maybe_label").
+:- pragma foreign_export("C", make_no_maybe_label = out,
+    "MR_DD_make_no_maybe_label").
 
 make_no_maybe_label = no.
 
 :- func construct_exit_node(trace_node_id, trace_node_id, trace_node_id,
     list(trace_atom_arg), event_number, label_layout, int,
     suspicion_accumulator) = trace_node(trace_node_id).
-:- pragma export(construct_exit_node(in, in, in, in, in, in, in, in) = out,
+:- pragma foreign_export("C",
+    construct_exit_node(in, in, in, in, in, in, in, in) = out,
     "MR_DD_construct_exit_node").
 
 construct_exit_node(Preceding, Call, MaybeRedo, AtomArgs, EventNo, Label,
@@ -1132,7 +1143,8 @@ construct_exit_node(Preceding, Call, MaybeRedo, AtomArgs, EventNo, Label,
 
 :- func construct_redo_node(trace_node_id, trace_node_id, event_number,
     label_layout, suspicion_accumulator) = trace_node(trace_node_id).
-:- pragma export(construct_redo_node(in, in, in, in, in) = out,
+:- pragma foreign_export("C",
+    construct_redo_node(in, in, in, in, in) = out,
     "MR_DD_construct_redo_node").
 
 construct_redo_node(Preceding, Exit, Event, Label, Suspicion) =
@@ -1141,7 +1153,8 @@ construct_redo_node(Preceding, Exit, Event, Label, Suspicion) =
 :- func construct_fail_node(trace_node_id, trace_node_id, trace_node_id,
     event_number, label_layout, suspicion_accumulator)
     = trace_node(trace_node_id).
-:- pragma export(construct_fail_node(in, in, in, in, in, in) = out,
+:- pragma foreign_export("C",
+    construct_fail_node(in, in, in, in, in, in) = out,
     "MR_DD_construct_fail_node").
 
 construct_fail_node(Preceding, Call, Redo, EventNo, Label, Suspicion) =
@@ -1150,7 +1163,8 @@ construct_fail_node(Preceding, Call, Redo, EventNo, Label, Suspicion) =
 :- pred construct_excp_node(trace_node_id::in, trace_node_id::in,
     trace_node_id::in, univ::in, event_number::in, label_layout::in,
     suspicion_accumulator::in, trace_node(trace_node_id)::out) is cc_multi.
-:- pragma export(construct_excp_node(in, in, in, in, in, in, in, out),
+:- pragma foreign_export("C",
+    construct_excp_node(in, in, in, in, in, in, in, out),
     "MR_DD_construct_excp_node").
 
 construct_excp_node(Preceding, Call, MaybeRedo, Exception, EventNo, Label,
@@ -1161,14 +1175,16 @@ construct_excp_node(Preceding, Call, MaybeRedo, Exception, EventNo, Label,
 
 :- func construct_switch_node(trace_node_id, label_layout)
     = trace_node(trace_node_id).
-:- pragma export(construct_switch_node(in, in) = out,
+:- pragma foreign_export("C",
+    construct_switch_node(in, in) = out,
     "MR_DD_construct_switch_node").
 
 construct_switch_node(Preceding, Label) = node_switch(Preceding, Label).
 
 :- func construct_first_disj_node(trace_node_id, label_layout)
     = trace_node(trace_node_id).
-:- pragma export(construct_first_disj_node(in, in) = out,
+:- pragma foreign_export("C",
+    construct_first_disj_node(in, in) = out,
     "MR_DD_construct_first_disj_node").
 
 construct_first_disj_node(Preceding, Label) =
@@ -1176,7 +1192,8 @@ construct_first_disj_node(Preceding, Label) =
 
 :- func construct_later_disj_node(trace_node_store, trace_node_id,
     label_layout, trace_node_id) = trace_node(trace_node_id).
-:- pragma export(construct_later_disj_node(in, in, in, in) = out,
+:- pragma foreign_export("C",
+    construct_later_disj_node(in, in, in, in) = out,
     "MR_DD_construct_later_disj_node").
 
 construct_later_disj_node(Store, Preceding, Label, PrevDisj)
@@ -1191,14 +1208,16 @@ construct_later_disj_node(Store, Preceding, Label, PrevDisj)
 
 :- func construct_cond_node(trace_node_id, label_layout)
     = trace_node(trace_node_id).
-:- pragma export(construct_cond_node(in, in) = out,
+:- pragma foreign_export("C",
+    construct_cond_node(in, in) = out,
     "MR_DD_construct_cond_node").
 
 construct_cond_node(Preceding, Label) = node_cond(Preceding, Label, undecided).
 
 :- func construct_then_node(trace_node_id, trace_node_id, label_layout)
     = trace_node(trace_node_id).
-:- pragma export(construct_then_node(in, in, in) = out,
+:- pragma foreign_export("C",
+    construct_then_node(in, in, in) = out,
     "MR_DD_construct_then_node").
 
 construct_then_node(Preceding, Cond, Label) =
@@ -1206,7 +1225,8 @@ construct_then_node(Preceding, Cond, Label) =
 
 :- func construct_else_node(trace_node_id, trace_node_id, label_layout)
     = trace_node(trace_node_id).
-:- pragma export(construct_else_node(in, in, in) = out,
+:- pragma foreign_export("C",
+    construct_else_node(in, in, in) = out,
     "MR_DD_construct_else_node").
 
 construct_else_node(Preceding, Cond, Label) =
@@ -1214,14 +1234,16 @@ construct_else_node(Preceding, Cond, Label) =
 
 :- func construct_neg_node(trace_node_id, label_layout)
     = trace_node(trace_node_id).
-:- pragma export(construct_neg_node(in, in) = out,
+:- pragma foreign_export("C",
+    construct_neg_node(in, in) = out,
     "MR_DD_construct_neg_node").
 
 construct_neg_node(Preceding, Label) = node_neg(Preceding, Label, undecided).
 
 :- func construct_neg_succ_node(trace_node_id, trace_node_id, label_layout)
     = trace_node(trace_node_id).
-:- pragma export(construct_neg_succ_node(in, in, in) = out,
+:- pragma foreign_export("C",
+    construct_neg_succ_node(in, in, in) = out,
     "MR_DD_construct_neg_succ_node").
 
 construct_neg_succ_node(Preceding, Neg, Label) =
@@ -1229,7 +1251,8 @@ construct_neg_succ_node(Preceding, Neg, Label) =
 
 :- func construct_neg_fail_node(trace_node_id, trace_node_id, label_layout)
     = trace_node(trace_node_id).
-:- pragma export(construct_neg_fail_node(in, in, in) = out,
+:- pragma foreign_export("C",
+    construct_neg_fail_node(in, in, in) = out,
     "MR_DD_construct_neg_fail_node").
 
 construct_neg_fail_node(Preceding, Neg, Label) =
@@ -1249,7 +1272,8 @@ null_trace_node_id(_) :-
 
 :- func init_trace_atom_args = list(trace_atom_arg).
 
-:- pragma export(init_trace_atom_args = out, "MR_DD_init_trace_atom_args").
+:- pragma foreign_export("C", init_trace_atom_args = out,
+    "MR_DD_init_trace_atom_args").
 
 init_trace_atom_args = [].
 
@@ -1261,7 +1285,7 @@ init_trace_atom_args = [].
     %
 :- pred add_trace_atom_arg_value(int::in, int::in, univ::in,
     list(trace_atom_arg)::in, list(trace_atom_arg)::out) is cc_multi.
-:- pragma export(add_trace_atom_arg_value(in, in, in, in, out),
+:- pragma foreign_export("C", add_trace_atom_arg_value(in, in, in, in, out),
     "MR_DD_add_trace_atom_arg_value").
 
 add_trace_atom_arg_value(HldsNum, ProgVis, Val, Args, [Arg | Args]) :-
@@ -1273,7 +1297,7 @@ add_trace_atom_arg_value(HldsNum, ProgVis, Val, Args, [Arg | Args]) :-
     %
 :- pred add_trace_atom_arg_no_value(int::in, int::in,
     list(trace_atom_arg)::in, list(trace_atom_arg)::out) is det.
-:- pragma export(add_trace_atom_arg_no_value(in, in, in, out),
+:- pragma foreign_export("C", add_trace_atom_arg_no_value(in, in, in, out),
     "MR_DD_add_trace_atom_arg_no_value").
 
 add_trace_atom_arg_no_value(HldsNum, ProgVis, Args, [Arg | Args]) :-
@@ -1345,7 +1369,7 @@ load_trace_node_map(Stream, Map, Key, !IO) :-
         throw(io_error("load_trace_node_map", Msg))
     ).
 
-:- pragma export(save_trace_node_store(in, in, in, di, uo),
+:- pragma foreign_export("C", save_trace_node_store(in, in, in, di, uo),
     "MR_DD_save_trace").
 
 save_trace_node_store(Stream, Store, NodeId, !IO) :-
@@ -1514,7 +1538,8 @@ arg_num_to_head_var_num([Arg | Args], ArgNum, CurArgNum, UserArgNum) :-
 :- pragma foreign_type("Java", bytecode, "java.lang.Object", []). %stub only
 
 :- pred read_proc_rep(bytecode::in, label_layout::in, proc_rep::out) is det.
-:- pragma export(read_proc_rep(in, in, out), "MR_DD_trace_read_rep").
+:- pragma foreign_export("C", read_proc_rep(in, in, out),
+    "MR_DD_trace_read_rep").
 
 read_proc_rep(Bytecode, Label, ProcRep) :-
     some [!Pos] (

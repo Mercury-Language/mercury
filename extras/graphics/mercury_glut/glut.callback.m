@@ -308,7 +308,8 @@ void MGLUT_display_callback(void)
 }
 ").
 
-:- pragma export(do_display_callback(pred(di, uo) is det, di, uo),
+:- pragma foreign_export("C",
+    do_display_callback(pred(di, uo) is det, di, uo),
     "MGLUT_do_display_callback").
 :- pred do_display_callback(pred(io, io), io, io).
 :- mode do_display_callback(pred(di, uo) is det, di, uo) is det.
@@ -345,8 +346,9 @@ void MGLUT_reshape_callback(int width, int height)
 }
 ").
 
-:- pragma export(do_reshape_callback(pred(in, in, di, uo) is det, in, in, di, 
-    uo), "MGLUT_do_reshape_callback").
+:- pragma foreign_export("C",
+    do_reshape_callback(pred(in, in, di, uo) is det, in, in, di, uo),
+    "MGLUT_do_reshape_callback").
 :- pred do_reshape_callback(pred(int, int, io, io), int, int, io, io).
 :- mode do_reshape_callback(pred(in, in, di, uo) is det, in, in, di, uo) is det.
 
@@ -384,8 +386,9 @@ void MGLUT_keyboard_callback(unsigned char scan_code, int x, int y)
 }
 ").
 
-:- pragma export(do_keyboard_callback(pred(in, in, in, di, uo) is det, 
-    in, in, in, di, uo), "MGLUT_do_keyboard_callback").
+:- pragma foreign_export("C",
+    do_keyboard_callback(pred(in, in, in, di, uo) is det, in, in, in, di, uo),
+    "MGLUT_do_keyboard_callback").
 :- pred do_keyboard_callback(pred(char, int, int, io, io), char, int, int, 
     io, io).
 :- mode do_keyboard_callback(pred(in, in, in, di, uo) is det, in, in, in,
@@ -425,8 +428,10 @@ void MGLUT_mouse_callback(int button, int state, int x, int y)
 }
 ").
 
-:- pragma export(do_mouse_callback(pred(in, in, in, in, di, uo) is det, 
-        in, in, in, in, di, uo), "MGLUT_do_mouse_callback").
+:- pragma foreign_export("C",
+    do_mouse_callback(pred(in, in, in, in, di, uo) is det, 
+        in, in, in, in, di, uo),
+    "MGLUT_do_mouse_callback").
 :- pred do_mouse_callback(pred(button, button_state, int, int, io, io), 
         int, int, int, int, io, io).
 :- mode do_mouse_callback(pred(in, in, in, in, di, uo) is det, in, in, in, 
@@ -502,8 +507,9 @@ void MGLUT_motion_callback(int x, int y)
 }
 ").
 
-:- pragma export(do_motion_callback(pred(in, in, di, uo) is det, in, in, 
-    di, uo), "MGLUT_do_motion_callback").
+:- pragma foreign_export("C",
+    do_motion_callback(pred(in, in, di, uo) is det, in, in, di, uo),
+    "MGLUT_do_motion_callback").
 :- pred do_motion_callback(pred(int, int, io, io), int, int, io, io).
 :- mode do_motion_callback(pred(in, in, di, uo) is det, in, in, di, uo) is det. 
 
@@ -540,8 +546,10 @@ void MGLUT_passive_motion_callback(int x, int y)
 }
 ").
 
-:- pragma export(do_passive_motion_callback(pred(in, in, di, uo) is det, 
-    in, in, di, uo), "MGLUT_do_passive_motion_callback").
+:- pragma foreign_export("C",
+    do_passive_motion_callback(pred(in, in, di, uo) is det, 
+        in, in, di, uo),
+    "MGLUT_do_passive_motion_callback").
 :- pred do_passive_motion_callback(pred(int, int, io, io), int, int, io, io).
 :- mode do_passive_motion_callback(pred(in, in, di, uo) is det, in, in, 
     di, uo) is det.
@@ -574,7 +582,8 @@ void MGLUT_entry_callback(int state)
     MGLUT_do_entry_callback(mglut_entry_callback, state);
 }").
 
-:- pragma export(do_entry_callback(pred(in, di, uo) is det, in, di, uo), 
+:- pragma foreign_export("C",
+    do_entry_callback(pred(in, di, uo) is det, in, di, uo), 
     "MGLUT_do_entry_callback").
 :- pred do_entry_callback(pred(entry_state, io, io), int, io, io).
 :- mode do_entry_callback(pred(in, di, uo) is det, in, di, uo) is det.
@@ -626,7 +635,8 @@ void MGLUT_visibility_callback(int state)
     MGLUT_do_visibility_callback(mglut_visibility_callback, state);
 }").
 
-:- pragma export(do_visibility_callback(pred(in, di, uo) is det, in, di, uo),
+:- pragma foreign_export("C",
+    do_visibility_callback(pred(in, di, uo) is det, in, di, uo),
     "MGLUT_do_visibility_callback").
 :- pred do_visibility_callback(pred(visibility, io, io), int, io, io).
 :- mode do_visibility_callback(pred(in, di, uo) is det, in, di, uo) is det.
@@ -680,8 +690,9 @@ void MGLUT_idle_callback(void)
     MGLUT_do_idle_callback(mglut_idle_callback);    
 }").
 
-:- pragma export(do_idle_callback(pred(di, uo) is det, di, uo), 
-        "MGLUT_do_idle_callback").
+:- pragma foreign_export("C",
+    do_idle_callback(pred(di, uo) is det, di, uo), 
+    "MGLUT_do_idle_callback").
 :- pred do_idle_callback(pred(io, io), io, io).
 :- mode do_idle_callback(pred(di, uo) is det, di, uo) is det.
 
@@ -717,8 +728,10 @@ void MGLUT_keyboard_up_callback(unsigned char scan_code, int x, int y)
         (MR_Char) scan_code, (MR_Integer) x, (MR_Integer) y);   
 }").
 
-:- pragma export(do_keyboard_up_callback(pred(in, in, in, di, uo) is det, 
-    in, in, in, di, uo), "MGLUT_do_keyboard_up_callback").
+:- pragma foreign_export("C",
+    do_keyboard_up_callback(pred(in, in, in, di, uo) is det, 
+        in, in, in, di, uo),
+    "MGLUT_do_keyboard_up_callback").
 :- pred do_keyboard_up_callback(pred(char, int, int, io, io), char, int, int, 
     io, io).
 :- mode do_keyboard_up_callback(pred(in,in,in,di,uo) is det, in, in, in, di, 
@@ -755,7 +768,8 @@ void MGLUT_overlay_display_callback(void)
     MGLUT_do_overlay_display_callback(mglut_overlay_display_callback);  
 }").
 
-:- pragma export(do_overlay_display_callback(pred(di, uo) is det, di, uo), 
+:- pragma foreign_export("C",
+    do_overlay_display_callback(pred(di, uo) is det, di, uo), 
     "MGLUT_do_overlay_display_callback").
 :- pred do_overlay_display_callback(pred(io, io), io, io).
 :- mode do_overlay_display_callback(pred(di, uo) is det, di, uo) is det.
@@ -794,12 +808,14 @@ void MGLUT_special_callback(int key, int x, int y)
 }
 ").
 
-:- pragma export(do_special_callback(pred(in, in, in ,di, uo) is det, 
-    in, in, in, di, uo), "MGLUT_do_special_callback").
+:- pragma foreign_export("C",
+    do_special_callback(pred(in, in, in ,di, uo) is det, 
+        in, in, in, di, uo),
+    "MGLUT_do_special_callback").
 :- pred do_special_callback(pred(special_key, int, int, io, io), 
-        int, int, int, io, io).
+    int, int, int, io, io).
 :- mode do_special_callback(pred(in,in,in,di,uo) is det, in, in, in, di, uo) 
-        is det.
+    is det.
 
 do_special_callback(Special, Key, X, Y, !IO) :-
     Special(int_to_special_key(Key), X, Y, !IO).
@@ -834,8 +850,10 @@ void MGLUT_special_up_callback(int key, int x, int y)
         (MR_Integer) key, (MR_Integer) x, (MR_Integer) y);  
 }").
 
-:- pragma export(do_special_up_callback(pred(in, in, in ,di, uo) is det, 
-    in, in, in, di, uo), "MGLUT_do_special_up_callback").
+:- pragma foreign_export("C",
+    do_special_up_callback(pred(in, in, in ,di, uo) is det, 
+        in, in, in, di, uo),
+    "MGLUT_do_special_up_callback").
 :- pred do_special_up_callback(pred(special_key, int, int, io, io), 
         int, int, int, io, io).
 :- mode do_special_up_callback(pred(in,in,in,di,uo) is det, in, in, in, di, uo) 

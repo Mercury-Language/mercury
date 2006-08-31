@@ -2176,15 +2176,16 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     Error = MR_io_exception;
 }").
 
-:- pragma export(make_err_msg(in, in, out, di, uo), "ML_make_err_msg").
+:- pragma foreign_export("C", make_err_msg(in, in, out, di, uo),
+    "ML_make_err_msg").
 
 :- pragma foreign_proc("C",
     make_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
+"
     ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, Msg);
     MR_update_io(IO0, IO);
-}").
+").
 
 :- pragma foreign_proc("C#",
     make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
@@ -2239,8 +2240,8 @@ have_dotnet :- semidet_fail.
     SUCCESS_INDICATOR = true;
 ").
 
-:- pragma export(make_win32_err_msg(in, in, out, di, uo),
-        "ML_make_win32_err_msg").
+:- pragma foreign_export("C", make_win32_err_msg(in, in, out, di, uo),
+    "ML_make_win32_err_msg").
 
 make_win32_err_msg(_, _, "", !IO) :-
     ( semidet_succeed ->
@@ -2252,10 +2253,10 @@ make_win32_err_msg(_, _, "", !IO) :-
 :- pragma foreign_proc("C",
     make_win32_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
+"
     ML_maybe_make_win32_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, Msg);
     MR_update_io(IO0, IO);
-}").
+").
 
 make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
     ( have_win32 ->
@@ -2646,18 +2647,28 @@ file_type_semaphore = semaphore.
 file_type_shared_memory = shared_memory.
 file_type_unknown = unknown.
 
-:- pragma export(file_type_character_device = out,
+:- pragma foreign_export("C", file_type_character_device = out,
     "ML_file_type_character_device").
-:- pragma export(file_type_block_device = out, "ML_file_type_block_device").
-:- pragma export(file_type_fifo = out, "ML_file_type_fifo").
-:- pragma export(file_type_directory = out, "ML_file_type_directory").
-:- pragma export(file_type_socket = out, "ML_file_type_socket").
-:- pragma export(file_type_symbolic_link = out, "ML_file_type_symbolic_link").
-:- pragma export(file_type_regular = out, "ML_file_type_regular").
-:- pragma export(file_type_message_queue = out, "ML_file_type_message_queue").
-:- pragma export(file_type_semaphore = out, "ML_file_type_semaphore").
-:- pragma export(file_type_shared_memory = out, "ML_file_type_shared_memory").
-:- pragma export(file_type_unknown = out, "ML_file_type_unknown ").
+:- pragma foreign_export("C", file_type_block_device = out,
+    "ML_file_type_block_device").
+:- pragma foreign_export("C", file_type_fifo = out,
+    "ML_file_type_fifo").
+:- pragma foreign_export("C", file_type_directory = out,
+    "ML_file_type_directory").
+:- pragma foreign_export("C", file_type_socket = out,
+    "ML_file_type_socket").
+:- pragma foreign_export("C", file_type_symbolic_link = out,
+    "ML_file_type_symbolic_link").
+:- pragma foreign_export("C", file_type_regular = out,
+    "ML_file_type_regular").
+:- pragma foreign_export("C", file_type_message_queue = out,
+    "ML_file_type_message_queue").
+:- pragma foreign_export("C", file_type_semaphore = out,
+    "ML_file_type_semaphore").
+:- pragma foreign_export("C", file_type_shared_memory = out,
+    "ML_file_type_shared_memory").
+:- pragma foreign_export("C", file_type_unknown = out,
+    "ML_file_type_unknown").
 
 %-----------------------------------------------------------------------------%
 
@@ -2912,54 +2923,56 @@ check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
 }").
 
 :- pred access_types_includes_read(list(access_type)::in) is semidet.
-:- pragma export(access_types_includes_read(in),
+:- pragma foreign_export("C", access_types_includes_read(in),
     "ML_access_types_includes_read").
 
 access_types_includes_read(Access) :-
     list.member(read, Access).
 
 :- pred access_types_includes_write(list(access_type)::in) is semidet.
-:- pragma export(access_types_includes_write(in),
+:- pragma foreign_export("C", access_types_includes_write(in),
     "ML_access_types_includes_write").
 
 access_types_includes_write(Access) :-
     list.member(write, Access).
 
 :- pred access_types_includes_execute(list(access_type)::in) is semidet.
-:- pragma export(access_types_includes_execute(in),
+:- pragma foreign_export("C", access_types_includes_execute(in),
     "ML_access_types_includes_execute").
 
 access_types_includes_execute(Access) :-
     list.member(execute, Access).
 
 :- func make_io_res_0_ok = io.res.
-:- pragma export((make_io_res_0_ok = out), "ML_make_io_res_0_ok").
+:- pragma foreign_export("C", (make_io_res_0_ok = out),
+    "ML_make_io_res_0_ok").
 
 make_io_res_0_ok = ok.
 
 :- pred make_io_res_0_error(io.system_error::in, string::in, io.res::out,
     io::di, io::uo) is det.
-:- pragma export(make_io_res_0_error(in, in, out, di, uo),
+:- pragma foreign_export("C", make_io_res_0_error(in, in, out, di, uo),
     "ML_make_io_res_0_error").
 
 make_io_res_0_error(Error, Msg0, error(make_io_error(Msg)), !IO) :-
     io.make_err_msg(Error, Msg0, Msg, !IO).
 
 :- func make_io_res_0_error_msg(string) = io.res.
-:- pragma export((make_io_res_0_error_msg(in) = out),
+:- pragma foreign_export("C", (make_io_res_0_error_msg(in) = out),
     "ML_make_io_res_0_error_msg").
 
 make_io_res_0_error_msg(Msg) = error(make_io_error(Msg)).
 
 :- func make_io_res_1_ok_file_type(file_type) = io.res(file_type).
-:- pragma export((make_io_res_1_ok_file_type(in) = out),
+:- pragma foreign_export("C", (make_io_res_1_ok_file_type(in) = out),
     "ML_make_io_res_1_ok_file_type").
 
 make_io_res_1_ok_file_type(FileType) = ok(FileType).
 
 :- pred make_io_res_1_error_file_type(io.system_error::in,
     string::in, io.res(file_type)::out, io::di, io::uo) is det.
-:- pragma export(make_io_res_1_error_file_type(in, in, out, di, uo),
+:- pragma foreign_export("C",
+    make_io_res_1_error_file_type(in, in, out, di, uo),
     "ML_make_io_res_1_error_file_type").
 
 make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg)), !IO) :-
@@ -3729,14 +3742,15 @@ io.write_many(Stream, [f(F) | Rest], !IO) :-
     io.write_many(Stream, Rest, !IO).
 
 %-----------------------------------------------------------------------------%
+%
+% Various different versions of io.print
+%
 
-% Various different versions of io.print.
-
-:- pragma export(io.print(in, in(do_not_allow), in, di, uo),
+:- pragma foreign_export("C", io.print(in, in(do_not_allow), in, di, uo),
     "ML_io_print_dna_to_stream").
-:- pragma export(io.print(in, in(canonicalize), in, di, uo),
+:- pragma foreign_export("C", io.print(in, in(canonicalize), in, di, uo),
     "ML_io_print_can_to_stream").
-:- pragma export(io.print(in, in(include_details_cc), in, di, uo),
+:- pragma foreign_export("C", io.print(in, in(include_details_cc), in, di, uo),
     "ML_io_print_cc_to_stream").
 
 io.print(Stream, NonCanon, Term, !IO) :-
@@ -3744,14 +3758,16 @@ io.print(Stream, NonCanon, Term, !IO) :-
     io.do_print(NonCanon, Term, !IO),
     io.set_output_stream(OrigStream, _Stream, !IO).
 
-:- pragma export(io.print(in, in, di, uo), "ML_io_print_to_stream").
+:- pragma foreign_export("C", io.print(in, in, di, uo),
+    "ML_io_print_to_stream").
 
 io.print(Stream, Term, !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
     io.do_print(canonicalize, Term, !IO),
     io.set_output_stream(OrigStream, _Stream, !IO).
 
-:- pragma export(io.print(in, di, uo), "ML_io_print_to_cur_stream").
+:- pragma foreign_export("C", io.print(in, di, uo),
+    "ML_io_print_to_cur_stream").
 
 io.print(Term, !IO) :-
     io.do_print(canonicalize, Term, !IO).
@@ -3826,8 +3842,9 @@ io.do_write(NonCanon, Term, !IO) :-
     io.do_write_univ(NonCanon, Univ, !IO).
 
 %-----------------------------------------------------------------------------%
-
-% Various different versions of io.write_univ.
+%
+% Various different versions of io.write_univ
+%
 
 io.write_univ(Univ, !IO) :-
     io.do_write_univ(canonicalize, Univ, !IO).
@@ -4242,8 +4259,9 @@ io.read_binary(Result, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-% stream predicates
+%
+% Stream predicates
+%
 
 io.open_input(FileName, Result, !IO) :-
     io.do_open_text(FileName, "r", Result0, OpenCount, NewStream, !IO),
@@ -4802,8 +4820,9 @@ io.report_stats(Selector, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-% miscellaneous predicates
+%
+% Miscellaneous predicates
+%
 
 :- interface.
 
@@ -4815,7 +4834,8 @@ io.report_stats(Selector, !IO) :-
 :- implementation.
 
     % For use by the Mercury runtime.
-:- pragma export(io.init_state(di, uo), "ML_io_init_state").
+    %
+:- pragma foreign_export("C", io.init_state(di, uo), "ML_io_init_state").
 
 io.init_state(!IO) :-
     io.gc_init(type_of(StreamDb), type_of(Globals), !IO),
@@ -4829,7 +4849,8 @@ io.init_state(!IO) :-
 :- pred io.finalize_state(io::di, io::uo) is det.
 
     % For use by the Mercury runtime.
-:- pragma export(io.finalize_state(di, uo), "ML_io_finalize_state").
+    %
+:- pragma foreign_export("C", io.finalize_state(di, uo), "ML_io_finalize_state").
 
     % Currently no finalization needed...
     % (Perhaps we should close all open Mercury files?
@@ -4911,7 +4932,7 @@ io.set_op_table(_OpTable, !IO).
 
 :- pred io.get_io_input_stream_type(type_desc::out, io::di, io::uo) is det.
 
-:- pragma export(io.get_io_input_stream_type(out, di, uo),
+:- pragma foreign_export("C", io.get_io_input_stream_type(out, di, uo),
     "ML_io_input_stream_type").
 
 io.get_io_input_stream_type(Type, !IO) :-
@@ -4920,7 +4941,7 @@ io.get_io_input_stream_type(Type, !IO) :-
 
 :- pred io.get_io_output_stream_type(type_desc::out, io::di, io::uo) is det.
 
-:- pragma export(io.get_io_output_stream_type(out, di, uo),
+:- pragma foreign_export("C", io.get_io_output_stream_type(out, di, uo),
     "ML_io_output_stream_type").
 
 io.get_io_output_stream_type(Type, !IO) :-
@@ -5805,7 +5826,7 @@ static MR_MercuryFileStruct mercury_open(string filename, string openmode,
 ").
 
 :- pred throw_io_error(string::in) is erroneous.
-:- pragma export(throw_io_error(in), "ML_throw_io_error").
+:- pragma foreign_export("C", throw_io_error(in), "ML_throw_io_error").
 
 throw_io_error(Message) :-
     throw(io_error(Message)).
@@ -6902,9 +6923,12 @@ io.write_float(Stream, Float, !IO) :-
 
 % Stream predicates.
 
-:- pragma export(io.stdin_stream(out, di, uo), "ML_io_stdin_stream").
-:- pragma export(io.stdout_stream(out, di, uo), "ML_io_stdout_stream").
-:- pragma export(io.stderr_stream(out, di, uo), "ML_io_stderr_stream").
+:- pragma foreign_export("C", io.stdin_stream(out, di, uo),
+    "ML_io_stdin_stream").
+:- pragma foreign_export("C", io.stdout_stream(out, di, uo),
+    "ML_io_stdout_stream").
+:- pragma foreign_export("C", io.stderr_stream(out, di, uo),
+    "ML_io_stderr_stream").
 
 :- pragma foreign_proc("C",
     io.stdin_stream = (Stream::out),

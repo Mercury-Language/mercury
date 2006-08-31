@@ -1,16 +1,18 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999, 2002, 2005-2006 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1993-1995, 1997, 1999, 2002, 2005-2006
+% The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: tr_array.m
-% Main authors: fjh
-% Stability: medium
-
+% 
+% File: tr_array.m.
+% Main authors: fjh.
+% Stability: medium.
+% 
 % This module provides backtrackable destructive update operations on arrays.
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module tr_array.
@@ -19,7 +21,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Operations that perform backtrackable destructive update.
+% Operations that perform backtrackable destructive update
 %
 
 	% tr_array.set sets the nth element of an array, and returns the
@@ -198,7 +200,7 @@ lower bounds other than zero are not supported
 :- pragma foreign_proc("C",
 	tr_array.set(Array0::array_mdi, Index::in, Item::in, Array::array_muo),
 	[promise_pure, will_not_call_mercury],
-"{
+"
 	MR_ArrayType *array = (MR_ArrayType *) Array0;
 	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
 		MR_fatal_error(""tr_array.set: array index out of bounds"");
@@ -206,7 +208,7 @@ lower bounds other than zero are not supported
 	MR_trail_current_value(&array->elements[Index]);
 	array->elements[Index] = Item;	/* destructive update! */
 	Array = Array0;
-}").
+").
 
 tr_array.semidet_set(Array0, Index, Item, Array) :-
 	tr_array.in_bounds(Array0, Index),
@@ -287,23 +289,24 @@ tr_array.slow_set(Array0, Index, Item, Array) :-
 :- pragma foreign_proc("C",
 	tr_array.lookup(Array::array_mui, Index::in, Item::out),
 	[promise_pure, will_not_call_mercury],
-"{
+"
 	MR_ArrayType *array = (MR_ArrayType *) Array;
 	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
 		MR_fatal_error(""tr_array.lookup: array index out of bounds"");
 	}
 	Item = array->elements[Index];
-}").
+").
+
 :- pragma foreign_proc("C",
 	tr_array.lookup(Array::in, Index::in, Item::out),
 	[promise_pure, will_not_call_mercury],
-"{
+"
 	MR_ArrayType *array = (MR_ArrayType *) Array;
 	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
 		MR_fatal_error(""tr_array.lookup: array index out of bounds"");
 	}
 	Item = array->elements[Index];
-}").
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -457,22 +460,22 @@ ML_tr_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 %-----------------------------------------------------------------------------%
 
 tr_array.to_list(Array, List) :-
-        tr_array.bounds(Array, Low, High),
-        tr_array.fetch_items(Array, Low, High, List).
+    tr_array.bounds(Array, Low, High),
+    tr_array.fetch_items(Array, Low, High, List).
 
 %-----------------------------------------------------------------------------%
 
 tr_array.fetch_items(Array, Low, High, List) :-
-        (
-                Low > High
-        ->
-                List = []
-        ;
-                Low1 = Low + 1,
-                tr_array.fetch_items(Array, Low1, High, List0),
-                tr_array.lookup(Array, Low, Item),
-                List = [Item|List0]
-        ).
+    (
+            Low > High
+    ->
+            List = []
+    ;
+            Low1 = Low + 1,
+            tr_array.fetch_items(Array, Low1, High, List0),
+            tr_array.lookup(Array, Low, Item),
+            List = [Item | List0]
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -481,9 +484,10 @@ tr_array.bsearch(A, El, Compare, Result) :-
 	tr_array.bsearch_2(A, Lo, Hi, El, Compare, Result).
 
 :- pred tr_array.bsearch_2(array(T), int, int, T,
-			pred(T, T, comparison_result), maybe(int)).
+    pred(T, T, comparison_result), maybe(int)).
 :- mode tr_array.bsearch_2(in, in, in, in, pred(in, in, out) is det,
-				out) is det.
+    out) is det.
+
 tr_array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 	Width = Hi - Lo,
 
@@ -496,9 +500,9 @@ tr_array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 	    ( Width = 0 ->
 	        tr_array.lookup(Array, Lo, X),
 	        ( Compare(El, X, (=)) ->
-		    Result = yes(Lo)
+		        Result = yes(Lo)
 	        ;
-		    Result = no
+		        Result = no
 	        )
 	    ;
 	        % Otherwise find the middle element of the range
@@ -507,16 +511,16 @@ tr_array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 	        tr_array.lookup(Array, Mid, XMid),
 	        Compare(XMid, El, Comp),
 	        ( 
-		    Comp = (<),
-		    Mid1 = Mid + 1,
-		    tr_array.bsearch_2(Array, Mid1, Hi, El, Compare, Result)
+		        Comp = (<),
+		        Mid1 = Mid + 1,
+		        tr_array.bsearch_2(Array, Mid1, Hi, El, Compare, Result)
 	        ; 
-		    Comp = (=),
-		    tr_array.bsearch_2(Array, Lo, Mid, El, Compare, Result)
+		        Comp = (=),
+		        tr_array.bsearch_2(Array, Lo, Mid, El, Compare, Result)
 	        ;
-	  	    Comp = (>),
-		    Mid1 = Mid - 1,
-		    tr_array.bsearch_2(Array, Lo, Mid1, El, Compare, Result)
+	  	        Comp = (>),
+		        Mid1 = Mid - 1,
+		        tr_array.bsearch_2(Array, Lo, Mid1, El, Compare, Result)
 	        )
 	    )
 	).

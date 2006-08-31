@@ -348,7 +348,7 @@
 :- import_module type_desc.
 
 
-:- pragma export(init_persistent_state(out),
+:- pragma foreign_export("C", init_persistent_state(out),
     "ML_BROWSE_init_persistent_state").
 
 %
@@ -359,8 +359,9 @@
 :- pred set_depth_from_mdb(bool::in, bool::in, bool::in,
     bool::in, bool::in, bool::in, bool::in, int::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_depth_from_mdb(in, in, in, in, in, in, in,
-    in, in, out), "ML_BROWSE_set_depth_from_mdb").
+:- pragma foreign_export("C",
+    set_depth_from_mdb(in, in, in, in, in, in, in, in, in, out),
+    "ML_BROWSE_set_depth_from_mdb").
 
 set_depth_from_mdb(P, B, A, F, Pr, V, NPr, Depth, !Browser) :-
     set_browser_param(no, P, B, A, F, Pr, V, NPr,  depth(Depth), !Browser).
@@ -368,8 +369,9 @@ set_depth_from_mdb(P, B, A, F, Pr, V, NPr, Depth, !Browser) :-
 :- pred set_size_from_mdb(bool::in, bool::in, bool::in, bool::in,
     bool::in, bool::in, bool::in, int::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_size_from_mdb(in, in, in, in, in, in, in,
-    in, in, out), "ML_BROWSE_set_size_from_mdb").
+:- pragma foreign_export("C",
+    set_size_from_mdb(in, in, in, in, in, in, in, in, in, out),
+    "ML_BROWSE_set_size_from_mdb").
 
 set_size_from_mdb(P, B, A, F, Pr, NPr, V, Size, !Browser) :-
     set_browser_param(no, P, B, A, F, Pr, V, NPr, size(Size), !Browser).
@@ -377,8 +379,9 @@ set_size_from_mdb(P, B, A, F, Pr, NPr, V, Size, !Browser) :-
 :- pred set_width_from_mdb(bool::in, bool::in, bool::in,
     bool::in, bool::in, bool::in, bool::in, int::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_width_from_mdb(in, in, in, in, in, in, in,
-    in, in, out), "ML_BROWSE_set_width_from_mdb").
+:- pragma foreign_export("C",
+    set_width_from_mdb(in, in, in, in, in, in, in, in, in, out),
+    "ML_BROWSE_set_width_from_mdb").
 
 set_width_from_mdb(P, B, A, F, Pr, V, NPr, Width, !Browser) :-
     set_browser_param(no, P, B, A, F, Pr, V, NPr, width(Width), !Browser).
@@ -386,8 +389,9 @@ set_width_from_mdb(P, B, A, F, Pr, V, NPr, Width, !Browser) :-
 :- pred set_lines_from_mdb(bool::in, bool::in, bool::in,
     bool::in, bool::in, bool::in, bool::in, int::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_lines_from_mdb(in, in, in, in, in, in, in,
-    in, in, out), "ML_BROWSE_set_lines_from_mdb").
+:- pragma foreign_export("C",
+    set_lines_from_mdb(in, in, in, in, in, in, in, in, in, out),
+    "ML_BROWSE_set_lines_from_mdb").
 
 set_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines, !Browser) :-
     set_browser_param(no, P, B, A, F, Pr, V, NPr, lines(Lines), !Browser).
@@ -416,20 +420,23 @@ info_set_xml_tmp_filename(FileName, !Info) :-
 
 :- pred set_format_from_mdb(bool::in, bool::in, bool::in, portray_format::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_format_from_mdb(in, in, in, in, in, out),
+:- pragma foreign_export("C",
+    set_format_from_mdb(in, in, in, in, in, out),
     "ML_BROWSE_set_format_from_mdb").
 
 set_format_from_mdb(P, B, A, Format, !Browser) :-
     % Any format flags are ignored for this parameter.
     set_browser_param(no, P, B, A, no, no, no, no, format(Format), !Browser).
 
-:- pragma export(get_num_io_actions(in, out),
+:- pragma foreign_export("C",
+    get_num_io_actions(in, out),
     "ML_BROWSE_get_num_io_actions").
 
 get_num_io_actions(Browser, NumIOActions) :-
     NumIOActions = Browser ^ num_printed_io_actions.
 
-:- pragma export(set_num_io_actions(in, in, out),
+:- pragma foreign_export("C",
+    set_num_io_actions(in, in, out),
     "ML_BROWSE_set_num_io_actions").
 
 set_num_io_actions(NumIOActions, !Browser) :-
@@ -437,7 +444,8 @@ set_num_io_actions(NumIOActions, !Browser) :-
 
 :- pred get_xml_browser_cmd_from_mdb(browser_persistent_state::in,
     string::out) is det.
-:- pragma export(get_xml_browser_cmd_from_mdb(in, out),
+:- pragma foreign_export("C",
+    get_xml_browser_cmd_from_mdb(in, out),
     "ML_BROWSE_get_xml_browser_cmd_from_mdb").
 
 get_xml_browser_cmd_from_mdb(Browser, Command) :-
@@ -451,7 +459,8 @@ get_xml_browser_cmd_from_mdb(Browser, Command) :-
 
 :- pred set_xml_browser_cmd_from_mdb(string::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_xml_browser_cmd_from_mdb(in, in, out),
+:- pragma foreign_export("C",
+    set_xml_browser_cmd_from_mdb(in, in, out),
     "ML_BROWSE_set_xml_browser_cmd_from_mdb").
 
 set_xml_browser_cmd_from_mdb(Command, !Browser) :-
@@ -463,7 +472,8 @@ set_xml_browser_cmd_from_mdb(Command, !Browser) :-
 
 :- pred get_xml_tmp_filename_from_mdb(browser_persistent_state::in,
     string::out) is det.
-:- pragma export(get_xml_tmp_filename_from_mdb(in, out),
+:- pragma foreign_export("C",
+    get_xml_tmp_filename_from_mdb(in, out),
     "ML_BROWSE_get_xml_tmp_filename_from_mdb").
 
 get_xml_tmp_filename_from_mdb(Browser, FileName) :-
@@ -477,7 +487,8 @@ get_xml_tmp_filename_from_mdb(Browser, FileName) :-
 
 :- pred set_xml_tmp_filename_from_mdb(string::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_xml_tmp_filename_from_mdb(in, in, out),
+:- pragma foreign_export("C",
+    set_xml_tmp_filename_from_mdb(in, in, out),
     "ML_BROWSE_set_xml_tmp_filename_from_mdb").
 
 set_xml_tmp_filename_from_mdb(FileName, !Browser) :-
@@ -493,12 +504,14 @@ set_xml_tmp_filename_from_mdb(FileName, !Browser) :-
 %
 
 :- func mercury_bool_yes = bool.
-:- pragma export(mercury_bool_yes = out, "ML_BROWSE_mercury_bool_yes").
+:- pragma foreign_export("C", mercury_bool_yes = out,
+    "ML_BROWSE_mercury_bool_yes").
 
 mercury_bool_yes = yes.
 
 :- func mercury_bool_no = bool.
-:- pragma export(mercury_bool_no = out, "ML_BROWSE_mercury_bool_no").
+:- pragma foreign_export("C", mercury_bool_no = out,
+    "ML_BROWSE_mercury_bool_no").
 
 mercury_bool_no = no.
 
@@ -1014,7 +1027,7 @@ send_term_to_socket(Term, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma export(browser_params_to_string(in, in, out),
+:- pragma foreign_export("C", browser_params_to_string(in, in, out),
     "ML_BROWSE_browser_params_to_string").
 
 browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
@@ -1136,7 +1149,7 @@ format_to_string(pretty) = "pretty".
 %---------------------------------------------------------------------------%
 
 :- pred browser_persistent_state_type(type_desc::out) is det.
-:- pragma export(browser_persistent_state_type(out),
+:- pragma foreign_export("C", browser_persistent_state_type(out),
     "ML_BROWSE_browser_persistent_state_type").
 
 browser_persistent_state_type(type_of(State)) :-

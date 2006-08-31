@@ -127,14 +127,14 @@ univ_type(Univ) = type_desc.type_of(univ_value(Univ)).
 
 :- pred construct_univ(T, univ).
 :- mode construct_univ(in, out) is det.
-:- pragma export(construct_univ(in, out), "ML_construct_univ").
+:- pragma foreign_export("C", construct_univ(in, out), "ML_construct_univ").
 
 construct_univ(X, Univ) :-
     Univ = univ(X).
 
 :- some [T] pred unravel_univ(univ, T).
 :- mode unravel_univ(in, out) is det.
-:- pragma export(unravel_univ(in, out), "ML_unravel_univ").
+:- pragma foreign_export("C", unravel_univ(in, out), "ML_unravel_univ").
 
 unravel_univ(Univ, X) :-
     univ_value(Univ) = X.

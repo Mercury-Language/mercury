@@ -588,7 +588,7 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
     browser_info.browser_persistent_state::in, help.system::in,
     diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma export(diagnoser_state_init_store(in, in, in, in, out),
+:- pragma foreign_export("C", diagnoser_state_init_store(in, in, in, in, out),
     "MR_DD_decl_diagnosis_state_init").
 
 diagnoser_state_init_store(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
@@ -600,7 +600,7 @@ diagnoser_state_init_store(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
     diagnoser_state(trace_node_id)::in,
     diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma export(set_diagnoser_testing_flag(in, in, out),
+:- pragma foreign_export("C", set_diagnoser_testing_flag(in, in, out),
     "MR_DD_decl_set_diagnoser_testing_flag").
 
 set_diagnoser_testing_flag(Testing, !Diagnoser) :-
@@ -613,7 +613,7 @@ set_diagnoser_testing_flag(Testing, !Diagnoser) :-
     diagnoser_state(trace_node_id)::in, 
     diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma export(
+:- pragma foreign_export("C",
     mdb.declarative_debugger.set_fallback_search_mode(in, in, in, out), 
     "MR_DD_decl_set_fallback_search_mode").
 
@@ -627,7 +627,8 @@ set_fallback_search_mode(Store, SearchMode, !Diagnoser) :-
 
 top_down_search_mode = mdb.declarative_analyser.top_down_search_mode.
 
-:- pragma export(mdb.declarative_debugger.top_down_search_mode = out, 
+:- pragma foreign_export("C",
+    mdb.declarative_debugger.top_down_search_mode = out, 
     "MR_DD_decl_top_down_search_mode").
 
 :- func divide_and_query_search_mode = mdb.declarative_analyser.search_mode.
@@ -635,7 +636,8 @@ top_down_search_mode = mdb.declarative_analyser.top_down_search_mode.
 divide_and_query_search_mode = 
     mdb.declarative_analyser.divide_and_query_search_mode.
 
-:- pragma export(mdb.declarative_debugger.divide_and_query_search_mode = out, 
+:- pragma foreign_export("C",
+    mdb.declarative_debugger.divide_and_query_search_mode = out, 
     "MR_DD_decl_divide_and_query_search_mode").
 
 :- func suspicion_divide_and_query_search_mode = 
@@ -644,7 +646,7 @@ divide_and_query_search_mode =
 suspicion_divide_and_query_search_mode = 
     mdb.declarative_analyser.suspicion_divide_and_query_search_mode.
 
-:- pragma export(
+:- pragma foreign_export("C",
     mdb.declarative_debugger.suspicion_divide_and_query_search_mode = out, 
     "MR_DD_decl_suspicion_divide_and_query_search_mode").
 
@@ -657,7 +659,8 @@ suspicion_divide_and_query_search_mode =
     browser_info.browser_persistent_state::in, 
     browser_info.browser_persistent_state::out, io::di, io::uo) is cc_multi.
 
-:- pragma export(diagnosis_new_tree(in, in, out, in, out, in, out, di, uo),
+:- pragma foreign_export("C",
+    diagnosis_new_tree(in, in, out, in, out, in, out, di, uo),
     "MR_DD_decl_diagnosis_new_tree").
 
 diagnosis_new_tree(Store, Node, Response, !State, !Browser, !IO) :-
@@ -672,7 +675,8 @@ diagnosis_new_tree(Store, Node, Response, !State, !Browser, !IO) :-
     browser_info.browser_persistent_state::in, 
     browser_info.browser_persistent_state::out, io::di, io::uo) is cc_multi.
 
-:- pragma export(diagnosis_resume_previous(in, out, in, out, in, out, di, uo),
+:- pragma foreign_export("C",
+    diagnosis_resume_previous(in, out, in, out, in, out, di, uo),
     "MR_DD_decl_diagnosis_resume_previous").
 
 diagnosis_resume_previous(Store, Response, !State, !Browser, !IO) :-
@@ -684,14 +688,15 @@ diagnosis_resume_previous(Store, Response, !State, !Browser, !IO) :-
 :- pred diagnoser_bug_found(diagnoser_response(trace_node_id)::in, 
     event_number::out) is semidet.
 
-:- pragma export(diagnoser_bug_found(in, out), "MR_DD_diagnoser_bug_found").
+:- pragma foreign_export("C", diagnoser_bug_found(in, out),
+    "MR_DD_diagnoser_bug_found").
 
 diagnoser_bug_found(bug_found(Event), Event).
 
 :- pred diagnoser_symptom_found(diagnoser_response(trace_node_id)::in, 
     event_number::out) is semidet.
 
-:- pragma export(diagnoser_symptom_found(in, out),
+:- pragma foreign_export("C", diagnoser_symptom_found(in, out),
     "MR_DD_diagnoser_symptom_found").
 
 diagnoser_symptom_found(symptom_found(Event), Event).
@@ -699,7 +704,8 @@ diagnoser_symptom_found(symptom_found(Event), Event).
 :- pred diagnoser_no_bug_found(diagnoser_response(trace_node_id)::in)
     is semidet.
 
-:- pragma export(diagnoser_no_bug_found(in), "MR_DD_diagnoser_no_bug_found").
+:- pragma foreign_export("C", diagnoser_no_bug_found(in),
+    "MR_DD_diagnoser_no_bug_found").
 
 diagnoser_no_bug_found(no_bug_found).
 
@@ -707,7 +713,8 @@ diagnoser_no_bug_found(no_bug_found).
     event_number::out, sequence_number::out, trace_node_id::out, int::out) 
     is semidet.
 
-:- pragma export(diagnoser_require_subtree(in, out, out, out, out),
+:- pragma foreign_export("C",
+    diagnoser_require_subtree(in, out, out, out, out),
     "MR_DD_diagnoser_require_subtree").
 
 diagnoser_require_subtree(require_subtree(Event, SeqNo, CallPreceding, 
@@ -716,7 +723,8 @@ diagnoser_require_subtree(require_subtree(Event, SeqNo, CallPreceding,
 :- pred diagnoser_require_supertree(diagnoser_response(trace_node_id)::in, 
     event_number::out, sequence_number::out) is semidet.
 
-:- pragma export(diagnoser_require_supertree(in, out, out),
+:- pragma foreign_export("C",
+    diagnoser_require_supertree(in, out, out),
     "MR_DD_diagnoser_require_supertree").
 
 diagnoser_require_supertree(require_supertree(Event, SeqNo), Event, SeqNo).
@@ -728,7 +736,8 @@ diagnoser_require_supertree(require_supertree(Event, SeqNo), Event, SeqNo).
 :- pred add_trusted_module(string::in, diagnoser_state(trace_node_id)::in, 
     diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma export(mdb.declarative_debugger.add_trusted_module(in, in, out),
+:- pragma foreign_export("C",
+    mdb.declarative_debugger.add_trusted_module(in, in, out),
     "MR_DD_decl_add_trusted_module").
 
 add_trusted_module(ModuleName, Diagnoser0, Diagnoser) :-
@@ -742,8 +751,9 @@ add_trusted_module(ModuleName, Diagnoser0, Diagnoser) :-
     diagnoser_state(trace_node_id)::in,
     diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma export(mdb.declarative_debugger.add_trusted_pred_or_func(in, in, 
-    out), "MR_DD_decl_add_trusted_pred_or_func").
+:- pragma foreign_export("C",
+    mdb.declarative_debugger.add_trusted_pred_or_func(in, in, out),
+    "MR_DD_decl_add_trusted_pred_or_func").
         
 add_trusted_pred_or_func(ProcLayout, !Diagnoser) :-
     add_trusted_pred_or_func(ProcLayout, !.Diagnoser ^ oracle_state, Oracle),
@@ -752,7 +762,8 @@ add_trusted_pred_or_func(ProcLayout, !Diagnoser) :-
 :- pred trust_standard_library(diagnoser_state(trace_node_id)::in,
     diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma export(mdb.declarative_debugger.trust_standard_library(in, out), 
+:- pragma foreign_export("C",
+    mdb.declarative_debugger.trust_standard_library(in, out), 
     "MR_DD_decl_trust_standard_library").
 
 trust_standard_library(!Diagnoser) :-
@@ -763,7 +774,8 @@ trust_standard_library(!Diagnoser) :-
 :- pred remove_trusted(int::in, diagnoser_state(trace_node_id)::in,
     diagnoser_state(trace_node_id)::out) is semidet.
     
-:- pragma export(mdb.declarative_debugger.remove_trusted(in, in, out),
+:- pragma foreign_export("C",
+    mdb.declarative_debugger.remove_trusted(in, in, out),
     "MR_DD_decl_remove_trusted").
 
 remove_trusted(N, !Diagnoser) :-
@@ -779,7 +791,8 @@ remove_trusted(N, !Diagnoser) :-
 :- pred get_trusted_list(diagnoser_state(trace_node_id)::in, bool::in,
     string::out) is det.
 
-:- pragma export(mdb.declarative_debugger.get_trusted_list(in, in, out),
+:- pragma foreign_export("C",
+    mdb.declarative_debugger.get_trusted_list(in, in, out),
     "MR_DD_decl_get_trusted_list").
 
 get_trusted_list(Diagnoser, MDBCommandFormat, List) :-

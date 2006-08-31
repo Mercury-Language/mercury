@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: debugger_interface.m.
 % Authors: fjh, jahier.
-
+% 
 % Purpose:
 %   This module provide support routines needed by
 %   runtime/mercury_trace_external.c for interfacing to an external
@@ -16,6 +16,8 @@
 %   debugger.
 %
 % This module corresponds to what is called the "Query Handler" in Opium.
+%
+%-----------------------------------------------------------------------------%
 
 :- module mdb.debugger_interface.
 :- interface.
@@ -323,8 +325,10 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 %   send to the debugger (e.g. Opium) the attributes of the current event
 %   except the list of arguments.
 
-:- pragma export(output_current_slots_user(in, in, in, in, in, in, in, in,
-    in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_user").
+:- pragma foreign_export("C",
+    output_current_slots_user(in, in, in, in, in, in, in, in, in, in, in, in,
+        in, in, di, uo),
+    "ML_DI_output_current_slots_user").
 
 :- pred output_current_slots_user(event_number::in, call_number::in,
     depth_number::in, trace_port::in, pred_or_func::in,
@@ -347,8 +351,10 @@ output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port,
 %   send to the debugger (e.g. Opium) the attributes of the current event
 %   except the list of arguments.
 
-:- pragma export(output_current_slots_comp(in, in, in, in, in, in, in,
-    in, in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_comp").
+:- pragma foreign_export("C",
+    output_current_slots_comp(in, in, in, in, in, in, in, in, in, in, in, in,
+        in, in, di, uo),
+    "ML_DI_output_current_slots_comp").
 
 :- pred output_current_slots_comp(event_number::in, call_number::in,
     depth_number::in, trace_port::in, /* name type */ string::in,
@@ -371,7 +377,7 @@ output_current_slots_comp(EventNumber, CallNumber, DepthNumber, Port,
 %   send to the debugger the list of the live variables of the current
 %   event.
 
-:- pragma export(output_current_vars(in, in, in, di, uo),
+:- pragma foreign_export("C", output_current_vars(in, in, in, di, uo),
     "ML_DI_output_current_vars").
 
 :- pred output_current_vars(list(univ)::in, list(string)::in,
@@ -386,7 +392,7 @@ output_current_vars(VarList, StringList, OutputStream, !IO) :-
 % output_current_nth_var "ML_DI_output_current_nth_var":
 %   send to the debugger the requested live variable of the current event.
 
-:- pragma export(output_current_nth_var(in, in, di, uo),
+:- pragma foreign_export("C", output_current_nth_var(in, in, di, uo),
     "ML_DI_output_current_nth_var").
 
 :- pred output_current_nth_var(univ::in, io.output_stream::in, io::di, io::uo)
@@ -398,7 +404,8 @@ output_current_nth_var(Var, OutputStream, !IO) :-
     io.print(OutputStream, ".\n", !IO),
     io.flush_output(OutputStream, !IO).
 
-:- pragma export(output_current_live_var_names(in, in, in, di, uo),
+:- pragma foreign_export("C",
+    output_current_live_var_names(in, in, in, di, uo),
     "ML_DI_output_current_live_var_names").
 
 :- pred output_current_live_var_names(list(string)::in, list(string)::in,
@@ -414,7 +421,8 @@ output_current_live_var_names(LiveVarNameList, LiveVarTypeList, OutputStream,
 
 %-----------------------------------------------------------------------------%
 
-:- pragma export(get_var_number(in) = out, "ML_DI_get_var_number").
+:- pragma foreign_export("C", get_var_number(in) = out,
+    "ML_DI_get_var_number").
 
     % This function is intended to retrieve the integer in
     % "current_nth_var(int)" requests.
@@ -430,8 +438,9 @@ get_var_number(DebuggerRequest) = VarNumber :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma export(found_match_user(in, in, in, in, in, in, in, in, in, in, in,
-        in, in, in), "ML_DI_found_match_user").
+:- pragma foreign_export("C",
+    found_match_user(in, in, in, in, in, in, in, in, in, in, in, in, in, in),
+    "ML_DI_found_match_user").
 
 :- pred found_match_user(event_number::in, call_number::in, depth_number::in,
     trace_port::in, pred_or_func::in, /* declarated module name */ string::in,
@@ -491,8 +500,9 @@ match(interval(Low, High), X) :-
     compare(GE, X, Low),
     ( GE = (>) ; GE = (=) ).
 
-:- pragma export(found_match_comp(in, in, in, in, in, in, in, in, in, in, in,
-    in, in, in), "ML_DI_found_match_comp").
+:- pragma foreign_export("C",
+    found_match_comp(in, in, in, in, in, in, in, in, in, in, in, in, in, in),
+    "ML_DI_found_match_comp").
 
 :- pred found_match_comp(event_number::in, call_number::in, depth_number::in,
     trace_port::in, /* name type */ string::in, /* module type */ string::in,
@@ -542,7 +552,8 @@ found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
 :- pred read_request_from_socket(io.input_stream::in, debugger_request::out,
     int::out, io::di, io::uo) is det.
 
-:- pragma export(read_request_from_socket(in, out, out, di, uo),
+:- pragma foreign_export("C",
+    read_request_from_socket(in, out, out, di, uo),
     "ML_DI_read_request_from_socket").
 
 read_request_from_socket(SocketStream, Request, RequestType, !IO) :-
@@ -572,7 +583,7 @@ read_request_from_socket(SocketStream, Request, RequestType, !IO) :-
 :- pred get_list_modules_to_import(debugger_request::in, int::out,
     imports::out) is det.
 
-:- pragma export(get_list_modules_to_import(in, out, out),
+:- pragma foreign_export("C", get_list_modules_to_import(in, out, out),
     "ML_DI_get_list_modules_to_import").
 
 get_list_modules_to_import(DebuggerRequest, ListLength, ModulesList) :-
@@ -590,7 +601,8 @@ get_list_modules_to_import(DebuggerRequest, ListLength, ModulesList) :-
 %-----------------------------------------------------------------------------%
 
 :- pred get_mmc_options(debugger_request::in, options::out) is det.
-:- pragma export(get_mmc_options(in, out), "ML_DI_get_mmc_options").
+:- pragma foreign_export("C", get_mmc_options(in, out),
+    "ML_DI_get_mmc_options").
 
 get_mmc_options(DebuggerRequest, Options) :-
     ( DebuggerRequest = mmc_options(OptionsPrim) ->
@@ -606,7 +618,8 @@ get_mmc_options(DebuggerRequest, Options) :-
     % `link_collect(ObjectFileName)' request.
     %
 :- pred get_object_file_name(debugger_request::in, string::out) is det.
-:- pragma export(get_object_file_name(in, out), "ML_DI_get_object_file_name").
+:- pragma foreign_export("C", get_object_file_name(in, out),
+    "ML_DI_get_object_file_name").
 
 get_object_file_name(DebuggerRequest, ObjectFileName) :-
     ( DebuggerRequest = link_collect(ObjectFileNamePrime) ->
@@ -618,7 +631,8 @@ get_object_file_name(DebuggerRequest, ObjectFileName) :-
 %-----------------------------------------------------------------------------%
 
 :- pred init_mercury_string(string::out) is det.
-:- pragma export(init_mercury_string(out), "ML_DI_init_mercury_string").
+:- pragma foreign_export("C", init_mercury_string(out),
+    "ML_DI_init_mercury_string").
 
 init_mercury_string("").
 
@@ -628,7 +642,8 @@ init_mercury_string("").
     % of the variable to browse from a `browse(var_name)' request.
     %
 :- pred get_variable_name(debugger_request::in, string::out) is det.
-:- pragma export(get_variable_name(in, out), "ML_DI_get_variable_name").
+:- pragma foreign_export("C", get_variable_name(in, out),
+    "ML_DI_get_variable_name").
 
 get_variable_name(DebuggerRequest, Options) :-
     ( DebuggerRequest = browse(OptionsPrime) ->

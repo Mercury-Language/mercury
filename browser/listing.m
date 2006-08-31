@@ -102,23 +102,23 @@
 
     % These predicates are called from trace/mercury_trace_internal.c.
     %
-:- pragma export(new_list_path = out,
+:- pragma foreign_export("C", new_list_path = out,
     "ML_LISTING_new_list_path").
-:- pragma export(get_list_path(in) = out,
+:- pragma foreign_export("C", get_list_path(in) = out,
     "ML_LISTING_get_list_path").
-:- pragma export(set_list_path(in, in, out),
+:- pragma foreign_export("C", set_list_path(in, in, out),
     "ML_LISTING_set_list_path").
-:- pragma export(clear_list_path(in, out),
+:- pragma foreign_export("C", clear_list_path(in, out),
     "ML_LISTING_clear_list_path").
-:- pragma export(push_list_path(in, in, out),
+:- pragma foreign_export("C", push_list_path(in, in, out),
     "ML_LISTING_push_list_path").
-:- pragma export(pop_list_path(in, out),
+:- pragma foreign_export("C", pop_list_path(in, out),
     "ML_LISTING_pop_list_path").
-:- pragma export(list_file(in, in, in, in, in, in, in, di, uo),
+:- pragma foreign_export("C", list_file(in, in, in, in, in, in, in, di, uo),
     "ML_LISTING_list_file").
 
 :- func listing_type = type_desc.
-:- pragma export(listing_type = out, "ML_LISTING_listing_type").
+:- pragma foreign_export("C", listing_type = out, "ML_LISTING_listing_type").
 
 listing_type = type_of(Path) :-
     clear_list_path(Path @ [], _).

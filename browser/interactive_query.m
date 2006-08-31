@@ -65,7 +65,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma export(query(in, in, in, in, in, di, uo), "ML_query").
+:- pragma foreign_export("C", query(in, in, in, in, in, di, uo), "ML_query").
 
 :- type prog
     --->    prog(query_type, imports, term, varset).
@@ -148,7 +148,7 @@ query_2(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, ReadTerm, !IO) :-
     ;       iq_eof
     ;       iq_error(string).
 
-:- pragma export(query_external(in, in, in, in, in, di, uo),
+:- pragma foreign_export("C", query_external(in, in, in, in, in, di, uo),
     "ML_query_external").
 
 query_external(QueryType, Imports, Options, SocketIn, SocketOut, !IO) :-

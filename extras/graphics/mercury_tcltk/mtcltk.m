@@ -166,7 +166,8 @@
     IO = IO0;
 }").
 
-:- pragma export(call_mercury_initializer(pred(in, di, uo) is det, in, di, uo),
+:- pragma foreign_export("C",
+    call_mercury_initializer(pred(in, di, uo) is det, in, di, uo),
     "mtcltk_call_mercury_initializer").
 :- pred call_mercury_initializer(
     pred(tcl_interp, io, io)::(pred(in, di, uo) is det),
@@ -254,8 +255,9 @@ mtcltk_strdup(const char *str)
 }
 ").
 
-:- pragma export(call_mercury_closure(pred(in, in, out, out, di, uo) is det,
-    in, in, out, out, di, uo),
+:- pragma foreign_export("C",
+    call_mercury_closure(pred(in, in, out, out, di, uo) is det,
+        in, in, out, out, di, uo),
     "mtcltk_call_mercury_closure").
 :- pred call_mercury_closure(
     pred(tcl_interp, list(string), tcl_status, string, io, io)
@@ -304,7 +306,7 @@ mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
 
 ").
 
-:- pragma export(tcl_status_ok(in), "mtcltk_tcl_status_ok").
+:- pragma foreign_export("C", tcl_status_ok(in), "mtcltk_tcl_status_ok").
 :- pred tcl_status_ok(tcl_status::in) is semidet.
 tcl_status_ok(tcl_ok).
 

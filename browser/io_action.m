@@ -88,8 +88,8 @@ io_action_to_browser_term(IoAction) = Term :-
     ),
     Term = synthetic_term_to_browser_term(ProcName, Args, IsFunc).
 
-:- pred pickup_io_action(int::in, maybe(io_action)::out,
-    io.state::di, io.state::uo) is det.
+:- pred pickup_io_action(int::in, maybe(io_action)::out, io::di, io::uo)
+    is det.
 
 :- pragma foreign_proc("C",
     pickup_io_action(SeqNum::in, MaybeIOAction::out, S0::di, S::uo),
@@ -120,12 +120,13 @@ io_action_to_browser_term(IoAction) = Term :-
 }").
 
 :- func make_no_io_action = maybe(io_action).
-:- pragma export(make_no_io_action = out, "MR_IO_ACTION_make_no_io_action").
+:- pragma foreign_export("C", make_no_io_action = out,
+    "MR_IO_ACTION_make_no_io_action").
 
 make_no_io_action = no.
 
 :- func make_yes_io_action(string, bool, list(univ)) = maybe(io_action).
-:- pragma export(make_yes_io_action(in, in, in) = out, 
+:- pragma foreign_export("C", make_yes_io_action(in, in, in) = out, 
     "MR_IO_ACTION_make_yes_io_action").
     
 make_yes_io_action(ProcName, yes, Args) = 

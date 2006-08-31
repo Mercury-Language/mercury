@@ -65,11 +65,11 @@
 
 :- implementation.
 
-:- pragma export(plain_term_to_browser_term(in) = out,
+:- pragma foreign_export("C", plain_term_to_browser_term(in) = out,
     "ML_BROWSE_plain_term_to_browser_term").
-:- pragma export(univ_to_browser_term(in) = out,
+:- pragma foreign_export("C", univ_to_browser_term(in) = out,
     "ML_BROWSE_univ_to_browser_term").
-:- pragma export(synthetic_term_to_browser_term(in, in, in) = out,
+:- pragma foreign_export("C", synthetic_term_to_browser_term(in, in, in) = out,
     "ML_BROWSE_synthetic_term_to_browser_term").
 
 univ_to_browser_term(Univ) = plain_term(Univ).

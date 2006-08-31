@@ -194,24 +194,29 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse_browser_term_no_modes(in, in, in, out, in, out,
-    di, uo), "ML_BROWSE_browse_browser_term").
-:- pragma export(browse_browser_term_format_no_modes(in, in, in, in,
-    in, out, di, uo), "ML_BROWSE_browse_browser_term_format").
-:- pragma export(browse_external_no_modes(in, in, in, in, out, di, uo),
+:- pragma foreign_export("C",
+    browse_browser_term_no_modes(in, in, in, out, in, out, di, uo),
+    "ML_BROWSE_browse_browser_term").
+:- pragma foreign_export("C",
+    browse_browser_term_format_no_modes(in, in, in, in, in, out, di, uo),
+    "ML_BROWSE_browse_browser_term_format").
+:- pragma foreign_export("C",
+    browse_external_no_modes(in, in, in, in, out, di, uo),
     "ML_BROWSE_browse_external").
-:- pragma export(print_browser_term(in, in, in, in, di, uo),
+:- pragma foreign_export("C", print_browser_term(in, in, in, in, di, uo),
     "ML_BROWSE_print_browser_term").
-:- pragma export(print_browser_term_format(in, in, in, in, in, di, uo),
+:- pragma foreign_export("C",
+    print_browser_term_format(in, in, in, in, in, di, uo),
     "ML_BROWSE_print_browser_term_format").
 
-:- pragma export(save_term_to_file(in, in, in, in, di, uo),
+:- pragma foreign_export("C", save_term_to_file(in, in, in, in, di, uo),
     "ML_BROWSE_save_term_to_file").
 
-:- pragma export(save_term_to_file_xml(in, in, in, di, uo),
+:- pragma foreign_export("C", save_term_to_file_xml(in, in, in, di, uo),
     "ML_BROWSE_save_term_to_file_xml").
 
-:- pragma export(save_and_browse_browser_term_xml(in, in, in, in, di, uo),
+:- pragma foreign_export("C",
+    save_and_browse_browser_term_xml(in, in, in, in, di, uo),
     "ML_BROWSE_browse_term_xml").
 
 %---------------------------------------------------------------------------%

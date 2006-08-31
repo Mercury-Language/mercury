@@ -927,7 +927,8 @@ time.ctime(Time) = asctime(localtime(Time)).
 
 :- implementation.
 
-:- pragma export(construct_time_t(in) = out, "ML_construct_time_t").
+:- pragma foreign_export("C", construct_time_t(in) = out,
+    "ML_construct_time_t").
 
 construct_time_t(T) = time_t(T).
 

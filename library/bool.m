@@ -117,8 +117,8 @@ bool.not(yes, no).
 
 :- func bool.return_no = bool.
 :- func bool.return_yes = bool.
-:- pragma export(bool.return_no = out, "ML_bool_return_no").
-:- pragma export(bool.return_yes = out, "ML_bool_return_yes").
+:- pragma foreign_export("C", bool.return_no = out, "ML_bool_return_no").
+:- pragma foreign_export("C", bool.return_yes = out, "ML_bool_return_yes").
 
 bool.return_no = no.
 bool.return_yes = yes.

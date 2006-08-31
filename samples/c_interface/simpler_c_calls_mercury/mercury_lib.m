@@ -57,27 +57,27 @@ baz(3) = 27.
 % The following code provides provides access to the Mercury predicate foo
 % from C code.
 
-:- pragma export(foo(in), "foo_test").
+:- pragma foreign_export("C", foo(in), "foo_test").
 
-:- pragma export(bar(in) = out, "bar").
-:- pragma export(bar(in) = in,  "bar_test").
-:- pragma export(bar(out) = in, "bar_inverse").
+:- pragma foreign_export("C", bar(in) = out, "bar").
+:- pragma foreign_export("C", bar(in) = in,  "bar_test").
+:- pragma foreign_export("C", bar(out) = in, "bar_inverse").
 
-:- pragma export(baz(in) = out, "baz").
+:- pragma foreign_export("C", baz(in) = out, "baz").
 
 	% The nondet mode of `foo' cannot be exported directly with
 	% the current Mercury/C interface.  To get all solutions,
 	% must define a predicate which returns all the solutions of foo,
 	% and export it to C.  We give it the name foo_list() in C.
 :- pred all_foos(list(int)::out) is det.
-:- pragma export(all_foos(out), "foo_list").
+:- pragma foreign_export("C", all_foos(out), "foo_list").
 all_foos(L) :- solutions((pred(X::out) is multi :- foo(X)), L).
 
 	% If we just want one solution, and don't care which one, then
 	% we can export a `cc_multi' (committed-choice nondeterminism)
 	% version of `foo'. We give it the name one_foo().
 :- pred cc_foo(int::out) is cc_multi.
-:- pragma export(cc_foo(out), "one_foo").
+:- pragma foreign_export("C", cc_foo(out), "one_foo").
 cc_foo(X) :- foo(X).
 
 %-----------------------------------------------------------------------------%

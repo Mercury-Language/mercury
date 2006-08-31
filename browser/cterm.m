@@ -5,15 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: cterm.m.
 % Author: zs.
-
+% 
 % This module provides a mechanism for matching terms from the running program
 % against terms specified by debugger commands, which are implemented in C in
 % runtime/mercury_trace_term.[ch].
-
-%---------------------------------------------------------------------------%
+% 
 %---------------------------------------------------------------------------%
 
 :- module mdb.cterm.
@@ -57,7 +56,8 @@
 :- pragma foreign_type(c, cterm, "MR_CTerm", [can_pass_as_mercury_type]).
 :- pragma foreign_type(c, cargs, "MR_CArgs", [can_pass_as_mercury_type]).
 
-:- pragma export(match_with_cterm(in, in, out), "ML_BROWSE_match_with_cterm").
+:- pragma foreign_export("C", match_with_cterm(in, in, out),
+    "ML_BROWSE_match_with_cterm").
 
 %---------------------------------------------------------------------------%
 

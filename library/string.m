@@ -3098,7 +3098,7 @@ string.det_to_float(FloatString) =
       func_error("string.det_to_float/1 - conversion failed.")
     ).
 
-:- pragma export(string.to_float(in, out), "ML_string_to_float").
+:- pragma foreign_export("C", string.to_float(in, out), "ML_string_to_float").
 
 :- pragma foreign_proc("C",
     string.to_float(FloatString::in, FloatVal::out),

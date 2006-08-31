@@ -1424,8 +1424,10 @@ call_goal(Goal, Result) :- Goal(Result).
 
 call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 
-:- pragma export(call_goal(pred(out) is det,     out), "ML_call_goal_det").
-:- pragma export(call_goal(pred(out) is semidet, out), "ML_call_goal_semidet").
+:- pragma foreign_export("C", call_goal(pred(out) is det, out),
+    "ML_call_goal_det").
+:- pragma foreign_export("C", call_goal(pred(out) is semidet, out),
+    "ML_call_goal_semidet").
 
 % This causes problems because the LLDS back-end
 % does not let you export code with determinism `nondet'.
@@ -1438,7 +1440,7 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 
 % :- pragma export(call_goal(pred(out) is nondet,  out), "ML_call_goal_nondet").
 
-:- pragma export(call_handler(pred(in, out) is det,     in, out),
+:- pragma foreign_export("C", call_handler(pred(in, out) is det, in, out),
     "ML_call_handler_det").
 
 /*
@@ -2526,7 +2528,7 @@ mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp)
 
 %-----------------------------------------------------------------------------%
 
-:- pragma export(report_uncaught_exception(in, di, uo),
+:- pragma foreign_export("C", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
 
 :- pred report_uncaught_exception(univ::in, io::di, io::uo) is cc_multi.

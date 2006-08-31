@@ -637,7 +637,8 @@ transaction_done:
 :- pred do_transaction(transaction(T)::transaction, int::out, T::out,
     univ::out, odbc.state::di, odbc.state::uo) is cc_multi.
 
-:- pragma export(do_transaction(transaction, out, out, out, di, uo), 
+:- pragma foreign_export("C",
+    do_transaction(transaction, out, out, out, di, uo), 
     "MODBC_odbc__do_transaction").
 
 do_transaction(Closure, GotException, Results, Exception, State0, State) :-
@@ -1612,7 +1613,7 @@ odbc_get_data_in_chunks(MODBC_Statement *statement, int column_id)
 }
 ").
 
-:- pragma export(overflow_message(out), "MODBC_overflow_message").
+:- pragma foreign_export("C", overflow_message(out), "MODBC_overflow_message").
 :- pred overflow_message(odbc.message::out) is det.
 
 overflow_message(Error) :-
@@ -1621,7 +1622,8 @@ overflow_message(Error) :-
                 "  Integers must be no larger than a word.",
     Error = ErrorType - ErrorMsg.
 
-:- pragma export(condense_chunks(in, out), "MODBC_odbc_condense_chunks").
+:- pragma foreign_export("C", condense_chunks(in, out),
+    "MODBC_odbc_condense_chunks").
 :- pred condense_chunks(list(string)::in, string::out) is det.
 
 condense_chunks(RevChunks, String) :-
@@ -2184,7 +2186,7 @@ convert_pattern_argument(pattern(Str), Str, 1).
     %
 :- pred sql_state_to_message(string::in, string::in,
     odbc.message::out) is det.
-:- pragma export(sql_state_to_message(in, in, out),
+:- pragma foreign_export("C", sql_state_to_message(in, in, out),
     "MODBC_odbc_sql_state_to_message").
 
 sql_state_to_message(SQLState, String, Message - String) :-

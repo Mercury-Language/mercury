@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: mogl.m.
 % Main authors: conway, juliensf.
-
+% 
 % This file provides a binding to OpenGL 1.1. (It won't work with OpenGL 1.0.)
 %
 % It will work with OpenGL 1.2 - 1.5 but it doesn't (currently)
@@ -3860,20 +3860,21 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
     }
 ").
 
-:- pragma export(deconstruct_double(in, out, out), 
+:- pragma foreign_export("C", deconstruct_double(in, out, out), 
     "MOGL_deconstruct_double").
 :- pred deconstruct_double({float, float}::in, float::out, float::out) is det.
 
 deconstruct_double({A, B}, A, B).
 
-:- pragma export(deconstruct_triple(in, out, out, out),
+:- pragma foreign_export("C", deconstruct_triple(in, out, out, out),
     "MOGL_deconstruct_triple").
 :- pred deconstruct_triple({float, float, float}::in, float::out, float::out,
     float::out) is det.
 
 deconstruct_triple({A, B, C}, A, B, C).
 
-:- pragma export(deconstruct_quadruple(in, out, out, out, out),
+:- pragma foreign_export("C",
+    deconstruct_quadruple(in, out, out, out, out),
     "MOGL_deconstruct_quadruple").
 :- pred deconstruct_quadruple({float, float, float, float}::in, 
     float::out, float::out, float::out, float::out) is det.
@@ -4972,11 +4973,11 @@ get_string(StringName, Result, !IO) :-
 ").
 
 :- func get_string_no = maybe(string).
-:- pragma export(get_string_no = out, "MOGL_get_string_no").
+:- pragma foreign_export("C", get_string_no = out, "MOGL_get_string_no").
 get_string_no = no.
 
 :- func get_string_yes(string) = maybe(string).
-:- pragma export(get_string_yes(in) = out, "MOGL_get_string_yes").
+:- pragma foreign_export("C", get_string_yes(in) = out, "MOGL_get_string_yes").
 get_string_yes(Str) = yes(Str).
 
 %------------------------------------------------------------------------------%

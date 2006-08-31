@@ -1,20 +1,24 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 2004-2005 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1997, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: unsafe.m
-% Author: fjh
-% Stability: low
+%
+% File: unsafe.m.
+% Author: fjh.
+% Stability: low.
+%
 %-----------------------------------------------------------------------------%
 
 /*
 ** WARNING: the procedures defined in this module are non-logical.
 **          They may have side effects, they may violate type safety,
-**	    they may interfere with certain memory management strategies,
-**	    and in general they may do lots of nasty things.
-**	    They may not work with future release of the Mercury compiler,
-**	    or with other Mercury implementations.
+**	        they may interfere with certain memory management strategies,
+**	        and in general they may do lots of nasty things.
+**	        They may not work with future release of the Mercury compiler,
+**	        or with other Mercury implementations.
 **          Use only as a last resort, and only with great care!
 **
 ** You have been warned.
@@ -65,25 +69,28 @@
 :- pragma foreign_proc("C",
 	unsafe_perform_io(P::(pred(di, uo) is det)),
 	[may_call_mercury],
-"{
+"
 	call_io_pred_det(P);
-}").
+").
+
 :- pragma foreign_proc("C",
 	unsafe_perform_io(P::(pred(di, uo) is cc_multi)),
 	[may_call_mercury],
-"{
+"
 	call_io_pred_cc_multi(P);
-}").
+").
 
-:- pred call_io_pred(pred(io__state, io__state), io__state, io__state).
+:- pred call_io_pred(pred(io, io), io, io).
 :- mode call_io_pred(pred(di, uo) is det, di, uo) is det.
 :- mode call_io_pred(pred(di, uo) is cc_multi, di, uo) is cc_multi.
 
-:- pragma export(call_io_pred(pred(di, uo) is det, di, uo),
-		"call_io_pred_det").
-:- pragma export(call_io_pred(pred(di, uo) is cc_multi, di, uo),
-		"call_io_pred_cc_multi").
+:- pragma foreign_export("C",
+    call_io_pred(pred(di, uo) is det, di, uo),
+	"call_io_pred_det").
+:- pragma foreign_export("C",
+    call_io_pred(pred(di, uo) is cc_multi, di, uo),
+	"call_io_pred_cc_multi").
 
-call_io_pred(P) --> P.
+call_io_pred(P, !IO) :- P(!IO).
 
 %-----------------------------------------------------------------------------%

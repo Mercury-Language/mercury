@@ -114,8 +114,9 @@ yield(!IO).
 
 :- pred call_back_to_mercury(pred(io, io), io, io).
 :- mode call_back_to_mercury(pred(di, uo) is cc_multi, di, uo) is cc_multi.
-:- pragma export(call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
-        "call_back_to_mercury_cc_multi").
+:- pragma foreign_export("C",
+    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
+    "call_back_to_mercury_cc_multi").
 
 call_back_to_mercury(Goal, !IO) :-
     Goal(!IO).

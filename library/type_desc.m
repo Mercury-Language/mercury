@@ -219,7 +219,7 @@
     % We need to call the rtti_implementation module -- so that we get the
     % dependencies right it's easiest to do it from Mercury.
 
-:- pragma export(call_rtti_compare_type_infos(out, in, in),
+:- pragma foreign_export("C", call_rtti_compare_type_infos(out, in, in),
     "ML_call_rtti_compare_type_infos").
 
 :- pred call_rtti_compare_type_infos(comparison_result::out,
@@ -443,7 +443,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
 
 
 % Export this function in order to use it in runtime/mercury_trace_external.c
-:- pragma export(type_name(in) = out, "ML_type_name").
+:- pragma foreign_export("C", type_name(in) = out, "ML_type_name").
 
 type_name(Type) = TypeName :-
     type_ctor_and_args(Type, TypeCtor, ArgTypes),
@@ -771,7 +771,7 @@ type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
     %
 :- func get_type_info_for_type_info = type_desc.
 
-:- pragma export(get_type_info_for_type_info = out,
+:- pragma foreign_export("C", get_type_info_for_type_info = out,
     "ML_get_type_info_for_type_info").
 
 get_type_info_for_type_info = TypeDesc :-

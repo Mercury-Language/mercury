@@ -5,8 +5,12 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
+% File: diff.m.
+% 
 % This module computes diffs between terms.
+%
+%---------------------------------------------------------------------------%
 
 :- module mdb.diff.
 :- interface.
@@ -31,7 +35,8 @@
 :- import_module string.
 :- import_module type_desc.
 
-:- pragma export(report_diffs(in, in, in, in, di, uo), "ML_report_diffs").
+:- pragma foreign_export("C", report_diffs(in, in, in, in, di, uo),
+    "ML_report_diffs").
 
 report_diffs(Drop, Max, Univ1, Univ2, !IO) :-
     (

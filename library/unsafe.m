@@ -78,9 +78,9 @@
 :- mode call_io_pred(pred(di, uo) is det, di, uo) is det.
 :- mode call_io_pred(pred(di, uo) is cc_multi, di, uo) is cc_multi.
 
-:- pragma export(call_io_pred(pred(di, uo) is det, di, uo),
+:- pragma foreign_export("C", call_io_pred(pred(di, uo) is det, di, uo),
     "call_io_pred_det").
-:- pragma export(call_io_pred(pred(di, uo) is cc_multi, di, uo),
+:- pragma foreign_export("C", call_io_pred(pred(di, uo) is cc_multi, di, uo),
     "call_io_pred_cc_multi").
 
 call_io_pred(P, !IO) :-

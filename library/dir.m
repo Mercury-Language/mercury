@@ -306,7 +306,8 @@ dir.is_directory_separator_semidet(Char) :-
 
 use_windows_paths :- dir.directory_separator = ('\\').
 
-:- pragma export((dir.this_directory = out), "ML_dir_this_directory").
+:- pragma foreign_export("C", (dir.this_directory = out),
+    "ML_dir_this_directory").
 
 dir.this_directory = ".".
 
@@ -750,7 +751,8 @@ dir.dotnet_path_name_is_absolute_2(_) :-
 
 dir.make_path_name(DirName, FileName) = DirName/FileName.
 
-:- pragma export(dir.make_path_name(in, in) = out, "ML_make_path_name").
+:- pragma foreign_export("C", dir.make_path_name(in, in) = out,
+    "ML_make_path_name").
 
 DirName0/FileName0 = PathName :-
     DirName = string.from_char_list(canonicalize_path_chars(
@@ -1043,13 +1045,14 @@ dir.make_single_directory(DirName, Result, !IO) :-
 ").
 
 :- func dir.make_mkdir_res_ok = io.res.
-:- pragma export((dir.make_mkdir_res_ok = out), "ML_make_mkdir_res_ok").
+:- pragma foreign_export("C", (dir.make_mkdir_res_ok = out),
+    "ML_make_mkdir_res_ok").
 
 dir.make_mkdir_res_ok = ok.
 
 :- pred dir.make_mkdir_res_error(io.system_error::in, io.res::out,
     io::di, io::uo) is det.
-:- pragma export(dir.make_mkdir_res_error(in, out, di, uo),
+:- pragma foreign_export("C", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
 
 dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
@@ -1058,7 +1061,7 @@ dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
 
 :- pred dir.make_mkdir_res_exists(io.system_error::in,
     string::in, io.res::out, io::di, io::uo) is det.
-:- pragma export(dir.make_mkdir_res_exists(in, in, out, di, uo),
+:- pragma foreign_export("C", dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
 
 dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
@@ -1071,7 +1074,7 @@ dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
 
 :- pred dir.check_dir_accessibility(string::in, io.res::out, io::di, io::uo)
     is det.
-:- pragma export(dir.check_dir_accessibility(in, out, di, uo),
+:- pragma foreign_export("C", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
 
 dir.check_dir_accessibility(DirName, Res, !IO) :-
@@ -1422,7 +1425,7 @@ dir.open(DirName, Res, !IO) :-
 
 :- pred dir.check_dir_readable(string::in, int::out,
     io.result({dir.stream, string})::out, io::di, io::uo) is det.
-:- pragma export(dir.check_dir_readable(in, out, out, di, uo),
+:- pragma foreign_export("C", dir.check_dir_readable(in, out, out, di, uo),
     "ML_check_dir_readable").
 
 dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
@@ -1456,7 +1459,7 @@ dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
 
 :- pred dir.read_first_entry(dir.stream::in,
     io.result({dir.stream, string})::out, io::di, io::uo) is det.
-:- pragma export(dir.read_first_entry(in, out, di, uo),
+:- pragma foreign_export("C", dir.read_first_entry(in, out, di, uo),
     "ML_dir_read_first_entry").
 
 dir.read_first_entry(Dir, Result, !IO) :-
@@ -1474,7 +1477,7 @@ dir.read_first_entry(Dir, Result, !IO) :-
 
 :- pred make_win32_dir_open_result_ok(dir.stream::in, c_pointer::in,
     io.result({dir.stream, string})::out, io::di, io::uo) is det.
-:- pragma export(make_win32_dir_open_result_ok(in, in, out, di, uo),
+:- pragma foreign_export("C", make_win32_dir_open_result_ok(in, in, out, di, uo),
     "ML_make_win32_dir_open_result_ok").
 
 make_win32_dir_open_result_ok(Dir, FirstFilePtr, Result, !IO) :-
@@ -1525,19 +1528,18 @@ copy_c_string(_) = _ :-
 ").
 
 :- func make_dir_open_result_eof = io.result({dir.stream, string}).
-:- pragma export((make_dir_open_result_eof = out),
+:- pragma foreign_export("C", (make_dir_open_result_eof = out),
     "ML_make_dir_open_result_eof").
 
 make_dir_open_result_eof = eof.
 
 :- pred make_dir_open_result_error(io.system_error::in,
     io.result({dir.stream, string})::out, io::di, io::uo) is det.
-:- pragma export(make_dir_open_result_error(in, out, di, uo),
+:- pragma foreign_export("C", make_dir_open_result_error(in, out, di, uo),
     "ML_make_dir_open_result_error").
 
 make_dir_open_result_error(Error, error(io.make_io_error(Msg)), !IO) :-
-    io.make_err_msg(Error, "dir.foldl2: opening directory failed: ", Msg,
-        !IO).
+    io.make_err_msg(Error, "dir.foldl2: opening directory failed: ", Msg, !IO).
 
 :- pred dir.close(dir.stream::in, io.res::out, io::di, io::uo) is det.
 
