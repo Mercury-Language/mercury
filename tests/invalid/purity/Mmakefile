@@ -9,6 +9,7 @@ PROGS= \
 	impure_func_t5 \
 	impure_func_t5_fixed \
 	impure_func_t7 \
+	impure_par_conj \
 	impure_pred_t1 \
 	impure_pred_t1_fixed \
 	impure_pred_t2 \

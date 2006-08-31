@@ -460,8 +460,15 @@ applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
 
 compute_expr_purity(conj(ConjType, Goals0), conj(ConjType, Goals), _,
         Purity, ContainsTrace, !Info) :-
-    compute_goals_purity(Goals0, Goals, purity_pure, Purity,
-        contains_no_trace_goal, ContainsTrace, !Info).
+    (
+        ConjType = plain_conj,
+        compute_goals_purity(Goals0, Goals, purity_pure, Purity,
+            contains_no_trace_goal, ContainsTrace, !Info)
+    ;
+        ConjType = parallel_conj,
+        compute_parallel_goals_purity(Goals0, Goals, purity_pure, Purity,
+            contains_no_trace_goal, ContainsTrace, !Info)
+    ).
 compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity,
         contains_no_trace_goal, !Info) :-
     Goal0 = plain_call(PredId0, ProcId, Vars, BIState, UContext, Name0),
@@ -911,6 +918,30 @@ compute_cases_purity([case(Ctor, Goal0) | Cases0], [case(Ctor, Goal) | Cases],
     !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
     compute_cases_purity(Cases0, Cases, !Purity, !ContainsTrace, !Info).
 
+:- pred compute_parallel_goals_purity(list(hlds_goal)::in,
+    list(hlds_goal)::out, purity::in, purity::out, contains_trace_goal::in,
+    contains_trace_goal::out, purity_info::in, purity_info::out) is det.
+
+compute_parallel_goals_purity([], [], !Purity, !ContainsTrace, !Info).
+compute_parallel_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity,
+        !ContainsTrace, !Info) :-
+    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
+    (
+        GoalPurity = purity_pure
+    ;
+        ( GoalPurity = purity_semipure
+        ; GoalPurity = purity_impure
+        ),
+        Goal0 = _ - GoalInfo0,
+        goal_info_get_context(GoalInfo0, Context),
+        purity_info_add_message(error(impure_parallel_conjunct_error(Context,
+            GoalPurity)), !Info)
+    ),
+    !:Purity = worst_purity(GoalPurity, !.Purity),
+    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
+    compute_parallel_goals_purity(Goals0, Goals, !Purity, !ContainsTrace,
+        !Info).
+
 :- func worst_contains_trace(contains_trace_goal, contains_trace_goal)
     = contains_trace_goal.
 
@@ -1051,7 +1082,8 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
     --->    missing_body_impurity_error(prog_context, pred_id)
     ;       closure_purity_error(prog_context, purity, purity)
             % closure_purity_error(Context, DeclaredPurity, ActualPurity)
-    ;       impure_unification_expr_error(prog_context, purity).
+    ;       impure_unification_expr_error(prog_context, purity)
+    ;       impure_parallel_conjunct_error(prog_context, purity).
 
 :- type post_typecheck_warning
     --->    unnecessary_body_impurity_decl(prog_context, pred_id, purity)
@@ -1071,6 +1103,9 @@ report_post_typecheck_message(ModuleInfo, error(Message), !IO) :-
     ;
         Message = impure_unification_expr_error(Context, Purity),
         impure_unification_expr_error(Context, Purity, !IO)
+    ;
+        Message = impure_parallel_conjunct_error(Context, Purity),
+        impure_parallel_conjunct_error(Context, Purity, !IO)
     ).
 
 report_post_typecheck_message(ModuleInfo, warning(Warning), !IO) :-
@@ -1179,6 +1214,16 @@ impure_unification_expr_error(Context, Purity, !IO) :-
     Pieces = [words("Purity error: unification with expression"),
         words("was declared"), fixed(PurityName ++ ","),
         words("but expression was not a function call.")],
+    write_error_pieces(Context, 0, Pieces, !IO).
+
+:- pred impure_parallel_conjunct_error(prog_context::in, purity::in,
+    io::di, io::uo) is det.
+
+impure_parallel_conjunct_error(Context, Purity, !IO) :-
+    purity_name(Purity, PurityName),
+    Pieces = [words("Purity error: parallel conjunct is"),
+        fixed(PurityName ++ ","),
+        words("but parallel conjuncts must be pure.")],
     write_error_pieces(Context, 0, Pieces, !IO).
 
 %-----------------------------------------------------------------------------%
