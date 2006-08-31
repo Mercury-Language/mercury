@@ -111,6 +111,10 @@
 %   It may also be nice to allow semipure function calls to occur
 %   inline (since ordering is not an issue for them).
 %
+% To do:
+%   Reconsider whether impure or semipure parallel conjuncts should be
+%   allowed.  Currently both are disallowed.
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.purity.
