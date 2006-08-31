@@ -192,12 +192,12 @@ dependent_par_conj(!ModuleInfo, !IO) :-
     add_pending_par_procs(DoneParProcs, PendingProcs,
         ModuleInfo0, !ModuleInfo, !IO).
 
-    % Dependent parallel conjunctions only supported on lowlevel C parallel
+    % Parallel conjunctions only supported on lowlevel C parallel
     % grades.
     %
-:- pred handle_dep_par_conj(module_info::in) is semidet.
+:- pred handle_par_conj(module_info::in) is semidet.
 
-handle_dep_par_conj(ModuleInfo) :-
+handle_par_conj(ModuleInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
@@ -250,7 +250,7 @@ process_proc_for_dep_par_conj_with_ignores(PredId, ProcId, IgnoreVars,
 
         search_goal_for_par_conj(!Body, InstMap0, _, Info0, Info1),
 
-        (if handle_dep_par_conj(!.ModuleInfo) then
+        (if handle_par_conj(!.ModuleInfo) then
             replace_sequences_in_goal(!Body, Info1, Info2),
             Info2 = dep_par_info(!:ParProcs, !:ModuleInfo,
                 !:VarSet, !:VarTypes, _IgnoreVars),
@@ -543,24 +543,26 @@ maybe_transform_par_conj(Conjuncts0, GoalInfo, NewGoal, InstMap,
     SharedVars = set.filter(isnt(set.contains(!.Info ^ dp_ignore_vars)),
         SharedVars0),
 
+    !.Info = dep_par_info(ParProcs0, ModuleInfo0,
+        VarSet0, VarTypes0, IgnoreVars),
     (if
-        set.empty(SharedVars)
+        handle_par_conj(ModuleInfo0)
     then
-        par_conj_list_to_goal(Conjuncts, GoalInfo, NewGoal)
-    else 
-        !.Info = dep_par_info(ParProcs0, ModuleInfo0,
-            VarSet0, VarTypes0, IgnoreVars),
         (if
-            handle_dep_par_conj(ModuleInfo0)
+            set.empty(SharedVars)
         then
+            % Independent parallel conjunctions need no transformation.
+            par_conj_list_to_goal(Conjuncts, GoalInfo, NewGoal)
+        else
             transform_conjunction(SharedVars, Conjuncts, GoalInfo, NewGoal,
                 InstMap, VarSet0, VarSet, VarTypes0, VarTypes,
                 ModuleInfo0, ModuleInfo, ParProcs0, ParProcs),
             !:Info = dep_par_info(ParProcs, ModuleInfo,
                 VarSet, VarTypes, IgnoreVars)
-        else
-            conj_list_to_goal(Conjuncts, GoalInfo, NewGoal)
         )
+    else
+        % Replace all parallel conjunctions by sequential conjunctions.
+        conj_list_to_goal(Conjuncts, GoalInfo, NewGoal)
     ).
 
     % Transforming the parallel conjunction.
