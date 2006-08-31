@@ -1105,6 +1105,8 @@
     %   io.set_globals(Globals, !IO)
     %
     % In parallel grades calls to io.update_globals/3 are atomic.
+    % If `UpdatePred' throws an exception then the `globals' field is
+    % left unchanged.
     % 
 :- pred io.update_globals(pred(univ, univ)::in(pred(di, uo) is det),
     io::di, io::uo) is det.
@@ -4588,12 +4590,29 @@ io.set_globals(Globals, !IO) :-
     io.unsafe_set_globals(Globals, !IO),
     io.unlock_globals(!IO).
 
+:- pragma promise_pure(io.update_globals/3).
+
 io.update_globals(UpdatePred, !IO) :-
     io.lock_globals(!IO),
     io.unsafe_get_globals(Globals0, !IO),
-    UpdatePred(Globals0, Globals),
-    io.unsafe_set_globals(Globals, !IO),
-    io.unlock_globals(!IO).
+    promise_equivalent_solutions [!:IO] (
+        Update = (pred(G::out) is det :-
+            UpdatePred(unsafe_promise_unique(Globals0), G)
+        ),
+        try(Update, UpdateResult),
+        (
+            UpdateResult = succeeded(Globals1),
+            Globals = unsafe_promise_unique(Globals1),
+            io.unsafe_set_globals(Globals, !IO),
+            io.unlock_globals(!IO)
+        ;
+            % If the update operation threw an exception
+            % then release the lock and rethrow the exception.
+            UpdateResult = exception(_),
+            impure io.unlock_globals,
+            rethrow(UpdateResult)
+        )
+    ).
 
 :- pred io.lock_globals(io::di, io::uo) is det.
 :- pragma foreign_proc("C",
@@ -4626,6 +4645,20 @@ lock_globals(!IO).
     % For the non-C backends.
     %
 unlock_globals(!IO).
+
+:- impure pred io.unlock_globals is det.
+:- pragma foreign_proc("C", 
+    io.unlock_globals,
+    [will_not_call_mercury, thread_safe],
+"
+    #ifdef MR_THREAD_SAFE
+        MR_UNLOCK(&ML_io_user_globals_lock, \"io.unlock_globals/2\");
+    #endif
+").    
+    % For the non-C backends.
+    %
+io.unlock_globals :-
+    impure impure_true.
 
     % NOTE: io.unsafe_{get, set}_globals/3 are marked as `thread_safe' so that
     % calling them to does not acquire the global lock.  Since calls to these

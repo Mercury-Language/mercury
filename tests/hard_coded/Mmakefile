@@ -118,6 +118,7 @@ ORDINARY_PROGS=	\
 	intermod_type_qual \
 	intermod_unused_args \
 	int_fold_up_down \
+	io_globals_deadlock \
 	join_list \
 	list_series_int \
 	loop_inv_test \
