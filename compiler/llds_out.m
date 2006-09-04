@@ -133,8 +133,8 @@
     % to put these in a new module (maybe llds_out_util).
 
 :- type decl_id
-    --->    decl_common_type(int)
-    ;       decl_scalar_common_array(int)
+    --->    decl_common_type(type_num)
+    ;       decl_scalar_common_array(type_num)
     ;       decl_float_label(string)
     ;       decl_code_addr(code_addr)
     ;       decl_data_addr(data_addr)
@@ -1161,7 +1161,7 @@ output_table_stats(ModuleName, DataName, NumInputs, !DeclSet, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_common_type_defn(int::in, common_cell_type::in,
+:- pred output_common_type_defn(type_num::in, common_cell_type::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_common_type_defn(TypeNum, CellType, !DeclSet, !IO) :-
@@ -4298,22 +4298,23 @@ tabling_struct_data_addr_string(ProcLabel, Id) =
     mercury_var_prefix ++ "_proc" ++ tabling_info_id_str(Id) ++ "__" ++
         proc_label_to_c_string(ProcLabel, no).
 
-:- pred output_common_cell_type_name(int::in, io::di, io::uo) is det.
+:- pred output_common_cell_type_name(type_num::in, io::di, io::uo) is det.
 
-output_common_cell_type_name(TypeNum, !IO) :-
+output_common_cell_type_name(type_num(TypeNum), !IO) :-
     io.write_string(mercury_common_type_prefix, !IO),
     io.write_int(TypeNum, !IO).
 
-:- pred output_common_scalar_cell_array_name(int::in, io::di, io::uo) is det.
+:- pred output_common_scalar_cell_array_name(type_num::in, io::di, io::uo)
+    is det.
 
-output_common_scalar_cell_array_name(TypeNum, !IO) :-
+output_common_scalar_cell_array_name(type_num(TypeNum), !IO) :-
     io.write_string(mercury_scalar_common_array_prefix, !IO),
     io.write_int(TypeNum, !IO).
 
-:- pred output_common_vector_cell_array_name(int::in, int::in, io::di, io::uo)
-    is det.
+:- pred output_common_vector_cell_array_name(type_num::in, int::in,
+    io::di, io::uo) is det.
 
-output_common_vector_cell_array_name(TypeNum, CellNum, !IO) :-
+output_common_vector_cell_array_name(type_num(TypeNum), CellNum, !IO) :-
     io.write_string(mercury_vector_common_array_prefix, !IO),
     io.write_int(TypeNum, !IO),
     io.write_string("_", !IO),
@@ -4845,7 +4846,7 @@ output_rval(mkword(Tag, Exprn), !IO) :-
     (
         Exprn = const(llconst_data_addr(DataAddr, no)),
         DataAddr = data_addr(_, DataName),
-        DataName = scalar_common_ref(TypeNum, CellNum)
+        DataName = scalar_common_ref(type_num(TypeNum), CellNum)
     ->
         io.write_string("MR_TAG_COMMON(", !IO),
         io.write_int(Tag, !IO),
@@ -4971,7 +4972,7 @@ output_rval_const(llconst_data_addr(DataAddr, MaybeOffset), !IO) :-
         % very substantial.
         (
             DataAddr = data_addr(_, DataName),
-            DataName = scalar_common_ref(TypeNum, CellNum)
+            DataName = scalar_common_ref(type_num(TypeNum), CellNum)
         ->
             io.write_string("MR_COMMON(", !IO),
             io.write_int(TypeNum, !IO),

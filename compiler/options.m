@@ -431,6 +431,8 @@
     ;       low_level_debug
     ;       table_debug
     ;       trad_passes
+    ;       parallel_liveness
+    ;       parallel_code_gen
     ;       polymorphism
     ;       reclaim_heap_on_failure
     ;       reclaim_heap_on_semidet_failure
@@ -1104,6 +1106,8 @@ option_defaults_2(code_gen_option, [
     low_level_debug                     -   bool(no),
     table_debug                         -   bool(no),
     trad_passes                         -   bool(yes),
+    parallel_liveness                   -   bool(no),
+    parallel_code_gen                   -   bool(no),
     polymorphism                        -   bool(yes),
     reclaim_heap_on_failure             -   bool_special,
     reclaim_heap_on_semidet_failure     -   bool(yes),
@@ -1818,6 +1822,8 @@ long_option("low-level-debug",      low_level_debug).
 long_option("table-debug",          table_debug).
 long_option("polymorphism",         polymorphism).
 long_option("trad-passes",          trad_passes).
+long_option("parallel-liveness",    parallel_liveness).
+long_option("parallel-code-gen",    parallel_code_gen).
 long_option("reclaim-heap-on-failure",  reclaim_heap_on_failure).
 long_option("reclaim-heap-on-semidet-failure",
                     reclaim_heap_on_semidet_failure).
@@ -3787,6 +3793,16 @@ options_help_code_generation -->
         "\tThis option tells the compiler",
         "\tto complete each phase of code generation on all predicates",
         "\tbefore going on the next phase on all predicates.",
+    %   "--parallel-liveness",
+    %   "Use multiple threads when computing liveness.",
+    %   "At the moment this option implies `--no-trad-passes',",
+    %   "and requires the compiler to be built in a",
+    %   "low-level parallel grade and running with multiple engines.",
+    %   "--parallel-code-gen",
+    %   "Use multiple threads when generating code.",
+    %   "At the moment this option implies `--no-trad-passes',",
+    %   "and requires the compiler to be built in a",
+    %   "low-level parallel grade and running with multiple engines.",
     %   "\t--no-polymorphism",
     %   "\t\tDon't handle polymorphic types.",
     %   "\t\t(Generates slightly more efficient code, but stops",

@@ -6748,6 +6748,24 @@ to complete each phase of code generation on all predicates
 before going on the next phase on all predicates.
 
 @c @sp 1
+@c @item --parallel-liveness
+@c @item --no-parallel-liveness
+@c @item --parallel-liveness
+@c Use multiple threads when computing liveness.
+@c At the moment this option implies @samp{--no-trad-passes},
+@c and requires the compiler to be built in a
+@c low-level parallel grade and running with multiple engines.
+
+@c @sp 1
+@c @item --parallel-code-gen
+@c @item --no-parallel-code-gen
+@c @item --parallel-code-gen
+@c Use multiple threads when generating code.
+@c At the moment this option implies @samp{--no-trad-passes},
+@c and requires the compiler to be built in a
+@c low-level parallel grade and running with multiple engines.
+
+@c @sp 1
 @c @item --no-polymorphism
 @c Don't handle polymorphic types.
 @c (Generates slightly more efficient code, but stops

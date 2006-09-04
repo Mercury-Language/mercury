@@ -348,10 +348,10 @@ dump_data_addr(rtti_addr(tc_rtti_id(TCName, TCDataName))) =
 dump_data_addr(layout_addr(LayoutName)) =
     "layout_addr(" ++ dump_layout_name(LayoutName) ++ ")".
 
-dump_data_name(scalar_common_ref(TypeNum, Offset)) =
+dump_data_name(scalar_common_ref(type_num(TypeNum), Offset)) =
     "scalar_common_ref(" ++ int_to_string(TypeNum) ++ ", "
         ++ int_to_string(Offset) ++ ")".
-dump_data_name(vector_common_ref(TypeNum, Offset)) =
+dump_data_name(vector_common_ref(type_num(TypeNum), Offset)) =
     "vector_common_ref(" ++ int_to_string(TypeNum) ++ ", "
         ++ int_to_string(Offset) ++ ")".
 dump_data_name(proc_tabling_ref(ProcLabel, Id)) =

@@ -3979,8 +3979,17 @@ maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
 compute_liveness(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Computing liveness...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    process_all_nonimported_procs(update_proc_io(detect_liveness_proc),
-        !HLDS, !IO),
+    globals.io_lookup_bool_option(parallel_liveness, ParallelLiveness, !IO),
+    globals.io_lookup_int_option(debug_liveness, DebugLiveness, !IO),
+    (
+        ParallelLiveness = yes,
+        DebugLiveness = -1
+    ->
+        detect_liveness_preds_parallel(!HLDS)
+    ;
+        process_all_nonimported_procs(update_proc_io(detect_liveness_proc),
+            !HLDS, !IO)
+    ),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

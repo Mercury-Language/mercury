@@ -117,34 +117,101 @@
 generate_code(ModuleInfo0, !GlobalData, Procedures, !IO) :-
     % Get a list of all the predicate ids for which we will generate code.
     module_info_predids(ModuleInfo0, PredIds),
-    % Now generate the code for each predicate.
-    generate_pred_list_code(ModuleInfo0, !GlobalData, PredIds,
-        Procedures, !IO).
+    % Check if we want to use parallel code generation.
+    module_info_get_globals(ModuleInfo0, Globals),
+    globals.lookup_bool_option(Globals, parallel_code_gen, ParallelCodeGen),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
+    (
+        ParallelCodeGen = yes,
+        % Can't do parallel code generation if I/O is required.
+        VeryVerbose = no,
+        Statistics = no
+    ->
+        generate_code_parallel(ModuleInfo0, PredIds, !GlobalData,
+            Procedures)
+    ;
+        generate_code_sequential(ModuleInfo0, PredIds, !GlobalData,
+            Procedures, !IO)
+    ).
 
-    % Translate a list of HLDS predicates to LLDS.
+:- pred generate_code_sequential(module_info::in, list(pred_id)::in,
+    global_data::in, global_data::out, list(c_procedure)::out, io::di, io::uo)
+    is det.
+
+generate_code_sequential(ModuleInfo0, PredIds, !GlobalData, Procedures, !IO) :-
+    list.map_foldl2(generate_maybe_pred_code(ModuleInfo0),
+        PredIds, PredProcedures, !GlobalData, !IO),
+    list.condense(PredProcedures, Procedures).
+
+%-----------------------------------------------------------------------------%
+
+:- pred generate_code_parallel(module_info::in, list(pred_id)::in,
+    global_data::in, global_data::out, list(c_procedure)::out) is det.
+
+generate_code_parallel(ModuleInfo0, PredIds, !GlobalData, Procedures) :-
+    % Split up the list of predicates into pieces for processing in parallel.
+    % Splitting the list in the middle does not work well as the load will be
+    % unbalanced.  Splitting the list in any other way (as we do) does mean
+    % that the generated code will be slightly different due to the static
+    % data being reordered.
+    % 
+    % We only try to make use of two processors (threads) for now.  Using more
+    % processors efficiently probably requires knowing how many processors are
+    % available, so we can divide the pred list whilst minimise the time
+    % merging global_datas and updating static cell references.
     %
-:- pred generate_pred_list_code(module_info::in,
-    global_data::in, global_data::out,
-    list(pred_id)::in, list(c_procedure)::out, io::di, io::uo) is det.
+    list.chunk(PredIds, pred_list_chunk_size, ListsOfPredIds),
+    interleave(ListsOfPredIds, ListsOfPredIdsA, ListsOfPredIdsB),
+    GlobalData0 = !.GlobalData,
+    (
+        list.condense(ListsOfPredIdsA, PredIdsA),
+        list.map_foldl(generate_pred_code_par(ModuleInfo0),
+            PredIdsA, PredProceduresA, GlobalData0, GlobalDataA),
+        list.condense(PredProceduresA, ProceduresA)
+    &
+        list.condense(ListsOfPredIdsB, PredIdsB),
+        GlobalData1 = bump_type_num_counter(GlobalData0, type_num_skip),
+        list.map_foldl(generate_pred_code_par(ModuleInfo0),
+            PredIdsB, PredProceduresB0, GlobalData1, GlobalDataB),
+        list.condense(PredProceduresB0, ProceduresB0)
+    ),
+    merge_global_datas(GlobalDataA, GlobalDataB, !:GlobalData,
+        StaticCellRemapInfo),
+    list.map(remap_static_cell_references(StaticCellRemapInfo),
+        ProceduresB0, ProceduresB),
+    Procedures = ProceduresA ++ ProceduresB.
 
-generate_pred_list_code(_ModuleInfo, !GlobalData, [], [], !IO).
-generate_pred_list_code(ModuleInfo, !GlobalData, [PredId | PredIds],
-        Predicates, !IO) :-
-    generate_maybe_pred_code(ModuleInfo, !GlobalData, PredId,
-        Predicates0, !IO),
-    generate_pred_list_code(ModuleInfo, !GlobalData, PredIds,
-        Predicates1, !IO),
-    list.append(Predicates0, Predicates1, Predicates).
+    % These numbers are rather arbitrary.
+    %
+:- func pred_list_chunk_size = int.
+pred_list_chunk_size = 50.
+
+:- func type_num_skip = int.
+type_num_skip = 10000.
+
+:- pred interleave(list(T)::in, list(T)::out, list(T)::out) is det.
+:- pred interleave_2(list(T)::in, list(T)::in, list(T)::out,
+    list(T)::in, list(T)::out) is det.
+
+interleave(L, reverse(As), reverse(Bs)) :-
+    interleave_2(L, [], As, [], Bs).
+
+interleave_2([], !As, !Bs).
+interleave_2([H|T], As0, As, Bs0, Bs) :-
+    interleave_2(T, Bs0, Bs, [H|As0], As).
+
+%-----------------------------------------------------------------------------%
 
 :- pred generate_maybe_pred_code(module_info::in,
-    global_data::in, global_data::out, pred_id::in,
-    list(c_procedure)::out, io::di, io::uo) is det.
+    pred_id::in, list(c_procedure)::out,
+    global_data::in, global_data::out, io::di, io::uo) is det.
 
     % Note that some of the logic of generate_maybe_pred_code is duplicated
     % by mercury_compile.backend_pass_by_preds, so modifications here may
     % also need to be repeated there.
     %
-generate_maybe_pred_code(ModuleInfo, !GlobalData, PredId, Predicates, !IO) :-
+generate_maybe_pred_code(ModuleInfo, PredId, Predicates, !GlobalData, !IO) :-
     module_info_preds(ModuleInfo, PredInfos),
     map.lookup(PredInfos, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
@@ -166,17 +233,27 @@ generate_maybe_pred_code(ModuleInfo, !GlobalData, PredId, Predicates, !IO) :-
         ;
             VeryVerbose = no
         ),
-        generate_pred_code(ModuleInfo, !GlobalData,
-            PredId, PredInfo, ProcIds, Predicates)
+        generate_pred_code(ModuleInfo, PredId, PredInfo, ProcIds, Predicates,
+            !GlobalData)
     ).
+
+:- pred generate_pred_code_par(module_info::in, pred_id::in,
+    list(c_procedure)::out, global_data::in, global_data::out) is det.
+
+generate_pred_code_par(ModuleInfo, PredId, Predicates, !GlobalData) :-
+    module_info_preds(ModuleInfo, PredInfos),
+    map.lookup(PredInfos, PredId, PredInfo),
+    ProcIds = pred_info_non_imported_procids(PredInfo),
+    generate_pred_code(ModuleInfo, PredId, PredInfo, ProcIds, Predicates,
+        !GlobalData).
 
     % Translate a HLDS predicate to LLDS.
     %
-:- pred generate_pred_code(module_info::in, global_data::in, global_data::out,
-    pred_id::in, pred_info::in, list(proc_id)::in, list(c_procedure)::out)
-    is det.
+:- pred generate_pred_code(module_info::in, 
+    pred_id::in, pred_info::in, list(proc_id)::in, list(c_procedure)::out,
+    global_data::in, global_data::out) is det.
 
-generate_pred_code(ModuleInfo, !GlobalData, PredId, PredInfo, ProcIds, Code) :-
+generate_pred_code(ModuleInfo, PredId, PredInfo, ProcIds, Code, !GlobalData) :-
     generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo,
         !GlobalData, [], Code).
 

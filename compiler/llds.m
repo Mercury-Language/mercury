@@ -132,13 +132,16 @@
                 rval            % The field value.
             ).
 
+:- type type_num
+    --->    type_num(int).
+
 :- type scalar_common_data_array
     --->    scalar_common_data_array(
                 scda_module     :: module_name,
                                 % The basename of this C file.
                 scda_rval_types :: common_cell_type,
                                 % The type of the elements of the array.
-                scda_type_num   :: int,
+                scda_type_num   :: type_num,
                                 % The type number.
                 scda_values     :: list(common_cell_value)
                                 % The array elements, starting at offset 0.
@@ -150,7 +153,7 @@
                                 % The basename of this C file.
                 vcda_rval_types :: common_cell_type,
                                 % The type of the elements of the array.
-                vcda_type_num   :: int,
+                vcda_type_num   :: type_num,
                                 % The type number.
                 vcda_vector_num :: int,
                                 % The number of this vector, among all the
@@ -904,7 +907,7 @@
     ;       layout_addr(layout_name).
 
 :- type data_name
-    --->    scalar_common_ref(int, int)
+    --->    scalar_common_ref(type_num, int)
             % We store all standalone (scalar) common cells of the same type
             % in an array. A reference to one of these cells contains the
             % the type number (which becomes the distinguishing part of the
@@ -912,7 +915,7 @@
             % which is stored in the first integer, and the offset within
             % this array, which is stored in the second integer.
 
-    ;       vector_common_ref(int, int)
+    ;       vector_common_ref(type_num, int)
             % We store each vector of common cells in its own global variable,
             % identified by a sequence number. The first integer is this
             % sequence number; the second is the offset in the array.

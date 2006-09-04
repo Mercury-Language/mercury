@@ -1387,11 +1387,18 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
-        % --dump-hlds and --statistics require compilation by phases
+        % --dump-hlds, --statistics, --parallel-liveness and
+        % --parallel-code-gen require compilation by phases
         globals.lookup_accumulating_option(!.Globals, dump_hlds, DumpStages),
+        globals.lookup_bool_option(!.Globals, parallel_liveness,
+            ParallelLiveness),
+        globals.lookup_bool_option(!.Globals, parallel_code_gen,
+            ParallelCodeGen),
         (
             ( DumpStages = [_ | _]
             ; Statistics = yes
+            ; ParallelLiveness = yes
+            ; ParallelCodeGen = yes
             )
         ->
             globals.set_option(trad_passes, bool(no), !Globals)

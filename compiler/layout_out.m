@@ -500,7 +500,7 @@ proc_layout_kind_to_type(proc_layout_proc_id(uci)) = "MR_Proc_Layout_UCI".
 
 :- type rval_or_numpair_or_none
     --->    rval(rval)
-    ;       num_pair(int, int)
+    ;       num_pair(type_num, int)
     ;       none.
 
 :- pred output_rval_or_numpair_or_none(rval_or_numpair_or_none::in,
@@ -509,7 +509,7 @@ proc_layout_kind_to_type(proc_layout_proc_id(uci)) = "MR_Proc_Layout_UCI".
 output_rval_or_numpair_or_none(rval(Rval), !IO) :-
     io.write_string(", ", !IO),
     output_rval_as_addr(Rval, !IO).
-output_rval_or_numpair_or_none(num_pair(Num1, Num2), !IO) :-
+output_rval_or_numpair_or_none(num_pair(type_num(Num1), Num2), !IO) :-
     io.write_string(", ", !IO),
     io.write_int(Num1, !IO),
     io.write_string(", ", !IO),
