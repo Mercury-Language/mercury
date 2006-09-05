@@ -2327,10 +2327,7 @@ output_instruction(label(Label), ProfInfo, !IO) :-
         LocalThreadEngineBase, !IO),
     (
         LocalThreadEngineBase = yes,
-        io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
-        io.write_string("\tMercuryEngine *MR_local_thread_engine_base = " ++
-            "MR_thread_engine_base;\n", !IO),
-        io.write_string("#endif\n", !IO)
+        io.write_string("\tMR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE\n", !IO)
     ;
         LocalThreadEngineBase = no
     ),

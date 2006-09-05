@@ -421,15 +421,19 @@ typedef struct MR_mercury_engine_struct {
     /*
     ** MR_engine_base is defined in machdeps/{arch}.h
     */
-  #else
+  #else     /* MR_NUM_REAL_REGS == 0 */
+
     /*
     ** MR_maybe_local_thread_engine_base can be redefined to refer to a
     ** local copy of MR_thread_engine_base.
     */
     #define MR_maybe_local_thread_engine_base   MR_thread_engine_base
-
     #define MR_engine_base  MR_maybe_local_thread_engine_base
-  #endif
+
+    #define MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE \
+        MercuryEngine *MR_local_thread_engine_base = MR_thread_engine_base;
+
+  #endif    /* MR_NUM_REAL_REGS == 0 */
 
   #define MR_ENGINE(x)      (((MercuryEngine *) MR_engine_base)->x)
   #define MR_cur_engine()   ((MercuryEngine *) MR_engine_base)
@@ -443,6 +447,10 @@ typedef struct MR_mercury_engine_struct {
   #define MR_get_engine()   (&MR_engine_base)
 
 #endif  /* !MR_THREAD_SAFE */
+
+#ifndef MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
+  #define MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
+#endif
 
 #define MR_CONTEXT(x)       (MR_ENGINE(MR_eng_context).x)
 
