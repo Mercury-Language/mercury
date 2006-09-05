@@ -292,7 +292,7 @@ read_dice(PassSource, PassFile, FailSource, FailFile, Result, !IO) :-
         Result = error(Problem)
     ).
 
-:- pragma export(read_dice_try_single_first(in, in, out, di, uo),
+:- pragma foreign_export("C", read_dice_try_single_first(in, in, out, di, uo),
     "MR_MDB_read_dice_try_single_first").
 
 read_dice_try_single_first(PassFile, FailFile, Result, !IO) :-
@@ -302,7 +302,7 @@ read_dice_try_single_first(PassFile, FailFile, Result, !IO) :-
 :- pred maybe_dice_error_to_problem_string(maybe_error(dice)::in, string::out)
 	is det.
 
-:- pragma export(maybe_dice_error_to_problem_string(in, out),
+:- pragma foreign_export("C", maybe_dice_error_to_problem_string(in, out),
 	"MR_DD_maybe_dice_error_to_problem_string").
 
 maybe_dice_error_to_problem_string(ok(_), "").
@@ -310,7 +310,7 @@ maybe_dice_error_to_problem_string(error(ErrorStr), ErrorStr).
 
 :- pred det_maybe_dice_error_to_dice(maybe_error(dice)::in, dice::out) is det.
 
-:- pragma export(det_maybe_dice_error_to_dice(in, out),
+:- pragma foreign_export("C", det_maybe_dice_error_to_dice(in, out),
 	"MR_DD_det_maybe_dice_error_to_dice").
 
 det_maybe_dice_error_to_dice(ok(Dice), Dice).
@@ -390,7 +390,8 @@ dice_add_trace_count(fail, LineNoAndCount, ExecCounts0, ExecCounts) :-
 % A mechanism for sorting and formatting slices. The structure is similar
 % to the mechanism for sorting and formatting dices below.
 
-:- pragma export(read_slice_to_string(in, in, in, in, out, out, di, uo),
+:- pragma foreign_export("C",
+    read_slice_to_string(in, in, in, in, out, out, di, uo),
     "MR_MDB_read_slice_to_string").
 
 read_slice_to_string(File, SortStr0, N, Module, SliceStr, Problem, !IO) :-
@@ -571,7 +572,8 @@ format_slice_exec_count(slice_exec_count(_, _, Count, Tests)) =
 % A mechanism for sorting and formatting dices. The structure is similar
 % to the mechanism for sorting and formatting slices above.
 
-:- pragma export(read_dice_to_string(in, in, in, in, in, out, out, di, uo),
+:- pragma foreign_export("C",
+    read_dice_to_string(in, in, in, in, in, out, out, di, uo),
     "MR_MDB_read_dice_to_string").
 
 read_dice_to_string(PassFile, FailFile, SortStr, N, Module, DiceStr, Problem,
@@ -808,7 +810,8 @@ suspicion_ratio_binary(PassCount, FailCount) = R :-
 
 :- func get_suspicion_for_label_layout(dice, label_layout) = float.
 
-:- pragma export(get_suspicion_for_label_layout(in, in) = out,
+:- pragma foreign_export("C",
+    get_suspicion_for_label_layout(in, in) = out,
 	"MR_DD_get_suspicion_for_label_layout").
 
 get_suspicion_for_label_layout(Dice, LabelLayout) = Suspicion :-
