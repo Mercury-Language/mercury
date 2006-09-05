@@ -33,12 +33,12 @@
 
 :- type arg_context
     --->    ac_head(pred_or_func, arity)
-            % the arguments in the head of the clause
+            % The arguments in the head of the clause.
 
     ;       ac_call(call_id)
-            % the arguments in a call to a predicate
+            % The arguments in a call to a predicate.
 
-    ;       ac_functor(            % the arguments in a functor
+    ;       ac_functor(            % The arguments in a functor.
                 cons_id,
                 unify_main_context,
                 unify_sub_contexts

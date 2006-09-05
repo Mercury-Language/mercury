@@ -514,7 +514,9 @@ compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
         Purity = purity_pure, % XXX this is wrong!
         GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
     ;
-        GenericCall0 = cast(_),
+        ( GenericCall0 = cast(_)
+        ; GenericCall0 = event_call(_)
+        ),
         Purity = purity_pure,
         GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
     ).

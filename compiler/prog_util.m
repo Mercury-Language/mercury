@@ -467,6 +467,10 @@ rename_in_goal_expr(OldVar, NewVar,
     rename_in_goal(OldVar, NewVar, Then0, Then),
     rename_in_goal(OldVar, NewVar, Else0, Else).
 rename_in_goal_expr(OldVar, NewVar,
+        event_expr(Name, Terms0),
+        event_expr(Name, Terms)) :-
+    term.substitute_list(Terms0, OldVar, term.variable(NewVar), Terms).
+rename_in_goal_expr(OldVar, NewVar,
         call_expr(SymName, Terms0, Purity),
         call_expr(SymName, Terms, Purity)) :-
     term.substitute_list(Terms0, OldVar, term.variable(NewVar), Terms).

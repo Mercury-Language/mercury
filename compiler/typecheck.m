@@ -105,10 +105,10 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.goal_path.
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_errors.
 :- import_module check_hlds.typecheck_info.
 :- import_module check_hlds.typeclasses.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
@@ -128,6 +128,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
@@ -897,7 +898,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
     ;
         Clauses0 = [SingleClause0]
     ->
-        SingleClause0 = clause(A, Goal0, C, D),
+        SingleClause0 = clause(ApplicableProcs, Goal0, Language, Context),
 
         Goal0 = _ - GoalInfo0,
         goal_to_conj_list(Goal0, Conj0),
@@ -912,7 +913,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
         apply_partial_map_to_list(Subst, HeadVars0, HeadVars),
         clauses_info_set_headvars(HeadVars, ClausesInfo0, ClausesInfo1),
 
-        SingleClause = clause(A, Goal, C, D),
+        SingleClause = clause(ApplicableProcs, Goal, Language, Context),
         clauses_info_set_clauses([SingleClause], ClausesInfo1, ClausesInfo2),
         clauses_info_set_varset(VarSet, ClausesInfo2, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo)
@@ -1291,7 +1292,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
         typecheck_call_pred(CurCall, Args, GoalPath, PredId, !Info, !IO),
         GoalExpr = plain_call(PredId, ProcId, Args, BI, UC, Name)
     ;
-        GoalExpr0 = generic_call(GenericCall0, Args, C, D),
+        GoalExpr0 = generic_call(GenericCall0, Args, Modes, Detism),
         hlds_goal.generic_call_id(GenericCall0, CallId),
         typecheck_info_set_called_predid(CallId, !Info),
         (
@@ -1301,23 +1302,28 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
             typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO)
         ;
             GenericCall0 = class_method(_, _, _, _),
-            unexpected(this_file, "typecheck_goal_2:
-                unexpected class method call")
+            unexpected(this_file,
+                "typecheck_goal_2: unexpected class method call")
+        ;
+            GenericCall0 = event_call(EventName),
+            GenericCall = GenericCall0,
+            checkpoint("event call", !Info, !IO),
+            typecheck_event_call(EventName, Args, !Info, !IO)
         ;
             GenericCall0 = cast(_),
             % A cast imposes no restrictions on its argument types,
             % so nothing needs to be done here.
             GenericCall = GenericCall0
         ),
-        GoalExpr = generic_call(GenericCall, Args, C, D)
+        GoalExpr = generic_call(GenericCall, Args, Modes, Detism)
     ;
-        GoalExpr0 = unify(LHS, RHS0, C, D, UnifyContext),
+        GoalExpr0 = unify(LHS, RHS0, UnifyMode, Unification, UnifyContext),
         checkpoint("unify", !Info, !IO),
         typecheck_info_set_arg_num(0, !Info),
         typecheck_info_set_unify_context(UnifyContext, !Info),
         goal_info_get_goal_path(GoalInfo, GoalPath),
         typecheck_unification(LHS, RHS0, RHS, GoalPath, !Info, !IO),
-        GoalExpr = unify(LHS, RHS, C, D, UnifyContext)
+        GoalExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext)
     ;
         GoalExpr0 = switch(_, _, _),
         unexpected(this_file, "typecheck_goal_2: unexpected switch")
@@ -1444,6 +1450,18 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
 
 %-----------------------------------------------------------------------------%
 
+:- pred typecheck_event_call(string::in, list(prog_var)::in,
+    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+
+typecheck_event_call(EventName, Args, !Info, !IO) :-
+    ( event_arg_types(EventName, EventArgTypes) ->
+        typecheck_var_has_type_list(Args, EventArgTypes, 1, !Info, !IO)
+    ;
+        report_unknown_event_call_error(EventName, !Info, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
 :- pred typecheck_call_pred(simple_call_id::in, list(prog_var)::in,
     goal_path::in, pred_id::out, typecheck_info::in, typecheck_info::out,
     io::di, io::uo) is det.
@@ -1484,7 +1502,6 @@ typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info, !IO) :-
         % S. Peyton-Jones, M. Jones 1997, for a discussion of some of the
         % issues.
         perform_context_reduction(OrigTypeAssignSet, !Info, !IO)
-
     ;
         PredId = invalid_pred_id,
         report_pred_call_error(CallId, !Info, !IO)
@@ -1497,7 +1514,6 @@ typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info, !IO) :-
 
 typecheck_call_pred_id(PredId, Args, GoalPath, !Info, !IO) :-
     typecheck_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
     map.lookup(Preds, PredId, PredInfo),
@@ -1515,6 +1531,7 @@ typecheck_call_pred_id(PredId, Args, GoalPath, !Info, !IO) :-
     ->
         typecheck_var_has_type_list(Args, PredArgTypes, 1, !Info, !IO)
     ;
+        module_info_get_class_table(ModuleInfo, ClassTable),
         make_body_hlds_constraints(ClassTable, PredTypeVarSet,
             GoalPath, PredClassContext, PredConstraints),
         typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet,
@@ -1864,10 +1881,10 @@ check_warn_too_much_overloading(!Info, !IO) :-
 
 typecheck_unification(X, rhs_var(Y), rhs_var(Y), _, !Info, !IO) :-
     typecheck_unify_var_var(X, Y, !Info, !IO).
-typecheck_unification(X, rhs_functor(F, E, As), rhs_functor(F, E, As),
-        GoalPath, !Info, !IO) :-
+typecheck_unification(X, rhs_functor(Functor, ExistConstraints, Args),
+        rhs_functor(Functor, ExistConstraints, Args), GoalPath, !Info, !IO) :-
     typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
-    typecheck_unify_var_functor(X, F, As, GoalPath, !Info, !IO),
+    typecheck_unify_var_functor(X, Functor, Args, GoalPath, !Info, !IO),
     perform_context_reduction(OrigTypeAssignSet, !Info, !IO).
 typecheck_unification(X,
         rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
@@ -2338,8 +2355,8 @@ builtin_atomic_type(cons(unqualified(String), 0), "character") :-
     % or equal to Arity.  GoalPath is used to identify any constraints
     % introduced.
     %
-    % For example, functor `map.search/1' has type `pred(K,V)'
-    % (hence PredTypeParams = [K,V]) and argument types [map(K,V)].
+    % For example, functor `map.search/1' has type `pred(K, V)'
+    % (hence PredTypeParams = [K, V]) and argument types [map(K, V)].
     %
 :- pred builtin_pred_type(typecheck_info::in, cons_id::in, int::in,
     goal_path::in, list(cons_type_info)::out) is semidet.

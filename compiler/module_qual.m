@@ -545,6 +545,15 @@ process_assert(if_then_else_expr(_, _, GA, GB, GC) - _, Symbols, Success) :-
     list.append(Symbols0, SymbolsC, Symbols),
     bool.and(SuccessA, SuccessB, Success0),
     bool.and(Success0, SuccessC, Success).
+process_assert(event_expr(_Name, Args0) - _, Symbols, Success) :-
+    list.map(term.coerce, Args0, Args),
+    ( term_qualified_symbols_list(Args, SymbolsPrime) ->
+        Symbols = SymbolsPrime,
+        Success = yes
+    ;
+        Symbols = [],
+        Success = no
+    ).
 process_assert(call_expr(SymName, Args0, _Purity) - _, Symbols, Success) :-
     ( SymName = qualified(_, _) ->
         list.map(term.coerce, Args0, Args),

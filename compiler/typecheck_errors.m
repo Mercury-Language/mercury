@@ -41,6 +41,9 @@
 :- pred report_pred_call_error(simple_call_id::in,
     typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
+:- pred report_unknown_event_call_error(string::in,
+    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+
 :- pred report_no_clauses(string::in, pred_id::in, pred_info::in,
     module_info::in, io::di, io::uo) is det.
 
@@ -141,7 +144,7 @@ report_pred_call_error(PredCallId, !Info, !IO) :-
             calls_are_fully_qualified(!.Info ^ pred_markers),
             PredOrFunc0, SymName, OtherIds),
         predicate_table_get_preds(PredicateTable, Preds),
-        OtherIds \= []
+        OtherIds = [_ | _]
     ->
         typecheck_find_arities(Preds, OtherIds, Arities),
         report_error_pred_num_args(!.Info, PredCallId, Arities, !IO)
@@ -152,10 +155,9 @@ report_pred_call_error(PredCallId, !Info, !IO) :-
         predicate_table_search_pf_sym(PredicateTable,
             calls_are_fully_qualified(!.Info ^ pred_markers),
             PredOrFunc, SymName, OtherIds),
-        OtherIds \= []
+        OtherIds = [_ | _]
     ->
-        report_error_func_instead_of_pred(!.Info, PredOrFunc,
-            PredCallId, !IO)
+        report_error_func_instead_of_pred(!.Info, PredOrFunc, PredCallId, !IO)
     ;
         report_error_undef_pred(!.Info, PredCallId, !IO)
     ),
@@ -320,7 +322,7 @@ report_error_apply_instead_of_pred(Info, !IO) :-
             words("e.g. instead of "),
             fixed("`NewFunc = apply(OldFunc, X)'"),
             words("use"),
-            fixed("`NewFunc = my_apply(OldFunc, X)'"), 
+            fixed("`NewFunc = my_apply(OldFunc, X)'"),
             words("where `my_apply' is defined"),
             words("with the appropriate arity, e.g."),
             fixed("`my_apply(Func, X, Y) :- apply(Func, X, Y).'")]
@@ -333,15 +335,23 @@ report_error_apply_instead_of_pred(Info, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+report_unknown_event_call_error(EventName, !Info, !IO) :-
+    typecheck_info_get_context(!.Info, Context),
+    Pieces = [words("There is no event named"), quote(EventName),
+        suffix(".")],
+    error_util.write_error_pieces(Context, 0, Pieces, !IO).
+
+%-----------------------------------------------------------------------------%
+
 report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo, !IO) :-
     io.get_exit_status(Status, !IO),
     ( Status = 0 ->
         pred_info_context(PredInfo, Context),
         PredPieces = describe_one_pred_name(ModuleInfo,
             should_not_module_qualify, PredId),
-        ErrorMsg = [words(MessageKind ++ ": no clauses for ") | PredPieces] ++
+        Pieces = [words(MessageKind ++ ": no clauses for ") | PredPieces] ++
             [suffix(".")],
-        error_util.write_error_pieces(Context, 0, ErrorMsg, !IO)
+        error_util.write_error_pieces(Context, 0, Pieces, !IO)
     ;
         % It is possible (and even likely) that the error that got the exit
         % status set was caused by a syntax error in a clause defining this
@@ -709,7 +719,7 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
             write_type_of_var(Info, Context, TypeAssignSet, Var, !IO),
             io.write_string(",\n", !IO)
         ;
-            true 
+            true
         ),
 
         prog_out.write_context(Context, !IO),
@@ -1015,7 +1025,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
                 io.write_string(
         "  correctly imported).\n", !IO)
             ;
-                true 
+                true
             )
         ;
             VerboseErrors = no
@@ -1027,7 +1037,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
     ; Functor = cons(unqualified("then"), 2) ->
         io.write_string("  error: `then' without `if' or `else'.\n", !IO),
         globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-        (   
+        (
             VerboseErrors = yes,
             prog_out.write_context(Context, !IO),
             io.write_string(
@@ -1036,7 +1046,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
             io.write_string(
                 "  Every if-then must have an `else'.\n", !IO)
         ;
-            VerboseErrors = no  
+            VerboseErrors = no
         )
     ; Functor = cons(unqualified("->"), 2) ->
         io.write_string("  error: `->' without `;'.\n", !IO),
@@ -1050,7 +1060,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
             io.write_string(
                 "  Every if-then must have an else.\n", !IO)
         ;
-            VerboseErrors = no 
+            VerboseErrors = no
         )
     ; Functor = cons(unqualified("^"), 2) ->
         io.write_string("  error: invalid use of field selection " ++
@@ -1065,19 +1075,19 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
             io.write_string("  The field name must be an " ++
                 "atom, not a variable or other term.\n", !IO)
         ;
-            VerboseErrors = no 
+            VerboseErrors = no
         )
     ; Functor = cons(unqualified(":="), 2) ->
         io.write_string("  error: invalid use of field update " ++
             "operator (`:=').\n", !IO),
         globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-        ( 
+        (
             VerboseErrors = yes,
             prog_out.write_context(Context, !IO),
             io.write_string("  This is probably some kind " ++
                 "of syntax error.\n", !IO)
         ;
-            VerboseErrors = no 
+            VerboseErrors = no
         )
     ; Functor = cons(unqualified(":-"), 2) ->
         io.write_string("  syntax error in lambda expression " ++
@@ -1092,13 +1102,13 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
         io.write_string("  error: invalid use of `!' " ++
             "state variable operator.\n", !IO),
         globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-        ( 
+        (
             VerboseErrors = yes,
             prog_out.write_context(Context, !IO),
             io.write_string("  You probably meant to use " ++
                 "`!.' or `!:'.\n", !IO)
         ;
-            VerboseErrors = no 
+            VerboseErrors = no
         )
     ;
         (

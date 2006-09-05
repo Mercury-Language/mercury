@@ -1685,6 +1685,13 @@ read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Goal) :-
             read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
                 Info, AtomicGoal, Goal)
         ;
+            GoalType = goal_event_call,
+            read_string(Bytecode, Label, !Pos, EventName),
+            read_vars(VarNumRep, Bytecode, !Pos, Args),
+            AtomicGoal = event_call_rep(EventName, Args),
+            read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+                Info, AtomicGoal, Goal)
+        ;
             GoalType = goal_foreign,
             read_vars(VarNumRep, Bytecode, !Pos, Args),
             AtomicGoal = pragma_foreign_code_rep(Args),

@@ -433,10 +433,12 @@ generic_call_id_to_string(gcid_higher_order(Purity, PredOrFunc, _)) =
     ++ prog_out.pred_or_func_to_full_str(PredOrFunc) ++ " call".
 generic_call_id_to_string(gcid_class_method(_ClassId, MethodId)) =
     simple_call_id_to_string(MethodId).
+generic_call_id_to_string(gcid_event_call(EventName)) =
+    "event " ++ EventName.
 generic_call_id_to_string(gcid_cast(CastType)) =
     cast_type_to_string(CastType).
 
-:- func cast_type_to_string(cast_type) = string.
+:- func cast_type_to_string(cast_kind) = string.
 
 cast_type_to_string(unsafe_type_cast) = "unsafe_type_cast".
 cast_type_to_string(unsafe_type_inst_cast) = "unsafe_type_inst_cast".
@@ -523,6 +525,8 @@ arg_number_to_string(generic_call_id(
         Str = Main ++ " (i.e. " ++ Expl ++ ")"
     ).
 arg_number_to_string(generic_call_id(gcid_class_method(_, _)), ArgNum) =
+    "argument " ++ int_to_string(ArgNum).
+arg_number_to_string(generic_call_id(gcid_event_call(_)), ArgNum) =
     "argument " ++ int_to_string(ArgNum).
 arg_number_to_string(generic_call_id(gcid_cast(_)), ArgNum) =
     "argument " ++ int_to_string(ArgNum).
@@ -1766,6 +1770,22 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
         term.var_list_to_term_list(ArgVars, ArgTerms),
         Term = term.functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
             Context),
+        write_indent(Indent, !IO),
+        mercury_output_term(Term, VarSet, AppendVarNums, !IO),
+        io.write_string(Follow, !IO)
+    ;
+        GenericCall = event_call(EventName),
+        globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
+        ( string.contains_char(Verbose, 'l') ->
+            write_indent(Indent, !IO),
+            io.write_string("% event call\n", !IO)
+        ;
+            true
+        ),
+        term.context_init(Context),
+        Functor = term.atom(EventName),
+        term.var_list_to_term_list(ArgVars, ArgTerms),
+        Term = term.functor(Functor, ArgTerms, Context),
         write_indent(Indent, !IO),
         mercury_output_term(Term, VarSet, AppendVarNums, !IO),
         io.write_string(Follow, !IO)

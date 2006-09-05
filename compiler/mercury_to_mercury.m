@@ -2764,7 +2764,7 @@ mercury_output_goal_2(promise_purity_expr(_Implicit, Purity, Goal), VarSet,
 mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
     Expr = trace_expr(MaybeCompileTime, MaybeRunTime, MaybeIO, MutableVars,
         Goal),
-    Indent1 = Indent + 1,
+    mercury_output_newline(Indent, !IO),
     io.write_string("trace [", !IO),
     some [!NeedComma] (
         !:NeedComma = no,
@@ -2799,8 +2799,8 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
             MutableVars, !.NeedComma, _, !IO)
     ),
     io.write_string("]", !IO),
-    mercury_output_newline(Indent1, !IO),
-    mercury_output_goal(Goal, VarSet, Indent1, !IO),
+    mercury_output_newline(Indent + 1, !IO),
+    mercury_output_goal(Goal, VarSet, Indent + 1, !IO),
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
@@ -2854,9 +2854,13 @@ mercury_output_goal_2(disj_expr(A, B), VarSet, Indent, !IO) :-
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2(call_expr(Name, Term, Purity), VarSet, Indent, !IO) :-
+mercury_output_goal_2(event_expr(Name, Terms), VarSet, Indent, !IO) :-
+    io.write_string("event ", !IO),
+    mercury_output_call(unqualified(Name), Terms, VarSet, Indent, !IO).
+
+mercury_output_goal_2(call_expr(Name, Terms, Purity), VarSet, Indent, !IO) :-
     write_purity_prefix(Purity, !IO),
-    mercury_output_call(Name, Term, VarSet, Indent, !IO).
+    mercury_output_call(Name, Terms, VarSet, Indent, !IO).
 
 mercury_output_goal_2(unify_expr(A, B, Purity), VarSet, _Indent, !IO) :-
     write_purity_prefix(Purity, !IO),

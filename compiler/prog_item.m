@@ -719,6 +719,7 @@
                             % if_then_else(SomeVars, StateVars, If, Then, Else)
 
     % atomic goals
+    ;       event_expr(string, list(prog_term))
     ;       call_expr(sym_name, list(prog_term), purity)
     ;       unify_expr(prog_term, prog_term, purity).
 

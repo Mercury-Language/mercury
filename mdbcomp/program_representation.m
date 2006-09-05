@@ -78,7 +78,7 @@
                 goal_rep,           % The quantified goal.
                 maybe_cut
             )
-    ;   atomic_goal_rep(
+    ;       atomic_goal_rep(
                 detism_rep,
                 string,             % Filename of context.
                 int,                % Line number of context.
@@ -155,6 +155,10 @@
                 string,             % name of called pred's module
                 string,             % name of the called pred
                 list(var_rep)       % the call's arguments
+            )
+    ;       event_call_rep(
+                string,             % name of the event
+                list(var_rep)       % the call's arguments
             ).
 
 :- type var_rep ==  int.
@@ -172,10 +176,10 @@
     ;       failure_rep.
 
     % If the given atomic goal behaves like a call in the sense that it
-    % generates events, then return the list of variables that are passed
-    % as arguments.
+    % generates events as ordinary calls do, then return the list of variables
+    % that are passed as arguments.
     %
-:- func atomic_goal_generates_event(atomic_goal_rep) = maybe(list(var_rep)).
+:- func atomic_goal_generates_event_like_call(atomic_goal_rep) = maybe(list(var_rep)).
 
     % If the given goal generates internal events directly then this
     % function will return yes and no otherwise.
@@ -193,7 +197,7 @@
 :- type atomic_goal_id
     ---> atomic_goal_id(string, string, int).
 
-    % Can we find out the atomic goals name, module and arity from
+    % Can we find out the atomic goal's name, module and arity from
     % its atomic_goal_rep? If so return them, otherwise return no.
     %
 :- func atomic_goal_identifiable(atomic_goal_rep) =
@@ -304,7 +308,8 @@
     ;       goal_ho_call
     ;       goal_method_call
     ;       goal_plain_call
-    ;       goal_builtin_call.
+    ;       goal_builtin_call
+    ;       goal_event_call.
 
 :- func goal_type_to_byte(bytecode_goal_type) = int.
 
@@ -351,23 +356,26 @@
 :- import_module require.
 :- import_module string.
 
-atomic_goal_generates_event(unify_construct_rep(_, _, _)) = no.
-atomic_goal_generates_event(unify_deconstruct_rep(_, _, _)) = no.
-atomic_goal_generates_event(partial_construct_rep(_, _, _)) = no.
-atomic_goal_generates_event(partial_deconstruct_rep(_, _, _)) = no.
-atomic_goal_generates_event(unify_assign_rep(_, _)) = no.
-atomic_goal_generates_event(unify_simple_test_rep(_, _)) = no.
-atomic_goal_generates_event(cast_rep(_, _)) = no.
-atomic_goal_generates_event(pragma_foreign_code_rep(_)) = no.
-atomic_goal_generates_event(higher_order_call_rep(_, Args)) = yes(Args).
-atomic_goal_generates_event(method_call_rep(_, _, Args)) = yes(Args).
-atomic_goal_generates_event(builtin_call_rep(_, _, _)) = no.
-atomic_goal_generates_event(plain_call_rep(ModuleName, PredName, Args)) =
+atomic_goal_generates_event_like_call(unify_construct_rep(_, _, _)) = no.
+atomic_goal_generates_event_like_call(unify_deconstruct_rep(_, _, _)) = no.
+atomic_goal_generates_event_like_call(partial_construct_rep(_, _, _)) = no.
+atomic_goal_generates_event_like_call(partial_deconstruct_rep(_, _, _)) = no.
+atomic_goal_generates_event_like_call(unify_assign_rep(_, _)) = no.
+atomic_goal_generates_event_like_call(unify_simple_test_rep(_, _)) = no.
+atomic_goal_generates_event_like_call(cast_rep(_, _)) = no.
+atomic_goal_generates_event_like_call(pragma_foreign_code_rep(_)) = no.
+atomic_goal_generates_event_like_call(higher_order_call_rep(_, Args)) =
+        yes(Args).
+atomic_goal_generates_event_like_call(method_call_rep(_, _, Args)) = yes(Args).
+atomic_goal_generates_event_like_call(builtin_call_rep(_, _, _)) = no.
+atomic_goal_generates_event_like_call(plain_call_rep(ModuleName, PredName,
+        Args)) =
     ( call_does_not_generate_events(ModuleName, PredName, list.length(Args)) ->
         no
     ;
         yes(Args)
     ).
+atomic_goal_generates_event_like_call(event_call_rep(_, _)) = no.
 
 call_does_not_generate_events(ModuleName, PredName, Arity) :-
     (
@@ -415,6 +423,7 @@ atomic_goal_identifiable(builtin_call_rep(Module, Name, Args)) =
     yes(atomic_goal_id(Module, Name, length(Args))).
 atomic_goal_identifiable(plain_call_rep(Module, Name, Args)) =
     yes(atomic_goal_id(Module, Name, length(Args))).
+atomic_goal_identifiable(event_call_rep(_, _)) = no.
 
 :- pragma export(proc_rep_type = out, "ML_proc_rep_type").
 
@@ -527,6 +536,7 @@ goal_type_byte(15, goal_ho_call).
 goal_type_byte(16, goal_method_call).
 goal_type_byte(17, goal_plain_call).
 goal_type_byte(18, goal_builtin_call).
+goal_type_byte(19, goal_event_call).
 
 %-----------------------------------------------------------------------------%
 

@@ -510,6 +510,46 @@ parse_goal_2("impure", [SubTerm], Context, MaybeGoal, !VarSet) :-
 parse_goal_2("semipure", [SubTerm], Context, MaybeGoal, !VarSet) :-
     parse_goal_with_purity(SubTerm, purity_semipure, Context, MaybeGoal,
         !VarSet).
+parse_goal_2("event", [SubTerm], Context, MaybeGoal, !VarSet) :-
+    parse_goal(SubTerm, MaybeSubGoal, !VarSet),
+    (
+        MaybeSubGoal = ok1(SubGoal),
+        ( SubGoal = call_expr(SymName, Args, Purity) - _SubContext ->
+            (
+                SymName = unqualified(EventName),
+                Purity = purity_pure
+            ->
+                Goal = event_expr(EventName, Args) - Context,
+                MaybeGoal = ok1(Goal)
+            ;
+                some [!Errors] (
+                    !:Errors = [],
+                    ( SymName = unqualified(_) ->
+                        true
+                    ;
+                        SymNameMsg = "event name must not be qualified",
+                        SymNameError = SymNameMsg - SubTerm,
+                        !:Errors = [SymNameError | !.Errors]
+                    ),
+                    ( Purity = purity_pure ->
+                        true
+                    ;
+                        PurityMsg = "event cannot be impure or semipure",
+                        PurityError = PurityMsg - SubTerm,
+                        !:Errors = [PurityError | !.Errors]
+                    ),
+                    MaybeGoal = error1(!.Errors)
+                )
+            )
+        ;
+            Msg = "event prefix must not precede anything other than a call",
+            Error = Msg - SubTerm,
+            MaybeGoal = error1([Error])
+        )
+    ;
+        MaybeSubGoal = error1(Errors),
+        MaybeGoal = error1(Errors)
+    ).
 parse_goal_2("is", [ATerm0, BTerm0], Context, MaybeGoal, !VarSet) :-
     % The following is a temporary hack to handle `is' in the parser -
     % we ought to handle it in the code generation - but then `is/2' itself

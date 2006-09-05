@@ -439,6 +439,9 @@ check_goal_2(generic_call(GenericCall, Args, Modes, Det), _GoalInfo0, Goal,
         GenericCall = class_method(_, _, _, _),
         ArgOffset = 0
     ;
+        GenericCall = event_call(_),
+        ArgOffset = 0
+    ;
         % Casts are introduced by the compiler and should be mode correct.
         GenericCall = cast(_),
         ArgOffset = 0
@@ -594,9 +597,8 @@ check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism, NeverSucceeds,
         !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
-    NeedExactMatch = no,
-    modecheck_var_has_inst_list(ArgVars, InitialInsts,
-        NeedExactMatch, ArgOffset, InstVarSub, !ModeInfo),
+    modecheck_var_has_inst_list_no_exact_match(ArgVars, InitialInsts,
+        ArgOffset, InstVarSub, !ModeInfo),
     mode_list_get_final_insts(ModuleInfo, ProcArgModes, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
     modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,

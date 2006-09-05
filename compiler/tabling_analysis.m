@@ -490,6 +490,10 @@ check_generic_call_for_mm_tabling(Details, Result, MaybeAnalysisStatus,
         Result  = mm_tabled_may_call,
         MaybeAnalysisStatus = yes(optimal)
     ;
+        Details = event_call(_),
+        Result = mm_tabled_will_not_call,
+        MaybeAnalysisStatus = yes(optimal)
+    ;
         Details = cast(_),
         Result = mm_tabled_will_not_call,
         MaybeAnalysisStatus = yes(optimal)
@@ -767,6 +771,9 @@ annotate_generic_call(GenericCall, Status, !ModuleInfo, !IO) :-
     ;
         GenericCall = class_method(_, _, _, _),
         Status = mm_tabled_may_call
+    ;     
+        GenericCall = event_call(_),
+        Status = mm_tabled_will_not_call
     ;     
         GenericCall = cast(_),
         Status = mm_tabled_will_not_call

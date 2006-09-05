@@ -1222,7 +1222,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             Primitives0)
     ;
         Goal = atomic_goal_rep(_, File, Line, BoundVars, AtomicGoal),
-        GeneratesEvent = atomic_goal_generates_event(AtomicGoal),
+        GeneratesEvent = atomic_goal_generates_event_like_call(AtomicGoal),
         (
             GeneratesEvent = yes(AtomicGoalArgs),
             MaybePrims = match_atomic_goal_to_contour_event(Store, File, Line,
@@ -1680,6 +1680,13 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
         AtomicGoal = builtin_call_rep(_, _, _),
         ( list.member(Var0, BoundVars) ->
             Origin = origin_primitive_op(File, Line, primop_builtin_call)
+        ;
+            traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
+        )
+    ;
+        AtomicGoal = event_call_rep(_, _),
+        ( list.member(Var0, BoundVars) ->
+            throw(internal_error("traverse_primitives", "bad event"))
         ;
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcRep, Origin)
         )

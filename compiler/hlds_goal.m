@@ -407,27 +407,39 @@
 
 :- type generic_call
     --->    higher_order(
-                prog_var,
-                purity,
-                pred_or_func,   % call/N (pred) or apply/N (func)
-                arity           % number of arguments (including the
+                ho_call_var     :: prog_var,
+                ho_call_purity  :: purity,
+                ho_call_kind    :: pred_or_func,
+                                % call/N (pred) or apply/N (func)
+                ho_call_arity   :: arity
+                                % number of arguments (including the
                                 % higher-order term)
             )
 
     ;       class_method(
-                prog_var,       % typeclass_info for the instance
-                int,            % number of the called method
-                class_id,       % name and arity of the class
-                simple_call_id  % name of the called method
+                method_tci      :: prog_var,
+                                % typeclass_info for the instance
+                method_num      :: int,
+                                % number of the called method
+                method_class_id :: class_id,
+                                % name and arity of the class
+                method_name     :: simple_call_id
+                                % name of the called method
             )
 
-    ;       cast(cast_type).
-            % cast(Input, Output): Assigns `Input' to `Output', performing
-            % a type and/or inst cast.
+    ;       event_call(
+                event_name      :: string 
+            )
+
+    ;       cast(
+                cast_kind       :: cast_kind
+                % cast(Input, Output): Assigns `Input' to `Output', performing
+                % a type and/or inst cast.
+            ).
 
     % The various kinds of casts that we can do.
     %
-:- type cast_type
+:- type cast_kind
     --->    unsafe_type_cast
             % An unsafe type cast between ground values.
 
@@ -1476,11 +1488,14 @@ generic_call_id(higher_order(_, Purity, PorF, Arity),
         generic_call_id(gcid_higher_order(Purity, PorF, Arity))).
 generic_call_id(class_method(_, _, ClassId, MethodId),
         generic_call_id(gcid_class_method(ClassId, MethodId))).
+generic_call_id(event_call(EventName),
+        generic_call_id(gcid_event_call(EventName))).
 generic_call_id(cast(CastType), generic_call_id(gcid_cast(CastType))).
 
 generic_call_pred_or_func(higher_order(_, _, PredOrFunc, _)) = PredOrFunc.
 generic_call_pred_or_func(class_method(_, _, _, CallId)) =
     simple_call_id_pred_or_func(CallId).
+generic_call_pred_or_func(event_call(_)) = predicate.
 generic_call_pred_or_func(cast(_)) = predicate.
 
 :- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.

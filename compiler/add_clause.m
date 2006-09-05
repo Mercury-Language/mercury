@@ -63,13 +63,13 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.pred_table.
 :- import_module hlds.make_hlds.add_pragma.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -78,6 +78,7 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
@@ -736,6 +737,22 @@ transform_goal_2(equivalent_expr(P0, Q0), _, Subst, Goal, NumAdded, !VarSet,
     NumAdded = NumAddedP + NumAddedQ,
     Goal = shorthand(bi_implication(P, Q)) - GoalInfo,
     finish_equivalence(BeforeSInfo, !SInfo).
+transform_goal_2(event_expr(EventName, Args0), Context, Subst,
+        Goal,
+        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
+    Args1 = expand_bang_state_var_args(Args0),
+    prepare_for_call(!SInfo),
+    term.apply_substitution_to_list(Args1, Subst, Args),
+    make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !IO),
+    list.length(HeadVars, Arity),
+    list.duplicate(Arity, in_mode, Modes),
+    goal_info_init(Context, GoalInfo),
+    Details = event_call(EventName),
+    Goal0 = generic_call(Details, HeadVars, Modes, detism_det) - GoalInfo,
+    CallId = generic_call_id(gcid_event_call(EventName)),
+    insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
+        Goal0, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
+    finish_call(!VarSet, !SInfo).
 transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal,
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     Args1 = expand_bang_state_var_args(Args0),
@@ -785,7 +802,7 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal,
 
             hlds_goal.generic_call_id(GenericCall, CallId)
         ;
-            % initialize some fields to junk
+            % Initialize some fields to junk.
             PredId = invalid_pred_id,
             ModeId = invalid_proc_id,
 

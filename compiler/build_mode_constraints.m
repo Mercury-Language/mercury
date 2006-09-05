@@ -471,6 +471,11 @@ add_goal_expr_constraints(_ModuleInfo, _ProgVarset, _PredId,
         Details = class_method(_, _, _, _),
         sorry(this_file, "class_method generic_call")
     ;
+        % XXX We need to impose the constraint that all the argument variables
+        % are bound elsewhere.
+        Details = event_call(_),
+        sorry(this_file, "event_call generic_call")
+    ;
         % No mode constraints
         Details = cast(_)
     ).

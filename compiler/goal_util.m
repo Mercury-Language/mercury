@@ -336,14 +336,14 @@
 
     % Generate a cast goal.  The input and output insts are just ground.
     %
-:- pred generate_cast(cast_type::in, prog_var::in, prog_var::in,
+:- pred generate_cast(cast_kind::in, prog_var::in, prog_var::in,
     prog_context::in, hlds_goal::out) is det.
 
     % This version takes input and output inst arguments, which may
     % be necessary when casting, say, solver type values with inst
     % any, or casting between enumeration types and ints.
     %
-:- pred generate_cast(cast_type::in, prog_var::in, prog_var::in,
+:- pred generate_cast(cast_kind::in, prog_var::in, prog_var::in,
     mer_inst::in, mer_inst::in, prog_context::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -719,7 +719,8 @@ rename_generic_call(Must, Subn,
         class_method(Var0, Method, ClassId, MethodId),
         class_method(Var, Method, ClassId, MethodId)) :-
     rename_var(Must, Subn, Var0, Var).
-rename_generic_call(_, _, cast(CastType), cast(CastType)).
+rename_generic_call(_, _, event_call(EventName), event_call(EventName)).
+rename_generic_call(_, _, cast(CastKind), cast(CastKind)).
 
 %-----------------------------------------------------------------------------%
 
@@ -890,6 +891,7 @@ rhs_goal_vars(RHS, !Set) :-
 
 generic_call_vars(higher_order(Var, _, _, _), [Var]).
 generic_call_vars(class_method(Var, _, _, _), [Var]).
+generic_call_vars(event_call(_), []).
 generic_call_vars(cast(_), []).
 
 %-----------------------------------------------------------------------------%

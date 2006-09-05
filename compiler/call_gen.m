@@ -148,24 +148,32 @@ generate_generic_call(OuterCodeModel, GenericCall, Args0,
     % `cast' differs from the other generic call types in that there is no
     % address. Also, live_vars.m assumes that casts do not require live
     % variables to be saved to the stack.
-    ( GenericCall = cast(_) ->
+    (
+        ( GenericCall = higher_order(_, _, _, _)
+        ; GenericCall = class_method(_, _, _, _)
+        ),
+        generate_main_generic_call(OuterCodeModel, GenericCall, Args0, Modes0,
+            Det, GoalInfo, Code, !CI)
+    ;
+        GenericCall = event_call(_),
+        % XXX The code for handling events is not yet implemented.
+        Code = empty
+    ;
+        GenericCall = cast(_),
         ( Args0 = [InputArg, OutputArg] ->
             generate_assign_builtin(OutputArg, leaf(InputArg), Code, !CI)
         ;
             unexpected(this_file,
                 "generate_generic_call: invalid type/inst cast call")
         )
-    ;
-        generate_generic_call_2(OuterCodeModel, GenericCall, Args0, Modes0,
-            Det, GoalInfo, Code, !CI)
     ).
 
-:- pred generate_generic_call_2(code_model::in, generic_call::in,
+:- pred generate_main_generic_call(code_model::in, generic_call::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
     hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
     is det.
 
-generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
+generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
         GoalInfo, Code, !CI) :-
     Types = list.map(code_info.variable_type(!.CI), Args),
 
@@ -189,15 +197,14 @@ generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
     list.append(SpecifierArgInfos, InVarArgInfos, InArgInfos),
     list.append(InArgInfos, OutArgsInfos, ArgInfos),
 
-        % Save the necessary vars on the stack and move the input args
-        % defined by variables to their registers.
+    % Save the necessary vars on the stack and move the input args defined
+    % by variables to their registers.
     code_info.setup_call(GoalInfo, ArgInfos, LiveVals0, SetupCode, !CI),
     kill_dead_input_vars(ArgInfos, GoalInfo, NonLiveOutputs, !CI),
 
-        % Move the input args not defined by variables to their
-        % registers. Setting up these arguments last results in
-        % slightly more efficient code, since we can use their
-        % registers when placing the variables.
+    % Move the input args not defined by variables to their registers.
+    % Setting up these arguments last results in slightly more efficient code,
+    % since we can use their registers when placing the variables.
     generic_call_nonvar_setup(GenericCall, HoCallVariant, InVars, OutVars,
         NonVarCode, !CI),
 
@@ -206,20 +213,18 @@ generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
 
     call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI),
 
-        % Make the call.
+    % Make the call.
     code_info.get_next_label(ReturnLabel, !CI),
     goal_info_get_context(GoalInfo, Context),
     goal_info_get_goal_path(GoalInfo, GoalPath),
 
-        % Figure out what variables will be live at the return point,
-        % and where, for use in the accurate garbage collector, and
-        % in the debugger.
+    % Figure out what variables will be live at the return point, and where,
+    % for use in the accurate garbage collector, and in the debugger.
     code_info.get_instmap(!.CI, InstMap),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap),
 
-        % Update the code generator state to reflect the situation
-        % after the call.
+    % Update the code generator state to reflect the situation after the call.
     handle_return(OutArgsInfos, GoalInfo, NonLiveOutputs,
         ReturnInstMap, ReturnLiveLvalues, !CI),
 
@@ -230,8 +235,7 @@ generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
         label(ReturnLabel) - "Continuation label"
     ]),
 
-        % If the call can fail, generate code to check for and
-        % handle the failure.
+    % If the call can fail, generate code to check for and handle the failure.
     handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
     Code = tree_list([SetupCode, NonVarCode, TraceCode, CallCode,
@@ -294,8 +298,10 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
             FirstImmediateInputReg = 4
         )
     ;
-        % Casts are generated inline.
-        GenericCall = cast(_),
+        % Events and casts are generated inline.
+        ( GenericCall = event_call(_)
+        ; GenericCall = cast(_)
+        ),
         CodeAddr = do_not_reached,
         SpecifierArgInfos = [],
         FirstImmediateInputReg = 1,
@@ -352,6 +358,8 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
                 "Assign number of immediate input arguments"
         ])
     ).
+generic_call_nonvar_setup(event_call(_), _, _, _, _, !CI) :-
+    unexpected(this_file, "generic_call_nonvar_setup: event_call").
 generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
     unexpected(this_file, "generic_call_nonvar_setup: cast").
 

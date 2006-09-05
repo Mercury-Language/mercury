@@ -243,6 +243,13 @@ goal_expr_to_byte_list(generic_call(GenericCall, Args, _, _),
             vars_to_byte_list(Info, Args) ++
             AtomicBytes
     ;
+        GenericCall = event_call(EventName),
+        string_to_byte_list(EventName, !StackInfo, EventNameBytes),
+        Bytes = [goal_type_to_byte(goal_event_call)] ++
+            EventNameBytes ++
+            vars_to_byte_list(Info, Args) ++
+            AtomicBytes
+    ;
         GenericCall = cast(_),
         ( Args = [InputArg, OutputArg] ->
             Bytes = [goal_type_to_byte(goal_cast)] ++

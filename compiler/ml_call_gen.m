@@ -149,22 +149,27 @@
     % boxing/unboxing of the arguments.
 ml_gen_generic_call(higher_order(_, _, _, _) @ GenericCall, ArgVars, ArgModes,
         Determinism, Context, Decls, Statements, !Info) :-
-    ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism,
+    ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism,
         Context, Decls, Statements, !Info).
 ml_gen_generic_call(class_method(_, _, _, _) @ GenericCall, ArgVars, ArgModes,
         Determinism, Context, Decls, Statements, !Info) :-
-    ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism,
+    ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism,
         Context, Decls, Statements, !Info).
+ml_gen_generic_call(event_call(_), _ArgVars, _ArgModes, _Determinism, _Context,
+        Decls, Statements, !Info) :-
+    % XXX For now, we can't generate events from the MLDS backend.
+    Decls = [],
+    Statements = [].
 ml_gen_generic_call(cast(_), ArgVars, _ArgModes, _Determinism, Context,
         Decls, Statements, !Info) :-
     ml_gen_cast(Context, ArgVars, Decls, Statements, !Info).
 
-:- pred ml_gen_generic_call_2(generic_call::in, list(prog_var)::in,
+:- pred ml_gen_main_generic_call(generic_call::in, list(prog_var)::in,
     list(mer_mode)::in, determinism::in, prog_context::in,
     mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
+ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         Decls, Statements, !Info) :-
     % Allocate some fresh type variables to use as the Mercury types
     % of the boxed arguments.
@@ -230,8 +235,11 @@ ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
         FuncType = mlds_func_type(Params),
         FuncRval = unop(unbox(FuncType), lval(FuncLval))
     ;
+        GenericCall = event_call(_),
+        unexpected(this_file, "ml_gen_main_generic_call: event_call")
+    ;
         GenericCall = cast(_),
-        unexpected(this_file, "ml_gen_generic_call_2: cast")
+        unexpected(this_file, "ml_gen_main_generic_call: cast")
     ),
 
     % Assign the function address rval to a new local variable. This makes

@@ -273,6 +273,8 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
         %
         add_error(Context, method_call, Params, !Info)
     ;
+        Details = event_call(_)
+    ;
         Details = cast(_)
     ).
 

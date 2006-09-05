@@ -2904,6 +2904,9 @@ will_flush(generic_call(GenericCall, _, _, _), BeforeAfter) = WillFlush :-
         GenericCall = class_method(_, _, _, _),
         WillFlush0 = yes
     ;
+        GenericCall = event_call(_),
+        WillFlush0 = no
+    ;
         GenericCall = cast(_),
         WillFlush0 = no
     ),

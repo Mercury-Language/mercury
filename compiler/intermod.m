@@ -490,9 +490,15 @@ traverse_goal(Goal, Goal, DoWrite, !Info) :-
     add_proc(PredId, DoWrite, !Info).
 traverse_goal(Goal @ generic_call(CallType, _, _, _) - Info,
         Goal - Info, DoWrite, !Info) :-
-    ( CallType = higher_order(_, _, _, _), DoWrite = yes
-    ; CallType = class_method(_, _, _, _), DoWrite = no
-    ; CallType = cast(_), DoWrite = no
+    (
+        CallType = higher_order(_, _, _, _),
+        DoWrite = yes
+    ;
+        ( CallType = class_method(_, _, _, _)
+        ; CallType = event_call(_)
+        ; CallType = cast(_)
+        ),
+        DoWrite = no
     ).
 traverse_goal(switch(Var, CanFail, Cases0) - Info,
         switch(Var, CanFail, Cases) - Info, DoWrite, !Info) :-

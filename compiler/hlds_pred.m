@@ -139,7 +139,8 @@
 :- type generic_call_id
     --->    gcid_higher_order(purity, pred_or_func, arity)
     ;       gcid_class_method(class_id, simple_call_id)
-    ;       gcid_cast(cast_type).
+    ;       gcid_event_call(string)
+    ;       gcid_cast(cast_kind).
 
 :- type pred_proc_list  ==  list(pred_proc_id).
 

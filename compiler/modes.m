@@ -210,20 +210,24 @@
 
     % Given a list of variables and a list of expected liveness, ensure
     % that the inst of each variable satisfies the corresponding expected
-    % liveness.  If the bool argument is `yes', then require an exact
-    % match.
+    % liveness.  If the bool argument is `yes', then require an exact match.
     %
-:- pred modecheck_var_list_is_live(list(prog_var)::in, list(is_live)::in,
-    bool::in, int::in, mode_info::in, mode_info::out) is det.
+:- pred modecheck_var_list_is_live_exact_match(list(prog_var)::in,
+    list(is_live)::in, int::in, mode_info::in, mode_info::out) is det.
+:- pred modecheck_var_list_is_live_no_exact_match(list(prog_var)::in,
+    list(is_live)::in, int::in, mode_info::in, mode_info::out) is det.
 
-    % Given a list of variables and a list of initial insts, ensure
-    % that the inst of each variable matches the corresponding initial
-    % inst.  If the bool argument is `yes', then we require an exact
-    % match (using inst_matches_final), otherwise we allow the var
-    % to be more instantiated than the inst (using inst_matches_initial).
+    % Given a list of variables and a list of initial insts, ensure that
+    % the inst of each variable matches the corresponding initial inst.
+    % If the bool argument is `yes', then we require an exact match
+    % (using inst_matches_final), otherwise we allow the var to be more
+    % instantiated than the inst (using inst_matches_initial).
     %
-:- pred modecheck_var_has_inst_list(list(prog_var)::in, list(mer_inst)::in,
-    bool::in, int::in, inst_var_sub::out,
+:- pred modecheck_var_has_inst_list_exact_match(list(prog_var)::in,
+    list(mer_inst)::in, int::in, inst_var_sub::out,
+    mode_info::in, mode_info::out) is det.
+:- pred modecheck_var_has_inst_list_no_exact_match(list(prog_var)::in,
+    list(mer_inst)::in, int::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
     % modecheck_set_var_inst(Var, Inst, MaybeUInst, ModeInfo0, ModeInfo):
@@ -324,8 +328,8 @@
     extra_goals::out) is det.
 
     % Handle_extra_goals combines MainGoal and ExtraGoals into a single
-    % hlds_goal_expr, rerunning mode analysis on the entire
-    % conjunction if ExtraGoals is not empty.
+    % hlds_goal_expr, rerunning mode analysis on the entire conjunction
+    % if ExtraGoals is not empty.
     %
 :- pred handle_extra_goals(hlds_goal_expr::in, extra_goals::in,
     hlds_goal_info::in, list(prog_var)::in, list(prog_var)::in,
@@ -355,15 +359,15 @@
 :- import_module check_hlds.delay_info.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
-:- import_module check_hlds.modecheck_call.
-:- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.modecheck_call.
+:- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.purity.
-:- import_module check_hlds.typecheck.
 :- import_module check_hlds.type_util.
+:- import_module check_hlds.typecheck.
 :- import_module check_hlds.unify_proc.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.hlds_clauses.
@@ -381,6 +385,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -1513,14 +1518,28 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
         GenericCall = higher_order(PredVar, _, PredOrFunc, _),
         modecheck_higher_order_call(PredOrFunc, PredVar,
             Args0, Args, Modes, Det, ExtraGoals, !ModeInfo),
+        Goal1 = generic_call(GenericCall, Args, Modes, Det),
         AllArgs0 = [PredVar | Args0],
-        AllArgs = [PredVar | Args]
+        AllArgs = [PredVar | Args],
+        handle_extra_goals(Goal1, ExtraGoals, GoalInfo0, AllArgs0, AllArgs,
+            InstMap0, Goal, !ModeInfo, !IO)
     ;
         % Class method calls are added by polymorphism.m.
         % XXX We should probably fill this in so that
         % rerunning mode analysis works on code with typeclasses.
         GenericCall = class_method(_, _, _, _),
         unexpected(this_file, "modecheck_goal_expr: class_method_call")
+    ;
+        GenericCall = event_call(EventName),
+        ( event_arg_modes(EventName, ModesPrime) ->
+            Modes = ModesPrime
+        ;
+            % The typechecker should have caught the unknown event,
+            % and not let compilation of this predicate proceed any further.
+            unexpected(this_file, "modecheck_goal_expr: unknown event")
+        ),
+        modecheck_event_call(Modes, Args0, Args, !ModeInfo),
+        Goal = generic_call(GenericCall, Args, Modes, detism_det)
     ;
         GenericCall = cast(_CastType),
         (
@@ -1558,13 +1577,10 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
             Modes = Modes0
         ),
         modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo),
-        AllArgs0 = Args0,
-        AllArgs = Args
+        Goal1 = generic_call(GenericCall, Args, Modes, Det),
+        handle_extra_goals(Goal1, ExtraGoals, GoalInfo0, Args0, Args,
+            InstMap0, Goal, !ModeInfo, !IO)
     ),
-
-    Goal1 = generic_call(GenericCall, Args, Modes, Det),
-    handle_extra_goals(Goal1, ExtraGoals, GoalInfo0, AllArgs0, AllArgs,
-        InstMap0, Goal, !ModeInfo, !IO),
 
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "generic_call", !ModeInfo, !IO).
@@ -1677,9 +1693,8 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
         % unreachable anyway.
         instmap.is_reachable(InstMap0),
 
-        % If we recorded errors processing the goal, it will
-        % have to be reprocessed anyway, so don't add the extra
-        % goals now.
+        % If we recorded errors processing the goal, it will have to be
+        % reprocessed anyway, so don't add the extra goals now.
         Errors = []
     ->
         %
@@ -2762,25 +2777,34 @@ compute_arg_offset(PredInfo, ArgOffset) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Given a list of variables and a list of expected livenesses,
-    % ensure the liveness of each variable satisfies the corresponding
-    % expected liveness.
-    %
-modecheck_var_list_is_live([_ | _], [], _, _, !ModeInfo) :-
-    unexpected(this_file, "modecheck_var_list_is_live: length mismatch").
-modecheck_var_list_is_live([], [_ | _], _, _, !ModeInfo) :-
-    unexpected(this_file, "modecheck_var_list_is_live: length mismatch").
-modecheck_var_list_is_live([], [], _NeedExactMatch, _ArgNum, !ModeInfo).
-modecheck_var_list_is_live([Var | Vars], [IsLive | IsLives], NeedExactMatch,
+modecheck_var_list_is_live_exact_match([_ | _], [], _, !ModeInfo) :-
+    unexpected(this_file,
+        "modecheck_var_list_is_live_exact_match: length mismatch").
+modecheck_var_list_is_live_exact_match([], [_ | _], _, !ModeInfo) :-
+    unexpected(this_file,
+        "modecheck_var_list_is_live_exact_match: length mismatch").
+modecheck_var_list_is_live_exact_match([], [], _ArgNum, !ModeInfo).
+modecheck_var_list_is_live_exact_match([Var | Vars], [IsLive | IsLives], 
         ArgNum0, !ModeInfo) :-
     ArgNum = ArgNum0 + 1,
     mode_info_set_call_arg_context(ArgNum, !ModeInfo),
-    modecheck_var_is_live(Var, IsLive, NeedExactMatch, !ModeInfo),
-    modecheck_var_list_is_live(Vars, IsLives, NeedExactMatch, ArgNum,
-        !ModeInfo).
+    modecheck_var_is_live_exact_match(Var, IsLive, !ModeInfo),
+    modecheck_var_list_is_live_exact_match(Vars, IsLives, ArgNum, !ModeInfo).
 
-:- pred modecheck_var_is_live(prog_var::in, is_live::in, bool::in,
-    mode_info::in, mode_info::out) is det.
+modecheck_var_list_is_live_no_exact_match([_ | _], [], _, !ModeInfo) :-
+    unexpected(this_file,
+        "modecheck_var_list_is_live_no_exact_match: length mismatch").
+modecheck_var_list_is_live_no_exact_match([], [_ | _], _, !ModeInfo) :-
+    unexpected(this_file,
+        "modecheck_var_list_is_live_no_exact_match: length mismatch").
+modecheck_var_list_is_live_no_exact_match([], [], _ArgNum, !ModeInfo).
+modecheck_var_list_is_live_no_exact_match([Var | Vars], [IsLive | IsLives], 
+        ArgNum0, !ModeInfo) :-
+    ArgNum = ArgNum0 + 1,
+    mode_info_set_call_arg_context(ArgNum, !ModeInfo),
+    modecheck_var_is_live_no_exact_match(Var, IsLive, !ModeInfo),
+    modecheck_var_list_is_live_no_exact_match(Vars, IsLives, ArgNum,
+        !ModeInfo).
 
     % `live' means possibly used later on, and `dead' means definitely not used
     % later on. If you don't need an exact match, then the only time you get
@@ -2789,12 +2813,17 @@ modecheck_var_list_is_live([Var | Vars], [IsLive | IsLives], NeedExactMatch,
     % update to clobber the variable, so we must be sure that it is dead
     % after the call.
     %
-modecheck_var_is_live(VarId, ExpectedIsLive, NeedExactMatch, !ModeInfo) :-
+
+    % A version of modecheck_var_is_live specialized for NeedExactMatch = no.
+    %
+:- pred modecheck_var_is_live_no_exact_match(prog_var::in, is_live::in,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_var_is_live_no_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
     mode_info_var_is_live(!.ModeInfo, VarId, VarIsLive),
     (
-        ( ExpectedIsLive = dead, VarIsLive = live
-        ; NeedExactMatch = yes, VarIsLive \= ExpectedIsLive
-        )
+        ExpectedIsLive = dead,
+        VarIsLive = live
     ->
         set.singleton_set(WaitingVars, VarId),
         mode_info_error(WaitingVars, mode_error_var_is_live(VarId), !ModeInfo)
@@ -2802,53 +2831,110 @@ modecheck_var_is_live(VarId, ExpectedIsLive, NeedExactMatch, !ModeInfo) :-
         true
     ).
 
+    % A version of modecheck_var_is_live specialized for NeedExactMatch = yes.
+    %
+:- pred modecheck_var_is_live_exact_match(prog_var::in, is_live::in,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_var_is_live_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
+    mode_info_var_is_live(!.ModeInfo, VarId, VarIsLive),
+    ( VarIsLive = ExpectedIsLive ->
+        true
+    ;
+        set.singleton_set(WaitingVars, VarId),
+        mode_info_error(WaitingVars, mode_error_var_is_live(VarId), !ModeInfo)
+    ).
+
 %-----------------------------------------------------------------------------%
 
     % Given a list of variables and a list of initial insts, ensure that
     % the inst of each variable matches the corresponding initial inst.
     %
-modecheck_var_has_inst_list(Vars, Insts, NeedEaxctMatch, ArgNum, Subst,
+modecheck_var_has_inst_list_exact_match(Vars, Insts, ArgNum, Subst,
         !ModeInfo) :-
-    modecheck_var_has_inst_list_2(Vars, Insts, NeedEaxctMatch, ArgNum,
+    modecheck_var_has_inst_list_exact_match_2(Vars, Insts, ArgNum,
         map.init, Subst, !ModeInfo).
 
-:- pred modecheck_var_has_inst_list_2(list(prog_var)::in, list(mer_inst)::in,
-    bool::in, int::in, inst_var_sub::in, inst_var_sub::out,
+modecheck_var_has_inst_list_no_exact_match(Vars, Insts, ArgNum, Subst,
+        !ModeInfo) :-
+    modecheck_var_has_inst_list_no_exact_match_2(Vars, Insts, ArgNum,
+        map.init, Subst, !ModeInfo).
+
+:- pred modecheck_var_has_inst_list_exact_match_2(list(prog_var)::in,
+    list(mer_inst)::in, int::in, inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst_list_2([_ | _], [], _, _, !Subst, !ModeInfo) :-
-    unexpected(this_file, "modecheck_var_has_inst_list: length mismatch").
-modecheck_var_has_inst_list_2([], [_ | _], _, _, !Subst, !ModeInfo) :-
-    unexpected(this_file, "modecheck_var_has_inst_list: length mismatch").
-modecheck_var_has_inst_list_2([], [], _Exact, _ArgNum, !Subst, !ModeInfo).
-modecheck_var_has_inst_list_2([Var | Vars], [Inst | Insts], NeedExactMatch,
+modecheck_var_has_inst_list_exact_match_2([_ | _], [], _, !Subst, !ModeInfo) :-
+    unexpected(this_file,
+        "modecheck_var_has_inst_list_exact_match_2: length mismatch").
+modecheck_var_has_inst_list_exact_match_2([], [_ | _], _, !Subst, !ModeInfo) :-
+    unexpected(this_file,
+        "modecheck_var_has_inst_list_exact_match_2: length mismatch").
+modecheck_var_has_inst_list_exact_match_2([], [], _ArgNum, !Subst, !ModeInfo).
+modecheck_var_has_inst_list_exact_match_2([Var | Vars], [Inst | Insts],
         ArgNum0, !Subst, !ModeInfo) :-
     ArgNum = ArgNum0 + 1,
     mode_info_set_call_arg_context(ArgNum, !ModeInfo),
-    modecheck_var_has_inst(Var, Inst, NeedExactMatch, !Subst, !ModeInfo),
-    modecheck_var_has_inst_list_2(Vars, Insts, NeedExactMatch, ArgNum,
+    modecheck_var_has_inst_exact_match(Var, Inst, !Subst, !ModeInfo),
+    modecheck_var_has_inst_list_exact_match_2(Vars, Insts, ArgNum,
         !Subst, !ModeInfo).
 
-:- pred modecheck_var_has_inst(prog_var::in, mer_inst::in, bool::in,
+:- pred modecheck_var_has_inst_list_no_exact_match_2(list(prog_var)::in,
+    list(mer_inst)::in, int::in, inst_var_sub::in, inst_var_sub::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_var_has_inst_list_no_exact_match_2([_ | _], [], _, !Subst,
+        !ModeInfo) :-
+    unexpected(this_file,
+        "modecheck_var_has_inst_list_no_exact_match_2: length mismatch").
+modecheck_var_has_inst_list_no_exact_match_2([], [_ | _], _,
+        !Subst, !ModeInfo) :-
+    unexpected(this_file,
+        "modecheck_var_has_inst_list_no_exact_match_2: length mismatch").
+modecheck_var_has_inst_list_no_exact_match_2([], [], _ArgNum,
+        !Subst, !ModeInfo).
+modecheck_var_has_inst_list_no_exact_match_2([Var | Vars], [Inst | Insts],
+        ArgNum0, !Subst, !ModeInfo) :-
+    ArgNum = ArgNum0 + 1,
+    mode_info_set_call_arg_context(ArgNum, !ModeInfo),
+    modecheck_var_has_inst_no_exact_match(Var, Inst, !Subst, !ModeInfo),
+    modecheck_var_has_inst_list_no_exact_match_2(Vars, Insts, ArgNum,
+        !Subst, !ModeInfo).
+
+:- pred modecheck_var_has_inst_exact_match(prog_var::in, mer_inst::in,
     inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst(VarId, Inst, NeedExactMatch, !Subst, !ModeInfo) :-
+modecheck_var_has_inst_exact_match(VarId, Inst, !Subst, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap),
     instmap.lookup_var(InstMap, VarId, VarInst),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
     map.lookup(VarTypes, VarId, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
-        (
-            NeedExactMatch = no,
-            inst_matches_initial(VarInst, Inst, Type, ModuleInfo0,
-                ModuleInfo, !Subst)
-        ;
-            NeedExactMatch = yes,
-            inst_matches_initial_no_implied_modes(VarInst, Inst,
-                Type, ModuleInfo0, ModuleInfo, !Subst)
-        )
+        inst_matches_initial_no_implied_modes(VarInst, Inst, Type,
+            ModuleInfo0, ModuleInfo, !Subst)
+    ->
+        mode_info_set_module_info(ModuleInfo, !ModeInfo)
+    ;
+        set.singleton_set(WaitingVars, VarId),
+        mode_info_error(WaitingVars,
+            mode_error_var_has_inst(VarId, VarInst, Inst), !ModeInfo)
+    ).
+
+:- pred modecheck_var_has_inst_no_exact_match(prog_var::in, mer_inst::in,
+    inst_var_sub::in, inst_var_sub::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_var_has_inst_no_exact_match(VarId, Inst, !Subst, !ModeInfo) :-
+    mode_info_get_instmap(!.ModeInfo, InstMap),
+    instmap.lookup_var(InstMap, VarId, VarInst),
+    mode_info_get_var_types(!.ModeInfo, VarTypes),
+    map.lookup(VarTypes, VarId, Type),
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+    (
+        inst_matches_initial(VarInst, Inst, Type, ModuleInfo0, ModuleInfo,
+            !Subst)
     ->
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;

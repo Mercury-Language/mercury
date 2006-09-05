@@ -425,7 +425,9 @@ check_goal_for_trail_mods_2(_, _VarTypes, Goal, _GoalInfo,
         Result = trail_may_modify,
         MaybeAnalysisStatus = yes(optimal)
     ;
-        Details = cast(_),
+        ( Details = cast(_)
+        ; Details = event_call(_)
+        ),
         Result  = trail_will_not_modify,
         MaybeAnalysisStatus = yes(optimal)
     ).
@@ -928,6 +930,9 @@ annotate_goal_2(_VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
     ;
         Details = class_method(_, _, _, _),
         Status = trail_may_modify
+    ;
+        Details = event_call(_),
+        Status = trail_will_not_modify
     ;
         Details = cast(_),
         Status = trail_will_not_modify

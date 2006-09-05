@@ -1020,6 +1020,10 @@ transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
         wrap_call(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo),
         AddedImpurity = yes
     ;
+        GenericCall = event_call(_),
+        GoalAndInfo = Goal0 - GoalInfo0,
+        AddedImpurity = no
+    ;
         GenericCall = cast(_),
         GoalAndInfo = Goal0 - GoalInfo0,
         AddedImpurity = no
@@ -1167,6 +1171,9 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
                 PrepareCallGoal
             ]) - PrepareCallGoalInfo,
             CallSite = method_call(FileName, LineNumber, GoalPath)
+        ;
+            Generic = event_call(_),
+            unexpected(this_file, "deep_profiling.wrap_call: event_call")
         ;
             Generic = cast(_),
             unexpected(this_file, "deep_profiling.wrap_call: cast")

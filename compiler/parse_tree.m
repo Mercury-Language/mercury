@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,13 +43,14 @@
 :- include_module prog_out.
 
 % Utility routines.
+:- include_module error_util.
+:- include_module prog_event.
 :- include_module prog_foreign.
 :- include_module prog_mode.
 :- include_module prog_mutable.
-:- include_module prog_util.
 :- include_module prog_type.
 :- include_module prog_type_subst.
-:- include_module error_util.
+:- include_module prog_util.
 
 % Transformations that act on the parse tree,
 % and stuff relating to the module system.

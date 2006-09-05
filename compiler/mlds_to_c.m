@@ -1367,7 +1367,6 @@ mlds_output_defn_body(Indent, Name, Context, DefnBody, !IO) :-
     ;
         DefnBody = mlds_function(MaybePredProcId, Signature,
             MaybeBody, _Attributes, _EnvVarNames),
-        % ZZZ
         mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id, !IO),
         mlds_output_func(Indent, Name, Context, Signature, MaybeBody, !IO)
     ;

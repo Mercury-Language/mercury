@@ -483,6 +483,8 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, GoalInfo,
         Details = class_method(_, _, _, _),
         !:Result = !.Result ^ status := may_throw(user_exception)
     ;
+        Details = event_call(_)
+    ;
         Details = cast(_)
     ).
 check_goal_for_exceptions_2(SCC, VarTypes, negation(Goal), _,

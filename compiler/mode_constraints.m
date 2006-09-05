@@ -1331,6 +1331,9 @@ goal_constraints_2(GoalPath, _NonLocals, _Vars, CanSucceed, GoalExpr, GoalExpr,
         generic_call_constrain_var(Var, GoalPath, !Constraint, !GCInfo),
         unexpected(this_file, "class_method call in clause")
     ;
+        GenericCall = event_call(_),
+        sorry(this_file, "event_call NYI")
+    ;
         GenericCall = cast(_),
         sorry(this_file, "type/inst cast call NYI")
     ).
