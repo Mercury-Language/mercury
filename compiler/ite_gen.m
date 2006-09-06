@@ -112,8 +112,27 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
     code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
     % Maybe save the current trail state before the condition.
-    code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
-        !CI),
+    % NOTE: this code should be kept up-to-date with the corresponding
+    %       code for the MLDS backend in add_trail_ops.m.
+    (
+        AddTrailOps = no,
+        IteTrailOps = no
+    ;
+        AddTrailOps = yes,
+        get_opt_trail_ops(!.CI, OptTrailOps),
+        (
+            OptTrailOps = yes,
+            goal_cannot_modify_trail(CondInfo0) = yes,
+            CondCodeModel \= model_non
+        ->
+            IteTrailOps = no
+        ;
+            IteTrailOps = yes
+        )
+    ), 
+    
+    code_info.maybe_save_ticket(IteTrailOps, SaveTicketCode, MaybeTicketSlot,
+         !CI),
 
     code_info.remember_position(!.CI, BranchStart),
 

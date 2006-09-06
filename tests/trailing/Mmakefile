@@ -9,7 +9,9 @@ ifeq "$(findstring tr,$(GRADE))" ""
 else
 	TRAIL_PROGS =			\
 		func_trail_test		\
-		func_trail_test_2
+		func_trail_test_2	\
+		tu_test1		\
+		tu_test2
 endif
 
 #-----------------------------------------------------------------------------#

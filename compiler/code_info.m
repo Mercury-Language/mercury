@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: code_info.m.
 % Main authors: conway, zs.
-
+% 
 % This file defines the code_info type and various operations on it.
 % The code_info structure is the 'state' of the code generator.
 %
@@ -23,7 +23,7 @@
 %   - interfacing to var_locn
 %   - managing the info required by garbage collection and value numbering
 %   - managing stack slots
-
+% 
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.code_info.
@@ -199,6 +199,8 @@
 :- pred set_static_cell_info(static_cell_info::in,
     code_info::in, code_info::out) is det.
 
+:- pred get_opt_trail_ops(code_info::in, bool::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -209,8 +211,6 @@
     code_info::in, code_info::out) is det.
 
 :- pred get_opt_no_return_calls(code_info::in, bool::out) is det.
-
-:- pred get_opt_trail_ops(code_info::in, bool::out) is det.
 
 :- pred get_zombies(code_info::in, set(prog_var)::out) is det.
 
@@ -2906,12 +2906,9 @@ pickup_zombies(Zombies, !CI) :-
 :- pred maybe_discard_and_release_ticket(maybe(lval)::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-    % Tests if we should add trail ops to the code we generate for the goal
-    % with the given goalinfo. This will be 'no' unless we are compiling
-    % in trailing grade. It may also be 'no' in trailing grades if we are
-    % optimizing trail usage and trail usage analysis tells us that it is safe
-    % to omit the trail ops.
-    %
+    % Should we add trail ops to the code we generate for the goal with the
+    % given goal_info.  This will be 'no' unless we are in a trailing grade.
+    % 
 :- func should_add_trail_ops(code_info, hlds_goal_info) = add_trail_ops.
 
 %---------------------------------------------------------------------------%
@@ -3102,21 +3099,16 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI) :-
         Code = empty
     ).
 
-should_add_trail_ops(CodeInfo, GoalInfo) = AddTrailOps :-
+    % XXX We will eventually need the GoalInfo here.
+    %
+should_add_trail_ops(CodeInfo, _GoalInfo) = AddTrailOps :-
     get_emit_trail_ops(CodeInfo, EmitTrailOps),
     (
         EmitTrailOps = no,
         AddTrailOps = no
     ;
         EmitTrailOps = yes,
-        get_opt_trail_ops(CodeInfo, OptTrailOps),
-        (
-            OptTrailOps = no,
-            AddTrailOps = yes
-        ;
-            OptTrailOps = yes,
-            AddTrailOps = goal_may_modify_trail(GoalInfo)
-        )
+        AddTrailOps = yes
     ).
 
 %---------------------------------------------------------------------------%

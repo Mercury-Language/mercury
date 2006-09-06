@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: add_trail_ops.m.
 % Authors: fjh, juliensf.
-
+% 
 % This module is an HLDS-to-HLDS transformation that inserts code to
 % handle trailing.  The module implements two ways of doing this:
 % 
@@ -23,7 +23,7 @@
 % is generally faster but results in larger executables.  The
 % `--generate-trail-ops-inline' option can be used to control which
 % of the methods is used.
-
+% 
 % This pass is currently only used for the MLDS back-end.
 % For some reason (perhaps efficiency?? or more likely just historical?),
 % the LLDS back-end inserts the trail operations as it is generating
@@ -31,23 +31,23 @@
 %
 % See compiler/notes/trailing.html for more information about trailing
 % in the Mercury implementation.
-
+% 
 % This module also implements trail usage optimization for those backends
 % that use it to implement trailing (see trailing_analysis.m for details).
-
+% 
 % NOTE: it is important that passes following this one do not attempt
 %       to reorder disjunctions.  If trail usage optimization is being
 %       performed and a disjunction is reordered then the trail might
 %       be corrupted.
-
+% 
 % TODO:
 %       - explore the space/time tradeoff between the inlining and
 %         non-inlining methods of implementing trailing.
-
+% 
 %-----------------------------------------------------------------------------%
-
+% 
 % XXX check goal_infos for correctness
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.add_trail_ops.
@@ -137,18 +137,8 @@ add_trail_ops(OptTrailUsage, GenerateInline, ModuleInfo0, !Proc) :-
     trail_ops_info::in, trail_ops_info::out) is det.
 
 goal_add_trail_ops(!Goal, !Info) :-
-    OptTrailUsage = !.Info ^ opt_trail_usage,
     !.Goal = GoalExpr0 - GoalInfo,
-    (
-        OptTrailUsage = yes,
-        goal_cannot_modify_trail(GoalInfo) = yes
-    ->
-        % Don't add trail ops if the goal cannot modify the trail
-        % and we are optimizing trail usage.
-        true
-    ;
-        goal_expr_add_trail_ops(GoalExpr0, GoalInfo, !:Goal, !Info)
-    ). 
+    goal_expr_add_trail_ops(GoalExpr0, GoalInfo, !:Goal, !Info).
 
 :- pred goal_expr_add_trail_ops(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, trail_ops_info::in, trail_ops_info::out) is det.
@@ -163,12 +153,13 @@ goal_expr_add_trail_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
 
     goal_info_get_context(GoalInfo, Context),
     goal_info_get_code_model(GoalInfo, CodeModel),
-
+    %
     % Allocate a new trail ticket so that we can restore things on
     % back-tracking.
+    %
     new_ticket_var(TicketVar, !Info),
     gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
-    disj_add_trail_ops(Goals0, yes, no, CodeModel, TicketVar, Goals, !Info),
+    disj_add_trail_ops(Goals0, yes, CodeModel, TicketVar, Goals, !Info),
     Goal = conj(plain_conj, [StoreTicketGoal, disj(Goals) - GoalInfo]).
 
 goal_expr_add_trail_ops(switch(A, B, Cases0), GI, switch(A, B, Cases) - GI,
@@ -259,41 +250,56 @@ goal_expr_add_trail_ops(scope(Reason, Goal0), OuterGoalInfo,
         Goal = scope(Reason, Goal1)
     ).
 
-goal_expr_add_trail_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
-        Goal - GoalInfo, !Info) :-
+goal_expr_add_trail_ops(if_then_else(ExistQVars, Cond0, Then0, Else0),
+    GoalInfo, Goal - GoalInfo, !Info) :-
     goal_add_trail_ops(Cond0, Cond, !Info),
     goal_add_trail_ops(Then0, Then1, !Info),
     goal_add_trail_ops(Else0, Else1, !Info),
-
-    % Allocate a new trail ticket so that we can restore things
-    % if the condition fails.
-    new_ticket_var(TicketVar, !Info),
-    goal_info_get_context(GoalInfo, Context),
-    gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
-
-    % Commit the trail ticket entries if the condition succeeds.
-    Then1 = _ - Then1GoalInfo,
+    %
+    % If the condition does not modify the trail and does not create
+    % any choicepoints then we can omit the trailing code around it.
+    %
+    OptTrailUsage = !.Info ^ opt_trail_usage,
     Cond = _ - CondGoalInfo,
     goal_info_get_code_model(CondGoalInfo, CondCodeModel),
-    ( CondCodeModel = model_non ->
-        gen_reset_ticket_solve(TicketVar, Context, ResetTicketSolveGoal,
-            !.Info),
-        Then = conj(plain_conj, [ResetTicketSolveGoal, Then1]) - Then1GoalInfo
+    (
+        OptTrailUsage = yes,
+        CondCodeModel \= model_non,
+        goal_cannot_modify_trail(CondGoalInfo) = yes
+    ->
+        Goal = if_then_else(ExistQVars, Cond, Then1, Else1)
     ;
-        gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
-            !.Info),
-        gen_prune_ticket(Context, PruneTicketGoal, !.Info),
-        Then = conj(plain_conj,
-            [ResetTicketCommitGoal, PruneTicketGoal, Then1])
-            - Then1GoalInfo
-    ),
-    gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal, !.Info),
-    gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
-    Else1 = _ - Else1GoalInfo,
-    Else = conj(plain_conj, [ResetTicketUndoGoal, DiscardTicketGoal, Else1])
-        - Else1GoalInfo,
-    IfThenElse = if_then_else(A, Cond, Then, Else) - GoalInfo,
-    Goal = conj(plain_conj, [StoreTicketGoal, IfThenElse]).
+        % Allocate a new trail ticket so that we can restore things if the
+        % condition fails.
+        %
+        new_ticket_var(TicketVar, !Info),
+        goal_info_get_context(GoalInfo, Context),
+        gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
+        %
+        % Commit the trail ticket entries if the condition succeeds.
+        %
+        Then1 = _ - Then1GoalInfo,
+        ( CondCodeModel = model_non ->
+            gen_reset_ticket_solve(TicketVar, Context, ResetTicketSolveGoal,
+                !.Info),
+            Then =
+                conj(plain_conj, [ResetTicketSolveGoal, Then1]) - Then1GoalInfo
+        ;
+            gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
+                !.Info),
+            gen_prune_ticket(Context, PruneTicketGoal, !.Info),
+            Then = conj(plain_conj,
+                [ResetTicketCommitGoal, PruneTicketGoal, Then1])
+                - Then1GoalInfo
+        ),
+        gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal, !.Info),
+        gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
+        Else1 = _ - Else1GoalInfo,
+        Else = conj(plain_conj, [ResetTicketUndoGoal, DiscardTicketGoal, Else1])
+            - Else1GoalInfo,
+        IfThenElse = if_then_else(ExistQVars, Cond, Then, Else) - GoalInfo,
+        Goal = conj(plain_conj, [StoreTicketGoal, IfThenElse])
+    ).
 
 goal_expr_add_trail_ops(Goal @ call(_, _, _, _, _, _), GI, Goal - GI, !Info).
 
@@ -329,39 +335,24 @@ goal_expr_add_trail_ops(shorthand(_), _, _, !Info) :-
 conj_add_trail_ops(Goals0, Goals, !Info) :-
     list.map_foldl(goal_add_trail_ops, Goals0, Goals, !Info).
 
-:- pred disj_add_trail_ops(hlds_goals::in, bool::in, bool::in,
-    code_model::in, prog_var::in, hlds_goals::out,
-    trail_ops_info::in, trail_ops_info::out) is det.
+:- pred disj_add_trail_ops(hlds_goals::in, bool::in, code_model::in,
+    prog_var::in, hlds_goals::out, trail_ops_info::in, trail_ops_info::out)
+    is det.
 
-disj_add_trail_ops([], _, _, _, _, [], !Info).
-disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, PrevDisjunctModifiesTrail,
-        CodeModel, TicketVar, [Goal | Goals], !Info) :-
+disj_add_trail_ops([], _, _, _, [], !Info).
+disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, CodeModel, TicketVar,
+        [Goal | Goals], !Info) :-
     Goal0 = _ - GoalInfo0,
     goal_info_get_context(GoalInfo0, Context),
 
     % First undo the effects of any earlier branches.
     (
         IsFirstBranch = yes,
-        UndoList = [],
-        expect(unify(PrevDisjunctModifiesTrail, no), this_file,
-            "PrevDisjunctModifiesTrail = yes for initial disjunct.")
+        UndoList = []
     ;
         IsFirstBranch = no,
-        %
-        % We only need to undo the changes from the last disjunction if it
-        % actually modified the trail.  We only do this if
-        % `--optimize-trail-usage' is set.
-        % 
-        (
-            PrevDisjunctModifiesTrail = no,
-            !.Info ^ opt_trail_usage = yes
-        ->
-            UndoList0 = []
-        ;
-            gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal,
-                !.Info),
-            UndoList0 = [ResetTicketUndoGoal]
-        ),
+        gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal, !.Info),
+        UndoList0 = [ResetTicketUndoGoal],
         (
             Goals0 = [],
             % Once we've reached the last disjunct, we can discard
@@ -373,29 +364,19 @@ disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, PrevDisjunctModifiesTrail,
             UndoList = UndoList0
         )
     ),
-    %
-    % Add trailing code to the disjunct itself.  We can omit the trailing code
-    % if the disjunct doesn't modify the trail and `--optimize-trail-usage' is
-    % set.
-    %
-    ThisDisjunctModifiesTrail = goal_may_modify_trail(GoalInfo0),
-    CanOmitTrailOps =
-        not(ThisDisjunctModifiesTrail) `and` !.Info ^ opt_trail_usage,
-    (
-        CanOmitTrailOps = yes, 
-        Goal1 = Goal0
-    ;
-        CanOmitTrailOps = no,
-        goal_add_trail_ops(Goal0, Goal1, !Info)
-    ),
+    goal_add_trail_ops(Goal0, Goal1, !Info),
     %
     % For model_semi and model_det disjunctions, once we reach the end of
     % the disjunct goal, we're committing to this disjunct, so we need to
     % prune the trail ticket.
     %
-    ( CodeModel = model_non ->
+    ( 
+        CodeModel = model_non,
         PruneList = []
     ;
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
         gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
             !.Info),
         gen_prune_ticket(Context, PruneTicketGoal, !.Info),
@@ -409,8 +390,7 @@ disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, PrevDisjunctModifiesTrail,
     %
     % Recursively handle the remaining disjuncts.
     %
-    disj_add_trail_ops(Goals0, no, ThisDisjunctModifiesTrail, CodeModel,
-        TicketVar, Goals, !Info).
+    disj_add_trail_ops(Goals0, no, CodeModel, TicketVar, Goals, !Info).
 
 :- pred cases_add_trail_ops(list(case)::in, list(case)::out,
     trail_ops_info::in, trail_ops_info::out) is det.
