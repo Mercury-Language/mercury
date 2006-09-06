@@ -1,0 +1,13 @@
+undo 1
+undo 2
+undo 3
+undo 4
+solve (soft commit) 5
+undo 5
+undo 6
+solve (soft commit) 7
+undo 7
+undo 8
+undo 9
+undo 10
+[5, 7]
