@@ -466,38 +466,35 @@ check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO).
 check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = if_then_else(_, If, Then, Else),
-    check_goals_for_trail_mods(SCC, VarTypes, [If, Then, Else],
+    Goal = if_then_else(_, Cond, Then, Else),
+    check_goals_for_trail_mods(SCC, VarTypes, [Cond, Then, Else],
         Result0, MaybeAnalysisStatus, !ModuleInfo, !IO),
     (
-        % If none of the disjuncts can modify the trail then we don't need
-        % to emit trailing code around this disjunction.
+        % If the condition of an if-then-else does not modify the trail
+        % and is not model_non then we can omit the trailing ops around
+        % the condition.
+        % 
+        % NOTE: any changes here may need to be relected in the clause
+        % of add_trail_ops.goal_expr_add_trail_ops that handles if_then_elses.
+        %
         Result0 = trail_will_not_modify,
-        Result  = trail_will_not_modify
+        Cond = _CondGoalExpr - CondGoalInfo,
+        goal_info_get_code_model(CondGoalInfo, CondCodeModel),
+        CondCodeModel \= model_non
+    -> 
+        Result = trail_will_not_modify
     ;
-        % If some of the goals modify the trail then we need to emit trailing
-        % code around the if-then-else.  If the if-then-else has status
-        % `trail_conditional' then we also need to emit trailing code around it
-        % because we cannot be sure that calls to builtin.{unify,compare}
-        % won't call user-defined equality/comparison predicates that modify
-        % the trail.
-        %
-        % XXX We change the status from `trail_conditional' to
-        % `trail_may_modify' here because `trail_conditional' currently means
-        % that the code for a procedure does not modify the state of the trail
-        % at all.  Since we emit trailing code for this if-then-else then
-        % by this definition it does modify the trail.  We may be able to relax
-        % this restriction in future, but at the moment doing this helps keep
-        % the contents of the .opt/.trans_opt/.analysis files consistent
-        % with the actual code we generate.
-        %
+        % If the condition modifies the trail, is model_non or both then
+        % we need to emit trailing ops around the conditoin.  If the
+        % if-then-else has status `trail_conditional' then we also need
+        % to emit the trail ops because we cannot be sure that calls to
+        % builtin.{unify,compare} won't call user-defined equality or
+        % comparison predicates that modify the trail.
+        % 
         % NOTE: conditional procedures whose status is changed here are
         % candidates for generating specialized versions that omit
         % the trailing code.
         %
-        ( Result0 = trail_conditional
-        ; Result0 = trail_may_modify
-        ),
         Result = trail_may_modify
     ).
 check_goal_for_trail_mods_2(SCC, VarTypes, conj(_, Goals), _,
@@ -507,20 +504,11 @@ check_goal_for_trail_mods_2(SCC, VarTypes, conj(_, Goals), _,
 check_goal_for_trail_mods_2(SCC, VarTypes, disj(Goals), _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
     check_goals_for_trail_mods(SCC, VarTypes, Goals,
-        Result0, MaybeAnalysisStatus, !ModuleInfo, !IO),
-    (
-        % If none of the disjuncts can modify the trail then we don't need
-        % to emit trailing code around this disjunction.
-        Result0 = trail_will_not_modify,
-        Result  = trail_will_not_modify
-    ;
-        % See the comment regarding if-then-elses above for the reason
-        % we treat `conditional' procedures like this.
-        ( Result0 = trail_conditional
-        ; Result0 = trail_may_modify
-        ),
-        Result = trail_may_modify
-    ).
+        _Result0, MaybeAnalysisStatus, !ModuleInfo, !IO),
+    % XXX Currently we have to put trailing code around disjunctions.
+    %     If we introduce trail specialisation it may be possible to
+    %     omit it.
+    Result = trail_may_modify.
 
 :- pred check_goals_for_trail_mods(scc::in, vartypes::in,
     hlds_goals::in, trailing_status::out, maybe(analysis_status)::out,
@@ -558,8 +546,7 @@ scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, InnerStatus) =
         % If we're at a commit for a goal that might modify the trail
         % then we need to emit some trailing code around the scope goal.
         InnerCodeModel = model_non,
-        OuterCodeModel \= model_non,
-        InnerStatus \= trail_will_not_modify
+        OuterCodeModel \= model_non
     ->
         trail_may_modify
     ;

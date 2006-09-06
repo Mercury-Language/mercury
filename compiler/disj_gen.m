@@ -133,11 +133,9 @@ generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
     code_info.get_next_label(EndLabel, !CI),
 
     code_info.remember_position(!.CI, BranchStart),
-    PrevBranchModifiesTrail = no,
     generate_disjuncts(Goals, CodeModel, ResumeMap, no, HijackInfo,
-        DisjGoalInfo, EndLabel, ReclaimHeap, PrevBranchModifiesTrail,
-        MaybeHpSlot, MaybeTicketSlot, BranchStart, no, MaybeEnd, GoalsCode,
-        !CI),
+        DisjGoalInfo, EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
+        BranchStart, no, MaybeEnd, GoalsCode, !CI),
 
     goal_info_get_store_map(DisjGoalInfo, StoreMap),
     code_info.after_all_branches(StoreMap, MaybeEnd, !CI),
@@ -153,17 +151,17 @@ generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
 
 :- pred generate_disjuncts(list(hlds_goal)::in, code_model::in,
     resume_map::in, maybe(resume_point_info)::in, disj_hijack_info::in,
-    hlds_goal_info::in, label::in, bool::in, bool::in, maybe(lval)::in,
+    hlds_goal_info::in, label::in, bool::in, maybe(lval)::in,
     maybe(lval)::in, position_info::in, maybe(branch_end_info)::in,
     maybe(branch_end_info)::out, code_tree::out, code_info::in,
     code_info::out) is det.
 
-generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
     unexpected(this_file, "generate_disjuncts: empty disjunction!").
 generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         MaybeEntryResumePoint, HijackInfo, DisjGoalInfo, EndLabel, ReclaimHeap,
-        PrevBranchModifiesTrail, MaybeHpSlot0, MaybeTicketSlot, BranchStart0,
-        MaybeEnd0, MaybeEnd, Code, !CI) :-
+        MaybeHpSlot0, MaybeTicketSlot, BranchStart0, MaybeEnd0, MaybeEnd,
+        Code, !CI) :-
 
     code_info.reset_to_position(BranchStart0, !CI),
     %
@@ -192,16 +190,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             code_info.maybe_restore_hp(MaybeHpSlot0, RestoreHpCode),
 
             % Reset the solver state if necessary.
-            (
-                PrevBranchModifiesTrail = yes,
-                code_info.maybe_reset_ticket(MaybeTicketSlot,
-                    reset_reason_undo, RestoreTicketCode)
-            ;
-                % Don't bother if the previous branch is known not to modify
-                % the trail.
-                PrevBranchModifiesTrail = no,
-                RestoreTicketCode = empty
-            )
+            code_info.maybe_reset_ticket(MaybeTicketSlot,
+                reset_reason_undo, RestoreTicketCode)
         ;
             MaybeEntryResumePoint = no,
             RestoreHpCode = empty,
@@ -296,15 +286,10 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             goto(label(EndLabel)) - "skip to end of nondet disj"
         ]),
 
-        % Check if this branch modifies the trail. If it doesn't then the next
-        % branch can avoid resetting it.
-        %
-        ThisBranchModifiesTrail = goal_may_modify_trail(GoalInfo),
-
         disj_gen.generate_disjuncts(Goals, CodeModel, FullResumeMap,
             yes(NextResumePoint), HijackInfo, DisjGoalInfo,
-            EndLabel, ReclaimHeap, ThisBranchModifiesTrail, MaybeHpSlot,
-            MaybeTicketSlot, BranchStart, MaybeEnd1, MaybeEnd, RestCode, !CI),
+            EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot, BranchStart,
+            MaybeEnd1, MaybeEnd, RestCode, !CI),
 
         Code = tree_list([EntryResumePointCode, RestoreHpCode,
             RestoreTicketCode, SaveHpCode, ModContCode, TraceCode,
@@ -317,15 +302,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         %
         code_info.maybe_restore_and_release_hp(MaybeHpSlot0, RestoreHpCode,
             !CI),
-        (
-            PrevBranchModifiesTrail = yes,
-            code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
-                reset_reason_undo, RestoreTicketCode, !CI)
-        ;
-            PrevBranchModifiesTrail = no,
-            code_info.maybe_discard_and_release_ticket(MaybeTicketSlot,
-                RestoreTicketCode, !CI)
-        ),
+        code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
+            reset_reason_undo, RestoreTicketCode, !CI),
 
         code_info.undo_disj_hijack(HijackInfo, UndoCode, !CI),
 
