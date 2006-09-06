@@ -410,6 +410,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		allow_stubs \
 		backend_external \
 		dir_test \
+		map_merge_test	\
 		test_array2d \
 		test_injection \
 		user_defined_equality \

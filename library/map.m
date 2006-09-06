@@ -236,9 +236,9 @@
 :- func map.from_corresponding_lists(list(K), list(V)) = map(K, V).
 :- pred map.from_corresponding_lists(list(K)::in, list(V)::in, map(K, V)::out)
     is det.
-
-    % For map.merge(MapA, MapB, Map), MapA and MapB must not both contain
-    % the same key.
+    
+    % Merge the contents of the two maps.  
+    % Throws an exception of both sets of keys are not disjoint.
     %
 :- func map.merge(map(K, V), map(K, V)) = map(K, V).
 :- pred map.merge(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
@@ -469,6 +469,20 @@
 :- import_module tree234.
 
 :- type map(K, V)   ==  tree234(K, V).
+    
+%-----------------------------------------------------------------------------%
+
+% Note to implementors:
+%
+% This is the old version of map.merge/3.  It is buggy in the sense that if the
+% sets of keys of the input maps are not disjoint it won't throw an exception
+% but will insert the key and the smallest of the two corresponding values to
+% the output map.  Eventually we would like to get rid of this version but some
+% of the code in the compiler currently assumes this behaviour and fixing it is
+% non-trivial.
+
+:- func map.old_merge(map(K, V), map(K, V)) = map(K, V).
+:- pred map.old_merge(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -722,6 +736,14 @@ map.from_corresponding_lists(Keys, Values, Map) :-
 %-----------------------------------------------------------------------------%
 
 map.merge(M0, M1, M) :-
+    map.to_assoc_list(M0, ML0),
+    map.to_assoc_list(M1, ML1),
+    list.merge(ML0, ML1, ML),
+    M = map.det_insert_from_assoc_list(map.init, ML).
+
+%-----------------------------------------------------------------------------%
+
+map.old_merge(M0, M1, M) :-
     map.to_assoc_list(M0, ML0),
     map.to_assoc_list(M1, ML1),
     list.merge(ML0, ML1, ML),
@@ -1055,6 +1077,9 @@ map.from_corresponding_lists(Ks, Vs) = M :-
 
 map.merge(M1, M2) = M3 :-
     map.merge(M1, M2, M3).
+
+map.old_merge(M1, M2) = M3 :-
+    map.old_merge(M1, M2, M3).
 
 map.overlay(M1, M2) = M3 :-
     map.overlay(M1, M2, M3).

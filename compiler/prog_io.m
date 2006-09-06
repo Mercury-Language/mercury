@@ -2972,7 +2972,7 @@ combine_quantifier_results(ok(_, _), error(Msg, Term), _, error(Msg, Term)).
 combine_quantifier_results(ok(UnivConstraints, InstConstraints0),
     ok(ExistConstraints, InstConstraints1), ExistQVars,
     ok(ExistQVars, constraints(UnivConstraints, ExistConstraints),
-        InstConstraints0 `map.merge` InstConstraints1)).
+        InstConstraints0 `map.old_merge` InstConstraints1)).
 
 :- pred get_quant_vars(quantifier_type::in, module_name::in,
     decl_attrs::in, decl_attrs::out, list(var)::in, list(var)::out) is det.
@@ -3014,7 +3014,7 @@ get_constraints(QuantType, ModuleName, !Attributes, MaybeConstraints) :-
 combine_constraint_list_results(error(Msg, Term), _, error(Msg, Term)).
 combine_constraint_list_results(ok(_, _), error(Msg, Term), error(Msg, Term)).
 combine_constraint_list_results(ok(CC0, IC0), ok(CC1, IC1),
-        ok(CC0 ++ CC1, IC0 `map.merge` IC1)).
+        ok(CC0 ++ CC1, IC0 `map.old_merge` IC1)).
 
 :- pred get_existential_constraints_from_term(module_name::in,
     term::in, term::out, maybe1(list(prog_constraint))::out) is det.

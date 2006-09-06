@@ -656,8 +656,8 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 
         % On the other hand, we insist that this information is consistent.
         %
-    map.merge(TypeMapA, TypeMapB, TypeMap),
-    map.merge(ConstraintMapA, ConstraintMapB, ConstraintMap),
+    map.old_merge(TypeMapA, TypeMapB, TypeMap),
+    map.old_merge(ConstraintMapA, ConstraintMapB, ConstraintMap),
 
     VarMaps = rtti_varmaps(TCImap, TImap, TypeMap, ConstraintMap).
 
