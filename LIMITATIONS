@@ -22,6 +22,6 @@ following fixed limits:
 * Higher order terms are limited to arity of about 500.
 
 These limits can be lifted (with some effort), but would possibly incur
-performance penalties. Contact the Mercury team (mercury@cs.mu.oz.au) if
-you find these limits are affecting your application.
+performance penalties. Contact the Mercury team (mercury@csse.unimelb.edu.au)
+if you find these limits are affecting your application.
 

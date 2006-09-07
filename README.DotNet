@@ -76,7 +76,7 @@ call "C:\Program Files\Microsoft Visual Studio.NET\Common7\Tools\vsvars32.bat"
 	  If you're reading this file from somewhere other than the Mercury
 	  distribution, try the Mercury homepage at:
 
-	  	<http://www.cs.mu.oz.au/mercury/>
+	      <http://www.mercury.csse.unimelb.edu.au>
 
 -----------------------------------------------------------------------------
 
@@ -145,7 +145,7 @@ For example:
 For more information about the foreign language interface, refer to the Mercury
 Language Reference Manual, which you can find at:
 
-	<http://www.cs.mu.oz.au/mercury/information/documentation.html>
+    <http://www.mercury.csse.unimelb.edu.au/information/documentation.html>
 
 The implementation will put this C# in a separate file, which will be
 compiled with Microsoft's C# compiler.  Mmake will automatically
@@ -187,7 +187,7 @@ RESOURCES
 
 You might find the following pages useful:
 
-	<http://www.cs.mu.oz.au/research/mercury/dotnet.html>
+	<http://www.mercury.csse.unimelb.edu.au/mercury/dotnet.html>
 
 	<http://msdn.microsoft.com/netframework/>
 

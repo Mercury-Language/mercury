@@ -20,7 +20,7 @@ calculator.m            A simple four-function arithmetic calculator,
 
 calculator2.m		A simple four-function arithmetic calculator,
 			which uses the parser module in the standard
-			library with a user-defined operator precendence
+			library with a user-defined operator precedence
 			table.
 
 committed_choice.m	An example illustrating committed-choice

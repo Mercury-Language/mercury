@@ -1,4 +1,4 @@
-Bug reports should be sent to mercury-bugs@cs.mu.oz.au.
+Bug reports should be sent to mercury-bugs@csse.unimelb.edu.au.
 If you're reporting more than one bug, please use separate emails
 for each bug.  Please include all the relevant information,
 including which version of Mercury you're using, what operating
@@ -12,7 +12,7 @@ fully self-contained.
 
 Below is a list of the known outstanding bugs.
 We'll try to record any other bugs that are discovered
-on our WWW page <http://www.cs.mu.oz.au/mercury>.
+on our WWW page <http://www.mercury.csse.unimelb.edu.au>.
 In addition to the bugs mentioned here, some bugs related
 to the implementation of particular languages features
 (existential types, nested modules, tabling)

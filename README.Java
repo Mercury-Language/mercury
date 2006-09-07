@@ -27,7 +27,7 @@ In order to try this system you will need
 
 	  If you're reading this file from somewhere other than the
 	  Mercury distribution, try the Mercury homepage at
-	  	<http://www.cs.mu.oz.au/mercury/>
+	  	<http://www.mercury.csse.unimelb.edu.au>
 WARNING
 
 Please note that the Java backend is still an experimental feature.  It
@@ -80,7 +80,8 @@ implemented using pure mercury code.
 
 For more information about the foreign language interface, see the Mercury
 Language Reference Manual, which you can find at:
-	<http://www.cs.mu.oz.au/mercury/information/documentation.html>
+	
+     <http://www.mercury.csse.unimelb.edu.au/information/documentation.html>
 
 -----------------------------------------------------------------------------
 
@@ -88,11 +89,11 @@ RESOURCES
 
 You might find the following pages useful:
 
-	<http://www.cs.mu.oz.au/research/mercury/java.html>
+    <http://www.mercury.csse.unimelb.edu.au/backends.html>
 
-	<http://java.sun.com/reference/api/index.html>
+    <http://java.sun.com/reference/api/index.html>
 
-	<http://www.cs.mu.oz.au/mercury/information/documentation.html>
+    <http://www.mercury.csse.unimelb.edu.au/information/documentation.html>
 
 -----------------------------------------------------------------------------
 

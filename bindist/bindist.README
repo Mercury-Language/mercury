@@ -3,7 +3,7 @@ University of Melbourne Mercury compiler, version <VERSION>,
 built on a `<FULLARCH>' system.
 
 The Mercury implementation is free software, but it is Copyright (C)
-1993-2005 The University of Melbourne.  It is distributed under the
+1993-2006 The University of Melbourne.  It is distributed under the
 terms of the GNU General Public License.  See the file COPYING for
 copying permission.  The Mercury library and runtime (libmer_std.* and
 libmer_rt.*) are distributed under the terms of the GNU Library General
@@ -13,7 +13,7 @@ please contact us!  We are willing to come to alternative arrangements,
 if the need should arise.)
 
 This distribution also contains a slightly modified version of the
-conservative garbage collector distributed by Hans Boehm, version 5.0alpha3,
+conservative garbage collector distributed by Hans Boehm, version 6.5,
 which has the following copyright attached (taken from the README file
 of the garbage collector source):
 
@@ -71,16 +71,18 @@ For examples of larger programs, download the Mercury source distribution -
 the Mercury compiler and the Mercury profiler are written in Mercury.
 
 For more information about Mercury, see the Mercury WWW home page at
-<http://www.cs.mu.oz.au/mercury/>, or send mail to mercury@cs.mu.oz.au.
+<http://www.mercury.csse.unimelb.edu.au>, or send mail to
+mercury@csse.unimelb.edu.au.
 
 If you would like to join the Mercury mailing lists (there are two,
 mercury-users for general discussion, and mercury-announce for
 announcements), send mail with "subscribe" in the body to
-mercury-users-request@cs.mu.oz.au or mercury-announce-request@cs.mu.oz.au
-(respectively).
+mercury-users-request@csse.unimelb.edu.au or
+mercury-announce-request@csse.unimelb.edu.au (respectively).
 
 Please send bug reports, enhancement requests, suggestions for improvements,
-and any other feedback to mercury-bugs@cs.mu.oz.au or mercury@cs.mu.oz.au.
+and any other feedback to mercury-bugs@csse.unimelb.edu.au or
+mercury@csse.unimelb.edu.au.
 If you find something you don't like, please tell us.
 If you find something you do like, please tell the world!
 
@@ -88,7 +90,7 @@ The Mercury binary and source distributions are available via anonymous
 ftp or WWW from the following locations:
 
 	Home site:
-	    Australia:	ftp://ftp.mercury.cs.mu.oz.au/pub/mercury/
+	    Australia:	ftp://ftp.mercury.csse.unimelb.edu.au/pub/mercury/
 
 	Mirrors:
 	    Sweden:	ftp://ftp.csd.uu.se/pub/Mercury/

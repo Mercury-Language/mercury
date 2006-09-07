@@ -8,10 +8,6 @@ running `mmake install'.
 cgi		A couple of Mercury library modules for doing HTML forms
 		programming using CGI (Common Gateway Interface).
 
-clpr		A Mercury interface to the CLP(R) constraint solver,
-		for solving arithmetic constraints on (floating point)
-		real numbers.
-
 complex_numbers
 		A Mercury library package containing support for
 		complex and imaginary numbers.
@@ -34,9 +30,9 @@ dynamic_linking
 		that are supported by most modern Unix systems.
 
 graphics	Some packages for doing graphics programming
-		and GUIs in Mercury: a Mercury interface to tcl/tk,
-		a Mercury binding to OpenGL and a Mercury binding to
-		GLUT.
+		and GUIs in Mercury: a Mercury interface to Tcl/Tk,
+		a Mercury binding to OpenGL, a Mercury binding to
+		GLUT and simplified binding to Xlib.
 
 lazy_evaluation
 		A library module `lazy' containing support for optional
@@ -44,7 +40,7 @@ lazy_evaluation
 		of its use, including a module `lazy_list' that defines
 		a lazy list data type.
 
-lex		A lexer package for Mercury that works over io__states,
+lex		A lexer package for Mercury that works over the IO state,
 		strings, and so forth.  It comes with a rich set of
 		standard regular expressions and the user is free to add
 		their own.                                                      

@@ -64,10 +64,6 @@ copyright licences:
 	Sun Microsystems, Inc., and other parties. 
 	See the file extras/graphics/mtogl/LICENSE.TK.
 
-	The CLP(R) v1.2 implementation in extras/clpr/clpr is copyright
-	by IBM; see the file extras/clpr/clpr/README for details, in
-	particular the RESEARCH SOFTWARE DISCLAIMER and USER AGREEMENT.
-
 THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
 
@@ -84,7 +80,7 @@ README file for your particular platform, if there is one:
 	README.Linux-Alpha	Linux on DEC Alpha
 	README.Linux-PPC	Linux on PowerPC
 	README.Linux-m68k	Linux on Motorola 68000
-	README.MacOS		Apple PowerPC Mac systems running MacOS 10
+	README.MacOS		Apple PowerPC Mac systems running Mac OS X
 	README.MS-Windows	Microsoft Windows
 	README.OSF1		DEC Alpha systems running OSF/1 version 3.x
 	README.Solaris		Solaris (SunOS) on SPARC or Intel x86.
