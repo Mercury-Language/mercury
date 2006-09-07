@@ -23,11 +23,13 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+:- import_module maybe.
 :- import_module map.
 
 %-----------------------------------------------------------------------------%
@@ -201,7 +203,6 @@
     prog_context::in, typecheck_info::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 %
 % The type_assign and type_assign_set data structures.
 %
@@ -226,9 +227,6 @@
                                     % Maps constraint identifiers to the
                                     % actual constraints.
             ).
-
-:- pred write_type_assign_set(type_assign_set::in, prog_varset::in,
-    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -266,7 +264,6 @@
     type_assign::in, type_assign::out) is det.
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- type args_type_assign_set == list(args_type_assign).
 
@@ -284,17 +281,15 @@
 :- func get_callee_arg_types(args_type_assign) = list(mer_type).
 :- func get_callee_constraints(args_type_assign) = hlds_constraints.
 
-:- pred write_args_type_assign_set(args_type_assign_set::in, prog_varset::in,
-    io::di, io::uo) is det.
-
-:- pred convert_nonempty_args_type_assign_set(args_type_assign_set::in,
-    type_assign_set::out) is det.
-
-    % Same as convert_nonempty_args_type_assign_set, but does not abort
-    % when the args are empty.
+    % XXX document me
     %
-:- pred convert_args_type_assign_set(args_type_assign_set::in,
-    type_assign_set::out) is det.
+:- func convert_args_type_assign_set(args_type_assign_set) = type_assign_set.
+
+    % Same as convert_args_type_assign_set, but aborts when the args are
+    % non-empty.
+    %
+:- func convert_args_type_assign_set_check_empty_args(args_type_assign_set) =
+    type_assign_set.
 
 %-----------------------------------------------------------------------------%
 
@@ -332,19 +327,44 @@
 :- func project_cons_type_info_source(cons_type_info) = cons_type_info_source.
 
 %-----------------------------------------------------------------------------%
+
+:- pred write_type_assign_set(type_assign_set::in, prog_varset::in,
+    io::di, io::uo) is det.
+
+:- func type_assign_set_to_pieces(type_assign_set, maybe(int), prog_varset)
+    = list(format_component).
+
+:- pred write_args_type_assign_set(args_type_assign_set::in, prog_varset::in,
+    io::di, io::uo) is det.
+
+:- func args_type_assign_set_to_pieces(args_type_assign_set, maybe(int),
+    prog_varset) = list(format_component).
+
+%-----------------------------------------------------------------------------%
+
+    % Used for debugging typechecking.
+    %
+:- pred type_checkpoint(string::in, typecheck_info::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
+:- import_module int.
 :- import_module pair.
 :- import_module set.
+:- import_module string.
 :- import_module svmap.
 :- import_module term.
 :- import_module varset.
@@ -588,7 +608,6 @@ typecheck_info_add_overloaded_symbol(Symbol, Context, !Info) :-
     typecheck_info_set_overloaded_symbols(SymbolMap, !Info).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 type_assign_get_var_types(TA, TA ^ var_types).
 type_assign_get_typevarset(TA, TA ^ type_varset).
@@ -608,9 +627,53 @@ type_assign_set_constraint_map(X, TA, TA ^ constraint_map := X).
 
 %-----------------------------------------------------------------------------%
 
+convert_args_type_assign_set([]) = [].
+convert_args_type_assign_set([ArgsTypeAssign | ArgsTypeAssigns]) =
+    [convert_args_type_assign(ArgsTypeAssign) |
+    convert_args_type_assign_set(ArgsTypeAssigns)].
+
+convert_args_type_assign_set_check_empty_args([]) = [].
+convert_args_type_assign_set_check_empty_args([ArgTypeAssign | ArgTypeAssigns])
+        = Result :-
+    ArgTypeAssign = args(_, Args, _),
+    (
+        Args = [],
+        Result =
+            [convert_args_type_assign(ArgTypeAssign) |
+            convert_args_type_assign_set_check_empty_args(ArgTypeAssigns)]
+    ;
+        Args = [_ | _],
+        % This should never happen, since the arguments should all have been
+        % processed at this point.
+        unexpected(this_file, "convert_nonempty_args_type_assign_set")
+    ).
+
+:- func convert_args_type_assign(args_type_assign) = type_assign.
+
+convert_args_type_assign(args(TypeAssign0, _, Constraints0)) = TypeAssign :-
+    type_assign_get_typeclass_constraints(TypeAssign0, OldConstraints),
+    type_assign_get_type_bindings(TypeAssign0, Bindings),
+    apply_rec_subst_to_constraints(Bindings, Constraints0, Constraints),
+    merge_hlds_constraints(Constraints, OldConstraints, NewConstraints),
+    type_assign_set_typeclass_constraints(NewConstraints,
+        TypeAssign0, TypeAssign).
+
+get_caller_arg_assign(ArgsTypeAssign) = ArgsTypeAssign ^ caller_arg_assign.
+get_callee_arg_types(ArgsTypeAssign) = ArgsTypeAssign ^ callee_arg_types.
+get_callee_constraints(ArgsTypeAssign) = ArgsTypeAssign ^ callee_constraints.
+
+project_cons_type_info_source(CTI) = CTI ^ cti_source.
+
+%-----------------------------------------------------------------------------%
+
 :- func varnums = bool.
 
 varnums = yes.
+
+:- func inc_maybe_seq(maybe(int)) = maybe(int).
+
+inc_maybe_seq(no) = no.
+inc_maybe_seq(yes(N)) = yes(N + 1).
 
 write_type_assign_set([], _, !IO).
 write_type_assign_set([TypeAssign | TypeAssigns], VarSet, !IO) :-
@@ -618,6 +681,31 @@ write_type_assign_set([TypeAssign | TypeAssigns], VarSet, !IO) :-
     write_type_assign(TypeAssign, VarSet, !IO),
     io.write_string("\n", !IO),
     write_type_assign_set(TypeAssigns, VarSet, !IO).
+
+type_assign_set_to_pieces([], _, _) = [].
+type_assign_set_to_pieces([TypeAssign | TypeAssigns], MaybeSeq, VarSet) =
+    type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) ++
+    type_assign_set_to_pieces(TypeAssigns, inc_maybe_seq(MaybeSeq), VarSet).
+
+write_args_type_assign_set([], _, !IO).
+write_args_type_assign_set([ArgTypeAssign | ArgTypeAssigns], VarSet, !IO) :-
+    % XXX Why does this simply pick the TypeAssign part of the ArgTypeAssign,
+    % instead of invoking convert_args_type_assign?
+    ArgTypeAssign = args(TypeAssign, _ArgTypes, _Cnstrs),
+    io.write_string("\t", !IO),
+    write_type_assign(TypeAssign, VarSet, !IO),
+    io.write_string("\n", !IO),
+    write_args_type_assign_set(ArgTypeAssigns, VarSet, !IO).
+
+args_type_assign_set_to_pieces([], _, _) = [].
+args_type_assign_set_to_pieces([ArgTypeAssign | ArgTypeAssigns], MaybeSeq,
+        VarSet) = Pieces :-
+    % XXX Why does this simply pick the TypeAssign part of the ArgTypeAssign,
+    % instead of invoking convert_args_type_assign?
+    ArgTypeAssign = args(TypeAssign, _ArgTypes, _Cnstrs),
+    Pieces = type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) ++
+        args_type_assign_set_to_pieces(ArgTypeAssigns, inc_maybe_seq(MaybeSeq),
+            VarSet).
 
 :- pred write_type_assign(type_assign::in, prog_varset::in, io::di, io::uo)
     is det.
@@ -639,12 +727,48 @@ write_type_assign(TypeAssign, VarSet, !IO) :-
     ),
     write_type_assign_types(Vars, VarSet, VarTypes, TypeBindings, TypeVarSet,
         no, !IO),
-    write_type_assign_constraints(Constraints, TypeBindings, TypeVarSet, !IO),
+    write_type_assign_hlds_constraints(Constraints, TypeBindings, TypeVarSet,
+        !IO),
     io.write_string("\n", !IO).
 
+:- func type_assign_to_pieces(type_assign, maybe(int), prog_varset)
+    = list(format_component).
+
+type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) = Pieces :-
+    (
+        MaybeSeq = yes(N),
+        SeqPieces0 = [words("Type assignment"), int_fixed(N), suffix(":"), nl],
+        ( N > 1 ->
+            SeqPieces = [blank_line | SeqPieces0]
+        ;
+            SeqPieces = SeqPieces0
+        )
+    ;
+        MaybeSeq = no,
+        SeqPieces = []
+    ),
+    type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
+    type_assign_get_var_types(TypeAssign, VarTypes),
+    type_assign_get_typeclass_constraints(TypeAssign, Constraints),
+    type_assign_get_type_bindings(TypeAssign, TypeBindings),
+    type_assign_get_typevarset(TypeAssign, TypeVarSet),
+    map.keys(VarTypes, Vars),
+    (
+        HeadTypeParams = [],
+        HeadPieces = []
+    ;
+        HeadTypeParams = [_ | _],
+        VarsStr = mercury_vars_to_string(HeadTypeParams, TypeVarSet, varnums),
+        HeadPieces = [words("some [" ++ VarsStr ++ "]"), nl]
+    ),
+    TypePieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
+        TypeBindings, TypeVarSet, no),
+    ConstraintPieces = type_assign_hlds_constraints_to_pieces(Constraints,
+        TypeBindings, TypeVarSet),
+    Pieces = SeqPieces ++ HeadPieces ++ TypePieces ++ ConstraintPieces ++ [nl].
+
 :- pred write_type_assign_types(list(prog_var)::in, prog_varset::in,
-    vartypes::in, tsubst::in, tvarset::in, bool::in,
-    io::di, io::uo) is det.
+    vartypes::in, tsubst::in, tvarset::in, bool::in, io::di, io::uo) is det.
 
 write_type_assign_types([], _, _, _, _, FoundOne, !IO) :-
     (
@@ -672,15 +796,61 @@ write_type_assign_types([Var | Vars], VarSet, VarTypes, TypeBindings,
             TypeVarSet, FoundOne, !IO)
     ).
 
-:- pred write_type_assign_constraints(hlds_constraints::in,
+:- func type_assign_types_to_pieces(list(prog_var), prog_varset,
+    vartypes, tsubst, tvarset, bool) = list(format_component).
+
+type_assign_types_to_pieces([], _, _, _, _, FoundOne) = Pieces :-
+    (
+        FoundOne = no,
+        Pieces = [words("(No variables were assigned a type)")]
+    ;
+        FoundOne = yes,
+        Pieces = []
+    ).
+type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
+        TypeVarSet, FoundOne) = Pieces :-
+    ( map.search(VarTypes, Var, Type) ->
+        (
+            FoundOne = yes,
+            PrefixPieces = [nl]
+        ;
+            FoundOne = no,
+            PrefixPieces = []
+        ),
+        VarStr = mercury_var_to_string(Var, VarSet, varnums),
+        TypeStr = type_with_bindings_to_string(Type, TypeVarSet, TypeBindings),
+        AssignPieces = [fixed(VarStr), suffix(":"), words(TypeStr)],
+        TailPieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
+            TypeBindings, TypeVarSet, yes),
+        Pieces = PrefixPieces ++ AssignPieces ++ TailPieces
+    ;
+        Pieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
+            TypeBindings, TypeVarSet, FoundOne)
+    ).
+
+:- pred write_type_assign_hlds_constraints(hlds_constraints::in,
     tsubst::in, tvarset::in, io::di, io::uo) is det.
 
-write_type_assign_constraints(Constraints, TypeBindings, TypeVarSet, !IO) :-
+write_type_assign_hlds_constraints(Constraints, TypeBindings, TypeVarSet,
+        !IO) :-
     Constraints = constraints(ConstraintsToProve, AssumedConstraints, _),
     write_type_assign_constraints("&", AssumedConstraints,
         TypeBindings, TypeVarSet, no, !IO),
     write_type_assign_constraints("<=", ConstraintsToProve,
         TypeBindings, TypeVarSet, no, !IO).
+
+:- func type_assign_hlds_constraints_to_pieces(hlds_constraints,
+    tsubst, tvarset) = list(format_component).
+
+type_assign_hlds_constraints_to_pieces(Constraints, TypeBindings, TypeVarSet)
+        = Pieces1 ++ Pieces2 :-
+    Constraints = constraints(ConstraintsToProve, AssumedConstraints, _),
+    PiecesList1 = type_assign_constraints_to_pieces_list("&",
+        AssumedConstraints, TypeBindings, TypeVarSet, no),
+    PiecesList2 = type_assign_constraints_to_pieces_list("<=",
+        ConstraintsToProve, TypeBindings, TypeVarSet, no),
+    Pieces1 = component_list_to_line_pieces(PiecesList1, []),
+    Pieces2 = component_list_to_line_pieces(PiecesList2, []).
 
 :- pred write_type_assign_constraints(string::in, list(hlds_constraint)::in,
     tsubst::in, tvarset::in, bool::in, io::di, io::uo) is det.
@@ -701,6 +871,26 @@ write_type_assign_constraints(Operator, [Constraint | Constraints],
     write_type_assign_constraints(Operator, Constraints, TypeBindings,
         TypeVarSet, yes, !IO).
 
+:- func type_assign_constraints_to_pieces_list(string, list(hlds_constraint),
+    tsubst, tvarset, bool) = list(list(format_component)).
+
+type_assign_constraints_to_pieces_list(_, [], _, _, _) = [].
+type_assign_constraints_to_pieces_list(Operator, [Constraint | Constraints],
+        TypeBindings, TypeVarSet, FoundOne) = [ThisPieces] ++ TailPieceLists :-
+    (
+        FoundOne = no,
+        Prefix = Operator ++ " "
+    ;
+        FoundOne = yes,
+        Prefix = "   "
+    ),
+    apply_rec_subst_to_constraint(TypeBindings, Constraint, BoundConstraint),
+    retrieve_prog_constraint(BoundConstraint, ProgConstraint),
+    ThisPieces = [fixed(Prefix ++
+        mercury_constraint_to_string(TypeVarSet, ProgConstraint))],
+    TailPieceLists = type_assign_constraints_to_pieces_list(Operator,
+        Constraints, TypeBindings, TypeVarSet, yes).
+
     % write_type_with_bindings writes out a type after applying the
     % type bindings.
     %
@@ -712,53 +902,60 @@ write_type_with_bindings(Type0, TypeVarSet, TypeBindings, !IO) :-
     strip_builtin_qualifiers_from_type(Type1, Type),
     mercury_output_type(TypeVarSet, no, Type, !IO).
 
-%-----------------------------------------------------------------------------%
+:- func type_with_bindings_to_string(mer_type, tvarset, tsubst) = string.
+
+type_with_bindings_to_string(Type0, TypeVarSet, TypeBindings) = Str :-
+    apply_rec_subst_to_type(TypeBindings, Type0, Type1),
+    strip_builtin_qualifiers_from_type(Type1, Type),
+    Str = mercury_type_to_string(TypeVarSet, no, Type).
+
 %-----------------------------------------------------------------------------%
 
-write_args_type_assign_set([], _, !IO).
-write_args_type_assign_set([ArgTypeAssign | ArgTypeAssigns], VarSet, !IO) :-
-    ArgTypeAssign = args(TypeAssign, _ArgTypes, _Cnstrs),
-    io.write_string("\t", !IO),
-    write_type_assign(TypeAssign, VarSet, !IO),
-    io.write_string("\n", !IO),
-    write_args_type_assign_set(ArgTypeAssigns, VarSet, !IO).
-
-convert_nonempty_args_type_assign_set([], []).
-convert_nonempty_args_type_assign_set([ArgTypeAssign | ArgTypeAssigns],
-        [TypeAssign | TypeAssigns]) :-
-    ArgTypeAssign = args(_, Args, _),
+type_checkpoint(Msg, Info, !IO) :-
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, debug_types, DoCheckPoint),
     (
-        Args = [],
-        convert_args_type_assign(ArgTypeAssign, TypeAssign)
+        DoCheckPoint = yes,
+        do_type_checkpoint(Msg, Info, !IO)
     ;
-        Args = [_ | _],
-        % this should never happen, since the arguments should
-        % all have been processed at this point
-        unexpected(this_file, "convert_nonempty_args_type_assign_set")
-    ),
-    convert_nonempty_args_type_assign_set(ArgTypeAssigns, TypeAssigns).
+        DoCheckPoint = no
+    ).
 
-convert_args_type_assign_set([], []).
-convert_args_type_assign_set([X | Xs], [Y | Ys]) :-
-    convert_args_type_assign(X, Y),
-    convert_args_type_assign_set(Xs, Ys).
-
-:- pred convert_args_type_assign(args_type_assign::in, type_assign::out)
+:- pred do_type_checkpoint(string::in, typecheck_info::in, io::di, io::uo)
     is det.
 
-convert_args_type_assign(args(TypeAssign0, _, Constraints0), TypeAssign) :-
-    type_assign_get_typeclass_constraints(TypeAssign0, OldConstraints),
-    type_assign_get_type_bindings(TypeAssign0, Bindings),
-    apply_rec_subst_to_constraints(Bindings, Constraints0, Constraints),
-    merge_hlds_constraints(Constraints, OldConstraints, NewConstraints),
-    type_assign_set_typeclass_constraints(NewConstraints,
-        TypeAssign0, TypeAssign).
+do_type_checkpoint(Msg, T0, !IO) :-
+    io.write_string("At ", !IO),
+    io.write_string(Msg, !IO),
+    io.write_string(": ", !IO),
+    globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+    maybe_report_stats(Statistics, !IO),
+    io.write_string("\n", !IO),
+    typecheck_info_get_type_assign_set(T0, TypeAssignSet),
+    (
+        Statistics = yes,
+        TypeAssignSet = [TypeAssign | _]
+    ->
+        type_assign_get_var_types(TypeAssign, VarTypes),
+        checkpoint_tree_stats("\t`var -> type' map", VarTypes, !IO),
+        type_assign_get_type_bindings(TypeAssign, TypeBindings),
+        checkpoint_tree_stats("\t`type var -> type' map", TypeBindings, !IO)
+    ;
+        true
+    ),
+    typecheck_info_get_varset(T0, VarSet),
+    write_type_assign_set(TypeAssignSet, VarSet, !IO).
 
-get_caller_arg_assign(ArgsTypeAssign) = ArgsTypeAssign ^ caller_arg_assign.
-get_callee_arg_types(ArgsTypeAssign) = ArgsTypeAssign ^ callee_arg_types.
-get_callee_constraints(ArgsTypeAssign) = ArgsTypeAssign ^ callee_constraints.
+:- pred checkpoint_tree_stats(string::in, map(_K, _V)::in, io::di, io::uo)
+    is det.
 
-project_cons_type_info_source(CTI) = CTI ^ cti_source.
+checkpoint_tree_stats(Description, Tree, !IO) :-
+    map.count(Tree, Count),
+    io.write_string(Description, !IO),
+    io.write_string(": count = ", !IO),
+    io.write_int(Count, !IO),
+    io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
 

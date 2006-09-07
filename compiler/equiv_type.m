@@ -1084,19 +1084,15 @@ report_error(circular_equivalence(Item) - Context, !IO) :-
         TypeDefn = parse_tree_eqv_type(_)
     ->
         Pieces = [words("Error: circular equivalence type"),
-            fixed(describe_sym_name_and_arity(SymName / length(Params))),
-            suffix(".")],
+            sym_name_and_arity(SymName / length(Params)), suffix(".")],
         write_error_pieces(Context, 0, Pieces, !IO)
     ;
         unexpected(this_file, "report_error: invalid item")
     ).
 report_error(invalid_with_type(SymName, PredOrFunc) - Context, !IO) :-
     Pieces = [words("In type declaration for"),
-        words(error_util.pred_or_func_to_string(PredOrFunc)),
-        fixed(error_util.describe_sym_name(SymName)),
-        suffix(":"), nl,
-        words("error: expected higher order"),
-        words(error_util.pred_or_func_to_string(PredOrFunc)),
+        p_or_f(PredOrFunc), sym_name(SymName), suffix(":"), nl,
+        words("error: expected higher order"), p_or_f(PredOrFunc),
         words("type after `with_type`.")],
     write_error_pieces(Context, 0, Pieces, !IO).
 report_error(invalid_with_inst(DeclType, SymName, MaybePredOrFunc) - Context,
@@ -1105,22 +1101,21 @@ report_error(invalid_with_inst(DeclType, SymName, MaybePredOrFunc) - Context,
     ; DeclType = mode_decl, DeclStr = "mode declaration"
     ),
     (
-        MaybePredOrFunc = no, PredOrFuncStr = ""
+        MaybePredOrFunc = no,
+        PredOrFuncPieces = []
     ;
         MaybePredOrFunc = yes(PredOrFunc),
-        PredOrFuncStr = error_util.pred_or_func_to_string(PredOrFunc)
+        PredOrFuncPieces = [p_or_f(PredOrFunc)]
     ),
-    Pieces = [words("In"), words(DeclStr), words("for"), words(PredOrFuncStr),
-        fixed(error_util.describe_sym_name(SymName)), suffix(":"), nl,
-        words("error: expected higher order "), words(PredOrFuncStr),
-        words("inst after `with_inst`.")],
+    Pieces = [words("In"), words(DeclStr), words("for")] ++
+        PredOrFuncPieces ++ [sym_name(SymName), suffix(":"), nl,
+        words("error: expected higher order ")] ++ PredOrFuncPieces ++
+        [words("inst after `with_inst`.")],
     write_error_pieces(Context, 0, Pieces, !IO).
 report_error(non_matching_with_type_with_inst(SymName, PredOrFunc) - Context,
         !IO) :-
     Pieces = [words("In type declaration for"),
-        words(error_util.pred_or_func_to_string(PredOrFunc)),
-        fixed(error_util.describe_sym_name(SymName)),
-        suffix(":"), nl,
+        p_or_f(PredOrFunc), sym_name(SymName), suffix(":"), nl,
         words("error: the `with_type` and `with_inst`"),
         words("annotations are incompatible.")],
     write_error_pieces(Context, 0, Pieces, !IO).

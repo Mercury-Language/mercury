@@ -3,15 +3,15 @@ constrained_poly_insts.m:009: Error: inconsistent constraints on inst variables 
 constrained_poly_insts.m:012: Error: inconsistent constraints on inst variables in function mode declaration: r(in(_1)) = out(_1 =< free).
 constrained_poly_insts.m:014: Error: inconsistent constraints on inst variables in function declaration: s((_1 :: in(_2 =< ground))) = (_1 :: out(_2 =< unique)).
 constrained_poly_insts.m:023: Error: clause for predicate
-constrained_poly_insts.m:023:   `constrained_poly_insts.q/2'
+constrained_poly_insts.m:023:   `constrained_poly_insts.q'/2
 constrained_poly_insts.m:023:   without preceding `pred' declaration.
 constrained_poly_insts.m:025: Error: clause for function
-constrained_poly_insts.m:025:   `constrained_poly_insts.s/1'
+constrained_poly_insts.m:025:   `constrained_poly_insts.s'/1
 constrained_poly_insts.m:025:   without preceding `func' declaration.
 constrained_poly_insts.m:023: Inferred :- pred q(T1, T1).
 constrained_poly_insts.m:025: Inferred :- func s(T1) = T1.
 constrained_poly_insts.m:006: Error: no mode declaration for exported predicate
-constrained_poly_insts.m:006:   `constrained_poly_insts.p/2'.
+constrained_poly_insts.m:006:   `constrained_poly_insts.p'/2.
 constrained_poly_insts.m:027: In clause for `t(in((I =< ground)), out((I =<
 constrained_poly_insts.m:027:   ground)))':
 constrained_poly_insts.m:027:   mode error: argument 2 became too instantiated.
@@ -19,6 +19,5 @@ constrained_poly_insts.m:027:   Final instantiatedness of `HeadVar__2' was
 constrained_poly_insts.m:027:   `unique(42)',
 constrained_poly_insts.m:027:   expected final instantiatedness was `(I =<
 constrained_poly_insts.m:027:   ground)'.
-constrained_poly_insts.m:023: Error: no mode declaration for predicate
-constrained_poly_insts.m:023:   `constrained_poly_insts.q/2'.
+constrained_poly_insts.m:023: Error: no mode declaration for predicate `q'/2.
 For more information, recompile with `-E'.

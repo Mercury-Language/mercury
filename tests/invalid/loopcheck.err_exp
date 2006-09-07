@@ -1,4 +1,4 @@
-loopcheck.m:009: In `main(di, uo)':
+loopcheck.m:009: In `main'(di, uo):
 loopcheck.m:009:   warning: determinism declaration could be tighter.
 loopcheck.m:009:   Declared `det', inferred `erroneous'.
 loopcheck.m:016: Error: `pragma loop_check' declaration not allowed for
@@ -6,7 +6,7 @@ loopcheck.m:016:   procedure with determinism `erroneous'.
 loopcheck.m:016:   The pragma requested is only valid for the following
 loopcheck.m:016:   determinisms: cc_multi, cc_nondet, det, multi, nondet and
 loopcheck.m:016:   semidet.
-loopcheck.m:017: Warning: recursive call will lead to infinite recursion. If
-loopcheck.m:017:   this recursive call is executed, the procedure will call
+loopcheck.m:017: Warning: recursive call will lead to infinite recursion.
+loopcheck.m:017:   If this recursive call is executed, the procedure will call
 loopcheck.m:017:   itself with exactly the same input arguments, leading to
 loopcheck.m:017:   infinite recursion.

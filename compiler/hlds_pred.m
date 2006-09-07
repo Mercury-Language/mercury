@@ -253,29 +253,32 @@
                 % Defined in the implementation of this module, and the module
                 % does not contain any sub-modules.
 
-    % Returns yes if the status indicates that the item was
-    % in any way exported -- that is, if it could be used
-    % by any other module, or by sub-modules of this module.
+    % Returns yes if the status indicates that the item was in any way exported
+    % -- that is, if it could be used by any other module, or by sub-modules
+    % of this module.
     %
 :- func status_is_exported(import_status) = bool.
 
-    % Returns yes if the status indicates that the item was
-    % exported to importing modules (not just to sub-modules).
+    % Returns yes if the status indicates that the item was exported
+    % to importing modules (not just to sub-modules).
     %
 :- func status_is_exported_to_non_submodules(import_status) = bool.
 
-    % Returns yes if the status indicates that the item was
-    % in any way imported -- that is, if it was defined in
-    % some other module, or in a sub-module of this module.
-    % This is the opposite of status_defined_in_this_module.
+    % Returns yes if the status indicates that the item was in any way imported
+    % -- that is, if it was defined in some other module, or in a sub-module
+    % of this module. This is the opposite of status_defined_in_this_module.
     %
 :- func status_is_imported(import_status) = bool.
 
-    % Returns yes if the status indicates that the item was
-    % defined in this module.  This is the opposite of
-    % status_is_imported.
+    % Returns yes if the status indicates that the item was defined in this
+    % module. This is the opposite of status_is_imported.
     %
 :- func status_defined_in_this_module(import_status) = bool.
+
+    % Returns yes if the import_status indicates the item came from
+    % the implementation section.
+    %
+:- func status_defined_in_impl_section(import_status) = bool.
 
     % Are calls from a predicate with the given import_status always fully
     % qualified. For calls occurring in `.opt' files this will return
@@ -876,6 +879,28 @@ status_defined_in_this_module(status_pseudo_exported) =         yes.
 status_defined_in_this_module(status_exported_to_submodules) =  yes.
 status_defined_in_this_module(status_local) =                   yes.
 
+status_defined_in_impl_section(status_abstract_exported) =      yes.
+status_defined_in_impl_section(status_exported_to_submodules) = yes.
+status_defined_in_impl_section(status_local) =                  yes.
+status_defined_in_impl_section(status_opt_imported) =           no.
+status_defined_in_impl_section(status_abstract_imported) =      no.
+status_defined_in_impl_section(status_pseudo_imported) =        no.
+status_defined_in_impl_section(status_exported) =               no.
+status_defined_in_impl_section(status_opt_exported) =           yes.
+status_defined_in_impl_section(status_pseudo_exported) =        no.
+status_defined_in_impl_section(status_external(Status)) =
+    status_defined_in_impl_section(Status).
+status_defined_in_impl_section(status_imported(ImportLocn)) =
+    import_locn_defined_in_impl_section(ImportLocn).
+
+:- func import_locn_defined_in_impl_section(import_locn) = bool.
+
+import_locn_defined_in_impl_section(import_locn_implementation) = yes.
+import_locn_defined_in_impl_section(import_locn_interface) = yes.
+import_locn_defined_in_impl_section(import_locn_ancestor) = yes.
+import_locn_defined_in_impl_section(import_locn_ancestor_private_interface)
+    = yes.
+
 calls_are_fully_qualified(Markers) =
     ( check_marker(Markers, marker_calls_are_fully_qualified) ->
         is_fully_qualified
@@ -994,7 +1019,7 @@ calls_are_fully_qualified(Markers) =
 pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin, Status,
         GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
         ClassProofs, ClassConstraintMap, ClausesInfo, PredInfo) :-
-    unqualify_name(SymName, PredName),
+    PredName = unqualify_name(SymName),
     sym_name_get_module_name(SymName, ModuleName, PredModuleName),
     prog_type.vars_list(ArgTypes, TVars),
     list.delete_elems(TVars, ExistQVars, HeadTypeParams),
@@ -1020,7 +1045,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    unqualify_name(SymName, PredName),
+    PredName = unqualify_name(SymName),
     Attributes = [],
     map.init(ClassProofs),
     map.init(ClassConstraintMap),

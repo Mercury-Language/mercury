@@ -340,7 +340,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         ;
             UnmentionedVars = [_ | _],
             Pieces = [words("In the " ++ LangStr ++ " code for"),
-                simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+                simple_call(PredOrFuncCallId), suffix(":"), nl,
                 words(variable_warning_start(UnmentionedVars)),
                 words("not occur in the " ++ LangStr ++ " code.")],
             write_error_pieces(Context, 0, Pieces, !IO)
@@ -363,7 +363,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         ;
             UnmentionedInputVars = [_ | _],
             Pieces1 = [words("In the " ++ LangStr ++ " code for"),
-                simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+                simple_call(PredOrFuncCallId), suffix(":"), nl,
                 words(variable_warning_start(UnmentionedInputVars)),
                 words("not occur in the first " ++ LangStr ++ " code.")],
             write_error_pieces(Context, 0, Pieces1, !IO)
@@ -381,7 +381,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         ;
             UnmentionedFirstOutputVars = [_ | _],
             Pieces2 = [words("In the " ++ LangStr ++ " code for"),
-                simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+                simple_call(PredOrFuncCallId), suffix(":"), nl,
                 words(variable_warning_start(UnmentionedFirstOutputVars)),
                 words("not occur in the first " ++ LangStr ++
                     " code or the shared " ++ LangStr ++ " code.")],
@@ -400,7 +400,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         ;
             UnmentionedLaterOutputVars = [_ | _],
             Pieces3 = [words("In the " ++ LangStr ++ " code for"),
-                simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+                simple_call(PredOrFuncCallId), suffix(":"), nl,
                 words(variable_warning_start(UnmentionedLaterOutputVars)),
                 words("not occur in the retry " ++ LangStr ++
                 " code or the shared " ++ LangStr ++ " code.")],
@@ -538,7 +538,7 @@ warn_singletons(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet, Context,
                 "' occur only once in this scope."
         ),
         Pieces1 = [words("In clause for"),
-            simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+            simple_call(PredOrFuncCallId), suffix(":"), nl,
             words(SingletonWarn)],
         report_warning(Context, 0, Pieces1, !IO)
     ),
@@ -562,7 +562,7 @@ warn_singletons(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet, Context,
                 "' occur more than once in this scope."
         ),
         Pieces2 = [words("In clause for"),
-            simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+            simple_call(PredOrFuncCallId), suffix(":"), nl,
             words(MultiWarn)],
         report_warning(Context, 0, Pieces2, !IO)
     ).

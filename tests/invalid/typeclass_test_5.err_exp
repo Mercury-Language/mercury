@@ -1,6 +1,6 @@
-typeclass_test_5.m:020: In instance declaration for `typeclass_test_5.c2(int)':
+typeclass_test_5.m:020: In instance declaration for `typeclass_test_5.c2'(int):
 typeclass_test_5.m:020:   multiple implementations of type class predicate
-typeclass_test_5.m:020:   method `typeclass_test_5.p/1'.
+typeclass_test_5.m:020:   method `typeclass_test_5.p'/1.
 typeclass_test_5.m:021: First definition appears here.
 typeclass_test_5.m:022: Subsequent definition appears here.
 typeclass_test_5.m:020: In instance declaration for `typeclass_test_5.c2(int)':

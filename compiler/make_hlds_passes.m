@@ -829,11 +829,10 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         (
             Origin = user,
             list.length(Args, Arity),
-            %
+
             % There is no point printing out the qualified name since that
             % information is already in the context.
-            %
-            unqualify_name(PredName, UnqualifiedPredName),
+            UnqualifiedPredName = unqualify_name(PredName),
             ClauseId = simple_call_id_to_string(PredOrFunc,
                 unqualified(UnqualifiedPredName) / Arity),
             error_is_exported(Context, "clause for " ++ ClauseId, !IO),
@@ -2079,7 +2078,7 @@ check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
 
 report_field_status_mismatch(Context, CallId, !IO) :-
     ErrorPieces = [
-        words("In declaration of"), simple_call_id(CallId), suffix(":"), nl,
+        words("In declaration of"), simple_call(CallId), suffix(":"), nl,
         words("error: a field access function for an"),
         words("exported field must also be exported.")
     ],

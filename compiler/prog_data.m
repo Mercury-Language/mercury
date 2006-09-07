@@ -896,7 +896,8 @@
     % These type equivalences are for the type of program variables
     % and associated structures.
     %
-:- type prog_var_type   --->    prog_var_type.
+:- type prog_var_type
+    --->    prog_var_type.
 :- type prog_var    ==  var(prog_var_type).
 :- type prog_varset ==  varset(prog_var_type).
 :- type prog_substitution ==    substitution(prog_var_type).

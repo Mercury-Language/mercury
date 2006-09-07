@@ -236,16 +236,16 @@
     %   NeedQual, PartialQualInfo, PredId, PredTable):
     %
     % Insert PredInfo into PredTable0 and assign it a new pred_id.
-    % You should check beforehand that the pred doesn't already
-    % occur in the table.
+    % You should check beforehand that the pred doesn't already occur
+    % in the table.
     %
-:- pred predicate_table_insert(pred_info::in, need_qualifier::in,
+:- pred predicate_table_insert_qual(pred_info::in, need_qualifier::in,
     partial_qualifier_info::in, pred_id::out,
     predicate_table::in, predicate_table::out) is det.
 
-    % Equivalent to predicate_table_insert/6, except that only the
+    % Equivalent to predicate_table_insert_qual/6, except that only the
     % fully-qualified version of the predicate will be inserted into the
-    % predicate symbol table. This is useful for creating % compiler-generated
+    % predicate symbol table. This is useful for creating compiler-generated
     % predicates which will only ever be accessed via fully-qualified names.
     %
 :- pred predicate_table_insert(pred_info::in, pred_id::out,
@@ -700,8 +700,8 @@ predicate_table_search_func_m_n_a(PredicateTable, IsFullyQualified,
         PredicateTable, !PredIds).
 
 :- pred maybe_filter_pred_ids_matching_module(is_fully_qualified::in,
-    module_name::in, predicate_table::in, list(pred_id)::in,
-    list(pred_id)::out) is det.
+    module_name::in, predicate_table::in,
+    list(pred_id)::in, list(pred_id)::out) is det.
 
 maybe_filter_pred_ids_matching_module(may_be_partially_qualified, _, _,
         !PredIds).
@@ -742,8 +742,7 @@ predicate_table_search_pf_name_arity(PredicateTable, function, Name, Arity,
 predicate_table_search_pf_sym_arity(PredicateTable, IsFullyQualified,
         PredOrFunc, qualified(Module, Name), Arity, PredIdList) :-
     predicate_table_search_pf_m_n_a(PredicateTable,
-        IsFullyQualified, PredOrFunc,
-        Module, Name, Arity, PredIdList).
+        IsFullyQualified, PredOrFunc, Module, Name, Arity, PredIdList).
 predicate_table_search_pf_sym_arity(PredicateTable, may_be_partially_qualified,
         PredOrFunc, unqualified(Name), Arity, PredIdList) :-
     predicate_table_search_pf_name_arity(PredicateTable, PredOrFunc,
@@ -778,7 +777,7 @@ predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
     predicate_table::in, predicate_table::out) is det.
 
 reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable, PredId,
-        !Table) :-
+        !PredicateTable) :-
     PredInfo = map.lookup(Preds, PredId),
     Access = map.lookup(AccessibilityTable, PredId),
     Access = access(Unqualified, PartiallyQualified),
@@ -796,8 +795,8 @@ reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable, PredId,
         PartiallyQualified = no,
         MaybeQualInfo = no
     ),
-    predicate_table_insert_2(yes(PredId), PredInfo,
-        NeedQual, MaybeQualInfo, _, !Table).
+    do_predicate_table_insert(yes(PredId), PredInfo, NeedQual, MaybeQualInfo,
+        _, !PredicateTable).
 
 :- pred predicate_table_reset(predicate_table::in, predicate_table::out)
     is det.
@@ -810,21 +809,20 @@ predicate_table_reset(PredicateTable0, PredicateTable) :-
 %-----------------------------------------------------------------------------%
 
 predicate_table_insert(PredInfo, PredId, !PredicateTable) :-
-    predicate_table_insert_2(no, PredInfo, must_be_qualified, no, PredId,
+    do_predicate_table_insert(no, PredInfo, must_be_qualified, no, PredId,
         !PredicateTable).
 
-predicate_table_insert(PredInfo, NeedQual, QualInfo, PredId,
+predicate_table_insert_qual(PredInfo, NeedQual, QualInfo, PredId,
         !PredicateTable) :-
-    predicate_table_insert_2(no, PredInfo, NeedQual, yes(QualInfo), PredId,
+    do_predicate_table_insert(no, PredInfo, NeedQual, yes(QualInfo), PredId,
         !PredicateTable).
 
-:- pred predicate_table_insert_2(maybe(pred_id)::in, pred_info::in,
+:- pred do_predicate_table_insert(maybe(pred_id)::in, pred_info::in,
     need_qualifier::in, maybe(partial_qualifier_info)::in, pred_id::out,
     predicate_table::in, predicate_table::out) is det.
 
-predicate_table_insert_2(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
+do_predicate_table_insert(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
         PredId, !PredicateTable) :-
-
     !.PredicateTable = predicate_table(Preds0, NextPredId0, PredIds0,
         AccessibilityTable0,
         Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,

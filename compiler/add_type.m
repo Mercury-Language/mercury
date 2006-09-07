@@ -85,7 +85,6 @@
 module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         item_status(Status0, NeedQual), !ModuleInfo, !IO) :-
     globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     list.length(Args, Arity),
     TypeCtor = type_ctor(Name, Arity),
     convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
@@ -108,8 +107,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
     ),
     (
         % Discriminated unions whose definition consists of a single
-        % zero-arity constructor are not allowed to have user-defined
-        % equality or comparison.
+        % zero-arity constructor are dummy types. Dummy types are not allowed
+        % to have user-defined equality or comparison.
         %
         TypeDefn = parse_tree_du_type(Ctors, MaybeUserUC),
         Ctors = [Constructor],
@@ -118,27 +117,24 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         % Only report errors for types defined in this module.
         status_defined_in_this_module(Status0) = yes
     ->
-        DummyTypeError = [
+        DummyMainPieces = [
             words("Error: the type"),
             sym_name_and_arity(Name / Arity),
             words("is not allowed to have user-defined equality"),
             words("or comparison.")
         ],
-        (
-            VerboseErrors = yes,
-            VerboseDummyTypeError = [
-                words("Discriminated unions whose body consists of a single"),
-                words("zero-arity constructor cannot have user-defined"),
-                words("equality or comparison.")
-            ],
-            CompleteDummyTypeError = DummyTypeError ++ VerboseDummyTypeError
-        ;
-            VerboseErrors = no,
-            globals.io_set_extra_error_info(yes, !IO),
-            CompleteDummyTypeError = DummyTypeError
-        ),
-        write_error_pieces(Context, 0, CompleteDummyTypeError, !IO),
-        io.set_exit_status(1, !IO)
+        DummyVerbosePieces = [
+            words("Discriminated unions whose body consists of a single"),
+            words("zero-arity constructor cannot have user-defined"),
+            words("equality or comparison.")
+        ],
+        DummyMsg = simple_msg(Context,
+            [always(DummyMainPieces), verbose_only(DummyVerbosePieces)]),
+        DummySpec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [DummyMsg]),
+        write_error_spec(DummySpec, 0, _DummyNumWarnings, 0, DummyNumErrors,
+            !IO),
+        module_info_incr_num_errors(DummyNumErrors, !ModuleInfo)
     ;
         true
     ),
@@ -154,13 +150,16 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         ( is_solver_type_is_inconsistent(OldBody, Body) ->
             % The existing definition has an is_solver_type annotation
             % which is different to the current definition.
-            module_info_incr_errors(!ModuleInfo),
-            Pieces0 = [words("In definition of type"),
-                fixed(describe_sym_name_and_arity(Name / Arity) ++ ":"), nl,
-                words("error: all definitions of a type must"),
-                words("have consistent `solver'"),
-                words("annotations")],
-            write_error_pieces(Context, 0, Pieces0, !IO),
+            SolverPieces = [words("In definition of type"),
+                sym_name_and_arity(Name / Arity), suffix(":"), nl,
+                words("error: all definitions of a type must have"),
+                words("consistent `solver' annotations")],
+            SolverMsg = simple_msg(Context, [always(SolverPieces)]),
+            SolverSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [SolverMsg]),
+            write_error_spec(SolverSpec, 0, _SolverNumWarnings,
+                0, SolverNumErrors, !IO),
+            module_info_incr_num_errors(SolverNumErrors, !ModuleInfo),
             MaybeOldDefn = no
         ;
             hlds_data.set_type_defn_body(OldBody, OldDefn0, OldDefn),
@@ -181,14 +180,16 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         MaybeOldDefn = no,
         Body = hlds_foreign_type(_)
     ->
-        TypeStr = describe_sym_name_and_arity(Name / Arity),
-        ErrorPieces = [
-            words("Error: type "),
-            fixed(TypeStr),
+        ForeignDeclPieces = [
+            words("Error: type "), sym_name_and_arity(Name / Arity),
             words("defined as foreign_type without being declared.")
         ],
-        write_error_pieces(Context, 0, ErrorPieces, !IO),
-        module_info_incr_errors(!ModuleInfo)
+        ForeignDeclMsg = simple_msg(Context, [always(ForeignDeclPieces)]),
+        ForeignDeclSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [ForeignDeclMsg]),
+        write_error_spec(ForeignDeclSpec, 0, _ForeignDeclNumWarnings,
+            0, ForeignDeclNumErrors, !IO),
+        module_info_incr_num_errors(ForeignDeclNumErrors, !ModuleInfo)
     ;
         MaybeOldDefn = yes(OldDefn1),
         Body = hlds_foreign_type(_),
@@ -198,14 +199,17 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         status_is_exported_to_non_submodules(OldStatus1) = no,
         status_is_exported_to_non_submodules(Status0) = yes
     ->
-        TypeStr = describe_sym_name_and_arity(Name / Arity),
-        ErrorPieces = [
+        ForeignVisPieces = [
             words("Error: pragma foreign_type "),
-            fixed(TypeStr),
+            sym_name_and_arity(Name / Arity),
             words("must have the same visibility as the type declaration.")
         ],
-        write_error_pieces(Context, 0, ErrorPieces, !IO),
-        module_info_incr_errors(!ModuleInfo)
+        ForeignVisMsg = simple_msg(Context, [always(ForeignVisPieces)]),
+        ForeignVisSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [ForeignVisMsg]),
+        write_error_spec(ForeignVisSpec, 0, _ForeignVisNumWarnings,
+            0, ForeignVisNumErrors, !IO),
+        module_info_incr_num_errors(ForeignVisNumErrors, !ModuleInfo)
     ;
         % If there was an existing non-abstract definition for the type, ...
         MaybeOldDefn = yes(T2),
@@ -252,14 +256,16 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 module_info_set_type_table(Types, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
-                Pieces = [words("In definition of type"),
-                    fixed(describe_sym_name_and_arity(Name / Arity) ++ ":"),
-                    nl,
-                    words("error: all definitions of a"),
-                    words("type must have the same"),
-                    words("visibility")],
-                write_error_pieces(Context, 0,
-                    Pieces, !IO)
+                DiffVisPieces = [words("In definition of type"),
+                    sym_name_and_arity(Name / Arity), suffix(":"), nl,
+                    words("error: all definitions of a type"),
+                    words("must have the same visibility")],
+                DiffVisMsg = simple_msg(Context, [always(DiffVisPieces)]),
+                DiffVisSpec = error_spec(severity_error,
+                    phase_parse_tree_to_hlds, [DiffVisMsg]),
+                write_error_spec(DiffVisSpec, 0, _DiffVisNumWarnings,
+                    0, DiffVisNumErrors, !IO),
+                module_info_incr_num_errors(DiffVisNumErrors, !ModuleInfo)
             )
         ;
             % ..., otherwise issue an error message if the second
@@ -285,20 +291,18 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             list.member(Var, Args),
             \+ type_contains_var(EqvType, Var)
         ->
-            Pieces = [words("Sorry, not implemented:"),
+            PolyEqvPieces = [words("Sorry, not implemented:"),
                 words("polymorphic equivalence type,"),
                 words("with monomorphic definition,"),
                 words("exported as abstract type.")],
-            write_error_pieces(Context, 0, Pieces, !IO),
-            (
-                VerboseErrors = yes,
-                write_error_pieces(Context, 0, abstract_monotype_workaround,
-                    !IO)
-            ;
-                VerboseErrors = no,
-                globals.io_set_extra_error_info(yes, !IO)
-            ),
-            io.set_exit_status(1, !IO)
+            PolyEqvMsg = simple_msg(Context,
+                [always(PolyEqvPieces),
+                verbose_only(abstract_monotype_workaround)]),
+            PolyEqvSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [PolyEqvMsg]),
+            write_error_spec(PolyEqvSpec, 0, _PolyEqvNumWarnings,
+                0, PolyEqvNumErrors, !IO),
+            module_info_incr_num_errors(PolyEqvNumErrors, !ModuleInfo)
         ;
             true
         )
@@ -452,39 +456,31 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
     globals.get_target(Globals, Target),
     ( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
         FoundError = no
-    ; GeneratingCode = yes ->
-        %
-        % If we're not generating code the error may only have
-        % occurred because the grade options weren't passed.
-        %
-        io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-        (
-            VeryVerbose = yes,
-            VerboseErrorPieces = [
-                nl,
-                words("There are representations for"),
-                words("this type on other back-ends,"),
-                words("but none for this back-end.")
-            ]
-        ;
-            VeryVerbose = no,
-            VerboseErrorPieces = []
-        ),
-        ( Target = target_c, LangStr = "C"
-        ; Target = target_il, LangStr = "IL"
-        ; Target = target_java, LangStr = "Java"
-        ; Target = target_asm, LangStr = "C"
-        ),
-        TypeStr = describe_sym_name_and_arity(Name/Arity),
-        ErrorPieces = [
-            words("Error: no"), words(LangStr),
-            words("`pragma foreign_type' declaration for"),
-            fixed(TypeStr) | VerboseErrorPieces
-        ],
-        write_error_pieces(Context, 0, ErrorPieces, !IO),
-        FoundError = yes,
-        module_info_incr_errors(!ModuleInfo)
     ;
+        (
+            GeneratingCode = yes,
+            ( Target = target_c, LangStr = "C"
+            ; Target = target_il, LangStr = "IL"
+            ; Target = target_java, LangStr = "Java"
+            ; Target = target_asm, LangStr = "C"
+            ),
+            MainPieces = [words("Error: no"), fixed(LangStr),
+                fixed("`pragma foreign_type'"), words("declaration for"),
+                sym_name_and_arity(Name/Arity), nl],
+            VerbosePieces = [words("There are representations for this type"),
+                words("on other back-ends, but none for this back-end."), nl],
+            Msg = simple_msg(Context,
+                [always(MainPieces), 
+                option_is_set(very_verbose, yes, [always(VerbosePieces)])]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [Msg]),
+            write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+            module_info_incr_num_errors(NumErrors, !ModuleInfo)
+        ;
+            GeneratingCode = no
+            % If we're not generating code the error may only have occurred
+            % because the grade options weren't passed.
+        ),
         FoundError = yes
     ).
 
@@ -714,18 +710,14 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
         list.member(OtherConsDefn, QualifiedConsDefns1),
         OtherConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
     ->
-        % XXX we should record each error using module_info_incr_errors
         QualifiedConsIdStr = cons_id_to_string(QualifiedConsId),
         TypeCtorStr = type_ctor_to_string(TypeCtor),
-        ErrMsg = [
-            words("Error: constructor"),
-            quote(QualifiedConsIdStr),
-            words("for type"),
-            quote(TypeCtorStr),
-            words("multiply defined.")
-        ],
-        write_error_pieces(Context, 0, ErrMsg, !IO),
-        io.set_exit_status(1, !IO),
+        Pieces = [words("Error: constructor"), quote(QualifiedConsIdStr),
+            words("for type"), quote(TypeCtorStr), words("multiply defined.")],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO),
+        % XXX module_info_incr_errors(_NumErrors, !ModuleInfo)
         QualifiedConsDefns = QualifiedConsDefns1
     ;
         QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1]
@@ -818,16 +810,18 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         % using module_info_incr_errors
         FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
         sym_name_to_string(FieldName, FieldString),
-        ErrorPieces = [words("Error: field"), quote(FieldString),
+        Pieces = [words("Error: field"), quote(FieldString),
             words("multiply defined.")],
-        write_error_pieces(Context, 0, ErrorPieces, !IO),
-
+        Msg1 = simple_msg(Context, [always(Pieces)]),
         PrevPieces = [words("Here is the previous definition of field"),
             quote(FieldString), suffix(".")],
-        write_error_pieces_not_first_line(OrigContext, 0, PrevPieces, !IO),
-        io.set_exit_status(1, !IO)
+        Msg2 = simple_msg(OrigContext, [always(PrevPieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [Msg1, Msg2]),
+        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
+        % XXX module_info_incr_errors(_NumErrors, !ModuleInfo)
     ;
-        unqualify_name(FieldName, UnqualFieldName),
+        UnqualFieldName = unqualify_name(FieldName),
 
         % Add an unqualified version of the field name to the table,
         % if appropriate.

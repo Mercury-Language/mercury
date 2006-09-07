@@ -11,4 +11,3 @@
 
 p1(X) :- some junk p3(X).
 p3(X) :- ( some junk X > 0 -> X = 42 ; X = -42 ).
-

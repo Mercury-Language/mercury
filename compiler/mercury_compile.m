@@ -953,31 +953,28 @@ read_module_or_file(file(FileName), ReturnTimestamp, ModuleName,
             ReturnTimestamp, Items, Error, ModuleName, MaybeTimestamp, !IO),
 
         %
-        % XXX If the module name doesn't match the file name
-        % the compiler won't be able to find the `.used'
-        % file (the name of the `.used' file is derived from
-        % the module name not the file name).
-        % This will be fixed when mmake functionality
-        % is moved into the compiler.
+        % XXX If the module name doesn't match the file name the compiler
+        % won't be able to find the `.used' file (the name of the `.used' file
+        % is derived from the module name not the file name). This will be
+        % fixed when mmake functionality is moved into the compiler.
         %
         globals.io_lookup_bool_option(smart_recompilation, Smart, !IO),
         (
             Smart = yes,
             ModuleName \= DefaultModuleName
         ->
-            globals.io_lookup_bool_option(warn_smart_recompilation, Warn,
-                !IO),
+            globals.io_lookup_bool_option(warn_smart_recompilation, Warn, !IO),
             (
                 Warn = yes,
-                Msg1 = "Warning: module name does not " ++ "match file name: ",
-                ModuleNameStr = describe_sym_name(ModuleName),
-                Msg2 = FileName ++ " contains module `" ++ ModuleNameStr ++
-                    "'.",
-                Msg3 = "Smart recompilation will not work unless " ++
-                    "a module name to file name mapping is created using " ++
-                    "`mmc -f *.m'.",
-                write_error_pieces_plain([words(Msg1), nl, words(Msg2), nl,
-                    words(Msg3)], !IO),
+                Pieces =
+                    [words("Warning:"),
+                    words("module name does not match file name: "), nl,
+                    fixed(FileName), words("contains module"),
+                    sym_name(ModuleName), suffix("."), nl,
+                    words("Smart recompilation will not work unless"),
+                    words("a module name to file name mapping is created"),
+                    words("using `mmc -f *.m'."), nl],
+                write_error_pieces_plain(Pieces, !IO),
                 record_warning(!IO)
             ;
                 Warn = no

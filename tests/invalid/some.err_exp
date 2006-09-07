@@ -1,3 +1,5 @@
 some.m:006: Error: unrecognized declaration: some junk pred p2((int :: in)) is semidet.
 some.m:012: Error: in first argument of some: expected list of variables and/or state variables: junk.
 some.m:013: Error: in first argument of some: expected list of variables and/or state variables: junk.
+some.m:005: Error: no clauses for predicate `p1'/1.
+some.m:007: Error: no clauses for predicate `p3'/1.

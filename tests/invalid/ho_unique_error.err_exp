@@ -1,4 +1,4 @@
-ho_unique_error.m:007: In `call_ho(di, uo)':
+ho_unique_error.m:007: In `call_ho'(di, uo):
 ho_unique_error.m:007:   error: invalid determinism for a predicate with I/O
 ho_unique_error.m:007:   state arguments.
 ho_unique_error.m:012: In clause for `call_ho(di, uo)':

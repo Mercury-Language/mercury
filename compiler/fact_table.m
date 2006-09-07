@@ -398,7 +398,7 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
         term.functor(Const, Terms0, Context), FactArgInfos,
         ProcStreams, MaybeOutput, FactNum, Result, !Errors, !IO) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    unqualify_name(PredName, PredString),
+    PredString = unqualify_name(PredName),
     ( Const = term.atom(TopLevel) ->
         (
             (

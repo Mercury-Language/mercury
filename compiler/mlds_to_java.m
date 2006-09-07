@@ -1060,7 +1060,7 @@ output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
     output_imports(Imports, !IO),
     io.write_list(ForeignDecls, "\n", output_java_decl(Indent), !IO),
     io.write_string("public class ", !IO),
-    unqualify_name(JavaSafeModuleName, ClassName),
+    ClassName = unqualify_name(JavaSafeModuleName),
     io.write_string(ClassName, !IO),
     io.write_string(" {\n", !IO),
     maybe_write_main_driver(Indent + 1, JavaSafeModuleName, Defns, !IO).
@@ -1096,7 +1096,7 @@ maybe_write_main_driver(Indent, JavaSafeModuleName, Defns, !IO) :-
         % Save the progname and command line arguments in the class variables
         % of `mercury.runtime.JavaInternal', as well as setting the default
         % exit status.
-        unqualify_name(JavaSafeModuleName, ClassName),
+        ClassName = unqualify_name(JavaSafeModuleName),
         indent_line(Indent + 1, !IO),
         io.write_string("mercury.runtime.JavaInternal.progname = """, !IO),
         io.write_string(ClassName, !IO),

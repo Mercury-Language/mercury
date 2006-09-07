@@ -1,2 +1,3 @@
-missing_init_pred.m:020: In clause for initialisation predicate for type missing_init_pred.t:
-missing_init_pred.m:020:   error: undefined predicate `missing_init_pred.init/1'.
+missing_init_pred.m:020: In clause for initialisation predicate for type `t':
+missing_init_pred.m:020:   error: undefined predicate
+missing_init_pred.m:020:   `missing_init_pred.init'/1.

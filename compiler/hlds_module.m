@@ -5,21 +5,20 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: hlds_module.m.
 % Main authors: fjh, conway.
-% 
-% This module defines the part of the High Level Data Structure or HLDS
-% that deals with issues that are wider than a single predicate.
-% 
+%
+% This module defines the main part of the High Level Data Structure or HLDS
+% that deals with issues that concern the module as a whole.
+%
 % The main data structures defined here are the types
 %
 %   module_info
 %   dependency_info
-%   predicate_table
 %
 % There is a separate interface section for each of these.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -108,26 +107,26 @@
 
     % Map from proc to an indication of whether or not it might throw an
     % exception.
-    % 
+    %
 :- type exception_info == map(pred_proc_id, proc_exception_info).
 
 :- type proc_exception_info
     --->    proc_exception_info(
-                proc_exception_status :: exception_status,
-                proc_maybe_excep_analysis_status :: maybe(analysis_status)
+                proc_exception_status               :: exception_status,
+                proc_maybe_excep_analysis_status    :: maybe(analysis_status)
             ).
-    
+
     % Map from proc to an indication of whether or not it modifies the trail.
     %
 :- type trailing_info == map(pred_proc_id, proc_trailing_info).
 
 :- type proc_trailing_info
     --->    proc_trailing_info(
-                proc_trailing_status :: trailing_status,
-                proc_maybe_trail_analysis_status :: maybe(analysis_status)
+                proc_trailing_status                :: trailing_status,
+                proc_maybe_trail_analysis_status    :: maybe(analysis_status)
             ).
 
-    % Map from a proc to a indication of whether or not it (or one of 
+    % Map from a proc to a indication of whether or not it (or one of
     % its subgoals) calls a procedure that is tabled using minimal
     % model tabling.
     %
@@ -135,15 +134,15 @@
 
 :- type proc_mm_tabling_info
     --->    proc_mm_tabling_info(
-                proc_mm_status :: mm_tabling_status,
                 % The tabling status for this procedures as determined
                 % by tabling analysis.
-                
-                proc_mm_analysis_status :: maybe(analysis_status)
+                proc_mm_status                      :: mm_tabling_status,
+
                 % The status of the tabling analysis results for this
                 % procedure.  This is used by the intermodule-analysis
                 % framework to determine if there is any benefit in
                 % re-analysing this procedure.
+                proc_mm_analysis_status             :: maybe(analysis_status)
             ).
 
     % List of procedures for which there are user-requested type
@@ -152,30 +151,24 @@
     % versions.
 :- type type_spec_info
     --->    type_spec_info(
+                % Procedures for which there are user-requested type
+                % specializations.
                 user_req_procs      :: set(pred_proc_id),
-                                    % Procedures for which there are
-                                    % user-requested type specializations.
 
+                % Set of predicates which need to be processed by
+                % higher_order.m to produce those specialized versions.
                 must_process_preds  ::  set(pred_id),
-                                    % Set of predicates which need to be
-                                    % processed by higher_order.m to
-                                    % produce those specialized versions.
 
+                % Map from predicates for which the user requested a type
+                % specialization to the list of predicates which must be
+                % processed by higher_order.m to force the production of those
+                % versions. This is used by dead_proc_elim.m to avoid creating
+                % versions unnecessarily for versions in imported modules.
                 user_to_process_map :: multi_map(pred_id, pred_id),
-                                    % Map from predicates for which the
-                                    % user requested a type specialization
-                                    % to the list of predicates which must
-                                    % be processed by higher_order.m to
-                                    % force the production of those
-                                    % versions. This is used by
-                                    % dead_proc_elim.m to avoid creating
-                                    % versions unnecessarily for versions
-                                    % in imported modules.
 
+                % Type spec pragmas to be placed in the `.opt' file if a
+                % predicate becomes exported.
                 pragma_map          :: multi_map(pred_id, pragma_type)
-                                    % Type spec pragmas to be placed in
-                                    % the `.opt' file if a predicate
-                                    % becomes exported.
             ).
 
     % Maps the full names of procedures (in the sense of
@@ -185,14 +178,14 @@
 
 :- type complexity_proc_info
     --->    complexity_proc_info(
+                % The index of the procedure in the runtime system's
+                % MR_complexity_procs array.
                 complexity_proc_num     :: int,
-                            % The index of the procedure in the runtime
-                            % system's MR_complexity_procs array.
 
+                % The full name of the procedure, in the form
+                % fqn/arity-modenum, where fqn is the predicate or function's
+                % fully qualified name.
                 complexity_proc_name    :: string,
-                            % The full name of the procedure, in the form
-                            % fqn/arity-modenum, where fqn is the predicate or
-                            % function's fully qualified name.
 
                 complexity_proc_args    :: list(complexity_arg_info)
             ).
@@ -208,22 +201,21 @@
     ;       complexity_input_fixed_size
     ;       complexity_output.
 
-        % This type is used to record the mapping between original
-        % procedures, and their optimised versions with respect to 
-        % structure reuse (CTGC). 
-        %
-:- type structure_reuse_map == 
+    % This type is used to record the mapping between original procedures,
+    % and their optimised versions with respect to structure reuse (CTGC).
+    %
+:- type structure_reuse_map ==
     map(pred_proc_id, pair(pred_proc_id, sym_name)).
+
 %-----------------------------------------------------------------------------%
 %
 % Various predicates for manipulating the module_info data structure
 %
 
     % Create an empty module_info for a given module name (and the
-    % global options).  The item_list is passed so that we can
-    % call get_implicit_dependencies to figure out whether to
-    % import `table_builtin', but the items are not inserted into
-    % the module_info.
+    % global options). The item_list is passed so that we can call
+    % get_implicit_dependencies to figure out whether to import
+    % `table_builtin', but the items are not inserted into the module_info.
     %
 :- pred module_info_init(module_name::in, item_list::in, globals::in,
     partial_qualifier_info::in, maybe(recompilation_info)::in,
@@ -329,6 +321,7 @@
     % any ancestor modules and any modules imported by ancestor modules.
     % It excludes transitively imported modules (those for which we read
     % `.int2' files).
+    %
 :- pred visible_module(module_name::out, module_info::in) is multi.
 
     % This returns all the modules that this module's code depends on,
@@ -491,10 +484,10 @@
 :- pred module_info_user_final_pred_c_names(module_info::in,
     list(string)::out) is det.
 
-:- pred module_info_get_structure_reuse_map(module_info::in, 
+:- pred module_info_get_structure_reuse_map(module_info::in,
     structure_reuse_map::out) is det.
 
-:- pred module_info_set_structure_reuse_map(structure_reuse_map::in, 
+:- pred module_info_set_structure_reuse_map(structure_reuse_map::in,
     module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -584,6 +577,9 @@
     is det.
 
 :- pred module_info_incr_errors(module_info::in, module_info::out) is det.
+
+:- pred module_info_incr_num_errors(int::in,
+    module_info::in, module_info::out) is det.
 
     % The module_info stores a counter which is used to distinguish
     % lambda predicates which appear on the same line in the same file.
@@ -778,7 +774,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     map.init(InstanceTable),
     map.init(SuperClassTable),
 
-    % the builtin modules are automatically imported
+    % The builtin modules are automatically imported.
     get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
     set.list_to_set(ImportDeps ++ UseDeps, ImportedModules),
     set.init(IndirectlyImportedModules),
@@ -879,7 +875,7 @@ module_info_get_maybe_complexity_proc_map(MI,
     MI ^ sub_info ^ maybe_complexity_proc_map).
 module_info_get_complexity_proc_infos(MI,
     MI ^ sub_info ^ complexity_proc_infos).
-module_info_get_structure_reuse_map(MI, 
+module_info_get_structure_reuse_map(MI,
     MI ^ sub_info ^ structure_reuse_map).
 
     % XXX There is some debate as to whether duplicate initialise directives
@@ -992,7 +988,7 @@ module_info_set_maybe_complexity_proc_map(NewVal, MI,
     MI ^ sub_info ^ maybe_complexity_proc_map := NewVal).
 module_info_set_complexity_proc_infos(NewVal, MI,
     MI ^ sub_info ^ complexity_proc_infos := NewVal).
-module_info_set_structure_reuse_map(ReuseMap, MI, 
+module_info_set_structure_reuse_map(ReuseMap, MI,
     MI ^ sub_info ^ structure_reuse_map := ReuseMap).
 
 %-----------------------------------------------------------------------------%
@@ -1103,8 +1099,11 @@ module_info_clobber_dependency_info(!MI) :-
     module_info_set_maybe_dependency_info(no, !MI).
 
 module_info_incr_errors(!MI) :-
+    module_info_incr_num_errors(1, !MI).
+
+module_info_incr_num_errors(Incr, !MI) :-
     module_info_get_num_errors(!.MI, Errs0),
-    Errs = Errs0 + 1,
+    Errs = Errs0 + Incr,
     module_info_set_num_errors(Errs, !MI).
 
 module_info_next_lambda_count(Context, Count, !MI) :-
@@ -1173,8 +1172,7 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
 
 module_add_foreign_decl(Lang, IsLocal, ForeignDecl, Context, !Module) :-
     module_info_get_foreign_decl(!.Module, ForeignDeclIndex0),
-        % store the decls in reverse order and reverse them later
-        % for efficiency
+    % Store the decls in reverse order and reverse them later for efficiency.
     ForeignDeclIndex = [foreign_decl_code(Lang, IsLocal, ForeignDecl,
         Context) | ForeignDeclIndex0],
     module_info_set_foreign_decl(ForeignDeclIndex, !Module).
@@ -1211,20 +1209,20 @@ predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity) :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo).
-    
+
 predicate_module(ModuleInfo, PredId) = ModuleName :-
     module_info_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo).
-    
+
 predicate_name(ModuleInfo, PredId) = PredName :-
     module_info_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
     PredName = pred_info_name(PredInfo).
-    
+
 predicate_arity(ModuleInfo, PredId) = Arity :-
     module_info_preds(ModuleInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo), 
+    map.lookup(Preds, PredId, PredInfo),
     Arity = pred_info_orig_arity(PredInfo).
 
 %-----------------------------------------------------------------------------%

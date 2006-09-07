@@ -204,7 +204,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             CallId = simple_call_id(PredOrFunc, PredName, Arity),
             ErrorPieces0 = [
                 words("Error: clause for automatically generated"),
-                words("field access"), simple_call_id(CallId), suffix("."), nl
+                words("field access"), simple_call(CallId), suffix("."), nl
             ],
             globals.io_lookup_bool_option(verbose_errors, Verbose, !IO),
             (

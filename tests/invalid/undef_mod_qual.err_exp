@@ -1,2 +1,2 @@
-undef_mod_qual.m:012: In clause for predicate `undef_mod_qual.main/2':
-undef_mod_qual.m:012:   error: undefined predicate `foo.bletchx/2'.
+undef_mod_qual.m:012: In clause for predicate `main'/2:
+undef_mod_qual.m:012:   error: undefined predicate `foo.bletchx'/2.

@@ -549,7 +549,7 @@ make_maybe_pseudo_type_info_or_self_tables(self, !Tables).
 
 make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
         Details) :-
-    unqualify_name(SymName, FunctorName),
+    FunctorName = unqualify_name(SymName),
     NumUnivTvars = TypeArity,
     % There can be no existentially typed args to the functor in a notag type.
     ExistTvars = [],
@@ -612,7 +612,7 @@ make_enum_functors([Functor | Functors], NextOrdinal0, ConsTagMap,
     map.lookup(ConsTagMap, ConsId, ConsTag),
     expect(unify(ConsTag, int_tag(NextOrdinal0)), this_file,
         "mismatch on constant assigned to functor in enum"),
-    unqualify_name(SymName, FunctorName),
+    FunctorName = unqualify_name(SymName),
     EnumFunctor = enum_functor(FunctorName, NextOrdinal0),
     make_enum_functors(Functors, NextOrdinal0 + 1, ConsTagMap, EnumFunctors).
 
@@ -696,7 +696,7 @@ make_maybe_res_functors([Functor | Functors], NextOrdinal, ConsTagMap,
         TypeArity, ModuleInfo, [MaybeResFunctor | MaybeResFunctors]) :-
     Functor = ctor(ExistTvars, Constraints, SymName, ConstructorArgs),
     list.length(ConstructorArgs, Arity),
-    unqualify_name(SymName, FunctorName),
+    FunctorName = unqualify_name(SymName),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, ConstructorArgs),
     map.lookup(ConsTagMap, ConsId, ConsTag),
     process_cons_tag(ConsTag, ConsRep),
@@ -776,7 +776,7 @@ generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo) :-
     ConstructorArg = MaybeArgSymName - ArgType,
     (
         MaybeArgSymName = yes(SymName),
-        unqualify_name(SymName, ArgName),
+        ArgName = unqualify_name(SymName),
         MaybeArgName = yes(ArgName)
     ;
         MaybeArgSymName = no,

@@ -491,7 +491,7 @@ ml_gen_reserved_address(ModuleInfo, reserved_object(TypeCtor, QualCtorName,
         module_info_get_globals(ModuleInfo, Globals),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
         TypeCtor = type_ctor(TypeName, TypeArity),
-        unqualify_name(TypeName, UnqualTypeName),
+        UnqualTypeName = unqualify_name(TypeName),
         MLDS_TypeName = mlds_append_class_qualifier(MLDS_ModuleName,
             module_qual, Globals, UnqualTypeName, TypeArity),
         Name = ml_format_reserved_object_name(CtorName, CtorArity),
@@ -854,7 +854,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             % If so, append the name of the derived class to the name of the
             % base class for this type (since the derived class will also be
             % nested inside the base class).
-            unqualify_name(CtorSymName, CtorName),
+            CtorName = unqualify_name(CtorSymName),
             QualTypeName = qual(MLDS_Module, _QualKind, TypeName),
             ClassQualifier = mlds_append_class_qualifier(MLDS_Module,
                 module_qual, Globals, TypeName, TypeArity),
@@ -1518,7 +1518,7 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
             (
                 ConsId = cons(ConsName, ConsArity)
             ->
-                unqualify_name(ConsName, UnqualConsName),
+                UnqualConsName = unqualify_name(ConsName),
                 FieldId = ml_gen_field_id(VarType, Tag, UnqualConsName,
                     ConsArity, FieldName, Globals)
             ;

@@ -1,4 +1,4 @@
-freefree.m:016: In predicate `freefree.p/0':
+freefree.m:016: In predicate `freefree.p'/0:
 freefree.m:016:   warning: unresolved polymorphism.
 freefree.m:016:   The variables with unbound types were:
 freefree.m:016:       Y: V_1

@@ -4114,7 +4114,7 @@ parse_implicitly_qualified_symbol_name(DefaultModName, Term, Result) :-
                 "does not match preceding `:- module' declaration",
             Result = error1([Msg - Term])
         ;
-            unqualify_name(SymName, UnqualName),
+            UnqualName = unqualify_name(SymName),
             Result = ok1(qualified(DefaultModName, UnqualName))
         )
     ;
@@ -4144,7 +4144,7 @@ parse_implicitly_qualified_term(DefaultModName, Term, ContainingTerm, Msg,
                 "preceding `:- module' declaration",
             Result = error2([ErrorMsg - ErrorTerm])
         ;
-            unqualify_name(SymName, UnqualName),
+            UnqualName = unqualify_name(SymName),
             Result = ok2(qualified(DefaultModName, UnqualName), Args)
         )
     ;

@@ -24,7 +24,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
@@ -123,13 +122,6 @@
 :- pred is_construction_equivalence_assertion(module_info::in, assert_id::in,
     cons_id::in, pred_id::in) is semidet.
 
-    % Ensure that an assertion which is defined in an interface
-    % doesn't refer to any constructors, functions and predicates
-    % defined in the implementation of that module.
-    %
-:- pred in_interface_check(hlds_goal::in, pred_info::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
     % Place a hlds_goal into a standard form.  Currently all the
     % code does is replace conj([G]) with G.
     %
@@ -143,13 +135,8 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
@@ -718,168 +705,6 @@ normalise_goals([], []).
 normalise_goals([Goal0 | Goal0s], [Goal | Goals]) :-
     normalise_goal(Goal0, Goal),
     normalise_goals(Goal0s, Goals).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-in_interface_check(plain_call(PredId,_,_,_,_,SymName) - GoalInfo, _PredInfo,
-        !Module, !IO) :-
-    module_info_pred_info(!.Module, PredId, CallPredInfo),
-    pred_info_get_import_status(CallPredInfo, ImportStatus),
-    ( is_defined_in_implementation_section(ImportStatus) = yes ->
-        goal_info_get_context(GoalInfo, Context),
-        PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
-        Arity = pred_info_orig_arity(CallPredInfo),
-        IdStr = simple_call_id_to_string(PredOrFunc, SymName, Arity),
-        write_assertion_interface_error(Context, IdStr, !Module, !IO)
-    ;
-        true
-    ).
-in_interface_check(generic_call(_, _, _, _) - _, _, !Module, !IO).
-in_interface_check(unify(Var, RHS, _, _, _) - GoalInfo, PredInfo,
-        !Module, !IO) :-
-    goal_info_get_context(GoalInfo, Context),
-    in_interface_check_unify_rhs(RHS, Var, Context, PredInfo, !Module, !IO).
-in_interface_check(call_foreign_proc(_, PredId, _, _, _, _, _) -
-        GoalInfo, _PredInfo, !Module, !IO) :-
-    module_info_pred_info(!.Module, PredId, PragmaPredInfo),
-    pred_info_get_import_status(PragmaPredInfo, ImportStatus),
-    ( is_defined_in_implementation_section(ImportStatus) = yes ->
-        goal_info_get_context(GoalInfo, Context),
-        PredOrFunc = pred_info_is_pred_or_func(PragmaPredInfo),
-        Name = pred_info_name(PragmaPredInfo),
-        SymName = unqualified(Name),
-        Arity = pred_info_orig_arity(PragmaPredInfo),
-        IdStr = simple_call_id_to_string(PredOrFunc, SymName, Arity),
-        write_assertion_interface_error(Context, IdStr, !Module, !IO)
-    ;
-        true
-    ).
-in_interface_check(conj(_, Goals) - _, PredInfo, !Module, !IO) :-
-    in_interface_check_list(Goals, PredInfo, !Module, !IO).
-in_interface_check(switch(_, _, _) - _, _, _, _, !IO) :-
-    unexpected(this_file, "in_interface_check: assertion contains switch.").
-in_interface_check(disj(Goals) - _, PredInfo, !Module, !IO) :-
-    in_interface_check_list(Goals, PredInfo, !Module, !IO).
-in_interface_check(negation(Goal) - _, PredInfo, !Module, !IO) :-
-    in_interface_check(Goal, PredInfo, !Module, !IO).
-in_interface_check(scope(_, Goal) - _, PredInfo, !Module, !IO) :-
-    in_interface_check(Goal, PredInfo, !Module, !IO).
-in_interface_check(if_then_else(_, If, Then, Else) - _, PredInfo,
-        !Module, !IO) :-
-    in_interface_check(If, PredInfo, !Module, !IO),
-    in_interface_check(Then, PredInfo, !Module, !IO),
-    in_interface_check(Else, PredInfo, !Module, !IO).
-in_interface_check(shorthand(ShorthandGoal) - _GoalInfo, PredInfo,
-        !Module, !IO) :-
-    in_interface_check_shorthand(ShorthandGoal, PredInfo, !Module, !IO).
-
-:- pred in_interface_check_shorthand(shorthand_goal_expr::in,
-    pred_info::in, module_info::in, module_info::out, io::di, io::uo) is det.
-
-in_interface_check_shorthand(bi_implication(LHS, RHS), PredInfo,
-        !Module, !IO) :-
-    in_interface_check(LHS, PredInfo, !Module, !IO),
-    in_interface_check(RHS, PredInfo, !Module, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred in_interface_check_unify_rhs(unify_rhs::in, prog_var::in,
-    prog_context::in, pred_info::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
-
-in_interface_check_unify_rhs(rhs_var(_), _, _, _, !Module, !IO).
-in_interface_check_unify_rhs(rhs_functor(ConsId, _, _), Var, Context,
-        PredInfo, !Module, !IO) :-
-    pred_info_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_get_vartypes(ClausesInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
-    ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        module_info_get_type_table(!.Module, Types),
-        map.lookup(Types, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
-        ( is_defined_in_implementation_section(TypeStatus) = yes ->
-            ConsIdStr = cons_id_to_string(ConsId),
-            IdStr = "constructor `" ++ ConsIdStr ++ "'",
-            write_assertion_interface_error(Context, IdStr, !Module, !IO)
-        ;
-            true
-        )
-    ;
-        unexpected(this_file,
-            "in_interface_check_unify_rhs: type_to_ctor_and_args failed.")
-    ).
-in_interface_check_unify_rhs(rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
-        _Var, _Context, PredInfo, !Module, !IO) :-
-    in_interface_check(Goal, PredInfo, !Module, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred in_interface_check_list(hlds_goals::in, pred_info::in,
-    module_info::in, module_info::out, io::di, io::uo)is det.
-
-in_interface_check_list([], _, !Module, !IO).
-in_interface_check_list([Goal0 | Goal0s], PredInfo, !Module, !IO) :-
-    in_interface_check(Goal0, PredInfo, !Module, !IO),
-    in_interface_check_list(Goal0s, PredInfo, !Module, !IO).
-
-%-----------------------------------------------------------------------------%
-
-    % Returns yes if the import_status indicates the item came form
-    % the implementation section.
-    %
-:- func is_defined_in_implementation_section(import_status) = bool.
-
-is_defined_in_implementation_section(status_abstract_exported) = yes.
-is_defined_in_implementation_section(status_exported_to_submodules) = yes.
-is_defined_in_implementation_section(status_local) = yes.
-is_defined_in_implementation_section(status_opt_imported) = no.
-is_defined_in_implementation_section(status_abstract_imported) = no.
-is_defined_in_implementation_section(status_pseudo_imported) = no.
-is_defined_in_implementation_section(status_exported) = no.
-is_defined_in_implementation_section(status_opt_exported) = yes.
-is_defined_in_implementation_section(status_pseudo_exported) = no.
-is_defined_in_implementation_section(status_external(Status)) =
-    is_defined_in_implementation_section(Status).
-is_defined_in_implementation_section(status_imported(ImportLocn)) = Impl :-
-    (
-        ImportLocn = import_locn_implementation,
-        Impl = yes
-    ;
-        ( ImportLocn = import_locn_interface
-        ; ImportLocn = import_locn_ancestor
-        ; ImportLocn = import_locn_ancestor_private_interface
-        ),
-        Impl = yes
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred write_assertion_interface_error(prog_context::in, string::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-write_assertion_interface_error(Context, IdStr, !Module, !IO) :-
-    module_info_incr_errors(!Module),
-    module_info_get_name(!.Module, ModuleName),
-    ModuleStr = describe_sym_name(ModuleName),
-    write_error_pieces(Context, 0,
-        [words("In interface for module"), fixed(ModuleStr ++ ":")], !IO),
-    write_error_pieces_not_first_line(Context, 0,
-        [words("error: exported promise refers to"),
-        words(IdStr), words("which is defined in the "),
-        words("implementation section of module"),
-        fixed(ModuleStr ++ ".")], !IO),
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    (
-        VerboseErrors = yes,
-        write_error_pieces_not_first_line(Context, 0,
-            [words("Either move the promise into the "),
-            words("implementation section or move "),
-            words("the definition into the interface.")], !IO)
-    ;
-        VerboseErrors = no,
-        globals.io_set_extra_error_info(yes, !IO)
-    ).
 
 %-----------------------------------------------------------------------------%
 

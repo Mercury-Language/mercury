@@ -1,5 +1,5 @@
 conflicting_tabling_pragmas.m:012: Error: function
-conflicting_tabling_pragmas.m:012:   `conflicting_tabling_pragmas.fac/1' has
+conflicting_tabling_pragmas.m:012:   `conflicting_tabling_pragmas.fac'/1 has
 conflicting_tabling_pragmas.m:012:   both memo and loop_check pragmas
 conflicting_tabling_pragmas.m:012:   specified. Only one kind of tabling pragma
 conflicting_tabling_pragmas.m:012:   may be applied to it.

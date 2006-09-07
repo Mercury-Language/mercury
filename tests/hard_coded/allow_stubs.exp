@@ -1,4 +1,4 @@
 hello world
-[caught exception: software_error("no clauses for predicate `allow_stubs.how_are_you/2\'")]
-going [caught exception: software_error("no clauses for predicate `allow_stubs.today/2\'")]
+[caught exception: software_error("no clauses for predicate `allow_stubs.how_are_you\'/2")]
+going [caught exception: software_error("no clauses for predicate `allow_stubs.today\'/2")]
 goodbye

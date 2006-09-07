@@ -595,12 +595,13 @@ report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
         SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
         proc_id_to_int(ProcId, ProcNumber0),
         ProcNumber = ProcNumber0 + 1,
-        ProcNumberStr = string.int_to_string(ProcNumber),
-        report_warning(mlds_get_prog_context(Context), 0, [
-            words("In mode number"), words(ProcNumberStr),
-            words("of"), simple_call_id(SimpleCallId), suffix(":"), nl,
-            words("warning: recursive call is not tail recursive.")
-        ], !IO)
+        Pieces =
+            [words("In mode number"), int_fixed(ProcNumber),
+            words("of"), simple_call(SimpleCallId), suffix(":"), nl,
+            words("warning: recursive call is not tail recursive."), nl],
+        Msg = simple_msg(mlds_get_prog_context(Context), [always(Pieces)]),
+        Spec = error_spec(severity_warning, phase_code_gen, [Msg]),
+        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
     ;
         PredLabel = mlds_special_pred_label(_, _, _, _)
         % Don't warn about these.

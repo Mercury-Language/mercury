@@ -1,4 +1,4 @@
-ambiguous_method.m:018: In declaration for function `ambiguous_method.e/0':
+ambiguous_method.m:018: In declaration for function `ambiguous_method.e'/0:
 ambiguous_method.m:018:   error in type class constraints: type variable E
 ambiguous_method.m:018:   occurs in the constraints, but is not determined by
 ambiguous_method.m:018:   the function's argument or result types.

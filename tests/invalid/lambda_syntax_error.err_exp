@@ -1,56 +1,57 @@
-lambda_syntax_error.m:012: In clause for function `lambda_syntax_error.baz/1':
+lambda_syntax_error.m:012: In clause for function `baz'/1:
 lambda_syntax_error.m:012:   in function result term of clause head:
 lambda_syntax_error.m:012:   syntax error in lambda expression (`:-').
-lambda_syntax_error.m:012: In clause for function `lambda_syntax_error.baz/1':
+lambda_syntax_error.m:012: In clause for function `baz'/1:
 lambda_syntax_error.m:012:   in function result term of clause head:
 lambda_syntax_error.m:012:   in argument 1 of functor `:-/2':
 lambda_syntax_error.m:012:   error: undefined symbol `pred/1'.
-lambda_syntax_error.m:013: In clause for function `lambda_syntax_error.baz2/1':
+lambda_syntax_error.m:013: In clause for function `baz2'/1:
 lambda_syntax_error.m:013:   in function result term of clause head:
 lambda_syntax_error.m:013:   syntax error in lambda expression (`:-').
-lambda_syntax_error.m:013: In clause for function `lambda_syntax_error.baz2/1':
+lambda_syntax_error.m:013: In clause for function `baz2'/1:
 lambda_syntax_error.m:013:   in function result term of clause head:
 lambda_syntax_error.m:013:   in argument 1 of functor `:-/2':
 lambda_syntax_error.m:013:   error: undefined symbol `pred/1'.
-lambda_syntax_error.m:013: In clause for function `lambda_syntax_error.baz2/1':
+lambda_syntax_error.m:013: In clause for function `baz2'/1:
 lambda_syntax_error.m:013:   in function result term of clause head:
 lambda_syntax_error.m:013:   in argument 1 of functor `:-/2':
 lambda_syntax_error.m:013:   in argument 1 of functor `pred/1':
 lambda_syntax_error.m:013:   error: undefined symbol `::/2'.
-lambda_syntax_error.m:013: In clause for function `lambda_syntax_error.baz2/1':
+lambda_syntax_error.m:013: In clause for function `baz2'/1:
 lambda_syntax_error.m:013:   in function result term of clause head:
 lambda_syntax_error.m:013:   in argument 1 of functor `:-/2':
 lambda_syntax_error.m:013:   in argument 1 of functor `pred/1':
 lambda_syntax_error.m:013:   in argument 2 of functor `::/2':
 lambda_syntax_error.m:013:   error: undefined symbol `in/0'.
-lambda_syntax_error.m:014: In clause for function `lambda_syntax_error.baz3/1':
+lambda_syntax_error.m:014: In clause for function `baz3'/1:
 lambda_syntax_error.m:014:   in function result term of clause head:
 lambda_syntax_error.m:014:   syntax error in lambda expression (`:-').
-lambda_syntax_error.m:014: In clause for function `lambda_syntax_error.baz3/1':
+lambda_syntax_error.m:014: In clause for function `baz3'/1:
 lambda_syntax_error.m:014:   in function result term of clause head:
 lambda_syntax_error.m:014:   in argument 1 of functor `:-/2':
 lambda_syntax_error.m:014:   in argument 1 of functor `is/2':
 lambda_syntax_error.m:014:   error: undefined symbol `pred/1'.
-lambda_syntax_error.m:014: In clause for function `lambda_syntax_error.baz3/1':
+lambda_syntax_error.m:014: In clause for function `baz3'/1:
 lambda_syntax_error.m:014:   in function result term of clause head:
 lambda_syntax_error.m:014:   in argument 1 of functor `:-/2':
 lambda_syntax_error.m:014:   in argument 2 of functor `is/2':
 lambda_syntax_error.m:014:   error: undefined symbol `semidet/0'.
-lambda_syntax_error.m:015: In clause for function `lambda_syntax_error.baz4/1':
+lambda_syntax_error.m:015: In clause for function `baz4'/1:
 lambda_syntax_error.m:015:   in function result term of clause head:
 lambda_syntax_error.m:015:   syntax error in lambda expression (`:-').
-lambda_syntax_error.m:015: In clause for function `lambda_syntax_error.baz4/1':
+lambda_syntax_error.m:015: In clause for function `baz4'/1:
 lambda_syntax_error.m:015:   in function result term of clause head:
 lambda_syntax_error.m:015:   in argument 1 of functor `:-/2':
-lambda_syntax_error.m:015:   error: the language construct =/2 should be
-lambda_syntax_error.m:015:   used as a goal, not as an expression.
-lambda_syntax_error.m:015: In clause for function `lambda_syntax_error.baz4/1':
+lambda_syntax_error.m:015:   error: the language construct `='/2 should be used
+lambda_syntax_error.m:015:   as a goal, not as an expression.
+lambda_syntax_error.m:015: In clause for function `baz4'/1:
 lambda_syntax_error.m:015:   in function result term of clause head:
 lambda_syntax_error.m:015:   in argument 1 of functor `:-/2':
 lambda_syntax_error.m:015:   in argument 1 of functor `=/2':
 lambda_syntax_error.m:015:   error: undefined symbol `pred/1'.
-lambda_syntax_error.m:015: In clause for function `lambda_syntax_error.baz4/1':
+lambda_syntax_error.m:015: In clause for function `baz4'/1:
 lambda_syntax_error.m:015:   in function result term of clause head:
 lambda_syntax_error.m:015:   in argument 2 of functor `:-/2':
-lambda_syntax_error.m:015:   error: the language construct =/2 should be
-lambda_syntax_error.m:015:   used as a goal, not as an expression.
+lambda_syntax_error.m:015:   error: the language construct `='/2 should be used
+lambda_syntax_error.m:015:   as a goal, not as an expression.
+For more information, recompile with `-E'.

@@ -1325,7 +1325,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, !Info, !IO) :-
     ;
         MatchingModules = [Module],
         % A unique match for this ID.
-        unqualify_name(SymName0, IdName),
+        IdName = unqualify_name(SymName0),
         Id = mq_id(qualified(Module, IdName), Arity),
         mq_info_set_module_used(Module, !Info),
         ItemType = convert_simple_item_type(TypeOfId),
@@ -1838,7 +1838,7 @@ id_set_insert(NeedQualifier, mq_id(qualified(Module, Name), Arity), !IdSet) :-
     module_id_set::in, list(module_name)::out) is det.
 
 id_set_search_sym_arity(IdSet, Sym, Arity, Modules, MatchingModules) :-
-    unqualify_name(Sym, UnqualName),
+    UnqualName = unqualify_name(Sym),
     (
         map.search(IdSet, UnqualName - Arity, ImportModules - UseModules)
     ->
@@ -1857,9 +1857,9 @@ id_set_search_sym_arity(IdSet, Sym, Arity, Modules, MatchingModules) :-
             ModuleArity = 0,
             id_set_search_sym_arity(Modules, Module, ModuleArity,
                 Modules, MatchingParentModules),
-            unqualify_name(Module, UnqualModule),
+            UnqualModule = unqualify_name(Module),
             AppendModuleName = (pred(X::in, Y::out) is det :-
-                    Y = qualified(X, UnqualModule)
+                Y = qualified(X, UnqualModule)
             ),
             list.map(AppendModuleName,
                 MatchingParentModules,

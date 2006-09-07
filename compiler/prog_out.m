@@ -160,6 +160,7 @@
 
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
@@ -275,34 +276,30 @@ write_simple_call_id(PredOrFunc, Name/Arity, !IO) :-
     Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
     io.write_string(Str, !IO).
 
-write_simple_call_id(PredOrFunc, Name, Arity, !IO) :-
-    Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
+write_simple_call_id(PredOrFunc, SymName, Arity, !IO) :-
+    Str = simple_call_id_to_string(PredOrFunc, SymName, Arity),
     io.write_string(Str, !IO).
 
-simple_call_id_to_string(simple_call_id(PredOrFunc, Name, Arity)) =
-    simple_call_id_to_string(PredOrFunc, Name, Arity).
+simple_call_id_to_string(simple_call_id(PredOrFunc, SymName, Arity)) =
+    simple_call_id_to_string(PredOrFunc, SymName, Arity).
 
-simple_call_id_to_string(PredOrFunc, Name/Arity) =
-    simple_call_id_to_string(PredOrFunc, Name, Arity).
+simple_call_id_to_string(PredOrFunc, SymName/Arity) =
+    simple_call_id_to_string(PredOrFunc, SymName, Arity).
 
-simple_call_id_to_string(PredOrFunc, Name, Arity) = Str :-
+simple_call_id_to_string(PredOrFunc, SymName, Arity) = Str :-
     % XXX When printed, promises are differentiated from predicates or
     % functions by module name, so the module names `promise',
     % `promise_exclusive', etc. should be reserved, and their dummy
     % predicates should have more unusual module names.
-    (
-        Name = unqualified(StrName)
-    ;
-        Name = qualified(_, StrName)
-    ),
+    Name = unqualify_name(SymName),
     % Is it really a promise?
-    ( string.prefix(StrName, "promise__") ->
+    ( string.prefix(Name, "promise__") ->
         MaybePromise = yes(true)
-    ; string.prefix(StrName, "promise_exclusive__") ->
+    ; string.prefix(Name, "promise_exclusive__") ->
         MaybePromise = yes(exclusive)
-    ; string.prefix(StrName, "promise_exhaustive__") ->
+    ; string.prefix(Name, "promise_exhaustive__") ->
         MaybePromise = yes(exhaustive)
-    ; string.prefix(StrName, "promise_exclusive_exhaustive__") ->
+    ; string.prefix(Name, "promise_exclusive_exhaustive__") ->
         MaybePromise = yes(exclusive_exhaustive)
     ;
         MaybePromise = no   % No, it is really a pred or func.
@@ -313,11 +310,12 @@ simple_call_id_to_string(PredOrFunc, Name, Arity) = Str :-
         Str = "`" ++ PromiseStr ++ "' declaration"
     ;
         MaybePromise = no,
-        PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-        SimpleCallId = simple_call_id(PredOrFunc, Name, Arity),
-        simple_call_id_to_sym_name_and_arity(SimpleCallId, SymArity),
-        SymArityStr = sym_name_and_arity_to_string(SymArity),
-        Str = PredOrFuncStr ++ " `" ++ SymArityStr ++ "'"
+        SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+        simple_call_id_to_sym_name_and_arity(SimpleCallId,
+            AdjustedSymNameAndArity),
+        Pieces = [p_or_f(PredOrFunc),
+            sym_name_and_arity(AdjustedSymNameAndArity)],
+        Str = error_pieces_to_string(Pieces)
     ).
 
 simple_call_id_to_sym_name_and_arity(SimpleCallId, SymName / OrigArity) :-

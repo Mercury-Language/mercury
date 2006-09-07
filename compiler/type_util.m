@@ -322,11 +322,11 @@
 
 %-----------------------------------------------------------------------------%
 
-type_ctor_module(_ModuleInfo, type_ctor(TypeName, _Arity)) = ModuleName :-
-    sym_name_get_module_name(TypeName, unqualified(""), ModuleName).
+type_ctor_module(_ModuleInfo, type_ctor(TypeSymName, _Arity)) = ModuleName :-
+    sym_name_get_module_name(TypeSymName, unqualified(""), ModuleName).
 
-type_ctor_name(_ModuleInfo, type_ctor(Name0, _Arity)) = Name :-
-    unqualify_name(Name0, Name).
+type_ctor_name(_ModuleInfo, type_ctor(TypeSymName, _Arity)) =
+    unqualify_name(TypeSymName).
 
 type_ctor_arity(_ModuleInfo, type_ctor(_Name, Arity)) = Arity.
 

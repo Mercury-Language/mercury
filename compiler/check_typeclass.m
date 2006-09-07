@@ -191,12 +191,10 @@ check_instance_decls(!QualInfo, !ModuleInfo, FoundError, !IO) :-
 :- pred check_one_class(class_table::in,
     pair(class_id, list(hlds_instance_defn))::in,
     pair(class_id, list(hlds_instance_defn))::out,
-    check_tc_info::in, check_tc_info::out,
-    io::di, io::uo) is det.
+    check_tc_info::in, check_tc_info::out, io::di, io::uo) is det.
 
 check_one_class(ClassTable, ClassId - InstanceDefns0,
-    ClassId - InstanceDefns, !CheckTCInfo, !IO) :-
-
+        ClassId - InstanceDefns, !CheckTCInfo, !IO) :-
     map.lookup(ClassTable, ClassId, ClassDefn),
     ClassDefn = hlds_class_defn(ImportStatus, SuperClasses, _FunDeps,
         _Ancestors, ClassVars, _Kinds, Interface, ClassInterface,
@@ -242,7 +240,6 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
         check_tc_info(Errors0, ModuleInfo0, QualInfo0),
         check_tc_info(Errors, ModuleInfo, QualInfo),
         !IO):-
-
     % Check conformance of the instance body.
     !.InstanceDefn = hlds_instance_defn(_, _, TermContext, _, _,
         InstanceBody, _, _, _),
@@ -376,10 +373,7 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
 format_method_name(Method) = MethodName :-
     Method = instance_method(PredOrFunc, Name, _Defn, Arity, _Context),
     adjust_func_arity(PredOrFunc, Arity, PredArity),
-    MethodName = [
-        pred_or_func(PredOrFunc),
-        sym_name_and_arity(Name / PredArity)
-    ].
+    MethodName = [p_or_f(PredOrFunc), sym_name_and_arity(Name / PredArity)].
 
 %----------------------------------------------------------------------------%
 
@@ -426,8 +420,7 @@ format_method_name(Method) = MethodName :-
     %
 :- pred check_instance_pred(class_id::in, list(tvar)::in,
     hlds_class_interface::in, pred_id::in,
-    instance_check_info::in, instance_check_info::out,
-    io::di, io::uo) is det.
+    instance_check_info::in, instance_check_info::out, io::di, io::uo) is det.
 
 check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
         !InstanceCheckInfo, !IO) :-
@@ -549,23 +542,20 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         OrderedInstanceMethods = OrderedInstanceMethods0,
         InstanceDefn = InstanceDefn0,
         ClassId = class_id(ClassName, _ClassArity),
-        sym_name_to_string(MethodName, MethodNameString),
         sym_name_to_string(ClassName, ClassNameString),
-        PredOrFuncString = pred_or_func_to_string(PredOrFunc),
-        string.int_to_string(Arity, ArityString),
         InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
             InstanceTypes),
-        string.append_list([
-            "In instance declaration for `",
-            ClassNameString, "(", InstanceTypesString, ")': ",
-            "multiple implementations of type class ",
-            PredOrFuncString, " method `",
-            MethodNameString, "/", ArityString, "'."],
-            ErrorHeader),
+        ErrorHeaderPieces =
+            [words("In instance declaration for"),
+            fixed("`" ++ ClassNameString ++ "'("
+                ++ InstanceTypesString ++ "):"),
+            words("multiple implementations of type class"),
+            p_or_f(PredOrFunc), words("method"),
+            sym_name_and_arity(MethodName / Arity), suffix(".")],
         I1 = instance_method(_, _, _, _, I1Context),
         Heading =
             [I1Context - [words("First definition appears here.")],
-            InstanceContext - [words(ErrorHeader)]],
+            InstanceContext - ErrorHeaderPieces],
         list.map((pred(Definition::in, ContextAndError::out) is det :-
             Definition = instance_method(_, _, _, _, TheContext),
             Error = [words("Subsequent definition appears here.")],
@@ -589,21 +579,16 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
             InstanceTypes),
 
         Error = [words("In instance declaration for"),
-            fixed("`" ++ ClassNameString
-                ++ "(" ++ InstanceTypesString
-                ++ ")'"),
+            quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
             suffix(":"),
-            words("no implementation for type class"),
-            pred_or_func(PredOrFunc),
-            words("method"),
-            sym_name_and_arity(MethodName / Arity),
+            words("no implementation for type class"), p_or_f(PredOrFunc),
+            words("method"), sym_name_and_arity(MethodName / Arity),
             suffix(".")
         ],
         Errors = [InstanceContext - Error | Errors0],
         Info = instance_method_info(ModuleInfo, QualInfo, PredName,
             Arity, ExistQVars, ArgTypes, ClassContext,
-            ArgModes, Errors,
-            ArgTypeVars, Status, PredOrFunc)
+            ArgModes, Errors, ArgTypeVars, Status, PredOrFunc)
     ).
 
     % Get all the instance definitions which match the specified
@@ -637,7 +622,8 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
         % combine them all into a single definition.
         MethodToClause = (pred(Method::in, Clauses::out) is semidet :-
             Method = instance_method(_, _, Defn, _, _),
-            Defn = clauses(Clauses)),
+            Defn = clauses(Clauses)
+        ),
         list.filter_map(MethodToClause, MatchingMethods, ClausesList),
         list.condense(ClausesList, FlattenedClauses),
         CombinedMethod = instance_method(PredOrFunc, MethodName,
@@ -761,9 +747,9 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 
     module_info_get_predicate_table(ModuleInfo1, PredicateTable1),
     module_info_get_partial_qualifier_info(ModuleInfo1, PQInfo),
-    % XXX Why do we need to pass may_be_unqualified here,
-    % rather than passing must_be_qualified or calling the /4 version?
-    predicate_table_insert(PredInfo, may_be_unqualified, PQInfo, PredId,
+    % XXX Why do we need to pass may_be_unqualified here, rather than passing
+    % must_be_qualified or calling the predicate_table_insert/4 version?
+    predicate_table_insert_qual(PredInfo, may_be_unqualified, PQInfo, PredId,
         PredicateTable1, PredicateTable),
     module_info_set_predicate_table(PredicateTable, ModuleInfo1, ModuleInfo),
 
@@ -1663,7 +1649,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo, !IO) :-
         Vars),
 
     Msg0 = [words("In declaration for"),
-        words(simple_call_id_to_string(PredOrFunc, SymName, Arity)),
+        simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
         suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]

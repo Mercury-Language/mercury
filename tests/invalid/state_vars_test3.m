@@ -19,4 +19,3 @@
     % Illegally uses !Y as a func result.
     %
 f(!X) = !Y.
-

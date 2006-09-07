@@ -1,19 +1,19 @@
-multimode_dcg.m:027: In clause for predicate `multimode_dcg.test1/3':
+multimode_dcg.m:027: In clause for predicate `multimode_dcg.test1'/3:
 multimode_dcg.m:027:   syntax error: some but not all arguments have mode
 multimode_dcg.m:027:   annotations.
-multimode_dcg.m:029: In clause for predicate `multimode_dcg.test1/3':
+multimode_dcg.m:029: In clause for predicate `multimode_dcg.test1'/3:
 multimode_dcg.m:029:   syntax error: some but not all arguments have mode
 multimode_dcg.m:029:   annotations.
-multimode_dcg.m:037: In clause for predicate `multimode_dcg.test2/4':
+multimode_dcg.m:037: In clause for predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:037:   syntax error: some but not all arguments have mode
 multimode_dcg.m:037:   annotations.
-multimode_dcg.m:039: In clause for predicate `multimode_dcg.test2/4':
+multimode_dcg.m:039: In clause for predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:039:   syntax error: some but not all arguments have mode
 multimode_dcg.m:039:   annotations.
-multimode_dcg.m:041: In clause for predicate `multimode_dcg.test2/4':
+multimode_dcg.m:041: In clause for predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:041:   syntax error: some but not all arguments have mode
 multimode_dcg.m:041:   annotations.
-multimode_dcg.m:043: In clause for predicate `multimode_dcg.test2/4':
+multimode_dcg.m:043: In clause for predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:043:   syntax error: some but not all arguments have mode
 multimode_dcg.m:043:   annotations.
 multimode_dcg.m:029: In clause for `test1(out, di, uo)':
@@ -29,4 +29,3 @@ multimode_dcg.m:043: In clause for `test2(out, out, di, uo)':
 multimode_dcg.m:043:   mode mismatch in disjunction.
 multimode_dcg.m:043:   `HeadVar__1' :: free, free, unique(0), unique(0).
 multimode_dcg.m:043:   `HeadVar__2' :: free, unique(0), free, unique(0).
-For more information, recompile with `-E'.

@@ -12,10 +12,10 @@ bigtest.m:001:   declaration.
 bigtest.m:001: Warning: declaration not yet implemented.
 bigtest.m:002: Warning: declaration not yet implemented.
 bigtest.m:003: Warning: declaration not yet implemented.
-bigtest.m:005: Error: clause for predicate `bigtest.fact/0'
+bigtest.m:005: Error: clause for predicate `bigtest.fact'/0
 bigtest.m:005:   without preceding `pred' declaration.
 bigtest.m:005: Inferred :- pred fact.
-bigtest.m:010: Error: no mode declaration for predicate `bigtest.p/1'.
+bigtest.m:010: Error: no mode declaration for predicate `p'/1.
 bigtest.m:010:   (Use `--infer-modes' to enable mode inference.)
-bigtest.m:005: Error: no mode declaration for predicate `bigtest.fact/0'.
+bigtest.m:005: Error: no mode declaration for predicate `fact'/0.
 bigtest.m:005:   (Use `--infer-modes' to enable mode inference.)

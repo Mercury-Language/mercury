@@ -194,9 +194,9 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
         true
     ;
         Pieces = [words("Error:"), words(Description), words("for"),
-            words(simple_call_id_to_string(PredOrFunc, Name, Arity)), nl,
+            simple_call(simple_call_id(PredOrFunc, Name, Arity)), nl,
             words("without preceding"),
-            fixed("`" ++ pred_or_func_to_str(PredOrFunc) ++ "'"),
+            quote(pred_or_func_to_str(PredOrFunc)),
             words("declaration.")],
         write_error_pieces(Context, 0, Pieces, !IO),
         io.set_exit_status(1, !IO)

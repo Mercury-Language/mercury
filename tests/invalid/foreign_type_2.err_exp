@@ -1,4 +1,4 @@
-foreign_type_2.m:018: In clause for function `foreign_type_2.unwrap_foreign/1':
+foreign_type_2.m:018: In clause for function `unwrap_foreign'/1:
 foreign_type_2.m:018:   in argument 1 of clause head:
 foreign_type_2.m:018:   error: undefined symbol `foreign/1'.
 foreign_type_2.m:018:   There are `:- pragma foreign_type' declarations for

@@ -107,9 +107,9 @@
     % The bool returned as the second argument will be `no' unless nothing
     % was printed out, in which case it will be the same as the first arg.
     %
-:- pred write_unify_context(bool::in, bool::out, unify_context::in,
+:- pred write_unify_context_first(bool::in, bool::out, unify_context::in,
     prog_context::in, io::di, io::uo) is det.
-:- pred unify_context_to_pieces(bool::in, bool::out, unify_context::in,
+:- pred unify_context_first_to_pieces(bool::in, bool::out, unify_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 :- pred write_determinism(determinism::in, io::di, io::uo) is det.
@@ -534,18 +534,18 @@ arg_number_to_string(generic_call_id(gcid_cast(_)), ArgNum) =
 %-----------------------------------------------------------------------------%
 
 write_unify_context(UnifyContext, Context, !IO) :-
-    write_unify_context(no, _, UnifyContext, Context, !IO).
+    write_unify_context_first(no, _, UnifyContext, Context, !IO).
 
 unify_context_to_pieces(UnifyContext, !Pieces) :-
-    unify_context_to_pieces(no, _, UnifyContext, !Pieces).
+    unify_context_first_to_pieces(no, _, UnifyContext, !Pieces).
 
-write_unify_context(!First, UnifyContext, Context, !IO) :-
+write_unify_context_first(!First, UnifyContext, Context, !IO) :-
     UnifyContext = unify_context(MainContext, RevSubContexts),
     list.reverse(RevSubContexts, SubContexts),
     write_unify_main_context(!First, MainContext, Context, !IO),
     write_unify_sub_contexts(!First, SubContexts, Context, !IO).
 
-unify_context_to_pieces(!First, UnifyContext, !Pieces) :-
+unify_context_first_to_pieces(!First, UnifyContext, !Pieces) :-
     UnifyContext = unify_context(MainContext, RevSubContexts),
     list.reverse(RevSubContexts, SubContexts),
     unify_main_context_to_pieces(!First, MainContext, !Pieces),

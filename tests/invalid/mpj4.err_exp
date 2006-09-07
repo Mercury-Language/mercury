@@ -1,13 +1,12 @@
-mpj4.m:020: In clause for function `mpj4.g/1':
+mpj4.m:020: In clause for function `g'/1:
 mpj4.m:020:   in function result term of clause head:
 mpj4.m:020:   in argument 2 of functor `f/3':
 mpj4.m:020:   type error in unification of argument
 mpj4.m:020:   and constant `"foo"'.
 mpj4.m:020:   argument has type `int',
 mpj4.m:020:   constant `"foo"' has type `string'.
-	The partial type assignment was:
-	HeadVar__2_2: (mpj4.intlist)
-	L_3: (mpj4.intlist)
-	V_4: int
-	V_5: int
-
+mpj4.m:020:   The partial type assignment was:
+mpj4.m:020:     HeadVar__2_2: (mpj4.intlist)
+mpj4.m:020:     L_3: (mpj4.intlist)
+mpj4.m:020:     V_4: int
+mpj4.m:020:     V_5: int

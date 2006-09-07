@@ -884,12 +884,12 @@ output_class_method(Method, !IO) :-
     io.write_string("\t", !IO),
     (
         Method = method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
-            PredOrFunc, Name0, TypesAndModes, WithType, WithInst,
+            PredOrFunc, SymName, TypesAndModes, WithType, WithInst,
             Detism, _Condition, Purity, ClassContext, Context),
 
         % The module name is implied by the qualifier of the
         % `:- typeclass declaration'.
-        unqualify_name(Name0, Name),
+        Name = unqualify_name(SymName),
         (
             % Function declarations using `with_type` have the
             % same format as predicate declarations, but with
@@ -909,12 +909,12 @@ output_class_method(Method, !IO) :-
                 ClassContext, Context, "", ",\n\t", "", !IO)
         )
     ;
-        Method = method_pred_or_func_mode(VarSet, PredOrFunc, Name0, Modes,
+        Method = method_pred_or_func_mode(VarSet, PredOrFunc, SymName, Modes,
             WithInst, Detism, _Condition, Context),
 
         % The module name is implied by the qualifier of the
         % `:- typeclass declaration'.
-        unqualify_name(Name0, Name),
+        Name = unqualify_name(SymName),
         (
             % Function mode declarations using `with_type` have
             % the same format as predicate mode declarations.
@@ -1937,7 +1937,7 @@ mercury_output_ctor(Ctor, VarSet, !IO) :-
 
         % We'll have attached the module name to the type definition,
         % so there's no point adding it to the constructor as well.
-    unqualify_name(SymName, Name),
+    Name = unqualify_name(SymName),
     AppendVarnums = no,
     mercury_output_quantifier(VarSet, AppendVarnums, ExistQVars, !IO),
     (
@@ -2127,7 +2127,7 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
     (
         PredOrFunc = predicate,
         MaybeDet = no,
-        unqualify_name(PredName, "is"),
+        unqualify_name(PredName) = "is",
         list.length(Types, 2)
     ->
         % This determinism will be ignored.
@@ -4204,9 +4204,8 @@ maybe_output_line_number(Context, !IO) :-
 
 :- pred maybe_unqualify_sym_name(bool::in, sym_name::in, sym_name::out) is det.
 
-maybe_unqualify_sym_name(no, Name, Name).
-maybe_unqualify_sym_name(yes, Name0, unqualified(Name)) :-
-    unqualify_name(Name0, Name).
+maybe_unqualify_sym_name(no, SymName, SymName).
+maybe_unqualify_sym_name(yes, SymName, unqualified(unqualify_name(SymName))).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,36 +1,40 @@
-illtyped_compare.m:017: In clause for unification predicate for type illtyped_compare.bar_rep:
-illtyped_compare.m:017:   in argument 2 of call to predicate `illtyped_compare.compare_bar/3':
-illtyped_compare.m:017:   type error: variable `HeadVar__1' has type `(illtyped_compare.bar_rep)',
+illtyped_compare.m:017: In clause for unification predicate for type `bar_rep':
+illtyped_compare.m:017:   in argument 2 of call to predicate
+illtyped_compare.m:017:   `illtyped_compare.compare_bar'/3:
+illtyped_compare.m:017:   type error: variable `HeadVar__1' has type
+illtyped_compare.m:017:   `(illtyped_compare.bar_rep)',
 illtyped_compare.m:017:   expected type was `(illtyped_compare.bar)'.
-	The partial type assignment was:
-	HeadVar__1_1: (illtyped_compare.bar_rep)
-	HeadVar__2_2: (illtyped_compare.bar_rep)
-	V_3: comparison_result
-
-illtyped_compare.m:017: In clause for unification predicate for type illtyped_compare.bar_rep:
-illtyped_compare.m:017:   in argument 3 of call to predicate `illtyped_compare.compare_bar/3':
-illtyped_compare.m:017:   type error: variable `HeadVar__2' has type `(illtyped_compare.bar_rep)',
+illtyped_compare.m:017:   The partial type assignment was:
+illtyped_compare.m:017:     HeadVar__1_1: (illtyped_compare.bar_rep)
+illtyped_compare.m:017:     HeadVar__2_2: (illtyped_compare.bar_rep)
+illtyped_compare.m:017:     V_3: comparison_result
+illtyped_compare.m:017: In clause for unification predicate for type `bar_rep':
+illtyped_compare.m:017:   in argument 3 of call to predicate
+illtyped_compare.m:017:   `illtyped_compare.compare_bar'/3:
+illtyped_compare.m:017:   type error: variable `HeadVar__2' has type
+illtyped_compare.m:017:   `(illtyped_compare.bar_rep)',
 illtyped_compare.m:017:   expected type was `(illtyped_compare.bar)'.
-	The partial type assignment was:
-	HeadVar__1_1: (illtyped_compare.bar_rep)
-	HeadVar__2_2: (illtyped_compare.bar_rep)
-	V_3: comparison_result
-
-illtyped_compare.m:017: In clause for comparison predicate for type illtyped_compare.bar_rep:
-illtyped_compare.m:017:   in argument 2 of call to predicate `illtyped_compare.compare_bar/3':
-illtyped_compare.m:017:   type error: variable `HeadVar__2' has type `(illtyped_compare.bar_rep)',
+illtyped_compare.m:017:   The partial type assignment was:
+illtyped_compare.m:017:     HeadVar__1_1: (illtyped_compare.bar_rep)
+illtyped_compare.m:017:     HeadVar__2_2: (illtyped_compare.bar_rep)
+illtyped_compare.m:017:     V_3: comparison_result
+illtyped_compare.m:017: In clause for comparison predicate for type `bar_rep':
+illtyped_compare.m:017:   in argument 2 of call to predicate
+illtyped_compare.m:017:   `illtyped_compare.compare_bar'/3:
+illtyped_compare.m:017:   type error: variable `HeadVar__2' has type
+illtyped_compare.m:017:   `(illtyped_compare.bar_rep)',
 illtyped_compare.m:017:   expected type was `(illtyped_compare.bar)'.
-	The partial type assignment was:
-	HeadVar__1_1: comparison_result
-	HeadVar__2_2: (illtyped_compare.bar_rep)
-	HeadVar__3_3: (illtyped_compare.bar_rep)
-
-illtyped_compare.m:017: In clause for comparison predicate for type illtyped_compare.bar_rep:
-illtyped_compare.m:017:   in argument 3 of call to predicate `illtyped_compare.compare_bar/3':
-illtyped_compare.m:017:   type error: variable `HeadVar__3' has type `(illtyped_compare.bar_rep)',
+illtyped_compare.m:017:   The partial type assignment was:
+illtyped_compare.m:017:     HeadVar__1_1: comparison_result
+illtyped_compare.m:017:     HeadVar__2_2: (illtyped_compare.bar_rep)
+illtyped_compare.m:017:     HeadVar__3_3: (illtyped_compare.bar_rep)
+illtyped_compare.m:017: In clause for comparison predicate for type `bar_rep':
+illtyped_compare.m:017:   in argument 3 of call to predicate
+illtyped_compare.m:017:   `illtyped_compare.compare_bar'/3:
+illtyped_compare.m:017:   type error: variable `HeadVar__3' has type
+illtyped_compare.m:017:   `(illtyped_compare.bar_rep)',
 illtyped_compare.m:017:   expected type was `(illtyped_compare.bar)'.
-	The partial type assignment was:
-	HeadVar__1_1: comparison_result
-	HeadVar__2_2: (illtyped_compare.bar_rep)
-	HeadVar__3_3: (illtyped_compare.bar_rep)
-
+illtyped_compare.m:017:   The partial type assignment was:
+illtyped_compare.m:017:     HeadVar__1_1: comparison_result
+illtyped_compare.m:017:     HeadVar__2_2: (illtyped_compare.bar_rep)
+illtyped_compare.m:017:     HeadVar__3_3: (illtyped_compare.bar_rep)

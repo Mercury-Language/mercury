@@ -6,4 +6,3 @@ impure_func_t5_fixed.m:022:   `free',
 impure_func_t5_fixed.m:022:   expected instantiatedness was `ground'.
 impure_func_t5_fixed.m:022:   The goal could not be reordered, because it was
 impure_func_t5_fixed.m:022:   impure.
-For more information, recompile with `-E'.

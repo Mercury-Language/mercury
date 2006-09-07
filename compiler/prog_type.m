@@ -898,7 +898,7 @@ qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
         type_to_ctor_and_args(Type, TypeCtor, _),
         TypeCtor = type_ctor(qualified(TypeModule, _), _)
     ->
-        unqualify_name(Name0, UnqualName),
+        UnqualName = unqualify_name(Name0),
         Name = qualified(TypeModule, UnqualName),
         ConsId = cons(Name, OrigArity),
         InstConsId = ConsId
@@ -927,7 +927,7 @@ type_constructors_are_no_tag_type(Ctors, Ctor, ArgType, MaybeArgName) :-
     % that it's not worth the implementation effort.
     Ctor \= unqualified("{}"),
 
-    map_maybe(unqualify_name, MaybeArgName0, MaybeArgName).
+    MaybeArgName = map_maybe(unqualify_name, MaybeArgName0).
 
 type_constructors_are_type_info(Ctors) :-
     type_is_single_ctor_single_arg(Ctors, Ctor, _, _),

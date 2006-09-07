@@ -1,2 +1,2 @@
 external.m:012: Warning: `external' declaration requires arity.
-external.m:007: Error: no clauses for predicate `p/2'.
+external.m:007: Error: no clauses for predicate `p'/2.

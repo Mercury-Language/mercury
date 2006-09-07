@@ -7,35 +7,35 @@ types.m:003: Error: constructor `types.a/0' for type `types.t/0' multiply
 types.m:003:   defined.
 types.m:003: Error: constructor `types.f/1' for type `types.t/0' multiply
 types.m:003:   defined.
-types.m:017: Error: clause for predicate `types.r/0'
+types.m:017: Error: clause for predicate `types.r'/0
 types.m:017:   without preceding `pred' declaration.
-types.m:020: Error: clause for predicate `types.a/1'
+types.m:020: Error: clause for predicate `types.a'/1
 types.m:020:   without preceding `pred' declaration.
-types.m:012: In clause for predicate `types.q/0':
-types.m:012:   error: undefined predicate `zzzzzzzz/0'.
-types.m:013: In clause for predicate `types.q/0':
-types.m:013:   in argument 1 of call to predicate `p/1':
+types.m:005: Error: no clauses for predicate `p'/1.
+types.m:012: In clause for predicate `q'/0:
+types.m:012:   error: undefined predicate `zzzzzzzz'/0.
+types.m:013: In clause for predicate `q'/0:
+types.m:013:   in argument 1 of call to predicate `p'/1:
 types.m:013:   type error: argument has type `int',
 types.m:013:   expected type was `(pred)'.
-	The partial type assignment was:
-	V_1: (pred)
-	V_2: int
-
-types.m:014: In clause for predicate `types.q/0':
+types.m:013:   The partial type assignment was:
+types.m:013:     V_1: (pred)
+types.m:013:     V_2: int
+types.m:014: In clause for predicate `q'/0:
 types.m:014:   error: wrong number of arguments (0; should be 1)
 types.m:014:   in call to predicate `p'.
-types.m:039: In clause for predicate `types.bar/1':
+types.m:039: In clause for predicate `bar'/1:
 types.m:039:   type error in unification of variable `X'
 types.m:039:   and constant `0'.
 types.m:039:   variable `X' has type `(some [BarTypeParam] BarTypeParam)',
 types.m:039:   constant `0' has type `int'.
-	The partial type assignment was:
-	some [BarTypeParam_1]
-	X_2: BarTypeParam
-
-types.m:018: In clause for predicate `types.r/0':
-types.m:018:   error: undefined predicate `s/0'.
-types.m:020: In clause for predicate `types.a/1':
-types.m:020:   error: undefined predicate `b/1'.
+types.m:039:   The partial type assignment was:
+types.m:039:     some [BarTypeParam_1]
+types.m:039:     X_2: BarTypeParam
+types.m:050: Error: no clauses for predicate `bar2'/1.
+types.m:018: In clause for predicate `r'/0:
+types.m:018:   error: undefined predicate `s'/0.
+types.m:020: In clause for predicate `a'/1:
+types.m:020:   error: undefined predicate `b'/1.
 types.m:048: Error: abstract declaration for type `types.t'/2 has no
 types.m:048:   corresponding definition.

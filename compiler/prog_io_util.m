@@ -606,7 +606,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
             % If the term is qualified with the `builtin' module
             % then it may be one of the simple builtin insts.
             % We call convert_inst recursively to check for this.
-            unqualify_name(QualifiedName, UnqualifiedName),
+            UnqualifiedName = unqualify_name(QualifiedName),
             convert_simple_builtin_inst(UnqualifiedName, Args1, Result0),
 
             % However, if the inst is a user_inst defined inside

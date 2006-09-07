@@ -5,4 +5,4 @@ prog_io_erroneous.m:001:   should contain at least one declaration other than
 prog_io_erroneous.m:001:   `:- import_module' in its interface section(s). This
 prog_io_erroneous.m:001:   would normally be a `:- pred', `:- func', `:- type',
 prog_io_erroneous.m:001:   `:- inst' or `:- mode' declaration.
-prog_io_erroneous.m:012: Error: no clauses for predicate `q/2'.
+prog_io_erroneous.m:012: Error: no clauses for predicate `q'/2.

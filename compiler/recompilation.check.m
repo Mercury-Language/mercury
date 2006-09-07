@@ -423,7 +423,7 @@ parse_simple_item(Info, Term, Set0, Set) :-
         Term = term.functor(term.atom("-"), [NameArityTerm, MatchesTerm], _),
         parse_name_and_arity(NameArityTerm, SymName, Arity)
     ->
-        unqualify_name(SymName, Name),
+        Name = unqualify_name(SymName),
         conjunction_to_list(MatchesTerm, MatchTermList),
         list.foldl(parse_simple_item_match(Info), MatchTermList,
             map.init, Matches),
@@ -916,7 +916,7 @@ check_class_method_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 
 item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
         ItemType, SymName, Arity) :-
-    unqualify_name(SymName, Name),
+    Name = unqualify_name(SymName),
     (
         map.search(extract_ids(UsedVersionNumbers, ItemType), Name - Arity,
             UsedVersionNumber)
@@ -941,7 +941,7 @@ check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
         NeedsCheck = yes,
         UsedItems = !.Info ^ used_items,
         UsedItemMap = extract_simple_item_set(UsedItems, ItemType),
-        unqualify_name(SymName, Name),
+        Name = unqualify_name(SymName),
         (
             map.search(UsedItemMap, Name - Arity,
                 MatchingQualifiers)
@@ -963,7 +963,7 @@ check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
 
 check_for_simple_item_ambiguity_2(ItemType, NeedQualifier, SymName, Arity,
         OldModuleQualifier, OldMatchingModuleName, !Info) :-
-    unqualify_name(SymName, Name),
+    Name = unqualify_name(SymName),
     (
         % XXX This is a bit conservative in the case of partially qualified
         % names but that hopefully won't come up too often.
@@ -1009,7 +1009,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
     ->
         UsedItems = !.Info ^ used_items,
         UsedItemMap = extract_pred_or_func_set(UsedItems, ItemType),
-        unqualify_name(SymName, Name),
+        Name = unqualify_name(SymName),
         ( map.search(UsedItemMap, Name, MatchingArityList) ->
             list.foldl(check_for_pred_or_func_item_ambiguity_1(WithType,
                 ItemType, NeedQualifier, SymName, Arity), MatchingArityList,
@@ -1070,7 +1070,7 @@ check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, NeedQualifier,
 
 check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
         SymName, Arity, OldModuleQualifier, OldMatchingModuleNames, !Info) :-
-    unqualify_name(SymName, Name),
+    Name = unqualify_name(SymName),
     (
         % XXX This is a bit conservative in the case of partially qualified
         % names but that hopefully won't come up too often.
@@ -1163,7 +1163,7 @@ check_field_ambiguities(NeedQualifier, ResolvedCtor, yes(FieldName) - _,
 check_functor_ambiguities(NeedQualifier, Name, MatchArity, ResolvedCtor,
         !Info) :-
     UsedItems = !.Info ^ used_items,
-    unqualify_name(Name, UnqualName),
+    UnqualName = unqualify_name(Name),
     UsedCtors = UsedItems ^ functors,
     ( map.search(UsedCtors, UnqualName, UsedCtorAL) ->
         check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
@@ -1237,7 +1237,7 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
     ->
         true
     ;
-        unqualify_name(SymName, Name),
+        Name = unqualify_name(SymName),
         OldName = module_qualify_name(OldModuleQualifier, Name),
         match_sym_name(OldName, SymName),
         \+ set.member(ResolvedCtor, OldResolvedCtors)
@@ -1363,9 +1363,8 @@ write_recompilation_message(P, !IO) :-
 
 write_recompile_reason(ModuleName, Reason, !IO) :-
     recompile_reason_message(Reason, MaybeContext, ErrorPieces0),
-    ErrorPieces = [words("Recompiling module"),
-        words(string.append(describe_sym_name(ModuleName), ":")), nl
-        | ErrorPieces0],
+    ErrorPieces = [words("Recompiling module"), sym_name(ModuleName),
+        suffix(":"), nl | ErrorPieces0],
     write_error_pieces_maybe_with_context(MaybeContext, 0, ErrorPieces, !IO).
 
 :- pred recompile_reason_message(recompile_reason::in, maybe(context)::out,
@@ -1402,9 +1401,9 @@ recompile_reason_message(
         no,
         [
         words("an instance for class"),
-        words(describe_sym_name_and_arity(ClassName / ClassArity)),
+        sym_name_and_arity(ClassName / ClassArity),
         words("in module"),
-        words(describe_sym_name(ModuleName)),
+        sym_name(ModuleName),
         words("was added or modified.")
         ]).
 recompile_reason_message(
@@ -1412,9 +1411,9 @@ recompile_reason_message(
         no,
         [
         words("an instance for class "),
-        words(describe_sym_name_and_arity(ClassName / ClassArity)),
+        sym_name_and_arity(ClassName / ClassArity),
         words("in module"),
-        words(describe_sym_name(ModuleName)),
+        sym_name(ModuleName),
         words("was removed.")
         ]).
 
@@ -1422,17 +1421,13 @@ recompile_reason_message(
 
 describe_item(item_id(ItemType0, item_name(SymName, Arity))) = Pieces :-
     ( body_item(ItemType0, ItemType1) ->
-        ItemType = ItemType1,
-        BodyWords = "body of "
+        string_to_item_type(ItemTypeStr, ItemType1),
+        ItemPieces = [words("body of"), words(ItemTypeStr)]
     ;
-        ItemType = ItemType0,
-        BodyWords = ""
+        string_to_item_type(ItemTypeStr, ItemType0),
+        ItemPieces = [words(ItemTypeStr)]
     ),
-    string_to_item_type(ItemTypeStr, ItemType),
-    Pieces = [
-        words(string.append(BodyWords, ItemTypeStr)),
-        words(describe_sym_name_and_arity(SymName / Arity))
-        ].
+    Pieces = ItemPieces ++ [sym_name_and_arity(SymName / Arity)].
 
 :- pred body_item(item_type::in, item_type::out) is semidet.
 
@@ -1444,7 +1439,7 @@ body_item(type_body_item, type_item).
 describe_functor(SymName, _Arity, ResolvedFunctor) = Pieces :-
     ResolvedFunctor = pred_or_func(_, ModuleName, PredOrFunc, PredArity),
     string_to_item_type(ItemTypeStr, pred_or_func_to_item_type(PredOrFunc)),
-    unqualify_name(SymName, UnqualName),
+    UnqualName = unqualify_name(SymName),
     SymNameAndArityPiece =
         sym_name_and_arity(qualified(ModuleName, UnqualName) / PredArity),
     Pieces = [words(ItemTypeStr), SymNameAndArityPiece].

@@ -1,6 +1,6 @@
-arg_order_rearrangment.m:008: In predicate `arg_order_rearrangment.r/2'
+arg_order_rearrangment.m:008: In predicate `arg_order_rearrangment.r'/2
 arg_order_rearrangment.m:014:   warning: the call to predicate
-arg_order_rearrangment.m:014:     `arg_order_rearrangment.app/3' has had the
+arg_order_rearrangment.m:014:     `arg_order_rearrangment.app'/3 has had the
 arg_order_rearrangment.m:014:     location of the variables `V_7' and `R0'
 arg_order_rearrangment.m:014:     swapped to allow accumulator introduction.
 arg_order_rearrangment.m:008:   Please ensure that these argument

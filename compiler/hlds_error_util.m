@@ -30,7 +30,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates to convert predicate and procedure names to strings
+% Predicates to convert predicate and procedure names to strings.
 %
 
 :- type should_module_qualify
@@ -102,7 +102,14 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     pred_info_get_origin(PredInfo, Origin),
     ( Origin = origin_special_pred(SpecialId - TypeCtor) ->
         special_pred_description(SpecialId, Descr),
-        TypeCtor = type_ctor(TypeSymName, TypeArity),
+        TypeCtor = type_ctor(TypeSymName0, TypeArity),
+        (
+            ShouldModuleQualify = should_module_qualify,
+            TypeSymName = TypeSymName0
+        ;
+            ShouldModuleQualify = should_not_module_qualify,
+            TypeSymName = unqualified(unqualify_name(TypeSymName0))
+        ),
         ( TypeArity = 0 ->
             Pieces = [words(Descr), words("for type"),
                 sym_name(TypeSymName)]
@@ -117,20 +124,18 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
             words("declaration")]
     ;
         ( check_marker(Markers, marker_class_method) ->
-            Prefix = [words("type class"), pred_or_func(PredOrFunc),
-                words("method")]
+            Prefix = [words("type class"), p_or_f(PredOrFunc), words("method")]
         ;
-            Prefix = [pred_or_func(PredOrFunc)]
+            Prefix = [p_or_f(PredOrFunc)]
         ),
-        string.int_to_string(OrigArity, ArityPart),
-        string.append_list([
-            "`",
-            module_qualification(ModuleName, ShouldModuleQualify),
-            PredName,
-            "/",
-            ArityPart,
-            "'"], SpecStr),
-        Pieces = Prefix ++ [fixed(SpecStr)]
+        (
+            ShouldModuleQualify = should_module_qualify,
+            PredSymName = qualified(ModuleName, PredName)
+        ;
+            ShouldModuleQualify = should_not_module_qualify,
+            PredSymName = unqualified(PredName)
+        ),
+        Pieces = Prefix ++ [sym_name_and_arity(PredSymName / OrigArity)]
     ).
 
 describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,
@@ -162,8 +167,8 @@ describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,
         "`",
         module_qualification(ModuleName, ShouldModuleQualify),
         PredName,
-        ArgModesPart,
-        "'"], Descr),
+        "'",
+        ArgModesPart], Descr),
     Pieces = [words(Descr)].
 
 describe_several_pred_names(Module, ShouldModuleQualify, PredIds) = Pieces :-

@@ -1,10 +1,10 @@
 one_member.m:044: Error: this `arbitrary' scope is not nested inside a
 one_member.m:044:   `promise_equivalent_solution_sets' scope.
+one_member.m:051: Error: the `arbitrary' goal lists an extra variable: Tree.
 one_member.m:051: Error: this `arbitrary' scope and the
 one_member.m:051:   `promise_equivalent_solution_sets' scope it is nested
 one_member.m:051:   inside overlap on the variable Item.
 one_member.m:050:   This is the outer `promise_equivalent_solution_sets' scope.
-one_member.m:051: Error: the `arbitrary' goal lists an extra variable: Tree.
 one_member.m:052: Error: unification for non-canonical type
 one_member.m:052:   `one_member.set_ctree234/1' occurs in a context which
 one_member.m:052:   requires all solutions.
@@ -21,6 +21,6 @@ one_member.m:053:   Call to do_one_member can fail.
 one_member.m:061: Error: `promise_equivalent_solution_sets' scope is nested
 one_member.m:061:   inside another.
 one_member.m:060:   This is the outer `promise_equivalent_solution_sets' scope.
-one_member.m:047: In `one_member2(in, out)':
+one_member.m:047: In `one_member2'(in, out):
 one_member.m:047:   warning: determinism declaration could be tighter.
 one_member.m:047:   Declared `nondet', inferred `semidet'.

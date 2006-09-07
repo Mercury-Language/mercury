@@ -1,7 +1,7 @@
-typeclass_test_8.m:004: In predicate `typeclass_test_8.main/2':
+typeclass_test_8.m:004: In predicate `typeclass_test_8.main'/2:
 typeclass_test_8.m:004:   type error: unsatisfied typeclass constraint:
 typeclass_test_8.m:004:       `typeclass_test_8.fooable(T)'
-typeclass_test_8.m:004: In predicate `typeclass_test_8.main/2':
+typeclass_test_8.m:004: In predicate `typeclass_test_8.main'/2:
 typeclass_test_8.m:004:   warning: unresolved polymorphism.
 typeclass_test_8.m:004:   The variable with an unbound type was:
 typeclass_test_8.m:004:       X: T

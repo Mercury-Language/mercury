@@ -1,6 +1,10 @@
-exported_unify3.m:005: In clause for unification predicate for type exported_unify3.foo:
-exported_unify3.m:005:   error: undefined predicate `exported_unify3.defined_in_wrong_module/2'.
-exported_unify3.sub.int:003: In clause for unification predicate for type exported_unify3.sub.bar:
-exported_unify3.sub.int:003:   error: undefined predicate `exported_unify3.sub.not_exported/2'.
-exported_unify3.int0:003: In clause for unification predicate for type exported_unify3.foo:
-exported_unify3.int0:003:   error: undefined predicate `exported_unify3.defined_in_wrong_module/2'.
+exported_unify3.m:005: In clause for unification predicate for type `foo':
+exported_unify3.m:005:   error: undefined predicate
+exported_unify3.m:005:   `exported_unify3.defined_in_wrong_module'/2.
+exported_unify3.sub.int:003: In clause for unification predicate for type
+exported_unify3.sub.int:003:   `bar':
+exported_unify3.sub.int:003:   error: undefined predicate
+exported_unify3.sub.int:003:   `exported_unify3.sub.not_exported'/2.
+exported_unify3.int0:003: In clause for unification predicate for type `foo':
+exported_unify3.int0:003:   error: undefined predicate
+exported_unify3.int0:003:   `exported_unify3.defined_in_wrong_module'/2.

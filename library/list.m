@@ -1199,6 +1199,16 @@
 
 :- interface.
 
+    % This is the same as the usual forward mode of append, but preserves
+    % any extra information available in the input arguments.
+    % NOTE: If Mercury recorded the mode and determinism information
+    % of higher order types in the *types* of higher order variables
+    % instead of in their *insts*, this function would not be needed.
+    %
+:- func inst_preserving_append(list(T)::in(list_skel(I =< ground)),
+    list(T)::in(list_skel(I =< ground))) =
+    (list(T)::out(list_skel(I =< ground))) is det.
+
 :- import_module term.      % for var/1.
 
 :- pragma type_spec(list.merge(in, in, out), T = var(_)).
@@ -2313,6 +2323,12 @@ successive_integers(Lo, Hi, !Ints) :-
     ;
         true
     ).
+
+%-----------------------------------------------------------------------------%
+
+inst_preserving_append([], L) = L.
+inst_preserving_append([H | T], L) = [H | NT] :-
+    inst_preserving_append(T, L) = NT.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

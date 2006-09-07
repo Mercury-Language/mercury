@@ -661,7 +661,7 @@ missing_pred_or_func_method_error(Name, Arity, PredOrFunc, Context,
         words("Error: mode declaration for type class method"),
         sym_name_and_arity(Name / Arity),
         words("without corresponding"),
-        pred_or_func(PredOrFunc),
+        p_or_f(PredOrFunc),
         words("method declaration.")
     ],
     write_error_pieces(Context, 0, NoPredOrFuncMsg, !IO),

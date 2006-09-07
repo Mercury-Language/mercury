@@ -201,7 +201,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
             )
         ;
             module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
-            predicate_table_insert(PredInfo0, NeedQual, PQInfo, PredId,
+            predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
                 PredTable0, PredTable1),
             ( pred_info_is_builtin(PredInfo0) ->
                 add_builtin(PredId, Types, PredInfo0, PredInfo),
@@ -488,8 +488,8 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
             is_fully_qualified, PredOrFunc, PredName, Arity, _)
     ->
         module_info_get_partial_qualifier_info(ModuleInfo, MQInfo),
-        predicate_table_insert(PredInfo, may_be_unqualified, MQInfo, PredId,
-            !PredicateTable)
+        predicate_table_insert_qual(PredInfo, may_be_unqualified, MQInfo,
+            PredId, !PredicateTable)
     ;
         unexpected(this_file, "preds_add_implicit")
     ).
@@ -501,8 +501,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
 
 unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !IO) :-
     Pieces = [words("Error: no determinism declaration for local"),
-        words(simple_call_id_to_string(PredOrFunc, Name, Arity)),
-        suffix(".")],
+        simple_call(simple_call_id(PredOrFunc, Name, Arity)), suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
     record_warning(!IO),
     globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
@@ -524,10 +523,8 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !IO) :-
 
 unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !IO) :-
     Pieces = [words("Error: no determinism declaration"),
-        words("for type class method"),
-        pred_or_func(PredOrFunc),
-        sym_name_and_arity(Name / Arity),
-        suffix(".")],
+        words("for type class method"), p_or_f(PredOrFunc),
+        sym_name_and_arity(Name / Arity), suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
     io.set_exit_status(1, !IO).
 
@@ -536,9 +533,7 @@ unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !IO) :-
 
 unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !IO) :-
     Pieces = [words("Error: no determinism declaration for exported"),
-        pred_or_func(PredOrFunc),
-        sym_name_and_arity(Name / Arity),
-        suffix(".")],
+        p_or_f(PredOrFunc), sym_name_and_arity(Name / Arity), suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
     io.set_exit_status(1, !IO).
 

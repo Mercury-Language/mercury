@@ -97,7 +97,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, PseudoArgs)
         ;
             TypeCtor = type_ctor(QualTypeName, Arity),
-            unqualify_name(QualTypeName, TypeName),
+            TypeName = unqualify_name(QualTypeName),
             sym_name_get_module_name(QualTypeName, unqualified("builtin"),
                 TypeModule),
             RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
@@ -163,7 +163,7 @@ construct_type_info(Type, TypeInfo) :-
             TypeInfo = var_arity_type_info(VarArityId, TypeInfoArgs)
         ;
             TypeCtor = type_ctor(QualTypeName, Arity),
-            unqualify_name(QualTypeName, TypeName),
+            TypeName = unqualify_name(QualTypeName),
             sym_name_get_module_name(QualTypeName, unqualified("builtin"),
                 TypeModule),
             RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),

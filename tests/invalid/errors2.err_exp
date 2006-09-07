@@ -5,125 +5,124 @@ errors2.m:001:   contain at least one declaration other than `:- import_module'
 errors2.m:001:   in its interface section(s). This would normally be a
 errors2.m:001:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
 errors2.m:001:   declaration.
-errors2.m:009: Error: clause for predicate `errors2.bind_type_param/1'
+errors2.m:009: Error: clause for predicate `errors2.bind_type_param'/1
 errors2.m:009:   without preceding `pred' declaration.
-errors2.m:052: In clause for predicate `errors2.type_error_4/0':
+errors2.m:052: In clause for predicate `errors2.type_error_4'/0:
 errors2.m:052:   warning: variable `X' occurs only once in this scope.
-errors2.m:059: In clause for predicate `errors2.type_error_5/0':
+errors2.m:059: In clause for predicate `errors2.type_error_5'/0:
 errors2.m:059:   warning: variable `X' occurs only once in this scope.
-errors2.m:065: In clause for predicate `errors2.type_error_6/0':
+errors2.m:065: In clause for predicate `errors2.type_error_6'/0:
 errors2.m:065:   warning: variable `X' occurs only once in this scope.
-errors2.m:070: In clause for predicate `errors2.type_error_7/0':
+errors2.m:070: In clause for predicate `errors2.type_error_7'/0:
 errors2.m:070:   warning: variable `Y' occurs only once in this scope.
-errors2.m:071: In clause for predicate `errors2.type_error_7/0':
+errors2.m:071: In clause for predicate `errors2.type_error_7'/0:
 errors2.m:071:   warning: variables `Z, A, B' occur only once in this scope.
-errors2.m:031: In clause for predicate `errors2.type_error/0':
-errors2.m:031:   in argument 1 of call to predicate `expect_int/1':
+errors2.m:007: Error: no clauses for predicate `bind_type_param'/2.
+errors2.m:023: Error: no clauses for predicate `produce_string'/1.
+errors2.m:025: Error: no clauses for predicate `expect_int'/1.
+errors2.m:031: In clause for predicate `type_error'/0:
+errors2.m:031:   in argument 1 of call to predicate `expect_int'/1:
 errors2.m:031:   type error: variable `X' has type `string',
 errors2.m:031:   expected type was `int'.
-	The partial type assignment was:
-	X_1: string
-
-errors2.m:037: In clause for predicate `errors2.type_error_2/0':
+errors2.m:031:   The partial type assignment was:
+errors2.m:031:     X_1: string
+errors2.m:037: In clause for predicate `type_error_2'/0:
 errors2.m:037:   type error in unification of variable `X'
 errors2.m:037:   and variable `Y'.
 errors2.m:037:   `X' has type `string',
 errors2.m:037:   `Y' has type `int'.
-	The partial type assignment was:
-	X_1: string
-	Y_2: int
-
-errors2.m:043: In clause for predicate `errors2.type_error_3/0':
-errors2.m:043:   in argument 1 of call to predicate `expect_int/1':
+errors2.m:037:   The partial type assignment was:
+errors2.m:037:     X_1: string
+errors2.m:037:     Y_2: int
+errors2.m:043: In clause for predicate `type_error_3'/0:
+errors2.m:043:   in argument 1 of call to predicate `expect_int'/1:
 errors2.m:043:   type error: variable `Y' has type `string',
 errors2.m:043:   expected type was `int'.
-	The partial type assignment was:
-	X_1: string
-	Y_2: string
-
-errors2.m:052: In clause for predicate `errors2.type_error_4/0':
+errors2.m:043:   The partial type assignment was:
+errors2.m:043:     X_1: string
+errors2.m:043:     Y_2: string
+errors2.m:052: In clause for predicate `type_error_4'/0:
 errors2.m:052:   in argument 3 of functor `foo_functor/3':
 errors2.m:052:   type error in unification of argument
 errors2.m:052:   and constant `1.00000000000000'.
 errors2.m:052:   argument has type `string',
 errors2.m:052:   constant `1.00000000000000' has type `float'.
-	The partial type assignment was:
-	Y_1: int
-	X_2: (errors2.foo_type)
-	V_3: character
-	V_4: string
-
-errors2.m:059: In clause for predicate `errors2.type_error_5/0':
+errors2.m:052:   The partial type assignment was:
+errors2.m:052:     Y_1: int
+errors2.m:052:     X_2: (errors2.foo_type)
+errors2.m:052:     V_3: character
+errors2.m:052:     V_4: string
+errors2.m:059: In clause for predicate `type_error_5'/0:
 errors2.m:059:   in argument 3 of functor `foo_functor/3':
 errors2.m:059:   type error in unification of argument
 errors2.m:059:   and constant `1.00000000000000'.
 errors2.m:059:   argument has type `string',
 errors2.m:059:   constant `1.00000000000000' has type `float'.
-	The partial type assignment was:
-	Y_1: character
-	X_2: (errors2.foo_type)
-	V_3: int
-	V_4: string
-
-errors2.m:065: In clause for predicate `errors2.type_error_6/0':
+errors2.m:059:   The partial type assignment was:
+errors2.m:059:     Y_1: character
+errors2.m:059:     X_2: (errors2.foo_type)
+errors2.m:059:     V_3: int
+errors2.m:059:     V_4: string
+errors2.m:065: In clause for predicate `type_error_6'/0:
 errors2.m:065:   in argument 3 of functor `bar_functor/3':
 errors2.m:065:   type error in unification of argument
 errors2.m:065:   and constant `1.00000000000000'.
 errors2.m:065:   argument has type `string',
 errors2.m:065:   constant `1.00000000000000' has type `float'.
-	The partial type assignment was:
-	Y_1: character
-	X_2: (errors2.bar_1_type)
-	V_3: int
-	V_4: string
-
-errors2.m:072: In clause for predicate `errors2.type_error_7/0':
-errors2.m:072:   in argument 1 of call to predicate `expect_int/1':
+errors2.m:065:   The partial type assignment was:
+errors2.m:065:     Y_1: character
+errors2.m:065:     X_2: (errors2.bar_1_type)
+errors2.m:065:     V_3: int
+errors2.m:065:     V_4: string
+errors2.m:072: In clause for predicate `type_error_7'/0:
+errors2.m:072:   in argument 1 of call to predicate `expect_int'/1:
 errors2.m:072:   type error: variable `C' has type `string',
 errors2.m:072:   expected type was `int'.
-	The possible partial type assignments were:
-	Y_1: (errors2.foo)
-	Z_2: (errors2.bar_1_type)
-	A_3: int
-	B_4: character
-	C_5: string
-
-	Y_1: (errors2.foo)
-	Z_2: (errors2.bar_2_type)
-	A_3: character
-	B_4: int
-	C_5: string
-
-	Y_1: character
-	Z_2: (errors2.bar_1_type)
-	A_3: int
-	B_4: character
-	C_5: string
-
-	Y_1: character
-	Z_2: (errors2.bar_2_type)
-	A_3: character
-	B_4: int
-	C_5: string
-
-errors2.m:078: In clause for predicate `errors2.type_error_8/0':
-errors2.m:078:   in argument 1 of call to predicate `from_char_list/2':
+errors2.m:072:   The possible partial type assignments were:
+errors2.m:072:     Type assignment 1:
+errors2.m:072:     Y_1: (errors2.foo)
+errors2.m:072:     Z_2: (errors2.bar_1_type)
+errors2.m:072:     A_3: int
+errors2.m:072:     B_4: character
+errors2.m:072:     C_5: string
+errors2.m:072:     
+errors2.m:072:     Type assignment 2:
+errors2.m:072:     Y_1: (errors2.foo)
+errors2.m:072:     Z_2: (errors2.bar_2_type)
+errors2.m:072:     A_3: character
+errors2.m:072:     B_4: int
+errors2.m:072:     C_5: string
+errors2.m:072:     
+errors2.m:072:     Type assignment 3:
+errors2.m:072:     Y_1: character
+errors2.m:072:     Z_2: (errors2.bar_1_type)
+errors2.m:072:     A_3: int
+errors2.m:072:     B_4: character
+errors2.m:072:     C_5: string
+errors2.m:072:     
+errors2.m:072:     Type assignment 4:
+errors2.m:072:     Y_1: character
+errors2.m:072:     Z_2: (errors2.bar_2_type)
+errors2.m:072:     A_3: character
+errors2.m:072:     B_4: int
+errors2.m:072:     C_5: string
+errors2.m:078: In clause for predicate `type_error_8'/0:
+errors2.m:078:   in argument 1 of call to predicate `from_char_list'/2:
 errors2.m:078:   error: undefined symbol `[]/0'.
-errors2.m:078: In clause for predicate `errors2.type_error_8/0':
-errors2.m:078:   error: undefined predicate `from_char_list/2'.
-errors2.m:085: In clause for predicate `errors2.type_error_9/0':
+errors2.m:078: In clause for predicate `type_error_8'/0:
+errors2.m:078:   error: undefined predicate `from_char_list'/2.
+errors2.m:085: In clause for predicate `type_error_9'/0:
 errors2.m:085:   type error in unification of variable `X'
 errors2.m:085:   and variable `Y'.
 errors2.m:085:   `X' has type `{int, string, character}',
 errors2.m:085:   `Y' has type `{string, character, int}'.
-	The partial type assignment was:
-	X_1: {int, string, character}
-	Y_2: {string, character, int}
-	V_3: int
-	V_4: string
-	V_5: character
-	V_6: string
-	V_7: character
-	V_8: int
-
+errors2.m:085:   The partial type assignment was:
+errors2.m:085:     X_1: {int, string, character}
+errors2.m:085:     Y_2: {string, character, int}
+errors2.m:085:     V_3: int
+errors2.m:085:     V_4: string
+errors2.m:085:     V_5: character
+errors2.m:085:     V_6: string
+errors2.m:085:     V_7: character
+errors2.m:085:     V_8: int
 errors2.m:009: Inferred :- pred bind_type_param(int).

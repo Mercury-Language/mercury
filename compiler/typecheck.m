@@ -174,7 +174,7 @@ typecheck_module(!Module, FoundError, ExceededIterationLimit, !IO) :-
         MaxIterations, !IO),
     typecheck_to_fixpoint(1, MaxIterations, PredIds, !Module,
         FoundError, ExceededIterationLimit, !IO),
-    write_inference_messages(PredIds, !.Module, !IO).
+    write_type_inference_messages(PredIds, !.Module, !IO).
 
     % Repeatedly typecheck the code for a group of predicates
     % until a fixpoint is reached, or until some errors are detected.
@@ -198,7 +198,7 @@ typecheck_to_fixpoint(Iteration, NumIterations, PredIds, !Module,
         globals.io_lookup_bool_option(debug_types, DebugTypes, !IO),
         (
             DebugTypes = yes,
-            write_inference_messages(PredIds, !.Module, !IO)
+            write_type_inference_messages(PredIds, !.Module, !IO)
         ;
             DebugTypes = no
         ),
@@ -212,21 +212,73 @@ typecheck_to_fixpoint(Iteration, NumIterations, PredIds, !Module,
         )
     ).
 
+    % Write out the inferred `pred' or `func' declarations for a list of
+    % predicates.  Don't write out the inferred types for assertions.
+    %
+:- pred write_type_inference_messages(list(pred_id)::in, module_info::in,
+    io::di, io::uo) is det.
+
+write_type_inference_messages([], _, !IO).
+write_type_inference_messages([PredId | PredIds], ModuleInfo, !IO) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_markers(PredInfo, Markers),
+    (
+        check_marker(Markers, marker_infer_type),
+        module_info_predids(ModuleInfo, ValidPredIds),
+        list.member(PredId, ValidPredIds),
+        \+ pred_info_get_goal_type(PredInfo, goal_type_promise(_))
+    ->
+        write_type_inference_message(PredInfo, !IO)
+    ;
+        true
+    ),
+    write_type_inference_messages(PredIds, ModuleInfo, !IO).
+
+    % Write out the inferred `pred' or `func' declaration
+    % for a single predicate.
+    %
+:- pred write_type_inference_message(pred_info::in, io::di, io::uo) is det.
+
+write_type_inference_message(PredInfo, !IO) :-
+    PredName = pred_info_name(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    Name = unqualified(PredName),
+    pred_info_context(PredInfo, Context),
+    pred_info_get_arg_types(PredInfo, VarSet, ExistQVars, Types0),
+    strip_builtin_qualifiers_from_type_list(Types0, Types),
+    pred_info_get_class_context(PredInfo, ClassContext),
+    pred_info_get_purity(PredInfo, Purity),
+    MaybeDet = no,
+    prog_out.write_context(Context, !IO),
+    io.write_string("Inferred ", !IO),
+    AppendVarNums = no,
+    (
+        PredOrFunc = predicate,
+        mercury_output_pred_type(VarSet, ExistQVars, Name, Types,
+            MaybeDet, Purity, ClassContext, Context, AppendVarNums, !IO)
+    ;
+        PredOrFunc = function,
+        pred_args_to_func_args(Types, ArgTypes, RetType),
+        mercury_output_func_type(VarSet, ExistQVars, Name, ArgTypes, RetType,
+            MaybeDet, Purity, ClassContext, Context, AppendVarNums, !IO)
+    ).
+
 :- pred typecheck_report_max_iterations_exceeded(io::di, io::uo) is det.
 
 typecheck_report_max_iterations_exceeded(!IO) :-
-    io.set_exit_status(1, !IO),
-    io.write_strings([
-        "Type inference iteration limit exceeded.\n",
-        "This probably indicates that your program has a type error.\n",
-        "You should declare the types explicitly.\n"
-    ], !IO),
     globals.io_lookup_int_option(type_inference_iteration_limit,
         MaxIterations, !IO),
-    io.format("(The current limit is %d iterations.  You can use the\n",
-        [i(MaxIterations)], !IO),
-    io.write_string("`--type-inference-iteration-limit' option " ++
-        "to increase the limit).\n", !IO).
+    Pieces = [words("Type inference iteration limit exceeded."),
+        words("This probably indicates that your program has a type error."),
+        words("You should declare the types explicitly."),
+        words("(The current limit is"), int_fixed(MaxIterations),
+        words("iterations."),
+        words("You can use the `--type-inference-iteration-limit' option"),
+        words("to increase the limit).")],
+    Msg = error_msg(no, no, 0, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1124,7 +1176,7 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !Info, !IO) :-
     % Typecheck the clause - first the head unification, and then the body.
     typecheck_var_has_type_list(HeadVars, ArgTypes, 1, !Info, !IO),
     typecheck_goal(Body0, Body, !Info, !IO),
-    checkpoint("end of clause", !Info, !IO),
+    type_checkpoint("end of clause", !.Info, !IO),
     !:Clause = !.Clause ^ clause_body := Body,
     typecheck_info_set_context(Context, !Info),
     typecheck_check_for_ambiguity(clause_only, HeadVars, !Info, !IO).
@@ -1237,32 +1289,32 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info, !IO) :-
 typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
     (
         GoalExpr0 = conj(ConjType, List0),
-        checkpoint("conj", !Info, !IO),
+        type_checkpoint("conj", !.Info, !IO),
         typecheck_goal_list(List0, List, !Info, !IO),
         GoalExpr = conj(ConjType, List)
     ;
         GoalExpr0 = disj(List0),
-        checkpoint("disj", !Info, !IO),
+        type_checkpoint("disj", !.Info, !IO),
         typecheck_goal_list(List0, List, !Info, !IO),
         GoalExpr = disj(List)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        checkpoint("if", !Info, !IO),
+        type_checkpoint("if", !.Info, !IO),
         typecheck_goal(Cond0, Cond, !Info, !IO),
-        checkpoint("then", !Info, !IO),
+        type_checkpoint("then", !.Info, !IO),
         typecheck_goal(Then0, Then, !Info, !IO),
-        checkpoint("else", !Info, !IO),
+        type_checkpoint("else", !.Info, !IO),
         typecheck_goal(Else0, Else, !Info, !IO),
         ensure_vars_have_a_type(Vars, !Info, !IO),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = negation(SubGoal0),
-        checkpoint("not", !Info, !IO),
+        type_checkpoint("not", !.Info, !IO),
         typecheck_goal(SubGoal0, SubGoal, !Info, !IO),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        checkpoint("scope", !Info, !IO),
+        type_checkpoint("scope", !.Info, !IO),
         typecheck_goal(SubGoal0, SubGoal, !Info, !IO),
         (
             Reason = exist_quant(Vars),
@@ -1284,7 +1336,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = plain_call(_, ProcId, Args, BI, UC, Name),
-        checkpoint("call", !Info, !IO),
+        type_checkpoint("call", !.Info, !IO),
         list.length(Args, Arity),
         CurCall = simple_call_id(predicate, Name, Arity),
         typecheck_info_set_called_predid(plain_call_id(CurCall), !Info),
@@ -1298,7 +1350,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
         (
             GenericCall0 = higher_order(PredVar, Purity, _, _),
             GenericCall = GenericCall0,
-            checkpoint("higher-order call", !Info, !IO),
+            type_checkpoint("higher-order call", !.Info, !IO),
             typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO)
         ;
             GenericCall0 = class_method(_, _, _, _),
@@ -1307,7 +1359,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
         ;
             GenericCall0 = event_call(EventName),
             GenericCall = GenericCall0,
-            checkpoint("event call", !Info, !IO),
+            type_checkpoint("event call", !.Info, !IO),
             typecheck_event_call(EventName, Args, !Info, !IO)
         ;
             GenericCall0 = cast(_),
@@ -1318,7 +1370,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
         GoalExpr = generic_call(GenericCall, Args, Modes, Detism)
     ;
         GoalExpr0 = unify(LHS, RHS0, UnifyMode, Unification, UnifyContext),
-        checkpoint("unify", !Info, !IO),
+        type_checkpoint("unify", !.Info, !IO),
         typecheck_info_set_arg_num(0, !Info),
         typecheck_info_set_unify_context(UnifyContext, !Info),
         goal_info_get_goal_path(GoalInfo, GoalPath),
@@ -1352,7 +1404,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
 
 typecheck_goal_2_shorthand(bi_implication(LHS0, RHS0),
         bi_implication(LHS, RHS), !Info, !IO) :-
-    checkpoint("<=>", !Info, !IO),
+    type_checkpoint("<=>", !.Info, !IO),
     typecheck_goal(LHS0, LHS, !Info, !IO),
     typecheck_goal(RHS0, RHS, !Info, !IO).
 
@@ -1654,7 +1706,8 @@ type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
     typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
 typecheck_var_has_arg_type_list([], _, ArgTypeAssignSet, !Info, !IO) :-
-    convert_nonempty_args_type_assign_set(ArgTypeAssignSet, TypeAssignSet),
+    TypeAssignSet =
+        convert_args_type_assign_set_check_empty_args(ArgTypeAssignSet),
     typecheck_info_set_type_assign_set(TypeAssignSet, !Info).
 
 typecheck_var_has_arg_type_list([Var | Vars], ArgNum, ArgTypeAssignSet0, !Info,
@@ -2566,7 +2619,7 @@ get_field_access_constructor(Info, GoalPath, FuncName, Arity, AccessType,
 
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    unqualify_name(FuncName, UnqualFuncName),
+    UnqualFuncName = unqualify_name(FuncName),
     (
         Info ^ is_field_access_function = no,
         \+ predicate_table_search_func_m_n_a(PredTable, is_fully_qualified,

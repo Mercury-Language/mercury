@@ -1,4 +1,4 @@
 warn_dead_procs.m:016: Inferred :- pred baz.
-warn_dead_procs.m:008: Warning: predicate `foo/0' mode 0 is never called.
-warn_dead_procs.m:012: Warning: predicate `bar/1' mode 0 is never called.
-warn_dead_procs.m:013: Warning: predicate `bar/1' mode 1 is never called.
+warn_dead_procs.m:008: Warning: predicate `foo'/0 mode 0 is never called.
+warn_dead_procs.m:012: Warning: predicate `bar'/1 mode 0 is never called.
+warn_dead_procs.m:013: Warning: predicate `bar'/1 mode 1 is never called.

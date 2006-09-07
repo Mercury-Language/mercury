@@ -1,12 +1,12 @@
-impure_pred_t1.m:020: In clause for predicate `impure_pred_t1.main/2':
+impure_pred_t1.m:020: In clause for predicate `main'/2:
 impure_pred_t1.m:020:   in argument 1 of functor `foo/1':
 impure_pred_t1.m:020:   type error in unification of argument
 impure_pred_t1.m:020:   and constant `get_counter'.
 impure_pred_t1.m:020:   argument has type `pred(int, int)',
-impure_pred_t1.m:020:   constant `get_counter' has type `(impure pred(int, int))'.
-	The partial type assignment was:
-	Y_3: (impure_pred_t1.foo)
-	DCG_0_6: (io.state)
-	DCG_3_9: (io.state)
-	V_10: pred(int, int)
-
+impure_pred_t1.m:020:   constant `get_counter' has type `(impure pred(int,
+impure_pred_t1.m:020:   int))'.
+impure_pred_t1.m:020:   The partial type assignment was:
+impure_pred_t1.m:020:     Y_3: (impure_pred_t1.foo)
+impure_pred_t1.m:020:     DCG_0_6: (io.state)
+impure_pred_t1.m:020:     DCG_3_9: (io.state)
+impure_pred_t1.m:020:     V_10: pred(int, int)

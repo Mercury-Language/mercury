@@ -956,7 +956,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
         TypeCtors = [TheTypeCtor],
         MaybePredId = no,
         ( TheTypeCtor = type_ctor(qualified(TypeModule, _), _) ->
-            unqualify_name(InstanceMethodName0, UnqualMethodName),
+            UnqualMethodName = unqualify_name(InstanceMethodName0),
             InstanceMethodName = qualified(TypeModule, UnqualMethodName)
         ;
             unexpected(this_file, "unqualified type_ctor in " ++

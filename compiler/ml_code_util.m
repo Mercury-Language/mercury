@@ -1568,7 +1568,7 @@ ml_gen_field_name(MaybeFieldName, ArgNum) = FieldName :-
     % otherwise we just use `F' followed by the field number.
     (
         MaybeFieldName = yes(QualifiedFieldName),
-        unqualify_name(QualifiedFieldName, FieldName)
+        FieldName = unqualify_name(QualifiedFieldName)
     ;
         MaybeFieldName = no,
         FieldName = string.format("F%d", [i(ArgNum)])

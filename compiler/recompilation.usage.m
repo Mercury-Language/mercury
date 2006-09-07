@@ -672,7 +672,7 @@ do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
             ),
             MatchingPredIds)),
         svmap.det_insert(ModuleQualifier, PredModules, !MatchingNames),
-        unqualify_name(SymName, Name),
+        Name = unqualify_name(SymName),
         set.fold(find_items_used_by_pred(PredOrFunc, Name - Arity),
             PredModules, !Info)
     ;
@@ -702,7 +702,7 @@ do_record_used_functor(ModuleQualifier, SymName, Arity, Recorded,
     ModuleInfo = !.Info ^ module_info,
 
     find_matching_functors(ModuleInfo, SymName, Arity, MatchingCtors),
-    unqualify_name(SymName, Name),
+    Name = unqualify_name(SymName),
     set.fold(find_items_used_by_functor(Name, Arity), MatchingCtors, !Info),
 
     ( set.empty(MatchingCtors) ->
@@ -818,7 +818,7 @@ get_pred_or_func_ctors(ModuleInfo, _SymName, Arity, PredId) = ResolvedCtor :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 record_resolved_item(SymName, Arity, RecordItem, !IdSet, !Info) :-
-    unqualify_name(SymName, UnqualifiedName),
+    UnqualifiedName = unqualify_name(SymName),
     ModuleQualifier = find_module_qualifier(SymName),
     ( map.search(!.IdSet, UnqualifiedName, MatchingNames0) ->
         MatchingNames1 = MatchingNames0

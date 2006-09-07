@@ -1,4 +1,4 @@
-pragma_term_conflict.m:008: Warning: predicate `pragma_term_conflict.a/0' and
-pragma_term_conflict.m:008:   predicate `pragma_term_conflict.b/0' are mutually
+pragma_term_conflict.m:008: Warning: predicate `pragma_term_conflict.a'/0 and
+pragma_term_conflict.m:008:   predicate `pragma_term_conflict.b'/0 are mutually
 pragma_term_conflict.m:008:   recursive but some of their termination pragmas
 pragma_term_conflict.m:008:   are inconsistent.

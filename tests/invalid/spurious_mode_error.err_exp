@@ -1,2 +1,2 @@
-spurious_mode_error.m:079: In clause for predicate `spurious_mode_error.foldit/4':
-spurious_mode_error.m:079:   error: undefined predicate `foobie/3'.
+spurious_mode_error.m:079: In clause for predicate `foldit'/4:
+spurious_mode_error.m:079:   error: undefined predicate `foobie'/3.

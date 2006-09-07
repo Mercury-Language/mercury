@@ -107,7 +107,7 @@
 %-----------------------------------------------------------------------------%
 
 perform_context_reduction(OrigTypeAssignSet, !Info, !IO) :-
-    checkpoint("before context reduction", !Info, !IO),
+    type_checkpoint("before context reduction", !.Info, !IO),
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_superclass_table(ModuleInfo, SuperClassTable),
@@ -126,8 +126,8 @@ perform_context_reduction(OrigTypeAssignSet, !Info, !IO) :-
         DeleteConstraints = (pred(TA0::in, TA::out) is det :-
             type_assign_get_typeclass_constraints(TA0, Constraints0),
             Constraints = (Constraints0
-                    ^ unproven := [])
-                    ^ redundant := multi_map.init,
+                ^ unproven := [])
+                ^ redundant := multi_map.init,
             type_assign_set_typeclass_constraints(Constraints, TA0, TA)
         ),
         list.map(DeleteConstraints, OrigTypeAssignSet, NewTypeAssignSet),

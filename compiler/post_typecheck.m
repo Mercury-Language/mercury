@@ -494,7 +494,7 @@ finish_promise(PromiseType, PromiseId, !Module, !IO) :-
     % to any local symbols.
     module_info_pred_info(!.Module, PromiseId, PredInfo),
     ( pred_info_is_exported(PredInfo) ->
-        assertion.in_interface_check(Goal, PredInfo, !Module, !IO)
+        in_interface_check(Goal, PredInfo, !Module, !IO)
     ;
         true
     ).
@@ -547,6 +547,138 @@ promise_ex_goal(ExclusiveDecl, Module, Goal) :-
     ;
         unexpected(this_file, "promise_ex.goal: not an promise")
     ).
+
+%-----------------------------------------------------------------------------%
+
+    % Ensure that an assertion which is defined in an interface doesn't
+    % refer to any constructors, functions and predicates defined in the
+    % implementation of that module.
+    %
+:- pred in_interface_check(hlds_goal::in, pred_info::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+in_interface_check(plain_call(PredId, _, _, _, _,SymName) - GoalInfo,
+        _PredInfo, !Module, !IO) :-
+    module_info_pred_info(!.Module, PredId, CallPredInfo),
+    pred_info_get_import_status(CallPredInfo, ImportStatus),
+    ( status_defined_in_impl_section(ImportStatus) = yes ->
+        goal_info_get_context(GoalInfo, Context),
+        PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
+        Arity = pred_info_orig_arity(CallPredInfo),
+        IdPieces = [simple_call(simple_call_id(PredOrFunc, SymName, Arity))],
+        write_assertion_interface_error(Context, IdPieces, !Module, !IO)
+    ;
+        true
+    ).
+in_interface_check(generic_call(_, _, _, _) - _, _, !Module, !IO).
+in_interface_check(unify(Var, RHS, _, _, _) - GoalInfo, PredInfo,
+        !Module, !IO) :-
+    goal_info_get_context(GoalInfo, Context),
+    in_interface_check_unify_rhs(RHS, Var, Context, PredInfo, !Module, !IO).
+in_interface_check(call_foreign_proc(_, PredId, _, _, _, _, _) -
+        GoalInfo, _PredInfo, !Module, !IO) :-
+    module_info_pred_info(!.Module, PredId, PragmaPredInfo),
+    pred_info_get_import_status(PragmaPredInfo, ImportStatus),
+    ( status_defined_in_impl_section(ImportStatus) = yes ->
+        goal_info_get_context(GoalInfo, Context),
+        PredOrFunc = pred_info_is_pred_or_func(PragmaPredInfo),
+        Name = pred_info_name(PragmaPredInfo),
+        SymName = unqualified(Name),
+        Arity = pred_info_orig_arity(PragmaPredInfo),
+        IdPieces = [simple_call(simple_call_id(PredOrFunc, SymName, Arity))],
+        write_assertion_interface_error(Context, IdPieces, !Module, !IO)
+    ;
+        true
+    ).
+in_interface_check(conj(_, Goals) - _, PredInfo, !Module, !IO) :-
+    in_interface_check_list(Goals, PredInfo, !Module, !IO).
+in_interface_check(switch(_, _, _) - _, _, _, _, !IO) :-
+    unexpected(this_file, "in_interface_check: assertion contains switch.").
+in_interface_check(disj(Goals) - _, PredInfo, !Module, !IO) :-
+    in_interface_check_list(Goals, PredInfo, !Module, !IO).
+in_interface_check(negation(Goal) - _, PredInfo, !Module, !IO) :-
+    in_interface_check(Goal, PredInfo, !Module, !IO).
+in_interface_check(scope(_, Goal) - _, PredInfo, !Module, !IO) :-
+    in_interface_check(Goal, PredInfo, !Module, !IO).
+in_interface_check(if_then_else(_, If, Then, Else) - _, PredInfo,
+        !Module, !IO) :-
+    in_interface_check(If, PredInfo, !Module, !IO),
+    in_interface_check(Then, PredInfo, !Module, !IO),
+    in_interface_check(Else, PredInfo, !Module, !IO).
+in_interface_check(shorthand(ShorthandGoal) - _GoalInfo, PredInfo,
+        !Module, !IO) :-
+    in_interface_check_shorthand(ShorthandGoal, PredInfo, !Module, !IO).
+
+:- pred in_interface_check_shorthand(shorthand_goal_expr::in,
+    pred_info::in, module_info::in, module_info::out, io::di, io::uo) is det.
+
+in_interface_check_shorthand(bi_implication(LHS, RHS), PredInfo,
+        !Module, !IO) :-
+    in_interface_check(LHS, PredInfo, !Module, !IO),
+    in_interface_check(RHS, PredInfo, !Module, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred in_interface_check_unify_rhs(unify_rhs::in, prog_var::in,
+    prog_context::in, pred_info::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+in_interface_check_unify_rhs(rhs_var(_), _, _, _, !Module, !IO).
+in_interface_check_unify_rhs(rhs_functor(ConsId, _, _), Var, Context,
+        PredInfo, !Module, !IO) :-
+    pred_info_clauses_info(PredInfo, ClausesInfo),
+    clauses_info_get_vartypes(ClausesInfo, VarTypes),
+    map.lookup(VarTypes, Var, Type),
+    ( type_to_ctor_and_args(Type, TypeCtor, _) ->
+        module_info_get_type_table(!.Module, Types),
+        map.lookup(Types, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+        ( status_defined_in_impl_section(TypeStatus) = yes ->
+            ConsIdStr = cons_id_to_string(ConsId),
+            IdPieces = [words("constructor"), quote(ConsIdStr)],
+            write_assertion_interface_error(Context, IdPieces, !Module, !IO)
+        ;
+            true
+        )
+    ;
+        unexpected(this_file,
+            "in_interface_check_unify_rhs: type_to_ctor_and_args failed.")
+    ).
+in_interface_check_unify_rhs(rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
+        _Var, _Context, PredInfo, !Module, !IO) :-
+    in_interface_check(Goal, PredInfo, !Module, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred in_interface_check_list(hlds_goals::in, pred_info::in,
+    module_info::in, module_info::out, io::di, io::uo)is det.
+
+in_interface_check_list([], _, !Module, !IO).
+in_interface_check_list([Goal0 | Goal0s], PredInfo, !Module, !IO) :-
+    in_interface_check(Goal0, PredInfo, !Module, !IO),
+    in_interface_check_list(Goal0s, PredInfo, !Module, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred write_assertion_interface_error(prog_context::in,
+    list(format_component)::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+write_assertion_interface_error(Context, IdPieces, !ModuleInfo, !IO) :-
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    MainPieces =
+        [words("In interface for module"), sym_name(ModuleName), suffix(":"),
+        nl, words("error: exported promise refers to")] ++ IdPieces ++
+        [words("which is defined in the implementation section of module"),
+        sym_name(ModuleName), suffix("."), nl],
+    VerbosePieces =
+        [words("Either move the promise into the implementation section"),
+        words("or move the definition into the interface."), nl],
+    Msgs = [always(MainPieces), verbose_only(VerbosePieces)],
+    Spec = error_spec(severity_error, phase_type_check,
+        [simple_msg(Context, Msgs)]),
+    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -680,17 +812,17 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !IO) :-
         true
     ;
         ProcIds = pred_info_procids(!.PredInfo),
-        check_for_indistinguishable_modes(ModuleInfo, PredId,
+        check_for_indistinguishable_modes_in_procs(ModuleInfo, PredId,
             ProcIds, [], !PredInfo, !IO)
     ).
 
-:- pred check_for_indistinguishable_modes(module_info::in, pred_id::in,
-    list(proc_id)::in, list(proc_id)::in, pred_info::in, pred_info::out,
-    io::di, io::uo) is det.
+:- pred check_for_indistinguishable_modes_in_procs(module_info::in,
+    pred_id::in, list(proc_id)::in, list(proc_id)::in,
+    pred_info::in, pred_info::out, io::di, io::uo) is det.
 
-check_for_indistinguishable_modes(_, _, [], _, !PredInfo, !IO).
-check_for_indistinguishable_modes(ModuleInfo, PredId, [ProcId | ProcIds],
-        PrevProcIds, !PredInfo, !IO) :-
+check_for_indistinguishable_modes_in_procs(_, _, [], _, !PredInfo, !IO).
+check_for_indistinguishable_modes_in_procs(ModuleInfo, PredId,
+        [ProcId | ProcIds], PrevProcIds, !PredInfo, !IO) :-
     check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId,
         PrevProcIds, Removed, !PredInfo, !IO),
     (
@@ -700,7 +832,7 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, [ProcId | ProcIds],
         Removed = no,
         PrevProcIds1 = [ProcId | PrevProcIds]
     ),
-    check_for_indistinguishable_modes(ModuleInfo, PredId, ProcIds,
+    check_for_indistinguishable_modes_in_procs(ModuleInfo, PredId, ProcIds,
         PrevProcIds1, !PredInfo, !IO).
 
 :- pred check_for_indistinguishable_mode(module_info::in, pred_id::in,
@@ -728,8 +860,10 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
                 MakeOptInt = yes
             )
         ->
+            % XXX We shouldn't ignore the updated ModuleInfo, which may
+            % differ from the old one in including an updated error count.
             report_indistinguishable_modes_error(ProcId1,
-                ProcId, PredId, !.PredInfo, ModuleInfo, !IO)
+                ProcId, PredId, !.PredInfo, ModuleInfo, _NewModuleInfo, !IO)
         ;
             true
         ),
@@ -880,7 +1014,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             type_to_ctor_and_args(TypeOfX, TypeCtorOfX, _),
             TypeCtorOfX = type_ctor(qualified(TypeModule, _), _)
         ->
-            unqualify_name(Name0, Name),
+            Name = unqualify_name(Name0),
             ConsId = cons(qualified(TypeModule, Name), Arity)
         ;
             ConsId = ConsId0
@@ -1229,8 +1363,8 @@ get_constructor_containing_field_3([MaybeArgFieldName - _ | CtorArgs],
         FieldName, FieldNumber0, FieldNumber) :-
     (
         MaybeArgFieldName = yes(ArgFieldName),
-        unqualify_name(ArgFieldName, UnqualFieldName),
-        unqualify_name(FieldName, UnqualFieldName)
+        UnqualFieldName = unqualify_name(ArgFieldName),
+        UnqualFieldName = unqualify_name(FieldName)
     ->
         FieldNumber = FieldNumber0
     ;

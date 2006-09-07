@@ -249,7 +249,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
         "ml_gen_enum_constant: arity != []"),
 
     % Generate an MLDS definition for this enumeration constant.
-    unqualify_name(Name, UnqualifiedName),
+    UnqualifiedName = unqualify_name(Name),
     MLDS_Defn = mlds_defn(entity_data(var(mlds_var_name(UnqualifiedName, no))),
         mlds_make_context(Context),
         ml_gen_enum_constant_decl_flags,
@@ -450,7 +450,7 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
         % in the `--tags none' case, where there will be no primary tags.
 
         Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args),
-        unqualify_name(Name, UnqualifiedName),
+        UnqualifiedName = unqualify_name(Name),
         ConstValue = const(mlconst_int(SecondaryTag)),
         MLDS_Defn = mlds_defn(
             entity_data(var(mlds_var_name(UnqualifiedName, no))),
@@ -574,7 +574,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
     MLDS_Context = mlds_make_context(Context),
 
     % Generate the class name for this constructor.
-    unqualify_name(CtorName, UnqualCtorName),
+    UnqualCtorName = unqualify_name(CtorName),
     list.length(Args, CtorArity),
 
     TagVal = get_tagval(ConsTagValues, Ctor),

@@ -1,23 +1,23 @@
-det_atomic_goal_msgs.m:008: In `det_calls_failure(in, out)':
+det_atomic_goal_msgs.m:008: In `det_calls_failure'(in, out):
 det_atomic_goal_msgs.m:008:   error: determinism declaration not satisfied.
 det_atomic_goal_msgs.m:008:   Declared `det', inferred `failure'.
-det_atomic_goal_msgs.m:015:   call to `det_atomic_goal_msgs.failure_pred(in)'
+det_atomic_goal_msgs.m:015:   call to `det_atomic_goal_msgs.failure_pred'(in)
 det_atomic_goal_msgs.m:015:   can fail.
-det_atomic_goal_msgs.m:009: In `det_calls_semidet(in, out)':
+det_atomic_goal_msgs.m:009: In `det_calls_semidet'(in, out):
 det_atomic_goal_msgs.m:009:   error: determinism declaration not satisfied.
 det_atomic_goal_msgs.m:009:   Declared `det', inferred `semidet'.
-det_atomic_goal_msgs.m:016:   call to `det_atomic_goal_msgs.semidet_pred(in)'
+det_atomic_goal_msgs.m:016:   call to `det_atomic_goal_msgs.semidet_pred'(in)
 det_atomic_goal_msgs.m:016:   can fail.
-det_atomic_goal_msgs.m:010: In `det_calls_multi(out)':
+det_atomic_goal_msgs.m:010: In `det_calls_multi'(out):
 det_atomic_goal_msgs.m:010:   error: determinism declaration not satisfied.
 det_atomic_goal_msgs.m:010:   Declared `det', inferred `multi'.
-det_atomic_goal_msgs.m:017:   call to `det_atomic_goal_msgs.multi_pred(out)'
+det_atomic_goal_msgs.m:017:   call to `det_atomic_goal_msgs.multi_pred'(out)
 det_atomic_goal_msgs.m:017:   can succeed more than once.
-det_atomic_goal_msgs.m:011: In `det_calls_nondet(in, out)':
+det_atomic_goal_msgs.m:011: In `det_calls_nondet'(in, out):
 det_atomic_goal_msgs.m:011:   error: determinism declaration not satisfied.
 det_atomic_goal_msgs.m:011:   Declared `det', inferred `nondet'.
-det_atomic_goal_msgs.m:018:   call to `det_atomic_goal_msgs.nondet_pred(in,
-det_atomic_goal_msgs.m:018:   out)' can fail and can succeed more than once.
-det_atomic_goal_msgs.m:038: In `failure_pred(in)':
+det_atomic_goal_msgs.m:018:   call to `det_atomic_goal_msgs.nondet_pred'(in,
+det_atomic_goal_msgs.m:018:   out) can fail and can succeed more than once.
+det_atomic_goal_msgs.m:038: In `failure_pred'(in):
 det_atomic_goal_msgs.m:038:   error: determinism declaration not satisfied.
 det_atomic_goal_msgs.m:038:   Declared `failure', inferred `det'.

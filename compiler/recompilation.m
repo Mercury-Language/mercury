@@ -423,7 +423,7 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
     ;
         ItemSet0 = !.Info ^ used_items,
         IdSet0 = extract_ids(ItemSet0, ItemType),
-        unqualify_name(QualifiedName, UnqualifiedName),
+        UnqualifiedName = unqualify_name(QualifiedName),
         ModuleName = find_module_qualifier(QualifiedName),
         UnqualifiedId = UnqualifiedName - Arity,
         Id = item_name(SymName, _),

@@ -368,7 +368,7 @@ add_gathered_item(Item, ItemId, ItemContext, Section, AddIfNotExisting,
         !GatheredItems) :-
     ItemId = item_id(ItemType, ItemName),
     ItemName = item_name(SymName, Arity),
-    unqualify_name(SymName, Name),
+    Name = unqualify_name(SymName),
     IdMap0 = extract_ids(!.GatheredItems, ItemType),
     NameArity = Name - Arity,
     ( map.search(IdMap0, NameArity, MatchingItems0) ->

@@ -1,11 +1,10 @@
-purity_type_error.m:020: In clause for predicate `purity_type_error.type_error/1':
+purity_type_error.m:020: In clause for predicate `type_error'/1:
 purity_type_error.m:020:   in argument 1 of clause head:
 purity_type_error.m:020:   type error in unification of variable `HeadVar__1'
 purity_type_error.m:020:   and constant `1.00000000000000'.
 purity_type_error.m:020:   variable `HeadVar__1' has type `int',
 purity_type_error.m:020:   constant `1.00000000000000' has type `float'.
-	The partial type assignment was:
-	HeadVar__1_1: int
-
-purity_type_error.m:009: In predicate `purity_type_error.warn/1':
+purity_type_error.m:020:   The partial type assignment was:
+purity_type_error.m:020:     HeadVar__1_1: int
+purity_type_error.m:009: In predicate `purity_type_error.warn'/1:
 purity_type_error.m:009:   warning: declared impure but actually pure.

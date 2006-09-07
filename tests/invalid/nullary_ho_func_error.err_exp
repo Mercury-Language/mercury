@@ -1,15 +1,14 @@
-nullary_ho_func_error.m:022: In clause for predicate `nullary_ho_func_error.main/2':
-nullary_ho_func_error.m:022:   in argument 1 of call to predicate `print/3':
+nullary_ho_func_error.m:022: In clause for predicate `main'/2:
+nullary_ho_func_error.m:022:   in argument 1 of call to predicate `print'/3:
 nullary_ho_func_error.m:022:   in argument 1 of functor `apply_nullary_func/1':
 nullary_ho_func_error.m:022:   type error in unification of argument
 nullary_ho_func_error.m:022:   and constant `pi'.
 nullary_ho_func_error.m:022:   argument has type `((func) = T)',
 nullary_ho_func_error.m:022:   constant `pi' has type `float'.
-	The partial type assignment was:
-	DCG_0_3: (io.state)
-	DCG_1_4: (io.state)
-	DCG_3_6: (io.state)
-	V_7: string
-	V_8: T
-	V_9: ((func) = T)
-
+nullary_ho_func_error.m:022:   The partial type assignment was:
+nullary_ho_func_error.m:022:     DCG_0_3: (io.state)
+nullary_ho_func_error.m:022:     DCG_1_4: (io.state)
+nullary_ho_func_error.m:022:     DCG_3_6: (io.state)
+nullary_ho_func_error.m:022:     V_7: string
+nullary_ho_func_error.m:022:     V_8: T
+nullary_ho_func_error.m:022:     V_9: ((func) = T)

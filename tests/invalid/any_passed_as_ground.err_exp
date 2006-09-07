@@ -1,5 +1,5 @@
 any_passed_as_ground.m:036: In clause for `main(di, uo)':
-any_passed_as_ground.m:036:   in call to predicate `list.member/2':
+any_passed_as_ground.m:036:   in call to predicate `list.member'/2:
 any_passed_as_ground.m:036:   mode error: arguments `TypeInfo_16, V_11, Xs'
 any_passed_as_ground.m:036:   have the following insts:
 any_passed_as_ground.m:036:     unique(private_builtin.type_info(unique(<type_ctor_info
@@ -9,5 +9,5 @@ any_passed_as_ground.m:036:     any_passed_as_ground.st/0>))),
 any_passed_as_ground.m:036:     free,
 any_passed_as_ground.m:036:     any
 any_passed_as_ground.m:036:   which does not match any of the modes for
-any_passed_as_ground.m:036:   predicate `list.member/2'.
+any_passed_as_ground.m:036:   predicate `list.member'/2.
 For more information, recompile with `-E'.

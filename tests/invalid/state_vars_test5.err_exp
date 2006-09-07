@@ -1,4 +1,4 @@
-state_vars_test5.m:021: In clause for predicate `state_vars_test5.p/1':
+state_vars_test5.m:021: In clause for predicate `state_vars_test5.p'/1:
 state_vars_test5.m:021:   warning: variable `STATE_VARIABLE_X' occurs only once
 state_vars_test5.m:021:   in this scope.
 state_vars_test5.m:021: In clause for `p(out)':
@@ -7,4 +7,3 @@ state_vars_test5.m:021:   instantiated.
 state_vars_test5.m:021:   Final instantiatedness of `STATE_VARIABLE_X' was
 state_vars_test5.m:021:   `free',
 state_vars_test5.m:021:   expected final instantiatedness was `ground'.
-For more information, recompile with `-E'.

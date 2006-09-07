@@ -1,25 +1,23 @@
-ext_type.m:016: In clause for predicate `ext_type.p/2':
+ext_type.m:016: In clause for predicate `p'/2:
 ext_type.m:016:   type error in unification of variable `Z'
 ext_type.m:016:   and functor `q/1'.
 ext_type.m:016:   variable `Z' has type `(some [QT] QT)',
-ext_type.m:016:   functor `q/1' has type 
+ext_type.m:016:   functor `q/1' has type
 ext_type.m:016:   `q(int): (some [QT] QT)'.
-	The partial type assignment was:
-	some [QT_2]
-	HeadVar__1_1: (bool.bool)
-	HeadVar__2_2: QT
-	Y_3: QT
-	V_4: int
-	Z_5: QT
-
-ext_type.m:019: In clause for predicate `ext_type.r/0':
+ext_type.m:016:   The partial type assignment was:
+ext_type.m:016:     some [QT_2]
+ext_type.m:016:     HeadVar__1_1: (bool.bool)
+ext_type.m:016:     HeadVar__2_2: QT
+ext_type.m:016:     Y_3: QT
+ext_type.m:016:     V_4: int
+ext_type.m:016:     Z_5: QT
+ext_type.m:019: In clause for predicate `r'/0:
 ext_type.m:019:   type error in unification of argument
 ext_type.m:019:   and functor `q/1'.
 ext_type.m:019:   argument has type `(some [QT] QT)',
-ext_type.m:019:   functor `q/1' has type 
+ext_type.m:019:   functor `q/1' has type
 ext_type.m:019:   `q(int): (some [QT] QT)'.
-	The partial type assignment was:
-	some [QT_1]
-	V_1: QT
-	V_2: int
-
+ext_type.m:019:   The partial type assignment was:
+ext_type.m:019:     some [QT_1]
+ext_type.m:019:     V_1: QT
+ext_type.m:019:     V_2: int

@@ -1,4 +1,4 @@
 term_indirect_warning.m:011: Termination of predicate
-term_indirect_warning.m:011:   `term_indirect_warning.foo/3' mode 0 not proven
+term_indirect_warning.m:011:   `term_indirect_warning.foo'/3 mode 0 not proven
 term_indirect_warning.m:011:   for the following reason:
 term_indirect_warning.m:016: It contains a higher order call.

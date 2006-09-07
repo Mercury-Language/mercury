@@ -1,2 +1,2 @@
-circ_type5.m:006: Error: circular equivalence type `circ_type5.c/1'.
-circ_type5.m:007: Error: circular equivalence type `circ_type5.c/0'.
+circ_type5.m:006: Error: circular equivalence type `circ_type5.c'/1.
+circ_type5.m:007: Error: circular equivalence type `circ_type5.c'/0.

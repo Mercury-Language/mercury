@@ -6147,7 +6147,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         list.member(Item, Items),
         Item = item_pred_or_func(_, _, _, _, predicate, Name, [_, _],
             WithType, _, _, _, _, _) - _,
-        unqualify_name(Name, "main"),
+        unqualify_name(Name) = "main",
 
         % XXX We should allow `main/2' to be declared using
         % `with_type`, but equivalences haven't been expanded

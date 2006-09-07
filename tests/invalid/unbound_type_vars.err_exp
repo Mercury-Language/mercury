@@ -1,6 +1,6 @@
 unbound_type_vars.m:014: Error: type variable in superclass constraint is not a parameter of this type class: c1(_1, _2).
 unbound_type_vars.m:018: Error: unbound type variable(s) in constraints on instance declaration: c1(int, float) <= c3(_1).
-unbound_type_vars.m:021: In declaration for predicate `unbound_type_vars.p1/1':
+unbound_type_vars.m:021: In declaration for predicate `unbound_type_vars.p1'/1:
 unbound_type_vars.m:021:   error in type class constraints: type variable T2
 unbound_type_vars.m:021:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:021:   the predicate's argument types.
@@ -23,7 +23,7 @@ unbound_type_vars.m:021:   2) The type variable occurs in a type which is fully
 unbound_type_vars.m:021:   determined.
 unbound_type_vars.m:021:   See the "Functional dependencies" section of the
 unbound_type_vars.m:021:   reference manual for details.
-unbound_type_vars.m:024: In declaration for predicate `unbound_type_vars.p2/2':
+unbound_type_vars.m:024: In declaration for predicate `unbound_type_vars.p2'/2:
 unbound_type_vars.m:024:   error in type class constraints: type variable T3
 unbound_type_vars.m:024:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:024:   the predicate's argument types.
@@ -46,7 +46,7 @@ unbound_type_vars.m:024:   2) The type variable occurs in a type which is fully
 unbound_type_vars.m:024:   determined.
 unbound_type_vars.m:024:   See the "Functional dependencies" section of the
 unbound_type_vars.m:024:   reference manual for details.
-unbound_type_vars.m:028: In declaration for predicate `unbound_type_vars.p3/1':
+unbound_type_vars.m:028: In declaration for predicate `unbound_type_vars.p3'/1:
 unbound_type_vars.m:028:   error in type class constraints: type variable T2
 unbound_type_vars.m:028:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:028:   the predicate's argument types.
@@ -69,7 +69,7 @@ unbound_type_vars.m:028:   2) The type variable occurs in a type which is fully
 unbound_type_vars.m:028:   determined.
 unbound_type_vars.m:028:   See the "Functional dependencies" section of the
 unbound_type_vars.m:028:   reference manual for details.
-unbound_type_vars.m:031: In declaration for predicate `unbound_type_vars.p4/1':
+unbound_type_vars.m:031: In declaration for predicate `unbound_type_vars.p4'/1:
 unbound_type_vars.m:031:   error in type class constraints: type variable T2
 unbound_type_vars.m:031:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:031:   the predicate's argument types.
@@ -92,7 +92,7 @@ unbound_type_vars.m:031:   2) The type variable occurs in a type which is fully
 unbound_type_vars.m:031:   determined.
 unbound_type_vars.m:031:   See the "Functional dependencies" section of the
 unbound_type_vars.m:031:   reference manual for details.
-unbound_type_vars.m:034: In declaration for predicate `unbound_type_vars.p5/1':
+unbound_type_vars.m:034: In declaration for predicate `unbound_type_vars.p5'/1:
 unbound_type_vars.m:034:   error in type class constraints: type variable T2
 unbound_type_vars.m:034:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:034:   the predicate's argument types.
@@ -115,6 +115,6 @@ unbound_type_vars.m:034:   2) The type variable occurs in a type which is fully
 unbound_type_vars.m:034:   determined.
 unbound_type_vars.m:034:   See the "Functional dependencies" section of the
 unbound_type_vars.m:034:   reference manual for details.
-unbound_type_vars.m:034: In declaration of predicate `unbound_type_vars.p5/1':
+unbound_type_vars.m:034: In declaration of predicate `unbound_type_vars.p5'/1:
 unbound_type_vars.m:034:   type variable T2 is universally constrained, but is
 unbound_type_vars.m:034:   existentially quantified.

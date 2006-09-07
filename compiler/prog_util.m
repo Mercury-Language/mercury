@@ -30,9 +30,9 @@
 
     % Given a symbol name, return its unqualified name.
     %
-:- pred unqualify_name(sym_name::in, string::out) is det.
+:- func unqualify_name(sym_name) = string.
 
-    % sym_name_get_module_name(SymName, ModName):
+    % sym_name_get_module_name(SymName) = ModName:
     %
     % Given a symbol name, return the module qualifiers(s).
     % Fails if the symbol is unqualified.
@@ -294,8 +294,8 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-unqualify_name(unqualified(PredName), PredName).
-unqualify_name(qualified(_ModuleName, PredName), PredName).
+unqualify_name(unqualified(Name)) = Name.
+unqualify_name(qualified(_ModuleName, Name)) = Name.
 
 sym_name_get_module_name(unqualified(_), _) :- fail.
 sym_name_get_module_name(qualified(ModuleName, _), ModuleName).

@@ -1,4 +1,4 @@
-table_with_inline.m:011: Warning: function `table_with_inline.foo/1' has a
+table_with_inline.m:011: Warning: function `table_with_inline.foo'/1 has a
 table_with_inline.m:011:   `:- pragma memo' declaration but also has a
 table_with_inline.m:011:   `:- pragma inline' declaration.
 table_with_inline.m:011:   This inline pragma will be ignored since tabled

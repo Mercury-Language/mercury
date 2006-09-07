@@ -2,4 +2,4 @@ typeclass_mode_3.m:007: Error: mode declaration for type class method
 typeclass_mode_3.m:007:   `typeclass_mode_3.p'/1 without corresponding
 typeclass_mode_3.m:007:   predicate method declaration.
 typeclass_mode_3.m:004: Error: no mode declaration for exported predicate
-typeclass_mode_3.m:004:   `typeclass_mode_3.p/1'.
+typeclass_mode_3.m:004:   `typeclass_mode_3.p'/1.

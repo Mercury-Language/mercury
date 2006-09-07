@@ -1,8 +1,8 @@
 typeclass_mode_2.m:005: Error: mode declaration for type class method
 typeclass_mode_2.m:005:   `typeclass_mode_2.p'/1 without corresponding
 typeclass_mode_2.m:005:   predicate method declaration.
-typeclass_mode_2.m:010: Error: clause for predicate `typeclass_mode_2.p/1'
+typeclass_mode_2.m:010: Error: clause for predicate `typeclass_mode_2.p'/1
 typeclass_mode_2.m:010:   without preceding `pred' declaration.
 typeclass_mode_2.m:010: Inferred :- pred p(T1).
-typeclass_mode_2.m:010: Error: no mode declaration for predicate
-typeclass_mode_2.m:010:   `typeclass_mode_2.p/1'.
+typeclass_mode_2.m:010: Error: no mode declaration for predicate `p'/1.
+For more information, recompile with `-E'.

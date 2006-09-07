@@ -2194,7 +2194,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
         !ExtraGoals, !Info) :-
     ClassId = class_id(ClassName, _ClassArity),
     % First create a variable to hold the new typeclass_info.
-    unqualify_name(ClassName, ClassNameString),
+    ClassNameString = unqualify_name(ClassName),
     new_typeclass_info_var(Constraint, ClassNameString, Var, !Info),
     MaybeVar = yes(Var),
     % Then work out where to extract it from.
@@ -2268,7 +2268,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
 
     ClassId = class_id(ClassName, _Arity),
 
-    unqualify_name(ClassName, ClassNameString),
+    ClassNameString = unqualify_name(ClassName),
     new_typeclass_info_var(Constraint, ClassNameString, BaseVar, !Info),
 
     module_info_get_instance_table(ModuleInfo, InstanceTable),
@@ -2909,8 +2909,8 @@ make_typeclass_info_head_var(RecordLocns, Constraint, ExtraHeadVar, !Info) :-
     ;
         % Make a new variable to contain the dictionary for this typeclass
         % constraint.
-        Constraint = constraint(ClassName0, _ClassTypes),
-        unqualify_name(ClassName0, ClassName),
+        Constraint = constraint(ClassSymName, _ClassTypes),
+        ClassName = unqualify_name(ClassSymName),
         new_typeclass_info_var(Constraint, ClassName, ExtraHeadVar, !Info),
         (
             RecordLocns = do_record_type_info_locns,

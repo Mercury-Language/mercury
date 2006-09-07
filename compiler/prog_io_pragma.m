@@ -1002,7 +1002,7 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm, VarSet0,
                     SpecializedName = SpecializedName0
                 ;
                     MaybeName = no,
-                    unqualify_name(PredName, UnqualName),
+                    UnqualName = unqualify_name(PredName),
                     make_pred_name(ModuleName, "TypeSpecOf", MaybePredOrFunc,
                         UnqualName, newpred_type_subst(TVarSet, TypeSubn),
                         SpecializedName)
