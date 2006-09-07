@@ -1,6 +1,6 @@
 #!/bin/sh
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1998, 2002 The University of Melbourne. 
+# Copyright (C) 1997-1998, 2002, 2006 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -100,13 +100,13 @@ $last_half
 .SH AUTHORS
 The Mercury team.
 .P
-See <http://www.cs.mu.oz.au/mercury/contact/people.html>.
+See <http://www.mercury.csse.unimelb.edu.au/contact/people.html>.
 .SH COPYRIGHT
 This program and its documentation are copyright by the University of Melbourne.
 They may be copied only under the terms of the GNU General Public License \-
 see the file COPYING in the Mercury distribution.
 .SH "SEE ALSO"
-<http://www.cs.mu.oz.au/mercury/information/documentation.html>
+<http://www.mercury.csse.unimelb.edu.au/information/documentation.html>
 .P
 The Mercury User's Guide.
 .P

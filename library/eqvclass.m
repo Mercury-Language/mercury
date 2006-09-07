@@ -24,7 +24,7 @@
 :- type eqvclass(T).
 :- type partition_id.
 
-    % Create an empty equivalance class.
+    % Create an empty equivalence class.
     %
 :- func eqvclass.init = eqvclass(T).
 :- pred eqvclass.init(eqvclass(T)::out) is det.

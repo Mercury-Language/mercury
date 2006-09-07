@@ -82,7 +82,7 @@
 
     % graph.search_node(Graph, NodeInfo, Node) nondeterministically
     % produces bindings of Node such that Node is a node in Graph
-    % that has the information NodeInfo attatched to it.
+    % that has the information NodeInfo attached to it.
     %
     % This operation is O(lgN) for the first solution for a graph
     % containing N nodes.

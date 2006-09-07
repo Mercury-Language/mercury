@@ -248,7 +248,7 @@ than usual.
 but it still didn't work. What do I do next?}
 @sp 1
 
-Send email to @code{mercury-bugs@@cs.mu.oz.au},
+Send email to @code{mercury-bugs@@csse.unimelb.edu.au},
 and we'll try to solve your problem.
 
 @end enumerate
