@@ -19,12 +19,12 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.equiv_type.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 :- import_module recompilation.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -65,7 +65,8 @@
     %
 :- pred process_type_qualification(prog_var::in, mer_type::in, tvarset::in,
     prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred make_atomic_unification(prog_var::in, unify_rhs::in, prog_context::in,
     unify_main_context::in, unify_sub_contexts::in, purity::in, hlds_goal::out,
@@ -93,7 +94,6 @@
 :- implementation.
 
 :- import_module hlds.hlds_data.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -186,7 +186,7 @@ set_module_recompilation_info(QualInfo, !ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
-        !QualInfo, !IO) :-
+        !QualInfo, !Specs) :-
     !.QualInfo = qual_info(EqvMap, TVarSet0, TVarRenaming0,
         TVarNameMap0, VarTypes0, MQInfo0, Status, FoundError),
     ( Status = status_opt_imported ->
@@ -194,8 +194,8 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
         Type1 = Type0,
         MQInfo = MQInfo0
     ;
-        module_qual.qualify_type_qualification(Type0, Type1,
-            Context, MQInfo0, MQInfo, !IO)
+        qualify_type_qualification(Type0, Type1, Context, MQInfo0, MQInfo,
+            !Specs)
     ),
 
     % Find any new type variables introduced by this type, and
@@ -215,24 +215,24 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
     RecordExpanded = no,
     equiv_type.replace_in_type(EqvMap, Type2, Type, _, TVarSet1, TVarSet,
         RecordExpanded, _),
-    update_var_types(Var, Type, Context, VarTypes0, VarTypes, !IO),
+    update_var_types(Var, Type, Context, VarTypes0, VarTypes, !Specs),
     !:QualInfo = qual_info(EqvMap, TVarSet, TVarRenaming,
         TVarNameMap, VarTypes, MQInfo, Status, FoundError).
 
 :- pred update_var_types(prog_var::in, mer_type::in, prog_context::in,
-    vartypes::in, vartypes::out, io::di, io::uo) is det.
+    vartypes::in, vartypes::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-update_var_types(Var, Type, Context, !VarTypes, !IO) :-
+update_var_types(Var, Type, Context, !VarTypes, !Specs) :-
     ( map.search(!.VarTypes, Var, Type0) ->
         ( Type = Type0 ->
             true
         ;
-            ErrMsg = [
-                words("Error: explicit type qualification does"),
-                words("not match prior qualification.")
-            ],
-            write_error_pieces(Context, 0, ErrMsg, !IO),
-            io.set_exit_status(1, !IO)
+            Pieces = [words("Error: explicit type qualification"),
+                words("does not match prior qualification."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ;
         svmap.det_insert(Var, Type, !VarTypes)

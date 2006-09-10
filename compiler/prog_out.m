@@ -98,11 +98,6 @@
 :- pred write_module_spec(module_specifier::in, io::di, io::uo) is det.
 :- func module_spec_to_escaped_string(module_specifier) = string.
 
-:- pred write_module_list(list(module_name)::in, io::di, io::uo) is det.
-
-:- pred write_list(list(T)::in, pred(T, io, io)::in(pred(in, di, uo) is det),
-    io::di, io::uo) is det.
-
 :- pred write_string_list(list(string)::in, io::di, io::uo) is det.
 
 :- pred write_promise_type(promise_type::in, io::di, io::uo) is det.
@@ -294,29 +289,28 @@ simple_call_id_to_string(PredOrFunc, SymName, Arity) = Str :-
     Name = unqualify_name(SymName),
     % Is it really a promise?
     ( string.prefix(Name, "promise__") ->
-        MaybePromise = yes(true)
+        MaybePromise = yes(promise_type_true)
     ; string.prefix(Name, "promise_exclusive__") ->
-        MaybePromise = yes(exclusive)
+        MaybePromise = yes(promise_type_exclusive)
     ; string.prefix(Name, "promise_exhaustive__") ->
-        MaybePromise = yes(exhaustive)
+        MaybePromise = yes(promise_type_exhaustive)
     ; string.prefix(Name, "promise_exclusive_exhaustive__") ->
-        MaybePromise = yes(exclusive_exhaustive)
+        MaybePromise = yes(promise_type_exclusive_exhaustive)
     ;
         MaybePromise = no   % No, it is really a pred or func.
     ),
     (
         MaybePromise = yes(PromiseType),
-        PromiseStr = promise_to_string(PromiseType),
-        Str = "`" ++ PromiseStr ++ "' declaration"
+        Pieces = [quote(promise_to_string(PromiseType)), words("declaration")]
     ;
         MaybePromise = no,
         SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
         simple_call_id_to_sym_name_and_arity(SimpleCallId,
             AdjustedSymNameAndArity),
         Pieces = [p_or_f(PredOrFunc),
-            sym_name_and_arity(AdjustedSymNameAndArity)],
-        Str = error_pieces_to_string(Pieces)
-    ).
+            sym_name_and_arity(AdjustedSymNameAndArity)]
+    ),
+    Str = error_pieces_to_string(Pieces).
 
 simple_call_id_to_sym_name_and_arity(SimpleCallId, SymName / OrigArity) :-
     SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
@@ -330,15 +324,8 @@ module_spec_to_escaped_string(ModuleSpec) =
 
 %-----------------------------------------------------------------------------%
 
-write_module_list(Modules, !IO) :-
-    write_list(Modules, write_module, !IO).
-
-:- pred write_module(module_name::in, io::di, io::uo) is det.
-
-write_module(Module, !IO) :-
-    io.write_string("`", !IO),
-    write_sym_name(Module, !IO),
-    io.write_string("'", !IO).
+:- pred write_list(list(T)::in, pred(T, io, io)::in(pred(in, di, uo) is det),
+    io::di, io::uo) is det.
 
 write_list([Import1, Import2, Import3 | Imports], Writer, !IO) :-
     call(Writer, Import1, !IO),
@@ -361,11 +348,11 @@ write_string_list([Name1, Name2 | Names], !IO) :-
     io.write_string(", ", !IO),
     write_string_list([Name2 | Names], !IO).
 
-promise_to_string(true) = "promise".
-promise_to_string(exclusive) = "promise_exclusive".
-promise_to_string(exhaustive) =  "promise_exhaustive".
-promise_to_string(exclusive_exhaustive) =
-        "promise_exclusive_exhaustive".
+promise_to_string(promise_type_true) = "promise".
+promise_to_string(promise_type_exclusive) = "promise_exclusive".
+promise_to_string(promise_type_exhaustive) =  "promise_exhaustive".
+promise_to_string(promise_type_exclusive_exhaustive) =
+    "promise_exclusive_exhaustive".
 
 builtin_type_to_string(builtin_type_int, "int").
 builtin_type_to_string(builtin_type_float, "float").

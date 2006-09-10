@@ -2,8 +2,8 @@ errors.m:010: Warning: module should start with a `:- module' declaration.
 errors.m:060: Error: free type parameter in RHS of type definition: f(_1).
 errors.m:061: Error: free type parameter in RHS of type definition: f(_1).
 errors.m:001: Warning: interface for module `errors' does not export anything.
-errors.m:001: Warning: module `int' is imported using both
-errors.m:001:   `:- import_module' and `:- use_module' declarations.
+errors.m:001: Warning: module `int' is imported using both `:- import_module'
+errors.m:001:   `:- use_module' declarations.
 errors.m:051: In definition of type
 errors.m:051:   `errors.du_type_which_references_undefined_type'/0:
 errors.m:051:   error: undefined type `undefined_type'/0.
@@ -23,13 +23,13 @@ errors.m:028:   without preceding `pred' declaration.
 errors.m:032: Error: mode declaration for predicate
 errors.m:032:   `errors.missing_pred_declaration'/0
 errors.m:032:   without preceding `pred' declaration.
+errors.m:038: Error: clause for predicate
+errors.m:038:   `errors.clause_without_pred_or_mode_declaration'/0
+errors.m:038:   without preceding `pred' declaration.
 errors.m:049: Error: constructor `errors.a/0' for type
 errors.m:049:   `errors.type_with_multiply_defined_ctors/0' multiply defined.
 errors.m:049: Error: constructor `errors.f/1' for type
 errors.m:049:   `errors.type_with_multiply_defined_ctors/0' multiply defined.
-errors.m:038: Error: clause for predicate
-errors.m:038:   `errors.clause_without_pred_or_mode_declaration'/0
-errors.m:038:   without preceding `pred' declaration.
 errors.m:075: In clause for predicate
 errors.m:075:   `errors.pred_with_unresolved_polymorphism'/0:
 errors.m:075:   warning: variable `Arg' occurs only once in this scope.

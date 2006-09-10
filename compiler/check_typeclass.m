@@ -520,7 +520,9 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
             InstanceTypes, InstanceConstraints,
             InstanceVarSet, InstanceModuleName,
             InstancePredDefn, Context,
-            InstancePredId, InstanceProcIds, Info0, Info, !IO),
+            InstancePredId, InstanceProcIds, Info0, Info, [], Specs),
+        % XXX _NumErrors
+        write_error_specs(Specs, 0, _NumWarnings, 0, _NumErrors, !IO),
 
         MakeClassProc = (pred(TheProcId::in, PredProcId::out) is det :-
                 PredProcId = hlds_class_proc(InstancePredId, TheProcId)
@@ -641,12 +643,12 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
     module_name::in, instance_proc_def::in, prog_context::in,
     pred_id::out, list(proc_id)::out,
     instance_method_info::in, instance_method_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 produce_auxiliary_procs(ClassId, ClassVars, Markers0,
         InstanceTypes0, InstanceConstraints0, InstanceVarSet,
         InstanceModuleName, InstancePredDefn, Context, PredId,
-        InstanceProcIds, Info0, Info, !IO) :-
+        InstanceProcIds, Info0, Info, !Specs) :-
 
     Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
         Arity, ExistQVars0, ArgTypes0, ClassMethodClassContext0,
@@ -722,7 +724,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     adjust_func_arity(PredOrFunc, Arity, PredArity),
     produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
         PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
-        ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, !IO),
+        ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, !Specs),
 
     % Fill in some information in the pred_info which is used by polymorphism
     % to make sure the type-infos and typeclass-infos are added in the correct
@@ -998,23 +1000,24 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
     ),
     (
         MissingConcreteError = yes,
+        !:FoundError = yes,
         ClassId = class_id(ClassName, _),
         sym_name_to_string(ClassName, ClassNameString),
         AbstractTypesString = mercury_type_list_to_string(
             AbstractInstance ^ instance_tvarset, AbstractTypes),
-        AbstractInstanceName = "`" ++ ClassNameString ++
-            "(" ++ AbstractTypesString ++ ")'",
+        AbstractInstanceName = ClassNameString ++
+            "(" ++ AbstractTypesString ++ ")",
         % XXX Should we mention any constraints on the instance
         % declaration here?
-        ErrorPieces = [words("Error: abstract instance declaration"),
-            words("for"), fixed(AbstractInstanceName),
+        Pieces = [words("Error: abstract instance declaration"),
+            words("for"), quote(AbstractInstanceName),
             words("has no corresponding concrete"),
-            words("instance in the implementation.")
-        ],
+            words("instance in the implementation."), nl],
         AbstractInstanceContext = AbstractInstance ^ instance_context,
-        write_error_pieces(AbstractInstanceContext, 0, ErrorPieces, !IO),
-        !:FoundError = yes,
-        io.set_exit_status(1, !IO)
+        Msg = simple_msg(AbstractInstanceContext, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_type_check, [Msg]),
+        % XXX _NumErrors
+        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
     ;
         MissingConcreteError = no
     ).
@@ -1157,13 +1160,14 @@ report_cyclic_classes(ClassTable, ClassPath, !IO) :-
         ClassPath = [ClassId | Tail],
         Context = map.lookup(ClassTable, ClassId) ^ class_context,
         ClassId = class_id(Name, Arity),
-        RevPieces0 = [
-            sym_name_and_arity(Name/Arity),
-            words("Error: cyclic superclass relation detected:")
-        ],
-        RevPieces1 = foldl(add_path_element, Tail, RevPieces0),
-        Pieces = list.reverse(RevPieces1),
-        write_error_pieces(Context, 0, Pieces, !IO)
+        RevPieces0 = [sym_name_and_arity(Name/Arity),
+            words("Error: cyclic superclass relation detected:")],
+        RevPieces = foldl(add_path_element, Tail, RevPieces0),
+        Pieces = list.reverse(RevPieces),
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        % XXX _NumErrors
+        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
     ).
 
 :- func add_path_element(class_id, list(format_component))
@@ -1268,18 +1272,19 @@ report_range_restriction_error(ClassId, InstanceDefn, Vars, !IO) :-
     VarsStrs = list.map((func(Var) = mercury_var_to_string(Var, TVarSet, no)),
         Vars),
 
-    Msg = [ words("In instance for typeclass"),
-        sym_name_and_arity(SymName / Arity),
-        suffix(":"), nl,
+    Pieces = [words("In instance for typeclass"),
+        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
         words("functional dependency not satisfied:"),
         words(choose_number(Vars, "type variable", "type variables"))]
         ++ list_to_pieces(VarsStrs) ++
         [words(choose_number(Vars, "occurs", "occur")),
         words("in the range of the functional dependency, but"),
         words(choose_number(Vars, "is", "are")),
-        words("not in the domain.")],
-    write_error_pieces(Context, 0, Msg, !IO),
-    io.set_exit_status(1, !IO).
+        words("not in the domain."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
     % Check the consistency of each (unordered) pair of instances.
     %
@@ -1362,20 +1367,17 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     RangeList = mercury_vars_to_string(RangeParams, TVarSet, no),
     FunDepStr = "`(" ++ DomainList ++ " -> " ++ RangeList ++ ")'",
 
-    ErrorPiecesA = [
-        words("Inconsistent instance declaration for typeclass"),
+    PiecesA = [words("Inconsistent instance declaration for typeclass"),
         sym_name_and_arity(SymName / Arity),
-        words("with functional dependency"),
-        fixed(FunDepStr),
-        suffix(".")
-    ],
-    ErrorPiecesB = [
-        words("Here is the conflicting instance.")
-    ],
+        words("with functional dependency"), fixed(FunDepStr),
+        suffix("."), nl],
+    PiecesB = [words("Here is the conflicting instance.")],
 
-    write_error_pieces(ContextA, 0, ErrorPiecesA, !IO),
-    write_error_pieces(ContextB, 0, ErrorPiecesB, !IO),
-    io.set_exit_status(1, !IO).
+    MsgA = simple_msg(ContextA, [always(PiecesA)]),
+    MsgB = error_msg(yes(ContextB), yes, 0, [always(PiecesB)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [MsgA, MsgB]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1648,7 +1650,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo, !IO) :-
     VarsStrs = list.map((func(Var) = mercury_var_to_string(Var, TVarSet, no)),
         Vars),
 
-    Msg0 = [words("In declaration for"),
+    Pieces0 = [words("In declaration for"),
         simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
         suffix(":"), nl,
         words("error in type class constraints:"),
@@ -1660,14 +1662,17 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo, !IO) :-
         words("not determined by the")],
     (
         PredOrFunc = predicate,
-        Msg = Msg0 ++ [words("predicate's argument types.")]
+        Pieces = Pieces0 ++ [words("predicate's argument types."), nl]
     ;
         PredOrFunc = function,
-        Msg = Msg0 ++ [words("function's argument or result types.")]
+        Pieces = Pieces0 ++ [words("function's argument or result types."), nl]
     ),
-    write_error_pieces(Context, 0, Msg, !IO),
-    maybe_report_unbound_tvars_explanation(Context, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context,
+        [always(Pieces),
+        verbose_only(report_unbound_tvars_explanation)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 :- pred report_unbound_tvars_in_ctor_context(list(tvar)::in, type_ctor::in,
     hlds_type_defn::in, io::di, io::uo) is det.
@@ -1680,60 +1685,52 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !IO) :-
     VarsStrs = list.map((func(Var) = mercury_var_to_string(Var, TVarSet, no)),
         Vars),
 
-    Msg = [words("In declaration for type"),
-        sym_name_and_arity(SymName / Arity),
-        suffix(":"), nl,
+    Pieces = [words("In declaration for type"),
+        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]
         ++ list_to_pieces(VarsStrs) ++
         [words(choose_number(Vars, "occurs", "occur")),
         words("in the constraints, but"),
         words(choose_number(Vars, "is", "are")),
-        words("not determined by the constructor's argument types.")],
-    write_error_pieces(Context, 0, Msg, !IO),
-    maybe_report_unbound_tvars_explanation(Context, !IO),
-    io.set_exit_status(1, !IO).
+        words("not determined by the constructor's argument types."), nl],
+    Msg = simple_msg(Context,
+        [always(Pieces),
+        verbose_only(report_unbound_tvars_explanation)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
-:- pred maybe_report_unbound_tvars_explanation(prog_context::in,
-    io::di, io::uo) is det.
+:- func report_unbound_tvars_explanation = list(format_component).
 
-maybe_report_unbound_tvars_explanation(Context, !IO) :-
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    (
-        VerboseErrors = yes,
-        Msg = [words("All types occurring in typeclass constraints"),
-            words("must be fully determined."),
-            words("A type is fully determined if one of the"),
-            words("following holds:"),
-            nl,
-            words("1) All type variables occurring in the type"),
-            words("are determined."),
-            nl,
-            words("2) The type occurs in a constraint argument,"),
-            words("that argument is in the range of some"),
-            words("functional dependency for that class, and"),
-            words("the types in all of the domain arguments for"),
-            words("that functional dependency are fully"),
-            words("determined."),
-            nl,
-            words("A type variable is determined if one of the"),
-            words("following holds:"),
-            nl,
-            words("1) The type variable occurs in the argument"),
-            words("types of the predicate, function, or"),
-            words("constructor which is constrained."),
-            nl,
-            words("2) The type variable occurs in a type which"),
-            words("is fully determined."),
-            nl,
-            words("See the ""Functional dependencies"" section"),
-            words("of the reference manual for details.")
-        ],
-        write_error_pieces_not_first_line(Context, 0, Msg, !IO)
-    ;
-        VerboseErrors = no,
-        globals.io_set_extra_error_info(yes, !IO)
-    ).
+report_unbound_tvars_explanation =
+    [words("All types occurring in typeclass constraints"),
+    words("must be fully determined."),
+    words("A type is fully determined if one of the"),
+    words("following holds:"),
+    nl,
+    words("1) All type variables occurring in the type"),
+    words("are determined."),
+    nl,
+    words("2) The type occurs in a constraint argument,"),
+    words("that argument is in the range of some"),
+    words("functional dependency for that class, and"),
+    words("the types in all of the domain arguments for"),
+    words("that functional dependency are fully"),
+    words("determined."),
+    nl,
+    words("A type variable is determined if one of the"),
+    words("following holds:"),
+    nl,
+    words("1) The type variable occurs in the argument"),
+    words("types of the predicate, function, or"),
+    words("constructor which is constrained."),
+    nl,
+    words("2) The type variable occurs in a type which"),
+    words("is fully determined."),
+    nl,
+    words("See the ""Functional dependencies"" section"),
+    words("of the reference manual for details."), nl].
 
 %---------------------------------------------------------------------------%
 
@@ -1807,8 +1804,11 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !IO) :-
     ),
     Pieces = InDeclaration ++ TypeVariables ++ TVarsPart ++
         [Are, BlahConstrained, suffix(","), words("but"), Are,
-        BlahQuantified, suffix(".")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+        BlahQuantified, suffix("."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %---------------------------------------------------------------------------%
 

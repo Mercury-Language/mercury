@@ -32,6 +32,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.equiv_type.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -97,7 +98,8 @@
     pred_or_func::in, arity::in, list(mer_type)::in, pred_markers::in,
     term.context::in, import_status::in, clauses_info::out,
     module_info::in, module_info::out,
-    make_hlds_qual_info::in, make_hlds_qual_info::out, io::di, io::uo) is det.
+    make_hlds_qual_info::in, make_hlds_qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Move the recompilation_info from the qual_info to the module_info
     % after make_hlds is finished with it and the qual_info is dead.
@@ -160,10 +162,10 @@ add_special_pred_decl_for_real(SpecialPredId, TVarSet,
 
 produce_instance_method_clauses(InstanceProcDefn,
         PredOrFunc, PredArity, ArgTypes, Markers, Context, Status,
-        ClausesInfo, !ModuleInfo, !QualInfo, !IO) :-
+        ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
     do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc,
         PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
-        !ModuleInfo, !QualInfo, !IO).
+        !ModuleInfo, !QualInfo, !Specs).
 
 set_module_recomp_info(QualInfo, !ModuleInfo) :-
     set_module_recompilation_info(QualInfo, !ModuleInfo).

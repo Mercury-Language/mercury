@@ -32,13 +32,11 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module assoc_list.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -67,9 +65,6 @@
 :- func get_any_errors3(maybe3(T1, T2, T3, U)) = assoc_list(string, term(U)).
 :- func get_any_errors4(maybe4(T1, T2, T3, T4, U))
     = assoc_list(string, term(U)).
-
-:- pred report_string_term_error(term.context::in, varset(U)::in,
-    pair(string, term(U))::in, io::di, io::uo) is det.
 
 :- type maybe_functor    ==  maybe_functor(generic).
 :- type maybe_functor(T) ==  maybe2(sym_name, list(term(T))).
@@ -217,13 +212,6 @@ get_any_errors3(error3(Errors)) = Errors.
 
 get_any_errors4(ok4(_, _, _, _)) = [].
 get_any_errors4(error4(Errors)) = Errors.
-
-report_string_term_error(Context, VarSet, Msg - ErrorTerm, !IO) :-
-    TermStr = mercury_term_to_string(ErrorTerm, VarSet, no),
-    Pieces = [words("Error:"), words(Msg), suffix(":"),
-        fixed("`" ++ TermStr ++ "'.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
 
 add_context(error1(Errs), _, error2(Errs)).
 add_context(ok1(Item), Context, ok2(Item, Context)).

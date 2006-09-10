@@ -97,6 +97,7 @@
 :- import_module solutions.
 :- import_module std_util.
 :- import_module string.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -204,10 +205,10 @@ postprocess_options(ok(OptionTable0), Errors, !IO) :-
     trace_suppress_items::out, may_be_thread_safe::out,
     list(string)::in, list(string)::out) is det.
 
-check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
+check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
         !Errors) :-
-    map.lookup(OptionTable0, target, Target0),
+    map.lookup(!.OptionTable, target, Target0),
     (
         Target0 = string(TargetStr),
         convert_target(TargetStr, TargetPrime)
@@ -218,7 +219,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         add_error("Invalid target option " ++
             "(must be `c', `asm', `il', or `java')", !Errors)
     ),
-    map.lookup(OptionTable0, gc, GC_Method0),
+    map.lookup(!.OptionTable, gc, GC_Method0),
     (
         GC_Method0 = string(GC_MethodStr),
         convert_gc_method(GC_MethodStr, GC_MethodPrime)
@@ -230,7 +231,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
             "`conservative', `boehm', `mps', `accurate', or `automatic')",
             !Errors)
     ),
-    map.lookup(OptionTable0, tags, TagsMethod0),
+    map.lookup(!.OptionTable, tags, TagsMethod0),
     (
         TagsMethod0 = string(TagsMethodStr),
         convert_tags_method(TagsMethodStr, TagsMethodPrime)
@@ -241,7 +242,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         add_error("Invalid tags option " ++
             "(must be `none', `low' or `high')", !Errors)
     ),
-    map.lookup(OptionTable0, fact_table_hash_percent_full, PercentFull),
+    map.lookup(!.OptionTable, fact_table_hash_percent_full, PercentFull),
     (
         PercentFull = int(Percent),
         Percent >= 1,
@@ -253,7 +254,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
             "`--fact-table-hash-percent-full'\n\t" ++
             "(must be an integer between 1 and 100)", !Errors)
     ),
-    map.lookup(OptionTable0, termination_norm, TermNorm0),
+    map.lookup(!.OptionTable, termination_norm, TermNorm0),
     (
         TermNorm0 = string(TermNormStr),
         convert_termination_norm(TermNormStr, TermNormPrime)
@@ -265,7 +266,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
             "`--termination-norm'\n\t(must be " ++
             "`simple', `total' or `num-data-elems').", !Errors)
     ),
-    map.lookup(OptionTable0, termination2_norm, Term2Norm0),
+    map.lookup(!.OptionTable, termination2_norm, Term2Norm0),
     (
         Term2Norm0 = string(Term2NormStr),
         convert_termination_norm(Term2NormStr, Term2NormPrime)
@@ -277,13 +278,13 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
             "`--termination2-norm'\n\t(must be" ++
             "`simple', `total' or `num-data-elems').", !Errors)
     ),
-    map.lookup(OptionTable0, force_disable_tracing, ForceDisableTracing),
+    map.lookup(!.OptionTable, force_disable_tracing, ForceDisableTracing),
     ( ForceDisableTracing = bool(yes) ->
         TraceLevel = trace_level_none
     ;
-        map.lookup(OptionTable0, trace_level, Trace),
-        map.lookup(OptionTable0, exec_trace, ExecTraceOpt),
-        map.lookup(OptionTable0, decl_debug, DeclDebugOpt),
+        map.lookup(!.OptionTable, trace_level, Trace),
+        map.lookup(!.OptionTable, exec_trace, ExecTraceOpt),
+        map.lookup(!.OptionTable, decl_debug, DeclDebugOpt),
         (
             Trace = string(TraceStr),
             ExecTraceOpt = bool(ExecTrace),
@@ -306,7 +307,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
                 "`decl', `rep' or `default').", !Errors)
         )
     ),
-    map.lookup(OptionTable0, suppress_trace, Suppress),
+    map.lookup(!.OptionTable, suppress_trace, Suppress),
     (
         Suppress = string(SuppressStr),
         convert_trace_suppress(SuppressStr, TraceSuppressPrime)
@@ -316,7 +317,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         TraceSuppress = default_trace_suppress, % dummy
         add_error("Invalid argument to option `--suppress-trace'.", !Errors)
     ),
-    map.lookup(OptionTable0, maybe_thread_safe, MaybeThreadSafeOption),
+    map.lookup(!.OptionTable, maybe_thread_safe_opt, MaybeThreadSafeOption),
     (
         MaybeThreadSafeOption = string(MaybeThreadSafeString),
         convert_maybe_thread_safe(MaybeThreadSafeString, MaybeThreadSafe0)
@@ -326,20 +327,18 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         MaybeThreadSafe = no, % dummy
         add_error("Invalid argument to option `--maybe-thread-safe'.", !Errors)
     ),
-    map.lookup(OptionTable0, dump_hlds_alias, DumpAliasOption),
+    map.lookup(!.OptionTable, dump_hlds_alias, DumpAliasOption),
     (
         DumpAliasOption = string(DumpAlias),
         DumpAlias = ""
     ->
-        OptionTable = OptionTable0
+        true
     ;
         DumpAliasOption = string(DumpAlias),
         convert_dump_alias(DumpAlias, DumpOptions)
     ->
-        map.set(OptionTable0, dump_hlds_options, string(DumpOptions),
-            OptionTable)
+        svmap.set(dump_hlds_options, string(DumpOptions), !OptionTable)
     ;
-        OptionTable = OptionTable0, % dummy
         add_error("Invalid argument to option `--hlds-dump-alias'.", !Errors)
     ).
 

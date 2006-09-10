@@ -1037,7 +1037,7 @@ write_promise(PromiseType, Indent, ModuleInfo, _PredId, VarSet,
     write_indent(Indent, !IO),
 
     % Print initial formatting differently for assertions.
-    ( PromiseType = true ->
+    ( PromiseType = promise_type_true ->
         io.write_string(":- promise all [", !IO),
         io.write_list(HeadVars, ", ", PrintVar, !IO),
         io.write_string("] (\n", !IO)

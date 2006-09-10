@@ -284,7 +284,7 @@
     ;       use_minimal_model_own_stacks
     ;       minimal_model_debug
     ;       type_layout
-    ;       maybe_thread_safe
+    ;       maybe_thread_safe_opt
     ;       extend_stacks_when_needed
 
     % Data representation compilation model options
@@ -1020,7 +1020,7 @@ option_defaults_2(compilation_model_option, [
     gc                                  -   string("boehm"),
     parallel                            -   bool(no),
     use_trail                           -   bool(no),
-    maybe_thread_safe                   -   string("no"),
+    maybe_thread_safe_opt               -   string("no"),
     extend_stacks_when_needed           -   bool(no),
     use_minimal_model_stack_copy        -   bool(no),
     use_minimal_model_own_stacks        -   bool(no),
@@ -1751,7 +1751,7 @@ long_option("garbage-collection",   gc).
 long_option("parallel",             parallel).
 long_option("use-trail",            use_trail).
 long_option("type-layout",          type_layout).
-long_option("maybe-thread-safe",    maybe_thread_safe).
+long_option("maybe-thread-safe",    maybe_thread_safe_opt).
 long_option("extend-stacks-when-needed",    extend_stacks_when_needed).
 % Data representation options
 long_option("reserve-tag",          reserve_tag).

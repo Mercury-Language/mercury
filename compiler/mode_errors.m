@@ -224,7 +224,6 @@
 :- pred write_mode_inference_messages(list(pred_id)::in, bool::in,
     module_info::in, io::di, io::uo) is det.
 
-:- pred output_mode_decl(proc_id::in, pred_info::in, io::di, io::uo) is det.
 :- func mode_decl_to_string(proc_id, pred_info) = string.
 
 %-----------------------------------------------------------------------------%
@@ -1245,7 +1244,7 @@ write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo,
         ModuleInfo, !IO).
 
     % Write out the inferred `mode' declaration for a single function
-    % or predicate..
+    % or predicate.
     %
 :- pred write_mode_inference_message(pred_info::in, proc_info::in, bool::in,
     module_info::in, io::di, io::uo) is det.
@@ -1281,9 +1280,9 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
             !:MaybeDet = no
         ),
         ( proc_info_is_valid_mode(ProcInfo) ->
-            Msg = "Inferred"
+            Verb = "Inferred"
         ;
-            Msg = "REJECTED",
+            Verb = "REJECTED",
             % Replace the final insts with dummy insts '...',
             % since they won't be valid anyway -- they are just
             % the results of whatever partial inference we did
@@ -1307,8 +1306,10 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
             Detail = mercury_func_mode_decl_to_string(VarSet, Name,
                 FuncArgModes, RetMode, !.MaybeDet, Context)
         ),
-        Pieces = [words(Msg), words(Detail), nl],
-        write_error_pieces(Context, 0, Pieces, !IO)
+        Pieces = [words(Verb), words(Detail), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_informational, phase_mode_check, [Msg]),
+        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1338,9 +1339,6 @@ report_indistinguishable_modes_error(OldProcId, NewProcId, PredId, PredInfo,
     module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
-
-output_mode_decl(ProcId, PredInfo, !IO) :-
-    io.write_string(mode_decl_to_string(ProcId, PredInfo), !IO).
 
 mode_decl_to_string(ProcId, PredInfo) = String :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),

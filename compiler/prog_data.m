@@ -43,15 +43,21 @@
 %-----------------------------------------------------------------------------%
 
     % Indicates the type of information the compiler should get from the
-    % declaration's clause.
+    % promise declaration's clause.
     %
 :- type promise_type
             % promise ex declarations
-    --->    exclusive                   % Each disjunct is mutually exclusive.
-    ;       exhaustive                  % Disjunction cannot fail.
-    ;       exclusive_exhaustive        % Both of the above.
-            % assertions
-    ;       true.                       % Promise goal is true.
+    --->    promise_type_exclusive                  
+            % Each disjunct is mutually exclusive.
+
+    ;       promise_type_exhaustive
+            % Disjunction cannot fail.
+
+    ;       promise_type_exclusive_exhaustive
+            % Both of the above assertions
+
+    ;       promise_type_true.
+            % Promise goal is true.
 
 :- type type_and_mode
     --->    type_only(mer_type)

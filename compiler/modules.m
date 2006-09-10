@@ -44,6 +44,7 @@
 :- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
@@ -439,7 +440,7 @@
     %   interfaces.
     %
 :- pred split_into_submodules(module_name::in, item_list::in, module_list::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -788,7 +789,6 @@
 :- import_module libs.handle_options.
 :- import_module libs.options.
 :- import_module make.              % XXX undesirable dependency
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_foreign.
@@ -804,6 +804,7 @@
 :- import_module char.
 :- import_module dir.
 :- import_module getopt_io.
+:- import_module int.
 :- import_module library.
 :- import_module multi_map.
 :- import_module solutions.
@@ -1250,42 +1251,42 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
         MaybeTimestamp, Items0, !IO) :-
     grab_unqual_imported_modules(SourceFileName, SourceFileModuleName,
         ModuleName, Items0, Module, Error, !IO),
-        %
-        % Check whether we succeeded
-        %
+
+    % Check whether we succeeded.
     % XXX zs: why does this code not check for fatal_module_errors?
     ( Error = some_module_errors ->
         module_name_to_file_name(ModuleName, ".int0", no, FileName, !IO),
         io.write_strings(["Error reading interface files.\n",
             "`", FileName, "' not written.\n"], !IO)
     ;
-            %
-            % Module-qualify all items.
-            %
+        % Module-qualify all items.
         module_imports_get_items(Module, Items1),
-        module_qual.module_qualify_items(Items1, Items2, ModuleName, yes,
-            _, _, _, _, !IO),
-        io.get_exit_status(Status, !IO),
-        ( Status \= 0 ->
-            module_name_to_file_name(ModuleName, ".int0", no, FileName, !IO),
+        globals.io_get_globals(Globals, !IO),
+        module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+        module_qualify_items(Items1, Items2, Globals, ModuleName,
+            yes(FileName), _, _, _, [], Specs),
+        (
+            Specs = [_ | _],
+            sort_error_specs(Specs, SortedSpecs),
+            write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors,
+                !IO),
             io.write_strings(["`", FileName, "' not written.\n"], !IO)
         ;
-            %
+            Specs = [],
+
             % Write out the `.int0' file.
             %
-            % XXX The following sequence of operations relies
-            % on the fact that any reversals done while processing
-            % it are undone by subsequent operations.  Also, we
-            % should sort the contents of the .int0 file as we
-            % do for the other types of interface file.  We don't
-            % do that at the moment because the code for doing
-            % that cannot handle the structure of lists of items
-            % that represent private interfaces.
-            %
+            % XXX The following sequence of operations relies on the fact that
+            % any reversals done while processing it are undone by subsequent
+            % operations. Also, we should sort the contents of the .int0 file
+            % as we do for the other types of interface file. We don't do that
+            % at the moment because the code for doing that cannot handle
+            % the structure of lists of items that represent private
+            % interfaces.
+
             strip_imported_items(Items2, [], Items3),
             strip_clauses_from_interface(Items3, Items4),
-            handle_mutables_in_private_interface(ModuleName,
-                Items4, Items5),
+            handle_mutables_in_private_interface(ModuleName, Items4, Items5),
             MakeAbs = (pred(Item0::in, Item::out) is det :-
                 Item0 = Item1 - Context,
                 ( make_abstract_instance(Item1, Item2) ->
@@ -1355,23 +1356,20 @@ handle_mutable_in_private_interface(ModuleName, Item - Context, !Items) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Read in the .int3 files that the current module depends on,
-    % and use these to qualify all items in the interface as much as
-    % possible. Then write out the .int and .int2 files.
+    % Read in the .int3 files that the current module depends on, and use these
+    % to qualify all items in the interface as much as possible. Then write out
+    % the .int and .int2 files.
     %
 make_interface(SourceFileName, SourceFileModuleName, ModuleName,
         MaybeTimestamp, Items0, !IO) :-
     some [!InterfaceItems] (
         get_interface(ModuleName, yes, Items0, !:InterfaceItems),
-            %
-            % Get the .int3 files for imported modules
-            %
+
+        % Get the .int3 files for imported modules.
         grab_unqual_imported_modules(SourceFileName, SourceFileModuleName,
             ModuleName, !.InterfaceItems, Module0, Error, !IO),
 
-            %
-            % Check whether we succeeded
-            %
+        % Check whether we succeeded.
         module_imports_get_items(Module0, !:InterfaceItems),
         % XXX zs: why does this code not check for fatal_module_errors?
         ( Error = some_module_errors ->
@@ -1382,26 +1380,29 @@ make_interface(SourceFileName, SourceFileModuleName, ModuleName,
                 "`", IntFileName, "' and ",
                 "`", Int2FileName, "' not written.\n"], !IO)
         ;
-                %
-                % Module-qualify all items.
-                %
-            module_qual.module_qualify_items(!InterfaceItems, ModuleName, yes,
-                _, _, _, _, !IO),
-            io.get_exit_status(Status, !IO),
-            ( Status \= 0 ->
+            % Module-qualify all items.
+            globals.io_get_globals(Globals, !IO),
+            module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+            module_qualify_items(!InterfaceItems, Globals, ModuleName,
+                yes(FileName), _, _, _, [], Specs),
+
+            % We want to finish writing the interface file (and keep
+            % the exit status at zero) if we found some warnings.
+            globals.io_set_option(halt_at_warn, bool(no), !IO),
+            sort_error_specs(Specs, SortedSpecs),
+            write_error_specs(SortedSpecs, 0, _NumWarnings, 0, NumErrors,
+                !IO),
+            ( NumErrors > 0 ->
                 module_name_to_file_name(ModuleName, ".int", no, IntFileName,
                     !IO),
                 io.write_strings(["`", IntFileName, "' ", "not written.\n"],
                     !IO)
             ;
-                %
-                % Strip out the imported interfaces,
-                % assertions are also stripped since they should
-                % only be written to .opt files,
-                % check for some warnings, and then
-                % write out the `.int' and `int2' files
-                % and touch the `.date' file.
-                %
+                % Strip out the imported interfaces, assertions are also
+                % stripped since they should only be written to .opt files,
+                % check for some warnings, and then write out the `.int'
+                % and `int2' files and touch the `.date' file.
+
                 strip_imported_items(!.InterfaceItems, [], !:InterfaceItems),
                 strip_assertions(!InterfaceItems),
                 strip_unnecessary_impl_defns(!InterfaceItems),
@@ -1418,17 +1419,23 @@ make_interface(SourceFileName, SourceFileModuleName, ModuleName,
         )
     ).
 
-    % This qualifies everything as much as it can given the
-    % information in the current module and writes out the .int3 file.
 make_short_interface(SourceFileName, ModuleName, Items0, !IO) :-
+    % This qualifies everything as much as it can given the information
+    % in the current module and writes out the .int3 file.
+
     get_interface(ModuleName, no, Items0, InterfaceItems0),
-        % assertions are also stripped since they should
-        % only be written to .opt files,
+    % Assertions are also stripped since they should only be written
+    % to .opt files,
     strip_assertions(InterfaceItems0, InterfaceItems1),
     check_for_clauses_in_interface(InterfaceItems1, InterfaceItems, !IO),
     get_short_interface(InterfaceItems, int3, ShortInterfaceItems0),
-    module_qual.module_qualify_items(ShortInterfaceItems0,
-        ShortInterfaceItems, ModuleName, no, _, _, _, _, !IO),
+    globals.io_get_globals(Globals, !IO),
+    module_qualify_items(ShortInterfaceItems0, ShortInterfaceItems,
+        Globals, ModuleName, no, _, _, _, [], Specs),
+    sort_error_specs(Specs, SortedSpecs),
+    write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors,
+        !IO),
+    % XXX why do we do this even if there are some errors?
     write_interface_file(SourceFileName, ModuleName, ".int3",
         no, ShortInterfaceItems, !IO),
     touch_interface_datestamp(ModuleName, ".date3", !IO).
@@ -1458,7 +1465,7 @@ strip_imported_items([Item - Context | Rest], !Items) :-
 
 strip_assertions([], []).
 strip_assertions([Item - Context | Rest], Items) :-
-    ( Item = item_promise(true, _, _, _) ->
+    ( Item = item_promise(promise_type_true, _, _, _) ->
         strip_assertions(Rest, Items)
     ;
         strip_assertions(Rest, Items0),
@@ -1470,17 +1477,6 @@ strip_assertions([Item - Context | Rest], Items) :-
 :- pred strip_unnecessary_impl_defns(item_list::in, item_list::out) is det.
 
 strip_unnecessary_impl_defns(Items0, Items) :-
-    % strip_unnecessary_impl_defns_2 is cc_multi because of the call
-    % to std_util.unsorted_aggregate. The order in which items are deleted
-    % from a multi_map does not matter.
-    promise_equivalent_solutions [Items] (
-        strip_unnecessary_impl_defns_2(Items0, Items)
-    ).
-
-:- pred strip_unnecessary_impl_defns_2(item_list::in, item_list::out)
-    is cc_multi.
-
-strip_unnecessary_impl_defns_2(Items0, Items) :-
     some [!IntTypesMap, !ImplTypesMap, !ImplItems] (
         gather_type_defns(no, Items0, [], IntItems0, [], !:ImplItems,
             map.init, !:IntTypesMap, map.init, !:ImplTypesMap),
@@ -1499,7 +1495,8 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
         % If there is an exported type declaration for a type with an abstract
         % declaration in the implementation (usually it will originally
         % have been a d.u. type), remove the declaration in the implementation.
-        solutions.unsorted_aggregate(
+
+        FindAbstractExportedTypes =
             (pred(TypeCtor::out) is nondet :-
                 map.member(!.ImplTypesMap, TypeCtor, Defns),
                 \+ (
@@ -1508,21 +1505,26 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
                 ),
                 multi_map.contains(!.IntTypesMap, TypeCtor)
             ),
+        solutions(FindAbstractExportedTypes, AbstractExportedTypes),
+        RemoveFromImplTypesMap =
             (pred(TypeCtor::in, !.ImplTypesMap::in, !:ImplTypesMap::out)
                     is det :-
                 multi_map.delete(!.ImplTypesMap, TypeCtor, !:ImplTypesMap)
             ),
+        list.foldl(RemoveFromImplTypesMap, AbstractExportedTypes,
             !ImplTypesMap),
 
-        map.foldl(
+        AddProjectedItem =
+            (pred((_ - Item)::in, !.ImplItems::in, !:ImplItems::out)
+                    is det :-
+                !:ImplItems = [Item | !.ImplItems]
+            ),
+        AddProjectedItems =
             (pred(_::in, Defns::in, !.ImplItems::in, !:ImplItems::out)
                     is det :-
-                list.foldl(
-                    (pred((_ - Item)::in, !.ImplItems::in, !:ImplItems::out)
-                            is det :-
-                        !:ImplItems = [Item | !.ImplItems]
-                    ), Defns, !ImplItems)
-            ), !.ImplTypesMap, !ImplItems),
+                list.foldl(AddProjectedItem, Defns, !ImplItems)
+            ),
+        map.foldl(AddProjectedItems, !.ImplTypesMap, !ImplItems),
 
         IntItems = [make_pseudo_decl(md_interface) | IntItems0],
 
@@ -1600,47 +1602,24 @@ standardize_impl_items([ItemAndContext | ItemAndContexts], !Unexpected,
                     "non-singleton-module use")
             )
         ;
-            ModuleDefn = md_module(_),
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_end_module(_),
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_imported(_),
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_used(_),
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_abstract_imported,
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_opt_imported,
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_transitively_imported,
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_external(_, _),
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_export(_),
+            ( ModuleDefn = md_module(_)
+            ; ModuleDefn = md_end_module(_)
+            ; ModuleDefn = md_imported(_)
+            ; ModuleDefn = md_used(_)
+            ; ModuleDefn = md_abstract_imported
+            ; ModuleDefn = md_opt_imported
+            ; ModuleDefn = md_transitively_imported
+            ; ModuleDefn = md_external(_, _)
+            ; ModuleDefn = md_export(_)
+            ; ModuleDefn = md_interface
+            ; ModuleDefn = md_implementation
+            ; ModuleDefn = md_private_interface
+            ; ModuleDefn = md_version_numbers(_, _)
+            ),
             !:Unexpected = yes
         ;
             ModuleDefn = md_include_module(_),
             !:RevRemainderItems = [ItemAndContext | !.RevRemainderItems]
-        ;
-            ModuleDefn = md_interface,
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_implementation,
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_private_interface,
-            !:Unexpected = yes
-        ;
-            ModuleDefn = md_version_numbers(_, _),
-            !:Unexpected = yes
         )
     ; Item = item_type_defn(_, _, _, _, _) ->
         insert_type_defn(Context, Item, !TypeDefnItems)
@@ -2427,146 +2406,155 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
     get_dependencies(Items0, IntImportedModules0, IntUsedModules0,
         ImpImportedModules0, ImpUsedModules0),
 
-    list.append(IntImportedModules0, ImpImportedModules0, ImportedModules0),
-    list.append(IntUsedModules0, ImpUsedModules0, UsedModules0),
+    ImportedModules0 = IntImportedModules0 ++ ImpImportedModules0,
+    UsedModules0 = IntUsedModules0 ++ ImpUsedModules0,
 
-    warn_if_import_self_or_ancestor(ModuleName, AncestorModules,
-        ImportedModules0, UsedModules0, !IO),
+    some [!Specs] (
+        !:Specs = [],
 
-    warn_if_duplicate_use_import_decls(ModuleName,
-        IntImportedModules0, IntImportedModules1,
-        IntUsedModules0, IntUsedModules1,
-        ImpImportedModules0, ImpImportedModules,
-        ImpUsedModules0, ImpUsedModules, !IO),
+        module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+        warn_if_import_self_or_ancestor(ModuleName, FileName, AncestorModules,
+            ImportedModules0, UsedModules0, !Specs),
 
-    get_fact_table_dependencies(Items0, FactDeps),
-    get_interface_and_implementation(ModuleName, no, Items0,
-        InterfaceItems, ImplItems),
-    get_children(InterfaceItems, PublicChildren),
-    (
-        MaybeTimestamp = yes(Timestamp),
-        MaybeTimestamps = yes(map.det_insert(map.init, ModuleName,
-            module_timestamp(".m", Timestamp, may_be_unqualified)))
-    ;
-        MaybeTimestamp = no,
-        MaybeTimestamps = no
+        warn_if_duplicate_use_import_decls(ModuleName, FileName,
+            IntImportedModules0, IntImportedModules1,
+            IntUsedModules0, IntUsedModules1,
+            ImpImportedModules0, ImpImportedModules,
+            ImpUsedModules0, ImpUsedModules, !Specs),
 
-    ),
-    init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
-        Items0, PublicChildren, NestedChildren, FactDeps,
-        MaybeTimestamps, !:Module),
+        get_fact_table_dependencies(Items0, FactDeps),
+        get_interface_and_implementation(ModuleName, no, Items0,
+            InterfaceItems, ImplItems),
+        get_children(InterfaceItems, PublicChildren),
+        (
+            MaybeTimestamp = yes(Timestamp),
+            MaybeTimestamps = yes(map.det_insert(map.init, ModuleName,
+                module_timestamp(".m", Timestamp, may_be_unqualified)))
+        ;
+            MaybeTimestamp = no,
+            MaybeTimestamps = no
 
-    % If this module has any separately-compiled sub-modules, then
-    % we need to make everything in the implementation of this module
-    % exported_to_submodules.  We do that by splitting out the implementation
-    % declarations and putting them in a special `:- private_interface'
-    % section.
-    %
-    get_children(Items0, Children),
-    (
-        Children = [],
-        Items1 = Items0
-    ;
-        Children = [_ | _],
-        split_clauses_and_decls(ImplItems, Clauses, ImplDecls),
-        list.condense(
-            [[make_pseudo_decl(md_interface) | InterfaceItems],
-            [make_pseudo_decl(md_private_interface) | ImplDecls],
-            [make_pseudo_decl(md_implementation) | Clauses]], Items1),
-        module_imports_set_items(Items1, !Module)
-    ),
+        ),
+        init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
+            Items0, PublicChildren, NestedChildren, FactDeps,
+            MaybeTimestamps, !:Module),
 
-    % Add `builtin' and `private_builtin' to the list of imported modules.
-    globals.io_get_globals(Globals, !IO),
-    add_implicit_imports(Items1, Globals,
-        IntImportedModules1, IntImportedModules2,
-        IntUsedModules1, IntUsedModules2),
+        % If this module has any separately-compiled sub-modules, then
+        % we need to make everything in the implementation of this module
+        % exported_to_submodules.  We do that by splitting out the
+        % implementation declarations and putting them in a special
+        % `:- private_interface' section.
+        %
+        get_children(Items0, Children),
+        (
+            Children = [],
+            Items1 = Items0
+        ;
+            Children = [_ | _],
+            split_clauses_and_decls(ImplItems, Clauses, ImplDecls),
+            list.condense(
+                [[make_pseudo_decl(md_interface) | InterfaceItems],
+                [make_pseudo_decl(md_private_interface) | ImplDecls],
+                [make_pseudo_decl(md_implementation) | Clauses]], Items1),
+            module_imports_set_items(Items1, !Module)
+        ),
 
-    % Process the ancestor modules.
-    %
-    % Uses of the items declared in ancestor modules do not need
-    % module qualifiers. Modules imported by ancestors are considered
-    % to be visible in the current module.
-    process_module_private_interfaces(ReadModules, AncestorModules,
-        make_pseudo_decl(md_imported(import_locn_ancestor_private_interface)),
-        make_pseudo_decl(md_abstract_imported),
-        IntImportedModules2, IntImportedModules,
-        IntUsedModules2, IntUsedModules, !Module, !IO),
+        % Add `builtin' and `private_builtin' to the list of imported modules.
+        globals.io_get_globals(Globals, !IO),
+        add_implicit_imports(Items1, Globals,
+            IntImportedModules1, IntImportedModules2,
+            IntUsedModules1, IntUsedModules2),
 
-    % Process the modules imported using `import_module'.
-    % Uses of these items do not need module qualifiers.
-    IntIndirectImports0 = [],
-    IntImpIndirectImports0 = [],
-    process_module_long_interfaces(ReadModules, may_be_unqualified,
-        IntImportedModules, ".int",
-        make_pseudo_decl(md_imported(import_locn_interface)),
-        make_pseudo_decl(md_abstract_imported),
-        IntIndirectImports0, IntIndirectImports1,
-        IntImpIndirectImports0, IntImpIndirectImports1,
-        !Module, !IO),
+        % Process the ancestor modules.
+        %
+        % Uses of the items declared in ancestor modules do not need
+        % module qualifiers. Modules imported by ancestors are considered
+        % to be visible in the current module.
+        process_module_private_interfaces(ReadModules, AncestorModules,
+            make_pseudo_decl(
+                md_imported(import_locn_ancestor_private_interface)),
+            make_pseudo_decl(md_abstract_imported),
+            IntImportedModules2, IntImportedModules,
+            IntUsedModules2, IntUsedModules, !Module, !IO),
 
-    ImpIndirectImports0 = [],
-    ImpImpIndirectImports0 = [],
-    process_module_long_interfaces(ReadModules, may_be_unqualified,
-        ImpImportedModules, ".int",
-        make_pseudo_decl(md_imported(import_locn_implementation)),
-        make_pseudo_decl(md_abstract_imported),
-        ImpIndirectImports0, ImpIndirectImports1,
-        ImpImpIndirectImports0, ImpImpIndirectImports1,
-        !Module, !IO),
+        % Process the modules imported using `import_module'.
+        % Uses of these items do not need module qualifiers.
+        IntIndirectImports0 = [],
+        IntImpIndirectImports0 = [],
+        process_module_long_interfaces(ReadModules, may_be_unqualified,
+            IntImportedModules, ".int",
+            make_pseudo_decl(md_imported(import_locn_interface)),
+            make_pseudo_decl(md_abstract_imported),
+            IntIndirectImports0, IntIndirectImports1,
+            IntImpIndirectImports0, IntImpIndirectImports1,
+            !Module, !IO),
 
-    % Process the modules imported using `use_module' .
-    process_module_long_interfaces(ReadModules, must_be_qualified,
-        IntUsedModules, ".int",
-        make_pseudo_decl(md_used(import_locn_interface)),
-        make_pseudo_decl(md_abstract_imported),
-        IntIndirectImports1, IntIndirectImports,
-        IntImpIndirectImports1, IntImpIndirectImports2,
-        !Module, !IO),
-    process_module_long_interfaces(ReadModules, must_be_qualified,
-        ImpUsedModules, ".int",
-        make_pseudo_decl(md_used(import_locn_implementation)),
-        make_pseudo_decl(md_abstract_imported),
-        ImpIndirectImports1, ImpIndirectImports,
-        ImpImpIndirectImports1, ImpImpIndirectImports2,
-        !Module, !IO),
+        ImpIndirectImports0 = [],
+        ImpImpIndirectImports0 = [],
+        process_module_long_interfaces(ReadModules, may_be_unqualified,
+            ImpImportedModules, ".int",
+            make_pseudo_decl(md_imported(import_locn_implementation)),
+            make_pseudo_decl(md_abstract_imported),
+            ImpIndirectImports0, ImpIndirectImports1,
+            ImpImpIndirectImports0, ImpImpIndirectImports1,
+            !Module, !IO),
 
-    % Process the short interfaces for indirectly imported modules.
-    % The short interfaces are treated as if they are imported
-    % using `use_module'.
-    append_pseudo_decl(md_transitively_imported, !Module),
-    process_module_short_interfaces_transitively(ReadModules,
-        IntIndirectImports, ".int2",
-        make_pseudo_decl(md_used(import_locn_interface)),
-        make_pseudo_decl(md_abstract_imported),
-        IntImpIndirectImports2, IntImpIndirectImports, !Module, !IO),
-    process_module_short_interfaces_transitively(ReadModules,
-        ImpIndirectImports, ".int2",
-        make_pseudo_decl(md_used(import_locn_implementation)),
-        make_pseudo_decl(md_abstract_imported),
-        ImpImpIndirectImports2, ImpImpIndirectImports, !Module, !IO),
+        % Process the modules imported using `use_module' .
+        process_module_long_interfaces(ReadModules, must_be_qualified,
+            IntUsedModules, ".int",
+            make_pseudo_decl(md_used(import_locn_interface)),
+            make_pseudo_decl(md_abstract_imported),
+            IntIndirectImports1, IntIndirectImports,
+            IntImpIndirectImports1, IntImpIndirectImports2,
+            !Module, !IO),
+        process_module_long_interfaces(ReadModules, must_be_qualified,
+            ImpUsedModules, ".int",
+            make_pseudo_decl(md_used(import_locn_implementation)),
+            make_pseudo_decl(md_abstract_imported),
+            ImpIndirectImports1, ImpIndirectImports,
+            ImpImpIndirectImports1, ImpImpIndirectImports2,
+            !Module, !IO),
 
-    % Process the short interfaces for modules imported in the implementation
-    % of indirectly imported modules. The items in these modules shouldn't be
-    % visible to typechecking -- they are used for fully expanding equivalence
-    % types after the semantic checking passes.
-    process_module_short_interfaces_and_impls_transitively(
-        ReadModules, IntImpIndirectImports, ".int2",
-        make_pseudo_decl(md_abstract_imported),
-        make_pseudo_decl(md_abstract_imported),
-        !Module, !IO),
-    process_module_short_interfaces_and_impls_transitively(
-        ReadModules, ImpImpIndirectImports, ".int2",
-        make_pseudo_decl(md_abstract_imported),
-        make_pseudo_decl(md_abstract_imported),
-        !Module, !IO),
+        % Process the short interfaces for indirectly imported modules.
+        % The short interfaces are treated as if they are imported
+        % using `use_module'.
+        append_pseudo_decl(md_transitively_imported, !Module),
+        process_module_short_interfaces_transitively(ReadModules,
+            IntIndirectImports, ".int2",
+            make_pseudo_decl(md_used(import_locn_interface)),
+            make_pseudo_decl(md_abstract_imported),
+            IntImpIndirectImports2, IntImpIndirectImports, !Module, !IO),
+        process_module_short_interfaces_transitively(ReadModules,
+            ImpIndirectImports, ".int2",
+            make_pseudo_decl(md_used(import_locn_implementation)),
+            make_pseudo_decl(md_abstract_imported),
+            ImpImpIndirectImports2, ImpImpIndirectImports, !Module, !IO),
 
-    module_imports_get_items(!.Module, Items),
-    check_imports_accessibility(ModuleName,
-        IntImportedModules ++ IntUsedModules ++
-        ImpImportedModules ++ ImpUsedModules, Items, !IO),
+        % Process the short interfaces for modules imported in the
+        % implementation of indirectly imported modules. The items in these
+        % modules shouldn't be visible to typechecking -- they are used for
+        % fully expanding equivalence types after the semantic checking passes.
+        process_module_short_interfaces_and_impls_transitively(
+            ReadModules, IntImpIndirectImports, ".int2",
+            make_pseudo_decl(md_abstract_imported),
+            make_pseudo_decl(md_abstract_imported),
+            !Module, !IO),
+        process_module_short_interfaces_and_impls_transitively(
+            ReadModules, ImpImpIndirectImports, ".int2",
+            make_pseudo_decl(md_abstract_imported),
+            make_pseudo_decl(md_abstract_imported),
+            !Module, !IO),
 
-    module_imports_get_error(!.Module, Error).
+        module_imports_get_items(!.Module, Items),
+        check_imports_accessibility(ModuleName,
+            IntImportedModules ++ IntUsedModules ++
+            ImpImportedModules ++ ImpUsedModules, Items, !Specs),
+
+        sort_error_specs(!.Specs, SortedSpecs),
+        write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
+
+        module_imports_get_error(!.Module, Error)
+    ).
 
     % grab_unqual_imported_modules:
     %
@@ -2652,12 +2640,19 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
         make_pseudo_decl(md_abstract_imported),
         [], _, !Module, !IO),
 
-    module_imports_get_items(!.Module, Items),
-    check_imports_accessibility(ModuleName,
-        IntImportDeps ++ IntUseDeps ++ ImpImportDeps ++ ImpUseDeps,
-        Items, !IO),
+    some [!Specs] (
+        !:Specs = [],
 
-    module_imports_get_error(!.Module, Error).
+        module_imports_get_items(!.Module, Items),
+        check_imports_accessibility(ModuleName,
+            IntImportDeps ++ IntUseDeps ++ ImpImportDeps ++ ImpUseDeps,
+            Items, !Specs),
+
+        sort_error_specs(!.Specs, SortedSpecs),
+        write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
+
+        module_imports_get_error(!.Module, Error)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -2791,107 +2786,94 @@ contains_tabling_pragma([Item | Items]) :-
 
     % Warn if a module imports itself, or an ancestor.
     %
-:- pred warn_if_import_self_or_ancestor(module_name::in, list(module_name)::in,
-    list(module_name)::in, list(module_name)::in,
-    io::di, io::uo) is det.
+:- pred warn_if_import_self_or_ancestor(module_name::in, string::in,
+    list(module_name)::in, list(module_name)::in, list(module_name)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_if_import_self_or_ancestor(ModuleName, AncestorModules,
-        ImportedModules, UsedModules, !IO) :-
-    globals.io_lookup_bool_option(warn_simple_code, Warn, !IO),
+warn_if_import_self_or_ancestor(ModuleName, FileName, AncestorModules,
+        ImportedModules, UsedModules, !Specs) :-
+    IsImportedAncestor = (pred(Import::out) is nondet :-
+        list.member(Import, AncestorModules),
+        ( list.member(Import, ImportedModules)
+        ; list.member(Import, UsedModules)
+        )
+    ),
+    solutions.aggregate(IsImportedAncestor,
+        warn_imported_ancestor(ModuleName, FileName), !Specs),
     (
-        Warn = yes,
-        (
-            ( list.member(ModuleName, ImportedModules)
-            ; list.member(ModuleName, UsedModules)
-            )
-        ->
-            module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
-            term.context_init(FileName, 1, Context),
-            SelfImportWarning = [
-                words("Warning: module"),
-                sym_name(ModuleName),
-                words("imports itself!")
-            ],
-            report_warning(Context, 0, SelfImportWarning, !IO)
-        ;
-            true
-        ),
-        IsImportedAncestor = (pred(Import::out) is nondet :-
-            list.member(Import, AncestorModules),
-            ( list.member(Import, ImportedModules)
-            ; list.member(Import, UsedModules)
-            )
-        ),
-        solutions.aggregate(IsImportedAncestor,
-            warn_imported_ancestor(ModuleName), !IO)
+        ( list.member(ModuleName, ImportedModules)
+        ; list.member(ModuleName, UsedModules)
+        )
+    ->
+        term.context_init(FileName, 1, Context),
+        SelfPieces = [words("Warning: module"),
+            sym_name(ModuleName), words("imports itself!")],
+        SelfMsg = simple_msg(Context,
+            [option_is_set(warn_simple_code, yes, [always(SelfPieces)])]),
+        SelfSpec = error_spec(severity_warning, phase_parse_tree_to_hlds,
+            [SelfMsg]),
+        !:Specs = [SelfSpec | !.Specs]
     ;
-        Warn = no
+        true
     ).
 
-:- pred warn_imported_ancestor(module_name::in, module_name::in,
-    io::di, io::uo) is det.
+:- pred warn_imported_ancestor(module_name::in, string::in, module_name::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_imported_ancestor(ModuleName, AncestorName, !IO) :-
-    module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+warn_imported_ancestor(ModuleName, FileName, AncestorName, !Specs) :-
     term.context_init(FileName, 1, Context),
-    record_warning(!IO),
-    report_warning(Context, 0,
-        [words("module"), sym_name(ModuleName),
+    MainPieces = [words("Module"), sym_name(ModuleName),
         words("imports its own ancestor, module"),
-        sym_name(AncestorName), words(".")], !IO),
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    (
-        VerboseErrors = yes,
-        report_warning(Context, 0,
-            [words("Every sub-module implicitly imports"),
-            words("its ancestors."),
-            words("There is no need to explicitly import them.")],
-            !IO)
-    ;
-        VerboseErrors = no,
-        globals.io_set_extra_error_info(yes, !IO)
-    ).
+        sym_name(AncestorName), words(".")],
+    VerbosePieces = [words("Every sub-module"),
+        words("implicitly imports its ancestors."),
+        words("There is no need to explicitly import them.")],
+    Msg = simple_msg(Context,
+        [option_is_set(warn_simple_code, yes,
+            [always(MainPieces), verbose_only(VerbosePieces)])]),
+    Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
     % This predicate ensures that all every import_module declaration is
     % checked against every use_module declaration, except for the case
     % where the interface has `:- use_module foo.' and the implementation
     % `:- import_module foo.'.
-    % warn_if_duplicate_use_import_decls/7 is called to generate the actual
-    % warnings.
+    %
+:- pred warn_if_duplicate_use_import_decls(module_name::in, string::in,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred warn_if_duplicate_use_import_decls(module_name::in,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out, io::di, io::uo) is det.
-
-warn_if_duplicate_use_import_decls(ModuleName,
+warn_if_duplicate_use_import_decls(ModuleName, FileName,
         IntImportedModules0, IntImportedModules,
         IntUsedModules0, IntUsedModules,
         ImpImportedModules0, ImpImportedModules,
-        ImpUsedModules0, ImpUsedModules, !IO) :-
+        ImpUsedModules0, ImpUsedModules, !Specs) :-
 
-    warn_if_duplicate_use_import_decls(ModuleName,
+    do_warn_if_duplicate_use_import_decls(ModuleName, FileName,
         IntImportedModules0, IntImportedModules1,
-        IntUsedModules0, IntUsedModules, !IO),
-    warn_if_duplicate_use_import_decls(ModuleName,
+        IntUsedModules0, IntUsedModules, !Specs),
+    do_warn_if_duplicate_use_import_decls(ModuleName, FileName,
         IntImportedModules1, IntImportedModules,
-        ImpUsedModules0, ImpUsedModules1, !IO),
+        ImpUsedModules0, ImpUsedModules1, !Specs),
 
-    warn_if_duplicate_use_import_decls(ModuleName,
+    do_warn_if_duplicate_use_import_decls(ModuleName, FileName,
         ImpImportedModules0, ImpImportedModules,
-        ImpUsedModules1, ImpUsedModules, !IO).
+        ImpUsedModules1, ImpUsedModules, !Specs).
 
     % Report warnings for modules imported using both `:- use_module'
     % and `:- import_module'.  Remove the unnecessary `:- use_module'
     % declarations.
-
-:- pred warn_if_duplicate_use_import_decls(module_name::in,
+    %
+:- pred do_warn_if_duplicate_use_import_decls(module_name::in, string::in,
     list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out, io::di, io::uo) is det.
+    list(module_name)::in, list(module_name)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_if_duplicate_use_import_decls(ModuleName, !ImportedModules, !UsedModules,
-        !IO) :-
+do_warn_if_duplicate_use_import_decls(_ModuleName, FileName,
+        !ImportedModules, !UsedModules, !Specs) :-
     set.list_to_set(!.ImportedModules, ImportedSet),
     set.list_to_set(!.UsedModules, UsedSet),
     set.intersect(ImportedSet, UsedSet, BothSet),
@@ -2899,42 +2881,27 @@ warn_if_duplicate_use_import_decls(ModuleName, !ImportedModules, !UsedModules,
         true
     ;
         set.to_sorted_list(BothSet, BothList),
-        globals.io_lookup_bool_option(warn_simple_code, WarnSimple, !IO),
-        (
-            WarnSimple = yes,
-            module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
-            term.context_init(FileName, 1, Context),
-            prog_out.write_context(Context, !IO),
-            io.write_string("Warning:", !IO),
-            ( BothList = [_] ->
-                io.write_string(" module ", !IO),
-                prog_out.write_module_list(BothList, !IO),
-                io.write_string(" is ", !IO)
-            ;
-                io.write_string(" modules ", !IO),
-                prog_out.write_module_list(BothList, !IO),
-                io.write_string(" are ", !IO)
-            ),
-            io.write_string("imported using both\n", !IO),
-            prog_out.write_context(Context, !IO),
-            io.write_string("  `:- import_module' and ", !IO),
-            io.write_string("`:- use_module' declarations.\n", !IO),
 
-            globals.io_lookup_bool_option(halt_at_warn, Halt, !IO),
-            (
-                Halt = yes,
-                io.set_exit_status(1, !IO)
-            ;
-                Halt = no
-            )
-        ;
-            WarnSimple = no
-        ),
+        term.context_init(FileName, 1, Context),
+        Pieces = [words("Warning:"),
+            words(choose_number(BothList, "module", "modules"))] ++
+            component_list_to_pieces(list.map(wrap_symname, BothList)) ++
+            [words(choose_number(BothList, "is", "are")),
+            words("imported using both `:- import_module'"),
+            words("`:- use_module' declarations."), nl],
+        Msg = simple_msg(Context,
+            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+        Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs],
 
         % Treat the modules with both types of import as if they
         % were imported using `:- import_module.'
         list.delete_elems(!.UsedModules, BothList, !:UsedModules)
     ).
+
+:- func wrap_symname(module_name) = format_component.
+
+wrap_symname(ModuleName) = sym_name(ModuleName).
 
 %-----------------------------------------------------------------------------%
 
@@ -3080,14 +3047,14 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         write_dependencies_list(ShortDeps, ".int2", DepStream, !IO),
 
         NestedExts = [
-                ".optdate",
-                ".trans_opt_date",
-                ".c_date",
-                ".s_date",
-                ".pic_s_date",
-                ".dir/*.$O",
-                ".il_date",
-                ".java_date"],
+            ".optdate",
+            ".trans_opt_date",
+            ".c_date",
+            ".s_date",
+            ".pic_s_date",
+            ".dir/*.$O",
+            ".il_date",
+            ".java_date"],
 
         % If a module contains nested-submodules then we need to build
         % the nested children before attempting to build the parent module.
@@ -3266,20 +3233,18 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             "endif"
         ], !IO),
 
-        % The .date and .date0 files depend on the .int0 files
-        % for the parent modules, and the .int3 files for the
-        % directly and indirectly imported modules.
+        % The .date and .date0 files depend on the .int0 files for the parent
+        % modules, and the .int3 files for the directly and indirectly imported
+        % modules.
         %
-        % For nested sub-modules, the `.date' files for the
-        % parent modules also depend on the same things as the
-        % `.date' files for this module, since all the `.date'
-        % files will get produced by a single mmc command.
-        % Similarly for `.date0' files, except these don't
-        % depend on the `.int0' files, because when doing the
-        % `--make-private-interface' for nested modules, mmc
-        % will process the modules in outermost to innermost
-        % order so as to produce each `.int0' file before it is
-        % needed.
+        % For nested sub-modules, the `.date' files for the parent modules
+        % also depend on the same things as the `.date' files for this module,
+        % since all the `.date' files will get produced by a single mmc
+        % command. Similarly for `.date0' files, except these don't depend
+        % on the `.int0' files, because when doing the
+        % `--make-private-interface' for nested modules, mmc will process
+        % the modules in outermost to innermost order so as to produce each
+        % `.int0' file before it is needed.
 
         module_name_to_file_name(ModuleName, ".date", no, DateFileName, !IO),
         module_name_to_file_name(ModuleName, ".date0", no, Date0FileName, !IO),
@@ -3300,9 +3265,9 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         write_dependencies_list(ShortDeps, ".int3", DepStream, !IO),
         io.write_string(DepStream, "\n\n", !IO),
 
-        % If we can pass the module name rather than the file name,
-        % then do so. `--smart-recompilation' doesn't work if the file name
-        % is passed and the module name doesn't match the file name.
+        % If we can pass the module name rather than the file name, then do so.
+        % `--smart-recompilation' doesn't work if the file name is passed
+        % and the module name doesn't match the file name.
 
         have_source_file_map(HaveMap, !IO),
         (
@@ -3924,7 +3889,9 @@ build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
     read_mod_from_file(FileName, ".m", "Reading file", no, no, Items, Error,
         ModuleName, _, !IO),
     string.append(FileName, ".m", SourceFileName),
-    split_into_submodules(ModuleName, Items, SubModuleList, !IO),
+    split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
+    sort_error_specs(Specs, SortedSpecs),
+    write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
     globals.io_get_globals(Globals, !IO),
     assoc_list.keys(SubModuleList, SubModuleNames),
     list.map(init_dependencies(SourceFileName, ModuleName, SubModuleNames,
@@ -6084,7 +6051,9 @@ read_dependencies(ModuleName, Search, ModuleImportsList, !IO) :-
     ;
         FileName = FileName0,
         Items = Items0,
-        split_into_submodules(ModuleName, Items, SubModuleList, !IO)
+        split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
+        sort_error_specs(Specs, SortedSpecs),
+        write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO)
     ),
     globals.io_get_globals(Globals, !IO),
     assoc_list.keys(SubModuleList, SubModuleNames),
@@ -6485,7 +6454,7 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
     ).
 
 :- pred check_imports_accessibility(module_name::in, list(module_name)::in,
-    item_list::in, io::di, io::uo) is det.
+    item_list::in, list(error_spec)::in, list(error_spec)::out) is det.
 
     %
     % At this point, we've read in all the appropriate interface files,
@@ -6498,16 +6467,17 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
     % We then go through all of the imported/used modules,
     % checking that each one is accessible.
     %
-check_imports_accessibility(ModuleName, Imports, Items, !IO) :-
+check_imports_accessibility(ModuleName, Imports, Items, !Specs) :-
     get_accessible_children(Items, AccessibleSubModules),
     list.foldl(check_module_accessibility(ModuleName,
-        AccessibleSubModules, Items), Imports, !IO).
+        AccessibleSubModules, Items), Imports, !Specs).
 
 :- pred check_module_accessibility(module_name::in, list(module_name)::in,
-    item_list::in, module_name::in, io::di, io::uo) is det.
+    item_list::in, module_name::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 check_module_accessibility(ModuleName, AccessibleSubModules, Items,
-        ImportedModule, !IO) :-
+        ImportedModule, !Specs) :-
     ( ImportedModule = qualified(ParentModule, SubModule) ->
         ( list.member(ImportedModule, AccessibleSubModules) ->
             true
@@ -6535,14 +6505,15 @@ check_module_accessibility(ModuleName, AccessibleSubModules, Items,
             list.foldl(
                 report_inaccessible_module_error(
                     ModuleName, ParentModule, SubModule),
-                ImportItems, !IO)
+                ImportItems, !Specs)
         )
     ;
         true
     ).
 
 :- pred report_inaccessible_module_error(module_name::in, module_name::in,
-    string::in, item_and_context::in, io::di, io::uo) is det.
+    string::in, item_and_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 % The error message should come out like this
 % (the second sentence is included only with --verbose-errors):
@@ -6556,7 +6527,7 @@ check_module_accessibility(ModuleName, AccessibleSubModules, Items,
 % very_long_name.m:123:   declaration for module `sub_module'.
 
 report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
-        Item - Context, !IO) :-
+        Item - Context, !Specs) :-
     ( Item = item_module_defn(_, md_import(list_module(_))) ->
         DeclName = "import_module"
     ; Item = item_module_defn(_, md_use(list_module(_))) ->
@@ -6565,32 +6536,22 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
         unexpected(this_file,
             "report_inaccessible_parent_error: invalid item")
     ),
-    ErrMsg0 = [
-        words("In module"), sym_name(ModuleName), suffix(":"), nl,
+    MainPieces = [words("In module"), sym_name(ModuleName), suffix(":"), nl,
         words("error in"), quote(DeclName), words("declaration:"), nl,
         words("module"), sym_name(qualified(ParentModule, SubModule)),
-        words("is inaccessible."), nl
-    ],
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    (
-
-        VerboseErrors = yes,
-        ErrMsg = ErrMsg0 ++ [
-            words("Either there was no prior"), quote("import_module"),
+        words("is inaccessible."), nl],
+    VerbosePieces = [words("Either there was no prior"),
+        quote("import_module"),
             words("or"), quote("use_module"),
             words("declaration to import module"), sym_name(ParentModule),
             suffix(","), words("or the interface for module"),
             sym_name(ParentModule), words("does not contain an"),
             quote("include_module"), words("declaration for module"),
-            quote(SubModule), suffix(".")
-        ]
-    ;
-        VerboseErrors = no,
-        ErrMsg = ErrMsg0,
-        globals.io_set_extra_error_info(yes, !IO)
-    ),
-    write_error_pieces(Context, 0, ErrMsg, !IO),
-    io.set_exit_status(1, !IO).
+            quote(SubModule), suffix("."), nl],
+    Msg = simple_msg(Context,
+        [always(MainPieces), verbose_only(VerbosePieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 
@@ -6892,14 +6853,14 @@ get_fact_table_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
     % Given a module (well, a list of items), split it into
     % its constituent sub-modules, in top-down order.
     %
-split_into_submodules(ModuleName, Items0, ModuleList, !IO) :-
+split_into_submodules(ModuleName, Items0, ModuleList, !Specs) :-
     InParentInterface = no,
     split_into_submodules_2(ModuleName, Items0, InParentInterface,
-        Items, ModuleList, !IO),
+        Items, ModuleList, !Specs),
 
     % Check that there are no items after the end_module declaration.
     ( Items = [_ - Context | _] ->
-        report_items_after_end_module(Context, !IO)
+        report_items_after_end_module(Context, !Specs)
     ;
         true
     ),
@@ -6913,30 +6874,32 @@ split_into_submodules(ModuleName, Items0, ModuleList, !IO) :-
     ( set.empty(Duplicates) ->
         true
     ;
-        report_duplicate_modules(Duplicates, Items0, !IO)
+        report_duplicate_modules(Duplicates, Items0, !Specs)
     ).
 
 :- pred split_into_submodules_2(module_name::in, item_list::in, bool::in,
-    item_list::out, module_list::out, io::di, io::uo) is det.
+    item_list::out, module_list::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 split_into_submodules_2(ModuleName, Items0, InParentInterface, Items,
-        ModuleList, !IO) :-
+        ModuleList, !Specs) :-
     InInterface0 = no,
     split_into_submodules_3(ModuleName, Items0,
         InParentInterface, InInterface0,
-        ThisModuleItems, Items, SubModules, !IO),
+        ThisModuleItems, Items, SubModules, !Specs),
     map.to_assoc_list(SubModules, SubModuleList),
     ModuleList = [ModuleName - ThisModuleItems | SubModuleList].
 
 :- pred split_into_submodules_3(module_name::in, item_list::in, bool::in,
     bool::in, item_list::out, item_list::out,
-    map(module_name, item_list)::out, io::di, io::uo) is det.
+    map(module_name, item_list)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-split_into_submodules_3(_ModuleName, [], _, _, [], [], SubModules, !IO) :-
+split_into_submodules_3(_ModuleName, [], _, _, [], [], SubModules, !Specs) :-
     map.init(SubModules).
 split_into_submodules_3(ModuleName, [Item | Items1],
         InParentInterface, InInterface0,
-        ThisModuleItems, OtherItems, SubModules, !IO) :-
+        ThisModuleItems, OtherItems, SubModules, !Specs) :-
     (
         % Check for a `module' declaration, which signals the start
         % of a nested module.
@@ -6944,11 +6907,11 @@ split_into_submodules_3(ModuleName, [Item | Items1],
     ->
         % Parse in the items for the nested submodule.
         split_into_submodules_2(SubModuleName, Items1, InInterface0,
-            Items2, SubModules0, !IO),
+            Items2, SubModules0, !Specs),
 
         % Parse in the remaining items for this module.
         split_into_submodules_3(ModuleName, Items2, InParentInterface,
-            InInterface0, ThisModuleItems0, Items3, SubModules1, !IO),
+            InInterface0, ThisModuleItems0, Items3, SubModules1, !Specs),
 
         % Combine the sub-module declarations from the previous two steps.
         list.foldl(add_submodule, SubModules0, SubModules1, SubModules),
@@ -6978,7 +6941,7 @@ split_into_submodules_3(ModuleName, [Item | Items1],
             (
                 InParentInterface = yes,
                 report_error_implementation_in_interface(ModuleName,
-                    ImplContext, !IO)
+                    ImplContext, !Specs)
             ;
                 InParentInterface = no
             ),
@@ -6994,7 +6957,7 @@ split_into_submodules_3(ModuleName, [Item | Items1],
             Item = item_instance(_, _, _, Body, _, _) - InstanceContext,
             Body \= abstract
         ->
-            report_non_abstract_instance_in_interface(InstanceContext, !IO)
+            report_non_abstract_instance_in_interface(InstanceContext, !Specs)
         ;
             true
         ),
@@ -7002,7 +6965,7 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         % Parse the remaining items for this module.
         split_into_submodules_3(ModuleName, Items1,
             InParentInterface, InInterface1,
-            ThisModuleItems0, Items2, SubModules, !IO),
+            ThisModuleItems0, Items2, SubModules, !Specs),
 
         % Put the current item back onto the front of the item list
         % for this module.
@@ -7029,9 +6992,9 @@ add_submodule(ModuleName - ModuleItemList, !SubModules) :-
     ).
 
 :- pred report_error_implementation_in_interface(module_name::in,
-    prog_context::in, io::di, io::uo) is det.
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_error_implementation_in_interface(ModuleName, Context, !IO) :-
+report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
     ( ModuleName = qualified(ParentModule0, ChildModule0) ->
         ParentModule = ParentModule0,
         ChildModule = ChildModule0
@@ -7043,13 +7006,14 @@ report_error_implementation_in_interface(ModuleName, Context, !IO) :-
         words("in definition of sub-module `" ++ ChildModule ++ "':"), nl,
         words("error: `:- implementation.' declaration for sub-module\n"),
         words("occurs in interface section of parent module.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 :- pred report_duplicate_modules(set(module_name)::in, item_list::in,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_duplicate_modules(Duplicates, Items, !IO) :-
+report_duplicate_modules(Duplicates, Items, !Specs) :-
     IsDuplicateError =
         (pred(SubModuleName - Context::out) is nondet :-
             list.member(Item, Items),
@@ -7063,12 +7027,12 @@ report_duplicate_modules(Duplicates, Items, !IO) :-
             set.member(SubModuleName, Duplicates)
         ),
     solutions.solutions(IsDuplicateError, DuplicateErrors),
-    list.foldl(report_error_duplicate_module_decl, DuplicateErrors, !IO).
+    list.foldl(report_error_duplicate_module_decl, DuplicateErrors, !Specs).
 
 :- pred report_error_duplicate_module_decl(pair(module_name, prog_context)::in,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_error_duplicate_module_decl(ModuleName - Context, !IO) :-
+report_error_duplicate_module_decl(ModuleName - Context, !Specs) :-
     ( ModuleName = qualified(ParentModule0, ChildModule0) ->
         ParentModule = ParentModule0,
         ChildModule = ChildModule0
@@ -7078,24 +7042,28 @@ report_error_duplicate_module_decl(ModuleName - Context, !IO) :-
     Pieces = [words("In module"), sym_name(ParentModule), suffix(":"), nl,
         words("error: sub-module `" ++ ChildModule ++ "' declared"),
         words("as both a separate sub-module and a nested sub-module.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
-:- pred report_items_after_end_module(prog_context::in, io::di, io::uo) is det.
+:- pred report_items_after_end_module(prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_items_after_end_module(Context, !IO) :-
-    ErrorPieces = [words("Error: item(s) after end_module declaration.")],
-    write_error_pieces(Context, 0, ErrorPieces, !IO),
-    io.set_exit_status(1, !IO).
+report_items_after_end_module(Context, !Specs) :-
+    Pieces = [words("Error: item(s) after end_module declaration.")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 :- pred report_non_abstract_instance_in_interface(prog_context::in,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_non_abstract_instance_in_interface(Context, !IO) :-
-    ErrorPieces = [words("Error: non-abstract instance declaration"),
+report_non_abstract_instance_in_interface(Context, !Specs) :-
+    Pieces = [words("Error: non-abstract instance declaration"),
         words("in module interface.")],
-    write_error_pieces(Context, 0, ErrorPieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
     % Given a module (well, a list of items), extract the interface
     % part of that module, i.e. all the items between `:- interface'

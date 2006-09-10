@@ -304,37 +304,29 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !Proofs,
 
 report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo,
         !IO) :-
-    io.set_exit_status(1, !IO),
-
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_context(PredInfo, Context),
 
-    Pieces0 = constraints_to_error_pieces(TVarSet, Constraints),
+    PredIdPieces = describe_one_pred_name(ModuleInfo,
+        should_not_module_qualify, PredId),
 
-    PredIdStr = pred_id_to_string(ModuleInfo, PredId),
-
-    Pieces = [
-        words("In"), fixed(PredIdStr), suffix(":"), nl,
+    Pieces = [words("In")] ++ PredIdPieces ++ [suffix(":"), nl,
         fixed("type error: unsatisfied typeclass " ++
-            choose_number(Constraints, "constraint:", "constraints:")),
-            nl_indent_delta(2) | Pieces0 ],
+        choose_number(Constraints, "constraint:", "constraints:")),
+        nl_indent_delta(1)] ++
+        component_list_to_line_pieces(
+            list.map(constraint_to_error_piece(TVarSet), Constraints), []) ++
+        [nl_indent_delta(-1)],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
-    write_error_pieces(Context, 0, Pieces, !IO).
-
-:- func constraints_to_error_pieces(tvarset, list(prog_constraint))
-    = format_components.
-
-constraints_to_error_pieces(_, []) = [].
-constraints_to_error_pieces(TVarset, [C]) =
-    [constraint_to_error_piece(TVarset, C)].
-constraints_to_error_pieces(TVarset, [ C0, C1 | Cs]) = Components :-
-    Format0    = [ constraint_to_error_piece(TVarset, C0), nl ],
-    Components = Format0 ++ constraints_to_error_pieces(TVarset, [C1 | Cs]).
-
-:- func constraint_to_error_piece(tvarset, prog_constraint) = format_component.
+:- func constraint_to_error_piece(tvarset, prog_constraint)
+    = list(format_component).
 
 constraint_to_error_piece(TVarset, Constraint) =
-    fixed("`" ++ mercury_constraint_to_string(TVarset, Constraint) ++ "'").
+    [quote(mercury_constraint_to_string(TVarset, Constraint))].
 
 %-----------------------------------------------------------------------------%
 
@@ -508,8 +500,7 @@ finish_promise(PromiseType, PromiseId, !Module, !IO) :-
 store_promise(PromiseType, PromiseId, !Module, Goal) :-
     (
         % Case for assertions.
-        PromiseType = true
-    ->
+        PromiseType = promise_type_true,
         module_info_get_assertion_table(!.Module, AssertTable0),
         assertion_table_add_assertion(PromiseId, AssertionId,
             AssertTable0, AssertTable),
@@ -518,12 +509,9 @@ store_promise(PromiseType, PromiseId, !Module, Goal) :-
         assertion.record_preds_used_in(Goal, AssertionId, !Module)
     ;
         % Case for exclusivity.
-        (
-            PromiseType = exclusive
-        ;
-            PromiseType = exclusive_exhaustive
-        )
-    ->
+        ( PromiseType = promise_type_exclusive
+        ; PromiseType = promise_type_exclusive_exhaustive
+        ),
         promise_ex_goal(PromiseId, !.Module, Goal),
         predids_from_goal(Goal, PredIds),
         module_info_get_exclusive_table(!.Module, Table0),
@@ -531,6 +519,7 @@ store_promise(PromiseType, PromiseId, !Module, Goal) :-
         module_info_set_exclusive_table(Table, !Module)
     ;
         % Case for exhaustiveness -- XXX not yet implemented.
+        PromiseType = promise_type_exhaustive,
         promise_ex_goal(PromiseId, !.Module, Goal)
     ).
 
@@ -701,10 +690,12 @@ check_type_of_main(PredInfo, !IO) :-
             true
         ;
             pred_info_context(PredInfo, Context),
-            error_util.write_error_pieces(Context, 0,
-                [words("Error: arguments of main/2"),
-                words("must have type `io.state'.")], !IO),
-            io.set_exit_status(1, !IO)
+            Pieces = [words("Error: arguments of main/2"),
+                words("must have type `io.state'."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_type_check, [Msg]),
+            % XXX _NumErrors
+            write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
         )
     ;
         true
@@ -785,13 +776,15 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
 
 unbound_inst_var_error(PredId, ProcInfo, ModuleInfo, !IO) :-
     proc_info_get_context(ProcInfo, Context),
-    io.set_exit_status(1, !IO),
     Pieces = [words("In mode declaration for")] ++
         describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId)
         ++ [suffix(":"), nl,
         words("error: unbound inst variable(s)."), nl,
         words("(Sorry, polymorphic modes are not supported.)"), nl],
-    write_error_pieces(Context, 0, Pieces, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1465,16 +1458,14 @@ check_for_missing_definitions_2(TypeCtor, TypeDefn, !NumErrors,
             not ModuleName = unqualified("type_desc"),
             not list.member(TypeCtor, BuiltinTypeCtors)
         ->
-            ErrorPieces = [
-                words("Error: abstract"),
-                words("declaration for type"),
-                sym_name_and_arity(SymName / Arity),
-                words("has no corresponding"),
-                words("definition.")
-            ],
             get_type_defn_context(TypeDefn, TypeContext),
-            write_error_pieces(TypeContext, 0, ErrorPieces, !IO),
-            io.set_exit_status(1, !IO),
+            Pieces = [words("Error: abstract declaration for type"),
+                sym_name_and_arity(SymName / Arity),
+                words("has no corresponding definition."), nl],
+            Msg = simple_msg(TypeContext, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_type_check, [Msg]),
+            % XXX _NumErrors
+            write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO),
             !:FoundTypeError = yes,
             !:NumErrors = !.NumErrors + 1
         ;

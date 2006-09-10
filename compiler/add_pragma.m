@@ -15,10 +15,10 @@
 :- import_module hlds.make_hlds.qual_info.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
-:- import_module io.
 :- import_module list.
 :- import_module term.
 
@@ -26,41 +26,46 @@
 
 :- pred add_pragma(item_origin::in, pragma_type::in, prog_context::in,
     item_status::in, item_status::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_foreign_export(item_origin::in, foreign_language::in,
     sym_name::in, pred_or_func::in, list(mer_mode)::in, string::in,
-    prog_context::in, module_info::in, module_info::out, io::di, io::uo)
-    is det.
+    prog_context::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_reserve_tag(sym_name::in, arity::in, import_status::in,
     prog_context::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_type_spec(pragma_type::in(pragma_type_spec),
     term.context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_termination2_info(pred_or_func::in, sym_name::in,
     list(mer_mode)::in, maybe(pragma_constr_arg_size_info)::in,
     maybe(pragma_constr_arg_size_info)::in,
-    maybe(pragma_termination_info)::in, prog_context::in, module_info::in,
-    module_info::out, io::di, io::uo) is det.
+    maybe(pragma_termination_info)::in, prog_context::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_termination_info(pred_or_func::in, sym_name::in,
     list(mer_mode)::in, maybe(pragma_arg_size_info)::in,
     maybe(pragma_termination_info)::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_structure_sharing(pred_or_func::in, sym_name::in,
     list(mer_mode)::in, list(prog_var)::in, list(mer_type)::in,
     maybe(structure_sharing_domain)::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_structure_reuse(pred_or_func::in, sym_name::in,
     list(mer_mode)::in, list(prog_var)::in, list(mer_type)::in,
     maybe(structure_reuse_domain)::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % module_add_pragma_import:
     %
@@ -75,19 +80,21 @@
     list(mer_mode)::in, pragma_foreign_proc_attributes::in, string::in,
     import_status::in, prog_context::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred module_add_pragma_foreign_proc(pragma_foreign_proc_attributes::in,
     sym_name::in, pred_or_func::in, list(pragma_var)::in, prog_varset::in,
     inst_varset::in, pragma_foreign_code_impl::in, import_status::in,
     prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred module_add_pragma_tabled(eval_method::in, sym_name::in, int::in,
     maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
     maybe(table_attributes)::in, import_status::in, import_status::out,
     prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % module_add_pragma_fact_table(PredName, Arity, FileName,
     %   Status, Context, Module0, Module, !Info):
@@ -100,9 +107,10 @@
     %
 :- pred module_add_pragma_fact_table(sym_name::in, arity::in, string::in,
     import_status::in, prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred lookup_current_backend(backend::out, io::di, io::uo) is det.
+:- func lookup_current_backend(globals) = backend.
 
     % Find the procedure with declared argmodes which match the ones we want.
     % If there was no mode declaration, then use the inferred argmodes.
@@ -142,7 +150,6 @@
 :- import_module ml_backend.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_ctgc.
@@ -173,7 +180,7 @@
 
 %-----------------------------------------------------------------------------%
 
-add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
+add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !Specs) :-
     % Check for invalid pragmas in the `interface' section.
     !.Status = item_status(ImportStatus, _),
     pragma_allowed_in_interface(Pragma, Allowed),
@@ -182,7 +189,7 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         (
             Origin = user,
             error_if_exported(ImportStatus, Context, "`pragma' declaration",
-                !IO)
+                !Specs)
         ;
             % We don't report this as an error as it just clutters up
             % the compiler output - the *real* error is whatever caused
@@ -215,16 +222,16 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         Pragma = pragma_inline(Name, Arity),
         add_pred_marker("inline", Name, Arity, ImportStatus, Context,
             marker_user_marked_inline, [marker_user_marked_no_inline],
-            !ModuleInfo, !IO)
+            !ModuleInfo, !Specs)
     ;
         Pragma = pragma_no_inline(Name, Arity),
         add_pred_marker("no_inline", Name, Arity, ImportStatus, Context,
             marker_user_marked_no_inline, [marker_user_marked_inline],
-            !ModuleInfo, !IO)
+            !ModuleInfo, !Specs)
     ;
         Pragma = pragma_obsolete(Name, Arity),
         add_pred_marker("obsolete", Name, Arity, ImportStatus,
-            Context, marker_obsolete, [], !ModuleInfo, !IO)
+            Context, marker_obsolete, [], !ModuleInfo, !Specs)
     ;
         % Handle pragma import decls later on (when we process
         % clauses and pragma c_code).
@@ -239,46 +246,50 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         Pragma = pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum,
             UnusedArgs),
         ( ImportStatus \= status_opt_imported ->
-            module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: illegal use of pragma `unused_args'.")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         ;
             add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum,
-                UnusedArgs, Context, !ModuleInfo, !IO)
+                UnusedArgs, Context, !ModuleInfo, !Specs)
         )
     ;
         Pragma = pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum,
             ThrowStatus),
         ( ImportStatus \= status_opt_imported ->
-            module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: illegal use of pragma `exceptions'.")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         ;
             add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum,
-                ThrowStatus, Context, !ModuleInfo, !IO)
+                ThrowStatus, Context, !ModuleInfo, !Specs)
         )
     ;
         Pragma = pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum,
             TrailingStatus),
         ( ImportStatus \= status_opt_imported ->
-            module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: illegal use of pragma `trailing_info'.")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         ;
             add_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum,
-                TrailingStatus, Context, !ModuleInfo, !IO)
+                TrailingStatus, Context, !ModuleInfo, !Specs)
         )
     ;
         Pragma = pragma_mm_tabling_info(PredOrFunc, SymName, Arity, ModeNum,
             MM_TablingStatus),
         ( ImportStatus \= status_opt_imported ->
-            module_info_incr_errors(!ModuleInfo),
             Pieces =
                 [words("Error: illegal use of pragma `mm_tabling_info',")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         ;
             add_pragma_mm_tabling_info(PredOrFunc, SymName, Arity, ModeNum,
-                MM_TablingStatus, Context, !ModuleInfo, !IO)
+                MM_TablingStatus, Context, !ModuleInfo, !Specs)
         )
     ;
         % Handle pragma type_spec decls later on (when we process clauses).
@@ -295,16 +306,16 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
     ;
         Pragma = pragma_promise_pure(Name, Arity),
         add_pred_marker("promise_pure", Name, Arity, ImportStatus,
-            Context, marker_promised_pure, [], !ModuleInfo, !IO)
+            Context, marker_promised_pure, [], !ModuleInfo, !Specs)
     ;
         Pragma = pragma_promise_semipure(Name, Arity),
         add_pred_marker("promise_semipure", Name, Arity, ImportStatus,
-            Context, marker_promised_semipure, [], !ModuleInfo, !IO)
+            Context, marker_promised_semipure, [], !ModuleInfo, !Specs)
     ;
         Pragma = pragma_promise_equivalent_clauses(Name, Arity),
         add_pred_marker("promise_equivalent_clauses", Name, Arity,
             ImportStatus, Context, marker_promised_equivalent_clauses, [],
-            !ModuleInfo, !IO)
+            !ModuleInfo, !Specs)
     ;
         % Handle pragma termination_info decls later on, in pass 3 --
         % we need to add function default modes before handling
@@ -318,17 +329,18 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         add_pred_marker("terminates", Name, Arity, ImportStatus, Context,
             marker_terminates,
             [marker_check_termination, marker_does_not_terminate],
-            !ModuleInfo, !IO)
+            !ModuleInfo, !Specs)
     ;
         Pragma = pragma_does_not_terminate(Name, Arity),
         add_pred_marker("does_not_terminate", Name, Arity, ImportStatus,
             Context, marker_does_not_terminate,
-            [marker_check_termination, marker_terminates], !ModuleInfo, !IO)
+            [marker_check_termination, marker_terminates], !ModuleInfo, !Specs)
     ;
         Pragma = pragma_check_termination(Name, Arity),
         add_pred_marker("check_termination", Name, Arity, ImportStatus,
             Context, marker_check_termination,
-            [marker_terminates, marker_does_not_terminate], !ModuleInfo, !IO)
+            [marker_terminates, marker_does_not_terminate],
+            !ModuleInfo, !Specs)
     ;
         Pragma = pragma_structure_sharing(_, _, _, _, _, _)
     ;
@@ -336,7 +348,7 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
     ;
         Pragma = pragma_mode_check_clauses(Name, Arity),
         add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
-            Context, marker_mode_check_clauses, [], !ModuleInfo, !IO),
+            Context, marker_mode_check_clauses, [], !ModuleInfo, !Specs),
 
         % Allowing the predicate to be inlined could lead to code generator
         % aborts. This is because the caller that inlines this predicate may
@@ -345,11 +357,11 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         % feature prevents the recomputation of.
         add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
             Context, marker_user_marked_no_inline, [marker_user_marked_inline],
-            !ModuleInfo, !IO)
+            !ModuleInfo, !Specs)
     ).
 
 add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
-        ExportedName, Context, !ModuleInfo, !IO) :-
+        ExportedName, Context, !ModuleInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     list.length(Modes, Arity),
     (
@@ -383,8 +395,7 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
                 Msg = simple_msg(Context, [always(Pieces)]),
                 Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                     [Msg]),
-                write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
-                module_info_incr_num_errors(NumErrors, !ModuleInfo)
+                !:Specs = [Spec | !.Specs]
             ;
                 % Emit a warning about using pragma foreign_export with
                 % a foreign language that is not supported.
@@ -395,37 +406,35 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
                     ; Lang = lang_il
                     ; Lang = lang_managed_cplusplus
                     ),
-                    Pieces = [
-                        words("Warning:"),
-                        fixed("`:- pragma foreign_export'"),
-                        words("declarations are not yet implemented"),
-                        words("for language"),
-                        words(foreign_language_string(Lang)),
-                        suffix(".")
-                    ],
+                    Pieces = [words("Warning:"),
+                        fixed("`:- pragma foreign_export' declarations"),
+                        words("are not yet implemented for language"),
+                        words(foreign_language_string(Lang)), suffix("."), nl],
                     Msg = simple_msg(Context, [always(Pieces)]),
                     Spec = error_spec(severity_warning,
                         phase_parse_tree_to_hlds, [Msg]),
-                    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
+                    !:Specs = [Spec | !.Specs]
                 ;
                     Lang = lang_c
                 ),
 
                 % Only add the foreign export if the specified language matches
                 % one of the foreign languages available for this backend.
-                io_get_backend_foreign_languages(ForeignLanguages, !IO),
+                module_info_get_globals(!.ModuleInfo, Globals),
+                globals.get_backend_foreign_languages(Globals,
+                    ForeignLanguages),
                 (
                     % XXX C# and Managed C++ exports currently cause an
                     % assertion failure in the MLDS->IL code generator.
-                    %
+
                     Lang \= lang_csharp,
                     Lang \= lang_managed_cplusplus,
                     list.member(Lang, ForeignLanguages)
                 ->
                     module_info_get_pragma_exported_procs(!.ModuleInfo,
                         PragmaExportedProcs0),
-                    NewExportedProc = pragma_exported_proc(Lang, PredId, ProcId,
-                        ExportedName, Context),
+                    NewExportedProc = pragma_exported_proc(Lang,
+                        PredId, ProcId, ExportedName, Context),
                     PragmaExportedProcs =
                         [NewExportedProc | PragmaExportedProcs0],
                     module_info_set_pragma_exported_procs(PragmaExportedProcs,
@@ -440,8 +449,7 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
             (
                 Origin = user,
                 undefined_mode_error(Name, Arity, Context,
-                    "`:- pragma foreign_export' declaration", !IO),
-                module_info_incr_errors(!ModuleInfo)
+                    "`:- pragma foreign_export' declaration", !Specs)
             ;
                 Origin = compiler(Details),
                 (
@@ -464,8 +472,7 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
         (
             Origin = user,
             undefined_pred_or_func_error(Name, Arity, Context,
-                "`:- pragma foreign_export' declaration", !IO),
-            module_info_incr_errors(!ModuleInfo)
+                "`:- pragma foreign_export' declaration", !Specs)
         ;
             Origin = compiler(Details),
             (
@@ -487,7 +494,7 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
 %-----------------------------------------------------------------------------%
 
 add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
-        !IO) :-
+        !Specs) :-
     TypeCtor = type_ctor(TypeName, TypeArity),
     module_info_get_type_table(!.ModuleInfo, Types0),
     ContextPieces = [
@@ -569,18 +576,18 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
         ),
         Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
         Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-        write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !ModuleInfo)
+        !:Specs = [Spec | !.Specs]
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- pred add_pragma_unused_args(pred_or_func::in, sym_name::in, arity::in,
     mode_num::in, list(int)::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
-        Context, !ModuleInfo, !IO) :-
+        Context, !ModuleInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     (
         predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
@@ -597,18 +604,18 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
             words("unknown predicate in `pragma unused_args'.")],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !ModuleInfo)
+        !:Specs = [Spec | !.Specs]
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- pred add_pragma_exceptions(pred_or_func::in, sym_name::in, arity::in,
     mode_num::in, exception_status::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus,
-        _Context, !ModuleInfo, !IO) :-
+        _Context, !ModuleInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     (
         predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
@@ -626,10 +633,8 @@ add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus,
     ;
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
-        % prog_out.write_context(Context, !IO),
         % io.write_string("Internal compiler error: " ++
-        %   "unknown predicate in `pragma exceptions'.\n", !IO),
-        % module_info_incr_errors(!ModuleInfo)
+        %   "unknown predicate in `pragma exceptions'.\n")
         true
     ).
 
@@ -637,10 +642,11 @@ add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus,
 
 :- pred add_pragma_trailing_info(pred_or_func::in, sym_name::in, arity::in,
     mode_num::in, trailing_status::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum, TrailingStatus,
-        _Context, !ModuleInfo, !IO) :-
+        _Context, !ModuleInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     (
         predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
@@ -655,10 +661,8 @@ add_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum, TrailingStatus,
     ;
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
-        % prog_out.write_context(Context, !IO),
         % io.write_string("Internal compiler error: " ++
-        %   "unknown predicate in `pragma trailing_info'.\n", !IO),
-        % module_info_incr_errors(!ModuleInfo)
+        %   "unknown predicate in `pragma trailing_info'.\n"),
         true
     ).
 
@@ -666,10 +670,11 @@ add_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum, TrailingStatus,
 
 :- pred add_pragma_mm_tabling_info(pred_or_func::in, sym_name::in, arity::in,
     mode_num::in, mm_tabling_status::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pragma_mm_tabling_info(PredOrFunc, SymName, Arity, ModeNum,
-        TablingStatus, _Context, !ModuleInfo, !IO) :-
+        TablingStatus, _Context, !ModuleInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     (
         predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
@@ -685,16 +690,14 @@ add_pragma_mm_tabling_info(PredOrFunc, SymName, Arity, ModeNum,
     ;
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
-        %prog_out__write_context(Context, !IO),
-        %io__write_string("Internal compiler error: " ++
-        %   "unknown predicate in `pragma trailing_info'.\n", !IO),
-        %module_info_incr_errors(!ModuleInfo)
+        % io.write_string("Internal compiler error: " ++
+        %   "unknown predicate in `pragma trailing_info'.\n"),
         true
     ).
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !IO) :-
+add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !Specs) :-
     Pragma = pragma_type_spec(SymName, _, Arity, MaybePredOrFunc, _, _, _, _),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     (
@@ -711,33 +714,34 @@ add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !IO) :-
         PredIds = [_ | _]
     ->
         list.foldl3(add_pragma_type_spec_2(Pragma, Context), PredIds,
-            !ModuleInfo, !QualInfo, !IO)
+            !ModuleInfo, !QualInfo, !Specs)
     ;
         undefined_pred_or_func_error(SymName, Arity, Context,
-            "`:- pragma type_spec' declaration", !IO),
-        module_info_incr_errors(!ModuleInfo)
+            "`:- pragma type_spec' declaration", !Specs)
     ).
 
 :- pred add_pragma_type_spec_2(pragma_type::in(pragma_type_spec),
     prog_context::in, pred_id::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
-        !IO) :-
+        !Specs) :-
     Pragma0 = pragma_type_spec(SymName, SpecName, Arity, _, MaybeModes, Subst,
         TVarSet0, ExpandedItems),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     handle_pragma_type_spec_subst(Context, Subst, PredInfo0,
         TVarSet0, TVarSet, Types, ExistQVars, ClassContext, SubstOk,
-        !ModuleInfo, !IO),
+        !ModuleInfo, !Specs),
     (
         SubstOk = yes(RenamedSubst),
         pred_info_get_procedures(PredInfo0, Procs0),
         handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
-            ProcIds, Procs0, Procs, ModesOk, !ModuleInfo, !IO),
-        globals.io_lookup_bool_option(user_guided_type_specialization,
-            DoTypeSpec, !IO),
-        globals.io_lookup_bool_option(smart_recompilation, Smart, !IO),
+            ProcIds, Procs0, Procs, ModesOk, !ModuleInfo, !Specs),
+        module_info_get_globals(!.ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, user_guided_type_specialization,
+            DoTypeSpec),
+        globals.lookup_bool_option(Globals, smart_recompilation, Smart),
         (
             ModesOk = yes,
             % Even if we aren't doing type specialization, we need to create
@@ -748,7 +752,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             % even if we aren't doing type specialization to avoid problems
             % with differing output for the recompilation tests in debugging
             % grades.
-            %
+
             ( DoTypeSpec = yes
             ; \+ pred_info_is_imported(PredInfo0)
             ; Smart = yes
@@ -878,10 +882,10 @@ subst_desc(TVar - Type) = var_to_int(TVar) - Type.
     assoc_list(tvar, mer_type)::in, pred_info::in, tvarset::in, tvarset::out,
     list(mer_type)::out, existq_tvars::out, prog_constraints::out,
     maybe(tsubst)::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
-        Types, ExistQVars, ClassContext, SubstOk, !ModuleInfo, !IO) :-
+        Types, ExistQVars, ClassContext, SubstOk, !ModuleInfo, !Specs) :-
     assoc_list.keys(Subst, VarsToSub),
     (
         Subst = []
@@ -894,9 +898,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
     ->
         list.sort_and_remove_dups(MultiSubstVars0, MultiSubstVars),
         report_multiple_subst_vars(PredInfo0, Context, TVarSet0,
-            MultiSubstVars, !IO),
-        module_info_incr_errors(!ModuleInfo),
-        io.set_exit_status(1, !IO),
+            MultiSubstVars, !Specs),
         ExistQVars = [],
         Types = [],
         ClassContext = constraints([], []),
@@ -956,9 +958,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
                 ;
                     SubExistQVars = [_ | _],
                     report_subst_existq_tvars(PredInfo0, Context,
-                        SubExistQVars, !IO),
-                    io.set_exit_status(1, !IO),
-                    module_info_incr_errors(!ModuleInfo),
+                        SubExistQVars, !Specs),
                     Types = [],
                     ClassContext = constraints([], []),
                     SubstOk = no
@@ -966,9 +966,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
             ;
                 RecSubstTVars = [_ | _],
                 report_recursive_subst(PredInfo0, Context, TVarSet0,
-                    RecSubstTVars, !IO),
-                io.set_exit_status(1, !IO),
-                module_info_incr_errors(!ModuleInfo),
+                    RecSubstTVars, !Specs),
                 ExistQVars = [],
                 Types = [],
                 ClassContext = constraints([], []),
@@ -978,9 +976,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
         ;
             UnknownVarsToSub = [_ | _],
             report_unknown_vars_to_subst(PredInfo0, Context, TVarSet0,
-                UnknownVarsToSub, !IO),
-            module_info_incr_errors(!ModuleInfo),
-            io.set_exit_status(1, !IO),
+                UnknownVarsToSub, !Specs),
             ExistQVars = [],
             Types = [],
             ClassContext = constraints([], []),
@@ -1007,54 +1003,51 @@ find_duplicate_list_elements([H | T], Vars) :-
     ).
 
 :- pred report_subst_existq_tvars(pred_info::in, prog_context::in,
-    list(tvar)::in, io::di, io::uo) is det.
+    list(tvar)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_subst_existq_tvars(PredInfo, Context, SubExistQVars, !IO) :-
+report_subst_existq_tvars(PredInfo, Context, SubExistQVars, !Specs) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
-    Pieces = report_pragma_type_spec(PredInfo) ++
+    Pieces = pragma_type_spec_to_pieces(PredInfo) ++
         [words("error: the substitution includes"),
-        words("the existentially quantified type"),
-        words(report_variables(SubExistQVars, TVarSet)), suffix(".")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+        words("the existentially quantified type")] ++
+        report_variables(SubExistQVars, TVarSet) ++ [suffix(".")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 :- pred report_recursive_subst(pred_info::in, prog_context::in, tvarset::in,
-    list(tvar)::in, io::di, io::uo) is det.
+    list(tvar)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, !IO) :-
-    ( RecursiveVars = [_] ->
-        Occurs = "occurs"
-    ;
-        Occurs = "occur"
-    ),
-    Pieces = report_pragma_type_spec(PredInfo) ++
-        [words("error:"), words(report_variables(RecursiveVars, TVarSet)),
-        words(Occurs), words("on both sides of the substitution.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, !Specs) :-
+    Pieces = pragma_type_spec_to_pieces(PredInfo) ++
+        [words("error:")] ++ report_variables(RecursiveVars, TVarSet) ++
+        [words(choose_number(RecursiveVars, "occurs", "occur")),
+        words("on both sides of the substitution.")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 :- pred report_multiple_subst_vars(pred_info::in, prog_context::in,
-    tvarset::in, list(tvar)::in, io::di, io::uo) is det.
+    tvarset::in, list(tvar)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars, !IO) :-
-    ( MultiSubstVars = [_] ->
-        Has = "has"
-    ;
-        Has = "have"
-    ),
-    Pieces = report_pragma_type_spec(PredInfo) ++
-        [words("error:"), words(report_variables(MultiSubstVars, TVarSet)),
-        words(Has), words("multiple replacement types.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars,
+        !Specs) :-
+    Pieces = pragma_type_spec_to_pieces(PredInfo) ++
+        [words("error:")] ++ report_variables(MultiSubstVars, TVarSet) ++
+        [words(choose_number(MultiSubstVars, "has", "have")),
+        words("multiple replacement types.")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 :- pred report_unknown_vars_to_subst(pred_info::in, prog_context::in,
-    tvarset::in, list(tvar)::in, io::di, io::uo) is det.
+    tvarset::in, list(tvar)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars, !IO) :-
+report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars,
+        !Specs) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    ( UnknownVars = [_] ->
-        DoesNot = "does not"
-    ;
-        DoesNot = "do not"
-    ),
     (
         PredOrFunc = predicate,
         Decl = "`:- pred'"
@@ -1062,15 +1055,17 @@ report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars, !IO) :-
         PredOrFunc = function,
         Decl = "`:- func'"
     ),
-    Pieces = report_pragma_type_spec(PredInfo) ++
-        [words("error:"), words(report_variables(UnknownVars, TVarSet)),
-        words(DoesNot), words("occur in the"), fixed(Decl),
-        words("declaration.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+    Pieces = pragma_type_spec_to_pieces(PredInfo) ++
+        [words("error:")] ++ report_variables(UnknownVars, TVarSet) ++
+        [words(choose_number(UnknownVars, "does not", "do not")),
+        words("occur in the"), fixed(Decl), words("declaration.")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
-:- func report_pragma_type_spec(pred_info) = list(format_component).
+:- func pragma_type_spec_to_pieces(pred_info) = list(format_component).
 
-report_pragma_type_spec(PredInfo) = Pieces :-
+pragma_type_spec_to_pieces(PredInfo) = Pieces :-
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
@@ -1079,15 +1074,11 @@ report_pragma_type_spec(PredInfo) = Pieces :-
     Pieces = [words("In `:- pragma type_spec' declaration for"),
         simple_call(SimpleCallId), suffix(":"), nl].
 
-:- func report_variables(list(tvar), tvarset) = string.
+:- func report_variables(list(tvar), tvarset) = list(format_component).
 
-report_variables(SubExistQVars, VarSet) = Str :-
-    VarsStr = mercury_vars_to_string(SubExistQVars, VarSet, no),
-    ( SubExistQVars = [_] ->
-        Str = "variable `" ++ VarsStr ++ "'"
-    ;
-        Str = "variables `" ++ VarsStr ++ "'"
-    ).
+report_variables(SubExistQVars, VarSet) =
+    [words(choose_number(SubExistQVars, "variable", "variables")),
+    quote(mercury_vars_to_string(SubExistQVars, VarSet, no))].
 
     % Check that the mode list for a `:- pragma type_spec' declaration
     % specifies a known procedure.
@@ -1095,10 +1086,11 @@ report_variables(SubExistQVars, VarSet) = Str :-
 :- pred handle_pragma_type_spec_modes(sym_name::in, arity::in,
     prog_context::in, maybe(list(mer_mode))::in, list(proc_id)::out,
     proc_table::in, proc_table::out, bool::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
-        !Procs, ModesOk, !ModuleInfo, !IO) :-
+        !Procs, ModesOk, !ModuleInfo, !Specs) :-
     (
         MaybeModes = yes(Modes),
         map.to_assoc_list(!.Procs, ExistingProcs),
@@ -1114,7 +1106,7 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
             ProcIds = [],
             module_info_incr_errors(!ModuleInfo),
             undefined_mode_error(SymName, Arity, Context,
-                "`:- pragma type_spec' declaration", !IO),
+                "`:- pragma type_spec' declaration", !Specs),
             ModesOk = no
         )
     ;
@@ -1127,7 +1119,7 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
 
 add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         MaybePragmaSuccessArgSizeInfo, MaybePragmaFailureArgSizeInfo,
-        MaybePragmaTerminationInfo, Context, !ModuleInfo, !IO) :-
+        MaybePragmaTerminationInfo, Context, !ModuleInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     list.length(ModeList, Arity),
     (
@@ -1141,13 +1133,12 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
             pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
-                get_procedure_matching_declmodes(ProcList,
-                    ModeList, !.ModuleInfo, ProcId)
+                get_procedure_matching_declmodes(ProcList, ModeList,
+                    !.ModuleInfo, ProcId)
             ->
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 add_context_to_constr_termination_info(
-                    MaybePragmaTerminationInfo, Context,
-                    MaybeTerminationInfo),
+                    MaybePragmaTerminationInfo, Context, MaybeTerminationInfo),
 
                 some [!TermInfo] (
                     proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
@@ -1162,27 +1153,28 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
                     proc_info_set_termination2_info(!.TermInfo,
                         ProcInfo0, ProcInfo)
                 ),
-                map.det_update(ProcTable0, ProcId, ProcInfo,
-                    ProcTable),
-                pred_info_set_procedures(ProcTable, PredInfo0,
-                    PredInfo),
-                map.det_update(PredTable0, PredId, PredInfo,
-                    PredTable),
+                map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+                map.det_update(PredTable0, PredId, PredInfo, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
-                module_info_incr_errors(!ModuleInfo),
                 Pieces = [words("Error: `:- pragma termination2_info'"),
                     words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    suffix(".")],
-                write_error_pieces(Context, 0, Pieces, !IO)
+                    suffix("."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             )
         ;
-            module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: ambiguous predicate name"),
                 simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                words("in"), fixed("`pragma termination2_info'.")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+                words("in"), fixed("`pragma termination2_info'."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ;
         % XXX This happens in `.trans_opt' files sometimes --
@@ -1190,16 +1182,15 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         true
         %   undefined_pred_or_func_error(
         %        SymName, Arity, Context,
-        %        "`:- pragma termination2_info' declaration", !IO),
-        %   module_info_incr_errors(!ModuleInfo)
+        %        "`:- pragma termination2_info' declaration", !Specs)
     ).
 
 %-----------------------------------------------------------------------------%
 
 add_pragma_structure_sharing(_PredOrFunc, _SymName, _ModeList, _HeadVars,
-        _Types, no, _Context, !ModuleInfo, !IO).
+        _Types, no, _Context, !ModuleInfo, !Specs).
 add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
-        Types, yes(SharingDomain), Context, !ModuleInfo, !IO):-
+        Types, yes(SharingDomain), Context, !ModuleInfo, !Specs):-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     list.length(ModeList, Arity),
     (
@@ -1224,19 +1215,23 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
                 map.det_update(PredTable0, PredId, PredInfo, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
-                module_info_incr_errors(!ModuleInfo),
                 Pieces = [words("Error: `:- pragma structure_sharing'"),
                     words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    suffix(".")],
-                write_error_pieces(Context, 0, Pieces, !IO)
+                    suffix("."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             )
         ;
-            module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: ambiguous predicate name"),
                 simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                words("in"), fixed("`pragma structure_sharing'.")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+                words("in"), quote("pragma structure_sharing."),
+                suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ;
         % XXX This happens in `.trans_opt' files sometimes --
@@ -1244,14 +1239,13 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
         true
         %   undefined_pred_or_func_error(SymName, Arity, Context,
         %       "`:- pragma structure_sharing' declaration",
-        %       !IO),
-        %   module_info_incr_errors(!ModuleInfo)
+        %       !Specs)
     ).
 
 add_pragma_structure_reuse(_PredOrFunc, _SymName, _ModeList, _HeadVars,
-        _Types, no, _Context, !ModuleInfo, !IO).
+        _Types, no, _Context, !ModuleInfo, !Specs).
 add_pragma_structure_reuse(PredOrFunc, SymName, ModeList, HeadVars,
-        Types, yes(ReuseDomain), Context, !ModuleInfo, !IO):-
+        Types, yes(ReuseDomain), Context, !ModuleInfo, !Specs):-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     list.length(ModeList, Arity),
     (
@@ -1275,21 +1269,23 @@ add_pragma_structure_reuse(PredOrFunc, SymName, ModeList, HeadVars,
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
                 map.det_update(PredTable0, PredId, PredInfo, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
-
             ;
-                module_info_incr_errors(!ModuleInfo),
                 Pieces = [words("Error: `:- pragma structure_reuse'"),
                     words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    suffix(".")],
-                write_error_pieces(Context, 0, Pieces, !IO)
+                    suffix("."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             )
         ;
-            module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: ambiguous predicate name"),
                 simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                words("in"), fixed("`pragma structure_reuse'.")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+                words("in"), quote("pragma structure_reuse"), suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ;
         % XXX This happens in `.trans_opt' files sometimes --
@@ -1297,14 +1293,13 @@ add_pragma_structure_reuse(PredOrFunc, SymName, ModeList, HeadVars,
         true
         %   undefined_pred_or_func_error(SymName, Arity, Context,
         %       "`:- pragma structure_sharing' declaration",
-        %       !IO),
-        %   module_info_incr_errors(!ModuleInfo)
+        %       !Specs)
     ).
 %-----------------------------------------------------------------------------%
 
 add_pragma_termination_info(PredOrFunc, SymName, ModeList,
         MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo,
-        Context, !ModuleInfo, !IO) :-
+        Context, !ModuleInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     list.length(ModeList, Arity),
     (
@@ -1339,15 +1334,19 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
                 Pieces = [words("Error: `:- pragma termination_info'"),
                     words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    suffix(".")],
-                write_error_pieces(Context, 0, Pieces, !IO)
+                    suffix("."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             )
         ;
-            module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: ambiguous predicate name"),
                 simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                words("in"), fixed("`pragma termination_info'.")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+                words("in"), fixed("`pragma termination_info'."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ;
         % XXX This happens in `.trans_opt' files sometimes --
@@ -1355,21 +1354,23 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
         true
         %   undefined_pred_or_func_error(SymName, Arity, Context,
         %       "`:- pragma termination_info' declaration",
-        %       !IO),
-        %   module_info_incr_errors(!ModuleInfo)
+        %       !Specs
     ).
 
 module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
-        Status, Context, !ModuleInfo, !QualInfo, !IO) :-
+        Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     list.length(Modes, Arity),
 
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        io.write_string("% Processing `:- pragma import' for ", !IO),
-        write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io.write_string("...\n", !IO)
+        trace [io(!IO)] (
+            io.write_string("% Processing `:- pragma import' for ", !IO),
+            write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
+            io.write_string("...\n", !IO)
+        )
     ;
         VeryVerbose = no
     ),
@@ -1385,7 +1386,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
     ;
         preds_add_implicit_report_error(ModuleName, PredOrFunc,
             PredName, Arity, Status, no, Context, origin_user(PredName),
-            "`:- pragma import' declaration", PredId, !ModuleInfo, !IO)
+            "`:- pragma import' declaration", PredId, !ModuleInfo, !Specs)
     ),
     % Lookup the pred_info for this pred, and check that it is valid.
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable2),
@@ -1400,17 +1401,20 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
         PredInfo1 = PredInfo0
     ),
     ( pred_info_is_imported(PredInfo1) ->
-        module_info_incr_errors(!ModuleInfo),
         Pieces = [words("Error: `:- pragma import' declaration for imported"),
             simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
-            suffix(".")],
-        write_error_pieces(Context, 0, Pieces, !IO)
+            suffix("."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ; pred_info_clause_goal_type(PredInfo1) ->
         module_info_incr_errors(!ModuleInfo),
         Pieces = [words("Error: `:- pragma import' declaration for"),
             simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
-            words("with preceding clauses.")],
-        write_error_pieces(Context, 0, Pieces, !IO)
+            words("with preceding clauses."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ;
         pred_info_update_goal_type(goal_type_foreign, PredInfo1, PredInfo2),
             % Add the pragma declaration to the proc_info for this procedure.
@@ -1421,18 +1425,19 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
                 !.ModuleInfo, ProcId)
         ->
             pred_add_pragma_import(PredId, ProcId, Attributes, C_Function,
-                Context, PredInfo2, PredInfo, !ModuleInfo, !QualInfo, !IO),
+                Context, PredInfo2, PredInfo, !ModuleInfo, !QualInfo, !Specs),
             map.det_update(Preds0, PredId, PredInfo, Preds),
             predicate_table_set_preds(Preds,
                 PredicateTable2, PredicateTable),
             module_info_set_predicate_table(PredicateTable, !ModuleInfo)
         ;
-            module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: `:- pragma import' declaration"),
                 words("for undeclared mode of"),
                 simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
-                suffix(".")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+                suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ).
 
@@ -1442,15 +1447,16 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
 :- pred pred_add_pragma_import(pred_id::in, proc_id::in,
     pragma_foreign_proc_attributes::in, string::in, prog_context::in,
     pred_info::in, pred_info::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
-        !PredInfo, !ModuleInfo, !QualInfo, !IO) :-
+        !PredInfo, !ModuleInfo, !QualInfo, !Specs) :-
     pred_info_get_procedures(!.PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     foreign.make_pragma_import(!.PredInfo, ProcInfo, C_Function, Context,
         PragmaImpl, VarSet, PragmaVars, ArgTypes, Arity, PredOrFunc,
-        !ModuleInfo, !IO),
+        !ModuleInfo, !Specs),
 
     % Lookup some information we need from the pred_info and proc_info.
     PredName = pred_info_name(!.PredInfo),
@@ -1464,7 +1470,7 @@ pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
         Purity, Attributes, PredId, ProcId,
         VarSet, PragmaVars, ArgTypes, PragmaImpl, Context, PredOrFunc,
         qualified(PredModule, PredName), Arity, Markers, Clauses0, Clauses,
-        !ModuleInfo, !IO),
+        !ModuleInfo, !Specs),
 
     % Store the clauses_info etc. back into the pred_info.
     pred_info_set_clauses_info(Clauses, !PredInfo).
@@ -1473,13 +1479,12 @@ pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
 
 module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
         ProgVarSet, _InstVarset, PragmaImpl, Status, Context, !ModuleInfo,
-        !QualInfo, !IO) :-
-    %
+        !QualInfo, !Specs) :-
     % Begin by replacing any maybe_thread_safe foreign_proc attributes
     % with the actual thread safety attributes which we get from the
     % `--maybe-thread-safe' option.
-    %
-    globals.io_get_globals(Globals, !IO),
+
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_maybe_thread_safe(Globals, MaybeThreadSafe),
     ThreadSafe = get_thread_safe(Attributes0),
     (
@@ -1500,17 +1505,19 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
     module_info_get_name(!.ModuleInfo, ModuleName),
     PragmaForeignLanguage = get_foreign_language(Attributes),
     list.length(PVars, Arity),
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        io.write_string("% Processing `:- pragma foreign_proc' for ", !IO),
-        write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io.write_string("...\n", !IO)
+        trace [io(!IO)] (
+            io.write_string("% Processing `:- pragma foreign_proc' for ", !IO),
+            write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
+            io.write_string("...\n", !IO)
+        )
     ;
         VeryVerbose = no
     ),
 
-    globals.io_get_backend_foreign_languages(BackendForeignLangs, !IO),
+    globals.get_backend_foreign_languages(Globals, BackendForeignLangs),
 
     % Lookup the pred declaration in the predicate table.
     % (If it's not there, print an error message and insert
@@ -1525,7 +1532,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
         preds_add_implicit_report_error(ModuleName, PredOrFunc,
             PredName, Arity, Status, no, Context, origin_user(PredName),
             "`:- pragma foreign_proc' declaration",
-            PredId, !ModuleInfo, !IO)
+            PredId, !ModuleInfo, !Specs)
     ),
 
     % Lookup the pred_info for this pred, add the pragma to the proc_info
@@ -1566,7 +1573,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
         ;
             true
         ),
-        lookup_current_backend(CurrentBackend, !IO),
+        CurrentBackend = lookup_current_backend(Globals),
         (
             ExtraAttrs = get_extra_attributes(Attributes),
             is_applicable_for_current_backend(CurrentBackend, ExtraAttrs) = no
@@ -1576,13 +1583,14 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
         ;
             pred_info_is_imported(!.PredInfo)
         ->
-            module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: `:- pragma foreign_proc'"),
                 words("(or `pragma c_code')"),
                 words("declaration for imported"),
                 simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
-                suffix(".")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+                suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         ;
             % Don't add clauses for foreign languages other than the ones
             % we can generate code for.
@@ -1618,7 +1626,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 clauses_info_add_pragma_foreign_proc(standard_foreign_proc,
                     Purity, Attributes, PredId, ProcId, ProgVarSet, PVars,
                     ArgTypes, PragmaImpl, Context, PredOrFunc, PredName,
-                    Arity, Markers, Clauses0, Clauses, !ModuleInfo, !IO),
+                    Arity, Markers, Clauses0, Clauses, !ModuleInfo, !Specs),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
                 pred_info_update_goal_type(goal_type_foreign, !PredInfo),
                 map.det_update(Preds0, PredId, !.PredInfo, Preds),
@@ -1626,14 +1634,17 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 module_info_set_predicate_table(PredTable, !ModuleInfo),
                 pragma_get_var_infos(PVars, ArgInfoBox),
                 assoc_list.keys(ArgInfoBox, ArgInfo),
-                maybe_warn_pragma_singletons(PragmaImpl, PragmaForeignLanguage,
-                    ArgInfo, Context, SimpleCallId, !.ModuleInfo, !IO)
+                warn_singletons_in_pragma_foreign_proc(PragmaImpl,
+                    PragmaForeignLanguage, ArgInfo, Context, SimpleCallId,
+                    !.ModuleInfo, !Specs)
             ;
-                module_info_incr_errors(!ModuleInfo),
                 Pieces = [words("Error: `:- pragma foreign_proc' declaration"),
                     words("for undeclared mode of"),
-                    simple_call(SimpleCallId), suffix(".")],
-                write_error_pieces(Context, 0, Pieces, !IO)
+                    simple_call(SimpleCallId), suffix("."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             )
         )
     ).
@@ -1642,7 +1653,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
 
 module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
         MaybeModes, MaybeAttributes, !Status, Context, !ModuleInfo,
-        !QualInfo, !IO) :-
+        !QualInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     EvalMethodStr = eval_method_to_string(EvalMethod),
     (
@@ -1663,7 +1674,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
                 Message1),
             preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
                 Arity, !.Status, no, Context, origin_user(PredName), Message1,
-                PredId, !ModuleInfo, !IO),
+                PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
         )
     ;
@@ -1679,7 +1690,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
                 Message1),
             preds_add_implicit_report_error(ModuleName, predicate, PredName,
                 Arity, !.Status, no, Context, origin_user(PredName), Message1,
-                PredId, !ModuleInfo, !IO),
+                PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
         )
     ),
@@ -1694,9 +1705,11 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
                     words("for the ambiguous name"),
                     sym_name_and_arity(PredName / Arity), suffix(","),
                     words("since the compiler-generated statistics predicate"),
-                    words("would have an ambiguous name too.")],
-                write_error_pieces(Context, 0, StatsPieces, !IO),
-                io.set_exit_status(1, !IO)
+                    words("would have an ambiguous name too."), nl],
+                StatsMsg = simple_msg(Context, [always(StatsPieces)]),
+                StatsSpec = error_spec(severity_error,
+                    phase_parse_tree_to_hlds, [StatsMsg]),
+                !:Specs = [StatsSpec | !.Specs]
             ;
                 Statistics = table_dont_gather_statistics
             ),
@@ -1706,9 +1719,11 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
                     words("for the ambiguous name"),
                     sym_name_and_arity(PredName / Arity), suffix(","),
                     words("since the compiler-generated reset predicate"),
-                    words("would have an ambiguous name too.")],
-                write_error_pieces(Context, 0, ResetPieces, !IO),
-                io.set_exit_status(1, !IO)
+                    words("would have an ambiguous name too."), nl],
+                ResetMsg = simple_msg(Context, [always(ResetPieces)]),
+                ResetSpec = error_spec(severity_error,
+                    phase_parse_tree_to_hlds, [ResetMsg]),
+                !:Specs = [ResetSpec | !.Specs]
             ;
                 AllowReset = table_dont_allow_reset
             )
@@ -1721,20 +1736,22 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
     list.foldl4(
         module_add_pragma_tabled_2(EvalMethod, PredName, Arity,
             MaybePredOrFunc, MaybeModes, MaybeAttributes, Context),
-        PredIds, !Status, !ModuleInfo, !QualInfo, !IO).
+        PredIds, !Status, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred module_add_pragma_tabled_2(eval_method::in, sym_name::in, int::in,
     maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
     maybe(table_attributes)::in, prog_context::in, pred_id::in,
     import_status::in, import_status::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         MaybeModes, MaybeAttributes, Context, PredId,
-        !Status, !ModuleInfo, !QualInfo, !IO) :-
+        !Status, !ModuleInfo, !QualInfo, !Specs) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
     ( EvalMethod0 = eval_minimal(_) ->
-        globals.io_lookup_bool_option(use_minimal_model_own_stacks,
-            OwnStacks, !IO),
+        globals.lookup_bool_option(Globals, use_minimal_model_own_stacks,
+            OwnStacks),
         (
             OwnStacks = yes,
             EvalMethod = eval_minimal(own_stacks)
@@ -1759,14 +1776,16 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     adjust_func_arity(PredOrFunc, Arity0, Arity),
 
     EvalMethodStr = eval_method_to_string(EvalMethod),
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        io.write_string("% Processing `:- pragma ", !IO),
-        io.write_string(EvalMethodStr, !IO),
-        io.write_string("' for ", !IO),
-        write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io.write_string("...\n", !IO)
+        trace [io(!IO)] (
+            io.write_string("% Processing `:- pragma ", !IO),
+            io.write_string(EvalMethodStr, !IO),
+            io.write_string("' for ", !IO),
+            write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
+            io.write_string("...\n", !IO)
+        )
     ;
         VeryVerbose = no
     ),
@@ -1774,34 +1793,35 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     % Issue a warning if this predicate/function has a pragma inline
     % declaration. Tabled procedures cannot be inlined.
     pred_info_get_markers(PredInfo0, Markers),
-    globals.io_lookup_bool_option(warn_table_with_inline, WarnInline, !IO),
+    globals.lookup_bool_option(Globals, warn_table_with_inline, WarnInline),
     SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
     (
         check_marker(Markers, marker_user_marked_inline),
         WarnInline = yes
     ->
         TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodStr)]),
-        InlineWarning = [
-            words("Warning: "), simple_call(SimpleCallId),
+        InlineWarningPieces = [words("Warning: "), simple_call(SimpleCallId),
             words("has a"), fixed(TablePragmaStr),
             words("declaration but also has a"),
-            fixed("`:- pragma inline'"), words("declaration."), nl,
+            quote(":- pragma inline"), words("declaration."), nl,
             words("This inline pragma will be ignored"),
             words("since tabled predicates cannot be inlined."), nl,
             words("You can use the"), fixed("`--no-warn-table-with-inline'"),
-            words("option to suppress this warning.")
-        ],
-        error_util.report_warning(Context, 0, InlineWarning, !IO)
+            words("option to suppress this warning."), nl],
+        InlineWarningMsg = simple_msg(Context, [always(InlineWarningPieces)]),
+        InlineWarningSpec = error_spec(severity_warning,
+            phase_parse_tree_to_hlds, [InlineWarningMsg]),
+        !:Specs = [InlineWarningSpec | !.Specs]
     ;
         true
     ),
     ( pred_info_is_imported(PredInfo0) ->
-        module_info_incr_errors(!ModuleInfo),
-        Pieces1 = [words("Error: "),
-            fixed("`:- pragma " ++ EvalMethodStr ++ "'"),
-            words("declaration for imported"),
-            simple_call(SimpleCallId), suffix(".")],
-        write_error_pieces(Context, 0, Pieces1, !IO)
+        Pieces = [words("Error: "), quote(":- pragma " ++ EvalMethodStr),
+            words("declaration for imported"), simple_call(SimpleCallId),
+            suffix("."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ;
         % Do we have to make sure the tabled preds are stratified?
         ( eval_method_needs_stratification(EvalMethod) = yes ->
@@ -1824,28 +1844,32 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context,
                     SimpleCallId, yes, EvalMethod, MaybeAttributes,
-                    ProcTable0, ProcTable,
-                    !Status, !ModuleInfo, !QualInfo, !IO),
+                    ProcTable0, ProcTable, !Status, !ModuleInfo, !QualInfo,
+                    !Specs),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             ;
-                module_info_incr_errors(!ModuleInfo),
-                Pieces2 = [words("Error:"),
+                Pieces = [words("Error:"),
                     fixed("`:- pragma " ++ EvalMethodStr ++ "'"),
                     words("declaration for undeclared mode of"),
                     simple_call(SimpleCallId), suffix(".")],
-                write_error_pieces(Context, 0, Pieces2, !IO)
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             )
         ;
             MaybeModes = no,
             (
                 ExistingProcs = [],
-                module_info_incr_errors(!ModuleInfo),
-                Pieces3 = [words("Error: "),
-                    fixed("`:- pragma " ++ EvalMethodStr ++ "'"),
+                Pieces = [words("Error: "),
+                    quote(":- pragma " ++ EvalMethodStr),
                     words("declaration for"), simple_call(SimpleCallId),
-                    words("with no declared modes.")],
-                write_error_pieces(Context, 0, Pieces3, !IO)
+                    words("with no declared modes."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             ;
                 ExistingProcs = [_ | ExistingProcsTail],
                 (
@@ -1857,8 +1881,8 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
                 ),
                 set_eval_method_create_aux_preds_list(ExistingProcs, Context,
                     SimpleCallId, SingleProc, EvalMethod, MaybeAttributes,
-                    ProcTable0, ProcTable,
-                    !Status, !ModuleInfo, !QualInfo, !IO),
+                    ProcTable0, ProcTable, !Status, !ModuleInfo, !QualInfo,
+                    !Specs),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             )
@@ -1870,29 +1894,30 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     bool::in, eval_method::in, maybe(table_attributes)::in,
     proc_table::in, proc_table::out, import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 set_eval_method_create_aux_preds_list([], _, _, _, _, _, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !IO).
+        !Status, !ModuleInfo, !QualInfo, !Specs).
 set_eval_method_create_aux_preds_list([ProcId - ProcInfo0 | Rest], Context,
         SimpleCallId, SingleProc, EvalMethod, MaybeAttributes, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !IO) :-
+        !Status, !ModuleInfo, !QualInfo, !Specs) :-
     set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
         SingleProc, EvalMethod, MaybeAttributes, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !IO),
+        !Status, !ModuleInfo, !QualInfo, !Specs),
     set_eval_method_create_aux_preds_list(Rest, Context, SimpleCallId,
         SingleProc, EvalMethod, MaybeAttributes, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !IO).
+        !Status, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred set_eval_method_create_aux_preds(proc_id::in, proc_info::in,
     prog_context::in, simple_call_id::in, bool::in, eval_method::in,
     maybe(table_attributes)::in, proc_table::in, proc_table::out,
     import_status::in, import_status::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
         SingleProc, EvalMethod, MaybeAttributes, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !IO) :-
+        !Status, !ModuleInfo, !QualInfo, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
     % NOTE: We don't bother detecting multiple tabling pragmas
     % of the same type here.
@@ -1903,31 +1928,30 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
         ( OldEvalMethod = EvalMethod ->
             Pieces = [words("Error:"), simple_call(SimpleCallId),
                 words("has duplicate"), fixed(EvalMethodStr),
-                words("pragmas specified.")
-            ]
+                words("pragmas specified."), nl]
         ;
             OldEvalMethodStr = eval_method_to_string(OldEvalMethod),
             Pieces = [words("Error:"), simple_call(SimpleCallId),
                 words("has both"), fixed(OldEvalMethodStr), words("and"),
                 fixed(EvalMethodStr), words("pragmas specified."),
-                words("Only one kind of tabling pragma may be applied to it.")
-            ]
+                words("Only one kind of tabling pragma may be applied to it."),
+                nl]
         ),
-        module_info_incr_errors(!ModuleInfo),
-        write_error_pieces(Context, 0, Pieces, !IO)
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ;
         proc_info_get_maybe_declared_argmodes(ProcInfo0,
             MaybeDeclaredArgModes),
         (
             MaybeDeclaredArgModes = no,
             EvalMethodStr = eval_method_to_string(EvalMethod),
-            Pieces = [words("Error:"),
-                fixed("`pragma" ++ EvalMethodStr ++ "'"),
+            Pieces = [words("Error:"), quote("pragma " ++ EvalMethodStr),
                 words("declaration for"), simple_call(SimpleCallId),
-                suffix(","), words("which has no declared modes.")
-            ],
-            module_info_incr_errors(!ModuleInfo),
-            write_error_pieces(Context, 0, Pieces, !IO)
+                suffix(","), words("which has no declared modes."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         ;
             MaybeDeclaredArgModes = yes(DeclaredArgModes),
             (
@@ -1954,10 +1978,11 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 Pieces = [words("Error in"),
                     fixed("`pragma " ++ EvalMethodStr ++ "'"),
                     words("declaration for"), simple_call(SimpleCallId),
-                    suffix(":"), nl, fixed(ArgMsg), words(ErrorMsg)
-                ],
-                module_info_incr_errors(!ModuleInfo),
-                write_error_pieces(Context, 0, Pieces, !IO)
+                    suffix(":"), nl, fixed(ArgMsg), words(ErrorMsg), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             ;
                 MaybeError = no
             ),
@@ -1973,7 +1998,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 Statistics = table_gather_statistics,
                 create_tabling_statistics_pred(ProcId, Context,
                     SimpleCallId, SingleProc, !ProcTable,
-                    !Status, !ModuleInfo, !QualInfo, !IO)
+                    !Status, !ModuleInfo, !QualInfo, !Specs)
             ;
                 Statistics = table_dont_gather_statistics
             ),
@@ -1981,7 +2006,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 AllowReset = table_allow_reset,
                 create_tabling_reset_pred(ProcId, Context,
                     SimpleCallId, SingleProc, !ProcTable,
-                    !Status, !ModuleInfo, !QualInfo, !IO)
+                    !Status, !ModuleInfo, !QualInfo, !Specs)
             ;
                 AllowReset = table_dont_allow_reset
             )
@@ -1991,10 +2016,11 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
 :- pred create_tabling_statistics_pred(proc_id::in, prog_context::in,
     simple_call_id::in, bool::in, proc_table::in, proc_table::out,
     import_status::in, import_status::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
-        !ProcTable, !Status, !ModuleInfo, !QualInfo, !IO) :-
+        !ProcTable, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     mercury_table_builtin_module(TableBuiltinModule),
     StatsTypeName = qualified(TableBuiltinModule, "proc_table_statistics"),
     StatsType = defined_type(StatsTypeName, [], kind_star),
@@ -2018,7 +2044,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         yes(detism_det), Condition, purity_pure, Constraints),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
     add_item_decl_pass_1(StatsPredDecl, Context, ItemStatus0, _,
-        !ModuleInfo, _, !IO),
+        !ModuleInfo, _, !Specs),
 
     some [!Attrs, !VarSet] (
         !:Attrs = default_attributes(lang_c),
@@ -2046,15 +2072,16 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
                     yes(Context))))
     ),
     add_item_clause(StatsPredClause, !Status, Context, !ModuleInfo,
-        !QualInfo, !IO).
+        !QualInfo, !Specs).
 
 :- pred create_tabling_reset_pred(proc_id::in, prog_context::in,
     simple_call_id::in, bool::in, proc_table::in, proc_table::out,
     import_status::in, import_status::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
-         !ProcTable, !Status, !ModuleInfo, !QualInfo, !IO) :-
+         !ProcTable, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     ArgDecl1 = type_and_mode(io_state_type, di_mode),
     ArgDecl2 = type_and_mode(io_state_type, uo_mode),
     ArgDecls = [ArgDecl1, ArgDecl2],
@@ -2074,7 +2101,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         yes(detism_det), Condition, purity_pure, Constraints),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
     add_item_decl_pass_1(ResetPredDecl, Context, ItemStatus0, _,
-        !ModuleInfo, _, !IO),
+        !ModuleInfo, _, !Specs),
 
     some [!Attrs, !VarSet] (
         !:Attrs = default_attributes(lang_c),
@@ -2097,7 +2124,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
                     yes(Context))))
     ),
     add_item_clause(ResetPredClause, !Status, Context, !ModuleInfo,
-        !QualInfo, !IO).
+        !QualInfo, !Specs).
 
 :- func tabling_stats_pred_name(simple_call_id, proc_id, bool) = sym_name.
 
@@ -2271,7 +2298,7 @@ pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
     pragma_get_var_infos(PragmaVars, Infos).
 
 module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
-        !ModuleInfo, !QualInfo, !IO) :-
+        !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
     (
         predicate_table_search_sym_arity(PredicateTable, is_fully_qualified,
@@ -2282,10 +2309,19 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
             PredIDs1 = [],      % only one predicate found
             module_info_pred_info(!.ModuleInfo, PredID, PredInfo0),
 
-                % Compile the fact table into a separate .o file.
-            fact_table_compile_facts(Pred, Arity, FileName,
-                PredInfo0, PredInfo, Context, !.ModuleInfo,
-                C_HeaderCode, PrimaryProcID, !IO),
+            % Compile the fact table into a separate .o file.
+            % We should be able to dispense with the impure shenanigans
+            % when we replace fact tables with fast code for large
+            % disjunctions.
+            some [!IO] (
+                promise_pure (
+                    semipure private_builtin.trace_get_io_state(!:IO),
+                    fact_table_compile_facts(Pred, Arity, FileName,
+                        PredInfo0, PredInfo, Context, !.ModuleInfo,
+                        C_HeaderCode, PrimaryProcID, !IO),
+                    impure private_builtin.trace_set_io_state(!.IO)
+                )
+            ),
 
             module_info_set_pred_info(PredID, PredInfo, !ModuleInfo),
             pred_info_get_procedures(PredInfo, ProcTable),
@@ -2294,33 +2330,28 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             adjust_func_arity(PredOrFunc, Arity, NumArgs),
 
-                % Create foreign_decls to declare extern variables.
+            % Create foreign_decls to declare extern variables.
             module_add_foreign_decl(lang_c, foreign_decl_is_local,
                 C_HeaderCode, Context, !ModuleInfo),
 
             module_add_fact_table_file(FileName, !ModuleInfo),
 
-            io.get_exit_status(ExitStatus, !IO),
-            ( ExitStatus = 1 ->
-                true
-            ;
-                % Create foreign_procs to access the table in each mode.
-                module_add_fact_table_procedures(ProcIDs,
-                    PrimaryProcID, ProcTable, Pred,
-                    PredOrFunc, NumArgs, ArgTypes, Status,
-                    Context, !ModuleInfo, !QualInfo, !IO)
-            )
+            % Create foreign_procs to access the table in each mode.
+            module_add_fact_table_procedures(ProcIDs, PrimaryProcID,
+                ProcTable, Pred, PredOrFunc, NumArgs, ArgTypes, Status,
+                Context, !ModuleInfo, !QualInfo, !Specs)
         ;
             PredIDs1 = [_ | _],     % >1 predicate found
-            io.set_exit_status(1, !IO),
             Pieces = [words("In pragma fact_table for"),
                 sym_name_and_arity(Pred/Arity), suffix(":"), nl,
-                words("error: ambiguous predicate/function name.")],
-            write_error_pieces(Context, 0, Pieces, !IO)
+                words("error: ambiguous predicate/function name."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ;
         undefined_pred_or_func_error(Pred, Arity, Context,
-            "`:- pragma fact_table' declaration", !IO)
+            "`:- pragma fact_table' declaration", !Specs)
     ).
 
     % Add a `pragma c_code' for each mode of the fact table lookup to the
@@ -2332,36 +2363,47 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
     proc_table::in, sym_name::in, pred_or_func::in, arity::in,
     list(mer_type)::in, import_status::in, prog_context::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_fact_table_procedures([],_,_,_,_,_,_,_,_, !ModuleInfo, !QualInfo,
-        !IO).
+        !Specs).
 module_add_fact_table_procedures([ProcID | ProcIDs], PrimaryProcID, ProcTable,
         SymName, PredOrFunc, Arity, ArgTypes, Status, Context,
-        !ModuleInfo, !QualInfo, !IO) :-
+        !ModuleInfo, !QualInfo, !Specs) :-
     module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
         PredOrFunc, Arity, ArgTypes, Status, Context,
-        !ModuleInfo, !QualInfo, !IO),
+        !ModuleInfo, !QualInfo, !Specs),
     module_add_fact_table_procedures(ProcIDs, PrimaryProcID, ProcTable,
         SymName, PredOrFunc, Arity, ArgTypes, Status, Context,
-        !ModuleInfo, !QualInfo, !IO).
+        !ModuleInfo, !QualInfo, !Specs).
 
 :- pred module_add_fact_table_proc(proc_id::in, proc_id::in, proc_table::in,
     sym_name::in, pred_or_func::in, arity::in, list(mer_type)::in,
     import_status::in, prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
         PredOrFunc, Arity, ArgTypes, Status, Context, !ModuleInfo, !QualInfo,
-        !IO) :-
+        !Specs) :-
     map.lookup(ProcTable, ProcID, ProcInfo),
     varset.init(ProgVarSet0),
     varset.new_vars(ProgVarSet0, Arity, Vars, ProgVarSet),
     proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     fact_table_pragma_vars(Vars, Modes, ProgVarSet, PragmaVars),
-    fact_table_generate_c_code(SymName, PragmaVars, ProcID, PrimaryProcID,
-        ProcInfo, ArgTypes, !.ModuleInfo, C_ProcCode, C_ExtraCode, !IO),
+
+    % We should be able to dispense with the impure shenanigans
+    % when we replace fact tables with fast code for large disjunctions.
+    some [!IO] (
+        promise_pure (
+            semipure private_builtin.trace_get_io_state(!:IO),
+            fact_table_generate_c_code(SymName, PragmaVars, ProcID,
+                PrimaryProcID, ProcInfo, ArgTypes, !.ModuleInfo,
+                C_ProcCode, C_ExtraCode, !IO),
+            impure private_builtin.trace_set_io_state(!.IO)
+        )
+    ),
 
     Attrs0 = default_attributes(lang_c),
     set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs1),
@@ -2371,20 +2413,18 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
     add_extra_attribute(refers_to_llds_stack, Attrs3, Attrs),
     module_add_pragma_foreign_proc(Attrs, SymName, PredOrFunc, PragmaVars,
         ProgVarSet, InstVarSet, fc_impl_ordinary(C_ProcCode, no), Status,
-        Context, !ModuleInfo, !QualInfo, !IO),
+        Context, !ModuleInfo, !QualInfo, !Specs),
     ( C_ExtraCode = "" ->
         true
     ;
         module_add_foreign_body_code(lang_c, C_ExtraCode, Context, !ModuleInfo)
     ),
-    %
-    % The C code for fact tables includes C labels;
-    % we cannot inline this code, because if we try,
-    % the result may be duplicate labels in the generated code.
-    % So we must disable inlining for fact_table procedures.
-    %
+
+    % The C code for fact tables includes C labels; we cannot inline this code,
+    % because if we try, the result may be duplicate labels in the generated
+    % code. So we must disable inlining for fact_table procedures.
     add_pred_marker("fact_table", SymName, Arity, Status, Context,
-        marker_user_marked_no_inline, [], !ModuleInfo, !IO).
+        marker_user_marked_no_inline, [], !ModuleInfo, !Specs).
 
     % Create a list(pragma_var) that looks like the ones that are created
     % for foreign_proc in prog_io.m.
@@ -2426,42 +2466,38 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
     pragma_foreign_code_impl::in, prog_context::in, pred_or_func::in,
     sym_name::in, arity::in, pred_markers::in,
     clauses_info::in, clauses_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         PredId, ProcId, PVarSet, PVars, OrigArgTypes, PragmaImpl0,
         Context, PredOrFunc, PredName, Arity, Markers, !ClausesInfo,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo, !Specs) :-
 
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
         InferredVarTypes, HeadVars, ClauseRep, RttiVarMaps,
         _HasForeignClauses),
     get_clause_list(ClauseRep, ClauseList),
 
-        % Find all the existing clauses for this mode, and
-        % extract their implementation language and clause number
-        % (that is, their index in the list).
-    globals.io_get_globals(Globals, !IO),
-    globals.io_get_target(Target, !IO),
+    % Find all the existing clauses for this mode, and extract their
+    % implementation language and clause number (that is, their index
+    % in the list).
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
     NewLang = get_foreign_language(Attributes0),
     list.foldl2(decide_action(Globals, Target, NewLang, ProcId), ClauseList,
         add, FinalAction, 1, _),
 
-    globals.io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
+    globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
     pragma_get_vars(PVars, Args0),
     pragma_get_var_infos(PVars, ArgInfo),
 
-    %
     % If the foreign language not one of the backend languages, we will
     % have to generate an interface to it in a backend language.
-    %
     foreign.extrude_pragma_implementation(BackendForeignLanguages,
         PVars, PredName, PredOrFunc, Context, !ModuleInfo,
         Attributes0, Attributes1, PragmaImpl0, PragmaImpl),
 
-    %
     % Check for arguments occurring multiple times.
-    %
     bag.init(ArgBag0),
     bag.insert_list(ArgBag0, Args0, ArgBag),
     bag.to_assoc_list(ArgBag, ArgBagAL0),
@@ -2474,29 +2510,30 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
 
     (
         MultipleArgs = [_ | _],
-        io.set_exit_status(1, !IO),
         adjust_func_arity(PredOrFunc, OrigArity, Arity),
         SimpleCallId = simple_call_id(PredOrFunc, PredName, OrigArity),
         Pieces1 = [words("In `:- pragma foreign_proc' declaration for"),
             simple_call(SimpleCallId), suffix(":"), nl],
         (
             MultipleArgs = [MultipleArg],
-            Pieces2 = [words("error: variable `" ++
-                mercury_var_to_string(MultipleArg, PVarSet, no) ++
-                "' occurs multiple times in the argument list.")]
+            Pieces2 = [words("error: variable"),
+                quote(mercury_var_to_string(MultipleArg, PVarSet, no)),
+                words("occurs multiple times in the argument list.")]
         ;
             MultipleArgs = [_, _ | _],
-            Pieces2 = [words("error: variables `" ++
-                mercury_vars_to_string(MultipleArgs, PVarSet, no) ++
-                "' occur multiple times in the argument list.")]
+            Pieces2 = [words("error: variables"),
+                quote(mercury_vars_to_string(MultipleArgs, PVarSet, no)),
+                words("occur multiple times in the argument list.")]
         ),
-        write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO)
+        Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ;
         MultipleArgs = [],
         % Build the foreign_proc.
         goal_info_init(GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
-        %
+
         % Check that the purity of a predicate/function declaration agrees with
         % the (promised) purity of the foreign proc.  We do not perform this
         % check there is a promise_{pure,semipure} pragma for the
@@ -2506,7 +2543,6 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         % in spurious error messages about non-existent foreign_procs.  For
         % that case we assume that the code that constructs the foreign_procs
         % from the import pragmas sets the purity attributes correctly.
-        %
         (
             ( Origin = pragma_import_foreign_proc
             ; check_marker(Markers, marker_promised_pure)
@@ -2521,16 +2557,16 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
             ->
                 purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
                 purity_name(Purity, PurityStr),
-                ErrorMsg = [
-                    words("Error: foreign clause for"),
-                    p_or_f(PredOrFunc),
-                    sym_name_and_arity(PredName / Arity),
-                    words("has purity " ++ ForeignAttributePurityStr),
+                Pieces = [words("Error: foreign clause for"),
+                    p_or_f(PredOrFunc), sym_name_and_arity(PredName / Arity),
+                    words("has purity"), words(ForeignAttributePurityStr),
                     words("but that"), p_or_f(PredOrFunc),
-                    words("has been declared " ++ PurityStr), suffix(".")
-                ],
-                write_error_pieces(Context, 0, ErrorMsg, !IO),
-                io.set_exit_status(1, !IO)
+                    words("has been declared"), words(PurityStr),
+                    suffix("."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             ;
                 true
             )
@@ -2539,8 +2575,8 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         goal_info_set_purity(Purity, GoalInfo1, GoalInfo),
         make_foreign_args(HeadVars, ArgInfo, OrigArgTypes, ForeignArgs),
         % Perform some renaming in any user annotated sharing information.
-        maybe_rename_user_annotated_sharing_information(Args0, HeadVars,
-            OrigArgTypes, Attributes1, Attributes, !IO),
+        maybe_rename_user_annotated_sharing_information(Globals,
+            Args0, HeadVars, OrigArgTypes, Attributes1, Attributes),
         ExtraArgs = [],
         MaybeTraceRuntimeCond = no,
         HldsGoal0 = call_foreign_proc(Attributes, PredId, ProcId, ForeignArgs,
@@ -2578,15 +2614,15 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
     % is expressed, to the formal variables in terms of which the clause
     % is expressed.
     %
-:- pred maybe_rename_user_annotated_sharing_information(list(prog_var)::in,
-    list(prog_var)::in, list(mer_type)::in,
-    pragma_foreign_proc_attributes::in, pragma_foreign_proc_attributes::out,
-    io::di, io::uo) is det.
+:- pred maybe_rename_user_annotated_sharing_information(globals::in,
+    list(prog_var)::in, list(prog_var)::in, list(mer_type)::in,
+    pragma_foreign_proc_attributes::in, pragma_foreign_proc_attributes::out)
+    is det.
 
-maybe_rename_user_annotated_sharing_information(ActualHeadVars, FormalHeadVars,
-        FormalTypes, !Attributes, !IO):-
-    globals.io_lookup_bool_option(structure_sharing_analysis, SharingAnalysis,
-        !IO),
+maybe_rename_user_annotated_sharing_information(Globals,
+        ActualHeadVars, FormalHeadVars, FormalTypes, !Attributes):-
+    globals.lookup_bool_option(Globals, structure_sharing_analysis,
+        SharingAnalysis),
     (
         SharingAnalysis = no
     ;
@@ -2616,8 +2652,8 @@ is_applicable_for_current_backend(CurrentBackend, [Attr | Attrs]) = Result :-
         )
     ).
 
-lookup_current_backend(CurrentBackend, !IO) :-
-    globals.io_lookup_bool_option(highlevel_code, HighLevel, !IO),
+lookup_current_backend(Globals) = CurrentBackend :-
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevel),
     (
         HighLevel = yes,
         CurrentBackend = high_level_backend

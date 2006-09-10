@@ -1851,7 +1851,10 @@ report_unused_args(PredInfo, UnusedArgs, !IO) :-
         Pieces2 = [words("arguments") | format_arg_list(UnusedArgs)] ++
             [words("are unused."), nl]
     ),
-    write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO).
+    Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
+    Spec = error_spec(severity_warning, phase_code_gen, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 :- func format_arg_list(list(int)) = list(format_component).
 

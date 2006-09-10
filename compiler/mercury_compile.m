@@ -1026,7 +1026,10 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         ( halt_at_module_error(HaltSyntax, Error) ->
             true
         ;
-            split_into_submodules(ModuleName, Items, SubModuleList, !IO),
+            split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
+            sort_error_specs(Specs, SortedSpecs),
+            write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors,
+                !IO),
             list.foldl(apply_process_module(ProcessModule,
                 FileName, ModuleName, MaybeTimestamp), SubModuleList, !IO)
         ),
@@ -1151,7 +1154,9 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         ModulesToLink = [],
         FactTableObjFiles = []
     ;
-        split_into_submodules(ModuleName, Items, SubModuleList0, !IO),
+        split_into_submodules(ModuleName, Items, SubModuleList0, [], Specs),
+        sort_error_specs(Specs, SortedSpecs),
+        write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
         ( MaybeModulesToRecompile = some_modules(ModulesToRecompile) ->
             ToRecompile = (pred((SubModule - _)::in) is semidet :-
                 list.member(SubModule, ModulesToRecompile)
@@ -1708,8 +1713,8 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
     module_imports_get_items(ModuleImports1, Items1),
     MaybeTimestamps = ModuleImports1 ^ maybe_timestamps,
 
-    module_qualify_items(Items1, Items2, Module, Verbose, Stats, MQInfo0, _,
-        UndefTypes0, UndefModes0, !IO),
+    invoke_module_qualify_items(Items1, Items2, Module, Verbose, Stats,
+        MQInfo0, UndefTypes0, UndefModes0, !IO),
 
     mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
     expand_equiv_types(Module, Items2, Verbose, Stats, Items, CircularTypes,
@@ -1752,16 +1757,20 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         HLDS1 = HLDS0
     ).
 
-:- pred module_qualify_items(item_list::in, item_list::out, module_name::in,
-    bool::in, bool::in, mq_info::out, int::out, bool::out, bool::out,
-    io::di, io::uo) is det.
+:- pred invoke_module_qualify_items(item_list::in, item_list::out,
+    module_name::in, bool::in, bool::in, mq_info::out,
+    bool::out, bool::out, io::di, io::uo) is det.
 
-module_qualify_items(Items0, Items, ModuleName, Verbose, Stats, MQInfo,
-        NumErrors, UndefTypes, UndefModes, !IO) :-
+invoke_module_qualify_items(Items0, Items, ModuleName, Verbose, Stats, MQInfo,
+        UndefTypes, UndefModes, !IO) :-
     maybe_write_string(Verbose, "% Module qualifying items...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    module_qual.module_qualify_items(Items0, Items, ModuleName, yes,
-        MQInfo, NumErrors, UndefTypes, UndefModes, !IO),
+    globals.io_get_globals(Globals, !IO),
+    module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+    module_qualify_items(Items0, Items, Globals, ModuleName, yes(FileName),
+        MQInfo, UndefTypes, UndefModes, [], Specs),
+    sort_error_specs(Specs, SortedSpecs),
+    write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -4411,17 +4420,14 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     ),
     maybe_report_stats(Stats, !IO),
 
-    % run the ml_optimize pass before ml_elim_nested,
-    % so that we eliminate as many local variables as possible
-    % before the ml_elim_nested transformations.
-    % We also want to do tail recursion optimization before
-    % ml_elim_nested, since this means that the stack-handling
-    % code for accurate GC will go outside the loop rather than
-    % inside the loop.
+    % Run the ml_optimize pass before ml_elim_nested, so that we eliminate
+    % as many local variables as possible before the ml_elim_nested
+    % transformations. We also want to do tail recursion optimization before
+    % ml_elim_nested, since this means that the stack-handling code for
+    % accurate GC will go outside the loop rather than inside the loop.
     %
-    % However, we need to disable optimize_initializations,
-    % because ml_elim_nested doesn't correctly handle
-    % code containing initializations.
+    % However, we need to disable optimize_initializations, because
+    % ml_elim_nested doesn't correctly handle code containing initializations.
     globals.io_lookup_bool_option(optimize, Optimize, !IO),
     (
         Optimize = yes,
@@ -4441,17 +4447,12 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(MLDS25, 25, "optimize1", !IO),
 
-    %
-    % Note that we call ml_elim_nested twice --
-    % the first time to chain the stack frames together, for accurate GC,
-    % and the second time to flatten nested functions.
-    % These two passes are quite similar,
-    % but must be done separately.
-    % Currently chaining the stack frames together for accurate GC
-    % needs to be done first, because the code for doing that
-    % can't handle the env_ptr references that the other pass
-    % generates.
-    %
+    % Note that we call ml_elim_nested twice -- the first time to chain
+    % the stack frames together, for accurate GC, and the second time to
+    % flatten nested functions. These two passes are quite similar, but
+    % must be done separately. Currently chaining the stack frames together
+    % for accurate GC needs to be done first, because the code for doing that
+    % can't handle the env_ptr references that the other pass generates.
 
     globals.io_get_gc_method(GC, !IO),
     ( GC = gc_accurate ->

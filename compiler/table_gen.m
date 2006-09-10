@@ -185,9 +185,8 @@ table_gen_process_proc(PredId, ProcId, ProcInfo0, PredInfo0, !ModuleInfo,
             PredModuleName, AnnotationIsMissing, TransformPrimitive),
         (
             AnnotationIsMissing = yes,
-            report_missing_tabled_for_io(!.ModuleInfo, PredInfo0,
-                PredId, ProcId, !IO),
-            module_info_incr_errors(!ModuleInfo)
+            report_missing_tabled_for_io(PredInfo0, PredId, ProcId,
+                !ModuleInfo, !IO)
         ;
             AnnotationIsMissing = no
         ),
@@ -308,45 +307,18 @@ subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
         \+ TabledForIoAttr = proc_not_tabled_for_io
     ).
 
-:- pred report_missing_tabled_for_io(module_info::in, pred_info::in,
-    pred_id::in, proc_id::in, io::di, io::uo) is det.
+:- pred report_missing_tabled_for_io(pred_info::in, pred_id::in, proc_id::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId, !IO) :-
+report_missing_tabled_for_io(PredInfo, PredId, ProcId, !ModuleInfo, !IO) :-
     pred_info_context(PredInfo, Context),
-    ProcPieces = describe_one_proc_name(ModuleInfo, should_module_qualify,
-        proc(PredId, ProcId)),
-    Msg = ProcPieces ++ [words("contains untabled I/O primitive.")],
-    error_util.write_error_pieces(Context, 0, Msg, !IO).
-
-:- pred report_bad_mode_for_tabling(module_info::in, pred_info::in,
-    pred_id::in, proc_id::in, prog_varset::in, list(prog_var)::in,
-    io::di, io::uo) is det.
-
-report_bad_mode_for_tabling(ModuleInfo, PredInfo, PredId, ProcId, VarSet, Vars,
-        !IO) :-
-    pred_info_context(PredInfo, Context),
-    ProcPieces = describe_one_proc_name(ModuleInfo, should_module_qualify,
-        proc(PredId, ProcId)),
-    lookup_var_names(VarSet, Vars, VarNames),
-    Msg = ProcPieces ++ [words("contains arguments"),
-        words("whose mode is incompatible with tabling;"), nl,
-        words("these arguments are"), words(VarNames)],
-    error_util.write_error_pieces(Context, 0, Msg, !IO).
-
-:- pred lookup_var_names(prog_varset::in, list(prog_var)::in, string::out)
-    is det.
-
-lookup_var_names(_, [], "").
-lookup_var_names(VarSet, [Var | Vars], Description) :-
-    varset.lookup_name(VarSet, Var, Name),
-    (
-        Vars = [],
-        Description = Name
-    ;
-        Vars = [_ | _],
-        lookup_var_names(VarSet, Vars, Description0),
-        Description = Name ++ ", " ++ Description0
-    ).
+    ProcPieces = describe_one_proc_name(!.ModuleInfo,
+        should_not_module_qualify, proc(PredId, ProcId)),
+    Pieces = ProcPieces ++ [words("contains untabled I/O primitive."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_code_gen, [Msg]),
+    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -363,17 +335,18 @@ table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
         table_gen_transform_proc(EvalMethod, PredId, ProcId,
             !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !IO)
     ;
-        % We don't want to increment the error count, since that would combine
-        % with --halt-at-warn to prevent the clean compilation of the library.
-
         pred_info_context(!.PredInfo, Context),
         ProcPieces = describe_one_proc_name(!.ModuleInfo,
             should_module_qualify, proc(PredId, ProcId)),
         EvalMethodStr = eval_method_to_string(EvalMethod),
-        Msg = [words("Ignoring the pragma"), fixed(EvalMethodStr),
+        Pieces = [words("Ignoring the pragma"), fixed(EvalMethodStr),
             words("for")] ++ ProcPieces ++
             [words("due to lack of support on this back end."), nl],
-        error_util.write_error_pieces(Context, 0, Msg, !IO),
+        Msg = simple_msg(Context, [always(Pieces)]),
+        % We don't want to increment the error count, since that would combine
+        % with --halt-at-warn to prevent the clean compilation of the library.
+        Spec = error_spec(severity_informational, phase_code_gen, [Msg]),
+        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO),
 
         % XXX We set the evaluation method to eval_normal here to prevent
         % problems in the ml code generator if we are compiling in a grade

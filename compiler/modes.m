@@ -511,16 +511,18 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 :- pred report_max_iterations_exceeded(io::di, io::uo) is det.
 
 report_max_iterations_exceeded(!IO) :-
-    io.set_exit_status(1, !IO),
-    io.write_strings([
-       "Mode analysis iteration limit exceeded.\n",
-       "You may need to declare the modes explicitly, or use the\n",
-       "`--mode-inference-iteration-limit' option to increase the limit.\n"
-    ], !IO),
     globals.io_lookup_int_option(mode_inference_iteration_limit,
         MaxIterations, !IO),
-    io.format("(The current limit is %d iterations.)\n",
-        [i(MaxIterations)], !IO).
+    Pieces = [words("Mode analysis iteration limit exceeded."), nl,
+        words("You may need to declare the modes explicitly"),
+        words("or use the `--mode-inference-iteration-limit' option"),
+        words("to increase the limit."),
+        words("(The current limit is"), int_fixed(MaxIterations),
+        words("iterations.)"), nl],
+    Msg = error_msg(no, no, 0, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_mode_check, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
     % copy_pred_bodies(OldPredTable, ProcId, ModuleInfo0, ModuleInfo):
     %
@@ -3378,23 +3380,18 @@ report_eval_method_requires_ground_args(ProcInfo, !ModuleInfo, !IO) :-
     proc_info_get_eval_method(ProcInfo, EvalMethod),
     proc_info_get_context(ProcInfo, Context),
     EvalMethodS = eval_method_to_string(EvalMethod),
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    Pieces1 = [words("Sorry, not implemented:"),
+    MainPieces = [words("Sorry, not implemented:"),
         fixed("`pragma " ++ EvalMethodS ++ "'"),
         words("declaration not allowed for procedure"),
-        words("with partially instantiated modes.")],
-    (
-        VerboseErrors = yes,
-        Pieces2 = [words("Tabling of predicates/functions"),
-            words("with partially instantiated modes"),
-            words("is not currently implemented.")]
-    ;
-        VerboseErrors = no,
-        globals.io_set_extra_error_info(yes, !IO),
-        Pieces2 = []
-    ),
-    write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO),
-    module_info_incr_errors(!ModuleInfo).
+        words("with partially instantiated modes."), nl],
+    VerbosePieces = [words("Tabling of predicates/functions"),
+        words("with partially instantiated modes"),
+        words("is not currently implemented."), nl],
+    Msg = simple_msg(Context,
+        [always(MainPieces), verbose_only(VerbosePieces)]),
+    Spec = error_spec(severity_error, phase_mode_check, [Msg]),
+    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 :- pred report_eval_method_destroys_uniqueness(proc_info::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -3403,32 +3400,31 @@ report_eval_method_destroys_uniqueness(ProcInfo, !ModuleInfo, !IO) :-
     proc_info_get_eval_method(ProcInfo, EvalMethod),
     proc_info_get_context(ProcInfo, Context),
     EvalMethodS = eval_method_to_string(EvalMethod),
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    Pieces1 = [words("Error:"),
+    MainPieces = [words("Error:"),
         fixed("`pragma " ++ EvalMethodS ++ "'"),
         words("declaration not allowed for procedure"),
-        words("with unique modes.")],
-    (
-        VerboseErrors = yes,
-        Pieces2 = [words("Tabling of predicates/functions with unique modes"),
-            words("is not allowed as this would lead to a copying"),
-            words("of the unique arguments which would result"),
-            words("in them no longer being unique.")]
-    ;
-        VerboseErrors = no,
-        Pieces2 = []
-    ),
-    write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO),
-    module_info_incr_errors(!ModuleInfo).
+        words("with unique modes."), nl],
+    VerbosePieces =
+        [words("Tabling of predicates/functions with unique modes"),
+        words("is not allowed as this would lead to a copying"),
+        words("of the unique arguments which would result"),
+        words("in them no longer being unique."), nl],
+    Msg = simple_msg(Context,
+        [always(MainPieces), verbose_only(VerbosePieces)]),
+    Spec = error_spec(severity_error, phase_mode_check, [Msg]),
+    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 :- pred report_wrong_mode_for_main(proc_info::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 report_wrong_mode_for_main(ProcInfo, !ModuleInfo, !IO) :-
     proc_info_get_context(ProcInfo, Context),
-    Pieces = [words("Error: main/2 must have mode `(di, uo)'.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    module_info_incr_errors(!ModuleInfo).
+    Pieces = [words("Error: main/2 must have mode `(di, uo)'."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_mode_check, [Msg]),
+    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

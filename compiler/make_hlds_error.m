@@ -18,53 +18,46 @@
 :- module hlds.make_hlds.make_hlds_error.
 :- interface.
 
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
 :- pred multiple_def_error(import_status::in, sym_name::in, int::in,
-    string::in, prog_context::in, prog_context::in, bool::out,
-    io::di, io::uo) is det.
+    string::in, prog_context::in, prog_context::in, list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred undefined_pred_or_func_error(sym_name::in, int::in, prog_context::in,
-    string::in, io::di, io::uo) is det.
+    string::in, list(error_spec)::in, list(error_spec)::out) is det.
 
     % Similar to undeclared_mode_error, but gives less information.
     % XXX perhaps we should get rid of this, and change the callers to
     % instead call undeclared_mode_error.
     %
 :- pred undefined_mode_error(sym_name::in, int::in, prog_context::in,
-    string::in, io::di, io::uo) is det.
+    string::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Similar to undefined_mode_error, but gives more information.
-    % XXX the documentation here should be somewhat less circular.
-    %
-:- pred undeclared_mode_error(list(mer_mode)::in, prog_varset::in,
-    pred_id::in, pred_info::in, module_info::in, prog_context::in,
-    io::di, io::uo) is det.
-
-:- pred maybe_undefined_pred_error(sym_name::in, int::in, pred_or_func::in,
-    import_status::in, bool::in, prog_context::in, string::in,
-    io::di, io::uo) is det.
+:- pred maybe_undefined_pred_error(globals::in, sym_name::in, int::in,
+    pred_or_func::in, import_status::in, bool::in, prog_context::in,
+    string::in, list(error_spec)::in, list(error_spec)::out) is det.
 
     % Emit an error if something is exported.  (Used to check for
     % when things shouldn't be exported.)
     %
 :- pred error_if_exported(import_status::in, prog_context::in, string::in,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Emit an error reporting that something should not have occurred in
     % a module interface.
     %
-:- pred error_is_exported(prog_context::in, string::in, io::di, io::uo)
-    is det.
+:- pred error_is_exported(prog_context::in, string::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -72,10 +65,9 @@
 :- implementation.
 
 :- import_module check_hlds.mode_errors.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
-:- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -86,92 +78,95 @@
 %-----------------------------------------------------------------------------%
 
 multiple_def_error(Status, Name, Arity, DefType, Context, OrigContext,
-        FoundError, !IO) :-
+        ExtraPieces, !Specs) :-
     ( Status = status_opt_imported ->
         % We don't take care not to read the same declaration from multiple
         % sources with inter-module optimization, so ignore multiple definition
         % errors in the items read for inter-module optimization.
-        FoundError = no
+        true
     ;
-        Pieces = [words("Error:"),
-            fixed(DefType), sym_name_and_arity(Name / Arity),
-            words("multiply defined.")],
-        write_error_pieces(Context, 0, Pieces, !IO),
-        OrigPieces = [words("Here is the previous definition of"),
-            fixed(DefType), sym_name_and_arity(Name / Arity),
-            suffix(".")],
-        write_error_pieces(OrigContext, 0, OrigPieces, !IO),
-        io.set_exit_status(1, !IO),
-        FoundError = yes
+        Pieces1 = [words("Error:"), fixed(DefType),
+            sym_name_and_arity(Name / Arity), words("multiply defined."), nl],
+        Pieces2 = [words("Here is the previous definition of"),
+            fixed(DefType), sym_name_and_arity(Name / Arity), suffix("."), nl],
+        Msg1 = simple_msg(Context, [always(Pieces1)]),
+        Msg2 = error_msg(yes(OrigContext), yes, 0, [always(Pieces2)]),
+        (
+            ExtraPieces = [],
+            ExtraMsgs = []
+        ;
+            ExtraPieces = [_ | _],
+            ExtraMsgs = [simple_msg(Context, [always(ExtraPieces)])]
+        ),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [Msg1, Msg2] ++ ExtraMsgs),
+        !:Specs = [Spec | !.Specs]
     ).
 
-undefined_pred_or_func_error(Name, Arity, Context, Description, !IO) :-
+undefined_pred_or_func_error(Name, Arity, Context, Description, !Specs) :-
     % This used to say `preceding' instead of `corresponding.'
     % Which is more correct?
     Pieces = [words("Error:"), words(Description), words("for"),
         sym_name_and_arity(Name / Arity),
         words("without corresponding `pred' or `func' declaration.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
-undefined_mode_error(Name, Arity, Context, Description, !IO) :-
+undefined_mode_error(Name, Arity, Context, Description, !Specs) :-
     Pieces = [words("Error:"), words(Description), words("for"),
         sym_name_and_arity(Name / Arity),
         words("specifies non-existent mode.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
-undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
-        Context, !IO) :-
-    prog_out.write_context(Context, !IO),
-    io.write_string("In clause for ", !IO),
-    hlds_out.write_pred_id(ModuleInfo, PredId, !IO),
-    io.write_string(":\n", !IO),
-    prog_out.write_context(Context, !IO),
-    io.write_string(
-        "  error: mode annotation specifies undeclared mode\n", !IO),
-    prog_out.write_context(Context, !IO),
-    io.write_string("  `", !IO),
+    % Similar to undefined_mode_error, but gives more information.
+    % XXX the documentation here should be somewhat less circular.
+    %
+:- func undeclared_mode_error(list(mer_mode), prog_varset,
+    pred_id, pred_info, module_info, prog_context) = error_spec.
+
+undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo, Context)
+        = Spec :-
+    PredIdPieces = describe_one_pred_name(ModuleInfo,
+        should_not_module_qualify, PredId),
     strip_builtin_qualifiers_from_mode_list(ModeList, StrippedModeList),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Name = pred_info_name(PredInfo),
     MaybeDet = no,
-    mercury_output_mode_subdecl(PredOrFunc, varset.coerce(VarSet),
-        unqualified(Name), StrippedModeList, MaybeDet, Context, !IO),
-    io.write_string("'\n", !IO),
-    prog_out.write_context(Context, !IO),
-    io.write_string("  of ", !IO),
-    hlds_out.write_pred_id(ModuleInfo, PredId, !IO),
-    io.write_string(".\n", !IO),
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    SubDeclStr = mercury_mode_subdecl_to_string(PredOrFunc,
+        varset.coerce(VarSet), unqualified(Name), StrippedModeList,
+        MaybeDet, Context),
+
+    MainPieces = [words("In clause for")] ++ PredIdPieces ++ [suffix(":"), nl,
+        words("error: mode annotation specifies undeclared mode"),
+        quote(SubDeclStr), suffix("."), nl],
     ProcIds = pred_info_all_procids(PredInfo),
     (
         ProcIds = [],
-        prog_out.write_context(Context, !IO),
-        io.write_string("  (There are no declared modes for this ", !IO),
-        write_pred_or_func(PredOrFunc, !IO),
-        io.write_string(".)\n", !IO)
+        VerbosePieces = [words("(There are no declared modes for this"),
+            p_or_f(PredOrFunc), suffix(".)"), nl]
     ;
         ProcIds = [_ | _],
-        (
-            VerboseErrors = yes,
-            io.write_string("\tThe declared modes for this ", !IO),
-            write_pred_or_func(PredOrFunc, !IO),
-            io.write_string(" are the following:\n", !IO),
-            list.foldl(output_mode_decl_for_pred_info(PredInfo), ProcIds, !IO)
-        ;
-            VerboseErrors = no,
-            globals.io_set_extra_error_info(yes, !IO)
-        )
-    ).
+        VerbosePieces = [words("The declared modes for this"),
+            p_or_f(PredOrFunc), words("are the following:"),
+            nl_indent_delta(1)] ++
+            component_list_to_line_pieces(
+                list.map(mode_decl_for_pred_info_to_pieces(PredInfo), ProcIds),
+                []) ++
+            [nl_indent_delta(-1)]
+    ),
+    Msg = simple_msg(Context,
+        [always(MainPieces), verbose_only(VerbosePieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]).
 
-:- pred output_mode_decl_for_pred_info(pred_info::in, proc_id::in,
-    io::di, io::uo) is det.
+:- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)
+    = list(format_component).
 
-output_mode_decl_for_pred_info(PredInfo, ProcId, !IO) :-
-    io.write_string("\t\t:- mode ", !IO),
-    output_mode_decl(ProcId, PredInfo, !IO),
-    io.write_string(".\n", !IO).
+mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
+    [words(":- mode"), words(mode_decl_to_string(ProcId, PredInfo)),
+    suffix(".")].
 
     % This is not considered an unconditional error anymore:
     % if there is no `:- pred' or `:- func' declaration,
@@ -180,11 +175,11 @@ output_mode_decl_for_pred_info(PredInfo, ProcId, !IO) :-
     % then we just add an implicit declaration for that predicate or
     % function, marking it as one whose type will be inferred.
     %
-maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
-        Context, Description, !IO) :-
+maybe_undefined_pred_error(Globals, Name, Arity, PredOrFunc, Status,
+        IsClassMethod, Context, Description, !Specs) :-
     DefinedInThisModule = status_defined_in_this_module(Status),
     IsExported = status_is_exported(Status),
-    globals.io_lookup_bool_option(infer_types, InferTypes, !IO),
+    globals.lookup_bool_option(Globals, infer_types, InferTypes),
     (
         DefinedInThisModule = yes,
         IsExported = no,
@@ -195,34 +190,22 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
     ;
         Pieces = [words("Error:"), words(Description), words("for"),
             simple_call(simple_call_id(PredOrFunc, Name, Arity)), nl,
-            words("without preceding"),
-            quote(pred_or_func_to_str(PredOrFunc)),
-            words("declaration.")],
-        write_error_pieces(Context, 0, Pieces, !IO),
-        io.set_exit_status(1, !IO)
+            words("without preceding"), quote(pred_or_func_to_str(PredOrFunc)),
+            words("declaration."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ).
 
-%     % This predicate is currently unused.
-%
-% :- pred clause_for_imported_pred_error(sym_name::in, arity::in,
-%     pred_or_func::in, prog_context::in, io::di, io::uo) is det.
-%
-% clause_for_imported_pred_error(Name, Arity, PredOrFunc, Context, !IO) :-
-%     Pieces = [words("Error: clause for imported"),
-%         pred_or_func(PredOrFunc),
-%         sym_name_and_arity(Name / Arity),
-%         suffix(".")],
-%     write_error_pieces(Context, 0, Pieces, !IO),
-%     io.set_exit_status(1, !IO).
+error_is_exported(Context, Item, !Specs) :-
+    Pieces = [words("Error:"), fixed(Item), words("in module interface."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
-error_is_exported(Context, Message, !IO) :-
-    Error = [words("Error:"), fixed(Message), words("in module interface.")],
-    write_error_pieces(Context, 0, Error, !IO),
-    io.set_exit_status(1, !IO).
-
-error_if_exported(Status, Context, Message, !IO) :-
+error_if_exported(Status, Context, Item, !Specs) :-
     ( Status = status_exported ->
-        error_is_exported(Context, Message, !IO)
+        error_is_exported(Context, Item, !Specs)
     ;
         true
     ).

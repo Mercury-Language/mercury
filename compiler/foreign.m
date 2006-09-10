@@ -26,11 +26,11 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module string.
@@ -139,8 +139,8 @@
 :- pred make_pragma_import(pred_info::in, proc_info::in, string::in,
     prog_context::in, pragma_foreign_code_impl::out,
     prog_varset::out, list(pragma_var)::out, list(mer_type)::out, arity::out,
-    pred_or_func::out, module_info::in, module_info::out, io::di, io::uo)
-    is det.
+    pred_or_func::out, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % The name of the #define which can be used to guard declarations with
     % to prevent entities being declared twice.
@@ -162,7 +162,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -333,7 +332,7 @@ make_pred_name_rest(lang_il, _SymName) = "some_il_name".
 make_pred_name_rest(lang_java, _SymName) = "some_java_name".
 
 make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
-        PragmaVars, ArgTypes, Arity, PredOrFunc, !ModuleInfo, !IO) :-
+        PragmaVars, ArgTypes, Arity, PredOrFunc, !ModuleInfo, !Specs) :-
 
     % Lookup some information we need from the pred_info and proc_info.
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -361,7 +360,8 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
 
     proc_info_get_declared_determinism(ProcInfo, MaybeDeclaredDetism),
     handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
-        PragmaVarsAndTypes, ArgPragmaVarsAndTypes, Return, !ModuleInfo, !IO),
+        PragmaVarsAndTypes, ArgPragmaVarsAndTypes, Return, !ModuleInfo,
+        !Specs),
     assoc_list.keys(ArgPragmaVarsAndTypes, ArgPragmaVars),
     create_pragma_import_c_code(ArgPragmaVars, !.ModuleInfo, "", Variables),
 
@@ -387,10 +387,11 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
     code_model::in, pred_or_func::in,
     assoc_list(pragma_var, mer_type)::in,
     assoc_list(pragma_var, mer_type)::out,
-    string::out, module_info::in, module_info::out, io::di, io::uo) is det.
+    string::out, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
-        !Args, C_Code0, !ModuleInfo, !IO) :-
+        !Args, C_Code0, !ModuleInfo, !Specs) :-
     (
         CodeModel = model_det,
         (
@@ -421,16 +422,14 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
             MaybeDeclaredDetism = no,
             DetismStr = "multi or nondet"
         ),
-        ErrorPieces = [
-            words("Error: `pragma_import' declaration for"),
+        Pieces = [words("Error: `pragma_import' declaration for"),
             words("a procedure that has a determinism of"),
-            fixed(DetismStr), suffix(".")
-        ],
-        write_error_pieces(Context, 0, ErrorPieces, !IO),
-        module_info_incr_errors(!ModuleInfo),
+            fixed(DetismStr), suffix("."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs],
 
-        % The following are just dummy values - they will never actually
-        % be used.
+        % This is just a dummy - it will never actually be used.
         C_Code0 = "\n#error ""cannot import nondet procedure""\n"
     ),
     list.filter(include_import_arg(!.ModuleInfo), !Args).

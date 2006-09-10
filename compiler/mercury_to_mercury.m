@@ -754,7 +754,8 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
 mercury_output_item(_, item_promise(PromiseType, Goal0, VarSet, UnivVars), _,
         !IO) :-
     Indent = 1,
-    ( PromiseType = true ->
+    (
+        PromiseType = promise_type_true,
         % For an assertion, we put back any universally quantified variables
         % that were stripped off during parsing so that the clause will
         % output correctly.
@@ -768,6 +769,10 @@ mercury_output_item(_, item_promise(PromiseType, Goal0, VarSet, UnivVars), _,
             Goal = Goal0
         )
     ;
+        ( PromiseType = promise_type_exclusive
+        ; PromiseType = promise_type_exhaustive
+        ; PromiseType = promise_type_exclusive_exhaustive
+        ),
         % A promise ex declaration has a slightly different standard formatting
         % from an assertion; the universal quantification comes before the rest
         % of the declaration
@@ -862,14 +867,6 @@ mercury_output_item(_, Mutable, _, !IO) :-
     io.write_string(", ", !IO),
     io.print(Attrs, !IO),
     io.write_string(").\n", !IO).
-
-:- func mercury_to_string_promise_type(promise_type) = string.
-
-mercury_to_string_promise_type(exclusive) = "promise_exclusive".
-mercury_to_string_promise_type(exhaustive) = "promise_exhaustive".
-mercury_to_string_promise_type(exclusive_exhaustive) =
-    "promise_exclusive_exhaustive".
-mercury_to_string_promise_type(true) = "promise".
 
 %-----------------------------------------------------------------------------%
 

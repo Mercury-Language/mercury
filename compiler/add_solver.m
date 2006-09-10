@@ -14,9 +14,9 @@
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -44,12 +44,13 @@
 :- pred add_solver_type_decl_items(tvarset::in, sym_name::in,
     list(type_param)::in, solver_type_details::in, prog_context::in,
     item_status::in, item_status::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_solver_type_clause_items(sym_name::in, list(type_param)::in,
     solver_type_details::in, import_status::in, import_status::out,
     prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, io::di, io::uo) is det.
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -70,7 +71,7 @@
 %-----------------------------------------------------------------------------%
 
 add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
-        SolverTypeDetails, Context, !Status, !ModuleInfo, !IO) :-
+        SolverTypeDetails, Context, !Status, !ModuleInfo, !Specs) :-
 
     % XXX kind inference:
     % We set the kinds to `star'.  This will be different when we have a
@@ -107,7 +108,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
         ToGroundRepnSymName, ToGroundRepnArgTypes, yes(detism_det),
         purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
-        !ModuleInfo, !IO),
+        !ModuleInfo, !Specs),
 
         % The `:- impure
         %   func 'representation of any st'(st::in(ai)) =
@@ -120,7 +121,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
         ToAnyRepnSymName, ToAnyRepnArgTypes, yes(detism_det),
         purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
-        !ModuleInfo, !IO),
+        !ModuleInfo, !Specs),
 
         % The `:- impure
         %   func 'representation to ground st'(rt::in(gi)) =
@@ -133,7 +134,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
         FromGroundRepnSymName, FromGroundRepnArgTypes, yes(detism_det),
         purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
-        !ModuleInfo, !IO),
+        !ModuleInfo, !Specs),
 
         % The `:- impure
         %   func 'representation to any st'(rt::in(ai)) =
@@ -146,7 +147,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
         FromAnyRepnSymName, FromAnyRepnArgTypes, yes(detism_det),
         purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
-        !ModuleInfo, !IO).
+        !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
@@ -154,29 +155,34 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     % the solver type sym_name.
     %
 :- func solver_to_ground_repn_symname(sym_name, arity) = sym_name.
+
 solver_to_ground_repn_symname(SymName, Arity) =
     solver_conversion_fn_symname("representation of ground ", SymName, Arity).
 
 :- func solver_to_any_repn_symname(sym_name, arity) = sym_name.
+
 solver_to_any_repn_symname(SymName, Arity) =
     solver_conversion_fn_symname("representation of any ", SymName, Arity).
 
 :- func repn_to_ground_solver_symname(sym_name, arity) = sym_name.
+
 repn_to_ground_solver_symname(SymName, Arity) =
     solver_conversion_fn_symname("representation to ground ", SymName, Arity).
 
 :- func repn_to_any_solver_symname(sym_name, arity) = sym_name.
+
 repn_to_any_solver_symname(SymName, Arity) =
     solver_conversion_fn_symname("representation to any ", SymName, Arity).
 
 :- func solver_conversion_fn_symname(string, sym_name, arity) = sym_name.
+
 solver_conversion_fn_symname(Prefix, unqualified(Name), Arity) =
     unqualified(Prefix ++ Name ++ "/" ++ int_to_string(Arity)).
 solver_conversion_fn_symname(Prefix, qualified(ModuleNames, Name), Arity) =
     qualified(ModuleNames, Prefix ++ Name ++ "/" ++ int_to_string(Arity)).
 
 add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
-        !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
+        !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     Arity             = length(TypeParams),
 
     AnyInst           = SolverTypeDetails ^ any_inst,
@@ -224,7 +230,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     ToGroundRepnItem = item_pragma(compiler(solver_type),
         ToGroundRepnForeignProc),
     add_item_clause(ToGroundRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
-        !IO),
+        !Specs),
 
         % The `func(in(any)) = out(<i_any>) is det' mode.
         %
@@ -244,7 +250,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         ),
     ToAnyRepnItem = item_pragma(compiler(solver_type), ToAnyRepnForeignProc),
     add_item_clause(ToAnyRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
-        !IO),
+        !Specs),
 
         % The `func(in(<i_ground>)) = out is det' mode.
         %
@@ -265,7 +271,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     FromGroundRepnItem = item_pragma(compiler(solver_type),
         FromGroundRepnForeignProc),
     add_item_clause(FromGroundRepnItem, !Status, Context, !ModuleInfo,
-        !QualInfo, !IO),
+        !QualInfo, !Specs),
 
         % The `func(in(<i_any>)) = out(any) is det' mode.
         %
@@ -286,7 +292,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     FromAnyRepnItem = item_pragma(compiler(solver_type),
         FromAnyRepnForeignProc),
     add_item_clause(FromAnyRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
-        !IO).
+        !Specs).
 
 %-----------------------------------------------------------------------------%
  :- end_module add_solver.

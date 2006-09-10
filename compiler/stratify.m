@@ -859,33 +859,27 @@ check_case_list([Case | Goals], !Calls) :-
 emit_message(PPId, Context, Message, Error, !ModuleInfo, !IO) :-
     PPIdDescription = describe_one_proc_name_mode(!.ModuleInfo,
         should_not_module_qualify, PPId),
-    ErrMsgStart = [words("In")] ++ PPIdDescription ++ [suffix(":"), nl],
+    Preamble = [words("In")] ++ PPIdDescription ++ [suffix(":"), nl],
     (
         Error = no,
-        ErrOrWarnMsg = words("warning:")
+        ErrOrWarnMsg = words("warning:"),
+        Severity = severity_warning
     ;
         Error = yes,
-        module_info_incr_errors(!ModuleInfo),
-        io.set_exit_status(1, !IO),
-        ErrOrWarnMsg = words("error:")
+        ErrOrWarnMsg = words("error:"),
+        Severity = severity_error
     ),
-    ErrMsgMiddle = [ ErrOrWarnMsg, words(Message) ],
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    (
-        VerboseErrors = yes,
-        ErrMsgFinal = [ nl,
-            words("A non-stratified loop is a loop in the call graph"),
-            words("of the given predicate/function that allows it to call"),
-            words("itself negatively.  This can cause problems for"),
-            words("bottom-up evaluation of the predicate/function.")
-        ]
-    ;
-        VerboseErrors = no,
-        ErrMsgFinal = [],
-        globals.io_set_extra_error_info(yes, !IO)
-    ),
-    ErrMsg = ErrMsgStart ++ ErrMsgMiddle ++ ErrMsgFinal,
-    write_error_pieces(Context, 0, ErrMsg, !IO).
+    MainPieces = [ErrOrWarnMsg, words(Message), nl],
+    VerbosePieces =
+        [words("A non-stratified loop is a loop in the call graph"),
+        words("of the given predicate/function that allows it to call"),
+        words("itself negatively. This can cause problems for"),
+        words("bottom-up evaluation of the predicate/function."), nl],
+    Msg = simple_msg(Context,
+        [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)]),
+    Spec = error_spec(Severity, phase_code_gen, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %-----------------------------------------------------------------------------%
 

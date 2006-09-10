@@ -1287,23 +1287,24 @@ process_decl(ModuleName, VarSet, "pragma", Pragma, Attributes, Result):-
     check_no_attributes(Result0, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "promise", Assertion, Attributes, Result):-
-    parse_promise(ModuleName, true, VarSet, Assertion, Attributes, Result0),
+    parse_promise(ModuleName, promise_type_true, VarSet,
+        Assertion, Attributes, Result0),
     check_no_attributes(Result0, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "promise_exclusive", PromiseGoal, Attributes,
         Result):-
-    parse_promise(ModuleName, exclusive, VarSet, PromiseGoal, Attributes,
-        Result).
+    parse_promise(ModuleName, promise_type_exclusive, VarSet,
+        PromiseGoal, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "promise_exhaustive", PromiseGoal, Attributes,
         Result):-
-    parse_promise(ModuleName, exhaustive, VarSet, PromiseGoal, Attributes,
-        Result).
+    parse_promise(ModuleName, promise_type_exhaustive, VarSet,
+        PromiseGoal, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "promise_exclusive_exhaustive", PromiseGoal,
         Attributes, Result):-
-    parse_promise(ModuleName, exclusive_exhaustive, VarSet, PromiseGoal,
-        Attributes, Result).
+    parse_promise(ModuleName, promise_type_exclusive_exhaustive, VarSet,
+        PromiseGoal, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "typeclass", Args, Attributes, Result):-
     parse_typeclass(ModuleName, VarSet, Args, Result0),
@@ -1421,7 +1422,8 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
     (
         MaybeGoal0 = ok1(Goal0),
         % Get universally quantified variables.
-        ( PromiseType = true ->
+        (
+            PromiseType = promise_type_true,
             ( Goal0 = all_expr(UnivVars0, AllGoal) - _Context ->
                 UnivVars0 = UnivVars,
                 Goal = AllGoal
@@ -1430,6 +1432,10 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
                 Goal = Goal0
             )
         ;
+            ( PromiseType = promise_type_exclusive
+            ; PromiseType = promise_type_exhaustive
+            ; PromiseType = promise_type_exclusive_exhaustive
+            ),
             get_quant_vars(univ, ModuleName, Attributes, _, [], UnivVars0),
             list.map(term.coerce_var, UnivVars0, UnivVars),
             Goal0 = Goal

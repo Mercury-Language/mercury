@@ -20,10 +20,10 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -35,13 +35,14 @@
     %
 :- pred module_add_type_defn(tvarset::in, sym_name::in, list(type_param)::in,
     type_defn::in, condition::in, prog_context::in, item_status::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Add the constructors and special preds for a type to the HLDS.
     %
 :- pred process_type_defn(type_ctor::in, hlds_type_defn::in,
     bool::in, bool::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred make_status_abstract(import_status::in, import_status::out) is det.
 
@@ -65,7 +66,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_out.
@@ -83,8 +83,8 @@
 %-----------------------------------------------------------------------------%
 
 module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
-        item_status(Status0, NeedQual), !ModuleInfo, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+        item_status(Status0, NeedQual), !ModuleInfo, !Specs) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
     list.length(Args, Arity),
     TypeCtor = type_ctor(Name, Arity),
     convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
@@ -132,9 +132,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             [always(DummyMainPieces), verbose_only(DummyVerbosePieces)]),
         DummySpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [DummyMsg]),
-        write_error_spec(DummySpec, 0, _DummyNumWarnings, 0, DummyNumErrors,
-            !IO),
-        module_info_incr_num_errors(DummyNumErrors, !ModuleInfo)
+        !:Specs = [DummySpec | !.Specs]
     ;
         true
     ),
@@ -157,9 +155,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             SolverMsg = simple_msg(Context, [always(SolverPieces)]),
             SolverSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [SolverMsg]),
-            write_error_spec(SolverSpec, 0, _SolverNumWarnings,
-                0, SolverNumErrors, !IO),
-            module_info_incr_num_errors(SolverNumErrors, !ModuleInfo),
+            !:Specs = [SolverSpec | !.Specs],
             MaybeOldDefn = no
         ;
             hlds_data.set_type_defn_body(OldBody, OldDefn0, OldDefn),
@@ -187,9 +183,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         ForeignDeclMsg = simple_msg(Context, [always(ForeignDeclPieces)]),
         ForeignDeclSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [ForeignDeclMsg]),
-        write_error_spec(ForeignDeclSpec, 0, _ForeignDeclNumWarnings,
-            0, ForeignDeclNumErrors, !IO),
-        module_info_incr_num_errors(ForeignDeclNumErrors, !ModuleInfo)
+        !:Specs = [ForeignDeclSpec | !.Specs]
     ;
         MaybeOldDefn = yes(OldDefn1),
         Body = hlds_foreign_type(_),
@@ -207,9 +201,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         ForeignVisMsg = simple_msg(Context, [always(ForeignVisPieces)]),
         ForeignVisSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [ForeignVisMsg]),
-        write_error_spec(ForeignVisSpec, 0, _ForeignVisNumWarnings,
-            0, ForeignVisNumErrors, !IO),
-        module_info_incr_num_errors(ForeignVisNumErrors, !ModuleInfo)
+        !:Specs = [ForeignVisSpec | !.Specs]
     ;
         % If there was an existing non-abstract definition for the type, ...
         MaybeOldDefn = yes(T2),
@@ -223,9 +215,9 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         hlds_data.get_type_defn_need_qualifier(T2, OrigNeedQual),
         Body_2 \= hlds_abstract_type(_)
     ->
-        globals.io_get_target(Target, !IO),
-        globals.io_lookup_bool_option(make_optimization_interface,
-            MakeOptInt, !IO),
+        globals.get_target(Globals, Target),
+        globals.lookup_bool_option(Globals, make_optimization_interface,
+            MakeOptInt),
         ( Body = hlds_foreign_type(_) ->
             module_info_contains_foreign_type(!ModuleInfo)
         ;
@@ -263,9 +255,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 DiffVisMsg = simple_msg(Context, [always(DiffVisPieces)]),
                 DiffVisSpec = error_spec(severity_error,
                     phase_parse_tree_to_hlds, [DiffVisMsg]),
-                write_error_spec(DiffVisSpec, 0, _DiffVisNumWarnings,
-                    0, DiffVisNumErrors, !IO),
-                module_info_incr_num_errors(DiffVisNumErrors, !ModuleInfo)
+                !:Specs = [DiffVisSpec | !.Specs]
             )
         ;
             % ..., otherwise issue an error message if the second
@@ -276,7 +266,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         ;
             module_info_incr_errors(!ModuleInfo),
             multiple_def_error(Status, Name, Arity, "type", Context,
-                OrigContext, _, !IO)
+                OrigContext, [], !Specs)
         )
     ;
         map.set(Types0, TypeCtor, T, Types),
@@ -300,9 +290,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 verbose_only(abstract_monotype_workaround)]),
             PolyEqvSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [PolyEqvMsg]),
-            write_error_spec(PolyEqvSpec, 0, _PolyEqvNumWarnings,
-                0, PolyEqvNumErrors, !IO),
-            module_info_incr_num_errors(PolyEqvNumErrors, !ModuleInfo)
+            !:Specs = [PolyEqvSpec | !.Specs]
         ;
             true
         )
@@ -371,28 +359,34 @@ check_foreign_type_visibility(OldStatus, NewDefnStatus) :-
         status_is_exported_to_non_submodules(NewDefnStatus) = no
     ).
 
-process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
-    hlds_data.get_type_defn_context(TypeDefn, Context),
-    hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
-    hlds_data.get_type_defn_tparams(TypeDefn, Args),
-    hlds_data.get_type_defn_body(TypeDefn, Body),
-    hlds_data.get_type_defn_status(TypeDefn, Status),
-    hlds_data.get_type_defn_need_qualifier(TypeDefn, NeedQual),
+process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
+    get_type_defn_context(TypeDefn, Context),
+    get_type_defn_tvarset(TypeDefn, TVarSet),
+    get_type_defn_tparams(TypeDefn, Args),
+    get_type_defn_body(TypeDefn, Body),
+    get_type_defn_status(TypeDefn, Status),
+    get_type_defn_need_qualifier(TypeDefn, NeedQual),
+    module_info_get_globals(!.ModuleInfo, Globals),
     (
         Body = hlds_du_type(ConsList, _, _, UserEqCmp, ReservedTag, _),
         module_info_get_cons_table(!.ModuleInfo, Ctors0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
-        check_for_errors(
-            (pred(M0::in, M::out, IO0::di, IO::uo) is det :-
-                module_info_get_ctor_field_table(M0, CtorFields0),
-                ctors_add(ConsList, TypeCtor, TVarSet, NeedQual, PQInfo,
-                    Context, Status, CtorFields0, CtorFields, Ctors0, Ctors,
-                    IO0, IO),
-                module_info_set_cons_table(Ctors, M0, M1),
-                module_info_set_ctor_field_table(CtorFields, M1, M)
-        ), NewFoundError, !ModuleInfo, !IO),
+        module_info_get_ctor_field_table(!.ModuleInfo, CtorFields0),
+        ctors_add(ConsList, TypeCtor, TVarSet, NeedQual, PQInfo,
+            Context, Status, CtorFields0, CtorFields, Ctors0, Ctors,
+            [], CtorAddSpecs),
+        module_info_set_cons_table(Ctors, !ModuleInfo),
+        module_info_set_ctor_field_table(CtorFields, !ModuleInfo),
 
-        globals.io_get_globals(Globals, !IO),
+        (
+            CtorAddSpecs = [],
+            NewFoundError = no
+        ;
+            CtorAddSpecs = [_ | _],
+            NewFoundError = yes,
+            !:Specs = CtorAddSpecs ++ !.Specs
+        ),
+
         (
             type_with_constructors_should_be_no_tag(Globals, TypeCtor,
                 ReservedTag, ConsList, UserEqCmp, Name, CtorArgType, _)
@@ -405,18 +399,15 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
             true
         )
     ;
-        Body = hlds_abstract_type(_),
-        NewFoundError = no
-    ;
-        Body = hlds_solver_type(_, _),
-        NewFoundError = no
-    ;
-        Body = hlds_eqv_type(_),
+        ( Body = hlds_abstract_type(_)
+        ; Body = hlds_solver_type(_, _)
+        ; Body = hlds_eqv_type(_)
+        ),
         NewFoundError = no
     ;
         Body = hlds_foreign_type(ForeignTypeBody),
         check_foreign_type(TypeCtor, ForeignTypeBody, Context,
-            NewFoundError, !ModuleInfo, !IO)
+            NewFoundError, !ModuleInfo, !Specs)
     ),
     !:FoundError = !.FoundError `and` NewFoundError,
     (
@@ -424,8 +415,8 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
     ->
         true
     ;
-        % Equivalence types are fully expanded on the IL and Java
-        % backends, so the special predicates aren't required.
+        % Equivalence types are fully expanded on the IL and Java backends,
+        % so the special predicates aren't required.
         are_equivalence_types_expanded(!.ModuleInfo),
         Body = hlds_eqv_type(_)
     ->
@@ -440,23 +431,22 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
             !ModuleInfo)
     ).
 
-    % Check_foreign_type ensures that if we are generating code for
-    % a specific backend that the foreign type has a representation
-    % on that backend.
+    % Check_foreign_type ensures that if we are generating code for a specific
+    % backend that the foreign type has a representation on that backend.
     %
 :- pred check_foreign_type(type_ctor::in, foreign_type_body::in,
     prog_context::in, bool::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
-        !IO) :-
+        !Specs) :-
     TypeCtor = type_ctor(Name, Arity),
     module_info_get_globals(!.ModuleInfo, Globals),
-    generating_code(GeneratingCode, !IO),
     globals.get_target(Globals, Target),
     ( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
         FoundError = no
     ;
+        GeneratingCode = generating_code(Globals),
         (
             GeneratingCode = yes,
             ( Target = target_c, LangStr = "C"
@@ -474,8 +464,7 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
                 option_is_set(very_verbose, yes, [always(VerbosePieces)])]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [Msg]),
-            write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
-            module_info_incr_num_errors(NumErrors, !ModuleInfo)
+            !:Specs = [Spec | !.Specs]
         ;
             GeneratingCode = no
             % If we're not generating code the error may only have occurred
@@ -484,25 +473,24 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         FoundError = yes
     ).
 
-    % Do the options imply that we will generate code for a specific
-    % back-end?
+    % Do the options imply that we will generate code for a specific back-end?
     %
-:- pred generating_code(bool::out, io::di, io::uo) is det.
+:- func generating_code(globals) = bool.
 
-generating_code(bool.not(NotGeneratingCode), !IO) :-
-    io_lookup_bool_option(make_short_interface, MakeShortInterface, !IO),
-    io_lookup_bool_option(make_interface, MakeInterface, !IO),
-    io_lookup_bool_option(make_private_interface, MakePrivateInterface, !IO),
-    io_lookup_bool_option(make_transitive_opt_interface,
-        MakeTransOptInterface, !IO),
-    io_lookup_bool_option(generate_source_file_mapping, GenSrcFileMapping,
-        !IO),
-    io_lookup_bool_option(generate_dependencies, GenDepends, !IO),
-    io_lookup_bool_option(generate_dependency_file, GenDependFile, !IO),
-    io_lookup_bool_option(convert_to_mercury, ConvertToMercury, !IO),
-    io_lookup_bool_option(typecheck_only, TypeCheckOnly, !IO),
-    io_lookup_bool_option(errorcheck_only, ErrorCheckOnly, !IO),
-    io_lookup_bool_option(output_grade_string, OutputGradeString, !IO),
+generating_code(Globals) = bool.not(NotGeneratingCode) :-
+    lookup_bool_option(Globals, make_short_interface, MakeShortInterface),
+    lookup_bool_option(Globals, make_interface, MakeInterface),
+    lookup_bool_option(Globals, make_private_interface, MakePrivateInterface),
+    lookup_bool_option(Globals, make_transitive_opt_interface,
+        MakeTransOptInterface),
+    lookup_bool_option(Globals, generate_source_file_mapping,
+        GenSrcFileMapping),
+    lookup_bool_option(Globals, generate_dependencies, GenDepends),
+    lookup_bool_option(Globals, generate_dependency_file, GenDependFile),
+    lookup_bool_option(Globals, convert_to_mercury, ConvertToMercury),
+    lookup_bool_option(Globals, typecheck_only, TypeCheckOnly),
+    lookup_bool_option(Globals, errorcheck_only, ErrorCheckOnly),
+    lookup_bool_option(Globals, output_grade_string, OutputGradeString),
     bool.or_list([MakeShortInterface, MakeInterface,
         MakePrivateInterface, MakeTransOptInterface,
         GenSrcFileMapping, GenDepends, GenDependFile, ConvertToMercury,
@@ -686,11 +674,12 @@ convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
 :- pred ctors_add(list(constructor)::in, type_ctor::in, tvarset::in,
     need_qualifier::in, partial_qualifier_info::in, prog_context::in,
     import_status::in, ctor_field_table::in, ctor_field_table::out,
-    cons_table::in, cons_table::out, io::di, io::uo) is det.
+    cons_table::in, cons_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-ctors_add([], _, _, _, _, _, _, !FieldNameTable, !Ctors, !IO).
+ctors_add([], _, _, _, _, _, _, !FieldNameTable, !Ctors, !Specs).
 ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
-        ImportStatus, !FieldNameTable, !Ctors, !IO) :-
+        ImportStatus, !FieldNameTable, !Ctors, !Specs) :-
     Ctor = ctor(ExistQVars, Constraints, Name, Args),
     QualifiedConsId = make_cons_id(Name, Args, TypeCtor),
     ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, TypeCtor,
@@ -716,8 +705,7 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
             words("for type"), quote(TypeCtorStr), words("multiply defined.")],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO),
-        % XXX module_info_incr_errors(_NumErrors, !ModuleInfo)
+        !:Specs = [Spec | !.Specs],
         QualifiedConsDefns = QualifiedConsDefns1
     ;
         QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1]
@@ -744,12 +732,12 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
 
         add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
             QualifiedConsId, Context, ImportStatus, FirstField,
-            !FieldNameTable, !IO)
+            !FieldNameTable, !Specs)
     ;
         unexpected(this_file, "ctors_add: cons_id not qualified")
     ),
     ctors_add(Rest, TypeCtor, TVarSet, NeedQual, PQInfo, Context,
-        ImportStatus, !FieldNameTable, !Ctors, !IO).
+        ImportStatus, !FieldNameTable, !Ctors, !Specs).
 
 :- pred add_ctor(string::in, int::in, hlds_cons_defn::in, module_name::in,
     cons_id::out, cons_table::in, cons_table::out) is det.
@@ -761,31 +749,33 @@ add_ctor(ConsName, Arity, ConsDefn, ModuleQual, ConsId, CtorsIn, CtorsOut) :-
 :- pred add_ctor_field_names(list(maybe(ctor_field_name))::in,
     need_qualifier::in, list(module_name)::in, type_ctor::in, cons_id::in,
     prog_context::in, import_status::in, int::in,
-    ctor_field_table::in, ctor_field_table::out, io::di, io::uo) is det.
+    ctor_field_table::in, ctor_field_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-add_ctor_field_names([], _, _, _, _, _, _, _, !FieldNameTable, !IO).
+add_ctor_field_names([], _, _, _, _, _, _, _, !FieldNameTable, !Specs).
 add_ctor_field_names([MaybeFieldName | FieldNames], NeedQual,
         PartialQuals, TypeCtor, ConsId, Context, ImportStatus,
-        FieldNumber, !FieldNameTable, !IO) :-
+        FieldNumber, !FieldNameTable, !Specs) :-
     (
         MaybeFieldName = yes(FieldName),
         FieldDefn = hlds_ctor_field_defn(Context, ImportStatus, TypeCtor,
             ConsId, FieldNumber),
         add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
-            !FieldNameTable, !IO)
+            !FieldNameTable, !Specs)
     ;
         MaybeFieldName = no
     ),
     add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
         ConsId, Context, ImportStatus, FieldNumber + 1,
-        !FieldNameTable, !IO).
+        !FieldNameTable, !Specs).
 
 :- pred add_ctor_field_name(ctor_field_name::in, hlds_ctor_field_defn::in,
     need_qualifier::in, list(module_name)::in,
-    ctor_field_table::in, ctor_field_table::out, io::di, io::uo) is det.
+    ctor_field_table::in, ctor_field_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
-        !FieldNameTable, !IO) :-
+        !FieldNameTable, !Specs) :-
     ( FieldName = qualified(FieldModule0, _) ->
         FieldModule = FieldModule0
     ;
@@ -818,8 +808,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         Msg2 = simple_msg(OrigContext, [always(PrevPieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [Msg1, Msg2]),
-        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
-        % XXX module_info_incr_errors(_NumErrors, !ModuleInfo)
+        !:Specs = [Spec | !.Specs]
     ;
         UnqualFieldName = unqualify_name(FieldName),
 

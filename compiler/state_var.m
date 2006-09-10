@@ -16,9 +16,9 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module set.
@@ -95,35 +95,34 @@
     % Obtain the mapping for a !.X state variable reference and
     % update the svar_info.
     %
-    % If we are processing the head of a clause or lambda, we
-    % incrementally accumulate the mappings.
+    % If we are processing the head of a clause or lambda, we incrementally
+    % accumulate the mappings.
     %
-    % Otherwise, the mapping must already be present for a local
-    % or `external' state variable (i.e. one that may be visible,
-    % but not updatable, in the current context.)
+    % Otherwise, the mapping must already be present for a local or `external'
+    % state variable (i.e. one that may be visible, but not updatable, in the
+    % current context.)
     %
-    % Note that if !.X does not appear in the head then !:X must
-    % appear before !.X can be referenced.
+    % Note that if !.X does not appear in the head then !:X must appear
+    % before !.X can be referenced.
     %
 :- pred dot(prog_context::in, svar::in, prog_var::out,
     prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Obtain the mapping for a !:X state variable reference.
     %
-    % If we are processing the head of a clause or lambda, we
-    % incrementally accumulate the mappings.
+    % If we are processing the head of a clause or lambda, we incrementally
+    % accumulate the mappings.
     %
-    % Otherwise, the mapping must already be present for a local
-    % state variable (`externally' visible state variables cannot
-    % be updated.)
+    % Otherwise, the mapping must already be present for a local state variable
+    % (`externally' visible state variables cannot be updated.)
     %
     % We also keep track of which state variables have been updated
     % in an atomic context.
     %
 :- pred colon(prog_context::in, svar::in, prog_var::out,
     prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Prepare for the head of a new clause.
     %
@@ -252,8 +251,7 @@
     %   p(X0, X1) and [!.X -> X1, !:X -> X2]
     %
 :- pred prepare_for_next_conjunct(svar_set::in,
-    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
-    is det.
+    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out) is det.
 
     % Given a list of argument terms, substitute !.X and !:X with
     % the corresponding state variable mappings.  Any !X should
@@ -262,11 +260,12 @@
     %
 :- pred substitute_state_var_mappings(list(prog_term)::in,
     list(prog_term)::out, prog_varset::in, prog_varset::out,
-    svar_info::in, svar_info::out, io::di, io::uo) is det.
+    svar_info::in, svar_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred substitute_state_var_mapping(prog_term::in, prog_term::out,
     prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Replace !X args with two args !.X, !:X in that order.
     %
@@ -286,13 +285,13 @@
     is semidet.
 
 :- pred report_illegal_state_var_update(prog_context::in, prog_varset::in,
-    svar::in, io::di, io::uo) is det.
+    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred report_illegal_func_svar_result(prog_context::in, prog_varset::in,
-    svar::in, io::di, io::uo) is det.
+    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred report_illegal_bang_svar_lambda_arg(prog_context::in, prog_varset::in,
-    svar::in, io::di, io::uo) is det.
+    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -300,7 +299,6 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_util.
 
 :- import_module char.
@@ -335,7 +333,7 @@ SInfo `with_updated_svar` StateVar =
 
 %-----------------------------------------------------------------------------%
 
-dot(Context, StateVar, Var, !VarSet, !SInfo, !IO) :-
+dot(Context, StateVar, Var, !VarSet, !SInfo, !Specs) :-
     ( !.SInfo ^ ctxt = in_head ->
         ( !.SInfo ^ dot ^ elem(StateVar) = Var0 ->
             Var = Var0
@@ -349,16 +347,17 @@ dot(Context, StateVar, Var, !VarSet, !SInfo, !IO) :-
             Var = Var0
         ; !.SInfo `has_svar_colon_mapping_for` StateVar ->
             new_dot_state_var(StateVar, Var, !VarSet, !SInfo),
-            report_uninitialized_state_var(Context, !.VarSet, StateVar, !IO)
+            report_uninitialized_state_var(Context, !.VarSet, StateVar, !Specs)
         ;
             Var = StateVar,
-            report_non_visible_state_var(".", Context, !.VarSet, StateVar, !IO)
+            report_non_visible_state_var(".", Context, !.VarSet, StateVar,
+                !Specs)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-colon(Context, StateVar, Var, !VarSet, !SInfo, !IO) :-
+colon(Context, StateVar, Var, !VarSet, !SInfo, !Specs) :-
     ( !.SInfo ^ ctxt = in_head ->
         ( !.SInfo ^ colon ^ elem(StateVar) = Var0 ->
             Var = Var0
@@ -379,7 +378,7 @@ colon(Context, StateVar, Var, !VarSet, !SInfo, !IO) :-
             ;
                 PError = report_non_visible_state_var(":")
             ),
-            PError(Context, !.VarSet, StateVar, !IO)
+            PError(Context, !.VarSet, StateVar, !Specs)
         )
     ).
 
@@ -1001,22 +1000,22 @@ expand_item_bsvs(Item) =
 
 %-----------------------------------------------------------------------------%
 
-substitute_state_var_mappings([], [], !VarSet, !SInfo, !IO).
-substitute_state_var_mappings([Arg0 | Args0], [Arg | Args],
-        !VarSet, !SInfo, !IO) :-
-    substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !IO),
-    substitute_state_var_mappings(Args0, Args, !VarSet, !SInfo, !IO).
+substitute_state_var_mappings([], [], !VarSet, !SInfo, !Specs).
+substitute_state_var_mappings([Arg0 | Args0], [Arg | Args], !VarSet, !SInfo,
+        !Specs) :-
+    substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !Specs),
+    substitute_state_var_mappings(Args0, Args, !VarSet, !SInfo, !Specs).
 
-substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !IO) :-
+substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !Specs) :-
     (
         Arg0 = functor(atom("!."), [variable(StateVar)], Context)
     ->
-        dot(Context, StateVar, Var, !VarSet, !SInfo, !IO),
+        dot(Context, StateVar, Var, !VarSet, !SInfo, !Specs),
         Arg  = variable(Var)
     ;
         Arg0 = functor(atom("!:"), [variable(StateVar)], Context)
     ->
-        colon(Context, StateVar, Var, !VarSet, !SInfo, !IO),
+        colon(Context, StateVar, Var, !VarSet, !SInfo, !Specs),
         Arg  = variable(Var)
     ;
         Arg  = Arg0
@@ -1038,59 +1037,65 @@ lambda_args_contain_bang_state_var([Arg | Args], StateVar) :-
 
 %-----------------------------------------------------------------------------%
 
-report_illegal_state_var_update(Context, VarSet, StateVar, !IO) :-
+report_illegal_state_var_update(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error: cannot use"), fixed("!:" ++ Name),
         words("in this context;"), nl,
-        words("however"), fixed("!." ++ Name), words("may be used here.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+        words("however"), fixed("!." ++ Name), words("may be used here."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 
 :- pred report_non_visible_state_var(string::in, prog_context::in,
-    prog_varset::in, svar::in, io::di, io::uo) is det.
+    prog_varset::in, svar::in, list(error_spec)::in, list(error_spec)::out)
+    is det.
 
-report_non_visible_state_var(DorC, Context, VarSet, StateVar, !IO) :-
+report_non_visible_state_var(DorC, Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
-    Pieces = [words("Error: state variable"),
-        fixed("!" ++ DorC ++ Name), words("is not visible in this context.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Pieces = [words("Error: state variable"), fixed("!" ++ DorC ++ Name),
+        words("is not visible in this context."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 
 :- pred report_uninitialized_state_var(prog_context::in, prog_varset::in,
-    svar::in, io::di, io::uo) is det.
+    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_uninitialized_state_var(Context, VarSet, StateVar, !IO) :-
+report_uninitialized_state_var(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: reference to uninitialized state variable"),
         fixed("!." ++ Name), suffix("."), nl],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    record_warning(!IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 
-report_illegal_func_svar_result(Context, VarSet, StateVar, !IO) :-
+report_illegal_func_svar_result(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error:"), fixed("!" ++ Name),
         words("cannot be a function result."), nl,
         words("You probably meant"), fixed("!." ++ Name),
         words("or"), fixed("!:" ++ Name), suffix("."), nl],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 
-report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !IO) :-
+report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error:"), fixed("!" ++ Name),
         words("cannot be a lambda argument."), nl,
         words("Perhaps you meant"), fixed("!." ++ Name),
         words("or"), fixed("!:" ++ Name), suffix("."), nl],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 

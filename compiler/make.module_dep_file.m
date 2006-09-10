@@ -529,7 +529,10 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
         ;
             io.set_exit_status(0, !IO),
             io.set_output_stream(ErrorStream, _, !IO),
-            split_into_submodules(ModuleName, Items, SubModuleList, !IO),
+            split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
+            sort_error_specs(Specs, SortedSpecs),
+            write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors,
+                !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
 
             globals.io_get_globals(Globals, !IO),

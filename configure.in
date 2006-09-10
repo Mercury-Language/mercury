@@ -233,7 +233,9 @@ if test "$BOOTSTRAP_MC" != ""; then
 				(1 .. 2) = [[1, 2]],
 				Global = 561
 			->
-				io.print("Hello, world\n", !IO)
+				trace [[io(!S)]] (
+					io.print("Hello, world\n", !S)
+				)
 			;
 				io.print("Nope.\n", !IO)
 			).
@@ -303,10 +305,11 @@ if test "$BOOTSTRAP_MC" != ""; then
 EOF
 	if
 		echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
+		# XXX We should reenable --halt-at-warn as soon as we can.
 		$BOOTSTRAP_MC \
 			--verbose \
 			--trace-io-builtins-2006-08-14 \
-			--halt-at-warn $link_static_opt conftest \
+			$link_static_opt conftest \
 			</dev/null >&AC_FD_CC 2>&1 &&
 		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
 		# Test for the --record-term-sizes-as-words option.

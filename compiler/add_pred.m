@@ -21,10 +21,10 @@
 :- import_module hlds.pred_table.
 :- import_module mdbcomp.prim_data.
 :- import_module hlds.make_hlds.make_hlds_passes.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -36,7 +36,8 @@
     maybe(determinism)::in, purity::in,
     prog_constraints::in, pred_markers::in, prog_context::in,
     item_status::in, maybe(pair(pred_id, proc_id))::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred do_add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
@@ -48,7 +49,8 @@
 :- pred module_add_mode(inst_varset::in, sym_name::in, list(mer_mode)::in,
     maybe(determinism)::in, import_status::in, prog_context::in,
     pred_or_func::in, bool::in, pair(pred_id, proc_id)::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Whenever there is a clause or mode declaration for an undeclared
     % predicate, we add an implicit declaration
@@ -58,7 +60,8 @@
 :- pred preds_add_implicit_report_error(module_name::in, pred_or_func::in,
     sym_name::in, arity::in, import_status::in, bool::in, prog_context::in,
     pred_origin::in, string::in, pred_id::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred preds_add_implicit_for_assertion(prog_vars::in, module_info::in,
     module_name::in, sym_name::in, arity::in, import_status::in,
@@ -79,7 +82,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -93,10 +95,10 @@
 module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
         PredOrFunc, PredName, TypesAndModes, MaybeDet, Purity,
         ClassContext, Markers, Context, item_status(Status, NeedQual),
-        MaybePredProcId, !ModuleInfo, !IO) :-
+        MaybePredProcId, !ModuleInfo, !Specs) :-
     split_types_and_modes(TypesAndModes, Types, MaybeModes0),
     add_new_pred(TypeVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
-        Markers, Context, Status, NeedQual, PredOrFunc, !ModuleInfo, !IO),
+        Markers, Context, Status, NeedQual, PredOrFunc, !ModuleInfo, !Specs),
     (
         PredOrFunc = predicate,
         MaybeModes0 = yes(Modes0),
@@ -133,7 +135,7 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
             IsClassMethod = no
         ),
         module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, Context,
-            PredOrFunc, IsClassMethod, PredProcId, !ModuleInfo, !IO),
+            PredOrFunc, IsClassMethod, PredProcId, !ModuleInfo, !Specs),
         MaybePredProcId = yes(PredProcId)
     ;
         MaybeModes = no,
@@ -148,11 +150,12 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
     list(mer_type)::in, purity::in, prog_constraints::in,
     pred_markers::in, prog_context::in, import_status::in,
     need_qualifier::in, pred_or_func::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
         Markers0, Context, ItemStatus, NeedQual, PredOrFunc, !ModuleInfo,
-        !IO) :-
+        !Specs) :-
     % Only preds with opt_imported clauses are tagged as opt_imported, so
     % that the compiler doesn't look for clauses for other preds read in
     % from optimization interfaces.
@@ -166,7 +169,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     (
         PredName = unqualified(_PName),
         module_info_incr_errors(!ModuleInfo),
-        unqualified_pred_error(PredName, Arity, Context, !IO)
+        unqualified_pred_error(PredName, Arity, Context, !Specs)
         % All predicate names passed into this predicate should have
         % been qualified by prog_io.m, when they were first read.
     ;
@@ -183,22 +186,15 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
             TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
             ClausesInfo, PredInfo0),
         (
-            predicate_table_search_pf_m_n_a(PredTable0,
-                is_fully_qualified, PredOrFunc, MNameOfPred,
-                PName, Arity, [OrigPred|_])
+            predicate_table_search_pf_m_n_a(PredTable0, is_fully_qualified,
+                PredOrFunc, MNameOfPred, PName, Arity, [OrigPred | _])
         ->
             module_info_pred_info(!.ModuleInfo, OrigPred, OrigPredInfo),
             pred_info_context(OrigPredInfo, OrigContext),
             DeclString = pred_or_func_to_str(PredOrFunc),
             adjust_func_arity(PredOrFunc, OrigArity, Arity),
             multiple_def_error(ItemStatus, PredName, OrigArity, DeclString,
-                Context, OrigContext, FoundError, !IO),
-            (
-                FoundError = yes,
-                module_info_incr_errors(!ModuleInfo)
-            ;
-                FoundError = no
-            )
+                Context, OrigContext, [], !Specs)
         ;
             module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
             predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
@@ -351,7 +347,7 @@ do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
     % - at the moment we just ignore those two arguments.
     %
 module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
-        PredOrFunc, IsClassMethod, PredProcId, !ModuleInfo, !IO) :-
+        PredOrFunc, IsClassMethod, PredProcId, !ModuleInfo, !Specs) :-
     % Lookup the pred or func declaration in the predicate table.
     % If it's not there (or if it is ambiguous), optionally print a
     % warning message and insert an implicit definition for the
@@ -370,14 +366,14 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     ;
         preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
             Arity, Status, IsClassMethod, MContext, origin_user(PredName),
-            "mode declaration", PredId, !ModuleInfo, !IO)
+            "mode declaration", PredId, !ModuleInfo, !Specs)
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
     predicate_table_get_preds(PredicateTable1, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
 
     module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod,
-        MContext, PredInfo0, PredInfo, ProcId, !IO),
+        MContext, PredInfo0, PredInfo, ProcId, !Specs),
     map.det_update(Preds0, PredId, PredInfo, Preds),
     predicate_table_set_preds(Preds, PredicateTable1, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
@@ -385,11 +381,12 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
 
 :- pred module_do_add_mode(inst_varset::in, arity::in, list(mer_mode)::in,
     maybe(determinism)::in, bool::in, prog_context::in,
-    pred_info::in, pred_info::out, proc_id::out, io::di, io::uo) is det.
+    pred_info::in, pred_info::out, proc_id::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
-        !PredInfo, ProcId, !IO) :-
-    % check that the determinism was specified
+        !PredInfo, ProcId, !Specs) :-
+    % Check that the determinism was specified.
     (
         MaybeDet = no,
         pred_info_get_import_status(!.PredInfo, ImportStatus),
@@ -399,19 +396,13 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
         PredSymName = qualified(PredModule, PredName),
         ( IsClassMethod = yes ->
             unspecified_det_for_method(PredSymName, Arity, PredOrFunc,
-                MContext, !IO)
+                MContext, !Specs)
         ; status_is_exported(ImportStatus) = yes ->
             unspecified_det_for_exported(PredSymName, Arity, PredOrFunc,
-                MContext, !IO)
+                MContext, !Specs)
         ;
-            globals.io_lookup_bool_option(infer_det, InferDet, !IO),
-            (
-                InferDet = no,
-                unspecified_det_for_local(PredSymName, Arity, PredOrFunc,
-                    MContext, !IO)
-            ;
-                InferDet = yes
-            )
+            unspecified_det_for_local(PredSymName, Arity, PredOrFunc,
+                MContext, !Specs)
         )
     ;
         MaybeDet = yes(_)
@@ -423,14 +414,15 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
 
 preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
         Status, IsClassMethod, Context, Origin, Description, PredId,
-        !ModuleInfo, !IO) :-
-    maybe_undefined_pred_error(PredName, Arity, PredOrFunc, Status,
-        IsClassMethod, Context, Description, !IO),
+        !ModuleInfo, !Specs) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    maybe_undefined_pred_error(Globals, PredName, Arity, PredOrFunc,
+        Status, IsClassMethod, Context, Description, !Specs),
     (
         PredOrFunc = function,
         adjust_func_arity(function, FuncArity, Arity),
         maybe_check_field_access_function(PredName, FuncArity, Status, Context,
-            !.ModuleInfo, !IO)
+            !.ModuleInfo, !Specs)
     ;
         PredOrFunc = predicate
     ),
@@ -497,55 +489,53 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
 %-----------------------------------------------------------------------------%
 
 :- pred unspecified_det_for_local(sym_name::in, arity::in, pred_or_func::in,
-    prog_context::in, io::di, io::uo) is det.
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !IO) :-
-    Pieces = [words("Error: no determinism declaration for local"),
+unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !Specs) :-
+    MainPieces = [words("Error: no determinism declaration for local"),
         simple_call(simple_call_id(PredOrFunc, Name, Arity)), suffix(".")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    record_warning(!IO),
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    (
-        VerboseErrors = yes,
-        VerbosePieces = [words("(This is an error because"),
-            words("you specified the `--no-infer-det' options."),
-            words("Use the `--infer-det' option if you want the compiler"),
-            words("to automatically infer the determinism"),
-            words("of local predicates.)")],
-        write_error_pieces(Context, 0, VerbosePieces, !IO)
-    ;
-        VerboseErrors = no,
-        globals.io_set_extra_error_info(yes, !IO)
-    ).
+    VerbosePieces = [words("(This is an error because"),
+        words("you specified the `--no-infer-det' options."),
+        words("Use the `--infer-det' option if you want the compiler"),
+        words("to automatically infer the determinism"),
+        words("of local predicates.)")],
+    InnerComponents = [always(MainPieces), verbose_only(VerbosePieces)],
+    Msg = simple_msg(Context,
+        [option_is_set(infer_det, no, InnerComponents)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 :- pred unspecified_det_for_method(sym_name::in, arity::in, pred_or_func::in,
-    prog_context::in, io::di, io::uo) is det.
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !IO) :-
+unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !Specs) :-
     Pieces = [words("Error: no determinism declaration"),
         words("for type class method"), p_or_f(PredOrFunc),
         sym_name_and_arity(Name / Arity), suffix(".")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 :- pred unspecified_det_for_exported(sym_name::in, arity::in, pred_or_func::in,
-    prog_context::in, io::di, io::uo) is det.
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !IO) :-
+unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !Specs) :-
     Pieces = [words("Error: no determinism declaration for exported"),
         p_or_f(PredOrFunc), sym_name_and_arity(Name / Arity), suffix(".")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 :- pred unqualified_pred_error(sym_name::in, int::in, prog_context::in,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-unqualified_pred_error(PredName, Arity, Context, !IO) :-
+unqualified_pred_error(PredName, Arity, Context, !Specs) :-
     Pieces = [words("Internal error: the unqualified predicate name"),
         sym_name_and_arity(PredName / Arity),
         words("should have been qualified by prog_io.m.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 

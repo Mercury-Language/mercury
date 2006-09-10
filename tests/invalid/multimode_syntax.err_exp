@@ -6,34 +6,29 @@ multimode_syntax.m:018:   annotations.
 multimode_syntax.m:019: In clause for function `multimode_syntax.func1'/1:
 multimode_syntax.m:019:   syntax error: some but not all arguments have mode
 multimode_syntax.m:019:   annotations.
-multimode_syntax.m:025: In clause for function `multimode_syntax.func2'/2:
+multimode_syntax.m:025: In clause for function `func2'/2:
 multimode_syntax.m:025:   error: mode annotation specifies undeclared mode
-multimode_syntax.m:025:   `func2(in, out) = out'
-multimode_syntax.m:025:   of function `multimode_syntax.func2'/2.
-	The declared modes for this function are the following:
-		:- mode func2(in, in) = out is det.
-multimode_syntax.m:027: In clause for function `multimode_syntax.func2'/2:
+multimode_syntax.m:025:   `func2(in, out) = out'.
+multimode_syntax.m:025:   The declared mode for this function is:
+multimode_syntax.m:025:     :- mode func2(in, in) = out is det.
+multimode_syntax.m:027: In clause for function `func2'/2:
 multimode_syntax.m:027:   error: mode annotation specifies undeclared mode
-multimode_syntax.m:027:   `func2(out, in) = out'
-multimode_syntax.m:027:   of function `multimode_syntax.func2'/2.
-	The declared modes for this function are the following:
-		:- mode func2(in, in) = out is det.
-multimode_syntax.m:029: In clause for function `multimode_syntax.func2'/2:
+multimode_syntax.m:027:   `func2(out, in) = out'.
+multimode_syntax.m:027:   The declared mode for this function is:
+multimode_syntax.m:027:     :- mode func2(in, in) = out is det.
+multimode_syntax.m:029: In clause for function `func2'/2:
 multimode_syntax.m:029:   error: mode annotation specifies undeclared mode
-multimode_syntax.m:029:   `func2(out, out) = out'
-multimode_syntax.m:029:   of function `multimode_syntax.func2'/2.
-	The declared modes for this function are the following:
-		:- mode func2(in, in) = out is det.
-multimode_syntax.m:033: In clause for function `multimode_syntax.func2b'/2:
+multimode_syntax.m:029:   `func2(out, out) = out'.
+multimode_syntax.m:029:   The declared mode for this function is:
+multimode_syntax.m:029:     :- mode func2(in, in) = out is det.
+multimode_syntax.m:033: In clause for function `func2b'/2:
 multimode_syntax.m:033:   error: mode annotation specifies undeclared mode
-multimode_syntax.m:033:   `func2b(in, out) = out'
-multimode_syntax.m:033:   of function `multimode_syntax.func2b'/2.
-	The declared modes for this function are the following:
-		:- mode func2b(in, in) = out is det.
-multimode_syntax.m:037: In clause for predicate `multimode_syntax.pred2b'/2:
+multimode_syntax.m:033:   `func2b(in, out) = out'.
+multimode_syntax.m:033:   The declared mode for this function is:
+multimode_syntax.m:033:     :- mode func2b(in, in) = out is det.
+multimode_syntax.m:037: In clause for predicate `pred2b'/2:
 multimode_syntax.m:037:   error: mode annotation specifies undeclared mode
-multimode_syntax.m:037:   `pred2b(in, out)'
-multimode_syntax.m:037:   of predicate `multimode_syntax.pred2b'/2.
+multimode_syntax.m:037:   `pred2b(in, out)'.
 multimode_syntax.m:037:   (There are no declared modes for this predicate.)
 multimode_syntax.m:045: In clause for predicate `multimode_syntax.test2'/2:
 multimode_syntax.m:045:   syntax error: some but not all arguments have mode
