@@ -13,10 +13,19 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mcurses, mcurses:basics, mcurses:user.
-:- import_module int, list, std_util.
+
+:- import_module mcurses.
+:- import_module mcurses.basics.
+:- import_module mcurses.user.
+
+:- import_module int.
+:- import_module list.
+:- import_module pair.
+
+%-----------------------------------------------------------------------------%
 
 main -->
         init(Root),
