@@ -237,7 +237,7 @@ print_genotypes(Path, Genotypes, !IO) :-
 	io.open_output(Path, Result, !IO),
 	(
 		Result = ok(Stream),
-		Strings = map(genotype_to_string, Genotypes),
+		Strings = list.map(genotype_to_string, Genotypes),
 		io.write_list(Stream, Strings, "\n", io.write_string(Stream), !IO),
 		io.nl(Stream, !IO),
 		io.close_output(Stream, !IO)
