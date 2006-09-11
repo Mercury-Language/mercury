@@ -310,7 +310,7 @@ Changes to the extras distribution:
 
 * We've added a library of data structures designed to work for solver types. 
 
-  The module extras/solver_types contains versions of the the standard
+  The module extras/solver_types contains versions of the standard
   library's array, assoc_list, list and map modules that are designed to
   work with terms that have inst `any'.
 
