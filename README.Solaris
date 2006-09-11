@@ -1,9 +1,7 @@
-Reportedly Mercury does not work on Solaris 2.5.1 if it is compiled with
-gcc 2.7.x.  It should however work fine on Solaris 2.5.1 if you compile
-it with gcc 2.8, or if you use gcc 2.7.x with an earlier version of Solaris.
+Mercury 0.13 may not work on Solaris 10 (SunOS 5.10) due to incompatibilities
+with the version of Boehm GC shipped with that version of Mercury.
 
-The binary distribution for Solaris that we distribute was compiled
-with gcc 2.7.2, so if you have Solaris 2.5.1, you may need to compile
-Mercury yourself from our source distribution.
+(The above problem has been fixed in post-0.13 versions of Mercury.)
 
-("Solaris 2.x" is also known as "SunOS 5.x".)
+Also, note that `--linkage static' is not supported on Solaris.  Executables
+produced using this option will cause a segmentation fault.
