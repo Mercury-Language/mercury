@@ -1,6 +1,6 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,7 +17,6 @@
 :- interface.
 
 :- import_module any_assoc_list.
-:- import_module any_list.
 :- import_module list.
 
 :- type any_tree234(K, V).
@@ -91,8 +90,8 @@
 :- func any_tree234__keys(any_tree234(K, V)::ia) = (list(K)::out) is det.
 :- pred any_tree234__keys(any_tree234(K, V)::ia, list(K)::out) is det.
 
-:- func any_tree234__values(any_tree234(K, V)::ia) = (any_list(V)::oa) is det.
-:- pred any_tree234__values(any_tree234(K, V)::ia, any_list(V)::oa) is det.
+:- func any_tree234__values(any_tree234(K, V)::ia) = (list(V)::oa) is det.
+:- pred any_tree234__values(any_tree234(K, V)::ia, list(V)::oa) is det.
 
 :- pred any_tree234__update(any_tree234(K, V)::ia, K::in, V::ia,
         any_tree234(K, V)::oa) is semidet.
@@ -232,11 +231,12 @@
 
 :- implementation.
 
+:- use_module    any_list.
 :- import_module any_util.
 :- import_module bool.
 :- import_module int.
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
 
 :- type any_tree234(K, V)
     --->    empty
@@ -391,7 +391,9 @@ any_tree234__search(T, K, V) :-
     ).
 
 any_tree234__lookup(T, K, V) :-
-    promise_pure ( impure any_tree234__search(T, K, V0) ->
+    promise_pure (
+        any_tree234__search(T, K, V0)
+    ->
         V = V0
     ;
         report_lookup_error("any_tree234__lookup: key not found.", K, V)
@@ -416,7 +418,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
             V = V0
         ;
             Result = (>),
-            ( impure any_tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
+            ( any_tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
                 K = Kp,
                 V = Vp
             ;
@@ -442,7 +444,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
             compare(Result1, SearchK, K1),
             (
                 Result1 = (<),
-                ( impure any_tree234__lower_bound_search(T1, SearchK,
+                ( any_tree234__lower_bound_search(T1, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -458,7 +460,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V1
             ;
                 Result1 = (>),
-                ( impure any_tree234__lower_bound_search(T2, SearchK,
+                ( any_tree234__lower_bound_search(T2, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -486,7 +488,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V0
             ;
                 Result0 = (>),
-                ( impure any_tree234__lower_bound_search(T1, SearchK,
+                ( any_tree234__lower_bound_search(T1, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -506,7 +508,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
             compare(Result2, SearchK, K2),
             (
                 Result2 = (<),
-                ( impure any_tree234__lower_bound_search(T2, SearchK,
+                ( any_tree234__lower_bound_search(T2, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -521,7 +523,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V2
             ;
                 Result2 = (>),
-                ( impure any_tree234__lower_bound_search(T3, SearchK,
+                ( any_tree234__lower_bound_search(T3, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -536,7 +538,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
 
 any_tree234__lower_bound_lookup(T, SearchK, K, V) :-
     promise_pure (
-        impure any_tree234__lower_bound_search(T, SearchK, K0, V0)
+        any_tree234__lower_bound_search(T, SearchK, K0, V0)
     ->
         K = K0,
         V = V0
@@ -557,7 +559,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
         compare(Result, SearchK, K0),
         (
             Result = (<),
-            ( impure any_tree234__upper_bound_search(T0, SearchK, Kp, Vp) -> 
+            ( any_tree234__upper_bound_search(T0, SearchK, Kp, Vp) -> 
                 K = Kp,
                 V = Vp
             ;
@@ -579,7 +581,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
         compare(Result0, SearchK, K0),
         (
             Result0 = (<),
-            ( impure any_tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
+            ( any_tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
                 K = Kp,
                 V = Vp
             ;
@@ -596,7 +598,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
             compare(Result1, SearchK, K1),
             (
                 Result1 = (<),
-                ( impure any_tree234__upper_bound_search(T1, SearchK,
+                ( any_tree234__upper_bound_search(T1, SearchK,
                     Kp, Vp)
                 ->
                     K = Kp,
@@ -624,7 +626,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
             compare(Result0, SearchK, K0),
             (
                 Result0 = (<),
-                ( impure any_tree234__upper_bound_search(T0, SearchK,
+                ( any_tree234__upper_bound_search(T0, SearchK,
                     Kp, Vp)
                 ->
                     K = Kp,
@@ -639,7 +641,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
                 V = V0
             ;
                 Result0 = (>),
-                ( impure any_tree234__upper_bound_search(T1, SearchK,
+                ( any_tree234__upper_bound_search(T1, SearchK,
                     Kp, Vp)
                 ->
                     K = Kp,
@@ -659,7 +661,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
             compare(Result2, SearchK, K2),
             (
                 Result2 = (<),
-                ( impure any_tree234__upper_bound_search(T2, SearchK,
+                ( any_tree234__upper_bound_search(T2, SearchK,
                     Kp, Vp)
                 ->
                     K = Kp,
@@ -681,7 +683,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
 
 any_tree234__upper_bound_lookup(T, SearchK, K, V) :-
     promise_pure (
-        impure any_tree234__upper_bound_search(T, SearchK, K0, V0)
+        any_tree234__upper_bound_search(T, SearchK, K0, V0)
     ->
         K = K0,
         V = V0
@@ -692,33 +694,41 @@ any_tree234__upper_bound_lookup(T, SearchK, K, V) :-
 
 %------------------------------------------------------------------------------%
 
-any_tree234__max_key(T0) = MaxKey :-
+any_tree234__max_key(T0) = Result :-
     ( T0 = two(NodeMaxKey, _, _, NodeMaxSubtree) 
     ; T0 = three(_, _, NodeMaxKey, _, _, _, NodeMaxSubtree)
     ; T0 = four(_, _, _, _, NodeMaxKey, _, _, _, _, NodeMaxSubtree)
     ),
     promise_pure (
-        impure MaxSubtreeKey = any_tree234__max_key(NodeMaxSubtree)
+        MaxSubtreeKey = any_tree234__max_key(NodeMaxSubtree)
     ->
         MaxKey = MaxSubtreeKey
     ;
         MaxKey = NodeMaxKey
     ),
-    unsafe_cast_to_ground(MaxKey).
+    % XXX This needs to be written this way in order to avoid errors due to
+    % limitations in the current mode analysis and/or intermodule optimization
+    % framework.
+    unsafe_cast_to_ground(MaxKey),
+    Result = MaxKey.
 
-any_tree234__min_key(T0) = MinKey :-
+any_tree234__min_key(T0) = Result :-
     ( T0 = two(NodeMinKey, _, NodeMinSubtree, _) 
     ; T0 = three(NodeMinKey, _, _, _, NodeMinSubtree, _, _)
     ; T0 = four(NodeMinKey, _, _, _, _, _, NodeMinSubtree, _, _, _)
     ),
     promise_pure (
-        impure MinSubtreeKey = any_tree234__min_key(NodeMinSubtree)
+        MinSubtreeKey = any_tree234__min_key(NodeMinSubtree)
     ->
         MinKey = MinSubtreeKey
     ;
         MinKey = NodeMinKey
     ),
-    unsafe_cast_to_ground(MinKey).
+    % XXX This needs to be written this way in order to avoid errors due to
+    % limitations in the current mode analysis and/or intermodule optimization
+    % framework.
+    unsafe_cast_to_ground(MinKey),
+    Result = MinKey.
 
 %------------------------------------------------------------------------------%
 
@@ -988,6 +998,7 @@ any_tree234__insert(Tin, K, V, Tout) :-
         any_tree234(K, V)::oa) is semidet.
 
 any_tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
+    promise_pure
     (
         T0 = empty
         % T1 = empty implied by T0 = empty
@@ -1085,6 +1096,7 @@ any_tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
         any_tree234(K, V)::oa) is semidet.
 
 any_tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
+    promise_pure
     (
         T0 = empty
         % T1 = empty implied by T0 = empty
@@ -1292,6 +1304,7 @@ any_tree234__set(Tin, K, V, Tout) :-
         K::in, V::ia, any_tree234(K, V)::oa) is det.
 
 any_tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
+    promise_pure
     (
         T0 = empty
         % T1 = empty implied by T0 = empty
@@ -1391,6 +1404,7 @@ any_tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
         K::in, V::ia, any_tree234(K, V)::oa) is det.
 
 any_tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
+    promise_pure
     (
         T0 = empty
         % T1 = empty implied by T0 = empty
@@ -1597,7 +1611,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
         ;
             Result0 = (=),
             (
-                impure any_tree234__remove_smallest_2(T1, ST1K, ST1V,
+                any_tree234__remove_smallest_2(T1, ST1K, ST1V,
                     NewT1, RHT1)
             ->
                 ( RHT1 = yes ->
@@ -1639,7 +1653,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
         ;
             Result0 = (=),
             (
-                impure any_tree234__remove_smallest_2(T1, ST1K, ST1V,
+                any_tree234__remove_smallest_2(T1, ST1K, ST1V,
                     NewT1, RHT1)
             ->
                 ( RHT1 = yes ->
@@ -1673,7 +1687,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
             ;
                 Result1 = (=),
                 (
-                    impure any_tree234__remove_smallest_2(T2,
+                    any_tree234__remove_smallest_2(T2,
                         ST2K, ST2V, NewT2, RHT2)
                 ->
                     ( RHT2 = yes ->
@@ -1724,7 +1738,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
             ;
                 Result0 = (=),
                 (
-                    impure any_tree234__remove_smallest_2(T1,
+                    any_tree234__remove_smallest_2(T1,
                         ST1K, ST1V, NewT1, RHT1)
                 ->
                     ( RHT1 = yes ->
@@ -1759,7 +1773,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
         ;
             Result1 = (=),
             (
-                impure any_tree234__remove_smallest_2(T2, ST2K, ST2V,
+                any_tree234__remove_smallest_2(T2, ST2K, ST2V,
                     NewT2, RHT2)
             ->
                 ( RHT2 = yes ->
@@ -1793,7 +1807,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
             ;
                 Result2 = (=),
                 (
-                    impure any_tree234__remove_smallest_2(T3,
+                    any_tree234__remove_smallest_2(T3,
                         ST3K, ST3V, NewT3, RHT3)
                 ->
                     ( RHT3 = yes ->
@@ -1858,7 +1872,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
         ;
             Result0 = (=),
             (
-                impure any_tree234__remove_smallest_2(T1, ST1K, ST1V,
+                any_tree234__remove_smallest_2(T1, ST1K, ST1V,
                     NewT1, RHT1)
             ->
                 ( RHT1 = yes ->
@@ -1901,7 +1915,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
         ;
             Result0 = (=),
             (
-                impure any_tree234__remove_smallest_2(T1, ST1K, ST1V,
+                any_tree234__remove_smallest_2(T1, ST1K, ST1V,
                     NewT1, RHT1)
             ->
                 ( RHT1 = yes ->
@@ -1936,7 +1950,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
             ;
                 Result1 = (=),
                 (
-                    impure any_tree234__remove_smallest_2(T2,
+                    any_tree234__remove_smallest_2(T2,
                         ST2K, ST2V, NewT2, RHT2)
                 ->
                     ( RHT2 = yes ->
@@ -1988,7 +2002,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
             ;
                 Result0 = (=),
                 (
-                    impure any_tree234__remove_smallest_2(T1,
+                    any_tree234__remove_smallest_2(T1,
                         ST1K, ST1V, NewT1, RHT1)
                 ->
                     ( RHT1 = yes ->
@@ -2024,7 +2038,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
         ;
             Result1 = (=),
             (
-                impure any_tree234__remove_smallest_2(T2, ST2K, ST2V,
+                any_tree234__remove_smallest_2(T2, ST2K, ST2V,
                     NewT2, RHT2)
             ->
                 ( RHT2 = yes ->
@@ -2059,7 +2073,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
             ;
                 Result2 = (=),
                 (
-                    impure any_tree234__remove_smallest_2(T3,
+                    any_tree234__remove_smallest_2(T3,
                         ST3K, ST3V, NewT3, RHT3)
                 ->
                     ( RHT3 = yes ->
@@ -2101,13 +2115,18 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
     % always go down the left subtree.
 
 any_tree234__remove_smallest(Tin, K, V, Tout) :-
-    any_tree234__remove_smallest_2(Tin, K, V, Tout, _),
-    unsafe_cast_to_ground(K).
+    any_tree234__remove_smallest_2(Tin, K0, V, Tout, _),
+    % XXX This needs to be written this way in order to avoid errors due to
+    % limitations in the current mode analysis and/or intermodule optimization
+    % framework.
+    unsafe_cast_to_ground(K0),
+    K = K0.
 
 :- pred any_tree234__remove_smallest_2(any_tree234(K, V)::ia, K::oa, V::oa,
         any_tree234(K, V)::oa, bool::out) is semidet.
 
 any_tree234__remove_smallest_2(Tin, K, V, Tout, RH) :-
+    promise_pure
     (
         Tin = empty,
         fail
@@ -2480,8 +2499,12 @@ fix_4node_t3(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
 %------------------------------------------------------------------------------%
 
 any_tree234__keys(Tree, Keys) :-
-    any_tree234__keys_2(Tree, [], Keys),
-    unsafe_cast_to_ground(Keys).
+    any_tree234__keys_2(Tree, [], Keys0),
+    % XXX This needs to be written this way in order to avoid errors due to
+    % limitations in the current mode analysis and/or intermodule optimization
+    % framework.
+    unsafe_cast_to_ground(Keys0),
+    Keys = Keys0.
 
 :- pred any_tree234__keys_2(any_tree234(K, V)::ia, list(K)::ia,
         list(K)::oa) is det.
@@ -2505,8 +2528,8 @@ any_tree234__keys_2(four(K0, _V0, K1, _V1, K2, _V2, T0, T1, T2, T3), L0, L) :-
 any_tree234__values(Tree, Values) :-
     any_tree234__values_2(Tree, [], Values).
 
-:- pred any_tree234__values_2(any_tree234(K, V)::ia, any_list(V)::ia,
-        any_list(V)::oa) is det.
+:- pred any_tree234__values_2(any_tree234(K, V)::ia, list(V)::ia,
+        list(V)::oa) is det.
 
 any_tree234__values_2(empty, List, List).
 any_tree234__values_2(two(_K0, V0, T0, T1), L0, L) :-

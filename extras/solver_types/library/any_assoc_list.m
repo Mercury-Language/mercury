@@ -1,5 +1,5 @@
-% vim ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
+% vim ft=mercury ts=4 sw=4 et
 % Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -17,21 +17,20 @@
 
 :- interface.
 
-:- import_module any_list.
 :- import_module list.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
-:- type any_assoc_list(K,V) ==  any_list(pair(K,V)).
+:- type any_assoc_list(K,V) ==  list(pair(K,V)).
 
-:- type any_assoc_list(T)   ==  any_list(pair(T,T)).
+:- type any_assoc_list(T)   ==  list(pair(T,T)).
 
     % Zip together two lists; abort if they are of different lengths.
     %
-:- pred any_assoc_list__from_corresponding_lists(list(K)::in, any_list(V)::ia,
+:- pred any_assoc_list__from_corresponding_lists(list(K)::in, list(V)::ia,
         any_assoc_list(K,V)::oa) is det.
-:- func any_assoc_list__from_corresponding_lists(list(K)::in, any_list(V)::ia)
+:- func any_assoc_list__from_corresponding_lists(list(K)::in, list(V)::ia)
         = (any_assoc_list(K,V)::oa) is det.
 
     % Return the first member of each pair.
@@ -41,16 +40,16 @@
 
     % Return the second member of each pair.
     %
-:- pred any_assoc_list__values(any_assoc_list(K, V)::ia, any_list(V)::oa)
+:- pred any_assoc_list__values(any_assoc_list(K, V)::ia, list(V)::oa)
         is det.
-:- func any_assoc_list__values(any_assoc_list(K, V)::ia) = (any_list(V)::oa)
+:- func any_assoc_list__values(any_assoc_list(K, V)::ia) = (list(V)::oa)
         is det.
 
     % Return the two lists contain respectively the first and second member
     % of each pair in the any_assoc_list.
     %
 :- pred any_assoc_list__keys_and_values(any_assoc_list(K, V)::ia,
-        list(K)::out, any_list(V)::oa) is det.
+        list(K)::out, list(V)::oa) is det.
 
     % Find the first element of the association list that matches
     % the given key, and return the associated value.
@@ -84,6 +83,7 @@
 
 :- implementation.
 
+:- use_module    any_list.
 :- import_module any_util.
 :- import_module require.
 :- import_module string.
@@ -91,7 +91,7 @@
 
 any_assoc_list__from_corresponding_lists(Ks, Vs, KVs) :-
     promise_pure (
-    	impure any_assoc_list__from_corresponding_2(Ks, Vs, KVs0)
+    	any_assoc_list__from_corresponding_2(Ks, Vs, KVs0)
     ->
         KVs = KVs0
     ;
@@ -117,8 +117,8 @@ any_assoc_list__from_corresponding_lists(Ks, Vs, KVs) :-
         error(ErrorString)
     ).
 
-:- pred any_assoc_list__from_corresponding_2(list(K)::in, any_list(V)::ia,
-    any_assoc_list(K,V)::oa) is semidet.
+:- pred any_assoc_list__from_corresponding_2(list(K)::in, list(V)::ia,
+	    any_assoc_list(K,V)::oa) is semidet.
 
 any_assoc_list__from_corresponding_2([], [], []).
 any_assoc_list__from_corresponding_2([A | As], [B | Bs], [A - B | ABs]) :-
@@ -179,7 +179,7 @@ AL ^ elem(K) = V :-
 
 AL ^ det_elem(K) = V :-
     promise_pure (
-      if   impure any_assoc_list__search(AL, K, V0)
+      if   any_assoc_list__search(AL, K, V0)
       then V = V0
       else report_lookup_error("any_assoc_list__det_elem: key not found", K)
     ).
