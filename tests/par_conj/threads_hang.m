@@ -5,12 +5,16 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- impure pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
 
 main(!IO) :-
+    % Set a signal to go off if the program is taking too long.
+    % The default SIGALRM handler will abort the program.
+    impure alarm(10),
+
     fib(7, F),
     fib(6, G),
     io.write_int(F, !IO),
@@ -30,3 +34,14 @@ fib(N, F) :-
         ),
         F = F1 + F2
     ).
+
+:- pragma foreign_decl("C", "#include <unistd.h>").
+
+:- impure pred alarm(int::in) is det.
+
+:- pragma foreign_proc("C",
+    alarm(Seconds::in),
+    [will_not_call_mercury],
+"
+    alarm(Seconds);
+").
