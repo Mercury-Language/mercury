@@ -6,7 +6,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2005 The University of Melbourne.
+** Copyright (C) 1997-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -451,7 +451,7 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
                 ** and compiler/mercury_to_mercury.m; any changes here
                 ** may require similar changes there.
                 */
-                if (isalnum(*c) ||
+                if (MR_isalnum(*c) ||
                     strchr(" !@#$%^&*()-_+=`~{}[];:'\"<>.,/?\\|", *c))
                 {
                     fputc(*c, fp);
