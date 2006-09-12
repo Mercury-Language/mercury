@@ -325,15 +325,6 @@ MR_GC_malloc(size_t num_bytes)
 	void	*ptr;
 
 #ifdef	MR_CONSERVATIVE_GC
-#ifdef	GC_REDIRECT_TO_LOCAL
-	/*
-	** Work around a bug in Boehm GC <= 6.7.
-	** It appears this problem is not in 7.0alpha5.
-	*/
-	if (num_bytes == 0) {
-		return NULL;
-	}
-#endif
 	ptr = GC_MALLOC(num_bytes);
 #else
 	ptr = malloc(num_bytes);
