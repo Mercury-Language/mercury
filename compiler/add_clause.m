@@ -912,9 +912,10 @@ extract_trace_io_var(Context, StateVar, GetGoal, SetGoal) :-
     SetPredName = qualified(Builtin, "trace_set_io_state"),
     SetVar = functor(atom("!:"), [variable(StateVar)], Context),
     UseVar = functor(atom("!."), [variable(StateVar)], Context),
-    Purity = purity_impure,
-    GetGoal = call_expr(GetPredName, [SetVar], Purity) - Context,
-    SetGoal = call_expr(SetPredName, [UseVar], Purity) - Context.
+    GetPurity = purity_semipure,
+    SetPurity = purity_impure,
+    GetGoal = call_expr(GetPredName, [SetVar], GetPurity) - Context,
+    SetGoal = call_expr(SetPredName, [UseVar], SetPurity) - Context.
 
 :- pred transform_promise_eqv_goal(prog_vars::in, prog_vars::in, prog_vars::in,
     prog_substitution::in, prog_context::in, prog_vars::out,
