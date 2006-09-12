@@ -18,5 +18,6 @@
 --c-include-directory ../browser/Mercury/mihs
 --c-include-directory ../trace
 --c-include-directory ../analysis
+--c-include-directory ../analysis/Mercury/mihs
 --no-main
 --config-file ../scripts/Mercury.config.bootstrap
