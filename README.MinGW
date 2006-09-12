@@ -6,8 +6,8 @@ It is possible to build the Mercury compiler using the MinGW version of GCC.
 The advantage of using MinGW is that the generated executables will run
 natively on Windows without the need for any support environments like Cygwin.
 
-A Unix like environment is however still require to build the Mercury compiler.
-MSYS or Cygwin can be used for this purpose.
+A Unix like environment is however still required to build the Mercury
+compiler.  MSYS or Cygwin can be used for this purpose.
 
 -----------------------------------------------------------------------------
 
