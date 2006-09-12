@@ -1,14 +1,15 @@
 typeclass_test_8.m:004: In predicate `main'/2:
 typeclass_test_8.m:004:   type error: unsatisfied typeclass constraint:
 typeclass_test_8.m:004:     `typeclass_test_8.fooable(T)'
-typeclass_test_8.m:004: In predicate `typeclass_test_8.main'/2:
+typeclass_test_8.m:004: In predicate `main'/2:
 typeclass_test_8.m:004:   warning: unresolved polymorphism.
 typeclass_test_8.m:004:   The variable with an unbound type was:
-typeclass_test_8.m:004:       X: T
-typeclass_test_8.m:004:   The unbound type variable(s) will be implicitly
-typeclass_test_8.m:004:   bound to the builtin type `void'.
-	The body of the clause contains a call to a polymorphic predicate,
-	but I can't determine which version should be called,
-	because the type variables listed above didn't get bound.
-	(I ought to tell you which call caused the problem, but I'm afraid
-	you'll have to work it out yourself.  My apologies.)
+typeclass_test_8.m:004:     X: T
+typeclass_test_8.m:004:   The unbound type variable will be implicitly bound to
+typeclass_test_8.m:004:   the builtin type `void'.
+typeclass_test_8.m:004:   The body of the clause contains a call to a
+typeclass_test_8.m:004:   polymorphic predicate, but I can't determine which
+typeclass_test_8.m:004:   version should be called, because the type variables
+typeclass_test_8.m:004:   listed above didn't get bound. (I ought to tell you
+typeclass_test_8.m:004:   which call caused the problem, but I'm afraid you'll
+typeclass_test_8.m:004:   have to work it out yourself. My apologies.)

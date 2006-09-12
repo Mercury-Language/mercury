@@ -79,8 +79,8 @@
                                 % that we are computing and which gets updated
                                 % as we go along.
 
-                found_error     :: bool,
-                                % Did we find any type errors?
+                found_errors    :: list(error_spec),
+                                % The list of errors found so far (if any).
 
                 overloaded_symbols :: overloaded_symbol_map,
                                 % The symbols used by the current predicate
@@ -113,7 +113,7 @@
 :- pred typecheck_info_init(module_info::in, pred_id::in,
     bool::in, tvarset::in, prog_varset::in, vartypes::in,
     head_type_params::in, hlds_constraints::in, import_status::in,
-    pred_markers::in, typecheck_info::out) is det.
+    pred_markers::in, list(error_spec)::in, typecheck_info::out) is det.
 
     % typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
     %   OldExplicitVarTypes, NewTypeVarSet, New* ..., TypeRenaming,
@@ -158,7 +158,8 @@
 :- pred typecheck_info_get_varset(typecheck_info::in, prog_varset::out) is det.
 :- pred typecheck_info_get_type_assign_set(typecheck_info::in,
     type_assign_set::out) is det.
-:- pred typecheck_info_get_found_error(typecheck_info::in, bool::out) is det.
+:- pred typecheck_info_get_errors(typecheck_info::in, list(error_spec)::out)
+    is det.
 :- pred typecheck_info_get_warned_about_overloading(typecheck_info::in,
     bool::out) is det.
 :- pred typecheck_info_get_overloaded_symbols(typecheck_info::in,
@@ -175,8 +176,6 @@
 :- pred typecheck_info_set_unify_context(unify_context::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_type_assign_set(type_assign_set::in,
-    typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_found_error(bool::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_warned_about_overloading(bool::in,
     typecheck_info::in, typecheck_info::out) is det.
@@ -201,6 +200,9 @@
 
 :- pred typecheck_info_add_overloaded_symbol(overloaded_symbol::in,
     prog_context::in, typecheck_info::in, typecheck_info::out) is det.
+
+:- pred typecheck_info_add_error(error_spec::in,
+    typecheck_info::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -373,13 +375,12 @@
 
 typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
         TypeVarSet, VarSet, VarTypes, HeadTypeParams,
-        Constraints, Status, Markers, Info) :-
+        Constraints, Status, Markers, Errors, Info) :-
     CallPredId = plain_call_id(simple_call_id(predicate, unqualified(""), 0)),
     term.context_init(Context),
     map.init(TypeBindings),
     map.init(Proofs),
     map.init(ConstraintMap),
-    FoundTypeError = no,
     WarnedAboutOverloading = no,
     map.init(OverloadedSymbols),
     Info = typecheck_info(ModuleInfo, CallPredId, 0, PredId, Status, Markers,
@@ -387,7 +388,7 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
         unify_context(umc_explicit, []), VarSet,
         [type_assign(VarTypes, TypeVarSet, HeadTypeParams,
             TypeBindings, Constraints, Proofs, ConstraintMap)],
-        FoundTypeError, OverloadedSymbols, WarnedAboutOverloading
+        Errors, OverloadedSymbols, WarnedAboutOverloading
     ).
 
 typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
@@ -412,17 +413,15 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         apply_rec_subst_to_constraint_map(TypeBindings,
             ConstraintMap0, ConstraintMap1),
 
+        % When inferring the typeclass constraints, the universal constraints
+        % here may be assumed (if this is the last pass) but will not have been
+        % eliminated during context reduction, hence they will not yet be
+        % in the constraint map. Since they may be required, put them in now.
         %
-        % When inferring the typeclass constraints, the universal
-        % constraints here may be assumed (if this is the last pass)
-        % but will not have been eliminated during context reduction,
-        % hence they will not yet be in the constraint map.  Since
-        % they may be required, put them in now.
-        %
-        % Additionally, existential constraints are assumed so don't
-        % need to be eliminated during context reduction, so they
-        % need to be put in the constraint map now.
-        %
+        % Additionally, existential constraints are assumed so don't need to be
+        % eliminated during context reduction, so they need to be put in the
+        % constraint map now.
+
         HLDSTypeConstraints = constraints(HLDSUnivConstraints,
             HLDSExistConstraints, _),
         list.foldl(update_constraint_map, HLDSUnivConstraints,
@@ -430,40 +429,33 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         list.foldl(update_constraint_map, HLDSExistConstraints,
             ConstraintMap2, ConstraintMap),
 
-        %
         % Figure out how we should rename the existential types
         % in the type declaration (if any).
-        %
+
         get_existq_tvar_renaming(OldHeadTypeParams, OldExistQVars,
             TypeBindings, ExistTypeRenaming),
 
+        % We used to just use the OldTypeVarSet that we got from the type
+        % assignment.
         %
-        % We used to just use the OldTypeVarSet that we got
-        % from the type assignment.
-        %
-        % However, that caused serious efficiency problems,
-        % because the typevarsets get bigger and bigger with each
-        % inference step.  Instead, we now construct a new
-        % typevarset NewTypeVarSet which contains only the
-        % variables we want, and we rename the type variables
-        % so that they fit into this new typevarset.
-        %
+        % However, that caused serious efficiency problems, because the
+        % typevarsets get bigger and bigger with each inference step. Instead,
+        % we now construct a new typevarset NewTypeVarSet which contains
+        % only the variables we want, and we rename the type variables so that
+        % they fit into this new typevarset.
 
-        %
-        % First, find the set (sorted list) of type variables
-        % that we need.  This must include any type variables
-        % in the inferred types, the explicit type qualifications,
-        % and any existentially typed variables that will remain
-        % in the declaration.
+        % First, find the set (sorted list) of type variables that we need.
+        % This must include any type variables in the inferred types, the
+        % explicit type qualifications, and any existentially typed variables
+        % that will remain in the declaration.
         %
         % There may also be some type variables in the HeadTypeParams
-        % which do not occur in the type of any variable (e.g. this
-        % can happen in the case of code containing type errors).
-        % We'd better keep those, too, to avoid errors
-        % when we apply the TSubst to the HeadTypeParams.
-        % (XXX should we do the same for TypeConstraints and
-        % ConstraintProofs too?)
-        %
+        % which do not occur in the type of any variable (e.g. this can happen
+        % in the case of code containing type errors). We'd better keep those,
+        % too, to avoid errors when we apply the TSubst to the HeadTypeParams.
+        % (XXX should we do the same for TypeConstraints and ConstraintProofs
+        % too?)
+
         map.values(VarTypes, Types),
         prog_type.vars_list(Types, TypeVars0),
         map.values(OldExplicitVarTypes, ExplicitTypes),
@@ -474,15 +466,12 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         list.condense([ExistQVarsToRemain, HeadTypeParams,
             TypeVars0, ExplicitTypeVars0], TypeVars1),
         list.sort_and_remove_dups(TypeVars1, TypeVars),
-        %
-        % Next, create a new typevarset with the same number of
-        % variables.
-        %
+
+        % Next, create a new typevarset with the same number of variables.
         varset.squash(OldTypeVarSet, TypeVars, NewTypeVarSet, TSubst),
-        %
-        % Finally, rename the types and type class constraints
-        % to use the new typevarset type variables.
-        %
+
+        % Finally, rename the types and type class constraints to use
+        % the new typevarset type variables.
         apply_variable_renaming_to_type_list(TSubst, Types, NewTypes),
         map.from_corresponding_lists(Vars, NewTypes, NewVarTypes),
         map.apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
@@ -510,9 +499,9 @@ expand_types([Var | Vars], TypeSubst, !VarTypes) :-
     map.det_update(!.VarTypes, Var, Type, !:VarTypes),
     expand_types(Vars, TypeSubst, !VarTypes).
 
-    % We rename any existentially quantified type variables which
-    % get mapped to other type variables, unless they are mapped to
-    % universally quantified type variables from the head of the predicate.
+    % We rename any existentially quantified type variables which get mapped
+    % to other type variables, unless they are mapped to universally quantified
+    % type variables from the head of the predicate.
     %
 :- pred get_existq_tvar_renaming(list(tvar)::in, existq_tvars::in, tsubst::in,
     tvar_renaming::out) is det.
@@ -548,6 +537,9 @@ tvar_maps_to_tvar(TypeBindings, TVar0, TVar) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred typecheck_info_set_errors(list(error_spec)::in,
+    typecheck_info::in, typecheck_info::out) is det.
+
 typecheck_info_get_module_info(Info, Info ^ module_info).
 typecheck_info_get_called_predid(Info, Info ^ call_id).
 typecheck_info_get_arg_num(Info, Info ^ arg_num).
@@ -556,7 +548,7 @@ typecheck_info_get_context(Info, Info ^ context).
 typecheck_info_get_unify_context(Info, Info ^ unify_context).
 typecheck_info_get_varset(Info, Info ^ varset).
 typecheck_info_get_type_assign_set(Info, Info ^ type_assign_set).
-typecheck_info_get_found_error(Info, Info ^ found_error).
+typecheck_info_get_errors(Info, Info ^ found_errors).
 typecheck_info_get_warned_about_overloading(Info,
         Info ^ warned_about_overloading).
 typecheck_info_get_overloaded_symbols(Info, Info ^ overloaded_symbols).
@@ -570,8 +562,7 @@ typecheck_info_set_unify_context(UnifyContext, Info,
         Info ^ unify_context := UnifyContext).
 typecheck_info_set_type_assign_set(TypeAssignSet, Info,
         Info ^ type_assign_set := TypeAssignSet).
-typecheck_info_set_found_error(FoundError, Info,
-        Info ^ found_error := FoundError).
+typecheck_info_set_errors(Errors, Info, Info ^ found_errors := Errors).
 typecheck_info_set_warned_about_overloading(Warned, Info,
         Info ^ warned_about_overloading := Warned).
 typecheck_info_set_overloaded_symbols(Symbols, Info,
@@ -606,6 +597,11 @@ typecheck_info_add_overloaded_symbol(Symbol, Context, !Info) :-
         map.det_insert(SymbolMap0, Symbol, Contexts, SymbolMap)
     ),
     typecheck_info_set_overloaded_symbols(SymbolMap, !Info).
+
+typecheck_info_add_error(Error, !Info) :-
+    typecheck_info_get_errors(!.Info, Errors0),
+    Errors = [Error | Errors0],
+    typecheck_info_set_errors(Errors, !Info).
 
 %-----------------------------------------------------------------------------%
 

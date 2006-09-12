@@ -1,15 +1,16 @@
-freefree.m:016: In predicate `freefree.p'/0:
+freefree.m:016: In predicate `p'/0:
 freefree.m:016:   warning: unresolved polymorphism.
 freefree.m:016:   The variables with unbound types were:
-freefree.m:016:       Y: V_1
-freefree.m:016:       X: V_1
-freefree.m:016:   The unbound type variable(s) will be implicitly
-freefree.m:016:   bound to the builtin type `void'.
-	The body of the clause contains a call to a polymorphic predicate,
-	but I can't determine which version should be called,
-	because the type variables listed above didn't get bound.
-	(I ought to tell you which call caused the problem, but I'm afraid
-	you'll have to work it out yourself.  My apologies.)
+freefree.m:016:     Y: V_1
+freefree.m:016:     X: V_1
+freefree.m:016:   The unbound type variables will be implicitly bound to the
+freefree.m:016:   builtin type `void'.
+freefree.m:016:   The body of the clause contains a call to a polymorphic
+freefree.m:016:   predicate, but I can't determine which version should be
+freefree.m:016:   called, because the type variables listed above didn't get
+freefree.m:016:   bound. (I ought to tell you which call caused the problem,
+freefree.m:016:   but I'm afraid you'll have to work it out yourself. My
+freefree.m:016:   apologies.)
 freefree.m:019: In clause for `p':
 freefree.m:019:   mode error in unification of `X' and `Y'.
 freefree.m:019:   Variable `X' has instantiatedness `free',

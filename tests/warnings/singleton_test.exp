@@ -12,10 +12,10 @@ singleton_test.m:041:   warning: variable `X' does not occur in the C code.
 singleton_test.m:055: In the C code for predicate
 singleton_test.m:055:   `singleton_test.c_hello_world'/3:
 singleton_test.m:055:   warning: variable `Msg' does not occur in the C code.
-singleton_test.m:008: In function `singleton_test.my_append_func'/2:
+singleton_test.m:008: In function `my_append_func'/2:
 singleton_test.m:008:   warning: unresolved polymorphism.
 singleton_test.m:008:   The variables with unbound types were:
-singleton_test.m:008:       L2: V_1
-singleton_test.m:008:       L1: V_1
-singleton_test.m:008:   The unbound type variable(s) will be implicitly
-singleton_test.m:008:   bound to the builtin type `void'.
+singleton_test.m:008:     L2: V_1
+singleton_test.m:008:     L1: V_1
+singleton_test.m:008:   The unbound type variables will be implicitly bound to
+singleton_test.m:008:   the builtin type `void'.

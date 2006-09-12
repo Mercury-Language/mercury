@@ -20,6 +20,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_goal.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module check_hlds.mode_info.
 
@@ -212,9 +213,8 @@
     % declare indistinguishable modes.
     % XXX This predicate should be included in the types above.
     %
-:- pred report_indistinguishable_modes_error(proc_id::in, proc_id::in,
-    pred_id::in, pred_info::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- func report_indistinguishable_modes_error(module_info, proc_id, proc_id,
+    pred_id, pred_info) = error_spec.
 
     % Write out the inferred `mode' declarations for a list of pred_ids.
     % The bool indicates whether or not to write out determinism
@@ -239,7 +239,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -845,7 +844,8 @@ mode_error_implied_mode_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
         words("expected instantiatedness was"),
         words(add_quotes(inst_to_string(ModeInfo, Inst))),
         suffix("."), nl],
-    Spec = error_spec(severity_error, phase_mode_check,
+    Severity = severity_conditional(errorcheck_only, no, severity_error, no),
+    Spec = error_spec(Severity, phase_mode_check,
         [simple_msg(Context,
             [option_is_set(errorcheck_only, no,
                 [always(Preamble ++ Pieces)])])]).
@@ -1314,8 +1314,8 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-report_indistinguishable_modes_error(OldProcId, NewProcId, PredId, PredInfo,
-        !ModuleInfo, !IO) :-
+report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
+        PredId, PredInfo) = Spec :-
     pred_info_get_procedures(PredInfo, Procs),
     map.lookup(Procs, OldProcId, OldProcInfo),
     map.lookup(Procs, NewProcId, NewProcInfo),
@@ -1323,7 +1323,7 @@ report_indistinguishable_modes_error(OldProcId, NewProcId, PredId, PredInfo,
     proc_info_get_context(NewProcInfo, NewContext),
 
     MainPieces = [words("In mode declarations for ")] ++
-        describe_one_pred_name(!.ModuleInfo, should_module_qualify, PredId)
+        describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
         ++ [suffix(":"), nl, words("error: duplicate mode declaration."), nl],
     VerbosePieces = [words("Modes"),
         fixed(add_quotes(mode_decl_to_string(OldProcId, PredInfo))),
@@ -1334,9 +1334,7 @@ report_indistinguishable_modes_error(OldProcId, NewProcId, PredId, PredInfo,
     Spec = error_spec(severity_error, phase_mode_check,
         [simple_msg(NewContext,
             [always(MainPieces), verbose_only(VerbosePieces)]),
-        simple_msg(OldContext, [always(OldPieces)])]),
-    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
-    module_info_incr_num_errors(NumErrors, !ModuleInfo).
+        simple_msg(OldContext, [always(OldPieces)])]).
 
 %-----------------------------------------------------------------------------%
 

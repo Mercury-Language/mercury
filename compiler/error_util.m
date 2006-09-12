@@ -36,6 +36,7 @@
 :- module parse_tree.error_util.
 :- interface.
 
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
@@ -76,8 +77,27 @@
             % Only set the exit status to indicate an error if --halt-at-warn
             % is enabled.
 
-    ;       severity_informational.
+    ;       severity_informational
             % Don't set the exit status to indicate an error.
+
+    ;       severity_conditional(
+            % If the given boolean option has the given value, then the actual
+            % severity is given by the third argument; if it has the other
+            % value, then the actual severity is given by the fourth argument.
+            % If the fourth argument is `no', then the error_spec shouldn't
+            % actually print anything if cond_option doesn't have the value
+            % in cond_option_value.
+
+                cond_option             :: option,
+                cond_option_value       :: bool,
+                cond_if_match           :: error_severity,
+                cond_if_no_match        :: maybe(error_severity)
+            ).
+
+:- type actual_severity
+    --->    actual_severity_error
+    ;       actual_severity_warning
+    ;       actual_severity_informational.
 
 :- type error_phase
     --->    phase_term_to_parse_tree
@@ -148,9 +168,41 @@
             % at start etc), this capability is intended only for messages
             % that help debug the compiler itself.
 
+%-----------------------------------------------------------------------------%
+
+    % Return the worst of two actual severities.
+    %
+:- func worst_severity(actual_severity, actual_severity)
+    = actual_severity.
+
+    % Compute the actual severity of a message with the given severity
+    % (if it actually prints anything).
+    %
+:- func actual_error_severity(globals, error_severity)
+    = maybe(actual_severity).
+
+    % Compute the worst actual severity (if any) occurring a list ofmessages.
+    %
+:- func worst_severity_in_specs(globals, list(error_spec))
+    = maybe(actual_severity).
+
+    % Return `yes' if the given list contains error_specs whose actual severity
+    % is actual_severity_error.
+    %
+:- func contains_errors(globals, list(error_spec)) = bool.
+
+    % Return `yes' if the given list contains error_specs whose actual severity
+    % is actual_severity_error or actual_severity_warning.
+    %
+:- func contains_errors_and_or_warnings(globals, list(error_spec)) = bool.
+
+%-----------------------------------------------------------------------------%
+
 :- pred sort_error_specs(list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred sort_error_msgs(list(error_msg)::in, list(error_msg)::out) is det.
+
+%-----------------------------------------------------------------------------%
 
     % write_error_spec(Spec, !NumWarnings, !NumErrors, !IO):
     % write_error_specs(Specs, !NumWarnings, !NumErrors, !IO):
@@ -339,13 +391,119 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 
 :- import_module char.
 :- import_module int.
 :- import_module list.
 :- import_module string.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
+
+worst_severity(actual_severity_error, actual_severity_error) =
+    actual_severity_error.
+worst_severity(actual_severity_error, actual_severity_warning) =
+    actual_severity_error.
+worst_severity(actual_severity_error, actual_severity_informational) =
+    actual_severity_error.
+worst_severity(actual_severity_warning, actual_severity_error) =
+    actual_severity_error.
+worst_severity(actual_severity_warning, actual_severity_warning) =
+    actual_severity_warning.
+worst_severity(actual_severity_warning, actual_severity_informational) =
+    actual_severity_warning.
+worst_severity(actual_severity_informational, actual_severity_error) =
+    actual_severity_error.
+worst_severity(actual_severity_informational, actual_severity_warning) =
+    actual_severity_warning.
+worst_severity(actual_severity_informational, actual_severity_informational) =
+    actual_severity_informational.
+
+actual_error_severity(Globals, Severity) = MaybeActual :-
+    (
+        Severity = severity_error,
+        MaybeActual = yes(actual_severity_error)
+    ;
+        Severity = severity_warning,
+        MaybeActual = yes(actual_severity_warning)
+    ;
+        Severity = severity_informational,
+        MaybeActual = yes(actual_severity_informational)
+    ;
+        Severity = severity_conditional(Option, MatchValue,
+            Match, MaybeNoMatch),
+        globals.lookup_bool_option(Globals, Option, Value),
+        ( Value = MatchValue ->
+            MaybeActual = actual_error_severity(Globals, Match)
+        ;
+            (
+                MaybeNoMatch = no,
+                MaybeActual = no
+            ;
+                MaybeNoMatch = yes(NoMatch),
+                MaybeActual = actual_error_severity(Globals, NoMatch)
+            )
+        )
+    ).
+
+worst_severity_in_specs(Globals, Specs) = MaybeWorst :-
+    worst_severity_in_specs_2(Globals, Specs, no, MaybeWorst).
+
+:- pred worst_severity_in_specs_2(globals::in, list(error_spec)::in,
+    maybe(actual_severity)::in, maybe(actual_severity)::out) is det.
+
+worst_severity_in_specs_2(_Globals, [], !MaybeWorst).
+worst_severity_in_specs_2(Globals, [Spec | Specs], !MaybeWorst) :-
+    Spec = error_spec(Severity, _, _),
+    MaybeThis = actual_error_severity(Globals, Severity),
+    (
+        !.MaybeWorst = no,
+        !:MaybeWorst = MaybeThis
+    ;
+        !.MaybeWorst = yes(_Worst),
+        MaybeThis = no
+    ;
+        !.MaybeWorst = yes(Worst),
+        MaybeThis = yes(This),
+        !:MaybeWorst = yes(worst_severity(Worst, This))
+    ),
+    worst_severity_in_specs_2(Globals, Specs, !MaybeWorst).
+
+contains_errors(Globals, Specs) = Errors :-
+    MaybeWorstActual = worst_severity_in_specs(Globals, Specs),
+    (
+        MaybeWorstActual = no,
+        Errors = no
+    ;
+        MaybeWorstActual = yes(WorstActual),
+        (
+            WorstActual = actual_severity_error,
+            Errors = yes
+        ;
+            ( WorstActual = actual_severity_warning
+            ; WorstActual = actual_severity_informational
+            ),
+            Errors = no
+        )
+    ).
+
+contains_errors_and_or_warnings(Globals, Specs) = ErrorsOrWarnings :-
+    MaybeWorstActual = worst_severity_in_specs(Globals, Specs),
+    (
+        MaybeWorstActual = no,
+        ErrorsOrWarnings = no
+    ;
+        MaybeWorstActual = yes(WorstActual),
+        (
+            ( WorstActual = actual_severity_error
+            ; WorstActual = actual_severity_warning
+            ),
+            ErrorsOrWarnings = yes
+        ;
+            WorstActual = actual_severity_informational,
+            ErrorsOrWarnings = no
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -431,20 +589,29 @@ do_write_error_spec(Globals, OrigExitStatus, Spec, !NumWarnings, !NumErrors,
     Spec = error_spec(Severity, _, Msgs),
     do_write_error_msgs(Msgs, Globals, OrigExitStatus, yes, no, PrintedSome,
         !IO),
+    MaybeActual = actual_error_severity(Globals, Severity),
     (
-        PrintedSome = no
+        PrintedSome = no,
+        expect(unify(MaybeActual, no), this_file,
+            "do_write_error_spec: MaybeActual isn't no")
     ;
         PrintedSome = yes,
         (
-            Severity = severity_error,
-            !:NumErrors = !.NumErrors + 1,
-            io.set_exit_status(1, !IO)
+            MaybeActual = yes(Actual),
+            (
+                Actual = actual_severity_error,
+                !:NumErrors = !.NumErrors + 1,
+                io.set_exit_status(1, !IO)
+            ;
+                Actual = actual_severity_warning,
+                !:NumWarnings = !.NumWarnings + 1,
+                record_warning(!IO)
+            ;
+                Actual = actual_severity_informational
+            )
         ;
-            Severity = severity_warning,
-            !:NumWarnings = !.NumWarnings + 1,
-            record_warning(!IO)
-        ;
-            Severity = severity_informational
+            MaybeActual = no,
+            unexpected(this_file, "do_write_error_spec: MaybeActual is no")
         )
     ).
 

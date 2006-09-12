@@ -22,8 +22,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
-
     % perform_context_reduction(OrigTypeAssignSet, !Info) is true
     % iff either
     % (a) !:Info is the typecheck_info that results from performing
@@ -70,7 +68,7 @@
     % subsequent calls to perform_context_reduction.
     %
 :- pred perform_context_reduction(type_assign_set::in,
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+    typecheck_info::in, typecheck_info::out) is det.
 
     % Apply context reduction to the list of class constraints by applying
     % the instance rules or superclass rules, building up proofs for
@@ -106,8 +104,10 @@
 
 %-----------------------------------------------------------------------------%
 
-perform_context_reduction(OrigTypeAssignSet, !Info, !IO) :-
-    type_checkpoint("before context reduction", !.Info, !IO),
+perform_context_reduction(OrigTypeAssignSet, !Info) :-
+    trace [io(!IO)] (
+        type_checkpoint("before context reduction", !.Info, !IO)
+    ),
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_superclass_table(ModuleInfo, SuperClassTable),
@@ -122,7 +122,8 @@ perform_context_reduction(OrigTypeAssignSet, !Info, !IO) :-
         TypeAssignSet0 = [_ | _],
         TypeAssignSet = []
     ->
-        report_unsatisfiable_constraints(TypeAssignSet0, !Info, !IO),
+        Spec = report_unsatisfiable_constraints(!.Info, TypeAssignSet0),
+        typecheck_info_add_error(Spec, !Info),
         DeleteConstraints = (pred(TA0::in, TA::out) is det :-
             type_assign_get_typeclass_constraints(TA0, Constraints0),
             Constraints = (Constraints0

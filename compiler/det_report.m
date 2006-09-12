@@ -1082,7 +1082,9 @@ det_report_to_error_spec(ModuleInfo, ContextDetMsg) = Spec :-
             Pieces = [words("Warning: call to obsolete")] ++ PredPieces
                 ++ [suffix(".")]
         ),
-        Spec = error_spec(severity_warning, phase_detism_check,
+        Severity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity, phase_detism_check,
             [simple_msg(Context,
                 [option_is_set(warn_simple_code, yes, [always(Pieces)])])])
     ;
@@ -1114,7 +1116,9 @@ det_report_to_error_spec(ModuleInfo, ContextDetMsg) = Spec :-
                 words("with exactly the same input arguments,"),
                 words("leading to infinite recursion.")]
         ),
-        Spec = error_spec(severity_warning, phase_detism_check,
+        Severity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity, phase_detism_check,
             [simple_msg(Context,
                 [option_is_set(warn_simple_code, yes,
                     [always(MainPieces), verbose_only(VerbosePieces)])])])
@@ -1125,7 +1129,9 @@ det_report_to_error_spec(ModuleInfo, ContextDetMsg) = Spec :-
             ++ [suffix(".")],
         PrevPieces = [words("Here is the previous") | CallPieces]
             ++ [suffix(".")],
-        Spec = error_spec(severity_warning, phase_detism_check,
+        Severity = severity_conditional(warn_duplicate_calls, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity, phase_detism_check,
             [simple_msg(Context,
                 [option_is_set(warn_duplicate_calls, yes,
                     [always(CurPieces)])]),
@@ -1140,7 +1146,9 @@ det_report_to_error_spec(ModuleInfo, ContextDetMsg) = Spec :-
             words("is nested inside another.")],
         OuterPieces = [words("This is the outer"),
             words("`promise_equivalent_solution_sets' scope.")],
-        Spec = error_spec(severity_warning, phase_detism_check,
+        Severity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity, phase_detism_check,
             [simple_msg(Context,
                 [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
             simple_msg(OuterContext,
@@ -1156,7 +1164,9 @@ det_report_to_error_spec(ModuleInfo, ContextDetMsg) = Spec :-
             Pieces = [words("Unknown format values in call to"),
                 sym_name_and_arity(SymName / Arity), suffix(".")]
         ),
-        Spec = error_spec(severity_warning, phase_detism_check,
+        Severity = severity_conditional(warn_unknown_format_calls, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity, phase_detism_check,
             [simple_msg(Context,
                 [option_is_set(warn_unknown_format_calls, yes,
                     [always(Pieces)])])])
@@ -1164,7 +1174,9 @@ det_report_to_error_spec(ModuleInfo, ContextDetMsg) = Spec :-
         DetMsg = bad_format(SymName, Arity, Msg),
         Pieces = [words("Mismatched format and values in call to"),
             sym_name_and_arity(SymName / Arity), suffix(":"), nl, words(Msg)],
-        Spec = error_spec(severity_warning, phase_detism_check,
+        Severity = severity_conditional(warn_known_bad_format_calls, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity, phase_detism_check,
             [simple_msg(Context,
                 [option_is_set(warn_known_bad_format_calls, yes,
                     [always(Pieces)])])])

@@ -17,6 +17,7 @@ errors2.m:070: In clause for predicate `errors2.type_error_7'/0:
 errors2.m:070:   warning: variable `Y' occurs only once in this scope.
 errors2.m:071: In clause for predicate `errors2.type_error_7'/0:
 errors2.m:071:   warning: variables `Z, A, B' occur only once in this scope.
+errors2.m:009: Inferred :- pred bind_type_param(int).
 errors2.m:007: Error: no clauses for predicate `bind_type_param'/2.
 errors2.m:023: Error: no clauses for predicate `produce_string'/1.
 errors2.m:025: Error: no clauses for predicate `expect_int'/1.
@@ -107,10 +108,10 @@ errors2.m:072:     A_3: character
 errors2.m:072:     B_4: int
 errors2.m:072:     C_5: string
 errors2.m:078: In clause for predicate `type_error_8'/0:
+errors2.m:078:   error: undefined predicate `from_char_list'/2.
+errors2.m:078: In clause for predicate `type_error_8'/0:
 errors2.m:078:   in argument 1 of call to predicate `from_char_list'/2:
 errors2.m:078:   error: undefined symbol `[]/0'.
-errors2.m:078: In clause for predicate `type_error_8'/0:
-errors2.m:078:   error: undefined predicate `from_char_list'/2.
 errors2.m:085: In clause for predicate `type_error_9'/0:
 errors2.m:085:   type error in unification of variable `X'
 errors2.m:085:   and variable `Y'.
@@ -125,4 +126,3 @@ errors2.m:085:     V_5: character
 errors2.m:085:     V_6: string
 errors2.m:085:     V_7: character
 errors2.m:085:     V_8: int
-errors2.m:009: Inferred :- pred bind_type_param(int).

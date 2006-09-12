@@ -122,10 +122,11 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module io.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -133,13 +134,13 @@
     % above, and eliminate double negations and calls to
     % `private_builtin.unsafe_type_cast/2'.  The first argument specifies
     % whether there were any type errors (if so, we suppress some diagnostics
-    % in post_typecheck.m because they are usually spurious).  The third
+    % in post_typecheck.m because they are usually spurious).  The second
     % argument specifies whether post_typecheck.m detected any errors that
     % would cause problems for later passes (if so, we stop compilation after
     % this pass).
     %
 :- pred puritycheck(bool::in, bool::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Rerun purity checking on a procedure after an optimization pass has
     % performed transformations which might affect the procedure's purity.
@@ -152,10 +153,9 @@
     pred_info::out) is det.
 
     % Give an error message for unifications marked impure/semipure
-    % that are not function calls (e.g. impure X = 4)
+    % that are not function calls (e.g. impure X = 4).
     %
-:- pred impure_unification_expr_error(prog_context::in, purity::in,
-    io::di, io::uo) is det.
+:- func impure_unification_expr_error(prog_context, purity) = error_spec.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -180,7 +180,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
@@ -193,6 +192,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -207,41 +207,51 @@
 % Public Predicates
 %
 
-puritycheck(FoundTypeError, PostTypecheckError, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(statistics, Statistics, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+puritycheck(FoundTypeError, PostTypecheckError, !ModuleInfo, !Specs) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, statistics, Statistics),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
 
-    maybe_write_string(Verbose, "% Purity-checking clauses...\n", !IO),
-    check_preds_purity(FoundTypeError, PostTypecheckError, !HLDS, !IO),
-    maybe_report_stats(Statistics, !IO).
+    trace [io(!IO)] (
+        maybe_write_string(Verbose, "% Purity-checking clauses...\n", !IO)
+    ),
+    finish_typecheck_and_check_preds_purity(FoundTypeError, PostTypecheckError,
+        !ModuleInfo, !Specs),
+    trace [io(!IO)] (
+        maybe_report_stats(Statistics, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 
     % Purity-check the code for all the predicates in a module.
     %
-:- pred check_preds_purity(bool::in, bool::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred finish_typecheck_and_check_preds_purity(bool::in, bool::out,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_preds_purity(FoundTypeError, PostTypecheckError, !ModuleInfo, !IO) :-
+finish_typecheck_and_check_preds_purity(FoundTypeError, PostTypecheckError,
+        !ModuleInfo, !Specs) :-
     module_info_predids(!.ModuleInfo, PredIds),
 
     % Only report error messages for unbound type variables if we didn't get
     % any type errors already; this avoids a lot of spurious diagnostics.
     ReportTypeErrors = bool.not(FoundTypeError),
-    post_typecheck.finish_preds(PredIds, ReportTypeErrors, NumErrors1,
-        PostTypecheckError, !ModuleInfo, !IO),
+    post_typecheck.finish_preds(PredIds, ReportTypeErrors, NumPostErrors,
+        !ModuleInfo, !Specs),
+    ( NumPostErrors > 0 ->
+        PostTypecheckError = yes
+    ;
+        PostTypecheckError = no
+    ),
 
-    check_preds_purity_2(PredIds, !ModuleInfo, NumErrors1, NumErrors, !IO),
-    module_info_get_num_errors(!.ModuleInfo, Errs0),
-    Errs = Errs0 + NumErrors,
-    module_info_set_num_errors(Errs, !ModuleInfo).
+    check_preds_purity(PredIds, !ModuleInfo, !Specs).
 
-:- pred check_preds_purity_2(list(pred_id)::in,
-    module_info::in, module_info::out, int::in, int::out,
-    io::di, io::uo) is det.
+:- pred check_preds_purity(list(pred_id)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_preds_purity_2([], !ModuleInfo, !NumErrors, !IO).
-check_preds_purity_2([PredId | PredIds], !ModuleInfo, !NumErrors, !IO) :-
+check_preds_purity([], !ModuleInfo, !Specs).
+check_preds_purity([PredId | PredIds], !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     (
         ( pred_info_is_imported(PredInfo0)
@@ -250,22 +260,22 @@ check_preds_purity_2([PredId | PredIds], !ModuleInfo, !NumErrors, !IO) :-
     ->
         PredInfo = PredInfo0
     ;
-        write_pred_progress_message("% Purity-checking ", PredId,
-            !.ModuleInfo, !IO),
-        puritycheck_pred(PredId, PredInfo0, PredInfo, !.ModuleInfo,
-            PurityErrsInThisPred, !IO),
-        !:NumErrors = !.NumErrors + PurityErrsInThisPred,
+        trace [io(!IO)] (
+            write_pred_progress_message("% Purity-checking ", PredId,
+                !.ModuleInfo, !IO)
+        ),
+        puritycheck_pred(PredId, PredInfo0, PredInfo, !.ModuleInfo, !Specs),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ),
 
     % Finish processing of promise declarations.
     pred_info_get_goal_type(PredInfo, GoalType),
     ( GoalType = goal_type_promise(PromiseType) ->
-        post_typecheck.finish_promise(PromiseType, PredId, !ModuleInfo, !IO)
+        post_typecheck.finish_promise(PromiseType, PredId, !ModuleInfo, !Specs)
     ;
         true
     ),
-    check_preds_purity_2(PredIds, !ModuleInfo, !NumErrors, !IO).
+    check_preds_purity(PredIds, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 %
@@ -287,9 +297,9 @@ check_preds_purity_2([PredId | PredIds], !ModuleInfo, !NumErrors, !IO) :-
 % turned into the appropriate feature in the hlds_goal_info.)
 
 :- pred puritycheck_pred(pred_id::in, pred_info::in, pred_info::out,
-    module_info::in, int::out, io::di, io::uo) is det.
+    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
+puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
     pred_info_get_purity(!.PredInfo, DeclPurity) ,
     pred_info_get_promised_purity(!.PredInfo, PromisedPurity),
     some [!ClausesInfo] (
@@ -303,13 +313,9 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
         compute_purity(Clauses0, Clauses, !.PredInfo, purity_pure, Purity,
             PurityInfo0, PurityInfo),
         PurityInfo = purity_info(_, _, !:PredInfo,
-            VarTypes, VarSet, RevMessages, _),
+            VarTypes, VarSet, GoalSpecs, _),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
         clauses_info_set_varset(VarSet, !ClausesInfo),
-        Messages = list.reverse(RevMessages),
-        list.foldl(report_post_typecheck_message(ModuleInfo), Messages, !IO),
-        NumErrors0 = list.length(list.filter((pred(error(_)::in) is semidet),
-            Messages)),
         clauses_info_set_clauses(Clauses, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo)
     ),
@@ -318,27 +324,28 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
         PromisedPurity, PurityCheckResult),
     (
         PurityCheckResult = inconsistent_promise,
-        NumErrors = NumErrors0 + 1,
-        error_inconsistent_promise(ModuleInfo, !.PredInfo, PredId,
-            DeclPurity, !IO)
+        Spec = error_inconsistent_promise(ModuleInfo, !.PredInfo, PredId,
+            DeclPurity),
+        PredSpecs = [Spec | GoalSpecs]
     ;
         PurityCheckResult = unnecessary_decl,
-        NumErrors = NumErrors0,
-        warn_exaggerated_impurity_decl(ModuleInfo, !.PredInfo, PredId,
-            DeclPurity, WorstPurity, !IO)
+        Spec = warn_exaggerated_impurity_decl(ModuleInfo, !.PredInfo, PredId,
+            DeclPurity, WorstPurity),
+        PredSpecs = [Spec | GoalSpecs]
     ;
         PurityCheckResult = insufficient_decl,
-        NumErrors = NumErrors0 + 1,
-        error_inferred_impure(ModuleInfo, !.PredInfo, PredId, Purity, !IO)
+        Spec = error_inferred_impure(ModuleInfo, !.PredInfo, PredId, Purity),
+        PredSpecs = [Spec | GoalSpecs]
     ;
         PurityCheckResult = unnecessary_promise_pure,
-        NumErrors = NumErrors0,
-        warn_unnecessary_promise_pure(ModuleInfo, !.PredInfo, PredId,
-            PromisedPurity, !IO)
+        Spec = warn_unnecessary_promise_pure(ModuleInfo, !.PredInfo, PredId,
+            PromisedPurity),
+        PredSpecs = [Spec | GoalSpecs]
     ;
         PurityCheckResult = no_worries,
-        NumErrors = NumErrors0
-    ).
+        PredSpecs = GoalSpecs
+    ),
+    !:Specs = PredSpecs ++ !.Specs.
 
 repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     pred_info_get_procedures(!.PredInfo, Procs0),
@@ -540,8 +547,8 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
         goal_info_get_purity(GoalInfo, DeclaredPurity),
         ( DeclaredPurity \= purity_pure ->
             goal_info_get_context(GoalInfo, Context),
-            Message = impure_unification_expr_error(Context, DeclaredPurity),
-            purity_info_add_message(error(Message), !Info)
+            Spec = impure_unification_expr_error(Context, DeclaredPurity),
+            purity_info_add_message(Spec, !Info)
         ;
             true
         ),
@@ -725,8 +732,8 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         !.Info ^ implicit_purity = dont_make_implicit_promises
     ->
         goal_info_get_context(GoalInfo, Context),
-        Message = impure_unification_expr_error(Context, DeclaredPurity),
-        purity_info_add_message(error(Message), !Info)
+        Spec = impure_unification_expr_error(Context, DeclaredPurity),
+        purity_info_add_message(Spec, !Info)
     ;
         true
     ).
@@ -859,8 +866,8 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
     ;
         less_pure(ActualPurity, DeclaredPurity)
     ->
-        purity_info_add_message(
-            error(missing_body_impurity_error(Context, PredId)), !Info)
+        Spec = error_missing_body_impurity_decl(ModuleInfo, PredId, Context),
+        purity_info_add_message(Spec, !Info)
     ;
         % We don't warn about exaggerated impurity decls in class methods
         % or instance methods --- it just means that the predicate provided
@@ -875,10 +882,9 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
     ->
         true
     ;
-        purity_info_add_message(
-            warning(unnecessary_body_impurity_decl(Context,
-                PredId, DeclaredPurity)),
-            !Info)
+        Spec = warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
+            DeclaredPurity),
+        purity_info_add_message(Spec, !Info)
     ).
 
 :- pred compute_goal_purity(hlds_goal::in, hlds_goal::out, purity::out,
@@ -940,8 +946,8 @@ compute_parallel_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity,
         ),
         Goal0 = _ - GoalInfo0,
         goal_info_get_context(GoalInfo0, Context),
-        purity_info_add_message(error(impure_parallel_conjunct_error(Context,
-            GoalPurity)), !Info)
+        Spec = impure_parallel_conjunct_error(Context, GoalPurity),
+        purity_info_add_message(Spec, !Info)
     ),
     !:Purity = worst_purity(GoalPurity, !.Purity),
     !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
@@ -962,46 +968,55 @@ worst_contains_trace(contains_no_trace_goal, contains_no_trace_goal) =
 
 %-----------------------------------------------------------------------------%
 
+:- pred check_closure_purity(hlds_goal_info::in, purity::in, purity::in,
+    purity_info::in, purity_info::out) is det.
+
+check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, !Info) :-
+    ( ActualPurity `less_pure` DeclaredPurity ->
+        goal_info_get_context(GoalInfo, Context),
+        Spec = report_error_closure_purity(Context,
+            DeclaredPurity, ActualPurity),
+        purity_info_add_message(Spec, !Info)
+    ;
+        % We don't bother to warn if the DeclaredPurity is less pure than the
+        % ActualPurity; that would lead to too many spurious warnings.
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
 :- func pred_context(module_info, pred_info, pred_id) = list(format_component).
 
 pred_context(ModuleInfo, _PredInfo, PredId) = Pieces :-
-    PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
+    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
         PredId),
     Pieces = [words("In")] ++ PredPieces ++ [suffix(":"), nl].
 
-:- pred error_inconsistent_promise(module_info::in, pred_info::in,
-    pred_id::in, purity::in, io::di, io::uo) is det.
+:- func error_inconsistent_promise(module_info, pred_info, pred_id, purity)
+    = error_spec.
 
-error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
+error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
     pred_info_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
     purity_name(Purity, PurityName),
     PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
-    Pieces1 = PredContextPieces ++
+    MainPieces = PredContextPieces ++
         [words("error: declared"), fixed(PurityName),
         words("but promised pure.")],
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    (
-        VerboseErrors = yes,
-        Pieces = Pieces1 ++
-            [words("A pure"), fixed(PredOrFuncStr),
-            words("that invokes impure or semipure code"),
-            words("should be promised pure and should have"),
-            words("no impurity declaration.")]
-    ;
-        VerboseErrors = no,
-        globals.io_set_extra_error_info(yes, !IO),
-        Pieces = Pieces1
-    ),
-    write_error_pieces(Context, 0, Pieces, !IO).
+    VerbosePieces = [words("A pure"), fixed(PredOrFuncStr),
+        words("that invokes impure or semipure code"),
+        words("should be promised pure and should have"),
+        words("no impurity declaration.")],
+    Msg = simple_msg(Context,
+        [always(MainPieces), verbose_only(VerbosePieces)]),
+    Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 
-:- pred warn_exaggerated_impurity_decl(module_info::in, pred_info::in,
-    pred_id::in, purity::in, purity::in,
-    io::di, io::uo) is det.
+:- func warn_exaggerated_impurity_decl(module_info, pred_info, pred_id,
+    purity, purity) = error_spec.
 
 warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
-        DeclPurity, ActualPurity, !IO) :-
+        DeclPurity, ActualPurity) = Spec :-
     pred_info_context(PredInfo, Context),
     PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
     purity_name(DeclPurity, DeclPurityName),
@@ -1009,14 +1024,14 @@ warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
     Pieces = PredContextPieces ++
         [words("warning: declared"), fixed(DeclPurityName),
         words("but actually"), fixed(ActualPurityName ++ ".")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    record_warning(!IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
 
-:- pred warn_unnecessary_promise_pure(module_info::in, pred_info::in,
-    pred_id::in, purity::in, io::di, io::uo) is det.
+:- func warn_unnecessary_promise_pure(module_info, pred_info, pred_id, purity)
+    = error_spec.
 
-warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity,
-        !IO) :-
+warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity)
+        = Spec :-
     pred_info_context(PredInfo, Context),
     PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
     (
@@ -1031,29 +1046,22 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity,
         PromisedPurity = purity_impure,
         unexpected(this_file, "warn_unnecessary_promise_pure: promise_impure?")
     ),
-    Pieces1 = [words("warning: unnecessary `" ++ Pragma ++ "' pragma."), nl],
-    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    (
-        VerboseErrors = yes,
-        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-        Pieces2 = [words("This"), fixed(PredOrFuncStr),
-            words("does not invoke any"), fixed(CodeStr),
-            words("code, so there is no need for a"),
-            words("`" ++ Pragma ++ "' pragma.")],
-        Pieces = PredContextPieces ++ Pieces1 ++ Pieces2
-    ;
-        VerboseErrors = no,
-        globals.io_set_extra_error_info(yes, !IO),
-        Pieces = PredContextPieces ++ Pieces1
-    ),
-    write_error_pieces(Context, 0, Pieces, !IO),
-    record_warning(!IO).
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    MainPieces = [words("warning: unnecessary"), quote(Pragma),
+        words("pragma."), nl],
+    VerbosePieces = [words("This"), p_or_f(PredOrFunc),
+        words("does not invoke any"), fixed(CodeStr), words("code,"),
+        words("so there is no need for a"), quote(Pragma), words("pragma."),
+        nl],
+    Msg = simple_msg(Context,
+        [always(PredContextPieces), always(MainPieces),
+            verbose_only(VerbosePieces)]),
+    Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
 
-:- pred error_inferred_impure(module_info::in, pred_info::in, pred_id::in,
-    purity::in, io::di, io::uo) is det.
+:- func error_inferred_impure(module_info, pred_info, pred_id, purity)
+    = error_spec.
 
-error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
+error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
     pred_info_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
@@ -1063,75 +1071,21 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
     purity_name(DeclaredPurity, DeclaredPurityName),
 
     Pieces1 = [words("purity error:"), fixed(PredOrFuncStr),
-        words("is"), fixed(PurityName ++ "."), nl],
+        words("is"), fixed(PurityName), suffix("."), nl],
     ( is_unify_or_compare_pred(PredInfo) ->
         Pieces2 = [words("It must be pure.")]
     ;
-        Pieces2 = [words("It must be declared"),
-            fixed("`" ++ PurityName ++ "'"),
-            words("or promised"),
-            fixed(DeclaredPurityName ++ ".")]
+        Pieces2 = [words("It must be declared"), quote(PurityName),
+            words("or promised"), fixed(DeclaredPurityName ++ "."), nl]
     ),
-    write_error_pieces(Context, 0, PredContextPieces ++ Pieces1 ++ Pieces2,
-        !IO).
+    Msg = simple_msg(Context,
+        [always(PredContextPieces), always(Pieces1), always(Pieces2)]),
+    Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 
-    % Errors and warnings reported by purity.m and post_typecheck.m
-    % for problems within a goal.
-    %
-:- type post_typecheck_message
-    --->    error(post_typecheck_error)
-    ;       warning(post_typecheck_warning).
+:- func error_missing_body_impurity_decl(module_info, pred_id, prog_context)
+    = error_spec.
 
-:- type post_typecheck_messages == list(post_typecheck_message).
-
-:- type post_typecheck_error
-    --->    missing_body_impurity_error(prog_context, pred_id)
-    ;       closure_purity_error(prog_context, purity, purity)
-            % closure_purity_error(Context, DeclaredPurity, ActualPurity)
-    ;       impure_unification_expr_error(prog_context, purity)
-    ;       impure_parallel_conjunct_error(prog_context, purity).
-
-:- type post_typecheck_warning
-    --->    unnecessary_body_impurity_decl(prog_context, pred_id, purity)
-    ;       redundant_promise_purity(prog_context, purity, purity).
-
-:- pred report_post_typecheck_message(module_info::in,
-    post_typecheck_message::in, io::di, io::uo) is det.
-
-report_post_typecheck_message(ModuleInfo, error(Message), !IO) :-
-    io.set_exit_status(1, !IO),
-    (
-        Message = missing_body_impurity_error(Context, PredId),
-        error_missing_body_impurity_decl(ModuleInfo, PredId, Context, !IO)
-    ;
-        Message = closure_purity_error(Context, DeclaredPurity, ActualPurity),
-        report_error_closure_purity(Context, DeclaredPurity, ActualPurity, !IO)
-    ;
-        Message = impure_unification_expr_error(Context, Purity),
-        impure_unification_expr_error(Context, Purity, !IO)
-    ;
-        Message = impure_parallel_conjunct_error(Context, Purity),
-        impure_parallel_conjunct_error(Context, Purity, !IO)
-    ).
-
-report_post_typecheck_message(ModuleInfo, warning(Warning), !IO) :-
-    record_warning(!IO),
-    (
-        Warning = unnecessary_body_impurity_decl(Context, PredId,
-            DeclaredPurity),
-        warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
-            DeclaredPurity, !IO)
-    ;
-        Warning = redundant_promise_purity(Context, PromisedPurity,
-            InsidePurity),
-        warn_redundant_promise_purity(Context, PromisedPurity,
-            InsidePurity, !IO)
-    ).
-
-:- pred error_missing_body_impurity_decl(module_info::in, pred_id::in,
-    prog_context::in, io::di, io::uo) is det.
-
-error_missing_body_impurity_decl(ModuleInfo, PredId, Context, !IO) :-
+error_missing_body_impurity_decl(ModuleInfo, PredId, Context) = Spec :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_purity(PredInfo, Purity),
@@ -1143,22 +1097,21 @@ error_missing_body_impurity_decl(ModuleInfo, PredId, Context, !IO) :-
     (
         PredOrFunc = predicate,
         Pieces2 = [words("purity error: call must be preceded by"),
-            fixed("`" ++ PurityName ++ "'"),
-            words("indicator.")]
+            quote(PurityName), words("indicator."), nl]
     ;
         PredOrFunc = function,
-        Pieces2 = [words("purity error: call must be in an " ++
-            "explicit unification which is preceded by"),
-            fixed("`" ++ PurityName ++ "'"),
-            words("indicator.")]
+        Pieces2 = [words("purity error: call must be in"),
+            words("an explicit unification which is preceded by"),
+            quote(PurityName), words("indicator."), nl]
     ),
-    write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO).
+    Msg = simple_msg(Context, [always(Pieces1), always(Pieces2)]),
+    Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 
-:- pred warn_unnecessary_body_impurity_decl(module_info::in, pred_id::in,
-    prog_context::in, purity::in, io::di, io::uo) is det.
+:- func warn_unnecessary_body_impurity_decl(module_info, pred_id, prog_context,
+    purity) = error_spec.
 
 warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
-        DeclaredPurity, !IO) :-
+        DeclaredPurity) = Spec :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_purity(PredInfo, ActualPurity),
     purity_name(DeclaredPurity, DeclaredPurityName),
@@ -1167,70 +1120,58 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
         PredId),
 
     Pieces1 = [words("In call to")] ++ PredPieces ++ [suffix(":"), nl,
-        words("warning: unnecessary"),
-        fixed("`" ++ DeclaredPurityName ++ "'"),
+        words("warning: unnecessary"), quote(DeclaredPurityName),
         words("indicator."), nl],
     ( ActualPurity = purity_pure ->
-        Pieces2 = [words("No purity indicator is necessary.")]
+        Pieces2 = [words("No purity indicator is necessary."), nl]
     ;
-        Pieces2 = [words("A purity indicator of"),
-            fixed("`" ++ ActualPurityName ++ "'"), words("is sufficient.")]
+        Pieces2 = [words("A purity indicator of"), quote(ActualPurityName),
+            words("is sufficient."), nl]
     ),
-    write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO).
+    Msg = simple_msg(Context, [always(Pieces1), always(Pieces2)]),
+    Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
 
-:- pred warn_redundant_promise_purity(prog_context::in, purity::in, purity::in,
-    io::di, io::uo) is det.
+:- func warn_redundant_promise_purity(prog_context, purity, purity)
+    = error_spec.
 
-warn_redundant_promise_purity(Context, PromisedPurity, InsidePurity, !IO) :-
+warn_redundant_promise_purity(Context, PromisedPurity, InsidePurity) = Spec :-
     purity_name(PromisedPurity, PromisedPurityName),
     DeclName = "promise_" ++ PromisedPurityName,
     purity_name(InsidePurity, InsidePurityName),
-    Pieces = [words("Warning: unnecessary"),
-        fixed("`" ++ DeclName ++ "'"), words("goal."), nl,
+    Pieces = [words("Warning: unnecessary"), quote(DeclName),
+        words("goal."), nl,
         words("The purity inside is"), words(InsidePurityName), nl],
-    write_error_pieces(Context, 0, Pieces, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
 
-:- pred check_closure_purity(hlds_goal_info::in, purity::in, purity::in,
-    purity_info::in, purity_info::out) is det.
+:- func report_error_closure_purity(prog_context, purity, purity) = error_spec.
 
-check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, !IO) :-
-    ( ActualPurity `less_pure` DeclaredPurity ->
-        goal_info_get_context(GoalInfo, Context),
-        purity_info_add_message(error(closure_purity_error(Context,
-            DeclaredPurity, ActualPurity)), !IO)
-    ;
-        % We don't bother to warn if the DeclaredPurity is less pure than the
-        % ActualPurity; that would lead to too many spurious warnings.
-        true
-    ).
-
-:- pred report_error_closure_purity(prog_context::in, purity::in, purity::in,
-    io::di, io::uo) is det.
-
-report_error_closure_purity(Context, _DeclaredPurity, ActualPurity, !IO) :-
+report_error_closure_purity(Context, _DeclaredPurity, ActualPurity) = Spec :-
     purity_name(ActualPurity, ActualPurityName),
     Pieces = [words("Purity error in closure: closure body is"),
-        fixed(ActualPurityName ++ ","),
+        fixed(ActualPurityName), suffix(","),
         words("but closure was not declared"),
-        fixed(ActualPurityName ++ ".")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+        fixed(ActualPurityName), suffix("."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 
-impure_unification_expr_error(Context, Purity, !IO) :-
+impure_unification_expr_error(Context, Purity) = Spec :-
     purity_name(Purity, PurityName),
     Pieces = [words("Purity error: unification with expression"),
         words("was declared"), fixed(PurityName ++ ","),
         words("but expression was not a function call.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 
-:- pred impure_parallel_conjunct_error(prog_context::in, purity::in,
-    io::di, io::uo) is det.
+:- func impure_parallel_conjunct_error(prog_context, purity) = error_spec.
 
-impure_parallel_conjunct_error(Context, Purity, !IO) :-
+impure_parallel_conjunct_error(Context, Purity) = Spec :-
     purity_name(Purity, PurityName),
     Pieces = [words("Purity error: parallel conjunct is"),
         fixed(PurityName ++ ","),
         words("but parallel conjuncts must be pure.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
@@ -1244,7 +1185,7 @@ impure_parallel_conjunct_error(Context, Purity, !IO) :-
                 pred_info           :: pred_info,
                 vartypes            :: vartypes,
                 varset              :: prog_varset,
-                messages            :: post_typecheck_messages,
+                messages            :: list(error_spec),
                 implicit_purity     :: implicit_purity_promise
                                     % If this is make_implicit_promises then
                                     % purity annotations are optional in the
@@ -1252,11 +1193,11 @@ impure_parallel_conjunct_error(Context, Purity, !IO) :-
                                     % should not be generated.
             ).
 
-:- pred purity_info_add_message(post_typecheck_message::in,
+:- pred purity_info_add_message(error_spec::in,
     purity_info::in, purity_info::out) is det.
 
-purity_info_add_message(Message, Info,
-    Info ^ messages := [Message | Info ^ messages]).
+purity_info_add_message(Spec, Info0, Info) :-
+    Info = Info0 ^ messages := [Spec | Info0 ^ messages].
 
 %-----------------------------------------------------------------------------%
 

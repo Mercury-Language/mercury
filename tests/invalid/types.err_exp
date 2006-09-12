@@ -24,6 +24,10 @@ types.m:013:     V_2: int
 types.m:014: In clause for predicate `q'/0:
 types.m:014:   error: wrong number of arguments (0; should be 1)
 types.m:014:   in call to predicate `p'.
+types.m:018: In clause for predicate `r'/0:
+types.m:018:   error: undefined predicate `s'/0.
+types.m:020: In clause for predicate `a'/1:
+types.m:020:   error: undefined predicate `b'/1.
 types.m:039: In clause for predicate `bar'/1:
 types.m:039:   type error in unification of variable `X'
 types.m:039:   and constant `0'.
@@ -33,9 +37,5 @@ types.m:039:   The partial type assignment was:
 types.m:039:     some [BarTypeParam_1]
 types.m:039:     X_2: BarTypeParam
 types.m:050: Error: no clauses for predicate `bar2'/1.
-types.m:018: In clause for predicate `r'/0:
-types.m:018:   error: undefined predicate `s'/0.
-types.m:020: In clause for predicate `a'/1:
-types.m:020:   error: undefined predicate `b'/1.
 types.m:048: Error: abstract declaration for type `types.t'/2 has no
 types.m:048:   corresponding definition.

@@ -1581,7 +1581,9 @@ maybe_warn_unused_interface_imports(ModuleName, FileName, UnusedImports,
             words("not used in the interface.")],
         Msg = simple_msg(Context,
             [option_is_set(warn_interface_imports, yes, [always(Pieces)])]),
-        Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
+        Severity = severity_conditional(warn_interface_imports, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
 

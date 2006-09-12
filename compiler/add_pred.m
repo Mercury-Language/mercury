@@ -502,7 +502,8 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !Specs) :-
     InnerComponents = [always(MainPieces), verbose_only(VerbosePieces)],
     Msg = simple_msg(Context,
         [option_is_set(infer_det, no, InnerComponents)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Severity = severity_conditional(infer_det, no, severity_error, no),
+    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred unspecified_det_for_method(sym_name::in, arity::in, pred_or_func::in,

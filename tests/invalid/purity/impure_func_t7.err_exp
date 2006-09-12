@@ -1,7 +1,5 @@
 impure_func_t7.m:029: Purity error: unification with expression was declared
 impure_func_t7.m:029:   impure, but expression was not a function call.
-impure_func_t7.m:029: Purity error: unification with expression was declared
-impure_func_t7.m:029:   impure, but expression was not a function call.
 impure_func_t7.m:037: Purity error: unification with expression was declared
 impure_func_t7.m:037:   impure, but expression was not a function call.
 impure_func_t7.m:046: Purity error: unification with expression was declared

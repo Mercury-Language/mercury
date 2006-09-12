@@ -2810,7 +2810,9 @@ warn_if_import_self_or_ancestor(ModuleName, FileName, AncestorModules,
             sym_name(ModuleName), words("imports itself!")],
         SelfMsg = simple_msg(Context,
             [option_is_set(warn_simple_code, yes, [always(SelfPieces)])]),
-        SelfSpec = error_spec(severity_warning, phase_parse_tree_to_hlds,
+        Severity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        SelfSpec = error_spec(Severity, phase_parse_tree_to_hlds,
             [SelfMsg]),
         !:Specs = [SelfSpec | !.Specs]
     ;
@@ -2831,7 +2833,9 @@ warn_imported_ancestor(ModuleName, FileName, AncestorName, !Specs) :-
     Msg = simple_msg(Context,
         [option_is_set(warn_simple_code, yes,
             [always(MainPieces), verbose_only(VerbosePieces)])]),
-    Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
+    Severity = severity_conditional(warn_simple_code, yes,
+        severity_warning, no),
+    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
     % This predicate ensures that all every import_module declaration is
@@ -2891,7 +2895,9 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, FileName,
             words("`:- use_module' declarations."), nl],
         Msg = simple_msg(Context,
             [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-        Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
+        Severity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs],
 
         % Treat the modules with both types of import as if they

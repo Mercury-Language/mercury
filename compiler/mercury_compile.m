@@ -1982,12 +1982,16 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
     % Next typecheck the clauses.
     %
     maybe_write_string(Verbose, "% Type-checking...\n", !IO),
-    typecheck(!HLDS, FoundTypeError, ExceededTypeCheckIterationLimit, !IO),
-    (
+    maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
+    typecheck_module(!HLDS, TypeCheckSpecs, ExceededTypeCheckIterationLimit),
+    write_error_specs(TypeCheckSpecs, 0, _NumTypeWarnings, 0, NumTypeErrors,
+        !IO),
+    maybe_report_stats(Stats, !IO),
+    ( NumTypeErrors > 0 ->
+        module_info_incr_num_errors(NumTypeErrors, !HLDS),
         FoundTypeError = yes,
         maybe_write_string(Verbose,
-            "% Program contains type error(s).\n", !IO),
-        io.set_exit_status(1, !IO)
+            "% Program contains type error(s).\n", !IO)
     ;
         FoundTypeError = no,
         maybe_write_string(Verbose, "% Program is type-correct.\n", !IO)
@@ -2782,13 +2786,12 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
 
 puritycheck(Verbose, Stats, !HLDS, FoundTypeError, FoundPostTypecheckError,
         !IO) :-
-    module_info_get_num_errors(!.HLDS, NumErrors0),
-    puritycheck(FoundTypeError, FoundPostTypecheckError, !HLDS, !IO),
-    module_info_get_num_errors(!.HLDS, NumErrors),
-    ( NumErrors \= NumErrors0 ->
+    puritycheck(FoundTypeError, FoundPostTypecheckError, !HLDS, [], Specs),
+    write_error_specs(Specs, 0, _NumWarnings, 0, NumErrors, !IO),
+    ( NumErrors > 0 ->
+        module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_write_string(Verbose,
-            "% Program contains purity error(s).\n", !IO),
-        io.set_exit_status(1, !IO)
+            "% Program contains purity error(s).\n", !IO)
     ;
         maybe_write_string(Verbose,
             "% Program is purity-correct.\n", !IO)

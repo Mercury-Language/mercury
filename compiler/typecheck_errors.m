@@ -9,8 +9,7 @@
 % File: typecheck_errors.m.
 % Main author: fjh.
 %
-% This file contains predicates to report errors and debugging messages for
-% typechecking.
+% This file contains predicates to report errors for typechecking.
 %
 %-----------------------------------------------------------------------------%
 
@@ -22,9 +21,9 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -38,50 +37,47 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_pred_call_error(simple_call_id::in,
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+:- func report_pred_call_error(typecheck_info, simple_call_id) = error_spec.
 
-:- pred report_unknown_event_call_error(string::in,
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+:- func report_unknown_event_call_error(typecheck_info, string) = error_spec.
 
-:- pred report_no_clauses(string::in, pred_id::in, pred_info::in,
-    module_info::in, io::di, io::uo) is det.
+:- func report_no_clauses(module_info, pred_id, pred_info) = error_spec.
 
-:- pred report_warning_too_much_overloading(typecheck_info::in,
-    io::di, io::uo) is det.
+:- func report_no_clauses_stub(module_info, pred_id, pred_info) = error_spec.
 
-:- pred report_error_unif_var_var(typecheck_info::in,
-    prog_var::in, prog_var::in, type_assign_set::in, io::di, io::uo) is det.
+:- func report_warning_too_much_overloading(typecheck_info) = error_spec.
 
-:- pred report_error_lambda_var(typecheck_info::in, pred_or_func::in,
-    lambda_eval_method::in, prog_var::in, list(prog_var)::in,
-    type_assign_set::in, io::di, io::uo) is det.
+:- func report_error_unif_var_var(typecheck_info, prog_var, prog_var,
+    type_assign_set) = error_spec.
 
-:- pred report_error_functor_type(typecheck_info::in,
-    prog_var::in, list(cons_type_info)::in, cons_id::in, int::in,
-    type_assign_set::in, io::di, io::uo) is det.
+:- func report_error_lambda_var(typecheck_info, pred_or_func,
+    lambda_eval_method, prog_var, list(prog_var), type_assign_set)
+    = error_spec.
 
-:- pred report_error_functor_arg_types(typecheck_info::in, prog_var::in,
-    list(cons_type_info)::in, cons_id::in, list(prog_var)::in,
-    args_type_assign_set::in, io::di, io::uo) is det.
+:- func report_error_functor_type(typecheck_info, prog_var,
+    list(cons_type_info), cons_id, int, type_assign_set) = error_spec.
 
-:- pred report_error_var(typecheck_info::in, prog_var::in, mer_type::in,
-    type_assign_set::in, io::di, io::uo) is det.
+:- func report_error_functor_arg_types(typecheck_info, prog_var,
+    list(cons_type_info), cons_id, list(prog_var), args_type_assign_set)
+    = error_spec.
 
-:- pred report_error_arg_var(typecheck_info::in, prog_var::in,
-    args_type_assign_set::in, io::di, io::uo) is det.
+:- func report_error_var(typecheck_info, prog_var, mer_type, type_assign_set)
+    = error_spec.
 
-:- pred report_error_undef_cons(typecheck_info::in, list(cons_error)::in,
-    cons_id::in, int::in, io::di, io::uo) is det.
+:- func report_error_arg_var(typecheck_info, prog_var, args_type_assign_set)
+    = error_spec.
 
-:- pred report_ambiguity_error(typecheck_info::in,
-    type_assign::in, type_assign::in, io::di, io::uo) is det.
+:- func report_error_undef_cons(typecheck_info, list(cons_error), cons_id, int)
+    = error_spec.
 
-:- pred report_unsatisfiable_constraints(type_assign_set::in,
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+:- func report_ambiguity_error(typecheck_info, type_assign, type_assign)
+    = error_spec.
 
-:- pred report_missing_tvar_in_foreign_code(typecheck_info::in, string::in,
-    io::di, io::uo) is det.
+:- func report_unsatisfiable_constraints(typecheck_info, type_assign_set)
+    = error_spec.
+
+:- func report_missing_tvar_in_foreign_code(typecheck_info, string)
+    = error_spec.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -95,7 +91,7 @@
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
-:- import_module parse_tree.error_util.
+:- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_io_util.
@@ -118,40 +114,37 @@
 
 %-----------------------------------------------------------------------------%
 
-report_pred_call_error(PredCallId, !Info, !IO) :-
+report_pred_call_error(Info, PredCallId) = Spec :-
     PredCallId = simple_call_id(PredOrFunc0, SymName, _Arity),
-    typecheck_info_get_module_info(!.Info, ModuleInfo),
+    typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     (
         predicate_table_search_pf_sym(PredicateTable,
-            calls_are_fully_qualified(!.Info ^ pred_markers),
+            calls_are_fully_qualified(Info ^ pred_markers),
             PredOrFunc0, SymName, OtherIds),
         predicate_table_get_preds(PredicateTable, Preds),
         OtherIds = [_ | _]
     ->
         typecheck_find_arities(Preds, OtherIds, Arities),
-        Spec = report_error_pred_num_args(!.Info, PredCallId, Arities)
+        Spec = report_error_pred_num_args(Info, PredCallId, Arities)
     ;
-        UndefMsg = report_error_undef_pred(!.Info, PredCallId),
+        UndefMsg = report_error_undef_pred(Info, PredCallId),
         (
             ( PredOrFunc0 = predicate, PredOrFunc = function
             ; PredOrFunc0 = function, PredOrFunc = predicate
             ),
             predicate_table_search_pf_sym(PredicateTable,
-                calls_are_fully_qualified(!.Info ^ pred_markers),
+                calls_are_fully_qualified(Info ^ pred_markers),
                 PredOrFunc, SymName, OtherIds),
             OtherIds = [_ | _]
         ->
-            KindMsg = report_error_func_instead_of_pred(!.Info, PredOrFunc),
+            KindMsg = report_error_func_instead_of_pred(Info, PredOrFunc),
             Msgs = [UndefMsg, KindMsg]
         ;
             Msgs = [UndefMsg]
         ),
         Spec = error_spec(severity_error, phase_type_check, Msgs)
-    ),
-    typecheck_info_set_found_error(yes, !Info),
-    % XXX _NumErrors
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    ).
 
 :- pred typecheck_find_arities(pred_table::in, list(pred_id)::in,
     list(int)::out) is det.
@@ -294,23 +287,18 @@ report_apply_instead_of_pred = Components :-
 
 %-----------------------------------------------------------------------------%
 
-report_unknown_event_call_error(EventName, !Info, !IO) :-
-    typecheck_info_get_context(!.Info, Context),
-    Pieces = [words("There is no event named"), quote(EventName),
-        suffix(".")],
+report_unknown_event_call_error(Info, EventName) = Spec :-
+    typecheck_info_get_context(Info, Context),
+    Pieces = [words("There is no event named"), quote(EventName), suffix(".")],
     Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_type_check, [Msg]),
-    typecheck_info_set_found_error(yes, !Info),
-    % XXX _NumErrors
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_warning, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
-report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo, !IO) :-
-    PredPieces = describe_one_pred_name(ModuleInfo,
-        should_not_module_qualify, PredId),
-    Pieces = [words(MessageKind), suffix(":"),
-        words("no clauses for ") | PredPieces] ++ [suffix(".")],
+report_no_clauses(ModuleInfo, PredId, PredInfo) = Spec :-
+    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
+        PredId),
+    Pieces = [words("Error: no clauses for") | PredPieces] ++ [suffix(".")],
     pred_info_context(PredInfo, Context),
     % It is possible (and even likely) that the error that got the exit
     % status set was caused by a syntax error in a clause defining this
@@ -326,19 +314,25 @@ report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo, !IO) :-
     % without clauses we warn about in a single compiler invocation to one,
     % we choose (as the lesser of two evils) to always report the error.
     Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_type_check, [Msg]),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
-report_warning_too_much_overloading(Info, !IO) :-
+report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Spec :-
+    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
+        PredId),
+    Pieces = [words("Warning: no clauses for ") | PredPieces] ++ [suffix(".")],
+    pred_info_context(PredInfo, Context),
+    Msg = simple_msg(Context,
+        [option_is_set(warn_stubs, yes, [always(Pieces)])]),
+    Severity = severity_conditional(warn_stubs, yes, severity_warning, no),
+    Spec = error_spec(Severity, phase_type_check, [Msg]).
+
+%-----------------------------------------------------------------------------%
+
+report_warning_too_much_overloading(Info) = Spec :-
     Msgs = warning_too_much_overloading_to_msgs(Info),
-    Spec = error_spec(severity_warning, phase_type_check, Msgs),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_warning, phase_type_check, Msgs).
 
 :- func warning_too_much_overloading_to_msgs(typecheck_info) = list(error_msg).
 
@@ -480,7 +474,7 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
 
 %-----------------------------------------------------------------------------%
 
-report_error_unif_var_var(Info, X, Y, TypeAssignSet, !IO) :-
+report_error_unif_var_var(Info, X, Y, TypeAssignSet) = Spec :-
     typecheck_info_get_context(Info, Context),
     typecheck_info_get_varset(Info, VarSet),
     typecheck_info_get_unify_context(Info, UnifyContext),
@@ -500,13 +494,12 @@ report_error_unif_var_var(Info, X, Y, TypeAssignSet, !IO) :-
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(UnifyContextPieces),
         always(MainPieces), verbose_only(VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+%-----------------------------------------------------------------------------%
 
 report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
-        TypeAssignSet, !IO) :-
+        TypeAssignSet) = Spec :-
     typecheck_info_get_context(Info, Context),
     typecheck_info_get_varset(Info, VarSet),
     typecheck_info_get_unify_context(Info, UnifyContext),
@@ -570,13 +563,12 @@ report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
         [always(InClauseForPieces ++ UnifyContextPieces),
         always(Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4),
         verbose_only(VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+%-----------------------------------------------------------------------------%
 
 report_error_functor_type(Info, Var, ConsDefnList, Functor, Arity,
-        TypeAssignSet, !IO) :-
+        TypeAssignSet) = Spec :-
     typecheck_info_get_context(Info, Context),
     typecheck_info_get_varset(Info, VarSet),
     typecheck_info_get_unify_context(Info, UnifyContext),
@@ -602,13 +594,12 @@ report_error_functor_type(Info, Var, ConsDefnList, Functor, Arity,
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
         always(MainPieces), verbose_only(VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+%-----------------------------------------------------------------------------%
 
 report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
-        ArgsTypeAssignSet, !IO) :-
+        ArgsTypeAssignSet) = Spec :-
     typecheck_info_get_context(Info, Context),
     typecheck_info_get_varset(Info, VarSet),
     typecheck_info_get_unify_context(Info, UnifyContext),
@@ -681,10 +672,7 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
         always(Pieces1 ++ Pieces2) | VerboseComponents]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 :- type mismatch_info
     --->    mismatch_info(
@@ -826,7 +814,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
 
 %-----------------------------------------------------------------------------%
 
-report_error_var(Info, Var, Type, TypeAssignSet0, !IO) :-
+report_error_var(Info, Var, Type, TypeAssignSet0) = Spec :-
     typecheck_info_get_pred_markers(Info, PredMarkers),
     typecheck_info_get_called_predid(Info, CalledPredId),
     typecheck_info_get_arg_num(Info, ArgNum),
@@ -864,12 +852,11 @@ report_error_var(Info, Var, Type, TypeAssignSet0, !IO) :-
         [always(InClauseForPieces ++ CallContextPieces),
         always(Pieces1 ++ Pieces2),
         verbose_only(VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
-report_error_arg_var(Info, Var, ArgTypeAssignSet0, !IO) :-
+%-----------------------------------------------------------------------------%
+
+report_error_arg_var(Info, Var, ArgTypeAssignSet0) = Spec :-
     typecheck_info_get_pred_markers(Info, PredMarkers),
     typecheck_info_get_called_predid(Info, CalledPredId),
     typecheck_info_get_arg_num(Info, ArgNum),
@@ -909,14 +896,11 @@ report_error_arg_var(Info, Var, ArgTypeAssignSet0, !IO) :-
         [always(InClauseForPieces ++ CallContextPieces),
         always(Pieces1 ++ Pieces2),
         verbose_only(VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
-report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
+report_error_undef_cons(Info, ConsErrors, Functor, Arity) = Spec :-
     typecheck_info_get_pred_markers(Info, PredMarkers),
     typecheck_info_get_called_predid(Info, CalledPredId),
     typecheck_info_get_arg_num(Info, ArgNum),
@@ -993,9 +977,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
         ConsMsgs = []
     ),
     Spec = error_spec(severity_error, phase_type_check,
-        [simple_msg(Context, [InitComp | FunctorComps]) | ConsMsgs]),
-    % XXX _NumErrors
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+        [simple_msg(Context, [InitComp | FunctorComps]) | ConsMsgs]).
 
 :- pred language_builtin_functor_components(string::in, arity::in,
     list(error_msg_component)::out) is semidet.
@@ -1168,7 +1150,7 @@ report_cons_error(Context, ConsError) = Msgs :-
 
 %-----------------------------------------------------------------------------%
 
-report_ambiguity_error(Info, TypeAssign1, TypeAssign2, !IO) :-
+report_ambiguity_error(Info, TypeAssign1, TypeAssign2) = Spec :-
     InClauseForPieces = in_clause_for_pieces(Info),
     Pieces1 =
         [words("error: ambiguous overloading causes type ambiguity."), nl],
@@ -1194,10 +1176,7 @@ report_ambiguity_error(Info, TypeAssign1, TypeAssign2, !IO) :-
     MainMsg = simple_msg(Context,
         [always(InClauseForPieces ++ Pieces1 ++ Pieces2) | VerboseComponents]),
     Spec = error_spec(severity_error, phase_type_check,
-        [MainMsg | WarningMsgs]),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+        [MainMsg | WarningMsgs]).
 
 :- func add_qualifiers_reminder = string.
 
@@ -1244,8 +1223,8 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
 
 %-----------------------------------------------------------------------------%
 
-report_unsatisfiable_constraints(TypeAssignSet, !Info, !IO) :-
-    InClauseForPieces = in_clause_for_pieces(!.Info),
+report_unsatisfiable_constraints(Info, TypeAssignSet) = Spec :-
+    InClauseForPieces = in_clause_for_pieces(Info),
     list.map_foldl(constraints_to_pieces, TypeAssignSet, ConstraintPieceLists,
         0, NumUnsatisfied),
     ( NumUnsatisfied = 1 ->
@@ -1257,13 +1236,10 @@ report_unsatisfiable_constraints(TypeAssignSet, !Info, !IO) :-
     Pieces2 = component_list_to_line_pieces(ConstraintPieceLists,
         [suffix(".")]),
 
-    typecheck_info_get_context(!.Info, Context),
+    typecheck_info_get_context(Info, Context),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ Pieces1 ++ Pieces2)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
-    % XXX _NumErrors
-    typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 :- pred constraints_to_pieces(type_assign::in, list(format_component)::out,
     int::in, int::out) is det.
@@ -1294,7 +1270,7 @@ wrap_quote(Str) = quote(Str).
 
 %-----------------------------------------------------------------------------%
 
-report_missing_tvar_in_foreign_code(Info, VarName, !IO) :-
+report_missing_tvar_in_foreign_code(Info, VarName) = Spec :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     typecheck_info_get_context(Info, Context),
     typecheck_info_get_predid(Info, PredId),
@@ -1304,10 +1280,7 @@ report_missing_tvar_in_foreign_code(Info, VarName, !IO) :-
         [words("should define the variable"),
         fixed(add_quotes(VarName)), suffix(".")],
     Spec = error_spec(severity_error, phase_type_check,
-        [simple_msg(Context, [always(Pieces)])]),
-    % XXX _NumErrors
-    % typecheck_info_set_found_error(yes, !Info),
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+        [simple_msg(Context, [always(Pieces)])]).
 
 %-----------------------------------------------------------------------------%
 

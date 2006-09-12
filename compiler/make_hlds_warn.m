@@ -111,7 +111,9 @@ warn_overlap_to_spec(VarSet, PredCallId, Warn) = Spec :-
     Msg = simple_msg(Context,
         [option_is_set(warn_overlapping_scopes, yes,
             [always(Pieces1 ++ Pieces2)])]),
-    Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]).
+    Severity = severity_conditional(warn_overlapping_scopes, yes,
+        severity_warning, no),
+    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
@@ -338,7 +340,9 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
         SinglesMsg = simple_msg(Context,
             [option_is_set(warn_singleton_vars, yes,
                 [always(SinglesPreamble ++ SinglesPieces)])]),
-        SinglesSpec = error_spec(severity_warning, phase_parse_tree_to_hlds,
+        SingleSeverity = severity_conditional(warn_singleton_vars, yes,
+            severity_warning, no),
+        SinglesSpec = error_spec(SingleSeverity, phase_parse_tree_to_hlds,
             [SinglesMsg]),
         !:Specs = [SinglesSpec | !.Specs]
     ),
@@ -366,7 +370,9 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
         MultiMsg = simple_msg(Context,
             [option_is_set(warn_singleton_vars, yes,
                 [always(MultiPreamble ++ MultiPieces)])]),
-        MultiSpec = error_spec(severity_warning, phase_parse_tree_to_hlds,
+        MultiSeverity = severity_conditional(warn_singleton_vars, yes,
+            severity_warning, no),
+        MultiSpec = error_spec(MultiSeverity, phase_parse_tree_to_hlds,
             [MultiMsg]),
         !:Specs = [MultiSpec | !.Specs]
     ).
@@ -395,7 +401,9 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
                 words("not occur in the"), words(LangStr), words("code."), nl],
             Msg1 = simple_msg(Context,
                 [option_is_set(warn_singleton_vars, yes, [always(Pieces1)])]),
-            Spec1 = error_spec(severity_warning, phase_parse_tree_to_hlds,
+            Severity1 = severity_conditional(warn_singleton_vars, yes,
+                severity_warning, no),
+            Spec1 = error_spec(Severity1, phase_parse_tree_to_hlds,
                 [Msg1]),
             !:Specs = [Spec1 | !.Specs]
         )
@@ -423,7 +431,9 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
                 words("code."), nl],
             Msg2 = simple_msg(Context,
                 [option_is_set(warn_singleton_vars, yes, [always(Pieces2)])]),
-            Spec2 = error_spec(severity_warning, phase_parse_tree_to_hlds,
+            Severity2 = severity_conditional(warn_singleton_vars, yes,
+                severity_warning, no),
+            Spec2 = error_spec(Severity2, phase_parse_tree_to_hlds,
                 [Msg2]),
             !:Specs = [Spec2 | !.Specs]
         ),
@@ -447,7 +457,9 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
                 nl],
             Msg3 = simple_msg(Context,
                 [option_is_set(warn_singleton_vars, yes, [always(Pieces3)])]),
-            Spec3 = error_spec(severity_warning, phase_parse_tree_to_hlds,
+            Severity3 = severity_conditional(warn_singleton_vars, yes,
+                severity_warning, no),
+            Spec3 = error_spec(Severity3, phase_parse_tree_to_hlds,
                 [Msg3]),
             !:Specs = [Spec3 | !.Specs]
         ),
@@ -471,7 +483,9 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
                 nl],
             Msg4 = simple_msg(Context,
                 [option_is_set(warn_singleton_vars, yes, [always(Pieces4)])]),
-            Spec4 = error_spec(severity_warning, phase_parse_tree_to_hlds,
+            Severity4 = severity_conditional(warn_singleton_vars, yes,
+                severity_warning, no),
+            Spec4 = error_spec(Severity4, phase_parse_tree_to_hlds,
                 [Msg4]),
             !:Specs = [Spec4 | !.Specs]
         )
