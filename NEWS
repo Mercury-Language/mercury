@@ -35,6 +35,14 @@ Changes to the Mercury standard library:
 * We have moved the all-solutions predicates from std_util.m into a new
   library module, solutions.m.  These predicates are still available in
   std_util.m but these versions are now deprecated.
+* We have moved the univ type, and related predicates, from std_util.m
+  into a new library module, univ.m.
+* We have moved the maybe type, and related predicates, from std_util.m
+  into a new library module, maybe.m.
+* We have moved the pair type, and related predicates, from std_util.m
+  into a new library module, pair.m.
+* We have moved the unit type from std_util.m into a new library module,
+  unit.m.
 * We have made the predicates semidet_succeed/0, semidet_fail/0 and
   cc_multi_equal/2 into builtins.  Formerly these were exported by std_util.m.
 * We have added an `injection' module, for reversible maps that are injective.
@@ -52,6 +60,7 @@ Changes to the Mercury compiler:
 
 Portability Improvements:
 * We've ported Mercury to the x86_64 (AMD64 / Intel EMT64) architecture.
+* We've made the implementation compatible with gcc 4.1.
 
 Changes to the Mercury debugger:
 * Users can now see a listing of the source code lines referred to by the
