@@ -166,3 +166,28 @@ is to disable inlining for any affected files.  This can be done
 by using the option `--no-inlining'.  
 
 -----------------------------------------------------------------------------
+
+Subject: higher-order specialisation bug 
+Date: 2 May 2005
+
+The Mercury compiler sometimes aborts at -O3 and higher with an error
+message similar to the following:
+
+	 Uncaught Mercury exception:
+	 Software Error: map__lookup: key not found
+		Key Type: term.var(parse_tree.prog_data.prog_var_type)
+ 		Key Value: var(20)
+ 		Value Type: ll_backend.var_locn.var_state
+
+This is due to a bug involving higher-order specialisation, type
+specialisation and typeclasses.  A workaround for this bug is to disable
+higher-order specialisation for any affected files.  This can be done
+by using the option `--no-higher-order'.
+
+-----------------------------------------------------------------------------
+
+Subject: segmentation fault in deep profiler
+Date: unknown
+
+The deep profiler may cause a segmentation fault when profiling large
+programs.  There is currently no known workaround for this problem.
