@@ -213,6 +213,13 @@ extern	MR_bool		MR_coverage_test_enabled;
 extern	MR_bool		MR_trace_count_enabled;
 
 /*
+** MR_trace_counts_file records the filename to use when dumping trace counts.
+** It may be NULL, in which case a unique file name will be generated.
+*/
+
+extern 	char		*MR_trace_counts_file;
+
+/*
 ** MR_trace checks whether MR_trace_func_enabled is true, and return
 ** immediately if it is not.
 **

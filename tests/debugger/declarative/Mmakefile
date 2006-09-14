@@ -285,13 +285,13 @@ dependency2.out: dependency2 dependency2.inp
 
 dice.pass: dice
 	/bin/rm -f .mercury_trace_counts.*dice.*
-	MERCURY_OPTIONS=--trace-count ./dice 1 2 3 4 && \
-	mv .mercury_trace_counts.*dice.* dice.pass
+	MERCURY_OPTIONS="--trace-count --tc-output-file dice.pass" \
+		./dice 1 2 3 4
 
 dice.fail: dice
 	/bin/rm -f .mercury_trace_counts.*dice.*
-	MERCURY_OPTIONS=--trace-count ./dice 4 1 2 3 && \
-	mv .mercury_trace_counts.*dice.* dice.fail
+	MERCURY_OPTIONS="--trace-count --tc-output-file dice.fail" \
+		./dice 4 1 2 3
 
 dice.out: dice dice.inp dice.pass dice.fail
 	$(MDB_STD) ./dice 4 1 2 3 < dice.inp > dice.out 2>&1
