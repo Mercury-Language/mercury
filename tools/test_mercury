@@ -177,19 +177,19 @@ case $BRANCH in
 		RELEASE_VERSION_PATTERN=g12-0.3.1*
 		;;
 	0.13)
-		CHECKOUT_OPTS=-rversion-0_13-branch
-		BASE_TAG_NAME=version-0_13-branch
-		FTP_DIR_NAME=0.13.0-beta
-		RELEASE_VERSION=0.13.0-beta-$DATE
-		RELEASE_VERSION_PATTERN=0.13.0-beta-*
+		# This is for 0.13.1-beta
+		#
+		#CHECKOUT_OPTS=-rversion-0_13-branch
+		#BASE_TAG_NAME=version-0_13-branch
+		#FTP_DIR_NAME=0.13.1-beta
+		#RELEASE_VERSION=0.13.1-beta-$DATE
+		#RELEASE_VERSION_PATTERN=0.13.1-beta-*
 
-		# This is for release 0.13.0 itself
-		# (as opposed to beta releases).
-		#CHECKOUT_OPTS=-rversion-0_13_0
-		#BASE_TAG_NAME=version-0_13_0
-		#FTP_DIR_NAME=0.13.0
-		#RELEASE_VERSION=0.13.0
-		#RELEASE_VERSION_PATTERN=0.13.0*
+		CHECKOUT_OPTS=-rversion-0_13_0
+		BASE_TAG_NAME=version-0_13_0
+		FTP_DIR_NAME=0.13.0
+		RELEASE_VERSION=0.13.0
+		RELEASE_VERSION_PATTERN=0.13.0*
 		;;
 	0.12)
 		#CHECKOUT_OPTS=-rversion-0_12-branch
