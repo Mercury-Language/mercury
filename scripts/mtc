@@ -1,6 +1,6 @@
 #!/bin/sh
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2005 The University of Melbourne.
+# Copyright (C) 2005-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -10,7 +10,7 @@
 # that the manpage still looks OK.
 Help="\
 Name:	mtc - gathering trace counts from Mercury programs
-Usage:	mtc <executable> [<args>]...
+Usage:	mtc [options] <executable> [<args>]...
 Description:
 	\`mtc' invokes the specified command \`<executable> <args>...'.
 	If that command is a Mercury program that was compiled with debugging
@@ -21,9 +21,20 @@ Description:
 	Otherwise, mtc will execute the command line as if the mtc prefix
 	weren't there.
 
+Options:
+	-o <file-name>, --output-file <file-name>
+		Save the generated trace counts to <file-name>.  If this
+		option is not given then a filename is automatically
+		generated.
+
+	--help
+		Display this message.
+
 Environment variables:
 	MERCURY_OPTIONS.
 "
+
+output_file=""
 
 #-----------------------------------------------------------------------------#
 #
@@ -35,6 +46,24 @@ case $# in
 		exit 1 ;;
 esac
 
+while : ; do
+	case "$1" in
+		--help)
+			echo "$Help"
+			exit 0 ;;
+		-o|--output-file)
+			output_file="$2";
+			shift; shift ;;
+		--)
+			shift; break ;;
+		-*)
+			echo "$0: unknown option \`$1'" 1>&2
+			exit 1 ;;
+		*)
+			break ;;
+	esac
+done
+
 #-----------------------------------------------------------------------------#
 #
 # Set the environment variables used by the Mercury runtime to the
@@ -42,7 +71,13 @@ esac
 # and then finally use $invoke_cmd to invoke the command.
 #
 
-enable_trace_count_opt="--trace-count"
+case $output_file in
+    "") enable_trace_count_opt="--trace-count"
+    	;;
+    *)	enable_trace_count_opt="--trace-count --tc-output-file $output_file"
+    	;;
+esac
+
 MERCURY_OPTIONS="$MERCURY_OPTIONS $enable_trace_count_opt"
 export MERCURY_OPTIONS
 exec "$@"

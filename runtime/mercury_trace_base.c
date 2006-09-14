@@ -45,11 +45,12 @@ ENDINIT
 
 void            (*MR_trace_shutdown)(void) = NULL;
 
+MR_bool         MR_trace_count_enabled = MR_FALSE;
 MR_bool         MR_coverage_test_enabled = MR_FALSE;
+char            *MR_trace_counts_file = NULL;
 
 MR_bool         MR_debug_ever_enabled = MR_FALSE;
 MR_bool         MR_debug_enabled = MR_FALSE;
-MR_bool         MR_trace_count_enabled = MR_FALSE;
 MR_bool         MR_trace_func_enabled = MR_FALSE;
 MR_Code         *(*volatile MR_selected_trace_func_ptr)(
                     const MR_Label_Layout *);
@@ -258,16 +259,25 @@ MR_trace_write_label_exec_counts_to_file(void *dummy)
     char    *name;
     char    *s;
 
-    /* 100 bytes must be enough for the process id, dots and '\0' */
-    len = strlen(MERCURY_TRACE_COUNTS_PREFIX) + strlen(MR_progname) + 100;
-    name = MR_malloc(len);
-    snprintf(name, len, ".%s.%s.%d", MERCURY_TRACE_COUNTS_PREFIX, MR_progname,
-        getpid());
+    if (MR_trace_counts_file) {
+        name = MR_trace_counts_file;
+    } else {
+        /*
+        ** If no trace counts file name is provided, then we generate
+        ** a file name.
+        */
 
-    /* make sure name is an acceptable filename */
-    for (s = name; *s != '\0'; s++) {
-        if (*s == '/') {
-            *s = ':';
+        /* 100 bytes must be enough for the process id, dots and '\0' */
+        len = strlen(MERCURY_TRACE_COUNTS_PREFIX) + strlen(MR_progname) + 100;
+        name = MR_malloc(len);
+        snprintf(name, len, ".%s.%s.%d", MERCURY_TRACE_COUNTS_PREFIX,
+            MR_progname, getpid());
+
+        /* make sure name is an acceptable filename */
+        for (s = name; *s != '\0'; s++) {
+            if (*s == '/') {
+                *s = '_';
+            }
         }
     }
 

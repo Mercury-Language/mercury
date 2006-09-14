@@ -1042,6 +1042,7 @@ enum MR_long_option {
     MR_TABLING_STATISTICS_OPT,
     MR_TRACE_COUNT_OPT,
     MR_COVERAGE_TEST_OPT,
+    MR_TRACE_COUNT_FILE,
     MR_MEM_USAGE_REPORT
 };
 
@@ -1112,6 +1113,7 @@ struct MR_option MR_long_opts[] = {
     { "tabling-statistics",             0, 0, MR_TABLING_STATISTICS_OPT },
     { "trace-count",                    0, 0, MR_TRACE_COUNT_OPT },
     { "coverage-test",                  0, 0, MR_COVERAGE_TEST_OPT },
+    { "tc-output-file",                 1, 0, MR_TRACE_COUNT_FILE },
     { "mem-usage-report",               0, 0, MR_MEM_USAGE_REPORT },
 
     /* This needs to be kept at the end. */
@@ -1500,6 +1502,10 @@ process_options(int argc, char **argv)
             case MR_COVERAGE_TEST_OPT:
                 MR_coverage_test_enabled = MR_TRUE;
                 MR_trace_count_enabled = MR_TRUE;
+                break;
+
+            case MR_TRACE_COUNT_FILE:
+                MR_trace_counts_file = MR_copy_string(MR_optarg);
                 break;
 
             case MR_MEM_USAGE_REPORT:
