@@ -63,7 +63,7 @@
     % to a string suitable for displaying on the screen, sorting it first
     % using SortStr. SortStr can be any combination of the letters "cCtT"
     % and indicates how the dice is to be sorted. See the documentation
-    % for the `slice' command in the user guide for an explanation of
+    % for the `mslice' tool in the user guide for an explanation of
     % the sort string. Take only the top N lines of the sorted list.
     %
     % If Module is not the empty string then only labels from the named
