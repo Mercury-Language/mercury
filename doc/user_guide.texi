@@ -1193,6 +1193,7 @@ file in your @samp{CLASSPATH}, which you can set using
 * I/O tabling::
 * Debugger commands::
 * Declarative debugging::
+* Trace counts::
 @end menu
 
 @node Quick overview
@@ -3690,10 +3691,10 @@ and one failing execution summary need to be generated.
 This can be done by compiling the program with deep tracing enabled
 (either by compiling in a .debug or .decldebug grade
 or with the @samp{--trace deep} or @samp{--trace rep} compiler options)
-and then running the program
-with the MERCURY_OPTIONS environment variable set to @samp{--trace-count}.  
-This will generate a file called @samp{.mercury_trace_counts}
-which contains a summary of the program's execution.
+and then running the program under mtc.
+This will generate a file with the prefix
+@samp{.mercury_trace_counts} and a unique suffix,
+that contains a summary of the program's execution
 This summary is called a slice.
 Copy the generated slice to a new file for each test case,
 to end up with some passing slices,
@@ -3737,9 +3738,9 @@ The file name and line number of the goal.  This can be used to set a
 breakpoint on the goal.
 @item @samp{Pass (total passing test runs)}:
 The total number of times the goal was executed in all the passing test runs.
-This is followed by a number in parenthesis which indicates the number of test
+This is followed by a number in parentheses which indicates the number of test
 runs the goal was executed in.  The heading of this column also has a number in
-parenthesis which is the total number of passing test cases.  In the example
+parentheses which is the total number of passing test cases.  In the example
 above we can see that 3 passing tests were run.
 @item @samp{Fail}:
 The number of times the goal was executed in the failing test run. 
@@ -3758,7 +3759,7 @@ The name of the file containing the failing slice can be specified with the
 The name of a file containing a list of the files containing the passing
 slices can be given with the @samp{-p} or @samp{--pass-trace-counts} option.
 Alternatively a separate @samp{set pass_trace_counts @var{filename}} command
-can be given.
+can be given.  See @ref{Trace counts} for more information about trace counts.
 @sp 1
 The table can be sorted on the Pass, Fail or Suspicion columns, or a
 combination of these.  This can be done with the @samp{-s} or @samp{--sort}
@@ -4670,6 +4671,248 @@ You can check the search mode used to find a particular question by issuing
 an @samp{info} command at the question prompt in the declarative debugger.
 You can also change the search mode from within the declarative debugger
 with the @samp{mode} command.
+
+@node Trace counts
+@section Trace counts
+
+A program with debugging enabled may be run in a special mode that causes it
+to write out a summary of its execution to a file.
+This summary is called a @emph{trace count} or @emph{slice}.
+A slice is a record of how many times each @emph{label} in the program was
+executed for a particular run.
+A label is a point in the source code where a debugger event,
+such as CALL or EXIT,
+can be triggered.
+
+Slices are useful for determining what parts of a failing program are being run
+and possibly causing the failure.
+Slices from failing and passing runs can be compared to see which parts of the
+program are being run in the failing runs,
+but not the passing runs.
+
+@menu
+* mtc::
+* mslice::
+* mdice::
+* mtc_union::
+@end menu
+
+@node mtc
+@subsection mtc
+
+To generate a slice for a program run, first compile the program with deep
+tracing enabled
+(either by using the @samp{--trace deep} option or
+compiling the program in a debugging grade). 
+Then invoke the program with the mtc script, passing any required
+arguments after the program name.
+@sp 1
+For example:
+@sp 1
+@example
+mtc ./myprog arg1 arg2
+@end example
+@sp 1
+The program will run as usual, except that when it terminates it will write
+a summary of the run to a file.
+@sp 1
+@samp{mtc} accepts an @samp{-f} or @samp{--output-file} option.
+The argument to this option is the filename to use for the generated
+trace count file.
+If this option is not given then the trace count will be written to a
+file with the prefix @samp{.mercury_trace_counts}
+and a unique suffix.
+@sp 1
+The generated slice can then be analysed by the @samp{mslice}
+and @samp{mdice} tools.
+It can also be used to help direct a declarative debugging search
+(see @ref{Search Modes}).
+
+@node mslice
+@subsection mslice
+
+Once a slice has been generated it can be viewed in various ways using the
+mslice tool.
+The output of the mslice tool will look something like the following:
+@sp 1
+@example
+Procedure            Path/Port File:Line Count (1)
+pred mrg.merge/3-0   CALL      mrg.m:60     14 (1)
+pred mrg.merge/3-0   EXIT      mrg.m:60     14 (1)
+pred mrg.msort_n/4-0 CALL      mrg.m:33     12 (1)
+pred mrg.msort_n/4-0 EXIT      mrg.m:33     12 (1)
+pred mrg.msort_n/4-0 <?;>      mrg.m:35     12 (1)
+@end example
+@sp 1
+Each row corresponds to a label in the program.
+The meanings of the columns are as follows:
+@itemize @bullet
+@item @samp{Procedure}:
+This column displays the procedure that the label relates to.
+@item @samp{Path/Port}:
+For labels that generate interface events this column displays          
+the event port and for labels that generate internal events it          
+displays the goal path. (See @ref{Tracing of Mercury programs} for an
+explanation of interface and internal events.)
+@item @samp{File:Line}:
+This column displays the context of the label.
+@item @samp{Count}:
+This column displays how many times the label was executed.
+The number in parentheses for each label row says in how many runs the label
+was executed.
+The number in parentheses in the heading row (after the word "Count")
+indicates how many runs were analysed by the mslice tool.
+@end itemize
+
+@sp 1
+
+The mslice tool is invoked using a command of the form:
+@example
+mslice [-s sortspec] [-l N] [-m module] file
+@end example
+@sp 1
+where @samp{file} may be a generated trace count file, or a file containing
+a list of generated trace count file names.
+@sp 1
+The @samp{-s} or @samp{--sort} option specifies how the output should be
+sorted.
+@samp{sortspec} should be a string made up of any combination of the letters
+@samp{cCtT}.
+Each letter specifies a column and direction to sort on:
+@itemize @bullet
+@item @samp{c}: Count ascending
+@item @samp{C}: Count descending
+@item @samp{t}: Number of runs ascending
+@item @samp{T}: Number of runs descending
+@end itemize
+@sp 1
+For example the option @samp{-s cT} will sort the output table by the
+Count column in ascending order.  If the counts for two or more labels are the
+same, then those labels will be sorted by number of runs in descending order.
+@sp 1
+The @samp{-l} or @samp{--limit} option limits the output to @samp{N} lines.
+@sp 1
+The @samp{-m} or @samp{--module} option limits the output to labels only
+from the given module.
+@sp 1
+
+@node mdice
+@subsection mdice
+
+A dice is a comparison between passing and failing runs of a program.
+@sp 1
+To use the @samp{mdice} tool one must first generate a set of trace count
+files for passing runs and a set of trace count files for failing runs
+using the @samp{mtc} tool.
+Once this has been done, the @samp{mdice} command
+can be used to display a table of statistics
+that compares the passing runs to the failing runs.
+@sp 1
+Here is an example of the output of the @samp{mdice} tool:
+@sp 1
+@example
+Procedure        Path/Port  File:Line Pass (3) Fail Suspicion
+pred s.mrg/3-0   <s2;c2;e;> s.m:74       0 (0)    1      1.00
+pred s.mrg/3-0   <s2;c2;t;> s.m:67      10 (3)    4      0.29
+pred s.mrg/3-0   CALL       s.m:64      18 (3)    7      0.28
+pred s.mrg/3-0   EXIT       s.m:64      18 (3)    7      0.28
+@end example
+@sp 1
+This example tells us that the @samp{else} in @samp{s.m} on line 74
+was executed once in the failing test run,
+but never during the passing test runs,
+so this would be a good place to start looking for a bug.
+@sp 1
+Each row corresponds to a label in the program. 
+The meanings of the columns are as follows:
+@itemize @bullet
+@item @samp{Procedure}:
+This column displays the procedure the label relates to.
+@item @samp{Path/Port}:
+For labels that generate interface events this column displays          
+the event port and for labels that generate internal events it          
+displays the goal path. (See @ref{Tracing of Mercury programs} for an
+explanation of interface and internal events.)
+@item @samp{File:Line}:
+This column displays the context of the label.
+@item @samp{Pass (total passing test runs)}:
+This columns displays the total number of times the label was executed in all
+the passing test runs.
+This is followed by a number in parentheses which indicates the number of test
+runs the label was executed in.
+The heading of this column also has a number in
+parentheses which is the total number of passing test cases.
+@item @samp{Fail}:
+This column displays the number of times the goal was executed in the failing
+test run(s).
+@item @samp{Suspicion}:
+This columns displays a number between 0 and 1 which gives an indication of how
+likely a particular goal is to contain a bug. 
+The suspicion is calculated as Suspicion = F / (P + F) where F is the number of
+times the goal was executed in failing runs and P is the number of times
+the goal was executed in passing runs.
+@end itemize
+@sp 1
+The @samp{mdice} tool is invoked with a command of the form:
+@sp 1
+@example
+mdice [-s sortspec] [-l N] [-m module] passfile failfile
+@end example
+@samp{passfile} is either a generated trace count file for a passing run,
+or a file containing a list of generated trace count filenames for passing
+runs.
+@samp{failfile} is either a generated trace count file for a failing run,
+or a file containing a list of generated trace count filenames for failing
+runs.
+@sp 1
+The table can be sorted on the Pass, Fail or Suspicion columns, or a
+combination of these.  This can be done with the @samp{-s} or @samp{--sort}
+option.  The argument of this option is a string made up of any combination of
+the letters @samp{pPfFsS}.  The letters in the string indicate how the table
+should be sorted:
+@sp 1
+@itemize @bullet
+@item @samp{p}: Pass ascending
+@item @samp{P}: Pass descending
+@item @samp{f}: Fail ascending
+@item @samp{F}: Fail descending
+@item @samp{s}: Suspicion ascending
+@item @samp{S}: Suspicion descending
+@end itemize
+@sp 1
+For example the string "SF" means sort the table by suspicion in descending
+order, and if any two suspicions are the same, then by number of executions in
+the failing run(s), also in descending order.
+@sp 1
+The option @samp{-l} or @samp{--limit} can be used to limit the number of lines
+displayed.
+@sp 1
+The @samp{-m} or @samp{--module} option limits the output to the given module
+and any submodules.
+
+@sp 1
+
+@node mtc_union
+@subsection mtc_union
+
+The @samp{mtc_union} tool can be used to combine several trace count files
+into one trace count file.
+This is useful when you have many trace count files you wish to analyse with
+@samp{mslice} or @samp{mdice}.
+It avoids the overhead of reading all the files
+each time @samp{mslice} or @samp{mdice} is invoked.
+
+@samp{mtc_union} is invoked by issuing a command of the form:
+@sp 1
+@example
+mtc_union [-v] -o output_file file1 file2 ...
+@end example
+@sp 1
+@samp{file1}, @samp{file2}, etc. are the trace count files that should be
+combined.
+The new trace count file will be written to @samp{output_file}.
+If the @samp{-v} or @samp{--verbose} option is specified then a progress
+message will be displayed as the files are merged.
 
 @c ----------------------------------------------------------------------------
 

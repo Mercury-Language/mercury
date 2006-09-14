@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -97,7 +97,7 @@ union_trace_counts(ShowProgress, [File | Files], NumTests0, TraceCounts0,
 
 usage(!IO) :-
 	io__write_strings([
-		"Usage: mtc_union [-p] -o output_file file1 file2 ...\n",
+		"Usage: mtc_union [-v] -o output_file file1 file2 ...\n",
 		"The -v or --verbose option causes each trace count ",
 		"file name\n",
 		"to be printed as it is added to the union.\n",
