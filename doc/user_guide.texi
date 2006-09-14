@@ -4691,14 +4691,14 @@ program are being run in the failing runs,
 but not the passing runs.
 
 @menu
-* mtc::
-* mslice::
-* mdice::
-* mtc_union::
+* Generating trace counts::
+* Slicing::
+* Dicing::
+* Combining trace counts::
 @end menu
 
-@node mtc
-@subsection mtc
+@node Generating trace counts
+@subsection Generating trace counts
 
 To generate a slice for a program run, first compile the program with deep
 tracing enabled
@@ -4728,8 +4728,8 @@ and @samp{mdice} tools.
 It can also be used to help direct a declarative debugging search
 (see @ref{Search Modes}).
 
-@node mslice
-@subsection mslice
+@node Slicing
+@subsection Slicing
 
 Once a slice has been generated it can be viewed in various ways using the
 mslice tool.
@@ -4796,15 +4796,16 @@ The @samp{-m} or @samp{--module} option limits the output to labels only
 from the given module.
 @sp 1
 
-@node mdice
-@subsection mdice
+@node Dicing
+@subsection Dicing
 
 A dice is a comparison between passing and failing runs of a program.
 @sp 1
+Dices are created using the @samp{mdice} tool.  
 To use the @samp{mdice} tool one must first generate a set of trace count
 files for passing runs and a set of trace count files for failing runs
-using the @samp{mtc} tool.
-Once this has been done, the @samp{mdice} command
+using the @samp{mtc} tool (@ref{Generating trace counts}).
+Once this has been done @samp{mdice}
 can be used to display a table of statistics
 that compares the passing runs to the failing runs.
 @sp 1
@@ -4892,8 +4893,8 @@ and any submodules.
 
 @sp 1
 
-@node mtc_union
-@subsection mtc_union
+@node Combining trace counts
+@subsection Combining trace counts
 
 The @samp{mtc_union} tool can be used to combine several trace count files
 into one trace count file.

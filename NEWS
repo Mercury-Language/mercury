@@ -83,7 +83,8 @@ Changes to the Mercury debugger:
 * The declarative debugger can now exploit information from the "code
   footprints" of passed and failed test cases to find bugs with fewer
   questions. We have also added two tools, mslice and mdice, to manipulate
-  files containing such footprints.
+  files containing such footprints.  See the "Trace counts" section of the
+  Mercury User's Guide for details.
 * Subterm dependency tracking in the declarative debugger is now significantly
   faster.
 
