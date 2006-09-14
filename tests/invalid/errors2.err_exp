@@ -17,8 +17,8 @@ errors2.m:070: In clause for predicate `errors2.type_error_7'/0:
 errors2.m:070:   warning: variable `Y' occurs only once in this scope.
 errors2.m:071: In clause for predicate `errors2.type_error_7'/0:
 errors2.m:071:   warning: variables `Z, A, B' occur only once in this scope.
-errors2.m:009: Inferred :- pred bind_type_param(int).
 errors2.m:007: Error: no clauses for predicate `bind_type_param'/2.
+errors2.m:009: Inferred :- pred bind_type_param(int).
 errors2.m:023: Error: no clauses for predicate `produce_string'/1.
 errors2.m:025: Error: no clauses for predicate `expect_int'/1.
 errors2.m:031: In clause for predicate `type_error'/0:

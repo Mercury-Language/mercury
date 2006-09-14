@@ -10,13 +10,15 @@ funcs_as_preds.m:027: Error: clause for function `funcs_as_preds.cons'/2
 funcs_as_preds.m:027:   without preceding `func' declaration.
 funcs_as_preds.m:030: Error: clause for function `funcs_as_preds.ap'/2
 funcs_as_preds.m:030:   without preceding `func' declaration.
-funcs_as_preds.m:021: Inferred :- func car((list.list((list.list(T))))) = (list.list(T)).
-funcs_as_preds.m:024: Inferred :- func cdr((list.list(T))) = (list.list(T)).
-funcs_as_preds.m:027: Inferred :- func cons(T, (list.list(T))) = (list.list(T)).
 funcs_as_preds.m:017: In clause for function `null'/1:
 funcs_as_preds.m:017:   in function result term of clause head:
 funcs_as_preds.m:017:   error: the language construct `='/2 should be used as a
 funcs_as_preds.m:017:   goal, not as an expression.
+funcs_as_preds.m:021: Inferred :- func car((list.list((list.list(T))))) =
+funcs_as_preds.m:021:   (list.list(T)).
+funcs_as_preds.m:024: Inferred :- func cdr((list.list(T))) = (list.list(T)).
+funcs_as_preds.m:027: Inferred :- func cons(T, (list.list(T))) =
+funcs_as_preds.m:027:   (list.list(T)).
 funcs_as_preds.m:030: In clause for function `ap'/2:
 funcs_as_preds.m:030:   error: undefined predicate `null'/1.
 funcs_as_preds.m:030:   (There is a *function* with that name, however.
