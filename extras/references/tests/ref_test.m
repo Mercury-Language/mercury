@@ -161,7 +161,7 @@ small_int(3).
 :- impure pred scope_test_message(string::in, int::in, int::in) is det.
 :- pragma foreign_proc("C",
 	scope_test_message(Prefix::in, Old::in, New::in),
-	[promise_pure, will_not_call_mercury],
+	[will_not_call_mercury],
 "
 	printf(""%s scope ref = %d; reset to %d\\n"", (char *) Prefix,
 			(int) Old, (int) New);
@@ -170,7 +170,7 @@ small_int(3).
 :- impure pred dump_integer(int::in) is det.
 :- pragma foreign_proc("C",
 	dump_integer(X::in),
-	[promise_pure, will_not_call_mercury],
+	[will_not_call_mercury],
 "
 	printf(""%d\\n"", X);
 ").

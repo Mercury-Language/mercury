@@ -19,7 +19,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module complex_numbers:complex.
+:- module complex_numbers.complex.
 :- interface.
 
 :- type complex ---> cmplx(float, float).	% real part, imag part

@@ -1,8 +1,10 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 %
-% this file is hereby placed into the public domain by the author (rejj)
+% This file is hereby placed into the public domain by the author (rejj).
 %
-% A simple test, using the mercury binding to curses.
+% A simple test Mercury curses binding.
 %
 %-----------------------------------------------------------------------------%
 
@@ -10,33 +12,46 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mcurses, mcurses:basics, mcurses:user.
-:- import_module int, list, std_util.
 
-main -->
-        init(Root),
-        start_colour,
-        cols(Cols),
-        rows(Rows),
+:- import_module mcurses.
+:- import_module mcurses.basics.
+:- import_module mcurses.user.
 
-        create(Root, [], 0, 0, Cols, 3, TopWindow),
-        create(Root, [], 0, 4, Cols, Rows - 4, BottomWindow),
+:- import_module int.
+:- import_module list.
+:- import_module pair.
 
-        place_string(TopWindow, 0, 2, "Hi!"),
-        place_char(BottomWindow, 10, 10, '@' - [bold, colour(yellow)]),
-        redraw,
-        getkey(_),
+%-----------------------------------------------------------------------------%
 
-        scroll(TopWindow, 1),
-        place_string(TopWindow, 0, 2, "Bye!"),
-        clear(BottomWindow),
-        place_char(BottomWindow, 10, 5, '@' - [bold, colour(green)]),
-        redraw,
-        getkey(_),
+main(!IO) :-
+    init(Root, !IO),
+    start_colour(!IO),
+    cols(Cols, !IO),
+    rows(Rows, !IO),
 
-        endwin.
+    create(Root, [], 0, 0, Cols, 3, TopWindow, !IO),
+    create(Root, [], 0, 4, Cols, Rows - 4, BottomWindow, !IO),
+
+    place_string(TopWindow, 0, 2, "Hi!", !IO),
+    place_char(BottomWindow, 10, 10, '@' - [bold, colour(yellow)], !IO),
+    redraw(!IO),
+    getkey(_, !IO),
+
+    scroll(TopWindow, 1, !IO),
+    place_string(TopWindow, 0, 2, "Bye!", !IO),
+    clear(BottomWindow, !IO),
+    place_char(BottomWindow, 10, 5, '@' - [bold, colour(green)], !IO),
+    redraw(!IO),
+    getkey(_, !IO),
+
+    endwin(!IO).
+
+%-----------------------------------------------------------------------------%
+:- end_module smalltest.
+%-----------------------------------------------------------------------------%

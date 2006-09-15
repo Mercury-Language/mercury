@@ -20,6 +20,11 @@ Changes to the Mercury standard library:
 * We have added string.c_pointer_to_string/{1,2} and string.from_c_pointer/1
   to convert c_pointers to a human readable form.
 
+Changes to the Mercury compiler:
+
+* The compiler now issues a warning when an inst declaration is not
+  consistent with any of the types in scope.
+
 DETAILED LISTING
 ================
 
@@ -31,6 +36,15 @@ Changes to the Mercury language:
   the corresponding Unicode character.  The encoding used to represent the
   Unicode character is implementation dependent.  For the Melbourne Mercury
   compiler, Unicode characters are represented using UTF-8 for the C backends.
+
+Changes to the Mercury compiler:
+
+* The compiler now issues a warning when an inst declaration isn't
+  consistent with any of the types in scope.
+
+  This makes it easier to diagnose mode errors caused by insts that are not
+  consistent with the type they are intended to be consistent with.
+
 
 NEWS for Mercury 0.13
 ---------------------
@@ -69,6 +83,14 @@ Changes to the Mercury standard library:
 * We have moved the all-solutions predicates from std_util.m into a new
   library module, solutions.m.  These predicates are still available in
   std_util.m but these versions are now deprecated.
+* We have moved the univ type, and related predicates, from std_util.m
+  into a new library module, univ.m.
+* We have moved the maybe type, and related predicates, from std_util.m
+  into a new library module, maybe.m.
+* We have moved the pair type, and related predicates, from std_util.m
+  into a new library module, pair.m.
+* We have moved the unit type from std_util.m into a new library module,
+  unit.m.
 * We have made the predicates semidet_succeed/0, semidet_fail/0 and
   cc_multi_equal/2 into builtins.  Formerly these were exported by std_util.m.
 * We have added an `injection' module, for reversible maps that are injective.
@@ -83,12 +105,10 @@ Changes to the Mercury compiler:
   with many clauses.
 * We have deleted the old --split-c-files option, as it conflicted with the
   implementation of module initialisation and finalisation.
-* The compiler now issues a warning when an inst declaration isn't
-  consistent with any of the types in scope.
 
 Portability Improvements:
-* We have made the implementation compatible with gcc 4.1.
-* We have ported Mercury to the x86_64 (AMD64 / Intel EMT64) architecture.
+* We've ported Mercury to the x86_64 (AMD64 / Intel EMT64) architecture.
+* We've made the implementation compatible with gcc 4.1.
 
 Changes to the Mercury debugger:
 * Users can now see a listing of the source code lines referred to by the
@@ -98,12 +118,6 @@ Changes to the Mercury debugger:
   left the goal at which the term was available as the value of a program
   variable.
 * Users can now see the set of places where two terms differ from each other.
-* Users can now execute system shell commands from within the debugger.
-* The source command now accepts optional additional arguments which
-  are substituted into the sourced file, allowing for parameterised
-  scripts.
-* Users can now open terms in their favourite editor, or
-  perform a grep on a term.
 * The `set' command has been replaced by several other commands: the `format',
   `format_param', `list_context_lines', `list_path', `xml_browser_cmd',
   `xml_tmp_filename', `fail_trace_counts', `pass_trace_counts' and
@@ -112,13 +126,13 @@ Changes to the Mercury debugger:
 * The `save' command now saves the entire persistent state of the debugger
   (with one small exception that cannot be reestablished by an mdb command from
   an arbitrary point of execution).
-* The declarative debugger now supports an `undo' command.
-* The declarative debugger now allows users to
-  change the search algorithm mid-session.
+* The declarative debugger now supports an `undo' command, and allows users to
+  select the search algorithm.
 * The declarative debugger can now exploit information from the "code
   footprints" of passed and failed test cases to find bugs with fewer
   questions. We have also added two tools, mslice and mdice, to manipulate
-  files containing such footprints.
+  files containing such footprints.  See the "Trace counts" section of the
+  Mercury User's Guide for details.
 * Subterm dependency tracking in the declarative debugger is now significantly
   faster.
 
@@ -350,57 +364,11 @@ Changes to the Mercury compiler:
   in which the format string or the structure of the list of values to be
   printed are not statically available.
 
-* The compiler now issues a warning when an inst declaration isn't
-  consistent with any of the types in scope.
-
-  This makes it easier to diagnose mode errors caused by insts that are not
-  consistent with the type they are intended to be consistent with.
-
-Changes to the Mercury debugger:
-
-* A `list' command has been added that displays a listing of the source code
-  lines referred to by the current environment.  To supporting commands
-  `pop_list_dir' and `push_list_dir' have also been added.
- 
-* Users can now keep hold of a term, referring to it even when execution has
-  left the goal at which the term was available as the value of a program
-  variable.  The name of the new command is `hold'.
-
-* A `diff' command has been added that allows users to see the set of places
-  where two terms differ from each other.
-
-* A `shell' (or `!' for short) command has been added that allows users to
-  execute system shell commands from within the debugger.
-
-* The `source' command now accepts optional additional arguments which
-  are substituted into the sourced file, allowing for parameterised
-  scripts.  The strings "$1" through "$9" in the sourced file are replaced with
-  the corresponding argument of the `source' command.
-
-* The above two features have been used to create two additional commands: an
-  `open' command that lets users open a term in their favourite editor for 
-  browsing and a `grep' command that can be used to check if a term contains
-  a particular pattern.
-  
-* The declarative debugger now allows users to take back answers they gave
-  by means of an multi-level `undo' command.
-
-* The declarative debugger now allows users to change the search algorithm
-  mid-session by means of a `mode' command.
-
-* The declarative debugger can now exploit information from the "code
-  footprints" of passed and failed test cases to find bugs with fewer
-  questions. We have also added two tools, mslice and mdice, to manipulate
-  files containing such footprints.
-
-* Subterm dependency tracking in the declarative debugger is now significantly
-  faster.
-
 Changes to the extras distribution:
 
 * We've added a library of data structures designed to work for solver types. 
 
-  The module extras/solver_types contains versions of the the standard
+  The module extras/solver_types contains versions of the standard
   library's array, assoc_list, list and map modules that are designed to
   work with terms that have inst `any'.
 

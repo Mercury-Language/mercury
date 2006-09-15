@@ -16,19 +16,10 @@
 <p>
 
 
-For more information on any of these issues, contact mercury@cs.mu.oz.au.
+For more information on any of these issues, contact
+mercury@csse.unimelb.edu.au.
 
 <p>
-
-<h2> type system </h2>
-
-<p>
-
-<ul>
-<li> Change type inference to handle ambiguity better
-     (see the XXX comment near the start of typecheck.m).
-
-</ul>
 
 <h2> mode analysis </h2>
 
@@ -45,10 +36,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 	[supported on the "alias" branch, but there were some serious
 	 performance problems... has not been merged back into the main
 	 branch]
-
-<li> detect incorrect usage of `bound(...)' insts.
-     That is, make sure that all of the functors in a bound(...) inst
-     are valid functors for the type.
 
 </ul>
 
@@ -97,8 +84,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <ul>
 <li> exporting things for manipulating Mercury types from C
-
-<li> better support for types defined in C
 
 <li> need to deal with memory management issues
 
@@ -169,7 +154,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <ul>
 
-<li> allow std_util.construct/4 to work for existential types
+<li> allow construct.construct/3 to work for existential types
 
 <li> remove limitation that higher-order terms are monomorphic.
      i.e. allow universal quantifiers at the top level of
@@ -276,9 +261,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 	(need multi-word fields)
 
 <li> stack allocation of structures
-
-<li> tail recursion optimization using pass-by-reference argument conventions
-	[being worked on by dmo]
 
 </ul>
 
@@ -402,6 +384,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <hr>
 <!--======================-->
 
-Last update was $Date: 2006-03-02 04:00:09 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2006-09-15 09:11:22 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>
