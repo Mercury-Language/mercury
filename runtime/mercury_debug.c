@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1996-2005 The University of Melbourne.
+** Copyright (C) 1996-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -533,6 +533,11 @@ MR_goto_msg(/* const */ MR_Code *addr)
 {
     if (!MR_lld_print_enabled) {
         return;
+    }
+
+    if (addr == NULL) {
+        printf("\ngoto NULL\n");
+        MR_fatal_error("MR_goto_msg: NULL");
     }
 
     printf("\ngoto ");

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2003, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,9 +29,8 @@
 #else
 
 #define	MR_debuggoto(label) \
-	(MR_assert(label), \
 	MR_IF (MR_gotodebug, \
-		(MR_save_transient_registers(), MR_goto_msg(label))))
+		(MR_save_transient_registers(), MR_goto_msg(label)))
 
 #define	MR_debugsreg() \
 	MR_IF (MR_sregdebug, \
