@@ -114,6 +114,7 @@
     ;       warn_unknown_format_calls
     ;       warn_obsolete
     ;       warn_insts_without_matching_type
+    ;       warn_unused_imports
 
     % Verbosity options
     ;       verbose
@@ -869,7 +870,12 @@ option_defaults_2(warning_option, [
     warn_known_bad_format_calls         -   bool(yes),
     warn_unknown_format_calls           -   bool(no),
     warn_obsolete                       -   bool(yes),
-    warn_insts_without_matching_type    -   bool(yes)
+    warn_insts_without_matching_type    -   bool(yes),
+        % XXX disabled by default until someone
+        % removes all the unused imports from
+        % the compiler itself which is compiled
+        % with --halt-at-warn by default.
+    warn_unused_imports                 -   bool(no)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1576,6 +1582,7 @@ long_option("warn-unknown-format-calls", warn_unknown_format_calls).
 long_option("warn-obsolete",             warn_obsolete).
 long_option("warn-insts-without-matching-type",
     warn_insts_without_matching_type).
+long_option("warn-unused-imports", warn_unused_imports).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -2789,6 +2796,12 @@ options_help_warning -->
         "--no-warn-insts-without-matching-type",
         "\tDon't warn about insts that are not consistent with any",
         "\tof the types in scope.",
+        % XXX disabled until compiler unused_imports,
+        % don't forget to update the user_guide.texi
+        % "--no-warn-unused-imports",
+        % "\tDon't warn about modules that are imported but not used.",
+        "--warn-unused-imports",
+        "\tWarn about modules that are imported but not used.",
         "--no-warn-nothing-exported",
         "\tDon't warn about modules which export nothing.",
         "--warn-unused-args",

@@ -5520,6 +5520,14 @@ Don't warn about insts that are not consistent with any
 types in scope.
 
 @sp 1
+@c @item --no-warn-unused-imports
+@item --warn-unused-imports
+@findex --no-warn-unused-imports
+@findex --warn-unused-imports
+Warn about modules that are imported but not used.
+@c Don't warn about modules that are imported but not used.
+
+@sp 1
 @item --no-warn-nothing-exported
 @findex --no-warn-nothing-exported
 @findex --warn-nothing-exported

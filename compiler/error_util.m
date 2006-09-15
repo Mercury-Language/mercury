@@ -316,6 +316,10 @@
     %
 :- func choose_number(list(T), U, U) = U.
 
+    % is_or_are(List) returns "is" if the list is singleton, an exception
+    % if the list is empty, otherwise it returns "are"
+:- func is_or_are(list(T)) = string.
+
 %-----------------------------------------------------------------------------%
 
 % XXX The predicates below should not be called in new code. New code should
@@ -749,6 +753,12 @@ component_list_to_line_pieces([Comps1, Comps2 | CompLists], Final) =
 choose_number([], _Singular, Plural) = Plural.
 choose_number([_], Singular, _Plural) = Singular.
 choose_number([_, _ | _], _Singular, Plural) = Plural.
+
+
+is_or_are([]) = "" :-
+    unexpected(this_file, "error_util.is_or_are").
+is_or_are([_]) = "is".
+is_or_are([_, _ | _]) = "are".
 
 write_error_pieces_plain(Components, !IO) :-
     do_write_error_pieces(yes, no, 0, Components, !IO).

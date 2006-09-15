@@ -138,6 +138,7 @@
     % miscellaneous compiler modules
 :- import_module check_hlds.goal_path.
 :- import_module check_hlds.inst_check.
+:- import_module check_hlds.unused_imports.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
@@ -2298,6 +2299,9 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
     maybe_polymorphism(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 30, "polymorphism", !DumpInfo, !IO),
 
+    maybe_unused_imports(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 31, "unused_imports", !DumpInfo, !IO),
+
     maybe_mode_constraints(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 33, "mode_constraints", !DumpInfo, !IO),
 
@@ -3424,6 +3428,20 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
         % types.
         unexpected(this_file,
             "sorry, `--no-polymorphism' is no longer supported")
+    ).
+
+:- pred maybe_unused_imports(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_unused_imports(Verbose, Stats, !HLDS, !IO) :-
+    globals.io_lookup_bool_option(warn_unused_imports, WarnUnusedImports, !IO),
+    ( WarnUnusedImports = yes,
+        maybe_write_string(Verbose, "% Checking for unused imports...", !IO),
+        unused_imports(!HLDS, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ; WarnUnusedImports = no,
+        true
     ).
 
 :- pred maybe_type_ctor_infos(bool::in, bool::in,

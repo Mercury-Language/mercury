@@ -305,8 +305,8 @@
 :- pred module_info_set_maybe_recompilation_info(maybe(recompilation_info)::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_add_imported_module_specifiers(list(module_specifier)::in,
-    module_info::in, module_info::out) is det.
+:- pred module_add_imported_module_specifiers(import_status::in,
+    list(module_specifier)::in, module_info::in, module_info::out) is det.
 
 :- pred module_info_get_imported_module_specifiers(module_info::in,
     set(module_specifier)::out) is det.
@@ -489,6 +489,15 @@
 
 :- pred module_info_set_structure_reuse_map(structure_reuse_map::in,
     module_info::in, module_info::out) is det.
+
+:- pred module_info_get_parent_used_modules(module_info::in,
+    list(module_name)::out) is det.
+
+:- pred module_info_add_parent_used_modules(list(module_name)::in,
+    module_info::in, module_info::out) is det.
+
+:- pred module_info_get_interface_module_specifiers(module_info::in,
+    set(module_name)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -745,7 +754,15 @@
                 user_final_pred_c_names     :: assoc_list(sym_name, string),
 
                 % Information about which procedures implement structure reuse.
-                structure_reuse_map        :: structure_reuse_map
+                structure_reuse_map         :: structure_reuse_map,
+
+                % The list of modules used in the parent modules of the current
+                % module
+                parent_used_modules         :: list(module_name),
+
+                % All the directly imported module specifiers in the interface.
+                % (Used by unused_imports analysis).
+                interface_module_specifiers :: set(module_specifier)
             ).
 
 module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
@@ -788,7 +805,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
         MM_TablingInfo, map.init, counter.init(1), ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
-        init_analysis_info(mmc), [], [], map.init),
+        init_analysis_info(mmc), [], [], map.init, [], set.init),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -877,6 +894,10 @@ module_info_get_complexity_proc_infos(MI,
     MI ^ sub_info ^ complexity_proc_infos).
 module_info_get_structure_reuse_map(MI,
     MI ^ sub_info ^ structure_reuse_map).
+module_info_get_parent_used_modules(MI,
+    MI ^ sub_info ^ parent_used_modules).
+module_info_get_interface_module_specifiers(MI,
+    MI ^ sub_info ^ interface_module_specifiers).
 
     % XXX There is some debate as to whether duplicate initialise directives
     % in the same module should constitute an error. Currently it is not, but
@@ -970,10 +991,18 @@ module_info_set_lambdas_per_context(NewVal, MI,
     MI ^ sub_info ^ lambdas_per_context := NewVal).
 module_info_set_model_non_pragma_counter(NewVal, MI,
     MI ^ sub_info ^ model_non_pragma_counter := NewVal).
-module_add_imported_module_specifiers(ModuleSpecifiers, MI,
-    MI ^ sub_info ^ imported_module_specifiers :=
-        set.insert_list(MI ^ sub_info ^ imported_module_specifiers,
-            ModuleSpecifiers)).
+module_add_imported_module_specifiers(IStat, ModuleSpecifiers, !MI) :-
+    !:MI = !.MI ^ sub_info ^ imported_module_specifiers :=
+        set.insert_list(!.MI ^ sub_info ^ imported_module_specifiers,
+            ModuleSpecifiers),
+    ( status_is_exported_to_non_submodules(IStat) = yes ->
+        !:MI = !.MI ^ sub_info ^ interface_module_specifiers :=
+            set.insert_list(!.MI ^ sub_info ^ interface_module_specifiers,
+                ModuleSpecifiers)
+    ;
+        true
+    ).
+
 module_add_indirectly_imported_module_specifiers(Modules, MI,
     MI ^ sub_info ^ indirectly_imported_module_specifiers :=
         set.insert_list(MI ^ sub_info ^ indirectly_imported_module_specifiers,
@@ -990,6 +1019,12 @@ module_info_set_complexity_proc_infos(NewVal, MI,
     MI ^ sub_info ^ complexity_proc_infos := NewVal).
 module_info_set_structure_reuse_map(ReuseMap, MI,
     MI ^ sub_info ^ structure_reuse_map := ReuseMap).
+
+module_info_add_parent_used_modules(Modules, MI,
+        MI ^ sub_info ^ parent_used_modules := UsedModules) :-
+    module_info_get_parent_used_modules(MI, UsedModules0),
+    UsedModules = list.sort_and_remove_dups(Modules ++ UsedModules0).
+        
 
 %-----------------------------------------------------------------------------%
 

@@ -83,6 +83,9 @@
 % Warnings about insts with no matching types
 :- include_module inst_check.
 
+% Warnings about unused imports
+:- include_module unused_imports.
+
 :- include_module goal_path.
 
 %-----------------------------------------------------------------------------%

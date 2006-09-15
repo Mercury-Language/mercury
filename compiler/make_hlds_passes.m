@@ -387,28 +387,10 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
         !:Status = StatusPrime
     ; ModuleDefn = md_import(list_module(Specifiers)) ->
         !.Status = item_status(IStat, _),
-        (
-            ( status_defined_in_this_module(IStat) = yes
-            ; IStat = status_imported(import_locn_ancestor_private_interface)
-            )
-        ->
-            module_add_imported_module_specifiers(Specifiers, !ModuleInfo)
-        ;
-            module_add_indirectly_imported_module_specifiers(Specifiers,
-                !ModuleInfo)
-        )
+        add_module_specifiers(Specifiers, IStat, !ModuleInfo)
     ; ModuleDefn = md_use(list_module(Specifiers)) ->
         !.Status = item_status(IStat, _),
-        (
-            ( status_defined_in_this_module(IStat) = yes
-            ; IStat = status_imported(import_locn_ancestor)
-            )
-        ->
-            module_add_imported_module_specifiers(Specifiers, !ModuleInfo)
-        ;
-            module_add_indirectly_imported_module_specifiers(Specifiers,
-                !ModuleInfo)
-        )
+        add_module_specifiers(Specifiers, IStat, !ModuleInfo)
     ; ModuleDefn = md_include_module(_) ->
         true
     ; ModuleDefn = md_external(MaybeBackend, External) ->
@@ -560,6 +542,23 @@ add_solver_type_mutable_items_pass_1([Item | Items], Context, !Status,
     add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, _, !Specs),
     add_solver_type_mutable_items_pass_1(Items, Context, !Status, !ModuleInfo,
         !Specs).
+
+:- pred add_module_specifiers(list(module_specifier)::in, import_status::in,
+    module_info::in, module_info::out) is det.
+
+add_module_specifiers(Specifiers, IStat, !ModuleInfo) :-
+    ( status_defined_in_this_module(IStat) = yes ->
+        module_add_imported_module_specifiers(IStat, Specifiers, !ModuleInfo)
+    ; IStat = status_imported(import_locn_ancestor_private_interface) ->
+        module_add_imported_module_specifiers(IStat, Specifiers, !ModuleInfo),
+
+            % Any import_module which comes from a private interface
+            % must by definition be a module used by the parent module.
+        module_info_add_parent_used_modules(Specifiers, !ModuleInfo)
+    ;
+        module_add_indirectly_imported_module_specifiers(Specifiers,
+            !ModuleInfo)
+    ).
 
 %-----------------------------------------------------------------------------%
 
