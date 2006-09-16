@@ -475,7 +475,7 @@ common_candidate_headvars_of_procs_2(HeadVarName, ListOfOrigins,
     % Only include this variable in the list of candidates if there are two
     % or more procedures in the SCC with head variables having the same name.
     ( ListOfOrigins = [_, _ | _] ->
-        list.foldl(map.merge, ListOfOrigins, map.init, Origins),
+        list.foldl(map.old_merge, ListOfOrigins, map.init, Origins),
         CandidateHeadVars = CandidateHeadVars0 ++ [HeadVarName - Origins]
     ;
         CandidateHeadVars = CandidateHeadVars0
@@ -702,7 +702,7 @@ make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
         RenameMapB, ProcStartInsert),
     rename_vars_in_goal(RenameMapB, Goal2, Goal3),
 
-    map.merge(RenameMapA, RenameMapB, RenameMap),
+    map.old_merge(RenameMapA, RenameMapB, RenameMap),
     apply_headvar_correction(set.from_list(HeadVars), RenameMap, Goal3, Goal),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset(VarSet, !ProcInfo),

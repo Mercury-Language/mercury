@@ -1038,7 +1038,7 @@ make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal) :-
         create_shadow_vars(ArgVars, VarsToExtract, VarSet0, VarSet,
             VarTypes0, VarTypes, map.init, NewRename, map.init, VoidRename),
         !:VarInfo = var_info(VarSet, VarTypes),
-        map.merge(!.VarRename, NewRename, !:VarRename),
+        map.old_merge(!.VarRename, NewRename, !:VarRename),
         % We rename the original goal
         rename_vars_in_goal(!.VarRename, Goal2, Goal3),
         rename_vars_in_goal(VoidRename, Goal3, Goal)

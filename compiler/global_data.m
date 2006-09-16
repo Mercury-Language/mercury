@@ -651,8 +651,8 @@ merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, Remap) :-
         StaticCellInfoB),
     GlobalData = global_data(ProcVarMap, ProcLayoutMap, ClosureLayouts,
         StaticCellInfo),
-    ProcVarMap = map.merge(ProcVarMapA, ProcVarMapB),
-    ProcLayoutMap = map.merge(ProcLayoutMapA, ProcLayoutMapB),
+    ProcVarMap = map.old_merge(ProcVarMapA, ProcVarMapB),
+    ProcLayoutMap = map.old_merge(ProcLayoutMapA, ProcLayoutMapB),
     ClosureLayouts = ClosureLayoutsA ++ ClosureLayoutsB,
     merge_static_cell_infos(StaticCellInfoA, StaticCellInfoB, StaticCellInfo,
         Remap).
