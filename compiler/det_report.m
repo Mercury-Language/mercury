@@ -407,9 +407,10 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo,
         % ... but for which all the arguments are input ...
         proc_info_get_argmodes(ProcInfo, PredArgModes),
         pred_args_to_func_args(PredArgModes, FuncArgModes, _FuncResultMode),
-        \+ (
-            list.member(FuncArgMode, FuncArgModes),
-            \+ mode_is_fully_input(!.ModuleInfo, FuncArgMode)
+        (
+            list.member(FuncArgMode, FuncArgModes)
+        =>
+            mode_is_fully_input(!.ModuleInfo, FuncArgMode)
         )
     ->
         % ... then it is an error.
