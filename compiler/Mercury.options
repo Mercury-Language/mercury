@@ -51,10 +51,3 @@ CFLAGS-gcc =	-DMR_NO_BACKWARDS_COMPAT \
 		-I$(GCC_SRC_DIR)
 # Likewise for mlds_to_gcc.m
 CFLAGS-mlds_to_gcc = $(CFLAGS-gcc)
-
-# XXX temporary bug workaround
-MCFLAGS-hlds.make_hlds.add_clause = --no-halt-at-warn
-MCFLAGS-hlds.make_hlds.add_pragma = --no-halt-at-warn
-MCFLAGS-check_hlds.purity = --no-halt-at-warn
-MCFLAGS-check_hlds.typecheck = --no-halt-at-warn
-MCFLAGS-check_hlds.typeclasses = --no-halt-at-warn

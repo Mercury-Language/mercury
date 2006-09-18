@@ -305,9 +305,9 @@ if test "$BOOTSTRAP_MC" != ""; then
 EOF
 	if
 		echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
-		# XXX We should reenable --halt-at-warn as soon as we can.
 		$BOOTSTRAP_MC \
 			--verbose \
+			--halt-at-warn \
 			--trace-io-builtins-2006-08-14 \
 			$link_static_opt conftest \
 			</dev/null >&AC_FD_CC 2>&1 &&
