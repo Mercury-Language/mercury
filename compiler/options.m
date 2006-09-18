@@ -803,6 +803,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 
@@ -2474,25 +2475,25 @@ append_to_accumulating_option(Option - Value, OptionTable0) =
 
 :- pred set_opt_level(int::in, option_table::in, option_table::out) is det.
 
-set_opt_level(N, OptionTable0, OptionTable) :-
+set_opt_level(N, !OptionTable) :-
     % First reset all optimizations to their default
     % (the default should be all optimizations off).
     option_defaults_2(optimization_option, OptimizationDefaults),
-    override_options(OptimizationDefaults, OptionTable0, OptionTable1),
+    override_options(OptimizationDefaults, !OptionTable),
 
     % Next enable the optimization levels from 0 up to N.
-    enable_opt_levels(0, N, OptionTable1, OptionTable).
+    enable_opt_levels(0, N, !OptionTable).
 
 :- pred enable_opt_levels(int::in, int::in,
     option_table::in, option_table::out) is det.
 
-enable_opt_levels(N0, N, OptionTable0, OptionTable) :-
+enable_opt_levels(N0, N, !OptionTable) :-
     ( N0 > N ->
-        OptionTable = OptionTable0
-    ; opt_level(N0, OptionTable0, OptionSettingsList) ->
-        override_options(OptionSettingsList, OptionTable0, OptionTable1),
+        true
+    ; opt_level(N0, !.OptionTable, OptionSettingsList) ->
+        override_options(OptionSettingsList, !OptionTable),
         N1 = N0 + 1,
-        enable_opt_levels(N1, N, OptionTable1, OptionTable)
+        enable_opt_levels(N1, N, !OptionTable)
     ;
         unexpected(this_file, "Unknown optimization level")
     ).
@@ -2500,10 +2501,10 @@ enable_opt_levels(N0, N, OptionTable0, OptionTable) :-
 :- pred override_options(list(pair(option, option_data))::in,
     option_table::in, option_table::out) is det.
 
-override_options([], OptionTable, OptionTable).
-override_options([Option - Value | Settings], OptionTable0, OptionTable) :-
-    map.set(OptionTable0, Option, Value, OptionTable1),
-    override_options(Settings, OptionTable1, OptionTable).
+override_options([], !OptionTable).
+override_options([Option - Value | Settings], !OptionTable) :-
+    svmap.set(Option, Value, !OptionTable),
+    override_options(Settings, !OptionTable).
 
 %-----------------------------------------------------------------------------%
 
