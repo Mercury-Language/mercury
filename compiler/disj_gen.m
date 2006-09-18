@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: disj_gen.m.
 % Main authors: conway, zs.
-% 
+%
 % The predicates of this module generate code for disjunctions.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.disj_gen.
@@ -83,50 +83,44 @@ generate_disj(AddTrailOps, CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
 
 generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
         Code, !CI)  :-
-
-        % Make sure that the variables whose values will be needed
-        % on backtracking to any disjunct are materialized into
-        % registers or stack slots. Their locations are recorded
-        % in ResumeMap.
+    % Make sure that the variables whose values will be needed on backtracking
+    % to any disjunct are materialized into registers or stack slots. Their
+    % locations are recorded in ResumeMap.
     code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
 
-        % If we are using a trail, save the current trail state
-        % before the first disjunct.
-        % XXX We should use a scheme such as the one we use for heap
-        % recovery for semi and det disjunctions, and delay saving
-        % the ticket until necessary.
+    % If we are using a trail, save the current trail state before the
+    % first disjunct.
+    % XXX We should use a scheme such as the one we use for heap recovery
+    % for semi and det disjunctions, and delay saving the ticket until
+    % necessary.
     code_info.get_globals(!.CI, Globals),
     code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
         !CI),
 
-        % If we are using a grade in which we can recover memory
-        % by saving and restoring the heap pointer, set up for
-        % doing so if necessary.
+    % If we are using a grade in which we can recover memory by saving
+    % and restoring the heap pointer, set up for doing so if necessary.
     ( CodeModel = model_non ->
-            % With nondet disjunctions, we must recover memory
-            % across all disjuncts, even disjuncts that cannot
-            % themselves allocate memory, since we can backtrack
-            % to disjunct N after control leaves disjunct N-1.
+        % With nondet disjunctions, we must recover memory across all
+        % disjuncts, even disjuncts that cannot themselves allocate memory,
+        % since we can backtrack to disjunct N after control leaves
+        % disjunct N-1.
         globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
             ReclaimHeap),
         code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI)
     ;
-            % With other disjunctions, we can backtrack to
-            % disjunct N only from disjunct N-1, so if disjunct
-            % N-1 does not allocate memory, we need not recover
-            % memory across it. Since it is possible (and common)
-            % for no disjunct to allocate memory, we delay saving
-            % the heap pointer and allocating a stack slot for
-            % the saved hp as long as possible.
+        % With other disjunctions, we can backtrack to disjunct N only from
+        % disjunct N-1, so if disjunct N-1 does not allocate memory, we need
+        % not recover memory across it. Since it is possible (and common)
+        % for no disjunct to allocate memory, we delay saving the heap pointer
+        % and allocating a stack slot for the saved hp as long as possible.
         globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
             ReclaimHeap),
         SaveHpCode = empty,
         MaybeHpSlot = no
     ),
 
-        % Save the values of any stack slots we may hijack,
-        % and if necessary, set the redofr slot of the top frame
-        % to point to this frame.
+    % Save the values of any stack slots we may hijack, and if necessary,
+    % set the redofr slot of the top frame to point to this frame.
     code_info.prepare_for_disj_hijack(CodeModel, HijackInfo,
         PrepareHijackCode, !CI),
 
@@ -164,12 +158,11 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         Code, !CI) :-
 
     code_info.reset_to_position(BranchStart0, !CI),
-    %
+
     % If this is not the first disjunct, generate the resume point by which
     % we arrive at this disjunct.
-    %
     (
-        MaybeEntryResumePoint = yes(EntryResumePoint), 
+        MaybeEntryResumePoint = yes(EntryResumePoint),
         code_info.generate_resume_point(EntryResumePoint,
             EntryResumePointCode, !CI)
     ;
@@ -197,15 +190,13 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             RestoreHpCode = empty,
             RestoreTicketCode = empty
         ),
-        %
+
         % The pre_goal_update sanity check insists on no_resume_point, to make
         % sure that all resume points have been handled by surrounding code.
-        %
         goal_info_set_resume_point(no_resume_point, GoalInfo0, GoalInfo),
         Goal = GoalExpr0 - GoalInfo,
-        % 
+
         % Save hp if it needs to be saved and hasn't been saved previously.
-        %
         (
             ReclaimHeap = yes,
             goal_may_allocate_heap(Goal),
@@ -213,7 +204,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         ->
             code_info.save_hp(SaveHpCode, HpSlot, !CI),
             MaybeHpSlot = yes(HpSlot),
-            %
+
             % This method of updating BranchStart0 is ugly. The best
             % alternative would be to arrange things so that a
             % remember_position here could get BranchStart, but doing so is
@@ -245,14 +236,13 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         code_gen.generate_goal(GoalCodeModel, Goal, GoalCode, !CI),
 
         ( CodeModel = model_non ->
-            % We can backtrack to the next disjunct from outside,
-            % so we make sure every variable in the resume set
-            % is in its stack slot.
+            % We can backtrack to the next disjunct from outside, so we make
+            % sure every variable in the resume set is in its stack slot.
             code_info.flush_resume_vars_to_stack(ResumeVarsCode, !CI),
 
-            % We hang onto any temporary slots holding saved
-            % heap pointers and/or tickets, thus ensuring that
-            % they will still be reserved after the disjunction.
+            % We hang onto any temporary slots holding saved heap pointers
+            % and/or tickets, thus ensuring that they will still be reserved
+            % after the disjunction.
             PruneTicketCode = empty
         ;
             ResumeVarsCode = empty,
@@ -269,7 +259,6 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         % the start of the next disjunct, so that we don't generate exceptions
         % when their storage is clobbered by the movement of the live
         % variables to the places indicated in the store map.
-        %
         code_info.pop_resume_point(!CI),
         code_info.pickup_zombies(Zombies, !CI),
         code_info.make_vars_forward_dead(Zombies, !CI),
@@ -277,7 +266,6 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         % Put every variable whose value is needed after the disjunction to
         % the place indicated by StoreMap, and accumulate information about
         % the code_info state at the ends of the branches so far.
-        %
         goal_info_get_store_map(DisjGoalInfo, StoreMap),
         code_info.generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
             SaveCode, !CI),
@@ -296,10 +284,9 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             GoalCode, ResumeVarsCode, PruneTicketCode, SaveCode,
             BranchCode, RestCode])
     ;
-        % Emit code for the last disjunct
+        % Emit code for the last disjunct.
 
         % Restore the heap pointer and solver state if necessary.
-        %
         code_info.maybe_restore_and_release_hp(MaybeHpSlot0, RestoreHpCode,
             !CI),
         code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
