@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2005 The University of Melbourne.
+# Copyright (C) 2005-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -15,6 +15,8 @@ all:	libany
 depend:	any.depend
 
 install: libany.install
+
+MCFLAGS-any= --no-warn-nothing-exported --no-warn-interface-imports
 
 .PHONY: check
 check:

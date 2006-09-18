@@ -1,6 +1,6 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,6 @@
 :- interface.
 
 :- import_module any_assoc_list.
-:- import_module any_list.
 :- import_module list.
 :- import_module set.
 
@@ -190,8 +189,8 @@
 
     % Given a map, return a list of all the data values in the map.
     %
-:- func any_map__values(any_map(K, V)::ia) = (any_list(V)::oa) is det.
-:- pred any_map__values(any_map(K, V)::ia, any_list(V)::oa) is det.
+:- func any_map__values(any_map(K, V)::ia) = (list(V)::oa) is det.
+:- pred any_map__values(any_map(K, V)::ia, list(V)::oa) is det.
 
     % Convert a map to an association list.
     %
@@ -254,9 +253,9 @@
     % Convert a pair of lists (which must be of the same length)
     % to a map.
     %
-:- func any_map__from_corresponding_lists(list(K)::in, any_list(V)::ia)
+:- func any_map__from_corresponding_lists(list(K)::in, list(V)::ia)
         = (any_map(K, V)::oa) is det.
-:- pred any_map__from_corresponding_lists(list(K)::in, any_list(V)::ia,
+:- pred any_map__from_corresponding_lists(list(K)::in, list(V)::ia,
         any_map(K, V)::oa) is det.
 
     % For any_map__merge(MapA, MapB, Map), MapA and MapB must
@@ -301,9 +300,9 @@
     % values in a specified map.
     %
 :- func any_map__apply_to_list(list(K)::in, any_map(K, V)::ia)
-        = (any_list(V)::oa) is det.
+        = (list(V)::oa) is det.
 :- pred any_map__apply_to_list(list(K)::in, any_map(K, V)::ia,
-        any_list(V)::oa) is det.
+        list(V)::oa) is det.
 
     % Declaratively, a NOP.
     % Operationally, a suggestion that the implementation
@@ -524,10 +523,11 @@
 
 :- implementation.
 
+:- use_module    any_list.
 :- import_module any_tree234.
 :- import_module any_util.
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
@@ -554,7 +554,7 @@ any_map__search(Map, K, V) :-
 
 any_map__lookup(Map, K, V) :-
     promise_pure (
-        impure any_tree234__search(Map, K, V1)
+        any_tree234__search(Map, K, V1)
     ->
         V = V1
     ;
@@ -566,7 +566,7 @@ any_map__lower_bound_search(Map, SearchK, K, V) :-
 
 any_map__lower_bound_lookup(Map, SearchK, K, V) :-
     promise_pure (
-        impure any_tree234__lower_bound_search(Map, SearchK, K1, V1)
+        any_tree234__lower_bound_search(Map, SearchK, K1, V1)
     ->
         K = K1,
         V = V1
@@ -580,7 +580,7 @@ any_map__upper_bound_search(Map, SearchK, K, V) :-
 
 any_map__upper_bound_lookup(Map, SearchK, K, V) :-
     promise_pure (
-        impure any_tree234__upper_bound_search(Map, SearchK, K1, V1)
+        any_tree234__upper_bound_search(Map, SearchK, K1, V1)
     ->
         K = K1,
         V = V1
@@ -598,7 +598,7 @@ any_map__insert(Map0, K, V, Map) :-
 
 any_map__det_insert(Map0, K, V, Map) :-
     promise_pure (
-        impure any_tree234__insert(Map0, K, V, Map1)
+        any_tree234__insert(Map0, K, V, Map1)
     ->
         Map = Map1
     ;
@@ -607,6 +607,7 @@ any_map__det_insert(Map0, K, V, Map) :-
     ).
 
 any_map__det_insert_from_corresponding_lists(Map0, Ks, Vs, Map) :-
+    promise_pure
     (
         Ks = [Key | Keys],
         Vs = [Value | Values]
@@ -631,6 +632,7 @@ any_map__det_insert_from_any_assoc_list(Map0, [K - V | KVs], Map) :-
     any_map__det_insert_from_any_assoc_list(Map1, KVs, Map).
 
 any_map__set_from_corresponding_lists(Map0, Ks, Vs, Map) :-
+    promise_pure
     (
         Ks = [Key | Keys],
         Vs = [Value | Values]
@@ -658,7 +660,7 @@ any_map__update(Map0, K, V, Map) :-
 
 any_map__det_update(Map0, K, V, Map) :-
     promise_pure (
-        impure any_tree234__update(Map0, K, V, Map1)
+        any_tree234__update(Map0, K, V, Map1)
     ->
         Map = Map1
     ;
@@ -670,7 +672,7 @@ any_map__transform_value(P, K, !Map) :-
 
 any_map__det_transform_value(P, K, !Map) :-
     promise_pure (
-        impure any_map__transform_value(P, K, !.Map, NewMap)
+        any_map__transform_value(P, K, !.Map, NewMap)
     ->
         !:Map = NewMap
     ;
@@ -721,7 +723,7 @@ any_map__remove(Map0, Key, Value, Map) :-
 
 any_map__det_remove(Map0, Key, Value, Map) :-
     promise_pure (
-        impure any_tree234__remove(Map0, Key, Value1, Map1)
+        any_tree234__remove(Map0, Key, Value1, Map1)
     ->
         Value = Value1,
         Map = Map1
@@ -779,7 +781,7 @@ any_map__overlay_large_map_2([], Map, Map).
 any_map__overlay_large_map_2([K - V | AssocList], Map0, Map) :-
     unsafe_cast_to_ground(K),
     promise_pure (
-        impure any_map__insert(Map0, K, V, Map1)
+        any_map__insert(Map0, K, V, Map1)
     ->
         Map2 = Map1
     ;
@@ -800,7 +802,7 @@ any_map__select(Original, KeySet, NewMap) :-
 any_map__select_2([], _Original, New, New).
 any_map__select_2([K|Ks], Original, New0, New) :-
     promise_pure (
-        impure any_map__search(Original, K, V)
+        any_map__search(Original, K, V)
     ->
         any_map__set(New0, K, V, New1)
     ;
@@ -895,7 +897,7 @@ any_map__intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
 
 any_map__det_intersect(CommonPred, Map1, Map2, Common) :-
     promise_pure (
-        impure any_map__intersect(CommonPred, Map1, Map2, CommonPrime)
+        any_map__intersect(CommonPred, Map1, Map2, CommonPrime)
     ->
         Common = CommonPrime
     ;
@@ -957,7 +959,7 @@ any_map__union_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
 
 any_map__det_union(CommonPred, Map1, Map2, Union) :-
     promise_pure (
-        impure any_map__union(CommonPred, Map1, Map2, UnionPrime)
+        any_map__union(CommonPred, Map1, Map2, UnionPrime)
     ->
         Union = UnionPrime
     ;
