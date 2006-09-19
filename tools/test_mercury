@@ -53,13 +53,10 @@ export CVSROOT
 TMPDIR=/tmp
 export TMPDIR
 
-# Make the files writable by group mercury.
-# But only do this for machines on the Mercury network.
-if [ -d /home/mercury/public/. ]; then
-	umask 002
-else
-	umask 022
-fi
+# Ensure that files are only writeable by user mercury, not group mercury.
+# This is in part to ensure that people don't unintentionally install
+# libraries over the installation we perform here.
+umask 022
 
 # Stop looping tests after 5 minutes of CPU time.
 # Also allow tests to use up to about 250 Mb of memory
