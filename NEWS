@@ -3,6 +3,8 @@ NEWS since Mercury 0.13
 
 Changes to the Mercury language:
 
+* We now support trace goals, which can be used to print progress messages or
+  log messages in the middle of arbitrary computations.
 * Mutables can now be marked as constant, which is useful when working with
   constant data structures that cannot be conveniently represented as constant
   terms.
@@ -29,6 +31,38 @@ DETAILED LISTING
 ================
 
 Changes to the Mercury language:
+
+* A new language construct allows programmers to include debugging and/or
+  logging code in the middle of arbitrary computations. Trace goals
+  may have both compile time and run time conditions placed on their execution.
+  However, if they are enabled, then they can perform I/O (even if the
+  surrounding code can't); they can also access the values of mutables.
+
+  Their capabilities, syntax and intended use are shown by the following
+  example.
+
+	:- mutable(logging_level, int, 0, ground, []).
+
+	:- pred time_consuming_task(data::in, result::out) is det.
+
+	time_consuming_task(In, Out) :-
+		trace [
+			compile_time(flag("do_logging") or grade(debug)),
+			run_time(env("VERBOSE")),
+			io(!IO),
+			state(logging_level, !LoggingLevel)
+		] (
+			io.write_string("Time_consuming_task start\n", !IO),
+			( !.LoggingLevel > 1 ->
+				io.write_string("Input is ", !IO),
+				io.write(In, !IO),
+				io.nl(!IO)
+			;
+				true
+			)
+		),
+		...
+		% perform the actual task
 
 * Unicode characters can now be encoded in string literals using an
   escape sequence.  The escape sequence \uXXXX (or \UXXXXXXXX), where XXXX

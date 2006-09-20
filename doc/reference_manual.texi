@@ -103,6 +103,8 @@ into another language, under the above conditions for modified versions.
 * C interface::       The C interface allows C code to be called
                       from Mercury code, and vice versa.
 * Impurity::          Users can write impure Mercury code.
+* Trace goals::       Trace goals allow programmers to add debugging and
+                      logging code to their programs.
 * Pragmas::           Various compiler directives, used for example to
                       control optimization.
 * Implementation-dependent extensions::       
@@ -838,6 +840,23 @@ except the @var{promise_equivalent_solution_sets} goal they are nested inside.
 Goals of the form @code{arbitrary @var{ArbVars} @var{ArbGoal}}
 are not allowed to occur outside
 @code{promise_equivalent_solution_sets @var{Vars} @var{Goal}} goals.
+
+@item @code{trace @var{Params} @var{Goal}}
+A trace goal, typically used for debugging or logging.
+@var{Goal} must be a valid goal;
+@var{Params} must be a valid list of trace parameters.
+Some trace parameters specify compile time or run time conditions;
+if any of these conditions are false, @var{Goal} will not be executed.
+Since in some program invocations
+@var{Goal} may be replaced by @samp{true} in this way,
+@var{Goal} may not bind or change the instantiation state
+of any variables it shares with the surrounding context.
+The things it may do are thus restricted to side effects;
+good programming style requires these side effects
+to not have any affect on the execution of the program itself,
+but to be confined to the provision of extra information
+for the user of the program.
+See @pxref{Trace goals} for the details.
 
 @item @code{@var{Call}}
 Any goal which does not match any of the above forms
@@ -9098,6 +9117,190 @@ For example:
 		impure Y = impure_apply(ImpureFunc, X),
 		impure Ys = map(ImpureFunc, Ys).
 @end example
+
+@node Trace goals
+@chapter Trace goals
+
+Sometimes, programmers find themselves
+needing to perform some side-effects in the middle of declarative code.
+One example is an operation that takes so long that
+users may think the program has gone into an infinite loop:
+periodically printing a progress message can give them reassurance.
+Another example is a program that is
+too long-running for its behavior to be analyzed via debuggers
+and too complex for analysis via profilers;
+a programmable logging facility generating data
+for analysis by a specially-written program may be the best option.
+However, inserting arbitrary side effects into declarative code
+is against the spirit of Mercury.
+Trace goals exist to provide a mechanism
+to code these side effects in a disciplined fashion.
+
+The format of trace goals is @code{trace @var{Params} @var{Goal}}.
+@var{Goal} must be a valid goal;
+@var{Params} must be a valid list of one or more trace parameters.
+The following example shows all four of the available kinds of parameters:
+@samp{compile_time}, @samp{run_time}, @samp{io} and @samp{state}.
+(It practice, it is far more typical to have just one parameter, @samp{io}.)
+
+@example
+:- mutable(logging_level, int, 0, ground, []).
+
+:- pred time_consuming_task(data::in, result::out) is det.
+
+time_consuming_task(In, Out) :-
+        trace [
+                compile_time(flag("do_logging") or grade(debug)),
+                run_time(env("VERBOSE")),
+                io(!IO),
+                state(logging_level, !LoggingLevel)
+        ] (
+                io.write_string("Time_consuming_task start\n", !IO),
+                ( !.LoggingLevel > 1 ->
+                        io.write_string("Input is ", !IO),
+                        io.write(In, !IO),
+                        io.nl(!IO)
+                ;
+                        true
+                )
+        ),
+        ...
+        % perform the actual task
+@end example
+
+The @samp{compile_time} parameter says under what circumstances
+the trace goal should be included in the executable program.
+In the example, at least one of two conditions has to be true:
+either this module has to be compiled
+with the option @samp{--trace-flag=do_logging},
+or it has to be compiled in a debugging grade.
+
+In general, the single argument of the @samp{compile_time} function symbol
+is a boolean expression that may use the @samp{and} and @samp{or} operators
+to connect one or more primitive compile-time conditions.
+There are three kinds of conditions.
+The first has the form @samp{flag(@var{FlagName})},
+where @var{FlagName} is an arbitrary name picked by the programmer;
+this condition is true
+if the module is compiled with the option @samp{--trace-flag=@var{FlagName}}.
+The second has the form @samp{grade(debug)};
+this condition is true
+if the module is compiled with in a debugging grade.
+(We may support the specification of other kinds of grades in the future.)
+The third has the form @samp{tracelevel(shallow)}, or @samp{tracelevel(deep)};
+this condition is true (irrespective of grade)
+if the module is compiled with at least the specified trace level.
+
+The @samp{run_time} parameter says under what circumstances the trace goal,
+if included in the executable program, should actually be executed.
+In this case, the environment variable @samp{VERBOSE} has be to set
+when the program starts execution.
+(It doesn't matter what value it is set to.)
+
+In general, the single argument of the @samp{run_time} function symbol
+is a boolean expression that may use the @samp{and} and @samp{or} operators
+to connect one or more primitive compile-time conditions.
+There is just one condition.
+It has the form @samp{env(@var{EnvVarName})},
+this condition is true
+if the environment variable @var{EnvVarName}
+exists when the program starts execution.
+
+The @samp{compile_time} and @samp{run_time} parameters
+may not appear in the parameter list more than once;
+programmers who want more than one condition
+have to specify how (with what boolean operators)
+their values should be combined.
+However, it is ok for them not to appear in the parameter list at all.
+If there is no @samp{compile_time} parameter,
+the trace goal is always compiled into the executable;
+if there is no @samp{run_time} parameter,
+the trace goal is always executed (if it is compiled into the executable).
+
+Since the trace goal may end up
+either not compiled into the executable or just not executed,
+it cannot bind any variables that occur in the surrounding code.
+(If it were allowed to bind such variables,
+then those variables would stay unbound
+if either the compile time or the run time condition were false.)
+This greatly restricts what trace goals can do.
+
+The usual reason for including a trace goal
+in a procedure body is to perform some I/O,
+which requires access to the I/O state.
+The @samp{io} parameter supplies this access.
+Its argument must be the name of a state variable prefixed by @samp{!};
+by convention, it is usually @samp{!IO}.
+The language implementation supplies
+the initial unique value of the I/O state
+as the value of @samp{!.IO} at the start of the trace goal;
+it requires the trace goal to give back
+the final unique value of the I/O state
+as the value of @samp{!.IO} current at the end of the trace goal.
+
+Note that trace goals that wish to do I/O
+must include this parameter in their parameter list
+@emph{even if} the surrounding code already has access to an I/O state.
+This is because otherwise,
+doing any I/O inside the trace goal
+would destroy the value of the current I/O state,
+changing the instantiation state of the variable holding it,
+and trace goals are not allowed to do that.
+
+The @samp{io} parameter may appear in the parameter list at most once,
+since it doesn't make sense to have
+two copies of the I/O state available to the trace goal.
+
+Besides doing I/O, trace goals may read and possibly write
+the values of mutable variables.
+Each mutable the trace goal wants access to should be listed
+in its own @samp{state} parameter
+(which may therefore appear in the parameter list more than once).
+Each @samp{state} parameter has two arguments:
+the first gives the name of the mutable,
+while the second must be the name of a state variable prefixed by @samp{!},
+e.g. @samp{!LoggingLevel}.
+The language implementation supplies
+the initial value of the mutable
+as the value of (in this case) @samp{!.LoggingLevel}
+at the start of the trace goal;
+at the end of the trace goal,
+it puts the value of @samp{!.LoggingLevel} current then
+back into the mutable.
+
+The intention here is that trace goals
+should be able to access mutables that give them information
+about the parameters within which they should operate.
+The ability of trace goals to actually @emph{update} the values of mutables
+is intended to allow the implementation of trace goals
+whose actions depend on the actions executed by previous trace goals.
+For example, a trace goal could test
+whether the current input value is the same as the previous input value,
+and if it is, then it can say so instead of printing the value out again.
+Another possibility is a progress message
+which is printed not for every item processed, but for every 1000th item,
+reassuring users without overwhelming them with a deluge of output.
+
+This kind of code is the @emph{only} intended use of this ability.
+Any program in which the value of a mutable set by a trace goal
+is inspected by code that is not itself within a trace goal
+is explicitly violating the intended uses of trace goals.
+Only the difficulty of implementing the required global program analysis
+prevents the language design from outlawing such programs in the first place.
+
+The compiler will not delete trace goals
+from the bodies of the procedures containing them.
+However, trace goals inside a procedure don't prevent
+calls to that procedure from being optimized away,
+if such optimization is otherwise possible.
+(There is no point in debugging or logging
+operations that don't actually occur.)
+In their effect on program optimizations,
+trace goals function as a kind of impure code,
+but one with an implicit promise_pure around the clause in which they occur.
+@c zs: I think saying the following is more likely to confuse than enlighten:
+@c The trace goal scope itself acts
+@c as a promise_pure scope for any impure code inside it.
 
 @node Pragmas
 @chapter Pragmas

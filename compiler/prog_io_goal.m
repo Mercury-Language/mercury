@@ -871,7 +871,7 @@ parse_trace_compiletime(ErrorTerm, Term, MaybeCompiletime) :-
                         "takes just one argument",
                     MaybeCompiletime = error1([Msg - Term])
                 )
-            ; Atom = "travelevel" ->
+            ; Atom = "tracelevel" ->
                 ( SubTerms = [SubTerm] ->
                     (
                         SubTerm = term.functor(term.atom(LevelName), [], _),
