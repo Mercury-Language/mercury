@@ -1506,9 +1506,8 @@ output_label_layout_addrs_in_vector([], !IO).
 output_label_layout_addrs_in_vector([Label | Labels], !IO) :-
     (
         Label = internal(LabelNum, ProcLabel),
-        groupable_labels(ProcLabel, 1, N, [LabelNum], RevLabelNums,
-            Labels, RemainingLabels),
-        N > 1
+        groupable_labels(ProcLabel, 1, _N, [LabelNum], RevLabelNums,
+            Labels, RemainingLabels)
     ->
         list.reverse(RevLabelNums, LabelNums),
         io.write_string("MR_LABEL_LAYOUT", !IO),
