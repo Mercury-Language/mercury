@@ -888,9 +888,9 @@ maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId0, Arity,
 maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
     (
         MaybeType = yes(Type),
-        type_is_higher_order(Type, _, _, _, Types)
+        type_is_higher_order_details(Type, _, _, _, ArgTypes)
     ->
-        MaybeTypes = list.map(func(T) = yes(T), Types)
+        MaybeTypes = list.map(func(T) = yes(T), ArgTypes)
     ;
         list.duplicate(Arity, no, MaybeTypes)
     ).

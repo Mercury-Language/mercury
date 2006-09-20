@@ -115,7 +115,7 @@ instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod, !.Fallthrough, Useset) :-
             !:RevInstrs = [Instr0 | !.RevInstrs],
             !:Fallthrough = yes
         ;
-            eliminate(Instr0, yes(!.Fallthrough), !RevInstrs, !Mod)
+            eliminate_instr(Instr0, yes(!.Fallthrough), !RevInstrs, !Mod)
         )
     ;
         (
@@ -123,7 +123,7 @@ instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod, !.Fallthrough, Useset) :-
             !:RevInstrs = [Instr0 | !.RevInstrs]
         ;
             !.Fallthrough = no,
-            eliminate(Instr0, no, !RevInstrs, !Mod)
+            eliminate_instr(Instr0, no, !RevInstrs, !Mod)
         ),
         opt_util.can_instr_fall_through(Uinstr0, Canfallthrough),
         (
@@ -140,11 +140,11 @@ instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod, !.Fallthrough, Useset) :-
     % on the instruction is often enough to deduce what the eliminated
     % instruction was.
     %
-:- pred eliminate(instruction::in, maybe(bool)::in,
+:- pred eliminate_instr(instruction::in, maybe(bool)::in,
     list(instruction)::in, list(instruction)::out,
     bool::in, bool::out) is det.
 
-eliminate(Uinstr0 - Comment0, Label, !RevInstrs, !Mod) :-
+eliminate_instr(Uinstr0 - Comment0, Label, !RevInstrs, !Mod) :-
     labelopt_eliminate_total(Total),
     (
         Total = yes,

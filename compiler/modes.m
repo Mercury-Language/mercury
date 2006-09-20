@@ -548,10 +548,9 @@ copy_pred_bodies(OldPredTable, PredIds, !ModuleInfo) :-
 copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
     map.lookup(PredTable0, PredId, PredInfo0),
     (
-        % don't copy type class methods, because their
-        % proc_infos are generated already mode-correct,
-        % and because copying from the clauses_info doesn't
-        % work for them.
+        % Don't copy type class methods, because their proc_infos are generated
+        % already mode-correct, and because copying from the clauses_info
+        % doesn't work for them.
         pred_info_get_markers(PredInfo0, Markers),
         check_marker(Markers, marker_class_method)
     ->
@@ -3239,7 +3238,7 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
 
     % Do the transformation for this call goal.
     SymName = qualified(CalleeModuleName, CalleePredName),
-    polymorphism.process_new_call(CalleePredInfo, CalleeProcInfo,
+    polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo,
         CalleePredId, CalleeProcId, ArgVars, not_builtin, CallUnifyContext,
         SymName, GoalInfo, Goal, PolyInfo0, PolyInfo),
 

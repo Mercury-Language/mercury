@@ -844,7 +844,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         ;
             unexpected(this_file, "replace_in_goal_expr: info not found")
         ),
-        polymorphism.make_type_info_var(TypeInfoType,
+        polymorphism_make_type_info_var(TypeInfoType,
             term.context_init, TypeInfoVar, Goals0, PolyInfo0, PolyInfo),
         poly_info_extract(PolyInfo, PredInfo0, PredInfo,
             !.Info ^ proc_info, ProcInfo, ModuleInfo),

@@ -125,7 +125,7 @@ gen_body(no, _, _, _, _, _) :-
         "been filled in by check_typeclass.m").
 gen_body(yes(PredProcIds0), Types, Constraints, ModuleInfo, ClassId,
         BaseTypeClassInfo) :-
-    prog_type.vars_list(Types, TypeVars),
+    type_vars_list(Types, TypeVars),
     get_unconstrained_tvars(TypeVars, Constraints, Unconstrained),
     list.length(Constraints, NumConstraints),
     list.length(Unconstrained, NumUnconstrained),

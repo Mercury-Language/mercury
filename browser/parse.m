@@ -215,7 +215,7 @@
 
 read_command(Prompt, Command, !IO) :-
     util.trace_get_command(Prompt, Line, !IO),
-    string.words(char.is_whitespace, Line) = Words,
+    string.words_separator(char.is_whitespace, Line) = Words,
     ( parse(Words, Command2) ->
         Command = Command2
     ;
@@ -226,7 +226,7 @@ read_command_external(Command, !IO) :-
     io.read(Result, !IO),
     (
         Result = ok(external_request(StringToParse)),
-        string.words(char.is_whitespace, StringToParse) = Words,
+        string.words_separator(char.is_whitespace, StringToParse) = Words,
         ( parse(Words, Command2) ->
             Command = Command2
         ;

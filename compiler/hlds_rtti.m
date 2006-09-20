@@ -680,7 +680,7 @@ get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
 get_typeinfo_vars_2([], _, _, []).
 get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
     ( map.search(VarTypes, Var, Type) ->
-        prog_type.vars(Type, TypeVars),
+        type_vars(Type, TypeVars),
         (
             TypeVars = [],
             % Optimize common case,

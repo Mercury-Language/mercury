@@ -491,7 +491,7 @@ unify_on_elements(Elements, TypesA, TypesB, HeadTypeParams, !Bindings) :-
 subsumes_on_elements(Elements, TypesA, TypesB, Subst) :-
     RTypesA = restrict_list_elements(Elements, TypesA),
     RTypesB = restrict_list_elements(Elements, TypesB),
-    prog_type.vars_list(RTypesB, RTypesBVars),
+    type_vars_list(RTypesB, RTypesBVars),
     map.init(Subst0),
     type_unify_list(RTypesA, RTypesB, RTypesBVars, Subst0, Subst).
 

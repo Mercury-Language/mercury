@@ -1021,7 +1021,7 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin, Status,
         ClassProofs, ClassConstraintMap, ClausesInfo, PredInfo) :-
     PredName = unqualify_name(SymName),
     sym_name_get_module_name(SymName, ModuleName, PredModuleName),
-    prog_type.vars_list(ArgTypes, TVars),
+    type_vars_list(ArgTypes, TVars),
     list.delete_elems(TVars, ExistQVars, HeadTypeParams),
     Attributes = [],
     % XXX kind inference:
@@ -1049,7 +1049,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     Attributes = [],
     map.init(ClassProofs),
     map.init(ClassConstraintMap),
-    prog_type.vars_list(ArgTypes, TVars),
+    type_vars_list(ArgTypes, TVars),
     list.delete_elems(TVars, ExistQVars, HeadTypeParams),
     % XXX kind inference:
     % we assume all tvars have kind `star'.
@@ -1455,7 +1455,7 @@ terminates_to_markers(depends_on_mercury_calls, []).
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    prog_type.vars_list(ArgTypes, ArgTypeVars0),
+    type_vars_list(ArgTypes, ArgTypeVars0),
     list.sort_and_remove_dups(ArgTypeVars0, ArgTypeVars),
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
     list.delete_elems(ArgTypeVars, ExistQVars, UnivQVars).

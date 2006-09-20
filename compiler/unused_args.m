@@ -543,7 +543,7 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, RttiVarMaps,
 
 setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps, !VarDep) :-
     map.lookup(VarTypeMap, Var, Type),
-    prog_type.vars(Type, TVars),
+    type_vars(Type, TVars),
     list.map((pred(TVar::in, TypeInfoVar::out) is det :-
         rtti_lookup_type_info_locn(RttiVarMaps, TVar, Locn),
         type_info_locn_var(Locn, TypeInfoVar)

@@ -642,7 +642,7 @@ packed_cs_univ_args(Depth, UnivArgs) =
 
 word_wrapped(String) =
     packed(space, list.map(func(Word) = text(Word),
-                            string.words(char.is_whitespace, String))).
+        string.words_separator(char.is_whitespace, String))).
 
 %-----------------------------------------------------------------------------%
 

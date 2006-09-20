@@ -52,8 +52,8 @@
 % paper "Constraint-based mode analysis of Mercury" by David Overton,
 % Zoltan Somogyi and Peter Stuckey documents these mode constraints.
 
-    % Represents conjunctions and disjunctions between atomic
-    % constraints on constraint variables.
+    % Represents conjunctions and disjunctions between atomic constraints
+    % on constraint variables.
     %
 :- type constraint_formulae == list(constraint_formula).
 :- type constraint_formula
@@ -114,28 +114,28 @@
     %
 :- type constraint_annotation
     --->    constraint_annotation(
-                context     ::      prog_context
-                                    % Context of the goal this constraint
-                                    % was formed for.
+                % Context of the goal this constraint was formed for.
+                context             ::      prog_context
             ).
 
     % producer/consumer constraints for a predicate.
     %
-:- type pred_p_c_constraints --->
-    pred_constraints(
-        proc_constraints    ::  multi_map(proc_id, constraint_and_annotation),
-                                % Stores procedure specific constraints
-                                % such as mode declaration constraints.
-        pred_constraints    ::  assoc_list(constraint_formula,
-                                    constraint_annotation),
-                                % Stores constraints that apply to all
-                                % procedures of the predicate -
-                                % typically generated from its clauses.
-        mode_infer_callees  ::  set(pred_id)
-                                % Collection of predicates with no
-                                % declared modes that are called by
-                                % this predicate.
-    ).
+:- type pred_p_c_constraints
+    --->    pred_constraints(
+                % Stores procedure specific constraints such as mode
+                % declaration constraints.
+                proc_constraints    ::  multi_map(proc_id,
+                                            constraint_and_annotation),
+
+                % Stores constraints that apply to all procedures of the
+                % predicate - typically generated from its clauses.
+                pred_constraints    ::  assoc_list(constraint_formula,
+                                            constraint_annotation),
+
+                % Collection of predicates with no declared modes that are
+                % called by this predicate.
+                mode_infer_callees  ::  set(pred_id)
+            ).
 
 %-----------------------------------------------------------------------------%
 
@@ -163,15 +163,21 @@
     %
 :- func init = pred_p_c_constraints.
 
-    % add_constraint(Formula, !PredConstraints) adds the constraint
-    % given by Formula to the constraint system in PredConstraints.
+    % add_constraint(Context, Formula, !PredConstraints):
+    %
+    % adds the constraint given by Formula to the constraint system
+    % in PredConstraints.
     %
 :- pred add_constraint(prog_context::in, constraint_formula::in,
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
-    % Adds a procedure specific constraint to the system.
+    % add_proc_specific_constraint(Context, ProcId, Formula, !PredConstraints):
     %
-:- pred add_constraint(prog_context::in, proc_id::in, constraint_formula::in,
+    % adds the constraint given by Formula to the constraint system in
+    % PredConstraints, and associates it specificaly with procedure ProcId.
+    %
+:- pred add_proc_specific_constraint(prog_context::in, proc_id::in,
+    constraint_formula::in,
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
     % add_mode_infer_callee(PredId, !PredConstraints)
@@ -191,11 +197,11 @@
 :- func pred_constraints_to_formulae(pred_p_c_constraints)
     = constraint_formulae.
 
-    % pred_constraints_to_formulae/2 returns all constraints that
+    % pred_constraints_for_proc_to_formulae returns all constraints that
     % apply to the given procedure from the pred_p_c_constraints,
     % including constraints that apply to all procedures.
     %
-:- func pred_constraints_to_formulae(proc_id, pred_p_c_constraints)
+:- func pred_constraints_for_proc_to_formulae(proc_id, pred_p_c_constraints)
     = constraint_formulae.
 
     % pred_constraints_to_formulae_and_annotations returns constraints
@@ -205,12 +211,12 @@
 :- func pred_constraints_to_formulae_and_annotations(pred_p_c_constraints) =
     assoc_list(constraint_formula, constraint_annotation).
 
-    % pred_constraints_to_formulae_and_annotations(ProcId, PredConstraints)
+    % pred_constraints_for_proc_to_formulae_and_annotations
     % returns all constraints that apply to the given procedure from the
     % pred_p_c_constraints, including constraints that apply to all
     % procedures, with their constraint annotations, in pairs.
     %
-:- func pred_constraints_to_formulae_and_annotations(proc_id,
+:- func pred_constraints_for_proc_to_formulae_and_annotations(proc_id,
     pred_p_c_constraints)
     = assoc_list(constraint_formula, constraint_annotation).
 
@@ -239,9 +245,10 @@
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
     % equiv_disj(Context, X, Ys, !Constraints) constrains X and Ys in
-    % Constraints such that (X <-> disj(Ys)) - ie if X is true at least one of
-    % Ys must be true, if X is false, all of Ys must be false. Context should
-    % be the context of the goal or declaration that imposed this constraint.
+    % Constraints such that (X <-> disj(Ys)) - i.e. if X is true at least one
+    % of the Ys must be true, if X is false, all of Ys must be false.
+    % Context should be the context of the goal or declaration that imposed
+    % this constraint.
     %
 :- pred equiv_disj(prog_context::in, mc_var::in, list(mc_var)::in,
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
@@ -269,7 +276,7 @@
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
     % xor(Context, A, B, !Constraints) constrains mode constraint variables A
-    % and B in Constraints by the constraint (A xor B), ie constrains exactly
+    % and B in Constraints by the constraint (A xor B), i.e. constrains exactly
     % one of them to be true. Context should be the context of the goal or
     % declaration that imposed this constraint.
     %
@@ -290,15 +297,13 @@
 
     % Dummy type used to distinguish mode constraint variables.
     %
-:- type mc_type ---> mc_type.
+:- type mc_type
+    --->    mc_type.
 
     % Initialises all the parts of a mode_constraints_info type.
     %
 init = pred_constraints(multi_map.init, [], set.init).
 
-    % add_constraint(Formula, !PredConstraints) adds the constraint
-    % given by Formula to the constraint system in PredConstraints.
-    %
 add_constraint(Context, ConstraintFormula, !PredConstraints) :-
     AllProcsConstraints = !.PredConstraints ^ pred_constraints,
     ConstraintAnnotation = constraint_annotation(Context),
@@ -306,12 +311,8 @@ add_constraint(Context, ConstraintFormula, !PredConstraints) :-
     !:PredConstraints = !.PredConstraints ^ pred_constraints :=
         list.cons(FormulaAndAnnotation, AllProcsConstraints).
 
-    % add_constraint(Context, ProcId, Formula, !PredConstraints) adds the
-    % constraint given by Formula to the constraint system in
-    % PredConstraints, and associates it specificaly with procedure
-    % ProcId.
-    %
-add_constraint(Context, ProcId, ConstraintFormula, !PredConstraints) :-
+add_proc_specific_constraint(Context, ProcId, ConstraintFormula,
+        !PredConstraints) :-
     ProcConstraints = !.PredConstraints ^ proc_constraints,
     ConstraintAnnotation = constraint_annotation(Context),
     FormulaAndAnnotation = pair(ConstraintFormula, ConstraintAnnotation),
@@ -332,7 +333,8 @@ pred_constraints_to_formulae(PCs) = assoc_list.keys(PCs ^ pred_constraints).
     % apply to the given procedure from the pred_p_c_constraints,
     % including constraints that apply to all procedures.
     %
-pred_constraints_to_formulae(ProcId, PredConstraints) = ConstraintFormulae :-
+pred_constraints_for_proc_to_formulae(ProcId, PredConstraints)
+        = ConstraintFormulae :-
     ThisProcConstraints = multi_map.lookup(PredConstraints ^ proc_constraints,
         ProcId),
     AllProcConstraints = PredConstraints ^ pred_constraints,
@@ -351,8 +353,8 @@ pred_constraints_to_formulae_and_annotations(PredConstraints) =
     % pred_p_c_constraints, including constraints that apply to all
     % procedures, with their constraint annotations, in pairs.
     %
-pred_constraints_to_formulae_and_annotations(ProcId, PredConstraints) =
-        ConstraintFormulae :-
+pred_constraints_for_proc_to_formulae_and_annotations(ProcId, PredConstraints)
+        = ConstraintFormulae :-
     ThisProcConstraints = multi_map.lookup(PredConstraints ^ proc_constraints,
         ProcId),
     AllProcConstraints = PredConstraints ^ pred_constraints,
@@ -506,46 +508,46 @@ mc_var_val_to_string(no, "no").
 
 pretty_print_constraints(VarSet, Constraints, !IO) :-
     Indent = "",
-    pretty_print_constraints(VarSet, Constraints, Indent, !IO).
+    pretty_print_constraints_indent(VarSet, Constraints, Indent, !IO).
 
     % Same as before, but with an indent argument used to indent
     % conjunctions and disjunctions of constraints.
     %
-:- pred pretty_print_constraints(mc_varset::in, constraint_formulae::in,
+:- pred pretty_print_constraints_indent(mc_varset::in, constraint_formulae::in,
     string::in, io::di, io::uo) is det.
 
-pretty_print_constraints(_VarSet, [], _Indent, !IO).
-pretty_print_constraints(VarSet, [Constr | Constrs], Indent, !IO) :-
-    pretty_print_constraint(VarSet, Constr, Indent, !IO),
-    pretty_print_constraints(VarSet, Constrs, Indent, !IO).
+pretty_print_constraints_indent(_VarSet, [], _Indent, !IO).
+pretty_print_constraints_indent(VarSet, [Constr | Constrs], Indent, !IO) :-
+    pretty_print_constraint_indent(VarSet, Constr, Indent, !IO),
+    pretty_print_constraints_indent(VarSet, Constrs, Indent, !IO).
 
-    % Prints one constraint_formulae to the output stream. Always
-    % puts a new line at the end.
+    % Prints one constraint_formulae to the output stream. Always puts
+    % a new line at the end.
     %
-:- pred pretty_print_constraint(mc_varset::in, constraint_formula::in,
+:- pred pretty_print_constraint_indent(mc_varset::in, constraint_formula::in,
     string::in, io::di, io::uo) is det.
 
-pretty_print_constraint(VarSet, disj(Constraints), Indent, !IO) :-
+pretty_print_constraint_indent(VarSet, disj(Constraints), Indent, !IO) :-
     io.write_string(Indent, !IO),
     io.write_string("disj(\n", !IO),
-    pretty_print_constraints(VarSet, Constraints, "\t" ++ Indent, !IO),
+    pretty_print_constraints_indent(VarSet, Constraints, "\t" ++ Indent, !IO),
     io.write_string(Indent, !IO),
     io.write_string(") end disj\n", !IO).
 
-pretty_print_constraint(VarSet, conj(Constraints), Indent, !IO) :-
+pretty_print_constraint_indent(VarSet, conj(Constraints), Indent, !IO) :-
     io.write_string(Indent, !IO),
     io.write_string("conj(\n", !IO),
-    pretty_print_constraints(VarSet, Constraints, "\t" ++ Indent, !IO),
+    pretty_print_constraints_indent(VarSet, Constraints, "\t" ++ Indent, !IO),
     io.write_string(Indent, !IO),
     io.write_string(") end conj\n", !IO).
 
-pretty_print_constraint(VarSet, atomic_constraint(Constraint), Indent, !IO) :-
+pretty_print_constraint_indent(VarSet, atomic_constraint(Constraint), Indent,
+        !IO) :-
     io.write_string(Indent, !IO),
     pretty_print_var_constraint(VarSet, Constraint, !IO),
     io.nl(!IO).
 
-    % Prints a var_constraint to the screen. No indents, no line
-    % return.
+    % Prints a var_constraint to the screen. No indents, no line return.
     %
 :- pred pretty_print_var_constraint(mc_varset::in, var_constraint::in,
     io::di, io::uo) is det.

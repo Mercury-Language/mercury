@@ -1209,16 +1209,16 @@ dump_interval_info(IntervalInfo, !IO) :-
     list.condense([StartIds, EndIds, VarsIds, SuccIds], IntervalIds0),
     list.sort_and_remove_dups(IntervalIds0, IntervalIds),
     io.write_string("INTERVALS:\n", !IO),
-    list.foldl(dump_interval_info(IntervalInfo), IntervalIds, !IO),
+    list.foldl(dump_interval_info_id(IntervalInfo), IntervalIds, !IO),
 
     map.to_assoc_list(IntervalInfo ^ anchor_follow_map, AnchorFollows),
     io.write_string("\nANCHOR FOLLOW:\n", !IO),
     list.foldl(dump_anchor_follow, AnchorFollows, !IO).
 
-:- pred dump_interval_info(interval_info::in, interval_id::in, io::di, io::uo)
-    is det.
+:- pred dump_interval_info_id(interval_info::in, interval_id::in,
+    io::di, io::uo) is det.
 
-dump_interval_info(IntervalInfo, IntervalId, !IO) :-
+dump_interval_info_id(IntervalInfo, IntervalId, !IO) :-
     io.write_string("\ninterval ", !IO),
     io.write_int(interval_id_to_int(IntervalId), !IO),
     io.write_string(": ", !IO),

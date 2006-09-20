@@ -673,7 +673,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     % the instance constraints.  (Type variables in the existq_tvars must
     % occur either in the argument types or in the class method context;
     % type variables in the instance types must appear in the arguments.)
-    prog_type.vars_list(ArgTypes1, ArgTVars),
+    type_vars_list(ArgTypes1, ArgTVars),
     prog_constraints_get_tvars(ClassMethodClassContext1, MethodContextTVars),
     constraint_list_get_tvars(InstanceConstraints1, InstanceTVars),
     list.condense([ArgTVars, MethodContextTVars, InstanceTVars], VarsToKeep0),
@@ -1236,9 +1236,9 @@ check_range_restrictedness_2(ClassId, InstanceDefn, FunDep, !ModuleInfo,
     Types = InstanceDefn ^ instance_types,
     FunDep = fundep(Domain, Range),
     DomainTypes = restrict_list_elements(Domain, Types),
-    prog_type.vars_list(DomainTypes, DomainVars),
+    type_vars_list(DomainTypes, DomainVars),
     RangeTypes = restrict_list_elements(Range, Types),
-    prog_type.vars_list(RangeTypes, RangeVars),
+    type_vars_list(RangeTypes, RangeVars),
     solutions.solutions((pred(V::out) is nondet :-
             list.member(V, RangeVars),
             \+ list.member(V, DomainVars)
@@ -1438,7 +1438,7 @@ check_pred_type_ambiguities(PredInfo, !ModuleInfo, !FoundError, !IO) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_class_context(PredInfo, Constraints),
-    prog_type.vars_list(ArgTypes, TVars),
+    type_vars_list(ArgTypes, TVars),
     get_unbound_tvars(TVarSet, TVars, Constraints, !.ModuleInfo, UnboundTVars),
     (
         UnboundTVars = []
@@ -1470,7 +1470,7 @@ check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo,
         !FoundError, !IO) :-
     Ctor = ctor(ExistQVars, Constraints, _, CtorArgs),
     assoc_list.values(CtorArgs, ArgTypes),
-    prog_type.vars_list(ArgTypes, ArgTVars),
+    type_vars_list(ArgTypes, ArgTVars),
     list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
         ArgTVars, ExistQArgTVars),
     get_type_defn_tvarset(TypeDefn, TVarSet),
@@ -1581,7 +1581,7 @@ induced_fundep(Args, fundep(Domain0, Range0), FunDeps)
 
 induced_vars(Args, ArgNum, Vars) = union(Vars, NewVars) :-
     Arg = list.index1_det(Args, ArgNum),
-    prog_type.vars(Arg, ArgVars),
+    type_vars(Arg, ArgVars),
     NewVars = set.list_to_set(ArgVars).
 
 :- func fundeps_closure(induced_fundeps, set(tvar)) = set(tvar).

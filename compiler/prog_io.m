@@ -669,7 +669,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
     % Parse the first term, treating it as occurring within the scope
     % of the special "root" module (so that any `:- module' declaration
     % is taken to be a non-nested module unless explicitly qualified).
-    parser.read_term(SourceFileName, MaybeFirstTerm, !IO),
+    parser.read_term_filename(SourceFileName, MaybeFirstTerm, !IO),
     root_module_name(RootModuleName),
     process_read_term(RootModuleName, MaybeFirstTerm, MaybeFirstItem),
     (
@@ -922,7 +922,7 @@ make_pseudo_include_module_decl(Varset, Context, ModuleSpecifier) =
     io::di, io::uo) is det.
 
 read_item(ModuleName, SourceFileName, MaybeItem, !IO) :-
-    parser.read_term(SourceFileName, MaybeTerm, !IO),
+    parser.read_term_filename(SourceFileName, MaybeTerm, !IO),
     process_read_term(ModuleName, MaybeTerm, MaybeItem).
 
 :- pred process_read_term(module_name::in, read_term::in,

@@ -88,9 +88,9 @@
 
     % As above, but using the supplied table of operators.
     %
-:- func string.string(ops.table, T) = string.
+:- func string.string_ops(ops.table, T) = string.
 
-    % string.string(NonCanon, OpsTable, X, String)
+    % string.string_ops_noncanon(NonCanon, OpsTable, X, String)
     %
     % As above, but the caller specifies what behaviour should occur for
     % non-canonical terms (i.e. terms where multiple representations
@@ -103,11 +103,13 @@
     % - `include_details_cc' will show the structure of any non-canonical
     %   subterms, but can only be called from a committed choice context.
     %
-:- pred string.string(deconstruct.noncanon_handling, ops.table, T, string).
-:- mode string.string(in(do_not_allow), in, in, out) is det.
-:- mode string.string(in(canonicalize), in, in, out) is det.
-:- mode string.string(in(include_details_cc), in, in, out) is cc_multi.
-:- mode string.string(in, in, in, out) is cc_multi.
+:- pred string.string_ops_noncanon(deconstruct.noncanon_handling, ops.table,
+    T, string).
+:- mode string.string_ops_noncanon(in(do_not_allow), in, in, out) is det.
+:- mode string.string_ops_noncanon(in(canonicalize), in, in, out) is det.
+:- mode string.string_ops_noncanon(in(include_details_cc), in, in, out)
+    is cc_multi.
+:- mode string.string_ops_noncanon(in, in, in, out) is cc_multi.
 
     % string.char_to_string(Char, String).
     % Converts a character (single-character atom) to a string or vice versa.
@@ -303,15 +305,15 @@
 
     % True if string contains only alphabetic characters (letters).
     %
-:- pred string.is_alpha(string::in) is semidet.
+:- pred string.is_all_alpha(string::in) is semidet.
 
     % True if string contains only alphabetic characters and underscores.
     %
-:- pred string.is_alpha_or_underscore(string::in) is semidet.
+:- pred string.is_all_alpha_or_underscore(string::in) is semidet.
 
     % True if string contains only letters, digits, and underscores.
     %
-:- pred string.is_alnum_or_underscore(string::in) is semidet.
+:- pred string.is_all_alnum_or_underscore(string::in) is semidet.
 
     % string.pad_left(String0, PadChar, Width, String):
     % Insert `PadChar's at the left of `String0' until it is at least as long
@@ -394,18 +396,18 @@
     %
 :- func string.strip(string) = string.
 
-    % string.lstrip(Pred, String):
+    % string.lstrip_pred(Pred, String):
     % `String' minus the maximal prefix consisting entirely of chars
     % satisfying `Pred'.
     %
-:- func string.lstrip(pred(char)::in(pred(in) is semidet), string::in)
+:- func string.lstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
     = (string::out) is det.
 
-    % string.rstrip(Pred, String):
+    % string.rstrip_pred(Pred, String):
     % `String' minus the maximal suffix consisting entirely of chars
     % satisfying `Pred'.
     %
-:- func string.rstrip(pred(char)::in(pred(in) is semidet), string::in)
+:- func string.rstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
     = (string::out) is det.
 
     % string.prefix_length(Pred, String):
@@ -560,17 +562,18 @@
 :- mode string.foldr_substring(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-    % string.words(SepP, String) returns the list of non-empty substrings
-    % of String (in first to last order) that are delimited by non-empty
-    % sequences of chars matched by SepP. For example,
+    % string.words_separator(SepP, String) returns the list of non-empty
+    % substrings of String (in first to last order) that are delimited
+    % by non-empty sequences of chars matched by SepP. For example,
     %
-    % string.words(char.is_whitespace, " the cat  sat on the  mat") =
+    % string.words_separator(char.is_whitespace, " the cat  sat on the  mat") =
     %   ["the", "cat", "sat", "on", "the", "mat"]
     %
-:- func string.words(pred(char), string) = list(string).
-:- mode string.words(pred(in) is semidet, in) = out is det.
+:- func string.words_separator(pred(char), string) = list(string).
+:- mode string.words_separator(pred(in) is semidet, in) = out is det.
 
-    % string.words(String) = string.words(char.is_whitespace, String).
+    % string.words(String) =
+    %   string.words_separator(char.is_whitespace, String).
     %
 :- func string.words(string) = list(string).
 
@@ -649,12 +652,13 @@
     %
 :- pred string.sub_string_search(string::in, string::in, int::out) is semidet.
 
-    % string.sub_string_search(String, SubString, BeginAt, Index).
+    % string.sub_string_search_start(String, SubString, BeginAt, Index).
     % `Index' is the position in `String' where the first occurrence of
     % `SubString' occurs such that 'Index' is greater than or equal to
     % `BeginAt'.  Indices start at zero,
     %
-:- pred string.sub_string_search(string::in, string::in, int::in, int::out)
+:- pred string.sub_string_search_start(string::in, string::in, int::in,
+    int::out)
     is semidet.
 
     % A function similar to sprintf() in C.
@@ -748,13 +752,13 @@
     %
 :- func string.word_wrap(string, int) = string.
 
-    % word_wrap(Str, N, WordSeparator) = Wrapped.
-    % word_wrap/3 is like word_wrap/2, except that words that need to be broken
-    % up over multiple lines have WordSeparator inserted between each piece.
-    % If the length of WordSeparator is greater that or equal to N, then
-    % no separator is used.
+    % word_wrap_separator(Str, N, WordSeparator) = Wrapped.
+    % word_wrap_separator/3 is like word_wrap/2, except that words that
+    % need to be broken up over multiple lines have WordSeparator inserted
+    % between each piece. If the length of WordSeparator is greater than
+    % or equal to N, then no separator is used.
     %
-:- func string.word_wrap(string, int, string) = string.
+:- func string.word_wrap_separator(string, int, string) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -795,20 +799,20 @@ string.replace_all(Str, Pat, Subst, Result) :-
         Result = append_list([Subst | list.reverse(Foldl)])
     ;
         PatLength = string.length(Pat),
-        ReversedChunks = replace_all(Str, Pat, Subst, PatLength, 0, []),
+        ReversedChunks = replace_all_2(Str, Pat, Subst, PatLength, 0, []),
         Chunks = list.reverse(ReversedChunks),
         Result = string.append_list(Chunks)
     ).
 
-:- func string.replace_all(string, string, string, int, int, list(string))
+:- func string.replace_all_2(string, string, string, int, int, list(string))
     = list(string).
 
-string.replace_all(Str, Pat, Subst, PatLength, BeginAt, Result0) = Result :-
-    ( sub_string_search(Str, Pat, BeginAt, Index) ->
+string.replace_all_2(Str, Pat, Subst, PatLength, BeginAt, Result0) = Result :-
+    ( sub_string_search_start(Str, Pat, BeginAt, Index) ->
         Length = Index - BeginAt,
         Initial = string.unsafe_substring(Str, BeginAt, Length),
         Start = Index + PatLength,
-        Result = string.replace_all(Str, Pat, Subst, PatLength, Start,
+        Result = string.replace_all_2(Str, Pat, Subst, PatLength, Start,
             [Subst, Initial | Result0])
     ;
         Length = string.length(Str) - BeginAt,
@@ -1356,13 +1360,13 @@ string.all_match_2(I, P, String) :-
         true
     ).
 
-string.is_alpha(S) :-
+string.is_all_alpha(S) :-
     string.all_match(char.is_alpha, S).
 
-string.is_alpha_or_underscore(S) :-
+string.is_all_alpha_or_underscore(S) :-
     string.all_match(char.is_alpha_or_underscore, S).
 
-string.is_alnum_or_underscore(S) :-
+string.is_all_alnum_or_underscore(S) :-
     string.all_match(char.is_alnum_or_underscore, S).
 
 string.pad_left(String0, PadChar, Width, String) :-
@@ -1522,10 +1526,11 @@ string.combine_hash(X, H0, H) :-
 %-----------------------------------------------------------------------------%
 
 string.sub_string_search(WholeString, Pattern, Index) :-
-    sub_string_search(WholeString, Pattern, 0, Index).
+    sub_string_search_start(WholeString, Pattern, 0, Index).
 
 :- pragma foreign_proc("C",
-    sub_string_search(WholeString::in, Pattern::in, BeginAt::in, Index::out),
+    sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
+        Index::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "{
     char *match;
@@ -1539,7 +1544,8 @@ string.sub_string_search(WholeString, Pattern, Index) :-
 }").
 
 :- pragma foreign_proc("C#",
-    sub_string_search(WholeString::in, Pattern::in, BeginAt::in, Index::out),
+    sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
+        Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     Index = WholeString.IndexOf(Pattern, BeginAt);
@@ -1547,17 +1553,17 @@ string.sub_string_search(WholeString, Pattern, Index) :-
 }").
 
 % This is only used if there is no matching foreign_proc definition
-sub_string_search(String, SubString, BeginAt, Index) :-
-    sub_string_search_2(String, SubString, BeginAt, length(String),
+sub_string_search_start(String, SubString, BeginAt, Index) :-
+    sub_string_search_start_2(String, SubString, BeginAt, length(String),
         length(SubString), Index).
 
     % Brute force string searching. For short Strings this is good;
     % for longer strings Boyer-Moore is much better.
     %
-:- pred sub_string_search_2(string::in, string::in, int::in, int::in, int::in,
-    int::out) is semidet.
+:- pred sub_string_search_start_2(string::in, string::in, int::in, int::in,
+    int::in, int::out) is semidet.
 
-sub_string_search_2(String, SubString, I, Length, SubLength, Index) :-
+sub_string_search_start_2(String, SubString, I, Length, SubLength, Index) :-
     I < Length,
     (
         % XXX This is inefficient -- there is no (in, in, in) = in is semidet
@@ -1568,7 +1574,8 @@ sub_string_search_2(String, SubString, I, Length, SubLength, Index) :-
     ->
         Index = I
     ;
-        sub_string_search_2(String, SubString, I + 1, Length, SubLength, Index)
+        sub_string_search_start_2(String, SubString, I + 1, Length, SubLength,
+            Index)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2960,14 +2967,14 @@ change_precision(Prec, OldFloat) = NewFloat :-
 :- pred split_at_exponent(string::in, string::out, string::out) is det.
 
 split_at_exponent(Str, Float, Exponent) :-
-    FloatAndExponent = string.words(is_exponent, Str),
+    FloatAndExponent = string.words_separator(is_exponent, Str),
     list.index0_det(FloatAndExponent, 0, Float),
     list.index0_det(FloatAndExponent, 1, Exponent).
 
 :- pred split_at_decimal_point(string::in, string::out, string::out) is det.
 
 split_at_decimal_point(Str, Mantissa, Fraction) :-
-    MantAndFrac = string.words(is_decimal_point, Str),
+    MantAndFrac = string.words_separator(is_decimal_point, Str),
     list.index0_det(MantAndFrac, 0, Mantissa),
     ( list.index0(MantAndFrac, 1, Fraction0) ->
         Fraction = Fraction0
@@ -4052,7 +4059,7 @@ string.format(S1, PT) = S2 :-
 
 %------------------------------------------------------------------------------%
 
-string.words(SepP, String) = Words :-
+string.words_separator(SepP, String) = Words :-
     I = preceding_boundary(isnt(SepP), String, string.length(String) - 1),
     Words = words_2(SepP, String, I, []).
 
@@ -4074,7 +4081,7 @@ words_2(SepP, String, WordEnd, Words0) = Words :-
 
 %------------------------------------------------------------------------------%
 
-string.words(String) = string.words(char.is_whitespace, String).
+string.words(String) = string.words_separator(char.is_whitespace, String).
 
 %------------------------------------------------------------------------------%
 
@@ -4124,11 +4131,11 @@ chomp(S) =
 
 %-----------------------------------------------------------------------------%
 
-rstrip(S) = rstrip(is_whitespace, S).
+rstrip(S) = rstrip_pred(is_whitespace, S).
 
 %-----------------------------------------------------------------------------%
 
-lstrip(S) = lstrip(is_whitespace, S).
+lstrip(S) = lstrip_pred(is_whitespace, S).
 
 %-----------------------------------------------------------------------------%
 
@@ -4139,11 +4146,11 @@ strip(S0) = S :-
 
 %-----------------------------------------------------------------------------%
 
-rstrip(P, S) = left(S, length(S) - suffix_length(P, S)).
+rstrip_pred(P, S) = left(S, length(S) - suffix_length(P, S)).
 
 %-----------------------------------------------------------------------------%
 
-lstrip(P, S) = right(S, length(S) - prefix_length(P, S)).
+lstrip_pred(P, S) = right(S, length(S) - prefix_length(P, S)).
 
 %-----------------------------------------------------------------------------%
 
@@ -4199,12 +4206,13 @@ add_revstring(String, RevStrings, [String | RevStrings]).
 % Various different versions of univ_to_string.
 
 string.string(Univ) = String :-
-    string.string(canonicalize, ops.init_mercury_op_table, Univ, String).
+    string.string_ops_noncanon(canonicalize, ops.init_mercury_op_table,
+        Univ, String).
 
-string.string(OpsTable, Univ) = String :-
-    string.string(canonicalize, OpsTable, Univ, String).
+string.string_ops(OpsTable, Univ) = String :-
+    string.string_ops_noncanon(canonicalize, OpsTable, Univ, String).
 
-string.string(NonCanon, OpsTable, X, String) :-
+string.string_ops_noncanon(NonCanon, OpsTable, X, String) :-
     value_to_revstrings(NonCanon, OpsTable, X, [], RevStrings),
     String = string.append_list(list.reverse(RevStrings)).
 
@@ -4218,22 +4226,22 @@ string.string(NonCanon, OpsTable, X, String) :-
 
 value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
     Priority = ops.max_priority(OpsTable) + 1,
-    value_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs).
+    value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs).
 
-:- pred value_to_revstrings(deconstruct.noncanon_handling,
+:- pred value_to_revstrings_prio(deconstruct.noncanon_handling,
     ops.table, ops.priority, T, revstrings, revstrings).
-:- mode value_to_revstrings(in(do_not_allow), in, in, in, in, out) is det.
-:- mode value_to_revstrings(in(canonicalize), in, in, in, in, out) is det.
-:- mode value_to_revstrings(in(include_details_cc), in, in, in, in, out)
+:- mode value_to_revstrings_prio(in(do_not_allow), in, in, in, in, out) is det.
+:- mode value_to_revstrings_prio(in(canonicalize), in, in, in, in, out) is det.
+:- mode value_to_revstrings_prio(in(include_details_cc), in, in, in, in, out)
     is cc_multi.
-:- mode value_to_revstrings(in, in, in, in, in, out) is cc_multi.
+:- mode value_to_revstrings_prio(in, in, in, in, in, out) is cc_multi.
 
-value_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
+value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
     %
     % we need to special-case the builtin types:
     %   int, char, float, string
     %   type_info, univ, c_pointer, array
-    %   and private_builtin:type_info
+    %   and private_builtin.type_info
     %
     ( dynamic_cast(X, String) ->
         add_revstring(term_io.quoted_string(String), !Rs)
@@ -4350,7 +4358,7 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
         add_revstring(term_io.quoted_atom(Functor), !Rs),
         add_revstring(" ", !Rs),
         adjust_priority(OpPriority, OpAssoc, NewPriority),
-        value_to_revstrings(NonCanon, OpsTable, NewPriority,
+        value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
             univ_value(PrefixArg), !Rs),
         maybe_add_revstring(")", Priority, OpPriority, !Rs)
     ;
@@ -4359,7 +4367,7 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
     ->
         maybe_add_revstring("(", Priority, OpPriority, !Rs),
         adjust_priority(OpPriority, OpAssoc, NewPriority),
-        value_to_revstrings(NonCanon, OpsTable, NewPriority,
+        value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
             univ_value(PostfixArg), !Rs),
         add_revstring(" ", !Rs),
         add_revstring(term_io.quoted_atom(Functor), !Rs),
@@ -4371,7 +4379,7 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
     ->
         maybe_add_revstring("(", Priority, OpPriority, !Rs),
         adjust_priority(OpPriority, LeftAssoc, LeftPriority),
-        value_to_revstrings(NonCanon, OpsTable, LeftPriority,
+        value_to_revstrings_prio(NonCanon, OpsTable, LeftPriority,
             univ_value(Arg1), !Rs),
         ( Functor = "," ->
             add_revstring(", ", !Rs)
@@ -4381,7 +4389,7 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
             add_revstring(" ", !Rs)
         ),
         adjust_priority(OpPriority, RightAssoc, RightPriority),
-        value_to_revstrings(NonCanon, OpsTable, RightPriority,
+        value_to_revstrings_prio(NonCanon, OpsTable, RightPriority,
             univ_value(Arg2), !Rs),
         maybe_add_revstring(")", Priority, OpPriority, !Rs)
     ;
@@ -4393,11 +4401,11 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
         add_revstring(term_io.quoted_atom(Functor), !Rs),
         add_revstring(" ", !Rs),
         adjust_priority(OpPriority, FirstAssoc, FirstPriority),
-        value_to_revstrings(NonCanon, OpsTable, FirstPriority,
+        value_to_revstrings_prio(NonCanon, OpsTable, FirstPriority,
             univ_value(Arg1), !Rs),
         add_revstring(" ", !Rs),
         adjust_priority(OpPriority, SecondAssoc, SecondPriority),
-        value_to_revstrings(NonCanon, OpsTable, SecondPriority,
+        value_to_revstrings_prio(NonCanon, OpsTable, SecondPriority,
             univ_value(Arg2), !Rs),
         maybe_add_revstring(")", Priority, OpPriority, !Rs)
     ;
@@ -4411,7 +4419,7 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
             add_revstring(")", !Rs)
         ;
             add_revstring(
-                term_io.quoted_atom(Functor,
+                term_io.quoted_atom_agt(Functor,
                     term_io.maybe_adjacent_to_graphic_token),
                 !Rs
             )
@@ -4496,7 +4504,7 @@ term_args_to_revstrings(NonCanon, OpsTable, [X | Xs], !Rs) :-
 
 arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
     Priority = comma_priority(OpsTable),
-    value_to_revstrings(NonCanon, OpsTable, Priority, univ_value(X), !Rs).
+    value_to_revstrings_prio(NonCanon, OpsTable, Priority, univ_value(X), !Rs).
 
 :- func comma_priority(ops.table) = ops.priority.
 
@@ -4644,15 +4652,15 @@ max_str_length(Str, PrevMaxLen, MaxLen, PrevMaxStr, MaxStr) :-
 
 %-----------------------------------------------------------------------------%
 
-string.word_wrap(Str, N) = string.word_wrap(Str, N, "").
+word_wrap(Str, N) = word_wrap_separator(Str, N, "").
 
-string.word_wrap(Str, N, WordSep) = Wrapped :-
-    Words = string.words(char.is_whitespace, Str),
+word_wrap_separator(Str, N, WordSep) = Wrapped :-
+    Words = string.words_separator(char.is_whitespace, Str),
     SepLen = string.length(WordSep),
     ( SepLen < N ->
-        string.word_wrap_2(Words, WordSep, SepLen, 1, N, [], Wrapped)
+        word_wrap_2(Words, WordSep, SepLen, 1, N, [], Wrapped)
     ;
-        string.word_wrap_2(Words, "", 0, 1, N, [], Wrapped)
+        word_wrap_2(Words, "", 0, 1, N, [], Wrapped)
     ).
 
 :- pred word_wrap_2(list(string)::in, string::in, int::in, int::in, int::in,

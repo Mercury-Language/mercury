@@ -41,11 +41,12 @@
 
 :- func dump_livemap(livemap) = string.
 
-:- func dump_livemap(proc_label, livemap) = string.
+:- func dump_livemap_for_proc(proc_label, livemap) = string.
 
 :- func dump_livemaplist(assoc_list(label, lvalset)) = string.
 
-:- func dump_livemaplist(proc_label, assoc_list(label, lvalset)) = string.
+:- func dump_livemaplist_for_proc(proc_label, assoc_list(label, lvalset))
+    = string.
 
 :- func dump_livevals(lvalset) = string.
 
@@ -85,11 +86,11 @@
 
 :- func dump_label(label) = string.
 
-:- func dump_label(proc_label, label) = string.
+:- func dump_label_for_proc(proc_label, label) = string.
 
 :- func dump_labels(list(label)) = string.
 
-:- func dump_labels(proc_label, list(label)) = string.
+:- func dump_labels_for_proc(proc_label, list(label)) = string.
 
 :- func dump_label_pairs(list(pair(label))) = string.
 
@@ -99,11 +100,11 @@
 
 :- func dump_code_addr(code_addr) = string.
 
-:- func dump_code_addr(proc_label, code_addr) = string.
+:- func dump_code_addr_for_proc(proc_label, code_addr) = string.
 
 :- func dump_code_addrs(list(code_addr)) = string.
 
-:- func dump_code_addrs(proc_label, list(code_addr)) = string.
+:- func dump_code_addrs_for_proc(proc_label, list(code_addr)) = string.
 
 :- func dump_bool(bool) = string.
 
@@ -208,18 +209,19 @@ dump_intlist([H | T]) =
 dump_livemap(Livemap) =
     dump_livemaplist(map.to_assoc_list(Livemap)).
 
-dump_livemap(ProcLabel, Livemap) =
-    dump_livemaplist(ProcLabel, map.to_assoc_list(Livemap)).
+dump_livemap_for_proc(ProcLabel, Livemap) =
+    dump_livemaplist_for_proc(ProcLabel, map.to_assoc_list(Livemap)).
 
 dump_livemaplist([]) = "".
 dump_livemaplist([Label - Lvalset | Livemaplist]) =
     dump_label(Label) ++ " ->" ++ dump_livevals(Lvalset) ++ "\n"
         ++ dump_livemaplist(Livemaplist).
 
-dump_livemaplist(_ProcLabel, []) = "".
-dump_livemaplist(ProcLabel, [Label - Lvalset | Livemaplist]) =
-    dump_label(ProcLabel, Label) ++ " ->" ++ dump_livevals(Lvalset) ++ "\n"
-        ++ dump_livemaplist(ProcLabel, Livemaplist).
+dump_livemaplist_for_proc(_ProcLabel, []) = "".
+dump_livemaplist_for_proc(ProcLabel, [Label - Lvalset | Livemaplist]) =
+    dump_label_for_proc(ProcLabel, Label) ++ " ->" ++
+        dump_livevals(Lvalset) ++ "\n" ++
+        dump_livemaplist_for_proc(ProcLabel, Livemaplist).
 
 dump_livevals(Lvalset) =
     dump_livelist(set.to_sorted_list(Lvalset)).
@@ -542,9 +544,9 @@ dump_code_addr(do_call_class_method(Variant)) =
     "do_call_class_method_" ++ ho_call_variant_to_string(Variant).
 dump_code_addr(do_not_reached) = "do_not_reached".
 
-dump_code_addr(ProcLabel, CodeAddr) =
+dump_code_addr_for_proc(ProcLabel, CodeAddr) =
     ( CodeAddr = label(Label) ->
-        dump_label(ProcLabel, Label)
+        dump_label_for_proc(ProcLabel, Label)
     ;
         dump_code_addr(CodeAddr)
     ).
@@ -553,24 +555,24 @@ dump_code_addrs([]) = "".
 dump_code_addrs([Addr | Addrs]) =
     " " ++ dump_code_addr(Addr) ++ dump_code_addrs(Addrs).
 
-dump_code_addrs(_, []) = "".
-dump_code_addrs(ProcLabel, [Addr | Addrs]) =
-    " " ++ dump_code_addr(ProcLabel, Addr)
-        ++ dump_code_addrs(ProcLabel, Addrs).
+dump_code_addrs_for_proc(_, []) = "".
+dump_code_addrs_for_proc(ProcLabel, [Addr | Addrs]) =
+    " " ++ dump_code_addr_for_proc(ProcLabel, Addr) ++
+        dump_code_addrs_for_proc(ProcLabel, Addrs).
 
 dump_label(internal(N, ProcLabel)) =
     dump_proclabel(ProcLabel) ++ "_i" ++ int_to_string(N).
 dump_label(entry(_, ProcLabel)) =
     dump_proclabel(ProcLabel).
 
-dump_label(CurProcLabel, internal(N, ProcLabel)) = Str :-
+dump_label_for_proc(CurProcLabel, internal(N, ProcLabel)) = Str :-
     string.int_to_string(N, N_str),
     ( CurProcLabel = ProcLabel ->
         Str = "local_" ++ N_str
     ;
         Str = dump_proclabel(ProcLabel) ++ "_" ++ N_str
     ).
-dump_label(CurProcLabel, entry(_, ProcLabel)) = Str :-
+dump_label_for_proc(CurProcLabel, entry(_, ProcLabel)) = Str :-
     ( CurProcLabel = ProcLabel ->
         Str = "CUR_PROC_ENTRY"
     ;
@@ -581,9 +583,10 @@ dump_labels([]) = "".
 dump_labels([Label | Labels]) =
     " " ++ dump_label(Label) ++ dump_labels(Labels).
 
-dump_labels(_, []) = "".
-dump_labels(ProcLabel, [Label | Labels]) =
-    " " ++ dump_label(ProcLabel, Label) ++ dump_labels(ProcLabel, Labels).
+dump_labels_for_proc(_, []) = "".
+dump_labels_for_proc(ProcLabel, [Label | Labels]) =
+    " " ++ dump_label_for_proc(ProcLabel, Label) ++
+        dump_labels_for_proc(ProcLabel, Labels).
 
 dump_label_pairs([]) = "".
 dump_label_pairs([L1 - L2 | Labels]) =
@@ -659,14 +662,14 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             CallModel = call_model_nondet(unchecked_tail_call),
             CallModelStr = "nondet unchecked_tail_call"
         ),
-        Str = "call(" ++ dump_code_addr(ProcLabel, Callee) ++ ", "
-            ++ dump_code_addr(ProcLabel, ReturnLabel) ++ ", ..., "
+        Str = "call(" ++ dump_code_addr_for_proc(ProcLabel, Callee) ++ ", "
+            ++ dump_code_addr_for_proc(ProcLabel, ReturnLabel) ++ ", ..., "
             ++ CallModelStr ++ ")"
     ;
         Instr = mkframe(FrameInfo, MaybeRedoip),
         (
             MaybeRedoip = yes(Redoip),
-            R_str = dump_code_addr(ProcLabel, Redoip)
+            R_str = dump_code_addr_for_proc(ProcLabel, Redoip)
         ;
             MaybeRedoip = no,
             R_str = "no_redoip"
@@ -694,21 +697,21 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         )
     ;
         Instr = label(Label),
-        Str = dump_label(ProcLabel, Label) ++ ":"
+        Str = dump_label_for_proc(ProcLabel, Label) ++ ":"
     ;
         Instr = goto(CodeAddr),
-        Str = "goto " ++ dump_code_addr(ProcLabel, CodeAddr)
+        Str = "goto " ++ dump_code_addr_for_proc(ProcLabel, CodeAddr)
     ;
         Instr = computed_goto(Rval, Labels),
         Str = "computed_goto " ++ dump_rval(Rval) ++ ":"
-            ++ dump_labels(ProcLabel, Labels)
+            ++ dump_labels_for_proc(ProcLabel, Labels)
     ;
         Instr = arbitrary_c_code(Code, _),
         Str = "arbitrary_c_code(" ++ Code ++ ")"
     ;
         Instr = if_val(Rval, CodeAddr),
         Str = "if (" ++ dump_rval(Rval) ++ ") goto "
-            ++ dump_code_addr(ProcLabel, CodeAddr)
+            ++ dump_code_addr_for_proc(ProcLabel, CodeAddr)
     ;
         Instr = save_maxfr(Lval),
         Str = "save_maxfr(" ++ dump_lval(Lval) ++ ")"
@@ -776,8 +779,8 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             ++ int_to_string(N) ++")"
     ;
         Instr = fork(Child, Parent, NumSlots),
-        Str = "fork(" ++ dump_label(ProcLabel, Child) ++ ", "
-            ++ dump_label(ProcLabel, Parent) ++ ", "
+        Str = "fork(" ++ dump_label_for_proc(ProcLabel, Child) ++ ", "
+            ++ dump_label_for_proc(ProcLabel, Parent) ++ ", "
             ++ int_to_string(NumSlots) ++ ")"
     ;
         Instr = join_and_terminate(Lval),
@@ -785,17 +788,17 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
     ;
         Instr = join_and_continue(Lval, Label),
         Str = "join(" ++ dump_lval(Lval) ++ ", "
-            ++ dump_label(ProcLabel, Label) ++ ")"
+            ++ dump_label_for_proc(ProcLabel, Label) ++ ")"
     ;
         Instr = pragma_c(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF, SSR, MD),
         Str = "pragma_c(\n"
             ++ "declarations:\n" ++ dump_decls(Decls)
             ++ "components:\n" ++ dump_components(ProcLabel, Comps)
             ++ dump_may_call_mercury(MCM) ++ "\n"
-            ++ dump_maybe_label("fix nolayout:", ProcLabel, MFNL)
-            ++ dump_maybe_label("fix layout:", ProcLabel, MFL)
-            ++ dump_maybe_label("fix onlylayout:", ProcLabel, MFOL)
-            ++ dump_maybe_label("nofix:", ProcLabel, MNF)
+            ++ dump_maybe_label_for_proc("fix nolayout:", ProcLabel, MFNL)
+            ++ dump_maybe_label_for_proc("fix layout:", ProcLabel, MFL)
+            ++ dump_maybe_label_for_proc("fix onlylayout:", ProcLabel, MFOL)
+            ++ dump_maybe_label_for_proc("nofix:", ProcLabel, MNF)
             ++ dump_bool("stack slot ref:", SSR)
             ++ dump_bool("may duplicate:", MD)
             ++ ")"
@@ -806,11 +809,11 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
 dump_may_call_mercury(proc_may_call_mercury) = "may_call_mercury".
 dump_may_call_mercury(proc_will_not_call_mercury) = "will_not_call_mercury".
 
-:- func dump_maybe_label(string, proc_label, maybe(label)) = string.
+:- func dump_maybe_label_for_proc(string, proc_label, maybe(label)) = string.
 
-dump_maybe_label(_Msg, _ProcLabel, no) = "".
-dump_maybe_label(Msg, ProcLabel, yes(Label)) =
-    Msg ++ " " ++ dump_label(ProcLabel, Label) ++ "\n".
+dump_maybe_label_for_proc(_Msg, _ProcLabel, no) = "".
+dump_maybe_label_for_proc(Msg, ProcLabel, yes(Label)) =
+    Msg ++ " " ++ dump_label_for_proc(ProcLabel, Label) ++ "\n".
 
 :- func dump_bool(string, bool) = string.
 
@@ -848,7 +851,7 @@ dump_component(_, pragma_c_outputs(Outputs)) = dump_output_components(Outputs).
 dump_component(_, pragma_c_user_code(_, Code)) = Code ++ "\n".
 dump_component(_, pragma_c_raw_code(Code, _, _)) = Code ++ "\n".
 dump_component(ProcLabel, pragma_c_fail_to(Label)) =
-    "fail to " ++ dump_label(ProcLabel, Label) ++ "\n".
+    "fail to " ++ dump_label_for_proc(ProcLabel, Label) ++ "\n".
 dump_component(_, pragma_c_noop) = "".
 
 :- func dump_input_components(list(pragma_c_input)) = string.

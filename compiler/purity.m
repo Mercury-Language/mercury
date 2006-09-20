@@ -694,7 +694,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     map.lookup(VarTypes, Var, TypeOfVar),
     (
         ConsId = cons(PName, _),
-        type_is_higher_order(TypeOfVar, TypePurity, PredOrFunc,
+        type_is_higher_order_details(TypeOfVar, TypePurity, PredOrFunc,
             _EvalMethod, VarArgTypes)
     ->
         PredInfo = !.Info ^ pred_info,

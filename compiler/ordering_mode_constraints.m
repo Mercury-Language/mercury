@@ -256,7 +256,8 @@ proc_reordering(PredConstraints, VarMap, PredId, ProcId, !Errors, !PredInfo) :-
     pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
 
-    ConstraintFormulae = pred_constraints_to_formulae(ProcId, PredConstraints),
+    ConstraintFormulae =
+        pred_constraints_for_proc_to_formulae(ProcId, PredConstraints),
 
     PrepConstraints0 = new_prep_cstrts,
     prepare_abstract_constraints(ConstraintFormulae, PrepConstraints0,
@@ -556,7 +557,7 @@ prog_var_ordering_constraints(VarMap, Bindings, _ProgVar, RepVars, !OCInfo) :-
         % Variable not produced here - no constraints.
     ;
         ProgVarAtProducers = [RepVar],      % Should be only one producer
-        First = get_position_in_conj(RepVar),
+        get_position_in_conj(RepVar, First),
         list.map(get_position_in_conj, ProgVarAtConsumers, Laters),
 
         list.foldl(add_lt_constraint(First), Laters, !OCInfo)
@@ -572,20 +573,13 @@ prog_var_ordering_constraints(VarMap, Bindings, _ProgVar, RepVars, !OCInfo) :-
 produced_at_path(VarMap, Bindings, RepVar) :-
     map.lookup(Bindings, bimap.lookup(VarMap, RepVar)) = yes.
 
-    % get_position_in_conj(RepVar) fails if the deepest level of the
-    % goalpath in RepVar is not a conjunction, otherwise it returns
+    % get_position_in_conj(RepVar, N) fails if the deepest level of the
+    % goalpath in RepVar is not a conjunction, otherwise it returns in N
     % the number of the conjunct the RepVar refers to.
-    %
-:- func get_position_in_conj(mc_rep_var::in) = (conjunct_id::out) is semidet.
-
-get_position_in_conj(_ProgVar `in` _PredId `at` [conj(N) | _]) = N.
-
-    % Predicate version of get_position_in_conj
     %
 :- pred get_position_in_conj(mc_rep_var::in, conjunct_id::out) is semidet.
 
-get_position_in_conj(RepVar, ConjID) :-
-    ConjID = get_position_in_conj(RepVar).
+get_position_in_conj(_ProgVar `in` _PredId `at` [conj(N) | _], N).
 
 %-----------------------------------------------------------------------------%
 

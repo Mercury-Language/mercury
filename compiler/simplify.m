@@ -1782,7 +1782,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
             Context, GoalInfo0, Call)
 
-    ; type_is_higher_order(Type, _, _, _, _) ->
+    ; type_is_higher_order(Type) ->
         % Convert higher-order unifications into calls to
         % builtin_unify_pred (which calls error/1).
         goal_info_get_context(GoalInfo0, GContext),
@@ -1914,7 +1914,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
         % Call polymorphism.m to create the type_infos.
         create_poly_info(ModuleInfo0, !.PredInfo, !.ProcInfo, !:PolyInfo),
         term.context_init(Context),
-        polymorphism.make_type_info_vars(Types, Context,
+        polymorphism_make_type_info_vars(Types, Context,
             TypeInfoVars, TypeInfoGoals, !PolyInfo),
         poly_info_extract(!.PolyInfo, !PredInfo, !ProcInfo, ModuleInfo1),
 

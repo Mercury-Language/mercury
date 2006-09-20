@@ -669,12 +669,13 @@ add_goal_expr_constraints(_ModuleInfo, _ProgVarset, _PredId,
 
 mode_decls_constraints(ModuleInfo, VarMap, PredId, Decls, HeadVarsList,
         Constraints) :-
-
     % Transform each headvar into the constraint variable representing
     % the proposition that it is produced at the empty goal path (ie
     % that it is produced by a call to the predicate).
     HeadVarsMCVars =
-        list.map(list.map(prog_var_at_path(VarMap, PredId, [])), HeadVarsList),
+        list.map(list.map(lookup_prog_var_at_path(VarMap, PredId, [])),
+            HeadVarsList),
+
     % Make the constraints for each declaration.
     ConstraintsList = list.map_corresponding(
         mode_decl_constraints(ModuleInfo), HeadVarsMCVars, Decls),
@@ -696,8 +697,8 @@ add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
 
     DeclConstraints = mode_decl_constraints(ModuleInfo, ArgsAtHead, Decl),
 
-    list.foldl(abstract_mode_constraints.add_constraint(Context, ProcId),
-        DeclConstraints, !Constraints).
+    list.foldl(add_proc_specific_constraint(Context, ProcId), DeclConstraints,
+        !Constraints).
 
     % add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
     %   CallingPred, Decls, GoalPath, CallArgs, !VarInfo, !Constraints)
@@ -875,7 +876,7 @@ add_goal_nonlocals_to_conjunct_production_maps(VarMap, PredId, Nonlocals,
 
 add_variable_to_conjunct_production_map(VarMap, PredId, GoalPath, ProgVar,
         !ConjunctProductionMap) :-
-    MCVar = prog_var_at_path(VarMap, PredId, GoalPath, ProgVar),
+    MCVar = lookup_prog_var_at_path(VarMap, PredId, GoalPath, ProgVar),
     svmulti_map.set(ProgVar, MCVar, !ConjunctProductionMap).
 
     % add_nonlocal_var_conj_constraints(ProgVarset, PredId, Context, GoalPath,
@@ -949,7 +950,7 @@ prog_var_at_path(ProgVarset, PredId, ProgVar, GoalPath, MCVar, !VarInfo) :-
     !.VarInfo = mc_var_info(MCVarset0, VarMap0),
     ensure_prog_var_at_path(ProgVarset, PredId, GoalPath, ProgVar,
         MCVarset0, MCVarset, VarMap0, VarMap),
-    MCVar = prog_var_at_path(VarMap, PredId, GoalPath, ProgVar),
+    MCVar = lookup_prog_var_at_path(VarMap, PredId, GoalPath, ProgVar),
     !:VarInfo = mc_var_info(MCVarset, VarMap).
 
     % prog_var_at_paths(ProgVarset, PredId, ProgVar, GoalPaths, MCVars,
@@ -1012,7 +1013,8 @@ ensure_prog_var_at_path(ProgVarset, PredId, GoalPath, ProgVar,
         svbimap.det_insert(RepVar, NewMCVar, !VarMap)
     ).
 
-    % prog_var_at_path(VarMap, PredId, GoalPath, ProgVar) = ConstraintVar:
+    % lookup_prog_var_at_path(VarMap, PredId, GoalPath, ProgVar)
+    %   = ConstraintVar:
     %
     % Consults the VarMap to get the constraint variable ConstraintVar
     % that represents the proposition that ProgVar is produced at
@@ -1020,9 +1022,10 @@ ensure_prog_var_at_path(ProgVarset, PredId, GoalPath, ProgVar,
     % error if the key (ProgVar `in` PredId) `at` GoalPath does not
     % exist in the map.
     %
-:- func prog_var_at_path(mc_var_map, pred_id, goal_path, prog_var) = mc_var.
+:- func lookup_prog_var_at_path(mc_var_map, pred_id, goal_path, prog_var)
+    = mc_var.
 
-prog_var_at_path(VarMap, PredId, GoalPath, ProgVar) =
+lookup_prog_var_at_path(VarMap, PredId, GoalPath, ProgVar) =
     bimap.lookup(VarMap, ((ProgVar `in` PredId) `at` GoalPath)).
 
     % Retrieves the mode constraint var as per prog_var_at_path, but
@@ -1032,7 +1035,7 @@ prog_var_at_path(VarMap, PredId, GoalPath, ProgVar) =
     list(mc_var)) = list(mc_var).
 
 cons_prog_var_at_path(VarMap, PredId, GoalPath, ProgVar, MCVars) =
-    [prog_var_at_path(VarMap, PredId, GoalPath, ProgVar) | MCVars].
+    [lookup_prog_var_at_path(VarMap, PredId, GoalPath, ProgVar) | MCVars].
 
     % prog_var_at_paths(VarMap, GoalPaths, ProgVar) = ConstraintVars
     % consults the map to form a list of the constraint variable
@@ -1046,7 +1049,8 @@ cons_prog_var_at_path(VarMap, PredId, GoalPath, ProgVar, MCVars) =
 
 prog_var_at_paths(VarMap, PredId, GoalPaths, ProgVar) =
     list.map(
-        func(GoalPath) = prog_var_at_path(VarMap, PredId, GoalPath, ProgVar),
+        func(GoalPath) =
+            lookup_prog_var_at_path(VarMap, PredId, GoalPath, ProgVar),
         GoalPaths).
 
     % nonlocals_at_path_and_subpaths(ProgVarset, GoalPath, SubPaths,

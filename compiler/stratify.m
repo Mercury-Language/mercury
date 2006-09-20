@@ -669,7 +669,7 @@ higherorder_in_out1([Type | Types], [Mode | Modes], ModuleInfo,
         % XXX Will have to use a more general check for higher order constants
         % in parameters user could hide higher order consts in a data structure
         % etc..
-        type_is_higher_order(Type, _, _, _, _)
+        type_is_higher_order(Type)
     ->
         ( mode_is_input(ModuleInfo, Mode) ->
             !:HOIn = yes

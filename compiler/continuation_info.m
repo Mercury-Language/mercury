@@ -557,7 +557,7 @@ some_arg_is_higher_order(PredInfo) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),
     some [Type] (
         list.member(Type, ArgTypes),
-        type_is_higher_order(Type, _, _, _, _)
+        type_is_higher_order(Type)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -725,7 +725,7 @@ generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
         LldsInst = llds_inst_partial(Inst)
     ),
     LiveValueType = live_value_var(Var, Name, Type, LldsInst),
-    prog_type.vars(Type, TypeVars).
+    type_vars(Type, TypeVars).
 
 %---------------------------------------------------------------------------%
 
@@ -764,7 +764,7 @@ build_closure_info([Var | Vars], [Type | Types],
     Layout = closure_arg_info(Type, Inst),
     set.singleton_set(Locations, reg(reg_r, ArgLoc)),
     svmap.det_insert(Var, Locations, !VarLocs),
-    prog_type.vars(Type, VarTypeVars),
+    type_vars(Type, VarTypeVars),
     svset.insert_list(VarTypeVars, !TypeVars),
     build_closure_info(Vars, Types, ArgInfos, Layouts, InstMap,
         !VarLocs, !TypeVars).
@@ -823,7 +823,7 @@ build_table_arg_info(VarTypes, [Var - SlotNum | NumberedVars],
         [ArgLayout | ArgLayouts], !TypeVars) :-
     map.lookup(VarTypes, Var, Type),
     ArgLayout = table_arg_info(Var, SlotNum, Type),
-    prog_type.vars(Type, VarTypeVars),
+    type_vars(Type, VarTypeVars),
     svset.insert_list(VarTypeVars, !TypeVars),
     build_table_arg_info(VarTypes, NumberedVars, ArgLayouts, !TypeVars).
 

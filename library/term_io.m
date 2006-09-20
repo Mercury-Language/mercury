@@ -161,7 +161,23 @@
 % and will not be included in the Mercury library reference manual.
 
 %-----------------------------------------------------------------------------%
+
 :- interface.
+
+    % Convert a character to the corresponding octal escape code.
+    %
+    % We use ISO-Prolog style octal escapes, which are of the form '\nnn\';
+    % note that unlike C octal escapes, they are terminated with a backslash.
+    %
+    % XXX Using this predicate in the compiler may cause problems interfacing
+    % with versions of the compiler that have been built in grades which use
+    % different character representations.
+    %
+:- func mercury_escape_char(char) = string.
+
+    % Succeed if the given character is a Mercury punctuation character.
+    %
+:- pred is_mercury_punctuation_char(char::in) is semidet.
 
     % for use by io.m.
 
@@ -169,10 +185,10 @@
     --->    maybe_adjacent_to_graphic_token
     ;       not_adjacent_to_graphic_token.
 
-:- pred term_io.quote_atom(string::in, adjacent_to_graphic_token::in,
+:- pred term_io.quote_atom_agt(string::in, adjacent_to_graphic_token::in,
     io::di, io::uo) is det.
 
-:- func term_io.quoted_atom(string, adjacent_to_graphic_token) = string.
+:- func term_io.quoted_atom_agt(string, adjacent_to_graphic_token) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -480,22 +496,22 @@ term_io.write_constant(term.integer(I), _, !IO) :-
 term_io.write_constant(term.float(F), _, !IO) :-
     io.write_float(F, !IO).
 term_io.write_constant(term.atom(A), NextToGraphicToken, !IO) :-
-    term_io.quote_atom(A, NextToGraphicToken, !IO).
+    term_io.quote_atom_agt(A, NextToGraphicToken, !IO).
 term_io.write_constant(term.string(S), _, !IO) :-
     term_io.quote_string(S, !IO).
 
 term_io.format_constant(Const) =
-    term_io.format_constant(Const, not_adjacent_to_graphic_token).
+    term_io.format_constant_agt(Const, not_adjacent_to_graphic_token).
 
-:- func term_io.format_constant(const, adjacent_to_graphic_token) = string.
+:- func term_io.format_constant_agt(const, adjacent_to_graphic_token) = string.
 
-term_io.format_constant(term.integer(I), _) =
+term_io.format_constant_agt(term.integer(I), _) =
     string.int_to_string(I).
-term_io.format_constant(term.float(F), _) =
+term_io.format_constant_agt(term.float(F), _) =
     string.float_to_string(F).
-term_io.format_constant(term.atom(A), NextToGraphicToken) =
-    term_io.quoted_atom(A, NextToGraphicToken).
-term_io.format_constant(term.string(S), _) =
+term_io.format_constant_agt(term.atom(A), NextToGraphicToken) =
+    term_io.quoted_atom_agt(A, NextToGraphicToken).
+term_io.format_constant_agt(term.string(S), _) =
     term_io.quoted_string(S).
 
 %-----------------------------------------------------------------------------%
@@ -507,12 +523,12 @@ term_io.quoted_char(C) =
     string.format("'%s'", [s(term_io.escaped_char(C))]).
 
 term_io.quote_atom(S, !IO) :-
-    term_io.quote_atom(S, not_adjacent_to_graphic_token, !IO).
+    term_io.quote_atom_agt(S, not_adjacent_to_graphic_token, !IO).
 
 term_io.quoted_atom(S) =
-    term_io.quoted_atom(S, not_adjacent_to_graphic_token).
+    term_io.quoted_atom_agt(S, not_adjacent_to_graphic_token).
 
-term_io.quote_atom(S, NextToGraphicToken, !IO) :-
+term_io.quote_atom_agt(S, NextToGraphicToken, !IO) :-
     ShouldQuote = should_atom_be_quoted(S, NextToGraphicToken),
     (
         ShouldQuote = no,
@@ -524,7 +540,7 @@ term_io.quote_atom(S, NextToGraphicToken, !IO) :-
         io.write_char('''', !IO)
     ).
 
-term_io.quoted_atom(S, NextToGraphicToken) = String :-
+term_io.quoted_atom_agt(S, NextToGraphicToken) = String :-
     ShouldQuote = should_atom_be_quoted(S, NextToGraphicToken),
     (
         ShouldQuote = no,
@@ -544,7 +560,7 @@ should_atom_be_quoted(S, NextToGraphicToken) = ShouldQuote :-
             % Letter digit token (6.4.2)
             string.first_char(S, FirstChar, Rest),
             char.is_lower(FirstChar),
-            string.is_alnum_or_underscore(Rest)
+            string.is_all_alnum_or_underscore(Rest)
         ;
             % Semicolon token (6.4.2)
             S = ";"
@@ -638,16 +654,6 @@ term_io.escaped_char(Char) = String :-
         String = mercury_escape_char(Char)
     ).
 
-    % Convert a character to the corresponding octal escape code.
-    %
-    % We use ISO-Prolog style octal escapes, which are of the form '\nnn\';
-    % note that unlike C octal escapes, they are terminated with a backslash.
-    %
-    % Note: the code here is similar to code in compiler/mercury_to_mercury.m;
-    % any changes here may require similar changes there.
-    %
-:- func mercury_escape_char(char) = string.
-
 mercury_escape_char(Char) = EscapeCode :-
     char.to_int(Char, Int),
     string.int_to_base_string(Int, 8, OctalString0),
@@ -663,22 +669,15 @@ mercury_escape_char(Char) = EscapeCode :-
 :- pred is_mercury_source_char(char::in) is semidet.
 
 is_mercury_source_char(Char) :-
-    ( char.is_alnum(Char) ->
-        true
-    ; is_mercury_punctuation_char(Char) ->
-        true
-    ;
-        fail
+    ( char.is_alnum(Char)
+    ; is_mercury_punctuation_char(Char)
     ).
 
     % Currently we only allow the following characters.
     % XXX should we just use is_printable(Char) instead?
     %
-    % Note: the code here is similar to code in compiler/mercury_to_mercury.m
-    % and also runtime/mercury_trace_base.c; any changes here may require
-    % similar changes there.
-    %
-:- pred is_mercury_punctuation_char(char::in) is semidet.
+    % Note: the code here is similar to code in runtime/mercury_trace_base.c;
+    % any changes here may require similar changes there.
 
 is_mercury_punctuation_char(' ').
 is_mercury_punctuation_char('!').

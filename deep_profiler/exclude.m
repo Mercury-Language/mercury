@@ -125,7 +125,7 @@ read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
             Line = Line0
         ),
         (
-            Words = string.words(char.is_whitespace, Line),
+            Words = string.words_separator(char.is_whitespace, Line),
             Words = [Scope, ModuleName],
             (
                 Scope = "all",

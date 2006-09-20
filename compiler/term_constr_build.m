@@ -795,7 +795,7 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
     VarTypes = !.Info ^ types,
     Type = VarTypes ^ det_elem(Var),
     ( 
-        not type_is_higher_order(Type, _, _, _, _),
+        not type_is_higher_order(Type),
         type_to_ctor_and_args(Type, TypeCtor, _)
     ->
         Norm   = !.Info ^ norm,

@@ -1909,7 +1909,7 @@ output_hexbyte(int8(Int), !IO) :-
 output_comment_string(Comment, !IO) :-
     io.write_string("// ", !IO),
     CommentDoc = separated(text, line,
-        string.words((pred('\n'::in) is semidet :- true), Comment)),
+        string.words_separator((pred('\n'::in) is semidet :- true), Comment)),
     Doc = label("\t// ", CommentDoc),
     write(70, Doc, !IO).
 

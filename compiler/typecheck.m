@@ -430,7 +430,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
                 % We also need to set the head_type_params field to indicate
                 % that all the existentially quantified tvars in the head
                 % of this pred are indeed bound by this predicate.
-                prog_type.vars_list(ArgTypes0, HeadVarsIncludingExistentials),
+                type_vars_list(ArgTypes0, HeadVarsIncludingExistentials),
                 pred_info_set_head_type_params(HeadVarsIncludingExistentials,
                     !PredInfo),
                 Specs = [],
@@ -462,7 +462,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
                     write_pred_progress_message("% Type-checking ", PredId,
                         !.ModuleInfo, !IO)
                 ),
-                prog_type.vars_list(ArgTypes0, !:HeadTypeParams),
+                type_vars_list(ArgTypes0, !:HeadTypeParams),
                 pred_info_get_class_context(!.PredInfo, PredConstraints),
                 constraint_list_get_tvars(PredConstraints ^ univ_constraints,
                     UnivTVars),
@@ -523,7 +523,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
             % apply only to the head variables, and those that apply to
             % type variables which occur only in the body.
             map.apply_to_list(HeadVars, InferredVarTypes, ArgTypes),
-            prog_type.vars_list(ArgTypes, ArgTypeVars),
+            type_vars_list(ArgTypes, ArgTypeVars),
             restrict_to_head_vars(InferredTypeConstraints0, ArgTypeVars,
                 InferredTypeConstraints, UnprovenBodyConstraints),
 
@@ -2702,7 +2702,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         %   Pair0 = 1 - 'a',
         %   Pair = Pair0 ^ snd := 2.
 
-        prog_type.vars(FieldType, TVarsInField),
+        type_vars(FieldType, TVarsInField),
         (
             TVarsInField = [],
             TVarSet = TVarSet0,
@@ -2733,7 +2733,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
             %
             list.replace_nth_det(ConsArgTypes, FieldNumber, int_type,
                 ArgTypesWithoutField),
-            prog_type.vars_list(ArgTypesWithoutField, TVarsInOtherArgs),
+            type_vars_list(ArgTypesWithoutField, TVarsInOtherArgs),
             set.intersect(
                 set.list_to_set(TVarsInField),
                 set.intersect(
@@ -2761,7 +2761,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                 % onto the set of type variables occuring in the types of the
                 % arguments of the call to `'field :='/2'. Note that we have
                 % already flipped the constraints.
-                prog_type.vars_list([FunctorType, FieldType], CallTVars0),
+                type_vars_list([FunctorType, FieldType], CallTVars0),
                 set.list_to_set(CallTVars0, CallTVars),
                 project_and_rename_constraints(ClassTable, TVarSet, CallTVars,
                     TVarRenaming, Constraints0, Constraints),
@@ -2809,7 +2809,7 @@ project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
 
 project_constraint(CallTVars, Constraint) :-
     Constraint = constraint(_, _, TypesToCheck),
-    prog_type.vars_list(TypesToCheck, TVarsToCheck0),
+    type_vars_list(TypesToCheck, TVarsToCheck0),
     set.list_to_set(TVarsToCheck0, TVarsToCheck),
     set.intersect(TVarsToCheck, CallTVars, RelevantTVars),
     \+ set.empty(RelevantTVars).

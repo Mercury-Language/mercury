@@ -512,7 +512,7 @@ unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
     params_get_functor_info(Params, FunctorInfo),
     params_get_var_types(Params, VarTypes),
     map.lookup(VarTypes, OutVar, Type),
-    \+ type_is_higher_order(Type, _, _, _, _),
+    \+ type_is_higher_order(Type),
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
         filter_args_and_modes(VarTypes, Args0, Args1, Modes0, Modes1),
         functor_norm(FunctorInfo, TypeCtor, ConsId, ModuleInfo,

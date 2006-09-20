@@ -436,7 +436,7 @@ read_trace_counts_setup(!TraceCounts, !IO) :-
 
 read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurFileName, !TraceCounts,
         !IO) :-
-    lexer.string_get_token_list(HeaderLine, string.length(HeaderLine),
+    lexer.string_get_token_list_max(HeaderLine, string.length(HeaderLine),
         TokenList, posn(HeaderLineNumber, 1, 0), _),
     (
         TokenList =

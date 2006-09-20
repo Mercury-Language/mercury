@@ -3411,7 +3411,7 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
                 "% Transforming polymorphic unifications...\n", !IO)
         ),
         maybe_flush_output(Verbose, !IO),
-        polymorphism.process_module(!HLDS, !IO),
+        polymorphism_process_module(!HLDS, !IO),
         (
             VeryVerbose = no,
             maybe_write_string(Verbose, " done.\n", !IO)

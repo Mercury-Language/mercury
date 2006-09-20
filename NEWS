@@ -22,6 +22,8 @@ Changes to the Mercury standard library:
 * We have added string.c_pointer_to_string/{1,2} and string.from_c_pointer/1
   to convert c_pointers to a human readable form.
 
+* We have renamed some library predicates whose names were ambiguous.
+
 Changes to the Mercury compiler:
 
 * The compiler now issues a warning when an inst declaration is not

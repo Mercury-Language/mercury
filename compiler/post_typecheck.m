@@ -261,7 +261,7 @@ check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
 check_type_bindings_2([], _, !UnresolvedVarsTypes, !Set).
 check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
         !UnresolvedVarsTypes, !Set) :-
-    prog_type.vars(Type, TVars),
+    type_vars(Type, TVars),
     set.list_to_set(TVars, TVarsSet0),
     set.delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
     ( \+ set.empty(TVarsSet1) ->
@@ -956,7 +956,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % Is the function symbol a higher-order predicate
         % or function constant?
         ConsId0 = cons(Name, _),
-        type_is_higher_order(TypeOfX, _Purity, PredOrFunc,
+        type_is_higher_order_details(TypeOfX, _Purity, PredOrFunc,
             EvalMethod, HOArgTypes),
 
         % We don't do this for the clause introduced by the compiler

@@ -851,7 +851,7 @@ is_primitive_type(TypeDesc, Element) :-
 mangle(Functor) = Element :-
     string.split(Functor, 1, Head, Tail),
     (
-        string.is_alpha(Head),
+        string.is_all_alpha(Head),
         string.to_lower(Head) = Head
     ->
         First = Head,

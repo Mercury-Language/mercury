@@ -457,9 +457,9 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         % too?)
 
         map.values(VarTypes, Types),
-        prog_type.vars_list(Types, TypeVars0),
+        type_vars_list(Types, TypeVars0),
         map.values(OldExplicitVarTypes, ExplicitTypes),
-        prog_type.vars_list(ExplicitTypes, ExplicitTypeVars0),
+        type_vars_list(ExplicitTypes, ExplicitTypeVars0),
         map.keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
         list.delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
             ExistQVarsToRemain),

@@ -861,7 +861,7 @@ get_command(Prompt, Command, User, User, !IO) :-
     util.trace_getline(Prompt, Result, User ^ instr, User ^ outstr, !IO),
     (
         Result = ok(String),
-        Words = string.words(char.is_whitespace, String),
+        Words = string.words_separator(char.is_whitespace, String),
         (
             Words = [CmdWord | CmdArgs],
             (
@@ -1048,7 +1048,7 @@ string_to_range(Arg, From, To) :-
         From = Num,
         To = Num
     ;
-        [FirstStr, SecondStr] = string.words(is_dash, Arg),
+        [FirstStr, SecondStr] = string.words_separator(is_dash, Arg),
         string.to_int(FirstStr, First),
         string.to_int(SecondStr, Second),
         ( First =< Second ->

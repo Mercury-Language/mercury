@@ -3637,7 +3637,7 @@ io.read(Result, !IO) :-
     io.process_read_term(ReadResult, LineNumber, Result).
 
 io.read_from_string(FileName, String, Len, Result, !Posn) :-
-    parser.read_term_from_string(FileName, String, Len, !Posn, ReadResult),
+    parser.read_term_from_substring(FileName, String, Len, !Posn, ReadResult),
     !.Posn = posn(LineNumber, _, _),
     io.process_read_term(ReadResult, LineNumber, Result).
 
@@ -4055,7 +4055,8 @@ io.write_ordinary_term(NonCanon, Univ, Priority, !IO) :-
             term_io.quote_atom(Functor, !IO),
             io.write_char(')', !IO)
         ;
-            term_io.quote_atom(Functor, maybe_adjacent_to_graphic_token, !IO)
+            term_io.quote_atom_agt(Functor, maybe_adjacent_to_graphic_token,
+                !IO)
         ),
         (
             Args = [X | Xs]

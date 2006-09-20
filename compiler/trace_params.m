@@ -338,7 +338,7 @@ trace_level_has_proc_body_reps(deep) = no.
 trace_level_has_proc_body_reps(decl_rep) = yes.
 
 convert_trace_suppress(SuppressString, SuppressItemSet) :-
-    SuppressWords = string.words(char_is_comma, SuppressString),
+    SuppressWords = string.words_separator(char_is_comma, SuppressString),
     list.map(convert_item_name, SuppressWords, SuppressItemLists),
     list.condense(SuppressItemLists, SuppressItems),
     set.list_to_set(SuppressItems, SuppressItemSet).

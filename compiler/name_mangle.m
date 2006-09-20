@@ -236,7 +236,7 @@ dont_module_qualify_name(Name, Arity) :-
     ).
 
 name_doesnt_need_mangling(Name) :-
-    string.is_alnum_or_underscore(Name),
+    string.is_all_alnum_or_underscore(Name),
     \+ string.append("f_", _Suffix, Name).
 
 sym_name_doesnt_need_mangling(unqualified(Name)) :-

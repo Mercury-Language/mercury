@@ -240,7 +240,7 @@ generate_plain_args(TypeArgs, PseudoArgs) :-
 :- pred type_is_var_arity(mer_type::in, var_arity_ctor_id::out) is semidet.
 
 type_is_var_arity(Type, VarArityCtorId) :-
-    ( type_is_higher_order(Type, _Purity, PredOrFunc, _, _) ->
+    ( type_is_higher_order_details(Type, _Purity, PredOrFunc, _, _) ->
         (
             PredOrFunc = predicate,
             VarArityCtorId = pred_type_info

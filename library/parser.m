@@ -45,10 +45,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % read_term/{3,4}:
-    %
-    % Reads in (and parses) terms from the current input stream.
-
     % read_term(Result):
     %
     % Reads a Mercury term from the current input stream.
@@ -63,27 +59,24 @@
 :- pred read_term_with_op_table(Ops::in, read_term(T)::out, io::di, io::uo)
     is det <= op_table(Ops).
 
-    % read_term(FileName, Result):
+    % read_term_filename(FileName, Result, !IO):
     %
     % Reads a term from the current input stream. The string is the filename
     % to use for the current input stream; this is used in constructing the
     % term.contexts in the read term. This interface is used to support
     % the `:- pragma source_file' directive.
     %
-:- pred read_term(string::in, read_term(T)::out, io::di, io::uo) is det.
+:- pred read_term_filename(string::in, read_term(T)::out, io::di, io::uo)
+    is det.
 
-    % read_term_with_op_table(Ops, FileName, Result):
+    % read_term_filename_with_op_table(Ops, FileName, Result, !IO):
     %
     % As above but using the given op_table.
     %
-:- pred read_term_with_op_table(Ops::in, string::in, read_term(T)::out,
-    io::di, io::uo) is det <= op_table(Ops).
+:- pred read_term_filename_with_op_table(Ops::in, string::in,
+    read_term(T)::out, io::di, io::uo) is det <= op_table(Ops).
 
 %-----------------------------------------------------------------------------%
-
-    % read_term_from_string/{4,6}:
-    %
-    % Parses terms from a string.
 
     % The read_term_from_string predicates are the same as the read_term
     % predicates, except that the term is read from a string rather than from
@@ -106,21 +99,17 @@
     % read_term_from_string(FileName, String, MaxOffset, StartPos,
     %   EndPos, Term).
     %
-:- pred read_term_from_string(string::in, string::in, int::in,
+:- pred read_term_from_substring(string::in, string::in, int::in,
     posn::in, posn::out, read_term(T)::out) is det.
 
     % read_term_from_string_with_op_table(Ops, FileName, String,
     %   MaxOffset, StartPos, EndPos, Term).
     %
-:- pred read_term_from_string_with_op_table(Ops::in, string::in,
+:- pred read_term_from_substring_with_op_table(Ops::in, string::in,
     string::in, int::in, posn::in, posn::out, read_term(T)::out) is det
     <= op_table(Ops).
 
 %-----------------------------------------------------------------------------%
-
-    % parse_tokens/{3,4}:
-    %
-    % Parses a list of tokens.
 
     % parse_tokens(FileName, TokenList, Result):
     %
@@ -163,16 +152,18 @@
 
 read_term(Result, !IO) :-
     io.input_stream_name(FileName, !IO),
-    read_term_with_op_table(ops.init_mercury_op_table, FileName, Result, !IO).
+    read_term_filename_with_op_table(ops.init_mercury_op_table, FileName,
+        Result, !IO).
 
 read_term_with_op_table(Ops, Result, !IO) :-
     io.input_stream_name(FileName, !IO),
-    read_term_with_op_table(Ops, FileName, Result, !IO).
+    read_term_filename_with_op_table(Ops, FileName, Result, !IO).
 
-read_term(FileName, Result, !IO) :-
-    read_term_with_op_table(ops.init_mercury_op_table, FileName, Result, !IO).
+read_term_filename(FileName, Result, !IO) :-
+    read_term_filename_with_op_table(ops.init_mercury_op_table, FileName,
+        Result, !IO).
 
-read_term_with_op_table(Ops, FileName, Result, !IO) :-
+read_term_filename_with_op_table(Ops, FileName, Result, !IO) :-
     lexer.get_token_list(Tokens, !IO),
     parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
 
@@ -183,16 +174,16 @@ read_term_from_string(FileName, String, EndPos, Result) :-
 read_term_from_string_with_op_table(Ops, FileName, String, EndPos, Result) :-
     string.length(String, Len),
     StartPos = posn(1, 0, 0),
-    read_term_from_string_with_op_table(Ops, FileName, String, Len,
+    read_term_from_substring_with_op_table(Ops, FileName, String, Len,
         StartPos, EndPos, Result).
 
-read_term_from_string(FileName, String, Len, StartPos, EndPos, Result) :-
-    read_term_from_string_with_op_table(ops.init_mercury_op_table,
+read_term_from_substring(FileName, String, Len, StartPos, EndPos, Result) :-
+    read_term_from_substring_with_op_table(ops.init_mercury_op_table,
         FileName, String, Len, StartPos, EndPos, Result).
 
-read_term_from_string_with_op_table(Ops, FileName, String, Len,
+read_term_from_substring_with_op_table(Ops, FileName, String, Len,
         StartPos, EndPos, Result) :-
-    lexer.string_get_token_list(String, Len, Tokens, StartPos, EndPos),
+    lexer.string_get_token_list_max(String, Len, Tokens, StartPos, EndPos),
     parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
 
 %-----------------------------------------------------------------------------%
@@ -205,9 +196,9 @@ parse_tokens_with_op_table(Ops, FileName, Tokens, Result) :-
     ( Tokens = token_nil ->
         Result = eof
     ;
-        init_state(Ops, FileName, Tokens, ParserState0),
+        init_parser_state(Ops, FileName, Tokens, ParserState0),
         parse_whole_term(Term, ParserState0, ParserState),
-        final_state(ParserState, VarSet, LeftOverTokens),
+        final_parser_state(ParserState, VarSet, LeftOverTokens),
         check_for_errors(Term, VarSet, Tokens, LeftOverTokens, Result)
     ).
 
@@ -224,7 +215,7 @@ check_for_errors(error(ErrorMessage, ErrorTokens), _VarSet, Tokens,
         % Find the token that caused the error.
         ( ErrorTokens = token_cons(ErrorTok, ErrorTokLineNum, _) ->
             lexer.token_to_string(ErrorTok, TokString),
-            string.append_list( ["Syntax error at ", TokString, ": ",
+            string.append_list(["Syntax error at ", TokString, ": ",
                 ErrorMessage], Message),
             LineNum = ErrorTokLineNum
         ;
@@ -273,10 +264,10 @@ check_for_bad_token(token_cons(Token, LineNum, Tokens), Message, LineNum) :-
 parse_whole_term(Term, !PS) :-
     parse_term(Term0, !PS),
     ( Term0 = ok(_) ->
-        ( get_token(end, !PS) ->
+        ( parser_get_token(end, !PS) ->
             Term = Term0
         ;
-            unexpected("operator or `.' expected", Term, !PS)
+            parser_unexpected("operator or `.' expected", Term, !PS)
         )
     ;
         % Propagate error upwards.
@@ -331,11 +322,11 @@ parse_term_2(MaxPriority, TermKind, Term, !PS) :-
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
 
 parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
-    ( get_token(Token, Context, !PS) ->
+    ( parser_get_token_context(Token, Context, !PS) ->
         (
             % Check for unary minus of integer.
             Token = name("-"),
-            get_token(integer(X), _IntContext, !PS)
+            parser_get_token_context(integer(X), _IntContext, !PS)
         ->
             get_term_context(!.PS, Context, TermContext),
             NegX = 0 - X,
@@ -344,7 +335,7 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
         ;
             % Check for unary minus of float.
             Token = name("-"),
-            get_token(float(F), _FloatContext, !PS)
+            parser_get_token_context(float(F), _FloatContext, !PS)
         ->
             get_term_context(!.PS, Context, TermContext),
             NegF = 0.0 - F,
@@ -353,12 +344,12 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
         ;
             % Check for binary prefix op.
             Token = name(Op),
-            \+ peek_token(open_ct, !.PS, _),
+            \+ parser_peek_token(open_ct, !.PS, _),
             get_ops_table(!.PS, OpTable),
             ops.lookup_binary_prefix_op(OpTable, Op, BinOpPriority,
                 RightAssoc, RightRightAssoc),
             BinOpPriority =< MaxPriority,
-            peek_token(NextToken, !PS),
+            parser_peek_token(NextToken, !PS),
             could_start_term(NextToken, yes)
         ->
             adjust_priority_for_assoc(BinOpPriority,
@@ -385,11 +376,11 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
         ;
             % Check for unary prefix op.
             Token = name(Op),
-            \+ peek_token(open_ct, !.PS, _),
+            \+ parser_peek_token(open_ct, !.PS, _),
             get_ops_table(!.PS, OpTable),
             ops.lookup_prefix_op(OpTable, Op, UnOpPriority, RightAssoc),
             UnOpPriority =< MaxPriority,
-            peek_token(NextToken, !PS),
+            parser_peek_token(NextToken, !PS),
             could_start_term(NextToken, yes)
         ->
             adjust_priority_for_assoc(UnOpPriority, RightAssoc,
@@ -409,7 +400,7 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
             OpPriority = 0
         )
     ;
-        error(!.PS, "unexpected end-of-file at start of sub-term", Term),
+        Term = make_error(!.PS, "unexpected end-of-file at start of sub-term"),
         OpPriority = 0
     ).
 
@@ -420,7 +411,7 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
 parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
     (
         % Infix op.
-        get_token(Token, Context, !PS),
+        parser_get_token_context(Token, Context, !PS),
         (
             Token = comma,
             TermKind = ordinary_term,
@@ -444,7 +435,7 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
             LeftAssoc = LeftAssoc0,
             RightAssoc = RightAssoc0,
             parse_backquoted_operator(Qualifier, Op, VariableTerm, !PS),
-            get_token(name("`"), _, !PS)
+            parser_get_token(name("`"), !PS)
         ;
             Op = Op0,
             VariableTerm = [],
@@ -478,7 +469,7 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
         )
     ;
         % Postfix op.
-        get_token(name(Op), Context, !PS),
+        parser_get_token_context(name(Op), Context, !PS),
         get_ops_table(!.PS, OpTable),
         ops.lookup_postfix_op(OpTable, Op, OpPriority, LeftAssoc),
         OpPriority =< MaxPriority,
@@ -496,7 +487,7 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
     state(Ops, T)::in, state(Ops, T)::out) is semidet <= op_table(Ops).
 
 parse_backquoted_operator(Qualifier, OpName, VariableTerm, !PS) :-
-    get_token(Token, Context, !PS),
+    parser_get_token_context(Token, Context, !PS),
     (
         Token = variable(VariableOp),
         Qualifier = no,
@@ -518,13 +509,13 @@ parse_backquoted_operator(Qualifier, OpName, VariableTerm, !PS) :-
 parse_backquoted_operator_2(Qualifier0, Qualifier, OpCtxt0, OpName0, OpName,
         !PS) :-
     (
-        get_token(name(ModuleSeparator), SepContext, !PS),
+        parser_get_token_context(name(ModuleSeparator), SepContext, !PS),
         (
             ModuleSeparator = "."
         ;
             ModuleSeparator = ":"
         ),
-        get_token(name(OpName1), NameContext, !PS),
+        parser_get_token_context(name(OpName1), NameContext, !PS),
         OpName1 \= "`"
     ->
         get_term_context(!.PS, SepContext, SepCtxt),
@@ -554,7 +545,7 @@ parse_simple_term(Token, Context, Priority, Term, !PS) :-
     ( parse_simple_term_2(Token, Context, Priority, Term0, !PS) ->
         check_for_higher_order_term(Term0, Context, Term, !PS)
     ;
-        unexpected_tok(Token, Context,
+        parser_unexpected_tok(Token, Context,
             "unexpected token at start of (sub)term", Term, !PS)
     ).
 
@@ -583,7 +574,7 @@ parse_simple_term(Token, Context, Priority, Term, !PS) :-
 
 parse_simple_term_2(name(Atom), Context, Prec, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
-    ( get_token(open_ct, !PS) ->
+    ( parser_get_token(open_ct, !PS) ->
         parse_args(Args0, !PS),
         (
             Args0 = ok(Args),
@@ -622,10 +613,10 @@ parse_simple_term_2(string(String), Context, _, Term, !PS) :-
 parse_simple_term_2(open, _, _, Term, !PS) :-
     parse_term(Term0, !PS),
     ( Term0 = ok(_) ->
-        ( get_token(close, !PS) ->
+        ( parser_get_token(close, !PS) ->
             Term = Term0
         ;
-            unexpected("expecting `)' or operator", Term, !PS)
+            parser_unexpected("expecting `)' or operator", Term, !PS)
         )
     ;
         % Propagate error upwards.
@@ -637,7 +628,7 @@ parse_simple_term_2(open_ct, Context, Prec, Term, !PS) :-
 
 parse_simple_term_2(open_list, Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
-    ( get_token(close_list, !PS) ->
+    ( parser_get_token(close_list, !PS) ->
         parse_special_atom("[]", TermContext, Term, !PS)
     ;
         parse_list(Term, !PS)
@@ -645,7 +636,7 @@ parse_simple_term_2(open_list, Context, _, Term, !PS) :-
 
 parse_simple_term_2(open_curly, Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
-    ( get_token(close_curly, !PS) ->
+    ( parser_get_token(close_curly, !PS) ->
         parse_special_atom("{}", TermContext, Term, !PS)
     ;
         % This is a slight departure from ISO Prolog syntax -- instead of
@@ -655,11 +646,11 @@ parse_simple_term_2(open_curly, Context, _, Term, !PS) :-
         parse_term(SubTerm0, !PS),
         ( SubTerm0 = ok(SubTerm) ->
             conjunction_to_list(SubTerm, ArgTerms),
-            ( get_token(close_curly, !PS) ->
+            ( parser_get_token(close_curly, !PS) ->
                 Term = ok(term.functor(term.atom("{}"), ArgTerms,
                     TermContext))
             ;
-                unexpected("expecting `}' or operator", Term, !PS)
+                parser_unexpected("expecting `}' or operator", Term, !PS)
             )
         ;
             % Propagate error upwards.
@@ -687,7 +678,7 @@ check_for_higher_order_term(Term0, Context, Term, !PS) :-
     % extension is to provide a nicer syntax for higher-order stuff.
     (
         Term0 = ok(Term1),
-        get_token(open_ct, !PS)
+        parser_get_token(open_ct, !PS)
     ->
         get_term_context(!.PS, Context, TermContext),
         parse_args(Args0, !PS),
@@ -710,7 +701,7 @@ check_for_higher_order_term(Term0, Context, Term, !PS) :-
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
 
 parse_special_atom(Atom, TermContext, Term, !PS) :-
-    ( get_token(open_ct, !PS) ->
+    ( parser_get_token(open_ct, !PS) ->
         parse_args(Args0, !PS),
         (
             Args0 = ok(Args),
@@ -732,7 +723,7 @@ parse_list(List, !PS) :-
     ( Arg0 = ok(Arg) ->
         parse_list_2(Arg, List, !PS)
     ;
-        % propagate error
+        % Propagate error.
         List = Arg0
     ).
 
@@ -740,7 +731,7 @@ parse_list(List, !PS) :-
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
 
 parse_list_2(Arg, List, !PS) :-
-    ( get_token(Token, Context, !PS) ->
+    ( parser_get_token_context(Token, Context, !PS) ->
         get_term_context(!.PS, Context, TermContext),
         ( Token = comma ->
             parse_list(Tail0, !PS),
@@ -754,11 +745,11 @@ parse_list_2(Arg, List, !PS) :-
         ; Token = ht_sep ->
             parse_arg(Tail0, !PS),
             ( Tail0 = ok(Tail) ->
-                ( get_token(close_list, !PS) ->
+                ( parser_get_token(close_list, !PS) ->
                     List = ok(term.functor(term.atom("[|]"), [Arg, Tail],
                         TermContext))
                 ;
-                    unexpected("expecting ']' or operator", List, !PS)
+                    parser_unexpected("expecting ']' or operator", List, !PS)
                 )
             ;
                 % Propagate error.
@@ -769,13 +760,12 @@ parse_list_2(Arg, List, !PS) :-
             List = ok(term.functor(term.atom("[|]"), [Arg, Tail],
                 TermContext))
         ;
-            unexpected_tok(Token, Context,
+            parser_unexpected_tok(Token, Context,
                 "expected comma, `|', `]', or operator", List, !PS)
         )
     ;
-        % XXX The error message should state the line that the
-        % list started on.
-        error(!.PS, "unexpected end-of-file in list", List)
+        % XXX The error message should state the line that the list started on.
+        List = make_error(!.PS, "unexpected end-of-file in list")
     ).
 
 :- pred parse_args(parse(list(term(T)))::out,
@@ -785,7 +775,7 @@ parse_args(List, !PS) :-
     parse_arg(Arg0, !PS),
     (
         Arg0 = ok(Arg),
-        ( get_token(Token, Context, !PS) ->
+        ( parser_get_token_context(Token, Context, !PS) ->
             ( Token = comma ->
                 parse_args(Tail0, !PS),
                 ( Tail0 = ok(Tail) ->
@@ -797,11 +787,11 @@ parse_args(List, !PS) :-
             ; Token = close ->
                 List = ok([Arg])
             ;
-                unexpected_tok(Token, Context,
+                parser_unexpected_tok(Token, Context,
                     "expected `,', `)', or operator", List, !PS)
             )
         ;
-            error(!.PS, "unexpected end-of-file in argument list", List)
+            List = make_error(!.PS, "unexpected end-of-file in argument list")
         )
     ;
         Arg0 = error(Message, Tokens),
@@ -835,8 +825,7 @@ parse_args(List, !PS) :-
 :- func parser_state_get_ops_table(state(Ops, T)) = Ops.
 :- func parser_state_get_varset(state(Ops, T)) = varset(T).
 :- func parser_state_get_tokens_left(state(Ops, T)) = token_list.
-:- func parser_state_get_var_names(state(Ops, T)) =
-    map(string, var(T)).
+:- func parser_state_get_var_names(state(Ops, T)) = map(string, var(T)).
 
 :- func parser_state_set_varset(state(Ops, T), varset(T))
     = state(Ops, T).
@@ -878,24 +867,24 @@ parser_state_set_var_names(ParserState0, Names) =
     % must have been an operator precedence error. Otherwise, it was some
     % other sort of error, so issue the usual error message.
     %
-:- pred unexpected(string::in, parse(U)::out,
+:- pred parser_unexpected(string::in, parse(U)::out,
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
 
-unexpected(UsualMessage, Error, !PS) :-
-    ( get_token(Token, Context, !PS) ->
-        unexpected_tok(Token, Context, UsualMessage, Error, !PS)
+parser_unexpected(UsualMessage, Error, !PS) :-
+    ( parser_get_token_context(Token, Context, !PS) ->
+        parser_unexpected_tok(Token, Context, UsualMessage, Error, !PS)
     ;
-        error(!.PS, UsualMessage, Error)
+        Error = make_error(!.PS, UsualMessage)
     ).
 
-:- pred unexpected_tok(token::in, token_context::in, string::in,
+:- pred parser_unexpected_tok(token::in, token_context::in, string::in,
     parse(U)::out,
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
 
-unexpected_tok(Token, Context, UsualMessage, Error, !PS) :-
+parser_unexpected_tok(Token, Context, UsualMessage, Error, !PS) :-
     % Push the token back, so that the error message points at it
     % rather than at the following token.
-    unget_token(Token, Context, !PS),
+    parser_unget_token(Token, Context, !PS),
     (
         ( Token = name(Op)
         ; Token = comma, Op = ","
@@ -905,17 +894,16 @@ unexpected_tok(Token, Context, UsualMessage, Error, !PS) :-
         ; ops.lookup_postfix_op(OpTable, Op, _, _)
         )
     ->
-        error(!.PS, "operator precedence error", Error)
+        Error = make_error(!.PS, "operator precedence error")
     ;
-        error(!.PS, UsualMessage, Error)
+        Error = make_error(!.PS, UsualMessage)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred error(state(Ops, T)::in, string::in, parse(U)::out)
-    is det.
+:- func make_error(state(Ops, T), string) = parse(U).
 
-error(ParserState, Message, error(Message, Tokens)) :-
+make_error(ParserState, Message) = error(Message, Tokens) :-
     Tokens = parser_state_get_tokens_left(ParserState).
 
 %-----------------------------------------------------------------------------%
@@ -945,55 +933,55 @@ could_start_term(integer_dot(_), no).
 
 %-----------------------------------------------------------------------------%
 
-:- pred init_state(Ops::in, string::in, token_list::in,
+:- pred init_parser_state(Ops::in, string::in, token_list::in,
     state(Ops, T)::out) is det <= op_table(Ops).
 
-init_state(Ops, FileName, Tokens, ParserState) :-
+init_parser_state(Ops, FileName, Tokens, ParserState) :-
     varset.init(VarSet),
     map.init(Names),
     ParserState = state(FileName, Ops, VarSet, Tokens, Names).
 
-:- pred final_state(state(Ops, T)::in, varset(T)::out,
+:- pred final_parser_state(state(Ops, T)::in, varset(T)::out,
     token_list::out) is det.
 
-final_state(ParserState, VarSet, TokenList) :-
+final_parser_state(ParserState, VarSet, TokenList) :-
     VarSet = parser_state_get_varset(ParserState),
     TokenList = parser_state_get_tokens_left(ParserState).
 
 %-----------------------------------------------------------------------------%
 
-:- pred get_token(token::out,
+:- pred parser_get_token(token::out,
     state(Ops, T)::in, state(Ops, T)::out) is semidet.
 
-get_token(Token, !PS) :-
-    get_token(Token, _Context, !PS).
+parser_get_token(Token, !PS) :-
+    parser_get_token_context(Token, _Context, !PS).
 
-:- pred get_token(token::out, token_context::out,
+:- pred parser_get_token_context(token::out, token_context::out,
     state(Ops, T)::in, state(Ops, T)::out) is semidet.
 
-get_token(Token, Context, ParserState0, ParserState) :-
+parser_get_token_context(Token, Context, ParserState0, ParserState) :-
     Tokens0 = parser_state_get_tokens_left(ParserState0),
     Tokens0 = token_cons(Token, Context, Tokens),
     ParserState = parser_state_set_tokens_left(ParserState0, Tokens).
 
-:- pred unget_token(token::in, token_context::in,
+:- pred parser_unget_token(token::in, token_context::in,
     state(Ops, T)::in, state(Ops, T)::out) is det.
 
-unget_token(Token, Context, ParserState0, ParserState) :-
+parser_unget_token(Token, Context, ParserState0, ParserState) :-
     Tokens0 = parser_state_get_tokens_left(ParserState0),
     Tokens = token_cons(Token, Context, Tokens0),
     ParserState = parser_state_set_tokens_left(ParserState0, Tokens).
 
-:- pred peek_token(token::out,
+:- pred parser_peek_token(token::out,
     state(Ops, T)::in, state(Ops, T)::out) is semidet.
 
-peek_token(Token, !PS) :-
-    peek_token(Token, _Context, !PS).
+parser_peek_token(Token, !PS) :-
+    parser_peek_token_context(Token, _Context, !PS).
 
-:- pred peek_token(token::out, token_context::out,
+:- pred parser_peek_token_context(token::out, token_context::out,
     state(Ops, T)::in, state(Ops, T)::out) is semidet.
 
-peek_token(Token, Context, ParserState, ParserState) :-
+parser_peek_token_context(Token, Context, ParserState, ParserState) :-
     Tokens = parser_state_get_tokens_left(ParserState),
     Tokens = token_cons(Token, Context, _).
 

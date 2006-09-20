@@ -915,7 +915,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
             InstanceDefn = hlds_instance_defn(_, _, _,
                 InstanceConstraints, InstanceTypes0, _,
                 yes(ClassInterface), _, _),
-            prog_type.vars_list(InstanceTypes0, InstanceTvars),
+            type_vars_list(InstanceTypes0, InstanceTvars),
             get_unconstrained_tvars(InstanceTvars,
                 InstanceConstraints, UnconstrainedTVars),
             NumArgsToExtract = list.length(InstanceConstraints)
@@ -1029,7 +1029,7 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
         InstanceTypes),
     apply_variable_renaming_to_prog_constraint_list(Renaming, Constraints0,
         Constraints1),
-    prog_type.vars_list(InstanceTypes, InstanceTVars),
+    type_vars_list(InstanceTypes, InstanceTVars),
     get_unconstrained_tvars(InstanceTVars, Constraints1, UnconstrainedTVars0),
 
     type_list_subsumes(InstanceTypes, ClassTypes, Subst),
@@ -1231,7 +1231,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
         map.contains(NewPreds, PredProcId),
         proc_info_get_vartypes(ProcInfo0, VarTypes0),
         map.lookup(VarTypes0, LVar, LVarType),
-        type_is_higher_order(LVarType, _, _, _, ArgTypes)
+        type_is_higher_order_details(LVarType, _, _, _, ArgTypes)
     ->
         % Create variables to represent
         proc_info_create_vars_from_types(ArgTypes, UncurriedArgs,
@@ -1658,7 +1658,7 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     ProcInfo = Info ^ proc_info,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.apply_to_list(Args, VarTypes, ArgTypes),
-    prog_type.vars_list(ArgTypes, AllTVars),
+    type_vars_list(ArgTypes, AllTVars),
     (
         AllTVars = [],
         ExtraTypeInfoTVars = []
@@ -1705,7 +1705,7 @@ construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     create_poly_info(!.Info ^ global_info ^ module_info,
         !.Info ^ pred_info, !.Info ^ proc_info, PolyInfo0),
     term.context_init(Context),
-    polymorphism.make_type_info_vars(Types, Context,
+    polymorphism_make_type_info_vars(Types, Context,
         TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, !.Info ^ pred_info, PredInfo,
         !.Info ^ proc_info, ProcInfo, ModuleInfo),

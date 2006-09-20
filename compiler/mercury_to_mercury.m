@@ -3156,31 +3156,10 @@ mercury_format_escaped_char(Char, !U) :-
         add_string(mercury_escape_char(Char), !U)
     ).
 
-:- func mercury_escape_char(char) = string.
-
-    % Convert a character to the corresponding octal escape code.
-    %
-    % We use ISO-Prolog style octal escapes, which are of the form
-    % '\nnn\'; note that unlike C octal escapes, they are terminated
-    % with a backslash.
-    %
-    % Note: the code here is similar to code in
-    % library/term_io.m; any changes here
-    % may require similar changes there.
-
-mercury_escape_char(Char) = EscapeCode :-
-    % XXX This may cause problems interfacing with versions of the compiler
-    % that have been built in grades which use different character
-    % representations.
-    char.to_int(Char, Int),
-    string.int_to_base_string(Int, 8, OctalString0),
-    string.pad_left(OctalString0, '0', 3, OctalString),
-    EscapeCode = "\\" ++ OctalString ++ "\\".
-
-:- pred mercury_is_source_char(char::in) is semidet.
-
     % Succeed if Char is a character which is allowed in
     % Mercury string and character literals.
+    %
+:- pred mercury_is_source_char(char::in) is semidet.
 
 mercury_is_source_char(Char) :-
     ( char.is_alnum(Char)
@@ -3188,45 +3167,6 @@ mercury_is_source_char(Char) :-
     ; Char = '\n'
     ; Char = '\t'
     ).
-
-    % Currently we only allow the following characters.
-    % XXX should we just use is_printable(Char) instead?
-
-:- pred is_mercury_punctuation_char(char::in) is semidet.
-
-is_mercury_punctuation_char(' ').
-is_mercury_punctuation_char('!').
-is_mercury_punctuation_char('@').
-is_mercury_punctuation_char('#').
-is_mercury_punctuation_char('$').
-is_mercury_punctuation_char('%').
-is_mercury_punctuation_char('^').
-is_mercury_punctuation_char('&').
-is_mercury_punctuation_char('*').
-is_mercury_punctuation_char('(').
-is_mercury_punctuation_char(')').
-is_mercury_punctuation_char('-').
-is_mercury_punctuation_char('_').
-is_mercury_punctuation_char('+').
-is_mercury_punctuation_char('=').
-is_mercury_punctuation_char('`').
-is_mercury_punctuation_char('~').
-is_mercury_punctuation_char('{').
-is_mercury_punctuation_char('}').
-is_mercury_punctuation_char('[').
-is_mercury_punctuation_char(']').
-is_mercury_punctuation_char(';').
-is_mercury_punctuation_char(':').
-is_mercury_punctuation_char('''').
-is_mercury_punctuation_char('"').
-is_mercury_punctuation_char('<').
-is_mercury_punctuation_char('>').
-is_mercury_punctuation_char('.').
-is_mercury_punctuation_char(',').
-is_mercury_punctuation_char('/').
-is_mercury_punctuation_char('?').
-is_mercury_punctuation_char('\\').
-is_mercury_punctuation_char('|').
 
 %-----------------------------------------------------------------------------%
 

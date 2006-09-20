@@ -813,7 +813,7 @@ generate_exist_into(ExistTvars, Constraints, ClassTable, ExistInfo) :-
     list.map((pred(C::in, Ts::out) is det :- C = constraint(_, Ts)),
         Constraints, ConstrainedTvars0),
     list.condense(ConstrainedTvars0, ConstrainedTvars1),
-    prog_type.vars_list(ConstrainedTvars1, ConstrainedTvars2),
+    type_vars_list(ConstrainedTvars1, ConstrainedTvars2),
     list.delete_elems(ExistTvars, ConstrainedTvars2, UnconstrainedTvars),
         % We do this to maintain the ordering of the type variables.
     list.delete_elems(ExistTvars, UnconstrainedTvars, ConstrainedTvars),
@@ -856,7 +856,7 @@ first_matching_type_class_info([], _, _, !N, _) :-
 first_matching_type_class_info([C | Cs], Tvar, MatchingConstraint, !N,
         TypeInfoIndex) :-
     C = constraint(_, Ts),
-    prog_type.vars_list(Ts, TVs),
+    type_vars_list(Ts, TVs),
     ( list.nth_member_search(TVs, Tvar, Index) ->
         MatchingConstraint = C,
         TypeInfoIndex = Index

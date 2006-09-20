@@ -65,11 +65,11 @@ main(!IO) :-
         "strip" -
         strip,
 
-        "lstrip(is_alpha)" -
-        lstrip(char.is_alpha),
+        "lstrip_pred(is_alpha)" -
+        lstrip_pred(char.is_alpha),
 
-        "rstrip(is_alpha)" -
-        rstrip(char.is_alpha),
+        "rstrip_pred(is_alpha)" -
+        rstrip_pred(char.is_alpha),
 
         "prefix_length(is_whitespace)" -
         ( func(S) = format("%d", [i(prefix_length(char.is_whitespace, S))]) ),

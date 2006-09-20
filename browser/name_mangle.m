@@ -172,7 +172,7 @@ sym_name_mangle(qualified(ModuleName, PlainName), MangledName) :-
 :- pred name_mangle(string::in, string::out) is det.
 
 name_mangle(Name, MangledName) :-
-    ( string.is_alnum_or_underscore(Name) ->
+    ( string.is_all_alnum_or_underscore(Name) ->
         % any names that start with `f_' are changed so that
         % they start with `f__', so that we can use names starting
         % with `f_' (followed by anything except an underscore)

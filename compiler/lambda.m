@@ -316,7 +316,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
     % quantified constraints.
     rtti_varmaps_reusable_constraints(RttiVarMaps, AllConstraints),
     map.apply_to_list(Vars, VarTypes, LambdaVarTypes),
-    list.map(prog_type.vars, LambdaVarTypes, LambdaTypeVarsList),
+    list.map(type_vars, LambdaVarTypes, LambdaTypeVarsList),
     list.condense(LambdaTypeVarsList, LambdaTypeVars),
     list.filter(constraint_contains_vars(LambdaTypeVars),
         AllConstraints, UnivConstraints),
@@ -527,7 +527,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
 constraint_contains_vars(LambdaVars, ClassConstraint) :-
     ClassConstraint = constraint(_, ConstraintTypes),
-    list.map(prog_type.vars, ConstraintTypes, ConstraintVarsList),
+    list.map(type_vars, ConstraintTypes, ConstraintVarsList),
     list.condense(ConstraintVarsList, ConstraintVars),
     % Probably not the most efficient way of doing it, but I wouldn't think
     % that it matters.

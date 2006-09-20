@@ -1636,13 +1636,13 @@ list.drop(N, As, Bs) :-
 
 %-----------------------------------------------------------------------------%
 
-list.duplicate(N, X, list.duplicate(N, X, [])).
+list.duplicate(N, X, list.duplicate_2(N, X, [])).
 
-:- func list.duplicate(int, T, list(T)) = list(T).
+:- func list.duplicate_2(int, T, list(T)) = list(T).
 
-list.duplicate(N, X, Xs) =
+list.duplicate_2(N, X, Xs) =
     ( N > 0 ->
-        list.duplicate(N-1, X, [X|Xs])
+        list.duplicate_2(N - 1, X, [X | Xs])
     ;
         Xs
     ).

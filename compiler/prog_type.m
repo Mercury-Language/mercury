@@ -53,14 +53,17 @@
     %
 :- pred type_is_higher_order(mer_type::in) is semidet.
 
-    % type_is_higher_order(Type, Purity, PredOrFunc, ArgTypes, EvalMeth):
-    % succeeds iff Type is a higher-order predicate or function type with
+    % type_is_higher_order_details(Type, Purity, PredOrFunc, ArgTypes,
+    %   EvalMeth):
+    %
+    % Succeeds iff Type is a higher-order predicate or function type with
     % the specified argument types (for functions, the return type is
     % appended to the end of the argument types), purity, and
     % evaluation method.
     %
-:- pred type_is_higher_order(mer_type::in, purity::out, pred_or_func::out,
-    lambda_eval_method::out, list(mer_type)::out) is semidet.
+:- pred type_is_higher_order_details(mer_type::in, purity::out,
+    pred_or_func::out, lambda_eval_method::out, list(mer_type)::out)
+    is semidet.
 
     % Succeed if the given type is a tuple type, returning
     % the argument types.
@@ -85,12 +88,12 @@
 
     % Succeeds iff the given type with the substitution applied is ground.
     %
-:- pred type_is_ground(mer_type::in, tsubst::in) is semidet.
+:- pred subst_type_is_ground(mer_type::in, tsubst::in) is semidet.
 
     % Succeeds iff the given type with the substitution applied is not
     % ground.
     %
-:- pred type_is_nonground(mer_type::in, tsubst::in) is semidet.
+:- pred subst_type_is_nonground(mer_type::in, tsubst::in) is semidet.
 
     % type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs)
     % Check if the principal type constructor of Type is of variable arity.
@@ -128,12 +131,12 @@
     % Return a list of the type variables of a type, in order of their
     % first occurrence in a depth-first, left-right traversal.
     %
-:- pred vars(mer_type::in, list(tvar)::out) is det.
+:- pred type_vars(mer_type::in, list(tvar)::out) is det.
 
     % Return a list of the type variables of a list of types, in order
     % of their first occurrence in a depth-first, left-right traversal.
     %
-:- pred vars_list(list(mer_type)::in, list(tvar)::out) is det.
+:- pred type_vars_list(list(mer_type)::in, list(tvar)::out) is det.
 
     % Nondeterministically return the variables in a type.
     %
@@ -426,9 +429,10 @@ type_is_nonvar(Type) :-
 type_is_higher_order(Type) :-
     strip_kind_annotation(Type) = higher_order_type(_, _, _, _).
 
-type_is_higher_order(Type0, Purity, PredOrFunc, EvalMethod, PredArgTypes) :-
-    Type = strip_kind_annotation(Type0),
-    Type = higher_order_type(ArgTypes, MaybeRetType, Purity, EvalMethod),
+type_is_higher_order_details(Type, Purity, PredOrFunc, EvalMethod,
+        PredArgTypes) :-
+    strip_kind_annotation(Type) =
+        higher_order_type(ArgTypes, MaybeRetType, Purity, EvalMethod),
     (
         MaybeRetType = yes(RetType),
         PredOrFunc = function,
@@ -457,19 +461,19 @@ type_is_ground(Type) :-
 type_is_nonground(Type) :-
     type_contains_var(Type, _).
 
-type_is_ground(Type, TSubst) :-
-    \+ type_is_nonground(Type, TSubst).
+subst_type_is_ground(Type, TSubst) :-
+    \+ subst_type_is_nonground(Type, TSubst).
 
-type_is_nonground(Type, TSubst) :-
+subst_type_is_nonground(Type, TSubst) :-
     type_contains_var(Type, TVar),
     ( map.search(TSubst, TVar, Binding) ->
-        type_is_nonground(Binding, TSubst)
+        subst_type_is_nonground(Binding, TSubst)
     ;
         true
     ).
 
 type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) :-
-    ( type_is_higher_order(Type, _Purity, PredOrFunc, _, TypeArgs0) ->
+    ( type_is_higher_order_details(Type, _Purity, PredOrFunc, _, TypeArgs0) ->
         TypeArgs = TypeArgs0,
         PredOrFuncStr = prog_out.pred_or_func_to_str(PredOrFunc),
         TypeCtor = type_ctor(unqualified(PredOrFuncStr), 0)
@@ -575,45 +579,45 @@ var_list_to_type_list(KindMap, [Var | Vars], [Type | Types]) :-
     Type = type_variable(Var, Kind),
     var_list_to_type_list(KindMap, Vars, Types).
 
-vars(Type, TVars) :-
-    vars_2(Type, [], RevTVars),
+type_vars(Type, TVars) :-
+    type_vars_2(Type, [], RevTVars),
     list.reverse(RevTVars, TVarsDups),
     list.remove_dups(TVarsDups, TVars).
 
-:- pred vars_2(mer_type::in, list(tvar)::in, list(tvar)::out) is det.
+:- pred type_vars_2(mer_type::in, list(tvar)::in, list(tvar)::out) is det.
 
-vars_2(type_variable(Var, _), Vs, [Var | Vs]).
-vars_2(defined_type(_, Args, _), !V) :-
-    vars_list_2(Args, !V).
-vars_2(builtin_type(_), !V).
-vars_2(higher_order_type(Args, MaybeRet, _, _), !V) :-
-    vars_list_2(Args, !V),
+type_vars_2(type_variable(Var, _), Vs, [Var | Vs]).
+type_vars_2(defined_type(_, Args, _), !V) :-
+    type_vars_list_2(Args, !V).
+type_vars_2(builtin_type(_), !V).
+type_vars_2(higher_order_type(Args, MaybeRet, _, _), !V) :-
+    type_vars_list_2(Args, !V),
     (
         MaybeRet = yes(Ret),
-        vars_2(Ret, !V)
+        type_vars_2(Ret, !V)
     ;
         MaybeRet = no
     ).
-vars_2(tuple_type(Args, _), !V) :-
-    vars_list_2(Args, !V).
-vars_2(apply_n_type(Var, Args, _), !V) :-
+type_vars_2(tuple_type(Args, _), !V) :-
+    type_vars_list_2(Args, !V).
+type_vars_2(apply_n_type(Var, Args, _), !V) :-
     !:V = [Var | !.V],
-    vars_list_2(Args, !V).
-vars_2(kinded_type(Type, _), !V) :-
-    vars_2(Type, !V).
+    type_vars_list_2(Args, !V).
+type_vars_2(kinded_type(Type, _), !V) :-
+    type_vars_2(Type, !V).
 
-vars_list(Types, TVars) :-
-    vars_list_2(Types, [], RevTVars),
+type_vars_list(Types, TVars) :-
+    type_vars_list_2(Types, [], RevTVars),
     list.reverse(RevTVars, TVarsDups),
     list.remove_dups(TVarsDups, TVars).
 
-:- pred vars_list_2(list(mer_type)::in, list(tvar)::in, list(tvar)::out)
+:- pred type_vars_list_2(list(mer_type)::in, list(tvar)::in, list(tvar)::out)
     is det.
 
-vars_list_2([], !V).
-vars_list_2([Type | Types], !V) :-
-    vars_2(Type, !V),
-    vars_list_2(Types, !V).
+type_vars_list_2([], !V).
+type_vars_list_2([Type | Types], !V) :-
+    type_vars_2(Type, !V),
+    type_vars_list_2(Types, !V).
 
 type_contains_var(type_variable(Var, _), Var).
 type_contains_var(defined_type(_, Args, _), Var) :-
@@ -726,7 +730,7 @@ constraint_list_get_tvars(Constraints, TVars) :-
     list.condense(TVarsList, TVars).
 
 constraint_get_tvars(constraint(_Name, Args), TVars) :-
-    vars_list(Args, TVars).
+    type_vars_list(Args, TVars).
 
 get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
     constraint_list_get_tvars(Constraints, ConstrainedTvars),
@@ -1282,11 +1286,10 @@ type_occurs_list([X | Xs], Y,  Bindings) :-
 %-----------------------------------------------------------------------------%
 
 type_list_subsumes(TypesA, TypesB, TypeSubst) :-
-    %
     % TypesA subsumes TypesB iff TypesA can be unified with TypesB
     % without binding any of the type variables in TypesB.
-    %
-    prog_type.vars_list(TypesB, TypesBVars),
+
+    type_vars_list(TypesB, TypesBVars),
     map.init(TypeSubst0),
     type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
 

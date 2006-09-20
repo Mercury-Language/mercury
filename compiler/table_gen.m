@@ -2309,7 +2309,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar,
         lookup_tabling_category(TypeCat, MaybeCatStringStep),
         (
             MaybeCatStringStep = no,
-            prog_type.vars(Type, TypeVars),
+            type_vars(Type, TypeVars),
             (
                 ArgTablingMethod = arg_value,
                 (
@@ -3447,7 +3447,7 @@ table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes, !TableInfo,
 
     % Call polymorphism.m to create the type_infos.
     create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2, PolyInfo0),
-    polymorphism.make_type_info_vars(Types, Context,
+    polymorphism_make_type_info_vars(Types, Context,
         TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PredInfo0, PredInfo,
         ProcInfo0, ProcInfo, ModuleInfo),

@@ -262,7 +262,7 @@ maybe_get_dotnet_library_version(MaybeVersion, !IO) :-
     io_lookup_string_option(dotnet_library_version, VersionStr, !IO),
     IsSep = (pred(('.')::in) is semidet),
     (
-        string.words(IsSep, VersionStr) = [Mj, Mn, Bu, Rv],
+        string.words_separator(IsSep, VersionStr) = [Mj, Mn, Bu, Rv],
         string.to_int(Mj, Major),
         string.to_int(Mn, Minor),
         string.to_int(Bu, Build),

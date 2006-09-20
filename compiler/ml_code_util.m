@@ -2145,7 +2145,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
 
     % Call polymorphism.m to generate the HLDS code to create the type_infos.
     create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0),
-    polymorphism.make_type_info_var(Type, Context,
+    polymorphism_make_type_info_var(Type, Context,
         TypeInfoVar, TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PredInfo0, PredInfo,
         ProcInfo0, ProcInfo, ModuleInfo1),

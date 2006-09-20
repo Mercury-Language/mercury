@@ -966,7 +966,7 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         %
     set.to_sorted_list(NonLocals, NonLocalsList),
     map.apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
-    prog_type.vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
+    type_vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
     list.append(ExistQVars, NonLocalTypeVarsList0, NonLocalTypeVarsList),
     set.list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
 

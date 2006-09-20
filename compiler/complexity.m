@@ -570,7 +570,7 @@ make_type_info_var(Type, Context, PredId, !ProcInfo, !ModuleInfo,
         TypeInfoVar, TypeInfoGoals) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     create_poly_info(!.ModuleInfo, PredInfo0, !.ProcInfo, PolyInfo0),
-    polymorphism.make_type_info_var(Type, Context, TypeInfoVar,
+    polymorphism_make_type_info_var(Type, Context, TypeInfoVar,
         TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PredInfo0, PredInfo,
         !ProcInfo, !:ModuleInfo),

@@ -241,7 +241,8 @@ modecheck_unification_2(X0,
     %
     (
         % Check if variable has a higher-order type.
-        type_is_higher_order(TypeOfX, Purity, _, EvalMethod, PredArgTypes),
+        type_is_higher_order_details(TypeOfX, Purity, _, EvalMethod,
+            PredArgTypes),
         ConsId0 = pred_const(ShroudedPredProcId, _)
     ->
         % Convert the pred term to a lambda expression.
@@ -885,7 +886,7 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal - GoalInfo) :-
     % and to the unification.
     %
     ( Goal0 = unify(X, Y, Mode, Unification0, FinalUnifyContext) ->
-        polymorphism.unification_typeinfos(Type, RttiVarMaps,
+        unification_typeinfos_rtti_varmaps(Type, RttiVarMaps,
             Unification0, Unification, GoalInfo2, GoalInfo),
         Goal = unify(X, Y, Mode, Unification, FinalUnifyContext)
     ;
@@ -1104,7 +1105,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
     ;
 
         % Check that we're not trying to do a higher-order unification.
-        type_is_higher_order(Type, _, PredOrFunc, _, _)
+        type_is_higher_order_details(Type, _, PredOrFunc, _, _)
     ->
         % We do not want to report this as an error if it occurs in a
         % compiler-generated predicate - instead, we delay the error
@@ -1300,7 +1301,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
             CanFail = can_fail,
             mode_info_get_instmap(!.ModeInfo, InstMap0),
             (
-                type_is_higher_order(TypeOfX, _, PredOrFunc, _, _),
+                type_is_higher_order_details(TypeOfX, _, PredOrFunc, _, _),
                 instmap.is_reachable(InstMap0)
             ->
                 set.init(WaitingVars),

@@ -348,7 +348,7 @@ lookup_proc_arg_size_info(ModuleInfo, PPId, MaybeArgSize) :-
 horder_vars([Arg | Args], VarType) :-
     (
         map.lookup(VarType, Arg, Type),
-        type_is_higher_order(Type, _, _, _, _)
+        type_is_higher_order(Type)
     ;
         horder_vars(Args, VarType)
     ).

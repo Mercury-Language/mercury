@@ -359,7 +359,7 @@ name_mangle(Name) = MangledName :-
     % require changes to extras/dynamic_linking/name_mangle.m,
     % profiler/demangle.m, util/mdemangle.c and compiler/name_mangle.m.
 
-    ( string.is_alnum_or_underscore(Name) ->
+    ( string.is_all_alnum_or_underscore(Name) ->
         % Any names that start with `f_' are changed so that they start with
         % `f__', so that we can use names starting with `f_' (followed by
         % anything except an underscore) without fear of name collisions.

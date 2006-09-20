@@ -68,19 +68,20 @@ test(X, Y) -->
 		++ "                                                    eee",
 		10) },
 	{ WrappedHyphen = 
-		string.word_wrap("*aaaaaaaaaaaaaaaaaaaa*  bbbbb bbb  b\t"
+		string.word_wrap_separator(
+		"*aaaaaaaaaaaaaaaaaaaa*  bbbbb bbb  b\t"
 		++ " ccccc c c c   cccc c c c c ccccc ccc cccc c  ccc ccc ccc "
 		++ "*dddddddddddddddddddddddddddddddddddddddddddddddddddddd*"
 		++ "                                                    eee",
 		10, "-") },
 	{ WrappedDots = 
-		string.word_wrap("*aaaaaa*  bbbbb bbb  b\t"
+		string.word_wrap_separator("*aaaaaa*  bbbbb bbb  b\t"
 		++ " ccccc c c c   cccc c c c c ccccc ccc cccc c  ccc ccc ccc "
 		++ "*dddddddddddddd*"
 		++ "                                                    eee",
 		5, "...") },
 	{ SepTooLong = 
-		string.word_wrap("whatever", 2, "...") },
+		string.word_wrap_separator("whatever", 2, "...") },
 	write_string("\nWrapped string:\n"),
 	write_string(Wrapped),
 	write_string("\nWrapped string with hyphens:\n"),

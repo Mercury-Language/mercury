@@ -171,33 +171,33 @@
 :- type substitution(T) == map(var(T), term(T)).
 :- type substitution    == substitution(generic).
 
-    % unify(Term1, Term2, Bindings0, Bindings):
+    % unify_term(Term1, Term2, Bindings0, Bindings):
     %
     % Unify (with occur check) two terms with respect to a set of bindings
     % and possibly update the set of bindings.
     %
-:- pred unify(term(T)::in, term(T)::in, substitution(T)::in,
+:- pred unify_term(term(T)::in, term(T)::in, substitution(T)::in,
     substitution(T)::out) is semidet.
 
     % As above, but unify the corresponding elements of two lists of terms.
     % Fails if the lists are not of equal length.
     %
-:- pred unify_list(list(term(T))::in, list(term(T))::in,
+:- pred unify_term_list(list(term(T))::in, list(term(T))::in,
     substitution(T)::in, substitution(T)::out) is semidet.
 
-    % unify(Term1, Term2, BoundVars, !Bindings):
+    % unify_term_dont_bind(Term1, Term2, BoundVars, !Bindings):
     %
     % Unify (with occur check) two terms with respect to a set of bindings
     % and possibly update the set of bindings. Fails if any of the variables
     % in BoundVars would become bound by the unification.
     %
-:- pred unify(term(T)::in, term(T)::in, list(var(T))::in,
+:- pred unify_term_dont_bind(term(T)::in, term(T)::in, list(var(T))::in,
     substitution(T)::in, substitution(T)::out) is semidet.
 
     % As above, but unify the corresponding elements of two lists of terms.
     % Fails if the lists are not of equal length.
     %
-:- pred unify_list(list(term(T))::in, list(term(T))::in,
+:- pred unify_term_list_dont_bind(list(term(T))::in, list(term(T))::in,
     list(var(T))::in, substitution(T)::in, substitution(T)::out) is semidet.
 
     % list_subsumes(Terms1, Terms2, Subst) succeeds iff the list
@@ -327,10 +327,10 @@
 :- pred apply_variable_renaming_to_vars(map(var(T), var(T))::in,
     list(var(T))::in, list(var(T))::out) is det.
 
-    % is_ground(Term, Bindings) is true iff no variables contained
+    % is_ground_in_bindings(Term, Bindings) is true iff no variables contained
     % in Term are non-ground in Bindings.
     %
-:- pred is_ground(term(T)::in, substitution(T)::in) is semidet.
+:- pred is_ground_in_bindings(term(T)::in, substitution(T)::in) is semidet.
 
     % is_ground(Term) is true iff Term contains no variables.
     %
@@ -819,12 +819,12 @@ context_init(File, LineNumber, context(File, LineNumber)).
 
 %-----------------------------------------------------------------------------%
 
-term.unify(variable(X), variable(Y), !Bindings) :-
+unify_term(variable(X), variable(Y), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
         ( map.search(!.Bindings, Y, BindingOfY) ->
             % Both X and Y already have bindings - just unify the terms
             % they are bound to.
-            term.unify(BindingOfX, BindingOfY, !Bindings)
+            unify_term(BindingOfX, BindingOfY, !Bindings)
         ;
             % Y is a variable which hasn't been bound yet.
             apply_rec_substitution(BindingOfX, !.Bindings, SubstBindingOfX),
@@ -856,40 +856,40 @@ term.unify(variable(X), variable(Y), !Bindings) :-
         )
     ).
 
-term.unify(term.variable(X), term.functor(F, As, C), !Bindings) :-
+unify_term(term.variable(X), term.functor(F, As, C), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
-        term.unify(BindingOfX, functor(F, As, C), !Bindings)
+        unify_term(BindingOfX, functor(F, As, C), !Bindings)
     ;
         \+ occurs_list(As, X, !.Bindings),
         map.set(!.Bindings, X, functor(F, As, C), !:Bindings)
     ).
 
-term.unify(functor(F, As, C), variable(X), !Bindings) :-
+unify_term(functor(F, As, C), variable(X), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
-        term.unify(functor(F, As, C), BindingOfX, !Bindings)
+        unify_term(functor(F, As, C), BindingOfX, !Bindings)
     ;
         \+ occurs_list(As, X, !.Bindings),
         map.set(!.Bindings, X, functor(F, As, C), !:Bindings)
     ).
 
-term.unify(functor(F, AsX, _), functor(F, AsY, _), !Bindings) :-
-    term.unify_list(AsX, AsY, !Bindings).
+unify_term(functor(F, AsX, _), functor(F, AsY, _), !Bindings) :-
+    unify_term_list(AsX, AsY, !Bindings).
 
-term.unify_list([], [], !Bindings).
-term.unify_list([X | Xs], [Y | Ys], !Bindings) :-
-    term.unify(X, Y, !Bindings),
-    term.unify_list(Xs, Ys, !Bindings).
+unify_term_list([], [], !Bindings).
+unify_term_list([X | Xs], [Y | Ys], !Bindings) :-
+    unify_term(X, Y, !Bindings),
+    unify_term_list(Xs, Ys, !Bindings).
 
-term.unify(variable(X), variable(Y), BoundVars, !Bindings) :-
+unify_term_dont_bind(variable(X), variable(Y), BoundVars, !Bindings) :-
     ( list.member(Y, BoundVars) ->
-        unify_bound_var(X, Y, BoundVars, !Bindings)
+        unify_term_bound_var(X, Y, BoundVars, !Bindings)
     ; list.member(X, BoundVars) ->
-        unify_bound_var(Y, X, BoundVars, !Bindings)
+        unify_term_bound_var(Y, X, BoundVars, !Bindings)
     ; map.search(!.Bindings, X, BindingOfX) ->
         ( map.search(!.Bindings, Y, BindingOfY) ->
             % Both X and Y already have bindings - just unify the
             % terms they are bound to.
-            unify(BindingOfX, BindingOfY, BoundVars, !Bindings)
+            unify_term_dont_bind(BindingOfX, BindingOfY, BoundVars, !Bindings)
         ;
             apply_rec_substitution(BindingOfX, !.Bindings, SubstBindingOfX),
             % Y is a variable which hasn't been bound yet.
@@ -920,27 +920,27 @@ term.unify(variable(X), variable(Y), BoundVars, !Bindings) :-
         )
     ).
 
-term.unify(variable(X), functor(F, As, C), BoundVars, !Bindings) :-
+unify_term_dont_bind(variable(X), functor(F, As, C), BoundVars, !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
-        term.unify(BindingOfX, functor(F, As, C), BoundVars, !Bindings)
+        unify_term_dont_bind(BindingOfX, functor(F, As, C), BoundVars,
+            !Bindings)
     ;
         \+ occurs_list(As, X, !.Bindings),
         \+ list.member(X, BoundVars),
         svmap.det_insert(X, functor(F, As, C), !Bindings)
     ).
 
-term.unify(functor(F, As, C), variable(X), BoundVars, !Bindings) :-
-    (
-        map.search(!.Bindings, X, BindingOfX)
-    ->
-        term.unify(functor(F, As, C), BindingOfX, BoundVars, !Bindings)
+unify_term_dont_bind(functor(F, As, C), variable(X), BoundVars, !Bindings) :-
+    ( map.search(!.Bindings, X, BindingOfX) ->
+        unify_term_dont_bind(functor(F, As, C), BindingOfX, BoundVars,
+            !Bindings)
     ;
         \+ occurs_list(As, X, !.Bindings),
         \+ list.member(X, BoundVars),
         svmap.det_insert(X, functor(F, As, C), !Bindings)
     ).
 
-term.unify(functor(FX, AsX, _CX), functor(FY, AsY, _CY), BoundVars,
+unify_term_dont_bind(functor(FX, AsX, _CX), functor(FY, AsY, _CY), BoundVars,
         !Bindings) :-
     list.length(AsX, ArityX),
     list.length(AsY, ArityY),
@@ -948,23 +948,23 @@ term.unify(functor(FX, AsX, _CX), functor(FY, AsY, _CY), BoundVars,
         FX = FY,
         ArityX = ArityY
     ->
-        term.unify_list(AsX, AsY, BoundVars, !Bindings)
+        unify_term_list_dont_bind(AsX, AsY, BoundVars, !Bindings)
     ;
         fail
     ).
 
-term.unify_list([], [], _, !Bindings).
-term.unify_list([X | Xs], [Y | Ys], BoundVars, !Bindings) :-
-    term.unify(X, Y, BoundVars, !Bindings),
-    term.unify_list(Xs, Ys, BoundVars, !Bindings).
+unify_term_list_dont_bind([], [], _, !Bindings).
+unify_term_list_dont_bind([X | Xs], [Y | Ys], BoundVars, !Bindings) :-
+    unify_term_dont_bind(X, Y, BoundVars, !Bindings),
+    unify_term_list_dont_bind(Xs, Ys, BoundVars, !Bindings).
 
-:- pred unify_bound_var(var(T)::in, var(T)::in, list(var(T))::in,
+:- pred unify_term_bound_var(var(T)::in, var(T)::in, list(var(T))::in,
     substitution(T)::in, substitution(T)::out) is semidet.
 
-unify_bound_var(Var, BoundVar, BoundVars, !Bindings) :-
+unify_term_bound_var(Var, BoundVar, BoundVars, !Bindings) :-
     ( map.search(!.Bindings, Var, BindingOfVar) ->
         BindingOfVar = variable(Var2),
-        unify_bound_var(Var2, BoundVar, BoundVars, !Bindings)
+        unify_term_bound_var(Var2, BoundVar, BoundVars, !Bindings)
     ;
         ( Var = BoundVar ->
             true
@@ -979,7 +979,7 @@ list_subsumes(Terms1, Terms2, Subst) :-
     % without binding any of the variables in Terms2.
     vars_list(Terms2, Terms2Vars),
     map.init(Subst0),
-    term.unify_list(Terms1, Terms2, Terms2Vars, Subst0, Subst).
+    unify_term_list_dont_bind(Terms1, Terms2, Terms2Vars, Subst0, Subst).
 
 %-----------------------------------------------------------------------------%
 
@@ -1163,30 +1163,31 @@ var_list_to_term_list([Var | Vars], [variable(Var) | Terms]) :-
 
 %-----------------------------------------------------------------------------%
 
-is_ground(variable(V), Bindings) :-
+is_ground_in_bindings(variable(V), Bindings) :-
     map.search(Bindings, V, Binding),
-    is_ground(Binding, Bindings).
-is_ground(functor(_, Args, _), Bindings) :-
-    is_ground_2(Args, Bindings).
+    is_ground_in_bindings(Binding, Bindings).
+is_ground_in_bindings(functor(_, Args, _), Bindings) :-
+    is_ground_in_bindings_list(Args, Bindings).
 
-:- pred is_ground_2(list(term(T))::in, substitution(T)::in) is semidet.
+:- pred is_ground_in_bindings_list(list(term(T))::in, substitution(T)::in)
+    is semidet.
 
-is_ground_2([], _Bindings).
-is_ground_2([Term | Terms], Bindings) :-
-    is_ground(Term, Bindings),
-    is_ground_2(Terms, Bindings).
+is_ground_in_bindings_list([], _Bindings).
+is_ground_in_bindings_list([Term | Terms], Bindings) :-
+    is_ground_in_bindings(Term, Bindings),
+    is_ground_in_bindings_list(Terms, Bindings).
 
 %-----------------------------------------------------------------------------%
 
 is_ground(functor(_, Args, _)) :-
-    is_ground_2(Args).
+    is_ground_list(Args).
 
-:- pred is_ground_2(list(term(T))::in) is semidet.
+:- pred is_ground_list(list(term(T))::in) is semidet.
 
-is_ground_2([]).
-is_ground_2([Term | Terms]) :-
+is_ground_list([]).
+is_ground_list([Term | Terms]) :-
     is_ground(Term),
-    is_ground_2(Terms).
+    is_ground_list(Terms).
 
 %-----------------------------------------------------------------------------%
 

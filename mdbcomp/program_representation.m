@@ -443,7 +443,7 @@ path_from_string_det(GoalPathStr, GoalPath) :-
     ).
 
 path_from_string(GoalPathStr, GoalPath) :-
-    StepStrs = string.words(is_path_separator, GoalPathStr),
+    StepStrs = string.words_separator(is_path_separator, GoalPathStr),
     list.map(path_step_from_string, StepStrs, GoalPath).
 
 path_step_from_string(String, Step) :-

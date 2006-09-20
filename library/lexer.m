@@ -76,7 +76,8 @@
     %
 :- type offset == int.
 
-    % string_get_token_list(String, MaxOffset, Tokens, InitialPos, FinalPos):
+    % string_get_token_list_max(String, MaxOffset, Tokens,
+    %   InitialPos, FinalPos):
     %
     % Scan a list of tokens from a string, starting at the current offset
     % specified by InitialPos. Keep scanning until either we encounter either
@@ -85,11 +86,12 @@
     % Return the tokens scanned in Tokens, and return the position one
     % character past the end of the last token in FinalPos.
     %
-:- pred string_get_token_list(string::in, offset::in, token_list::out,
+:- pred string_get_token_list_max(string::in, offset::in, token_list::out,
     posn::in, posn::out) is det.
 
     % string_get_token_list(String, Tokens, InitialPos, FinalPos):
-    % calls string_get_token_list/5 above with MaxPos = length of String.
+    %
+    % calls string_get_token_list_max above with MaxPos = length of String.
     %
 :- pred string_get_token_list(string::in, token_list::out,
     posn::in, posn::out) is det.
@@ -221,9 +223,9 @@ get_token_list_2(Token0, Context0, Tokens, !IO) :-
 
 string_get_token_list(String, Tokens, !Posn) :-
     string.length(String, Len),
-    string_get_token_list(String, Len, Tokens, !Posn).
+    string_get_token_list_max(String, Len, Tokens, !Posn).
 
-string_get_token_list(String, Len, Tokens, !Posn) :-
+string_get_token_list_max(String, Len, Tokens, !Posn) :-
     string_get_token(String, Len, Token, Context, !Posn),
     ( Token = eof ->
         Tokens = token_nil
@@ -231,7 +233,7 @@ string_get_token_list(String, Len, Tokens, !Posn) :-
         Tokens = token_cons(Token, Context, token_nil)
     ;
         Tokens = token_cons(Token, Context, Tokens1),
-        string_get_token_list(String, Len, Tokens1, !Posn)
+        string_get_token_list_max(String, Len, Tokens1, !Posn)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -305,8 +307,7 @@ string_set_line_number(LineNumber, Posn0, Posn) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred get_token(token::out, token_context::out, io::di, io::uo)
-    is det.
+:- pred get_token(token::out, token_context::out, io::di, io::uo) is det.
 
 get_token(Token, Context, !IO) :-
     io.read_char(Result, !IO),

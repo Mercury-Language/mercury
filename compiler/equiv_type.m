@@ -856,7 +856,7 @@ replace_in_pred_type(PredName, PredOrFunc, Context, EqvMap, EqvInstMap,
         MaybeWithType0 = yes(WithType0),
         replace_in_type(EqvMap, WithType0, WithType, _, !TypeVarSet, !Info),
         (
-            type_is_higher_order(WithType, _Purity, PredOrFunc,
+            type_is_higher_order_details(WithType, _Purity, PredOrFunc,
                 _EvalMethod, ExtraTypes0)
         ->
             ExtraTypes = ExtraTypes0,

@@ -580,19 +580,19 @@ add_constant_construction(ConstructVar, Construct0,
 
 filter_dependent_constraints(NonLocals, GoalOutputVars, Constraints,
         Dependent, Independent) :-
-    filter_dependent_constraints(NonLocals, GoalOutputVars, Constraints,
+    filter_dependent_constraints_2(NonLocals, GoalOutputVars, Constraints,
         [], RevDependent, [], RevIndependent),
     list.reverse(RevDependent, Dependent),
     list.reverse(RevIndependent, Independent).
 
-:- pred filter_dependent_constraints(set(prog_var)::in, set(prog_var)::in,
+:- pred filter_dependent_constraints_2(set(prog_var)::in, set(prog_var)::in,
     list(constraint)::in,
     list(constraint)::in, list(constraint)::out,
     list(constraint)::in, list(constraint)::out) is det.
 
-filter_dependent_constraints(_NonLocals, _OutputVars, [],
+filter_dependent_constraints_2(_NonLocals, _OutputVars, [],
         !RevDependent, !RevIndependent).
-filter_dependent_constraints(NonLocals, GoalOutputVars,
+filter_dependent_constraints_2(NonLocals, GoalOutputVars,
         [Constraint | Constraints], !RevDependent, !RevIndependent) :-
     Constraint = constraint(ConstraintGoal, _, IncompatibleInstVars, _),
     ConstraintGoal = _ - ConstraintGoalInfo,
@@ -627,7 +627,7 @@ filter_dependent_constraints(NonLocals, GoalOutputVars,
     ;
         !:RevIndependent = [Constraint | !.RevIndependent]
     ),
-    filter_dependent_constraints(NonLocals, GoalOutputVars, Constraints,
+    filter_dependent_constraints_2(NonLocals, GoalOutputVars, Constraints,
         !RevDependent, !RevIndependent).
 
 %-----------------------------------------------------------------------------%
@@ -671,39 +671,39 @@ propagate_conj_constraints([Goal0 - Constraints0 | Goals0],
 
 filter_complex_constraints(Constraints,
         SimpleConstraints, ComplexConstraints) :-
-    filter_complex_constraints(Constraints,
+    filter_complex_constraints_2(Constraints,
         [], RevSimpleConstraints, [], RevComplexConstraints),
     SimpleConstraints = list.reverse(RevSimpleConstraints),
     ComplexConstraints = list.reverse(RevComplexConstraints).
 
     % Don't attempt to push branched goals into other goals.
     %
-:- pred filter_complex_constraints(list(constraint)::in,
+:- pred filter_complex_constraints_2(list(constraint)::in,
     list(constraint)::in, list(constraint)::out,
     list(constraint)::in, list(constraint)::out) is det.
 
-filter_complex_constraints([], !RevSimpleConstraints, !RevComplexConstraints).
-filter_complex_constraints([Constraint | Constraints],
+filter_complex_constraints_2([],
+        !RevSimpleConstraints, !RevComplexConstraints).
+filter_complex_constraints_2([Constraint | Constraints],
         !RevSimpleConstraints, !RevComplexConstraints) :-
     Constraint = constraint(ConstraintGoal, _, _, _),
     (
         goal_is_simple(ConstraintGoal),
 
-        %
         % Check whether this simple constraint can be reordered
         % with the complex constraints we've already found.
-        %
-        \+ (
-            list.member(ComplexConstraint, !.RevComplexConstraints),
-            \+ can_reorder_constraints(ComplexConstraint, Constraint)
+        (
+            list.member(ComplexConstraint, !.RevComplexConstraints)
+        =>
+            can_reorder_constraints(ComplexConstraint, Constraint)
         )
     ->
         !:RevSimpleConstraints = [Constraint | !.RevSimpleConstraints]
     ;
         !:RevComplexConstraints = [Constraint | !.RevComplexConstraints]
     ),
-    filter_complex_constraints(Constraints, !RevSimpleConstraints,
-        !RevComplexConstraints).
+    filter_complex_constraints_2(Constraints,
+        !RevSimpleConstraints, !RevComplexConstraints).
 
 :- pred goal_is_simple(hlds_goal::in) is semidet.
 
