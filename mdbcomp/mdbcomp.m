@@ -22,6 +22,7 @@
 
 :- pred mdbcomp.version(string::out) is det.
 
+% If you add any modules here, you should update the list in slice/Mmakefile.
 :- include_module prim_data.
 :- include_module program_representation.
 :- include_module rtti_access.

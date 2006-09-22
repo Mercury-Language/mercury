@@ -213,7 +213,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		:- implementation.
 
-		:- import_module bool, int, list, univ.
+		:- import_module bool, char, string, int, list, univ.
        	
 		:- mutable(global_var,
 			int,
@@ -237,7 +237,9 @@ if test "$BOOTSTRAP_MC" != ""; then
 					io.print("Hello, world\n", !S)
 				)
 			;
-				io.print("Nope.\n", !IO)
+				Words = string.words_separator(char.is_alpha,
+					"xx yy"),
+				io.write(Words, !IO)
 			).
 
 		:- type t    ---> a ; b ; c(int).
@@ -4360,7 +4362,6 @@ library/LIB_FLAGS
 mdbcomp/MDBCOMP_FLAGS
 browser/MDB_FLAGS
 analysis/ANALYSIS_FLAGS
-slice/SLICE_FLAGS
 profiler/PROF_FLAGS
 deep_profiler/DEEP_FLAGS
 "$test_flags"

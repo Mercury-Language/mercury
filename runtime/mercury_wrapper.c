@@ -422,10 +422,11 @@ int                 MR_num_complexity_procs;
 
 #endif
 
-static  void    process_args(int argc, char **argv);
-static  void    process_environment_options(void);
-static  void    process_options(int argc, char **argv);
-static  void    usage(void);
+static  void    MR_process_args(int argc, char **argv);
+static  void    MR_process_environment_options(void);
+static  void    MR_process_options(int argc, char **argv);
+static  void    MR_usage(void);
+static  MR_bool MR_matches_exec_name(const char *option);
 
 #ifdef MR_TYPE_CTOR_STATS
 static  void    MR_print_type_ctor_stats(void);
@@ -505,8 +506,8 @@ mercury_runtime_init(int argc, char **argv)
     ** variable MERCURY_OPTIONS, and save results in global variables.
     */
 
-    process_args(argc, argv);
-    process_environment_options();
+    MR_process_args(argc, argv);
+    MR_process_environment_options();
 
 #ifdef  MR_STACK_FRAME_STATS
     MR_init_stack_frame_stats();
@@ -654,8 +655,7 @@ mercury_runtime_init(int argc, char **argv)
         ** In case the program terminates with an exception,
         ** we still want the trace count to be written out.
         */
-        MR_register_exception_cleanup(MR_trace_write_label_exec_counts_to_file,
-            NULL);
+        MR_register_exception_cleanup(MR_trace_record_label_exec_counts, NULL);
     }
 
     /*
@@ -922,13 +922,13 @@ MR_make_argv(const char *string,
 }
 
 /*  
-** process_args() is a function that sets some global variables from the
+** MR_process_args() is a function that sets some global variables from the
 ** command line.  `mercury_arg[cv]' are `arg[cv]' without the program name.
 ** `progname' is program name.
 */
 
 static void
-process_args(int argc, char **argv)
+MR_process_args(int argc, char **argv)
 {
     MR_progname = argv[0];
     mercury_argc = argc - 1;
@@ -936,12 +936,12 @@ process_args(int argc, char **argv)
 }
 
 /*
-** process_environment_options() is a function to parse the MERCURY_OPTIONS
+** MR_process_environment_options() is a function to parse the MERCURY_OPTIONS
 ** environment variable.  
 */ 
 
 static void
-process_environment_options(void)
+MR_process_environment_options(void)
 {
     char    *env_options;
 
@@ -983,7 +983,7 @@ process_environment_options(void)
         }
         MR_GC_free(dummy_command_line);
 
-        process_options(argc, argv);
+        MR_process_options(argc, argv);
 
         MR_GC_free(arg_str);
         MR_GC_free(argv);
@@ -1041,7 +1041,12 @@ enum MR_long_option {
     MR_DEEP_PROF_DEBUG_FILE_OPT,
     MR_TABLING_STATISTICS_OPT,
     MR_TRACE_COUNT_OPT,
+    MR_TRACE_COUNT_IF_EXEC_OPT,
+    MR_TRACE_COUNT_SUMMARY_FILE_OPT,
+    MR_TRACE_COUNT_SUMMARY_CMD_OPT,
+    MR_TRACE_COUNT_SUMMARY_MAX_OPT,
     MR_COVERAGE_TEST_OPT,
+    MR_COVERAGE_TEST_IF_EXEC_OPT,
     MR_TRACE_COUNT_FILE,
     MR_MEM_USAGE_REPORT
 };
@@ -1112,8 +1117,17 @@ struct MR_option MR_long_opts[] = {
     { "deep-debug-file",                0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT },
     { "tabling-statistics",             0, 0, MR_TABLING_STATISTICS_OPT },
     { "trace-count",                    0, 0, MR_TRACE_COUNT_OPT },
+    { "trace-count-if-exec",            1, 0, MR_TRACE_COUNT_IF_EXEC_OPT },
     { "coverage-test",                  0, 0, MR_COVERAGE_TEST_OPT },
+    { "coverage-test-if-exec",          1, 0, MR_COVERAGE_TEST_IF_EXEC_OPT },
     { "tc-output-file",                 1, 0, MR_TRACE_COUNT_FILE },
+    { "trace-count-output-file",        1, 0, MR_TRACE_COUNT_FILE },
+    { "tc-summary-file",                1, 0, MR_TRACE_COUNT_SUMMARY_FILE_OPT },
+    { "trace-count-summary-file",       1, 0, MR_TRACE_COUNT_SUMMARY_FILE_OPT },
+    { "tc-summary-cmd",                 1, 0, MR_TRACE_COUNT_SUMMARY_CMD_OPT },
+    { "trace-count-summary-cmd",        1, 0, MR_TRACE_COUNT_SUMMARY_CMD_OPT },
+    { "tc-summary-max",                 1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
+    { "trace-count-summary-max",        1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
     { "mem-usage-report",               0, 0, MR_MEM_USAGE_REPORT },
 
     /* This needs to be kept at the end. */
@@ -1121,7 +1135,7 @@ struct MR_option MR_long_opts[] = {
 };
 
 static void
-process_options(int argc, char **argv)
+MR_process_options(int argc, char **argv)
 {
     unsigned long   size;
     int             c;
@@ -1134,7 +1148,7 @@ process_options(int argc, char **argv)
         {
             case MR_HEAP_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_heap_size = size;
@@ -1142,7 +1156,7 @@ process_options(int argc, char **argv)
 
             case MR_HEAP_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_heap_size = size * sizeof(MR_Word);
@@ -1150,7 +1164,7 @@ process_options(int argc, char **argv)
 
             case MR_DETSTACK_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_detstack_size = size;
@@ -1158,7 +1172,7 @@ process_options(int argc, char **argv)
 
             case MR_DETSTACK_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_detstack_size = size * sizeof(MR_Word);
@@ -1166,7 +1180,7 @@ process_options(int argc, char **argv)
 
             case MR_NONDETSTACK_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_nondstack_size = size;
@@ -1174,7 +1188,7 @@ process_options(int argc, char **argv)
 
             case MR_NONDETSTACK_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_nondstack_size = size * sizeof(MR_Word);
@@ -1182,7 +1196,7 @@ process_options(int argc, char **argv)
 
             case MR_SOLUTIONS_HEAP_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_solutions_heap_size = size;
@@ -1190,7 +1204,7 @@ process_options(int argc, char **argv)
 
             case MR_SOLUTIONS_HEAP_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_solutions_heap_size = size * sizeof(MR_Word);
@@ -1198,7 +1212,7 @@ process_options(int argc, char **argv)
 
             case MR_TRAIL_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_trail_size = size;
@@ -1206,7 +1220,7 @@ process_options(int argc, char **argv)
 
             case MR_TRAIL_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_trail_size = size * sizeof(MR_Word);
@@ -1214,7 +1228,7 @@ process_options(int argc, char **argv)
 
             case MR_HEAP_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_heap_zone_size = size;
@@ -1222,7 +1236,7 @@ process_options(int argc, char **argv)
 
             case MR_HEAP_REDZONE_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_heap_zone_size = size * sizeof(MR_Word);
@@ -1230,7 +1244,7 @@ process_options(int argc, char **argv)
 
             case MR_DETSTACK_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_detstack_zone_size = size;
@@ -1238,7 +1252,7 @@ process_options(int argc, char **argv)
 
             case MR_DETSTACK_REDZONE_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_detstack_zone_size = size * sizeof(MR_Word);
@@ -1246,7 +1260,7 @@ process_options(int argc, char **argv)
 
             case MR_NONDETSTACK_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_nondstack_zone_size = size;
@@ -1254,7 +1268,7 @@ process_options(int argc, char **argv)
 
             case MR_NONDETSTACK_REDZONE_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_nondstack_zone_size = size * sizeof(MR_Word);
@@ -1262,7 +1276,7 @@ process_options(int argc, char **argv)
 
             case MR_SOLUTIONS_HEAP_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_solutions_heap_zone_size = size;
@@ -1270,7 +1284,7 @@ process_options(int argc, char **argv)
 
             case MR_SOLUTIONS_HEAP_REDZONE_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_solutions_heap_zone_size = size * sizeof(MR_Word);
@@ -1278,7 +1292,7 @@ process_options(int argc, char **argv)
 
             case MR_TRAIL_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_trail_zone_size = size;
@@ -1286,7 +1300,7 @@ process_options(int argc, char **argv)
 
             case MR_TRAIL_REDZONE_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_trail_zone_size = size * sizeof(MR_Word);
@@ -1294,7 +1308,7 @@ process_options(int argc, char **argv)
 
             case MR_HEAP_MARGIN_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_heap_margin_size = size;
@@ -1302,7 +1316,7 @@ process_options(int argc, char **argv)
 
             case MR_HEAP_MARGIN_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_heap_margin_size = size * sizeof(MR_Word);
@@ -1310,13 +1324,13 @@ process_options(int argc, char **argv)
 
             case MR_HEAP_EXPANSION_FACTOR:
                 if (sscanf(MR_optarg, "%lf", &MR_heap_expansion_factor) != 1) {
-                    usage();
+                    MR_usage();
                 }
                 break;
 
             case MR_GENSTACK_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_genstack_size = size;
@@ -1324,7 +1338,7 @@ process_options(int argc, char **argv)
 
             case MR_GENSTACK_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_genstack_size = size * sizeof(MR_Word);
@@ -1332,7 +1346,7 @@ process_options(int argc, char **argv)
 
             case MR_CUTSTACK_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_cutstack_size = size;
@@ -1340,7 +1354,7 @@ process_options(int argc, char **argv)
 
             case MR_CUTSTACK_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_cutstack_size = size * sizeof(MR_Word);
@@ -1348,7 +1362,7 @@ process_options(int argc, char **argv)
 
             case MR_PNEGSTACK_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_pnegstack_size = size;
@@ -1356,7 +1370,7 @@ process_options(int argc, char **argv)
 
             case MR_PNEGSTACK_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_pnegstack_size = size * sizeof(MR_Word);
@@ -1364,7 +1378,7 @@ process_options(int argc, char **argv)
 
             case MR_GEN_DETSTACK_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_gen_detstack_size = size;
@@ -1372,7 +1386,7 @@ process_options(int argc, char **argv)
 
             case MR_GEN_DETSTACK_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_gen_detstack_size = size * sizeof(MR_Word);
@@ -1380,7 +1394,7 @@ process_options(int argc, char **argv)
 
             case MR_GEN_NONSTACK_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_gen_nonstack_size = size;
@@ -1388,7 +1402,7 @@ process_options(int argc, char **argv)
 
             case MR_GEN_NONSTACK_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_gen_nonstack_size = size * sizeof(MR_Word);
@@ -1396,7 +1410,7 @@ process_options(int argc, char **argv)
 
             case MR_GEN_DETSTACK_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_gen_detstack_zone_size = size;
@@ -1404,7 +1418,7 @@ process_options(int argc, char **argv)
 
             case MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_gen_detstack_zone_size = size * sizeof(MR_Word);
@@ -1412,7 +1426,7 @@ process_options(int argc, char **argv)
 
             case MR_GEN_NONSTACK_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_gen_nonstack_zone_size = size;
@@ -1420,7 +1434,7 @@ process_options(int argc, char **argv)
 
             case MR_GEN_NONSTACK_REDZONE_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_gen_nonstack_zone_size = size * sizeof(MR_Word);
@@ -1451,7 +1465,7 @@ process_options(int argc, char **argv)
             case 'n':
             case MR_NUM_OUTPUT_ARGS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_num_output_args = size;
@@ -1499,13 +1513,58 @@ process_options(int argc, char **argv)
                 MR_trace_count_enabled = MR_TRUE;
                 break;
 
+            case MR_TRACE_COUNT_IF_EXEC_OPT:
+                if (MR_matches_exec_name(MR_optarg)) {
+                    MR_trace_count_enabled = MR_TRUE;
+                }
+                break;
+
             case MR_COVERAGE_TEST_OPT:
                 MR_coverage_test_enabled = MR_TRUE;
                 MR_trace_count_enabled = MR_TRUE;
                 break;
 
+            case MR_COVERAGE_TEST_IF_EXEC_OPT:
+                if (MR_matches_exec_name(MR_optarg)) {
+                    MR_coverage_test_enabled = MR_TRUE;
+                    MR_trace_count_enabled = MR_TRUE;
+                }
+                break;
+
             case MR_TRACE_COUNT_FILE:
+                if (MR_trace_count_summary_file != NULL) {
+                    MR_fatal_error(
+                        "--trace-count-file and --trace-count-summary-file"
+                        " are mutually exclusive\n");
+                }
+
                 MR_trace_counts_file = MR_copy_string(MR_optarg);
+                break;
+
+            case MR_TRACE_COUNT_SUMMARY_FILE_OPT:
+                if (MR_trace_counts_file != NULL) {
+                    MR_fatal_error(
+                        "--trace-count-file and --trace-count-summary-file"
+                        " are mutually exclusive\n");
+                }
+
+                MR_trace_count_summary_file = MR_copy_string(MR_optarg);
+                break;
+
+            case MR_TRACE_COUNT_SUMMARY_CMD_OPT:
+                MR_trace_count_summary_cmd = MR_copy_string(MR_optarg);
+                break;
+
+            case MR_TRACE_COUNT_SUMMARY_MAX_OPT:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                if (size < 2) {
+                    MR_usage();
+                }
+
+                MR_trace_count_summary_max = size;
                 break;
 
             case MR_MEM_USAGE_REPORT:
@@ -1522,7 +1581,7 @@ process_options(int argc, char **argv)
 
             case 'C':
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 MR_pcache_size = size * 1024;
@@ -1548,7 +1607,7 @@ process_options(int argc, char **argv)
                     MR_nondstackdebug = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "B")) {
                     if (sscanf(MR_optarg+1, "%u", &MR_lld_start_block) != 1) {
-                        usage();
+                        MR_usage();
                     }
                 } else if (MR_streq(MR_optarg, "c")) {
                     MR_calldebug    = MR_TRUE;
@@ -1609,11 +1668,11 @@ process_options(int argc, char **argv)
 
                     if (MR_optarg[1] == '0' && MR_optarg[2] == 'x') {
                         if (sscanf(MR_optarg+3, "%lx", &addr) != 1) {
-                            usage();
+                            MR_usage();
                         }
                     } else {
                         if (sscanf(MR_optarg+1, "%lu", &addr) != 1) {
-                            usage();
+                            MR_usage();
                         }
                     }
 
@@ -1630,7 +1689,7 @@ process_options(int argc, char **argv)
                     */
                     MR_calldebug = MR_TRUE;
                 } else {
-                    usage();
+                    MR_usage();
                 }
 
                 use_own_timer = MR_FALSE;
@@ -1647,7 +1706,7 @@ process_options(int argc, char **argv)
                     MR_trace_handler = MR_TRACE_EXTERNAL;
 #endif
                 } else {
-                    usage();
+                    MR_usage();
                 }
 
                 break;
@@ -1659,18 +1718,18 @@ process_options(int argc, char **argv)
             case 'P':
 #ifdef  MR_THREAD_SAFE
                 if (sscanf(MR_optarg, "%u", &MR_num_threads) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 if (MR_num_threads < 1) {
-                    usage();
+                    MR_usage();
                 }
 #endif
                 break;
 
             case 'r':   
                 if (sscanf(MR_optarg, "%d", &repeats) != 1) {
-                    usage();
+                    MR_usage();
                 }
 
                 break;
@@ -1704,7 +1763,7 @@ process_options(int argc, char **argv)
                 } else if (MR_streq(MR_optarg, "p")) {
                     MR_time_profile_method = MR_profile_user_plus_system_time;
                 } else {
-                    usage();
+                    MR_usage();
                 }
                 break;
 
@@ -1721,7 +1780,7 @@ process_options(int argc, char **argv)
                 break;
 
             default:    
-                usage();
+                MR_usage();
 
         }
     }
@@ -1743,7 +1802,7 @@ process_options(int argc, char **argv)
 }
 
 static void 
-usage(void)
+MR_usage(void)
 {
     printf("The MERCURY_OPTIONS environment variable "
         "contains an invalid option.\n"
@@ -1751,6 +1810,26 @@ usage(void)
         "the Mercury\nUser's Guide for details.\n");
     fflush(stdout);
     exit(1);
+}
+
+static MR_bool
+MR_matches_exec_name(const char *option)
+{
+    char        *s;
+    const char  *exec_name;
+
+    s = strrchr(MR_progname, '/');
+    if (s == NULL) {
+        exec_name = MR_progname;
+    } else {
+        exec_name = s + 1;
+    }
+
+    if (MR_streq(option, exec_name)) {
+        return MR_TRUE;
+    } else {
+        return MR_FALSE;
+    }
 }
 
 /*
@@ -2280,7 +2359,7 @@ mercury_runtime_terminate(void)
     MR_trace_final();
 
     if (MR_trace_count_enabled) {
-        MR_trace_write_label_exec_counts_to_file(NULL);
+        MR_trace_record_label_exec_counts(NULL);
     }
 
 #if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \

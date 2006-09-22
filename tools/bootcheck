@@ -132,6 +132,10 @@ Options:
     --trace-count
         Collect counts of the number of times each label is executed
         in modules compiled with debugging.
+    --coverage-test
+        Collect counts of the number of times each label is executed
+        in modules compiled with debugging, and put the raw data needed
+        by the mct script into a bunch of files in the coverage directory.
     -W, --windows
         Translate paths into the Microsoft Windows format and use the
         extension \`.lib' for libraries. This option also implies
@@ -181,6 +185,7 @@ test_grade=
 test_params=false
 copy_runtime=false
 copy_boehm_gc=false
+copy_slice=false
 copy_profilers=false
 mmake_stage_2=true
 keep_stage_2=false
@@ -199,6 +204,7 @@ compile_times=false
 write_out_profile_data=true
 type_stats=""
 trace_count=false
+coverage_test=false
 disable_debug_libs=false
 delete_deep_data=true
 progress=false
@@ -305,6 +311,9 @@ while test $# -gt 0; do
     -p|--copy-profilers)
         copy_profilers=true ;;
 
+    --copy-slice)
+        copy_slice=true ;;
+
     --check-namespace)
         check_namespace=true ;;
     --no-check-namespace)
@@ -352,6 +361,9 @@ while test $# -gt 0; do
 
     --trace-count|--trace-counts)
         trace_count=true ;;
+
+    --coverage-test)
+        coverage_test=true ;;
 
     -W|--windows)
         windows=true; use_cp=true; A=lib ;;
@@ -421,6 +433,7 @@ case $target in
         # but the stage 2 will be built with `--target asm',
         # then we need to copy the profiler directories.
         # So to be safe, we just enable this by default.
+        copy_slice=true
         copy_profilers=true
         ;;
 esac
@@ -430,6 +443,7 @@ case $grade in
         target_subdir=$ils_subdir
         target_opt=
         # See comment above
+        copy_slice=true
         copy_profilers=true
         # The IL back-end generates native Windows executables,
         # which do not understand symlinks.  So we need to use cp.
@@ -531,6 +545,19 @@ if $trace_count
 then
     MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count"
     export MERCURY_OPTIONS
+else
+    true
+fi
+
+if $coverage_test
+then
+    mkdir -p $root/coverage
+    # Don't contaminate the coverage test with old data.
+    /bin/rm $root/coverage/COVERAGE_TEST_DATA* > /dev/null 2>&1
+    MERCURY_OPTIONS="$MERCURY_OPTIONS --coverage-test-if-exec=mercury_compile --trace-count-summary-file=$root/coverage/COVERAGE_TEST_DATA --trace-count-summary-cmd=$root/slice/mtc_union"
+    export MERCURY_OPTIONS
+    # Check whether we can compile the slice directory.
+    copy_slice=true
 else
     true
 fi
@@ -729,15 +756,18 @@ then
         $LN_S $root/scripts .
         $LN_S $root/tools .
         $LN_S $root/util .
-        if $copy_profilers
+        if $copy_slice
         then
             mkdir slice
             cd slice
             $LN_S $root/slice/*.m .
             cp $root/slice/Mmake* $root/slice/Mercury.options .
-            cp $root/slice/*_FLAGS.in .
-            cp $root/slice/.mgnu* .
             cd $root/$stage2dir
+        else
+            $LN_S $root/slice .
+        fi
+        if $copy_profilers
+        then
             mkdir profiler
             cd profiler
             $LN_S $root/profiler/*.m .
@@ -754,7 +784,6 @@ then
             cp $root/deep_profiler/.mgnu* .
             cd $root/$stage2dir
         else
-            $LN_S $root/slice .
             $LN_S $root/profiler .
             $LN_S $root/deep_profiler .
         fi
@@ -769,6 +798,11 @@ then
         then
             /bin/rm -f Mmake.params
             cp $root/Mmake.stage.params Mmake.params
+        fi
+        if test -f $root/Mmake.stage.slice.params
+        then
+            /bin/rm -f slice/Mmake.slice.params
+            cp $root/Mmake.stage.slice.params slice/Mmake.slice.params
         fi
         if test -f $root/Mmake.stage.mdbcomp.params
         then
@@ -838,8 +872,7 @@ then
                 if (cd $stage2dir && \
                     $MMAKE compiler/COMP_FLAGS library/LIB_FLAGS \
                     mdbcomp/MDBCOMP_FLAGS analysis/ANALYSIS_FLAGS \
-                    slice/SLICE_FLAGS profiler/PROF_FLAGS \
-                    deep_profiler/DEEP_FLAGS)
+                    profiler/PROF_FLAGS deep_profiler/DEEP_FLAGS)
                 then
                     echo "building of stage 2 flags files successful"
                 else
@@ -848,10 +881,10 @@ then
                 fi
                 ;;
         esac
-        
+
         if (cd $stage2dir && \
             $MMAKE $mmake_opts dep_library dep_mdbcomp \
-            dep_browser dep_analysis dep_compiler dep_slice \
+            dep_browser dep_analysis dep_compiler \
             dep_profiler dep_deep_profiler)
         then
             echo "building of stage 2 dependencies successful"
@@ -887,7 +920,8 @@ then
             exit 1
         fi
 
-        if (cd $stage2dir && $MMAKE $mmake_opts $jfactor trace)
+        if (cd $stage2dir/trace && \
+            $MMAKE $mmake_opts $jfactor trace)
         then
             echo "building of stage 2 trace successful"
         else
@@ -903,7 +937,8 @@ then
             ar cr $stage2dir/trace/lib$TRACE_LIB_NAME.a
         fi
 
-        if (cd $stage2dir && $MMAKE $mmake_opts $jfactor analysis)
+        if (cd $stage2dir/analysis \
+            && $MMAKE $mmake_opts $jfactor all)
         then
             echo "building of stage 2 analysis successful"
         else
@@ -920,7 +955,27 @@ then
             exit 1
         fi
 
-        if (cd $stage2dir && $MMAKE $mmake_opts MMAKEFLAGS=$jfactor all)
+        # We use "mmake" instead $MMAKE because we don't want to override
+        # the mmc in $PATH with the one in scripts, since that one will
+        # probably refer to a nonexistent executable in /usr/local/mercury-DEV.
+
+        if (cd $stage2dir/slice && \
+            unset MMAKE && \
+            unset MMAKE_VPATH && \
+            unset MMAKE_DIR && \
+            unset MERCURY_CONFIG_DIR && \
+            unset MERCURY_STDLIB_DIR && \
+            mmake $mmake_opts $jfactor depend && \
+            mmake $mmake_opts $jfactor all)
+        then
+            echo "building of stage 2 slice successful"
+        else
+            echo "building of stage 2 slice not successful"
+            exit 1
+        fi
+
+        if (cd $stage2dir && \
+            $MMAKE $mmake_opts MMAKEFLAGS=$jfactor all)
         then
             echo "building of stage 2 successful"
         else
@@ -938,6 +993,7 @@ then
             ls -lt $stage2dir/compiler/mercury_compile
         fi
     fi
+    echo "finishing stage 2 at `date`"
 
     # Build the check_namespace target in the relevant directories.
     # We want to do so before we delete any of the stage 2 object files.
@@ -986,9 +1042,15 @@ then
         true
     else
         libdirs="library mdbcomp browser"
+        if $copy_slice
+        then
+            slicedirs="slice"
+        else
+            slicedirs=
+        fi
         if $copy_profilers
         then
-            profdirs="slice profiler deep_profiler"
+            profdirs="profiler deep_profiler"
         else
             profdirs=
         fi
@@ -999,7 +1061,7 @@ then
             rundirs=
         fi
 
-        objdirs="$libdirs $profdirs $rundirs"
+        objdirs="$libdirs $slicedirs $profdirs $rundirs"
         for rmdir in $objdirs
         do
             cd $root/$stage2dir/$rmdir

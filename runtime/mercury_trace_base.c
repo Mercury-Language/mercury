@@ -43,10 +43,16 @@ ENDINIT
   #include <sys/wait.h>     /* for the wait system call */
 #endif
 
+#define MR_TRACE_COUNT_SUMMARY_MAX_DEFAULT  20
+
 void            (*MR_trace_shutdown)(void) = NULL;
 
 MR_bool         MR_trace_count_enabled = MR_FALSE;
 MR_bool         MR_coverage_test_enabled = MR_FALSE;
+const char      *MR_trace_count_summary_file = NULL;
+const char      *MR_trace_count_summary_cmd = "mtc_union";
+unsigned int    MR_trace_count_summary_max =
+                    MR_TRACE_COUNT_SUMMARY_MAX_DEFAULT;
 char            *MR_trace_counts_file = NULL;
 
 MR_bool         MR_debug_ever_enabled = MR_FALSE;
@@ -168,7 +174,7 @@ MR_trace_count(const MR_Label_Layout *label_layout)
     MR_Unsigned     *exec_count;
 
     exec_count = MR_trace_lookup_trace_count(label_layout);
-    
+
 #ifdef  MR_TRACE_COUNT_DEBUG
     {
         const MR_Label_Layout   *call_label_layout;
@@ -228,8 +234,8 @@ MR_trace_lookup_trace_count(const MR_Label_Layout *label_layout)
 #define INIT_MODULE_TABLE_SIZE  10
 
 const MR_Module_Layout  **MR_module_infos;
-int                     MR_module_info_next = 0;
-int                     MR_module_info_max  = 0;
+unsigned                MR_module_info_next = 0;
+unsigned                MR_module_info_max  = 0;
 
 void
 MR_insert_module_info_into_module_table(const MR_Module_Layout *module)
@@ -244,34 +250,85 @@ MR_insert_module_info_into_module_table(const MR_Module_Layout *module)
     MR_module_infos[slot] = module;
 }
 
-static  void    MR_trace_write_quoted_atom(FILE *fp, const char *atom);
-static  void    MR_trace_write_label_exec_counts(FILE *fp);
+static  void        MR_trace_write_quoted_atom(FILE *fp, const char *atom);
+static  void        MR_trace_write_string(FILE *fp, const char *atom);
+static  unsigned    MR_trace_write_label_exec_counts_for_file(FILE *fp,
+                        const MR_Module_Layout *module,
+                        const MR_Module_File_Layout *file,
+                        const char *module_name,
+                        MR_bool coverage_test);
 
-MR_PathPort     MR_named_count_port[MR_PORT_NONE + 1];
+MR_PathPort         MR_named_count_port[MR_PORT_NONE + 1];
 
-#define MERCURY_TRACE_COUNTS_PREFIX  "mercury_trace_counts"
+#define MERCURY_TRACE_COUNTS_PREFIX     "mercury_trace_counts"
+#define TEMP_SUFFIX                     ".tmp"
+
+#define MR_FILE_EXISTS(filename)        (access(filename, F_OK) == 0)
 
 void
-MR_trace_write_label_exec_counts_to_file(void *dummy)
+MR_trace_record_label_exec_counts(void *dummy)
 {
-    FILE    *fp;
-    int     len;
-    char    *name;
-    char    *s;
+    FILE        *fp;
+    char        *name;
+    unsigned    name_len;
+    MR_bool     summarize;
+    MR_bool     keep;
+    char        *slash;
+    const char  *program_name;
 
-    if (MR_trace_counts_file) {
-        name = MR_trace_counts_file;
+    program_name = MR_copy_string(MR_progname);
+    slash = strrchr(program_name, '/');
+    if (slash != NULL) {
+        program_name = slash + 1;
+    }
+
+    summarize = MR_FALSE;
+    keep = MR_FALSE;
+    if (MR_trace_count_summary_file != NULL) {
+        if (MR_FILE_EXISTS(MR_trace_count_summary_file)) {
+            int     i;
+
+            /* 30 bytes must be enough for the dot, the value of i, and '\0' */
+            name_len = strlen(MR_trace_count_summary_file) + 30;
+            name = MR_malloc(name_len);
+
+            fp = NULL;
+            /* search for a suffix that doesn't exist yet */
+            for (i = 1; i <= MR_trace_count_summary_max; i++) {
+                snprintf(name, name_len, "%s.%d",
+                    MR_trace_count_summary_file, i);
+                if (! MR_FILE_EXISTS(name)) {
+                    /* file doesn't exist, commit to this one */
+                    if (i == MR_trace_count_summary_max) {
+                        summarize = MR_TRUE;
+                    }
+
+                    break;
+                }
+            }
+        } else {
+            /*
+            ** The summary file doesn't yet exist, create it.
+            */
+            name = MR_copy_string(MR_trace_count_summary_file);
+        }
+    } else if (MR_trace_counts_file) {
+        name = MR_copy_string(MR_trace_counts_file);
+        keep = MR_TRUE;
     } else {
+        char    *s;
+
         /*
         ** If no trace counts file name is provided, then we generate
         ** a file name.
         */
 
         /* 100 bytes must be enough for the process id, dots and '\0' */
-        len = strlen(MERCURY_TRACE_COUNTS_PREFIX) + strlen(MR_progname) + 100;
-        name = MR_malloc(len);
-        snprintf(name, len, ".%s.%s.%d", MERCURY_TRACE_COUNTS_PREFIX,
-            MR_progname, getpid());
+        name_len = strlen(MERCURY_TRACE_COUNTS_PREFIX) + strlen(program_name)
+            + 100;
+        name = MR_malloc(name_len);
+        snprintf(name, name_len, ".%s.%s.%d", MERCURY_TRACE_COUNTS_PREFIX,
+            program_name, getpid());
 
         /* make sure name is an acceptable filename */
         for (s = name; *s != '\0'; s++) {
@@ -283,127 +340,266 @@ MR_trace_write_label_exec_counts_to_file(void *dummy)
 
     fp = fopen(name, "w");
     if (fp != NULL) {
-        MR_do_init_modules_debugger();
-        MR_trace_write_label_exec_counts(fp);
+        unsigned    num_written;
+
+        num_written = MR_trace_write_label_exec_counts(fp,
+            program_name, MR_coverage_test_enabled);
         (void) fclose(fp);
+
+        if (num_written == 0 && !keep) {
+            /*
+            ** We did not write out any trace counts, so there is nothing
+            ** to gather.
+            */
+
+            (void) unlink(name);
+            summarize = MR_FALSE;
+        }
     } else {
         fprintf(stderr, "%s: %s\n", name, strerror(errno));
+        /*
+        ** You can't summarize a file list if you can't create
+        ** one of its files.
+        */
+        summarize = MR_FALSE;
+    }
+
+    free(name);
+
+    if (summarize) {
+        char        *cmd;
+        unsigned    cmd_len;
+        int         summary_status;
+        int         mv_status;
+        int         unlink_status;
+        int         i;
+        const char  *old_options;
+
+        /* 30 bytes must be enough for the dot, the value of i, and space */
+        name_len = strlen(MR_trace_count_summary_file) + 30;
+        name = MR_malloc(name_len);
+
+        cmd_len = strlen(MR_trace_count_summary_cmd) + 4;
+        cmd_len += strlen(MR_trace_count_summary_file)
+            + strlen(TEMP_SUFFIX) + 1;
+        cmd_len += (MR_trace_count_summary_max + 1) * name_len;
+        cmd_len += 100;
+
+        cmd = MR_malloc(cmd_len);
+
+        strcpy(cmd, MR_trace_count_summary_cmd);
+        strcat(cmd, " -o ");
+        strcat(cmd, MR_trace_count_summary_file);
+        strcat(cmd, TEMP_SUFFIX);
+        strcat(cmd, " ");
+        strcat(cmd, MR_trace_count_summary_file);
+
+        for (i = 1; i <= MR_trace_count_summary_max; i++) {
+            snprintf(name, name_len, "%s.%d", MR_trace_count_summary_file, i);
+            strcat(cmd, " ");
+            strcat(cmd, name);
+        }
+
+        strcat(cmd, " > /dev/null 2>&1");
+
+        old_options = getenv("MERCURY_OPTIONS");
+        if (old_options != NULL) {
+            (void) setenv("MERCURY_OPTIONS", "", MR_TRUE);
+            summary_status = system(cmd);
+            (void) setenv("MERCURY_OPTIONS", old_options, MR_TRUE);
+        } else {
+            summary_status = system(cmd);
+        }
+
+        if (summary_status == 0) {
+            strcpy(cmd, "mv ");
+            strcat(cmd, MR_trace_count_summary_file);
+            strcat(cmd, TEMP_SUFFIX);
+            strcat(cmd, " ");
+            strcat(cmd, MR_trace_count_summary_file);
+            mv_status = system(cmd);
+
+            if (mv_status == 0) {
+                /* delete all files whose data is now in the summary file */
+                for (i = 1; i <= MR_trace_count_summary_max; i++) {
+                    snprintf(name, name_len, "%s.%d",
+                        MR_trace_count_summary_file, i);
+                    unlink_status = unlink(name);
+                    if (unlink_status != 0) {
+                        MR_fatal_error(
+                            "couldn't create summary of trace data");
+                    }
+                }
+            } else {
+                MR_fatal_error("couldn't create summary of trace data");
+            }
+        } else {
+            MR_fatal_error("couldn't create summary of trace data");
+        }
+
+        free(name);
+        free(cmd);
     }
 }
 
-/*
-** For every label reachable from the module table, write the id of the label
-** and the number of times it has been executed to the specified file, with the
-** exception of labels that haven't been executed.
-*/
-
-static void
-MR_trace_write_label_exec_counts(FILE *fp)
+unsigned
+MR_trace_write_label_exec_counts(FILE *fp, const char *progname,
+    MR_bool coverage_test)
 {
     const MR_Module_Layout      *module;
     const MR_Module_File_Layout *file;
+    int                         num_modules;
+    int                         num_files;
+    int                         module_num;
+    int                         file_num;
+    unsigned                    num_written;
+    char                        *s;
+
+    MR_trace_name_count_port_ensure_init();
+
+    fprintf(fp, "%s", MR_TRACE_COUNT_FILE_ID);
+    if (coverage_test) {
+        fputs("single_file(base_count_file_type(user_all, ", fp);
+    } else {
+        fputs("single_file(base_count_file_type(user_nonzero, ", fp);
+    }
+
+    MR_trace_write_string(fp, progname);
+    fputs(")).\n", fp);
+
+    num_modules = MR_module_info_next;
+    num_written = 0;
+    for (module_num = 0; module_num < num_modules; module_num++) {
+        module = MR_module_infos[module_num];
+        num_files = module->MR_ml_filename_count;
+
+        fputs("module ", fp);
+        MR_trace_write_quoted_atom(fp, module->MR_ml_name);
+        fputc('\n', fp);
+
+        for (file_num = 0; file_num < num_files; file_num++) {
+            file = module->MR_ml_module_file_layout[file_num];
+            num_written += MR_trace_write_label_exec_counts_for_file(fp,
+                module, file, module->MR_ml_name, coverage_test);
+        }
+    }
+
+    return num_written;
+}
+
+static unsigned
+MR_trace_write_label_exec_counts_for_file(FILE *fp,
+    const MR_Module_Layout *module, const MR_Module_File_Layout *file,
+    const char *module_name, MR_bool coverage_test)
+{
     const MR_Label_Layout       *label;
     const MR_Proc_Layout        *prev_proc;
     const MR_Proc_Layout        *proc;
     const MR_User_Proc_Id       *id;
     MR_Trace_Port               port;
-    int                         num_modules;
-    int                         num_files;
     int                         num_labels;
-    int                         module_num;
-    int                         file_num;
     int                         label_num;
     int                         label_index;
+    unsigned                    num_written;
     MR_Unsigned                 exec_count;
     MR_PathPort                 path_port;
 
-    MR_trace_name_count_port_ensure_init();
-
-    fprintf(fp, "%s", MR_TRACE_COUNT_FILE_ID);
-    if (MR_coverage_test_enabled) {
-        fprintf(fp, "user_all\n");
-    } else {
-        fprintf(fp, "user_nonzero\n");
-    }
+    fputs("file ", fp);
+    MR_trace_write_quoted_atom(fp, file->MR_mfl_filename);
+    fputc('\n', fp);
 
     prev_proc = NULL;
-    num_modules = MR_module_info_next;
-    for (module_num = 0; module_num < num_modules; module_num++) {
-        module = MR_module_infos[module_num];
-        num_files = module->MR_ml_filename_count;
+    num_labels = file->MR_mfl_label_count;
+    num_written = 0;
+    for (label_num = 0; label_num < num_labels; label_num++) {
+        label = file->MR_mfl_label_layout[label_num];
+        proc = label->MR_sll_entry;
+        label_index = label->MR_sll_label_num_in_module;
+        exec_count = module->MR_ml_label_exec_count[label_index];
+        if (! MR_PROC_LAYOUT_IS_UCI(proc) && label_index > 0 &&
+            (exec_count > 0 || coverage_test))
+        {
+            num_written++;
 
-        for (file_num = 0; file_num < num_files; file_num++) {
-            file = module->MR_ml_module_file_layout[file_num];
-            fprintf(fp, "file ");
-            MR_trace_write_quoted_atom(fp, file->MR_mfl_filename);
-            fprintf(fp, "\n");
-            num_labels = file->MR_mfl_label_count;
-            for (label_num = 0; label_num < num_labels; label_num++) {
-                label = file->MR_mfl_label_layout[label_num];
-                proc = label->MR_sll_entry;
-                label_index = label->MR_sll_label_num_in_module;
-                exec_count = module->MR_ml_label_exec_count[label_index];
-                if (! MR_PROC_LAYOUT_IS_UCI(proc) && label_index > 0 &&
-                    (exec_count > 0 || MR_coverage_test_enabled))
-                {
-                    id = &proc->MR_sle_user;
-                    if (proc != prev_proc) {
-                        fprintf(fp, "proc ");
-                        MR_trace_write_quoted_atom(fp, id->MR_user_def_module);
-                        fprintf(fp, " %c ",
-                            ( id->MR_user_pred_or_func == MR_PREDICATE
-                                ? 'p' : 'f'));
-                        MR_trace_write_quoted_atom(fp,
-                            id->MR_user_decl_module);
-                        fputc(' ', fp);
-                        MR_trace_write_quoted_atom(fp, id->MR_user_name);
-                        fprintf(fp, " %d %d\n",
-                            id->MR_user_arity, id->MR_user_mode);
-                    }
-
-                    port = label->MR_sll_port;
-                    path_port = MR_named_count_port[port];
-
-                    switch (path_port) {
-
-                        case PORT_ONLY:
-                            fprintf(fp, "%s %" MR_INTEGER_LENGTH_MODIFIER "u",
-                                MR_port_names[port], exec_count);
-                            break;
-
-                        case PATH_ONLY:
-                            fprintf(fp,
-                                "<%s> %" MR_INTEGER_LENGTH_MODIFIER "u",
-                                MR_label_goal_path(label), exec_count);
-                            break;
-
-                        case PORT_AND_PATH:
-                            fprintf(fp,
-                                "%s <%s> %" MR_INTEGER_LENGTH_MODIFIER "u",
-                                MR_port_names[port], MR_label_goal_path(label),
-                                exec_count);
-                            break;
-
-                        default:
-                            MR_fatal_error("MR_trace_write_label_exec_counts: "
-                                "bad path_port");
-                            break;
-                    }
-
-                    fprintf(fp, " %d\n", file->MR_mfl_label_lineno[label_num]);
-
-                    prev_proc = proc;
+            id = &proc->MR_sle_user;
+            if (proc != prev_proc) {
+                if (MR_strdiff(module_name, id->MR_user_def_module)) {
+                    MR_fatal_error(
+                        "MR_trace_write_label_exec_counts_for_file: "
+                        "module name mismatch");
                 }
+
+                if (id->MR_user_pred_or_func == MR_PREDICATE) {
+                    fputs("pproc", fp);
+                } else {
+                    fputs("fproc", fp);
+                }
+
+                if (MR_strdiff(module_name, id->MR_user_decl_module)) {
+                    /* turn pproc/fproc into pprocdecl/fprocdecl */
+                    fputs("decl ", fp);
+                    MR_trace_write_quoted_atom(fp, id->MR_user_decl_module);
+                }
+
+                fputc(' ', fp);
+                MR_trace_write_quoted_atom(fp, id->MR_user_name);
+                fprintf(fp, " %d %d\n", id->MR_user_arity, id->MR_user_mode);
             }
+
+            port = label->MR_sll_port;
+            path_port = MR_named_count_port[port];
+
+            switch (path_port) {
+
+                case PORT_ONLY:
+                    fputs(MR_port_names[port], fp);
+                    break;
+
+                case PATH_ONLY:
+                    putc('<', fp);
+                    fputs(MR_label_goal_path(label), fp);
+                    putc('>', fp);
+                    break;
+
+                case PORT_AND_PATH:
+                    fputs(MR_port_names[port], fp);
+                    putc(' ', fp);
+                    putc('<', fp);
+                    fputs(MR_label_goal_path(label), fp);
+                    putc('>', fp);
+                    break;
+
+                default:
+                    MR_fatal_error(
+                        "MR_trace_write_label_exec_counts_for_file: "
+                        "bad path_port");
+                    break;
+            }
+
+            putc(' ', fp);
+            fprintf(fp, "%d", file->MR_mfl_label_lineno[label_num]);
+
+            if (exec_count > 0) {
+                putc(' ', fp);
+                fprintf(fp, "%" MR_INTEGER_LENGTH_MODIFIER "u", exec_count);
+            }
+
+            putc('\n', fp);
+
+            prev_proc = proc;
         }
     }
+
+    return num_written;
 }
 
 void
 MR_trace_name_count_port_ensure_init()
 {
     static MR_bool  done = MR_FALSE;
-    
+
+    MR_do_init_modules_debugger();
+
     if (! done) {
         MR_Trace_Port   port;
 
@@ -419,7 +615,7 @@ MR_trace_name_count_port_ensure_init()
         MR_named_count_port[MR_PORT_NEG_ENTER] = PORT_AND_PATH;
         MR_named_count_port[MR_PORT_NEG_SUCCESS] = PORT_AND_PATH;
         MR_named_count_port[MR_PORT_NEG_FAILURE] = PORT_AND_PATH;
-        
+
         done = MR_TRUE;
     }
 }
@@ -473,6 +669,42 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
     }
 
     fputc('\'', fp);
+}
+
+/*
+** The output of this is supposed to be equivalent to writing out a string.
+*/
+
+static void
+MR_trace_write_string(FILE *fp, const char *atom)
+{
+    const char *c;
+
+    fputc('\"', fp);
+    for (c = atom; *c != '\0'; c++) {
+        switch (*c) {
+            case '"':
+                fputs("\\\"", fp);
+                break;
+            case '\\':
+                fputs("\\\\", fp);
+                break;
+            case '\n':
+                fputs("\\n", fp);
+                break;
+            case '\t':
+                fputs("\\t", fp);
+                break;
+            case '\b':
+                fputs("\\b", fp);
+                break;
+            default:
+                fputc(*c, fp);
+                break;
+        }
+    }
+
+    fputc('\"', fp);
 }
 
 /**************************************************************************/
@@ -972,7 +1204,7 @@ MR_compare_in_sort_arena(const void *addr1, const void *addr2)
 
     record1 = (const MR_IO_Table_Stats_Hash_Record *) addr1;
     record2 = (const MR_IO_Table_Stats_Hash_Record *) addr2;
-    return record2->MR_io_tabling_stats_count - 
+    return record2->MR_io_tabling_stats_count -
         record1->MR_io_tabling_stats_count;
 }
 

@@ -946,8 +946,9 @@ count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
         proc_id_to_int(ProcId)),
     pred_info_context(PredInfo, Context),
     Context = context(FileName, _),
-    ProcLabelAndFile = proc_label_and_filename(ProcLabel, FileName),
-    ( get_proc_counts(TraceCounts, ProcLabelAndFile, yes(ProcCounts)) ->
+    ProcLabelInContext = proc_label_in_context(pred_info_module(PredInfo),
+        FileName, ProcLabel),
+    ( get_proc_counts(TraceCounts, ProcLabelInContext, yes(ProcCounts)) ->
         count_load_stores_in_proc(count_info(PredProcId, ProcInfo,
             ModuleInfo, ProcCounts, TuningParams, TuplingScheme),
             ProcLoads, ProcStores),
@@ -1858,11 +1859,11 @@ extract_tupled_args_from_list_2([H | T], Num, Indices, NotSelected) :-
 :- type mdbcomp_goal_path
     == mdbcomp.program_representation.goal_path.
 
-:- pred get_proc_counts(trace_counts::in, proc_label_and_filename::in,
+:- pred get_proc_counts(trace_counts::in, proc_label_in_context::in,
     maybe(proc_trace_counts)::out) is det.
 
-get_proc_counts(TraceCounts, ProcLabelAndFile, MaybeProcCounts) :-
-    ( map.search(TraceCounts, ProcLabelAndFile, ProcCounts) ->
+get_proc_counts(TraceCounts, ProcLabelInContext, MaybeProcCounts) :-
+    ( map.search(TraceCounts, ProcLabelInContext, ProcCounts) ->
         MaybeProcCounts = yes(ProcCounts)
     ;
         MaybeProcCounts = no

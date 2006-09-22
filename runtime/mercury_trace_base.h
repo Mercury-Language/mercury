@@ -109,28 +109,42 @@ extern	MR_Code	*MR_trace_count(const MR_Label_Layout *);
 */
 
 extern	const MR_Module_Layout	**MR_module_infos;
-extern	int			MR_module_info_next;
-extern	int			MR_module_info_max;
+extern	unsigned		MR_module_info_next;
+extern	unsigned		MR_module_info_max;
 
 extern	void	MR_insert_module_info_into_module_table(
 			const MR_Module_Layout *module_layout);
 
 /*
 ** For every label reachable from the module table, write the id of the label
-** and the number of times it has been executed to trace counts file of this
-** program, with the exception of labels that haven't been executed.
-**
-** The dummy argument allows this function to be registered with
-** MR_register_exception_cleanup.
+** and the number of times it has been executed to the specified file. For 
+** labels that haven't been executed, write them out only if the coverage_test
+** argument is true. The return value is the number of labels whose trace count
+** information was actually written out.
 **
 ** The file can be recognized as a Mercury trace counts file as its first
 ** line matches MR_TRACE_COUNT_FILE_ID. The value of that macro should be
 ** kept in sync with trace_count_file_id in mdbcomp/trace_counts.m.
+** One of the later lines gives the name of the program that the trace counts
+** were derived from; this should be supplied by the caller as the progname
+** argument.
 */
 
 #define	MR_TRACE_COUNT_FILE_ID	    "Mercury trace counts file\n"
 
-extern	void	MR_trace_write_label_exec_counts_to_file(void *dummy);
+extern	unsigned int	MR_trace_write_label_exec_counts(FILE *fp,
+				const char *progname, MR_bool coverage_test);
+
+/*
+** Figure out where (to which file) to write out the label execution counts,
+** and then invoke MR_trace_write_label_exec_counts to write it out there.
+** If the user has asked for this data to be summarized, do that too.
+**
+** The dummy argument allows this function to be registered with
+** MR_register_exception_cleanup.
+*/
+
+extern	void		MR_trace_record_label_exec_counts(void *dummy);
 
 /*
 ** MR_trace_init() is called from mercury_runtime_init()
@@ -204,6 +218,21 @@ extern	MR_bool		MR_debug_ever_enabled;
 extern	MR_bool		MR_coverage_test_enabled;
 
 /*
+** If MR_trace_count_summary_file is not NULL, then its value gives the
+** name of the file in which to accumulate trace count information. If this
+** file doesn't exist, the trace counts data will be printed to it. If this
+** file does exist, the trace counts data will be printed to files with this
+** name as a base name plus a suffix .1, .2, .3 etc until the number reaches
+** MR_trace_count_summary_max, at which point the program will invoke
+** the command named by MR_trace_count_summary_cmd to consolidate all those
+** trace counts in one file (the one named by MR_trace_count_summary_file).
+*/
+
+extern	const char	*MR_trace_count_summary_file;
+extern	const char	*MR_trace_count_summary_cmd;
+extern	unsigned int	MR_trace_count_summary_max;
+
+/*
 ** MR_trace_count_enabled will keep the same value throughout the execution of
 ** the entire program after being set in mercury_wrapper.c to the same value
 ** as MR_debug_enabled. Unlike MR_debug_enabled, it is never reset, so one can
@@ -250,9 +279,8 @@ extern	MR_bool		MR_trace_func_enabled;
 ** it must be declared `volatile'.
 */
 
-extern	MR_Code *(*volatile MR_selected_trace_func_ptr)(
-			const MR_Label_Layout *);
-
+extern	MR_Code 	*(*volatile MR_selected_trace_func_ptr)(
+				const MR_Label_Layout *);
 
 /*
 ** MR_trace_call_seqno counts distinct calls. The prologue of every

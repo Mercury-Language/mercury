@@ -17,68 +17,163 @@ Description:
 	enabled (e.g. using the \`--debug' option), or if that command invokes
 	such a program, then mtc will cause the program to count the
 	number of times each event is executed, and to write out that data
-	to a file with a .mercury_trace_counts prefix when the program exits.
-	Otherwise, mtc will execute the command line as if the mtc prefix
-	weren't there.
+	to a file. Otherwise, mtc will execute the command line as if the
+	mtc prefix weren't there.
 
 Options:
-	-o <file-name>, --output-file <file-name>
-		Save the generated trace counts to <file-name>.  If this
-		option is not given then a filename is automatically
-		generated.
+	-c, --coverage-test
+		Ordinarily, the generated trace count file contains only
+		nonzero trace counts. This option causes even zero counts
+		to be written out, since coverage testing needs to know
+		which parts of the code are not executed.
+
+	-o <filename>, --output-file <filename>
+		Save the generated trace counts to <filename>.
+
+	-s <basename>, --summary-file=<basename>
+		If this option is given, the trace counts are put into a new
+		file whose name is <basename>.N for a small integer N, choosing
+		N to be the smallest integer for which <basename>.N doesn't yet
+		exist. If this is not initially possible for a small enough N
+		(due probably to previous runs), then the program will replace
+		all of the <basename>.N files with a summary named just
+		<basename>; if <basename> existed already, it will be included
+		in the summary as well. This way, at the end of a sequence of
+		runs of the program, the command \"mtc_union <basename>*\"
+		will compute a summary of all the trace counts files.
+
+	--summary-count=<maxN>
+		Gives the maximum value of N to use with --summary-file.
 
 	--help
 		Display this message.
 
+If neither the -o nor the -s option is given, then the trace counts are put
+into a file whose name is automatically generated. This name will start with
+the prefix ".mercury_trace_counts", followed by a mangled version of the
+name of the executable, and then the process id.
+
+The -o and -s options are mutually exclusive.
+
 Environment variables:
 	MERCURY_OPTIONS.
 "
-
-output_file=""
 
 #-----------------------------------------------------------------------------#
 #
 # process the command line options
 #
 
-case $# in
-	0)	echo "Usage: mtc <executable> [<arg> ...]" 1>&2
-		exit 1 ;;
-esac
+coverage_test=false
+output_file=""
+summary_file=""
+summary_limit=""
 
-while : ; do
+while test "$#" -gt 0
+do
 	case "$1" in
+		-c|--coverage-test)
+			coverage_test=true
+			;;
+
 		--help)
 			echo "$Help"
-			exit 0 ;;
+			exit 0
+			;;
+
 		-o|--output-file)
 			output_file="$2";
-			shift; shift ;;
+			shift
+			;;
+
+		-o*)
+			output_file="`expr $1 : '-o\(.*\)'`"
+			;;
+
+		--output-file=*)
+			output_file="`expr $1 : '--output-file=\(.*\)'`"
+			;;
+
+		-s|--summary-file)
+			summary_file="$2"
+			shift
+			;;
+
+		-s*)
+			summary_file="`expr $1 : '-s\(.*\)'`"
+			;;
+
+		--summary-file=*)
+			summary_file="`expr $1 : '--summary-file=\(.*\)'`"
+			;;
+
+		--summary-limit)
+			summary_limit="$2"
+			shift
+			;;
+
+		--summary-limit=*)
+			summary_limit="`expr $1 : '--summary-limit=\(.*\)'`"
+			;;
+
 		--)
-			shift; break ;;
+			shift
+			break
+			;;
+
 		-*)
 			echo "$0: unknown option \`$1'" 1>&2
-			exit 1 ;;
+			exit 1
+			;;
+
 		*)
-			break ;;
+			break
+			;;
 	esac
+	shift
 done
+
+case $# in
+	0)	echo "Usage: mtc [options] <executable> [<arg> ...]" 1>&2
+		exit 1
+		;;
+esac
+
+if test "$output_file" != "" -a "$summary_file" != ""
+then
+	echo "The options --output-file and --summary-file are incompatible."
+	exit 1
+fi
 
 #-----------------------------------------------------------------------------#
 #
-# Set the environment variables used by the Mercury runtime to the
-# the appropriate values to enable the gathering of trace counts,
-# and then finally use $invoke_cmd to invoke the command.
+# Set the environment variables used by the Mercury runtime to the appropriate
+# values to enable the gathering of trace counts, and then finally use
+# $invoke_cmd to invoke the command.
 #
 
-case $output_file in
-    "") enable_trace_count_opt="--trace-count"
-    	;;
-    *)	enable_trace_count_opt="--trace-count --tc-output-file $output_file"
-    	;;
-esac
+MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count"
 
-MERCURY_OPTIONS="$MERCURY_OPTIONS $enable_trace_count_opt"
+if "$coverage_test"
+then
+	MERCURY_OPTIONS="$MERCURY_OPTIONS --coverage-test"
+fi
+
+if test "$summary_file" != ""
+then
+	MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count-summary-file=$summary_file"
+fi
+
+if test "$summary_limit" != ""
+then
+	MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count-summary-limit=$summary_limit"
+fi
+
+if test "$output_file" != ""
+then
+	MERCURY_OPTIONS="$MERCURY_OPTIONS --tc-output-file $output_file"
+fi
+
 export MERCURY_OPTIONS
 exec "$@"
 

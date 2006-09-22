@@ -26,29 +26,29 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type slice --->
-    slice(
-        num_tests       :: int,
-        slice_proc_map  :: map(proc_label, proc_slice)
-    ).
+:- type slice
+    --->    slice(
+                num_tests       :: int,
+                slice_proc_map  :: map(proc_label, proc_slice)
+            ).
 
 :- type slice_proc_map   == map(proc_label, proc_slice).
 
 :- type proc_slice       == map(path_port, slice_exec_count).
 
-:- type slice_exec_count --->
-    slice_exec_count(
-            slice_filename      ::  string,
-            slice_linenumber    ::  int,
+:- type slice_exec_count
+    --->    slice_exec_count(
+                slice_filename      ::  string,
+                slice_linenumber    ::  int,
 
-            slice_count         :: int,
-                                % The number of times the label was executed in
-                                % all the test runs.
+                slice_count         :: int,
+                                    % The number of times the label was
+                                    % executed in all the test runs.
 
-            slice_tests         :: int
-                                % The number of test runs the label was
-                                % executed in.
-    ).
+                slice_tests         :: int
+                                    % The number of test runs the label was
+                                    % executed in.
+            ).
 
     % read_slice(Source, File, MaybeSlice, !IO):
     %
@@ -79,38 +79,38 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type dice --->
-    dice(
-        num_pass_tests  :: int,
-        num_fail_tests  :: int,
-        dice_proc_map   :: map(proc_label, proc_dice)
-    ).
+:- type dice
+    --->    dice(
+                num_pass_tests  :: int,
+                num_fail_tests  :: int,
+                dice_proc_map   :: map(proc_label, proc_dice)
+            ).
 
 :- type dice_proc_map   == map(proc_label, proc_dice).
 
 :- type proc_dice       == map(path_port, dice_exec_count).
 
-:- type dice_exec_count --->
-    dice_exec_count(
-            dice_filename   ::  string,
-            dice_linenumber ::  int,
+:- type dice_exec_count
+    --->    dice_exec_count(
+                dice_filename   ::  string,
+                dice_linenumber ::  int,
 
-            pass_count      :: int,
-                            % The number of times the label was executed in
-                            % all the passing test runs.
+                pass_count      :: int,
+                                % The number of times the label was executed in
+                                % all the passing test runs.
 
-            pass_tests      :: int,
-                            % The number of passing test runs the label
-                            % was executed in.
+                pass_tests      :: int,
+                                % The number of passing test runs the label
+                                % was executed in.
 
-            fail_count      :: int,
-                            % The number of times the label was executed in
-                            % failing test runs.
+                fail_count      :: int,
+                                % The number of times the label was executed in
+                                % failing test runs.
 
-            fail_tests      :: int
-                            % The number of failing test runs the label
-                            % was executed in.
-    ).
+                fail_tests      :: int
+                                % The number of failing test runs the label
+                                % was executed in.
+            ).
 
     % read_dice(PassSource, PassFile, FailSource, FailFile, MaybeDice, !IO):
     %
@@ -221,12 +221,13 @@ read_slice(Source, File, Result, !IO) :-
 slice_merge_trace_counts(TraceCounts, !SliceProcMap) :-
     map.foldl(slice_merge_proc_trace_counts, TraceCounts, !SliceProcMap).
 
-:- pred slice_merge_proc_trace_counts(proc_label_and_filename::in,
+:- pred slice_merge_proc_trace_counts(proc_label_in_context::in, 
     proc_trace_counts::in, slice_proc_map::in, slice_proc_map::out) is det.
 
 slice_merge_proc_trace_counts(ProcLabelAndFile, ProcTraceCounts,
         !SliceProcMap) :-
-    ProcLabelAndFile = proc_label_and_filename(ProcLabel, FileName),
+    ProcLabelAndFile = proc_label_in_context(_ModuleNameSym, FileName,
+        ProcLabel),
     ( map.search(!.SliceProcMap, ProcLabel, FoundProcSlice) ->
         map.foldl(slice_merge_path_port(FileName), ProcTraceCounts,
             FoundProcSlice, MergedProcSlice),
@@ -329,13 +330,14 @@ det_maybe_dice_error_to_dice(error(_), _) :-
 dice_merge_trace_counts(Kind, TraceCounts, !DiceProcMap) :-
     map.foldl(dice_merge_proc_trace_counts(Kind), TraceCounts, !DiceProcMap).
 
-:- pred dice_merge_proc_trace_counts(trace_counts_kind::in,
-    proc_label_and_filename::in, proc_trace_counts::in, dice_proc_map::in,
+:- pred dice_merge_proc_trace_counts(trace_counts_kind::in, 
+    proc_label_in_context::in, proc_trace_counts::in, dice_proc_map::in,
     dice_proc_map::out) is det.
 
 dice_merge_proc_trace_counts(Kind, ProcLabelAndFile, ProcTraceCounts,
         !DiceProcMap) :-
-    ProcLabelAndFile = proc_label_and_filename(ProcLabel, FileName),
+    ProcLabelAndFile = proc_label_in_context(_ModuleNameSym, FileName,
+        ProcLabel),
     ( map.search(!.DiceProcMap, ProcLabel, FoundProcDice) ->
         map.foldl(dice_merge_path_port(FileName, Kind), ProcTraceCounts,
             FoundProcDice, MergedProcDice),
@@ -436,12 +438,12 @@ read_slice_to_string(File, SortStr0, N, Module, SliceStr, Problem, !IO) :-
     % Values of this type uniquely identify a label in the program
     % and contain some statistics about the execution of the label.
     %
-:- type slice_label_count --->
-    slice_label_count(
-        slc_proc_label  :: proc_label,
-        slc_path_port   :: path_port,
-        slc_counts      :: slice_exec_count
-    ).
+:- type slice_label_count
+    --->    slice_label_count(
+                slc_proc_label  :: proc_label,
+                slc_path_port   :: path_port,
+                slc_counts      :: slice_exec_count
+            ).
 
 :- pred slice_label_count_is_for_module(string::in, slice_label_count::in)
     is semidet.
@@ -613,12 +615,12 @@ read_dice_to_string(PassFile, FailFile, SortStr, N, Module, DiceStr, Problem,
     % Values of this type uniquely identify a label in the program
     % and contain some statistics about the execution of the label.
     %
-:- type dice_label_count --->
-    dice_label_count(
-        dlc_proc_label  :: proc_label,
-        dlc_path_port   :: path_port,
-        dlc_counts      :: dice_exec_count
-    ).
+:- type dice_label_count
+    --->    dice_label_count(
+                dlc_proc_label  :: proc_label,
+                dlc_path_port   :: path_port,
+                dlc_counts      :: dice_exec_count
+            ).
 
 :- pred dice_label_count_is_for_module(string::in, dice_label_count::in)
     is semidet.
@@ -774,9 +776,7 @@ format_dice_exec_count(dice_exec_count(_, _, PassCount, PassTests,
 
 suspicion_ratio(PassCount, FailCount) = R1 :-
     Denominator = PassCount + FailCount,
-    (
-        Denominator \= 0
-    ->
+    ( Denominator \= 0 ->
         R = float(FailCount) / float(Denominator),
         ( R >= 0.20 ->
             R1 = R

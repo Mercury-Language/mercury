@@ -1,18 +1,18 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Tool to combine several trace counts into one.
+% Tool to take the difference of two trace counts.
 %
-% Main Author: Ian MacLarty.
+% Author: Zoltan Somogyi.
 %
 %-----------------------------------------------------------------------------%
 
-:- module mtc_union.
+:- module mtc_diff.
 
 :- interface.
 
@@ -34,10 +34,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module maybe.
 :- import_module require.
-:- import_module set.
 :- import_module string.
+:- import_module std_util.
 
 main(!IO) :-
     io.command_line_arguments(Args0, !IO),
@@ -47,22 +46,35 @@ main(!IO) :-
         GetoptResult = ok(OptionTable),
         lookup_string_option(OptionTable, output_filename, OutputFile),
         (
-            Args = [_ | _],
+            Args = [Arg1, Arg2],
             OutputFile \= ""
         ->
-            lookup_bool_option(OptionTable, verbose, Verbose),
-            read_and_union_trace_counts(Verbose, try_single_first, Args,
-                NumTests, Kinds, TraceCounts, MaybeReadError, !IO),
             stderr_stream(StdErr, !IO),
+            read_trace_counts_source(no, try_single_first, Arg1,
+                MaybeTraceCounts1, !IO),
             (
-                MaybeReadError = yes(ReadErrorMsg),
-                io.write_string(StdErr, ReadErrorMsg, !IO),
-                io.nl(StdErr, !IO)
+                MaybeTraceCounts1 = list_ok(_, _)
             ;
-                MaybeReadError = no,
-                Type = union_file(NumTests, set.to_sorted_list(Kinds)),
-                write_trace_counts_to_file(Type, TraceCounts, OutputFile,
-                    WriteResult, !IO),
+                MaybeTraceCounts1 = list_error_message(Msg1),
+                io.write_string(StdErr, Msg1, !IO),
+                io.nl(StdErr, !IO)
+            ),
+            read_trace_counts_source(no, try_single_first, Arg2,
+                MaybeTraceCounts2, !IO),
+            (
+                MaybeTraceCounts2 = list_ok(_, _)
+            ;
+                MaybeTraceCounts2 = list_error_message(Msg2),
+                io.write_string(StdErr, Msg2, !IO),
+                io.nl(StdErr, !IO)
+            ),
+            (
+                MaybeTraceCounts1 = list_ok(Type1, TraceCounts1),
+                MaybeTraceCounts2 = list_ok(Type2, TraceCounts2)
+            ->
+                diff_trace_counts(TraceCounts1, TraceCounts2, TraceCounts),
+                write_trace_counts_to_file(diff_file(Type1, Type2),
+                    TraceCounts, OutputFile, WriteResult, !IO),
                 (
                     WriteResult = ok
                 ;
@@ -72,6 +84,9 @@ main(!IO) :-
                         string(WriteErrorMsg), !IO),
                     io.nl(StdErr, !IO)
                 )
+            ;
+                % The error message has already been printed above.
+                true
             )
         ;
             usage(!IO)
@@ -86,9 +101,7 @@ main(!IO) :-
 
 usage(!IO) :-
     io.write_strings([
-        "Usage: mtc_union [-v] -o output_file file1 file2 ...\n",
-        "The -v or --verbose option causes each trace count file name\n",
-        "to be printed as it is added to the union.\n",
+        "Usage: mtc_diff -o outputfile file1 file2\n",
         "file1, file2, etc can be trace count files or they can be files\n",
         "that contains lists of the names of other trace count files.\n"],
         !IO).
@@ -96,8 +109,7 @@ usage(!IO) :-
 %-----------------------------------------------------------------------------%
 
 :- type option
-    --->    output_filename
-    ;       verbose.
+    --->    output_filename.
 
 :- type option_table == option_table(option).
 
@@ -106,12 +118,9 @@ usage(!IO) :-
 :- pred option_default(option::out, option_data::out) is multi.
 
 option_default(output_filename, string("")).
-option_default(verbose,         bool(no)).
 
 short_option('o',               output_filename).
-short_option('v',               verbose).
 
 long_option("out",              output_filename).
-long_option("verbose",          verbose).
 
 %-----------------------------------------------------------------------------%

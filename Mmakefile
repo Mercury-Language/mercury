@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2005 The University of Melbourne.
+# Copyright (C) 1995-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -51,6 +51,17 @@ SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:$$PATH \
 		MMAKE_VPATH=. \
 		MMAKE_DIR=../../scripts \
 		../../scripts/mmake $(MMAKEFLAGS)
+
+# Note that we compile the slice directory using the version of mmc,
+# mmake etc that we find in $PATH. We don't want to override this mmc
+# with the one in scripts, since that one will probably refer to a
+# nonexistent executable in /usr/local/mercury-DEV. This is why actions
+# referring to the slice directory should use $(PLAIN_SUBDIR_MMAKE)
+# instead of $(SUBDIR_MMAKE).
+
+PLAIN_SUBDIR_MMAKE = unset MMAKE; unset MMAKE_VPATH; unset MMAKE_DIR; \
+		unset MERCURY_CONFIG_DIR; unset MERCURY_STDLIB_DIR; \
+		mmake $(MMAKEFLAGS)
 
 GENERATED_DOCS = README INSTALL WORK_IN_PROGRESS TODO
 
@@ -117,24 +128,18 @@ compiler/$(deps_subdir)top_level.dep: library/$(deps_subdir)$(STD_LIB_NAME).dep
 	+cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_slice
-dep_slice: slice/$(deps_subdir)mslice.dep \
+dep_slice: slice/$(deps_subdir)mcov.dep \
+	slice/$(deps_subdir)mslice.dep \
 	slice/$(deps_subdir)mdice.dep \
-	slice/$(deps_subdir)mtc_union.dep
+	slice/$(deps_subdir)mtc_union.dep \
+	slice/$(deps_subdir)mtc_diff.dep
 
-slice/$(deps_subdir)mslice.dep: \
-		library/$(deps_subdir)$(STD_LIB_NAME).dep \
-		mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep
-	+cd slice && $(SUBDIR_MMAKE) mslice.depend
-
-slice/$(deps_subdir)mdice.dep: \
-		library/$(deps_subdir)$(STD_LIB_NAME).dep \
-		mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep
-	+cd slice && $(SUBDIR_MMAKE) mdice.depend
-
-slice/$(deps_subdir)mtc_union.dep: \
-		library/$(deps_subdir)$(STD_LIB_NAME).dep \
-		mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep
-	+cd slice && $(SUBDIR_MMAKE) mtc_union.depend
+slice/$(deps_subdir)mcov.dep \
+slice/$(deps_subdir)mslice.dep \
+slice/$(deps_subdir)mdice.dep \
+slice/$(deps_subdir)mtc_union.dep \
+slice/$(deps_subdir)mtc_diff.dep:
+	+cd slice && $(PLAIN_SUBDIR_MMAKE) depend
 
 .PHONY: dep_profiler
 dep_profiler: profiler/$(deps_subdir)mercury_profile.dep
@@ -167,15 +172,9 @@ deep_profiler/$(deps_subdir)mdprof_dump.dep: \
 # depend_library MUST be done before depend_compiler and depend_profiler
 
 .PHONY: depend
-depend:
-	+cd library && $(SUBDIR_MMAKE) depend
-	+cd mdbcomp && $(SUBDIR_MMAKE) depend
-	+cd browser && $(SUBDIR_MMAKE) depend
-	+cd analysis && $(SUBDIR_MMAKE) depend
-	+cd compiler && $(SUBDIR_MMAKE) depend
-	+cd slice && $(SUBDIR_MMAKE) depend
-	+cd profiler && $(SUBDIR_MMAKE) depend
-	+cd deep_profiler && $(SUBDIR_MMAKE) depend
+depend: depend_library depend_mdbcomp depend_browser \
+		depend_analysis depend_compiler \
+		depend_slice depend_profiler depend_deep_profiler
 
 .PHONY: depend_library
 depend_library:
@@ -189,13 +188,17 @@ depend_mdbcomp:
 depend_browser:
 	+cd browser && $(SUBDIR_MMAKE) depend
 
+.PHONY: depend_analysis
+depend_analysis:
+	+cd analysis && $(SUBDIR_MMAKE) depend
+
 .PHONY: depend_compiler
 depend_compiler:
 	+cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_slice
 depend_slice:
-	+cd slice && $(SUBDIR_MMAKE) depend
+	+cd slice && $(PLAIN_SUBDIR_MMAKE) depend
 
 .PHONY: depend_profiler
 depend_profiler:
@@ -267,9 +270,8 @@ doc: scripts util
 	+cd doc && $(SUBDIR_MMAKE)
 
 .PHONY: slice
-slice: dep_slice scripts util boehm_gc runtime library \
-		mdbcomp browser trace
-	+cd slice && $(SUBDIR_MMAKE)
+slice: dep_slice
+	+cd slice && $(PLAIN_SUBDIR_MMAKE)
 
 .PHONY: profiler
 profiler: dep_profiler scripts util boehm_gc runtime library \
@@ -309,7 +311,7 @@ tags_analysis:
 
 .PHONY: tags_slice
 tags_slice:
-	+cd slice && $(SUBDIR_MMAKE) tags
+	+cd slice && $(PLAIN_SUBDIR_MMAKE) tags
 
 .PHONY: tags_profiler
 tags_profiler:
@@ -404,8 +406,8 @@ tar: $(GENERATED_DOCS)
 	+cd analysis && $(SUBDIR_MMAKE) all-ints cs tags
 	+cd compiler && $(SUBDIR_MMAKE) depend
 	+cd compiler && $(SUBDIR_MMAKE) cs tags
-	+cd slice && $(SUBDIR_MMAKE) depend
-	+cd slice && $(SUBDIR_MMAKE) cs tags
+	+cd slice && $(PLAIN_SUBDIR_MMAKE) depend
+	+cd slice && $(PLAIN_SUBDIR_MMAKE) cs tags
 	+cd profiler && $(SUBDIR_MMAKE) depend
 	+cd profiler && $(SUBDIR_MMAKE) cs tags
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
@@ -553,9 +555,19 @@ install_compiler: dep_compiler compiler
 install_doc: doc
 	+cd doc && $(SUBDIR_MMAKE) install
 
+# We can't leave the install actions for the slice directory to be executed
+# directly from slice/Mmakefile, since slice/Mmakefile doesn't have access
+# to the value of $(INSTALL_MERC_BIN_DIR).
+
 .PHONY: install_slice
 install_slice: slice
-	+cd slice && $(SUBDIR_MMAKE) install
+	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	+cd slice &&							\
+	mmake PROGS &&							\
+	for prog in `cat PROGS` ; do					\
+		cp `vpath_find $$prog$(EXT_FOR_EXE)` 			\
+			$(INSTALL_MERC_BIN_DIR)/$$prog$(EXT_FOR_EXE);	\
+	done
 
 .PHONY: install_profiler
 install_profiler: profiler
