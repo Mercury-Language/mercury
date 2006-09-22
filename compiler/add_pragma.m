@@ -114,9 +114,11 @@
 
     % Find the procedure with declared argmodes which match the ones we want.
     % If there was no mode declaration, then use the inferred argmodes.
+    % Allow for a renaming between the inst vars.
     %
-:- pred get_procedure_matching_declmodes(assoc_list(proc_id, proc_info)::in,
-    list(mer_mode)::in, module_info::in, proc_id::out) is semidet.
+:- pred get_procedure_matching_declmodes_with_renaming(
+    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in,
+    module_info::in, proc_id::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -373,8 +375,8 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
         pred_info_get_procedures(PredInfo, Procs),
         map.to_assoc_list(Procs, ExistingProcs),
         (
-            get_procedure_matching_declmodes(ExistingProcs, Modes,
-                !.ModuleInfo, ProcId)
+            get_procedure_matching_declmodes_with_renaming(ExistingProcs,
+                Modes, !.ModuleInfo, ProcId)
         ->
             map.lookup(Procs, ProcId, ProcInfo),
             proc_info_get_declared_determinism(ProcInfo, MaybeDet),
@@ -1133,8 +1135,8 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
             pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
-                get_procedure_matching_declmodes(ProcList, ModeList,
-                    !.ModuleInfo, ProcId)
+                get_procedure_matching_declmodes_with_renaming(ProcList,
+                    ModeList, !.ModuleInfo, ProcId)
             ->
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 add_context_to_constr_termination_info(
@@ -1204,8 +1206,8 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
             pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
-                get_procedure_matching_declmodes(ProcList, ModeList,
-                    !.ModuleInfo, ProcId)
+                get_procedure_matching_declmodes_with_renaming(ProcList,
+                    ModeList, !.ModuleInfo, ProcId)
             ->
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 proc_info_set_imported_structure_sharing(HeadVars, Types,
@@ -1259,8 +1261,8 @@ add_pragma_structure_reuse(PredOrFunc, SymName, ModeList, HeadVars,
             pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
-                get_procedure_matching_declmodes(ProcList, ModeList,
-                    !.ModuleInfo, ProcId)
+                get_procedure_matching_declmodes_with_renaming(ProcList,
+                    ModeList, !.ModuleInfo, ProcId)
             ->
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 proc_info_set_imported_structure_reuse(HeadVars, Types,
@@ -1313,8 +1315,8 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
             pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
-                get_procedure_matching_declmodes(ProcList, ModeList,
-                    !.ModuleInfo, ProcId)
+                get_procedure_matching_declmodes_with_renaming(ProcList,
+                    ModeList, !.ModuleInfo, ProcId)
             ->
                 add_context_to_arg_size_info(MaybePragmaArgSizeInfo,
                     Context, MaybeArgSizeInfo),
@@ -1616,7 +1618,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 %
                 % XXX We should probably also check that each pair in
                 % the renaming has the same name.
-                get_procedure_matching_argmodes_with_renaming(ExistingProcs,
+                get_procedure_matching_declmodes_with_renaming(ExistingProcs,
                     Modes, !.ModuleInfo, ProcId)
             ->
                 pred_info_clauses_info(!.PredInfo, Clauses0),
@@ -2740,51 +2742,6 @@ get_procedure_matching_argmodes_2([P | Procs], Modes, ModuleInfo, OurProcId) :-
         get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, OurProcId)
     ).
 
-    % Find the procedure with argmodes which match the ones we want but
-    % allow for a renaming between the inst vars.
-    %
-:- pred get_procedure_matching_argmodes_with_renaming(
-    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in,
-    module_info::in, proc_id::out) is semidet.
-
-get_procedure_matching_argmodes_with_renaming(Procs, Modes0,
-        ModuleInfo, ProcId) :-
-    list.map(constrain_inst_vars_in_mode, Modes0, Modes),
-    get_procedure_matching_argmodes_with_renaming_2(Procs, Modes,
-        ModuleInfo, ProcId).
-
-:- pred get_procedure_matching_argmodes_with_renaming_2(
-    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in,
-    module_info::in, proc_id::out) is semidet.
-
-get_procedure_matching_argmodes_with_renaming_2([P | Procs], Modes,
-        ModuleInfo, OurProcId) :-
-    P = ProcId - ProcInfo,
-    proc_info_get_argmodes(ProcInfo, ArgModes),
-    ( mode_list_matches_with_renaming(Modes, ArgModes, ModuleInfo) ->
-        OurProcId = ProcId
-    ;
-        get_procedure_matching_argmodes_with_renaming_2(Procs, Modes,
-            ModuleInfo, OurProcId)
-    ).
-
-get_procedure_matching_declmodes(Procs, Modes0, ModuleInfo, ProcId) :-
-    list.map(constrain_inst_vars_in_mode, Modes0, Modes),
-    get_procedure_matching_declmodes_2(Procs, Modes, ModuleInfo, ProcId).
-
-:- pred get_procedure_matching_declmodes_2(assoc_list(proc_id, proc_info)::in,
-    list(mer_mode)::in, module_info::in, proc_id::out) is semidet.
-
-get_procedure_matching_declmodes_2([P | Procs], Modes, ModuleInfo,
-        OurProcId) :-
-    P = ProcId - ProcInfo,
-    proc_info_declared_argmodes(ProcInfo, ArgModes),
-    ( mode_list_matches(Modes, ArgModes, ModuleInfo) ->
-        OurProcId = ProcId
-    ;
-        get_procedure_matching_declmodes_2(Procs, Modes, ModuleInfo, OurProcId)
-    ).
-
 :- pred mode_list_matches(list(mer_mode)::in, list(mer_mode)::in,
     module_info::in) is semidet.
 
@@ -2795,6 +2752,28 @@ mode_list_matches([Mode1 | Modes1], [Mode2 | Modes2], ModuleInfo) :-
     mode_get_insts_semidet(ModuleInfo, Mode1, Inst1, Inst2),
     mode_get_insts_semidet(ModuleInfo, Mode2, Inst1, Inst2),
     mode_list_matches(Modes1, Modes2, ModuleInfo).
+
+
+get_procedure_matching_declmodes_with_renaming(Procs, Modes0,
+        ModuleInfo, ProcId) :-
+    list.map(constrain_inst_vars_in_mode, Modes0, Modes),
+    get_procedure_matching_declmodes_with_renaming_2(Procs, Modes,
+        ModuleInfo, ProcId).
+
+:- pred get_procedure_matching_declmodes_with_renaming_2(
+    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in,
+    module_info::in, proc_id::out) is semidet.
+
+get_procedure_matching_declmodes_with_renaming_2([P | Procs], Modes,
+        ModuleInfo, OurProcId) :-
+    P = ProcId - ProcInfo,
+    proc_info_declared_argmodes(ProcInfo, ArgModes),
+    ( mode_list_matches_with_renaming(Modes, ArgModes, ModuleInfo) ->
+        OurProcId = ProcId
+    ;
+        get_procedure_matching_declmodes_with_renaming_2(Procs, Modes,
+            ModuleInfo, OurProcId)
+    ).
 
 %----------------------------------------------------------------------------%
 

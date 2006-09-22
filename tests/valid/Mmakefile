@@ -163,6 +163,7 @@ OTHER_PROGS= \
 	no_warn_obsolete \
 	nondet_live \
 	overloading \
+	param_mode_bug \
 	parsing_bug_main \
 	pred_with_no_modes \
 	qualified_cons_id \
