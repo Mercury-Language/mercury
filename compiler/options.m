@@ -60,6 +60,14 @@
 :- func option_table_add_mercury_library_directory(option_table, string)
     = option_table.
 
+    % Add a directory using all of the
+    % `--search-directory', `--intermod-directory',
+    % `--library-directory', `--init-file-directory' and
+    % `--c-include-directory' options.
+    %
+:- func option_table_add_search_library_files_directory(option_table,
+    string) = option_table.
+
     % Quote an argument to a shell command.
     %
 :- func quote_arg(string) = string.
@@ -677,6 +685,7 @@
     ;       link_objects
     ;       mercury_library_directories
     ;       mercury_library_directory_special
+    ;       search_library_files_directory_special
     ;       mercury_libraries
     ;       mercury_library_special
     ;       mercury_standard_library_directory
@@ -1405,6 +1414,7 @@ option_defaults_2(link_option, [
     link_libraries                      -   accumulating([]),
     link_objects                        -   accumulating([]),
     mercury_library_directory_special   -   string_special,
+    search_library_files_directory_special - string_special,
     mercury_library_directories         -   accumulating([]),
     mercury_library_special             -   string_special,
     mercury_libraries                   -   accumulating([]),
@@ -2167,6 +2177,10 @@ long_option("mercury-library",      mercury_library_special).
 long_option("ml",                   mercury_library_special).
 long_option("mercury-library-directory", mercury_library_directory_special).
 long_option("mld",                  mercury_library_directory_special).
+long_option("search-library-files-directory",
+                search_library_files_directory_special).
+long_option("search-lib-files-dir",
+                search_library_files_directory_special).
 long_option("mercury-standard-library-directory",
                 mercury_standard_library_directory_special).
 long_option("mercury-stdlib-dir",
@@ -2394,6 +2408,10 @@ special_handler(mercury_library_directory_special, string(Dir),
         OptionTable0, ok(OptionTable)) :-
     OptionTable = option_table_add_mercury_library_directory(
         OptionTable0, Dir).
+special_handler(search_library_files_directory_special, string(Dir),
+        OptionTable0, ok(OptionTable)) :-
+    OptionTable = option_table_add_search_library_files_directory(
+        OptionTable0, Dir).
 special_handler(mercury_library_special, string(Lib),
         OptionTable0, ok(OptionTable)) :-
     OptionTable =
@@ -2462,6 +2480,15 @@ option_table_add_mercury_library_directory(OptionTable0, Dir) =
         c_include_directory         - dir.make_path_name(Dir, "inc"),
         init_file_directories       - dir.make_path_name(Dir, "modules"),
         mercury_library_directories - Dir
+    ], OptionTable0).
+
+option_table_add_search_library_files_directory(OptionTable0, Dir) =
+    list.foldl(append_to_accumulating_option, [
+        search_directories          - Dir,
+        intermod_directories        - Dir,
+        c_include_directory         - Dir,
+        init_file_directories       - Dir,
+        link_library_directories    - Dir
     ], OptionTable0).
 
 :- func append_to_accumulating_option(pair(option, string),
@@ -4438,6 +4465,12 @@ options_help_link -->
         "\tLink with the specified library.",
         "--link-object <object-file>",
         "\tLink with the specified object file.",
+        "--search-lib-files-dir <directory>",
+        "--search-library-files-directory <directory>",
+        "\tEquivalent to adding <directory> using all of the",
+        "\t`--search-directory', `--intermod-directory',",
+        "\t`--library-directory', `--init-file-directory' and",
+        "\t`--c-include-directory' options.",
         "--mld <directory>, --mercury-library-directory <directory>",
         "\tAppend <directory> to the list of directories to",
         "\tbe searched for Mercury libraries. This will add",

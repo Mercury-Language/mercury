@@ -8247,6 +8247,18 @@ Link with the specified library.
 Link with the specified object file.
 
 @sp 1
+@item --search-lib-files-dir @var{directory}
+@itemx --search-library-files-directory @var{directory}
+@findex --search-lib-files-dir
+@findex --search-library-files-directory
+@cindex Directories for libraries
+@cindex Search path for libraries
+Equivalent to adding @var{directory} using all of the
+@samp{--search-directory}, @samp{--intermod-directory},
+@samp{--library-directory}, @samp{--init-file-directory} and
+@samp{--c-include-directory} options.
+
+@sp 1
 @item --mld @var{directory}
 @itemx --mercury-library-directory @var{directory}
 @findex --mld
