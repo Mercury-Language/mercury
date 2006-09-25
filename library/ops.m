@@ -28,6 +28,43 @@
 :- module ops.
 :- interface.
 
+:- import_module list.
+
+%-----------------------------------------------------------------------------%
+
+    % An ops.class describes what structure terms constructed with an operator
+    % of that class are allowed to take.
+:- type ops.class
+    --->    infix(ops.assoc, ops.assoc)             % term Op term
+    ;       prefix(ops.assoc)                       % Op term
+    ;       binary_prefix(ops.assoc, ops.assoc)     % Op term term
+    ;       postfix(ops.assoc).                     % term Op
+
+    % `x' represents an argument whose priority must be
+    % strictly lower than the priority of the operator.
+    % `y' represents an argument whose priority must be
+    % lower than or equal to the priority of the operator.
+:- type ops.assoc
+    --->    x
+    ;       y.
+
+    % Operators with a low "priority" bind more tightly than those
+    % with a high "priority". For example, given that `+' has
+    % priority 500 and `*' has priority 400, the term `2 * X + Y'
+    % would parse as `(2 * X) + Y'.
+    %
+    % The lowest priority is 0.
+    %
+:- type ops.priority == int.
+
+:- type ops.op_info
+    --->    op_info(
+                ops.class,
+                ops.priority  
+            ).
+
+%-----------------------------------------------------------------------------%
+
 :- typeclass ops.op_table(Table) where [
 
         % Check whether a string is the name of an infix operator,
@@ -36,27 +73,17 @@
     pred ops.lookup_infix_op(Table::in, string::in, ops.priority::out,
         ops.assoc::out, ops.assoc::out) is semidet,
 
-        % Operator terms are terms of the form `X `Op` Y',
-        % where `Op' is a variable or a name and `X' and `Y'
-        % are terms. If operator terms are included in `Table',
-        % return their precedence and associativity.
-        %
-    pred ops.lookup_operator_term(Table::in, ops.priority::out,
-        ops.assoc::out, ops.assoc::out) is semidet,
-
         % Check whether a string is the name of a prefix operator,
         % and if it is, return its precedence and associativity.
         %
     pred ops.lookup_prefix_op(Table::in, string::in,
         ops.priority::out, ops.assoc::out) is semidet,
 
-        % Check whether a string is the name of a binary prefix
-        % operator, and if it is, return its precedence and
-        % associativity.
+        % Check whether a string is the name of a binary prefix operator,
+        % and if it is, return its precedence and associativity.
         %
     pred ops.lookup_binary_prefix_op(Table::in, string::in,
-        ops.priority::out, ops.assoc::out, ops.assoc::out)
-        is semidet,
+        ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet,
 
         % Check whether a string is the name of a postfix operator,
         % and if it is, return its precedence and associativity.
@@ -64,21 +91,35 @@
     pred ops.lookup_postfix_op(Table::in, string::in, ops.priority::out,
         ops.assoc::out) is semidet,
 
-        % Check whether a string is the name of an operator
+        % Check whether a string is the name of an operator.
         %
     pred ops.lookup_op(Table::in, string::in) is semidet,
+
+        % Check whether a string is the name of an operator, and if it is,
+        % return the op_info describing that operator in the third argument.
+        % If the string is the name of more than one operator, return
+        % information about its other guises in the last argument.
+        %
+    pred ops.lookup_op_infos(Table::in, string::in,
+        op_info::out, list(op_info)::out) is semidet,
+
+        % Operator terms are terms of the form `X `Op` Y', where `Op' is
+        % a variable or a name and `X' and `Y' are terms. If operator terms
+        % are included in `Table', return their precedence and associativity.
+        %
+    pred ops.lookup_operator_term(Table::in, ops.priority::out,
+        ops.assoc::out, ops.assoc::out) is semidet,
 
         % Returns the highest priority number (the lowest is zero).
         %
     func ops.max_priority(Table) = ops.priority,
 
-        % The maximum priority of an operator appearing
-        % as the top-level functor of an argument of a compound
-        % term.
+        % The maximum priority of an operator appearing as the top-level
+        % functor of an argument of a compound term.
         %
         % This will generally be the precedence of `,/2' less one.
-        % If `,/2' does not appear in the op_table,
-        % `ops.max_priority' plus one may be a reasonable value.
+        % If `,/2' does not appear in the op_table, `ops.max_priority' plus one
+        % may be a reasonable value.
         %
     func ops.arg_priority(Table) = ops.priority
 ].
@@ -96,56 +137,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Operators with a low "priority" bind more tightly than those
-    % with a high "priority". For example, given that `+' has
-    % priority 500 and `*' has priority 400, the term `2 * X + Y'
-    % would parse as `(2 * X) + Y'.
-    %
-    % The lowest priority is 0.
-    %
-:- type ops.priority == int.
-
-%-----------------------------------------------------------------------------%
-
-    % An ops.specifier describes what structure terms
-    % constructed with an operator are allowed to take.
-    % `f' represents the operator and `x' and `y' represent arguments.
-    % `x' represents an argument whose priority must be
-    % strictly lower than that of the operator.
-    % `y' represents an argument whose priority is
-    % lower or equal to that of the operator.
-    % For example, `yfx' indicates a left-associative infix operator,
-    % while `xfy' indicates a right-associative infix operator.
-    %
-:- type ops.specifier
-    --->    fx
-    ;       fy
-    ;       xf
-    ;       yf
-    ;       xfx
-    ;       yfx
-    ;       xfy
-    ;       fxx
-    ;       fxy
-    ;       fyx.
-
-:- type ops.assoc
-    --->    x
-    ;       y.
-
-:- type ops.class
-    --->    infix(ops.assoc, ops.assoc)
-    ;       prefix(ops.assoc)
-    ;       binary_prefix(ops.assoc, ops.assoc)
-    ;       postfix(ops.assoc).
-
-    % convert an ops.specifer (e.g. `xfy') to an ops.class
-    % (e.g. `infix(x, y)').
-    %
-:- pred ops.op_specifier_to_class(ops.specifier::in, ops.class::out) is det.
-
-%-----------------------------------------------------------------------------%
-
 :- implementation.
 
 % Anything below here is not documented in the library reference manual.
@@ -160,38 +151,20 @@
 
 :- implementation.
 
-ops.op_specifier_to_class(fx, prefix(x)).
-ops.op_specifier_to_class(fy, prefix(y)).
-ops.op_specifier_to_class(xf, postfix(x)).
-ops.op_specifier_to_class(yf, postfix(y)).
-ops.op_specifier_to_class(xfx, infix(x,x)).
-ops.op_specifier_to_class(yfx, infix(y,x)).
-ops.op_specifier_to_class(xfy, infix(x,y)).
-ops.op_specifier_to_class(fxx, binary_prefix(x,x)).
-ops.op_specifier_to_class(fyx, binary_prefix(y,x)).
-ops.op_specifier_to_class(fxy, binary_prefix(x,y)).
-
 :- type ops.mercury_op_table
     --->    ops.mercury_op_table.
-
-    % ops.category is used to index the op_table so that
-    % lookups are semidet rather than nondet.
-    % Prefix and binary_prefix operators have ops.category `before'.
-    % Infix and postfix operators have ops.category `after'.
-:- type ops.category
-    --->    before
-    ;       after.
 
 ops.init_mercury_op_table = ops.mercury_op_table.
 
 :- instance ops.op_table(ops.mercury_op_table) where [
     pred(ops.lookup_infix_op/5) is ops.lookup_mercury_infix_op,
-    pred(ops.lookup_operator_term/4) is ops.lookup_mercury_operator_term,
     pred(ops.lookup_prefix_op/4) is ops.lookup_mercury_prefix_op,
     pred(ops.lookup_binary_prefix_op/5) is
         ops.lookup_mercury_binary_prefix_op,
     pred(ops.lookup_postfix_op/4) is ops.lookup_mercury_postfix_op,
     pred(ops.lookup_op/2) is ops.lookup_mercury_op,
+    pred(ops.lookup_op_infos/4) is ops.lookup_mercury_op_infos,
+    pred(ops.lookup_operator_term/4) is ops.lookup_mercury_operator_term,
     func(ops.max_priority/1) is ops.mercury_max_priority,
     func(ops.arg_priority/1) is ops.mercury_arg_priority
 ].
@@ -201,43 +174,95 @@ ops.init_mercury_op_table = ops.mercury_op_table.
 
 ops.lookup_mercury_infix_op(_OpTable, Name, Priority,
         LeftAssoc, RightAssoc) :-
-    ops.op_table(Name, after, Specifier, Priority),
-    ops.op_specifier_to_class(Specifier, infix(LeftAssoc, RightAssoc)).
-
-:- pred ops.lookup_mercury_operator_term(mercury_op_table::in,
-    ops.priority::out, ops.assoc::out, ops.assoc::out) is det.
-
-    % Left associative, lower priority than everything
-    % except record syntax.
-ops.lookup_mercury_operator_term(_OpTable, 120, y, x).
+    ops.op_table(Name, Info, MaybeOtherInfo),
+    (
+        Info = op_info(Class, PriorityPrime),
+        Class = infix(LeftAssocPrime, RightAssocPrime)
+    ->
+        LeftAssoc = LeftAssocPrime,
+        RightAssoc = RightAssocPrime,
+        Priority = PriorityPrime
+    ;
+        MaybeOtherInfo = [op_info(Class, PriorityPrime)],
+        Class = infix(LeftAssocPrime, RightAssocPrime)
+    ->
+        LeftAssoc = LeftAssocPrime,
+        RightAssoc = RightAssocPrime,
+        Priority = PriorityPrime
+    ;
+        fail
+    ).
 
 :- pred ops.lookup_mercury_prefix_op(mercury_op_table::in,
     string::in, ops.priority::out, ops.assoc::out) is semidet.
 
 ops.lookup_mercury_prefix_op(_OpTable, Name, Priority, LeftAssoc) :-
-    ops.op_table(Name, before, Specifier, Priority),
-    ops.op_specifier_to_class(Specifier, prefix(LeftAssoc)).
+    ops.op_table(Name, Info, MaybeOtherInfo),
+    ( Info = op_info(prefix(LeftAssocPrime), PriorityPrime) ->
+        LeftAssoc = LeftAssocPrime,
+        Priority = PriorityPrime
+    ; MaybeOtherInfo = [op_info(prefix(LeftAssocPrime), PriorityPrime)] ->
+        LeftAssoc = LeftAssocPrime,
+        Priority = PriorityPrime
+    ;
+        fail
+    ).
 
 :- pred ops.lookup_mercury_binary_prefix_op(mercury_op_table::in, string::in,
     ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet.
 
 ops.lookup_mercury_binary_prefix_op(_OpTable, Name, Priority,
         LeftAssoc, RightAssoc) :-
-    ops.op_table(Name, before, Specifier, Priority),
-    ops.op_specifier_to_class(Specifier,
-        binary_prefix(LeftAssoc, RightAssoc)).
+    ops.op_table(Name, Info, MaybeOtherInfo),
+    (
+        Info = op_info(Class, PriorityPrime),
+        Class = binary_prefix(LeftAssocPrime, RightAssocPrime)
+    ->
+        LeftAssoc = LeftAssocPrime,
+        RightAssoc = RightAssocPrime,
+        Priority = PriorityPrime
+    ;
+        MaybeOtherInfo = [op_info(Class, PriorityPrime)],
+        Class = binary_prefix(LeftAssocPrime, RightAssocPrime)
+    ->
+        LeftAssoc = LeftAssocPrime,
+        RightAssoc = RightAssocPrime,
+        Priority = PriorityPrime
+    ;
+        fail
+    ).
 
 :- pred ops.lookup_mercury_postfix_op(mercury_op_table::in,
     string::in, ops.priority::out, ops.assoc::out) is semidet.
 
 ops.lookup_mercury_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
-    ops.op_table(Name, after, Specifier, Priority),
-    ops.op_specifier_to_class(Specifier, postfix(LeftAssoc)).
+    ops.op_table(Name, Info, MaybeOtherInfo),
+    ( Info = op_info(postfix(LeftAssocPrime), PriorityPrime) ->
+        LeftAssoc = LeftAssocPrime,
+        Priority = PriorityPrime
+    ; MaybeOtherInfo = [op_info(postfix(LeftAssocPrime), PriorityPrime)] ->
+        LeftAssoc = LeftAssocPrime,
+        Priority = PriorityPrime
+    ;
+        fail
+    ).
 
 :- pred ops.lookup_mercury_op(mercury_op_table::in, string::in) is semidet.
 
 ops.lookup_mercury_op(_OpTable, Name) :-
-    ops.op_table(Name, _, _, _).
+    ops.op_table(Name, _, _).
+
+:- pred ops.lookup_mercury_op_infos(mercury_op_table::in, string::in,
+    op_info::out, list(op_info)::out) is semidet.
+
+ops.lookup_mercury_op_infos(_OpTable, Name, Info, OtherInfos) :-
+    ops.op_table(Name, Info, OtherInfos).
+
+:- pred ops.lookup_mercury_operator_term(mercury_op_table::in,
+    ops.priority::out, ops.assoc::out, ops.assoc::out) is det.
+
+    % Left associative, lower priority than everything except record syntax.
+ops.lookup_mercury_operator_term(_OpTable, 120, y, x).
 
 :- func ops.mercury_max_priority(mercury_op_table) = ops.priority.
 
@@ -248,128 +273,176 @@ ops.mercury_max_priority(_Table) = 1200.
     % This needs to be less than the priority of the ','/2 operator.
 ops.mercury_arg_priority(_Table) = 999.
 
-    % Changes here may require changes to doc/reference_manual.texi.
-:- pred ops.op_table(string, ops.category, ops.specifier, ops.priority).
-:- mode ops.op_table(in, in, out, out) is semidet.
-:- mode ops.op_table(in, out, out, out) is nondet.
+:- pred ops.op_table(string::in, op_info::out, list(op_info)::out) is semidet.
 
-ops.op_table("..", after, xfx, 550).       % Mercury extension
-ops.op_table("*", after, yfx, 400).        % standard ISO Prolog
-ops.op_table("**", after, xfy, 200).       % standard ISO Prolog
-ops.op_table("+", after, yfx, 500).        % standard ISO Prolog
-ops.op_table("++", after, xfy, 500).       % Mercury extension
-ops.op_table("+", before, fx, 500).        % traditional Prolog (not ISO)
-ops.op_table(",", after, xfy, 1000).       % standard ISO Prolog
-ops.op_table("&", after, xfy, 1025).       % Mercury extension
-ops.op_table("-", after, yfx, 500).        % standard ISO Prolog
-ops.op_table("--", after, yfx, 500).       % Mercury extension
-ops.op_table("-", before, fx, 200).        % standard ISO Prolog
-ops.op_table("--->", after, xfy, 1179).    % Mercury extension
-ops.op_table("-->", after, xfx, 1200).     % standard ISO Prolog
-ops.op_table("->", after, xfy, 1050).      % standard ISO Prolog
-ops.op_table(".", after, yfx, 10).         % Mercury extension
-ops.op_table("/", after, yfx, 400).        % standard ISO Prolog
-ops.op_table("//", after, yfx, 400).       % standard ISO Prolog
-ops.op_table("/\\", after, yfx, 500).      % standard ISO Prolog
-ops.op_table(":", after, yfx, 120).        % Mercury extension
-ops.op_table(":-", after, xfx, 1200).      % standard ISO Prolog
-ops.op_table(":-", before, fx, 1200).      % standard ISO Prolog
-ops.op_table("::", after, xfx, 1175).      % Mercury extension
-ops.op_table(":=", after, xfx, 650).       % Mercury extension
-ops.op_table(";", after, xfy, 1100).       % standard ISO Prolog
-ops.op_table("<", after, xfx, 700).        % standard ISO Prolog
-ops.op_table("<<", after, yfx, 400).       % standard ISO Prolog
-ops.op_table("<=", after, xfy, 920).       % Mercury/NU-Prolog extension
-ops.op_table("<=>", after, xfy, 920).      % Mercury/NU-Prolog extension
-ops.op_table("=", after, xfx, 700).        % standard ISO Prolog
-ops.op_table("=..", after, xfx, 700).      % standard ISO Prolog
-ops.op_table("=:=", after, xfx, 700).      % standard ISO Prolog (*)
-ops.op_table("=<", after, xfx, 700).       % standard ISO Prolog
-ops.op_table("==", after, xfx, 700).       % standard ISO Prolog (*)
-ops.op_table("==>", after, xfx, 1175).     % Mercury extension
-ops.op_table("=>", after, xfy, 920).       % Mercury/NU-Prolog extension
-ops.op_table("=\\=", after, xfx, 700).     % standard ISO Prolog (*)
-ops.op_table("=^", after, xfx, 650).       % Mercury extension
-ops.op_table(">", after, xfx, 700).        % standard ISO Prolog
-ops.op_table(">=", after, xfx, 700).       % standard ISO Prolog
-ops.op_table(">>", after, yfx, 400).       % standard ISO Prolog
-ops.op_table("?-", before, fx, 1200).      % standard ISO Prolog (*)
-ops.op_table("@", after, xfx, 90).         % Mercury extension
-ops.op_table("@<", after, xfx, 700).       % standard ISO Prolog
-ops.op_table("@=<", after, xfx, 700).      % standard ISO Prolog
-ops.op_table("@>", after, xfx, 700).       % standard ISO Prolog
-ops.op_table("@>=", after, xfx, 700).      % standard ISO Prolog
-ops.op_table("\\", before, fx, 200).       % standard ISO Prolog
-ops.op_table("\\+", before, fy, 900).      % standard ISO Prolog
-ops.op_table("\\/", after, yfx, 500).      % standard ISO Prolog
-ops.op_table("\\=", after, xfx, 700).      % standard ISO Prolog
-ops.op_table("\\==", after, xfx, 700).     % standard ISO Prolog (*)
-ops.op_table("^", after, xfy, 99).         % ISO Prolog (prec. 200,
-                                            %   bitwise xor)
-                                            % Mercury (record syntax)
-ops.op_table("^", before, fx, 100).        % Mercury extension
-                                            % (record syntax)
-ops.op_table("all", before, fxy, 950).     % Mercury/NU-Prolog extension
-ops.op_table("and", after, xfy, 720).      % NU-Prolog extension
-ops.op_table("div", after, yfx, 400).      % standard ISO Prolog
-ops.op_table("else", after, xfy, 1170).    % Mercury/NU-Prolog extension
-ops.op_table("end_module", before, fx, 1199).  % Mercury extension
-ops.op_table("func", before, fx, 800).     % Mercury extension
-ops.op_table("if", before, fx, 1160).      % Mercury/NU-Prolog extension
-ops.op_table("import_module", before, fx, 1199). % Mercury extension
-ops.op_table("include_module", before, fx, 1199). % Mercury extension
-ops.op_table("impure", before, fy, 800).   % Mercury extension
-ops.op_table("initialise", before, fx, 1199).  % Mercury extension
-ops.op_table("initialize", before, fx, 1199).  % Mercury extension
-ops.op_table("finalise", before, fx, 1199).    % Mercury extension
-ops.op_table("finalize", before, fx, 1199).    % Mercury extension
-ops.op_table("inst", before, fx, 1199).    % Mercury extension
-ops.op_table("instance", before, fx, 1199).    % Mercury extension
-ops.op_table("is", after, xfx, 701).       % ISO Prolog says prec 700
-ops.op_table("mod", after, xfx, 400).      % Standard ISO Prolog
-ops.op_table("mode", before, fx, 1199).    % Mercury extension
-ops.op_table("module", before, fx, 1199).  % Mercury extension
-ops.op_table("not", before, fy, 900).      % Mercury/NU-Prolog extension
-ops.op_table("or", after, xfy, 740).       % NU-Prolog extension
-ops.op_table("pragma", before, fx, 1199).  % Mercury extension
-ops.op_table("pred", before, fx, 800).     % Mercury/NU-Prolog extension
-ops.op_table("promise", before, fx, 1199). % Mercury extension
-ops.op_table("trace", before, fxy, 950).   % Mercury extension
-ops.op_table("event", before, fx, 100).    % Mercury extension
-ops.op_table("promise_exclusive", before, fy, 950). % Mercury extension
-ops.op_table("promise_exhaustive", before, fy, 950). % Mercury extension
-ops.op_table("promise_exclusive_exhaustive", before, fy, 950).
-                                            % Mercury extension
-ops.op_table("rem", after, xfx, 400).      % Standard ISO Prolog
-ops.op_table("rule", before, fx, 1199).    % NU-Prolog extension
-ops.op_table("semipure", before, fy, 800). % Mercury extension
-ops.op_table("solver", before, fy, 1181).  % Mercury extension
-ops.op_table("promise_pure", before, fx, 950). % Mercury extension
-ops.op_table("promise_impure", before, fx, 950).   % Mercury extension
-ops.op_table("promise_semipure", before, fx, 950). % Mercury extension
-ops.op_table("promise_pure_implicit", before, fx, 950).    % Mercury extension
-ops.op_table("promise_impure_implicit", before, fx, 950).  % Mercury extension
-ops.op_table("promise_semipure_implicit", before, fx, 950).% Mercury extension
-ops.op_table("promise_equivalent_solutions", before, fxy, 950).
-                                           % Mercury extension
-ops.op_table("promise_equivalent_solution_sets", before, fxy, 950).
-                                           % Mercury extension
-ops.op_table("arbitrary", before, fxy, 950).
-                                           % Mercury extension
-ops.op_table("some", before, fxy, 950).    % Mercury/NU-Prolog extension
-ops.op_table("then", after, xfx, 1150).    % Mercury/NU-Prolog extension
-ops.op_table("type", before, fx, 1180).    % Mercury extension
-ops.op_table("typeclass", before, fx, 1199).   % Mercury extension
-ops.op_table("use_module", before, fx, 1199).  % Mercury extension
-ops.op_table("when", after, xfx, 900).     % NU-Prolog extension (*)
-ops.op_table("where", after, xfx, 1175).   % NU-Prolog extension (*)
-ops.op_table("~", before, fy, 900).        % Goedel (*)
-ops.op_table("~=", after, xfx, 700).       % NU-Prolog (*)
-ops.op_table("!", before, fx, 40).         % Mercury extension
-ops.op_table("!.", before, fx, 40).        % Mercury extension
-ops.op_table("!:", before, fx, 40).        % Mercury extension
+ops.op_table(Op, Info, OtherInfos) :-
+    % NOTE: Changes here may require changes to doc/reference_manual.texi.
 
-% (*) means that the operator is not useful in Mercury
-%     and is provided only for compatibility.
+    % (*) means that the operator is not useful in Mercury
+    % and is provided only for compatibility.
+
+    (
+    % The following symbols represent more than one operator.
+    % NOTE: The code of several other predicates above depends on the fact
+    % that no symbol represents more than *two* operators, by assuming that
+    % the length of OtherInfos cannot exceed one.
+
+        Op = "+",
+        Info = op_info(infix(y, x), 500),
+        % standard ISO Prolog
+        OtherInfos = [op_info(prefix(x), 500)]
+        % traditional Prolog (not ISO)
+    ;
+        Op = "-",
+        Info = op_info(infix(y, x), 500),
+        % standard ISO Prolog
+        OtherInfos = [op_info(prefix(x), 200)]
+        % standard ISO Prolog
+    ;
+        Op = ":-",
+        Info = op_info(infix(x, x), 1200),
+        % standard ISO Prolog
+        OtherInfos = [op_info(prefix(x), 1200)]
+        % standard ISO Prolog
+    ;
+        Op = "^",
+        Info = op_info(infix(x, y), 99),
+        % ISO Prolog (prec. 200, bitwise xor), Mercury (record syntax)
+        OtherInfos = [op_info(prefix(x), 100)]
+        % Mercury extension (record syntax)
+    ;
+    % The remaining symbols all represent just one operator.
+
+        % The following operators are standard ISO Prolog.
+        ( Op = "*",     Info = op_info(infix(y, x), 400)
+        ; Op = "**",    Info = op_info(infix(x, y), 200)
+        ; Op = ",",     Info = op_info(infix(x, y), 1000)
+        ; Op = "-->",   Info = op_info(infix(x, x), 1200)
+        ; Op = "->",    Info = op_info(infix(x, y), 1050)
+        ; Op = "/",     Info = op_info(infix(y, x), 400)
+        ; Op = "//",    Info = op_info(infix(y, x), 400)
+        ; Op = "/\\",   Info = op_info(infix(y, x), 500)
+        ; Op = ";",     Info = op_info(infix(x, y), 1100)
+        ; Op = "<",     Info = op_info(infix(x, x), 700)
+        ; Op = "<<",    Info = op_info(infix(y, x), 400)
+        ; Op = "=",     Info = op_info(infix(x, x), 700)
+        ; Op = "=..",   Info = op_info(infix(x, x), 700)
+        ; Op = "=:=",   Info = op_info(infix(x, x), 700)    % (*)
+        ; Op = "=<",    Info = op_info(infix(x, x), 700)
+        ; Op = "==",    Info = op_info(infix(x, x), 700)    % (*)
+        ; Op = "=\\=",  Info = op_info(infix(x, x), 700)    % (*)
+        ; Op = ">",     Info = op_info(infix(x, x), 700)
+        ; Op = ">=",    Info = op_info(infix(x, x), 700)
+        ; Op = ">>",    Info = op_info(infix(y, x), 400)
+        ; Op = "?-",    Info = op_info(prefix(x), 1200)     % (*)
+        ; Op = "@<",    Info = op_info(infix(x, x), 700)
+        ; Op = "@=<",   Info = op_info(infix(x, x), 700)
+        ; Op = "@>",    Info = op_info(infix(x, x), 700)
+        ; Op = "@>=",   Info = op_info(infix(x, x), 700)
+        ; Op = "\\",    Info = op_info(prefix(x), 200)
+        ; Op = "\\+",   Info = op_info(prefix(y), 900)
+        ; Op = "\\/",   Info = op_info(infix(y, x), 500)
+        ; Op = "\\=",   Info = op_info(infix(x, x), 700)
+        ; Op = "\\==",  Info = op_info(infix(x, x), 700)    % (*)
+        ; Op = "div",   Info = op_info(infix(y, x), 400)
+        ; Op = "is",    Info = op_info(infix(x, x), 701)    % ISO: prec 700
+        ; Op = "mod",   Info = op_info(infix(x, x), 400)
+        ; Op = "rem",   Info = op_info(infix(x, x), 400)
+        ),
+        OtherInfos = []
+    ;
+        % The following operator is a Goedel extension.
+        Op = "~",       Info = op_info(prefix(y), 900),     % (*)
+        OtherInfos = []
+    ;
+        % The following operators are NU-Prolog extensions.
+        ( Op = "~=",    Info = op_info(infix(x, x), 700)    % (*)
+        ; Op = "and",   Info = op_info(infix(x, y), 720)
+        ; Op = "or",    Info = op_info(infix(x, y), 740)
+        ; Op = "rule",  Info = op_info(prefix(x), 1199)
+        ; Op = "when",  Info = op_info(infix(x, x), 900)    % (*)
+        ; Op = "where", Info = op_info(infix(x, x), 1175)   % (*)
+        ),
+        OtherInfos = []
+    ;
+        % The following operators are Mercury/NU-Prolog extensions.
+        ( Op = "<=",    Info = op_info(infix(x, y), 920)
+        ; Op = "<=>",   Info = op_info(infix(x, y), 920)
+        ; Op = "=>",    Info = op_info(infix(x, y), 920)
+        ; Op = "all",   Info = op_info(binary_prefix(x, y), 950)
+        ; Op = "some",  Info = op_info(binary_prefix(x, y), 950)
+        ; Op = "if",    Info = op_info(prefix(x), 1160)
+        ; Op = "then",  Info = op_info(infix(x, x), 1150)
+        ; Op = "else",  Info = op_info(infix(x, y), 1170)
+        ; Op = "not",   Info = op_info(prefix(y), 900)
+        ; Op = "pred",  Info = op_info(prefix(x), 800)
+        ),
+        OtherInfos = []
+    ;
+        % The following operators are Mercury extensions.
+        ( Op = "!",                 Info = op_info(prefix(x), 40)
+        ; Op = "!.",                Info = op_info(prefix(x), 40)
+        ; Op = "!:",                Info = op_info(prefix(x), 40)
+        ; Op = "&",                 Info = op_info(infix(x, y), 1025)
+        ; Op = "++",                Info = op_info(infix(x, y), 500)
+        ; Op = "--",                Info = op_info(infix(y, x), 500)
+        ; Op = "--->",              Info = op_info(infix(x, y), 1179)
+        ; Op = ".",                 Info = op_info(infix(y, x), 10)
+        ; Op = "..",                Info = op_info(infix(x, x), 550)
+        ; Op = ":",                 Info = op_info(infix(y, x), 120)
+        ; Op = "::",                Info = op_info(infix(x, x), 1175)
+        ; Op = ":=",                Info = op_info(infix(x, x), 650)
+        ; Op = "==>",               Info = op_info(infix(x, x), 1175)
+        ; Op = "=^",                Info = op_info(infix(x, x), 650)
+        ; Op = "@",                 Info = op_info(infix(x, x), 90)
+        ; Op = "end_module",        Info = op_info(prefix(x), 1199)
+        ; Op = "event",             Info = op_info(prefix(x), 100)
+        ; Op = "finalise",          Info = op_info(prefix(x), 1199)
+        ; Op = "finalize",          Info = op_info(prefix(x), 1199)
+        ; Op = "func",              Info = op_info(prefix(x), 800)
+        ; Op = "import_module",     Info = op_info(prefix(x), 1199)
+        ; Op = "impure",            Info = op_info(prefix(y), 800)
+        ; Op = "include_module",    Info = op_info(prefix(x), 1199)
+        ; Op = "initialise",        Info = op_info(prefix(x), 1199)
+        ; Op = "initialize",        Info = op_info(prefix(x), 1199)
+        ; Op = "inst",              Info = op_info(prefix(x), 1199)
+        ; Op = "instance",          Info = op_info(prefix(x), 1199)
+        ; Op = "mode",              Info = op_info(prefix(x), 1199)
+        ; Op = "module",            Info = op_info(prefix(x), 1199)
+        ; Op = "pragma",            Info = op_info(prefix(x), 1199)
+        ; Op = "promise",           Info = op_info(prefix(x), 1199)
+        ; Op = "semipure",          Info = op_info(prefix(y), 800)
+        ; Op = "solver",            Info = op_info(prefix(y), 1181)
+        ; Op = "type",              Info = op_info(prefix(x), 1180)
+        ; Op = "typeclass",         Info = op_info(prefix(x), 1199)
+        ; Op = "use_module",        Info = op_info(prefix(x), 1199)
+        ),
+        OtherInfos = []
+    ;
+        ( Op = "arbitrary"
+        ; Op = "promise_equivalent_solutions"
+        ; Op = "promise_equivalent_solution_sets"
+        ; Op = "trace"
+        ),
+        Info = op_info(binary_prefix(x, y), 950),
+        OtherInfos = []
+    ;
+        ( Op = "promise_exclusive"
+        ; Op = "promise_exhaustive"
+        ; Op = "promise_exclusive_exhaustive"
+        ),
+        Info = op_info(prefix(y), 950),
+        OtherInfos = []
+    ;
+        ( Op = "promise_pure"
+        ; Op = "promise_pure_implicit"
+        ; Op = "promise_semipure"
+        ; Op = "promise_semipure_implicit"
+        ; Op = "promise_impure"
+        ; Op = "promise_impure_implicit"
+        ),
+        Info = op_info(prefix(x), 950),
+        OtherInfos = []
+    ).
 
 %-----------------------------------------------------------------------------%

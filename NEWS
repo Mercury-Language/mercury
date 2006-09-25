@@ -13,6 +13,9 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We have changed the interface of the ops module to make lookups of operators
+  more efficient.
+
 * We have added list.map2_foldl3/10, list.map_corresponding_foldl/6 and
   list.map_corresponding3_foldl/7 
 

@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: io.m.
 % Main author: fjh.
 % Stability: medium to high.
-% 
+%
 % This file encapsulates all the file I/O.
 %
 % We implement a purely logical I/O system using non-logical I/O primitives
@@ -21,7 +21,7 @@
 %
 % Attempting any operation on a stream which has already been closed results
 % in undefined behaviour.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -670,7 +670,7 @@
     % Does not modify the I/O state.
     %
 :- pred io.stdout_stream(io.output_stream::out, io::di, io::uo) is det.
-    
+
     % Retrieves the standard error stream.
     %
 :- func io.stderr_stream = io.output_stream.
@@ -1107,7 +1107,7 @@
     % In parallel grades calls to io.update_globals/3 are atomic.
     % If `UpdatePred' throws an exception then the `globals' field is
     % left unchanged.
-    % 
+    %
 :- pred io.update_globals(pred(univ, univ)::in(pred(di, uo) is det),
     io::di, io::uo) is det.
 
@@ -1547,7 +1547,7 @@
     #ifdef MR_THREAD_SAFE
         extern MercuryLock ML_io_user_globals_lock;
     #endif
-    
+
     extern int          ML_next_stream_id;
     #if 0
       extern MR_Word    ML_io_ops_table;
@@ -1557,11 +1557,11 @@
 :- pragma foreign_code("C", "
     MR_Word         ML_io_stream_db;
     MR_Word         ML_io_user_globals;
-    
+
     #ifdef MR_THREAD_SAFE
         MercuryLock ML_io_user_globals_lock;
     #endif
-    
+
     /* a counter used to generate unique stream ids */
     int             ML_next_stream_id;
     #if 0
@@ -3867,16 +3867,17 @@ io.write_univ(Stream, NonCanon, Univ, !IO) :-
 
 io.do_write_univ(NonCanon, Univ, !IO) :-
     io.get_op_table(OpTable, !IO),
-    io.do_write_univ(NonCanon, Univ, ops.max_priority(OpTable) + 1, !IO).
+    io.do_write_univ_prio(NonCanon, Univ, ops.max_priority(OpTable) + 1, !IO).
 
-:- pred io.do_write_univ(deconstruct.noncanon_handling, univ, ops.priority,
+:- pred io.do_write_univ_prio(deconstruct.noncanon_handling, univ, ops.priority,
     io, io).
-:- mode io.do_write_univ(in(do_not_allow), in, in, di, uo) is det.
-:- mode io.do_write_univ(in(canonicalize), in, in, di, uo) is det.
-:- mode io.do_write_univ(in(include_details_cc), in, in, di, uo) is cc_multi.
-:- mode io.do_write_univ(in, in, in, di, uo) is cc_multi.
+:- mode io.do_write_univ_prio(in(do_not_allow), in, in, di, uo) is det.
+:- mode io.do_write_univ_prio(in(canonicalize), in, in, di, uo) is det.
+:- mode io.do_write_univ_prio(in(include_details_cc), in, in, di, uo)
+    is cc_multi.
+:- mode io.do_write_univ_prio(in, in, in, di, uo) is cc_multi.
 
-io.do_write_univ(NonCanon, Univ, Priority, !IO) :-
+io.do_write_univ_prio(NonCanon, Univ, Priority, !IO) :-
     % We need to special-case the builtin types:
     %   int, char, float, string
     %   type_info, univ, c_pointer, array
@@ -3898,7 +3899,7 @@ io.do_write_univ(NonCanon, Univ, Priority, !IO) :-
         io.get_stream_db(StreamDb, !IO),
         io.maybe_stream_info(StreamDb, Stream) = StreamInfo,
         type_to_univ(StreamInfo, StreamInfoUniv),
-        io.do_write_univ(NonCanon, StreamInfoUniv, Priority, !IO)
+        io.do_write_univ_prio(NonCanon, StreamInfoUniv, Priority, !IO)
     ; univ_to_type(Univ, C_Pointer) ->
         io.write_c_pointer(C_Pointer, !IO)
     ;
@@ -3980,98 +3981,175 @@ io.write_ordinary_term(NonCanon, Univ, Priority, !IO) :-
         io.write_string("[]", !IO)
     ;
         Functor = "{}",
-        Args = [BracedTerm]
-    ->
-        io.write_string("{ ", !IO),
-        io.do_write_univ(NonCanon, BracedTerm, !IO),
-        io.write_string(" }", !IO)
-    ;
-        Functor = "{}",
         Args = [BracedHead | BracedTail]
     ->
-        io.write_char('{', !IO),
-        io.write_arg(NonCanon, BracedHead, !IO),
-        io.write_term_args(NonCanon, BracedTail, !IO),
-        io.write_char('}', !IO)
-    ;
-        Args = [PrefixArg],
-        ops.lookup_prefix_op(OpTable, Functor, OpPriority, OpAssoc)
-    ->
-        maybe_write_paren('(', Priority, OpPriority, !IO),
-        term_io.quote_atom(Functor, !IO),
-        io.write_char(' ', !IO),
-        adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
-        io.do_write_univ(NonCanon, PrefixArg, NewPriority, !IO),
-        maybe_write_paren(')', Priority, OpPriority, !IO)
-    ;
-        Args = [PostfixArg],
-        ops.lookup_postfix_op(OpTable, Functor, OpPriority, OpAssoc)
-    ->
-        maybe_write_paren('(', Priority, OpPriority, !IO),
-        adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
-        io.do_write_univ(NonCanon, PostfixArg, NewPriority, !IO),
-        io.write_char(' ', !IO),
-        term_io.quote_atom(Functor, !IO),
-        maybe_write_paren(')', Priority, OpPriority, !IO)
-    ;
-        Args = [Arg1, Arg2],
-        ops.lookup_infix_op(OpTable, Functor, OpPriority,
-            LeftAssoc, RightAssoc)
-    ->
-        maybe_write_paren('(', Priority, OpPriority, !IO),
-        adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
-        io.do_write_univ(NonCanon, Arg1, LeftPriority, !IO),
-        ( Functor = "," ->
-            io.write_string(", ", !IO)
+        (
+            BracedTail = [],
+            io.write_string("{ ", !IO),
+            io.do_write_univ(NonCanon, BracedHead, !IO),
+            io.write_string(" }", !IO)
         ;
+            BracedTail = [_ | _],
+            io.write_char('{', !IO),
+            io.write_arg(NonCanon, BracedHead, !IO),
+            io.write_term_args(NonCanon, BracedTail, !IO),
+            io.write_char('}', !IO)
+        )
+    ;
+        ops.lookup_op_infos(OpTable, Functor, FirstOpInfo, OtherOpInfos)
+    ->
+        select_op_info_and_print(NonCanon, FirstOpInfo, OtherOpInfos,
+            Priority, Functor, Args, !IO)
+    ;
+        io.write_functor_and_args(NonCanon, Functor, Args, !IO)
+    ).
+
+:- pred select_op_info_and_print(deconstruct.noncanon_handling,
+    op_info, list(op_info), ops.priority, string, list(univ), io, io) is det.
+:- mode select_op_info_and_print(in(do_not_allow), in, in, in, in, in, di, uo)
+    is det.
+:- mode select_op_info_and_print(in(canonicalize), in, in, in, in, in, di, uo)
+    is det.
+:- mode select_op_info_and_print(in(include_details_cc), in, in, in, in, in,
+    di, uo) is cc_multi.
+:- mode select_op_info_and_print(in, in, in, in, in, in, di, uo) is cc_multi.
+
+select_op_info_and_print(NonCanon, OpInfo, OtherOpInfos, Priority,
+        Functor, Args, !IO) :-
+    OpInfo = op_info(OpClass, _),
+    (
+        OpClass = prefix(_OpAssoc),
+        ( Args = [Arg] ->
+            OpInfo = op_info(_, OpPriority),
+            maybe_write_paren('(', Priority, OpPriority, !IO),
+            term_io.quote_atom(Functor, !IO),
+            io.write_char(' ', !IO),
+            OpClass = prefix(OpAssoc),
+            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+            io.do_write_univ_prio(NonCanon, Arg, NewPriority, !IO),
+            maybe_write_paren(')', Priority, OpPriority, !IO)
+        ;
+            select_remaining_op_info_and_print(NonCanon, OtherOpInfos,
+                Priority, Functor, Args, !IO)
+        )
+    ;
+        OpClass = postfix(_OpAssoc),
+        ( Args = [PostfixArg] ->
+            OpInfo = op_info(_, OpPriority),
+            maybe_write_paren('(', Priority, OpPriority, !IO),
+            OpClass = postfix(OpAssoc),
+            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+            io.do_write_univ_prio(NonCanon, PostfixArg, NewPriority, !IO),
             io.write_char(' ', !IO),
             term_io.quote_atom(Functor, !IO),
-            io.write_char(' ', !IO)
-        ),
-        adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
-        io.do_write_univ(NonCanon, Arg2, RightPriority, !IO),
-        maybe_write_paren(')', Priority, OpPriority, !IO)
+            maybe_write_paren(')', Priority, OpPriority, !IO)
+        ;
+            select_remaining_op_info_and_print(NonCanon, OtherOpInfos,
+                Priority, Functor, Args, !IO)
+        )
     ;
-        Args = [Arg1, Arg2],
-        ops.lookup_binary_prefix_op(OpTable, Functor, OpPriority,
-            FirstAssoc, SecondAssoc)
-    ->
-        maybe_write_paren('(', Priority, OpPriority, !IO),
-        term_io.quote_atom(Functor, !IO),
-        io.write_char(' ', !IO),
-        adjust_priority_for_assoc(OpPriority, FirstAssoc, FirstPriority),
-        io.do_write_univ(NonCanon, Arg1, FirstPriority, !IO),
-        io.write_char(' ', !IO),
-        adjust_priority_for_assoc(OpPriority, SecondAssoc, SecondPriority),
-        io.do_write_univ(NonCanon, Arg2, SecondPriority, !IO),
-        maybe_write_paren(')', Priority, OpPriority, !IO)
+        OpClass = infix(_LeftAssoc, _RightAssoc),
+        ( Args = [Arg1, Arg2] ->
+            OpInfo = op_info(_, OpPriority),
+            maybe_write_paren('(', Priority, OpPriority, !IO),
+            OpClass = infix(LeftAssoc, _),
+            adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
+            io.do_write_univ_prio(NonCanon, Arg1, LeftPriority, !IO),
+            ( Functor = "," ->
+                io.write_string(", ", !IO)
+            ;
+                io.write_char(' ', !IO),
+                term_io.quote_atom(Functor, !IO),
+                io.write_char(' ', !IO)
+            ),
+            OpClass = infix(_, RightAssoc),
+            adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
+            io.do_write_univ_prio(NonCanon, Arg2, RightPriority, !IO),
+            maybe_write_paren(')', Priority, OpPriority, !IO)
+        ;
+            select_remaining_op_info_and_print(NonCanon, OtherOpInfos,
+                Priority, Functor, Args, !IO)
+        )
     ;
-        (
-            Args = [],
-            ops.lookup_op(OpTable, Functor),
-            Priority =< ops.max_priority(OpTable)
-        ->
-            io.write_char('(', !IO),
+        OpClass = binary_prefix(_FirstAssoc, _SecondAssoc),
+        ( Args = [Arg1, Arg2] ->
+            OpInfo = op_info(_, OpPriority),
+            maybe_write_paren('(', Priority, OpPriority, !IO),
             term_io.quote_atom(Functor, !IO),
-            io.write_char(')', !IO)
+            io.write_char(' ', !IO),
+            OpClass = binary_prefix(FirstAssoc, _),
+            adjust_priority_for_assoc(OpPriority, FirstAssoc,
+                FirstPriority),
+            io.do_write_univ_prio(NonCanon, Arg1, FirstPriority, !IO),
+            io.write_char(' ', !IO),
+            OpClass = binary_prefix(_, SecondAssoc),
+            adjust_priority_for_assoc(OpPriority, SecondAssoc,
+                SecondPriority),
+            io.do_write_univ_prio(NonCanon, Arg2, SecondPriority, !IO),
+            maybe_write_paren(')', Priority, OpPriority, !IO)
         ;
-            term_io.quote_atom_agt(Functor, maybe_adjacent_to_graphic_token,
-                !IO)
-        ),
-        (
-            Args = [X | Xs]
-        ->
-            io.write_char('(', !IO),
-            io.write_arg(NonCanon, X, !IO),
-            io.write_term_args(NonCanon, Xs, !IO),
-            io.write_char(')', !IO)
-        ;
-            true
+            select_remaining_op_info_and_print(NonCanon, OtherOpInfos,
+                Priority, Functor, Args, !IO)
         )
     ).
 
+:- pred select_remaining_op_info_and_print(deconstruct.noncanon_handling,
+    list(op_info), ops.priority, string, list(univ), io, io) is det.
+:- mode select_remaining_op_info_and_print(in(do_not_allow), in, in, in, in,
+    di, uo) is det.
+:- mode select_remaining_op_info_and_print(in(canonicalize), in, in, in, in,
+    di, uo) is det.
+:- mode select_remaining_op_info_and_print(in(include_details_cc), in, in, in,
+    in, di, uo) is cc_multi.
+:- mode select_remaining_op_info_and_print(in, in, in, in, in, di, uo)
+    is cc_multi.
+
+select_remaining_op_info_and_print(NonCanon, [FirstOpInfo | MoreOpInfos],
+        Priority, Functor, Args, !IO) :-
+    select_op_info_and_print(NonCanon, FirstOpInfo, MoreOpInfos,
+        Priority, Functor, Args, !IO).
+select_remaining_op_info_and_print(NonCanon, [],
+        Priority, Functor, Args, !IO) :-
+    io.get_op_table(OpTable, !IO),
+    (
+        Args = [],
+        Priority =< ops.max_priority(OpTable)
+    ->
+        io.write_char('(', !IO),
+        term_io.quote_atom(Functor, !IO),
+        io.write_char(')', !IO)
+    ;
+        io.write_functor_and_args(NonCanon, Functor, Args, !IO)
+    ).
+
+:- pred io.write_functor_and_args(deconstruct.noncanon_handling, string,
+    list(univ), io, io).
+:- mode io.write_functor_and_args(in(do_not_allow), in, in, di, uo) is det.
+:- mode io.write_functor_and_args(in(canonicalize), in, in, di, uo) is det.
+:- mode io.write_functor_and_args(in(include_details_cc), in, in, di, uo)
+    is cc_multi.
+:- mode io.write_functor_and_args(in, in, in, di, uo) is cc_multi.
+
+:- pragma inline(io.write_functor_and_args/5).
+
+io.write_functor_and_args(NonCanon, Functor, Args, !IO) :-
+    term_io.quote_atom_agt(Functor, maybe_adjacent_to_graphic_token, !IO),
+    (
+        Args = [X | Xs],
+        io.write_char('(', !IO),
+        io.write_arg(NonCanon, X, !IO),
+        io.write_term_args(NonCanon, Xs, !IO),
+        io.write_char(')', !IO)
+    ;
+        Args = []
+    ).
+
+:- pragma inline(adjust_priority_for_assoc/3).
+
 adjust_priority_for_assoc(Priority, y, Priority).
 adjust_priority_for_assoc(Priority, x, Priority - 1).
+
+:- pragma inline(maybe_write_paren/5).
 
 maybe_write_paren(Char, Priority, OpPriority, !IO) :-
     ( OpPriority > Priority ->
@@ -4129,7 +4207,7 @@ io.write_term_args(NonCanon, [X | Xs], !IO) :-
 
 io.write_arg(NonCanon, X, !IO) :-
     arg_priority(ArgPriority, !IO),
-    io.do_write_univ(NonCanon, X, ArgPriority, !IO).
+    io.do_write_univ_prio(NonCanon, X, ArgPriority, !IO).
 
 :- pred arg_priority(int::out, io::di, io::uo) is det.
 
@@ -4641,7 +4719,7 @@ io.update_globals(UpdatePred, !IO) :-
     #ifdef MR_THREAD_SAFE
         MR_LOCK(&ML_io_user_globals_lock, \"io.lock_globals/2\");
     #endif
-    
+
     MR_update_io(IO0, IO);
 ").
 
@@ -4666,14 +4744,14 @@ lock_globals(!IO).
 unlock_globals(!IO).
 
 :- impure pred io.unlock_globals is det.
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     io.unlock_globals,
     [will_not_call_mercury, thread_safe],
 "
     #ifdef MR_THREAD_SAFE
         MR_UNLOCK(&ML_io_user_globals_lock, \"io.unlock_globals/2\");
     #endif
-").    
+").
     % For the non-C backends.
     %
 io.unlock_globals :-
@@ -4683,7 +4761,7 @@ io.unlock_globals :-
     % calling them to does not acquire the global lock.  Since calls to these
     % predicates should be surrounded by calls to io.{lock, unlock}_globals/2
     % this is safe.
-    % 
+    %
 :- pred io.unsafe_get_globals(univ::uo, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.unsafe_get_globals(Globals::uo, IO0::di, IO::uo),
