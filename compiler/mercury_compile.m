@@ -1719,11 +1719,12 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
 
     mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
     expand_equiv_types(Module, Items2, Verbose, Stats, Items, CircularTypes,
-        EqvMap, RecompInfo0, RecompInfo, !IO),
+        EqvMap, UsedModules, RecompInfo0, RecompInfo, !IO),
     mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
     bool.or(UndefTypes0, CircularTypes, UndefTypes1),
 
-    make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats, HLDS0, QualInfo,
+    make_hlds(Module, Items, MQInfo, EqvMap, UsedModules,
+        Verbose, Stats, HLDS0, QualInfo,
         UndefTypes2, UndefModes2, FoundError, !IO),
 
     bool.or(UndefTypes1, UndefTypes2, UndefTypes),
@@ -1856,29 +1857,30 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
     bool.or(Error1, Error2, Error).
 
 :- pred expand_equiv_types(module_name::in, item_list::in, bool::in, bool::in,
-    item_list::out, bool::out, eqv_map::out,
+    item_list::out, bool::out, eqv_map::out, used_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     io::di, io::uo) is det.
 
 expand_equiv_types(ModuleName, Items0, Verbose, Stats, Items, CircularTypes,
-    EqvMap, RecompInfo0, RecompInfo, !IO) :-
+    EqvMap, UsedModules, RecompInfo0, RecompInfo, !IO) :-
     maybe_write_string(Verbose, "% Expanding equivalence types...", !IO),
     maybe_flush_output(Verbose, !IO),
     equiv_type.expand_eqv_types(ModuleName, Items0, Items, CircularTypes,
-        EqvMap, RecompInfo0, RecompInfo, !IO),
+        EqvMap, UsedModules, RecompInfo0, RecompInfo, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
 :- pred make_hlds(module_name::in, item_list::in, mq_info::in,
-    eqv_map::in, bool::in, bool::in, module_info::out,
+    eqv_map::in, used_modules::in, bool::in, bool::in, module_info::out,
     make_hlds_qual_info::out, bool::out, bool::out, bool::out, io::di, io::uo)
     is det.
 
-make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats, HLDS, QualInfo,
+make_hlds(Module, Items, MQInfo, EqvMap, UsedModules,
+        Verbose, Stats, HLDS, QualInfo,
         UndefTypes, UndefModes, FoundSemanticError, !IO) :-
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
     Prog = unit_module(Module, Items),
-    parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, QualInfo,
+    parse_tree_to_hlds(Prog, MQInfo, EqvMap, UsedModules, HLDS, QualInfo,
         UndefTypes, UndefModes, !IO),
     module_info_get_num_errors(HLDS, NumErrors),
     io.get_exit_status(Status, !IO),

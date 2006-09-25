@@ -45,20 +45,20 @@
 
 :- type make_hlds_qual_info.
 
-    % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, QualInfo,
-    %   InvalidTypes, InvalidModes):
+    % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, UsedModules,
+    %   HLDS, QualInfo, InvalidTypes, InvalidModes):
     %
-    % Given MQInfo (returned by module_qual.m) and EqvMap (returned by
-    % equiv_type.m), converts ParseTree to HLDS. Any errors found are
-    % recorded in the HLDS num_errors field.
+    % Given MQInfo (returned by module_qual.m) and EqvMap and UsedModules
+    % (returned by equiv_type.m), converts ParseTree to HLDS. Any errors found
+    % are recorded in the HLDS num_errors field.
     % Returns InvalidTypes = yes if undefined types found.
     % Returns InvalidModes = yes if undefined or cyclic insts or modes
     % found. QualInfo is an abstract type that is then passed back to
     % produce_instance_method_clauses (see below).
     %
 :- pred parse_tree_to_hlds(compilation_unit::in, mq_info::in, eqv_map::in,
-    module_info::out, make_hlds_qual_info::out, bool::out, bool::out,
-    io::di, io::uo) is det.
+    used_modules::in, module_info::out, make_hlds_qual_info::out,
+    bool::out, bool::out, io::di, io::uo) is det.
 
 :- pred add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
@@ -138,9 +138,9 @@
 
 :- type make_hlds_qual_info == hlds.make_hlds.qual_info.qual_info.
 
-parse_tree_to_hlds(Module, MQInfo0, EqvMap, ModuleInfo,
+parse_tree_to_hlds(Module, MQInfo0, EqvMap, UsedModules, ModuleInfo,
         QualInfo, InvalidTypes, InvalidModes, !IO) :-
-    do_parse_tree_to_hlds(Module, MQInfo0, EqvMap, ModuleInfo,
+    do_parse_tree_to_hlds(Module, MQInfo0, EqvMap, UsedModules, ModuleInfo,
         QualInfo, InvalidTypes, InvalidModes, !IO).
 
 add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,

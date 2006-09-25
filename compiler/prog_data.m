@@ -1515,6 +1515,40 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+
+:- type item_visibility
+    --->    visibility_public
+    ;       visibility_private.
+
+:- type used_modules
+    --->    used_modules(
+                    % The modules used in the interface and implementation.
+                int_used_modules    :: set(module_name),
+                impl_used_modules   :: set(module_name)
+            ).
+
+    %
+    % Initialize the used_modules structure.
+    %
+:- func used_modules_init = used_modules.
+
+    %
+    % Given a sym_name call add_all_modules on the module part of the name.
+    %
+:- pred add_sym_name_module(item_visibility::in, sym_name::in,
+    used_modules::in, used_modules::out) is det.
+
+    %
+    % Given a module name add the module and all of its parent modules
+    % to the used_modules.
+    %
+:- pred add_all_modules(item_visibility::in, sym_name::in,
+    used_modules::in, used_modules::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module libs.compiler_util.
@@ -1934,6 +1968,34 @@ get_type_kind(tuple_type(_, Kind)) = Kind.
 get_type_kind(apply_n_type(_, _, Kind)) = Kind.
 get_type_kind(kinded_type(_, Kind)) = Kind.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+used_modules_init = used_modules(set.init, set.init).
+
+%-----------------------------------------------------------------------------%
+
+add_sym_name_module(_Status, unqualified(_), !UsedModules).
+add_sym_name_module(Visibility, qualified(ModuleName, _), !UsedModules) :-
+    add_all_modules(Visibility, ModuleName, !UsedModules).
+
+add_all_modules(Visibility, ModuleName @ unqualified(_), !UsedModules) :-
+    add_module(Visibility, ModuleName, !UsedModules).
+add_all_modules(Visibility, ModuleName @ qualified(Parent, _), !UsedModules) :-
+    add_module(Visibility, ModuleName, !UsedModules),
+    add_all_modules(Visibility, Parent, !UsedModules).
+
+:- pred add_module(item_visibility::in, module_name::in,
+    used_modules::in, used_modules::out) is det.
+
+add_module(visibility_public, Module, !UsedModules) :-
+    !:UsedModules = !.UsedModules ^ int_used_modules :=
+            set.insert(!.UsedModules ^ int_used_modules, Module).
+add_module(visibility_private, Module, !UsedModules) :-
+    !:UsedModules = !.UsedModules ^ impl_used_modules :=
+            set.insert(!.UsedModules ^ impl_used_modules, Module).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

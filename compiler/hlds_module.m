@@ -490,10 +490,13 @@
 :- pred module_info_set_structure_reuse_map(structure_reuse_map::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_get_parent_used_modules(module_info::in,
-    list(module_name)::out) is det.
+:- pred module_info_get_used_modules(module_info::in,
+    used_modules::out) is det.
 
-:- pred module_info_add_parent_used_modules(list(module_name)::in,
+:- pred module_info_set_used_modules(used_modules::in,
+    module_info::in, module_info::out) is det.
+
+:- pred module_info_add_parents_to_used_modules(list(module_name)::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_info_get_interface_module_specifiers(module_info::in,
@@ -756,9 +759,11 @@
                 % Information about which procedures implement structure reuse.
                 structure_reuse_map         :: structure_reuse_map,
 
-                % The list of modules used in the parent modules of the current
-                % module
-                parent_used_modules         :: list(module_name),
+                % The modules which have already been calculated as being
+                % used.  Currently this is the module imports inherited from
+                % the parent modules plus those calculated during expansion
+                % of equivalence types and insts.
+                used_modules                :: used_modules,
 
                 % All the directly imported module specifiers in the interface.
                 % (Used by unused_imports analysis).
@@ -805,7 +810,8 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
         MM_TablingInfo, map.init, counter.init(1), ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
-        init_analysis_info(mmc), [], [], map.init, [], set.init),
+        init_analysis_info(mmc), [], [],
+        map.init, used_modules_init, set.init),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -892,10 +898,8 @@ module_info_get_maybe_complexity_proc_map(MI,
     MI ^ sub_info ^ maybe_complexity_proc_map).
 module_info_get_complexity_proc_infos(MI,
     MI ^ sub_info ^ complexity_proc_infos).
-module_info_get_structure_reuse_map(MI,
-    MI ^ sub_info ^ structure_reuse_map).
-module_info_get_parent_used_modules(MI,
-    MI ^ sub_info ^ parent_used_modules).
+module_info_get_structure_reuse_map(MI, MI ^ sub_info ^ structure_reuse_map).
+module_info_get_used_modules(MI, MI ^ sub_info ^ used_modules).
 module_info_get_interface_module_specifiers(MI,
     MI ^ sub_info ^ interface_module_specifiers).
 
@@ -1019,11 +1023,14 @@ module_info_set_complexity_proc_infos(NewVal, MI,
     MI ^ sub_info ^ complexity_proc_infos := NewVal).
 module_info_set_structure_reuse_map(ReuseMap, MI,
     MI ^ sub_info ^ structure_reuse_map := ReuseMap).
+module_info_set_used_modules(UsedModules, MI,
+    MI ^ sub_info ^ used_modules := UsedModules).
 
-module_info_add_parent_used_modules(Modules, MI,
-        MI ^ sub_info ^ parent_used_modules := UsedModules) :-
-    module_info_get_parent_used_modules(MI, UsedModules0),
-    UsedModules = list.sort_and_remove_dups(Modules ++ UsedModules0).
+module_info_add_parents_to_used_modules(Modules, MI,
+        MI ^ sub_info ^ used_modules := UsedModules) :-
+    module_info_get_used_modules(MI, UsedModules0),
+    list.foldl(add_all_modules(visibility_public),
+            Modules, UsedModules0, UsedModules).
         
 
 %-----------------------------------------------------------------------------%

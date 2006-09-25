@@ -33,6 +33,7 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -42,14 +43,14 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
+
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 
 :- import_module libs.
 :- import_module libs.compiler_util.
@@ -64,29 +65,6 @@
 :- import_module string.
 :- import_module svset.
 :- import_module term.
-
-:- type item_visibility
-    --->    visibility_public
-    ;       visibility_private.
-
-:- type used_modules
-    --->    used_modules(
-                    % The modules used in the interface and implementation.
-                int_used_modules    :: set(module_name),
-                impl_used_modules   :: set(module_name),
-
-                    % The types used in the interface and implementation.
-                int_used_types      :: set(type_ctor),
-                impl_used_types     :: set(type_ctor),
-
-                    % :- type map(K, V) == tree234(K, V)
-                    %
-                    % will appear in the relation as tree234/2 -> map/2.
-                    % Thus the transitive closure from the tree234/2
-                    % will include all the possible equivalence types
-                    % of tree234/2.
-                eqv_types           :: relation(type_ctor)
-            ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -109,12 +87,10 @@ unused_imports(!ModuleInfo, !IO) :-
         mercury_profiling_builtin_module,
         mercury_term_size_prof_builtin_module,
         mercury_par_builtin_module],
-    module_info_get_parent_used_modules(!.ModuleInfo, ParentImports),
-    UsedModules0 = used_modules(
-            set(ImplicitImports ++ ParentImports),
-            set.init, set.init, set.init, relation.init),
-    used_modules(!.ModuleInfo, UsedModules0, UsedModules),
-
+    module_info_get_used_modules(!.ModuleInfo, UsedModules0),
+    list.foldl(add_all_modules(visibility_public), ImplicitImports,
+            UsedModules0, UsedModules1),
+    used_modules(!.ModuleInfo, UsedModules1, UsedModules),
         
         %
         % The unused imports is simply the set of imports minus all the
@@ -217,49 +193,7 @@ used_modules(ModuleInfo, !UsedModules) :-
     map.foldl(instance_used_modules, InstanceTable, !UsedModules),
 
     module_info_preds(ModuleInfo, PredTable),
-    map.foldl(pred_info_used_modules, PredTable, !UsedModules),
-
-        %
-        % Handle the fact that equivalence types have been expanded by now.
-        %
-    set.fold(add_eqv_type_used_modules(visibility_public),
-            !.UsedModules ^ int_used_types, !UsedModules),
-    set.fold(add_eqv_type_used_modules(visibility_private),
-            !.UsedModules ^ impl_used_types, !UsedModules).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-    %
-    % As equivalence types have already been expanded by now we have to take
-    % each type used by the system and determine with which other types this
-    % type may be equivalent to, and add the modules where these types come
-    % from as being used as the type may have been actually imported using
-    % this name.
-    %
-    % XXX I think a better way would be to modify equiv_types.m to record
-    % for the interface and implementation section exactly which type_ctor's
-    % were expanded.  I looked into this but didn't have enough time to do it.
-    %
-:- pred add_eqv_type_used_modules(item_visibility::in, type_ctor::in,
-    used_modules::in, used_modules::out) is det.
-
-add_eqv_type_used_modules(Visibility, TypeCtor, !UsedModules) :-
-    Relation = !.UsedModules ^ eqv_types,
-    ( relation.search_element(Relation, TypeCtor, Key) ->
-        EqvTypeKeys = relation.dfs(Relation, Key),
-        EqvTypes = list.map(relation.lookup_key(Relation), EqvTypeKeys),
-        list.foldl(type_ctor_used_modules(Visibility), EqvTypes, !UsedModules)
-    ;
-        true
-    ).
-
-
-:- pred type_ctor_used_modules(item_visibility::in, type_ctor::in,
-    used_modules::in, used_modules::out) is det.
-
-type_ctor_used_modules(Visibility, type_ctor(Name, _), !UsedModules) :-
-    add_sym_name_module(Visibility, Name, !UsedModules).
+    map.foldl(pred_info_used_modules, PredTable, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -267,7 +201,7 @@ type_ctor_used_modules(Visibility, type_ctor(Name, _), !UsedModules) :-
 :- pred type_used_modules(type_ctor::in, hlds_type_defn::in,
     used_modules::in, used_modules::out) is det.
 
-type_used_modules(TypeCtor, TypeDefn, !UsedModules) :-
+type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
     get_type_defn_status(TypeDefn, ImportStatus),
     get_type_defn_body(TypeDefn, TypeBody),
 
@@ -282,19 +216,6 @@ type_used_modules(TypeCtor, TypeDefn, !UsedModules) :-
             ; TypeBody = hlds_solver_type(_, _)
             ; TypeBody = hlds_abstract_type(_)
             ),
-            true
-        )
-    ;
-        true
-    ),
-
-        % Determine all the type_ctors which are equivalent.
-    ( TypeBody = hlds_eqv_type(EType) ->
-        ( type_to_ctor_and_args(EType, EqvTypeCtor, _) ->
-            relation.add_values(!.UsedModules ^ eqv_types,
-                    EqvTypeCtor, TypeCtor, EqvTypes),
-            !:UsedModules = !.UsedModules ^ eqv_types := EqvTypes
-        ;
             true
         )
     ;
@@ -548,13 +469,7 @@ cons_id_used_modules(_, table_io_decl(_), !UsedModules).
     used_modules::in, used_modules::out) is det.
 
 mer_type_used_modules(Visibility, Type, !UsedModules) :-
-    mer_type_used_modules_2(Visibility, Type, !UsedModules),
-    ( type_to_ctor_and_args(Type, TypeCtor, Args) ->
-        add_type_ctor(Visibility, TypeCtor, !UsedModules),
-        list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules)
-    ;
-        true
-    ).
+    mer_type_used_modules_2(Visibility, Type, !UsedModules).
 
 :- pred mer_type_used_modules_2(item_visibility::in, mer_type::in,
     used_modules::in, used_modules::out) is det.
@@ -684,58 +599,6 @@ item_visibility(ImportStatus) =
     ;
         visibility_private
     ).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-    %
-    % Given a sym_name add all the module qualifiers to the used_modules.
-    %
-:- pred add_sym_name_module(item_visibility::in, sym_name::in,
-    used_modules::in, used_modules::out) is det.
-
-add_sym_name_module(_Status, unqualified(_), !UsedModules).
-add_sym_name_module(Visibility, qualified(ModuleName, _), !UsedModules) :-
-    add_all_modules(Visibility, ModuleName, !UsedModules).
-
-    %
-    % Given a module name add the module and all of its parent modules
-    % to the used_modules.
-    %
-:- pred add_all_modules(item_visibility::in, sym_name::in,
-    used_modules::in, used_modules::out) is det.
-
-add_all_modules(Visibility, ModuleName @ unqualified(_), !UsedModules) :-
-    add_module(Visibility, ModuleName, !UsedModules).
-add_all_modules(Visibility, ModuleName @ qualified(Parent, _), !UsedModules) :-
-    add_module(Visibility, ModuleName, !UsedModules),
-    add_all_modules(Visibility, Parent, !UsedModules).
-
-:- pred add_module(item_visibility::in, module_name::in,
-    used_modules::in, used_modules::out) is det.
-
-add_module(visibility_public, Module, !UsedModules) :-
-    !:UsedModules = !.UsedModules ^ int_used_modules :=
-            set.insert(!.UsedModules ^ int_used_modules, Module).
-add_module(visibility_private, Module, !UsedModules) :-
-    !:UsedModules = !.UsedModules ^ impl_used_modules :=
-            set.insert(!.UsedModules ^ impl_used_modules, Module).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-    %
-    % Add the type_ctor to the used_modules.
-    %
-:- pred add_type_ctor(item_visibility::in, type_ctor::in,
-    used_modules::in, used_modules::out) is det.
-
-add_type_ctor(visibility_public, TypeCtor, !UsedModules) :-
-    !:UsedModules = !.UsedModules ^ int_used_types :=
-            set.insert(!.UsedModules ^ int_used_types, TypeCtor).
-add_type_ctor(visibility_private, TypeCtor, !UsedModules) :-
-    !:UsedModules = !.UsedModules ^ impl_used_types :=
-            set.insert(!.UsedModules ^ impl_used_types, TypeCtor).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

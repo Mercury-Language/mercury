@@ -30,20 +30,20 @@
 :- type item_status
     ---> item_status(import_status, need_qualifier).
 
-    % do_parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, QualInfo,
-    %   InvalidTypes, InvalidModes):
+    % do_parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, UsedModules
+    %   HLDS, QualInfo, InvalidTypes, InvalidModes):
     %
-    % Given MQInfo (returned by module_qual.m) and EqvMap (returned by
-    % equiv_type.m), converts ParseTree to HLDS. Any errors found are
-    % recorded in the HLDS num_errors field.
+    % Given MQInfo (returned by module_qual.m) and EqvMap and UsedModules
+    % (both returned by equiv_type.m), converts ParseTree to HLDS. Any errors
+    % found are recorded in the HLDS num_errors field.
     % Returns InvalidTypes = yes if undefined types found.
     % Returns InvalidModes = yes if undefined or cyclic insts or modes
     % found. QualInfo is an abstract type that is then passed back to
     % produce_instance_method_clauses (see below).
     %
 :- pred do_parse_tree_to_hlds(compilation_unit::in, mq_info::in, eqv_map::in,
-    module_info::out, qual_info::out, bool::out, bool::out, io::di, io::uo)
-    is det.
+    used_modules::in, module_info::out, qual_info::out,
+    bool::out, bool::out, io::di, io::uo) is det.
 
     % The bool records whether any cyclic insts or modes were detected.
     %
@@ -133,12 +133,13 @@
 
 %-----------------------------------------------------------------------------%
 
-do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
-        QualInfo, InvalidTypes, InvalidModes, !IO) :-
+do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
+        ModuleInfo, QualInfo, InvalidTypes, InvalidModes, !IO) :-
     some [!Module, !Specs] (
         globals.io_get_globals(Globals, !IO),
         mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
         module_info_init(Name, Items, Globals, PQInfo, no, !:Module),
+        module_info_set_used_modules(UsedModules, !Module),
         !:Specs = [],
         add_item_list_decls_pass_1(Items,
             item_status(status_local, may_be_unqualified), !Module,
@@ -554,7 +555,7 @@ add_module_specifiers(Specifiers, IStat, !ModuleInfo) :-
 
             % Any import_module which comes from a private interface
             % must by definition be a module used by the parent module.
-        module_info_add_parent_used_modules(Specifiers, !ModuleInfo)
+        module_info_add_parents_to_used_modules(Specifiers, !ModuleInfo)
     ;
         module_add_indirectly_imported_module_specifiers(Specifiers,
             !ModuleInfo)
