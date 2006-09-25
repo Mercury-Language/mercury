@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: rtti_implementation.m.
 % Main author: trd, petdr.
 % Stability: low.
-% 
+%
 % This file is intended to provide portable RTTI functionality by implementing
 % most of Mercury's RTTI functionality in Mercury.
 %
@@ -112,50 +112,50 @@
     % The type_ctor_rep needs to be kept up to date with the real
     % definition in runtime/mercury_type_info.h.
 :- type type_ctor_rep
-    --->    enum
-    ;       enum_usereq
-    ;       du
-    ;       du_usereq
-    ;       notag
-    ;       notag_usereq
-    ;       equiv
-    ;       (func)
-    ;       int
-    ;       char
-    ;       float
-    ;       string
-    ;       (pred)
-    ;       subgoal
-    ;       void
-    ;       c_pointer
-    ;       typeinfo
-    ;       typeclassinfo
-    ;       array
-    ;       succip
-    ;       hp
-    ;       curfr
-    ;       maxfr
-    ;       redofr
-    ;       redoip
-    ;       trail_ptr
-    ;       ticket
-    ;       notag_ground
-    ;       notag_ground_usereq
-    ;       equiv_ground
-    ;       tuple
-    ;       reserved_addr
-    ;       reserved_addr_usereq
-    ;       type_ctor_info
-    ;       base_typeclass_info
-    ;       type_desc
-    ;       type_ctor_desc
-    ;       foreign
-    ;       reference
-    ;       stable_c_pointer
-    ;       stable_foreign
-    ;       pseudo_type_desc
-    ;       dummy
-    ;       unknown.
+    --->    tcr_enum
+    ;       tcr_enum_usereq
+    ;       tcr_du
+    ;       tcr_du_usereq
+    ;       tcr_notag
+    ;       tcr_notag_usereq
+    ;       tcr_equiv
+    ;       tcr_func
+    ;       tcr_int
+    ;       tcr_char
+    ;       tcr_float
+    ;       tcr_string
+    ;       tcr_pred
+    ;       tcr_subgoal
+    ;       tcr_void
+    ;       tcr_c_pointer
+    ;       tcr_typeinfo
+    ;       tcr_typeclassinfo
+    ;       tcr_array
+    ;       tcr_succip
+    ;       tcr_hp
+    ;       tcr_curfr
+    ;       tcr_maxfr
+    ;       tcr_redofr
+    ;       tcr_redoip
+    ;       tcr_trail_ptr
+    ;       tcr_ticket
+    ;       tcr_notag_ground
+    ;       tcr_notag_ground_usereq
+    ;       tcr_equiv_ground
+    ;       tcr_tuple
+    ;       tcr_reserved_addr
+    ;       tcr_reserved_addr_usereq
+    ;       tcr_type_ctor_info
+    ;       tcr_base_typeclass_info
+    ;       tcr_type_desc
+    ;       tcr_type_ctor_desc
+    ;       tcr_foreign
+    ;       tcr_reference
+    ;       tcr_stable_c_pointer
+    ;       tcr_stable_foreign
+    ;       tcr_pseudo_type_desc
+    ;       tcr_dummy
+    ;       tcr_unknown.
 
     % We keep all the other types abstract.
 
@@ -186,136 +186,63 @@ num_functors(TypeDesc) = NumFunctors :-
     TypeCtorInfo = get_type_ctor_info(unsafe_cast(TypeDesc)),
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
     (
-        TypeCtorRep = du,
+        ( TypeCtorRep = tcr_du
+        ; TypeCtorRep = tcr_du_usereq
+        ; TypeCtorRep = tcr_reserved_addr
+        ; TypeCtorRep = tcr_reserved_addr_usereq
+        ; TypeCtorRep = tcr_enum
+        ; TypeCtorRep = tcr_enum_usereq
+        ),
         NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
     ;
-        TypeCtorRep = du_usereq,
-        NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
-    ;
-        TypeCtorRep = reserved_addr,
-        NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
-    ;
-        TypeCtorRep = reserved_addr_usereq,
-        NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
-    ;
-        TypeCtorRep = enum,
-        NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
-    ;
-        TypeCtorRep = enum_usereq,
-        NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
-    ;
-        TypeCtorRep = dummy,
+        ( TypeCtorRep = tcr_dummy
+        ; TypeCtorRep = tcr_notag
+        ; TypeCtorRep = tcr_notag_usereq
+        ; TypeCtorRep = tcr_notag_ground
+        ; TypeCtorRep = tcr_notag_ground_usereq
+        ; TypeCtorRep = tcr_tuple
+        ),
         NumFunctors = 1
     ;
-        TypeCtorRep = notag,
-        NumFunctors = 1
+        TypeCtorRep = tcr_equiv_ground,
+        error("rtti_implementation num_functors for equiv_ground type")
     ;
-        TypeCtorRep = notag_usereq,
-        NumFunctors = 1
+        TypeCtorRep = tcr_equiv,
+        error("rtti_implementation num_functors for equiv type")
     ;
-        TypeCtorRep = notag_ground,
-        NumFunctors = 1
-    ;
-        TypeCtorRep = notag_ground_usereq,
-        NumFunctors = 1
-    ;
-        TypeCtorRep = tuple,
-        NumFunctors = 1
-    ;
-        TypeCtorRep = subgoal,
+        ( TypeCtorRep = tcr_subgoal
+        ; TypeCtorRep = tcr_int
+        ; TypeCtorRep = tcr_char
+        ; TypeCtorRep = tcr_float
+        ; TypeCtorRep = tcr_string
+        ; TypeCtorRep = tcr_func
+        ; TypeCtorRep = tcr_pred
+        ; TypeCtorRep = tcr_void
+        ; TypeCtorRep = tcr_c_pointer
+        ; TypeCtorRep = tcr_stable_c_pointer
+        ; TypeCtorRep = tcr_typeinfo
+        ; TypeCtorRep = tcr_type_ctor_info
+        ; TypeCtorRep = tcr_type_desc
+        ; TypeCtorRep = tcr_pseudo_type_desc
+        ; TypeCtorRep = tcr_type_ctor_desc
+        ; TypeCtorRep = tcr_typeclassinfo
+        ; TypeCtorRep = tcr_base_typeclass_info
+        ; TypeCtorRep = tcr_array
+        ; TypeCtorRep = tcr_succip
+        ; TypeCtorRep = tcr_hp
+        ; TypeCtorRep = tcr_curfr
+        ; TypeCtorRep = tcr_maxfr
+        ; TypeCtorRep = tcr_redofr
+        ; TypeCtorRep = tcr_redoip
+        ; TypeCtorRep = tcr_trail_ptr
+        ; TypeCtorRep = tcr_ticket
+        ; TypeCtorRep = tcr_foreign
+        ; TypeCtorRep = tcr_stable_foreign
+        ; TypeCtorRep = tcr_reference
+        ),
         NumFunctors = -1
     ;
-        TypeCtorRep = equiv_ground,
-        error("rtti_implementation num_functors for equiv types")
-    ;
-        TypeCtorRep = equiv,
-        error("rtti_implementation num_functors for equiv types")
-    ;
-        TypeCtorRep = int,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = char,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = float,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = string,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = (func),
-        NumFunctors = -1
-    ;
-        TypeCtorRep = (pred),
-        NumFunctors = -1
-    ;
-        TypeCtorRep = void,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = c_pointer,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = stable_c_pointer,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = typeinfo,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = type_ctor_info,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = type_desc,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = pseudo_type_desc,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = type_ctor_desc,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = typeclassinfo,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = base_typeclass_info,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = array,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = succip,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = hp,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = curfr,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = maxfr,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = redofr,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = redoip,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = trail_ptr,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = ticket,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = foreign,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = stable_foreign,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = reference,
-        NumFunctors = -1
-    ;
-        TypeCtorRep = unknown,
+        TypeCtorRep = tcr_unknown,
         error("num_functors: unknown type_ctor_rep")
     ).
 
@@ -340,64 +267,37 @@ get_functor_impl(TypeDesc, FunctorNumber,
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
     (
-        TypeCtorRep = du,
+        ( TypeCtorRep = tcr_du
+        ; TypeCtorRep = tcr_du_usereq
+        ; TypeCtorRep = tcr_reserved_addr
+        ; TypeCtorRep = tcr_reserved_addr_usereq
+        ),
         get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo,
             FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
     ;
-        TypeCtorRep = du_usereq,
-        get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
-    ;
-        TypeCtorRep = reserved_addr,
-        get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
-    ;
-        TypeCtorRep = reserved_addr_usereq,
-        get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
-    ;
-        TypeCtorRep = subgoal,
-        fail
-    ;
-        TypeCtorRep = enum,
+        ( TypeCtorRep = tcr_enum
+        ; TypeCtorRep = tcr_enum_usereq
+        ; TypeCtorRep = tcr_dummy
+        ),
         get_functor_enum(TypeCtorRep, TypeCtorInfo,
             FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
     ;
-        TypeCtorRep = enum_usereq,
-        get_functor_enum(TypeCtorRep, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
-    ;
-        TypeCtorRep = dummy,
-        get_functor_enum(TypeCtorRep, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
-    ;
-        TypeCtorRep = notag,
+        ( TypeCtorRep = tcr_notag
+        ; TypeCtorRep = tcr_notag_usereq
+        ; TypeCtorRep = tcr_notag_ground
+        ; TypeCtorRep = tcr_notag_ground_usereq
+        ),
         get_functor_notag(TypeCtorRep, TypeCtorInfo,
             FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
     ;
-        TypeCtorRep = notag_usereq,
-        get_functor_notag(TypeCtorRep, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
-    ;
-        TypeCtorRep = notag_ground,
-        get_functor_notag(TypeCtorRep, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
-    ;
-        TypeCtorRep = notag_ground_usereq,
-        get_functor_notag(TypeCtorRep, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
-    ;
-        TypeCtorRep = equiv_ground,
+        ( TypeCtorRep = tcr_equiv_ground
+        ; TypeCtorRep = tcr_equiv
+        ),
         NewTypeInfo = collapse_equivalences(TypeInfo),
         get_functor_impl(unsafe_cast(NewTypeInfo), FunctorNumber,
             FunctorName, Arity, TypeInfoList, Names)
     ;
-        TypeCtorRep = equiv,
-        NewTypeInfo = collapse_equivalences(TypeInfo),
-        get_functor_impl(unsafe_cast(NewTypeInfo), FunctorNumber,
-            FunctorName, Arity, TypeInfoList, Names)
-    ;
-        TypeCtorRep = tuple,
+        TypeCtorRep = tcr_tuple,
         FunctorName = "{}",
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
         TypeInfoList = iterate(1, Arity, (func(I) =
@@ -405,91 +305,39 @@ get_functor_impl(TypeDesc, FunctorNumber,
         ),
         Names = list.duplicate(Arity, null_string)
     ;
-        TypeCtorRep = int,
+        ( TypeCtorRep = tcr_subgoal
+        ; TypeCtorRep = tcr_int
+        ; TypeCtorRep = tcr_char
+        ; TypeCtorRep = tcr_float
+        ; TypeCtorRep = tcr_string
+        ; TypeCtorRep = tcr_func
+        ; TypeCtorRep = tcr_pred
+        ; TypeCtorRep = tcr_void
+        ; TypeCtorRep = tcr_c_pointer
+        ; TypeCtorRep = tcr_stable_c_pointer
+        ; TypeCtorRep = tcr_typeinfo
+        ; TypeCtorRep = tcr_type_ctor_info
+        ; TypeCtorRep = tcr_type_desc
+        ; TypeCtorRep = tcr_pseudo_type_desc
+        ; TypeCtorRep = tcr_type_ctor_desc
+        ; TypeCtorRep = tcr_typeclassinfo
+        ; TypeCtorRep = tcr_base_typeclass_info
+        ; TypeCtorRep = tcr_array
+        ; TypeCtorRep = tcr_succip
+        ; TypeCtorRep = tcr_hp
+        ; TypeCtorRep = tcr_curfr
+        ; TypeCtorRep = tcr_maxfr
+        ; TypeCtorRep = tcr_redofr
+        ; TypeCtorRep = tcr_redoip
+        ; TypeCtorRep = tcr_trail_ptr
+        ; TypeCtorRep = tcr_ticket
+        ; TypeCtorRep = tcr_foreign
+        ; TypeCtorRep = tcr_stable_foreign
+        ; TypeCtorRep = tcr_reference
+        ),
         fail
     ;
-        TypeCtorRep = char,
-        fail
-    ;
-        TypeCtorRep = float,
-        fail
-    ;
-        TypeCtorRep = string,
-        fail
-    ;
-        TypeCtorRep = (func),
-        fail
-    ;
-        TypeCtorRep = (pred),
-        fail
-    ;
-        TypeCtorRep = void,
-        fail
-    ;
-        TypeCtorRep = c_pointer,
-        fail
-    ;
-        TypeCtorRep = stable_c_pointer,
-        fail
-    ;
-        TypeCtorRep = typeinfo,
-        fail
-    ;
-        TypeCtorRep = type_ctor_info,
-        fail
-    ;
-        TypeCtorRep = type_desc,
-        fail
-    ;
-        TypeCtorRep = pseudo_type_desc,
-        fail
-    ;
-        TypeCtorRep = type_ctor_desc,
-        fail
-    ;
-        TypeCtorRep = typeclassinfo,
-        fail
-    ;
-        TypeCtorRep = base_typeclass_info,
-        fail
-    ;
-        TypeCtorRep = array,
-        fail
-    ;
-        TypeCtorRep = succip,
-        fail
-    ;
-        TypeCtorRep = hp,
-        fail
-    ;
-        TypeCtorRep = curfr,
-        fail
-    ;
-        TypeCtorRep = maxfr,
-        fail
-    ;
-        TypeCtorRep = redofr,
-        fail
-    ;
-        TypeCtorRep = redoip,
-        fail
-    ;
-        TypeCtorRep = trail_ptr,
-        fail
-    ;
-        TypeCtorRep = ticket,
-        fail
-    ;
-        TypeCtorRep = foreign,
-        fail
-    ;
-        TypeCtorRep = stable_foreign,
-        fail
-    ;
-        TypeCtorRep = reference,
-        fail
-    ;
-        TypeCtorRep = unknown,
+        TypeCtorRep = tcr_unknown,
         error("get_functor: unknown type_ctor_rep")
     ).
 
@@ -617,11 +465,11 @@ generic_compare(Res, X, Y) :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
     (
-        TypeCtorRep = tuple
+        TypeCtorRep = tcr_tuple
     ->
         compare_tuple(TypeInfo, Res, X, Y)
     ;
-        ( TypeCtorRep = (pred) ; TypeCtorRep = (func) )
+        ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
     ->
         error("rtti_implementation.m: unimplemented: higher order comparisons")
     ;
@@ -668,11 +516,11 @@ generic_unify(X, Y) :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
     (
-        TypeCtorRep = tuple
+        TypeCtorRep = tcr_tuple
     ->
         unify_tuple(TypeInfo, X, Y)
     ;
-        ( TypeCtorRep = (pred) ; TypeCtorRep = (func) )
+        ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
     ->
         error("rtti_implementation.m: unimplemented: higher order unification")
     ;
@@ -993,9 +841,9 @@ compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
 :- pred type_ctor_is_variable_arity(type_ctor_info::in) is semidet.
 
 type_ctor_is_variable_arity(TypeCtorInfo) :-
-    ( TypeCtorInfo ^ type_ctor_rep = (pred)
-    ; TypeCtorInfo ^ type_ctor_rep = (func)
-    ; TypeCtorInfo ^ type_ctor_rep = tuple
+    ( TypeCtorInfo ^ type_ctor_rep = tcr_pred
+    ; TypeCtorInfo ^ type_ctor_rep = tcr_func
+    ; TypeCtorInfo ^ type_ctor_rep = tcr_tuple
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1013,9 +861,9 @@ collapse_equivalences(TypeInfo) = NewTypeInfo :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     (
         (
-            TypeCtorInfo ^ type_ctor_rep = equiv_ground
+            TypeCtorInfo ^ type_ctor_rep = tcr_equiv_ground
         ;
-            TypeCtorInfo ^ type_ctor_rep = equiv
+            TypeCtorInfo ^ type_ctor_rep = tcr_equiv
         )
     ->
         error("rtti_implementation.m: unimplemented: " ++
@@ -1078,16 +926,16 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     TypeInfo = get_type_info(Term),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = type_ctor_rep(TypeCtorInfo),
-    deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
+    deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Functor, Arity, Arguments).
 
-:- pred deconstruct(T, type_info, type_ctor_info, type_ctor_rep,
+:- pred deconstruct_2(T, type_info, type_ctor_info, type_ctor_rep,
     noncanon_handling, string, int, list(univ)).
-:- mode deconstruct(in, in, in, in, in(do_not_allow), out, out, out) is det.
-:- mode deconstruct(in, in, in, in, in(canonicalize), out, out, out) is det.
-:- mode deconstruct(in, in, in, in,
+:- mode deconstruct_2(in, in, in, in, in(do_not_allow), out, out, out) is det.
+:- mode deconstruct_2(in, in, in, in, in(canonicalize), out, out, out) is det.
+:- mode deconstruct_2(in, in, in, in,
     in(include_details_cc), out, out, out) is cc_multi.
-:- mode deconstruct(in, in, in, in, in, out, out, out) is cc_multi.
+:- mode deconstruct_2(in, in, in, in, in, out, out, out) is cc_multi.
 
     % Code to perform deconstructions (XXX not yet complete).
     %
@@ -1095,14 +943,14 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     % immediately useful (e.g. called by io.write) have been implemented
     % so far.
 
-deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
+deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Functor, Arity, Arguments) :-
     (
-        TypeCtorRep = enum_usereq,
+        TypeCtorRep = tcr_enum_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
             NonCanon, Functor, Arity, Arguments)
     ;
-        TypeCtorRep = enum,
+        TypeCtorRep = tcr_enum,
         TypeFunctors = type_ctor_functors(TypeCtorInfo),
         EnumFunctorDesc = enum_functor_desc(TypeCtorRep,
             unsafe_get_enum_value(Term), TypeFunctors),
@@ -1110,25 +958,25 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = dummy,
+        TypeCtorRep = tcr_dummy,
         TypeFunctors = type_ctor_functors(TypeCtorInfo),
         EnumFunctorDesc = enum_functor_desc(TypeCtorRep, 0, TypeFunctors),
         Functor = enum_functor_name(EnumFunctorDesc),
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = du_usereq,
+        TypeCtorRep = tcr_du_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
             NonCanon, Functor, Arity, Arguments)
     ;
-        TypeCtorRep = du,
+        TypeCtorRep = tcr_du,
 
         LayoutInfo = type_layout(TypeCtorInfo),
         PTag = get_primary_tag(Term),
         PTagEntry = LayoutInfo ^ ptag_index(PTag),
         SecTagLocn = PTagEntry ^ sectag_locn,
         (
-            SecTagLocn = none,
+            SecTagLocn = stag_none,
             FunctorDesc = PTagEntry ^ du_sectag_alternatives(0),
             Functor = FunctorDesc ^ du_functor_name,
             Arity = FunctorDesc ^ du_functor_arity,
@@ -1137,12 +985,12 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
                     get_arg(Term, X, SecTagLocn, FunctorDesc, TypeInfo))
                 ))
         ;
-            SecTagLocn = local,
+            SecTagLocn = stag_local,
             Functor = "some_du_local_sectag",
             Arity = 0,
             Arguments = []
         ;
-            SecTagLocn = remote,
+            SecTagLocn = stag_remote,
             SecTag = get_remote_secondary_tag(Term),
             FunctorDesc = PTagEntry ^ du_sectag_alternatives(SecTag),
             Functor = FunctorDesc ^ du_functor_name,
@@ -1152,53 +1000,53 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
                     get_arg(Term, X, SecTagLocn, FunctorDesc, TypeInfo))
                 ))
         ;
-            SecTagLocn = variable,
+            SecTagLocn = stag_variable,
             Functor = "some_du_variable_sectag",
             Arity = 0,
             Arguments = []
         )
     ;
-        TypeCtorRep = notag_usereq,
+        TypeCtorRep = tcr_notag_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor, Arity, Arguments)
     ;
-        TypeCtorRep = notag,
+        TypeCtorRep = tcr_notag,
         Functor = "some_notag",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = notag_ground_usereq,
+        TypeCtorRep = tcr_notag_ground_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor, Arity, Arguments)
     ;
-        TypeCtorRep = notag_ground,
+        TypeCtorRep = tcr_notag_ground,
         Functor = "some_notag_ground",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = equiv_ground,
+        TypeCtorRep = tcr_equiv_ground,
         Functor = "some_equiv_ground",
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
-        TypeCtorRep = (func),
+        TypeCtorRep = tcr_func,
         Functor = "<<function>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = equiv,
+        TypeCtorRep = tcr_equiv,
         Functor = "some_equiv",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = int,
+        TypeCtorRep = tcr_int,
         det_dynamic_cast(Term, Int),
         Functor = string.int_to_string(Int),
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = char,
+        TypeCtorRep = tcr_char,
         det_dynamic_cast(Term, Char),
 
         % XXX should escape characters correctly
@@ -1206,13 +1054,13 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = float,
+        TypeCtorRep = tcr_float,
         det_dynamic_cast(Term, Float),
         Functor = float_to_string(Float),
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = string,
+        TypeCtorRep = tcr_string,
         det_dynamic_cast(Term, String),
 
         % XXX should escape characters in the string correctly
@@ -1221,12 +1069,12 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
         % XXX noncanonical term
-        TypeCtorRep = (pred),
+        TypeCtorRep = tcr_pred,
         Functor = "<<predicate>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = tuple,
+        TypeCtorRep = tcr_tuple,
         type_ctor_and_args(TypeInfo, _TypeCtorInfo, TypeArgs),
         Functor = "{}",
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
@@ -1238,41 +1086,41 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             ), TypeArgs, Arguments, 0, _)
     ;
         % XXX noncanonical term
-        TypeCtorRep = subgoal,
+        TypeCtorRep = tcr_subgoal,
         Functor = "<<subgoal>>",
         Arity = 0,
         Arguments = []
     ;
         % There is no way to create values of type `void', so this
         % should never happen.
-        TypeCtorRep = void,
+        TypeCtorRep = tcr_void,
         error("rtti_implementation.m: cannot deconstruct void types")
     ;
-        TypeCtorRep = c_pointer,
+        TypeCtorRep = tcr_c_pointer,
         det_dynamic_cast(Term, CPtr),
         Functor = string.c_pointer_to_string(CPtr),
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = stable_c_pointer,
+        TypeCtorRep = tcr_stable_c_pointer,
         det_dynamic_cast(Term, CPtr),
         Functor = "stable_" ++ string.c_pointer_to_string(CPtr),
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
-        TypeCtorRep = typeinfo,
+        TypeCtorRep = tcr_typeinfo,
         Functor = "some_typeinfo",
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
-        TypeCtorRep = typeclassinfo,
+        TypeCtorRep = tcr_typeclassinfo,
         Functor = "<<typeclassinfo>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = array,
+        TypeCtorRep = tcr_array,
 
         % Constrain the T in array(T) to the correct element type.
         type_ctor_and_args(type_of(Term), _, Args),
@@ -1291,103 +1139,103 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             (func(Elem, List) = [univ(Elem) | List]),
             Array, [])
     ;
-        TypeCtorRep = succip,
+        TypeCtorRep = tcr_succip,
         Functor = "<<succip>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = hp,
+        TypeCtorRep = tcr_hp,
         Functor = "<<hp>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = curfr,
+        TypeCtorRep = tcr_curfr,
         Functor = "<<curfr>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = maxfr,
+        TypeCtorRep = tcr_maxfr,
         Functor = "<<maxfr>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = redofr,
+        TypeCtorRep = tcr_redofr,
         Functor = "<<redofr>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = redoip,
+        TypeCtorRep = tcr_redoip,
         Functor = "<<redoip>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = trail_ptr,
+        TypeCtorRep = tcr_trail_ptr,
         Functor = "<<trail_ptr>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = ticket,
+        TypeCtorRep = tcr_ticket,
         Functor = "<<ticket>>",
         Arity = 0,
         Arguments = []
     ;
         % XXX FIXME!!!
-        TypeCtorRep = reserved_addr,
+        TypeCtorRep = tcr_reserved_addr,
         Functor = "some_reserved_addr",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = reserved_addr_usereq,
+        TypeCtorRep = tcr_reserved_addr_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor, Arity, Arguments)
     ;
         % XXX noncanonical term
-        TypeCtorRep = type_ctor_info,
+        TypeCtorRep = tcr_type_ctor_info,
         Functor = "some_typectorinfo",
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
-        TypeCtorRep = base_typeclass_info,
+        TypeCtorRep = tcr_base_typeclass_info,
         Functor = "<<basetypeclassinfo>>",
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
-        TypeCtorRep = type_desc,
+        TypeCtorRep = tcr_type_desc,
         Functor = "some_type_desc",
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
-        TypeCtorRep = pseudo_type_desc,
+        TypeCtorRep = tcr_pseudo_type_desc,
         Functor = "some_pseudo_type_desc",
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
-        TypeCtorRep = type_ctor_desc,
+        TypeCtorRep = tcr_type_ctor_desc,
         Functor = "some_type_ctor_desc",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = foreign,
+        TypeCtorRep = tcr_foreign,
         Functor = "<<foreign>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = stable_foreign,
+        TypeCtorRep = tcr_stable_foreign,
         Functor = "<<stable_foreign>>",
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
-        TypeCtorRep = reference,
+        TypeCtorRep = tcr_reference,
         Functor = "<<reference>>",
         Arity = 0,
         Arguments = []
     ;
-        TypeCtorRep = unknown,
+        TypeCtorRep = tcr_unknown,
         error("rtti_implementation: unknown type_ctor rep in deconstruct")
     ).
 
@@ -1401,8 +1249,8 @@ det_dynamic_cast(Term, Actual) :-
 
 same_array_elem_type(_, _).
 
-:- inst usereq == bound(enum_usereq; du_usereq; notag_usereq;
-    notag_ground_usereq; reserved_addr_usereq).
+:- inst usereq == bound(tcr_enum_usereq ; tcr_du_usereq ; tcr_notag_usereq ;
+    tcr_notag_ground_usereq ; tcr_reserved_addr_usereq).
 
 :- pred handle_usereq_type(T, type_info, type_ctor_info, type_ctor_rep,
         noncanon_handling, string, int, list(univ)).
@@ -1429,22 +1277,22 @@ handle_usereq_type(Term, TypeInfo, TypeCtorInfo,
     ;
         NonCanon = include_details_cc,
         (
-            TypeCtorRep = enum_usereq,
-            BaseTypeCtorRep = enum
+            TypeCtorRep = tcr_enum_usereq,
+            BaseTypeCtorRep = tcr_enum
         ;
-            TypeCtorRep = du_usereq,
-            BaseTypeCtorRep = du
+            TypeCtorRep = tcr_du_usereq,
+            BaseTypeCtorRep = tcr_du
         ;
-            TypeCtorRep = notag_usereq,
-            BaseTypeCtorRep = notag
+            TypeCtorRep = tcr_notag_usereq,
+            BaseTypeCtorRep = tcr_notag
         ;
-            TypeCtorRep = notag_ground_usereq,
-            BaseTypeCtorRep = notag_ground
+            TypeCtorRep = tcr_notag_ground_usereq,
+            BaseTypeCtorRep = tcr_notag_ground
         ;
-            TypeCtorRep = reserved_addr_usereq,
-            BaseTypeCtorRep = reserved_addr
+            TypeCtorRep = tcr_reserved_addr_usereq,
+            BaseTypeCtorRep = tcr_reserved_addr
         ),
-        deconstruct(Term, TypeInfo, TypeCtorInfo, BaseTypeCtorRep, NonCanon,
+        deconstruct_2(Term, TypeInfo, TypeCtorInfo, BaseTypeCtorRep, NonCanon,
             Functor, Arity, Arguments)
     ).
 
@@ -1485,7 +1333,7 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
     PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, Index),
     get_arg_type_info(TypeInfo, PseudoTypeInfo, Term, FunctorDesc,
         ArgTypeInfo),
-    ( ( SecTagLocn = none ; high_level_data ) ->
+    ( ( SecTagLocn = stag_none ; high_level_data ) ->
         TagOffset = 0
     ;
         TagOffset = 1
@@ -1697,7 +1545,7 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
     [promise_pure],
 "
     // Mention TypeInfo_for_U to avoid a warning.
-    
+
     int i = Index + ExtraArgs;
     try {
         // try low level data
@@ -1944,7 +1792,12 @@ get_remote_secondary_tag(_::in) = (0::out) :-
     }
 ").
 
-:- type sectag_locn ---> none ; local ; remote ; variable.
+:- type sectag_locn
+    --->    stag_none
+    ;       stag_local
+    ;       stag_remote
+    ;       stag_variable.
+
 % :- pragma foreign_type("Java", sectag_locn, "mercury.runtime.Sectag_Locn").
 
 :- type du_sectag_alternatives ---> du_sectag_alternatives(c_pointer).
@@ -2466,10 +2319,11 @@ unsafe_cast(_) = _ :-
 :- pragma foreign_type("Java", notag_functor_desc,
     "mercury.runtime.NotagFunctorDesc").
 
-:- inst du == bound(du; du_usereq; reserved_addr; reserved_addr_usereq).
-:- inst enum == bound(enum ; enum_usereq ; dummy).
-:- inst notag == bound(notag ; notag_usereq ;
-    notag_ground ; notag_ground_usereq).
+:- inst du == bound(tcr_du ; tcr_du_usereq ; tcr_reserved_addr ;
+    tcr_reserved_addr_usereq).
+:- inst enum == bound(tcr_enum ; tcr_enum_usereq ; tcr_dummy).
+:- inst notag == bound(tcr_notag ; tcr_notag_usereq ;
+    tcr_notag_ground ; tcr_notag_ground_usereq).
 
 :- func du_functor_desc(type_ctor_rep, int, type_functors) = du_functor_desc.
 :- mode du_functor_desc(in(du), in, in) = out is det.

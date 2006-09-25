@@ -292,19 +292,19 @@ maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
         (
             BrowserTerm = plain_term(Univ),
             Term = univ_value(Univ),
-            term_to_xml.write_xml_doc_cc(Term, simple,
+            term_to_xml.write_xml_doc_general_cc(Term, simple,
                 no_stylesheet,  no_dtd, _, !IO)
         ;
             BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
             (
                 MaybeRes = no,
                 PredicateTerm = predicate(Functor, Args),
-                term_to_xml.write_xml_doc_cc(PredicateTerm,
+                term_to_xml.write_xml_doc_general_cc(PredicateTerm,
                     simple, no_stylesheet, no_dtd, _, !IO)
             ;
                 MaybeRes = yes(Result),
                 FunctionTerm = function(Functor, Args, Result),
-                term_to_xml.write_xml_doc_cc(FunctionTerm,
+                term_to_xml.write_xml_doc_general_cc(FunctionTerm,
                     simple, no_stylesheet, no_dtd, _, !IO)
             )
         ),

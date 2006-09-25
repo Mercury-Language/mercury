@@ -124,26 +124,26 @@
     % the DOCTYPE is defined by an external DTD.
     %
 :- type doctype
-    --->    public(string)              % FPI
-    ;       public(string, string)      % FPI, URL
-    ;       system(string).             % URL
+    --->    public(string)                  % FPI
+    ;       public_system(string, string)   % FPI, URL
+    ;       system(string).                 % URL
 
     % Values of this type specify whether a DTD should be included in
     % a generated XML document and if so how.
     %
 :- type maybe_dtd
-    --->    embed
+    --->    embed_dtd
             % Generate and embed the entire DTD in the document
             % (only available for method 2).
 
-    ;       external(doctype)
+    ;       external_dtd(doctype)
             % Included a reference to an external DTD.
 
     ;       no_dtd.
             % Do not include any DOCTYPE information.
 
 :- inst non_embedded_dtd
-    --->    external(ground)
+    --->    external_dtd(ground)
     ;       no_dtd.
 
     % Values of this type indicate whether a stylesheet reference should be
@@ -167,10 +167,10 @@
     %
     % Same as write_xml_doc/3, but use the given output stream.
     %
-:- pred write_xml_doc(io.output_stream::in, T::in, io::di, io::uo) is det
-    <= xmlable(T).
+:- pred write_xml_doc_to_stream(io.output_stream::in, T::in, io::di, io::uo)
+    is det <= xmlable(T).
 
-    % write_xml_doc(Term, MaybeStyleSheet, MaybeDTD, !IO):
+    % write_xml_doc_style_dtd(Term, MaybeStyleSheet, MaybeDTD, !IO):
     %
     % Write Term to the current output stream as an XML document.
     % MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
@@ -179,20 +179,22 @@
     % a DTD cannot be automatically generated and embedded
     % (that feature is available only for method 2 -- see below).
     %
-:- pred write_xml_doc(T::in, maybe_stylesheet::in,
+:- pred write_xml_doc_style_dtd(T::in, maybe_stylesheet::in,
     maybe_dtd::in(non_embedded_dtd), io::di, io::uo) is det <= xmlable(T).
 
-    % write_xml_doc(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO):
+    % write_xml_doc_style_dtd_stream(Stream, Term, MaybeStyleSheet, MaybeDTD,
+    %   !IO):
     %
-    % Same as write_xml_doc/5, but write output to the given output stream.
+    % Same as write_xml_doc_style_dtd/5, but write output to the given
+    % output stream.
     %
-:- pred write_xml_doc(io.output_stream::in, T::in, maybe_stylesheet::in,
-    maybe_dtd::in(non_embedded_dtd), io::di, io::uo) is det <= xmlable(T).
+:- pred write_xml_doc_style_dtd_stream(io.output_stream::in, T::in,
+    maybe_stylesheet::in, maybe_dtd::in(non_embedded_dtd), io::di, io::uo)
+    is det <= xmlable(T).
 
     % write_xml_element(Indent, Term, !IO).
-    % Write Term out as XML to the current output stream,
-    % using indentation level Indent (each indentation level is one
-    % tab character).
+    % Write Term out as XML to the current output stream, using indentation
+    % level Indent (each indentation level is one tab character).
     % No `<?xml ... ?>' header will be written.
     % This is useful for generating large XML documents in pieces.
     %
@@ -202,8 +204,8 @@
     %
     % Same as write_xml_element/4, but use the given output stream.
     %
-:- pred write_xml_element(io.output_stream::in, int::in, T::in, io::di, io::uo)
-    is det <= xmlable(T).
+:- pred write_xml_element_to_stream(io.output_stream::in, int::in, T::in,
+    io::di, io::uo) is det <= xmlable(T).
 
     % write_xml_header(MaybeEncoding, !IO):
     %
@@ -216,7 +218,7 @@
 
     % Same as write_xml_header/3, but use the given output stream.
     %
-:- pred write_xml_header(io.output_stream::in, maybe(string)::in,
+:- pred write_xml_header_to_stream(io.output_stream::in, maybe(string)::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -389,7 +391,7 @@
             % it is not generally possible to generate DTD rules for functors
             % with existentially typed arguments.
 
-    % write_xml_doc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
+    % write_xml_doc_general(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
     %   DTDResult, !IO):
     %
     % Write Term to the current output stream as an XML document using
@@ -402,21 +404,21 @@
     % out.  See the dtd_generation_result type for a list of the other
     % possible values of DTDResult and their meanings.
     %
-:- pred write_xml_doc(T::in, element_mapping::in(element_mapping),
+:- pred write_xml_doc_general(T::in, element_mapping::in(element_mapping),
     maybe_stylesheet::in, maybe_dtd::in, dtd_generation_result::out,
     io::di, io::uo) is det.
 
-    % write_xml_doc(Stream, Term, ElementMapping, MaybeStyleSheet,
-    %   MaybeDTD, DTDResult, !IO):
+    % write_xml_doc_general_to_stream(Stream, Term, ElementMapping,
+    %   MaybeStyleSheet, MaybeDTD, DTDResult, !IO):
     %
     % Same as write_xml_doc/7 except write the XML doc to the given
     % output stream.
     %
-:- pred write_xml_doc(io.output_stream::in, T::in,
+:- pred write_xml_doc_general_to_stream(io.output_stream::in, T::in,
     element_mapping::in(element_mapping), maybe_stylesheet::in,
     maybe_dtd::in, dtd_generation_result::out, io::di, io::uo) is det.
 
-    % write_xml_doc_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
+    % write_xml_doc_general_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
     %   DTDResult, !IO):
     %
     % Write Term to the current output stream as an XML document using
@@ -429,17 +431,17 @@
     % written out.  See the dtd_generation_result type for a list of the
     % other possible values of DTDResult and their meanings.
     %
-:- pred write_xml_doc_cc(T::in, element_mapping::in(element_mapping),
+:- pred write_xml_doc_general_cc(T::in, element_mapping::in(element_mapping),
     maybe_stylesheet::in, maybe_dtd::in, dtd_generation_result::out,
     io::di, io::uo) is cc_multi.
 
-    % write_xml_doc_cc(Stream, Term, ElementMapping, MaybeStyleSheet,
+    % write_xml_doc_general_cc(Stream, Term, ElementMapping, MaybeStyleSheet,
     %    MaybeDTD, DTDResult, !IO):
     %
     % Same as write_xml_doc/7 except write the XML doc to the given
     % output stream.
     %
-:- pred write_xml_doc_cc(io.output_stream::in, T::in,
+:- pred write_xml_doc_general_cc_to_stream(io.output_stream::in, T::in,
     element_mapping::in(element_mapping), maybe_stylesheet::in,
     maybe_dtd::in, dtd_generation_result::out, io::di, io::uo) is cc_multi.
 
@@ -471,7 +473,7 @@
     % Same as write_dtd/5 except the DTD will be written to the given
     % output stream.
     %
-:- pred write_dtd(io.output_stream::in, T::unused,
+:- pred write_dtd_to_stream(io.output_stream::in, T::unused,
     element_mapping::in(element_mapping), dtd_generation_result::out,
     io::di, io::uo) is det.
 
@@ -487,16 +489,17 @@
     element_mapping::in(element_mapping), dtd_generation_result::out,
     io::di, io::uo) is det.
 
-    % write_dtd_for_type(Stream, Type, ElementMapping, DTDResult, !IO):
+    % write_dtd_for_type_to_stream(Stream, Type, ElementMapping, DTDResult,
+    %   !IO):
     %
     % Same as write_dtd_for_type/5 except the DTD will be written to the
     % given output stream.
     %
-:- pred write_dtd_from_type(io.output_stream::in, type_desc::in,
+:- pred write_dtd_from_type_to_stream(io.output_stream::in, type_desc::in,
     element_mapping::in(element_mapping), dtd_generation_result::out,
     io::di, io::uo) is det.
 
-    % write_xml_element(NonCanon, MakeElement, IndentLevel, Term, !IO):
+    % write_xml_element_general(NonCanon, MakeElement, IndentLevel, Term, !IO):
     %
     % Write XML elements for the given term and all its descendents,
     % using IndentLevel as the initial indentation level (each
@@ -506,15 +509,16 @@
     % according to the value of NonCanon.  See the deconstruct
     % module in the standard library for more information on this argument.
     %
-:- pred write_xml_element(deconstruct.noncanon_handling,
+:- pred write_xml_element_general(deconstruct.noncanon_handling,
     element_mapping, int, T, io, io).
-:- mode write_xml_element(in(do_not_allow), in(element_mapping), in, in,
-    di, uo) is det.
-:- mode write_xml_element(in(canonicalize), in(element_mapping), in, in,
-    di, uo) is det.
-:- mode write_xml_element(in(include_details_cc), in(element_mapping), in, in,
-    di, uo) is cc_multi.
-:- mode write_xml_element(in, in(element_mapping), in, in, di, uo) is cc_multi.
+:- mode write_xml_element_general(in(do_not_allow), in(element_mapping),
+    in, in, di, uo) is det.
+:- mode write_xml_element_general(in(canonicalize), in(element_mapping),
+    in, in, di, uo) is det.
+:- mode write_xml_element_general(in(include_details_cc), in(element_mapping),
+    in, in, di, uo) is cc_multi.
+:- mode write_xml_element_general(in, in(element_mapping),
+    in, in, di, uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -535,12 +539,12 @@
 %-----------------------------------------------------------------------------%
 
 write_xml_doc(Term, !IO) :-
-    write_xml_doc(Term, no_stylesheet, no_dtd, !IO).
+    write_xml_doc_style_dtd(Term, no_stylesheet, no_dtd, !IO).
 
-write_xml_doc(Stream, Term, !IO) :-
-    write_xml_doc(Stream, Term, no_stylesheet, no_dtd, !IO).
+write_xml_doc_to_stream(Stream, Term, !IO) :-
+    write_xml_doc_style_dtd_stream(Stream, Term, no_stylesheet, no_dtd, !IO).
 
-write_xml_doc(Term, MaybeStyleSheet, MaybeDTD, !IO) :-
+write_xml_doc_style_dtd(Term, MaybeStyleSheet, MaybeDTD, !IO) :-
     write_xml_header(no, !IO),
     write_stylesheet_ref(MaybeStyleSheet, !IO),
     Root = to_xml(Term),
@@ -548,7 +552,7 @@ write_xml_doc(Term, MaybeStyleSheet, MaybeDTD, !IO) :-
     (
         MaybeDTD = no_dtd
     ;
-        MaybeDTD = external(DocType),
+        MaybeDTD = external_dtd(DocType),
         write_external_doctype(RootName, DocType, !IO)
     ),
     ( if contains_noformat_xml(Children) then
@@ -558,9 +562,9 @@ write_xml_doc(Term, MaybeStyleSheet, MaybeDTD, !IO) :-
     ),
     write_xml_element_format(ChildrenFormat, 0, Root, !IO).
 
-write_xml_doc(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO) :-
+write_xml_doc_style_dtd_stream(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
-    write_xml_doc(Term, MaybeStyleSheet, MaybeDTD, !IO),
+    write_xml_doc_style_dtd(Term, MaybeStyleSheet, MaybeDTD, !IO),
     io.set_output_stream(OrigStream, _, !IO).
 
 write_xml_element(Indent, Term, !IO) :-
@@ -573,14 +577,14 @@ write_xml_element(Indent, Term, !IO) :-
     ),
     write_xml_element_format(ChildrenFormat, Indent, Root, !IO).
 
-write_xml_element(Stream, Indent, Term, !IO) :-
+write_xml_element_to_stream(Stream, Indent, Term, !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
     write_xml_element(Indent, Term, !IO),
     io.set_output_stream(OrigStream, _, !IO).
 
-write_xml_doc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD, DTDResult,
-        !IO) :-
-    DTDResult = can_generate_dtd(MaybeDTD, ElementMapping, type_of(Term)),
+write_xml_doc_general(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
+        DTDResult, !IO) :-
+    DTDResult = can_generate_dtd_2(MaybeDTD, ElementMapping, type_of(Term)),
     (
         DTDResult = ok
     ->
@@ -588,21 +592,21 @@ write_xml_doc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD, DTDResult,
         write_stylesheet_ref(MaybeStyleSheet, !IO),
         write_doctype(canonicalize, Term, ElementMapping, MaybeDTD, _,
             !IO),
-        write_xml_element(canonicalize, ElementMapping, 0, Term, !IO)
+        write_xml_element_general(canonicalize, ElementMapping, 0, Term, !IO)
     ;
         true
     ).
 
-write_xml_doc(Stream, Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
-        DTDResult, !IO) :-
+write_xml_doc_general_to_stream(Stream, Term, ElementMapping,
+        MaybeStyleSheet, MaybeDTD, DTDResult, !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
-    write_xml_doc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
+    write_xml_doc_general(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
         DTDResult, !IO),
     io.set_output_stream(OrigStream, _, !IO).
 
-write_xml_doc_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD, DTDResult,
-        !IO) :-
-    DTDResult = can_generate_dtd(MaybeDTD, ElementMapping, type_of(Term)),
+write_xml_doc_general_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
+        DTDResult, !IO) :-
+    DTDResult = can_generate_dtd_2(MaybeDTD, ElementMapping, type_of(Term)),
     (
         DTDResult = ok
     ->
@@ -610,20 +614,20 @@ write_xml_doc_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD, DTDResult,
         write_stylesheet_ref(MaybeStyleSheet, !IO),
         write_doctype(include_details_cc, Term, ElementMapping,
             MaybeDTD, _, !IO),
-        write_xml_element(include_details_cc, ElementMapping,
+        write_xml_element_general(include_details_cc, ElementMapping,
             0, Term, !IO)
     ;
         true
     ).
 
-write_xml_doc_cc(Stream, Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
-        DTDResult, !IO) :-
+write_xml_doc_general_cc_to_stream(Stream, Term, ElementMapping,
+        MaybeStyleSheet, MaybeDTD, DTDResult, !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
-    write_xml_doc_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
+    write_xml_doc_general_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
         DTDResult, !IO),
     io.set_output_stream(OrigStream, _, !IO).
 
-write_xml_element(NonCanon, ElementMapping, IndentLevel, Term, !IO) :-
+write_xml_element_general(NonCanon, ElementMapping, IndentLevel, Term, !IO) :-
     type_to_univ(Term, Univ),
     get_element_pred(ElementMapping, MakeElement),
     write_xml_element_univ(NonCanon, MakeElement, IndentLevel, Univ, [], _,
@@ -633,12 +637,13 @@ write_dtd(Term, ElementMapping, DTDResult, !IO) :-
     type_of(Term) = TypeDesc,
     write_dtd_from_type(TypeDesc, ElementMapping, DTDResult, !IO).
 
-write_dtd(Stream, Term, ElementMapping, DTDResult, !IO) :-
+write_dtd_to_stream(Stream, Term, ElementMapping, DTDResult, !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
     write_dtd(Term, ElementMapping, DTDResult, !IO),
     io.set_output_stream(OrigStream, _, !IO).
 
-write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !IO) :-
+write_dtd_from_type_to_stream(Stream, TypeDesc, ElementMapping, DTDResult,
+        !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
     write_dtd_from_type(TypeDesc, ElementMapping, DTDResult, !IO),
     io.set_output_stream(OrigStream, _, !IO).
@@ -655,7 +660,7 @@ write_xml_header(MaybeEncoding, !IO) :-
         io.write_string("?>\n", !IO)
     ).
 
-write_xml_header(Stream, MaybeEncoding, !IO) :-
+write_xml_header_to_stream(Stream, MaybeEncoding, !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
     write_xml_header(MaybeEncoding, !IO),
     io.set_output_stream(OrigStream, _, !IO).
@@ -682,10 +687,10 @@ write_stylesheet_ref(with_stylesheet(Type, Href), !IO) :-
     di, uo) is cc_multi.
 
 write_doctype(_, _, _, no_dtd, ok, !IO).
-write_doctype(_, T, ElementMapping, embed, DTDResult, !IO) :-
+write_doctype(_, T, ElementMapping, embed_dtd, DTDResult, !IO) :-
     write_dtd(T, ElementMapping, DTDResult, !IO),
     io.nl(!IO).
-write_doctype(NonCanon, T, ElementMapping, external(DocType), ok, !IO) :-
+write_doctype(NonCanon, T, ElementMapping, external_dtd(DocType), ok, !IO) :-
     get_element_pred(ElementMapping, MakeElement),
     deconstruct.deconstruct(T, NonCanon, Functor, Arity, _),
     ( is_discriminated_union(type_of(T), _) ->
@@ -707,7 +712,7 @@ write_external_doctype(Root, DocType, !IO) :-
         io.write_string(" PUBLIC """, !IO),
         io.write_string(PUBLIC, !IO)
     ;
-        DocType = public(PUBLIC, SYSTEM),
+        DocType = public_system(PUBLIC, SYSTEM),
         io.write_string(" PUBLIC """, !IO),
         io.write_string(PUBLIC, !IO),
         io.write_string(""" """, !IO),
@@ -1418,12 +1423,12 @@ can_generate_dtd(ElementMapping, TypeDesc) =  Result :-
         Result = multiple_functors_for_root
     ).
 
-:- func can_generate_dtd(maybe_dtd::in, element_mapping::in(element_mapping),
+:- func can_generate_dtd_2(maybe_dtd::in, element_mapping::in(element_mapping),
     type_desc::in) = (dtd_generation_result::out) is det.
 
-can_generate_dtd(no_dtd, _, _) = ok.
-can_generate_dtd(external(_), _, _) = ok.
-can_generate_dtd(embed, ElementMapping, TypeDesc)
+can_generate_dtd_2(no_dtd, _, _) = ok.
+can_generate_dtd_2(external_dtd(_), _, _) = ok.
+can_generate_dtd_2(embed_dtd, ElementMapping, TypeDesc)
     = can_generate_dtd(ElementMapping, TypeDesc).
 
     % Check that we can reliably generate a DTD for the types in the list.
