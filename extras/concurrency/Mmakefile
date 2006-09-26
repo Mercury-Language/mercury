@@ -9,6 +9,7 @@ INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 TESTS = philo philo2 philo3 midimon
 
 -include ../Mmake.params
+include Mercury.options
 
 default_target: all
 
@@ -18,8 +19,6 @@ install:	libconcurrency.install
 clean:		concurrency.clean $(TESTS:%=%.clean)
 realclean:	concurrency.realclean $(TESTS:%=%.realclean)
 tests:		$(TESTS)
-
-MCFLAGS-concurrency+=--no-warn-nothing-exported --no-warn-interface-imports
 
 .PHONY: check
 check: all

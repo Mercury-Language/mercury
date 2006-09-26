@@ -185,12 +185,13 @@ public class ME_Semaphore {
         ctxt = sem->suspended;
         sem->suspended = ctxt->MR_ctxt_next;
         MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
-        MR_schedule(ctxt);
+        MR_schedule_context(ctxt);
             /* yield() */
         MR_save_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
             &&signal_skip_to_the_end_1;
-        MR_schedule(MR_ENGINE(MR_eng_this_context));
+        MR_schedule_context(MR_ENGINE(MR_eng_this_context));
+        MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
 signal_skip_to_the_end_1: ;
     } else {
@@ -200,7 +201,8 @@ signal_skip_to_the_end_1: ;
         MR_save_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
             &&signal_skip_to_the_end_2;
-        MR_schedule(MR_ENGINE(MR_eng_this_context));
+        MR_schedule_context(MR_ENGINE(MR_eng_this_context));
+        MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
 signal_skip_to_the_end_2: ;
     }
@@ -254,6 +256,7 @@ signal_skip_to_the_end_2: ;
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_next = sem->suspended;
         sem->suspended = MR_ENGINE(MR_eng_this_context);
         MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
+        MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
 wait_skip_to_the_end: ;
     }

@@ -66,13 +66,14 @@
         /* Store the closure on the top of the new context's stack. */
     *(ctxt->MR_ctxt_sp) = Goal;
     ctxt->MR_ctxt_next = NULL;
-    MR_schedule(ctxt);
+    MR_schedule_context(ctxt);
     if (0) {
 spawn_call_back_to_mercury_cc_multi:
         MR_save_registers();
             /* Get the closure from the top of the stack */
         call_back_to_mercury_cc_multi(*((MR_Word *)MR_sp));
         MR_destroy_context(MR_ENGINE(MR_eng_this_context));
+        MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
     }
 #else
@@ -102,7 +103,8 @@ spawn_call_back_to_mercury_cc_multi:
     MR_save_context(MR_ENGINE(MR_eng_this_context));
     MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
         &&yield_skip_to_the_end;
-    MR_schedule(MR_ENGINE(MR_eng_this_context));
+    MR_schedule_context(MR_ENGINE(MR_eng_this_context));
+    MR_ENGINE(MR_eng_this_context) = NULL;
     MR_runnext();
 yield_skip_to_the_end:
 #endif

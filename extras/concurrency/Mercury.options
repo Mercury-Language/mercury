@@ -1,0 +1,11 @@
+MCFLAGS-concurrency += --no-warn-nothing-exported --no-warn-interface-imports
+
+# In parallel, low level C grades that don't reserve a machine register for
+# the engine base (i.e. don't use gcc global registers) don't generate code
+# that assumes we cache the engine base address into a local variable
+# MR_local_thread_engine_base.  These two modules contain hand-written code
+# which jump about a bit and maintaining MR_local_thread_engine_base in all
+# the right places is tricky (i.e. I gave up).
+#
+MCFLAGS-spawn += --no-local-thread-engine-base
+MCFLAGS-semaphore += --no-local-thread-engine-base
