@@ -80,24 +80,27 @@
 %-----------------------------------------------------------------------------%
 
 :- type own_prof_info
-    --->    all(int, int, int, int, int, int, int)
-                % exits, fails, redos, excps, quanta, allocs, words
-                % implicit calls = exits + fails + excps - redos
-    ;       det(int, int, int, int)
-                % exits, quanta, allocs, words;
-                % implicit fails == redos == excps == 0
-                % implicit calls == exits
-    ;       fast_det(int, int, int)
-                % exits, allocs, words;
-                % implicit fails == redos == excps == 0
-                % implicit calls == exits
-                % implicit quanta == 0
-    ;       fast_nomem_semi(int, int).
-                % exits, fails
-                % implicit redos == excps == 0
-                % implicit calls == exits + fails
-                % implicit quanta == 0
-                % implicit allocs == words == 0
+    --->    own_prof_all(int, int, int, int, int, int, int)
+            % exits, fails, redos, excps, quanta, allocs, words
+            % implicit calls = exits + fails + excps - redos
+
+    ;       own_prof_det(int, int, int, int)
+            % exits, quanta, allocs, words;
+            % implicit fails == redos == excps == 0
+            % implicit calls == exits
+
+    ;       own_prof_fast_det(int, int, int)
+            % exits, allocs, words;
+            % implicit fails == redos == excps == 0
+            % implicit calls == exits
+            % implicit quanta == 0
+
+    ;       own_prof_fast_nomem_semi(int, int).
+            % exits, fails
+            % implicit redos == excps == 0
+            % implicit calls == exits + fails
+            % implicit quanta == 0
+            % implicit allocs == words == 0
 
 :- type inherit_prof_info
     --->    inherit_prof_info(
@@ -106,43 +109,44 @@
                 int         % words
             ).
 
-calls(fast_nomem_semi(Exits, Fails)) = Exits + Fails.
-exits(fast_nomem_semi(Exits, _)) = Exits.
-fails(fast_nomem_semi(_, Fails)) = Fails.
-redos(fast_nomem_semi(_, _)) = 0.
-excps(fast_nomem_semi(_, _)) = 0.
-quanta(fast_nomem_semi(_, _)) = 0.
-allocs(fast_nomem_semi(_, _)) = 0.
-words(fast_nomem_semi(_, _)) = 0.
+calls(own_prof_fast_nomem_semi(Exits, Fails)) = Exits + Fails.
+exits(own_prof_fast_nomem_semi(Exits, _)) = Exits.
+fails(own_prof_fast_nomem_semi(_, Fails)) = Fails.
+redos(own_prof_fast_nomem_semi(_, _)) = 0.
+excps(own_prof_fast_nomem_semi(_, _)) = 0.
+quanta(own_prof_fast_nomem_semi(_, _)) = 0.
+allocs(own_prof_fast_nomem_semi(_, _)) = 0.
+words(own_prof_fast_nomem_semi(_, _)) = 0.
 
-calls(fast_det(Exits, _, _)) = Exits.
-exits(fast_det(Exits, _, _)) = Exits.
-fails(fast_det(_, _, _)) = 0.
-redos(fast_det(_, _, _)) = 0.
-excps(fast_det(_, _, _)) = 0.
-quanta(fast_det(_, _, _)) = 0.
-allocs(fast_det(_, Allocs, _)) = Allocs.
-words(fast_det(_, _, Words)) = Words.
+calls(own_prof_fast_det(Exits, _, _)) = Exits.
+exits(own_prof_fast_det(Exits, _, _)) = Exits.
+fails(own_prof_fast_det(_, _, _)) = 0.
+redos(own_prof_fast_det(_, _, _)) = 0.
+excps(own_prof_fast_det(_, _, _)) = 0.
+quanta(own_prof_fast_det(_, _, _)) = 0.
+allocs(own_prof_fast_det(_, Allocs, _)) = Allocs.
+words(own_prof_fast_det(_, _, Words)) = Words.
 
-calls(det(Exits, _, _, _)) = Exits.
-exits(det(Exits, _, _, _)) = Exits.
-fails(det(_, _, _, _)) = 0.
-redos(det(_, _, _, _)) = 0.
-excps(det(_, _, _, _)) = 0.
-quanta(det(_, Quanta, _, _)) = Quanta.
-allocs(det(_, _, Allocs, _)) = Allocs.
-words(det(_, _, _, Words)) = Words.
+calls(own_prof_det(Exits, _, _, _)) = Exits.
+exits(own_prof_det(Exits, _, _, _)) = Exits.
+fails(own_prof_det(_, _, _, _)) = 0.
+redos(own_prof_det(_, _, _, _)) = 0.
+excps(own_prof_det(_, _, _, _)) = 0.
+quanta(own_prof_det(_, Quanta, _, _)) = Quanta.
+allocs(own_prof_det(_, _, Allocs, _)) = Allocs.
+words(own_prof_det(_, _, _, Words)) = Words.
 
-calls(all(Exits, Fails, Redos, Excps, _, _, _)) = Exits + Fails + Excps - Redos.
-exits(all(Exits, _, _, _, _, _, _)) = Exits.
-fails(all(_, Fails, _, _, _, _, _)) = Fails.
-redos(all(_, _, Redos, _, _, _, _)) = Redos.
-excps(all(_, _, _, Excps, _, _, _)) = Excps.
-quanta(all(_, _, _, _, Quanta, _, _)) = Quanta.
-allocs(all(_, _, _, _, _, Allocs, _)) = Allocs.
-words(all(_, _, _, _, _, _, Words)) = Words.
+calls(own_prof_all(Exits, Fails, Redos, Excps, _, _, _)) =
+    Exits + Fails + Excps - Redos.
+exits(own_prof_all(Exits, _, _, _, _, _, _)) = Exits.
+fails(own_prof_all(_, Fails, _, _, _, _, _)) = Fails.
+redos(own_prof_all(_, _, Redos, _, _, _, _)) = Redos.
+excps(own_prof_all(_, _, _, Excps, _, _, _)) = Excps.
+quanta(own_prof_all(_, _, _, _, Quanta, _, _)) = Quanta.
+allocs(own_prof_all(_, _, _, _, _, Allocs, _)) = Allocs.
+words(own_prof_all(_, _, _, _, _, _, Words)) = Words.
 
-zero_own_prof_info = fast_nomem_semi(0, 0).
+zero_own_prof_info = own_prof_fast_nomem_semi(0, 0).
 
 inherit_quanta(inherit_prof_info(Quanta, _, _)) = Quanta.
 inherit_allocs(inherit_prof_info(_, Allocs, _)) = Allocs.
@@ -182,8 +186,8 @@ add_inherit_to_own(PI1, PI2) = SumPI :-
     Quanta = inherit_quanta(PI1) + quanta(PI2),
     Allocs = inherit_allocs(PI1) + allocs(PI2),
     Words = inherit_words(PI1) + words(PI2),
-    SumPI = compress_profile(Exits, Fails, Redos, Excps,
-        Quanta, Allocs, Words).
+    SumPI = compress_profile(Exits, Fails, Redos, Excps, Quanta,
+        Allocs, Words).
 
 add_own_to_own(PI1, PI2) = SumPI :-
     Exits = exits(PI1) + exits(PI2),
@@ -210,24 +214,24 @@ compress_profile(Exits, Fails, Redos, Excps, Quanta, Allocs, Words) = PI :-
         Allocs = 0,
         Words = 0
     ->
-        PI = fast_nomem_semi(Exits, Fails)
+        PI = own_prof_fast_nomem_semi(Exits, Fails)
     ;
         Fails = 0,
         Redos = 0,
         Excps = 0
     ->
         ( Quanta = 0 ->
-            PI = fast_det(Exits, Allocs, Words)
+            PI = own_prof_fast_det(Exits, Allocs, Words)
         ;
-            PI = det(Exits, Quanta, Allocs, Words)
+            PI = own_prof_det(Exits, Quanta, Allocs, Words)
         )
     ;
-        PI = all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words)
+        PI = own_prof_all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words)
     ).
 
 compress_profile(PI0) = PI :-
     (
-        PI0 = all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words),
+        PI0 = own_prof_all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words),
         (
             Redos = 0,
             Excps = 0,
@@ -235,38 +239,38 @@ compress_profile(PI0) = PI :-
             Allocs = 0,
             Words = 0
         ->
-            PI = fast_nomem_semi(Exits, Fails)
+            PI = own_prof_fast_nomem_semi(Exits, Fails)
         ;
             Fails = 0,
             Redos = 0,
             Excps = 0
         ->
             ( Quanta = 0 ->
-                PI = fast_det(Exits, Allocs, Words)
+                PI = own_prof_fast_det(Exits, Allocs, Words)
             ;
-                PI = det(Exits, Quanta, Allocs, Words)
+                PI = own_prof_det(Exits, Quanta, Allocs, Words)
             )
         ;
             PI = PI0
         )
     ;
-        PI0 = det(Exits, Quanta, Allocs, Words),
+        PI0 = own_prof_det(Exits, Quanta, Allocs, Words),
         ( Allocs = 0, Words = 0 ->
-            PI = fast_nomem_semi(Exits, 0)
+            PI = own_prof_fast_nomem_semi(Exits, 0)
         ; Quanta = 0 ->
-            PI = fast_det(Exits, Allocs, Words)
+            PI = own_prof_fast_det(Exits, Allocs, Words)
         ;
             PI = PI0
         )
     ;
-        PI0 = fast_det(Exits, Allocs, Words),
+        PI0 = own_prof_fast_det(Exits, Allocs, Words),
         ( Allocs = 0, Words = 0 ->
-            PI = fast_nomem_semi(Exits, 0)
+            PI = own_prof_fast_nomem_semi(Exits, 0)
         ;
             PI = PI0
         )
     ;
-        PI0 = fast_nomem_semi(_, _),
+        PI0 = own_prof_fast_nomem_semi(_, _),
         PI = PI0
     ).
 
@@ -275,23 +279,23 @@ compress_profile(PI0) = PI :-
 decompress_profile(Own, Calls, Exits, Fails, Redos, Excps,
         Quanta, Allocs, Words) :-
     (
-        Own = all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words),
+        Own = own_prof_all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words),
         Calls = Exits + Fails + Redos
     ;
-        Own = det(Exits, Quanta, Allocs, Words),
+        Own = own_prof_det(Exits, Quanta, Allocs, Words),
         Calls = Exits,
         Fails = 0,
         Redos = 0,
         Excps = 0
     ;
-        Own = fast_det(Exits, Allocs, Words),
+        Own = own_prof_fast_det(Exits, Allocs, Words),
         Calls = Exits,
         Fails = 0,
         Redos = 0,
         Excps = 0,
         Quanta = 0
     ;
-        Own = fast_nomem_semi(Exits, Fails),
+        Own = own_prof_fast_nomem_semi(Exits, Fails),
         Calls = Exits + Fails,
         Redos = 0,
         Excps = 0,
@@ -300,7 +304,7 @@ decompress_profile(Own, Calls, Exits, Fails, Redos, Excps,
         Words = 0
     ).
 
-own_to_string(all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words)) =
+own_to_string(own_prof_all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words)) =
     "all(" ++
     string.int_to_string(Exits) ++ ", " ++
     string.int_to_string(Fails) ++ ", " ++
@@ -310,29 +314,29 @@ own_to_string(all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words)) =
     string.int_to_string(Allocs) ++ ", " ++
     string.int_to_string(Words) ++
     ")".
-own_to_string(det(Exits, Quanta, Allocs, Words)) =
+own_to_string(own_prof_det(Exits, Quanta, Allocs, Words)) =
     "det(" ++
     string.int_to_string(Exits) ++ ", " ++
     string.int_to_string(Quanta) ++ ", " ++
     string.int_to_string(Allocs) ++ ", " ++
     string.int_to_string(Words) ++
     ")".
-own_to_string(fast_det(Exits, Allocs, Words)) =
+own_to_string(own_prof_fast_det(Exits, Allocs, Words)) =
     "fast_det(" ++
     string.int_to_string(Exits) ++ ", " ++
     string.int_to_string(Allocs) ++ ", " ++
     string.int_to_string(Words) ++
     ")".
-own_to_string(fast_nomem_semi(Exits, Fails)) =
+own_to_string(own_prof_fast_nomem_semi(Exits, Fails)) =
     "fast_det(" ++
     string.int_to_string(Exits) ++ ", " ++
     string.int_to_string(Fails) ++
     ")".
 
-is_inactive(all(0, 0, 0, 0, _, _, _)).
-is_inactive(det(0, _, _, _)).
-is_inactive(fast_det(0, _, _)).
-is_inactive(fast_nomem_semi(0, 0)).
+is_inactive(own_prof_all(0, 0, 0, 0, _, _, _)).
+is_inactive(own_prof_det(0, _, _, _)).
+is_inactive(own_prof_fast_det(0, _, _)).
+is_inactive(own_prof_fast_nomem_semi(0, 0)).
 
 %----------------------------------------------------------------------------%
 :- end_module measurements.
