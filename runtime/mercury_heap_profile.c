@@ -30,6 +30,9 @@ MR_memprof_counter	MR_memprof_overall;
 MR_memprof_table	MR_memprof_procs;
 MR_memprof_table	MR_memprof_types;
 
+/* private global variables */
+static MR_bool		profile_heap = MR_TRUE;
+
 /*
 ** Initialize a heap profiling counter.
 */
@@ -125,6 +128,10 @@ void
 MR_record_allocation(int size, MR_Code *proc_addr,
 	const char *proc_name, const char *type)
 {
+	if (!profile_heap) {
+		return;
+	}
+
 	/*
 	** Increment the overall totals,
 	** record the allocation in the per-procedure table, and
@@ -133,4 +140,15 @@ MR_record_allocation(int size, MR_Code *proc_addr,
 	MR_increment_counter(&MR_memprof_overall, size);
 	MR_increment_table_entry(&MR_memprof_procs, proc_name, proc_addr, size);
 	MR_increment_table_entry(&MR_memprof_types, type, NULL, size);
+}
+
+void
+MR_prof_turn_on_heap_profiling(void)
+{
+        profile_heap = MR_TRUE;
+}
+
+void MR_prof_turn_off_heap_profiling(void)
+{
+        profile_heap = MR_FALSE;
 }

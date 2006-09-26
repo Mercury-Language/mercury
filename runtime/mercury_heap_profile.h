@@ -108,6 +108,14 @@ extern void MR_prof_output_mem_tables(void);
 
 /*---------------------------------------------------------------------------*/
 
+/*
+** At runtime turn heap profiling on or off.
+*/
+extern void MR_prof_turn_on_heap_profiling(void);
+extern void MR_prof_turn_off_heap_profiling(void);
+
+/*---------------------------------------------------------------------------*/
+
 #endif /* MERCURY_HEAP_PROFILE_H */
 
 /*---------------------------------------------------------------------------*/

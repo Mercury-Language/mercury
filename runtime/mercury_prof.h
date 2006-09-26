@@ -96,6 +96,11 @@ extern	void	MR_prof_init(void);
 extern	void	MR_prof_finish(void);
 extern	void	MR_close_prof_decl_file(void);
 
+#ifdef MR_MPROF_PROFILE_CALLS
+  extern void 	MR_prof_turn_on_call_profiling(void);
+  extern void	MR_prof_turn_off_call_profiling(void);
+#endif
+
 #ifdef MR_MPROF_PROFILE_TIME
   extern void 	MR_prof_turn_on_time_profiling(void);
   extern void	MR_prof_turn_off_time_profiling(void);

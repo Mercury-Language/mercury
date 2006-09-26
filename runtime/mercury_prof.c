@@ -87,11 +87,13 @@ MR_Code *		volatile	MR_prof_current_proc;
 static volatile	int		in_profiling_code = MR_FALSE;
 
 #ifdef MR_MPROF_PROFILE_CALLS
+  static MR_bool	 profile_calls = MR_TRUE;
   static FILE 		*MR_prof_decl_fptr = NULL;
   static prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
 #endif
 
 #ifdef MR_MPROF_PROFILE_TIME
+  static MR_bool	 profile_time = MR_FALSE;
   static prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 #endif
 
@@ -136,6 +138,10 @@ MR_prof_call_profile(MR_Code *Callee, MR_Code *Caller)
 {
 	prof_call_node	*node, **node_addr, *new_node;
 	int		 hash_value;
+
+	if (!profile_calls) {
+		return;
+	}
 
 	in_profiling_code = MR_TRUE;
 
@@ -463,18 +469,37 @@ void MR_close_prof_decl_file(void)
 #endif
 }
 
+#ifdef MR_MPROF_PROFILE_CALLS
+void
+MR_prof_turn_on_call_profiling(void)
+{
+        profile_calls = MR_TRUE;
+}
+
+void MR_prof_turn_off_call_profiling(void)
+{
+        profile_calls = MR_FALSE;
+}
+#endif
+
 #ifdef MR_MPROF_PROFILE_TIME
 
 void
 MR_prof_turn_on_time_profiling(void)
 {
-	MR_turn_on_time_profiling(prof_handle_tick);
+	if (!profile_time) {
+		MR_turn_on_time_profiling(prof_handle_tick);
+		profile_time = MR_TRUE;
+	}
 }
 
 void
 MR_prof_turn_off_time_profiling(void)
 {
-	MR_turn_off_time_profiling();
+	if (profile_time) {
+		MR_turn_off_time_profiling();
+		profile_time = MR_FALSE;
+	}
 }
 
 #endif
