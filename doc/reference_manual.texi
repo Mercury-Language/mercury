@@ -6097,7 +6097,7 @@ fair search rule; and so forth.
 				       written in a different
 				       programming language.
 * Calling Mercury from foreign code::  How to call a Mercury predicate
-                                       or funciton from a different
+                                       or function from a different
                                        programming language.
 * Using foreign types from Mercury::   How to use a type defined in         
 				       a different programming language
