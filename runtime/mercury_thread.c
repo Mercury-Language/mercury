@@ -105,7 +105,6 @@ MR_init_thread(MR_when_to_use when_to_use)
     MR_restore_registers();
 #endif
     MR_load_engine_regs(MR_cur_engine());
-    MR_load_context(MR_ENGINE(MR_eng_this_context));
 
     MR_save_registers();
 
@@ -125,6 +124,11 @@ MR_init_thread(MR_when_to_use when_to_use)
             return MR_FALSE;
 
         case MR_use_now :
+            if (MR_ENGINE(MR_eng_this_context) == NULL) {
+                MR_ENGINE(MR_eng_this_context) =
+                    MR_create_context("init_thread", NULL);
+            }
+            MR_load_context(MR_ENGINE(MR_eng_this_context));
             return MR_TRUE;
         
         default:

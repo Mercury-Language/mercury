@@ -295,19 +295,12 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(Target, !KnownContentsMap, !DepLvalMap)
     ;
-        Uinstr0 = fork(_, _, _),
+        Uinstr0 = fork(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % Both the parent and the child thread jump to labels specified
         % by the fork instruction, so the value of !:KnownContentsMap doesn't
         % really matter since the next instruction (which must be a label)
         % will reset it to empty anyway.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        Uinstr0 = join_and_terminate(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % The value of KnownContentsMap doesn't really matter since this
-        % instruction terminates the execution of this thread.
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init
     ;

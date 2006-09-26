@@ -167,6 +167,14 @@
     %
 :- pred set_instmap(instmap::in, code_info::in, code_info::out) is det.
 
+    % Get the current nesting depth for parallel conjunctions.
+    %
+:- pred get_par_conj_depth(code_info::in, int::out) is det.
+
+    % Set the current nesting depth for parallel conjunctions.
+    %
+:- pred set_par_conj_depth(int::in, code_info::in, code_info::out) is det.
+
     % The number of the last local label allocated.
     %
 :- pred get_label_counter(code_info::in, counter::out) is det.
@@ -250,6 +258,11 @@
     map(lval, slot_contents)::out) is det.
 
 :- pred set_temp_content_map(map(lval, slot_contents)::in,
+    code_info::in, code_info::out) is det.
+
+:- pred get_persistent_temps(code_info::in, set(lval)::out) is det.
+
+:- pred set_persistent_temps(set(lval)::in,
     code_info::in, code_info::out) is det.
 
 :- pred set_closure_layouts(list(layout_data)::in,
@@ -363,8 +376,14 @@
                                     % fields below. Any keys in that map which
                                     % are not in this set are free for reuse.
 
-                fail_info           :: fail_info
+                fail_info           :: fail_info,
                                     % Information about how to manage failures.
+
+                par_conj_depth      :: int
+                                    % How deep in a nested parallel conjunction
+                                    % we are. This is zero at the beginning of
+                                    % a procedure and is incremented as we
+                                    % enter parallel conjunctions.
             ).
 
 :- type code_info_persistent
@@ -398,6 +417,11 @@
                                     % impossible to describe to gc what the
                                     % slot contains after the end of the
                                     % branched control structure.
+
+                persistent_temps    :: set(lval),
+                                    % Stack slot locations that should not be
+                                    % released even when the code generator
+                                    % resets its location-dependent state.
 
                 closure_layout_seq :: counter,
 
@@ -461,6 +485,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     DummyFailInfo = fail_info(ResumePoints, resume_point_unknown,
         may_be_different, not_inside_non_condition, Hijack),
     map.init(TempContentMap),
+    set.init(PersistentTemps),
     set.init(TempsInUse),
     set.init(Zombies),
     map.init(LayoutMap),
@@ -502,7 +527,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             Zombies,
             VarLocnInfo,
             TempsInUse,
-            DummyFailInfo   % init_fail_info will override this dummy value
+            DummyFailInfo,  % init_fail_info will override this dummy value
+            0               % nested parallel conjunction depth
         ),
         code_info_persistent(
             counter.init(1),
@@ -510,6 +536,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             LayoutMap,
             0,
             TempContentMap,
+            PersistentTemps,
             counter.init(1),
             [],
             -1,
@@ -557,11 +584,13 @@ get_zombies(CI, CI ^ code_info_loc_dep ^ zombies).
 get_var_locn_info(CI, CI ^ code_info_loc_dep ^ var_locn_info).
 get_temps_in_use(CI, CI ^ code_info_loc_dep ^ temps_in_use).
 get_fail_info(CI, CI ^ code_info_loc_dep ^ fail_info).
+get_par_conj_depth(CI, CI ^ code_info_loc_dep ^ par_conj_depth).
 get_label_counter(CI, CI ^ code_info_persistent ^ label_num_src).
 get_succip_used(CI, CI ^ code_info_persistent ^ store_succip).
 get_layout_info(CI, CI ^ code_info_persistent ^ label_info).
 get_max_temp_slot_count(CI, CI ^ code_info_persistent ^ stackslot_max).
 get_temp_content_map(CI, CI ^ code_info_persistent ^ temp_contents).
+get_persistent_temps(CI, CI ^ code_info_persistent ^ persistent_temps).
 get_closure_seq_counter(CI, CI ^ code_info_persistent ^ closure_layout_seq).
 get_closure_layouts(CI, CI ^ code_info_persistent ^ closure_layouts).
 get_max_reg_in_use_at_trace(CI, CI ^ code_info_persistent ^ max_reg_used).
@@ -579,12 +608,14 @@ set_zombies(Zs, CI, CI ^ code_info_loc_dep ^ zombies := Zs).
 set_var_locn_info(EI, CI, CI ^ code_info_loc_dep ^ var_locn_info := EI).
 set_temps_in_use(TI, CI, CI ^ code_info_loc_dep ^ temps_in_use := TI).
 set_fail_info(FI, CI, CI ^ code_info_loc_dep ^ fail_info := FI).
+set_par_conj_depth(N, CI, CI ^ code_info_loc_dep ^ par_conj_depth := N).
 set_label_counter(LC, CI, CI ^ code_info_persistent ^ label_num_src := LC).
 set_succip_used(SU, CI, CI ^ code_info_persistent ^ store_succip := SU).
 set_layout_info(LI, CI, CI ^ code_info_persistent ^ label_info := LI).
 set_max_temp_slot_count(TM, CI,
     CI ^ code_info_persistent ^ stackslot_max := TM).
 set_temp_content_map(CM, CI, CI ^ code_info_persistent ^ temp_contents := CM).
+set_persistent_temps(PT, CI, CI ^ code_info_persistent ^ persistent_temps := PT).
 set_closure_seq_counter(CLS, CI,
     CI ^ code_info_persistent ^ closure_layout_seq := CLS).
 set_closure_layouts(CG, CI, CI ^ code_info_persistent ^ closure_layouts := CG).
@@ -1034,9 +1065,14 @@ add_vector_static_cell(Types, Vector, DataAddr, !CI) :-
 remember_position(CI, position_info(CI)).
 
 reset_to_position(position_info(PosCI), CurCI, NextCI) :-
-    PosCI  = code_info(_, LocDep, _),
-    CurCI  = code_info(Static, _, Persistent),
-    NextCI = code_info(Static, LocDep, Persistent).
+    PosCI   = code_info(_, LocDep, _),
+    CurCI   = code_info(Static, _, Persistent),
+    NextCI0 = code_info(Static, LocDep, Persistent),
+
+    get_persistent_temps(NextCI0, PersistentTemps),
+    get_temps_in_use(NextCI0, TempsInUse0),
+    set.union(PersistentTemps, TempsInUse0, TempsInUse),
+    set_temps_in_use(TempsInUse, NextCI0, NextCI).
 
 reset_resume_known(BranchStart, !CI) :-
     BranchStart = position_info(BranchStartCI),
@@ -3352,6 +3388,8 @@ record_highest_used_reg(_, AbsLocn, !HighestUsedRegNum) :-
     ;
         AbsLocn = abs_stackvar(_)
     ;
+        AbsLocn = abs_parent_stackvar(_)
+    ;
         AbsLocn = abs_framevar(_)
     ).
 
@@ -3437,6 +3475,7 @@ valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
     ;
         (
             ( Lval = stackvar(N)
+            ; Lval = parent_stackvar(N)
             ; Lval = framevar(N)
             ),
             N < 0
@@ -3714,6 +3753,18 @@ generate_resume_layout(Label, ResumeMap, !CI) :-
     %
 :- pred release_temp_slot(lval::in, code_info::in, code_info::out) is det.
 
+    % Acquire a stack slot for storing a temporary. The stack slot is not
+    % implicitly released when the code generator resets its location-dependent
+    % state. The slot_contents description is for accurate gc.
+    %
+:- pred acquire_persistent_temp_slot(slot_contents::in, lval::out,
+    code_info::in, code_info::out) is det.
+
+    % Release a persistent stack slot acquired earlier for a temporary value.
+    %
+:- pred release_persistent_temp_slot(lval::in, code_info::in, code_info::out)
+    is det.
+
     % Return the lval of the stack slot in which the given variable
     % is stored. Aborts if the variable does not have a stack slot
     % an assigned to it.
@@ -3757,6 +3808,18 @@ release_temp_slot(StackVar, !CI) :-
     set.delete(TempsInUse0, StackVar, TempsInUse),
     set_temps_in_use(TempsInUse, !CI).
 
+acquire_persistent_temp_slot(Item, StackVar, !CI) :-
+    acquire_temp_slot(Item, StackVar, !CI),
+    get_persistent_temps(!.CI, PersistentTemps0),
+    set.insert(PersistentTemps0, StackVar, PersistentTemps),
+    set_persistent_temps(PersistentTemps, !CI).
+
+release_persistent_temp_slot(StackVar, !CI) :-
+    release_temp_slot(StackVar, !CI),
+    get_persistent_temps(!.CI, PersistentTemps0),
+    set.delete(PersistentTemps0, StackVar, PersistentTemps),
+    set_persistent_temps(PersistentTemps, !CI).
+
 %---------------------------------------------------------------------------%
 
 get_variable_slot(CI, Var, Slot) :-
@@ -3789,6 +3852,9 @@ max_var_slot_2([], !Max).
 max_var_slot_2([L | Ls], !Max) :-
     (
         L = det_slot(N),
+        int.max(N, !Max)
+    ;
+        L = parent_det_slot(N),
         int.max(N, !Max)
     ;
         L = nondet_slot(N),

@@ -1785,6 +1785,7 @@ long_option("num-reserved-objects", num_reserved_objects).
 long_option("bits-per-word",        bits_per_word).
 long_option("bytes-per-word",       bytes_per_word).
 long_option("conf-low-tag-bits",    conf_low_tag_bits).
+long_option("sync-term-size",       sync_term_size).
 long_option("unboxed-float",        unboxed_float).
 long_option("unboxed-enums",        unboxed_enums).
 long_option("unboxed-no-tag-types", unboxed_no_tag_types).

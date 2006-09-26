@@ -31,6 +31,7 @@
 
 :- type stack_slot
     --->    det_slot(int)
+    ;       parent_det_slot(int)
     ;       nondet_slot(int).
 
     % Maps variables to their stack slots.
@@ -41,6 +42,7 @@
     --->    any_reg
     ;       abs_reg(int)
     ;       abs_stackvar(int)
+    ;       abs_parent_stackvar(int)
     ;       abs_framevar(int).
 
 :- type abs_follow_vars_map ==  map(prog_var, abs_locn).
@@ -704,9 +706,11 @@ rename_vars_in_var_locn_list(Must, Subn,
 %-----------------------------------------------------------------------------%
 
 stack_slot_num(det_slot(N)) = N.
+stack_slot_num(parent_det_slot(N)) = N.
 stack_slot_num(nondet_slot(N)) = N.
 
 stack_slot_to_abs_locn(det_slot(N)) = abs_stackvar(N).
+stack_slot_to_abs_locn(parent_det_slot(N)) = abs_parent_stackvar(N).
 stack_slot_to_abs_locn(nondet_slot(N)) = abs_framevar(N).
 
 key_stack_slot_to_abs_locn(_, Slot) =
@@ -715,6 +719,8 @@ key_stack_slot_to_abs_locn(_, Slot) =
 abs_locn_to_string(any_reg) = "any_reg".
 abs_locn_to_string(abs_reg(N)) = "r" ++ int_to_string(N).
 abs_locn_to_string(abs_stackvar(N)) = "stackvar" ++ int_to_string(N).
+abs_locn_to_string(abs_parent_stackvar(N)) =
+    "parent_stackvar" ++ int_to_string(N).
 abs_locn_to_string(abs_framevar(N)) = "framevar" ++ int_to_string(N).
 
 %-----------------------------------------------------------------------------%

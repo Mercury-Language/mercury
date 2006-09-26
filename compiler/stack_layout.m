@@ -22,6 +22,8 @@
 %
 % The C types of the structures we generate are defined and documented in
 % runtime/mercury_stack_layout.h.
+%
+% TODO: Handle the parent_sp register and parent stack variables.
 % 
 %---------------------------------------------------------------------------%
 
@@ -1424,6 +1426,9 @@ represent_lval(reg(reg_f, Num), Word) :-
 represent_lval(stackvar(Num), Word) :-
     expect(Num > 0, this_file, "represent_lval: bad stackvar"),
     make_tagged_word(lval_stackvar, Num, Word).
+represent_lval(parent_stackvar(Num), Word) :-
+    expect(Num > 0, this_file, "represent_lval: bad parent_stackvar"),
+    make_tagged_word(lval_parent_stackvar, Num, Word).
 represent_lval(framevar(Num), Word) :-
     expect(Num > 0, this_file, "represent_lval: bad framevar"),
     make_tagged_word(lval_framevar, Num, Word).
@@ -1437,6 +1442,8 @@ represent_lval(hp, Word) :-
     make_tagged_word(lval_hp, 0, Word).
 represent_lval(sp, Word) :-
     make_tagged_word(lval_sp, 0, Word).
+represent_lval(parent_sp, Word) :-
+    make_tagged_word(lval_parent_sp, 0, Word).
 
 represent_lval(temp(_, _), _) :-
     unexpected(this_file, "continuation live value stored in temp register").
@@ -1484,7 +1491,9 @@ make_tagged_word(Locn, Value, TaggedValue) :-
     ;       lval_curfr
     ;       lval_hp
     ;       lval_sp
-    ;       lval_indirect.
+    ;       lval_indirect
+    ;       lval_parent_sp
+    ;       lval_parent_stackvar.
 
 :- pred locn_type_code(locn_type::in, int::out) is det.
 
@@ -1498,6 +1507,8 @@ locn_type_code(lval_curfr,    6).
 locn_type_code(lval_hp,       7).
 locn_type_code(lval_sp,       8).
 locn_type_code(lval_indirect, 9).
+locn_type_code(lval_parent_sp,       8).    % XXX placeholder only
+locn_type_code(lval_parent_stackvar, 2).    % XXX placeholder only
 
     % This number of tag bits must be able to encode all values of
     % locn_type_code.
@@ -1535,6 +1546,9 @@ represent_lval_as_byte(reg(reg_r, Num), Byte) :-
 represent_lval_as_byte(stackvar(Num), Byte) :-
     expect(Num > 0, this_file, "represent_lval_as_byte: bad stackvar"),
     make_tagged_byte(1, Num, Byte).
+represent_lval_as_byte(parent_stackvar(Num), Byte) :-
+    expect(Num > 0, this_file, "represent_lval_as_byte: bad parent_stackvar"),
+    make_tagged_byte(1, Num, Byte). % XXX placeholder only
 represent_lval_as_byte(framevar(Num), Byte) :-
     expect(Num > 0, this_file, "represent_lval_as_byte: bad framevar"),
     make_tagged_byte(2, Num, Byte).
@@ -1553,6 +1567,9 @@ represent_lval_as_byte(hp, Byte) :-
 represent_lval_as_byte(sp, Byte) :-
     locn_type_code(lval_sp, Val),
     make_tagged_byte(3, Val, Byte).
+represent_lval_as_byte(parent_sp, Byte) :-
+    locn_type_code(lval_parent_sp, Val),
+    make_tagged_byte(3, Val, Byte). % XXX placeholder only
 
 :- pred make_tagged_byte(int::in, int::in, int::out) is det.
 

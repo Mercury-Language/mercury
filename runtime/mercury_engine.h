@@ -359,6 +359,9 @@ typedef struct MR_mercury_engine_struct {
     MR_Word             *MR_eng_sol_hp;
     MR_Word             *MR_eng_global_hp;
 #endif
+#ifdef  MR_THREAD_SAFE
+    MR_Word             *MR_eng_parent_sp;
+#endif
     MR_Context          *MR_eng_this_context;
     MR_Context          MR_eng_context;
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS

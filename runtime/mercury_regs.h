@@ -228,7 +228,13 @@
 **	MR_pneg_next		if minimal model is enabled
 **	MR_pneg_stack		if minimal model is enabled
 **
+**	MR_parent_sp		if parallelism is enabled
+**
 **   The number of these registers is given by MR_NUM_SPECIAL_GLOBAL_REG.
+**
+**   XXX in parallel grade we cannot use global variables for these registers.
+**   They need to be fields in the Mercury engine structure.  We already
+**   do this for MR_parent_sp, but incompletely for a few of the others.
 **
 ** The Mercury abstract machine registers layer also provides MR_virtual_r(),
 ** MR_virtual_succip, MR_virtual_hp, etc., which are similar to mr<N>,
@@ -239,7 +245,7 @@
 #define MR_MAX_REAL_R_REG		32
 #define MR_MAX_VIRTUAL_R_REG		1024
 #define	MR_NUM_SPECIAL_MAYBE_REAL_REG	6
-#define MR_NUM_SPECIAL_GLOBAL_REG	13
+#define MR_NUM_SPECIAL_GLOBAL_REG	14
 #define MR_NUM_SPECIAL_REG		(MR_NUM_SPECIAL_MAYBE_REAL_REG + \
 					MR_NUM_SPECIAL_GLOBAL_REG)
 
@@ -501,6 +507,8 @@
 #define	MR_PNEG_STACK_SLOT		(MR_FIRST_UNREAL_SLOT + 11)
 #define	MR_PNEG_NEXT_SLOT		(MR_FIRST_UNREAL_SLOT + 12)
 
+#define	MR_PARENT_SP_SLOT		(MR_FIRST_UNREAL_SLOT + 13)
+
 #define	MR_FIRST_UNREAL_R_SLOT		(MR_FIRST_UNREAL_SLOT + \
 					MR_NUM_SPECIAL_GLOBAL_REG)
 
@@ -554,6 +562,9 @@
 #define MR_pneg_stack		MR_count_usage(MR_CUT_STACK_SLOT,	\
 					MR_pneg_stack_var)
 
+#define MR_parent_sp		MR_count_usage(MR_PARENT_SP_SLOT,	\
+					MR_ENGINE(MR_eng_parent_sp))
+
 #define MR_saved_succip_word(save_area)		(save_area[MR_SI_SLOT])
 #define MR_saved_hp_word(save_area)		(save_area[MR_HP_SLOT])
 #define MR_saved_sp_word(save_area)		(save_area[MR_SP_SLOT])
@@ -578,6 +589,8 @@
 #define MR_saved_cut_stack_word(save_area)	(save_area[MR_CUT_STACK_SLOT])
 #define MR_saved_pneg_next_word(save_area)	(save_area[MR_PNEG_NEXT_SLOT])
 #define MR_saved_pneg_stack_word(save_area)	(save_area[MR_PNEG_STACK_SLOT])
+
+#define MR_saved_parent_sp_word(save_area)	(save_area[MR_PARENT_SP_SLOT])
 
 #define MR_saved_succip(save_area)					\
 	((MR_Code *) MR_saved_succip_word(save_area))
@@ -618,6 +631,9 @@
 	((MR_Integer) MR_saved_pneg_next_word(save_area))
 #define MR_saved_pneg_stack(save_area)					\
 	((MR_PNegStackFrame *) MR_saved_pneg_stack_word(save_area))
+
+#define MR_saved_parent_sp(save_area)					\
+	((MR_Word *) MR_saved_parent_sp_word(save_area))
 
 /*
 ** MR_virtual_reg_value(n) accesses the underlying fake_reg for general
@@ -665,6 +681,8 @@
 #define MR_virtual_cut_stack		MR_saved_cut_stack(MR_fake_reg)
 #define MR_virtual_pneg_next		MR_saved_pneg_next(MR_fake_reg)
 #define MR_virtual_pneg_stack		MR_saved_pneg_stack(MR_fake_reg)
+
+#define MR_virtual_parent_sp		MR_saved_parent_sp(MR_fake_reg)
 
 #ifdef	MR_USE_TRAIL
   #define MR_save_trail_registers()					\
@@ -717,6 +735,21 @@
   #define MR_restore_mm_registers()	((void) 0)
 #endif
 
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
+  #define MR_save_par_registers()                                       \
+	do {                                                            \
+		MR_saved_parent_sp_word(MR_fake_reg) = (MR_Word)        \
+			MR_parent_sp;                                   \
+	} while (0)
+  #define MR_restore_par_registers()					\
+	do {								\
+		MR_parent_sp = MR_virtual_parent_sp;			\
+	} while (0)
+#else
+  #define MR_save_par_registers()	((void) 0)
+  #define MR_restore_par_registers()	((void) 0)
+#endif
+
 /*
 ** The MR_save_registers() macro copies the physical machine registers
 ** and the global variables holding special purpose abstract machine registers
@@ -741,6 +774,7 @@
 			MR_global_hp;					\
 		MR_save_trail_registers();				\
 		MR_save_mm_registers();					\
+		MR_save_par_registers();				\
 	} while (0)
 
 #define MR_restore_registers() 						\
@@ -752,6 +786,7 @@
 		MR_global_hp = MR_virtual_global_hp;			\
 		MR_restore_trail_registers();				\
 		MR_restore_mm_registers();				\
+		MR_restore_par_registers();				\
 	} while (0)
 
 /*

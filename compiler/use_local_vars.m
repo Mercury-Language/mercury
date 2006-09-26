@@ -520,9 +520,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     ;
         Uinstr0 = init_sync_term(_, _)
     ;
-        Uinstr0 = fork(_, _, _)
-    ;
-        Uinstr0 = join_and_terminate(_)
+        Uinstr0 = fork(_)
     ;
         Uinstr0 = join_and_continue(_, _)
     ;

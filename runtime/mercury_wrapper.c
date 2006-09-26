@@ -166,6 +166,10 @@ double MR_heap_expansion_factor = 2.0;
 /* primary cache size to optimize for, in bytes */
 size_t      MR_pcache_size =            8192;
 
+/* soft limits on the number of contexts we can create */
+MR_Unsigned MR_max_contexts_per_thread = 2;
+MR_Unsigned MR_max_outstanding_contexts;
+
 /* file names for mdb's debugger I/O streams */
 const char  *MR_mdb_in_filename = NULL;
 const char  *MR_mdb_out_filename = NULL;
@@ -572,6 +576,9 @@ mercury_runtime_init(int argc, char **argv)
         for (i = 1 ; i < MR_num_threads ; i++) {
             MR_create_thread(NULL);
         }
+        while (MR_num_idle_engines < MR_num_threads-1) {
+            /* busy wait until the worker threads are ready */
+        }
     }
   #endif /* ! MR_THREAD_SAFE */
 #endif /* ! MR_HIGHLEVEL_CODE */
@@ -664,7 +671,7 @@ mercury_runtime_init(int argc, char **argv)
     */
     MR_restore_regs_from_mem(c_regs);
 
-} /* end runtime_mercury_init() */
+} /* end mercury_runtime_init() */
 
 #ifdef MR_CONSERVATIVE_GC
 
@@ -1028,6 +1035,7 @@ enum MR_long_option {
     MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS,
     MR_GEN_NONSTACK_REDZONE_SIZE,
     MR_GEN_NONSTACK_REDZONE_SIZE_KWORDS,
+    MR_MAX_CONTEXTS_PER_THREAD,
     MR_MDB_TTY,
     MR_MDB_IN,
     MR_MDB_OUT,
@@ -1104,6 +1112,7 @@ struct MR_option MR_long_opts[] = {
     { "gen-nonstack-zone-size",         1, 0, MR_GEN_NONSTACK_REDZONE_SIZE },
     { "gen-nonstack-zone-size-kwords",
             1, 0, MR_GEN_NONSTACK_REDZONE_SIZE_KWORDS },
+    { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
     { "mdb-tty",                        1, 0, MR_MDB_TTY },
     { "mdb-in",                         1, 0, MR_MDB_IN },
     { "mdb-out",                        1, 0, MR_MDB_OUT },
@@ -1438,6 +1447,14 @@ MR_process_options(int argc, char **argv)
                 }
 
                 MR_gen_nonstack_zone_size = size * sizeof(MR_Word);
+                break;
+
+            case MR_MAX_CONTEXTS_PER_THREAD:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                MR_max_contexts_per_thread = size;
                 break;
 
             case 'i':
@@ -1784,6 +1801,8 @@ MR_process_options(int argc, char **argv)
 
         }
     }
+
+    MR_max_outstanding_contexts = MR_max_contexts_per_thread * MR_num_threads;
 
     if (MR_lld_print_min > 0 || MR_lld_start_name != NULL) {
         MR_lld_print_enabled = 0;
@@ -2386,17 +2405,14 @@ mercury_runtime_terminate(void)
         MR_table_report_statistics(stdout);
     }
 
-#ifndef MR_HIGHLEVEL_CODE
-  #ifdef MR_THREAD_SAFE
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
+    MR_LOCK(&MR_runqueue_lock, "exit_now");
     MR_exit_now = MR_TRUE;
     pthread_cond_broadcast(&MR_runqueue_cond);
+    MR_UNLOCK(&MR_runqueue_lock, "exit_now");
 
     assert(MR_primordial_thread == pthread_self());
     MR_primordial_thread = (MercuryThread) 0;
-
-    /* XXX seems to be needed or short programs may have no output */
-    fflush(stdout);
-  #endif
 #endif
 
 #if 0 /* XXX the following code breaks on Win32 */

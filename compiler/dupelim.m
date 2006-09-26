@@ -416,20 +416,16 @@ standardize_instr(Instr1, Instr) :-
         Instr1 = decr_sp_and_return(_),
         Instr = Instr1
     ;
-        Instr1 = fork(_, _, _),
+        Instr1 = fork(_),
         Instr = Instr1
     ;
         Instr1 = init_sync_term(Lval1, N),
         standardize_lval(Lval1, Lval),
         Instr = init_sync_term(Lval, N)
     ;
-        Instr1 = join_and_terminate(Lval1),
+        Instr1 = join_and_continue(Lval1, Label),
         standardize_lval(Lval1, Lval),
-        Instr = join_and_terminate(Lval)
-    ;
-        Instr1 = join_and_continue(Lval1, N),
-        standardize_lval(Lval1, Lval),
-        Instr = join_and_continue(Lval, N)
+        Instr = join_and_continue(Lval, Label)
     ;
         Instr1 = pragma_c(_, _, _, _, _, _, _, _, _),
         Instr = Instr1
@@ -447,8 +443,10 @@ standardize_lval(Lval0, Lval) :-
         ; Lval0 = curfr
         ; Lval0 = hp
         ; Lval0 = sp
+        ; Lval0 = parent_sp
         ; Lval0 = temp(_, _)
         ; Lval0 = stackvar(_)
+        ; Lval0 = parent_stackvar(_)
         ; Lval0 = framevar(_)
         ; Lval0 = succip_slot(_)
         ; Lval0 = redoip_slot(_)
@@ -735,10 +733,9 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
         ; Instr1 = decr_sp(_)
         ; Instr1 = decr_sp_and_return(_)
         ; Instr1 = pragma_c(_, _, _, _, _, _, _, _, _)
-        ; Instr1 = fork(_, _, _)
+        ; Instr1 = fork(_)
         ; Instr1 = init_sync_term(_, _)
         ; Instr1 = join_and_continue(_, _)
-        ; Instr1 = join_and_terminate(_)
         ),
         ( Instr1 = Instr2 ->
             MaybeInstr = yes(Instr1)
@@ -781,11 +778,19 @@ most_specific_lval(Lval1, Lval2, Lval) :-
         Lval2 = Lval1,
         Lval = Lval1
     ;
+        Lval1 = parent_sp,
+        Lval2 = Lval1,
+        Lval = Lval1
+    ;
         Lval1 = temp(_, _),
         Lval2 = Lval1,
         Lval = Lval1
     ;
         Lval1 = stackvar(_),
+        Lval2 = Lval1,
+        Lval = Lval1
+    ;
+        Lval1 = parent_stackvar(_),
         Lval2 = Lval1,
         Lval = Lval1
     ;

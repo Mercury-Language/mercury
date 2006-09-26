@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -111,6 +111,7 @@
 #define MR_based_stackvar(base_sp, n)   ((base_sp)[1 - (n)])
 #define MR_stackvar(n)                  MR_based_stackvar(MR_sp, (n))
 #define MR_sv(n)                        MR_stackvar(n)
+#define MR_parent_sv(n)                 MR_based_stackvar(MR_parent_sp, (n))
 
 #define MR_incr_sp(n)                                                         \
     do {                                                                      \

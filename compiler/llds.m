@@ -481,24 +481,17 @@
             % documentation in par_conj_gen.m and runtime/mercury_context.{c,h}
             % for further information about synchronisation terms.)
 
-    ;       fork(label, label, int)
-            % Create a new context. fork(Child, Parent, NumSlots) creates
-            % a new thread which will start executing at Child. After spawning
-            % execution in the child, control branches to Parent. NumSlots is
-            % the number of stack slots that need to be copied to the child's
-            % stack (see comments in runtime/mercury_context.{h,c}).
-
-    ;       join_and_terminate(lval)
-            % Signal that this thread of execution has finished in the current
-            % parallel conjunction, then terminate it. The synchronisation term
-            % is specified by the given lval. (See the documentation in
-            % par_conj_gen.m and runtime/mercury_context.{c,h} for further
-            % information about synchronisation terms.)
+    ;       fork(label)
+            % Create a new spark. fork(Child) creates spark, to begin execution
+            % at Child. Control continues at the next instruction.
 
     ;       join_and_continue(lval, label).
             % Signal that this thread of execution has finished in the current
-            % parallel conjunction, then branch to the given label. The
-            % synchronisation term is specified by the given lval.
+            % parallel conjunct.  For details of how we at the end of a parallel
+            % conjunct see runtime/mercury_context.{c,h}.
+            % The synchronisation term is specified by the given lval.
+            % The label gives the address of the code following the parallel
+            % conjunction. 
 
 :- type nondet_frame_info
     --->    temp_frame(
@@ -777,7 +770,15 @@
             % Virtual machine register holding the heap pointer.
 
     ;       sp
-            % Virtual machine register point to the top of det stack.
+            % Virtual machine register pointing to the top of det stack.
+
+    ;       parent_sp
+            % Virtual machine register pointing to the top of the det stack.
+            % This is only set at the beginning of a parallel conjunction (and
+            % restored afterwards). Parallel conjuncts which refer to stack
+            % slots use this register instead of sp, as they could be running
+            % in a different context, where sp would be pointing into a
+            % different det stack.
 
     ;       temp(reg_type, int)
             % A local temporary register. These temporary registers are
@@ -794,6 +795,11 @@
             % A det stack slot. The number is the offset relative to the
             % current value of `sp'. These are used in both det and semidet
             % code. Stackvar slot numbers start at 1.
+
+    ;       parent_stackvar(int)
+            % A det stack slot. The number is the offset relative to the
+            % value of `parent_sp'. These are used only in the code
+            % of parallel conjuncts. Stackvar slot numbers start at 1.
 
     ;       framevar(int)
             % A nondet stack slot. The reference is relative to the current
@@ -1105,6 +1111,7 @@
 %-----------------------------------------------------------------------------%
 
 stack_slot_to_lval(det_slot(N)) = stackvar(N).
+stack_slot_to_lval(parent_det_slot(N)) = parent_stackvar(N).
 stack_slot_to_lval(nondet_slot(N)) = framevar(N).
 
 key_stack_slot_to_lval(_, Slot) =
@@ -1113,12 +1120,15 @@ key_stack_slot_to_lval(_, Slot) =
 abs_locn_to_lval_or_any_reg(any_reg) = loa_any_reg.
 abs_locn_to_lval_or_any_reg(abs_reg(N)) = loa_lval(reg(reg_r, N)).
 abs_locn_to_lval_or_any_reg(abs_stackvar(N)) = loa_lval(stackvar(N)).
+abs_locn_to_lval_or_any_reg(abs_parent_stackvar(N))
+    = loa_lval(parent_stackvar(N)).
 abs_locn_to_lval_or_any_reg(abs_framevar(N)) = loa_lval(framevar(N)).
 
 abs_locn_to_lval(any_reg) = _ :-
     unexpected(this_file, "abs_locn_to_lval: any_reg").
 abs_locn_to_lval(abs_reg(N)) = reg(reg_r, N).
 abs_locn_to_lval(abs_stackvar(N)) = stackvar(N).
+abs_locn_to_lval(abs_parent_stackvar(N)) = parent_stackvar(N).
 abs_locn_to_lval(abs_framevar(N)) = framevar(N).
 
 key_abs_locn_to_lval(_, AbsLocn) =
@@ -1146,9 +1156,11 @@ lval_type(maxfr, data_ptr).
 lval_type(curfr, data_ptr).
 lval_type(hp, data_ptr).
 lval_type(sp, data_ptr).
+lval_type(parent_sp, data_ptr).
 lval_type(temp(RegType, _), Type) :-
     register_type(RegType, Type).
 lval_type(stackvar(_), word).
+lval_type(parent_stackvar(_), word).
 lval_type(framevar(_), word).
 lval_type(succip_slot(_), code_ptr).
 lval_type(redoip_slot(_), code_ptr).

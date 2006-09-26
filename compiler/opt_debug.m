@@ -244,6 +244,8 @@ dump_lval(reg(Type, Num)) =
     dump_reg(Type, Num).
 dump_lval(stackvar(N)) =
     "sv" ++ int_to_string(N).
+dump_lval(parent_stackvar(N)) =
+    "parent_sv" ++ int_to_string(N).
 dump_lval(framevar(N)) =
     "fv" ++ int_to_string(N).
 dump_lval(succip) = "succip".
@@ -261,6 +263,7 @@ dump_lval(succip_slot(R)) =
     "succip_slot(" ++ dump_rval(R) ++ ")".
 dump_lval(hp) = "hp".
 dump_lval(sp) = "sp".
+dump_lval(parent_sp) = "parent_sp".
 dump_lval(field(MT, N, F)) = Str :-
     (
         MT = yes(T),
@@ -776,15 +779,10 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
     ;
         Instr = init_sync_term(Lval, N),
         Str = "init_sync_term(" ++ dump_lval(Lval) ++ ", "
-            ++ int_to_string(N) ++")"
+            ++ int_to_string(N) ++ ")"
     ;
-        Instr = fork(Child, Parent, NumSlots),
-        Str = "fork(" ++ dump_label_for_proc(ProcLabel, Child) ++ ", "
-            ++ dump_label_for_proc(ProcLabel, Parent) ++ ", "
-            ++ int_to_string(NumSlots) ++ ")"
-    ;
-        Instr = join_and_terminate(Lval),
-        Str = "join_and_terminate(" ++ dump_lval(Lval) ++ ")"
+        Instr = fork(Child),
+        Str = "fork(" ++ dump_label_for_proc(ProcLabel, Child) ++ ")"
     ;
         Instr = join_and_continue(Lval, Label),
         Str = "join(" ++ dump_lval(Lval) ++ ", "

@@ -49,6 +49,20 @@
 :- mode args_contain_rval(in, in) is semidet.
 :- mode args_contain_rval(in, out) is nondet.
 
+    % transform_lval_in_instr(Transform, !Instr, !Acc):
+    %
+    % Transform all lvals in !.Instr with the predicate Transform.
+    % An accumulator is threaded through.
+    %
+:- pred transform_lval_in_instr(transform_lval(T)::in(transform_lval),
+    instruction::in, instruction::out, T::in, T::out) is det.
+
+:- pred transform_lval_in_rval(transform_lval(T)::in(transform_lval),
+    rval::in, rval::out, T::in, T::out) is det.
+
+:- type transform_lval(T)   == pred(lval, lval, T, T).
+:- inst transform_lval      == (pred(in, out, in, out) is det).
+
     % substitute_lval_in_instr(OldLval, NewLval, !Instr, !SubstCount):
     %
     % Substitute all occurrences of OldLval in !.Instr with NewLval.
@@ -283,7 +297,9 @@ vars_in_lval(maxfr, []).
 vars_in_lval(curfr, []).
 vars_in_lval(hp, []).
 vars_in_lval(sp, []).
+vars_in_lval(parent_sp, []).
 vars_in_lval(stackvar(_SlotNum), []).
+vars_in_lval(parent_stackvar(_SlotNum), []).
 vars_in_lval(framevar(_SlotNum), []).
 vars_in_lval(succip_slot(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
@@ -316,23 +332,15 @@ vars_in_mem_ref(heap_ref(BaseRval, _Tag, FieldRval), BaseVars ++ FieldVars) :-
 
 %-----------------------------------------------------------------------------%
 
-substitute_lval_in_lval(OldLval, NewLval, Lval0, Lval) :-
-    substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval,
-        0, _SubstCount).
-
-substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval) :-
-    substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval,
-        0, _SubstCount).
-
-substitute_lval_in_instr(OldLval, NewLval, Instr0, Instr, !N) :-
+transform_lval_in_instr(Transform, Instr0, Instr, !Acc) :-
     Instr0 = Uinstr0 - Comment,
-    substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N),
+    transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc),
     Instr = Uinstr - Comment.
 
-:- pred substitute_lval_in_uinstr(lval::in, lval::in,
-    instr::in, instr::out, int::in, int::out) is det.
+:- pred transform_lval_in_uinstr(transform_lval(T)::in(transform_lval),
+    instr::in, instr::out, T::in, T::out) is det.
 
-substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
+transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
     (
         ( Uinstr0 = comment(_Comment)
         ; Uinstr0 = llcall(_, _, _, _, _, _)
@@ -344,130 +352,123 @@ substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
         ; Uinstr0 = incr_sp(_, _)
         ; Uinstr0 = decr_sp(_)
         ; Uinstr0 = decr_sp_and_return(_)
-        ; Uinstr0 = fork(_, _, _)
+        ; Uinstr0 = fork(_)
         ),
         Uinstr = Uinstr0
     ;
         Uinstr0 = livevals(LvalSet0),
         set.to_sorted_list(LvalSet0, Lvals0),
-        list.map_foldl(substitute_lval_in_lval_count(OldLval, NewLval),
-            Lvals0, Lvals, !N),
+        list.map_foldl(Transform, Lvals0, Lvals, !Acc),
         set.list_to_set(Lvals, LvalSet),
         Uinstr = livevals(LvalSet)
     ;
         Uinstr0 = block(TempR, TempF, Instrs0),
-        list.map_foldl(substitute_lval_in_instr(OldLval, NewLval),
-            Instrs0, Instrs, !N),
+        list.map_foldl(transform_lval_in_instr(Transform),
+            Instrs0, Instrs, !Acc),
         Uinstr = block(TempR, TempF, Instrs)
     ;
         Uinstr0 = assign(Lval0, Rval0),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        Transform(Lval0, Lval, !Acc),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = assign(Lval, Rval)
     ;
         Uinstr0 = computed_goto(Rval0, Labels),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = computed_goto(Rval, Labels)
     ;
         Uinstr0 = arbitrary_c_code(Code, LiveLvals0),
-        substitute_lval_in_live_lval_info(OldLval, NewLval,
-            LiveLvals0, LiveLvals, !N),
+        transform_lval_in_live_lval_info(Transform, LiveLvals0, LiveLvals,
+            !Acc),
         Uinstr = arbitrary_c_code(Code, LiveLvals)
     ;
         Uinstr0 = if_val(Rval0, CodeAddr),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = if_val(Rval, CodeAddr)
     ;
         Uinstr0 = save_maxfr(Lval0),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
+        Transform(Lval0, Lval, !Acc),
         Uinstr = save_maxfr(Lval)
     ;
         Uinstr0 = restore_maxfr(Lval0),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
+        Transform(Lval0, Lval, !Acc),
         Uinstr = restore_maxfr(Lval)
     ;
         Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, TypeCtor, MayUseAtomic),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        Transform(Lval0, Lval, !Acc),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = incr_hp(Lval, MaybeTag, MO, Rval, TypeCtor, MayUseAtomic)
     ;
         Uinstr0 = mark_hp(Lval0),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
+        Transform(Lval0, Lval, !Acc),
         Uinstr = mark_hp(Lval)
     ;
         Uinstr0 = restore_hp(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = restore_hp(Rval)
     ;
         Uinstr0 = free_heap(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = free_heap(Rval)
     ;
         Uinstr0 = store_ticket(Lval0),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
+        Transform(Lval0, Lval, !Acc),
         Uinstr = store_ticket(Lval)
     ;
         Uinstr0 = reset_ticket(Rval0, Reason),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = reset_ticket(Rval, Reason)
     ;
         Uinstr0 = mark_ticket_stack(Lval0),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
+        Transform(Lval0, Lval, !Acc),
         Uinstr = mark_ticket_stack(Lval)
     ;
         Uinstr0 = prune_tickets_to(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = prune_tickets_to(Rval)
 %   ;
 %       % discard_tickets_to(_) is used only in hand-written code
 %       Uinstr0 = discard_tickets_to(Rval0),
-%       substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval, !N),
+%       transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
 %       Uinstr = discard_tickets_to(Rval)
     ;
         Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
             MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
             ReferStackSlot, MayDupl),
-        list.map_foldl(substitute_lval_in_component(OldLval, NewLval),
-            Components0, Components, !N),
+        list.map_foldl(transform_lval_in_component(Transform),
+            Components0, Components, !Acc),
         Uinstr = pragma_c(Decls, Components, MayCallMercury,
             MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
             ReferStackSlot, MayDupl)
     ;
         Uinstr0 = init_sync_term(Lval0, BranchCount),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
+        Transform(Lval0, Lval, !Acc),
         Uinstr = init_sync_term(Lval, BranchCount)
     ;
-        Uinstr0 = join_and_terminate(Lval0),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
-        Uinstr = join_and_terminate(Lval)
-    ;
         Uinstr0 = join_and_continue(Lval0, Label),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
+        Transform(Lval0, Lval, !Acc),
         Uinstr = join_and_continue(Lval, Label)
     ).
 
-:- pred substitute_lval_in_component(lval::in, lval::in,
-    pragma_c_component::in, pragma_c_component::out, int::in, int::out) is det.
+:- pred transform_lval_in_component(transform_lval(T)::in(transform_lval),
+    pragma_c_component::in, pragma_c_component::out, T::in, T::out) is det.
 
-substitute_lval_in_component(OldLval, NewLval,
-        Component0, Component, !N) :-
+transform_lval_in_component(Transform, Component0, Component, !Acc) :-
     (
         Component0 = pragma_c_inputs(Inputs0),
-        list.map_foldl(substitute_lval_in_pragma_c_input(OldLval, NewLval),
-            Inputs0, Inputs, !N),
+        list.map_foldl(transform_lval_in_pragma_c_input(Transform),
+            Inputs0, Inputs, !Acc),
         Component = pragma_c_inputs(Inputs)
     ;
         Component0 = pragma_c_outputs(Outputs0),
-        list.map_foldl(substitute_lval_in_pragma_c_output(OldLval, NewLval),
-            Outputs0, Outputs, !N),
+        list.map_foldl(transform_lval_in_pragma_c_output(Transform),
+            Outputs0, Outputs, !Acc),
         Component = pragma_c_outputs(Outputs)
     ;
         Component0 = pragma_c_user_code(_, _),
         Component = Component0
     ;
         Component0 = pragma_c_raw_code(Code, CanBranchAway, LvalSet0),
-        substitute_lval_in_live_lval_info(OldLval, NewLval,
-            LvalSet0, LvalSet, !N),
+        transform_lval_in_live_lval_info(Transform, LvalSet0, LvalSet, !Acc),
         Component = pragma_c_raw_code(Code, CanBranchAway, LvalSet)
     ;
         Component0 = pragma_c_fail_to(_),
@@ -477,92 +478,99 @@ substitute_lval_in_component(OldLval, NewLval,
         Component = Component0
     ).
 
-:- pred substitute_lval_in_live_lval_info(lval::in, lval::in,
-    c_code_live_lvals::in, c_code_live_lvals::out, int::in, int::out) is det.
+:- pred transform_lval_in_live_lval_info(transform_lval(T)::in(transform_lval),
+    c_code_live_lvals::in, c_code_live_lvals::out, T::in, T::out) is det.
 
-substitute_lval_in_live_lval_info(_OldLval, _NewLval,
-        no_live_lvals_info, no_live_lvals_info, !N).
-substitute_lval_in_live_lval_info(OldLval, NewLval,
-        live_lvals_info(LvalSet0), live_lvals_info(LvalSet), !N) :-
+transform_lval_in_live_lval_info(_,
+        no_live_lvals_info, no_live_lvals_info, !Acc).
+transform_lval_in_live_lval_info(Transform,
+        live_lvals_info(LvalSet0), live_lvals_info(LvalSet), !Acc) :-
     Lvals0 = set.to_sorted_list(LvalSet0),
-    list.map_foldl(substitute_lval_in_lval_count(OldLval, NewLval),
-        Lvals0, Lvals, !N),
+    list.map_foldl(Transform, Lvals0, Lvals, !Acc),
     set.list_to_set(Lvals, LvalSet).
 
-:- pred substitute_lval_in_pragma_c_input(lval::in, lval::in,
-    pragma_c_input::in, pragma_c_input::out, int::in, int::out) is det.
+:- pred transform_lval_in_pragma_c_input(transform_lval(T)::in(transform_lval),
+    pragma_c_input::in, pragma_c_input::out, T::in, T::out) is det.
 
-substitute_lval_in_pragma_c_input(OldLval, NewLval, Out0, Out,
-        !N) :-
+transform_lval_in_pragma_c_input(Transform, Out0, Out, !Acc) :-
     Out0 = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval0,
         MaybeForeign, BoxPolicy),
-    substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+    transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
     Out = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval,
         MaybeForeign, BoxPolicy).
 
-:- pred substitute_lval_in_pragma_c_output(lval::in, lval::in,
-    pragma_c_output::in, pragma_c_output::out, int::in, int::out) is det.
+:- pred transform_lval_in_pragma_c_output(transform_lval(T)::in(transform_lval),
+    pragma_c_output::in, pragma_c_output::out, T::in, T::out) is det.
 
-substitute_lval_in_pragma_c_output(OldLval, NewLval, Out0, Out, !N) :-
+transform_lval_in_pragma_c_output(Transform, Out0, Out, !Acc) :-
     Out0 = pragma_c_output(Lval0, VarType, IsDummy, OrigType, Name,
         MaybeForeign, BoxPolicy),
-    substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
+    Transform(Lval0, Lval, !Acc),
     Out = pragma_c_output(Lval, VarType, IsDummy, OrigType, Name,
         MaybeForeign, BoxPolicy).
 
-:- pred substitute_lval_in_rval_count(lval::in, lval::in,
-    rval::in, rval::out, int::in, int::out) is det.
-
-substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N) :-
+transform_lval_in_rval(Transform, Rval0, Rval, !Acc) :-
     (
         Rval0 = lval(Lval0),
-        substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
+        Transform(Lval0, Lval, !Acc),
         Rval = lval(Lval)
     ;
         Rval0 = var(_Var),
         Rval = Rval0
     ;
         Rval0 = mkword(Tag, Rval1),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval1, Rval2, !N),
+        transform_lval_in_rval(Transform, Rval1, Rval2, !Acc),
         Rval = mkword(Tag, Rval2)
     ;
         Rval0 = const(_Const),
         Rval = Rval0
     ;
         Rval0 = unop(Unop, Rval1),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval1, Rval2, !N),
+        transform_lval_in_rval(Transform, Rval1, Rval2, !Acc),
         Rval = unop(Unop, Rval2)
     ;
         Rval0 = binop(Binop, Rval1, Rval2),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval1, Rval3, !N),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval2, Rval4, !N),
+        transform_lval_in_rval(Transform, Rval1, Rval3, !Acc),
+        transform_lval_in_rval(Transform, Rval2, Rval4, !Acc),
         Rval = binop(Binop, Rval3, Rval4)
     ;
         Rval0 = mem_addr(MemRef0),
-        substitute_lval_in_mem_ref(OldLval, NewLval, MemRef0, MemRef, !N),
+        transform_lval_in_mem_ref(Transform, MemRef0, MemRef, !Acc),
         Rval = mem_addr(MemRef)
     ).
 
-:- pred substitute_lval_in_mem_ref(lval::in, lval::in,
-    mem_ref::in, mem_ref::out, int::in, int::out) is det.
+:- pred transform_lval_in_mem_ref(transform_lval(T)::in(transform_lval),
+    mem_ref::in, mem_ref::out, T::in, T::out) is det.
 
-substitute_lval_in_mem_ref(OldLval, NewLval, MemRef0, MemRef, !N) :-
+transform_lval_in_mem_ref(Transform, MemRef0, MemRef, !Acc) :-
     (
         MemRef0 = stackvar_ref(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         MemRef = stackvar_ref(Rval)
     ;
         MemRef0 = framevar_ref(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         MemRef = framevar_ref(Rval)
     ;
         MemRef0 = heap_ref(BaseRval0, Tag, FieldRval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, BaseRval0, BaseRval,
-            !N),
-        substitute_lval_in_rval_count(OldLval, NewLval, FieldRval0, FieldRval,
-            !N),
+        transform_lval_in_rval(Transform, BaseRval0, BaseRval, !Acc),
+        transform_lval_in_rval(Transform, FieldRval0, FieldRval, !Acc),
         MemRef = heap_ref(BaseRval, Tag, FieldRval)
     ).
+
+%-----------------------------------------------------------------------------%
+
+substitute_lval_in_instr(OldLval, NewLval, Instr0, Instr, !N) :-
+    transform_lval_in_instr(substitute_lval_in_lval_count(OldLval, NewLval),
+        Instr0, Instr, !N).
+
+substitute_lval_in_lval(OldLval, NewLval, Lval0, Lval) :-
+    substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval,
+        0, _SubstCount).
+
+substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval) :-
+    transform_lval_in_rval(substitute_lval_in_lval_count(OldLval, NewLval),
+        Rval0, Rval, 0, _SubstCount).
 
 :- pred substitute_lval_in_lval_count(lval::in, lval::in,
     lval::in, lval::out, int::in, int::out) is det.
@@ -579,6 +587,7 @@ substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N) :-
     lval::in, lval::out, int::in, int::out) is det.
 
 substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval, !N) :-
+    Transform = substitute_lval_in_lval_count(OldLval, NewLval),
     (
         ( Lval0 = reg(_Type, _RegNum)
         ; Lval0 = succip
@@ -586,8 +595,10 @@ substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval, !N) :-
         ; Lval0 = curfr
         ; Lval0 = hp
         ; Lval0 = sp
+        ; Lval0 = parent_sp
         ; Lval0 = temp(_Type, _TmpNum)
         ; Lval0 = stackvar(_SlotNum)
+        ; Lval0 = parent_stackvar(_SlotNum)
         ; Lval0 = framevar(_SlotNum)
         ; Lval0 = lvar(_Var)
         ; Lval0 = global_var_ref(_GlobalVarName)
@@ -595,54 +606,33 @@ substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval, !N) :-
         Lval = Lval0
     ;
         Lval0 = succip_slot(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !N),
         Lval = succip_slot(Rval)
     ;
         Lval0 = redoip_slot(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !N),
         Lval = redoip_slot(Rval)
     ;
         Lval0 = redofr_slot(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !N),
         Lval = redofr_slot(Rval)
     ;
         Lval0 = succfr_slot(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !N),
         Lval = succfr_slot(Rval)
     ;
         Lval0 = prevfr_slot(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !N),
         Lval = prevfr_slot(Rval)
     ;
         Lval0 = field(Tag, Rval1, Rval2),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval1, Rval3, !N),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval2, Rval4, !N),
+        transform_lval_in_rval(Transform, Rval1, Rval3, !N),
+        transform_lval_in_rval(Transform, Rval2, Rval4, !N),
         Lval = field(Tag, Rval3, Rval4)
     ;
         Lval0 = mem_ref(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        transform_lval_in_rval(Transform, Rval0, Rval, !N),
         Lval = mem_ref(Rval)
-    ).
-
-:- pred substitute_lval_in_args(lval::in, lval::in,
-    list(maybe(rval))::in, list(maybe(rval))::out, int::in, int::out) is det.
-
-substitute_lval_in_args(_OldLval, _NewLval, [], [], !N).
-substitute_lval_in_args(OldLval, NewLval, [M0 | Ms0], [M | Ms], !N) :-
-    substitute_lval_in_arg(OldLval, NewLval, M0, M, !N),
-    substitute_lval_in_args(OldLval, NewLval, Ms0, Ms, !N).
-
-:- pred substitute_lval_in_arg(lval::in, lval::in,
-    maybe(rval)::in, maybe(rval)::out, int::in, int::out) is det.
-
-substitute_lval_in_arg(OldLval, NewLval, MaybeRval0, MaybeRval, !N) :-
-    (
-        MaybeRval0 = yes(Rval0),
-        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
-        MaybeRval = yes(Rval)
-    ;
-        MaybeRval0 = no,
-        MaybeRval = MaybeRval0
     ).
 
 substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
@@ -706,8 +696,10 @@ substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval) :-
         ; Lval0 = curfr
         ; Lval0 = hp
         ; Lval0 = sp
+        ; Lval0 = parent_sp
         ; Lval0 = temp(_, _)
         ; Lval0 = stackvar(_)
+        ; Lval0 = parent_stackvar(_)
         ; Lval0 = framevar(_)
         ; Lval0 = global_var_ref(_)
         ; Lval0 = lvar(_)
@@ -742,27 +734,6 @@ substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval) :-
         Lval0 = mem_ref(Rval0),
         substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
         Lval = mem_ref(Rval)
-    ).
-
-:- pred substitute_rval_in_args(rval::in, rval::in,
-    list(maybe(rval))::in, list(maybe(rval))::out) is det.
-
-substitute_rval_in_args(_OldRval, _NewRval, [], []).
-substitute_rval_in_args(OldRval, NewRval, [M0 | Ms0], [M | Ms]) :-
-    substitute_rval_in_arg(OldRval, NewRval, M0, M),
-    substitute_rval_in_args(OldRval, NewRval, Ms0, Ms).
-
-:- pred substitute_rval_in_arg(rval::in, rval::in,
-    maybe(rval)::in, maybe(rval)::out) is det.
-
-substitute_rval_in_arg(OldRval, NewRval, MaybeRval0, MaybeRval) :-
-    (
-        MaybeRval0 = yes(Rval0),
-        substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
-        MaybeRval = yes(Rval)
-    ;
-        MaybeRval0 = no,
-        MaybeRval = MaybeRval0
     ).
 
 %-----------------------------------------------------------------------------%
@@ -886,6 +857,7 @@ rval_addrs(mem_addr(Rval), CodeAddrs, DataAddrs) :-
 
 lval_addrs(reg(_Type, _RegNum), [], []).
 lval_addrs(stackvar(_SlotNum), [], []).
+lval_addrs(parent_stackvar(_SlotNum), [], []).
 lval_addrs(framevar(_SlotNum), [], []).
 lval_addrs(succip, [], []).
 lval_addrs(maxfr, [], []).
@@ -902,6 +874,7 @@ lval_addrs(succip_slot(Rval), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval, CodeAddrs, DataAddrs).
 lval_addrs(hp, [], []).
 lval_addrs(sp, [], []).
+lval_addrs(parent_sp, [], []).
 lval_addrs(field(_Tag, Rval1, Rval2), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval1, CodeAddrs1, DataAddrs1),
     rval_addrs(Rval2, CodeAddrs2, DataAddrs2),

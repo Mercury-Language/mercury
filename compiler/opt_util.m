@@ -642,6 +642,7 @@ no_stack_straight_line_2([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
 
 lval_refers_stackvars(reg(_, _)) = no.
 lval_refers_stackvars(stackvar(_)) = yes.
+lval_refers_stackvars(parent_stackvar(_)) = yes.
 lval_refers_stackvars(framevar(_)) = yes.
 lval_refers_stackvars(succip) = no.
 lval_refers_stackvars(maxfr) = no.
@@ -653,6 +654,7 @@ lval_refers_stackvars(redoip_slot(_)) = yes.
 lval_refers_stackvars(succip_slot(_)) = yes.
 lval_refers_stackvars(hp) = no.
 lval_refers_stackvars(sp) = no.
+lval_refers_stackvars(parent_sp) = no.
 lval_refers_stackvars(field(_, Rval, FieldNum)) =
     bool.or(
         rval_refers_stackvars(Rval),
@@ -861,11 +863,8 @@ instr_refers_to_stack(Uinstr - _) = Refers :-
         Uinstr = init_sync_term(Lval, _),
         Refers = lval_refers_stackvars(Lval)
     ;
-        Uinstr = fork(_, _, _),
+        Uinstr = fork(_),
         Refers = yes
-    ;
-        Uinstr = join_and_terminate(Lval),
-        Refers = lval_refers_stackvars(Lval)
     ;
         Uinstr = join_and_continue(Lval, _),
         Refers = lval_refers_stackvars(Lval)
@@ -1005,8 +1004,7 @@ can_instr_branch_away(incr_sp(_, _), no).
 can_instr_branch_away(decr_sp(_), no).
 can_instr_branch_away(decr_sp_and_return(_), yes).
 can_instr_branch_away(init_sync_term(_, _), no).
-can_instr_branch_away(fork(_, _, _), yes).
-can_instr_branch_away(join_and_terminate(_), no).
+can_instr_branch_away(fork(_), no).
 can_instr_branch_away(join_and_continue(_, _), yes).
 can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _, _, _), BranchAway) :-
     can_components_branch_away(Comps, BranchAway).
@@ -1082,8 +1080,7 @@ can_instr_fall_through(incr_sp(_, _), yes).
 can_instr_fall_through(decr_sp(_), yes).
 can_instr_fall_through(decr_sp_and_return(_), no).
 can_instr_fall_through(init_sync_term(_, _), yes).
-can_instr_fall_through(fork(_, _, _), no).
-can_instr_fall_through(join_and_terminate(_), no).
+can_instr_fall_through(fork(_), yes).
 can_instr_fall_through(join_and_continue(_, _), no).
 can_instr_fall_through(pragma_c(_, _, _, _, _, _, _, _, _), yes).
 
@@ -1129,8 +1126,7 @@ can_use_livevals(incr_sp(_, _), no).
 can_use_livevals(decr_sp(_), no).
 can_use_livevals(decr_sp_and_return(_), yes).
 can_use_livevals(init_sync_term(_, _), no).
-can_use_livevals(fork(_, _, _), no).
-can_use_livevals(join_and_terminate(_), no).
+can_use_livevals(fork(_), no).
 can_use_livevals(join_and_continue(_, _), no).
 can_use_livevals(pragma_c(_, _, _, _, _, _, _, _, _), no).
 
@@ -1198,8 +1194,7 @@ instr_labels_2(decr_sp_and_return(_), [], []) :-
     % so late that this predicate should never be invoked on such instructions.
     unexpected(this_file, "instr_labels_2: decr_sp_and_return").
 instr_labels_2(init_sync_term(_, _), [], []).
-instr_labels_2(fork(Child, Parent, _), [Child, Parent], []).
-instr_labels_2(join_and_terminate(_), [], []).
+instr_labels_2(fork(Child), [Child], []).
 instr_labels_2(join_and_continue(_, Label), [Label], []).
 instr_labels_2(pragma_c(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
         MaybeOnlyLayoutLabel, MaybeSubLabel, _, _), Labels, []) :-
@@ -1257,8 +1252,7 @@ possible_targets(decr_sp_and_return(_), [], []) :-
     % See the comment in instr_labels_2.
     unexpected(this_file, "possible_targets: decr_sp_and_return").
 possible_targets(init_sync_term(_, _), [], []).
-possible_targets(fork(Child, Parent, _), [Child, Parent], []).
-possible_targets(join_and_terminate(_), [], []).
+possible_targets(fork(_Child), [], []).
 possible_targets(join_and_continue(_, L), [L], []).
 possible_targets(pragma_c(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
         _, MaybeSubLabel, _, _), Labels, []) :-
@@ -1329,8 +1323,7 @@ instr_rvals_and_lvals(incr_sp(_, _), [], []).
 instr_rvals_and_lvals(decr_sp(_), [], []).
 instr_rvals_and_lvals(decr_sp_and_return(_), [], []).
 instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
-instr_rvals_and_lvals(fork(_, _, _), [], []).
-instr_rvals_and_lvals(join_and_terminate(Lval), [], [Lval]).
+instr_rvals_and_lvals(fork(_), [], []).
 instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _, _, _, _),
         Rvals, Lvals) :-
@@ -1475,9 +1468,7 @@ count_temps_instr(decr_sp(_), !R, !F).
 count_temps_instr(decr_sp_and_return(_), !R, !F).
 count_temps_instr(init_sync_term(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
-count_temps_instr(fork(_, _, _), !R, !F).
-count_temps_instr(join_and_terminate(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
+count_temps_instr(fork(_), !R, !F).
 count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(pragma_c(_, _, _, _, _, _, _, _, _), !R, !F).
@@ -1580,8 +1571,7 @@ touches_nondet_ctrl_instr(Uinstr, Touch) :-
         ; Uinstr = save_maxfr(_)
         ; Uinstr = restore_maxfr(_)
         ; Uinstr = init_sync_term(_, _)     % This is a safe approximation.
-        ; Uinstr = fork(_, _, _)            % This is a safe approximation.
-        ; Uinstr = join_and_terminate(_)    % This is a safe approximation.
+        ; Uinstr = fork(_)                  % This is a safe approximation.
         ; Uinstr = join_and_continue(_, _)  % This is a safe approximation.
         ),
         Touch = yes
@@ -1614,6 +1604,7 @@ touches_nondet_ctrl_instr(Uinstr, Touch) :-
 
 touches_nondet_ctrl_lval(reg(_, _), no).
 touches_nondet_ctrl_lval(stackvar(_), no).
+touches_nondet_ctrl_lval(parent_stackvar(_), no).
 touches_nondet_ctrl_lval(framevar(_), no).
 touches_nondet_ctrl_lval(succip, no).
 touches_nondet_ctrl_lval(maxfr, yes).
@@ -1625,6 +1616,7 @@ touches_nondet_ctrl_lval(redoip_slot(_), yes).
 touches_nondet_ctrl_lval(succip_slot(_), yes).
 touches_nondet_ctrl_lval(hp, no).
 touches_nondet_ctrl_lval(sp, no).
+touches_nondet_ctrl_lval(parent_sp, no).
 touches_nondet_ctrl_lval(field(_, Rval1, Rval2), Touch) :-
     touches_nondet_ctrl_rval(Rval1, Touch1),
     touches_nondet_ctrl_rval(Rval2, Touch2),
@@ -1688,6 +1680,7 @@ touches_nondet_ctrl_component(pragma_c_noop, no).
 
 lval_access_rvals(reg(_, _), []).
 lval_access_rvals(stackvar(_), []).
+lval_access_rvals(parent_stackvar(_), []).
 lval_access_rvals(framevar(_), []).
 lval_access_rvals(succip, []).
 lval_access_rvals(maxfr, []).
@@ -1699,6 +1692,7 @@ lval_access_rvals(prevfr_slot(Rval), [Rval]).
 lval_access_rvals(succfr_slot(Rval), [Rval]).
 lval_access_rvals(hp, []).
 lval_access_rvals(sp, []).
+lval_access_rvals(parent_sp, []).
 lval_access_rvals(field(_, Rval1, Rval2), [Rval1, Rval2]).
 lval_access_rvals(temp(_, _), []).
 lval_access_rvals(lvar(_), _) :-
@@ -1963,15 +1957,9 @@ replace_labels_instr(prune_tickets_to(Rval0), ReplMap, ReplData,
 replace_labels_instr(incr_sp(Size, Msg), _, _, incr_sp(Size, Msg)).
 replace_labels_instr(decr_sp(Size), _, _, decr_sp(Size)).
 replace_labels_instr(decr_sp_and_return(Size), _, _, decr_sp_and_return(Size)).
-replace_labels_instr(init_sync_term(T, N), _, _,
-        init_sync_term(T, N)).
-replace_labels_instr(fork(Child0, Parent0, SlotCount), Replmap, _,
-        fork(Child, Parent, SlotCount)) :-
-    replace_labels_label(Child0, Replmap, Child),
-    replace_labels_label(Parent0, Replmap, Parent).
-replace_labels_instr(join_and_terminate(Lval0), Replmap, _,
-        join_and_terminate(Lval)) :-
-    replace_labels_lval(Lval0, Replmap, Lval).
+replace_labels_instr(init_sync_term(T, N), _, _, init_sync_term(T, N)).
+replace_labels_instr(fork(Child0), Replmap, _, fork(Child)) :-
+    replace_labels_label(Child0, Replmap, Child).
 replace_labels_instr(join_and_continue(Lval0, Label0),
         Replmap, _, join_and_continue(Lval, Label)) :-
     replace_labels_label(Label0, Replmap, Label),
@@ -2041,6 +2029,7 @@ replace_labels_comp(pragma_c_noop, _, pragma_c_noop).
 
 replace_labels_lval(reg(RegType, RegNum), _, reg(RegType, RegNum)).
 replace_labels_lval(stackvar(N), _, stackvar(N)).
+replace_labels_lval(parent_stackvar(N), _, parent_stackvar(N)).
 replace_labels_lval(framevar(N), _, framevar(N)).
 replace_labels_lval(succip, _, succip).
 replace_labels_lval(maxfr, _, maxfr).
@@ -2057,6 +2046,7 @@ replace_labels_lval(prevfr_slot(Rval0), ReplMap, prevfr_slot(Rval)) :-
     replace_labels_rval(Rval0, ReplMap, Rval).
 replace_labels_lval(hp, _, hp).
 replace_labels_lval(sp, _, sp).
+replace_labels_lval(parent_sp, _, parent_sp).
 replace_labels_lval(field(Tag, Base0, Offset0), ReplMap,
         field(Tag, Base, Offset)) :-
     replace_labels_rval(Base0, ReplMap, Base),

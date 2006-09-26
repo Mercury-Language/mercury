@@ -383,6 +383,7 @@ lvals_in_rval(mem_addr(MemRef), Lvals) :-
 
 lvals_in_lval(reg(_, _), []).
 lvals_in_lval(stackvar(_), []).
+lvals_in_lval(parent_stackvar(_), []).
 lvals_in_lval(framevar(_), []).
 lvals_in_lval(succip, []).
 lvals_in_lval(maxfr, []).
@@ -399,6 +400,7 @@ lvals_in_lval(prevfr_slot(Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
 lvals_in_lval(hp, []).
 lvals_in_lval(sp, []).
+lvals_in_lval(parent_sp, []).
 lvals_in_lval(field(_, Rval1, Rval2), Lvals1 ++ Lvals2) :-
     lvals_in_rval(Rval1, Lvals1),
     lvals_in_rval(Rval2, Lvals2).

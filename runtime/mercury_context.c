@@ -33,10 +33,20 @@ ENDINIT
 #include "mercury_reg_workarounds.h"    /* for `MR_fd*' stuff */
 
 static  void            MR_init_context_maybe_generator(MR_Context *c,
-                            MR_Generator *gen);
+                            const char *id, MR_Generator *gen);
 
+/*---------------------------------------------------------------------------*/
+
+/*
+** The run queue and spark queue are protected and signalled with the
+** same lock and condition variable.
+*/
 MR_Context              *MR_runqueue_head;
 MR_Context              *MR_runqueue_tail;
+#ifndef MR_HIGHLEVEL_CODE
+  MR_Spark              *MR_spark_queue_head;
+  MR_Spark              *MR_spark_queue_tail;
+#endif
 #ifdef  MR_THREAD_SAFE
   MercuryLock           MR_runqueue_lock;
   MercuryCond           MR_runqueue_cond;
@@ -58,6 +68,11 @@ static MR_Context       *free_context_list = NULL;
 #ifdef  MR_THREAD_SAFE
   static MercuryLock    free_context_list_lock;
 #endif
+
+int MR_num_idle_engines = 0;
+int MR_num_outstanding_contexts_and_sparks = 0;
+
+/*---------------------------------------------------------------------------*/
 
 void
 MR_init_thread_stuff(void)
@@ -87,8 +102,9 @@ MR_finalize_runqueue(void)
 #endif
 }
 
-void 
-MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
+static void 
+MR_init_context_maybe_generator(MR_Context *c, const char *id,
+    MR_Generator *gen)
 {
     c->MR_ctxt_id = id;
     c->MR_ctxt_next = NULL;
@@ -100,29 +116,29 @@ MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
 #ifndef MR_HIGHLEVEL_CODE
     c->MR_ctxt_succip = MR_ENTRY(MR_do_not_reached);
 
-    if (c->MR_ctxt_detstack_zone != NULL) {
-        MR_reset_redzone(c->MR_ctxt_detstack_zone);
-    } else if (gen != NULL) {
-        c->MR_ctxt_detstack_zone = MR_create_zone("gen_detstack",
-            0, MR_gen_detstack_size, MR_next_offset(),
-            MR_gen_detstack_zone_size, MR_default_handler);
-    } else {
-        c->MR_ctxt_detstack_zone = MR_create_zone("detstack",
-            0, MR_detstack_size, MR_next_offset(),
-            MR_detstack_zone_size, MR_default_handler);
+    if (c->MR_ctxt_detstack_zone == NULL) {
+        if (gen != NULL) {
+            c->MR_ctxt_detstack_zone = MR_create_zone("gen_detstack",
+                    0, MR_gen_detstack_size, MR_next_offset(),
+                    MR_gen_detstack_zone_size, MR_default_handler);
+        } else {
+            c->MR_ctxt_detstack_zone = MR_create_zone("detstack",
+                    0, MR_detstack_size, MR_next_offset(),
+                    MR_detstack_zone_size, MR_default_handler);
+        }
     }
     c->MR_ctxt_sp = c->MR_ctxt_detstack_zone->MR_zone_min;
 
-    if (c->MR_ctxt_nondetstack_zone != NULL) {
-        MR_reset_redzone(c->MR_ctxt_nondetstack_zone);
-    } else if (gen != NULL) {
-        c->MR_ctxt_nondetstack_zone = MR_create_zone("gen_nondetstack",
-            0, MR_gen_nonstack_size, MR_next_offset(),
-            MR_gen_nonstack_zone_size, MR_default_handler);
-    } else {
-        c->MR_ctxt_nondetstack_zone = MR_create_zone("nondetstack",
-            0, MR_nondstack_size, MR_next_offset(),
-            MR_nondstack_zone_size, MR_default_handler);
+    if (c->MR_ctxt_nondetstack_zone == NULL) {
+        if (gen != NULL) {
+            c->MR_ctxt_nondetstack_zone = MR_create_zone("gen_nondetstack",
+                    0, MR_gen_nonstack_size, MR_next_offset(),
+                    MR_gen_nonstack_zone_size, MR_default_handler);
+        } else {
+            c->MR_ctxt_nondetstack_zone = MR_create_zone("nondetstack",
+                    0, MR_nondstack_size, MR_next_offset(),
+                    MR_nondstack_zone_size, MR_default_handler);
+        }
     }
     /*
     ** Note that maxfr and curfr point to the last word in the frame,
@@ -147,27 +163,21 @@ MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
             "generator and stack_copy");
     }
 
-    if (c->MR_ctxt_genstack_zone != NULL) {
-        MR_reset_redzone(c->MR_ctxt_genstack_zone);
-    } else {
+    if (c->MR_ctxt_genstack_zone == NULL) {
         c->MR_ctxt_genstack_zone = MR_create_zone("genstack", 0,
             MR_genstack_size, MR_next_offset(),
             MR_genstack_zone_size, MR_default_handler);
     }
     c->MR_ctxt_gen_next = 0;
 
-    if (c->MR_ctxt_cutstack_zone != NULL) {
-        MR_reset_redzone(c->MR_ctxt_cutstack_zone);
-    } else {
+    if (c->MR_ctxt_cutstack_zone == NULL) {
         c->MR_ctxt_cutstack_zone = MR_create_zone("cutstack", 0,
             MR_cutstack_size, MR_next_offset(),
             MR_cutstack_zone_size, MR_default_handler);
     }
     c->MR_ctxt_cut_next = 0;
 
-    if (c->MR_ctxt_pnegstack_zone != NULL) {
-        MR_reset_redzone(c->MR_ctxt_pnegstack_zone);
-    } else {
+    if (c->MR_ctxt_pnegstack_zone == NULL) {
         c->MR_ctxt_pnegstack_zone = MR_create_zone("pnegstack", 0,
             MR_pnegstack_size, MR_next_offset(),
             MR_pnegstack_zone_size, MR_default_handler);
@@ -178,6 +188,10 @@ MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
   #ifdef MR_USE_MINIMAL_MODEL_OWN_STACKS
     c->MR_ctxt_owner_generator = gen;
   #endif /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+
+    c->MR_ctxt_parent_sp = NULL;
+    c->MR_ctxt_spark_stack = NULL;
+
 #endif /* !MR_HIGHLEVEL_CODE */
 
 #ifdef MR_USE_TRAIL
@@ -185,9 +199,7 @@ MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
         MR_fatal_error("MR_init_context_maybe_generator: generator and trail");
     }
 
-    if (c->MR_ctxt_trail_zone != NULL) {
-        MR_reset_redzone(c->MR_ctxt_trail_zone);
-    } else {
+    if (c->MR_ctxt_trail_zone == NULL) {
         c->MR_ctxt_trail_zone = MR_create_zone("trail", 0,
             MR_trail_size, MR_next_offset(),
             MR_trail_zone_size, MR_default_handler);
@@ -214,6 +226,9 @@ MR_create_context(const char *id, MR_Generator *gen)
     MR_Context  *c;
 
     MR_LOCK(&free_context_list_lock, "create_context");
+
+    MR_num_outstanding_contexts_and_sparks++;
+
     if (free_context_list == NULL) {
         MR_UNLOCK(&free_context_list_lock, "create_context i");
         c = MR_GC_NEW(MR_Context);
@@ -230,14 +245,30 @@ MR_create_context(const char *id, MR_Generator *gen)
         MR_UNLOCK(&free_context_list_lock, "create_context ii");
     }
 
-    MR_init_context(c, id, gen);
+    MR_init_context_maybe_generator(c, id, gen);
     return c;
 }
 
 void 
 MR_destroy_context(MR_Context *c)
 {
+    MR_assert(c);
+
+#ifndef MR_HIGHLEVEL_CODE
+    MR_assert(c->MR_ctxt_spark_stack == NULL);
+#endif
+
+    /* XXX not sure if this is an overall win yet */
+#if 0 && defined(MR_CONSERVATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
+    /* Clear stacks to prevent retention of data. */
+    MR_clear_zone_for_GC(c->MR_ctxt_detstack_zone,
+        c->MR_ctxt_detstack_zone->MR_zone_min);
+    MR_clear_zone_for_GC(c->MR_ctxt_nondetstack_zone,
+        c->MR_ctxt_nondetstack_zone->MR_zone_min);
+#endif /* defined(MR_CONSERVATIVE_GC) && !defined(MR_HIGHLEVEL_CODE) */
+
     MR_LOCK(&free_context_list_lock, "destroy_context");
+    MR_num_outstanding_contexts_and_sparks--;
     c->MR_ctxt_next = free_context_list;
     free_context_list = c;
     MR_UNLOCK(&free_context_list_lock, "destroy_context");
@@ -324,7 +355,7 @@ MR_check_pending_contexts(MR_bool block)
                 && FD_ISSET(pctxt->fd, &ex_set))
             )
         {
-            MR_schedule(pctxt->context);
+            MR_schedule_context(pctxt->context);
         }
     }
 
@@ -338,10 +369,10 @@ MR_check_pending_contexts(MR_bool block)
 }
 
 void
-MR_schedule(MR_Context *ctxt)
+MR_schedule_context(MR_Context *ctxt)
 {
+    MR_LOCK(&MR_runqueue_lock, "schedule_context");
     ctxt->MR_ctxt_next = NULL;
-    MR_LOCK(&MR_runqueue_lock, "schedule");
     if (MR_runqueue_tail) {
         MR_runqueue_tail->MR_ctxt_next = ctxt;
         MR_runqueue_tail = ctxt;
@@ -361,10 +392,44 @@ MR_schedule(MR_Context *ctxt)
         MR_BROADCAST(&MR_runqueue_cond);
     }
 #endif
-    MR_UNLOCK(&MR_runqueue_lock, "schedule");
+    MR_UNLOCK(&MR_runqueue_lock, "schedule_context");
 }
 
 #ifndef MR_HIGHLEVEL_CODE
+
+void
+MR_schedule_spark_globally(MR_Spark *spark)
+{
+    MR_LOCK(&MR_runqueue_lock, "schedule_spark_globally");
+    if (MR_spark_queue_tail) {
+        MR_spark_queue_tail->MR_spark_next = spark;
+        MR_spark_queue_tail = spark;
+    } else {
+        MR_spark_queue_head = spark;
+        MR_spark_queue_tail = spark;
+    }
+    MR_num_outstanding_contexts_and_sparks++;
+  #ifdef MR_THREAD_SAFE
+    MR_SIGNAL(&MR_runqueue_cond);
+  #endif
+    MR_UNLOCK(&MR_runqueue_lock, "schedule_spark_globally");
+}
+
+void
+MR_schedule_spark_locally(MR_Spark *spark)
+{
+    MR_Context  *ctxt;
+
+    ctxt = MR_ENGINE(MR_eng_this_context);
+
+    /* 
+    ** Only the engine running the context is allowed to access
+    ** the context's spark stack, so no locking is required here.
+    */
+    spark->MR_spark_next = ctxt->MR_ctxt_spark_stack;
+    ctxt->MR_ctxt_spark_stack = spark;
+}
+
 
 MR_define_extern_entry(MR_do_runnext);
 
@@ -377,13 +442,23 @@ MR_define_entry(MR_do_runnext);
 {
     MR_Context      *tmp;
     MR_Context      *prev;
+    MR_Spark        *spark;
     unsigned        depth;
     MercuryThread   thd;
+
+    /*
+    ** If this engine is holding onto a context, the context should not be in
+    ** the middle of running some code.
+    */
+    assert(MR_ENGINE(MR_eng_this_context) == NULL ||
+            MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_stack == NULL);
 
     depth = MR_ENGINE(MR_eng_c_depth);
     thd = MR_ENGINE(MR_eng_owner_thread);
 
     MR_LOCK(&MR_runqueue_lock, "MR_do_runnext (i)");
+
+    MR_num_idle_engines++;
 
     while (1) {
         if (MR_exit_now == MR_TRUE) {
@@ -395,6 +470,8 @@ MR_define_entry(MR_do_runnext);
             MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (ii)");
             MR_destroy_thread(MR_cur_engine());
         }
+
+        /* Search for a ready context which we can handle. */
         tmp = MR_runqueue_head;
         /* XXX check pending io */
         prev = NULL;
@@ -402,17 +479,27 @@ MR_define_entry(MR_do_runnext);
             if ((depth > 0 && tmp->MR_ctxt_owner_thread == thd) ||
                 (tmp->MR_ctxt_owner_thread == (MercuryThread) NULL))
             {
-                break;
+                MR_num_idle_engines--;
+                goto ReadyContext;
             }
             prev = tmp;
             tmp = tmp->MR_ctxt_next;
         }
-        if (tmp != NULL) {
-            break;
+
+        /* Check if the spark queue is nonempty. */
+        spark = MR_spark_queue_head;
+        if (spark != NULL) {
+            MR_num_idle_engines--;
+            MR_num_outstanding_contexts_and_sparks--;
+            goto ReadySpark;
         }
+
+        /* Nothing to do, go back to sleep. */
         MR_WAIT(&MR_runqueue_cond, &MR_runqueue_lock);
     }
-    MR_ENGINE(MR_eng_this_context) = tmp;
+
+  ReadyContext:
+
     if (prev != NULL) {
         prev->MR_ctxt_next = tmp->MR_ctxt_next;
     } else {
@@ -422,11 +509,39 @@ MR_define_entry(MR_do_runnext);
         MR_runqueue_tail = prev;
     }
     MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (iii)");
-    MR_load_context(MR_ENGINE(MR_eng_this_context));
-    MR_GOTO(MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume);
+
+    /* Discard whatever unused context we may have and switch to tmp. */
+    if (MR_ENGINE(MR_eng_this_context) != NULL) {
+        MR_destroy_context(MR_ENGINE(MR_eng_this_context));
+    }
+    MR_ENGINE(MR_eng_this_context) = tmp;
+    MR_load_context(tmp);
+    MR_GOTO(tmp->MR_ctxt_resume);
+
+  ReadySpark:
+
+    MR_spark_queue_head = spark->MR_spark_next;
+    if (MR_spark_queue_tail == spark) {
+        MR_spark_queue_tail = NULL;
+    }
+    MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (iii)");
+
+    /* Grab a new context if we haven't got one then begin execution. */
+    if (MR_ENGINE(MR_eng_this_context) == NULL) {
+        MR_ENGINE(MR_eng_this_context) = MR_create_context("from spark", NULL);
+        MR_load_context(MR_ENGINE(MR_eng_this_context));
+    }
+    MR_parent_sp = spark->MR_spark_parent_sp;
+    MR_GOTO(spark->MR_spark_resume);
 }
 #else /* !MR_THREAD_SAFE */
 {
+    /*
+    ** We don't support actually putting things in the global spark queue
+    ** in these grades.
+    */
+    assert(MR_spark_queue_head == NULL);
+
     if (MR_runqueue_head == NULL && MR_pending_contexts == NULL) {
         MR_fatal_error("empty runqueue!");
     }

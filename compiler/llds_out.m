@@ -1778,9 +1778,9 @@ find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
     ->
         set_tree234.insert(ContLabel, !ContLabelSet)
     ;
-        Instr = fork(Label1, Label2, _)
+        Instr = fork(Label1)
     ->
-        set_tree234.insert_list([Label1, Label2], !ContLabelSet)
+        set_tree234.insert(Label1, !ContLabelSet)
     ;
         Instr = block(_, _, Block)
     ->
@@ -1977,11 +1977,8 @@ output_instr_decls(StackLayoutLabels, pragma_c(_, Comps, _, _,
     list.foldl2(output_pragma_c_component_decls, Comps, !DeclSet, !IO).
 output_instr_decls(_, init_sync_term(Lval, _), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
-output_instr_decls(_, fork(Child, Parent, _), !DeclSet, !IO) :-
-    output_code_addr_decls(label(Child), !DeclSet, !IO),
-    output_code_addr_decls(label(Parent), !DeclSet, !IO).
-output_instr_decls(_, join_and_terminate(Lval), !DeclSet, !IO) :-
-    output_lval_decls(Lval, !DeclSet, !IO).
+output_instr_decls(_, fork(Child), !DeclSet, !IO) :-
+    output_code_addr_decls(label(Child), !DeclSet, !IO).
 output_instr_decls(_, join_and_continue(Lval, Label), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO),
     output_code_addr_decls(label(Label), !DeclSet, !IO).
@@ -2549,18 +2546,9 @@ output_instruction(init_sync_term(Lval, N), _, !IO) :-
     io.write_int(N, !IO),
     io.write_string(");\n", !IO).
 
-output_instruction(fork(Child, Parent, Lval), _, !IO) :-
-    io.write_string("\tMR_fork_new_context(", !IO),
+output_instruction(fork(Child), _, !IO) :-
+    io.write_string("\tMR_fork_new_child(", !IO),
     output_label_as_code_addr(Child, !IO),
-    io.write_string(", ", !IO),
-    output_label_as_code_addr(Parent, !IO),
-    io.write_string(", ", !IO),
-    io.write_int(Lval, !IO),
-    io.write_string(");\n", !IO).
-
-output_instruction(join_and_terminate(Lval), _, !IO) :-
-    io.write_string("\tMR_join_and_terminate(", !IO),
-    output_lval(Lval, !IO),
     io.write_string(");\n", !IO).
 
 output_instruction(join_and_continue(Lval, Label), _, !IO) :-
@@ -3528,6 +3516,7 @@ output_lval_decls_format(field(_, Rval, FieldNum), FirstIndent, LaterIndent,
         !IO).
 output_lval_decls_format(reg(_, _), _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(stackvar(_), _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(parent_stackvar(_), _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(framevar(_), _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(succip, _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(maxfr, _, _, !N, !DeclSet, !IO).
@@ -3554,6 +3543,7 @@ output_lval_decls_format(succip_slot(Rval), FirstIndent, LaterIndent,
         !IO).
 output_lval_decls_format(hp, _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(sp, _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(parent_sp, _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(lvar(_), _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(temp(_, _), _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(mem_ref(Rval), FirstIndent, LaterIndent,
@@ -5090,6 +5080,15 @@ output_lval(stackvar(N), !IO) :-
     io.write_string("MR_sv(", !IO),
     io.write_int(N, !IO),
     io.write_string(")", !IO).
+output_lval(parent_stackvar(N), !IO) :-
+    ( N =< 0 ->
+        unexpected(this_file, "parent stack var out of range")
+    ;
+        true
+    ),
+    io.write_string("MR_parent_sv(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(")", !IO).
 output_lval(framevar(N), !IO) :-
     ( N =< 0 ->
         unexpected(this_file, "frame var out of range")
@@ -5103,6 +5102,8 @@ output_lval(succip, !IO) :-
     io.write_string("MR_succip", !IO).
 output_lval(sp, !IO) :-
     io.write_string("MR_sp", !IO).
+output_lval(parent_sp, !IO) :-
+    io.write_string("MR_parent_sp", !IO).
 output_lval(hp, !IO) :-
     io.write_string("MR_hp", !IO).
 output_lval(maxfr, !IO) :-
@@ -5183,6 +5184,15 @@ output_lval_for_assign(stackvar(N), word, !IO) :-
     io.write_string("MR_sv(", !IO),
     io.write_int(N, !IO),
     io.write_string(")", !IO).
+output_lval_for_assign(parent_stackvar(N), word, !IO) :-
+    ( N < 0 ->
+        unexpected(this_file, "parent stack var out of range")
+    ;
+        true
+    ),
+    io.write_string("MR_parent_sv(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(")", !IO).
 output_lval_for_assign(framevar(N), word, !IO) :-
     ( N =< 0 ->
         unexpected(this_file, "frame var out of range")
@@ -5196,6 +5206,8 @@ output_lval_for_assign(succip, word, !IO) :-
     io.write_string("MR_succip_word", !IO).
 output_lval_for_assign(sp, word, !IO) :-
     io.write_string("MR_sp_word", !IO).
+output_lval_for_assign(parent_sp, data_ptr, !IO) :-
+    io.write_string("MR_parent_sp", !IO).
 output_lval_for_assign(hp, word, !IO) :-
     io.write_string("MR_hp_word", !IO).
 output_lval_for_assign(maxfr, word, !IO) :-
@@ -5308,6 +5320,8 @@ lval_to_string(framevar(N)) =
     "MR_fv(" ++ int_to_string(N) ++ ")".
 lval_to_string(stackvar(N)) =
     "MR_sv(" ++ int_to_string(N) ++ ")".
+lval_to_string(parent_stackvar(N)) =
+    "MR_parent_sv(" ++ int_to_string(N) ++ ")".
 lval_to_string(reg(RegType, RegNum)) =
     "reg(" ++ reg_to_string(RegType, RegNum) ++ ")".
 
@@ -5396,6 +5410,9 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
     (
         Slot = det_slot(SlotNum),
         StackStr = "sv"
+    ;
+        Slot = parent_det_slot(SlotNum),
+        StackStr = "parent_sv"
     ;
         Slot = nondet_slot(SlotNum),
         StackStr = "fv"

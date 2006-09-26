@@ -225,6 +225,15 @@ extern	size_t		MR_heap_margin_size;
 /* heap expansion factor for accurate GC (see mercury_accurate_gc.c) */
 extern  double		MR_heap_expansion_factor;
 
+/* number of outstanding contexts we can create per thread (soft limit) */
+extern	MR_Unsigned	MR_contexts_per_thread;
+
+/*
+** number of outstanding contexts we can create 
+** (MR_contexts_per_thread * MR_num_threads)
+*/
+extern	MR_Unsigned	MR_max_outstanding_contexts;
+
 /* file names for the mdb debugging streams */
 extern	const char	*MR_mdb_in_filename;
 extern	const char	*MR_mdb_out_filename;

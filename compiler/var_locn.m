@@ -1927,6 +1927,7 @@ materialize_vars_in_lval(ModuleInfo, Lval0, Avoid, Lval, Code, !VLI) :-
     (
         ( Lval0 = reg(_, _)
         ; Lval0 = stackvar(_)
+        ; Lval0 = parent_stackvar(_)
         ; Lval0 = framevar(_)
         ; Lval0 = global_var_ref(_)
         ; Lval0 = succip
@@ -1934,6 +1935,7 @@ materialize_vars_in_lval(ModuleInfo, Lval0, Avoid, Lval, Code, !VLI) :-
         ; Lval0 = curfr
         ; Lval0 = hp
         ; Lval0 = sp
+        ; Lval0 = parent_sp
         ),
         Lval = Lval0,
         Code = empty
@@ -2176,6 +2178,7 @@ make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
 
 is_root_lval(reg(reg_r, _)).
 is_root_lval(stackvar(_)).
+is_root_lval(parent_stackvar(_)).
 is_root_lval(framevar(_)).
 
 %----------------------------------------------------------------------------%

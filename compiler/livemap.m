@@ -284,9 +284,7 @@ livemap.build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
     ;
         Uinstr0 = init_sync_term(_, _)
     ;
-        Uinstr0 = fork(_, _, _)
-    ;
-        Uinstr0 = join_and_terminate(_)
+        Uinstr0 = fork(_)
     ;
         Uinstr0 = join_and_continue(_, _)
     ;

@@ -3,7 +3,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2001, 2003-2005 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -142,10 +142,10 @@ MR_init_engine(MercuryEngine *eng)
 #endif
 
 	/*
-	** Finally, allocate an initial context (Mercury thread)
-	** in the engine and initialize the per-context stuff.
+	** Don't allocate a context for this engine until it is actually
+	** needed.
 	*/
-	eng->MR_eng_this_context = MR_create_context("main", NULL);
+	eng->MR_eng_this_context = NULL;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -156,7 +156,9 @@ void MR_finalize_engine(MercuryEngine *eng)
 	** XXX there are lots of other resources in MercuryEngine that
 	** might need to be finalized.  
 	*/
-	MR_destroy_context(eng->MR_eng_this_context);
+	if (eng->MR_eng_this_context) {
+		MR_destroy_context(eng->MR_eng_this_context);
+	}
 }
 
 /*---------------------------------------------------------------------------*/
@@ -475,19 +477,18 @@ dummy_label:
 	*/
 #ifdef	MR_THREAD_SAFE
 	MR_ENGINE(MR_eng_c_depth)++;
-{
-	MercuryThreadList *new_element;
+	if (MR_ENGINE(MR_eng_this_context)) {
+		MercuryThreadList *new_element;
 
-	new_element = MR_GC_NEW(MercuryThreadList);
-	new_element->thread =
-		MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread;
-	new_element->next = MR_ENGINE(MR_eng_saved_owners);
-	MR_ENGINE(MR_eng_saved_owners) = new_element;
-}
+		new_element = MR_GC_NEW(MercuryThreadList);
+		new_element->thread =
+			MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread;
+		new_element->next = MR_ENGINE(MR_eng_saved_owners);
+		MR_ENGINE(MR_eng_saved_owners) = new_element;
 
-	MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread =
-		MR_ENGINE(MR_eng_owner_thread);
-
+		MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread =
+			MR_ENGINE(MR_eng_owner_thread);
+	}
 #endif
 
 	/*
@@ -504,25 +505,25 @@ MR_define_label(engine_done);
 	** the current context.
 	*/
 #ifdef	MR_THREAD_SAFE
+	if (MR_ENGINE(MR_eng_this_context)) {
+		MercuryThreadList *tmp;
+		MercuryThread val;
 
-	assert(MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread
-		== MR_ENGINE(MR_eng_owner_thread));
-	MR_ENGINE(MR_eng_c_depth)--;
-{
-	MercuryThreadList *tmp;
-	MercuryThread val;
+		assert(MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread
+			== MR_ENGINE(MR_eng_owner_thread));
+		MR_ENGINE(MR_eng_c_depth)--;
 
-	tmp = MR_ENGINE(MR_eng_saved_owners);
-	if (tmp != NULL)
-	{
-		val = tmp->thread;
-		MR_ENGINE(MR_eng_saved_owners) = tmp->next;
-		MR_GC_free(tmp);
-	} else {
-		val = 0;
+		tmp = MR_ENGINE(MR_eng_saved_owners);
+		if (tmp != NULL)
+		{
+			val = tmp->thread;
+			MR_ENGINE(MR_eng_saved_owners) = tmp->next;
+			MR_GC_free(tmp);
+		} else {
+			val = 0;
+		}
+		MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread = val;
 	}
-	MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread = val;
-}
 #endif
 
 	MR_debugmsg1("in label `engine_done', locals at %p\n", locals);

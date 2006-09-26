@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997, 2000-2001, 2004 The University of Melbourne.
+** Copyright (C) 1997, 2000-2001, 2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -69,6 +69,8 @@ MR_print_register_usage_counts(void)
 	printf(MR_COUNT_FORMAT, MR_num_uses[MR_PNEG_NEXT_SLOT]);
 	printf("MR_pneg_stack");
 	printf(MR_COUNT_FORMAT, MR_num_uses[MR_PNEG_STACK_SLOT]);
+	printf("MR_parent_sp");
+	printf(MR_COUNT_FORMAT, MR_num_uses[MR_PARENT_SP_SLOT]);
 }
 #endif	/* MR_MEASURE_REGISTER_USAGE */
 
@@ -126,6 +128,8 @@ MR_verify_fake_registers(void)
 	printf(MR_VERIFY_FORMAT, MR_PNEG_NEXT_SLOT);
 	printf("MR_pneg_stack");
 	printf(MR_VERIFY_FORMAT, MR_PNEG_STACK_SLOT);
+	printf("MR_parent_sp");
+	printf(MR_VERIFY_FORMAT, MR_PARENT_SP_SLOT);
 }
 #endif	/* MR_VERIFY_FAKE_REGISTERS */
 

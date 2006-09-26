@@ -536,9 +536,7 @@ find_used_registers_instr(pragma_c(_, Components, _, _, _, _, _, _, _),
     find_used_registers_components(Components, !Used).
 find_used_registers_instr(init_sync_term(Lval, _), !Used) :-
     find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(fork(_, _, _), !Used).
-find_used_registers_instr(join_and_terminate(Lval), !Used) :-
-    find_used_registers_lval(Lval, !Used).
+find_used_registers_instr(fork(_), !Used).
 find_used_registers_instr(join_and_continue(Lval, _), !Used) :-
     find_used_registers_lval(Lval, !Used).
 

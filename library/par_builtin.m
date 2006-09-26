@@ -109,7 +109,7 @@
     GC_REGISTER_FINALIZER(Future, MR_finalize_future, NULL, NULL, NULL);
   #endif
 
-    Future->signalled = 0;
+    Future->signalled = MR_FALSE;
     Future->suspended = NULL;
     Future->value = 0;
 
@@ -154,7 +154,6 @@
         MR_UNLOCK(&(Future->lock), ""future.wait"");
     } else {
         MR_Context *ctxt;
-        MercuryThreadList *new_element;
 
         /*
         ** The address of the future can be lost when we resume so save it on
@@ -163,39 +162,21 @@
         MR_incr_sp(1);
         MR_sv(1) = (MR_Word) Future;
 
-        ctxt = MR_ENGINE(MR_eng_this_context);
-
-        /*
-        ** Mark the current context as being owned by this thread to prevent it
-        ** from being resumed by another thread. Specifically we don't want the
-        ** 'main' context to be resumed by any thread other than the primordial
-        ** thread, because after the primordial thread finishes executing the
-        ** main program it has to clean up the Mercury runtime.
-        **
-        ** XXX this solution seems too heavy for the problem at hand
-        */
-        MR_ENGINE(MR_eng_c_depth)++;
-
-        new_element = MR_GC_NEW(MercuryThreadList);
-        new_element->thread = ctxt->MR_ctxt_owner_thread;
-        new_element->next = MR_ENGINE(MR_eng_saved_owners);
-        MR_ENGINE(MR_eng_saved_owners) = new_element;
-
-        ctxt->MR_ctxt_owner_thread = MR_ENGINE(MR_eng_owner_thread);
-
         /*
         ** Save this context and put it on the list of suspended contexts for
         ** this future.
         */
+        ctxt = MR_ENGINE(MR_eng_this_context);
         MR_save_context(ctxt);
+
         ctxt->MR_ctxt_resume = MR_ENTRY(mercury__par_builtin__wait_resume);
         ctxt->MR_ctxt_next = Future->suspended;
         Future->suspended = ctxt;
 
         MR_UNLOCK(&(Future->lock), ""future.wait"");
-        MR_runnext();
 
-        assert(0);
+        MR_ENGINE(MR_eng_this_context) = NULL;
+        MR_runnext();
     }
 
 #else
@@ -235,27 +216,7 @@ INIT mercury_par_builtin_wait_resume
         Future = (MR_Future *) MR_sv(1);
         MR_decr_sp(1);
 
-        assert(Future->signalled == 1);
-
-        /* Restore the owning thread in the current context. */
-        assert(MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread
-            == MR_ENGINE(MR_eng_owner_thread));
-        MR_ENGINE(MR_eng_c_depth)--;
-        {
-            MercuryThreadList *tmp;
-            MercuryThread val;
-
-            tmp = MR_ENGINE(MR_eng_saved_owners);
-            if (tmp != NULL)
-            {
-                val = tmp->thread;
-                MR_ENGINE(MR_eng_saved_owners) = tmp->next;
-                MR_GC_free(tmp);
-            } else {
-                val = 0;
-            }
-            MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread = val;
-        }
+        assert(Future->signalled);
 
         /* Return to the caller of par_builtin.wait. */
         MR_r1 = Future->value;
@@ -298,7 +259,7 @@ INIT mercury_par_builtin_wait_resume
 "
 #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
 
-    assert(Future->signalled == 1);
+    assert(Future->signalled);
     Value = Future->value;
 
 #else
@@ -316,6 +277,7 @@ INIT mercury_par_builtin_wait_resume
 #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
 
     MR_Context *ctxt;
+    MR_Context *next;
 
     MR_LOCK(&(Future->lock), ""future.signal"");
 
@@ -323,25 +285,23 @@ INIT mercury_par_builtin_wait_resume
     ** If the same future is passed twice to a procedure then it
     ** could be signalled twice, but the value must be the same.
     */
-    if (Future->signalled != 0) {
-        assert(Future->signalled == 1);
+    if (Future->signalled) {
         assert(Future->value == Value);
     } else {
-        Future->signalled++;
+        Future->signalled = MR_TRUE;
         Future->value = Value;
     }
 
     /* Schedule all the contexts which are blocking on this future. */
     ctxt = Future->suspended;
     while (ctxt != NULL) {
-        MR_schedule(ctxt);
-        ctxt = ctxt->MR_ctxt_next;
+        next = ctxt->MR_ctxt_next;
+        MR_schedule_context(ctxt);  /* clobbers MR_ctxt_next */
+        ctxt = next;
     }
     Future->suspended = NULL;
 
     MR_UNLOCK(&(Future->lock), ""future.signal"");
-
-    assert(Future->signalled == 1);
 
 #else
 

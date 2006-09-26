@@ -878,11 +878,13 @@ live_value_type(lval(redofr_slot(_)), live_value_unwanted).
 live_value_type(lval(redoip_slot(_)), live_value_unwanted).
 live_value_type(lval(succip_slot(_)), live_value_unwanted).
 live_value_type(lval(sp), live_value_unwanted).
+live_value_type(lval(parent_sp), live_value_unwanted).
 live_value_type(lval(lvar(_)), live_value_unwanted).
 live_value_type(lval(field(_, _, _)), live_value_unwanted).
 live_value_type(lval(temp(_, _)), live_value_unwanted).
 live_value_type(lval(reg(_, _)), live_value_unwanted).
 live_value_type(lval(stackvar(_)), live_value_unwanted).
+live_value_type(lval(parent_stackvar(_)), live_value_unwanted).
 live_value_type(lval(framevar(_)), live_value_unwanted).
 live_value_type(lval(mem_ref(_)), live_value_unwanted). % XXX
 live_value_type(lval(global_var_ref(_)), live_value_unwanted).

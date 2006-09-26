@@ -1667,6 +1667,7 @@ AC_CACHE_VAL(mercury_cv_sync_term_size,
 	int main() {
 		struct {
 			pthread_mutex_t lock;
+			void		*orig_context;
 			int		count;
 			void		*parent;
 		} x;

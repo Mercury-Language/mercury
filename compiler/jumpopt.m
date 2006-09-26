@@ -756,16 +756,12 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         % for the last time.
         unexpected(this_file, "instr_list: block")
     ;
-        Uinstr0 = fork(Child0, Parent0, NumSlots),
+        Uinstr0 = fork(Child0),
         short_label(Instrmap, Child0, Child),
-        short_label(Instrmap, Parent0, Parent),
-        (
-            Child = Child0,
-            Parent = Parent0
-        ->
+        ( Child = Child0 ->
             NewRemain = usual_case
         ;
-            Uinstr = fork(Child, Parent, NumSlots),
+            Uinstr = fork(Child),
             Comment = Comment0 ++ " (redirect)",
             Instr = Uinstr - Comment,
             NewRemain = specified([Instr], Instrs0)
@@ -802,7 +798,6 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         ; Uinstr0 = incr_hp(_, _, _, _, _, _)
         ; Uinstr0 = restore_hp(_)
         ; Uinstr0 = init_sync_term(_, _)
-        ; Uinstr0 = join_and_terminate(_)
         ),
         NewRemain = usual_case
     ),
@@ -1053,8 +1048,10 @@ jumpopt.short_labels_lval(_, maxfr, maxfr).
 jumpopt.short_labels_lval(_, curfr, curfr).
 jumpopt.short_labels_lval(_, hp, hp).
 jumpopt.short_labels_lval(_, sp, sp).
+jumpopt.short_labels_lval(_, parent_sp, parent_sp).
 jumpopt.short_labels_lval(_, temp(T, N), temp(T, N)).
 jumpopt.short_labels_lval(_, stackvar(N), stackvar(N)).
+jumpopt.short_labels_lval(_, parent_stackvar(N), parent_stackvar(N)).
 jumpopt.short_labels_lval(_, framevar(N), framevar(N)).
 jumpopt.short_labels_lval(_, global_var_ref(Var), global_var_ref(Var)).
 jumpopt.short_labels_lval(Instrmap, succip_slot(Rval0), succip_slot(Rval)) :-
