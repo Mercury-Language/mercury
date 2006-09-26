@@ -244,9 +244,9 @@ of octal digits must be terminated with a closing backslash.
 
 The sequence @samp{\u} or @samp{\U} can be used to escape Unicode characters.
 @samp{\u} must be followed by the Unicode character code expressed as four
-hexidecimal digits.
+hexadecimal digits.
 @samp{\U} must be followed by the Unicode character code expressed as eight
-hexidecimal digits.
+hexadecimal digits.
 The encoding used for Unicode characters is implementation dependent.
 For the Melbourne Mercury compiler, it is UTF-8 for the C backends and UTF-16
 for the Java and IL backends.
@@ -6442,7 +6442,7 @@ or
 exports a procedure for use by foreign language @var{Lang}.
 For each exported procedure the Mercury implementation will create an
 interface to the named Mercury procedure in the foreign language using
-the name @var{ForeignName}.  The form of this interface is depenendent
+the name @var{ForeignName}.  The form of this interface is dependent
 upon the specified foreign language.  For further details see the language
 specific information below.
 
@@ -8878,7 +8878,7 @@ That is, a declaration of the form:
 
 @example
 :- impure pred @var{Pred}(@var{Arguments}@dots{}).
-:- semimpure pred @var{Pred}(@var{Arguments}@dots{}).
+:- semipure pred @var{Pred}(@var{Arguments}@dots{}).
 @end example
 
 @noindent
