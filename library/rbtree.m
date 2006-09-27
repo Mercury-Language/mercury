@@ -142,13 +142,6 @@
 :- pred rbtree.remove(rbtree(K, V)::in, K::in, V::out,
     rbtree(K, V)::out) is semidet.
 
-    % Same as above, except this version does not return the value
-    % corresponding to the key.  Its use is deprecated, but it is
-    % kept for compatibility with older versions of this library.
-    %
-:- pragma obsolete(rbtree.remove/3).
-:- pred rbtree.remove(rbtree(K, V)::in, K::in, rbtree(K, V)::out) is semidet.
-
     % Deletes the node with the minimum key from the tree,
     % and returns the key and value fields.
     %
@@ -885,9 +878,6 @@ rbtree.delete_2(black(K0, V0, L, R), K, MustRemove, MaybeV, Tree) :-
 
 rbtree.remove(Tree0, K, V, Tree) :-
     rbtree.delete_2(Tree0, K, yes, yes(V), Tree).
-
-rbtree.remove(Tree0, K, Tree) :-
-    rbtree.remove(Tree0, K, _, Tree).
 
 rbtree.remove_largest(empty, _K, _V, _Tree) :-
     fail.

@@ -81,8 +81,6 @@
 :- func integer.abs(integer) = integer.
 
 :- func integer.pow(integer, integer) = integer.
-:- pragma obsolete(integer.pow/3).
-:- pred integer.pow(integer::in, integer::in, integer::out) is det.
 
 :- func integer.float(integer) = float.
 :- func integer.int(integer) = int.
@@ -906,8 +904,6 @@ pos_lt(Xs, Ys) :-
 pos_geq(Xs, Ys) :-
     C = pos_cmp(Xs, Ys),
     ( C = (>) ; C = (=) ).
-
-integer.pow(A, N, integer.pow(A, N)).
 
 integer.pow(A, N) = P :-
     ( big_isnegative(N) ->

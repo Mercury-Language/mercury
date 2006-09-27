@@ -41,10 +41,6 @@
 
 :- func rational.from_integers(integer, integer) = rational.
 
-    % New programs should use rational.from_integers/2.
-:- pragma obsolete(rational_from_integers/2).
-:- func rational.rational_from_integers(integer, integer) = rational.
-
 % :- func float(rational) = float.
 
 :- func '+'(rational) = rational.
@@ -120,8 +116,6 @@ rational.rational(Num, Den) = rational_norm(integer(Num), integer(Den)).
 rational.from_integer(Integer) = rational_norm(Integer, integer.one).
 
 rational.from_integers(Num, Den) = rational_norm(Num, Den).
-
-rational_from_integers(Num, Den) = rational_norm(Num, Den).
 
 %% XXX: There are ways to do this in some cases even if the
 %% float conversions would overflow.

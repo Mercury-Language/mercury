@@ -62,12 +62,6 @@
 :- func int.min(int, int) = int.
 :- pred int.min(int::in, int::in, int::out) is det.
 
-    % conversion of integer to floating point
-    % OBSOLETE: use float.float/1 instead.
-    %
-:- pragma obsolete(int.to_float/2).
-:- pred int.to_float(int::in, float::out) is det.
-
     % exponentiation
     % int.pow(X, Y, Z): Z is X raised to the Yth power
     % Throws a `math.domain_error' exception if Y is negative.
@@ -608,27 +602,6 @@ int.log2_2(X, N0, N) :-
 % in case you should take the address of `is' or something weird like that.
 
 is(X, X).
-
-%-----------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    int.to_float(IntVal::in, FloatVal::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    FloatVal = IntVal;
-").
-:- pragma foreign_proc("C#",
-    int.to_float(IntVal::in, FloatVal::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    FloatVal = (double) IntVal;
-").
-:- pragma foreign_proc("Java",
-    int.to_float(IntVal::in, FloatVal::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    FloatVal = (double) IntVal;
-").
 
 %-----------------------------------------------------------------------------%
 
