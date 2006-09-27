@@ -366,6 +366,11 @@
 % Everything below here is not intended to be part of the public interface,
 % and will not be included in the Mercury library reference manual.
 
+% This import is needed by the Mercury clauses for semidet_succeed/0
+% and semidet_fail/0.
+%
+:- import_module int.
+
 %-----------------------------------------------------------------------------%
 
 :- interface.

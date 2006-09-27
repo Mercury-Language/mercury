@@ -93,6 +93,10 @@
 
 :- implementation.
 
+% For use by the Java and IL backends.
+%
+:- use_module rtti_implementation.
+
 :- pragma foreign_decl("C", "
 
 #include ""mercury_type_desc.h""

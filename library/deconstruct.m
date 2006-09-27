@@ -232,6 +232,10 @@
 :- import_module int.
 :- import_module require.
 
+% For use by the Java and IL backends.
+%
+:- use_module rtti_implementation.
+
 :- pragma foreign_decl("C", "
 
 #include ""mercury_deconstruct.h""
