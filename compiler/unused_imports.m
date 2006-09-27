@@ -23,6 +23,7 @@
 
 :- import_module io.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
     % This predicate issues a warning for each import_module
@@ -50,7 +51,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type.
 
 :- import_module libs.
 :- import_module libs.compiler_util.
@@ -60,10 +60,8 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module relation.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%

@@ -17,10 +17,8 @@
 :- module backend_libs.bytecode_data.
 :- interface.
 
-:- import_module int.
 :- import_module io.
 :- import_module list.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -64,9 +62,12 @@
 
 :- implementation.
 
+:- import_module libs.
 :- import_module libs.compiler_util.
 
 :- import_module char.
+:- import_module int.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

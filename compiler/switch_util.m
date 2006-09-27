@@ -18,9 +18,11 @@
 :- interface.
 
 :- import_module backend_libs.rtti.         % for sectag_locn
+:- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
@@ -149,6 +151,7 @@
 
 :- implementation.
 
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 

@@ -20,10 +20,10 @@
 
 :- import_module check_hlds.build_mode_constraints.
 :- import_module check_hlds.prop_mode_constraints.
+:- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
 
-:- import_module int.
 :- import_module io.
 :- import_module list.
 :- import_module set.
@@ -106,14 +106,15 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.goal_util.
+:- import_module libs.
 :- import_module libs.compiler_util.
-:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bimap.
 :- import_module bool.
+:- import_module int.
 :- import_module multi_map.
 :- import_module map.
 :- import_module maybe.

@@ -19,7 +19,9 @@
 :- module backend_libs.builtin_ops.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_pred.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module list.

@@ -93,8 +93,6 @@
 
 :- implementation.
 
-:- use_module rtti_implementation.
-
 :- pragma foreign_decl("C", "
 
 #include ""mercury_type_desc.h""

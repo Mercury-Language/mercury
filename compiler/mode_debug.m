@@ -35,13 +35,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.modes.
-:- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_module.
+:- import_module hlds.
 :- import_module hlds.instmap.
-:- import_module hlds.passes_aux.
-:- import_module libs.globals.
-:- import_module libs.options.
+:- import_module parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
@@ -49,7 +45,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module term.

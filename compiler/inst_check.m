@@ -24,6 +24,7 @@
 
 :- import_module io.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
     % This predicate issues a warning for each user defined bound insts
@@ -49,7 +50,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module libs.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.

@@ -16,10 +16,15 @@
 :- module bytecode_backend.bytecode.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module hlds.
 :- import_module hlds.hlds_data.
+:- import_module libs.
 :- import_module libs.tree.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module char.
@@ -147,13 +152,9 @@
 
 :- import_module backend_libs.bytecode_data.
 :- import_module backend_libs.c_util.
-:- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
-:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
-:- import_module int.
-:- import_module library.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

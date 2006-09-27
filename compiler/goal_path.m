@@ -18,9 +18,11 @@
 :- module check_hlds.goal_path.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -58,12 +60,11 @@
 
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module char.
 :- import_module int.
 :- import_module list.
 :- import_module map.

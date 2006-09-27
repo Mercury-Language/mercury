@@ -18,7 +18,6 @@
 
 :- module list.
 :- interface.
-:- import_module int.
 
 %-----------------------------------------------------------------------------%
 
@@ -1231,6 +1230,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module require.
 :- import_module set_tree234.
 :- import_module string.

@@ -101,7 +101,6 @@
 
 :- import_module counter.
 :- import_module int.
-:- import_module list.
 :- import_module unit.
 :- import_module univ.
 :- import_module version_array.

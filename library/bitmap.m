@@ -28,7 +28,6 @@
 
 :- import_module array.
 :- import_module bool.
-:- import_module int.
 
 %-----------------------------------------------------------------------------%
 
@@ -164,6 +163,7 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module int.
 :- import_module require.
 
     % A bitmap is represented as an array of ints where each int stores

@@ -455,11 +455,8 @@
 :- implementation.
 
 :- import_module array.
-:- import_module bool.
-:- import_module char.
 :- import_module construct.
 :- import_module deconstruct.
-:- import_module float.
 :- import_module int.
 :- import_module require.
 :- import_module string.

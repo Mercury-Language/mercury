@@ -19,8 +19,6 @@
 :- module benchmarking.
 :- interface.
 
-:- import_module int.
-
     % `report_stats' is a non-logical procedure intended for use in profiling
     % the performance of a program. It has the side-effect of reporting
     % some memory and time usage statistics about the time period since
@@ -71,6 +69,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module int.
 
 %-----------------------------------------------------------------------------%
 

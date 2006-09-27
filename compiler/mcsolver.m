@@ -119,16 +119,14 @@
 
 :- implementation.
 
+:- import_module libs.
 :- import_module libs.compiler_util.
 
 :- import_module eqvclass.
-:- import_module exception.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
 :- import_module set.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

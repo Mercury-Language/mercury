@@ -26,9 +26,6 @@
 
 :- import_module assoc_list.
 :- import_module char.
-:- import_module float.
-:- import_module int.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -151,13 +148,14 @@
 :- implementation.
 
 :- import_module array.
-:- import_module bool.
 :- import_module deconstruct.
 :- import_module exception.
+:- import_module float.
+:- import_module int.
 :- import_module list.
-:- import_module math.
 :- import_module pair.
 :- import_module require.
+:- import_module string.
 :- import_module type_desc.
 :- import_module univ.
 :- import_module version_array.

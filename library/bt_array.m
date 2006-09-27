@@ -29,7 +29,6 @@
 
 :- module bt_array.
 :- interface.
-:- import_module int.
 :- import_module list.
 
 :- type bt_array(T).
@@ -177,6 +176,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module require.
 :- import_module string.
 

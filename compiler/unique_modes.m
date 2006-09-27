@@ -35,9 +35,11 @@
 :- interface.
 
 :- import_module check_hlds.mode_info.
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -84,18 +86,13 @@
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.unify_proc.
-:- import_module hlds.hlds_data.
-:- import_module hlds.hlds_out.
 :- import_module hlds.instmap.
-:- import_module hlds.passes_aux.
+:- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 
-:- import_module assoc_list.
 :- import_module bag.
 :- import_module int.
 :- import_module list.
@@ -104,7 +101,6 @@
 :- import_module pair.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

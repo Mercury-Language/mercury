@@ -22,11 +22,9 @@
 
 :- import_module backend_libs.builtin_ops.
 
-:- import_module char.
-:- import_module int.
-:- import_module io.
-:- import_module string.
 
+:- import_module char.
+:- import_module io.
 %-----------------------------------------------------------------------------%
 %
 % Line numbering.
@@ -152,14 +150,14 @@
 
 :- implementation.
 
-:- import_module backend_libs.name_mangle.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.prog_foreign.
-:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
+:- import_module int.
 :- import_module list.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %

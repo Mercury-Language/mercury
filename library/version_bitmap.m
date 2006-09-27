@@ -25,7 +25,6 @@
 :- interface.
 
 :- import_module bool.
-:- import_module int.
 
 %-----------------------------------------------------------------------------%
 
@@ -109,6 +108,7 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module int.
 :- import_module require.
 :- import_module version_array.
 

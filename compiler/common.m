@@ -32,8 +32,10 @@
 :- interface.
 
 :- import_module check_hlds.simplify.
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -90,31 +92,22 @@
 :- implementation.
 
 :- import_module check_hlds.det_report.
-:- import_module check_hlds.det_util.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
-:- import_module check_hlds.type_util.
-:- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
-:- import_module hlds.quantification.
+:- import_module libs.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
+:- import_module transform_hlds.    % for pd_cost, etc.
 :- import_module transform_hlds.pd_cost.
 
-:- import_module bool.
 :- import_module eqvclass.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module sveqvclass.
 :- import_module svmap.
 :- import_module term.

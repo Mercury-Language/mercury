@@ -340,7 +340,6 @@
 
 :- implementation.
 
-:- import_module require.
 :- import_module set_ordlist.
 :- import_module set_unordlist.
 

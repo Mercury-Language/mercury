@@ -201,7 +201,6 @@
 :- import_module lexer.
 :- import_module list.
 :- import_module parser.
-:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

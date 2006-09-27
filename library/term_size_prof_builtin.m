@@ -76,9 +76,6 @@
 
 :- implementation.
 
-:- import_module int.
-:- import_module require.
-
 %---------------------------------------------------------------------------%
 
 

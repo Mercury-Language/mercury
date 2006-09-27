@@ -154,8 +154,6 @@
 :- interface.
 
 :- import_module char.
-:- import_module float.
-:- import_module int.
 :- import_module io.
 :- import_module list.
 :- import_module string.
@@ -379,7 +377,7 @@
 :- import_module array.
 :- import_module deconstruct.
 :- import_module enum.
-:- import_module exception.
+:- import_module int.
 :- import_module map.
 :- import_module ops.
 :- import_module pair.

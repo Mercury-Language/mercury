@@ -22,6 +22,7 @@
 
 :- import_module check_hlds.abstract_mode_constraints.
 :- import_module check_hlds.build_mode_constraints.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
@@ -76,42 +77,23 @@
 :- implementation.
 
 :- import_module check_hlds.goal_path.
-:- import_module check_hlds.mcsolver.
-:- import_module check_hlds.mode_constraint_robdd.
-:- import_module check_hlds.mode_ordering.
-:- import_module check_hlds.mode_util.
-:- import_module hlds.hhf.
 :- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.inst_graph.
-:- import_module hlds.passes_aux.
+:- import_module libs.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
-:- import_module mode_robdd.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_mode.
-:- import_module parse_tree.modules.
-:- import_module transform_hlds.dependency_graph.
 
-:- import_module assoc_list.
-:- import_module bimap.
 :- import_module bool.
-:- import_module int.
-:- import_module multi_map.
 :- import_module pair.
-:- import_module robdd.
 :- import_module set.
-:- import_module sparse_bitset.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

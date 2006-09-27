@@ -20,7 +20,6 @@
 :- module version_array2d.
 :- interface.
 
-:- import_module int.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -108,6 +107,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module require.
 :- import_module string.
 :- import_module version_array.

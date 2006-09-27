@@ -89,7 +89,6 @@
 :- implementation.
 
 :- import_module counter.
-:- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module require.

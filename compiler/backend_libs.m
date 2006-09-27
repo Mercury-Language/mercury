@@ -13,8 +13,6 @@
 %
 :- module backend_libs.
 :- interface.
-:- import_module hlds.
-:- import_module parse_tree.
 
 % modules that provide functionality used by several different back-ends
 :- include_module base_typeclass_info.
@@ -35,10 +33,6 @@
 :- include_module type_class_info.
 
 :- implementation.
-
-:- import_module check_hlds.        % needed for type_util, mode_util
-:- import_module libs.
-:- import_module mdbcomp.
 
 :- end_module backend_libs.
 

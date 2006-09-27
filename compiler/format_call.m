@@ -81,10 +81,13 @@
 :- interface.
 
 :- import_module check_hlds.det_report.
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module list.
@@ -104,6 +107,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_pred.
+:- import_module libs.
 :- import_module libs.compiler_util.
 
 :- import_module counter.

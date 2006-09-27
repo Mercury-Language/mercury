@@ -40,7 +40,9 @@
 :- module check_hlds.inst_match.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -303,8 +305,9 @@
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_data.
+:- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
@@ -316,7 +319,6 @@
 :- import_module maybe.
 :- import_module set.
 :- import_module set_tree234.
-:- import_module std_util.
 :- import_module svset.
 :- import_module term.
 

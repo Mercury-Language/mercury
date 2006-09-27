@@ -21,6 +21,7 @@
 
 :- import_module check_hlds.abstract_mode_constraints.
 :- import_module check_hlds.prop_mode_constraints.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 :- import_module io.
@@ -43,6 +44,8 @@
 
 :- implementation.
 
+:- import_module transform_hlds.    % for pd_cost, etc.
+
 :- import_module check_hlds.build_mode_constraints.
 :- import_module check_hlds.ordering_mode_constraints.
 
@@ -52,32 +55,30 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hhf.
 :- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.inst_graph.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mode_robdd.
 % :- import_module mode_robdd.check.
 % :- import_module mode_robdd.tfeir.
 :- import_module mode_robdd.tfeirn.
+:- import_module parse_tree.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_mode.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
-:- import_module bimap.
 :- import_module bool.
-:- import_module gc.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -89,7 +90,6 @@
 :- import_module sparse_bitset.
 :- import_module string.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 % :- import_module unsafe.

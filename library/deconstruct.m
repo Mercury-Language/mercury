@@ -231,8 +231,6 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module rtti_implementation.
-:- import_module string.
 
 :- pragma foreign_decl("C", "
 

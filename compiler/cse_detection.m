@@ -20,6 +20,7 @@
 :- module check_hlds.cse_detection.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
@@ -35,26 +36,24 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_util.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.modes.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.switch_detection.
 :- import_module check_hlds.switch_detection.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module assoc_list.
@@ -62,7 +61,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module multi_map.
 :- import_module pair.
 :- import_module set.
 :- import_module string.

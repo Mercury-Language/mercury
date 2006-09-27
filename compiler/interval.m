@@ -32,8 +32,10 @@
 :- module backend_libs.interval.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -176,26 +178,18 @@
 
 :- implementation.
 
+:- import_module check_hlds.        % needed for type_util, mode_util
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_out.
 :- import_module hlds.instmap.
-:- import_module hlds.quantification.
+:- import_module libs.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.call_gen.
-:- import_module ll_backend.liveness.
-:- import_module ll_backend.live_vars.
-:- import_module ll_backend.store_alloc.
-:- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module svmap.

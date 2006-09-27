@@ -23,7 +23,9 @@
 :- module check_hlds.mode_constraint_robdd.
 :- interface.
 
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module mode_robdd.
@@ -146,7 +148,6 @@
 :- import_module mode_robdd.tfeirn.
 % :- import_module mode_robdd.check.
 
-:- import_module assoc_list.
 :- import_module bimap.
 :- import_module bool.
 :- import_module list.
@@ -157,9 +158,7 @@
 :- import_module sparse_bitset.
 :- import_module stack.
 :- import_module std_util.
-:- import_module string.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 :- type mc_type ---> mc_type.

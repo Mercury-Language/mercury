@@ -54,7 +54,6 @@
 :- interface.
 
 :- import_module deconstruct.
-:- import_module int.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -525,11 +524,11 @@
 
 :- implementation.
 
-:- import_module array.
 :- import_module bool.
 :- import_module char.
 :- import_module construct.
 :- import_module exception.
+:- import_module int.
 :- import_module map.
 :- import_module require.
 :- import_module string.

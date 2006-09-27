@@ -28,7 +28,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %
@@ -253,11 +252,11 @@
 :- implementation.
 
 :- import_module char.
-:- import_module enum.
 :- import_module exception.
 :- import_module int.
 :- import_module require.
 :- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

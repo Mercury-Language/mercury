@@ -414,13 +414,6 @@
 
 :- implementation.
 
-:- import_module char.
-:- import_module float.
-:- import_module int.
-:- import_module list.
-:- import_module require.
-:- import_module string.
-
 %-----------------------------------------------------------------------------%
 
 false :-

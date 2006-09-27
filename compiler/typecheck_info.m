@@ -17,12 +17,15 @@
 :- module check_hlds.typecheck_info.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -354,6 +357,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -361,11 +365,8 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
-:- import_module parse_tree.prog_util.
 
 :- import_module int.
-:- import_module pair.
-:- import_module set.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.

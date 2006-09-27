@@ -19,10 +19,13 @@
 :- module backend_libs.proc_label.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -57,11 +60,9 @@
 :- implementation.
 
 :- import_module backend_libs.rtti.
-:- import_module check_hlds.type_util.
-:- import_module hlds.special_pred.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
 :- import_module list.
 :- import_module pair.

@@ -116,7 +116,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
-:- import_module univ.
 
 :- pragma foreign_code("C#", "
 

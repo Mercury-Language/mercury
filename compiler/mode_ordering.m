@@ -15,6 +15,7 @@
 :- interface.
 
 :- import_module check_hlds.mode_constraint_robdd.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.inst_graph.
@@ -54,7 +55,9 @@
 % :- import_module mode_robdd.check.
 % :- import_module mode_robdd.tfeir.
 :- import_module mode_robdd.tfeirn.
+:- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

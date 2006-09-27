@@ -16,9 +16,12 @@
 :- module backend_libs.compile_target_code.
 :- interface.
 
+:- import_module parse_tree.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.modules.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
@@ -168,8 +171,8 @@
 
 :- implementation.
 
-:- import_module backend_libs.foreign.
-:- import_module backend_libs.name_mangle.
+:- import_module hlds.
+
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -180,10 +183,8 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 
-:- import_module char.
 :- import_module dir.
 :- import_module getopt_io.
-:- import_module int.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

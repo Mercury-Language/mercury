@@ -16,10 +16,12 @@
 :- module check_hlds.mode_util.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -188,23 +190,20 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
-:- import_module check_hlds.mode_info.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
-:- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 

@@ -194,7 +194,6 @@
 :- import_module float.
 :- import_module int.
 :- import_module require.
-:- import_module std_util.
 
 %---------------------------------------------------------------------------%
 

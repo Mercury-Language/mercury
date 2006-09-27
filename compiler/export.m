@@ -20,8 +20,11 @@
 :- module backend_libs.export.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
@@ -78,6 +81,9 @@
 
 :- implementation.
 
+:- import_module check_hlds.        % needed for type_util, mode_util
+:- import_module libs.
+
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
@@ -89,7 +95,6 @@
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_util.
@@ -104,7 +109,6 @@
 :- import_module pair.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

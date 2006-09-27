@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module bytecode_backend.bytecode.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 :- import_module io.
@@ -43,7 +44,9 @@
 % in call_gen.m that we use here into arg_info.m, and to then rework
 % arg_info.m so that it didn't depend on the LLDS.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.    % for type_util and mode_util
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
@@ -54,17 +57,18 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
+:- import_module libs.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.tree.
+:- import_module ll_backend.  	% bytecode_gen uses ll_backend__call_gen.m
 :- import_module ll_backend.call_gen.  % XXX for arg passing convention
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module counter.
 :- import_module deconstruct.
 :- import_module int.

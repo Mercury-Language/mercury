@@ -21,7 +21,6 @@
 :- interface.
 
 :- import_module array.
-:- import_module int.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -128,6 +127,7 @@
 
 :- import_module array.
 :- import_module require.
+:- import_module int.
 
     % array2d(Rows, Cols, Array)
     %

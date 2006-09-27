@@ -79,7 +79,9 @@
 
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
 :- import_module bool.
@@ -101,9 +103,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.goal_path.
-:- import_module check_hlds.inst_match.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_errors.
 :- import_module check_hlds.typecheck_info.
@@ -113,40 +113,34 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_event.
-:- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_io_util.
-:- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
-:- import_module getopt_io.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
 :- import_module pair.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

@@ -48,13 +48,16 @@
 :- interface.
 
 :- import_module check_hlds.mode_info.
+:- import_module hlds.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -140,7 +143,6 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.modes.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.post_typecheck.
 :- import_module check_hlds.switch_detection.
@@ -153,14 +155,12 @@
 :- import_module hlds.quantification.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.

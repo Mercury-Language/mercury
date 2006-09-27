@@ -19,6 +19,7 @@
 :- module backend_libs.matching.
 :- interface.
 
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -87,6 +88,7 @@
 % Uncomment if you want to dump performance information into the .err file.
 % :- import_module unsafe.
 
+:- import_module libs.
 :- import_module libs.compiler_util.
 
 :- import_module assoc_list.

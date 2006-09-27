@@ -35,7 +35,6 @@
 :- module version_array.
 :- interface.
 
-:- import_module int.
 :- import_module list.
 
 :- type version_array(T).
@@ -139,7 +138,7 @@
 
 :- implementation.
 
-:- import_module array.
+:- import_module int.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%

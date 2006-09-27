@@ -51,11 +51,14 @@
 
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.det_util.
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module io.
@@ -108,17 +111,13 @@
 :- implementation.
 
 :- import_module check_hlds.modecheck_call.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.purity.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_out.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.

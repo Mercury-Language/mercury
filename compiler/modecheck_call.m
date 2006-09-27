@@ -24,10 +24,13 @@
 
 :- import_module check_hlds.mode_info.
 :- import_module check_hlds.modes.
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -75,30 +78,25 @@
 
 :- implementation.
 
-:- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
-:- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modes.
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
-:- import_module hlds.hlds_data.
 :- import_module hlds.instmap.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
-:- import_module int.
 :- import_module map.
 :- import_module set.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

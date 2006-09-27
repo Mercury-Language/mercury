@@ -27,7 +27,6 @@
 :- module cord.
 :- interface.
 
-:- import_module int.
 :- import_module list.
 
     % Cords that contain the same members in the same order will not
@@ -117,6 +116,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module int.
 
     % We impose the following invariants to ensure we have a unique
     % representation for the empty cord (this makes the implementation

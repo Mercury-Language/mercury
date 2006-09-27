@@ -174,11 +174,14 @@
 :- module check_hlds.polymorphism.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module io.
@@ -374,42 +377,34 @@
 
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.purity.
-:- import_module check_hlds.typecheck.
 :- import_module check_hlds.type_util.
-:- import_module check_hlds.unify_proc.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_out.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
+:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 

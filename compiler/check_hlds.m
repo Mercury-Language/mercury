@@ -11,13 +11,6 @@
 :- module check_hlds.
 :- interface.
 
-:- import_module hlds.
-:- import_module mdbcomp.
-:- import_module parse_tree.
-
-% :- import_module check_hlds.type_analysis.
-% :- import_module check_hlds.mode_analysis.
-
 %-----------------------------------------------------------------------------%
 
 % Type checking
@@ -91,9 +84,6 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module libs.
-:- import_module transform_hlds.    % for pd_cost, etc.
 
 :- end_module check_hlds.
 
