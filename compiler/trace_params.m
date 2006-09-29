@@ -357,40 +357,42 @@ default_trace_suppress = set.init.
     % The exception port cannot be disabled, because it is never put into
     % compiler-generated code in the first place; such events are created
     % on the fly by library/exception.m.
-% convert_port_name("call") = call.
-convert_port_name("exit") = exit.
-convert_port_name("fail") = fail.
-convert_port_name("redo") = redo.
-% convert_port_name("excp") = exception.
-convert_port_name("exception") = exception.
-convert_port_name("cond") = ite_cond.
-convert_port_name("ite_cond") = ite_cond.
-convert_port_name("then") = ite_then.
-convert_port_name("ite_then") = ite_then.
-convert_port_name("else") = ite_else.
-convert_port_name("ite_else") = ite_else.
-convert_port_name("nege") = neg_enter.
-convert_port_name("neg_enter") = neg_enter.
-convert_port_name("negs") = neg_success.
-convert_port_name("neg_success") = neg_success.
-convert_port_name("negf") = neg_failure.
-convert_port_name("neg_failure") = neg_failure.
-convert_port_name("swtc") = switch.
-convert_port_name("switch") = switch.
-convert_port_name("disj") = disj.
-convert_port_name("frst") = nondet_pragma_first.
-convert_port_name("nondet_pragma_first") = nondet_pragma_first.
-convert_port_name("latr") = nondet_pragma_first.
-convert_port_name("nondet_pragma_later") = nondet_pragma_later.
+% convert_port_name("call") = port_call.
+convert_port_name("exit") = port_exit.
+convert_port_name("fail") = port_fail.
+convert_port_name("redo") = port_redo.
+% convert_port_name("excp") = port_exception.
+convert_port_name("exception") = port_exception.
+convert_port_name("cond") = port_ite_cond.
+convert_port_name("ite_cond") = port_ite_cond.
+convert_port_name("then") = port_ite_then.
+convert_port_name("ite_then") = port_ite_then.
+convert_port_name("else") = port_ite_else.
+convert_port_name("ite_else") = port_ite_else.
+convert_port_name("nege") = port_neg_enter.
+convert_port_name("neg_enter") = port_neg_enter.
+convert_port_name("negs") = port_neg_success.
+convert_port_name("neg_success") = port_neg_success.
+convert_port_name("negf") = port_neg_failure.
+convert_port_name("neg_failure") = port_neg_failure.
+convert_port_name("swtc") = port_switch.
+convert_port_name("switch") = port_switch.
+convert_port_name("disj") = port_disj.
+convert_port_name("frst") = port_nondet_pragma_first.
+convert_port_name("nondet_pragma_first") = port_nondet_pragma_first.
+convert_port_name("latr") = port_nondet_pragma_first.
+convert_port_name("nondet_pragma_later") = port_nondet_pragma_later.
+convert_port_name("slvr") = port_solver.
+convert_port_name("solver") = port_solver.
 
 :- func convert_port_class_name(string) = list(trace_port) is semidet.
 
 convert_port_class_name("interface") =
-    [call, exit, redo, fail, exception].
+    [port_call, port_exit, port_redo, port_fail, port_exception].
 convert_port_class_name("internal") =
-    [ite_then, ite_else, switch, disj].
+    [port_ite_then, port_ite_else, port_switch, port_disj].
 convert_port_class_name("context") =
-    [ite_cond, neg_enter, neg_success, neg_failure].
+    [port_ite_cond, port_neg_enter, port_neg_success, port_neg_failure].
 
 :- func convert_other_name(string) = trace_suppress_item is semidet.
 
@@ -429,38 +431,49 @@ trace_level_rep(decl_rep) = "MR_TRACE_LEVEL_DECL_REP".
 %-----------------------------------------------------------------------------%
 
 :- type port_category
-    --->    interface   % The events that describe the interface of a procedure
-                        % with its callers.
-    ;       internal    % The events inside each procedure that were present
-                        % in the initial procedural debugger.
-    ;       context.    % The events inside each procedure that we added
-                        % because the declarative debugger needs to know when
-                        % (potentially) negated contexts start and end.
+    --->    port_cat_interface
+            % The events that describe the interface of a procedure
+            % with its callers.
+
+    ;       port_cat_internal
+            % The events inside each procedure that were present
+            % in the initial procedural debugger.
+
+    ;       port_cat_context
+            % The events inside each procedure that we added because
+            % the declarative debugger needs to know when (potentially)
+            % negated contexts start and end.
+
+    ;       port_cat_solver.
+            % Solver events.
 
 :- func trace_port_category(trace_port) = port_category.
 
-trace_port_category(call)                   = interface.
-trace_port_category(exit)                   = interface.
-trace_port_category(fail)                   = interface.
-trace_port_category(redo)                   = interface.
-trace_port_category(exception)              = interface.
-trace_port_category(ite_cond)               = context.
-trace_port_category(ite_then)               = internal.
-trace_port_category(ite_else)               = internal.
-trace_port_category(neg_enter)              = context.
-trace_port_category(neg_success)            = context.
-trace_port_category(neg_failure)            = context.
-trace_port_category(switch)                 = internal.
-trace_port_category(disj)                   = internal.
-trace_port_category(nondet_pragma_first)    = internal.
-trace_port_category(nondet_pragma_later)    = internal.
+trace_port_category(port_call)                = port_cat_interface.
+trace_port_category(port_exit)                = port_cat_interface.
+trace_port_category(port_fail)                = port_cat_interface.
+trace_port_category(port_redo)                = port_cat_interface.
+trace_port_category(port_exception)           = port_cat_interface.
+trace_port_category(port_ite_cond)            = port_cat_context.
+trace_port_category(port_ite_then)            = port_cat_internal.
+trace_port_category(port_ite_else)            = port_cat_internal.
+trace_port_category(port_neg_enter)           = port_cat_context.
+trace_port_category(port_neg_success)         = port_cat_context.
+trace_port_category(port_neg_failure)         = port_cat_context.
+trace_port_category(port_switch)              = port_cat_internal.
+trace_port_category(port_disj)                = port_cat_internal.
+trace_port_category(port_nondet_pragma_first) = port_cat_internal.
+trace_port_category(port_nondet_pragma_later) = port_cat_internal.
+trace_port_category(port_solver)              = port_cat_solver.
 
 :- func trace_level_port_categories(trace_level) = list(port_category).
 
 trace_level_port_categories(none) = [].
-trace_level_port_categories(shallow) = [interface].
-trace_level_port_categories(deep) = [interface, internal, context].
-trace_level_port_categories(decl_rep) = [interface, internal, context].
+trace_level_port_categories(shallow) = [port_cat_interface].
+trace_level_port_categories(deep) =
+    [port_cat_interface, port_cat_internal, port_cat_context, port_cat_solver].
+trace_level_port_categories(decl_rep) =
+    [port_cat_interface, port_cat_internal, port_cat_context, port_cat_solver].
 
 :- func trace_level_allows_port_suppression(trace_level) = bool.
 
@@ -500,18 +513,19 @@ maybe_add_suppressed_event(SuppressItem, SuppressedEventsInt0,
 
 :- func port_number(trace_port) = int.
 
-port_number(call) = 1.
-port_number(exit) = 2.
-port_number(redo) = 3.
-port_number(fail) = 4.
-port_number(exception) = 5.
-port_number(ite_cond) = 6.
-port_number(ite_then) = 7.
-port_number(ite_else) = 8.
-port_number(neg_enter) = 9.
-port_number(neg_success) = 10.
-port_number(neg_failure) = 11.
-port_number(disj) = 12.
-port_number(switch) = 13.
-port_number(nondet_pragma_first) = 14.
-port_number(nondet_pragma_later) = 15.
+port_number(port_call) = 1.
+port_number(port_exit) = 2.
+port_number(port_redo) = 3.
+port_number(port_fail) = 4.
+port_number(port_exception) = 5.
+port_number(port_ite_cond) = 6.
+port_number(port_ite_then) = 7.
+port_number(port_ite_else) = 8.
+port_number(port_neg_enter) = 9.
+port_number(port_neg_success) = 10.
+port_number(port_neg_failure) = 11.
+port_number(port_disj) = 12.
+port_number(port_switch) = 13.
+port_number(port_nondet_pragma_first) = 14.
+port_number(port_nondet_pragma_later) = 15.
+port_number(port_solver) = 16.

@@ -126,10 +126,10 @@ output_layout_data_defn(Data, !DeclSet, !IO) :-
     (
         Data = label_layout_data(ProcLabel, LabelNum, ProcLayoutAddr,
             MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
-            MaybeVarInfo),
+            MaybeSolverData, MaybeVarInfo),
         output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr,
             MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
-            MaybeVarInfo, !DeclSet, !IO)
+            MaybeSolverData, MaybeVarInfo, !DeclSet, !IO)
     ;
         Data = proc_layout_data(ProcLabel, Traversal, MaybeRest),
         output_proc_layout_data_defn(ProcLabel, Traversal, MaybeRest,
@@ -176,11 +176,16 @@ output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO) :-
 
 extract_layout_name(Data, LayoutName) :-
     (
-        Data = label_layout_data(ProcLabel, LabelNum, _, _, _, _, _, yes(_)),
-        LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info)
-    ;
-        Data = label_layout_data(ProcLabel, LabelNum, _, _, _, _, _, no),
-        LayoutName = label_layout(ProcLabel, LabelNum, label_has_no_var_info)
+        Data = label_layout_data(ProcLabel, LabelNum, _, _, _, _, _, _,
+            MaybeVarInfo),
+        (
+            MaybeVarInfo = yes(_),
+            LabelVars = label_has_var_info
+        ;
+            MaybeVarInfo = no,
+            LabelVars = label_has_no_var_info
+        ),
+        LayoutName = label_layout(ProcLabel, LabelNum, LabelVars)
     ;
         Data = proc_layout_data(RttiProcLabel, _, MaybeRest),
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
@@ -225,10 +230,22 @@ make_label_layout_name(Label) = Name :-
 
 output_layout_name(Data, !IO) :-
     (
-        Data =label_layout(ProcLabel, LabelNum, _),
+        Data = label_layout(ProcLabel, LabelNum, _),
         % This code should be kept in sync with make_label_layout_name/1 above.
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_label_layout__", !IO),
+        io.write_string(label_to_c_string(internal(LabelNum, ProcLabel), yes),
+            !IO)
+    ;
+        Data = solver_event_layout(ProcLabel, LabelNum),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_solver_event_layout__", !IO),
+        io.write_string(label_to_c_string(internal(LabelNum, ProcLabel), yes),
+            !IO)
+    ;
+        Data = solver_event_attr_names(ProcLabel, LabelNum),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_solver_event_attr_names__", !IO),
         io.write_string(label_to_c_string(internal(LabelNum, ProcLabel), yes),
             !IO)
     ;
@@ -353,6 +370,15 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         io.write_string(" ", !IO),
         output_layout_name(label_layout(ProcLabel, LabelNum, LabelVars), !IO)
     ;
+        Data = solver_event_layout(ProcLabel, LabelNum),
+        io.write_string("static const struct MR_Solver_Event_Struct ", !IO),
+        output_layout_name(solver_event_layout(ProcLabel, LabelNum), !IO)
+    ;
+        Data = solver_event_attr_names(ProcLabel, LabelNum),
+        io.write_string("static const char * ", !IO),
+        output_layout_name(solver_event_attr_names(ProcLabel, LabelNum), !IO),
+        io.write_string("[]", !IO)
+    ;
         Data = proc_layout(ProcLabel, Kind),
         ProcIsImported = ProcLabel ^ proc_is_imported,
         ProcIsExported = ProcLabel ^ proc_is_exported,
@@ -466,6 +492,8 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
     ).
 
 layout_name_would_include_code_addr(label_layout(_, _, _)) = no.
+layout_name_would_include_code_addr(solver_event_layout(_, _)) = no.
+layout_name_would_include_code_addr(solver_event_attr_names(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout_exec_trace(_)) = yes.
 layout_name_would_include_code_addr(proc_layout_head_var_nums(_)) = no.
@@ -499,32 +527,66 @@ proc_layout_kind_to_type(proc_layout_proc_id(uci)) = "MR_Proc_Layout_UCI".
 %-----------------------------------------------------------------------------%
 
 :- type rval_or_numpair_or_none
-    --->    rval(rval)
-    ;       num_pair(type_num, int)
-    ;       none.
+    --->    kind_rval(rval)
+    ;       kind_num_pair(type_num, int)
+    ;       kind_none.
 
 :- pred output_rval_or_numpair_or_none(rval_or_numpair_or_none::in,
     io::di, io::uo) is det.
 
-output_rval_or_numpair_or_none(rval(Rval), !IO) :-
+output_rval_or_numpair_or_none(kind_rval(Rval), !IO) :-
     io.write_string(", ", !IO),
     output_rval_as_addr(Rval, !IO).
-output_rval_or_numpair_or_none(num_pair(type_num(Num1), Num2), !IO) :-
+output_rval_or_numpair_or_none(kind_num_pair(type_num(Num1), Num2), !IO) :-
     io.write_string(", ", !IO),
     io.write_int(Num1, !IO),
     io.write_string(", ", !IO),
     io.write_int(Num2, !IO).
-output_rval_or_numpair_or_none(none, !IO).
+output_rval_or_numpair_or_none(kind_none, !IO).
 
 :- pred output_label_layout_data_defn(proc_label::in, int::in, layout_name::in,
     maybe(trace_port)::in, maybe(bool)::in, int::in, maybe(int)::in,
-    maybe(label_var_info)::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
+    maybe(solver_event_data)::in, maybe(label_var_info)::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
-        MaybeIsHidden, LabelNumberInModule, MaybeGoalPath, MaybeVarInfo,
-        !DeclSet, !IO) :-
+        MaybeIsHidden, LabelNumberInModule, MaybeGoalPath, MaybeSolverData,
+        MaybeVarInfo, !DeclSet, !IO) :-
     output_layout_decl(ProcLayoutAddr, !DeclSet, !IO),
+    (
+        MaybeSolverData = no,
+        SolverChars = ""
+    ;
+        MaybeSolverData = yes(SolverData),
+        SolverChars = "_S",
+        SolverData = solver_event_data(SolverEventName, SolverNumAttributes,
+            SolverLocnsRval, SolverTypesRval, SolverAttrNames),
+
+        AttrNamesLayoutName = solver_event_attr_names(ProcLabel, LabelNum),
+        AttrNamesDataAddr = layout_addr(AttrNamesLayoutName),
+        AttrNamesRval = const(llconst_data_addr(AttrNamesDataAddr, no)),
+        decl_set_insert(decl_data_addr(AttrNamesDataAddr), !DeclSet),
+        output_layout_name_storage_type_name(AttrNamesLayoutName, no, !IO),
+        io.write_string(" = {\n", !IO),
+        io.write_list(SolverAttrNames, ", ", io.write, !IO),
+        io.write_string("};\n\n", !IO),
+
+        SolverLayoutName = solver_event_layout(ProcLabel, LabelNum),
+        SolverDataAddr = layout_addr(SolverLayoutName),
+        decl_set_insert(decl_data_addr(SolverDataAddr), !DeclSet),
+        output_layout_name_storage_type_name(SolverLayoutName, no, !IO),
+        io.write_string(" = {\n""", !IO),
+        io.write_string(SolverEventName, !IO),
+        io.write_string(""",\n", !IO),
+        io.write_int(SolverNumAttributes, !IO),
+        io.write_string(",\n", !IO),
+        output_rval_as_addr(SolverLocnsRval, !IO),
+        io.write_string(",\n", !IO),
+        output_rval_as_addr(SolverTypesRval, !IO),
+        io.write_string(",\n", !IO),
+        output_rval_as_addr(AttrNamesRval, !IO),
+        io.write_string("};\n\n", !IO)
+    ),
     (
         MaybeIsHidden = yes(yes),
         HiddenChars = "T"
@@ -556,37 +618,38 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
                     scalar_common_ref(TPTypeNum, TPCellNum))
             ->
                 CommonChars = "XCCC",
-                LocnsTypes1 = num_pair(LTTypeNum, LTCellNum),
-                VarNums1 = num_pair(VNTypeNum, VNCellNum),
-                TypeParams1 = num_pair(TPTypeNum, TPCellNum)
+                LocnsTypes1 = kind_num_pair(LTTypeNum, LTCellNum),
+                VarNums1 = kind_num_pair(VNTypeNum, VNCellNum),
+                TypeParams1 = kind_num_pair(TPTypeNum, TPCellNum)
             ;
                 TypeParams0 = const(llconst_int(0))
             ->
                 CommonChars = "XCC0",
-                LocnsTypes1 = num_pair(LTTypeNum, LTCellNum),
-                VarNums1 = num_pair(VNTypeNum, VNCellNum),
-                TypeParams1 = none
+                LocnsTypes1 = kind_num_pair(LTTypeNum, LTCellNum),
+                VarNums1 = kind_num_pair(VNTypeNum, VNCellNum),
+                TypeParams1 = kind_none
             ;
                 CommonChars = "",
-                LocnsTypes1 = rval(LocnsTypes0),
-                VarNums1 = rval(VarNums0),
-                TypeParams1 = rval(TypeParams0)
+                LocnsTypes1 = kind_rval(LocnsTypes0),
+                VarNums1 = kind_rval(VarNums0),
+                TypeParams1 = kind_rval(TypeParams0)
             )
         ;
             CommonChars = "",
-            LocnsTypes1 = rval(LocnsTypes0),
-            VarNums1 = rval(VarNums0),
-            TypeParams1 = rval(TypeParams0)
+            LocnsTypes1 = kind_rval(LocnsTypes0),
+            VarNums1 = kind_rval(VarNums0),
+            TypeParams1 = kind_rval(TypeParams0)
         ),
-        Macro = "MR_DEF_LL" ++ HiddenChars ++ CommonChars,
+        Macro0 = "MR_DEF_LL" ++ HiddenChars ++ CommonChars,
         MaybeVarInfoTuple = yes({EncodedVarCount1, LocnsTypes1, VarNums1,
             TypeParams1})
     ;
         MaybeVarInfo = no,
         LabelVars = label_has_no_var_info,
-        Macro = "MR_DEF_LLNVI" ++ HiddenChars,
+        Macro0 = "MR_DEF_LLNVI" ++ HiddenChars,
         MaybeVarInfoTuple = no
     ),
+    Macro = Macro0 ++ SolverChars,
     LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
     io.write_string("\n", !IO),
     io.write_string(Macro, !IO),
@@ -646,23 +709,27 @@ output_rval_as_addr(Rval, !IO) :-
         output_rval(Rval, !IO)
     ).
 
+    % Return the name of the given port, as in the enum MR_Trace_Port
+    % in runtime/mercury_stack_layout.h.
+    %
 :- func trace_port_to_string(trace_port) = string.
 
-trace_port_to_string(call) =                "CALL".
-trace_port_to_string(exit) =                "EXIT".
-trace_port_to_string(redo) =                "REDO".
-trace_port_to_string(fail) =                "FAIL".
-trace_port_to_string(exception) =           "EXCEPTION".
-trace_port_to_string(ite_cond) =            "COND".
-trace_port_to_string(ite_then) =            "THEN".
-trace_port_to_string(ite_else) =            "ELSE".
-trace_port_to_string(neg_enter) =           "NEG_ENTER".
-trace_port_to_string(neg_success) =         "NEG_SUCCESS".
-trace_port_to_string(neg_failure) =         "NEG_FAILURE".
-trace_port_to_string(disj) =                "DISJ".
-trace_port_to_string(switch) =              "SWITCH".
-trace_port_to_string(nondet_pragma_first) = "PRAGMA_FIRST".
-trace_port_to_string(nondet_pragma_later) = "PRAGMA_LATER".
+trace_port_to_string(port_call) =                "CALL".
+trace_port_to_string(port_exit) =                "EXIT".
+trace_port_to_string(port_redo) =                "REDO".
+trace_port_to_string(port_fail) =                "FAIL".
+trace_port_to_string(port_exception) =           "EXCEPTION".
+trace_port_to_string(port_ite_cond) =            "COND".
+trace_port_to_string(port_ite_then) =            "THEN".
+trace_port_to_string(port_ite_else) =            "ELSE".
+trace_port_to_string(port_neg_enter) =           "NEG_ENTER".
+trace_port_to_string(port_neg_success) =         "NEG_SUCCESS".
+trace_port_to_string(port_neg_failure) =         "NEG_FAILURE".
+trace_port_to_string(port_disj) =                "DISJ".
+trace_port_to_string(port_switch) =              "SWITCH".
+trace_port_to_string(port_nondet_pragma_first) = "PRAGMA_FIRST".
+trace_port_to_string(port_nondet_pragma_later) = "PRAGMA_LATER".
+trace_port_to_string(port_solver) =              "SOLVER".
 
 %-----------------------------------------------------------------------------%
 
@@ -793,7 +860,7 @@ output_layout_traversal_group(Traversal, !IO) :-
         % by module initialization code.
         io.write_string("NULL", !IO)
     ),
-    io.write_string(",\n", !IO),
+    io.write_string(",\n{ ", !IO),
     (
         MaybeSuccipSlot = yes(SuccipSlot),
         io.write_int(SuccipSlot, !IO)
@@ -801,7 +868,7 @@ output_layout_traversal_group(Traversal, !IO) :-
         MaybeSuccipSlot = no,
         io.write_int(-1, !IO)
     ),
-    io.write_string(",\n", !IO),
+    io.write_string(" },\n", !IO),
     io.write_int(StackSlotCount, !IO),
     io.write_string(",\n", !IO),
     io.write_string(detism_to_c_detism(Detism), !IO),

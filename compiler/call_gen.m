@@ -36,16 +36,14 @@
 
 :- pred generate_generic_call(code_model::in, generic_call::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
-    hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
-    is det.
+    hlds_goal_info::in, code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred generate_builtin(code_model::in, pred_id::in, proc_id::in,
-    list(prog_var)::in, code_tree::out, code_info::in, code_info::out)
-    is det.
+    list(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
 
 :- type known_call_variant
-    --->    known_num
-    ;       unknown.
+    --->    ho_call_known_num
+    ;       ho_call_unknown.
 
     % generic_call_info(Globals, GenericCall, NumImmediateInputArgs, CodeAddr,
     %   SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant).
@@ -79,7 +77,9 @@
 :- import_module libs.options.
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
+:- import_module ll_backend.continuation_info.
 :- import_module ll_backend.trace_gen.
+:- import_module parse_tree.prog_event.
 
 :- import_module bool.
 :- import_module int.
@@ -137,8 +137,8 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-generate_generic_call(OuterCodeModel, GenericCall, Args0,
-        Modes0, Det, GoalInfo, Code, !CI) :-
+generate_generic_call(OuterCodeModel, GenericCall, Args, Modes, Det,
+        GoalInfo, Code, !CI) :-
     % For a generic_call, we split the arguments into inputs and outputs,
     % put the inputs in the locations expected by mercury.do_call_closure in
     % runtime/mercury_ho_call.c, generate the call to that code, and pick up
@@ -152,15 +152,14 @@ generate_generic_call(OuterCodeModel, GenericCall, Args0,
         ( GenericCall = higher_order(_, _, _, _)
         ; GenericCall = class_method(_, _, _, _)
         ),
-        generate_main_generic_call(OuterCodeModel, GenericCall, Args0, Modes0,
+        generate_main_generic_call(OuterCodeModel, GenericCall, Args, Modes,
             Det, GoalInfo, Code, !CI)
     ;
-        GenericCall = event_call(_),
-        % XXX The code for handling events is not yet implemented.
-        Code = empty
+        GenericCall = event_call(EventName),
+        generate_event_call(EventName, Args, GoalInfo, Code, !CI)
     ;
         GenericCall = cast(_),
-        ( Args0 = [InputArg, OutputArg] ->
+        ( Args = [InputArg, OutputArg] ->
             generate_assign_builtin(OutputArg, leaf(InputArg), Code, !CI)
         ;
             unexpected(this_file,
@@ -194,8 +193,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
         InVarArgInfos),
     give_vars_consecutive_arg_infos(OutVars, FirstOutput, top_out,
         OutArgsInfos),
-    list.append(SpecifierArgInfos, InVarArgInfos, InArgInfos),
-    list.append(InArgInfos, OutArgsInfos, ArgInfos),
+    ArgInfos = SpecifierArgInfos ++ InVarArgInfos ++ OutArgsInfos,
 
     % Save the necessary vars on the stack and move the input args defined
     % by variables to their registers.
@@ -243,6 +241,38 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
 
 %---------------------------------------------------------------------------%
 
+:- pred generate_event_call(string::in, list(prog_var)::in, hlds_goal_info::in,
+    code_tree::out, code_info::in, code_info::out) is det.
+
+generate_event_call(EventName, Args, GoalInfo, Code, !CI) :-
+    ( event_arg_names(EventName, AttributeNames) ->
+        generate_event_attributes(AttributeNames, Args, Attributes, AttrCodes,
+            !CI),
+        SolverEventInfo = solver_event_info(EventName, Attributes),
+        generate_solver_event_code(SolverEventInfo, GoalInfo, EventCode, !CI),
+        Code = tree(tree_list(AttrCodes), EventCode)
+    ;
+        unexpected(this_file, "generate_event_call: bad event name")
+    ).
+
+:- pred generate_event_attributes(list(string)::in, list(prog_var)::in,
+    list(solver_attribute)::out, list(code_tree)::out,
+    code_info::in, code_info::out) is det.
+
+generate_event_attributes([], [], [], [], !CI).
+generate_event_attributes([], [_ | _], _, _, !CI) :-
+    unexpected(this_file, "generate_event_attributes: list length mismatch").
+generate_event_attributes([_ | _], [], _, _, !CI) :-
+    unexpected(this_file, "generate_event_attributes: list length mismatch").
+generate_event_attributes([Name | Names], [Var | Vars], [Attr | Attrs],
+        [Code | Codes], !CI) :-
+    produce_variable(Var, Code, Rval, !CI),
+    Type = variable_type(!.CI, Var),
+    Attr = solver_attribute(Rval, Type, Name),
+    generate_event_attributes(Names, Vars, Attrs, Codes, !CI).
+
+%---------------------------------------------------------------------------%
+
     % The registers before the first input argument are all live.
     %
 :- pred extra_livevals(int::in, list(lval)::out) is det.
@@ -273,11 +303,11 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
             NumInputArgs =< MaxSpec
         ->
             CodeAddr = do_call_closure(specialized_known(NumInputArgs)),
-            HoCallVariant = known_num,
+            HoCallVariant = ho_call_known_num,
             FirstImmediateInputReg = 2
         ;
             CodeAddr = do_call_closure(generic),
-            HoCallVariant = unknown,
+            HoCallVariant = ho_call_unknown,
             FirstImmediateInputReg = 3
         )
     ;
@@ -290,11 +320,11 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
             NumInputArgs =< MaxSpec
         ->
             CodeAddr = do_call_class_method(specialized_known(NumInputArgs)),
-            HoCallVariant = known_num,
+            HoCallVariant = ho_call_known_num,
             FirstImmediateInputReg = 3
         ;
             CodeAddr = do_call_class_method(generic),
-            HoCallVariant = unknown,
+            HoCallVariant = ho_call_unknown,
             FirstImmediateInputReg = 4
         )
     ;
@@ -305,7 +335,7 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
         CodeAddr = do_not_reached,
         SpecifierArgInfos = [],
         FirstImmediateInputReg = 1,
-        HoCallVariant = unknown     % dummy; not used
+        HoCallVariant = ho_call_unknown     % dummy; not used
     ).
 
     % Some of the values that generic call passes to the dispatch routine
@@ -327,10 +357,10 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
 generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
         InVars, _OutVars, Code, !CI) :-
     (
-        HoCallVariant = known_num,
+        HoCallVariant = ho_call_known_num,
         Code = empty
     ;
-        HoCallVariant = unknown,
+        HoCallVariant = ho_call_unknown,
         code_info.clobber_regs([reg(reg_r, 2)], !CI),
         list.length(InVars, NInVars),
         Code = node([
@@ -341,14 +371,14 @@ generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
 generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
         InVars, _OutVars, Code, !CI) :-
     (
-        HoCallVariant = known_num,
+        HoCallVariant = ho_call_known_num,
         code_info.clobber_regs([reg(reg_r, 2)], !CI),
         Code = node([
             assign(reg(reg_r, 2), const(llconst_int(Method))) -
                 "Index of class method in typeclass info"
         ])
     ;
-        HoCallVariant = unknown,
+        HoCallVariant = ho_call_unknown,
         code_info.clobber_regs([reg(reg_r, 2), reg(reg_r, 3)], !CI),
         list.length(InVars, NInVars),
         Code = node([

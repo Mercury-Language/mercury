@@ -243,6 +243,7 @@
                 port_type       :: trace_port,
                 port_is_hidden  :: bool,
                 port_path       :: goal_path,
+                port_solver     :: maybe(solver_event_info),
                 port_label      :: layout_label_info
             ).
 
@@ -269,6 +270,19 @@
                 live_value_type,    % Info about the variable.
                 string              % Where in the compiler this
                                     % layout_var_info was created
+            ).
+
+:- type solver_attribute
+    --->    solver_attribute(
+                attr_locn               :: rval,
+                attr_type               :: mer_type,
+                attr_name               :: string
+            ).
+
+:- type solver_event_info
+    --->    solver_event_info(
+                solver_port             :: string,
+                solver_attributes       :: list(solver_attribute)
             ).
 
 :- type closure_layout_info

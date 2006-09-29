@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001, 2004 The University of Melbourne.
+** Copyright (C) 2001, 2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -48,9 +48,9 @@
 		NULL,							\
 		MR_maybe_activation_count_field				\
 		NULL,							\
-		MR_LONG_LVAL_TYPE_UNKNOWN,				\
-		MR_LONG_LVAL_TYPE_UNKNOWN,				\
-		MR_LONG_LVAL_TYPE_UNKNOWN				\
+		-1,							\
+		-1,							\
+		-1							\
 	}
 
 #define	MR_proc_static_one_site(global_var_name, call_sites_var_name,	\
@@ -63,36 +63,36 @@
 		call_sites_var_name,					\
 		MR_maybe_activation_count_field				\
 		NULL,							\
-		MR_LONG_LVAL_TYPE_UNKNOWN,				\
-		MR_LONG_LVAL_TYPE_UNKNOWN,				\
-		MR_LONG_LVAL_TYPE_UNKNOWN				\
+		-1,							\
+		-1,							\
+		-1							\
 	}
 
 #define	MR_proc_static_user_no_site(module, name, arity, mode,		\
 		file, line, interface) 					\
 	MR_proc_static_no_site(						\
 		MR_proc_static_user_name(module, name, arity, mode),	\
-			file, line, interface)
+		file, line, interface)
 
 #define	MR_proc_static_user_one_site(module, name, arity, mode,		\
 		file, line, interface) 					\
 	MR_proc_static_one_site(					\
 		MR_proc_static_user_name(module, name, arity, mode),	\
 		MR_call_sites_user_name(module, name, arity, mode),	\
-			file, line, interface)
+		file, line, interface)
 
 #define	MR_proc_static_uci_no_site(module, name, type, arity, mode,	\
 		file, line, interface) 					\
 	MR_proc_static_no_site(						\
 		MR_proc_static_uci_name(module, name, type, arity, mode), \
-			file, line, interface)
+		file, line, interface)
 
 #define	MR_proc_static_uci_one_site(module, name, type, arity, mode,	\
 		file, line, interface) 					\
 	MR_proc_static_one_site(					\
 		MR_proc_static_uci_name(module, name, type, arity, mode), \
 		MR_call_sites_uci_name(module, name, type, arity, mode), \
-			file, line, interface)
+		file, line, interface)
 
 /*****************************************************************************/
 

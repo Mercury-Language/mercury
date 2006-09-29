@@ -111,7 +111,7 @@
 :- pred check_and_set_magic_var_location(prog_var::in, lval::in,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % lval_in_use(VarLocnInfo, Lval)
+    % lval_in_use(VarLocnInfo, Lval):
     %
     % Succeeds iff Lval, which should be a register or stack slot,
     % holds (a path to) a variable or is otherwise reserved.
@@ -1884,7 +1884,7 @@ cell_is_constant(_VarStateMap, _ExprnOpts, [], []).
 cell_is_constant(VarStateMap, ExprnOpts, [yes(Rval0) | MaybeRvals],
         [Rval - LldsType | RvalsTypes]) :-
     expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval),
-    rval_type_as_arg(Rval, ExprnOpts, LldsType),
+    rval_type_as_arg(Rval, ExprnOpts ^ unboxed_float, LldsType),
     cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes).
 
     % expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval):

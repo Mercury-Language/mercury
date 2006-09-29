@@ -730,21 +730,22 @@ parse_rest(Rest, ExecCount, NumTests) :-
         string.to_int(NumTestsStr, NumTests)
     ).
 
-string_to_trace_port("CALL", call).
-string_to_trace_port("EXIT", exit).
-string_to_trace_port("REDO", redo).
-string_to_trace_port("FAIL", fail).
-string_to_trace_port("EXCP", exception).
-string_to_trace_port("COND", ite_cond).
-string_to_trace_port("THEN", ite_then).
-string_to_trace_port("ELSE", ite_else).
-string_to_trace_port("NEGE", neg_enter).
-string_to_trace_port("NEGS", neg_success).
-string_to_trace_port("NEGF", neg_failure).
-string_to_trace_port("DISJ", disj).
-string_to_trace_port("SWTC", switch).
-string_to_trace_port("FRST", nondet_pragma_first).
-string_to_trace_port("LATR", nondet_pragma_later).
+string_to_trace_port("CALL", port_call).
+string_to_trace_port("EXIT", port_exit).
+string_to_trace_port("REDO", port_redo).
+string_to_trace_port("FAIL", port_fail).
+string_to_trace_port("EXCP", port_exception).
+string_to_trace_port("COND", port_ite_cond).
+string_to_trace_port("THEN", port_ite_then).
+string_to_trace_port("ELSE", port_ite_else).
+string_to_trace_port("NEGE", port_neg_enter).
+string_to_trace_port("NEGS", port_neg_success).
+string_to_trace_port("NEGF", port_neg_failure).
+string_to_trace_port("DISJ", port_disj).
+string_to_trace_port("SWTC", port_switch).
+string_to_trace_port("FRST", port_nondet_pragma_first).
+string_to_trace_port("LATR", port_nondet_pragma_later).
+string_to_trace_port("SLVR", port_solver).
 
 :- func string_to_goal_path(string) = goal_path is semidet.
 
@@ -758,21 +759,25 @@ string_to_goal_path(String) = Path :-
     % This function should be kept in sync with the MR_named_count_port array
     % in runtime/mercury_trace_base.c.
     %
-make_path_port(_GoalPath, call) = port_only(call).
-make_path_port(_GoalPath, exit) = port_only(exit).
-make_path_port(_GoalPath, redo) = port_only(redo).
-make_path_port(_GoalPath, fail) = port_only(fail).
-make_path_port(_GoalPath, exception) = port_only(exception).
-make_path_port(GoalPath, ite_cond) = path_only(GoalPath).
-make_path_port(GoalPath, ite_then) = path_only(GoalPath).
-make_path_port(GoalPath, ite_else) = path_only(GoalPath).
-make_path_port(GoalPath, neg_enter) = port_and_path(neg_enter, GoalPath).
-make_path_port(GoalPath, neg_success) = port_and_path(neg_success, GoalPath).
-make_path_port(GoalPath, neg_failure) = port_and_path(neg_failure, GoalPath).
-make_path_port(GoalPath, disj) = path_only(GoalPath).
-make_path_port(GoalPath, switch) = path_only(GoalPath).
-make_path_port(GoalPath, nondet_pragma_first) = path_only(GoalPath).
-make_path_port(GoalPath, nondet_pragma_later) = path_only(GoalPath).
+make_path_port(_GoalPath, port_call) = port_only(port_call).
+make_path_port(_GoalPath, port_exit) = port_only(port_exit).
+make_path_port(_GoalPath, port_redo) = port_only(port_redo).
+make_path_port(_GoalPath, port_fail) = port_only(port_fail).
+make_path_port(_GoalPath, port_exception) = port_only(port_exception).
+make_path_port(GoalPath, port_ite_cond) = path_only(GoalPath).
+make_path_port(GoalPath, port_ite_then) = path_only(GoalPath).
+make_path_port(GoalPath, port_ite_else) = path_only(GoalPath).
+make_path_port(GoalPath, port_neg_enter) =
+    port_and_path(port_neg_enter, GoalPath).
+make_path_port(GoalPath, port_neg_success) =
+    port_and_path(port_neg_success, GoalPath).
+make_path_port(GoalPath, port_neg_failure) =
+    port_and_path(port_neg_failure, GoalPath).
+make_path_port(GoalPath, port_disj) = path_only(GoalPath).
+make_path_port(GoalPath, port_switch) = path_only(GoalPath).
+make_path_port(GoalPath, port_nondet_pragma_first) = path_only(GoalPath).
+make_path_port(GoalPath, port_nondet_pragma_later) = path_only(GoalPath).
+make_path_port(_GoalPath, port_solver) = port_only(port_call).
 
 %-----------------------------------------------------------------------------%
 

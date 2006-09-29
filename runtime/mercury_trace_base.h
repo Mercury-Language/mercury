@@ -24,9 +24,9 @@
 
 /*
 ** This enum should EXACTLY match the definition of the `trace_port_type'
-** type in browser/util.m, the definition of the predicate
-** `layout_out__trace_port_to_string' and the function
-** `stack_layout__port_number', and the port names list
+** type in mdbcomp/prim_data.m, the definition of the predicate
+** `layout_out.trace_port_to_string' and the function
+** `stack_layout.port_number', and the port names list
 ** in the C source file of this module (mercury_trace_base.c),
 */
 
@@ -46,6 +46,7 @@ typedef	enum {
 	MR_PORT_SWITCH,
 	MR_PORT_PRAGMA_FIRST,
 	MR_PORT_PRAGMA_LATER,
+	MR_PORT_SOLVER,
 	MR_PORT_NONE
 } MR_Trace_Port;
 
@@ -100,6 +101,8 @@ extern	const char 			*MR_port_names[];
 extern	MR_Code	*MR_trace(const MR_Label_Layout *);
 extern	MR_Code	*MR_trace_fake(const MR_Label_Layout *);
 extern	MR_Code	*MR_trace_count(const MR_Label_Layout *);
+
+extern	MR_Code	*MR_solver_trace(const MR_Label_Layout *);
 
 /*
 ** These three variables implement a table of module layout structures,
@@ -575,7 +578,7 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 #endif	/* !MR_HIGHLEVEL_CODE */
 
 /*
-** The compiler emits the following macro at each trace event.
+** The compiler emits the following macro at each non-solver trace event.
 */
 
 #define	MR_EVENT(label)							\
@@ -583,6 +586,20 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 		MR_Code *MR_jumpaddr;					\
 		MR_save_transient_registers();				\
 		MR_jumpaddr = MR_trace((const MR_Label_Layout *)	\
+			&MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));	\
+		MR_restore_transient_registers();			\
+		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);		\
+	}
+
+/*
+** The compiler emits the following macro at each solver trace event.
+*/
+
+#define	MR_SOLVER_EVENT(label)						\
+	{								\
+		MR_Code *MR_jumpaddr;					\
+		MR_save_transient_registers();				\
+		MR_jumpaddr = MR_solver_trace((const MR_Label_Layout *)	\
 			&MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));	\
 		MR_restore_transient_registers();			\
 		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);		\

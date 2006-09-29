@@ -42,7 +42,7 @@
 % following the event as a parameter. For the first and later arms of
 % nondet pragma C code, there is no such hlds_goal, which is why these events
 % need a bit of special treatment.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.trace_gen.
@@ -53,6 +53,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.continuation_info.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
@@ -195,6 +196,11 @@
 :- pred maybe_generate_pragma_event_code(nondet_pragma_trace_port::in,
     prog_context::in, code_tree::out, code_info::in, code_info::out) is det.
 
+    % Generate code for a solver trace event.
+    %
+:- pred generate_solver_event_code(solver_event_info::in, hlds_goal_info::in,
+    code_tree::out, code_info::in, code_info::out) is det.
+
 :- type external_event_info
     --->    external_event_info(
                 label,      % The label associated with the
@@ -242,7 +248,6 @@
 :- import_module libs.trace_params.
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
-:- import_module ll_backend.continuation_info.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.
 :- import_module mdbcomp.prim_data.
@@ -260,18 +265,21 @@
     % Information specific to a trace port.
     %
 :- type trace_port_info
-    --->    external
-    ;       internal(
+    --->    port_info_external
+    ;       port_info_internal(
                 goal_path,      % The path of the goal whose start
                                 % this port represents.
                 set(prog_var)   % The pre-death set of this goal.
             )
-    ;       negation_end(
+    ;       port_info_negation_end(
                 goal_path       % The path of the goal whose end
                                 % (one way or another) this port
                                 % represents.
             )
-    ;       nondet_pragma.
+    ;       port_info_solver(
+                goal_path       % The path of the goal.
+            )
+    ;       port_info_nondet_pragma.
 
 trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -376,7 +384,7 @@ do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
     % stages, but before it does so, it needs to know whether those slots
     % exist or not. This is why setup returns TraceSlotInfo, which answers
     % such questions, for later inclusion in the procedure's layout structure.
-    
+
 trace_reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         MaybeTableVarInfo) :-
     globals.get_trace_level(Globals, TraceLevel),
@@ -394,7 +402,7 @@ trace_reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         (
             proc_info_interface_code_model(ProcInfo, model_non),
             eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel,
-                TraceSuppress, redo) = yes
+                TraceSuppress, port_redo) = yes
         ->
             RedoLayout = 1
         ;
@@ -451,7 +459,7 @@ trace_setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
     globals.get_trace_suppress(Globals, TraceSuppress),
     globals.lookup_bool_option(Globals, trace_table_io, TraceTableIo),
     TraceRedo = eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel,
-        TraceSuppress, redo),
+        TraceSuppress, port_redo),
     (
         TraceRedo = yes,
         CodeModel = model_non
@@ -677,22 +685,22 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
             Path = [LastStep | _],
             (
                 LastStep = switch(_, _),
-                PortPrime = switch
+                PortPrime = port_switch
             ;
                 LastStep = disj(_),
-                PortPrime = disj
+                PortPrime = port_disj
             ;
                 LastStep = ite_cond,
-                PortPrime = ite_cond
+                PortPrime = port_ite_cond
             ;
                 LastStep = ite_then,
-                PortPrime = ite_then
+                PortPrime = port_ite_then
             ;
                 LastStep = ite_else,
-                PortPrime = ite_else
+                PortPrime = port_ite_else
             ;
                 LastStep = neg,
-                PortPrime = neg_enter
+                PortPrime = port_neg_enter
             )
         ->
             Port = PortPrime
@@ -716,8 +724,8 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
             ;
                 HideEvent = no
             ),
-            generate_event_code(Port, internal(Path, PreDeaths),
-                TraceInfo, Context, HideEvent, _, _, Code, !CI)
+            generate_event_code(Port, port_info_internal(Path, PreDeaths),
+                yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI)
         ;
             Code = empty
         )
@@ -732,10 +740,10 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
         MaybeTraceInfo = yes(TraceInfo),
         (
             NegPort = neg_failure,
-            Port = neg_failure
+            Port = port_neg_failure
         ;
             NegPort = neg_success,
-            Port = neg_success
+            Port = port_neg_success
         ),
         code_info.get_pred_info(!.CI, PredInfo),
         code_info.get_proc_info(!.CI, ProcInfo),
@@ -751,8 +759,8 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
         ;
             HideEvent = no
         ),
-        generate_event_code(Port, negation_end(Path), TraceInfo, Context,
-            HideEvent, _, _, Code, !CI)
+        generate_event_code(Port, port_info_negation_end(Path), yes(TraceInfo),
+            Context, HideEvent, no, _, _, Code, !CI)
     ;
         Code = empty
     ).
@@ -768,11 +776,21 @@ maybe_generate_pragma_event_code(PragmaPort, Context, Code, !CI) :-
             TraceInfo ^ trace_level,
             TraceInfo ^ trace_suppress_items, Port) = yes
     ->
-        generate_event_code(Port, nondet_pragma, TraceInfo, Context, no, _, _,
-            Code, !CI)
+        generate_event_code(Port, port_info_nondet_pragma, yes(TraceInfo),
+            Context, no, no, _, _, Code, !CI)
     ;
         Code = empty
     ).
+
+generate_solver_event_code(SolverInfo, GoalInfo, Code, !CI) :-
+    goal_info_get_goal_path(GoalInfo, Path),
+    goal_info_get_context(GoalInfo, Context),
+    Port = port_solver,
+    PortInfo = port_info_solver(Path),
+    MaybeTraceInfo = no,
+    HideEvent = no,
+    generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
+        yes(SolverInfo), _Label, _TvarDataMap, Code, !CI).
 
 generate_external_event_code(ExternalPort, TraceInfo, Context,
         MaybeExternalInfo, !CI) :-
@@ -784,46 +802,49 @@ generate_external_event_code(ExternalPort, TraceInfo, Context,
             TraceInfo ^ trace_level,
             TraceInfo ^ trace_suppress_items, Port) = yes
     ->
-        generate_event_code(Port, external, TraceInfo, Context, no, Label,
-            TvarDataMap, Code, !CI),
-        MaybeExternalInfo = yes(external_event_info(Label,
-            TvarDataMap, Code))
+        generate_event_code(Port, port_info_external, yes(TraceInfo), Context,
+            no, no, Label, TvarDataMap, Code, !CI),
+        MaybeExternalInfo = yes(external_event_info(Label, TvarDataMap, Code))
     ;
         MaybeExternalInfo = no
     ).
 
 :- pred generate_event_code(trace_port::in, trace_port_info::in,
-    trace_info::in, prog_context::in, bool::in, label::out,
+    maybe(trace_info)::in, prog_context::in, bool::in,
+    maybe(solver_event_info)::in, label::out,
     map(tvar, set(layout_locn))::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
-generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent, Label,
-        TvarDataMap, Code, !CI) :-
+generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
+        MaybeSolverInfo, Label, TvarDataMap, Code, !CI) :-
     code_info.get_next_label(Label, !CI),
     code_info.get_known_variables(!.CI, LiveVars0),
     (
-        PortInfo = external,
+        PortInfo = port_info_external,
         LiveVars = LiveVars0,
         Path = []
     ;
-        PortInfo = internal(Path, PreDeaths),
+        PortInfo = port_info_internal(Path, PreDeaths),
         ResumeVars = code_info.current_resume_point_vars(!.CI),
         set.difference(PreDeaths, ResumeVars, RealPreDeaths),
         set.to_sorted_list(RealPreDeaths, RealPreDeathList),
         list.delete_elems(LiveVars0, RealPreDeathList, LiveVars)
     ;
-        PortInfo = negation_end(Path),
+        PortInfo = port_info_negation_end(Path),
         LiveVars = LiveVars0
     ;
-        PortInfo = nondet_pragma,
+        PortInfo = port_info_solver(Path),
+        LiveVars = LiveVars0
+    ;
+        PortInfo = port_info_nondet_pragma,
         LiveVars = [],
-        ( Port = nondet_pragma_first ->
+        ( Port = port_nondet_pragma_first ->
             Path = [first]
-        ; Port = nondet_pragma_later ->
+        ; Port = port_nondet_pragma_later ->
             Path = [later]
         ;
-            unexpected(this_file, "generate_event_code: " ++
-                "bad nondet pragma port")
+            unexpected(this_file,
+                "generate_event_code: bad nondet pragma port")
         )
     ),
     VarTypes = code_info.get_var_types(!.CI),
@@ -856,11 +877,18 @@ generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent, Label,
     set.list_to_set(VarInfoList, VarInfoSet),
     LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
     LabelStr = llds_out.label_to_c_string(Label, no),
-    string.append_list(["\t\tMR_EVENT(", LabelStr, ")\n"], TraceStmt),
-    code_info.add_trace_layout_for_label(Label, Context, Port, HideEvent,
-        Path, LayoutLabelInfo, !CI),
     (
-        Port = fail,
+        MaybeSolverInfo = no,
+        TraceStmt = "\t\tMR_EVENT(" ++ LabelStr ++ ")\n"
+    ;
+        MaybeSolverInfo = yes(_),
+        TraceStmt = "\t\tMR_SOLVER_EVENT(" ++ LabelStr ++ ")\n"
+    ),
+    code_info.add_trace_layout_for_label(Label, Context, Port, HideEvent,
+        Path, MaybeSolverInfo, LayoutLabelInfo, !CI),
+    (
+        Port = port_fail,
+        MaybeTraceInfo = yes(TraceInfo),
         TraceInfo ^ redo_label = yes(RedoLabel)
     ->
         % The layout information for the redo event is the same as
@@ -873,8 +901,8 @@ generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent, Label,
         % at procedure entry. Therefore setup reserves a label
         % for the redo event, whose layout information is filled in
         % when we get to the fail event.
-        code_info.add_trace_layout_for_label(RedoLabel, Context, redo,
-            HideEvent, Path, LayoutLabelInfo, !CI)
+        code_info.add_trace_layout_for_label(RedoLabel, Context, port_redo,
+            HideEvent, Path, no, LayoutLabelInfo, !CI)
     ;
         true
     ),
@@ -1024,14 +1052,16 @@ stackref_to_string(Lval, LvalStr) :-
 
 :- func convert_external_port_type(external_trace_port) = trace_port.
 
-convert_external_port_type(external_port_call) = call.
-convert_external_port_type(external_port_exit) = exit.
-convert_external_port_type(external_port_fail) = fail.
+convert_external_port_type(external_port_call) = port_call.
+convert_external_port_type(external_port_exit) = port_exit.
+convert_external_port_type(external_port_fail) = port_fail.
 
 :- func convert_nondet_pragma_port_type(nondet_pragma_trace_port) = trace_port.
 
-convert_nondet_pragma_port_type(nondet_pragma_first) = nondet_pragma_first.
-convert_nondet_pragma_port_type(nondet_pragma_later) = nondet_pragma_later.
+convert_nondet_pragma_port_type(nondet_pragma_first) =
+    port_nondet_pragma_first.
+convert_nondet_pragma_port_type(nondet_pragma_later) =
+    port_nondet_pragma_later. 
 
 %-----------------------------------------------------------------------------%
 
@@ -1065,8 +1095,8 @@ redo_layout_slot(CodeModel, RedoLayoutSlot) :-
     ( CodeModel = model_non ->
         RedoLayoutSlot = framevar(4)
     ;
-        unexpected(this_file, "attempt to access redo layout slot " ++
-            "for det or semi procedure")
+        unexpected(this_file,
+            "attempt to access redo layout slot for det or semi procedure")
     ).
 
 %-----------------------------------------------------------------------------%

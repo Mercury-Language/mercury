@@ -119,6 +119,7 @@ const char  *MR_port_names[] =
     "SWTC",
     "FRST",
     "LATR",
+    "SLVR",
     "NONE",
 };
 
@@ -137,6 +138,16 @@ static  MR_Unsigned MR_standardize_num(MR_Unsigned num,
 
 MR_Code *
 MR_trace(const MR_Label_Layout *layout)
+{
+    if (! MR_trace_func_enabled) {
+        return NULL;
+    }
+
+    return (*MR_selected_trace_func_ptr)(layout);
+}
+
+MR_Code *
+MR_solver_trace(const MR_Label_Layout *layout)
 {
     if (! MR_trace_func_enabled) {
         return NULL;

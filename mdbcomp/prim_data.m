@@ -33,21 +33,22 @@
     % in runtime/mercury_trace_base.h, and in the same order, since the
     % code (in browser) assumes the representation is the same.
 :- type trace_port
-    --->    call
-    ;       exit
-    ;       redo
-    ;       fail
-    ;       exception
-    ;       ite_cond
-    ;       ite_then
-    ;       ite_else
-    ;       neg_enter
-    ;       neg_success
-    ;       neg_failure
-    ;       disj
-    ;       switch
-    ;       nondet_pragma_first
-    ;       nondet_pragma_later.
+    --->    port_call
+    ;       port_exit
+    ;       port_redo
+    ;       port_fail
+    ;       port_exception
+    ;       port_ite_cond
+    ;       port_ite_then
+    ;       port_ite_else
+    ;       port_neg_enter
+    ;       port_neg_success
+    ;       port_neg_failure
+    ;       port_disj
+    ;       port_switch
+    ;       port_nondet_pragma_first
+    ;       port_nondet_pragma_later
+    ;       port_solver.
 
 % was in compiler/prog_data.m
 

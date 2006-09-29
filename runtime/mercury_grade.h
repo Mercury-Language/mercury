@@ -61,7 +61,7 @@
 */
 
 #define MR_GRADE_PART_0	v14_
-#define MR_GRADE_EXEC_TRACE_VERSION_NO	5
+#define MR_GRADE_EXEC_TRACE_VERSION_NO	6
 #define MR_GRADE_DEEP_PROF_VERSION_NO	1
 
 #ifdef MR_HIGHLEVEL_CODE
@@ -365,7 +365,7 @@
   #define MR_GRADE_PART_14		MR_PASTE3(MR_GRADE_PART_13, _decldebug, MR_GRADE_EXEC_TRACE_VERSION_NO)
   #define MR_GRADE_OPT_PART_14		MR_GRADE_OPT_PART_13 ".decldebug"
   #if ! defined(MR_EXEC_TRACE)
-    #error "declarative debugging require execution tracing"
+    #error "declarative debugging requires execution tracing"
   #endif
 #else
   #if defined(MR_EXEC_TRACE)

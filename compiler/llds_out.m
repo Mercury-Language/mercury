@@ -371,7 +371,7 @@ order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
         !OtherLayouts) :-
     ( Layout = proc_layout_data(_, _, _) ->
         !:ProcLayouts = [Layout | !.ProcLayouts]
-    ; Layout = label_layout_data(_, _, _, _, _, _, _, _) ->
+    ; Layout = label_layout_data(_, _, _, _, _, _, _, _, _) ->
         !:LabelLayouts = [Layout | !.LabelLayouts]
     ;
         !:OtherLayouts = [Layout | !.OtherLayouts]
@@ -3250,25 +3250,6 @@ output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
         io.write_string("];\n", !IO)
     ),
     output_cons_arg_group_types(Groups, Indent, ArgNum + 1, !IO).
-
-    % Given an rval, figure out the type it would have as an argument.
-    % Normally that's the same as its usual type; the exception is that
-    % for boxed floats, the type is data_ptr (i.e. the type of the boxed value)
-    % rather than float (the type of the unboxed value).
-    %
-:- pred rval_type_as_arg(rval::in, llds_type::out, io::di, io::uo) is det.
-
-rval_type_as_arg(Rval, ArgType, !IO) :-
-    llds.rval_type(Rval, Type),
-    globals.io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
-    (
-        Type = float,
-        UnboxFloat = no
-    ->
-        ArgType = data_ptr
-    ;
-        ArgType = Type
-    ).
 
     % Same as output_llds_type, but will put parentheses around the llds_type.
     %

@@ -690,46 +690,64 @@ MR_trace_construct_node(MR_Event_Info *event_info)
         case MR_PORT_CALL:
             trace = MR_trace_decl_call(event_info, trace);
             break;
+
         case MR_PORT_EXIT:
             trace = MR_trace_decl_exit(event_info, trace);
             break;
+
         case MR_PORT_REDO:
             trace = MR_trace_decl_redo(event_info, trace);
             break;
+
         case MR_PORT_FAIL:
             trace = MR_trace_decl_fail(event_info, trace);
             break;
+
         case MR_PORT_DISJ:
             trace = MR_trace_decl_disj(event_info, trace);
             break;
+
         case MR_PORT_SWITCH:
             trace = MR_trace_decl_switch(event_info, trace);
             break;
+
         case MR_PORT_COND:
             trace = MR_trace_decl_cond(event_info, trace);
             break;
+
         case MR_PORT_THEN:
             trace = MR_trace_decl_then(event_info, trace);
             break;
+
         case MR_PORT_ELSE:
             trace = MR_trace_decl_else(event_info, trace);
             break;
+
         case MR_PORT_NEG_ENTER:
             trace = MR_trace_decl_neg_enter(event_info, trace);
             break;
+
         case MR_PORT_NEG_SUCCESS:
             trace = MR_trace_decl_neg_success(event_info, trace);
             break;
+
         case MR_PORT_NEG_FAILURE:
             trace = MR_trace_decl_neg_failure(event_info, trace);
             break;
+
         case MR_PORT_PRAGMA_FIRST:
         case MR_PORT_PRAGMA_LATER:
             MR_fatal_error("MR_trace_construct_node: "
                 "foreign language code is not handled (yet)");
+
         case MR_PORT_EXCEPTION:
             trace = MR_trace_decl_excp(event_info, trace);
             break;
+
+        case MR_PORT_SOLVER:
+            /* do nothing */
+            break;
+
         default:
             MR_fatal_error("MR_trace_construct_node: unknown port");
     }

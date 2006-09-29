@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2005 The University of Melbourne.
+** Copyright (C) 1998-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -288,7 +288,7 @@ MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
             entry_layout->MR_sle_stack_slots;
     } else {
         /* succip is always saved in succip_slot */
-        assert(location == -1);
+        assert(location.MR_long_lval == -1);
         /*
         ** Note that curfr always points to an ordinary procedure frame,
         ** never to a temp frame, and this property continues to hold

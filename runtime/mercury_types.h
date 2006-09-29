@@ -229,9 +229,11 @@ typedef struct MR_ProfilingMetrics_Struct       MR_ProfilingMetrics;
 
 typedef struct MR_CallSiteDynList_Struct        MR_CallSiteDynList;
 
+typedef struct MR_Long_Lval_Struct              MR_Long_Lval;
 typedef struct MR_Proc_Layout_Struct            MR_Proc_Layout;
 typedef struct MR_Module_Layout_Struct          MR_Module_Layout;
 typedef struct MR_Label_Layout_Struct           MR_Label_Layout;
+typedef struct MR_Solver_Event_Struct           MR_Solver_Event;
 
 typedef union MR_TableNode_Union                MR_TableNode;
 typedef MR_TableNode                            *MR_TrieNode;

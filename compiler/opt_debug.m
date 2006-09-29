@@ -457,6 +457,12 @@ dump_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)) = Str :-
         LabelVarsStr = "label_has_no_var_info"
     ),
     Str = "label_layout(" ++ LabelStr ++ ", " ++ LabelVarsStr ++ ")".
+dump_layout_name(solver_event_layout(ProcLabel, LabelNum)) = Str :-
+    LabelStr = dump_label(internal(LabelNum, ProcLabel)),
+    Str = "solver_event_layout(" ++ LabelStr ++ ")".
+dump_layout_name(solver_event_attr_names(ProcLabel, LabelNum)) = Str :-
+    LabelStr = dump_label(internal(LabelNum, ProcLabel)),
+    Str = "solver_event_attr_names(" ++ LabelStr ++ ")".
 dump_layout_name(proc_layout(RttiProcLabel, _)) =
     "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(proc_layout_exec_trace(RttiProcLabel)) =

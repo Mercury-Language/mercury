@@ -753,11 +753,15 @@ MR_trace_retry(MR_Event_Info *event_info,
             }
 
             if (i < MR_long_desc_var_count(call_label)) {
-                arg_num = MR_get_register_number_long(
-                    MR_long_desc_var_locn(call_label, i));
+                MR_Long_Lval    long_locn;
+
+                long_locn.MR_long_lval = MR_long_desc_var_locn(call_label, i);
+                arg_num = MR_get_register_number_long(long_locn);
             } else {
-                arg_num = MR_get_register_number_short(
-                    MR_short_desc_var_locn(call_label, i));
+                MR_Short_Lval    short_locn;
+
+                short_locn = MR_short_desc_var_locn(call_label, i);
+                arg_num = MR_get_register_number_short(short_locn);
             }
 
             if (arg_num > 0) {
@@ -1294,12 +1298,17 @@ MR_trace_find_input_arg(const MR_Label_Layout *label_layout,
     for (i = 0; i < MR_all_desc_var_count(label_layout); i++) {
         if (var_num == label_layout->MR_sll_var_nums[i]) {
             if (i < MR_long_desc_var_count(label_layout)) {
-                return MR_lookup_long_lval_base(
-                    MR_long_desc_var_locn(label_layout, i),
+                MR_Long_Lval    long_locn;
+
+                long_locn.MR_long_lval =
+                    MR_long_desc_var_locn(label_layout, i);
+                return MR_lookup_long_lval_base(long_locn,
                     saved_regs, base_sp, base_curfr, succeeded);
             } else {
-                return MR_lookup_short_lval_base(
-                    MR_short_desc_var_locn(label_layout, i),
+                MR_Short_Lval    short_locn;
+
+                short_locn = MR_short_desc_var_locn(label_layout, i);
+                return MR_lookup_short_lval_base(short_locn,
                     saved_regs, base_sp, base_curfr, succeeded);
             }
         }

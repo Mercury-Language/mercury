@@ -61,6 +61,7 @@
                 maybe_is_hidden         :: maybe(bool),
                 label_num_in_module     :: int,
                 maybe_goal_path         :: maybe(int), % offset
+                maybe_solver_info       :: maybe(solver_event_data),
                 maybe_var_info          :: maybe(label_var_info)
             )
     ;       proc_layout_data(           % defines MR_Proc_Layout
@@ -97,6 +98,15 @@
                 table_io_decl_type_params :: rval
             ).
 
+:- type solver_event_data
+    --->    solver_event_data(
+                solver_event_name       :: string,
+                solver_event_num_attr   :: int,
+                solver_event_locns      :: rval,
+                solver_event_types      :: rval,
+                solver_event_names      :: list(string)
+            ).
+
 :- type label_var_info
     --->    label_var_info(             % part of MR_Label_Layout
                 encoded_var_count       :: int,
@@ -108,9 +118,9 @@
 :- type proc_layout_stack_traversal     % defines MR_Stack_Traversal
     --->    proc_layout_stack_traversal(
                 entry_label             :: maybe(label),
-                                        % The proc entry label; will be
-                                        % `no' if we don't have static
-                                        % code addresses.
+                                        % The proc entry label; will be `no'
+                                        % if we don't have static code
+                                        % addresses.
                 succip_slot             :: maybe(int),
                 stack_slot_count        :: int,
                 detism                  :: determinism
@@ -187,6 +197,8 @@
 
 :- type layout_name
     --->    label_layout(proc_label, int, label_vars)
+    ;       solver_event_layout(proc_label, int)
+    ;       solver_event_attr_names(proc_label, int)
     ;       proc_layout(rtti_proc_label, proc_layout_kind)
             % A proc layout structure for stack tracing, accurate gc,
             % deep profiling and/or execution tracing.

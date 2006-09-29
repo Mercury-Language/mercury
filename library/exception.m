@@ -1921,7 +1921,7 @@ MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 8);
 MR_proc_static_user_no_site(exception, builtin_throw, 1, 0,
     ""exception.m"", MR_DUMMY_LINE, MR_TRUE);
 MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
-        MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
+        MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR_INT(1),
         MR_PREDICATE, exception, builtin_throw, 1, 0);
 MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_throw, 1, 0, 1);
 

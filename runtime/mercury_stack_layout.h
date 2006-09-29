@@ -97,18 +97,24 @@ typedef	MR_int_least16_t	MR_Determinism;
 ** describes the different tag values. The interpretation of the rest of
 ** the word depends on the location type:
 **
-** Locn			Tag	Rest
-** MR_r(Num)		 0	Num (register number)
-** MR_f(Num)		 1	Num (register number)
-** MR_stackvar(Num)	 2	Num (stack slot number)
-** MR_framevar(Num)	 3	Num (stack slot number)
-** MR_succip		 4
-** MR_maxfr		 5
-** MR_curfr		 6
-** MR_hp		 7
-** MR_sp		 8
-** indirect(Base, N)	 9	See below
-** unknown		10	(The location is not known)
+** Locn			Rest
+**
+** MR_r(Num)		Num (register number)
+** MR_f(Num)		Num (register number)
+** MR_stackvar(Num)	Num (stack slot number)
+** MR_framevar(Num)	Num (stack slot number)
+** MR_succip
+** MR_maxfr
+** MR_curfr
+** MR_hp
+** MR_sp
+** constant		See below
+** indirect(Base, N)	See below
+** unknown		(The location is not known)
+**
+** For constants, the rest of the word is a pointer to static data. The
+** pointer has only two low tag bits free, so we reserve every four-bit tag
+** which has 00 as its bottom two bits for representing them.
 **
 ** For indirect references, the word exclusive of the tag consists of
 ** (a) an integer with MR_LONG_LVAL_OFFSETBITS bits giving the index of
@@ -119,53 +125,67 @@ typedef	MR_int_least16_t	MR_Determinism;
 ** type class info. This MR_Long_Lval value will *not* have an indirect
 ** tag.
 **
-** This data is generated in stack_layout__represent_locn_as_int,
+** This data is generated in stack_layout.represent_locn_as_int,
 ** which must be kept in sync with the constants and macros defined here.
 */
 
-typedef MR_uint_least32_t	MR_Long_Lval;
+struct MR_Long_Lval_Struct {
+	MR_uint_least32_t	MR_long_lval;
+};
 
 typedef enum {
+	MR_LONG_LVAL_TYPE_CONS_0,
 	MR_LONG_LVAL_TYPE_R,
 	MR_LONG_LVAL_TYPE_F,
 	MR_LONG_LVAL_TYPE_STACKVAR,
+	MR_LONG_LVAL_TYPE_CONS_1,
 	MR_LONG_LVAL_TYPE_FRAMEVAR,
 	MR_LONG_LVAL_TYPE_SUCCIP,
 	MR_LONG_LVAL_TYPE_MAXFR,
+	MR_LONG_LVAL_TYPE_CONS_2,
 	MR_LONG_LVAL_TYPE_CURFR,
 	MR_LONG_LVAL_TYPE_HP,
 	MR_LONG_LVAL_TYPE_SP,
+	MR_LONG_LVAL_TYPE_CONS_3,
 	MR_LONG_LVAL_TYPE_INDIRECT,
-	MR_LONG_LVAL_TYPE_UNKNOWN 
+	MR_LONG_LVAL_TYPE_UNKNOWN
 } MR_Long_Lval_Type;
 
-/* This must be in sync with stack_layout__long_lval_tag_bits */
-#define MR_LONG_LVAL_TAGBITS	4
+/* This must be in sync with stack_layout.long_lval_tag_bits */
+#define MR_LONG_LVAL_TAGBITS		4
 
-#define MR_LONG_LVAL_TYPE(Locn) 					\
+#define MR_LONG_LVAL_CONST_TAGBITS	2
+
+#define MR_LONG_LVAL_TYPE(Locn)						\
 	((MR_Long_Lval_Type)						\
-		(((MR_Word) Locn) & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
+		((Locn).MR_long_lval & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
 
-#define MR_LONG_LVAL_NUMBER(Locn) 					\
-	((int) ((MR_Word) Locn) >> MR_LONG_LVAL_TAGBITS)
+#define MR_LONG_LVAL_NUMBER(Locn)					\
+	((int) (Locn).MR_long_lval >> MR_LONG_LVAL_TAGBITS)
 
-/* This must be in sync with stack_layout__offset_bits */
+#define MR_LONG_LVAL_CONST(Locn)					\
+	(* (MR_Word *) ((Locn).MR_long_lval &				\
+		~ ((1 << MR_LONG_LVAL_CONST_TAGBITS) - 1)))
+
+/* This must be in sync with stack_layout.offset_bits */
 #define MR_LONG_LVAL_OFFSETBITS	6
 
-#define MR_LONG_LVAL_INDIRECT_OFFSET(LocnNumber) 			\
-	((int) ((LocnNumber) & ((1 << MR_LONG_LVAL_OFFSETBITS) - 1)))
+#define MR_LONG_LVAL_INDIRECT_OFFSET(LocnNumber)			\
+	((int) ((LocnNumber).MR_long_lval &				\
+		((1 << MR_LONG_LVAL_OFFSETBITS) - 1)))
 
-#define MR_LONG_LVAL_INDIRECT_BASE_LVAL(LocnNumber)			\
-	(((MR_Word) (LocnNumber)) >> MR_LONG_LVAL_OFFSETBITS)
+#define MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(LocnNumber)			\
+	(((MR_uint_least32_t) (LocnNumber).MR_long_lval)		\
+		>> MR_LONG_LVAL_OFFSETBITS)
 
-#define	MR_LONG_LVAL_STACKVAR(n)					\
-	((MR_Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_STACKVAR)
+#define	MR_LONG_LVAL_STACKVAR_INT(n)					\
+	(((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_STACKVAR)
 
-#define	MR_LONG_LVAL_FRAMEVAR(n)					\
-	((MR_Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_FRAMEVAR)
+#define	MR_LONG_LVAL_FRAMEVAR_INT(n)					\
+	(((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_FRAMEVAR)
 
-#define	MR_LONG_LVAL_R_REG(n)						\
-	((MR_Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
+#define	MR_LONG_LVAL_R_REG_INT(n)					\
+	(((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
 
 /*
 ** MR_Short_Lval is a MR_uint_least8_t which describes an location. This
@@ -183,7 +203,7 @@ typedef enum {
 ** MR_framevar(Num)	 2	Num (stack slot number)
 ** special reg		 3	MR_Long_Lval_Type
 **
-** This data is generated in stack_layout__represent_locn_as_byte,
+** This data is generated in stack_layout.represent_locn_as_byte,
 ** which must be kept in sync with the constants and macros defined here.
 */
 
@@ -196,14 +216,14 @@ typedef enum {
 	MR_SHORT_LVAL_TYPE_SPECIAL
 } MR_Short_Lval_Type;
 
-/* This must be in sync with stack_layout__short_lval_tag_bits */
+/* This must be in sync with stack_layout.short_lval_tag_bits */
 #define MR_SHORT_LVAL_TAGBITS	2
 
-#define MR_SHORT_LVAL_TYPE(Locn) 					\
+#define MR_SHORT_LVAL_TYPE(Locn)					\
 	((MR_Short_Lval_Type)						\
 		(((MR_Word) Locn) & ((1 << MR_SHORT_LVAL_TAGBITS) - 1)))
 
-#define MR_SHORT_LVAL_NUMBER(Locn) 					\
+#define MR_SHORT_LVAL_NUMBER(Locn)					\
 	((int) ((MR_Word) Locn) >> MR_SHORT_LVAL_TAGBITS)
 
 #define	MR_SHORT_LVAL_STACKVAR(n)					\
@@ -217,6 +237,47 @@ typedef enum {
 #define	MR_SHORT_LVAL_R_REG(n)						\
 	((MR_Short_Lval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
 		+ MR_SHORT_LVAL_TYPE_R))
+
+/*-------------------------------------------------------------------------*/
+/*
+** Definitions for MR_Solver_Event
+*/
+
+/*
+** This is the initial, temporary definition of the solver event structure.
+**
+** The port is initially represented as a string. Later, once the set of solver
+** event kinds is settled, it will be a value of an enum type representing all
+** those kinds.
+**
+** The num_attributes field gives the number of attributes. Once the runtime
+** system knows the number of attributes of each kind of event, this field may
+** disappear.
+**
+** The next three fields all point to an array whose length is the number of
+** attributes.
+**
+** solver_event->MR_se_attribute_locns[i] gives the location where we can find
+** the value of the (i+1)th attribute (since we start counting attributes at
+** one). This field will stay.
+**
+** solver_event->MR_se_attribute_types[i] is the typeinfo giving the type
+** of the (i+1)th attribute. If we find that all attributes of all events
+** have a fixed type, this field may disappear.
+**
+** solver_event->MR_se_attribute_names[i] gives the name of the (i+1)th
+** attribute. Once attribute names have settled down and the future code in the
+** trace directory that manipulates solver events has learned these names,
+** this field will disappear.
+*/
+
+struct MR_Solver_Event_Struct {
+	const char			*MR_se_port;
+	MR_uint_least16_t		MR_se_num_attributes;
+	MR_Long_Lval			*MR_se_attribute_locns;
+	MR_TypeInfo			*MR_se_attribute_types;
+	const char			**MR_se_attribute_names;
+};
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -236,7 +297,7 @@ typedef enum {
 ** with events, this will be the port of the event. For return labels,
 ** this port will be exception (since exception events are associated with
 ** the return from the call that raised the exception).
-** 
+**
 ** The MR_sll_hidden field contains a boolean which is meaningful only if the
 ** label corresponds to an execution tracing event. It will be true if the
 ** event should have no effects that the user can see (no message printed, no
@@ -250,6 +311,10 @@ typedef enum {
 ** the offset will be zero, leading to the empty string. You can use the macro
 ** MR_label_goal_path to convert the value in the MR_sll_goal_path field to a
 ** string.
+**
+** If the label is the label of a solver event, then the MR_sll_solver_event
+** field will point to information about the solver event; otherwise, the field
+** will be NULL.
 **
 ** The remaining fields give information about the values live at the given
 ** label, if this information is available. If it is available, the
@@ -328,7 +393,7 @@ typedef enum {
 ** indicated by this index will be incremented (when MR_trace_count_enabled
 ** is set). The array element at index zero is ignored. A label layout will
 ** have zero in its MR_sll_label_num_in_module field if the label doesn't
-** corresponding to an event.
+** correspond to an event.
 **
 ** XXX: Presently, inst information is ignored; we assume that all live values
 ** are ground.
@@ -345,6 +410,7 @@ struct MR_Label_Layout_Struct {
 	MR_int_least8_t			MR_sll_hidden;
 	MR_uint_least16_t		MR_sll_label_num_in_module;
 	MR_uint_least32_t		MR_sll_goal_path;
+	const MR_Solver_Event		*MR_sll_solver_event;
 	MR_Integer			MR_sll_var_count; /* >= 0 */
 	const void			*MR_sll_locns_types;
 	const MR_uint_least16_t		*MR_sll_var_nums;
@@ -357,13 +423,14 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	MR_int_least8_t			MR_sll_hidden;
 	MR_uint_least16_t		MR_sll_label_num_in_module;
 	MR_uint_least32_t		MR_sll_goal_path;
+	const MR_Solver_Event		*MR_sll_solver_event;
 	MR_Integer			MR_sll_var_count; /* < 0 */
 } MR_Label_Layout_No_Var_Info;
 
 #define	MR_label_goal_path(layout)					\
 	((MR_PROC_LAYOUT_HAS_EXEC_TRACE((layout)->MR_sll_entry)) ?	\
 		((layout)->MR_sll_entry->MR_sle_module_layout		\
-		 	->MR_ml_string_table				\
+			->MR_ml_string_table				\
 		+ (layout)->MR_sll_goal_path)				\
 	: "")
 
@@ -392,7 +459,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 #define	MR_short_desc_var_locn(sll, i)					\
 		(((MR_uint_least8_t *)					\
 			MR_end_of_long_desc_var_locns(sll))		\
-		 		[((i) - MR_long_desc_var_count(sll))])
+				[((i) - MR_long_desc_var_count(sll))])
 
 /*
 ** Define a stack layout for an internal label.
@@ -403,7 +470,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 **
 ** For the native garbage collector, we will need to add meaningful
 ** live value information as well to these macros.
-*/ 
+*/
 
 #define	MR_LAYOUT_FROM_LABEL(label)					\
 	MR_PASTE2(mercury_data__label_layout__, label)
@@ -416,6 +483,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	MR_label_layout_user_name(module, name, arity, mode, label) = {	\
 		(MR_Proc_Layout *) &					\
 			MR_proc_layout_user_name(module, name, arity, mode), \
+		0,							\
 		-1,							\
 		MR_FALSE,						\
 		0,							\
@@ -429,64 +497,115 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 ** the others are the fields of MR_Label_Layouts.
 */
 
-#define	MR_DEF_LL_GEN(e, ln, port, h, num, path, vc, lt, vn, tv)	\
-	static const MR_Label_Layout 					\
+#define	MR_DEF_LL_GEN(e, ln, port, h, num, path, s, vc, lt, vn, tv)	\
+	static const MR_Label_Layout					\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
 	= {								\
 		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
 		MR_PASTE2(MR_PORT_, port),				\
-		(h), (num), (path), (vc),				\
+		(h), (num), (path), (s), (vc),				\
 		((const void *) lt),					\
 		((const MR_uint_least16_t *) vn),			\
 		((const MR_Type_Param_Locns *) tv)			\
 	}
 
-#define	MR_DEF_LLNVI_GEN(e, ln, port, h, num, path)			\
+#define	MR_DEF_LLNVI_GEN(e, ln, port, s, h, num, path)			\
 	static const MR_Label_Layout_No_Var_Info			\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
 	= {								\
 		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
 		MR_PASTE2(MR_PORT_, port),				\
-		(h), (path), (num), -1					\
+		(h), (path), (s), (num), -1				\
 	}
 
+
 #define	MR_DEF_LL(e, ln, port, num, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc, lt, vn, tv)
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc, lt, vn, tv)
 
 #define	MR_DEF_LLT(e, ln, port, num, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc, lt, vn, tv)
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc, lt, vn, tv)
+
+#define	MR_DEF_LL_S(e, ln, port, num, path, vc, lt, vn, tv)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,			\
+		MR_SOLVER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
+		vc, lt, vn, tv)
+
+#define	MR_DEF_LLT_S(e, ln, port, num, path, vc, lt, vn, tv)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,			\
+		MR_SOLVER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
+		vc, lt, vn, tv)
 
 #define	MR_DEF_LLXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc,	\
 		MR_XCOMMON(ltt, ltc),					\
 		MR_XCOMMON(vnt, vnc),					\
 		MR_XCOMMON(tvt, tvc))
 
 #define	MR_DEF_LLXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc,	\
 		MR_XCOMMON(ltt, ltc),					\
 		MR_XCOMMON(vnt, vnc), 0)
 
 #define	MR_DEF_LLTXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc,	\
 		MR_XCOMMON(ltt, ltc),					\
 		MR_XCOMMON(vnt, vnc),					\
 		MR_XCOMMON(tvt, tvc))
 
 #define	MR_DEF_LLTXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc,	\
+		MR_XCOMMON(ltt, ltc),					\
+		MR_XCOMMON(vnt, vnc), 0)
+
+#define	MR_DEF_LLXCCC_S(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,			\
+		MR_SOLVER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
+		vc,							\
+		MR_XCOMMON(ltt, ltc),					\
+		MR_XCOMMON(vnt, vnc),					\
+		MR_XCOMMON(tvt, tvc))
+
+#define	MR_DEF_LLXCC0_S(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,			\
+		MR_SOLVER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
+		vc,							\
+		MR_XCOMMON(ltt, ltc),					\
+		MR_XCOMMON(vnt, vnc), 0)
+
+#define	MR_DEF_LLTXCCC_S(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,			\
+		MR_SOLVER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
+		vc,							\
+		MR_XCOMMON(ltt, ltc),					\
+		MR_XCOMMON(vnt, vnc),					\
+		MR_XCOMMON(tvt, tvc))
+
+#define	MR_DEF_LLTXCC0_S(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,			\
+		MR_SOLVER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
+		vc,							\
 		MR_XCOMMON(ltt, ltc),					\
 		MR_XCOMMON(vnt, vnc), 0)
 
 #define	MR_DEF_LLNVI(e, ln, port, num, path)				\
-	MR_DEF_LLNVI_GEN(e, ln, port, MR_FALSE, path)
+	MR_DEF_LLNVI_GEN(e, ln, port, NULL, MR_FALSE, path)
 
 #define	MR_DEF_LLNVIT(e, ln, port, num, path)				\
-	MR_DEF_LLNVI_GEN(e, ln, port, MR_TRUE, path)
+	MR_DEF_LLNVI_GEN(e, ln, port, NULL, MR_TRUE, path)
+
+#define	MR_DEF_LLNVI_S(e, ln, port, num, path)				\
+	MR_DEF_LLNVI_GEN(e, ln, port,					\
+		MR_SOLVER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
+		MR_FALSE, path)
+
+#define	MR_DEF_LLNVIT_S(e, ln, port, num, path)				\
+	MR_DEF_LLNVI_GEN(e, ln, port,					\
+		MR_SOLVER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)), \
+		MR_TRUE, path)
 
 #define MR_DECL_LL(e, ln)						\
 	MR_declare_label(MR_label_name(MR_add_prefix(e), ln));		\
-	static const MR_Label_Layout 					\
+	static const MR_Label_Layout					\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)); \
 
 #define MR_DECL_LLNVI(e, ln)						\
@@ -599,7 +718,7 @@ typedef struct MR_Table_Io_Decl_Struct {
 } MR_Table_Io_Decl;
 
 /*
-** MR_Table_Info: compiler generated information describing the tabling 
+** MR_Table_Info: compiler generated information describing the tabling
 ** data structures used by a procedure.
 **
 ** For I/O tabled procedures, the information is in the io_decl field.
@@ -813,7 +932,7 @@ typedef	struct MR_Exec_Trace_Struct {
 **   in a deep profiling grade.
 **
 ** The runtime system considers all proc layout structures to be of type
-** MR_Proc_Layout, but must use the macros defined below to check for the 
+** MR_Proc_Layout, but must use the macros defined below to check for the
 ** existence of each substructure before accessing the fields of that
 ** substructure. The macros are MR_PROC_LAYOUT_HAS_PROC_ID to check for the
 ** MR_Proc_Id substructure, MR_PROC_LAYOUT_HAS_EXEC_TRACE to check for the
@@ -952,7 +1071,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 ** that defines the entry. (The cast in the body of MR_INIT_PROC_LAYOUT_ADDR
 ** is needed because compiler-generated layout structures may use any of the
 ** variant types listed above.)
-*/ 
+*/
 
 #define	MR_PROC_NO_SLOT_COUNT		-1
 
@@ -971,7 +1090,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 
 #define MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(sc, detism, slots, succip_locn, \
 		pf, module, name, arity, mode, proc_static)		\
-	MR_declare_entry(MR_proc_entry_user_name(module, name, 		\
+	MR_declare_entry(MR_proc_entry_user_name(module, name,		\
 		arity, mode));						\
 	sc const MR_Proc_Layout_User					\
 	MR_proc_layout_user_name(module, name, arity, mode) = {		\
@@ -979,7 +1098,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 			MR_MAKE_PROC_LAYOUT_ADDR(			\
 				MR_proc_entry_user_name(module, name,	\
 					arity, mode)),			\
-			succip_locn,					\
+			{ succip_locn },				\
 			slots,						\
 			detism						\
 		},							\
@@ -998,14 +1117,14 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 #define MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(sc, detism, slots, succip_locn, \
 		module, name, type, arity, mode, proc_static)		\
 	MR_declare_entry(MR_proc_entry_uci_name(module, name,		\
-		type, arity, mode)); 					\
+		type, arity, mode));					\
 	sc const MR_Proc_Layout_UCI					\
 	MR_proc_layout_uci_name(module, name, type, arity, mode) = {	\
 		{							\
 			MR_MAKE_PROC_LAYOUT_ADDR(			\
 				MR_proc_entry_uci_name(module, name,	\
 					type, arity, mode)),		\
-			succip_locn,					\
+			{ succip_locn },				\
 			slots,						\
 			detism						\
 		},							\

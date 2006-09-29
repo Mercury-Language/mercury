@@ -1872,7 +1872,7 @@ get_proc_counts(TraceCounts, ProcLabelInContext, MaybeProcCounts) :-
 :- pred get_proc_calls(proc_trace_counts::in, int::out) is det.
 
 get_proc_calls(ProcCounts, Count) :-
-    map.lookup(ProcCounts, port_only(call), ContextCount),
+    map.lookup(ProcCounts, port_only(port_call), ContextCount),
     Count = ContextCount ^ exec_count.
 
 :- pred get_path_only_count(proc_trace_counts::in, mdbcomp_goal_path::in,

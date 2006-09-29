@@ -968,20 +968,20 @@ set_trace_node_arg(Node0, FieldNum, Val, Node) :-
 :- pragma foreign_export("C", trace_node_port(in) = out,
     "MR_DD_trace_node_port").
 
-trace_node_port(node_call(_, _, _, _, _, _, _, _, _, _)) = call.
-trace_node_port(node_exit(_, _, _, _, _, _, _, _))       = exit.
-trace_node_port(node_redo(_, _, _, _, _))        = redo.
-trace_node_port(node_fail(_, _, _, _, _, _))     = fail.
-trace_node_port(node_excp(_, _, _, _, _, _, _))  = exception.
-trace_node_port(node_switch(_, _))               = switch.
-trace_node_port(node_first_disj(_, _))           = disj.
-trace_node_port(node_later_disj(_, _, _))        = disj.
-trace_node_port(node_cond(_, _, _))              = ite_cond.
-trace_node_port(node_then(_, _, _))              = ite_then.
-trace_node_port(node_else(_, _, _))              = ite_else.
-trace_node_port(node_neg(_, _, _))               = neg_enter.
-trace_node_port(node_neg_succ(_, _, _))          = neg_success.
-trace_node_port(node_neg_fail(_, _, _))          = neg_failure.
+trace_node_port(node_call(_, _, _, _, _, _, _, _, _, _)) = port_call.
+trace_node_port(node_exit(_, _, _, _, _, _, _, _))       = port_exit.
+trace_node_port(node_redo(_, _, _, _, _))        = port_redo.
+trace_node_port(node_fail(_, _, _, _, _, _))     = port_fail.
+trace_node_port(node_excp(_, _, _, _, _, _, _))  = port_exception.
+trace_node_port(node_switch(_, _))               = port_switch.
+trace_node_port(node_first_disj(_, _))           = port_disj.
+trace_node_port(node_later_disj(_, _, _))        = port_disj.
+trace_node_port(node_cond(_, _, _))              = port_ite_cond.
+trace_node_port(node_then(_, _, _))              = port_ite_then.
+trace_node_port(node_else(_, _, _))              = port_ite_else.
+trace_node_port(node_neg(_, _, _))               = port_neg_enter.
+trace_node_port(node_neg_succ(_, _, _))          = port_neg_success.
+trace_node_port(node_neg_fail(_, _, _))          = port_neg_failure.
 
 :- func trace_node_path(trace_node(trace_node_id)) = goal_path_string.
 :- pragma foreign_export("C", trace_node_path(in) = out,

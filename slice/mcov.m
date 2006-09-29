@@ -192,7 +192,7 @@ proc_process_path_port_count(PathPort, LineNumberAndCount, !MaybeCallInfo,
         !Count) :-
     LineNumberAndCount = line_no_and_count(LineNumber, CurCount, _NumTests),
     !:Count = !.Count + CurCount,
-    ( PathPort = port_only(call) ->
+    ( PathPort = port_only(port_call) ->
         require(unify(!.MaybeCallInfo, no),
             "proc_process_path_port_count: duplicate call port:"),
         !:MaybeCallInfo = yes(LineNumber)

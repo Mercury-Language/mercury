@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: code_info.m.
 % Main authors: conway, zs.
-% 
+%
 % This file defines the code_info type and various operations on it.
 % The code_info structure is the 'state' of the code generator.
 %
@@ -23,7 +23,7 @@
 %   - interfacing to var_locn
 %   - managing the info required by garbage collection and value numbering
 %   - managing stack slots
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.code_info.
@@ -335,7 +335,7 @@
                                     % the call sequence number and depth
                                     % are stored in, provided tracing is
                                     % switched on.
-                
+
                 opt_no_resume_calls :: bool,
                                     % Should we optimize calls that cannot
                                     % return?
@@ -739,8 +739,8 @@ set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
 :- pred succip_is_used(code_info::in, code_info::out) is det.
 
 :- pred add_trace_layout_for_label(label::in, term.context::in,
-    trace_port::in, bool::in, goal_path::in, layout_label_info::in,
-    code_info::in, code_info::out) is det.
+    trace_port::in, bool::in, goal_path::in, maybe(solver_event_info)::in,
+    layout_label_info::in, code_info::in, code_info::out) is det.
 
 :- pred get_cur_proc_label(code_info::in, proc_label::out) is det.
 
@@ -926,10 +926,11 @@ get_next_label(Label, !CI) :-
 succip_is_used(!CI) :-
     set_succip_used(yes, !CI).
 
-add_trace_layout_for_label(Label, Context, Port, IsHidden, Path, Layout,
-        !CI) :-
+add_trace_layout_for_label(Label, Context, Port, IsHidden, Path,
+        MaybeSolverEventInfo, Layout, !CI) :-
     get_layout_info(!.CI, Internals0),
-    Exec = yes(trace_port_layout_info(Context, Port, IsHidden, Path, Layout)),
+    Exec = yes(trace_port_layout_info(Context, Port, IsHidden, Path,
+        MaybeSolverEventInfo, Layout)),
     (
         Label = internal(LabelNum, _)
     ;
@@ -2893,7 +2894,7 @@ pickup_zombies(Zombies, !CI) :-
 
     % Should we add trail ops to the code we generate for the goal with the
     % given goal_info.  This will be 'no' unless we are in a trailing grade.
-    % 
+    %
 :- func should_add_trail_ops(code_info, hlds_goal_info) = add_trail_ops.
 
 %---------------------------------------------------------------------------%

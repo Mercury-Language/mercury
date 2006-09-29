@@ -19,7 +19,6 @@
 
 :- import_module hlds.hlds_pred.
 :- import_module ll_backend.continuation_info.
-:- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.prim_data.     % for module_name
@@ -92,12 +91,13 @@
     list(scalar_common_data_array)::out, list(vector_common_data_array)::out)
     is det.
 
-    % Given an rval, figure out the type it would have as an argument.
-    % Normally that's the same as its usual type; the exception is that for
-    % boxed floats, the type is data_ptr (i.e. the type of the boxed value)
-    % rather than float (the type of the unboxed value).
+    % Given an rval, and the value of the --unboxed_float option, figure out
+    % the type the rval would have as an argument. Normally that's the same
+    % as its usual type; the exception is that for boxed floats, the type
+    % is data_ptr (i.e. the type of the boxed value) rather than float
+    % (the type of the unboxed value).
     %
-:- pred rval_type_as_arg(rval::in, exprn_opts::in, llds_type::out) is det.
+:- pred rval_type_as_arg(rval::in, bool::in, llds_type::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -599,8 +599,8 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
 
 %-----------------------------------------------------------------------------%
 
-rval_type_as_arg(Rval, ExprnOpts, Type) :-
-    natural_type(ExprnOpts ^ unboxed_float, Rval, Type).
+rval_type_as_arg(Rval, UnboxedFloat, Type) :-
+    natural_type(UnboxedFloat, Rval, Type).
 
 :- pred natural_type(bool::in, rval::in, llds_type::out) is det.
 

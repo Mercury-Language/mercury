@@ -394,7 +394,7 @@ update_label_table({ProcLabel, LabelNum, LabelVars, InternalInfo},
         update_label_table_2(ProcLabel, LabelNum,
             LabelVars, Context, IsReturn, !LabelTables)
     ;
-        Port = yes(trace_port_layout_info(Context, _, _, _, _)),
+        Port = yes(trace_port_layout_info(Context, _, _, _, _, _)),
         context_is_valid(Context)
     ->
         update_label_table_2(ProcLabel, LabelNum, LabelVars, Context,
@@ -735,7 +735,7 @@ internal_var_number_map(_Label - Internal, !VarNumMap, !Counter) :-
     Internal = internal_layout_info(MaybeTrace, MaybeResume, MaybeReturn),
     (
         MaybeTrace = yes(Trace),
-        Trace = trace_port_layout_info(_, _, _, _, TraceLayout),
+        Trace = trace_port_layout_info(_, _, _, _, _, TraceLayout),
         label_layout_var_number_map(TraceLayout, !VarNumMap, !Counter)
     ;
         MaybeTrace = no
@@ -807,9 +807,11 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     (
         Trace = no,
         set.init(TraceLiveVarSet),
-        map.init(TraceTypeVarMap)
+        map.init(TraceTypeVarMap),
+        MaybeSolverInfo = no
     ;
-        Trace = yes(trace_port_layout_info(_,_,_,_, TraceLayout)),
+        Trace = yes(trace_port_layout_info(_,_,_,_, MaybeSolverInfo,
+            TraceLayout)),
         TraceLayout = layout_label_info(TraceLiveVarSet, TraceTypeVarMap)
     ),
     (
@@ -821,7 +823,7 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         ResumeLayout = layout_label_info(ResumeLiveVarSet, ResumeTypeVarMap)
     ),
     (
-        Trace = yes(trace_port_layout_info(_, Port, IsHidden, GoalPath, _)),
+        Trace = yes(trace_port_layout_info(_, Port, IsHidden, GoalPath, _, _)),
         Return = no,
         MaybePort = yes(Port),
         MaybeIsHidden = yes(IsHidden),
@@ -834,14 +836,12 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         % We only ever use the port fields of these layout structures
         % when we process exception events. (Since exception events are
         % interface events, the goal path field is not meaningful then.)
-        MaybePort = yes(exception),
+        MaybePort = yes(port_exception),
         MaybeIsHidden = yes(no),
         % We only ever use the goal path fields of these layout structures
         % when we process "fail" commands in the debugger.
         ReturnInfo = return_layout_info(TargetsContexts, _),
-        (
-            find_valid_return_context(TargetsContexts, _, _, GoalPath)
-        ->
+        ( find_valid_return_context(TargetsContexts, _, _, GoalPath) ->
             goal_path_to_string(GoalPath, GoalPathStr),
             lookup_string_in_table(GoalPathStr, GoalPathNum, !Info),
             MaybeGoalPath = yes(GoalPathNum)
@@ -861,8 +861,7 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     ;
         Trace = yes(_),
         Return = yes(_),
-        unexpected(this_file,
-            "label has both trace and return layout info")
+        unexpected(this_file, "label has both trace and return layout info")
     ),
     get_agc_stack_layout(!.Info, AgcStackLayout),
     (
@@ -910,13 +909,36 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         MaybeVarInfo = yes(VarInfo),
         LabelVars = label_has_var_info
     ),
+    (
+        MaybeSolverInfo = no,
+        MaybeSolverData = no
+    ;
+        MaybeSolverInfo = yes(SolverInfo),
+        SolverInfo = solver_event_info(SolverEventName, Attributes),
+        list.length(Attributes, NumAttributes),
+        construct_solver_data_array(Attributes,
+            SolverLocnsArray, SolverTypesArray, SolverAttrNames, !Info),
+
+        get_static_cell_info(!.Info, StaticCellInfo0),
+        add_scalar_static_cell(SolverLocnsArray, SolverLocnsDataAddr,
+            StaticCellInfo0, StaticCellInfo1),
+        add_scalar_static_cell(SolverTypesArray, SolverTypesDataAddr,
+            StaticCellInfo1, StaticCellInfo),
+        set_static_cell_info(StaticCellInfo, !Info),
+
+        SolverLocnsRval = const(llconst_data_addr(SolverLocnsDataAddr, no)),
+        SolverTypesRval = const(llconst_data_addr(SolverTypesDataAddr, no)),
+        SolverData = solver_event_data(SolverEventName, NumAttributes,
+            SolverLocnsRval, SolverTypesRval, SolverAttrNames),
+        MaybeSolverData = yes(SolverData)
+    ),
 
     (
         Trace = yes(_),
         allocate_label_number(LabelNumber0, !Info),
-        % MR_ml_label_exec_count[0] is never written out;
-        % it is reserved for cases like this, for labels without
-        % events, and for handwritten labels.
+        % MR_ml_label_exec_count[0] is never written out; it is reserved for
+        % cases like this, for labels without events, and for handwritten
+        % labels.
         ( LabelNumber0 < (1 << 16) ->
             LabelNumber = LabelNumber0
         ;
@@ -927,11 +949,36 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         LabelNumber = 0
     ),
     LayoutData = label_layout_data(ProcLabel, LabelNum, ProcLayoutName,
-        MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath, MaybeVarInfo),
+        MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath, MaybeSolverData,
+        MaybeVarInfo),
     LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
     Label = internal(LabelNum, ProcLabel),
     add_internal_layout_data(LayoutData, Label, LayoutName, !Info),
     LabelLayout = {ProcLabel, LabelNum, LabelVars, Internal}.
+
+:- pred construct_solver_data_array(list(solver_attribute)::in,
+    assoc_list(rval, llds_type)::out, assoc_list(rval, llds_type)::out,
+    list(string)::out, stack_layout_info::in, stack_layout_info::out) is det.
+
+construct_solver_data_array([], [], [], [], !Info).
+construct_solver_data_array([Attr | Attrs],
+        [LocnRvalAndType | LocnRvalAndTypes],
+        [TypeRvalAndType | TypeRvalAndTypes], [Name | Names], !Info) :-
+    Attr = solver_attribute(Locn, Type, Name),
+    represent_locn_or_const_as_int_rval(Locn, LocnRval, LocnRvalType, !Info),
+    LocnRvalAndType = LocnRval - LocnRvalType,
+
+    ExistQTvars = [],
+    NumUnivQTvars = -1,
+    get_static_cell_info(!.Info, StaticCellInfo0),
+    ll_pseudo_type_info.construct_typed_llds_pseudo_type_info(Type,
+        NumUnivQTvars, ExistQTvars, StaticCellInfo0, StaticCellInfo,
+        TypeRval, TypeRvalType),
+    set_static_cell_info(StaticCellInfo, !Info),
+    TypeRvalAndType = TypeRval - TypeRvalType,
+
+    construct_solver_data_array(Attrs, LocnRvalAndTypes, TypeRvalAndTypes,
+        Names, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -1173,7 +1220,7 @@ construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
         LiveValueType = live_value_var(_, _, Type, _),
         get_module_info(!.Info, ModuleInfo),
         is_dummy_argument_type(ModuleInfo, Type),
-        % We want to preserve I/O states in registers
+        % We want to preserve I/O states in registers.
         \+ (
             Locn = direct(reg(_, _))
         )
@@ -1386,6 +1433,39 @@ represent_special_live_value_type(SpecialTypeName, Rval) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred represent_locn_or_const_as_int_rval(rval::in, rval::out,
+    llds_type::out, stack_layout_info::in, stack_layout_info::out) is det.
+
+represent_locn_or_const_as_int_rval(LvalOrConst, Rval, Type, !Info) :-
+    (
+        LvalOrConst = lval(Lval),
+        represent_locn_as_int_rval(direct(Lval), Rval),
+        Type = uint_least32
+    ;
+        LvalOrConst = const(_Const),
+        get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
+        rval_type_as_arg(LvalOrConst, UnboxedFloat, LLDSType),
+
+        get_static_cell_info(!.Info, StaticCellInfo0),
+        add_scalar_static_cell([LvalOrConst - LLDSType], DataAddr,
+            StaticCellInfo0, StaticCellInfo),
+        set_static_cell_info(StaticCellInfo, !Info),
+        Rval = const(llconst_data_addr(DataAddr, no)),
+        Type = data_ptr
+    ;
+        ( LvalOrConst = binop(_, _, _)
+        ; LvalOrConst = unop(_, _)
+        ; LvalOrConst = mkword(_, _)
+        ; LvalOrConst = mem_addr(_)
+        ; LvalOrConst = var(_)
+        ),
+        unexpected(this_file, "represent_locn_or_const_as_int_rval: bad rval")
+    ).
+
+%---------------------------------------------------------------------------%
+
     % Construct a representation of a variable location as a 32-bit integer.
     %
     % Most of the time, a layout specifies a location as an lval.
@@ -1497,27 +1577,32 @@ make_tagged_word(Locn, Value, TaggedValue) :-
 
 :- pred locn_type_code(locn_type::in, int::out) is det.
 
-locn_type_code(lval_r_reg,    0).
-locn_type_code(lval_f_reg,    1).
-locn_type_code(lval_stackvar, 2).
-locn_type_code(lval_framevar, 3).
-locn_type_code(lval_succip,   4).
-locn_type_code(lval_maxfr,    5).
-locn_type_code(lval_curfr,    6).
-locn_type_code(lval_hp,       7).
-locn_type_code(lval_sp,       8).
-locn_type_code(lval_indirect, 9).
-locn_type_code(lval_parent_sp,       8).    % XXX placeholder only
-locn_type_code(lval_parent_stackvar, 2).    % XXX placeholder only
+% The code of this predicate should be kept in sync with the enum type
+% MR_Long_Lval_Type in runtime/mercury_stack_layout.h. Note that the values
+% equal to 0 modulo 4 are reserved for representing constants.
+locn_type_code(lval_r_reg,           1).
+locn_type_code(lval_f_reg,           2).
+locn_type_code(lval_stackvar,        3).
+locn_type_code(lval_parent_stackvar, 3).     % XXX placeholder only
+locn_type_code(lval_framevar,        5).
+locn_type_code(lval_succip,          6).
+locn_type_code(lval_maxfr,           7).
+locn_type_code(lval_curfr,           9).
+locn_type_code(lval_hp,              10).
+locn_type_code(lval_sp,              11).
+locn_type_code(lval_parent_sp,       11).    % XXX placeholder only
+locn_type_code(lval_indirect,        13).
 
     % This number of tag bits must be able to encode all values of
     % locn_type_code.
+    %
 :- func long_lval_tag_bits = int.
 
 long_lval_tag_bits = 4.
 
     % This number of tag bits must be able to encode the largest offset
     % of a type_info within a typeclass_info.
+    %
 :- func long_lval_offset_bits = int.
 
 long_lval_offset_bits = 6.
