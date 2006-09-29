@@ -95,7 +95,7 @@ case "$BRANCH" in
 		#
 		BRANCH=latest
 	   	;;
-	   jupiter|ceres)
+	   jupiter)
 		case $DAY in
 			*[13579]) BRANCH=$release_branch ;;
 			*) BRANCH=latest ;;
@@ -104,7 +104,7 @@ case "$BRANCH" in
 	   uranus|swordfish)
 		BRANCH=latest
 		;;
-	   saturn|earth)
+	   saturn)
  	       	case $DAY in
 			*[02468]) BRANCH=$release_branch ;;
 		        *) BRANCH=latest ;;
