@@ -202,8 +202,7 @@
                 user_arity        :: int,
                 user_mode         :: int
             )
-    ;
-            uci_pred(
+    ;       uci_pred(
                 uci_type_name   :: string,
                 uci_type_module :: string,
                 uci_def_module  :: string,
@@ -213,8 +212,8 @@
             ).
 
 :- type call_site_array_slot
-    --->    normal(call_site_dynamic_ptr)
-    ;       multi(is_zeroed, array(call_site_dynamic_ptr)).
+    --->    slot_normal(call_site_dynamic_ptr)
+    ;       slot_multi(is_zeroed, array(call_site_dynamic_ptr)).
 
 :- type is_zeroed
     --->    zeroed
@@ -228,11 +227,11 @@
     ;       callback.
 
 :- type call_site_kind_and_callee
-    --->    normal_call(proc_static_ptr, string)
-    ;       special_call
-    ;       higher_order_call
-    ;       method_call
-    ;       callback.
+    --->    normal_call_and_callee(proc_static_ptr, string)
+    ;       special_call_and_no_callee
+    ;       higher_order_call_and_no_callee
+    ;       method_call_and_no_callee
+    ;       callback_and_no_callee.
 
 :- type call_site_callees
     --->    call_site_callees(

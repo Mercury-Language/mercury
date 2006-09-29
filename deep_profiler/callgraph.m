@@ -103,10 +103,10 @@ add_pd_arcs(InitDeep, PDI, PD, !Graph) :-
 
 add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, !Graph) :-
     (
-        CallSiteSlot = normal(CSDPtr),
+        CallSiteSlot = slot_normal(CSDPtr),
         add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph)
     ;
-        CallSiteSlot = multi(_, CSDPtrArray),
+        CallSiteSlot = slot_multi(_, CSDPtrArray),
         array.to_list(CSDPtrArray, CSDPtrs),
         list.foldl(add_csd_arcs(InitDeep, FromPDI), CSDPtrs, !Graph)
     ).

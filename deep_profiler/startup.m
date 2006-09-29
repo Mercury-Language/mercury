@@ -457,12 +457,11 @@ construct_call_site_caller_2(SlotNum, Deep, CSSPtrs, CSDArraySlots,
         array.lookup(CSDArraySlots, SlotNum, CSDArraySlot),
         array.lookup(CSSPtrs, SlotNum, CSSPtr),
         (
-            CSDArraySlot = normal(CSDPtr),
+            CSDArraySlot = slot_normal(CSDPtr),
             construct_call_site_caller_3(Deep, CSSPtr, -1, CSDPtr,
                 !CallSiteStaticMap)
-
         ;
-            CSDArraySlot = multi(_, CSDPtrs),
+            CSDArraySlot = slot_multi(_, CSDPtrs),
             array_foldl_from_0(construct_call_site_caller_3(Deep, CSSPtr),
                 CSDPtrs, !CallSiteStaticMap)
         ),
@@ -517,12 +516,11 @@ construct_call_site_calls_2(CallSiteDynamics, ProcDynamics, SlotNum,
         array.lookup(CSDArraySlots, SlotNum, CSDArraySlot),
         array.lookup(CSSPtrs, SlotNum, CSSPtr),
         (
-            CSDArraySlot = normal(CSDPtr),
+            CSDArraySlot = slot_normal(CSDPtr),
             construct_call_site_calls_3(CallSiteDynamics,
-                ProcDynamics, CSSPtr, -1,
-                CSDPtr, !CallSiteCalls)
+                ProcDynamics, CSSPtr, -1, CSDPtr, !CallSiteCalls)
         ;
-            CSDArraySlot = multi(_, CSDPtrs),
+            CSDArraySlot = slot_multi(_, CSDPtrs),
             array_foldl_from_0(
                 construct_call_site_calls_3(CallSiteDynamics,
                     ProcDynamics, CSSPtr),
@@ -850,7 +848,7 @@ flatten_call_sites(CallSiteArray, CSDPtrs, IsZeroed) :-
 
 gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
     (
-        Slot = normal(CSDPtr),
+        Slot = slot_normal(CSDPtr),
         CSDPtr = call_site_dynamic_ptr(CSDI),
         ( CSDI > 0 ->
             CSDPtrs1 = [[CSDPtr] | CSDPtrs0]
@@ -859,7 +857,7 @@ gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
         ),
         IsZeroed = IsZeroed0
     ;
-        Slot = multi(IsZeroed1, PtrArray),
+        Slot = slot_multi(IsZeroed1, PtrArray),
         array.to_list(PtrArray, PtrList0),
         list.filter((pred(CSDPtr::in) is semidet :-
             CSDPtr = call_site_dynamic_ptr(CSDI),

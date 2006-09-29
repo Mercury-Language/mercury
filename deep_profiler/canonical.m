@@ -183,7 +183,7 @@ complete_clique_slots(SlotNum, InitDeep, Clique, PSSites, PDSites,
         array.lookup(PSSites, SlotNum, CSSPtr),
         lookup_call_site_statics(InitDeep ^ init_call_site_statics,
             CSSPtr, CSS),
-        ( CSS ^ css_kind = normal_call(_, _) ->
+        ( CSS ^ css_kind = normal_call_and_callee(_, _) ->
             lookup_normal_sites(PDSites, SlotNum, CSDPtrs)
         ;
             lookup_multi_sites(PDSites, SlotNum, CSDPtrLists),
@@ -273,15 +273,15 @@ merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
     ( SlotNum >= 0 ->
         array.lookup(PrimeSiteArray0, SlotNum, PrimeSite0),
         (
-            PrimeSite0 = normal(PrimeCSDPtr0),
+            PrimeSite0 = slot_normal(PrimeCSDPtr0),
             merge_proc_dynamic_normal_slot(MergeInfo, SlotNum,
                 Clique, PrimePDPtr, PrimeCSDPtr0,
                 RestSiteArrays, PrimeCSDPtr,
                 !InitDeep, !Redirect),
             array.set(PrimeSiteArray0, SlotNum,
-                normal(PrimeCSDPtr), PrimeSiteArray1)
+                slot_normal(PrimeCSDPtr), PrimeSiteArray1)
         ;
-            PrimeSite0 = multi(IsZeroed, PrimeCSDPtrArray0),
+            PrimeSite0 = slot_multi(IsZeroed, PrimeCSDPtrArray0),
             array.to_list(PrimeCSDPtrArray0, PrimeCSDPtrList0),
             merge_proc_dynamic_multi_slot(MergeInfo, SlotNum,
                 Clique, PrimePDPtr, PrimeCSDPtrList0,
@@ -289,7 +289,7 @@ merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
                 !InitDeep, !Redirect),
             PrimeCSDPtrArray = array(PrimeCSDPtrList),
             array.set(PrimeSiteArray0, SlotNum,
-                multi(IsZeroed, PrimeCSDPtrArray),
+                slot_multi(IsZeroed, PrimeCSDPtrArray),
                 PrimeSiteArray1)
         ),
         merge_proc_dynamic_slots(MergeInfo, SlotNum - 1, Clique,
@@ -487,10 +487,10 @@ lookup_normal_sites([], _, []).
 lookup_normal_sites([RestArray | RestArrays], SlotNum, [CSDPtr | CSDPtrs]) :-
     array.lookup(RestArray, SlotNum, Slot),
     (
-        Slot = normal(CSDPtr)
+        Slot = slot_normal(CSDPtr)
     ;
-        Slot = multi(_, _),
-        error("lookup_normal_sites: found multi")
+        Slot = slot_multi(_, _),
+        error("lookup_normal_sites: found slot_multi")
     ),
     lookup_normal_sites(RestArrays, SlotNum, CSDPtrs).
 
@@ -501,10 +501,10 @@ lookup_multi_sites([], _, []).
 lookup_multi_sites([RestArray | RestArrays], SlotNum, [CSDList | CSDLists]) :-
     array.lookup(RestArray, SlotNum, Slot),
     (
-        Slot = normal(_),
+        Slot = slot_normal(_),
         error("lookup_multi_sites: found normal")
     ;
-        Slot = multi(_, CSDArray),
+        Slot = slot_multi(_, CSDArray),
         array.to_list(CSDArray, CSDList)
     ),
     lookup_multi_sites(RestArrays, SlotNum, CSDLists).
@@ -762,9 +762,10 @@ subst_in_proc_dynamic(Redirect, !PD) :-
 :- pred subst_in_slot(redirect::in, call_site_array_slot::in,
     call_site_array_slot::out) is det.
 
-subst_in_slot(Redirect, normal(CSDPtr0), normal(CSDPtr)) :-
+subst_in_slot(Redirect, slot_normal(CSDPtr0), slot_normal(CSDPtr)) :-
     lookup_csd_redirect(Redirect ^ csd_redirect, CSDPtr0, CSDPtr).
-subst_in_slot(Redirect, multi(IsZeroed, CSDPtrs0), multi(IsZeroed, CSDPtrs)) :-
+subst_in_slot(Redirect, slot_multi(IsZeroed, CSDPtrs0),
+        slot_multi(IsZeroed, CSDPtrs)) :-
     array.map(lookup_csd_redirect(Redirect ^ csd_redirect),
         u(CSDPtrs0), CSDPtrs).
 
@@ -925,15 +926,15 @@ concatenate_profile_slots(Cur, Max, PrevMaxCSD, PrevMaxPD, !Sites) :-
     ( Cur =< Max ->
         array.lookup(!.Sites, Cur, Slot0),
         (
-            Slot0 = normal(CSDPtr0),
+            Slot0 = slot_normal(CSDPtr0),
             concat_call_site_dynamic_ptr(PrevMaxCSD, CSDPtr0, CSDPtr),
-            Slot = normal(CSDPtr)
+            Slot = slot_normal(CSDPtr)
         ;
-            Slot0 = multi(IsZeroed, CSDPtrs0),
+            Slot0 = slot_multi(IsZeroed, CSDPtrs0),
             array_map_from_0(
                 concat_call_site_dynamic_ptr(PrevMaxCSD),
                 u(CSDPtrs0), CSDPtrs),
-            Slot = multi(IsZeroed, CSDPtrs)
+            Slot = slot_multi(IsZeroed, CSDPtrs)
         ),
         svarray.set(Cur, Slot, !Sites),
         concatenate_profile_slots(Cur + 1, Max, PrevMaxCSD, PrevMaxPD,

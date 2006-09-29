@@ -286,10 +286,10 @@ append_slot_to_string(Slot, Str0, Str) :-
 
 :- func array_slot_to_html(call_site_array_slot) = string.
 
-array_slot_to_html(normal(CSDPtr)) = HTML :-
+array_slot_to_html(slot_normal(CSDPtr)) = HTML :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
     HTML = "normal " ++ string.int_to_string(CSDI).
-array_slot_to_html(multi(_, CSDPtrArray)) = HTML :-
+array_slot_to_html(slot_multi(_, CSDPtrArray)) = HTML :-
     array.to_list(CSDPtrArray, CSDPtrs),
     list.foldl(append_csdi_to_string, CSDPtrs, "", CSDI_HTML),
     list.length(CSDPtrs, CSDPtrCount),
@@ -308,22 +308,29 @@ append_pdi_to_string(proc_dynamic_ptr(PDI), Str0) =
 
 :- func kind_and_callee_to_string(call_site_kind_and_callee) = string.
 
-kind_and_callee_to_string(normal_call(proc_static_ptr(PSI), TypeSpec)) =
+kind_and_callee_to_string(normal_call_and_callee(proc_static_ptr(PSI),
+        TypeSpec)) =
     "normal " ++ string.int_to_string(PSI) ++ " " ++ TypeSpec.
-kind_and_callee_to_string(special_call) = "special_call".
-kind_and_callee_to_string(higher_order_call) = "higher_order_call".
-kind_and_callee_to_string(method_call) = "method_call".
-kind_and_callee_to_string(callback) = "callback".
+kind_and_callee_to_string(special_call_and_no_callee) = "special_call".
+kind_and_callee_to_string(higher_order_call_and_no_callee) =
+    "higher_order_call".
+kind_and_callee_to_string(method_call_and_no_callee) = "method_call".
+kind_and_callee_to_string(callback_and_no_callee) = "callback".
 
 %-----------------------------------------------------------------------------%
 
 :- func call_site_kind_and_callee_to_html(call_site_kind_and_callee) = string.
 
-call_site_kind_and_callee_to_html(normal_call(_, _)) = "normal_call".
-call_site_kind_and_callee_to_html(special_call) =      "special_call".
-call_site_kind_and_callee_to_html(higher_order_call) = "higher_order_call".
-call_site_kind_and_callee_to_html(method_call) =       "method_call".
-call_site_kind_and_callee_to_html(callback) =          "callback".
+call_site_kind_and_callee_to_html(normal_call_and_callee(_, _)) =
+    "normal_call".
+call_site_kind_and_callee_to_html(special_call_and_no_callee) =
+    "special_call".
+call_site_kind_and_callee_to_html(higher_order_call_and_no_callee) =
+    "higher_order_call".
+call_site_kind_and_callee_to_html(method_call_and_no_callee) =
+    "method_call".
+call_site_kind_and_callee_to_html(callback_and_no_callee) =
+    "callback".
 
 %-----------------------------------------------------------------------------%
 
@@ -969,8 +976,8 @@ call_site_clique_to_html(Pref, Deep, CallerCliquePtr, Percent, Pair,
     Pair = CSSPtr - CallSiteArraySlot,
     deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
     Kind = CSS ^ css_kind,
-    ( Kind = normal_call(_CalleePSPtr, _) ->
-        ( CallSiteArraySlot = normal(CSDPtr0) ->
+    ( Kind = normal_call_and_callee(_CalleePSPtr, _) ->
+        ( CallSiteArraySlot = slot_normal(CSDPtr0) ->
             CSDPtr = CSDPtr0
         ;
             error("call_site_clique_to_html: normal_call error")
@@ -978,7 +985,7 @@ call_site_clique_to_html(Pref, Deep, CallerCliquePtr, Percent, Pair,
         normal_call_site_clique_to_html(Pref, Deep, CallerCliquePtr,
             CSDPtr, LineGroups, Percent, ActionPtrs)
     ;
-        ( CallSiteArraySlot = multi(_, CSDPtrs0) ->
+        ( CallSiteArraySlot = slot_multi(_, CSDPtrs0) ->
             array.to_list(CSDPtrs0, CSDPtrs)
         ;
             error("call_site_clique_to_html: non-normal_call error")
@@ -1086,7 +1093,7 @@ call_site_summary_to_html(Pref, Deep, CSSPtr) = LineGroup :-
     Kind = CSS ^ css_kind,
     CallerPSPtr = CSS ^ css_container,
     call_site_context(Deep, CSSPtr, FileName, LineNumber),
-    ( Kind = normal_call(CalleePSPtr, _) ->
+    ( Kind = normal_call_and_callee(CalleePSPtr, _) ->
         LineGroup0 = normal_call_site_summary_to_html(Pref, Deep,
             FileName, LineNumber, CallerPSPtr, CalleePSPtr,
             CallSiteCallList)
@@ -1302,9 +1309,9 @@ call_site_dynamic_to_html(Pref, Deep, CallSiteDisplay, MaybeCallerCliquePtr,
     ;       callee_clique.
 
 :- type wrap_with_url
-    --->    always
-    ;       if_cross_clique(assume_cross_clique)
-    ;       never.
+    --->    wrap_url_always
+    ;       wrap_url_if_cross_clique(assume_cross_clique)
+    ;       wrap_url_never.
 
 :- type assume_cross_clique
     --->    assume_cross_clique
@@ -1316,18 +1323,20 @@ call_site_dynamic_to_html(Pref, Deep, CallSiteDisplay, MaybeCallerCliquePtr,
 :- func downward_summary_display = call_site_display.
 
 ancestor_display =
-    call_site_display(call_context, caller_proc_name, caller_clique, always).
+    call_site_display(call_context, caller_proc_name, caller_clique,
+        wrap_url_always).
 
 upward_display =
-    call_site_display(call_context, caller_proc_name, callee_clique, always).
+    call_site_display(call_context, caller_proc_name, callee_clique,
+        wrap_url_always).
 
 downward_display =
-    call_site_display(call_context, callee_proc_name,
-        callee_clique, if_cross_clique(assume_within_clique)).
+    call_site_display(call_context, callee_proc_name, callee_clique,
+        wrap_url_if_cross_clique(assume_within_clique)).
 
 downward_summary_display =
-    call_site_display(empty_context, callee_proc_name,
-        callee_clique, if_cross_clique(assume_within_clique)).
+    call_site_display(empty_context, callee_proc_name, callee_clique,
+        wrap_url_if_cross_clique(assume_within_clique)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1369,10 +1378,10 @@ call_to_html(Pref, Deep, CallSiteDisplay, CallContext,
         [s(deep_cmd_pref_to_url(Pref, Deep, clique(ChosenCliqueNum))),
         s(escape_html_string(ProcName))]),
     (
-        CallSiteDisplay ^ display_wrap = always,
+        CallSiteDisplay ^ display_wrap = wrap_url_always,
         UsedProcName0 = WrappedProcName
     ;
-        CallSiteDisplay ^ display_wrap = if_cross_clique(Assume),
+        CallSiteDisplay ^ display_wrap = wrap_url_if_cross_clique(Assume),
         (
             MaybeCallerCliquePtr = yes(_),
             ( CallerCliquePtr \= CalleeCliquePtr ->
@@ -1391,7 +1400,7 @@ call_to_html(Pref, Deep, CallSiteDisplay, CallContext,
             )
         )
     ;
-        CallSiteDisplay ^ display_wrap = never,
+        CallSiteDisplay ^ display_wrap = wrap_url_never,
         UsedProcName0 = escape_html_string(ProcName)
     ),
     (
@@ -1459,8 +1468,9 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
     LinkProc   = "Group callers by procedure",
     LinkModule = "Group callers by module",
     LinkClique = "Group callers by clique",
-    BunchSize = 100,    % Don't display more lines than this,
-                        % to avoid quadratic behaviour in Netscape.
+    % Don't display more lines than BunchSize, to avoid quadratic behaviour
+    % in Netscape.
+    BunchSize = 100,
     (
         CallerGroups = group_by_call_site,
         GroupMap = list.foldl(accumulate_csds_by_call_site(Deep),

@@ -265,9 +265,9 @@ dump_call_site_array_slot(Index, CSA_slot, !IO) :-
 
 :- func call_site_array_slot_to_string(call_site_array_slot) = string.
 
-call_site_array_slot_to_string(normal(call_site_dynamic_ptr(CSDI))) =
+call_site_array_slot_to_string(slot_normal(call_site_dynamic_ptr(CSDI))) =
     string.format("normal(csd%d)", [i(CSDI)]).
-call_site_array_slot_to_string(multi(_, _)) = "multi".
+call_site_array_slot_to_string(slot_multi(_, _)) = "multi".
 
 %----------------------------------------------------------------------------%
 
@@ -400,16 +400,16 @@ dump_proc_id(Proc) = Str :-
 :- pred dump_call_site_kind_and_callee(call_site_kind_and_callee::in,
     io::di, io::uo) is det.
 
-dump_call_site_kind_and_callee(normal_call(Ptr, String), !IO) :-
+dump_call_site_kind_and_callee(normal_call_and_callee(Ptr, String), !IO) :-
     Ptr = proc_static_ptr(Val),
     io.format("normal_call(%d, \"%s\")", [i(Val), s(String)], !IO).
-dump_call_site_kind_and_callee(special_call, !IO) :-
+dump_call_site_kind_and_callee(special_call_and_no_callee, !IO) :-
     io.write_string("special_call", !IO).
-dump_call_site_kind_and_callee(higher_order_call, !IO) :-
+dump_call_site_kind_and_callee(higher_order_call_and_no_callee, !IO) :-
     io.write_string("higher_order_call", !IO).
-dump_call_site_kind_and_callee(method_call, !IO) :-
+dump_call_site_kind_and_callee(method_call_and_no_callee, !IO) :-
     io.write_string("method_call", !IO).
-dump_call_site_kind_and_callee(callback, !IO) :-
+dump_call_site_kind_and_callee(callback_and_no_callee, !IO) :-
     io.write_string("callback", !IO).
 
 %----------------------------------------------------------------------------%

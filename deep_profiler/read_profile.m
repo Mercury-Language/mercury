@@ -150,7 +150,7 @@ init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec, InstrumentQuanta,
         array.init(MaxCSS + 1,
             call_site_static(
                 make_dummy_psptr, -1,
-                normal_call(make_dummy_psptr, ""), -1, ""
+                normal_call_and_callee(make_dummy_psptr, ""), -1, ""
             )),
         array.init(MaxPS + 1,
             proc_static(dummy_proc_id, "", "", "", "", -1, no,
@@ -677,7 +677,7 @@ read_call_site_slot(Res, !IO) :-
             (
                 Res2 = ok(CSDI),
                 CSDPtr = make_csdptr(CSDI),
-                Res = ok(normal(CSDPtr))
+                Res = ok(slot_normal(CSDPtr))
                 % DEBUGSITE
                 % io.write_string("normal call_site slot ",
                 %   !IO),
@@ -701,7 +701,7 @@ read_call_site_slot(Res, !IO) :-
             (
                 Res2 = ok(CSDIs),
                 CSDPtrs = list.map(make_csdptr, CSDIs),
-                Res = ok(multi(Zeroed, array(CSDPtrs)))
+                Res = ok(slot_multi(Zeroed, array(CSDPtrs)))
                 % DEBUGSITE
                 % io.write_string("multi call_site slots ",
                 %   !IO),
@@ -806,8 +806,8 @@ read_call_site_kind_and_callee(Res, !IO) :-
                 read_string(Res2, !IO),
                 (
                     Res2 = ok(TypeSubst),
-                    Res = ok(normal_call(proc_static_ptr(CalleeProcStatic),
-                        TypeSubst))
+                    Res = ok(normal_call_and_callee(
+                        proc_static_ptr(CalleeProcStatic), TypeSubst))
                 ;
                     Res2 = error(Err),
                     Res = error(Err)
@@ -817,13 +817,13 @@ read_call_site_kind_and_callee(Res, !IO) :-
                 Res = error(Err)
             )
         ; Byte = token_special_call ->
-            Res = ok(special_call)
+            Res = ok(special_call_and_no_callee)
         ; Byte = token_higher_order_call ->
-            Res = ok(higher_order_call)
+            Res = ok(higher_order_call_and_no_callee)
         ; Byte = token_method_call ->
-            Res = ok(method_call)
+            Res = ok(method_call_and_no_callee)
         ; Byte = token_callback ->
-            Res = ok(callback)
+            Res = ok(callback_and_no_callee)
         ;
             format("unexpected call_site_kind %d", [i(Byte)], Msg),
             Res = error(Msg)
