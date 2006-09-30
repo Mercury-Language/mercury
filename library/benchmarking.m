@@ -19,6 +19,8 @@
 :- module benchmarking.
 :- interface.
 
+:- import_module io.
+
     % `report_stats' is a non-logical procedure intended for use in profiling
     % the performance of a program. It has the side-effect of reporting
     % some memory and time usage statistics about the time period since
@@ -64,6 +66,47 @@
 :- pred benchmark_nondet(pred(T1, T2), T1, int, int, int).
 :- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out)
     is cc_multi.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+    %
+    % Turn off or on the collection of all profiling statistics.
+    %
+:- pred turn_off_profiling(io::di, io::uo) is det.
+:- pred turn_on_profiling(io::di, io::uo) is det.
+
+:- impure pred turn_off_profiling is det.
+:- impure pred turn_on_profiling is det.
+
+    %
+    % Turn off or on the collection of call graph profiling statistics.
+    %
+:- pred turn_off_call_profiling(io::di, io::uo) is det.
+:- pred turn_on_call_profiling(io::di, io::uo) is det.
+
+:- impure pred turn_off_call_profiling is det.
+:- impure pred turn_on_call_profiling is det.
+
+    %
+    % Turn off or on the collection of time spent in each procedure
+    % profiling statistics.
+    %
+:- pred turn_off_time_profiling(io::di, io::uo) is det.
+:- pred turn_on_time_profiling(io::di, io::uo) is det.
+
+:- impure pred turn_off_time_profiling is det.
+:- impure pred turn_on_time_profiling is det.
+
+    %
+    % Turn off or on the collection of memory allocated in each procedure
+    % profiling statistics.
+    %
+:- pred turn_off_heap_profiling(io::di, io::uo) is det.
+:- pred turn_on_heap_profiling(io::di, io::uo) is det.
+
+:- impure pred turn_off_heap_profiling is det.
+:- impure pred turn_on_heap_profiling is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -912,6 +955,104 @@ incr_ref(Ref) :-
     [will_not_call_mercury],
 "
     Ref.value = X;
+").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+turn_off_profiling(!IO) :-
+    promise_pure ( impure turn_off_profiling ).
+
+turn_on_profiling(!IO) :-
+    promise_pure ( impure turn_on_profiling ).
+
+turn_off_profiling :-
+    impure turn_off_call_profiling,
+    impure turn_off_time_profiling,
+    impure turn_off_heap_profiling.
+
+turn_on_profiling :-
+    impure turn_on_call_profiling,
+    impure turn_on_time_profiling,
+    impure turn_on_heap_profiling.
+
+%-----------------------------------------------------------------------------%
+
+turn_off_call_profiling(!IO) :-
+    promise_pure ( impure turn_off_call_profiling ).
+
+turn_on_call_profiling(!IO) :-
+    promise_pure ( impure turn_on_call_profiling ).
+
+turn_off_time_profiling(!IO) :-
+    promise_pure ( impure turn_off_time_profiling ).
+
+turn_on_time_profiling(!IO) :-
+    promise_pure ( impure turn_on_time_profiling ).
+
+turn_off_heap_profiling(!IO) :-
+    promise_pure ( impure turn_off_heap_profiling ).
+
+turn_on_heap_profiling(!IO) :-
+    promise_pure ( impure turn_on_heap_profiling ).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_decl(c, local, "
+#include ""mercury_prof.h""
+#include ""mercury_heap_profile.h""
+").
+
+:- pragma foreign_proc(c, turn_off_call_profiling,
+        [will_not_call_mercury, thread_safe, tabled_for_io], "
+#ifdef MR_MPROF_PROFILE_CALLS
+    MR_prof_turn_off_call_profiling();
+#endif
+").
+
+:- pragma foreign_proc(c, turn_on_call_profiling,
+        [will_not_call_mercury, thread_safe, tabled_for_io], "
+#ifdef MR_MPROF_PROFILE_CALLS
+    MR_prof_turn_on_call_profiling();
+#endif
+").
+
+:- pragma foreign_proc(c, turn_off_time_profiling,
+        [will_not_call_mercury, thread_safe, tabled_for_io], "
+#ifdef MR_MPROF_PROFILE_TIME
+    MR_prof_turn_off_time_profiling();
+#endif
+").
+
+:- pragma foreign_proc(c, turn_on_time_profiling,
+        [will_not_call_mercury, thread_safe, tabled_for_io], "
+#ifdef MR_MPROF_PROFILE_TIME
+    MR_prof_turn_on_time_profiling();
+#endif
+").
+
+:- pragma foreign_proc(c, turn_off_time_profiling,
+        [will_not_call_mercury, thread_safe, tabled_for_io], "
+#ifdef MR_MPROF_PROFILE_TIME
+    MR_prof_turn_off_time_profiling();
+#endif
+").
+
+:- pragma foreign_proc(c, turn_on_time_profiling,
+        [will_not_call_mercury, thread_safe, tabled_for_io], "
+#ifdef MR_MPROF_PROFILE_TIME
+    MR_prof_turn_on_time_profiling();
+#endif
+").
+
+:- pragma foreign_proc(c, turn_off_heap_profiling,
+        [will_not_call_mercury, thread_safe, tabled_for_io], "
+    MR_prof_turn_off_heap_profiling();
+").
+
+:- pragma foreign_proc(c, turn_on_heap_profiling,
+        [will_not_call_mercury, thread_safe, tabled_for_io], "
+    MR_prof_turn_on_heap_profiling();
 ").
 
 %-----------------------------------------------------------------------------%
