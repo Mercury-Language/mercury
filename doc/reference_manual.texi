@@ -9615,7 +9615,7 @@ and will avoid recomputing solutions
 that are already available in the memo table.
 The @samp{minimal_model} pragma asks for the computation
 of a ``minimal model'' semantics.
-These differs from the @samp{memo} pragma in that
+These differ from the @samp{memo} pragma in that
 the detection of what appears to be an infinite recursive loop is not fatal.
 The implementation will consider the apparently infinitely recursive calls
 to fail if the call concerned has no way of computing any solutions
@@ -9684,9 +9684,9 @@ followed by the name of the tabled predicate, followed by its arity,
 and (if the predicate has more than one mode) by the mode number
 (the first declared mode is mode 0, the second is mode 1, and so on).
 These three or four components are separated by underscores.
-The reset predicate takes three arguments.
-The second and third are a di/uo pair of I/O states as arguments,
-while the first is a output argument which contains information
+The statistics predicate takes three arguments.
+The second and third are a di/uo pair of I/O states,
+while the first is an output argument that contains information
 about accesses to and modifications of the procedure's memo table,
 both since the creation of the table,
 and since the last call to this predicate.
