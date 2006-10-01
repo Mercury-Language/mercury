@@ -2049,7 +2049,7 @@ MR_BEGIN_CODE
 /* mercury__exception__builtin_catch_3_1: the semidet version */
 #define proc_label              mercury__exception__builtin_catch_3_1
 #define proc_layout             MR_proc_layout_user_name(exception, \
-                            `       builtin_catch, 3, 1)
+                                    builtin_catch, 3, 1)
 #define excp_handler            MR_MODEL_SEMI_HANDLER
 #define model                   ""[model semi]""
 #define save_results()          save_r1r2
