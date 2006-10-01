@@ -1,6 +1,6 @@
 duplicate_modes.m:001: Warning: interface for module `duplicate_modes' does not
 duplicate_modes.m:001:   export anything.
-duplicate_modes.m:001: To be useful, a module should export something. A file
+duplicate_modes.m:001:   To be useful, a module should export something. A file
 duplicate_modes.m:001:   should contain at least one declaration other than
 duplicate_modes.m:001:   `:- import_module' in its interface section(s). This
 duplicate_modes.m:001:   would normally be a `:- pred', `:- func', `:- type',

@@ -700,7 +700,7 @@
     % update_interface_return_succeeded(FileName, Succeeded):
     %
     % Call the shell script mercury_update_interface to update the
-    % interface file FileName if it has changed.
+    % interface file FileName from FileName.tmp if it has changed.
     %
 :- pred update_interface_return_succeeded(file_name::in, bool::out,
     io::di, io::uo) is det.
@@ -1408,6 +1408,7 @@ make_interface(SourceFileName, SourceFileModuleName, ModuleName,
                 strip_unnecessary_impl_defns(!InterfaceItems),
                 check_for_clauses_in_interface(!InterfaceItems, !IO),
                 check_int_for_no_exports(!.InterfaceItems, ModuleName, !IO),
+                order_items(!InterfaceItems),
                 write_interface_file(SourceFileName, ModuleName, ".int",
                     MaybeTimestamp, !.InterfaceItems, !IO),
                 get_short_interface(!.InterfaceItems, int2,
@@ -1425,7 +1426,7 @@ make_short_interface(SourceFileName, ModuleName, Items0, !IO) :-
 
     get_interface(ModuleName, no, Items0, InterfaceItems0),
     % Assertions are also stripped since they should only be written
-    % to .opt files,
+    % to .opt files.
     strip_assertions(InterfaceItems0, InterfaceItems1),
     check_for_clauses_in_interface(InterfaceItems1, InterfaceItems, !IO),
     get_short_interface(InterfaceItems, int3, ShortInterfaceItems0),
@@ -1538,24 +1539,9 @@ strip_unnecessary_impl_defns(Items0, Items) :-
             Items = IntItems
         ;
             !.ImplItems = [_ | _],
-            standardize_impl_items(!.ImplItems, no, Unexpected,
-                [], RevRemainderItems, [], ImportItems, [], UseItems,
-                [], TypeDefnItems),
-            (
-                Unexpected = yes,
-                unexpected(this_file, "strip_unnecessary_impl_defns_2: " ++
-                    "unexpected items in implementation section")
-                % XXX If the above exception is thrown and you need a
-                % workaround you, can replace the exception with this code:
-                % Items = IntItems ++ [make_pseudo_decl(implementation)]
-                %    ++ !.ImplItems
-            ;
-                Unexpected = no,
-                list.reverse(RevRemainderItems, RemainderItems),
-                list.condense([IntItems, [make_pseudo_decl(md_implementation)],
-                    ImportItems, UseItems, TypeDefnItems, RemainderItems],
-                    Items)
-            )
+            standardize_impl_items(!.ImplItems, StdImplItems),
+            ImplSectionItem = make_pseudo_decl(md_implementation),
+            list.condense([IntItems, [ImplSectionItem], StdImplItems], Items)
         )
     ).
 
@@ -1569,7 +1555,25 @@ strip_unnecessary_impl_defns(Items0, Items) :-
 :- inst type_defn_item  ==  bound(item_type_defn(ground, ground, ground,
                                 ground, ground)).
 
-:- pred standardize_impl_items(item_list::in, bool::in, bool::out,
+:- pred standardize_impl_items(item_list::in, item_list::out) is det.
+
+standardize_impl_items(Items0, Items) :-
+    do_standardize_impl_items(Items0, no, Unexpected, [], RevRemainderItems,
+        [], ImportItems, [], UseItems, [], TypeDefnItems),
+    (
+        Unexpected = yes,
+        unexpected(this_file, "standardize_impl_items: unexpected items")
+        % XXX If the above exception is thrown and you need a
+        % workaround you can replace the call to unexpected with this code:
+        % Items = Items0
+    ;
+        Unexpected = no,
+        list.reverse(RevRemainderItems, RemainderItems),
+        list.condense([ImportItems, UseItems, TypeDefnItems, RemainderItems],
+            Items)
+    ).
+
+:- pred do_standardize_impl_items(item_list::in, bool::in, bool::out,
     item_list::in, item_list::out,
     item_list::in(list_skel(item_context(import_item))),
     item_list::out(list_skel(item_context(import_item))),
@@ -1579,9 +1583,9 @@ strip_unnecessary_impl_defns(Items0, Items) :-
     item_list::out(list_skel(item_context(type_defn_item))))
     is det.
 
-standardize_impl_items([], !Unexpected, !RevRemainderItems,
+do_standardize_impl_items([], !Unexpected, !RevRemainderItems,
         !ImportItems, !UseItems, !TypeDefnItems).
-standardize_impl_items([ItemAndContext | ItemAndContexts], !Unexpected,
+do_standardize_impl_items([ItemAndContext | ItemAndContexts], !Unexpected,
         !RevRemainderItems, !ImportItems, !UseItems, !TypeDefnItems) :-
     ItemAndContext = Item - Context,
     ( Item = item_module_defn(_VarSet, ModuleDefn) ->
@@ -1590,16 +1594,16 @@ standardize_impl_items([ItemAndContext | ItemAndContexts], !Unexpected,
             ( ImportModules = list_module([_ImportModule]) ->
                 insert_import_module(Context, Item, !ImportItems)
             ;
-                unexpected(this_file, "standardize_impl_items: " ++
-                    "non-singleton-module import")
+                unexpected(this_file,
+                    "do_standardize_impl_items: non-singleton-module import")
             )
         ;
             ModuleDefn = md_use(UseModules),
             ( UseModules = list_module([_UseModule]) ->
                 insert_use_module(Context, Item, !UseItems)
             ;
-                unexpected(this_file, "standardize_impl_items: " ++
-                    "non-singleton-module use")
+                unexpected(this_file,
+                    "do_standardize_impl_items: non-singleton-module use")
             )
         ;
             ( ModuleDefn = md_module(_)
@@ -1626,7 +1630,7 @@ standardize_impl_items([ItemAndContext | ItemAndContexts], !Unexpected,
     ;
         !:RevRemainderItems = [ItemAndContext | !.RevRemainderItems]
     ),
-    standardize_impl_items(ItemAndContexts, !Unexpected,
+    do_standardize_impl_items(ItemAndContexts, !Unexpected,
         !RevRemainderItems, !ImportItems, !UseItems, !TypeDefnItems).
 
 :- pred insert_import_module(prog_context::in, item::in,
@@ -1855,9 +1859,7 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap,
 
 accumulate_abs_eqv_type_rhs(ImplTypeMap, TypeCtor, !AbsEqvRhsTypeCtors,
         !Modules) :-
-    (
-        map.search(ImplTypeMap, TypeCtor, TypeDefns)
-    ->
+    ( map.search(ImplTypeMap, TypeCtor, TypeDefns) ->
         list.foldl2(accumulate_abs_eqv_type_rhs_2(ImplTypeMap), TypeDefns,
             !AbsEqvRhsTypeCtors, !Modules)
     ;
@@ -1882,8 +1884,8 @@ accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _, !AbsEqvRhsTypeCtors,
         true
     ).
 
-:- pred accumulate_modules(type_ctor::in, set(module_name)::in,
-    set(module_name)::out) is det.
+:- pred accumulate_modules(type_ctor::in,
+    set(module_name)::in, set(module_name)::out) is det.
 
 accumulate_modules(TypeCtor, !Modules) :-
     % NOTE: This assumes that everything has been module qualified.
@@ -1897,8 +1899,8 @@ accumulate_modules(TypeCtor, !Modules) :-
     % Given a type, return the set of user-defined type constructors
     % occurring in it.
     %
-:- pred type_to_type_ctor_set(mer_type::in, set(type_ctor)::in,
-    set(type_ctor)::out) is det.
+:- pred type_to_type_ctor_set(mer_type::in,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
 
 type_to_type_ctor_set(Type, !TypeCtors) :-
     ( type_to_ctor_and_args(Type, TypeCtor, Args) ->
@@ -2135,35 +2137,27 @@ check_int_for_no_exports([Item - _Context | Items], ModuleName, !IO) :-
 :- pred warn_no_exports(module_name::in, io::di, io::uo) is det.
 
 warn_no_exports(ModuleName, !IO) :-
-    globals.io_lookup_bool_option(warn_nothing_exported, ExportWarning, !IO),
-    (
-        ExportWarning = yes,
-        module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
-        report_warning(context_init(FileName, 1), 0,
-            [words("Warning: interface for module"),
-            sym_name(ModuleName),
-            words("does not export anything.")], !IO),
-        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-        (
-            VerboseErrors = yes,
-            report_warning(context_init(FileName, 1), 0,
-                [words("To be useful, a module should export"),
-                words("something. A file should contain"),
-                words("at least one declaration other than"),
-                fixed("`:- import_module'"),
-                words("in its interface section(s)."),
-                words("This would normally be a"),
-                fixed("`:- pred',"), fixed("`:- func',"),
-                fixed("`:- type',"), fixed("`:- inst'"),
-                fixed("or `:- mode'"),
-                fixed("declaration.")], !IO)
-        ;
-            VerboseErrors = no,
-            globals.io_set_extra_error_info(yes, !IO)
-        )
-    ;
-        ExportWarning = no
-    ).
+    module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
+    Context = context_init(FileName, 1),
+    Severity = severity_conditional(warn_nothing_exported, yes,
+        severity_warning, no),
+    Component = option_is_set(warn_nothing_exported, yes,
+        [always([words("Warning: interface for module"),
+            sym_name(ModuleName), words("does not export anything.")]),
+        verbose_only(
+            [words("To be useful, a module should export something."),
+            words("A file should contain at least one declaration"),
+            words("other than"), fixed("`:- import_module'"),
+            words("in its interface section(s)."),
+            words("This would normally be a"),
+            fixed("`:- pred',"), fixed("`:- func',"),
+            fixed("`:- type',"), fixed("`:- inst'"),
+            fixed("or `:- mode'"), words("declaration.")])
+        ]),
+    Msg = simple_msg(Context, [Component]),
+    Spec = error_spec(Severity, phase_term_to_parse_tree, [Msg]),
+    % XXX _NumErrors
+    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -2173,7 +2167,7 @@ warn_no_exports(ModuleName, !IO) :-
 write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
         InterfaceItems0, !IO) :-
 
-        % Create (e.g.) `foo.int.tmp'.
+    % Create (e.g.) `foo.int.tmp'.
     string.append(Suffix, ".tmp", TmpSuffix),
     module_name_to_file_name(ModuleName, Suffix, yes, OutputFileName, !IO),
     module_name_to_file_name(ModuleName, TmpSuffix, no, TmpOutputFileName,
@@ -2198,9 +2192,8 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
             ( OldError = no_module_errors ->
                 MaybeOldItems = yes(OldItems)
             ;
-                % If we can't read in the old file, the
-                % timestamps will all be set to the
-                % modification time of the source file.
+                % If we can't read in the old file, the timestamps will
+                % all be set to the modification time of the source file.
                 MaybeOldItems = no
             ),
             recompilation.version.compute_version_numbers(Timestamp,
@@ -2230,8 +2223,6 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
     convert_to_mercury(ModuleName, TmpOutputFileName, InterfaceItems, !IO),
     globals.io_set_option(line_numbers, bool(LineNumbers), !IO),
     update_interface(OutputFileName, !IO).
-
-        % update <Module>.int from <Module>.int.tmp if necessary
 
 update_interface(OutputFileName, !IO) :-
     update_interface_return_succeeded(OutputFileName, Succeeded, !IO),
@@ -7175,13 +7166,9 @@ get_interface_and_implementation_2(IncludeImplTypes, [ItemAndContext | Rest],
                 IncludeImplTypes = yes,
                 include_in_int_file_implementation(Item)
             ->
-                (
-                    make_abstract_defn(Item, int2, ImpItem1)
-                ->
+                ( make_abstract_defn(Item, int2, ImpItem1) ->
                     ImpItem = ImpItem1
-                ;
-                    make_abstract_unify_compare(Item, int2, ImpItem1)
-                ->
+                ; make_abstract_unify_compare(Item, int2, ImpItem1) ->
                     ImpItem = ImpItem1
                 ;
                     ImpItem = Item

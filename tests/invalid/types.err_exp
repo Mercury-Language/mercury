@@ -1,5 +1,5 @@
 types.m:001: Warning: interface for module `types' does not export anything.
-types.m:001: To be useful, a module should export something. A file should
+types.m:001:   To be useful, a module should export something. A file should
 types.m:001:   contain at least one declaration other than `:- import_module'
 types.m:001:   in its interface section(s). This would normally be a `:- pred',
 types.m:001:   `:- func', `:- type', `:- inst' or `:- mode' declaration.

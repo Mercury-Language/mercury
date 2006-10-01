@@ -1,6 +1,6 @@
 errors2.m:001: Warning: interface for module `errors2' does not export
 errors2.m:001:   anything.
-errors2.m:001: To be useful, a module should export something. A file should
+errors2.m:001:   To be useful, a module should export something. A file should
 errors2.m:001:   contain at least one declaration other than `:- import_module'
 errors2.m:001:   in its interface section(s). This would normally be a
 errors2.m:001:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'

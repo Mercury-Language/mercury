@@ -1,7 +1,7 @@
 undef_type.m:001: Warning: interface for module `undef_type' does not export
 undef_type.m:001:   anything.
-undef_type.m:001: To be useful, a module should export something. A file should
-undef_type.m:001:   contain at least one declaration other than
+undef_type.m:001:   To be useful, a module should export something. A file
+undef_type.m:001:   should contain at least one declaration other than
 undef_type.m:001:   `:- import_module' in its interface section(s). This would
 undef_type.m:001:   normally be a `:- pred', `:- func', `:- type', `:- inst'
 undef_type.m:001:   or `:- mode' declaration.

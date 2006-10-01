@@ -7,7 +7,7 @@ Error: atom expected in `:- mode' declaration: _1.
 vars_in_wrong_places.m:008: Error: atom expected in function `:- mode' declaration: _1 = int.
 vars_in_wrong_places.m:001: Warning: interface for module
 vars_in_wrong_places.m:001:   `vars_in_wrong_places' does not export anything.
-vars_in_wrong_places.m:001: To be useful, a module should export something. A
+vars_in_wrong_places.m:001:   To be useful, a module should export something. A
 vars_in_wrong_places.m:001:   file should contain at least one declaration
 vars_in_wrong_places.m:001:   other than `:- import_module' in its interface
 vars_in_wrong_places.m:001:   section(s). This would normally be a `:- pred',

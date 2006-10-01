@@ -1,7 +1,7 @@
 predmode.m:005: Error: some but not all arguments have modes: p((int :: in), int).
 predmode.m:001: Warning: interface for module `predmode' does not export
 predmode.m:001:   anything.
-predmode.m:001: To be useful, a module should export something. A file should
+predmode.m:001:   To be useful, a module should export something. A file should
 predmode.m:001:   contain at least one declaration other than
 predmode.m:001:   `:- import_module' in its interface section(s). This would
 predmode.m:001:   normally be a `:- pred', `:- func', `:- type', `:- inst'

@@ -4,7 +4,7 @@ bigtest.m:008: Error: unrecognized declaration: incorrect_declaration.
 bigtest.m:016: Error: type parameters must be variables: t3 = t1 + t2.
 bigtest.m:001: Warning: interface for module `bigtest' does not export
 bigtest.m:001:   anything.
-bigtest.m:001: To be useful, a module should export something. A file should
+bigtest.m:001:   To be useful, a module should export something. A file should
 bigtest.m:001:   contain at least one declaration other than `:- import_module'
 bigtest.m:001:   in its interface section(s). This would normally be a
 bigtest.m:001:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
