@@ -176,8 +176,8 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
     = mlds_function_body.
 
 mark_tailcalls_in_function_body(body_external, _, _) = body_external.
-mark_tailcalls_in_function_body(body_defined_here(Statement0), AtTail,
-        Locals) = body_defined_here(Statement) :-
+mark_tailcalls_in_function_body(body_defined_here(Statement0), AtTail, Locals)
+        = body_defined_here(Statement) :-
     Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
 
 :- func mark_tailcalls_in_maybe_statement(maybe(statement), at_tail, locals)
@@ -194,25 +194,27 @@ mark_tailcalls_in_maybe_statement(yes(Statement0), AtTail, Locals) =
 mark_tailcalls_in_statements([], _, _) = [].
 mark_tailcalls_in_statements([First0 | Rest0], AtTail, Locals) =
         [First | Rest] :-
-    % If the First statement is followed by a `return' statement, then it is
-    % in a tailcall position. If there are no statements after the first, then
-    % the first statement is in a tail call position iff the statement list
-    % is in a tail call position. Otherwise, i.e. if the first statement
+    % If there are no statements after the first, then the first statement
+    % is in a tail call position iff the statement list is in a tail call
+    % position. If the First statement is followed by a `return' statement,
+    % then it is in a tailcall position. Otherwise, i.e. if the first statement
     % is followed by anything other than a `return' statement, then
     % the first statement is not in a tail call position.
-    %
-    ( Rest = [statement(return(ReturnVals), _) | _] ->
-        FirstAtTail = yes(ReturnVals)
-    ; Rest = [] ->
+    (
+        Rest = [],
         FirstAtTail = AtTail
     ;
-        FirstAtTail = no
+        Rest = [FirstRest | _],
+        ( FirstRest = statement(return(ReturnVals), _) ->
+            FirstAtTail = yes(ReturnVals)
+        ;
+            FirstAtTail = no
+        )
     ),
     First = mark_tailcalls_in_statement(First0, FirstAtTail, Locals),
     Rest = mark_tailcalls_in_statements(Rest0, AtTail, Locals).
 
-:- func mark_tailcalls_in_statement(statement, at_tail, locals)
-    = statement.
+:- func mark_tailcalls_in_statement(statement, at_tail, locals) = statement.
 
 mark_tailcalls_in_statement(Statement0, AtTail, Locals) = Statement :-
     Statement0 = statement(Stmt0, Context),
@@ -267,9 +269,8 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         Stmt = Stmt0
     ;
         Stmt0 = mlcall(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
-        %
-        % check if we can mark this call as a tail call
-        %
+
+        % Check if we can mark this call as a tail call.
         (
             CallKind0 = ordinary_call,
 
@@ -318,8 +319,7 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
     list(mlds_switch_case).
 
 mark_tailcalls_in_cases([], _, _) = [].
-mark_tailcalls_in_cases([Case0 | Cases0], AtTail, Locals) =
-        [Case | Cases] :-
+mark_tailcalls_in_cases([Case0 | Cases0], AtTail, Locals) = [Case | Cases] :-
     Case = mark_tailcalls_in_case(Case0, AtTail, Locals),
     Cases = mark_tailcalls_in_cases(Cases0, AtTail, Locals).
 
@@ -350,8 +350,7 @@ mark_tailcalls_in_default(default_case(Statement0), AtTail, Locals) =
 %   (so that assignments to them won't have any side effects),
 %   so that we can optimize the call into a tailcall.
 
-:- pred match_return_vals(list(mlds_rval)::in, list(mlds_lval)::in)
-    is semidet.
+:- pred match_return_vals(list(mlds_rval)::in, list(mlds_lval)::in) is semidet.
 
 match_return_vals([], []).
 match_return_vals([Rval|Rvals], [Lval|Lvals]) :-

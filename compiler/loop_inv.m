@@ -217,7 +217,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
             % We only apply the optimization if the set of invariant goals
             % is non-empty.
             %
-        InvGoals \= []
+        InvGoals = [_ | _]
 
             % NOTE!  At this point it is vital that
             % - none of the InvVars are used as (partially) unique

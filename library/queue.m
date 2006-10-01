@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: queue.m.
 % Main author: fjh.
 % Stability: high.
-% 
+%
 % This file contains a `queue' ADT.
 % A queue holds a sequence of values, and provides operations
 % to insert values at the end of the queue (queue.put) and remove them from
@@ -17,7 +17,7 @@
 %
 % This implementation is in terms of a pair of lists.
 % The put and get operations are amortized constant-time.
-% 
+%
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
@@ -124,30 +124,33 @@
 :- implementation.
 
 :- import_module int.
-:- import_module pair.
 
 %--------------------------------------------------------------------------%
 
-    % This implementation is in terms of a pair of lists. We impose the
-    % extra constraint that the `off' list is empty if and only if the queue
-    % is empty.
-:- type queue(T) == pair(list(T)).
+    % This implementation is in terms of a pair of lists: the list of items
+    % in the queue is given by off_list ++ reverse(on_list). The reason for
+    % the names is that we generally get items off the off_list and put them
+    % on the on_list. We impose the extra constraint that the off_list field
+    % is empty if and only if the queue as a whole is empty.
+:- type queue(T)
+    --->    queue(
+                on_list     :: list(T),
+                off_list    :: list(T)
+            ).
 
-queue.init([] - []).
+queue.init(queue([], [])).
 
-queue.equal(On0 - Off0, On1 - Off1) :-
-    list.reverse(On0, On0R),
-    list.append(Off0, On0R, Q0),
-    list.reverse(On1, On1R),
-    list.append(Off1, On1R, Q1),
-    Q0 = Q1.
+queue.equal(queue(OnA, OffA), queue(OnB, OffB)) :-
+    QA = OffA ++ list.reverse(OnA),
+    QB = OffB ++ list.reverse(OnB),
+    QA = QB.
 
-queue.is_empty(_ - []).
+queue.is_empty(queue(_, [])).
 
 queue.is_full(_) :-
     semidet_fail.
 
-queue.put(On0 - Off0, Elem, On - Off) :-
+queue.put(queue(On0, Off0), Elem, queue(On, Off)) :-
     (
         Off0 = [],
         On = On0,
@@ -158,7 +161,7 @@ queue.put(On0 - Off0, Elem, On - Off) :-
         Off = Off0
     ).
 
-queue.put_list(On0 - Off0, Xs, On - Off) :-
+queue.put_list(queue(On0, Off0), Xs, queue(On, Off)) :-
     (
         Off0 = [],
         On = On0,
@@ -175,9 +178,9 @@ queue.put_list_2([], On, On).
 queue.put_list_2([X | Xs], On0, On) :-
     queue.put_list_2(Xs, [X | On0], On).
 
-queue.first(_ - [Elem | _], Elem).
+queue.first(queue(_, [Elem | _]), Elem).
 
-queue.get(On0 - [Elem | Off0], Elem, On - Off) :-
+queue.get(queue(On0, [Elem | Off0]), Elem, queue(On, Off)) :-
     (
         Off0 = [],
         list.reverse(On0, Off),
@@ -188,18 +191,18 @@ queue.get(On0 - [Elem | Off0], Elem, On - Off) :-
         Off = Off0
     ).
 
-queue.length(On - Off, Length) :-
+queue.length(queue(On, Off), Length) :-
     list.length(On, LengthOn),
     list.length(Off, LengthOff),
     Length = LengthOn + LengthOff.
 
-queue.list_to_queue(List, [] - List).
+queue.list_to_queue(List, queue([], List)).
 
-queue.from_list(List) = [] - List.
+queue.from_list(List) = queue([], List).
 
-queue.to_list(On - Off) = Off ++ list.reverse(On).
+queue.to_list(queue(On, Off)) = Off ++ list.reverse(On).
 
-queue.delete_all(On0 - Off0, Elem, On - Off) :-
+queue.delete_all(queue(On0, Off0), Elem, queue(On, Off)) :-
     list.delete_all(On0, Elem, On1),
     list.delete_all(Off0, Elem, Off1),
     (
@@ -212,17 +215,17 @@ queue.delete_all(On0 - Off0, Elem, On - Off) :-
         Off = Off1
     ).
 
-queue.put_on_front(On - Off, Elem, On - [Elem | Off]).
+queue.put_on_front(queue(On, Off), Elem, queue(On, [Elem | Off])).
 
 queue.put_on_front(Queue0, Elem) = Queue :-
     queue.put_on_front(Queue0, Elem, Queue).
 
-queue.put_list_on_front(On - Off, Elems, On - (Elems ++ Off)).
+queue.put_list_on_front(queue(On, Off), Elems, queue(On, Elems ++ Off)).
 
 queue.put_list_on_front(Queue0, Elems) = Queue :-
     queue.put_list_on_front(Queue0, Elems, Queue).
 
-queue.get_from_back(On0 - Off0, Elem, On - Off) :-
+queue.get_from_back(queue(On0, Off0), Elem, queue(On, Off)) :-
     (
         % The On list is non-empty and the last element in the queue
         % is the head of the On list.

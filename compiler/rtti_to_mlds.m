@@ -894,28 +894,32 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
     map.to_assoc_list(PtagMap, PtagList),
     SubDefns = list.map(gen_du_stag_ordered_table(ModuleName, RttiTypeCtor),
         PtagList),
-    ( PtagList = [1 - _ | _] ->
-        % Output a dummy ptag definition for the reserved tag first.
-        RttiElemName = type_ctor_du_ptag_layout(0),
-        RttiElemId = ctor_rtti_id(RttiTypeCtor, RttiElemName),
-        PtagInitPrefix = [
-            init_struct(mlds_rtti_type(item_type(RttiElemId)),
-            [gen_init_int(0),
-            gen_init_builtin_const("MR_SECTAG_VARIABLE"),
-            gen_init_null_pointer(
-                mlds_rtti_type(item_type(
-                    ctor_rtti_id(RttiTypeCtor,
-                        type_ctor_du_stag_ordered_table(0)))))]
-        )],
-        FirstPtag = 1
-    ; PtagList = [0 - _ | _] ->
-        PtagInitPrefix = [],
-        FirstPtag = 0
-    ; PtagList = [] ->
+    (
+        PtagList = [],
         PtagInitPrefix = [],
         FirstPtag = 0
     ;
-        unexpected(this_file, "gen_du_ptag_ordered_table: bad ptag list")
+        PtagList = [FirstPtag - _ | _],
+        ( FirstPtag = 0 ->
+            PtagInitPrefix = [],
+            FirstPtag = 0
+        ;  FirstPtag = 1 ->
+            % Output a dummy ptag definition for the reserved tag first.
+            RttiElemName = type_ctor_du_ptag_layout(0),
+            RttiElemId = ctor_rtti_id(RttiTypeCtor, RttiElemName),
+            PtagInitPrefix = [
+                init_struct(mlds_rtti_type(item_type(RttiElemId)),
+                [gen_init_int(0),
+                gen_init_builtin_const("MR_SECTAG_VARIABLE"),
+                gen_init_null_pointer(
+                    mlds_rtti_type(item_type(
+                        ctor_rtti_id(RttiTypeCtor,
+                            type_ctor_du_stag_ordered_table(0)))))]
+            )],
+            FirstPtag = 1
+        ;
+            unexpected(this_file, "gen_du_ptag_ordered_table: bad ptag list")
+        )
     ),
     PtagInits = gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
         PtagList, FirstPtag),

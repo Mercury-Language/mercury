@@ -423,11 +423,13 @@ eqvclass.partition_list_to_eqvclass([Partition | Ps], EqvClass) :-
     eqvclass.partition_list_to_eqvclass(Ps, EqvClass0),
     EqvClass0 = eqvclass(Counter0, PartitionMap0, ElementMap0),
     set.to_sorted_list(Partition, Elements),
-    ( Elements = [] ->
+    (
+        Elements = [],
         Counter = Counter0,
         ElementMap0 = ElementMap,
         PartitionMap0 = PartitionMap
     ;
+        Elements = [_ | _],
         counter.allocate(Id, Counter0, Counter),
         eqvclass.make_partition(Elements, Id, ElementMap0, ElementMap),
         map.det_insert(PartitionMap0, Id, Partition, PartitionMap)

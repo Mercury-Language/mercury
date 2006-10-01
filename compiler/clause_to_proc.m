@@ -288,12 +288,16 @@ select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
     Clause = clause(ProcIds, _, _, _),
     % An empty list here means that the clause applies to all procs.
-    ( ProcIds = [] ->
-        MatchingClauses = [Clause | MatchingClauses1]
-    ; list.member(ProcId, ProcIds) ->
+    (
+        ProcIds = [],
         MatchingClauses = [Clause | MatchingClauses1]
     ;
-        MatchingClauses = MatchingClauses1
+        ProcIds = [_ | _],
+        ( list.member(ProcId, ProcIds) ->
+            MatchingClauses = [Clause | MatchingClauses1]
+        ;
+            MatchingClauses = MatchingClauses1
+        )
     ),
     select_matching_clauses(Clauses, ProcId, MatchingClauses1).
 
@@ -533,8 +537,8 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
                 ExistConstraints0 = [ExistConstraint | ExistConstraints]
             ;
                 ExistConstraints0 = [],
-                unexpected(this_file, "introduce_exists_casts_extra: " ++
-                    "missing constraint")
+                unexpected(this_file,
+                    "introduce_exists_casts_extra: missing constraint")
             ),
             rtti_det_insert_typeclass_info_var(ExistConstraint, Var,
                 !RttiVarMaps),
@@ -545,8 +549,8 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
             maybe_add_type_info_locns(ConstraintArgs, Var, 1, !RttiVarMaps)
         ;
             VarInfo = non_rtti_var,
-            unexpected(this_file, "introduce_exists_casts_extra: " ++
-                "rtti_varmaps info not found")
+            unexpected(this_file,
+                "introduce_exists_casts_extra: rtti_varmaps info not found")
         )
     ;
         Var = Var0,

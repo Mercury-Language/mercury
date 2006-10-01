@@ -94,9 +94,10 @@
 :- pred can_generate_special_pred_clauses_for_type(module_info::in,
     type_ctor::in, hlds_type_body::in) is semidet.
 
-    % Are the special predicates for a builtin type defined in Mercury?
+    % Is this a builtin type whose special predicates are defined in Mercury?
+    % If yes, return the name of the type.type
     %
-:- pred is_builtin_types_special_preds_defined_in_mercury(type_ctor::in,
+:- pred is_builtin_type_special_preds_defined_in_mercury(type_ctor::in,
     string::out) is semidet.
 
     % Does the compiler generate the RTTI for the builtin types, or is
@@ -263,7 +264,7 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body) :-
         Ctors = Body ^ du_type_ctors,
         list.member(Ctor, Ctors),
         Ctor = ctor(ExistQTVars, _, _, _),
-        ExistQTVars \= []
+        ExistQTVars = [_ | _]
     ;
         SpecialPredId = spec_pred_init,
         type_body_is_solver_type(ModuleInfo, Body)
@@ -273,16 +274,16 @@ can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
     (
         Body \= hlds_abstract_type(_)
     ;
-        % Only the types which have it's unification and comparison
-        % predicates defined in private_builtin.m
+        % The types which have their unification and comparison
+        % predicates defined in private_builtin.m.
         compiler_generated_rtti_for_builtins(ModuleInfo),
-        is_builtin_types_special_preds_defined_in_mercury(TypeCtor, _)
+        is_builtin_type_special_preds_defined_in_mercury(TypeCtor, _)
     ),
     \+ type_ctor_has_hand_defined_rtti(TypeCtor, Body),
     \+ type_body_has_user_defined_equality_pred(ModuleInfo, Body,
         abstract_noncanonical_type(_IsSolverType)).
 
-is_builtin_types_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
+is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
     Builtin = mercury_public_builtin_module,
     TypeCtor = type_ctor(qualified(Builtin, TypeName), 0),
     ( TypeName = "int"

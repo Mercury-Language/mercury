@@ -748,7 +748,7 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
         SingleCtor ^ cons_exist = [],
         SingleCtorName = SingleCtor ^ cons_name,
         SingleCtorArgs = SingleCtor ^ cons_args,
-        SingleCtorArgs \= [],
+        SingleCtorArgs = [_ | _],
         % Prevent infinite loop with recursive types.
         \+ list.member(Type, ContainerTypes)
     ->

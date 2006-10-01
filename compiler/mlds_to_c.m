@@ -88,9 +88,9 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
-                                          % for ml_gen_public_field_decl_flags,
-                                          % which is used by the code that
-                                          % handles derived classes
+                                         % for ml_gen_public_field_decl_flags,
+                                         % which is used by the code that
+                                         % handles derived classes
 :- import_module ml_backend.ml_type_gen. % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
 :- import_module ml_backend.rtti_to_mlds.% for mlds_rtti_type_name.
@@ -975,7 +975,8 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
         mlds_output_pragma_export_output_defns(ModuleName), !IO),
 
     % Declare a local variable or two for the return value, if needed.
-    ( RetTypes = [RetType1] ->
+    (
+        RetTypes = [RetType1],
         ( RetType1 = mlds_foreign_type(c(_)) ->
             io.write_string("\t", !IO),
             mlds_output_pragma_export_type(RetType1, !IO),
@@ -989,7 +990,9 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
             io.write_string(" ret_value;\n", !IO)
         )
     ;
-        true
+        RetTypes = []
+    ;
+        RetTypes = [_, _ | _]
     ),
 
     % Generate code to box any non-word-sized foreign_type input parameters;
@@ -1000,10 +1003,12 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
 
     % Generate code to actually call the Mercury procedure which
     % is being exported
-    ( RetTypes = [] ->
+    (
+        RetTypes = [],
         io.write_string("\t", !IO),
         mlds_output_pragma_export_call(ModuleName, FuncName, Parameters, !IO)
-    ; RetTypes = [RetType2] ->
+    ;
+        RetTypes = [RetType2],
         ( RetType2 = mlds_foreign_type(c(_)) ->
             io.write_string("\tboxed_ret_value = ", !IO)
         ;
@@ -1013,9 +1018,9 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
         ),
         mlds_output_pragma_export_call(ModuleName, FuncName, Parameters, !IO)
     ;
+        RetTypes = [_, _ | _],
         % This is just for MLDS dumps when compiling to non-C targets.
-        % So we don't need to worry about boxing/unboxing foreign types
-        % here.
+        % So we don't need to worry about boxing/unboxing foreign types here.
         io.write_string("\treturn (", !IO),
         mlds_output_return_list(RetTypes, mlds_output_pragma_export_type, !IO),
         io.write_string(") ", !IO)
@@ -1028,7 +1033,8 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
 
     % Generate the final statement to unbox and return the return value,
     % if needed.
-    ( RetTypes = [RetType3] ->
+    (
+        RetTypes = [RetType3],
         ( RetType3 = mlds_foreign_type(c(_)) ->
             io.write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
             mlds_output_pragma_export_type(RetType3, !IO),
@@ -1038,7 +1044,9 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
         ),
         io.write_string("\treturn ret_value;\n", !IO)
     ;
-        true
+        RetTypes = []
+    ;
+        RetTypes = [_, _ | _]
     ).
 
 :- pred mlds_output_pragma_input_arg(mlds_module_name::in, mlds_argument::in,
@@ -1111,8 +1119,7 @@ boxed_name(Name) = BoxedName :-
     ).
 
 :- pred mlds_output_pragma_export_call(mlds_module_name::in,
-    mlds_qualified_entity_name::in, mlds_arguments::in,
-    io::di, io::uo) is det.
+    mlds_qualified_entity_name::in, mlds_arguments::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_call(ModuleName, FuncName, Parameters, !IO) :-
     mlds_output_fully_qualified_name(FuncName, !IO),
@@ -1168,8 +1175,7 @@ det_func_signature(mlds_func_params(Args, _RetTypes)) = Params :-
     ->
         ReturnArgType = ReturnArgType0
     ;
-        unexpected(this_file,
-            "det_func_signature: function return type!")
+        unexpected(this_file, "det_func_signature: function return type!")
     ),
     Params = mlds_func_params(InputArgs, [ReturnArgType]).
 
@@ -1737,10 +1743,13 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context, CallingConvention,
     QualifiedName = qual(ModuleName, _, _),
     mlds_output_params(OutputPrefix, OutputSuffix,
         Indent, ModuleName, Context, Parameters, !IO),
-    ( RetTypes = [RetType2] ->
+    (
+        RetTypes = [RetType2],
         OutputSuffix(RetType2, !IO)
     ;
-        true
+        RetTypes = []
+    ;
+        RetTypes = [_, _ | _]
     ).
 
 :- pred mlds_output_prefix_suffix(output_type::in(output_type),

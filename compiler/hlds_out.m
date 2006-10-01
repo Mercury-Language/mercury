@@ -2139,7 +2139,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
         string.contains_char(Verbose, 's'),
         goal_info_get_store_map(GoalInfo, StoreMap),
         map.to_assoc_list(StoreMap, StoreMapList),
-        StoreMapList \= []
+        StoreMapList = [_ | _]
     ->
         write_indent(Indent, !IO),
         io.write_string("% store map:\n", !IO),

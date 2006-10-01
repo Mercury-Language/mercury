@@ -281,8 +281,7 @@ propagate_conj(Goals0, Constraints, Goals, !Info, !IO) :-
     % Annotate each conjunct with the variables it produces.
     %
 :- pred annotate_conj_output_vars(list(hlds_goal)::in, module_info::in,
-    vartypes::in, instmap::in, annotated_conj::in, annotated_conj::out)
-    is det.
+    vartypes::in, instmap::in, annotated_conj::in, annotated_conj::out) is det.
 
 annotate_conj_output_vars([], _, _, _, !RevGoals).
 annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,

@@ -1,1 +1,1 @@
-functor(atom("-"), [functor(atom("[]"), [], context("", 0)), functor(atom("[]"), [], context("", 0))], context("", 0))
+functor(atom("queue"), [functor(atom("[]"), [], context("", 0)), functor(atom("[]"), [], context("", 0))], context("", 0))

@@ -460,7 +460,7 @@ propagate_conj_constraints([Goal0 | Goals0], NonLocals, RevGoals0, Goals,
             CnstrGoal = _ - CnstrGoalInfo,
             goal_info_has_feature(CnstrGoalInfo, feature_constraint)
         ), Goals0, Constraints, Goals1),
-        Constraints \= []
+        Constraints = [_ | _]
     ->
         sym_name_to_string(SymName, SymNameString),
         pd_debug_message("propagating constraints into call to %s\n",

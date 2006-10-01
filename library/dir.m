@@ -383,7 +383,7 @@ dir.split_name(FileName, DirName, BaseName) :-
 :- pred dir.split_name_2(list(char)::in, string::out, string::out) is semidet.
 
 dir.split_name_2(FileNameChars0, DirName, BaseName) :-
-    FileNameChars0 \= [],
+    FileNameChars0 = [_ | _],
     FileNameWithoutSlash = remove_trailing_dir_separator(FileNameChars0),
     FileNameWithoutSlash \= string.to_char_list(dir.this_directory),
     FileNameWithoutSlash \= string.to_char_list(dir.parent_directory),
@@ -631,7 +631,7 @@ strip_leading_win32_unc_root_directory([Sep, Sep | !.FileName], !:FileName) :-
     dir.is_directory_separator(Sep),
     list.takewhile(isnt(dir.is_directory_separator_semidet), !.FileName,
         Server, !:FileName),
-    Server \= [],
+    Server = [_ | _],
     (
         !.FileName = []
     ;
@@ -642,7 +642,7 @@ strip_leading_win32_unc_root_directory([Sep, Sep | !.FileName], !:FileName) :-
             !.FileName = [_|_],
             list.takewhile(isnt(dir.is_directory_separator_semidet),
                 !.FileName, Share, !:FileName),
-            Share \= [],
+            Share = [_ | _],
             ( !.FileName = [Sep | !:FileName]
             ; !.FileName = []
             )

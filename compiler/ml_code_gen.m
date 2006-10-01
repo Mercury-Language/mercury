@@ -993,9 +993,10 @@ ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus, !Defns, !IO) :-
     ;
         ProcIds = pred_info_non_imported_procids(PredInfo)
     ),
-    ( ProcIds = [] ->
-        true
+    (
+        ProcIds = []
     ;
+        ProcIds = [_ | _],
         write_pred_progress_message("% Generating MLDS code for ",
             PredId, ModuleInfo, !IO),
         pred_info_get_procedures(PredInfo, ProcTable),

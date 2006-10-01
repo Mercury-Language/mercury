@@ -2029,7 +2029,7 @@ mercury_format_pred_or_func_decl(PredOrFunc, TypeVarSet, InstVarSet,
     split_types_and_modes(TypesAndModes, Types, MaybeModes),
     (
         MaybeModes = yes(Modes),
-        ( Modes \= []
+        ( Modes = [_ | _]
         ; WithInst = yes(_)
         )
     ->
@@ -2897,7 +2897,7 @@ mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
             ( Vars = [_ | _]
             ; DotSVars = [_ | _]
             ),
-            ColonSVars \= []
+            ColonSVars = [_ | _]
         ->
             io.write_string(", ", !IO)
         ;
@@ -2914,7 +2914,7 @@ mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
     ).
 
 :- pred mercury_output_state_vars_using_prefix(prog_vars::in, string::in,
-        prog_varset::in, bool::in, io::di, io::uo) is det.
+    prog_varset::in, bool::in, io::di, io::uo) is det.
 
 mercury_output_state_vars_using_prefix([], _BangPrefix, _VarSet,
         _AppendVarnums, !IO).
@@ -2923,14 +2923,13 @@ mercury_output_state_vars_using_prefix([SVar | SVars], BangPrefix, VarSet,
     io.write_string(BangPrefix, !IO),
     mercury_format_var(VarSet, AppendVarnums, SVar, !IO),
     (
-        SVars \= []
-    ->
-        io.write_string(", ", !IO)
+        SVars = [_ | _],
+        io.write_string(", ", !IO),
+        mercury_output_state_vars_using_prefix(SVars, BangPrefix, VarSet,
+            AppendVarnums, !IO)
     ;
-        true
-    ),
-    mercury_output_state_vars_using_prefix(SVars, BangPrefix, VarSet,
-        AppendVarnums, !IO).
+        SVars = []
+    ).
 
 :- pred mercury_output_comma_if_needed(bool::in, io::di, io::uo) is det.
 
@@ -4278,7 +4277,7 @@ output_list([Item | Items], Sep, Pred, !Str) :-
     (
         Items = []
     ;
-        Items = [_|_],
+        Items = [_ | _],
         output_string(Sep, !Str),
         output_list(Items, Sep, Pred, !Str)
     ).
@@ -4549,10 +4548,10 @@ write_pragma_structure_reuse_info(PredOrFunc, SymName, Modes, Context,
 
 write_vars_and_types(HeadVars, VarSet, HeadVarTypes, TypeVarSet, !IO) :-
     (
-        HeadVars = []
-    ->
+        HeadVars = [],
         io.write_string("vars, types", !IO)
     ;
+        HeadVars = [_ | _],
         io.write_string("vars(", !IO),
         mercury_output_vars(HeadVars, VarSet, no, !IO),
         io.write_string("), ", !IO),
@@ -4563,8 +4562,9 @@ write_vars_and_types(HeadVars, VarSet, HeadVarTypes, TypeVarSet, !IO) :-
         io.write_string(")", !IO)
     ).
 
-:- pred write_type_of_var(vartypes::in, tvarset::in, prog_var::in, io::di,
-    io::uo) is det.
+:- pred write_type_of_var(vartypes::in, tvarset::in, prog_var::in,
+    io::di, io::uo) is det.
+
 write_type_of_var(VarTypes, TypeVarSet, Var, !IO):-
     map.lookup(VarTypes, Var, VarType),
     mercury_output_type(TypeVarSet, no, VarType, !IO).

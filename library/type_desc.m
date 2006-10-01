@@ -503,14 +503,21 @@ type_name(Type) = TypeName :-
 type_arg_names([], _, []).
 type_arg_names([Type | Types], IsFunc, ArgNames) :-
     Name = type_name(Type),
-    ( Types = [] ->
+    (
+        Types = [],
         ArgNames = [Name]
-    ; IsFunc = yes, Types = [FuncReturnType] ->
-        FuncReturnName = type_name(FuncReturnType),
-        ArgNames = [Name, ") = ", FuncReturnName]
     ;
-        type_arg_names(Types, IsFunc, Names),
-        ArgNames = [Name, ", " | Names]
+        Types = [_ | _],
+        (
+            IsFunc = yes,
+            Types = [FuncReturnType]
+        ->
+            FuncReturnName = type_name(FuncReturnType),
+            ArgNames = [Name, ") = ", FuncReturnName]
+        ;
+            type_arg_names(Types, IsFunc, Names),
+            ArgNames = [Name, ", " | Names]
+        )
     ).
 
 type_args(Type) = ArgTypes :-

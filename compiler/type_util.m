@@ -439,7 +439,7 @@ is_existq_type(Module, Type) :-
     type_constructors(Type, Module, Constructors),
     some [Constructor] (
         list.member(Constructor, Constructors),
-        Constructor ^ cons_exist \= []
+        Constructor ^ cons_exist = [_ | _]
     ).
 
 is_dummy_argument_type(ModuleInfo, Type) :-

@@ -93,10 +93,12 @@ atsort_main(Nodes0, !.Succmap, !.Predmap, MustSuccmap, MustPredmap, PrefOrder,
         Sorted) :-
     atsort_repeat_source_sink(Nodes0, !Succmap, !Predmap,
         [], Source1, Mid1, [], Sink1),
-    ( Mid1 = [] ->
+    (
+        Mid1 = [],
         list.reverse(Source1, Source1rev),
         list.append(Source1rev, Sink1, Sorted)
     ;
+        Mid1 = [_ | _],
         atsort_choose(Mid1, !Succmap, !Predmap, MustSuccmap, MustPredmap,
             PrefOrder, Chosen, Mid2),
         % write('Chosen: '),
