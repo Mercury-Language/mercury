@@ -1628,7 +1628,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    direct(int)
     ;       indirect(int, int).
 
-    % This type is differs from the type table_step_kind in
+    % This type differs from the type table_step_kind in
     % library/table_builtin.m in that (a) in gives more information about the
     % type of the corresponding argument (if this info is needed and
     % available), and (b) it doesn't have to handle dummy steps.

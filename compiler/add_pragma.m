@@ -2189,7 +2189,7 @@ table_info_global_var_name(ModuleInfo, SimpleCallId, ProcId) = VarName :-
         HighLevelCode = yes,
         MaybeModuleName = no,
         % We set CodeModel and NoReturnValue to dummy values because we cannot
-        % do any better right now. The code in that outputs the mlds_proc_label
+        % do any better right now. The code that outputs the mlds_proc_label
         % of an mlds_tabling_ref should use mlds_std_tabling_proc_label to
         % set these fields to the same values.
         CodeModel = model_det,

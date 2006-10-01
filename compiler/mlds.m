@@ -1907,7 +1907,7 @@ mlds_append_name(name(Package, Module), Name)
 wrapper_class_name = "mercury_code".
 
 mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
-     % We standardize the parts of PredLabel0 that aren't computable from
+    % We standardize the parts of PredLabel0 that aren't computable from
     % the tabling pragma, because the code that creates the reset predicate
     % in table_info_global_var_name in add_pragma.m doesn't have access to
     % this information.
