@@ -210,6 +210,10 @@
     set_tree234(T1)::in, T2::in, T2::out) is det.
 :- func set_tree234.fold(func(T1, T2) = T2, set_tree234(T1), T2) = T2.
 
+:- pred set_tree234.fold2(
+    pred(T1, T2, T2, T3, T3)::in(pred(in, in, out, in, out) is det),
+    set_tree234(T1)::in, T2::in, T2::out, T3::in, T3::out) is det.
+
     % set_tree234.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
     % FalsePart consists of those elements of Set for which Pred fails.
@@ -1921,6 +1925,26 @@ set_tree234.fold(Func, four(E0, E1, E2, T0, T1, T2, T3), !.A) = !:A :-
     set_tree234.fold(Func, T2, !.A) = !:A,
     !:A = Func(E2, !.A),
     set_tree234.fold(Func, T3, !.A) = !:A.
+
+set_tree234.fold2(_Pred, empty, !A, !B).
+set_tree234.fold2(Pred, two(E, T0, T1), !A, !B) :-
+    set_tree234.fold2(Pred, T0, !A, !B),
+    call(Pred, E, !A, !B),
+    set_tree234.fold2(Pred, T1, !A, !B).
+set_tree234.fold2(Pred, three(E0, E1, T0, T1, T2), !A, !B) :-
+    set_tree234.fold2(Pred, T0, !A, !B),
+    call(Pred, E0, !A, !B),
+    set_tree234.fold2(Pred, T1, !A, !B),
+    call(Pred, E1, !A, !B),
+    set_tree234.fold2(Pred, T2, !A, !B).
+set_tree234.fold2(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B) :-
+    set_tree234.fold2(Pred, T0, !A, !B),
+    call(Pred, E0, !A, !B),
+    set_tree234.fold2(Pred, T1, !A, !B),
+    call(Pred, E1, !A, !B),
+    set_tree234.fold2(Pred, T2, !A, !B),
+    call(Pred, E2, !A, !B),
+    set_tree234.fold2(Pred, T3, !A, !B).
 
 %------------------------------------------------------------------------------%
 
