@@ -195,7 +195,8 @@
     % depends not only on the execution of other impure predicates,
     % but all calls.
     %
-:- type near_stack_limits ---> near_stack_limits.
+:- type near_stack_limits
+    --->    near_stack_limits.
 
 :- impure pred throw_if_near_stack_limits is det.
 
@@ -211,59 +212,69 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred try(determinism, pred(T), exception_result(T)).
-:- mode try(in(bound(det)), pred(out) is det, out(cannot_fail)) is cc_multi.
-:- mode try(in(bound(semidet)), pred(out) is semidet, out) is cc_multi.
-:- mode try(in(bound(cc_multi)), pred(out) is cc_multi, out(cannot_fail))
-    is cc_multi.
-:- mode try(in(bound(cc_nondet)), pred(out) is cc_nondet, out) is cc_multi.
+:- pred try_det(exp_determinism, pred(T), exception_result(T)).
+:- mode try_det(in(bound(exp_detism_det)), pred(out) is det,
+    out(cannot_fail)) is cc_multi.
+:- mode try_det(in(bound(exp_detism_semidet)), pred(out) is semidet,
+    out) is cc_multi.
+:- mode try_det(in(bound(exp_detism_cc_multi)), pred(out) is cc_multi,
+    out(cannot_fail)) is cc_multi.
+:- mode try_det(in(bound(exp_detism_cc_nondet)), pred(out) is cc_nondet,
+    out) is cc_multi.
 
-:- pred try_io(determinism, pred(T, io, io), exception_result(T), io, io).
-:- mode try_io(in(bound(det)), pred(out, di, uo) is det,
-    out(cannot_fail), di, uo) is cc_multi.
-:- mode try_io(in(bound(cc_multi)), pred(out, di, uo) is cc_multi,
-    out(cannot_fail), di, uo) is cc_multi.
+:- pred try_io_det(exp_determinism, pred(T, io, io), exception_result(T),
+    io, io).
+:- mode try_io_det(in(bound(exp_detism_det)),
+    pred(out, di, uo) is det, out(cannot_fail), di, uo) is cc_multi.
+:- mode try_io_det(in(bound(exp_detism_cc_multi)),
+    pred(out, di, uo) is cc_multi, out(cannot_fail), di, uo) is cc_multi.
 
-:- pred try_store(determinism, pred(T, store(S), store(S)),
+:- pred try_store_det(exp_determinism, pred(T, store(S), store(S)),
     exception_result(T), store(S), store(S)).
-:- mode try_store(in(bound(det)), pred(out, di, uo) is det,
-    out(cannot_fail), di, uo) is cc_multi.
-:- mode try_store(in(bound(cc_multi)), pred(out, di, uo) is cc_multi,
-    out(cannot_fail), di, uo) is cc_multi.
+:- mode try_store_det(in(bound(exp_detism_det)),
+    pred(out, di, uo) is det, out(cannot_fail), di, uo) is cc_multi.
+:- mode try_store_det(in(bound(exp_detism_cc_multi)),
+    pred(out, di, uo) is cc_multi, out(cannot_fail), di, uo) is cc_multi.
 
-:- pred try_all(determinism, pred(T), maybe(univ), list(T)).
-:- mode try_all(in(bound(det)), pred(out) is det, out,
+:- pred try_all_det(exp_determinism, pred(T), maybe(univ), list(T)).
+:- mode try_all_det(in(bound(exp_detism_det)), pred(out) is det, out,
     out(nil_or_singleton_list)) is cc_multi.
-:- mode try_all(in(bound(semidet)), pred(out) is semidet, out,
+:- mode try_all_det(in(bound(exp_detism_semidet)), pred(out) is semidet, out,
     out(nil_or_singleton_list)) is cc_multi.
-:- mode try_all(in(bound(multi)), pred(out) is multi, out, out) is cc_multi.
-:- mode try_all(in(bound(nondet)), pred(out) is nondet, out, out) is cc_multi.
+:- mode try_all_det(in(bound(exp_detism_multi)), pred(out) is multi, out,
+    out) is cc_multi.
+:- mode try_all_det(in(bound(exp_detism_nondet)), pred(out) is nondet, out,
+    out) is cc_multi.
 
-:- type determinism
-    --->    det
-    ;       semidet
-    ;       cc_multi
-    ;       cc_nondet
-    ;       multi
-    ;       nondet
-    ;       erroneous
-    ;       failure.
+:- type exp_determinism
+    --->    exp_detism_det
+    ;       exp_detism_semidet
+    ;       exp_detism_cc_multi
+    ;       exp_detism_cc_nondet
+    ;       exp_detism_multi
+    ;       exp_detism_nondet
+    ;       exp_detism_erroneous
+    ;       exp_detism_failure.
 
-:- pred get_determinism(pred(T), determinism).
-:- mode get_determinism(pred(out) is det,     out(bound(det)))     is cc_multi.
-:- mode get_determinism(pred(out) is semidet, out(bound(semidet))) is cc_multi.
-:- mode get_determinism(pred(out) is multi,   out(bound(multi)))   is cc_multi.
-:- mode get_determinism(pred(out) is nondet,  out(bound(nondet)))  is cc_multi.
-:- mode get_determinism(pred(out) is cc_multi, out(bound(cc_multi)))
-    is cc_multi.
-:- mode get_determinism(pred(out) is cc_nondet, out(bound(cc_nondet)))
-    is cc_multi.
+:- pred get_determinism(pred(T), exp_determinism).
+:- mode get_determinism(pred(out) is det,
+    out(bound(exp_detism_det)))     is cc_multi.
+:- mode get_determinism(pred(out) is semidet,
+    out(bound(exp_detism_semidet))) is cc_multi.
+:- mode get_determinism(pred(out) is multi,
+    out(bound(exp_detism_multi)))   is cc_multi.
+:- mode get_determinism(pred(out) is nondet,
+    out(bound(exp_detism_nondet)))  is cc_multi.
+:- mode get_determinism(pred(out) is cc_multi,
+    out(bound(exp_detism_cc_multi))) is cc_multi.
+:- mode get_determinism(pred(out) is cc_nondet,
+    out(bound(exp_detism_cc_nondet))) is cc_multi.
 
-:- pred get_determinism_2(pred(T, S, S), determinism).
-:- mode get_determinism_2(pred(out, di, uo) is det, out(bound(det)))
-    is cc_multi.
-:- mode get_determinism_2(pred(out, di, uo) is cc_multi, out(bound(cc_multi)))
-    is cc_multi.
+:- pred get_determinism_2(pred(T, S, S), exp_determinism).
+:- mode get_determinism_2(pred(out, di, uo) is det,
+    out(bound(exp_detism_det))) is cc_multi.
+:- mode get_determinism_2(pred(out, di, uo) is cc_multi,
+    out(bound(exp_detism_cc_multi))) is cc_multi.
 
 % The calls to error/1 here are needed to ensure that the
 % declarative semantics of each clause is equivalent,
@@ -274,40 +285,47 @@
 
 :- pragma promise_equivalent_clauses(get_determinism/2).
 
-get_determinism(_Pred::(pred(out) is det), Det::out(bound(det))) :-
-    ( cc_multi_equal(det, Det)
+get_determinism(_Pred::(pred(out) is det),
+        Det::out(bound(exp_detism_det))) :-
+    ( cc_multi_equal(exp_detism_det, Det)
     ; error("get_determinism")
     ).
-get_determinism(_Pred::(pred(out) is semidet), Det::out(bound(semidet))) :-
-    ( cc_multi_equal(semidet, Det)
+get_determinism(_Pred::(pred(out) is semidet),
+        Det::out(bound(exp_detism_semidet))) :-
+    ( cc_multi_equal(exp_detism_semidet, Det)
     ; error("get_determinism")
     ).
-get_determinism(_Pred::(pred(out) is cc_multi), Det::out(bound(cc_multi))) :-
-    ( cc_multi_equal(cc_multi, Det)
+get_determinism(_Pred::(pred(out) is cc_multi),
+        Det::out(bound(exp_detism_cc_multi))) :-
+    ( cc_multi_equal(exp_detism_cc_multi, Det)
     ; error("get_determinism")
     ).
-get_determinism(_Pred::(pred(out) is cc_nondet), Det::out(bound(cc_nondet))) :-
-    ( cc_multi_equal(cc_nondet, Det)
+get_determinism(_Pred::(pred(out) is cc_nondet),
+        Det::out(bound(exp_detism_cc_nondet))) :-
+    ( cc_multi_equal(exp_detism_cc_nondet, Det)
     ; error("get_determinism")
     ).
-get_determinism(_Pred::(pred(out) is multi), Det::out(bound(multi))) :-
-    ( cc_multi_equal(multi, Det)
+get_determinism(_Pred::(pred(out) is multi),
+        Det::out(bound(exp_detism_multi))) :-
+    ( cc_multi_equal(exp_detism_multi, Det)
     ; error("get_determinism")
     ).
-get_determinism(_Pred::(pred(out) is nondet), Det::out(bound(nondet))) :-
-    ( cc_multi_equal(nondet, Det)
+get_determinism(_Pred::(pred(out) is nondet),
+        Det::out(bound(exp_detism_nondet))) :-
+    ( cc_multi_equal(exp_detism_nondet, Det)
     ; error("get_determinism")
     ).
 
 :- pragma promise_equivalent_clauses(get_determinism_2/2).
 
-get_determinism_2(_Pred::pred(out, di, uo) is det, Det::out(bound(det))) :-
-    ( cc_multi_equal(det, Det)
+get_determinism_2(_Pred::pred(out, di, uo) is det,
+        Det::out(bound(exp_detism_det))) :-
+    ( cc_multi_equal(exp_detism_det, Det)
     ; error("get_determinism_2")
     ).
 get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
-        Det::out(bound(cc_multi))) :-
-    ( cc_multi_equal(cc_multi, Det)
+        Det::out(bound(exp_detism_cc_multi))) :-
+    ( cc_multi_equal(exp_detism_cc_multi, Det)
     ; error("get_determinism_2")
     ).
 
@@ -427,26 +445,26 @@ try(_Detism, Goal, Result) :-
 
 try(Goal, Result) :-
     get_determinism(Goal, Detism),
-    try(Detism, Goal, Result).
+    try_det(Detism, Goal, Result).
 
-try(det, Goal, Result) :-
+try_det(exp_detism_det, Goal, Result) :-
     WrappedGoal = (pred(R::out) is det :-
         wrap_success_or_failure(Goal, R)
     ),
     catch_impl(WrappedGoal, wrap_exception, Result0),
     cc_multi_equal(Result0, Result).
-try(semidet, Goal, Result) :-
+try_det(exp_detism_semidet, Goal, Result) :-
     WrappedGoal = (pred(R::out) is det :-
         wrap_success_or_failure(Goal, R)
     ),
     catch_impl(WrappedGoal, wrap_exception, Result0),
     cc_multi_equal(Result0, Result).
-try(cc_multi, Goal, Result) :-
+try_det(exp_detism_cc_multi, Goal, Result) :-
     WrappedGoal = (pred(R::out) is cc_multi :-
         wrap_success_or_failure(Goal, R)
     ),
     catch_impl(WrappedGoal, wrap_exception, Result).
-try(cc_nondet, Goal, Result) :-
+try_det(exp_detism_cc_nondet, Goal, Result) :-
     WrappedGoal = (pred(R::out) is cc_multi :-
         wrap_success_or_failure(Goal, R)
     ),
@@ -456,10 +474,10 @@ try(cc_nondet, Goal, Result) :-
 
 try_all(Goal, MaybeException, Solutions) :-
     get_determinism(Goal, Detism),
-    try_all(Detism, Goal, MaybeException, Solutions).
+    try_all_det(Detism, Goal, MaybeException, Solutions).
 
-try_all(det, Goal, MaybeException, Solutions) :-
-    try(det, Goal, Result),
+try_all_det(exp_detism_det, Goal, MaybeException, Solutions) :-
+    try_det(exp_detism_det, Goal, Result),
     (
         Result = succeeded(Solution),
         Solutions = [Solution],
@@ -469,8 +487,8 @@ try_all(det, Goal, MaybeException, Solutions) :-
         Solutions = [],
         MaybeException = yes(Exception)
     ).
-try_all(semidet, Goal, MaybeException, Solutions) :-
-    try(semidet, Goal, Result),
+try_all_det(exp_detism_semidet, Goal, MaybeException, Solutions) :-
+    try_det(exp_detism_semidet, Goal, Result),
     (
         Result = failed,
         Solutions = [],
@@ -484,7 +502,7 @@ try_all(semidet, Goal, MaybeException, Solutions) :-
         Solutions = [],
         MaybeException = yes(Exception)
     ).
-try_all(multi, Goal, MaybeException, Solutions) :-
+try_all_det(exp_detism_multi, Goal, MaybeException, Solutions) :-
     WrappedGoal = (pred(R::out) is multi :-
         wrap_success(Goal, R)
     ),
@@ -494,7 +512,7 @@ try_all(multi, Goal, MaybeException, Solutions) :-
     unsorted_solutions(TryOneSoln, ResultList), 
     list.foldl2(process_one_exception_result, ResultList,
         no, MaybeException, [], Solutions).
-try_all(nondet, Goal, MaybeException, Solutions) :-
+try_all_det(exp_detism_nondet, Goal, MaybeException, Solutions) :-
     WrappedGoal = (pred(R::out) is nondet :-
         wrap_success(Goal, R)
     ),
@@ -527,12 +545,11 @@ incremental_try_all(Goal, AccPred, !Acc) :-
     ),
     unsorted_aggregate(TryOneSoln, AccPred, !Acc).
 
-% We need to switch on the Detism argument
-% for the same reason as above.
+% We need to switch on the Detism argument for the same reason as above.
 
 try_store(StoreGoal, Result, !Store) :-
     get_determinism_2(StoreGoal, Detism),
-    try_store(Detism, StoreGoal, Result, !Store).
+    try_store_det(Detism, StoreGoal, Result, !Store).
 
     % Store0 is not really unique in the calls to unsafe_promise_unique
     % below, since it is also used in the calls to handle_store_result.
@@ -540,19 +557,19 @@ try_store(StoreGoal, Result, !Store) :-
     % other reference is only used in the case when an exception is
     % thrown, and in that case the declarative semantics of this
     % predicate say that the final store returned is unspecified.
-try_store(det, StoreGoal, Result, !Store) :-
+try_store_det(exp_detism_det, StoreGoal, Result, !Store) :-
     Goal = (pred({R, S}::out) is det :-
         unsafe_promise_unique(!.Store, S0),
         StoreGoal(R, S0, S)
     ),
-    try(det, Goal, Result0),
+    try_det(exp_detism_det, Goal, Result0),
     handle_store_result(Result0, Result, !Store).
-try_store(cc_multi, StoreGoal, Result, !Store) :-
+try_store_det(exp_detism_cc_multi, StoreGoal, Result, !Store) :-
     Goal = (pred({R, S}::out) is cc_multi :-
         unsafe_promise_unique(!.Store, S0),
         StoreGoal(R, S0, S)
     ),
-    try(cc_multi, Goal, Result0),
+    try_det(exp_detism_cc_multi, Goal, Result0),
     handle_store_result(Result0, Result, !Store).
 
 :- pred handle_store_result(exception_result({T, store(S)})::in(cannot_fail),
@@ -580,22 +597,22 @@ handle_store_result(Result0, Result, !Store) :-
 
 try_io(IO_Goal, Result, !IO) :-
     get_determinism_2(IO_Goal, Detism),
-    try_io(Detism, IO_Goal, Result, !IO).
+    try_io_det(Detism, IO_Goal, Result, !IO).
 
 % We'd better not inline try_io/5, since it uses a horrible hack
 % with unsafe_perform_io (see below) that might confuse the compiler.
-:- pragma no_inline(try_io/5).
+:- pragma no_inline(try_io_det/5).
 
-try_io(det, IO_Goal, Result, !IO) :-
+try_io_det(exp_detism_det, IO_Goal, Result, !IO) :-
     Goal = (pred(R::out) is det :-
         very_unsafe_perform_io(IO_Goal, R)
     ),
-    try(det, Goal, Result).
-try_io(cc_multi, IO_Goal, Result, !IO) :-
+    try_det(exp_detism_det, Goal, Result).
+try_io_det(exp_detism_cc_multi, IO_Goal, Result, !IO) :-
     Goal = (pred(R::out) is cc_multi :-
         very_unsafe_perform_io(IO_Goal, R)
     ),
-    try(cc_multi, Goal, Result).
+    try_det(exp_detism_cc_multi, Goal, Result).
 
 :- pred very_unsafe_perform_io(pred(T, io, io), T).
 :- mode very_unsafe_perform_io(pred(out, di, uo) is det, out) is det.
@@ -968,8 +985,7 @@ mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
         exit(EXIT_FAILURE);
     } else {
   #ifdef MR_DEBUG_JMPBUFS
-        fprintf(stderr, ""throw longjmp %p\\n"",
-            exception_handler->handler);
+        fprintf(stderr, ""throw longjmp %p\\n"", exception_handler->handler);
   #endif
         exception_handler->exception = exception;
         longjmp(exception_handler->handler, 1);
@@ -1021,21 +1037,21 @@ mercury__exception__builtin_catch_gc_trace(void *frame)
         (MR_Word) &agc_locals->handler_pred);
 }
 
- #define ML_DECLARE_AGC_HANDLER \
+ #define ML_DECLARE_AGC_HANDLER                                             \
     struct mercury__exception__builtin_catch_locals agc_locals;
 
- #define ML_INSTALL_AGC_HANDLER(TYPE_INFO, HANDLER_PRED) \
-    do { \
-        agc_locals.prev = mercury__private_builtin__stack_chain; \
-        agc_locals.trace = mercury__exception__builtin_catch_gc_trace; \
-        agc_locals.type_info = (TYPE_INFO); \
-        agc_locals.handler_pred = (HANDLER_PRED); \
-        mercury__private_builtin__stack_chain = &agc_locals; \
+ #define ML_INSTALL_AGC_HANDLER(TYPE_INFO, HANDLER_PRED)                    \
+    do {                                                                    \
+        agc_locals.prev = mercury__private_builtin__stack_chain;            \
+        agc_locals.trace = mercury__exception__builtin_catch_gc_trace;      \
+        agc_locals.type_info = (TYPE_INFO);                                 \
+        agc_locals.handler_pred = (HANDLER_PRED);                           \
+        mercury__private_builtin__stack_chain = &agc_locals;                \
     } while(0)
 
- #define ML_UNINSTALL_AGC_HANDLER() \
-    do { \
-        mercury__private_builtin__stack_chain = agc_locals.prev; \
+ #define ML_UNINSTALL_AGC_HANDLER()                                         \
+    do {                                                                    \
+        mercury__private_builtin__stack_chain = agc_locals.prev;            \
     } while (0)
 
   #define ML_AGC_LOCAL(NAME) (agc_locals.NAME)
@@ -1072,8 +1088,7 @@ mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
         ML_UNINSTALL_AGC_HANDLER();
     } else {
   #ifdef MR_DEBUG_JMPBUFS
-        fprintf(stderr, ""detcatch caught jmp %p\\n"",
-            this_handler.handler);
+        fprintf(stderr, ""detcatch caught jmp %p\\n"", this_handler.handler);
   #endif
 
         ML_SET_EXCEPTION_HANDLER(this_handler.prev);
@@ -1108,8 +1123,7 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
         return result;
     } else {
   #ifdef MR_DEBUG_JMPBUFS
-        fprintf(stderr, ""semicatch caught jmp %p\\n"",
-            this_handler.handler);
+        fprintf(stderr, ""semicatch caught jmp %p\\n"", this_handler.handler);
   #endif
 
         ML_SET_EXCEPTION_HANDLER(this_handler.prev);
@@ -1167,8 +1181,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
         ML_UNINSTALL_AGC_HANDLER();
     } else {
     #ifdef MR_DEBUG_JMPBUFS
-        fprintf(stderr, ""noncatch caught jmp %p\\n"",
-            this_handler.handler);
+        fprintf(stderr, ""noncatch caught jmp %p\\n"", this_handler.handler);
     #endif
 
         ML_SET_EXCEPTION_HANDLER(this_handler.prev);
@@ -1184,8 +1197,8 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 
 struct ML_catch_env {
     ML_ExceptionHandler this_handler;
-    MR_Cont         cont;
-    void            *cont_env;
+    MR_Cont             cont;
+    void                *cont_env;
 };
 
 static void MR_CALL
@@ -1193,18 +1206,16 @@ ML_catch_success_cont(void *env_ptr) {
     struct ML_catch_env *env = (struct ML_catch_env *) env_ptr;
 
     /*
-    ** If we reach here, it means that
-    ** the nondet goal has succeeded, so we
-    ** need to restore the previous exception
-    ** handler before calling its continuation
+    ** If we reach here, it means that the nondet goal has succeeded, so we
+    ** need to restore the previous exception handler before calling its
+    ** continuation.
     */
     ML_SET_EXCEPTION_HANDLER(env->this_handler.prev);
     (*env->cont)(env->cont_env);
 
     /*
-    ** If we get here, it means that the continuation
-    ** has failed, and so we are about to redo the
-    ** nondet goal.  Thus we need to re-establish
+    ** If we get here, it means that the continuation has failed, and so we
+    ** are about to redo the nondet goal. Thus we need to re-establish
     ** its exception handler.
     */
     ML_SET_EXCEPTION_HANDLER(&env->this_handler);
@@ -1232,21 +1243,18 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
     if (setjmp(locals.this_handler.handler) == 0) {
         ML_call_goal_non_handcoded(type_info, pred, output,
             ML_catch_success_cont, &locals);
+
         /*
-        ** If we reach here, it means that
-        ** the nondet goal has failed, so we
-        ** need to restore the previous exception
-        ** handler
+        ** If we reach here, it means that the nondet goal has failed, so we
+        ** need to restore the previous exception handler.
         */
         ML_SET_EXCEPTION_HANDLER(locals.this_handler.prev);
         ML_UNINSTALL_AGC_HANDLER();
         return;
     } else {
         /*
-        ** We caught an exception.
-        ** Restore the previous exception handler,
-        ** and then invoke the handler predicate
-        ** for this handler.
+        ** We caught an exception. Restore the previous exception handler,
+        ** and then invoke the handler predicate for this handler.
         */
 
     #ifdef MR_DEBUG_JMPBUFS
@@ -1276,11 +1284,11 @@ namespace mercury {
     namespace runtime {
         public class Exception : System.Exception
         {
-           public Exception(object[] data)
-           {
-            mercury_exception = data;
-           }
-           public object[] mercury_exception;
+            public Exception(object[] data)
+            {
+                mercury_exception = data;
+            }
+            public object[] mercury_exception;
         };
     }
 }
@@ -1319,8 +1327,8 @@ namespace mercury {
             TypeInfo_for_T, Handler, ex.mercury_exception, ref T);
     }
 ").
-/*
 
+/*
     % We can't implement these until we implement semidet procedures
     % for the C# interface.
 
@@ -1396,9 +1404,6 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 :- pragma foreign_export("C", call_handler(pred(in, out) is det, in, out),
     "ML_call_handler_det").
 
-/*
-*******/
-
 :- pragma foreign_proc("Java",
     throw_impl(_T::in),
     [will_not_call_mercury, promise_pure],
@@ -1430,8 +1435,7 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     T = null;
 }").
 :- pragma foreign_proc("Java",
-    catch_impl(_Pred::pred(out) is cc_multi, _Handler::in(handler),
-        T::out),
+    catch_impl(_Pred::pred(out) is cc_multi, _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "{
     // the shenanigans with `if (always)' are to avoid errors from
@@ -1443,8 +1447,7 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     T = null;
 }").
 :- pragma foreign_proc("Java",
-    catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler),
-        T::out),
+    catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "{
     // the shenanigans with `if (always)' are to avoid errors from
@@ -1484,8 +1487,7 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     #include ""mercury_layout_util.h""
     #include ""mercury_deep_profiling_hand.h""
 
-    MR_DECLARE_TYPE_CTOR_INFO_STRUCT( \
-            mercury_data_univ__type_ctor_info_univ_0);
+    MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data_univ__type_ctor_info_univ_0);
 #endif
 ").
 
@@ -1528,18 +1530,18 @@ void mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp);
 */
 
   #ifdef MR_DEEP_PROFILING
-    #define WARNING(msg)                        \\
-    do {                                \\
-        MR_fatal_error(""cannot update exception counts: %s\\n"",\\
-            msg);                       \\
+    #define WARNING(msg)                                            \\
+    do {                                                            \\
+        MR_fatal_error(""cannot update exception counts: %s\\n"",   \\
+            msg);                                                   \\
     } while (0)
   #else
-    #define WARNING(msg)                        \\
-    do {                                \\
-        fflush(stdout);                     \\
-        fprintf(stderr, ""mdb: warning: %s\\n""         \\
-            ""This may result in some exception events\\n"" \\
-            ""being omitted from the trace.\\n"", (msg));   \\
+    #define WARNING(msg)                                            \\
+    do {                                                            \\
+        fflush(stdout);                                             \\
+        fprintf(stderr, ""mdb: warning: %s\\n""                     \\
+            ""This may result in some exception events\\n""         \\
+            ""being omitted from the trace.\\n"", (msg));           \\
     } while (0)
   #endif
 
@@ -1547,8 +1549,8 @@ static MR_Code *
 ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
     MR_Word *base_curfr)
 {
-    const MR_Internal   *label;
-    const MR_Label_Layout   *return_label_layout;
+    const MR_Internal               *label;
+    const MR_Label_Layout           *return_label_layout;
 
     /*
     ** Find the layout info for the stack frame pointed to by MR_succip
@@ -1562,21 +1564,21 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
 
     while (return_label_layout != NULL) {
         const MR_Proc_Layout        *entry_layout;
-        MR_Code             *MR_jumpaddr;
+        MR_Code                     *MR_jumpaddr;
         MR_Stack_Walk_Step_Result   result;
-        const char          *problem;
+        const char                  *problem;
   #ifdef MR_DEEP_PROFILING
-        MR_CallSiteDynamic      *csd;
+        MR_CallSiteDynamic          *csd;
         const MR_Proc_Layout        *pl;
-        MR_ProcStatic           *ps;
-        MR_ProcStatic           *proc_static;
-        int             top_csd_slot;
-        int             middle_csd_slot;
-        MR_CallSiteDynamic      *top_csd;
-        MR_CallSiteDynamic      *middle_csd;
+        MR_ProcStatic               *ps;
+        MR_ProcStatic               *proc_static;
+        int                         top_csd_slot;
+        int                         middle_csd_slot;
+        MR_CallSiteDynamic          *top_csd;
+        MR_CallSiteDynamic          *middle_csd;
     #ifndef MR_USE_ACTIVATION_COUNTS
-        int             old_outermost_slot;
-        MR_ProcDynamic          *old_outermost;
+        int                         old_outermost_slot;
+        MR_ProcDynamic              *old_outermost;
     #endif
   #endif
 
@@ -1689,14 +1691,9 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
   #endif
 
         if (MR_debug_enabled) {
-            /*
-            ** invoke MR_trace() to trace the exception
-            */
-            if (return_label_layout->MR_sll_port !=
-                MR_PORT_EXCEPTION)
-            {
-                MR_fatal_error(""return layout port ""
-                    ""is not exception"");
+            /* Invoke MR_trace() to trace the exception. */
+            if (return_label_layout->MR_sll_port != MR_PORT_EXCEPTION) {
+                MR_fatal_error(""return layout port is not exception"");
             }
 
             MR_jumpaddr = MR_trace(return_label_layout);
@@ -1705,9 +1702,7 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
             }
         }
 
-        /*
-        ** unwind the stacks back to the previous stack frame
-        */
+        /* Unwind the stacks back to the previous stack frame. */
         result = MR_stack_walk_step(entry_layout, &return_label_layout,
             &base_sp, &base_curfr, &problem);
         if (result != MR_STEP_OK) {
@@ -1723,22 +1718,22 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
 }
 
 /* swap the heap with the solutions heap */
-#define swap_heaps()                            \\
-{                                   \\
-    /* save the current heap */                 \\
-    MR_Word     *swap_heaps_temp_hp;                \\
-    MR_MemoryZone   *swap_heaps_temp_hp_zone;           \\
-                                    \\
-    swap_heaps_temp_hp = MR_hp;                 \\
-    swap_heaps_temp_hp_zone = MR_ENGINE(MR_eng_heap_zone);      \\
-                                    \\
-    /* set heap to solutions heap */                \\
-    MR_hp_word = (MR_Word) MR_sol_hp;               \\
-    MR_ENGINE(MR_eng_heap_zone) =                   \\
-        MR_ENGINE(MR_eng_solutions_heap_zone);          \\
-                                    \\
-    /* set the solutions heap to be the old heap */         \\
-    MR_sol_hp = swap_heaps_temp_hp;                 \\
+#define swap_heaps()                                                \\
+{                                                                   \\
+    /* save the current heap */                                     \\
+    MR_Word     *swap_heaps_temp_hp;                                \\
+    MR_MemoryZone   *swap_heaps_temp_hp_zone;                       \\
+                                                                    \\
+    swap_heaps_temp_hp = MR_hp;                                     \\
+    swap_heaps_temp_hp_zone = MR_ENGINE(MR_eng_heap_zone);          \\
+                                                                    \\
+    /* set heap to solutions heap */                                \\
+    MR_hp_word = (MR_Word) MR_sol_hp;                               \\
+    MR_ENGINE(MR_eng_heap_zone) =                                   \\
+        MR_ENGINE(MR_eng_solutions_heap_zone);                      \\
+                                                                    \\
+    /* set the solutions heap to be the old heap */                 \\
+    MR_sol_hp = swap_heaps_temp_hp;                                 \\
     MR_ENGINE(MR_eng_solutions_heap_zone) = swap_heaps_temp_hp_zone;\\
 }
 
@@ -2003,32 +1998,32 @@ MR_BEGIN_CODE
 ** for the different determinisms.
 */
 
-#define save_r1         do {                    \
-                    MR_framevar(1) = MR_r1;     \
-                } while (0)
-#define save_r1r2       do {                    \
-                    MR_framevar(1) = MR_r1;     \
-                    MR_framevar(2) = MR_r2;     \
-                } while (0)
-#define restore_r1      do {                    \
-                    MR_r1 = MR_framevar(1);     \
-                } while (0)
-#define restore_r1r2        do {                    \
-                    MR_r1 = MR_framevar(1);     \
-                    MR_r2 = MR_framevar(2);     \
-                } while (0)
+#define save_r1                 do {                                    \
+                                    MR_framevar(1) = MR_r1;             \
+                                } while (0)
+#define save_r1r2               do {                                    \
+                                    MR_framevar(1) = MR_r1;             \
+                                    MR_framevar(2) = MR_r2;             \
+                                } while (0)
+#define restore_r1              do {                                    \
+                                    MR_r1 = MR_framevar(1);             \
+                                } while (0)
+#define restore_r1r2            do {                                    \
+                                    MR_r1 = MR_framevar(1);             \
+                                    MR_r2 = MR_framevar(2);             \
+                                } while (0)
 
 /* mercury__exception__builtin_catch_3_0: the det version */
-#define proc_label      mercury__exception__builtin_catch_3_0
-#define proc_layout     MR_proc_layout_user_name(exception, \
-                    builtin_catch, 3, 0)
-#define excp_handler        MR_MODEL_DET_HANDLER
-#define model           ""[model det]""
-#define save_results()      save_r1
-#define restore_results()   restore_r1
-#define handle_ticket_on_exit() do {                    \
-                    MR_prune_ticket();      \
-                } while (0)
+#define proc_label              mercury__exception__builtin_catch_3_0
+#define proc_layout             MR_proc_layout_user_name(exception,     \
+                                    builtin_catch, 3, 0)
+#define excp_handler            MR_MODEL_DET_HANDLER
+#define model                   ""[model det]""
+#define save_results()          save_r1
+#define restore_results()       restore_r1
+#define handle_ticket_on_exit() do {                                    \
+                                    MR_prune_ticket();                  \
+                                } while (0)
 
 #include ""mercury_exception_catch_body.h""
 
@@ -2037,9 +2032,9 @@ MR_BEGIN_CODE
 
 /* mercury__exception__builtin_catch_3_2: the cc_multi version */
 /* identical to mercury__exception__builtin_catch_3_0 except for label names */
-#define proc_label      mercury__exception__builtin_catch_3_2
-#define proc_layout     MR_proc_layout_user_name(exception, \
-                    builtin_catch, 3, 2)
+#define proc_label              mercury__exception__builtin_catch_3_2
+#define proc_layout             MR_proc_layout_user_name(exception, \
+                                    builtin_catch, 3, 2)
 
 #include ""mercury_exception_catch_body.h""
 
@@ -2052,20 +2047,20 @@ MR_BEGIN_CODE
 #undef  proc_label
 
 /* mercury__exception__builtin_catch_3_1: the semidet version */
-#define proc_label      mercury__exception__builtin_catch_3_1
-#define proc_layout     MR_proc_layout_user_name(exception, \
-                    builtin_catch, 3, 1)
-#define excp_handler        MR_MODEL_SEMI_HANDLER
-#define model           ""[model semi]""
-#define save_results()      save_r1r2
-#define restore_results()   restore_r1r2
-#define handle_ticket_on_exit() do {                    \
-                    if (MR_r1) {            \
-                        MR_prune_ticket();  \
-                    } else {            \
-                        MR_discard_ticket();    \
-                    }               \
-                } while (0)
+#define proc_label              mercury__exception__builtin_catch_3_1
+#define proc_layout             MR_proc_layout_user_name(exception, \
+                            `       builtin_catch, 3, 1)
+#define excp_handler            MR_MODEL_SEMI_HANDLER
+#define model                   ""[model semi]""
+#define save_results()          save_r1r2
+#define restore_results()       restore_r1r2
+#define handle_ticket_on_exit() do {                                    \
+                                    if (MR_r1) {                        \
+                                        MR_prune_ticket();              \
+                                    } else {                            \
+                                        MR_discard_ticket();            \
+                                    }                                   \
+                                } while (0)
 
 #include ""mercury_exception_catch_body.h""
 
@@ -2074,9 +2069,9 @@ MR_BEGIN_CODE
 
 /* mercury__exception__builtin_catch_3_3: the cc_nondet version */
 /* identical to mercury__exception__builtin_catch_3_1 except for label names */
-#define proc_label      mercury__exception__builtin_catch_3_3
-#define proc_layout     MR_proc_layout_user_name(exception, \
-                    builtin_catch, 3, 3)
+#define proc_label              mercury__exception__builtin_catch_3_3
+#define proc_layout             MR_proc_layout_user_name(exception, \
+                                    builtin_catch, 3, 3)
 
 #include ""mercury_exception_catch_body.h""
 
@@ -2089,18 +2084,18 @@ MR_BEGIN_CODE
 #undef  proc_label
 
 /* mercury__exception__builtin_catch_3_4: the multi version */
-#define proc_label      mercury__exception__builtin_catch_3_4
-#define proc_layout     MR_proc_layout_user_name(exception, \
-                    builtin_catch, 3, 4)
-#define excp_handler        MR_MODEL_NON_HANDLER
-#define model           ""[model non]""
-#define save_results()      save_r1
-#define restore_results()   restore_r1
-#define version_model_non   MR_TRUE
+#define proc_label              mercury__exception__builtin_catch_3_4
+#define proc_layout             MR_proc_layout_user_name(exception, \
+                                    builtin_catch, 3, 4)
+#define excp_handler            MR_MODEL_NON_HANDLER
+#define model                   ""[model non]""
+#define save_results()          save_r1
+#define restore_results()       restore_r1
+#define version_model_non       MR_TRUE
 #define handle_ticket_on_exit() ((void) 0)
-#define handle_ticket_on_fail() do {                    \
-                    MR_prune_ticket();      \
-                } while (0)
+#define handle_ticket_on_fail() do {                            \
+                                    MR_prune_ticket();          \
+                                } while (0)
 
 #include ""mercury_exception_catch_body.h""
 
@@ -2109,9 +2104,9 @@ MR_BEGIN_CODE
 
 /* mercury__exception__builtin_catch_3_5: the nondet version */
 /* identical to mercury__exception__builtin_catch_3_4 except for label names */
-#define proc_label      mercury__exception__builtin_catch_3_5
-#define proc_layout     MR_proc_layout_user_name(exception, \
-                    builtin_catch, 3, 5)
+#define proc_label              mercury__exception__builtin_catch_3_5
+#define proc_layout             MR_proc_layout_user_name(exception,     \
+                                    builtin_catch, 3, 5)
 
 #include ""mercury_exception_catch_body.h""
 
@@ -2139,13 +2134,13 @@ MR_BEGIN_CODE
 
 MR_define_entry(mercury__exception__builtin_throw_1_0);
 {
-    MR_Word             exception;
-    MR_Word             handler;
+    MR_Word                     exception;
+    MR_Word                     handler;
     enum MR_HandlerCodeModel    catch_code_model;
-    MR_bool             trace_from_full;
-    MR_Word             *orig_curfr;
-    MR_Unsigned         exception_event_number;
-    MR_bool             walk_stack;
+    MR_bool                     trace_from_full;
+    MR_Word                     *orig_curfr;
+    MR_Unsigned                 exception_event_number;
+    MR_bool                     walk_stack;
 
     exception = MR_r1;
     exception_event_number = MR_trace_event_number;
@@ -2160,12 +2155,16 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 #endif
 
     if (walk_stack) {
-        MR_Code *MR_jumpaddr;
+        MR_Code     *MR_jumpaddr;
+
         MR_trace_set_exception_value(exception);
         MR_save_transient_registers();
         MR_jumpaddr = ML_throw_walk_stack(MR_succip, MR_sp, MR_curfr);
         MR_restore_transient_registers();
-        if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);
+
+        if (MR_jumpaddr != NULL) {
+            MR_GOTO(MR_jumpaddr);
+        }
     }
 
     /*
@@ -2183,31 +2182,27 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
         != MR_ENTRY(MR_exception_handler_do_fail))
     {
         MR_curfr_word = MR_succfr_slot_word(MR_curfr);
-        if (MR_curfr <
-            MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min)
-        {
+        if (MR_curfr < MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min) {
             MR_Word save_succip_word;
+
             /*
             ** There was no exception handler.
             **
-            ** We restore the original value of MR_curfr,
-            ** print out some diagnostics,
-            ** and then terminate execution.
+            ** We restore the original value of MR_curfr, print out some
+            ** diagnostics, and then terminate execution.
             **
-            ** We need to save the registers to the fake_reg
-            ** array using MR_save_registers() before calling
-            ** ML_report_uncaught_exception, since that is
-            ** Mercury code and the C->Mercury interface expects
-            ** the registers to be saved.
-            ** We also need to save & restore the MR_succip
-            ** across that call, since any call to Mercury code
-            ** may clobber MR_succip (and also the Mercury
-            ** registers MR_r1, MR_r2, MR_r3, etc., but for those
-            ** we don't care, since we don't use them).
-            ** Note that the MR_save_registers() alone is not
-            ** sufficient since the Mercury code may clobber the
-            ** copy of MR_succip in the fake_reg.
+            ** We need to save the registers to the fake_reg array using
+            ** MR_save_registers() before calling ML_report_uncaught_exception,
+            ** since that is Mercury code and the C->Mercury interface expects
+            ** the registers to be saved. We also need to save & restore
+            ** the MR_succip across that call, since any call to Mercury code
+            ** may clobber MR_succip (and also the Mercury registers MR_r1,
+            ** MR_r2, MR_r3, etc., but for those we don't care, since we don't
+            ** use them). Note that the MR_save_registers() alone is not
+            ** sufficient since the Mercury code may clobber the copy of
+            ** MR_succip in the fake_reg.
             */
+
             MR_curfr_word = (MR_Word) orig_curfr;
             fflush(stdout);
             save_succip_word = MR_succip_word;
@@ -2218,30 +2213,27 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
             if (exception_event_number > 0) {
                 if (MR_standardize_event_details) {
                     fprintf(stderr,
-                        ""Last trace event before ""
-                        ""the unhandled exception was ""
-                        ""event #E%ld.\\n"",
-                        (long) MR_standardize_event_num( exception_event_number));
+                        ""Last trace event before the unhandled exception""
+                        "" was event #E%ld.\\n"",
+                        (long)
+                            MR_standardize_event_num(exception_event_number));
                 } else {
                     fprintf(stderr,
-                        ""Last trace event before ""
-                        ""the unhandled exception was ""
-                        ""event #%ld.\\n"",
+                        ""Last trace event before the unhandled exception""
+                        "" was event #%ld.\\n"",
                         (long) exception_event_number);
                 }
             }
             if (walk_stack) {
                 /*
-                ** The stack has already been unwound by
-                ** ML_throw_walk_stack(), so we can't dump it.
-                ** (In fact, if we tried to dump the now-empty
-                ** stack, we'd get incorrect results, since
-                ** ML_throw_walk_stack() does not restore
-                ** MR_succip to the appropriate value.)
+                ** The stack has already been unwound by ML_throw_walk_stack(),
+                ** so we can't dump it. (In fact, if we tried to dump the
+                ** now-empty stack, we'd get incorrect results, since
+                ** ML_throw_walk_stack() does not restore MR_succip
+                ** to the appropriate value.)
                 */
             } else {
-                MR_dump_stack(MR_succip, MR_sp, MR_curfr,
-                    MR_FALSE);
+                MR_dump_stack(MR_succip, MR_sp, MR_curfr, MR_FALSE);
             }
 
             MR_perform_registered_exception_cleanups();
@@ -2250,7 +2242,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
     }
 
     /*
-    ** Save the handler we found
+    ** Save the handler we found.
     */
     catch_code_model = MR_EXCEPTION_STRUCT->MR_excp_code_model;
     handler = MR_EXCEPTION_STRUCT->MR_excp_handler;
@@ -2295,8 +2287,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
     MR_Word * saved_solns_heap_ptr;
 
     /* switch to the solutions heap */
-    if (MR_ENGINE(MR_eng_heap_zone) ==
-        MR_EXCEPTION_STRUCT->MR_excp_heap_zone)
+    if (MR_ENGINE(MR_eng_heap_zone) == MR_EXCEPTION_STRUCT->MR_excp_heap_zone)
     {
         swap_heaps();
     }
@@ -2394,11 +2385,12 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
     */
 
 #ifdef  MR_DEEP_PROFILING
-    MR_fatal_error(""builtin_throw cannot (yet) invoke Mercury handlers in deep profiling grades"");
+    MR_fatal_error(""builtin_throw cannot (yet) invoke""
+        "" Mercury handlers in deep profiling grades"");
 #endif
 
     MR_r1 = handler;    /* get the Handler closure */
-    MR_r2 = 1;      /* One additional input argument */
+    MR_r2 = 1;          /* One additional input argument */
     MR_r3 = exception;  /* This is our one input argument */
 
     /*
