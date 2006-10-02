@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: intermod.m.
 % Main author: stayl.
-
+% 
 % This module writes out the interface for inter-module optimization.
 % The .opt file includes:
 %   - The clauses for exported preds that can be inlined.
@@ -32,7 +32,7 @@
 % determinism declarations do not have clauses exported, since this would
 % require running mode analysis and determinism analysis before writing the
 % .opt file, significantly increasing compile time for a very small gain.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.intermod.
@@ -164,7 +164,6 @@ write_optfile(!ModuleInfo, !IO) :-
         globals.io_lookup_bool_option(deforestation, Deforestation, !IO),
         globals.io_lookup_int_option(higher_order_size_limit,
             HigherOrderSizeLimit, !IO),
-        globals.io_lookup_bool_option(intermod_unused_args, UnusedArgs, !IO),
         some [!IntermodInfo] (
             init_intermod_info(!.ModuleInfo, !:IntermodInfo),
             gather_preds(PredIds, yes, Threshold, HigherOrderSizeLimit,
@@ -175,12 +174,7 @@ write_optfile(!ModuleInfo, !IO) :-
             intermod_info_get_module_info(!.IntermodInfo, !:ModuleInfo),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO),
-            (
-                UnusedArgs = yes,
-                do_adjust_pred_import_status(!.IntermodInfo, !ModuleInfo)
-            ;
-                UnusedArgs = no
-            )
+            do_adjust_pred_import_status(!.IntermodInfo, !ModuleInfo)
         )
     ),
     % restore the option setting that we overrode above
