@@ -89,22 +89,22 @@ include Mercury.options
 		echo "Matched $*.sorted_exp" && \
 		cp $*.res1 $@; } || \
 	{ test -f $*.exp2 && \
-		@sort $*.exp2 > $*.sorted_exp2 \
+		sort $*.exp2 > $*.sorted_exp2 && \
 		diff $(DIFF_OPTS) $*.sorted_exp2 $*.sorted_out > $*.res2 && \
 		echo "Matched $*.sorted_exp2" && \
 		cp $*.res2 $@; } || \
 	{ test -f $*.exp3 && \
-		@sort $*.exp3 > $*.sorted_exp3 \
+		sort $*.exp3 > $*.sorted_exp3 && \
 		diff $(DIFF_OPTS) $*.sorted_exp3 $*.sorted_out > $*.res3 && \
 		echo "Matched $*.sorted_exp3" && \
 		cp $*.res3 $@; } || \
 	{ test -f $*.exp4 && \
-		@sort $*.exp4 > $*.sorted_exp4 \
+		sort $*.exp4 > $*.sorted_exp4 && \
 		diff $(DIFF_OPTS) $*.sorted_exp4 $*.sorted_out > $*.res4 && \
 		echo "Matched $*.sorted_exp4" && \
 		cp $*.res4 $@; } || \
 	{ test -f $*.exp5 && \
-		@sort $*.exp5 > $*.sorted_exp5 \
+		sort $*.exp5 > $*.sorted_exp5 && \
 		diff $(DIFF_OPTS) $*.sorted_exp5 $*.sorted_out > $*.res5 && \
 		echo "Matched $*.sorted_exp5" && \
 		cp $*.res5 $@; } || \
