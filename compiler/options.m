@@ -213,6 +213,7 @@
     ;       auto_comments
     ;       frameopt_comments
     ;       show_dependency_graph
+    ;       dump_trace_counts
     ;       dump_hlds
     ;       dump_hlds_pred_id
     ;       dump_hlds_alias
@@ -970,6 +971,7 @@ option_defaults_2(aux_output_option, [
     auto_comments                       -   bool(no),
     frameopt_comments                   -   bool(no),
     show_dependency_graph               -   bool(no),
+    dump_trace_counts                   -   accumulating([]),
     dump_hlds                           -   accumulating([]),
     dump_hlds_pred_id                   -   int(-1),
     dump_hlds_alias                     -   string(""),
@@ -1695,6 +1697,7 @@ long_option("line-numbers",         line_numbers).
 long_option("auto-comments",        auto_comments).
 long_option("frameopt-comments",    frameopt_comments).
 long_option("show-dependency-graph",    show_dependency_graph).
+long_option("dump-trace-counts",    dump_trace_counts).
 long_option("dump-hlds",            dump_hlds).
 long_option("hlds-dump",            dump_hlds).
 long_option("dump-hlds-pred-id",    dump_hlds_pred_id).
@@ -3186,6 +3189,13 @@ options_help_aux_output -->
         "\tuse the `--no-llds-optimize' option.)",
         "--show-dependency-graph",
         "\tWrite out the dependency graph to `<module>.dependency_graph'.",
+% This option is for developers only.
+%       "--dump-trace-counts <stage number or name>",
+%       "\tIf the compiler was compiled with debugging enabled and is being",
+%       "\trun with trace counting enabled, write out the trace counts file",
+%       "\tafter the specified stage to `<module>.trace_counts.<num>-<name>'.",
+%       "\tStage numbers range from 1-599.",
+%       "\tMultiple dump options accumulate.",
         "-d <n>, --dump-hlds <stage number or name>",
         "\tDump the HLDS (high level intermediate representation) after",
         "\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.",
@@ -3194,7 +3204,7 @@ options_help_aux_output -->
         "--dump-hlds-pred-id <n>",
         "\tDump the HLDS only of the predicate/function with the given",
         "\tpred id.",
-% This option is for developers only
+% This option is for developers only.
 %       "-D, --dump-hlds-alias <dump-alias>",
 %       "\tWith `--dump-hlds', include extra detail in the dump.",
 %       "\tEach dump alias is shorthand for a set of option letters.",

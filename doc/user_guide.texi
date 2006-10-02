@@ -6101,6 +6101,20 @@ or in Mercury (with @samp{--convert-to-mercury}).
 @findex --show-dependency-graph
 Write out the dependency graph to @var{module}.dependency_graph.
 
+@c @sp 1
+@c @item -d @var{stage}
+@c @itemx --dump-trace-counts @var{stage}
+@c @findex --dump-trace-counts
+@c tIf the compiler was compiled with debugging enabled
+@c and is being run with trace counting enabled,
+@c write out the trace counts file after the specified stage to
+@c @file{@var{module}.trace_counts.@var{num}-@var{name}}.
+@c Stage numbers range from 1 to 599; not all stage numbers are valid.
+@c If a stage number is followed by a plus sign,
+@c all stages after the given stage will be dumped as well.
+@c The special stage name @samp{all} causes the dumping of all stages.
+@c Multiple dump options accumulate.
+
 @sp 1
 @item -d @var{stage}
 @itemx --dump-hlds @var{stage}

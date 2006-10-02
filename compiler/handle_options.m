@@ -857,10 +857,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             DebugLiveness >= 0,
             convert_dump_alias("all", AllDumpOptions)
         ->
-                % Programmers only enable --debug-liveness if they are
-                % interested in the goal annotations put on goals by
-                % the various phases of the liveness pass. The default
-                % dump options do not print these annotations.
+            % Programmers only enable --debug-liveness if they are interested
+            % in the goal annotations put on goals by the various phases
+            % of the liveness pass. The default dump options do not print
+            % these annotations.
             globals.lookup_string_option(!.Globals, dump_hlds_options,
                 DumpOptions0),
             string.append(DumpOptions0, AllDumpOptions, DumpOptions1),
@@ -1388,13 +1388,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         % --dump-hlds, --statistics, --parallel-liveness and
         % --parallel-code-gen require compilation by phases
-        globals.lookup_accumulating_option(!.Globals, dump_hlds, DumpStages),
+        globals.lookup_accumulating_option(!.Globals, dump_hlds,
+            DumpHLDSStages),
+        globals.lookup_accumulating_option(!.Globals, dump_trace_counts,
+            DumpTraceStages),
         globals.lookup_bool_option(!.Globals, parallel_liveness,
             ParallelLiveness),
         globals.lookup_bool_option(!.Globals, parallel_code_gen,
             ParallelCodeGen),
         (
-            ( DumpStages = [_ | _]
+            ( DumpHLDSStages = [_ | _]
+            ; DumpTraceStages = [_ | _]
             ; Statistics = yes
             ; ParallelLiveness = yes
             ; ParallelCodeGen = yes
@@ -1405,8 +1409,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
-        % If we are doing type-specialization, we may as well take
-        % advantage of the declarations supplied by the programmer.
+        % If we are doing type-specialization, we may as well take advantage
+        % of the declarations supplied by the programmer.
         option_implies(type_specialization, user_guided_type_specialization,
             bool(yes), !Globals),
 

@@ -4599,9 +4599,12 @@ mlds_to_il_assembler(MLDS, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
-    globals.io_lookup_accumulating_option(dump_hlds, DumpStages, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_accumulating_option(dump_hlds, DumpHLDSStages, !IO),
+    globals.io_lookup_accumulating_option(dump_trace_counts, DumpTraceStages,
+        !IO),
     StageNumStr = stage_num_str(StageNum),
-    ( should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) ->
+    ( should_dump_stage(StageNum, StageNumStr, StageName, DumpHLDSStages) ->
         module_info_get_name(HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".hlds_dump", yes, BaseFileName,
             !IO),
@@ -4617,7 +4620,6 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
                     "to the stage in " ++ PrevDumpFileName ++ ".\n", !IO),
                 io.close_output(FileStream, !IO)
             ;
-                globals.io_lookup_bool_option(verbose, Verbose, !IO),
                 maybe_write_string(Verbose, "\n", !IO),
                 Msg = "can't open file `" ++ DumpFileName ++ "' for output.",
                 report_error(Msg, !IO)
@@ -4627,6 +4629,25 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
             CurDumpFileName = DumpFileName
         ),
         !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
+    ; should_dump_stage(StageNum, StageNumStr, StageName, DumpTraceStages) ->
+        module_info_get_name(HLDS, ModuleName),
+        module_name_to_file_name(ModuleName, ".trace_counts", yes,
+            BaseFileName, !IO),
+        DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName,
+        write_out_trace_counts(DumpFileName, MaybeTraceCountsError, !IO),
+        (
+            MaybeTraceCountsError = no,
+            maybe_write_string(Verbose, "% Dumped trace counts to `", !IO),
+            maybe_write_string(Verbose, DumpFileName, !IO),
+            maybe_write_string(Verbose, "'\n", !IO),
+            maybe_flush_output(Verbose, !IO)
+        ;
+            MaybeTraceCountsError = yes(TraceCountsError),
+            io.write_string("% ", !IO),
+            io.write_string(TraceCountsError, !IO),
+            io.nl(!IO),
+            io.flush_output(!IO)
+        )
     ;
         true
     ).

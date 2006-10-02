@@ -8,7 +8,7 @@
 % 
 % File: benchmarking.m.
 % Main author: zs.
-% Stability: medium to high.
+% Stability: medium.
 % 
 % This module contains predicates that deal with the CPU time requirements
 % of (various parts of) the program.
@@ -20,6 +20,7 @@
 :- interface.
 
 :- import_module io.
+:- import_module maybe.
 
     % `report_stats' is a non-logical procedure intended for use in profiling
     % the performance of a program. It has the side-effect of reporting
@@ -70,7 +71,6 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    %
     % Turn off or on the collection of all profiling statistics.
     %
 :- pred turn_off_profiling(io::di, io::uo) is det.
@@ -79,7 +79,6 @@
 :- impure pred turn_off_profiling is det.
 :- impure pred turn_on_profiling is det.
 
-    %
     % Turn off or on the collection of call graph profiling statistics.
     %
 :- pred turn_off_call_profiling(io::di, io::uo) is det.
@@ -88,7 +87,6 @@
 :- impure pred turn_off_call_profiling is det.
 :- impure pred turn_on_call_profiling is det.
 
-    %
     % Turn off or on the collection of time spent in each procedure
     % profiling statistics.
     %
@@ -98,7 +96,6 @@
 :- impure pred turn_off_time_profiling is det.
 :- impure pred turn_on_time_profiling is det.
 
-    %
     % Turn off or on the collection of memory allocated in each procedure
     % profiling statistics.
     %
@@ -111,9 +108,24 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+    % write_out_trace_counts(FileName, MaybeErrorMsg, !IO):
+    %
+    % Write out the trace counts accumulated so far in this program's execution
+    % to FileName. If successful, set MaybeErrorMsg to "no". If unsuccessful,
+    % e.g. because the program wasn't compiled with debugging enabled or
+    % because trace counting isn't turned on, then set MaybeErrorMsg to a "yes"
+    % wrapper around an error message.
+    %
+:- pred write_out_trace_counts(string::in, maybe(string)::out,
+    io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module int.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -1056,4 +1068,52 @@ turn_on_heap_profiling(!IO) :-
 ").
 
 %-----------------------------------------------------------------------------%
+
+write_out_trace_counts(DumpFileName, MaybeErrorMsg, !IO) :-
+    dump_trace_counts_to(DumpFileName, Result, !IO),
+    ( Result = 0 ->
+        MaybeErrorMsg = no
+    ; Result = 1 ->
+        MaybeErrorMsg = yes("Couldn't dump trace counts to `" ++
+            DumpFileName ++ "': no compiled with debugging")
+    ; Result = 2 ->
+        MaybeErrorMsg = yes("Couldn't dump trace counts to `" ++
+            DumpFileName ++ "': trace counting not turned on")
+    ; Result = 3 ->
+        MaybeErrorMsg = yes("Couldn't dump trace counts to `" ++
+            DumpFileName ++ "': couldn't open file")
+    ;
+        MaybeErrorMsg = yes("Couldn't dump trace counts to `" ++
+            DumpFileName ++ "'")
+    ).
+
+:- pred dump_trace_counts_to(string::in, int::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    dump_trace_counts_to(FileName::in, Result::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+#ifdef  MR_EXEC_TRACE
+    FILE    *fp;
+
+    if (MR_trace_count_enabled && MR_trace_func_enabled) {
+        fp = fopen(FileName, ""w"");
+        if (fp != NULL) {
+            MR_trace_write_label_exec_counts(fp, MR_progname, MR_FALSE);
+            Result = 0;
+            (void) fclose(fp);
+        } else {
+            Result = 3;
+        }
+    } else {
+        Result = 2;
+    }
+#else
+    Result = 1;
+#endif
+").
+
+% Default definition for non-C backends.
+dump_trace_counts_to(_, 1, !IO).
+
 %-----------------------------------------------------------------------------%
