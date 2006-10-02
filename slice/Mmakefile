@@ -22,7 +22,7 @@ include Mercury.options
 
 MAIN_TARGET		= all
 
--# If you add more modules, you'll also have to modify ../Mmakefile.
+# If you add more modules, you'll also have to modify ../Mmakefile.
 MERCURY_MAIN_MODULES	= mslice mdice mtc_union mcov mtc_diff
 
 DEPENDS	= $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
