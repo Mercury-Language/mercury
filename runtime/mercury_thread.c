@@ -126,7 +126,8 @@ MR_init_thread(MR_when_to_use when_to_use)
         case MR_use_now :
             if (MR_ENGINE(MR_eng_this_context) == NULL) {
                 MR_ENGINE(MR_eng_this_context) =
-                    MR_create_context("init_thread", NULL);
+                    MR_create_context("init_thread",
+                        MR_CONTEXT_SIZE_REGULAR, NULL);
             }
             MR_load_context(MR_ENGINE(MR_eng_this_context));
             return MR_TRUE;

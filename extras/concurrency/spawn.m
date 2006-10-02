@@ -61,7 +61,7 @@
 "
 #ifndef MR_HIGHLEVEL_CODE
     MR_Context  *ctxt;
-    ctxt = MR_create_context(""spawn"", NULL);
+    ctxt = MR_create_context(""spawn"", MR_CONTEXT_SIZE_REGULAR, NULL);
     ctxt->MR_ctxt_resume = &&spawn_call_back_to_mercury_cc_multi;
         /* Store the closure on the top of the new context's stack. */
     *(ctxt->MR_ctxt_sp) = Goal;

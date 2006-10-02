@@ -8637,6 +8637,36 @@ Sets the size of the nondet stack to @var{size} kilobytes
 multiplied by the word size in bytes.
 
 @sp 1
+@item --small-detstack-size @var{size}
+@findex --small-detstack-size (runtime option)
+Sets the size of the det stack used for executing parallel conjunctions
+to @var{size} kilobytes.
+The regular det stack size must be equal or greater.
+
+@sp 1
+@item --small-detstack-size-kwords @var{size}
+@findex --small-detstack-size-kwords (runtime option)
+Sets the size of the det stack used for executing parallel conjunctions
+to @var{size} kilobytes
+multiplied by the word size in bytes.
+The regular det stack size must be equal or greater.
+
+@sp 1
+@item --small-nondetstack-size @var{size}
+@findex --small-nondetstack-size (runtime option)
+Sets the size of the nondet stack for executing parallel computations
+to @var{size} kilobytes.
+The regular nondet stack size must be equal or greater.
+
+@sp 1
+@item --small-nondetstack-size-kwords @var{size}
+@findex --small-nondetstack-size-kwords (runtime option)
+Sets the size of the nondet stack for executing parallel computations
+to @var{size} kilobytes
+multiplied by the word size in bytes.
+The regular nondet stack size must be equal or greater.
+
+@sp 1
 @item --solutions-heap-size @var{size}
 @findex --solutions-heap-size (runtime option)
 Sets the size of the solutions heap to @var{size} kilobytes.

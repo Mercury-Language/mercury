@@ -93,6 +93,8 @@ ENDINIT
 #endif
 size_t      MR_detstack_size =          1024 * sizeof(MR_Word);
 size_t      MR_nondstack_size =           64 * sizeof(MR_Word);
+size_t      MR_small_detstack_size =     512 * sizeof(MR_Word);
+size_t      MR_small_nondstack_size =      8 * sizeof(MR_Word);
 size_t      MR_solutions_heap_size =     256 * sizeof(MR_Word);
 size_t      MR_global_heap_size =        256 * sizeof(MR_Word);
 size_t      MR_trail_size =               32 * sizeof(MR_Word);
@@ -1004,6 +1006,10 @@ enum MR_long_option {
     MR_DETSTACK_SIZE_KWORDS,
     MR_NONDETSTACK_SIZE,
     MR_NONDETSTACK_SIZE_KWORDS,
+    MR_SMALL_DETSTACK_SIZE,
+    MR_SMALL_DETSTACK_SIZE_KWORDS,
+    MR_SMALL_NONDETSTACK_SIZE,
+    MR_SMALL_NONDETSTACK_SIZE_KWORDS,
     MR_SOLUTIONS_HEAP_SIZE,
     MR_SOLUTIONS_HEAP_SIZE_KWORDS,
     MR_TRAIL_SIZE,
@@ -1070,6 +1076,14 @@ struct MR_option MR_long_opts[] = {
     { "nondet-stack-size",              1, 0, MR_NONDETSTACK_SIZE },
     { "nondetstack-size-kwords",        1, 0, MR_NONDETSTACK_SIZE_KWORDS },
     { "nondet-stack-size-kwords",       1, 0, MR_NONDETSTACK_SIZE_KWORDS },
+    { "small-detstack-size",            1, 0, MR_SMALL_DETSTACK_SIZE },
+    { "small-det-stack-size",           1, 0, MR_SMALL_DETSTACK_SIZE },
+    { "small-detstack-size-kwords",     1, 0, MR_SMALL_DETSTACK_SIZE_KWORDS },
+    { "small-det-stack-size-kwords",    1, 0, MR_SMALL_DETSTACK_SIZE_KWORDS },
+    { "small-nondetstack-size",         1, 0, MR_SMALL_NONDETSTACK_SIZE },
+    { "small-nondet-stack-size",        1, 0, MR_SMALL_NONDETSTACK_SIZE },
+    { "small-nondetstack-size-kwords",  1, 0, MR_SMALL_NONDETSTACK_SIZE_KWORDS },
+    { "small-nondet-stack-size-kwords", 1, 0, MR_SMALL_NONDETSTACK_SIZE_KWORDS },
     { "solutions-heap-size",            1, 0, MR_SOLUTIONS_HEAP_SIZE },
     { "solutions-heap-size-kwords",     1, 0, MR_SOLUTIONS_HEAP_SIZE_KWORDS },
     { "trail-size",                     1, 0, MR_TRAIL_SIZE },
@@ -1201,6 +1215,38 @@ MR_process_options(int argc, char **argv)
                 }
 
                 MR_nondstack_size = size * sizeof(MR_Word);
+                break;
+
+            case MR_SMALL_DETSTACK_SIZE:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                MR_small_detstack_size = size;
+                break;
+
+            case MR_SMALL_DETSTACK_SIZE_KWORDS:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                MR_small_detstack_size = size * sizeof(MR_Word);
+                break;
+
+            case MR_SMALL_NONDETSTACK_SIZE:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                MR_small_nondstack_size = size;
+                break;
+
+            case MR_SMALL_NONDETSTACK_SIZE_KWORDS:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                MR_small_nondstack_size = size * sizeof(MR_Word);
                 break;
 
             case MR_SOLUTIONS_HEAP_SIZE:
@@ -1818,6 +1864,22 @@ MR_process_options(int argc, char **argv)
         fflush(stdout);
         exit(1);
     }
+
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
+    if (MR_small_detstack_size > MR_detstack_size) {
+        printf("The small detstack size must be smaller than the "
+            "regular detstack size.\n");
+        fflush(stdout);
+        exit(1);
+    }
+
+    if (MR_small_nondstack_size > MR_nondstack_size) {
+        printf("The small nondetstack size must be smaller than the "
+            "regular nondetstack size.\n");
+        fflush(stdout);
+        exit(1);
+    }
+#endif
 }
 
 static void 

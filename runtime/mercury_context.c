@@ -58,13 +58,13 @@ MR_PendingContext       *MR_pending_contexts;
 #endif
 
 /*
-** free_context_list is a global linked list of unused context
-** structures. If the MR_MemoryZone pointers are not NULL,
-** then they point to allocated MR_MemoryZones, which will
-** need to be reinitialized, but have space allocated to
-** them. (see comments in mercury_memory.h about MR_reset_zone())
+** free_context_list and free_small_context_list are a global linked lists
+** of unused context structures, with regular and small stacks respectively.
+** If the MR_MemoryZone pointers are not NULL, then they point to allocated
+** MR_MemoryZones.
 */
 static MR_Context       *free_context_list = NULL;
+static MR_Context       *free_small_context_list = NULL;
 #ifdef  MR_THREAD_SAFE
   static MercuryLock    free_context_list_lock;
 #endif
@@ -106,6 +106,11 @@ static void
 MR_init_context_maybe_generator(MR_Context *c, const char *id,
     MR_Generator *gen)
 {
+    const char  *detstack_name;
+    const char  *nondstack_name;
+    size_t      detstack_size;
+    size_t      nondstack_size;
+
     c->MR_ctxt_id = id;
     c->MR_ctxt_next = NULL;
     c->MR_ctxt_resume = NULL;
@@ -116,14 +121,29 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 #ifndef MR_HIGHLEVEL_CODE
     c->MR_ctxt_succip = MR_ENTRY(MR_do_not_reached);
 
+    switch (c->MR_ctxt_size) {
+        case MR_CONTEXT_SIZE_REGULAR:
+            detstack_name  = "detstack";
+            nondstack_name = "nondetstack";
+            detstack_size  = MR_detstack_size;
+            nondstack_size = MR_nondstack_size;
+            break;
+        case MR_CONTEXT_SIZE_SMALL:
+            detstack_name  = "small_detstack";
+            nondstack_name = "small_nondetstack";
+            detstack_size  = MR_small_detstack_size;
+            nondstack_size = MR_small_nondstack_size;
+            break;
+    }
+
     if (c->MR_ctxt_detstack_zone == NULL) {
         if (gen != NULL) {
             c->MR_ctxt_detstack_zone = MR_create_zone("gen_detstack",
                     0, MR_gen_detstack_size, MR_next_offset(),
                     MR_gen_detstack_zone_size, MR_default_handler);
         } else {
-            c->MR_ctxt_detstack_zone = MR_create_zone("detstack",
-                    0, MR_detstack_size, MR_next_offset(),
+            c->MR_ctxt_detstack_zone = MR_create_zone(detstack_name,
+                    0, detstack_size, MR_next_offset(),
                     MR_detstack_zone_size, MR_default_handler);
         }
     }
@@ -135,8 +155,8 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
                     0, MR_gen_nonstack_size, MR_next_offset(),
                     MR_gen_nonstack_zone_size, MR_default_handler);
         } else {
-            c->MR_ctxt_nondetstack_zone = MR_create_zone("nondetstack",
-                    0, MR_nondstack_size, MR_next_offset(),
+            c->MR_ctxt_nondetstack_zone = MR_create_zone(nondstack_name,
+                    0, nondstack_size, MR_next_offset(),
                     MR_nondstack_zone_size, MR_default_handler);
         }
     }
@@ -221,7 +241,7 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 }
 
 MR_Context *
-MR_create_context(const char *id, MR_Generator *gen)
+MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 {
     MR_Context  *c;
 
@@ -229,9 +249,26 @@ MR_create_context(const char *id, MR_Generator *gen)
 
     MR_num_outstanding_contexts_and_sparks++;
 
-    if (free_context_list == NULL) {
-        MR_UNLOCK(&free_context_list_lock, "create_context i");
+    /*
+    ** Regular contexts have stacks at least as big as
+    ** small contexts, so we can return a regular context in place of
+    ** a small context if one is already available.
+    */
+    if (ctxt_size == MR_CONTEXT_SIZE_SMALL && free_small_context_list) {
+        c = free_small_context_list;
+        free_small_context_list = c->MR_ctxt_next;
+    } else if (free_context_list != NULL) {
+        c = free_context_list;
+        free_context_list = c->MR_ctxt_next;
+    } else {
+        c = NULL;
+    }
+
+    MR_UNLOCK(&free_context_list_lock, "create_context i");
+
+    if (c == NULL) {
         c = MR_GC_NEW(MR_Context);
+        c->MR_ctxt_size = ctxt_size;
 #ifndef MR_HIGHLEVEL_CODE
         c->MR_ctxt_detstack_zone = NULL;
         c->MR_ctxt_nondetstack_zone = NULL;
@@ -239,10 +276,6 @@ MR_create_context(const char *id, MR_Generator *gen)
 #ifdef MR_USE_TRAIL
         c->MR_ctxt_trail_zone = NULL;
 #endif
-    } else {
-        c = free_context_list;
-        free_context_list = c->MR_ctxt_next;
-        MR_UNLOCK(&free_context_list_lock, "create_context ii");
     }
 
     MR_init_context_maybe_generator(c, id, gen);
@@ -269,8 +302,17 @@ MR_destroy_context(MR_Context *c)
 
     MR_LOCK(&free_context_list_lock, "destroy_context");
     MR_num_outstanding_contexts_and_sparks--;
-    c->MR_ctxt_next = free_context_list;
-    free_context_list = c;
+
+    switch (c->MR_ctxt_size) {
+        case MR_CONTEXT_SIZE_REGULAR:
+            c->MR_ctxt_next = free_context_list;
+            free_context_list = c;
+            break;
+        case MR_CONTEXT_SIZE_SMALL:
+            c->MR_ctxt_next = free_small_context_list;
+            free_small_context_list = c;
+            break;
+    }
     MR_UNLOCK(&free_context_list_lock, "destroy_context");
 }
 
@@ -528,7 +570,8 @@ MR_define_entry(MR_do_runnext);
 
     /* Grab a new context if we haven't got one then begin execution. */
     if (MR_ENGINE(MR_eng_this_context) == NULL) {
-        MR_ENGINE(MR_eng_this_context) = MR_create_context("from spark", NULL);
+        MR_ENGINE(MR_eng_this_context) = MR_create_context("from spark",
+            MR_CONTEXT_SIZE_SMALL, NULL);
         MR_load_context(MR_ENGINE(MR_eng_this_context));
     }
     MR_parent_sp = spark->MR_spark_parent_sp;

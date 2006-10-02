@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2004-2005 The University of Melbourne.
+** Copyright (C) 2004-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -411,7 +411,7 @@ MR_get_context_for_gen(MR_Generator *gen)
 
         sprintf(buf, "gen%d", MR_next_gen_context);
         MR_next_gen_context++;
-        ctxt = MR_create_context(strdup(buf), gen);
+        ctxt = MR_create_context(strdup(buf), MR_CONTEXT_SIZE_REGULAR, gen);
     }
 
     ctxt->MR_ctxt_owner_generator = gen;

@@ -162,9 +162,13 @@ MR_init_memory(void)
 #endif
 	MR_detstack_size	 = MR_round_up(MR_detstack_size * 1024,
 					MR_unit);
+	MR_small_detstack_size	 = MR_round_up(MR_small_detstack_size * 1024,
+					MR_unit);
 	MR_detstack_zone_size	 = MR_round_up(MR_detstack_zone_size * 1024,
 					MR_unit);
 	MR_nondstack_size	 = MR_round_up(MR_nondstack_size * 1024,
+					MR_unit);
+	MR_small_nondstack_size	 = MR_round_up(MR_small_nondstack_size * 1024,
 					MR_unit);
 	MR_nondstack_zone_size	 = MR_round_up(MR_nondstack_zone_size * 1024,
 					MR_unit);

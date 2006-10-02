@@ -69,6 +69,13 @@
 ** id               A string to identify the context for humans who want to
 **                  debug the handling of contexts.
 **
+** size             Whether this context has regular-sized stacks or smaller
+**                  stacks. Some parallel programs can allocate many contexts
+**                  and most parallel computations should not require very
+**                  large stacks. We allocate contexts with "smaller" stacks
+**                  for parallel computations (although whether they are
+**                  actually smaller is up to the user).
+**
 ** next             If this context is in the free-list `next' will point to
 **                  the next free context. If this context is suspended waiting
 **                  for a variable to become bound, `next' will point to the
@@ -119,8 +126,14 @@
 typedef struct MR_Context_Struct MR_Context;
 typedef struct MR_Spark_Struct MR_Spark;
 
+typedef enum {
+    MR_CONTEXT_SIZE_REGULAR,
+    MR_CONTEXT_SIZE_SMALL
+} MR_ContextSize;
+
 struct MR_Context_Struct {
     const char          *MR_ctxt_id;
+    MR_ContextSize      MR_ctxt_size;
     MR_Context          *MR_ctxt_next; 
     MR_Code             *MR_ctxt_resume;
 #ifdef  MR_THREAD_SAFE
@@ -283,7 +296,8 @@ extern  void        MR_init_context(MR_Context *context, const char *id,
 ** Allocates and initializes a new context structure, and gives it the given
 ** id. If gen is non-NULL, the context is for the given generator.
 */
-extern  MR_Context  *MR_create_context(const char *id, MR_Generator *gen);
+extern  MR_Context  *MR_create_context(const char *id,
+                        MR_ContextSize ctxt_size, MR_Generator *gen);
 
 /*
 ** MR_destroy_context(context) returns the pointed-to context structure

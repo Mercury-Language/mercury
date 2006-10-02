@@ -195,6 +195,8 @@ extern	int		mercury_exit_status;
 extern	size_t		MR_heap_size;
 extern	size_t		MR_detstack_size;
 extern	size_t		MR_nondstack_size;
+extern	size_t		MR_small_detstack_size;
+extern	size_t		MR_small_nondstack_size;
 extern	size_t		MR_solutions_heap_size;
 extern	size_t		MR_trail_size;
 extern	size_t		MR_global_heap_size;
