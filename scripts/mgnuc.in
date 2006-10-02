@@ -300,9 +300,11 @@ else
     MSVCRT_OPTS=""
 fi
 
+boehm_opts="-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC "
 case $gc_method in
     accurate)       GC_OPTS="-DMR_NATIVE_GC" ;;
-    boehm)          GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC" ;;
+    boehm)          GC_OPTS="$boehm_opts" ;;
+    boehm_debug)    GC_OPTS="$boehm_opts -DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACK_PTRS" ;;
     conservative)   GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC" ;;
     mps)            GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_MPS_GC" ;;
     none)           GC_OPTS="" ;;
@@ -385,6 +387,11 @@ esac
 case $decl_debug in
     true)           DECL_DEBUG_OPTS="-DMR_DECL_DEBUG" ;;
     false)          DECL_DEBUG_OPTS="" ;;
+esac
+
+case $ll_debug in
+    true)           LL_DEBUG_OPTS="-DMR_LL_DEBUG $DEBUG_OPT -O0" ;;
+    false)          LL_DEBUG_OPTS="" ;;
 esac
 
 case $extend_stacks in
@@ -575,6 +582,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $STACK_TRACE_OPTS\
     $TRACE_OPTS\
     $DECL_DEBUG_OPTS\
+    $LL_DEBUG_OPTS\
     $EXTEND_STACKS_OPTS\
     $LLDEBUG_OPTS\
     $C_DEBUG_OPTS\

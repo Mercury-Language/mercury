@@ -123,6 +123,9 @@
 #if defined(MR_MPS_GC)
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _mps)
   #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".mps"
+#elif defined(MR_BOEHM_GC_DEBUG)
+  #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _gcd)
+  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".gcd"
 #elif defined(MR_BOEHM_GC) || defined(MR_CONSERVATIVE_GC)
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _gc)
   #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".gc"
@@ -377,19 +380,27 @@
     #endif
 #endif
 
-#if defined(MR_EXTEND_STACKS_WHEN_NEEDED)
-  #define MR_GRADE_PART_15	MR_PASTE2(MR_GRADE_PART_14, _exts)
-  #define MR_GRADE_OPT_PART_15	MR_GRADE_OPT_PART_14 ".exts"
-  #if defined(MR_HIGHLEVEL_CODE)
-    #error "--extend-stacks-when-needed and --high-level-code are not compatible"
-  #endif
+#if defined(MR_LL_DEBUG)
+  #define MR_GRADE_PART_15	MR_PASTE2(MR_GRADE_PART_14, _ll_debug)
+  #define MR_GRADE_OPT_PART_15	MR_GRADE_OPT_PART_14 ".ll_debug"
 #else
   #define MR_GRADE_PART_15	MR_GRADE_PART_14
   #define MR_GRADE_OPT_PART_15	MR_GRADE_OPT_PART_14
 #endif
 
-#define MR_GRADE		MR_GRADE_PART_15
-#define MR_GRADE_OPT		MR_GRADE_OPT_PART_15
+#if defined(MR_EXTEND_STACKS_WHEN_NEEDED)
+  #define MR_GRADE_PART_16	MR_PASTE2(MR_GRADE_PART_15, _exts)
+  #define MR_GRADE_OPT_PART_16	MR_GRADE_OPT_PART_15 ".exts"
+  #if defined(MR_HIGHLEVEL_CODE)
+    #error "--extend-stacks-when-needed and --high-level-code are not compatible"
+  #endif
+#else
+  #define MR_GRADE_PART_16	MR_GRADE_PART_15
+  #define MR_GRADE_OPT_PART_16	MR_GRADE_OPT_PART_15
+#endif
+
+#define MR_GRADE		MR_GRADE_PART_16
+#define MR_GRADE_OPT		MR_GRADE_OPT_PART_16
 
 #define MR_GRADE_VAR		MR_PASTE2(MR_grade_,MR_GRADE)
 #define MR_GRADE_STRING 	MR_STRINGIFY(MR_GRADE)

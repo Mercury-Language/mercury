@@ -1960,6 +1960,7 @@ long_usage(!IO) :-
     ;       comp_minimal_model  % whether we set up for minimal model tabling
     ;       comp_pic            % Do we need to reserve a register for
                                 % PIC (position independent code)?
+    ;       comp_lowlevel       % what to do to target code
     ;       comp_trace          % tracing/debugging options
     ;       comp_stack_extend.  % automatic stack extension
 
@@ -2204,6 +2205,7 @@ grade_component_table("par", comp_par, [parallel - bool(yes)], no, yes).
 
     % GC components
 grade_component_table("gc", comp_gc, [gc - string("boehm")], no, yes).
+grade_component_table("gcd", comp_gc, [gc - string("boehm_debug")], no, yes).
 grade_component_table("mps", comp_gc, [gc - string("mps")], no, yes).
 grade_component_table("agc", comp_gc, [gc - string("accurate")], no, yes).
 
@@ -2278,6 +2280,10 @@ grade_component_table("decldebug", comp_trace,
     [exec_trace - bool(yes), decl_debug - bool(yes)], no, yes).
 grade_component_table("debug", comp_trace,
     [exec_trace - bool(yes), decl_debug - bool(no)], no, yes).
+
+    % Stack extension components
+grade_component_table("ll_debug", comp_lowlevel,
+    [target_debug - bool(yes)], no, yes).
 
     % Stack extension components
 grade_component_table("exts", comp_stack_extend,

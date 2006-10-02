@@ -91,11 +91,16 @@ AO_INSTALL_DIR=$(srcdir)/libatomic_ops-install
 
 # Mercury-specific CFLAGS:
 CFLAGS= -I$(srcdir)/include -I$(AO_INSTALL_DIR)/include \
-	-DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
+	-DNO_EXECUTE_PERMISSION \
 	$(BOEHM_CFLAGS) $(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 
-ifeq ($(GC_GRADE),par_gc)
+ifeq ($(findstring par,$(GRADE)),par)
 CFLAGS += $(BOEHM_CFLAGS_FOR_THREADS)
+endif
+
+# If we are in the gcd grade then don't define -DNO_DEBUGGING
+ifneq ($(findstring gcd,$(GRADE)),gcd)
+CFLAGS += -DNO_DEBUGGING
 endif
 
 # We need $(CFLAGS_FOR_PIC) because we might be building a shared library.

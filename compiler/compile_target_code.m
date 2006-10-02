@@ -455,6 +455,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         CFLAGS_FOR_THREADS = ""
     ),
     globals.io_get_gc_method(GC_Method, !IO),
+    BoehmGC_Opt = "-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC ",
     (
         GC_Method = gc_automatic,
         GC_Opt = ""
@@ -463,7 +464,10 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         GC_Opt = ""
     ;
         GC_Method = gc_boehm,
-        GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC "
+        GC_Opt = BoehmGC_Opt
+    ;
+        GC_Method = gc_boehm_debug,
+        GC_Opt = BoehmGC_Opt ++ "-DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACKPTRS "
     ;
         GC_Method = gc_mps,
         GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_MPS_GC "
@@ -1436,7 +1440,14 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
         StaticGCLibs = "",
         SharedGCLibs = ""
     ;
-        GCMethod = gc_boehm,
+        ( GCMethod = gc_boehm
+        ; GCMethod = gc_boehm_debug
+        ),
+        ( GCMethod = gc_boehm_debug ->
+            GCGrade0 = "gc_debug"
+        ;
+            GCGrade0 = "gc"
+        ),
         globals.io_lookup_bool_option(profile_time, ProfTime, !IO),
         globals.io_lookup_bool_option(profile_deep, ProfDeep, !IO),
         (
@@ -1444,17 +1455,17 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
             ; ProfDeep = yes
             )
         ->
-            GCGrade0 = "gc_prof"
+            GCGrade1 = GCGrade0 ++ "_prof"
         ;
-            GCGrade0 = "gc"
+            GCGrade1 = GCGrade0
         ),
         globals.io_lookup_bool_option(parallel, Parallel, !IO),
         (
             Parallel = yes,
-            GCGrade = "par_" ++ GCGrade0
+            GCGrade = "par_" ++ GCGrade1
         ;
             Parallel = no,
-            GCGrade = GCGrade0
+            GCGrade = GCGrade1
         ),
         make_link_lib(TargetType, GCGrade, SharedGCLibs, !IO),
         StaticGCLibs = quote_arg(StdLibDir/"lib"/

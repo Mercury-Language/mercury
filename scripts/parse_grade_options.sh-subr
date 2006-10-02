@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2005 The University of Melbourne.
+# Copyright (C) 1997-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -76,7 +76,7 @@
 	--gc)
 		shift
 		case "$1" in
-			accurate|conservative|boehm|mps|none|automatic)
+			accurate|conservative|boehm|boehm_debug|mps|none|automatic)
 				gc_method=$1 ;;
 			*)
 				echo "$0: invalid gc method \`$1'" 1>&2
@@ -178,6 +178,11 @@
 	--no-decl-debug)
 		decl_debug=false ;;
 
+	--low-level-debug)
+		ll_debug= true ;;
+	--no-low-level-debug)
+		ll_debug= false ;;
+
 	--extend-stacks-when-needed)
 		extend_stacks=true ;;
 	--no-extend-stacks-when-needed)
@@ -216,6 +221,7 @@
 		pic_reg=false
 		debug=false
 		decl_debug=false
+		ll_debug=false
 		extend_stacks=false
 
 		grade_pieces=`echo $grade | tr '.' ' '`
@@ -349,6 +355,9 @@
 				gc)
 					gc_method=boehm
 					;;
+				gcd)
+					gc_method=boehm_debug
+					;;
 				nogc)
 					gc_method=none
 					;;
@@ -448,6 +457,10 @@
 
 				decldebug)
 					decl_debug=true
+					;;
+
+				ll_debug)
+					ll_debug=true
 					;;
 
 				exts)

@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2000-2005 The University of Melbourne.
+# Copyright (C) 2000-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -87,6 +87,7 @@ esac
 case $gc_method in
 	conservative)	GRADE="$GRADE.gc" ;;	# deprecated; alias for boehm
 	boehm)		GRADE="$GRADE.gc" ;;
+	boehm_debug)	GRADE="$GRADE.gcd" ;;
 	mps)		GRADE="$GRADE.mps" ;;
 	accurate)	GRADE="$GRADE.agc" ;;
 esac
@@ -149,6 +150,11 @@ case $debug,$decl_debug in
 			exit 1
 			;;
 esac
+
+case $ll_debug in
+	true)		GRADE="$GRADE.ll_debug" ;;
+	*)		;;
+esac;
 
 case $extend_stacks in
 	true)		GRADE="$GRADE.exts" ;;

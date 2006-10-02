@@ -87,6 +87,8 @@
 
     ;       gc_boehm        % The Boehm et al conservative collector.
 
+    ;       gc_boehm_debug  % Boehm collector with debugging enabled.
+
     ;       gc_mps          % A different conservative collector, based on
                             % Ravenbrook Limited's MPS (Memory Pool System)
                             % kit. Benchmarking indicated that this one
@@ -297,6 +299,7 @@ convert_foreign_language_2("java", lang_java).
 convert_gc_method("none", gc_none).
 convert_gc_method("conservative", gc_boehm).
 convert_gc_method("boehm", gc_boehm).
+convert_gc_method("boehm_debug", gc_boehm_debug).
 convert_gc_method("mps", gc_mps).
 convert_gc_method("accurate", gc_accurate).
 convert_gc_method("automatic", gc_automatic).
@@ -332,6 +335,7 @@ simple_foreign_language_string(lang_il) = "il".
 simple_foreign_language_string(lang_java) = "java".
 
 gc_is_conservative(gc_boehm) = yes.
+gc_is_conservative(gc_boehm_debug) = yes.
 gc_is_conservative(gc_mps) = yes.
 gc_is_conservative(gc_none) = no.
 gc_is_conservative(gc_accurate) = no.

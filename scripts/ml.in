@@ -173,6 +173,14 @@ esac
 
 # Compute the gc grade from the grade
 case "$GRADE" in
+	*.par*.gcd*.prof*)
+		gc_grade=par_gc_debug_prof ;;
+	*.par*.gcd*)
+		gc_grade=par_gc_debug ;;
+	*.gcd*.prof*)
+		gc_grade=gc_debug_prof ;;
+	*.gcd*)
+		gc_grade=gc_debug ;;
 	*.par*.gc*.prof*)
 		gc_grade=par_gc_prof ;;
 	*.par*.gc*)

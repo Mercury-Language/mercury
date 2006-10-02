@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2005 The University of Melbourne.
+# Copyright (C) 1997-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -30,7 +30,7 @@ Grade options:
 	--gcc-global-registers
 	-H, --high-level-code
 	--parallel
-	--gc {boehm, mps, accurate, none}
+	--gc {boehm, boehm_debug, mps, accurate, none}
 	-p, --profiling
 	--profile-calls
 	--profile-time
@@ -47,6 +47,7 @@ Grade options:
 	--no-stack-trace
 	--debug
 	--decl-debug
+	--low-level-debug
 	--extend-stacks-when-needed
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide."
@@ -79,6 +80,7 @@ minimal_model_debug=false
 pic_reg=false
 debug=false
 decl_debug=false
+ll_debug=false
 extend_stacks=false
 
 case $# in
