@@ -931,7 +931,7 @@ ml_gen_type_name(type_ctor(Name, Arity), QualifiedTypeName, Arity) :-
     ;
         % Builtin types like `int' may be still unqualified at this point.
         Name = unqualified(TypeName),
-        mercury_public_builtin_module(ModuleName)
+        ModuleName = mercury_public_builtin_module
     ),
     MLDS_Module = mercury_module_name_to_mlds(ModuleName),
     QualifiedTypeName = qual(MLDS_Module, module_qual, TypeName).

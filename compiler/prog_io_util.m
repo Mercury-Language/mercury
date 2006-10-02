@@ -588,7 +588,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         % Anything else must be a user-defined inst.
         parse_qualified_term(Term, Term, "inst", ok2(QualifiedName, Args1)),
         (
-            mercury_public_builtin_module(BuiltinModule),
+            BuiltinModule = mercury_public_builtin_module,
             sym_name_get_module_name(QualifiedName, unqualified(""),
                 BuiltinModule),
             % If the term is qualified with the `builtin' module

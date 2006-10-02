@@ -117,7 +117,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
         ->
             PredId = PredId0,
             ( GoalType = goal_type_promise(_) ->
-                sym_name_to_string(PredName, NameString),
+                NameString = sym_name_to_string(PredName),
                 string.format("%s %s %s (%s).\n",
                     [s("Attempted to introduce a predicate"),
                     s("for a promise with an identical"),

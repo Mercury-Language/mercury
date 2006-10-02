@@ -515,10 +515,10 @@ type_to_ctor_and_args(Type, TypeCtor, Args) :-
             SymName = SymName0
         ;
             Purity = purity_semipure,
-            insert_module_qualifier("semipure", SymName0, SymName)
+            SymName = insert_module_qualifier("semipure", SymName0)
         ;
             Purity = purity_impure,
-            insert_module_qualifier("impure", SymName0, SymName)
+            SymName = insert_module_qualifier("impure", SymName0)
         ),
         TypeCtor = type_ctor(SymName, Arity)
     ;
@@ -684,7 +684,7 @@ strip_builtin_qualifiers_from_type(defined_type(Name0, Args0, Kind),
         defined_type(Name, Args, Kind)) :-
     (
         Name0 = qualified(Module, Name1),
-        mercury_public_builtin_module(Module)
+        Module = mercury_public_builtin_module
     ->
         Name = unqualified(Name1)
     ;
@@ -758,7 +758,7 @@ constructor_list_represents_dummy_argument_type([Ctor], no) :-
 
 type_is_io_state(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, []),
-    mercury_std_lib_module_name("io", ModuleName),
+    ModuleName = mercury_std_lib_module_name("io"),
     TypeCtor = type_ctor(qualified(ModuleName, "state"), 0).
 
 type_ctor_is_array(type_ctor(qualified(unqualified("array"), "array"), 1)).
@@ -769,7 +769,7 @@ is_introduced_type_info_type(Type) :-
 
 is_introduced_type_info_type_ctor(TypeCtor) :-
     TypeCtor = type_ctor(qualified(PrivateBuiltin, Name), 0),
-    mercury_private_builtin_module(PrivateBuiltin),
+    PrivateBuiltin = mercury_private_builtin_module,
     ( Name = "type_info"
     ; Name = "type_ctor_info"
     ; Name = "typeclass_info"
@@ -836,35 +836,35 @@ char_type = builtin_type(builtin_type_character).
 void_type = defined_type(unqualified("void"), [], kind_star).
 
 c_pointer_type = defined_type(Name, [], kind_star) :-
-    mercury_public_builtin_module(BuiltinModule),
+    BuiltinModule = mercury_public_builtin_module,
     Name = qualified(BuiltinModule, "c_pointer").
 
 heap_pointer_type = defined_type(Name, [], kind_star) :-
-    mercury_private_builtin_module(BuiltinModule),
+    BuiltinModule = mercury_private_builtin_module,
     Name = qualified(BuiltinModule, "heap_pointer").
 
 sample_type_info_type = defined_type(Name, [], kind_star) :-
-    mercury_private_builtin_module(BuiltinModule),
+    BuiltinModule = mercury_private_builtin_module,
     Name = qualified(BuiltinModule, "sample_type_info").
 
 sample_typeclass_info_type = defined_type(Name, [], kind_star) :-
-    mercury_private_builtin_module(BuiltinModule),
+    BuiltinModule = mercury_private_builtin_module,
     Name = qualified(BuiltinModule, "sample_typeclass_info").
 
 comparison_result_type = defined_type(Name, [], kind_star) :-
-    mercury_public_builtin_module(BuiltinModule),
+    BuiltinModule = mercury_public_builtin_module,
     Name = qualified(BuiltinModule, "comparison_result").
 
 type_info_type = defined_type(Name, [], kind_star) :-
-    mercury_private_builtin_module(BuiltinModule),
+    BuiltinModule = mercury_private_builtin_module,
     Name = qualified(BuiltinModule, "type_info").
 
 type_ctor_info_type = defined_type(Name, [], kind_star) :-
-    mercury_private_builtin_module(BuiltinModule),
+    BuiltinModule = mercury_private_builtin_module,
     Name = qualified(BuiltinModule, "type_ctor_info").
 
 io_state_type = defined_type(Name, [], kind_star) :-
-    mercury_std_lib_module_name("io", Module),
+    Module = mercury_std_lib_module_name("io"),
     Name = qualified(Module, "state").
 
 %-----------------------------------------------------------------------------%
@@ -961,7 +961,7 @@ ctor_is_type_info(Ctor) :-
 
 unqualify_private_builtin(unqualified(Name), Name).
 unqualify_private_builtin(qualified(ModuleName, Name), Name) :-
-    mercury_private_builtin_module(ModuleName).
+    ModuleName = mercury_private_builtin_module.
 
 :- pred name_is_type_info(string::in) is semidet.
 

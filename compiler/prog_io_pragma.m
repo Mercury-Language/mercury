@@ -379,7 +379,7 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
     ->
         string.left(String1, Index, AssemblyName),
         string.split(String1, Index + 1, _, TypeNameStr),
-        string_to_sym_name(TypeNameStr, ".", TypeSymName),
+        TypeSymName = string_to_sym_name(TypeNameStr),
         ForeignType = ok1(il(il_type(reference, AssemblyName, TypeSymName)))
     ;
         string.append("valuetype [", String1, String0),
@@ -387,7 +387,7 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
     ->
         string.left(String1, Index, AssemblyName),
         string.split(String1, Index + 1, _, TypeNameStr),
-        string_to_sym_name(TypeNameStr, ".", TypeSymName),
+        TypeSymName = string_to_sym_name(TypeNameStr),
         ForeignType = ok1(il(il_type(value, AssemblyName, TypeSymName)))
     ;
         ForeignType = error1(["invalid foreign language type description" -

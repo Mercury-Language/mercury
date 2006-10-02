@@ -402,7 +402,7 @@ output_import(Import, !IO) :-
     ),
     SymName = mlds_module_name_to_sym_name(ImportName),
     JavaSafeSymName = valid_module_name(SymName),
-    sym_name_to_string(JavaSafeSymName, ".", File),
+    File = sym_name_to_string(JavaSafeSymName),
     % XXX Name mangling code should be put here when we start enforcing
     % Java's naming conventions.
     ClassFile = File,
@@ -1073,8 +1073,7 @@ output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
 output_package_info(unqualified(_), !IO).
 output_package_info(qualified(Module, _), !IO) :-
     io.write_string("package ", !IO),
-    sym_name_to_string(Module, ".", Package),
-    io.write_string(Package, !IO),
+    io.write_string(sym_name_to_string(Module), !IO),
     io.write_string(";\n", !IO).
 
     % Check if this module contains a `main' predicate and if it does insert

@@ -93,10 +93,9 @@ output_managed_code(Lang, MLDS, !IO) :-
 
 output_src_start(ModuleName, !IO) :-
     library.version(Version),
-    sym_name_to_string(ModuleName, ModuleNameStr),
     io.write_strings(
         ["//\n// Automatically generated from `",
-        ModuleNameStr,
+        sym_name_to_string(ModuleName),
         ".m' by the\n",
         "// Mercury compiler, version ",
         Version,
@@ -225,7 +224,7 @@ output_language_specific_header_code(lang_managed_cplusplus, ModuleName,
                     )
                 ;
                     SymName = mlds_module_name_to_sym_name(Name),
-                    sym_name_to_string(SymName, ".", Str)
+                    Str = sym_name_to_string(SymName)
                 ),
                 Result = [Str]
             ;
@@ -240,9 +239,8 @@ output_language_specific_header_code(lang_managed_cplusplus, ModuleName,
             io.write_string(".dll""\n", !IO)
         ), ActualImports, !IO),
 
-    sym_name_to_string(ModuleName, ModuleNameStr),
     io.write_strings([
-        "#using """, ModuleNameStr, ".dll""\n",
+        "#using """, sym_name_to_string(ModuleName), ".dll""\n",
         "#include ""mercury_mcpp.h""\n",
 
         % XXX We have to use the mercury namespace, as

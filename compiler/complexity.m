@@ -353,7 +353,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
             - ImpureOrigGoalInfo
     ),
 
-    mercury_term_size_prof_builtin_module(TSPB),
+    TSPB = mercury_term_size_prof_builtin_module,
     SwitchArms = [
         case(cons(qualified(TSPB, "is_inactive"), 0), TransformedGoal),
         case(cons(qualified(TSPB, "is_active"), 0), OrigGoal)
@@ -486,7 +486,7 @@ generate_new_var(Name, Type, !ProcInfo, Var) :-
 
 complexity_generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
         Code, BoundVars, ModuleInfo, Context, Goal) :-
-    mercury_term_size_prof_builtin_module(BuiltinModule),
+    BuiltinModule = mercury_term_size_prof_builtin_module,
     Attrs0 = default_attributes(lang_c),
     set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs),
     MaybeTraceRuntimeCond = no,
@@ -556,7 +556,7 @@ pair_with_ground(Var) = Var - ground(shared, none).
 :- func is_active_type = mer_type.
 
 is_active_type = Type :-
-    mercury_term_size_prof_builtin_module(M),
+    M = mercury_term_size_prof_builtin_module,
     construct_type(type_ctor(qualified(M, "complexity_is_active"), 0), [],
         Type).
 

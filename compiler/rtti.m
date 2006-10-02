@@ -1017,13 +1017,13 @@ pti_get_rtti_type_ctor(type_var(_)) = _ :-
     unexpected(this_file, "rtti_data_to_name: type_var").
 
 var_arity_id_to_rtti_type_ctor(pred_type_info) = Ctor :-
-    mercury_public_builtin_module(Builtin),
+    Builtin = mercury_public_builtin_module,
     Ctor = rtti_type_ctor(Builtin, "pred", 0).
 var_arity_id_to_rtti_type_ctor(func_type_info) = Ctor :-
-    mercury_public_builtin_module(Builtin),
+    Builtin = mercury_public_builtin_module,
     Ctor = rtti_type_ctor(Builtin, "func", 0).
 var_arity_id_to_rtti_type_ctor(tuple_type_info) = Ctor :-
-    mercury_public_builtin_module(Builtin),
+    Builtin = mercury_public_builtin_module,
     Ctor = rtti_type_ctor(Builtin, "tuple", 0).
 
 rtti_id_maybe_element_has_array_type(item_type(RttiId)) =
@@ -1393,7 +1393,7 @@ encode_tc_instance_type(TCType) = Str :-
         % XXX We may wish to check that all arguments are variables.
     ),
     RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, _CtorArity),
-    sym_name_to_string(qualified(ModuleName, TypeName), "__", TypeStr),
+    TypeStr = sym_name_to_string_sep(qualified(ModuleName, TypeName), "__"),
     % XXX This naming scheme is the same as for base_typeclass_infos.
     % We should think about
     % - whether encoding guarantees different names for different instance
@@ -1411,7 +1411,7 @@ mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr) :-
     % that are after everything has been module qualified. The only
     % things with an empty module name should be the builtins.
     ( ModuleNameSym0 = unqualified("") ->
-        mercury_public_builtin_module(ModuleNameSym)
+        ModuleNameSym = mercury_public_builtin_module
     ;
         ModuleNameSym = ModuleNameSym0
     ),

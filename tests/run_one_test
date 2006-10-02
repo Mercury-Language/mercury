@@ -3,6 +3,8 @@
 
 set -x
 
+max_num_trace_counts=50
+
 exitstatus=0
 echo RUNNING TEST $this_dir/$test_full $params_msg | tee $test_full.log
 echo "MERCURY_OPTIONS=$MERCURY_OPTIONS"
@@ -48,32 +50,36 @@ else
         echo $this_dir/$test_full $params_msg \
             >> $tests_dir/FAILED_TESTS_SUMMARY
         tcdir=FAILED_TC_DIR
-        tcfile=FAILED_TC_FILES
         exitstatus=1
     else
         rm -f $test_full.log $test.out* $test.*res*
         mmake $test.realclean > /dev/null 2>&1
         echo PASSED TEST $this_dir/$test_full $params_msg
         tcdir=PASSED_TC_DIR
-        tcfile=PASSED_TC_FILES
     fi
     case "$trace_count" in
         true)
-            mkdir -p $tests_dir/$tcdir
-            testname=`echo $this_dir/$test_full | tr '[/]' '[:]'`
+            n=`cat $tests_dir/$tcdir/NEXT_NUMBER`
             for counts_file in .mercury_trace_counts.*
             do
                 if test -s "$counts_file"
                 then
-                    progpidname=`echo "$counts_file" | \
-                        sed -e 's/.mercury_trace_counts.//'`
-                    name="TEST_${testname}_PROG_${progpidname}"
-                    mv $counts_file $tests_dir/$tcdir/$name
-                    /bin/rm -f $tests_dir/$tcdir/$name.gz
-                    gzip $tests_dir/$tcdir/$name
-                    echo $tcdir/$name >> $tests_dir/$tcfile
+                    mv "$counts_file" "$tests_dir/$tcdir/trace_counts.$n"
+                    n=`expr $n + 1`
                 fi
             done
+            if test "$n" -gt "$max_num_trace_counts"
+            then
+                ${SLICE_DIR}mtc_union -o $tests_dir/$tcdir/tmp_summary \
+                    $tests_dir/$tcdir/trace_counts.*
+                /bin/rm -f $tests_dir/$tcdir/trace_counts.*
+                mv $tests_dir/$tcdir/tmp_summary \
+                    $tests_dir/$tcdir/trace_counts.0
+
+                echo 1 > $tests_dir/$tcdir/NEXT_NUMBER
+            else
+                echo $n > $tests_dir/$tcdir/NEXT_NUMBER
+            fi
             ;;
     esac
 fi

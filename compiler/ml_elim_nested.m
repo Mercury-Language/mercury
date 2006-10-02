@@ -507,7 +507,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
         \+ (
             Name = entity_function(PredLabel, _, _, _),
             PredLabel = mlds_user_pred_label(_, _, "gc_trace", 1, _, _),
-            mercury_private_builtin_module(PrivateBuiltin),
+            PrivateBuiltin = mercury_private_builtin_module,
             ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
         )
     ->
@@ -1229,7 +1229,7 @@ ml_block(VarDecls, Statements, Context) =
 :- func ml_stack_chain_var = mlds_lval.
 
 ml_stack_chain_var = StackChain :-
-    mercury_private_builtin_module(PrivateBuiltin),
+    PrivateBuiltin = mercury_private_builtin_module,
     MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
     StackChain = var(qual(MLDS_Module, module_qual,
         mlds_var_name("stack_chain", no)), ml_stack_chain_type).
@@ -1313,9 +1313,7 @@ ml_pred_label_name(mlds_special_pred_label(PredName, MaybeTypeModule,
 
 :- func ml_module_name_string(mercury_module_name) = string.
 
-ml_module_name_string(ModuleName) = ModuleNameString :-
-    Separator = "__",
-    sym_name_to_string(ModuleName, Separator, ModuleNameString).
+ml_module_name_string(ModuleName) = sym_name_to_string_sep(ModuleName, "__").
 
 %-----------------------------------------------------------------------------%
 

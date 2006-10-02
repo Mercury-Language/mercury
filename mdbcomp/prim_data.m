@@ -128,27 +128,32 @@
     %
 :- func get_special_pred_id_arity(special_pred_id) = int.
 
-    % string_to_sym_name(String, Separator, SymName):
+    % string_to_sym_name_sep(String, Separator) = SymName:
     %
     % Convert a string, possibly prefixed with module qualifiers (separated
     % by Separator), into a symbol name.
     %
-:- pred string_to_sym_name(string::in, string::in, sym_name::out) is det.
+:- func string_to_sym_name_sep(string, string) = sym_name.
 
-    % sym_name_to_string(SymName, Separator, String):
+    % string_to_sym_name(String) = SymName:
+    %
+    % Convert a string, possibly prefixed with module qualifiers (separated
+    % by the standard Mercury module qualifier separator), into a symbol name.
+    %
+:- func string_to_sym_name(string) = sym_name.
+
+    % sym_name_to_string_sep(SymName, Separator) = String:
     %
     % Convert a symbol name to a string, with module qualifiers separated
     % by Separator.
     %
-:- pred sym_name_to_string(sym_name::in, string::in, string::out) is det.
-:- func sym_name_to_string(sym_name, string) = string.
+:- func sym_name_to_string_sep(sym_name, string) = string.
 
-    % sym_name_to_string(SymName, String):
+    % sym_name_to_string(SymName) = String:
     %
     % Convert a symbol name to a string, with module qualifiers separated by
     % the standard Mercury module qualifier operator.
     %
-:- pred sym_name_to_string(sym_name::in, string::out) is det.
 :- func sym_name_to_string(sym_name) = string.
 
     % is_submodule(SymName1, SymName2):
@@ -158,20 +163,18 @@
     %
 :- pred is_submodule(module_name::in, module_name::in) is semidet.
 
-    % insert_module_qualifier(ModuleName, SymName0, SymName):
+    % insert_module_qualifier(ModuleName, SymName0) = SymName:
     %
     % Prepend the specified ModuleName onto the module qualifiers in SymName0,
     % giving SymName.
     %
-:- pred insert_module_qualifier(string::in, sym_name::in, sym_name::out)
-    is det.
+:- func insert_module_qualifier(string, sym_name) = sym_name.
 
     % Returns the name of the module containing public builtins;
     % originally this was "mercury_builtin", but it later became
     % just "builtin", and it may eventually be renamed "std.builtin".
     % This module is automatically imported, as if via `import_module'.
     %
-:- pred mercury_public_builtin_module(sym_name::out) is det.
 :- func mercury_public_builtin_module = sym_name.
 
     % Returns the name of the module containing private builtins;
@@ -180,7 +183,6 @@
     % "std.private_builtin". This module is automatically imported,
     % as if via `use_module'.
     %
-:- pred mercury_private_builtin_module(sym_name::out) is det.
 :- func mercury_private_builtin_module = sym_name.
 
     % Returns the name of the module containing builtins for tabling;
@@ -188,33 +190,28 @@
     % a separate module. This module is automatically imported iff any
     % predicate is tabled.
     %
-:- pred mercury_table_builtin_module(sym_name::out) is det.
 :- func mercury_table_builtin_module = sym_name.
 
     % Returns the name of the module containing the builtins for deep
     % profiling. This module is automatically imported iff deep profiling
     % is enabled.
     %
-:- pred mercury_profiling_builtin_module(sym_name::out) is det.
 :- func mercury_profiling_builtin_module = sym_name.
 
     % Returns the name of the module containing the builtins for term size
     % profiling. This module is automatically imported iff term size profiling
     % is enabled.
     %
-:- pred mercury_term_size_prof_builtin_module(sym_name::out) is det.
 :- func mercury_term_size_prof_builtin_module = sym_name.
 
     % Returns the name of the module containing the builtins for parallelism.
     % This module is automatically imported iff building in a .par grade.
     %
-:- pred mercury_par_builtin_module(sym_name::out) is det.
 :- func mercury_par_builtin_module = sym_name.
 
     % Returns the sym_name of the module with the given name in the
     % Mercury standard library.
     %
-:- pred mercury_std_lib_module_name(string::in, sym_name::out) is det.
 :- func mercury_std_lib_module_name(string) = sym_name.
 
     % Succeeds iff the specified module is one of the builtin modules listed
@@ -234,7 +231,7 @@
 :- import_module list.
 :- import_module string.
 
-string_to_sym_name(String, ModuleSeparator, Result) :-
+string_to_sym_name_sep(String, ModuleSeparator) = Result :-
     % This would be simpler if we had a string.rev_sub_string_search/3 pred.
     % With that, we could search for underscores right-to-left, and construct
     % the resulting symbol directly. Instead, we search for them left-to-right,
@@ -248,31 +245,26 @@ string_to_sym_name(String, ModuleSeparator, Result) :-
         string.length(ModuleSeparator, SeparatorLength),
         RightLength = StringLength - LeftLength - SeparatorLength,
         string.right(String, RightLength, Name),
-        string_to_sym_name(Name, ModuleSeparator, NameSym),
-        insert_module_qualifier(ModuleName, NameSym, Result)
+        NameSym = string_to_sym_name_sep(Name, ModuleSeparator),
+        Result = insert_module_qualifier(ModuleName, NameSym)
     ;
         Result = unqualified(String)
     ).
 
-insert_module_qualifier(ModuleName, unqualified(PlainName),
-        qualified(unqualified(ModuleName), PlainName)).
-insert_module_qualifier(ModuleName, qualified(ModuleQual0, PlainName),
-        qualified(ModuleQual, PlainName)) :-
-    insert_module_qualifier(ModuleName, ModuleQual0, ModuleQual).
+string_to_sym_name(String) = string_to_sym_name_sep(String, ".").
 
-sym_name_to_string(SymName, String) :-
-    sym_name_to_string(SymName, ".", String).
-
-sym_name_to_string(SymName) = String :-
-    sym_name_to_string(SymName, String).
-
-sym_name_to_string(SymName, Separator) = String :-
-    sym_name_to_string(SymName, Separator, String).
-
-sym_name_to_string(unqualified(Name), _Separator, Name).
-sym_name_to_string(qualified(ModuleSym, Name), Separator, QualName) :-
-    sym_name_to_string(ModuleSym, Separator, ModuleName),
+sym_name_to_string_sep(unqualified(Name), _Separator) = Name.
+sym_name_to_string_sep(qualified(ModuleSym, Name), Separator) = QualName :-
+    ModuleName = sym_name_to_string_sep(ModuleSym, Separator),
     string.append_list([ModuleName, Separator, Name], QualName).
+
+sym_name_to_string(SymName) = sym_name_to_string_sep(SymName, ".").
+
+insert_module_qualifier(ModuleName, unqualified(PlainName)) =
+        qualified(unqualified(ModuleName), PlainName).
+insert_module_qualifier(ModuleName, qualified(ModuleQual0, PlainName)) =
+        qualified(ModuleQual, PlainName) :-
+    insert_module_qualifier(ModuleName, ModuleQual0) = ModuleQual.
 
 is_submodule(SymName, SymName).
 is_submodule(qualified(SymNameA, _), SymNameB) :-
@@ -297,32 +289,25 @@ get_special_pred_id_arity(Id) = Arity :-
 % mercury_private_builtin_module(M) =
 %       qualified(unqualified("std"), "private_builtin"))).
 mercury_public_builtin_module = unqualified("builtin").
-mercury_public_builtin_module(mercury_public_builtin_module).
 mercury_private_builtin_module = unqualified("private_builtin").
-mercury_private_builtin_module(mercury_private_builtin_module).
 mercury_table_builtin_module = unqualified("table_builtin").
-mercury_table_builtin_module(mercury_table_builtin_module).
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
-mercury_profiling_builtin_module(mercury_profiling_builtin_module).
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
-mercury_term_size_prof_builtin_module(mercury_term_size_prof_builtin_module).
 mercury_par_builtin_module = unqualified("par_builtin").
-mercury_par_builtin_module(mercury_par_builtin_module).
 mercury_std_lib_module_name(Name) = unqualified(Name).
-mercury_std_lib_module_name(Name, unqualified(Name)).
 
 any_mercury_builtin_module(Module) :-
-    ( mercury_public_builtin_module(Module)
-    ; mercury_private_builtin_module(Module)
-    ; mercury_table_builtin_module(Module)
-    ; mercury_profiling_builtin_module(Module)
-    ; mercury_term_size_prof_builtin_module(Module)
-    ; mercury_par_builtin_module(Module)
+    ( Module = mercury_public_builtin_module
+    ; Module = mercury_private_builtin_module
+    ; Module = mercury_table_builtin_module
+    ; Module = mercury_profiling_builtin_module
+    ; Module = mercury_term_size_prof_builtin_module
+    ; Module = mercury_par_builtin_module
     ).
 
 non_traced_mercury_builtin_module(Module) :-
-    ( mercury_table_builtin_module(Module)
-    ; mercury_profiling_builtin_module(Module)
-    ; mercury_term_size_prof_builtin_module(Module)
-    ; mercury_par_builtin_module(Module)
+    ( Module = mercury_table_builtin_module
+    ; Module = mercury_profiling_builtin_module
+    ; Module = mercury_term_size_prof_builtin_module
+    ; Module = mercury_par_builtin_module
     ).

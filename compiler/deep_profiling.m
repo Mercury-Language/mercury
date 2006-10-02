@@ -453,7 +453,7 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
         % We don't want to transform the procedures for
         % managing the deep profiling call graph, or we'd get
         % infinite recursion.
-        mercury_profiling_builtin_module(PredModuleName)
+        PredModuleName = mercury_profiling_builtin_module
     ->
         true
     ;
@@ -1573,7 +1573,7 @@ generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
     VarSet0 = !.DeepInfo ^ vars,
     VarTypes0 = !.DeepInfo ^ var_types,
     varset.new_named_var(VarSet0, "CSNCell", CellVar, VarSet),
-    mercury_profiling_builtin_module(ProfilingBuiltin),
+    ProfilingBuiltin = mercury_profiling_builtin_module,
     CellTypeName = string.format("call_site_nums_%d", [i(Length)]),
     CellTypeId = type_ctor(qualified(ProfilingBuiltin, CellTypeName), Length),
     construct_type(CellTypeId, [], CellType),
@@ -1665,7 +1665,7 @@ generate_cell_unify(Length, ConsId, Args, Var, Goal) :-
     pred_id::out, proc_id::out) is det.
 
 get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
-    mercury_profiling_builtin_module(ModuleName),
+    ModuleName = mercury_profiling_builtin_module,
     module_info_get_predicate_table(ModuleInfo, PredTable),
     (
         predicate_table_search_pred_m_n_a(PredTable,
@@ -1696,8 +1696,7 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
                 "get_deep_profile_builtin_ppid: pred_id not unique")
         )
     ;
-        format("couldn't find pred_id for `%s'/%d",
-            [s(Name), i(Arity)], Msg),
+        format("couldn't find pred_id for `%s'/%d", [s(Name), i(Arity)], Msg),
         unexpected(this_file, Msg)
     ).
 

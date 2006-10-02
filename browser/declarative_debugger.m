@@ -741,7 +741,7 @@ diagnoser_require_supertree(require_supertree(Event, SeqNo), Event, SeqNo).
     "MR_DD_decl_add_trusted_module").
 
 add_trusted_module(ModuleName, Diagnoser0, Diagnoser) :-
-    string_to_sym_name(ModuleName, ".", SymModuleName),
+    SymModuleName = string_to_sym_name(ModuleName),
     add_trusted_module(SymModuleName, Diagnoser0 ^ oracle_state, Oracle),
     Diagnoser = Diagnoser0 ^ oracle_state := Oracle.
 

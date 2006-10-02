@@ -1115,7 +1115,7 @@ generate_sub_assign(Left, Right, Code, !CI) :-
 var_type_msg(Type, Msg) :-
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
         TypeCtor = type_ctor(TypeSym, TypeArity),
-        sym_name_to_string(TypeSym, TypeSymStr),
+        TypeSymStr = sym_name_to_string(TypeSym),
         string.int_to_string(TypeArity, TypeArityStr),
         string.append_list([TypeSymStr, "/", TypeArityStr], Msg)
     ;

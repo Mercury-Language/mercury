@@ -417,16 +417,15 @@ gen_init_fn_defns(MLDS_ModuleName, GlobalInfo0, GlobalInfo) -->
 init_fn_name(ModuleName, Suffix) = InitFnName :-
 		% Here we ensure that we only get one "mercury__" at the
 		% start of the function name.
-	mdbcomp__prim_data__sym_name_to_string(
-			mlds_module_name_to_sym_name(ModuleName), "__",
-			ModuleNameString0),
+	ModuleNameString0 = sym_name_to_string_sep(
+		mlds_module_name_to_sym_name(ModuleName), "__"),
 	(
 		string__prefix(ModuleNameString0, "mercury__")
 	->
 		ModuleNameString = ModuleNameString0
 	;
 		string__append("mercury__", ModuleNameString0,
-				ModuleNameString)
+			ModuleNameString)
 	),
 	string__append_list([ModuleNameString, "__init", Suffix], InitFnName).
 
@@ -3331,7 +3330,7 @@ build_lval(var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
 	;
 		% check if it's in the private_builtin module
 		% and is an RTTI enumeration constant
-		{ mercury_private_builtin_module(PrivateBuiltin) },
+		{ PrivateBuiltin = mercury_private_builtin_module },
 		{ mercury_module_name_to_mlds(PrivateBuiltin) = ModuleName },
 		{ VarName = mlds_var_name(VarNameBase, _MaybeNum) },
 		{ rtti_enum_const(VarNameBase, IntVal) }
@@ -3339,7 +3338,7 @@ build_lval(var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
 		gcc__build_int(IntVal, Expr)
 	;
 		% check if it's private_builtin:dummy_var
-		{ mercury_private_builtin_module(PrivateBuiltin) },
+		{ PrivateBuiltin = mercury_private_builtin_module },
 		{ mercury_module_name_to_mlds(PrivateBuiltin) = ModuleName },
 		{ VarName = mlds_var_name("dummy_var", _) }
 	->

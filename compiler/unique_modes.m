@@ -449,7 +449,7 @@ check_goal_2(generic_call(GenericCall, Args, Modes, Det), _GoalInfo0, Goal,
 
 check_goal_2(plain_call(PredId, ProcId0, Args, Builtin, CallContext,
         PredName), GoalInfo0, Goal, !ModeInfo, !IO) :-
-    sym_name_to_string(PredName, PredNameString),
+    PredNameString = sym_name_to_string(PredName),
     string.append("call ", PredNameString, CallString),
     mode_checkpoint(enter, CallString, !ModeInfo, !IO),
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),

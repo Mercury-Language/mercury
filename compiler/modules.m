@@ -838,14 +838,13 @@ module_name_to_file_name(ModuleName, Ext, Search, MkDir, FileName, !IO) :-
         % Look up the module in the module->file mapping.
         source_file_map.lookup_module_source_file(ModuleName, FileName, !IO)
     ;
-        sym_name_to_string(ModuleName, ".", BaseFileName),
-        string.append(BaseFileName, Ext, BaseName),
+        string.append(sym_name_to_string(ModuleName), Ext, BaseName),
         choose_file_name(ModuleName, BaseName, Ext, Search, MkDir, FileName,
             !IO)
     ).
 
 module_name_to_lib_file_name(Prefix, ModuleName, Ext, MkDir, FileName, !IO) :-
-    sym_name_to_string(ModuleName, ".", BaseFileName),
+    BaseFileName = sym_name_to_string(ModuleName),
     string.append_list([Prefix, BaseFileName, Ext], BaseName),
     choose_file_name(ModuleName, BaseName, Ext, no, MkDir, FileName, !IO).
 
@@ -1045,13 +1044,13 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
     ).
 
 file_name_to_module_name(FileName, ModuleName) :-
-    string_to_sym_name(FileName, ".", ModuleName).
+    ModuleName = string_to_sym_name(FileName).
 
 module_name_to_file_name(ModuleName, FileName) :-
-    sym_name_to_string(ModuleName, ".", FileName).
+    FileName = sym_name_to_string(ModuleName).
 
 module_name_to_make_var_name(ModuleName, MakeVarName) :-
-    sym_name_to_string(ModuleName, ".", MakeVarName).
+    MakeVarName = sym_name_to_string(ModuleName).
 
 maybe_make_symlink(LinkTarget, LinkName, Result, !IO) :-
     globals.io_lookup_bool_option(use_symlinks, UseSymLinks, !IO),
@@ -2706,12 +2705,12 @@ get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps) :-
     list(module_name)::in, list(module_name)::out) is det.
 
 add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
-    mercury_public_builtin_module(MercuryPublicBuiltin),
-    mercury_private_builtin_module(MercuryPrivateBuiltin),
-    mercury_table_builtin_module(MercuryTableBuiltin),
-    mercury_profiling_builtin_module(MercuryProfilingBuiltin),
-    mercury_term_size_prof_builtin_module(MercuryTermSizeProfBuiltin),
-    mercury_par_builtin_module(MercuryParBuiltin),
+    MercuryPublicBuiltin = mercury_public_builtin_module,
+    MercuryPrivateBuiltin = mercury_private_builtin_module,
+    MercuryTableBuiltin = mercury_table_builtin_module,
+    MercuryProfilingBuiltin = mercury_profiling_builtin_module,
+    MercuryTermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
+    MercuryParBuiltin = mercury_par_builtin_module,
     !:ImportDeps = [MercuryPublicBuiltin | !.ImportDeps],
     !:UseDeps = [MercuryPrivateBuiltin | !.UseDeps],
     (
@@ -2720,12 +2719,16 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         % a tabling pragma, or if one of --use-minimal-model and
         % --trace-table-io is specified.
         %
-        ( contains_tabling_pragma(Items)
-        ; globals.lookup_bool_option(Globals,
-            use_minimal_model_stack_copy, yes)
-        ; globals.lookup_bool_option(Globals,
-            use_minimal_model_own_stacks, yes)
-        ; globals.lookup_bool_option(Globals, trace_table_io, yes)
+        (
+            contains_tabling_pragma(Items)
+        ;
+            globals.lookup_bool_option(Globals,
+                use_minimal_model_stack_copy, yes)
+        ;
+            globals.lookup_bool_option(Globals,
+                use_minimal_model_own_stacks, yes)
+        ;
+            globals.lookup_bool_option(Globals, trace_table_io, yes)
         )
     ->
         !:UseDeps = [MercuryTableBuiltin | !.UseDeps]
@@ -3917,7 +3920,7 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
     ModuleDep = deps(_, ModuleImports),
     module_imports_get_error(ModuleImports, Error),
     ( Error = fatal_module_errors ->
-        sym_name_to_string(ModuleName, ModuleString),
+        ModuleString = sym_name_to_string(ModuleName),
         string.append_list(["can't read source file for module `",
             ModuleString, "'."], Message),
         report_error(Message, !IO)
@@ -4487,8 +4490,8 @@ generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap,
     comparison_result::out) is det.
 
 compare_module_names(Sym1, Sym2, Result) :-
-    sym_name_to_string(Sym1, Str1),
-    sym_name_to_string(Sym2, Str2),
+    Str1 = sym_name_to_string(Sym1),
+    Str2 = sym_name_to_string(Sym2),
     compare(Result, Str1, Str2).
 
 :- pred generate_dv_file(file_name::in, module_name::in, deps_map::in,
@@ -4497,7 +4500,7 @@ compare_module_names(Sym1, Sym2, Result) :-
 generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io.write_string(DepStream,
         "# Automatically generated dependency variables for module `", !IO),
-    sym_name_to_string(ModuleName, ModuleNameString),
+    ModuleNameString = sym_name_to_string(ModuleName),
     io.write_string(DepStream, ModuleNameString, !IO),
     io.write_string(DepStream, "'\n", !IO),
     io.write_string(DepStream, "# generated from source file `", !IO),
@@ -4988,7 +4991,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io.write_string(DepStream,
         "# Automatically generated dependencies for module `", !IO),
-    sym_name_to_string(ModuleName, ModuleNameString),
+    ModuleNameString = sym_name_to_string(ModuleName),
     io.write_string(DepStream, ModuleNameString, !IO),
     io.write_string(DepStream, "'\n", !IO),
     io.write_string(DepStream,
@@ -5251,7 +5254,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     % The `force-module_init' dependency forces the commands for
     % the `module_init.c' rule to be run every time the rule
     % is considered.
-    sym_name_to_string(ModuleName, ".", ModuleFileName),
+    ModuleFileName = sym_name_to_string(ModuleName),
     ForceC2InitTarget = "force-" ++ ModuleFileName ++ "_init",
     TmpInitCFileName = InitCFileName ++ ".tmp",
     io.write_strings(DepStream, [
@@ -5685,7 +5688,7 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
         ModuleImports ^ has_foreign_code = contains_foreign_code(Langs),
         set.member(lang_c, Langs)
     ->
-        sym_name_to_string(Module, ".", FileName),
+        FileName = sym_name_to_string(Module),
         NewLinkObjs = [(FileName ++ "__c_code") - Module | FactTableObjs]
     ;
         NewLinkObjs = FactTableObjs

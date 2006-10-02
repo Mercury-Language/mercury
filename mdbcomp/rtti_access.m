@@ -138,15 +138,15 @@ get_proc_label_from_layout(Layout) = ProcLabel :-
         ;
             error("get_proc_label_from_layout: bad special_pred_id")
         ),
-        string_to_sym_name(DefModule, ".", SymDefModule),
-        string_to_sym_name(TypeModule, ".", SymTypeModule),
+        SymDefModule = string_to_sym_name(DefModule),
+        SymTypeModule = string_to_sym_name(TypeModule),
         ProcLabel = special_proc_label(SymDefModule, SpecialId, 
             SymTypeModule, TypeName, TypeArity, ModeNum)
     ;
         proc_layout_get_non_uci_fields(Layout, PredOrFunc,
             DeclModule, DefModule, PredName, Arity, ModeNum),
-        string_to_sym_name(DefModule, ".", SymDefModule),
-        string_to_sym_name(DeclModule, ".", SymDeclModule),
+        SymDefModule = string_to_sym_name(DefModule),
+        SymDeclModule = string_to_sym_name(DeclModule),
         ProcLabel = ordinary_proc_label(SymDefModule, PredOrFunc,
             SymDeclModule, PredName, Arity, ModeNum)
     ).

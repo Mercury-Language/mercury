@@ -272,7 +272,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
             CallArgs = [Rval],
             AtomicStmt = restore_hp(Rval)
         ),
-        mercury_private_builtin_module(PrivateBuiltin),
+        PrivateBuiltin = mercury_private_builtin_module,
         ModName = mercury_module_name_to_mlds(PrivateBuiltin)
     ->
         Stmt = atomic(AtomicStmt)

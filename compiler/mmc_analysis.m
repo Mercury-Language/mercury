@@ -128,11 +128,9 @@ mmc_module_is_local(ModuleId, IsLocal, !IO) :-
         !IO),
     IsLocal = (if ModuleId `list.member` LocalModuleIds then yes else no).
 
-module_name_to_module_id(ModuleName) = ModuleId :-
-    sym_name_to_string(ModuleName, ModuleId).
+module_name_to_module_id(ModuleName) = sym_name_to_string(ModuleName).
 
-module_id_to_module_name(ModuleId) = ModuleName :-
-    string_to_sym_name(ModuleId, ".", ModuleName).
+module_id_to_module_name(ModuleId) = string_to_sym_name(ModuleId).
 
 pred_or_func_name_arity_to_func_id(PredOrFunc, Name, Arity, ProcId) = FuncId :-
     SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),

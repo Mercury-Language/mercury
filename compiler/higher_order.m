@@ -2668,7 +2668,7 @@ add_new_pred(CalledPredProcId, NewPred, !Info) :-
 maybe_write_request(no, _, _, _, _, _, _, _, _, !IO).
 maybe_write_request(yes, ModuleInfo, Msg, SymName, Arity, ActualArity,
         MaybeNewName, HOArgs, Context, !IO) :-
-    prim_data.sym_name_to_string(SymName, OldName),
+    OldName = sym_name_to_string(SymName),
     string.int_to_string(Arity, ArStr),
     io.write_string("% ", !IO),
     prog_out.write_context(Context, !IO),

@@ -1071,11 +1071,11 @@ get_pred_id_and_proc_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         % that this never happens
         list.length(ArgTypes, Arity),
         PredOrFuncStr = prog_out.pred_or_func_to_str(PredOrFunc),
-        mdbcomp.prim_data.sym_name_to_string(SymName, Name2),
+        NameStr = sym_name_to_string(SymName),
         string.int_to_string(Arity, ArityString),
         string.append_list(["get_pred_id_and_proc_id: ",
             "undefined/invalid ", PredOrFuncStr,
-            "\n`", Name2, "/", ArityString, "'"], Msg),
+            "\n`", NameStr, "/", ArityString, "'"], Msg),
         unexpected(this_file, Msg)
     ),
     get_proc_id(ModuleInfo, PredId, ProcId).

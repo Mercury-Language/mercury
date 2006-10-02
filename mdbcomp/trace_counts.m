@@ -126,37 +126,15 @@
 :- pred read_trace_counts_list(bool::in, string::in,
     read_trace_counts_list_result::out, io::di, io::uo) is det.
 
-:- type slice_source
-    --->    file_list
-    ;       single_file
-    ;       try_single_first.
-
-    % read_trace_counts_source(ShowProgress, Source, FileName, Result, !IO):
+    % read_trace_counts_source(FileName, Result, !IO):
     %
-    % Read in trace counts stored in one or more trace count files.
+    % Read in trace counts stored in a given trace count file.
     %
-    % If Source is file_list, then FileName should contain a list of filenames,
-    % and read_trace_counts_source will read in the trace counts from each
-    % of those files.
-    %
-    % If Source is single_file, then FileName should itself be a file
-    % containing trace counts data.
-    %
-    % If Source is try_single_first, then read_trace_counts_source will
-    % check to see if FileName contains trace counts data. If yes, it will
-    % get trace counts from there. If not, read_trace_counts_source will
-    % interpret FileName as a file that itself contains filenames, and
-    % will treat it as with Source=file_list.
-    %
-    % If the source is a list of files and ShowProgress is yes then
-    % the name of each file read will be printed to the current output
-    % stream just before it is read.
-    %
-:- pred read_trace_counts_source(bool::in, slice_source::in, string::in,
+:- pred read_trace_counts_source(string::in,
     read_trace_counts_list_result::out, io::di, io::uo) is det.
 
-    % read_and_union_trace_counts(ShowProgress, Source, FileNames,
-    %   NumTests, TestKinds, TraceCounts, MaybeError, !IO):
+    % read_and_union_trace_counts(ShowProgress, FileNames, NumTests, TestKinds,
+    %   TraceCounts, MaybeError, !IO):
     %
     % Invoke read_trace_counts_source for each of the supplied filenames, and
     % union the resulting trace counts. If there is a problem with reading in
@@ -165,9 +143,13 @@
     % the union of the trace counts and NumTests will contain the number of
     % tests the trace counts come from.
     %
-:- pred read_and_union_trace_counts(bool::in, slice_source::in,
-    list(string)::in, int::out, set(trace_count_file_type)::out,
-    trace_counts::out, maybe(string)::out, io::di, io::uo) is det.
+    % If the source is a list of files and ShowProgress is yes then
+    % the name of each file read will be printed to the current output
+    % stream just before it is read.
+    %
+:- pred read_and_union_trace_counts(bool::in, list(string)::in, int::out,
+    set(trace_count_file_type)::out, trace_counts::out, maybe(string)::out,
+    io::di, io::uo) is det.
 
     % write_trace_counts_to_file(FileType, TraceCounts, FileName, Result, !IO):
     %
@@ -305,54 +287,29 @@ diff_counts_on_line(LC1, LC2) = LC :-
 
 %-----------------------------------------------------------------------------%
 
-read_trace_counts_source(ShowProgress, Source, FileName, Result, !IO) :-
+read_trace_counts_source(FileName, Result, !IO) :-
+    read_trace_counts(FileName, ReadTCResult, !IO),
     (
-        Source = file_list,
-        read_trace_counts_list(ShowProgress, FileName, Result, !IO)
+        ReadTCResult = ok(FileType, TraceCount),
+        Result = list_ok(FileType, TraceCount)
     ;
-        Source = single_file,
-        (
-            ShowProgress = yes,
-            io.write_string(FileName, !IO),
-            io.nl(!IO)
-        ;
-            ShowProgress = no
-        ),
-        read_trace_counts(FileName, ReadTCResult, !IO),
-        (
-            ReadTCResult = ok(FileType, TraceCount),
-            Result = list_ok(FileType, TraceCount)
-        ;
-            ReadTCResult = io_error(IOError),
-            ErrMsg = io.error_message(IOError),
-            Result = list_error_message("IO error reading file " ++
-                "`" ++ FileName ++ "': " ++ ErrMsg)
-        ;
-            ReadTCResult = open_error(IOError),
-            ErrMsg = io.error_message(IOError),
-            Result = list_error_message("IO error opening file " ++
-                "`" ++ FileName ++ "': " ++ ErrMsg)
-        ;
-            ReadTCResult = syntax_error(ErrMsg),
-            Result = list_error_message("Syntax error in file `" ++
-                FileName ++ "': " ++ ErrMsg)
-        ;
-            ReadTCResult = error_message(ErrMsg),
-            Result = list_error_message("Error reading trace counts " ++
-                "from file `" ++ FileName ++ "': " ++ ErrMsg)
-        )
+        ReadTCResult = io_error(IOError),
+        ErrMsg = io.error_message(IOError),
+        Result = list_error_message("IO error reading file " ++
+            "`" ++ FileName ++ "': " ++ ErrMsg)
     ;
-        Source = try_single_first,
-        read_trace_counts_source(ShowProgress, single_file, FileName,
-            TryResult, !IO),
-        (
-            TryResult = list_ok(_, _),
-            Result = TryResult
-        ;
-            TryResult = list_error_message(_),
-            read_trace_counts_source(ShowProgress, file_list, FileName,
-                Result, !IO)
-        )
+        ReadTCResult = open_error(IOError),
+        ErrMsg = io.error_message(IOError),
+        Result = list_error_message("IO error opening file " ++
+            "`" ++ FileName ++ "': " ++ ErrMsg)
+    ;
+        ReadTCResult = syntax_error(ErrMsg),
+        Result = list_error_message("Syntax error in file `" ++
+            FileName ++ "': " ++ ErrMsg)
+    ;
+        ReadTCResult = error_message(ErrMsg),
+        Result = list_error_message("Error reading trace counts " ++
+            "from file `" ++ FileName ++ "': " ++ ErrMsg)
     ).
 
 read_trace_counts_list(ShowProgress, FileName, Result, !IO) :-
@@ -551,7 +508,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                 token_cons(name(NextModuleName), _,
                 token_nil)
         ->
-            string_to_sym_name(NextModuleName, ".", NextModuleNameSym),
+            NextModuleNameSym = string_to_sym_name(NextModuleName),
             io.read_line_as_string(Result, !IO),
             (
                 Result = ok(Line),
@@ -611,7 +568,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                     token_cons(integer(Arity), _,
                     token_cons(integer(Mode), _,
                     token_nil)))),
-                string_to_sym_name(DeclModuleName, ".", DeclModuleNameSym),
+                DeclModuleNameSym = string_to_sym_name(DeclModuleName),
                 ProcLabel = ordinary_proc_label(CurModuleNameSym, predicate,
                     DeclModuleNameSym, Name, Arity, Mode)
             ;
@@ -622,7 +579,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                     token_cons(integer(Arity), _,
                     token_cons(integer(Mode), _,
                     token_nil)))),
-                string_to_sym_name(DeclModuleName, ".", DeclModuleNameSym),
+                DeclModuleNameSym = string_to_sym_name(DeclModuleName),
                 ProcLabel = ordinary_proc_label(CurModuleNameSym, function,
                     DeclModuleNameSym, Name, Arity, Mode)
             )
@@ -781,9 +738,9 @@ make_path_port(_GoalPath, port_solver) = port_only(port_call).
 
 %-----------------------------------------------------------------------------%
 
-read_and_union_trace_counts(ShowProgress, SliceSource, Files,
-        NumTests, TestKinds, TraceCounts, MaybeError, !IO) :-
-    read_and_union_trace_counts_2(ShowProgress, SliceSource, Files,
+read_and_union_trace_counts(ShowProgress, Files, NumTests, TestKinds,
+        TraceCounts, MaybeError, !IO) :-
+    read_and_union_trace_counts_2(ShowProgress, Files,
         union_file(0, []), FileType, map.init, TraceCounts, MaybeError, !IO),
     (
         FileType = union_file(NumTests, TestKindList),
@@ -796,22 +753,28 @@ read_and_union_trace_counts(ShowProgress, SliceSource, Files,
         error("read_and_union_trace_counts: diff_file")
     ).
 
-:- pred read_and_union_trace_counts_2(bool::in, slice_source::in,
+:- pred read_and_union_trace_counts_2(bool::in,
     list(string)::in, trace_count_file_type::in, trace_count_file_type::out,
     trace_counts::in, trace_counts::out, maybe(string)::out,
     io::di, io::uo) is det.
 
-read_and_union_trace_counts_2(_, _, [], !FileType, !TraceCounts,
-        no, !IO).
-read_and_union_trace_counts_2(ShowProgress, SliceSource, [File | Files],
+read_and_union_trace_counts_2(_, [], !FileType, !TraceCounts, no, !IO).
+read_and_union_trace_counts_2(ShowProgress, [FileName | FileNames],
         !FileType, !TraceCounts, MaybeError, !IO) :-
-    read_trace_counts_source(ShowProgress, SliceSource, File, TCResult, !IO),
+    (
+        ShowProgress = yes,
+        io.write_string(FileName, !IO),
+        io.nl(!IO)
+    ;
+        ShowProgress = no
+    ),
+    read_trace_counts_source(FileName, TCResult, !IO),
     (
         TCResult = list_ok(FileType, NewTraceCounts),
         summarize_trace_counts_list([!.TraceCounts, NewTraceCounts],
             !:TraceCounts),
         !:FileType = sum_trace_count_file_type(!.FileType, FileType),
-        read_and_union_trace_counts_2(ShowProgress, SliceSource, Files,
+        read_and_union_trace_counts_2(ShowProgress, FileNames,
             !FileType, !TraceCounts, MaybeError, !IO)
     ;
         TCResult = list_error_message(Message),
@@ -1031,4 +994,4 @@ insert_into_list_as_set(List0, Item) = List :-
     set.list_to_set(List0, Set0),
     set.insert(Set0, Item, Set),
     set.to_sorted_list(Set, List).
-    
+

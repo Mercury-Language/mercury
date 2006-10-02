@@ -292,8 +292,8 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO) :-
         transform_mlds(MLDS),
 
     ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
-    prim_data.sym_name_to_string(mlds_module_name_to_sym_name(ModuleName),
-        ".", AssemblyName),
+    AssemblyName =
+        sym_name_to_string(mlds_module_name_to_sym_name(ModuleName)),
     get_il_data_rep(ILDataRep, !IO),
     globals.io_lookup_bool_option(debug_il_asm, DebugIlAsm, !IO),
     globals.io_lookup_bool_option(verifiable_code,
@@ -4132,7 +4132,7 @@ generate_extern_assembly(CurrentAssembly, Version, SignAssembly,
             Import = foreign_import(ForeignImportName),
             ForeignImportName = il_assembly_name(ImportName),
             PackageName = mlds_module_name_to_package_name( ImportName),
-            prim_data.sym_name_to_string(PackageName, ForeignPackageStr),
+            ForeignPackageStr = sym_name_to_string(PackageName),
             ( string.prefix(ForeignPackageStr, "System") ->
                 AsmDecls = dotnet_system_assembly_decls(Version)
             ;

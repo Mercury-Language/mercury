@@ -697,8 +697,7 @@ debug_test_id(dummy_test, !IO)   :- debug_string("dummy", !IO).
 :- pred output_module_id(byte_module_id::in, io::di, io::uo) is det.
 
 output_module_id(ModuleId, !IO) :-
-    sym_name_to_string(ModuleId, ModuleIdString),
-    output_string(ModuleIdString, !IO).
+    output_string(sym_name_to_string(ModuleId), !IO).
 
 :- pred debug_module_id(byte_module_id::in, io::di, io::uo) is det.
 

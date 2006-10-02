@@ -670,7 +670,7 @@ Options to pass to the Java compiler (if you are using it).
 Options to pass to the Microsoft command line C++ compiler (if you are
 using it).
 
-@item MS_CL_NOASM 
+@item MS_CL_NOASM
 @vindex MS_CL_NOASM
 The option to control whether the Microsoft command line C++ compiler
 will generate .NET assemblies from Managed C++ files.  Set to
@@ -1255,7 +1255,7 @@ mdb>
 
 For each trace event, the debugger prints out several pieces of
 information.  The three numbers at the start of the display are the
-event number, the call sequence number, and the call depth. 
+event number, the call sequence number, and the call depth.
 (You don't really need to pay too much attention to those.)
 They are followed by the event type (e.g.@: @samp{CALL} or @samp{EXIT}).
 After that comes the identification of the procedure
@@ -1341,7 +1341,7 @@ and type @kbd{M-x mdb @key{RET}}. Emacs will then prompt you for
 the mdb command to invoke
 
 @example
-Run mdb (like this): mdb 
+Run mdb (like this): mdb
 @end example
 
 @noindent
@@ -1366,7 +1366,7 @@ to set the Emacs variable @samp{pop-up-frames} to @samp{t}
 before starting mdb, since this will cause each buffer to be
 displayed in a new ``frame'' (i.e.@: a new X window).
 You can set this variable interactively using the
-@samp{set-variable} command, i.e.@: 
+@samp{set-variable} command, i.e.@:
 @kbd{M-x set-variable @key{RET} pop-up-frames @key{RET} t @key{RET}}.
 Or you can put @samp{(setq pop-up-frames t)} in the @file{.emacs}
 file in your home directory.
@@ -1642,7 +1642,7 @@ allowing you to examine the state of the computation and issue commands.
 Mercury supports two broad ways of preparing a program for debugging.
 The simpler way is to compile a program in a debugging grade,
 which you can do directly by specifying a grade
-that includes the word ``debug'' or ``decldebug'' 
+that includes the word ``debug'' or ``decldebug''
 (e.g.@: @samp{asm_fast.gc.debug}, or @samp{asm_fast.gc.decldebug}),
 or indirectly by specifying one of the @samp{--debug} or @samp{--decl-debug}
 grade options to the compiler, linker, and other tools
@@ -2230,9 +2230,9 @@ even if the number and the command are not separated by white space.
 @kindex cc_query (mdb command)
 @kindex io_query (mdb command)
 
-@c This documentation has been duplicated in 
+@c This documentation has been duplicated in
 @c Opium-M/source/interactive_queries.op so please tell me (jahier@irisa.fr)
-@c to update my documentation on interactive queries if you update this 
+@c to update my documentation on interactive queries if you update this
 @c subsection.
 
 These commands allow you to type in queries (goals) interactively
@@ -2253,7 +2253,7 @@ Queries can only use symbols that are exported from a module;
 entities which are declared in a module's implementation section
 only cannot be used.
 @sp 1
-The three variants differ in what kind of goals they allow. 
+The three variants differ in what kind of goals they allow.
 For goals which perform I/O, you need to use @samp{io_query};
 this lets you type in the goal using DCG syntax.
 For goals which don't do I/O, but which have determinism
@@ -2625,8 +2625,8 @@ If the name or number is followed by a term path such as "^2",
 then only the specified subterm of the given variable is given to the browser.
 @sp 1
 The interactive term browser allows you
-to selectively examine particular subterms. 
-The depth and size of printed terms may be controlled. 
+to selectively examine particular subterms.
+The depth and size of printed terms may be controlled.
 The displayed terms may also be clipped to fit within a single screen.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
@@ -2660,7 +2660,7 @@ Reports an error if the current event does not refer to such a port.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
-The @samp{-x} or @samp{--xml} option tells mdb to dump the exception to an 
+The @samp{-x} or @samp{--xml} option tells mdb to dump the exception to an
 XML file and then invoke an XML browser on the file.  The XML filename as well
 as the command to invoke the XML browser can be set using the @samp{set}
 command.  See the documentation for @samp{set} for more details.
@@ -2689,7 +2689,7 @@ the @samp{set} command.  See the documentation for @samp{set} for more details.
 @c for @samp{set} for more details.
 @sp 1
 
-@item stack [-d] [-f@var{numframes}] [@var{numlines}] 
+@item stack [-d] [-f@var{numframes}] [@var{numlines}]
 @kindex stack (mdb command)
 Prints the names of the ancestors of the call
 specified by the current event.
@@ -3413,12 +3413,12 @@ in questions from the declarative debugger.
 Set the shell command used to launch an XML browser to @var{command}.
 If you want a stylesheet to be applied to the XML
 before the browser is invoked,
-then you should do that in this command using the appropriate program 
+then you should do that in this command using the appropriate program
 (such as xsltproc, which comes with libxslt
-and is available from http://xmlsoft.org/XSLT/).  
+and is available from http://xmlsoft.org/XSLT/).
 By default if xsltproc and mozilla (or firefox) are available,
 xsltproc is invoked to apply the xul_tree.xsl stylesheet in
-extras/xml_stylesheets, then mozilla is invoked on the resulting XUL file.  
+extras/xml_stylesheets, then mozilla is invoked on the resulting XUL file.
 @sp 1
 You can use the apostrophe character (') to quote the command string,
 for example "xml_browser_cmd 'firefox file:///tmp/mdbtmp.xml'".
@@ -3577,7 +3577,7 @@ The following commands relate to the declarative debugger.  See
 @sp 1
 @table @code
 @item dd [-r] [-n@var{nodes}] [-s@var{search-mode}] [-p@var{passfile}] [-f@var{failfile}]
-@c @item dd [--assume-all-io-is-tabled] [-d@var{depth}] [-t] 
+@c @item dd [--assume-all-io-is-tabled] [-d@var{depth}] [-t]
 @c       [--debug [filename]]
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
 @c makes an assertion, and if the assertion is incorrect, the resulting
@@ -3596,7 +3596,7 @@ The following commands relate to the declarative debugger.  See
 @c `Is this a bug?' questions to which the simulated user answers `yes'.
 @c This is useful for benchmarking the declarative debugger.
 @c @sp 1
-@c The @samp{--debug} option causes events generated by the declarative 
+@c The @samp{--debug} option causes events generated by the declarative
 @c debugger to become visible.  This allows the declarative debugger to be
 @c debugged.
 @c If a filename is provided, the front end of the debugger is not called
@@ -3614,9 +3614,9 @@ value for @var{nodes} requires more memory, but improves the
 performance of the declarative debugger for long running programs since it will
 not have to rerun the program as often.
 @sp 1
-The @samp{-s@var{search-mode}} or @samp{--search-mode @var{search-mode}} 
-option tells the declarative debugger which 
-search mode to use.  Valid search modes are @samp{top_down} (or @samp{td}), 
+The @samp{-s@var{search-mode}} or @samp{--search-mode @var{search-mode}}
+option tells the declarative debugger which
+search mode to use.  Valid search modes are @samp{top_down} (or @samp{td}),
 @samp{divide_and_query} (or @samp{dq}) and @samp{suspicion_divide_and_query}
 (or @samp{sdq}).
 @samp{top_down} is the default when this option is not given.
@@ -3624,19 +3624,19 @@ search mode to use.  Valid search modes are @samp{top_down} (or @samp{td}),
 Use the @samp{-r} or @samp{--resume} option to continue your previous
 declarative debugging session.  If the @samp{--resume} option is given and
 there were no previous declarative debugging sessions then the option will be
-ignored.  A @samp{dd --resume} command can be issued at any event. 
+ignored.  A @samp{dd --resume} command can be issued at any event.
 The @samp{--search-mode} option may be used with the @samp{--resume} option
 to change the search mode of a previously started declarative debugging
 session.
 @sp 1
-The arguments supplied to the @samp{--pass-trace-counts} (or @samp{-p}) and 
+The arguments supplied to the @samp{--pass-trace-counts} (or @samp{-p}) and
 @samp{--fail-trace-counts} (or @samp{-f}) options are either trace count
 files or files containing a list of trace count files.
 The supplied trace counts are used to assign
 a suspicion to each event based on which parts of program were executed in
-the failing test case(s), but not the passing test case(s).  
+the failing test case(s), but not the passing test case(s).
 This is used to guide the declarative debugger when
-the suspicion-divide-and-query search mode is used.  If the 
+the suspicion-divide-and-query search mode is used.  If the
 suspicion-divide-and-query search mode is specified then either both the
 @samp{-p} and @samp{-f} options must be given, or the @samp{fail_trace_counts}
 and @samp{pass_trace_counts} configuration parameters must be set (using
@@ -3644,15 +3644,15 @@ the @samp{set} command).
 @item trust @var{module-name}|@var{proc-spec}
 @kindex trust (mdb command)
 Tells the declarative debugger to trust the given module, predicate or
-function.  
+function.
 @sp 1
 Individual predicates or functions can be trusted by just giving the
 predicate or function name.  If there is more than one predicate or function
-with the given name then a list of alternatives will be shown.  
+with the given name then a list of alternatives will be shown.
 @sp 1
-The entire Mercury standard library is trusted by default and can be 
+The entire Mercury standard library is trusted by default and can be
 untrusted in the usual manner using the `untrust' command.  To restore trusted
-status to the Mercury standard library issue the command 
+status to the Mercury standard library issue the command
 `trust standard library' or just `trust std lib'.
 @sp 1
 See also `trusted' and `untrust'.
@@ -3664,7 +3664,7 @@ and `untrust'.
 @sp 1
 @item untrust @var{num}
 @kindex untrust (mdb command)
-Removes the object from the list of trusted objects.  @var{num} should 
+Removes the object from the list of trusted objects.  @var{num} should
 correspond with the number shown in the list produced by issuing a `trusted'
 command.  See also `trust' and `trusted'.
 @end table
@@ -3698,7 +3698,7 @@ i.e.@: sets the counts for all depths to zero.
 @sp 1
 @item dice [-p@var{filename}] [-f@var{filename}] [-n@var{num}] [-s[pPfFsS]+] [-o @var{filename}] [-m @var{module}]
 @kindex dice (mdb command)
-Display a program dice on the screen.  
+Display a program dice on the screen.
 @sp 1
 A dice is a comparison between
 some successful test runs of the program and a failing test run.
@@ -3713,13 +3713,12 @@ This will generate a file with the prefix
 that contains a summary of the program's execution
 This summary is called a slice.
 Copy the generated slice to a new file for each test case,
-to end up with some passing slices,
-say @samp{pass1}, @samp{pass2}, @samp{pass3}, etc.
-and a failing slice, say @samp{fail}.
+to end up with a failing slice, say @samp{fail},
+and some passing slices, say @samp{pass1}, @samp{pass2}, @samp{pass3}, etc.
+Union the passing slices with a command such as
+@samp{mtc_union -p passes pass1 pass2 pass3}.
 @sp 1
-Once one or more passing slices
-and a failing slice have been generated the @samp{dice} command
-can be used to display a table of statistics
+The @samp{dice} command can use these files to display a table of statistics
 comparing the passing test runs to the failing run.
 Here is an example of a dice displayed in an mdb session:
 @sp 1
@@ -3748,7 +3747,7 @@ The procedure in which the goal appears.
 The goal path and/or port of the goal.  For atomic goals, statistics about the
 CALL event and the corresponding EXIT, FAIL or EXCP event are displayed on
 separate rows.  For other types of goals the goal path is displayed, except for
-NEGE, NEGS and NEGF events where the goal path and port are displayed. 
+NEGE, NEGS and NEGF events where the goal path and port are displayed.
 @item @samp{File:Line}:
 The file name and line number of the goal.  This can be used to set a
 breakpoint on the goal.
@@ -3759,21 +3758,21 @@ runs the goal was executed in.  The heading of this column also has a number in
 parentheses which is the total number of passing test cases.  In the example
 above we can see that 3 passing tests were run.
 @item @samp{Fail}:
-The number of times the goal was executed in the failing test run. 
+The number of times the goal was executed in the failing test run.
 @item @samp{Suspicion}:
 A number between 0 and 1 which gives an indication of how likely a
-particular goal is to be buggy.  The is calculated as 
+particular goal is to be buggy.  The is calculated as
 Suspicion = F / (P + F) where F is the number of times the goal
 was executed in the failing test run and P is the number of times the goal
 was executed in passing test runs.
 @end itemize
 @sp 1
-The name of the file containing the failing slice can be specified with the 
-@samp{-f} or @samp{--fail-trace-counts} option or with a separate 
+The name of the file containing the failing slice can be specified with the
+@samp{-f} or @samp{--fail-trace-counts} option or with a separate
 @samp{set fail_trace_count @var{filename}} command.
 @sp 1
-The name of a file containing a list of the files containing the passing
-slices can be given with the @samp{-p} or @samp{--pass-trace-counts} option.
+The name of the file containing the union of the passing slices
+can be given with the @samp{-p} or @samp{--pass-trace-counts} option.
 Alternatively a separate @samp{set pass_trace_counts @var{filename}} command
 can be given.  See @ref{Trace counts} for more information about trace counts.
 @sp 1
@@ -3798,12 +3797,12 @@ test case, descending.
 @sp 1
 The option @samp{-n} or @samp{--top} can be used to limit the number lines
 displayed.  Only the top @var{num} lines, with respect to
-the ordering specified by the @samp{-s} option, will be displayed.  
+the ordering specified by the @samp{-s} option, will be displayed.
 By default the table is limited to 50 lines.
 @sp 1
 If the @samp{-o} or @samp{--output-to-file} option is given then the output
 will be written to the specified file instead of being displayed on the
-screen.  Note that the file will be overwritten without warning if it 
+screen.  Note that the file will be overwritten without warning if it
 already exists.
 @sp 1
 The @samp{-m} or @samp{--module} option limits the output to the given module
@@ -4142,10 +4141,10 @@ questions about the correctness of calls executed in your program.
 
 Because pure Mercury code does not have any side effects, the declarative
 debugger can make inferences such as ``if a call produces incorrect output
-from correct input, then there must be a bug in the code executed by one of 
+from correct input, then there must be a bug in the code executed by one of
 the descendents of the call''.
 
-The declarative debugger is therefore able to automate much of the 
+The declarative debugger is therefore able to automate much of the
 `detective work' that must be done manually when using the
 procedural debugger.
 
@@ -4261,11 +4260,11 @@ the declarative debugger prints the call atom
 followed by the exception that was thrown,
 and prints the question @samp{Expected?} for the user to answer.
 
-In addition to asserting whether a call behaved correctly or not 
+In addition to asserting whether a call behaved correctly or not
 the user may also assert that a call should never have occurred in the first
 place, because its inputs violated some precondition of the call.  For example
 if an unsorted list is passed to a predicate that is only designed to work with
-sorted lists.  Such calls should be deemed @emph{inadmissible} by the user. 
+sorted lists.  Such calls should be deemed @emph{inadmissible} by the user.
 This tells the declarative debugger that either the call was given the wrong
 input by its caller or whatever generated the input is incorrect.
 
@@ -4318,7 +4317,7 @@ Change the current search mode.  The search modes may be abbreviated to
 @samp{td}, @samp{dq} and @samp{b} respectively.
 @sp 1
 @item browse [--xml] [@var{n}]
-Start the interactive term browser and browse the @var{n}th argument 
+Start the interactive term browser and browse the @var{n}th argument
 before answering.  If the argument number
 is omitted then browse the whole call as if it were a data term.
 While browsing a @samp{track} command may be issued to find the point at
@@ -4326,7 +4325,7 @@ which the current subterm was bound (see @ref{Improving the search}).
 To return to the declarative debugger question issue a @samp{quit}
 command from within the interactive term browser.  For more information
 on the use of the interactive term browser see the @samp{browse} command
-in @ref{Browsing commands} or type @samp{help} from within the 
+in @ref{Browsing commands} or type @samp{help} from within the
 interactive query browser.
 @sp 1
 Giving the @samp{--xml} or @samp{-x} option causes the term to be displayed
@@ -4396,19 +4395,19 @@ Print the current values of browser parameters.
 @item track [-a] [@var{term-path}]
 The @samp{track} command can only be given from within the interactive
 term browser and tells the declarative debugger to find the point at which
-the current subterm was bound.  
-If no argument is given the current subterm is taken to be incorrect.  
+the current subterm was bound.
+If no argument is given the current subterm is taken to be incorrect.
 If a @var{term-path} is given then the subterm at @var{term-path} relative to
 the current subterm will be considered incorrect.
 The declarative debugger will ask about the call that bound the given subterm
-next.  
-To find out the location of the unification that bound the subterm, 
+next.
+To find out the location of the unification that bound the subterm,
 issue an @samp{info} command when asked about the call that bound the subterm.
-The declarative debugger can use one of two algorithms to find the 
-point at which the subterm was bound.  
+The declarative debugger can use one of two algorithms to find the
+point at which the subterm was bound.
 The first algorithm uses some heuristics
 to find the subterm more quickly than the second algorithm.
-It is possible, though unlikely, 
+It is possible, though unlikely,
 for the first algorithm to find the wrong call.
 The first algorithm is the default.
 To tell the declarative debugger to
@@ -4426,12 +4425,12 @@ in the procedural debugger.
 The session can be resumed with a @samp{dd --resume} command.
 @item quit
 End the declarative debugging session and return to
-the event at which the @samp{dd} command was given.  
+the event at which the @samp{dd} command was given.
 The session can be resumed with a @samp{dd --resume} command.
 @sp 1
 @item info
 List the filename and line number of the predicate the current question
-is about as well as the filename and line number where the predicate 
+is about as well as the filename and line number where the predicate
 was called (if this information is available).  Also print some information
 about the state of the bug search, such as the current search mode,
 how many events are yet to be eliminated and the reason for asking
@@ -4488,7 +4487,7 @@ If the assertion made by an EXIT, FAIL or EXCP event is false and one or
 more of the children of the call that resulted in the incorrect EXIT, FAIL or
 EXCP event is inadmissible, while all the other calls are correct, then an
 ``inadmissible call'' bug has been found.  This is a call that behaved
-incorrectly (by producing the incorrect output, failing or throwing an 
+incorrectly (by producing the incorrect output, failing or throwing an
 exception) because it passed unexpected input to one of it's children.
 The guilty call is displayed as well as the inadmissible child.
 
@@ -4519,8 +4518,8 @@ they are returned to the event at which the @samp{dd} command was given.
 @subsection Search Modes
 
 The declarative debugger can operate in one of several modes when
-searching for a bug.  
-Different search modes will result in different sequences of questions 
+searching for a bug.
+Different search modes will result in different sequences of questions
 being asked by the declarative debugger.
 The user can specify which mode to use by giving the
 @samp{--search-mode} option to the @samp{dd} command (see
@@ -4563,8 +4562,8 @@ case, but not in passing test cases.
 
 The user may ask the declarative debugger to do a binary search along the
 path in the call tree between the current question and the question that the
-user last answered @samp{no} to.  This is useful, for example, when a 
-recursive predicate is producing incorrect output, but the base case is 
+user last answered @samp{no} to.  This is useful, for example, when a
+recursive predicate is producing incorrect output, but the base case is
 correct.
 
 @node Improving the search
@@ -4578,14 +4577,14 @@ explained in this section.
 @subsubsection Tracking suspicious subterms
 
 An incorrect subterm can be tracked to the call that bound the subterm
-from within the interactive term browser 
+from within the interactive term browser
 (see @ref{Declarative debugging commands}).
 
-After issuing a @samp{track} command, 
-the next question asked by the declarative debugger will 
+After issuing a @samp{track} command,
+the next question asked by the declarative debugger will
 be about the call that bound the incorrect subterm,
 unless that call was
-eliminated as a possible bug because of an answer to a previous 
+eliminated as a possible bug because of an answer to a previous
 question or the call that bound the subterm was not traced.
 
 For example consider the following fragment of a program that calculates
@@ -4617,9 +4616,9 @@ get_payment(loan(...), 10, payment(date(9, 10, 1977), 10.000000000000)).
 Valid?
 @end example
 
-Then if we know that this is the right payment amount for the given loan, 
-but the date is incorrect, we can track the date(...) subterm and the 
-debugger will then ask us about @code{get_payment_date}:  
+Then if we know that this is the right payment amount for the given loan,
+but the date is incorrect, we can track the date(...) subterm and the
+debugger will then ask us about @code{get_payment_date}:
 
 @noindent
 @example
@@ -4632,7 +4631,7 @@ browser> track
 get_payment_date(loan(...), 10, date(9, 10, 1977)).
 Valid?
 @end example
-	
+
 Thus irrelevant questions about @code{get_payment_amount} are avoided.
 
 @noindent
@@ -4653,32 +4652,32 @@ Note that this feature is only available if the executable is compiled
 in a .decldebug grade or with the @samp{--trace rep} option.  If a module
 is compiled with the @samp{--trace rep} option but other modules in the
 program are not then you will not be able to track subterms through those
-other modules.  
+other modules.
 
 @subsubsection Trusting predicates, functions and modules
 
-The declarative debugger can also be told to assume that certain predicates, 
+The declarative debugger can also be told to assume that certain predicates,
 functions or entire modules do not contain any bugs.  The declarative
 debugger will never ask questions about trusted predicates or functions.  It
-is a good idea to trust standard library modules imported by a program being 
+is a good idea to trust standard library modules imported by a program being
 debugged.
 
 The declarative debugger can be told which predicates/functions it can trust
-before the @samp{dd} command is given.  This is done using the @samp{trust}, 
-@samp{trusted} and @samp{untrust} commands at the mdb prompt (see 
-@ref{Declarative debugging mdb commands} for details on how to use these 
+before the @samp{dd} command is given.  This is done using the @samp{trust},
+@samp{trusted} and @samp{untrust} commands at the mdb prompt (see
+@ref{Declarative debugging mdb commands} for details on how to use these
 commands).
 
 Trust commands may be placed in the @samp{.mdbrc} file which contains default
 settings for mdb (see @ref{Mercury debugger invocation}).  Trusted
-predicates will also be exported with a @samp{save} command (see 
+predicates will also be exported with a @samp{save} command (see
 @ref{Miscellaneous commands}).
 
 During the declarative debugging session the user may tell the declarative
 debugger to trust the predicate or function in the current question.
 Alternatively the user may tell the declarative debugger to trust all the
 predicates and functions in the same module as the predicate or function in the
-current question.  See the @samp{trust} command in 
+current question.  See the @samp{trust} command in
 @ref{Declarative debugging commands}.
 
 @subsubsection When different search modes are used
@@ -4692,7 +4691,7 @@ one question.
 If no search mode is specified with the @samp{dd} command then
 the search mode depends on if the @samp{--resume} option is
 given.
-If it is then the previous search mode will be used, 
+If it is then the previous search mode will be used,
 otherwise top-down search will be used.
 
 You can check the search mode used to find a particular question by issuing
@@ -4703,37 +4702,36 @@ with the @samp{mode} command.
 @node Trace counts
 @section Trace counts
 
-A program with debugging enabled may be run in a special mode that causes it
-to write out a summary of its execution to a file.
-This summary is called a @emph{trace count} or @emph{slice}.
-A slice is a record of how many times each @emph{label} in the program was
-executed for a particular run.
-A label is a point in the source code where a debugger event,
-such as CALL or EXIT,
-can be triggered.
+A program with debugging enabled may be run in a special mode
+that causes it to write out to a @emph{trace count file}
+a record of how many times each @emph{debugger event} in the program
+was executed during that run.
 
-Slices are useful for determining what parts of a failing program are being run
-and possibly causing the failure.
-Slices from failing and passing runs can be compared to see which parts of the
-program are being run in the failing runs,
-but not the passing runs.
+Trace counts are useful for determining
+what parts of a failing program are being run
+and possibly causing the failure;
+this is called @emph{slicing}.
+Slices from failing and passing runs can be compared
+to see which parts of the program are being executed during failing runs,
+but not during passing runs; this is called @emph{dicing}.
 
 @menu
 * Generating trace counts::
+* Combining trace counts::
 * Slicing::
 * Dicing::
-* Combining trace counts::
+* Coverage testing::
 @end menu
 
 @node Generating trace counts
 @subsection Generating trace counts
 
-To generate a slice for a program run, first compile the program with deep
-tracing enabled
-(either by using the @samp{--trace deep} option or
-compiling the program in a debugging grade). 
-Then invoke the program with the mtc script, passing any required
-arguments after the program name.
+To generate a slice for a program run,
+first compile the program with deep tracing enabled
+(either by using the @samp{--trace deep} option
+or by compiling the program in a debugging grade).
+Then invoke the program with the @samp{mtc} script,
+passing any required arguments after the program name.
 @sp 1
 For example:
 @sp 1
@@ -4741,26 +4739,88 @@ For example:
 mtc ./myprog arg1 arg2
 @end example
 @sp 1
-The program will run as usual, except that when it terminates it will write
-a summary of the run to a file.
+The program will run as usual, except that when it terminates
+it will write the number of times each debugger event was executed
+to a trace count file.
 @sp 1
 @samp{mtc} accepts an @samp{-f} or @samp{--output-file} option.
-The argument to this option is the filename to use for the generated
-trace count file.
-If this option is not given then the trace count will be written to a
-file with the prefix @samp{.mercury_trace_counts}
-and a unique suffix.
+The argument to this option is the filename to use
+for the generated trace count file.
+If this option is not given,
+then the trace count will be written to a file
+with the prefix @samp{.mercury_trace_counts} and a unique suffix.
 @sp 1
-The generated slice can then be analysed by the @samp{mslice}
-and @samp{mdice} tools.
-It can also be used to help direct a declarative debugging search
+Ordinarily, the generated trace count file will list
+only the debugger events that were actually executed during this run.
+However, it will list all debugger events, even unexecuted ones,
+if @samp{mtc} is given the @samp{-c} or @samp{--coverage-test} option.
+@sp 1
+@samp{mtc} also supports two more options intended for coverage testing:
+@samp{-s} or @samp{--summary-file}, and @samp{--summary-count}.
+These each set an option in the @samp{MERCURY_OPTIONS} environment variable,
+@samp{--trace-count-summary-file} and @samp{--trace-count-summary-max}
+respectively.
+For the documentation of these @samp{mtc} options,
+see the documentation of @samp{MERCURY_OPTIONS} environment variable.
+
+@sp 1
+
+Trace count files
+can be manipulated with the @samp{mtc_union} and @samp{mtc_diff} tools,
+and they can be analysed by the @samp{mslice} and @samp{mdice} tools.
+They can also be used to help direct a declarative debugging search
 (see @ref{Search Modes}).
+
+@sp 1
+
+@node Combining trace counts
+@subsection Combining trace counts
+
+The @samp{mtc_union} tool can be used
+to combine several trace count files into one trace count file.
+You need to use this when you have
+many trace count files you wish to analyse with @samp{mslice} or @samp{mdice}.
+
+@samp{mtc_union} is invoked by issuing a command of the form:
+@sp 1
+@example
+mtc_union [-v] -o output_file file1 file2 ...
+@end example
+@sp 1
+@samp{file1}, @samp{file2}, etc.
+are the trace count files that should be combined.
+The new trace count file will be written to @samp{output_file}.
+This file will preserve
+the count of the test cases that contributed to its contents,
+even if some of @samp{file1}, @samp{file2}, etc themselves
+were created by @samp{mtc_union}.
+If the @samp{-v} or @samp{--verbose} option is specified
+then a progress message will be displayed
+as each file is read and its contents merged into the union.
+
+The @samp{mtc_diff} tool can be used
+to subtract one trace count file from another.
+
+@samp{mtc_diff} is invoked by issuing a command of the form:
+@sp 1
+@example
+mtc_diff -o output_file file1 file2
+@end example
+@sp 1
+@samp{file1} and @samp{file2} must both be trace counts files.
+The output, written to @samp{output_file}, will contain
+the difference between the trace counts in @samp{file1} and @samp{file2}
+for every event that occurs in @samp{file1}.
+Unlike @samp{mtc_union}, @samp{mtc_diff} does not preserve
+the count of the test cases that contributed to its contents in any useful way.
+
+@sp 1
 
 @node Slicing
 @subsection Slicing
 
-Once a slice has been generated it can be viewed in various ways using the
-mslice tool.
+Once a slice has been generated
+it can be viewed in various ways using the mslice tool.
 The output of the mslice tool will look something like the following:
 @sp 1
 @example
@@ -4778,18 +4838,19 @@ The meanings of the columns are as follows:
 @item @samp{Procedure}:
 This column displays the procedure that the label relates to.
 @item @samp{Path/Port}:
-For labels that generate interface events this column displays          
-the event port and for labels that generate internal events it          
-displays the goal path. (See @ref{Tracing of Mercury programs} for an
-explanation of interface and internal events.)
+For interface events this column displays the event port,
+while for internal events it displays the goal path.
+(See @ref{Tracing of Mercury programs}
+for an explanation of interface and internal events.)
 @item @samp{File:Line}:
-This column displays the context of the label.
+This column displays the context of the event.
 @item @samp{Count}:
-This column displays how many times the label was executed.
-The number in parentheses for each label row says in how many runs the label
-was executed.
+This column displays how many times the event was executed.
+The number in parentheses for each event row
+says in how many runs the event was executed.
 The number in parentheses in the heading row (after the word "Count")
-indicates how many runs were analysed by the mslice tool.
+indicates how many runs were represented
+in the trace counts file analysed by the mslice tool.
 @end itemize
 
 @sp 1
@@ -4799,13 +4860,14 @@ The mslice tool is invoked using a command of the form:
 mslice [-s sortspec] [-l N] [-m module] file
 @end example
 @sp 1
-where @samp{file} may be a generated trace count file, or a file containing
-a list of generated trace count file names.
+where @samp{file} is a trace count file,
+generated either directly by a program run
+or indirectly by the @samp{mtc_union} or @samp{mtc_diff} tools.
 @sp 1
-The @samp{-s} or @samp{--sort} option specifies how the output should be
-sorted.
-@samp{sortspec} should be a string made up of any combination of the letters
-@samp{cCtT}.
+The @samp{-s} or @samp{--sort} option
+specifies how the output should be sorted.
+@samp{sortspec} should be a string made up of
+any combination of the letters @samp{cCtT}.
 Each letter specifies a column and direction to sort on:
 @itemize @bullet
 @item @samp{c}: Count ascending
@@ -4814,14 +4876,15 @@ Each letter specifies a column and direction to sort on:
 @item @samp{T}: Number of runs descending
 @end itemize
 @sp 1
-For example the option @samp{-s cT} will sort the output table by the
-Count column in ascending order.  If the counts for two or more labels are the
-same, then those labels will be sorted by number of runs in descending order.
+For example the option @samp{-s cT} will sort the output table
+by the Count column in ascending order.
+If the counts for two or more events are the same,
+then those events will be sorted by number of runs in descending order.
 @sp 1
 The @samp{-l} or @samp{--limit} option limits the output to @samp{N} lines.
 @sp 1
-The @samp{-m} or @samp{--module} option limits the output to labels only
-from the given module.
+The @samp{-m} or @samp{--module} option limits the output
+to events only from the given module.
 @sp 1
 
 @node Dicing
@@ -4830,11 +4893,13 @@ from the given module.
 A dice is a comparison between passing and failing runs of a program.
 @sp 1
 Dice are created using the @samp{mdice} tool.
-To use the @samp{mdice} tool one must first generate a set of trace count
-files for passing runs and a set of trace count files for failing runs
+To use the @samp{mdice} tool,
+one must first generate a set of trace count files for passing runs
+and a set of trace count files for failing runs
 using the @samp{mtc} tool (@ref{Generating trace counts}).
-Once this has been done, the @samp{mdice}
-can be used to display a table of statistics
+Once this has been done,
+and the union of each set computed using @samp{mtc_union},
+@samp{mdice} can be used to display a table of statistics
 that compares the passing runs to the failing runs.
 @sp 1
 Here is an example of the output of the @samp{mdice} tool:
@@ -4852,34 +4917,34 @@ was executed once in the failing test run,
 but never during the passing test runs,
 so this would be a good place to start looking for a bug.
 @sp 1
-Each row corresponds to a label in the program. 
+Each row corresponds to an event in the program.
 The meanings of the columns are as follows:
 @itemize @bullet
 @item @samp{Procedure}:
-This column displays the procedure the label relates to.
+This column displays the procedure the event relates to.
 @item @samp{Path/Port}:
-For labels that generate interface events this column displays          
-the event port and for labels that generate internal events it          
-displays the goal path. (See @ref{Tracing of Mercury programs} for an
-explanation of interface and internal events.)
+For interface events this column displays the event port,
+while for internal events it displays the goal path.
+(See @ref{Tracing of Mercury programs}
+for an explanation of interface and internal events.)
 @item @samp{File:Line}:
-This column displays the context of the label.
+This column displays the context of the event.
 @item @samp{Pass (total passing test runs)}:
-This columns displays the total number of times the label was executed in all
-the passing test runs.
-This is followed by a number in parentheses which indicates the number of test
-runs the label was executed in.
-The heading of this column also has a number in
-parentheses which is the total number of passing test cases.
+This columns displays the total number of times
+the event was executed in all the passing test runs.
+This is followed by a number in parentheses
+which indicates the number of test runs the event was executed in.
+The heading of this column also has a number in parentheses
+which is the total number of passing test cases.
 @item @samp{Fail}:
-This column displays the number of times the goal was executed in the failing
-test run(s).
+This column displays the number of times
+the goal was executed in the failing test run(s).
 @item @samp{Suspicion}:
-This columns displays a number between 0 and 1 which gives an indication of how
-likely a particular goal is to contain a bug. 
-The suspicion is calculated as Suspicion = F / (P + F) where F is the number of
-times the goal was executed in failing runs and P is the number of times
-the goal was executed in passing runs.
+This columns displays a number between 0 and 1
+which gives an indication of how likely a particular goal is to contain a bug.
+The suspicion is calculated as Suspicion = F / (P + F)
+where F is the number of times the goal was executed in failing runs
+and P is the number of times the goal was executed in passing runs.
 @end itemize
 @sp 1
 The @samp{mdice} tool is invoked with a command of the form:
@@ -4887,18 +4952,19 @@ The @samp{mdice} tool is invoked with a command of the form:
 @example
 mdice [-s sortspec] [-l N] [-m module] passfile failfile
 @end example
-@samp{passfile} is either a generated trace count file for a passing run,
-or a file containing a list of generated trace count filenames for passing
-runs.
-@samp{failfile} is either a generated trace count file for a failing run,
-or a file containing a list of generated trace count filenames for failing
-runs.
+@samp{passfile} is a trace count file,
+generated either directly by a passing program run
+or as the union of the trace count files of passing program runs.
+@samp{failfile} is a trace count file,
+generated either directly by a failing program run
+or as the union of the trace count files of failing program runs.
 @sp 1
-The table can be sorted on the Pass, Fail or Suspicion columns, or a
-combination of these.  This can be done with the @samp{-s} or @samp{--sort}
-option.  The argument of this option is a string made up of any combination of
-the letters @samp{pPfFsS}.  The letters in the string indicate how the table
-should be sorted:
+The table can be sorted on the Pass, Fail or Suspicion columns,
+or a combination of these.
+This can be done with the @samp{-s} or @samp{--sort} option.
+The argument of this option is a string
+made up of any combination of the letters @samp{pPfFsS}.
+The letters in the string indicate how the table should be sorted:
 @sp 1
 @itemize @bullet
 @item @samp{p}: Pass ascending
@@ -4909,39 +4975,59 @@ should be sorted:
 @item @samp{S}: Suspicion descending
 @end itemize
 @sp 1
-For example the string "SF" means sort the table by suspicion in descending
-order, and if any two suspicions are the same, then by number of executions in
-the failing run(s), also in descending order.
+For example the string "SF" means
+sort the table by suspicion in descending order,
+and if any two suspicions are the same,
+then by number of executions in the failing run(s), also in descending order.
 @sp 1
-The option @samp{-l} or @samp{--limit} can be used to limit the number of lines
-displayed.
+The option @samp{-l} or @samp{--limit}
+can be used to limit the number of lines displayed.
 @sp 1
-The @samp{-m} or @samp{--module} option limits the output to the given module
-and any submodules.
+The @samp{-m} or @samp{--module} option
+limits the output to the given module and any submodules.
 
 @sp 1
 
-@node Combining trace counts
-@subsection Combining trace counts
+@node Coverage testing
+@subsection Coverage testing
 
-The @samp{mtc_union} tool can be used to combine several trace count files
-into one trace count file.
-This is useful when you have many trace count files you wish to analyse with
-@samp{mslice} or @samp{mdice}.
-It avoids the overhead of reading all the files
-each time @samp{mslice} or @samp{mdice} is invoked.
-
-@samp{mtc_union} is invoked by issuing a command of the form:
+Coverage testing is the process of finding out
+which parts of the code of a program
+are not executed during any test case,
+so that new test cases can be designed specifically to exercise those parts.
+@sp 1
+The first step in coverage testing a Mercury program
+is compiling that program with execution tracing enabled,
+either by using the @samp{--trace deep} option
+or by compiling the program in a debugging grade.
+The second step is to execute that program on all its test cases
+with coverage testing enabled.
+This can be done either by running the program with @samp{mtc --coverage-test},
+or by including one of the corresponding options
+(@samp{--coverage-test} or @samp{--coverage-test-if-exec=@var{programname}})
+in the value of the @samp{MERCURY_OPTIONS} environment variable.
+These runs generate a set of trace counts files
+that can be given to the Mercury test coverage tool, the @samp{mcov} program.
+@sp 1
+The @samp{mcov} tool is invoked with a command of the form:
 @sp 1
 @example
-mtc_union [-v] -o output_file file1 file2 ...
+mcov [-d] [-v] [-o output_file] tracecountfile1 ...
 @end example
+The arguments consist of one or more trace count files.
+The output will normally be a list of all the procedures in the program
+that were not executed in any of the runs
+that generated these trace count files.
+The output will go to standard output
+unless this is overridden by the @samp{-o} or @samp{--output-file} option.
 @sp 1
-@samp{file1}, @samp{file2}, etc. are the trace count files that should be
-combined.
-The new trace count file will be written to @samp{output_file}.
-If the @samp{-v} or @samp{--verbose} option is specified then a progress
-message will be displayed as the files are merged.
+If the @samp{-d} or @samp{--detailed} option is specified,
+then the the output will list all the @emph{events} in the program
+that were not executed in any of these runs.
+This option can thus show the unexecuted parts of the executed procedures.
+@sp 1
+If the @samp{-v} or @samp{--verbose} option is specified,
+then a progress message will be displayed as each file is read.
 
 @c ----------------------------------------------------------------------------
 
@@ -5028,7 +5114,7 @@ pass the @samp{--deep-profiling} option to @samp{mmc},
 If you are using Mmake,
 then you pass these options to all the relevant programs
 by setting the @samp{GRADEFLAGS} variable in your Mmakefile,
-e.g.@: by adding the line @samp{GRADEFLAGS=--profiling}. 
+e.g.@: by adding the line @samp{GRADEFLAGS=--profiling}.
 (For more information about the different grades,
 see @ref{Compilation model options}.)
 
@@ -5328,7 +5414,7 @@ each call contributes equally to the total time of the current procedure.
 
 To create a memory profile, you can invoke @samp{mprof}
 with the @samp{-m} (@samp{--profile memory-words}) option.
-This will profile the amount of memory allocated, measured in units of words. 
+This will profile the amount of memory allocated, measured in units of words.
 (A word is 4 bytes on a 32-bit architecture,
 and 8 bytes on a 64-bit architecture.)
 
@@ -5809,7 +5895,7 @@ of the predicate with the given predicate id.
 @findex --make
 Output detailed debugging traces of the `--make' option.
 
-@c XXX This can be uncommented when the documentation for 
+@c XXX This can be uncommented when the documentation for
 @c `--analyse-closures' is uncommented.
 
 @c @sp 1
@@ -5912,11 +5998,11 @@ Write information used for inter-module optimization to
 @findex --make-trans-opt
 @findex --make-transitive-optimization-interface
 Write the @file{@var{module}.trans_opt} file.  This file is used to store
-information used for inter-module optimization.  The information is read 
+information used for inter-module optimization.  The information is read
 in when the compiler is invoked with the
-@samp{--transitive-intermodule-optimization} option. 
+@samp{--transitive-intermodule-optimization} option.
 The file is called the ``transitive'' optimization interface file
-because a @samp{.trans_opt} file may depend on other 
+because a @samp{.trans_opt} file may depend on other
 @samp{.trans_opt} and @samp{.opt} files.  In contrast,
 a @samp{.opt} file can only hold information derived directly
 from the corresponding @samp{.m} file.
@@ -6413,7 +6499,7 @@ link time, typically of the form @samp{undefined symbol MR_grade_@dots{}}
 or @samp{symbol MR_runtime_grade multiply defined}.)
 
 The options below must be passed to @samp{mgnuc}, @samp{c2init}
-and @samp{ml} as well as to @samp{mmc}. 
+and @samp{ml} as well as to @samp{mmc}.
 If you are using Mmake, then you should specify
 these options in the @samp{GRADEFLAGS} variable rather than specifying
 them in @samp{MCFLAGS}, @samp{MGNUCFLAGS} and @samp{MLFLAGS}.
@@ -6598,13 +6684,13 @@ and grade modifier; they are followed by descriptions of those options.
 @c @code{--profile-calls --profile-time --profile-memory}.
 @c (not recommended because --profile-memory interferes with
 @c --profile-time)
-@c 
+@c
 @c @item @samp{.proftime}
 @c @code{--profile-time}.
-@c 
+@c
 @c @item @samp{.profcalls}
 @c @code{--profile-calls}.
-@c 
+@c
 @item @samp{.tr}
 @code{--use-trail}.
 
@@ -6677,7 +6763,7 @@ C compiler to generate object code.
 @item @code{--java-only}
 @findex --java-only
 An abbreviation for @samp{--target java --target-code-only}.
-Generate Java code in @file{@var{module}.java}, but do not invoke 
+Generate Java code in @file{@var{module}.java}, but do not invoke
 the Java compiler to produce Java bytecode.
 
 @end table
@@ -6867,7 +6953,7 @@ other grades use @samp{--gc none}.
 garbage collector.
 @samp{accurate} is our own type-accurate copying collector.
 It requires @samp{--high-level-code}.
-@samp{mps} is another conservative collector based on Ravenbrook Limited's 
+@samp{mps} is another conservative collector based on Ravenbrook Limited's
 MPS (Memory Pool System) kit.
 @samp{automatic} means the target language provides it.
 This is the case for the IL and Java back-ends, which always use
@@ -6960,10 +7046,10 @@ latter are more efficient.
 @findex --reserve-tag
 @cindex Tags
 @cindex Data representation
-Reserve a tag in the data representation of the generated 
+Reserve a tag in the data representation of the generated
 code. This tag is intended to be used to give an explicit
 representation to free variables.
-This is necessary for a seamless Herbrand constraint solver --- 
+This is necessary for a seamless Herbrand constraint solver ---
 for use with HAL.
 
 @sp 1
@@ -6988,7 +7074,7 @@ runtime.  The C code also needs to be compiled with
 @item --low-level-debug
 @findex --low-level-debug
 Enables various low-level debugging stuff that was in the distant past
-used to debug the Mercury compiler's low-level code generation. 
+used to debug the Mercury compiler's low-level code generation.
 This option is not likely to be useful to anyone except the Mercury
 implementors.  It causes the generated code to become very big and very
 inefficient, and slows down compilation a lot.
@@ -7217,8 +7303,8 @@ Use the information stored in @file{@var{module}.trans_opt} files
 to make intermodule optimizations.  The @file{@var{module}.trans_opt} files
 are different to the @file{@var{module}.opt} files as @samp{.trans_opt}
 files may depend on other @samp{.trans_opt} files, whereas each
-@samp{.opt} file may only depend on the corresponding @samp{.m} file. 
-Note that @samp{--transitive-intermodule-optimization} does not 
+@samp{.opt} file may only depend on the corresponding @samp{.m} file.
+Note that @samp{--transitive-intermodule-optimization} does not
 work with @samp{mmc --make}.
 
 @sp 1
@@ -7230,13 +7316,13 @@ closure of the imports.
 
 @item --use-opt-files
 @findex --use-opt-files
-Perform inter-module optimization using any @samp{.opt} files which are 
+Perform inter-module optimization using any @samp{.opt} files which are
 already built, e.g.@: those for the standard library, but do not build any
 others.
 
 @item --use-trans-opt-files
 @findex --use-trans-opt-files
-Perform inter-module optimization using any @samp{.trans_opt} files which are 
+Perform inter-module optimization using any @samp{.trans_opt} files which are
 already built, e.g.@: those for the standard library, but do not build any
 others.
 
@@ -7513,7 +7599,7 @@ A value of -1 specifies no limit. The default is 15.
 @item --analyse-exceptions
 @findex --analyse-exceptions
 Try to identify those procedures that cannot throw an
-exception.  This information can be used by some 
+exception.  This information can be used by some
 optimization passes.
 
 @c XXX The documentation `--analyse-closures' can be uncommented
@@ -7592,7 +7678,7 @@ of minimal model tabling.
 @subsection MLDS backend (MLDS -> MLDS) optimization options
 @cindex MLDS
 
-These optimizations are applied to the medium level 
+These optimizations are applied to the medium level
 intermediate code.
 
 @table @code
@@ -8176,7 +8262,7 @@ Set the classpath for the Java compiler.
 @findex --java-object-file-extension
 @cindex File extensions
 Specify an extension for Java object (bytecode) files.  By default this
-is @samp{.class}. 
+is @samp{.class}.
 
 @end table
 
@@ -8726,6 +8812,97 @@ The report is printed to a new file named @file{.mem_usage_report@var{N}}
 for the lowest value of @var{N} (up to 99)
 which doesn't overwrite an existing file.
 
+@sp 1
+@item --trace-count
+@findex --trace-count
+When the program terminates, generate a trace counts file
+listing all the debugger events the program executed,
+if the program actually executed any debugger events.
+If MERCURY_OPTIONS includes
+the --trace-count-output-file=@var{filename} option,
+then the trace counts are put into the file @var{filename}.
+If MERCURY_OPTIONS includes
+the --trace-count-summary-file=@var{basename} option,
+then the trace counts are put
+either in the file @var{basename} (if it does not exist),
+or in @var{basename.N} for the lowest value of the integer @var{N}
+which doesn't overwrite an existing file.
+(There is a limit on the value of @var{N};
+see the option --trace-count-summary-max below.)
+If neither option is specified,
+then the output will be written to a file
+with the prefix @samp{.mercury_trace_counts} and a unique suffix.
+Specifying both options is an error.
+
+@sp 1
+@item --coverage-test
+@findex --coverage-test
+Act as the --trace-count option, except
+include @emph{all} debugger events in the output,
+even the ones that were not executed.
+
+@sp 1
+@item --trace-count-if-exec=@var{prog}
+@findex --trace-count-if-exec=@var{prog}
+Act as the --trace-count option,
+but only if the executable is named @var{prog}.
+This is to allow
+the collection of trace count information from only one Mercury program
+even if several Mercury programs
+are executed with the same setting of MERCURY_OPTIONS.
+
+@sp 1
+@item --coverage-test-if-exec=@var{prog}
+@findex --coverage-test-if-exec=@var{prog}
+Act as the --coverage-test option,
+but only if the executable is named @var{prog}.
+This is to allow
+the collection of coverage test information from only one Mercury program
+even if several Mercury programs
+are executed with the same setting of MERCURY_OPTIONS.
+
+@sp 1
+@item --trace-count-output-file=@var{filename}
+@findex --trace-count-output-file=@var{filename}
+Documented alongside the --trace-count option.
+
+@sp 1
+@item --trace-count-summary-file=@var{basename}
+@findex --trace-count-summary-file=@var{basename}
+Documented alongside the --trace-count option.
+
+@sp 1
+@item --trace-count-summary-max=@var{N}
+@findex --trace-count-summary-max=@var{N}
+If MERCURY_OPTIONS includes both
+the --trace-count option (or one of the other options that imply --trace-count)
+and the --trace-count-summary-file=@var{basename} option,
+then the generated program will put the generated trace counts
+either in @var{basename} (if it does not exist),
+or in @var{basename.N} for the lowest value of the integer @var{N}
+which doesn't overwrite an existing file.
+The --trace-count-summary-max option
+specifies the maximum value of this @var{N}.
+When this maximum is reached,
+the program will invoke the @samp{mtc_union} program
+to summarize @var{basename}, @var{basename.1}, ... @var{basename.N}
+into a single file @var{basename}, and delete the rest.
+By imposing a limit on the total number
+(and hence indirectly on the total size) of these trace count files,
+this mechanism allows the gathering of trace count information
+from a large number of program runs.
+The default maximum value of @var{N} is 20.
+
+@c @sp 1
+@c @item --trace-count-summary-cmd=@var{cmd}
+@c @findex --trace-count-summary-cmd=@var{cmd}
+@c This option specifies the command to use instead of mtc_union
+@c for computing trace counts summaries, as shown for the above option.
+@c This documentation is commented out
+@c because the option is for implementors only.
+@c The intended use is to override the installed version of mtc_union
+@c with the version in a specific workspace, which may be more recent.
+
 @end table
 
 @sp 1
@@ -8796,12 +8973,12 @@ The Mercury foreign language interfaces allows pragma foreign_proc to
 specify multiple implementations (in different foreign programming
 languages) for a procedure.
 
-If the compiler generates code for a procedure using a back-end for which 
+If the compiler generates code for a procedure using a back-end for which
 there are multiple applicable foreign languages, it will choose the
-foreign language to use for each procedure according to a builtin ordering. 
+foreign language to use for each procedure according to a builtin ordering.
 
 If the language specified in a foreign_proc is not available for a
-particular backend, it will be ignored. 
+particular backend, it will be ignored.
 
 If there are no suitable foreign_proc clauses for a particular
 procedure but there are Mercury clauses, they will be used instead.

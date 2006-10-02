@@ -543,7 +543,7 @@ fi
 
 if $trace_count
 then
-    MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count"
+    MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count-if-exec=mercury_compile"
     export MERCURY_OPTIONS
 else
     true
@@ -1566,14 +1566,19 @@ then
 
         case $failing_tests_only in
             true)
-                test_log_opt="FAILING_TESTS_ONLY"
+                test_log_opt="FAILED_TESTS_ONLY=yes"
                 ;;
         esac
 
         cd $root/${tests_prefix}tests
-        /bin/rm -fr PASSED_TC_DIR PASSED_TC_FILES > /dev/null 2>&1
-        /bin/rm -fr FAILED_TC_DIR FAILED_TC_FILES > /dev/null 2>&1
         > FAILED_TESTS_SUMMARY
+
+        /bin/rm -fr PASSED_TC_DIR FAILED_TC_DIR > /dev/null 2>&1
+        mkdir -p PASSED_TC_DIR FAILED_TC_DIR
+        echo 0 > PASSED_TC_DIR/NEXT_NUMBER
+        echo 0 > FAILED_TC_DIR/NEXT_NUMBER
+        SLICE_DIR="$root/slice/"
+        export SLICE_DIR
 
         if test "$specified_tests_only" != ""
         then
@@ -1620,6 +1625,16 @@ then
             echo "Saving test suite stats in $type_stats.test.$$"
             mv "$type_stats" "$type_stats".test.$$
         fi
+
+        for tcdir in PASSED_TC_DIR FAILED_TC_DIR
+        do
+            if test "`cat $tcdir/NEXT_NUMBER`" -gt 0
+            then
+                ${SLICE_DIR}slice/mtc_union -o $tcdir/SUMMARY \
+                    $tcdir/trace_counts.*
+                /bin/rm $tcdir/trace_counts.*
+            fi
+        done
 
         cd $root
     fi

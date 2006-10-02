@@ -1257,7 +1257,7 @@ ml_gen_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, EvalMethod,
 :- func init_step(string) = mlds_initializer.
 
 init_step(Str) = init_obj(Rval) :-
-    mercury_private_builtin_module(PrivateBuiltin),
+    PrivateBuiltin = mercury_private_builtin_module,
     MLDS_ModuleName = mercury_module_name_to_mlds(PrivateBuiltin),
     Var = qual(MLDS_ModuleName, module_qual, mlds_var_name(Str, no)),
     % XXX These are actually enumeration constants.

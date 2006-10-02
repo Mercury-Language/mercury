@@ -1597,8 +1597,8 @@ polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars,
 
 foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
         Constraint, MaybeArgName - native_if_possible) :-
-    Constraint = constraint(Name0, Types),
-    sym_name_to_string(Name0, "__", Name),
+    Constraint = constraint(SymName, Types),
+    Name = sym_name_to_string_sep(SymName, "__"),
     type_vars_list(Types, TypeVars),
     TypeVarNames = list.map(underscore_and_tvar_name(TypeVarSet), TypeVars),
     string.append_list(["TypeClassInfo_for_", Name | TypeVarNames],

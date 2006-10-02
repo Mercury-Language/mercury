@@ -69,8 +69,7 @@ lookup_module_source_file(ModuleName, FileName, !IO) :-
         FileName = default_source_file(ModuleName)
     ).
 
-default_source_file(ModuleName) = BaseFileName ++ ".m" :-
-    sym_name_to_string(ModuleName, ".", BaseFileName).
+default_source_file(ModuleName) = sym_name_to_string(ModuleName) ++ ".m".
 
 have_source_file_map(HaveMap, !IO) :-
     get_source_file_map(_, !IO),
@@ -124,7 +123,7 @@ read_source_file_map(ModuleChars, !Map, !IO) :-
     (
         ModuleCharsResult = ok(RevModuleChars),
         string.from_rev_char_list(RevModuleChars, ModuleStr),
-        string_to_sym_name(ModuleStr, ".", ModuleName),
+        ModuleName = string_to_sym_name(ModuleStr),
         read_until_char('\n', [], FileNameCharsResult, !IO),
         (
             FileNameCharsResult = ok(FileNameChars),

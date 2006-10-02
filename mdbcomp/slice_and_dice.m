@@ -50,25 +50,24 @@
                                     % executed in.
             ).
 
-    % read_slice(Source, File, MaybeSlice, !IO):
+    % read_slice(File, MaybeSlice, !IO):
     %
-    % Read the slice(s) from Source and File.
+    % Read the slices from File.
     %
-:- pred read_slice(slice_source::in, string::in,
-    maybe_error(slice)::out, io::di, io::uo) is det.
+:- pred read_slice(string::in, maybe_error(slice)::out, io::di, io::uo) is det.
 
     % read_slice_to_string(File, SortStr, N, Module, SliceStr, Problem, !IO):
     %
-    % Read the slice(s) from try_single_first and File, and convert it
-    % to a string suitable for displaying on the screen, sorting it first
-    % using SortStr. SortStr can be any combination of the letters "cCtT"
-    % and indicates how the dice is to be sorted. See the documentation
-    % for the `mslice' tool in the user guide for an explanation of
-    % the sort string. Take only the top N lines of the sorted list.
+    % Read the slice from File, and convert it to a string suitable for
+    % displaying on the screen, sorting it first using SortStr. SortStr
+    % can be any combination of the letters "cCtT" and indicates how the slice
+    % is to be sorted. See the documentation for the `mslice' tool in the
+    % user guide for an explanation of the sort string. Take only the top N
+    % lines of the sorted list.
     %
-    % If Module is not the empty string then only labels from the named
-    % module will be included in the dice string, otherwise all modules
-    % will be included.
+    % If Module is not the empty string then only labels from the named module
+    % will be included in the dice string, otherwise all modules will be
+    % included.
     %
     % If there was a problem reading the trace counts then Problem will
     % contain a string describing the problem encountered and SliceStr
@@ -112,29 +111,21 @@
                                 % was executed in.
             ).
 
-    % read_dice(PassSource, PassFile, FailSource, FailFile, MaybeDice, !IO):
+    % read_dice(PassFile, FailFile, MaybeDice, !IO):
     %
-    % Read the slice(s) from PassSource and PassFile, interpreting them as
-    % passing slices; read the slice(s) from FailSource and FailFile,
-    % interpreting them as failing slices; then produce the dice you get
-    % from them.
+    % Read the slice from PassFile, interpreting it as (a union of) passing
+    % slices; read the slices from FailFile, interpreting it as (a union of)
+    % failing slices; then produce the dice you get from them.
     %
-:- pred read_dice(slice_source::in, string::in, slice_source::in, string::in,
-    maybe_error(dice)::out, io::di, io::uo) is det.
-
-    % Same as read_dice/7, but with PassSource and FailSource both
-    % try_single_first.
-    %
-:- pred read_dice_try_single_first(string::in, string::in,
-    maybe_error(dice)::out, io::di, io::uo) is det.
+:- pred read_dice(string::in, string::in, maybe_error(dice)::out,
+    io::di, io::uo) is det.
 
     % read_dice_to_string(PassFile, FailFile, SortStr, N, Module, DiceStr,
     %   Problem, !IO):
     %
-    % Read the slice(s) from try_single_first and PassFile, interpreting them
-    % as passing slices; read the slice(s) from try_single_first and FailFile,
-    % interpreting them as failing slices; then produce the dice you get
-    % from them.
+    % Read the slice from PassFile, interpreting it as (a union of) passing
+    % slices; read the slices from FailFile, interpreting it as (a union of)
+    % failing slices; then produce the dice you get from them.
     %
     % Then convert the dice to a string suitable for displaying on the screen,
     % sorting it first using SortStr. SortStr can be any combination of the
@@ -143,9 +134,9 @@
     % for an explanation of the sort string. Take only the top N lines
     % of the sorted list.
     %
-    % If Module is not the empty string then only labels from the named
-    % module will be included in the dice string, otherwise all modules
-    % will be included.
+    % If Module is not the empty string then only labels from the named module
+    % will be included in the dice string, otherwise all modules will be
+    % included.
     %
     % If there was a problem reading the trace counts then Problem will
     % contain a string describing the problem encountered and DiceStr
@@ -200,8 +191,8 @@
 % The mechanism for reading in slices. The structure is similar to the
 % mechanism for reading in dices below.
 
-read_slice(Source, File, Result, !IO) :-
-    read_trace_counts_source(no, Source, File, ReadResult, !IO),
+read_slice(File, Result, !IO) :-
+    read_trace_counts_source(File, ReadResult, !IO),
     (
         ReadResult = list_ok(FileType, TraceCounts),
         slice_merge_trace_counts(TraceCounts, map.init, SliceProcMap),
@@ -268,17 +259,19 @@ slice_add_trace_count(LineNoAndCount, ExecCounts0, ExecCounts) :-
 % The mechanism for reading in dices. The structure is similar to the
 % mechanism for reading in slices above.
 
-read_dice(PassSource, PassFile, FailSource, FailFile, Result, !IO) :-
-    read_trace_counts_source(no, PassSource, PassFile, ReadPassResult, !IO),
+:- pragma foreign_export("C", read_dice(in, in, out, di, uo),
+    "MR_MDB_read_dice").
+
+read_dice(PassFile, FailFile, Result, !IO) :-
+    read_trace_counts_source(PassFile, ReadPassResult, !IO),
     (
         ReadPassResult = list_ok(PassFileType, PassTraceCounts),
-        read_trace_counts_source(no, FailSource, FailFile, ReadFailResult,
-            !IO),
+        read_trace_counts_source(FailFile, ReadFailResult, !IO),
         (
             ReadFailResult = list_ok(FailFileType, FailTraceCounts),
-            dice_merge_trace_counts(pass, PassTraceCounts, map.init,
+            dice_merge_trace_counts(pass_slice, PassTraceCounts, map.init,
                 PassDiceProcMap),
-            dice_merge_trace_counts(fail, FailTraceCounts,
+            dice_merge_trace_counts(fail_slice, FailTraceCounts,
                 PassDiceProcMap, DiceProcMap),
             TotalPassTests = num_tests_for_file_type(PassFileType),
             TotalFailTests = num_tests_for_file_type(FailFileType),
@@ -292,13 +285,6 @@ read_dice(PassSource, PassFile, FailSource, FailFile, Result, !IO) :-
         ReadPassResult = list_error_message(Problem),
         Result = error(Problem)
     ).
-
-:- pragma foreign_export("C", read_dice_try_single_first(in, in, out, di, uo),
-    "MR_MDB_read_dice_try_single_first").
-
-read_dice_try_single_first(PassFile, FailFile, Result, !IO) :-
-    read_dice(try_single_first, PassFile, try_single_first, FailFile, Result,
-        !IO).
 
 :- pred maybe_dice_error_to_problem_string(maybe_error(dice)::in, string::out)
 	is det.
@@ -319,8 +305,8 @@ det_maybe_dice_error_to_dice(error(_), _) :-
 	error("det_maybe_dice_error_to_dice: result is error").
 
 :- type trace_counts_kind
-    --->    pass
-    ;       fail.
+    --->    pass_slice
+    ;       fail_slice.
 
     % Merge the passing or failing trace_counts into the given dice.
     %
@@ -360,11 +346,11 @@ dice_merge_path_port(FileName, Kind, PathPort, LineNoAndCount, !ProcDice) :-
     ;
         LineNoAndCount = line_no_and_count(LineNumber, ExecCount, NumTests),
         (
-            Kind = pass,
+            Kind = pass_slice,
             InitCount = dice_exec_count(FileName, LineNumber,
                 ExecCount, NumTests, 0, 0)
         ;
-            Kind = fail,
+            Kind = fail_slice,
             InitCount = dice_exec_count(FileName, LineNumber, 0, 0,
                 ExecCount, NumTests)
         ),
@@ -374,13 +360,13 @@ dice_merge_path_port(FileName, Kind, PathPort, LineNoAndCount, !ProcDice) :-
 :- pred dice_add_trace_count(trace_counts_kind::in, line_no_and_count::in,
     dice_exec_count::in, dice_exec_count::out) is det.
 
-dice_add_trace_count(pass, LineNoAndCount, ExecCounts0, ExecCounts) :-
+dice_add_trace_count(pass_slice, LineNoAndCount, ExecCounts0, ExecCounts) :-
     LineNoAndCount = line_no_and_count(_LineNumber, ExecCount, NumTests),
     ExecCounts0 = dice_exec_count(FileName, LineNumber,
         PassExec, PassTests, FailExec, FailTests),
     ExecCounts = dice_exec_count(FileName, LineNumber,
         PassExec + ExecCount, PassTests + NumTests, FailExec, FailTests).
-dice_add_trace_count(fail, LineNoAndCount, ExecCounts0, ExecCounts) :-
+dice_add_trace_count(fail_slice, LineNoAndCount, ExecCounts0, ExecCounts) :-
     LineNoAndCount = line_no_and_count(_LineNumber, ExecCount, NumTests),
     ExecCounts0 = dice_exec_count(FileName, LineNumber,
         PassExec, PassTests, FailExec, FailTests),
@@ -398,7 +384,7 @@ dice_add_trace_count(fail, LineNoAndCount, ExecCounts0, ExecCounts) :-
 
 read_slice_to_string(File, SortStr0, N, Module, SliceStr, Problem, !IO) :-
     ( slice_sort_string_is_valid(SortStr0) ->
-        read_slice(try_single_first, File, ReadSliceResult, !IO),
+        read_slice(File, ReadSliceResult, !IO),
         (
             ReadSliceResult = ok(Slice),
             Slice = slice(TotalTests, SliceProcMap),
@@ -581,8 +567,7 @@ format_slice_exec_count(slice_exec_count(_, _, Count, Tests)) =
 read_dice_to_string(PassFile, FailFile, SortStr, N, Module, DiceStr, Problem,
         !IO) :-
     ( dice_sort_string_is_valid(SortStr) ->
-        read_dice(try_single_first, PassFile, try_single_first, FailFile,
-            ReadDiceResult, !IO),
+        read_dice(PassFile, FailFile, ReadDiceResult, !IO),
         (
             ReadDiceResult = ok(Dice),
             Dice = dice(TotalPassTests, TotalFailTests, DiceProcMap),
@@ -850,7 +835,7 @@ proc_label_is_for_module(Module, ProcLabel) :-
     ;
         ProcLabel = special_proc_label(_, _, ProcSymModule, _, _, _)
     ),
-    string_to_sym_name(Module, ".", SymModule),
+    SymModule = string_to_sym_name(Module),
     is_submodule(ProcSymModule, SymModule).
 
 :- func format_proc_label(proc_label) = string.

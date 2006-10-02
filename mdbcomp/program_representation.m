@@ -379,12 +379,12 @@ atomic_goal_generates_event_like_call(event_call_rep(_, _)) = no.
 
 call_does_not_generate_events(ModuleName, PredName, Arity) :-
     (
-        string_to_sym_name(ModuleName, ".", SymModuleName),
+        SymModuleName = string_to_sym_name(ModuleName),
         non_traced_mercury_builtin_module(SymModuleName)
     ;
         % The debugger cannot handle calls to polymorphic builtins that 
         % do not take a type_info argument, so such calls are not traced.
-        string_to_sym_name(ModuleName, ".", SymModuleName),
+        SymModuleName = string_to_sym_name(ModuleName),
         no_type_info_builtin(SymModuleName, PredName, Arity)
     ;
         pred_is_external(ModuleName, PredName, Arity)
@@ -549,19 +549,19 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
     no_type_info_builtin_2(ModuleNameType, PredName, Arity),
     (
         ModuleNameType = builtin,
-        mercury_public_builtin_module(ModuleName)
+        ModuleName = mercury_public_builtin_module
     ;
         ModuleNameType = private_builtin,
-        mercury_private_builtin_module(ModuleName)
+        ModuleName = mercury_private_builtin_module
     ;
         ModuleNameType = table_builtin,
-        mercury_table_builtin_module(ModuleName)
+        ModuleName = mercury_table_builtin_module
     ;
         ModuleNameType = term_size_prof_builtin,
-        mercury_term_size_prof_builtin_module(ModuleName)
+        ModuleName = mercury_term_size_prof_builtin_module
     ;
         ModuleNameType = par_builtin,
-        mercury_par_builtin_module(ModuleName)
+        ModuleName = mercury_par_builtin_module
     ).
 
 :- type builtin_mod

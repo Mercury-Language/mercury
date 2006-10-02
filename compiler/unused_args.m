@@ -1150,7 +1150,7 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
             TypeName = type_ctor_name(ModuleInfo, TypeCtor),
             TypeArity = type_ctor_arity(ModuleInfo, TypeCtor),
             string.int_to_string(TypeArity, TypeArityStr),
-            sym_name_to_string(TypeModule, TypeModuleString0),
+            TypeModuleString0 = sym_name_to_string(TypeModule),
             string.replace_all(TypeModuleString0, ".", "__", TypeModuleString),
             string.append_list([Name0, "_", TypeModuleString, "__", TypeName,
                 "_", TypeArityStr], Name1)

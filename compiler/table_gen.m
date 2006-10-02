@@ -722,7 +722,7 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         purity_impure, Context, InactiveGoalInfo),
     InactiveGoal = InactiveGoalExpr - InactiveGoalInfo,
 
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     SwitchArms = [
         case(cons(qualified(TB, "loop_active"), 0), ActiveGoal),
         case(cons(qualified(TB, "loop_inactive"), 0), InactiveGoal)
@@ -923,7 +923,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
             Detism, purity_impure, Context, InactiveGoalInfo),
         InactiveGoal = InactiveGoalExpr - InactiveGoalInfo,
 
-        mercury_table_builtin_module(TB),
+        TB = mercury_table_builtin_module,
         SwitchArms = [
             case(cons(qualified(TB, "memo_det_active"), 0), ActiveGoal),
             case(cons(qualified(TB, "memo_det_inactive"), 0), InactiveGoal),
@@ -961,7 +961,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         InactiveGoal = InactiveGoalExpr - InactiveGoalInfo,
         FailedGoal = fail_goal,
 
-        mercury_table_builtin_module(TB),
+        TB = mercury_table_builtin_module,
         SwitchArms = [
             case(cons(qualified(TB, "memo_semi_active"), 0), ActiveGoal),
             case(cons(qualified(TB, "memo_semi_inactive"), 0), InactiveGoal),
@@ -1079,7 +1079,7 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     OutputVars = list.map(project_var, NumberedOutputVars),
     InactiveInstmapDelta = bind_vars(OutputVars),
 
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     SwitchArms = [
         case(cons(qualified(TB, "memo_non_active"), 0), InfiniteRecursionGoal),
         case(cons(qualified(TB, "memo_non_inactive"), 0), InactiveGoal),
@@ -1226,16 +1226,16 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         CounterVar),
     generate_new_table_var("StartVar", int_type, !VarSet, !VarTypes,
         StartVar),
-    generate_call("table_io_in_range", detism_semi,
+    table_generate_call("table_io_in_range", detism_semi,
         [TableVar, CounterVar, StartVar], purity_impure,
         ground_vars([TableVar, CounterVar, StartVar]),
         ModuleInfo, Context, InRangeGoal),
     generate_new_table_var("TipVar", trie_node_type, !VarSet, !VarTypes,
         TipVar),
-    generate_call("table_lookup_insert_start_int", detism_det,
+    table_generate_call("table_lookup_insert_start_int", detism_det,
         [TableVar, StartVar, CounterVar, TipVar], purity_impure,
         ground_vars([TipVar]), ModuleInfo, Context, LookupGoal),
-    generate_call("table_io_has_occurred", detism_semi, [TipVar],
+    table_generate_call("table_io_has_occurred", detism_semi, [TipVar],
         purity_impure, [], ModuleInfo, Context, OccurredGoal),
     (
         TableDecl = table_io_decl,
@@ -1288,7 +1288,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
             unexpected(this_file,
                 "create_new_io_goal: one in / one out violation")
         ),
-        generate_call("table_io_copy_io_state", detism_det,
+        table_generate_call("table_io_copy_io_state", detism_det,
             [IoStateAssignFromVar, IoStateAssignToVar], purity_pure,
             [IoStateAssignFromVar - ground(clobbered, none),
             IoStateAssignToVar - ground(unique, none)],
@@ -1319,11 +1319,11 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         Unitize = table_io_unitize,
         generate_new_table_var("SavedTraceEnabled", int_type,
             !VarSet, !VarTypes, SavedTraceEnabledVar),
-        generate_call("table_io_left_bracket_unitized_goal", detism_det,
+        table_generate_call("table_io_left_bracket_unitized_goal", detism_det,
             [SavedTraceEnabledVar], purity_impure,
             ground_vars([SavedTraceEnabledVar]),
             ModuleInfo, Context, LeftBracketGoal),
-        generate_call("table_io_right_bracket_unitized_goal", detism_det,
+        table_generate_call("table_io_right_bracket_unitized_goal", detism_det,
             [SavedTraceEnabledVar], purity_impure, [],
             ModuleInfo, Context, RightBracketGoal),
         CallSaveAnswerGoalList = [LeftBracketGoal, NewGoal,
@@ -1467,13 +1467,13 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         Context, MainGoalInfo),
     MainGoal = MainExpr - MainGoalInfo,
 
-    generate_call("table_mm_completion", detism_det, [SubgoalVar],
+    table_generate_call("table_mm_completion", detism_det, [SubgoalVar],
         purity_impure, [], ModuleInfo, Context, ResumeGoal0),
     append_fail(ResumeGoal0, ResumeGoal),
     InactiveExpr = disj([MainGoal, ResumeGoal]),
     InactiveGoal = InactiveExpr - MainGoalInfo,
 
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     SwitchArms = [
         case(cons(qualified(TB, "mm_inactive"), 0), InactiveGoal),
         case(cons(qualified(TB, "mm_complete"), 0), RestoreAllAnswerGoal),
@@ -1649,7 +1649,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         unexpected(this_file, "do_own_stack_transform: invalid determinism")
     ),
     % XXX consider inlining the predicate being called
-    generate_call(ConsumePredName, Detism, [ConsumerVar, AnswerBlockVar],
+    table_generate_call(ConsumePredName, Detism, [ConsumerVar, AnswerBlockVar],
         purity_impure, ground_vars([AnswerBlockVar]), ModuleInfo, Context,
         GetNextAnswerGoal),
     DebugArgStr = get_debug_arg_string(!.TableInfo),
@@ -2722,7 +2722,7 @@ generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
     generate_new_table_var("AnswerBlock", answer_block_type,
         !VarSet, !VarTypes, AnswerBlockVar),
     ModuleInfo = TableInfo ^ table_module_info,
-    generate_call(ReturnAllAns, Detism, [RecordVar, AnswerBlockVar],
+    table_generate_call(ReturnAllAns, Detism, [RecordVar, AnswerBlockVar],
         purity_semipure, ground_vars([AnswerBlockVar]), ModuleInfo,
         Context, ReturnAnswerBlocksGoal),
     DebugArgStr = get_debug_arg_string(TableInfo),
@@ -2794,7 +2794,7 @@ generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
     generate_new_table_var("AnswerBlock", answer_block_type,
         !VarSet, !VarTypes, AnswerBlockVar),
     ModuleInfo = TableInfo ^ table_module_info,
-    generate_call(PredName, Detism, [SubgoalVar, AnswerBlockVar],
+    table_generate_call(PredName, Detism, [SubgoalVar, AnswerBlockVar],
         Purity, ground_vars([AnswerBlockVar]), ModuleInfo,
         Context, ReturnAnswerBlocksGoal),
     DebugArgStr = get_debug_arg_string(TableInfo),
@@ -2892,15 +2892,15 @@ generate_error_goal(TableInfo, Context, Msg, !VarSet, !VarTypes, Goal) :-
     Arity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
-    sym_name_to_string(qualified(Module, Name), NameStr),
+    NameStr = sym_name_to_string(qualified(Module, Name)),
     string.int_to_string(Arity, ArityStr),
     Message = Msg ++ " in " ++ PredOrFuncStr ++ " " ++ NameStr
         ++ "/" ++ ArityStr,
 
     gen_string_construction("Message", Message, !VarSet, !VarTypes,
         MessageVar, MessageStrGoal),
-    generate_call("table_error", detism_erroneous, [MessageVar], purity_pure,
-        [], ModuleInfo, Context, CallGoal),
+    table_generate_call("table_error", detism_erroneous, [MessageVar],
+        purity_pure, [], ModuleInfo, Context, CallGoal),
 
     GoalExpr = conj(plain_conj, [MessageStrGoal, CallGoal]),
     goal_info_init_hide(set.init, bind_vars([]), detism_erroneous,
@@ -2917,13 +2917,13 @@ generate_new_table_var(Name, Type, !VarSet, !VarTypes, Var) :-
     varset.new_named_var(!.VarSet, Name, Var, !:VarSet),
     map.set(!.VarTypes, Var, Type, !:VarTypes).
 
-:- pred generate_call(string::in, determinism::in, list(prog_var)::in,
+:- pred table_generate_call(string::in, determinism::in, list(prog_var)::in,
     purity::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
-generate_call(PredName, Detism, Args, Purity, InstMapSrc, ModuleInfo, Context,
-        Goal) :-
-    mercury_table_builtin_module(BuiltinModule),
+table_generate_call(PredName, Detism, Args, Purity, InstMapSrc, ModuleInfo,
+        Context, Goal) :-
+    BuiltinModule = mercury_table_builtin_module,
     ( Purity = purity_pure ->
         Features0 = []
     ;
@@ -2946,7 +2946,6 @@ generate_call(PredName, Detism, Args, Purity, InstMapSrc, ModuleInfo, Context,
 
 table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
         Code, Purity, InstMapSrc, ModuleInfo, Context, Goal) :-
-    mercury_table_builtin_module(BuiltinModule),
     ( Purity = purity_pure ->
         Features0 = []
     ;
@@ -2957,6 +2956,7 @@ table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
     ;
         Features = Features0
     ),
+    BuiltinModule = mercury_table_builtin_module,
     MaybeTraceRuntimCond = no,
     goal_util.generate_foreign_proc(BuiltinModule, PredName, predicate,
         only_mode, Detism, Purity, Attributes, Args, ExtraArgs,
@@ -3002,44 +3002,44 @@ gen_string_construction(VarName, VarValue, !VarSet, !VarTypes, Var, Goal) :-
 :- func mm_status_type = mer_type.
 
 proc_table_info_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "ml_proc_table_info"), 0),
         [], Type).
 
 trie_node_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "ml_trie_node"), 0), [], Type).
 
 memo_non_record_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "memo_non_record"), 0), [], Type).
 
 subgoal_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "ml_subgoal"), 0), [], Type).
 
 answer_block_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "ml_answer_block"), 0), [], Type).
 
 loop_status_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "loop_status"), 0), [], Type).
 
 memo_det_status_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "memo_det_status"), 0), [], Type).
 
 memo_semi_status_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "memo_semi_status"), 0), [], Type).
 
 memo_non_status_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "memo_non_status"), 0), [], Type).
 
 mm_status_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "mm_status"), 0), [], Type).
 
 %-----------------------------------------------------------------------------%
@@ -3047,13 +3047,13 @@ mm_status_type = Type :-
 :- func consumer_type = mer_type.
 
 consumer_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "ml_consumer"), 0), [], Type).
 
 :- func generator_type = mer_type.
 
 generator_type = Type :-
-    mercury_table_builtin_module(TB),
+    TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "ml_generator"), 0), [], Type).
 
 :- type maybe_specified_method

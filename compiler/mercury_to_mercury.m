@@ -1600,13 +1600,13 @@ mercury_format_cons_id(pred_const(ShroudedPredProcId, EvalMethod), _, !U) :-
     add_lambda_eval_method(EvalMethod, !U),
     add_string(")>", !U).
 mercury_format_cons_id(type_ctor_info_const(Module, Type, Arity), _, !U) :-
-    sym_name_to_string(Module, ModuleString),
+    ModuleString = sym_name_to_string(Module),
     string.int_to_string(Arity, ArityString),
     add_strings(["<type_ctor_info for ",
         ModuleString, ".", Type, "/", ArityString, ">"], !U).
 mercury_format_cons_id(base_typeclass_info_const(Module, Class, InstanceNum,
         InstanceString), _, !U) :-
-    sym_name_to_string(Module, ModuleString),
+    ModuleString = sym_name_to_string(Module),
     add_string("<base_typeclass_info for ", !U),
     add_class_id(Class, !U),
     ( ModuleString \= "some bogus module name" ->
@@ -1784,7 +1784,7 @@ mercury_output_type_defn(TVarSet, Name, TParams,
             RefOrVal = value,
             RefOrValStr = "valuetype "
         ),
-        sym_name_to_string(ForeignTypeName, ".", NameStr),
+        NameStr = sym_name_to_string(ForeignTypeName),
         ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++ "]" ++ NameStr
     ;
         ForeignType = c(c_type(ForeignTypeStr))

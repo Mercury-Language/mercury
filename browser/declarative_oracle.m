@@ -398,15 +398,15 @@ get_trusted_list(Oracle, no, DisplayStr) :-
 
 format_trust_command(module(ModuleName),
         S, S ++ "trust " ++ ModuleNameStr ++ "\n") :-
-    sym_name_to_string(ModuleName, ".", ModuleNameStr).
+    ModuleNameStr = sym_name_to_string(ModuleName).
 format_trust_command(predicate(ModuleName, Name, Arity), S, S ++ Command) :-
     ArityStr = int_to_string(Arity),
-    sym_name_to_string(ModuleName, ".", ModuleNameStr),
+    ModuleNameStr = sym_name_to_string(ModuleName),
     Command = "trust pred*" ++ ModuleNameStr ++ "." ++ Name ++ "/"
         ++ ArityStr ++ "\n".
 format_trust_command(function(ModuleName, Name, Arity), S, S ++ Command) :-
     ArityStr = int_to_string(Arity - 1),
-    sym_name_to_string(ModuleName, ".", ModuleNameStr),
+    ModuleNameStr = sym_name_to_string(ModuleName),
     Command = "trust func*" ++ ModuleNameStr ++ "." ++ Name ++ "/"
         ++ ArityStr ++ "\n".
 format_trust_command(standard_library, S, S ++ "trust std lib\n").
@@ -415,16 +415,16 @@ format_trust_command(standard_library, S, S ++ "trust std lib\n").
     string::out) is det.
 
 format_trust_display(Id, module(ModuleName), S, S ++ Display) :-
-    sym_name_to_string(ModuleName, ".", ModuleNameStr),
+    ModuleNameStr = sym_name_to_string(ModuleName),
     Display = int_to_string(Id) ++ ": module " ++ ModuleNameStr ++ "\n".
 format_trust_display(Id, predicate(ModuleName, Name, Arity),
         S, S ++ Display) :-
-    sym_name_to_string(ModuleName, ".", ModuleNameStr),
+    ModuleNameStr = sym_name_to_string(ModuleName),
     Display = int_to_string(Id) ++ ": predicate " ++ ModuleNameStr ++ "." 
         ++ Name ++ "/" ++ int_to_string(Arity) ++ "\n".
 format_trust_display(Id, function(ModuleName, Name, Arity),
         S, S ++ Display) :-
-    sym_name_to_string(ModuleName, ".", ModuleNameStr),
+    ModuleNameStr = sym_name_to_string(ModuleName),
     Display = int_to_string(Id) ++ ": function " ++ ModuleNameStr ++ "." ++
         Name ++ "/" ++ int_to_string(Arity - 1) ++ "\n".
 format_trust_display(Id, standard_library, S, S ++ Display) :-

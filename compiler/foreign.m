@@ -610,15 +610,14 @@ to_type_string(lang_c, foreign(ForeignType, _)) = Result :-
     ;
         unexpected(this_file, "to_type_string: qualified C type")
     ).
-to_type_string(lang_csharp, foreign(ForeignType, _)) = Result :-
-    sym_name_to_string(ForeignType, ".", Result).
+to_type_string(lang_csharp, foreign(ForeignType, _)) =
+        sym_name_to_string(ForeignType).
 to_type_string(lang_managed_cplusplus, foreign(ForeignType, _)) =
-        Result ++ " *" :-
-    sym_name_to_string(ForeignType, "::", Result).
-to_type_string(lang_il, foreign(ForeignType, _)) = Result :-
-    sym_name_to_string(ForeignType, ".", Result).
-to_type_string(lang_java, foreign(ForeignType, _)) = Result :-
-    sym_name_to_string(ForeignType, ".", Result).
+        sym_name_to_string_sep(ForeignType, "::") ++ " *".
+to_type_string(lang_il, foreign(ForeignType, _)) =
+        sym_name_to_string(ForeignType).
+to_type_string(lang_java, foreign(ForeignType, _)) =
+        sym_name_to_string(ForeignType).
 
     % XXX does this do the right thing for high level data?
 to_type_string(lang_c, mercury(Type)) = Result :-

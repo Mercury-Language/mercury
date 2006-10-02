@@ -305,7 +305,7 @@ write_cons_id(ConsId, !IO) :-
     io.write_string(cons_id_to_string(ConsId), !IO).
 
 cons_id_to_string(cons(SymName, Arity)) = String :-
-    sym_name_to_string(SymName, SymNameString0),
+    SymNameString0 = sym_name_to_string(SymName),
     ( string.contains_char(SymNameString0, '*') ->
         % We need to protect against the * appearing next to a /
         Stuff = (pred(Char::in, Str0::in, Str::out) is det :-

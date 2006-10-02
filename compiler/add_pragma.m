@@ -2023,7 +2023,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
 
 create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         !ProcTable, !Status, !ModuleInfo, !QualInfo, !Specs) :-
-    mercury_table_builtin_module(TableBuiltinModule),
+    TableBuiltinModule = mercury_table_builtin_module,
     StatsTypeName = qualified(TableBuiltinModule, "proc_table_statistics"),
     StatsType = defined_type(StatsTypeName, [], kind_star),
     ArgDecl1 = type_and_mode(StatsType, out_mode),

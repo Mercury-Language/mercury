@@ -317,12 +317,16 @@ dice.pass3: dice
 	MERCURY_OPTIONS=--trace-count ./dice 10 11 100 && \
 	mv .mercury_trace_counts.*dice.* dice.pass3
 
+dice.passes: dice.pass1 dice.pass2 dice.pass3
+	MERCURY_OPTIONS= \
+	$(SLICE_DIR)mtc_union -o dice.passes dice.pass1 dice.pass2 dice.pass3
+
 dice.fail: dice
 	/bin/rm -f .mercury_trace_counts.*dice.*
 	MERCURY_OPTIONS=--trace-count ./dice 4 1 2 3 && \
 	mv .mercury_trace_counts.*dice.* dice.fail
 
-dice.out: dice dice.inp dice.pass1 dice.pass2 dice.pass3 dice.fail
+dice.out: dice dice.inp dice.passes dice.fail
 	$(MDB_STD) ./dice 4 1 2 3 < dice.inp > dice.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on

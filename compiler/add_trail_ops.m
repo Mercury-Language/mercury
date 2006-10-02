@@ -183,7 +183,7 @@ goal_expr_add_trail_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
         % make sure that it can't fail. So we use a call to
         % `private_builtin.unused' (which will call error/1) rather than
         % `fail' for the "then" part.
-        mercury_private_builtin_module(PrivateBuiltin),
+        PrivateBuiltin = mercury_private_builtin_module,
         generate_simple_call(PrivateBuiltin, "unused", predicate, only_mode,
             detism_det, purity_pure, [], [], [], ModuleInfo, Context, ThenGoal)
     ;
@@ -613,7 +613,7 @@ ticket_counter_type = c_pointer_type.
 
 trail_generate_call(PredName, Detism, Purity, Args, InstMap, ModuleInfo,
         Context, CallGoal) :-
-    mercury_private_builtin_module(BuiltinModule),
+    BuiltinModule = mercury_private_builtin_module,
     goal_util.generate_simple_call(BuiltinModule, PredName, predicate,
         only_mode, Detism, Purity, Args, [], InstMap, ModuleInfo, Context,
         CallGoal).
@@ -626,7 +626,7 @@ trail_generate_call(PredName, Detism, Purity, Args, InstMap, ModuleInfo,
 
 trail_generate_foreign_proc(PredName, Purity, InstMap,
         ModuleInfo, Context, Args, ForeignCode, ForeignProcGoal) :-
-    mercury_private_builtin_module(PrivateBuiltinModule),
+    PrivateBuiltinModule = mercury_private_builtin_module,
     Detism = detism_det,
     some [!ForeignProcAttrs] (
         % XXX handle other target languages here.

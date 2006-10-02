@@ -164,7 +164,7 @@ any_inst = any(shared).
 make_std_mode(Name, Args, make_std_mode(Name, Args)).
 
 make_std_mode(Name, Args) = Mode :-
-    mercury_public_builtin_module(MercuryBuiltin),
+    MercuryBuiltin = mercury_public_builtin_module,
     QualifiedName = qualified(MercuryBuiltin, Name),
     Mode = user_defined_mode(QualifiedName, Args).
 
@@ -561,7 +561,7 @@ strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
 strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
     (
         SymName0 = qualified(Module, Name),
-        mercury_public_builtin_module(Module)
+        Module = mercury_public_builtin_module
     ->
         SymName = unqualified(Name)
     ;

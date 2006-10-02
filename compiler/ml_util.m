@@ -649,8 +649,8 @@ type_needs_lowlevel_rep(Target, Type) :-
 
     % XXX Do we need to do the same for the Java back-end?
 type_ctor_needs_lowlevel_rep(target_il, type_ctor(TypeName, _Arity)) :-
-    mercury_public_builtin_module(Builtin),
-    mercury_private_builtin_module(PrivateBuiltin),
+    Builtin = mercury_public_builtin_module,
+    PrivateBuiltin = mercury_private_builtin_module,
     RttiImplementation = unqualified("rtti_implementation"),
     Univ = unqualified("univ"),
     MutVar = unqualified("mutvar"),
@@ -685,7 +685,7 @@ type_ctor_needs_lowlevel_rep(target_il, type_ctor(TypeName, _Arity)) :-
 %-----------------------------------------------------------------------------%
 
 gen_init_builtin_const(Name) = init_obj(Rval) :-
-    mercury_private_builtin_module(PrivateBuiltin),
+    PrivateBuiltin = mercury_private_builtin_module,
     MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
     % XXX These are actually enumeration constants.
     % Perhaps we should be using an enumeration type here,

@@ -215,8 +215,7 @@ describe_several_call_sites(Module, ShouldModuleQualify, Sites) = Pieces :-
 module_qualification(ModuleName, ShouldModuleQualify) = ModuleQualification :-
     (
         ShouldModuleQualify = should_module_qualify,
-        sym_name_to_string(ModuleName, ModuleNameString),
-        ModuleQualification = ModuleNameString ++ "."
+        ModuleQualification = sym_name_to_string(ModuleName) ++ "."
     ;
         ShouldModuleQualify = should_not_module_qualify,
         ModuleQualification = ""

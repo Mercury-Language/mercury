@@ -50,8 +50,7 @@ main(!IO) :-
             OutputFile \= ""
         ->
             stderr_stream(StdErr, !IO),
-            read_trace_counts_source(no, try_single_first, Arg1,
-                MaybeTraceCounts1, !IO),
+            read_trace_counts_source(Arg1, MaybeTraceCounts1, !IO),
             (
                 MaybeTraceCounts1 = list_ok(_, _)
             ;
@@ -59,8 +58,7 @@ main(!IO) :-
                 io.write_string(StdErr, Msg1, !IO),
                 io.nl(StdErr, !IO)
             ),
-            read_trace_counts_source(no, try_single_first, Arg2,
-                MaybeTraceCounts2, !IO),
+            read_trace_counts_source(Arg2, MaybeTraceCounts2, !IO),
             (
                 MaybeTraceCounts2 = list_ok(_, _)
             ;
@@ -100,10 +98,8 @@ main(!IO) :-
 :- pred usage(io::di, io::uo) is det.
 
 usage(!IO) :-
-    io.write_strings([
-        "Usage: mtc_diff -o outputfile file1 file2\n",
-        "file1, file2, etc can be trace count files or they can be files\n",
-        "that contains lists of the names of other trace count files.\n"],
+    io.write_string(
+        "Usage: mtc_diff -o outputfile tracecountfile1 tracecountfile2\n",
         !IO).
 
 %-----------------------------------------------------------------------------%

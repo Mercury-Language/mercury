@@ -1205,7 +1205,7 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleSymName = pred_info_module(PredInfo),
 
-    sym_name_to_string(ModuleSymName, "__", ModuleName),
+    ModuleName = sym_name_to_string_sep(ModuleSymName, "__"),
 
     code_util.make_local_entry_label(ModuleInfo, PredId, ProcId, no, Entry),
 
@@ -1286,7 +1286,7 @@ push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 
 find_arg_type_ctor_name(TypeCtor, TypeName) :-
     TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-    mdbcomp.prim_data.sym_name_to_string(TypeCtorSymName, TypeCtorName),
+    TypeCtorName = sym_name_to_string(TypeCtorSymName),
     string.int_to_string(TypeCtorArity, ArityStr),
     string.append_list([TypeCtorName, "_", ArityStr], TypeName).
 

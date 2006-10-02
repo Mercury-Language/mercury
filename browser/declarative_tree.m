@@ -1512,8 +1512,7 @@ atomic_goal_matches_atom(AtomicGoalId, Atom) :-
     ProcLabel = get_proc_label_from_layout(Atom ^ proc_layout),
     get_pred_attributes(ProcLabel, EventModule, EventName, _, _),
     EventArity = length(Atom ^ atom_args),
-    sym_name_to_string(EventModule, ".", EventModuleStr),
-    EventModuleStr = GoalModule,
+    GoalModule = sym_name_to_string(EventModule),
     EventName = GoalName,
     EventArity = GoalArity.
 

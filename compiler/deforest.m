@@ -462,7 +462,7 @@ propagate_conj_constraints([Goal0 | Goals0], NonLocals, RevGoals0, Goals,
         ), Goals0, Constraints, Goals1),
         Constraints = [_ | _]
     ->
-        sym_name_to_string(SymName, SymNameString),
+        SymNameString = sym_name_to_string(SymName),
         pd_debug_message("propagating constraints into call to %s\n",
             [s(SymNameString)], !IO),
 

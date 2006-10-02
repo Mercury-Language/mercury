@@ -220,7 +220,7 @@ read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-
     maybe_write_string(VeryVerbose,
         "% Reading transitive optimization interface for module", !IO),
     maybe_write_string(VeryVerbose, " `", !IO),
-    sym_name_to_string(Import, ImportString),
+    ImportString = sym_name_to_string(Import),
     maybe_write_string(VeryVerbose, ImportString, !IO),
     maybe_write_string(VeryVerbose, "'... ", !IO),
     maybe_flush_output(VeryVerbose, !IO),

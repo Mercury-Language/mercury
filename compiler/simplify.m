@@ -1560,7 +1560,6 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     simplify_info_set_var_types(VarTypes, !Info),
 
     % Construct the call to compare/3.
-    mercury_public_builtin_module(BuiltinModule),
     hlds_goal.goal_info_get_context(GoalInfo, Context),
     Args     = [TI, R, X, Y],
 
@@ -1577,6 +1576,7 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
 
     Unique   = ground(unique, none),
     ArgInsts = [R - Unique],
+    BuiltinModule = mercury_public_builtin_module,
     goal_util.generate_simple_call(BuiltinModule, "compare", predicate,
         mode_no(ModeNo), detism_det, purity_pure, Args, [], ArgInsts,
         ModuleInfo, Context, CmpGoal0),

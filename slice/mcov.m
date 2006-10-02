@@ -53,8 +53,8 @@ main(!IO) :-
         (
             Args = [_ | _],
             lookup_bool_option(OptionTable, verbose, Verbose),
-            read_and_union_trace_counts(Verbose, try_single_first, Args,
-                _NumTests, FileTypes, TraceCounts, MaybeReadError, !IO),
+            read_and_union_trace_counts(Verbose, Args, _NumTests, FileTypes,
+                TraceCounts, MaybeReadError, !IO),
             stderr_stream(StdErr, !IO),
             (
                 MaybeReadError = yes(ReadErrorMsg),
@@ -75,14 +75,25 @@ main(!IO) :-
                     io.write_string(StdErr, consistency_warning, !IO)
                 ),
                 lookup_bool_option(OptionTable, detailed, Detailed),
+                lookup_accumulating_option(OptionTable, modules, Modules),
+                (
+                    Modules = [],
+                    RestrictToModules = no
+                ;
+                    Modules = [_ | _],
+                    ModuleSyms = list.map(string_to_sym_name, Modules),
+                    RestrictToModules = yes(set.list_to_set(ModuleSyms))
+                ),
                 lookup_string_option(OptionTable, output_filename, OutputFile),
                 ( OutputFile = "" ->
-                    write_coverage_test(Detailed, TraceCounts, !IO)
+                    write_coverage_test(Detailed, RestrictToModules,
+                        TraceCounts, !IO)
                 ;
                     io.tell(OutputFile, OpenRes, !IO),
                     (
                         OpenRes = ok,
-                        write_coverage_test(Detailed, TraceCounts, !IO)
+                        write_coverage_test(Detailed, RestrictToModules,
+                            TraceCounts, !IO)
                     ;
                         OpenRes = error(OpenErrorMsg),
                         io.write_string(StdErr, "Error opening " ++
@@ -129,10 +140,21 @@ consistency_warning =
                 label_path_port     :: path_port
             ).
 
-:- pred write_coverage_test(bool::in, trace_counts::in, io::di, io::uo) is det.
+:- type trace_counts_list ==
+    assoc_list(proc_label_in_context, proc_trace_counts).
 
-write_coverage_test(Detailed, TraceCountMap, !IO) :-
-    map.to_assoc_list(TraceCountMap, TraceCounts),
+:- pred write_coverage_test(bool::in, maybe(set(module_name))::in,
+    trace_counts::in, io::di, io::uo) is det.
+
+write_coverage_test(Detailed, RestrictToModules, TraceCountMap, !IO) :-
+    map.to_assoc_list(TraceCountMap, TraceCounts0),
+    (
+        RestrictToModules = no,
+        TraceCounts = TraceCounts0
+    ;
+        RestrictToModules = yes(Modules),
+        list.filter(in_module_set(Modules), TraceCounts0, TraceCounts)
+    ),
     (
         Detailed = no,
         collect_zero_count_local_procs(TraceCounts, ZeroCountProcs),
@@ -147,10 +169,16 @@ write_coverage_test(Detailed, TraceCountMap, !IO) :-
         list.foldl(write_label_info, SortedZeroCountLabels, !IO)
     ).
 
+:- pred in_module_set(set(module_name)::in, pair(proc_label_in_context, T)::in)
+    is semidet.
+
+in_module_set(Modules, ProcLabelInContext - _) :-
+    ProcLabelInContext = proc_label_in_context(Module, _, _),
+    set.member(Module, Modules).
+
 %-----------------------------------------------------------------------------%
 
-:- pred collect_zero_count_local_procs(
-    assoc_list(proc_label_in_context, proc_trace_counts)::in,
+:- pred collect_zero_count_local_procs(trace_counts_list::in,
     list(proc_info)::out) is det.
 
 collect_zero_count_local_procs(TraceCounts, ZeroCountProcInfos) :-
@@ -160,8 +188,7 @@ collect_zero_count_local_procs(TraceCounts, ZeroCountProcInfos) :-
     list.filter_map(is_zero_count_local_proc(ProcInfoMap), CountList,
         ZeroCountProcInfos).
 
-:- pred collect_proc_infos_counts(
-    assoc_list(proc_label_in_context, proc_trace_counts)::in,
+:- pred collect_proc_infos_counts(trace_counts_list::in,
     map(proc_label, proc_info)::in, map(proc_label, proc_info)::out,
     map(proc_label, int)::in, map(proc_label, int)::out) is det.
 
@@ -210,8 +237,7 @@ is_zero_count_local_proc(ProcInfoMap, ProcLabel - Count, ProcInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred collect_zero_count_local_labels(
-    assoc_list(proc_label_in_context, proc_trace_counts)::in,
+:- pred collect_zero_count_local_labels(trace_counts_list::in,
     list(label_info)::in, list(label_info)::out) is det.
 
 collect_zero_count_local_labels([], !ZeroLabelInfos).
@@ -325,20 +351,24 @@ write_path_port_for_user(port_and_path(Port, Path), !IO) :-
 
 usage(!IO) :-
     io.write_strings([
-        "Usage: mct [-d] [-v] [-o output_file] file1 file2 ...\n",
+        "Usage: mcov [-d] [-v] [-m module] [-o output_file] file1 file2 ...\n",
         "The -d or --detailed option causes the printing of a report for\n",
         "each label that has not been executed, even if some other code\n",
         "has been executed in the same procedure.\n",
         "The -v or --verbose option causes each trace count file name\n",
         "to be printed as it is added to the union.\n",
-        "file1, file2, etc can be trace count files or they can be files\n",
-        "that contains lists of the names of other trace count files.\n"],
+        "file1, file2, etc should be trace count files.\n",
+        "If one or more -m or --module options are given, then the output\n",
+        "will be restricted to the modules named by their arguments.\n",
+        "The argument of the -o or --output-file option gives the name\n",
+        "of the output file.\n"],
         !IO).
 
 %-----------------------------------------------------------------------------%
 
 :- type option
     --->    detailed
+    ;       modules
     ;       output_filename
     ;       verbose.
 
@@ -349,15 +379,18 @@ usage(!IO) :-
 :- pred option_default(option::out, option_data::out) is multi.
 
 option_default(detailed,        bool(no)).
+option_default(modules,         accumulating([])).
 option_default(output_filename, string("")).
 option_default(verbose,         bool(no)).
 
 short_option('d',               detailed).
+short_option('m',               modules).
 short_option('o',               output_filename).
 short_option('v',               verbose).
 
 long_option("detailed",         detailed).
-long_option("out",              output_filename).
+long_option("module",           modules).
+long_option("output-file",      output_filename).
 long_option("verbose",          verbose).
 
 %-----------------------------------------------------------------------------%

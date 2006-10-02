@@ -100,7 +100,8 @@
     ;       actual_severity_informational.
 
 :- type error_phase
-    --->    phase_term_to_parse_tree
+    --->    phase_read_files
+    ;       phase_term_to_parse_tree
     ;       phase_parse_tree_to_hlds
     ;       phase_type_check
     ;       phase_mode_check
@@ -1210,13 +1211,12 @@ get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
 
 %-----------------------------------------------------------------------------%
 
-describe_sym_name_and_arity(SymName / Arity) = String :-
-    sym_name_to_string(SymName, SymNameString),
-    String = string.append_list(["`", SymNameString, "/",
+describe_sym_name_and_arity(SymName / Arity) =
+    string.append_list(["`", sym_name_to_string(SymName), "/",
         string.int_to_string(Arity), "'"]).
 
-describe_sym_name(SymName) = string.append_list(["`", SymNameString, "'"]) :-
-    sym_name_to_string(SymName, SymNameString).
+describe_sym_name(SymName) =
+    string.append_list(["`", sym_name_to_string(SymName), "'"]).
 
 pred_or_func_to_string(predicate) = "predicate".
 pred_or_func_to_string(function) = "function".

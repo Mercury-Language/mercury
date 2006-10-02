@@ -160,8 +160,7 @@ tuple_arguments(!ModuleInfo, !IO) :-
         report_warning("Warning: --tuple requires " ++
             "--tuple-trace-counts-file to work.\n", !IO)
     ;
-        read_trace_counts_source(no, try_single_first, TraceCountsFile,
-            Result, !IO),
+        read_trace_counts_source(TraceCountsFile, Result, !IO),
         (
             Result = list_ok(_, TraceCounts),
             tuple_arguments_2(!ModuleInfo, TraceCounts, !IO)

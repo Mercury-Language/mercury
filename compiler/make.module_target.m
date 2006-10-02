@@ -350,7 +350,7 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
 
 build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
         _Imports, AllOptionArgs, ErrorStream, Succeeded, !Info, !IO) :-
-    sym_name_to_string(ModuleName, ".", ModuleArg),
+    ModuleArg = sym_name_to_string(ModuleName),
 
     globals.io_lookup_bool_option(verbose_commands, Verbose, !IO),
     (

@@ -51,8 +51,8 @@ main(!IO) :-
             OutputFile \= ""
         ->
             lookup_bool_option(OptionTable, verbose, Verbose),
-            read_and_union_trace_counts(Verbose, try_single_first, Args,
-                NumTests, Kinds, TraceCounts, MaybeReadError, !IO),
+            read_and_union_trace_counts(Verbose, Args, NumTests, Kinds,
+                TraceCounts, MaybeReadError, !IO),
             stderr_stream(StdErr, !IO),
             (
                 MaybeReadError = yes(ReadErrorMsg),
@@ -89,8 +89,7 @@ usage(!IO) :-
         "Usage: mtc_union [-v] -o output_file file1 file2 ...\n",
         "The -v or --verbose option causes each trace count file name\n",
         "to be printed as it is added to the union.\n",
-        "file1, file2, etc can be trace count files or they can be files\n",
-        "that contains lists of the names of other trace count files.\n"],
+        "file1, file2, etc should be trace count files.\n"],
         !IO).
 
 %-----------------------------------------------------------------------------%

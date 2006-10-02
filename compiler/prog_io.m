@@ -454,7 +454,7 @@ search_for_module_source(Dirs, ModuleName, PartialModuleName, Result, !IO) :-
             search_for_module_source(Dirs, ModuleName, PartialModuleName1,
                 Result, !IO)
         ;
-            sym_name_to_string(ModuleName, ModuleNameStr),
+            ModuleNameStr = sym_name_to_string(ModuleName),
             Result = error("can't find source for module `" ++
                 ModuleNameStr ++ "'")
         )
@@ -695,7 +695,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
             ModuleName = StartModuleName,
             Messages = []
         ;
-            sym_name_to_string(StartModuleName, StartModuleNameString),
+            StartModuleNameString = sym_name_to_string(StartModuleName),
             WrongModuleWarning = "source file `" ++ SourceFileName ++
                 "' contains module named `" ++ StartModuleNameString ++ "'",
             maybe_add_warning(WarnWrong, MaybeFirstTerm, FirstContext,
@@ -4093,7 +4093,7 @@ parse_symbol_name(Term, Result) :-
         )
     ;
         ( Term = term.functor(term.atom(Name), [], _Context3) ->
-            string_to_sym_name(Name, "__", SymName),
+            SymName = string_to_sym_name_sep(Name, "__"),
             Result = ok1(SymName)
         ;
             term.coerce(Term, ErrorTerm),
@@ -4183,7 +4183,7 @@ parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
         )
     ;
         ( Term = term.functor(term.atom(Name), Args, _) ->
-            string_to_sym_name(Name, "__", SymName),
+            SymName = string_to_sym_name_sep(Name, "__"),
             Result = ok2(SymName, Args)
         ;
             string.append("atom expected in ", Msg, ErrorMsg),

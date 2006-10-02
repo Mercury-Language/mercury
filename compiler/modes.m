@@ -1473,7 +1473,7 @@ modecheck_goal_expr(scope(Reason, SubGoal0), GoalInfo0, GoalExpr, !ModeInfo,
 
 modecheck_goal_expr(plain_call(PredId, ProcId0, Args0, _, Context, PredName),
         GoalInfo0, Goal, !ModeInfo, !IO) :-
-    sym_name_to_string(PredName, PredNameString),
+    PredNameString = sym_name_to_string(PredName),
     string.append("call ", PredNameString, CallString),
     mode_checkpoint(enter, CallString, !ModeInfo, !IO),
 

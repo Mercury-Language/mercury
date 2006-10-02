@@ -259,7 +259,7 @@ write_quoted_sym_name(SymName, !IO) :-
     io.write_string("'", !IO).
 
 sym_name_and_arity_to_string(SymName/Arity) = String :-
-    sym_name_to_string(SymName, SymNameString),
+    SymNameString = sym_name_to_string(SymName),
     string.int_to_string(Arity, ArityString),
     string.append_list([SymNameString, "/", ArityString], String).
 

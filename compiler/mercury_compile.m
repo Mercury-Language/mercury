@@ -902,7 +902,7 @@ read_module_or_file(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
         MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Parsing module `", !IO),
-    sym_name_to_string(ModuleName, ModuleNameString),
+    ModuleNameString = sym_name_to_string(ModuleName),
     maybe_write_string(Verbose, ModuleNameString, !IO),
     maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
     (
@@ -1177,7 +1177,7 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         (
             non_traced_mercury_builtin_module(ModuleName),
             not (
-                    mercury_profiling_builtin_module(ModuleName),
+                    ModuleName = mercury_profiling_builtin_module,
                     TraceProf = yes
             )
         ->
@@ -1821,12 +1821,13 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
                 WarnNoTransOptDeps),
             (
                 WarnNoTransOptDeps = yes,
-                sym_name_to_string(ModuleName, ModuleString),
-                Msg1 = "Warning: cannot read trans-opt dependencies " ++
-                    "for module `" ++ ModuleString ++ "'.",
-                Msg2 = "You need to remake the dependencies.",
-                write_error_pieces_plain([words(Msg1), nl, words(Msg2)], !IO),
-                record_warning(!IO)
+                Pieces = [words("Warning: cannot read trans-opt dependencies"),
+                    words("for module"), sym_name(ModuleName), suffix("."), nl,
+                    words("You need to remake the dependencies."), nl],
+                Msg = error_msg(no, no, 0, [always(Pieces)]),
+                Spec = error_spec(severity_warning, phase_read_files, [Msg]),
+                % XXX _NumErrors
+                write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
             ;
                 WarnNoTransOptDeps = no
             )

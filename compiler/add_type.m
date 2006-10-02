@@ -799,7 +799,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         % XXX We should record each error.
         % using module_info_incr_errors
         FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
-        sym_name_to_string(FieldName, FieldString),
+        FieldString = sym_name_to_string(FieldName),
         Pieces = [words("Error: field"), quote(FieldString),
             words("multiply defined.")],
         Msg1 = simple_msg(Context, [always(Pieces)]),

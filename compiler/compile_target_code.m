@@ -1308,7 +1308,7 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
             %       directory which is the one where the library is going to
             %       be installed, *not* where it is going to be built. 
             %        
-            sym_name_to_string(ModuleName, BaseFileName),
+            BaseFileName = sym_name_to_string(ModuleName),
             globals.io_lookup_string_option(shared_library_extension,
                 SharedLibExt, !IO),
             ShLibFileName = "lib" ++ BaseFileName ++ SharedLibExt,

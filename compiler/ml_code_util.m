@@ -1336,7 +1336,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             (
                 TypeCtorSymName = unqualified(TypeName),
                 type_ctor_is_tuple(TypeCtor),
-                mercury_public_builtin_module(TypeModule)
+                TypeModule = mercury_public_builtin_module
             ;
                 TypeCtorSymName = qualified(TypeModule, TypeName)
             )
@@ -1429,7 +1429,7 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
         % The variable won't have been declared, so we need to generate
         % a dummy lval for this variable.
 
-        mercury_private_builtin_module(PrivateBuiltin),
+        PrivateBuiltin = mercury_private_builtin_module,
         MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
         ml_gen_type(Info, Type, MLDS_Type),
         Lval = var(qual(MLDS_Module, module_qual,
@@ -2014,7 +2014,7 @@ ml_type_category_might_contain_pointers(type_cat_user_ctor) = yes.
 trace_type_info_type(Type, RealType) :-
     Type = defined_type(TypeName, _, _),
     TypeName = qualified(PrivateBuiltin, Name),
-    mercury_private_builtin_module(PrivateBuiltin),
+    PrivateBuiltin = mercury_private_builtin_module,
     ( Name = "type_info", RealType = sample_type_info_type
     ; Name = "type_ctor_info", RealType = c_pointer_type
     ; Name = "typeclass_info", RealType = sample_typeclass_info_type
@@ -2111,7 +2111,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     PredLabel = mlds_user_pred_label((predicate), no, PredName, PredOrigArity,
         model_det, no),
     ProcId = hlds_pred.initial_proc_id,
-    mercury_private_builtin_module(PredModule),
+    PredModule = mercury_private_builtin_module,
     MLDS_Module = mercury_module_name_to_mlds(PredModule),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     QualProcLabel = qual(MLDS_Module, module_qual, ProcLabel),
@@ -2654,7 +2654,7 @@ get_copy_out_option(Globals, CodeModel) = CopyOut :-
 
 fixup_builtin_module(ModuleName0) = ModuleName :-
     ( ModuleName0 = unqualified("") ->
-        mercury_public_builtin_module(ModuleName)
+        ModuleName = mercury_public_builtin_module
     ;
         ModuleName = ModuleName0
     ).

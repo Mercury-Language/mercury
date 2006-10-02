@@ -82,7 +82,7 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
             (
                 TypeCtorSymName = unqualified(TypeName),
                 type_ctor_is_tuple(TypeCtor),
-                mercury_public_builtin_module(TypeModule)
+                TypeModule = mercury_public_builtin_module
             ;
                 TypeCtorSymName = qualified(TypeModule, TypeName)
             )

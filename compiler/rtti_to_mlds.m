@@ -228,7 +228,7 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
     TypeCtorData = type_ctor_data(Version, TypeModule, TypeName,
         TypeArity, UnifyUniv, CompareUniv, Flags, TypeCtorDetails),
     RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, TypeArity),
-    sym_name_to_string(TypeModule, TypeModuleName),
+    TypeModuleName = sym_name_to_string(TypeModule),
     NumPtags = type_ctor_details_num_ptags(TypeCtorDetails),
     NumFunctors = type_ctor_details_num_functors(TypeCtorDetails),
     FunctorsRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_functors),
@@ -311,7 +311,7 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
         MethodIdsInit = gen_init_rtti_id(ModuleName, MethodIdsRttiId)
     ),
     TCIdRttiId = tc_rtti_id(TCName, type_class_id),
-    sym_name_to_string(ModuleSymName, ModuleSymNameStr),
+    ModuleSymNameStr = sym_name_to_string(ModuleSymName),
     list.length(TVarNames, NumTVars),
     list.length(MethodIds, NumMethods),
     TCIdInit = init_struct(mlds_rtti_type(item_type(TCIdRttiId)), [
@@ -1226,7 +1226,7 @@ gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
         % don't have any qualifiers at this point, so we need to add
         % the `builtin' qualifier now.
         ( RttiModuleName = unqualified("") ->
-            mercury_public_builtin_module(ModuleName),
+            ModuleName = mercury_public_builtin_module,
             RttiTypeCtor = rtti_type_ctor(RttiModuleName,
                 RttiTypeName, RttiTypeArity)
         ;
