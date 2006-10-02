@@ -1,13 +1,14 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2005-2006 The University of Melbourne.
+# Copyright (C) 2005-2006 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 # Mmakefile for building the Mercury slice and dice tools.
 
-GRADE = $(DEFAULT_GRADE)
-MC = mmc
+MERCURY_DIR=..
+LINK_STATIC=yes
+include $(MERCURY_DIR)/Mmake.common
 
 -include Mmake.slice.params
 
@@ -21,104 +22,128 @@ include Mercury.options
 
 MAIN_TARGET		= all
 
-# If you add more modules, you'll also have to modify ../Mmakefile.
-MERCURY_MAIN_MODULES	= mcov mslice mdice mtc_union mtc_diff
-MERCURY_MAIN_MODULES_MS	= $(mcov.ms) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) \
-				$(mtc_diff.ms)
+-# If you add more modules, you'll also have to modify ../Mmakefile.
+MERCURY_MAIN_MODULES	= mslice mdice mtc_union mcov mtc_diff
 
 DEPENDS	= $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
 INTS	= $(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
 INT3S	= $(patsubst %,%.int3s,$(MERCURY_MAIN_MODULES))
 CHECKS	= $(patsubst %,%.check,$(MERCURY_MAIN_MODULES))
 
+VPATH = $(MDBCOMP_DIR) $(LIBRARY_DIR)
+
 #-----------------------------------------------------------------------------#
 
-MDBCOMP_DIR = ../mdbcomp
-
-MDBCOMP_MODULES = \
-	mdbcomp.m \
-	prim_data.m \
-	program_representation.m \
-	rtti_access.m \
-	slice_and_dice.m \
-	trace_counts.m
-
-MDBCOMP_ORIG_MODULES = $(patsubst %,$(MDBCOMP_DIR)/%,$(MDBCOMP_MODULES))
+MLFLAGS += --shared
+MCFLAGS += --flags SLICE_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend:	$(MDBCOMP_MODULES) $(DEPENDS)
+depend:	$(DEPENDS)
+
+$(DEPENDS): SLICE_FLAGS
 
 .PHONY: all
-all:	$(MDBCOMP_MODULES) $(MERCURY_MAIN_MODULES) tags_file_exists
+all:	$(MERCURY_MAIN_MODULES) $(TAGS_FILE_EXISTS)
 
-# We need to start by turn write permission on for each copied file
-# in case some exist, but we need to ignore errors in case some don't exist.
-# The exit 0 is to prevent make itself from printing a message about the
-# (ignored) failure of an action.
-#
-# We could modify the action here to copy only the changed files.
+#-----------------------------------------------------------------------------#
 
-$(MDBCOMP_MODULES): $(MDBCOMP_ORIG_MODULES)
-	-@chmod a+w $(MDBCOMP_MODULES) > /dev/null 2>&1; exit 0
-	cp $(MDBCOMP_ORIG_MODULES) .
-	@chmod a-w $(MDBCOMP_MODULES)
+# Add some additional dependencies, so that Mmake knows to remake the
+# slicer and dicer if one of the libraries changes.
 
-PROGS:
-	echo $(MERCURY_MAIN_MODULES) > PROGS
+ifeq ("$(filter il% java%,$(GRADE))","")        
+mslice: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mslice: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mslice: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+mdice: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mdice: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mdice: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+# XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
+# if in .gc(.prof) grade.
+mtc_union: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mtc_union: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mtc_union: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+mcov: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mcov: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mcov: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+mtc_diff: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mtc_diff: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mtc_diff: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+endif
+
+$(cs_subdir)mslice_init.c: $(UTIL_DIR)/mkinit
+$(cs_subdir)mdice_init.c: $(UTIL_DIR)/mkinit
+$(cs_subdir)mtc_union.c: $(UTIL_DIR)/mkinit
+$(cs_subdir)mcov.c: $(UTIL_DIR)/mkinit
+$(cs_subdir)mtc_diff.c: $(UTIL_DIR)/mkinit
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: check
 check:	$(CHECKS)
 
-.PHONY: ints
+.PHONY: ints 
 ints:	$(INTS)
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MERCURY_MAIN_MODULES_MS) $(MDBCOMP_DIR)/*.m ../library/*.m
-	mtags $(MERCURY_MAIN_MODULES_MS) $(MDBCOMP_DIR)/*.m ../library/*.m
+tags:	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
+	$(mtc_diff.ms) $($(LIBRARY_DIR)/*.m
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
-	mtags $(MERCURY_MAIN_MODULES_MS) $(MDBCOMP_DIR)/*.m ../library/*.m; \
+	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) \
+	$(mcov.ms) $(mtc_union.ms) $(LIBRARY_DIR)/*.m; \
 	fi
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
 dates:
-	touch $(mcov.dates) $(mslice.dates) $(mdice.dates) \
-		$(mtc_union.dates) $(mtc_diff.dates)
+	touch $(mslice.dates) $(mdice.dates) $(mtc_union.dates) \
+		$(mcov.dates) $(mtc_diff.ms)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs ss ils
-os:	$(mcov.os) $(mslice.os) $(mdice.os) $(mtc_union.os) $(mtc_diff.os) \
-	$(os_subdir)mcov_init.o \
-	$(os_subdir)mslice_init.o \
-	$(os_subdir)mdice_init.o \
-	$(os_subdir)mtc_union_init.o \
-	$(os_subdir)mtc_diff_init.o
-cs:	$(mcov.cs) $(mslice.cs) $(mdice.cs) $(mtc_union.cs) $(mtc_diff.cs) \
-	$(cs_subdir)mcov_init.c \
-	$(cs_subdir)mslice_init.c \
-	$(cs_subdir)mdice_init.c \
-	$(cs_subdir)mtc_union_init.c \
-	$(cs_subdir)mtc_diff_init.c
-ss:	$(mcov.ss) $(mslice.ss) $(mdice.ss) $(mtc_union.ss) $(mtc_diff.ss)
-ils:	$(mcov.ils) $(mslice.ils) $(mdice.ils) $(mtc_union.ils) $(mtc_diff.ils)
+os:	$(mslice.os) $(mdice.os) $(mtc_union.os) \
+	$(os_subdir)mslice_init.o $(os_subdir)mdice_init.o \
+	$(os_subdir)mtc_union.o $(os_subdir)mcov.o \
+	$(os_subdir)mtc_diff.o
+cs:	$(mslice.cs) $(mdice.cs) $(mtc_union.cs) \
+	$(cs_subdir)mslice_init.c $(cs_subdir)mdice_init.c \
+	$(cs_subdir)mtc_union.c $(cs_subdir)mcov.c \
+	$(cs_subdir)mtc_diff.c
+ss:	$(mslice.ss) $(mdice.ss) $(mtc_union.ss) $(mcov.ss) $(mtc_diff.ss)
+ils:	$(mslice.ils) $(mdice.ils) $(mtc_union.ils) $(mcov.ils) $(mtc_diff.ils)
 
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	/bin/rm -fr $(MDBCOMP_MODULES) mdbcomp.*.err tags
+	rm -f tags SLICE_FLAGS SLICE_FLAGS.date
 
 #-----------------------------------------------------------------------------#
 
-# The installation targets are in the top-level Mmakefile.
+# Installation targets
+
+.PHONY: install
+install: install_slicer
+
+.PHONY: install_slicer
+install_slicer: mslice mdice mtc_union mcov mtc_diff
+	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mslice$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mslice$(EXT_FOR_EXE)
+	cp `vpath_find mdice$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mdice$(EXT_FOR_EXE)
+	cp `vpath_find mtc_union$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mtc_union$(EXT_FOR_EXE)
+	cp `vpath_find mcov$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mcov$(EXT_FOR_EXE)
+	cp `vpath_find mtc_diff$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mtc_diff$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#

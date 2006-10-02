@@ -52,17 +52,6 @@ SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:$$PATH \
 		MMAKE_DIR=../../scripts \
 		../../scripts/mmake $(MMAKEFLAGS)
 
-# Note that we compile the slice directory using the version of mmc,
-# mmake etc that we find in $PATH. We don't want to override this mmc
-# with the one in scripts, since that one will probably refer to a
-# nonexistent executable in /usr/local/mercury-DEV. This is why actions
-# referring to the slice directory should use $(PLAIN_SUBDIR_MMAKE)
-# instead of $(SUBDIR_MMAKE).
-
-PLAIN_SUBDIR_MMAKE = unset MMAKE; unset MMAKE_VPATH; unset MMAKE_DIR; \
-		unset MERCURY_CONFIG_DIR; unset MERCURY_STDLIB_DIR; \
-		mmake $(MMAKEFLAGS)
-
 GENERATED_DOCS = README INSTALL WORK_IN_PROGRESS TODO
 
 # If you change these, you will also need to change the files indicated
@@ -139,7 +128,7 @@ slice/$(deps_subdir)mslice.dep \
 slice/$(deps_subdir)mdice.dep \
 slice/$(deps_subdir)mtc_union.dep \
 slice/$(deps_subdir)mtc_diff.dep:
-	+cd slice && $(PLAIN_SUBDIR_MMAKE) depend
+	+cd slice && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_profiler
 dep_profiler: profiler/$(deps_subdir)mercury_profile.dep
@@ -198,7 +187,7 @@ depend_compiler:
 
 .PHONY: depend_slice
 depend_slice:
-	+cd slice && $(PLAIN_SUBDIR_MMAKE) depend
+	+cd slice && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_profiler
 depend_profiler:
@@ -271,7 +260,7 @@ doc: scripts util
 
 .PHONY: slice
 slice: dep_slice
-	+cd slice && $(PLAIN_SUBDIR_MMAKE)
+	+cd slice && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
 profiler: dep_profiler scripts util boehm_gc runtime library \
@@ -311,7 +300,7 @@ tags_analysis:
 
 .PHONY: tags_slice
 tags_slice:
-	+cd slice && $(PLAIN_SUBDIR_MMAKE) tags
+	+cd slice && $(SUBDIR_MMAKE) tags
 
 .PHONY: tags_profiler
 tags_profiler:
@@ -406,8 +395,8 @@ tar: $(GENERATED_DOCS)
 	+cd analysis && $(SUBDIR_MMAKE) all-ints cs tags
 	+cd compiler && $(SUBDIR_MMAKE) depend
 	+cd compiler && $(SUBDIR_MMAKE) cs tags
-	+cd slice && $(PLAIN_SUBDIR_MMAKE) depend
-	+cd slice && $(PLAIN_SUBDIR_MMAKE) cs tags
+	+cd slice && $(SUBDIR_MMAKE) depend
+	+cd slice && $(SUBDIR_MMAKE) cs tags
 	+cd profiler && $(SUBDIR_MMAKE) depend
 	+cd profiler && $(SUBDIR_MMAKE) cs tags
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
@@ -555,19 +544,9 @@ install_compiler: dep_compiler compiler
 install_doc: doc
 	+cd doc && $(SUBDIR_MMAKE) install
 
-# We can't leave the install actions for the slice directory to be executed
-# directly from slice/Mmakefile, since slice/Mmakefile doesn't have access
-# to the value of $(INSTALL_MERC_BIN_DIR).
-
 .PHONY: install_slice
 install_slice: slice
-	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
-	+cd slice &&							\
-	mmake PROGS &&							\
-	for prog in `cat PROGS` ; do					\
-		cp `vpath_find $$prog$(EXT_FOR_EXE)` 			\
-			$(INSTALL_MERC_BIN_DIR)/$$prog$(EXT_FOR_EXE);	\
-	done
+	+cd slice && $(SUBDIR_MMAKE) install
 
 .PHONY: install_profiler
 install_profiler: profiler
