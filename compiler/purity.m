@@ -112,8 +112,7 @@
 %   inline (since ordering is not an issue for them).
 %
 % To do:
-%   Reconsider whether impure or semipure parallel conjuncts should be
-%   allowed.  Currently both are disallowed.
+%   Reconsider whether impure parallel conjuncts should be allowed.
 %
 %-----------------------------------------------------------------------------%
 
@@ -927,11 +926,11 @@ compute_parallel_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity,
         !ContainsTrace, !Info) :-
     compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
     (
-        GoalPurity = purity_pure
+        ( GoalPurity = purity_pure
+        ; GoalPurity = purity_semipure
+        )
     ;
-        ( GoalPurity = purity_semipure
-        ; GoalPurity = purity_impure
-        ),
+        GoalPurity = purity_impure,
         Goal0 = _ - GoalInfo0,
         goal_info_get_context(GoalInfo0, Context),
         Spec = impure_parallel_conjunct_error(Context, GoalPurity),
@@ -1157,7 +1156,7 @@ impure_parallel_conjunct_error(Context, Purity) = Spec :-
     purity_name(Purity, PurityName),
     Pieces = [words("Purity error: parallel conjunct is"),
         fixed(PurityName ++ ","),
-        words("but parallel conjuncts must be pure.")],
+        words("but parallel conjuncts must be pure or semipure.")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 

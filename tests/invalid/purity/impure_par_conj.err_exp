@@ -1,8 +1,4 @@
-impure_par_conj.m:014: Purity error: parallel conjunct is semipure, but
-impure_par_conj.m:014:   parallel conjuncts must be pure.
 impure_par_conj.m:018: Purity error: parallel conjunct is impure, but parallel
-impure_par_conj.m:018:   conjuncts must be pure.
+impure_par_conj.m:018:   conjuncts must be pure or semipure.
 impure_par_conj.m:022: Purity error: parallel conjunct is impure, but parallel
-impure_par_conj.m:022:   conjuncts must be pure.
-impure_par_conj.m:024: Purity error: parallel conjunct is semipure, but
-impure_par_conj.m:024:   parallel conjuncts must be pure.
+impure_par_conj.m:022:   conjuncts must be pure or semipure.
