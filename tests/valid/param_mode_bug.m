@@ -34,5 +34,5 @@ foo(Y::out(I),  X::in(I)) :-
 	Y = X;
 ").
 
-:- pragma foreign_export("C", bar(in(I), out(I)), "BAR").
+:- pragma export(bar(in(I), out(I)), "BAR").
 bar(X, X).
