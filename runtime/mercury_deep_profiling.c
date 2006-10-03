@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2001-2005 The University of Melbourne.
+** Copyright (C) 2001-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,7 +60,7 @@ MR_ProcStatic   MR_main_parent_proc_static =
 
 MR_Proc_Layout_User MR_main_parent_proc_layout =
 {
-    { MR_do_not_reached, MR_DETISM_DET, -1, MR_LONG_LVAL_TYPE_UNKNOWN },
+    { MR_do_not_reached, { MR_LONG_LVAL_TYPE_UNKNOWN }, -1, MR_DETISM_DET },
     { MR_PREDICATE, "Mercury runtime", "Mercury runtime",
         "Mercury runtime", 0, 0 },
     NULL,
