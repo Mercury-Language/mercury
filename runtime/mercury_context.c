@@ -457,21 +457,6 @@ MR_schedule_spark_globally(MR_Spark *spark)
     MR_UNLOCK(&MR_runqueue_lock, "schedule_spark_globally");
 }
 
-void
-MR_schedule_spark_locally(MR_Spark *spark)
-{
-    MR_Context  *ctxt;
-
-    ctxt = MR_ENGINE(MR_eng_this_context);
-
-    /* 
-    ** Only the engine running the context is allowed to access
-    ** the context's spark stack, so no locking is required here.
-    */
-    spark->MR_spark_next = ctxt->MR_ctxt_spark_stack;
-    ctxt->MR_ctxt_spark_stack = spark;
-}
-
 
 MR_define_extern_entry(MR_do_runnext);
 

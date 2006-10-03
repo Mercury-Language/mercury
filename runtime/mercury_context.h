@@ -333,11 +333,6 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
 ** Append the given spark onto the end of the spark queue.
 */
 extern  void        MR_schedule_spark_globally(MR_Spark *spark);
-
-/*
-** Push the given spark onto the hot end of the context's spark stack.
-*/
-extern  void        MR_schedule_spark_locally(MR_Spark *spark);
 #endif /* !MR_HIGHLEVEL_CODE */
 
 #ifndef MR_HIGHLEVEL_CODE
@@ -379,6 +374,19 @@ extern  void        MR_schedule_spark_locally(MR_Spark *spark);
   #define MR_fork_globally_criteria                             \
     (MR_num_idle_engines != 0 &&                                \
     MR_num_outstanding_contexts_and_sparks < MR_max_outstanding_contexts)
+
+  #define MR_schedule_spark_locally(spark)                              \
+    do {                                                                \
+        MR_Context  *ssl_ctxt;                                          \
+                                                                        \
+        /*                                                              \
+        ** Only the engine running the context is allowed to access     \
+        ** the context's spark stack, so no locking is required here.   \
+        */                                                              \
+        ssl_ctxt = MR_ENGINE(MR_eng_this_context);                      \
+        spark->MR_spark_next = ssl_ctxt->MR_ctxt_spark_stack;           \
+        ssl_ctxt->MR_ctxt_spark_stack = spark;                          \
+    } while (0)
 
 #endif /* !MR_HIGHLEVEL_CODE */
 

@@ -106,8 +106,6 @@ MR_init_thread(MR_when_to_use when_to_use)
 #endif
     MR_load_engine_regs(MR_cur_engine());
 
-    MR_save_registers();
-
 #ifdef  MR_THREAD_SAFE
     MR_ENGINE(MR_eng_owner_thread) = pthread_self();
 #endif
@@ -130,6 +128,7 @@ MR_init_thread(MR_when_to_use when_to_use)
                         MR_CONTEXT_SIZE_REGULAR, NULL);
             }
             MR_load_context(MR_ENGINE(MR_eng_this_context));
+            MR_save_registers();
             return MR_TRUE;
         
         default:
