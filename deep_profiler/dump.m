@@ -187,7 +187,7 @@ dump_call_site_dynamic(Index, CallSiteDynamic, !IO) :-
 
 dump_own_prof_info(Own, !IO) :-
     decompress_profile(Own, Calls, Exits, Fails, Redos, Excps,
-        Quanta, Allocs, Words),
+        Quanta, CallSeqs, Allocs, Words),
     ( Calls = 0 ->
         true
     ;
@@ -217,6 +217,11 @@ dump_own_prof_info(Own, !IO) :-
         true
     ;
         io.format("\tquanta:\t%d\n", [i(Quanta)], !IO)
+    ),
+    ( CallSeqs = 0 ->
+        true
+    ;
+        io.format("\tcall_seqs:\t%d\n", [i(CallSeqs)], !IO)
     ),
     ( Allocs = 0 ->
         true

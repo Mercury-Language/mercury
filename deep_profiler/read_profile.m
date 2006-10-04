@@ -123,7 +123,7 @@ read_id_string(Res, !IO) :-
 % This must the same string as the one written by MR_write_out_id_string
 % in runtime/mercury_deep_profiling.c.
 
-id_string = "Mercury deep profiler data version 1\n".
+id_string = "Mercury deep profiler data version 2\n".
 
 :- func init_deep(int, int, int, int, int, int, int, int, int, int)
     = initial_deep.
@@ -620,15 +620,17 @@ read_profile(Res, !IO) :-
                 !MaybeError, !IO),
             maybe_read_num_handle_error(Mask, 0x0004, Fails,
                 !MaybeError, !IO),
-            maybe_read_num_handle_error(Mask, 0x0008, Redos,
+            maybe_read_num_handle_error(Mask, 0x0040, Redos,
                 !MaybeError, !IO),
-            maybe_read_num_handle_error(Mask, 0x0010, Excps,
+            maybe_read_num_handle_error(Mask, 0x0080, Excps,
                 !MaybeError, !IO),
-            maybe_read_num_handle_error(Mask, 0x0020, Quanta,
+            maybe_read_num_handle_error(Mask, 0x0100, Quanta,
                 !MaybeError, !IO),
-            maybe_read_num_handle_error(Mask, 0x0040, Mallocs,
+            maybe_read_num_handle_error(Mask, 0x0008, CallSeqs,
                 !MaybeError, !IO),
-            maybe_read_num_handle_error(Mask, 0x0080, Words,
+            maybe_read_num_handle_error(Mask, 0x0010, Allocs,
+                !MaybeError, !IO),
+            maybe_read_num_handle_error(Mask, 0x0020, Words,
                 !MaybeError, !IO),
             LastMaybeError = !.MaybeError
         ),
@@ -638,7 +640,7 @@ read_profile(Res, !IO) :-
         ;
             LastMaybeError = no,
             Res = ok(compress_profile(Exits, Fails, Redos, Excps,
-                Quanta, Mallocs, Words))
+                Quanta, CallSeqs, Allocs, Words))
         )
     ;
         Res0 = error(Error),

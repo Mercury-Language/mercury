@@ -534,7 +534,10 @@
 ** Enables deep profiling of port counts.
 **
 ** MR_DEEP_PROFILING_TIMING.
-** Enables deep profiling of time.
+** Enables deep profiling of time (obtained via clock interrupt signals).
+**
+** MR_DEEP_PROFILING_CALL_SEQ.
+** Enables deep profiling of time (obtained by counting call sequence numbers).
 **
 ** MR_DEEP_PROFILING_MEMORY.
 ** Enables deep profiling of memory usage.
@@ -545,11 +548,13 @@
   #define MR_DEEP_PROFILING_PORT_COUNTS
   #ifndef MR_DEEP_PROFILING_PERF_TEST
     #define MR_DEEP_PROFILING_TIMING
+    #define MR_DEEP_PROFILING_CALL_SEQ
     #define MR_DEEP_PROFILING_MEMORY
   #endif
 #else
   #undef  MR_DEEP_PROFILING_PORT_COUNTS
   #undef  MR_DEEP_PROFILING_TIMING
+  #undef  MR_DEEP_PROFILING_CALL_SEQ
   #undef  MR_DEEP_PROFILING_MEMORY
 #endif
 

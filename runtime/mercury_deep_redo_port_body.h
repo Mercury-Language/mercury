@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002, 2004 The University of Melbourne.
+** Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -41,6 +41,10 @@
 
   #ifdef MR_DEEP_PROFILING_PORT_COUNTS
 	csd->MR_csd_own.MR_own_redos++;
+  #endif
+
+  #ifdef MR_DEEP_PROFILING_CALL_SEQ
+	csd->MR_csd_own.MR_own_call_seqs -= MR_deep_prof_cur_call_seq;
   #endif
 
 	pd = csd->MR_csd_callee_ptr;

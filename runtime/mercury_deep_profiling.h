@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2004 The University of Melbourne.
+** Copyright (C) 2001-2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -40,6 +40,9 @@ struct MR_ProfilingMetrics_Struct {
 #endif
 #ifdef MR_DEEP_PROFILING_TIMING
 	volatile unsigned			MR_own_quanta;
+#endif
+#ifdef MR_DEEP_PROFILING_CALL_SEQ
+	unsigned				MR_own_call_seqs;
 #endif
 #ifdef MR_DEEP_PROFILING_MEMORY
 	unsigned				MR_own_allocs;
@@ -148,6 +151,16 @@ typedef enum {
   	((void) 0)
 #endif
 
+#ifdef MR_DEEP_PROFILING_CALL_SEQ
+  #define MR_init_own_call_seqs(csd)					\
+  	do {								\
+		(csd)->MR_csd_own.MR_own_call_seqs = 0;			\
+	} while (0)
+#else
+  #define MR_init_own_call_seqs(csd)					\
+  	((void) 0)
+#endif
+
 #ifdef MR_DEEP_PROFILING_MEMORY
   #define MR_init_own_memory(csd)					\
   	do {								\
@@ -176,6 +189,7 @@ typedef enum {
 		newcsd->MR_csd_callee_ptr = NULL;			\
 		MR_init_own_ports(newcsd);				\
 		MR_init_own_quanta(newcsd);				\
+		MR_init_own_call_seqs(newcsd);				\
 		MR_init_own_memory(newcsd);				\
 		MR_init_depth_count(newcsd);				\
 	} while (0)
@@ -308,6 +322,10 @@ extern	MR_CallSiteDynamic		*MR_root_call_sites[];
 extern	volatile MR_bool		MR_inside_deep_profiling_code;
 extern	volatile unsigned		MR_quanta_inside_deep_profiling_code;
 extern	volatile unsigned		MR_quanta_outside_deep_profiling_code;
+
+#ifdef MR_DEEP_PROFILING_CALL_SEQ
+extern	unsigned			MR_deep_prof_cur_call_seq;
+#endif
 
 #ifdef MR_DEEP_PROFILING_STATISTICS
 

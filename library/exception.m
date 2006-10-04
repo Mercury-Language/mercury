@@ -1588,7 +1588,7 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
         entry_layout = return_label_layout->MR_sll_entry;
         if (!MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)
             && MR_redoip_slot(base_curfr) ==
-            MR_ENTRY(MR_exception_handler_do_fail))
+                MR_ENTRY(MR_exception_handler_do_fail))
         {
             return NULL;
         }
@@ -1624,8 +1624,7 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
         }
 
     #ifndef MR_USE_ACTIVATION_COUNTS
-        old_outermost_slot = proc_static->
-            MR_ps_old_outermost_stack_slot;
+        old_outermost_slot = proc_static->MR_ps_old_outermost_stack_slot;
 
         if (old_outermost_slot <= 0) {
             MR_fatal_error(""builtin_throw: no old_outer slot"");
@@ -1639,32 +1638,31 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
                 MR_based_stackvar(base_sp, middle_csd_slot);
     #ifndef MR_USE_ACTIVATION_COUNTS
             old_outermost = (MR_ProcDynamic *)
-                MR_based_stackvar(base_sp,
-                    old_outermost_slot);
+                MR_based_stackvar(base_sp, old_outermost_slot);
     #endif
         } else {
             top_csd = (MR_CallSiteDynamic *)
                 MR_based_framevar(base_curfr, top_csd_slot);
             middle_csd = (MR_CallSiteDynamic *)
-                MR_based_framevar(base_curfr,
-                    middle_csd_slot);
+                MR_based_framevar(base_curfr, middle_csd_slot);
     #ifndef MR_USE_ACTIVATION_COUNTS
             old_outermost = (MR_ProcDynamic *)
-                MR_based_framevar(base_curfr,
-                    old_outermost_slot);
+                MR_based_framevar(base_curfr, old_outermost_slot);
     #endif
         }
 
         csd = middle_csd;
-        MR_deep_assert(csd, NULL, NULL,
-            csd == MR_current_call_site_dynamic);
+        MR_deep_assert(csd, NULL, NULL, csd == MR_current_call_site_dynamic);
 
     #ifdef MR_DEEP_PROFILING_PORT_COUNTS
         csd->MR_csd_own.MR_own_excps++;
     #endif
 
-        MR_deep_assert(csd, NULL, NULL,
-            csd->MR_csd_callee_ptr != NULL);
+    #ifdef MR_DEEP_PROFILING_CALL_SEQ
+        csd->MR_csd_own.MR_own_call_seqs += MR_deep_prof_cur_call_seq;
+    #endif
+
+        MR_deep_assert(csd, NULL, NULL, csd->MR_csd_callee_ptr != NULL);
         pl = csd->MR_csd_callee_ptr->MR_pd_proc_layout;
         MR_deep_assert(csd, pl, NULL, pl != NULL);
         ps = pl->MR_sle_proc_static;
@@ -1721,7 +1719,7 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
 #define swap_heaps()                                                \\
 {                                                                   \\
     /* save the current heap */                                     \\
-    MR_Word     *swap_heaps_temp_hp;                                \\
+    MR_Word         *swap_heaps_temp_hp;                            \\
     MR_MemoryZone   *swap_heaps_temp_hp_zone;                       \\
                                                                     \\
     swap_heaps_temp_hp = MR_hp;                                     \\

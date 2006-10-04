@@ -105,9 +105,14 @@ MR_CallSiteDynamic  *MR_current_call_site_dynamic =
 MR_CallSiteDynamic  *MR_next_call_site_dynamic = NULL;
 MR_CallSiteDynList  **MR_current_callback_site = (MR_CallSiteDynList **)
                         &MR_main_parent_call_site_dynamics[0];
+
 volatile MR_bool    MR_inside_deep_profiling_code = MR_FALSE;
 volatile unsigned   MR_quanta_inside_deep_profiling_code = 0;
 volatile unsigned   MR_quanta_outside_deep_profiling_code = 0;
+
+#ifdef  MR_DEEP_PROFILING_CALL_SEQ
+unsigned            MR_deep_prof_cur_call_seq = 0;
+#endif
 
 #ifdef  MR_DEEP_PROFILING_STATISTICS
 
@@ -636,7 +641,7 @@ static void
 MR_write_out_id_string(FILE *fp)
 {
     /* Must be the same as id_string in deep_profiler/read_profile.m */
-    const char  *id_string = "Mercury deep profiler data version 1\n";
+    const char  *id_string = "Mercury deep profiler data version 2\n";
 
     fputs(id_string, fp);
 }
@@ -909,7 +914,7 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
         bitmask |= 0x0004;
     }
     if (csd->MR_csd_own.MR_own_redos != 0) {
-        bitmask |= 0x0008;
+        bitmask |= 0x0040;
     }
     if (csd->MR_csd_own.MR_own_excps != 0) {
         bitmask |= 0x0010;
@@ -917,15 +922,20 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
 #endif
 #ifdef MR_DEEP_PROFILING_TIMING
     if (csd->MR_csd_own.MR_own_quanta != 0) {
-        bitmask |= 0x0020;
+        bitmask |= 0x0100;
+    }
+#endif
+#ifdef MR_DEEP_PROFILING_CALL_SEQ
+    if (csd->MR_csd_own.MR_own_call_seqs != 0) {
+        bitmask |= 0x0008;
     }
 #endif
 #ifdef MR_DEEP_PROFILING_MEMORY
     if (csd->MR_csd_own.MR_own_allocs != 0) {
-        bitmask |= 0x0040;
+        bitmask |= 0x0010;
     }
     if (csd->MR_csd_own.MR_own_words != 0) {
-        bitmask |= 0x0080;
+        bitmask |= 0x0020;
     }
 #endif
 
