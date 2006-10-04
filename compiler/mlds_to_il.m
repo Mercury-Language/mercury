@@ -1968,25 +1968,26 @@ atomic_statement_to_il(outline_foreign_proc(Lang, _, ReturnLvals, _Code),
         Instrs = comment_node("outline foreign proc -- already called")
     ).
 
-atomic_statement_to_il(inline_target_code(lang_il, Code), Instrs, !Info) :-
+atomic_statement_to_il(inline_target_code(ml_target_il, Code), Instrs,
+        !Info) :-
     Instrs = inline_code_to_il_asm(Code).
-atomic_statement_to_il(inline_target_code(lang_C, _Code), _Instrs, !Info) :-
-    unexpected(this_file, "lang_C").
-atomic_statement_to_il(inline_target_code(lang_java, _Code), _Instrs, !Info) :-
-    unexpected(this_file, "lang_java").
-atomic_statement_to_il(inline_target_code(lang_java_bytecode, _), _, !Info) :-
-    unexpected(this_file, "lang_java_bytecode").
-atomic_statement_to_il(inline_target_code(lang_java_asm, _), _, !Info) :-
-    unexpected(this_file, "lang_java_asm").
-atomic_statement_to_il(inline_target_code(lang_asm, _), _, !Info) :-
-    unexpected(this_file, "lang_asm").
-atomic_statement_to_il(inline_target_code(lang_GNU_C, _), _, !Info) :-
-    unexpected(this_file, "lang_GNU_C").
-atomic_statement_to_il(inline_target_code(lang_C_minus_minus, _), _, !Info) :-
-    unexpected(this_file, "lang_C_minus_minus").
+atomic_statement_to_il(inline_target_code(ml_target_c, _Code), _Instrs,
+        !Info) :-
+    unexpected(this_file, "ml_target_c").
+atomic_statement_to_il(inline_target_code(ml_target_java, _Code), _Instrs,
+        !Info) :-
+    unexpected(this_file, "ml_target_java").
+atomic_statement_to_il(inline_target_code(ml_target_asm, _), _, !Info) :-
+    unexpected(this_file,  "ml_target_asm").
+atomic_statement_to_il(inline_target_code(ml_target_gnu_c, _), _, !Info) :-
+    unexpected(this_file, "ml_target_gnu_c").
 
-atomic_statement_to_il(trail_op(_), node(Instrs), !Info) :-
-    Instrs = [comment("... some trail operation ... (unimplemented)")].
+    % NOTE: for the MLDS backends trail ops are currently implemented by
+    % the HLDS->HLDS transformation in add_trail_ops.m.  If we encounter
+    % an MLDS trail op it's an error.
+    %
+atomic_statement_to_il(trail_op(_), _, _, _) :-
+    unexpected(this_file, "trail ops").
 
 atomic_statement_to_il(assign(Lval, Rval), Instrs, !Info) :-
     % Do assignments by loading the rval and storing to the lval.

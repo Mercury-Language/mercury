@@ -250,11 +250,17 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
     ;
         GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
             Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
-        ( get_foreign_language(Attributes) = lang_c ->
-            pragma_c_gen.generate_pragma_c_code(CodeModel, Attributes,
+        Lang = get_foreign_language(Attributes),
+        (   Lang = lang_c,
+            generate_pragma_c_code(CodeModel, Attributes,
                 PredId, ProcId, Args, ExtraArgs, MaybeTraceRuntimeCond,
                 PragmaCode, GoalInfo, Code, !CI)
         ;
+            ( Lang = lang_java
+            ; Lang = lang_csharp
+            ; Lang = lang_managed_cplusplus
+            ; Lang = lang_il
+            ),
             unexpected(this_file,
                 "generate_goal_2: foreign code other than C unexpected")
         )

@@ -80,7 +80,8 @@
     % because it shouldn't be generated with target language different to the
     % native target language in the long run.
     %
-:- pred defn_contains_foreign_code(target_lang::in, mlds_defn::in) is semidet.
+:- pred defn_contains_foreign_code(mlds_target_lang::in,
+    mlds_defn::in) is semidet.
 
     % defn_contains_foreign_code(ForeignLang, Defn):
     %

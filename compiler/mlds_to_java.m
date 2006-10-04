@@ -473,12 +473,17 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
 output_java_decl(Indent, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, Code, Context),
-    ( Lang = lang_java ->
+    (   Lang = lang_java,
         indent_line(mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
         io.nl(!IO)
     ;
-        sorry(this_file, "foreign code other than Java")
+        ( Lang = lang_c
+        ; Lang = lang_csharp
+        ; Lang = lang_managed_cplusplus
+        ; Lang = lang_il
+        ),
+        sorry(this_file, "foreign decl other than Java")
     ).
 
 :- pred output_java_body_code(indent::in, user_foreign_code::in, io::di,
@@ -486,11 +491,17 @@ output_java_decl(Indent, DeclCode, !IO) :-
 
 output_java_body_code(Indent, user_foreign_code(Lang, Code, Context), !IO) :-
     % Only output Java code.
-    ( Lang = lang_java ->
+    ( 
+        Lang = lang_java,
         indent_line(mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
         io.nl(!IO)
     ;
+        ( Lang = lang_c
+        ; Lang = lang_csharp
+        ; Lang = lang_managed_cplusplus
+        ; Lang = lang_il
+        ),
         sorry(this_file, "foreign code other than Java")
     ).
 
@@ -2827,22 +2838,28 @@ output_atomic_stmt(_Indent, _, _FuncInfo, mark_hp(_Lval), _, _, _) :-
 output_atomic_stmt(_Indent, _, _FuncInfo, restore_hp(_Rval), _, _, _) :-
     unexpected(this_file, "restore_hp not implemented.").
 
-    % trail management
+    % Trail management.
     %
 output_atomic_stmt(_Indent, _, _FuncInfo, trail_op(_TrailOp), _, _, _) :-
     unexpected(this_file, "trail_ops not implemented.").
 
-    % foreign language interfacing
+    % Foreign language interfacing.
     %
 output_atomic_stmt(Indent, ModuleInfo, FuncInfo,
         inline_target_code(TargetLang, Components), Context, !IO) :-
-    ( TargetLang = lang_java ->
+    ( 
+        TargetLang = ml_target_java,
         indent_line(Indent, !IO),
         ModuleName = FuncInfo ^ func_info_name ^ mod_name,
         list.foldl(
             output_target_code_component(ModuleInfo, ModuleName, Context),
             Components, !IO)
     ;
+        ( TargetLang = ml_target_c
+        ; TargetLang = ml_target_gnu_c
+        ; TargetLang = ml_target_asm
+        ; TargetLang = ml_target_il
+        ),
         unexpected(this_file, "inline_target_code only works for lang_java")
     ).
 

@@ -253,7 +253,7 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 	% Handle output of any foreign code (C, Ada, Fortran, etc.)
 	% to appropriate files.
 	%
-	{ list__filter(defn_contains_foreign_code(lang_asm), Defns0,
+	{ list__filter(defn_contains_foreign_code(ml_target_asm), Defns0,
 		ForeignDefns, Defns) },
 		% We only handle C currently, so we just look up C
 	{ ForeignCode = map__lookup(AllForeignCode, lang_c) },

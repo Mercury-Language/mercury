@@ -1300,7 +1300,7 @@
 
     % Foreign language interfacing.
 
-    ;       inline_target_code(target_lang, list(target_code_component))
+    ;       inline_target_code(mlds_target_lang, list(target_code_component))
             % Do whatever is specified by the target_code_components, which
             % can be any piece of code in the specified target language (C,
             % assembler, or whatever) that does not have any non-local flow
@@ -1348,15 +1348,15 @@
 
     % This is just a random selection of possible languages
     % that we might want to target...
-:- type target_lang
-    --->    lang_C
-    ;       lang_GNU_C
-    ;       lang_C_minus_minus
-    ;       lang_asm
-    ;       lang_il
-    ;       lang_java
-    ;       lang_java_asm
-    ;       lang_java_bytecode.
+:- type mlds_target_lang
+    --->    ml_target_c
+    ;       ml_target_gnu_c
+%     ;       ml_target_c_minus_minus
+    ;       ml_target_asm
+    ;       ml_target_il
+    ;       ml_target_java.
+%     ;       ml_target_java_asm
+%     ;       ml_target_java_bytecode.
 
 :- type target_code_component
     --->    user_target_code(

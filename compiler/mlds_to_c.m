@@ -770,7 +770,8 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode, !IO) :-
 mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
     % Only output C code in the C header file.
-    ( Lang = lang_c ->
+    ( 
+        Lang = lang_c,
         (
             (
                 MaybeDesiredIsLocal = no
@@ -785,6 +786,11 @@ mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
             true
         )
     ;
+        ( Lang = lang_java
+        ; Lang = lang_csharp
+        ; Lang = lang_managed_cplusplus
+        ; Lang = lang_il
+        ),
         sorry(this_file, "foreign code other than C")
     ).
 
@@ -3140,11 +3146,17 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo, trail_op(_TrailOp), _, !IO) :-
 
 mlds_output_atomic_stmt(_Indent, _FuncInfo,
     inline_target_code(TargetLang, Components), Context, !IO) :-
-    ( TargetLang = lang_C ->
+    ( 
+        TargetLang = ml_target_c,
         list.foldl(mlds_output_target_code_component(Context), Components,
             !IO)
     ;
-        sorry(this_file, "inline_target_code only works for lang_C")
+        ( TargetLang = ml_target_gnu_c
+        ; TargetLang = ml_target_asm
+        ; TargetLang = ml_target_il
+        ; TargetLang = ml_target_java
+        ),
+        sorry(this_file, "inline_target_code only works for language C")
     ).
 
 mlds_output_atomic_stmt(_Indent, _FuncInfo,

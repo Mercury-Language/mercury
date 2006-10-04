@@ -1294,7 +1294,8 @@ common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
 
 output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
         !IO) :-
-    ( Lang = lang_c ->
+    ( 
+        Lang = lang_c,
         globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
         (
             PrintComments = yes,
@@ -1309,6 +1310,11 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
         io.write_string("\n", !IO),
         output_reset_line_num(!IO)
     ;
+        ( Lang = lang_java
+        ; Lang = lang_csharp
+        ; Lang = lang_managed_cplusplus
+        ; Lang = lang_il
+        ),
         unexpected(this_file, "output_user_foreign_code: unimplemented: " ++
             "foreign code other than C")
     ).
@@ -1324,7 +1330,8 @@ output_foreign_header_include_lines(Decls, !IO) :-
 
 output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
     Decl = foreign_decl_code(Lang, _IsLocal, Code, Context),
-    ( Lang = lang_c ->
+    ( 
+        Lang = lang_c,
         ( set.member(Code, !.AlreadyDone) ->
             true
         ;
@@ -1346,8 +1353,13 @@ output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
             output_reset_line_num(!IO)
         )
     ;
+        ( Lang = lang_java
+        ; Lang = lang_csharp
+        ; Lang = lang_managed_cplusplus
+        ; Lang = lang_il
+        ),
         unexpected(this_file, "output_user_foreign_code: unexpected: " ++
-            "foreign code other than C")
+            "foreign decl code other than C")
     ).
 
 :- pred output_c_label_decls(map(label, data_addr)::in, list(label)::in,

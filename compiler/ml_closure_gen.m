@@ -1094,7 +1094,7 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
             raw_target_code(")->MR_closure_layout;\n", [])
         ],
         ClosureLayoutPtrGCInit = statement(atomic(
-            inline_target_code(lang_C,
+            inline_target_code(ml_target_c,
             ClosureLayoutPtrGCInitFragments)), MLDS_Context),
         TypeParamsGCInitFragments = [
             target_code_output(TypeParamsLval),
@@ -1132,7 +1132,7 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
 
     ),
     TypeParamsGCInit = statement(atomic(inline_target_code(
-        lang_C, TypeParamsGCInitFragments)), MLDS_Context),
+        ml_target_c, TypeParamsGCInitFragments)), MLDS_Context),
     GC_Decls = [ClosureLayoutPtrDecl, TypeParamsDecl].
 
 ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
@@ -1183,7 +1183,7 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
 
     (
         MaybeGCTraceCode0 = yes(CallTraceFuncCode),
-        MakeTypeInfoCode = atomic(inline_target_code(lang_C, [
+        MakeTypeInfoCode = atomic(inline_target_code(ml_target_c, [
             raw_target_code("{\n", []),
             raw_target_code("MR_MemoryList allocated_mem = NULL;\n", []),
             target_code_output(TypeInfoLval),
@@ -1197,7 +1197,7 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
                 "NULL, NULL, &allocated_mem);\n",
                 [i(ArgNum)]), [])
         ])),
-        DeallocateCode = atomic(inline_target_code(lang_C, [
+        DeallocateCode = atomic(inline_target_code(ml_target_c, [
             raw_target_code("MR_deallocate(allocated_mem);\n", []),
             raw_target_code("}\n", [])
         ])),

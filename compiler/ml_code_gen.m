@@ -2453,10 +2453,10 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         raw_target_code(HashUndefs, []),
         raw_target_code("}\n", [])
     ],
-    Starting_C_Code_Stmt = inline_target_code(lang_C, Starting_C_Code),
+    Starting_C_Code_Stmt = inline_target_code(ml_target_c, Starting_C_Code),
     Starting_C_Code_Statement = statement(
         atomic(Starting_C_Code_Stmt), mlds_make_context(Context)),
-    Ending_C_Code_Stmt = inline_target_code(lang_C, Ending_C_Code),
+    Ending_C_Code_Stmt = inline_target_code(ml_target_c, Ending_C_Code),
     Ending_C_Code_Statement = statement(
         atomic(Ending_C_Code_Stmt), mlds_make_context(Context)),
     Statements = list.condense([
@@ -2600,7 +2600,7 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
         AssignInputsList,
         [user_target_code(JavaCode, yes(Context), [])]
     ]),
-    Java_Code_Stmt = inline_target_code(lang_java, Java_Code),
+    Java_Code_Stmt = inline_target_code(ml_target_java, Java_Code),
     Java_Code_Statement = statement(
         atomic(Java_Code_Stmt),
         mlds_make_context(Context)),
@@ -2772,7 +2772,7 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
             ByRefOutputVars, CopiedOutputVars),
         ArgVars, VarLocals),
 
-    OutlineStmt = inline_target_code(lang_il, [
+    OutlineStmt = inline_target_code(ml_target_il, [
         user_target_code(ForeignCode, yes(Context),
             get_target_code_attributes(lang_il,
                 get_extra_attributes(Attributes)))
@@ -3033,8 +3033,8 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
             raw_target_code("}\n", [])
         ]
     ),
-    Starting_C_Code_Stmt = inline_target_code(lang_C, Starting_C_Code),
-    Ending_C_Code_Stmt = inline_target_code(lang_C, Ending_C_Code),
+    Starting_C_Code_Stmt = inline_target_code(ml_target_c, Starting_C_Code),
+    Ending_C_Code_Stmt = inline_target_code(ml_target_c, Ending_C_Code),
     Starting_C_Code_Statement = statement(
         atomic(Starting_C_Code_Stmt), mlds_make_context(Context)),
     Ending_C_Code_Statement = statement(atomic(Ending_C_Code_Stmt),

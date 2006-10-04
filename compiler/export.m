@@ -708,7 +708,8 @@ produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
 produce_header_file_2([], !IO).
 produce_header_file_2([E | ExportedProcs], !IO) :-
     E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls),
-    ( Lang = lang_c ->
+    ( 
+        Lang = lang_c,
         % Output the function header.
         io.write_string(C_RetType, !IO),
         io.write_string(" ", !IO),
@@ -717,6 +718,11 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
         io.write_string(ArgDecls, !IO),
         io.write_string(");\n", !IO)
     ;
+        ( Lang = lang_csharp
+        ; Lang = lang_java
+        ; Lang = lang_managed_cplusplus
+        ; Lang = lang_il
+        ),
         sorry(this_file, "foreign languages other than C unimplemented")
     ),
     produce_header_file_2(ExportedProcs, !IO).
