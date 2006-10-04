@@ -1,10 +1,10 @@
-Option `--nondetstack-size-kwords=256':
+Option `--nondetstack-size-kwords=256 --small-nondetstack-size-kwords=256':
 Hello world (with non-standard options).
 
-Option `--nondet-stack-size-kwords=256':
+Option `--nondet-stack-size-kwords=256 --small-nondet-stack-size-kwords=256':
 Hello world (with non-standard options).
 
-Option `--detstack-size=128':
+Option `--detstack-size=128 --small-detstack-size=128':
 Hello world (with non-standard options).
 
 Option `--this-is-not-a-real-option':

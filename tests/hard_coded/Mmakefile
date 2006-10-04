@@ -630,7 +630,7 @@ intermod_unused_args.c: intermod_unused_args2.c
 # is created by concatenating all of the outputs from each run.
 runtime_opt.out: runtime_opt runtime_opt.inp
 	( \
-		for option in `cat runtime_opt.inp`; do \
+		cat runtime_opt.inp | while read option; do \
 			echo "Option \`$$option':"; \
 			MERCURY_OPTIONS="$$option" ./runtime_opt 2>&1 || true; \
 			echo ""; \
