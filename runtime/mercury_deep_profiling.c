@@ -967,6 +967,12 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
     }
 #endif
 
+#ifdef MR_DEEP_PROFILING_CALL_SEQ
+    if (csd->MR_csd_own.MR_own_call_seqs != 0) {
+        MR_write_num(fp, csd->MR_csd_own.MR_own_call_seqs);
+    }
+#endif
+
 #ifdef MR_DEEP_PROFILING_MEMORY
     if (csd->MR_csd_own.MR_own_allocs != 0) {
         MR_write_num(fp, csd->MR_csd_own.MR_own_allocs);
