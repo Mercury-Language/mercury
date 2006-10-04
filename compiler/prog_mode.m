@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_mode.m.
 % Main author: fjh.
-
+% 
 % Utility predicates dealing with modes and insts that do not require access
 % to the HLDS. (The predicates that do are in mode_util.m.)
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_mode.

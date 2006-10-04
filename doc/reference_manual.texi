@@ -4789,11 +4789,19 @@ following signatures:
 @end example
 
 The initial value of @samp{varname} is @samp{initial_value}, which is set
-before the program's @samp{main/2} predicate is executed.  The type
-@samp{vartype} is not allowed to contain any type variables and the inst
-@samp{varinst} is not allowed to contain any inst variables or have any type
-class constraints; @samp{initial_value} can be any Mercury expression with
-type @samp{vartype} and inst @samp{varinst}.
+before the program's @samp{main/2} predicate is executed.  
+
+The type @samp{vartype} is not allowed to contain any type variables or
+have any type class constraints.
+
+The inst @samp{varinst} is not allowed to contain any inst variables.
+It is also not allowed to be equivalent to, or contain components that
+are equivalent to, the builtin insts @samp{free}, @samp{unique},
+@samp{mostly_unique}, @samp{dead} or @samp{mostly_dead}.
+
+The initial value of a mutable, @samp{inital_value}, may be any Mercury
+expression with type @samp{vartype} and inst @samp{varinst} subject to
+the above restrictions.
 
 The following @samp{attributes} must be supported:
 

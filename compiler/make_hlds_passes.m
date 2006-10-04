@@ -97,6 +97,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
 :- import_module check_hlds.clause_to_proc.
+:- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.make_hlds.add_class.
@@ -537,7 +538,8 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
     item_status::in, item_status::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_solver_type_mutable_items_pass_1([], _Context, !Status, !ModuleInfo, !Specs).
+add_solver_type_mutable_items_pass_1([], _Context, !Status, !ModuleInfo,
+        !Specs).
 add_solver_type_mutable_items_pass_1([Item | Items], Context, !Status,
         !ModuleInfo, !Specs) :-
     add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, _, !Specs),
@@ -686,7 +688,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
         true
     ).
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
-    Item = item_mutable(Name, _Type, _InitTerm, _Inst, MutAttrs, _MutVarset),
+    Item = item_mutable(Name, _Type, _InitTerm, Inst, MutAttrs, _MutVarset),
     !.Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
         error_is_exported(Context, "`mutable' declaration", !Specs)
@@ -706,7 +708,8 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
 
         % XXX We don't currently support the foreign_name attribute
         % for languages other than C.
-        ( CompilationTarget = target_c ->
+        ( 
+            CompilationTarget = target_c,
             mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
             module_info_get_name(!.ModuleInfo, ModuleName),
             (
@@ -738,6 +741,10 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
                 IOStateInterface = no
             )
         ;
+            ( CompilationTarget = target_il
+            ; CompilationTarget = target_java
+            ; CompilationTarget = target_asm
+            ),
             Pieces = [words("Error: foreign_name mutable attribute not yet"),
                 words("implemented for the"),
                 fixed(compilation_target_string(CompilationTarget)),
@@ -745,6 +752,31 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
+        ),
+        %
+        % Check that the inst in the mutable delcaration is a valid inst for a
+        % mutable declaration.
+        %
+        ( is_valid_mutable_inst(!.ModuleInfo, Inst) ->
+            true
+        ;
+            % It is okay to pass a dummy varset in here since any attempt
+            % to use inst variables in a mutable declaration should already
+            % been dealt with when the mutable declaration was parsed.
+            DummyInstVarset = varset.init,  
+            InstStr = mercury_expanded_inst_to_string(Inst, DummyInstVarset,
+                !.ModuleInfo),
+            InvalidInstPieces = [
+                words("Error: the inst"),
+                quote(InstStr),
+                words("is not a valid inst for a mutable declaration.")     
+            ],
+            % XXX we could provide more information about exactly *why* the
+            % inst was not valid here as well.
+            InvalidInstMsg = simple_msg(Context, [always(InvalidInstPieces)]),
+            InvalidInstSpec = error_spec(severity_error,
+                phase_parse_tree_to_hlds, [InvalidInstMsg]),
+            !:Specs = [ InvalidInstSpec | !.Specs ]
         )
     ;
         DefinedThisModule = no

@@ -8,7 +8,7 @@
 % 
 % File: hlds_code_util.m.
 % 
-% Various utilities routines for use during hlds generation.
+% Various utilities routines for use during HLDS generation.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -39,11 +39,17 @@
     %
 :- pred make_instance_string(list(mer_type)::in, string::out) is det.
 
+    % Succeeds iff this inst is one that can be used in a valid
+    % mutable declaration.
+    %
+:- pred is_valid_mutable_inst(module_info::in, mer_inst::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
@@ -58,6 +64,7 @@
 :- import_module char.
 :- import_module map.
 :- import_module pair.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -155,6 +162,27 @@ type_to_string(Type, String) :-
     ;
         unexpected(this_file, "type_to_string: invalid type")
     ).
+
+%----------------------------------------------------------------------------%
+
+is_valid_mutable_inst(ModuleInfo, Inst) :-
+    set.init(Expansions),
+    is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions).
+
+:- pred is_valid_mutable_inst_2(module_info::in, mer_inst::in,
+    set(inst_name)::in) is semidet.
+
+is_valid_mutable_inst_2(_, any(shared), _).
+is_valid_mutable_inst_2(ModuleInfo, bound(shared, BoundInsts), Expansions) :-
+    list.member(bound_functor(_, Insts), BoundInsts),
+    list.member(Inst, Insts),
+    is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions).
+is_valid_mutable_inst_2(_, ground(shared, _), _).
+is_valid_mutable_inst_2(ModuleInfo, defined_inst(InstName), Expansions0) :-
+    not set.member(InstName, Expansions0),
+    Expansions = set.insert(Expansions0, InstName),
+    inst_lookup(ModuleInfo, InstName, Inst),
+    is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions).
 
 %----------------------------------------------------------------------------%
 

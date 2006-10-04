@@ -125,7 +125,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Print out an entire hlds structure.
+    % Print out an entire HLDS structure.
     %
 :- pred write_hlds(int::in, module_info::in, io::di, io::uo) is det.
 
