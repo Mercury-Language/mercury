@@ -952,7 +952,8 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
 
     globals.io_get_target(Target, !IO),
     io.output_stream(OutputStream, !IO),
-    ( Target = target_asm ->
+    ( 
+        Target = target_asm,
         % For --target asm, we generate everything into a single object file.
         (
             Modules = [FirstModule | _],
@@ -962,9 +963,14 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
             unexpected(this_file, "link_module_list: no modules")
         )
     ;
+        ( Target = target_c
+        ; Target = target_java
+        ; Target = target_il
+        ),
         join_module_list(Modules, Obj, ObjectsList, !IO)
     ),
-    ( TargetType = executable ->
+    ( 
+        TargetType = executable,
         list.map(
             (pred(ModuleStr::in, ModuleName::out) is det :-
                 file_name_to_module_name(dir.basename_det(ModuleStr),
@@ -974,6 +980,7 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
         make_init_obj_file(OutputStream, MustCompile, MainModuleName,
             ModuleNames, InitObjResult, !IO)
     ;
+        TargetType = shared_library,
         InitObjResult = yes("")
     ),
     (
@@ -1610,9 +1617,14 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         % Link/copy the executable into the user's directory.
         globals.io_set_option(use_subdirs, bool(no), !IO),
         globals.io_set_option(use_grade_subdirs, bool(no), !IO),
-        ( LinkTargetType = executable ->
+        ( 
+            LinkTargetType = executable,
             module_name_to_file_name(ModuleName, Ext, no, UserDirFileName, !IO)
         ;
+            ( LinkTargetType = static_library
+            ; LinkTargetType = shared_library
+            ; LinkTargetType = java_archive
+            ),
             module_name_to_lib_file_name("lib", ModuleName, Ext, no,
                 UserDirFileName, !IO)
         ),

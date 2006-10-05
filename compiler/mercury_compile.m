@@ -428,13 +428,17 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
                 file_name_to_module_name(FirstModule,
                     MainModuleName),
                 globals.get_target(Globals, Target),
-                ( Target = target_java ->
-                    % For Java, at the "link" step we just
-                    % generate a shell script; the actual
-                    % linking will be done at runtime by
+                ( 
+                    Target = target_java,
+                    % For Java, at the "link" step we just generate a shell
+                    % script; the actual linking will be done at runtime by
                     % the Java interpreter.
                     create_java_shell_script(MainModuleName, Succeeded, !IO)
                 ;
+                    ( Target = target_c
+                    ; Target = target_il
+                    ; Target = target_asm
+                    ),
                     compile_with_module_options(MainModuleName,
                         OptionVariables, OptionArgs,
                         link_module_list(ModulesToLink, FactTableObjFiles),

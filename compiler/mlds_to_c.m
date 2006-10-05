@@ -202,17 +202,23 @@ mlds_output_hdr_imports(_Indent, _Imports, !IO).
 
 mlds_output_src_imports(Indent, Imports, !IO) :-
     globals.io_get_target(Target, !IO),
-    ( Target = target_asm ->
+    ( 
+        Target = target_asm
         % For --target asm, we don't create the header files for modules that
         % don't contain C code, so we'd better not include them, since they
         % might not exist.
 
         % XXX This is a hack; it may lead to warnings or errors when compiling
         % the generated code, since the functions that we call (e.g. for
-        % `pragma export') may not have been declared.
-        true
+        % `pragma foreign_export') may not have been declared.
     ;
+        Target = target_c,
         list.foldl(mlds_output_src_import(Indent), Imports, !IO)
+    ;
+        ( Target = target_java
+        ; Target = target_il
+        ),
+        unexpected(this_file, "expected target asm or target c")
     ).
 
 :- pred mlds_output_src_import(indent::in, mlds_import::in,
@@ -361,7 +367,8 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
     % can be #included by C++ programs.
 
     globals.io_get_target(Target, !IO),
-    ( Target = target_c ->
+    ( 
+        Target = target_c,
         mlds_indent(Indent, !IO),
         io.write_string("#ifdef __cplusplus\n", !IO),
         mlds_indent(Indent, !IO),
@@ -370,7 +377,10 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
         io.write_string("#endif\n", !IO),
         io.nl(!IO)
     ;
-        true
+        ( Target = target_il
+        ; Target = target_java
+        ; Target = target_asm
+        )
     ),
     mlds_indent(Indent, !IO),
     io.write_string("#include ""mercury.h""\n", !IO).
@@ -465,7 +475,8 @@ mlds_output_src_bootstrap_defines(!IO).
 
 mlds_output_hdr_end(Indent, ModuleName, !IO) :-
     globals.io_get_target(Target, !IO),
-    ( Target = target_c ->
+    ( 
+        Target = target_c,
         % Terminate the `extern "C"' wrapper.
         mlds_indent(Indent, !IO),
         io.write_string("#ifdef __cplusplus\n", !IO),
@@ -475,7 +486,10 @@ mlds_output_hdr_end(Indent, ModuleName, !IO) :-
         io.write_string("#endif\n", !IO),
         io.nl(!IO)
     ;
-        true
+        ( Target = target_il
+        ; Target = target_java
+        ; Target = target_asm
+        )
     ),
     mlds_indent(Indent, !IO),
     io.write_string("#endif /* MR_HEADER_GUARD_", !IO),

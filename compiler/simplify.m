@@ -1404,9 +1404,14 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
                     PrivateBuiltin = mercury_private_builtin_module,
                     EvalPredName = "trace_evaluate_runtime_condition",
                     some [!EvalAttributes] (
-                        ( Target = target_c ->
+                        ( 
+                            Target = target_c,
                             !:EvalAttributes = default_attributes(lang_c)
                         ;
+                            ( Target = target_il
+                            ; Target = target_java
+                            ; Target = target_asm
+                            ),
                             sorry(this_file, "NYI: runtime trace conditions "
                                 ++ "in languages other than C")
                         ),

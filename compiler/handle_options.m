@@ -476,7 +476,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         intermodule optimization pulls in a lot of code which isn't
         %         needed, so ensure that this dead code is removed.
 
-        ( Target = target_il ->
+        ( 
+            Target = target_il,
             globals.set_gc_method(gc_automatic, !Globals),
             globals.set_option(gc, string("automatic"), !Globals),
             globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
@@ -512,7 +513,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 true
             )
         ;
-            true
+            ( Target = target_c
+            ; Target = target_java
+            ; Target = target_asm
+            )
         ),
 
         % Set --put-nondet-env-on-heap if --verifiable-code is specified,
@@ -570,7 +574,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         intermodule optimization pulls in a lot of code which isn't
         %         needed, so ensure that this dead code is removed.
 
-        ( Target = target_java ->
+        ( 
+            Target = target_java,
             globals.set_gc_method(gc_automatic, !Globals),
             globals.set_option(gc, string("automatic"), !Globals),
             globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
@@ -596,14 +601,21 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 AutoIntermodOptimization = no
             )
         ;
-            true
+            ( Target = target_c
+            ; Target = target_il
+            ; Target = target_asm
+            )
         ),
         % Generating assembler via the gcc back-end requires
         % using high-level code.
-        ( Target = target_asm ->
+        ( 
+            Target = target_asm,
             globals.set_option(highlevel_code, bool(yes), !Globals)
         ;
-            true
+            ( Target = target_c
+            ; Target = target_il
+            ; Target = target_java
+            )
         ),
 
         % Generating high-level C or asm code requires putting each commit
@@ -1069,10 +1081,14 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 % For the IL backend we turn off optimize_peep
                 % so that we don't optimize away references to the
                 % local variables of a procedure.
-                ( Target = target_il ->
+                ( 
+                    Target = target_il,
                     globals.set_option(optimize_peep, bool(no), !Globals)
                 ;
-                    true
+                    ( Target = target_c
+                    ; Target = target_java
+                    ; Target = target_asm
+                    )
                 )
             ;
                 TraceOptimized = yes

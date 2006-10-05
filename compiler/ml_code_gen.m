@@ -2429,11 +2429,16 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         % for calling managed function pointers in managed C++. Instead we have
         % to call back into IL and make the continuation call in IL. This is
         % called an "indirect" success continuation call.
-
-        ( Target = target_il ->
+        %
+        ( 
+            Target = target_il,
             ml_gen_call_current_success_cont_indirectly(Context, CallCont,
                 !Info)
         ;
+            ( Target = target_c
+            ; Target = target_java
+            ; Target = target_asm
+            ),
             ml_gen_call_current_success_cont(Context, CallCont, !Info)
         )
     ;

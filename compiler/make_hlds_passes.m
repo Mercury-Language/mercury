@@ -979,9 +979,13 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
         % So we ignore these pragmas for the Java back-end.
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.get_target(Globals, Target),
-        ( Target = target_java ->
-            true
+        ( 
+            Target = target_java
         ;
+            ( Target = target_c
+            ; Target = target_il
+            ; Target = target_asm
+            ),
             add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo,
                 !Specs)
         )

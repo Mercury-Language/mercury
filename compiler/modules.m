@@ -4537,9 +4537,14 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io.write_string(DepStream, "\n", !IO),
 
     globals.io_get_target(Target, !IO),
-    ( Target = target_il ->
+    ( 
+        Target = target_il,
         ForeignModulesAndExts = foreign_modules(Modules, DepsMap)
     ;
+        ( Target = target_c
+        ; Target = target_java
+        ; Target = target_asm
+        ),
         ForeignModulesAndExts = []
     ),
     ForeignModules = assoc_list.keys(ForeignModulesAndExts),
