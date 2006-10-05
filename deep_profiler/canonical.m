@@ -837,8 +837,11 @@ do_merge_profiles(BaseInitDeep, OtherInitDeeps, MergedInitDeep) :-
     list.foldl(int_add, InstrumentQuantas, 0, InstrumentQuanta),
     list.foldl(int_add, UserQuantas, 0, UserQuanta),
     WordSize = BaseInitDeep ^ init_profile_stats ^ word_size,
+    extract_num_callseqs(BaseInitDeep, BaseNumCallSeqs),
+    list.map(extract_num_callseqs, OtherInitDeeps, OtherNumCallSeqs),
+    list.foldl(int_add, OtherNumCallSeqs, BaseNumCallSeqs, ConcatNumCallSeqs),
     ConcatProfileStats = profile_stats(
-        ConcatMaxCSD, BaseMaxCSS, ConcatMaxPD, BaseMaxPS,
+        ConcatMaxCSD, BaseMaxCSS, ConcatMaxPD, BaseMaxPS, ConcatNumCallSeqs,
         BaseTicksPerSec, InstrumentQuanta, UserQuanta, WordSize, yes),
     % The root part is a temporary lie.
     MergedInitDeep = initial_deep(ConcatProfileStats,
@@ -931,14 +934,12 @@ concatenate_profile_slots(Cur, Max, PrevMaxCSD, PrevMaxPD, !Sites) :-
             Slot = slot_normal(CSDPtr)
         ;
             Slot0 = slot_multi(IsZeroed, CSDPtrs0),
-            array_map_from_0(
-                concat_call_site_dynamic_ptr(PrevMaxCSD),
+            array_map_from_0(concat_call_site_dynamic_ptr(PrevMaxCSD),
                 u(CSDPtrs0), CSDPtrs),
             Slot = slot_multi(IsZeroed, CSDPtrs)
         ),
         svarray.set(Cur, Slot, !Sites),
-        concatenate_profile_slots(Cur + 1, Max, PrevMaxCSD, PrevMaxPD,
-            !Sites)
+        concatenate_profile_slots(Cur + 1, Max, PrevMaxCSD, PrevMaxPD, !Sites)
     ;
         true
     ).
@@ -968,6 +969,7 @@ concat_proc_dynamic_ptr(PrevMaxPD, !PDPtr) :-
 %-----------------------------------------------------------------------------%
 
     % array_match_elements(Min, Max, BaseArray, OtherArrays):
+    %
     % Succeeds iff all the elements of all the OtherArrays are equal to the
     % corresponding element of BaseArray.
     %
@@ -984,6 +986,7 @@ array_match_elements(N, Max, BaseArray, OtherArrays) :-
     ).
 
     % match_element(TestElement, Index, Arrays):
+    %
     % Succeeds iff the elements of all the Arrays at index Index
     % are equal to TestElement.
     %

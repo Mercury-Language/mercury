@@ -132,7 +132,7 @@ get_static_ptrs_from_dynamic_proc(ProcStatics, _, ProcDynamic, !PS_Ptrs,
 
 dump_init_profile_stats(Stats, !IO) :-
     Stats = profile_stats(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
-        InstrumentQuanta, UserQuanta, WordSize, Canonical),
+        InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize, Canonical),
     io.write_string("SECTION PROFILING STATS:\n\n", !IO),
     io.format("\tmax_csd = %d\n", [i(MaxCSD)], !IO),
     io.format("\tmax_css = %d\n", [i(MaxCSS)], !IO),
@@ -141,6 +141,7 @@ dump_init_profile_stats(Stats, !IO) :-
     io.format("\tticks_per_sec = %d\n", [i(TicksPerSec)], !IO),
     io.format("\tinstrument_quanta = %d\n", [i(InstrumentQuanta)], !IO),
     io.format("\tuser_quanta = %d\n", [i(UserQuanta)], !IO),
+    io.format("\tnum_call_seqs = %d\n", [i(NumCallSeqs)], !IO),
     io.format("\tword_size   = %d\n", [i(WordSize)], !IO),
     io.write_string("\tcanonical = ", !IO),
     (

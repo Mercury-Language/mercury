@@ -38,6 +38,7 @@
                 max_css                     :: int,
                 max_pd                      :: int,
                 max_ps                      :: int,
+                num_callseqs                :: int,
                 ticks_per_sec               :: int,
                 instrument_quanta           :: int,
                 user_quanta                 :: int,
@@ -415,6 +416,7 @@
 :- pred extract_ticks_per_sec(initial_deep::in, int::out) is det.
 :- pred extract_instrument_quanta(initial_deep::in, int::out) is det.
 :- pred extract_user_quanta(initial_deep::in, int::out) is det.
+:- pred extract_num_callseqs(initial_deep::in, int::out) is det.
 :- pred extract_max_css(initial_deep::in, int::out) is det.
 :- pred extract_max_ps(initial_deep::in, int::out) is det.
 :- pred extract_max_csd(initial_deep::in, int::out) is det.
@@ -863,6 +865,9 @@ extract_instrument_quanta(InitDeep,
 
 extract_user_quanta(InitDeep,
     InitDeep ^ init_profile_stats ^ user_quanta).
+
+extract_num_callseqs(InitDeep,
+    InitDeep ^ init_profile_stats ^ num_callseqs).
 
 extract_max_css(InitDeep, MaxCSS) :-
     array.max(InitDeep ^ init_call_site_statics, MaxCSS).

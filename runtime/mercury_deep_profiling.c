@@ -372,6 +372,7 @@ MR_write_out_profiling_tree(void)
     int                     root_pd_id;
     FILE                    *fp;
     int                     ticks_per_sec;
+    unsigned                num_call_seqs;
     FILE                    *check_fp;
 
     fp = fopen(MR_MDPROF_DATAFILENAME, "wb+");
@@ -389,6 +390,7 @@ MR_write_out_profiling_tree(void)
     }
 #endif
 
+    /* We overwrite these zeros (and the id string) after the seek below. */
     MR_write_out_id_string(fp);
     MR_write_fixed_size_int(fp, 0);
     MR_write_fixed_size_int(fp, 0);
@@ -400,10 +402,16 @@ MR_write_out_profiling_tree(void)
 #else
     ticks_per_sec = 0;
 #endif
+#ifdef  MR_DEEP_PROFILING_CALL_SEQ
+    num_call_seqs = MR_deep_prof_cur_call_seq;
+#else
+    num_call_seqs = 0;
+#endif
 
     MR_write_num(fp, ticks_per_sec);
     MR_write_num(fp, MR_quanta_inside_deep_profiling_code);
     MR_write_num(fp, MR_quanta_outside_deep_profiling_code);
+    MR_write_num(fp, num_call_seqs);
     MR_write_byte(fp, sizeof(MR_Word));
     MR_write_byte(fp, 0); /* the canonical flag is MR_FALSE = 0 */
 

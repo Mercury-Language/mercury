@@ -215,6 +215,35 @@
     pred(in, in, in, in, in, in, in, in, in, in, out) is det,
     out, di, uo) is det.
 
+:- pred io_combinator.sequence_11(
+    pred(io.result(T1), io, io),
+    pred(io.result(T2), io, io),
+    pred(io.result(T3), io, io),
+    pred(io.result(T4), io, io),
+    pred(io.result(T5), io, io),
+    pred(io.result(T6), io, io),
+    pred(io.result(T7), io, io),
+    pred(io.result(T8), io, io),
+    pred(io.result(T9), io, io),
+    pred(io.result(T10), io, io),
+    pred(io.result(T11), io, io),
+    pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, io.result(T)),
+    io.result(T), io, io).
+:- mode io_combinator.sequence_11(
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(in, in, in, in, in, in, in, in, in, in, in, out) is det,
+    out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred io_combinator.res_sequence_2(
@@ -386,6 +415,35 @@
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
     pred(in, in, in, in, in, in, in, in, in, in, out) is det,
+    out, di, uo) is det.
+
+:- pred io_combinator.res_sequence_11(
+    pred(io.res(T1), io, io),
+    pred(io.res(T2), io, io),
+    pred(io.res(T3), io, io),
+    pred(io.res(T4), io, io),
+    pred(io.res(T5), io, io),
+    pred(io.res(T6), io, io),
+    pred(io.res(T7), io, io),
+    pred(io.res(T8), io, io),
+    pred(io.res(T9), io, io),
+    pred(io.res(T10), io, io),
+    pred(io.res(T11), io, io),
+    pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, io.res(T)),
+    io.res(T), io, io).
+:- mode io_combinator.res_sequence_11(
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(in, in, in, in, in, in, in, in, in, in, in, out) is det,
     out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -561,6 +619,35 @@
     pred(in, in, in, in, in, in, in, in, in, in, out) is det,
     out, di, uo) is det.
 
+:- pred io_combinator.maybe_error_sequence_11(
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
+    pred(maybe_error(T4), io, io),
+    pred(maybe_error(T5), io, io),
+    pred(maybe_error(T6), io, io),
+    pred(maybe_error(T7), io, io),
+    pred(maybe_error(T8), io, io),
+    pred(maybe_error(T9), io, io),
+    pred(maybe_error(T10), io, io),
+    pred(maybe_error(T11), io, io),
+    pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, maybe_error(T)),
+    maybe_error(T), io, io).
+:- mode io_combinator.maybe_error_sequence_11(
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(in, in, in, in, in, in, in, in, in, in, in, out) is det,
+    out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -568,1413 +655,1686 @@
 
 %-----------------------------------------------------------------------------%
 
-io_combinator.sequence_2(P1, P2, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.sequence_2(P1, P2, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            { call(Combine, T1, T2, Res) }
+            Res2 = ok(T2),
+            call(Combine, T1, T2, Res)
         ;
-            { Res2 = eof },
-            { Res = eof }
+            Res2 = eof,
+            Res = eof
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = eof },
-        { Res = eof }
+        Res1 = eof,
+        Res = eof
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.sequence_3(P1, P2, P3, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.sequence_3(P1, P2, P3, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                { call(Combine, T1, T2, T3, Res) }
+                Res3 = ok(T3),
+                call(Combine, T1, T2, T3, Res)
             ;
-                { Res3 = eof },
-                { Res = eof }
+                Res3 = eof,
+                Res = eof
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = eof },
-            { Res = eof }
+            Res2 = eof,
+            Res = eof
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = eof },
-        { Res = eof }
+        Res1 = eof,
+        Res = eof
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.sequence_4(P1, P2, P3, P4, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.sequence_4(P1, P2, P3, P4, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    { call(Combine, T1, T2, T3, T4, Res) }
+                    Res4 = ok(T4),
+                    call(Combine, T1, T2, T3, T4, Res)
                 ;
-                    { Res4 = eof },
-                    { Res = eof }
+                    Res4 = eof,
+                    Res = eof
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = eof },
-                { Res = eof }
+                Res3 = eof,
+                Res = eof
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = eof },
-            { Res = eof }
+            Res2 = eof,
+            Res = eof
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = eof },
-        { Res = eof }
+        Res1 = eof,
+        Res = eof
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.sequence_5(P1, P2, P3, P4, P5, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.sequence_5(P1, P2, P3, P4, P5, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        { call(Combine, T1, T2, T3, T4,
-                            T5, Res) }
+                        Res5 = ok(T5),
+                        call(Combine, T1, T2, T3, T4, T5, Res)
                     ;
-                        { Res5 = eof },
-                        { Res = eof }
+                        Res5 = eof,
+                        Res = eof
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = eof },
-                    { Res = eof }
+                    Res4 = eof,
+                    Res = eof
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = eof },
-                { Res = eof }
+                Res3 = eof,
+                Res = eof
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = eof },
-            { Res = eof }
+            Res2 = eof,
+            Res = eof
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = eof },
-        { Res = eof }
+        Res1 = eof,
+        Res = eof
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.sequence_6(P1, P2, P3, P4, P5, P6, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.sequence_6(P1, P2, P3, P4, P5, P6, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            { call(Combine, T1, T2,
-                                T3, T4, T5,
-                                T6, Res) }
+                            Res6 = ok(T6),
+                            call(Combine, T1, T2, T3, T4, T5, T6, Res)
                         ;
-                            { Res6 = eof },
-                            { Res = eof }
+                            Res6 = eof,
+                            Res = eof
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = eof },
-                        { Res = eof }
+                        Res5 = eof,
+                        Res = eof
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = eof },
-                    { Res = eof }
+                    Res4 = eof,
+                    Res = eof
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = eof },
-                { Res = eof }
+                Res3 = eof,
+                Res = eof
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = eof },
-            { Res = eof }
+            Res2 = eof,
+            Res = eof
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = eof },
-        { Res = eof }
+        Res1 = eof,
+        Res = eof
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.sequence_7(P1, P2, P3, P4, P5, P6, P7, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.sequence_7(P1, P2, P3, P4, P5, P6, P7, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                { call(Combine, T1, T2, T3, T4, T5, T6, T7,
-                                    Res) }
+                                Res7 = ok(T7),
+                                call(Combine, T1, T2, T3, T4, T5, T6, T7, Res)
                             ;
-                                { Res7 = eof },
-                                { Res = eof }
+                                Res7 = eof,
+                                Res = eof
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = eof },
-                            { Res = eof }
+                            Res6 = eof,
+                            Res = eof
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = eof },
-                        { Res = eof }
+                        Res5 = eof,
+                        Res = eof
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = eof },
-                    { Res = eof }
+                    Res4 = eof,
+                    Res = eof
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = eof },
-                { Res = eof }
+                Res3 = eof,
+                Res = eof
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = eof },
-            { Res = eof }
+            Res2 = eof,
+            Res = eof
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = eof },
-        { Res = eof }
+        Res1 = eof,
+        Res = eof
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.sequence_8(P1, P2, P3, P4, P5, P6, P7, P8, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.sequence_8(P1, P2, P3, P4, P5, P6, P7, P8, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                call(P8, Res8),
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
                                 (
-                                    { Res8 = ok(T8) },
-                                    { call(Combine, T1, T2, T3, T4, T5, T6,
-                                        T7, T8, Res) }
+                                    Res8 = ok(T8),
+                                    call(Combine, T1, T2, T3, T4, T5, T6,
+                                        T7, T8, Res)
                                 ;
-                                    { Res8 = eof },
-                                    { Res = eof }
+                                    Res8 = eof,
+                                    Res = eof
                                 ;
-                                    { Res8 = error(Err) },
-                                    { Res = error(Err) }
+                                    Res8 = error(Err),
+                                    Res = error(Err)
                                 )
                             ;
-                                { Res7 = eof },
-                                { Res = eof }
+                                Res7 = eof,
+                                Res = eof
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = eof },
-                            { Res = eof }
+                            Res6 = eof,
+                            Res = eof
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = eof },
-                        { Res = eof }
+                        Res5 = eof,
+                        Res = eof
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = eof },
-                    { Res = eof }
+                    Res4 = eof,
+                    Res = eof
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = eof },
-                { Res = eof }
+                Res3 = eof,
+                Res = eof
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = eof },
-            { Res = eof }
+            Res2 = eof,
+            Res = eof
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = eof },
-        { Res = eof }
+        Res1 = eof,
+        Res = eof
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.sequence_9(P1, P2, P3, P4, P5, P6, P7, P8, P9, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.sequence_9(P1, P2, P3, P4, P5, P6, P7, P8, P9, Combine, Res,
+        !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                call(P8, Res8),
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
                                 (
-                                    { Res8 = ok(T8) },
-                                    call(P9, Res9),
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
                                     (
-                                        { Res9 = ok(T9) },
-                                        { call(Combine, T1, T2, T3, T4, T5,
-                                            T6, T7, T8, T9, Res) }
+                                        Res9 = ok(T9),
+                                        call(Combine, T1, T2, T3, T4, T5,
+                                            T6, T7, T8, T9, Res)
                                     ;
-                                        { Res9 = eof },
-                                        { Res = eof }
+                                        Res9 = eof,
+                                        Res = eof
                                     ;
-                                        { Res9 = error(Err) },
-                                        { Res = error(Err) }
+                                        Res9 = error(Err),
+                                        Res = error(Err)
                                     )
                                 ;
-                                    { Res8 = eof },
-                                    { Res = eof }
+                                    Res8 = eof,
+                                    Res = eof
                                 ;
-                                    { Res8 = error(Err) },
-                                    { Res = error(Err) }
+                                    Res8 = error(Err),
+                                    Res = error(Err)
                                 )
                             ;
-                                { Res7 = eof },
-                                { Res = eof }
+                                Res7 = eof,
+                                Res = eof
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = eof },
-                            { Res = eof }
+                            Res6 = eof,
+                            Res = eof
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = eof },
-                        { Res = eof }
+                        Res5 = eof,
+                        Res = eof
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = eof },
-                    { Res = eof }
+                    Res4 = eof,
+                    Res = eof
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = eof },
-                { Res = eof }
+                Res3 = eof,
+                Res = eof
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = eof },
-            { Res = eof }
+            Res2 = eof,
+            Res = eof
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = eof },
-        { Res = eof }
+        Res1 = eof,
+        Res = eof
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 io_combinator.sequence_10(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
-        Combine, Res) -->
-    call(P1, Res1),
+        Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                call(P8, Res8),
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
                                 (
-                                    { Res8 = ok(T8) },
-                                    call(P9, Res9),
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
                                     (
-                                        { Res9 = ok(T9) },
-                                        call(P10, Res10),
+                                        Res9 = ok(T9),
+                                        call(P10, Res10, !IO),
                                         (
-                                            { Res10 = ok(T10) },
-                                            { call(Combine, T1, T2, T3, T4, T5,
-                                                T6, T7, T8, T9, T10, Res) }
+                                            Res10 = ok(T10),
+                                            call(Combine, T1, T2, T3, T4, T5,
+                                                T6, T7, T8, T9, T10, Res)
                                         ;
-                                            { Res10 = eof },
-                                            { Res = eof }
+                                            Res10 = eof,
+                                            Res = eof
                                         ;
-                                            { Res10 = error(Err) },
-                                            { Res = error(Err) }
+                                            Res10 = error(Err),
+                                            Res = error(Err)
                                         )
                                     ;
-                                        { Res9 = eof },
-                                        { Res = eof }
+                                        Res9 = eof,
+                                        Res = eof
                                     ;
-                                        { Res9 = error(Err) },
-                                        { Res = error(Err) }
+                                        Res9 = error(Err),
+                                        Res = error(Err)
                                     )
                                 ;
-                                    { Res8 = eof },
-                                    { Res = eof }
+                                    Res8 = eof,
+                                    Res = eof
                                 ;
-                                    { Res8 = error(Err) },
-                                    { Res = error(Err) }
+                                    Res8 = error(Err),
+                                    Res = error(Err)
                                 )
                             ;
-                                { Res7 = eof },
-                                { Res = eof }
+                                Res7 = eof,
+                                Res = eof
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = eof },
-                            { Res = eof }
+                            Res6 = eof,
+                            Res = eof
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = eof },
-                        { Res = eof }
+                        Res5 = eof,
+                        Res = eof
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = eof },
-                    { Res = eof }
+                    Res4 = eof,
+                    Res = eof
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = eof },
-                { Res = eof }
+                Res3 = eof,
+                Res = eof
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = eof },
-            { Res = eof }
+            Res2 = eof,
+            Res = eof
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = eof },
-        { Res = eof }
+        Res1 = eof,
+        Res = eof
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
+    ).
+
+io_combinator.sequence_11(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11,
+        Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
+    (
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
+        (
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
+            (
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
+                (
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
+                    (
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
+                        (
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
+                            (
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
+                                (
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
+                                    (
+                                        Res9 = ok(T9),
+                                        call(P10, Res10, !IO),
+                                        (
+                                            Res10 = ok(T10),
+                                            call(P11, Res11, !IO),
+                                            (
+                                                Res11 = ok(T11),
+                                                call(Combine, T1, T2, T3, T4,
+                                                    T5, T6, T7, T8, T9, T10,
+                                                    T11, Res)
+                                            ;
+                                                Res11 = eof,
+                                                Res = eof
+                                            ;
+                                                Res11 = error(Err),
+                                                Res = error(Err)
+                                            )
+                                        ;
+                                            Res10 = eof,
+                                            Res = eof
+                                        ;
+                                            Res10 = error(Err),
+                                            Res = error(Err)
+                                        )
+                                    ;
+                                        Res9 = eof,
+                                        Res = eof
+                                    ;
+                                        Res9 = error(Err),
+                                        Res = error(Err)
+                                    )
+                                ;
+                                    Res8 = eof,
+                                    Res = eof
+                                ;
+                                    Res8 = error(Err),
+                                    Res = error(Err)
+                                )
+                            ;
+                                Res7 = eof,
+                                Res = eof
+                            ;
+                                Res7 = error(Err),
+                                Res = error(Err)
+                            )
+                        ;
+                            Res6 = eof,
+                            Res = eof
+                        ;
+                            Res6 = error(Err),
+                            Res = error(Err)
+                        )
+                    ;
+                        Res5 = eof,
+                        Res = eof
+                    ;
+                        Res5 = error(Err),
+                        Res = error(Err)
+                    )
+                ;
+                    Res4 = eof,
+                    Res = eof
+                ;
+                    Res4 = error(Err),
+                    Res = error(Err)
+                )
+            ;
+                Res3 = eof,
+                Res = eof
+            ;
+                Res3 = error(Err),
+                Res = error(Err)
+            )
+        ;
+            Res2 = eof,
+            Res = eof
+        ;
+            Res2 = error(Err),
+            Res = error(Err)
+        )
+    ;
+        Res1 = eof,
+        Res = eof
+    ;
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 %-----------------------------------------------------------------------------%
 
-io_combinator.res_sequence_2(P1, P2, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.res_sequence_2(P1, P2, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            { call(Combine, T1, T2, Res) }
+            Res2 = ok(T2),
+            call(Combine, T1, T2, Res)
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.res_sequence_3(P1, P2, P3, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.res_sequence_3(P1, P2, P3, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                { call(Combine, T1, T2, T3, Res) }
+                Res3 = ok(T3),
+                call(Combine, T1, T2, T3, Res)
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.res_sequence_4(P1, P2, P3, P4, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.res_sequence_4(P1, P2, P3, P4, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    { call(Combine, T1, T2, T3, T4, Res) }
+                    Res4 = ok(T4),
+                    call(Combine, T1, T2, T3, T4, Res)
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.res_sequence_5(P1, P2, P3, P4, P5, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.res_sequence_5(P1, P2, P3, P4, P5, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        { call(Combine, T1, T2, T3, T4,
-                            T5, Res) }
+                        Res5 = ok(T5),
+                        call(Combine, T1, T2, T3, T4, T5, Res)
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.res_sequence_6(P1, P2, P3, P4, P5, P6, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.res_sequence_6(P1, P2, P3, P4, P5, P6, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            { call(Combine, T1, T2,
-                                T3, T4, T5,
-                                T6, Res) }
+                            Res6 = ok(T6),
+                            call(Combine, T1, T2, T3, T4, T5, T6, Res)
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.res_sequence_7(P1, P2, P3, P4, P5, P6, P7, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.res_sequence_7(P1, P2, P3, P4, P5, P6, P7, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                { call(Combine, T1, T2, T3, T4, T5, T6, T7,
-                                    Res) }
+                                Res7 = ok(T7),
+                                call(Combine, T1, T2, T3, T4, T5, T6, T7, Res)
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.res_sequence_8(P1, P2, P3, P4, P5, P6, P7, P8, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.res_sequence_8(P1, P2, P3, P4, P5, P6, P7, P8, Combine, Res,
+        !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                call(P8, Res8),
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
                                 (
-                                    { Res8 = ok(T8) },
-                                    { call(Combine, T1, T2, T3, T4, T5, T6,
-                                        T7, T8, Res) }
+                                    Res8 = ok(T8),
+                                    call(Combine, T1, T2, T3, T4, T5, T6,
+                                        T7, T8, Res)
                                 ;
-                                    { Res8 = error(Err) },
-                                    { Res = error(Err) }
+                                    Res8 = error(Err),
+                                    Res = error(Err)
                                 )
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 io_combinator.res_sequence_9(P1, P2, P3, P4, P5, P6, P7, P8, P9,
-        Combine, Res) -->
-    call(P1, Res1),
+        Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                call(P8, Res8),
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
                                 (
-                                    { Res8 = ok(T8) },
-                                    call(P9, Res9),
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
                                     (
-                                        { Res9 = ok(T9) },
-                                        { call(Combine, T1, T2, T3, T4, T5,
-                                            T6, T7, T8, T9, Res) }
+                                        Res9 = ok(T9),
+                                        call(Combine, T1, T2, T3, T4, T5,
+                                            T6, T7, T8, T9, Res)
                                     ;
-                                        { Res9 = error(Err) },
-                                        { Res = error(Err) }
+                                        Res9 = error(Err),
+                                        Res = error(Err)
                                     )
                                 ;
-                                    { Res8 = error(Err) },
-                                    { Res = error(Err) }
+                                    Res8 = error(Err),
+                                    Res = error(Err)
                                 )
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 io_combinator.res_sequence_10(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
-        Combine, Res) -->
-    call(P1, Res1),
+        Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                call(P8, Res8),
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
                                 (
-                                    { Res8 = ok(T8) },
-                                    call(P9, Res9),
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
                                     (
-                                        { Res9 = ok(T9) },
-                                        call(P10, Res10),
+                                        Res9 = ok(T9),
+                                        call(P10, Res10, !IO),
                                         (
-                                            { Res10 = ok(T10) },
-                                            { call(Combine, T1, T2, T3, T4, T5,
-                                                T6, T7, T8, T9, T10, Res) }
+                                            Res10 = ok(T10),
+                                            call(Combine, T1, T2, T3, T4, T5,
+                                                T6, T7, T8, T9, T10, Res)
                                         ;
-                                            { Res10 = error(Err) },
-                                            { Res = error(Err) }
+                                            Res10 = error(Err),
+                                            Res = error(Err)
                                         )
                                     ;
-                                        { Res9 = error(Err) },
-                                        { Res = error(Err) }
+                                        Res9 = error(Err),
+                                        Res = error(Err)
                                     )
                                 ;
-                                    { Res8 = error(Err) },
-                                    { Res = error(Err) }
+                                    Res8 = error(Err),
+                                    Res = error(Err)
                                 )
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
+    ).
+
+io_combinator.res_sequence_11(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11,
+        Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
+    (
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
+        (
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
+            (
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
+                (
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
+                    (
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
+                        (
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
+                            (
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
+                                (
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
+                                    (
+                                        Res9 = ok(T9),
+                                        call(P10, Res10, !IO),
+                                        (
+                                            Res10 = ok(T10),
+                                            call(P11, Res11, !IO),
+                                            (
+                                                Res11 = ok(T11),
+                                                call(Combine, T1, T2, T3, T4,
+                                                    T5, T6, T7, T8, T9, T10,
+                                                    T11, Res)
+                                            ;
+                                                Res11 = error(Err),
+                                                Res = error(Err)
+                                            )
+                                        ;
+                                            Res10 = error(Err),
+                                            Res = error(Err)
+                                        )
+                                    ;
+                                        Res9 = error(Err),
+                                        Res = error(Err)
+                                    )
+                                ;
+                                    Res8 = error(Err),
+                                    Res = error(Err)
+                                )
+                            ;
+                                Res7 = error(Err),
+                                Res = error(Err)
+                            )
+                        ;
+                            Res6 = error(Err),
+                            Res = error(Err)
+                        )
+                    ;
+                        Res5 = error(Err),
+                        Res = error(Err)
+                    )
+                ;
+                    Res4 = error(Err),
+                    Res = error(Err)
+                )
+            ;
+                Res3 = error(Err),
+                Res = error(Err)
+            )
+        ;
+            Res2 = error(Err),
+            Res = error(Err)
+        )
+    ;
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 %-----------------------------------------------------------------------------%
 
-io_combinator.maybe_error_sequence_2(P1, P2, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.maybe_error_sequence_2(P1, P2, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            { call(Combine, T1, T2, Res) }
+            Res2 = ok(T2),
+            call(Combine, T1, T2, Res)
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.maybe_error_sequence_3(P1, P2, P3, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.maybe_error_sequence_3(P1, P2, P3, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                { call(Combine, T1, T2, T3, Res) }
+                Res3 = ok(T3),
+                call(Combine, T1, T2, T3, Res)
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.maybe_error_sequence_4(P1, P2, P3, P4, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.maybe_error_sequence_4(P1, P2, P3, P4, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    { call(Combine, T1, T2, T3, T4, Res) }
+                    Res4 = ok(T4),
+                    call(Combine, T1, T2, T3, T4, Res)
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.maybe_error_sequence_5(P1, P2, P3, P4, P5, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.maybe_error_sequence_5(P1, P2, P3, P4, P5, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        { call(Combine, T1, T2, T3, T4,
-                            T5, Res) }
+                        Res5 = ok(T5),
+                        call(Combine, T1, T2, T3, T4, T5, Res)
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
-io_combinator.maybe_error_sequence_6(P1, P2, P3, P4, P5, P6, Combine, Res) -->
-    call(P1, Res1),
+io_combinator.maybe_error_sequence_6(P1, P2, P3, P4, P5, P6, Combine, Res, !IO)
+:-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            { call(Combine, T1, T2,
-                                T3, T4, T5,
-                                T6, Res) }
+                            Res6 = ok(T6),
+                            call(Combine, T1, T2, T3, T4, T5, T6, Res)
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 io_combinator.maybe_error_sequence_7(P1, P2, P3, P4, P5, P6, P7,
-        Combine, Res) -->
-    call(P1, Res1),
+        Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                { call(Combine, T1, T2, T3, T4, T5, T6, T7,
-                                    Res) }
+                                Res7 = ok(T7),
+                                call(Combine, T1, T2, T3, T4, T5, T6, T7, Res)
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 io_combinator.maybe_error_sequence_8(P1, P2, P3, P4, P5, P6, P7, P8,
-        Combine, Res) -->
-    call(P1, Res1),
+        Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                call(P8, Res8),
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
                                 (
-                                    { Res8 = ok(T8) },
-                                    { call(Combine, T1, T2, T3, T4, T5, T6,
-                                        T7, T8, Res) }
+                                    Res8 = ok(T8),
+                                    call(Combine, T1, T2, T3, T4, T5, T6,
+                                        T7, T8, Res)
                                 ;
-                                    { Res8 = error(Err) },
-                                    { Res = error(Err) }
+                                    Res8 = error(Err),
+                                    Res = error(Err)
                                 )
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 io_combinator.maybe_error_sequence_9(P1, P2, P3, P4, P5, P6, P7, P8, P9,
-        Combine, Res) -->
-    call(P1, Res1),
+        Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                call(P8, Res8),
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
                                 (
-                                    { Res8 = ok(T8) },
-                                    call(P9, Res9),
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
                                     (
-                                        { Res9 = ok(T9) },
-                                        { call(Combine, T1, T2, T3, T4, T5,
-                                            T6, T7, T8, T9, Res) }
+                                        Res9 = ok(T9),
+                                        call(Combine, T1, T2, T3, T4, T5,
+                                            T6, T7, T8, T9, Res)
                                     ;
-                                        { Res9 = error(Err) },
-                                        { Res = error(Err) }
+                                        Res9 = error(Err),
+                                        Res = error(Err)
                                     )
                                 ;
-                                    { Res8 = error(Err) },
-                                    { Res = error(Err) }
+                                    Res8 = error(Err),
+                                    Res = error(Err)
                                 )
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 io_combinator.maybe_error_sequence_10(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
-        Combine, Res) -->
-    call(P1, Res1),
+        Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
     (
-        { Res1 = ok(T1) },
-        call(P2, Res2),
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
         (
-            { Res2 = ok(T2) },
-            call(P3, Res3),
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
             (
-                { Res3 = ok(T3) },
-                call(P4, Res4),
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
                 (
-                    { Res4 = ok(T4) },
-                    call(P5, Res5),
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
                     (
-                        { Res5 = ok(T5) },
-                        call(P6, Res6),
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
                         (
-                            { Res6 = ok(T6) },
-                            call(P7, Res7),
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
                             (
-                                { Res7 = ok(T7) },
-                                call(P8, Res8),
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
                                 (
-                                    { Res8 = ok(T8) },
-                                    call(P9, Res9),
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
                                     (
-                                        { Res9 = ok(T9) },
-                                        call(P10, Res10),
+                                        Res9 = ok(T9),
+                                        call(P10, Res10, !IO),
                                         (
-                                            { Res10 = ok(T10) },
-                                            { call(Combine, T1, T2, T3, T4, T5,
-                                                T6, T7, T8, T9, T10, Res) }
+                                            Res10 = ok(T10),
+                                            call(Combine, T1, T2, T3, T4, T5,
+                                                T6, T7, T8, T9, T10, Res)
                                         ;
-                                            { Res10 = error(Err) },
-                                            { Res = error(Err) }
+                                            Res10 = error(Err),
+                                            Res = error(Err)
                                         )
                                     ;
-                                        { Res9 = error(Err) },
-                                        { Res = error(Err) }
+                                        Res9 = error(Err),
+                                        Res = error(Err)
                                     )
                                 ;
-                                    { Res8 = error(Err) },
-                                    { Res = error(Err) }
+                                    Res8 = error(Err),
+                                    Res = error(Err)
                                 )
                             ;
-                                { Res7 = error(Err) },
-                                { Res = error(Err) }
+                                Res7 = error(Err),
+                                Res = error(Err)
                             )
                         ;
-                            { Res6 = error(Err) },
-                            { Res = error(Err) }
+                            Res6 = error(Err),
+                            Res = error(Err)
                         )
                     ;
-                        { Res5 = error(Err) },
-                        { Res = error(Err) }
+                        Res5 = error(Err),
+                        Res = error(Err)
                     )
                 ;
-                    { Res4 = error(Err) },
-                    { Res = error(Err) }
+                    Res4 = error(Err),
+                    Res = error(Err)
                 )
             ;
-                { Res3 = error(Err) },
-                { Res = error(Err) }
+                Res3 = error(Err),
+                Res = error(Err)
             )
         ;
-            { Res2 = error(Err) },
-            { Res = error(Err) }
+            Res2 = error(Err),
+            Res = error(Err)
         )
     ;
-        { Res1 = error(Err) },
-        { Res = error(Err) }
+        Res1 = error(Err),
+        Res = error(Err)
+    ).
+
+io_combinator.maybe_error_sequence_11(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
+        P11, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
+    (
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
+        (
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
+            (
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
+                (
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
+                    (
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
+                        (
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
+                            (
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
+                                (
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
+                                    (
+                                        Res9 = ok(T9),
+                                        call(P10, Res10, !IO),
+                                        (
+                                            Res10 = ok(T10),
+                                            call(P11, Res11, !IO),
+                                            (
+                                                Res11 = ok(T11),
+                                                call(Combine, T1, T2, T3, T4,
+                                                    T5, T6, T7, T8, T9, T10,
+                                                    T11, Res)
+                                            ;
+                                                Res11 = error(Err),
+                                                Res = error(Err)
+                                            )
+                                        ;
+                                            Res10 = error(Err),
+                                            Res = error(Err)
+                                        )
+                                    ;
+                                        Res9 = error(Err),
+                                        Res = error(Err)
+                                    )
+                                ;
+                                    Res8 = error(Err),
+                                    Res = error(Err)
+                                )
+                            ;
+                                Res7 = error(Err),
+                                Res = error(Err)
+                            )
+                        ;
+                            Res6 = error(Err),
+                            Res = error(Err)
+                        )
+                    ;
+                        Res5 = error(Err),
+                        Res = error(Err)
+                    )
+                ;
+                    Res4 = error(Err),
+                    Res = error(Err)
+                )
+            ;
+                Res3 = error(Err),
+                Res = error(Err)
+            )
+        ;
+            Res2 = error(Err),
+            Res = error(Err)
+        )
+    ;
+        Res1 = error(Err),
+        Res = error(Err)
     ).
 
 %-----------------------------------------------------------------------------%

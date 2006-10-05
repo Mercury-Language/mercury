@@ -54,11 +54,12 @@ read_call_graph(FileName, Res, !IO) :-
         read_id_string(Res1, !IO),
         (
             Res1 = ok(_),
-            io_combinator.maybe_error_sequence_10(
+            io_combinator.maybe_error_sequence_11(
                 read_fixed_size_int,
                 read_fixed_size_int,
                 read_fixed_size_int,
                 read_fixed_size_int,
+                read_num,
                 read_num,
                 read_num,
                 read_num,
@@ -70,14 +71,15 @@ read_call_graph(FileName, Res, !IO) :-
                         TicksPerSec::in,
                         InstrumentQuanta::in,
                         UserQuanta::in,
+                        NumCallSeqs::in,
                         WordSize::in,
                         CanonicalFlag::in,
                         RootPDI::in,
                         ResInitDeep::out) is det :-
                     InitDeep0 = init_deep(MaxCSD, MaxCSS,
                         MaxPD, MaxPS,
-                        TicksPerSec,
-                        InstrumentQuanta, UserQuanta,
+                        TicksPerSec, InstrumentQuanta, UserQuanta,
+                        NumCallSeqs,
                         WordSize, CanonicalFlag,
                         RootPDI),
                     ResInitDeep = ok(InitDeep0)
@@ -125,18 +127,19 @@ read_id_string(Res, !IO) :-
 
 id_string = "Mercury deep profiler data version 2\n".
 
-:- func init_deep(int, int, int, int, int, int, int, int, int, int)
+:- func init_deep(int, int, int, int, int, int, int, int, int, int, int)
     = initial_deep.
 
 init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec, InstrumentQuanta,
-        UserQuanta, WordSize, CanonicalByte, RootPDI) = InitDeep :-
+        UserQuanta, NumCallSeqs, WordSize, CanonicalByte, RootPDI)
+        = InitDeep :-
     ( CanonicalByte = 0 ->
         CanonicalFlag = no
     ;
         CanonicalFlag = yes
     ),
     InitStats = profile_stats(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
-        InstrumentQuanta, UserQuanta, WordSize, CanonicalFlag),
+        InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize, CanonicalFlag),
     InitDeep = initial_deep(
         InitStats,
         make_pdptr(RootPDI),
