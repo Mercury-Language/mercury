@@ -415,7 +415,7 @@ case $HOST in
 					hlc.gc			\
 					hlc.gc.tr		\
 					hlc.par.gc		\
-					asm_jump.par.gc		\
+					asm_fast.par.gc		\
 					asm_jump.gc"
 		;;					
 	jupiter)
