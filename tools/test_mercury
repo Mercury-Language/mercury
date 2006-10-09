@@ -600,9 +600,6 @@ case "$with_asm" in
 		date
 		;;
 esac
-[ -d mercury/extras/clpr/CVS ] ||
-(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
-	set_status "clpr checkout"
 
 : make sure the installation directory exists
 [ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
@@ -763,52 +760,6 @@ unset MERCURY_COMPILER
 PATH="$INSTALL_DIR/bin:$PATH"
 
 GRADES="`(cd $DIR/mercury && mmake echo_libgrades)`"
-
-#-----------------------------------------------------------------------------#
-
-: test and install the CLPR interface
-
-# CLPR requires trailing, so here we only test the trailing grades.
-# XXX The CLPR interface currently also requires GCC (see the #error in
-# extras/clpr/cfloat.m), so we test it only if we're using GCC.
-case "$C_COMPILER" in
-    gcc)
-#	for grade in $GRADES; do
-#	    case "$grade" in *.tr*)
-#		echo "test clpr stuff for grade $grade" 1>&2
-#		{
-#			echo "GRADE = $grade"
-#			echo "EXTRA_MCFLAGS = $INSTALL_MCFLAGS"
-#			echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS"
-#			echo "EXTRA_CFLAGS = $INSTALL_CFLAGS"
-#			echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS"
-#		} > mercury/extras/Mmake.params &&
-#		(cd mercury/extras/clpr &&
-#			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-#			mmake -k depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-#			mmake -k 	$PARALLEL MMAKEFLAGS=$PARALLEL &&
-#			mmake -k check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-#			mmake install LIBGRADES=$grade \
-#					$PARALLEL MMAKEFLAGS=$PARALLEL &&
-#			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
-#				set_status "clpr tests in grade $grade"
-#		echo "test trailed_update stuff for grade $grade" 1>&2
-#		(cd mercury/extras/trailed_update &&
-#			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-#			mmake -k depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-#			mmake -k	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-#			mmake -k check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-#			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
-#			    set_status "trailed_update tests in grade $grade"
-#		;;
-#	    esac
-#	done
-	echo "test of clpr and trailed_update disabled"
-	;;
-    *)
-	echo "not testing clpr, since the CLP(R) interface requires GCC"
-	;;
-esac
 
 #-----------------------------------------------------------------------------#
 
@@ -1063,7 +1014,7 @@ esac
 		echo "test_mercury tagging unstable $BASE_TAG_NAME," \
 			"starting at `date`" 1>&2 &&
 		cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag \
-			mercury clpr tests &&
+			mercury tests &&
 		cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
 		if [ -d gcc/. ] && [ -d mercury-gcc/. ]; then
 			cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag \
@@ -1106,7 +1057,7 @@ case $status in
 		echo "test_mercury tagging stable $BASE_TAG_NAME," \
 			"starting at `date`" 1>&2 &&
 		cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag \
-			mercury clpr tests &&
+			mercury tests &&
 		cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
 		if [ -d gcc/. ] && [ -d mercury-gcc/. ]; then
 			cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag \
