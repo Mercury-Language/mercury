@@ -89,7 +89,7 @@ submake: force
 clean_local:
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) clean
-	cd libatomic_ops-1.2 && $(MAKE) $(MMAKEFLAGS) clean
+	-cd libatomic_ops-1.2 && $(MAKE) $(MMAKEFLAGS) clean
 	rm -f libgc.$A libgc.so libpar_gc.$A libpar_gc.dll
 	rm -f libatomic_ops-1.2/Makefile libatomic_ops-1.2/tests/Makefile
 	rm -f libatomic_ops-1.2/src/Makefile

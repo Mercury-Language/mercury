@@ -6,13 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: read_call_graph.m.
 % Authors: conway, zs.
 %
 % This module contains code for reading in a deep profiling data file.
 % Such files, named Deep.data, are created by deep profiled executables.
+%
+%-----------------------------------------------------------------------------%
 
 :- module read_profile.
-
 :- interface.
 
 :- import_module profile.
@@ -22,6 +24,9 @@
 
 :- pred read_call_graph(string::in, maybe_error(initial_deep)::out,
     io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -36,6 +41,8 @@
 :- import_module list.
 :- import_module require.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type maybe_error2(T1, T2)
     --->    ok2(T1, T2)
@@ -232,8 +239,9 @@ read_nodes(InitDeep0, Res, !IO) :-
     io::di, io::uo) is det.
 
 read_call_site_static(Res, !IO) :-
-    % DEBUGSITE
-    % io.write_string("reading call_site_static.\n"),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.write_string("reading call_site_static.\n", !IO)
+    ),
     io_combinator.maybe_error_sequence_4(
         read_ptr(css),
         read_call_site_kind_and_callee,
@@ -250,13 +258,14 @@ read_call_site_static(Res, !IO) :-
         Res1, !IO),
     (
         Res1 = ok({CallSiteStatic, CSSI}),
-        Res = ok2(CallSiteStatic, CSSI)
-        % DEBUGSITE
-        % io.write_string("read call_site_static ", !IO),
-        % io.write_int(CSSI, !IO),
-        % io.write_string(": ", !IO),
-        % io.write(CallSiteStatic, !IO),
-        % io.write_string("\n", !IO)
+        Res = ok2(CallSiteStatic, CSSI),
+        trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+            io.write_string("read call_site_static ", !IO),
+            io.write_int(CSSI, !IO),
+            io.write_string(": ", !IO),
+            io.write(CallSiteStatic, !IO),
+            io.write_string("\n", !IO)
+        )
     ;
         Res1 = error(Err),
         Res = error2(Err)
@@ -267,8 +276,9 @@ read_call_site_static(Res, !IO) :-
     io::di, io::uo) is det.
 
 read_proc_static(Res, !IO) :-
-    % DEBUGSITE
-    % io.write_string("reading proc_static.\n", !IO),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.write_string("reading proc_static.\n", !IO)
+    ),
     io_combinator.maybe_error_sequence_6(
         read_ptr(ps),
         read_proc_id,
@@ -302,13 +312,14 @@ read_proc_static(Res, !IO) :-
             ProcStatic = proc_static(Id, DeclModule,
                 RefinedStr, RawStr, FileName, LineNumber,
                 IsInInterface, array(CSSPtrs), not_zeroed),
-            Res = ok2(ProcStatic, PSI)
-            % DEBUGSITE
-            % io.write_string("read proc_static ", !IO),
-            % io.write_int(PSI, !IO),
-            % io.write_string(": ", !IO),
-            % io.write(ProcStatic, !IO),
-            % io.write_string("\n", !IO)
+            Res = ok2(ProcStatic, PSI),
+            trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+                io.write_string("read proc_static ", !IO),
+                io.write_int(PSI, !IO),
+                io.write_string(": ", !IO),
+                io.write(ProcStatic, !IO),
+                io.write_string("\n", !IO)
+            )
         ;
             Res2 = error(Err),
             Res = error2(Err)
@@ -318,8 +329,7 @@ read_proc_static(Res, !IO) :-
         Res = error2(Err)
     ).
 
-:- pred read_proc_id(maybe_error(proc_id)::out,
-    io::di, io::uo) is det.
+:- pred read_proc_id(maybe_error(proc_id)::out, io::di, io::uo) is det.
 
 read_proc_id(Res, !IO) :-
     read_deep_byte(Res0, !IO),
@@ -340,8 +350,8 @@ read_proc_id(Res, !IO) :-
         Res = error(Err)
     ).
 
-:- pred read_proc_id_uci_pred(maybe_error(proc_id)::out,
-    io::di, io::uo) is det.
+:- pred read_proc_id_uci_pred(maybe_error(proc_id)::out, io::di, io::uo)
+    is det.
 
 read_proc_id_uci_pred(Res, !IO) :-
     io_combinator.maybe_error_sequence_6(
@@ -526,8 +536,9 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
     io::di, io::uo) is det.
 
 read_proc_dynamic(Res, !IO) :-
-    % DEBUGSITE
-    % io.write_string("reading proc_dynamic.\n", !IO),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.write_string("reading proc_dynamic.\n", !IO)
+    ),
     io_combinator.maybe_error_sequence_3(
         read_ptr(pd),
         read_ptr(ps),
@@ -543,13 +554,14 @@ read_proc_dynamic(Res, !IO) :-
             Res2 = ok(Refs),
             PSPtr = make_psptr(PSI),
             ProcDynamic = proc_dynamic(PSPtr, array(Refs)),
-            Res = ok2(ProcDynamic, PDI)
-            % DEBUGSITE
-            % io.write_string("read proc_dynamic ", !IO),
-            % io.write_int(PDI, !IO),
-            % io.write_string(": ", !IO),
-            % io.write(ProcDynamic, !IO),
-            % io.write_string("\n", !IO)
+            Res = ok2(ProcDynamic, PDI),
+            trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+                io.write_string("read proc_dynamic ", !IO),
+                io.write_int(PDI, !IO),
+                io.write_string(": ", !IO),
+                io.write(ProcDynamic, !IO),
+                io.write_string("\n", !IO)
+            )
         ;
             Res2 = error(Err),
             Res = error2(Err)
@@ -563,8 +575,9 @@ read_proc_dynamic(Res, !IO) :-
     io::di, io::uo) is det.
 
 read_call_site_dynamic(Res, !IO) :-
-    % DEBUGSITE
-    % io.write_string("reading call_site_dynamic.\n", !IO),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.write_string("reading call_site_dynamic.\n", !IO)
+    ),
     read_ptr(csd, Res1, !IO),
     (
         Res1 = ok(CSDI),
@@ -578,14 +591,14 @@ read_call_site_dynamic(Res, !IO) :-
                 CallerPDPtr = make_dummy_pdptr,
                 CallSiteDynamic = call_site_dynamic(
                     CallerPDPtr, PDPtr, Profile),
-                Res = ok2(CallSiteDynamic, CSDI)
-                % DEBUGSITE
-                % io.write_string("read call_site_dynamic ",
-                %   !IO),
-                % io.write_int(CSDI, !IO),
-                % io.write_string(": ", !IO),
-                % io.write(CallSiteDynamic, !IO),
-                % io.write_string("\n", !IO)
+                Res = ok2(CallSiteDynamic, CSDI),
+                trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+                    io.write_string("read call_site_dynamic ", !IO),
+                    io.write_int(CSDI, !IO),
+                    io.write_string(": ", !IO),
+                    io.write(CallSiteDynamic, !IO),
+                    io.write_string("\n", !IO)
+                )
             ;
                 Res3 = error(Err),
                 Res = error2(Err)
@@ -599,8 +612,7 @@ read_call_site_dynamic(Res, !IO) :-
         Res = error2(Err)
     ).
 
-:- pred read_profile(maybe_error(own_prof_info)::out,
-    io::di, io::uo) is det.
+:- pred read_profile(maybe_error(own_prof_info)::out, io::di, io::uo) is det.
 
 read_profile(Res, !IO) :-
     read_num(Res0, !IO),
@@ -672,8 +684,9 @@ maybe_read_num_handle_error(MaskWord, MaskValue, Num, !MaybeError, !IO) :-
     io::di, io::uo) is det.
 
 read_call_site_slot(Res, !IO) :-
-    % DEBUGSITE
-    % io.write_string("reading call_site_slot.\n", !IO),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.write_string("reading call_site_slot.\n", !IO)
+    ),
     read_call_site_kind(Res1, !IO),
     (
         Res1 = ok(Kind),
@@ -682,12 +695,12 @@ read_call_site_slot(Res, !IO) :-
             (
                 Res2 = ok(CSDI),
                 CSDPtr = make_csdptr(CSDI),
-                Res = ok(slot_normal(CSDPtr))
-                % DEBUGSITE
-                % io.write_string("normal call_site slot ",
-                %   !IO),
-                % io.write_int(CSDI, !IO),
-                % io.write_string("\n", !IO)
+                Res = ok(slot_normal(CSDPtr)),
+                trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+                    io.write_string("normal call_site slot ", !IO),
+                    io.write_int(CSDI, !IO),
+                    io.write_string("\n", !IO)
+                )
             ;
                 Res2 = error(Err),
                 Res = error(Err)
@@ -706,12 +719,12 @@ read_call_site_slot(Res, !IO) :-
             (
                 Res2 = ok(CSDIs),
                 CSDPtrs = list.map(make_csdptr, CSDIs),
-                Res = ok(slot_multi(Zeroed, array(CSDPtrs)))
-                % DEBUGSITE
-                % io.write_string("multi call_site slots ",
-                %   !IO),
-                % io.write(CSDIs, !IO),
-                % io.write_string("\n", !IO)
+                Res = ok(slot_multi(Zeroed, array(CSDPtrs))),
+                trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+                    io.write_string("multi call_site slots ", !IO),
+                    io.write(CSDIs, !IO),
+                    io.write_string("\n", !IO)
+                )
             ;
                 Res2 = error(Err),
                 Res = error(Err)
@@ -742,8 +755,9 @@ read_multi_call_site_csdis(Res, !IO) :-
     maybe_error(list(int))::out, io::di, io::uo) is det.
 
 read_multi_call_site_csdis_2(CSDIs0, Res, !IO) :-
-    % DEBUGSITE
-    % io.format("reading multi_call_site_csdi.\n", [], !IO),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.format("reading multi_call_site_csdi.\n", [], !IO)
+    ),
     read_deep_byte(Res0, !IO),
     (
         Res0 = ok(Byte),
@@ -786,11 +800,12 @@ read_call_site_kind(Res, !IO) :-
             format("unexpected call_site_kind %d",
                 [i(Byte)], Msg),
             Res = error(Msg)
+        ),
+        trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+             io.write_string("call_site_kind ", !IO),
+             io.write(Res, !IO),
+             io.write_string("\n", !IO)
         )
-        % DEBUGSITE
-        % io.write_string("call_site_kind ", !IO),
-        % io.write(Res, !IO),
-        % io.write_string("\n", !IO)
     ;
         Res0 = error(Err),
         Res = error(Err)
@@ -832,11 +847,12 @@ read_call_site_kind_and_callee(Res, !IO) :-
         ;
             format("unexpected call_site_kind %d", [i(Byte)], Msg),
             Res = error(Msg)
+        ),
+        trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+            io.write_string("call_site_kind_and_callee ", !IO),
+            io.write(Res, !IO),
+            io.write_string("\n", !IO)
         )
-        % DEBUGSITE
-        % io.write_string("call_site_kind_and_callee ", !IO),
-        % io.write(Res, !IO),
-        % io.write_string("\n", !IO)
     ;
         Res0 = error(Err),
         Res = error(Err)
@@ -915,30 +931,32 @@ read_n_byte_string(Length, Res, !IO) :-
     ;
         Res1 = error(Err),
         Res = error(Err)
+    ),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.write_string("string ", !IO),
+        io.write(Res, !IO),
+        io.write_string("\n", !IO)
     ).
-    % DEBUGSITE
-    % io.write_string("string ", !IO),
-    % io.write(Res, !IO),
-    % io.write_string("\n", !IO).
 
-:- pred read_ptr(ptr_kind::in, maybe_error(int)::out,
-    io::di, io::uo) is det.
+:- pred read_ptr(ptr_kind::in, maybe_error(int)::out, io::di, io::uo) is det.
 
 read_ptr(_Kind, Res, !IO) :-
-    read_num1(0, Res, !IO).
-    % DEBUGSITE
-    % io.write_string("ptr ", !IO),
-    % io.write(Res, !IO),
-    % io.write_string("\n", !IO).
+    read_num1(0, Res, !IO),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.write_string("ptr ", !IO),
+        io.write(Res, !IO),
+        io.write_string("\n", !IO)
+    ).
 
 :- pred read_num(maybe_error(int)::out, io::di, io::uo) is det.
 
 read_num(Res, !IO) :-
-    read_num1(0, Res, !IO).
-    % DEBUGSITE
-    % io.write_string("num ", !IO),
-    % io.write(Res, !IO),
-    % io.write_string("\n", !IO).
+    read_num1(0, Res, !IO),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.write_string("num ", !IO),
+        io.write(Res, !IO),
+        io.write_string("\n", !IO)
+    ).
 
 :- pred read_num1(int::in, maybe_error(int)::out,
     io::di, io::uo) is det.
@@ -1029,10 +1047,11 @@ read_n_bytes(N, Bytes0, Res, !IO) :-
 
 read_deep_byte(Res, !IO) :-
     read_byte(Res0, !IO),
-    % DEBUGSITE
-    % io.write_string("byte ", !IO),
-    % io.write(Res, !IO),
-    % io.write_string("\n", !IO),
+    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        io.write_string("byte ", !IO),
+        io.write(Res, !IO),
+        io.write_string("\n", !IO)
+    ),
     (
         Res0 = ok(Byte),
         Res = ok(Byte)

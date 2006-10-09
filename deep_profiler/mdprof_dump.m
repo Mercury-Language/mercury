@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: mdprof_dump.m.
 % Authors: juliensf, zs.
 %
 % This module is the main module of a tool for dumping out the contents
@@ -16,7 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module mdprof_dump.
-
 :- interface.
 
 :- import_module io.
@@ -85,7 +85,7 @@ main_2(Options, FileName, !IO) :-
     getopt.lookup_bool_option(Options, dump_proc_dynamics, DumpPDs0),
     getopt.lookup_bool_option(Options, dump_call_site_statics, DumpCSSs0),
     getopt.lookup_bool_option(Options, dump_proc_statics, DumpPSs0),
-    % If the user doesn't way what he/she wants, they dump everything.
+    % If the user doesn't say what he/she wants, they dump everything.
     (
         ProfStats0 = no,
         DumpCSDs0 = no,
