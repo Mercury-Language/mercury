@@ -173,7 +173,7 @@ install_cgi_progs: mdprof_cgi
 	cp `vpath_find mdprof_test$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mdprof_test
 	cp `vpath_find mdprof_dump$(EXT_FOR_EXE)` \
-		$(INSTALL_MER_BIN_DIR)/mdprof_dump
+		$(INSTALL_MERC_BIN_DIR)/mdprof_dump
 
 uninstall:
 	# We try to uninstall mdprof_cgi, but failure to do so is not an
