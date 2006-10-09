@@ -117,7 +117,7 @@ extern	int	mercury_terminate(void);
 ** accept this because it avoids having the runtime rely on the library.
 */
 
-/* in library/io.h */
+/* in library/io.mh */
 extern	void	mercury_init_io(void);
 extern	void	ML_io_init_state(void);
 extern	void	ML_io_finalize_state(void);

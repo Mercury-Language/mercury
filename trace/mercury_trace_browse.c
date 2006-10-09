@@ -95,7 +95,7 @@ MR_trace_save_term(const char *filename, MR_Word browser_term)
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
     MR_TRACE_CALL_MERCURY(
         ML_BROWSE_save_term_to_file(mercury_filename, mercury_format,
-            browser_term, &mdb_out);
+            browser_term, MR_wrap_output_stream(&mdb_out));
     );
 }
 
@@ -110,7 +110,7 @@ MR_trace_save_term_xml(const char *filename, MR_Word browser_term)
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
     MR_TRACE_CALL_MERCURY(
         ML_BROWSE_save_term_to_file_xml(mercury_filename, browser_term,
-            &mdb_out);
+            MR_wrap_output_stream(&mdb_out));
     );
 }
 
@@ -124,7 +124,9 @@ MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
     MR_c_file_to_mercury_file(MR_mdb_err, &mdb_err);
 
     MR_TRACE_CALL_MERCURY(
-        ML_BROWSE_browse_term_xml(browser_term, &mdb_out, &mdb_err,
+        ML_BROWSE_browse_term_xml(browser_term,
+            MR_wrap_output_stream(&mdb_out),
+            MR_wrap_output_stream(&mdb_err),
             MR_trace_browser_persistent_state);
     );
 }
@@ -170,14 +172,18 @@ MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
     if (format != MR_BROWSE_DEFAULT_FORMAT) {
         MR_TRACE_CALL_MERCURY(
             ML_BROWSE_browse_browser_term_format(browser_term,
-                &mdb_in, &mdb_out, (MR_Word) format,
+                MR_wrap_input_stream(&mdb_in),
+                MR_wrap_output_stream(&mdb_out),
+                (MR_Word) format,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
     } else {
         MR_TRACE_CALL_MERCURY(
             ML_BROWSE_browse_browser_term(browser_term,
-                &mdb_in, &mdb_out, &maybe_mark,
+                MR_wrap_input_stream(&mdb_in),
+                MR_wrap_output_stream(&mdb_out),
+                &maybe_mark,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
@@ -206,14 +212,18 @@ MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
     if (format != MR_BROWSE_DEFAULT_FORMAT) {
         MR_TRACE_CALL_MERCURY(
             ML_BROWSE_browse_browser_term_format(browser_term,
-                &mdb_in, &mdb_out, (MR_Word) format,
+                MR_wrap_input_stream(&mdb_in),
+                MR_wrap_output_stream(&mdb_out),
+                (MR_Word) format,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
     } else {
         MR_TRACE_CALL_MERCURY(
             ML_BROWSE_browse_browser_term(browser_term,
-                &mdb_in, &mdb_out, &maybe_mark,
+                MR_wrap_input_stream(&mdb_in),
+                MR_wrap_output_stream(&mdb_out),
+                &maybe_mark,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
@@ -240,7 +250,8 @@ MR_trace_browse_external(MR_Word type_info, MR_Word value,
 
     MR_TRACE_CALL_MERCURY(
         ML_BROWSE_browse_external(type_info, value,
-            &MR_debugger_socket_in, &MR_debugger_socket_out,
+            MR_wrap_input_stream(&MR_debugger_socket_in),
+            MR_wrap_output_stream(&MR_debugger_socket_out),
             MR_trace_browser_persistent_state,
             &MR_trace_browser_persistent_state);
     );
@@ -267,12 +278,14 @@ MR_trace_print(MR_Word type_info, MR_Word value, MR_Browse_Caller_Type caller,
 
     if (format != MR_BROWSE_DEFAULT_FORMAT) {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_print_browser_term_format(browser_term, &mdb_out, caller,
+            ML_BROWSE_print_browser_term_format(browser_term, 
+                MR_wrap_output_stream(&mdb_out), caller,
                 (MR_Word) format, MR_trace_browser_persistent_state);
         );
     } else {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_print_browser_term(browser_term, &mdb_out,
+            ML_BROWSE_print_browser_term(browser_term,
+                MR_wrap_output_stream(&mdb_out),
                 (MR_Word) caller, MR_trace_browser_persistent_state);
         );
     }
@@ -293,12 +306,14 @@ MR_trace_print_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 
     if (format != MR_BROWSE_DEFAULT_FORMAT) {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_print_browser_term_format(browser_term, &mdb_out, caller,
+            ML_BROWSE_print_browser_term_format(browser_term, 
+                MR_wrap_output_stream(&mdb_out), caller,
                 (MR_Word) format, MR_trace_browser_persistent_state);
         );
     } else {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_print_browser_term(browser_term, &mdb_out,
+            ML_BROWSE_print_browser_term(browser_term,
+                MR_wrap_output_stream(&mdb_out),
                 (MR_Word) caller, MR_trace_browser_persistent_state);
         );
     }
@@ -376,7 +391,8 @@ MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 
     MR_TRACE_CALL_MERCURY(
         ML_query(type, imports_list, (MR_String) options_on_heap,
-            &mdb_in, &mdb_out);
+            MR_wrap_input_stream(&mdb_in),
+            MR_wrap_output_stream(&mdb_out));
     );
 }
 
@@ -388,7 +404,8 @@ MR_trace_query_external(MR_Query_Type type, MR_String options, int num_imports,
 {
     MR_TRACE_CALL_MERCURY(
         ML_query_external(type, imports_list, options,
-            &MR_debugger_socket_in, &MR_debugger_socket_out);
+            MR_wrap_input_stream(&MR_debugger_socket_in),
+            MR_wrap_output_stream(&MR_debugger_socket_out));
     );
 }
 

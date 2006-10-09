@@ -151,6 +151,7 @@ ORDINARY_PROGS=	\
 	pragma_inline \
 	pretty_printing \
 	prince_frameopt \
+	print_stream \
 	promise_equivalent_clauses \
 	promise_equivalent_solutions_test \
 	promise_equiv_with_svars \

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000, 2002-2004 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002-2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -19,7 +19,7 @@
 #include <stdarg.h>		/* for `va_list' */
 
 /*
-** The C `MercuryFile' type is used for the Mercury `io__stream' type
+** The C `MercuryFile' type is used for the Mercury `io.stream' type
 ** in library/io.m.
 ** Mercury files are not quite the same as C stdio FILEs,
 ** because we keep track of a lot more information.
@@ -149,5 +149,28 @@
 #endif	/* MR_NEW_MERCURYFILE_STRUCT */
 
 typedef MercuryFile	*MercuryFilePtr;
+
+/*
+** This macro should be used to wrap arguments of type MercuryFilePtr
+** that are being passed to exported Mercury procedures where the type
+** of the corresponding argument in the Mercury procedure is
+** io.input_stream or io.binary_input_stream.
+*/
+#define MR_wrap_output_stream(mf) ((MR_Word)(mf))
+
+/*
+** This macro should be used to wrap arguments of type MercuryFilePtr
+** that are being passed to exported Mercury procedures where the type
+** of the corresponding argument in the Mercury procedure is
+** io.output_stream or io.binary_output_stream.
+*/
+#define MR_wrap_input_stream(mf) ((MR_Word)(mf))
+
+/* 
+** Do the reverse to above.
+** The only place we use this in browser/listing.m.
+*/
+#define MR_unwrap_input_stream(mf) ((MercuryFilePtr)(mf))
+#define MR_unwrap_output_stream(mf) ((MercuryFilePtr)(mf))
 
 #endif /* not MERCURY_LIBRARY_TYPES_H */

@@ -922,7 +922,7 @@ MR_output_current_slots(const MR_Label_Layout *layout,
             layout->MR_sll_entry->MR_sle_detism,
             (MR_String) (MR_Word) path,
             lineno,
-            &MR_debugger_socket_out);
+            MR_wrap_output_stream(&MR_debugger_socket_out));
         );
     } else {
         MR_TRACE_CALL_MERCURY(
@@ -943,7 +943,7 @@ MR_output_current_slots(const MR_Label_Layout *layout,
             layout->MR_sll_entry->MR_sle_detism,
             (MR_String) (MR_Word) path,
             lineno,
-            &MR_debugger_socket_out);
+            MR_wrap_output_stream(&MR_debugger_socket_out));
         );
     }
 }
@@ -952,8 +952,10 @@ static void
 MR_output_current_vars(MR_Word var_list, MR_Word string_list)
 {
     MR_TRACE_CALL_MERCURY(
-        ML_DI_output_current_vars(var_list, string_list,
-            &MR_debugger_socket_out);
+    ML_DI_output_current_vars(
+        var_list,
+        string_list,
+        MR_wrap_output_stream(&MR_debugger_socket_out));
     );
 }
 
@@ -961,7 +963,9 @@ static void
 MR_output_current_nth_var(MR_Word var)
 {
     MR_TRACE_CALL_MERCURY(
-        ML_DI_output_current_nth_var(var, &MR_debugger_socket_out);
+    ML_DI_output_current_nth_var(
+        var,
+        MR_wrap_output_stream(&MR_debugger_socket_out));
     );
 }
 
@@ -969,8 +973,10 @@ static void
 MR_output_current_live_var_names(MR_Word var_names_list, MR_Word type_list)
 {
     MR_TRACE_CALL_MERCURY(
-        ML_DI_output_current_live_var_names(var_names_list, type_list,
-            &MR_debugger_socket_out);
+    ML_DI_output_current_live_var_names(
+        var_names_list,
+        type_list,
+        MR_wrap_output_stream(&MR_debugger_socket_out));
     );
 }
 
@@ -981,8 +987,10 @@ MR_read_request_from_socket(MR_Word *debugger_request_ptr,
     fflush(MR_file(MR_debugger_socket_in));
 
     MR_TRACE_CALL_MERCURY(
-        ML_DI_read_request_from_socket(&MR_debugger_socket_in, 
-            debugger_request_ptr, debugger_request_type_ptr);
+    ML_DI_read_request_from_socket(
+        MR_wrap_input_stream(&MR_debugger_socket_in), 
+        debugger_request_ptr, 
+        debugger_request_type_ptr);
     );
 }
  

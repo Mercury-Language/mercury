@@ -177,7 +177,7 @@ get_foreign_export_defns(ModuleInfo, ExportedProcsCode) :-
     % #endif
     % <function name>(MR_Word Mercury__Argument1,
     %       MR_Word *Mercury__Argument2...);
-    %       /* Word for input, Word* for output */
+    %       /* MR_Word for input, MR_Word* for output */
     %
     % #if SEMIDET
     %   MR_bool
@@ -188,7 +188,7 @@ get_foreign_export_defns(ModuleInfo, ExportedProcsCode) :-
     % #endif
     % <function name>(MR_Word Mercury__Argument1,
     %       MR_Word *Mercury__Argument2...)
-    %       /* Word for input, Word* for output */
+    %       /* MR_Word for input, MR_Word* for output */
     % {
     % #if MR_NUM_REAL_REGS > 0
     %   MR_Word c_regs[MR_NUM_REAL_REGS];

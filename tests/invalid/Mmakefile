@@ -117,6 +117,7 @@ SINGLEMODULE= \
 	missing_det_decls \
 	missing_init_pred \
 	missing_interface_import \
+	mixed_up_streams \
 	mode_inf \
 	modes_erroneous \
 	mostly_uniq1 \

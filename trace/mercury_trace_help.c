@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2000,2002-2005 The University of Melbourne.
+** Copyright (C) 1998-2000,2002-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -127,7 +127,8 @@ MR_trace_help(void)
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
     MR_TRACE_CALL_MERCURY(
-        ML_HELP_help(MR_trace_help_system, &mdb_out);
+        ML_HELP_help(MR_trace_help_system,
+            MR_wrap_output_stream(&mdb_out));
     );
 }
 
@@ -145,7 +146,8 @@ MR_trace_help_word(const char *word)
 
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
     MR_TRACE_CALL_MERCURY(
-        ML_HELP_name(MR_trace_help_system, word_on_heap, &mdb_out);
+        ML_HELP_name(MR_trace_help_system, word_on_heap,
+            MR_wrap_output_stream(&mdb_out));
     );
 }
 
@@ -172,7 +174,9 @@ MR_trace_help_cat_item(const char *category, const char *item)
 
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
     MR_TRACE_CALL_MERCURY(
-        ML_HELP_path(MR_trace_help_system, path, &mdb_out, &result);
+        ML_HELP_path(MR_trace_help_system, path,
+            MR_wrap_output_stream(&mdb_out),
+            &result);
         error = ML_HELP_result_is_error(result, &msg);
     );
 

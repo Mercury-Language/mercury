@@ -198,7 +198,7 @@ find_and_open_file([Dir | Path], FileName, Result, !IO) :-
     mercury_stream_to_c_FILE_star(InStream::in) = (InStrm::out),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
-    InStrm = MR_file(*InStream);
+    InStrm = MR_file(*(MR_unwrap_input_stream(InStream)));
 ").
 
 %-----------------------------------------------------------------------------%

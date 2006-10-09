@@ -1416,7 +1416,9 @@ MR_trace_decl_ensure_init(void)
         MR_trace_browse_ensure_init();
         MR_TRACE_CALL_MERCURY(
             MR_trace_node_store = 0;
-            MR_DD_decl_diagnosis_state_init(&mdb_in, &mdb_out,
+            MR_DD_decl_diagnosis_state_init(
+                MR_wrap_input_stream(&mdb_in),
+                MR_wrap_output_stream(&mdb_out),
                 MR_trace_browser_persistent_state, MR_trace_help_system,
                 &MR_trace_front_end_state);
         );
@@ -1832,7 +1834,8 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
         MR_mercuryfile_init(MR_trace_store_file, 1, &stream);
 
         MR_TRACE_CALL_MERCURY(
-            MR_DD_save_trace(&stream, MR_trace_node_store, root);
+            MR_DD_save_trace(MR_wrap_output_stream(&stream),
+                MR_trace_node_store, root);
         );
 
         fclose(MR_trace_store_file);

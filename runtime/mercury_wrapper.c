@@ -389,9 +389,9 @@ MR_Code     *MR_program_entry_point;
 const char  *MR_runtime_flags = "";
 
 void        (*MR_library_initializer)(void);
-            /* normally ML_io_init_state (io__init_state/2)*/
+            /* normally ML_io_init_state (io.init_state/2)*/
 void        (*MR_library_finalizer)(void);
-            /* normally ML_io_finalize_state (io__finalize_state/2) */
+            /* normally ML_io_finalize_state (io.finalize_state/2) */
 
 void        (*MR_io_stderr_stream)(MercuryFilePtr *);
 void        (*MR_io_stdout_stream)(MercuryFilePtr *);

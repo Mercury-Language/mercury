@@ -71,6 +71,7 @@ OTHER_PROGS= \
 	det_inference \
 	det_switch \
 	double_vn \
+	file_stream_instances \
 	easy_nondet_test \
 	easy_nondet_test_2 \
 	empty_bound_inst_list \
