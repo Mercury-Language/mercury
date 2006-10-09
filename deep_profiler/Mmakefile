@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2005 The University of Melbourne. 
+# Copyright (C) 1995-2006 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -164,9 +164,16 @@ install_cgi_progs: mdprof_cgi
 	# We also install mdprof_cgi in $(INSTALL_MERC_BIN_DIR).
 	# This is done just so that it can easily get put in the
 	# binary distribution (even if the step above failed).
+	# It's useful for mdprof_test and mdprof_dump to avaiable when
+	# debugging problems with the deep profiler so we install them as
+	# well.
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mdprof_cgi$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mdprof_cgi
+	cp `vpath_find mdprof_test$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mdprof_test
+	cp `vpath_find mdprof_dump$(EXT_FOR_EXE)` \
+		$(INSTALL_MER_BIN_DIR)/mdprof_dump
 
 uninstall:
 	# We try to uninstall mdprof_cgi, but failure to do so is not an
