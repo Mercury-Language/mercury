@@ -16,7 +16,7 @@
 ** The initialization file is a small C program that calls the initialization
 ** functions for all the modules in a Mercury program.
 **
-** Alternatively, if invoked with the -k option, this program produces a 
+** Alternatively, if invoked with the -k option, this program produces a
 ** list of intialization directives on stdout.  This mode of operation is
 ** is used when building .init files for libraries.
 **
@@ -583,11 +583,10 @@ FILE    *check_fp;
 int
 main(int argc, char **argv)
 {
-
     int exit_status;
-    
+
     MR_progname = argv[0];
-    
+
     parse_options(argc, argv);
 
 #ifdef  CHECK_GET_LINE
@@ -611,12 +610,12 @@ main(int argc, char **argv)
 /*
 ** Output the initialisation file for a Mercury library, the .init file.
 */
-static int 
+static int
 output_lib_init_file(void)
 {
     int filenum;
     int i;
-        
+
     for (filenum = 0; filenum < num_files; filenum++) {
             process_file(files[filenum]);
     }
@@ -643,22 +642,22 @@ output_lib_init_file(void)
     } else {
         return EXIT_SUCCESS;
     }
-    
+
 }
-    
+
 /*---------------------------------------------------------------------------*/
 
 /*
 ** Output the initialisation program for a Mercury executable, the *_init.c
 ** file.
 */
-static int 
+static int
 output_init_program(void)
 {
     int filenum;
     int num_bunches;
     int i;
-    
+
     do_path_search();
     output_headers();
 
@@ -715,7 +714,7 @@ output_init_program(void)
     output_main_init_function(PURPOSE_REQ_FINAL, num_bunches);
 
     output_main();
-    
+
     if (num_errors > 0) {
         fputs("/* Force syntax error, since there were */\n", stdout);
         fputs("/* errors in the generation of this file */\n", stdout);
@@ -832,7 +831,7 @@ parse_options(int argc, char *argv[])
         case 'k':
             output_lib_init = MR_TRUE;
             break;
-        
+
         default:
             usage();
         }
