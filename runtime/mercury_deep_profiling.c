@@ -649,7 +649,7 @@ static void
 MR_write_out_id_string(FILE *fp)
 {
     /* Must be the same as id_string in deep_profiler/read_profile.m */
-    const char  *id_string = "Mercury deep profiler data version 2\n";
+    const char  *id_string = "Mercury deep profiler data version 3\n";
 
     fputs(id_string, fp);
 }
@@ -925,7 +925,7 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
         bitmask |= 0x0040;
     }
     if (csd->MR_csd_own.MR_own_excps != 0) {
-        bitmask |= 0x0010;
+        bitmask |= 0x0080;
     }
 #endif
 #ifdef MR_DEEP_PROFILING_TIMING

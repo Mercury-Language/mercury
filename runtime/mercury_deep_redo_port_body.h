@@ -43,10 +43,6 @@
 	csd->MR_csd_own.MR_own_redos++;
   #endif
 
-  #ifdef MR_DEEP_PROFILING_CALL_SEQ
-	csd->MR_csd_own.MR_own_call_seqs -= MR_deep_prof_cur_call_seq;
-  #endif
-
 	pd = csd->MR_csd_callee_ptr;
 	MR_deep_assert(csd, NULL, NULL, pd != NULL);
 	pl = pd->MR_pd_proc_layout;

@@ -120,11 +120,11 @@
 **
 ** min_hp_rec       This pointer marks the minimum value of MR_hp to which
 **                  we can truncate the heap on backtracking. See comments
-**                  before the macro set_min_heap_reclamation_point below.
+**                  before the macro MR_set_min_heap_reclamation_point below.
 */
 
-typedef struct MR_Context_Struct MR_Context;
-typedef struct MR_Spark_Struct MR_Spark;
+typedef struct MR_Context_Struct    MR_Context;
+typedef struct MR_Spark_Struct      MR_Spark;
 
 typedef enum {
     MR_CONTEXT_SIZE_REGULAR,
@@ -185,18 +185,19 @@ struct MR_Context_Struct {
 /*
 ** A spark contains just enough information to begin execution of a parallel
 ** conjunct.  Sparks are allocated on the heap, and can be stored in a
-** context's spark stack, or in the global spark queue.  In the former case, a
-** spark will eventually be executed in the same context (same detstack, etc.)
-** as the code that generated the spark.  In the latter case the spark can be
-** picked up and executed by any idle engine in a different context.
+** context's spark stack, or in the global spark queue.  In the former case,
+** a spark will eventually be executed in the same context (same detstack,
+** etc.) as the code that generated the spark. In the latter case the spark
+** can be picked up and executed by any idle engine in a different context.
 **
 ** In the current implementation a spark is put on the global spark queue if,
 ** at the time a fork instruction is reached, we think the spark has a chance
 ** of being picked up for execution by an idle engine.  Otherwise the spark
-** goes on the context's spark stack. At the moment is an irrevocable decision.
-** A future possibility is to allow idle engines to steal work from the cold
-** end of some context's spark stack.
+** goes on the context's spark stack. At the moment this is an irrevocable
+** decision. A future possibility is to allow idle engines to steal work
+** from the cold end of some context's spark stack.
 */
+
 #ifndef MR_HIGHLEVEL_CODE
 struct MR_Spark_Struct {
     MR_Spark            *MR_spark_next;
@@ -212,6 +213,7 @@ struct MR_Spark_Struct {
 ** computations which have already started) over sparks (which are
 ** computations which have not begun).
 */
+
 extern      MR_Context  *MR_runqueue_head;
 extern      MR_Context  *MR_runqueue_tail;
 #ifndef MR_HIGHLEVEL_CODE

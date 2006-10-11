@@ -1658,10 +1658,6 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
         csd->MR_csd_own.MR_own_excps++;
     #endif
 
-    #ifdef MR_DEEP_PROFILING_CALL_SEQ
-        csd->MR_csd_own.MR_own_call_seqs += MR_deep_prof_cur_call_seq;
-    #endif
-
         MR_deep_assert(csd, NULL, NULL, csd->MR_csd_callee_ptr != NULL);
         pl = csd->MR_csd_callee_ptr->MR_pd_proc_layout;
         MR_deep_assert(csd, pl, NULL, pl != NULL);

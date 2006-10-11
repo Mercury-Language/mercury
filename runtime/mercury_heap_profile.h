@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998, 2000-2001 The University of Melbourne.
+** Copyright (C) 1998, 2000-2001, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -90,21 +90,24 @@ extern	MR_memprof_table	MR_memprof_types;
 
 /*
 ** MR_record_allocation(size, proc_addr, proc_name, type):
-**	Record heap profiling information for an allocation of one cell
-**	of `size' words by procedure `proc_name' with address `proc_addr'
-**	for an object of type `type'.
-**	The heap profiling information is recorded in the three global
-**	variables above.
+**
+** Record heap profiling information for an allocation of one cell of `size'
+** words by procedure `proc_name' with address `proc_addr' for an object of
+** type `type'. The heap profiling information is recorded in the three global
+** variables above.
 */
-extern void MR_record_allocation(int size, MR_Code *proc_addr,
-		const char *proc_name, const char *type);
+
+extern void	MR_record_allocation(int size, MR_Code *proc_addr,
+			const char *proc_name, const char *type);
 
 /*
 ** MR_prof_output_mem_tables():
-**	Write out the information recorded by MR_record_allocation()
-**	to a pair of files `Prof.MemoryMR_Words' and `Prof.MemoryCells'.
+**
+** Write out the information recorded by MR_record_allocation() to a pair
+** of files `Prof.MemoryMR_Words' and `Prof.MemoryCells'.
 */
-extern void MR_prof_output_mem_tables(void);
+
+extern void	MR_prof_output_mem_tables(void);
 
 /*---------------------------------------------------------------------------*/
 

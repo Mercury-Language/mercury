@@ -68,8 +68,8 @@
   #endif
 
   #ifdef MR_DEEP_PROFILING_CALL_SEQ
+	csd->MR_csd_own.MR_own_call_seqs++;
 	MR_deep_prof_cur_call_seq++;
-	csd->MR_csd_own.MR_own_call_seqs -= MR_deep_prof_cur_call_seq;
   #endif
 
   #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
