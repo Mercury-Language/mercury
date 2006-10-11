@@ -153,7 +153,7 @@ verify_profile(ProgName, Args0, Options, !IO) :-
         Args0 = [],
         Args  = ["Deep.data"]
     ;
-        Args0 = [_|_],
+        Args0 = [_ | _],
         Args = Args0
     ),
     list.foldl(verify_profile_2(ProgName, Options), Args, !IO).
