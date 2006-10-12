@@ -132,7 +132,7 @@ read_id_string(Res, !IO) :-
 % This must the same string as the one written by MR_write_out_id_string
 % in runtime/mercury_deep_profiling.c.
 
-id_string = "Mercury deep profiler data version 2\n".
+id_string = "Mercury deep profiler data version 3\n".
 
 :- func init_deep(int, int, int, int, int, int, int, int, int, int, int)
     = initial_deep.
@@ -239,7 +239,7 @@ read_nodes(InitDeep0, Res, !IO) :-
     io::di, io::uo) is det.
 
 read_call_site_static(Res, !IO) :-
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading call_site_static.\n", !IO)
     ),
     io_combinator.maybe_error_sequence_4(
@@ -259,7 +259,7 @@ read_call_site_static(Res, !IO) :-
     (
         Res1 = ok({CallSiteStatic, CSSI}),
         Res = ok2(CallSiteStatic, CSSI),
-        trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
             io.write_string("read call_site_static ", !IO),
             io.write_int(CSSI, !IO),
             io.write_string(": ", !IO),
@@ -276,7 +276,7 @@ read_call_site_static(Res, !IO) :-
     io::di, io::uo) is det.
 
 read_proc_static(Res, !IO) :-
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading proc_static.\n", !IO)
     ),
     io_combinator.maybe_error_sequence_6(
@@ -313,7 +313,7 @@ read_proc_static(Res, !IO) :-
                 RefinedStr, RawStr, FileName, LineNumber,
                 IsInInterface, array(CSSPtrs), not_zeroed),
             Res = ok2(ProcStatic, PSI),
-            trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+            trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                 io.write_string("read proc_static ", !IO),
                 io.write_int(PSI, !IO),
                 io.write_string(": ", !IO),
@@ -536,7 +536,7 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
     io::di, io::uo) is det.
 
 read_proc_dynamic(Res, !IO) :-
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading proc_dynamic.\n", !IO)
     ),
     io_combinator.maybe_error_sequence_3(
@@ -555,7 +555,7 @@ read_proc_dynamic(Res, !IO) :-
             PSPtr = make_psptr(PSI),
             ProcDynamic = proc_dynamic(PSPtr, array(Refs)),
             Res = ok2(ProcDynamic, PDI),
-            trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+            trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                 io.write_string("read proc_dynamic ", !IO),
                 io.write_int(PDI, !IO),
                 io.write_string(": ", !IO),
@@ -575,7 +575,7 @@ read_proc_dynamic(Res, !IO) :-
     io::di, io::uo) is det.
 
 read_call_site_dynamic(Res, !IO) :-
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading call_site_dynamic.\n", !IO)
     ),
     read_ptr(csd, Res1, !IO),
@@ -592,7 +592,7 @@ read_call_site_dynamic(Res, !IO) :-
                 CallSiteDynamic = call_site_dynamic(
                     CallerPDPtr, PDPtr, Profile),
                 Res = ok2(CallSiteDynamic, CSDI),
-                trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+                trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                     io.write_string("read call_site_dynamic ", !IO),
                     io.write_int(CSDI, !IO),
                     io.write_string(": ", !IO),
@@ -684,7 +684,7 @@ maybe_read_num_handle_error(MaskWord, MaskValue, Num, !MaybeError, !IO) :-
     io::di, io::uo) is det.
 
 read_call_site_slot(Res, !IO) :-
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading call_site_slot.\n", !IO)
     ),
     read_call_site_kind(Res1, !IO),
@@ -696,7 +696,7 @@ read_call_site_slot(Res, !IO) :-
                 Res2 = ok(CSDI),
                 CSDPtr = make_csdptr(CSDI),
                 Res = ok(slot_normal(CSDPtr)),
-                trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+                trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                     io.write_string("normal call_site slot ", !IO),
                     io.write_int(CSDI, !IO),
                     io.write_string("\n", !IO)
@@ -720,7 +720,7 @@ read_call_site_slot(Res, !IO) :-
                 Res2 = ok(CSDIs),
                 CSDPtrs = list.map(make_csdptr, CSDIs),
                 Res = ok(slot_multi(Zeroed, array(CSDPtrs))),
-                trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+                trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                     io.write_string("multi call_site slots ", !IO),
                     io.write(CSDIs, !IO),
                     io.write_string("\n", !IO)
@@ -755,7 +755,7 @@ read_multi_call_site_csdis(Res, !IO) :-
     maybe_error(list(int))::out, io::di, io::uo) is det.
 
 read_multi_call_site_csdis_2(CSDIs0, Res, !IO) :-
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.format("reading multi_call_site_csdi.\n", [], !IO)
     ),
     read_deep_byte(Res0, !IO),
@@ -801,7 +801,7 @@ read_call_site_kind(Res, !IO) :-
                 [i(Byte)], Msg),
             Res = error(Msg)
         ),
-        trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
              io.write_string("call_site_kind ", !IO),
              io.write(Res, !IO),
              io.write_string("\n", !IO)
@@ -848,7 +848,7 @@ read_call_site_kind_and_callee(Res, !IO) :-
             format("unexpected call_site_kind %d", [i(Byte)], Msg),
             Res = error(Msg)
         ),
-        trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+        trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
             io.write_string("call_site_kind_and_callee ", !IO),
             io.write(Res, !IO),
             io.write_string("\n", !IO)
@@ -932,7 +932,7 @@ read_n_byte_string(Length, Res, !IO) :-
         Res1 = error(Err),
         Res = error(Err)
     ),
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("string ", !IO),
         io.write(Res, !IO),
         io.write_string("\n", !IO)
@@ -942,7 +942,7 @@ read_n_byte_string(Length, Res, !IO) :-
 
 read_ptr(_Kind, Res, !IO) :-
     read_num1(0, Res, !IO),
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("ptr ", !IO),
         io.write(Res, !IO),
         io.write_string("\n", !IO)
@@ -952,7 +952,7 @@ read_ptr(_Kind, Res, !IO) :-
 
 read_num(Res, !IO) :-
     read_num1(0, Res, !IO),
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("num ", !IO),
         io.write(Res, !IO),
         io.write_string("\n", !IO)
@@ -1047,7 +1047,7 @@ read_n_bytes(N, Bytes0, Res, !IO) :-
 
 read_deep_byte(Res, !IO) :-
     read_byte(Res0, !IO),
-    trace [ compile_time(flag("debug_read_profdeep")), io(!IO) ] (
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("byte ", !IO),
         io.write(Res, !IO),
         io.write_string("\n", !IO)

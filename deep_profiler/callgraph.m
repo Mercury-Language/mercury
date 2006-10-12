@@ -46,19 +46,17 @@
 % :- import_module io.
 % :- import_module require.
 % :- import_module string.
-% :- import_module unsafe.
 
 %-----------------------------------------------------------------------------%
 
 find_cliques(InitDeep, BottomUpPDPtrCliqueList) :-
     make_graph(InitDeep, Graph),
     topological_sort(Graph, TopDownPDICliqueList),
-    %
+
     % Turn each of the sets of PDIs into a list of PDPtrs.  We use foldl here
     % because the list may be very long and map runs out of stack space, and
     % we want the final list in reverse order anyway because the propagation
     % algorithm works bottom up.
-    %
     list.foldl(accumulate_pdptr_lists, TopDownPDICliqueList,
         [], BottomUpPDPtrCliqueList).
 
@@ -133,10 +131,9 @@ add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph) :-
 make_clique_indexes(NPDs, CliqueList, Cliques, CliqueIndex) :-
     Cliques = array(CliqueList),
     array.init(NPDs, clique_ptr(-1), CliqueIndex0),
-    %
+
     % For each clique, add entries to the CliqueIndex array, which maps every
     % proc_dynamic_ptr back to the clique to which it belongs.
-    %
     array_foldl_from_1(index_clique, Cliques, CliqueIndex0, CliqueIndex).
 
 :- pred index_clique(int::in, list(proc_dynamic_ptr)::in,
@@ -148,8 +145,6 @@ index_clique(CliqueNum, CliqueMembers, !CliqueIndex) :-
 
 :- pred index_clique_member(int::in, proc_dynamic_ptr::in,
     array(clique_ptr)::array_di, array(clique_ptr)::array_uo) is det.
-
-% :- pragma promise_pure(index_clique_member/4).
 
 index_clique_member(CliqueNum, PDPtr, !CliqueIndex) :-
     PDPtr = proc_dynamic_ptr(PDI),

@@ -12,6 +12,7 @@
 % read_profile.m into the data structure that mdprof_cgi.m needs to service
 % requests for web pages. The algorithm it implements is documented in the
 % deep profiling paper.
+%
 %-----------------------------------------------------------------------------%
 
 :- module startup.
@@ -28,8 +29,8 @@
 %-----------------------------------------------------------------------------%
 
 :- pred read_and_startup(string::in, list(string)::in, bool::in,
-    maybe(io.output_stream)::in, list(string)::in, maybe_error(deep)::out,
-    io::di, io::uo) is det.
+    maybe(io.output_stream)::in, list(string)::in, list(string)::in,
+    maybe_error(deep)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -54,12 +55,10 @@
 :- import_module svarray.
 :- import_module svmap.
 
-% :- import_module unsafe.
-
 %-----------------------------------------------------------------------------%
 
 read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream,
-    DumpStages, Res, !IO) :-
+        DumpStages, DumpOptions, Res, !IO) :-
     (
         DataFileNames = [],
         % This should have been caught and reported by main.
@@ -76,7 +75,7 @@ read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream,
         (
             Res0 = ok(InitDeep),
             startup(Machine, DataFileName, Canonical, MaybeOutputStream,
-                DumpStages, InitDeep, Deep, !IO),
+                DumpStages, DumpOptions, InitDeep, Deep, !IO),
             Res = ok(Deep)
         ;
             Res0 = error(Error),
@@ -84,19 +83,19 @@ read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream,
         )
     ;
         DataFileNames = [_, _ | _],
-        error("mdprof_server: merging of data files " ++
-            "is not yet implemented")
+        error("mdprof_server: merging of data files is not yet implemented")
     ).
 
 :- pred startup(string::in, string::in, bool::in, maybe(io.output_stream)::in,
-    list(string)::in, initial_deep::in, deep::out, io::di, io::uo) is det.
+    list(string)::in, list(string)::in, initial_deep::in, deep::out,
+    io::di, io::uo) is det.
 
-startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
-        InitDeep0, Deep, !IO) :-
+startup(Machine, DataFileName, Canonical, MaybeOutputStream,
+        DumpStages, DumpOptions, InitDeep0, Deep, !IO) :-
     InitDeep0 = initial_deep(InitStats, Root,
         CallSiteDynamics0, ProcDynamics, CallSiteStatics0, ProcStatics0),
     maybe_dump(DataFileName, DumpStages, 0,
-        dump_initial_deep(yes, no, yes, yes, yes, yes, InitDeep0), !IO),
+        dump_initial_deep(InitDeep0, DumpOptions), !IO),
 
     maybe_report_msg(MaybeOutputStream,
         "% Mapping static call sites to containing procedures...\n", !IO),
@@ -117,7 +116,7 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
     InitDeep1 = initial_deep(InitStats, Root,
         CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics),
     maybe_dump(DataFileName, DumpStages, 10,
-        dump_initial_deep(yes, no, yes, yes, yes, yes, InitDeep1), !IO),
+        dump_initial_deep(InitDeep1, DumpOptions), !IO),
     (
         Canonical = no,
         InitDeep = InitDeep1
@@ -131,7 +130,7 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
         maybe_report_stats(MaybeOutputStream, !IO)
     ),
     maybe_dump(DataFileName, DumpStages, 20,
-        dump_initial_deep(yes, no, yes, yes, yes, yes, InitDeep), !IO),
+        dump_initial_deep(InitDeep, DumpOptions), !IO),
 
     array.max(InitDeep ^ init_proc_dynamics, PDMax),
     NPDs = PDMax + 1,
@@ -159,13 +158,12 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
     maybe_report_msg(MaybeOutputStream,
         "% Constructing clique parent map...\n", !IO),
 
-        % For each CallSiteDynamic pointer, if it points to
-        % a ProcDynamic which is in a different clique to
-        % the one from which the CallSiteDynamic's parent
-        % came, then this CallSiteDynamic is the entry to
-        % the [lower] clique. We need to compute this information
-        % so that we can print clique-based timing summaries in
-        % the browser.
+    % For each CallSiteDynamic pointer, if it points to a ProcDynamic
+    % which is in a different clique to the one from which the
+    % CallSiteDynamic's parent came, then this CallSiteDynamic is the entry to
+    % the [lower] clique. We need to compute this information so that
+    % we can print clique-based timing summaries in the browser.
+
     array.max(Cliques, CliqueMax),
     NCliques = CliqueMax + 1,
     array.init(NCliques, call_site_dynamic_ptr(-1), CliqueParents0),
@@ -207,7 +205,7 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
     maybe_report_stats(MaybeOutputStream, !IO),
 
     maybe_report_msg(MaybeOutputStream,
-        "% Propagating time up call graph...\n", !IO),
+        "% Propagating measurements up call graph...\n", !IO),
 
     array.init(NCSDs, zero_inherit_prof_info, CSDDesc0),
     array.init(NPDs, zero_own_prof_info, PDOwn0),
@@ -230,10 +228,16 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
         PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
         PDCompTable0, CSDCompTable0, ModuleData),
 
+    maybe_dump(DataFileName, DumpStages, 30,
+        dump_deep(Deep0, DumpOptions), !IO),
+
     array_foldl_from_1(propagate_to_clique, Cliques, Deep0, Deep1),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
+
+    maybe_dump(DataFileName, DumpStages, 40,
+        dump_deep(Deep1, DumpOptions), !IO),
 
     maybe_report_msg(MaybeOutputStream,
         "% Summarizing information...\n", !IO),
@@ -242,7 +246,10 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
     summarize_modules(Deep3, Deep),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
-    maybe_report_stats(MaybeOutputStream, !IO).
+    maybe_report_stats(MaybeOutputStream, !IO),
+
+    maybe_dump(DataFileName, DumpStages, 50,
+        dump_deep(Deep, DumpOptions), !IO).
 
 :- pred count_quanta(int::in, call_site_dynamic::in, int::in, int::out) is det.
 
@@ -259,13 +266,20 @@ initialize_module_data(_ModuleName, PSPtrs) =
 
 maybe_dump(BaseName, DumpStages, ThisStageNum, Action, !IO) :-
     string.int_to_string(ThisStageNum, ThisStage),
-    ( list.member(ThisStage, DumpStages) ->
+    (
+        (
+            list.member("all", DumpStages)
+        ;
+            list.member(ThisStage, DumpStages)
+        )
+    ->
         string.append_list([BaseName, ".deepdump.", ThisStage], FileName),
         io.open_output(FileName, OpenRes, !IO),
         (
             OpenRes = ok(FileStream),
             io.set_output_stream(FileStream, CurStream, !IO),
             Action(!IO),
+            io.close_output(FileStream, !IO),
             io.set_output_stream(CurStream, _, !IO)
         ;
             OpenRes = error(Error),
@@ -707,8 +721,8 @@ accumulate_ps_costs(Deep, PSPtr, Own0, Own, Desc0, Desc) :-
 
 propagate_to_clique(CliqueNumber, Members, !Deep) :-
     array.lookup(!.Deep ^ clique_parents, CliqueNumber, ParentCSDPtr),
-    list.foldl3(propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr),
-        Members, !Deep, map.init, SumTable, map.init, OverrideMap),
+    list.foldl3(propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr), Members,
+        !Deep, map.init, SumTable, map.init, OverrideMap),
     ( valid_call_site_dynamic_ptr(!.Deep, ParentCSDPtr) ->
         deep_lookup_call_site_dynamics(!.Deep, ParentCSDPtr, ParentCSD),
         ParentOwn = ParentCSD ^ csd_own_prof,
@@ -765,7 +779,10 @@ propagate_to_call_site(CliqueNumber, PDPtr, CSDPtr, !Deep, !PDCompTable) :-
     CalleePDPtr = CSD ^ csd_callee,
     deep_lookup_clique_index(!.Deep, CalleePDPtr, ChildCliquePtr),
     ChildCliquePtr = clique_ptr(ChildCliqueNumber),
-    ( ChildCliqueNumber \= CliqueNumber ->
+    ( ChildCliqueNumber = CliqueNumber ->
+        % We don't propagate profiling measurements along intra-clique calls.
+        true
+    ;
         deep_lookup_pd_desc(!.Deep, PDPtr, ProcDesc0),
         deep_lookup_csd_desc(!.Deep, CSDPtr, CalleeDesc),
         CalleeTotal = add_own_to_inherit(CalleeOwn, CalleeDesc),
@@ -773,10 +790,6 @@ propagate_to_call_site(CliqueNumber, PDPtr, CSDPtr, !Deep, !PDCompTable) :-
         deep_update_pd_desc(PDPtr, ProcDesc, !Deep),
         deep_lookup_csd_comp_table(!.Deep, CSDPtr, CSDCompTable),
         !:PDCompTable = add_comp_tables(!.PDCompTable, CSDCompTable)
-    ;
-        % We don't propagate profiling measurements
-        % along intra-clique calls.
-        true
     ).
 
 %-----------------------------------------------------------------------------%

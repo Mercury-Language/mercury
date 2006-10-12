@@ -30,18 +30,22 @@
 :- func redos(own_prof_info) = int.
 :- func excps(own_prof_info) = int.
 :- func quanta(own_prof_info) = int.
-:- func call_seqs(own_prof_info) = int.
+:- func callseqs(own_prof_info) = int.
 :- func allocs(own_prof_info) = int.
 :- func words(own_prof_info) = int.
 
 :- func zero_own_prof_info = own_prof_info.
 
+:- pred is_zero_own_prof_info(own_prof_info::in) is semidet.
+
 :- func inherit_quanta(inherit_prof_info) = int.
-:- func inherit_call_seqs(inherit_prof_info) = int.
+:- func inherit_callseqs(inherit_prof_info) = int.
 :- func inherit_allocs(inherit_prof_info) = int.
 :- func inherit_words(inherit_prof_info) = int.
 
 :- func zero_inherit_prof_info = inherit_prof_info.
+
+:- pred is_zero_inherit_prof_info(inherit_prof_info::in) is semidet.
 
 :- func add_inherit_to_inherit(inherit_prof_info, inherit_prof_info)
     = inherit_prof_info.
@@ -84,41 +88,41 @@
 
 :- type own_prof_info
     --->    own_prof_all(
-                opa_exits       :: int,
-                opa_fails       :: int,
-                opa_redos       :: int,
-                opa_excps       :: int,
-                opa_quanta      :: int,
-                opa_call_seqs   :: int,
-                opa_allocs      :: int,
-                opa_words       :: int
+                opa_exits               :: int,
+                opa_fails               :: int,
+                opa_redos               :: int,
+                opa_excps               :: int,
+                opa_quanta              :: int,
+                opa_callseqs            :: int,
+                opa_allocs              :: int,
+                opa_words               :: int
             )
             % implicit calls = exits + fails + excps - redos
 
     ;       own_prof_det(
-                opd_exits       :: int,
-                opd_quanta      :: int,
-                opd_call_seqs   :: int,
-                opd_allocs      :: int,
-                opd_words       :: int
+                opd_exits               :: int,
+                opd_quanta              :: int,
+                opd_callseqs            :: int,
+                opd_allocs              :: int,
+                opd_words               :: int
             )
             % implicit fails == redos == excps == 0
             % implicit calls == exits
 
     ;       own_prof_fast_det(
-                opfd_exits      :: int,
-                opfd_call_seqs  :: int,
-                opfd_allocs     :: int,
-                opfd_words      :: int
+                opfd_exits              :: int,
+                opfd_callseqs           :: int,
+                opfd_allocs             :: int,
+                opfd_words              :: int
             )
             % implicit fails == redos == excps == 0
             % implicit calls == exits
             % implicit quanta == 0
 
     ;       own_prof_fast_nomem_semi(
-                opfns_exits     :: int,
-                opfns_fails     :: int,
-                opfns_call_seqs :: int
+                opfns_exits             :: int,
+                opfns_fails             :: int,
+                opfns_callseqs          :: int
             ).
             % implicit redos == excps == 0
             % implicit calls == exits + fails
@@ -127,10 +131,10 @@
 
 :- type inherit_prof_info
     --->    inherit_prof_info(
-                ipo_quanta      :: int,
-                ipo_call_seqs   :: int,
-                ipo_allocs      :: int,
-                ipo_words       :: int
+                ipo_quanta              :: int,
+                ipo_callseqs            :: int,
+                ipo_allocs              :: int,
+                ipo_words               :: int
             ).
 
 calls(own_prof_fast_nomem_semi(Exits, Fails, _)) = Exits + Fails.
@@ -138,7 +142,7 @@ exits(own_prof_fast_nomem_semi(Exits, _, _)) = Exits.
 fails(own_prof_fast_nomem_semi(_, Fails, _)) = Fails.
 redos(own_prof_fast_nomem_semi(_, _, _)) = 0.
 excps(own_prof_fast_nomem_semi(_, _, _)) = 0.
-call_seqs(own_prof_fast_nomem_semi(_, _, CallSeqs)) = CallSeqs.
+callseqs(own_prof_fast_nomem_semi(_, _, CallSeqs)) = CallSeqs.
 quanta(own_prof_fast_nomem_semi(_, _, _)) = 0.
 allocs(own_prof_fast_nomem_semi(_, _, _)) = 0.
 words(own_prof_fast_nomem_semi(_, _, _)) = 0.
@@ -149,7 +153,7 @@ fails(own_prof_fast_det(_, _, _, _)) = 0.
 redos(own_prof_fast_det(_, _, _, _)) = 0.
 excps(own_prof_fast_det(_, _, _, _)) = 0.
 quanta(own_prof_fast_det(_, _, _, _)) = 0.
-call_seqs(own_prof_fast_det(_, CallSeqs, _, _)) = CallSeqs.
+callseqs(own_prof_fast_det(_, CallSeqs, _, _)) = CallSeqs.
 allocs(own_prof_fast_det(_, _, Allocs, _)) = Allocs.
 words(own_prof_fast_det(_, _, _, Words)) = Words.
 
@@ -159,7 +163,7 @@ fails(own_prof_det(_, _, _, _, _)) = 0.
 redos(own_prof_det(_, _, _, _, _)) = 0.
 excps(own_prof_det(_, _, _, _, _)) = 0.
 quanta(own_prof_det(_, Quanta, _, _, _)) = Quanta.
-call_seqs(own_prof_det(_, _, CallSeqs, _, _)) = CallSeqs.
+callseqs(own_prof_det(_, _, CallSeqs, _, _)) = CallSeqs.
 allocs(own_prof_det(_, _, _, Allocs, _)) = Allocs.
 words(own_prof_det(_, _, _, _, Words)) = Words.
 
@@ -170,43 +174,50 @@ fails(own_prof_all(_, Fails, _, _, _, _, _, _)) = Fails.
 redos(own_prof_all(_, _, Redos, _, _, _, _, _)) = Redos.
 excps(own_prof_all(_, _, _, Excps, _, _, _, _)) = Excps.
 quanta(own_prof_all(_, _, _, _, Quanta, _, _, _)) = Quanta.
-call_seqs(own_prof_all(_, _, _, _, CallSeqs, _, _, _)) = CallSeqs.
+callseqs(own_prof_all(_, _, _, _, _, CallSeqs, _, _)) = CallSeqs.
 allocs(own_prof_all(_, _, _, _, _, _, Allocs, _)) = Allocs.
 words(own_prof_all(_, _, _, _, _, _, _, Words)) = Words.
 
 zero_own_prof_info = own_prof_fast_nomem_semi(0, 0, 0).
 
+is_zero_own_prof_info(own_prof_all(0, 0, 0, 0, 0, 0, 0, 0)).
+is_zero_own_prof_info(own_prof_det(0, 0, 0, 0, 0)).
+is_zero_own_prof_info(own_prof_fast_det(0, 0, 0, 0)).
+is_zero_own_prof_info(own_prof_fast_nomem_semi(0, 0, 0)).
+
 inherit_quanta(inherit_prof_info(Quanta, _, _, _)) = Quanta.
-inherit_call_seqs(inherit_prof_info(_, CallSeqs, _, _)) = CallSeqs.
+inherit_callseqs(inherit_prof_info(_, CallSeqs, _, _)) = CallSeqs.
 inherit_allocs(inherit_prof_info(_, _, Allocs, _)) = Allocs.
 inherit_words(inherit_prof_info(_, _, _, Words)) = Words.
 
 zero_inherit_prof_info = inherit_prof_info(0, 0, 0, 0).
 
+is_zero_inherit_prof_info(inherit_prof_info(0, 0, 0, 0)).
+
 add_inherit_to_inherit(PI1, PI2) = SumPI :-
     Quanta = inherit_quanta(PI1) + inherit_quanta(PI2),
-    CallSeqs = inherit_call_seqs(PI1) + inherit_call_seqs(PI2),
+    CallSeqs = inherit_callseqs(PI1) + inherit_callseqs(PI2),
     Allocs = inherit_allocs(PI1) + inherit_allocs(PI2),
     Words = inherit_words(PI1) + inherit_words(PI2),
     SumPI = inherit_prof_info(Quanta, CallSeqs, Allocs, Words).
 
 add_own_to_inherit(PI1, PI2) = SumPI :-
     Quanta = quanta(PI1) + inherit_quanta(PI2),
-    CallSeqs = call_seqs(PI1) + inherit_call_seqs(PI2),
+    CallSeqs = callseqs(PI1) + inherit_callseqs(PI2),
     Allocs = allocs(PI1) + inherit_allocs(PI2),
     Words = words(PI1) + inherit_words(PI2),
     SumPI = inherit_prof_info(Quanta, CallSeqs, Allocs, Words).
 
 subtract_own_from_inherit(PI1, PI2) = SumPI :-
     Quanta = inherit_quanta(PI2) - quanta(PI1),
-    CallSeqs = inherit_call_seqs(PI2) - call_seqs(PI1),
+    CallSeqs = inherit_callseqs(PI2) - callseqs(PI1),
     Allocs = inherit_allocs(PI2) - allocs(PI1),
     Words = inherit_words(PI2) - words(PI1),
     SumPI = inherit_prof_info(Quanta, CallSeqs, Allocs, Words).
 
 subtract_inherit_from_inherit(PI1, PI2) = SumPI :-
     Quanta = inherit_quanta(PI2) - inherit_quanta(PI1),
-    CallSeqs = inherit_call_seqs(PI2) - inherit_call_seqs(PI1),
+    CallSeqs = inherit_callseqs(PI2) - inherit_callseqs(PI1),
     Allocs = inherit_allocs(PI2) - inherit_allocs(PI1),
     Words = inherit_words(PI2) - inherit_words(PI1),
     SumPI = inherit_prof_info(Quanta, CallSeqs, Allocs, Words).
@@ -217,11 +228,11 @@ add_inherit_to_own(PI1, PI2) = SumPI :-
     Redos = redos(PI2),
     Excps = excps(PI2),
     Quanta = inherit_quanta(PI1) + quanta(PI2),
-    CallSeqs = inherit_call_seqs(PI1) + call_seqs(PI2),
+    CallSeqs = inherit_callseqs(PI1) + callseqs(PI2),
     Allocs = inherit_allocs(PI1) + allocs(PI2),
     Words = inherit_words(PI1) + words(PI2),
-    SumPI = compress_profile(Exits, Fails, Redos, Excps, Quanta, CallSeqs,
-        Allocs, Words).
+    SumPI = compress_profile(Exits, Fails, Redos, Excps,
+        Quanta, CallSeqs, Allocs, Words).
 
 add_own_to_own(PI1, PI2) = SumPI :-
     Exits = exits(PI1) + exits(PI2),
@@ -229,11 +240,11 @@ add_own_to_own(PI1, PI2) = SumPI :-
     Redos = redos(PI1) + redos(PI2),
     Excps = excps(PI1) + excps(PI2),
     Quanta = quanta(PI1) + quanta(PI2),
-    CallSeqs = call_seqs(PI1) + call_seqs(PI2),
+    CallSeqs = callseqs(PI1) + callseqs(PI2),
     Allocs = allocs(PI1) + allocs(PI2),
     Words = words(PI1) + words(PI2),
-    SumPI = compress_profile(Exits, Fails, Redos, Excps, Quanta, CallSeqs,
-        Allocs, Words).
+    SumPI = compress_profile(Exits, Fails, Redos, Excps,
+        Quanta, CallSeqs, Allocs, Words).
 
 sum_own_infos(Owns) =
     list.foldl(add_own_to_own, Owns, zero_own_prof_info).
@@ -319,7 +330,7 @@ decompress_profile(Own, Calls, Exits, Fails, Redos, Excps, Quanta, CallSeqs,
     (
         Own = own_prof_all(Exits, Fails, Redos, Excps, Quanta, CallSeqs,
             Allocs, Words),
-        Calls = Exits + Fails + Redos
+        Calls = Exits + Fails - Redos
     ;
         Own = own_prof_det(Exits, Quanta, CallSeqs, Allocs, Words),
         Calls = Exits,

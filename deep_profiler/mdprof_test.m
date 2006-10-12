@@ -102,6 +102,7 @@ main2(ProgName, Args, Options, !IO) :-
         lookup_bool_option(Options, canonical_clique, Canonical),
         lookup_bool_option(Options, verbose, Verbose),
         lookup_accumulating_option(Options, dump, DumpStages),
+        lookup_accumulating_option(Options, dump_options, DumpOptions),
         server_name(Machine, !IO),
         (
             Verbose = no,
@@ -112,7 +113,7 @@ main2(ProgName, Args, Options, !IO) :-
             MaybeOutput = yes(Stdout)
         ),
         read_and_startup(Machine, [FileName], Canonical, MaybeOutput,
-            DumpStages, Res, !IO),
+            DumpStages, DumpOptions, Res, !IO),
         (
             Res = ok(Deep),
             lookup_bool_option(Options, test, Test),
@@ -121,7 +122,7 @@ main2(ProgName, Args, Options, !IO) :-
             ;
                 Test = yes,
                 lookup_string_option(Options, test_dir, TestDir),
-                test_server(TestDir, default_preferences, Deep, !IO)
+                test_server(TestDir, default_preferences(Deep), Deep, !IO)
             )
         ;
             Res = error(Error),
@@ -164,7 +165,7 @@ verify_profile(ProgName, Args0, Options, !IO) :-
 verify_profile_2(ProgName, Options, FileName, !IO) :-
     lookup_bool_option(Options, canonical_clique, Canonical),
     Machine = "dummy_server",      % For verification this doesn't matter.
-    read_and_startup(Machine, [FileName], Canonical, no, [], Res, !IO),
+    read_and_startup(Machine, [FileName], Canonical, no, [], [], Res, !IO),
     (
         Res = ok(_Deep)
     ;
@@ -226,7 +227,7 @@ test_server(DirName, Pref, Deep, !IO) :-
 
 test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(clique(Cur), Pref, Deep, HTML, !IO),
+        try_exec(deep_cmd_clique(Cur), Pref, Deep, HTML, !IO),
         write_test_html(DirName, "clique", Cur, HTML, !IO),
         test_cliques(Cur + 1, Max, DirName, Pref, Deep, !IO)
     ;
@@ -238,7 +239,7 @@ test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
 
 test_procs(Cur, Max, DirName, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(proc(Cur), Pref, Deep, HTML, !IO),
+        try_exec(deep_cmd_proc(Cur), Pref, Deep, HTML, !IO),
         write_test_html(DirName, "proc", Cur, HTML, !IO),
         test_procs(Cur + 1, Max, DirName, Pref, Deep, !IO)
     ;
@@ -285,6 +286,7 @@ write_test_html(DirName, BaseName, Num, HTML, !IO) :-
 :- type option
     --->    canonical_clique
     ;       dump
+    ;       dump_options
     ;       flat
     ;       help
     ;       test
@@ -300,14 +302,15 @@ write_test_html(DirName, BaseName, Num, HTML, !IO) :-
 
 short('c',  canonical_clique).
 short('d',  dump).
-short('v',  verbose).
-short('D',  test_dir).
+short('D',  dump_options).
 short('T',  test).
+short('v',  verbose).
 
 :- pred long(string::in, option::out) is semidet.
 
 long("canonical-clique",    canonical_clique).
 long("dump",                dump).
+long("dump-options",        dump_options).
 long("help",                help).
 long("test",                test).
 long("test-dir",            test_dir).
@@ -319,6 +322,7 @@ long("verify-profile",      verify_profile).
 
 defaults(canonical_clique,  bool(no)).
 defaults(dump,              accumulating([])).
+defaults(dump_options,      accumulating([])).
 defaults(help,              bool(no)).
 defaults(test,              bool(no)).
 defaults(test_dir,          string("deep_test")).

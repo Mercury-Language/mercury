@@ -62,10 +62,7 @@ server_name(ServerName, !IO) :-
             io.read_file_as_string(TmpStream, TmpReadRes, !IO),
             (
                 TmpReadRes = ok(ServerNameNl),
-                (
-                    string.remove_suffix(ServerNameNl,
-                        "\n", ServerNamePrime)
-                ->
+                ( string.remove_suffix(ServerNameNl, "\n", ServerNamePrime) ->
                     ServerName = ServerNamePrime
                 ;
                     error("malformed server name")

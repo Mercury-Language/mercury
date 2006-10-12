@@ -68,29 +68,27 @@ try_exec(Cmd, Pref, Deep, HTML, !IO) :-
         ;
             Msg = "unknown exception"
         ),
-        HTML = string.format(
-                "<H3>AN EXCEPTION HAS OCCURRED: %s</H3>\n",
-                [s(Msg)])
+        HTML = string.format("<H3>AN EXCEPTION HAS OCCURRED: %s</H3>\n",
+            [s(Msg)])
     ).
 
 :- pred exec(cmd::in, preferences::in, deep::in, string::out,
     io::di, io::uo) is det.
 
-exec(restart, _Pref, _Deep, _HTML, !IO) :-
+exec(deep_cmd_restart, _Pref, _Deep, _HTML, !IO) :-
     % Our caller is supposed to filter out restart commands.
     error("exec: found restart command").
-exec(quit, _Pref, Deep, HTML, !IO) :-
+exec(deep_cmd_quit, _Pref, Deep, HTML, !IO) :-
     HTML = string.format(
         "<H3>Shutting down deep profile server for %s.</H3>\n",
         [s(Deep ^ data_file_name)]).
-exec(timeout(TimeOut), _Pref, _Deep, HTML, !IO) :-
-    HTML = string.format("<H3>Timeout set to %d minutes</H3>\n",
-        [i(TimeOut)]).
+exec(deep_cmd_timeout(TimeOut), _Pref, _Deep, HTML, !IO) :-
+    HTML = string.format("<H3>Timeout set to %d minutes</H3>\n", [i(TimeOut)]).
 exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = menu,
+    Cmd = deep_cmd_menu,
     HTML = generate_menu_page(Cmd, Pref, Deep).
 exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = root(MaybePercent),
+    Cmd = deep_cmd_root(MaybePercent),
     deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
     RootCliquePtr = clique_ptr(RootCliqueNum),
     (
@@ -101,7 +99,7 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
         generate_clique_page(Cmd, RootCliqueNum, Pref, Deep, HTML, 100, _)
     ).
 exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = clique(CliqueNum),
+    Cmd = deep_cmd_clique(CliqueNum),
     CliquePtr = clique_ptr(CliqueNum),
     ( valid_clique_ptr(Deep, CliquePtr) ->
         generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML, 100, _)
@@ -112,7 +110,7 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             page_footer(Cmd, Pref, Deep)
     ).
 exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = proc(PSI),
+    Cmd = deep_cmd_proc(PSI),
     PSPtr = proc_static_ptr(PSI),
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         HTML = generate_proc_page(Cmd, PSPtr, Pref, Deep)
@@ -123,7 +121,7 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             page_footer(Cmd, Pref, Deep)
     ).
 exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = proc_callers(PSI, CallerGroups, BunchNum),
+    Cmd = deep_cmd_proc_callers(PSI, CallerGroups, BunchNum),
     PSPtr = proc_static_ptr(PSI),
     ( valid_proc_static_ptr(Deep, PSPtr) ->
         generate_proc_callers_page(Cmd, PSPtr, CallerGroups, BunchNum,
@@ -135,10 +133,10 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             page_footer(Cmd, Pref, Deep)
     ).
 exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = modules,
+    Cmd = deep_cmd_modules,
     HTML = generate_modules_page(Cmd, Pref, Deep).
 exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = module(ModuleName),
+    Cmd = deep_cmd_module(ModuleName),
     ( map.search(Deep ^ module_data, ModuleName, ModuleData) ->
         HTML = generate_module_page(Cmd, ModuleName, ModuleData, Pref, Deep)
     ;
@@ -148,18 +146,18 @@ exec(Cmd, Pref, Deep, HTML, !IO) :-
             page_footer(Cmd, Pref, Deep)
     ).
 exec(Cmd, Pref, Deep, HTML, !IO) :-
-    Cmd = top_procs(Limit, CostKind, InclDesc, Scope),
+    Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
     HTML = generate_top_procs_page(Cmd, Limit, CostKind, InclDesc, Scope,
         Pref, Deep).
-exec(proc_static(PSI), _Pref, Deep, HTML, !IO) :-
+exec(deep_cmd_proc_static(PSI), _Pref, Deep, HTML, !IO) :-
     HTML = generate_proc_static_debug_page(PSI, Deep).
-exec(proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
+exec(deep_cmd_proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
     HTML = generate_proc_dynamic_debug_page(PDI, Deep).
-exec(call_site_static(CSSI), _Pref, Deep, HTML, !IO) :-
+exec(deep_cmd_call_site_static(CSSI), _Pref, Deep, HTML, !IO) :-
     HTML = generate_call_site_static_debug_page(CSSI, Deep).
-exec(call_site_dynamic(CSDI), _Pref, Deep, HTML, !IO) :-
+exec(deep_cmd_call_site_dynamic(CSDI), _Pref, Deep, HTML, !IO) :-
     HTML = generate_call_site_dynamic_debug_page(CSDI, Deep).
-exec(raw_clique(CI), _Pref, Deep, HTML, !IO) :-
+exec(deep_cmd_raw_clique(CI), _Pref, Deep, HTML, !IO) :-
     HTML = generate_clique_debug_page(CI, Deep).
 
 %-----------------------------------------------------------------------------%
@@ -337,62 +335,86 @@ call_site_kind_and_callee_to_html(callback_and_no_callee) =
 :- func generate_menu_page(cmd, preferences, deep) = string.
 
 generate_menu_page(Cmd, Pref, Deep) = HTML :-
+    ShouldDisplayTimes = should_display_times(Deep),
     HTML =
         page_banner(Cmd, Pref) ++
         "<p>\n" ++
         menu_text ++
         "<ul>\n" ++
         "<li>\n" ++
-        menu_item(Deep, Pref, root(no),
+        menu_item(Deep, Pref, deep_cmd_root(no),
             "Exploring the call graph, starting at the root.") ++
         "<li>\n" ++
-        menu_item(Deep, Pref, root(yes(90)),
+        menu_item(Deep, Pref, deep_cmd_root(yes(90)),
             "Exploring the call graph, starting at the action.") ++
         "<li>\n" ++
-        menu_item(Deep, Pref, modules,
+        menu_item(Deep, Pref, deep_cmd_modules,
             "Exploring the program module by module.") ++
+        ( ShouldDisplayTimes = yes ->
+            "<li>\n" ++
+            menu_item(Deep, Pref,
+                deep_cmd_top_procs(rank_range(1, 100), cost_time,
+                    self, overall),
+                "Top 100 most expensive procedures: time, self.") ++
+            "<li>\n" ++
+            menu_item(Deep, Pref,
+                deep_cmd_top_procs(rank_range(1, 100), cost_time,
+                    self_and_desc, overall),
+                "Top 100 most expensive procedures: time, self+desc.")
+        ;
+            ""
+        ) ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            top_procs(rank_range(1, 100), time,
+            deep_cmd_top_procs(rank_range(1, 100), cost_callseqs,
                 self, overall),
-            "Top 100 most expensive procedures: time, self.") ++
+            "Top 100 most expensive procedures: callseqs, self.") ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            top_procs(rank_range(1, 100), time,
+            deep_cmd_top_procs(rank_range(1, 100), cost_callseqs,
                 self_and_desc, overall),
-            "Top 100 most expensive procedures: time, self+desc.")
-            ++
+            "Top 100 most expensive procedures: callseqs, self+desc.") ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            top_procs(rank_range(1, 100), words,
-                self, overall),
+            deep_cmd_top_procs(rank_range(1, 100), cost_words, self, overall),
             "Top 100 most expensive procedures: words, self.") ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            top_procs(rank_range(1, 100), words,
-                self_and_desc, overall),
+            deep_cmd_top_procs(rank_range(1, 100), cost_words, self_and_desc,
+                overall),
             "Top 100 most expensive procedures: words, self+desc.")
             ++
+        ( ShouldDisplayTimes = yes ->
+            "<li>\n" ++
+            menu_item(Deep, Pref,
+                deep_cmd_top_procs(threshold(0.1), cost_time, self, overall),
+                "Procedures above 0.1% threshold: time, self.") ++
+            "<li>\n" ++
+            menu_item(Deep, Pref,
+                deep_cmd_top_procs(threshold(1.0), cost_time, self_and_desc,
+                    overall),
+                "Procedures above 1% threshold: time, self+desc.")
+        ;
+            ""
+        ) ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            top_procs(threshold(0.1), time,
-                self, overall),
-            "Procedures above 0.1% threshold: time, self.") ++
+            deep_cmd_top_procs(threshold(0.1), cost_callseqs, self, overall),
+            "Procedures above 0.1% threshold: callseqs, self.") ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            top_procs(threshold(0.1), time,
-                self_and_desc, overall),
-            "Procedures above 1% threshold: time, self+desc.")
+            deep_cmd_top_procs(threshold(1.0), cost_callseqs, self_and_desc,
+                overall),
+            "Procedures above 1% threshold: callseqs, self+desc.")
             ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            top_procs(threshold(0.1), words,
-                self, overall),
+            deep_cmd_top_procs(threshold(0.1), cost_words, self, overall),
             "Procedures above 0.1% threshold: words, self.") ++
         "<li>\n" ++
         menu_item(Deep, Pref,
-            top_procs(threshold(0.1), words,
-                self_and_desc, overall),
+            deep_cmd_top_procs(threshold(1.0), cost_words, self_and_desc,
+                overall),
             "Procedures above 1% threshold: words, self+desc.")
             ++
         "</ul>\n" ++
@@ -434,6 +456,9 @@ present_stats(Deep) = HTML :-
         "<TR><TD ALIGN=left>Quanta in instrumentation:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
             [i(Stats ^ instrument_quanta)]) ++
+        "<TR><TD ALIGN=left>Call sequence numbers:</TD>\n" ++
+        string.format("<TD ALIGN=right>%d</TD></TR>\n",
+            [i(Stats ^ num_callseqs)]) ++
         "<TR><TD ALIGN=left>CallSiteDynamic structures:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
             [i(Stats ^ max_csd)]) ++
@@ -459,8 +484,7 @@ chase_the_action(Cmd, CliqueNum, Pref, Deep, Percent) = HTML :-
     generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML0,
         Percent, ActionPtrs),
     ( ActionPtrs = [clique_ptr(ActionCliqueNum)] ->
-        HTML = chase_the_action(Cmd, ActionCliqueNum,
-            Pref, Deep, Percent)
+        HTML = chase_the_action(Cmd, ActionCliqueNum, Pref, Deep, Percent)
     ;
         HTML = HTML0
     ).
@@ -470,18 +494,15 @@ chase_the_action(Cmd, CliqueNum, Pref, Deep, Percent) = HTML :-
 :- pred generate_clique_page(cmd::in, int::in, preferences::in, deep::in,
     string::out, int::in, list(clique_ptr)::out) is det.
 
-generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML,
-        Percent, ActionPtrs) :-
-    clique_to_html(Pref, Deep, clique_ptr(CliqueNum),
-        CliqueHTML, Percent, ActionPtrs),
+generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML, Percent, ActionPtrs) :-
+    clique_to_html(Pref, Deep, clique_ptr(CliqueNum), CliqueHTML, Percent,
+        ActionPtrs),
     HTML =
         page_banner(Cmd, Pref) ++
-        string.format("<H3>Clique %d:</H3>\n",
-            [i(CliqueNum)]) ++
+        string.format("<H3>Clique %d:</H3>\n", [i(CliqueNum)]) ++
         table_start(Pref) ++
         fields_header(Pref, source_proc, totals_meaningful,
-            wrap_clique_links(clique_ptr(CliqueNum),
-                Pref, Deep)) ++
+            wrap_clique_links(clique_ptr(CliqueNum), Pref, Deep)) ++
         CliqueHTML ++
         table_end(Pref) ++
         page_footer(Cmd, Pref, Deep).
@@ -519,10 +540,8 @@ generate_proc_callers_page(Cmd, PSPtr, CallerGroups, BunchNum, Pref, Deep,
                 ""
             ;
                 table_start(Pref) ++
-                fields_header(Pref, IdFields,
-                    totals_meaningful,
-                    wrap_proc_callers_links(PSPtr,
-                        CallerGroups, 1,
+                fields_header(Pref, IdFields, totals_meaningful,
+                    wrap_proc_callers_links(PSPtr, CallerGroups, 1,
                         Pref, Deep)) ++
                 CallersHTML ++
                 table_end(Pref) ++
@@ -571,8 +590,8 @@ generate_module_page(Cmd, ModuleName, ModuleData, Pref, Deep) = HTML :-
 
 generate_top_procs_page(Cmd, Limit, CostKind, InclDesc0, Scope0, Pref, Deep)
         = HTML :-
-    ( CostKind = calls ->
-        % counting calls is incompatible both with self_and_desc
+    ( CostKind = cost_calls ->
+        % Counting calls is incompatible both with self_and_desc
         % and per_call.
         InclDesc = self,
         Scope = overall
@@ -595,7 +614,8 @@ generate_top_procs_page(Cmd, Limit, CostKind, InclDesc0, Scope0, Pref, Deep)
         Desc = cost_criteria_to_description(CostKind, InclDesc, Scope),
         Heading = string.format("<H3>Top procedures %s</H3>\n",
             [s(Desc)]),
-        ( TopPSIs = [] ->
+        (
+            TopPSIs = [],
             HTML =
                 page_banner(Cmd, Pref) ++
                 Heading ++ "<p>\n" ++
@@ -605,22 +625,20 @@ generate_top_procs_page(Cmd, Limit, CostKind, InclDesc0, Scope0, Pref, Deep)
                 ToggleCostHTML ++
                 page_footer(Cmd, Pref, Deep)
         ;
+            TopPSIs = [_ | _],
             TopProcs = list.filter_map(
                 lookup_proc_total_to_html(Pref, Deep, no, ""),
                 list.map(wrap_proc_static_ptr, TopPSIs)),
             RankedTopProcs = add_ranks(TopProcs),
             SummaryHTMLs = list.map(
-                two_id_line_to_html(Pref, Deep,
-                    totals_meaningful),
+                two_id_line_to_html(Pref, Deep, totals_meaningful),
                 RankedTopProcs),
             HTML =
                 page_banner(Cmd, Pref) ++
                 Heading ++ "<p>\n" ++
                 table_start(Pref) ++
-                fields_header(Pref, rank_proc,
-                    totals_meaningful,
-                    wrap_top_procs_links(Limit, Pref,
-                        Deep)) ++
+                fields_header(Pref, rank_proc, totals_meaningful,
+                    wrap_top_procs_links(Limit, Pref, Deep)) ++
                 string.append_list(SummaryHTMLs) ++
                 table_end(Pref) ++
                 "<p>\n" ++
@@ -660,11 +678,11 @@ not_mercury_runtime(ModuleName - _) :-
 module_summary_to_html(Pref, Deep, ModuleName - ModuleData) = LineGroup :-
     ModuleData = module_data(Own, Desc, _),
     not (
-        Pref ^ pref_inactive ^ inactive_modules = hide,
+        Pref ^ pref_inactive ^ inactive_modules = inactive_hide,
         is_inactive(Own)
     ),
     HTML = string.format("<TD><A HREF=""%s"">%s</A></TD>\n",
-        [s(deep_cmd_pref_to_url(Pref, Deep, module(ModuleName))),
+        [s(deep_cmd_pref_to_url(Pref, Deep, deep_cmd_module(ModuleName))),
             s(ModuleName)]),
     LineGroup = line_group(ModuleName, 0, ModuleName, Own, Desc, HTML, unit).
 
@@ -675,8 +693,8 @@ module_summary_to_html(Pref, Deep, ModuleName - ModuleData) = LineGroup :-
 
 module_to_html(Pref, Deep, _ModuleName, ModuleData, IdHeaders, HTML) :-
     ModuleData = module_data(_Own, _Desc, PSPtrs),
-    ProcLines = list.filter_map(
-        lookup_proc_total_to_html(Pref, Deep, yes, ""), PSPtrs),
+    ProcLines = list.filter_map(lookup_proc_total_to_html(Pref, Deep, yes, ""),
+        PSPtrs),
     Criteria = Pref ^ pref_criteria,
     SortedProcLines = sort_line_groups(Criteria, ProcLines),
     ( Criteria = by_cost(_, _, _) ->
@@ -686,8 +704,7 @@ module_to_html(Pref, Deep, _ModuleName, ModuleData, IdHeaders, HTML) :-
         IdHeaders = source_proc,
         RankedProcLines = list.map(add_self_context, SortedProcLines)
     ),
-    ProcHTMLs = list.map(
-        two_id_line_to_html(Pref, Deep, totals_meaningful),
+    ProcHTMLs = list.map(two_id_line_to_html(Pref, Deep, totals_meaningful),
         RankedProcLines),
     HTML =
         separator_row(Pref, IdHeaders, totals_meaningful) ++
@@ -742,8 +759,8 @@ clique_to_html(Pref, Deep, CliquePtr, HTML, PerCent, ActionPtrs) :-
         separator_row(Pref, source_proc, totals_meaningful) ++
         Ancestors ++
         separator_row(Pref, source_proc, totals_meaningful) ++
-        header_row("Procedures of the clique:",
-            Pref, source_proc, totals_meaningful) ++
+        header_row("Procedures of the clique:", Pref, source_proc,
+            totals_meaningful) ++
         separator_row(Pref, source_proc, totals_meaningful) ++
         ProcGroups.
 
@@ -763,7 +780,7 @@ clique_ancestors_to_html(Pref, Deep, AncestorLimit, RespectLimit, CliquePtr,
         deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
         EntryPDPtr = EntryCSD ^ csd_caller,
         ( EntryPDPtr = Deep ^ root ->
-            % we have reached the root
+            % We have reached the root.
             HTML = "",
             Cutoff = no
         ; RespectLimit = yes, AncestorLimit =< 0 ->
@@ -776,12 +793,11 @@ clique_ancestors_to_html(Pref, Deep, AncestorLimit, RespectLimit, CliquePtr,
             ThisHTML = two_id_line_to_html(Pref, Deep, totals_meaningful,
                 ThisLine),
             clique_ancestors_to_html(Pref, Deep, AncestorLimit - 1,
-                RespectLimit, EntryCliquePtr,
-                AncestorHTML, Cutoff),
+                RespectLimit, EntryCliquePtr, AncestorHTML, Cutoff),
             HTML = AncestorHTML ++ ThisHTML
         )
     ;
-        % we have reached the parent of root
+        % We have reached the parent of root.
         HTML = "",
         Cutoff = no
     ).
@@ -819,24 +835,21 @@ procs_in_clique_to_html(Pref, Deep, CliquePtr, Percent, PSPtr - PDPtrs,
         list.map(deep_lookup_pd_desc(Deep), PDPtrs, ProcDescs),
         ProcOwn = sum_own_infos(ProcOwns),
         ProcDesc = sum_inherit_infos(ProcDescs),
-        ProcTotal = proc_total_to_two_id_line(Pref, Deep,
-            yes, "summary ", PSPtr, ProcOwn, ProcDesc),
-        list.map2(
-            proc_in_clique_to_html(Pref, Deep, CliquePtr, Percent),
+        ProcTotal = proc_total_to_two_id_line(Pref, Deep, yes, "summary ",
+            PSPtr, ProcOwn, ProcDesc),
+        list.map2(proc_in_clique_to_html(Pref, Deep, CliquePtr, Percent),
             PDPtrs, ComponentHTMLs, ActionPtrLists),
         list.condense(ActionPtrLists, ActionPtrs),
         string.append_list(ComponentHTMLs, ComponentHTML),
         HTML =
             separator_row(Pref, source_proc, totals_meaningful) ++
-            two_id_line_to_html(Pref, Deep, totals_meaningful,
-                ProcTotal) ++
+            two_id_line_to_html(Pref, Deep, totals_meaningful, ProcTotal) ++
             separator_row(Pref, source_proc, totals_meaningful) ++
             ComponentHTML
     ).
 
 :- pred proc_in_clique_to_html(preferences::in, deep::in, clique_ptr::in,
-    int::in, proc_dynamic_ptr::in, string::out, list(clique_ptr)::out)
-    is det.
+    int::in, proc_dynamic_ptr::in, string::out, list(clique_ptr)::out) is det.
 
 proc_in_clique_to_html(Pref, Deep, CliquePtr, Percent, PDPtr,
         HTML, ActionPtrs) :-
@@ -845,36 +858,30 @@ proc_in_clique_to_html(Pref, Deep, CliquePtr, Percent, PDPtr,
         deep_lookup_pd_desc(Deep, PDPtr, ProcDesc),
         deep_lookup_proc_dynamics(Deep, PDPtr, PD),
         PSPtr = PD ^ pd_proc_static,
-        ProcTotal = proc_total_to_two_id_line(Pref, Deep,
-            yes, "", PSPtr, ProcOwn, ProcDesc),
+        ProcTotal = proc_total_to_two_id_line(Pref, Deep, yes, "",
+            PSPtr, ProcOwn, ProcDesc),
         child_call_sites(Deep ^ proc_dynamics, Deep ^ proc_statics,
             PDPtr, GroupPairs),
-        ( GroupPairs = [] ->
-            HTML =
-                separator_row(Pref, source_proc,
-                    totals_meaningful) ++
-                two_id_line_to_html(Pref, Deep,
-                    totals_meaningful,ProcTotal),
+        ProcHTML =
+            separator_row(Pref, source_proc, totals_meaningful) ++
+            two_id_line_to_html(Pref, Deep, totals_meaningful, ProcTotal),
+        (
+            GroupPairs = [],
+            HTML = ProcHTML,
             ActionPtrs = []
         ;
-            list.map2(call_site_clique_to_html(Pref, Deep,
-                CliquePtr, Percent),
+            GroupPairs = [_ | _],
+            list.map2(call_site_clique_to_html(Pref, Deep, CliquePtr, Percent),
                 GroupPairs, CallSiteLists, ActionPtrLists),
             list.condense(CallSiteLists, CallSites),
             list.condense(ActionPtrLists, ActionPtrs),
-            SortedCallSites = sort_line_groups(
-                Pref ^ pref_criteria, CallSites),
+            SortedCallSites = sort_line_groups(Pref ^ pref_criteria,
+                CallSites),
             BodyHTMLs = list.map(
-                two_id_line_group_to_html(Pref, Deep,
-                    totals_meaningful),
+                two_id_line_group_to_html(Pref, Deep, totals_meaningful),
                 SortedCallSites),
-            HTML =
-                separator_row(Pref, source_proc,
-                    totals_meaningful) ++
-                two_id_line_to_html(Pref, Deep,
-                    totals_meaningful,ProcTotal) ++
-                separator_row(Pref, source_proc,
-                    totals_meaningful) ++
+            HTML = ProcHTML ++
+                separator_row(Pref, source_proc, totals_meaningful) ++
                 string.append_list(BodyHTMLs)
         )
     ;
@@ -907,7 +914,7 @@ child_call_sites(ProcDynamics, ProcStatics, PDPtr, PairedSlots) :-
 lookup_proc_total_to_html(Pref, Deep, Bold, Prefix, PSPtr) = LineGroup :-
     deep_lookup_ps_own(Deep, PSPtr, Own),
     not (
-        Pref ^ pref_inactive ^ inactive_procs = hide,
+        Pref ^ pref_inactive ^ inactive_procs = inactive_hide,
         is_inactive(Own)
     ),
     deep_lookup_ps_desc(Deep, PSPtr, Desc),
@@ -961,8 +968,7 @@ proc_total_to_html_base(Pref, Deep, Span, Bold, Prefix, PSPtr,
         BoldEnd = "</B>"
     ),
     HTML = string.format("<TD CLASS=id COLSPAN=%d>%s%s%s%s</TD>\n",
-        [i(Span), s(BoldStart), s(Prefix),
-        s(WrappedProcName), s(BoldEnd)]).
+        [i(Span), s(BoldStart), s(Prefix), s(WrappedProcName), s(BoldEnd)]).
 
 %-----------------------------------------------------------------------------%
 
@@ -991,9 +997,8 @@ call_site_clique_to_html(Pref, Deep, CallerCliquePtr, Percent, Pair,
             error("call_site_clique_to_html: non-normal_call error")
         ),
         call_site_context(Deep, CSSPtr, FileName, LineNumber),
-        multi_call_site_clique_to_html(Pref, Deep,
-            FileName, LineNumber, Kind, CallerCliquePtr, CSDPtrs,
-            LineGroups, Percent, ActionPtrs)
+        multi_call_site_clique_to_html(Pref, Deep, FileName, LineNumber,
+            Kind, CallerCliquePtr, CSDPtrs, LineGroups, Percent, ActionPtrs)
     ).
 
 :- func maybe_extract_action_clique(deep, clique_ptr, int,
@@ -1013,9 +1018,9 @@ maybe_extract_action_clique(Deep, CallerCliquePtr, Percent, CSDPtr)
             CSDOwn = CSD ^ csd_own_prof,
             CSDTotal = add_own_to_inherit(CSDOwn, CSDDesc),
             RootTotal = root_total_info(Deep),
-            CSDQuanta = inherit_quanta(CSDTotal),
-            RootQuanta = inherit_quanta(RootTotal),
-            ( CSDQuanta * 100 > RootQuanta * Percent ->
+            CSDCallSeqs = inherit_callseqs(CSDTotal),
+            RootCallSeqs = inherit_callseqs(RootTotal),
+            ( CSDCallSeqs * 100 > RootCallSeqs * Percent ->
                 ActionPtrs = [CalleeCliquePtr]
             ;
                 ActionPtrs = []
@@ -1062,22 +1067,18 @@ multi_call_site_clique_to_html(Pref, Deep, FileName, LineNumber, Kind,
     SummaryHTML =
         string.format("<TD CLASS=id>%s:%d</TD>\n",
             [s(escape_html_string(FileName)), i(LineNumber)]) ++
-        %
+
         % NOTE: we don't escape HTML special characters for
         % 'CallSiteName' because it has already been done.
-        %
-        string.format("<TD CLASS=id>%s</TD>\n",
-            [s(CallSiteName)]),
+        string.format("<TD CLASS=id>%s</TD>\n", [s(CallSiteName)]),
     (
         Pref ^ pref_summarize = summarize,
-        LineGroup = line_group(FileName, LineNumber,
-            RawCallSiteName, Own, Desc, SummaryHTML,
-                sub_lines(two_id, []))
+        LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
+            Own, Desc, SummaryHTML, sub_lines(two_id, []))
     ;
         Pref ^ pref_summarize = dont_summarize,
-        LineGroup = line_group(FileName, LineNumber,
-            RawCallSiteName, Own, Desc, SummaryHTML,
-                sub_lines(two_id, SubLines))
+        LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
+            Own, Desc, SummaryHTML, sub_lines(two_id, SubLines))
     ),
     LineGroups = [LineGroup].
 
@@ -1095,12 +1096,10 @@ call_site_summary_to_html(Pref, Deep, CSSPtr) = LineGroup :-
     call_site_context(Deep, CSSPtr, FileName, LineNumber),
     ( Kind = normal_call_and_callee(CalleePSPtr, _) ->
         LineGroup0 = normal_call_site_summary_to_html(Pref, Deep,
-            FileName, LineNumber, CallerPSPtr, CalleePSPtr,
-            CallSiteCallList)
+            FileName, LineNumber, CallerPSPtr, CalleePSPtr, CallSiteCallList)
     ;
         LineGroup0 = multi_call_site_summary_to_html(Pref, Deep,
-            FileName, LineNumber, Kind,
-            CallerPSPtr, CallSiteCallList)
+            FileName, LineNumber, Kind, CallerPSPtr, CallSiteCallList)
     ),
     CSSContext = string.format("%s:%d",
         [s(escape_html_string(FileName)), i(LineNumber)]),
@@ -1120,8 +1119,7 @@ normal_call_site_summary_to_html(Pref, Deep, FileName, LineNumber,
         Desc = zero_inherit_prof_info,
         SummaryHTML =
             string.format("<TD CLASS=id>%s</TD>\n",
-                [s(proc_static_to_html_ref(Pref,
-                    Deep, CalleePSPtr))]),
+                [s(proc_static_to_html_ref(Pref, Deep, CalleePSPtr))]),
         LineGroup = line_group(FileName, LineNumber,
             ProcName, Own, Desc, SummaryHTML,
             sub_lines(two_id, []))
@@ -1130,8 +1128,7 @@ normal_call_site_summary_to_html(Pref, Deep, FileName, LineNumber,
         require(unify(CalleePSPtr, CalleePSPtrFromCall),
             "call_site_summary_to_html: callee mismatch"),
         LineGroup0 = call_site_summary_group_to_html(Pref, Deep,
-            FileName, LineNumber, ProcName,
-            CallerPSPtr, CallSiteCall),
+            FileName, LineNumber, ProcName, CallerPSPtr, CallSiteCall),
         LineGroup = line_to_two_id_subline_group(LineGroup0)
     ;
         error("normal_call_site_summary_to_html: too many procedures")
@@ -1151,24 +1148,20 @@ multi_call_site_summary_to_html(Pref, Deep, FileName, LineNumber, Kind,
         FileName, LineNumber, RawCallSiteName, CallerPSPtr),
         CallSiteCallList),
     sum_line_group_measurements(SubLines, Own, Desc),
-    %
+
     % NOTE: we don't escape HTML special characters for
     % 'CallSiteName' because it has already been done.
-    %
     SummaryHTML =
-        string.format("<TD CLASS=id>%s</TD>\n",
-            [s(CallSiteName)]),
+        string.format("<TD CLASS=id>%s</TD>\n", [s(CallSiteName)]),
     (
         Pref ^ pref_summarize = summarize,
-        LineGroup = line_group(FileName, LineNumber,
-            RawCallSiteName, Own, Desc, SummaryHTML,
-            sub_lines(two_id, []))
+        LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
+            Own, Desc, SummaryHTML, sub_lines(two_id, []))
     ;
         Pref ^ pref_summarize = dont_summarize,
         ContextSubLines = list.map(add_context(""), SubLines),
-        LineGroup = line_group(FileName, LineNumber,
-            RawCallSiteName, Own, Desc, SummaryHTML,
-            sub_lines(two_id, ContextSubLines))
+        LineGroup = line_group(FileName, LineNumber, RawCallSiteName,
+            Own, Desc, SummaryHTML, sub_lines(two_id, ContextSubLines))
     ).
 
 :- func call_site_summary_group_to_html(preferences, deep,
@@ -1207,11 +1200,9 @@ multi_call_site_add_suffix(Pref, RawCallSiteName, CallList) = CallSiteName :-
     inherit_prof_info::in, inherit_prof_info::out) is det.
 
 process_call_site_dynamics_group([], _, _,
-        MaybeCalleeCliquePtr, MaybeCalleeCliquePtr,
-        Own, Own, Desc, Desc).
+        MaybeCalleeCliquePtr, MaybeCalleeCliquePtr, Own, Own, Desc, Desc).
 process_call_site_dynamics_group([CSDPtr | CSDPtrs], Deep, CalleePSPtr,
-        MaybeCalleeCliquePtr0, MaybeCalleeCliquePtr,
-        Own0, Own, Desc0, Desc) :-
+        MaybeCalleeCliquePtr0, MaybeCalleeCliquePtr, Own0, Own, Desc0, Desc) :-
     deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
     PDPtr = CSD ^ csd_callee,
     deep_lookup_proc_dynamics(Deep, PDPtr, PD),
@@ -1233,8 +1224,7 @@ process_call_site_dynamics_group([CSDPtr | CSDPtrs], Deep, CalleePSPtr,
     Own1 = add_own_to_own(Own0, CSDOwn),
     Desc1 = add_inherit_to_inherit(Desc0, CSDDesc),
     process_call_site_dynamics_group(CSDPtrs, Deep, CalleePSPtr,
-        MaybeCalleeCliquePtr1, MaybeCalleeCliquePtr,
-        Own1, Own, Desc1, Desc).
+        MaybeCalleeCliquePtr1, MaybeCalleeCliquePtr, Own1, Own, Desc1, Desc).
 
 :- pred accumulate_csd_prof_info(deep::in, proc_static_ptr::in,
     call_site_dynamic_ptr::in,
@@ -1280,8 +1270,7 @@ call_site_dynamic_to_html(Pref, Deep, CallSiteDisplay, MaybeCallerCliquePtr,
     Context = string.format("%s:%d", [s(escape_html_string(FileName)),
         i(LineNumber)]),
     HTML = call_to_html(Pref, Deep, CallSiteDisplay, Context,
-        CallerPDPtr, CalleePDPtr,
-        MaybeCallerCliquePtr, CalleeCliquePtr),
+        CallerPDPtr, CalleePDPtr, MaybeCallerCliquePtr, CalleeCliquePtr),
     ProcName = escape_html_string(proc_dynamic_name(Deep, CalleePDPtr)),
     LineGroup = line_group(FileName, LineNumber, ProcName,
         CallSiteOwn, CallSiteDesc, HTML, unit).
@@ -1375,7 +1364,7 @@ call_to_html(Pref, Deep, CallSiteDisplay, CallContext,
     ),
     ChosenCliquePtr = clique_ptr(ChosenCliqueNum),
     WrappedProcName = string.format("<A HREF=""%s"">%s</A>",
-        [s(deep_cmd_pref_to_url(Pref, Deep, clique(ChosenCliqueNum))),
+        [s(deep_cmd_pref_to_url(Pref, Deep, deep_cmd_clique(ChosenCliqueNum))),
         s(escape_html_string(ProcName))]),
     (
         CallSiteDisplay ^ display_wrap = wrap_url_always,
@@ -1448,8 +1437,7 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
             Deep, Result, !IO),
         (
             Result = ok(ExcludeSpec),
-            CallerCSDPtrPairs = list.map(
-                pair_contour(Deep, ExcludeSpec),
+            CallerCSDPtrPairs = list.map(pair_contour(Deep, ExcludeSpec),
                 CallerCSDPtrs),
             MaybeErrorMsg = no
         ;
@@ -1460,10 +1448,10 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
     ),
     ProcName = proc_static_name(Deep, PSPtr),
     PSPtr = proc_static_ptr(PSI),
-    CmdSite    = proc_callers(PSI, group_by_call_site, 1),
-    CmdProc    = proc_callers(PSI, group_by_proc, 1),
-    CmdModule  = proc_callers(PSI, group_by_module, 1),
-    CmdClique  = proc_callers(PSI, group_by_clique, 1),
+    CmdSite    = deep_cmd_proc_callers(PSI, group_by_call_site, 1),
+    CmdProc    = deep_cmd_proc_callers(PSI, group_by_proc, 1),
+    CmdModule  = deep_cmd_proc_callers(PSI, group_by_module, 1),
+    CmdClique  = deep_cmd_proc_callers(PSI, group_by_clique, 1),
     LinkSite   = "Group callers by call site",
     LinkProc   = "Group callers by procedure",
     LinkModule = "Group callers by module",
@@ -1476,8 +1464,7 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         GroupMap = list.foldl(accumulate_csds_by_call_site(Deep),
             CallerCSDPtrPairs, map.init),
         map.to_assoc_list(GroupMap, GroupList),
-        Lines = list.map(
-            proc_callers_call_site_to_html(Pref, Deep, PSPtr),
+        Lines = list.map(proc_callers_call_site_to_html(Pref, Deep, PSPtr),
             GroupList),
         SortedLines = sort_line_groups(Pref ^ pref_criteria, Lines),
         IdFields = source_proc,
@@ -1497,8 +1484,7 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         GroupMap = list.foldl(accumulate_csds_by_procedure(Deep),
             CallerCSDPtrPairs, map.init),
         map.to_assoc_list(GroupMap, GroupList),
-        Lines = list.map(
-            proc_callers_proc_to_html(Pref, Deep, PSPtr),
+        Lines = list.map(proc_callers_proc_to_html(Pref, Deep, PSPtr),
             GroupList),
         SortedLines = sort_line_groups(Pref ^ pref_criteria, Lines),
         IdFields = source_proc,
@@ -1518,11 +1504,9 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         GroupMap = list.foldl(accumulate_csds_by_module(Deep),
             CallerCSDPtrPairs, map.init),
         map.to_assoc_list(GroupMap, GroupList),
-        RawLines = list.map(
-            proc_callers_module_to_html(Pref, Deep, PSPtr),
+        RawLines = list.map(proc_callers_module_to_html(Pref, Deep, PSPtr),
             GroupList),
-        SortedRawLines = sort_line_groups(Pref ^ pref_criteria,
-            RawLines),
+        SortedRawLines = sort_line_groups(Pref ^ pref_criteria, RawLines),
         SortedLines = add_ranks(SortedRawLines),
         IdFields = rank_module,
         Entity = "module",
@@ -1541,11 +1525,9 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         GroupMap = list.foldl(accumulate_csds_by_clique(Deep),
             CallerCSDPtrPairs, map.init),
         map.to_assoc_list(GroupMap, GroupList),
-        RawLines = list.map(
-            proc_callers_clique_to_html(Pref, Deep, PSPtr),
+        RawLines = list.map(proc_callers_clique_to_html(Pref, Deep, PSPtr),
             GroupList),
-        SortedRawLines = sort_line_groups(Pref ^ pref_criteria,
-            RawLines),
+        SortedRawLines = sort_line_groups(Pref ^ pref_criteria, RawLines),
         SortedLines = add_ranks(SortedRawLines),
         IdFields = source_proc,
         Entity = "clique",
@@ -1574,32 +1556,29 @@ proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
         DisplayedLines),
     HTML = string.append_list(DisplayedHTMLs),
     ( BunchNum > 1 ->
-        FirstCmd = proc_callers(PSI, CallerGroups, 1),
+        FirstCmd = deep_cmd_proc_callers(PSI, CallerGroups, 1),
         FirstLink = "First group",
         FirstToggle =
             string.format("<A HREF=""%s"">%s</A>\n",
-                [s(deep_cmd_pref_to_url(Pref, Deep, FirstCmd)),
-                s(FirstLink)])
+                [s(deep_cmd_pref_to_url(Pref, Deep, FirstCmd)), s(FirstLink)])
     ;
         FirstToggle = ""
     ),
     ( BunchNum > 2 ->
-        PrevCmd = proc_callers(PSI, CallerGroups, BunchNum - 1),
+        PrevCmd = deep_cmd_proc_callers(PSI, CallerGroups, BunchNum - 1),
         PrevLink = "Previous group",
         PrevToggle =
             string.format("<A HREF=""%s"">%s</A>\n",
-                [s(deep_cmd_pref_to_url(Pref, Deep, PrevCmd)),
-                s(PrevLink)])
+                [s(deep_cmd_pref_to_url(Pref, Deep, PrevCmd)), s(PrevLink)])
     ;
         PrevToggle = ""
     ),
     ( NumLines > BunchNum * BunchSize ->
-        NextCmd = proc_callers(PSI, CallerGroups, BunchNum + 1),
+        NextCmd = deep_cmd_proc_callers(PSI, CallerGroups, BunchNum + 1),
         NextLink = "Next group",
         NextToggle =
             string.format("<A HREF=""%s"">%s</A>\n",
-                [s(deep_cmd_pref_to_url(Pref, Deep, NextCmd)),
-                s(NextLink)])
+                [s(deep_cmd_pref_to_url(Pref, Deep, NextCmd)), s(NextLink)])
     ;
         NextToggle = ""
     ),
@@ -1641,7 +1620,7 @@ select_line_bunch(NumLines, BunchNum0, BunchNum, BunchSize,
 
 proc_callers_banner(PSI, ProcName, Pref, Deep, NumLines, BunchSize, BunchNum,
         Parent) = HTML :-
-    Cmd = proc(PSI),
+    Cmd = deep_cmd_proc(PSI),
     WrappedProcName = string.format("<A HREF=""%s"">%s</A>",
         [s(deep_cmd_pref_to_url(Pref, Deep, Cmd)),
             s(escape_html_string(ProcName))]),
@@ -1657,8 +1636,7 @@ proc_callers_banner(PSI, ProcName, Pref, Deep, NumLines, BunchSize, BunchNum,
     ; BunchNum = 1 ->
         HTML = string.format(
             "<H3>There are %d %ss calling %s, showing first %d:</H3>",
-            [i(NumLines), s(Parent), s(WrappedProcName),
-            i(BunchSize)])
+            [i(NumLines), s(Parent), s(WrappedProcName), i(BunchSize)])
     ;
         First = (BunchNum - 1) * BunchSize + 1,
         Last0 = (BunchNum) * BunchSize,
@@ -1669,8 +1647,7 @@ proc_callers_banner(PSI, ProcName, Pref, Deep, NumLines, BunchSize, BunchNum,
         ),
         HTML = string.format(
             "<H3>There are %d %ss calling %s, showing %d to %d:</H3>",
-            [i(NumLines), s(Parent), s(WrappedProcName),
-            i(First), i(Last)])
+            [i(NumLines), s(Parent), s(WrappedProcName), i(First), i(Last)])
     ).
 
 :- func proc_callers_call_site_to_html(preferences, deep, proc_static_ptr,
@@ -1683,15 +1660,13 @@ proc_callers_call_site_to_html(Pref, Deep, CalleePSPtr, CSSPtr - CSDPtrs)
     CallerPSPtr = CSS ^ css_container,
     deep_lookup_proc_statics(Deep, CallerPSPtr, CallerPS),
     CallerProcName = CallerPS ^ ps_refined_id,
-    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr),
-        CSDPtrs,
+    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr), CSDPtrs,
         zero_own_prof_info, Own, zero_inherit_prof_info, Desc),
     HTML =
         string.format("<TD CLASS=id>%s:%d</TD>\n",
             [s(FileName), i(LineNumber)]) ++
         string.format("<TD CLASS=id>%s</TD>\n",
-            [s(proc_static_to_html_ref(Pref, Deep,
-                CallerPSPtr))]),
+            [s(proc_static_to_html_ref(Pref, Deep, CallerPSPtr))]),
     LineGroup = line_group(FileName, LineNumber, CallerProcName,
         Own, Desc, HTML, unit).
 
@@ -1703,15 +1678,13 @@ proc_callers_proc_to_html(Pref, Deep, CalleePSPtr, CallerPSPtr - CSDPtrs)
     proc_static_context(Deep, CallerPSPtr, FileName, LineNumber),
     deep_lookup_proc_statics(Deep, CallerPSPtr, CallerPS),
     CallerProcName = CallerPS ^ ps_refined_id,
-    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr),
-        CSDPtrs,
+    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr), CSDPtrs,
         zero_own_prof_info, Own, zero_inherit_prof_info, Desc),
     HTML =
         string.format("<TD CLASS=id>%s:%d</TD>\n",
             [s(FileName), i(LineNumber)]) ++
         string.format("<TD CLASS=id>%s</TD>\n",
-            [s(proc_static_to_html_ref(Pref, Deep,
-                CallerPSPtr))]),
+            [s(proc_static_to_html_ref(Pref, Deep, CallerPSPtr))]),
     LineGroup = line_group(FileName, LineNumber, CallerProcName,
         Own, Desc, HTML, unit).
 
@@ -1720,8 +1693,7 @@ proc_callers_proc_to_html(Pref, Deep, CalleePSPtr, CallerPSPtr - CSDPtrs)
 
 proc_callers_module_to_html(Pref, Deep, CalleePSPtr, ModuleName - CSDPtrs)
         = LineGroup :-
-    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr),
-        CSDPtrs,
+    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr), CSDPtrs,
         zero_own_prof_info, Own, zero_inherit_prof_info, Desc),
     HTML = string.format("<TD CLASS=id>%s</TD>\n",
         [s(module_name_to_html_ref(Pref, Deep, ModuleName))]),
@@ -1735,8 +1707,7 @@ proc_callers_module_to_html(Pref, Deep, CalleePSPtr, ModuleName - CSDPtrs)
 
 proc_callers_clique_to_html(Pref, Deep, CalleePSPtr, CliquePtr - CSDPtrs)
         = LineGroup :-
-    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr),
-        CSDPtrs,
+    list.foldl2(accumulate_parent_csd_prof_info(Deep, CalleePSPtr), CSDPtrs,
         zero_own_prof_info, Own, zero_inherit_prof_info, Desc),
     deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
     deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
@@ -1785,8 +1756,7 @@ accumulate_csds_by_module(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
     deep_lookup_proc_statics(Deep, GroupPSPtr, GroupPS),
     GroupModuleName = GroupPS ^ ps_decl_module,
     ( map.search(Map0, GroupModuleName, CostCSDPtrs0) ->
-        map.det_update(Map0, GroupModuleName, [CostCSDPtr | CostCSDPtrs0],
-            Map)
+        map.det_update(Map0, GroupModuleName, [CostCSDPtr | CostCSDPtrs0], Map)
     ;
         map.det_insert(Map0, GroupModuleName, [CostCSDPtr], Map)
     ).
@@ -1823,10 +1793,8 @@ accumulate_parent_csd_prof_info(Deep, CallerPSPtr, CSDPtr,
         add_own_to_own(Own0, CSDOwn) = Own,
         add_inherit_to_inherit(Desc0, CSDDesc) = Desc1,
 
-        deep_lookup_clique_index(Deep, CSD ^ csd_callee,
-            CalleeCliquePtr),
-        deep_lookup_clique_members(Deep, CalleeCliquePtr,
-            CalleeCliquePDPtrs),
+        deep_lookup_clique_index(Deep, CSD ^ csd_callee, CalleeCliquePtr),
+        deep_lookup_clique_members(Deep, CalleeCliquePtr, CalleeCliquePDPtrs),
         list.foldl(compensate_using_comp_table(Deep, CallerPSPtr),
             CalleeCliquePDPtrs, Desc1, Desc)
     ).
@@ -1888,13 +1856,13 @@ proc_summary_to_html(Pref, Deep, PSPtr) = HTML :-
 proc_summary_toggles_to_html(Pref, Deep, PSPtr) = HTML :-
     PSPtr = proc_static_ptr(PSI),
     Msg1 = "Parent call sites",
-    Cmd1 = proc_callers(PSI, group_by_call_site, 1),
+    Cmd1 = deep_cmd_proc_callers(PSI, group_by_call_site, 1),
     Msg2 = "Parent procedures",
-    Cmd2 = proc_callers(PSI, group_by_proc, 1),
+    Cmd2 = deep_cmd_proc_callers(PSI, group_by_proc, 1),
     Msg3 = "Parent modules",
-    Cmd3 = proc_callers(PSI, group_by_module, 1),
+    Cmd3 = deep_cmd_proc_callers(PSI, group_by_module, 1),
     Msg4 = "Parent cliques",
-    Cmd4 = proc_callers(PSI, group_by_clique, 1),
+    Cmd4 = deep_cmd_proc_callers(PSI, group_by_clique, 1),
     Link1 = string.format("<A HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, Cmd1)), s(Msg1)]),
     Link2 = string.format("<A HREF=""%s"">%s</A>\n",
@@ -1916,7 +1884,7 @@ proc_summary_toggles_to_html(Pref, Deep, PSPtr) = HTML :-
 
 wrap_clique_links(CliquePtr, Pref0, Deep, Str0, Criteria) = Str :-
     CliquePtr = clique_ptr(CI),
-    Cmd = clique(CI),
+    Cmd = deep_cmd_clique(CI),
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",
@@ -1927,7 +1895,7 @@ wrap_clique_links(CliquePtr, Pref0, Deep, Str0, Criteria) = Str :-
 
 wrap_proc_links(PSPtr, Pref0, Deep, Str0, Criteria) = Str :-
     PSPtr = proc_static_ptr(PSI),
-    Cmd = proc(PSI),
+    Cmd = deep_cmd_proc(PSI),
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",
@@ -1939,7 +1907,7 @@ wrap_proc_links(PSPtr, Pref0, Deep, Str0, Criteria) = Str :-
 wrap_proc_callers_links(PSPtr, CallerGroups, BunchNum, Pref0, Deep,
         Str0, Criteria) = Str :-
     PSPtr = proc_static_ptr(PSI),
-    Cmd = proc_callers(PSI, CallerGroups, BunchNum),
+    Cmd = deep_cmd_proc_callers(PSI, CallerGroups, BunchNum),
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",
@@ -1949,7 +1917,7 @@ wrap_proc_callers_links(PSPtr, CallerGroups, BunchNum, Pref0, Deep,
     order_criteria) = string.
 
 wrap_module_links(ModuleName, Pref0, Deep, Str0, Criteria) = Str :-
-    Cmd = module(ModuleName),
+    Cmd = deep_cmd_module(ModuleName),
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",
@@ -1958,7 +1926,7 @@ wrap_module_links(ModuleName, Pref0, Deep, Str0, Criteria) = Str :-
 :- func wrap_modules_links(preferences, deep, string, order_criteria) = string.
 
 wrap_modules_links(Pref0, Deep, Str0, Criteria) = Str :-
-    Cmd = modules,
+    Cmd = deep_cmd_modules,
     Pref = Pref0 ^ pref_criteria := Criteria,
     URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
     Str = string.format("<A HREF=%s>%s</A>",
@@ -1976,7 +1944,7 @@ wrap_top_procs_links(Limit, Pref, Deep, Str0, Criteria) = Str :-
         Str = Str0
     ;
         Criteria = by_cost(CostKind, InclDesc, Scope),
-        Cmd = top_procs(Limit, CostKind, InclDesc, Scope),
+        Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
         Str = string.format("<A HREF=%s>%s</A>",
             [s(URL), s(escape_html_string(Str0))])

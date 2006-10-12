@@ -127,8 +127,7 @@ compare_procs_fallback(MainFunc, Deep, PSI1, PSI2) = Result :-
         ( Result1 \= (=) ->
             Result = Result1
         ;
-            Result = compare_ps_words_both_overall(Deep,
-                PSI1, PSI2)
+            Result = compare_ps_words_both_overall(Deep, PSI1, PSI2)
         )
     ).
 
@@ -146,61 +145,93 @@ filter_top_procs(Deep, RootPSI, FilterPred, PSI) :-
     compare_proc_statics::out(func(in, in, in) = out is det),
     pred(deep, int)::out(pred(in, in) is semidet)) is det.
 
-find_top_sort_predicate(calls,  self,          overall,  yes,
+find_top_sort_predicate(cost_calls,  self,          overall,  yes,
     compare_ps_calls_self_overall,  filter_ps_calls_self).
-find_top_sort_predicate(calls,  self,          per_call, no,
+find_top_sort_predicate(cost_calls,  self,          per_call, no,
     compare_ps_calls_self_overall,  filter_ps_calls_self).
-find_top_sort_predicate(calls,  self_and_desc, overall,  no,
+find_top_sort_predicate(cost_calls,  self_and_desc, overall,  no,
     compare_ps_calls_self_overall,  filter_ps_calls_self).
-find_top_sort_predicate(calls,  self_and_desc, per_call, no,
+find_top_sort_predicate(cost_calls,  self_and_desc, per_call, no,
     compare_ps_calls_self_overall,  filter_ps_calls_self).
-find_top_sort_predicate(redos,  self,          overall,  yes,
+
+find_top_sort_predicate(cost_redos,  self,          overall,  yes,
     compare_ps_redos_self_overall,  filter_ps_redos_self).
-find_top_sort_predicate(redos,  self,          per_call, no,
+find_top_sort_predicate(cost_redos,  self,          per_call, no,
     compare_ps_redos_self_overall,  filter_ps_redos_self).
-find_top_sort_predicate(redos,  self_and_desc, overall,  no,
+find_top_sort_predicate(cost_redos,  self_and_desc, overall,  no,
     compare_ps_redos_self_overall,  filter_ps_redos_self).
-find_top_sort_predicate(redos,  self_and_desc, per_call, no,
+find_top_sort_predicate(cost_redos,  self_and_desc, per_call, no,
     compare_ps_redos_self_overall,  filter_ps_redos_self).
-find_top_sort_predicate(time,   self,          overall,  yes,
+
+find_top_sort_predicate(cost_time,   self,          overall,  yes,
     compare_ps_time_self_overall,   filter_ps_time_self).
-find_top_sort_predicate(time,   self,          per_call, yes,
+find_top_sort_predicate(cost_time,   self,          per_call, yes,
     compare_ps_time_self_percall,   filter_ps_time_self).
-find_top_sort_predicate(time,   self_and_desc, overall,  yes,
+find_top_sort_predicate(cost_time,   self_and_desc, overall,  yes,
     compare_ps_time_both_overall,   filter_ps_time_both).
-find_top_sort_predicate(time,   self_and_desc, per_call, yes,
+find_top_sort_predicate(cost_time,   self_and_desc, per_call, yes,
     compare_ps_time_both_percall,   filter_ps_time_both).
-find_top_sort_predicate(allocs, self,          overall,  yes,
+
+find_top_sort_predicate(cost_callseqs, self,          overall,  yes,
+    compare_ps_callseqs_self_overall, filter_ps_callseqs_self).
+find_top_sort_predicate(cost_callseqs, self,          per_call, yes,
+    compare_ps_callseqs_self_percall, filter_ps_callseqs_self).
+find_top_sort_predicate(cost_callseqs, self_and_desc, overall,  yes,
+    compare_ps_callseqs_both_overall, filter_ps_callseqs_both).
+find_top_sort_predicate(cost_callseqs, self_and_desc, per_call, yes,
+    compare_ps_callseqs_both_percall, filter_ps_callseqs_both).
+
+find_top_sort_predicate(cost_allocs, self,          overall,  yes,
     compare_ps_allocs_self_overall, filter_ps_allocs_self).
-find_top_sort_predicate(allocs, self,          per_call, yes,
+find_top_sort_predicate(cost_allocs, self,          per_call, yes,
     compare_ps_allocs_self_percall, filter_ps_allocs_self).
-find_top_sort_predicate(allocs, self_and_desc, overall,  yes,
+find_top_sort_predicate(cost_allocs, self_and_desc, overall,  yes,
     compare_ps_allocs_both_overall, filter_ps_allocs_both).
-find_top_sort_predicate(allocs, self_and_desc, per_call, yes,
+find_top_sort_predicate(cost_allocs, self_and_desc, per_call, yes,
     compare_ps_allocs_both_percall, filter_ps_allocs_both).
-find_top_sort_predicate(words,  self,          overall,  yes,
+
+find_top_sort_predicate(cost_words,  self,          overall,  yes,
     compare_ps_words_self_overall,  filter_ps_words_self).
-find_top_sort_predicate(words,  self,          per_call, yes,
+find_top_sort_predicate(cost_words,  self,          per_call, yes,
     compare_ps_words_self_percall,  filter_ps_words_self).
-find_top_sort_predicate(words,  self_and_desc, overall,  yes,
+find_top_sort_predicate(cost_words,  self_and_desc, overall,  yes,
     compare_ps_words_both_overall,  filter_ps_words_both).
-find_top_sort_predicate(words,  self_and_desc, per_call, yes,
+find_top_sort_predicate(cost_words,  self_and_desc, per_call, yes,
     compare_ps_words_both_percall,  filter_ps_words_both).
 
 :- pred find_threshold_predicate(cost_kind::in, include_descendants::in,
     bool::out, pred(deep, float, int)::out(pred(in, in, in) is semidet))
     is det.
 
-find_threshold_predicate(calls,  self,          no,  threshold_ps_time_self).
-find_threshold_predicate(calls,  self_and_desc, no,  threshold_ps_time_self).
-find_threshold_predicate(redos,  self,          no,  threshold_ps_time_self).
-find_threshold_predicate(redos,  self_and_desc, no,  threshold_ps_time_self).
-find_threshold_predicate(time,   self,          yes, threshold_ps_time_self).
-find_threshold_predicate(time,   self_and_desc, yes, threshold_ps_time_both).
-find_threshold_predicate(allocs, self,          yes, threshold_ps_allocs_self).
-find_threshold_predicate(allocs, self_and_desc, yes, threshold_ps_allocs_both).
-find_threshold_predicate(words,  self,          yes, threshold_ps_words_self).
-find_threshold_predicate(words,  self_and_desc, yes, threshold_ps_words_both).
+find_threshold_predicate(cost_calls,  self,          no,
+    threshold_ps_time_self).
+find_threshold_predicate(cost_calls,  self_and_desc, no,
+    threshold_ps_time_self).
+
+find_threshold_predicate(cost_redos,  self,          no,
+    threshold_ps_time_self).
+find_threshold_predicate(cost_redos,  self_and_desc, no,
+    threshold_ps_time_self).
+
+find_threshold_predicate(cost_time,   self,          yes,
+    threshold_ps_time_self).
+find_threshold_predicate(cost_time,   self_and_desc, yes,
+    threshold_ps_time_both).
+
+find_threshold_predicate(cost_callseqs, self,          yes,
+    threshold_ps_callseqs_self).
+find_threshold_predicate(cost_callseqs, self_and_desc, yes,
+    threshold_ps_callseqs_both).
+
+find_threshold_predicate(cost_allocs, self,          yes,
+    threshold_ps_allocs_self).
+find_threshold_predicate(cost_allocs, self_and_desc, yes,
+    threshold_ps_allocs_both).
+
+find_threshold_predicate(cost_words,  self,          yes,
+    threshold_ps_words_self).
+find_threshold_predicate(cost_words,  self_and_desc, yes,
+    threshold_ps_words_both).
 
 %-----------------------------------------------------------------------------%
 
@@ -285,6 +316,68 @@ compare_ps_time_both_percall(Deep, PSI1, PSI2) = Result :-
     TotalQuantaPerCall1 = float(TotalQuanta1) / float(Calls1),
     TotalQuantaPerCall2 = float(TotalQuanta2) / float(Calls2),
     compare(Result, TotalQuantaPerCall2, TotalQuantaPerCall1).
+
+:- func compare_ps_callseqs_self_overall(deep, int, int) = comparison_result.
+
+compare_ps_callseqs_self_overall(Deep, PSI1, PSI2) = Result :-
+    PSOwn = Deep ^ ps_own,
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    OwnCallSeqs1 = callseqs(Own1),
+    OwnCallSeqs2 = callseqs(Own2),
+    compare(Result, OwnCallSeqs2, OwnCallSeqs1).
+
+:- func compare_ps_callseqs_self_percall(deep, int, int) = comparison_result.
+
+compare_ps_callseqs_self_percall(Deep, PSI1, PSI2) = Result :-
+    PSOwn = Deep ^ ps_own,
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    Calls1 = calls(Own1),
+    Calls2 = calls(Own2),
+    OwnCallSeqs1 = callseqs(Own1),
+    OwnCallSeqs2 = callseqs(Own2),
+    OwnCallSeqsPerCall1 = float(OwnCallSeqs1) / float(Calls1),
+    OwnCallSeqsPerCall2 = float(OwnCallSeqs2) / float(Calls2),
+    compare(Result, OwnCallSeqsPerCall2, OwnCallSeqsPerCall1).
+
+:- func compare_ps_callseqs_both_overall(deep, int, int) = comparison_result.
+
+compare_ps_callseqs_both_overall(Deep, PSI1, PSI2) = Result :-
+    PSOwn = Deep ^ ps_own,
+    PSDesc = Deep ^ ps_desc,
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSDesc, PSI2, Desc2),
+    OwnCallSeqs1 = callseqs(Own1),
+    OwnCallSeqs2 = callseqs(Own2),
+    DescCallSeqs1 = inherit_callseqs(Desc1),
+    DescCallSeqs2 = inherit_callseqs(Desc2),
+    TotalCallSeqs1 = OwnCallSeqs1 + DescCallSeqs1,
+    TotalCallSeqs2 = OwnCallSeqs2 + DescCallSeqs2,
+    compare(Result, TotalCallSeqs2, TotalCallSeqs1).
+
+:- func compare_ps_callseqs_both_percall(deep, int, int) = comparison_result.
+
+compare_ps_callseqs_both_percall(Deep, PSI1, PSI2) = Result :-
+    PSOwn = Deep ^ ps_own,
+    PSDesc = Deep ^ ps_desc,
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSDesc, PSI2, Desc2),
+    Calls1 = calls(Own1),
+    Calls2 = calls(Own2),
+    OwnCallSeqs1 = callseqs(Own1),
+    OwnCallSeqs2 = callseqs(Own2),
+    DescCallSeqs1 = inherit_callseqs(Desc1),
+    DescCallSeqs2 = inherit_callseqs(Desc2),
+    TotalCallSeqs1 = OwnCallSeqs1 + DescCallSeqs1,
+    TotalCallSeqs2 = OwnCallSeqs2 + DescCallSeqs2,
+    TotalCallSeqsPerCall1 = float(TotalCallSeqs1) / float(Calls1),
+    TotalCallSeqsPerCall2 = float(TotalCallSeqs2) / float(Calls2),
+    compare(Result, TotalCallSeqsPerCall2, TotalCallSeqsPerCall1).
 
 :- func compare_ps_allocs_self_overall(deep, int, int) = comparison_result.
 
@@ -448,6 +541,26 @@ filter_ps_time_both(Deep, PSI1) :-
     TotalQuanta1 = OwnQuanta1 + DescQuanta1,
     TotalQuanta1 > 0.
 
+:- pred filter_ps_callseqs_self(deep::in, int::in) is semidet.
+
+filter_ps_callseqs_self(Deep, PSI1) :-
+    PSOwn = Deep ^ ps_own,
+    array.lookup(PSOwn, PSI1, Own1),
+    OwnCallSeqs1 = callseqs(Own1),
+    OwnCallSeqs1 > 0.
+
+:- pred filter_ps_callseqs_both(deep::in, int::in) is semidet.
+
+filter_ps_callseqs_both(Deep, PSI1) :-
+    PSOwn = Deep ^ ps_own,
+    PSDesc = Deep ^ ps_desc,
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSDesc, PSI1, Desc1),
+    OwnCallSeqs1 = callseqs(Own1),
+    DescCallSeqs1 = inherit_callseqs(Desc1),
+    TotalCallSeqs1 = OwnCallSeqs1 + DescCallSeqs1,
+    TotalCallSeqs1 > 0.
+
 :- pred filter_ps_allocs_self(deep::in, int::in) is semidet.
 
 filter_ps_allocs_self(Deep, PSI1) :-
@@ -519,6 +632,36 @@ threshold_ps_time_both(Deep, Threshold, PSI) :-
     TotalQuanta = OwnQuanta + DescQuanta,
     RootTotalQuanta = RootOwnQuanta + RootDescQuanta,
     100.0 * float(TotalQuanta) > Threshold * float(RootTotalQuanta).
+
+:- pred threshold_ps_callseqs_self(deep::in, float::in, int::in) is semidet.
+
+threshold_ps_callseqs_self(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    array.lookup(PSOwn, PSI, Own),
+    RootOwn = root_own_info(Deep),
+    RootDesc = root_desc_info(Deep),
+    OwnCallSeqs = callseqs(Own),
+    RootOwnCallSeqs = callseqs(RootOwn),
+    RootDescCallSeqs = inherit_callseqs(RootDesc),
+    RootTotalCallSeqs = RootOwnCallSeqs + RootDescCallSeqs,
+    100.0 * float(OwnCallSeqs) > Threshold * float(RootTotalCallSeqs).
+
+:- pred threshold_ps_callseqs_both(deep::in, float::in, int::in) is semidet.
+
+threshold_ps_callseqs_both(Deep, Threshold, PSI) :-
+    PSOwn = Deep ^ ps_own,
+    PSDesc = Deep ^ ps_desc,
+    array.lookup(PSOwn, PSI, Own),
+    array.lookup(PSDesc, PSI, Desc),
+    RootOwn = root_own_info(Deep),
+    RootDesc = root_desc_info(Deep),
+    OwnCallSeqs = callseqs(Own),
+    RootOwnCallSeqs = callseqs(RootOwn),
+    DescCallSeqs = inherit_callseqs(Desc),
+    RootDescCallSeqs = inherit_callseqs(RootDesc),
+    TotalCallSeqs = OwnCallSeqs + DescCallSeqs,
+    RootTotalCallSeqs = RootOwnCallSeqs + RootDescCallSeqs,
+    100.0 * float(TotalCallSeqs) > Threshold * float(RootTotalCallSeqs).
 
 :- pred threshold_ps_allocs_self(deep::in, float::in, int::in) is semidet.
 
@@ -592,71 +735,91 @@ sort_line_groups(Criteria, Groups) = SortedGroups :-
     ;
         Criteria = by_cost(Measurement, InclDesc, Scope),
         (
-            Measurement = calls,
+            Measurement = cost_calls,
             % We ignore the setting of InclDesc because calls are not
             % inherited from descendants, and we ignore the setting of Scope
             % because sorting on "calls per call" is not useful.
             CompFunc = compare_line_groups_by_calls
         ;
-            Measurement = redos,
+            Measurement = cost_redos,
             CompFunc = compare_line_groups_by_redos
         ;
-            Measurement = time,
+            Measurement = cost_time,
             InclDesc = self,
             Scope = overall,
             CompFunc = compare_line_groups_by_time_self_overall
         ;
-            Measurement = time,
+            Measurement = cost_time,
             InclDesc = self,
             Scope = per_call,
             CompFunc = compare_line_groups_by_time_self_percall
         ;
-            Measurement = time,
+            Measurement = cost_time,
             InclDesc = self_and_desc,
             Scope = overall,
             CompFunc = compare_line_groups_by_time_total_overall
         ;
-            Measurement = time,
+            Measurement = cost_time,
             InclDesc = self_and_desc,
             Scope = per_call,
             CompFunc = compare_line_groups_by_time_total_percall
         ;
-            Measurement = allocs,
+            Measurement = cost_callseqs,
+            InclDesc = self,
+            Scope = overall,
+            CompFunc = compare_line_groups_by_callseqs_self_overall
+        ;
+            Measurement = cost_callseqs,
+            InclDesc = self,
+            Scope = per_call,
+            CompFunc = compare_line_groups_by_callseqs_self_percall
+        ;
+            Measurement = cost_callseqs,
+            InclDesc = self_and_desc,
+            Scope = overall,
+            CompFunc = compare_line_groups_by_callseqs_total_overall
+        ;
+            Measurement = cost_callseqs,
+            InclDesc = self_and_desc,
+            Scope = per_call,
+            CompFunc = compare_line_groups_by_callseqs_total_percall
+        ;
+            Measurement = cost_allocs,
             InclDesc = self,
             Scope = overall,
             CompFunc = compare_line_groups_by_allocs_self_overall
         ;
-            Measurement = allocs,
+            Measurement = cost_allocs,
             InclDesc = self,
             Scope = per_call,
             CompFunc = compare_line_groups_by_allocs_self_percall
         ;
-            Measurement = allocs,
+            Measurement = cost_allocs,
             InclDesc = self_and_desc,
             Scope = overall,
             CompFunc = compare_line_groups_by_allocs_total_overall
         ;
-            Measurement = allocs,
+            Measurement = cost_allocs,
             InclDesc = self_and_desc,
             Scope = per_call,
             CompFunc = compare_line_groups_by_allocs_total_percall
         ;
-            Measurement = words,
+            Measurement = cost_words,
             InclDesc = self,
             Scope = overall,
             CompFunc = compare_line_groups_by_words_self_overall
         ;
-            Measurement = words,
+            Measurement = cost_words,
             InclDesc = self,
             Scope = per_call,
             CompFunc = compare_line_groups_by_words_self_percall
         ;
-            Measurement = words,
+            Measurement = cost_words,
             InclDesc = self_and_desc,
             Scope = overall,
             CompFunc = compare_line_groups_by_words_total_overall
         ;
-            Measurement = words,
+            Measurement = cost_words,
             InclDesc = self_and_desc,
             Scope = per_call,
             CompFunc = compare_line_groups_by_words_total_percall
@@ -752,10 +915,8 @@ compare_line_groups_by_time_self_percall(Group1, Group2) = Result :-
     line_group(FL, LL)) = comparison_result.
 
 compare_line_groups_by_time_total_overall(Group1, Group2) = Result :-
-    Quanta1 = quanta(Group1 ^ group_own) +
-        inherit_quanta(Group1 ^ group_desc),
-    Quanta2 = quanta(Group2 ^ group_own) +
-        inherit_quanta(Group2 ^ group_desc),
+    Quanta1 = quanta(Group1 ^ group_own) + inherit_quanta(Group1 ^ group_desc),
+    Quanta2 = quanta(Group2 ^ group_own) + inherit_quanta(Group2 ^ group_desc),
     compare(Result, Quanta2, Quanta1).
 
 :- func compare_line_groups_by_time_total_percall(line_group(FL, LL),
@@ -764,10 +925,8 @@ compare_line_groups_by_time_total_overall(Group1, Group2) = Result :-
 compare_line_groups_by_time_total_percall(Group1, Group2) = Result :-
     Calls1 = calls(Group1 ^ group_own),
     Calls2 = calls(Group2 ^ group_own),
-    Quanta1 = quanta(Group1 ^ group_own) +
-        inherit_quanta(Group1 ^ group_desc),
-    Quanta2 = quanta(Group2 ^ group_own) +
-        inherit_quanta(Group2 ^ group_desc),
+    Quanta1 = quanta(Group1 ^ group_own) + inherit_quanta(Group1 ^ group_desc),
+    Quanta2 = quanta(Group2 ^ group_own) + inherit_quanta(Group2 ^ group_desc),
     ( Calls1 = 0 ->
         QuantaPerCall1 = 0.0
     ;
@@ -779,6 +938,66 @@ compare_line_groups_by_time_total_percall(Group1, Group2) = Result :-
         QuantaPerCall2 = float(Quanta2) / float(Calls2)
     ),
     compare(Result, QuantaPerCall2, QuantaPerCall1).
+
+:- func compare_line_groups_by_callseqs_self_overall(line_group(FL, LL),
+    line_group(FL, LL)) = comparison_result.
+
+compare_line_groups_by_callseqs_self_overall(Group1, Group2) = Result :-
+    CallSeqs1 = callseqs(Group1 ^ group_own),
+    CallSeqs2 = callseqs(Group2 ^ group_own),
+    compare(Result, CallSeqs2, CallSeqs1).
+
+:- func compare_line_groups_by_callseqs_self_percall(line_group(FL, LL),
+    line_group(FL, LL)) = comparison_result.
+
+compare_line_groups_by_callseqs_self_percall(Group1, Group2) = Result :-
+    Calls1 = calls(Group1 ^ group_own),
+    Calls2 = calls(Group2 ^ group_own),
+    CallSeqs1 = callseqs(Group1 ^ group_own),
+    CallSeqs2 = callseqs(Group2 ^ group_own),
+    ( Calls1 = 0 ->
+        CallSeqsPerCall1 = 0.0
+    ;
+        CallSeqsPerCall1 = float(CallSeqs1) / float(Calls1)
+    ),
+    ( Calls2 = 0 ->
+        CallSeqsPerCall2 = 0.0
+    ;
+        CallSeqsPerCall2 = float(CallSeqs2) / float(Calls2)
+    ),
+    compare(Result, CallSeqsPerCall2, CallSeqsPerCall1).
+
+:- func compare_line_groups_by_callseqs_total_overall(line_group(FL, LL),
+    line_group(FL, LL)) = comparison_result.
+
+compare_line_groups_by_callseqs_total_overall(Group1, Group2) = Result :-
+    CallSeqs1 = callseqs(Group1 ^ group_own) +
+        inherit_callseqs(Group1 ^ group_desc),
+    CallSeqs2 = callseqs(Group2 ^ group_own) +
+        inherit_callseqs(Group2 ^ group_desc),
+    compare(Result, CallSeqs2, CallSeqs1).
+
+:- func compare_line_groups_by_callseqs_total_percall(line_group(FL, LL),
+    line_group(FL, LL)) = comparison_result.
+
+compare_line_groups_by_callseqs_total_percall(Group1, Group2) = Result :-
+    Calls1 = calls(Group1 ^ group_own),
+    Calls2 = calls(Group2 ^ group_own),
+    CallSeqs1 = callseqs(Group1 ^ group_own) +
+        inherit_callseqs(Group1 ^ group_desc),
+    CallSeqs2 = callseqs(Group2 ^ group_own) +
+        inherit_callseqs(Group2 ^ group_desc),
+    ( Calls1 = 0 ->
+        CallSeqsPerCall1 = 0.0
+    ;
+        CallSeqsPerCall1 = float(CallSeqs1) / float(Calls1)
+    ),
+    ( Calls2 = 0 ->
+        CallSeqsPerCall2 = 0.0
+    ;
+        CallSeqsPerCall2 = float(CallSeqs2) / float(Calls2)
+    ),
+    compare(Result, CallSeqsPerCall2, CallSeqsPerCall1).
 
 :- func compare_line_groups_by_allocs_self_overall(line_group(FL, LL),
     line_group(FL, LL)) = comparison_result.
@@ -812,10 +1031,8 @@ compare_line_groups_by_allocs_self_percall(Group1, Group2) = Result :-
     line_group(FL, LL)) = comparison_result.
 
 compare_line_groups_by_allocs_total_overall(Group1, Group2) = Result :-
-    Alloc1 = allocs(Group1 ^ group_own) +
-        inherit_allocs(Group1 ^ group_desc),
-    Alloc2 = allocs(Group2 ^ group_own) +
-        inherit_allocs(Group2 ^ group_desc),
+    Alloc1 = allocs(Group1 ^ group_own) + inherit_allocs(Group1 ^ group_desc),
+    Alloc2 = allocs(Group2 ^ group_own) + inherit_allocs(Group2 ^ group_desc),
     compare(Result, Alloc2, Alloc1).
 
 :- func compare_line_groups_by_allocs_total_percall(line_group(FL, LL),
@@ -824,10 +1041,8 @@ compare_line_groups_by_allocs_total_overall(Group1, Group2) = Result :-
 compare_line_groups_by_allocs_total_percall(Group1, Group2) = Result :-
     Calls1 = calls(Group1 ^ group_own),
     Calls2 = calls(Group2 ^ group_own),
-    Alloc1 = allocs(Group1 ^ group_own) +
-        inherit_allocs(Group1 ^ group_desc),
-    Alloc2 = allocs(Group2 ^ group_own) +
-        inherit_allocs(Group2 ^ group_desc),
+    Alloc1 = allocs(Group1 ^ group_own) + inherit_allocs(Group1 ^ group_desc),
+    Alloc2 = allocs(Group2 ^ group_own) + inherit_allocs(Group2 ^ group_desc),
     ( Calls1 = 0 ->
         AllocPerCall1 = 0.0
     ;
@@ -872,10 +1087,8 @@ compare_line_groups_by_words_self_percall(Group1, Group2) = Result :-
     line_group(FL, LL)) = comparison_result.
 
 compare_line_groups_by_words_total_overall(Group1, Group2) = Result :-
-    Words1 = words(Group1 ^ group_own) +
-        inherit_words(Group1 ^ group_desc),
-    Words2 = words(Group2 ^ group_own) +
-        inherit_words(Group2 ^ group_desc),
+    Words1 = words(Group1 ^ group_own) + inherit_words(Group1 ^ group_desc),
+    Words2 = words(Group2 ^ group_own) + inherit_words(Group2 ^ group_desc),
     compare(Result, Words2, Words1).
 
 :- func compare_line_groups_by_words_total_percall(line_group(FL, LL),
@@ -884,10 +1097,8 @@ compare_line_groups_by_words_total_overall(Group1, Group2) = Result :-
 compare_line_groups_by_words_total_percall(Group1, Group2) = Result :-
     Calls1 = calls(Group1 ^ group_own),
     Calls2 = calls(Group2 ^ group_own),
-    Words1 = words(Group1 ^ group_own) +
-        inherit_words(Group1 ^ group_desc),
-    Words2 = words(Group2 ^ group_own) +
-        inherit_words(Group2 ^ group_desc),
+    Words1 = words(Group1 ^ group_own) + inherit_words(Group1 ^ group_desc),
+    Words2 = words(Group2 ^ group_own) + inherit_words(Group2 ^ group_desc),
     ( Calls1 = 0 ->
         WordsPerCall1 = 0.0
     ;

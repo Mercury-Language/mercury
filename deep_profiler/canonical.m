@@ -44,8 +44,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% :- import_module unsafe.
-
 :- type merge_info
     --->    merge_info(
                 merge_clique_members :: array(list(proc_dynamic_ptr)),

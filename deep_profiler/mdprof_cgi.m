@@ -74,13 +74,13 @@ main(!IO) :-
         ),
         split(QueryString0, query_separator_char, Pieces),
         ( Pieces = [CmdStr, PrefStr, FileName] ->
-            Cmd = url_component_to_cmd(CmdStr, menu),
+            Cmd = url_component_to_cmd(CmdStr, deep_cmd_menu),
             process_query(Cmd, yes(PrefStr), FileName, Options, !IO)
         ; Pieces = [CmdStr, FileName] ->
-            Cmd = url_component_to_cmd(CmdStr, menu),
+            Cmd = url_component_to_cmd(CmdStr, deep_cmd_menu),
             process_query(Cmd, no, FileName, Options, !IO)
         ; Pieces = [FileName] ->
-            process_query(menu, no, FileName, Options, !IO)
+            process_query(deep_cmd_menu, no, FileName, Options, !IO)
         ;
             io.set_exit_status(1, !IO),
             % Give the simplest URL in the error message.
@@ -197,7 +197,7 @@ html_header_text = "Content-type: text/html\n\n".
 :- pred process_query(cmd::in, maybe(string)::in, string::in,
     option_table::in, io::di, io::uo) is cc_multi.
 
-process_query(Cmd, MaybePrefStr, DataFileName, Options, !IO) :-
+process_query(Cmd, MaybePrefStr, DataFileName0, Options0, !IO) :-
     (
         MaybePrefStr = yes(PrefStr),
         MaybePref = url_component_to_maybe_pref(PrefStr)
@@ -206,10 +206,18 @@ process_query(Cmd, MaybePrefStr, DataFileName, Options, !IO) :-
         MaybePref = no
     ),
     (
-        MaybePref = yes(Pref)
+        MaybePref = yes(Pref),
+        PrefInd = given_pref(Pref)
     ;
         MaybePref = no,
-        Pref = default_preferences
+        PrefInd = default_pref
+    ),
+    ( string.remove_suffix(DataFileName0, ".localhost", DataFileNamePrime) ->
+        DataFileName = DataFileNamePrime,
+        map.det_update(Options0, localhost, bool(yes), Options)
+    ;
+        DataFileName = DataFileName0,
+        Options = Options0
     ),
     ToServerPipe = to_server_pipe_name(DataFileName),
     FromServerPipe = from_server_pipe_name(DataFileName),
@@ -229,13 +237,12 @@ process_query(Cmd, MaybePrefStr, DataFileName, Options, !IO) :-
     ),
     check_for_existing_fifos(ToServerPipe, FromServerPipe, FifoCount, !IO),
     ( FifoCount = 0 ->
-        handle_query_from_new_server(Cmd, Pref, DataFileName,
-            ToServerPipe, FromServerPipe, StartupFile,
-            MutexFile, WantFile, Options, !IO)
+        handle_query_from_new_server(Cmd, PrefInd, DataFileName,
+            ToServerPipe, FromServerPipe, StartupFile, MutexFile, WantFile,
+            Options, !IO)
     ; FifoCount = 2 ->
-        handle_query_from_existing_server(Cmd, Pref,
-            ToServerPipe, FromServerPipe,
-            MutexFile, WantFile, Options, !IO)
+        handle_query_from_existing_server(Cmd, PrefInd,
+            ToServerPipe, FromServerPipe, MutexFile, WantFile, Options, !IO)
     ;
         release_lock(Debug, MutexFile, !IO),
         remove_want_file(WantFile, !IO),
@@ -246,19 +253,43 @@ process_query(Cmd, MaybePrefStr, DataFileName, Options, !IO) :-
     % Handle the given query using the existing server. Delete the mutex and
     % want files when we get out of the critical region.
     %
-:- pred handle_query_from_existing_server(cmd::in, preferences::in,
+:- pred handle_query_from_existing_server(cmd::in, preferences_indication::in,
     string::in, string::in, string::in, string::in, option_table::in,
     io::di, io::uo) is det.
 
-handle_query_from_existing_server(Cmd, Pref, ToServerPipe, FromServerPipe,
+handle_query_from_existing_server(Cmd, PrefInd, ToServerPipe, FromServerPipe,
         MutexFile, WantFile, Options, !IO) :-
     lookup_bool_option(Options, debug, Debug),
-    send_term(ToServerPipe, Debug, cmd_pref(Cmd, Pref), !IO),
+    trace [compiletime(flag("debug_client_server")), io(!S)] (
+        io.open_append("/tmp/deep_debug", Res1, !S),
+        ( Res1 = ok(DebugStream1) ->
+            io.write_string(DebugStream1,
+                "sending query to existing server.\n", !S),
+            io.write(DebugStream1, cmd_pref(Cmd, PrefInd), !S),
+            io.close_output(DebugStream1, !S)
+        ;
+            true
+        )
+    ),
+    send_term(ToServerPipe, Debug, cmd_pref(Cmd, PrefInd), !IO),
     release_lock(Debug, MutexFile, !IO),
     remove_want_file(WantFile, !IO),
     recv_string(FromServerPipe, Debug, ResponseFileName, !IO),
     CatCmd = string.format("cat %s", [s(ResponseFileName)]),
     io.call_system(CatCmd, _, !IO),
+    trace [compiletime(flag("debug_client_server")), io(!T)] (
+        io.open_append("/tmp/deep_debug", Res2, !T),
+        ( Res2 = ok(DebugStream2) ->
+            io.write_string(DebugStream2,
+                "sending reply from existing server.\n", !T),
+            io.close_output(DebugStream2, !T),
+            DebugCatCmd = string.format("cat %s >> /tmp/deep_debug",
+                [s(ResponseFileName)]),
+            io.call_system(DebugCatCmd, _, !T)
+        ;
+            true
+        )
+    ),
     (
         Debug = yes
         % Leave the response file to be examined.
@@ -270,13 +301,21 @@ handle_query_from_existing_server(Cmd, Pref, ToServerPipe, FromServerPipe,
     % Handle the given query and then become the new server. Delete the mutex
     % and want files when we get out of the critical region.
     %
-:- pred handle_query_from_new_server(cmd::in, preferences::in, string::in,
-    string::in, string::in, string::in, string::in, string::in,
+:- pred handle_query_from_new_server(cmd::in, preferences_indication::in,
+    string::in, string::in, string::in, string::in, string::in, string::in,
     option_table::in, io::di, io::uo) is cc_multi.
 
-handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
-        StartupFile, MutexFile, WantFile, Options, !IO) :-
-    server_name(Machine, !IO),
+handle_query_from_new_server(Cmd, PrefInd, FileName,
+        ToServerPipe, FromServerPipe, StartupFile, MutexFile, WantFile,
+        Options, !IO) :-
+    lookup_bool_option(Options, localhost, LocalHost),
+    (
+        LocalHost = no,
+        server_name(Machine, !IO)
+    ;
+        LocalHost = yes,
+        Machine = "localhost"
+    ),
     lookup_bool_option(Options, canonical_clique, Canonical),
     lookup_bool_option(Options, server_process, ServerProcess),
     lookup_bool_option(Options, debug, Debug),
@@ -297,16 +336,16 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
         MaybeStartupStream = no
     ),
     read_and_startup(Machine, [FileName], Canonical, MaybeStartupStream,
-        [], Res, !IO),
+        [], [], Res, !IO),
     (
         Res = ok(Deep),
+        Pref = solidify_preference(Deep, PrefInd),
         try_exec(Cmd, Pref, Deep, HTML, !IO),
         (
             MaybeStartupStream = yes(StartupStream1),
             io.format(StartupStream1, "query 0 output:\n%s\n", [s(HTML)], !IO),
-            % If we don't flush the output before the fork, it will
-            % be flushed twice, once by the parent process and
-            % once by the child process.
+            % If we don't flush the output before the fork, it will be flushed
+            % twice, once by the parent process and once by the child process.
             io.flush_output(StartupStream1, !IO)
         ;
             MaybeStartupStream = no
@@ -363,7 +402,8 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
         DetachProcess = yes,
         detach_process(DetachRes, !IO)
     ),
-    ( DetachRes = in_child(ChildHasParent) ->
+    (
+        DetachRes = in_child(ChildHasParent),
         % We are in the child; start serving queries.
         (
             ChildHasParent = child_has_parent,
@@ -407,7 +447,8 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
         lookup_bool_option(Options, canonical_clique, Canonical),
         server_loop(ToServerPipe, FromServerPipe, TimeOut,
             MaybeDebugStream, Debug, Canonical, 0, Deep, !IO)
-    ; DetachRes = in_parent ->
+    ;
+        DetachRes = in_parent,
         % We are in the parent after we spawned the child. We cause the process
         % to exit simply by not calling server_loop.
         %
@@ -416,6 +457,7 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
         release_lock(Debug, MutexFile, !IO),
         remove_want_file(WantFile, !IO)
     ;
+        DetachRes = fork_failed,
         % We are in the parent because the fork failed. Again we cause
         % the process to exit simply by not calling server_loop, but we also
         % report the failure through the exit status. We don't report it
@@ -447,19 +489,21 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
     ;
         MaybeStartupStream = no
     ),
-    CmdPref0 = cmd_pref(Cmd0, Pref0),
-    ( Cmd0 = restart ->
+    CmdPref0 = cmd_pref(Cmd0, PrefInd0),
+    Pref0 = solidify_preference(Deep, PrefInd0),
+
+    ( Cmd0 = deep_cmd_restart ->
         read_and_startup(Deep0 ^ server_name, [Deep0 ^ data_file_name],
-            Canonical, MaybeStartupStream, [], MaybeDeep, !IO),
+            Canonical, MaybeStartupStream, [], [], MaybeDeep, !IO),
         (
             MaybeDeep = ok(Deep),
             MaybeMsg = no,
-            Cmd = menu
+            Cmd = deep_cmd_menu
         ;
             MaybeDeep = error(ErrorMsg),
             MaybeMsg = yes(ErrorMsg),
             Deep = Deep0,
-            Cmd = quit
+            Cmd = deep_cmd_quit
         )
     ;
         Deep = Deep0,
@@ -495,13 +539,13 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         MaybeStartupStream = no
     ),
 
-    ( Cmd = quit ->
+    ( Cmd = deep_cmd_quit ->
         % The lack of a recursive call here shuts down the server.
         %
         % This deletes all the files created by the process, including
         % WantFile and MutexFile, with MutexFile being deleted last.
         delete_cleanup_files(!IO)
-    ; Cmd = timeout(TimeOut) ->
+    ; Cmd = deep_cmd_timeout(TimeOut) ->
         server_loop(ToServerPipe, FromServerPipe, TimeOut, MaybeStartupStream,
             Debug, Canonical, QueryNum, Deep, !IO)
     ;
@@ -560,7 +604,7 @@ make_pipes(FileName, Success, !IO) :-
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
     struct stat statbuf;
-    int     status;
+    int         status;
 
     FifoCount = 0;
     status = stat(Fifo1, &statbuf);
@@ -654,6 +698,7 @@ detach_process(Result, !IO) :-
     ;       debug
     ;       detach_process
     ;       help
+    ;       localhost
     ;       modules
     ;       proc
     ;       quit
@@ -665,7 +710,6 @@ detach_process(Result, !IO) :-
     ;       version
     ;       write_query_string.
 
-:- type options ---> options.
 :- type option_table == (option_table(option)).
 
 :- pred short(char::in, option::out) is semidet.
@@ -688,6 +732,7 @@ long("clique",              clique).
 long("debug",               debug).
 long("detach-process",      detach_process).
 long("help",                help).
+long("localhost",           localhost).
 long("modules",             modules).
 long("proc",                proc).
 long("quit",                quit).
@@ -706,6 +751,7 @@ defaults(clique,                int(0)).
 defaults(debug,                 bool(no)).
 defaults(detach_process,        bool(yes)).
 defaults(help,                  bool(no)).
+defaults(localhost,             bool(no)).
 defaults(modules,               bool(no)).
 defaults(proc,                  int(0)).
 defaults(quit,                  bool(no)).
@@ -726,17 +772,17 @@ default_cmd(Options) = Cmd :-
     lookup_int_option(Options, clique, CliqueNum),
     lookup_int_option(Options, proc, ProcNum),
     ( Root = yes ->
-        Cmd = root(no)
+        Cmd = deep_cmd_root(no)
     ; Modules = yes ->
-        Cmd = modules
+        Cmd = deep_cmd_modules
     ; CliqueNum > 0 ->
-        Cmd = clique(CliqueNum)
+        Cmd = deep_cmd_clique(CliqueNum)
     ; ProcNum > 0 ->
-        Cmd = proc(ProcNum)
+        Cmd = deep_cmd_proc(ProcNum)
     ; Quit = yes ->
-        Cmd = quit
+        Cmd = deep_cmd_quit
     ;
-        Cmd = menu
+        Cmd = deep_cmd_menu
     ).
 
 %-----------------------------------------------------------------------------%

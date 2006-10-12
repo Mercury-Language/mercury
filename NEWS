@@ -32,6 +32,13 @@ Changes to the Mercury compiler:
 * The compiler now issues a warning when an inst declaration is not
   consistent with any of the types in scope.
 
+Changes to the Mercury deep profiler:
+
+* The deep profiler now supports measuring a proxy for time: a counter that
+  is incremented at each call. Since calls happen a lot more frequently than
+  clock interrupts, this can yield useful profiles for shorter-running
+  programs.
+
 DETAILED LISTING
 ================
 

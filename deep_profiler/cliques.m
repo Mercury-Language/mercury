@@ -53,7 +53,6 @@
 
 % :- import_module io.
 % :- import_module string.
-% :- import_module unsafe.
 
 %-----------------------------------------------------------------------------%
 
@@ -102,8 +101,6 @@ mklist(N, Acc0, Acc) :-
         Acc1 = [N | Acc0],
         mklist(N - 1, Acc1, Acc)
     ).
-
-% :- pragma promise_pure(topological_sort/2).
 
 topological_sort(Graph, TSort) :-
     % impure unsafe_perform_io(io.nl),
@@ -201,8 +198,6 @@ dfs_graph_2([Node | Nodes], Graph, Visit0, Dfs0, Dfs) :-
     %
 :- pred dfs(list(int)::in, graph::in, visit::array_di, list(int)::in,
     visit::array_uo, list(int)::out) is det.
-
-% :- pragma promise_pure(dfs/6).
 
 dfs([], _Graph, Visit, Dfs, Visit, Dfs).
 dfs([Node | Nodes], Graph, Visit0, Dfs0, Visit, Dfs) :-

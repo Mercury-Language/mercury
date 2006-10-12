@@ -83,12 +83,11 @@
            ).
 
 :- type exclusion_type
-    --->    all_procedures      % Exclude all procedures in the
-                                % named module.
-    ;       internal_procedures.    % Exclude all procedures in the
-                                    % named module, except those
-                                    % which are exported from the
-                                    % module.
+    --->    exclude_all_procedures
+            % Exclude all procedures in the named module.
+    ;       exclude_internal_procedures.
+            % Exclude all procedures in the named module, except those
+            % which are exported from the module.
 
 %-----------------------------------------------------------------------------%
 
@@ -129,18 +128,17 @@ read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
             Words = [Scope, ModuleName],
             (
                 Scope = "all",
-                ExclType = all_procedures
+                ExclType = exclude_all_procedures
             ;
                 Scope = "internal",
-                ExclType = internal_procedures
+                ExclType = exclude_internal_procedures
             )
         ->
             Spec = exclude_spec(ModuleName, ExclType),
             RevSpecs1 = [Spec | RevSpecs0],
             read_exclude_lines(FileName, InputStream, RevSpecs1, Res, !IO)
         ;
-            Msg = string.format(
-                "file %s contains badly formatted line: %s",
+            Msg = string.format("file %s contains badly formatted line: %s",
                 [s(FileName), s(Line)]),
             Res = error(Msg)
         )
@@ -194,9 +192,9 @@ apply_contour_exclusion(Deep, ExcludedSpecs, CSDPtr0) = CSDPtr :-
             set.member(ExclSpec, ExcludedSpecs),
             ExclSpec = exclude_spec(ModuleName, ExclType),
             (
-                ExclType = all_procedures
+                ExclType = exclude_all_procedures
             ;
-                ExclType = internal_procedures,
+                ExclType = exclude_internal_procedures,
                 PS ^ ps_in_interface = no
             )
         ->

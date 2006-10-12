@@ -1,4 +1,4 @@
-%-----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
@@ -49,6 +49,8 @@
 
 :- interface.
 
+:- import_module profile.
+
 :- import_module bool.
 :- import_module char.
 :- import_module io.
@@ -56,9 +58,9 @@
 
 %-----------------------------------------------------------------------------%
 
-    % These functions derive the names of auxiliary files (or parts
-    % thereof) from the name of the profiling data file being explored.
-    % The auxiliary files are:
+    % These functions derive the names of auxiliary files (or parts thereof)
+    % from the name of the profiling data file being explored. The auxiliary
+    % files are:
     %
     % - the name of the named pipe for transmitting queries to the server;
     % - the name of the named pipe for transmitting responses back to the
@@ -84,30 +86,32 @@
 :- func contour_file_name(string) = string.
 
     % send_term(ToFileName, Debug, Term):
-    %   Write the term Term to ToFileName, making it is new contents.
-    %   If Debug is `yes', write it to the file `/tmp/.send_term'
-    %   as well.
+    %
+    % Write the term Term to ToFileName, making it is new contents.
+    % If Debug is `yes', write it to the file `/tmp/.send_term' as well.
     %
 :- pred send_term(string::in, bool::in, T::in, io::di, io::uo) is det.
 
     % send_string(ToFileName, Debug, Str):
-    %   Write the string Str to ToFileName, making it is new contents.
-    %   If Debug is `yes', write it to the file `/tmp/.send_string'
-    %   as well.
+    %
+    % Write the string Str to ToFileName, making it is new contents.
+    % If Debug is `yes', write it to the file `/tmp/.send_string' as well.
     %
 :- pred send_string(string::in, bool::in, string::in, io::di, io::uo) is det.
 
     % recv_term(FromFileName, Debug, Term):
-    %   Read the contents of FromFileName, which should be a single
-    %   Mercury term. If Debug is `yes', write the result of the read
-    %   to the file `/tmp/.recv_term' as well.
+    %
+    % Read the contents of FromFileName, which should be a single Mercury term.
+    % If Debug is `yes', write the result of the read to the file
+    % `/tmp/.recv_term' as well.
     %
 :- pred recv_term(string::in, bool::in, T::out, io::di, io::uo) is det.
 
     % recv_string(FromFileName, Debug, Str):
-    %   Read the contents of FromFileName, and return it as Str.
-    %   If Debug is `yes', write the result of the read to the file
-    %   `/tmp/.recv_string' as well.
+    %
+    % Read the contents of FromFileName, and return it as Str.
+    % If Debug is `yes', write the result of the read to the file
+    % `/tmp/.recv_string' as well.
     %
 :- pred recv_string(string::in, bool::in, string::out, io::di, io::uo) is det.
 
@@ -117,29 +121,29 @@
     --->    html(string).
 
 :- type cmd_pref
-    --->    cmd_pref(cmd, preferences).
+    --->    cmd_pref(cmd, preferences_indication).
 
 :- type cmd
-    --->    quit
-    ;       restart
-    ;       timeout(int)
-    ;       menu
-    ;       root(maybe(int))
-    ;       clique(int)
-    ;       proc(int)
-    ;       proc_callers(int, caller_groups, int)
-    ;       modules
-    ;       module(string)
-    ;       top_procs(display_limit, cost_kind, include_descendants,
+    --->    deep_cmd_quit
+    ;       deep_cmd_restart
+    ;       deep_cmd_timeout(int)
+    ;       deep_cmd_menu
+    ;       deep_cmd_root(maybe(int))
+    ;       deep_cmd_clique(int)
+    ;       deep_cmd_proc(int)
+    ;       deep_cmd_proc_callers(int, caller_groups, int)
+    ;       deep_cmd_modules
+    ;       deep_cmd_module(string)
+    ;       deep_cmd_top_procs(display_limit, cost_kind, include_descendants,
                 measurement_scope)
     %
     % The following commands are for debugging.
     %
-    ;       proc_static(int)
-    ;       proc_dynamic(int)
-    ;       call_site_static(int)
-    ;       call_site_dynamic(int)
-    ;       raw_clique(int).
+    ;       deep_cmd_proc_static(int)
+    ;       deep_cmd_proc_dynamic(int)
+    ;       deep_cmd_call_site_static(int)
+    ;       deep_cmd_call_site_dynamic(int)
+    ;       deep_cmd_raw_clique(int).
 
 :- type caller_groups
     --->    group_by_call_site
@@ -148,11 +152,12 @@
     ;       group_by_clique.
 
 :- type cost_kind
-    --->    calls
-    ;       redos
-    ;       time
-    ;       allocs
-    ;       words.
+    --->    cost_calls
+    ;       cost_redos
+    ;       cost_time
+    ;       cost_callseqs
+    ;       cost_allocs
+    ;       cost_words.
 
 :- type include_descendants
     --->    self
@@ -160,41 +165,47 @@
 
 :- type display_limit
     --->    rank_range(int, int)
-                    % rank_range(M, N): display procedures
-                    % with rank M to N, both inclusive.
+            % rank_range(M, N): display procedures with rank M to N,
+            % both inclusive.
 
     ;       threshold(float).
-                    % threshold(Percent): display
-                    % procedures whose cost is at least
-                    % Fraction of the whole program's
-                    % cost.
+            % threshold(Percent): display procedures whose cost is at least
+            % Percent% of the whole program's cost.
+
+:- type preferences_indication
+    --->    given_pref(preferences)
+    ;       default_pref
+    ;       all_pref.
 
 :- type preferences
-    ---> preferences(
-            pref_fields :: fields,
-                    % set of fields to display
-            pref_box    :: box,
-                    % whether displays should be boxed
-            pref_colour :: colour_scheme,
-                    % what principle governs colours
-            pref_anc    :: maybe(int),
-                    % max number of ancestors to display
-            pref_summarize  :: summarize,
-                    % whether pages should summarize
-                    % at higher order call sites
-            pref_criteria   :: order_criteria,
-                    % the criteria for ordering lines in
-                    % pages, if the command doesn't specify
-                    % otherwise
-            pref_contour :: contour,
-                    % whether contour exclusion should be
-                    % applied
-            pref_time :: time_format,
+    --->    preferences(
+                % The set of fields to display.
+                pref_fields         :: fields,
 
-            pref_inactive :: inactive_items
-                    % Whether we should show modules/procs
-                    % that haven't been called.
-        ).
+                % Whether displays should be boxed.
+                pref_box            :: box,
+
+                % What principle governs colours.
+                pref_colour         :: colour_scheme,
+
+                % The max number of ancestors to display.
+                pref_anc            :: maybe(int),
+
+                % Whether pages should summarize at higher order call sites.
+                pref_summarize      :: summarize,
+
+                % The criteria for ordering lines in pages, if the command
+                % doesn't specify otherwise.
+                pref_criteria       :: order_criteria,
+
+                % Whether contour exclusion should be applied.
+                pref_contour        :: contour,
+
+                pref_time           :: time_format,
+
+                % Whether we should show modules/procs that haven't been called.
+                pref_inactive       :: inactive_items
+            ).
 
 :- type port_fields
     --->    no_port
@@ -208,6 +219,12 @@
     ;       time_and_percall
     ;       ticks_and_time_and_percall.
 
+
+:- type callseqs_fields
+    --->    no_callseqs
+    ;       callseqs
+    ;       callseqs_and_percall.
+
 :- type alloc_fields
     --->    no_alloc
     ;       alloc
@@ -219,15 +236,16 @@
     ;       memory_and_percall(memory_units).
 
 :- type memory_units
-    --->    words
-    ;       bytes.
+    --->    units_words
+    ;       units_bytes.
 
 :- type fields
     --->    fields(
-                port_fields   :: port_fields,
-                time_fields   :: time_fields,
-                alloc_fields  :: alloc_fields,
-                memory_fields :: memory_fields
+                port_fields     :: port_fields,
+                time_fields     :: time_fields,
+                callseqs_fields :: callseqs_fields,
+                alloc_fields    :: alloc_fields,
+                memory_fields   :: memory_fields
             ).
 
 :- type box
@@ -235,8 +253,8 @@
     ;       nobox.
 
 :- type colour_scheme
-    --->    column_groups
-    ;       none.
+    --->    colour_column_groups
+    ;       colour_none.
 
 :- type summarize
     --->    summarize
@@ -264,7 +282,9 @@
     ;       scale_by_millions
     ;       scale_by_thousands.
 
-:- type inactive_status ---> hide ; show.
+:- type inactive_status
+    --->    inactive_hide
+    ;       inactive_show.
 
 :- type inactive_items
     --->    inactive_items(
@@ -274,9 +294,15 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func default_preferences = preferences.
+    % Return "yes" if it is worth displaying times for this profile.
+    %
+:- func should_display_times(deep) = bool.
 
-:- func default_fields = fields.
+:- func solidify_preference(deep, preferences_indication) = preferences.
+
+:- func default_preferences(deep) = preferences.
+
+:- func default_fields(deep) = fields.
 :- func all_fields = fields.
 :- func default_box = box.
 :- func default_colour_scheme = colour_scheme.
@@ -305,6 +331,7 @@
 :- import_module conf.
 :- import_module util.
 
+:- import_module int.
 :- import_module list.
 :- import_module require.
 :- import_module set.
@@ -312,9 +339,34 @@
 
 %-----------------------------------------------------------------------------%
 
-default_preferences =
+    % Display times only if the profile was derived from a run that ran for
+    % at least this many quanta.
+    %
+:- func minimum_meaningful_quanta = int.
+
+minimum_meaningful_quanta = 10.
+
+should_display_times(Deep) =
+    ( Deep ^ profile_stats ^ user_quanta > minimum_meaningful_quanta ->
+        yes
+    ;
+        no
+    ).
+
+solidify_preference(Deep, PrefInd) = Pref :-
+    (
+        PrefInd = given_pref(Pref)
+    ;
+        PrefInd = default_pref,
+        Pref = default_preferences(Deep)
+    ;
+        PrefInd = all_pref,
+        Pref = default_preferences(Deep) ^ pref_fields := all_fields
+    ).
+
+default_preferences(Deep) =
     preferences(
-        default_fields,
+        default_fields(Deep),
         default_box,
         default_colour_scheme,
         default_ancestor_limit,
@@ -325,19 +377,29 @@ default_preferences =
         default_inactive_items
     ).
 
-default_fields = fields(port, ticks, no_alloc, memory(words)).
-all_fields = fields(port, ticks_and_time_and_percall, alloc, memory(words)).
+default_fields(Deep) = Fields :-
+    ShouldDisplayTimes = should_display_times(Deep),
+    (
+        ShouldDisplayTimes = yes,
+        Time = ticks
+    ;
+        ShouldDisplayTimes = no,
+        Time = no_time
+    ),
+    Fields = fields(port, Time, callseqs, no_alloc, memory(units_words)).
+all_fields = fields(port, ticks_and_time_and_percall, callseqs_and_percall,
+    alloc, memory(units_words)).
 default_box = box.
-default_colour_scheme = column_groups.
+default_colour_scheme = colour_column_groups.
 default_ancestor_limit = yes(5).
 default_summarize = dont_summarize.
 default_order_criteria = by_context.
-default_cost_kind = time.
+default_cost_kind = cost_callseqs.
 default_incl_desc = self_and_desc.
 default_scope = overall.
 default_contour = no_contour.
 default_time_format = scale_by_thousands.
-default_inactive_items = inactive_items(hide, hide).
+default_inactive_items = inactive_items(inactive_hide, inactive_hide).
 
 %-----------------------------------------------------------------------------%
 
@@ -527,20 +589,20 @@ machine_datafile_cmd_pref_to_url(Machine, DataFileName, Cmd, Preferences) =
 
 cmd_to_string(Cmd) = CmdStr :-
     (
-        Cmd = quit,
+        Cmd = deep_cmd_quit,
         CmdStr = "quit"
     ;
-        Cmd = restart,
+        Cmd = deep_cmd_restart,
         CmdStr = "restart"
     ;
-        Cmd = timeout(Minutes),
+        Cmd = deep_cmd_timeout(Minutes),
         CmdStr = string.format("timeout%c%d",
             [c(cmd_separator_char), i(Minutes)])
     ;
-        Cmd = menu,
+        Cmd = deep_cmd_menu,
         CmdStr = "menu"
     ;
-        Cmd = root(MaybePercent),
+        Cmd = deep_cmd_root(MaybePercent),
         (
             MaybePercent = yes(Percent),
             CmdStr = string.format("root%c%d",
@@ -551,29 +613,29 @@ cmd_to_string(Cmd) = CmdStr :-
                 [c(cmd_separator_char), s("no")])
         )
     ;
-        Cmd = clique(CliqueNum),
+        Cmd = deep_cmd_clique(CliqueNum),
         CmdStr = string.format("clique%c%d",
             [c(cmd_separator_char), i(CliqueNum)])
     ;
-        Cmd = proc(ProcNum),
+        Cmd = deep_cmd_proc(ProcNum),
         CmdStr = string.format("proc%c%d",
             [c(cmd_separator_char), i(ProcNum)])
     ;
-        Cmd = proc_callers(ProcNum, GroupCallers, BunchNum),
+        Cmd = deep_cmd_proc_callers(ProcNum, GroupCallers, BunchNum),
         GroupCallersStr = caller_groups_to_string(GroupCallers),
         CmdStr = string.format("proc_callers%c%d%c%s%c%d",
             [c(cmd_separator_char), i(ProcNum),
             c(cmd_separator_char), s(GroupCallersStr),
             c(cmd_separator_char), i(BunchNum)])
     ;
-        Cmd = modules,
+        Cmd = deep_cmd_modules,
         CmdStr = "modules"
     ;
-        Cmd = module(ModuleName),
+        Cmd = deep_cmd_module(ModuleName),
         CmdStr = string.format("module%c%s",
             [c(cmd_separator_char), s(ModuleName)])
     ;
-        Cmd = top_procs(Limit, CostKind, InclDesc, Scope),
+        Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         LimitStr = limit_to_string(Limit),
         CostKindStr = cost_kind_to_string(CostKind),
         InclDescStr = incl_desc_to_string(InclDesc),
@@ -584,23 +646,23 @@ cmd_to_string(Cmd) = CmdStr :-
             c(cmd_separator_char), s(InclDescStr),
             c(cmd_separator_char), s(ScopeStr)])
     ;
-        Cmd = proc_static(PSI),
+        Cmd = deep_cmd_proc_static(PSI),
         CmdStr = string.format("proc_static%c%d",
             [c(cmd_separator_char), i(PSI)])
     ;
-        Cmd = proc_dynamic(PDI),
+        Cmd = deep_cmd_proc_dynamic(PDI),
         CmdStr = string.format("proc_dynamic%c%d",
             [c(cmd_separator_char), i(PDI)])
     ;
-        Cmd = call_site_static(CSSI),
+        Cmd = deep_cmd_call_site_static(CSSI),
         CmdStr = string.format("call_site_static%c%d",
             [c(cmd_separator_char), i(CSSI)])
     ;
-        Cmd = call_site_dynamic(CSDI),
+        Cmd = deep_cmd_call_site_dynamic(CSDI),
         CmdStr = string.format("call_site_dynamic%c%d",
             [c(cmd_separator_char), i(CSDI)])
     ;
-        Cmd = raw_clique(CI),
+        Cmd = deep_cmd_raw_clique(CI),
         CmdStr = string.format("raw_clique%c%d",
             [c(cmd_separator_char), i(CI)])
     ).
@@ -652,83 +714,82 @@ url_component_to_maybe_cmd(QueryString) = MaybeCmd :-
             fail
         )
     ->
-        MaybeCmd = yes(root(MaybePercent))
+        MaybeCmd = yes(deep_cmd_root(MaybePercent))
     ;
         Pieces = ["clique", CliqueNumStr],
         string.to_int(CliqueNumStr, CliqueNum)
     ->
-        MaybeCmd = yes(clique(CliqueNum))
+        MaybeCmd = yes(deep_cmd_clique(CliqueNum))
     ;
         Pieces = ["proc", PSIStr],
         string.to_int(PSIStr, PSI)
     ->
-        MaybeCmd = yes(proc(PSI))
+        MaybeCmd = yes(deep_cmd_proc(PSI))
     ;
         Pieces = ["proc_callers", PSIStr, GroupCallersStr, BunchNumStr],
         string.to_int(PSIStr, PSI),
         string.to_int(BunchNumStr, BunchNum),
         string_to_caller_groups(GroupCallersStr, GroupCallers)
     ->
-        MaybeCmd = yes(proc_callers(PSI, GroupCallers, BunchNum))
+        MaybeCmd = yes(deep_cmd_proc_callers(PSI, GroupCallers, BunchNum))
     ;
         Pieces = ["modules"]
     ->
-        MaybeCmd = yes(modules)
+        MaybeCmd = yes(deep_cmd_modules)
     ;
         Pieces = ["module", ModuleName]
     ->
-        MaybeCmd = yes(module(ModuleName))
+        MaybeCmd = yes(deep_cmd_module(ModuleName))
     ;
-        Pieces = ["top_procs", LimitStr,
-            CostKindStr, InclDescStr, ScopeStr],
+        Pieces = ["top_procs", LimitStr, CostKindStr, InclDescStr, ScopeStr],
         string_to_limit(LimitStr, Limit),
         string_to_cost_kind(CostKindStr, CostKind),
         string_to_incl_desc(InclDescStr, InclDesc),
         string_to_scope(ScopeStr, Scope)
     ->
-        MaybeCmd = yes(top_procs(Limit, CostKind, InclDesc, Scope))
+        MaybeCmd = yes(deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope))
     ;
         Pieces = ["menu"]
     ->
-        MaybeCmd = yes(menu)
+        MaybeCmd = yes(deep_cmd_menu)
     ;
         Pieces = ["proc_static", PSIStr],
         string.to_int(PSIStr, PSI)
     ->
-        MaybeCmd = yes(proc_static(PSI))
+        MaybeCmd = yes(deep_cmd_proc_static(PSI))
     ;
         Pieces = ["proc_dynamic", PDIStr],
         string.to_int(PDIStr, PDI)
     ->
-        MaybeCmd = yes(proc_dynamic(PDI))
+        MaybeCmd = yes(deep_cmd_proc_dynamic(PDI))
     ;
         Pieces = ["call_site_static", CSSIStr],
         string.to_int(CSSIStr, CSSI)
     ->
-        MaybeCmd = yes(call_site_static(CSSI))
+        MaybeCmd = yes(deep_cmd_call_site_static(CSSI))
     ;
         Pieces = ["call_site_dynamic", CSDIStr],
         string.to_int(CSDIStr, CSDI)
     ->
-        MaybeCmd = yes(call_site_dynamic(CSDI))
+        MaybeCmd = yes(deep_cmd_call_site_dynamic(CSDI))
     ;
         Pieces = ["raw_clique", CliqueNumStr],
         string.to_int(CliqueNumStr, CliqueNum)
     ->
-        MaybeCmd = yes(raw_clique(CliqueNum))
+        MaybeCmd = yes(deep_cmd_raw_clique(CliqueNum))
     ;
         Pieces = ["timeout", TimeOutStr],
         string.to_int(TimeOutStr, TimeOut)
     ->
-        MaybeCmd = yes(timeout(TimeOut))
+        MaybeCmd = yes(deep_cmd_timeout(TimeOut))
     ;
         Pieces = ["restart"]
     ->
-        MaybeCmd = yes(restart)
+        MaybeCmd = yes(deep_cmd_restart)
     ;
         Pieces = ["quit"]
     ->
-        MaybeCmd = yes(quit)
+        MaybeCmd = yes(deep_cmd_quit)
     ;
         MaybeCmd = no
     ).
@@ -755,9 +816,8 @@ url_component_to_maybe_pref(QueryString) = MaybePreferences :-
         string_to_time_format(TimeStr, Time),
         string_to_inactive_items(InactiveItemsStr, InactiveItems)
     ->
-        Preferences = preferences(Fields, Box, Colour,
-            MaybeAncestorLimit, Summarize, Order, Contour, Time,
-            InactiveItems),
+        Preferences = preferences(Fields, Box, Colour, MaybeAncestorLimit,
+            Summarize, Order, Contour, Time, InactiveItems),
         MaybePreferences = yes(Preferences)
     ;
         MaybePreferences = no
@@ -793,6 +853,19 @@ string_to_time_fields("qt",  ticks_and_time).
 string_to_time_fields("tp",  time_and_percall).
 string_to_time_fields("qtp", ticks_and_time_and_percall).
 
+:- func callseqs_fields_to_string(callseqs_fields) = string.
+
+callseqs_fields_to_string(AllocFields) = String :-
+    string_to_callseqs_fields(String, AllocFields).
+
+:- pred string_to_callseqs_fields(string, callseqs_fields).
+:- mode string_to_callseqs_fields(in, out) is semidet.
+:- mode string_to_callseqs_fields(out, in) is det.
+
+string_to_callseqs_fields("_", no_callseqs).
+string_to_callseqs_fields("s", callseqs).
+string_to_callseqs_fields("S", callseqs_and_percall).
+
 :- func alloc_fields_to_string(alloc_fields) = string.
 
 alloc_fields_to_string(AllocFields) = String :-
@@ -802,9 +875,9 @@ alloc_fields_to_string(AllocFields) = String :-
 :- mode string_to_alloc_fields(in, out) is semidet.
 :- mode string_to_alloc_fields(out, in) is det.
 
-string_to_alloc_fields("_",  no_alloc).
-string_to_alloc_fields("a",  alloc).
-string_to_alloc_fields("ap", alloc_and_percall).
+string_to_alloc_fields("_", no_alloc).
+string_to_alloc_fields("a", alloc).
+string_to_alloc_fields("A", alloc_and_percall).
 
 :- func memory_fields_to_string(memory_fields) = string.
 
@@ -815,18 +888,20 @@ memory_fields_to_string(MemoryFields) = String :-
 :- mode string_to_memory_fields(in, out) is semidet.
 :- mode string_to_memory_fields(out, in) is det.
 
-string_to_memory_fields("_",  no_memory).
-string_to_memory_fields("b",  memory(bytes)).
-string_to_memory_fields("w",  memory(words)).
-string_to_memory_fields("bp", memory_and_percall(bytes)).
-string_to_memory_fields("wp", memory_and_percall(words)).
+string_to_memory_fields("_", no_memory).
+string_to_memory_fields("b", memory(units_bytes)).
+string_to_memory_fields("w", memory(units_words)).
+string_to_memory_fields("B", memory_and_percall(units_bytes)).
+string_to_memory_fields("W", memory_and_percall(units_words)).
 
 :- func fields_to_string(fields) = string.
 
-fields_to_string(fields(Port, Time, Allocs, Memory)) =
+fields_to_string(fields(Port, Time, CallSeqs, Allocs, Memory)) =
     port_fields_to_string(Port) ++
     string.char_to_string(field_separator_char) ++
     time_fields_to_string(Time) ++
+    string.char_to_string(field_separator_char) ++
+    callseqs_fields_to_string(CallSeqs) ++
     string.char_to_string(field_separator_char) ++
     alloc_fields_to_string(Allocs) ++
     string.char_to_string(field_separator_char) ++
@@ -837,13 +912,14 @@ fields_to_string(fields(Port, Time, Allocs, Memory)) =
 string_to_fields(FieldsStr, Fields) :-
     (
         split(FieldsStr, field_separator_char, Pieces),
-        Pieces = [PortStr, TimeStr, AllocStr, MemoryStr],
+        Pieces = [PortStr, TimeStr, CallSeqsStr, AllocStr, MemoryStr],
         string_to_port_fields(PortStr, Port),
         string_to_time_fields(TimeStr, Time),
+        string_to_callseqs_fields(CallSeqsStr, CallSeqs),
         string_to_alloc_fields(AllocStr, Alloc),
         string_to_memory_fields(MemoryStr, Memory)
     ->
-        Fields = fields(Port, Time, Alloc, Memory)
+        Fields = fields(Port, Time, CallSeqs, Alloc, Memory)
     ;
         fail
     ).
@@ -871,11 +947,12 @@ cost_kind_to_string(CostKind) = String :-
 :- mode string_to_cost_kind(in, out) is semidet.
 :- mode string_to_cost_kind(out, in) is det.
 
-string_to_cost_kind("calls",  calls).
-string_to_cost_kind("redos",  redos).
-string_to_cost_kind("time",   time).
-string_to_cost_kind("allocs", allocs).
-string_to_cost_kind("words",  words).
+string_to_cost_kind("calls",    cost_calls).
+string_to_cost_kind("redos",    cost_redos).
+string_to_cost_kind("time",     cost_time).
+string_to_cost_kind("callseqs", cost_callseqs).
+string_to_cost_kind("allocs",   cost_allocs).
+string_to_cost_kind("words",    cost_words).
 
 :- func incl_desc_to_string(include_descendants) = string.
 
@@ -894,7 +971,7 @@ string_to_incl_desc("both", self_and_desc).
 limit_to_string(rank_range(Lo, Hi)) =
     string.format("%d%c%d", [i(Lo), c(limit_separator_char), i(Hi)]).
 limit_to_string(threshold(Threshold)) =
-    string.format("%f", [f(Threshold)]).
+    string.format("%g", [f(Threshold)]).
 
 :- pred string_to_limit(string::in, display_limit::out) is semidet.
 
@@ -1007,10 +1084,10 @@ inactive_items_to_string(Items) = String :-
 :- mode string_to_inactive_items(in, out) is semidet.
 :- mode string_to_inactive_items(out, in) is det.
 
-string_to_inactive_items("hh", inactive_items(hide,  hide)).
-string_to_inactive_items("sh", inactive_items(show,  hide)).
-string_to_inactive_items("hs", inactive_items(hide,  show)).
-string_to_inactive_items("ss", inactive_items(show,  show)).
+string_to_inactive_items("hh", inactive_items(inactive_hide, inactive_hide)).
+string_to_inactive_items("sh", inactive_items(inactive_show, inactive_hide)).
+string_to_inactive_items("hs", inactive_items(inactive_hide, inactive_show)).
+string_to_inactive_items("ss", inactive_items(inactive_show, inactive_show)).
 
 :- func colour_scheme_to_string(colour_scheme) = string.
 
@@ -1021,8 +1098,8 @@ colour_scheme_to_string(Scheme) = String :-
 :- mode string_to_colour_scheme(in, out) is semidet.
 :- mode string_to_colour_scheme(out, in) is det.
 
-string_to_colour_scheme("cols", column_groups).
-string_to_colour_scheme("none", none).
+string_to_colour_scheme("cols", colour_column_groups).
+string_to_colour_scheme("none", colour_none).
 
 :- func box_to_string(box) = string.
 

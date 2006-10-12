@@ -34,84 +34,83 @@
 
 :- type profile_stats
     --->    profile_stats(
-                max_csd                     :: int,
-                max_css                     :: int,
-                max_pd                      :: int,
-                max_ps                      :: int,
-                num_callseqs                :: int,
-                ticks_per_sec               :: int,
-                instrument_quanta           :: int,
-                user_quanta                 :: int,
-                word_size                   :: int,
-                canonical                   :: bool
+                max_csd                 :: int,
+                max_css                 :: int,
+                max_pd                  :: int,
+                max_ps                  :: int,
+                ticks_per_sec           :: int,
+                instrument_quanta       :: int,
+                user_quanta             :: int,
+                num_callseqs            :: int,
+                word_size               :: int,
+                canonical               :: bool
             ).
 
 :- type initial_deep
     --->    initial_deep(
-                init_profile_stats          :: profile_stats,
-                init_root                   :: proc_dynamic_ptr,
+                init_profile_stats      :: profile_stats,
+                init_root               :: proc_dynamic_ptr,
 
                 % The following fields are the main arrays.
                 % Each is indexed by its own xxx_ptr int.
-                init_call_site_dynamics     :: call_site_dynamics,
-                init_proc_dynamics          :: proc_dynamics,
-                init_call_site_statics      :: call_site_statics,
-                init_proc_statics           :: proc_statics
+                init_call_site_dynamics :: call_site_dynamics,
+                init_proc_dynamics      :: proc_dynamics,
+                init_call_site_statics  :: call_site_statics,
+                init_proc_statics       :: proc_statics
             ).
 
 :- type deep
     --->    deep(
-                profile_stats               :: profile_stats,
-                server_name                 :: string,
-                data_file_name              :: string,
+                profile_stats           :: profile_stats,
+                server_name             :: string,
+                data_file_name          :: string,
 
-                root                        :: proc_dynamic_ptr,
+                root                    :: proc_dynamic_ptr,
 
                 % The following fields are the main arrays.
                 % Each is indexed by its own xxx_ptr int.
-                call_site_dynamics          :: call_site_dynamics,
-                proc_dynamics               :: proc_dynamics,
-                call_site_statics           :: call_site_statics,
-                proc_statics                :: proc_statics,
+                call_site_dynamics      :: call_site_dynamics,
+                proc_dynamics           :: proc_dynamics,
+                call_site_statics       :: call_site_statics,
+                proc_statics            :: proc_statics,
 
                 % The following fields give information about cliques.
-                clique_index                :: array(clique_ptr),
-                                            % index: proc_dynamic_ptr int
-                clique_members              :: array(list(proc_dynamic_ptr)),
-                                            % index: clique_ptr int
-                clique_parents              :: array(call_site_dynamic_ptr),
-                                            % index: clique_ptr int
-                clique_maybe_child          :: array(maybe(clique_ptr)),
-                                            % index: call_site_dynamic_ptr int
+                clique_index            :: array(clique_ptr),
+                                        % index: proc_dynamic_ptr int
+                clique_members          :: array(list(proc_dynamic_ptr)),
+                                        % index: clique_ptr int
+                clique_parents          :: array(call_site_dynamic_ptr),
+                                        % index: clique_ptr int
+                clique_maybe_child      :: array(maybe(clique_ptr)),
+                                        % index: call_site_dynamic_ptr int
 
                 % Reverse links.
-                proc_callers                :: array(
-                                                list(call_site_dynamic_ptr)),
-                                            % index: proc_static_ptr int
-                call_site_static_map        :: call_site_static_map,
-                                            % index: call_site_dynamic_ptr int
-                call_site_calls             :: array(map(proc_static_ptr,
-                                                list(call_site_dynamic_ptr))),
-                                            % index: call_site_static_ptr int
+                proc_callers            :: array(list(call_site_dynamic_ptr)),
+                                        % index: proc_static_ptr int
+                call_site_static_map    :: call_site_static_map,
+                                        % index: call_site_dynamic_ptr int
+                call_site_calls         :: array(map(proc_static_ptr,
+                                            list(call_site_dynamic_ptr))),
+                                        % index: call_site_static_ptr int
 
-                % Propagated timing info.
-                pd_own                      :: array(own_prof_info),
-                pd_desc                     :: array(inherit_prof_info),
-                csd_desc                    :: array(inherit_prof_info),
-                ps_own                      :: array(own_prof_info),
-                ps_desc                     :: array(inherit_prof_info),
-                css_own                     :: array(own_prof_info),
-                css_desc                    :: array(inherit_prof_info),
+                % Propagated measurements.
+                pd_own                  :: array(own_prof_info),
+                pd_desc                 :: array(inherit_prof_info),
+                csd_desc                :: array(inherit_prof_info),
+                ps_own                  :: array(own_prof_info),
+                ps_desc                 :: array(inherit_prof_info),
+                css_own                 :: array(own_prof_info),
+                css_desc                :: array(inherit_prof_info),
 
                 % Additional propagated timing info to solve the problem
                 % of undetected recursion through higher order calls,
                 % which is caused by our use of zeroing.
 
-                pd_comp_table               :: array(compensation_table),
-                csd_comp_table              :: array(compensation_table),
+                pd_comp_table           :: array(compensation_table),
+                csd_comp_table          :: array(compensation_table),
 
                 % Information about modules.
-                module_data                 :: map(string, module_data)
+                module_data             :: map(string, module_data)
             ).
 
 :- type compensation_table == map(proc_static_ptr, inherit_prof_info).
@@ -119,11 +118,11 @@
 :- type module_data
     --->    module_data(
                 % The total cost of the module.
-                module_own                  :: own_prof_info,
-                module_desc                 :: inherit_prof_info,
+                module_own              :: own_prof_info,
+                module_desc             :: inherit_prof_info,
 
                 % The procedures defined in the module.
-                module_procs                :: list(proc_static_ptr)
+                module_procs            :: list(proc_static_ptr)
             ).
 
 %-----------------------------------------------------------------------------%
