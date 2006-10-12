@@ -351,6 +351,19 @@ MP_handle_timeout(void)
     int             matchlen;
     MR_bool         success;
 
+#ifdef  MP_DEBUG_LOCKS
+    {
+        FILE    *debug_fp;
+
+        debug_fp = fopen(""/tmp/deep_locks"", ""a"");
+        if (debug_fp != NULL) {
+            fprintf(debug_fp, ""pid %d MP_handle_timeout at %d\\n"",
+                getpid(), (int) time(NULL));
+            fclose(debug_fp);
+        }
+    }
+#endif
+
     if (MP_timeout_want_dir == NULL || MP_timeout_want_prefix == NULL) {
         MR_fatal_error(""MP_handle_timeout: null dir or prefix"");
     }
@@ -364,6 +377,19 @@ MP_handle_timeout(void)
         ** We therefore abort the timeout, but schedule the next one.
         */
 
+#ifdef  MP_DEBUG_LOCKS
+        {
+            FILE    *debug_fp;
+
+            debug_fp = fopen(""/tmp/deep_locks"", ""a"");
+            if (debug_fp != NULL) {
+                fprintf(debug_fp, ""pid %d aborting timeout: lock\\n"",
+                    getpid());
+                fclose(debug_fp);
+            }
+        }
+#endif
+
         (void) alarm(MP_timeout_seconds);
         return;
     }
@@ -374,9 +400,20 @@ MP_handle_timeout(void)
     }
 
     while ((dirent = readdir(dir)) != NULL) {
-        if (MR_strneq(dirent->d_name, MP_timeout_want_prefix,
-            matchlen))
-        {
+        if (MR_strneq(dirent->d_name, MP_timeout_want_prefix, matchlen)) {
+
+#ifdef  MP_DEBUG_LOCKS
+            {
+                FILE    *debug_fp;
+
+                debug_fp = fopen(""/tmp/deep_locks"", ""a"");
+                if (debug_fp != NULL) {
+                    fprintf(debug_fp,
+                        ""pid %d aborting timeout: want file\\n"", getpid());
+                    fclose(debug_fp);
+                }
+            }
+#endif
             /* abort the timeout */
             (void) closedir(dir);
             (void) alarm(MP_timeout_seconds);
@@ -391,6 +428,19 @@ MP_handle_timeout(void)
     */
 
     MP_delete_cleanup_files();
+
+#ifdef  MP_DEBUG_LOCKS
+    {
+        FILE    *debug_fp;
+
+        debug_fp = fopen(""/tmp/deep_locks"", ""a"");
+        if (debug_fp != NULL) {
+            fprintf(debug_fp, ""pid %d timeout exit\\n"", getpid());
+            fclose(debug_fp);
+        }
+    }
+#endif
+
     exit(EXIT_SUCCESS);
 }
 
@@ -493,7 +543,7 @@ MP_do_try_get_lock(const char *mutex_file)
         MR_fatal_error(""MP_do_try_get_lock failed"");
     }
 
-    return res;
+    return success;
 }
 
 void
@@ -614,6 +664,20 @@ MP_do_release_lock(const char *mutex_file)
 #ifdef  MR_DEEP_PROFILER_ENABLED
     int i;
 
+#ifdef  MP_DEBUG_LOCKS
+    {
+        FILE    *debug_fp;
+
+        debug_fp = fopen(""/tmp/deep_locks"", ""a"");
+        if (debug_fp != NULL) {
+            fprintf(debug_fp, ""pid %d setup signals ...\\n"", getpid());
+            fprintf(debug_fp, ""mutexfile %s, wantdir %s, wantprefix %s\\n"",
+                MutexFile, WantDir, WantPrefix);
+            fclose(debug_fp);
+        }
+    }
+#endif
+
     MP_timeout_mutex_file = MutexFile;
     MP_timeout_want_dir = WantDir;
     MP_timeout_want_prefix = WantPrefix;
@@ -648,6 +712,20 @@ MP_do_release_lock(const char *mutex_file)
     MP_timeout_seconds = Minutes * 60;
     (void) alarm(MP_timeout_seconds);
     S = S0;
+
+#ifdef  MP_DEBUG_LOCKS
+    {
+        FILE    *debug_fp;
+
+        debug_fp = fopen(""/tmp/deep_locks"", ""a"");
+        if (debug_fp != NULL) {
+            fprintf(debug_fp, ""pid %d setup timeout at %d for %d\\n"",
+                getpid(), (int) time(NULL),
+                (int) time(NULL) + MP_timeout_seconds);
+            fclose(debug_fp);
+        }
+    }
+#endif
 #else
     MR_fatal_error(""deep profiler not enabled"");
 #endif
