@@ -63,6 +63,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
 
+:- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -223,14 +224,17 @@ process_goal(ReuseMap, !Goal, !IO) :-
     ;
         GoalExpr0 = generic_call(_, _, _, _)
     ;
-        GoalExpr0 = unify(_, _, _, _, _),
+        GoalExpr0 = unify(_, _, _, Unification0, _),
         ReuseDescription0 = goal_info_get_reuse(GoalInfo0),
         (
             ReuseDescription0 = potential_reuse(Descr)
         ->
             ReuseDescription = reuse(Descr),
+            unification_set_reuse(Descr, Unification0, 
+                Unification), 
+            GoalExpr = GoalExpr0 ^ unify_kind := Unification, 
             goal_info_set_reuse(ReuseDescription, GoalInfo0, GoalInfo),
-            !:Goal = GoalExpr0 - GoalInfo
+            !:Goal = GoalExpr - GoalInfo
         ;
             true
         )
@@ -266,6 +270,27 @@ process_goal(ReuseMap, !Goal, !IO) :-
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "process_goal: shorthand goal.")
     ).
+
+:- pred unification_set_reuse(short_reuse_description::in, 
+    unification::in, unification::out) is det.
+
+unification_set_reuse(ShortReuseDescription, !Unification) :- 
+    (
+        !.Unification = construct(A, B, C, D, _HowToConstruct, F, G), 
+        ShortReuseDescription = cell_reused(DeadVar, _, PossibleConsIds, 
+            CellsToUpdate)
+    -> 
+        CellToReuse = cell_to_reuse(DeadVar, PossibleConsIds, 
+            list.map(needs_update_to_bool, CellsToUpdate)),
+        HowToConstruct = reuse_cell(CellToReuse),
+        !:Unification = construct(A, B, C, D, HowToConstruct, F, G)
+    ;
+        true
+    ).
+
+:- func needs_update_to_bool(needs_update) = bool. 
+needs_update_to_bool(needs_update) = no.
+needs_update_to_bool(does_not_need_update) = yes.
 
 :- pred determine_reuse_version(structure_reuse_map::in, pred_id::in,
     proc_id::in, sym_name::in, pred_id::out, proc_id::out, 
