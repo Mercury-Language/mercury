@@ -52,8 +52,8 @@
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_info.
-:- import_module check_hlds.modes.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.modes.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.unique_modes.
@@ -69,6 +69,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type_subst.
@@ -104,7 +105,7 @@ deforestation(!ModuleInfo, !IO) :-
     % Find out which arguments of each procedure are switched on at the top
     % level or are constructed in a way which is possibly deforestable.
     Task0 = update_module_cookie(get_branch_vars_proc, UnivProcArgInfo0),
-    process_all_nonimported_procs(Task0, Task, !ModuleInfo, !IO),
+    process_all_nonimported_procs_update(Task0, Task, !ModuleInfo, !IO),
     (
         Task = update_module_cookie(_, UnivProcArgInfo),
         univ_to_type(UnivProcArgInfo, ProcArgInfo1)
@@ -140,14 +141,15 @@ deforestation(!ModuleInfo, !IO) :-
         % inference on the specialized versions after constraint propagation,
         % because some nondet predicates will have become semidet.
         list.foldl(reset_inferred_proc_determinism, Versions, !ModuleInfo),
-        module_info_get_num_errors(!.ModuleInfo, Errors5),
 
-        disable_det_warnings(OptionsToRestore, !IO),
-        determinism_pass(!ModuleInfo, !IO),
-        restore_det_warnings(OptionsToRestore, !IO),
+        module_info_get_globals(!.ModuleInfo, Globals0),
+        disable_det_warnings(OptionsToRestore, Globals0, Globals1),
+        determinism_pass(!ModuleInfo, Specs),
+        restore_det_warnings(OptionsToRestore, Globals1, Globals),
+        module_info_set_globals(Globals, !ModuleInfo),
 
-        module_info_get_num_errors(!.ModuleInfo, Errors),
-        expect(unify(Errors5, Errors), this_file,
+        FoundErrors = contains_errors(Globals, Specs),
+        expect(unify(FoundErrors, no), this_file,
             "determinism errors after deforestation")
     ;
         true
@@ -249,7 +251,7 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
                 % then we re-run determinism analysis. As with
                 % inlining.m, this avoids problems with inlining
                 % erroneous procedures.
-                det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, _, _, _)
+                det_infer_proc(PredId, ProcId, !ModuleInfo, _, _, _)
             ;
                 RerunDet = no
             ),

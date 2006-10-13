@@ -20,6 +20,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -51,10 +52,6 @@
     ;       update_module_cookie(pred(pred_id, proc_id, proc_info, proc_info,
                 univ, univ, module_info, module_info), univ).
 
-:- type pred_error_task ==
-        pred(pred_id, module_info, module_info, pred_info, pred_info,
-            int, int, io, io).
-
 % Note that update_module_cookie causes some difficulties.
 % Ideally, it should be implemented using existential types:
 %
@@ -85,7 +82,7 @@
         ;   update_proc_io(pred(in, in, in, in, out, di, uo) is det)
         ;   update_proc_error(pred(in, in, in, out, in, out, out, out, di, uo)
                 is det)
-        ;   update_pred_error(pred(in, in, out, in, out, out, out, di, uo)
+        ;   update_pred_error(pred(in, in, out, in, out, in, out, di, uo)
                 is det)
         ;   update_module(pred(in, in, in, in, out, in, out) is det)
         ;   update_module_io(pred(in, in, in, out, in, out, di, uo) is det)
@@ -93,25 +90,43 @@
                 is det, ground)
         )).
 
-:- inst pred_error_task ==
-    (pred(in, in, out, in, out, out, out, di, uo) is det).
-
 :- mode task == task >> task.
 
+:- type pred_error_task ==
+        pred(pred_id, module_info, module_info, pred_info, pred_info,
+            list(error_spec), list(error_spec), io, io).
+
+:- inst pred_error_task ==
+    (pred(in, in, out, in, out, in, out, di, uo) is det).
+
+:- pred process_all_nonimported_procs_errors(task::task,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 :- pred process_all_nonimported_procs(task::task,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+:- pred process_all_nonimported_procs_update_errors(
+    task::task, task::out(task), module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred process_all_nonimported_procs_update(task::task, task::out(task),
     module_info::in, module_info::out, io::di, io::uo) is det.
 
     % Process procedures for which a given test succeeds.
     %
+:- pred process_matching_nonimported_procs_errors(task::task,
+    pred(pred_info)::in(pred(in) is semidet),
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 :- pred process_matching_nonimported_procs(task::task,
     pred(pred_info)::in(pred(in) is semidet),
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred process_matching_nonimported_procs(task::task, task::out(task),
-    pred(pred_info)::in(pred(in) is semidet),
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-:- pred process_all_nonimported_procs(task::task, task::out(task),
+:- pred process_matching_nonimported_procs_update_errors(
+    task::task, task::out(task), pred(pred_info)::in(pred(in) is semidet),
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred process_matching_nonimported_procs_update(
+    task::task, task::out(task), pred(pred_info)::in(pred(in) is semidet),
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred write_pred_progress_message(string::in, pred_id::in, module_info::in,
@@ -218,34 +233,63 @@
 
 %-----------------------------------------------------------------------------%
 
+process_all_nonimported_procs_errors(Task, !ModuleInfo, !Specs, !IO) :-
+    True = (pred(_PredInfo::in) is semidet :- true),
+    process_matching_nonimported_procs_errors(Task, True, !ModuleInfo,
+        !Specs, !IO).
+
 process_all_nonimported_procs(Task, !ModuleInfo, !IO) :-
-    True = (pred(_PredInfo::in) is semidet :- true),
-    process_matching_nonimported_procs(Task, True, !ModuleInfo, !IO).
+    process_all_nonimported_procs_errors(Task, !ModuleInfo, [], Specs, !IO),
+    expect(unify(Specs, []), this_file,
+        "process_all_nonimported_procs: Specs").
 
-process_all_nonimported_procs(!Task, !ModuleInfo, !IO) :-
+process_all_nonimported_procs_update_errors(!Task, !ModuleInfo, !Specs, !IO) :-
     True = (pred(_PredInfo::in) is semidet :- true),
-    process_matching_nonimported_procs(!Task, True, !ModuleInfo, !IO).
+    process_matching_nonimported_procs_update_errors(!Task, True, !ModuleInfo,
+        !Specs, !IO).
 
-process_matching_nonimported_procs(Task, Filter, !ModuleInfo, !IO) :-
+process_all_nonimported_procs_update(!Task, !ModuleInfo, !IO) :-
+    process_all_nonimported_procs_update_errors(!Task, !ModuleInfo,
+        [], Specs, !IO),
+    expect(unify(Specs, []), this_file,
+        "process_all_nonimported_procs_update: Specs").
+
+process_matching_nonimported_procs_errors(Task, Filter, !ModuleInfo,
+        !Specs, !IO) :-
     module_info_predids(!.ModuleInfo, PredIds),
     ( Task = update_pred_error(Pred) ->
-        list.foldl2(process_nonimported_pred(Pred, Filter), PredIds,
-            !ModuleInfo, !IO)
+        list.foldl3(process_nonimported_pred(Pred, Filter), PredIds,
+            !ModuleInfo, !Specs, !IO)
     ;
         process_nonimported_procs_in_preds(PredIds, Task, _, Filter,
             !ModuleInfo, !IO)
     ).
 
-process_matching_nonimported_procs(Task0, Task, Filter, !ModuleInfo, !IO) :-
+process_matching_nonimported_procs(Task, Filter, !ModuleInfo, !IO) :-
+    process_matching_nonimported_procs_errors(Task, Filter, !ModuleInfo,
+        [], Specs, !IO),
+    expect(unify(Specs, []), this_file,
+        "process_matching_nonimported_procs: Specs").
+
+process_matching_nonimported_procs_update_errors(Task0, Task, Filter,
+        !ModuleInfo, !Specs, !IO) :-
     module_info_predids(!.ModuleInfo, PredIds),
     process_nonimported_procs_in_preds(PredIds, Task0, Task, Filter,
         !ModuleInfo, !IO).
 
+process_matching_nonimported_procs_update(Task0, Task, Filter,
+        !ModuleInfo, !IO) :-
+    process_matching_nonimported_procs_update_errors(Task0, Task, Filter,
+        !ModuleInfo, [], Specs, !IO),
+    expect(unify(Specs, []), this_file,
+        "process_matching_nonimported_procs_update_errors: Specs").
+
 :- pred process_nonimported_pred(pred_error_task::in(pred_error_task),
     pred(pred_info)::in(pred(in) is semidet), pred_id::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !IO) :-
+process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !Specs, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     (
         ( pred_info_is_imported(PredInfo0)
@@ -254,9 +298,8 @@ process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !IO) :-
     ->
         true
     ;
-        Task(PredId, !ModuleInfo, PredInfo0, PredInfo, WarnCnt, ErrCnt, !IO),
-        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
-        passes_aux.handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO)
+        Task(PredId, !ModuleInfo, PredInfo0, PredInfo, !Specs, !IO),
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ).
 
 :- pred process_nonimported_procs_in_preds(list(pred_id)::in,

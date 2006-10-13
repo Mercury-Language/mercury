@@ -94,9 +94,9 @@ gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
         _TermContext, InstanceConstraints, InstanceTypes, Body,
         PredProcIds, _Varset, _SuperClassProofs),
     (
-        Body = concrete(_),
-        % Only make the base_typeclass_info if the instance
-        % declaration originally came from _this_ module.
+        Body = instance_body_concrete(_),
+        % Only make the base_typeclass_info if the instance declaration
+        % originally came from _this_ module.
         status_defined_in_this_module(ImportStatus) = yes
     ->
         make_instance_string(InstanceTypes, InstanceString),
@@ -107,8 +107,8 @@ gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
             InstanceString, BaseTypeClassInfo),
         !:RttiDataList = [RttiData | !.RttiDataList]
     ;
-        % The instance decl is from another module,
-        % or is abstract, so we don't bother including it.
+        % The instance decl is from another module, or is abstract,
+        % so we don't bother including it.
         true
     ).
 

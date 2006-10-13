@@ -302,8 +302,8 @@ real_main_2(MCFlags0, MaybeMCFlags, Args0, Variables0, Variables, !IO) :-
         MaybeMCFlags = no
     ;
         Errors = [],
-        globals.io_lookup_maybe_string_option(config_file,
-            MaybeConfigFile, !IO),
+        globals.io_lookup_maybe_string_option(config_file, MaybeConfigFile,
+            !IO),
         (
             MaybeConfigFile = yes(ConfigFile),
             read_options_file(ConfigFile, Variables0, MaybeVariables, !IO),
@@ -602,8 +602,8 @@ compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
     % and then we'll continue with the normal work of
     % the compilation, which will be done by the callback
     % function (`process_args').
-    maybe_mlds_to_gcc.run_gcc_backend(FirstModuleName, CallBack,
-        ModulesToLink, !IO),
+    maybe_mlds_to_gcc.run_gcc_backend(FirstModuleName, CallBack, ModulesToLink,
+        !IO),
 
     % Now we know what the real module name was, so we
     % can rename the assembler file if needed (see above).
@@ -1032,8 +1032,7 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             true
         ;
             split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
-            sort_error_specs(Specs, SortedSpecs),
-            write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors,
+            write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
             list.foldl(apply_process_module(ProcessModule,
                 FileName, ModuleName, MaybeTimestamp), SubModuleList, !IO)
@@ -1154,14 +1153,15 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         ModulesToLink, FactTableObjFiles, !IO) :-
     read_module_or_file(FileOrModule, yes, ModuleName, FileName,
         MaybeTimestamp, Items, Error, ReadModules0, ReadModules, !IO),
-    globals.io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax, !IO),
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, halt_at_syntax_errors, HaltSyntax),
     ( halt_at_module_error(HaltSyntax, Error) ->
         ModulesToLink = [],
         FactTableObjFiles = []
     ;
         split_into_submodules(ModuleName, Items, SubModuleList0, [], Specs),
-        sort_error_specs(Specs, SortedSpecs),
-        write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
+            !IO),
         ( MaybeModulesToRecompile = some_modules(ModulesToRecompile) ->
             ToRecompile = (pred((SubModule - _)::in) is semidet :-
                 list.member(SubModule, ModulesToRecompile)
@@ -1173,16 +1173,15 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         assoc_list.keys(SubModuleList0, NestedSubModules0),
         list.delete_all(NestedSubModules0, ModuleName, NestedSubModules),
 
-        globals.io_get_globals(Globals, !IO),
         find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
 
-        globals.io_lookup_bool_option(trace_prof, TraceProf, !IO),
+        globals.lookup_bool_option(Globals, trace_prof, TraceProf),
 
         (
             non_traced_mercury_builtin_module(ModuleName),
             not (
-                    ModuleName = mercury_profiling_builtin_module,
-                    TraceProf = yes
+                ModuleName = mercury_profiling_builtin_module,
+                TraceProf = yes
             )
         ->
             % Some predicates in the builtin modules are missing
@@ -1191,8 +1190,8 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
             % there should never be part of an execution trace
             % anyway; they are effectively language primitives.
             % (They may still be parts of stack traces.)
-            globals.io_lookup_bool_option(trace_stack_layout, TSL, !IO),
-            globals.io_get_trace_level(TraceLevel, !IO),
+            globals.lookup_bool_option(Globals, trace_stack_layout, TSL),
+            globals.get_trace_level(Globals, TraceLevel),
 
             globals.io_set_option(trace_stack_layout, bool(no), !IO),
             globals.io_set_trace_level_none(!IO),
@@ -1775,8 +1774,7 @@ invoke_module_qualify_items(Items0, Items, ModuleName, Verbose, Stats, MQInfo,
     module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
     module_qualify_items(Items0, Items, Globals, ModuleName, yes(FileName),
         MQInfo, UndefTypes, UndefModes, [], Specs),
-    sort_error_specs(Specs, SortedSpecs),
-    write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -1831,7 +1829,8 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
                 Msg = error_msg(no, no, 0, [always(Pieces)]),
                 Spec = error_spec(severity_warning, phase_read_files, [Msg]),
                 % XXX _NumErrors
-                write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
+                write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors,
+                    !IO)
             ;
                 WarnNoTransOptDeps = no
             )
@@ -1924,18 +1923,18 @@ frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
     ;
         FoundUndefTypeError = no,
         maybe_write_string(Verbose, "% Checking typeclasses...\n", !IO),
-        check_typeclass.check_typeclasses(QualInfo0, QualInfo, !HLDS,
-            FoundTypeclassError, !IO),
+        check_typeclass.check_typeclasses(!HLDS, QualInfo0, QualInfo,
+            [], Specs),
         maybe_dump_hlds(!.HLDS, 5, "typeclass", !DumpInfo, !IO),
         set_module_recomp_info(QualInfo, !HLDS),
 
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+
         % We can't continue after a typeclass error, since typecheck
         % can get internal errors.
-        (
-            FoundTypeclassError = yes,
+        ( NumErrors > 0 ->
             !:FoundError = yes
         ;
-            FoundTypeclassError = no,
             frontend_pass_no_type_error(FoundUndefModeError, !FoundError,
                 !HLDS, !DumpInfo, !IO)
         )
@@ -1992,8 +1991,8 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
     maybe_write_string(Verbose, "% Type-checking...\n", !IO),
     maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
     typecheck_module(!HLDS, TypeCheckSpecs, ExceededTypeCheckIterationLimit),
-    write_error_specs(TypeCheckSpecs, 0, _NumTypeWarnings, 0, NumTypeErrors,
-        !IO),
+    write_error_specs(TypeCheckSpecs, Globals, 0, _NumTypeWarnings,
+        0, NumTypeErrors, !IO),
     maybe_report_stats(Stats, !IO),
     ( NumTypeErrors > 0 ->
         module_info_incr_num_errors(NumTypeErrors, !HLDS),
@@ -2300,13 +2299,14 @@ output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
     bool::out, dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_polymorphism(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 30, "polymorphism", !DumpInfo, !IO),
 
-    maybe_unused_imports(Verbose, Stats, !HLDS, !IO),
+    maybe_unused_imports(Verbose, Stats, !.HLDS, UnusedImportSpecs, !IO),
     maybe_dump_hlds(!.HLDS, 31, "unused_imports", !DumpInfo, !IO),
 
     maybe_mode_constraints(Verbose, Stats, !HLDS, !IO),
@@ -2326,8 +2326,13 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
         detect_cse(Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(!.HLDS, 45, "cse", !DumpInfo, !IO),
 
-        check_determinism(Verbose, Stats, !HLDS, FoundDetError, !IO),
+        check_determinism(Verbose, Stats, !HLDS, DetismSpecs, !IO),
         maybe_dump_hlds(!.HLDS, 50, "determinism", !DumpInfo, !IO),
+
+        Specs1 = UnusedImportSpecs ++ DetismSpecs,
+        write_error_specs(Specs1, Globals, 0, _NumWarnings1, 0, NumErrors1,
+            !IO),
+        module_info_incr_num_errors(NumErrors1, !HLDS),
 
         check_unique_modes(Verbose, Stats, !HLDS, FoundUniqError, !IO),
         maybe_dump_hlds(!.HLDS, 55, "unique_modes", !DumpInfo, !IO),
@@ -2335,17 +2340,23 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
         check_stratification(Verbose, Stats, !HLDS, FoundStratError, !IO),
         maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
 
-        simplify(yes, frontend, Verbose, Stats, process_all_nonimported_procs,
-            !HLDS, !IO),
+        simplify(yes, frontend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
         maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
+
+        % Once the other passes have all been converted to return error_specs,
+        % we can write them out all at once.
+        write_error_specs(SimplifySpecs, Globals, 0, _NumWarnings2,
+            0, NumErrors2, !IO),
+        module_info_incr_num_errors(NumErrors2, !HLDS),
 
         % Work out whether we encountered any errors.
         io.get_exit_status(ExitStatus, !IO),
         (
             FoundModeError = no,
-            FoundDetError = no,
             FoundUniqError = no,
             FoundStratError = no,
+            NumErrors1 = 0,
+            NumErrors2 = 0,
             % Strictly speaking, we shouldn't need to check the exit status.
             % But the values returned for FoundModeError etc. aren't always
             % correct.
@@ -2365,8 +2376,9 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_read_experimental_complexity_file(!HLDS, !IO),
 
@@ -2485,8 +2497,10 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     % propagation and we cannot do that once the term-size profiling or deep
     % profiling transformations have been applied.
     %
-    simplify(no, pre_prof_transforms, Verbose, Stats,
-        process_all_nonimported_procs, !HLDS, !IO),
+    simplify(no, pre_prof_transforms, Verbose, Stats, !HLDS, SimplifySpecs,
+        !IO),
+    expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
+        "middle_pass: simplify has errors"),
     maybe_dump_hlds(!.HLDS, 215, "pre_prof_transform_simplify", !DumpInfo,
         !IO),
 
@@ -2550,8 +2564,9 @@ backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_saved_vars(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 310, "saved_vars_const", !DumpInfo, !IO),
@@ -2562,8 +2577,9 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     maybe_followcode(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 320, "followcode", !DumpInfo, !IO),
 
-    simplify(no, ll_backend, Verbose, Stats, process_all_nonimported_procs,
-        !HLDS, !IO),
+    simplify(no, ll_backend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
+    expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
+        "backend_pass_by_phases: simplify has errors"),
     maybe_dump_hlds(!.HLDS, 325, "ll_backend_simplify", !DumpInfo, !IO),
 
     compute_liveness(Verbose, Stats, !HLDS, !IO),
@@ -2584,7 +2600,7 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
         !IO),
     % maybe_dump_global_data(!.GlobalData, !IO),
 
-    maybe_do_optimize(!.GlobalData, Verbose, Stats, LLDS1, LLDS, !IO).
+    maybe_do_optimize(!.HLDS, !.GlobalData, Verbose, Stats, LLDS1, LLDS, !IO).
 
 :- pred backend_pass_by_preds(module_info::in, module_info::out,
     global_data::in, global_data::out, list(c_procedure)::out,
@@ -2798,7 +2814,8 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
 puritycheck(Verbose, Stats, !HLDS, FoundTypeError, FoundPostTypecheckError,
         !IO) :-
     puritycheck(FoundTypeError, FoundPostTypecheckError, !HLDS, [], Specs),
-    write_error_specs(Specs, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     ( NumErrors > 0 ->
         module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_write_string(Verbose,
@@ -2899,17 +2916,17 @@ detect_cse(Verbose, Stats, !HLDS, !IO) :-
     ).
 
 :- pred check_determinism(bool::in, bool::in,
-    module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
+    module_info::in, module_info::out, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-check_determinism(Verbose, Stats, !HLDS, FoundError, !IO) :-
-    module_info_get_num_errors(!.HLDS, NumErrors0),
-    determinism_pass(!HLDS, !IO),
-    module_info_get_num_errors(!.HLDS, NumErrors),
-    ( NumErrors \= NumErrors0 ->
+check_determinism(Verbose, Stats, !HLDS, Specs, !IO) :-
+    determinism_pass(!HLDS, Specs),
+    module_info_get_globals(!.HLDS, Globals),
+    FoundError = contains_errors(Globals, Specs),
+    (
         FoundError = yes,
         maybe_write_string(Verbose,
-            "% Program contains determinism error(s).\n", !IO),
-        io.set_exit_status(1, !IO)
+            "% Program contains determinism error(s).\n", !IO)
     ;
         FoundError = no,
         maybe_write_string(Verbose, "% Program is determinism-correct.\n", !IO)
@@ -3128,12 +3145,11 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
             % The first stage of LLDS code generation.
 
 :- pred simplify(bool::in, simplify_pass::in, bool::in, bool::in,
-    pred(task, module_info, module_info, io, io)::in(pred(task, in, out,
-        di, uo) is det),
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, profile_deep, DeepProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
@@ -3147,7 +3163,7 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
         SimplifyPass = pre_prof_transforms,
         IsProfPass = no
     ->
-        true
+        Specs = []
     ;
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -3187,7 +3203,9 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
             Simplifications = list_to_simplifications(!.SimpList)
         ),
 
-        Process(update_pred_error(simplify_pred(Simplifications)), !HLDS, !IO),
+        process_all_nonimported_procs_errors(
+            update_pred_error(simplify_pred(Simplifications)),
+            !HLDS, [], Specs, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ).
@@ -3404,10 +3422,11 @@ expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(polymorphism, Polymorphism, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, polymorphism, Polymorphism),
     (
         Polymorphism = yes,
-        globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (
             VeryVerbose = no,
             maybe_write_string(Verbose,
@@ -3438,24 +3457,29 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
     ).
 
 :- pred maybe_unused_imports(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_unused_imports(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(warn_unused_imports, WarnUnusedImports, !IO),
-    ( WarnUnusedImports = yes,
+maybe_unused_imports(Verbose, Stats, HLDS, Specs, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, warn_unused_imports,
+        WarnUnusedImports),
+    (
+        WarnUnusedImports = yes,
         maybe_write_string(Verbose, "% Checking for unused imports...", !IO),
-        unused_imports(!HLDS, !IO),
+        unused_imports(HLDS, Specs, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    ; WarnUnusedImports = no,
-        true
+    ;
+        WarnUnusedImports = no,
+        Specs = []
     ).
 
 :- pred maybe_type_ctor_infos(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(type_ctor_info, TypeCtorInfo, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, type_ctor_info, TypeCtorInfo),
     (
         TypeCtorInfo = yes,
         maybe_write_string(Verbose,
@@ -3472,7 +3496,8 @@ maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO) :-
     bool::in, bool::in, dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(generate_bytecode, GenBytecode, !IO),
+    module_info_get_globals(HLDS0, Globals),
+    globals.lookup_bool_option(Globals, generate_bytecode, GenBytecode),
     (
         GenBytecode = yes,
         map_args_to_regs(Verbose, Stats, HLDS0, HLDS1, !IO),
@@ -3506,15 +3531,17 @@ maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !DumpInfo, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(untuple, Untuple, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, untuple, Untuple),
     (
         Untuple = yes,
         maybe_write_string(Verbose, "% Untupling...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         untuple_arguments(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
-        simplify(no, post_untuple, Verbose, Stats,
-            process_all_nonimported_procs, !HLDS, !IO),
+        simplify(no, post_untuple, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
+        expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
+            "maybe_untuple_arguments: simplify has errors"),
         maybe_report_stats(Stats, !IO)
     ;
         Untuple = no
@@ -3524,7 +3551,8 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(tuple, Tuple, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, untuple, Tuple),
     (
         Tuple = yes,
         maybe_write_string(Verbose, "% Tupling...\n", !IO),
@@ -3540,10 +3568,11 @@ maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(optimize_higher_order, HigherOrder, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, optimize_higher_order, HigherOrder),
     % --type-specialization implies --user-guided-type-specialization.
-    globals.io_lookup_bool_option(user_guided_type_specialization, Types,
-        !IO),
+    globals.lookup_bool_option(Globals, user_guided_type_specialization,
+        Types),
 
     % Always produce the specialized versions for which
     % `:- pragma type_spec' declarations exist, because
@@ -3572,10 +3601,11 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(allow_inlining, Allow, !IO),
-    globals.io_lookup_bool_option(inline_simple, Simple, !IO),
-    globals.io_lookup_bool_option(inline_single_use, SingleUse, !IO),
-    globals.io_lookup_int_option(inline_compound_threshold, Threshold, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, allow_inlining, Allow),
+    globals.lookup_bool_option(Globals, inline_simple, Simple),
+    globals.lookup_bool_option(Globals, inline_single_use, SingleUse),
+    globals.lookup_int_option(Globals, inline_compound_threshold, Threshold),
     (
         Allow = yes,
         ( Simple = yes
@@ -3585,7 +3615,7 @@ maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
     ->
         maybe_write_string(Verbose, "% Inlining...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        inlining(!HLDS, !IO),
+        inlining(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -3596,11 +3626,12 @@ maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(deforestation, Deforest, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, deforestation, Deforest),
 
     % --constraint-propagation implies --local-constraint-propagation.
-    globals.io_lookup_bool_option(local_constraint_propagation, Constraints,
-        !IO),
+    globals.lookup_bool_option(Globals, local_constraint_propagation,
+        Constraints),
     (
         ( Deforest = yes
         ; Constraints = yes
@@ -3637,7 +3668,8 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
     io::di, io::uo) is det.
 
 maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(loop_invariants, LoopInv, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, loop_invariants, LoopInv),
     (
         LoopInv = yes,
         % We run the mark_static pass because we need the construct_how flag
@@ -3660,7 +3692,8 @@ maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(delay_construct, DelayConstruct, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, delay_construct, DelayConstruct),
     (
         DelayConstruct = yes,
         maybe_write_string(Verbose,
@@ -3678,7 +3711,7 @@ maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+    module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, intermod_unused_args, Intermod),
     globals.lookup_bool_option(Globals, optimize_unused_args, Optimize),
     globals.lookup_bool_option(Globals, warn_unused_args, Warn),
@@ -3701,7 +3734,8 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(unneeded_code, UnneededCode, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, unneeded_code, UnneededCode),
     (
         UnneededCode = yes,
         maybe_write_string(Verbose,
@@ -3719,7 +3753,8 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(optimize_dead_procs, Dead, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, optimize_dead_procs, Dead),
     (
         Dead = yes,
         maybe_write_string(Verbose, "% Eliminating dead procedures...\n", !IO),
@@ -3735,8 +3770,8 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(structure_sharing_analysis,
-        Sharing, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, structure_sharing_analysis, Sharing),
     (
         Sharing = yes,
         maybe_write_string(Verbose, "% Structure sharing analysis...\n",
@@ -3767,8 +3802,9 @@ maybe_dependent_par_conj(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :- 
-    globals.io_lookup_bool_option(structure_reuse_analysis, 
-        ReuseAnalysis, !IO), 
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, structure_reuse_analysis, 
+        ReuseAnalysis), 
     (
         ReuseAnalysis = yes, 
         maybe_write_string(Verbose, "% Structure reuse analysis...\n",
@@ -3785,8 +3821,9 @@ maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(record_term_sizes_as_words, AsWords, !IO),
-    globals.io_lookup_bool_option(record_term_sizes_as_cells, AsCells, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_words, AsWords),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_cells, AsCells),
     (
         AsWords = yes,
         AsCells = yes,
@@ -3822,11 +3859,12 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_read_experimental_complexity_file(!HLDS, !IO) :-
-    globals.io_lookup_string_option(experimental_complexity, FileName, !IO),
-    globals.io_lookup_bool_option(record_term_sizes_as_words,
-        RecordTermSizesAsWords, !IO),
-    globals.io_lookup_bool_option(record_term_sizes_as_cells,
-        RecordTermSizesAsCells, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_string_option(Globals, experimental_complexity, FileName),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_words,
+        RecordTermSizesAsWords),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
+        RecordTermSizesAsCells),
     bool.or(RecordTermSizesAsWords, RecordTermSizesAsCells,
         RecordTermSizes),
     ( FileName = "" ->
@@ -3888,7 +3926,8 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_deep_profiling(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(profile_deep, ProfileDeep, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
     (
         ProfileDeep = yes,
         maybe_write_string(Verbose,
@@ -3905,7 +3944,8 @@ maybe_deep_profiling(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(introduce_accumulators, Optimize, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, introduce_accumulators, Optimize),
     (
         Optimize = yes,
         maybe_write_string(Verbose,
@@ -3923,7 +3963,8 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_lco(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(optimize_constructor_last_call, LCO, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, optimize_constructor_last_call, LCO),
     (
         LCO = yes,
         maybe_write_string(Verbose,
@@ -3954,7 +3995,8 @@ map_args_to_regs(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(optimize_saved_vars_const, SavedVars, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, optimize_saved_vars_const, SavedVars),
     (
         SavedVars = yes,
         maybe_write_string(Verbose,
@@ -3972,7 +4014,8 @@ maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(optimize_saved_vars_cell, SavedVars, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, optimize_saved_vars_cell, SavedVars),
     (
         SavedVars = yes,
         maybe_write_string(Verbose,
@@ -3990,8 +4033,9 @@ maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(follow_code, FollowCode, !IO),
-    globals.io_lookup_bool_option(prev_code, PrevCode, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, follow_code, FollowCode),
+    globals.lookup_bool_option(Globals, prev_code, PrevCode),
     (
         ( FollowCode = yes
         ; PrevCode = yes
@@ -4011,10 +4055,11 @@ maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 compute_liveness(Verbose, Stats, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, parallel_liveness, ParallelLiveness),
+    globals.lookup_int_option(Globals, debug_liveness, DebugLiveness),
     maybe_write_string(Verbose, "% Computing liveness...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    globals.io_lookup_bool_option(parallel_liveness, ParallelLiveness, !IO),
-    globals.io_lookup_int_option(debug_liveness, DebugLiveness, !IO),
     (
         ParallelLiveness = yes,
         DebugLiveness = -1
@@ -4053,7 +4098,8 @@ allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_goal_paths(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_get_trace_level(TraceLevel, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.get_trace_level(Globals, TraceLevel),
     ( given_trace_level_is_none(TraceLevel) = no ->
         maybe_write_string(Verbose, "% Calculating goal paths...", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -4076,11 +4122,12 @@ generate_code(HLDS, Verbose, Stats, !GlobalData, LLDS, !IO) :-
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred maybe_do_optimize(global_data::in, bool::in, bool::in,
+:- pred maybe_do_optimize(module_info::in, global_data::in, bool::in, bool::in,
     list(c_procedure)::in, list(c_procedure)::out, io::di, io::uo) is det.
 
-maybe_do_optimize(GlobalData, Verbose, Stats, !LLDS, !IO) :-
-    globals.io_lookup_bool_option(optimize, Optimize, !IO),
+maybe_do_optimize(HLDS, GlobalData, Verbose, Stats, !LLDS, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, optimize, Optimize),
     (
         Optimize = yes,
         maybe_write_string(Verbose, "% Doing optimizations...\n", !IO),
@@ -4146,15 +4193,16 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 
 output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         FactTableObjFiles, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
     % Here we generate the LLDS representations for various data structures
     % used for RTTI, type classes, and stack layouts.
     % XXX This should perhaps be part of backend_pass rather than output_pass.
     type_ctor_info.generate_rtti(HLDS, TypeCtorRttiData),
     generate_base_typeclass_info_rtti(HLDS, OldTypeClassInfoRttiData),
-    globals.io_lookup_bool_option(new_type_class_rtti, NewTypeClassRtti, !IO),
+    globals.lookup_bool_option(Globals, new_type_class_rtti, NewTypeClassRtti),
     generate_type_class_info_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
     list.append(OldTypeClassInfoRttiData, NewTypeClassInfoRttiData,
@@ -4186,7 +4234,7 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     export.produce_header_file(C_ExportDecls, ModuleName, !IO),
 
     % Finally we invoke the C compiler to compile it.
-    globals.io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
+    globals.lookup_bool_option(Globals, target_code_only, TargetCodeOnly),
     (
         TargetCodeOnly = no,
         io.output_stream(OutputStream, !IO),
@@ -4218,7 +4266,8 @@ construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, TablingInfoStructs,
         C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
     MangledModuleName = sym_name_mangle(ModuleSymName),
     string.append(MangledModuleName, "_module", ModuleName),
-    globals.io_lookup_int_option(procs_per_c_function, ProcsPerFunc, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
     get_c_body_code(C_BodyCode0, C_BodyCode),
     ( ProcsPerFunc = 0 ->
         % ProcsPerFunc = 0 really means infinity -
@@ -4373,11 +4422,13 @@ compile_fact_table_file(ErrorStream, BaseName, O_File, Succeeded, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
 
-    simplify(no, ml_backend, Verbose, Stats,
-        process_all_nonimported_procs, !HLDS, !IO),
+    simplify(no, ml_backend, Verbose, Stats, !HLDS, SimplifySpecs, !IO),
+    expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
+        "ml_backend: simplify has errors"),
     maybe_dump_hlds(!.HLDS, 405, "ml_backend_simplify", !DumpInfo, !IO),
 
     % NOTE: it is unsafe for passes after add_trail_ops to reorder
@@ -4418,7 +4469,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     % chain_gc_stack_frame pass of ml_elim_nested,
     % because we need to unlink the stack frame from the
     % stack chain before tail calls.
-    globals.io_lookup_bool_option(optimize_tailcalls, OptimizeTailCalls, !IO),
+    globals.lookup_bool_option(Globals, optimize_tailcalls, OptimizeTailCalls),
     (
         OptimizeTailCalls = yes,
         maybe_write_string(Verbose, "% Detecting tail calls...\n", !IO),
@@ -4431,17 +4482,16 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(MLDS20, 20, "tailcalls", !IO),
 
-    % Warning about non-tail calls needs to come after detection
-    % of tail calls
-    globals.io_lookup_bool_option(warn_non_tail_recursion, WarnTailCalls,
-        !IO),
+    % Warning about non-tail calls must come after detection of tail calls.
+    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
+        WarnTailCalls),
     (
         OptimizeTailCalls = yes,
         WarnTailCalls = yes
     ->
         maybe_write_string(Verbose,
             "% Warning about non-tail recursive calls...\n", !IO),
-        ml_warn_tailcalls(MLDS20, !IO),
+        ml_warn_tailcalls(Globals, MLDS20, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         true
@@ -4456,11 +4506,11 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     %
     % However, we need to disable optimize_initializations, because
     % ml_elim_nested doesn't correctly handle code containing initializations.
-    globals.io_lookup_bool_option(optimize, Optimize, !IO),
+    globals.lookup_bool_option(Globals, optimize, Optimize),
     (
         Optimize = yes,
-        globals.io_lookup_bool_option(optimize_initializations,
-            OptimizeInitializations, !IO),
+        globals.lookup_bool_option(Globals, optimize_initializations,
+            OptimizeInitializations),
         globals.io_set_option(optimize_initializations, bool(no), !IO),
         maybe_write_string(Verbose, "% Optimizing MLDS...\n", !IO),
         ml_optimize.optimize(MLDS20, MLDS25, !IO),
@@ -4482,7 +4532,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     % for accurate GC needs to be done first, because the code for doing that
     % can't handle the env_ptr references that the other pass generates.
 
-    globals.io_get_gc_method(GC, !IO),
+    globals.get_gc_method(Globals, GC),
     ( GC = gc_accurate ->
         maybe_write_string(Verbose,
             "% Threading GC stack frames...\n", !IO),
@@ -4494,7 +4544,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(MLDS30, 30, "gc_frames", !IO),
 
-    globals.io_lookup_bool_option(gcc_nested_functions, NestedFuncs, !IO),
+    globals.lookup_bool_option(Globals, gcc_nested_functions, NestedFuncs),
     (
         NestedFuncs = no,
         maybe_write_string(Verbose, "% Flattening nested functions...\n", !IO),
@@ -4604,10 +4654,11 @@ mlds_to_il_assembler(MLDS, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_accumulating_option(dump_hlds, DumpHLDSStages, !IO),
-    globals.io_lookup_accumulating_option(dump_trace_counts, DumpTraceStages,
-        !IO),
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_accumulating_option(Globals, dump_hlds, DumpHLDSStages),
+    globals.lookup_accumulating_option(Globals, dump_trace_counts,
+        DumpTraceStages),
     StageNumStr = stage_num_str(StageNum),
     ( should_dump_stage(StageNum, StageNumStr, StageName, DumpHLDSStages) ->
         module_info_get_name(HLDS, ModuleName),
@@ -4695,8 +4746,9 @@ should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) :-
 :- pred dump_hlds(string::in, module_info::in, io::di, io::uo) is det.
 
 dump_hlds(DumpFile, HLDS, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_write_string(Verbose, "% Dumping out HLDS to `", !IO),
     maybe_write_string(Verbose, DumpFile, !IO),
     maybe_write_string(Verbose, "'...", !IO),

@@ -3538,10 +3538,10 @@ write_instance_defn(Indent, InstanceDefn, !IO) :-
 
     write_indent(Indent, !IO),
     (
-        Body = abstract,
+        Body = instance_body_abstract,
         io.write_string("% abstract", !IO)
     ;
-        Body = concrete(Methods),
+        Body = instance_body_concrete(Methods),
         io.write_string("% Instance Methods: ", !IO),
         mercury_output_instance_methods(Methods, !IO)
     ),

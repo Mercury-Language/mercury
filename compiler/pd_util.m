@@ -172,6 +172,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.constraint.
 :- import_module transform_hlds.pd_cost.
@@ -246,10 +247,9 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
 pd_simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
     % Construct a simplify_info.
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-    module_info_get_globals(ModuleInfo0, Globals),
     pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
-    det_info_init(ModuleInfo0, VarTypes0, PredId, ProcId, Globals, DetInfo0),
+    det_info_init(ModuleInfo0, VarTypes0, PredId, ProcId, DetInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     simplify_info_init(DetInfo0, Simplifications, InstMap0, ProcInfo0,
@@ -375,18 +375,17 @@ rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
         ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo),
 
-    module_info_get_globals(ModuleInfo, Globals),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
+    det_info_init(ModuleInfo, VarTypes, PredId, ProcId, DetInfo),
     pd_info_get_instmap(!.PDInfo, InstMap),
     det_infer_goal(Goal0, Goal, InstMap, SolnContext, [], no, DetInfo, _, _,
-        Msgs),
+        [], Specs),
 
     % Make sure there were no errors.
-    disable_det_warnings(OptionsToRestore, !IO),
-    det_report_msgs(Msgs, ModuleInfo, _, ErrCnt, !IO),
-    restore_det_warnings(OptionsToRestore, !IO),
-    expect(unify(ErrCnt, 0), this_file,
+    globals.io_get_globals(Globals, !IO),
+    disable_det_warnings(_OptionsToRestore, Globals, GlobalsToUse),
+    write_error_specs(Specs, GlobalsToUse, 0, _NumWarnings, 0, NumErrors, !IO),
+    expect(unify(NumErrors, 0), this_file,
         "rerun_det_analysis: determinism errors").
 
 %-----------------------------------------------------------------------------%

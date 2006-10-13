@@ -715,12 +715,12 @@ module_qualify_item(
     mq_info_set_error_context(mqec_class(mq_id(Name, Arity)) - Context, !Info),
     qualify_prog_constraint_list(Constraints0, Constraints, !Info, !Specs),
     (
-        Interface0 = abstract,
-        Interface = abstract
+        Interface0 = class_interface_abstract,
+        Interface = class_interface_abstract
     ;
-        Interface0 = concrete(Methods0),
+        Interface0 = class_interface_concrete(Methods0),
         qualify_class_interface(Methods0, Methods, !Info, !Specs),
-        Interface = concrete(Methods)
+        Interface = class_interface_concrete(Methods)
     ).
 
 module_qualify_item(
@@ -1262,18 +1262,24 @@ qualify_class_method(
 :- pred qualify_instance_body(sym_name::in, instance_body::in,
     instance_body::out) is det.
 
-qualify_instance_body(_ClassName, abstract, abstract).
-qualify_instance_body(ClassName, concrete(M0s), concrete(Ms)) :-
-    ( ClassName = unqualified(_) ->
-        Ms = M0s
+qualify_instance_body(ClassName, InstanceBody0, InstanceBody) :-
+    (
+        InstanceBody0 = instance_body_abstract,
+        InstanceBody = instance_body_abstract
     ;
-        sym_name_get_module_name(ClassName, unqualified(""), Module),
-        Qualify = (pred(M0::in, M::out) is det :-
-            M0 = instance_method(A, Method0, C, D, E),
-            add_module_qualifier(Module, Method0, Method),
-            M = instance_method(A, Method, C, D, E)
+        InstanceBody0 = instance_body_concrete(M0s),
+        ( ClassName = unqualified(_) ->
+            Ms = M0s
+        ;
+            sym_name_get_module_name(ClassName, unqualified(""), Module),
+            Qualify = (pred(M0::in, M::out) is det :-
+                M0 = instance_method(A, Method0, C, D, E),
+                add_module_qualifier(Module, Method0, Method),
+                M = instance_method(A, Method, C, D, E)
+            ),
+            list.map(Qualify, M0s, Ms)
         ),
-        list.map(Qualify, M0s, Ms)
+        InstanceBody = instance_body_concrete(Ms)
     ).
 
 :- pred add_module_qualifier(sym_name::in, sym_name::in, sym_name::out) is det.

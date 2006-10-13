@@ -1,7 +1,7 @@
-pragma_c_code_no_det.m:012: In `c_code'(out):
-pragma_c_code_no_det.m:012:   error: `:- pragma c_code(...)' for a procedure
-pragma_c_code_no_det.m:012:   without a determinism declaration.
 pragma_c_code_no_det.m:005: In `test'(out):
 pragma_c_code_no_det.m:005:   warning: determinism declaration could be
 pragma_c_code_no_det.m:005:   tighter.
 pragma_c_code_no_det.m:005:   Declared `det', inferred `erroneous'.
+pragma_c_code_no_det.m:012: In `c_code'(out):
+pragma_c_code_no_det.m:012:   error: `:- pragma foreign_proc(...)' for a
+pragma_c_code_no_det.m:012:   procedure without a determinism declaration.

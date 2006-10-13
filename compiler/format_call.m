@@ -80,18 +80,17 @@
 :- module check_hlds.format_call.
 :- interface.
 
-:- import_module check_hlds.det_report.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -99,7 +98,7 @@
     prog_var::out, prog_var::out) is semidet.
 
 :- pred find_format_call_errors(module_info::in, hlds_goal::in,
-    set(context_det_msg)::in, set(context_det_msg)::out) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -109,13 +108,16 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module libs.options.
 
+:- import_module bool.
 :- import_module counter.
 :- import_module exception.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
@@ -207,10 +209,9 @@ find_format_call_errors(ModuleInfo, Goal, !Msgs) :-
         !Msgs).
 
 :- pred check_format_call_site(conj_maps::in, conj_pred_map::in,
-    format_call_site::in, set(context_det_msg)::in, set(context_det_msg)::out)
-    is det.
+    format_call_site::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-check_format_call_site(ConjMaps, PredMap, FormatCallSite, !Msgs) :-
+check_format_call_site(ConjMaps, PredMap, FormatCallSite, !Specs) :-
     FormatCallSite = format_call_site(StringVar, ValuesVar,
         ModuleName, Name, Arity, Context, CurId),
     SymName = qualified(ModuleName, Name),
@@ -222,9 +223,17 @@ check_format_call_site(ConjMaps, PredMap, FormatCallSite, !Msgs) :-
         MaybeFormatString = yes(FormatString0)
     ;
         MaybeFormatString = no,
-        StringMsg = unknown_format_string(SymName, Arity),
-        ContextStringMsg = context_det_msg(Context, StringMsg),
-        svset.insert(ContextStringMsg, !Msgs)
+        UnknownFormatPieces = [words("Unknown format string in call to"),
+            sym_name_and_arity(SymName / Arity), suffix("."), nl],
+        UnknownFormatSeverity =
+            severity_conditional(warn_unknown_format_calls, yes,
+                severity_warning, no),
+        UnknownFormatMsg = simple_msg(Context,
+            [option_is_set(warn_unknown_format_calls, yes,
+                [always(UnknownFormatPieces)])]),
+        UnknownFormatSpec = error_spec(UnknownFormatSeverity,
+            phase_detism_check, [UnknownFormatMsg]),
+        !:Specs = [UnknownFormatSpec | !.Specs]
     ),
 
     (
@@ -236,9 +245,18 @@ check_format_call_site(ConjMaps, PredMap, FormatCallSite, !Msgs) :-
         MaybeValues = yes(Values0)
     ;
         MaybeValues = no,
-        ValuesMsg = unknown_format_values(SymName, Arity),
-        ContextValuesMsg = context_det_msg(Context, ValuesMsg),
-        svset.insert(ContextValuesMsg, !Msgs)
+        UnknownFormatValuesPieces =
+            [words("Unknown format values in call to"),
+            sym_name_and_arity(SymName / Arity), suffix("."), nl],
+        UnknownFormatValuesSeverity =
+            severity_conditional(warn_unknown_format_calls, yes,
+                severity_warning, no),
+        UnknownFormatValuesMsg = simple_msg(Context,
+            [option_is_set(warn_unknown_format_calls, yes,
+                [always(UnknownFormatValuesPieces)])]),
+        UnknownFormatValuesSpec = error_spec(UnknownFormatValuesSeverity,
+            phase_detism_check, [UnknownFormatValuesMsg]),
+        !:Specs = [UnknownFormatValuesSpec | !.Specs]
     ),
 
     (
@@ -257,9 +275,18 @@ check_format_call_site(ConjMaps, PredMap, FormatCallSite, !Msgs) :-
                 ;
                     ExceptionMsg = ExceptionMsg0
                 ),
-                BadMsg = bad_format(SymName, Arity, ExceptionMsg),
-                ContextBadMsg = context_det_msg(Context, BadMsg),
-                svset.insert(ContextBadMsg, !Msgs)
+                BadFormatPieces =
+                    [words("Mismatched format and values in call to"),
+                    sym_name_and_arity(SymName / Arity), suffix(":"), nl,
+                    words(ExceptionMsg)],
+                BadFormatMsg = simple_msg(Context,
+                    [option_is_set(warn_known_bad_format_calls, yes,
+                        [always(BadFormatPieces)])]),
+                BadFormatSeverity = severity_conditional(
+                    warn_known_bad_format_calls, yes, severity_warning, no),
+                BadFormatSpec = error_spec(BadFormatSeverity,
+                    phase_simplify(report_in_any_mode), [BadFormatMsg]),
+                !:Specs = [BadFormatSpec | !.Specs]
             ;
                 % We can't decode arbitrary exception values, but string.m
                 % shouldn't throw anything but software_errors, so ignoring

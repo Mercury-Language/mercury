@@ -807,10 +807,10 @@ mercury_output_item(UnqualifiedItemNames, item_typeclass(Constraints,
     mercury_format_fundeps_and_prog_constraint_list(FunDeps, Constraints,
         VarSet, AppendVarnums, !IO),
     (
-        Interface = abstract,
+        Interface = class_interface_abstract,
         io.write_string(".\n", !IO)
     ;
-        Interface = concrete(Methods),
+        Interface = class_interface_concrete(Methods),
         io.write_string(" where [\n", !IO),
         output_class_methods(Methods, !IO),
         io.write_string("\n].\n", !IO)
@@ -830,9 +830,9 @@ mercury_output_item(_, item_instance(Constraints, ClassName, Types, Body,
     mercury_format_prog_constraint_list(Constraints, VarSet, "<=",
         AppendVarnums, !IO),
     (
-        Body = abstract
+        Body = instance_body_abstract
     ;
-        Body = concrete(Methods),
+        Body = instance_body_concrete(Methods),
         io.write_string(" where [\n", !IO),
         mercury_output_instance_methods(Methods, !IO),
         io.write_string("\n]", !IO)
@@ -935,7 +935,7 @@ mercury_output_instance_methods(Methods, !IO) :-
 output_instance_method(Method, !IO) :-
     Method = instance_method(PredOrFunc, Name1, Defn, Arity, Context),
     (
-        Defn = name(Name2),
+        Defn = instance_proc_def_name(Name2),
         io.write_char('\t', !IO),
         (
             PredOrFunc = function,
@@ -950,7 +950,7 @@ output_instance_method(Method, !IO) :-
         io.write_string(") is ", !IO),
         mercury_output_bracketed_sym_name(Name2, !IO)
     ;
-        Defn = clauses(ItemList),
+        Defn = instance_proc_def_clauses(ItemList),
         % XXX should we output the term contexts?
         io.write_string("\t(", !IO),
         io.write_list(ItemList, "),\n\t(",

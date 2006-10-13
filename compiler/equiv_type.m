@@ -407,15 +407,15 @@ replace_in_item(ModuleName, Location,
         Constraints0, Constraints, VarSet0, VarSet,
         ExpandedItems0, ExpandedItems1, !UsedModules),
     (
-        ClassInterface0 = abstract,
-        ClassInterface = abstract,
+        ClassInterface0 = class_interface_abstract,
+        ClassInterface = class_interface_abstract,
         ExpandedItems = ExpandedItems1,
         Errors = []
     ;
-        ClassInterface0 = concrete(Methods0),
+        ClassInterface0 = class_interface_concrete(Methods0),
         replace_in_class_interface(Location, Methods0, EqvMap, EqvInstMap,
             Methods, [], Errors, ExpandedItems1, ExpandedItems, !UsedModules),
-        ClassInterface = concrete(Methods)
+        ClassInterface = class_interface_concrete(Methods)
     ),
     ItemId = item_id(typeclass_item, item_name(ClassName, Arity)),
     finish_recording_expanded_items(ItemId, ExpandedItems, !Info).

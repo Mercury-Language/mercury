@@ -872,7 +872,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         NeedsCheck, !Info),
     (
         NeedsCheck = yes,
-        Interface = concrete(Methods)
+        Interface = class_interface_concrete(Methods)
     ->
         list.foldl(check_class_method_for_ambiguities(NeedQualifier,
             OldTimestamp, VersionNumbers), Methods, !Info)

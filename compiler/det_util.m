@@ -24,8 +24,6 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -70,7 +68,7 @@
     det_info::in) is semidet.
 
 :- pred det_info_init(module_info::in, vartypes::in, pred_id::in, proc_id::in,
-    globals::in, det_info::out) is det.
+    det_info::out) is det.
 
 :- pred det_info_get_module_info(det_info::in, module_info::out) is det.
 :- pred det_info_get_pred_id(det_info::in, pred_id::out) is det.
@@ -90,7 +88,9 @@
 
 :- implementation.
 
+:- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -169,7 +169,8 @@ det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
                 fully_strict    :: bool         % --fully-strict
             ).
 
-det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo) :-
+det_info_init(ModuleInfo, VarTypes, PredId, ProcId, DetInfo) :-
+    module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, reorder_conj, ReorderConj),
     globals.lookup_bool_option(Globals, reorder_disj, ReorderDisj),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),

@@ -765,7 +765,7 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
         %
         SaveInfo = !.Info,
         (
-            Interface0 = concrete(Methods0),
+            Interface0 = instance_body_concrete(Methods0),
             (
                 MaybePredProcIds = yes(ClassProcs),
                 GetPredId =
@@ -789,33 +789,27 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
             bool.and_list(DoWriteMethodsList, DoWriteMethods),
             (
                 DoWriteMethods = yes,
-                Interface = concrete(Methods)
+                Interface = instance_body_concrete(Methods)
             ;
                 DoWriteMethods = no,
 
-                %
                 % Write an abstract instance declaration if any of the methods
                 % cannot be written to the `.opt' file for any reason.
-                %
-                Interface = abstract,
+                Interface = instance_body_abstract,
 
-                %
                 % Don't write declarations for any of the methods if one
                 % can't be written.
-                %
                 !:Info = SaveInfo
             )
         ;
-            Interface0 = abstract,
+            Interface0 = instance_body_abstract,
             Interface = Interface0
         ),
         (
-            %
             % Don't write an abstract instance declaration
             % if the declaration is already in the `.int' file.
-            %
             (
-                Interface = abstract
+                Interface = instance_body_abstract
             =>
                 status_is_exported(Status) = no
             )
@@ -847,7 +841,7 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
     InstanceMethod0 = instance_method(PredOrFunc, MethodName,
         InstanceMethodDefn0, MethodArity, MethodContext),
     (
-        InstanceMethodDefn0 = name(InstanceMethodName0),
+        InstanceMethodDefn0 = instance_proc_def_name(InstanceMethodName0),
         PredOrFunc = function,
         (
             find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
@@ -861,7 +855,7 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
                 MaybePredId = no,
                 PredIds = PredIds0
             ),
-            InstanceMethodDefn = name(InstanceMethodName)
+            InstanceMethodDefn = instance_proc_def_name(InstanceMethodName)
         ;
             % This will force add_proc to return DoWrite = no.
             PredId = invalid_pred_id,
@@ -871,18 +865,17 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
             InstanceMethodDefn = InstanceMethodDefn0
         )
     ;
-        InstanceMethodDefn0 = name(InstanceMethodName0),
+        InstanceMethodDefn0 = instance_proc_def_name(InstanceMethodName0),
         PredOrFunc = predicate,
         init_markers(Markers),
         resolve_pred_overloading(ModuleInfo, Markers,
             MethodCallArgTypes, MethodCallTVarSet,
             InstanceMethodName0, InstanceMethodName, PredId),
         PredIds = [PredId | PredIds0],
-        InstanceMethodDefn = name(InstanceMethodName)
+        InstanceMethodDefn = instance_proc_def_name(InstanceMethodName)
     ;
-        InstanceMethodDefn0 = clauses(_ItemList),
-        %
-        % XXX for methods defined using this syntax it is a little tricky
+        InstanceMethodDefn0 = instance_proc_def_clauses(_ItemList),
+        % XXX For methods defined using this syntax it is a little tricky
         % to write out the .opt files, so for now I've just disabled
         % intermodule optimization for type class instance declarations
         % using the new syntax.

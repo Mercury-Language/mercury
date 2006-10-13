@@ -879,8 +879,9 @@ emit_message(PPId, Context, Message, Error, !ModuleInfo, !IO) :-
     Msg = simple_msg(Context,
         [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)]),
     Spec = error_spec(Severity, phase_code_gen, [Msg]),
+    module_info_get_globals(!.ModuleInfo, Globals),
     % XXX _NumErrors
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %-----------------------------------------------------------------------------%
 

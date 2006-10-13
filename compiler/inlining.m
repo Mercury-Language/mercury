@@ -88,13 +88,12 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining(module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred inlining(module_info::in, module_info::out) is det.
 
     % This heuristic is used for both local and intermodule inlining.
     %
@@ -170,6 +169,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -197,8 +197,7 @@
 
             ).
 
-inlining(!ModuleInfo, !IO) :-
-    %
+inlining(!ModuleInfo) :-
     % Package up all the inlining options
     % - whether to inline simple conj's of builtins
     % - whether to inline predicates that are only called once
@@ -208,8 +207,8 @@ inlining(!ModuleInfo, !IO) :-
     %   if inlining a procedure would cause the number of variables to exceed
     %   this threshold then we don't inline it.
     % - whether we're in an MLDS grade
-    %
-    globals.io_get_globals(Globals, !IO),
+
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, inline_simple, Simple),
     globals.lookup_bool_option(Globals, inline_single_use, SingleUse),
     globals.lookup_int_option(Globals, inline_call_cost, CallCost),
@@ -219,7 +218,7 @@ inlining(!ModuleInfo, !IO) :-
         SimpleThreshold),
     globals.lookup_int_option(Globals, inline_vars_threshold, VarThreshold),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    globals.io_get_trace_level(TraceLevel, !IO),
+    globals.get_trace_level(Globals, TraceLevel),
     AnyTracing = bool.not(given_trace_level_is_none(TraceLevel)),
     Params = params(Simple, SingleUse, CallCost, CompoundThreshold,
         SimpleThreshold, VarThreshold, HighLevelCode, AnyTracing),
@@ -254,29 +253,29 @@ inlining(!ModuleInfo, !IO) :-
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
     list.condense(SCCs, PredProcs),
     set.init(InlinedProcs0),
-    do_inlining(PredProcs, NeededMap, Params, InlinedProcs0, !ModuleInfo, !IO),
+    do_inlining(PredProcs, NeededMap, Params, InlinedProcs0, !ModuleInfo),
 
     % The dependency graph is now out of date and needs to be rebuilt.
     module_info_clobber_dependency_info(!ModuleInfo).
 
 :- pred do_inlining(list(pred_proc_id)::in, needed_map::in,
     inline_params::in, set(pred_proc_id)::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-do_inlining([], _Needed, _Params, _Inlined, !Module, !IO).
-do_inlining([PPId | PPIds], Needed, Params, !.Inlined, !Module, !IO) :-
-    in_predproc(PPId, !.Inlined, Params, !Module, !IO),
-    mark_predproc(PPId, Needed, Params, !.Module, !Inlined, !IO),
-    do_inlining(PPIds, Needed, Params, !.Inlined, !Module, !IO).
+do_inlining([], _Needed, _Params, _Inlined, !Module).
+do_inlining([PPId | PPIds], Needed, Params, !.Inlined, !Module) :-
+    in_predproc(PPId, !.Inlined, Params, !Module),
+    mark_predproc(PPId, Needed, Params, !.Module, !Inlined),
+    do_inlining(PPIds, Needed, Params, !.Inlined, !Module).
 
     % This predicate effectively adds implicit `pragma inline' directives
     % for procedures that match its heuristic.
     %
 :- pred mark_predproc(pred_proc_id::in, needed_map::in,
     inline_params::in, module_info::in,
-    set(pred_proc_id)::in, set(pred_proc_id)::out, io::di, io::uo) is det.
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs, !IO) :-
+mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs) :-
     (
         Simple = Params ^ simple,
         SingleUse = Params ^ single_use,
@@ -313,7 +312,7 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs, !IO) :-
         % Don't inline recursive predicates (unless explicitly requested).
         \+ goal_calls(CalledGoal, PredProcId)
     ->
-        mark_proc_as_inlined(PredProcId, ModuleInfo, !InlinedProcs, !IO)
+        mark_proc_as_inlined(PredProcId, ModuleInfo, !InlinedProcs)
     ;
         true
     ).
@@ -369,16 +368,18 @@ is_flat_simple_goal_list([Goal | Goals]) :-
     is_flat_simple_goal_list(Goals).
 
 :- pred mark_proc_as_inlined(pred_proc_id::in, module_info::in,
-    set(pred_proc_id)::in, set(pred_proc_id)::out, io::di, io::uo) is det.
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo, !InlinedProcs, !IO) :-
+mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo, !InlinedProcs) :-
     svset.insert(proc(PredId, ProcId), !InlinedProcs),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ( pred_info_requested_inlining(PredInfo) ->
         true
     ;
-        write_proc_progress_message("% Inlining ", PredId, ProcId,
-            ModuleInfo, !IO)
+        trace [io(!IO)] (
+            write_proc_progress_message("% Inlining ", PredId, ProcId,
+                ModuleInfo, !IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -441,9 +442,9 @@ mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo, !InlinedProcs, !IO) :-
             ).
 
 :- pred in_predproc(pred_proc_id::in, set(pred_proc_id)::in, inline_params::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
+in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
     VarThresh = Params ^ var_threshold,
     HighLevelCode = Params ^ highlevel_code,
     AnyTracing = Params ^ any_tracing,
@@ -520,10 +521,9 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
     % If the determinism of some sub-goals has changed, then we re-run
     % determinism analysis, because propagating the determinism information
     % through the procedure may lead to more efficient code.
-    globals.io_get_globals(Globals, !IO),
     (
         DetChanged = yes,
-        det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, _, _, _)
+        det_infer_proc(PredId, ProcId, !ModuleInfo, _, _, _)
     ;
         DetChanged = no
     ).

@@ -282,8 +282,9 @@ report_mode_warnings(!ModeInfo, !IO) :-
 
 report_mode_error(ModeError, !ModeInfo, !IO) :-
     Spec = mode_error_to_spec(ModeError, !.ModeInfo),
-    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+    module_info_get_globals(ModuleInfo0, Globals),
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, ModuleInfo0, ModuleInfo),
     mode_info_set_module_info(ModuleInfo, !ModeInfo).
 
@@ -294,8 +295,9 @@ report_mode_error(ModeError, !ModeInfo, !IO) :-
 
 report_mode_warning(Warning, !ModeInfo, !IO) :-
     Spec = mode_warning_to_spec(!.ModeInfo, Warning),
-    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+    module_info_get_globals(ModuleInfo0, Globals),
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, ModuleInfo0, ModuleInfo),
     mode_info_set_module_info(ModuleInfo, !ModeInfo).
 
@@ -1183,7 +1185,9 @@ maybe_report_error_no_modes(PredId, PredInfo, !ModuleInfo, !IO) :-
             Spec = error_spec(severity_error, phase_mode_check,
                 [simple_msg(Context,
                     [always(MainPieces), verbose_only(VerbosePieces)])]),
-            write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+            module_info_get_globals(!.ModuleInfo, Globals),
+            write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors,
+                !IO),
             module_info_incr_num_errors(NumErrors, !ModuleInfo)
         )
     ;
@@ -1194,7 +1198,8 @@ maybe_report_error_no_modes(PredId, PredInfo, !ModuleInfo, !IO) :-
             ++ [suffix("."), nl],
         Spec = error_spec(severity_error, phase_mode_check,
             [simple_msg(Context, [always(Pieces)])]),
-        write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+        module_info_get_globals(!.ModuleInfo, Globals),
+        write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !ModuleInfo)
     ).
 
@@ -1311,7 +1316,8 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
         Pieces = [words(Verb), words(Detail), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_informational, phase_mode_check, [Msg]),
-        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
+        module_info_get_globals(ModuleInfo, Globals),
+        write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

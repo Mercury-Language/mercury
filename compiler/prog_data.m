@@ -644,33 +644,35 @@
     --->    class_id(class_name, arity).
 
 :- type class_interface
-    --->    abstract
-    ;       concrete(class_methods).
+    --->    class_interface_abstract
+    ;       class_interface_concrete(class_methods).
 
 :- type instance_method
     --->    instance_method(
-                pred_or_func,
-                sym_name,           % method name
-                instance_proc_def,
-                arity,
-                prog_context        % context of the instance declaration
+                instance_method_p_or_f          :: pred_or_func,
+                instance_method_name            :: sym_name,
+                instance_method_proc_def        :: instance_proc_def,
+                instance_method_arity           :: arity,
+
+                % The context of the instance declaration.
+                instance_method_decl_context    :: prog_context
             ).
 
 :- type instance_proc_def
-    --->    name(
+    --->    instance_proc_def_name(
                 % defined using the `pred(...) is <Name>' syntax
                 sym_name
             )
 
-    ;       clauses(
+    ;       instance_proc_def_clauses(
                 % defined using clauses
                 list(item)          % the items must be either
                                     % pred_clause or func_clause items
             ).
 
 :- type instance_body
-    --->    abstract
-    ;       concrete(instance_methods).
+    --->    instance_body_abstract
+    ;       instance_body_concrete(instance_methods).
 
 :- type instance_methods == list(instance_method).
 

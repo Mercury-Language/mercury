@@ -99,6 +99,10 @@
     ;       actual_severity_warning
     ;       actual_severity_informational.
 
+:- type mode_report_control
+    --->    report_in_any_mode
+    ;       report_only_if_in_all_modes.
+
 :- type error_phase
     --->    phase_read_files
     ;       phase_term_to_parse_tree
@@ -107,6 +111,7 @@
     ;       phase_mode_check
     ;       phase_purity_check
     ;       phase_detism_check
+    ;       phase_simplify(mode_report_control)
     ;       phase_termination_analysis
     ;       phase_accumulator_intro
     ;       phase_interface_gen
@@ -205,8 +210,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % write_error_spec(Spec, !NumWarnings, !NumErrors, !IO):
-    % write_error_specs(Specs, !NumWarnings, !NumErrors, !IO):
+    % write_error_spec(Spec, Globals, !NumWarnings, !NumErrors, !IO):
+    % write_error_specs(Specs, Globals, !NumWarnings, !NumErrors, !IO):
     %
     % Write out the error message(s) specified by Spec or Specs, minus the
     % parts whose conditions are false. Increment !NumWarnings by the number
@@ -216,9 +221,11 @@
     % components but they aren't being printed out, set the flag for reminding
     % the user about --verbose-errors.
     %
-:- pred write_error_spec(error_spec::in, int::in, int::out,
+    % Look up option values in the supplied Globals.
+    %
+:- pred write_error_spec(error_spec::in, globals::in, int::in, int::out,
     int::in, int::out, io::di, io::uo) is det.
-:- pred write_error_specs(list(error_spec)::in, int::in, int::out,
+:- pred write_error_specs(list(error_spec)::in, globals::in, int::in, int::out,
     int::in, int::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -257,6 +264,11 @@
                             % The output should contain the string form of
                             % the sym_name, followed by '/' and the arity,
                             % all surrounded by `' quotes.
+
+    ;       top_ctor_of_type(mer_type)
+                            % The top level type constructor of the given type,
+                            % which must have one (i.e. must not be a
+                            % variable).
 
     ;       p_or_f(pred_or_func)
                             % Output the string "predicate" or "function"
@@ -394,12 +406,14 @@
 :- implementation.
 
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module libs.compiler_util.
 
 :- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module require.
 :- import_module string.
 :- import_module term.
 
@@ -576,12 +590,11 @@ project_msg_context(Msg) = MaybeContext :-
 
 %-----------------------------------------------------------------------------%
 
-write_error_spec(Spec, !NumWarnings, !NumErrors, !IO) :-
-    write_error_specs([Spec], !NumWarnings, !NumErrors, !IO).
+write_error_spec(Spec, Globals, !NumWarnings, !NumErrors, !IO) :-
+    write_error_specs([Spec], Globals, !NumWarnings, !NumErrors, !IO).
 
-write_error_specs(Specs0, !NumWarnings, !NumErrors, !IO) :-
+write_error_specs(Specs0, Globals, !NumWarnings, !NumErrors, !IO) :-
     sort_error_specs(Specs0, Specs),
-    io_get_globals(Globals, !IO),
     io.get_exit_status(OrigExitStatus, !IO),
     list.foldl3(do_write_error_spec(Globals, OrigExitStatus), Specs,
         !NumWarnings, !NumErrors, !IO).
@@ -893,6 +906,16 @@ error_pieces_to_string([Component | Components]) = Str :-
         Word = simple_call_id_to_string(SimpleCallId),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
+        Component = top_ctor_of_type(Type),
+        ( type_to_ctor_and_args(Type, TypeCtor, _) ->
+            TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
+            SymName = TypeCtorName / TypeCtorArity,
+            Word = sym_name_and_arity_to_word(SymName),
+            Str = join_string_and_tail(Word, Components, TailStr)
+        ;
+            error("error_pieces_to_string: type is variable")
+        )
+    ;
         Component = nl,
         Str = "\n" ++ TailStr
     ;
@@ -971,6 +994,16 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
         Component = sym_name_and_arity(SymNameAndArity),
         Word = sym_name_and_arity_to_word(SymNameAndArity),
         RevWords1 = [plain_word(Word) | RevWords0]
+    ;
+        Component = top_ctor_of_type(Type),
+        ( type_to_ctor_and_args(Type, TypeCtor, _) ->
+            TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
+            SymName = TypeCtorName / TypeCtorArity,
+            RevWords1 = [plain_word(sym_name_and_arity_to_word(SymName))
+                | RevWords0]
+        ;
+            error("convert_components_to_paragraphs_acc: type is variable")
+        )
     ;
         Component = p_or_f(PredOrFunc),
         Word = pred_or_func_to_string(PredOrFunc),

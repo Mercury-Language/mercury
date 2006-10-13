@@ -57,20 +57,20 @@
 :- interface.
 
 :- import_module ml_backend.mlds.
+:- import_module libs.globals.
 
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-    % Traverse the MLDS, marking all optimizable tail calls
-    % as tail calls.
+    % Traverse the MLDS, marking all optimizable tail calls as tail calls.
     %
 :- pred ml_mark_tailcalls(mlds::in, mlds::out, io::di, io::uo) is det.
 
     % Traverse the MLDS, warning about all directly recursive calls
     % that are not marked as tail calls.
     %
-:- pred ml_warn_tailcalls(mlds::in, io::di, io::uo) is det.
+:- pred ml_warn_tailcalls(globals::in, mlds::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -515,9 +515,9 @@ locals_member(Name, LocalsList) :-
 
 %-----------------------------------------------------------------------------%
 
-ml_warn_tailcalls(MLDS, !IO) :-
+ml_warn_tailcalls(Globals, MLDS, !IO) :-
     solutions.solutions(nontailcall_in_mlds(MLDS), Warnings),
-    list.foldl(report_nontailcall_warning, Warnings, !IO).
+    list.foldl(report_nontailcall_warning(Globals), Warnings, !IO).
 
 :- type tailcall_warning
     --->    tailcall_warning(
@@ -583,11 +583,11 @@ nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
     % If so, construct an appropriate warning.
     Warning = tailcall_warning(PredLabel, ProcId, Context).
 
-:- pred report_nontailcall_warning(tailcall_warning::in,
+:- pred report_nontailcall_warning(globals::in, tailcall_warning::in,
     io::di, io::uo) is det.
 
-report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
-        !IO) :-
+report_nontailcall_warning(Globals, Warning, !IO) :-
+    Warning = tailcall_warning(PredLabel, ProcId, Context),
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, _MaybeModule, Name, Arity,
             _CodeModel, _NonOutputFunc),
@@ -600,7 +600,7 @@ report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
             words("warning: recursive call is not tail recursive."), nl],
         Msg = simple_msg(mlds_get_prog_context(Context), [always(Pieces)]),
         Spec = error_spec(severity_warning, phase_code_gen, [Msg]),
-        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO)
+        write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ;
         PredLabel = mlds_special_pred_label(_, _, _, _)
         % Don't warn about these.

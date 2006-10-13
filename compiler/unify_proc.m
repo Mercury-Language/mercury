@@ -458,15 +458,23 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
         module_info_remove_predid(PredId, !ModuleInfo),
         Changed = Changed1
     ;
-        ( HowToCheckGoal = check_unique_modes ->
+        (
+            HowToCheckGoal = check_unique_modes,
             detect_switches_in_proc(ProcId, PredId, !ModuleInfo),
             detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO),
-            determinism_check_proc(ProcId, PredId, !ModuleInfo, !IO),
+            determinism_check_proc(ProcId, PredId, !ModuleInfo, Specs),
+            (
+                Specs = []
+            ;
+                Specs = [_ | _],
+                unexpected(this_file, "modecheck_queued_proc: found error")
+            ),
             save_proc_info(ProcId, PredId, !.ModuleInfo, !OldPredTable),
             unique_modes.check_proc(ProcId, PredId, !ModuleInfo, Changed2,
                 !IO),
             bool.or(Changed1, Changed2, Changed)
         ;
+            HowToCheckGoal = check_modes,
             Changed = Changed1
         )
     ).

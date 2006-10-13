@@ -221,7 +221,7 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
         % Does this pragma match any of the methods of this class.
         list.member(_ - ClassItem, !.ClassItems),
         ClassItem = item_typeclass(_, _, _, _, Interface, _) - _,
-        Interface = concrete(Methods),
+        Interface = class_interface_concrete(Methods),
         list.member(Method, Methods),
         Method = method_pred_or_func(_, _, _, MethodPredOrFunc, SymName,
             TypesAndModes, WithType, _, _, _, _, _, _),
@@ -428,11 +428,12 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
             Section - (PredOrFuncModeItem - ItemContext)
             | MatchingItems0]
     ;
-        Item ^ tc_class_methods = concrete(Methods0)
+        Item ^ tc_class_methods = class_interface_concrete(Methods0)
     ->
         MethodsList = list.map(split_class_method_types_and_modes, Methods0),
         list.condense(MethodsList, Methods),
-        TypeclassItem = Item ^ tc_class_methods := concrete(Methods),
+        TypeclassItem = Item ^ tc_class_methods
+            := class_interface_concrete(Methods),
         MatchingItems = [Section - (TypeclassItem - ItemContext)
             | MatchingItems0]
     ;
@@ -946,9 +947,15 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
 :- pred class_interface_is_unchanged(class_interface::in,
     class_interface::in) is semidet.
 
-class_interface_is_unchanged(abstract, abstract).
-class_interface_is_unchanged(concrete(Methods1), concrete(Methods2)) :-
-    class_methods_are_unchanged(Methods1, Methods2).
+class_interface_is_unchanged(Interface0, Interface) :-
+    (
+        Interface0 = class_interface_abstract,
+        Interface = class_interface_abstract
+    ;
+        Interface0 = class_interface_concrete(Methods1),
+        class_methods_are_unchanged(Methods1, Methods2),
+        Interface = class_interface_concrete(Methods2)
+    ).
 
 :- pred class_methods_are_unchanged(class_methods::in,
     class_methods::in) is semidet.

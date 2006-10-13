@@ -964,18 +964,24 @@ expand_bang_state_var(T @ functor(Const, Args, Ctxt), Ts) =
 
 %-----------------------------------------------------------------------------%
 
-expand_bang_state_var_args_in_instance_method_heads(abstract) = abstract.
-
-expand_bang_state_var_args_in_instance_method_heads(concrete(Methods)) =
-    concrete(list.map(expand_method_bsvs, Methods)).
+expand_bang_state_var_args_in_instance_method_heads(InstanceBody) = Expanded :-
+    (
+        InstanceBody = instance_body_abstract,
+        Expanded = instance_body_abstract
+    ;
+        InstanceBody = instance_body_concrete(Methods),
+        Expanded = instance_body_concrete(
+            list.map(expand_method_bsvs, Methods))
+    ).
 
 :- func expand_method_bsvs(instance_method) = instance_method.
 
 expand_method_bsvs(IM) = IM :-
-    IM = instance_method(_, _, name(_), _, _).
+    IM = instance_method(_, _, instance_proc_def_name(_), _, _).
 
 expand_method_bsvs(IM0) = IM :-
-    IM0 = instance_method(PredOrFunc, Method, clauses(Cs0), Arity0, Ctxt),
+    IM0 = instance_method(PredOrFunc, Method, instance_proc_def_clauses(Cs0),
+        Arity0, Ctxt),
     Cs  = list.map(expand_item_bsvs, Cs0),
         % Note that the condition should always succeed...
         %
@@ -984,7 +990,8 @@ expand_method_bsvs(IM0) = IM :-
     ;
         Arity = Arity0
     ),
-    IM  = instance_method(PredOrFunc, Method, clauses(Cs), Arity, Ctxt).
+    IM  = instance_method(PredOrFunc, Method, instance_proc_def_clauses(Cs),
+        Arity, Ctxt).
 
     % The instance method clause items will all be clause items.
     %

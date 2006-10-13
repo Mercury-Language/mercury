@@ -317,7 +317,8 @@ report_missing_tabled_for_io(PredInfo, PredId, ProcId, !ModuleInfo, !IO) :-
     Pieces = ProcPieces ++ [words("contains untabled I/O primitive."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_code_gen, [Msg]),
-    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -346,7 +347,8 @@ table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
         % We don't want to increment the error count, since that would combine
         % with --halt-at-warn to prevent the clean compilation of the library.
         Spec = error_spec(severity_informational, phase_code_gen, [Msg]),
-        write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO),
+        module_info_get_globals(!.ModuleInfo, Globals),
+        write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
 
         % XXX We set the evaluation method to eval_normal here to prevent
         % problems in the ml code generator if we are compiling in a grade

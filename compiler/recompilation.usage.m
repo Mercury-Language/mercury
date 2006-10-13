@@ -948,9 +948,9 @@ find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
     ClassInterface = ClassDefn ^ class_interface,
     find_items_used_by_class_constraints(Constraints, !Info),
     (
-        ClassInterface = abstract
+        ClassInterface = class_interface_abstract
     ;
-        ClassInterface = concrete(Methods),
+        ClassInterface = class_interface_concrete(Methods),
         list.foldl(find_items_used_by_class_method, Methods, !Info)
     ),
     module_info_get_instance_table(ModuleInfo, Instances),

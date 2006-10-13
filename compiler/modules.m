@@ -1267,8 +1267,8 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
         (
             Specs = [_ | _],
             sort_error_specs(Specs, SortedSpecs),
-            write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors,
-                !IO),
+            write_error_specs(SortedSpecs, Globals, 0, _NumWarnings,
+                0, _NumErrors, !IO),
             io.write_strings(["`", FileName, "' not written.\n"], !IO)
         ;
             Specs = [],
@@ -1389,8 +1389,8 @@ make_interface(SourceFileName, SourceFileModuleName, ModuleName,
             % the exit status at zero) if we found some warnings.
             globals.io_set_option(halt_at_warn, bool(no), !IO),
             sort_error_specs(Specs, SortedSpecs),
-            write_error_specs(SortedSpecs, 0, _NumWarnings, 0, NumErrors,
-                !IO),
+            write_error_specs(SortedSpecs, Globals, 0, _NumWarnings,
+                0, NumErrors, !IO),
             ( NumErrors > 0 ->
                 module_name_to_file_name(ModuleName, ".int", no, IntFileName,
                     !IO),
@@ -1433,7 +1433,7 @@ make_short_interface(SourceFileName, ModuleName, Items0, !IO) :-
     module_qualify_items(ShortInterfaceItems0, ShortInterfaceItems,
         Globals, ModuleName, no, _, _, _, [], Specs),
     sort_error_specs(Specs, SortedSpecs),
-    write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors,
+    write_error_specs(SortedSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
         !IO),
     % XXX why do we do this even if there are some errors?
     write_interface_file(SourceFileName, ModuleName, ".int3",
@@ -2155,8 +2155,9 @@ warn_no_exports(ModuleName, !IO) :-
         ]),
     Msg = simple_msg(Context, [Component]),
     Spec = error_spec(Severity, phase_term_to_parse_tree, [Msg]),
+    globals.io_get_globals(Globals, !IO),
     % XXX _NumErrors
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -2541,7 +2542,8 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
             ImpImportedModules ++ ImpUsedModules, Items, !Specs),
 
         sort_error_specs(!.Specs, SortedSpecs),
-        write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
+        write_error_specs(SortedSpecs, Globals, 0, _NumWarnings,
+            0, _NumErrors, !IO),
 
         module_imports_get_error(!.Module, Error)
     ).
@@ -2639,7 +2641,8 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
             Items, !Specs),
 
         sort_error_specs(!.Specs, SortedSpecs),
-        write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
+        write_error_specs(SortedSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
+            !IO),
 
         module_imports_get_error(!.Module, Error)
     ).
@@ -3891,8 +3894,9 @@ build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
     string.append(FileName, ".m", SourceFileName),
     split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
     sort_error_specs(Specs, SortedSpecs),
-    write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO),
     globals.io_get_globals(Globals, !IO),
+    write_error_specs(SortedSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
+        !IO),
     assoc_list.keys(SubModuleList, SubModuleNames),
     list.map(init_dependencies(SourceFileName, ModuleName, SubModuleNames,
         Error, Globals), SubModuleList, ModuleImportsList),
@@ -6045,6 +6049,7 @@ read_dependencies(ModuleName, Search, ModuleImportsList, !IO) :-
     read_mod_ignore_errors(ModuleName, ".m",
         "Getting dependencies for module", Search, no, Items0, Error,
         FileName0, _, !IO),
+    globals.io_get_globals(Globals, !IO),
     (
         Items0 = [],
         Error = fatal_module_errors
@@ -6058,9 +6063,9 @@ read_dependencies(ModuleName, Search, ModuleImportsList, !IO) :-
         Items = Items0,
         split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
         sort_error_specs(Specs, SortedSpecs),
-        write_error_specs(SortedSpecs, 0, _NumWarnings, 0, _NumErrors, !IO)
+        write_error_specs(SortedSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
+            !IO)
     ),
-    globals.io_get_globals(Globals, !IO),
     assoc_list.keys(SubModuleList, SubModuleNames),
     list.map(init_dependencies(FileName, ModuleName, SubModuleNames,
         Error, Globals), SubModuleList, ModuleImportsList).
@@ -6960,7 +6965,7 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         (
             InInterface1 = yes,
             Item = item_instance(_, _, _, Body, _, _) - InstanceContext,
-            Body \= abstract
+            Body \= instance_body_abstract
         ->
             report_non_abstract_instance_in_interface(InstanceContext, !Specs)
         ;
@@ -7263,7 +7268,7 @@ item_needs_imports(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _)) =
 item_needs_imports(item_pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
 item_needs_imports(Item @ item_typeclass(_, _, _, _, _, _)) =
     (
-        Item ^ tc_class_methods = abstract,
+        Item ^ tc_class_methods = class_interface_abstract,
         \+ (
             list.member(Constraint, Item ^ tc_constraints),
             Constraint = constraint(_, ConstraintArgs),
@@ -7363,7 +7368,7 @@ make_abstract_defn(Item0 @ item_type_defn(_VarSet, _Name, _Args, TypeDefn,
 make_abstract_defn(item_instance(_, _, _, _, _, _) @ Item0, int2, Item) :-
     make_abstract_instance(Item0, Item).
 make_abstract_defn(item_typeclass(_, _, _, _, _, _) @ Item, _,
-        Item ^ tc_class_methods := abstract).
+        Item ^ tc_class_methods := class_interface_abstract).
 
 :- pred make_abstract_unify_compare(item::in, short_interface_kind::in,
     item::out) is semidet.
@@ -7397,8 +7402,8 @@ make_abstract_unify_compare(
 make_abstract_instance(Item0, Item) :-
     Item0 = item_instance(_Constraints, _Class, _ClassTypes, Body0,
         _TVarSet, _ModName),
-    Body0 = concrete(_),
-    Body = abstract,
+    Body0 = instance_body_concrete(_),
+    Body = instance_body_abstract,
     Item = Item0 ^ ci_method_instances := Body.
 
 :- pred maybe_strip_import_decls(item_list::in, item_list::out) is det.

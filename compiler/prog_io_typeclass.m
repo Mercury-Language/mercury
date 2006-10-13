@@ -100,7 +100,7 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
             MaybeParsedNameAndVars = ok1(ParsedNameAndVars),
             ( ParsedNameAndVars = item_typeclass(_, _, _, _, _, _) ->
                 Result = ok1((ParsedNameAndVars
-                    ^ tc_class_methods := concrete(MethodList))
+                    ^ tc_class_methods := class_interface_concrete(MethodList))
                     ^ tc_varset := TVarSet)
             ;
                 % If the item we get back isn't a typeclass,
@@ -236,8 +236,8 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
             list.sort_and_remove_dups(TermVars, SortedTermVars),
             list.length(SortedTermVars) = list.length(TermVars) : int
         ->
-            Result = ok1(item_typeclass([], [], ClassName, Vars, abstract,
-                TVarSet))
+            Result = ok1(item_typeclass([], [], ClassName, Vars,
+                class_interface_abstract, TVarSet))
         ;
             Msg = "expected distinct variables as class parameters",
             Result = error1([Msg - Name])
@@ -614,8 +614,8 @@ parse_underived_instance_2(ErrorTerm, ClassName, ok1(Types), TVarSet,
             "with distinct variables as arguments",
         Result = error1([Msg - ErrorTerm])
     ;
-        Result = ok1(item_instance([], ClassName, Types, abstract, TVarSet,
-            ModuleName))
+        Result = ok1(item_instance([], ClassName, Types,
+            instance_body_abstract, TVarSet, ModuleName))
     ).
 
 :- pred type_is_functor_and_vars(mer_type::in) is semidet.
@@ -668,7 +668,7 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
                     Types, _, _, ModName)
             ->
                 Result0 = ok1(item_instance(Constraints, NameString, Types,
-                    concrete(MethodList), TVarSet, ModName)),
+                    instance_body_concrete(MethodList), TVarSet, ModName)),
                 check_tvars_in_instance_constraint(Result0, Name, Result)
             ;
                 % If the item we get back isn't a typeclass,
@@ -744,7 +744,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
                     "instance method", ok2(InstanceMethodName, []))
             ->
                 Result = ok1(instance_method(predicate, ClassMethodName,
-                    name(InstanceMethodName), ArityInt, TermContext))
+                    instance_proc_def_name(InstanceMethodName), ArityInt,
+                    TermContext))
             ;
                 Msg = "expected `pred(<Name> / <Arity>) is <InstanceMethod>'",
                 Result = error1([Msg - MethodTerm])
@@ -761,7 +762,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
                     "instance method", ok2(InstanceMethodName, []))
             ->
                 Result = ok1(instance_method(function, ClassMethodName,
-                    name(InstanceMethodName), ArityInt, TermContext))
+                    instance_proc_def_name(InstanceMethodName), ArityInt,
+                    TermContext))
             ;
                 Msg = "expected `func(<Name> / <Arity>) is <InstanceMethod>'",
                 Result = error1([Msg - MethodTerm])
@@ -792,7 +794,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
             ->
                 adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),
                 Result = ok1(instance_method(PredOrFunc, ClassMethodName,
-                    clauses([Item]), ArityInt, Context))
+                    instance_proc_def_clauses([Item]), ArityInt, Context))
             ;
                 Msg = "expected clause or " ++
                     "`pred(<Name> / <Arity>) is <InstanceName>' or " ++

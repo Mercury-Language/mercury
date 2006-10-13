@@ -1790,7 +1790,7 @@ write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs,
     set(pred_id)::in, set(pred_id)::out, io::di, io::uo) is det.
 
 maybe_warn_unused_args(no, _, _, _, _, _, !WarnedPredIds, !IO).
-maybe_warn_unused_args(yes, _ModuleInfo, PredInfo, PredId, ProcId,
+maybe_warn_unused_args(yes, ModuleInfo, PredInfo, PredId, ProcId,
         UnusedArgs0, !WarnedPredIds, !IO) :-
     ( set.member(PredId, !.WarnedPredIds) ->
         true
@@ -1807,7 +1807,7 @@ maybe_warn_unused_args(yes, _ModuleInfo, PredInfo, PredId, ProcId,
         adjust_unused_args(NumToDrop, UnusedArgs0, UnusedArgs),
         (
             UnusedArgs = [_ | _],
-            report_unused_args(PredInfo, UnusedArgs, !IO)
+            report_unused_args(ModuleInfo, PredInfo, UnusedArgs, !IO)
         ;
             UnusedArgs = []
         )
@@ -1831,19 +1831,19 @@ adjust_unused_args(NumToDrop, [UnusedArgNo | UnusedArgNos0], AdjUnusedArgs) :-
     % in every mode of a predicate are warned about. The warning is
     % suppressed for type_infos.
     %
-:- pred report_unused_args(pred_info::in, list(int)::in,
+:- pred report_unused_args(module_info::in, pred_info::in, list(int)::in,
     io::di, io::uo) is det.
 
-report_unused_args(PredInfo, UnusedArgs, !IO) :-
+report_unused_args(ModuleInfo, PredInfo, UnusedArgs, !IO) :-
     list.length(UnusedArgs, NumArgs),
     pred_info_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    Module = pred_info_module(PredInfo),
-    Name = pred_info_name(PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     Pieces1 = [words("In"), fixed(pred_or_func_to_full_str(PredOrFunc)),
-        sym_name_and_arity(qualified(Module, Name) / Arity), suffix(":"), nl,
-        words("warning:")],
+        sym_name_and_arity(qualified(ModuleName, PredName) / Arity),
+        suffix(":"), nl, words("warning:")],
     ( NumArgs = 1 ->
         Pieces2 = [words("argument") | format_arg_list(UnusedArgs)] ++
             [words("is unused."), nl]
@@ -1853,8 +1853,9 @@ report_unused_args(PredInfo, UnusedArgs, !IO) :-
     ),
     Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
     Spec = error_spec(severity_warning, phase_code_gen, [Msg]),
+    module_info_get_globals(ModuleInfo, Globals),
     % XXX _NumErrors
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 :- func format_arg_list(list(int)) = list(format_component).
 

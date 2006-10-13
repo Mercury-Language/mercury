@@ -465,7 +465,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
     ;
         % Stop if we have exceeded the iteration limit.
         ( MaxIterations =< 1 ->
-            report_max_iterations_exceeded(!IO),
+            report_max_iterations_exceeded(!.ModuleInfo, !IO),
             UnsafeToContinue = yes
         ;
             globals.io_lookup_bool_option(debug_modes, DebugModes, !IO),
@@ -506,11 +506,12 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
         )
     ).
 
-:- pred report_max_iterations_exceeded(io::di, io::uo) is det.
+:- pred report_max_iterations_exceeded(module_info::in, io::di, io::uo) is det.
 
-report_max_iterations_exceeded(!IO) :-
-    globals.io_lookup_int_option(mode_inference_iteration_limit,
-        MaxIterations, !IO),
+report_max_iterations_exceeded(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_int_option(Globals, mode_inference_iteration_limit,
+        MaxIterations),
     Pieces = [words("Mode analysis iteration limit exceeded."), nl,
         words("You may need to declare the modes explicitly"),
         words("or use the `--mode-inference-iteration-limit' option"),
@@ -520,7 +521,7 @@ report_max_iterations_exceeded(!IO) :-
     Msg = error_msg(no, no, 0, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_mode_check, [Msg]),
     % XXX _NumErrors
-    write_error_spec(Spec, 0, _NumWarnings, 0, _NumErrors, !IO).
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
     % copy_pred_bodies(OldPredTable, ProcId, ModuleInfo0, ModuleInfo):
     %
@@ -3387,7 +3388,8 @@ report_eval_method_requires_ground_args(ProcInfo, !ModuleInfo, !IO) :-
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(VerbosePieces)]),
     Spec = error_spec(severity_error, phase_mode_check, [Msg]),
-    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 :- pred report_eval_method_destroys_uniqueness(proc_info::in,
@@ -3409,7 +3411,8 @@ report_eval_method_destroys_uniqueness(ProcInfo, !ModuleInfo, !IO) :-
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(VerbosePieces)]),
     Spec = error_spec(severity_error, phase_mode_check, [Msg]),
-    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 :- pred report_wrong_mode_for_main(proc_info::in,
@@ -3420,7 +3423,8 @@ report_wrong_mode_for_main(ProcInfo, !ModuleInfo, !IO) :-
     Pieces = [words("Error: main/2 must have mode `(di, uo)'."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_mode_check, [Msg]),
-    write_error_spec(Spec, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%

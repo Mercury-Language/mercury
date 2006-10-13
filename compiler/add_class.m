@@ -83,9 +83,11 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
     list.length(Vars, ClassArity),
     ClassId = class_id(Name, ClassArity),
     Status = item_status(ImportStatus0, _),
-    ( Interface = abstract ->
+    (
+        Interface = class_interface_abstract,
         make_status_abstract(ImportStatus0, ImportStatus1)
     ;
+        Interface = class_interface_concrete(_),
         ImportStatus1 = ImportStatus0
     ),
     HLDSFunDeps = list.map(make_hlds_fundep(Vars), FunDeps),
@@ -99,11 +101,11 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
             OldVarSet, OldContext),
         combine_status(ImportStatus1, OldStatus, ImportStatus),
         (
-            OldInterface = concrete(_),
+            OldInterface = class_interface_concrete(_),
             ClassMethods0 = OldMethods,
             ClassInterface = OldInterface
         ;
-            OldInterface = abstract,
+            OldInterface = class_interface_abstract,
             ClassMethods0 = [],
             ClassInterface = Interface
         ),
@@ -127,8 +129,8 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
                 Context, OldContext, Extras, !Specs),
             ErrorOrPrevDef = yes
         ;
-            Interface = concrete(_),
-            OldInterface = concrete(_)
+            Interface = class_interface_concrete(_),
+            OldInterface = class_interface_concrete(_)
         ->
             multiple_def_error(ImportStatus, Name, ClassArity,
                 "typeclass", Context, OldContext, [], !Specs),
@@ -148,7 +150,7 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
     (
         ErrorOrPrevDef = no,
         (
-            Interface = concrete(Methods),
+            Interface = class_interface_concrete(Methods),
             module_add_class_interface(Name, Vars, Methods,
                 Status, PredProcIds0, !ModuleInfo, !Specs),
             % Get rid of the `no's from the list of maybes
@@ -163,7 +165,7 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
             % corresponding list of pred_proc_ids for instance definitions.
             list.sort(PredProcIds1, ClassMethods)
         ;
-            Interface = abstract,
+            Interface = class_interface_abstract,
             ClassMethods = ClassMethods0
         ),
 
@@ -505,11 +507,11 @@ check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId,
     IsOverlapping = (pred((Context - OtherContext)::out) is nondet :-
         NewInstanceDefn = hlds_instance_defn(_, _Status, Context,
             _, Types, Body, _, VarSet, _),
-        Body \= abstract, % XXX
+        Body = instance_body_concrete(_), % XXX
         list.member(OtherInstanceDefn, InstanceDefns),
         OtherInstanceDefn = hlds_instance_defn(_, _OtherStatus,
             OtherContext, _, OtherTypes, OtherBody, _, OtherVarSet, _),
-        OtherBody \= abstract, % XXX
+        OtherBody = instance_body_concrete(_), % XXX
         tvarset_merge_renaming(VarSet, OtherVarSet, _NewVarSet, Renaming),
         apply_variable_renaming_to_type_list(Renaming, OtherTypes,
             NewOtherTypes),
@@ -539,7 +541,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         !QualInfo, !Specs) :-
     (
         % Handle the `pred(<MethodName>/<Arity>) is <ImplName>' syntax.
-        InstanceProcDefn = name(InstancePredName), 
+        InstanceProcDefn = instance_proc_def_name(InstancePredName), 
         % Add the body of the introduced pred.
         % First the goal info, ...
         goal_info_init(GoalInfo0),
@@ -570,7 +572,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
             HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses)
     ;
         % Handle the arbitrary clauses syntax.
-        InstanceProcDefn = clauses(InstanceClauses),
+        InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),
         clauses_info_init(PredArity, ClausesInfo0),
         list.foldl4(
             produce_instance_method_clause(PredOrFunc, Context, Status),

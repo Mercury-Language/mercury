@@ -1,10 +1,10 @@
-cyclic_typeclass_3.m:014: Error: cyclic superclass relation detected:
-cyclic_typeclass_3.m:014:   `cyclic_typeclass_3.c'/1 <=
-cyclic_typeclass_3.m:014:   `cyclic_typeclass_3.e'/1 <=
-cyclic_typeclass_3.m:014:   `cyclic_typeclass_3.i'/1 <=
-cyclic_typeclass_3.m:014:   `cyclic_typeclass_3.c'/1
 cyclic_typeclass_3.m:012: Error: cyclic superclass relation detected:
 cyclic_typeclass_3.m:012:   `cyclic_typeclass_3.a'/1 <=
 cyclic_typeclass_3.m:012:   `cyclic_typeclass_3.b'/1 <=
 cyclic_typeclass_3.m:012:   `cyclic_typeclass_3.g'/1 <=
 cyclic_typeclass_3.m:012:   `cyclic_typeclass_3.a'/1
+cyclic_typeclass_3.m:014: Error: cyclic superclass relation detected:
+cyclic_typeclass_3.m:014:   `cyclic_typeclass_3.c'/1 <=
+cyclic_typeclass_3.m:014:   `cyclic_typeclass_3.e'/1 <=
+cyclic_typeclass_3.m:014:   `cyclic_typeclass_3.i'/1 <=
+cyclic_typeclass_3.m:014:   `cyclic_typeclass_3.c'/1

@@ -141,13 +141,12 @@ generate_maybe_instance_decl(ModuleInfo, ClassId, InstanceDefn, !RttiDatas) :-
     ImportStatus = InstanceDefn ^ instance_status,
     Body = InstanceDefn ^ instance_body,
     (
-        Body = concrete(_),
+        Body = instance_body_concrete(_),
         % Only make the RTTI structure for the type class instance if the
         % instance declaration originally came from _this_ module.
         status_defined_in_this_module(ImportStatus) = yes
     ->
-        RttiData = generate_instance_decl(ModuleInfo, ClassId,
-            InstanceDefn),
+        RttiData = generate_instance_decl(ModuleInfo, ClassId, InstanceDefn),
         !:RttiDatas = [RttiData | !.RttiDatas]
     ;
         true

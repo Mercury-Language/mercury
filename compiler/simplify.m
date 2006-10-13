@@ -32,7 +32,6 @@
 :- interface.
 
 :- import_module check_hlds.common.
-:- import_module check_hlds.det_report.
 :- import_module check_hlds.det_util.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
@@ -42,6 +41,7 @@
 :- import_module hlds.instmap.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module parse_tree.error_util.
 
 :- import_module bool.
 :- import_module io.
@@ -51,7 +51,7 @@
 
 :- pred simplify_pred(simplifications::in, pred_id::in,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
-    int::out, int::out, io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 :- pred simplify_proc(simplifications::in, pred_id::in, proc_id::in,
     module_info::in, module_info::out, proc_info::in, proc_info::out,
@@ -59,7 +59,7 @@
 
 :- pred simplify_proc_return_msgs(simplifications::in, pred_id::in,
     proc_id::in, module_info::in, module_info::out,
-    proc_info::in, proc_info::out, set(context_det_msg)::out, bool::out,
+    proc_info::in, proc_info::out, list(error_spec)::out, bool::out,
     io::di, io::uo) is det.
 
 :- pred simplify_process_goal(hlds_goal::in, hlds_goal::out,
@@ -128,6 +128,7 @@
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
@@ -290,8 +291,7 @@ simplify_do_extra_common_struct(Info) :-
 
 %-----------------------------------------------------------------------------%
 
-simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo,
-        WarnCnt, ErrCnt, !IO) :-
+simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo, !Specs, !IO) :-
     write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo, !IO),
     ProcIds = pred_info_non_imported_procids(!.PredInfo),
     % Don't warn for compiler-generated procedures.
@@ -300,52 +300,49 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo,
     ;
         Simplifications = Simplifications0
     ),
-    MaybeMsgs0 = no,
+    MaybeSpecs0 = no,
     simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
-        MaybeMsgs0, MaybeMsgs, !IO),
+        MaybeSpecs0, MaybeSpecs, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
     (
-        MaybeMsgs = yes(Msgs0 - Msgs1),
-        set.union(Msgs0, Msgs1, Msgs2),
-        set.to_sorted_list(Msgs2, Msgs),
-        det_report_msgs(Msgs, !.ModuleInfo, WarnCnt, ErrCnt, !IO)
+        MaybeSpecs = yes(AnyModeSpecSet - AllModeSpecSet),
+        set.union(AnyModeSpecSet, AllModeSpecSet, SpecSet),
+        set.to_sorted_list(SpecSet, NewSpecs),
+        !:Specs = NewSpecs ++ !.Specs
     ;
-        MaybeMsgs = no,
-        WarnCnt = 0,
-        ErrCnt = 0
+        MaybeSpecs = no
     ),
-    globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+    globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(Statistics, !IO).
 
 :- pred simplify_procs(simplifications::in, pred_id::in,
     list(proc_id)::in, module_info::in, module_info::out,
     pred_info::in, pred_info::out,
-    maybe(pair(set(context_det_msg)))::in,
-    maybe(pair(set(context_det_msg)))::out,
+    maybe(pair(set(error_spec)))::in, maybe(pair(set(error_spec)))::out,
     io::di, io::uo) is det.
 
-simplify_procs(_, _, [], !ModuleInfo, !PredInfo, !Msgs, !IO).
+simplify_procs(_, _, [], !ModuleInfo, !PredInfo, !MaybeSpecs, !IO).
 simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
-        !PredInfo, !MaybeMsgs, !IO) :-
+        !PredInfo, !MaybeSpecs, !IO) :-
     pred_info_get_procedures(!.PredInfo, Procs0),
     map.lookup(Procs0, ProcId, Proc0),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
-        !ModuleInfo, Proc0, Proc, ProcMsgSet, MayHaveParallelConj, !IO),
+        !ModuleInfo, Proc0, Proc, ProcSpecs, MayHaveParallelConj, !IO),
     map.det_update(Procs0, ProcId, Proc, Procs),
     pred_info_set_procedures(Procs, !PredInfo),
-    set.to_sorted_list(ProcMsgSet, ProcMsgs),
-    list.filter((pred(context_det_msg(_, Msg)::in) is semidet :-
-            det_msg_is_any_mode_msg(Msg, any_mode)
-        ), ProcMsgs, ProcAnyModeMsgs, ProcAllModeMsgs),
-    set.sorted_list_to_set(ProcAnyModeMsgs, ProcAnyModeMsgSet),
-    set.sorted_list_to_set(ProcAllModeMsgs, ProcAllModeMsgSet),
+    list.filter((pred(error_spec(_, Phase, _)::in) is semidet :-
+            Phase = phase_simplify(report_only_if_in_all_modes)
+        ), ProcSpecs, ProcAllModeSpecs, ProcAnyModeSpecs),
+    set.sorted_list_to_set(ProcAnyModeSpecs, ProcAnyModeSpecSet),
+    set.sorted_list_to_set(ProcAllModeSpecs, ProcAllModeSpecSet),
     (
-        !.MaybeMsgs = yes(AnyModeMsgSet0 - AllModeMsgSet0),
-        set.union(AnyModeMsgSet0, ProcAnyModeMsgSet, AnyModeMsgSet),
-        set.intersect(AllModeMsgSet0, ProcAllModeMsgSet, AllModeMsgSet),
-        !:MaybeMsgs = yes(AllModeMsgSet - AnyModeMsgSet)
+        !.MaybeSpecs = yes(AnyModeSpecSet0 - AllModeSpecSet0),
+        set.union(AnyModeSpecSet0, ProcAnyModeSpecSet, AnyModeSpecSet),
+        set.intersect(AllModeSpecSet0, ProcAllModeSpecSet, AllModeSpecSet),
+        !:MaybeSpecs = yes(AllModeSpecSet - AnyModeSpecSet)
     ;
-        !.MaybeMsgs = no,
-        !:MaybeMsgs = yes(ProcAnyModeMsgSet - ProcAllModeMsgSet)
+        !.MaybeSpecs = no,
+        !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
     ),
     % This is ugly, but we want to avoid running the dependent parallel
     % conjunction pass on predicates not containing parallel conjunctions
@@ -360,7 +357,7 @@ simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
         MayHaveParallelConj = no
     ),
     simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
-        !MaybeMsgs, !IO).
+        !MaybeSpecs, !IO).
 
 simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !Proc, !IO)  :-
     write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo, !IO),
@@ -372,8 +369,7 @@ simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !Proc, !IO)  :-
 turn_off_common_struct_threshold = 1000.
 
 simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
-        !ProcInfo, DetMsgs, MayHaveParallelConj, !IO) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
+        !ProcInfo, ErrorSpecs, MayHaveParallelConj, !IO) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     NumVars = map.count(VarTypes0),
     ( NumVars > turn_off_common_struct_threshold ->
@@ -385,7 +381,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     ;
         Simplifications = Simplifications0
     ),
-    det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId, Globals, DetInfo0),
+    det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId, DetInfo0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     simplify_info_init(DetInfo0, Simplifications, InstMap0, !.ProcInfo, Info0),
     proc_info_get_goal(!.ProcInfo, Goal0),
@@ -416,7 +412,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
     simplify_info_get_module_info(Info, !:ModuleInfo),
-    simplify_info_get_det_msgs(Info, DetMsgs0),
+    simplify_info_get_error_specs(Info, ErrorSpecs0),
     (
         Info ^ format_calls = yes,
         (
@@ -430,11 +426,11 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         % build the format strings or values, which means that the new version
         % in Goal may not contain the information find_format_call_errors needs
         % to avoid spurious messages about unknown format strings or values.
-        find_format_call_errors(!.ModuleInfo, Goal0, DetMsgs0, DetMsgs1)
+        find_format_call_errors(!.ModuleInfo, Goal0, ErrorSpecs0, ErrorSpecs1)
     ;
         % Either there are no calls to check or we would ignore the added
         % messages anyway.
-        DetMsgs1 = DetMsgs0
+        ErrorSpecs1 = ErrorSpecs0
     ),
     pred_info_get_import_status(PredInfo, Status),
     IsDefinedHere = status_defined_in_this_module(Status),
@@ -443,10 +439,10 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         % Don't generate any warnings or even errors if the predicate isn't
         % defined here; any such messages will be generated when we compile
         % the module the predicate comes from.
-        set.init(DetMsgs)
+        ErrorSpecs = []
     ;
         IsDefinedHere = yes,
-        DetMsgs = DetMsgs1
+        ErrorSpecs = ErrorSpecs1
     ),
     MayHaveParallelConj = Info ^ may_have_parallel_conj.
 
@@ -536,7 +532,7 @@ do_process_goal(Goal0, Goal, !Info, !IO) :-
 
         simplify_info_get_det_info(!.Info, DetInfo),
         det_infer_goal(Goal3, Goal, InstMap0, SolnContext, [], no, DetInfo,
-            _, _, _)
+            _, _, [], _)
     ;
         Goal = Goal3
     ).
@@ -586,9 +582,20 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
                     )
             )
         ->
-            Msg = goal_cannot_succeed,
-            ContextMsg = context_det_msg(Context, Msg),
-            simplify_info_add_det_msg(ContextMsg, !Info)
+            MainPieces = [words("Warning: this goal cannot succeed.")],
+            VerbosePieces =
+                [words("The compiler will optimize away this goal,"),
+                words("replacing it with `fail'."),
+                words("To disable this optimization, use"),
+                words("the `--fully-strict' option.")],
+            Msg = simple_msg(Context,
+                [option_is_set(warn_simple_code, yes,
+                    [always(MainPieces), verbose_only(VerbosePieces)])]),
+            Severity = severity_conditional(warn_simple_code, yes,
+                severity_warning, no),
+            Spec = error_spec(Severity,
+                phase_simplify(report_only_if_in_all_modes), [Msg]),
+            simplify_info_add_error_spec(Spec, !Info)
         ;
             true
         ),
@@ -653,7 +660,7 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
 %       ->
 %           Msg = det_goal_has_no_outputs,
 %           ContextMsg = context_det_msg(Context, Msg),
-%           simplify_info_add_det_msg(ContextMsg, !Info)
+%           simplify_info_add_error_spec(ContextMsg, !Info)
 %       ;
 %           true
 %       ),
@@ -1131,9 +1138,15 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         ;
             InsideDuplForSwitch = no,
             goal_info_get_context(GoalInfo0, Context),
-            Msg = ite_cond_cannot_fail,
-            ContextMsg = context_det_msg(Context, Msg),
-            simplify_info_add_det_msg(ContextMsg, !Info)
+            Pieces = [words("Warning: the condition of this if-then-else"),
+                words("cannot fail.")],
+            Msg = simple_msg(Context,
+                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+            Severity = severity_conditional(warn_simple_code, yes,
+                severity_warning, no),
+            Spec = error_spec(Severity,
+                phase_simplify(report_only_if_in_all_modes), [Msg]),
+            simplify_info_add_error_spec(Spec, !Info)
         ),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
@@ -1142,11 +1155,10 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         det_negation_det(CondDetism0, MaybeNegDetism),
         (
             Cond0 = negation(NegCond) - _,
-            % XXX BUG! This optimization is only safe if it
-            % preserves mode correctness, which means in particular
-            % that the the negated goal must not clobber any
-            % variables.
-            % For now I've just disabled the optimization.
+            % XXX BUG! This optimization is only safe if it preserves mode
+            % correctness, which means in particular that the negated goal
+            % must not clobber any variables. For now I've just disabled
+            % the optimization.
             semidet_fail
         ->
             Cond = NegCond
@@ -1186,9 +1198,15 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         ;
             InsideDuplForSwitch = no,
             goal_info_get_context(GoalInfo0, Context),
-            Msg = ite_cond_cannot_succeed,
-            ContextMsg = context_det_msg(Context, Msg),
-            simplify_info_add_det_msg(ContextMsg, !Info)
+            Pieces = [words("Warning: the condition of this if-then-else"),
+                words("cannot succeed.")],
+            Msg = simple_msg(Context,
+                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+            Severity = severity_conditional(warn_simple_code, yes,
+                severity_warning, no),
+            Spec = error_spec(Severity,
+                phase_simplify(report_only_if_in_all_modes), [Msg]),
+            simplify_info_add_error_spec(Spec, !Info)
         ),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
@@ -1286,13 +1304,23 @@ simplify_goal_2(negation(Goal0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     determinism_components(Detism, CanFail, MaxSoln),
     goal_info_get_context(GoalInfo0, Context),
     ( CanFail = cannot_fail ->
-        Msg = negated_goal_cannot_fail,
-        ContextMsg = context_det_msg(Context, Msg),
-        simplify_info_add_det_msg(ContextMsg, !Info)
+        Pieces = [words("Warning: the negated goal cannot fail.")],
+        Msg = simple_msg(Context,
+            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+        Severity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity,
+            phase_simplify(report_only_if_in_all_modes), [Msg]),
+        simplify_info_add_error_spec(Spec, !Info)
     ; MaxSoln = at_most_zero ->
-        Msg = negated_goal_cannot_succeed,
-        ContextMsg = context_det_msg(Context, Msg),
-        simplify_info_add_det_msg(ContextMsg, !Info)
+        Pieces = [words("Warning: the negated goal cannot succeed.")],
+        Msg = simple_msg(Context,
+            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+        Severity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity,
+            phase_simplify(report_only_if_in_all_modes), [Msg]),
+        simplify_info_add_error_spec(Spec, !Info)
     ;
         true
     ),
@@ -1622,6 +1650,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
         !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    goal_info_get_context(GoalInfo0, GoalContext),
     % Check for calls to predicates with `pragma obsolete' declarations.
     (
         simplify_do_warn_obsolete(!.Info),
@@ -1643,10 +1672,19 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
         pred_info_get_markers(ThisPredInfo, ThisPredMarkers),
         not check_marker(ThisPredMarkers, marker_obsolete)
     ->
-        goal_info_get_context(GoalInfo0, Context1),
-        ObsoleteMsg = warn_call_to_obsolete(PredId),
-        ObsoleteContextMsg = context_det_msg(Context1, ObsoleteMsg),
-        simplify_info_add_det_msg(ObsoleteContextMsg, !Info)
+        % XXX warn_obsolete isn't really a simple code warning.
+        % We should add a separate warning type for this.
+        ObsoletePredPieces = describe_one_pred_name(ModuleInfo,
+            should_module_qualify, PredId),
+        ObsoletePieces = [words("Warning: call to obsolete")] ++
+            ObsoletePredPieces ++ [suffix("."), nl],
+        ObsoleteMsg = simple_msg(GoalContext,
+            [option_is_set(warn_simple_code, yes, [always(ObsoletePieces)])]),
+        ObsoleteSeverity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        ObsoleteSpec = error_spec(ObsoleteSeverity,
+            phase_simplify(report_in_any_mode), [ObsoleteMsg]),
+        simplify_info_add_error_spec(ObsoleteSpec, !Info)
     ;
         true
     ),
@@ -1714,10 +1752,26 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
         pred_info_get_purity(PredInfo1, Purity),
         \+ Purity = purity_impure
     ->
-        goal_info_get_context(GoalInfo0, Context2),
-        InfiniteRecMsg = warn_infinite_recursion,
-        InfiniteRecContextMsg = context_det_msg(Context2, InfiniteRecMsg),
-        simplify_info_add_det_msg(InfiniteRecContextMsg, !Info)
+        % It would be better if we supplied more information than just
+        % the line number, e.g. we should print the name of the containing
+        % predicate.
+
+        InfiniteRecMainPieces = [words("Warning: recursive call will lead to"),
+            words("infinite recursion.")],
+        InfiniteRecVerbosePieces =
+            [words("If this recursive call is executed,"),
+            words("the procedure will call itself"),
+            words("with exactly the same input arguments,"),
+            words("leading to infinite recursion.")],
+        InfiniteRecMsg = simple_msg(GoalContext,
+            [option_is_set(warn_simple_code, yes,
+                [always(InfiniteRecMainPieces),
+                verbose_only(InfiniteRecVerbosePieces)])]),
+        InfiniteRecSeverity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        InfiniteRecSpec = error_spec(InfiniteRecSeverity,
+            phase_simplify(report_in_any_mode), [InfiniteRecMsg]),
+        simplify_info_add_error_spec(InfiniteRecSpec, !Info)
     ;
         true
     ),
@@ -2451,9 +2505,15 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
             Goal0 \= disj([]) - _
         ->
             goal_info_get_context(GoalInfo, Context),
-            Msg = zero_soln_disjunct,
-            ContextMsg = context_det_msg(Context, Msg),
-            simplify_info_add_det_msg(ContextMsg, !Info)
+            Pieces = [words("Warning: this disjunct"),
+                words("will never have any solutions.")],
+            Msg = simple_msg(Context,
+                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+            Severity = severity_conditional(warn_simple_code, yes,
+                severity_warning, no),
+            Spec = error_spec(Severity,
+                phase_simplify(report_only_if_in_all_modes), [Msg]),
+            simplify_info_add_error_spec(Spec, !Info)
         ;
             true
         ),
@@ -2598,7 +2658,7 @@ contains_multisoln_goal(Goals) :-
 :- type simplify_info
     --->    simplify_info(
                 det_info                :: det_info,
-                msgs                    :: set(context_det_msg),
+                error_specs             :: list(error_spec),
                 simplifications         :: simplifications,
                 common_info             :: common_info,
                                         % Info about common subexpressions.
@@ -2636,8 +2696,7 @@ simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    set.init(Msgs),
-    Info = simplify_info(DetInfo, Msgs, Simplifications,
+    Info = simplify_info(DetInfo, [], Simplifications,
         common_info_init, InstMap, VarSet, InstVarSet,
         no, no, no, 0, 0, RttiVarMaps, no, no, no).
 
@@ -2660,14 +2719,13 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
 :- interface.
 
 :- import_module parse_tree.prog_data.
-:- import_module set.
 
 :- pred simplify_info_init(det_info::in, simplifications::in,
     instmap::in, proc_info::in, simplify_info::out) is det.
 
 :- pred simplify_info_get_det_info(simplify_info::in, det_info::out) is det.
-:- pred simplify_info_get_det_msgs(simplify_info::in,
-    set(context_det_msg)::out) is det.
+:- pred simplify_info_get_error_specs(simplify_info::in, list(error_spec)::out)
+    is det.
 :- pred simplify_info_get_simplifications(simplify_info::in,
     simplifications::out) is det.
 :- pred simplify_info_get_common_info(simplify_info::in, common_info::out)
@@ -2696,7 +2754,7 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_rtti_varmaps(rtti_varmaps::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_do_add_det_msg(context_det_msg::in,
+:- pred simplify_info_do_add_error_spec(error_spec::in,
     simplify_info::in, simplify_info::out) is det.
 
 :- pred simplify_info_incr_cost_delta(int::in,
@@ -2712,7 +2770,7 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
     bool::out) is det.
 
 simplify_info_get_det_info(Info, Info ^ det_info).
-simplify_info_get_det_msgs(Info, Info ^ msgs).
+simplify_info_get_error_specs(Info, Info ^ error_specs).
 simplify_info_get_simplifications(Info, Info ^ simplifications).
 simplify_info_get_common_info(Info, Info ^ common_info).
 simplify_info_get_instmap(Info, Info ^ instmap).
@@ -2751,7 +2809,7 @@ simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
 
 :- pred simplify_info_set_det_info(det_info::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_det_msgs(set(context_det_msg)::in,
+:- pred simplify_info_set_error_specs(list(error_spec)::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_simplifications(simplifications::in,
     simplify_info::in, simplify_info::out) is det.
@@ -2768,7 +2826,7 @@ simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
 :- pred simplify_info_set_inside_duplicated_for_switch(bool::in,
     simplify_info::in, simplify_info::out) is det.
 
-:- pred simplify_info_add_det_msg(context_det_msg::in,
+:- pred simplify_info_add_error_spec(error_spec::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_cost_delta(int::in,
     simplify_info::in, simplify_info::out) is det.
@@ -2783,7 +2841,7 @@ simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
     simplify_info::in, simplify_info::out) is det.
 
 simplify_info_set_det_info(Det, Info, Info ^ det_info := Det).
-simplify_info_set_det_msgs(Msgs, Info, Info ^ msgs := Msgs).
+simplify_info_set_error_specs(Specs, Info, Info ^ error_specs := Specs).
 simplify_info_set_simplifications(Simp, Info, Info ^ simplifications := Simp).
 simplify_info_set_instmap(InstMap, Info, Info ^ instmap := InstMap).
 simplify_info_set_common_info(Common, Info, Info ^ common_info := Common).
@@ -2802,17 +2860,17 @@ simplify_info_set_inside_duplicated_for_switch(IDFS, Info,
 simplify_info_incr_cost_delta(Incr, Info,
     Info ^ cost_delta := Info ^ cost_delta + Incr).
 
-simplify_info_add_det_msg(Msg, !Info) :-
+simplify_info_add_error_spec(Spec, !Info) :-
     ( simplify_do_warn_simple_code(!.Info) ->
-        simplify_info_do_add_det_msg(Msg, !Info)
+        simplify_info_do_add_error_spec(Spec, !Info)
     ;
         true
     ).
 
-simplify_info_do_add_det_msg(Msg, !Info) :-
-    simplify_info_get_det_msgs(!.Info, Msgs0),
-    set.insert(Msgs0, Msg, Msgs),
-    simplify_info_set_det_msgs(Msgs, !Info).
+simplify_info_do_add_error_spec(Spec, !Info) :-
+    simplify_info_get_error_specs(!.Info, Specs0),
+    Specs = [Spec | Specs0],
+    simplify_info_set_error_specs(Specs, !Info).
 
 simplify_info_enter_lambda(Info, Info ^ lambdas := Info ^ lambdas + 1).
 simplify_info_leave_lambda(Info, Info ^ lambdas := LambdaCount) :-

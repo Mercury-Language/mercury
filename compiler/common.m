@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: common.m.
 % Original author: squirrel (Jane Anna Langley).
 % Some bugs fixed by fjh.
 % Extensive revision by zs.
 % More revision by stayl.
-% 
+%
 % This module attempts to optimise out instances where a variable is
 % decomposed and then soon after reconstructed from the parts. If possible we
 % would like to "short-circuit" this process.  It also optimizes
@@ -25,7 +25,7 @@
 % information, since the compiler does not yet have such information.  Once we
 % implement ctgc, the assumptions made by this module will have to be
 % revisited.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module check_hlds.common.
@@ -99,10 +99,13 @@
 :- import_module hlds.instmap.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module libs.options.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type.
-:- import_module transform_hlds.    % for pd_cost, etc.
+:- import_module transform_hlds.
 :- import_module transform_hlds.pd_cost.
 
+:- import_module bool.
 :- import_module eqvclass.
 :- import_module map.
 :- import_module maybe.
@@ -571,9 +574,22 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 types_match_exactly_list(OutputArgTypes1, OutputArgTypes2)
             ->
                 goal_info_get_context(GoalInfo, Context),
-                Msg = duplicate_call(SeenCall, PrevContext),
-                ContextMsg = context_det_msg(Context, Msg),
-                simplify_info_do_add_det_msg(ContextMsg, !Info)
+                CallPieces = det_report_seen_call_id(ModuleInfo, SeenCall),
+                CurPieces = [words("Warning: redundant") | CallPieces]
+                    ++ [suffix(".")],
+                PrevPieces = [words("Here is the previous") | CallPieces]
+                    ++ [suffix(".")],
+                Severity = severity_conditional(warn_duplicate_calls, yes,
+                    severity_warning, no),
+                Msg = simple_msg(Context,
+                    [option_is_set(warn_duplicate_calls, yes,
+                        [always(CurPieces)])]),
+                PrevMsg = error_msg(yes(PrevContext), yes, 0,
+                    [option_is_set(warn_duplicate_calls, yes,
+                        [always(PrevPieces)])]),
+                Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
+                    [Msg, PrevMsg]),
+                simplify_info_do_add_error_spec(Spec, !Info)
             ;
                 true
             ),

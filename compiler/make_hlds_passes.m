@@ -136,14 +136,14 @@
 
 do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
         ModuleInfo, QualInfo, InvalidTypes, InvalidModes, !IO) :-
-    some [!Module, !Specs] (
+    some [!ModuleInfo, !Specs] (
         globals.io_get_globals(Globals, !IO),
         mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
-        module_info_init(Name, Items, Globals, PQInfo, no, !:Module),
-        module_info_set_used_modules(UsedModules, !Module),
+        module_info_init(Name, Items, Globals, PQInfo, no, !:ModuleInfo),
+        module_info_set_used_modules(UsedModules, !ModuleInfo),
         !:Specs = [],
         add_item_list_decls_pass_1(Items,
-            item_status(status_local, may_be_unqualified), !Module,
+            item_status(status_local, may_be_unqualified), !ModuleInfo,
             no, InvalidModes0, !Specs),
         globals.io_lookup_bool_option(statistics, Statistics, !IO),
         maybe_write_string(Statistics, "% Processed all items in pass 1\n",
@@ -152,7 +152,7 @@ do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
 
         add_item_list_decls_pass_2(Items,
             item_status(status_local, may_be_unqualified),
-            !Module, [], Pass2Specs),
+            !ModuleInfo, [], Pass2Specs),
         (
             Pass2Specs = [],
             InvalidTypes1 = no
@@ -168,9 +168,9 @@ do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
         % may cause a compiler abort.
         (
             InvalidTypes1 = no,
-            module_info_get_type_table(!.Module, Types),
-            map.foldl3(process_type_defn, Types, no, InvalidTypes2, !Module,
-                !Specs)
+            module_info_get_type_table(!.ModuleInfo, Types),
+            map.foldl3(process_type_defn, Types, no, InvalidTypes2,
+                !ModuleInfo, !Specs)
         ;
             InvalidTypes1 = yes,
             InvalidTypes2 = yes
@@ -180,21 +180,21 @@ do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
         % type declaration, hence no hlds_type_defn is generated for them.
         (
             Name = mercury_public_builtin_module,
-            compiler_generated_rtti_for_builtins(!.Module)
+            compiler_generated_rtti_for_builtins(!.ModuleInfo)
         ->
             list.foldl(add_builtin_type_ctor_special_preds,
-                builtin_type_ctors_with_no_hlds_type_defn, !Module)
+                builtin_type_ctors_with_no_hlds_type_defn, !ModuleInfo)
         ;
             true
         ),
 
         % Balance any data structures that need it.
-        module_info_optimize(!Module),
+        module_info_optimize(!ModuleInfo),
         maybe_write_string(Statistics, "% Processed all items in pass 2\n",
             !IO),
         maybe_report_stats(Statistics, !IO),
         init_qual_info(MQInfo0, EqvMap, QualInfo0),
-        add_item_list_clauses(Items, status_local, !Module,
+        add_item_list_clauses(Items, status_local, !ModuleInfo,
             QualInfo0, QualInfo, !Specs),
 
         qual_info_get_mq_info(QualInfo, MQInfo),
@@ -205,13 +205,15 @@ do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
 
         % The predid list is constructed in reverse order, for efficiency,
         % so we return it to the correct order here.
-        module_info_reverse_predids(!Module),
+        module_info_reverse_predids(!ModuleInfo),
 
         sort_error_specs(!.Specs, SortedSpecs),
-        write_error_specs(SortedSpecs, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !Module),
+        module_info_get_globals(!.ModuleInfo, CurGlobals),
+        write_error_specs(SortedSpecs, CurGlobals, 0, _NumWarnings,
+            0, NumErrors, !IO),
+        module_info_incr_num_errors(NumErrors, !ModuleInfo),
 
-        ModuleInfo = !.Module
+        ModuleInfo = !.ModuleInfo
     ).
 
 :- pred add_builtin_type_ctor_special_preds(type_ctor::in,
@@ -634,9 +636,11 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
     Item = item_instance(Constraints, Name, Types, Body, VarSet,
         InstanceModuleName),
     !.Status = item_status(ImportStatus, _),
-    ( Body = abstract ->
+    (
+        Body = instance_body_abstract,
         make_status_abstract(ImportStatus, BodyStatus)
     ;
+        Body = instance_body_concrete(_),
         BodyStatus = ImportStatus
     ),
     module_add_instance_defn(InstanceModuleName, Constraints, Name, Types,
@@ -2046,13 +2050,13 @@ marker_must_be_exported(_) :-
     semidet_fail.
 
 maybe_check_field_access_function(FuncName, FuncArity, Status, Context,
-        Module, !Specs) :-
+        ModuleInfo, !Specs) :-
     (
-        is_field_access_function_name(Module, FuncName, FuncArity,
+        is_field_access_function_name(ModuleInfo, FuncName, FuncArity,
             AccessType, FieldName)
     ->
         check_field_access_function(AccessType, FieldName, FuncName,
-            FuncArity, Status, Context, Module, !Specs)
+            FuncArity, Status, Context, ModuleInfo, !Specs)
     ;
         true
     ).
@@ -2062,12 +2066,12 @@ maybe_check_field_access_function(FuncName, FuncArity, Status, Context,
     module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
-        FuncStatus, Context, Module, !Specs) :-
+        FuncStatus, Context, ModuleInfo, !Specs) :-
     adjust_func_arity(function, FuncArity, PredArity),
     FuncCallId = simple_call_id(function, FuncName, PredArity),
 
     % Check that a function applied to an exported type is also exported.
-    module_info_get_ctor_field_table(Module, CtorFieldTable),
+    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     (
         % Abstract types have status `abstract_exported', so errors won't be
         % reported for local field access functions for them.
