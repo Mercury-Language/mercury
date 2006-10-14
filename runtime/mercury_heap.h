@@ -494,7 +494,7 @@ MR_create2_func(MR_Word w1, MR_Word w2)
 {
     MR_Word *p;
 
-    p == (MR_Word *) MR_new_object(MR_Word, 2 * sizeof(MR_Word), "create2");
+    p = (MR_Word *) MR_new_object(MR_Word, 2 * sizeof(MR_Word), "create2");
     p[0] = w1;
     p[1] = w2;
     return (MR_Word) p;
