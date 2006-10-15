@@ -554,8 +554,8 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
     goal_info_get_determinism(GoalInfo0, Detism),
     simplify_info_get_det_info(!.Info, DetInfo),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
-    goal_can_loop_or_throw(Goal0, Goal0CanLoopOrThrow, ModuleInfo0,
-        ModuleInfo, !IO),
+    goal_can_loop_or_throw(Goal0, Goal0CanLoopOrThrow, ModuleInfo0, ModuleInfo,
+         !IO),
     simplify_info_set_module_info(ModuleInfo, !Info),
     goal_info_get_purity(GoalInfo0, Purity),
     (
