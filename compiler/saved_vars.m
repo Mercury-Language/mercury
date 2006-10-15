@@ -318,32 +318,32 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         (
             Goal0Expr = unify(_, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
-            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
+            rename_some_vars_in_goal(Subst, Construct, NewConstruct),
+            rename_some_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
             Goal0Expr = plain_call(_, _, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
-            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
+            rename_some_vars_in_goal(Subst, Construct, NewConstruct),
+            rename_some_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
             Goal0Expr = generic_call(_, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
-            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
+            rename_some_vars_in_goal(Subst, Construct, NewConstruct),
+            rename_some_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
             Goal0Expr = call_foreign_proc(_, _, _, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
-            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
+            rename_some_vars_in_goal(Subst, Construct, NewConstruct),
+            rename_some_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
@@ -366,8 +366,8 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         ;
             Goal0Expr = scope(Reason, SomeGoal0),
             rename_var(Var, NewVar, Subst, !SlotInfo),
-            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util.rename_vars_in_goal(Subst, SomeGoal0, SomeGoal1),
+            rename_some_vars_in_goal(Subst, Construct, NewConstruct),
+            rename_some_vars_in_goal(Subst, SomeGoal0, SomeGoal1),
             push_into_goal(SomeGoal1, SomeGoal, NewConstruct, NewVar,
                 !SlotInfo),
             Goal1 = scope(Reason, SomeGoal) - Goal0Info,
@@ -377,8 +377,8 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         ;
             Goal0Expr = negation(NegGoal0),
             rename_var(Var, NewVar, Subst, !SlotInfo),
-            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util.rename_vars_in_goal(Subst, NegGoal0, NegGoal1),
+            rename_some_vars_in_goal(Subst, Construct, NewConstruct),
+            rename_some_vars_in_goal(Subst, NegGoal0, NegGoal1),
             push_into_goal(NegGoal1, NegGoal, NewConstruct, NewVar,
                 !SlotInfo),
             Goal1 = negation(NegGoal) - Goal0Info,
@@ -454,8 +454,8 @@ push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo) :-
     goal_info_get_nonlocals(GoalInfo0, NonLocals),
     ( set.member(Var, NonLocals) ->
         rename_var(Var, NewVar, Subst, !SlotInfo),
-        goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
-        goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
+        rename_some_vars_in_goal(Subst, Construct, NewConstruct),
+        rename_some_vars_in_goal(Subst, Goal0, Goal1),
         push_into_goal(Goal1, Goal, NewConstruct, NewVar, !SlotInfo)
     ;
         saved_vars_in_goal(Goal0, Goal, !SlotInfo)

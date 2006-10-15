@@ -397,7 +397,7 @@ write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
     (
         VeryVerbose = yes,
         io.write_string(Message, !IO),
-        hlds_out.write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
+        hlds_out.write_pred_proc_id_pair(ModuleInfo, PredId, ProcId, !IO),
         io.write_string("\n", !IO)
     ;
         VeryVerbose = no

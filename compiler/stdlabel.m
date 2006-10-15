@@ -56,7 +56,7 @@ standardize_labels(Instrs0, Instrs, _, !:ProcCounter) :-
     opt_util.get_prologue(Instrs0, LabelInstr, Comments, Instrs1),
     (
         LabelInstr = label(FirstLabel) - _,
-        FirstLabel = entry(_, ProcLabel)
+        FirstLabel = entry_label(_, ProcLabel)
     ->
         build_std_map(Instrs1, ProcLabel, counter.init(1), !:ProcCounter,
             map.init, Map),
@@ -76,7 +76,7 @@ build_std_map([], _, !Counter, !Map).
 build_std_map([Instr | Instrs], ProcLabel, !Counter, !Map) :-
     ( Instr = label(Label) - _ ->
         counter.allocate(LabelNum, !Counter),
-        StdLabel = internal(LabelNum, ProcLabel),
+        StdLabel = internal_label(LabelNum, ProcLabel),
         svmap.det_insert(Label, StdLabel, !Map)
     ;
         true

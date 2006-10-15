@@ -353,7 +353,7 @@ generate_primary_try_me_else_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         TestRval = binop(ne, TagRval,
             unop(mktag, const(llconst_int(Primary)))),
         TestCode = node([
-            if_val(TestRval, label(ElseLabel)) - "test primary tag only"
+            if_val(TestRval, code_label(ElseLabel)) - "test primary tag only"
         ]),
         generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc,
             VarRval, CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
@@ -373,7 +373,7 @@ generate_primary_try_me_else_chain([PtagGroup | PtagGroups], TagRval, VarRval,
             % so this goto will be optimized away (unless the
             % layout of the failcode in the caller changes).
             FailCode = node([
-                goto(label(FailLabel)) -
+                goto(code_label(FailLabel)) -
                     "primary tag with no code to handle it"
             ]),
             Code = tree(ThisTagCode, FailCode)
@@ -414,7 +414,8 @@ generate_primary_try_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         TestRval = binop(eq, TagRval,
             unop(mktag, const(llconst_int(Primary)))),
         TestCode = node([
-            if_val(TestRval, label(ThisPtagLabel)) - "test primary tag only"
+            if_val(TestRval, code_label(ThisPtagLabel))
+                - "test primary tag only"
         ]),
         LabelCode = node([label(ThisPtagLabel) - "this primary tag"]),
         generate_primary_tag_code(StagGoalMap, Primary, MaxSecondary, StagLoc,
@@ -431,7 +432,7 @@ generate_primary_try_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         ;
             PtagGroups = [],
             FailCode = node([
-                goto(label(FailLabel)) -
+                goto(code_label(FailLabel)) -
                     "primary tag with no code to handle it"
             ]),
             Code = tree(PrevTests, tree(FailCode, PrevCases))
@@ -532,7 +533,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
                 CanFail = can_fail,
                 string.int_to_string(CurPrimary, PtagStr),
                 string.append("no code for ptag ", PtagStr, Comment),
-                Code = node([goto(label(FailLabel)) - Comment])
+                Code = node([goto(code_label(FailLabel)) - Comment])
             ;
                 CanFail = cannot_fail,
                 Code = empty
@@ -574,7 +575,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
             " to ", HighEndStr], LabelComment),
         LowRangeEndConst = const(llconst_int(LowRangeEnd)),
         TestRval = binop(int_gt, PtagRval, LowRangeEndConst),
-        IfCode = node([if_val(TestRval, label(NewLabel)) - IfComment]),
+        IfCode = node([if_val(TestRval, code_label(NewLabel)) - IfComment]),
         LabelCode = node([label(NewLabel) - LabelComment]),
 
         code_info.remember_position(!.CI, BranchStart),
@@ -616,7 +617,8 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
             goal_info_get_store_map(SwitchGoalInfo, StoreMap),
             code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
             GotoCode = node([
-                goto(label(EndLabel)) - "skip to end of primary tag switch"
+                goto(code_label(EndLabel))
+                    - "skip to end of primary tag switch"
             ]),
             Code = tree_list([CommentCode, TraceCode, GoalCode, SaveCode,
                 GotoCode])
@@ -746,7 +748,7 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
         code_info.get_next_label(ElseLabel, !CI),
         TestCode = node([
             if_val(binop(ne, StagRval, const(llconst_int(Secondary))),
-                label(ElseLabel))
+                code_label(ElseLabel))
                 - "test remote sec tag only"
         ]),
         maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
@@ -755,7 +757,7 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
         code_info.generate_branch_end(StoreMap, !MaybeEnd,
             SaveCode, !CI),
         GotoLabelCode = node([
-            goto(label(EndLabel)) - "skip to end of secondary tag switch",
+            goto(code_label(EndLabel)) - "skip to end of secondary tag switch",
             label(ElseLabel) - "handle next secondary tag"
         ]),
         ThisCode = tree_list([TestCode, CommentCode, TraceCode, GoalCode,
@@ -770,7 +772,7 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
         ;
             Cases0 = [],
             FailCode = node([
-                goto(label(FailLabel)) - "secondary tag does not match"
+                goto(code_label(FailLabel)) - "secondary tag does not match"
             ]),
             Code = tree(ThisCode, FailCode)
         )
@@ -780,7 +782,7 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         GotoCode = node([
-            goto(label(EndLabel)) - "skip to end of secondary tag switch"
+            goto(code_label(EndLabel)) - "skip to end of secondary tag switch"
         ]),
         Code = tree_list([CommentCode, TraceCode, GoalCode, SaveCode,
             GotoCode])
@@ -812,7 +814,7 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
         code_info.get_next_label(ThisStagLabel, !CI),
         TestCode = node([
             if_val(binop(eq, StagRval, const(llconst_int(Secondary))),
-                label(ThisStagLabel))
+                code_label(ThisStagLabel))
                 - ("test remote sec tag only for " ++ Comment)
         ]),
         LabelCode = node([
@@ -824,7 +826,7 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         GotoCode = node([
-            goto(label(EndLabel)) - "skip to end of secondary tag switch"
+            goto(code_label(EndLabel)) - "skip to end of secondary tag switch"
         ]),
         ThisCode = tree_list([LabelCode, TraceCode, GoalCode, SaveCode,
             GotoCode]),
@@ -839,7 +841,7 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
         ;
             Cases0 = [],
             FailCode = node([
-                goto(label(FailLabel)) -
+                goto(code_label(FailLabel)) -
                     "secondary tag with no code to handle it"
             ]),
             Code = tree(PrevTests, tree(FailCode, PrevCases))
@@ -851,7 +853,7 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         GotoCode = node([
-            goto(label(EndLabel)) - "skip to end of secondary tag switch"
+            goto(code_label(EndLabel)) - "skip to end of secondary tag switch"
         ]),
         Code = tree_list([PrevTests0, CommentCode, TraceCode, GoalCode,
             SaveCode, GotoCode, PrevCases0])
@@ -896,7 +898,7 @@ generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary, CodeModel,
                 code_info.reset_to_position(BranchStart, !CI)
             ),
             GotoCode = node([
-                goto(label(EndLabel)) - "branch to end of tag switch"
+                goto(code_label(EndLabel)) - "branch to end of tag switch"
             ]),
             generate_secondary_jump_table(CaseList1, NextSecondary,
                 MaxSecondary, CodeModel, SwitchGoalInfo, EndLabel, FailLabel,
@@ -936,7 +938,7 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
                 CanFail = can_fail,
                 string.int_to_string(CurSec, StagStr),
                 string.append("no code for ptag ", StagStr, Comment),
-                Code = node([goto(label(FailLabel)) - Comment])
+                Code = node([goto(code_label(FailLabel)) - Comment])
             ;
                 CanFail = cannot_fail,
                 Code = empty
@@ -978,7 +980,7 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             " to ", HighEndStr], LabelComment),
         LowRangeEndConst = const(llconst_int(LowRangeEnd)),
         TestRval = binop(int_gt, StagRval, LowRangeEndConst),
-        IfCode = node([if_val(TestRval, label(NewLabel)) - IfComment]),
+        IfCode = node([if_val(TestRval, code_label(NewLabel)) - IfComment]),
         LabelCode = node([label(NewLabel) - LabelComment ]),
 
         code_info.remember_position(!.CI, BranchStart),

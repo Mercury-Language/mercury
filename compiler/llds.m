@@ -955,13 +955,15 @@
             % proc entry; exported from a Mercury module
 
 :- type label
-    --->    internal(int, proc_label)
-    ;       entry(entry_label_type, proc_label).
+    --->    internal_label(int, proc_label)
+    ;       entry_label(entry_label_type, proc_label).
 
 :- type code_addr
-    --->    label(label)            % A label defined in this Mercury module.
-    ;       imported(proc_label)    % A label from another Mercury module.
-    ;       succip                  % The address in the `succip' register.
+    --->    code_label(label)       % A label defined in this Mercury module.
+    ;       code_imported_proc(proc_label)
+                                    % A label for a procedure from another
+                                    % Mercury module.
+    ;       code_succip             % The address in the `succip' register.
     ;       do_succeed(bool)        % The bool is `yes' if there are any
                                     % alternatives left. If the bool is `no',
                                     % we do a succeed_discard() rather than
@@ -1143,9 +1145,9 @@ stack_slot_num_to_lval(CodeModel, SlotNum) =
 
 break_up_local_label(Label, ProcLabel, LabelNum) :-
     (
-        Label = internal(LabelNum, ProcLabel)
+        Label = internal_label(LabelNum, ProcLabel)
     ;
-        Label = entry(_, _),
+        Label = entry_label(_, _),
         unexpected(this_file, "break_up_local_label: entry label")
     ).
 
@@ -1268,8 +1270,8 @@ binop_return_type(body, word).
 register_type(reg_r, word).
 register_type(reg_f, float).
 
-get_proc_label(entry(_, ProcLabel)) = ProcLabel.
-get_proc_label(internal(_, ProcLabel)) = ProcLabel.
+get_proc_label(entry_label(_, ProcLabel)) = ProcLabel.
+get_proc_label(internal_label(_, ProcLabel)) = ProcLabel.
 
 get_defining_module_name(ordinary_proc_label(ModuleName, _, _, _, _, _))
     = ModuleName.

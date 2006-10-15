@@ -1224,7 +1224,7 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
         % Swap the arguments.
         [A, B] = set.to_sorted_list(Vars),
         map.from_assoc_list([A-B, B-A], Subst),
-        goal_util.rename_vars_in_goal(Subst, Goal, SwappedGoal),
+        goal_util.rename_some_vars_in_goal(Subst, Goal, SwappedGoal),
         CSGoal = SwappedGoal - InstMap
     ),
 
@@ -1565,7 +1565,7 @@ create_orig_goal(Call, Substs, HeadToCallSubst, CallToHeadSubst,
     U = create_new_orig_recursive_goals(UpdateBase, Update,
         HeadToCallSubst, UpdateSubst, C),
 
-    goal_util.rename_vars_in_goal(CallToHeadSubst, Call, BaseCall),
+    goal_util.rename_some_vars_in_goal(CallToHeadSubst, Call, BaseCall),
     Cbefore = goal_list(set.to_sorted_list(Before), C),
     Uupdate = goal_list(set.to_sorted_list(UpdateBase) ++
         set.to_sorted_list(Update), U),
@@ -1588,7 +1588,7 @@ create_acc_goal(Call, Substs, HeadToCallSubst, BaseIds, BasePairs, Sets,
     BaseIds = base(_UpdateBase, AssocBase, OtherBase),
     Sets = sets(Before, Assoc, ConstructAssoc, Construct, Update, _Reject),
 
-    goal_util.rename_vars_in_goal(RecCallSubst, Call, RecCall),
+    goal_util.rename_some_vars_in_goal(RecCallSubst, Call, RecCall),
 
     Cbefore = goal_list(set.to_sorted_list(Before), C),
 
@@ -1792,7 +1792,7 @@ rename(Ids, Subst, From, Initial) = Final :-
     list.foldl(
         (pred(Id::in, GS0::in, GS::out) is det :-
             goal_store_lookup(From, Id, Goal0 - InstMap),
-            goal_util.rename_vars_in_goal(Subst, Goal0, Goal),
+            goal_util.rename_some_vars_in_goal(Subst, Goal0, Goal),
             goal_store_det_insert(Id, Goal - InstMap, GS0, GS)
         ), Ids, Initial, Final).
 

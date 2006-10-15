@@ -52,7 +52,7 @@
         T::in, T::out) is det
 ].
 
-:- pred build_live_sets_in_goal(hlds_goal::in, hlds_goal::out,
+:- pred build_live_sets_in_goal_no_par_stack(hlds_goal::in, hlds_goal::out,
     set(prog_var)::in, alloc_data::in, T::in, T::out,
     set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, set(prog_var)::out) is det <= stack_alloc_info(T).
@@ -103,12 +103,12 @@
 % traversal of the goal. The liveness information is computed from the liveness
 % delta annotations.
 
-build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
-        AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
+build_live_sets_in_goal_no_par_stack(Goal0 - GoalInfo0, Goal - GoalInfo,
+        ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
     ParStackVars0 = parallel_stackvars(set.init, [], set.init),
     build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
-            AllocData, !StackAlloc, !Liveness, !NondetLiveness,
-            ParStackVars0, _ParStackVars).
+        AllocData, !StackAlloc, !Liveness, !NondetLiveness,
+        ParStackVars0, _ParStackVars).
 
 :- pred build_live_sets_in_goal(hlds_goal::in, hlds_goal::out,
     set(prog_var)::in, alloc_data::in, T::in, T::out,

@@ -197,7 +197,7 @@ jumpopt.build_maps([Instr0 | Instrs0], Recjump, !Instrmap, !Blockmap,
         % Put the start of the procedure into Blockmap only after
         % frameopt has had a shot at it.
         (
-            ( Label = internal(_, _)
+            ( Label = internal_label(_, _)
             ; Recjump = yes
             )
         ->
@@ -291,7 +291,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
     (
         Uinstr0 = llcall(Proc, RetAddr, LiveInfos, Context, GoalPath,
             CallModel),
-        ( RetAddr = label(RetLabel) ->
+        ( RetAddr = code_label(RetLabel) ->
             (
                 % Look for det style tailcalls. We look for this even if
                 % the call is semidet, because one of the optimizations below
@@ -352,10 +352,10 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 not set.member(RetLabel, LayoutLabels)
             ->
                 counter.allocate(LabelNum, Counter0, Counter1),
-                NewLabel = internal(LabelNum, ProcLabel),
+                NewLabel = internal_label(LabelNum, ProcLabel),
                 NewInstrs = [
                     if_val(binop(ne, lval(curfr), lval(maxfr)),
-                        label(NewLabel))
+                        code_label(NewLabel))
                         - "branch around if cannot tail call",
                     assign(maxfr, lval(prevfr_slot(lval(curfr))))
                         - "discard this frame",
@@ -381,7 +381,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 ( RetLabel = DestLabel ->
                     NewInstrs = [Instr0]
                 ;
-                    NewInstrs = [llcall(Proc, label(DestLabel), LiveInfos,
+                    NewInstrs = [llcall(Proc, code_label(DestLabel), LiveInfos,
                         Context, GoalPath, CallModel)
                         - redirect_comment(Comment0)]
                 ),
@@ -394,7 +394,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         )
     ;
         Uinstr0 = goto(TargetAddr),
-        ( TargetAddr = label(TargetLabel) ->
+        ( TargetAddr = code_label(TargetLabel) ->
             (
                 % Eliminate the goto if possible.
                 opt_util.is_this_label_next(TargetLabel, Instrs0, _)
@@ -402,7 +402,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 NewInstrs = [],
                 NewRemain = specified(NewInstrs, Instrs0)
             ;
-                PrevInstr = if_val(_, label(IfTargetLabel)),
+                PrevInstr = if_val(_, code_label(IfTargetLabel)),
                 opt_util.is_this_label_next(IfTargetLabel, Instrs0, _)
             ->
                 % Eliminating the goto (by the local peephole pass)
@@ -418,14 +418,14 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 map.search(Procmap, TargetLabel, Between0)
             ->
                 jumpopt.adjust_livevals(PrevInstr, Between0, Between),
-                NewInstrs = Between ++ [goto(succip) - "shortcircuit"],
+                NewInstrs = Between ++ [goto(code_succip) - "shortcircuit"],
                 NewRemain = specified(NewInstrs, Instrs0)
             ;
                 % Replace a jump to a semidet epilog with the epilog.
                 map.search(Sdprocmap, TargetLabel, Between0)
             ->
                 jumpopt.adjust_livevals(PrevInstr, Between0, Between),
-                NewInstrs = Between ++ [goto(succip) - "shortcircuit"],
+                NewInstrs = Between ++ [goto(code_succip) - "shortcircuit"],
                 NewRemain = specified(NewInstrs, Instrs0)
             ;
                 % Replace a jump to a nondet epilog with the epilog.
@@ -485,7 +485,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                     ( TargetLabel = DestLabel ->
                         NewInstrs0 = [Instr0]
                     ;
-                        NewInstrs0 = [goto(label(DestLabel)) - Shorted]
+                        NewInstrs0 = [goto(code_label(DestLabel)) - Shorted]
                     )
                 ),
                 ( map.search(Lvalmap, DestLabel, yes(Lvalinstr)) ->
@@ -514,7 +514,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         )
     ;
         Uinstr0 = if_val(Cond, TargetAddr),
-        ( TargetAddr = label(TargetLabel) ->
+        ( TargetAddr = code_label(TargetLabel) ->
             (
                 % Attempt to transform code such as
                 %
@@ -547,7 +547,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                     HaveLabel = no
                 ),
                 GotoInstr = goto(GotoTarget) - GotoComment,
-                ( HaveLabel = no ; GotoTarget = label(_) ),
+                ( HaveLabel = no ; GotoTarget = code_label(_) ),
                 opt_util.skip_comments(AfterGoto, AfterGotoComments),
                 AfterGotoComments = [LabelInstr | _],
                 LabelInstr = label(TargetLabel) - _
@@ -589,7 +589,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 Instrs1 = [GotoInstr | AfterGoto],
                 GotoInstr = goto(GotoAddr) - GotoComment,
                 \+ (
-                    GotoAddr = label(GotoLabel),
+                    GotoAddr = code_label(GotoLabel),
                     map.search(Blockmap, GotoLabel, _)
                 )
             ->
@@ -597,7 +597,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 NewIfInstr = if_val(NotCond, GotoAddr) - GotoComment,
                 NewInstrs = [NewIfInstr],
                 NewGotoComment = Comment0 ++ " (switched)",
-                NewGotoInstr = goto(label(TargetLabel)) - NewGotoComment,
+                NewGotoInstr = goto(code_label(TargetLabel)) - NewGotoComment,
                 RemainInstrs = [NewGotoInstr | AfterGoto],
                 NewRemain = specified(NewInstrs, RemainInstrs)
             ;
@@ -645,7 +645,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                         NewAssign = assign(reg(reg_r, 1), NewCond) -
                             "shortcircuit bool computation"
                     ),
-                    Proceed = goto(succip) - "shortcircuit",
+                    Proceed = goto(code_succip) - "shortcircuit",
                     NewInstrs = [NewAssign | Between] ++ [Proceed],
                     NewRemain = specified(NewInstrs, Instrs0)
                 ;
@@ -653,7 +653,8 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                     TargetLabel \= DestLabel
                 ->
                     Shorted = "shortcircuited jump: " ++ Comment0,
-                    NewInstrs = [if_val(Cond, label(DestLabel)) - Shorted],
+                    NewInstrs = [if_val(Cond, code_label(DestLabel))
+                        - Shorted],
                     NewRemain = specified(NewInstrs, Instrs0)
                 ;
                     NewRemain = usual_case
@@ -677,13 +678,14 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         )
     ;
         Uinstr0 = mkframe(FrameInfo, Redoip),
-        ( Redoip = yes(label(Label0)) ->
+        ( Redoip = yes(code_label(Label0)) ->
             jumpopt.short_label(Instrmap, Label0, Label),
             ( Label = Label0 ->
                 NewRemain = usual_case
             ;
                 Shorted = Comment0 ++ " (some shortcircuits)",
-                NewInstrs = [mkframe(FrameInfo, yes(label(Label))) - Shorted],
+                NewInstrs = [mkframe(FrameInfo, yes(code_label(Label)))
+                    - Shorted],
                 NewRemain = specified(NewInstrs, Instrs0)
             )
         ;
@@ -963,7 +965,7 @@ jumpopt.final_dest_2(Instrmap, LabelsSofar, SrcLabel, DestLabel,
     (
         SrcInstr = SrcUinstr - _Comment,
         (
-            SrcUinstr = goto(label(TargetLabel))
+            SrcUinstr = goto(code_label(TargetLabel))
         ;
             SrcUinstr = label(TargetLabel)
         ),
@@ -1009,9 +1011,9 @@ jumpopt.short_labels_const(_, llconst_multi_string(L, S),
         llconst_multi_string(L, S)).
 jumpopt.short_labels_const(Instrmap, llconst_code_addr(CodeAddr0),
         llconst_code_addr(CodeAddr)) :-
-    ( CodeAddr0 = label(Label0) ->
+    ( CodeAddr0 = code_label(Label0) ->
         jumpopt.short_label(Instrmap, Label0, Label),
-        CodeAddr = label(Label)
+        CodeAddr = code_label(Label)
     ;
         CodeAddr = CodeAddr0
     ).

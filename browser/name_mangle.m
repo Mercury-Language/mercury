@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: name_mangle.m.
 % Purpose: name mangling support.
 % Main author: fjh.
 % Stability: low.
-% 
+%
 % This module provides the proc_name_mangle/1 function, which takes a value of
 % type `mercury_proc' and returns a string which is the symbol name for
 % specified procedure, and which is suitable for use in a call to dl.sym.
@@ -20,7 +20,7 @@
 % in different Mercury implementations.  Any code which creates or
 % examines values of that type should be carefully isolated so that
 % it can be easily changed if the representation of `mercury_proc' changes.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -84,14 +84,14 @@ proc_name_mangle(MercuryProc) =
     ;
         llds_proc_name_mangle(MercuryProc)
     ).
-        
+
 :- func llds_proc_name_mangle(mercury_proc) = string.
 
 llds_proc_name_mangle(MercuryProc) = LabelName :-
     MercuryProc = mercury_proc(PredOrFunc, Module, Name0, Arity, ModeNum),
     sym_name_mangle(Module, ModuleName),
     (
-        ( 
+        (
             Module = unqualified("builtin")
         ;
             Name0 = "main",
@@ -163,7 +163,7 @@ sym_name_mangle(qualified(ModuleName, PlainName), MangledName) :-
     sym_name_mangle(ModuleName, MangledModuleName),
     name_mangle(PlainName, MangledPlainName),
     qualify_name(MangledModuleName, MangledPlainName, MangledName).
-    
+
     % Convert a Mercury predicate name into something that can form
     % part of a C identifier.  This predicate is necessary because
     % quoted names such as 'name with embedded spaces' are valid
@@ -188,7 +188,7 @@ name_mangle(Name, MangledName) :-
 
 :- pred convert_to_valid_c_identifier(string::in, string::out) is det.
 
-convert_to_valid_c_identifier(String, Name) :-  
+convert_to_valid_c_identifier(String, Name) :-
     ( name_conversion_table(String, Name0) ->
         Name = Name0
     ;
@@ -201,8 +201,8 @@ convert_to_valid_c_identifier(String, Name) :-
 qualify_name(Module0, Name0, Name) :-
     string.append_list([Module0, "__", Name0], Name).
 
-    % A table used to convert Mercury functors into
-    % C identifiers.  Feel free to add any new translations you want.
+    % A table used to convert Mercury functors into C identifiers.
+    % Feel free to add any new translations you want.
     % The C identifiers should start with "f_",
     % to avoid introducing name clashes.
     % If the functor name is not found in the table, then
@@ -236,7 +236,7 @@ name_conversion_table("!", "f_cut").
     %
 :- pred convert_to_valid_c_identifier_2(string::in, string::out) is det.
 
-convert_to_valid_c_identifier_2(String, Name) :-    
+convert_to_valid_c_identifier_2(String, Name) :-
     ( string.first_char(String, Char, Rest) ->
         char.to_int(Char, Code),
         string.int_to_string(Code, CodeString),
@@ -250,7 +250,8 @@ convert_to_valid_c_identifier_2(String, Name) :-
 
 :- pred use_asm_labels is semidet.
 
-:- pragma foreign_proc("C", use_asm_labels,
+:- pragma foreign_proc("C",
+    use_asm_labels,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
 #ifdef MR_USE_ASM_LABELS

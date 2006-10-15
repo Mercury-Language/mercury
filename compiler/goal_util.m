@@ -67,10 +67,11 @@
 % occur as a key in the mapping, then the variable is left unsubstituted.
 
     % rename_vars_in_goals(MustRename, Substitution, GoalList, NewGoalList).
+    %
 :- pred rename_vars_in_goals(bool::in, prog_var_renaming::in,
     hlds_goals::in, hlds_goals::out) is det.
 
-:- pred rename_vars_in_goal(prog_var_renaming::in,
+:- pred rename_some_vars_in_goal(prog_var_renaming::in,
     hlds_goal::in, hlds_goal::out) is det.
 
 :- pred must_rename_vars_in_goal(prog_var_renaming::in,
@@ -268,7 +269,8 @@
     hlds_goal::in, instmap::in, hlds_goal::in, bool::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-    % reordering_maintains_termination(ModuleInfo, FullyStrict, Goal1, Goal2).
+    % reordering_maintains_termination_old(ModuleInfo, FullyStrict,
+    %   Goal1, Goal2).
     %
     % Succeeds if any possible change in termination behaviour from reordering
     % the goals is allowed according to the semantics options.
@@ -278,7 +280,7 @@
     % NOTE: this version is deprecated; new code should use the following
     %       version because it supports the intermodule-analysis framework.
     %
-:- pred reordering_maintains_termination(module_info::in, bool::in,
+:- pred reordering_maintains_termination_old(module_info::in, bool::in,
     hlds_goal::in, hlds_goal::in) is semidet.
 
     % reordering_maintains_termination(FullyStrict, Goal1, Goal2, Result,
@@ -343,7 +345,7 @@
     % be necessary when casting, say, solver type values with inst
     % any, or casting between enumeration types and ints.
     %
-:- pred generate_cast(cast_kind::in, prog_var::in, prog_var::in,
+:- pred generate_cast_with_insts(cast_kind::in, prog_var::in, prog_var::in,
     mer_inst::in, mer_inst::in, prog_context::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -490,7 +492,7 @@ rename_var(Must, Subn, V, N) :-
 
 %-----------------------------------------------------------------------------%
 
-rename_vars_in_goal(Subn, Goal0, Goal) :-
+rename_some_vars_in_goal(Subn, Goal0, Goal) :-
     rename_vars_in_goal(no, Subn, Goal0, Goal).
 
 must_rename_vars_in_goal(Subn, Goal0, Goal) :-
@@ -1417,7 +1419,7 @@ can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
     EarlierTrace = contains_no_trace_goal,
     LaterTrace = contains_no_trace_goal,
 
-    reordering_maintains_termination(ModuleInfo, FullyStrict,
+    reordering_maintains_termination_old(ModuleInfo, FullyStrict,
         EarlierGoal, LaterGoal),
 
     % Don't reorder the goals if the later goal depends on the outputs
@@ -1485,7 +1487,7 @@ can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
         )
     ).
 
-reordering_maintains_termination(ModuleInfo, FullyStrict,
+reordering_maintains_termination_old(ModuleInfo, FullyStrict,
         EarlierGoal, LaterGoal) :-
     EarlierGoal = _ - EarlierGoalInfo,
     LaterGoal = _ - LaterGoalInfo,
@@ -1634,9 +1636,11 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
 
 generate_cast(CastType, InArg, OutArg, Context, Goal) :-
     Ground = ground_inst,
-    generate_cast(CastType, InArg, OutArg, Ground, Ground, Context, Goal).
+    generate_cast_with_insts(CastType, InArg, OutArg, Ground, Ground, Context,
+        Goal).
 
-generate_cast(CastType, InArg, OutArg, InInst, OutInst, Context, Goal) :-
+generate_cast_with_insts(CastType, InArg, OutArg, InInst, OutInst, Context,
+        Goal) :-
     set.list_to_set([InArg, OutArg], NonLocals),
     instmap_delta_from_assoc_list([OutArg - OutInst], InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,

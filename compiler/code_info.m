@@ -471,7 +471,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         MaybeFailVars = no,
         EffLiveness = Liveness
     ),
-    var_locn.init_state(ArgList, EffLiveness, VarSet, VarTypes, StackSlots,
+    init_var_locn_state(ArgList, EffLiveness, VarSet, VarTypes, StackSlots,
         FollowVars, Options, VarLocnInfo),
     stack.init(ResumePoints),
     globals.lookup_bool_option(Globals, allow_hijacks, AllowHijack),
@@ -682,7 +682,7 @@ set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
     % type of the constructor), determine correct tag (representation)
     % of that constructor.
     %
-:- func cons_id_to_tag(code_info, prog_var, cons_id) = cons_tag.
+:- func cons_id_to_tag_for_var(code_info, prog_var, cons_id) = cons_tag.
 
     % Get the code model of the current procedure.
     %
@@ -726,7 +726,7 @@ set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
     % we do not yet know which procedures will be put into the same
     % C functions, and so we cannot do this.
     %
-:- func make_entry_label(code_info, module_info, pred_id, proc_id, bool)
+:- func make_proc_entry_label(code_info, module_info, pred_id, proc_id, bool)
     = code_addr.
 
     % Generate the next local label in sequence.
@@ -768,19 +768,19 @@ set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
 
 get_stack_slots(CI, StackSlots) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn.get_stack_slots(VarLocnInfo, StackSlots).
+    var_locn_get_stack_slots(VarLocnInfo, StackSlots).
 
 get_follow_var_map(CI, FollowVarMap) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn.get_follow_var_map(VarLocnInfo, FollowVarMap).
+    var_locn_get_follow_var_map(VarLocnInfo, FollowVarMap).
 
 get_next_non_reserved(CI, NextNonReserved) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn.get_next_non_reserved(VarLocnInfo, NextNonReserved).
+    var_locn_get_next_non_reserved(VarLocnInfo, NextNonReserved).
 
 set_follow_vars(FollowVars, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.set_follow_vars(FollowVars, VarLocnInfo0, VarLocnInfo),
+    var_locn_set_follow_vars(FollowVars, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 %-----------------------------------------------------------------------------%
@@ -858,7 +858,7 @@ lookup_type_defn(CI, Type) = TypeDefn :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     map.lookup(TypeTable, TypeCtor, TypeDefn).
 
-cons_id_to_tag(CI, Var, ConsId) = ConsTag :-
+cons_id_to_tag_for_var(CI, Var, ConsId) = ConsTag :-
     get_module_info(CI, ModuleInfo),
     ConsTag = cons_id_to_tag(ConsId, variable_type(CI, Var), ModuleInfo).
 
@@ -899,20 +899,19 @@ variable_to_string(CI, Var) = Name :-
 
 %---------------------------------------------------------------------------%
 
-make_entry_label(CI, ModuleInfo, PredId, ProcId, Immed0) = PredAddress :-
+make_proc_entry_label(CI, ModuleInfo, PredId, ProcId, Immed0) = CodeAddr :-
     (
         Immed0 = no,
         Immed = no
     ;
         Immed0 = yes,
         get_globals(CI, Globals),
-        globals.lookup_int_option(Globals, procs_per_c_function,
-            ProcsPerFunc),
+        globals.lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
         get_pred_id(CI, CurPredId),
         get_proc_id(CI, CurProcId),
         Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId))
     ),
-    make_entry_label(ModuleInfo, PredId, ProcId, Immed, PredAddress).
+    CodeAddr = make_entry_label(ModuleInfo, PredId, ProcId, Immed).
 
 get_next_label(Label, !CI) :-
     get_module_info(!.CI, ModuleInfo),
@@ -921,7 +920,7 @@ get_next_label(Label, !CI) :-
     get_label_counter(!.CI, C0),
     counter.allocate(N, C0, C),
     set_label_counter(C, !CI),
-    make_internal_label(ModuleInfo, PredId, ProcId, N, Label).
+    Label = make_internal_label(ModuleInfo, PredId, ProcId, N).
 
 succip_is_used(!CI) :-
     set_succip_used(yes, !CI).
@@ -932,9 +931,9 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, Path,
     Exec = yes(trace_port_layout_info(Context, Port, IsHidden, Path,
         MaybeSolverEventInfo, Layout)),
     (
-        Label = internal(LabelNum, _)
+        Label = internal_label(LabelNum, _)
     ;
-        Label = entry(_, _),
+        Label = entry_label(_, _),
         unexpected(this_file, "add_trace_layout_for_label: entry")
     ),
     ( map.search(Internals0, LabelNum, Internal0) ->
@@ -958,9 +957,9 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
     get_layout_info(!.CI, Internals0),
     Resume = yes(LayoutInfo),
     (
-        Label = internal(LabelNum, _)
+        Label = internal_label(LabelNum, _)
     ;
-        Label = entry(_, _),
+        Label = entry_label(_, _),
         unexpected(this_file, "add_trace_layout_for_label: entry")
     ),
     ( map.search(Internals0, LabelNum, Internal0) ->
@@ -1188,7 +1187,7 @@ remake_with_store_map(StoreMap, !CI) :-
     map.to_assoc_list(StoreMap, VarLocns),
     VarLvals = assoc_list.map_values(key_abs_locn_to_lval, VarLocns),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.reinit_state(VarLvals, VarLocnInfo0, VarLocnInfo),
+    reinit_var_locn_state(VarLvals, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 save_hp_in_branch(Code, Slot, Pos0, Pos) :-
@@ -2044,7 +2043,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
 
     get_next_label(SuccLabel, !CI),
     GotoSuccLabel = node([
-        goto(label(SuccLabel)) - "Jump to success continuation"
+        goto(code_label(SuccLabel)) - "Jump to success continuation"
     ]),
     SuccLabelCode = node([
         label(SuccLabel) - "Success continuation"
@@ -2194,7 +2193,7 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
             remember_position(!.CI, CurPos),
             pick_and_place_vars(AssocList, _, PlaceCode, !CI),
             reset_to_position(CurPos, !CI),
-            SuccessAddress = label(SuccessLabel),
+            SuccessAddress = code_label(SuccessLabel),
             % We branch away if the test *fails*, therefore if the test
             % succeeds, we branch around the code that moves variables to
             % their failure locations and branches away to the failure
@@ -2376,14 +2375,14 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
     (
         CodeModel = model_det,
         get_next_label(ResumeLabel, !CI),
-        ResumeAddress = label(ResumeLabel),
+        ResumeAddress = code_label(ResumeLabel),
         ResumeKnown = resume_point_unknown,
         CurfrMaxfr = may_be_different
     ;
         CodeModel = model_semi,
         % The resume point for this label will be part of the procedure epilog.
         get_next_label(ResumeLabel, !CI),
-        ResumeAddress = label(ResumeLabel),
+        ResumeAddress = code_label(ResumeLabel),
         ResumeKnown = resume_point_known(wont_be_done),
         CurfrMaxfr = may_be_different
     ;
@@ -2391,7 +2390,7 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
         (
             MaybeFailVars = yes(_),
             get_next_label(ResumeLabel, !CI),
-            ResumeAddress = label(ResumeLabel)
+            ResumeAddress = code_label(ResumeLabel)
         ;
             MaybeFailVars = no,
             ResumeAddress = do_fail
@@ -2429,29 +2428,29 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
     (
         ResumeLocs = resume_locs_orig_only,
         get_next_label(OrigLabel, !CI),
-        OrigAddr = label(OrigLabel),
+        OrigAddr = code_label(OrigLabel),
         ResumePoint = orig_only(OrigMap, OrigAddr)
     ;
         ResumeLocs = resume_locs_stack_only,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
         get_next_label(StackLabel, !CI),
-        StackAddr = label(StackLabel),
+        StackAddr = code_label(StackLabel),
         ResumePoint = stack_only(StackMap, StackAddr)
     ;
         ResumeLocs = resume_locs_orig_and_stack,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
         get_next_label(OrigLabel, !CI),
-        OrigAddr = label(OrigLabel),
+        OrigAddr = code_label(OrigLabel),
         get_next_label(StackLabel, !CI),
-        StackAddr = label(StackLabel),
+        StackAddr = code_label(StackLabel),
         ResumePoint = orig_and_stack(OrigMap, OrigAddr, StackMap, StackAddr)
     ;
         ResumeLocs = resume_locs_stack_and_orig,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
         get_next_label(StackLabel, !CI),
-        StackAddr = label(StackLabel),
+        StackAddr = code_label(StackLabel),
         get_next_label(OrigLabel, !CI),
-        OrigAddr = label(OrigLabel),
+        OrigAddr = code_label(OrigLabel),
         ResumePoint = stack_and_orig(StackMap, StackAddr, OrigMap, OrigAddr)
     ).
 
@@ -2556,7 +2555,7 @@ generate_resume_point(ResumePoint, Code, !CI) :-
 :- pred extract_label_from_code_addr(code_addr::in, label::out) is det.
 
 extract_label_from_code_addr(CodeAddr, Label) :-
-    ( CodeAddr = label(Label0) ->
+    ( CodeAddr = code_label(Label0) ->
         Label = Label0
     ;
         unexpected(this_file, "extract_label_from_code_addr: non-label!")
@@ -2592,7 +2591,7 @@ set_var_locations(Map, !CI) :-
     map.to_assoc_list(Map, LvalList0),
     flatten_varlval_list(LvalList0, LvalList),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.reinit_state(LvalList, VarLocnInfo0, VarLocnInfo),
+    reinit_var_locn_state(LvalList, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 :- pred flatten_varlval_list(assoc_list(prog_var, set(lval))::in,
@@ -2678,21 +2677,21 @@ clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
     ;
         ResumePoint0 = stack_only(Map1, _),
         get_next_label(Label1, !CI),
-        Addr1 = label(Label1),
+        Addr1 = code_label(Label1),
         ResumePoint = stack_only(Map1, Addr1)
     ;
         ResumePoint0 = stack_and_orig(Map1, _, Map2, _),
         get_next_label(Label1, !CI),
-        Addr1 = label(Label1),
+        Addr1 = code_label(Label1),
         get_next_label(Label2, !CI),
-        Addr2 = label(Label2),
+        Addr2 = code_label(Label2),
         ResumePoint = stack_and_orig(Map1, Addr1, Map2, Addr2)
     ;
         ResumePoint0 = orig_and_stack(Map1, _, Map2, _),
         get_next_label(Label2, !CI),
-        Addr2 = label(Label2),
+        Addr2 = code_label(Label2),
         get_next_label(Label1, !CI),
-        Addr1 = label(Label1),
+        Addr1 = code_label(Label1),
         ResumePoint = stack_and_orig(Map2, Addr2, Map1, Addr1)
     ).
 
@@ -2773,13 +2772,13 @@ make_vars_forward_live_2([Var | Vars], StackSlots, N0, !VarLocnInfo) :-
         find_unused_reg(!.VarLocnInfo, N0, N1),
         Lval = reg(reg_r, N1)
     ),
-    var_locn.set_magic_var_location(Var, Lval, !VarLocnInfo),
+    var_locn_set_magic_var_location(Var, Lval, !VarLocnInfo),
     make_vars_forward_live_2(Vars, StackSlots, N1, !VarLocnInfo).
 
 :- pred find_unused_reg(var_locn_info::in, int::in, int::out) is det.
 
 find_unused_reg(VLI, N0, N) :-
-    ( var_locn.lval_in_use(VLI, reg(reg_r, N0)) ->
+    ( var_locn_lval_in_use(VLI, reg(reg_r, N0)) ->
         find_unused_reg(VLI, N0 + 1, N)
     ;
         N = N0
@@ -2807,7 +2806,7 @@ maybe_make_vars_forward_dead(Vars0, FirstTime, !CI) :-
 maybe_make_vars_forward_dead_2([], _, !CI).
 maybe_make_vars_forward_dead_2([V | Vs], FirstTime, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.var_becomes_dead(V, FirstTime, VarLocnInfo0, VarLocnInfo),
+    var_locn_var_becomes_dead(V, FirstTime, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI),
     maybe_make_vars_forward_dead_2(Vs, FirstTime, !CI).
 
@@ -3220,7 +3219,7 @@ should_add_trail_ops(CodeInfo, _GoalInfo) = AddTrailOps :-
 
 variable_locations(CI, Lvals) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn.get_var_locations(VarLocnInfo, Lvals).
+    var_locn_get_var_locations(VarLocnInfo, Lvals).
 
 :- func rval_map_to_lval_map(prog_var, set(rval)) = set(lval).
 
@@ -3233,26 +3232,26 @@ rval_is_lval(lval(Lval)) = Lval.
 
 set_var_location(Var, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.check_and_set_magic_var_location(Var, Lval,
+    var_locn_check_and_set_magic_var_location(Var, Lval,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_var_to_var(Var, AssignedVar, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.assign_var_to_var(Var, AssignedVar, VarLocnInfo0, VarLocnInfo),
+    var_locn_assign_var_to_var(Var, AssignedVar, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_lval_to_var(Var, Lval, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo),
     get_module_info(!.CI, ModuleInfo),
-    var_locn.assign_lval_to_var(ModuleInfo, Var, Lval, StaticCellInfo, Code,
+    var_locn_assign_lval_to_var(ModuleInfo, Var, Lval, StaticCellInfo, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_const_to_var(Var, ConstRval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.assign_const_to_var(Var, ConstRval, VarLocnInfo0, VarLocnInfo),
+    var_locn_assign_const_to_var(Var, ConstRval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_expr_to_var(Var, Rval, Code, !CI) :-
@@ -3261,7 +3260,7 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
         code_util.lvals_in_rval(Rval, Lvals),
         Lvals = []
     ->
-        var_locn.assign_expr_to_var(Var, Rval, Code,
+        var_locn_assign_expr_to_var(Var, Rval, Code,
         VarLocnInfo0, VarLocnInfo)
     ;
         unexpected(this_file, "assign_expr_to_var: non-var lvals")
@@ -3273,7 +3272,7 @@ assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeSize,
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn.assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
+    var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         Vector, MaybeSize, TypeMsg, MayUseAtomic, Code,
         StaticCellInfo0, StaticCellInfo, VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
@@ -3282,7 +3281,7 @@ assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeSize,
 place_var(Var, Lval, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn.place_var(ModuleInfo, Var, Lval, Code,
+    var_locn_place_var(ModuleInfo, Var, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3316,34 +3315,34 @@ pick_var_places([Var - LvalSet | VarLvalSets], VarLvals) :-
 place_vars(VarLocs, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn.place_vars(ModuleInfo, VarLocs, Code, VarLocnInfo0, VarLocnInfo),
+    var_locn_place_vars(ModuleInfo, VarLocs, Code, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 produce_variable(Var, Code, Rval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn.produce_var(ModuleInfo, Var, Rval, Code,
+    var_locn_produce_var(ModuleInfo, Var, Rval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 produce_variable_in_reg(Var, Code, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn.produce_var_in_reg(ModuleInfo, Var, Lval, Code,
+    var_locn_produce_var_in_reg(ModuleInfo, Var, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 produce_variable_in_reg_or_stack(Var, Code, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn.produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code,
+    var_locn_produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 materialize_vars_in_lval(Lval0, Lval, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn.materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code,
+    var_locn_materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3356,12 +3355,12 @@ acquire_reg_for_var(Var, Lval, !CI) :-
         PrefLocn = abs_reg(PrefRegNum),
         PrefRegNum >= 1
     ->
-        var_locn.acquire_reg_prefer_given(PrefRegNum, Lval,
+        var_locn_acquire_reg_prefer_given(PrefRegNum, Lval,
         VarLocnInfo0, VarLocnInfo)
     ;
         % XXX We should only get a register if the map.search
         % succeeded; otherwise we should put the var in its stack slot.
-        var_locn.acquire_reg_start_at_given(NextNonReserved, Lval,
+        var_locn_acquire_reg_start_at_given(NextNonReserved, Lval,
             VarLocnInfo0, VarLocnInfo)
     ),
     set_var_locn_info(VarLocnInfo, !CI).
@@ -3369,7 +3368,7 @@ acquire_reg_for_var(Var, Lval, !CI) :-
 acquire_reg_not_in_storemap(StoreMap, Lval, !CI) :-
     map.foldl(record_highest_used_reg, StoreMap, 0, HighestUsedRegNum),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.acquire_reg_start_at_given(HighestUsedRegNum + 1, Lval,
+    var_locn_acquire_reg_start_at_given(HighestUsedRegNum + 1, Lval,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3397,25 +3396,25 @@ record_highest_used_reg(_, AbsLocn, !HighestUsedRegNum) :-
 acquire_reg(Type, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     expect(unify(Type, reg_r), this_file, "acquire_reg: unknown reg type"),
-    var_locn.acquire_reg(Lval, VarLocnInfo0, VarLocnInfo),
+    var_locn_acquire_reg(Lval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 release_reg(Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.release_reg(Lval, VarLocnInfo0, VarLocnInfo),
+    var_locn_release_reg(Lval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 reserve_r1(Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn.clear_r1(ModuleInfo, Code, VarLocnInfo0, VarLocnInfo1),
-    var_locn.acquire_reg_require_given(reg(reg_r, 1),
+    var_locn_clear_r1(ModuleInfo, Code, VarLocnInfo0, VarLocnInfo1),
+    var_locn_acquire_reg_require_given(reg(reg_r, 1),
         VarLocnInfo1, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 clear_r1(empty, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.release_reg(reg(reg_r, 1), VarLocnInfo0, VarLocnInfo),
+    var_locn_release_reg(reg(reg_r, 1), VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 %---------------------------------------------------------------------------%
@@ -3460,7 +3459,7 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     var_arg_info_to_lval(InArgInfos, InArgLocs),
     list.append(RealStackVarLocs, InArgLocs, AllRealLocs),
-    var_locn.place_vars(ModuleInfo, DummyStackVarLocs ++ AllRealLocs, Code,
+    var_locn_place_vars(ModuleInfo, DummyStackVarLocs ++ AllRealLocs, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI),
     assoc_list.values(AllRealLocs, LiveLocList),
@@ -3497,7 +3496,7 @@ setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, !CI) :-
     var_arg_info_to_lval(ArgsInfos, ArgsLocns),
     get_module_info(!.CI, ModuleInfo),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.place_vars(ModuleInfo, ArgsLocns, Code,
+    var_locn_place_vars(ModuleInfo, ArgsLocns, Code,
         VarLocnInfo0, VarLocnInfo1),
     set_var_locn_info(VarLocnInfo1, !CI),
     assoc_list.values(ArgsLocns, LiveLocList),
@@ -3541,22 +3540,22 @@ call_arg_in_selected_dir(Direction, _ - arg_info(_, Mode)) :-
 
 lock_regs(N, Exceptions, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.lock_regs(N, Exceptions, VarLocnInfo0, VarLocnInfo),
+    var_locn_lock_regs(N, Exceptions, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 unlock_regs(!CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.unlock_regs(VarLocnInfo0, VarLocnInfo),
+    var_locn_unlock_regs(VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 clear_all_registers(OkToDeleteAny, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.clobber_all_regs(OkToDeleteAny, VarLocnInfo0, VarLocnInfo),
+    var_locn_clobber_all_regs(OkToDeleteAny, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 clobber_regs(Regs, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn.clobber_regs(Regs, VarLocnInfo0, VarLocnInfo),
+    var_locn_clobber_regs(Regs, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 save_variables(OutArgs, SavedLocs, Code, !CI) :-
@@ -3593,7 +3592,7 @@ associate_stack_slot(CI, Var, Var - Slot) :-
 
 max_reg_in_use(CI, Max) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn.max_reg_in_use(VarLocnInfo, Max).
+    var_locn_max_reg_in_use(VarLocnInfo, Max).
 
 magically_put_var_in_unused_reg(Var, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),

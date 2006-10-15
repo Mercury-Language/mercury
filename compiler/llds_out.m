@@ -1390,7 +1390,7 @@ group_c_labels_with_layouts(_StackLayoutLabels, [],
 group_c_labels_with_layouts(StackLayoutLabels, [Label | Labels],
         !DeclLLMap, !OtherLocalMap, !RevAddrsToDecl, !RevOthers) :-
     (
-        Label = internal(LabelNum, ProcLabel),
+        Label = internal_label(LabelNum, ProcLabel),
         ( map.search(StackLayoutLabels, Label, DataAddr) ->
             (
                 DataAddr = layout_addr(LayoutName),
@@ -1407,7 +1407,7 @@ group_c_labels_with_layouts(StackLayoutLabels, [Label | Labels],
             svmulti_map.set(ProcLabel, LabelNum, !OtherLocalMap)
         )
     ;
-        Label = entry(_, _),
+        Label = entry_label(_, _),
         !:RevOthers = [Label | !.RevOthers]
     ),
     group_c_labels_with_layouts(StackLayoutLabels, Labels,
@@ -1478,7 +1478,7 @@ insert_var_info_label_layout_decl(ProcLabel, LabelNum, !DeclSet) :-
     decl_set::in, decl_set::out) is det.
 
 insert_code_addr_decl(ProcLabel, LabelNum, !DeclSet) :-
-    DeclId = decl_code_addr(label(internal(LabelNum, ProcLabel))),
+    DeclId = decl_code_addr(code_label(internal_label(LabelNum, ProcLabel))),
     decl_set_insert(DeclId, !DeclSet).
 
 :- pred output_c_label_decl(map(label, data_addr)::in, label::in,
@@ -1490,7 +1490,7 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
     %
     ( map.search(StackLayoutLabels, Label, DataAddr) ->
         (
-            Label = internal(LabelNum, ProcLabel),
+            Label = internal_label(LabelNum, ProcLabel),
             DataAddr = layout_addr(LayoutName),
             LayoutName = label_layout(ProcLabel, LabelNum, LabelVars)
         ->
@@ -1524,16 +1524,16 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
         % Declare the label itself.
         %
         (
-            Label = entry(entry_label_exported, _),
+            Label = entry_label(entry_label_exported, _),
             DeclMacro = "MR_def_extern_entry("
         ;
-            Label = entry(entry_label_local, _),
+            Label = entry_label(entry_label_local, _),
             DeclMacro = "MR_decl_static("
         ;
-            Label = entry(entry_label_c_local, _),
+            Label = entry_label(entry_label_c_local, _),
             DeclMacro = "MR_decl_local("
         ;
-            Label = internal(_, _),
+            Label = internal_label(_, _),
             DeclMacro = "MR_decl_label("
         ),
         io.write_string(DeclMacro, !IO),
@@ -1543,7 +1543,7 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
     ;
         AlreadyDeclaredLabel = yes
     ),
-    decl_set_insert(decl_code_addr(label(Label)), !DeclSet).
+    decl_set_insert(decl_code_addr(code_label(Label)), !DeclSet).
 
 :- pred output_stack_layout_decl(data_addr::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
@@ -1573,14 +1573,14 @@ group_c_labels(_StackLayoutLabels, [], !NoLayoutMap, !LayoutMap, !RevOthers).
 group_c_labels(StackLayoutLabels, [Label | Labels], !NoLayoutMap, !LayoutMap,
         !RevOthers) :-
     (
-        Label = internal(LabelNum, ProcLabel),
+        Label = internal_label(LabelNum, ProcLabel),
         ( map.search(StackLayoutLabels, Label, _DataAddr) ->
             svmulti_map.set(ProcLabel, LabelNum, !LayoutMap)
         ;
             svmulti_map.set(ProcLabel, LabelNum, !NoLayoutMap)
         )
     ;
-        Label = entry(_, _),
+        Label = entry_label(_, _),
         !:RevOthers = [Label | !.RevOthers]
     ),
     group_c_labels(StackLayoutLabels, Labels, !NoLayoutMap, !LayoutMap,
@@ -1633,16 +1633,16 @@ output_c_label_init(StackLayoutLabels, Label, !IO) :-
         InitProcLayout = no
     ),
     (
-        Label = entry(entry_label_exported, ProcLabel),
+        Label = entry_label(entry_label_exported, ProcLabel),
         TabInitMacro = "\tMR_init_entry1"
     ;
-        Label = entry(entry_label_local, ProcLabel),
+        Label = entry_label(entry_label_local, ProcLabel),
         TabInitMacro = "\tMR_init_entry1"
     ;
-        Label = entry(entry_label_c_local, ProcLabel),
+        Label = entry_label(entry_label_c_local, ProcLabel),
         TabInitMacro = "\tMR_init_local1"
     ;
-        Label = internal(_, _),
+        Label = internal_label(_, _),
         % These should have been separated out by group_c_labels.
         unexpected(this_file, "output_c_label_init: internal/2")
     ),
@@ -1661,8 +1661,8 @@ output_c_label_init(StackLayoutLabels, Label, !IO) :-
 
 :- pred label_is_proc_entry(label::in, bool::out) is det.
 
-label_is_proc_entry(internal(_, _), no).
-label_is_proc_entry(entry(_, _), yes).
+label_is_proc_entry(internal_label(_, _), no).
+label_is_proc_entry(entry_label(_, _), yes).
 
 :- pred output_c_procedure_decls(map(label, data_addr)::in, c_procedure::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1758,10 +1758,10 @@ find_caller_label([], _) :-
 find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
     ( Instr0 = label(Label) ->
         (
-            Label = internal(_, _),
+            Label = internal_label(_, _),
             unexpected(this_file, "caller label is internal label")
         ;
-            Label = entry(_, _),
+            Label = entry_label(_, _),
             CallerLabel = Label
         )
     ;
@@ -1778,14 +1778,14 @@ find_cont_labels([], !ContLabelSet).
 find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
     (
         (
-            Instr = llcall(_, label(ContLabel), _, _, _, _)
+            Instr = llcall(_, code_label(ContLabel), _, _, _, _)
         ;
-            Instr = mkframe(_, yes(label(ContLabel)))
+            Instr = mkframe(_, yes(code_label(ContLabel)))
         ;
             Instr = join_and_continue(_, ContLabel)
         ;
             Instr = assign(redoip_slot(_), const(Const)),
-            Const = llconst_code_addr(label(ContLabel))
+            Const = llconst_code_addr(code_label(ContLabel))
         )
     ->
         set_tree234.insert(ContLabel, !ContLabelSet)
@@ -1844,9 +1844,9 @@ is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs, !Count) :-
     ( Instr0 = label(_) ->
         Instrs = [Instr0 - Comment0 | Instrs0]
     ;
-        ( Instr0 = goto(label(Label)) ->
+        ( Instr0 = goto(code_label(Label)) ->
             !:Count = !.Count + 1
-        ; Instr0 = if_val(_, label(Label)) ->
+        ; Instr0 = if_val(_, code_label(Label)) ->
             !:Count = !.Count + 1
         ; Instr0 = block(_, _, BlockInstrs) ->
             count_while_label_in_block(Label, BlockInstrs, !Count)
@@ -1864,9 +1864,9 @@ count_while_label_in_block(Label, [Instr0 - _Comment0 | Instrs0], !Count) :-
     ( Instr0 = label(_) ->
         unexpected(this_file, "label in block")
     ;
-        ( Instr0 = goto(label(Label)) ->
+        ( Instr0 = goto(code_label(Label)) ->
             !:Count = !.Count + 1
-        ; Instr0 = if_val(_, label(Label)) ->
+        ; Instr0 = if_val(_, code_label(Label)) ->
             !:Count = !.Count + 1
         ; Instr0 = block(_, _, _) ->
             unexpected(this_file, "block in block")
@@ -1990,10 +1990,10 @@ output_instr_decls(StackLayoutLabels, pragma_c(_, Comps, _, _,
 output_instr_decls(_, init_sync_term(Lval, _), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
 output_instr_decls(_, fork(Child), !DeclSet, !IO) :-
-    output_code_addr_decls(label(Child), !DeclSet, !IO).
+    output_code_addr_decls(code_label(Child), !DeclSet, !IO).
 output_instr_decls(_, join_and_continue(Lval, Label), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO),
-    output_code_addr_decls(label(Label), !DeclSet, !IO).
+    output_code_addr_decls(code_label(Label), !DeclSet, !IO).
 
 :- pred output_pragma_c_component_decls(pragma_c_component::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -2045,10 +2045,10 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
         io.write_string("\tbreak; } /* end while */\n", !IO),
         output_instruction_list([Instr0 - Comment0 | Instrs],
             PrintComments, ProfInfo, WhileSet, !IO)
-    ; Instr0 = goto(label(Label)) ->
+    ; Instr0 = goto(code_label(Label)) ->
         io.write_string("\t/* continue */ } /* end while */\n", !IO),
         output_instruction_list(Instrs, PrintComments, ProfInfo, WhileSet, !IO)
-    ; Instr0 = if_val(Rval, label(Label)) ->
+    ; Instr0 = if_val(Rval, code_label(Label)) ->
         io.write_string("\tif (", !IO),
         output_test_rval(Rval, !IO),
         io.write_string(")\n\t\tcontinue;\n", !IO),
@@ -2086,11 +2086,11 @@ output_instruction_list_while_block([Instr0 - Comment0 | Instrs], Label,
         PrintComments, ProfInfo, !IO) :-
     ( Instr0 = label(_) ->
         unexpected(this_file, "label in block")
-    ; Instr0 = goto(label(Label)) ->
+    ; Instr0 = goto(code_label(Label)) ->
         io.write_string("\tcontinue;\n", !IO),
         expect(unify(Instrs, []), this_file,
             "output_instruction_list_while_block: code after goto")
-    ; Instr0 = if_val(Rval, label(Label)) ->
+    ; Instr0 = if_val(Rval, code_label(Label)) ->
         io.write_string("\tif (", !IO),
         output_test_rval(Rval, !IO),
         io.write_string(")\n\t\tcontinue;\n", !IO),
@@ -2152,7 +2152,7 @@ output_debug_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
     ProcLabel = ordinary_proc_label(DummyModule, predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
-    ProfInfo = entry(entry_label_local, ProcLabel) - ContLabelSet,
+    ProfInfo = entry_label(entry_label_local, ProcLabel) - ContLabelSet,
     output_instruction_and_comment(Instr, Comment, PrintComments,
         ProfInfo, !IO).
 
@@ -2166,7 +2166,7 @@ output_debug_instruction(Instr, !IO) :-
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
     ProcLabel = ordinary_proc_label(DummyModule, predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
-    ProfInfo = entry(entry_label_local, ProcLabel) - ContLabelSet,
+    ProfInfo = entry_label(entry_label_local, ProcLabel) - ContLabelSet,
     output_instruction(Instr, ProfInfo, !IO).
 
 :- pred output_block_start(int::in, int::in, io::di, io::uo) is det.
@@ -3579,22 +3579,22 @@ output_code_addr_decls_format(CodeAddress, FirstIndent, LaterIndent, !N,
 
 :- pred need_code_addr_decls(code_addr::in, bool::out, io::di, io::uo) is det.
 
-need_code_addr_decls(label(Label), Need, !IO) :-
+need_code_addr_decls(code_label(Label), Need, !IO) :-
     (
-        Label = entry(entry_label_exported, _),
+        Label = entry_label(entry_label_exported, _),
         Need = yes
     ;
-        Label = entry(entry_label_local, _),
+        Label = entry_label(entry_label_local, _),
         Need = yes
     ;
-        Label = entry(entry_label_c_local, _),
+        Label = entry_label(entry_label_c_local, _),
         Need = no
     ;
-        Label = internal(_, _),
+        Label = internal_label(_, _),
         Need = no
     ).
-need_code_addr_decls(imported(_), yes, !IO).
-need_code_addr_decls(succip, no, !IO).
+need_code_addr_decls(code_imported_proc(_), yes, !IO).
+need_code_addr_decls(code_succip, no, !IO).
 need_code_addr_decls(do_succeed(_), no, !IO).
 need_code_addr_decls(do_redo, NeedDecl, !IO) :-
     globals.io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
@@ -3622,13 +3622,13 @@ need_code_addr_decls(do_not_reached, yes, !IO).
 
 :- pred output_code_addr_decls(code_addr::in, io::di, io::uo) is det.
 
-output_code_addr_decls(label(Label), !IO) :-
+output_code_addr_decls(code_label(Label), !IO) :-
     output_label_as_code_addr_decls(Label, !IO).
-output_code_addr_decls(imported(ProcLabel), !IO) :-
+output_code_addr_decls(code_imported_proc(ProcLabel), !IO) :-
     io.write_string("MR_decl_entry(", !IO),
     output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(");\n", !IO).
-output_code_addr_decls(succip, !IO).
+output_code_addr_decls(code_succip, !IO).
 output_code_addr_decls(do_succeed(_), !IO).
 output_code_addr_decls(do_redo, !IO) :-
     globals.io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
@@ -3668,13 +3668,15 @@ output_code_addr_decls(do_not_reached, !IO) :-
 
 :- pred output_label_as_code_addr_decls(label::in, io::di, io::uo) is det.
 
-output_label_as_code_addr_decls(entry(entry_label_exported, ProcLabel), !IO) :-
+output_label_as_code_addr_decls(entry_label(entry_label_exported, ProcLabel),
+        !IO) :-
     io.write_string("MR_decl_entry(", !IO),
-    output_label(entry(entry_label_exported, ProcLabel), no, !IO),
+    output_label(entry_label(entry_label_exported, ProcLabel), no, !IO),
     io.write_string(");\n", !IO).
-output_label_as_code_addr_decls(entry(entry_label_local, _ProcLabel), !IO).
-output_label_as_code_addr_decls(entry(entry_label_c_local, _), !IO).
-output_label_as_code_addr_decls(internal(_, _), !IO).
+output_label_as_code_addr_decls(entry_label(entry_label_local, _ProcLabel),
+        !IO).
+output_label_as_code_addr_decls(entry_label(entry_label_c_local, _), !IO).
+output_label_as_code_addr_decls(internal_label(_, _), !IO).
 
 output_data_addr_decls(DataAddr, !DeclSet, !IO) :-
     output_data_addr_decls_format(DataAddr, "", "", 0, _, !DeclSet, !IO).
@@ -3832,9 +3834,9 @@ maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet, !IO) :-
     % Note that we do some optimization here: instead of always outputting
     % `MR_GOTO(<label>)', we output different things for each different
     % kind of label.
-output_goto(label(Label), CallerLabel, !IO) :-
+output_goto(code_label(Label), CallerLabel, !IO) :-
     (
-        Label = entry(entry_label_exported, _),
+        Label = entry_label(entry_label_exported, _),
         globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
         (
             ProfileCalls = yes,
@@ -3850,7 +3852,7 @@ output_goto(label(Label), CallerLabel, !IO) :-
             io.write_string(");\n", !IO)
         )
     ;
-        Label = entry(entry_label_local, _),
+        Label = entry_label(entry_label_local, _),
         globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
         (
             ProfileCalls = yes,
@@ -3866,7 +3868,7 @@ output_goto(label(Label), CallerLabel, !IO) :-
             io.write_string(");\n", !IO)
         )
     ;
-        Label = entry(entry_label_c_local, _),
+        Label = entry_label(entry_label_c_local, _),
         globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
         (
             ProfileCalls = yes,
@@ -3882,12 +3884,12 @@ output_goto(label(Label), CallerLabel, !IO) :-
             io.write_string(");\n", !IO)
         )
     ;
-        Label = internal(_, _),
+        Label = internal_label(_, _),
         io.write_string("MR_GOTO_LAB(", !IO),
         output_label(Label, no, !IO),
         io.write_string(");\n", !IO)
     ).
-output_goto(imported(ProcLabel), CallerLabel, !IO) :-
+output_goto(code_imported_proc(ProcLabel), CallerLabel, !IO) :-
     globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
     (
         ProfileCalls = yes,
@@ -3902,7 +3904,7 @@ output_goto(imported(ProcLabel), CallerLabel, !IO) :-
         output_proc_label_no_prefix(ProcLabel, !IO),
         io.write_string(");\n", !IO)
     ).
-output_goto(succip, _, !IO) :-
+output_goto(code_succip, _, !IO) :-
     io.write_string("MR_proceed();\n", !IO).
 output_goto(do_succeed(Last), _, !IO) :-
     (
@@ -3990,7 +3992,7 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
         globals.io_lookup_bool_option(profile_calls, ProfileCall, !IO)
     ),
     (
-        Target = label(Label),
+        Target = code_label(Label),
         % We really shouldn't be calling internal labels ...
         label_is_external_to_c_module(Label) = no
     ->
@@ -4037,7 +4039,7 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
             )
         )
     ;
-        Continuation = label(ContLabel),
+        Continuation = code_label(ContLabel),
         label_is_external_to_c_module(ContLabel) = no
     ->
         (
@@ -4156,7 +4158,7 @@ output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO) :-
 :- pred code_addr_to_string_base(code_addr::in, string::out,
     bool::out, wrapper::out) is det.
 
-code_addr_to_string_base(label(Label), BaseStr, yes, Wrapper) :-
+code_addr_to_string_base(code_label(Label), BaseStr, yes, Wrapper) :-
     BaseStr = label_to_c_string(Label, no),
     IsExternal = label_is_external_to_c_module(Label),
     (
@@ -4166,9 +4168,10 @@ code_addr_to_string_base(label(Label), BaseStr, yes, Wrapper) :-
         IsExternal = no,
         Wrapper = wrapper_label
     ).
-code_addr_to_string_base(imported(ProcLabel), BaseStr, yes, wrapper_entry) :-
+code_addr_to_string_base(code_imported_proc(ProcLabel), BaseStr, yes,
+        wrapper_entry) :-
     BaseStr = proc_label_to_c_string(ProcLabel, no).
-code_addr_to_string_base(succip, "MR_succip", no, wrapper_none).
+code_addr_to_string_base(code_succip, "MR_succip", no, wrapper_none).
 code_addr_to_string_base(do_succeed(Last), BaseStr, no, wrapper_entry) :-
     (
         Last = no,
@@ -4308,10 +4311,10 @@ output_label_as_code_addr(Label, !IO) :-
 
 :- func label_is_external_to_c_module(label) = bool.
 
-label_is_external_to_c_module(entry(entry_label_exported, _)) = yes.
-label_is_external_to_c_module(entry(entry_label_local, _)) = yes.
-label_is_external_to_c_module(entry(entry_label_c_local, _)) = no.
-label_is_external_to_c_module(internal(_, _)) = no.
+label_is_external_to_c_module(entry_label(entry_label_exported, _)) = yes.
+label_is_external_to_c_module(entry_label(entry_label_local, _)) = yes.
+label_is_external_to_c_module(entry_label(entry_label_c_local, _)) = no.
+label_is_external_to_c_module(internal_label(_, _)) = no.
 
 :- pred label_as_code_addr_to_string(label::in, string::out) is det.
 
@@ -4347,19 +4350,19 @@ output_label_list_2([Label | Labels], !IO) :-
 
 :- pred output_label_defn(label::in, io::di, io::uo) is det.
 
-output_label_defn(entry(entry_label_exported, ProcLabel), !IO) :-
+output_label_defn(entry_label(entry_label_exported, ProcLabel), !IO) :-
     io.write_string("MR_define_entry(", !IO),
-    output_label(entry(entry_label_exported, ProcLabel), !IO),
+    output_label(entry_label(entry_label_exported, ProcLabel), !IO),
     io.write_string(");\n", !IO).
-output_label_defn(entry(entry_label_local, ProcLabel), !IO) :-
+output_label_defn(entry_label(entry_label_local, ProcLabel), !IO) :-
     io.write_string("MR_def_static(", !IO),
     output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(")\n", !IO).
-output_label_defn(entry(entry_label_c_local, ProcLabel), !IO) :-
+output_label_defn(entry_label(entry_label_c_local, ProcLabel), !IO) :-
     io.write_string("MR_def_local(", !IO),
     output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(")\n", !IO).
-output_label_defn(internal(Num, ProcLabel), !IO) :-
+output_label_defn(internal_label(Num, ProcLabel), !IO) :-
     io.write_string("MR_def_label(", !IO),
     output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(",", !IO),
@@ -4382,9 +4385,9 @@ output_label(Label, AddPrefix, !IO) :-
     LabelStr = label_to_c_string(Label, AddPrefix),
     io.write_string(LabelStr, !IO).
 
-label_to_c_string(entry(_, ProcLabel), AddPrefix) =
+label_to_c_string(entry_label(_, ProcLabel), AddPrefix) =
     proc_label_to_c_string(ProcLabel, AddPrefix).
-label_to_c_string(internal(Num, ProcLabel), AddPrefix) = LabelStr :-
+label_to_c_string(internal_label(Num, ProcLabel), AddPrefix) = LabelStr :-
     ProcLabelStr = proc_label_to_c_string(ProcLabel, AddPrefix),
     string.int_to_string(Num, NumStr),
     string.append("_i", NumStr, NumSuffix),

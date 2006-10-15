@@ -235,8 +235,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     code_info.get_module_info(!.CI, ModuleInfo),
     code_info.get_pred_id(!.CI, PredId),
     code_info.get_proc_id(!.CI, ProcId),
-    code_util.make_local_entry_label(ModuleInfo, PredId, ProcId, no,
-        EntryLabel),
+    EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
 
     code_info.pre_goal_update(SwitchGoalInfo, no, !CI),
     unify_gen.generate_tag_test(Var, BaseConsId, branch_on_success,
@@ -303,7 +302,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
                 - "decrement loop counter"],
         TestAuxReg = [
             if_val(binop(int_gt, lval(AuxReg), const(llconst_int(0))),
-                label(Loop2Label))
+                code_label(Loop2Label))
                 - "test on upward loop"]
     ;
         PushMsg = proc_gen.push_msg(ModuleInfo, PredId, ProcId),
@@ -314,7 +313,8 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         IncrAuxReg = [],
         DecrAuxReg = [],
         TestAuxReg = [
-            if_val(binop(int_gt, lval(sp), lval(AuxReg)), label(Loop2Label))
+            if_val(binop(int_gt, lval(sp), lval(AuxReg)),
+                code_label(Loop2Label))
                 - "test on upward loop"]
     ),
 
@@ -342,7 +342,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
             BaseList,
             LiveValCode,
             [
-                goto(succip) - "exit from base case"
+                goto(code_succip) - "exit from base case"
             ]
         ], InstrList)
     ;
@@ -378,13 +378,13 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
             TestAuxReg,
             LiveValCode,
             [
-                goto(succip) - "exit from recursive case",
+                goto(code_succip) - "exit from recursive case",
                 label(BaseLabel) - "start of base case"
             ],
             BaseList,
             LiveValCode,
             [
-                goto(succip) - "exit from base case"
+                goto(code_succip) - "exit from base case"
             ]
         ], InstrList)
     ),
@@ -409,7 +409,8 @@ generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
                 "if_val followed by other instructions")
         ),
         code_util.neg_rval(Test, NewTest),
-        Instrs = [if_val(NewTest, label(Target)) - "test on downward loop"]
+        Instrs = [if_val(NewTest, code_label(Target))
+            - "test on downward loop"]
     ;
         generate_downloop_test(Instrs0, Target, Instrs1),
         Instrs = [Instr0 | Instrs1]

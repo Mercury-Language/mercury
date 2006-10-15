@@ -199,7 +199,7 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
     LastCase = extended_case(_, int_tag(LastCaseVal), _, _),
     Span = LastCaseVal - FirstCaseVal,
     Range = Span + 1,
-    dense_switch.calc_density(NumCases, Range, Density),
+    Density = switch_density(NumCases, Range),
     Density > ReqDensity,
 
     % If there are going to be no gaps in the lookup table then we won't need
@@ -221,7 +221,7 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
         classify_type(ModuleInfo, Type) = TypeCategory,
         (
             dense_switch.type_range(!.CI, TypeCategory, Type, TypeRange),
-            dense_switch.calc_density(NumCases, TypeRange, DetDensity),
+            DetDensity = switch_density(NumCases, TypeRange),
             DetDensity > ReqDensity
         ->
             NeedRangeCheck = dont_need_range_check,
@@ -650,7 +650,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
             BranchEndCode, !CI),
         code_info.release_reg(BaseReg, !CI),
         GotoEndCode = node([
-            goto(label(EndLabel)) - "goto end of switch from one_soln"
+            goto(code_label(EndLabel)) - "goto end of switch from one_soln"
         ]),
         KindCode = tree_list([BranchEndCode, GotoEndCode])
     ;
@@ -703,7 +703,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         code_info.release_reg(BaseReg, !CI),
 
         GotoEndCode = node([
-            goto(label(EndLabel)) - "goto end of switch from several_soln"
+            goto(code_label(EndLabel)) - "goto end of switch from several_soln"
         ]),
 
         code_info.reset_to_position(DisjEntry, !CI),
@@ -721,12 +721,12 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
             assign(LaterBaseReg, lval(CurSlot))
                 - "Init later base register",
             if_val(binop(int_ge, lval(LaterBaseReg), lval(MaxSlot)),
-                label(UndoLabel))
+                code_label(UndoLabel))
                 - "Jump to undo hijack code if there are no more solutions",
             assign(CurSlot,
                 binop(int_add, lval(CurSlot), const(llconst_int(NumOutVars))))
                 - "Update current slot in the later solution array",
-            goto(label(AfterUndoLabel))
+            goto(code_label(AfterUndoLabel))
                 - "Jump around undo hijack code",
             label(UndoLabel)
                 - "Undo hijack code"
@@ -778,7 +778,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
             lval(field(yes(0), lval(BaseReg), const(llconst_int(0)))),
             const(llconst_int(0))),
         TestCode = node([
-            if_val(TestRval, label(NextKindLabel))
+            if_val(TestRval, code_label(NextKindLabel))
                 - "skip to next kind in several_soln lookup switch",
             comment("This kind is " ++ case_kind_to_string(Kind))
                 - ""

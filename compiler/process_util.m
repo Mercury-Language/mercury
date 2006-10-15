@@ -72,8 +72,8 @@
     % If fork() is not supported on the current architecture,
     % `AltP' will be called instead in the current process.
     %
-:- pred call_in_forked_process(io_pred::in(io_pred), io_pred::in(io_pred),
-    bool::out, io::di, io::uo) is det.
+:- pred call_in_forked_process_with_backup(io_pred::in(io_pred),
+    io_pred::in(io_pred), bool::out, io::di, io::uo) is det.
 
     % As above, but if fork() is not available, just call the
     % predicate in the current process.
@@ -270,11 +270,11 @@ raise_signal(_::in, IO::di, IO::uo).
 %-----------------------------------------------------------------------------%
 
 call_in_forked_process(P, Success, !IO) :-
-    call_in_forked_process(P, P, Success, !IO).
+    call_in_forked_process_with_backup(P, P, Success, !IO).
 
-call_in_forked_process(P, AltP, Success, !IO) :-
+call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
     ( can_fork ->
-        call_in_forked_process_2(P, ForkStatus, CallStatus, !IO),
+        do_call_in_forked_process(P, ForkStatus, CallStatus, !IO),
         ( ForkStatus = 1 ->
             Success = no
         ;
@@ -307,14 +307,14 @@ can_fork :- semidet_fail.
 #endif
 ").
 
-:- pred call_in_forked_process_2(io_pred::in(io_pred), int::out, int::out,
+:- pred do_call_in_forked_process(io_pred::in(io_pred), int::out, int::out,
     io::di, io::uo) is det.
 
-call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
-    unexpected(this_file, "call_in_forked_process_2").
+do_call_in_forked_process(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
+    unexpected(this_file, "do_call_in_forked_process").
 
 :- pragma foreign_proc("C",
-    call_in_forked_process_2(Pred::in(io_pred), ForkStatus::out, Status::out,
+    do_call_in_forked_process(Pred::in(io_pred), ForkStatus::out, Status::out,
         IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io],
 "{

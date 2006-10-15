@@ -234,14 +234,14 @@ generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
         string.append_list(["checking that ", VarName, " has functor ",
             ConsIdName], Comment),
         CommentCode = node([comment(Comment) - ""]),
-        Tag = code_info.cons_id_to_tag(!.CI, Var, ConsId),
+        Tag = cons_id_to_tag_for_var(!.CI, Var, ConsId),
         generate_tag_test_rval_2(Tag, Rval, TestRval)
     ;
         Reverse = yes(TestConsId),
         string.append_list(["checking that ", VarName, " has functor ",
             ConsIdName, " (inverted test)"], Comment),
         CommentCode = node([comment(Comment) - ""]),
-        Tag = code_info.cons_id_to_tag(!.CI, Var, TestConsId),
+        Tag = cons_id_to_tag_for_var(!.CI, Var, TestConsId),
         generate_tag_test_rval_2(Tag, Rval, NegTestRval),
         code_util.neg_rval(NegTestRval, TestRval)
     ),
@@ -253,7 +253,7 @@ generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
         Sense = branch_on_failure,
         code_util.neg_rval(TestRval, TheRval)
     ),
-    TestCode = node([if_val(TheRval, label(ElseLab)) - "tag test"]),
+    TestCode = node([if_val(TheRval, code_label(ElseLab)) - "tag test"]),
     Code = tree(VarCode, tree(CommentCode, TestCode)).
 
 %---------------------------------------------------------------------------%
@@ -263,7 +263,7 @@ generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
 
 generate_tag_test_rval(Var, ConsId, TestRval, Code, !CI) :-
     code_info.produce_variable(Var, Code, Rval, !CI),
-    Tag = code_info.cons_id_to_tag(!.CI, Var, ConsId),
+    Tag = cons_id_to_tag_for_var(!.CI, Var, ConsId),
     generate_tag_test_rval_2(Tag, Rval, TestRval).
 
 :- pred generate_tag_test_rval_2(cons_tag::in, rval::in, rval::out)
@@ -367,7 +367,7 @@ generate_reserved_address(reserved_object(_, _, _)) = _ :-
 
 generate_construction(Var, ConsId, Args, Modes, TakeAddr, MaybeSize, GoalInfo,
         Code, !CI) :-
-    Tag = code_info.cons_id_to_tag(!.CI, Var, ConsId),
+    Tag = cons_id_to_tag_for_var(!.CI, Var, ConsId),
     generate_construction_2(Tag, Var, Args, Modes, TakeAddr, MaybeSize,
         GoalInfo, Code, !CI).
 
@@ -631,7 +631,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                 % It is possible for the number of hidden arguments to be zero,
                 % in which case the body of this loop should not be executed
                 % at all. This is why we jump to the loop condition test.
-                goto(label(LoopTest))
+                goto(code_label(LoopTest))
                     - ("enter the copy loop at the conceptual top"),
                 label(LoopStart) - "start of loop",
                 assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
@@ -642,7 +642,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                 label(LoopTest)
                     - ("do we have more old arguments to copy?"),
                 if_val(binop(int_lt, lval(LoopCounter), lval(NumOldArgs)),
-                    label(LoopStart))
+                    code_label(LoopStart))
                     - "repeat the loop?"
             ]),
             generate_extra_closure_args(CallArgs, LoopCounter, NewClosure,
@@ -655,9 +655,8 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                  AssignCode])
         )
     ;
-        CodeAddr = code_info.make_entry_label(!.CI, ModuleInfo,
-            PredId, ProcId, no),
-        code_util.extract_proc_label_from_code_addr(CodeAddr, ProcLabel),
+        CodeAddr = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, no),
+        ProcLabel = extract_proc_label_from_code_addr(CodeAddr),
         CodeAddrRval = const(llconst_code_addr(CodeAddr)),
         continuation_info.generate_closure_layout( ModuleInfo, PredId, ProcId,
             ClosureInfo),
@@ -897,7 +896,7 @@ make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
     code_info::in, code_info::out) is det.
 
 generate_det_deconstruction(Var, Cons, Args, Modes, Code, !CI) :-
-    Tag = code_info.cons_id_to_tag(!.CI, Var, Cons),
+    Tag = cons_id_to_tag_for_var(!.CI, Var, Cons),
     generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI).
 
 :- pred generate_det_deconstruction_2(prog_var::in, cons_id::in,

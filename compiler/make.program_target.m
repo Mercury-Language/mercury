@@ -18,14 +18,14 @@
 
 %-----------------------------------------------------------------------------%
 
-    % make_linked_target(Target, Success, Info0, Info):
+    % make_linked_target(Target, Success, !Info):
     %
     % Build a library or an executable.
     %
 :- pred make_linked_target(linked_target_file::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % make_misc_target(Target, Success, Info0, Info):
+    % make_misc_target(Target, Success, !Info):
     %
     % Handle miscellaneous target types, including clean-up, library
     % installation, and building all files of a given type for all
@@ -76,7 +76,8 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
             IntermoduleAnalysis, !IO),
         (
             IntermoduleAnalysis = yes,
-            make_misc_target(MainModuleName - build_analyses,
+            make_misc_target_builder(
+                MainModuleName - misc_target_build_analyses,
                 ExtraOptions, Succeeded0, !Info, !IO)
         ;
             IntermoduleAnalysis = no,
@@ -113,21 +114,21 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
         globals.io_get_target(CompilationTarget, !IO),
         (
             CompilationTarget = target_c,
-            IntermediateTargetType = c_code,
-            ObjectTargetType = object_code(PIC)
+            IntermediateTargetType = module_target_c_code,
+            ObjectTargetType = module_target_object_code(PIC)
         ;
             CompilationTarget = target_asm,
-            IntermediateTargetType = asm_code(PIC),
-            ObjectTargetType = object_code(PIC)
+            IntermediateTargetType = module_target_asm_code(PIC),
+            ObjectTargetType = module_target_object_code(PIC)
         ;
             CompilationTarget = target_il,
-            IntermediateTargetType = il_code,
-            ObjectTargetType = il_asm
+            IntermediateTargetType = module_target_il_code,
+            ObjectTargetType = module_target_il_asm
         ;
             CompilationTarget = target_java,
-            IntermediateTargetType = java_code,
+            IntermediateTargetType = module_target_java_code,
             % XXX Whoever finishes the Java backend can fill this in.
-            ObjectTargetType = object_code(non_pic)
+            ObjectTargetType = module_target_object_code(non_pic)
         ),
 
         get_target_modules(IntermediateTargetType,
@@ -152,7 +153,7 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
             ObjTargets, BuildDepsResult, !Info, !IO),
         (
             DepsSuccess = yes,
-            BuildDepsResult \= error
+            BuildDepsResult \= deps_error
         ->
             build_with_check_for_interrupt(
                 build_with_output_redirect(MainModuleName,
@@ -176,16 +177,16 @@ get_target_modules(TargetType, AllModules, TargetModules, !Info, !IO) :-
     globals.io_get_target(CompilationTarget, !IO),
     (
         (
-            TargetType = errors
+            TargetType = module_target_errors
         ;
             CompilationTarget = target_asm,
-            ( TargetType = asm_code(_)
-            ; TargetType = object_code(_)
+            ( TargetType = module_target_asm_code(_)
+            ; TargetType = module_target_object_code(_)
             )
         )
     ->
-        % `.err' and `.s' files are only produced for the
-        % top-level module in each source file.
+        % `.err' and `.s' files are only produced for the top-level module
+        % in each source file.
         list.foldl3(get_target_modules_2, AllModules,
             [], TargetModules, !Info, !IO)
     ;
@@ -229,13 +230,14 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
         set.member(lang_c, Langs)
     ->
         ForeignObjectTargets =
-            [target(ModuleName - foreign_object(PIC, lang_c))]
+            [dep_target(ModuleName
+                - module_target_foreign_object(PIC, lang_c))]
     ;
         CompilationTarget = target_il,
         Imports ^ has_foreign_code = contains_foreign_code(Langs)
     ->
         ForeignObjectTargets = list.map(
-            (func(L) = target(ModuleName - foreign_il_asm(L))
+            (func(L) = dep_target(ModuleName - module_target_foreign_il_asm(L))
             ), set.to_sorted_list(Langs))
     ;
         ForeignObjectTargets = []
@@ -250,7 +252,8 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
     ->
         FactObjectTargets = list.map(
             (func(FactFile) =
-                target(ModuleName - fact_table_object(PIC, FactFile))
+                dep_target(ModuleName -
+                    module_target_fact_table_object(PIC, FactFile))
             ),
             Imports ^ fact_table_deps),
         ObjectTargets = FactObjectTargets ++ ForeignObjectTargets
@@ -324,7 +327,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
             DepsResult2 = BuildDepsResult
         ;
             InitObjectResult = no,
-            DepsResult2 = error,
+            DepsResult2 = deps_error,
             InitObjects = []
         )
     ;
@@ -336,29 +339,30 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 
     % Report errors if any of the extra objects aren't present.
     list.map_foldl2(dependency_status,
-        list.map((func(F) = file(F, no)), ObjectsToCheck),
+        list.map((func(F) = dep_file(F, no)), ObjectsToCheck),
         ExtraObjStatus, !Info, !IO),
 
     DepsResult3 =
-        ( list.member(error, ExtraObjStatus) -> error ; DepsResult2 ),
-    BuildDepsSuccess = ( DepsResult3 \= error -> yes ; no ),
+        ( list.member(deps_status_error, ExtraObjStatus) ->
+            deps_error ; DepsResult2 ),
+    BuildDepsSuccess = ( DepsResult3 \= deps_error -> yes ; no ),
     list.map_foldl2(get_file_timestamp([dir.this_directory]),
         ObjectsToCheck, ExtraObjectTimestamps, !Info, !IO),
     check_dependency_timestamps(OutputFileName, MaybeTimestamp,
         BuildDepsSuccess, ObjectsToCheck, io.write,
         ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
 
-    DepsResult4 = ( DepsSuccess = yes -> DepsResult3 ; error ),
-    ( DepsResult4 = error, DepsResult = DepsResult4
-    ; DepsResult4 = out_of_date, DepsResult = DepsResult4
-    ; DepsResult4 = up_to_date, DepsResult = ExtraObjectDepsResult
+    DepsResult4 = ( DepsSuccess = yes -> DepsResult3 ; deps_error ),
+    ( DepsResult4 = deps_error, DepsResult = DepsResult4
+    ; DepsResult4 = deps_out_of_date, DepsResult = DepsResult4
+    ; DepsResult4 = deps_up_to_date, DepsResult = ExtraObjectDepsResult
     ),
     (
-        DepsResult = error,
+        DepsResult = deps_error,
         file_error(OutputFileName, !IO),
         Succeeded = no
     ;
-        DepsResult = up_to_date,
+        DepsResult = deps_up_to_date,
         globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs,
             !IO),
         (
@@ -374,7 +378,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
             Succeeded = yes
         )
     ;
-        DepsResult = out_of_date,
+        DepsResult = deps_out_of_date,
         maybe_make_linked_target_message(OutputFileName, !IO),
 
         % Find the extra object files for externally compiled foreign
@@ -490,18 +494,20 @@ linked_target_cleanup(MainModuleName, FileType, OutputFileName,
 
 make_misc_target(MainModuleName - TargetType, Succeeded, !Info, !IO) :-
     build_with_module_options(MainModuleName, [],
-        make_misc_target(MainModuleName - TargetType), Succeeded, !Info, !IO).
+        make_misc_target_builder(MainModuleName - TargetType),
+        Succeeded, !Info, !IO).
 
-:- pred make_misc_target(pair(module_name, misc_target_type)::in,
+:- pred make_misc_target_builder(pair(module_name, misc_target_type)::in,
     list(string)::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
+make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
+        !Info, !IO) :-
     % Don't rebuild dependencies when cleaning up.
     RebuildDeps = !.Info ^ rebuild_dependencies,
     (
-        ( TargetType = clean
-        ; TargetType = realclean
+        ( TargetType = misc_target_clean
+        ; TargetType = misc_target_realclean
         )
     ->
         !:Info = !.Info ^ rebuild_dependencies := no
@@ -513,17 +519,17 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
     !:Info = !.Info ^ rebuild_dependencies := RebuildDeps,
     AllModules = set.to_sorted_list(AllModulesSet),
     (
-        TargetType = clean,
+        TargetType = misc_target_clean,
         Succeeded = yes,
         list.foldl2(make_module_clean, AllModules, !Info, !IO),
         remove_init_files(MainModuleName, !Info, !IO)
     ;
-        TargetType = realclean,
+        TargetType = misc_target_realclean,
         Succeeded = yes,
         make_main_module_realclean(MainModuleName, !Info, !IO),
         list.foldl2(make_module_realclean, AllModules, !Info, !IO)
     ;
-        TargetType = build_all(ModuleTargetType),
+        TargetType = misc_target_build_all(ModuleTargetType),
         get_target_modules(ModuleTargetType, AllModules, TargetModules,
             !Info, !IO),
         globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
@@ -537,19 +543,21 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
             Succeeded = Succeeded0 `and` Succeeded1
         )
     ;
-        TargetType = build_analyses,
+        TargetType = misc_target_build_analyses,
         build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
             !Info, !IO)
     ;
-        TargetType = build_library,
+        TargetType = misc_target_build_library,
         ShortInts = make_dependency_list(AllModules,
-            unqualified_short_interface),
-        LongInts = make_dependency_list(AllModules, long_interface),
+            module_target_unqualified_short_interface),
+        LongInts = make_dependency_list(AllModules,
+            module_target_long_interface),
         globals.io_lookup_bool_option(intermodule_optimization,
             Intermod, !IO),
         (
             Intermod = yes,
-            OptFiles = make_dependency_list(AllModules, intermodule_interface)
+            OptFiles = make_dependency_list(AllModules,
+                module_target_intermodule_interface)
         ;
             Intermod = no,
             OptFiles = []
@@ -595,9 +603,9 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
             Succeeded = no
         )
     ;
-        TargetType = install_library,
-        make_misc_target(MainModuleName - build_library, LibSucceeded,
-            !Info, !IO),
+        TargetType = misc_target_install_library,
+        make_misc_target(MainModuleName - misc_target_build_library,
+            LibSucceeded, !Info, !IO),
         (
             LibSucceeded = yes,
             install_library(MainModuleName, Succeeded, !Info, !IO)
@@ -613,8 +621,8 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
 
 build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
         !Info, !IO) :-
-    get_target_modules(analysis_registry, AllModules, TargetModules0,
-        !Info, !IO),
+    get_target_modules(module_target_analysis_registry, AllModules,
+        TargetModules0, !Info, !IO),
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
     ( Succeeded0 = no, KeepGoing = no ->
         Succeeded = no
@@ -645,7 +653,7 @@ build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
     foldl2_maybe_stop_at_error(KeepGoing,
         make_module_target_extra_options(LocalModulesOpts),
-        make_dependency_list(TargetModules, analysis_registry),
+        make_dependency_list(TargetModules, module_target_analysis_registry),
         Succeeded1, !Info, !IO),
     % Maybe we should have an option to reanalyse cliques before moving 
     % upwards in the dependency graph?
@@ -754,8 +762,8 @@ modules_needing_reanalysis(ReanalyseSuboptimal, [Module | Modules],
     make_info::in, make_info::out) is det.
 
 reset_analysis_registry_dependency_status(ModuleName, Info,
-        Info ^ dependency_status ^ elem(Dep) := not_considered) :-
-    Dep = target(ModuleName - analysis_registry).
+        Info ^ dependency_status ^ elem(Dep) := deps_status_not_considered) :-
+    Dep = dep_target(ModuleName - module_target_analysis_registry).
 
 %-----------------------------------------------------------------------------%
 
@@ -926,14 +934,14 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
         StatusMap = map.from_assoc_list(list.filter(
             (pred((File - _)::in) is semidet :-
                 \+ (
-                    File = target(_ - Target),
+                    File = dep_target(_ - Target),
                     target_is_grade_or_arch_dependent(Target)
                 )
             ),
             map.to_assoc_list(StatusMap0))),
         Info1 = (Info0 ^ dependency_status := StatusMap)
             ^ option_args := OptionArgs,
-        make_misc_target(ModuleName - build_library, LibSucceeded,
+        make_misc_target(ModuleName - misc_target_build_library, LibSucceeded,
             Info1, Info2, !IO),
         (
             LibSucceeded = yes,
@@ -1256,8 +1264,9 @@ remove_init_files(ModuleName, !Info, !IO) :-
 
 make_module_clean(ModuleName, !Info, !IO) :-
     list.foldl2(make_remove_target_file(ModuleName),
-        [errors, c_code, c_header(mih), il_code, java_code],
-        !Info, !IO),
+        [module_target_errors, module_target_c_code,
+        module_target_c_header(header_mih), module_target_il_code,
+        module_target_java_code], !Info, !IO),
 
     list.foldl2(make_remove_file(ModuleName), [".used", ".prof"], !Info, !IO),
 
@@ -1278,20 +1287,23 @@ make_module_clean(ModuleName, !Info, !IO) :-
         ), FactTableFiles, !Info, !IO),
 
     CCodeModule = foreign_language_module_name(ModuleName, lang_c),
-    make_remove_target_file(CCodeModule, c_code, !Info, !IO),
+    make_remove_target_file(CCodeModule, module_target_c_code, !Info, !IO),
 
     % Remove object and assembler files.
     list.foldl2(
         (pred(PIC::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo) is det :-
-        make_remove_target_file(ModuleName, object_code(PIC), !Info, !IO),
-        make_remove_target_file(ModuleName, asm_code(PIC), !Info, !IO),
-        make_remove_target_file(ModuleName, foreign_object(PIC, lang_c),
+        make_remove_target_file(ModuleName, module_target_object_code(PIC),
             !Info, !IO),
+        make_remove_target_file(ModuleName, module_target_asm_code(PIC),
+            !Info, !IO),
+        make_remove_target_file(ModuleName,
+            module_target_foreign_object(PIC, lang_c), !Info, !IO),
         list.foldl2(
             (pred(FactTableFile::in, !.Info::in, !:Info::out,
                     !.IO::di, !:IO::uo) is det :-
                 make_remove_target_file(ModuleName,
-                    fact_table_object(PIC, FactTableFile), !Info, !IO)
+                    module_target_fact_table_object(PIC, FactTableFile),
+                    !Info, !IO)
             ), FactTableFiles, !Info, !IO)
         ),
         [pic, link_with_pic, non_pic], !Info, !IO),
@@ -1300,16 +1312,16 @@ make_module_clean(ModuleName, !Info, !IO) :-
     CSharpModule = foreign_language_module_name(ModuleName, lang_csharp),
     make_remove_file(CSharpModule,
         foreign_language_file_extension(lang_csharp), !Info, !IO),
-    make_remove_target_file(CSharpModule, foreign_il_asm(lang_csharp),
-        !Info, !IO),
+    make_remove_target_file(CSharpModule,
+        module_target_foreign_il_asm(lang_csharp), !Info, !IO),
 
     McppModule = foreign_language_module_name(ModuleName,
         lang_managed_cplusplus),
     make_remove_file(McppModule,
         foreign_language_file_extension(lang_managed_cplusplus),
         !Info, !IO),
-    make_remove_target_file(McppModule, foreign_il_asm(lang_managed_cplusplus),
-        !Info, !IO).
+    make_remove_target_file(McppModule,
+        module_target_foreign_il_asm(lang_managed_cplusplus), !Info, !IO).
 
 :- pred make_module_realclean(module_name::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
@@ -1318,13 +1330,13 @@ make_module_realclean(ModuleName, !Info, !IO) :-
     make_module_clean(ModuleName, !Info, !IO),
     list.foldl2(make_remove_target_file(ModuleName),
         [
-            private_interface, 
-            long_interface, 
-            short_interface,
-            unqualified_short_interface, 
-            intermodule_interface, 
-            analysis_registry,
-            c_header(mh)
+            module_target_private_interface, 
+            module_target_long_interface, 
+            module_target_short_interface,
+            module_target_unqualified_short_interface, 
+            module_target_intermodule_interface, 
+            module_target_analysis_registry,
+            module_target_c_header(header_mh)
         ],
         !Info, !IO),
     make_remove_file(ModuleName, make_module_dep_file_extension, !Info, !IO),

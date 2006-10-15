@@ -90,7 +90,7 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     set.init(NondetLiveness0),
     SimpleStackAlloc0 = stack_alloc(set.make_singleton_set(FailVars)),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    build_live_sets_in_goal(Goal0, Goal, FailVars, AllocData,
+    build_live_sets_in_goal_no_par_stack(Goal0, Goal, FailVars, AllocData,
         SimpleStackAlloc0, SimpleStackAlloc, Liveness0, _Liveness,
         NondetLiveness0, _NondetLiveness),
     proc_info_set_goal(Goal, !ProcInfo),

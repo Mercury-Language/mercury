@@ -25,6 +25,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -40,11 +41,9 @@
     % the current procedure may make jumps more efficient.
     %
 :- type immed == maybe(pair(int, pred_proc_id)).
-:- pred make_entry_label(module_info::in, pred_id::in, proc_id::in, immed::in,
-    code_addr::out) is det.
+:- func make_entry_label(module_info, pred_id, proc_id, immed) = code_addr.
 
-:- pred make_entry_label_from_rtti(rtti_proc_label::in, immed::in,
-    code_addr::out) is det.
+:- func make_entry_label_from_rtti(rtti_proc_label, immed) = code_addr.
 
     % Create a label which holds the address of the specified procedure,
     % which must be defined in the current module (procedures that are
@@ -52,23 +51,20 @@
     % not as labels, since their address is not known at C compilation time).
     % The fourth argument has the same meaning as for make_entry_label.
     %
-:- pred make_local_entry_label(module_info::in, pred_id::in, proc_id::in,
-    immed::in, label::out) is det.
+:- func make_local_entry_label(module_info, pred_id, proc_id, immed) = label.
 
     % Create a label internal to a Mercury procedure.
     %
-:- pred make_internal_label(module_info::in, pred_id::in, proc_id::in, int::in,
-    label::out) is det.
+:- func make_internal_label(module_info, pred_id, proc_id, int) = label.
 
-:- pred extract_proc_label_from_code_addr(code_addr::in, proc_label::out)
-    is det.
+:- func extract_proc_label_from_code_addr(code_addr) = proc_label.
 
 :- pred arg_loc_to_register(arg_loc::in, lval::out) is det.
 
 :- pred max_mentioned_reg(list(lval)::in, int::out) is det.
 :- pred max_mentioned_abs_reg(list(abs_locn)::in, int::out) is det.
 
-:- pred goal_may_alloc_temp_frame(hlds_goal::in) is semidet.
+:- pred goal_may_alloc_temp_frame(hlds_goal::in, bool::out) is det.
 
     % Negate a condition.
     % This is used mostly just to make the generated code more readable.
@@ -106,7 +102,6 @@
 :- import_module libs.options.
 :- import_module parse_tree.prog_util.
 
-:- import_module bool.
 :- import_module char.
 :- import_module int.
 :- import_module set.
@@ -116,27 +111,26 @@
 
 %---------------------------------------------------------------------------%
 
-make_entry_label(ModuleInfo, PredId, ProcId, Immed, ProcAddr) :-
+make_entry_label(ModuleInfo, PredId, ProcId, Immed) = ProcAddr :-
     RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-    make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr).
+    ProcAddr = make_entry_label_from_rtti(RttiProcLabel, Immed).
 
-make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr) :-
+make_entry_label_from_rtti(RttiProcLabel, Immed) = ProcAddr :-
     ( RttiProcLabel ^ proc_is_imported = yes ->
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
-        ProcAddr = imported(ProcLabel)
+        ProcAddr = code_imported_proc(ProcLabel)
     ;
-        make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label),
-        ProcAddr = label(Label)
+        Label = make_local_entry_label_from_rtti(RttiProcLabel, Immed),
+        ProcAddr = code_label(Label)
     ).
 
-make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
+make_local_entry_label(ModuleInfo, PredId, ProcId, Immed) = Label :-
     RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-    make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label).
+    Label = make_local_entry_label_from_rtti(RttiProcLabel, Immed).
 
-:- pred make_local_entry_label_from_rtti(rtti_proc_label::in,
-    immed::in, label::out) is det.
+:- func make_local_entry_label_from_rtti(rtti_proc_label, immed) = label.
 
-make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
+make_local_entry_label_from_rtti(RttiProcLabel, Immed) = Label :-
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
     (
         Immed = no,
@@ -148,19 +142,18 @@ make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
         ;
             EntryType = entry_label_local
         ),
-        Label = entry(EntryType, ProcLabel)
+        Label = entry_label(EntryType, ProcLabel)
     ;
         Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId)),
-        choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
-            RttiProcLabel^pred_id, RttiProcLabel^proc_id,
-            ProcLabel, Label)
+        Label = choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
+            RttiProcLabel ^ pred_id, RttiProcLabel ^ proc_id, ProcLabel)
     ).
 
-:- pred choose_local_label_type(int::in, pred_id::in, proc_id::in,
-    pred_id::in, proc_id::in, proc_label::in, label::out) is det.
+:- func choose_local_label_type(int, pred_id, proc_id, pred_id, proc_id,
+        proc_label) = label.
 
 choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
-        PredId, ProcId, ProcLabel, Label) :-
+        PredId, ProcId, ProcLabel) = Label :-
     (
         % If we want to branch to the label now, we prefer a form that is
         % usable only within the current C module, since it is likely to be
@@ -176,18 +169,18 @@ choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
     ;
         EntryType = entry_label_local
     ),
-    Label = entry(EntryType, ProcLabel).
+    Label = entry_label(EntryType, ProcLabel).
 
 %-----------------------------------------------------------------------------%
 
-make_internal_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
+make_internal_label(ModuleInfo, PredId, ProcId, LabelNum) = Label :-
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-    Label = internal(LabelNum, ProcLabel).
+    Label = internal_label(LabelNum, ProcLabel).
 
-extract_proc_label_from_code_addr(CodeAddr, ProcLabel) :-
-    ( CodeAddr = label(Label) ->
+extract_proc_label_from_code_addr(CodeAddr) = ProcLabel :-
+    ( CodeAddr = code_label(Label) ->
         ProcLabel = get_proc_label(Label)
-    ; CodeAddr = imported(ProcLabelPrime) ->
+    ; CodeAddr = code_imported_proc(ProcLabelPrime) ->
         ProcLabel = ProcLabelPrime
     ;
         unexpected(this_file, "extract_label_from_code_addr failed")
@@ -228,11 +221,6 @@ max_mentioned_abs_reg_2([Lval | Lvals], !MaxRegNum) :-
     max_mentioned_abs_reg_2(Lvals, !MaxRegNum).
 
 %-----------------------------------------------------------------------------%
-
-goal_may_alloc_temp_frame(Goal) :-
-    goal_may_alloc_temp_frame(Goal, yes).
-
-:- pred goal_may_alloc_temp_frame(hlds_goal::in, bool::out) is det.
 
 goal_may_alloc_temp_frame(Goal - _GoalInfo, May) :-
     goal_may_alloc_temp_frame_2(Goal, May).

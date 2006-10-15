@@ -191,7 +191,7 @@ stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     OptStackAlloc0 = init_opt_stack_alloc,
     set.init(FailVars),
     set.init(NondetLiveness0),
-    build_live_sets_in_goal(Goal2, Goal, FailVars, AllocData,
+    build_live_sets_in_goal_no_par_stack(Goal2, Goal, FailVars, AllocData,
         OptStackAlloc0, OptStackAlloc, Liveness0, _Liveness,
         NondetLiveness0, _NondetLiveness),
     proc_info_set_goal(Goal, !ProcInfo),
@@ -712,52 +712,37 @@ anchor_requires_close(_, anchor_call_site(_)) = yes.
 resume_save_status_requires_close(has_resume_save) = yes.
 resume_save_status_requires_close(has_no_resume_save) = no.
 
-:- pred may_have_no_successor(anchor::in) is semidet.
+:- func may_have_no_successor(anchor) = bool.
 
-may_have_no_successor(Anchor) :-
-    may_have_no_successor(Anchor, yes).
+may_have_no_successor(anchor_proc_start) = no.
+may_have_no_successor(anchor_proc_end) = yes.
+may_have_no_successor(anchor_branch_start(_, _)) = no.
+may_have_no_successor(anchor_cond_then(_)) = no.
+may_have_no_successor(anchor_branch_end(_, _)) = no.
+may_have_no_successor(anchor_call_site(_)) = yes. % if the call cannot succeed
 
-:- pred may_have_no_successor(anchor::in, bool::out) is det.
+:- func may_have_one_successor(anchor) = bool.
 
-may_have_no_successor(anchor_proc_start, no).
-may_have_no_successor(anchor_proc_end, yes).
-may_have_no_successor(anchor_branch_start(_, _), no).
-may_have_no_successor(anchor_cond_then(_), no).
-may_have_no_successor(anchor_branch_end(_, _), no).
-may_have_no_successor(anchor_call_site(_), yes).   % if the call cannot succeed
+may_have_one_successor(anchor_proc_start) = yes.
+may_have_one_successor(anchor_proc_end) = no.
+may_have_one_successor(anchor_branch_start(_, _)) = yes.
+may_have_one_successor(anchor_cond_then(_)) = yes.
+may_have_one_successor(anchor_branch_end(_, _)) = yes.
+may_have_one_successor(anchor_call_site(_)) = yes.
 
-:- pred may_have_one_successor(anchor::in) is semidet.
+:- func may_have_more_successors(anchor) = bool.
 
-may_have_one_successor(Anchor) :-
-    may_have_one_successor(Anchor, yes).
-
-:- pred may_have_one_successor(anchor::in, bool::out) is det.
-
-may_have_one_successor(anchor_proc_start, yes).
-may_have_one_successor(anchor_proc_end, no).
-may_have_one_successor(anchor_branch_start(_, _), yes).
-may_have_one_successor(anchor_cond_then(_), yes).
-may_have_one_successor(anchor_branch_end(_, _), yes).
-may_have_one_successor(anchor_call_site(_), yes).
-
-:- pred may_have_more_successors(anchor::in) is semidet.
-
-may_have_more_successors(Anchor) :-
-    may_have_more_successors(Anchor, yes).
-
-:- pred may_have_more_successors(anchor::in, bool::out) is det.
-
-may_have_more_successors(anchor_proc_start, no).
-may_have_more_successors(anchor_proc_end, no).
-may_have_more_successors(anchor_branch_start(BranchType, _), MayHave) :-
+may_have_more_successors(anchor_proc_start) = no.
+may_have_more_successors(anchor_proc_end) = no.
+may_have_more_successors(anchor_branch_start(BranchType, _)) =
     ( BranchType = branch_neg ->
-        MayHave = no
+        no
     ;
-        MayHave = yes
+        yes
     ).
-may_have_more_successors(anchor_cond_then(_), no).
-may_have_more_successors(anchor_branch_end(_, _), no).
-may_have_more_successors(anchor_call_site(_), no).
+may_have_more_successors(anchor_cond_then(_)) = no.
+may_have_more_successors(anchor_branch_end(_, _)) = no.
+may_have_more_successors(anchor_call_site(_)) = no.
 
 %-----------------------------------------------------------------------------%
 
@@ -793,7 +778,7 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
     map.lookup(IntervalInfo ^ interval_succ, IntervalId, SuccessorIds),
     (
         SuccessorIds = [],
-        expect(may_have_no_successor(End), this_file,
+        expect(unify(may_have_no_successor(End), yes), this_file,
             "find_all_branches: unexpected no successor")
         % expect(unify(MaybeSearchAnchor0, no), this_file,
         %   "find_all_branches: no successor while in search"),
@@ -802,11 +787,11 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
         SuccessorIds = [SuccessorId | MoreSuccessorIds],
         (
             MoreSuccessorIds = [],
-            expect(may_have_one_successor(End), this_file,
+            expect(unify(may_have_one_successor(End), yes), this_file,
                 "find_all_branches: unexpected one successor")
         ;
             MoreSuccessorIds = [_ | _],
-            expect(may_have_more_successors(End), this_file,
+            expect(unify(may_have_more_successors(End), yes), this_file,
                 "find_all_branches: unexpected more successors")
         ),
         (

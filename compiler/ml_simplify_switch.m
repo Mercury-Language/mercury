@@ -37,6 +37,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.switch_util.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -133,7 +134,7 @@ is_dense_switch(Cases, ReqDensity) :-
     % The switch needs to be dense enough.
     find_first_and_last_case(Cases, FirstCaseVal, LastCaseVal),
     CasesRange = LastCaseVal - FirstCaseVal + 1,
-    Density = calc_density(NumCases, CasesRange),
+    Density = switch_density(NumCases, CasesRange),
     Density > ReqDensity.
 
     % For switches with a default, we normally need to check that
@@ -153,7 +154,7 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
         Range = range(Min, Max),
         TypeRange = Max - Min + 1,
         NumCases = list.length(Cases),
-        NoDefaultDensity = calc_density(NumCases, TypeRange),
+        NoDefaultDensity = switch_density(NumCases, TypeRange),
         NoDefaultDensity > ReqDensity
     ->
         NeedRangeCheck = no,
@@ -169,13 +170,6 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
         FirstVal = FirstCaseVal,
         LastVal = LastCaseVal
     ).
-
-    % Calculate the percentage density given the range and the number of cases.
-    %
-:- func calc_density(int, int) = int.
-
-calc_density(NumCases, Range) = Density :-
-    Density = (NumCases * 100) // Range.
 
 %-----------------------------------------------------------------------------%
 

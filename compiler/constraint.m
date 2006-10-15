@@ -550,9 +550,9 @@ add_constant_construction(ConstructVar, Construct0,
         !:Info = !.Info ^ varset := VarSet,
         !:Info = !.Info ^ vartypes := VarTypes,
         map.from_assoc_list([ConstructVar - NewVar], Subn),
-        rename_vars_in_goal(Subn, Construct0, Construct),
+        rename_some_vars_in_goal(Subn, Construct0, Construct),
         Constructs = [Construct | Constructs0],
-        rename_vars_in_goal(Subn, ConstraintGoal0, ConstraintGoal),
+        rename_some_vars_in_goal(Subn, ConstraintGoal0, ConstraintGoal),
         Constraint = constraint(ConstraintGoal, ChangedVars,
             IncompatibleInstVars, Constructs)
     ;

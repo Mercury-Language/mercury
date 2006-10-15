@@ -259,9 +259,7 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
         VeryVerbose = yes,
         io.write_string("% Considering tupling in ", !IO),
         list.foldl((pred(PredProcId::in, IO0::di, IO::uo) is det :-
-            PredProcId = proc(PredId, ProcId),
-            hlds_out.write_pred_proc_id(!.ModuleInfo,
-                PredId, ProcId, IO0, IO)),
+            hlds_out.write_pred_proc_id(!.ModuleInfo, PredProcId, IO0, IO)),
             SCC, !IO),
         io.write_string("\n", !IO)
     ;
@@ -699,7 +697,7 @@ make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
     insert_proc_start_deconstruction(Goal1, Goal2,
         VarSet1, VarSet, VarTypes1, VarTypes,
         RenameMapB, ProcStartInsert),
-    rename_vars_in_goal(RenameMapB, Goal2, Goal3),
+    rename_some_vars_in_goal(RenameMapB, Goal2, Goal3),
 
     map.old_merge(RenameMapA, RenameMapB, RenameMap),
     apply_headvar_correction(set.from_list(HeadVars), RenameMap, Goal3, Goal),
@@ -876,7 +874,7 @@ prepare_proc_for_counting(PredProcId, !ModuleInfo, !IO) :-
         OptTupleAlloc0 = opt_tuple_alloc,
         set.init(FailVars),
         set.init(NondetLiveness0),
-        build_live_sets_in_goal(Goal0, Goal, FailVars, AllocData,
+        build_live_sets_in_goal_no_par_stack(Goal0, Goal, FailVars, AllocData,
             OptTupleAlloc0, _OptTupleAlloc, Liveness0, _Liveness,
             NondetLiveness0, _NondetLiveness),
         proc_info_set_goal(Goal, !ProcInfo),

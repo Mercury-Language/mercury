@@ -604,11 +604,11 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
         run_param_command(Debugger, ParamCmd, yes, !Info, !IO),
         Quit = no
     ;
-        Command = cd,
+        Command = cd_no_path,
         set_path(root_rel([]), !Info),
         Quit = no
     ;
-        Command = cd(Path),
+        Command = cd_path(Path),
         change_dir(!.Info ^ dirs, Path, NewPwd),
         deref_subterm(!.Info ^ term, NewPwd, [], Result),
         (

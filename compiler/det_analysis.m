@@ -221,7 +221,7 @@ global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
             io.write_string("% Inferred " ++ ChangeStr ++ " detism ", !IO),
             mercury_output_det(NewDetism, !IO),
             io.write_string(" for ", !IO),
-            hlds_out.write_pred_proc_id(!.ModuleInfo, PredId, ProcId, !IO),
+            write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
             io.write_string("\n", !IO)
         )
     ;

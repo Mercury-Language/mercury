@@ -448,7 +448,7 @@ dump_rtti_type_class_instance_types(TCTypes) = Str :-
     Str = "tc_instance(" ++ TypesStr ++ ")".
 
 dump_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)) = Str :-
-    LabelStr = dump_label(internal(LabelNum, ProcLabel)),
+    LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
     (
         LabelVars = label_has_var_info,
         LabelVarsStr = "label_has_var_info"
@@ -458,10 +458,10 @@ dump_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)) = Str :-
     ),
     Str = "label_layout(" ++ LabelStr ++ ", " ++ LabelVarsStr ++ ")".
 dump_layout_name(solver_event_layout(ProcLabel, LabelNum)) = Str :-
-    LabelStr = dump_label(internal(LabelNum, ProcLabel)),
+    LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
     Str = "solver_event_layout(" ++ LabelStr ++ ")".
 dump_layout_name(solver_event_attr_names(ProcLabel, LabelNum)) = Str :-
-    LabelStr = dump_label(internal(LabelNum, ProcLabel)),
+    LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
     Str = "solver_event_attr_names(" ++ LabelStr ++ ")".
 dump_layout_name(proc_layout(RttiProcLabel, _)) =
     "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
@@ -531,9 +531,9 @@ dump_maybe_rvals([MR | MRs], N) = Str :-
         Str = "truncated"
     ).
 
-dump_code_addr(label(Label)) = dump_label(Label).
-dump_code_addr(imported(ProcLabel)) = dump_proclabel(ProcLabel).
-dump_code_addr(succip) = "succip".
+dump_code_addr(code_label(Label)) = dump_label(Label).
+dump_code_addr(code_imported_proc(ProcLabel)) = dump_proclabel(ProcLabel).
+dump_code_addr(code_succip) = "succip".
 dump_code_addr(do_succeed(Last)) = Str :-
     (
         Last = no,
@@ -554,7 +554,7 @@ dump_code_addr(do_call_class_method(Variant)) =
 dump_code_addr(do_not_reached) = "do_not_reached".
 
 dump_code_addr_for_proc(ProcLabel, CodeAddr) =
-    ( CodeAddr = label(Label) ->
+    ( CodeAddr = code_label(Label) ->
         dump_label_for_proc(ProcLabel, Label)
     ;
         dump_code_addr(CodeAddr)
@@ -569,19 +569,19 @@ dump_code_addrs_for_proc(ProcLabel, [Addr | Addrs]) =
     " " ++ dump_code_addr_for_proc(ProcLabel, Addr) ++
         dump_code_addrs_for_proc(ProcLabel, Addrs).
 
-dump_label(internal(N, ProcLabel)) =
+dump_label(internal_label(N, ProcLabel)) =
     dump_proclabel(ProcLabel) ++ "_i" ++ int_to_string(N).
-dump_label(entry(_, ProcLabel)) =
+dump_label(entry_label(_, ProcLabel)) =
     dump_proclabel(ProcLabel).
 
-dump_label_for_proc(CurProcLabel, internal(N, ProcLabel)) = Str :-
+dump_label_for_proc(CurProcLabel, internal_label(N, ProcLabel)) = Str :-
     string.int_to_string(N, N_str),
     ( CurProcLabel = ProcLabel ->
         Str = "local_" ++ N_str
     ;
         Str = dump_proclabel(ProcLabel) ++ "_" ++ N_str
     ).
-dump_label_for_proc(CurProcLabel, entry(_, ProcLabel)) = Str :-
+dump_label_for_proc(CurProcLabel, entry_label(_, ProcLabel)) = Str :-
     ( CurProcLabel = ProcLabel ->
         Str = "CUR_PROC_ENTRY"
     ;
@@ -803,8 +803,8 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             ++ dump_maybe_label_for_proc("fix layout:", ProcLabel, MFL)
             ++ dump_maybe_label_for_proc("fix onlylayout:", ProcLabel, MFOL)
             ++ dump_maybe_label_for_proc("nofix:", ProcLabel, MNF)
-            ++ dump_bool("stack slot ref:", SSR)
-            ++ dump_bool("may duplicate:", MD)
+            ++ dump_bool_msg("stack slot ref:", SSR)
+            ++ dump_bool_msg("may duplicate:", MD)
             ++ ")"
     ).
 
@@ -819,10 +819,10 @@ dump_maybe_label_for_proc(_Msg, _ProcLabel, no) = "".
 dump_maybe_label_for_proc(Msg, ProcLabel, yes(Label)) =
     Msg ++ " " ++ dump_label_for_proc(ProcLabel, Label) ++ "\n".
 
-:- func dump_bool(string, bool) = string.
+:- func dump_bool_msg(string, bool) = string.
 
-dump_bool(Msg, no)  = Msg ++ " no\n".
-dump_bool(Msg, yes) = Msg ++ " yes\n".
+dump_bool_msg(Msg, no)  = Msg ++ " no\n".
+dump_bool_msg(Msg, yes) = Msg ++ " yes\n".
 
 :- func dump_may_use_atomic(may_use_atomic_alloc) = string.
 

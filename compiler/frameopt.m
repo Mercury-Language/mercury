@@ -293,7 +293,7 @@ frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
         MkframeInstr = MkframeUinstr - MkframeComment,
         find_succeed_labels(Instrs1, map.init, SuccMap),
         counter.allocate(KeepFrameLabelNum, !C),
-        KeepFrameLabel = internal(KeepFrameLabelNum, ProcLabel),
+        KeepFrameLabel = internal_label(KeepFrameLabelNum, ProcLabel),
         keep_nondet_frame(Remain, Instrs2, ProcLabel, KeepFrameLabel,
             MkframeUinstr, SuccMap, LayoutLabels, no, yes)
     ->
@@ -345,8 +345,8 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
     (
         % Look for nondet style tailcalls which do not need
         % a runtime check.
-        Uinstr0 = llcall(label(entry(_, ProcLabel)), label(RetLabel),
-            _, _, _, CallModel),
+        Uinstr0 = llcall(code_label(entry_label(_, ProcLabel)),
+            code_label(RetLabel), _, _, _, CallModel),
         CallModel = call_model_nondet(unchecked_tail_call),
         map.search(SuccMap, RetLabel, BetweenIncl),
         BetweenIncl = [livevals(_) - _, goto(_) - _],
@@ -359,7 +359,7 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
         NewComment = Comment ++ " (nondet tailcall)",
         Instrs = [
             livevals(Livevals) - "",
-            goto(label(KeepFrameLabel)) - NewComment
+            goto(code_label(KeepFrameLabel)) - NewComment
             | Instrs1
         ]
     ;
@@ -530,7 +530,7 @@ divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, Instrs, !C) :-
                 Instrs = [Instr0 | Instrs1]
             ;
                 counter.allocate(N, !C),
-                NewLabel = internal(N, ProcLabel),
+                NewLabel = internal_label(N, ProcLabel),
                 NewInstr = label(NewLabel) - "",
                 divide_into_basic_blocks(Instrs0, ProcLabel, Instrs1, !C),
                 Instrs = [Instr0, NewInstr | Instrs1]
@@ -555,7 +555,7 @@ flatten_block_seq([Label | Labels], BlockMap, Instrs) :-
     (
         list.split_last(BlockInstrs, MostInstrs, LastInstr),
         Labels = [NextLabel | _],
-        LastInstr = goto(label(NextLabel)) - _
+        LastInstr = goto(code_label(NextLabel)) - _
     ->
         % Optimize away the redundant goto, which we probably introduced.
         % The next invocation of jumpopt would also do this, but doing it here
@@ -626,10 +626,11 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             % updating LabelSeq and BlockMap.
 
             counter.allocate(EmptyN, !C),
-            EmptyLabel = internal(EmptyN, ProcLabel),
+            EmptyLabel = internal_label(EmptyN, ProcLabel),
 
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
-            FallThroughToEmptyInstr = goto(label(EmptyLabel)) - "fall through",
+            FallThroughToEmptyInstr = goto(code_label(EmptyLabel))
+                - "fall through",
             BlockInfo = frame_block_info(Label,
                 [Instr0 | EntryInstrs] ++ [FallThroughToEmptyInstr],
                 FallInto, [], no, entry_block(EntryInfo)),
@@ -645,14 +646,14 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
                 Instrs2 = Instrs1
             ;
                 counter.allocate(N, !C),
-                NextLabel = internal(N, ProcLabel),
+                NextLabel = internal_label(N, ProcLabel),
                 NextLabelInstr = label(NextLabel) - "",
                 Instrs2 = [NextLabelInstr | Instrs1]
             ),
 
             EmptyLabelInstr = label(EmptyLabel) - "",
             FallThroughFromEmptyInstr =
-                goto(label(NextLabel)) - "fall through",
+                goto(code_label(NextLabel)) - "fall through",
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
             EmptyBlockType = ordinary_block(block_doesnt_need_frame,
                 is_post_entry_dummy),
@@ -697,10 +698,10 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             % comment, we don't substitute labels used as code addresses
             % in assignments to redoip slots.
             counter.allocate(N, !C),
-            ExitLabel = internal(N, ProcLabel),
+            ExitLabel = internal_label(N, ProcLabel),
 
             compute_block_needs_frame(Label, Extra, NeedsFrame),
-            FallThroughInstr = goto(label(ExitLabel)) - "fall through",
+            FallThroughInstr = goto(code_label(ExitLabel)) - "fall through",
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
             (
                 Extra = [],
@@ -954,8 +955,8 @@ detect_nondet_exit(Instrs0, _EntryInfo, Extra, ExitInstrs, Remain, ExitInfo) :-
         % maxfr and succip.
         Maxfr = [MaxfrInstr],
         SuccipRestore = [SuccipRestoreInstr],
-        ( GotoTarget = label(entry(_, _))
-        ; GotoTarget = imported(_)
+        ( GotoTarget = code_label(entry_label(_, _))
+        ; GotoTarget = code_imported_proc(_)
         ),
         ExitInfo = nondet_teardown_exit(SuccipRestoreInstr,
             MaxfrInstr, CurfrInstr, Livevals, Goto)
@@ -1241,7 +1242,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
             MaybeFallThrough = no
         ),
         (
-            LastUinstr = goto(label(GotoLabel)),
+            LastUinstr = goto(code_label(GotoLabel)),
             matching_label_ref(FirstLabel, GotoLabel)
         ->
             !:JumpToStart = yes
@@ -1259,8 +1260,8 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
 
 :- pred local_label(proc_label::in, label::in) is semidet.
 
-local_label(ProcLabel, entry(_, ProcLabel)).
-local_label(ProcLabel, internal(_, ProcLabel)).
+local_label(ProcLabel, entry_label(_, ProcLabel)).
+local_label(ProcLabel, internal_label(_, ProcLabel)).
 
     % The form of a label used in a tailcall may be different from
     % the form used in the initial label. The initial label may be
@@ -1275,8 +1276,8 @@ local_label(ProcLabel, internal(_, ProcLabel)).
 :- pred matching_label_ref(label::in, label::in) is semidet.
 
 matching_label_ref(FirstLabel, GotoLabel) :-
-    FirstLabel = entry(FirstLabelType, ProcLabel),
-    GotoLabel = entry(GotoLabelType, ProcLabel),
+    FirstLabel = entry_label(FirstLabelType, ProcLabel),
+    GotoLabel = entry_label(GotoLabelType, ProcLabel),
     matching_entry_type(FirstLabelType, GotoLabelType).
 
 :- pred matching_entry_type(entry_label_type::in, entry_label_type::in)
@@ -1297,7 +1298,7 @@ find_redoip_labels([Instr | Instrs], ProcLabel, !RedoipLabels) :-
     Instr = Uinstr - _,
     (
         Uinstr = assign(redoip_slot(_),
-            const(llconst_code_addr(label(Label)))),
+            const(llconst_code_addr(code_label(Label)))),
         get_proc_label(Label) = ProcLabel
     ->
         !:RedoipLabels = [Label | !.RedoipLabels]
@@ -1369,7 +1370,7 @@ keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
     (
         BlockInfo0 = frame_block_info(Label, OrigInstrs, FallInto, [_], no,
             exit_block(det_exit(Succip, Livevals, Goto))),
-        Goto = goto(label(GotoLabel)) - Comment,
+        Goto = goto(code_label(GotoLabel)) - Comment,
         matching_label_ref(FirstLabel, GotoLabel)
     ->
         (
@@ -1382,7 +1383,7 @@ keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
                 "keep_frame_transform: block does not begin with label")
         ),
         string.append(Comment, " (keeping frame)", NewComment),
-        NewGoto = goto(label(SecondLabel)) - NewComment,
+        NewGoto = goto(code_label(SecondLabel)) - NewComment,
         LivevalsGoto = Livevals ++ [NewGoto],
         (
             CanClobberSuccip = yes,
@@ -1925,7 +1926,7 @@ transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0, OrdNeedsFrame,
         ( FallThroughLabel = FallThroughLabel0 ->
             RedirectFallThrough = []
         ;
-            RedirectFallThrough = [goto(label(FallThroughLabel))
+            RedirectFallThrough = [goto(code_label(FallThroughLabel))
                 - "redirect fallthrough"]
             % We can expect this jump to be optimized away in most cases.
         )
@@ -2083,7 +2084,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
         (
             PrevNeedsFrame = block_needs_frame(Reasons),
             counter.allocate(N, !C),
-            JumpAroundLabel = internal(N, ProcLabel),
+            JumpAroundLabel = internal_label(N, ProcLabel),
             % By not including a label instruction at the start of
             % JumpAroundCode, we are breaking an invariant of frame_block_maps.
             % However, we don't execute any code during or after
@@ -2091,7 +2092,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             % including the label saves memory and reduces the amount of work
             % labelopt has to do. (The label *would* be optimized away, since
             % it can't be referred to from anywhere.)
-            JumpAroundCode = [goto(label(Label0)) - "jump around setup"],
+            JumpAroundCode = [goto(code_label(Label0)) - "jump around setup"],
             Labels = [JumpAroundLabel, SetupLabel, Label0 | Labels1],
             JumpAroundReason = jump_around(Label0, Reasons),
             JumpAroundBlockInfo = frame_block_info(JumpAroundLabel,
@@ -2163,7 +2164,7 @@ nondet_late_setup(nondet_entry(Msg, FrameSize, Redoip)) =
 :- func nondet_non_teardown_exit_code(nondet_exit_info) = list(instruction).
 
 nondet_non_teardown_exit_code(nondet_plain_exit(Livevals, _Goto)) =
-    Livevals ++ [goto(succip) - ""].
+    Livevals ++ [goto(code_succip) - ""].
 nondet_non_teardown_exit_code(nondet_teardown_exit(_, _, _, Livevals, Goto)) =
     Livevals ++ [Goto].
 
@@ -2181,7 +2182,7 @@ ensure_setup_parallel(Label, ParallelLabel, ProcLabel, !C, !SetupParMap) :-
         ParallelLabel = OldParallel
     ;
         counter.allocate(N, !C),
-        NewParallel = internal(N, ProcLabel),
+        NewParallel = internal_label(N, ProcLabel),
         ParallelLabel = NewParallel,
         map.det_insert(ParMap0, Label, NewParallel, ParMap),
         !:SetupParMap = setup_par_map(ParMap)
@@ -2199,7 +2200,7 @@ ensure_exit_parallel(Label, ParallelLabel, ProcLabel, !C, !ExitParMap) :-
         ParallelLabel = OldParallel
     ;
         counter.allocate(N, !C),
-        NewParallel = internal(N, ProcLabel),
+        NewParallel = internal_label(N, ProcLabel),
         ParallelLabel = NewParallel,
         map.det_insert(ParMap0, Label, NewParallel, ParMap),
         !:ExitParMap = exit_par_map(ParMap)

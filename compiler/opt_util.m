@@ -493,7 +493,7 @@ is_proceed_next(Instrs0, InstrsBetween) :-
     Instr5 = livevals(_) - _,
     skip_comments_labels(Instrs6, Instrs7),
     Instrs7 = [Instr7 | _],
-    Instr7 = goto(succip) - _,
+    Instr7 = goto(code_succip) - _,
     InstrsBetween = [Instr1use, Instr3use, Instr5].
 
 is_sdproceed_next(Instrs0, InstrsBetween) :-
@@ -531,7 +531,7 @@ is_sdproceed_next_sf(Instrs0, InstrsBetween, Success) :-
     Instr7 = livevals(_) - _,
     skip_comments_labels(Instrs8, Instrs9),
     Instrs9 = [Instr9 | _],
-    Instr9 = goto(succip) - _,
+    Instr9 = goto(code_succip) - _,
     InstrsBetween = [Instr1use, Instr3use, Instr5, Instr7].
 
 is_succeed_next(Instrs0, InstrsBetweenIncl) :-
@@ -548,7 +548,7 @@ is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
     Instrs1 = [Instr1 | Instrs2],
     Instr1 = Uinstr1 - _,
     (
-        Uinstr1 = if_val(lval(reg(reg_r, 1)), label(JumpLabel))
+        Uinstr1 = if_val(lval(reg(reg_r, 1)), code_label(JumpLabel))
     ->
         map.search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
@@ -558,7 +558,7 @@ is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
         filter_out_livevals(BetweenFalse0, Between)
     ;
         Uinstr1 = if_val(unop(logical_not, lval(reg(reg_r, 1))),
-            label(JumpLabel))
+            code_label(JumpLabel))
     ->
         map.search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
@@ -705,9 +705,9 @@ rvals_refer_stackvars([MaybeRval | Tail]) =
 
 :- func code_addr_refers_to_stack(code_addr) = bool.
 
-code_addr_refers_to_stack(label(_)) = no.
-code_addr_refers_to_stack(imported(_)) = no.
-code_addr_refers_to_stack(succip) = no.
+code_addr_refers_to_stack(code_label(_)) = no.
+code_addr_refers_to_stack(code_imported_proc(_)) = no.
+code_addr_refers_to_stack(code_succip) = no.
 code_addr_refers_to_stack(do_succeed(_)) = yes.
 code_addr_refers_to_stack(do_redo) = yes.
 code_addr_refers_to_stack(do_fail) = yes.
@@ -1146,7 +1146,7 @@ instr_labels(Instr, Labels, CodeAddrs) :-
 
 find_label_code_addrs([], Labels, Labels).
 find_label_code_addrs([CodeAddr | Rest], Labels0, Labels) :-
-    ( CodeAddr = label(Label) ->
+    ( CodeAddr = code_label(Label) ->
         Labels1 = [Label | Labels0]
     ;
         Labels1 = Labels0
@@ -1207,7 +1207,7 @@ possible_targets(block(_, _, _), _, _) :-
     unexpected(this_file, "block in possible_targets").
 possible_targets(assign(_, _), [], []).
 possible_targets(llcall(_, Return, _, _, _, _), Labels, CodeAddrs) :-
-    ( Return = label(ReturnLabel) ->
+    ( Return = code_label(ReturnLabel) ->
         Labels = [ReturnLabel],
         CodeAddrs = []
     ;
@@ -1217,7 +1217,7 @@ possible_targets(llcall(_, Return, _, _, _, _), Labels, CodeAddrs) :-
 possible_targets(mkframe(_, _), [], []).
 possible_targets(label(_), [], []).
 possible_targets(goto(CodeAddr), Labels, CodeAddrs) :-
-    ( CodeAddr = label(Label) ->
+    ( CodeAddr = code_label(Label) ->
         Labels = [Label],
         CodeAddrs = []
     ;
@@ -1227,7 +1227,7 @@ possible_targets(goto(CodeAddr), Labels, CodeAddrs) :-
 possible_targets(computed_goto(_, Labels), Labels, []).
 possible_targets(arbitrary_c_code(_, _), [], []).
 possible_targets(if_val(_, CodeAddr), Labels, CodeAddrs) :-
-    ( CodeAddr = label(Label) ->
+    ( CodeAddr = code_label(Label) ->
         Labels = [Label],
         CodeAddrs = []
     ;
@@ -1401,16 +1401,16 @@ instr_list_labels([Uinstr - _ | Instrs], Labels, CodeAddrs) :-
     list.append(Labels0, Labels1, Labels),
     list.append(CodeAddrs0, CodeAddrs1, CodeAddrs).
 
-livevals_addr(label(Label), Result) :-
+livevals_addr(code_label(Label), Result) :-
     (
-        Label = internal(_, _),
+        Label = internal_label(_, _),
         Result = no
     ;
-        Label = entry(_, _),
+        Label = entry_label(_, _),
         Result = yes
     ).
-livevals_addr(imported(_), yes).
-livevals_addr(succip, yes).
+livevals_addr(code_imported_proc(_), yes).
+livevals_addr(code_succip, yes).
 livevals_addr(do_succeed(_), yes).
 livevals_addr(do_redo, no).
 livevals_addr(do_fail, no).
@@ -1499,8 +1499,8 @@ count_temps_lval(Lval, !R, !F) :-
 % that uses a temp var without defining it.
 count_temps_rval(_, !R, !F).
 
-format_label(internal(_, ProcLabel)) = format_proc_label(ProcLabel).
-format_label(entry(_, ProcLabel)) = format_proc_label(ProcLabel).
+format_label(internal_label(_, ProcLabel)) = format_proc_label(ProcLabel).
+format_label(entry_label(_, ProcLabel)) = format_proc_label(ProcLabel).
 
 format_proc_label(ordinary_proc_label(_Module, _PredOrFunc, _, Name,
         Arity, Mode)) =
@@ -2102,10 +2102,11 @@ replace_labels_rval_const(llconst_code_addr(Addr0), ReplMap,
 replace_labels_rval_const(llconst_data_addr(DataAddr, MaybeOffset), _,
         llconst_data_addr(DataAddr, MaybeOffset)).
 
-replace_labels_code_addr(label(Label0), ReplMap, label(Label)) :-
+replace_labels_code_addr(code_label(Label0), ReplMap, code_label(Label)) :-
     replace_labels_label(Label0, ReplMap, Label).
-replace_labels_code_addr(imported(Proc), _, imported(Proc)).
-replace_labels_code_addr(succip, _, succip).
+replace_labels_code_addr(code_imported_proc(Proc), _,
+        code_imported_proc(Proc)).
+replace_labels_code_addr(code_succip, _, code_succip).
 replace_labels_code_addr(do_succeed(Last), _, do_succeed(Last)).
 replace_labels_code_addr(do_redo, _, do_redo).
 replace_labels_code_addr(do_fail, _, do_fail).

@@ -88,7 +88,8 @@ optimize_proc(GlobalData, CProc0, CProc, !IO) :-
         ->
             LabelMap = ProcLayout ^ internal_map,
             map.sorted_keys(LabelMap, LayoutLabelNums),
-            LayoutLabels = list.map(make_internal_label(ProcLabel),
+            LayoutLabels = list.map(
+                make_internal_label_for_proc_label(ProcLabel),
                 LayoutLabelNums),
             set.sorted_list_to_set(LayoutLabels, LayoutLabelSet)
         ;
@@ -106,9 +107,10 @@ optimize_proc(GlobalData, CProc0, CProc, !IO) :-
             ProcLabel, !.C, MayAlterRtti, CGlobalVars)
     ).
 
-:- func make_internal_label(proc_label, int) = label.
+:- func make_internal_label_for_proc_label(proc_label, int) = label.
 
-make_internal_label(ProcLabel, LabelNum) = internal(LabelNum, ProcLabel).
+make_internal_label_for_proc_label(ProcLabel, LabelNum)
+    = internal_label(LabelNum, ProcLabel).
 
 %-----------------------------------------------------------------------------%
 

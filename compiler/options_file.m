@@ -125,19 +125,20 @@ read_args_file(OptionsFile, MaybeMCFlags, !IO) :-
         !IO),
     (
         MaybeVariables = yes(Variables),
-        % Ignore settings in the environment -- the parent
-        % mmc process will have included those in the file.
-        lookup_variable_words(no, Variables, "MCFLAGS", FlagsResult, !IO),
+        % Ignore settings in the environment -- the parent mmc process
+        % will have included those in the file.
+        lookup_variable_words_maybe_env(no, Variables, "MCFLAGS", FlagsResult,
+            !IO),
         (
-            FlagsResult = set(MCFlags),
+            FlagsResult = var_result_set(MCFlags),
             MaybeMCFlags = yes(MCFlags)
         ;
-            FlagsResult = unset,
+            FlagsResult = var_result_unset,
             io.write_string("mercury_compile: internal error: " ++
                 "arguments file does not set MCFLAGS.\n", !IO),
             MaybeMCFlags = no
         ;
-            FlagsResult = error(Msg),
+            FlagsResult = var_result_error(Msg),
             MaybeMCFlags = no,
             io.write_string(Msg, !IO),
             io.nl(!IO)
@@ -779,8 +780,7 @@ get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
         RevWord = RevWord0
     ; Char = '"' ->
         parse_string_chars([], RevStringChars, Chars0, Chars1),
-        get_word_2(RevStringChars ++ RevWord0, RevWord,
-            Chars1, Chars)
+        get_word_2(RevStringChars ++ RevWord0, RevWord, Chars1, Chars)
     ; Char = ('\\') ->
         (
             Chars0 = [],
@@ -808,13 +808,13 @@ lookup_main_target(Vars, MaybeMainTarget, !IO) :-
     lookup_variable_words_report_error(Vars, "MAIN_TARGET", MainTargetResult,
         !IO),
     (
-        MainTargetResult = set(MainTarget),
+        MainTargetResult = var_result_set(MainTarget),
         MaybeMainTarget = yes(MainTarget)
     ;
-        MainTargetResult = unset,
+        MainTargetResult = var_result_unset,
         MaybeMainTarget = yes([])
     ;
-        MainTargetResult = error(_),
+        MainTargetResult = var_result_error(_),
         MaybeMainTarget = no
     ).
 
@@ -840,10 +840,10 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
         list.map(
             (pred(VarResult::in, MaybeValue::out) is semidet :-
                 (
-                    VarResult = set(Value),
+                    VarResult = var_result_set(Value),
                     MaybeValue = yes(Value)
                 ;
-                    VarResult = unset,
+                    VarResult = var_result_unset,
                     MaybeValue = no
                 )
             ), Results, Values)
@@ -953,12 +953,13 @@ options_variable_type_is_target_specific(mercury_linkage) = yes.
 
 convert_to_mmc_options(_ - no) = [].
 convert_to_mmc_options(VariableType - yes(VariableValue)) =
-    convert_to_mmc_options(VariableType, VariableValue).
+    convert_to_mmc_options_with_value(VariableType, VariableValue).
 
-:- func convert_to_mmc_options(options_variable_type, list(string))
+:- func convert_to_mmc_options_with_value(options_variable_type, list(string))
     = list(string).
 
-convert_to_mmc_options(VariableType, VariableValue) = OptionsStrings :-
+convert_to_mmc_options_with_value(VariableType, VariableValue)
+        = OptionsStrings :-
     MMCOptionType = mmc_option_type(VariableType),
     (
         MMCOptionType = mmc_flags,
@@ -1009,9 +1010,9 @@ mmc_option_type(mercury_linkage) = option([], "--mercury-linkage").
 %-----------------------------------------------------------------------------%
 
 :- type variable_result(T)
-    --->    set(T)
-    ;       unset
-    ;       error(string).
+    --->    var_result_set(T)
+    ;       var_result_unset
+    ;       var_result_error(string).
 
 :- pred lookup_options_variable(options_variables::in,
     options_variable_class::in, options_variable_type::in,
@@ -1023,8 +1024,8 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
     lookup_variable_words_report_error(Vars, "DEFAULT_" ++ VarName,
         DefaultFlagsResult, !IO),
     ( OptionsVariableClass = default ->
-        FlagsResult = unset,
-        ExtraFlagsResult = unset
+        FlagsResult = var_result_unset,
+        ExtraFlagsResult = var_result_unset
     ;
         lookup_variable_words_report_error(Vars, VarName, FlagsResult, !IO),
         lookup_variable_words_report_error(Vars, "EXTRA_" ++ VarName,
@@ -1039,21 +1040,25 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
         lookup_variable_words_report_error(Vars, ModuleVarName,
             ModuleFlagsResult, !IO)
     ;
-        ModuleFlagsResult = unset
+        ModuleFlagsResult = var_result_unset
     ),
-    Result = DefaultFlagsResult ++ FlagsResult ++ ExtraFlagsResult
-        ++ ModuleFlagsResult.
+    Result = list.foldl(combine_var_results,
+        [DefaultFlagsResult, FlagsResult, ExtraFlagsResult, ModuleFlagsResult],
+        var_result_unset).
 
-:- func variable_result(list(T)) ++ variable_result(list(T)) =
-    variable_result(list(T)).
+:- func combine_var_results(variable_result(list(T)), variable_result(list(T)))
+    = variable_result(list(T)).
 
-unset ++ unset = unset.
-unset ++ set(V) = set(V).
-unset ++ error(E) = error(E).
-set(V1) ++ set(V2) = set(V1 ++ V2).
-set(V) ++ unset = set(V).
-set(_) ++ error(E) = error(E).
-error(E) ++ _ = error(E).
+combine_var_results(var_result_unset, var_result_unset) = var_result_unset.
+combine_var_results(var_result_unset, var_result_set(V)) = var_result_set(V).
+combine_var_results(var_result_unset, var_result_error(E)) =
+    var_result_error(E).
+combine_var_results(var_result_set(V1), var_result_set(V2)) =
+    var_result_set(V1 ++ V2).
+combine_var_results(var_result_set(V), var_result_unset) = var_result_set(V).
+combine_var_results(var_result_set(_), var_result_error(E)) =
+    var_result_error(E).
+combine_var_results(var_result_error(E), _) = var_result_error(E).
 
 :- pred lookup_variable_words_report_error(options_variables::in,
     options_variable::in, variable_result(list(string))::out,
@@ -1061,7 +1066,7 @@ error(E) ++ _ = error(E).
 
 lookup_variable_words_report_error(Vars, VarName, Result, !IO) :-
     lookup_variable_words(Vars, VarName, Result, !IO),
-    ( Result = error(Error) ->
+    ( Result = var_result_error(Error) ->
         io.write_string(Error, !IO),
         io.nl(!IO)
     ;
@@ -1071,14 +1076,14 @@ lookup_variable_words_report_error(Vars, VarName, Result, !IO) :-
 :- pred lookup_variable_words(options_variables::in, options_variable::in,
     variable_result(list(string))::out, io::di, io::uo) is det.
 
-lookup_variable_words(Vars, VarName, Result) -->
-    lookup_variable_words(yes, Vars, VarName, Result).
+lookup_variable_words(Vars, VarName, Result, !IO) :-
+    lookup_variable_words_maybe_env(yes, Vars, VarName, Result, !IO).
 
-:- pred lookup_variable_words(bool::in, options_variables::in,
+:- pred lookup_variable_words_maybe_env(bool::in, options_variables::in,
     options_variable::in, variable_result(list(string))::out,
     io::di, io::uo) is det.
 
-lookup_variable_words(LookupEnv, Vars, VarName, Result, !IO) :-
+lookup_variable_words_maybe_env(LookupEnv, Vars, VarName, Result, !IO) :-
     (
         LookupEnv = yes,
         io.get_environment_var(VarName, MaybeEnvValue, !IO)
@@ -1086,21 +1091,25 @@ lookup_variable_words(LookupEnv, Vars, VarName, Result, !IO) :-
         LookupEnv = no,
         MaybeEnvValue = no
     ),
-    ( MaybeEnvValue = yes(EnvValue) ->
+    (
+        MaybeEnvValue = yes(EnvValue),
         SplitResult = checked_split_into_words(string.to_char_list(EnvValue)),
         (
             SplitResult = ok(EnvWords),
-            Result = set(EnvWords)
+            Result = var_result_set(EnvWords)
         ;
             SplitResult = error(Msg),
-            Result = error("Error: in environment variable `"
+            Result = var_result_error("Error: in environment variable `"
                 ++ VarName ++ "': " ++ Msg)
         )
-    ; map.search(Vars, VarName, MapValue) ->
-        MapValue = options_variable_value(_, Words, _),
-        Result = set(Words)
     ;
-        Result = unset
+        MaybeEnvValue = no,
+        ( map.search(Vars, VarName, MapValue) ->
+            MapValue = options_variable_value(_, Words, _),
+            Result = var_result_set(Words)
+        ;
+            Result = var_result_unset
+        )
     ).
 
 :- pred lookup_variable_chars(options_variables::in, string::in,

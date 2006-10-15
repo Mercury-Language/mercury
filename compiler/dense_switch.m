@@ -32,8 +32,9 @@
     % (we may convert locally semidet switches into locally det
     % switches by adding extra cases whose body is just `fail').
     %
-:- pred is_dense_switch(code_info::in, prog_var::in, cases_list::in,
-    can_fail::in, int::in, int::out, int::out, can_fail::out) is semidet.
+:- pred cases_list_is_dense_switch(code_info::in, prog_var::in,
+    cases_list::in, can_fail::in, int::in, int::out, int::out, can_fail::out)
+    is semidet.
 
     % Generate code for a switch using a dense jump table.
     %
@@ -41,10 +42,6 @@
     code_model::in, can_fail::in, hlds_goal_info::in, label::in,
     branch_end::in, branch_end::out, code_tree::out,
     code_info::in, code_info::out) is det.
-
-    % Also used by lookup_switch.
-    %
-:- pred calc_density(int::in, int::in, int::out) is det.
 
     % Also used by lookup_switch.
     %
@@ -74,7 +71,7 @@
 
 %-----------------------------------------------------------------------------%
 
-is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
+cases_list_is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
         FirstVal, LastVal, CanFail) :-
     list.length(TaggedCases, NumCases),
     NumCases > 2,
@@ -84,7 +81,7 @@ is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
     LastCase = extended_case(_, int_tag(LastCaseVal), _, _),
     Span = LastCaseVal - FirstCaseVal,
     Range = Span + 1,
-    dense_switch.calc_density(NumCases, Range, Density),
+    Density = switch_density(NumCases, Range),
     Density > ReqDensity,
     ( CanFail0 = can_fail ->
         % For semidet switches, we normally need to check that the variable
@@ -96,7 +93,7 @@ is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
         classify_type(ModuleInfo, Type) = TypeCategory,
         (
             dense_switch.type_range(CI, TypeCategory, Type, TypeRange),
-            dense_switch.calc_density(NumCases, TypeRange, DetDensity),
+            DetDensity = switch_density(NumCases, TypeRange),
             DetDensity > ReqDensity
         ->
             CanFail = cannot_fail,
@@ -112,14 +109,6 @@ is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
         FirstVal = FirstCaseVal,
         LastVal = LastCaseVal
     ).
-
-%---------------------------------------------------------------------------%
-
-    % Calculate the percentage density given the range and the number of cases.
-    %
-calc_density(NumCases, Range, Density) :-
-    N1 = NumCases * 100,
-    Density = N1 // Range.
 
 %---------------------------------------------------------------------------%
 
@@ -190,7 +179,7 @@ generate_cases(Cases0, NextVal, EndVal, CodeModel, SwitchGoalInfo, EndLabel,
             label(ThisLabel) - Comment
         ]),
         JumpCode = node([
-            goto(label(EndLabel)) - "branch to end of dense switch"
+            goto(code_label(EndLabel)) - "branch to end of dense switch"
         ]),
         % Generate the rest of the cases.
         NextVal1 = NextVal + 1,

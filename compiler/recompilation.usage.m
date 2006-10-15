@@ -55,23 +55,22 @@
 :- type resolved_item_map(T) == map(module_qualifier, T).
 
 :- type resolved_functor
-    --->    pred_or_func(
+    --->    resolved_functor_pred_or_func(
                 pred_id,
                 module_name,
                 pred_or_func,
                 arity       % The actual arity of the predicate or function
             )
-    ;       constructor(
+    ;       resolved_functor_constructor(
                 item_name   % type_ctor
             )
-    ;       field(
+    ;       resolved_functor_field(
                 item_name,  % type_ctor
                 item_name   % cons_id
             ).
 
-:- pred write_usage_file(module_info::in,
-    list(module_name)::in, maybe(module_timestamps)::in,
-    io::di, io::uo) is det.
+:- pred write_usage_file(module_info::in, list(module_name)::in,
+    maybe(module_timestamps)::in, io::di, io::uo) is det.
 
     % Changes which modify the format of the `.used' files will increment
     % this number. recompilation_check.m should recompile if the version number
@@ -449,30 +448,41 @@ write_resolved_item_set_3(WriteMatches, Arity - Matches, !IO) :-
 
 :- pred write_resolved_functor(resolved_functor::in, io::di, io::uo) is det.
 
-write_resolved_functor(pred_or_func(_, ModuleName, PredOrFunc, Arity), !IO) :-
-    io.write(PredOrFunc, !IO),
-    io.write_string("(", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(", ", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string(")", !IO).
-write_resolved_functor(constructor(item_name(TypeName, Arity)), !IO) :-
-    io.write_string("ctor(", !IO),
-    mercury_output_bracketed_sym_name(TypeName, next_to_graphic_token, !IO),
-    io.write_string("/", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string(")", !IO).
-write_resolved_functor(field(item_name(TypeName, TypeArity),
-        item_name(ConsName, ConsArity)), !IO) :-
-    io.write_string("field(", !IO),
-    mercury_output_bracketed_sym_name(TypeName, next_to_graphic_token, !IO),
-    io.write_string("/", !IO),
-    io.write_int(TypeArity, !IO),
-    io.write_string(", ", !IO),
-    mercury_output_bracketed_sym_name(ConsName, next_to_graphic_token, !IO),
-    io.write_string("/", !IO),
-    io.write_int(ConsArity, !IO),
-    io.write_string(")", !IO).
+write_resolved_functor(ResolvedFunctor, !IO) :-
+    (
+        ResolvedFunctor = resolved_functor_pred_or_func(_, ModuleName,
+            PredOrFunc, Arity),
+        io.write(PredOrFunc, !IO),
+        io.write_string("(", !IO),
+        mercury_output_bracketed_sym_name(ModuleName, !IO),
+        io.write_string(", ", !IO),
+        io.write_int(Arity, !IO),
+        io.write_string(")", !IO)
+    ;
+        ResolvedFunctor = resolved_functor_constructor(ItemName),
+        ItemName = item_name(TypeName, Arity),
+        io.write_string("ctor(", !IO),
+        mercury_output_bracketed_sym_name(TypeName, next_to_graphic_token,
+            !IO),
+        io.write_string("/", !IO),
+        io.write_int(Arity, !IO),
+        io.write_string(")", !IO)
+    ;
+        ResolvedFunctor = resolved_functor_field(TypeItemName, ConsItemName),
+        TypeItemName = item_name(TypeName, TypeArity),
+        ConsItemName = item_name(ConsName, ConsArity),
+        io.write_string("field(", !IO),
+        mercury_output_bracketed_sym_name(TypeName, next_to_graphic_token,
+            !IO),
+        io.write_string("/", !IO),
+        io.write_int(TypeArity, !IO),
+        io.write_string(", ", !IO),
+        mercury_output_bracketed_sym_name(ConsName, next_to_graphic_token,
+            !IO),
+        io.write_string("/", !IO),
+        io.write_int(ConsArity, !IO),
+        io.write_string(")", !IO)
+    ).
 
 usage_file_version_number = 2.
 
@@ -735,7 +745,8 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
         list.map(
             (func(ConsDefn) = Ctor :-
                 ConsDefn = hlds_cons_defn(_,_,_, TypeCtor, _),
-                Ctor = constructor(type_ctor_to_item_name(TypeCtor))
+                Ctor = resolved_functor_constructor(
+                    type_ctor_to_item_name(TypeCtor))
             ),
             ConsDefns),
 
@@ -763,7 +774,8 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
             (func(FieldDefn) = FieldCtor :-
                 FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
                 ( ConsId = cons(ConsName, ConsArity) ->
-                    FieldCtor = field(type_ctor_to_item_name(TypeCtor),
+                    FieldCtor = resolved_functor_field(
+                        type_ctor_to_item_name(TypeCtor),
                         item_name(ConsName, ConsArity))
                 ;
                     unexpected(this_file, "weird cons_id in hlds_field_defn")
@@ -801,7 +813,8 @@ get_pred_or_func_ctors(ModuleInfo, _SymName, Arity, PredId) = ResolvedCtor :-
         ; OrigArity = Arity
         )
     ),
-    ResolvedCtor = pred_or_func(PredId, PredModule, PredOrFunc, OrigArity).
+    ResolvedCtor = resolved_functor_pred_or_func(PredId, PredModule,
+        PredOrFunc, OrigArity).
 
 %-----------------------------------------------------------------------------%
 
@@ -1217,14 +1230,15 @@ find_items_used_by_functors_3(Name, Arity, Qualifier, _, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_functor(Name, _Arity, ResolverFunctor, !Info) :-
-    ResolverFunctor = pred_or_func(PredId, PredModule, PredOrFunc, PredArity),
+    ResolverFunctor = resolved_functor_pred_or_func(PredId, PredModule,
+        PredOrFunc, PredArity),
     find_items_used_by_pred(PredOrFunc, Name - PredArity, PredId - PredModule,
         !Info).
 find_items_used_by_functor(_, _, ResolverFunctor, !Info) :-
-    ResolverFunctor = constructor(TypeCtor),
+    ResolverFunctor = resolved_functor_constructor(TypeCtor),
     maybe_record_item_to_process(type_body_item, TypeCtor, !Info).
 find_items_used_by_functor(_, _, ResolverFunctor, !Info) :-
-    ResolverFunctor = field(TypeCtor, _),
+    ResolverFunctor = resolved_functor_field(TypeCtor, _),
     maybe_record_item_to_process(type_body_item, TypeCtor, !Info).
 
 :- pred find_items_used_by_simple_item_set(item_type::in, simple_item_set::in,

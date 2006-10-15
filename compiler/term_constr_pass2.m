@@ -670,8 +670,8 @@ write_cycles([Cycle | Cycles], ModuleInfo, Varset, !IO) :-
 write_cycle([], _, !IO).
 write_cycle([ Proc | Procs ], ModuleInfo, !IO) :- 
     io.write_string("\t- ", !IO),
-    Proc = real(proc(PredId, ProcId)),
-    hlds_out.write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
+    Proc = real(PredProcId),
+    hlds_out.write_pred_proc_id(ModuleInfo, PredProcId, !IO),
     io.nl(!IO),
     write_cycle(Procs, ModuleInfo, !IO).
 
@@ -680,16 +680,16 @@ write_cycle([ Proc | Procs ], ModuleInfo, !IO) :-
 
 write_edge(ModuleInfo, Varset, Edge, !IO) :- 
     io.write_string("Edge is:\n\tHead: ", !IO),
-    Edge ^ head = real(proc(PredId, ProcId)),
-    hlds_out.write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
+    Edge ^ head = real(PredProcId),
+    hlds_out.write_pred_proc_id(ModuleInfo, PredProcId, !IO),
     io.write_string(" : ", !IO),
     write_size_vars(Varset, Edge ^ head_args, !IO),
     io.write_string(" :- \n", !IO),
     io.write_string("\tConstraints are:  \n", !IO),
     write_polyhedron(Edge ^ label, Varset, !IO),
     io.write_string("\n\tCall is:  ", !IO),
-    Edge ^ callee = real(proc(CallPredId, CallProcId)),
-    hlds_out.write_pred_proc_id(ModuleInfo, CallPredId, CallProcId, !IO),
+    Edge ^ callee = real(CallPredProcId),
+    hlds_out.write_pred_proc_id(ModuleInfo, CallPredProcId, !IO),
     io.write_string(" : ", !IO),
     write_size_vars(Varset, Edge ^ call_args, !IO),
     io.write_string(" :- \n", !IO),

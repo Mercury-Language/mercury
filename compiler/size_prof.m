@@ -221,7 +221,7 @@ process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
     (
         VeryVerbose = yes,
         io.write_string("% Adding typeinfos in ", !IO),
-        hlds_out.write_pred_proc_id(!.ModuleInfo, PredId, ProcId, !IO),
+        hlds_out.write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
         io.write_string(": ", !IO),
         process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
             !ModuleInfo, !IO),

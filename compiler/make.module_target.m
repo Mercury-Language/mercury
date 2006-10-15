@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: make.module_target.m.
 % Main author: stayl.
-% 
+%
 % Build targets which relate to a single module (e.g. C code, object code,
 % interface files).
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module make.module_target.
@@ -19,14 +19,14 @@
 
 %-----------------------------------------------------------------------------%
 
-    % make_module_target(Target, Success, Info0, Info).
+    % make_module_target(Target, Success, !Info).
     %
     % Make a target corresponding to a single module.
     %
 :- pred make_module_target(dependency_file::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % make_module_target_extra_options(ExtraOpts, Target, Success, Info0, Info)
+    % make_module_target_extra_options(ExtraOpts, Target, Success, !Info)
     %
     % Make a target corresponding to a single module, with extra command line
     % options.
@@ -45,18 +45,18 @@
 :- pred record_made_target(target_file::in, compilation_task_type::in,
     bool::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-:- type foreign_code_file --->
-    foreign_code_file(
-        foreign_language    :: foreign_language,
+:- type foreign_code_file
+    --->    foreign_code_file(
+                foreign_language    :: foreign_language,
 
-                            % Name of the file produced by the Mercury
-                            % compiler, e.g. module_c_code.c.
-        target_file         :: file_name,
+                target_file         :: file_name,
+                                    % Name of the file produced by the Mercury
+                                    % compiler, e.g. module_c_code.c.
 
-                            % Name of the file produced by the foreign
-                            % language compiler, e.g. module_c_code.o.
-        object_file         :: file_name
-    ).
+                object_file         :: file_name
+                                    % Name of the file produced by the foreign
+                                    % language compiler, e.g. module_c_code.o.
+            ).
 
     % Find the foreign code files generated when a module is processed.
     % The `pic' field is only used for C foreign code.
@@ -87,21 +87,22 @@ make_module_target(TargetFile, Succeeded1, Succeeded1 `and` Succeeded2,
 make_module_target(DepFile, Succeeded, !Info, !IO) :-
     make_module_target_extra_options([], DepFile, Succeeded, !Info, !IO).
 
-make_module_target_extra_options(_ExtraOptions, file(_, _) @ Dep,
+make_module_target_extra_options(_ExtraOptions, dep_file(_, _) @ Dep,
         Succeeded, !Info, !IO) :-
     dependency_status(Dep, Status, !Info, !IO),
-    Succeeded = ( Status = error -> no ; yes ).
-make_module_target_extra_options(ExtraOptions, target(TargetFile) @ Dep,
+    Succeeded = ( Status = deps_status_error -> no ; yes ).
+make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
         Succeeded, !Info, !IO) :-
     dependency_status(Dep, Status, !Info, !IO),
     (
-        Status = not_considered,
+        Status = deps_status_not_considered,
         TargetFile = ModuleName - FileType,
         get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
         (
             MaybeImports = no,
             Succeeded = no,
-            !:Info = !.Info ^ dependency_status ^ elem(Dep) := error
+            !:Info = !.Info ^ dependency_status ^ elem(Dep)
+                := deps_status_error
         ;
             MaybeImports = yes(Imports),
             globals.io_get_globals(Globals, !IO),
@@ -115,13 +116,13 @@ make_module_target_extra_options(ExtraOptions, target(TargetFile) @ Dep,
                 Imports ^ source_file_module_name \= ModuleName
             ->
                 make_module_target_extra_options(ExtraOptions,
-                    target(Imports ^ source_file_module_name - FileType),
+                    dep_target(Imports ^ source_file_module_name - FileType),
                     Succeeded, !Info, !IO)
             ;
                 CompilationTask = CompilationTaskType - _,
                 touched_files(TargetFile, CompilationTaskType,
                     TouchedTargetFiles, TouchedFiles, !Info, !IO),
-                list.foldl(update_target_status(being_built),
+                list.foldl(update_target_status(deps_status_being_built),
                     TouchedTargetFiles, !Info),
 
                 debug_file_msg(TargetFile, "checking dependencies", !IO),
@@ -136,14 +137,14 @@ make_module_target_extra_options(ExtraOptions, target(TargetFile) @ Dep,
                     union_deps(target_dependencies(Globals, FileType)),
                     ModulesToCheck, DepsSuccess, set.init, DepFiles0,
                     !Info, !IO),
-                ( TargetFile = _ - private_interface ->
+                ( TargetFile = _ - module_target_private_interface ->
                     % Avoid circular dependencies (the `.int0' files
                     % for the nested sub-modules depend on this module's
                     % `.int0' file).
                     DepFilesToMake = set.to_sorted_list(
                         set.delete_list(DepFiles0,
                             make_dependency_list(ModulesToCheck,
-                                private_interface)))
+                                module_target_private_interface)))
                 ;
                     DepFilesToMake = set.to_sorted_list(DepFiles0)
                 ),
@@ -163,20 +164,21 @@ make_module_target_extra_options(ExtraOptions, target(TargetFile) @ Dep,
                     DepsSuccess = no,
                     KeepGoing = no
                 ->
-                    DepsResult = error
+                    DepsResult = deps_error
                 ;
                     make_dependency_files(TargetFile, DepFilesToMake,
                         TouchedTargetFiles, TouchedFiles, DepsResult0,
                         !Info, !IO),
-                    DepsResult = ( DepsSuccess = yes -> DepsResult0 ; error )
+                    DepsResult =
+                        ( DepsSuccess = yes -> DepsResult0 ; deps_error )
                 ),
                 (
-                    DepsResult = error,
+                    DepsResult = deps_error,
                     Succeeded = no,
-                    list.foldl(update_target_status(error),
+                    list.foldl(update_target_status(deps_status_error),
                         TouchedTargetFiles, !Info)
                 ;
-                    DepsResult = out_of_date,
+                    DepsResult = deps_out_of_date,
                     !:Info = !.Info ^ command_line_targets :=
                         set.delete(!.Info ^ command_line_targets,
                             ModuleName - module_target(FileType)),
@@ -184,23 +186,22 @@ make_module_target_extra_options(ExtraOptions, target(TargetFile) @ Dep,
                         TouchedTargetFiles, TouchedFiles, ExtraOptions,
                         Succeeded, !Info, !IO)
                 ;
-                    DepsResult = up_to_date,
+                    DepsResult = deps_up_to_date,
                     maybe_warn_up_to_date_target(
                         ModuleName - module_target(FileType), !Info, !IO),
                     debug_file_msg(TargetFile, "up to date", !IO),
                     Succeeded = yes,
-                    list.foldl(update_target_status(up_to_date),
-                        [TargetFile | TouchedTargetFiles],
-                        !Info)
+                    list.foldl(update_target_status(deps_status_up_to_date),
+                        [TargetFile | TouchedTargetFiles], !Info)
                 )
             )
         )
     ;
-        Status = up_to_date,
+        Status = deps_status_up_to_date,
         Succeeded = yes
     ;
-        Status = being_built,
-        ( TargetFile = _FileName - foreign_il_asm(_Lang) ->
+        Status = deps_status_being_built,
+        ( TargetFile = _FileName - module_target_foreign_il_asm(_Lang) ->
             io.write_string("Error: circular dependency detected " ++
                 "while building\n", !IO),
             io.write_string("  `", !IO),
@@ -215,7 +216,7 @@ make_module_target_extra_options(ExtraOptions, target(TargetFile) @ Dep,
         ),
         Succeeded = no
     ;
-        Status = error,
+        Status = deps_status_error,
         Succeeded = no
     ).
 
@@ -241,14 +242,14 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
         MakeDepsSuccess = no
     ->
         debug_file_msg(TargetFile, "error making dependencies", !IO),
-        DepsResult = error
+        DepsResult = deps_error
     ;
         list.member(error(_), TargetTimestamps)
     ->
         debug_file_msg(TargetFile, "target file does not exist", !IO),
-        DepsResult = out_of_date
+        DepsResult = deps_out_of_date
     ;
-        ( TargetFile = ModuleName - analysis_registry ->
+        ( TargetFile = ModuleName - module_target_analysis_registry ->
             force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis,
                 !.Info, !IO)
         ;
@@ -256,13 +257,13 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
         ),
         (
             ForceReanalysis = yes,
-            DepsResult = out_of_date
+            DepsResult = deps_out_of_date
         ;
             ForceReanalysis = no,
-            %
+
             % Compare the oldest of the timestamps of the touched
             % files with the timestamps of the dependencies.
-            %
+
             list.map_foldl2(get_timestamp_file_timestamp,
                 TouchedTargetFiles, TouchedTargetFileTimestamps, !Info, !IO),
             list.map_foldl2(get_file_timestamp([dir.this_directory]),
@@ -271,7 +272,7 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
                 TouchedTargetFileTimestamps, ok(newest_timestamp)),
             MaybeOldestTimestamp = list.foldl(find_oldest_timestamp,
                 TouchedFileTimestamps, MaybeOldestTimestamp0),
-    
+
             get_file_name(no, TargetFile, TargetFileName, !Info, !IO),
             check_dependencies(TargetFileName, MaybeOldestTimestamp,
                 MakeDepsSuccess, DepFilesToMake, DepsResult, !Info, !IO)
@@ -280,10 +281,10 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 
 :- pred force_reanalysis_of_suboptimal_module(module_name::in, bool::out,
     make_info::in, io::di, io::uo) is det.
-                
+
 force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis, Info,
         !IO) :-
-    (if Info ^ reanalysis_passes > 0 then
+    ( Info ^ reanalysis_passes > 0 ->
         ModuleId = module_name_to_module_id(ModuleName),
         analysis.read_module_overall_status(mmc, ModuleId,
             MaybeAnalysisStatus, !IO),
@@ -292,7 +293,7 @@ force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis, Info,
         ;
             ForceReanalysis = no
         )
-    else
+    ;
         ForceReanalysis = no
     ).
 
@@ -358,15 +359,13 @@ build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
         AllArgs = list.append(AllOptionArgs, [ModuleArg]),
         io.write_string("Invoking command `mmc ", !IO),
         % XXX Don't write the default options.
-        io.write_list(list.map(quote_arg, AllArgs), " ", io.write_string,
-            !IO),
+        io.write_list(list.map(quote_arg, AllArgs), " ", io.write_string, !IO),
         io.write_string("'", !IO),
         io.nl(!IO)
     ;
         Verbose = no
     ),
 
-    %
     % Run compilations to target code in a separate process.
     % This is necessary for `--target asm' because the GCC
     % backend can only be invoked once per process. It's a good
@@ -378,10 +377,11 @@ build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
     % because if type checking gets overloaded by ambiguities
     % it can be difficult to kill the compiler otherwise.
     io.set_output_stream(ErrorStream, OldOutputStream, !IO),
-    ( 
+    (
         forkable_module_compilation_task_type(ModuleTask) = yes
     ->
-        call_in_forked_process(call_mercury_compile_main([ModuleArg]),
+        call_in_forked_process_with_backup(
+            call_mercury_compile_main([ModuleArg]),
             invoke_mmc(ErrorStream, ArgFileName, AllOptionArgs ++ [ModuleArg]),
             Succeeded, !IO)
     ;
@@ -390,13 +390,12 @@ build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
     io.set_output_stream(OldOutputStream, _, !IO),
 
     (
-        ( ModuleTask = compile_to_target_code
-        ; ModuleTask = errorcheck
+        ( ModuleTask = task_compile_to_target_code
+        ; ModuleTask = task_errorcheck
         )
     ->
-        % The `.err_date' file is needed because the `.err'
-        % file is touched by all phases of compilation, including
-        % writing interfaces.
+        % The `.err_date' file is needed because the `.err' file is touched
+        % by all phases of compilation, including writing interfaces.
         touch_interface_datestamp(ModuleName, ".err_date", !IO)
     ;
         true
@@ -406,8 +405,8 @@ build_target_2(ModuleName, target_code_to_object_code(PIC), _,
         Imports, _, ErrorStream, Succeeded, !Info, !IO) :-
     globals.io_get_target(CompilationTarget, !IO),
 
-    % Run the compilation in a child process so it can
-    % be killed if an interrupt arrives.
+    % Run the compilation in a child process so it can be killed
+    % if an interrupt arrives.
     call_in_forked_process(
         build_object_code(ModuleName, CompilationTarget, PIC, ErrorStream,
             Imports),
@@ -417,8 +416,8 @@ build_target_2(ModuleName, foreign_code_to_object_code(PIC, Lang), _,
         Imports, _, ErrorStream, Succeeded, !Info, !Io) :-
     foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile, !Io),
 
-    % Run the compilation in a child process so it can
-    % be killed if an interrupt arrives.
+    % Run the compilation in a child process so it can be killed
+    % if an interrupt arrives.
     call_in_forked_process(
         compile_foreign_code_file(ErrorStream, PIC, Imports, ForeignCodeFile),
         Succeeded, !Io).
@@ -428,8 +427,8 @@ build_target_2(ModuleName, fact_table_code_to_object_code(PIC, FactTableFile),
     fact_table_foreign_code_file(ModuleName, PIC, FactTableFile,
         FactTableForeignCode, !IO),
 
-    % Run the compilation in a child process so it can
-    % be killed if an interrupt arrives.
+    % Run the compilation in a child process so it can be killed
+    % if an interrupt arrives.
     call_in_forked_process(
         compile_foreign_code_file(ErrorStream, PIC, Imports,
             FactTableForeignCode),
@@ -487,13 +486,13 @@ compile_foreign_code_file(ErrorStream, _, Imports,
 :- func forkable_module_compilation_task_type(module_compilation_task_type)
     = bool.
 
-forkable_module_compilation_task_type(errorcheck) = no.
-forkable_module_compilation_task_type(make_short_interface) = no.
-forkable_module_compilation_task_type(make_interface) = no.
-forkable_module_compilation_task_type(make_private_interface) = no.
-forkable_module_compilation_task_type(make_optimization_interface) = yes.
-forkable_module_compilation_task_type(make_analysis_registry) = yes.
-forkable_module_compilation_task_type(compile_to_target_code) = yes.
+forkable_module_compilation_task_type(task_errorcheck) = no.
+forkable_module_compilation_task_type(task_make_short_interface) = no.
+forkable_module_compilation_task_type(task_make_interface) = no.
+forkable_module_compilation_task_type(task_make_private_interface) = no.
+forkable_module_compilation_task_type(task_make_optimization_interface) = yes.
+forkable_module_compilation_task_type(task_make_analysis_registry) = yes.
+forkable_module_compilation_task_type(task_compile_to_target_code) = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -636,10 +635,10 @@ record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
         OtherTouchedFiles, !Info, !IO) :-
     (
         Succeeded = yes,
-        TargetStatus = up_to_date
+        TargetStatus = deps_status_up_to_date
     ;
         Succeeded = no,
-        TargetStatus = error,
+        TargetStatus = deps_status_error,
         target_file_error(TargetFile, !IO)
     ),
 
@@ -656,10 +655,10 @@ record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
     list.foldl(DeleteTimestamp, OtherTouchedFiles, !Info).
 
 :- pred update_target_status(dependency_status::in, target_file::in,
-        make_info::in, make_info::out) is det.
+    make_info::in, make_info::out) is det.
 
 update_target_status(TargetStatus, TargetFile, Info,
-    Info ^ dependency_status ^ elem(target(TargetFile)) := TargetStatus).
+    Info ^ dependency_status ^ elem(dep_target(TargetFile)) := TargetStatus).
 
 %-----------------------------------------------------------------------------%
 
@@ -668,46 +667,49 @@ update_target_status(TargetStatus, TargetFile, Info,
 :- func compilation_task(globals, module_target_type) =
     compilation_task_result.
 
-compilation_task(_, source) = _ :- unexpected(this_file, "compilation_task").
-compilation_task(_, errors) =
-    process_module(errorcheck) - ["--errorcheck-only"].
-compilation_task(_, unqualified_short_interface) =
-    process_module(make_short_interface) - ["--make-short-interface"].
-compilation_task(Globals, short_interface) =
-    compilation_task(Globals, long_interface).
-compilation_task(_, long_interface) =
-    process_module(make_interface) - ["--make-interface"].
-compilation_task(_, private_interface) =
-    process_module(make_private_interface) - ["--make-private-interface"].
-compilation_task(_, intermodule_interface) =
-    process_module(make_optimization_interface) -
+compilation_task(_, module_target_source) = _ :-
+    unexpected(this_file, "compilation_task").
+compilation_task(_, module_target_errors) =
+    process_module(task_errorcheck) - ["--errorcheck-only"].
+compilation_task(_, module_target_unqualified_short_interface) =
+    process_module(task_make_short_interface) - ["--make-short-interface"].
+compilation_task(Globals, module_target_short_interface) =
+    compilation_task(Globals, module_target_long_interface).
+compilation_task(_, module_target_long_interface) =
+    process_module(task_make_interface) - ["--make-interface"].
+compilation_task(_, module_target_private_interface) =
+    process_module(task_make_private_interface) - ["--make-private-interface"].
+compilation_task(_, module_target_intermodule_interface) =
+    process_module(task_make_optimization_interface) -
         ["--make-optimization-interface"].
-compilation_task(_, analysis_registry) =
-    process_module(make_analysis_registry) - ["--make-analysis-registry"].
-compilation_task(Globals, c_header(_)) = compilation_task(Globals, c_code).
-compilation_task(_, c_code) =
-    process_module(compile_to_target_code) - ["--compile-to-c"].
-compilation_task(_, il_code) =
-    process_module(compile_to_target_code) - ["--il-only"].
-compilation_task(_, il_asm) = target_code_to_object_code(non_pic) - [].
-compilation_task(_, java_code) =
-    process_module(compile_to_target_code) - ["--java-only"].
-compilation_task(_, asm_code(PIC)) =
-    process_module(compile_to_target_code) - ( PIC = pic -> ["--pic"] ; [] ).
-compilation_task(_, object_code(PIC)) =
+compilation_task(_, module_target_analysis_registry) =
+    process_module(task_make_analysis_registry) - ["--make-analysis-registry"].
+compilation_task(Globals, module_target_c_header(_)) =
+        compilation_task(Globals, module_target_c_code).
+compilation_task(_, module_target_c_code) =
+    process_module(task_compile_to_target_code) - ["--compile-to-c"].
+compilation_task(_, module_target_il_code) =
+    process_module(task_compile_to_target_code) - ["--il-only"].
+compilation_task(_, module_target_il_asm) =
+        target_code_to_object_code(non_pic) - [].
+compilation_task(_, module_target_java_code) =
+    process_module(task_compile_to_target_code) - ["--java-only"].
+compilation_task(_, module_target_asm_code(PIC)) =
+    process_module(task_compile_to_target_code) -
+        ( PIC = pic -> ["--pic"] ; [] ).
+compilation_task(_, module_target_object_code(PIC)) =
     target_code_to_object_code(PIC) - get_pic_flags(PIC).
-compilation_task(_, foreign_il_asm(Lang)) =
+compilation_task(_, module_target_foreign_il_asm(Lang)) =
     foreign_code_to_object_code(non_pic, Lang) - [].
-compilation_task(_, foreign_object(PIC, Lang)) =
+compilation_task(_, module_target_foreign_object(PIC, Lang)) =
     foreign_code_to_object_code(PIC, Lang) - get_pic_flags(PIC).
-compilation_task(_, fact_table_object(PIC, FactTable)) =
+compilation_task(_, module_target_fact_table_object(PIC, FactTable)) =
     fact_table_code_to_object_code(PIC, FactTable) - get_pic_flags(PIC).
 
 :- func get_pic_flags(pic) = list(string).
 
-% `--pic-reg' is harmless for architectures and grades where
-% it is not needed (it's only needed for grades using
-% GCC global register variables on x86).
+% `--pic-reg' is harmless for architectures and grades where it is not needed
+% (it's only needed for grades using GCC global register variables on x86).
 get_pic_flags(pic) = ["--pic", "--pic-reg"].
 get_pic_flags(link_with_pic) = ["--pic-reg"].
 get_pic_flags(non_pic) = [].
@@ -754,7 +756,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 
     globals.io_get_target(CompilationTarget, !IO),
     (
-        Task = compile_to_target_code,
+        Task = task_compile_to_target_code,
         CompilationTarget = target_asm
     ->
         % For `--target asm' the code for the nested children is placed
@@ -768,7 +770,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
     % Find out what header files are generated.
     %
     (
-        Task = compile_to_target_code,
+        Task = task_compile_to_target_code,
         list.map_foldl(
             external_foreign_code_files(target_type_to_pic(FileType)),
                 ModuleImportsList, ForeignCodeFileList, !IO),
@@ -786,7 +788,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
                 %
                 HeaderModuleNames = SourceFileModuleNames,
                 HeaderTargets0 = make_target_list(HeaderModuleNames,
-                    c_header(mih))
+                    module_target_c_header(header_mih))
             ;
                 HighLevelCode = no,
                 HeaderTargets0 = []
@@ -803,7 +805,8 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
                         contains_foreign_code(_) =
                             MImports ^ has_foreign_code
                     ), ModuleImportsList),
-            HeaderTargets0 = make_target_list(HeaderModuleNames, c_header(mih))
+            HeaderTargets0 = make_target_list(HeaderModuleNames,
+                module_target_c_header(header_mih))
         ;
             CompilationTarget = target_il,
             HeaderTargets0 = []
@@ -818,7 +821,8 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
             )
         ->
             Names = SourceFileModuleNames,
-            HeaderTargets = make_target_list(Names, c_header(mh))
+            HeaderTargets =
+                make_target_list(Names, module_target_c_header(header_mh))
                 ++ HeaderTargets0
         ;
             HeaderTargets = HeaderTargets0
@@ -827,19 +831,20 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         TouchedTargetFiles0 = make_target_list(TargetModuleNames, FileType),
         TouchedTargetFiles = TouchedTargetFiles0 ++ HeaderTargets
     ;
-        Task = make_interface,
+        Task = task_make_interface,
         % Both long and short interface files are produced
         % when making the interface.
         ForeignCodeFiles = [],
         TouchedTargetFiles =
-            make_target_list(TargetModuleNames, long_interface) ++
-            make_target_list(TargetModuleNames, short_interface)
+            make_target_list(TargetModuleNames, module_target_long_interface)
+            ++
+            make_target_list(TargetModuleNames, module_target_short_interface)
     ;
-        ( Task = errorcheck
-        ; Task = make_short_interface
-        ; Task = make_private_interface
-        ; Task = make_optimization_interface
-        ; Task = make_analysis_registry
+        ( Task = task_errorcheck
+        ; Task = task_make_short_interface
+        ; Task = task_make_private_interface
+        ; Task = task_make_optimization_interface
+        ; Task = task_make_analysis_registry
         ),
         ForeignCodeFiles = [],
         TouchedTargetFiles = make_target_list(TargetModuleNames, FileType)
@@ -952,9 +957,9 @@ external_foreign_code_files_for_il(ModuleName, Language, ForeignFiles, !IO) :-
 :- func target_type_to_pic(module_target_type) = pic.
 
 target_type_to_pic(TargetType) = Result :-
-    ( TargetType = asm_code(PIC) ->
+    ( TargetType = module_target_asm_code(PIC) ->
         Result = PIC
-    ; TargetType = object_code(PIC) ->
+    ; TargetType = module_target_object_code(PIC) ->
         Result = PIC
     ;
         Result = non_pic

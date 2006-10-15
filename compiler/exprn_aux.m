@@ -169,13 +169,13 @@ const_is_constant(llconst_data_addr(_, _), _, yes).
 
 :- pred addr_is_constant(code_addr::in, exprn_opts::in, bool::out) is det.
 
-addr_is_constant(label(Label), ExprnOpts, IsConst) :-
+addr_is_constant(code_label(Label), ExprnOpts, IsConst) :-
     ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
     label_is_constant(Label, NonLocalGotos, AsmLabels, IsConst).
-addr_is_constant(imported(_), ExprnOpts, IsConst) :-
+addr_is_constant(code_imported_proc(_), ExprnOpts, IsConst) :-
     ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
     globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-addr_is_constant(succip, _, no).
+addr_is_constant(code_succip, _, no).
 addr_is_constant(do_succeed(_), _, no).
 addr_is_constant(do_redo, _, no).
 addr_is_constant(do_fail, _, no).
@@ -187,15 +187,15 @@ addr_is_constant(do_not_reached, _, no).
 
 :- pred label_is_constant(label::in, bool::in, bool::in, bool::out) is det.
 
-label_is_constant(entry(entry_label_exported, _), NonLocalGotos, AsmLabels,
-        IsConst) :-
+label_is_constant(entry_label(entry_label_exported, _),
+        NonLocalGotos, AsmLabels, IsConst) :-
     globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-label_is_constant(entry(entry_label_local, _), NonLocalGotos, AsmLabels,
-        IsConst) :-
+label_is_constant(entry_label(entry_label_local, _),
+        NonLocalGotos, AsmLabels, IsConst) :-
     globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
-label_is_constant(entry(entry_label_c_local, _), _NonLocalGotos, _AsmLabels,
-        yes).
-label_is_constant(internal(_, _), _NonLocalGotos, _AsmLabels, yes).
+label_is_constant(entry_label(entry_label_c_local, _),
+        _NonLocalGotos, _AsmLabels, yes).
+label_is_constant(internal_label(_, _), _NonLocalGotos, _AsmLabels, yes).
 
 %-----------------------------------------------------------------------------%
 

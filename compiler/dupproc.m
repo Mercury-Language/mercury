@@ -121,7 +121,7 @@ find_matching_model_proc([ModelId - ModelStdProc | ModelIdProcs], Id, Proc,
 maybe_redirect_proc(Proc0, Target, MaybeProc) :-
     Instrs0 = Proc0 ^ cproc_code,
     get_prologue(Instrs0, LabelInstr, _Comments, LaterInstrs),
-    Redirect = goto(label(entry(entry_label_local, Target))) -
+    Redirect = goto(code_label(entry_label(entry_label_local, Target))) -
         "Redirect to procedure with identical body",
     list.filter(disallowed_instr, LaterInstrs, DisallowedInstrs),
     list.length(LaterInstrs, NumLaterInstrs),
@@ -303,13 +303,13 @@ standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap) :-
 
 standardize_label(Label, StdLabel, DupProcMap) :-
     (
-        Label = internal(Num, ProcLabel),
+        Label = internal_label(Num, ProcLabel),
         standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap),
-        StdLabel = internal(Num, StdProcLabel)
+        StdLabel = internal_label(Num, StdProcLabel)
     ;
-        Label = entry(Type, ProcLabel),
+        Label = entry_label(Type, ProcLabel),
         standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap),
-        StdLabel = entry(Type, StdProcLabel)
+        StdLabel = entry_label(Type, StdProcLabel)
     ).
 
     % Compute the standard form of a list(label).
@@ -329,15 +329,15 @@ standardize_labels([Label | Labels], [StdLabel | StdLabels], DupProcMap) :-
 
 standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap) :-
     (
-        CodeAddr = label(Label),
+        CodeAddr = code_label(Label),
         standardize_label(Label, StdLabel, DupProcMap),
-        StdCodeAddr = label(StdLabel)
+        StdCodeAddr = code_label(StdLabel)
     ;
-        CodeAddr = imported(ProcLabel),
+        CodeAddr = code_imported_proc(ProcLabel),
         standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap),
-        StdCodeAddr = imported(StdProcLabel)
+        StdCodeAddr = code_imported_proc(StdProcLabel)
     ;
-        CodeAddr = succip,
+        CodeAddr = code_succip,
         StdCodeAddr = CodeAddr
     ;
         CodeAddr = do_succeed(_),

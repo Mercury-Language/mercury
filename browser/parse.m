@@ -130,8 +130,8 @@
 
 :- type command
     --->    print(maybe(maybe_option_table(format_option)), maybe(path))
-    ;       cd(path)
-    ;       cd
+    ;       cd_path(path)
+    ;       cd_no_path
     ;       track(how_track_subterm, should_assert_invalid, maybe(path))
     ;       mode_query(path)
     ;       mode_query
@@ -388,11 +388,13 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         ; CmdToken = (^)
         )
     ->
-        ( ArgTokens = [] ->
-            Command = cd
+        (
+            ArgTokens = [],
+            Command = cd_no_path
         ;
+            ArgTokens = [_ | _],
             parse_path(ArgTokens, Path),
-            Command = cd(Path)
+            Command = cd_path(Path)
         )
     ;
         CmdToken = name("cdr")
@@ -401,7 +403,7 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         list.duplicate(Repetitions, TokenPath, DupTokenPath),
         list.condense(DupTokenPath, RepeatedTokenPath),
         parse_path(RepeatedTokenPath, RepeatedPath),
-        Command = cd(RepeatedPath)
+        Command = cd_path(RepeatedPath)
     ;
         CmdToken = name("pwd")
     ->
@@ -570,7 +572,8 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         OptionOps = option_ops_multi(short_format_param_cmd_option,
             long_format_param_cmd_option, format_param_cmd_option_defaults),
         getopt.process_options(OptionOps, [], _, MaybeOptionTable),
-        Command = param_command(format_param(MaybeOptionTable, depth(Depth)))
+        Command = param_command(format_param(MaybeOptionTable,
+            setting_depth(Depth)))
     ;
         fail
     ).
@@ -578,10 +581,10 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
 :- pred param_cmd_to_setting(format_param_cmd::in, int::in, setting::out)
     is det.
 
-param_cmd_to_setting(param_depth, N, depth(N)).
-param_cmd_to_setting(param_size,  N, size(N)).
-param_cmd_to_setting(param_width, N, width(N)).
-param_cmd_to_setting(param_lines, N, lines(N)).
+param_cmd_to_setting(param_depth, N, setting_depth(N)).
+param_cmd_to_setting(param_size,  N, setting_size(N)).
+param_cmd_to_setting(param_width, N, setting_width(N)).
+param_cmd_to_setting(param_lines, N, setting_lines(N)).
 
 :- pred parse_path(list(token)::in, path::out) is semidet.
 
@@ -627,13 +630,13 @@ parse_dirs([Token | Tokens], Dirs) :-
 
 parse_format([Fmt], Setting) :-
     ( Fmt = name("flat") ->
-        Setting = format(flat)
+        Setting = setting_format(flat)
     ; Fmt = name("raw_pretty") ->
-        Setting = format(raw_pretty)
+        Setting = setting_format(raw_pretty)
     ; Fmt = name("verbose") ->
-        Setting = format(verbose)
+        Setting = setting_format(verbose)
     ; Fmt = name("pretty") ->
-        Setting = format(pretty)
+        Setting = setting_format(pretty)
     ;
         fail
     ).
@@ -643,16 +646,16 @@ parse_format([Fmt], Setting) :-
 parse_format_param([Token | Tokens], Setting) :-
     ( Token = name("depth") ->
         Tokens = [num(Depth)],
-        Setting = depth(Depth)
+        Setting = setting_depth(Depth)
     ; Token = name("size") ->
         Tokens = [num(Size)],
-        Setting = size(Size)
+        Setting = setting_size(Size)
     ; Token = name("width") ->
         Tokens = [num(X)],
-        Setting = width(X)
+        Setting = setting_width(X)
     ; Token = name("lines") ->
         Tokens = [num(Y)],
-        Setting = lines(Y)
+        Setting = setting_lines(Y)
     ;
         fail
     ).
@@ -752,11 +755,11 @@ format_param_cmd_option_defaults(set_pretty,     bool(no)).
 %   io.nl.
 % show_command(ls) -->
 %   io.write_string("ls\n").
-% show_command(cd(Path)) -->
+% show_command(cd_path(Path)) -->
 %   io.write_string("cd "),
 %   show_path(Path),
 %   io.nl.
-% show_command(cd) -->
+% show_command(cd_no_path) -->
 %   io.write_string("cd\n").
 % show_command(track(Path)) -->
 %   io.write_string("track "),

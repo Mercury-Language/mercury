@@ -156,9 +156,9 @@
             ).
 
 :- type make_error
-    --->    target_error(target_file)
-    ;       dependencies_error(module_name)
-    ;       other(string).
+    --->    make_error_target(target_file)
+    ;       make_error_dependencies(module_name)
+    ;       make_error_other(string).
 
 :- type compilation_task == pair(compilation_task_type, module_name).
 
@@ -172,55 +172,55 @@
     ;       fact_table_code_to_object_code(pic, file_name).
 
 :- type module_compilation_task_type
-    --->    errorcheck
-    ;       make_short_interface
-    ;       make_interface
-    ;       make_private_interface
-    ;       make_optimization_interface
-    ;       make_analysis_registry
-    ;       compile_to_target_code.
+    --->    task_errorcheck
+    ;       task_make_short_interface
+    ;       task_make_interface
+    ;       task_make_private_interface
+    ;       task_make_optimization_interface
+    ;       task_make_analysis_registry
+    ;       task_compile_to_target_code.
 
 :- type module_target_type
-    --->    source
-    ;       errors
-    ;       private_interface
-    ;       long_interface
-    ;       short_interface
-    ;       unqualified_short_interface
-    ;       intermodule_interface
-    ;       analysis_registry
-    ;       c_header(c_header_type)
-    ;       c_code
-    ;       il_code
-    ;       il_asm
-    ;       java_code
-    ;       asm_code(pic)
-    ;       object_code(pic)
-    ;       foreign_il_asm(foreign_language)
-    ;       foreign_object(pic, foreign_language)
-    ;       fact_table_object(pic, file_name).
+    --->    module_target_source
+    ;       module_target_errors
+    ;       module_target_private_interface
+    ;       module_target_long_interface
+    ;       module_target_short_interface
+    ;       module_target_unqualified_short_interface
+    ;       module_target_intermodule_interface
+    ;       module_target_analysis_registry
+    ;       module_target_c_header(c_header_type)
+    ;       module_target_c_code
+    ;       module_target_il_code
+    ;       module_target_il_asm
+    ;       module_target_java_code
+    ;       module_target_asm_code(pic)
+    ;       module_target_object_code(pic)
+    ;       module_target_foreign_il_asm(foreign_language)
+    ;       module_target_foreign_object(pic, foreign_language)
+    ;       module_target_fact_table_object(pic, file_name).
 
 :- type c_header_type
-    --->    mh      % For `:- pragma export' declarations.
-    ;       mih.    % Declarations for hlc grades, for compiler use only.
+    --->    header_mh      % For `:- pragma export' declarations.
+    ;       header_mih.    % Declarations for hlc grades, for compiler use only.
 
 % :- type linked_target_type in compile_target_code.m.
 
 :- type misc_target_type
-    --->    clean
-    ;       realclean
-    ;       build_all(module_target_type)
-    ;       build_analyses
-    ;       build_library
-    ;       install_library.
+    --->    misc_target_clean
+    ;       misc_target_realclean
+    ;       misc_target_build_all(module_target_type)
+    ;       misc_target_build_analyses
+    ;       misc_target_build_library
+    ;       misc_target_install_library.
 
 :- type file_timestamps == map(string, maybe_error(timestamp)).
 
 :- type dependency_status
-    --->    not_considered
-    ;       being_built
-    ;       up_to_date
-    ;       error.
+    --->    deps_status_not_considered
+    ;       deps_status_being_built
+    ;       deps_status_up_to_date
+    ;       deps_status_error.
 
 :- type target_file == pair(module_name, module_target_type).
 :- type linked_target_file == pair(module_name, linked_target_type).
@@ -314,12 +314,11 @@ make_target(Target, Success, !Info, !IO) :-
     Target = ModuleName - TargetType,
     (
         TargetType = module_target(ModuleTargetType),
-        make_module_target(target(ModuleName - ModuleTargetType), Success,
+        make_module_target(dep_target(ModuleName - ModuleTargetType), Success,
             !Info, !IO)
     ;
         TargetType = linked_target(ProgramTargetType),
-        make_linked_target(ModuleName - ProgramTargetType, Success,
-            !Info, !IO)
+        make_linked_target(ModuleName - ProgramTargetType, Success, !Info, !IO)
     ;
         TargetType = misc_target(MiscTargetType),
         make_misc_target(ModuleName - MiscTargetType, Success, !Info, !IO)
@@ -348,7 +347,7 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
     ;
         string.append("lib", ModuleNameStr, FileName)
     ->
-        TargetType = misc_target(build_library),
+        TargetType = misc_target(misc_target_build_library),
         file_name_to_module_name(ModuleNameStr, ModuleName)
     ;
         TargetType = linked_target(executable),
@@ -388,36 +387,36 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
         yes(Suffix1) = target_extension(Globals, ModuleTargetType),
         % Not yet implemented. `build_all' targets are only used by
         % tools/bootcheck, so it doesn't really matter.
-        ModuleTargetType \= c_header(_)
+        ModuleTargetType \= module_target_c_header(_)
     ->
         ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(build_all(ModuleTargetType))
+        TargetType = misc_target(misc_target_build_all(ModuleTargetType))
     ;
         Suffix = ".check"
     ->
         ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(build_all(errors))
+        TargetType = misc_target(misc_target_build_all(module_target_errors))
     ;
         Suffix = ".analyse"
     ->
         ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(build_analyses)
+        TargetType = misc_target(misc_target_build_analyses)
     ;
         Suffix = ".clean"
     ->
         ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(clean)
+        TargetType = misc_target(misc_target_clean)
     ;
         Suffix = ".realclean"
     ->
         ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(realclean)
+        TargetType = misc_target(misc_target_realclean)
     ;
         Suffix = ".install",
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
     ->
         ModuleNameStr = ModuleNameStr1,
-        TargetType = misc_target(install_library)
+        TargetType = misc_target(misc_target_install_library)
     ;
         fail
     ),

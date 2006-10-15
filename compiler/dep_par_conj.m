@@ -1561,9 +1561,8 @@ rename_apart_in_par_conjunct(AllNonLocals, Goal0, Goal,
     set.difference(DontRename0, Intersect) = DontRename,
 
     create_variables(set.to_sorted_list(DoRename),
-        !.VarSet, !.VarTypes,
-        !VarSet, !VarTypes, map.init, Renaming),
-    rename_vars_in_goal(Renaming, Goal0, Goal).
+        !.VarSet, !.VarTypes, !VarSet, !VarTypes, map.init, Renaming),
+    rename_some_vars_in_goal(Renaming, Goal0, Goal).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

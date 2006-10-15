@@ -1115,7 +1115,7 @@ pd_can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
     EarlierTrace = contains_no_trace_goal,
     LaterTrace = contains_no_trace_goal,
 
-    goal_util.reordering_maintains_termination(ModuleInfo, FullyStrict,
+    goal_util.reordering_maintains_termination_old(ModuleInfo, FullyStrict,
         EarlierGoal, LaterGoal),
 
     % Don't reorder the goals if the later goal depends on the outputs

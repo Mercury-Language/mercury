@@ -807,7 +807,8 @@ process_arg(OptionVariables, OptionArgs, Arg, ModulesToLink, FactTableObjFiles,
     globals.io_lookup_bool_option(invoked_by_mmc_make, InvokedByMake, !IO),
     (
         InvokedByMake = no,
-        build_with_module_options(file_or_module_to_module_name(FileOrModule),
+        build_with_module_options_args(
+            file_or_module_to_module_name(FileOrModule),
             OptionVariables, OptionArgs, [],
             process_arg_build(FileOrModule, OptionVariables, OptionArgs),
             _, [], MaybePair, !IO),
@@ -1285,11 +1286,13 @@ compile_with_module_options(ModuleName, OptionVariables, OptionArgs,
         Compile(Succeeded, !IO)
     ;
         InvokedByMake = no,
-        build_with_module_options(ModuleName, OptionVariables, OptionArgs, [],
-            (pred(_::in, Succeeded0::out, X::in, X::out,
-                    IO0::di, IO::uo) is det :-
+        Builder =
+            (pred(_::in, Succeeded0::out, X::in, X::out, IO0::di, IO::uo)
+                    is det :-
                 Compile(Succeeded0, IO0, IO)
-            ), Succeeded, unit, _, !IO)
+            ),
+        build_with_module_options_args(ModuleName, OptionVariables, OptionArgs,
+            [], Builder, Succeeded, unit, _, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2594,7 +2597,7 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     maybe_goal_paths(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 345, "precodegen", !DumpInfo, !IO),
 
-    generate_code(!.HLDS, Verbose, Stats, !GlobalData, LLDS1, !IO),
+    generate_code_for_module(!.HLDS, Verbose, Stats, !GlobalData, LLDS1, !IO),
 
     maybe_generate_stack_layouts(!.HLDS, LLDS1, Verbose, Stats, !GlobalData,
         !IO),
@@ -4111,14 +4114,14 @@ maybe_goal_paths(Verbose, Stats, !HLDS, !IO) :-
         true
     ).
 
-:- pred generate_code(module_info::in, bool::in, bool::in,
+:- pred generate_code_for_module(module_info::in, bool::in, bool::in,
     global_data::in, global_data::out, list(c_procedure)::out,
     io::di, io::uo) is det.
 
-generate_code(HLDS, Verbose, Stats, !GlobalData, LLDS, !IO) :-
+generate_code_for_module(HLDS, Verbose, Stats, !GlobalData, LLDS, !IO) :-
     maybe_write_string(Verbose, "% Generating code...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    generate_code(HLDS, !GlobalData, LLDS, !IO),
+    generate_module_code(HLDS, !GlobalData, LLDS, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

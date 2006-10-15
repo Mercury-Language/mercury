@@ -186,8 +186,8 @@ write_reasons_message(ModuleName, Reasons, !IO) :-
     io::di, io::uo) is det.
 
 write_not_found_reasons_message(UsageFileName, ModuleName, !IO) :-
-    Reason = file_error(UsageFileName, "file `" ++ UsageFileName ++
-        "' not found."),
+    Reason = recompile_for_file_error(UsageFileName,
+        "file `" ++ UsageFileName ++ "' not found."),
     write_recompile_reason(ModuleName, Reason, !IO).
 
 :- pred should_recompile_3_try(bool::in,
@@ -227,7 +227,7 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
     ;
         io.input_stream_name(UsageFileName, !IO),
         throw_syntax_error(
-            file_error(UsageFileName,
+            recompile_for_file_error(UsageFileName,
                 "invalid usage file version number in file `"
                 ++ UsageFileName ++ "'."),
             !.Info)
@@ -257,14 +257,15 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
                 ModuleTimestamp ^ timestamp := NewTimestamp,
                 Items, Error, FileName, !Info),
             !:Info = !.Info ^ modules_to_recompile := all_modules,
-            record_recompilation_reason(module_changed(FileName), !Info)
+            record_recompilation_reason(recompile_for_module_changed(FileName),
+                !Info)
         ;
             ( Error \= no_module_errors
             ; MaybeNewTimestamp = no
             )
         ->
             throw_syntax_error(
-                file_error(FileName,
+                recompile_for_file_error(FileName,
                     "error reading file `" ++ FileName ++ "'."),
                 !.Info)
         ;
@@ -286,7 +287,7 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
     ->
         !:Info = !.Info ^ sub_modules := SubModules
     ;
-        Reason1 = syntax_error(get_term_context(SubModulesTerm),
+        Reason1 = recompile_for_syntax_error(get_term_context(SubModulesTerm),
             "error in sub_modules term"),
         throw_syntax_error(Reason1, !.Info)
     ),
@@ -310,7 +311,7 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
     ->
         !:Info = !.Info ^ used_typeclasses := set.list_to_set(UsedClasses)
     ;
-        Reason3 = syntax_error(get_term_context(UsedClassesTerm),
+        Reason3 = recompile_for_syntax_error(get_term_context(UsedClassesTerm),
             "error in used_typeclasses term"),
         throw_syntax_error(Reason3, !.Info)
     ),
@@ -331,7 +332,7 @@ require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
     ->
         true
     ;
-        Reason = output_file_not_up_to_date(TargetFile),
+        Reason = recompile_for_output_file_not_up_to_date(TargetFile),
         record_recompilation_reason(Reason, !Info)
     ).
 
@@ -364,7 +365,7 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
         ModuleName = ModuleName0,
         ModuleTimestamp = module_timestamp(Suffix, Timestamp, NeedQualifier)
     ;
-        Reason = syntax_error(get_term_context(Term),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in module timestamp"),
         throw_syntax_error(Reason, Info)
     ).
@@ -379,7 +380,8 @@ parse_used_items(Info, Term, UsedItems) :-
         list.foldl(parse_used_item_set(Info), UsedItemTerms,
             init_item_id_set(map.init, map.init, map.init), UsedItems)
     ;
-        Reason = syntax_error(get_term_context(Term), "error in used items"),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
+            "error in used items"),
         throw_syntax_error(Reason, Info)
     ).
 
@@ -406,12 +408,13 @@ parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
                 ItemTerms, map.init, CtorItems),
             UsedItems = UsedItems0 ^ functors := CtorItems
         ;
-            Reason = syntax_error(get_term_context(Term),
+            Reason = recompile_for_syntax_error(get_term_context(Term),
                 "error in used items: unknown item type: " ++ ItemTypeStr),
             throw_syntax_error(Reason, Info)
         )
     ;
-        Reason = syntax_error(get_term_context(Term), "error in used items"),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
+            "error in used items"),
         throw_syntax_error(Reason, Info)
     ).
 
@@ -429,7 +432,8 @@ parse_simple_item(Info, Term, Set0, Set) :-
             map.init, Matches),
         map.det_insert(Set0, Name - Arity, Matches, Set)
     ;
-        Reason = syntax_error(get_term_context(Term), "error in simple items"),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
+            "error in simple items"),
         throw_syntax_error(Reason, Info)
     ).
 
@@ -452,7 +456,7 @@ parse_simple_item_match(Info, Term, Items0, Items) :-
     ->
         map.det_insert(Items0, Qualifier, ModuleName, Items)
     ;
-        Reason = syntax_error(get_term_context(Term),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in simple item match"),
         throw_syntax_error(Reason, Info)
     ).
@@ -488,7 +492,7 @@ parse_pred_or_func_item_match(Info, Term, !Items) :-
     ->
         svmap.det_insert(Qualifier, set.list_to_set(Matches), !Items)
     ;
-        Reason = syntax_error(get_term_context(Term),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in pred or func match"),
         throw_syntax_error(Reason, Info)
     ).
@@ -512,7 +516,7 @@ parse_functor_matches(Info, Term, !Map) :-
         list.map(parse_resolved_functor(Info), MatchesList, Matches),
         svmap.det_insert(Qualifier, set.list_to_set(Matches), !Map)
     ;
-        Reason = syntax_error(get_term_context(Term),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in functor match"),
         throw_syntax_error(Reason, Info)
     ).
@@ -531,22 +535,23 @@ parse_resolved_functor(Info, Term, Ctor) :-
         ArityTerm = term.functor(term.integer(Arity), [], _)
     ->
         PredId = invalid_pred_id,
-        Ctor = pred_or_func(PredId, ModuleName, PredOrFunc, Arity)
+        Ctor = resolved_functor_pred_or_func(PredId, ModuleName, PredOrFunc,
+            Arity)
     ;
         Term = term.functor(term.atom("ctor"), [NameArityTerm], _),
         parse_name_and_arity(NameArityTerm, TypeName, TypeArity)
     ->
-        Ctor = constructor(item_name(TypeName, TypeArity))
+        Ctor = resolved_functor_constructor(item_name(TypeName, TypeArity))
     ;
         Term = term.functor(term.atom("field"),
             [TypeNameArityTerm, ConsNameArityTerm], _),
         parse_name_and_arity(TypeNameArityTerm, TypeName, TypeArity),
         parse_name_and_arity(ConsNameArityTerm, ConsName, ConsArity)
     ->
-        Ctor = field(item_name(TypeName, TypeArity),
+        Ctor = resolved_functor_field(item_name(TypeName, TypeArity),
             item_name(ConsName, ConsArity))
     ;
-        Reason = syntax_error(get_term_context(Term),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in functor match"),
         throw_syntax_error(Reason, Info)
     ).
@@ -570,7 +575,7 @@ parse_resolved_item_set(Info, ParseMatches, Term, Set0, Set) :-
             MatchTermList, Matches),
         map.det_insert(Set0, Name, Matches, Set)
     ;
-        Reason = syntax_error(get_term_context(Term),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in resolved item matches"),
         throw_syntax_error(Reason, Info)
     ).
@@ -593,7 +598,7 @@ parse_resolved_item_arity_matches(Info, ParseMatches, Term,
             ),
             MatchTermList, map.init, MatchMap)
     ;
-        Reason = syntax_error(get_term_context(Term),
+        Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in resolved item matches"),
         throw_syntax_error(Reason, Info)
     ).
@@ -620,7 +625,8 @@ check_imported_modules(!Info, !IO) :-
     ;
         TermResult = error(Message, Line),
         io.input_stream_name(FileName, !IO),
-        Reason = syntax_error(term.context(FileName, Line), Message),
+        Reason = recompile_for_syntax_error(term.context(FileName, Line),
+            Message),
         throw_syntax_error(Reason, !.Info)
     ;
         TermResult = eof,
@@ -629,7 +635,7 @@ check_imported_modules(!Info, !IO) :-
         % of the `.used' file was not interrupted.
         io.input_stream_name(FileName, !IO),
         io.get_line_number(Line, !IO),
-        Reason = syntax_error(term.context(FileName, Line),
+        Reason = recompile_for_syntax_error(term.context(FileName, Line),
             "unexpected end of file"),
         throw_syntax_error(Reason, !.Info)
     ).
@@ -695,14 +701,15 @@ check_imported_module(Term, !Info, !IO) :-
                 RecordedTimestamp, UsedItemsTerm, VersionNumbers,
                 OtherItems, !Info)
         ;
-            record_recompilation_reason(module_changed(FileName),
+            record_recompilation_reason(recompile_for_module_changed(FileName),
                 !Info)
         )
     ;
         Error \= no_module_errors
     ->
         throw_syntax_error(
-            file_error(FileName, "error reading file `" ++ FileName ++ "'."),
+            recompile_for_file_error(FileName,
+                "error reading file `" ++ FileName ++ "'."),
             !.Info)
     ;
         true
@@ -726,7 +733,8 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
             Errors = [Msg - ErrorTerm | _],
             % XXX Can Errors contain more than oner error? If so, we should
             % not ignore the tail of the list.
-            Reason = syntax_error(get_term_context(ErrorTerm), Msg),
+            Reason = recompile_for_syntax_error(get_term_context(ErrorTerm),
+                Msg),
             throw_syntax_error(Reason, !.Info)
         )
     ),
@@ -762,7 +770,8 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
     set.difference(set.intersect(UsedClasses, ModuleInstances),
         UsedInstances, AddedInstances),
     ( [AddedInstance | _] = set.to_sorted_list(AddedInstances) ->
-        Reason1 = changed_or_added_instance(ModuleName, AddedInstance),
+        Reason1 = recompile_for_changed_or_added_instance(ModuleName,
+            AddedInstance),
         record_recompilation_reason(Reason1, !Info)
     ;
         true
@@ -796,12 +805,12 @@ check_item_version_number(ModuleName, NewItemTypeVersionNumbers, ItemType,
         ( NewVersionNumber = UsedVersionNumber ->
             true
         ;
-            Reason = changed_item(make_item_id(ModuleName, ItemType,
-                NameArity)),
+            Reason = recompile_for_changed_item(make_item_id(ModuleName,
+                ItemType, NameArity)),
             record_recompilation_reason(Reason, !Info)
         )
     ;
-        Reason = removed_item(make_item_id(ModuleName, ItemType,
+        Reason = recompile_for_removed_item(make_item_id(ModuleName, ItemType,
             NameArity)),
         record_recompilation_reason(Reason, !Info)
     ).
@@ -825,11 +834,12 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
         ( UsedVersionNumber = NewVersionNumber ->
             true
         ;
-            Reason = changed_or_added_instance(ModuleName, ClassId),
+            Reason = recompile_for_changed_or_added_instance(ModuleName,
+                ClassId),
             record_recompilation_reason(Reason, !Info)
         )
     ;
-        Reason = removed_instance(ModuleName, ClassId),
+        Reason = recompile_for_removed_instance(ModuleName, ClassId),
         record_recompilation_reason(Reason, !Info)
     ).
 
@@ -977,7 +987,8 @@ check_for_simple_item_ambiguity_2(ItemType, NeedQualifier, SymName, Arity,
         \+ SymName = qualified(OldMatchingModuleName, _)
     ->
         OldMatchingName = qualified(OldMatchingModuleName, Name),
-        Reason = item_ambiguity(item_id(ItemType, item_name(SymName, Arity)),
+        Reason = recompile_for_item_ambiguity(
+            item_id(ItemType, item_name(SymName, Arity)),
             [item_id(ItemType, item_name(OldMatchingName, Arity))]),
         record_recompilation_reason(Reason, !Info)
     ;
@@ -1023,13 +1034,15 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
             (
                 WithType = yes(_),
                 % We don't know the actual arity.
-                AritiesToMatch = any
+                AritiesToMatch = match_arity_any
             ;
                 WithType = no,
-                AritiesToMatch = less_than_or_equal(Arity)
+                AritiesToMatch = match_arity_less_than_or_equal(Arity)
             ),
-            check_functor_ambiguities(NeedQualifier, SymName, AritiesToMatch,
-                pred_or_func(PredId, ModuleName, PredOrFunc, Arity), !Info)
+            ResolvedFunctor = resolved_functor_pred_or_func(PredId, ModuleName,
+                PredOrFunc, Arity),
+            check_functor_ambiguities_by_name(NeedQualifier, SymName,
+                AritiesToMatch, ResolvedFunctor, !Info)
         ;
             unexpected(this_file,
                 "check_for_pred_or_func_item_ambiguity: " ++
@@ -1092,8 +1105,8 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
                 Item = item_id(ItemType, item_name(OldMatchingName, Arity))
             ),
             set.to_sorted_list(OldMatchingModuleNames)),
-        Reason = item_ambiguity(item_id(ItemType, item_name(SymName, Arity)),
-            AmbiguousDecls),
+        Reason = recompile_for_item_ambiguity(item_id(ItemType,
+            item_name(SymName, Arity)), AmbiguousDecls),
         record_recompilation_reason(Reason, !Info)
     ;
         true
@@ -1126,12 +1139,14 @@ check_type_defn_ambiguity_with_functor(_, _, parse_tree_solver_type(_, _),
 check_functor_ambiguities(NeedQualifier, TypeCtor, ctor(_, _, Name, Args),
         !Info) :-
     TypeCtorItem = type_ctor_to_item_name(TypeCtor),
-    ResolvedCtor = constructor(TypeCtorItem),
+    ResolvedCtor = resolved_functor_constructor(TypeCtorItem),
     Arity = list.length(Args),
-    check_functor_ambiguities(NeedQualifier, Name, exact(Arity),
-        ResolvedCtor, !Info),
-    list.foldl(check_field_ambiguities(NeedQualifier,
-        field(TypeCtorItem, item_name(Name, Arity))), Args, !Info).
+    check_functor_ambiguities_by_name(NeedQualifier, Name,
+        match_arity_exact(Arity), ResolvedCtor, !Info),
+    list.foldl(
+        check_field_ambiguities(NeedQualifier,
+            resolved_functor_field(TypeCtorItem, item_name(Name, Arity))),
+        Args, !Info).
 
 :- pred check_field_ambiguities(need_qualifier::in, resolved_functor::in,
     constructor_arg::in,
@@ -1143,25 +1158,25 @@ check_field_ambiguities(NeedQualifier, ResolvedCtor, yes(FieldName) - _,
     % XXX The arities to match below will need to change if we ever
     % allow taking the address of field access functions.
     field_access_function_name(get, FieldName, ExtractFuncName),
-    check_functor_ambiguities(NeedQualifier, ExtractFuncName,
-        exact(1), ResolvedCtor, !Info),
+    check_functor_ambiguities_by_name(NeedQualifier, ExtractFuncName,
+        match_arity_exact(1), ResolvedCtor, !Info),
     field_access_function_name(set, FieldName, UpdateFuncName),
-    check_functor_ambiguities(NeedQualifier, UpdateFuncName,
-        exact(2), ResolvedCtor, !Info).
+    check_functor_ambiguities_by_name(NeedQualifier, UpdateFuncName,
+        match_arity_exact(2), ResolvedCtor, !Info).
 
     % Predicates and functions used as functors can match any arity
     % less than or equal to the predicate or function's arity.
 :- type functor_match_arity
-    --->    exact(arity)
-    ;       less_than_or_equal(arity)
-    ;       any.
+    --->    match_arity_exact(arity)
+    ;       match_arity_less_than_or_equal(arity)
+    ;       match_arity_any.
 
-:- pred check_functor_ambiguities(need_qualifier::in, sym_name::in,
+:- pred check_functor_ambiguities_by_name(need_qualifier::in, sym_name::in,
     functor_match_arity::in, resolved_functor::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities(NeedQualifier, Name, MatchArity, ResolvedCtor,
-        !Info) :-
+check_functor_ambiguities_by_name(NeedQualifier, Name, MatchArity,
+        ResolvedCtor, !Info) :-
     UsedItems = !.Info ^ used_items,
     UnqualName = unqualify_name(Name),
     UsedCtors = UsedItems ^ functors,
@@ -1181,7 +1196,7 @@ check_functor_ambiguities_2(_, _, _, _, [], !Info).
 check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
         ResolvedCtor, [Arity - UsedCtorMap | UsedCtorAL], !Info) :-
     (
-        MatchArity = exact(ArityToMatch),
+        MatchArity = match_arity_exact(ArityToMatch),
         ( ArityToMatch = Arity ->
             Check = yes,
             Continue = no
@@ -1194,7 +1209,7 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
             )
         )
     ;
-        MatchArity = less_than_or_equal(ArityToMatch),
+        MatchArity = match_arity_less_than_or_equal(ArityToMatch),
         ( Arity =< ArityToMatch ->
             Check = yes,
             Continue = yes
@@ -1203,7 +1218,7 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
             Continue = no
         )
     ;
-        MatchArity = any,
+        MatchArity = match_arity_any,
         Check = yes,
         Continue = yes
     ),
@@ -1242,7 +1257,7 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
         match_sym_name(OldName, SymName),
         \+ set.member(ResolvedCtor, OldResolvedCtors)
     ->
-        Reason = functor_ambiguity(
+        Reason = recompile_for_functor_ambiguity(
             module_qualify_name(OldModuleQualifier, Name),
             Arity, ResolvedCtor, set.to_sorted_list(OldResolvedCtors)
         ),
@@ -1267,56 +1282,56 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
             ).
 
 :- type recompile_exception
-    ---> recompile_exception(
-            recompile_reason,
-            recompilation_check_info
-        ).
+    --->    recompile_exception(
+                recompile_reason,
+                recompilation_check_info
+            ).
 
 :- type recompile_reason
-    --->    file_error(
+    --->    recompile_for_file_error(
                 file_name,
                 string
             )
 
-    ;       output_file_not_up_to_date(
+    ;       recompile_for_output_file_not_up_to_date(
                 file_name
             )
 
-    ;       syntax_error(
+    ;       recompile_for_syntax_error(
                 term.context,
                 string
             )
 
-    ;       module_changed(
+    ;       recompile_for_module_changed(
                 file_name
             )
 
-    ;       item_ambiguity(
+    ;       recompile_for_item_ambiguity(
                 item_id,                % new item.
                 list(item_id)           % ambiguous declarations.
             )
 
-    ;       functor_ambiguity(
+    ;       recompile_for_functor_ambiguity(
                 sym_name,
                 arity,
                 resolved_functor,       % new item.
                 list(resolved_functor)  % ambiguous declarations.
             )
 
-    ;       changed_item(
+    ;       recompile_for_changed_item(
                 item_id
             )
 
-    ;       removed_item(
+    ;       recompile_for_removed_item(
                 item_id
             )
 
-    ;       changed_or_added_instance(
+    ;       recompile_for_changed_or_added_instance(
                 module_name,
                 item_name               % class name
             )
 
-    ;       removed_instance(
+    ;       recompile_for_removed_instance(
                 module_name,
                 item_name               % class name
             ).
@@ -1370,20 +1385,23 @@ write_recompile_reason(ModuleName, Reason, !IO) :-
 :- pred recompile_reason_message(recompile_reason::in, maybe(context)::out,
     list(format_component)::out) is det.
 
-recompile_reason_message(file_error(_FileName, Msg), no, [words(Msg)]).
-recompile_reason_message(output_file_not_up_to_date(FileName), no,
-        [words("output file"), words(FileName), words("is not up to date.")]).
-recompile_reason_message(syntax_error(Context, Msg), yes(Context),
+recompile_reason_message(recompile_for_file_error(_FileName, Msg), no,
         [words(Msg)]).
-recompile_reason_message(module_changed(FileName), no,
+recompile_reason_message(recompile_for_output_file_not_up_to_date(FileName),
+        no,
+        [words("output file"), words(FileName), words("is not up to date.")]).
+recompile_reason_message(recompile_for_syntax_error(Context, Msg),
+        yes(Context), [words(Msg)]).
+recompile_reason_message(recompile_for_module_changed(FileName), no,
         [words("file"), words("`" ++ FileName ++ "'"), words("has changed.")]).
-recompile_reason_message(item_ambiguity(Item, AmbiguousItems), no, Pieces) :-
+recompile_reason_message(recompile_for_item_ambiguity(Item, AmbiguousItems),
+        no, Pieces) :-
     AmbiguousItemPieces = component_lists_to_pieces(
         list.map(describe_item, AmbiguousItems)),
     Pieces = [words("addition of ") | describe_item(Item)]
         ++ [words("could cause an ambiguity with")]
         ++ AmbiguousItemPieces ++ [suffix(".")].
-recompile_reason_message(functor_ambiguity(SymName, Arity,
+recompile_reason_message(recompile_for_functor_ambiguity(SymName, Arity,
         Functor, AmbiguousFunctors), no, Pieces) :-
     FunctorPieces = describe_functor(SymName, Arity, Functor),
     AmbiguousFunctorPieces = component_lists_to_pieces(
@@ -1391,12 +1409,12 @@ recompile_reason_message(functor_ambiguity(SymName, Arity,
     Pieces = [words("addition of ") | FunctorPieces]
         ++ [words("could cause an ambiguity with")]
         ++ AmbiguousFunctorPieces ++ [suffix(".")].
-recompile_reason_message(changed_item(Item), no,
+recompile_reason_message(recompile_for_changed_item(Item), no,
         list.append(describe_item(Item), [words("was modified.")])).
-recompile_reason_message(removed_item(Item), no,
+recompile_reason_message(recompile_for_removed_item(Item), no,
         list.append(describe_item(Item), [words("was removed.")])).
 recompile_reason_message(
-        changed_or_added_instance(ModuleName,
+        recompile_for_changed_or_added_instance(ModuleName,
             item_name(ClassName, ClassArity)),
         no,
         [
@@ -1407,7 +1425,8 @@ recompile_reason_message(
         words("was added or modified.")
         ]).
 recompile_reason_message(
-        removed_instance(ModuleName, item_name(ClassName, ClassArity)),
+        recompile_for_removed_instance(ModuleName,
+            item_name(ClassName, ClassArity)),
         no,
         [
         words("an instance for class "),
@@ -1437,14 +1456,16 @@ body_item(type_body_item, type_item).
     list(format_component).
 
 describe_functor(SymName, _Arity, ResolvedFunctor) = Pieces :-
-    ResolvedFunctor = pred_or_func(_, ModuleName, PredOrFunc, PredArity),
+    ResolvedFunctor = resolved_functor_pred_or_func(_, ModuleName, PredOrFunc,
+        PredArity),
     string_to_item_type(ItemTypeStr, pred_or_func_to_item_type(PredOrFunc)),
     UnqualName = unqualify_name(SymName),
     SymNameAndArityPiece =
         sym_name_and_arity(qualified(ModuleName, UnqualName) / PredArity),
     Pieces = [words(ItemTypeStr), SymNameAndArityPiece].
 describe_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
-    ResolvedFunctor = constructor(item_name(TypeName, TypeArity)),
+    ResolvedFunctor = resolved_functor_constructor(
+        item_name(TypeName, TypeArity)),
     Pieces = [
         words("constructor"),
         sym_name_and_arity(SymName / Arity),
@@ -1452,7 +1473,7 @@ describe_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
         sym_name_and_arity(TypeName / TypeArity)
     ].
 describe_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
-    ResolvedFunctor = field(item_name(TypeName, TypeArity),
+    ResolvedFunctor = resolved_functor_field(item_name(TypeName, TypeArity),
         item_name(ConsName, ConsArity)),
     Pieces = [
         words("field access function"),
@@ -1475,13 +1496,14 @@ read_term_check_for_error_or_eof(Info, Item, Term, !IO) :-
     ;
         TermResult = error(Message, Line),
         io.input_stream_name(FileName, !IO),
-        Reason = syntax_error(term.context(FileName, Line), Message),
+        Reason = recompile_for_syntax_error(term.context(FileName, Line),
+            Message),
         throw_syntax_error(Reason, Info)
     ;
         TermResult = eof,
         io.input_stream_name(FileName, !IO),
         io.get_line_number(Line, !IO),
-        Reason = syntax_error(term.context(FileName, Line),
+        Reason = recompile_for_syntax_error(term.context(FileName, Line),
             "unexpected end of file, expected " ++ Item ++ "."),
         throw_syntax_error(Reason, Info)
     ).

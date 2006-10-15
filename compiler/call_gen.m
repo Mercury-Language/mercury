@@ -107,15 +107,14 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
 
     % Make the call.
     code_info.get_module_info(!.CI, ModuleInfo),
-    Address = code_info.make_entry_label(!.CI, ModuleInfo,
-        PredId, ProcId, yes),
+    Address = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, yes),
     code_info.get_next_label(ReturnLabel, !CI),
     call_gen.call_comment(CodeModel, CallComment),
     goal_info_get_context(GoalInfo, Context),
     goal_info_get_goal_path(GoalInfo, GoalPath),
     CallCode = node([
         livevals(LiveVals) - "",
-        llcall(Address, label(ReturnLabel), ReturnLiveLvalues, Context,
+        llcall(Address, code_label(ReturnLabel), ReturnLiveLvalues, Context,
             GoalPath, CallModel) - CallComment,
         label(ReturnLabel) - "continuation label"
     ]),
@@ -228,7 +227,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
 
     CallCode = node([
         livevals(LiveVals) - "",
-        llcall(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
+        llcall(CodeAddr, code_label(ReturnLabel), ReturnLiveLvalues,
             Context, GoalPath, CallModel) - "Setup and call",
         label(ReturnLabel) - "Continuation label"
     ]),
@@ -425,7 +424,7 @@ handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
         ;
             code_info.get_next_label(ContLab, !CI),
             FailTestCode = node([
-                if_val(lval(reg(reg_r, 1)), label(ContLab))
+                if_val(lval(reg(reg_r, 1)), code_label(ContLab))
                     - "test for success"
             ]),
             code_info.generate_failure(FailCode, !CI),

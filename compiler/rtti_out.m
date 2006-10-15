@@ -1226,8 +1226,8 @@ output_res_name_ordered_table_element(RttiTypeCtor, MaybeResFunctor, !IO) :-
 
 :- func make_code_addr(rtti_proc_label) = code_addr.
 
-make_code_addr(ProcLabel) = CodeAddr :-
-    code_util.make_entry_label_from_rtti(ProcLabel, no, CodeAddr).
+make_code_addr(ProcLabel) =
+    make_entry_label_from_rtti(ProcLabel, no).
 
 :- pred output_reserved_address(reserved_address::in, io::di, io::uo) is det.
 

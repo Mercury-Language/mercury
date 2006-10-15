@@ -594,7 +594,7 @@ construct_common_unify(Var, GoalExpr0 - GoalInfo, !CseInfo, OldNewVars,
         create_parallel_subterms(Args, Context, Ucontext, !CseInfo,
             OldNewVars, Replacements),
         map.from_assoc_list(OldNewVars, Sub),
-        goal_util.rename_vars_in_goal(Sub, GoalExpr1 - GoalInfo, HoistedGoal)
+        rename_some_vars_in_goal(Sub, GoalExpr1 - GoalInfo, HoistedGoal)
     ;
         unexpected(this_file, "non-unify goal in construct_common_unify")
     ).

@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: make.util.m.
 % Main author: stayl.
-% 
+%
 % Assorted predicates used to implement `mmc --make'.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module make.util.
@@ -56,33 +56,29 @@
 :- type build(T) == build(T, make_info).
 :- inst build == (pred(in, out, in, out, di, uo) is det).
 
-    % build_with_module_options(ModuleName, ExtraArgs, Builder,
-    %   Succeeded, !Info).
+    % build_with_module_options(ModuleName, ExtraArgs, Builder, Succeeded,
+    %   !Info).
     %
-    % Perform the given closure after updating the option_table in
-    % the globals in the io.state to contain the module-specific
-    % options for the specified module and the extra options given
-    % in the ExtraArgs.
-    % Adds `--invoked-by-mmc-make' and `--use-subdirs' to the option
-    % list.
+    % Perform the given closure after updating the option_table in the globals
+    % in the io.state to contain the module-specific options for the specified
+    % module and the extra options given in the ExtraArgs.
+    % Adds `--invoked-by-mmc-make' and `--use-subdirs' to the option list.
     % The old option table will be restored afterwards.
     %
 :- pred build_with_module_options(module_name::in,
     list(string)::in, build(list(string))::in(build), bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % build_with_module_options(ModuleName, OptionsVariables,
+    % build_with_module_options_args(ModuleName, OptionsVariables,
     %   OptionArgs, ExtraArgs, Builder, Succeeded, !Info).
     %
-    % Perform the given closure after updating the option_table in
-    % the globals in the io.state to contain the module-specific
-    % options for the specified module and the extra options given
-    % in ExtraArgs and OptionArgs
-    % Does not add `--invoked-by-mmc-make' and `--use-subdirs'
-    % to the option list.
-    % The old option table will be restored afterwards.
+    % Perform the given closure after updating the option_table in the globals
+    % in the io.state to contain the module-specific options for the specified
+    % module and the extra options given in ExtraArgs and OptionArgs.
+    % Does not add `--invoked-by-mmc-make' and `--use-subdirs' to the
+    % option list. The old option table will be restored afterwards.
     %
-:- pred build_with_module_options(module_name::in, options_variables::in,
+:- pred build_with_module_options_args(module_name::in, options_variables::in,
     list(string)::in, list(string)::in,
     build(list(string), Info1, Info2)::in(build),
     bool::out, Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
@@ -237,8 +233,8 @@
     %
 :- pred maybe_make_target_message(target_file::in, io::di, io::uo) is det.
 
-:- pred maybe_make_target_message(io.output_stream::in, target_file::in,
-    io::di, io::uo) is det.
+:- pred maybe_make_target_message_to_stream(io.output_stream::in,
+    target_file::in, io::di, io::uo) is det.
 
     % Write a message "Reanalysing invalid/suboptimal modules" if
     % `--verbose-make' is set.
@@ -366,27 +362,28 @@ build_with_output_redirect(ModuleName, Build, Succeeded, !Info, !IO) :-
 
 build_with_module_options(ModuleName, ExtraOptions, Build, Succeeded,
         !Info, !IO) :-
-    build_with_module_options(yes, ModuleName, !.Info ^ options_variables,
-        !.Info ^ option_args, ExtraOptions, Build, Succeeded,
-        !.Info, MaybeInfo, !IO),
+    build_with_module_options_args_invoked(yes, ModuleName,
+        !.Info ^ options_variables, !.Info ^ option_args, ExtraOptions, Build,
+        Succeeded, !.Info, MaybeInfo, !IO),
     (
         MaybeInfo = yes(!:Info)
     ;
         MaybeInfo = no
     ).
 
-build_with_module_options(ModuleName, OptionVariables,
+build_with_module_options_args(ModuleName, OptionVariables,
         OptionArgs, ExtraOptions, Build, Succeeded, !Info, !IO) :-
-    build_with_module_options(no, ModuleName, OptionVariables,
+    build_with_module_options_args_invoked(no, ModuleName, OptionVariables,
         OptionArgs, ExtraOptions, Build, Succeeded, !Info, !IO).
 
-:- pred build_with_module_options(bool::in, module_name::in,
+:- pred build_with_module_options_args_invoked(bool::in, module_name::in,
     options_variables::in, list(string)::in, list(string)::in,
     build(list(string), Info1, Info2)::in(build),
     bool::out, Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
 
-build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
-        OptionArgs, ExtraOptions, Build, Succeeded, Info0, MaybeInfo, !IO) :-
+build_with_module_options_args_invoked(InvokedByMmcMake, ModuleName,
+        OptionVariables, OptionArgs, ExtraOptions, Build, Succeeded,
+        Info0, MaybeInfo, !IO) :-
     lookup_mmc_module_options(OptionVariables, ModuleName, OptionsResult, !IO),
     (
         OptionsResult = no,
@@ -547,7 +544,7 @@ get_timestamp_file_timestamp(ModuleName - FileType, MaybeTimestamp,
     SearchDirs = [dir.this_directory],
     get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO).
 
-get_dependency_timestamp(file(FileName, MaybeOption), MaybeTimestamp,
+get_dependency_timestamp(dep_file(FileName, MaybeOption), MaybeTimestamp,
         !Info, !IO) :-
     (
         MaybeOption = yes(Option),
@@ -557,10 +554,10 @@ get_dependency_timestamp(file(FileName, MaybeOption), MaybeTimestamp,
         SearchDirs = [dir.this_directory]
     ),
     get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO).
-get_dependency_timestamp(target(Target), MaybeTimestamp, !Info, !IO) :-
+get_dependency_timestamp(dep_target(Target), MaybeTimestamp, !Info, !IO) :-
     get_target_timestamp(yes, Target, MaybeTimestamp0, !Info, !IO),
     (
-        Target = _ - c_header(mih),
+        Target = _ - module_target_c_header(header_mih),
         MaybeTimestamp0 = ok(_)
     ->
         % Don't rebuild the `.o' file if an irrelevant part of a
@@ -574,7 +571,7 @@ get_dependency_timestamp(target(Target), MaybeTimestamp, !Info, !IO) :-
     ).
 
 get_target_timestamp(Search, Target, MaybeTimestamp, !Info, !IO) :-
-    ( Target = ModuleName - analysis_registry ->
+    ( Target = ModuleName - module_target_analysis_registry ->
         get_target_timestamp_analysis_registry(Search, ModuleName,
             MaybeTimestamp, !Info, !IO)
     ;
@@ -601,8 +598,9 @@ get_target_timestamp_analysis_registry(Search, ModuleName, MaybeTimestamp,
             ( Status = optimal
             ; Status = suboptimal
             ),
-            get_timestamp_file_timestamp(ModuleName - analysis_registry,
-                MaybeTimestamp0, !Info, !IO),
+            get_timestamp_file_timestamp(
+                ModuleName - module_target_analysis_registry, MaybeTimestamp0,
+                !Info, !IO),
             (
                 MaybeTimestamp0 = ok(_),
                 MaybeTimestamp = MaybeTimestamp0
@@ -620,8 +618,9 @@ get_target_timestamp_analysis_registry(Search, ModuleName, MaybeTimestamp,
         )
     ;
         MaybeStatus = no,
-        get_target_timestamp_2(Search, ModuleName - analysis_registry,  
-            MaybeTimestamp, !Info, !IO)
+        get_target_timestamp_2(Search,
+            ModuleName - module_target_analysis_registry, MaybeTimestamp,
+            !Info, !IO)
     ).
 
 :- pred get_target_timestamp_2(bool::in, target_file::in,
@@ -641,8 +640,8 @@ get_target_timestamp_2(Search, ModuleName - FileType, MaybeTimestamp,
     get_file_timestamp(SearchDirs, FileName, MaybeTimestamp0, !Info, !IO),
     (
         MaybeTimestamp0 = error(_),
-        ( FileType = intermodule_interface
-        ; FileType = analysis_registry
+        ( FileType = module_target_intermodule_interface
+        ; FileType = module_target_analysis_registry
         )
     ->
         % If a `.opt' file in another directory doesn't exist,
@@ -666,7 +665,7 @@ get_target_timestamp_2(Search, ModuleName - FileType, MaybeTimestamp,
     ).
 
 get_file_name(Search, ModuleName - FileType, FileName, !Info, !IO) :-
-    ( FileType = source ->
+    ( FileType = module_target_source ->
         % In some cases the module name won't match the file name
         % (module mdb.parse might be in parse.m or mdb.m), so we need to
         % look up the file name here.
@@ -695,8 +694,8 @@ get_file_name(Search, ModuleName - FileType, FileName, !Info, !IO) :-
             )
         ;
             MaybeExt = no,
-            module_target_to_file_name(ModuleName, FileType, no, Search,
-                FileName, !IO)
+            module_target_to_file_name_maybe_search(ModuleName, FileType, no,
+                Search, FileName, !IO)
         )
     ).
 
@@ -793,34 +792,34 @@ report_remove_file(FileName, !IO) :-
 make_target_list(Ks, V) = list.map((func(K) = K - V), Ks).
 
 make_dependency_list(ModuleNames, FileType) =
-    list.map((func(Module) = target(Module - FileType)), ModuleNames).
+    list.map((func(Module) = dep_target(Module - FileType)), ModuleNames).
 
-target_extension(_, source) = yes(".m").
-target_extension(_, errors) = yes(".err").
-target_extension(_, private_interface) = yes(".int0").
-target_extension(_, long_interface) = yes(".int").
-target_extension(_, short_interface) = yes(".int2").
-target_extension(_, unqualified_short_interface) = yes(".int3").
-target_extension(_, intermodule_interface) = yes(".opt").
-target_extension(_, analysis_registry) = yes(".analysis").
-target_extension(_, c_header(mih)) = yes(".mih").
-target_extension(_, c_header(mh)) = yes(".mh").
-target_extension(_, c_code) = yes(".c").
-target_extension(_, il_code) = yes(".il").
+target_extension(_, module_target_source) = yes(".m").
+target_extension(_, module_target_errors) = yes(".err").
+target_extension(_, module_target_private_interface) = yes(".int0").
+target_extension(_, module_target_long_interface) = yes(".int").
+target_extension(_, module_target_short_interface) = yes(".int2").
+target_extension(_, module_target_unqualified_short_interface) = yes(".int3").
+target_extension(_, module_target_intermodule_interface) = yes(".opt").
+target_extension(_, module_target_analysis_registry) = yes(".analysis").
+target_extension(_, module_target_c_header(header_mih)) = yes(".mih").
+target_extension(_, module_target_c_header(header_mh)) = yes(".mh").
+target_extension(_, module_target_c_code) = yes(".c").
+target_extension(_, module_target_il_code) = yes(".il").
 
     % XXX ".exe" if the module contains main.
-target_extension(_, il_asm) = yes(".dll").
-target_extension(_, java_code) = yes(".java").
-target_extension(_, asm_code(non_pic)) = yes(".s").
-target_extension(_, asm_code(link_with_pic)) = yes(".s").
-target_extension(_, asm_code(pic)) = yes(".pic_s").
-target_extension(Globals, object_code(PIC)) = yes(Ext) :-
+target_extension(_, module_target_il_asm) = yes(".dll").
+target_extension(_, module_target_java_code) = yes(".java").
+target_extension(_, module_target_asm_code(non_pic)) = yes(".s").
+target_extension(_, module_target_asm_code(link_with_pic)) = yes(".s").
+target_extension(_, module_target_asm_code(pic)) = yes(".pic_s").
+target_extension(Globals, module_target_object_code(PIC)) = yes(Ext) :-
     maybe_pic_object_file_extension(Globals, PIC, Ext).
 
     % These all need to be handled as special cases.
-target_extension(_, foreign_object(_, _)) = no.
-target_extension(_, foreign_il_asm(_)) = no.
-target_extension(_, fact_table_object(_, _)) = no.
+target_extension(_, module_target_foreign_object(_, _)) = no.
+target_extension(_, module_target_foreign_il_asm(_)) = no.
+target_extension(_, module_target_fact_table_object(_, _)) = no.
 
 linked_target_file_name(ModuleName, executable, FileName) -->
     globals.io_lookup_string_option(executable_file_extension, Ext),
@@ -838,20 +837,22 @@ linked_target_file_name(ModuleName, java_archive, FileName) -->
     bool::in, file_name::out, io::di, io::uo) is det.
 
 module_target_to_file_name(ModuleName, TargetType, MkDir, FileName, !IO) :-
-    module_target_to_file_name(ModuleName, TargetType, MkDir, no,
+    module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, no,
         FileName, !IO).
 
 :- pred module_target_to_search_file_name(module_name::in,
     module_target_type::in, file_name::out, io::di, io::uo) is det.
 
 module_target_to_search_file_name(ModuleName, TargetType, FileName, !IO) :-
-    module_target_to_file_name(ModuleName, TargetType, no, yes, FileName, !IO).
+    module_target_to_file_name_maybe_search(ModuleName, TargetType, no, yes,
+        FileName, !IO).
 
-:- pred module_target_to_file_name(module_name::in, module_target_type::in,
-    bool::in, bool::in, file_name::out, io::di, io::uo) is det.
+:- pred module_target_to_file_name_maybe_search(module_name::in,
+    module_target_type::in, bool::in, bool::in, file_name::out,
+    io::di, io::uo) is det.
 
-module_target_to_file_name(ModuleName, TargetType, MkDir, Search, FileName,
-        !IO) :-
+module_target_to_file_name_maybe_search(ModuleName, TargetType, MkDir, Search,
+        FileName, !IO) :-
     globals.io_get_globals(Globals, !IO),
     target_extension(Globals, TargetType) = MaybeExt,
     (
@@ -865,27 +866,28 @@ module_target_to_file_name(ModuleName, TargetType, MkDir, Search, FileName,
         )
     ;
         MaybeExt = no,
-        ( TargetType = foreign_object(PIC, Lang) ->
+        ( TargetType = module_target_foreign_object(PIC, Lang) ->
             (
                 ForeignModuleName =
                     foreign_language_module_name(ModuleName, Lang)
             ->
-                module_target_to_file_name(ForeignModuleName, object_code(PIC),
-                    MkDir, Search, FileName, !IO)
+                module_target_to_file_name_maybe_search(ForeignModuleName,
+                    module_target_object_code(PIC), MkDir, Search, FileName,
+                    !IO)
             ;
                 unexpected(this_file, "module_target_to_file_name_2")
             )
-        ; TargetType = foreign_il_asm(Lang) ->
+        ; TargetType = module_target_foreign_il_asm(Lang) ->
             (
                 ForeignModuleName =
                     foreign_language_module_name(ModuleName, Lang)
             ->
-                module_target_to_file_name(ForeignModuleName, il_asm, MkDir,
-                    Search, FileName, !IO)
+                module_target_to_file_name_maybe_search(ForeignModuleName,
+                    module_target_il_asm, MkDir, Search, FileName, !IO)
             ;
                 unexpected(this_file, "module_target_to_file_name_2")
             )
-        ; TargetType = fact_table_object(PIC, FactFile) ->
+        ; TargetType = module_target_fact_table_object(PIC, FactFile) ->
             maybe_pic_object_file_extension(PIC, Ext, !IO),
             fact_table_file_name(ModuleName, FactFile, Ext, MkDir, FileName,
                 !IO)
@@ -902,70 +904,82 @@ module_target_to_file_name(ModuleName, TargetType, MkDir, Search, FileName,
     % can be modified in the process of analysing _another_ module.
     % The timestamp is only updated after actually analysing the module that
     % the `.analysis' file corresponds to.
-timestamp_extension(_, errors) = ".err_date".
-timestamp_extension(_, private_interface) = ".date0".
-timestamp_extension(_, long_interface) = ".date".
-timestamp_extension(_, short_interface) = ".date".
-timestamp_extension(_, unqualified_short_interface) = ".date3".
-timestamp_extension(_, intermodule_interface) = ".optdate".
-timestamp_extension(_, analysis_registry) = ".analysis_date".
-timestamp_extension(_, c_code) = ".c_date".
-timestamp_extension(Globals, c_header(_)) = Ext :-
+timestamp_extension(_, module_target_errors) = ".err_date".
+timestamp_extension(_, module_target_private_interface) = ".date0".
+timestamp_extension(_, module_target_long_interface) = ".date".
+timestamp_extension(_, module_target_short_interface) = ".date".
+timestamp_extension(_, module_target_unqualified_short_interface) = ".date3".
+timestamp_extension(_, module_target_intermodule_interface) = ".optdate".
+timestamp_extension(_, module_target_analysis_registry) = ".analysis_date".
+timestamp_extension(_, module_target_c_code) = ".c_date".
+timestamp_extension(Globals, module_target_c_header(_)) = Ext :-
     globals.get_target(Globals, Target),
     Ext = timestamp_extension(Globals,
-        (Target = target_asm -> asm_code(non_pic) ; c_code)).
-timestamp_extension(_, il_code) = ".il_date".
-timestamp_extension(_, java_code) = ".java_date".
-timestamp_extension(_, asm_code(non_pic)) = ".s_date".
-timestamp_extension(_, asm_code(pic)) = ".pic_s_date".
+        (Target = target_asm ->
+            module_target_asm_code(non_pic) ; module_target_c_code)).
+timestamp_extension(_, module_target_il_code) = ".il_date".
+timestamp_extension(_, module_target_java_code) = ".java_date".
+timestamp_extension(_, module_target_asm_code(non_pic)) = ".s_date".
+timestamp_extension(_, module_target_asm_code(pic)) = ".pic_s_date".
 
 :- func search_for_file_type(module_target_type) = maybe(option).
 
-search_for_file_type(source) = no.
-search_for_file_type(errors) = no.
+search_for_file_type(module_target_source) = no.
+search_for_file_type(module_target_errors) = no.
     % XXX only for inter-module optimization.
-search_for_file_type(private_interface) = yes(search_directories).
-search_for_file_type(long_interface) = yes(search_directories).
-search_for_file_type(short_interface) = yes(search_directories).
-search_for_file_type(unqualified_short_interface) = yes(search_directories).
-search_for_file_type(intermodule_interface) = yes(intermod_directories).
-search_for_file_type(analysis_registry) = yes(intermod_directories).
-search_for_file_type(c_header(_)) = yes(c_include_directory).
-search_for_file_type(c_code) = no.
-search_for_file_type(il_code) = no.
-search_for_file_type(il_asm) = no.
-search_for_file_type(java_code) = no.
-search_for_file_type(asm_code(_)) = no.
-search_for_file_type(object_code(_)) = no.
-search_for_file_type(foreign_object(_, _)) = no.
-search_for_file_type(foreign_il_asm(_)) = no.
-search_for_file_type(fact_table_object(_, _)) = no.
+search_for_file_type(module_target_private_interface) =
+        yes(search_directories).
+search_for_file_type(module_target_long_interface) = yes(search_directories).
+search_for_file_type(module_target_short_interface) = yes(search_directories).
+search_for_file_type(module_target_unqualified_short_interface) =
+        yes(search_directories).
+search_for_file_type(module_target_intermodule_interface) =
+        yes(intermod_directories).
+search_for_file_type(module_target_analysis_registry) =
+        yes(intermod_directories).
+search_for_file_type(module_target_c_header(_)) = yes(c_include_directory).
+search_for_file_type(module_target_c_code) = no.
+search_for_file_type(module_target_il_code) = no.
+search_for_file_type(module_target_il_asm) = no.
+search_for_file_type(module_target_java_code) = no.
+search_for_file_type(module_target_asm_code(_)) = no.
+search_for_file_type(module_target_object_code(_)) = no.
+search_for_file_type(module_target_foreign_object(_, _)) = no.
+search_for_file_type(module_target_foreign_il_asm(_)) = no.
+search_for_file_type(module_target_fact_table_object(_, _)) = no.
 
 target_is_grade_or_arch_dependent(Target) :-
-    target_is_grade_or_arch_dependent(Target, yes).
+    is_target_grade_or_arch_dependent(Target) = yes.
 
-:- pred target_is_grade_or_arch_dependent(module_target_type::in,
-    bool::out) is det.
+:- func is_target_grade_or_arch_dependent(module_target_type) = bool.
 
-target_is_grade_or_arch_dependent(source, no).
-target_is_grade_or_arch_dependent(errors, no).
-target_is_grade_or_arch_dependent(private_interface, no).
-target_is_grade_or_arch_dependent(long_interface, no).
-target_is_grade_or_arch_dependent(short_interface, no).
-target_is_grade_or_arch_dependent(unqualified_short_interface, no).
-target_is_grade_or_arch_dependent(intermodule_interface, yes).
-target_is_grade_or_arch_dependent(analysis_registry, yes).
-target_is_grade_or_arch_dependent(c_header(mh), no).
-target_is_grade_or_arch_dependent(c_header(mih), yes).
-target_is_grade_or_arch_dependent(c_code, yes).
-target_is_grade_or_arch_dependent(il_code, yes).
-target_is_grade_or_arch_dependent(il_asm, yes).
-target_is_grade_or_arch_dependent(java_code, yes).
-target_is_grade_or_arch_dependent(asm_code(_), yes).
-target_is_grade_or_arch_dependent(object_code(_), yes).
-target_is_grade_or_arch_dependent(foreign_object(_, _), yes).
-target_is_grade_or_arch_dependent(foreign_il_asm(_), yes).
-target_is_grade_or_arch_dependent(fact_table_object(_, _), yes).
+is_target_grade_or_arch_dependent(Target) = IsDependent :-
+    (
+        ( Target = module_target_source
+        ; Target = module_target_errors
+        ; Target = module_target_private_interface
+        ; Target = module_target_long_interface
+        ; Target = module_target_short_interface
+        ; Target = module_target_unqualified_short_interface
+        ; Target = module_target_c_header(header_mh)
+        ),
+        IsDependent = no
+    ;
+        ( Target = module_target_intermodule_interface
+        ; Target = module_target_analysis_registry
+        ; Target = module_target_c_header(header_mih)
+        ; Target = module_target_c_code
+        ; Target = module_target_il_code
+        ; Target = module_target_il_asm
+        ; Target = module_target_java_code
+        ; Target = module_target_asm_code(_)
+        ; Target = module_target_object_code(_)
+        ; Target = module_target_foreign_object(_, _)
+        ; Target = module_target_foreign_il_asm(_)
+        ; Target = module_target_fact_table_object(_, _)
+        ),
+        IsDependent = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -998,9 +1012,9 @@ debug_file_msg(TargetFile, Msg, !IO) :-
             io.nl
         ), !IO).
 
-write_dependency_file(target(TargetFile), !IO) :-
+write_dependency_file(dep_target(TargetFile), !IO) :-
     write_target_file(TargetFile, !IO).
-write_dependency_file(file(FileName, _), !IO) :-
+write_dependency_file(dep_file(FileName, _), !IO) :-
     io.write_string(FileName, !IO).
 
 write_target_file(ModuleName - FileType, !IO) :-
@@ -1017,9 +1031,9 @@ maybe_make_linked_target_message(TargetFile, !IO) :-
 
 maybe_make_target_message(TargetFile, !IO) :-
     io.output_stream(OutputStream, !IO),
-    maybe_make_target_message(OutputStream, TargetFile, !IO).
+    maybe_make_target_message_to_stream(OutputStream, TargetFile, !IO).
 
-maybe_make_target_message(OutputStream, TargetFile, !IO) :-
+maybe_make_target_message_to_stream(OutputStream, TargetFile, !IO) :-
     verbose_msg(
         (pred(di, uo) is det -->
             io.set_output_stream(OutputStream, OldOutputStream),

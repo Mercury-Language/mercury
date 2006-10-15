@@ -303,7 +303,7 @@ do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
         eff_trace_level_is_none(PredInfo0, !.ProcInfo, TraceLevel) = no,
         CodeModel \= model_non,
         proc_info_get_goal(!.ProcInfo, Goal),
-        code_util.goal_may_alloc_temp_frame(Goal)
+        code_util.goal_may_alloc_temp_frame(Goal, yes)
     ->
         MaxfrFlag = yes
     ;

@@ -147,20 +147,20 @@
             ).
 
 :- type setting
-    --->    depth(int)
-    ;       size(int)
-    ;       width(int)
-    ;       lines(int)
-    ;       format(portray_format).
+    --->    setting_depth(int)
+    ;       setting_size(int)
+    ;       setting_width(int)
+    ;       setting_lines(int)
+    ;       setting_format(portray_format).
 
-    % Initialise a new browser_info.  The optional portray_format
+    % Initialise a new browser_info. The optional portray_format
     % overrides the default format.
     %
 :- func init(browser_term, browse_caller_type,
     maybe(portray_format), maybe(browser_mode_func),
     browser_persistent_state) = browser_info.
 
-    % Get the format to use for the given caller type.  The optional
+    % Get the format to use for the given caller type. The optional
     % portray_format overrides the current default.
     %
 :- pred get_format(browser_info::in, browse_caller_type::in,
@@ -364,7 +364,8 @@
     "ML_BROWSE_set_depth_from_mdb").
 
 set_depth_from_mdb(P, B, A, F, Pr, V, NPr, Depth, !Browser) :-
-    set_browser_param(no, P, B, A, F, Pr, V, NPr,  depth(Depth), !Browser).
+    set_browser_param(no, P, B, A, F, Pr, V, NPr, setting_depth(Depth),
+        !Browser).
 
 :- pred set_size_from_mdb(bool::in, bool::in, bool::in, bool::in,
     bool::in, bool::in, bool::in, int::in,
@@ -374,7 +375,8 @@ set_depth_from_mdb(P, B, A, F, Pr, V, NPr, Depth, !Browser) :-
     "ML_BROWSE_set_size_from_mdb").
 
 set_size_from_mdb(P, B, A, F, Pr, NPr, V, Size, !Browser) :-
-    set_browser_param(no, P, B, A, F, Pr, V, NPr, size(Size), !Browser).
+    set_browser_param(no, P, B, A, F, Pr, V, NPr, setting_size(Size),
+        !Browser).
 
 :- pred set_width_from_mdb(bool::in, bool::in, bool::in,
     bool::in, bool::in, bool::in, bool::in, int::in,
@@ -384,7 +386,8 @@ set_size_from_mdb(P, B, A, F, Pr, NPr, V, Size, !Browser) :-
     "ML_BROWSE_set_width_from_mdb").
 
 set_width_from_mdb(P, B, A, F, Pr, V, NPr, Width, !Browser) :-
-    set_browser_param(no, P, B, A, F, Pr, V, NPr, width(Width), !Browser).
+    set_browser_param(no, P, B, A, F, Pr, V, NPr, setting_width(Width),
+        !Browser).
 
 :- pred set_lines_from_mdb(bool::in, bool::in, bool::in,
     bool::in, bool::in, bool::in, bool::in, int::in,
@@ -394,7 +397,8 @@ set_width_from_mdb(P, B, A, F, Pr, V, NPr, Width, !Browser) :-
     "ML_BROWSE_set_lines_from_mdb").
 
 set_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines, !Browser) :-
-    set_browser_param(no, P, B, A, F, Pr, V, NPr, lines(Lines), !Browser).
+    set_browser_param(no, P, B, A, F, Pr, V, NPr, setting_lines(Lines),
+        !Browser).
 
 info_set_browse_param(OptionTable, Setting, !Info) :-
     PersistentState0 = !.Info ^ state,
@@ -426,7 +430,8 @@ info_set_xml_tmp_filename(FileName, !Info) :-
 
 set_format_from_mdb(P, B, A, Format, !Browser) :-
     % Any format flags are ignored for this parameter.
-    set_browser_param(no, P, B, A, no, no, no, no, format(Format), !Browser).
+    set_browser_param(no, P, B, A, no, no, no, no, setting_format(Format),
+        !Browser).
 
 :- pragma foreign_export("C",
     get_num_io_actions(in, out),
@@ -768,7 +773,7 @@ default_all_yes(A0, B0, C0, D0, A, B, C, D) :-
 
 maybe_set_param(no, _, _, _, _, _, !Params).
 maybe_set_param(yes, F, Pr, V, NPr, Setting, !Params) :-
-    ( Setting = format(NewFormat) ->
+    ( Setting = setting_format(NewFormat) ->
         !:Params = !.Params ^ default_format := NewFormat
     ;
         Format0 = !.Params ^ default_format,
@@ -788,12 +793,12 @@ maybe_set_param(yes, F, Pr, V, NPr, Setting, !Params) :-
     format_params::in, format_params::out) is det.
 
 maybe_set_param_2(no, _, Params, Params).
-maybe_set_param_2(yes, depth(D), Params, Params ^ depth := D).
-maybe_set_param_2(yes, size(S), Params, Params ^ size := S).
-maybe_set_param_2(yes, format(_), _, _) :-
+maybe_set_param_2(yes, setting_depth(D), Params, Params ^ depth := D).
+maybe_set_param_2(yes, setting_size(S), Params, Params ^ size := S).
+maybe_set_param_2(yes, setting_format(_), _, _) :-
     error("maybe_set_param_2: cannot set format here").
-maybe_set_param_2(yes, width(W), Params, Params ^ width := W).
-maybe_set_param_2(yes, lines(L), Params, Params ^ lines := L).
+maybe_set_param_2(yes, setting_width(W), Params, Params ^ width := W).
+maybe_set_param_2(yes, setting_lines(L), Params, Params ^ lines := L).
 
 :- pred get_caller_params(browser_persistent_state::in, browse_caller_type::in,
     caller_params::out) is det.

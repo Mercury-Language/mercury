@@ -30,9 +30,9 @@
     (pred(in, out, out, in, out, di, uo) is det).
 
 :- type dependency_file
-    --->    target(target_file)
+    --->    dep_target(target_file)
                         % A target which could be made.
-    ;       file(file_name, maybe(option)).
+    ;       dep_file(file_name, maybe(option)).
                         % An ordinary file which `mmc --make' does not know
                         % how to rebuild. The option gives a list of
                         % directories in which to search.
@@ -54,8 +54,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Find all modules in the current directory which are
-    % reachable (by import) from the given module.
+    % Find all modules in the current directory which are reachable (by import)
+    % from the given module.
     %
 :- pred find_reachable_local_modules(module_name::in, bool::out,
     set(module_name)::out, make_info::in, make_info::out,
@@ -63,10 +63,9 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Find all modules in the current directory which are
-    % reachable (by import) from the given module.
-    % Return a list of `--local-module-id' options suitable for the
-    % command line.
+    % Find all modules in the current directory which are reachable (by import)
+    % from the given module. Return a list of `--local-module-id' options
+    % suitable for the command line.
     %
 :- pred make_local_module_id_options(module_name::in, bool::out,
     list(string)::out, make_info::in, make_info::out, io::di, io::uo) is det.
@@ -79,9 +78,9 @@
 %-----------------------------------------------------------------------------%
 
 :- type dependencies_result
-    --->    up_to_date
-    ;       out_of_date
-    ;       error.
+    --->    deps_up_to_date
+    ;       deps_out_of_date
+    ;       deps_error.
 
     % check_dependencies(TargetFileName, TargetFileTimestamp,
     %   BuildDepsSucceeded, Dependencies, Result)
@@ -175,79 +174,88 @@ combine_deps_list([FindDeps | FindDepsList]) =
         combine_deps(FindDeps, combine_deps_list(FindDepsList))
     ).
 
-target_dependencies(_, source) = no_deps.
-target_dependencies(Globals, errors) = compiled_code_dependencies(Globals).
-target_dependencies(_, private_interface) = interface_file_dependencies.
-target_dependencies(_, long_interface) = interface_file_dependencies.
-target_dependencies(_, short_interface) = interface_file_dependencies.
-target_dependencies(_, unqualified_short_interface) = source `of` self.
-target_dependencies(Globals, c_header(_)) =
-        target_dependencies(Globals, c_code).
-target_dependencies(Globals, c_code) = compiled_code_dependencies(Globals).
-target_dependencies(Globals, il_code) = compiled_code_dependencies(Globals).
-target_dependencies(_, il_asm) =
-    combine_deps_list([
-        il_code `of` self
-    ]).
-target_dependencies(Globals, java_code) = compiled_code_dependencies(Globals).
-target_dependencies(Globals, asm_code(_)) =
+target_dependencies(_, module_target_source) = no_deps.
+target_dependencies(Globals, module_target_errors) =
         compiled_code_dependencies(Globals).
-target_dependencies(Globals, object_code(PIC)) = Deps :-
+target_dependencies(_, module_target_private_interface) =
+        interface_file_dependencies.
+target_dependencies(_, module_target_long_interface) =
+        interface_file_dependencies.
+target_dependencies(_, module_target_short_interface) =
+        interface_file_dependencies.
+target_dependencies(_, module_target_unqualified_short_interface) =
+        module_target_source `of` self.
+target_dependencies(Globals, module_target_c_header(_)) =
+        target_dependencies(Globals, module_target_c_code).
+target_dependencies(Globals, module_target_c_code) =
+        compiled_code_dependencies(Globals).
+target_dependencies(Globals, module_target_il_code) =
+        compiled_code_dependencies(Globals).
+target_dependencies(_, module_target_il_asm) =
+    combine_deps_list([
+        module_target_il_code `of` self
+    ]).
+target_dependencies(Globals, module_target_java_code) =
+        compiled_code_dependencies(Globals).
+target_dependencies(Globals, module_target_asm_code(_)) =
+        compiled_code_dependencies(Globals).
+target_dependencies(Globals, module_target_object_code(PIC)) = Deps :-
     globals.get_target(Globals, CompilationTarget),
-    TargetCode = ( CompilationTarget = target_asm -> asm_code(PIC) ; c_code ),
+    TargetCode = ( CompilationTarget = target_asm ->
+        module_target_asm_code(PIC) ; module_target_c_code ),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 
-    %
     % For --highlevel-code, the `.c' file will #include the header
     % file for all imported modules.
-    %
     (
         CompilationTarget = target_c,
         HighLevelCode = yes
     ->
         HeaderDeps = combine_deps_list([
-            c_header(mih) `of` direct_imports,
-            c_header(mih) `of` indirect_imports,
-            c_header(mih) `of` parents,
-            c_header(mih) `of` intermod_imports
+            module_target_c_header(header_mih) `of` direct_imports,
+            module_target_c_header(header_mih) `of` indirect_imports,
+            module_target_c_header(header_mih) `of` parents,
+            module_target_c_header(header_mih) `of` intermod_imports
         ])
     ;
         HeaderDeps = no_deps
     ),
     Deps = combine_deps_list([
         TargetCode `of` self,
-        c_header(mh) `of` foreign_imports,
+        module_target_c_header(header_mh) `of` foreign_imports,
         HeaderDeps
     ]).
-target_dependencies(_, intermodule_interface) =
-        combine_deps_list([
-            source `of` self,
-            private_interface `of` parents,
-            long_interface `of` non_intermod_direct_imports,
-            short_interface `of` non_intermod_indirect_imports
-        ]).
-target_dependencies(_, analysis_registry) =
+target_dependencies(_, module_target_intermodule_interface) =
     combine_deps_list([
-        source `of` self,
-        private_interface `of` parents,
-        long_interface `of` non_intermod_direct_imports,
-        short_interface `of` non_intermod_indirect_imports
+        module_target_source `of` self,
+        module_target_private_interface `of` parents,
+        module_target_long_interface `of` non_intermod_direct_imports,
+        module_target_short_interface `of` non_intermod_indirect_imports
     ]).
-target_dependencies(_, foreign_il_asm(_)) =
+target_dependencies(_, module_target_analysis_registry) =
     combine_deps_list([
-        il_asm `of` self,
-        il_asm `of` filter(maybe_keep_std_lib_module, direct_imports),
-        il_asm `of` filter(maybe_keep_std_lib_module,
-            foreign_imports(lang_il)),
-        foreign_il_asm(lang_managed_cplusplus) `of`
-            filter(maybe_keep_std_lib_module,
-                foreign_imports(lang_managed_cplusplus)),
-        foreign_il_asm(lang_csharp) `of` filter(maybe_keep_std_lib_module,
-            foreign_imports(lang_csharp))
+        module_target_source `of` self,
+        module_target_private_interface `of` parents,
+        module_target_long_interface `of` non_intermod_direct_imports,
+        module_target_short_interface `of` non_intermod_indirect_imports
     ]).
-target_dependencies(Globals, foreign_object(PIC, _)) =
+target_dependencies(_, module_target_foreign_il_asm(_)) =
+    combine_deps_list([
+        module_target_il_asm `of` self,
+        module_target_il_asm `of` filter_module_names(maybe_keep_std_lib_module,
+            direct_imports),
+        module_target_il_asm `of` filter_module_names(maybe_keep_std_lib_module,
+            foreign_imports_lang(lang_il)),
+        module_target_foreign_il_asm(lang_managed_cplusplus) `of`
+            filter_module_names(maybe_keep_std_lib_module,
+                foreign_imports_lang(lang_managed_cplusplus)),
+        module_target_foreign_il_asm(lang_csharp) `of`
+            filter_module_names(maybe_keep_std_lib_module,
+                foreign_imports_lang(lang_csharp))
+    ]).
+target_dependencies(Globals, module_target_foreign_object(PIC, _)) =
     get_foreign_deps(Globals, PIC).
-target_dependencies(Globals, fact_table_object(PIC, _)) =
+target_dependencies(Globals, module_target_fact_table_object(PIC, _)) =
     get_foreign_deps(Globals, PIC).
 
 :- func get_foreign_deps(globals::in, pic::in) =
@@ -255,7 +263,8 @@ target_dependencies(Globals, fact_table_object(PIC, _)) =
 
 get_foreign_deps(Globals, PIC) = Deps :-
     globals.get_target(Globals, CompilationTarget),
-    TargetCode = ( CompilationTarget = target_asm -> asm_code(PIC) ; c_code ),
+    TargetCode = ( CompilationTarget = target_asm ->
+        module_target_asm_code(PIC) ; module_target_c_code ),
     Deps = combine_deps_list([
         TargetCode `of` self
     ]).
@@ -265,10 +274,10 @@ get_foreign_deps(Globals, PIC) = Deps :-
 
 interface_file_dependencies =
     combine_deps_list([
-        source `of` self,
-        private_interface `of` parents,
-        unqualified_short_interface `of` direct_imports,
-        unqualified_short_interface `of` indirect_imports
+        module_target_source `of` self,
+        module_target_private_interface `of` parents,
+        module_target_unqualified_short_interface `of` direct_imports,
+        module_target_unqualified_short_interface `of` indirect_imports
     ]).
 
 :- func compiled_code_dependencies(globals::in) =
@@ -281,21 +290,21 @@ compiled_code_dependencies(Globals) = Deps :-
     (
         Intermod = yes,
         Deps0 = combine_deps_list([
-            intermodule_interface `of` self,
-            intermodule_interface `of` intermod_imports,
+            module_target_intermodule_interface `of` self,
+            module_target_intermodule_interface `of` intermod_imports,
             map_find_module_deps(imports,
                 map_find_module_deps(parents, intermod_imports)),
-            compiled_code_dependencies
+            base_compiled_code_dependencies
         ])
     ;
         Intermod = no,
-        Deps0 = compiled_code_dependencies
+        Deps0 = base_compiled_code_dependencies
     ),
     (
         IntermodAnalysis = yes,
         Deps = combine_deps_list([
-            analysis_registry `of` self,
-            analysis_registry `of` direct_imports,
+            module_target_analysis_registry `of` self,
+            module_target_analysis_registry `of` direct_imports,
             Deps0
         ])
     ;
@@ -303,23 +312,23 @@ compiled_code_dependencies(Globals) = Deps :-
         Deps = Deps0
     ).
 
-:- func compiled_code_dependencies =
+:- func base_compiled_code_dependencies =
     (find_module_deps(dependency_file)::out(find_module_deps)) is det.
 
-compiled_code_dependencies =
+base_compiled_code_dependencies =
     combine_deps_list([
-        source `of` self,
-        fact_table `files_of` self,
+        module_target_source `of` self,
+        fact_table_files `files_of` self,
         map_find_module_deps(imports, self)
     ]).
 
 :- func imports =
-        (find_module_deps(dependency_file)::out(find_module_deps)) is det.
+    (find_module_deps(dependency_file)::out(find_module_deps)) is det.
 
 imports = combine_deps_list([
-        private_interface `of` parents,
-        long_interface `of` direct_imports,
-        short_interface `of` indirect_imports
+        module_target_private_interface `of` parents,
+        module_target_long_interface `of` direct_imports,
+        module_target_short_interface `of` indirect_imports
     ]).
 
 :- func module_target_type `of` find_module_deps(module_name) =
@@ -369,7 +378,7 @@ files_of_2(FindFiles, FindDeps, ModuleName, Success, DepFiles, !Info, !IO) :-
         Success = Success0 `and` Success1,
         DepFiles = set.sorted_list_to_set(
             list.map(
-                (func(FileName - Option) = file(FileName, Option)),
+                (func(FileName - Option) = dep_file(FileName, Option)),
                 set.to_sorted_list(FileNames)))
     ).
 
@@ -378,8 +387,8 @@ files_of_2(FindFiles, FindDeps, ModuleName, Success, DepFiles, !Info, !IO) :-
     module_name::in, bool::out, set(T)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-map_find_module_deps(FindDeps2, FindDeps1, ModuleName,
-        Success, Result, !Info, !IO) :-
+map_find_module_deps(FindDeps2, FindDeps1, ModuleName, Success, Result,
+        !Info, !IO) :-
     KeepGoing = !.Info ^ keep_going,
     FindDeps1(ModuleName, Success0, Modules0, !Info, !IO),
     (
@@ -427,8 +436,8 @@ direct_imports(ModuleName, Success, Modules, !Info, !IO) :-
     ;
         KeepGoing = !.Info ^ keep_going,
 
-        non_intermod_direct_imports(ModuleName, Success0,
-            Modules0, !Info, !IO),
+        non_intermod_direct_imports(ModuleName, Success0, Modules0,
+            !Info, !IO),
         (
             Success0 = no,
             KeepGoing = no
@@ -436,10 +445,8 @@ direct_imports(ModuleName, Success, Modules, !Info, !IO) :-
             Success = no,
             Modules = set.init
         ;
-            %
-            % We also read `.int' files for the modules for
-            % which we read `.opt' files, and for the modules
-            % imported by those modules.
+            % We also read `.int' files for the modules for which we read
+            % `.opt' files, and for the modules imported by those modules.
             %
             intermod_imports(ModuleName, Success1, IntermodModules, !Info,
                 !IO),
@@ -475,26 +482,22 @@ non_intermod_direct_imports(ModuleName, Success, Modules, !Info, !IO) :-
     (
         MaybeImports = yes(Imports),
 
+        % Find the direct imports of this module (modules for which we will
+        % read the `.int' files).
         %
-        % Find the direct imports of this module (modules
-        % for which we will read the `.int' files).
+        % Note that we need to do this both for the interface imports of
+        % this module and for the *implementation* imports of its ancestors.
+        % This is because if this module is defined in the implementation
+        % section of its parent, then the interface of this module may depend
+        % on things imported only by its parent's implementation.
         %
-        % Note that we need to do this both for the interface
-        % imports of this module and for the *implementation*
-        % imports of its ancestors.  This is because if this
-        % module is defined in the implementation section of
-        % its parent, then the interface of this module may
-        % depend on things imported only by its parent's
-        % implementation.
-        %
-        % If this module was actually defined in the interface
-        % section of one of its ancestors, then it should only
-        % depend on the interface imports of that ancestor,
-        % so the dependencies added here are in fact more
-        % conservative than they need to be in that case.
-        % However, that should not be a major problem.
-        % (This duplicates how this is handled by modules.m).
-        %
+        % If this module was actually defined in the interface section of
+        % one of its ancestors, then it should only depend on the interface
+        % imports of that ancestor, so the dependencies added here are in fact
+        % more conservative than they need to be in that case. However, that
+        % should not be a major problem. (This duplicates how this is handled
+        % by modules.m).
+
         Modules0 = set.union(set.list_to_set(Imports ^ impl_deps),
             set.list_to_set(Imports ^ int_deps)),
         (
@@ -525,8 +528,8 @@ indirect_imports(ModuleName, Success, Modules, !Info, !IO) :-
         Success, Modules, !Info, !IO).
 
     % Return the list of modules for which we should read `.int2' files,
-    % ignoring those which need to be read as a result of importing
-    % modules imported by a `.opt' file.
+    % ignoring those which need to be read as a result of importing modules
+    % imported by a `.opt' file.
     %
 :- pred non_intermod_indirect_imports(module_name::in, bool::out,
     set(module_name)::out, make_info::in, make_info::out,
@@ -543,9 +546,9 @@ non_intermod_indirect_imports(ModuleName, Success, Modules, !Info, !IO) :-
 indirect_imports_2(FindDirectImports, ModuleName, Success, IndirectImports,
         !Info, !IO) :-
     FindDirectImports(ModuleName, DirectSuccess, DirectImports, !Info, !IO),
-        % XXX The original version of this code by stayl had the line assigning
-        % to KeepGoing textually *before* the call to FindDirectImports, but
-        % looked up the keep_going in the version of !Info *after* that call.
+    % XXX The original version of this code by stayl had the line assigning
+    % to KeepGoing textually *before* the call to FindDirectImports, but
+    % looked up the keep_going in the version of !Info *after* that call.
     KeepGoing = !.Info ^ keep_going,
     (
         DirectSuccess = no,
@@ -598,11 +601,10 @@ intermod_imports(ModuleName, Success, Modules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 foreign_imports(ModuleName, Success, Modules, !Info, !IO) :-
-    %
     % The object file depends on the header files for the modules
     % mentioned in `:- pragma foreign_import_module' declarations
     % in the current module and the `.opt' files it imports.
-    %
+
     globals.io_get_globals(Globals, !IO),
     globals.get_backend_foreign_languages(Globals, Languages),
     intermod_imports(ModuleName, IntermodSuccess, IntermodModules, !Info, !IO),
@@ -642,7 +644,7 @@ find_module_foreign_imports_2(Languages, ModuleName,
     (
         MaybeImports = yes(Imports),
         ForeignModules = set.list_to_set(
-            get_foreign_imported_modules(Languages,
+            get_foreign_imported_modules_lang(Languages,
             Imports ^ foreign_import_modules)),
         Success = yes
     ;
@@ -657,10 +659,10 @@ find_module_foreign_imports_2(Languages, ModuleName,
 get_foreign_imported_modules(ForeignImportModules) =
     get_foreign_imported_modules_2(no, ForeignImportModules).
 
-:- func get_foreign_imported_modules(set(foreign_language),
+:- func get_foreign_imported_modules_lang(set(foreign_language),
     foreign_import_module_info_list) = list(module_name).
 
-get_foreign_imported_modules(Languages, ForeignImportModules) =
+get_foreign_imported_modules_lang(Languages, ForeignImportModules) =
     get_foreign_imported_modules_2(yes(Languages), ForeignImportModules).
 
 :- func get_foreign_imported_modules_2(maybe(set(foreign_language)),
@@ -686,17 +688,17 @@ get_foreign_imported_modules_3(MaybeLanguages, ForeignImportModule)
 
 %-----------------------------------------------------------------------------%
 
-    % foreign_imports(Lang, ModuleName, Success, Modules, !Info, !IO)
+    % foreign_imports_lang(Lang, ModuleName, Success, Modules, !Info, !IO)
     %
     % From the module, ModuleName, extract the set of modules, Modules,
     % which are mentioned in foreign_import_module declarations with the
     % specified language, Lang.
     %
-:- pred foreign_imports(foreign_language::in,
+:- pred foreign_imports_lang(foreign_language::in,
     module_name::in, bool::out, set(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-foreign_imports(Lang, ModuleName, Success, Modules, !Info, !IO) :-
+foreign_imports_lang(Lang, ModuleName, Success, Modules, !Info, !IO) :-
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
@@ -714,23 +716,24 @@ foreign_imports(Lang, ModuleName, Success, Modules, !Info, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % filter(F, P, MN, S, Ms, !Info, !IO)L
-    %   Filter the set of module_names returned from P called with MN,
-    %   as its input arguments with F.  The first argument to F will be MN
-    %   and the second argument be one of the module_names returned from P.
+    % filter(F, P, MN, S, Ms, !Info, !IO):
     %
-:- pred filter(pred(module_name, module_name)::pred(in, in) is semidet,
-        pred(module_name, bool, set(module_name), make_info, make_info,
-            io, io)::pred(in, out, out, in, out, di, uo) is det,
-        module_name::in, bool::out,
-        set(module_name)::out, make_info::in, make_info::out,
-        io::di, io::uo) is det.
+    % Filter the set of module_names returned from P called with MN,
+    % as its input arguments with F.  The first argument to F will be MN
+    % and the second argument be one of the module_names returned from P.
+    %
+:- pred filter_module_names(
+    pred(module_name, module_name)::pred(in, in) is semidet,
+    pred(module_name, bool, set(module_name), make_info, make_info,
+        io, io)::pred(in, out, out, in, out, di, uo) is det,
+    module_name::in, bool::out,
+    set(module_name)::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
-filter(Filter, F, ModuleName, Success, Modules, !Info, !IO) :-
+filter_module_names(Filter, F, ModuleName, Success, Modules, !Info, !IO) :-
     F(ModuleName, Success, Modules0, !Info, !IO),
     Modules = set.filter((pred(M::in) is semidet :- Filter(ModuleName, M)),
         Modules0).
-
 
     % If the current module we are compiling is not in the standard
     % library and the module we are importing is then remove it,
@@ -748,11 +751,11 @@ maybe_keep_std_lib_module(CurrentModule, ImportedModule) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred fact_table(module_name::in,
+:- pred fact_table_files(module_name::in,
     bool::out, set(pair(file_name, maybe(option)))::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-fact_table(ModuleName, Success, Files, !Info, !IO) :-
+fact_table_files(ModuleName, Success, Files, !Info, !IO) :-
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
@@ -768,11 +771,11 @@ fact_table(ModuleName, Success, Files, !Info, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- type transitive_dependencies_root
-    ---> transitive_dependencies_root(
-            module_name,
-            transitive_dependencies_type,
-            module_locn
-        ).
+    --->    transitive_dependencies_root(
+                module_name,
+                transitive_dependencies_type,
+                module_locn
+            ).
 
 :- type transitive_deps_result == pair(bool, set(module_name)).
 
@@ -862,9 +865,8 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
             ->
                 (
                     % Parents don't need to be considered here.
-                    % Anywhere the interface of the child module
-                    % is needed, the parent must also have been
-                    % imported.
+                    % Anywhere the interface of the child module is needed,
+                    % the parent must also have been imported.
                     DependenciesType = interface_imports,
                     ImportsToCheck = Imports ^ int_deps
                 ;
@@ -935,13 +937,13 @@ check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
     assoc_list.from_corresponding_lists(DepFiles, DepStatusList, DepStatusAL),
     list.filter(
         (pred((_ - DepStatus)::in) is semidet :-
-            DepStatus \= up_to_date
+            DepStatus \= deps_status_up_to_date
         ), DepStatusAL, UnbuiltDependencies),
     (
         UnbuiltDependencies = [_ | _],
         debug_msg(check_dependencies_debug_unbuilt(TargetFileName,
             UnbuiltDependencies), !IO),
-        DepsResult = error
+        DepsResult = deps_error
     ;
         UnbuiltDependencies = [],
         debug_msg(
@@ -983,7 +985,7 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         DepFiles, WriteDepFile, DepTimestamps, DepsResult, !IO) :-
     (
         MaybeTimestamp = error(_),
-        DepsResult = out_of_date,
+        DepsResult = deps_out_of_date,
         debug_msg(io.write_string(TargetFileName ++ " does not exist.\n"), !IO)
     ;
         MaybeTimestamp = ok(Timestamp),
@@ -992,18 +994,18 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
             list.member(MaybeDepTimestamp1, DepTimestamps),
             MaybeDepTimestamp1 = error(_)
         ->
-            DepsResult = error,
+            DepsResult = deps_error,
             WriteMissingDeps =
                 check_dependencies_timestamps_write_missing_deps(
                     TargetFileName, BuildDepsSucceeded, DepFiles,
                     WriteDepFile, DepTimestamps),
             (
                 BuildDepsSucceeded = yes,
-                %
+
                 % Something has gone wrong -- building the target has
                 % succeeded, but there are some files missing.
                 % Report an error.
-                %
+
                 WriteMissingDeps(!IO)
             ;
                 BuildDepsSucceeded = no,
@@ -1012,12 +1014,10 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         ;
             Rebuild = yes
         ->
-            %
-            % With `--rebuild', a target is always considered
-            % to be out-of-date, regardless of the timestamps
-            % of its dependencies.
-            %
-            DepsResult = out_of_date
+            % With `--rebuild', a target is always considered to be
+            % out-of-date, regardless of the timestamps of its dependencies.
+
+            DepsResult = deps_out_of_date
         ;
             list.member(MaybeDepTimestamp2, DepTimestamps),
             MaybeDepTimestamp2 = ok(DepTimestamp),
@@ -1025,9 +1025,9 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         ->
             debug_newer_dependencies(TargetFileName, MaybeTimestamp,
                 DepFiles, WriteDepFile, DepTimestamps, !IO),
-            DepsResult = out_of_date
+            DepsResult = deps_out_of_date
         ;
-            DepsResult = up_to_date
+            DepsResult = deps_up_to_date
         )
     ).
 
@@ -1064,7 +1064,7 @@ debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
     io.write_list(NewerDeps, ",\n\t", WriteDepFile, !IO),
     io.nl(!IO).
 
-dependency_status(file(FileName, _) @ Dep, Status, !Info, !IO) :-
+dependency_status(dep_file(FileName, _) @ Dep, Status, !Info, !IO) :-
     (
         Status0 = !.Info ^ dependency_status ^ elem(Dep)
     ->
@@ -1073,10 +1073,10 @@ dependency_status(file(FileName, _) @ Dep, Status, !Info, !IO) :-
         get_dependency_timestamp(Dep, MaybeTimestamp, !Info, !IO),
         (
             MaybeTimestamp = ok(_),
-            Status = up_to_date
+            Status = deps_status_up_to_date
         ;
             MaybeTimestamp = error(Error),
-            Status = error,
+            Status = deps_status_error,
             io.write_string("** Error: file `", !IO),
             io.write_string(FileName, !IO),
             io.write_string("' not found: ", !IO),
@@ -1085,34 +1085,33 @@ dependency_status(file(FileName, _) @ Dep, Status, !Info, !IO) :-
         ),
         !:Info = !.Info ^ dependency_status ^ elem(Dep) := Status
     ).
-dependency_status(target(Target) @ Dep, Status, !Info, !IO) :-
+dependency_status(dep_target(Target) @ Dep, Status, !Info, !IO) :-
     Target = ModuleName - FileType,
-    ( FileType = source ->
+    ( FileType = module_target_source ->
         % Source files are always up-to-date.
-        maybe_warn_up_to_date_target(ModuleName - module_target(source),
-            !Info, !IO),
-        Status = up_to_date
+        ModuleTarget = module_target(module_target_source),
+        maybe_warn_up_to_date_target(ModuleName - ModuleTarget, !Info, !IO),
+        Status = deps_status_up_to_date
     ; Status0 = !.Info ^ dependency_status ^ elem(Dep) ->
         Status = Status0
     ;
         get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
         (
             MaybeImports = no,
-            Status = error
+            Status = deps_status_error
         ;
             MaybeImports = yes(Imports),
             ( Imports ^ module_dir \= dir.this_directory ->
-                %
                 % Targets from libraries are always considered to be
                 % up-to-date if they exist.
-                %
+
                 get_target_timestamp(yes, Target, MaybeTimestamp, !Info, !IO),
                 (
                     MaybeTimestamp = ok(_),
-                    Status = up_to_date
+                    Status = deps_status_up_to_date
                 ;
                     MaybeTimestamp = error(Error),
-                    Status = error,
+                    Status = deps_status_error,
                     io.write_string("** Error: file `", !IO),
                     write_target_file(Target, !IO),
                     io.write_string("' not found: ", !IO),
@@ -1120,7 +1119,7 @@ dependency_status(target(Target) @ Dep, Status, !Info, !IO) :-
                     io.nl(!IO)
                 )
             ;
-                Status = not_considered
+                Status = deps_status_not_considered
             )
         ),
         !:Info = !.Info ^ dependency_status ^ elem(Dep) := Status

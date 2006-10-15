@@ -353,33 +353,24 @@ atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, Bytes,
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
 cons_id_to_byte_list(SymName, !StackInfo, Bytes) :-
-    string_to_byte_list(cons_id_to_string(SymName), !StackInfo, Bytes).
+    string_to_byte_list(cons_id_rep(SymName), !StackInfo, Bytes).
 
-:- func cons_id_to_string(cons_id) = string.
+:- func cons_id_rep(cons_id) = string.
 
-cons_id_to_string(cons(SymName, _)) =
-    prog_rep.sym_base_name_to_string(SymName).
-cons_id_to_string(int_const(Int)) =
-    string.int_to_string(Int).
-cons_id_to_string(float_const(Float)) =
-    string.float_to_string(Float).
-cons_id_to_string(string_const(String)) =
-    string.append_list(["""", String, """"]).
-cons_id_to_string(pred_const(_, _)) = "$pred_const".
-cons_id_to_string(type_ctor_info_const(_, _, _)) =
-    "$type_ctor_info_const".
-cons_id_to_string(base_typeclass_info_const(_, _, _, _)) =
+cons_id_rep(cons(SymName, _)) = prog_rep.sym_base_name_to_string(SymName).
+cons_id_rep(int_const(Int)) = string.int_to_string(Int).
+cons_id_rep(float_const(Float)) = string.float_to_string(Float).
+cons_id_rep(string_const(String)) = string.append_list(["""", String, """"]).
+cons_id_rep(pred_const(_, _)) = "$pred_const".
+cons_id_rep(type_ctor_info_const(_, _, _)) = "$type_ctor_info_const".
+cons_id_rep(base_typeclass_info_const(_, _, _, _)) =
     "$base_typeclass_info_const".
-cons_id_to_string(type_info_cell_constructor(_)) =
-    "$type_info_cell_constructor".
-cons_id_to_string(typeclass_info_cell_constructor) =
+cons_id_rep(type_info_cell_constructor(_)) = "$type_info_cell_constructor".
+cons_id_rep(typeclass_info_cell_constructor) =
     "$typeclass_info_cell_constructor".
-cons_id_to_string(tabling_info_const(_)) =
-    "$tabling_info_const".
-cons_id_to_string(deep_profiling_proc_layout(_)) =
-    "$deep_profiling_procedure_data".
-cons_id_to_string(table_io_decl(_)) =
-    "$table_io_decl".
+cons_id_rep(tabling_info_const(_)) = "$tabling_info_const".
+cons_id_rep(deep_profiling_proc_layout(_)) = "$deep_profiling_procedure_data".
+cons_id_rep(table_io_decl(_)) = "$table_io_decl".
 
 :- func sym_base_name_to_string(sym_name) = string.
 

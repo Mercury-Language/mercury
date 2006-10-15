@@ -161,8 +161,7 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
     io.nl(!IO),
     io.write_string("Parents: ", !IO),
     set.to_sorted_list(Parents, ParentsList),
-    io.write_list(ParentsList, ", ",
-        pd_debug_write_pred_proc_id(ModuleInfo), !IO),
+    io.write_list(ParentsList, ", ", write_pred_proc_id(ModuleInfo), !IO),
     io.nl(!IO),
     (
         WriteUnfoldedGoal = yes,
@@ -194,14 +193,7 @@ pd_debug_write_pred_proc_id_list(PDInfo, PredProcIds, !IO) :-
     list(pred_proc_id)::in, io::di, io::uo) is det.
 
 pd_debug_write_pred_proc_id_list_2(ModuleInfo, PredProcIds, !IO) :-
-    io.write_list(PredProcIds, ", ",
-        pd_debug_write_pred_proc_id(ModuleInfo), !IO).
-
-:- pred pd_debug_write_pred_proc_id(module_info::in, pred_proc_id::in,
-    io::di, io::uo) is det.
-
-pd_debug_write_pred_proc_id(ModuleInfo, proc(PredId, ProcId), !IO) :-
-    hlds_out.write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO).
+    io.write_list(PredProcIds, ", ", write_pred_proc_id(ModuleInfo), !IO).
 
 %-----------------------------------------------------------------------------%
 

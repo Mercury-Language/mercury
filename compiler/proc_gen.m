@@ -44,7 +44,8 @@
 
     % Translate a HLDS module to LLDS.
     %
-:- pred generate_code(module_info::in, global_data::in, global_data::out,
+:- pred generate_module_code(module_info::in,
+    global_data::in, global_data::out,
     list(c_procedure)::out, io::di, io::uo) is det.
 
     % Translate a HLDS procedure to LLDS, threading through the data structure
@@ -114,7 +115,7 @@
 
 %---------------------------------------------------------------------------%
 
-generate_code(ModuleInfo0, !GlobalData, Procedures, !IO) :-
+generate_module_code(ModuleInfo0, !GlobalData, Procedures, !IO) :-
     % Get a list of all the predicate ids for which we will generate code.
     module_info_predids(ModuleInfo0, PredIds),
     % Check if we want to use parallel code generation.
@@ -398,8 +399,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo,
             PredId, ProcId),
         code_info.get_layout_info(CodeInfo, InternalMap),
-        code_util.make_local_entry_label(ModuleInfo, PredId, ProcId,
-            no, EntryLabel),
+        EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
         proc_info_get_eval_method(ProcInfo, EvalMethod),
         proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
         proc_info_get_headvars(ProcInfo, HeadVars),
@@ -706,7 +706,7 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
     FailCode = node([
         assign(reg(reg_r, 1), const(llconst_false)) - "Fail",
         livevals(FailureLiveRegs) - "",
-        goto(succip) - "Return from procedure call"
+        goto(code_succip) - "Return from procedure call"
     ]),
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
@@ -808,7 +808,7 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
                 code_info.get_next_label(SkipLabel, !CI),
                 DiscardTraceTicketCode = node([
                     if_val(unop(logical_not, lval(FromFullSlotLval)),
-                        label(SkipLabel)) - "",
+                        code_label(SkipLabel)) - "",
                     discard_ticket - "discard retry ticket",
                     label(SkipLabel) - ""
                 ])
@@ -874,9 +874,9 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     code_info.get_pred_id(CI, PredId),
     code_info.get_proc_id(CI, ProcId),
     code_info.get_module_info(CI, ModuleInfo),
-    code_util.make_local_entry_label(ModuleInfo, PredId, ProcId, no, Entry),
+    EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
     LabelCode = node([
-        label(Entry) - "Procedure entry point"
+        label(EntryLabel) - "Procedure entry point"
     ]),
     code_info.get_succip_used(CI, Used),
     (
@@ -1064,13 +1064,13 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 code_info.get_next_label(SkipLabelCopy, !CI),
                 PruneTraceTicketCode = node([
                     if_val(unop(logical_not, lval(FromFullSlotLval)),
-                        label(SkipLabel)) - "",
+                        code_label(SkipLabel)) - "",
                     prune_ticket - "prune retry ticket",
                     label(SkipLabel) - ""
                 ]),
                 PruneTraceTicketCodeCopy = node([
                     if_val(unop(logical_not, lval(FromFullSlotLval)),
-                        label(SkipLabelCopy)) - "",
+                        code_label(SkipLabelCopy)) - "",
                     prune_ticket - "prune retry ticket",
                     label(SkipLabelCopy) - ""
                 ])
@@ -1129,7 +1129,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             CodeModel = model_det,
             SuccessCode = node([
                 livevals(LiveLvals) - "",
-                goto(succip) - "Return from procedure call"
+                goto(code_succip) - "Return from procedure call"
             ]),
             AllSuccessCode = tree_list([TraceExitCode, RestoreDeallocCodeCopy,
                 SuccessCode])
@@ -1139,7 +1139,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             SuccessCode = node([
                 assign(reg(reg_r, 1), const(llconst_true)) - "Succeed",
                 livevals(SuccessLiveRegs) - "",
-                goto(succip) - "Return from procedure call"
+                goto(code_succip) - "Return from procedure call"
             ]),
             AllSuccessCode = tree_list([TraceExitCode, RestoreDeallocCodeCopy,
                 SuccessCode])
@@ -1177,7 +1177,7 @@ add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
         [Instrn - Comment | Instrns]) :-
     (
         Instrn0 = livevals(LiveVals0),
-        Instrns0 \= [goto(succip) - _ | _]
+        Instrns0 \= [goto(code_succip) - _ | _]
         % XXX We should also test for tailcalls
         % once we start generating them directly.
     ->
@@ -1207,7 +1207,7 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
     ModuleName = sym_name_to_string_sep(ModuleSymName, "__"),
 
-    code_util.make_local_entry_label(ModuleInfo, PredId, ProcId, no, Entry),
+    EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
 
     PredName = pred_info_name(PredInfo),
     proc_id_to_int(ProcId, ProcNum),
@@ -1249,7 +1249,7 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
     ],
 
     BytecodeInstructions = [
-        label(Entry) - "Procedure entry point",
+        label(EntryLabel) - "Procedure entry point",
         pragma_c([], BytecodeInstructionsComponents, proc_may_call_mercury,
             no, no, no, no, no, no) - "Entry stub"
     ].

@@ -467,8 +467,8 @@ introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
         make_new_exist_cast_var(HeadVar0, HeadVar, !VarSet),
         svmap.det_insert(HeadVar, ExternalType, !VarTypes),
         mode_get_insts(ModuleInfo, ArgMode, _, Inst),
-        generate_cast(exists_cast, HeadVar0, HeadVar, Inst, Inst, Context,
-            ExtraGoal),
+        generate_cast_with_insts(exists_cast, HeadVar0, HeadVar, Inst, Inst,
+            Context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals]
     ;
         HeadVar = HeadVar0

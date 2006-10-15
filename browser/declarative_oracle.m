@@ -306,33 +306,36 @@ oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle) :-
     oracle_kb_init(Old),
     user_state_init(InStr, OutStr, Browser, HelpSystem, User),
     % Trust the standard library by default.
-    bimap.set(bimap.init, standard_library, 0, Trusted),
+    bimap.set(bimap.init, trusted_standard_library, 0, Trusted),
     counter.init(1, Counter),
     Oracle = oracle(Current, Old, User, Trusted, Counter).
     
 %-----------------------------------------------------------------------------%
 
 :- type trusted_object
-    --->    module(module_name)
+    --->    trusted_module(module_name)
             % all predicates/functions in a module
 
-    ;       predicate(
+    ;       trusted_predicate(
                 module_name,
                 string,     % pred name
                 int         % arity
             )
 
-    ;       function(
+    ;       trusted_function(
                 module_name,
                 string,     % function name
                 int         % arity including return value
             )
 
-    ;       standard_library.
+    ;       trusted_standard_library.
 
 add_trusted_module(ModuleName, !Oracle) :-
     counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
-    ( bimap.insert(!.Oracle ^ trusted, module(ModuleName), Id, Trusted) ->
+    (
+        bimap.insert(!.Oracle ^ trusted, trusted_module(ModuleName), Id,
+            Trusted)
+    ->
         !:Oracle = !.Oracle ^ trusted := Trusted,
         !:Oracle = !.Oracle ^ trusted_id_counter := Counter
     ;
@@ -353,11 +356,11 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
         (
             PredOrFunc = predicate,
             bimap.insert(!.Oracle ^ trusted,
-                predicate(ModuleName, Name, Arity), Id, Trusted)
+                trusted_predicate(ModuleName, Name, Arity), Id, Trusted)
         ;
             PredOrFunc = function,
             bimap.insert(!.Oracle ^ trusted,
-                function(ModuleName, Name, Arity), Id, Trusted)
+                trusted_function(ModuleName, Name, Arity), Id, Trusted)
         )
     ->
         !:Oracle = !.Oracle ^ trusted := Trusted,
@@ -368,7 +371,10 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
 
 trust_standard_library(!Oracle) :-
     counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
-    ( bimap.insert(!.Oracle ^ trusted, standard_library, Id, Trusted) ->
+    (
+        bimap.insert(!.Oracle ^ trusted, trusted_standard_library, Id,
+            Trusted)
+    ->
         !:Oracle = !.Oracle ^ trusted_id_counter := Counter,
         !:Oracle = !.Oracle ^ trusted := Trusted
     ;
@@ -396,38 +402,40 @@ get_trusted_list(Oracle, no, DisplayStr) :-
 :- pred format_trust_command(trusted_object::in, string::in, string::out)
     is det.
 
-format_trust_command(module(ModuleName),
+format_trust_command(trusted_module(ModuleName),
         S, S ++ "trust " ++ ModuleNameStr ++ "\n") :-
     ModuleNameStr = sym_name_to_string(ModuleName).
-format_trust_command(predicate(ModuleName, Name, Arity), S, S ++ Command) :-
+format_trust_command(trusted_predicate(ModuleName, Name, Arity),
+        S, S ++ Command) :-
     ArityStr = int_to_string(Arity),
     ModuleNameStr = sym_name_to_string(ModuleName),
     Command = "trust pred*" ++ ModuleNameStr ++ "." ++ Name ++ "/"
         ++ ArityStr ++ "\n".
-format_trust_command(function(ModuleName, Name, Arity), S, S ++ Command) :-
+format_trust_command(trusted_function(ModuleName, Name, Arity),
+        S, S ++ Command) :-
     ArityStr = int_to_string(Arity - 1),
     ModuleNameStr = sym_name_to_string(ModuleName),
     Command = "trust func*" ++ ModuleNameStr ++ "." ++ Name ++ "/"
         ++ ArityStr ++ "\n".
-format_trust_command(standard_library, S, S ++ "trust std lib\n").
+format_trust_command(trusted_standard_library, S, S ++ "trust std lib\n").
 
 :- pred format_trust_display(int::in, trusted_object::in, string::in, 
     string::out) is det.
 
-format_trust_display(Id, module(ModuleName), S, S ++ Display) :-
+format_trust_display(Id, trusted_module(ModuleName), S, S ++ Display) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
     Display = int_to_string(Id) ++ ": module " ++ ModuleNameStr ++ "\n".
-format_trust_display(Id, predicate(ModuleName, Name, Arity),
+format_trust_display(Id, trusted_predicate(ModuleName, Name, Arity),
         S, S ++ Display) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
     Display = int_to_string(Id) ++ ": predicate " ++ ModuleNameStr ++ "." 
         ++ Name ++ "/" ++ int_to_string(Arity) ++ "\n".
-format_trust_display(Id, function(ModuleName, Name, Arity),
+format_trust_display(Id, trusted_function(ModuleName, Name, Arity),
         S, S ++ Display) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
     Display = int_to_string(Id) ++ ": function " ++ ModuleNameStr ++ "." ++
         Name ++ "/" ++ int_to_string(Arity - 1) ++ "\n".
-format_trust_display(Id, standard_library, S, S ++ Display) :-
+format_trust_display(Id, trusted_standard_library, S, S ++ Display) :-
     Display = int_to_string(Id) ++ ": the Mercury standard library\n".
         
 %-----------------------------------------------------------------------------%
@@ -523,7 +531,7 @@ trusted(ProcLayout, Oracle) :-
     (
         ProcLabel = ordinary_proc_label(Module, PredOrFunc, _, Name, Arity, _),
         (
-            bimap.search(Trusted, standard_library, _),
+            bimap.search(Trusted, trusted_standard_library, _),
             (
                 Module = qualified(_, ModuleNameStr)
             ;
@@ -531,13 +539,13 @@ trusted(ProcLayout, Oracle) :-
             ),
             mercury_std_library_module(ModuleNameStr)
         ;
-            bimap.search(Trusted, module(Module), _)
+            bimap.search(Trusted, trusted_module(Module), _)
         ;
             PredOrFunc = predicate,
-            bimap.search(Trusted, predicate(Module, Name, Arity), _)
+            bimap.search(Trusted, trusted_predicate(Module, Name, Arity), _)
         ;
             PredOrFunc = function,
-            bimap.search(Trusted, function(Module, Name, Arity), _)
+            bimap.search(Trusted, trusted_function(Module, Name, Arity), _)
         )
     ;
         ProcLabel = special_proc_label(_, _, _, _, _, _)

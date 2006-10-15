@@ -94,7 +94,7 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     % CanFail says whether the switch covers all cases.
 
     goal_info_get_store_map(GoalInfo, StoreMap),
-    SwitchCategory = determine_category(!.CI, CaseVar),
+    SwitchCategory = determine_switch_category(!.CI, CaseVar),
     code_info.get_next_label(EndLabel, !CI),
     lookup_tags(!.CI, Cases, CaseVar, TaggedCases0),
     list.sort_and_remove_dups(TaggedCases0, TaggedCases),
@@ -138,8 +138,8 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
         NumCases >= DenseSize,
         globals.lookup_int_option(Globals, dense_switch_req_density,
             ReqDensity),
-        dense_switch.is_dense_switch(!.CI, CaseVar, TaggedCases,
-            CanFail, ReqDensity, FirstVal, LastVal, CanFail1)
+        cases_list_is_dense_switch(!.CI, CaseVar, TaggedCases, CanFail,
+            ReqDensity, FirstVal, LastVal, CanFail1)
     ->
         generate_dense_switch(TaggedCases, FirstVal, LastVal, CaseVar,
             CodeModel, CanFail1, GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
@@ -174,9 +174,9 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     % We categorize switches according to whether the value being switched on
     % is an atomic type, a string, or something more complicated.
     %
-:- func determine_category(code_info, prog_var) = switch_category.
+:- func determine_switch_category(code_info, prog_var) = switch_category.
 
-determine_category(CI, CaseVar) = SwitchCategory :-
+determine_switch_category(CI, CaseVar) = SwitchCategory :-
     Type = code_info.variable_type(CI, CaseVar),
     code_info.get_module_info(CI, ModuleInfo),
     classify_type(ModuleInfo, Type) = TypeCategory,
@@ -190,7 +190,7 @@ determine_category(CI, CaseVar) = SwitchCategory :-
 lookup_tags(_, [], _, []).
 lookup_tags(CI, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
     Case = case(ConsId, Goal),
-    Tag = code_info.cons_id_to_tag(CI, Var, ConsId),
+    Tag = cons_id_to_tag_for_var(CI, Var, ConsId),
     Priority = switch_util.switch_priority(Tag),
     TaggedCase = extended_case(Priority, Tag, ConsId, Goal),
     lookup_tags(CI, Cases, Var, TaggedCases).
@@ -299,7 +299,7 @@ generate_cases([extended_case(_, _, Cons, Goal) | Cases], Var, CodeModel,
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ElseCode = node([
-            goto(label(EndLabel)) - "skip to the end of the switch",
+            goto(code_label(EndLabel)) - "skip to the end of the switch",
             label(NextLabel) - "next case"
         ]),
         ThisCaseCode = tree_list([TestCode, TraceCode, GoalCode, SaveCode,

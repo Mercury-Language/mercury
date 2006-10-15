@@ -207,7 +207,7 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
 
     code_info.get_next_label(EndLabel, !CI),
     JumpToEndCode = node([
-        goto(label(EndLabel)) - "Jump to the end of if-then-else"
+        goto(code_label(EndLabel)) - "Jump to the end of if-then-else"
     ]),
     EndLabelCode = node([
         label(EndLabel) - "end of if-then-else"

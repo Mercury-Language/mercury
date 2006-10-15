@@ -968,7 +968,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
 record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, _InsertMap,
         _MaybeFeature) :-
     Goal0 = unify(_, _, _, _, _) - _,
-    rename_vars_in_goal(!.VarRename, Goal0, Goal).
+    rename_some_vars_in_goal(!.VarRename, Goal0, Goal).
 
 record_decisions_in_goal(shorthand(_) - _, _, !VarInfo, !VarRename, _, _) :-
     unexpected(this_file, "shorthand in record_decisions_in_goal").
@@ -1033,9 +1033,9 @@ make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal) :-
             VarTypes0, VarTypes, map.init, NewRename, map.init, VoidRename),
         !:VarInfo = var_info(VarSet, VarTypes),
         map.old_merge(!.VarRename, NewRename, !:VarRename),
-        % We rename the original goal
-        rename_vars_in_goal(!.VarRename, Goal2, Goal3),
-        rename_vars_in_goal(VoidRename, Goal3, Goal)
+        % We rename the original goal.
+        rename_some_vars_in_goal(!.VarRename, Goal2, Goal3),
+        rename_some_vars_in_goal(VoidRename, Goal3, Goal)
     ;
         unexpected(this_file, "make_inserted_goal: not a deconstruct")
     ).
@@ -1084,7 +1084,7 @@ create_shadow_var(Arg, VarsToExtract, !VarSet, !VarTypes,
 record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
         MustHaveMap, InsertMap, MaybeFeature) :-
     Goal0 = _ - GoalInfo0,
-    rename_vars_in_goal(!.VarRename, Goal0, Goal1),
+    rename_some_vars_in_goal(!.VarRename, Goal0, Goal1),
     (
         goal_info_maybe_get_maybe_need_across_call(GoalInfo0,
             MaybeNeedAcrossCall),
@@ -1164,7 +1164,7 @@ apply_headvar_correction(HeadVarSet, RenameMap, Goal0, Goal) :-
     ( map.is_empty(Subst) ->
         Goal = Goal0
     ;
-        goal_util.rename_vars_in_goal(Subst, Goal0, Goal)
+        goal_util.rename_some_vars_in_goal(Subst, Goal0, Goal)
     ).
 
 :- pred build_headvar_subst(list(prog_var)::in, rename_map::in,

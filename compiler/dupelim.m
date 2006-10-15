@@ -295,8 +295,8 @@ standardize_instr_block(Instrs0, MaybeFallThrough, Uinstrs) :-
     standardize_instrs(Instrs0, Uinstrs1),
     (
         MaybeFallThrough = yes(Label),
-        Goto = goto(label(Label)),
-        list.append(Uinstrs1, [Goto], Uinstrs)
+        Goto = goto(code_label(Label)),
+        Uinstrs = Uinstrs1 ++ [Goto]
     ;
         MaybeFallThrough = no,
         Uinstrs = Uinstrs1
@@ -516,12 +516,12 @@ standardize_block(Instrs, MaybeFallThrough, StdInstrs) :-
         MaybeFallThrough = yes(Label),
         (
             list.last(Instrs, LastInstr),
-            LastInstr = goto(label(Label)) - _
+            LastInstr = goto(code_label(Label)) - _
         ->
             StdInstrs = Instrs
         ;
-            Goto = goto(label(Label)) - "",
-            list.append(Instrs, [Goto], StdInstrs)
+            Goto = goto(code_label(Label)) - "",
+            StdInstrs = Instrs ++ [Goto]
         )
     ;
         MaybeFallThrough = no,
@@ -543,7 +543,7 @@ most_specific_block(Instrs1, MaybeFallThrough1,
     % can delete comments from its input instruction sequences,
     % it cannot delete executable instructions.
     list.last_det(Instrs, LastInstr),
-    ( LastInstr = goto(label(Label)) - _ ->
+    ( LastInstr = goto(code_label(Label)) - _ ->
         MaybeFallThrough = yes(Label)
     ;
         MaybeFallThrough = no

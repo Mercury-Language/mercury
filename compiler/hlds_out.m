@@ -71,9 +71,9 @@
     is det.
 :- func pred_proc_id_to_string(module_info, pred_proc_id) = string.
 
-:- pred write_pred_proc_id(module_info::in, pred_id::in, proc_id::in,
+:- pred write_pred_proc_id_pair(module_info::in, pred_id::in, proc_id::in,
     io::di, io::uo) is det.
-:- func pred_proc_id_to_string(module_info, pred_id, proc_id) = string.
+:- func pred_proc_id_pair_to_string(module_info, pred_id, proc_id) = string.
 
 :- pred write_call_id(call_id::in, io::di, io::uo) is det.
 :- func call_id_to_string(call_id) = string.
@@ -398,15 +398,16 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
     ).
 
 write_pred_proc_id(ModuleInfo, proc(PredId, ProcId), !IO) :-
-    write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO).
+    write_pred_proc_id_pair(ModuleInfo, PredId, ProcId, !IO).
 
 pred_proc_id_to_string(ModuleInfo, proc(PredId, ProcId)) =
-    pred_proc_id_to_string(ModuleInfo, PredId, ProcId).
+    pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId).
 
-write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO) :-
-    io.write_string(pred_proc_id_to_string(ModuleInfo, PredId, ProcId), !IO).
+write_pred_proc_id_pair(ModuleInfo, PredId, ProcId, !IO) :-
+    io.write_string(pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
+        !IO).
 
-pred_proc_id_to_string(ModuleInfo, PredId, ProcId) = Str :-
+pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId) = Str :-
     proc_id_to_int(ProcId, ModeNum),
     Str = pred_id_to_string(ModuleInfo, PredId)
         ++ " mode " ++ int_to_string(ModeNum).
@@ -1734,8 +1735,8 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
             ),
             write_indent(Indent, !IO),
             write_purity_prefix(Purity, !IO),
-            write_functor(term.atom("call"),
-                [PredVar | ArgVars], VarSet, AppendVarNums, !IO)
+            write_functor(term.atom("call"), [PredVar | ArgVars], VarSet,
+                AppendVarNums, !IO)
         ;
             PredOrFunc = function,
             ( string.contains_char(Verbose, 'l') ->
@@ -2616,31 +2617,31 @@ write_sym_name_and_args(PredName, ArgVars, VarSet, AppendVarNums, !IO) :-
             AppendVarNums, !IO)
     ;
         PredName = unqualified(Name),
-        write_functor(term.atom(Name), ArgVars, VarSet, AppendVarNums,
-            next_to_graphic_token, !IO)
+        write_functor_maybe_needs_quotes(term.atom(Name), ArgVars, VarSet,
+            AppendVarNums, next_to_graphic_token, !IO)
     ).
 
 write_functor(Functor, ArgVars, VarSet, AppendVarNums, !IO) :-
-    write_functor(Functor, ArgVars, VarSet, AppendVarNums,
+    write_functor_maybe_needs_quotes(Functor, ArgVars, VarSet, AppendVarNums,
         not_next_to_graphic_token, !IO).
 
 functor_to_string(Functor, ArgVars, VarSet, AppendVarNums) =
-    functor_to_string(Functor, ArgVars, VarSet, AppendVarNums,
-        not_next_to_graphic_token).
+    functor_to_string_maybe_needs_quotes(Functor, ArgVars, VarSet,
+        AppendVarNums, not_next_to_graphic_token).
 
-:- pred write_functor(const::in, list(prog_var)::in, prog_varset::in,
-    bool::in, needs_quotes::in, io::di, io::uo) is det.
+:- pred write_functor_maybe_needs_quotes(const::in, list(prog_var)::in,
+    prog_varset::in, bool::in, needs_quotes::in, io::di, io::uo) is det.
 
-write_functor(Functor, ArgVars, VarSet, AppendVarNums, NextToGraphicToken,
-        !IO) :-
-    io.write_string(functor_to_string(Functor, ArgVars, VarSet,
-        AppendVarNums, NextToGraphicToken), !IO).
+write_functor_maybe_needs_quotes(Functor, ArgVars, VarSet, AppendVarNums,
+        NextToGraphicToken, !IO) :-
+    io.write_string(functor_to_string_maybe_needs_quotes(Functor, ArgVars,
+        VarSet, AppendVarNums, NextToGraphicToken), !IO).
 
-:- func functor_to_string(const, list(prog_var), prog_varset,
-    bool, needs_quotes) = string.
+:- func functor_to_string_maybe_needs_quotes(const, list(prog_var),
+    prog_varset, bool, needs_quotes) = string.
 
-functor_to_string(Functor, ArgVars, VarSet, AppendVarNums, NextToGraphicToken)
-        = Str :-
+functor_to_string_maybe_needs_quotes(Functor, ArgVars, VarSet, AppendVarNums,
+        NextToGraphicToken) = Str :-
     term.context_init(Context),
     term.var_list_to_term_list(ArgVars, ArgTerms),
     Term = term.functor(Functor, ArgTerms, Context),
@@ -2661,7 +2662,7 @@ write_qualified_functor(ModuleName, Functor, ArgVars, VarSet, AppendVarNums,
 qualified_functor_to_string(ModuleName, Functor, ArgVars, VarSet,
         AppendVarNums) = Str :-
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
-    FunctorStr = functor_to_string(Functor, ArgVars, VarSet,
+    FunctorStr = functor_to_string_maybe_needs_quotes(Functor, ArgVars, VarSet,
         AppendVarNums, next_to_graphic_token),
     Str = ModuleNameStr ++ "." ++ FunctorStr.
 
@@ -2699,8 +2700,8 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
                 ArgVars, VarSet, AppendVarNums)
         ;
             SymName = unqualified(Name),
-            Str = functor_to_string(term.atom(Name), ArgVars, VarSet,
-                AppendVarNums, next_to_graphic_token)
+            Str = functor_to_string_maybe_needs_quotes(term.atom(Name),
+                ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
         )
     ;
         ConsId = int_const(Int),
@@ -2736,12 +2737,12 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
             ++ ", " ++ int_to_string(Arity) ++ "), " ++ Instance ++ ")"
     ;
         ConsId = type_info_cell_constructor(_),
-        Str = functor_to_string(
+        Str = functor_to_string_maybe_needs_quotes(
             term.atom("type_info_cell_constructor"),
             ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
     ;
         ConsId = typeclass_info_cell_constructor,
-        Str = functor_to_string(
+        Str = functor_to_string_maybe_needs_quotes(
             term.atom("typeclass_info_cell_constructor"),
             ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
     ;
@@ -3956,26 +3957,28 @@ write_constraint_id(ConstraintId, !IO) :-
 
 add_mode_qualifier(Context, HeadTerm - Mode) = AnnotatedTerm :-
     construct_qualified_term(unqualified("::"),
-        [HeadTerm, mode_to_term(Context, Mode)], Context, AnnotatedTerm).
+        [HeadTerm, mode_to_term_with_context(Context, Mode)],
+        Context, AnnotatedTerm).
 
-mode_to_term(Mode) = mode_to_term(term.context_init, Mode).
+mode_to_term(Mode) = mode_to_term_with_context(term.context_init, Mode).
 
-:- func mode_to_term(term.context, mer_mode) = prog_term.
+:- func mode_to_term_with_context(term.context, mer_mode) = prog_term.
 
-mode_to_term(Context, (InstA -> InstB)) = Term :-
+mode_to_term_with_context(Context, (InstA -> InstB)) = Term :-
     (
         % Check for higher-order pred or func modes, and output them
         % in a nice format.
         InstA = ground(_Uniq, higher_order(_)),
         InstB = InstA
     ->
-        Term = inst_to_term(InstA, Context)
+        Term = inst_to_term_with_context(InstA, Context)
     ;
         construct_qualified_term(unqualified(">>"),
-            [inst_to_term(InstA, Context), inst_to_term(InstB, Context)],
+            [inst_to_term_with_context(InstA, Context),
+            inst_to_term_with_context(InstB, Context)],
             Context, Term)
     ).
-mode_to_term(Context, user_defined_mode(Name, Args)) = Term :-
+mode_to_term_with_context(Context, user_defined_mode(Name, Args)) = Term :-
     construct_qualified_term(Name, list.map(map_inst_to_term(Context), Args),
         Context, Term).
 
@@ -3986,40 +3989,40 @@ make_atom(Name, Context) =
 
 :- func map_inst_to_term(prog_context, mer_inst) = prog_term.
 
-map_inst_to_term(Context, Inst) = inst_to_term(Inst, Context).
+map_inst_to_term(Context, Inst) = inst_to_term_with_context(Inst, Context).
 
-inst_to_term(Inst) = inst_to_term(Inst, term.context_init).
+inst_to_term(Inst) = inst_to_term_with_context(Inst, term.context_init).
 
-:- func inst_to_term(mer_inst, prog_context) = prog_term.
+:- func inst_to_term_with_context(mer_inst, prog_context) = prog_term.
 
-inst_to_term(any(Uniq), Context) =
+inst_to_term_with_context(any(Uniq), Context) =
     make_atom(any_inst_uniqueness(Uniq), Context).
-inst_to_term(free, Context) =
+inst_to_term_with_context(free, Context) =
     make_atom("free", Context).
-inst_to_term(free(Type), Context) = Term :-
+inst_to_term_with_context(free(Type), Context) = Term :-
     unparse_type(Type, Term0),
     Term1 = term.coerce(Term0),
     Term = term.functor(term.atom("free"), [Term1], Context).
-inst_to_term(bound(Uniq, BoundInsts), Context) = Term :-
+inst_to_term_with_context(bound(Uniq, BoundInsts), Context) = Term :-
     construct_qualified_term(unqualified(inst_uniqueness(Uniq, "bound")),
         [bound_insts_to_term(BoundInsts, Context)], Context, Term).
-inst_to_term(ground(Uniq, GroundInstInfo), Context) = Term :-
+inst_to_term_with_context(ground(Uniq, GroundInstInfo), Context) = Term :-
     (
         GroundInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, Det)),
         % XXX we ignore Uniq
         (
             PredOrFunc = predicate,
             construct_qualified_term(unqualified("pred"),
-                list.map(mode_to_term(Context), Modes),
+                list.map(mode_to_term_with_context(Context), Modes),
                 Context, ModesTerm)
         ;
             PredOrFunc = function,
             pred_args_to_func_args(Modes, ArgModes, RetMode),
             construct_qualified_term(unqualified("func"),
-                list.map(mode_to_term(Context), ArgModes),
+                list.map(mode_to_term_with_context(Context), ArgModes),
                 Context, ArgModesTerm),
             construct_qualified_term(unqualified("="),
-                [ArgModesTerm, mode_to_term(Context, RetMode)],
+                [ArgModesTerm, mode_to_term_with_context(Context, RetMode)],
                 Context, ModesTerm)
         ),
         construct_qualified_term(unqualified("is"), [
@@ -4028,18 +4031,18 @@ inst_to_term(ground(Uniq, GroundInstInfo), Context) = Term :-
         GroundInstInfo = none,
         Term = make_atom(inst_uniqueness(Uniq, "ground"), Context)
     ).
-inst_to_term(inst_var(Var), _) =
+inst_to_term_with_context(inst_var(Var), _) =
     term.coerce(term.variable(Var)).
-inst_to_term(constrained_inst_vars(Vars, Inst), Context) =
+inst_to_term_with_context(constrained_inst_vars(Vars, Inst), Context) =
     set.fold(func(Var, Term) =
             term.functor(term.atom("=<"),
                 [term.coerce(term.variable(Var)), Term], Context),
-        Vars, inst_to_term(Inst, Context)).
-inst_to_term(abstract_inst(Name, Args), Context) =
+        Vars, inst_to_term_with_context(Inst, Context)).
+inst_to_term_with_context(abstract_inst(Name, Args), Context) =
     inst_name_to_term(user_inst(Name, Args), Context).
-inst_to_term(defined_inst(InstName), Context) =
+inst_to_term_with_context(defined_inst(InstName), Context) =
     inst_name_to_term(InstName, Context).
-inst_to_term(not_reached, Context) =
+inst_to_term_with_context(not_reached, Context) =
     make_atom("not_reached", Context).
 
 :- func inst_name_to_term(inst_name, prog_context) = prog_term.

@@ -116,14 +116,15 @@ generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
                     StringTable, lval(SlotReg)))
                 - "lookup the string for this hash slot",
             if_val(binop(logical_and, lval(StringReg),
-                binop(str_eq, lval(StringReg), VarRval)), label(JumpLabel))
+                binop(str_eq, lval(StringReg), VarRval)),
+                code_label(JumpLabel))
                 - "did we find a match?",
             assign(SlotReg,
                 binop(array_index(elem_type_int),
                     NextSlotsTable, lval(SlotReg)))
                 - "not yet, so get next slot in hash chain",
             if_val(binop(int_ge, lval(SlotReg), const(llconst_int(0))),
-                label(LoopLabel))
+                code_label(LoopLabel))
                 - "keep searching until we reach the end of the chain",
             label(FailLabel) - "no match, so fail"
         ])
@@ -192,7 +193,8 @@ gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
         ;
             code_info.reset_to_position(BranchStart, !CI)
         ),
-        FinishCode = node([goto(label(EndLabel)) - "jump to end of switch"]),
+        FinishCode = node([goto(code_label(EndLabel))
+            - "jump to end of switch"]),
         Code = tree_list([LabelCode, TraceCode, GoalCode, SaveCode,
              FinishCode])
     ;

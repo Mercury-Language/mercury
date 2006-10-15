@@ -166,7 +166,7 @@ livemap.build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
             LivevalsNeeded, Found),
         ( Found = yes ->
             true
-        ; CodeAddr = label(Label) ->
+        ; CodeAddr = code_label(Label) ->
             livemap.insert_label_livevals(!.Livemap, Label,
                 set.init, !:Livevals)
         ;
@@ -207,7 +207,7 @@ livemap.build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
         ;
             Found = no,
             livemap.make_live_in_rvals([Rval], !Livevals),
-            ( CodeAddr = label(Label) ->
+            ( CodeAddr = code_label(Label) ->
                 livemap.insert_label_livevals(!.Livemap, Label, !Livevals)
             ;
                 true
@@ -368,9 +368,9 @@ livemap.look_for_livevals(Instrs0, Instrs, !Livevals,
     %
 :- pred livemap.special_code_addr(code_addr::in, maybe(lval)::out) is det.
 
-livemap.special_code_addr(label(_), no).
-livemap.special_code_addr(imported(_), no).
-livemap.special_code_addr(succip, yes(succip)).
+livemap.special_code_addr(code_label(_), no).
+livemap.special_code_addr(code_imported_proc(_), no).
+livemap.special_code_addr(code_succip, yes(succip)).
 livemap.special_code_addr(do_succeed(_), yes(succip_slot(lval(curfr)))).
 livemap.special_code_addr(do_redo, yes(redoip_slot(lval(maxfr)))).
 livemap.special_code_addr(do_trace_redo_fail_shallow, no).

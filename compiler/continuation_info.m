@@ -440,7 +440,7 @@ process_proc_llds(PredProcId, Instructions, WantReturnInfo, !GlobalData) :-
     global_data_get_proc_layout(!.GlobalData, PredProcId, ProcLayoutInfo0),
     Internals0 = ProcLayoutInfo0^internal_map,
     GetCallInfo = (pred(Instr::in, Call::out) is semidet :-
-        Instr = llcall(Target, label(ReturnLabel), LiveInfo, Context,
+        Instr = llcall(Target, code_label(ReturnLabel), LiveInfo, Context,
             GoalPath, _) - _Comment,
         Call = call_info(ReturnLabel, Target, LiveInfo, Context, GoalPath)
     ),
@@ -468,9 +468,9 @@ process_continuation(WantReturnInfo, CallInfo, !Internals) :-
     % but also that it belongs to the current procedure, but this would be
     % serious paranoia.
     (
-        ReturnLabel = internal(ReturnLabelNum, _)
+        ReturnLabel = internal_label(ReturnLabelNum, _)
     ;
-        ReturnLabel = entry(_, _),
+        ReturnLabel = entry_label(_, _),
         unexpected(this_file, "process_continuation: bad return")
     ),
     ( map.search(!.Internals, ReturnLabelNum, Internal0) ->

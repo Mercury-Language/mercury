@@ -234,20 +234,20 @@ output_layout_name(Data, !IO) :-
         % This code should be kept in sync with make_label_layout_name/1 above.
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_label_layout__", !IO),
-        io.write_string(label_to_c_string(internal(LabelNum, ProcLabel), yes),
-            !IO)
+        io.write_string(
+            label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
     ;
         Data = solver_event_layout(ProcLabel, LabelNum),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_solver_event_layout__", !IO),
-        io.write_string(label_to_c_string(internal(LabelNum, ProcLabel), yes),
-            !IO)
+        io.write_string(
+            label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
     ;
         Data = solver_event_attr_names(ProcLabel, LabelNum),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_solver_event_attr_names__", !IO),
-        io.write_string(label_to_c_string(internal(LabelNum, ProcLabel), yes),
-            !IO)
+        io.write_string(
+            label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
     ;
         Data = proc_layout(RttiProcLabel, _),
         io.write_string(mercury_data_prefix, !IO),
@@ -839,7 +839,7 @@ output_layout_traversal_decls(Traversal, !DeclSet, !IO) :-
         _StackSlotCount, _Detism),
     (
         MaybeEntryLabel = yes(EntryLabel),
-        output_code_addr_decls(label(EntryLabel), !DeclSet, !IO)
+        output_code_addr_decls(code_label(EntryLabel), !DeclSet, !IO)
     ;
         MaybeEntryLabel = no
     ).
@@ -853,7 +853,7 @@ output_layout_traversal_group(Traversal, !IO) :-
     io.write_string("{\n", !IO),
     (
         MaybeEntryLabel = yes(EntryLabel),
-        output_code_addr(label(EntryLabel), !IO)
+        output_code_addr(code_label(EntryLabel), !IO)
     ;
         MaybeEntryLabel = no,
         % The actual code address will be put into the structure
@@ -982,7 +982,7 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
         proc_layout_exec_trace(RttiProcLabel), yes, !IO),
     io.write_string(" = {\nMR_LABEL_LAYOUT_REF(", !IO),
     ( CallLabelLayout = label_layout(CallProcLabel, CallLabelNum, _) ->
-        output_label(internal(CallLabelNum, CallProcLabel), no, !IO)
+        output_label(internal_label(CallLabelNum, CallProcLabel), no, !IO)
     ;
         unexpected(this_file, "output_layout_exec_trace: bad call layout")
     ),
@@ -1555,7 +1555,7 @@ project_label_layout(DataAddr, Label) :-
         DataAddr = layout_addr(LayoutName),
         LayoutName = label_layout(ProcLabel, LabelNum, _)
     ->
-        Label = internal(LabelNum, ProcLabel)
+        Label = internal_label(LabelNum, ProcLabel)
     ;
         unexpected(this_file, "project_label_layout: not label layout")
     ).
@@ -1566,7 +1566,7 @@ project_label_layout(DataAddr, Label) :-
 output_label_layout_addrs_in_vector([], !IO).
 output_label_layout_addrs_in_vector([Label | Labels], !IO) :-
     (
-        Label = internal(LabelNum, ProcLabel),
+        Label = internal_label(LabelNum, ProcLabel),
         groupable_labels(ProcLabel, 1, _N, [LabelNum], RevLabelNums,
             Labels, RemainingLabels)
     ->
@@ -1596,7 +1596,7 @@ groupable_labels(ProcLabel, !Count, !RevLabelsNums, !Labels) :-
         !.Labels = [Label | !:Labels],
         MaxChunkSize = 9,
         !.Count < MaxChunkSize, % leave room for the one we're adding
-        Label = internal(LabelNum, ProcLabel)
+        Label = internal_label(LabelNum, ProcLabel)
     ->
         !:Count = !.Count + 1,
         !:RevLabelsNums = [LabelNum | !.RevLabelsNums],

@@ -271,7 +271,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             SaveCode, !CI),
 
         BranchCode = node([
-            goto(label(EndLabel)) - "skip to end of nondet disj"
+            goto(code_label(EndLabel)) - "skip to end of nondet disj"
         ]),
 
         disj_gen.generate_disjuncts(Goals, CodeModel, FullResumeMap,

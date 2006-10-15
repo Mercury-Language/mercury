@@ -134,7 +134,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         RestInstrs = OrigInstrs0
     ;
         counter.allocate(N, !C),
-        Label = internal(N, ProcLabel),
+        Label = internal_label(N, ProcLabel),
         svset.insert(Label, !NewLabels),
         LabelInstr = label(Label) - "",
         RestInstrs = [OrigInstr0 | OrigInstrs0]

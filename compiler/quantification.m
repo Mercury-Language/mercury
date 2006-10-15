@@ -456,7 +456,7 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
     ;
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, Cond0, Cond1, !Info),
-        goal_util.rename_vars_in_goal(RenameMap, Then0, Then1),
+        goal_util.rename_some_vars_in_goal(RenameMap, Then0, Then1),
         goal_util.rename_var_list(no, RenameMap, Vars0, Vars)
     ),
     insert_list(QuantVars, Vars, QuantVars1),
@@ -1338,7 +1338,7 @@ rename_apart(RenameSet, RenameMap, !Goal, !Info) :-
         map.init(RenameMap0),
         goal_util.create_variables(RenameList, Varset0, VarTypes0,
             Varset0, Varset, VarTypes0, VarTypes, RenameMap0, RenameMap),
-        goal_util.rename_vars_in_goal(RenameMap, !Goal),
+        goal_util.rename_some_vars_in_goal(RenameMap, !Goal),
         set_varset(Varset, !Info),
         set_vartypes(VarTypes, !Info)
 

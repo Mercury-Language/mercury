@@ -407,7 +407,7 @@ trace_runtime_cond_pragma_c_code(RuntimeExpr, Code, !CI) :-
     code_info.get_next_label(SuccessLabel, !CI),
     code_info.generate_failure(FailCode, !CI),
     CondCode = node([
-        if_val(CondRval, label(SuccessLabel))
+        if_val(CondRval, code_label(SuccessLabel))
             - "environment variable tests"
     ]),
     SuccessLabelCode = node([
@@ -665,7 +665,7 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         code_info.get_next_label(SkipLabel, !CI),
         code_info.generate_failure(FailCode, !CI),
         GotoSkipLabelCode = node([
-            goto(label(SkipLabel)) - "Skip past failure code"
+            goto(code_label(SkipLabel)) - "Skip past failure code"
         ]),
         SkipLabelCode = node([label(SkipLabel) - ""]),
         FailLabelCode = node([label(TheFailLabel) - ""]),
@@ -695,10 +695,10 @@ make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
 :- func make_proc_label_string(module_info, pred_id, proc_id) = string.
 
 make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
-    code_util.make_entry_label(ModuleInfo, PredId, ProcId, no, CodeAddr),
-    ( CodeAddr = imported(ProcLabel) ->
+    CodeAddr = make_entry_label(ModuleInfo, PredId, ProcId, no),
+    ( CodeAddr = code_imported_proc(ProcLabel) ->
         ProcLabelString = proc_label_to_c_string(ProcLabel, yes)
-    ; CodeAddr = label(Label) ->
+    ; CodeAddr = code_label(Label) ->
         ProcLabelString = label_to_c_string(Label, yes)
     ;
         unexpected(this_file, "code_addr in make_proc_label_hash_define")
@@ -764,7 +764,7 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     code_info.get_next_label(RetryLabel, !CI),
     ModFrameCode = node([
         assign(redoip_slot(lval(curfr)),
-            const(llconst_code_addr(label(RetryLabel))))
+            const(llconst_code_addr(code_label(RetryLabel))))
             - "Set up backtracking to retry label"
     ]),
     RetryLabelCode = node([

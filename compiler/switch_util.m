@@ -69,6 +69,10 @@
 :- pred type_range(type_category::in, mer_type::in, module_info::in,
     int::out, int::out) is semidet.
 
+    % Calculate the percentage density given the range and the number of cases.
+    %
+:- func switch_density(int, int) = int.
+
 %-----------------------------------------------------------------------------%
 %
 % Stuff for string hash switches
@@ -80,7 +84,8 @@
 :- pred string_hash_cases(cases_list::in, int::in, map(int, cases_list)::out)
     is det.
 
-:- type hash_slot ---> hash_slot(extended_case, int).
+:- type hash_slot
+    --->    hash_slot(extended_case, int).
 
     % calc_hash_slots(AssocList, HashMap, Map):
     %
@@ -311,6 +316,9 @@ type_range(type_cat_enum, Type, ModuleInfo, 0, MaxEnum) :-
     ;
         unexpected(this_file, "type_range: enum type is not d.u. type?")
     ).
+
+switch_density(NumCases, Range) = Density :-
+    Density = (NumCases * 100) // Range.
 
 %-----------------------------------------------------------------------------%
 

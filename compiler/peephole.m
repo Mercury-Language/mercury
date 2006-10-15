@@ -160,7 +160,7 @@ peephole.match(computed_goto(SelectorRval, Labels), Comment, _,
     (
         LabelValsList = [Label - _]
     ->
-        GotoInstr = goto(label(Label)) - Comment,
+        GotoInstr = goto(code_label(Label)) - Comment,
         Instrs = [GotoInstr | Instrs0]
     ;
         LabelValsList = [LabelVals1, LabelVals2],
@@ -169,8 +169,8 @@ peephole.match(computed_goto(SelectorRval, Labels), Comment, _,
     ->
         CondRval = binop(eq, SelectorRval, const(llconst_int(Val))),
         CommentInstr = comment(Comment) - "",
-        BranchInstr = if_val(CondRval, label(OneValLabel)) - "",
-        GotoInstr = goto(label(OtherLabel)) - Comment,
+        BranchInstr = if_val(CondRval, code_label(OneValLabel)) - "",
+        GotoInstr = goto(code_label(OtherLabel)) - Comment,
         Instrs = [CommentInstr, BranchInstr, GotoInstr | Instrs0]
     ;
         fail
@@ -203,7 +203,7 @@ peephole.match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
     ->
         Instrs = Instrs0
     ;
-        CodeAddr = label(Label),
+        CodeAddr = code_label(Label),
         opt_util.is_this_label_next(Label, Instrs0, _)
     ->
         Instrs = Instrs0
@@ -280,7 +280,7 @@ peephole.match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
                 | Instrs2
             ]
         ;
-            Redoip1 = label(_)
+            Redoip1 = code_label(_)
         ->
             (
                 Target = do_fail
@@ -318,7 +318,7 @@ peephole.match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
         Instrs1 = [Instr1 | Instrs2],
         Instr1 = goto(do_succeed(_)) - _
     ->
-        GotoSuccip = goto(succip) - "return from optimized away mkframe",
+        GotoSuccip = goto(code_succip) - "return from optimized away mkframe",
         Instrs = Straight ++ [GotoSuccip | Instrs2]
     ;
         fail
@@ -420,7 +420,7 @@ combine_decr_sp([Instr0 | Instrs0], Instrs) :-
         Instr2 = decr_sp(N) - _,
         opt_util.skip_comments_livevals(Instrs3, Instrs4),
         Instrs4 = [Instr4 | Instrs5],
-        Instr4 = goto(succip) - Comment
+        Instr4 = goto(code_succip) - Comment
     ->
         NewInstr = decr_sp_and_return(N) - Comment,
         Instrs = [NewInstr | Instrs5]

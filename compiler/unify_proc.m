@@ -418,8 +418,7 @@ queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo, !IO) :-
         ;
             io.write_string("% Mode-analyzing ", !IO)
         ),
-        PredProcId = proc(PredId, ProcId),
-        hlds_out.write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
+        hlds_out.write_pred_proc_id(ModuleInfo, PredProcId, !IO),
         io.write_string("\n", !IO)
 %       /*****
 %       mode_list_get_initial_insts(Modes, ModuleInfo1,
@@ -728,7 +727,8 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
         InitGoal = InitCall - GoalInfo,
 
         Any = any(shared),
-        generate_cast(equiv_type_cast, X0, X, Any, Any, Context, CastGoal),
+        generate_cast_with_insts(equiv_type_cast, X0, X, Any, Any, Context,
+            CastGoal),
         Goal = conj(plain_conj, [InitGoal, CastGoal]) - GoalInfo,
         quantify_clauses_body([X], Goal, Context, Clauses, !Info)
     ;

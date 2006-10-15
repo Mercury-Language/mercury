@@ -386,7 +386,7 @@ update_label_table({ProcLabel, LabelNum, LabelVars, InternalInfo},
         Return = yes(return_layout_info(TargetsContexts, _)),
         find_valid_return_context(TargetsContexts, Target, Context, _GoalPath)
     ->
-        ( Target = label(TargetLabel) ->
+        ( Target = code_label(TargetLabel) ->
             IsReturn = known_callee(TargetLabel)
         ;
             IsReturn = unknown_callee
@@ -613,9 +613,9 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
         MaybeTrailSlots, MaybeMaxfrSlot, MaybeCallTableSlot),
     % The label associated with an event must have variable info.
     (
-        CallLabel = internal(CallLabelNum, CallProcLabel)
+        CallLabel = internal_label(CallLabelNum, CallProcLabel)
     ;
-        CallLabel = entry(_, _),
+        CallLabel = entry_label(_, _),
         unexpected(this_file,
             "construct_trace_layout: entry call label")
     ),
@@ -952,7 +952,7 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath, MaybeSolverData,
         MaybeVarInfo),
     LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
-    Label = internal(LabelNum, ProcLabel),
+    Label = internal_label(LabelNum, ProcLabel),
     add_internal_layout_data(LayoutData, Label, LayoutName, !Info),
     LabelLayout = {ProcLabel, LabelNum, LabelVars, Internal}.
 

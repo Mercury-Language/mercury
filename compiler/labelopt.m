@@ -54,7 +54,7 @@
 
 labelopt_main(Final, LayoutLabelSet, Instrs0, Instrs, Mod) :-
     build_useset(Instrs0, LayoutLabelSet, Useset),
-    instr_list(Instrs0, Instrs1, Useset, Mod),
+    opt_labels_in_instr_list(Instrs0, Instrs1, Useset, Mod),
     (
         Final = yes,
         Mod = yes
@@ -82,29 +82,31 @@ build_useset([Instr | Instructions], !Useset) :-
     % preceded by code that cannot fall through.
     %
     % We build up the generated instruction list in reverse order in
-    % instr_list_2, because building it in right order here would make
-    % instr_list not tail recursive, and thus unable to handle very long
-    % instruction lists.
+    % opt_labels_in_instr_list_2, because building it in right order here
+    % would make opt_labels_in_instr_list not tail recursive, and thus unable
+    % to handle very long instruction lists.
     %
-:- pred instr_list(list(instruction)::in, list(instruction)::out,
+:- pred opt_labels_in_instr_list(list(instruction)::in, list(instruction)::out,
     set(label)::in, bool::out) is det.
 
-instr_list(Instrs0, Instrs, Useset, Mod) :-
+opt_labels_in_instr_list(Instrs0, Instrs, Useset, Mod) :-
     Fallthrough = yes,
-    instr_list_2(Instrs0, [], RevInstrs, no, Mod, Fallthrough, Useset),
+    opt_labels_in_instr_list_2(Instrs0, [], RevInstrs, no, Mod, Fallthrough,
+        Useset),
     list.reverse(RevInstrs, Instrs).
 
-:- pred instr_list_2(list(instruction)::in,
+:- pred opt_labels_in_instr_list_2(list(instruction)::in,
     list(instruction)::in, list(instruction)::out,
     bool::in, bool::out, bool::in, set(label)::in) is det.
 
-instr_list_2([], !RevInstrs, !Mod, _Fallthrough, _Useset).
-instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod, !.Fallthrough, Useset) :-
+opt_labels_in_instr_list_2([], !RevInstrs, !Mod, _Fallthrough, _Useset).
+opt_labels_in_instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod,
+        !.Fallthrough, Useset) :-
     Instr0 = Uinstr0 - _Comment,
     ( Uinstr0 = label(Label) ->
         (
             (
-                Label = entry(EntryType, _),
+                Label = entry_label(EntryType, _),
                 ( EntryType = entry_label_exported
                 ; EntryType = entry_label_local
                 )
@@ -133,7 +135,8 @@ instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod, !.Fallthrough, Useset) :-
             !:Fallthrough = no
         )
     ),
-    instr_list_2(Instrs0, !RevInstrs, !Mod, !.Fallthrough, Useset).
+    opt_labels_in_instr_list_2(Instrs0, !RevInstrs, !Mod,
+        !.Fallthrough, Useset).
 
     % Instead of removing eliminated instructions from the instruction list,
     % we can replace them by placeholder comments. The original comment field

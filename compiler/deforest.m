@@ -879,7 +879,7 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         ( list.member(OtherGoal, BetweenGoals)
         ; MaybeLaterGoal = yes(LaterGoal), OtherGoal = LaterGoal
         ),
-        \+ goal_util.reordering_maintains_termination(ModuleInfo,
+        \+ goal_util.reordering_maintains_termination_old(ModuleInfo,
             FullyStrict, EarlierGoal, OtherGoal)
     ->
         pd_debug_message("interleaving execution could change " ++
