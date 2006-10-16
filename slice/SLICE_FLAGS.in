@@ -17,3 +17,4 @@
 --c-include-directory ../browser/Mercury/mihs
 --c-include-directory ../trace
 --config-file ../scripts/Mercury.config.bootstrap
+--force-disable-tracing

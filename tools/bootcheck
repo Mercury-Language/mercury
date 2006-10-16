@@ -762,6 +762,7 @@ then
             cd slice
             $LN_S $root/slice/*.m .
             cp $root/slice/Mmake* $root/slice/Mercury.options .
+            cp $root/slice/*_FLAGS.in .
             cd $root/$stage2dir
         else
             $LN_S $root/slice .

@@ -30,7 +30,19 @@ INTS	= $(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
 INT3S	= $(patsubst %,%.int3s,$(MERCURY_MAIN_MODULES))
 CHECKS	= $(patsubst %,%.check,$(MERCURY_MAIN_MODULES))
 
-VPATH = $(MDBCOMP_DIR) $(LIBRARY_DIR)
+VPATH = $(LIBRARY_DIR)
+
+#-----------------------------------------------------------------------------#
+
+MDBCOMP_MODULES = \
+	mdbcomp.m \
+	prim_data.m \
+	program_representation.m \
+	rtti_access.m \
+	slice_and_dice.m \
+	trace_counts.m
+
+MDBCOMP_ORIG_MODULES = $(patsubst %,$(MDBCOMP_DIR)/%,$(MDBCOMP_MODULES))
 
 #-----------------------------------------------------------------------------#
 
@@ -40,12 +52,25 @@ MCFLAGS += --flags SLICE_FLAGS $(CONFIG_OVERRIDE)
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend:	$(DEPENDS)
+depend:	$(MDBCOMP_MODULES) $(DEPENDS)
 
 $(DEPENDS): SLICE_FLAGS
 
 .PHONY: all
-all:	$(MERCURY_MAIN_MODULES) $(TAGS_FILE_EXISTS)
+all:	$(MDBCOMP_MODULES) $(MERCURY_MAIN_MODULES) $(TAGS_FILE_EXISTS)
+
+#-----------------------------------------------------------------------------#
+# We need to start by turning write permission on for each copied file
+# in case some exist, but we need to ignore errors in case some don't exist.
+# The exit 0 is to prevent make itself from printing a message about the
+# (ignored) failure of an action.
+#
+# We could modify the action here to copy only the changed files.
+
+$(MDBCOMP_MODULES): $(MDBCOMP_ORIG_MODULES)
+	-@chmod a+w $(MDBCOMP_MODULES) > /dev/null 2>&1; exit 0
+	cp $(MDBCOMP_ORIG_MODULES) .
+	@chmod a-w $(MDBCOMP_MODULES)
 
 #-----------------------------------------------------------------------------#
 
