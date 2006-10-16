@@ -107,6 +107,7 @@
     --->    phase_read_files
     ;       phase_term_to_parse_tree
     ;       phase_parse_tree_to_hlds
+    ;       phase_expand_types
     ;       phase_type_check
     ;       phase_mode_check
     ;       phase_purity_check

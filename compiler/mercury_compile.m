@@ -1724,9 +1724,19 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         MQInfo0, UndefTypes0, UndefModes0, !IO),
 
     mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
-    expand_equiv_types(Module, Items2, Verbose, Stats, Items, CircularTypes,
-        EqvMap, UsedModules, RecompInfo0, RecompInfo, !IO),
+    expand_equiv_types(Module, Verbose, Stats, Items2, Items,
+        EqvMap, UsedModules, RecompInfo0, RecompInfo, ExpandSpecs, !IO),
     mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
+    (
+        ExpandSpecs = [],
+        CircularTypes = no
+    ;
+        ExpandSpecs = [_ | _],
+        CircularTypes = yes,
+        % XXX _NumErrors
+        write_error_specs(ExpandSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
+            !IO)
+    ),
     bool.or(UndefTypes0, CircularTypes, UndefTypes1),
 
     make_hlds(Module, Items, MQInfo, EqvMap, UsedModules,
@@ -1863,17 +1873,17 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
     ),
     bool.or(Error1, Error2, Error).
 
-:- pred expand_equiv_types(module_name::in, item_list::in, bool::in, bool::in,
-    item_list::out, bool::out, eqv_map::out, used_modules::out,
+:- pred expand_equiv_types(module_name::in, bool::in, bool::in,
+    item_list::in, item_list::out, eqv_map::out, used_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
-expand_equiv_types(ModuleName, Items0, Verbose, Stats, Items, CircularTypes,
-    EqvMap, UsedModules, RecompInfo0, RecompInfo, !IO) :-
+expand_equiv_types(ModuleName, Verbose, Stats, Items0, Items,
+        EqvMap, UsedModules, RecompInfo0, RecompInfo, Specs, !IO) :-
     maybe_write_string(Verbose, "% Expanding equivalence types...", !IO),
     maybe_flush_output(Verbose, !IO),
-    equiv_type.expand_eqv_types(ModuleName, Items0, Items, CircularTypes,
-        EqvMap, UsedModules, RecompInfo0, RecompInfo, !IO),
+    equiv_type.expand_eqv_types(ModuleName, Items0, Items,
+        EqvMap, UsedModules, RecompInfo0, RecompInfo, Specs),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

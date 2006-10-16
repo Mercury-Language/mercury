@@ -19,20 +19,20 @@
 :- interface.
 
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
-    % expand_eqv_types(ModuleName, Items0, Items,
-    %   CircularTypes, EqvMap, MaybeRecompInfo0, MaybeRecompInfo).
+    % expand_eqv_types(ModuleName, Items0, Items, CircularTypes, EqvMap,
+    %   !MaybeRecompInfo, Specs).
     %
     % First it builds up a map from type_ctor to the equivalent type.
     % Then it traverses through the list of items, expanding all types.
@@ -51,9 +51,9 @@
     %
 :- pred expand_eqv_types(module_name::in,
     list(item_and_context)::in, list(item_and_context)::out,
-    bool::out, eqv_map::out, used_modules::out,
+    eqv_map::out, used_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    io::di, io::uo) is det.
+    list(error_spec)::out) is det.
 
     % Replace equivalence types in a given type.
     % The bool output is `yes' if anything changed.
@@ -111,7 +111,6 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -141,24 +140,15 @@
     % First we build up a mapping which records the equivalence type
     % definitions.  Then we go through the item list and replace them.
     %
-expand_eqv_types(ModuleName,
-        Items0, Items, Error, EqvMap, UsedModules, !Info, !IO) :-
+expand_eqv_types(ModuleName, Items0, Items, EqvMap, UsedModules, !Info,
+        Specs) :-
     map.init(EqvMap0),
     map.init(EqvInstMap0),
     build_eqv_map(Items0, EqvMap0, EqvMap, EqvInstMap0, EqvInstMap),
     replace_in_item_list(ModuleName, eqv_type_out_of_module, Items0,
-        EqvMap, EqvInstMap, [], RevItems, [], ErrorList, !Info,
-        used_modules_init, UsedModules),
-    list.reverse(RevItems, Items),
-    (
-        ErrorList = [],
-        Error = no
-    ;
-        ErrorList = [_ | _],
-        list.foldl(report_error, list.reverse(ErrorList), !IO),
-        Error = yes,
-        io.set_exit_status(1, !IO)
-    ).
+        EqvMap, EqvInstMap, [], RevItems, !Info,
+        used_modules_init, UsedModules, [], Specs),
+    list.reverse(RevItems, Items).
 
     % We need to expand equivalence insts in
     % `:- pred p `with_inst` i' declarations.
@@ -174,15 +164,6 @@ expand_eqv_types(ModuleName,
 :- type pred_or_func_decl_type
     --->    type_decl
     ;       mode_decl.
-
-:- type eqv_error == pair(eqv_error_type, prog_context).
-
-:- type eqv_error_type
-    --->    circular_equivalence(item)
-    ;       invalid_with_type(sym_name, pred_or_func)
-    ;       invalid_with_inst(pred_or_func_decl_type,
-                sym_name, maybe(pred_or_func))
-    ;       non_matching_with_type_with_inst(sym_name, pred_or_func).
 
 :- pred build_eqv_map(list(item_and_context)::in,
     eqv_map::in, eqv_map::out, eqv_inst_map::in, eqv_inst_map::out) is det.
@@ -248,13 +229,13 @@ is_section_defn(md_version_numbers(_, _)) = no.
 :- pred replace_in_item_list(module_name::in, eqv_type_location::in,
     list(item_and_context)::in, eqv_map::in, eqv_inst_map::in,
     list(item_and_context)::in, list(item_and_context)::out,
-    list(eqv_error)::in, list(eqv_error)::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out) is det.
+    used_modules::in, used_modules::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_item_list(_, _, [], _, _, !Items, !Errors, !Info, !UsedModules).
+replace_in_item_list(_, _, [], _, _, !Items, !Info, !UsedModules, !Specs).
 replace_in_item_list(ModuleName, Location0, [ItemAndContext0 | Items0],
-        EqvMap, EqvInstMap, !ReplItems, !Errors, !Info, !UsedModules) :-
+        EqvMap, EqvInstMap, !ReplItems, !Info, !UsedModules, !Specs) :-
     ItemAndContext0 = Item0 - Context,
     ( Item0 = item_module_defn(_, ModuleDefn) ->
         ( ModuleDefn = md_interface,
@@ -292,49 +273,55 @@ replace_in_item_list(ModuleName, Location0, [ItemAndContext0 | Items0],
     ),
     (
         replace_in_item(ModuleName, Location, Item0, Context, EqvMap,
-            EqvInstMap, Item, NewErrors, !Info, !UsedModules)
+            EqvInstMap, Item, !Info, !UsedModules, ItemSpecs)
     ->
         ItemAndContext = Item - Context,
-
         % Discard the item if there were any errors.
         (
-            NewErrors = [],
+            ItemSpecs = [],
             !:ReplItems = [ItemAndContext | !.ReplItems]
         ;
-            NewErrors = [_ | _]
+            ItemSpecs = [_ | _]
         ),
-        !:Errors = NewErrors ++ !.Errors
+        !:Specs = ItemSpecs ++ !.Specs
     ;
         ItemAndContext = ItemAndContext0,
         !:ReplItems = [ItemAndContext | !.ReplItems]
     ),
     replace_in_item_list(ModuleName, Location, Items0, EqvMap, EqvInstMap,
-        !ReplItems, !Errors, !Info, !UsedModules).
+        !ReplItems, !Info, !UsedModules, !Specs).
 
 :- pred replace_in_item(module_name::in, eqv_type_location::in, item::in,
     prog_context::in, eqv_map::in, eqv_inst_map::in, item::out,
-    list(eqv_error)::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out) is semidet.
+    used_modules::in, used_modules::out, list(error_spec)::out) is semidet.
 
 replace_in_item(ModuleName, Location,
-        item_type_defn(VarSet0, Name, TArgs, TypeDefn0, Cond) @ Item,
+        item_type_defn(VarSet0, SymName, TArgs, TypeDefn0, Cond),
         Context, EqvMap, _EqvInstMap,
-        item_type_defn(VarSet, Name, TArgs, TypeDefn, Cond),
-        Error, !Info, !UsedModules) :-
+        item_type_defn(VarSet, SymName, TArgs, TypeDefn, Cond),
+        !Info, !UsedModules, Specs) :-
     list.length(TArgs, Arity),
-    maybe_record_expanded_items(ModuleName, Name, !.Info, UsedTypeCtors0),
-    replace_in_type_defn(Location, EqvMap, type_ctor(Name, Arity), TypeDefn0,
-        TypeDefn, ContainsCirc, VarSet0, VarSet,
+    maybe_record_expanded_items(ModuleName, SymName, !.Info, UsedTypeCtors0),
+    replace_in_type_defn(Location, EqvMap, type_ctor(SymName, Arity),
+        TypeDefn0, TypeDefn, ContainsCirc, VarSet0, VarSet,
         UsedTypeCtors0, UsedTypeCtors, !UsedModules),
     (
         ContainsCirc = yes,
-        Error = [circular_equivalence(Item) - Context]
+        ( TypeDefn0 = parse_tree_eqv_type(_) ->
+            Pieces = [words("Error: circular equivalence type"),
+                sym_name_and_arity(SymName / length(TArgs)), suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_expand_types, [Msg]),
+            Specs = [Spec]
+        ;
+            unexpected(this_file, "replace_in_item: invalid item")
+        )
     ;
         ContainsCirc = no,
-        Error = []
+        Specs = []
     ),
-    ItemId = item_id(type_body_item, item_name(Name, Arity)),
+    ItemId = item_id(type_body_item, item_name(SymName, Arity)),
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !Info).
 
 replace_in_item(ModuleName, Location,
@@ -345,14 +332,14 @@ replace_in_item(ModuleName, Location,
         item_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
             PredOrFunc, PredName, TypesAndModes, MaybeWithType,
             MaybeWithInst, Det, Cond, Purity, ClassContext),
-        Errors, !Info, !UsedModules) :-
+        !Info, !UsedModules, Specs) :-
     maybe_record_expanded_items(ModuleName, PredName, !.Info, ExpandedItems0),
 
     replace_in_pred_type(Location, PredName, PredOrFunc, Context, EqvMap,
         EqvInstMap, ClassContext0, ClassContext,
         TypesAndModes0, TypesAndModes, TypeVarSet0, TypeVarSet,
         MaybeWithType0, MaybeWithType, MaybeWithInst0, MaybeWithInst,
-        Det0, Det, ExpandedItems0, ExpandedItems, !UsedModules, Errors),
+        Det0, Det, ExpandedItems0, ExpandedItems, !UsedModules, Specs),
 
     ItemType = pred_or_func_to_item_type(PredOrFunc),
     list.length(TypesAndModes, Arity),
@@ -366,13 +353,13 @@ replace_in_item(ModuleName, Location,
         Context, _EqvMap, EqvInstMap,
         item_pred_or_func_mode(InstVarSet, MaybePredOrFunc, PredName,
             Modes, WithInst, Det, Cond),
-        Errors, !Info, !UsedModules) :-
+        !Info, !UsedModules, Specs) :-
     maybe_record_expanded_items(ModuleName, PredName, !.Info, ExpandedItems0),
 
     replace_in_pred_mode(Location, PredName, length(Modes0), Context,
-        mode_decl, EqvInstMap, MaybePredOrFunc0, MaybePredOrFunc,
-        ExtraModes, WithInst0, WithInst, Det0, Det,
-        ExpandedItems0, ExpandedItems, !UsedModules, Errors),
+        mode_decl, EqvInstMap, ExtraModes, MaybePredOrFunc0, MaybePredOrFunc,
+        WithInst0, WithInst, Det0, Det,
+        ExpandedItems0, ExpandedItems, !UsedModules, Specs),
     (
         ExtraModes = [],
         Modes = Modes0
@@ -397,7 +384,7 @@ replace_in_item(ModuleName, Location,
         _Context, EqvMap, EqvInstMap,
         item_typeclass(Constraints, FunDeps, ClassName, Vars,
             ClassInterface, VarSet),
-        Errors, !Info, !UsedModules) :-
+        !Info, !UsedModules, Specs) :-
     list.length(Vars, Arity),
     maybe_record_expanded_items(ModuleName, ClassName, !.Info, ExpandedItems0),
     replace_in_prog_constraint_list(Location, EqvMap,
@@ -407,11 +394,11 @@ replace_in_item(ModuleName, Location,
         ClassInterface0 = class_interface_abstract,
         ClassInterface = class_interface_abstract,
         ExpandedItems = ExpandedItems1,
-        Errors = []
+        Specs = []
     ;
         ClassInterface0 = class_interface_concrete(Methods0),
         replace_in_class_interface(Location, Methods0, EqvMap, EqvInstMap,
-            Methods, [], Errors, ExpandedItems1, ExpandedItems, !UsedModules),
+            Methods, ExpandedItems1, ExpandedItems, !UsedModules, [], Specs),
         ClassInterface = class_interface_concrete(Methods)
     ),
     ItemId = item_id(typeclass_item, item_name(ClassName, Arity)),
@@ -423,7 +410,7 @@ replace_in_item(ModuleName, Location,
         _Context, EqvMap, _EqvInstMap,
         item_instance(Constraints, ClassName, Ts, InstanceBody, VarSet,
             ModName),
-        [], !Info, !UsedModules) :-
+        !Info, !UsedModules, []) :-
     (
         ( !.Info = no
         ; ModName = ModuleName
@@ -443,12 +430,12 @@ replace_in_item(ModuleName, Location,
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !Info).
 
 replace_in_item(ModuleName, Location,
-        item_pragma(Origin, pragma_type_spec(PredName, B, Arity, D, E,
-            Subst0, VarSet0, ItemIds0)),
+        item_pragma(Origin, pragma_type_spec(PredName, NewName, Arity, PorF,
+            Modes, Subst0, VarSet0, ItemIds0)),
         _Context, EqvMap, _EqvInstMap,
-        item_pragma(Origin, pragma_type_spec(PredName, B, Arity, D, E,
-            Subst, VarSet, ItemIds)),
-        [], !Info, !UsedModules) :-
+        item_pragma(Origin, pragma_type_spec(PredName, NewName, Arity, PorF,
+            Modes, Subst, VarSet, ItemIds)),
+        !Info, !UsedModules, []) :-
     (
         ( !.Info = no
         ; PredName = qualified(ModuleName, _)
@@ -473,7 +460,7 @@ replace_in_item(ModuleName, Location,
         _Context, EqvMap, _EqvInstMap,
         item_pragma(Origin, pragma_foreign_proc(Attrs, PName, PredOrFunc, 
             ProcVars, ProcVarset, ProcInstVarset, ProcImpl)),
-        [], !Info, !UsedModules) :-
+        !Info, !UsedModules, []) :-
     some [!EquivTypeInfo] (
         maybe_record_expanded_items(ModuleName, PName,
             !.Info, !:EquivTypeInfo),
@@ -503,7 +490,7 @@ replace_in_item(ModuleName, Location,
         item_mutable(MutName, Type0, InitValue, Inst0, Attrs, Varset),
         _Context, EqvMap, EqvInstMap,
         item_mutable(MutName, Type, InitValue, Inst, Attrs, Varset),
-        [], !Info, !UsedModules) :-
+        !Info, !UsedModules, []) :-
     QualName = qualified(ModuleName, MutName),
     maybe_record_expanded_items(ModuleName, QualName, !.Info, ExpandedItems0),
     TVarSet0 = varset.init,
@@ -519,29 +506,30 @@ replace_in_item(ModuleName, Location,
     equiv_type_info::in, equiv_type_info::out,
     used_modules::in, used_modules::out) is semidet.
 
-replace_in_type_defn(Location, EqvMap, TypeCtor, parse_tree_eqv_type(TBody0),
-        parse_tree_eqv_type(TBody), ContainsCirc,
-        !VarSet, !Info, !UsedModules) :-
-    replace_in_type_location_2(Location, EqvMap, [TypeCtor], TBody0, TBody,
-        _, ContainsCirc, !VarSet, !Info, !UsedModules).
-
-replace_in_type_defn(Location, EqvMap, _,
-        parse_tree_du_type(TBody0, EqPred),
-        parse_tree_du_type(TBody, EqPred), no, !VarSet, !Info, !UsedModules) :-
-    replace_in_ctors_location(Location, EqvMap, TBody0, TBody, !VarSet, !Info,
-        !UsedModules).
-
-replace_in_type_defn(Location, EqvMap, TypeCtor,
-        parse_tree_solver_type(SolverTypeDetails0, MaybeUserEqComp),
-        parse_tree_solver_type(SolverTypeDetails,  MaybeUserEqComp),
+replace_in_type_defn(Location, EqvMap, TypeCtor, TypeDefn0, TypeDefn,
         ContainsCirc, !VarSet, !Info, !UsedModules) :-
-    SolverTypeDetails0 = solver_type_details(RepresentationType0, InitPred,
-        GroundInst, AnyInst, MutableItems),
-    replace_in_type_location_2(Location, EqvMap, [TypeCtor], 
-        RepresentationType0, RepresentationType,
-        _, ContainsCirc, !VarSet, !Info, !UsedModules),
-    SolverTypeDetails = solver_type_details(RepresentationType, InitPred,
-        GroundInst, AnyInst, MutableItems).
+    (
+        TypeDefn0 = parse_tree_eqv_type(TypeBody0),
+        replace_in_type_location_2(Location, EqvMap, [TypeCtor],
+            TypeBody0, TypeBody, _, ContainsCirc, !VarSet, !Info, !UsedModules),
+        TypeDefn = parse_tree_eqv_type(TypeBody)
+    ;
+        TypeDefn0 = parse_tree_du_type(TypeBody0, EqPred),
+        replace_in_ctors_location(Location, EqvMap, TypeBody0, TypeBody,
+            !VarSet, !Info, !UsedModules),
+        ContainsCirc = no,
+        TypeDefn = parse_tree_du_type(TypeBody, EqPred)
+    ;
+        TypeDefn0 = parse_tree_solver_type(SolverDetails0, MaybeUserEqComp),
+        SolverDetails0 = solver_type_details(RepresentationType0, InitPred,
+            GroundInst, AnyInst, MutableItems),
+        replace_in_type_location_2(Location, EqvMap, [TypeCtor], 
+            RepresentationType0, RepresentationType,
+            _, ContainsCirc, !VarSet, !Info, !UsedModules),
+        SolverDetails = solver_type_details(RepresentationType, InitPred,
+            GroundInst, AnyInst, MutableItems),
+        TypeDefn = parse_tree_solver_type(SolverDetails,  MaybeUserEqComp)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -557,11 +545,11 @@ replace_in_prog_constraints(EqvMap, Cs0, Cs, !VarSet, !Info) :-
 replace_in_prog_constraints_location(Location, EqvMap, Cs0, Cs, !VarSet, !Info,
         !UsedModules) :-
     Cs0 = constraints(UnivCs0, ExistCs0),
-    Cs = constraints(UnivCs, ExistCs),
     replace_in_prog_constraint_list(Location, EqvMap, UnivCs0, UnivCs,
         !VarSet, !Info, !UsedModules),
     replace_in_prog_constraint_list(Location, EqvMap, ExistCs0, ExistCs,
-        !VarSet, !Info, !UsedModules).
+        !VarSet, !Info, !UsedModules),
+    Cs = constraints(UnivCs, ExistCs).
 
 :- pred replace_in_prog_constraint_list(eqv_type_location::in, eqv_map::in,
     list(prog_constraint)::in, list(prog_constraint)::out,
@@ -593,54 +581,54 @@ replace_in_prog_constraint_location(Location, EqvMap, Constraint0, Constraint,
 
 :- pred replace_in_class_interface(eqv_type_location::in, class_methods::in,
     eqv_map::in, eqv_inst_map::in, class_methods::out,
-    list(eqv_error)::in, list(eqv_error)::out,
     equiv_type_info::in, equiv_type_info::out,
-    used_modules::in, used_modules::out) is det.
+    used_modules::in, used_modules::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 replace_in_class_interface(Location, ClassInterface0, EqvMap, EqvInstMap,
-        ClassInterface, !Errors, !Info, !UsedModules) :-
+        ClassInterface, !Info, !UsedModules, !Specs) :-
     list.map_foldl3(replace_in_class_method(Location, EqvMap, EqvInstMap),
-        ClassInterface0, ClassInterface, !Errors, !Info, !UsedModules).
+        ClassInterface0, ClassInterface, !Info, !UsedModules, !Specs).
 
 :- pred replace_in_class_method(eqv_type_location::in,
     eqv_map::in, eqv_inst_map::in, class_method::in, class_method::out,
-    list(eqv_error)::in, list(eqv_error)::out,
     equiv_type_info::in, equiv_type_info::out,
-    used_modules::in, used_modules::out) is det.
+    used_modules::in, used_modules::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_class_method(Location, EqvMap, EqvInstMap,
-        method_pred_or_func(TypeVarSet0, InstVarSet, ExistQVars, PredOrFunc,
-            PredName, TypesAndModes0, WithType0, WithInst0,
-            Det0, Cond, Purity, ClassContext0, Context),
-        method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
-            PredName, TypesAndModes, WithType, WithInst,
-            Det, Cond, Purity, ClassContext, Context),
-        !Errors, !Info, !UsedModules) :-
-    replace_in_pred_type(Location, PredName, PredOrFunc, Context, EqvMap,
-        EqvInstMap, ClassContext0, ClassContext,
-        TypesAndModes0, TypesAndModes, TypeVarSet0, TypeVarSet,
-        WithType0, WithType, WithInst0, WithInst, Det0, Det,
-        !Info, !UsedModules, NewErrors),
-    !:Errors = NewErrors ++ !.Errors.
-
-replace_in_class_method(Location, _, EqvInstMap,
-        method_pred_or_func_mode(InstVarSet, MaybePredOrFunc0, PredName,
-            Modes0, WithInst0, Det0, Cond, Context),
-        method_pred_or_func_mode(InstVarSet, MaybePredOrFunc, PredName,
-            Modes, WithInst, Det, Cond, Context),
-        !Errors, !Info, !UsedModules) :-
-    replace_in_pred_mode(Location, PredName, length(Modes0), Context,
-        mode_decl, EqvInstMap, MaybePredOrFunc0, MaybePredOrFunc,
-        ExtraModes, WithInst0, WithInst, Det0, Det, !Info, !UsedModules,
-        NewErrors),
+replace_in_class_method(Location, EqvMap, EqvInstMap, Method0, Method,
+        !Info, !UsedModules, !Specs) :-
     (
-        ExtraModes = [],
-        Modes = Modes0
+        Method0 = method_pred_or_func(TypeVarSet0, InstVarSet, ExistQVars,
+            PredOrFunc, PredName, TypesAndModes0, WithType0, WithInst0,
+            Det0, Cond, Purity, ClassContext0, Context),
+        replace_in_pred_type(Location, PredName, PredOrFunc, Context, EqvMap,
+            EqvInstMap, ClassContext0, ClassContext,
+            TypesAndModes0, TypesAndModes, TypeVarSet0, TypeVarSet,
+            WithType0, WithType, WithInst0, WithInst, Det0, Det,
+            !Info, !UsedModules, NewSpecs),
+        !:Specs = NewSpecs ++ !.Specs,
+        Method = method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
+            PredOrFunc, PredName, TypesAndModes, WithType, WithInst,
+            Det, Cond, Purity, ClassContext, Context)
     ;
-        ExtraModes = [_ | _],
-        Modes = Modes0 ++ ExtraModes
-    ),
-    !:Errors = NewErrors ++ !.Errors.
+        Method0 = method_pred_or_func_mode(InstVarSet, MaybePredOrFunc0,
+            PredName, Modes0, WithInst0, Det0, Cond, Context),
+        replace_in_pred_mode(Location, PredName, length(Modes0), Context,
+            mode_decl, EqvInstMap, ExtraModes,
+            MaybePredOrFunc0, MaybePredOrFunc, WithInst0, WithInst,
+            Det0, Det, !Info, !UsedModules, NewSpecs),
+        (
+            ExtraModes = [],
+            Modes = Modes0
+        ;
+            ExtraModes = [_ | _],
+            Modes = Modes0 ++ ExtraModes
+        ),
+        !:Specs = NewSpecs ++ !.Specs,
+        Method = method_pred_or_func_mode(InstVarSet, MaybePredOrFunc,
+            PredName, Modes, WithInst, Det, Cond, Context)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -996,75 +984,88 @@ replace_in_inst_location(Location, Inst0, EqvInstMap, ExpandedInstIds, Inst,
     maybe(mer_inst)::in, maybe(mer_inst)::out,
     maybe(determinism)::in, maybe(determinism)::out,
     equiv_type_info::in, equiv_type_info::out,
-    used_modules::in, used_modules::out,
-    list(eqv_error)::out) is det.
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_pred_type(Location, PredName, PredOrFunc, Context,
         EqvMap, EqvInstMap, ClassContext0, ClassContext,
         TypesAndModes0, TypesAndModes, !TypeVarSet,
         MaybeWithType0, MaybeWithType, MaybeWithInst0, MaybeWithInst,
-        Det0, Det, !Info, !UsedModules, Errors) :-
+        !Det, !Info, !UsedModules, !:Specs) :-
     replace_in_prog_constraints_location(Location, EqvMap,
         ClassContext0, ClassContext, !TypeVarSet, !Info, !UsedModules),
-    replace_in_tms(Location, EqvMap,
-        TypesAndModes0, TypesAndModes1, !TypeVarSet, !Info, !UsedModules),
+    replace_in_tms(Location, EqvMap, TypesAndModes0, TypesAndModes1,
+        !TypeVarSet, !Info, !UsedModules),
     (
         MaybeWithType0 = yes(WithType0),
         replace_in_type_location(Location, EqvMap, WithType0, WithType, _,
             !TypeVarSet, !Info, !UsedModules),
         (
             type_is_higher_order_details(WithType, _Purity, PredOrFunc,
-                _EvalMethod, ExtraTypes0)
+                _EvalMethod, ExtraTypesPrime)
         ->
-            ExtraTypes = ExtraTypes0,
-            Errors0 = []
+            ExtraTypes = ExtraTypesPrime,
+            !:Specs = []
         ;
             ExtraTypes = [],
-            Errors0 = [invalid_with_type(PredName, PredOrFunc) - Context]
+            Pieces1 = [words("In type declaration for"),
+                p_or_f(PredOrFunc), sym_name(PredName), suffix(":"), nl,
+                words("error: expected higher order"), p_or_f(PredOrFunc),
+                words("type after `with_type`."), nl],
+            Msg1 = simple_msg(Context, [always(Pieces1)]),
+            Spec1 = error_spec(severity_error, phase_expand_types, [Msg1]),
+            !:Specs = [Spec1]
         )
     ;
         MaybeWithType0 = no,
         ExtraTypes = [],
-        Errors0 = []
+        !:Specs = []
     ),
 
     replace_in_pred_mode(Location, PredName, length(TypesAndModes0),
-        Context, type_decl, EqvInstMap, yes(PredOrFunc), _, ExtraModes,
-        MaybeWithInst0, _, Det0, Det, !Info, !UsedModules, ModeErrors),
-    Errors1 = Errors0 ++ ModeErrors,
-
-    ( Errors1 = [_ | _] ->
-        Errors = Errors1,
-        ExtraTypesAndModes = []
-    ; ExtraModes = [] ->
-        Errors = Errors1,
-        ExtraTypesAndModes = list.map((func(Type) = type_only(Type)),
-            ExtraTypes)
-    ; length(ExtraTypes) `with_type` int = length(ExtraModes) ->
-        Errors = Errors1,
-        assoc_list.from_corresponding_lists(ExtraTypes, ExtraModes,
-            ExtraTypesModes),
-        ExtraTypesAndModes = list.map(
-            (func(Type - Mode) = type_and_mode(Type, Mode)),
-            ExtraTypesModes)
-    ;
-        Errors = [non_matching_with_type_with_inst(PredName, PredOrFunc)
-            - Context | Errors1],
-        ExtraTypesAndModes = []
-    ),
+        Context, type_decl, EqvInstMap, ExtraModes, yes(PredOrFunc), _,
+        MaybeWithInst0, _, !Det, !Info, !UsedModules, ModeSpecs),
+    !:Specs = !.Specs ++ ModeSpecs,
 
     (
-        Errors = [],
+        !.Specs = [_ | _],
+        ExtraTypesAndModes = []
+    ;
+        !.Specs = [],
+        (
+            ExtraModes = [],
+            ExtraTypesAndModes = list.map((func(Type) = type_only(Type)),
+                ExtraTypes)
+        ;
+            ExtraModes = [_ | _],
+            ( length(ExtraTypes) `with_type` int = length(ExtraModes) ->
+                assoc_list.from_corresponding_lists(ExtraTypes, ExtraModes,
+                    ExtraTypesModes),
+                ExtraTypesAndModes = list.map(
+                    (func(Type - Mode) = type_and_mode(Type, Mode)),
+                    ExtraTypesModes)
+            ;
+                Pieces2 = [words("In type declaration for"),
+                    p_or_f(PredOrFunc), sym_name(PredName), suffix(":"), nl,
+                    words("error: the `with_type` and `with_inst`"),
+                    words("annotations are incompatible."), nl],
+                Msg2 = simple_msg(Context, [always(Pieces2)]),
+                Spec2 = error_spec(severity_error, phase_expand_types, [Msg2]),
+                !:Specs = [Spec2 | !.Specs],
+                ExtraTypesAndModes = []
+            )
+        )
+    ),
+    (
+        !.Specs = [],
         MaybeWithType = no,
         MaybeWithInst = no
     ;
-        Errors = [_ | _],
+        !.Specs = [_ | _],
         % Leave the `with_type` and `with_inst` fields so that make_hlds knows
         % to discard this declaration.
         MaybeWithType = MaybeWithType0,
         MaybeWithInst = MaybeWithInst0
     ),
-
     (
         ExtraTypesAndModes = [],
         TypesAndModes = TypesAndModes1
@@ -1078,32 +1079,32 @@ replace_in_pred_type(Location, PredName, PredOrFunc, Context,
 
 :- pred replace_in_pred_mode(eqv_type_location::in, sym_name::in, arity::in,
     prog_context::in, pred_or_func_decl_type::in, eqv_inst_map::in,
+    list(mer_mode)::out,
     maybe(pred_or_func)::in, maybe(pred_or_func)::out,
-    list(mer_mode)::out, maybe(mer_inst)::in, maybe(mer_inst)::out,
+    maybe(mer_inst)::in, maybe(mer_inst)::out,
     maybe(determinism)::in, maybe(determinism)::out,
     equiv_type_info::in, equiv_type_info::out,
-    used_modules::in, used_modules::out,
-    list(eqv_error)::out) is det.
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_pred_mode(Location, PredName, OrigArity, Context, DeclType,
-        EqvInstMap, MaybePredOrFunc0, MaybePredOrFunc, ExtraModes,
-        MaybeWithInst0, MaybeWithInst, Det0, Det,
-        !Info, !UsedModules, Errors) :-
+        EqvInstMap, ExtraModes, MaybePredOrFunc0, MaybePredOrFunc,
+        MaybeWithInst0, MaybeWithInst, !MaybeDet, !Info, !UsedModules,
+        Specs) :-
     (
         MaybeWithInst0 = yes(WithInst0),
         replace_in_inst(Location, WithInst0, EqvInstMap, WithInst, !Info,
             !UsedModules),
         (
-            WithInst = ground(_, higher_order(pred_inst_info(
-                PredOrFunc, ExtraModes0, DetPrime))),
+            WithInst = ground(_, GroundInstInfo),
+            GroundInstInfo = higher_order(HOInst),
+            HOInst = pred_inst_info(PredOrFunc, ExtraModes0, DetPrime),
             ( MaybePredOrFunc0 = no
             ; MaybePredOrFunc0 = yes(PredOrFunc)
             )
         ->
-            Det = yes(DetPrime),
+            !:MaybeDet = yes(DetPrime),
             MaybeWithInst = no,
             MaybePredOrFunc = yes(PredOrFunc),
-            Errors = [],
             ExtraModes = ExtraModes0,
             (
                 MaybePredOrFunc0 = no,
@@ -1113,24 +1114,38 @@ replace_in_pred_mode(Location, PredName, OrigArity, Context, DeclType,
             ),
             OrigItemId = item_id(pred_or_func_to_item_type(RecordedPredOrFunc),
                 item_name(PredName, OrigArity)),
-            record_expanded_item(OrigItemId, !Info)
+            record_expanded_item(OrigItemId, !Info),
+            Specs = []
         ;
             ExtraModes = [],
             MaybePredOrFunc = MaybePredOrFunc0,
             % Leave the `with_inst` fields so that make_hlds
             % knows to discard this declaration.
             MaybeWithInst = MaybeWithInst0,
-            Det = Det0,
-            Errors = [invalid_with_inst(DeclType, PredName, MaybePredOrFunc0)
-                - Context]
+            ( DeclType = type_decl, DeclStr = "declaration"
+            ; DeclType = mode_decl, DeclStr = "mode declaration"
+            ),
+            (
+                MaybePredOrFunc = no,
+                PredOrFuncPieces = []
+            ;
+                MaybePredOrFunc = yes(PredOrFunc),
+                PredOrFuncPieces = [p_or_f(PredOrFunc)]
+            ),
+            Pieces = [words("In"), words(DeclStr), words("for")] ++
+                PredOrFuncPieces ++ [sym_name(PredName), suffix(":"), nl,
+                words("error: expected higher order ")] ++ PredOrFuncPieces ++
+                [words("inst after `with_inst`."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_expand_types, [Msg]),
+            Specs = [Spec]
         )
     ;
         MaybeWithInst0 = no,
         MaybeWithInst = MaybeWithInst0,
         MaybePredOrFunc = MaybePredOrFunc0,
-        Errors = [],
-        Det = Det0,
-        ExtraModes = []
+        ExtraModes = [],
+        Specs = []
     ).
 
 :- pred replace_in_tms(eqv_type_location::in, eqv_map::in,
@@ -1250,52 +1265,6 @@ finish_recording_expanded_items(_, yes(_), no, _) :-
 finish_recording_expanded_items(Item, yes(_ - ExpandedItems),
         yes(Info0), yes(Info)) :-
     recompilation.record_expanded_items(Item, ExpandedItems, Info0, Info).
-
-%-----------------------------------------------------------------------------%
-
-:- pred report_error(eqv_error::in, io::di, io::uo) is det.
-
-report_error(circular_equivalence(Item) - Context, !IO) :-
-    (
-        Item = item_type_defn(_, SymName, Params, TypeDefn, _),
-        TypeDefn = parse_tree_eqv_type(_)
-    ->
-        Pieces = [words("Error: circular equivalence type"),
-            sym_name_and_arity(SymName / length(Params)), suffix(".")],
-        write_error_pieces(Context, 0, Pieces, !IO)
-    ;
-        unexpected(this_file, "report_error: invalid item")
-    ).
-report_error(invalid_with_type(SymName, PredOrFunc) - Context, !IO) :-
-    Pieces = [words("In type declaration for"),
-        p_or_f(PredOrFunc), sym_name(SymName), suffix(":"), nl,
-        words("error: expected higher order"), p_or_f(PredOrFunc),
-        words("type after `with_type`.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
-report_error(invalid_with_inst(DeclType, SymName, MaybePredOrFunc) - Context,
-        !IO) :-
-    ( DeclType = type_decl, DeclStr = "declaration"
-    ; DeclType = mode_decl, DeclStr = "mode declaration"
-    ),
-    (
-        MaybePredOrFunc = no,
-        PredOrFuncPieces = []
-    ;
-        MaybePredOrFunc = yes(PredOrFunc),
-        PredOrFuncPieces = [p_or_f(PredOrFunc)]
-    ),
-    Pieces = [words("In"), words(DeclStr), words("for")] ++
-        PredOrFuncPieces ++ [sym_name(SymName), suffix(":"), nl,
-        words("error: expected higher order ")] ++ PredOrFuncPieces ++
-        [words("inst after `with_inst`.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
-report_error(non_matching_with_type_with_inst(SymName, PredOrFunc) - Context,
-        !IO) :-
-    Pieces = [words("In type declaration for"),
-        p_or_f(PredOrFunc), sym_name(SymName), suffix(":"), nl,
-        words("error: the `with_type` and `with_inst`"),
-        words("annotations are incompatible.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
 
 %-----------------------------------------------------------------------------%
 
