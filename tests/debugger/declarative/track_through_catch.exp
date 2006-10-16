@@ -6,30 +6,20 @@ mdb> table_io start
 I/O tabling started.
 mdb> break try
 Ambiguous procedure specification. The matches are:
-0: pred exception.try/3-3 (cc_multi)
-1: pred exception.try/3-2 (cc_multi)
-2: pred exception.try/3-1 (cc_multi)
-3: pred exception.try/3-0 (cc_multi)
-4: pred exception.try/2-3 (cc_multi)
-5: pred exception.try/2-2 (cc_multi)
-6: pred exception.try/2-1 (cc_multi)
-7: pred exception.try/2-0 (cc_multi)
+0: pred exception.try/2-3 (cc_multi)
+1: pred exception.try/2-2 (cc_multi)
+2: pred exception.try/2-1 (cc_multi)
+3: pred exception.try/2-0 (cc_multi)
 
-Which do you want to put a breakpoint on (0-7 or *)? *
- 0: + stop  interface pred exception.try/3-3 (cc_multi)
- 1: + stop  interface pred exception.try/3-2 (cc_multi)
- 2: + stop  interface pred exception.try/3-1 (cc_multi)
- 3: + stop  interface pred exception.try/3-0 (cc_multi)
- 4: + stop  interface pred exception.try/2-3 (cc_multi)
- 5: + stop  interface pred exception.try/2-2 (cc_multi)
- 6: + stop  interface pred exception.try/2-1 (cc_multi)
- 7: + stop  interface pred exception.try/2-0 (cc_multi)
+Which do you want to put a breakpoint on (0-3 or *)? *
+ 0: + stop  interface pred exception.try/2-3 (cc_multi)
+ 1: + stop  interface pred exception.try/2-2 (cc_multi)
+ 2: + stop  interface pred exception.try/2-1 (cc_multi)
+ 3: + stop  interface pred exception.try/2-0 (cc_multi)
 mdb> c
-      E2:     C2 CALL pred exception.try/2-0 (cc_multi) exception.m:475 (track_through_catch.m:15)
+      E2:     C2 CALL pred exception.try/2-0 (cc_multi) exception.m:446 (track_through_catch.m:15)
 mdb> f
-      E3:     C3 CALL pred exception.try/3-0 (cc_multi) exception.m:479 (exception.m:477)
-      E4:     C3 EXIT pred exception.try/3-0 (cc_multi) exception.m:479 (exception.m:477)
-      E5:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:475 (track_through_catch.m:15)
+      E3:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:446 (track_through_catch.m:15)
 mdb> dd
 try(q(2), succeeded(2))
 Valid? b 2
@@ -45,5 +35,5 @@ the unification inside the predicate track_through_catch.p/1
 (track_through_catch.m:21). The path to the subterm in the atom is 1.
 dd> quit
 Diagnosis aborted.
-      E5:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:475 (track_through_catch.m:15)
+      E3:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:446 (track_through_catch.m:15)
 mdb> quit -y
