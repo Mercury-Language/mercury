@@ -72,9 +72,9 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-.SUFFIXES: .in .texi_pp .texi .dvi .ps .pdf .text
+.SUFFIXES: .in .texi_pp .texi .dvi_log .ps .pdf .text
 
-%.dvi: %.texi_pp
+%.dvi_log: %.texi_pp
 	$(TEXI2DVI) $< > $*.dvi_log
 
 %.ps: %.dvi
@@ -126,7 +126,7 @@ all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC)
 #-----------------------------------------------------------------------------#
 
 .PHONY: dvi
-dvi: $(TEXINFO_FILES:%=%.dvi)
+dvi: $(TEXINFO_FILES:%=%.dvi_log)
 
 .PHONY: warn_no_dvi
 warn_no_dvi: 
@@ -315,7 +315,7 @@ library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
 		esac;							\
 	done > library-chapters.texi_pp
 
-library.dvi library_toc.html library_1.html mercury_library.info \
+library.dvi_log library_toc.html library_1.html mercury_library.info \
 		mercury_library.html mercury_library/index.html: \
 	library-menu.texi_pp library-chapters.texi_pp
 
@@ -375,6 +375,8 @@ install_html: $(HTML) install_dirs
 
 .PHONY: install_dvi
 install_dvi: $(DVI) install_dirs
+	# It is possible that there are no .dvi files here,
+	# if the TEXI2DVI command generates PDF directly.
 	-cp *.dvi $(INSTALL_DVI_DIR)
 
 .PHONY: install_text
