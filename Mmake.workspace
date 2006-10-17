@@ -155,13 +155,13 @@ MERC_DLL_DIR = $(LIBRARY_DIR)
 # passed to echo in order to preserve double-quotes (e.g. for
 # file names containing spaces).
 #
+GC_LIBS_0=`ml --grade $(GRADE) --print-gc-grade`
+GC_LIBS=$(shell echo $(GC_LIBS_0))
+
 STATIC_GC_LIBS_0 = 						\
 	`							\
 	    case $(GRADE) in					\
-		*.par*.gc*.prof*) echo $(BOEHM_GC_DIR)/libpar_gc_prof.$A ;; \
-		*.par*.gc*)	echo $(BOEHM_GC_DIR)/libpar_gc.$A ;; \
-		*.gc*.prof*)	echo $(BOEHM_GC_DIR)/libgc_prof.$A ;; \
-		*.gc*)		echo $(BOEHM_GC_DIR)/libgc.$A ;; \
+	    	*.gc*)		echo $(BOEHM_GC_DIR)/lib$(GC_LIBS).$A	;; \
 		*.mps*)		echo $(MPS_GC_OBJ_DIR)/mps.$A ;; \
 	    esac						\
 	`
@@ -170,10 +170,7 @@ STATIC_GC_LIBS = $(shell echo $(STATIC_GC_LIBS_0))
 SHARED_GC_LIBS_0 =						\
 	 `							\
 	    case $(GRADE) in					\
-		*.par*.gc*.prof*) echo -lpar_gc_prof ;;		\
-		*.par*.gc*)	echo -lpar_gc ;;		\
-		*.gc*.prof*)	echo -lgc_prof ;;		\
-		*.gc*)		echo -lgc ;;			\
+		*.gc*)		echo -l$(GC_LIBS) ;;		\
 		*.mps*)		echo $(MPS_GC_OBJ_DIR)/mps.$A ;; \
 	    esac						\
 	`
