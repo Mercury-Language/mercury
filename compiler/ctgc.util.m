@@ -107,7 +107,19 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, _TVarSet) =
     % types of the head variables.
     pred_info_get_arg_types(PredInfo, FormalTypes),
 
-    type_list_subsumes_det(FormalTypes, ActualTypes, TypeSubstitution).
+    (
+        type_list_subsumes(FormalTypes, ActualTypes, TypeSubstitution0)
+    -> 
+        TypeSubstitution = TypeSubstitution0
+    ; 
+        % XXX Sharing analysis of compiler generated procedures fails due
+        % to the fact that type_list_subsumes fails; I assume that the 
+        % same reasoning as in inlining.get_type_substitution/5 is applicable
+        % here: "The head types should always be unifiable with the actual
+        % argument types, otherwise it is a type error that should have
+        % been detected by typechecking. [...]"
+        TypeSubstitution = map.init
+    ).
 
 %-----------------------------------------------------------------------------%
 

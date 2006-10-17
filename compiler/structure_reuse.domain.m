@@ -374,6 +374,9 @@ reuse_as_subsumed_by(ModuleInfo, ProcInfo, FirstReuseAs, SecondReuseAs) :-
         % reuse is unconditional, hence also the calling environments that
         % satisfy the conditions expressed by SecondReuseAs.
     ;
+        FirstReuseAs = unconditional,
+        SecondReuseAs = unconditional
+    ;
         FirstReuseAs = conditional(ReuseConditionsFirst),
         SecondReuseAs = conditional(ReuseConditionsSecond),
         list.takewhile(reuse_conditions_subsume_reuse_condition(ModuleInfo,
