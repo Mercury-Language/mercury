@@ -1042,9 +1042,19 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
     ;
         ModuleFlagsResult = var_result_unset
     ),
-    Result = list.foldl(combine_var_results,
-        [DefaultFlagsResult, FlagsResult, ExtraFlagsResult, ModuleFlagsResult],
-        var_result_unset).
+    %
+    % NOTE: the order in which these lists of flags are added together is
+    %       important.  In the resulting set the flags from DefaultFlagsResult
+    %       *must* occur before those in FlagsResult, which in turn *must*
+    %       occur before those in ExtraFlagsResult ... etc.
+    %       Failing to maintain this order will result in the user being unable
+    %       to override the default value of many of the compiler's options.
+    %
+    Result =
+        DefaultFlagsResult  `combine_var_results`
+        FlagsResult         `combine_var_results`
+        ExtraFlagsResult    `combine_var_results`
+        ModuleFlagsResult.
 
 :- func combine_var_results(variable_result(list(T)), variable_result(list(T)))
     = variable_result(list(T)).
