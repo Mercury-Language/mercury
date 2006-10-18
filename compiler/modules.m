@@ -5245,7 +5245,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     module_name_to_file_name(ModuleName, ".dv", no, DvFileName, !IO),
 
     io.write_strings(DepStream, [
-        InitFileName, " : ", DepFileName, "\n",
+        InitFileName, " : ", DepFileName, " $(", MakeVarName, ".cs)\n",
         "\techo > ", InitFileName, "\n"
     ], !IO),
     io.write_strings(DepStream, [
@@ -5268,7 +5268,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     TmpInitCFileName = InitCFileName ++ ".tmp",
     io.write_strings(DepStream, [
         ForceC2InitTarget, " :\n\n",
-        InitCFileName, " : ", ForceC2InitTarget, "\n",
+        InitCFileName, " : ", ForceC2InitTarget, " $(", MakeVarName, ".cs)\n",
         "\t@$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) ",
             "--init-c-file ", TmpInitCFileName,
             " $(", MakeVarName, ".init_cs) $(ALL_C2INITARGS)\n",
