@@ -1,0 +1,2 @@
+instance_dup_var.m:012: Error: types in instance declarations must be functors with distinct variables as arguments: baz(foo(_1, _1), bar).
+instance_dup_var.m:015: Error: types in instance declarations must be functors with distinct variables as arguments: baz(foo(_1, _2), foo(_3, _1)).
