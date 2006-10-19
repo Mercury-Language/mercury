@@ -68,6 +68,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -604,18 +605,21 @@ parse_underived_instance_2(ErrorTerm, ClassName, ok1(Types), TVarSet,
         ModuleName, Result) :-
     (
         % Check that each type in the arguments of the instance decl
-        % is a functor with vars as args.
-        some [Type] (
-            list.member(Type, Types),
-            \+ type_is_functor_and_vars(Type)
-        )
+        % is a functor with vars as args...
+        all [Type] (
+            list.member(Type, Types)
+        =>
+            type_is_functor_and_vars(Type)
+        ),
+        % ...and that the vars are distinct across the entire arg list.
+        type_vars_are_distinct(Types)
     ->
+        Result = ok1(item_instance([], ClassName, Types,
+            instance_body_abstract, TVarSet, ModuleName))
+    ;
         Msg = "types in instance declarations must be functors " ++
             "with distinct variables as arguments",
         Result = error1([Msg - ErrorTerm])
-    ;
-        Result = ok1(item_instance([], ClassName, Types,
-            instance_body_abstract, TVarSet, ModuleName))
     ).
 
 :- pred type_is_functor_and_vars(mer_type::in) is semidet.
@@ -648,6 +652,16 @@ functor_args_are_variables(Args) :-
     =>
         type_is_var(Arg)
     ).
+
+:- pred type_vars_are_distinct(list(mer_type)::in) is semidet.
+
+type_vars_are_distinct(Types) :-
+    promise_equivalent_solutions [NumVars, VarsWithoutDups] (
+        solutions.unsorted_solutions(type_list_contains_var(Types), Vars),
+        list.length(Vars, NumVars),
+        list.sort_and_remove_dups(Vars, VarsWithoutDups)
+    ),
+    list.length(VarsWithoutDups, NumVars).
 
 :- pred parse_non_empty_instance(module_name::in, term::in, term::in,
     varset::in, tvarset::in, maybe1(item)::out) is det.

@@ -100,6 +100,7 @@ SINGLEMODULE= \
 	inline_conflict \
 	inst_list_dup \
 	instance_bug \
+	instance_dup_var \
 	invalid_export_detism \
 	invalid_import_detism \
 	invalid_main \

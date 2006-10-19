@@ -37,7 +37,6 @@ TYPECLASSES_PROGS= \
 	impure_methods \
 	instance_clauses \
 	instance_unconstrained_tvar \
-	instance_unconstrained_tvar_dup \
 	instance_unconstrained_tvar_type_spec \
 	inference_test \
 	inference_test_2 \
@@ -96,6 +95,10 @@ JAVA_TYPECLASSES_PROGS= \
 	superclass_call \
 	test_default_func_mode \
 	typeclass_test_5
+
+# We don't support duplicated type variables in instance declarations yet.
+# When we do, this test case should be enabled.
+#	instance_unconstrained_tvar_dup
 
 ifneq "$(findstring java,$(GRADE))" ""
 	PROGS=$(JAVA_TYPECLASSES_PROGS)
