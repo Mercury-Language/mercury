@@ -141,7 +141,8 @@ profiler/$(deps_subdir)mercury_profile.dep: \
 ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
 dep_deep_profiler: deep_profiler/$(deps_subdir)mdprof_cgi.dep \
 		deep_profiler/$(deps_subdir)mdprof_test.dep \
-		deep_profiler/$(deps_subdir)mdprof_dump.dep
+		deep_profiler/$(deps_subdir)mdprof_dump.dep \
+		deep_profiler/$(deps_subdir)mdprof_feedback.dep
 else
 dep_deep_profiler:
 endif
@@ -157,6 +158,10 @@ deep_profiler/$(deps_subdir)mdprof_test.dep: \
 deep_profiler/$(deps_subdir)mdprof_dump.dep: \
 		library/$(deps_subdir)$(STD_LIB_NAME).dep
 	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_dump.depend
+
+deep_profiler/$(deps_subdir)mdprof_feedback.dep: \
+		library/$(deps_subdir)$(STD_LIB_NAME).dep
+	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_feedback.depend
 
 # depend_library MUST be done before depend_compiler and depend_profiler
 
