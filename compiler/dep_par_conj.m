@@ -1196,15 +1196,16 @@ maybe_replace_call(RevGoals0, Goal0, FwdGoals0, RevGoals, FwdGoals, !Info) :-
         else
             replace_call(WaitPairs, SignalPairs, Goal0, Goal, !Info),
 
-            % After the replaced call may be further references to a waited
-            % variable.  Add `get' goals after the transformed goal (a get
-            % is a wait without the waiting).  We assume the get goals will
+            % After the replaced call may be further references to a signalled
+            % or waited variable.  Add `get' goals after the transformed goal
+            % to make sure the variable is bound.  We assume the get goals will
             % be simplified away if they turn out to be unnecessary.
             %
             % XXX the simplify pass that comes later doesn't always remove
             %     these calls even if they're unnecessary
             %
-            list.map(make_get_goal(!.Info ^ dp_module_info), WaitPairs, GetGoals),
+            list.map(make_get_goal(!.Info ^ dp_module_info),
+                SignalPairs ++ WaitPairs, GetGoals),
 
             RevGoals = GetGoals ++ [Goal] ++ IrrelevantWaitGoals ++ RevGoals1,
             FwdGoals = IrrelevantSignalGoals ++ FwdGoals1
