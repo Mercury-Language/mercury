@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_io_typeclass.m.
 % Main authors: dgj.
-
+% 
 % This module handles the parsing of typeclass declarations.
 % Perhaps some of this should go into prog_io_util.m?
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_typeclass.
@@ -66,6 +66,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -584,17 +585,21 @@ parse_underived_instance_2(ErrorTerm, ClassName, ok(Types), TVarSet,
         ModuleName, Result) :-
     (
         % Check that each type in the arguments of the instance decl
-        % is a functor with vars as args.
-        some [Type] (
-            list.member(Type, Types),
-            \+ type_is_functor_and_vars(Type)
-        )
+        % is a functor with vars as args ...
+        all [Type] (
+            list.member(Type, Types)
+        =>
+            type_is_functor_and_vars(Type)
+        ),
+        % ...and that the vars are distinct across the entire arg list.
+        type_vars_are_distinct(Types)
     ->
-        Result = error("types in instance declarations must be " ++
-            "functors with distinct variables as arguments", ErrorTerm)
-    ;
         Result = ok(instance([], ClassName, Types, abstract, TVarSet,
             ModuleName))
+    ;
+        Msg = "types in instance declarations must be functors " ++
+            "with distinct variables as arguments",
+        Result = error(Msg, ErrorTerm)
     ).
 
 :- pred type_is_functor_and_vars(mer_type::in) is semidet.
@@ -617,6 +622,16 @@ type_is_functor_and_vars(tuple(Args, _)) :-
     functor_args_are_variables(Args).
 type_is_functor_and_vars(kinded(Type, _)) :-
     type_is_functor_and_vars(Type).
+
+:- pred type_vars_are_distinct(list(mer_type)::in) is semidet.
+
+type_vars_are_distinct(Types) :-
+    promise_equivalent_solutions [NumVars, VarsWithoutDups] (
+        solutions.unsorted_solutions(type_list_contains_var(Types), Vars),
+        list.length(Vars, NumVars),
+        list.sort_and_remove_dups(Vars, VarsWithoutDups)
+    ),
+    list.length(VarsWithoutDups, NumVars).
 
 :- pred functor_args_are_variables(list(mer_type)::in) is semidet.
 

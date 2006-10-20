@@ -11,24 +11,27 @@
 :- type w(T) ---> w(T).
 :- type cf(T) ---> cf(func(T) = bool).
 
-:- instance coll(w(T), list(T)).
-:- instance coll(w(T), cf(T)).
 :- instance coll(int, int).
+
+% We don't support duplicated type vars in instances yet, so these cases
+% are disabled for the moment.
+% :- instance coll(w(T), list(T)).
+% :- instance coll(w(T), cf(T)).
 
 :- implementation.
 :- import_module int.
 
-:- instance coll(w(T), list(T)) where [
-	(e = []),
-	(i(w(E), L) = [E | L]),
-	(m(w(E), L) :- list__member(E, L))
-].
+% :- instance coll(w(T), list(T)) where [
+% 	(e = []),
+% 	(i(w(E), L) = [E | L]),
+% 	(m(w(E), L) :- list__member(E, L))
+% ].
 
-:- instance coll(w(T), cf(T)) where [
-	(e = cf(func(_) = no)),
-	(i(w(E), cf(F)) = cf(func(X) = ( X = E -> yes ; F(X) ))),
-	(m(w(E), cf(F)) :- F(E) = yes)
-].
+% :- instance coll(w(T), cf(T)) where [
+% 	(e = cf(func(_) = no)),
+% 	(i(w(E), cf(F)) = cf(func(X) = ( X = E -> yes ; F(X) ))),
+% 	(m(w(E), cf(F)) :- F(E) = yes)
+% ].
 
 :- instance coll(int, int) where [
 	(e = 0),

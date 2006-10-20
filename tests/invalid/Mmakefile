@@ -97,6 +97,7 @@ SINGLEMODULE= \
 	inconsistent_instances \
 	inline_conflict \
 	instance_bug \
+	instance_dup_var \
 	inst_list_dup \
 	invalid_export_detism \
 	invalid_import_detism \
