@@ -45,16 +45,17 @@
 :- instance store(io.state).
 :- instance store(store(S)).
 
-    % initialize a new store
+    % Initialize a new store.
+    %
 :- some [S] pred store.new(store(S)::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
-% mutvars
+% Mutvars
 %
 
     % generic_mutvar(T, S):
-    % a mutable variable holding a value of type T in store S
+    % A mutable variable holding a value of type T in store S.
     %
 :- type generic_mutvar(T, S).
 :- type io_mutvar(T) == generic_mutvar(T, io.state).
