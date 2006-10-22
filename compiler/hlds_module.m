@@ -275,12 +275,6 @@
 :- pred module_info_set_instance_table(instance_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_get_superclass_table(module_info::in,
-    superclass_table::out) is det.
-
-:- pred module_info_set_superclass_table(superclass_table::in,
-    module_info::in, module_info::out) is det.
-
 :- pred module_info_get_assertion_table(module_info::in, assertion_table::out)
     is det.
 
@@ -660,7 +654,6 @@
                 cons_table                  :: cons_table,
                 class_table                 :: class_table,
                 instance_table              :: instance_table,
-                superclass_table            :: superclass_table,
                 assertion_table             :: assertion_table,
                 exclusive_table             :: exclusive_table,
                 ctor_field_table            :: ctor_field_table,
@@ -794,7 +787,6 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 
     map.init(ClassTable),
     map.init(InstanceTable),
-    map.init(SuperClassTable),
 
     % The builtin modules are automatically imported.
     get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
@@ -814,8 +806,8 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         map.init, used_modules_init, set.init),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
-        ClassTable, SuperClassTable, InstanceTable, AssertionTable,
-        ExclusiveTable, FieldNameTable, RecompInfo).
+        ClassTable, InstanceTable, AssertionTable, ExclusiveTable,
+        FieldNameTable, RecompInfo).
 
 %-----------------------------------------------------------------------------%
 %
@@ -832,7 +824,6 @@ module_info_get_mode_table(MI, MI ^ mode_table).
 module_info_get_cons_table(MI, MI ^ cons_table).
 module_info_get_class_table(MI, MI ^ class_table).
 module_info_get_instance_table(MI, MI ^ instance_table).
-module_info_get_superclass_table(MI, MI ^ superclass_table).
 module_info_get_assertion_table(MI, MI ^ assertion_table).
 module_info_get_exclusive_table(MI, MI ^ exclusive_table).
 module_info_get_ctor_field_table(MI, MI ^ ctor_field_table).
@@ -853,7 +844,6 @@ module_info_set_mode_table(M, MI, MI ^ mode_table := M).
 module_info_set_cons_table(C, MI, MI ^ cons_table := C).
 module_info_set_class_table(C, MI, MI ^ class_table := C).
 module_info_set_instance_table(I, MI, MI ^ instance_table := I).
-module_info_set_superclass_table(S, MI, MI ^ superclass_table := S).
 module_info_set_assertion_table(A, MI, MI ^ assertion_table := A).
 module_info_set_exclusive_table(PXT, MI, MI ^ exclusive_table := PXT).
 module_info_set_ctor_field_table(CF, MI, MI ^ ctor_field_table := CF).

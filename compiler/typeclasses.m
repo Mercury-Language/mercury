@@ -76,9 +76,8 @@
     % the instance rules or superclass rules, building up proofs for
     % redundant constraints.
     %
-:- pred reduce_context_by_rule_application(class_table::in,
-    instance_table::in, superclass_table::in, head_type_params::in,
-    tsubst::in, tsubst::out, tvarset::in, tvarset::out,
+:- pred reduce_context_by_rule_application(class_table::in, instance_table::in,
+    head_type_params::in, tsubst::in, tsubst::out, tvarset::in, tvarset::out,
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out,
     hlds_constraints::in, hlds_constraints::out) is det.
@@ -101,6 +100,7 @@
 :- import_module multi_map.
 :- import_module pair.
 :- import_module set.
+:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -112,11 +112,10 @@ perform_context_reduction(OrigTypeAssignSet, !Info) :-
     ),
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
-    module_info_get_superclass_table(ModuleInfo, SuperClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     typecheck_info_get_type_assign_set(!.Info, TypeAssignSet0),
     list.filter_map(
-        reduce_type_assign_context(ClassTable, SuperClassTable, InstanceTable),
+        reduce_type_assign_context(ClassTable, InstanceTable),
         TypeAssignSet0, TypeAssignSet),
     (
         % Check that this context reduction hasn't eliminated
@@ -139,11 +138,10 @@ perform_context_reduction(OrigTypeAssignSet, !Info) :-
         typecheck_info_set_type_assign_set(TypeAssignSet, !Info)
     ).
 
-:- pred reduce_type_assign_context(class_table::in, superclass_table::in,
-    instance_table::in, type_assign::in, type_assign::out) is semidet.
+:- pred reduce_type_assign_context(class_table::in, instance_table::in,
+    type_assign::in, type_assign::out) is semidet.
 
-reduce_type_assign_context(ClassTable, SuperClassTable, InstanceTable,
-        !TypeAssign) :-
+reduce_type_assign_context(ClassTable, InstanceTable, !TypeAssign) :-
     type_assign_get_head_type_params(!.TypeAssign, HeadTypeParams),
     type_assign_get_type_bindings(!.TypeAssign, Bindings0),
     type_assign_get_typeclass_constraints(!.TypeAssign, Constraints0),
@@ -151,10 +149,10 @@ reduce_type_assign_context(ClassTable, SuperClassTable, InstanceTable,
     type_assign_get_constraint_proofs(!.TypeAssign, Proofs0),
     type_assign_get_constraint_map(!.TypeAssign, ConstraintMap0),
 
-    typeclasses.reduce_context_by_rule_application(ClassTable,
-        InstanceTable, SuperClassTable, HeadTypeParams,
-        Bindings0, Bindings, TVarSet0, TVarSet, Proofs0, Proofs,
-        ConstraintMap0, ConstraintMap, Constraints0, Constraints),
+    typeclasses.reduce_context_by_rule_application(ClassTable, InstanceTable,
+        HeadTypeParams, Bindings0, Bindings, TVarSet0, TVarSet,
+        Proofs0, Proofs, ConstraintMap0, ConstraintMap,
+        Constraints0, Constraints),
     check_satisfiability(Constraints ^ unproven, HeadTypeParams),
 
     type_assign_set_type_bindings(Bindings, !TypeAssign),
@@ -163,25 +161,22 @@ reduce_type_assign_context(ClassTable, SuperClassTable, InstanceTable,
     type_assign_set_constraint_proofs(Proofs, !TypeAssign),
     type_assign_set_constraint_map(ConstraintMap, !TypeAssign).
 
-reduce_context_by_rule_application(ClassTable, InstanceTable,
-        SuperClassTable, HeadTypeParams, !Bindings, !TVarSet, !Proofs,
-        !ConstraintMap, !Constraints) :-
-    reduce_context_by_rule_application_2(ClassTable,
-        InstanceTable, SuperClassTable, HeadTypeParams, !Bindings,
-        !TVarSet, !Proofs, !ConstraintMap, !Constraints,
-        !.Constraints ^ unproven, _).
+reduce_context_by_rule_application(ClassTable, InstanceTable, HeadTypeParams,
+        !Bindings, !TVarSet, !Proofs, !ConstraintMap, !Constraints) :-
+    reduce_context_by_rule_application_2(ClassTable, InstanceTable,
+        HeadTypeParams, !Bindings, !TVarSet, !Proofs, !ConstraintMap,
+        !Constraints, !.Constraints ^ unproven, _).
 
 :- pred reduce_context_by_rule_application_2(class_table::in,
-    instance_table::in, superclass_table::in, head_type_params::in,
+    instance_table::in, head_type_params::in,
     tsubst::in, tsubst::out, tvarset::in, tvarset::out,
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out,
     hlds_constraints::in, hlds_constraints::out,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
-reduce_context_by_rule_application_2(ClassTable, InstanceTable,
-        SuperClassTable, HeadTypeParams, !Bindings, !TVarSet, !Proofs,
-        !ConstraintMap, !Constraints, !Seen) :-
+reduce_context_by_rule_application_2(ClassTable, InstanceTable, HeadTypeParams,
+        !Bindings, !TVarSet, !Proofs, !ConstraintMap, !Constraints, !Seen) :-
     apply_rec_subst_to_constraints(!.Bindings, !Constraints),
     apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams,
         !.Constraints, !TVarSet, !Bindings, AppliedImprovementRule),
@@ -202,10 +197,7 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable,
         EliminatedAssumed),
     apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, !Seen, !Constraints, AppliedInstanceRule),
-    % XXX Kind inference: we assume that all tvars have kind `star'.
-    map.init(KindMap),
-    apply_class_rules(SuperClassTable, !.TVarSet, KindMap, !Proofs,
-        !ConstraintMap, !Constraints, AppliedClassRule),
+    apply_class_rules(!Proofs, !ConstraintMap, !Constraints, AppliedClassRule),
     (
         AppliedImprovementRule = no,
         EliminatedAssumed = no,
@@ -215,9 +207,9 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable,
         % We have reached fixpoint.
         sort_and_merge_dups(!Constraints)
     ;
-        reduce_context_by_rule_application_2(ClassTable,
-            InstanceTable, SuperClassTable, HeadTypeParams, !Bindings,
-            !TVarSet, !Proofs, !ConstraintMap, !Constraints, !Seen)
+        reduce_context_by_rule_application_2(ClassTable, InstanceTable,
+            HeadTypeParams, !Bindings, !TVarSet, !Proofs, !ConstraintMap,
+            !Constraints, !Seen)
     ).
 
 :- pred sort_and_merge_dups(hlds_constraints::in, hlds_constraints::out)
@@ -501,10 +493,10 @@ subsumes_on_elements(Elements, TypesA, TypesB, Subst) :-
     hlds_constraints::in, hlds_constraints::out, bool::out) is det.
 
 eliminate_assumed_constraints(!ConstraintMap, !Constraints, Changed) :-
-    !.Constraints = constraints(Unproven0, Assumed, Redundant),
+    !.Constraints = constraints(Unproven0, Assumed, Redundant, Ancestors),
     eliminate_assumed_constraints_2(Assumed, !ConstraintMap,
         Unproven0, Unproven, Changed),
-    !:Constraints = constraints(Unproven, Assumed, Redundant).
+    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
 
 :- pred eliminate_assumed_constraints_2(list(hlds_constraint)::in,
     constraint_map::in, constraint_map::out,
@@ -539,11 +531,11 @@ eliminate_assumed_constraints_2(AssumedCs, !ConstraintMap, [C | Cs], NewCs,
 
 apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, !Seen, !Constraints, Changed) :-
-    !.Constraints = constraints(Unproven0, Assumed, Redundant0),
+    !.Constraints = constraints(Unproven0, Assumed, Redundant0, Ancestors),
     apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, Redundant0, Redundant, !Seen,
         Unproven0, Unproven, Changed),
-    !:Constraints = constraints(Unproven, Assumed, Redundant).
+    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
 
 :- pred apply_instance_rules_2(class_table::in, instance_table::in,
     tvarset::in, tvarset::out,
@@ -650,170 +642,49 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
     ).
 
     % To reduce a constraint using class declarations, we search the
-    % superclass relation to find a path from the inferred constraint to
-    % another (declared or inferred) constraint.
+    % ancestors in the hlds_constraints to find a path from the inferred
+    % constraint to another (declared or inferred) constraint.
     %
-:- pred apply_class_rules(superclass_table::in, tvarset::in, tvar_kind_map::in,
-    constraint_proof_map::in, constraint_proof_map::out,
+:- pred apply_class_rules(constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out,
     hlds_constraints::in, hlds_constraints::out, bool::out) is det.
 
-apply_class_rules(SuperClassTable, TVarSet, KindMap, !Proofs, !ConstraintMap,
-        !Constraints, Changed) :-
-    !.Constraints = constraints(Unproven0, Assumed, _),
-    apply_class_rules_2(Assumed, SuperClassTable, TVarSet, KindMap,
-        !Proofs, !ConstraintMap, Unproven0, Unproven, Changed),
+apply_class_rules(!Proofs, !ConstraintMap, !Constraints, Changed) :-
+    !.Constraints = constraints(Unproven0, _, _, Ancestors),
+    apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
+        Unproven0, Unproven, Changed),
     !:Constraints = !.Constraints ^ unproven := Unproven.
 
-:- pred apply_class_rules_2(list(hlds_constraint)::in, superclass_table::in,
-    tvarset::in, tvar_kind_map::in, constraint_proof_map::in,
-    constraint_proof_map::out, constraint_map::in, constraint_map::out,
-    list(hlds_constraint)::in, list(hlds_constraint)::out,
-    bool::out) is det.
+:- pred apply_class_rules_2(ancestor_constraints::in,
+    constraint_proof_map::in, constraint_proof_map::out,
+    constraint_map::in, constraint_map::out,
+    list(hlds_constraint)::in, list(hlds_constraint)::out, bool::out) is det.
 
-apply_class_rules_2(_, _, _, _, !Proofs, !ConstraintMap, [], [], no).
-apply_class_rules_2(AssumedConstraints, SuperClassTable, TVarSet, KindMap,
-        !Proofs, !ConstraintMap, [Constraint0 | Constraints0],
-        Constraints, Changed) :-
-    Parents = [],
+apply_class_rules_2(_, !Proofs, !ConstraintMap, [], [], no).
+apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
+        [Constraint0 | Constraints0], Constraints, Changed) :-
     retrieve_prog_constraint(Constraint0, ProgConstraint0),
-
-    % The head_type_params argument contains all the variables from the
-    % original constraint that we are trying to prove. (These are the type
-    % variables that must not be bound as we search through the superclass
-    % relation).
-    constraint_get_tvars(ProgConstraint0, HeadTypeParams),
     (
-        eliminate_constraint_by_class_rules(ProgConstraint0, _, _,
-            AssumedConstraints, SuperClassTable, HeadTypeParams,
-            TVarSet, KindMap, Parents, !Proofs)
+        map.search(Ancestors, ProgConstraint0, Descendants)
     ->
         update_constraint_map(Constraint0, !ConstraintMap),
-        apply_class_rules_2(AssumedConstraints, SuperClassTable,
-            TVarSet, KindMap, !Proofs, !ConstraintMap,
+        add_superclass_proofs(ProgConstraint0, Descendants, !Proofs),
+        apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
             Constraints0, Constraints, _),
         Changed = yes
     ;
-        apply_class_rules_2(AssumedConstraints, SuperClassTable,
-            TVarSet, KindMap, !Proofs, !ConstraintMap,
+        apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
             Constraints0, TailConstraints, Changed),
         Constraints = [Constraint0 | TailConstraints]
     ).
 
-    % eliminate_constraint_by_class_rules eliminates a class constraint
-    % by applying the superclass relation. A list of "parent" constraints
-    % is also passed in --- these are the constraints that we are
-    % (recursively) in the process of checking, and is used to ensure that
-    % we don't get into a cycle in the relation.
-    %
-:- pred eliminate_constraint_by_class_rules(prog_constraint::in,
-    prog_constraint::out, tsubst::out, list(hlds_constraint)::in,
-    superclass_table::in, head_type_params::in, tvarset::in,
-    tvar_kind_map::in, list(prog_constraint)::in,
-    constraint_proof_map::in, constraint_proof_map::out) is semidet.
+:- pred add_superclass_proofs(prog_constraint::in, list(prog_constraint)::in,
+    constraint_proof_map::in, constraint_proof_map::out) is det.
 
-eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst,
-        AssumedConstraints, SuperClassTable, HeadTypeParams, TVarSet,
-        KindMap, ParentConstraints, Proofs0, Proofs) :-
-
-    % Make sure we aren't in a cycle in the superclass relation.
-    \+ list.member(C, ParentConstraints),
-
-    C = constraint(SuperClassName, SuperClassTypes),
-    list.length(SuperClassTypes, SuperClassArity),
-    SuperClassId = class_id(SuperClassName, SuperClassArity),
-    multi_map.search(SuperClassTable, SuperClassId, SubClasses),
-
-    % Convert all the subclass_details into prog_constraints by doing the
-    % appropriate variable renaming and applying the type variable bindings.
-    % If the unification of the type variables for a particular constraint
-    % fails then that constraint is eliminated because it cannot contribute
-    % to proving the constraint we are trying to prove.
-    list.filter_map(
-        subclass_details_to_constraint(TVarSet, KindMap, SuperClassTypes),
-        SubClasses, SubClassConstraints),
-    (
-        % Do the first level of search. We search for an assumed constraint
-        % which unifies with any of the subclass constraints.
-        varset.vars(TVarSet, XXXHeadTypeParams),
-        list.find_first_map(
-            match_assumed_constraint(XXXHeadTypeParams, SubClassConstraints),
-            AssumedConstraints, SubClass - SubClassSubst0)
-    ->
-        SubClassSubst = SubClassSubst0,
-        apply_rec_subst_to_prog_constraint(SubClassSubst, C, SubstC),
-        map.set(Proofs0, SubstC, superclass(SubClass), Proofs)
-    ;
-        NewParentConstraints = [C | ParentConstraints],
-
-        % Recursively search the rest of the superclass relation.
-        SubClassSearch = (pred(Constraint::in, CnstrtAndProof::out)
-                is semidet :-
-            eliminate_constraint_by_class_rules(Constraint,
-                SubstConstraint, SubClassSubst0,
-                AssumedConstraints, SuperClassTable,
-                HeadTypeParams, TVarSet, KindMap,
-                NewParentConstraints, Proofs0, SubProofs),
-            CnstrtAndProof = {SubstConstraint, SubClassSubst0, SubProofs}
-        ),
-        % XXX this could (and should) be more efficient.
-        % (i.e. by manually doing a "cut").
-        find_first_map(SubClassSearch, SubClassConstraints,
-            {NewSubClass, SubClassSubst, NewProofs}),
-        apply_rec_subst_to_prog_constraint(SubClassSubst, C, SubstC),
-        map.set(NewProofs, SubstC, superclass(NewSubClass), Proofs)
-    ).
-
-:- pred match_assumed_constraint(head_type_params::in,
-    list(prog_constraint)::in, hlds_constraint::in,
-    pair(prog_constraint, tsubst)::out) is semidet.
-
-match_assumed_constraint(HeadTypeParams, SubClassConstraints,
-        AssumedConstraint, Match) :-
-    find_first_map(
-        match_assumed_constraint_2(HeadTypeParams, AssumedConstraint),
-        SubClassConstraints, Match).
-
-:- pred match_assumed_constraint_2(head_type_params::in, hlds_constraint::in,
-    prog_constraint::in, pair(prog_constraint, tsubst)::out) is semidet.
-
-match_assumed_constraint_2(HeadTypeParams, AssumedConstraint,
-        SubClassConstraint, Match) :-
-    AssumedConstraint = constraint(_, AssumedConstraintClass,
-        AssumedConstraintTypes),
-    SubClassConstraint = constraint(AssumedConstraintClass,
-        SubClassConstraintTypes),
-    map.init(EmptySub),
-    type_unify_list(SubClassConstraintTypes, AssumedConstraintTypes,
-        HeadTypeParams, EmptySub, AssumedConstraintSub),
-    retrieve_prog_constraint(AssumedConstraint, MatchingProgConstraint),
-    Match = MatchingProgConstraint - AssumedConstraintSub.
-
-    % subclass_details_to_constraint will fail iff the call to
-    % type_unify_list fails.
-    %
-:- pred subclass_details_to_constraint(tvarset::in, tvar_kind_map::in,
-    list(mer_type)::in, subclass_details::in, prog_constraint::out) is semidet.
-
-subclass_details_to_constraint(TVarSet, KindMap0, SuperClassTypes,
-        SubClassDetails, SubC) :-
-    SubClassDetails = subclass_details(SuperVars0, SubID, SubVars0,
-        SuperVarSet),
-
-    % Rename the variables from the typeclass declaration into those
-    % of the current pred.
-    tvarset_merge_renaming(TVarSet, SuperVarSet, _NewTVarSet, Renaming),
-    apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap0, KindMap),
-    apply_variable_renaming_to_tvar_list(Renaming, SubVars0, SubVars),
-    apply_variable_renaming_to_type_list(Renaming, SuperVars0, SuperVars),
-
-    % Work out what the (renamed) vars from the typeclass declaration
-    % are bound to here.
-    type_unify_list(SuperVars, SuperClassTypes, [], map.init, Bindings),
-    SubID = class_id(SubName, _SubArity),
-    apply_rec_subst_to_tvar_list(KindMap, Bindings, SubVars,
-        SubClassTypes),
-    SubC = constraint(SubName, SubClassTypes).
+add_superclass_proofs(_, [], !Proofs).
+add_superclass_proofs(Constraint, [Descendant | Descendants], !Proofs) :-
+    svmap.set(Constraint, superclass(Descendant), !Proofs),
+    add_superclass_proofs(Descendant, Descendants, !Proofs).
 
     % check_satisfiability(Constraints, HeadTypeParams):
     %

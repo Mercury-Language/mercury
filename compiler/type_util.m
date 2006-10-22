@@ -923,34 +923,55 @@ apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
-    !.Constraints = constraints(Unproven0, Assumed0, Redundant0),
+    !.Constraints = constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
     apply_variable_renaming_to_constraint_list(Renaming, Unproven0, Unproven),
     apply_variable_renaming_to_constraint_list(Renaming, Assumed0, Assumed),
     Pred = (pred(_::in, C0::in, C::out) is det :-
         apply_variable_renaming_to_constraint_list(Renaming, C0, C)
     ),
     map.map_values(Pred, Redundant0, Redundant),
-    !:Constraints = constraints(Unproven, Assumed, Redundant).
+    map.keys(Ancestors0, AncestorsKeys0),
+    map.values(Ancestors0, AncestorsValues0),
+    apply_variable_renaming_to_prog_constraint_list(Renaming, AncestorsKeys0,
+        AncestorsKeys),
+    list.map(apply_variable_renaming_to_prog_constraint_list(Renaming),
+        AncestorsValues0, AncestorsValues),
+    map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
+    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
 
 apply_subst_to_constraints(Subst, !Constraints) :-
-    !.Constraints = constraints(Unproven0, Assumed0, Redundant0),
+    !.Constraints = constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
     apply_subst_to_constraint_list(Subst, Unproven0, Unproven),
     apply_subst_to_constraint_list(Subst, Assumed0, Assumed),
     Pred = (pred(_::in, C0::in, C::out) is det :-
         apply_subst_to_constraint_list(Subst, C0, C)
     ),
     map.map_values(Pred, Redundant0, Redundant),
-    !:Constraints = constraints(Unproven, Assumed, Redundant).
+    map.keys(Ancestors0, AncestorsKeys0),
+    map.values(Ancestors0, AncestorsValues0),
+    apply_subst_to_prog_constraint_list(Subst, AncestorsKeys0,
+        AncestorsKeys),
+    list.map(apply_subst_to_prog_constraint_list(Subst),
+        AncestorsValues0, AncestorsValues),
+    map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
+    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
 
 apply_rec_subst_to_constraints(Subst, !Constraints) :-
-    !.Constraints = constraints(Unproven0, Assumed0, Redundant0),
+    !.Constraints = constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
     apply_rec_subst_to_constraint_list(Subst, Unproven0, Unproven),
     apply_rec_subst_to_constraint_list(Subst, Assumed0, Assumed),
     Pred = (pred(_::in, C0::in, C::out) is det :-
         apply_rec_subst_to_constraint_list(Subst, C0, C)
     ),
     map.map_values(Pred, Redundant0, Redundant),
-    !:Constraints = constraints(Unproven, Assumed, Redundant).
+    map.keys(Ancestors0, AncestorsKeys0),
+    map.values(Ancestors0, AncestorsValues0),
+    apply_rec_subst_to_prog_constraint_list(Subst, AncestorsKeys0,
+        AncestorsKeys),
+    list.map(apply_rec_subst_to_prog_constraint_list(Subst),
+        AncestorsValues0, AncestorsValues),
+    map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
+    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
 
 %-----------------------------------------------------------------------------%
 

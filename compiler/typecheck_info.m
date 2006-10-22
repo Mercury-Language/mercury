@@ -424,7 +424,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         % constraint map now.
 
         HLDSTypeConstraints = constraints(HLDSUnivConstraints,
-            HLDSExistConstraints, _),
+            HLDSExistConstraints, _, _),
         list.foldl(update_constraint_map, HLDSUnivConstraints,
             ConstraintMap1, ConstraintMap2),
         list.foldl(update_constraint_map, HLDSExistConstraints,
@@ -830,7 +830,7 @@ type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
 
 write_type_assign_hlds_constraints(Constraints, TypeBindings, TypeVarSet,
         !IO) :-
-    Constraints = constraints(ConstraintsToProve, AssumedConstraints, _),
+    Constraints = constraints(ConstraintsToProve, AssumedConstraints, _, _),
     write_type_assign_constraints("&", AssumedConstraints,
         TypeBindings, TypeVarSet, no, !IO),
     write_type_assign_constraints("<=", ConstraintsToProve,
@@ -841,7 +841,7 @@ write_type_assign_hlds_constraints(Constraints, TypeBindings, TypeVarSet,
 
 type_assign_hlds_constraints_to_pieces(Constraints, TypeBindings, TypeVarSet)
         = Pieces1 ++ Pieces2 :-
-    Constraints = constraints(ConstraintsToProve, AssumedConstraints, _),
+    Constraints = constraints(ConstraintsToProve, AssumedConstraints, _, _),
     PiecesList1 = type_assign_constraints_to_pieces_list("&",
         AssumedConstraints, TypeBindings, TypeVarSet, no),
     PiecesList2 = type_assign_constraints_to_pieces_list("<=",

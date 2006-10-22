@@ -79,7 +79,6 @@
 module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
         Context, Status, !ModuleInfo, !Specs) :-
     module_info_get_class_table(!.ModuleInfo, Classes0),
-    module_info_get_superclass_table(!.ModuleInfo, SuperClasses0),
     list.length(Vars, ClassArity),
     ClassId = class_id(Name, ClassArity),
     Status = item_status(ImportStatus0, _),
@@ -183,10 +182,6 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
 
         (
             IsNewDefn = yes,
-            update_superclass_table(ClassId, Vars, VarSet, Constraints,
-                SuperClasses0, SuperClasses),
-
-            module_info_set_superclass_table(SuperClasses, !ModuleInfo),
 
                 % When we find the class declaration, make an
                 % entry for the instances.
@@ -392,27 +387,6 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
                 "no pred_or_func on mode declaration")
         )
     ).
-
-    % Insert an entry into the super class table for each super class of
-    % this class.
-    %
-:- pred update_superclass_table(class_id::in, list(tvar)::in, tvarset::in,
-    list(prog_constraint)::in, superclass_table::in, superclass_table::out)
-    is det.
-
-update_superclass_table(ClassId, Vars, VarSet, Constraints, !Supers) :-
-    list.foldl(update_superclass_table_2(ClassId, Vars, VarSet), Constraints,
-        !Supers).
-
-:- pred update_superclass_table_2(class_id::in, list(tvar)::in, tvarset::in,
-    prog_constraint::in, superclass_table::in, superclass_table::out) is det.
-
-update_superclass_table_2(ClassId, Vars, VarSet, Constraint, !Supers) :-
-    Constraint = constraint(SuperName, SuperTypes),
-    list.length(SuperTypes, SuperClassArity),
-    SuperClassId = class_id(SuperName, SuperClassArity),
-    SubClassDetails = subclass_details(SuperTypes, ClassId, Vars, VarSet),
-    multi_map.set(!.Supers, SuperClassId, SubClassDetails, !:Supers).
 
     % Go through the list of class methods, looking for
     % - functions without mode declarations: add a default mode

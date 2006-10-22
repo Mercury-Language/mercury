@@ -691,7 +691,6 @@ write_hlds(Indent, Module, !IO) :-
     module_info_get_inst_table(Module, InstTable),
     module_info_get_mode_table(Module, ModeTable),
     module_info_get_class_table(Module, ClassTable),
-    module_info_get_superclass_table(Module, SuperClassTable),
     module_info_get_instance_table(Module, InstanceTable),
     write_header(Indent, Module, !IO),
     globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
@@ -704,8 +703,6 @@ write_hlds(Indent, Module, !IO) :-
         write_types(Indent, TypeTable, !IO),
         io.write_string("\n", !IO),
         write_classes(Indent, ClassTable, !IO),
-        io.write_string("\n", !IO),
-        write_superclasses(Indent, SuperClassTable, !IO),
         io.write_string("\n", !IO),
         write_instances(Indent, InstanceTable, !IO),
         io.write_string("\n", !IO)
@@ -3422,55 +3419,6 @@ write_class_proc(hlds_class_proc(PredId, ProcId), !IO) :-
     io.write_string(", proc_id:", !IO),
     proc_id_to_int(ProcId, ProcInt),
     io.write_int(ProcInt, !IO),
-    io.write_char(')', !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred write_superclasses(int::in, superclass_table::in, io::di, io::uo)
-    is det.
-
-write_superclasses(Indent, SuperClassTable, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("%-------- Super Classes --------\n", !IO),
-    multi_map.to_assoc_list(SuperClassTable, SuperClassTableList),
-    io.write_list(SuperClassTableList, "\n\n", write_superclass(Indent), !IO),
-    io.nl(!IO).
-
-:- pred write_superclass(int::in, pair(class_id, list(subclass_details))::in,
-    io::di, io::uo) is det.
-
-write_superclass(Indent, ClassId - SubClassDetailsList, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
-    write_class_id(ClassId, !IO),
-    io.write_string(":\n", !IO),
-
-    io.write_list(SubClassDetailsList, "\n",
-        write_subclass_details(Indent, ClassId), !IO).
-
-:- pred write_subclass_details(int::in, class_id::in, subclass_details::in,
-    io::di, io::uo) is det.
-
-write_subclass_details(Indent, SuperClassId, SubClassDetails, !IO) :-
-    SubClassDetails = subclass_details(SuperClassVars, SubClassId,
-        SubClassVars, VarSet),
-
-    % Curry the varset for term_io.write_variable/4.
-    PrintVar = (pred(VarName::in, IO0::di, IO::uo) is det :-
-            term_io.write_variable(VarName, VarSet, IO0, IO)
-        ),
-    write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
-    SubClassId = class_id(SubSymName, _SubArity),
-    prog_out.write_sym_name(SubSymName, !IO),
-    io.write_char('(', !IO),
-    io.write_list(SubClassVars, ", ", PrintVar, !IO),
-    io.write_string(") <= ", !IO),
-
-    SuperClassId = class_id(SuperSymName, _SuperArity),
-    prog_out.write_sym_name(SuperSymName, !IO),
-    io.write_char('(', !IO),
-    io.write_list(SuperClassVars, ", ", mercury_output_type(VarSet, no), !IO),
     io.write_char(')', !IO).
 
 %-----------------------------------------------------------------------------%
