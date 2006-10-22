@@ -36,6 +36,7 @@
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module int.
+:- import_module svmap.
 :- import_module svmulti_map.
 :- import_module term.
 :- import_module varset.
@@ -919,7 +920,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
                             % constraints from the goal being checked, or
                             % universal constraints on the head).
 
-                redundant   :: redundant_constraints
+                redundant   :: redundant_constraints,
                             % Constraints that are known to be redundant.
                             % This includes constraints that have already been
                             % proved as well as constraints that are ancestors
@@ -927,6 +928,9 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
                             % constraints.  Not all such constraints are
                             % included, only those which may be used for
                             % the purposes of improvement.
+
+                ancestors   :: ancestor_constraints
+                            % Ancestors of assumed constraints.
             ).
 
     % Redundant constraints are partitioned by class, which helps us
@@ -934,6 +938,16 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
     %
 :- type redundant_constraints == multi_map(class_id, hlds_constraint).
 
+    % Constraints which are ancestors of assumed constraints, along with the
+    % list of constraints (following the class hierarchy) which leads to
+    % the assumed constraint.  The assumed constraint is the last item in the
+    % list.
+    %
+    % Note that if there are two possible lists for the same constraint, we
+    % always keep the shorter one.
+    %
+:- type ancestor_constraints == map(prog_constraint, list(prog_constraint)).
+ 
     % During type checking we fill in a constraint_map which gives
     % the constraint that corresponds to each identifier.  This is used
     % by the polymorphism translation to retrieve details of constraints.
@@ -1031,7 +1045,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
 :- implementation.
 
 empty_hlds_constraints(Constraints) :-
-    Constraints = constraints([], [], multi_map.init).
+    Constraints = constraints([], [], multi_map.init, map.init).
 
 init_hlds_constraint_list(ProgConstraints, Constraints) :-
     list.map(init_hlds_constraint, ProgConstraints, Constraints).
@@ -1066,7 +1080,9 @@ make_hlds_constraints(ClassTable, TVarSet, Unproven, Assumed, Constraints) :-
         Unproven, multi_map.init, Redundant0),
     list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
         Assumed, Redundant0, Redundant),
-    Constraints = constraints(Unproven, Assumed, Redundant).
+    list.foldl(update_ancestor_constraints(ClassTable, TVarSet),
+        Assumed, map.init, Ancestors),
+    Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
 
 make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalPath,
         Constraints) :-
@@ -1085,15 +1101,31 @@ make_hlds_constraint_list_2([P | Ps], T, G, N, [H | Hs]) :-
     make_hlds_constraint_list_2(Ps, T, G, N + 1, Hs).
 
 merge_hlds_constraints(ConstraintsA, ConstraintsB, Constraints) :-
-    ConstraintsA = constraints(UnprovenA, AssumedA, RedundantA),
-    ConstraintsB = constraints(UnprovenB, AssumedB, RedundantB),
+    ConstraintsA = constraints(UnprovenA, AssumedA, RedundantA, AncestorsA),
+    ConstraintsB = constraints(UnprovenB, AssumedB, RedundantB, AncestorsB),
     list.append(UnprovenA, UnprovenB, Unproven),
     list.append(AssumedA, AssumedB, Assumed),
     multi_map.merge(RedundantA, RedundantB, Redundant),
-    Constraints = constraints(Unproven, Assumed, Redundant).
+    map.union(shortest_list, AncestorsA, AncestorsB, Ancestors),
+    Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
+
+:- pred shortest_list(list(T)::in, list(T)::in, list(T)::out) is det.
+
+shortest_list(As, Bs, Cs) :-
+    ( is_shorter(As, Bs) ->
+        Cs = As
+    ;
+        Cs = Bs
+    ).
+
+:- pred is_shorter(list(T)::in, list(T)::in) is semidet.
+
+is_shorter([], _).
+is_shorter([_ | As], [_ | Bs]) :-
+    is_shorter(As, Bs).
 
 retrieve_prog_constraints(Constraints, ProgConstraints) :-
-    Constraints = constraints(Unproven, Assumed, _),
+    Constraints = constraints(Unproven, Assumed, _, _),
     retrieve_prog_constraint_list(Unproven, UnivProgConstraints),
     retrieve_prog_constraint_list(Assumed, ExistProgConstraints),
     ProgConstraints = constraints(UnivProgConstraints, ExistProgConstraints).
@@ -1208,26 +1240,65 @@ search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath, Count,
 
 %-----------------------------------------------------------------------------%
 
-:- interface.
+    % Search the superclasses of the given constraint for a potential proof,
+    % and add it to the map if no better proof exists already.
+    %
+:- pred update_ancestor_constraints(class_table::in, tvarset::in,
+    hlds_constraint::in, ancestor_constraints::in, ancestor_constraints::out)
+    is det.
 
-:- type subclass_details
-    --->    subclass_details(
-                subclass_types      :: list(mer_type),
-                                    % Arguments of the superclass constraint.
+update_ancestor_constraints(ClassTable, TVarSet, HLDSConstraint, !Ancestors) :-
+    retrieve_prog_constraint(HLDSConstraint, Constraint),
+    update_ancestor_constraints_2(ClassTable, TVarSet, [], Constraint,
+        !Ancestors).
 
-                subclass_id         :: class_id,
-                                    % Name of the subclass.
+:- pred update_ancestor_constraints_2(class_table::in, tvarset::in,
+    list(prog_constraint)::in, prog_constraint::in,
+    ancestor_constraints::in, ancestor_constraints::out) is det.
 
-                subclass_tvars      :: list(tvar),
-                                    % Variables of the subclass.
+update_ancestor_constraints_2(ClassTable, TVarSet, Descendants0, Constraint,
+        !Ancestors) :-
+    Constraint = constraint(Class, Args),
+    list.length(Args, Arity),
+    ClassId = class_id(Class, Arity),
+    map.lookup(ClassTable, ClassId, ClassDefn),
 
-                subclass_tvarset    :: tvarset
-                                    % The names of these vars.
-            ).
+    % We can ignore the resulting tvarset, since any new variables
+    % will become bound when the arguments are bound. (This follows
+    % from the fact that constraints on class declarations can only use
+    % variables that appear in the head of the declaration.)
 
-    % I'm sure there's a very clever way of doing this with graphs
-    % or relations...
-:- type superclass_table == multi_map(class_id, subclass_details).
+    tvarset_merge_renaming(TVarSet, ClassDefn ^ class_tvarset, _, Renaming),
+    apply_variable_renaming_to_prog_constraint_list(Renaming,
+        ClassDefn ^ class_supers, RenamedSupers),
+    apply_variable_renaming_to_tvar_list(Renaming, ClassDefn ^ class_vars,
+        RenamedParams),
+    map.from_corresponding_lists(RenamedParams, Args, Subst),
+    apply_subst_to_prog_constraint_list(Subst, RenamedSupers, Supers),
+
+    Descendants = [Constraint | Descendants0],
+    list.foldl(update_ancestor_constraints_3(ClassTable, TVarSet, Descendants),
+        Supers, !Ancestors).
+
+:- pred update_ancestor_constraints_3(class_table::in, tvarset::in,
+    list(prog_constraint)::in, prog_constraint::in,
+    ancestor_constraints::in, ancestor_constraints::out) is det.
+
+update_ancestor_constraints_3(ClassTable, TVarSet, Descendants, Constraint,
+        !Ancestors) :-
+    (
+        map.search(!.Ancestors, Constraint, OldDescendants),
+        is_shorter(OldDescendants, Descendants)
+    ->
+        % We don't want to update the ancestors because we already have a
+        % better path.  The same will apply for all superclasses, so we
+        % don't traverse any further.
+        true
+    ;
+        svmap.set(Constraint, Descendants, !Ancestors),
+        update_ancestor_constraints_2(ClassTable, TVarSet, Descendants,
+            Constraint, !Ancestors)
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

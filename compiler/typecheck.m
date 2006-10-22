@@ -2671,7 +2671,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
 
 project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
         !Constraints) :-
-    !.Constraints = constraints(Unproven0, Assumed, Redundant0),
+    !.Constraints = constraints(Unproven0, Assumed, Redundant0, Ancestors),
 
     % Project the constraints down onto the list of tvars in the call.
     list.filter(project_constraint(CallTVars), Unproven0, NewUnproven0),
@@ -2680,7 +2680,7 @@ project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
     update_redundant_constraints(ClassTable, TVarSet, NewUnproven,
         Redundant0, Redundant),
     list.append(NewUnproven, Unproven0, Unproven),
-    !:Constraints = constraints(Unproven, Assumed, Redundant).
+    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
 
 :- pred project_constraint(set(tvar)::in, hlds_constraint::in) is semidet.
 

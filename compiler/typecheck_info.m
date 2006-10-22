@@ -358,7 +358,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         % need to be put in the constraint map now.
         %
         HLDSTypeConstraints = constraints(HLDSUnivConstraints,
-            HLDSExistConstraints, _),
+            HLDSExistConstraints, _, _),
         list.foldl(update_constraint_map, HLDSUnivConstraints,
             ConstraintMap1, ConstraintMap2),
         list.foldl(update_constraint_map, HLDSExistConstraints,
@@ -616,7 +616,7 @@ write_type_assign_types([Var | Vars], VarSet, VarTypes, TypeBindings,
     tsubst::in, tvarset::in, io::di, io::uo) is det.
 
 write_type_assign_constraints(Constraints, TypeBindings, TypeVarSet, !IO) :-
-    Constraints = constraints(ConstraintsToProve, AssumedConstraints, _),
+    Constraints = constraints(ConstraintsToProve, AssumedConstraints, _, _),
     write_type_assign_constraints("&", AssumedConstraints,
         TypeBindings, TypeVarSet, no, !IO),
     write_type_assign_constraints("<=", ConstraintsToProve,

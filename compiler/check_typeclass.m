@@ -832,7 +832,6 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    module_info_get_superclass_table(ModuleInfo, SuperClassTable),
 
     % Build a suitable constraint context for checking the instance.
     % To do this, we assume any constraints on the instance declaration
@@ -851,11 +850,9 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
     % Try to reduce the superclass constraints, using the declared instance
     % constraints and the usual context reduction rules.
     map.init(ConstraintMap0),
-    typeclasses.reduce_context_by_rule_application(ClassTable,
-        InstanceTable, SuperClassTable, ClassVars, TypeSubst, _,
-        InstanceVarSet1, InstanceVarSet2,
-        Proofs0, Proofs1, ConstraintMap0, _,
-        Constraints0, Constraints),
+    typeclasses.reduce_context_by_rule_application(ClassTable, InstanceTable,
+        ClassVars, TypeSubst, _, InstanceVarSet1, InstanceVarSet2,
+        Proofs0, Proofs1, ConstraintMap0, _, Constraints0, Constraints),
     UnprovenConstraints = Constraints ^ unproven,
 
     (
