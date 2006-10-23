@@ -264,7 +264,8 @@ doc: scripts util
 	+cd doc && $(SUBDIR_MMAKE)
 
 .PHONY: slice
-slice: dep_slice
+slice: dep_slice scripts util boehm_gc runtime library \
+		mdbcomp browser trace
 	+cd slice && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
