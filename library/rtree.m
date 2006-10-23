@@ -1,4 +1,4 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006 The University of Melbourne.
@@ -10,15 +10,16 @@
 % Main author: gjd.
 % Stability: low.
 % 
-% This file provides a region tree (R-tree) ADT.  An R-tree associates
+% This module provides a region tree (R-tree) ADT.  A region tree associates
 % values with regions in some space, e.g. rectangles in the 2D plane, or
-% bounding spheres in 3D space.  R-trees accept spatial queries, e.g. a
+% bounding spheres in 3D space.  Region trees accept spatial queries, e.g. a
 % typical usage is "find all pubs within a 2km radius".
 % 
-% This module provides a region(K) typeclass that allows the user to
+% This module also provides the typeclass region(K) which allows the user to
 % define new regions and spaces.  Three "builtin" instances for region(K)
-% are provided: region(interval), region(box) and region(box3d) corresponding
-% to "square" regions in 1, 2 and 3 dimensional space respectively.
+% are provided: region(interval), region(box) and region(box3d)
+% corresponding to "square" regions in one, two and three dimensional spaces
+% respectively.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -34,31 +35,33 @@
 
 :- typeclass region(K) where [
 
-        % Tests whether two regions intersect.
+        % Succeeds iff two regions intersect.
         %
     pred intersects(K::in, K::in) is semidet,
 
-        % Tests whether the first region is contained within the second.
+        % Succeeds iff the first region is contained within the second.
         %
     pred contains(K::in, K::in) is semidet,
 
-        % Computes the "size" of a region.
-        % e.g. for a 2D box, the "size" is equivalent to area.
+        % Returns the "size" of a region.
+        % e.g. for a two dimensional box one possible measure of "size"
+        %      would be the area.
         %
     func size(K) = float,
 
-        % Computes a bounding region that contains both input regions.
-        % The resulting region should be as small as possible.
-        % 
+        % Return a region that contains both input regions.
+        % The region returned should be minimal region that contains
+        % both input regions.
+        %
     func bounding_region(K, K) = K,
 
         % Computes the size of the bounding region returned by
         % bounding_region/2, i.e.
         %
         % bounding_region_size(K1, K2) = size(bounding_region(K1, K2)).
-        %
-        % Lazy programmers can use this definition, however usually a
-        % better implementation can be found, e.g. for intervals:
+        % 
+        % While the above definition would suffice, a more efficient 
+        % implementation often exists, e.g. for intervals:
         % 
         % bounding_region_size(interval(X0, X1), interval(Y0, Y1)) = 
         %       max(X1, Y1) - min(X0, Y0).
@@ -75,19 +78,19 @@
     %
 :- func rtree.init = (rtree(K, V)::uo) is det <= region(K).
 
-    % Check whether an rtree is empty.
+    % Succeeds iff the given rtree is empty.
     % 
 :- pred rtree.is_empty(rtree(K, V)::in) is semidet.
 
     % Insert a new key and corresponding value into an rtree.
     %
 :- func rtree.insert(K, V, rtree(K, V)) = rtree(K, V) <= region(K).
-:- pred rtree.insert(K::in, V::in, rtree(K, V)::in, rtree(K, V)::out) is det
-    <= region(K).
+:- pred rtree.insert(K::in, V::in, rtree(K, V)::in, rtree(K, V)::out)
+    is det <= region(K).
 
     % Delete a key-value pair from an rtree.
-    % Assumes that K is either the key for V, or is contained in the key for
-    % V.
+    % Assumes that K is either the key for V, or is contained in the key
+    % for V.
     %
     % Fails if the key-value pair is not in the tree.
     %
@@ -104,10 +107,10 @@
 
     % search_general(KTest, VTest, T) = V.
     %
-    % Search for all values V with associated keys K that satisfy 
-    % KTest(K) /\ VTest(V).  The search assumes that for all K1, K2 such
-    % that K1 contains K2, then if KTest(K2) holds we have that KTest(K1) also
-    % holds.
+    % Search for all values V with associated keys K that satisfy
+    % KTest(K) /\ VTest(V).  The search assumes that for all K1, K2
+    % such that K1 contains K2, then if KTest(K2) holds we have that
+    % KTest(K1) also holds.
     %
     % We have that:
     %
@@ -115,11 +118,11 @@
     %       <=> search_general(intersects(K), true, T, Vs)
     %
     %   search_contains(T, K, Vs)
-    %       <=> search_general(contains(K),true,T,Vs)
+    %       <=> search_general(contains(K), true, T, Vs)
     %
 :- func rtree.search_general(pred(K)::in(pred(in) is semidet),
-    pred(V)::in(pred(in) is semidet), rtree(K, V)::in)
-    = (list(V)::out) is det.
+    pred(V)::in(pred(in) is semidet), rtree(K, V)::in) = (list(V)::out)
+    is det.
 
     % search_first(KTest, VTest, Max, T, V, L).
     %
@@ -132,7 +135,7 @@
     % K1 contains K2, then if KTest(K2, L2) holds we have that 
     % KTest(K1, L1) holds with L2 >= L1.
     %
-    % If there exists multiple key-value pairs which satisfy the above 
+    % If there exist multiple key-value pairs that satisfy the above 
     % conditions, then one of the candidates is chosen arbitrarily. 
     % 
 :- pred rtree.search_first(pred(K, L), pred(V, L), rtree(K, V), L, V, L).
@@ -158,32 +161,39 @@
 :- pred rtree.fold(pred(K, V, A, A), rtree(K, V), A, A).
 :- mode rtree.fold(pred(in, in, in, out) is det, in, in, out) is det.
 :- mode rtree.fold(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode rtree.fold(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode rtree.fold(pred(in, in, in, out) is semidet, in, in, out)
+    is semidet.
 
     % Apply a transformation predicate to all the values in an rtree.
     %
 :- pred rtree.map_values(pred(K, V, W), rtree(K, V), rtree(K, W)).
 :- mode rtree.map_values(pred(in, in, out) is det, in, out) is det.
-:- mode rtree.map_values(pred(in, in, out) is semidet, in, out) is semidet.
+:- mode rtree.map_values(pred(in, in, out) is semidet, in, out)
+    is semidet.
 
 %---------------------------------------------------------------------------%
 %
-% Predefined regions
+% Pre-defined regions
 %
    
     % An interval type represented as interval(Min, Max).
     %
-:- type interval ---> interval(float, float).
+:- type interval
+    --->    interval(float, float).
+    
+    % A 2D axis aligned box represented as box(XMin, XMax, YMin, YMax).
+    % 
+:- type box
+    --->    box(float, float, float, float).
+
+    % A 3D axis aligned box represented as
+    % box(XMin, XMax, YMin, YMax, ZMin, ZMax).
+    % 
+:- type box3d
+    --->    box3d(float, float, float, float, float, float).
+
 :- instance region(interval).
-
-    % A 2D axis aligned box represented as box(XMin,XMax,YMin,YMax).
-    % 
-:- type box ---> box(float, float, float, float).
 :- instance region(box).
-
-    % A 3D axis aligned box represented as box(XMin,XMax,YMin,YMax,ZMin,ZMax).
-    % 
-:- type box3d ---> box3d(float, float, float, float, float, float).
 :- instance region(box3d).
 
 %---------------------------------------------------------------------------%
@@ -195,6 +205,19 @@
 :- import_module int.
 :- import_module require.
 
+%---------------------------------------------------------------------------%
+% 
+% The implementation here is based on:
+%
+% A. Guttman, "R-trees: a dynamic index structure for spatial searching,"
+% in Proc. ACM-SIGMOD Int. Conf. Management of Data, Boston, MA, 1984,
+% pp.47--54.
+%
+% NOTES
+% -----
+% * What the paper refers to as "rectangles", we refer to as "regions".
+% * What the paper refers to as "area", we refer to as "size".
+% 
 %---------------------------------------------------------------------------%
 
     % The empty rtree and singleton rtrees are treated as a special case.
@@ -224,6 +247,10 @@
     bound(four(ground, ground, ground, ground, ground, ground, ground, 
         ground)).
 
+:- type min_of_two_result
+    --->    min2_first
+    ;       min2_second.
+
 :- type min_of_three_result 
     --->    min3_first 
     ;       min3_second 
@@ -237,21 +264,22 @@
 
 %-----------------------------------------------------------------------------%
 %
-% init
+% Creation
 %
 
 rtree.init = empty.
 
 %-----------------------------------------------------------------------------%
 %
-% is_empty
+% Test for emptiness
 %
 
 rtree.is_empty(empty).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
-% insert
+% Insertion
 %
 
 rtree.insert(K, V, !.Tree) = !:Tree :-
@@ -273,14 +301,16 @@ rtree.insert(K, V, rtree(!.T), rtree(!:T)) :-
 insert_2(leaf(_), _, _, _) :-
     error("insert: leaf unexpected").
 insert_2(two(K0, T0, K1, T1), K, V, T) :-
-    Result = include2(K, K0, K1), 
-    ( Result = min3_first ->
+    Result = choose_subtree(K, K0, K1), 
+    ( 
+        Result = min2_first,
         insert_and_split_child2(K0, T0, K1, T1, K, V, T)
     ;
+        Result = min2_second,
         insert_and_split_child2(K1, T1, K0, T0, K, V, T)
     ).
 insert_2(three(K0, T0, K1, T1, K2, T2), K, V, T) :-
-    Result = include3(K, K0, K1, K2), 
+    Result = choose_subtree(K, K0, K1, K2), 
     (
         Result = min3_first, 
         insert_and_split_child3(K0, T0, K1, T1, K2, T2, K, V, T)
@@ -294,43 +324,82 @@ insert_2(three(K0, T0, K1, T1, K2, T2), K, V, T) :-
 insert_2(Node, K, V, T) :-
     Node = four(_, _, _, _, _, _, _, _), 
     split_4_node(Node, K0, T0, K1, T1), 
-    NRT = two(K0, T0, K1, T1), 
-    insert_2(NRT, K, V, T).
+    insert_2(two(K0, T0, K1, T1), K, V, T).
 
-    % Decides which subtree to insert value with K0.
+%-----------------------------------------------------------------------------%
+%
+% Choosing what subtree to insert a new node into
+%
+ 
+% The following functions choose a subtree into which to insert a new
+% Key-Value pair.  There are two versions, one for when we are inserting into
+% two-nodes and another for when we are inserting into three-nodes.
+% (Four-nodes should be split when they are encountered so we will never need
+% to insert into them.)
+%
+% In either case the algorithm is the same (c.f. the ChooseLeaf algorithm in
+% the paper by Guttman).
+%
+% We insert the new Value into the subtree whose associated region needs the
+% least enlargement to include Key.  Ties are resolved in favour of the
+% subtree with the region of smallest size.
+
+    % choose_subtree(Key, KA, KB).
     %
-:- func include2(K, K, K) = min_of_three_result <= region(K).
-
-include2(K0, K1, K2) = Result :-
-    A1 = size(K1), 
-    A2 = size(K2), 
-    A01 = bounding_region_size(K0, K1), 
-    A02 = bounding_region_size(K0, K2), 
-    D1 = A01 - A1, 
-    D2 = A02 - A2, 
-    include_min(D1, D2, A1, A2, min3_first, min3_second, Result).
-
-    % Decides which subtree to insert value with K0.
+    % Returns min2_first if we should insert the value associated with Key
+    % into the subtree associated with KA and min2_second if we should 
+    % insert it into the subtree associated with KB.
     %
-:- func include3(K, K, K, K) = min_of_three_result <= region(K).
+:- func choose_subtree(K, K, K) = min_of_two_result <= region(K).
 
-include3(K0, K1, K2, K3) = Result :- 
-    A1 = size(K1), 
-    A2 = size(K2), 
-    A3 = size(K3), 
-    A01 = bounding_region_size(K0, K1), 
-    A02 = bounding_region_size(K0, K2), 
-    A03 = bounding_region_size(K0, K3), 
-    D1 = A01 - A1, 
-    D2 = A02 - A2, 
-    D3 = A03 - A3, 
-    include_min(D1, D2, A1, A2, min3_first, min3_second, Result0), 
-    ( Result0 = min3_first ->
-        include_min(D1, D3, A1, A3, min3_first, min3_third, Result)
+choose_subtree(Key, KA, KB) = Result :-
+    SizeA = size(KA), 
+    SizeB = size(KB),
+    %
+    % Compute the size of each of KA and KB enlarged to include Key.
+    %
+    EnlargedSizeA = bounding_region_size(Key, KA), 
+    EnlargedSizeB = bounding_region_size(Key, KB), 
+    IncreaseForA  = EnlargedSizeA - SizeA,
+    IncreaseForB  = EnlargedSizeB - SizeB,
+    ( IncreaseForA < IncreaseForB ->
+        Result = min2_first
+    ; IncreaseForA > IncreaseForB ->
+        Result = min2_second
+    ; SizeA =< SizeB ->
+        Result = min2_first
     ;
-        include_min(D2, D3, A2, A3, min3_second, min3_third, Result)
+        Result = min2_second
     ).
 
+    % Decides which subtree to insert value with Key.
+    %
+:- func choose_subtree(K, K, K, K) = min_of_three_result <= region(K).
+
+choose_subtree(Key, KA, KB, KC) = Result :- 
+    AreaA = size(KA), 
+    AreaB = size(KB), 
+    AreaC = size(KC), 
+    EnlargedAreaA = bounding_region_size(Key, KA),
+    EnlargedAreaB = bounding_region_size(Key, KB),
+    EnlargedAreaC = bounding_region_size(Key, KC),
+    IncreaseForA = EnlargedAreaA - AreaA,
+    IncreaseForB = EnlargedAreaB - AreaB,
+    IncreaseForC = EnlargedAreaC - AreaC,
+    include_min(IncreaseForA, IncreaseForB, AreaA, AreaB,
+        min3_first, min3_second, Result0), 
+    ( Result0 = min3_first ->
+        include_min(IncreaseForA, IncreaseForC, AreaA, AreaC,
+            min3_first, min3_third, Result)
+    ;
+        include_min(IncreaseForB, IncreaseForC, AreaA, AreaB,
+            min3_second, min3_third, Result)
+    ).
+
+    % D1 and D2 are the enlargement to the two rectangles caused by adding
+    % the new key.  We choose the Key that causes the smallest enlargement.
+    % In the event of a tie with choose the Key with the smallest area.
+    %
 :- pred include_min(float::in, float::in, float::in, float::in,
     min_of_three_result::in, min_of_three_result::in,
     min_of_three_result::out) is det.
@@ -345,6 +414,8 @@ include_min(D1, D2, A1, A2, R1, R2, R3) :-
     ;
         R3 = R2
     ).
+
+%-----------------------------------------------------------------------------%
     
     % Split the child (if a 4 node) and insert into T0.
     %
@@ -352,24 +423,30 @@ include_min(D1, D2, A1, A2, R1, R2, R3) :-
     rtree_2(K, V)::in, K::in, V::in, rtree_2(K, V)::out) is det <= region(K).
 
 insert_and_split_child2(K0, T0, K1, T1, K, V, T) :-
-    ( T0 = leaf(_), 
+    ( 
+        T0 = leaf(_), 
         T = three(K0, T0, K1, T1, K, leaf(V))
-    ; T0 = two(_, _, _, _), 
+    ; 
+        T0 = two(_, _, _, _), 
         NK0 = bounding_region(K, K0), 
         insert_2(T0, K, V, NT0), 
         T = two(NK0, NT0, K1, T1)
-    ; T0 = three(_, _, _, _, _, _), 
+    ; 
+        T0 = three(_, _, _, _, _, _), 
         NK0 = bounding_region(K, K0), 
         insert_2(T0, K, V, NT0), 
         T = two(NK0, NT0, K1, T1)
-    ; T0 = four(_, _, _, _, _, _, _, _), 
+    ; 
+        T0 = four(_, _, _, _, _, _, _, _), 
         split_4_node(T0, K2, T2, K3, T3), 
-        Result = include2(K, K2, K3), 
-        ( Result = min3_first ->
+        Result = choose_subtree(K, K2, K3), 
+        ( 
+            Result = min2_first,
             K4 = bounding_region(K, K2), 
             insert_2(T2, K, V, T4), 
             T = three(K1, T1, K3, T3, K4, T4)
         ;
+            Result = min2_second,
             K4 = bounding_region(K, K3), 
             insert_2(T3, K, V, T4), 
             T = three(K1, T1, K2, T2, K4, T4)
@@ -399,19 +476,26 @@ insert_and_split_child3(K0, T0, K1, T1, K2, T2, K, V, T) :-
     ;
         T0 = four(_, _, _, _, _, _, _, _), 
         split_4_node(T0, K3, T3, K4, T4), 
-        Result = include2(K, K2, K3), 
-        ( Result = min3_first ->
+        Result = choose_subtree(K, K2, K3), 
+        ( 
+            Result = min2_first,
             K5 = bounding_region(K, K3), 
             insert_2(T3, K, V, T5), 
             T = four(K1, T1, K2, T2, K4, T4, K5, T5)
         ;
+            Result = min2_second,
             K5 = bounding_region(K, K4), 
             insert_2(T4, K, V, T5), 
             T = four(K1, T1, K2, T2, K3, T3, K5, T5)
         )
     ).
-    
-    % Split a 4 node into two 2 nodes.
+
+%-----------------------------------------------------------------------------%
+%
+% Node splitting
+%
+
+    % Split a 4-node into two 2-nodes.
     % Attempts to minimise the size of the resulting keys.
     %
 :- pred split_4_node(rtree_2(K, V)::in(four), K::out, rtree_2(K, V)::out,
@@ -461,60 +545,66 @@ split_4_node(Four, K4, T4, K5, T5) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
-% delete
+% Deletion
 %    
-
-    % When deleting from an rtree, we may need to collect some subtrees that
-    % need to be reinserted.
+    
+    % When deleting from an rtree we may need to collect some subtrees that
+    % need to be reinserted.  These subtrees are called orphan entries.
     %
-:- type deleted(K, V) 
-    --->    deleted(K, rtree_2(K, V)).
+:- type orphan(K, V)
+    --->    orphan(K, rtree_2(K, V)).
 
-:- type deleteds(K, V) == list(deleted(K, V)).
+:- type orphans(K, V) == list(orphan(K, V)).
 
 :- type delete_info(K, V) 
-    --->    deleting(deleteds(K, V))
-    ;       finished(int, deleteds(K, V)).
+    --->    deleting(orphans(K, V))
+    ;       finished(int, orphans(K, V)).
 
 rtree.delete(K, V, one(K0, V), empty) :-
     contains(K, K0).
-rtree.delete(K, V, rtree(T0), T) :-
-    delete_2(T0, K, V, 1, _, DT, DI), 
-    (
-        DI = finished(D, DLs), 
-        reinsert_deleted_subtrees(DLs, D, DT, T1), 
-        T = rtree(T1)
-    ;
-        DI = deleting(DLs), 
-        %
-        % We are still deleting and we have reached the root node.  This 
-        % means the path to the deleted leaf contained all 2-nodes 
-        % (including the root-node).
-        %
+rtree.delete(K, V, !Tree) :-
+    some [!T] (
+        !.Tree = rtree(!:T),
+        delete_2(!.T, K, V, 1, _, !:T, Info), 
         (
-            DLs = [deleted(NK, NT) | DLs0], 
+            Info = finished(Depth, Orphans), 
+            reinsert_deleted_subtrees(Orphans, Depth, !T), 
+            !:Tree = rtree(!.T)
+        ;
+            Info = deleting(Orphans), 
             %
-            % Here we detect the special case that the root was a 2-node
-            % with two leaves (& one was deleted).  Thus we need to drop 
-            % back to a 1-node.
+            % We are still deleting and we have reached the root node.  This 
+            % means the path to the deleted leaf contained all 2-nodes 
+            % (including the root-node).
             %
-            ( NT = leaf(NV) ->
-                ( DLs0 = [] ->
-                    T = one(NK, NV)
-                ; DLs0 = [deleted(NK1, NT1)] ->
-                    T1 = two(NK, NT, NK1, NT1), 
-                    T = rtree(T1)
+            (
+                Orphans = [ Orphan | Orphans0], 
+                Orphan  = orphan(OrphanKey, OrphanTree),
+                %
+                % Here we detect the special case that the root was a 2-node
+                % with two leaves (& one was deleted).  Thus we need to drop 
+                % back to a 1-node.
+                %
+                ( OrphanTree = leaf(OrphanValue) ->
+                    ( Orphans0 = [] ->
+                        !:Tree = one(OrphanKey, OrphanValue)
+                    ; Orphans0 = [orphan(NextOrphanKey, NextOrphanTree)] ->
+                        !:T = two(OrphanKey, OrphanTree, NextOrphanKey,
+                            NextOrphanTree), 
+                        !:Tree = rtree(!.T)
+                    ;
+                        error("delete: unbalanced rtree")
+                    )
                 ;
-                    error("delete: unbalanced rtree")
+                    reinsert_deleted_subtrees(Orphans0, 1, OrphanTree, !:T), 
+                    !:Tree = rtree(!.T)
                 )
             ;
-                reinsert_deleted_subtrees(DLs0, 1, NT, T1), 
-                T = rtree(T1)
+                Orphans = [], 
+                error("delete: expected delete info")
             )
-        ;
-            DLs = [], 
-            error("delete: expected delete info")
         )
     ).
     
@@ -524,78 +614,86 @@ rtree.delete(K, V, rtree(T0), T) :-
 :- pred delete_2(rtree_2(K, V)::in, K::in, V::in, int::in, K::out,
     rtree_2(K, V)::out, delete_info(K, V)::out) is semidet <= region(K).
 
-delete_2(T, K, V, _, DK, DT, DeleteInfo) :-
-    T = leaf(V), 
-    DK = K, 
-    DT = T, 
-    DeleteInfo = deleting([]).
-delete_2(two(K0, T0, K1, T1), K, V, D, DK, DT, DeleteInfo) :-
-    ( try_deletion2(K0, T0, K1, T1, K, V, D, DK0, DT0, DI0) ->
+delete_2(leaf(V), K, V, _, K, leaf(V), deleting([])).
+delete_2(two(K0, T0, K1, T1), K, V, Depth, DK, DT, Info) :-
+    ( try_deletion2(K0, T0, K1, T1, K, V, Depth, DK0, DT0, Info0) ->
         DK = DK0, 
         DT = DT0, 
-        DeleteInfo = DI0
+        Info = Info0
     ;
-        try_deletion2(K1, T1, K0, T0, K, V, D, DK, DT, DeleteInfo)
+        try_deletion2(K1, T1, K0, T0, K, V, Depth, DK, DT, Info)
     ).
-delete_2(three(K0, T0, K1, T1, K2, T2), K, V, D, DK, DT, DeleteInfo) :-
-    ( try_deletion3(K0, T0, K1, T1, K2, T2, K, V, D, DK0, DT0, DI0) ->
+delete_2(three(K0, T0, K1, T1, K2, T2), K, V, Depth, DK, DT, Info) :-
+    ( try_deletion3(K0, T0, K1, T1, K2, T2, K, V, Depth, DK0, DT0, Info0) ->
         DK = DK0, 
         DT = DT0, 
-        DeleteInfo = DI0
-    ; try_deletion3(K1, T1, K0, T0, K2, T2, K, V, D, DK0, DT0, DI0) ->
+        Info = Info0
+    ; try_deletion3(K1, T1, K0, T0, K2, T2, K, V, Depth, DK0, DT0, Info0) ->
         DK = DK0, 
         DT = DT0, 
-        DeleteInfo = DI0
+        Info = Info0
     ;
-        try_deletion3(K2, T2, K0, T0, K1, T1, K, V, D, DK, DT, DeleteInfo)
+        try_deletion3(K2, T2, K0, T0, K1, T1, K, V, Depth, DK, DT, Info)
     ).
-delete_2(four(K0, T0, K1, T1, K2, T2, K3, T3), K, V, D, DK, DT, DI) :-
-    ( try_deletion4(K0, T0, K1, T1, K2, T2, K3, T3, K, V, D, DK0, DT0, DI0) ->
+delete_2(four(K0, T0, K1, T1, K2, T2, K3, T3), K, V, Depth, DK, DT, Info) :-
+    (
+        try_deletion4(K0, T0, K1, T1, K2, T2, K3, T3, K, V, Depth, DK0, DT0,
+            Info0)
+    ->
         DK = DK0, 
         DT = DT0, 
-        DI = DI0
-    ; try_deletion4(K1, T1, K0, T0, K2, T2, K3, T3, K, V, D, DK0, DT0, DI0) ->
-        DK = DK0, 
-        DT = DT0, 
-        DI = DI0
-    ; try_deletion4(K2, T2, K0, T0, K1, T1, K3, T3, K, V, D, DK0, DT0, DI0) ->
-        DK = DK0, 
-        DT = DT0, 
-        DI = DI0
+        Info = Info0
     ;
-        try_deletion4(K3, T3, K0, T0, K1, T1, K2, T2, K, V, D, DK, DT, DI)
+        try_deletion4(K1, T1, K0, T0, K2, T2, K3, T3, K, V, Depth, DK0, DT0,
+            Info0)
+    ->
+        DK = DK0, 
+        DT = DT0, 
+        Info = Info0
+    ;
+        try_deletion4(K2, T2, K0, T0, K1, T1, K3, T3, K, V, Depth, DK0, DT0,
+            Info0)
+    ->
+        DK = DK0, 
+        DT = DT0, 
+        Info = Info0
+    ;
+        try_deletion4(K3, T3, K0, T0, K1, T1, K2, T2, K, V, Depth, DK, DT,
+            Info)
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred try_deletion2(K::in, rtree_2(K, V)::in, K::in, rtree_2(K, V)::in,
     K::in, V::in, int::in, K::out, rtree_2(K, V)::out, delete_info(K, V)::out)
     is semidet <= region(K).
 
-try_deletion2(K0, T0, K1, T1, K, V, D, DK, DT, DI) :-
+try_deletion2(K0, T0, K1, T1, K, V, Depth, DK, DT, Info) :-
     contains(K, K0), 
-    delete_2(T0, K, V, D + 1, DK0, DT0, DI0), 
+    delete_2(T0, K, V, Depth + 1, DK0, DT0, Info0), 
     (
-        DI0 = deleting(DLs), 
-        Del = deleted(K1, T1), 
-        DI = deleting([Del | DLs]), 
-        DT = DT0, 
-        DK = K
+        Info0 = deleting(DLs), 
+        Del   = orphan(K1, T1), 
+        Info  = deleting([Del | DLs]), 
+        DT    = DT0, 
+        DK    = K
     ;
-        DI0 = finished(_, _), 
-        DT = two(DK0, DT0, K1, T1), 
-        DK = bounding_region(K1, DK0), 
-        DI = DI0
+        Info0 = finished(_, _), 
+        DT    = two(DK0, DT0, K1, T1), 
+        DK    = bounding_region(K1, DK0), 
+        Info  = Info0
     ).
 
 :- pred try_deletion3(K::in, rtree_2(K, V)::in, K::in, rtree_2(K, V)::in,
     K::in, rtree_2(K, V)::in, K::in, V::in, int::in, K::out,
     rtree_2(K, V)::out, delete_info(K, V)::out) is semidet <= region(K).
 
-try_deletion3(K0, T0, K1, T1, K2, T2, K, V, D, DK, DT, DI) :-
+try_deletion3(K0, T0, K1, T1, K2, T2, K, V, Depth, DK, DT, DI) :-
     contains(K, K0), 
-    delete_2(T0, K, V, D + 1, DK0, DT0, DI0), 
+    delete_2(T0, K, V, Depth + 1, DK0, DT0, DI0), 
     (
         DI0 = deleting(DLs), 
-        DI = finished(D + 1, DLs), 
+        DI = finished(Depth + 1, DLs), 
         DT = two(K1, T1, K2, T2), 
         DK = bounding_region(K1, K2)
     ;
@@ -628,19 +726,21 @@ try_deletion4(K0, T0, K1, T1, K2, T2, K3, T3, K, V, D, DK, DT, DI) :-
         DK  = bounding_region(TK, K23)
     ).
 
+%-----------------------------------------------------------------------------%
+    
     % Given a list of deleted trees (with their bounding regions), 
     % (re)insert the trees back into the main tree at the specified depth.
     %
-:- pred reinsert_deleted_subtrees(deleteds(K, V)::in, int::in,
+:- pred reinsert_deleted_subtrees(orphans(K, V)::in, int::in,
     rtree_2(K, V)::in, rtree_2(K, V)::out) is det <= region(K).
 
-reinsert_deleted_subtrees([], _, T, T).
-reinsert_deleted_subtrees([deleted(K, T) | DLs], D, T0, T2) :-
-    T1 = insert_tree(T0, K, T, 1, D), 
+reinsert_deleted_subtrees([], _, !T).
+reinsert_deleted_subtrees([orphan(K, T) | DLs], Depth, T0, T2) :-
+    T1 = insert_tree(T0, K, T, 1, Depth), 
     ( T0 = four(_, _, _, _, _, _, _, _) ->
-        reinsert_deleted_subtrees(DLs, D + 2, T1, T2)
+        reinsert_deleted_subtrees(DLs, Depth + 2, T1, T2)
     ;
-        reinsert_deleted_subtrees(DLs, D + 1, T1, T2)
+        reinsert_deleted_subtrees(DLs, Depth + 1, T1, T2)
     ).
     
     % The code here is almost identical to 'insert', however we are 
@@ -655,10 +755,12 @@ insert_tree(two(K0, T0, K1, T1), K, S, D0, D) = T :-
     ( D0 = D ->
         T = three(K0, T0, K1, T1, K, S)
     ;
-        Result = include2(K, K0, K1), 
-        ( Result = min3_first ->
+        Result = choose_subtree(K, K0, K1), 
+        ( 
+            Result = min2_first,
             insert_tree_and_split_child2(K0, T0, K1, T1, K, S, D0 + 1, D, T)
         ;
+            Result = min2_second,
             insert_tree_and_split_child2(K1, T1, K0, T0, K, S, D0 + 1, D, T)
         )
     ).
@@ -666,7 +768,7 @@ insert_tree(three(K0, T0, K1, T1, K2, T2), K, S, D0, D) = T :-
     ( D0 = D ->
         T = four(K0, T0, K1, T1, K2, T2, K, S)
     ;
-        Result = include3(K, K0, K1, K2), 
+        Result = choose_subtree(K, K0, K1, K2), 
         (
             Result = min3_first, 
             insert_tree_and_split_child3(K0, T0, K1, T1, K2, T2, K, S,
@@ -708,12 +810,14 @@ insert_tree_and_split_child2(K0, T0, K1, T1, K, S, D0, D, T) :-
     ;
         T0 = four(_, _, _, _, _, _, _, _), 
         split_4_node(T0, K2, T2, K3, T3), 
-        Result = include2(K, K2, K3), 
-        ( Result = min3_first ->
+        Result = choose_subtree(K, K2, K3), 
+        (
+            Result = min2_first,
             K4 = bounding_region(K, K2), 
             T4 = insert_tree(T2, K, S, D0, D), 
             T  = three(K1, T1, K3, T3, K4, T4)
         ;
+            Result = min2_second,
             K4 = bounding_region(K, K3), 
             T4 = insert_tree(T3, K, S, D0, D), 
             T  = three(K1, T1, K2, T2, K4, T4)
@@ -741,12 +845,14 @@ insert_tree_and_split_child3(K0, T0, K1, T1, K2, T2, K, S, D0, D, T) :-
     ;
         T0 = four(_, _, _, _, _, _, _, _), 
         split_4_node(T0, K3, T3, K4, T4), 
-        Result = include2(K, K2, K3), 
-        ( Result = min3_first ->
+        Result = choose_subtree(K, K2, K3), 
+        ( 
+            Result = min2_first,
             K5 = bounding_region(K, K3), 
             T5 = insert_tree(T3, K, S, D0, D), 
             T  = four(K1, T1, K2, T2, K4, T4, K5, T5)
         ;
+            Result = min2_second,
             K5 = bounding_region(K, K4), 
             T5 = insert_tree(T4, K, S, D0, D), 
             T  = four(K1, T1, K2, T2, K3, T3, K5, T5)
@@ -1283,7 +1389,7 @@ search_general_fold_subtree(K, T, KTest, VPred, !Acc) :-
 
 %-----------------------------------------------------------------------------%
 %
-% fold
+% Fold
 %
 
 rtree.fold(_P, empty, !Acc).
@@ -1341,7 +1447,7 @@ rtree.map_values(P, rtree(T), rtree(U)) :-
 :- mode map_values_2(pred(in, in, out) is semidet, in, out) is semidet.
 
 map_values_2(_, leaf(_), _) :-
-    error("map_values_2: leaf unexpected").
+    error("map_values_2: unexpected leaf.").
 map_values_2(P, two(K0, T0, K1, T1), two(K0, U0, K1, U1)) :-
     map_values_2(P, K0, T0, U0),
     map_values_2(P, K1, T1, U1).
@@ -1372,7 +1478,7 @@ map_values_2(P, K, T, U) :-
 
     % Find the minimum of three values.
     %
-:- func minimum_of_three(E, E, E) = min_of_three_result.
+:- func minimum_of_three(T, T, T) = min_of_three_result.
 
 minimum_of_three(A, B, C) =
     ( compare((<), A, B) ->
@@ -1393,36 +1499,33 @@ minimum_of_three(A, B, C) =
 
     % Find the minimum of four values.
     %
-:- func minimum_of_four(E, E, E, E) = min_of_four_result.
+:- func minimum_of_four(T, T, T, T) = min_of_four_result.
 
-minimum_of_four(E0, E1, E2, E3) = M :-
-    compare(R0, E0, E1), 
-    ( R0 = (<) ->
-        M0 = min4_first, 
-        F0 = E0
+minimum_of_four(A, B, C, D) = Min :-
+    ( compare((<), A, B) ->
+        Min0 = min4_first, 
+        MinItem0 = A 
     ;
-        M0 = min4_second, 
-        F0 = E1
+        Min0 = min4_second, 
+        MinItem0 = B 
     ), 
-    compare(R1, F0, E2), 
-    ( R1 = (<) ->
-        M1 = M0, 
-        F1 = F0
+    ( compare((<), MinItem0, C) ->
+        Min1 = Min0, 
+        MinItem = MinItem0
     ;
-        M1 = min4_third, 
-        F1 = E2
+        Min1 = min4_third, 
+        MinItem = C
     ), 
-    compare(R2, F1, E3), 
-    ( R2 = (<) ->
-        M = M1
+    ( compare((<), MinItem, D) ->
+        Min = Min1
     ;
-        M = min4_fourth
+        Min = min4_fourth
     ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
-% Predefined regions
+% Pre-defined regions
 %
 
 %-----------------------------------------------------------------------------%
@@ -1439,76 +1542,75 @@ minimum_of_four(E0, E1, E2, E3) = M :-
 
 :- pred box3d_intersects(box3d::in, box3d::in) is semidet.
 
-box3d_intersects(Bx0, Bx1) :-
-    Bx0 = box3d(X0, X1, Y0, Y1, Z0, Z1), 
-    Bx1 = box3d(A0, A1, B0, B1, C0, C1), 
-    ( X0 =< A0 ->
-        X1 >= A0
+box3d_intersects(A, B) :-
+    A = box3d(AXMin, AXMax, AYMin, AYMax, AZMin, AZMax), 
+    B = box3d(BXMin, BXMax, BYMin, BYMax, BZMin, BZMax), 
+    ( AXMin =< BXMin ->
+        AXMax >= BXMin 
     ;
-        X0 =< A1
+        AXMin =< BXMax 
     ), 
-    ( Y0 =< B0 ->
-        Y1 >= B0
+    ( AYMin =< BYMin ->
+        AYMax >= BYMin 
     ;
-        Y0 =< B1
+        AYMin =< BYMax 
     ), 
-    ( Z0 =< C0 ->
-        Z1 >= C0
+    ( AZMin =< BZMin ->
+        AZMax >= BZMin 
     ;
-        Z0 =< C1
+        AZMin =< BZMax 
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred box3d_contains(box3d::in, box3d::in) is semidet.
 
-box3d_contains(Bx0, Bx1) :-
-    Bx0 = box3d(X0, X1, Y0, Y1, Z0, Z1), 
-    Bx1 = box3d(A0, A1, B0, B1, C0, C1), 
-    X0 >= A0, 
-    X1 =< A1, 
-    Y0 >= B0, 
-    Y1 =< B1, 
-    Z0 >= C0, 
-    Z1 =< C1.
+box3d_contains(A, B) :-
+    A = box3d(AXMin, AXMax, AYMin, AYMax, AZMin, AZMax), 
+    B = box3d(BXMin, BXMax, BYMin, BYMax, BZMin, BZMax), 
+    AXMin >= BXMin, 
+    AXMax =< BXMax, 
+    AYMin >= BYMin, 
+    AYMax =< BYMax, 
+    AZMin >= BZMin, 
+    AZMax =< BZMax.
 
 %-----------------------------------------------------------------------------%
 
 :- func box3d_volume(box3d) = float.
 
-box3d_volume(Bx) = A :-
-    Bx = box3d(X0, X1, Y0, Y1, Z0, Z1), 
-    A = (X1 - X0) * (Y1 - Y0) * (Z1 - Z0).
+box3d_volume(Box) = (XMax - XMin) * (YMax - YMin) * (ZMax - ZMin) :-
+    Box = box3d(XMin, XMax, YMin, YMax, ZMin, ZMax).
 
 %-----------------------------------------------------------------------------%
 
 :- func box3d_bounding_region(box3d, box3d) = box3d.
 
-box3d_bounding_region(Bx0, Bx1) = Bx2 :-
-    Bx0 = box3d(X0, X1, Y0, Y1, Z0, Z1), 
-    Bx1 = box3d(A0, A1, B0, B1, C0, C1), 
-    M0 = min(X0, A0), 
-    M1 = max(X1, A1), 
-    N0 = min(Y0, B0), 
-    N1 = max(Y1, B1), 
-    O0 = min(Z0, C0), 
-    O1 = max(Z1, C1), 
-    Bx2 = box3d(M0, M1, N0, N1, O0, O1).
+box3d_bounding_region(A, B) = C :-
+    A = box3d(AXMin, AXMax, AYMin, AYMax, AZMin, AZMax), 
+    B = box3d(BXMin, BXMax, BYMin, BYMax, BZMin, BZMax), 
+    CXMin = min(AXMin, BXMin), 
+    CXMax = max(AXMax, BXMax), 
+    CYMin = min(AYMin, BYMin), 
+    CYMax = max(AYMax, BYMax), 
+    CZMin = min(AZMin, BZMin), 
+    CZMax = max(AZMax, BZMax), 
+    C = box3d(CXMin, CXMax, CYMin, CYMax, CZMin, CZMax).
 
 %-----------------------------------------------------------------------------%
 
 :- func box3d_bounding_region_volume(box3d, box3d) = float.
 
-box3d_bounding_region_volume(Bx0, Bx1) = CA :-
-    Bx0 = box3d(X0, X1, Y0, Y1, Z0, Z1), 
-    Bx1 = box3d(A0, A1, B0, B1, C0, C1), 
-    M0 = min(X0, A0), 
-    M1 = max(X1, A1), 
-    N0 = min(Y0, B0), 
-    N1 = max(Y1, B1), 
-    O0 = min(Z0, C0), 
-    O1 = max(Z1, C1), 
-    CA = (M1 - M0) * (N1 - N0) * (O1 - O0).
+box3d_bounding_region_volume(A, B) = Volume :-
+    A = box3d(AXMin, AXMax, AYMin, AYMax, AZMin, AZMax), 
+    B = box3d(BXMin, BXMax, BYMin, BYMax, BZMin, BZMax), 
+    XMin = min(AXMin, BXMin), 
+    XMax = max(AXMax, BXMax), 
+    YMin = min(AYMin, BYMin), 
+    YMax = max(AYMax, BYMax), 
+    ZMin = min(AZMin, BZMin), 
+    ZMax = max(AZMax, BZMax), 
+    Volume = (XMax - XMin) * (YMax - YMin) * (ZMax - ZMin).
     
 %-----------------------------------------------------------------------------%
 
@@ -1524,64 +1626,63 @@ box3d_bounding_region_volume(Bx0, Bx1) = CA :-
 
 :- pred box_intersects(box::in, box::in) is semidet.
 
-box_intersects(Bx0, Bx1) :-
-    Bx0 = box(X0, X1, Y0, Y1), 
-    Bx1 = box(A0, A1, B0, B1), 
-    ( X0 =< A0 ->
-        X1 >= A0
-    ;   X0 =< A1
+box_intersects(A, B) :-
+    A = box(AXMin, AXMax, AYMin, AYMax), 
+    B = box(BXMin, BXMax, BYMin, BYMax), 
+    ( AXMin =< BXMin ->
+        AXMax >= BXMin
+    ;
+        AXMin =< BXMax 
     ), 
-    ( Y0 =< B0 ->
-        Y1 >= B0
-    ;   Y0 =< B1
+    ( AYMin =< BYMin ->
+        AYMax >= BYMin 
+    ;
+        AYMin =< BYMax
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred box_contains(box::in, box::in) is semidet.
 
-box_contains(Bx0, Bx1) :-
-    Bx0 = box(X0, X1, Y0, Y1), 
-    Bx1 = box(A0, A1, B0, B1), 
-    X0 >= A0, 
-    X1 =< A1, 
-    Y0 >= B0, 
-    Y1 =< B1.
+box_contains(A, B) :-
+    A = box(AXMin, AXMax, AYMin, AYMax), 
+    B = box(BXMin, BXMax, BYMin, BYMax), 
+    AXMin >= BXMin, 
+    AXMax =< BXMax, 
+    AYMin >= BYMin, 
+    AYMax =< BYMax.
 
 %---------------------------------------------------------------------------%
 
 :- func box_area(box) = float.
 
-box_area(Bx) = A :-
-    Bx = box(X0, X1, Y0, Y1), 
-    A = (X1 - X0) * (Y1 - Y0).
+box_area(box(XMin, XMax, YMin, YMax)) = (XMax - XMin) * (YMax - YMin).
 
 %---------------------------------------------------------------------------%
 
 :- func box_bounding_region(box, box) = box.
 
-box_bounding_region(Bx0, Bx1) = Bx2 :-
-    Bx0 = box(X0, X1, Y0, Y1), 
-    Bx1 = box(A0, A1, B0, B1), 
-    M0 = min(X0, A0), 
-    M1 = max(X1, A1), 
-    N0 = min(Y0, B0), 
-    N1 = max(Y1, B1), 
-    Bx2 = box(M0, M1, N0, N1).
+box_bounding_region(A, B) = C :-
+    A = box(AXMin, AXMax, AYMin, AYMax), 
+    B = box(BXMin, BXMax, BYMin, BYMax), 
+    CXMin = min(AXMin, BXMin), 
+    CXMax = max(AXMax, BXMax), 
+    CYMin = min(AYMin, BYMin), 
+    CYMax = max(AYMax, BYMax), 
+    C = box(CXMin, CXMax, CYMin, CYMax).
 
 %---------------------------------------------------------------------------%
 
 :- func box_bounding_region_area(box, box) = float.
-
-box_bounding_region_area(Bx0, Bx1) = CA :-
-    Bx0 = box(X0, X1, Y0, Y1), 
-    Bx1 = box(A0, A1, B0, B1), 
-    M0 = min(X0, A0), 
-    M1 = max(X1, A1), 
-    N0 = min(Y0, B0), 
-    N1 = max(Y1, B1), 
-    CA = (M1 - M0) * (N1 - N0).
     
+box_bounding_region_area(A, B) = (XMax - XMin) * (YMax - YMin) :-
+    A = box(AXMin, AXMax, AYMin, AYMax), 
+    B = box(BXMin, BXMax, BYMin, BYMax), 
+    XMin = min(AXMin, BXMin), 
+    XMax = max(AXMax, BXMax), 
+    YMin = min(AYMin, BYMin), 
+    YMax = max(AYMax, BYMax).
+
 %-----------------------------------------------------------------------------%
 
 :- instance region(interval) where [
@@ -1596,50 +1697,46 @@ box_bounding_region_area(Bx0, Bx1) = CA :-
 
 :- pred interval_intersects(interval::in, interval::in) is semidet.
 
-interval_intersects(Bx0, Bx1) :-
-    Bx0 = interval(X0, X1), 
-    Bx1 = interval(A0, A1), 
-    ( X0 =< A0 ->
-        X1 >= A0
+interval_intersects(A, B) :-
+    A = interval(AMin, AMax), 
+    B = interval(BMin, BMax), 
+    ( AMin =< BMin ->
+        AMax >= BMin 
     ;
-        X0 =< A1
+        AMin =< BMax 
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred interval_contains(interval::in, interval::in) is semidet.
 
-interval_contains(Bx0, Bx1) :-
-    Bx0 = interval(X0, X1), 
-    Bx1 = interval(A0, A1), 
-    X0 >= A0, 
-    X1 =< A1.
+interval_contains(A, B) :-
+    A = interval(AMin, AMax), 
+    B = interval(BMin, BMax), 
+    AMin >= BMin, 
+    AMax =< BMax.
 
 %-----------------------------------------------------------------------------%
 
 :- func interval_length(interval) = float.
 
-interval_length(Bx) = A :-
-    Bx = interval(X0, X1), 
-    A = X1-X0.
+interval_length(interval(Max, Min)) = Max - Min.
 
 %-----------------------------------------------------------------------------%
 
 :- func interval_bounding_region(interval, interval) = interval.
 
-interval_bounding_region(Bx0, Bx1) = Bx2 :-
-    Bx0 = interval(X0, X1), 
-    Bx1 = interval(A0, A1), 
-    Bx2 = interval(min(X0, A0), max(X1, A1)).
+interval_bounding_region(A, B) = interval(min(AMin, BMin), max(AMax, BMax)) :-
+    A = interval(AMin, AMax),
+    B = interval(BMin, BMax).
 
 %-----------------------------------------------------------------------------%
 
 :- func interval_bounding_region_length(interval, interval) = float.
 
-interval_bounding_region_length(Bx0, Bx1) = CA :-
-    Bx0 = interval(X0, X1), 
-    Bx1 = interval(A0, A1), 
-    CA = max(X1, A1) - min(X0, A0).
+interval_bounding_region_length(A, B) = max(AMax, BMax) - min(AMin, BMin) :-
+    A = interval(AMin, AMax), 
+    B = interval(BMin, BMax).
 
 %-----------------------------------------------------------------------------%
 :- end_module rtree.
