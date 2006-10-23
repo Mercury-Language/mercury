@@ -46,6 +46,7 @@ syn keyword mercuryPragma       inline no_inline
 syn keyword mercuryPragma       type_spec source_file fact_table obsolete
 syn keyword mercuryPragma       memo loop_check minimal_model
 syn keyword mercuryPragma       terminates does_not_terminate check_termination
+syn keyword mercuryPragma       promise_equivalent_clauses
 syn keyword mercuryCInterface   c_header_code c_code
 syn keyword mercuryCInterface   foreign_proc foreign_decl foreign_code
 syn keyword mercuryCInterface   foreign_type foreign_import_module

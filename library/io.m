@@ -4378,7 +4378,7 @@ io.write_private_builtin_type_info(PrivateBuiltinTypeInfo, !IO) :-
 
 io.write_list([], _Separator, _OutputPred, !IO).
 io.write_list([E | Es], Separator, OutputPred, !IO) :-
-    call(OutputPred, E, !IO),
+    OutputPred(E, !IO),
     (
         Es = []
     ;

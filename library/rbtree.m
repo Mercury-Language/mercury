@@ -1021,16 +1021,16 @@ rbtree.foldl3(Pred, black(K, V, Left, Right), !Acc1, !Acc2, !Acc3) :-
 rbtree.map_values(_Pred, empty, empty).
 rbtree.map_values(Pred, Tree0, Tree) :-
     Tree0 = red(K0, V0, Left0, Right0),
-    Tree  = red(K0, W0, Left, Right),
-    call(Pred, K0, V0, W0),
+    Pred(K0, V0, W0),
     rbtree.map_values(Pred, Left0, Left),
-    rbtree.map_values(Pred, Right0, Right).
+    rbtree.map_values(Pred, Right0, Right),
+    Tree = red(K0, W0, Left, Right).
 rbtree.map_values(Pred, Tree0, Tree) :-
     Tree0 = black(K0, V0, Left0, Right0),
-    Tree  = black(K0, W0, Left, Right),
-    call(Pred, K0, V0, W0),
+    Pred(K0, V0, W0),
     rbtree.map_values(Pred, Left0, Left),
-    rbtree.map_values(Pred, Right0, Right).
+    rbtree.map_values(Pred, Right0, Right),
+    Tree = black(K0, W0, Left, Right).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

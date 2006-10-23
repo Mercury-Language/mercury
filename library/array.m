@@ -1274,7 +1274,7 @@ array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
         % Do a Compare to check.
         ( Width = 0 ->
             array.lookup(Array, Lo, X),
-            ( call(Compare, El, X, (=)) ->
+            ( Compare(El, X, (=)) ->
                 Result = yes(Lo)
             ;
                 Result = no
@@ -1284,7 +1284,7 @@ array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
             % and check against that.
             Mid = (Lo + Hi) >> 1,   % `>> 1' is hand-optimized `div 2'.
             array.lookup(Array, Mid, XMid),
-            call(Compare, XMid, El, Comp),
+            Compare(XMid, El, Comp),
             (
                 Comp = (<),
                 Mid1 = Mid + 1,
@@ -1305,10 +1305,9 @@ array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 array.map(Closure, OldArray, NewArray) :-
     ( array.semidet_lookup(OldArray, 0, Elem0) ->
         array.size(OldArray, Size),
-        call(Closure, Elem0, Elem),
+        Closure(Elem0, Elem),
         array.init(Size, Elem, NewArray0),
-        array.map_2(1, Size, Closure, OldArray,
-        NewArray0, NewArray)
+        array.map_2(1, Size, Closure, OldArray, NewArray0, NewArray)
     ;
         array.make_empty_array(NewArray)
     ).

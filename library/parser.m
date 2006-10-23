@@ -263,7 +263,8 @@ check_for_bad_token(token_cons(Token, LineNum, Tokens), Message, LineNum) :-
 
 parse_whole_term(Term, !PS) :-
     parse_term(Term0, !PS),
-    ( Term0 = ok(_) ->
+    ( 
+        Term0 = ok(_),
         ( parser_get_token(end, !PS) ->
             Term = Term0
         ;
@@ -271,6 +272,7 @@ parse_whole_term(Term, !PS) :-
         )
     ;
         % Propagate error upwards.
+        Term0 = error(_, _),
         Term = Term0
     ).
 
@@ -612,7 +614,8 @@ parse_simple_term_2(string(String), Context, _, Term, !PS) :-
 
 parse_simple_term_2(open, _, _, Term, !PS) :-
     parse_term(Term0, !PS),
-    ( Term0 = ok(_) ->
+    (
+        Term0 = ok(_),
         ( parser_get_token(close, !PS) ->
             Term = Term0
         ;
@@ -620,6 +623,7 @@ parse_simple_term_2(open, _, _, Term, !PS) :-
         )
     ;
         % Propagate error upwards.
+        Term0 = error(_, _),
         Term = Term0
     ).
 

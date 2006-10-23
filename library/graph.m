@@ -173,8 +173,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module require.
-
-:- use_module solutions.
+:- import_module solutions.
 
 %------------------------------------------------------------------------------%
 
@@ -257,7 +256,7 @@ graph.find_matching_nodes(Graph, NodeInfo, NodeSet) :-
 %   SolnGoal = lambda([Node::out] is nondet,
 %           map.member(NodeTable, Node, NodeInfo)),
 %   solutions(SolnGoal, NodeList),
-    solutions.solutions(graph.select_node(NodeTable, NodeInfo), NodeList),
+    solutions(graph.select_node(NodeTable, NodeInfo), NodeList),
     set.sorted_list_to_set(NodeList, NodeSet).
 
 :- pred graph.select_node(map(node(N), N)::in, N::in, node(N)::out) is nondet.

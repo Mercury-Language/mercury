@@ -56,9 +56,7 @@
     % Return an empty set.
     %
 :- func init = sparse_bitset(T).
-
-:- pred init(sparse_bitset(T)).
-:- mode init(out) is det.
+:- pred init(sparse_bitset(T)::out) is det.
 
 :- pred empty(sparse_bitset(T)).
 :- mode empty(in) is semidet.
@@ -921,7 +919,7 @@ contains_2([Data | Rest], Index) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(member/2).
+:- pragma promise_equivalent_clauses(member/2).
 
 member(Elem::in, Set::in) :-
     contains(Set, Elem).

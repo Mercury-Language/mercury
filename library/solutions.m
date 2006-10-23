@@ -180,9 +180,11 @@ solutions(Pred, List) :-
     builtin_solutions(Pred, UnsortedList),
     list.sort_and_remove_dups(UnsortedList, List).
 
-solutions(P) = S :- solutions(P, S).
+solutions(P) = S :-
+    solutions(P, S).
 
-solutions_set(P) = S :- solutions_set(P, S).
+solutions_set(P) = S :-
+    solutions_set(P, S).
 
 solutions_set(Pred, Set) :-
     builtin_solutions(Pred, List),
@@ -211,10 +213,8 @@ unsorted_aggregate(Generator, Accumulator, !Acc) :-
 %-----------------------------------------------------------------------------%
 
 :- pred builtin_solutions(pred(T), list(T)).
-:- mode builtin_solutions(pred(out) is multi, out)
-    is det. /* really cc_multi */
-:- mode builtin_solutions(pred(out) is nondet, out)
-    is det. /* really cc_multi */
+:- mode builtin_solutions(pred(out) is multi, out) is det.  % really cc_multi
+:- mode builtin_solutions(pred(out) is nondet, out) is det. % really cc_multi
 
 builtin_solutions(Generator, UnsortedList) :-
     builtin_aggregate(Generator, list.cons, [], UnsortedList).

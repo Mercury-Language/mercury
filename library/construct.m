@@ -282,8 +282,7 @@ get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
 
 null_to_no(S) = ( if null(S) then no else yes(S) ).
 
-:- pred null(string).
-:- mode null(in) is semidet.
+:- pred null(string::in) is semidet.
 
 :- pragma foreign_proc("C",
     null(S::in),

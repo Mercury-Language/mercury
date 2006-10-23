@@ -90,17 +90,13 @@
 
     % Default hash_preds for ints and strings and everything (buwahahaha!)
     %
-:- pred int_double_hash(int, int, int).
-:- mode int_double_hash(in, out, out) is det.
+:- pred int_double_hash(int::in, int::out, int::out) is det.
 
-:- pred string_double_hash(string, int, int).
-:- mode string_double_hash(in, out, out) is det.
+:- pred string_double_hash(string::in, int::out, int::out) is det.
 
-:- pred char_double_hash(char, int, int).
-:- mode char_double_hash(in, out, out) is det.
+:- pred char_double_hash(char::in, int::out, int::out) is det.
 
-:- pred float_double_hash(float, int, int).
-:- mode float_double_hash(in, out, out) is det.
+:- pred float_double_hash(float::in, int::out, int::out) is det.
 
 :- pred generic_double_hash(T, int, int).
 :- mode generic_double_hash(in, out, out) is det.

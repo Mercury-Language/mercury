@@ -18,6 +18,8 @@
 
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % The `type_desc', `pseudo_type_desc' and `type_ctor_desc' types
     % provide access to type information.
     % A type_desc represents a type, e.g. `list(int)'.
@@ -293,8 +295,9 @@ special___Unify___pseudo_type_desc_0_0(object[] x, object[] y)
 ").
 
 %-----------------------------------------------------------------------------%
-
-% Code for type manipulation.
+%
+% Code for type manipulation
+%
 
 pseudo_type_desc_is_ground(PseudoTypeDesc) :-
     pseudo_type_ctor_and_args(PseudoTypeDesc, _TypeCtor, ArgPseudos),

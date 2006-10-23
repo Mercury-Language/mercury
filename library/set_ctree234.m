@@ -29,6 +29,8 @@
 :- import_module bool.
 :- import_module list.
 
+%--------------------------------------------------------------------------%
+
 :- type set_ctree234(_T).
 
     % `set_ctree234.init = Set' is true iff `Set' is an empty set.
@@ -2140,21 +2142,21 @@ set_ctree234.fold(Pred, ct(_, Tin), !A) :-
 set_ctree234.do_fold_pred(_Pred, empty, !A).
 set_ctree234.do_fold_pred(Pred, two(E, T0, T1), !A) :-
     set_ctree234.do_fold_pred(Pred, T0, !A),
-    call(Pred, E, !A),
+    Pred(E, !A),
     set_ctree234.do_fold_pred(Pred, T1, !A).
 set_ctree234.do_fold_pred(Pred, three(E0, E1, T0, T1, T2), !A) :-
     set_ctree234.do_fold_pred(Pred, T0, !A),
-    call(Pred, E0, !A),
+    Pred(E0, !A),
     set_ctree234.do_fold_pred(Pred, T1, !A),
-    call(Pred, E1, !A),
+    Pred(E1, !A),
     set_ctree234.do_fold_pred(Pred, T2, !A).
 set_ctree234.do_fold_pred(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
     set_ctree234.do_fold_pred(Pred, T0, !A),
-    call(Pred, E0, !A),
+    Pred(E0, !A),
     set_ctree234.do_fold_pred(Pred, T1, !A),
-    call(Pred, E1, !A),
+    Pred(E1, !A),
     set_ctree234.do_fold_pred(Pred, T2, !A),
-    call(Pred, E2, !A),
+    Pred(E2, !A),
     set_ctree234.do_fold_pred(Pred, T3, !A).
 
 set_ctree234.fold(Pred, ct(_, Tin), A0) = A :-
@@ -2194,21 +2196,21 @@ set_ctree234.fold2(Pred, ct(_, Tin), !A, !B) :-
 set_ctree234.do_fold2_pred(_Pred, empty, !A, !B).
 set_ctree234.do_fold2_pred(Pred, two(E, T0, T1), !A, !B) :-
     set_ctree234.do_fold2_pred(Pred, T0, !A, !B),
-    call(Pred, E, !A, !B),
+    Pred(E, !A, !B),
     set_ctree234.do_fold2_pred(Pred, T1, !A, !B).
 set_ctree234.do_fold2_pred(Pred, three(E0, E1, T0, T1, T2), !A, !B) :-
     set_ctree234.do_fold2_pred(Pred, T0, !A, !B),
-    call(Pred, E0, !A, !B),
+    Pred(E0, !A, !B),
     set_ctree234.do_fold2_pred(Pred, T1, !A, !B),
-    call(Pred, E1, !A, !B),
+    Pred(E1, !A, !B),
     set_ctree234.do_fold2_pred(Pred, T2, !A, !B).
 set_ctree234.do_fold2_pred(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B) :-
     set_ctree234.do_fold2_pred(Pred, T0, !A, !B),
-    call(Pred, E0, !A, !B),
+    Pred(E0, !A, !B),
     set_ctree234.do_fold2_pred(Pred, T1, !A, !B),
-    call(Pred, E1, !A, !B),
+    Pred(E1, !A, !B),
     set_ctree234.do_fold2_pred(Pred, T2, !A, !B),
-    call(Pred, E2, !A, !B),
+    Pred(E2, !A, !B),
     set_ctree234.do_fold2_pred(Pred, T3, !A, !B).
 
 %------------------------------------------------------------------------------%
@@ -2224,28 +2226,28 @@ set_ctree234.map_pred(_Pred, empty, !List).
 set_ctree234.map_pred(Pred, Tin, !List) :-
     Tin = two(E0, T0, T1),
     set_ctree234.map_pred(Pred, T0, !List),
-    call(Pred, E0, N0),
+    Pred(E0, N0),
     !:List = [N0 | !.List],
     set_ctree234.map_pred(Pred, T1, !List).
 set_ctree234.map_pred(Pred, Tin, !List) :-
     Tin = three(E0, E1, T0, T1, T2),
     set_ctree234.map_pred(Pred, T0, !List),
-    call(Pred, E0, N0),
+    Pred(E0, N0),
     !:List = [N0 | !.List],
     set_ctree234.map_pred(Pred, T1, !List),
-    call(Pred, E1, N1),
+    Pred(E1, N1),
     !:List = [N1 | !.List],
     set_ctree234.map_pred(Pred, T2, !List).
 set_ctree234.map_pred(Pred, Tin, !List) :-
     Tin = four(E0, E1, E2, T0, T1, T2, T3),
     set_ctree234.map_pred(Pred, T0, !List),
-    call(Pred, E0, N0),
+    Pred(E0, N0),
     !:List = [N0 | !.List],
     set_ctree234.map_pred(Pred, T1, !List),
-    call(Pred, E1, N1),
+    Pred(E1, N1),
     !:List = [N1 | !.List],
     set_ctree234.map_pred(Pred, T2, !List),
-    call(Pred, E2, N2),
+    Pred(E2, N2),
     !:List = [N2 | !.List],
     set_ctree234.map_pred(Pred, T3, !List).
 

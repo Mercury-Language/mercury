@@ -33,16 +33,14 @@
     % Determine the length of a string.
     % An empty string has length zero.
     %
-:- func string.length(string) = int.
-:- mode string.length(in) = uo is det.
+:- func string.length(string::in) = (int::uo) is det.
 :- pred string.length(string, int).
 :- mode string.length(in, uo) is det.
 :- mode string.length(ui, uo) is det.
 
     % Append two strings together.
     %
-:- func string.append(string, string) = string.
-:- mode string.append(in, in) = uo is det.
+:- func string.append(string::in, string::in) = (string::uo) is det.
 
 :- pred string.append(string, string, string).
 :- mode string.append(in, in, in) is semidet.  % implied
@@ -103,8 +101,7 @@
     % - `include_details_cc' will show the structure of any non-canonical
     %   subterms, but can only be called from a committed choice context.
     %
-:- pred string.string_ops_noncanon(deconstruct.noncanon_handling, ops.table,
-    T, string).
+:- pred string.string_ops_noncanon(noncanon_handling, ops.table, T, string).
 :- mode string.string_ops_noncanon(in(do_not_allow), in, in, out) is det.
 :- mode string.string_ops_noncanon(in(canonicalize), in, in, out) is det.
 :- mode string.string_ops_noncanon(in(include_details_cc), in, in, out)
@@ -114,8 +111,7 @@
     % string.char_to_string(Char, String).
     % Converts a character (single-character atom) to a string or vice versa.
     %
-:- func string.char_to_string(char) = string.
-:- mode string.char_to_string(in) = uo is det.
+:- func string.char_to_string(char::in) = (string::uo) is det.
 :- pred string.char_to_string(char, string).
 :- mode string.char_to_string(in, uo) is det.
 :- mode string.char_to_string(out, in) is semidet.
@@ -126,10 +122,8 @@
 
     % Convert an integer to a string.
     %
-:- func string.int_to_string(int) = string.
-:- mode string.int_to_string(in) = uo is det.
-:- pred string.int_to_string(int, string).
-:- mode string.int_to_string(in, uo) is det.
+:- func string.int_to_string(int::in) = (string::uo) is det.
+:- pred string.int_to_string(int::in, string::uo) is det.
 
     % A synonym for string.int_to_string/1.
     %
@@ -137,17 +131,14 @@
 
     % Convert an integer to a string with commas as thousand separators.
     %
-:- func string.int_to_string_thousands(int) = string.
-:- mode string.int_to_string_thousands(in) = uo is det.
+:- func string.int_to_string_thousands(int::in) = (string::uo) is det.
 
     % string.int_to_base_string(Int, Base, String):
     % Convert an integer to a string in a given Base.
     % An exception is thrown if Base is not between 2 and 36.
     %
-:- func string.int_to_base_string(int, int) = string.
-:- mode string.int_to_base_string(in, in) = uo is det.
-:- pred string.int_to_base_string(int, int, string).
-:- mode string.int_to_base_string(in, in, uo) is det.
+:- func string.int_to_base_string(int::in, int::in) = (string::uo) is det.
+:- pred string.int_to_base_string(int::in, int::in, string::uo) is det.
 
     % string.int_to_base_string_group(Int, Base, GroupLength, Separator,
     %   String):
@@ -168,10 +159,8 @@
     % The precision chosen from this range will be such to allow a successful
     % decimal -> binary conversion of the float.
     %
-:- func string.float_to_string(float) = string.
-:- mode string.float_to_string(in) = uo is det.
-:- pred string.float_to_string(float, string).
-:- mode string.float_to_string(in, uo) is det.
+:- func string.float_to_string(float::in) = (string::uo) is det.
+:- pred string.float_to_string(float::in, string::uo) is det.
 
     % A synonym for string.float_to_string/1.
     %
@@ -215,23 +204,21 @@
     % string.replace_all replaces any occurrences of Search in String0
     % with Replace to give String.
     %
-:- func string.replace_all(string, string, string) = string.
-:- mode string.replace_all(in, in, in) = uo is det.
-:- pred string.replace_all(string, string, string, string).
-:- mode string.replace_all(in, in, in, uo) is det.
+:- func string.replace_all(string::in, string::in, string::in) = (string::uo)
+    is det.
+:- pred string.replace_all(string::in, string::in, string::in, string::uo)
+    is det.
 
     % Converts a string to lowercase.
     %
-:- func string.to_lower(string) = string.
-:- mode string.to_lower(in) = uo is det.
+:- func string.to_lower(string::in) = (string::uo) is det.
 :- pred string.to_lower(string, string).
 :- mode string.to_lower(in, uo) is det.
 :- mode string.to_lower(in, in) is semidet.        % implied
 
     % Converts a string to uppercase.
     %
-:- func string.to_upper(string) = string.
-:- mode string.to_upper(in) = uo is det.
+:- func string.to_upper(string::in) = (string::uo) is det.
 :- pred string.to_upper(string, string).
 :- mode string.to_upper(in, uo) is det.
 :- mode string.to_upper(in, in) is semidet.        % implied
@@ -255,8 +242,7 @@
 
     % Convert a list of characters to a string.
     %
-:- func string.from_char_list(list(char)) = string.
-:- mode string.from_char_list(in) = uo is det.
+:- func string.from_char_list(list(char)::in) = (string::uo) is det.
 :- pred string.from_char_list(list(char), string).
 :- mode string.from_char_list(in, uo) is det.
 :- mode string.from_char_list(out, in) is det.
@@ -264,10 +250,8 @@
     % Same as string.from_char_list, except that it reverses the order
     % of the characters.
     %
-:- func string.from_rev_char_list(list(char)) = string.
-:- mode string.from_rev_char_list(in) = uo is det.
-:- pred string.from_rev_char_list(list(char), string).
-:- mode string.from_rev_char_list(in, uo) is det.
+:- func string.from_rev_char_list(list(char)::in) = (string::uo) is det.
+:- pred string.from_rev_char_list(list(char)::in, string::uo) is det.
 
     % Converts a signed base 10 string to an int; throws an exception
     % if the string argument does not match the regexp [+-]?[0-9]+
@@ -609,10 +593,8 @@
     % If `Count' is out of the range [0, length of `String' - `Start'],
     % it is treated as if it were the nearest end-point of that range.)
     %
-:- func string.substring(string, int, int) = string.
-:- mode string.substring(in, in, in) = uo is det.
-:- pred string.substring(string, int, int, string).
-:- mode string.substring(in, in, in, uo) is det.
+:- func string.substring(string::in, int::in, int::in) = (string::uo) is det.
+:- pred string.substring(string::in, int::in, int::in, string::uo) is det.
 
     % string.unsafe_substring(String, Start, Count, Substring):
     % `Substring' is first the `Count' characters in what would remain
@@ -624,10 +606,10 @@
     % whereas string.substring may take time proportional to the length
     %% of the whole string.
     %
-:- func string.unsafe_substring(string, int, int) = string.
-:- mode string.unsafe_substring(in, in, in) = uo is det.
-:- pred string.unsafe_substring(string, int, int, string).
-:- mode string.unsafe_substring(in, in, in, uo) is det.
+:- func string.unsafe_substring(string::in, int::in, int::in) = (string::uo)
+    is det.
+:- pred string.unsafe_substring(string::in, int::in, int::in, string::uo)
+    is det.
 
     % Append a list of strings together.
     %
@@ -978,7 +960,7 @@ string.remove_suffix(A, B, C) :-
     string.to_char_list(C, LC),
     char_list_remove_suffix(LA, LB, LC).
 
-:- pragma promise_pure(string.prefix/2).
+:- pragma promise_equivalent_clauses(string.prefix/2).
 
 string.prefix(String::in, Prefix::in) :-
     Len    = length(String),
@@ -1009,7 +991,7 @@ prefix_2_ioii(String, Prefix, PreLen, Len) :-
     PreLen < Len,
     prefix_2_ioii(String, Prefix, PreLen + 1, Len).
 
-:- pragma promise_pure(string.suffix/2).
+:- pragma promise_equivalent_clauses(string.suffix/2).
 
 string.suffix(String::in, Suffix::in) :-
     Len    = length(String),
@@ -1227,7 +1209,7 @@ string.int_to_base_string_group_2(NegN, Base, Curr, Period, Sep, Str) :-
     Str[size] = '\\0';
 }").
 
-:- pragma promise_pure(string.to_char_list/2).
+:- pragma promise_equivalent_clauses(string.to_char_list/2).
 
 string.to_char_list(Str::in, CharList::out) :-
     string.to_char_list_2(Str, 0, CharList).
@@ -3477,7 +3459,7 @@ string.set_char(Ch, Index, Str0, Str) :-
     Length = Str.length();
 ").
 
-:- pragma promise_pure(string.length/2).
+:- pragma promise_equivalent_clauses(string.length/2).
 
 string.length(Str0, Len) :-
     % XXX This copy is only necessary because of the ui.
@@ -3495,7 +3477,7 @@ string.length_2(Str, Index, Length) :-
 
 /*-----------------------------------------------------------------------*/
 
-:- pragma promise_pure(string.append/3).
+:- pragma promise_equivalent_clauses(string.append/3).
 
 string.append(S1::in, S2::in, S3::in) :-
     string.append_iii(S1, S2, S3).
@@ -4216,8 +4198,8 @@ string.string_ops_noncanon(NonCanon, OpsTable, X, String) :-
     value_to_revstrings(NonCanon, OpsTable, X, [], RevStrings),
     String = string.append_list(list.reverse(RevStrings)).
 
-:- pred value_to_revstrings(deconstruct.noncanon_handling,
-    ops.table, T, revstrings, revstrings).
+:- pred value_to_revstrings(noncanon_handling, ops.table, T,
+    revstrings, revstrings).
 :- mode value_to_revstrings(in(do_not_allow), in, in, in, out) is det.
 :- mode value_to_revstrings(in(canonicalize), in, in, in, out) is det.
 :- mode value_to_revstrings(in(include_details_cc), in, in, in, out)
@@ -4228,8 +4210,8 @@ value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
     Priority = ops.max_priority(OpsTable) + 1,
     value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs).
 
-:- pred value_to_revstrings_prio(deconstruct.noncanon_handling,
-    ops.table, ops.priority, T, revstrings, revstrings).
+:- pred value_to_revstrings_prio(noncanon_handling, ops.table, ops.priority, T,
+    revstrings, revstrings).
 :- mode value_to_revstrings_prio(in(do_not_allow), in, in, in, in, out) is det.
 :- mode value_to_revstrings_prio(in(canonicalize), in, in, in, in, out) is det.
 :- mode value_to_revstrings_prio(in(include_details_cc), in, in, in, in, out)
@@ -4238,7 +4220,7 @@ value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 
 value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
     %
-    % we need to special-case the builtin types:
+    % We need to special-case the builtin types:
     %   int, char, float, string
     %   type_info, univ, c_pointer, array
     %   and private_builtin.type_info
@@ -4271,15 +4253,15 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         % rather than the reverse) is also chosen for efficiency, to find
         % failure cheaply in the common cases, rather than for readability.
         %
-        type_desc.type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
+        type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
         ArgTypes = [ElemType],
-        type_desc.type_ctor_name(TypeCtor) = "array",
-        type_desc.type_ctor_module_name(TypeCtor) = "array"
+        type_ctor_name(TypeCtor) = "array",
+        type_ctor_module_name(TypeCtor) = "array"
     ->
         % Now that we know the element type, we can constrain the type of
         % the variable `Array' so that we can use det_dynamic_cast.
         %
-        type_desc.has_type(Elem, ElemType),
+        has_type(Elem, ElemType),
         same_array_elem_type(Array, Elem),
         det_dynamic_cast(X, Array),
         array_to_revstrings(NonCanon, OpsTable, Array, !Rs)
@@ -4287,12 +4269,12 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         % Check if the type is private_builtin.type_info/1.
         % See the comments above for array.array/1.
         %
-        type_desc.type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
+        type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
         ArgTypes = [ElemType],
-        type_desc.type_ctor_name(TypeCtor) = "type_info",
-        type_desc.type_ctor_module_name(TypeCtor) = "private_builtin"
+        type_ctor_name(TypeCtor) = "type_info",
+        type_ctor_module_name(TypeCtor) = "private_builtin"
     ->
-        type_desc.has_type(Elem, ElemType),
+        has_type(Elem, ElemType),
         same_private_builtin_type(PrivateBuiltinTypeInfo, Elem),
         det_dynamic_cast(X, PrivateBuiltinTypeInfo),
         private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs)
@@ -4309,8 +4291,8 @@ same_array_elem_type(_, _).
 
 same_private_builtin_type(_, _).
 
-:- pred ordinary_term_to_revstrings(deconstruct.noncanon_handling,
-    ops.table, ops.priority, T, revstrings, revstrings).
+:- pred ordinary_term_to_revstrings(noncanon_handling, ops.table,
+    ops.priority, T, revstrings, revstrings).
 :- mode ordinary_term_to_revstrings(in(do_not_allow), in, in, in, in, out)
     is det.
 :- mode ordinary_term_to_revstrings(in(canonicalize), in, in, in, in, out)
@@ -4321,7 +4303,7 @@ same_private_builtin_type(_, _).
     is cc_multi.
 
 ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
-    deconstruct.deconstruct(X, NonCanon, Functor, _Arity, Args),
+    deconstruct(X, NonCanon, Functor, _Arity, Args),
     (
         Functor = "[|]",
         Args = [ListHead, ListTail]
@@ -4451,8 +4433,8 @@ maybe_add_revstring(String, Priority, OpPriority, !Rs) :-
 adjust_priority(Priority, ops.y, Priority).
 adjust_priority(Priority, ops.x, Priority - 1).
 
-:- pred univ_list_tail_to_revstrings(deconstruct.noncanon_handling,
-    ops.table, univ, revstrings, revstrings).
+:- pred univ_list_tail_to_revstrings(noncanon_handling, ops.table, univ,
+    revstrings, revstrings).
 :- mode univ_list_tail_to_revstrings(in(do_not_allow), in, in, in, out) is det.
 :- mode univ_list_tail_to_revstrings(in(canonicalize), in, in, in, out) is det.
 :- mode univ_list_tail_to_revstrings(in(include_details_cc), in, in, in, out)
@@ -4460,8 +4442,7 @@ adjust_priority(Priority, ops.x, Priority - 1).
 :- mode univ_list_tail_to_revstrings(in, in, in, in, out) is cc_multi.
 
 univ_list_tail_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
-    deconstruct.deconstruct(univ_value(Univ), NonCanon, Functor, _Arity,
-        Args),
+    deconstruct(univ_value(Univ), NonCanon, Functor, _Arity, Args),
     (
         Functor = "[|]",
         Args = [ListHead, ListTail]
@@ -4481,8 +4462,8 @@ univ_list_tail_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
 
     % Write the remaining arguments.
     %
-:- pred term_args_to_revstrings(deconstruct.noncanon_handling,
-    ops.table, list(univ), revstrings, revstrings).
+:- pred term_args_to_revstrings(noncanon_handling, ops.table, list(univ),
+    revstrings, revstrings).
 :- mode term_args_to_revstrings(in(do_not_allow), in, in, in, out) is det.
 :- mode term_args_to_revstrings(in(canonicalize), in, in, in, out) is det.
 :- mode term_args_to_revstrings(in(include_details_cc), in, in, in, out)
@@ -4495,7 +4476,7 @@ term_args_to_revstrings(NonCanon, OpsTable, [X | Xs], !Rs) :-
     arg_to_revstrings(NonCanon, OpsTable, X, !Rs),
     term_args_to_revstrings(NonCanon, OpsTable, Xs, !Rs).
 
-:- pred arg_to_revstrings(deconstruct.noncanon_handling,
+:- pred arg_to_revstrings(noncanon_handling,
     ops.table, univ, revstrings, revstrings).
 :- mode arg_to_revstrings(in(do_not_allow), in, in, in, out) is det.
 :- mode arg_to_revstrings(in(canonicalize), in, in, in, out) is det.
@@ -4519,8 +4500,8 @@ arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 
 comma_priority(_OpTable) = 1000.
 
-:- pred array_to_revstrings(deconstruct.noncanon_handling,
-    ops.table, array(T), revstrings, revstrings).
+:- pred array_to_revstrings(noncanon_handling, ops.table, array(T),
+    revstrings, revstrings).
 :- mode array_to_revstrings(in(do_not_allow), in, in, in, out) is det.
 :- mode array_to_revstrings(in(canonicalize), in, in, in, out) is det.
 :- mode array_to_revstrings(in(include_details_cc), in, in, in, out)
@@ -4533,13 +4514,13 @@ array_to_revstrings(NonCanon, OpsTable, Array, !Rs) :-
         array.to_list(Array) `with_type` list(T), !Rs),
     add_revstring(")", !Rs).
 
-:- pred type_desc_to_revstrings(type_desc.type_desc::in,
+:- pred type_desc_to_revstrings(type_desc::in,
     revstrings::in, revstrings::out) is det.
 
 type_desc_to_revstrings(TypeDesc, !Rs) :-
-    add_revstring(term_io.quoted_atom(type_desc.type_name(TypeDesc)), !Rs).
+    add_revstring(term_io.quoted_atom(type_name(TypeDesc)), !Rs).
 
-:- pred type_ctor_desc_to_revstrings(type_desc.type_ctor_desc::in,
+:- pred type_ctor_desc_to_revstrings(type_ctor_desc::in,
     revstrings::in, revstrings::out) is det.
 
 type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
@@ -4550,7 +4531,7 @@ type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
         ModuleName = "builtin",
         Name = "func"
     ->
-        % The type ctor that we call `builtin:func/N' takes N + 1 type
+        % The type ctor that we call `builtin.func/N' takes N + 1 type
         % parameters: N arguments plus one return value. So we need to subtract
         % one from the arity here.
         Arity = Arity0 - 1

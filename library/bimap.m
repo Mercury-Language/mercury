@@ -302,7 +302,8 @@
 :- import_module pair.
 :- import_module require.
 
-:- type bimap(K, V) --->    bimap(map(K, V), map(V, K)).
+:- type bimap(K, V)
+    --->    bimap(map(K, V), map(V, K)).
 
 %-----------------------------------------------------------------------------%
 

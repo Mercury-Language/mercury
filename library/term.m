@@ -494,7 +494,7 @@ try_term_to_univ(Term, Type, Result) :-
     try_term_to_univ_2(Term, Type, [], Result).
 
 :- pred try_term_to_univ_2(term(T)::in,
-    type_desc.type_desc::in, term_to_type_context::in,
+    type_desc::in, term_to_type_context::in,
     term_to_type_result(univ, T)::out) is det.
 
 try_term_to_univ_2(variable(Var), _Type, Context,
@@ -502,10 +502,10 @@ try_term_to_univ_2(variable(Var), _Type, Context,
 try_term_to_univ_2(Term, Type, Context, Result) :-
     Term = functor(Functor, ArgTerms, TermContext),
     (
-        type_desc.type_ctor_and_args(Type, TypeCtor, TypeArgs),
+        type_ctor_and_args(Type, TypeCtor, TypeArgs),
         term_to_univ_special_case(
-            type_desc.type_ctor_module_name(TypeCtor),
-            type_desc.type_ctor_name(TypeCtor),
+            type_ctor_module_name(TypeCtor),
+            type_ctor_name(TypeCtor),
             TypeArgs, Term, Type, Context, SpecialCaseResult)
     ->
         Result = SpecialCaseResult
@@ -535,7 +535,7 @@ try_term_to_univ_2(Term, Type, Context, Result) :-
     ).
 
 :- pred term_to_univ_special_case(string::in, string::in,
-    list(type_desc.type_desc)::in,
+    list(type_desc)::in,
     term(T)::in(bound(functor(ground, ground, ground))),
     type_desc.type_desc::in, term_to_type_context::in,
     term_to_type_result(univ, T)::out) is semidet.
@@ -567,14 +567,14 @@ term_to_univ_special_case("array", "array", [ElemType],
     % convert the term representing the list of elements back to a list,
     % and then (if successful) we just call the array/1 function.
     %
-    type_desc.has_type(Elem, ElemType),
-    ListType = type_desc.type_of([Elem]),
+    has_type(Elem, ElemType),
+    ListType = type_of([Elem]),
     ArgContext = arg_context(atom("array"), 1, TermContext),
     NewContext = [ArgContext | PrevContext],
     try_term_to_univ_2(ArgList, ListType, NewContext, ArgResult),
     (
         ArgResult = ok(ListUniv),
-        type_desc.has_type(Elem2, ElemType),
+        has_type(Elem2, ElemType),
         same_type(List, [Elem2]),
         det_univ_to_type(ListUniv, List),
         Array = array(List),
@@ -613,7 +613,7 @@ term_to_univ_special_case("type_desc", "type_desc", _, _, _, _, _) :-
     fail.
 
 :- pred term_list_to_univ_list(list(term(T))::in,
-    list(type_desc.type_desc)::in, const::in, int::in,
+    list(type_desc)::in, const::in, int::in,
     term_to_type_context::in, context::in,
     term_to_type_result(list(univ), T)::out) is semidet.
 
@@ -639,14 +639,14 @@ term_list_to_univ_list([ArgTerm | ArgTerms],
         Result = error(Error)
     ).
 
-:- pred find_functor(type_desc.type_desc::in, string::in, int::in,
+:- pred find_functor(type_desc::in, string::in, int::in,
     int::out, list(type_desc.type_desc)::out) is semidet.
 
 find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
     N = construct.num_functors(Type),
     find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
 
-:- pred find_functor_2(type_desc.type_desc::in, string::in, int::in,
+:- pred find_functor_2(type_desc::in, string::in, int::in,
     int::in, int::out, list(type_desc)::out) is semidet.
 
 find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes) :-
@@ -668,7 +668,7 @@ det_term_to_type(Term, X) :-
     ;
         Message = "term.det_term_to_type failed, due to a type error:\n"
             ++ "the term wasn't a valid term for type `"
-            ++ type_desc.type_name(type_desc.type_of(X)) ++ "'",
+            ++ type_name(type_of(X)) ++ "'",
         error(Message)
     ).
 
@@ -683,16 +683,16 @@ univ_to_term(Univ, Term) :-
     % NU-Prolog barfs on `num_functors(Type) < 0'
     ( construct.num_functors(Type) = N, N < 0 ->
         (
-            type_desc.type_ctor_and_args(Type, TypeCtor, TypeArgs),
-            TypeName = type_desc.type_ctor_name(TypeCtor),
-            ModuleName = type_desc.type_ctor_module_name(TypeCtor),
+            type_ctor_and_args(Type, TypeCtor, TypeArgs),
+            TypeName = type_ctor_name(TypeCtor),
+            ModuleName = type_ctor_module_name(TypeCtor),
             univ_to_term_special_case(ModuleName, TypeName, TypeArgs,
                 Univ, Context, SpecialCaseTerm)
         ->
             Term = SpecialCaseTerm
         ;
             Message = "term.type_to_term: unknown type `"
-                ++ type_desc.type_name(univ_type(Univ)) ++ "'",
+                ++ type_name(univ_type(Univ)) ++ "'",
             error(Message)
         )
     ;
@@ -703,7 +703,7 @@ univ_to_term(Univ, Term) :-
     ).
 
 :- pred univ_to_term_special_case(string::in, string::in,
-    list(type_desc.type_desc)::in, univ::in, context::in, term(T)::out)
+    list(type_desc)::in, univ::in, context::in, term(T)::out)
     is semidet.
 
 univ_to_term_special_case("builtin", "int", [], Univ, Context,
@@ -735,7 +735,7 @@ univ_to_term_special_case("univ", "univ", [], Univ, Context, Term) :-
 
 univ_to_term_special_case("array", "array", [ElemType], Univ, Context, Term) :-
     Term = functor(atom("array"), [ArgsTerm], Context),
-    type_desc.has_type(Elem, ElemType),
+    has_type(Elem, ElemType),
     same_type(List, [Elem]),
     det_univ_to_type(Univ, Array),
     array.to_list(Array, List),
@@ -754,13 +754,12 @@ univ_list_to_term_list([Value|Values], [Term|Terms]) :-
 
     % Given a type_info, return a term that represents the name of that type.
     %
-:- pred type_info_to_term(context::in, type_desc.type_desc::in,
-    term(T)::out) is det.
+:- pred type_info_to_term(context::in, type_desc::in, term(T)::out) is det.
 
 type_info_to_term(Context, TypeInfo, Term) :-
-    type_desc.type_ctor_and_args(TypeInfo, TypeCtor, ArgTypes),
-    TypeName = type_desc.type_ctor_name(TypeCtor),
-    ModuleName = type_desc.type_ctor_name(TypeCtor),
+    type_ctor_and_args(TypeInfo, TypeCtor, ArgTypes),
+    TypeName = type_ctor_name(TypeCtor),
+    ModuleName = type_ctor_name(TypeCtor),
     list.map(type_info_to_term(Context), ArgTypes, ArgTerms),
 
     ( ModuleName = "builtin" ->

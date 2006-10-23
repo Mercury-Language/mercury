@@ -337,7 +337,7 @@ injection.reverse_search(injection(_, R), V) = map.search(R, V).
 
 injection.reverse_search(I, injection.reverse_search(I, V), V).
 
-:- pragma promise_pure(injection.search/3).
+:- pragma promise_equivalent_clauses(injection.search/3).
 
 injection.search(injection(F, _)::in, K::in, V::out) :-
     map.search(F, K, V0),

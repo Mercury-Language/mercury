@@ -30,14 +30,17 @@
 
 :- module store.
 :- interface.
+
 :- import_module io.
 
-% Stores and keys are indexed by a type S of typeclass store(S) that
-% is used to distinguish between different stores.  By using an
-% existential type declaration for store.new (see below), we use the
-% type system to ensure at compile time that you never attempt to use
-% a key from one store to access a different store.
+%-----------------------------------------------------------------------------%
 
+    % Stores and keys are indexed by a type S of typeclass store(S) that
+    % is used to distinguish between different stores.  By using an
+    % existential type declaration for store.new (see below), we use the
+    % type system to ensure at compile time that you never attempt to use
+    % a key from one store to access a different store.
+    %
 :- typeclass store(S).
 :- type store(S).
 

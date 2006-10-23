@@ -631,8 +631,14 @@ pos_int_to_digits_2(D, Tail) = Result :-
 
 :- func mul_base(integer) = integer.
 
-mul_base(i(Len, Digits)) =
-    ( Digits = [] -> integer.zero ; i(Len + 1, mul_base_2(Digits)) ).
+mul_base(i(Len, Digits)) = Result :-
+    (
+        Digits = [],
+        Result = integer.zero
+    ;
+        Digits = [_ | _],
+        Result = i(Len + 1, mul_base_2(Digits))
+    ).
 
 :- func mul_base_2(list(digit)) = list(digit).
 
@@ -1052,7 +1058,7 @@ integer.to_string(i(Sign, Digits)) = SignStr ++ digits_to_string(AbsDigits) :-
 :- func digits_to_string(list(digit)) = string.
 
 digits_to_string([]) = "0".
-digits_to_string(Digits @ [_|_]) = Str :-
+digits_to_string(Digits @ [_ | _]) = Str :-
     printbase_rep(printbase_pos_int_to_digits(base),
         Digits, i(_, DigitsInPrintBase)),
     ( DigitsInPrintBase = [Head | Tail] ->

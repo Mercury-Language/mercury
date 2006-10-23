@@ -1656,9 +1656,11 @@ list.chunk(List, ChunkSize, ListOfSmallLists) :-
     list(list(T))::out) is det.
 
 list.chunk_2([], _ChunkSize, List0, _N, Lists) :-
-    ( List0 = [] ->
+    (
+        List0 = [],
         Lists = []
     ;
+        List0 = [_ | _],
         list.reverse(List0, List),
         Lists = [List]
     ).

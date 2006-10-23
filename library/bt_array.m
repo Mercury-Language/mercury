@@ -409,7 +409,7 @@ bsearch_2(A, Lo, Hi, El, Compare, I) :-
     % Do a Compare to check.
     ( Width = 0 ->
         lookup(A, Lo, X),
-        call(Compare, El, X, (=)),
+        Compare(El, X, (=)),
         I = Lo
     ;
         % Otherwise find the middle element of the range and check against
@@ -422,7 +422,7 @@ bsearch_2(A, Lo, Hi, El, Compare, I) :-
 
         Mid = (Lo + Hi) >> 1,
         lookup(A, Mid, XMid),
-        call(Compare, XMid, El, Comp),
+        Compare(XMid, El, Comp),
         ( Comp = (<),
             Mid1 = Mid + 1,
             bsearch_2(A, Mid1, Hi, El, Compare, I)

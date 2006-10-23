@@ -286,10 +286,9 @@
 
 :- import_module pair.
 :- import_module require.
+:- import_module solutions.
 :- import_module string.
 :- import_module svset.
-
-:- use_module solutions.
 
 % Please keep the differences between this module and getopt_io.m to the
 % minimum. Most changes should done in both modules.
@@ -331,16 +330,16 @@
     )).
 
 init_option_table(OptionDefaultsPred, OptionTable) :-
-    solutions.solutions((pred(OptionDataPair::out) is nondet :-
+    solutions((pred(OptionDataPair::out) is nondet :-
             OptionDataPair = Option - OptionData,
-            call(OptionDefaultsPred, Option, OptionData)
+            OptionDefaultsPred(Option, OptionData)
         ), OptionDefaultsList),
     map.from_assoc_list(OptionDefaultsList, OptionTable).
 
 init_option_table_multi(OptionDefaultsPred, OptionTable) :-
-    solutions.solutions((pred(OptionDataPair::out) is multi :-
+    solutions((pred(OptionDataPair::out) is multi :-
             OptionDataPair = Option - OptionData,
-            call(OptionDefaultsPred, Option, OptionData)
+            OptionDefaultsPred(Option, OptionData)
         ), OptionDefaultsList),
     map.from_assoc_list(OptionDefaultsList, OptionTable).
 
@@ -395,7 +394,7 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
         Result = ok(OptionTable0)
     ; string.append("--no-", LongOption, Option) ->
         LongOptionPred = OptionOps ^ long_option,
-        ( call(LongOptionPred, LongOption, Flag) ->
+        ( LongOptionPred(LongOption, Flag) ->
             string.append("--", LongOption, OptName),
             process_negated_option(OptName, Flag, OptionOps,
                 OptionTable0, Result1, !OptionsSet),
@@ -430,7 +429,7 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
             MaybeArg = no
         ),
         OptionName = "--" ++ LongOption,
-        ( call(LongOptionPred, LongOption, Flag) ->
+        ( LongOptionPred(LongOption, Flag) ->
             ( map.search(OptionTable0, Flag, OptionData) ->
                 getopt.handle_long_option(OptionName, Flag, OptionData,
                     MaybeArg, Args0, Args, OptionOps,
@@ -455,7 +454,7 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
         % Process a single negated option `-x-'.
         ( ShortOptionsList = [SingleShortOpt, '-'] ->
             ShortOptionPred = OptionOps ^ short_option,
-            ( call(ShortOptionPred, SingleShortOpt, Flag) ->
+            ( ShortOptionPred(SingleShortOpt, Flag) ->
                 string.from_char_list(['-', SingleShortOpt], OptName),
                 process_negated_option(OptName, Flag, OptionOps,
                     OptionTable0, Result1, !OptionsSet),
@@ -516,12 +515,14 @@ getopt.handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
         getopt.need_arg(OptionData, yes),
         MaybeOptionArg0 = no
     ->
-        ( Args0 = [Arg | ArgsTail] ->
+        (
+            Args0 = [Arg | ArgsTail],
             MaybeOptionArg = yes(Arg),
             Args1 = ArgsTail,
             MissingArg = no,
             OptionArgs1 = [Arg | OptionArgs0]
         ;
+            Args0 = [],
             MaybeOptionArg = no,
             Args1 = Args0,
             OptionArgs1 = OptionArgs0,
@@ -573,7 +574,7 @@ getopt.handle_short_options([], _, Args, Args, OptionArgs, OptionArgs,
 getopt.handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
         OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet) :-
     ShortOptionPred = OptionOps ^ short_option,
-    ( call(ShortOptionPred, Opt, Flag) ->
+    ( ShortOptionPred(Opt, Flag) ->
         ( map.search(OptionTable0, Flag, OptionData) ->
             ( getopt.need_arg(OptionData, yes) ->
                 getopt.get_short_option_arg(Opts0, Arg, Args0, Args1,
@@ -862,7 +863,7 @@ getopt.process_special(Option, Flag, OptionData, OptionOps,
     (
         MaybeHandler = notrack(Handler),
         (
-            call(Handler, Flag, OptionData, OptionTable0, Result0)
+            Handler(Flag, OptionData, OptionTable0, Result0)
         ->
             Result = Result0
         ;
@@ -873,7 +874,7 @@ getopt.process_special(Option, Flag, OptionData, OptionOps,
     ;
         MaybeHandler = track(TrackHandler),
         (
-            call(TrackHandler, Flag, OptionData, OptionTable0, Result0,
+            TrackHandler(Flag, OptionData, OptionTable0, Result0,
                 NewOptionsSet)
         ->
             set.union(NewOptionsSet, !OptionsSet),

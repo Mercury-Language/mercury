@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: par_builtin.m.
 % Main authors: wangp.
 % Stability: low.
-
+% 
 % This file is automatically imported, as if via `use_module', into every
 % module in lowlevel parallel grades.  It is intended for the builtin procedures
 % that the compiler generates implicit calls to when implementing parallel
@@ -18,14 +18,11 @@
 % This module is a private part of the Mercury implementation; user modules
 % should never explicitly import this module. The interface for this module
 % does not get included in the Mercury library reference manual.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module par_builtin.
-
-%-----------------------------------------------------------------------------%
-
 :- interface.
 
 :- type future(T).
@@ -54,6 +51,7 @@
     %
 :- impure pred signal(future(T)::in, T::in) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

@@ -387,7 +387,7 @@ set.subset(SetA, SetB) :-
 set.superset(SetA, SetB) :-
     set_ordlist.superset(SetA, SetB).
 
-:- pragma promise_pure(set.member/2).
+:- pragma promise_equivalent_clauses(set.member/2).
 
 set.member(X::in, Set::in) :-
     set_ordlist.is_member(X, Set, yes).

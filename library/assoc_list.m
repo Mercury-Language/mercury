@@ -24,22 +24,22 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type assoc_list(K,V) ==  list(pair(K,V)).
+:- type assoc_list(K, V) ==  list(pair(K, V)).
 
-:- type assoc_list(T)   ==  list(pair(T,T)).
+:- type assoc_list(T)   ==  list(pair(T, T)).
 
     % Swap the two sides of the pairs in each member of the list.
     %
+:- func assoc_list.reverse_members(assoc_list(K, V)) = assoc_list(V, K).
 :- pred assoc_list.reverse_members(assoc_list(K, V)::in,
     assoc_list(V, K)::out) is det.
-:- func assoc_list.reverse_members(assoc_list(K, V)) = assoc_list(V, K).
 
     % Zip together two lists; abort if they are of different lengths.
     %
-:- pred assoc_list.from_corresponding_lists(list(K)::in, list(V)::in,
-    assoc_list(K,V)::out) is det.
 :- func assoc_list.from_corresponding_lists(list(K), list(V))
-    = assoc_list(K,V).
+    = assoc_list(K, V).
+:- pred assoc_list.from_corresponding_lists(list(K)::in, list(V)::in,
+    assoc_list(K, V)::out) is det.
 
     % Return the first member of each pair.
     %
@@ -48,8 +48,8 @@
 
     % Return the second member of each pair.
     %
-:- pred assoc_list.values(assoc_list(K, V)::in, list(V)::out) is det.
 :- func assoc_list.values(assoc_list(K, V)) = list(V).
+:- pred assoc_list.values(assoc_list(K, V)::in, list(V)::out) is det.
 
     % Return the two lists contain respectively the first and second member
     % of each pair in the assoc_list.
@@ -64,7 +64,7 @@
 
     % An alternative version of assoc_list.search.
     %
-:- func assoc_list(K, V) ^ elem(K)     = V is semidet.
+:- func assoc_list(K, V) ^ elem(K) = V is semidet.
 
     % An alternative version of assoc_list.search that throws an
     % exception if the key in question does not appear in the assoc_list.

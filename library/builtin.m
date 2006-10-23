@@ -450,7 +450,7 @@ promise_only_solution(CCPred::(pred(uo) is cc_nondet)) = (OutVal::uo) :-
 
 get_one_solution(CCPred) = OutVal :-
     impure Pred = cc_cast(CCPred),
-    call(Pred, OutVal).
+    Pred(OutVal).
 
 :- impure func cc_cast(pred(T)) = pred(T).
 :- mode cc_cast(pred(out) is cc_nondet) = out(pred(out) is semidet) is det.
@@ -500,7 +500,7 @@ promise_only_solution_io(Pred, X, !IO) :-
 
 get_one_solution_io(Pred, X, !IO) :-
     impure DetPred = cc_cast_io(Pred),
-    call(DetPred, X, !IO).
+    DetPred(X, !IO).
 
 :- impure func cc_cast_io(pred(T, IO, IO)) = pred(T, IO, IO).
 :- mode cc_cast_io(pred(out, di, uo) is cc_multi) =

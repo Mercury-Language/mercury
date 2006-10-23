@@ -1218,9 +1218,11 @@ string_get_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
     token::out, io::di, io::uo) is det.
 
 finish_hex_escape(QuoteChar, Chars, HexChars, Token, !IO) :-
-    ( HexChars = [] ->
+    (
+        HexChars = [],
         Token = error("empty hex escape")
     ;
+        HexChars = [_ | _],
         rev_char_list_to_string(HexChars, HexString),
         (
             string.base_string_to_int(16, HexString, Int),
@@ -1314,9 +1316,11 @@ string_get_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
     token::out, io::di, io::uo) is det.
 
 finish_octal_escape(QuoteChar, Chars, OctalChars, Token, !IO) :-
-    ( OctalChars = [] ->
+    (
+        OctalChars = [],
         Token = error("empty octal escape")
     ;
+        OctalChars = [_ | _],
         rev_char_list_to_string(OctalChars, OctalString),
         (
             string.base_string_to_int(8, OctalString, Int),

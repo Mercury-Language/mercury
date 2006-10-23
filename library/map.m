@@ -881,7 +881,7 @@ map.intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
         compare(R, Key1, Key2),
         (
             R = (=),
-            call(CommonPred, Value1, Value2, Value),
+            CommonPred(Value1, Value2, Value),
             map.det_insert(Common0, Key1, Value, Common1),
             map.intersect_2(AssocTail1, AssocTail2, CommonPred,
                 Common1, Common)
@@ -985,7 +985,7 @@ map.union_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
         compare(R, Key1, Key2),
         (
             R = (=),
-            call(CommonPred, Value1, Value2, Value),
+            CommonPred(Value1, Value2, Value),
             map.det_insert(Common0, Key1, Value, Common1),
             map.union_2(AssocTail1, AssocTail2, CommonPred, Common1, Common)
         ;

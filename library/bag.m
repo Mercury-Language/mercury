@@ -22,6 +22,8 @@
 :- import_module list.
 :- import_module set.
 
+%---------------------------------------------------------------------------%
+
 :- type bag(T).
 
     % Create an empty bag.
