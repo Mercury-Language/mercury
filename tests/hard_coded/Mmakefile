@@ -170,6 +170,7 @@ ORDINARY_PROGS=	\
 	rev_arith \
 	reverse_arith \
 	rtc_bug \
+	rtree_test \
 	rtti_strings \
 	runtime_opt \
 	setjmp_test \

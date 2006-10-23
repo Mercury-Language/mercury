@@ -94,6 +94,7 @@
 :- import_module relation.
 :- import_module require.
 :- import_module robdd.
+:- import_module rtree.
 :- import_module set.
 :- import_module set_bbbtree.
 :- import_module set_ctree234.
@@ -238,6 +239,7 @@ mercury_std_library_module("rbtree").
 mercury_std_library_module("relation").
 mercury_std_library_module("require").
 mercury_std_library_module("robdd").
+mercury_std_library_module("rtree").
 mercury_std_library_module("rtti_implementation").
 mercury_std_library_module("set").
 mercury_std_library_module("set_bbbtree").
