@@ -24,6 +24,8 @@
 :- import_module set.
 :- import_module unit.
 
+%------------------------------------------------------------------------------%
+
     % graph(Node, Arc) represents a directed graph with information of
     % type Node associated with each node, and information of type Arc
     % associated with each arc.
@@ -170,7 +172,6 @@
 :- implementation.
 
 :- import_module counter.
-:- import_module list.
 :- import_module map.
 :- import_module require.
 :- import_module solutions.

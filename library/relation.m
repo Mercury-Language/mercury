@@ -27,6 +27,8 @@
 :- import_module set.
 :- import_module sparse_bitset.
 
+%------------------------------------------------------------------------------%
+
 :- type relation(T).
 
 :- type relation_key.
@@ -306,12 +308,10 @@
 
 :- import_module bimap.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module queue.
 :- import_module require.
-:- import_module sparse_bitset.
 :- import_module stack.
 
 %------------------------------------------------------------------------------%

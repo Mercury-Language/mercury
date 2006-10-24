@@ -1551,7 +1551,6 @@
 
 :- import_module array.
 :- import_module benchmarking.
-:- import_module bool.
 :- import_module dir.
 :- import_module enum.
 :- import_module exception.

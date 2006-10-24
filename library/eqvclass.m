@@ -16,11 +16,12 @@
 %-----------------------------------------------------------------------------%
 
 :- module eqvclass.
-
 :- interface.
 
 :- import_module list.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
 :- type eqvclass(T).
 :- type partition_id.
@@ -157,8 +158,9 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module svmap.
+
+%---------------------------------------------------------------------------%
 
 :- type eqvclass(T)
     --->    eqvclass(
