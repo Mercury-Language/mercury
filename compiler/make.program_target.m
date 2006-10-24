@@ -337,7 +337,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
     % Report errors if any of the extra objects aren't present.
     list.map_foldl2(dependency_status,
         list.map((func(F) = file(F, no)), ObjectsToCheck),
-        ExtraObjStatus, !Info, !IO),
+            ExtraObjStatus, !Info, !IO),
 
     DepsResult3 =
         ( list.member(error, ExtraObjStatus) -> error ; DepsResult2 ),
@@ -1094,7 +1094,24 @@ install_subdir_file(SubdirLinkSucceeded, InstallDir, ModuleName, Ext,
 maybe_install_library_file(Linkage, FileName, InstallDir, Succeeded, !IO) :-
     globals.io_lookup_accumulating_option(lib_linkages, LibLinkages, !IO),
     ( list.member(Linkage, LibLinkages) ->
-        install_file(FileName, InstallDir, Succeeded, !IO)
+        install_file(FileName, InstallDir, Succeeded0, !IO),
+        %
+        % We need to update the archive index after we copy a .a file to
+        % the installation directory because the linkers on some OSs
+        % complain if we don't.
+        % 
+        (
+            Linkage = "static",
+            Succeeded0 = yes
+        ->
+            % FileName is directory qualified so strip that qualification
+            % off.
+            %
+            BaseFileName = dir.det_basename(FileName),
+            generate_archive_index(BaseFileName, InstallDir, Succeeded, !IO)
+        ;
+            Succeeded = Succeeded0
+        )
     ;
         Succeeded = yes
     ).
@@ -1197,6 +1214,27 @@ print_mkdir_errors([error(Error) | Rest], no, !IO) :-
 make_install_symlink(Subdir, Ext, Succeeded, !IO) :-
     LinkName = Subdir/(Ext ++ "s"),
     maybe_make_symlink("..", LinkName, Succeeded, !IO).
+
+    % Generate (or update) the index for an archive file,
+    % i.e. run ranlib on a .a file.
+    %
+:- pred generate_archive_index(file_name::in, dir_name::in, bool::out,
+    io::di, io::uo) is det.
+
+generate_archive_index(FileName, InstallDir, Succeeded, !IO) :-
+    verbose_msg(
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.write_string("Generating archive index for file ", !IO),
+            io.write_string(FileName, !IO),
+            io.write_string(" in ", !IO),
+            io.write_string(InstallDir, !IO),
+            io.nl(!IO)
+        ), !IO),
+    globals.io_lookup_string_option(ranlib_command, RanLibCommand, !IO),
+    Command = string.join_list("    ", list.map(quote_arg,
+        [RanLibCommand, InstallDir / FileName ])),
+    io.output_stream(OutputStream, !IO),
+    invoke_system_command(OutputStream, verbose, Command, Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 
