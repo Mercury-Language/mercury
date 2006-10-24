@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: mlds_to_il.m - Convert MLDS to IL.
 % Main author: trd, petdr.
-
+% 
 % This module generates IL from MLDS.  Currently it's pretty tuned
 % towards generating assembler -- to generate code using
 % Reflection::Emit it is likely some changes will need to be made.
@@ -53,11 +53,10 @@
 % [ ] Add an option to do overflow checking.
 % [ ] Should replace hard-coded of int32 with a more abstract name such
 %     as `mercury_int_il_type'.
-
+% 
 % XXX We should rename this module to mlds_to_ilds, since that is what
 %     it actually does.
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_il.
@@ -2002,7 +2001,7 @@ atomic_statement_to_il(delete_object(Target), Instrs, !Info) :-
     get_load_store_lval_instrs(Target, LoadInstrs, StoreInstrs, !Info),
     Instrs = tree_list([LoadInstrs, instr_node(ldnull), StoreInstrs]).
 
-atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
+atomic_statement_to_il(new_object(Target0, _MaybeTag, HasSecTag, Type, Size,
         MaybeCtorName, Args0, ArgTypes0), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
     (
@@ -2056,6 +2055,22 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
         ILArgTypes = list.map(mlds_type_to_ilds_type(DataRep), ArgTypes),
         list.map_foldl(load, Args, ArgsLoadInstrsTrees, !Info),
         ArgsLoadInstrs = tree_list(ArgsLoadInstrsTrees),
+        % Check if it is an assignment to private_builtin.dummy_var
+        % If so, then it needs to be cast to il_generic_type.
+        (
+            Target0 = var(qual(MLDS_Module, QualKind, VarName), _),
+            VarName = mlds_var_name("dummy_var", _),
+            mercury_private_builtin_module(PrivateBuiltin),
+            MLDS_PrivateBuiltin = mercury_module_name_to_mlds(PrivateBuiltin),
+            mlds_append_wrapper_class(MLDS_PrivateBuiltin) = MLDS_Module
+        ->
+            MaybeCastInstrs = node([castclass(il_generic_type)]),
+            Target = var(qual(MLDS_Module, QualKind, VarName),
+                mlds_generic_type)
+        ;
+            MaybeCastInstrs = empty,
+            Target = Target0
+        ),
         get_load_store_lval_instrs(Target, LoadMemRefInstrs,
             StoreLvalInstrs, !Info),
         CallCtor = newobj_constructor(ClassName, ILArgTypes),
@@ -2064,6 +2079,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
             comment_node("new object (call constructor)"),
             ArgsLoadInstrs,
             instr_node(CallCtor),
+            MaybeCastInstrs,
             StoreLvalInstrs
         ])
     ;
@@ -2119,7 +2135,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
         ArgsLoadInstrs = tree_list(ArgsLoadInstrsTrees),
 
         % Get the instructions to load and store the target.
-        get_load_store_lval_instrs(Target, LoadMemRefInstrs, StoreLvalInstrs,
+        get_load_store_lval_instrs(Target0, LoadMemRefInstrs, StoreLvalInstrs,
             !Info),
         (
             Size = yes(SizeInWordsRval0),
@@ -3112,7 +3128,7 @@ mlds_mercury_type_to_ilds_type(_, _, type_cat_higher_order) =
     il_object_array_type.
 mlds_mercury_type_to_ilds_type(_, _, type_cat_tuple) = il_object_array_type.
 mlds_mercury_type_to_ilds_type(_, _, type_cat_enum) =  il_object_array_type.
-mlds_mercury_type_to_ilds_type(_, _, type_cat_dummy) =  il_object_array_type.
+mlds_mercury_type_to_ilds_type(_, _, type_cat_dummy) =  il_generic_type.
 mlds_mercury_type_to_ilds_type(_, _, type_cat_variable) = il_generic_type.
 mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_type_info) =
     mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor).

@@ -120,11 +120,11 @@
 :- pragma foreign_code("C#", "
 
 // The dummy_var is used to represent io.states and other Mercury
-// parameters that are not really passed around.  Occasionally a dummy variable
-// will be used by the code generator as an lval, so we use
+// parameters that are not really passed around.  Occasionally a dummy
+// variable will be used by the code generator as an lval, so we use
 // private_builtin:dummy_var as that lval.
 
-public static object[] dummy_var;
+public static object dummy_var;
 
 ").
 
