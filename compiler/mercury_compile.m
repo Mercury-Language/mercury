@@ -657,7 +657,8 @@ do_rename_file(OldFileName, NewFileName, Result, !IO) :-
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
     io.rename_file(OldFileName, NewFileName, Result0, !IO),
-    ( Result0 = error(Error0) ->
+    ( 
+        Result0 = error(Error0),
         maybe_write_string(VeryVerbose, " failed.\n", !IO),
         maybe_flush_output(VeryVerbose, !IO),
         io.error_message(Error0, ErrorMsg0),
@@ -668,7 +669,8 @@ do_rename_file(OldFileName, NewFileName, Result, !IO) :-
         maybe_write_string(VeryVerbose, "'...", !IO),
         maybe_flush_output(VeryVerbose, !IO),
         io.remove_file(NewFileName, Result1, !IO),
-        ( Result1 = error(Error1) ->
+        (
+            Result1 = error(Error1),
             maybe_write_string(Verbose, " failed.\n", !IO),
             maybe_flush_output(Verbose, !IO),
             io.error_message(Error1, ErrorMsg1),
@@ -679,6 +681,7 @@ do_rename_file(OldFileName, NewFileName, Result, !IO) :-
             report_error(Message, !IO),
             Result = Result1
         ;
+            Result1 = ok,
             maybe_write_string(VeryVerbose, " done.\n", !IO),
             maybe_write_string(VeryVerbose, "% Renaming `", !IO),
             maybe_write_string(VeryVerbose, OldFileName, !IO),
@@ -687,7 +690,8 @@ do_rename_file(OldFileName, NewFileName, Result, !IO) :-
             maybe_write_string(VeryVerbose, "' again...", !IO),
             maybe_flush_output(VeryVerbose, !IO),
             io.rename_file(OldFileName, NewFileName, Result2, !IO),
-            ( Result2 = error(Error2) ->
+            (
+                Result2 = error(Error2),
                 maybe_write_string(Verbose, " failed.\n", !IO),
                 maybe_flush_output(Verbose, !IO),
                 io.error_message(Error2, ErrorMsg),
@@ -696,11 +700,13 @@ do_rename_file(OldFileName, NewFileName, Result, !IO) :-
                     "': ", ErrorMsg], Message),
                 report_error(Message, !IO)
             ;
+                Result2 = ok,
                 maybe_write_string(Verbose, " done.\n", !IO)
             ),
             Result = Result2
         )
     ;
+        Result0 = ok,
         maybe_write_string(Verbose, " done.\n", !IO),
         Result = Result0
     ).
@@ -842,7 +848,8 @@ process_arg_build(FileOrModule, OptionVariables, OptionArgs, _, yes,
 process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         FactTableObjFiles, !IO) :-
     globals.io_lookup_bool_option(generate_dependencies, GenerateDeps, !IO),
-    ( GenerateDeps = yes,
+    (
+        GenerateDeps = yes,
         ModulesToLink = [],
         FactTableObjFiles = [],
         (
@@ -852,10 +859,12 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             FileOrModule = module(ModuleName),
             generate_module_dependencies(ModuleName, !IO)
         )
-    ; GenerateDeps = no,
+    ;
+        GenerateDeps = no,
         globals.io_lookup_bool_option(generate_dependency_file,
             GenerateDepFile, !IO),
-        ( GenerateDepFile = yes,
+        (
+            GenerateDepFile = yes,
             ModulesToLink = [],
             FactTableObjFiles = [],
             (
@@ -865,7 +874,8 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
                 FileOrModule = module(ModuleName),
                 generate_module_dependency_file(ModuleName, !IO)
             )
-        ; GenerateDepFile = no,
+        ;
+            GenerateDepFile = no,
             process_module(OptionVariables, OptionArgs,
                 FileOrModule, ModulesToLink, FactTableObjFiles, !IO)
         )
@@ -1001,8 +1011,7 @@ read_module_or_file(file(FileName), ReturnTimestamp, ModuleName,
 process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         FactTableObjFiles, !IO) :-
     globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, halt_at_syntax_errors,
-        HaltSyntax),
+    globals.lookup_bool_option(Globals, halt_at_syntax_errors, HaltSyntax),
     globals.lookup_bool_option(Globals, make_interface, MakeInterface),
     globals.lookup_bool_option(Globals, make_short_interface,
         MakeShortInterface),
@@ -1297,16 +1306,15 @@ compile_with_module_options(ModuleName, OptionVariables, OptionArgs,
 
 %-----------------------------------------------------------------------------%
 
-    % Return a closure which will work out what the target files
-    % are for a module, so recompilation_check.m can check that
-    % they are up-to-date which deciding whether compilation is
-    % necessary.
+    % Return a closure which will work out what the target files are for
+    % a module, so recompilation_check.m can check that they are
+    % up-to-date which deciding whether compilation is necessary.
     % Note that `--smart-recompilation' only works with
-    % `--target-code-only', which is always set when the
-    % compiler is invoked by mmake. Using smart recompilation
-    % without using mmake is not a sensible thing to do.
-    % handle_options.m will disable smart recompilation if
-    % `--target-code-only' is not set.
+    % `--target-code-only', which is always set when the compiler is
+    % invoked by mmake. Using smart recompilation without using mmake is
+    % not a sensible thing to do.  handle_options.m will disable smart
+    % recompilation if `--target-code-only' is not set.
+    %
 :- pred find_smart_recompilation_target_files(module_name::in, globals::in,
     find_target_file_names::out(find_target_file_names)) is det.
 
@@ -1524,17 +1532,18 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         (
             ( Target = target_c
             ; Target = target_asm
-            )
-        ->
+            ),
             %
-            % Produce the grade independent header file
-            % <module>.mh containing function prototypes
-            % for the `:- pragma export'ed procedures.
+            % Produce the grade independent header file <module>.mh
+            % containing function prototypes for the procedures 
+            % referred to by foreign_export pragmas.
             %
             export.get_foreign_export_decls(!.HLDS, ExportDecls),
             export.produce_header_file(ExportDecls, ModuleName, !IO)
         ;
-            true
+            ( Target = target_java
+            ; Target = target_il
+            )
         ),
         (
             Target = target_il,
@@ -1570,7 +1579,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             FactTableBaseFiles = []
         ;
             Target = target_asm,
-            % compile directly to assembler using the gcc back-end
+            % Compile directly to assembler using the gcc back-end.
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             maybe_mlds_to_gcc(MLDS, ContainsCCode, !IO),
             (
@@ -1649,13 +1658,13 @@ mercury_compile_asm_c_code(ModuleName, !IO) :-
     compile_target_code.compile_c_file(OutputStream, PIC,
         CCode_C_File, CCode_O_File, CompileOK, !IO),
     maybe_set_exit_status(CompileOK, !IO),
-    % add this object file to the list
-    % of extra object files to link in
+    % Add this object file to the list of extra object files to link in.
     globals.io_lookup_accumulating_option(link_objects, LinkObjects, !IO),
     globals.io_set_option(link_objects,
         accumulating([CCode_O_File | LinkObjects]), !IO).
 
-    % return `yes' iff this module defines the main/2 entry point.
+    % Return `yes' iff this module defines the main/2 entry point.
+    %
 :- func mlds_has_main(mlds) = has_main.
 
 mlds_has_main(MLDS) =
@@ -1672,9 +1681,11 @@ mlds_has_main(MLDS) =
 
 get_linked_target_type(LinkedTargetType, !IO) :-
     globals.io_lookup_bool_option(compile_to_shared_lib, MakeSharedLib, !IO),
-    ( MakeSharedLib = yes ->
+    (
+        MakeSharedLib = yes,
         LinkedTargetType = shared_library
     ;
+        MakeSharedLib = no,
         LinkedTargetType = executable
     ).
 
@@ -2134,7 +2145,8 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             )
         ->
             frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo, !IO),
-            ( FoundModeError = no ->
+            (
+                FoundModeError = no, 
                 (
                     % Closure analysis assumes that lambda expressions have
                     % been converted into separate predicates.
@@ -2197,6 +2209,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     ReuseAnalysis = no
                 )
             ;
+                FoundModeError = yes,
                 io.set_exit_status(1, !IO)
             )
         ;
@@ -2216,10 +2229,12 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             module_info_get_name(!.HLDS, ModuleName),
             module_name_to_search_file_name(ModuleName, ".opt", OptName, !IO),
             search_for_file(IntermodDirs, OptName, Found, !IO),
-            ( Found = ok(_) ->
+            ( 
+                Found = ok(_),
                 UpdateStatus = yes,
                 io.seen(!IO)
             ;
+                Found = error(_),
                 UpdateStatus = no
             )
         ;
@@ -2523,7 +2538,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_term_size_prof(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 220, "term_size_prof", !DumpInfo, !IO),
 
-    % Deep profiling transformation should be done late in the piece
+    % The deep profiling transformation should be done late in the piece
     % since it munges the code a fair amount and introduces strange
     % disjunctions that might confuse other hlds->hlds transformations.
     maybe_deep_profiling(Verbose, Stats, !HLDS, !IO),
@@ -2845,8 +2860,8 @@ puritycheck(Verbose, Stats, !HLDS, FoundTypeError, FoundPostTypecheckError,
 modecheck(Verbose, Stats, !HLDS, FoundModeError, UnsafeToContinue, !IO) :-
     module_info_get_num_errors(!.HLDS, NumErrors0),
     maybe_benchmark_modes(
-        (pred(H0::in, {H,U}::out, di, uo) is det -->
-            modecheck(H0, H, U)
+        (pred(H0::in, {H, U}::out, !.IO::di, !:IO::uo) is det :-
+            modecheck(H0, H, U, !IO)
         ),
         "modecheck", !.HLDS, {!:HLDS, UnsafeToContinue}, !IO),
     module_info_get_num_errors(!.HLDS, NumErrors),
@@ -2967,8 +2982,7 @@ maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_closure_analysis(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(analyse_closures, ClosureAnalysis,
-        !IO),
+    globals.io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
     (
         ClosureAnalysis = yes,
         maybe_write_string(Verbose, "% Analysing closures...\n", !IO),
@@ -3305,7 +3319,7 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
     (
         gc_is_conservative(GC) = yes
     ->
-        % we can't do heap reclamation with conservative GC
+        % We can't do heap reclamation with conservative GC.
         true
     ;
         SemidetReclaim = no,
@@ -3345,14 +3359,18 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
         module_name_to_file_name(ModuleName, ".dependency_graph", yes,
             FileName, !IO),
         io.open_output(FileName, Res, !IO),
-        ( Res = ok(FileStream) ->
+        ( 
+            Res = ok(FileStream),
             io.set_output_stream(FileStream, OutputStream, !IO),
             dependency_graph.write_dependency_graph(!HLDS, !IO),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO),
             maybe_write_string(Verbose, " done.\n", !IO)
         ;
-            report_error("unable to write dependency graph.", !IO)
+            Res = error(IOError),
+            ErrorMsg = "unable to write dependency graph: " ++
+                io.error_message(IOError),
+            report_error(ErrorMsg, !IO)
         ),
         maybe_report_stats(Stats, !IO)
     ;
@@ -3379,13 +3397,17 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".prof", yes, ProfFileName, !IO),
         io.open_output(ProfFileName, Res, !IO),
-        ( Res = ok(FileStream) ->
+        (
+            Res = ok(FileStream),
             io.set_output_stream(FileStream, OutputStream, !IO),
             dependency_graph.write_prof_dependency_graph(!HLDS, !IO),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO)
         ;
-            report_error("unable to write profiling static call graph.", !IO)
+            Res = error(IOError),
+            ErrorMsg = "unable to write profiling static call graph: " ++
+                io.error_message(IOError),
+            report_error(ErrorMsg, !IO)
         ),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -3991,8 +4013,9 @@ maybe_lco(Verbose, Stats, !HLDS, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
+%
 % The backend passes
+%
 
 :- pred map_args_to_regs(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -4198,8 +4221,9 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
+%
 % The LLDS output pass
+%
 
 :- pred output_pass(module_info::in, global_data::in, list(c_procedure)::in,
     module_name::in, bool::out, list(string)::out, io::di, io::uo) is det.
@@ -4428,8 +4452,9 @@ compile_fact_table_file(ErrorStream, BaseName, O_File, Succeeded, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
+%
 % The MLDS backend
+%
 
 :- pred mlds_backend(module_info::in, module_info::out, mlds::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
@@ -4479,9 +4504,8 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     maybe_dump_mlds(MLDS10, 10, "rtti", !IO),
 
     % Detection of tail calls needs to occur before the
-    % chain_gc_stack_frame pass of ml_elim_nested,
-    % because we need to unlink the stack frame from the
-    % stack chain before tail calls.
+    % chain_gc_stack_frame pass of ml_elim_nested, because we need to
+    % unlink the stack frame from the stack chain before tail calls.
     globals.lookup_bool_option(Globals, optimize_tailcalls, OptimizeTailCalls),
     (
         OptimizeTailCalls = yes,
@@ -4609,7 +4633,10 @@ mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
     MLDS = mlds(ModuleName, ForeignCode, Imports, Defns,
         InitPreds, FinalPreds).
 
-% The `--high-level-C' MLDS output pass
+%-----------------------------------------------------------------------------%
+%
+% The `--high-level-code' MLDS output pass
+%
 
 :- pred mlds_to_high_level_c(mlds::in, io::di, io::uo) is det.
 
@@ -4684,13 +4711,16 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
         ->
             CurDumpFileName = PrevDumpFileName,
             io.open_output(DumpFileName, Res, !IO),
-            ( Res = ok(FileStream) ->
+            (
+                Res = ok(FileStream),
                 io.write_string(FileStream, "This stage is identical " ++
                     "to the stage in " ++ PrevDumpFileName ++ ".\n", !IO),
                 io.close_output(FileStream, !IO)
             ;
+                Res = error(IOError),
                 maybe_write_string(Verbose, "\n", !IO),
-                Msg = "can't open file `" ++ DumpFileName ++ "' for output.",
+                Msg = "can't open file `" ++ DumpFileName ++
+                    "' for output: " ++ io.error_message(IOError),
                 report_error(Msg, !IO)
             )
         ;
@@ -4767,7 +4797,8 @@ dump_hlds(DumpFile, HLDS, !IO) :-
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
     io.open_output(DumpFile, Res, !IO),
-    ( Res = ok(FileStream) ->
+    (
+        Res = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
         hlds_out.write_hlds(0, HLDS, !IO),
         io.set_output_stream(OutputStream, _, !IO),
@@ -4775,8 +4806,10 @@ dump_hlds(DumpFile, HLDS, !IO) :-
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
+        Res = error(IOError),
         maybe_write_string(Verbose, "\n", !IO),
-        Msg = "can't open file `" ++ DumpFile ++ "' for output.",
+        Msg = "can't open file `" ++ DumpFile ++
+            "' for output: " ++ io.error_message(IOError),
         report_error(Msg, !IO)
     ).
 
@@ -4820,7 +4853,8 @@ dump_mlds(DumpFile, MLDS, !IO) :-
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
     io.open_output(DumpFile, Res, !IO),
-    ( Res = ok(FileStream) ->
+    (
+        Res = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
         pprint.write(80, pprint.to_doc(MLDS), !IO),
         io.nl(!IO),
@@ -4829,8 +4863,10 @@ dump_mlds(DumpFile, MLDS, !IO) :-
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
+        Res = error(IOError),
         maybe_write_string(Verbose, "\n", !IO),
-        string.append_list(["can't open file `", DumpFile, "' for output."],
+        string.append_list(["can't open file `", DumpFile, "' for output: ",
+                io.error_message(IOError)],
             ErrorMessage),
         report_error(ErrorMessage, !IO)
     ).

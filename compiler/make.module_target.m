@@ -917,8 +917,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
     (
         ( CompilationTarget = target_c
         ; CompilationTarget = target_asm
-        )
-    ->
+        ),
         list.map_foldl(
             (pred(FactTableFile::in, FactTableForeignFile::out, di, uo)
                     is det -->
@@ -931,6 +930,9 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
             ), Imports ^ fact_table_deps, FactTableForeignFiles, !IO),
         ForeignFiles = ForeignFiles0 ++ FactTableForeignFiles
     ;
+        ( CompilationTarget = target_java
+        ; CompilationTarget = target_il
+        ),
         ForeignFiles = ForeignFiles0
     ).
 

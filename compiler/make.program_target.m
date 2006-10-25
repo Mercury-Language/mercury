@@ -51,9 +51,14 @@
 %-----------------------------------------------------------------------------%
 
 make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
-    ( FileType = shared_library ->
+    (
+        FileType = shared_library,
         ExtraOptions = ["--compile-to-shared-lib"]
     ;
+        ( FileType = executable
+        ; FileType = java_archive
+        ; FileType = static_library
+        ),
         ExtraOptions = []
     ),
     globals.io_lookup_accumulating_option(lib_linkages, LibLinkages, !IO),
@@ -248,8 +253,7 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
     (
         ( CompilationTarget = target_c
         ; CompilationTarget = target_asm
-        )
-    ->
+        ),
         FactObjectTargets = list.map(
             (func(FactFile) =
                 dep_target(ModuleName -
@@ -258,6 +262,9 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
             Imports ^ fact_table_deps),
         ObjectTargets = FactObjectTargets ++ ForeignObjectTargets
     ;
+        ( CompilationTarget = target_java
+        ; CompilationTarget = target_il
+        ),
         ObjectTargets = ForeignObjectTargets
     ).
 
@@ -822,7 +829,8 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
     (
         MaybeImports = yes(Imports),
         globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
-        ( Intermod = yes ->
+        (
+            Intermod = yes,
             % `.int0' files are imported by `.opt' files.
             (
                 Imports ^ children = [_ | _],
@@ -832,6 +840,7 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
                 Exts = ["opt"]
             )
         ;
+            Intermod = no,
             Exts = []
         ),
 

@@ -1096,8 +1096,7 @@ write_module_or_linked_target(ModuleName - FileType, !IO) :-
         write_target_file(ModuleName - ModuleTargetType, !IO)
     ;
         FileType = linked_target(LinkedTargetType),
-        linked_target_file_name(ModuleName, LinkedTargetType, FileName,
-            !IO),
+        linked_target_file_name(ModuleName, LinkedTargetType, FileName, !IO),
         io.write_string(FileName, !IO)
     ;
         FileType = misc_target(_),
