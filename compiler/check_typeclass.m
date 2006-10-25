@@ -891,27 +891,25 @@ constraint_list_to_string_2(VarSet, [C | Cs], String) :-
 
 %---------------------------------------------------------------------------%
 
-    % Check that every abstract instance in the interface of a module
-    % has a corresponding concrete instance in the implementation.
+    % Check that every abstract instance in the module has a
+    % corresponding concrete instance in the implementation.
     %
 :- pred check_for_missing_concrete_instances(module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_for_missing_concrete_instances(!ModuleInfo, !Specs) :-
     module_info_get_instance_table(!.ModuleInfo, InstanceTable),
-    % Grab all the abstract instance declarations in the interface of this
-    % module and all the concrete instances defined in the implementation.
+    % Grab all the instance declarations that occur in this module
+    % and partition them into two sets: abstract instance declarations
+    % and concrete instance declarations.
     gather_abstract_and_concrete_instances(InstanceTable,
         AbstractInstances, ConcreteInstances),
     map.foldl(check_for_corresponding_instances(ConcreteInstances),
         AbstractInstances, !Specs).
 
-    % gather_abstract_and_concrete_instances(Table,
-    %   AbstractInstances, ConcreteInstances).
-    %
     % Search the instance_table and create a table of abstract
-    % instances that occur in the module interface and a table of
-    % concrete instances that occur in the module implementation.
+    % instances that occur in the module and a table of concrete
+    % instances that occur in the module.
     % Imported instances are not included at all.
     %
 :- pred gather_abstract_and_concrete_instances(instance_table::in,
@@ -923,10 +921,8 @@ gather_abstract_and_concrete_instances(InstanceTable, Abstracts,
         multi_map.init, Abstracts, multi_map.init, Concretes).
 
     % Partition all the non-imported instances for a particular
-    % class into two groups, those that are abstract and in the
-    % module interface and those that are concrete and in the module
-    % implementation.  Concrete instances cannot occur in the
-    % interface and we ignore abstract instances in the implementation.
+    % class into two groups, those that are abstract and those that
+    % are concrete.
     %
 :- pred partition_instances_for_class(class_id::in,
     list(hlds_instance_defn)::in, instance_table::in, instance_table::out,
@@ -949,13 +945,7 @@ partition_instances_for_class_2(ClassId, InstanceDefn, !Abstracts,
         Body = InstanceDefn ^ instance_body,
         (
             Body = instance_body_abstract,
-            IsExported = status_is_exported_to_non_submodules(ImportStatus),
-            (
-                IsExported = yes,
-                svmulti_map.add(ClassId, InstanceDefn, !Abstracts)
-            ;
-                IsExported = no
-            )
+            svmulti_map.add(ClassId, InstanceDefn, !Abstracts)
         ;
             Body = instance_body_concrete(_),
             svmulti_map.add(ClassId, InstanceDefn, !Concretes)

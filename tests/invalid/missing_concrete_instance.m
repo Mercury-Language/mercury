@@ -9,3 +9,7 @@
 :- typeclass foo(T) where [].
 
 :- instance foo(int).
+
+:- implementation.
+
+:- instance foo(float).
