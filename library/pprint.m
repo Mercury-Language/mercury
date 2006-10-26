@@ -156,6 +156,7 @@
 :- import_module char.
 :- import_module io.
 :- import_module list.
+:- import_module stream.
 :- import_module string.
 :- import_module univ.
 
@@ -366,8 +367,11 @@
     %
 :- pred write(int::in, T::in, io::di, io::uo) is det <= doc(T).
 
-:- pred write(io.output_stream::in, int::in, T::in, io::di, io::uo) is det
-    <= doc(T).
+    % Write docs to the specified string writer stream in pretty printed
+    % format.  The int argument specifies a page width in characters.
+    %
+:- pred write(Stream::in, int::in, T::in, State::di, State::uo) is det
+    <= ( doc(T), stream.writer(Stream, string, State) ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -453,8 +457,8 @@ to_string(W, X) = S :-
 write(W, X, !IO) :-
     layout_best(io.write_string, W, doc(X), !IO).
 
-write(Stream, W, X, !IO) :-
-    layout_best(io.write_string(Stream), W, doc(X), !IO).
+write(Stream, W, X, !State) :-
+    layout_best(put(Stream), W, doc(X), !State).
 
 %-----------------------------------------------------------------------------%
 
