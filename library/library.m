@@ -106,6 +106,7 @@
 :- import_module stack.
 :- import_module std_util.
 :- import_module store.
+:- import_module stream.
 :- import_module string.
 :- import_module svarray.
 :- import_module svbag.
@@ -254,6 +255,7 @@ mercury_std_library_module("sparse_bitset").
 mercury_std_library_module("stack").
 mercury_std_library_module("std_util").
 mercury_std_library_module("store").
+mercury_std_library_module("stream").
 mercury_std_library_module("string").
 mercury_std_library_module("svarray").
 mercury_std_library_module("svbag").
