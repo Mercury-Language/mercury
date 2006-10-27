@@ -5,7 +5,8 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+% 
+% File: interface.m.
 % Author: zs.
 %
 % This module defines interface between CGI programs acting as clients
@@ -45,7 +46,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module interface.
-
 :- interface.
 
 :- import_module bool.
@@ -336,7 +336,7 @@ default_incl_desc = self_and_desc.
 default_scope = overall.
 default_contour = no_contour.
 default_time_format = scale_by_thousands.
-default_inactive_items = inactive_items(show, show).
+default_inactive_items = inactive_items(hide, hide).
 
 %-----------------------------------------------------------------------------%
 
