@@ -29,6 +29,7 @@ TYPECLASS_PROGS= \
 	func_class \
 	func_method \
 	fundeps \
+	fundeps_poly_instance \
 	instance_superclass \
 	instance_unconstrained_tvar \
 	mpj2 \

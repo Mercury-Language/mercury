@@ -5428,6 +5428,15 @@ The following instance would also be illegal
 
 @noindent
 since the variable @samp{T} may not always be bound to the same type.
+However, the instance
+
+@example
+	:- instance baz(list(S), list(T)) <= baz(S, T) where @dots{}
+@end example
+
+is legal because the @samp{baz(S, T)} constraint ensures that whatever
+@samp{T} is bound to, it is always uniquely determined from the binding
+of @samp{S}.
 
 The extra requirements that result from the use of functional dependencies
 allow the bindings of some variables to be determined from the bindings

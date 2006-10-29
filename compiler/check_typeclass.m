@@ -7,15 +7,15 @@
 %---------------------------------------------------------------------------%
 %
 % File: check_typeclass.m.
-% Author: dgj.
+% Author: dgj, mark
 %
 % This module checks conformance of instance declarations to the typeclass
 % declaration. It takes various steps to do this.
 %
-% First, for every method of every instance it generates a new pred
-% whose types and modes are as expected by the typeclass declaration and
-% whose body just calls the implementation provided by the instance
-% declaration.
+% First, in check_instance_decls/6, for every method of every instance we
+% generate a new pred whose types and modes are as expected by the typeclass
+% declaration and whose body just calls the implementation provided by the
+% instance declaration.
 %
 % eg. given the declarations:
 %
@@ -37,30 +37,41 @@
 %
 % By generating the new pred, we check the instance method for type, mode,
 % determinism and uniqueness correctness since the generated pred is checked
-% in each of those passes too.
+% in each of those passes too.  At this point we add instance method pred/proc
+% ids to the instance table of the HLDS.  We also check that there are no
+% missing, duplicate or bogus methods.
 %
-% Second, this pass checks that all superclass constraints are satisfied
-% by the instance declaration.  To do this it attempts to perform context
-% reduction on the typeclass constraints, using the instance constraints
-% as assumptions.
+% In this pass we also call check_superclass_conformance/9, which checks that
+% all superclass constraints are satisfied by the instance declaration.  To do
+% this it attempts to perform context reduction on the typeclass constraints,
+% using the instance constraints as assumptions.  At this point we fill in
+% the super class proofs.
 %
-% Third, typeclass constraints on predicate and function declarations are
-% checked for ambiguity, taking into consideration the information
-% provided by functional dependencies.
+% Second, in check_for_cyclic_classes/4, we check for cycles in the typeclass
+% hierarchy.  A cycle occurs if we can start from any given typeclass
+% declaration and follow the superclass constraints on classes to reach the
+% same class that we started from.  Only the class_id needs to be repeated;
+% it doesn't need to have the parameters.  Note that we follow the constraints
+% on class declarations only, not those on instance declarations.  While doing
+% this, we fill in the fundeps_ancestors field in the class table.
 %
-% Fourth, all visible instances are checked for range-restrictedness and
-% mutual consistency, with respect to any functional dependencies.  This
-% doesn't necessarily catch all cases of inconsistent instances, however,
-% since in general that cannot be done until link time.  We try to catch
-% as many cases as possible here, though, since we can give better error
-% messages.
+% Third, in check_for_missing_concrete_instances/4, we check that each
+% abstract instance has a corresponding concrete instance.
 %
-% This module also checks for cycles in the typeclass hierarchy, and checks
-% that each abstract instance has a corresponding concrete instance.
+% Fourth, in check_functional_dependencies/4, all visible instances are
+% checked for coverage and mutual consistency with respect to any functional
+% dependencies.  This doesn't necessarily catch all cases of inconsistent
+% instances, however, since in general that cannot be done until link time.
+% We try to catch as many cases as possible here, though, since we can give
+% better error messages.
 %
-% This pass fills in the super class proofs and instance method pred/proc ids
-% in the instance table of the HLDS, and fills in the fundeps_ancestors in
-% the class table.
+% Last, in check_typeclass_constraints/4, we check typeclass constraints on
+% predicate and function declarations and on existentially typed data
+% constructors for ambiguity, taking into consideration the information
+% provided by functional dependencies.  We also call check_constraint_quant/5
+% to check that all type variables in constraints are universally quantified,
+% or that they are all existentially quantified.  We don't support constraints
+% where some of the type variables are universal and some are existential.
 %
 %---------------------------------------------------------------------------%
 
@@ -338,30 +349,9 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
         BogusInstanceMethods = []
     ;
         BogusInstanceMethods = [_ | _],
-        % There were one or more bogus methods.
-        % Construct an appropriate error message.
-        ClassId = class_id(ClassName, ClassArity),
-        ErrorMsgStart =  [
-            words("In instance declaration for"),
-            sym_name_and_arity(ClassName / ClassArity),
-            suffix(":"),
-            words("incorrect method name(s):")
-        ],
-        ErrorMsgBody0 = list.map(format_method_name, BogusInstanceMethods),
-        ErrorMsgBody1 = list.condense(ErrorMsgBody0),
-        ErrorMsgBody = list.append(ErrorMsgBody1, [suffix(".")]),
-        Pieces = ErrorMsgStart ++ ErrorMsgBody,
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
-        !:Specs = [Spec | !.Specs]
+        report_bogus_instance_methods(ClassId, BogusInstanceMethods, Context,
+            !Specs)
     ).
-
-:- func format_method_name(instance_method) = format_components.
-
-format_method_name(Method) = MethodName :-
-    Method = instance_method(PredOrFunc, Name, _Defn, Arity, _Context),
-    adjust_func_arity(PredOrFunc, Arity, PredArity),
-    MethodName = [p_or_f(PredOrFunc), sym_name_and_arity(Name / PredArity)].
 
 %----------------------------------------------------------------------------%
 
@@ -501,9 +491,9 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
         OrderedInstanceMethods, !Info, !Specs) :-
-    InstanceDefn0 = hlds_instance_defn(InstanceModuleName, InstanceStatus,
-        InstanceContext, InstanceConstraints, InstanceTypes,
-        InstanceBody, MaybeInstancePredProcs, InstanceVarSet, InstanceProofs),
+    InstanceDefn0 = hlds_instance_defn(InstanceModuleName, _InstanceStatus,
+        _InstanceContext, InstanceConstraints, InstanceTypes,
+        InstanceBody, MaybeInstancePredProcs, InstanceVarSet, _InstanceProofs),
     !.Info = instance_method_info(_ModuleInfo, _QualInfo, _PredName, Arity,
         _ExistQVars, _ArgTypes, _ClassContext, _ArgModes, _ArgTypeVars,
         _Status, PredOrFunc),
@@ -529,61 +519,20 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
             MaybeInstancePredProcs = no,
             InstancePredProcs = InstancePredProcs1
         ),
-        InstanceDefn = hlds_instance_defn(InstanceModuleName, InstanceStatus,
-            Context, InstanceConstraints, InstanceTypes,
-            InstanceBody, yes(InstancePredProcs), InstanceVarSet,
-            InstanceProofs)
+        InstanceDefn = InstanceDefn0
+            ^ instance_hlds_interface := yes(InstancePredProcs)
     ;
-        MatchingInstanceMethods = [Instance1, Instance2 | LaterInstances],
-        % Duplicate method definition error.
+        MatchingInstanceMethods = [_, _ | _],
         OrderedInstanceMethods = OrderedInstanceMethods0,
         InstanceDefn = InstanceDefn0,
-        ClassId = class_id(ClassName, _ClassArity),
-        ClassNameString = sym_name_to_string(ClassName),
-        InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
-            InstanceTypes),
-        HeaderPieces =
-            [words("In instance declaration for"),
-            words("`" ++ ClassNameString ++
-                "(" ++ InstanceTypesString ++ ")':"),
-            words("multiple implementations of type class"),
-            p_or_f(PredOrFunc), words("method"),
-            sym_name_and_arity(MethodName / Arity), suffix("."), nl],
-        HeadingMsg = simple_msg(InstanceContext, [always(HeaderPieces)]),
-        Instance1Context = Instance1 ^ instance_method_decl_context,
-        FirstPieces = [words("First definition appears here."), nl],
-        FirstMsg = simple_msg(Instance1Context, [always(FirstPieces)]),
-        DefnToMsg = (pred(Definition::in, Msg::out) is det :-
-            TheContext = Definition ^ instance_method_decl_context,
-            SubsequentPieces =
-                [words("Subsequent definition appears here."), nl],
-            Msg = simple_msg(TheContext, [always(SubsequentPieces)])
-        ),
-        list.map(DefnToMsg, [Instance2 | LaterInstances], LaterMsgs),
-
-        Spec = error_spec(severity_error, phase_type_check,
-            [HeadingMsg, FirstMsg | LaterMsgs]),
-        !:Specs = [Spec | !.Specs]
+        report_duplicate_method_defn(ClassId, InstanceDefn0, PredOrFunc,
+            MethodName, Arity, MatchingInstanceMethods, !Specs)
     ;
         MatchingInstanceMethods = [],
-        % Undefined method error.
         OrderedInstanceMethods = OrderedInstanceMethods0,
         InstanceDefn = InstanceDefn0,
-        ClassId = class_id(ClassName, _ClassArity),
-        ClassNameString = sym_name_to_string(ClassName),
-        InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
-            InstanceTypes),
-
-        Pieces = [words("In instance declaration for"),
-            words("`" ++ ClassNameString ++
-                "(" ++ InstanceTypesString ++ ")'"),
-            suffix(":"),
-            words("no implementation for type class"), p_or_f(PredOrFunc),
-            words("method"), sym_name_and_arity(MethodName / Arity),
-            suffix("."), nl],
-        Msg = simple_msg(InstanceContext, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
-        !:Specs = [Spec | !.Specs]
+        report_undefined_method(ClassId, InstanceDefn0, PredOrFunc,
+            MethodName, Arity, !Specs)
     ).
 
     % Get all the instance definitions which match the specified
@@ -1121,35 +1070,6 @@ find_cycle(ClassId, [Head | Tail], Path0, Cycle) :-
         find_cycle(ClassId, Tail, Path, Cycle)
     ).
 
-    % Report an error using the format
-    %
-    %   module.m:NNN: Error: cyclic superclass relation detected:
-    %   module.m:NNN:   `foo/N' <= `bar/N' <= `baz/N' <= `foo/N'
-    %
-:- func report_cyclic_classes(class_table, class_path) = error_spec.
-
-report_cyclic_classes(ClassTable, ClassPath) = Spec :-
-    (
-        ClassPath = [],
-        unexpected(this_file, "report_cyclic_classes: empty cycle found.")
-    ;
-        ClassPath = [ClassId | Tail],
-        Context = map.lookup(ClassTable, ClassId) ^ class_context,
-        ClassId = class_id(Name, Arity),
-        RevPieces0 = [sym_name_and_arity(Name/Arity),
-            words("Error: cyclic superclass relation detected:")],
-        RevPieces = foldl(add_path_element, Tail, RevPieces0),
-        Pieces = list.reverse(RevPieces),
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg])
-    ).
-
-:- func add_path_element(class_id, list(format_component))
-    = list(format_component).
-
-add_path_element(class_id(Name, Arity), RevPieces0) =
-    [sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
-
 %---------------------------------------------------------------------------%
 
     % Check that all instances are range restricted with respect to the
@@ -1183,78 +1103,43 @@ check_fundeps_class(ClassId, !ModuleInfo, !Specs) :-
     module_info_get_instance_table(!.ModuleInfo, InstanceTable),
     map.lookup(InstanceTable, ClassId, InstanceDefns),
     FunDeps = ClassDefn ^ class_fundeps,
-    check_range_restrictedness(ClassId, InstanceDefns, FunDeps,
-        !ModuleInfo, !Specs),
+    check_coverage(ClassId, InstanceDefns, FunDeps, !ModuleInfo, !Specs),
     check_consistency(ClassId, ClassDefn, InstanceDefns, FunDeps,
         !ModuleInfo, !Specs).
 
-:- pred check_range_restrictedness(class_id::in, list(hlds_instance_defn)::in,
+:- pred check_coverage(class_id::in, list(hlds_instance_defn)::in,
     hlds_class_fundeps::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_range_restrictedness(_, [], _, !ModuleInfo, !Specs).
-check_range_restrictedness(ClassId, [InstanceDefn | InstanceDefns], FunDeps,
-        !ModuleInfo, !Specs) :-
-    list.foldl2(check_range_restrictedness_2(ClassId, InstanceDefn),
-        FunDeps, !ModuleInfo, !Specs),
-    check_range_restrictedness(ClassId, InstanceDefns, FunDeps,
-        !ModuleInfo, !Specs).
+check_coverage(_, [], _, !ModuleInfo, !Specs).
+check_coverage(ClassId, [InstanceDefn | InstanceDefns], FunDeps, !ModuleInfo,
+        !Specs) :-
+    list.foldl2(check_coverage_2(ClassId, InstanceDefn), FunDeps, !ModuleInfo,
+        !Specs),
+    check_coverage(ClassId, InstanceDefns, FunDeps, !ModuleInfo, !Specs).
 
-:- pred check_range_restrictedness_2(class_id::in, hlds_instance_defn::in,
+:- pred check_coverage_2(class_id::in, hlds_instance_defn::in,
     hlds_class_fundep::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_range_restrictedness_2(ClassId, InstanceDefn, FunDep, !ModuleInfo,
-        !Specs) :-
+check_coverage_2(ClassId, InstanceDefn, FunDep, !ModuleInfo, !Specs) :-
+    TVarSet = InstanceDefn ^ instance_tvarset,
     Types = InstanceDefn ^ instance_types,
     FunDep = fundep(Domain, Range),
     DomainTypes = restrict_list_elements(Domain, Types),
     type_vars_list(DomainTypes, DomainVars),
     RangeTypes = restrict_list_elements(Range, Types),
     type_vars_list(RangeTypes, RangeVars),
-    solutions.solutions((pred(V::out) is nondet :-
-            list.member(V, RangeVars),
-            \+ list.member(V, DomainVars)
-        ), UnboundVars),
+    Constraints = InstanceDefn ^ instance_constraints,
+    get_unbound_tvars(TVarSet, DomainVars, RangeVars, Constraints,
+        !.ModuleInfo, UnboundVars),
     (
         UnboundVars = []
     ;
         UnboundVars = [_ | _],
-        Spec = report_range_restriction_error(ClassId, InstanceDefn,
-            UnboundVars),
+        Spec = report_coverage_error(ClassId, InstanceDefn, UnboundVars),
         !:Specs = [Spec | !.Specs]
     ).
-
-    % The error message is intended to look like this:
-    %
-    % long_module_name:001: In instance for typeclass `long_class/2':
-    % long_module_name:001:   functional dependency not satisfied: type
-    % long_module_name:001:   variables T1, T2 and T3 occur in the range of a
-    % long_module_name:001:   functional dependency, but are not in the
-    % long_module_name:001:   domain.
-
-:- func report_range_restriction_error(class_id, hlds_instance_defn,
-    list(tvar)) = error_spec.
-
-report_range_restriction_error(ClassId, InstanceDefn, Vars) = Spec :-
-    ClassId = class_id(SymName, Arity),
-    TVarSet = InstanceDefn ^ instance_tvarset,
-    Context = InstanceDefn ^ instance_context,
-
-    VarsStrs = list.map((func(Var) = mercury_var_to_string(Var, TVarSet, no)),
-        Vars),
-
-    Pieces = [words("In instance for typeclass"),
-        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
-        words("functional dependency not satisfied:"),
-        words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_pieces(VarsStrs) ++
-        [words(choose_number(Vars, "occurs", "occur")),
-        words("in the range of the functional dependency, but"),
-        words(choose_number(Vars, "is", "are")),
-        words("not in the domain."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
     % Check the consistency of each (unordered) pair of instances.
     %
@@ -1316,34 +1201,6 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     ;
         true
     ).
-
-:- func report_consistency_error(class_id, hlds_class_defn,
-    hlds_instance_defn, hlds_instance_defn, hlds_class_fundep) = error_spec.
-
-report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
-        = Spec :-
-    ClassId = class_id(SymName, Arity),
-    Params = ClassDefn ^ class_vars,
-    TVarSet = ClassDefn ^ class_tvarset,
-    ContextA = InstanceA ^ instance_context,
-    ContextB = InstanceB ^ instance_context,
-
-    FunDep = fundep(Domain, Range),
-    DomainParams = restrict_list_elements(Domain, Params),
-    RangeParams = restrict_list_elements(Range, Params),
-    DomainList = mercury_vars_to_string(DomainParams, TVarSet, no),
-    RangeList = mercury_vars_to_string(RangeParams, TVarSet, no),
-    FunDepStr = "`(" ++ DomainList ++ " -> " ++ RangeList ++ ")'",
-
-    PiecesA = [words("Inconsistent instance declaration for typeclass"),
-        sym_name_and_arity(SymName / Arity),
-        words("with functional dependency"), fixed(FunDepStr),
-        suffix("."), nl],
-    PiecesB = [words("Here is the conflicting instance.")],
-
-    MsgA = simple_msg(ContextA, [always(PiecesA)]),
-    MsgB = error_msg(yes(ContextB), yes, 0, [always(PiecesB)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [MsgA, MsgB]).
 
 %---------------------------------------------------------------------------%
 
@@ -1408,8 +1265,11 @@ check_pred_type_ambiguities(PredInfo, !ModuleInfo, !Specs) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_class_context(PredInfo, Constraints),
-    type_vars_list(ArgTypes, TVars),
-    get_unbound_tvars(TVarSet, TVars, Constraints, !.ModuleInfo, UnboundTVars),
+    type_vars_list(ArgTypes, ArgTVars),
+    prog_constraints_get_tvars(Constraints, ConstrainedTVars),
+    Constraints = constraints(UnivCs, ExistCs),
+    get_unbound_tvars(TVarSet, ArgTVars, ConstrainedTVars, UnivCs ++ ExistCs,
+        !.ModuleInfo, UnboundTVars),
     (
         UnboundTVars = []
     ;
@@ -1442,8 +1302,9 @@ check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo, !Specs) :-
     type_vars_list(ArgTypes, ArgTVars),
     list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
         ArgTVars, ExistQArgTVars),
+    constraint_list_get_tvars(Constraints, ConstrainedTVars),
     get_type_defn_tvarset(TypeDefn, TVarSet),
-    get_unbound_tvars(TVarSet, ExistQArgTVars, constraints([], Constraints),
+    get_unbound_tvars(TVarSet, ExistQArgTVars, ConstrainedTVars, Constraints,
         !.ModuleInfo, UnboundTVars),
     (
         UnboundTVars = []
@@ -1454,30 +1315,57 @@ check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred get_unbound_tvars(tvarset::in, list(tvar)::in, prog_constraints::in,
-    module_info::in, list(tvar)::out) is det.
+%---------------------------------------------------------------------------%
 
-get_unbound_tvars(TVarSet, TVars, Constraints, ModuleInfo, UnboundTVars) :-
+    % Check that all types appearing in universal (existential) constraints are
+    % universally (existentially) quantified.
+    %
+:- pred check_constraint_quant(pred_info::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_constraint_quant(PredInfo, !ModuleInfo, !Specs) :-
+    pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
+    pred_info_get_class_context(PredInfo, Constraints),
+    Constraints = constraints(UnivCs, ExistCs),
+    prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
+    solutions.solutions((pred(V::out) is nondet :-
+            list.member(V, UnivTVars),
+            list.member(V, ExistQVars)
+        ), BadUnivTVars),
+    maybe_report_badly_quantified_vars(PredInfo, universal_constraint,
+        BadUnivTVars, !ModuleInfo, !Specs),
+    prog_type.constraint_list_get_tvars(ExistCs, ExistTVars),
+    list.delete_elems(ExistTVars, ExistQVars, BadExistTVars),
+    maybe_report_badly_quantified_vars(PredInfo, existential_constraint,
+        BadExistTVars, !ModuleInfo, !Specs).
+
+:- pred maybe_report_badly_quantified_vars(pred_info::in, quant_error_type::in,
+    list(tvar)::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars,
+        !ModuleInfo, !Specs) :-
+    (
+        TVars = []
+    ;
+        TVars = [_ | _],
+        Spec = report_badly_quantified_vars(PredInfo, QuantErrorType, TVars),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred get_unbound_tvars(tvarset::in, list(tvar)::in, list(tvar)::in,
+    list(prog_constraint)::in, module_info::in, list(tvar)::out) is det.
+
+get_unbound_tvars(TVarSet, RootTVars, AllTVars, Constraints, ModuleInfo,
+        UnboundTVars) :-
     module_info_get_class_table(ModuleInfo, ClassTable),
     InducedFunDeps = induced_fundeps(ClassTable, TVarSet, Constraints),
-    FunDepsClosure = fundeps_closure(InducedFunDeps, list_to_set(TVars)),
-    solutions.solutions(
-        constrained_var_not_in_closure(Constraints, FunDepsClosure),
-            UnboundTVars).
-
-:- pred constrained_var_not_in_closure(prog_constraints::in, set(tvar)::in,
-    tvar::out) is nondet.
-
-constrained_var_not_in_closure(ClassContext, Closure, UnboundTVar) :-
-    ClassContext = constraints(UnivCs, ExistCs),
-    (
-        Constraints = UnivCs
-    ;
-        Constraints = ExistCs
-    ),
-    prog_type.constraint_list_get_tvars(Constraints, TVars),
-    list.member(UnboundTVar, TVars),
-    \+ set.member(UnboundTVar, Closure).
+    FunDepsClosure = fundeps_closure(InducedFunDeps, list_to_set(RootTVars)),
+    UnboundTVarsSet = set.difference(list_to_set(AllTVars), FunDepsClosure),
+    UnboundTVars = set.to_sorted_list(UnboundTVarsSet).
 
 :- type induced_fundeps == list(induced_fundep).
 :- type induced_fundep
@@ -1486,12 +1374,11 @@ constrained_var_not_in_closure(ClassContext, Closure, UnboundTVar) :-
                 range       :: set(tvar)
             ).
 
-:- func induced_fundeps(class_table, tvarset, prog_constraints)
+:- func induced_fundeps(class_table, tvarset, list(prog_constraint))
     = induced_fundeps.
 
-induced_fundeps(ClassTable, TVarSet, constraints(UnivCs, ExistCs))
-    = foldl(induced_fundeps_2(ClassTable, TVarSet), UnivCs,
-        foldl(induced_fundeps_2(ClassTable, TVarSet), ExistCs, [])).
+induced_fundeps(ClassTable, TVarSet, Constraints)
+    = foldl(induced_fundeps_2(ClassTable, TVarSet), Constraints, []).
 
 :- func induced_fundeps_2(class_table, tvarset, prog_constraint,
     induced_fundeps) = induced_fundeps.
@@ -1585,7 +1472,213 @@ collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
         !:FunDeps = [FunDep | !.FunDeps]
     ).
 
-    % The error message is intended to look like this:
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Error reporting.
+%
+%---------------------------------------------------------------------------%
+
+    % Duplicate method definition error.
+    %
+:- pred report_duplicate_method_defn(class_id::in, hlds_instance_defn::in,
+    pred_or_func::in, sym_name::in, arity::in, instance_methods::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
+        Arity, MatchingInstanceMethods, !Specs) :-
+    InstanceVarSet = InstanceDefn ^ instance_tvarset,
+    InstanceTypes = InstanceDefn ^ instance_types,
+    InstanceContext = InstanceDefn ^ instance_context,
+    ClassId = class_id(ClassName, _ClassArity),
+    ClassNameString = sym_name_to_string(ClassName),
+    InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
+        InstanceTypes),
+    HeaderPieces =
+        [words("In instance declaration for"),
+        words("`" ++ ClassNameString ++
+            "(" ++ InstanceTypesString ++ ")':"),
+        words("multiple implementations of type class"),
+        p_or_f(PredOrFunc), words("method"),
+        sym_name_and_arity(MethodName / Arity), suffix("."), nl],
+    HeadingMsg = simple_msg(InstanceContext, [always(HeaderPieces)]),
+    ( MatchingInstanceMethods = [FirstInstance0 | LaterInstances0] ->
+        FirstInstance = FirstInstance0,
+        LaterInstances = LaterInstances0
+    ;
+        unexpected(this_file, "no matching instances")
+    ),
+    FirstInstanceContext = FirstInstance ^ instance_method_decl_context,
+    FirstPieces = [words("First definition appears here."), nl],
+    FirstMsg = simple_msg(FirstInstanceContext, [always(FirstPieces)]),
+    DefnToMsg = (pred(Definition::in, Msg::out) is det :-
+        TheContext = Definition ^ instance_method_decl_context,
+        SubsequentPieces =
+            [words("Subsequent definition appears here."), nl],
+        Msg = simple_msg(TheContext, [always(SubsequentPieces)])
+    ),
+    list.map(DefnToMsg, LaterInstances, LaterMsgs),
+
+    Spec = error_spec(severity_error, phase_type_check,
+        [HeadingMsg, FirstMsg | LaterMsgs]),
+    !:Specs = [Spec | !.Specs].
+
+%---------------------------------------------------------------------------%
+
+    % Undefined method error.
+    %
+:- pred report_undefined_method(class_id::in, hlds_instance_defn::in,
+    pred_or_func::in, sym_name::in, arity::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
+        !Specs) :-
+    InstanceVarSet = InstanceDefn ^ instance_tvarset,
+    InstanceTypes = InstanceDefn ^ instance_types,
+    InstanceContext = InstanceDefn ^ instance_context,
+    ClassId = class_id(ClassName, _ClassArity),
+    ClassNameString = sym_name_to_string(ClassName),
+    InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
+        InstanceTypes),
+
+    Pieces = [words("In instance declaration for"),
+        words("`" ++ ClassNameString ++
+            "(" ++ InstanceTypesString ++ ")'"),
+        suffix(":"),
+        words("no implementation for type class"), p_or_f(PredOrFunc),
+        words("method"), sym_name_and_arity(MethodName / Arity),
+        suffix("."), nl],
+    Msg = simple_msg(InstanceContext, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+%---------------------------------------------------------------------------%
+
+:- pred report_bogus_instance_methods(class_id::in, instance_methods::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_bogus_instance_methods(ClassId, BogusInstanceMethods, Context, !Specs) :-
+    % There were one or more bogus methods.
+    % Construct an appropriate error message.
+    ClassId = class_id(ClassName, ClassArity),
+    ErrorMsgStart =  [
+        words("In instance declaration for"),
+        sym_name_and_arity(ClassName / ClassArity),
+        suffix(":"),
+        words("incorrect method name(s):")
+    ],
+    ErrorMsgBody0 = list.map(format_method_name, BogusInstanceMethods),
+    ErrorMsgBody1 = list.condense(ErrorMsgBody0),
+    ErrorMsgBody = list.append(ErrorMsgBody1, [suffix(".")]),
+    Pieces = ErrorMsgStart ++ ErrorMsgBody,
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- func format_method_name(instance_method) = format_components.
+
+format_method_name(Method) = MethodName :-
+    Method = instance_method(PredOrFunc, Name, _Defn, Arity, _Context),
+    adjust_func_arity(PredOrFunc, Arity, PredArity),
+    MethodName = [p_or_f(PredOrFunc), sym_name_and_arity(Name / PredArity)].
+
+%---------------------------------------------------------------------------%
+
+    % The error message for cyclic classes is intended to look like this:
+    %
+    %   module.m:NNN: Error: cyclic superclass relation detected:
+    %   module.m:NNN:   `foo/N' <= `bar/N' <= `baz/N' <= `foo/N'
+    %
+:- func report_cyclic_classes(class_table, class_path) = error_spec.
+
+report_cyclic_classes(ClassTable, ClassPath) = Spec :-
+    (
+        ClassPath = [],
+        unexpected(this_file, "report_cyclic_classes: empty cycle found.")
+    ;
+        ClassPath = [ClassId | Tail],
+        Context = map.lookup(ClassTable, ClassId) ^ class_context,
+        ClassId = class_id(Name, Arity),
+        RevPieces0 = [sym_name_and_arity(Name/Arity),
+            words("Error: cyclic superclass relation detected:")],
+        RevPieces = foldl(add_path_element, Tail, RevPieces0),
+        Pieces = list.reverse(RevPieces),
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg])
+    ).
+
+:- func add_path_element(class_id, list(format_component))
+    = list(format_component).
+
+add_path_element(class_id(Name, Arity), RevPieces0) =
+    [sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
+
+%---------------------------------------------------------------------------%
+
+    % The coverage error message is intended to look like this:
+    %
+    % long_module_name:001: In instance for typeclass `long_class/2':
+    % long_module_name:001:   functional dependency not satisfied: type
+    % long_module_name:001:   variables T1, T2 and T3 occur in the range of a
+    % long_module_name:001:   functional dependency, but are not determined
+    % long_module_name:001:   by the domain.
+
+:- func report_coverage_error(class_id, hlds_instance_defn, list(tvar))
+    = error_spec.
+
+report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
+    ClassId = class_id(SymName, Arity),
+    TVarSet = InstanceDefn ^ instance_tvarset,
+    Context = InstanceDefn ^ instance_context,
+
+    VarsStrs = list.map((func(Var) = mercury_var_to_string(Var, TVarSet, no)),
+        Vars),
+
+    Pieces = [words("In instance for typeclass"),
+        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
+        words("functional dependency not satisfied:"),
+        words(choose_number(Vars, "type variable", "type variables"))]
+        ++ list_to_pieces(VarsStrs) ++
+        [words(choose_number(Vars, "occurs", "occur")),
+        words("in the range of the functional dependency, but"),
+        words(choose_number(Vars, "is", "are")),
+        words("not determined by the domain."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+%---------------------------------------------------------------------------%
+
+:- func report_consistency_error(class_id, hlds_class_defn,
+    hlds_instance_defn, hlds_instance_defn, hlds_class_fundep) = error_spec.
+
+report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
+        = Spec :-
+    ClassId = class_id(SymName, Arity),
+    Params = ClassDefn ^ class_vars,
+    TVarSet = ClassDefn ^ class_tvarset,
+    ContextA = InstanceA ^ instance_context,
+    ContextB = InstanceB ^ instance_context,
+
+    FunDep = fundep(Domain, Range),
+    DomainParams = restrict_list_elements(Domain, Params),
+    RangeParams = restrict_list_elements(Range, Params),
+    DomainList = mercury_vars_to_string(DomainParams, TVarSet, no),
+    RangeList = mercury_vars_to_string(RangeParams, TVarSet, no),
+    FunDepStr = "`(" ++ DomainList ++ " -> " ++ RangeList ++ ")'",
+
+    PiecesA = [words("Inconsistent instance declaration for typeclass"),
+        sym_name_and_arity(SymName / Arity),
+        words("with functional dependency"), fixed(FunDepStr),
+        suffix("."), nl],
+    PiecesB = [words("Here is the conflicting instance.")],
+
+    MsgA = simple_msg(ContextA, [always(PiecesA)]),
+    MsgB = error_msg(yes(ContextB), yes, 0, [always(PiecesB)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [MsgA, MsgB]).
+
+%---------------------------------------------------------------------------%
+
+    % The error messages for ambiguous types are intended to look like this:
     %
     % long_module_name:001: In declaration for function `long_function/2':
     % long_module_name:001:   error in type class constraints: type variables
@@ -1698,46 +1791,9 @@ report_unbound_tvars_explanation =
 
 %---------------------------------------------------------------------------%
 
-    % Check that all types appearing in universal (existential) constraints are
-    % universally (existentially) quantified.
-    %
-:- pred check_constraint_quant(pred_info::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_constraint_quant(PredInfo, !ModuleInfo, !Specs) :-
-    pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
-    pred_info_get_class_context(PredInfo, Constraints),
-    Constraints = constraints(UnivCs, ExistCs),
-    prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
-    solutions.solutions((pred(V::out) is nondet :-
-            list.member(V, UnivTVars),
-            list.member(V, ExistQVars)
-        ), BadUnivTVars),
-    maybe_report_badly_quantified_vars(PredInfo, universal_constraint,
-        BadUnivTVars, !ModuleInfo, !Specs),
-    prog_type.constraint_list_get_tvars(ExistCs, ExistTVars),
-    list.delete_elems(ExistTVars, ExistQVars, BadExistTVars),
-    maybe_report_badly_quantified_vars(PredInfo, existential_constraint,
-        BadExistTVars, !ModuleInfo, !Specs).
-
 :- type quant_error_type
     --->    universal_constraint
     ;       existential_constraint.
-
-:- pred maybe_report_badly_quantified_vars(pred_info::in, quant_error_type::in,
-    list(tvar)::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars,
-        !ModuleInfo, !Specs) :-
-    (
-        TVars = []
-    ;
-        TVars = [_ | _],
-        Spec = report_badly_quantified_vars(PredInfo, QuantErrorType, TVars),
-        !:Specs = [Spec | !.Specs]
-    ).
 
 :- func report_badly_quantified_vars(pred_info, quant_error_type, list(tvar))
     = error_spec.

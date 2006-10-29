@@ -87,6 +87,7 @@ SINGLEMODULE= \
 	freefree \
 	func_errors \
 	funcs_as_preds \
+	fundeps_coverage \
 	fundeps_unbound_in_ctor \
 	fundeps_vars \
 	hawkins_mm_fail_reset \
