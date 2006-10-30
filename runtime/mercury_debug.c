@@ -48,10 +48,10 @@
 
 #ifdef  MR_DEEP_PROFILING
 static void     MR_check_watch_csd_start(MR_Code *proc);
-static MR_bool  MR_csds_are_different(MR_CallSiteDynamic *csd1,
-                    MR_CallSiteDynamic *csd2);
+static MR_bool  MR_csds_are_different(const MR_CallSiteDynamic *csd1,
+                    const MR_CallSiteDynamic *csd2);
 static void     MR_assign_csd(MR_CallSiteDynamic *csd1,
-                    MR_CallSiteDynamic *csd2);
+                    const MR_CallSiteDynamic *csd2);
 #endif
 
 static void     MR_count_call(MR_Code *proc);
@@ -205,7 +205,7 @@ MR_debug_tag_offset_incr_hp_base_msg(MR_Word ptr, int tag, int offset,
 
 #ifdef MR_LOWLEVEL_DEBUG
 
-void 
+void
 MR_mkframe_msg(const char *predname)
 {
     MR_restore_transient_registers();
@@ -230,7 +230,7 @@ MR_mkframe_msg(const char *predname)
     }
 }
 
-void 
+void
 MR_mktempframe_msg(void)
 {
     MR_restore_transient_registers();
@@ -250,7 +250,7 @@ MR_mktempframe_msg(void)
     }
 }
 
-void 
+void
 MR_mkdettempframe_msg(void)
 {
     MR_restore_transient_registers();
@@ -271,7 +271,7 @@ MR_mkdettempframe_msg(void)
     }
 }
 
-void 
+void
 MR_succeed_msg(void)
 {
     MR_restore_transient_registers();
@@ -292,7 +292,7 @@ MR_succeed_msg(void)
     }
 }
 
-void 
+void
 MR_succeeddiscard_msg(void)
 {
     MR_restore_transient_registers();
@@ -313,7 +313,7 @@ MR_succeeddiscard_msg(void)
     }
 }
 
-void 
+void
 MR_fail_msg(void)
 {
     MR_restore_transient_registers();
@@ -331,7 +331,7 @@ MR_fail_msg(void)
         MR_redoip_slot(MR_prevfr_slot(MR_curfr)));
 }
 
-void 
+void
 MR_redo_msg(void)
 {
     MR_restore_transient_registers();
@@ -348,7 +348,7 @@ MR_redo_msg(void)
     printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_maxfr));
 }
 
-void 
+void
 MR_call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succ_cont)
 {
     MR_count_call(proc);
@@ -377,7 +377,7 @@ MR_call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succ_cont)
 #endif
 }
 
-void 
+void
 MR_tailcall_msg(/* const */ MR_Code *proc)
 {
     MR_restore_transient_registers();
@@ -408,7 +408,7 @@ MR_tailcall_msg(/* const */ MR_Code *proc)
 #endif
 }
 
-void 
+void
 MR_proceed_msg(void)
 {
     MR_do_watches();
@@ -427,7 +427,7 @@ MR_proceed_msg(void)
 #endif
 }
 
-void 
+void
 MR_cr1_msg(const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
@@ -445,7 +445,7 @@ MR_cr1_msg(const MR_Word *addr)
     MR_printheap(addr);
 }
 
-void 
+void
 MR_cr2_msg(const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
@@ -453,19 +453,19 @@ MR_cr2_msg(const MR_Word *addr)
     }
 
 #ifdef  MR_RECORD_TERM_SIZES
-    printf("create2: put size %ld, values %9lx,%9lx at ",   
+    printf("create2: put size %ld, values %9lx,%9lx at ",
         (long) (MR_Integer) addr[-3],
         (long) (MR_Integer) addr[-2],
         (long) (MR_Integer) addr[-1]);
 #else
-    printf("create2: put values %9lx,%9lx at ", 
+    printf("create2: put values %9lx,%9lx at ",
         (long) (MR_Integer) addr[-2],
         (long) (MR_Integer) addr[-1]);
 #endif
     MR_printheap(addr);
 }
 
-void 
+void
 MR_cr3_msg(const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
@@ -473,13 +473,13 @@ MR_cr3_msg(const MR_Word *addr)
     }
 
 #ifdef  MR_RECORD_TERM_SIZES
-    printf("create3: put size %ld, values %9lx,%9lx,%9lx at ",  
+    printf("create3: put size %ld, values %9lx,%9lx,%9lx at ",
         (long) (MR_Integer) addr[-4],
         (long) (MR_Integer) addr[-3],
         (long) (MR_Integer) addr[-2],
         (long) (MR_Integer) addr[-1]);
 #else
-    printf("create3: put values %9lx,%9lx,%9lx at ",    
+    printf("create3: put values %9lx,%9lx,%9lx at ",
         (long) (MR_Integer) addr[-3],
         (long) (MR_Integer) addr[-2],
         (long) (MR_Integer) addr[-1]);
@@ -487,7 +487,7 @@ MR_cr3_msg(const MR_Word *addr)
     MR_printheap(addr);
 }
 
-void 
+void
 MR_incr_hp_debug_msg(MR_Word val, const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
@@ -502,7 +502,7 @@ MR_incr_hp_debug_msg(MR_Word val, const MR_Word *addr)
 #endif
 }
 
-void 
+void
 MR_incr_sp_msg(MR_Word val, const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
@@ -513,7 +513,7 @@ MR_incr_sp_msg(MR_Word val, const MR_Word *addr)
     MR_printdetstack(addr);
 }
 
-void 
+void
 MR_decr_sp_msg(MR_Word val, const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
@@ -528,7 +528,7 @@ MR_decr_sp_msg(MR_Word val, const MR_Word *addr)
 
 #ifdef MR_DEBUG_GOTOS
 
-void 
+void
 MR_goto_msg(/* const */ MR_Code *addr)
 {
     if (!MR_lld_print_enabled) {
@@ -544,10 +544,10 @@ MR_goto_msg(/* const */ MR_Code *addr)
     MR_printlabel(stdout, addr);
 }
 
-void 
+void
 MR_reg_msg(void)
 {
-    int     i;
+    int         i;
     MR_Integer  x;
 
     if (!MR_lld_print_enabled) {
@@ -597,7 +597,6 @@ MR_count_call(MR_Code *proc)
             printf("min %lu, max %lu, more <%s>\n",
                 MR_lld_print_min, MR_lld_print_max,
                 MR_lld_print_more_min_max);
-        
         }
     }
 
@@ -630,13 +629,13 @@ MR_count_call(MR_Code *proc)
         | MR_lld_debug_enabled;
 }
 
-void 
+void
 MR_printint(MR_Word n)
 {
     printf("int %ld\n", (long) (MR_Integer) n);
 }
 
-void 
+void
 MR_printstring(const char *s)
 {
     if (MR_print_raw_addrs) {
@@ -646,7 +645,7 @@ MR_printstring(const char *s)
     }
 }
 
-void 
+void
 MR_printheap(const MR_Word *h)
 {
 #ifndef MR_CONSERVATIVE_GC
@@ -657,12 +656,11 @@ MR_printheap(const MR_Word *h)
     printf("offset %3ld words\n",
         (long) (MR_Integer) (h - MR_ENGINE(MR_eng_heap_zone)->min));
 #else
-    printf("ptr %p\n",
-        (const void *) h);
+    printf("ptr %p\n", (const void *) h);
 #endif
 }
 
-void 
+void
 MR_dumpframe(/* const */ MR_Word *fr)
 {
     int i;
@@ -686,7 +684,7 @@ MR_dumpframe(/* const */ MR_Word *fr)
     }
 }
 
-void 
+void
 MR_dumpnondstack(void)
 {
     MR_Word *fr;
@@ -699,7 +697,7 @@ MR_dumpnondstack(void)
     }
 }
 
-void 
+void
 MR_printframe(const char *msg)
 {
     printf("\n%s\n", msg);
@@ -708,7 +706,7 @@ MR_printframe(const char *msg)
     MR_print_ordinary_regs();
 }
 
-void 
+void
 MR_printregs(const char *msg)
 {
     MR_restore_transient_registers();
@@ -728,7 +726,7 @@ MR_printregs(const char *msg)
     }
 }
 
-static void 
+static void
 MR_print_ordinary_regs(void)
 {
     int     i;
@@ -740,8 +738,7 @@ MR_print_ordinary_regs(void)
 
 #ifndef MR_CONSERVATIVE_GC
         if ((MR_Integer) MR_ENGINE(MR_eng_heap_zone)->min <= value
-                && value < (MR_Integer)
-                    MR_ENGINE(MR_eng_heap_zone)->top)
+            && value < (MR_Integer) MR_ENGINE(MR_eng_heap_zone)->top)
         {
             printf("(heap) ");
         }
@@ -756,7 +753,7 @@ MR_print_ordinary_regs(void)
 static struct MR_CallSiteDynamic_Struct MR_watched_csd_last_value =
 {
     /* MR_csd_callee_ptr */ NULL,
-    { 
+    {
   #ifdef MR_DEEP_PROFILING_PORT_COUNTS
     #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
     /* MR_own_calls */ 0,
@@ -769,6 +766,9 @@ static struct MR_CallSiteDynamic_Struct MR_watched_csd_last_value =
   #endif
   #ifdef MR_DEEP_PROFILING_TIMING
     /* MR_own_quanta */ 0,
+  #endif
+  #ifdef MR_DEEP_PROFILING_CALL_SEQ
+    /* MR_own_call_seqs */ 0,
   #endif
   #ifdef MR_DEEP_PROFILING_MEMORY
     /* MR_own_allocs */ 0,
@@ -789,8 +789,7 @@ MR_check_watch_csd_start(MR_Code *proc)
     if (MR_proc_matches_name(proc, MR_watch_csd_start_name)) {
         if (MR_watch_csd_addr == MR_next_call_site_dynamic) {
             /*
-            ** Optimize future checks and make
-            ** MR_watch_csd_addr static.
+            ** Optimize future checks and make MR_watch_csd_addr static.
             */
             MR_watch_csd_started = MR_TRUE;
             MR_watch_csd_start_name = NULL;
@@ -800,48 +799,63 @@ MR_check_watch_csd_start(MR_Code *proc)
 }
 
 static MR_bool
-MR_csds_are_different(MR_CallSiteDynamic *csd1, MR_CallSiteDynamic *csd2)
+MR_csds_are_different(const MR_CallSiteDynamic *csd1,
+    const MR_CallSiteDynamic *csd2)
 {
-    MR_ProfilingMetrics *pm1;
-    MR_ProfilingMetrics *pm2;
+    const MR_ProfilingMetrics *pm1;
+    const MR_ProfilingMetrics *pm2;
 
-    if (csd1->MR_csd_callee_ptr != csd2->MR_csd_callee_ptr)
+    if (csd1->MR_csd_callee_ptr != csd2->MR_csd_callee_ptr) {
         return MR_TRUE;
+    }
 
     pm1 = &csd1->MR_csd_own;
     pm2 = &csd2->MR_csd_own;
 
   #ifdef MR_DEEP_PROFILING_PORT_COUNTS
     #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
-    if (pm1->MR_own_calls != pm2->MR_own_calls)
+    if (pm1->MR_own_calls != pm2->MR_own_calls) {
         return MR_TRUE;
+    }
     #endif
-    if (pm1->MR_own_exits != pm2->MR_own_exits)
+    if (pm1->MR_own_exits != pm2->MR_own_exits) {
         return MR_TRUE;
-    if (pm1->MR_own_fails != pm2->MR_own_fails)
+    }
+    if (pm1->MR_own_fails != pm2->MR_own_fails) {
         return MR_TRUE;
-    if (pm1->MR_own_redos != pm2->MR_own_redos)
+    }
+    if (pm1->MR_own_redos != pm2->MR_own_redos) {
         return MR_TRUE;
+    }
   #endif
   #ifdef MR_DEEP_PROFILING_TIMING
-    if (pm1->MR_own_quanta != pm2->MR_own_quanta)
+    if (pm1->MR_own_quanta != pm2->MR_own_quanta) {
         return MR_TRUE;
+    }
+  #endif
+  #ifdef MR_DEEP_PROFILING_CALL_SEQ
+    if (pm1->MR_own_call_seqs != pm2->MR_own_call_seqs) {
+        return MR_TRUE;
+    }
   #endif
   #ifdef MR_DEEP_PROFILING_MEMORY
-    if (pm1->MR_own_allocs != pm2->MR_own_allocs)
+    if (pm1->MR_own_allocs != pm2->MR_own_allocs) {
         return MR_TRUE;
-    if (pm1->MR_own_words != pm2->MR_own_words)
+    }
+    if (pm1->MR_own_words != pm2->MR_own_words) {
         return MR_TRUE;
+    }
   #endif
 
-    if (csd1->MR_csd_depth_count != csd2->MR_csd_depth_count)
+    if (csd1->MR_csd_depth_count != csd2->MR_csd_depth_count) {
         return MR_TRUE;
+    }
 
     return MR_FALSE;
 };
 
 static void
-MR_assign_csd(MR_CallSiteDynamic *csd1, MR_CallSiteDynamic *csd2)
+MR_assign_csd(MR_CallSiteDynamic *csd1, const MR_CallSiteDynamic *csd2)
 {
     csd1->MR_csd_callee_ptr = csd2->MR_csd_callee_ptr;
 
@@ -854,8 +868,10 @@ MR_assign_csd(MR_CallSiteDynamic *csd1, MR_CallSiteDynamic *csd2)
     csd1->MR_csd_own.MR_own_redos = csd2->MR_csd_own.MR_own_redos;
   #endif
   #ifdef MR_DEEP_PROFILING_TIMING
-    /* MR_own_quanta */ 0,
     csd1->MR_csd_own.MR_own_quanta = csd2->MR_csd_own.MR_own_quanta;
+  #endif
+  #ifdef MR_DEEP_PROFILING_CALL_SEQ
+    csd1->MR_csd_own.MR_own_call_seqs = csd2->MR_csd_own.MR_own_call_seqs;
   #endif
   #ifdef MR_DEEP_PROFILING_MEMORY
     csd1->MR_csd_own.MR_own_allocs = csd2->MR_csd_own.MR_own_allocs;
@@ -881,11 +897,9 @@ MR_do_watches(void)
             if (MR_csds_are_different(&MR_watched_csd_last_value,
                 MR_watch_csd_addr))
             {
-                MR_assign_csd(&MR_watched_csd_last_value,
-                    MR_watch_csd_addr);
+                MR_assign_csd(&MR_watched_csd_last_value, MR_watch_csd_addr);
                 printf("current call: %lu\n", MR_lld_cur_call);
-                MR_print_deep_prof_var(stdout, "watch_csd",
-                    MR_watch_csd_addr);
+                MR_print_deep_prof_var(stdout, "watch_csd", MR_watch_csd_addr);
             }
         }
     }
@@ -913,13 +927,13 @@ MR_proc_matches_name(MR_Code *proc, const char *name)
 
 #ifndef MR_HIGHLEVEL_CODE
 
-void 
+void
 MR_printdetstackptr(const MR_Word *s)
 {
     MR_print_detstackptr(stdout, s);
 }
 
-void 
+void
 MR_print_detstackptr(FILE *fp, const MR_Word *s)
 {
     fprintf(fp, "det %3ld",
@@ -930,49 +944,45 @@ MR_print_detstackptr(FILE *fp, const MR_Word *s)
     }
 }
 
-void 
+void
 MR_printdetstack(const MR_Word *s)
 {
     if (MR_print_raw_addrs) {
         printf("ptr %p, ", (const void *) s);
     }
 
-    printf("offset %3ld words\n",
-        (long) (MR_Integer) MR_det_stack_offset(s));
+    printf("offset %3ld words\n", (long) (MR_Integer) MR_det_stack_offset(s));
 }
 
-void 
+void
 MR_printnondstackptr(const MR_Word *s)
 {
     MR_print_nondstackptr(stdout, s);
 }
 
-void 
+void
 MR_print_nondstackptr(FILE *fp, const MR_Word *s)
 {
-    fprintf(fp, "non %3ld",
-        (long) (MR_Integer) MR_non_stack_offset(s));
+    fprintf(fp, "non %3ld", (long) (MR_Integer) MR_non_stack_offset(s));
 
     if (MR_print_raw_addrs) {
-        fprintf(fp, " (%p)",
-        (const void *) s);
+        fprintf(fp, " (%p)", (const void *) s);
     }
 }
 
-void 
+void
 MR_printnondstack(const MR_Word *s)
 {
     if (MR_print_raw_addrs) {
         printf("ptr %p, ", (const void *) s);
     }
 
-    printf("offset %3ld words\n",
-        (long) (MR_Integer) MR_non_stack_offset(s));
+    printf("offset %3ld words\n", (long) (MR_Integer) MR_non_stack_offset(s));
 }
 
 #endif /* !MR_HIGHLEVEL_CODE */
 
-void 
+void
 MR_print_heapptr(FILE *fp, const MR_Word *s)
 {
 #ifdef  MR_CONSERVATIVE_GC
@@ -987,7 +997,7 @@ MR_print_heapptr(FILE *fp, const MR_Word *s)
     }
 }
 
-void 
+void
 MR_print_label(FILE *fp, /* const */ MR_Code *w)
 {
     MR_Internal *internal;
@@ -1001,8 +1011,7 @@ MR_print_label(FILE *fp, /* const */ MR_Code *w)
         }
 #ifdef  MR_DEBUG_LABEL_GOAL_PATHS
         if (internal->i_layout != NULL) {
-            fprintf(fp, " <%s>",
-                MR_label_goal_path(internal->i_layout));
+            fprintf(fp, " <%s>", MR_label_goal_path(internal->i_layout));
         }
 #endif
     } else {
@@ -1014,8 +1023,7 @@ MR_print_label(FILE *fp, /* const */ MR_Code *w)
             if (entry->e_name != NULL) {
                 fprintf(fp, "entry label %s", entry->e_name);
             } else {
-                fprintf(fp, "unnamed entry label %p",
-                    entry->e_addr);
+                fprintf(fp, "unnamed entry label %p", entry->e_addr);
             }
         } else {
             fprintf(fp, "label UNKNOWN %p", w);
@@ -1030,7 +1038,7 @@ MR_print_label(FILE *fp, /* const */ MR_Code *w)
     }
 }
 
-void 
+void
 MR_printlabel(FILE *fp, /* const */ MR_Code *w)
 {
     MR_print_label(fp, w);
@@ -1048,11 +1056,10 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
     } else {
         const MR_ProcDynamic    *pd;
         const MR_Proc_Layout    *pl;
-        const MR_ProcStatic *ps;
-        const MR_Proc_Id    *proc_id;
+        const MR_ProcStatic     *ps;
+        const MR_Proc_Id        *proc_id;
 
-        fprintf(fp, ", depth %d,",
-            csd->MR_csd_depth_count);
+        fprintf(fp, ", depth %d,", csd->MR_csd_depth_count);
 
 #ifdef  MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
         fprintf(fp, " calls %d,",
@@ -1076,31 +1083,24 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
             proc_id = &pl->MR_sle_proc_id;
             if (MR_PROC_ID_IS_UCI(*proc_id)) {
                 fprintf(fp, "  %s:%s %s/%d-%d\n  ",
-                    proc_id->MR_proc_uci.
-                        MR_uci_type_module,
-                    proc_id->MR_proc_uci.
-                        MR_uci_type_name,
-                    proc_id->MR_proc_uci.
-                        MR_uci_pred_name,
-                    proc_id->MR_proc_uci.
-                        MR_uci_type_arity,
+                    proc_id->MR_proc_uci.MR_uci_type_module,
+                    proc_id->MR_proc_uci.MR_uci_type_name,
+                    proc_id->MR_proc_uci.MR_uci_pred_name,
+                    proc_id->MR_proc_uci.MR_uci_type_arity,
                     proc_id->MR_proc_uci.MR_uci_mode);
             } else {
                 fprintf(fp, "  %s.%s/%d-%d\n  ",
-                    proc_id->MR_proc_user.
-                        MR_user_decl_module,
+                    proc_id->MR_proc_user.MR_user_decl_module,
                     proc_id->MR_proc_user.MR_user_name,
                     proc_id->MR_proc_user.MR_user_arity,
                     proc_id->MR_proc_user.MR_user_mode);
             }
 
 #ifdef  MR_USE_ACTIVATION_COUNTS
-            fprintf(fp, "active %d, ",
-                ps->MR_ps_activation_count);
+            fprintf(fp, "active %d, ", ps->MR_ps_activation_count);
 #endif
             fprintf(fp, "outermost %p, array %d\n",
-                ps->MR_ps_outermost_activation_ptr,
-                ps->MR_ps_num_call_sites);
+                ps->MR_ps_outermost_activation_ptr, ps->MR_ps_num_call_sites);
         }
     }
 #endif
