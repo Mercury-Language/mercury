@@ -242,12 +242,12 @@ Changes to the Mercury language:
   goal is pure or semipure. Given Goal, a goal that uses impure and/or
   semipure code, the goal
 
-	  promise_pure ( Goal )
+	promise_pure ( Goal )
 
   promises that Goal presents a pure interface. Given Goal, a goal that
   uses impure code, the goal
 
-	  promise_semipure ( Goal )
+	promise_semipure ( Goal )
 
   promises that Goal presents a semipure interface.
 
