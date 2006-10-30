@@ -102,6 +102,7 @@ process(FILE *fp)
                 cur_column = 1;
             } else {
                 putchar(cur_char);
+                putchar(next_char);
                 cur_column++;
             }
         } else if (cur_char == '\t') {
