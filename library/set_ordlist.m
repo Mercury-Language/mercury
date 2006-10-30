@@ -298,7 +298,7 @@ set_ordlist.insert_list(Set0, List0, Set) :-
     set_ordlist.union(List, Set0, Set).
 
 set_ordlist.insert([], E, [E]).
-set_ordlist.insert([I|Is], E, Js) :-
+set_ordlist.insert([I | Is], E, Js) :-
     compare(R, I, E),
     (
         R = (<),
@@ -377,19 +377,20 @@ set_ordlist.sort_no_dups(List, Set) :-
         set_ordlist.no_dups(Elem, Elems)
     ).
 
-    % set_ordlist.no_dups(Elem, Set) is true iff Set does not
-    % contain Elem, and Set does not contains duplicates.
+    % set_ordlist.no_dups(Elem, Set) is true iff Set does not contain Elem,
+    % and Set does not contains duplicates.
+    %
 :- pred set_ordlist.no_dups(T::in, list(T)::in) is semidet.
 
 set_ordlist.no_dups(_, []).
-set_ordlist.no_dups(Elem, [Elem0|Elems]) :-
+set_ordlist.no_dups(Elem, [Elem0 | Elems]) :-
     Elem \= Elem0,
     set_ordlist.no_dups(Elem0, Elems).
 
 set_ordlist.remove(Set0, Elem, Set) :-
     list.delete_first(Set0, Elem, Set).
 
-set_ordlist.remove_least([Elem|Set], Elem, Set).
+set_ordlist.remove_least([Elem | Set], Elem, Set).
 
 set_ordlist.union(Set0, Set1, Set) :-
     list.merge_and_remove_dups(Set0, Set1, Set).
@@ -416,14 +417,14 @@ set_ordlist.intersect([X | Xs], [Y | Ys], Set) :-
     compare(R, X, Y),
     (
         R = (<),
-        set_ordlist.intersect(Xs, [Y|Ys], Set)
+        set_ordlist.intersect(Xs, [Y | Ys], Set)
     ;
         R = (=),
         set_ordlist.intersect(Xs, Ys, Set0),
-        Set = [X|Set0]
+        Set = [X | Set0]
     ;
         R = (>),
-        set_ordlist.intersect([X|Xs], Ys, Set)
+        set_ordlist.intersect([X | Xs], Ys, Set)
     ).
 
 set_ordlist.power_intersect([], []).
@@ -514,12 +515,11 @@ set_ordlist.count(S) = N :-
     set_ordlist.count(S, N).
 
 set_ordlist.map(F, S1) = S2 :-
-    S2 = set_ordlist.list_to_set(list.map(F,
-            set_ordlist.to_sorted_list(S1))).
+    S2 = set_ordlist.list_to_set(list.map(F, set_ordlist.to_sorted_list(S1))).
 
 set_ordlist.filter_map(PF, S1) = S2 :-
     S2 = set_ordlist.list_to_set(list.filter_map(PF,
-            set_ordlist.to_sorted_list(S1))).
+        set_ordlist.to_sorted_list(S1))).
 
 set_ordlist.fold(F, S, A) = B :-
     B = list.foldl(F, set_ordlist.to_sorted_list(S), A).
