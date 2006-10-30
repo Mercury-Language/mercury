@@ -10,9 +10,9 @@
 # compiled with these flags to make sure all calls
 # to the builtin comparison routines are inlined.
 TYPE_SPEC_FLAGS = --inline-vars-threshold 10000
-MCFLAGS-list += $(TYPE_SPEC_FLAGS)
+MCFLAGS-list += $(TYPE_SPEC_FLAGS) --optimize-constructor-last-call
 MCFLAGS-map += $(TYPE_SPEC_FLAGS)
-MCFLAGS-tree234 += $(TYPE_SPEC_FLAGS)
+MCFLAGS-tree234 += $(TYPE_SPEC_FLAGS) --optimize-constructor-last-call
 MCFLAGS-set += $(TYPE_SPEC_FLAGS)
 MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 
