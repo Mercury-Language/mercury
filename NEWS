@@ -3,6 +3,8 @@ NEWS since Mercury 0.13
 
 Changes to the Mercury language:
 
+* Some of the restrictions on typeclass instances have been relaxed, allowing
+  support for polymorphic instances with functional dependencies.
 * We now support trace goals, which can be used to print progress messages or
   log messages in the middle of arbitrary computations.
 * Mutables can now be marked as constant, which is useful when working with
@@ -43,6 +45,23 @@ DETAILED LISTING
 ================
 
 Changes to the Mercury language:
+
+* The restriction on typeclass instances that all type variables appearing in
+  the range of a functional dependency must be monomorphic has been relaxed.
+  We now support cases where the type variables in the range are determined
+  by the type variables in the domain, using the functional dependency
+  information from any instance constraints.
+
+  For example, given the typeclass
+
+	:- typeclass foo(A, B) <= (A -> B).
+
+  the following instance is now valid:
+
+	:- instance foo(list(S), list(T)) <= foo(S, T).
+
+  since the variable T, in the range, is determined from the variable S by the
+  functional dependencies on the foo(S, T) constraint.
 
 * A new language construct allows programmers to include debugging and/or
   logging code in the middle of arbitrary computations. Trace goals
