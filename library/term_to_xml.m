@@ -54,9 +54,9 @@
 :- interface.
 
 :- import_module deconstruct.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module stream.
 :- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
@@ -78,8 +78,8 @@
                 % An XML element with a name, list of attributes
                 % and a list of children.
                 element_name    :: string,
-                attributes  :: list(attr),
-                children    :: list(xml)
+                attributes      :: list(attr),
+                children        :: list(xml)
             )
 
     ;       data(string)
@@ -89,13 +89,14 @@
 
     ;       cdata(string)
             % Data to be enclosed in `<![CDATA[' and `]]>' tags.
-            % Any occurrences of `]]>' in the data will be
-            % converted to `]]&gt;'.
+            % The string may not contain the substring "]]>".
+            % If it does then invalid XML will be generated.
 
     ;       comment(string)
             % An XML comment.  The comment should not
             % include the `<!--' and `-->'.  Any occurrences of
-            % `--' will be replaced by ` - '.
+            % the substring "--" will be replaced by " - ", 
+            % since "--" is not allowed in XML comments.
 
     ;       entity(string)
             % An entity reference.  The string will
@@ -106,6 +107,7 @@
             % Raw XML data.  The data will be written out verbatim.
 
     % An XML document must have an element at the top-level.
+    % The following inst is used to enforce this restriction.
     %
 :- inst xml_doc
     --->    elem(
@@ -123,7 +125,7 @@
     % the DOCTYPE is defined by an external DTD.
     %
 :- type doctype
-    --->    public(string)                  % FPI
+    --->    public(string)                  % Formal Public Identifier (FPI)
     ;       public_system(string, string)   % FPI, URL
     ;       system(string).                 % URL
 
@@ -155,70 +157,49 @@
             )
     ;       no_stylesheet.
 
-    % write_xml_doc(Term, !IO):
+    % write_xml_doc(Stream, Term, !State):
     %
-    % Output Term as an XML document to the current output stream.
+    % Output Term as an XML document to the given stream.
     % Term must be an instance of the xmlable typeclass.
     %
-:- pred write_xml_doc(T::in, io::di, io::uo) is det <= xmlable(T).
+:- pred write_xml_doc(Stream::in, T::in, State::di, State::uo)
+    is det <= (xmlable(T), stream.writer(Stream, string, State)).
 
-    % write_xml_doc(Stream, Term, !IO):
+    % write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD,
+    %   !State):
     %
-    % Same as write_xml_doc/3, but use the given output stream.
-    %
-:- pred write_xml_doc_to_stream(io.output_stream::in, T::in, io::di, io::uo)
-    is det <= xmlable(T).
-
-    % write_xml_doc_style_dtd(Term, MaybeStyleSheet, MaybeDTD, !IO):
-    %
-    % Write Term to the current output stream as an XML document.
+    % Write Term to the given stream as an XML document.
     % MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
     % reference and/or a DTD should be included.
-    % Using this predicate only external DTDs can be included, i.e.
+    % Using this predicate, only external DTDs can be included, i.e.
     % a DTD cannot be automatically generated and embedded
     % (that feature is available only for method 2 -- see below).
     %
-:- pred write_xml_doc_style_dtd(T::in, maybe_stylesheet::in,
-    maybe_dtd::in(non_embedded_dtd), io::di, io::uo) is det <= xmlable(T).
+:- pred write_xml_doc_style_dtd(Stream::in, T::in,
+    maybe_stylesheet::in, maybe_dtd::in(non_embedded_dtd),
+    State::di, State::uo) is det
+    <= (xmlable(T), stream.writer(Stream, string, State)).
 
-    % write_xml_doc_style_dtd_stream(Stream, Term, MaybeStyleSheet, MaybeDTD,
-    %   !IO):
+    % write_xml_element(Stream, Indent, Term, !State):
     %
-    % Same as write_xml_doc_style_dtd/5, but write output to the given
-    % output stream.
-    %
-:- pred write_xml_doc_style_dtd_stream(io.output_stream::in, T::in,
-    maybe_stylesheet::in, maybe_dtd::in(non_embedded_dtd), io::di, io::uo)
-    is det <= xmlable(T).
-
-    % write_xml_element(Indent, Term, !IO).
-    % Write Term out as XML to the current output stream, using indentation
-    % level Indent (each indentation level is one tab character).
+    % Write Term out as XML to the given stream, using Indent as the
+    % indentation level (each indentation level is one tab character).
     % No `<?xml ... ?>' header will be written.
-    % This is useful for generating large XML documents in pieces.
+    % This is useful for generating large XML documents piecemeal.
     %
-:- pred write_xml_element(int::in, T::in, io::di, io::uo) is det <= xmlable(T).
+:- pred write_xml_element(Stream::in, int::in, T::in,
+    State::di, State::uo) is det
+    <= (xmlable(T), stream.writer(Stream, string, State)).
 
-    % write_xml_element(Stream, Indent, Term, !IO):
-    %
-    % Same as write_xml_element/4, but use the given output stream.
-    %
-:- pred write_xml_element_to_stream(io.output_stream::in, int::in, T::in,
-    io::di, io::uo) is det <= xmlable(T).
-
-    % write_xml_header(MaybeEncoding, !IO):
+    % write_xml_header(Stream, MaybeEncoding, !State):
     %
     % Write an XML header (i.e. `<?xml version="1.0"?>) to the
-    % current output stream.
+    % current file output stream.
     % If MaybeEncoding is yes(Encoding), then include `encoding="Encoding"'
     % in the header.
     %
-:- pred write_xml_header(maybe(string)::in, io::di, io::uo) is det.
-
-    % Same as write_xml_header/3, but use the given output stream.
-    %
-:- pred write_xml_header_to_stream(io.output_stream::in, maybe(string)::in,
-    io::di, io::uo) is det.
+:- pred write_xml_header(Stream::in, maybe(string)::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
 %-----------------------------------------------------------------------------%
 %
@@ -229,7 +210,7 @@
     % to use when generating XML.  The role of a mapping is twofold:
     %   1. To map functors to elements, and
     %   2. To map functors to a set of attributes that should be
-    %   set for the corresponding element.
+    %      generated for the corresponding element.
     %
     % We provide two predefined mappings:
     %
@@ -291,7 +272,7 @@
     % Values of this type are passed to custom functor-to-element
     % mapping predicates to tell the predicate which functor to generate
     % an element name for if the type is a discriminated union.  If the
-    % type is not a discriminated union, then none_du is passed to
+    % type is not a discriminated union, then non_du is passed to
     % the predicate when requesting an element for the type.
     %
 :- type maybe_functor_info
@@ -301,7 +282,7 @@
                 functor_arity   :: int
             )
 
-    ;       none_du.
+    ;       non_du.
             % The type is not a discriminated union.
 
     % Values of this type specify attributes that should be set from
@@ -390,10 +371,10 @@
             % it is not generally possible to generate DTD rules for functors
             % with existentially typed arguments.
 
-    % write_xml_doc_general(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
-    %   DTDResult, !IO):
+    % write_xml_doc_general(Stream, Term, ElementMapping,
+    %   MaybeStyleSheet, MaybeDTD, DTDResult, !State):
     %
-    % Write Term to the current output stream as an XML document using
+    % Write Term to the given stream as an XML document using
     % ElementMapping as the scheme to map functors to elements.
     % MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
     % reference and/or a DTD should be included.  Any non-canonical terms
@@ -403,24 +384,15 @@
     % out.  See the dtd_generation_result type for a list of the other
     % possible values of DTDResult and their meanings.
     %
-:- pred write_xml_doc_general(T::in, element_mapping::in(element_mapping),
-    maybe_stylesheet::in, maybe_dtd::in, dtd_generation_result::out,
-    io::di, io::uo) is det.
-
-    % write_xml_doc_general_to_stream(Stream, Term, ElementMapping,
-    %   MaybeStyleSheet, MaybeDTD, DTDResult, !IO):
-    %
-    % Same as write_xml_doc/7 except write the XML doc to the given
-    % output stream.
-    %
-:- pred write_xml_doc_general_to_stream(io.output_stream::in, T::in,
+:- pred write_xml_doc_general(Stream::in, T::in,
     element_mapping::in(element_mapping), maybe_stylesheet::in,
-    maybe_dtd::in, dtd_generation_result::out, io::di, io::uo) is det.
+    maybe_dtd::in, dtd_generation_result::out, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-    % write_xml_doc_general_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
-    %   DTDResult, !IO):
+    % write_xml_doc_general_cc(Stream, Term, ElementMapping, MaybeStyleSheet,
+    %    MaybeDTD, DTDResult, !State):
     %
-    % Write Term to the current output stream as an XML document using
+    % Write Term to the current file output stream as an XML document using
     % ElementMapping as the scheme to map functors to elements.
     % MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
     % reference and/or a DTD should be included.  Any non-canonical terms
@@ -430,19 +402,10 @@
     % written out.  See the dtd_generation_result type for a list of the
     % other possible values of DTDResult and their meanings.
     %
-:- pred write_xml_doc_general_cc(T::in, element_mapping::in(element_mapping),
-    maybe_stylesheet::in, maybe_dtd::in, dtd_generation_result::out,
-    io::di, io::uo) is cc_multi.
-
-    % write_xml_doc_general_cc(Stream, Term, ElementMapping, MaybeStyleSheet,
-    %    MaybeDTD, DTDResult, !IO):
-    %
-    % Same as write_xml_doc/7 except write the XML doc to the given
-    % output stream.
-    %
-:- pred write_xml_doc_general_cc_to_stream(io.output_stream::in, T::in,
+:- pred write_xml_doc_general_cc(Stream::in, T::in,
     element_mapping::in(element_mapping), maybe_stylesheet::in,
-    maybe_dtd::in, dtd_generation_result::out, io::di, io::uo) is cc_multi.
+    maybe_dtd::in, dtd_generation_result::out, State::di, State::uo)
+    is cc_multi <= stream.writer(Stream, string, State).
 
     % can_generate_dtd(ElementMapping, Type) = Result:
     %
@@ -455,50 +418,36 @@
 :- func can_generate_dtd(element_mapping::in(element_mapping),
     type_desc::in) = (dtd_generation_result::out) is det.
 
-    % write_dtd(Term, ElementMapping, DTDResult, !IO):
+    % write_dtd(Stream, Term, ElementMapping, DTDResult, !State):
     %
-    % Write a DTD for the given term to the current output stream using
+    % Write a DTD for the given term to the current file output stream using
     % ElementMapping to map functors to elements.  If a DTD
     % cannot be generated for Term using ElementMapping then a value
     % other than `ok' is returned in DTDResult and nothing is written.
     % See the dtd_generation_result type for a list of the other
     % possible values of DTDResult and their meanings.
     %
-:- pred write_dtd(T::unused, element_mapping::in(element_mapping),
-    dtd_generation_result::out, io::di, io::uo) is det.
-
-    % write_dtd(Stream, Term, ElementMapping, DTDResult, !IO):
-    %
-    % Same as write_dtd/5 except the DTD will be written to the given
-    % output stream.
-    %
-:- pred write_dtd_to_stream(io.output_stream::in, T::unused,
+:- pred write_dtd(Stream::in, T::unused,
     element_mapping::in(element_mapping), dtd_generation_result::out,
-    io::di, io::uo) is det.
+    State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-    % write_dtd_for_type(Type, ElementMapping, DTDResult, !IO):
+    % write_dtd_for_type(Stream, Type, ElementMapping, DTDResult,
+    %   !State):
     %
-    % Write a DTD for the given type to the current output stream. If a DTD
-    % cannot be generated for Type using ElementMapping then a value
+    % Write a DTD for the given type to the given stream. If a
+    % DTD cannot be generated for Type using ElementMapping then a value
     % other than `ok' is returned in DTDResult and nothing is written.
     % See the dtd_generation_result type for a list of the other
     % possible values of DTDResult and their meanings.
     %
-:- pred write_dtd_from_type(type_desc::in,
+:- pred write_dtd_from_type(Stream::in, type_desc::in,
     element_mapping::in(element_mapping), dtd_generation_result::out,
-    io::di, io::uo) is det.
+    State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-    % write_dtd_for_type_to_stream(Stream, Type, ElementMapping, DTDResult,
-    %   !IO):
-    %
-    % Same as write_dtd_for_type/5 except the DTD will be written to the
-    % given output stream.
-    %
-:- pred write_dtd_from_type_to_stream(io.output_stream::in, type_desc::in,
-    element_mapping::in(element_mapping), dtd_generation_result::out,
-    io::di, io::uo) is det.
-
-    % write_xml_element_general(NonCanon, MakeElement, IndentLevel, Term, !IO):
+    % write_xml_element_general(Stream, NonCanon, MakeElement, IndentLevel,
+    %   Term, !State):
     %
     % Write XML elements for the given term and all its descendents,
     % using IndentLevel as the initial indentation level (each
@@ -508,6 +457,91 @@
     % according to the value of NonCanon.  See the deconstruct
     % module in the standard library for more information on this argument.
     %
+:- pred write_xml_element_general(Stream, deconstruct.noncanon_handling,
+    element_mapping, int, T, State, State)
+    <= stream.writer(Stream, string, State).
+:- mode write_xml_element_general(in, in(do_not_allow), in(element_mapping),
+    in, in, di, uo) is det.
+:- mode write_xml_element_general(in, in(canonicalize), in(element_mapping),
+    in, in, di, uo) is det.
+:- mode write_xml_element_general(in, in(include_details_cc), 
+    in(element_mapping), in, in, di, uo) is cc_multi.
+:- mode write_xml_element_general(in, in, in(element_mapping),
+    in, in, di, uo) is cc_multi.
+
+%-----------------------------------------------------------------------------%
+% The following predicates are all deprecated.  They will be removed
+% after the next official release.
+%
+
+:- import_module io.
+
+:- pragma obsolete(write_xml_doc/3).
+:- pred write_xml_doc(T::in, io::di, io::uo) is det <= xmlable(T).
+
+:- pragma obsolete(write_xml_doc_to_stream/4).
+:- pred write_xml_doc_to_stream(io.output_stream::in, T::in, io::di, io::uo)
+    is det <= xmlable(T).
+
+:- pragma obsolete(write_xml_doc_style_dtd/5).
+:- pred write_xml_doc_style_dtd(T::in, maybe_stylesheet::in,
+    maybe_dtd::in(non_embedded_dtd), io::di, io::uo) is det <= xmlable(T).
+
+:- pragma obsolete(write_xml_doc_style_dtd_stream/6).
+:- pred write_xml_doc_style_dtd_stream(io.output_stream::in, T::in,
+    maybe_stylesheet::in, maybe_dtd::in(non_embedded_dtd), io::di, io::uo)
+    is det <= xmlable(T).
+
+:- pragma obsolete(write_xml_element/4).
+:- pred write_xml_element(int::in, T::in, io::di, io::uo) is det <= xmlable(T).
+
+:- pragma obsolete(write_xml_element_to_stream/5).
+:- pred write_xml_element_to_stream(io.output_stream::in, int::in, T::in,
+    io::di, io::uo) is det <= xmlable(T).
+
+:- pragma obsolete(write_xml_header/3).
+:- pred write_xml_header(maybe(string)::in, io::di, io::uo) is det.
+
+:- pragma obsolete(write_xml_doc_general/7).
+:- pred write_xml_doc_general(T::in, element_mapping::in(element_mapping),
+    maybe_stylesheet::in, maybe_dtd::in, dtd_generation_result::out,
+    io::di, io::uo) is det.
+
+:- pragma obsolete(write_xml_doc_general_to_stream/8).
+:- pred write_xml_doc_general_to_stream(io.output_stream::in, T::in,
+    element_mapping::in(element_mapping), maybe_stylesheet::in,
+    maybe_dtd::in, dtd_generation_result::out, io::di, io::uo) is det.
+
+:- pragma obsolete(write_xml_doc_general_cc/7).
+:- pred write_xml_doc_general_cc(T::in, element_mapping::in(element_mapping),
+    maybe_stylesheet::in, maybe_dtd::in, dtd_generation_result::out,
+    io::di, io::uo) is cc_multi.
+
+:- pragma obsolete(write_xml_doc_general_cc_to_stream/8).
+:- pred write_xml_doc_general_cc_to_stream(io.output_stream::in, T::in,
+    element_mapping::in(element_mapping), maybe_stylesheet::in,
+    maybe_dtd::in, dtd_generation_result::out, io::di, io::uo) is cc_multi.
+
+:- pragma obsolete(write_dtd/5).
+:- pred write_dtd(T::unused, element_mapping::in(element_mapping),
+    dtd_generation_result::out, io::di, io::uo) is det.
+
+:- pragma obsolete(write_dtd_to_stream/6).
+:- pred write_dtd_to_stream(io.output_stream::in, T::unused,
+    element_mapping::in(element_mapping), dtd_generation_result::out,
+    io::di, io::uo) is det.
+
+:- pragma obsolete(write_dtd_from_type/5).
+:- pred write_dtd_from_type(type_desc::in,
+    element_mapping::in(element_mapping), dtd_generation_result::out,
+    io::di, io::uo) is det.
+
+:- pragma obsolete(write_dtd_from_type_to_stream/6).
+:- pred write_dtd_from_type_to_stream(io.output_stream::in, type_desc::in,
+    element_mapping::in(element_mapping), dtd_generation_result::out,
+    io::di, io::uo) is det.
+    
+:- pragma obsolete(write_xml_element_general/6).
 :- pred write_xml_element_general(deconstruct.noncanon_handling,
     element_mapping, int, T, io, io).
 :- mode write_xml_element_general(in(do_not_allow), in(element_mapping),
@@ -537,36 +571,29 @@
 
 %-----------------------------------------------------------------------------%
 
-write_xml_doc(Term, !IO) :-
-    write_xml_doc_style_dtd(Term, no_stylesheet, no_dtd, !IO).
+write_xml_doc(Stream, Term, !State) :-
+    write_xml_doc_style_dtd(Stream, Term, no_stylesheet, no_dtd,
+        !State).
 
-write_xml_doc_to_stream(Stream, Term, !IO) :-
-    write_xml_doc_style_dtd_stream(Stream, Term, no_stylesheet, no_dtd, !IO).
-
-write_xml_doc_style_dtd(Term, MaybeStyleSheet, MaybeDTD, !IO) :-
-    write_xml_header(no, !IO),
-    write_stylesheet_ref(MaybeStyleSheet, !IO),
+write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD, !State) :-
+    write_xml_header(Stream, no, !State),
+    write_stylesheet_ref(Stream, MaybeStyleSheet, !State),
     Root = to_xml(Term),
     Root = elem(RootName, _, Children),
     (
         MaybeDTD = no_dtd
     ;
         MaybeDTD = external_dtd(DocType),
-        write_external_doctype(RootName, DocType, !IO)
+        write_external_doctype(Stream, RootName, DocType, !State)
     ),
     ( if contains_noformat_xml(Children) then
         ChildrenFormat = no_format
     else
         ChildrenFormat = format
     ),
-    write_xml_element_format(ChildrenFormat, 0, Root, !IO).
+    write_xml_element_format(Stream, ChildrenFormat, 0, Root, !State).
 
-write_xml_doc_style_dtd_stream(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    write_xml_doc_style_dtd(Term, MaybeStyleSheet, MaybeDTD, !IO),
-    io.set_output_stream(OrigStream, _, !IO).
-
-write_xml_element(Indent, Term, !IO) :-
+write_xml_element(Stream, Indent, Term, !State) :-
     Root = to_xml(Term),
     Root = elem(_, _, Children),
     ( if contains_noformat_xml(Children) then
@@ -574,154 +601,124 @@ write_xml_element(Indent, Term, !IO) :-
     else
         ChildrenFormat = format
     ),
-    write_xml_element_format(ChildrenFormat, Indent, Root, !IO).
+    write_xml_element_format(Stream, ChildrenFormat, Indent, Root, !State).
 
-write_xml_element_to_stream(Stream, Indent, Term, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    write_xml_element(Indent, Term, !IO),
-    io.set_output_stream(OrigStream, _, !IO).
-
-write_xml_doc_general(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
-        DTDResult, !IO) :-
+write_xml_doc_general(Stream, Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
+        DTDResult, !State) :-
     DTDResult = can_generate_dtd_2(MaybeDTD, ElementMapping, type_of(Term)),
     (
         DTDResult = ok
     ->
-        write_xml_header(no, !IO),
-        write_stylesheet_ref(MaybeStyleSheet, !IO),
-        write_doctype(canonicalize, Term, ElementMapping, MaybeDTD, _,
-            !IO),
-        write_xml_element_general(canonicalize, ElementMapping, 0, Term, !IO)
+        write_xml_header(Stream, no, !State),
+        write_stylesheet_ref(Stream, MaybeStyleSheet, !State),
+        write_doctype(Stream, canonicalize, Term, ElementMapping, MaybeDTD, _,
+            !State),
+        write_xml_element_general(Stream, canonicalize, ElementMapping, 0, 
+            Term, !State)
     ;
         true
     ).
 
-write_xml_doc_general_to_stream(Stream, Term, ElementMapping,
-        MaybeStyleSheet, MaybeDTD, DTDResult, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    write_xml_doc_general(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
-        DTDResult, !IO),
-    io.set_output_stream(OrigStream, _, !IO).
-
-write_xml_doc_general_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
-        DTDResult, !IO) :-
+write_xml_doc_general_cc(Stream, Term, ElementMapping, MaybeStyleSheet,
+        MaybeDTD, DTDResult, !State) :-
     DTDResult = can_generate_dtd_2(MaybeDTD, ElementMapping, type_of(Term)),
     (
         DTDResult = ok
     ->
-        write_xml_header(no, !IO),
-        write_stylesheet_ref(MaybeStyleSheet, !IO),
-        write_doctype(include_details_cc, Term, ElementMapping,
-            MaybeDTD, _, !IO),
-        write_xml_element_general(include_details_cc, ElementMapping,
-            0, Term, !IO)
+        write_xml_header(Stream, no, !State),
+        write_stylesheet_ref(Stream, MaybeStyleSheet, !State),
+        write_doctype(Stream, include_details_cc, Term, ElementMapping,
+            MaybeDTD, _, !State),
+        write_xml_element_general(Stream, include_details_cc, ElementMapping,
+            0, Term, !State)
     ;
         true
     ).
 
-write_xml_doc_general_cc_to_stream(Stream, Term, ElementMapping,
-        MaybeStyleSheet, MaybeDTD, DTDResult, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    write_xml_doc_general_cc(Term, ElementMapping, MaybeStyleSheet, MaybeDTD,
-        DTDResult, !IO),
-    io.set_output_stream(OrigStream, _, !IO).
-
-write_xml_element_general(NonCanon, ElementMapping, IndentLevel, Term, !IO) :-
+write_xml_element_general(Stream, NonCanon, ElementMapping, IndentLevel, Term,
+        !State) :-
     type_to_univ(Term, Univ),
     get_element_pred(ElementMapping, MakeElement),
-    write_xml_element_univ(NonCanon, MakeElement, IndentLevel, Univ, [], _,
-        !IO).
+    write_xml_element_univ(Stream, NonCanon, MakeElement, IndentLevel, Univ,
+        [], _, !State).
 
-write_dtd(Term, ElementMapping, DTDResult, !IO) :-
+write_dtd(Stream, Term, ElementMapping, DTDResult, !State) :-
     type_of(Term) = TypeDesc,
-    write_dtd_from_type(TypeDesc, ElementMapping, DTDResult, !IO).
+    write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State).
 
-write_dtd_to_stream(Stream, Term, ElementMapping, DTDResult, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    write_dtd(Term, ElementMapping, DTDResult, !IO),
-    io.set_output_stream(OrigStream, _, !IO).
-
-write_dtd_from_type_to_stream(Stream, TypeDesc, ElementMapping, DTDResult,
-        !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    write_dtd_from_type(TypeDesc, ElementMapping, DTDResult, !IO),
-    io.set_output_stream(OrigStream, _, !IO).
-
-write_xml_header(MaybeEncoding, !IO) :-
-    io.write_string("<?xml version=""1.0""", !IO),
+write_xml_header(Stream, MaybeEncoding, !State) :-
+    put(Stream, "<?xml version=""1.0""", !State),
     (
         MaybeEncoding = yes(Encoding),
-        io.write_string(" encoding=""", !IO),
-        io.write_string(Encoding, !IO),
-        io.write_string("""?>\n", !IO)
+        put(Stream, " encoding=""", !State),
+        put(Stream, Encoding, !State),
+        put(Stream, """?>\n", !State)
     ;
         MaybeEncoding = no,
-        io.write_string("?>\n", !IO)
+        put(Stream, "?>\n", !State)
     ).
 
-write_xml_header_to_stream(Stream, MaybeEncoding, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    write_xml_header(MaybeEncoding, !IO),
-    io.set_output_stream(OrigStream, _, !IO).
+:- pred write_stylesheet_ref(Stream::in, maybe_stylesheet::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-:- pred write_stylesheet_ref(maybe_stylesheet::in, io::di, io::uo) is det.
+write_stylesheet_ref(_, no_stylesheet, !State).
+write_stylesheet_ref(Stream, with_stylesheet(Type, Href), !State) :-
+    put(Stream, "<?xml-stylesheet type=""", !State),
+    put(Stream, Type, !State),
+    put(Stream, """ href=""", !State),
+    put(Stream, Href, !State),
+    put(Stream, """?>\n", !State).
 
-write_stylesheet_ref(no_stylesheet, !IO).
-write_stylesheet_ref(with_stylesheet(Type, Href), !IO) :-
-    io.write_string("<?xml-stylesheet type=""", !IO),
-    io.write_string(Type, !IO),
-    io.write_string(""" href=""", !IO),
-    io.write_string(Href, !IO),
-    io.write_string("""?>\n", !IO).
-
-:- pred write_doctype(deconstruct.noncanon_handling, T, element_mapping,
-    maybe_dtd, dtd_generation_result, io, io).
-:- mode write_doctype(in(canonicalize), in, in(element_mapping), in, out,
+:- pred write_doctype(Stream, deconstruct.noncanon_handling, T,
+    element_mapping, maybe_dtd, dtd_generation_result, State, State)
+    <= stream.writer(Stream, string, State).
+:- mode write_doctype(in, in(canonicalize), in, in(element_mapping), in, out,
     di, uo) is det.
-:- mode write_doctype(in(do_not_allow), in, in(element_mapping), in, out,
+:- mode write_doctype(in, in(do_not_allow), in, in(element_mapping), in, out,
     di, uo) is det.
-:- mode write_doctype(in(include_details_cc), in, in(element_mapping), in, out,
-    di, uo) is cc_multi.
-:- mode write_doctype(in, in, in(element_mapping), in, out,
+:- mode write_doctype(in, in(include_details_cc), in, in(element_mapping),
+    in, out, di, uo) is cc_multi.
+:- mode write_doctype(in, in, in, in(element_mapping), in, out,
     di, uo) is cc_multi.
 
-write_doctype(_, _, _, no_dtd, ok, !IO).
-write_doctype(_, T, ElementMapping, embed_dtd, DTDResult, !IO) :-
-    write_dtd(T, ElementMapping, DTDResult, !IO),
-    io.nl(!IO).
-write_doctype(NonCanon, T, ElementMapping, external_dtd(DocType), ok, !IO) :-
+write_doctype(_, _, _, _, no_dtd, ok, !State).
+write_doctype(Stream, _, T, ElementMapping, embed_dtd, DTDResult, !State) :-
+    write_dtd(Stream, T, ElementMapping, DTDResult, !State),
+    put(Stream, "\n", !State).
+write_doctype(Stream, NonCanon, T, ElementMapping, external_dtd(DocType), ok,
+        !State) :-
     get_element_pred(ElementMapping, MakeElement),
     deconstruct.deconstruct(T, NonCanon, Functor, Arity, _),
     ( is_discriminated_union(type_of(T), _) ->
         Request = du_functor(Functor, Arity)
     ;
-        Request = none_du
+        Request = non_du
     ),
     MakeElement(type_of(T), Request, Root, _),
-    write_external_doctype(Root, DocType, !IO).
+    write_external_doctype(Stream, Root, DocType, !State).
 
-:- pred write_external_doctype(string::in, doctype::in, io::di, io::uo)
-    is det.
+:- pred write_external_doctype(Stream::in, string::in, doctype::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_external_doctype(Root, DocType, !IO) :-
-    io.write_string("<!DOCTYPE ", !IO),
-    io.write_string(Root, !IO),
+write_external_doctype(Stream, Root, DocType, !State) :-
+    put(Stream, "<!DOCTYPE ", !State),
+    put(Stream, Root, !State),
     (
         DocType = public(PUBLIC),
-        io.write_string(" PUBLIC """, !IO),
-        io.write_string(PUBLIC, !IO)
+        put(Stream, " PUBLIC """, !State),
+        put(Stream, PUBLIC, !State)
     ;
         DocType = public_system(PUBLIC, SYSTEM),
-        io.write_string(" PUBLIC """, !IO),
-        io.write_string(PUBLIC, !IO),
-        io.write_string(""" """, !IO),
-        io.write_string(SYSTEM, !IO)
+        put(Stream, " PUBLIC """, !State),
+        put(Stream, PUBLIC, !State),
+        put(Stream, """ """, !State),
+        put(Stream, SYSTEM, !State)
     ;
         DocType = system(SYSTEM),
-        io.write_string(" SYSTEM """, !IO),
-        io.write_string(SYSTEM, !IO)
+        put(Stream, " SYSTEM """, !State),
+        put(Stream, SYSTEM, !State)
     ),
-    io.write_string(""">\n", !IO).
+    put(Stream, """>\n", !State).
 
     % Implementation of the `unique' predefined mapping scheme.
     %
@@ -737,7 +734,7 @@ make_unique_element(TypeDesc, du_functor(Functor, Arity), Element,
     ),
     Element = MangledElement ++ "--" ++ string.int_to_string(Arity) ++
         "--" ++ mangle(type_name(TypeDesc)).
-make_unique_element(TypeDesc, none_du, Element, AttrFromSources) :-
+make_unique_element(TypeDesc, non_du, Element, AttrFromSources) :-
     ( is_primitive_type(TypeDesc, PrimitiveElement) ->
         Element = PrimitiveElement,
         AttrFromSources = [attr_from_source("type", type_name),
@@ -762,7 +759,7 @@ make_simple_element(_, du_functor(Functor, _), Element, all_attr_sources) :-
     ;
         Element = mangle(Functor)
     ).
-make_simple_element(TypeDesc, none_du, Element, AttrFromSources) :-
+make_simple_element(TypeDesc, non_du, Element, AttrFromSources) :-
     ( is_primitive_type(TypeDesc, PrimitiveElement) ->
         Element = PrimitiveElement,
         AttrFromSources = [attr_from_source("type", type_name),
@@ -845,9 +842,9 @@ is_primitive_type(TypeDesc, Element) :-
 % characters which aren't alpha numeric or underscores with '-' followed by
 % the character code.
 %
-% So for example "my-functor!" would become "my-45functor-33" while
-% "MyFunctor" would become "Tag_MyFunctor", presuming we were using
-% "Tag_" as the prefix for strings that started with capital letters.
+% For example "my-functor!" would become "my-45functor-33".
+% If we we where using "Tag_" as the prefix for strings that start with
+% capital letters, then "MyFunctor" would become "Tag_MyFunctor".
 %
 
 :- func mangle(string) = string.
@@ -915,7 +912,7 @@ get_elements_and_args(MakeElement, TypeDesc, Elements, MaybeFunctors,
                 "get_functor failed for discriminated union"))
         )
     ;
-        MakeElement(TypeDesc, none_du, Element, AttrFromSources),
+        MakeElement(TypeDesc, non_du, Element, AttrFromSources),
         Elements = [Element],
         AttributeLists = [AttrFromSources],
         MaybeFunctors = [no],
@@ -961,55 +958,53 @@ primitive_value(Univ, PrimValue) :-
     --->    format
     ;       no_format.
 
-:- pred write_xml_element_format(maybe_format::in, int::in, xml::in,
-    io::di, io::uo) is det.
+:- pred write_xml_element_format(Stream::in, maybe_format::in, int::in, xml::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_xml_element_format(Format, IndentLevel, elem(Name, Attrs, Children),
-        !IO) :-
-    maybe_indent(Format, IndentLevel, !IO),
+write_xml_element_format(Stream, Format, IndentLevel,
+        elem(Name, Attrs, Children), !State) :-
+    maybe_indent(Stream, Format, IndentLevel, !State),
     (
         Children = [],
-        write_empty_element(Name, Attrs, !IO),
-        maybe_nl(Format, !IO)
+        write_empty_element(Stream, Name, Attrs, !State),
+        maybe_nl(Stream, Format, !State)
     ;
         Children = [_ | _],
-        write_element_start(Name, Attrs, !IO),
+        write_element_start(Stream, Name, Attrs, !State),
         ( if contains_noformat_xml(Children) then
             ChildrenFormat = no_format
         else
             ChildrenFormat = format,
-            io.nl(!IO)
+            put(Stream, "\n", !State)
         ),
-        list.foldl(write_xml_element_format(ChildrenFormat,
-            IndentLevel + 1), Children, !IO),
-        maybe_indent(ChildrenFormat, IndentLevel, !IO),
-        write_element_end(Name, !IO),
-        maybe_nl(Format, !IO)
+        list.foldl(write_xml_element_format(Stream, ChildrenFormat,
+            IndentLevel + 1), Children, !State),
+        maybe_indent(Stream, ChildrenFormat, IndentLevel, !State),
+        write_element_end(Stream, Name, !State),
+        maybe_nl(Stream, Format, !State)
     ).
-write_xml_element_format(_, _, data(Data), !IO) :-
-    write_xml_escaped_string(Data, !IO).
-write_xml_element_format(Format, IndentLevel, cdata(CData), !IO) :-
-    maybe_indent(Format, IndentLevel, !IO),
-    io.write_string("<![CDATA[", !IO),
-    % CData may not contain "]]>", so replace with "]]&gt;".
-    string.replace_all(CData, "]]>", "]]&gt;", EscapedCData),
-    io.write_string(EscapedCData, !IO),
-    io.write_string("]]>", !IO),
-    maybe_nl(Format, !IO).
-write_xml_element_format(Format, IndentLevel, comment(Comment), !IO) :-
-    maybe_indent(Format, IndentLevel, !IO),
-    io.write_string("<!-- ", !IO),
+write_xml_element_format(Stream, _, _, data(Data), !State) :-
+    write_xml_escaped_string(Stream, Data, !State).
+write_xml_element_format(Stream, Format, IndentLevel, cdata(CData), !State) :-
+    maybe_indent(Stream, Format, IndentLevel, !State),
+    put(Stream, "<![CDATA[", !State),
+    put(Stream, CData, !State),
+    put(Stream, "]]>", !State),
+    maybe_nl(Stream, Format, !State).
+write_xml_element_format(Stream, Format, IndentLevel, comment(Comment),
+        !State) :-
+    maybe_indent(Stream, Format, IndentLevel, !State),
+    put(Stream, "<!-- ", !State),
     % Comments may not contain "--", so replace with " - ".
     string.replace_all(Comment, "--", " - ", EscapedComment),
-    io.write_string(EscapedComment, !IO),
-    io.write_string(" -->", !IO),
-    maybe_nl(Format, !IO).
-write_xml_element_format(_, _, entity(EntityName), !IO) :-
-    io.write_char('&', !IO),
-    io.write_string(EntityName, !IO),
-    io.write_char(';', !IO).
-write_xml_element_format(_, _, raw(RawString), !IO) :-
-    io.write_string(RawString, !IO).
+    put(Stream, EscapedComment, !State),
+    put(Stream, " -->", !State),
+    maybe_nl(Stream, Format, !State).
+write_xml_element_format(Stream, _, _, entity(EntityName), !State) :-
+    put(Stream, "&", !State),
+    put(Stream, EntityName ++ ";", !State).
+write_xml_element_format(Stream, _, _, raw(RawString), !State) :-
+    put(Stream, RawString, !State).
 
 :- func can_format_siblings(xml) = bool.
 
@@ -1029,42 +1024,45 @@ contains_noformat_xml([XML | Rest]) :-
         contains_noformat_xml(Rest)
     ).
 
-:- pred maybe_nl(maybe_format::in, io::di, io::uo) is det.
+:- pred maybe_nl(Stream::in, maybe_format::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-maybe_nl(no_format, !IO).
-maybe_nl(format, !IO) :- io.nl(!IO).
+maybe_nl(_Stream, no_format, !State).
+maybe_nl(Stream, format, !State) :- put(Stream, "\n", !State).
 
-:- pred maybe_indent(maybe_format::in, int::in, io::di, io::uo) is det.
+:- pred maybe_indent(Stream::in, maybe_format::in, int::in,
+    State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-maybe_indent(Format, Indent, !IO) :-
+maybe_indent(Stream, Format, Indent, !State) :-
     (
         Format = format,
-        indent(Indent, !IO)
+        indent(Stream, Indent, !State)
     ;
         Format = no_format
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_xml_element_univ(deconstruct.noncanon_handling,
+:- pred write_xml_element_univ(Stream, deconstruct.noncanon_handling,
     element_pred, int, univ, list(maybe(string)),
-    list(maybe(string)), io, io).
-:- mode write_xml_element_univ(in(do_not_allow), in(element_pred), in, in,
+    list(maybe(string)), State, State) <= stream.writer(Stream, string, State).
+:- mode write_xml_element_univ(in, in(do_not_allow), in(element_pred), in, in,
     in, out, di, uo) is det.
-:- mode write_xml_element_univ(in(canonicalize), in(element_pred), in, in,
+:- mode write_xml_element_univ(in, in(canonicalize), in(element_pred), in, in,
     in, out, di, uo) is det.
-:- mode write_xml_element_univ(in(include_details_cc), in(element_pred), in,
-    in, in, out, di, uo) is cc_multi.
-:- mode write_xml_element_univ(in, in(element_pred), in, in, in, out, di, uo)
-    is cc_multi.
+:- mode write_xml_element_univ(in, in(include_details_cc), in(element_pred),
+    in, in, in, out, di, uo) is cc_multi.
+:- mode write_xml_element_univ(in, in, in(element_pred), in, in, in, out, di,
+    uo) is cc_multi.
 
     % Write an element and all its descendents to the current output
     % stream.  If MaybeFields isn't empty then its head is used for the
     % `field' attribute and the Tail is returned in
     % RemainingMaybeFieldNames.  This is so it can be called using foldl2.
     %
-write_xml_element_univ(NonCanon, MakeElement, IndentLevel, Univ,
-        MaybeFieldNames, RemainingMaybeFieldNames, !IO) :-
+write_xml_element_univ(Stream, NonCanon, MakeElement, IndentLevel, Univ,
+        MaybeFieldNames, RemainingMaybeFieldNames, !State) :-
     (
         MaybeFieldNames = [MaybeFieldName | RemainingMaybeFieldNames]
     ;
@@ -1078,31 +1076,32 @@ write_xml_element_univ(NonCanon, MakeElement, IndentLevel, Univ,
     ( is_discriminated_union(TypeDesc, _) ->
         Request = du_functor(Functor, Arity)
     ;
-        Request = none_du
+        Request = non_du
     ),
     MakeElement(TypeDesc, Request, Element, AttrFromSources),
     ( primitive_value(Univ, PrimValue) ->
-        indent(IndentLevel, !IO),
-        write_primitive_element_with_attr_from_source(Element, AttrFromSources,
-            PrimValue, MaybeFieldName, TypeDesc, !IO)
+        indent(Stream, IndentLevel, !State),
+        write_primitive_element_with_attr_from_source(Stream, Element,
+            AttrFromSources, PrimValue, MaybeFieldName, TypeDesc, !State)
     ;
         (
             Args = [],
-            indent(IndentLevel, !IO),
-            write_empty_element_with_attr_from_source(Element,
+            indent(Stream, IndentLevel, !State),
+            write_empty_element_with_attr_from_source(Stream, Element,
                 AttrFromSources, yes(Functor), yes(Arity), MaybeFieldName,
-                TypeDesc, !IO)
+                TypeDesc, !State)
         ;
             Args = [_ | _],
             ChildMaybeFieldNames = get_field_names(TypeDesc, Functor, Arity),
-            indent(IndentLevel, !IO),
-            write_element_start_with_attr_from_source(Element, AttrFromSources,
-                yes(Functor), yes(Arity), MaybeFieldName, TypeDesc, !IO),
-            write_child_xml_elements(NonCanon, MakeElement, IndentLevel + 1,
-                Args, ChildMaybeFieldNames, !IO),
-            indent(IndentLevel, !IO),
-            write_element_end(Element, !IO),
-            io.nl(!IO)
+            indent(Stream, IndentLevel, !State),
+            write_element_start_with_attr_from_source(Stream, Element,
+                AttrFromSources, yes(Functor), yes(Arity), MaybeFieldName,
+                TypeDesc, !State),
+            write_child_xml_elements(Stream, NonCanon, MakeElement,
+                IndentLevel + 1, Args, ChildMaybeFieldNames, !State),
+            indent(Stream, IndentLevel, !State),
+            write_element_end(Stream, Element, !State),
+            put(Stream, "\n", !State)
         )
     ).
 
@@ -1156,148 +1155,158 @@ find_field_names(TypeDesc, [FunctorNum | FunctorNums], Functor, Arity,
 %-----------------------------------------------------------------------------%
 %
 % XXX The following is done to get around an unimplemented feature where higher
-% order terms with more than one mode can't be passed around (so we can't just
-% pass write_xml_element_univ to foldl).
+% order terms with more than one mode can't be passed as arguments (so we can't
+% just pass write_xml_element_univ to foldl).
 %
 
-:- pred write_child_xml_elements(deconstruct.noncanon_handling,
-    element_pred, int, list(univ), list(maybe(string)), io, io).
-:- mode write_child_xml_elements(in(do_not_allow), in(element_pred), in, in,
-    in, di, uo) is det.
-:- mode write_child_xml_elements(in(canonicalize), in(element_pred), in, in,
-    in, di, uo) is det.
-:- mode write_child_xml_elements(in(include_details_cc), in(element_pred),
+:- pred write_child_xml_elements(Stream, deconstruct.noncanon_handling,
+    element_pred, int, list(univ), list(maybe(string)), State, State)
+    <= stream.writer(Stream, string, State).
+:- mode write_child_xml_elements(in, in(do_not_allow), in(element_pred), in,
+    in, in, di, uo) is det.
+:- mode write_child_xml_elements(in, in(canonicalize), in(element_pred), in,
+    in, in, di, uo) is det.
+:- mode write_child_xml_elements(in, in(include_details_cc), in(element_pred),
     in, in, in,  di, uo) is cc_multi.
-:- mode write_child_xml_elements(in, in(element_pred), in, in, in, di, uo)
+:- mode write_child_xml_elements(in, in, in(element_pred), in, in, in, di, uo)
     is cc_multi.
 
-write_child_xml_elements(NonCanon, MakeElement, IndentLevel, Args,
-        MaybeFieldNames, !IO) :-
+write_child_xml_elements(Stream, NonCanon, MakeElement, IndentLevel, Args,
+        MaybeFieldNames, !State) :-
     (
         NonCanon = do_not_allow,
         list.foldl2(
-            write_xml_element_univ_do_not_allow(
-                MakeElement, IndentLevel), Args,
-            MaybeFieldNames, _, !IO)
+            write_xml_element_univ_do_not_allow(Stream, MakeElement,
+                IndentLevel), Args,
+            MaybeFieldNames, _, !State)
     ;
         NonCanon = canonicalize,
         list.foldl2(
-            write_xml_element_univ_canonicalize(
-                MakeElement, IndentLevel), Args,
-            MaybeFieldNames, _, !IO)
+            write_xml_element_univ_canonicalize(Stream, MakeElement,
+                IndentLevel), Args,
+            MaybeFieldNames, _, !State)
     ;
         NonCanon = include_details_cc,
         list.foldl2(
-            write_xml_element_univ_include_details_cc(
-                MakeElement, IndentLevel), Args,
-            MaybeFieldNames, _, !IO)
+            write_xml_element_univ_include_details_cc(Stream, MakeElement,
+                IndentLevel), Args,
+            MaybeFieldNames, _, !State)
     ).
 
-:- pred write_xml_element_univ_do_not_allow(element_pred::in(element_pred),
+:- pred write_xml_element_univ_do_not_allow(Stream::in, 
+    element_pred::in(element_pred),
     int::in, univ::in, list(maybe(string))::in, list(maybe(string))::out,
-    io::di, io::uo) is det.
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_xml_element_univ_do_not_allow(MakeElement, IndentLevel, Univ,
-        MaybeFieldNames0, MaybeFieldNames, !IO) :-
-    write_xml_element_univ(do_not_allow, MakeElement, IndentLevel,
-        Univ, MaybeFieldNames0, MaybeFieldNames, !IO).
+write_xml_element_univ_do_not_allow(Stream, MakeElement, IndentLevel, Univ,
+        MaybeFieldNames0, MaybeFieldNames, !State) :-
+    write_xml_element_univ(Stream, do_not_allow, MakeElement, IndentLevel,
+        Univ, MaybeFieldNames0, MaybeFieldNames, !State).
 
-:- pred write_xml_element_univ_canonicalize(element_pred::in(element_pred),
+:- pred write_xml_element_univ_canonicalize(Stream::in, 
+    element_pred::in(element_pred),
     int::in, univ::in, list(maybe(string))::in, list(maybe(string))::out,
-    io::di, io::uo) is det.
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_xml_element_univ_canonicalize(MakeElement, IndentLevel, Univ,
-        MaybeFieldNames0, MaybeFieldNames, !IO) :-
-    write_xml_element_univ(canonicalize, MakeElement, IndentLevel,
-        Univ, MaybeFieldNames0, MaybeFieldNames, !IO).
+write_xml_element_univ_canonicalize(Stream, MakeElement, IndentLevel, Univ,
+        MaybeFieldNames0, MaybeFieldNames, !State) :-
+    write_xml_element_univ(Stream, canonicalize, MakeElement, IndentLevel,
+        Univ, MaybeFieldNames0, MaybeFieldNames, !State).
 
-:- pred write_xml_element_univ_include_details_cc(
+:- pred write_xml_element_univ_include_details_cc(Stream::in,
     element_pred::in(element_pred), int::in, univ::in,
-    list(maybe(string))::in, list(maybe(string))::out, io::di, io::uo)
-    is cc_multi.
+    list(maybe(string))::in, list(maybe(string))::out, State::di, State::uo)
+    is cc_multi <= stream.writer(Stream, string, State).
 
-write_xml_element_univ_include_details_cc(MakeElement, IndentLevel, Univ,
-        MaybeFieldNames0, MaybeFieldNames, !IO) :-
-    write_xml_element_univ(include_details_cc, MakeElement,
-        IndentLevel, Univ, MaybeFieldNames0, MaybeFieldNames, !IO).
+write_xml_element_univ_include_details_cc(Stream, MakeElement, IndentLevel,
+        Univ, MaybeFieldNames0, MaybeFieldNames, !State) :-
+    write_xml_element_univ(Stream, include_details_cc, MakeElement,
+        IndentLevel, Univ, MaybeFieldNames0, MaybeFieldNames, !State).
 
 %-----------------------------------------------------------------------------%
 %
 % Predicates for writing elements
 %
 
-:- pred indent(int::in, io::di, io::uo) is det.
+:- pred indent(Stream::in, int::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-indent(IndentLevel, !IO) :-
+indent(Stream, IndentLevel, !State) :-
     ( IndentLevel > 0 ->
-        io.write_char('\t', !IO),
-        indent(IndentLevel - 1, !IO)
+        put(Stream, "\t", !State),
+        indent(Stream, IndentLevel - 1, !State)
     ;
         true
     ).
 
-:- pred write_primitive_element_with_attr_from_source(string::in,
+:- pred write_primitive_element_with_attr_from_source(Stream::in, string::in,
    list(attr_from_source)::in, string::in, maybe(string)::in,
-   type_desc::in, io::di, io::uo) is det.
+   type_desc::in, State::di, State::uo) is det
+   <= stream.writer(Stream, string, State).
 
-write_primitive_element_with_attr_from_source(Element, AttrFromSources, Value,
-        MaybeField, TypeDesc, !IO) :-
-    io.write_string("<", !IO),
-    io.write_string(Element, !IO),
+write_primitive_element_with_attr_from_source(Stream, Element,
+        AttrFromSources, Value, MaybeField, TypeDesc, !State) :-
+    put(Stream, "<", !State),
+    put(Stream, Element, !State),
     Attrs = make_attrs_from_sources(no, no,
         TypeDesc, MaybeField, AttrFromSources),
-    list.foldl(write_attribute, Attrs, !IO),
-    io.write_string(">", !IO),
-    write_xml_escaped_string(Value, !IO),
-    io.write_string("</", !IO),
-    io.write_string(Element, !IO),
-    io.write_string(">\n", !IO).
+    list.foldl(write_attribute(Stream), Attrs, !State),
+    put(Stream, ">", !State),
+    write_xml_escaped_string(Stream, Value, !State),
+    put(Stream, "</", !State),
+    put(Stream, Element, !State),
+    put(Stream, ">\n", !State).
 
-:- pred write_element_start_with_attr_from_source(string::in,
+:- pred write_element_start_with_attr_from_source(Stream::in, string::in,
     list(attr_from_source)::in,
     maybe(string)::in, maybe(int)::in, maybe(string)::in,
-    type_desc::in, io::di, io::uo) is det.
+    type_desc::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-write_element_start_with_attr_from_source(Element, AttrFromSources,
-        MaybeFunctor, MaybeArity, MaybeField, TypeDesc, !IO) :-
+write_element_start_with_attr_from_source(Stream, Element, AttrFromSources,
+        MaybeFunctor, MaybeArity, MaybeField, TypeDesc, !State) :-
     Attrs = make_attrs_from_sources(MaybeFunctor, MaybeArity,
         TypeDesc, MaybeField, AttrFromSources),
-    write_element_start(Element, Attrs, !IO),
-    io.nl(!IO).
+    write_element_start(Stream, Element, Attrs, !State),
+    put(Stream, "\n", !State).
 
-:- pred write_element_start(string::in, list(attr)::in, io::di, io::uo) is det.
+:- pred write_element_start(Stream::in, string::in, list(attr)::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_element_start(Element, Attributes, !IO) :-
-    io.write_string("<", !IO),
-    io.write_string(Element, !IO),
-    list.foldl(write_attribute, Attributes, !IO),
-    io.write_string(">", !IO).
+write_element_start(Stream, Element, Attributes, !State) :-
+    put(Stream, "<", !State),
+    put(Stream, Element, !State),
+    list.foldl(write_attribute(Stream), Attributes, !State),
+    put(Stream, ">", !State).
 
-:- pred write_empty_element_with_attr_from_source(string::in,
+:- pred write_empty_element_with_attr_from_source(Stream::in, string::in,
     list(attr_from_source)::in, maybe(string)::in, maybe(int)::in,
-    maybe(string)::in, type_desc::in, io::di, io::uo) is det.
+    maybe(string)::in, type_desc::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-write_empty_element_with_attr_from_source(Element, AttrFromSources,
-        MaybeFunctor, MaybeArity, MaybeField, TypeDesc, !IO) :-
+write_empty_element_with_attr_from_source(Stream, Element, AttrFromSources,
+        MaybeFunctor, MaybeArity, MaybeField, TypeDesc, !State) :-
     Attrs = make_attrs_from_sources(MaybeFunctor, MaybeArity,
         TypeDesc, MaybeField, AttrFromSources),
-    write_empty_element(Element, Attrs, !IO),
-    io.nl(!IO).
+    write_empty_element(Stream, Element, Attrs, !State),
+    put(Stream, "\n", !State).
 
-:- pred write_empty_element(string::in, list(attr)::in, io::di, io::uo) is det.
+:- pred write_empty_element(Stream::in, string::in, list(attr)::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_empty_element(Element, Attributes, !IO) :-
-    io.write_string("<", !IO),
-    io.write_string(Element, !IO),
-    list.foldl(write_attribute, Attributes, !IO),
-    io.write_string(" />", !IO).
+write_empty_element(Stream, Element, Attributes, !State) :-
+    put(Stream, "<", !State),
+    put(Stream, Element, !State),
+    list.foldl(write_attribute(Stream), Attributes, !State),
+    put(Stream, " />", !State).
 
-:- pred write_element_end(string::in, io::di, io::uo) is det.
+:- pred write_element_end(Stream::in, string::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-write_element_end(Element, !IO) :-
-    io.write_string("</", !IO),
-    io.write_string(Element, !IO),
-    io.write_string(">", !IO).
+write_element_end(Stream, Element, !State) :-
+    put(Stream, "</", !State),
+    put(Stream, Element, !State),
+    put(Stream, ">", !State).
 
 :- func attr_from_source_to_maybe_attr(maybe(string), maybe(int), type_desc,
     maybe(string), attr_from_source) = maybe(attr).
@@ -1350,27 +1359,30 @@ make_attrs_from_sources(MaybeFunctor, MaybeArity, TypeDesc, MaybeField,
 
 is_maybe_yes(yes(X), X).
 
-:- pred write_attribute(attr::in, io::di, io::uo) is det.
+:- pred write_attribute(Stream::in, attr::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-write_attribute(attr(Name, Value), !IO) :-
-    io.write_string(" ", !IO),
-    io.write_string(Name, !IO),
-    io.write_string("=""", !IO),
-    write_xml_escaped_string(Value, !IO),
-    io.write_string("""", !IO).
+write_attribute(Stream, attr(Name, Value), !State) :-
+    put(Stream, " ", !State),
+    put(Stream, Name, !State),
+    put(Stream, "=""", !State),
+    write_xml_escaped_string(Stream, Value, !State),
+    put(Stream, """", !State).
 
-:- pred write_xml_escaped_string(string::in, io::di, io::uo) is det.
+:- pred write_xml_escaped_string(Stream::in, string::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_xml_escaped_string(Str, !IO) :-
-    string.foldl(write_xml_escaped_char, Str, !IO).
+write_xml_escaped_string(Stream, Str, !State) :-
+    string.foldl(write_xml_escaped_char(Stream), Str, !State).
 
-:- pred write_xml_escaped_char(char::in, io::di, io::uo) is det.
+:- pred write_xml_escaped_char(Stream::in, char::in, State::di, State::uo)
+    is det <= stream.writer(Stream, string, State).
 
-write_xml_escaped_char(Chr, !IO) :-
+write_xml_escaped_char(Stream, Chr, !State) :-
     ( xml_predefined_entity(Chr, Str) ->
-        io.write_string(Str, !IO)
+        put(Stream, Str, !State)
     ;
-        io.write_char(Chr, !IO)
+        put(Stream, string.from_char(Chr), !State)
     ).
 
 :- pred xml_predefined_entity(char::in, string::out) is semidet.
@@ -1386,7 +1398,7 @@ xml_predefined_entity(('\"'), "&quot;").
 % Predicates to write the DTD for a type.
 %
 
-write_dtd_from_type(TypeDesc, ElementMapping, DTDResult, !IO) :-
+write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
     DTDResult = can_generate_dtd(ElementMapping, TypeDesc),
     (
         DTDResult = ok
@@ -1398,11 +1410,12 @@ write_dtd_from_type(TypeDesc, ElementMapping, DTDResult, !IO) :-
         ->
             ArgTypes = list.map(ground_pseudo_type_desc_to_type_desc_det,
                 PseudoArgTypes),
-            io.write_string("<!DOCTYPE ", !IO),
-            io.write_string(RootElement, !IO),
-            io.write_string(" [\n\n", !IO),
-            write_dtd_types(MakeElement, [TypeDesc | ArgTypes], map.init, !IO),
-            io.write_string("\n]>", !IO),
+            put(Stream, "<!DOCTYPE ", !State),
+            put(Stream, RootElement, !State),
+            put(Stream, " [\n\n", !State),
+            write_dtd_types(Stream, MakeElement, [TypeDesc | ArgTypes],
+                map.init, !State),
+            put(Stream, "\n]>", !State),
             DTDResult = ok
         ;
             throw(software_error("term_to_xml.write_dtd_from_type"
@@ -1495,54 +1508,58 @@ can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc | PseudoTypeDescs],
     % to the first argument.  We stop when all the types have had their DTD
     % entry written.
     %
-:- pred write_dtd_types(element_pred::in(element_pred),
+:- pred write_dtd_types(Stream::in, element_pred::in(element_pred),
     list(type_desc)::in, map(type_desc, unit)::in,
-    io::di, io::uo) is det.
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_dtd_types(_, [], _, !IO).
-write_dtd_types(MakeElement, [TypeDesc | TypeDescs], AlreadyDone, !IO) :-
+write_dtd_types(_, _, [], _, !State).
+write_dtd_types(Stream, MakeElement, [TypeDesc | TypeDescs], AlreadyDone,
+        !State) :-
     ( map.search(AlreadyDone, TypeDesc, _) ->
-        write_dtd_types(MakeElement, TypeDescs, AlreadyDone, !IO)
+        write_dtd_types(Stream, MakeElement, TypeDescs, AlreadyDone, !State)
     ;
-        write_dtd_type_elements(MakeElement, TypeDesc, ChildArgTypes, !IO),
+        write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes,
+            !State),
         map.set(AlreadyDone, TypeDesc, unit, NewAlreadyDone),
-        write_dtd_types(MakeElement, append(ChildArgTypes, TypeDescs),
-            NewAlreadyDone, !IO)
+        write_dtd_types(Stream, MakeElement, append(ChildArgTypes, TypeDescs),
+            NewAlreadyDone, !State)
     ).
 
     % Write the IMPLIED, FIXED or REQUIRED part of the ATTLIST entry.
     %
-:- pred write_attribute_source_kind(attr_source::in, maybe(string)::in,
-    io::di, io::uo) is det.
+:- pred write_attribute_source_kind(Stream::in, attr_source::in,
+    maybe(string)::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-write_attribute_source_kind(functor, no, !IO) :-
-    io.write_string("#IMPLIED", !IO).
-write_attribute_source_kind(functor, yes(Value), !IO) :-
-    io.write_string("#FIXED """, !IO),
-    write_xml_escaped_string(Value, !IO),
-    io.write_string("""", !IO).
-write_attribute_source_kind(field_name, _, !IO) :-
-    io.write_string("#IMPLIED", !IO).
-write_attribute_source_kind(type_name, no, !IO) :-
-    io.write_string("#REQUIRED", !IO).
-write_attribute_source_kind(type_name, yes(Value), !IO) :-
-    io.write_string("#FIXED """, !IO),
-    write_xml_escaped_string(Value, !IO),
-    io.write_string("""", !IO).
-write_attribute_source_kind(arity, no, !IO) :-
-    io.write_string("#IMPLIED", !IO).
-write_attribute_source_kind(arity, yes(Value), !IO) :-
-    io.write_string("#FIXED """, !IO),
-    write_xml_escaped_string(Value, !IO),
-    io.write_string("""", !IO).
+write_attribute_source_kind(Stream, functor, no, !State) :-
+    put(Stream, "#IMPLIED", !State).
+write_attribute_source_kind(Stream, functor, yes(Value), !State) :-
+    put(Stream, "#FIXED """, !State),
+    write_xml_escaped_string(Stream, Value, !State),
+    put(Stream, """", !State).
+write_attribute_source_kind(Stream, field_name, _, !State) :-
+    put(Stream, "#IMPLIED", !State).
+write_attribute_source_kind(Stream, type_name, no, !State) :-
+    put(Stream, "#REQUIRED", !State).
+write_attribute_source_kind(Stream, type_name, yes(Value), !State) :-
+    put(Stream, "#FIXED """, !State),
+    write_xml_escaped_string(Stream, Value, !State),
+    put(Stream, """", !State).
+write_attribute_source_kind(Stream, arity, no, !State) :-
+    put(Stream, "#IMPLIED", !State).
+write_attribute_source_kind(Stream, arity, yes(Value), !State) :-
+    put(Stream, "#FIXED """, !State),
+    write_xml_escaped_string(Stream, Value, !State),
+    put(Stream, """", !State).
 
     % Write an ATTLIST entry for the given attribute.
     %
-:- pred write_dtd_attlist(string::in, maybe(string)::in, maybe(int)::in,
-    type_desc::in, attr_from_source::in, io::di, io::uo) is det.
+:- pred write_dtd_attlist(Stream::in, string::in, maybe(string)::in,
+    maybe(int)::in, type_desc::in, attr_from_source::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_dtd_attlist(Element, MaybeFunctor, MaybeArity, TypeDesc,
-        attr_from_source(Name, Source), !IO) :-
+write_dtd_attlist(Stream, Element, MaybeFunctor, MaybeArity, TypeDesc,
+        attr_from_source(Name, Source), !State) :-
     (
         Source = functor,
         MaybeValue = MaybeFunctor
@@ -1562,52 +1579,55 @@ write_dtd_attlist(Element, MaybeFunctor, MaybeArity, TypeDesc,
         Source = field_name,
         MaybeValue = no
     ),
-    io.write_string("<!ATTLIST ", !IO),
-    io.write_string(Element, !IO),
-    io.write_string(" ", !IO),
-    io.write_string(Name, !IO),
-    io.write_string(" CDATA ", !IO),
-    write_attribute_source_kind(Source, MaybeValue, !IO),
-    io.write_string(">\n", !IO).
+    put(Stream, "<!ATTLIST ", !State),
+    put(Stream, Element, !State),
+    put(Stream, " ", !State),
+    put(Stream, Name, !State),
+    put(Stream, " CDATA ", !State),
+    write_attribute_source_kind(Stream, Source, MaybeValue, !State),
+    put(Stream, ">\n", !State).
 
-:- pred write_dtd_attlists(string::in, list(attr_from_source)::in,
-    maybe(string)::in, maybe(int)::in, type_desc::in, io::di, io::uo) is det.
+:- pred write_dtd_attlists(Stream::in, string::in, list(attr_from_source)::in,
+    maybe(string)::in, maybe(int)::in, type_desc::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_dtd_attlists(Element, AttrFromSources, MaybeFunctor, MaybeArity,
-        TypeDesc, !IO) :-
-    list.foldl(write_dtd_attlist(Element, MaybeFunctor, MaybeArity,
-        TypeDesc), AttrFromSources, !IO).
+write_dtd_attlists(Stream, Element, AttrFromSources, MaybeFunctor, MaybeArity,
+        TypeDesc, !State) :-
+    list.foldl(write_dtd_attlist(Stream, Element, MaybeFunctor, MaybeArity,
+        TypeDesc), AttrFromSources, !State).
 
     % Write DTD entries for all the functors for a type.
     %
-:- pred write_dtd_type_elements(element_pred::in(element_pred),
+:- pred write_dtd_type_elements(Stream::in, element_pred::in(element_pred),
     type_desc::in, list(type_desc)::out,
-    io::di, io::uo) is det.
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_dtd_type_elements(MakeElement, TypeDesc, ChildArgTypes, !IO) :-
+write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes, !State)
+        :-
     get_elements_and_args(MakeElement, TypeDesc, Elements,
         MaybeFunctors, MaybeArities, ArgPseudoTypeLists,
         AttributeLists),
     ArgTypeLists = list.map(list.map(
         ground_pseudo_type_desc_to_type_desc_det), ArgPseudoTypeLists),
     list.condense(ArgTypeLists, ChildArgTypes),
-    io.write_string("<!-- Elements for functors of type """, !IO),
-    write_xml_escaped_string(type_name(TypeDesc), !IO),
-    io.write_string(""" -->\n\n", !IO),
-    write_dtd_entries(MakeElement, TypeDesc, Elements, MaybeFunctors,
-        MaybeArities, ArgTypeLists, AttributeLists, !IO).
+    put(Stream, "<!-- Elements for functors of type """, !State),
+    write_xml_escaped_string(Stream, type_name(TypeDesc), !State),
+    put(Stream, """ -->\n\n", !State),
+    write_dtd_entries(Stream, MakeElement, TypeDesc, Elements, MaybeFunctors,
+        MaybeArities, ArgTypeLists, AttributeLists, !State).
 
-:- pred write_dtd_entries(element_pred::in(element_pred),
+:- pred write_dtd_entries(Stream::in, element_pred::in(element_pred),
     type_desc::in, list(string)::in, list(maybe(string))::in,
     list(maybe(int))::in, list(list(type_desc))::in,
-    list(list(attr_from_source))::in, io::di, io::uo) is det.
+    list(list(attr_from_source))::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
     % Write all the given DTD entries.
     %
-write_dtd_entries(_, _, [], _, _, _, _, !IO).
-write_dtd_entries(MakeElement, TypeDesc, [Element | Elements],
+write_dtd_entries(_, _, _, [], _, _, _, _, !State).
+write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
         MaybeFunctorList, MaybeArityList, ArgTypeListList,
-        AttributeListList, !IO) :-
+        AttributeListList, !State) :-
 
     MaybeFunctor = list.det_head(MaybeFunctorList),
     MaybeFunctors = list.det_tail(MaybeFunctorList),
@@ -1618,17 +1638,17 @@ write_dtd_entries(MakeElement, TypeDesc, [Element | Elements],
     AttributeList = list.det_head(AttributeListList),
     AttributeLists = list.det_tail(AttributeListList),
 
-    io.write_string("<!ELEMENT ", !IO),
-    io.write_string(Element, !IO),
-    io.write_string(" ", !IO),
+    put(Stream, "<!ELEMENT ", !State),
+    put(Stream, Element, !State),
+    put(Stream, " ", !State),
     (
         is_primitive_type(TypeDesc, _)
     ->
-        io.write_string("(#PCDATA)>\n", !IO)
+        put(Stream, "(#PCDATA)>\n", !State)
     ;
         (
             ArgTypeList = [],
-            io.write_string("EMPTY>\n", !IO)
+            put(Stream, "EMPTY>\n", !State)
         ;
             ArgTypeList = [Head | Tail],
             (
@@ -1645,58 +1665,126 @@ write_dtd_entries(MakeElement, TypeDesc, [Element | Elements],
 
             % Put extra braces for arrays for the * at the end.
             ( is_array(TypeDesc, _) ->
-                io.write_string("(", !IO)
+                put(Stream, "(", !State)
             ;
                 true
             ),
 
             (
                 Braces = yes,
-                io.write_string("(", !IO)
+                put(Stream, "(", !State)
             ;
                 Braces = no
             ),
 
-            io.write_list(ArgTypeList, ",",
-                write_dtd_allowed_functors_regex(MakeElement), !IO),
+            AllowedFunctorsRegexs = list.map(dtd_allowed_functors_regex(MakeElement), ArgTypeList),
+            AllowedFunctorsRegex = string.join_list(",", AllowedFunctorsRegexs),
+            put(Stream, AllowedFunctorsRegex, !State),
 
             (
                 Braces = yes,
-                io.write_string(")", !IO)
+                put(Stream, ")", !State)
             ;
                 Braces = no
             ),
 
             ( is_array(TypeDesc, _) ->
-                io.write_string("*)", !IO)
+                put(Stream, "*)", !State)
             ;
                 true
             ),
 
-            io.write_string(">\n", !IO)
+            put(Stream, ">\n", !State)
         )
     ),
-    write_dtd_attlists(Element, AttributeList, MaybeFunctor, MaybeArity,
-        TypeDesc, !IO),
-    io.nl(!IO),
-    write_dtd_entries(MakeElement, TypeDesc, Elements, MaybeFunctors,
-        MaybeArities, ArgTypeLists, AttributeLists, !IO).
+    write_dtd_attlists(Stream, Element, AttributeList, MaybeFunctor,
+        MaybeArity, TypeDesc, !State),
+    put(Stream, "\n", !State),
+    write_dtd_entries(Stream, MakeElement, TypeDesc, Elements, MaybeFunctors,
+        MaybeArities, ArgTypeLists, AttributeLists, !State).
 
-    % Write the allowed functors for the type as a DTD rule regular
+    % Return the allowed functors for the type as a DTD rule regular
     % expression.
     %
-:- pred write_dtd_allowed_functors_regex(element_pred::in(element_pred),
-    type_desc::in, io::di, io::uo) is det.
+:- func dtd_allowed_functors_regex(element_pred::in(element_pred),
+    type_desc::in) = (string::out) is det.
 
-write_dtd_allowed_functors_regex(MakeElement, TypeDesc, !IO) :-
+dtd_allowed_functors_regex(MakeElement, TypeDesc) = Regex :-
     get_elements_and_args(MakeElement, TypeDesc, Elements, _, _, _, _),
+    ElementsStr = string.join_list("|", Elements),
     ( length(Elements) > 1 ->
-        io.write_string("(", !IO),
-        io.write_list(Elements, "|", io.write_string, !IO),
-        io.write_string(")", !IO)
+        Regex = "(" ++ ElementsStr ++ ")"
     ;
-        io.write_list(Elements, "|", io.write_string, !IO)
+        Regex = ElementsStr
     ).
+
+%-----------------------------------------------------------------------------%
+
+write_xml_doc(Term, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_xml_doc(Stream, Term, !IO).
+
+write_xml_doc_to_stream(Stream, Term, !IO) :-
+    write_xml_doc(Stream, Term, !IO).
+
+write_xml_doc_style_dtd(Term, MaybeStyleSheet, MaybeDTD, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO).
+
+write_xml_doc_style_dtd_stream(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO) :-
+    write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO).
+
+write_xml_element(Indent, Term, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_xml_element(Stream, Indent, Term, !IO).
+
+write_xml_element_to_stream(Stream, Indent, Term, !IO) :-
+    write_xml_element(Stream, Indent, Term, !IO).
+
+write_xml_header(MaybeEncoding, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_xml_header(Stream, MaybeEncoding, !IO).
+
+write_xml_doc_general(Term, Mapping, MaybeStyleSheet, MaybeDTD,
+        DTDGenerationResult, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_xml_doc_general(Stream, Term, Mapping, MaybeStyleSheet, MaybeDTD,
+            DTDGenerationResult, !IO).
+
+write_xml_doc_general_to_stream(Stream, Term, Mapping, MaybeStyleSheet,
+        MaybeDTD, DTDGenerationResult, !IO) :-
+    write_xml_doc_general(Stream, Term, Mapping, MaybeStyleSheet, MaybeDTD,
+            DTDGenerationResult, !IO).
+
+write_xml_doc_general_cc(Term, Mapping, MaybeStyleSheet, MaybeDTD,
+        DTDGenerationResult, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_xml_doc_general_cc(Stream, Term, Mapping, MaybeStyleSheet, MaybeDTD,
+            DTDGenerationResult, !IO).
+
+write_xml_doc_general_cc_to_stream(Stream, Term, Mapping, MaybeStyleSheet,
+        MaybeDTD, DTDGenerationResult, !IO) :-
+    write_xml_doc_general_cc(Stream, Term, Mapping, MaybeStyleSheet, MaybeDTD,
+            DTDGenerationResult, !IO).
+
+write_dtd(Term, Mapping, DTDGenerationResult, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_dtd(Stream, Term, Mapping, DTDGenerationResult, !IO).
+
+write_dtd_to_stream(Stream, Term, Mapping, DTDGenerationResult, !IO) :-
+    write_dtd(Stream, Term, Mapping, DTDGenerationResult, !IO).
+
+write_dtd_from_type(Type, Mapping, DTDGenerationResult, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_dtd_from_type(Stream, Type, Mapping, DTDGenerationResult, !IO).
+
+write_dtd_from_type_to_stream(Stream, Type, Mapping, DTDGenerationResult, !IO)
+        :-
+    write_dtd_from_type(Stream, Type, Mapping, DTDGenerationResult, !IO).
+
+write_xml_element_general(NonCanon, Mapping, Indent, Term, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_xml_element_general(Stream, NonCanon, Mapping, Indent, Term, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module term_to_xml.

@@ -20,15 +20,15 @@ main(!IO) :-
 		svmap.set(4, "four", !Map),
 		svmap.set(5, "five", !Map),
 		svmap.set(6, "six &<>!@$%^`&*()-+='", !Map),
-		write_xml_doc_style_dtd(!.Map, no_stylesheet,
+		write_xml_doc_style_dtd(io.stdout_stream, !.Map, no_stylesheet,
 			external_dtd(
 			public_system("-//W3C//DTD XHTML 1.0 Strict//EN",
 			"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd")),
 			!IO),
 		io.nl(!IO),
-		write_xml_doc(!.Map, !IO),
+		write_xml_doc(io.stdout_stream, !.Map, !IO),
 		io.nl(!IO),
-		write_xml_element(2, !.Map, !IO)
+		write_xml_element(io.stdout_stream, 2, !.Map, !IO)
 	),
 	nl(!IO).
 

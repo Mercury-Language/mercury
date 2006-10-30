@@ -274,7 +274,7 @@ save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
 save_term_to_file_xml(FileName, BrowserTerm, OutStream, !IO) :-
     maybe_save_term_to_file_xml(FileName, BrowserTerm, Result, !IO),
     (
-        Result = ok
+        Result = ok(_)
     ;
         Result = error(Error),
         io.error_message(Error, Msg),
@@ -283,32 +283,32 @@ save_term_to_file_xml(FileName, BrowserTerm, OutStream, !IO) :-
     ).
 
 :- pred maybe_save_term_to_file_xml(string::in, browser_term::in,
-    io.res::out, io::di, io::uo) is cc_multi.
+    io.res(io.output_stream)::out, io::di, io::uo) is cc_multi.
 
 maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
-    io.tell(FileName, FileStreamRes, !IO),
+    io.open_output(FileName, FileStreamRes, !IO),
     (
-        FileStreamRes = ok,
+        FileStreamRes = ok(OutputStream),
         (
             BrowserTerm = plain_term(Univ),
             Term = univ_value(Univ),
-            term_to_xml.write_xml_doc_general_cc(Term, simple,
+            term_to_xml.write_xml_doc_general_cc(OutputStream, Term, simple,
                 no_stylesheet,  no_dtd, _, !IO)
         ;
             BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
             (
                 MaybeRes = no,
                 PredicateTerm = predicate(Functor, Args),
-                term_to_xml.write_xml_doc_general_cc(PredicateTerm,
-                    simple, no_stylesheet, no_dtd, _, !IO)
+                term_to_xml.write_xml_doc_general_cc(OutputStream,
+                    PredicateTerm, simple, no_stylesheet, no_dtd, _, !IO)
             ;
                 MaybeRes = yes(Result),
                 FunctionTerm = function(Functor, Args, Result),
-                term_to_xml.write_xml_doc_general_cc(FunctionTerm,
-                    simple, no_stylesheet, no_dtd, _, !IO)
+                term_to_xml.write_xml_doc_general_cc(OutputStream,
+                    FunctionTerm, simple, no_stylesheet, no_dtd, _, !IO)
             )
         ),
-        io.told(!IO)
+        io.close_output(OutputStream, !IO)
     ;
         FileStreamRes = error(_)
     ).
@@ -322,7 +322,7 @@ save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State, !IO) :-
         io.write_string(OutStream, "Saving term to XML file...\n", !IO),
         maybe_save_term_to_file_xml(TmpFileName, Term, SaveResult, !IO),
         (
-            SaveResult = ok,
+            SaveResult = ok(_),
             launch_xml_browser(OutStream, ErrStream, CommandStr, !IO)
         ;
             SaveResult = error(Error),
