@@ -355,9 +355,8 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
   /*
   ** fork_new_child(MR_Code *child);
   ** create a new spark to execute the code at `child'.  The new spark is put
-  ** on the global spark queue or the context-local spark stack.  The current
-  ** context resumes at `parent'.  MR_parent_sp must already be set
-  ** appropriately before this instruction is executed.
+  ** on the global spark queue or the context-local spark stack.  MR_parent_sp
+  ** must already be set appropriately before this instruction is executed.
   */
   #define MR_fork_new_child(child)                              \
     do {                                                        \
@@ -374,8 +373,7 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
     } while (0)
 
   #define MR_fork_globally_criteria                             \
-    (MR_num_idle_engines != 0 &&                                \
-    MR_num_outstanding_contexts_and_sparks < MR_max_outstanding_contexts)
+    (MR_num_outstanding_contexts_and_sparks < MR_max_outstanding_contexts)
 
   #define MR_schedule_spark_locally(spark)                              \
     do {                                                                \
