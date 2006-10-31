@@ -16,5 +16,4 @@
 --c-include-directory ../browser
 --c-include-directory ../browser/Mercury/mihs
 --c-include-directory ../trace
---linkage shared
 --config-file ../scripts/Mercury.config.bootstrap
