@@ -691,6 +691,7 @@
     ;       create_archive_command_output_flag
     ;       create_archive_command_flags
     ;       ranlib_command
+    ;       ranlib_flags
     ;       mkinit_command
     ;       demangle_command
     ;       trace_libs
@@ -1406,6 +1407,7 @@ option_defaults_2(link_option, [
     create_archive_command_output_flag  -   string(""),
     create_archive_command_flags        -   accumulating([]), % "cr"
     ranlib_command                      -   string(""),
+    ranlib_flags                        -   string(""),
     mkinit_command                      -   string("mkinit"),
     demangle_command                    -   string("mdemangle"),
     trace_libs                          -   string(""),
@@ -2143,6 +2145,7 @@ long_option("create-archive-command-flags", create_archive_command_flags).
 long_option("link-executable-command",  link_executable_command).
 long_option("link-shared-lib-command",  link_shared_lib_command).
 long_option("ranlib-command",       ranlib_command).
+long_option("ranlib-flags",         ranlib_flags).
 long_option("mkinit-command",       mkinit_command).
 long_option("demangle-command",     demangle_command).
 long_option("trace-libs",           trace_libs).
@@ -4383,8 +4386,8 @@ options_help_link -->
         % The --shared-library-extension,
         % --library-extension, --executable-file-extension
         % --create-archive-command, --create-archive-command-flags
-        % --create-archive-command-output-flag, --ranlib-command
-        % --link-executable-command, --link-shared-lib-command,
+        % --create-archive-command-output-flag, --ranlib-command,
+        % --ranlib-flags, --link-executable-command, --link-shared-lib-command,
         % --mkinit-command, --demangle-command, --trace-libs,
         % --thread-libs, --shared-libs, --math-lib, --readline-libs,
         % --linker-opt-separator,

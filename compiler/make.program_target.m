@@ -1230,9 +1230,26 @@ generate_archive_index(FileName, InstallDir, Succeeded, !IO) :-
             io.write_string(InstallDir, !IO),
             io.nl(!IO)
         ), !IO),
-    globals.io_lookup_string_option(ranlib_command, RanLibCommand, !IO),
+    globals.io_lookup_string_option(ranlib_command, RanLibCommand0, !IO),
+    %
+    % XXX: because some systems, e.g. Mac OS X, need to invoke ranlib 
+    % with an option we need to break the ranlib command up in order to get
+    % the quoting correct, e.g. we want
+    % 
+    %   "ranlib" "-c" <archive>
+    %
+    % rather than
+    %
+    %   "ranlib -c" <archive>
+    %
+    % on such systems. 
+    % 
+    % This is just a workaround until the change to introduce a separate
+    % `--ranlib-flags' option has bootstrapped.
+    % 
+    RanLibCommand = string.words(RanLibCommand0),
     Command = string.join_list("    ", list.map(quote_arg,
-        [RanLibCommand, InstallDir / FileName ])),
+        RanLibCommand ++ [ InstallDir / FileName ])),
     io.output_stream(OutputStream, !IO),
     invoke_system_command(OutputStream, verbose, Command, Succeeded, !IO).
 
