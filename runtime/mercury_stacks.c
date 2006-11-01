@@ -2,7 +2,12 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2001, 2003-2005 The University of Melbourne.
+INIT mercury_sys_init_stacks
+ENDINIT
+*/
+
+/*
+** Copyright (C) 1998-2001, 2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -34,6 +39,7 @@
 
 #include "mercury_imp.h"
 #include "mercury_runtime_util.h"
+#include "mercury_memory_handlers.h"    /* for MR_default_handler */
 #include <stdio.h>
 
 /***************************************************************************/
@@ -191,6 +197,238 @@ MR_debug_zone_extend(FILE *fp, const char *when, const char *stackname,
 
 /***************************************************************************/
 
+#ifndef  MR_HIGHLEVEL_CODE
+
+#ifdef  MR_STACK_SEGMENTS
+
+MR_declare_entry(MR_pop_detstack_segment);
+MR_declare_entry(MR_pop_nondetstack_segment);
+
+MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
+{
+    MR_Word         *old_sp;
+    MR_MemoryZones  *list;
+    MR_MemoryZone   *new_zone;
+
+    old_sp = sp;
+
+    new_zone = MR_create_zone("detstack_segment", 0, MR_detstack_size, 0,
+        MR_detstack_zone_size, MR_default_handler);
+
+    list = MR_GC_malloc_uncollectable(sizeof(MR_MemoryZones));
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("create new det segment: old zone: %p, old sp %p\n",
+        MR_CONTEXT(MR_ctxt_detstack_zone), old_sp);
+    printf("old sp: ");
+    MR_printdetstack(old_sp);
+    printf("old succip: ");
+    MR_printlabel(stdout, MR_succip);
+#endif
+
+    list->MR_zones_head = MR_CONTEXT(MR_ctxt_detstack_zone);
+    list->MR_zones_tail = MR_CONTEXT(MR_ctxt_prev_detstack_zones);
+    MR_CONTEXT(MR_ctxt_prev_detstack_zones) = list;
+    MR_CONTEXT(MR_ctxt_detstack_zone) = new_zone;
+    MR_CONTEXT(MR_ctxt_sp) = MR_CONTEXT(MR_ctxt_detstack_zone)->MR_zone_min;
+
+    MR_sp_word = (MR_Word) MR_CONTEXT(MR_ctxt_sp);
+
+    MR_incr_sp_leaf(2);
+    MR_stackvar(1) = (MR_Word) old_sp;
+    MR_stackvar(2) = (MR_Word) MR_succip;
+
+    MR_incr_sp_leaf(n);
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("create new det segment: new zone: %p, new sp %p\n",
+        MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp);
+    printf("new sp: ");
+    MR_printdetstack(MR_sp);
+    printf("new succip: ");
+    MR_printlabel(stdout, MR_ENTRY(MR_pop_detstack_segment));
+#endif
+
+    return MR_sp;
+}
+
+MR_Word *
+MR_new_nondetstack_segment(MR_Word *maxfr, int n)
+{
+    MR_Word         *old_maxfr;
+    MR_MemoryZones  *list;
+    MR_MemoryZone   *new_zone;
+
+    old_maxfr = maxfr;
+
+    new_zone = MR_create_zone("nondetstack_segment", 0, MR_nondetstack_size, 0,
+        MR_nondetstack_zone_size, MR_default_handler);
+
+    list = MR_GC_malloc_uncollectable(sizeof(MR_MemoryZones));
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("create new nondet segment: old zone: %p, old maxfr %p\n",
+        MR_CONTEXT(MR_ctxt_nondetstack_zone), old_maxfr);
+    printf("old maxfr: ");
+    MR_printnondetstack(old_maxfr);
+    printf("old succip: ");
+    MR_printlabel(stdout, MR_succip);
+#endif
+
+    list->MR_zones_head = MR_CONTEXT(MR_ctxt_nondetstack_zone);
+    list->MR_zones_tail = MR_CONTEXT(MR_ctxt_prev_nondetstack_zones);
+    MR_CONTEXT(MR_ctxt_prev_nondetstack_zones) = list;
+    MR_CONTEXT(MR_ctxt_nondetstack_zone) = new_zone;
+    MR_CONTEXT(MR_ctxt_maxfr) =
+        MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min;
+
+    MR_maxfr_word = (MR_Word) MR_CONTEXT(MR_ctxt_maxfr);
+
+    MR_mkframe("new_nondetstack_segment", 1, MR_ENTRY(MR_do_fail));
+    MR_framevar(1) = (MR_Word) old_maxfr;
+
+    MR_maxfr_word = (MR_Word) (MR_maxfr + (MR_NONDET_FIXED_SIZE + (n)));
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("create new nondet segment: new zone: %p, new maxfr %p\n",
+        MR_CONTEXT(MR_ctxt_nondetstack_zone), MR_maxfr);
+    printf("new maxfr: ");
+    MR_printnondetstack(MR_maxfr);
+    printf("new succip: ");
+    MR_printlabel(stdout, MR_ENTRY(MR_pop_nondetstack_segment));
+#endif
+
+    return MR_maxfr;
+}
+
+#endif  /* MR_STACK_SEGMENTS */
+
+MR_define_extern_entry(MR_pop_detstack_segment);
+MR_define_extern_entry(MR_pop_nondetstack_segment);
+
+MR_BEGIN_MODULE(stack_segment_module)
+    MR_init_entry_an(MR_pop_detstack_segment);
+    MR_init_entry_an(MR_pop_nondetstack_segment);
+MR_BEGIN_CODE
+
+MR_define_entry(MR_pop_detstack_segment);
+#ifdef MR_STACK_SEGMENTS
+{
+    MR_MemoryZones  *list;
+    MR_Word         *orig_sp;
+    MR_Code         *orig_succip;
+
+    orig_sp = (MR_Word *) MR_stackvar(1);
+    orig_succip = (MR_Code *) MR_stackvar(2);
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("restore old det segment: old zone %p, old sp %p\n",
+        MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp);
+    printf("old sp: ");
+    MR_printdetstack(MR_sp);
+    printf("old succip: ");
+    MR_printlabel(stdout, MR_succip);
+#endif
+
+    MR_unget_zone(MR_CONTEXT(MR_ctxt_detstack_zone));
+
+    list = MR_CONTEXT(MR_ctxt_prev_detstack_zones);
+    MR_CONTEXT(MR_ctxt_detstack_zone) = list->MR_zones_head;
+    MR_CONTEXT(MR_ctxt_prev_detstack_zones) = list->MR_zones_tail;
+    MR_CONTEXT(MR_ctxt_sp) = orig_sp;
+    MR_GC_free(list);
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("restore old det segment: new zone %p, new sp %p\n",
+        MR_CONTEXT(MR_ctxt_detstack_zone), orig_sp);
+    printf("new sp: ");
+    MR_printdetstack(orig_sp);
+    printf("new succip: ");
+    MR_printlabel(stdout, orig_succip);
+#endif
+
+    MR_sp_word = (MR_Word) orig_sp;
+    MR_GOTO(orig_succip);
+}
+#else   /* ! MR_STACK_SEGMENTS */
+    MR_fatal_error("MR_pop_detstack_segment reached\n");
+#endif  /* MR_STACK_SEGMENTS */
+
+MR_define_entry(MR_pop_nondetstack_segment);
+#ifdef MR_STACK_SEGMENTS
+{
+    MR_MemoryZones  *list;
+    MR_Word         *orig_maxfr;
+    MR_Code         *orig_succip;
+
+    orig_maxfr = (MR_Word *) MR_stackvar(1);
+    orig_succip = (MR_Code *) MR_stackvar(2);
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("restore old nondet segment: old zone %p, old maxfr %p\n",
+        MR_CONTEXT(MR_ctxt_nondetstack_zone), MR_maxfr);
+    printf("old maxfr: ");
+    MR_printnondetstack(MR_maxfr);
+    printf("old succip: ");
+    MR_printlabel(stdout, MR_succip);
+#endif
+
+    MR_unget_zone(MR_CONTEXT(MR_ctxt_nondetstack_zone));
+
+    list = MR_CONTEXT(MR_ctxt_prev_nondetstack_zones);
+    MR_CONTEXT(MR_ctxt_nondetstack_zone) = list->MR_zones_head;
+    MR_CONTEXT(MR_ctxt_prev_nondetstack_zones) = list->MR_zones_tail;
+    MR_CONTEXT(MR_ctxt_maxfr) = orig_maxfr;
+    MR_GC_free(list);
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("restore old nondet segment: new zone %p, new maxfr %p\n",
+        MR_CONTEXT(MR_ctxt_nondetstack_zone), orig_maxfr);
+    printf("new maxfr: ");
+    MR_printnondetstack(orig_maxfr);
+    printf("new succip: ");
+    MR_printlabel(stdout, orig_succip);
+#endif
+
+    MR_maxfr_word = (MR_Word) orig_maxfr;
+    MR_GOTO(orig_succip);
+}
+#else   /* ! MR_STACK_SEGMENTS */
+    MR_fatal_error("MR_pop_nondetstack_segment reached\n");
+#endif  /* MR_STACK_SEGMENTS */
+
+MR_END_MODULE
+
+#endif /* !MR_HIGHLEVEL_CODE */
+
+/* forward decls to suppress gcc warnings */
+void mercury_sys_init_stacks_init(void);
+void mercury_sys_init_stacks_init_type_tables(void);
+#ifdef  MR_DEEP_PROFILING
+void mercury_sys_init_stacks_write_out_proc_statics(FILE *fp);
+#endif
+
+void mercury_sys_init_stacks_init(void)
+{
+#ifndef MR_HIGHLEVEL_CODE
+    stack_segment_module();
+#endif
+}
+
+void mercury_sys_init_stacks_init_type_tables(void)
+{
+    /* no types to register */
+}
+
+#ifdef  MR_DEEP_PROFILING
+void mercury_sys_init_stacks_write_out_proc_statics(FILE *fp)
+{
+    /* no proc_statics to write out */
+}
+#endif
+
+/***************************************************************************/
+
 #undef MR_TABLE_DEBUG
 
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
@@ -302,7 +540,7 @@ MR_print_gen_stack_entry(FILE *fp, MR_Integer i, MR_GenStackFrame *p)
     MR_SubgoalDebug *subgoal_debug;
 
     fprintf(fp, "gen %ld = <", (long) i);
-    MR_print_nondstackptr(fp, p->MR_gen_frame);
+    MR_print_nondetstackptr(fp, p->MR_gen_frame);
     subgoal_debug = MR_lookup_subgoal_debug_addr(p->MR_gen_subgoal);
     fprintf(fp, ", %s>\n", MR_subgoal_debug_name(subgoal_debug));
 }
@@ -479,7 +717,7 @@ MR_print_cut_stack_entry(FILE *fp, MR_Integer i, MR_CutStackFrame *p)
     MR_CutGeneratorList gen_list;
 
     fprintf(fp, "cut %ld = <", (long) i);
-    MR_print_nondstackptr(fp, p->MR_cut_frame);
+    MR_print_nondetstackptr(fp, p->MR_cut_frame);
     fprintf(fp, ">");
     fprintf(fp, ", cut_gen_next %d", (int) p->MR_cut_gen_next);
 #ifdef  MR_MINIMAL_MODEL_DEBUG
@@ -667,7 +905,7 @@ MR_print_pneg_stack_entry(FILE *fp, MR_Integer i, MR_PNegStackFrame *p)
     MR_PNegConsumerList l;
 
     fprintf(fp, "pneg %d = <", (int) i);
-    MR_print_nondstackptr(fp, p->MR_pneg_frame);
+    MR_print_nondetstackptr(fp, p->MR_pneg_frame);
     fprintf(fp, ">");
 #ifdef  MR_MINIMAL_MODEL_DEBUG
     fprintf(fp, ", pneg_gen_next %d", (int) p->MR_pneg_gen_next);

@@ -11,12 +11,12 @@
 ** mercury_context.h - defines Mercury multithreading stuff.
 **
 ** A "context" is a Mercury thread.  (We use a different term than "thread"
-** to avoid confusing Mercury threads and Posix threads.) 
+** to avoid confusing Mercury threads and POSIX threads.)
 ** Each context is represented by a value of type MR_Context,
 ** which contains a detstack, a nondetstack, a trail (if needed), the various
-** pointers that refer to them, a succip, and a thread-resumption continuation. 
+** pointers that refer to them, a succip, and a thread-resumption continuation.
 ** Contexts are initally stored in a free-list.
-** When one is running, the Posix thread that is executing it has a pointer
+** When one is running, the POSIX thread that is executing it has a pointer
 ** to its context structure `this_context'. When a context suspends, it
 ** calls `MR_save_context(context_ptr)' which copies the context from the
 ** various registers and global variables into the structure referred to
@@ -28,18 +28,18 @@
 ** parallel conjunction. The code of a parallel conjunct has access
 ** to the procedure's stack frame via the `parent_sp' register.
 **
-** Contexts can migrate transparently between multiple Posix threads.
+** Contexts can migrate transparently between multiple POSIX threads.
 **
-** Each Posix thread has its own heap and solutions heap (both allocated
+** Each POSIX thread has its own heap and solutions heap (both allocated
 ** in shared memory). This makes GC harder, but enables heap allocation
 ** to be done without locking which is very important for performance.
 ** Each context has a copy of the heap pointer that is taken when it is
-** switched out. If the Posix thread's heap pointer is the same as the
+** switched out. If the POSIX thread's heap pointer is the same as the
 ** copied one when the context is switched back in, then it is safe for
 ** the context to do heap reclamation on failure.
 **
 ** If MR_THREAD_SAFE is not defined, then everything gets executed within a
-** single Posix thread. No locking is required.
+** single POSIX thread. No locking is required.
 */
 
 #ifndef MERCURY_CONTEXT_H
@@ -92,10 +92,14 @@
 **
 ** succip           The succip for this context.
 **
-** detstack_zone    The detstack zone for this context.
+** detstack_zone    The current detstack zone for this context.
+** prev_detstack_zones
+**                  A list of any previous detstack zones for this context.
 ** sp               The saved sp for this context.
 **
-** nondetstack_zone The nondetstack zone for this context.
+** nondetstack_zone The current nondetstack zone for this context.
+** prev_nondetstack_zones
+**                  A list of any previous nondetstack zones for this context.
 ** curfr            The saved curfr for this context.
 ** maxfr            The saved maxfr for this context.
 **
@@ -123,18 +127,25 @@
 **                  before the macro MR_set_min_heap_reclamation_point below.
 */
 
-typedef struct MR_Context_Struct    MR_Context;
-typedef struct MR_Spark_Struct      MR_Spark;
+typedef struct MR_Context_Struct        MR_Context;
+typedef struct MR_Spark_Struct          MR_Spark;
 
 typedef enum {
     MR_CONTEXT_SIZE_REGULAR,
     MR_CONTEXT_SIZE_SMALL
 } MR_ContextSize;
 
+typedef struct MR_MemoryZones_Struct    MR_MemoryZones;
+
+struct MR_MemoryZones_Struct {
+    MR_MemoryZone       *MR_zones_head;
+    MR_MemoryZones      *MR_zones_tail;
+};
+
 struct MR_Context_Struct {
     const char          *MR_ctxt_id;
     MR_ContextSize      MR_ctxt_size;
-    MR_Context          *MR_ctxt_next; 
+    MR_Context          *MR_ctxt_next;
     MR_Code             *MR_ctxt_resume;
 #ifdef  MR_THREAD_SAFE
     MercuryThread       MR_ctxt_owner_thread;
@@ -144,9 +155,11 @@ struct MR_Context_Struct {
     MR_Code             *MR_ctxt_succip;
 
     MR_MemoryZone       *MR_ctxt_detstack_zone;
+    MR_MemoryZones      *MR_ctxt_prev_detstack_zones;
     MR_Word             *MR_ctxt_sp;
 
     MR_MemoryZone       *MR_ctxt_nondetstack_zone;
+    MR_MemoryZones      *MR_ctxt_prev_nondetstack_zones;
     MR_Word             *MR_ctxt_maxfr;
     MR_Word             *MR_ctxt_curfr;
 
@@ -355,8 +368,9 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
   /*
   ** fork_new_child(MR_Code *child);
   ** create a new spark to execute the code at `child'.  The new spark is put
-  ** on the global spark queue or the context-local spark stack.  MR_parent_sp
-  ** must already be set appropriately before this instruction is executed.
+  ** on the global spark queue or the context-local spark stack.  The current
+  ** context resumes at `parent'.  MR_parent_sp must already be set
+  ** appropriately before this instruction is executed.
   */
   #define MR_fork_new_child(child)                              \
     do {                                                        \
@@ -373,7 +387,8 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
     } while (0)
 
   #define MR_fork_globally_criteria                             \
-    (MR_num_outstanding_contexts_and_sparks < MR_max_outstanding_contexts)
+    (MR_num_idle_engines != 0 &&                                \
+    MR_num_outstanding_contexts_and_sparks < MR_max_outstanding_contexts)
 
   #define MR_schedule_spark_locally(spark)                              \
     do {                                                                \
@@ -398,7 +413,7 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
   **
   ** If MR_ctxt_hp == NULL then this is the first time this context has been
   ** scheduled, so the furthest back down the heap we can reclaim is to the
-  ** current value of MR_hp. 
+  ** current value of MR_hp.
   **
   ** If MR_hp > MR_ctxt_hp, another context has allocated data on the heap
   ** since we were last scheduled, so the furthest back that we can reclaim is
@@ -490,8 +505,12 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
         MR_IF_NOT_HIGHLEVEL_CODE(                                             \
             MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone =                 \
                 load_context_c->MR_ctxt_detstack_zone;                        \
+            MR_ENGINE(MR_eng_context).MR_ctxt_prev_detstack_zones =           \
+                load_context_c->MR_ctxt_prev_detstack_zones;                  \
             MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone =              \
                 load_context_c->MR_ctxt_nondetstack_zone;                     \
+            MR_ENGINE(MR_eng_context).MR_ctxt_prev_nondetstack_zones =        \
+                load_context_c->MR_ctxt_prev_nondetstack_zones;               \
             MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                               \
                 MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone =             \
                     load_context_c->MR_ctxt_genstack_zone;                    \
@@ -543,8 +562,12 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
         MR_IF_NOT_HIGHLEVEL_CODE(                                             \
             save_context_c->MR_ctxt_detstack_zone =                           \
                 MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone;              \
+            save_context_c->MR_ctxt_prev_detstack_zones =                     \
+                MR_ENGINE(MR_eng_context).MR_ctxt_prev_detstack_zones;        \
             save_context_c->MR_ctxt_nondetstack_zone =                        \
                 MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone;           \
+            save_context_c->MR_ctxt_prev_nondetstack_zones =                  \
+                MR_ENGINE(MR_eng_context).MR_ctxt_prev_nondetstack_zones;     \
             MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                               \
                 save_context_c->MR_ctxt_genstack_zone =                       \
                     MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone;          \

@@ -49,6 +49,7 @@ Grade options:
 	--decl-debug
 	--low-level-debug
 	--extend-stacks-when-needed
+	--stack-segments
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide."
 
@@ -82,6 +83,7 @@ debug=false
 decl_debug=false
 ll_debug=false
 extend_stacks=false
+stack_segments=false
 
 case $# in
 	0) set - --grade "$DEFAULT_GRADE" ;;

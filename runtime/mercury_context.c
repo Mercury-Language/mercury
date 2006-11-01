@@ -107,9 +107,9 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     MR_Generator *gen)
 {
     const char  *detstack_name;
-    const char  *nondstack_name;
+    const char  *nondetstack_name;
     size_t      detstack_size;
-    size_t      nondstack_size;
+    size_t      nondetstack_size;
 
     c->MR_ctxt_id = id;
     c->MR_ctxt_next = NULL;
@@ -124,15 +124,15 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     switch (c->MR_ctxt_size) {
         case MR_CONTEXT_SIZE_REGULAR:
             detstack_name  = "detstack";
-            nondstack_name = "nondetstack";
+            nondetstack_name = "nondetstack";
             detstack_size  = MR_detstack_size;
-            nondstack_size = MR_nondstack_size;
+            nondetstack_size = MR_nondetstack_size;
             break;
         case MR_CONTEXT_SIZE_SMALL:
             detstack_name  = "small_detstack";
-            nondstack_name = "small_nondetstack";
+            nondetstack_name = "small_nondetstack";
             detstack_size  = MR_small_detstack_size;
-            nondstack_size = MR_small_nondstack_size;
+            nondetstack_size = MR_small_nondetstack_size;
             break;
     }
 
@@ -146,20 +146,39 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
                     0, detstack_size, MR_next_offset(),
                     MR_detstack_zone_size, MR_default_handler);
         }
+
+        if (c->MR_ctxt_prev_detstack_zones != NULL) {
+            /*
+            ** We may be able to reuse a previously allocated stack, but
+            ** a context should be reused only when its stacks are empty.
+            */
+            MR_fatal_error("MR_init_context_maybe_generator: prev det stack");
+        }
     }
+    c->MR_ctxt_prev_detstack_zones = NULL;
     c->MR_ctxt_sp = c->MR_ctxt_detstack_zone->MR_zone_min;
 
     if (c->MR_ctxt_nondetstack_zone == NULL) {
         if (gen != NULL) {
             c->MR_ctxt_nondetstack_zone = MR_create_zone("gen_nondetstack",
-                    0, MR_gen_nonstack_size, MR_next_offset(),
-                    MR_gen_nonstack_zone_size, MR_default_handler);
+                    0, MR_gen_nondetstack_size, MR_next_offset(),
+                    MR_gen_nondetstack_zone_size, MR_default_handler);
         } else {
-            c->MR_ctxt_nondetstack_zone = MR_create_zone(nondstack_name,
-                    0, nondstack_size, MR_next_offset(),
-                    MR_nondstack_zone_size, MR_default_handler);
+            c->MR_ctxt_nondetstack_zone = MR_create_zone(nondetstack_name,
+                    0, nondetstack_size, MR_next_offset(),
+                    MR_nondetstack_zone_size, MR_default_handler);
+        }
+
+        if (c->MR_ctxt_prev_nondetstack_zones != NULL) {
+            /*
+            ** We may be able to reuse a previously allocated stack, but
+            ** a context should be reused only when its stacks are empty.
+            */
+            MR_fatal_error(
+                "MR_init_context_maybe_generator: prev nondet stack");
         }
     }
+    c->MR_ctxt_prev_nondetstack_zones = NULL;
     /*
     ** Note that maxfr and curfr point to the last word in the frame,
     ** not to the first word, so we need to add the size of the frame,
@@ -250,9 +269,9 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     MR_num_outstanding_contexts_and_sparks++;
 
     /*
-    ** Regular contexts have stacks at least as big as
-    ** small contexts, so we can return a regular context in place of
-    ** a small context if one is already available.
+    ** Regular contexts have stacks at least as big as small contexts,
+    ** so we can return a regular context in place of a small context
+    ** if one is already available.
     */
     if (ctxt_size == MR_CONTEXT_SIZE_SMALL && free_small_context_list) {
         c = free_small_context_list;

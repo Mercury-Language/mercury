@@ -786,7 +786,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         ; Uinstr0 = label(_)
         ; Uinstr0 = save_maxfr(_)
         ; Uinstr0 = restore_maxfr(_)
-        ; Uinstr0 = incr_sp(_, _)
+        ; Uinstr0 = incr_sp(_, _, _)
         ; Uinstr0 = decr_sp(_)
         ; Uinstr0 = decr_sp_and_return(_)
         ; Uinstr0 = store_ticket(_)

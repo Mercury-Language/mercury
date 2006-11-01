@@ -108,9 +108,9 @@ MR_print_stack_regs(FILE *fp, MR_Word *saved_regs)
     fprintf(fp, "sp = ");
     MR_print_detstackptr(fp, MR_saved_sp(saved_regs));
     fprintf(fp, "\ncurfr = ");
-    MR_print_nondstackptr(fp, MR_saved_curfr(saved_regs));
+    MR_print_nondetstackptr(fp, MR_saved_curfr(saved_regs));
     fprintf(fp, "\nmaxfr = ");
-    MR_print_nondstackptr(fp, MR_saved_maxfr(saved_regs));
+    MR_print_nondetstackptr(fp, MR_saved_maxfr(saved_regs));
     fprintf(fp, "\n");
 #endif
 }

@@ -581,12 +581,24 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         ExecTraceOpt = ""
     ),
     globals.io_lookup_bool_option(extend_stacks_when_needed, Extend, !IO),
+    globals.io_lookup_bool_option(stack_segments, StackSegments, !IO),
     (
         Extend = yes,
+        StackSegments = no,
         ExtendOpt = "-DMR_EXTEND_STACKS_WHEN_NEEDED "
     ;
         Extend = no,
+        StackSegments = yes,
+        ExtendOpt = "-DMR_STACK_SEGMENTS "
+    ;
+        Extend = no,
+        StackSegments = no,
         ExtendOpt = ""
+    ;
+        Extend = yes,
+        StackSegments = yes,
+        ExtendOpt = unexpected(this_file,
+            "compile_c_file: --extend-stacks-when-needed and --stack-segments")
     ),
     globals.io_lookup_bool_option(target_debug, Target_Debug, !IO),
     (

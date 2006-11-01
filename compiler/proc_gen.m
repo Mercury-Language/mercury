@@ -910,7 +910,8 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     Arity = pred_info_orig_arity(PredInfo),
 
     PushMsg = push_msg(ModuleInfo, PredId, ProcId),
-    ( CodeModel = model_non ->
+    (
+        CodeModel = model_non,
         code_info.resume_point_stack_addr(OutsideResumePoint,
             OutsideResumeAddress),
         (
@@ -941,13 +942,26 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
             ]),
             NondetPragma = no
         )
-    ; TotalSlots > 0 ->
-        AllocCode = node([
-            incr_sp(TotalSlots, PushMsg) - "Allocate stack frame"
-        ]),
-        NondetPragma = no
     ;
-        AllocCode = empty,
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
+        IsLeaf = proc_body_is_leaf(Goal),
+        (
+            IsLeaf = is_not_leaf,
+            StackIncrKind = stack_incr_nonleaf
+        ;
+            IsLeaf = is_leaf,
+            StackIncrKind = stack_incr_leaf
+        ),
+        ( TotalSlots > 0 ->
+            AllocCode = node([
+                incr_sp(TotalSlots, PushMsg, StackIncrKind)
+                    - "Allocate stack frame"
+            ])
+        ;
+            AllocCode = empty
+        ),
         NondetPragma = no
     ),
     FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma),

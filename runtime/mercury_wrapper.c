@@ -65,23 +65,21 @@ ENDINIT
 /* command-line options */
 
 /*
-** size of data areas (including redzones), in kilobytes
-** (but we later multiply by 1024 to convert to bytes)
+** Sizes of data areas (including redzones), in kilobytes
+** (but we later multiply by 1024 to convert to bytes).
 **
-** Note that it is OK to allocate a large heap, since
-** we will only touch the part of it that we use;
-** we're really only allocating address space,
-** not physical memory.
-** But the other areas should be kept small, at least
-** in the case when conservative GC is enabled, since
-** the conservative GC will scan them.
+** Note that it is OK to allocate a large heap, since we will only touch
+** the part of it that we use; we're really only allocating address space,
+** not physical memory. But the other areas should be kept small, at least
+** in the case when conservative GC is enabled, since the conservative GC
+** will scan them.
 **
-** Note that for the accurate collector, the total heap size
-** that we use will be twice the heap size specified here,
-** since it is a two-space collector.
+** Note that for the accurate collector, the total heap size that we use
+** will be twice the heap size specified here, since it is a two-space
+** collector.
 **
-** Changes to MR_heap_size, MR_detstack_size or MR_nondstack_size should
-** be reflected in the user guide.  Changes to MR_heap_size may also require
+** Changes to MR_heap_size, MR_detstack_size or MR_nondetstack_size should be
+** reflected in the user guide.  Changes to MR_heap_size may also require
 ** changing MR_heap_zone_size and/or the MR_heap_margin_size, which are
 ** defined below.
 */
@@ -91,10 +89,17 @@ ENDINIT
 #else
   size_t    MR_heap_size =              8192 * sizeof(MR_Word);
 #endif
-size_t      MR_detstack_size =          1024 * sizeof(MR_Word);
-size_t      MR_nondstack_size =           64 * sizeof(MR_Word);
+#ifdef MR_STACK_SEGMENTS
+size_t      MR_detstack_size =            64 * sizeof(MR_Word);
+size_t      MR_nondetstack_size =         16 * sizeof(MR_Word);
+size_t      MR_small_detstack_size =       8 * sizeof(MR_Word);
+size_t      MR_small_nondetstack_size =    8 * sizeof(MR_Word);
+#else
+size_t      MR_detstack_size =          4096 * sizeof(MR_Word);
+size_t      MR_nondetstack_size =         64 * sizeof(MR_Word);
 size_t      MR_small_detstack_size =     512 * sizeof(MR_Word);
-size_t      MR_small_nondstack_size =      8 * sizeof(MR_Word);
+size_t      MR_small_nondetstack_size =    8 * sizeof(MR_Word);
+#endif
 size_t      MR_solutions_heap_size =     256 * sizeof(MR_Word);
 size_t      MR_global_heap_size =        256 * sizeof(MR_Word);
 size_t      MR_trail_size =               32 * sizeof(MR_Word);
@@ -103,7 +108,7 @@ size_t      MR_genstack_size =             8 * sizeof(MR_Word);
 size_t      MR_cutstack_size =             8 * sizeof(MR_Word);
 size_t      MR_pnegstack_size =            8 * sizeof(MR_Word);
 size_t      MR_gen_detstack_size =        16 * sizeof(MR_Word);
-size_t      MR_gen_nonstack_size =        16 * sizeof(MR_Word);
+size_t      MR_gen_nondetstack_size =     16 * sizeof(MR_Word);
 
 /*
 ** size of the redzones at the end of data areas, in kilobytes
@@ -129,7 +134,7 @@ size_t      MR_gen_nonstack_size =        16 * sizeof(MR_Word);
   size_t        MR_heap_zone_size =        4 * sizeof(MR_Word);
 #endif
 size_t      MR_detstack_zone_size =        4 * sizeof(MR_Word);
-size_t      MR_nondstack_zone_size =       4 * sizeof(MR_Word);
+size_t      MR_nondetstack_zone_size =     4 * sizeof(MR_Word);
 size_t      MR_solutions_heap_zone_size =  4 * sizeof(MR_Word);
 size_t      MR_global_heap_zone_size =     4 * sizeof(MR_Word);
 size_t      MR_trail_zone_size =           4 * sizeof(MR_Word);
@@ -138,7 +143,7 @@ size_t      MR_genstack_zone_size =        4 * sizeof(MR_Word);
 size_t      MR_cutstack_zone_size =        4 * sizeof(MR_Word);
 size_t      MR_pnegstack_zone_size =       4 * sizeof(MR_Word);
 size_t      MR_gen_detstack_zone_size =    4 * sizeof(MR_Word);
-size_t      MR_gen_nonstack_zone_size =    4 * sizeof(MR_Word);
+size_t      MR_gen_nondetstack_zone_size = 4 * sizeof(MR_Word);
 
 /*
 ** MR_heap_margin_size is used for accurate GC with the MLDS->C back-end.
@@ -165,8 +170,20 @@ size_t      MR_gen_nonstack_zone_size =    4 * sizeof(MR_Word);
 
 double MR_heap_expansion_factor = 2.0;
 
+/*
+** When we use stack segments, we reserve the last MR_stack_margin_size bytes
+** of each stack segment for leaf procedures. This way, leaf procedures that
+** do not need this much stack space can allocate their stack space *without*
+** incurring the cost of a test.
+**
+** MR_stack_margin_size is never consulted directly; instead, its value is used
+** to set the MR_zone_extend_threshold field in a stack's memory zone.
+*/
+
+size_t      MR_stack_margin_size = 128;
+
 /* primary cache size to optimize for, in bytes */
-size_t      MR_pcache_size =            8192;
+size_t      MR_pcache_size = 8192;
 
 /* soft limits on the number of contexts we can create */
 MR_Unsigned MR_max_contexts_per_thread = 2;
@@ -1035,12 +1052,12 @@ enum MR_long_option {
     MR_PNEGSTACK_SIZE_KWORDS,
     MR_GEN_DETSTACK_SIZE,
     MR_GEN_DETSTACK_SIZE_KWORDS,
-    MR_GEN_NONSTACK_SIZE,
-    MR_GEN_NONSTACK_SIZE_KWORDS,
+    MR_GEN_NONDETSTACK_SIZE,
+    MR_GEN_NONDETSTACK_SIZE_KWORDS,
     MR_GEN_DETSTACK_REDZONE_SIZE,
     MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS,
-    MR_GEN_NONSTACK_REDZONE_SIZE,
-    MR_GEN_NONSTACK_REDZONE_SIZE_KWORDS,
+    MR_GEN_NONDETSTACK_REDZONE_SIZE,
+    MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS,
     MR_MAX_CONTEXTS_PER_THREAD,
     MR_MDB_TTY,
     MR_MDB_IN,
@@ -1118,14 +1135,15 @@ struct MR_option MR_long_opts[] = {
     { "pnegstack-size-kwords",          1, 0, MR_PNEGSTACK_SIZE_KWORDS },
     { "gen-detstack-size",              1, 0, MR_GEN_DETSTACK_SIZE },
     { "gen-detstack-size-kwords",       1, 0, MR_GEN_DETSTACK_SIZE_KWORDS },
-    { "gen-nonstack-size",              1, 0, MR_GEN_NONSTACK_SIZE },
-    { "gen-nonstack-size-kwords",       1, 0, MR_GEN_NONSTACK_SIZE_KWORDS },
+    { "gen-nondetstack-size",           1, 0, MR_GEN_NONDETSTACK_SIZE },
+    { "gen-nondetstack-size-kwords",    1, 0, MR_GEN_NONDETSTACK_SIZE_KWORDS },
     { "gen-detstack-zone-size",         1, 0, MR_GEN_DETSTACK_REDZONE_SIZE },
     { "gen-detstack-zone-size-kwords", 
-            1, 0, MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS },
-    { "gen-nonstack-zone-size",         1, 0, MR_GEN_NONSTACK_REDZONE_SIZE },
-    { "gen-nonstack-zone-size-kwords",
-            1, 0, MR_GEN_NONSTACK_REDZONE_SIZE_KWORDS },
+        1, 0, MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS },
+    { "gen-nondetstack-zone-size",
+        1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE },
+    { "gen-nondetstack-zone-size-kwords",
+        1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
     { "mdb-tty",                        1, 0, MR_MDB_TTY },
     { "mdb-in",                         1, 0, MR_MDB_IN },
@@ -1206,7 +1224,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_nondstack_size = size;
+                MR_nondetstack_size = size;
                 break;
 
             case MR_NONDETSTACK_SIZE_KWORDS:
@@ -1214,7 +1232,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_nondstack_size = size * sizeof(MR_Word);
+                MR_nondetstack_size = size * sizeof(MR_Word);
                 break;
 
             case MR_SMALL_DETSTACK_SIZE:
@@ -1238,7 +1256,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_small_nondstack_size = size;
+                MR_small_nondetstack_size = size;
                 break;
 
             case MR_SMALL_NONDETSTACK_SIZE_KWORDS:
@@ -1246,7 +1264,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_small_nondstack_size = size * sizeof(MR_Word);
+                MR_small_nondetstack_size = size * sizeof(MR_Word);
                 break;
 
             case MR_SOLUTIONS_HEAP_SIZE:
@@ -1318,7 +1336,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_nondstack_zone_size = size;
+                MR_nondetstack_zone_size = size;
                 break;
 
             case MR_NONDETSTACK_REDZONE_SIZE_KWORDS:
@@ -1326,7 +1344,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                MR_nondstack_zone_size = size * sizeof(MR_Word);
+                MR_nondetstack_zone_size = size * sizeof(MR_Word);
                 break;
 
             case MR_SOLUTIONS_HEAP_REDZONE_SIZE:
@@ -1447,20 +1465,20 @@ MR_process_options(int argc, char **argv)
                 MR_gen_detstack_size = size * sizeof(MR_Word);
                 break;
 
-            case MR_GEN_NONSTACK_SIZE:
+            case MR_GEN_NONDETSTACK_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
                     MR_usage();
                 }
 
-                MR_gen_nonstack_size = size;
+                MR_gen_nondetstack_size = size;
                 break;
 
-            case MR_GEN_NONSTACK_SIZE_KWORDS:
+            case MR_GEN_NONDETSTACK_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
                     MR_usage();
                 }
 
-                MR_gen_nonstack_size = size * sizeof(MR_Word);
+                MR_gen_nondetstack_size = size * sizeof(MR_Word);
                 break;
 
             case MR_GEN_DETSTACK_REDZONE_SIZE:
@@ -1479,20 +1497,20 @@ MR_process_options(int argc, char **argv)
                 MR_gen_detstack_zone_size = size * sizeof(MR_Word);
                 break;
 
-            case MR_GEN_NONSTACK_REDZONE_SIZE:
+            case MR_GEN_NONDETSTACK_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
                     MR_usage();
                 }
 
-                MR_gen_nonstack_zone_size = size;
+                MR_gen_nondetstack_zone_size = size;
                 break;
 
-            case MR_GEN_NONSTACK_REDZONE_SIZE_KWORDS:
+            case MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
                     MR_usage();
                 }
 
-                MR_gen_nonstack_zone_size = size * sizeof(MR_Word);
+                MR_gen_nondetstack_zone_size = size * sizeof(MR_Word);
                 break;
 
             case MR_MAX_CONTEXTS_PER_THREAD:
@@ -1652,14 +1670,14 @@ MR_process_options(int argc, char **argv)
 
             case 'd':   
                 if (MR_streq(MR_optarg, "a")) {
-                    MR_calldebug      = MR_TRUE;
-                    MR_nondstackdebug = MR_TRUE;
-                    MR_detstackdebug  = MR_TRUE;
-                    MR_heapdebug      = MR_TRUE;
-                    MR_gotodebug      = MR_TRUE;
-                    MR_sregdebug      = MR_TRUE;
-                    MR_finaldebug     = MR_TRUE;
-                    MR_tracedebug     = MR_TRUE;
+                    MR_calldebug        = MR_TRUE;
+                    MR_nondetstackdebug = MR_TRUE;
+                    MR_detstackdebug    = MR_TRUE;
+                    MR_heapdebug        = MR_TRUE;
+                    MR_gotodebug        = MR_TRUE;
+                    MR_sregdebug        = MR_TRUE;
+                    MR_finaldebug       = MR_TRUE;
+                    MR_tracedebug       = MR_TRUE;
 #ifdef MR_MPS_GC
                     MR_mps_quiet = MR_FALSE;
 #endif
@@ -1667,7 +1685,7 @@ MR_process_options(int argc, char **argv)
                     MR_agc_debug      = MR_TRUE;
 #endif
                 } else if (MR_streq(MR_optarg, "b")) {
-                    MR_nondstackdebug = MR_TRUE;
+                    MR_nondetstackdebug = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "B")) {
                     if (sscanf(MR_optarg+1, "%u", &MR_lld_start_block) != 1) {
                         MR_usage();
@@ -1809,13 +1827,13 @@ MR_process_options(int argc, char **argv)
             case 't':   
                 use_own_timer = MR_TRUE;
 
-                MR_calldebug      = MR_FALSE;
-                MR_nondstackdebug = MR_FALSE;
-                MR_detstackdebug  = MR_FALSE;
-                MR_heapdebug      = MR_FALSE;
-                MR_gotodebug      = MR_FALSE;
-                MR_sregdebug      = MR_FALSE;
-                MR_finaldebug     = MR_FALSE;
+                MR_calldebug        = MR_FALSE;
+                MR_nondetstackdebug = MR_FALSE;
+                MR_detstackdebug    = MR_FALSE;
+                MR_heapdebug        = MR_FALSE;
+                MR_gotodebug        = MR_FALSE;
+                MR_sregdebug        = MR_FALSE;
+                MR_finaldebug       = MR_FALSE;
                 break;
 
             case 'T':
@@ -1873,7 +1891,7 @@ MR_process_options(int argc, char **argv)
         exit(1);
     }
 
-    if (MR_small_nondstack_size > MR_nondstack_size) {
+    if (MR_small_nondetstack_size > MR_nondetstack_size) {
         printf("The small nondetstack size must be smaller than the "
             "regular nondetstack size.\n");
         fflush(stdout);
@@ -2078,10 +2096,10 @@ mercury_runtime_main(void)
             (long) (MR_ENGINE(MR_eng_heap_zone)->max
                 - MR_ENGINE(MR_eng_heap_zone)->min));
   #endif
-        printf("max detstack used:  %6ld words\n",
+        printf("max detstack used:    %6ld words\n",
             (long)(MR_CONTEXT(MR_ctxt_detstack_zone)->MR_zone_max
                    - MR_CONTEXT(MR_ctxt_detstack_zone)->MR_zone_min));
-        printf("max nondstack used: %6ld words\n",
+        printf("max nondetstack used: %6ld words\n",
             (long) (MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_max
                 - MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min));
     }
@@ -2327,9 +2345,9 @@ MR_define_entry(MR_do_interpreter);
 #ifdef  MR_LOWLEVEL_DEBUG
     if (MR_finaldebug) {
         MR_save_transient_registers();
-        MR_printregs("do_interpreter started");
+        MR_printregs(stdout, "do_interpreter started");
         if (MR_detaildebug) {
-            MR_dumpnondstack();
+            MR_dumpnondetstack(stdout);
         }
     }
 #endif
@@ -2351,9 +2369,9 @@ MR_define_label(global_success);
 #ifdef  MR_LOWLEVEL_DEBUG
     if (MR_finaldebug) {
         MR_save_transient_registers();
-        MR_printregs("global succeeded");
+        MR_printregs(stdout, "global succeeded");
         if (MR_detaildebug) {
-            MR_dumpnondstack();
+            MR_dumpnondetstack(stdout);
         }
     }
 #endif
@@ -2368,10 +2386,10 @@ MR_define_label(global_fail);
 #ifdef  MR_LOWLEVEL_DEBUG
     if (MR_finaldebug) {
         MR_save_transient_registers();
-        MR_printregs("global failed");
+        MR_printregs(stdout, "global failed");
 
         if (MR_detaildebug) {
-            MR_dumpnondstack();
+            MR_dumpnondetstack(stdout);
         }
     }
 #endif
@@ -2393,7 +2411,7 @@ MR_define_label(all_done);
 #ifdef MR_LOWLEVEL_DEBUG
     if (MR_finaldebug && MR_detaildebug) {
         MR_save_transient_registers();
-        MR_printregs("after popping...");
+        MR_printregs(stdout, "after popping...");
     }
 #endif
 
@@ -2406,7 +2424,7 @@ MR_define_label(wrapper_not_reached);
     MR_fatal_error("reached wrapper_not_reached");
 MR_END_MODULE
 
-#endif
+#endif  /* MR_HIGHLEVEL_CODE */
 
 /*---------------------------------------------------------------------------*/
 

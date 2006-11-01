@@ -75,7 +75,7 @@ fill_branch_delay_slot([Instr0 | Instrs0], Instrs) :-
         Instr0 = label(_) - _,
         Instrs0 = [Instr1, Instr2, Instr3 | Tail0],
         Instr1 = if_val(_, _) - _,
-        Instr2 = incr_sp(Size, _) - _,
+        Instr2 = incr_sp(Size, _, _) - _,
         Instr3 = assign(stackvar(Size), lval(succip)) - C2
     ->
         fill_branch_delay_slot(Tail0, Tail1),

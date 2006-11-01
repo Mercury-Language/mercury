@@ -29,6 +29,7 @@
 static  MR_Stack_Walk_Step_Result
                     MR_stack_walk_succip_layout(MR_Code *success,
                         const MR_Label_Layout **return_label_layout,
+                        MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr,
                         const char **problem_ptr);
 
 #ifndef MR_HIGHLEVEL_CODE
@@ -302,18 +303,32 @@ MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
     }
 
     return MR_stack_walk_succip_layout(success, return_label_layout,
-        problem_ptr);
+        stack_trace_sp_ptr, stack_trace_curfr_ptr, problem_ptr);
 }
 
 static MR_Stack_Walk_Step_Result
 MR_stack_walk_succip_layout(MR_Code *success,
-    const MR_Label_Layout **return_label_layout, const char **problem_ptr)
+    const MR_Label_Layout **return_label_layout,
+    MR_Word **stack_trace_sp_ptr, MR_Word **stack_trace_curfr_ptr,
+    const char **problem_ptr)
 {
     MR_Internal             *label;
 
     if (success == MR_stack_trace_bottom) {
         return MR_STEP_OK;
     }
+
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_STACK_SEGMENTS)
+    if (success == MR_ENTRY(MR_pop_detstack_segment)) {
+        success = (MR_Code *) MR_based_stackvar(*stack_trace_sp_ptr, 2);
+        *stack_trace_sp_ptr = (MR_Word *)
+            MR_based_stackvar(*stack_trace_sp_ptr, 1);
+    } else if (success == MR_ENTRY(MR_pop_nondetstack_segment)) {
+        success = MR_succip_slot(*stack_trace_curfr_ptr);
+        *stack_trace_curfr_ptr = (MR_Word *)
+            MR_based_framevar(*stack_trace_curfr_ptr, 1);
+    }
+#endif /* !MR_HIGHLEVEL_CODE && MR_STACK_SEGMENTS */
 
     label = MR_lookup_internal_by_addr(success);
     if (label == NULL) {
@@ -483,12 +498,12 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
 
         frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
         if (frame_size == MR_NONDET_TEMP_SIZE) {
-            MR_print_nondstackptr(fp, base_maxfr);
+            MR_print_nondetstackptr(fp, base_maxfr);
             fprintf(fp, ": temp\n");
             fprintf(fp, " redoip: ");
             MR_printlabel(fp, MR_redoip_slot(base_maxfr));
             fprintf(fp, " redofr: ");
-            MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
+            MR_print_nondetstackptr(fp, MR_redofr_slot(base_maxfr));
             fprintf(fp, "\n");
 
             if (print_vars) {
@@ -497,12 +512,12 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
 
             lines_dumped_so_far += 3;
         } else if (frame_size == MR_DET_TEMP_SIZE) {
-            MR_print_nondstackptr(fp, base_maxfr);
+            MR_print_nondetstackptr(fp, base_maxfr);
             fprintf(fp, ": temp\n");
             fprintf(fp, " redoip: ");
             MR_printlabel(fp, MR_redoip_slot(base_maxfr));
             fprintf(fp, " redofr: ");
-            MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
+            MR_print_nondetstackptr(fp, MR_redofr_slot(base_maxfr));
             fprintf(fp, "\n");
             fprintf(fp, " detfr:  ");
             MR_print_detstackptr(fp, MR_tmp_detfr_slot(base_maxfr));
@@ -510,7 +525,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
 
             lines_dumped_so_far += 4;
         } else {
-            MR_print_nondstackptr(fp, base_maxfr);
+            MR_print_nondetstackptr(fp, base_maxfr);
             fprintf(fp, ": ordinary, %d words", frame_size);
             if (print_vars && MR_find_matching_branch(base_maxfr, &branch)) {
                 fprintf(fp, ", ");
@@ -522,12 +537,12 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
             fprintf(fp, " redoip: ");
             MR_printlabel(fp, MR_redoip_slot(base_maxfr));
             fprintf(fp, " redofr: ");
-            MR_print_nondstackptr(fp, MR_redofr_slot(base_maxfr));
+            MR_print_nondetstackptr(fp, MR_redofr_slot(base_maxfr));
             fprintf(fp, "\n");
             fprintf(fp, " succip: ");
             MR_printlabel(fp, MR_succip_slot(base_maxfr));
             fprintf(fp, " succfr: ");
-            MR_print_nondstackptr(fp, MR_succfr_slot(base_maxfr));
+            MR_print_nondetstackptr(fp, MR_succfr_slot(base_maxfr));
             fprintf(fp, "\n");
             lines_dumped_so_far += 5;
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
@@ -544,17 +559,17 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
                 {
                     fprintf(fp, " debug:  ");
                     fprintf(fp, "call event ");
-                    MR_print_nondstackptr(fp,
+                    MR_print_nondetstackptr(fp,
                         &MR_event_num_framevar(base_maxfr));
                     fprintf(fp, " => %" MR_INTEGER_LENGTH_MODIFIER "d, ",
                         MR_event_num_framevar(base_maxfr) + 1);
                     fprintf(fp, "call seq ");
-                    MR_print_nondstackptr(fp,
+                    MR_print_nondetstackptr(fp,
                         &MR_call_num_framevar(base_maxfr));
                     fprintf(fp, " => %" MR_INTEGER_LENGTH_MODIFIER "d, ",
                         MR_call_num_framevar(base_maxfr)),
                     fprintf(fp, "depth ");
-                    MR_print_nondstackptr(fp,
+                    MR_print_nondetstackptr(fp,
                         &MR_call_depth_framevar(base_maxfr));
                     fprintf(fp, " => %" MR_INTEGER_LENGTH_MODIFIER "d\n",
                         MR_call_depth_framevar(base_maxfr));
@@ -589,22 +604,22 @@ MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
     switch (category) {
         case MR_INTERNAL_FRAME_ON_SIDE_BRANCH:
             fprintf(dump_fp, " internal frame on nondet side branch ");
-            MR_printnondstackptr(top_fr);
+            MR_print_nondetstackptr(dump_fp, top_fr);
             fprintf(dump_fp, "\n");
             break;
         case MR_FRAME_ON_MAIN_BRANCH:
             fprintf(dump_fp, " on main nondet branch ");
-            MR_printnondstackptr(top_fr);
+            MR_print_nondetstackptr(dump_fp, top_fr);
             fprintf(dump_fp, "\n");
             break;
         case MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH:
             fprintf(dump_fp, " terminal top frame of a nondet side branch ");
-            MR_printnondstackptr(base_curfr);
+            MR_print_nondetstackptr(dump_fp, base_curfr);
             fprintf(dump_fp, "\n");
             break;
         case MR_TOP_FRAME_ON_SIDE_BRANCH:
             fprintf(dump_fp, " top frame of a nondet side branch ");
-            MR_printnondstackptr(base_curfr);
+            MR_print_nondetstackptr(dump_fp, base_curfr);
             fprintf(dump_fp, "\n");
             break;
         default:
@@ -814,7 +829,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
 
         if (redoip == NULL) {
             (*func)(func_data, MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH,
-                    NULL, NULL, NULL, fr, level_number);
+                NULL, NULL, NULL, fr, level_number);
             MR_erase_temp_redoip(fr);
 
             success = MR_succip_slot(fr);
@@ -822,7 +837,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
             base_curfr = MR_succfr_slot(fr);
             topfr = fr;
             result = MR_stack_walk_succip_layout(success, &label_layout,
-                &problem);
+                &base_sp, &base_curfr, &problem);
         } else {
             internal = MR_lookup_internal_by_addr(redoip);
             if (internal == NULL || internal->i_layout == NULL) {
@@ -1258,7 +1273,7 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
     if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
         MR_print_detstackptr(fp, base_sp);
     } else {
-        MR_print_nondstackptr(fp, base_curfr);
+        MR_print_nondetstackptr(fp, base_curfr);
     }
 
     fprintf(fp, " ");

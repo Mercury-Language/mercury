@@ -512,7 +512,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     ;
         Uinstr0 = prune_tickets_to(_)
     ;
-        Uinstr0 = incr_sp(_, _)
+        Uinstr0 = incr_sp(_, _, _)
     ;
         Uinstr0 = decr_sp(_)
     ;

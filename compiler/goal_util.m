@@ -152,6 +152,14 @@
 :- pred extra_nonlocal_typeinfos(rtti_varmaps::in, vartypes::in,
     existq_tvars::in, set(prog_var)::in, set(prog_var)::out) is det.
 
+:- type is_leaf
+    --->    is_leaf
+    ;       is_not_leaf.
+
+    % See whether the given procedure body is that of a leaf procedure.
+    %
+:- func proc_body_is_leaf(hlds_goal) = is_leaf.
+
     % See whether the goal is a branched structure.
     %
 :- pred goal_is_branched(hlds_goal_expr::in) is semidet.
@@ -1002,6 +1010,92 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         ), NonLocalTypeClassInfoVars),
     NonLocalTypeInfos = set.union(NonLocalTypeInfoVars,
         NonLocalTypeClassInfoVars).
+
+%-----------------------------------------------------------------------------%
+
+proc_body_is_leaf(GoalExpr - _) = IsLeaf :-
+    (
+        GoalExpr = unify(_, _, _, UnifyKind, _),
+        (
+            UnifyKind = complicated_unify(_, _, _),
+            IsLeaf = is_not_leaf
+        ;
+            ( UnifyKind = construct(_, _, _, _, _, _, _)
+            ; UnifyKind = deconstruct(_, _, _, _, _, _)
+            ; UnifyKind = assign(_, _)
+            ; UnifyKind = simple_test(_, _)
+            ),
+            IsLeaf = is_leaf
+        )
+    ;
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        IsLeaf = is_not_leaf
+    ;
+        ( GoalExpr = conj(_, Goals)
+        ; GoalExpr = disj(Goals)
+        ),
+        IsLeaf = proc_body_is_leaf_goals(Goals)
+    ;
+        ( GoalExpr = negation(Goal)
+        ; GoalExpr = scope(_, Goal)
+        ),
+        IsLeaf = proc_body_is_leaf(Goal)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        IsLeaf = proc_body_is_leaf_cases(Cases)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        ( 
+            proc_body_is_leaf(Cond) = is_leaf,
+            proc_body_is_leaf(Then) = is_leaf,
+            proc_body_is_leaf(Else) = is_leaf
+        ->
+            IsLeaf = is_leaf
+        ;
+            IsLeaf = is_not_leaf
+        )
+    ;
+        GoalExpr = shorthand(ShortHand),
+        ShortHand = bi_implication(GoalA, GoalB),
+        ( 
+            proc_body_is_leaf(GoalA) = is_leaf,
+            proc_body_is_leaf(GoalB) = is_leaf
+        ->
+            IsLeaf = is_leaf
+        ;
+            IsLeaf = is_not_leaf
+        )
+    ).
+
+:- func proc_body_is_leaf_goals(list(hlds_goal)) = is_leaf.
+
+proc_body_is_leaf_goals([]) = is_leaf.
+proc_body_is_leaf_goals([Goal | Goals]) = IsLeaf :-
+    ( 
+        proc_body_is_leaf(Goal) = is_leaf,
+        proc_body_is_leaf_goals(Goals) = is_leaf
+    ->
+        IsLeaf = is_leaf
+    ;
+        IsLeaf = is_not_leaf
+    ).
+
+:- func proc_body_is_leaf_cases(list(case)) = is_leaf.
+
+proc_body_is_leaf_cases([]) = is_leaf.
+proc_body_is_leaf_cases([Case | Cases]) = IsLeaf :-
+    Case = case(_, Goal),
+    ( 
+        proc_body_is_leaf(Goal) = is_leaf,
+        proc_body_is_leaf_cases(Cases) = is_leaf
+    ->
+        IsLeaf = is_leaf
+    ;
+        IsLeaf = is_not_leaf
+    ).
 
 %-----------------------------------------------------------------------------%
 

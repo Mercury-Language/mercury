@@ -156,7 +156,12 @@ case $ll_debug in
 	*)		;;
 esac;
 
-case $extend_stacks in
-	true)		GRADE="$GRADE.exts" ;;
-	*)		;;
+case $extend_stacks,$stack_segments in
+	true,false)	GRADE="$GRADE.exts" ;;
+	false,true)	GRADE="$GRADE.stseg" ;;
+	false,false)	;;
+	*)		progname=`basename $0`
+			echo "$progname: error: invalid combination of stack extension options." 1>&2
+			exit 1
+			;;
 esac

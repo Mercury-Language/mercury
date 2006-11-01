@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003-2005 The University of Melbourne.
+** Copyright (C) 2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -412,7 +412,7 @@ MR_print_subgoal(FILE *fp, const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
     fprintf(fp, "subgoal %s: status %s, generator frame ",
         MR_subgoal_addr_name(subgoal),
         MR_subgoal_status(subgoal->MR_sg_status));
-    MR_print_nondstackptr(fp, subgoal->MR_sg_generator_fr);
+    MR_print_nondetstackptr(fp, subgoal->MR_sg_generator_fr);
     if (subgoal->MR_sg_back_ptr == NULL) {
         fprintf(fp, ", DELETED");
     }
@@ -841,9 +841,9 @@ nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2)
   #ifdef MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("common ancestor search: ");
-            MR_printnondstackptr(fr1);
+            MR_print_nondetstackptr(stdout, fr1);
             printf(" vs ");
-            MR_printnondstackptr(fr2);
+            MR_print_nondetstackptr(stdout, fr2);
             printf("\n");
         }
   #endif
@@ -858,7 +858,7 @@ nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2)
   #ifdef MR_TABLE_DEBUG
     if (MR_tabledebug) {
         printf("the common ancestor is ");
-        MR_printnondstackptr(fr1);
+        MR_print_nondetstackptr(stdout, fr1);
         printf("\n");
     }
   #endif
@@ -1150,9 +1150,9 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
         printf("extending saved state of consumer %s for %s\n",
             MR_consumer_addr_name(consumer), MR_subgoal_addr_name(leader));
         printf("common ancestors: old ");
-        MR_printnondstackptr(old_common_ancestor_fr);
+        MR_print_nondetstackptr(stdout, old_common_ancestor_fr);
         printf(", new ");
-        MR_printnondstackptr(new_common_ancestor_fr);
+        MR_print_nondetstackptr(stdout, new_common_ancestor_fr);
         printf("\nold saved state:\n");
         print_saved_state(stdout, cons_saved_state);
     }
@@ -1174,9 +1174,9 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("assert: det arena_start ");
-            MR_printdetstackptr(arena_start);
+            MR_print_detstackptr(stdout, arena_start);
             printf(" + %d = ", arena_size);
-            MR_printdetstackptr(cons_saved_state->MR_ss_s_p);
+            MR_print_detstackptr(stdout, cons_saved_state->MR_ss_s_p);
             printf(" + 1: diff %d\n",
                 (arena_start + arena_size)
                 - (cons_saved_state->MR_ss_s_p + 1));
@@ -1226,9 +1226,9 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("assert: non arena_start ");
-            MR_printnondstackptr(arena_start);
+            MR_print_nondetstackptr(stdout, arena_start);
             printf(" + %d = ", arena_size);
-            MR_printnondstackptr(cons_saved_state->MR_ss_max_fr);
+            MR_print_nondetstackptr(stdout, cons_saved_state->MR_ss_max_fr);
             printf(" + 1: diff %d\n",
                 (arena_start + arena_size)
                 - (cons_saved_state->MR_ss_max_fr + 1));
@@ -1347,10 +1347,10 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
         if (MR_tablestackdebug) {
             printf("considering %s frame ",
                 (ordinary? "ordinary" : "temp"));
-            MR_print_nondstackptr(stdout,
+            MR_print_nondetstackptr(stdout,
                 saved_to_real_nondet_stack(saved_state, saved_fr));
             printf(" with redoip slot at ");
-            MR_print_nondstackptr(stdout,
+            MR_print_nondetstackptr(stdout,
                 saved_to_real_nondet_stack(saved_state,
                     MR_redoip_addr(saved_fr)));
             printf("\n");
@@ -1371,7 +1371,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
 #ifdef  MR_TABLE_DEBUG
                 if (MR_tabledebug) {
                     printf("next main sequence frame ");
-                    MR_printnondstackptr(MR_succfr_slot(saved_fr));
+                    MR_print_nondetstackptr(stdout, MR_succfr_slot(saved_fr));
                 }
 #endif  /* MR_TABLE_DEBUG */
 
@@ -1401,7 +1401,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
 #ifdef  MR_TABLE_DEBUG
             if (MR_tabledebug) {
                 printf("setting redoip to schedule completion in bottom frame ");
-                MR_print_nondstackptr(stdout,
+                MR_print_nondetstackptr(stdout,
                     saved_to_real_nondet_stack(saved_state, saved_fr));
                 printf(" (in saved copy)\n");
             }
@@ -1425,7 +1425,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
 #ifdef  MR_TABLE_DEBUG
                 if (MR_tabledebug) {
                     printf("setting redoip to schedule completion in frame ");
-                    MR_print_nondstackptr(stdout,
+                    MR_print_nondetstackptr(stdout,
                         saved_to_real_nondet_stack(saved_state, saved_fr));
                     printf(" (in saved copy)\n");
                 }
@@ -1445,7 +1445,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
   #ifdef  MR_TABLE_DEBUG
                 if (MR_tablestackdebug) {
                     printf("clobbering redoip of follower frame at ");
-                    MR_printnondstackptr(real_fr);
+                    MR_print_nondetstackptr(stdout, real_fr);
                     printf(" (in saved copy)\n");
                 }
   #endif    /* MR_TABLE_DEBUG */
@@ -1467,7 +1467,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
   #ifdef  MR_TABLE_DEBUG
             if (MR_tablestackdebug) {
                 printf("committing redoip of frame at ");
-                MR_printnondstackptr(real_fr);
+                MR_print_nondetstackptr(stdout, real_fr);
                 printf(" (in saved copy)\n");
             }
   #endif    /* MR_TABLE_DEBUG */
@@ -1479,7 +1479,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
 #ifdef  MR_TABLE_DEBUG
             if (MR_tabledebug) {
                 printf("clobbering redoip of frame at ");
-                MR_printnondstackptr(real_fr);
+                MR_print_nondetstackptr(stdout, real_fr);
                 printf(" (in saved copy)\n");
             }
 
@@ -1556,9 +1556,9 @@ print_saved_state(FILE *fp, MR_SavedState *saved_state)
     fprintf(fp, "sp:\t");
     MR_print_detstackptr(fp, saved_state->MR_ss_s_p);
     fprintf(fp, "\ncurfr:\t");
-    MR_print_nondstackptr(fp, saved_state->MR_ss_cur_fr);
+    MR_print_nondetstackptr(fp, saved_state->MR_ss_cur_fr);
     fprintf(fp, "\nmaxfr:\t");
-    MR_print_nondstackptr(fp, saved_state->MR_ss_max_fr);
+    MR_print_nondetstackptr(fp, saved_state->MR_ss_max_fr);
     fprintf(fp, "\n");
     
     fprintf(fp, "slots saved: %" MR_INTEGER_LENGTH_MODIFIER "d non,",
@@ -1574,9 +1574,9 @@ print_saved_state(FILE *fp, MR_SavedState *saved_state)
 
     if (saved_state->MR_ss_non_stack_block_size > 0) {
         fprintf(fp, "non region from ");
-        MR_print_nondstackptr(fp, saved_state->MR_ss_non_stack_real_start);
+        MR_print_nondetstackptr(fp, saved_state->MR_ss_non_stack_real_start);
         fprintf(fp, " to ");
-        MR_print_nondstackptr(fp, saved_state->MR_ss_non_stack_real_start +
+        MR_print_nondetstackptr(fp, saved_state->MR_ss_non_stack_real_start +
             saved_state->MR_ss_non_stack_block_size - 1);
         fprintf(fp, " (both inclusive)\n");
     }
@@ -1895,9 +1895,9 @@ MR_define_label(SUSPEND_LABEL(Call));
         if (MR_tabledebug) {
             printf("resetting deepest nca for subgoal %s from ",
                 MR_subgoal_addr_name(subgoal));
-            MR_print_nondstackptr(stdout, subgoal->MR_sg_deepest_nca_fr);
+            MR_print_nondetstackptr(stdout, subgoal->MR_sg_deepest_nca_fr);
             printf(" to ");
-            MR_print_nondstackptr(stdout, common_ancestor);
+            MR_print_nondetstackptr(stdout, common_ancestor);
             printf("\n");
         }
 #endif

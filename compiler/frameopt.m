@@ -437,8 +437,9 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
 
 :- type det_entry_info
     --->    det_entry(
+                int,            % The frame size.
                 string,         % The msg of the incr_sp instruction.
-                int             % The frame size.
+                stack_incr_kind
             ).
 
 :- type det_exit_info
@@ -777,10 +778,10 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
 detect_det_entry(Instrs0, Setup, Others ++ Remain, EntryInfo) :-
     opt_util.gather_comments(Instrs0, Others0, Instrs1),
     Instrs1 = [SetupInstr1 | Instrs2],
-    SetupInstr1 = incr_sp(FrameSize, Msg) - _,
+    SetupInstr1 = incr_sp(FrameSize, Msg, Kind) - _,
     detstack_setup(Instrs2, FrameSize, SetupInstr2, Others0, Others, Remain),
     Setup = [SetupInstr1, SetupInstr2],
-    EntryInfo = det_entry(Msg, FrameSize).
+    EntryInfo = det_entry(FrameSize, Msg, Kind).
 
 :- pred detstack_setup(list(instruction)::in, int::in, instruction::out,
     list(instruction)::in, list(instruction)::out, list(instruction)::out)
@@ -833,7 +834,7 @@ detect_nondet_entry(Instrs0, [MkframeInstr], Remain, EntryInfo) :-
     det_exit_info::out) is semidet.
 
 detect_det_exit(Instrs0, EntryInfo, Extra, ExitInstrs, Remain, ExitInfo) :-
-    EntryInfo = det_entry(_Msg, FrameSize),
+    EntryInfo = det_entry(FrameSize, _Msg, _),
     detstack_teardown(Instrs0, FrameSize, Extra, SuccipRestore, Decrsp,
         Livevals, Goto, Remain),
     ExitInstrs = SuccipRestore ++ Decrsp ++ Livevals ++ [Goto],
@@ -2148,8 +2149,8 @@ is_ordinary_block(ordinary_block(_, _)).
 
 :- func det_late_setup(det_entry_info) = list(instruction).
 
-det_late_setup(det_entry(Msg, FrameSize)) =
-    [incr_sp(FrameSize, Msg) - "late setup",
+det_late_setup(det_entry(FrameSize, Msg, Kind)) =
+    [incr_sp(FrameSize, Msg, Kind) - "late setup",
     assign(stackvar(FrameSize), lval(succip)) - "late save"].
 
 :- func det_non_teardown_exit_code(det_exit_info) = list(instruction).
@@ -2313,8 +2314,11 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
 
 :- func describe_det_entry(det_entry_info) = string.
 
-describe_det_entry(det_entry(Msg, Size)) =
-    "msg: " ++ Msg ++ ", size: " ++ int_to_string(Size) ++ "\n".
+describe_det_entry(det_entry(Size, Msg, Kind)) =
+    "size: " ++ int_to_string(Size) ++
+    ", msg: " ++ Msg ++
+    ", kind: " ++ dump_stack_incr_kind(Kind) ++
+    "\n".
 
 :- func describe_det_exit(proc_label, det_exit_info) = string.
 

@@ -17,32 +17,18 @@
 #include    <stdio.h>
 #include    <stdarg.h>
 
-#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
-  #define   MR_in_ctxt_det_zone(ptr, ctxt)          \
-                MR_in_zone(ptr, ctxt->MR_ctxt_detstack_zone)
-  #define   MR_in_ctxt_non_zone(ptr, ctxt)          \
-                MR_in_zone(ptr, ctxt->MR_ctxt_nondetstack_zone)
-
-  extern  const MR_Context  *MR_find_ctxt_for_det_ptr(const MR_Word *ptr);
-  extern  const MR_Context  *MR_find_ctxt_for_non_ptr(const MR_Word *ptr);
-
-  extern  MR_MemoryZone     *MR_find_zone_for_det_ptr(const MR_Word *ptr);
-  extern  MR_MemoryZone     *MR_find_zone_for_non_ptr(const MR_Word *ptr);
-
-  extern  MR_Generator      *MR_find_gen_for_det_ptr(const MR_Word *ptr);
-  extern  MR_Generator      *MR_find_gen_for_non_ptr(const MR_Word *ptr);
-
-  #define MR_det_zone(fr)   (MR_find_zone_for_det_ptr(fr))
-  #define MR_non_zone(fr)   (MR_find_zone_for_non_ptr(fr))
-#else
-  #define MR_det_zone(fr)   (MR_CONTEXT(MR_ctxt_detstack_zone))
-  #define MR_non_zone(fr)   (MR_CONTEXT(MR_ctxt_nondetstack_zone))
-#endif
-
-#define MR_det_stack_min(fr)    (MR_det_zone(fr)->MR_zone_min)
-#define MR_det_stack_offset(fr) (fr - MR_det_stack_min(fr))
-#define MR_non_stack_min(fr)    (MR_non_zone(fr)->MR_zone_min)
-#define MR_non_stack_offset(fr) (fr - MR_non_stack_min(fr))
+static  MR_bool MR_find_zone_for_det_ptr_in_context(const MR_Word *ptr,
+                    MR_Context *ctxt,
+                    MR_MemoryZone **zone_ptr, int *zone_num_ptr);
+static  MR_bool MR_find_zone_for_nondet_ptr_in_context(const MR_Word *ptr,
+                    MR_Context *ctxt,
+                    MR_MemoryZone **zone_ptr, int *zone_num_ptr);
+static  MR_bool MR_find_zone_for_det_ptr(const MR_Word *ptr,
+                    MR_Context **ctxt_ptr,
+                    MR_MemoryZone **zone_ptr, int *zone_num_ptr);
+static  MR_bool MR_find_zone_for_nondet_ptr(const MR_Word *ptr,
+                    MR_Context **ctxt_ptr,
+                    MR_MemoryZone **zone_ptr, int *zone_num_ptr);
 
 /*--------------------------------------------------------------------*/
 
@@ -54,10 +40,10 @@ static void     MR_assign_csd(MR_CallSiteDynamic *csd1,
                     const MR_CallSiteDynamic *csd2);
 #endif
 
-static void     MR_count_call(MR_Code *proc);
-static void     MR_print_ordinary_regs(void);
-static void     MR_do_watches(void);
-static MR_bool  MR_proc_matches_name(MR_Code *proc, const char *name);
+static void     MR_count_call(FILE *fp, const MR_Code *proc);
+static void     MR_print_ordinary_regs(FILE *fp);
+static void     MR_do_watches(FILE *fp);
+static MR_bool  MR_proc_matches_name(const MR_Code *proc, const char *name);
 
 #ifdef  MR_LOWLEVEL_ADDR_DEBUG
   #define   MR_PRINT_RAW_ADDRS  MR_TRUE
@@ -67,137 +53,41 @@ static MR_bool  MR_proc_matches_name(MR_Code *proc, const char *name);
 
 static  MR_bool MR_print_raw_addrs = MR_PRINT_RAW_ADDRS;
 
-/* auxiliary routines for the code that prints debugging messages */
-
-#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
-
-const MR_Context *
-MR_find_ctxt_for_det_ptr(const MR_Word *ptr)
-{
-    const MR_Dlist      *item;
-    const MR_Context    *ctxt;
-
-    if (MR_in_ctxt_det_zone(ptr, MR_ENGINE(MR_eng_main_context))) {
-        return MR_ENGINE(MR_eng_main_context);
-    }
-
-    MR_for_dlist(item, MR_ENGINE(MR_eng_gen_contexts)) {
-        ctxt = (MR_Context *) MR_dlist_data(item);
-        if (MR_in_ctxt_det_zone(ptr, ctxt)) {
-            return ctxt;
-        }
-    }
-
-    return NULL;
-}
-
-const MR_Context *
-MR_find_ctxt_for_non_ptr(const MR_Word *ptr)
-{
-    const MR_Dlist      *item;
-    const MR_Context    *ctxt;
-
-    if (MR_in_ctxt_non_zone(ptr, MR_ENGINE(MR_eng_main_context))) {
-        return MR_ENGINE(MR_eng_main_context);
-    }
-
-    MR_for_dlist(item, MR_ENGINE(MR_eng_gen_contexts)) {
-        ctxt = (MR_Context *) MR_dlist_data(item);
-        if (MR_in_ctxt_non_zone(ptr, ctxt)) {
-            return ctxt;
-        }
-    }
-
-    return NULL;
-}
-
-MR_MemoryZone *
-MR_find_zone_for_det_ptr(const MR_Word *ptr)
-{
-    const MR_Context    *ctxt;
-
-    ctxt = MR_find_ctxt_for_det_ptr(ptr);
-    if (ctxt != NULL) {
-        return ctxt->MR_ctxt_detstack_zone;
-    }
-
-    MR_fatal_error("MR_find_zone_for_det_ptr: not in any context");
-}
-
-MR_MemoryZone *
-MR_find_zone_for_non_ptr(const MR_Word *ptr)
-{
-    const MR_Context    *ctxt;
-
-    ctxt = MR_find_ctxt_for_non_ptr(ptr);
-    if (ctxt != NULL) {
-        return ctxt->MR_ctxt_nondetstack_zone;
-    }
-
-    MR_fatal_error("MR_find_zone_for_non_ptr: not in any context");
-}
-
-MR_Generator *
-MR_find_gen_for_det_ptr(const MR_Word *ptr)
-{
-    const MR_Context    *ctxt;
-
-    ctxt = MR_find_ctxt_for_det_ptr(ptr);
-    if (ctxt != NULL) {
-        return ctxt->MR_ctxt_owner_generator;
-    }
-
-    MR_fatal_error("MR_find_gen_for_det_ptr: not in any context");
-}
-
-MR_Generator *
-MR_find_gen_for_non_ptr(const MR_Word *ptr)
-{
-    const MR_Context    *ctxt;
-
-    ctxt = MR_find_ctxt_for_non_ptr(ptr);
-    if (ctxt != NULL) {
-        return ctxt->MR_ctxt_owner_generator;
-    }
-
-    MR_fatal_error("MR_find_gen_for_non_ptr: not in any context");
-}
-
-#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
-
 /* debugging messages */
 
 #ifdef MR_DEBUG_HEAP_ALLOC
 
 void
-MR_unravel_univ_msg(MR_Word univ, MR_TypeInfo type_info, MR_Word value)
+MR_unravel_univ_msg(FILE *fp, MR_Word univ, MR_TypeInfo type_info,
+    MR_Word value)
 {
     if (MR_lld_print_enabled && MR_heapdebug) {
-        printf("unravel univ %p: typeinfo %p, value %p\n",
+        fprintf(fp, "unravel univ %p: typeinfo %p, value %p\n",
             (void *) univ, (void *) type_info, (void *) value);
-        fflush(stdout);
+        fflush(fp);
     }
 }
 
 void
-MR_new_univ_on_hp_msg(MR_Word univ, MR_TypeInfo type_info, MR_Word value)
+MR_new_univ_on_hp_msg(FILE *fp, MR_Word univ, MR_TypeInfo type_info,
+    MR_Word value)
 {
     if (MR_lld_print_enabled && MR_heapdebug) {
-        printf("new univ on hp: typeinfo %p, value %p => %p\n",
+        fprintf(fp"new univ on hp: typeinfo %p, value %p => %p\n",
             (void *) type_info, (void *) value, (void *) univ);
-        fflush(stdout);
+        fflush(fp);
     }
 }
 
 void
-MR_debug_tag_offset_incr_hp_base_msg(MR_Word ptr, int tag, int offset,
-    int count, int is_atomic)
+MR_debug_tag_offset_incr_hp_base_msg(FILE *fp, MR_Word ptr,
+    int tag, int offset, int count, int is_atomic)
 {
     if (MR_lld_print_enabled && MR_heapdebug) {
-        printf("tag_offset_incr_hp: "
+        fprintf(fp, "tag_offset_incr_hp: "
             "tag %d, offset %d, count %d%s => %p\n",
             tag, offset, count, (is_atomic ? ", atomic" : ""), (void *) ptr);
-        fflush(stdout);
+        fflush(fp);
     }
 }
 
@@ -206,7 +96,7 @@ MR_debug_tag_offset_incr_hp_base_msg(MR_Word ptr, int tag, int offset,
 #ifdef MR_LOWLEVEL_DEBUG
 
 void
-MR_mkframe_msg(const char *predname)
+MR_mkframe_msg(FILE *fp, const char *predname)
 {
     MR_restore_transient_registers();
 
@@ -214,24 +104,31 @@ MR_mkframe_msg(const char *predname)
         return;
     }
 
-    printf("\nnew choice point for procedure %s\n", predname);
-    printf("new  fr: "); MR_printnondstack(MR_curfr);
-    printf("prev fr: "); MR_printnondstack(MR_prevfr_slot(MR_curfr));
-    printf("succ fr: "); MR_printnondstack(MR_succfr_slot(MR_curfr));
-    printf("succ ip: "); MR_printlabel(stdout, MR_succip_slot(MR_curfr));
-    printf("redo fr: "); MR_printnondstack(MR_redofr_slot(MR_curfr));
-    printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_curfr));
+    fprintf(fp, "\nnew choice point for procedure %s\n", predname);
+    fprintf(fp, "new  fr: ");
+    MR_printnondetstack(fp, MR_curfr);
+    fprintf(fp, "prev fr: ");
+    MR_printnondetstack(fp, MR_prevfr_slot(MR_curfr));
+    fprintf(fp, "succ fr: ");
+    MR_printnondetstack(fp, MR_succfr_slot(MR_curfr));
+    fprintf(fp, "succ ip: ");
+    MR_printlabel(fp, MR_succip_slot(MR_curfr));
+    fprintf(fp, "redo fr: ");
+    MR_printnondetstack(fp, MR_redofr_slot(MR_curfr));
+    fprintf(fp, "redo ip: ");
+    MR_printlabel(fp, MR_redoip_slot(MR_curfr));
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
-    printf("det fr:  "); MR_printdetstack(MR_table_detfr_slot(MR_curfr));
+    fprintf(fp, "det fr:  ");
+    MR_printdetstack(fp, MR_table_detfr_slot(MR_curfr));
 #endif
 
     if (MR_detaildebug) {
-        MR_dumpnondstack();
+        MR_dumpnondetstack(fp);
     }
 }
 
 void
-MR_mktempframe_msg(void)
+MR_mktempframe_msg(FILE *fp)
 {
     MR_restore_transient_registers();
 
@@ -239,19 +136,23 @@ MR_mktempframe_msg(void)
         return;
     }
 
-    printf("\nnew temp nondet frame\n");
-    printf("new  fr: "); MR_printnondstack(MR_maxfr);
-    printf("prev fr: "); MR_printnondstack(MR_prevfr_slot(MR_maxfr));
-    printf("redo fr: "); MR_printnondstack(MR_redofr_slot(MR_maxfr));
-    printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_maxfr));
+    fprintf(fp, "\nnew temp nondet frame\n");
+    fprintf(fp, "new  fr: ");
+    MR_printnondetstack(fp, MR_maxfr);
+    fprintf(fp, "prev fr: ");
+    MR_printnondetstack(fp, MR_prevfr_slot(MR_maxfr));
+    fprintf(fp, "redo fr: ");
+    MR_printnondetstack(fp, MR_redofr_slot(MR_maxfr));
+    fprintf(fp, "redo ip: ");
+    MR_printlabel(fp, MR_redoip_slot(MR_maxfr));
 
     if (MR_detaildebug) {
-        MR_dumpnondstack();
+        MR_dumpnondetstack(fp);
     }
 }
 
 void
-MR_mkdettempframe_msg(void)
+MR_mkdettempframe_msg(FILE *fp)
 {
     MR_restore_transient_registers();
 
@@ -259,269 +160,285 @@ MR_mkdettempframe_msg(void)
         return;
     }
 
-    printf("\nnew det temp nondet frame\n");
-    printf("new  fr: "); MR_printnondstack(MR_maxfr);
-    printf("prev fr: "); MR_printnondstack(MR_prevfr_slot(MR_maxfr));
-    printf("redo fr: "); MR_printnondstack(MR_redofr_slot(MR_maxfr));
-    printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_maxfr));
-    printf("det fr:  "); MR_printdetstack(MR_tmp_detfr_slot(MR_maxfr));
+    fprintf(fp, "\nnew det temp nondet frame\n");
+    fprintf(fp, "new  fr: ");
+    MR_printnondetstack(fp, MR_maxfr);
+    fprintf(fp, "prev fr: ");
+    MR_printnondetstack(fp, MR_prevfr_slot(MR_maxfr));
+    fprintf(fp, "redo fr: ");
+    MR_printnondetstack(fp, MR_redofr_slot(MR_maxfr));
+    fprintf(fp, "redo ip: ");
+    MR_printlabel(fp, MR_redoip_slot(MR_maxfr));
+    fprintf(fp, "det fr:  ");
+    MR_printdetstack(fp, MR_tmp_detfr_slot(MR_maxfr));
 
     if (MR_detaildebug) {
-        MR_dumpnondstack();
+        MR_dumpnondetstack(fp);
     }
 }
 
 void
-MR_succeed_msg(void)
+MR_succeed_msg(FILE *fp)
 {
     MR_restore_transient_registers();
 
-    MR_do_watches();
+    MR_do_watches(fp);
 
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    printf("\nsucceeding from procedure\n");
-    printf("curr fr: "); MR_printnondstack(MR_curfr);
-    printf("succ fr: "); MR_printnondstack(MR_succfr_slot(MR_curfr));
-    printf("succ ip: "); MR_printlabel(stdout, MR_succip_slot(MR_curfr));
+    fprintf(fp, "\nsucceeding from procedure\n");
+    fprintf(fp, "curr fr: ");
+    MR_printnondetstack(fp, MR_curfr);
+    fprintf(fp, "succ fr: ");
+    MR_printnondetstack(fp, MR_succfr_slot(MR_curfr));
+    fprintf(fp, "succ ip: ");
+    MR_printlabel(fp, MR_succip_slot(MR_curfr));
 
     if (MR_detaildebug) {
-        MR_printregs("registers at success");
+        MR_printregs(fp, "registers at success");
     }
 }
 
 void
-MR_succeeddiscard_msg(void)
+MR_succeeddiscard_msg(FILE *fp)
 {
     MR_restore_transient_registers();
 
-    MR_do_watches();
+    MR_do_watches(fp);
 
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    printf("\nsucceeding from procedure\n");
-    printf("curr fr: "); MR_printnondstack(MR_curfr);
-    printf("succ fr: "); MR_printnondstack(MR_succfr_slot(MR_curfr));
-    printf("succ ip: "); MR_printlabel(stdout, MR_succip_slot(MR_curfr));
+    fprintf(fp, "\nsucceeding from procedure\n");
+    fprintf(fp, "curr fr: ");
+    MR_printnondetstack(fp, MR_curfr);
+    fprintf(fp, "succ fr: ");
+    MR_printnondetstack(fp, MR_succfr_slot(MR_curfr));
+    fprintf(fp, "succ ip: ");
+    MR_printlabel(fp, MR_succip_slot(MR_curfr));
 
     if (MR_detaildebug) {
-        MR_printregs("registers at success");
+        MR_printregs(fp, "registers at success");
     }
 }
 
 void
-MR_fail_msg(void)
+MR_fail_msg(FILE *fp)
 {
     MR_restore_transient_registers();
 
-    MR_do_watches();
+    MR_do_watches(fp);
 
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    printf("\nfailing from procedure\n");
-    printf("curr fr: "); MR_printnondstack(MR_curfr);
-    printf("fail fr: "); MR_printnondstack(MR_prevfr_slot(MR_curfr));
-    printf("fail ip: "); MR_printlabel(stdout,
-        MR_redoip_slot(MR_prevfr_slot(MR_curfr)));
+    fprintf(fp, "\nfailing from procedure\n");
+    fprintf(fp, "curr fr: ");
+    MR_printnondetstack(fp, MR_curfr);
+    fprintf(fp, "fail fr: ");
+    MR_printnondetstack(fp, MR_prevfr_slot(MR_curfr));
+    fprintf(fp, "fail ip: ");
+    MR_printlabel(fp, MR_redoip_slot(MR_prevfr_slot(MR_curfr)));
 }
 
 void
-MR_redo_msg(void)
+MR_redo_msg(FILE *fp)
 {
     MR_restore_transient_registers();
 
-    MR_do_watches();
+    MR_do_watches(fp);
 
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    printf("\nredo from procedure\n");
-    printf("curr fr: "); MR_printnondstack(MR_curfr);
-    printf("redo fr: "); MR_printnondstack(MR_maxfr);
-    printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_maxfr));
+    fprintf(fp, "\nredo from procedure\n");
+    fprintf(fp, "curr fr: ");
+    MR_printnondetstack(fp, MR_curfr);
+    fprintf(fp, "redo fr: ");
+    MR_printnondetstack(fp, MR_maxfr);
+    fprintf(fp, "redo ip: ");
+    MR_printlabel(fp, MR_redoip_slot(MR_maxfr));
 }
 
 void
-MR_call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succ_cont)
+MR_call_msg(FILE *fp, const MR_Code *proc, const MR_Code *succ_cont)
 {
-    MR_count_call(proc);
+    MR_count_call(fp, proc);
 
 #ifdef  MR_DEEP_PROFILING
     MR_check_watch_csd_start(proc);
 #endif  /* MR_DEEP_PROFILING */
 
-    MR_do_watches();
+    MR_do_watches(fp);
 
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    printf("\ncall %lu: ", MR_lld_cur_call);
-    MR_printlabel(stdout, proc);
-    printf("cont ");
-    MR_printlabel(stdout, succ_cont);
+    fprintf(fp, "\ncall %lu: ", MR_lld_cur_call);
+    MR_printlabel(fp, proc);
+    fprintf(fp, "cont ");
+    MR_printlabel(fp, succ_cont);
 
     if (MR_anyregdebug) {
-        MR_printregs("at call:");
+        MR_printregs(fp, "at call:");
     }
 
 #ifdef  MR_DEEP_PROFILING
-    MR_print_deep_prof_vars(stdout, "MR_call_msg");
+    MR_print_deep_prof_vars(fp, "MR_call_msg");
 #endif
 }
 
 void
-MR_tailcall_msg(/* const */ MR_Code *proc)
+MR_tailcall_msg(FILE *fp, const MR_Code *proc)
 {
     MR_restore_transient_registers();
 
-    MR_count_call(proc);
+    MR_count_call(fp, proc);
 
 #ifdef  MR_DEEP_PROFILING
     MR_check_watch_csd_start(proc);
 #endif  /* MR_DEEP_PROFILING */
 
-    MR_do_watches();
+    MR_do_watches(fp);
 
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    printf("\ntail call %lu: ", MR_lld_cur_call);
-    MR_printlabel(stdout, proc);
-    printf("cont ");
-    MR_printlabel(stdout, MR_succip);
+    fprintf(fp, "\ntail call %lu: ", MR_lld_cur_call);
+    MR_printlabel(fp, proc);
+    fprintf(fp, "cont ");
+    MR_printlabel(fp, MR_succip);
 
     if (MR_anyregdebug) {
-        MR_printregs("at tailcall:");
+        MR_printregs(fp, "at tailcall:");
     }
 
 #ifdef  MR_DEEP_PROFILING
-    MR_print_deep_prof_vars(stdout, "MR_tailcall_msg");
+    MR_print_deep_prof_vars(fp, "MR_tailcall_msg");
 #endif
 }
 
 void
-MR_proceed_msg(void)
+MR_proceed_msg(FILE *fp)
 {
-    MR_do_watches();
+    MR_do_watches(fp);
 
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    printf("\nreturning from determinate procedure\n");
+    fprintf(fp, "\nreturning from determinate procedure\n");
     if (MR_anyregdebug) {
-        MR_printregs("at proceed:");
+        MR_printregs(fp, "at proceed:");
     }
 
 #ifdef  MR_DEEP_PROFILING
-    MR_print_deep_prof_vars(stdout, "MR_proceed_msg");
+    MR_print_deep_prof_vars(fp, "MR_proceed_msg");
 #endif
 }
 
 void
-MR_cr1_msg(const MR_Word *addr)
+MR_cr1_msg(FILE *fp, const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
         return;
     }
 
 #ifdef  MR_RECORD_TERM_SIZES
-    printf("create1: put size %ld, value %9lx at ",
+    fprintf(fp, "create1: put size %ld, value %9lx at ",
         (long) (MR_Integer) addr[-2],
         (long) (MR_Integer) addr[-1]);
 #else
-    printf("create1: put value %9lx at ",
+    fprintf(fp, "create1: put value %9lx at ",
         (long) (MR_Integer) addr[-1]);
 #endif
-    MR_printheap(addr);
+    MR_printheap(fp, addr);
 }
 
 void
-MR_cr2_msg(const MR_Word *addr)
+MR_cr2_msg(FILE *fp, const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
         return;
     }
 
 #ifdef  MR_RECORD_TERM_SIZES
-    printf("create2: put size %ld, values %9lx,%9lx at ",
+    fprintf(fp, "create2: put size %ld, values %9lx,%9lx at ",
         (long) (MR_Integer) addr[-3],
         (long) (MR_Integer) addr[-2],
         (long) (MR_Integer) addr[-1]);
 #else
-    printf("create2: put values %9lx,%9lx at ",
+    fprintf(fp, "create2: put values %9lx,%9lx at ",
         (long) (MR_Integer) addr[-2],
         (long) (MR_Integer) addr[-1]);
 #endif
-    MR_printheap(addr);
+    MR_printheap(fp, addr);
 }
 
 void
-MR_cr3_msg(const MR_Word *addr)
+MR_cr3_msg(FILE *fp, const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
         return;
     }
 
 #ifdef  MR_RECORD_TERM_SIZES
-    printf("create3: put size %ld, values %9lx,%9lx,%9lx at ",
+    fprintf(fp, "create3: put size %ld, values %9lx,%9lx,%9lx at ",
         (long) (MR_Integer) addr[-4],
         (long) (MR_Integer) addr[-3],
         (long) (MR_Integer) addr[-2],
         (long) (MR_Integer) addr[-1]);
 #else
-    printf("create3: put values %9lx,%9lx,%9lx at ",
+    fprintf(fp, "create3: put values %9lx,%9lx,%9lx at ",
         (long) (MR_Integer) addr[-3],
         (long) (MR_Integer) addr[-2],
         (long) (MR_Integer) addr[-1]);
 #endif
-    MR_printheap(addr);
+    MR_printheap(fp, addr);
 }
 
 void
-MR_incr_hp_debug_msg(MR_Word val, const MR_Word *addr)
+MR_incr_hp_debug_msg(FILE *fp, MR_Word val, const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
         return;
     }
 
 #ifdef MR_CONSERVATIVE_GC
-    printf("allocated %ld words at %p\n", (long) val, addr);
+    fprintf(fp, "allocated %ld words at %p\n", (long) val, addr);
 #else
-    printf("increment hp by %ld from ", (long) (MR_Integer) val);
-    MR_printheap(addr);
+    fprintf(fp, "increment hp by %ld from ", (long) (MR_Integer) val);
+    MR_printheap(fp, addr);
 #endif
 }
 
 void
-MR_incr_sp_msg(MR_Word val, const MR_Word *addr)
+MR_incr_sp_msg(FILE *fp, MR_Word val, const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    printf("increment sp by %ld from ", (long) (MR_Integer) val);
-    MR_printdetstack(addr);
+    fprintf(fp, "increment sp by %ld from ", (long) (MR_Integer) val);
+    MR_printdetstack(fp, addr);
 }
 
 void
-MR_decr_sp_msg(MR_Word val, const MR_Word *addr)
+MR_decr_sp_msg(FILE *fp, MR_Word val, const MR_Word *addr)
 {
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    printf("decrement sp by %ld from ", (long) (MR_Integer) val);
-    MR_printdetstack(addr);
+    fprintf(fp, "decrement sp by %ld from ", (long) (MR_Integer) val);
+    MR_printdetstack(fp, addr);
 }
 
 #endif /* defined(MR_LOWLEVEL_DEBUG) */
@@ -529,23 +446,23 @@ MR_decr_sp_msg(MR_Word val, const MR_Word *addr)
 #ifdef MR_DEBUG_GOTOS
 
 void
-MR_goto_msg(/* const */ MR_Code *addr)
+MR_goto_msg(FILE *fp, const MR_Code *addr)
 {
     if (!MR_lld_print_enabled) {
         return;
     }
 
     if (addr == NULL) {
-        printf("\ngoto NULL\n");
+        fprintf(fp, "\ngoto NULL\n");
         MR_fatal_error("MR_goto_msg: NULL");
     }
 
-    printf("\ngoto ");
-    MR_printlabel(stdout, addr);
+    fprintf(fp, "\ngoto ");
+    MR_printlabel(fp, addr);
 }
 
 void
-MR_reg_msg(void)
+MR_reg_msg(FILE *fp)
 {
     int         i;
     MR_Integer  x;
@@ -563,9 +480,9 @@ MR_reg_msg(void)
             x -= (MR_Integer) MR_ENGINE(MR_eng_heap_zone)->MR_zone_min;
         }
 #endif
-        printf("%8lx ", (long) x);
+        fprintf(fp, "%8lx ", (long) x);
     }
-    printf("\n");
+    fprintf(fp, "\n");
 }
 
 #endif /* defined(MR_DEBUG_GOTOS) */
@@ -577,14 +494,14 @@ MR_reg_msg(void)
 /* debugging printing tools */
 
 static void
-MR_count_call(MR_Code *proc)
+MR_count_call(FILE *fp, const MR_Code *proc)
 {
     MR_lld_cur_call++;
     if (!MR_lld_print_region_enabled) {
         if (MR_lld_cur_call == MR_lld_print_min) {
             MR_lld_print_region_enabled = MR_TRUE;
-            printf("entering printed region\n");
-            printf("min %lu, max %lu, more <%s>\n",
+            fprintf(fp, "entering printed region\n");
+            fprintf(fp, "min %lu, max %lu, more <%s>\n",
                 MR_lld_print_min, MR_lld_print_max,
                 MR_lld_print_more_min_max);
         }
@@ -593,8 +510,8 @@ MR_count_call(MR_Code *proc)
             MR_lld_print_region_enabled = MR_FALSE;
             MR_setup_call_intervals(&MR_lld_print_more_min_max,
                 &MR_lld_print_min, &MR_lld_print_max);
-            printf("leaving printed region\n");
-            printf("min %lu, max %lu, more <%s>\n",
+            fprintf(fp, "leaving printed region\n");
+            fprintf(fp, "min %lu, max %lu, more <%s>\n",
                 MR_lld_print_min, MR_lld_print_max,
                 MR_lld_print_more_min_max);
         }
@@ -603,10 +520,10 @@ MR_count_call(MR_Code *proc)
     if (MR_proc_matches_name(proc, MR_lld_start_name)) {
         MR_lld_print_name_enabled = MR_TRUE;
         MR_lld_start_until = MR_lld_cur_call + MR_lld_start_block;
-        printf("entering printed name block %s\n", MR_lld_start_name);
+        fprintf(fp, "entering printed name block %s\n", MR_lld_start_name);
     } else if (MR_lld_cur_call == MR_lld_start_until) {
         MR_lld_print_name_enabled = MR_FALSE;
-        printf("leaving printed name block\n");
+        fprintf(fp, "leaving printed name block\n");
     }
 
 #ifdef  MR_DEEP_PROFILING
@@ -616,10 +533,10 @@ MR_count_call(MR_Code *proc)
         MR_lld_print_csd_enabled = MR_TRUE;
         MR_lld_csd_until = MR_lld_cur_call + MR_lld_start_block;
         MR_watch_csd_started = MR_TRUE;
-        printf("entering printed csd block %p\n", MR_watch_csd_addr);
+        fprintf(fp, "entering printed csd block %p\n", MR_watch_csd_addr);
     } else if (MR_lld_cur_call == MR_lld_csd_until) {
         MR_lld_print_csd_enabled = MR_FALSE;
-        printf("leaving printed csd block\n");
+        fprintf(fp, "leaving printed csd block\n");
     }
 #endif
 
@@ -630,121 +547,126 @@ MR_count_call(MR_Code *proc)
 }
 
 void
-MR_printint(MR_Word n)
+MR_printint(FILE *fp, MR_Word n)
 {
-    printf("int %ld\n", (long) (MR_Integer) n);
+    fprintf(fp, "int %ld\n", (long) (MR_Integer) n);
 }
 
 void
-MR_printstring(const char *s)
+MR_printstring(FILE *fp, const char *s)
 {
     if (MR_print_raw_addrs) {
-        printf("string %p %s\n", (const void *) s, s);
+        fprintf(fp, "string %p %s\n", (const void *) s, s);
     } else {
-        printf("string %s\n", s);
+        fprintf(fp, "string %s\n", s);
     }
 }
 
 void
-MR_printheap(const MR_Word *h)
+MR_printheap(FILE *fp, const MR_Word *h)
 {
 #ifndef MR_CONSERVATIVE_GC
     if (MR_print_raw_addrs) {
-        printf("ptr %p, ", (const void *) h);
+        fprintf(fp, "ptr %p, ", (const void *) h);
     }
 
-    printf("offset %3ld words\n",
+    fprintf(fp, "offset %3ld words\n",
         (long) (MR_Integer) (h - MR_ENGINE(MR_eng_heap_zone)->min));
 #else
-    printf("ptr %p\n", (const void *) h);
+    fprintf(fp, "ptr %p\n", (const void *) h);
 #endif
 }
 
 void
-MR_dumpframe(/* const */ MR_Word *fr)
+MR_dumpframe(FILE *fp, const MR_Word *fr)
 {
     int i;
 
-    printf("frame at ");
-    if (MR_print_raw_addrs) {
-        printf("ptr %p, ", (const void *) fr);
-    }
-
-    printf("offset %3ld words\n",
-        (long) (MR_Integer) MR_non_stack_offset(fr));
-    printf("\t succip    "); MR_printlabel(stdout, MR_succip_slot(fr));
-    printf("\t redoip    "); MR_printlabel(stdout, MR_redoip_slot(fr));
-    printf("\t succfr    "); MR_printnondstack(MR_succfr_slot(fr));
-    printf("\t prevfr    "); MR_printnondstack(MR_prevfr_slot(fr));
+    fprintf(fp, "frame at ");
+    MR_printnondetstack(fp, fr),
+    fprintf(fp, "\n");
+    fprintf(fp, "\t succip    ");
+    MR_printlabel(fp, MR_succip_slot(fr));
+    fprintf(fp, "\t redoip    ");
+    MR_printlabel(fp, MR_redoip_slot(fr));
+    fprintf(fp, "\t succfr    ");
+    MR_printnondetstack(fp, MR_succfr_slot(fr));
+    fprintf(fp, "\t prevfr    ");
+    MR_printnondetstack(fp, MR_prevfr_slot(fr));
 
     for (i = 1; &MR_based_framevar(fr,i) > MR_prevfr_slot(fr); i++) {
-        printf("\t framevar(%d)  %ld 0x%lx\n",
+        fprintf(fp, "\t framevar(%d)  %ld 0x%lx\n",
             i, (long) (MR_Integer) MR_based_framevar(fr,i),
             (unsigned long) MR_based_framevar(fr,i));
     }
 }
 
 void
-MR_dumpnondstack(void)
+MR_dumpnondetstack(FILE *fp)
 {
     MR_Word *fr;
 
-    printf("\nnondstack dump\n");
+    fprintf(fp, "\nnondetstack dump\n");
     for (fr = MR_maxfr; fr > MR_nondet_stack_trace_bottom;
         fr = MR_prevfr_slot(fr))
     {
-        MR_dumpframe(fr);
+        MR_dumpframe(fp, fr);
     }
 }
 
 void
-MR_printframe(const char *msg)
+MR_printframe(FILE *fp, const char *msg)
 {
-    printf("\n%s\n", msg);
-    MR_dumpframe(MR_curfr);
+    fprintf(fp, "\n%s\n", msg);
+    MR_dumpframe(fp, MR_curfr);
 
-    MR_print_ordinary_regs();
+    MR_print_ordinary_regs(fp);
 }
 
 void
-MR_printregs(const char *msg)
+MR_printregs(FILE *fp, const char *msg)
 {
     MR_restore_transient_registers();
 
-    printf("\n%s\n", msg);
+    fprintf(fp, "\n%s\n", msg);
 
     if (MR_sregdebug) {
-        printf("%-9s", "succip:");  MR_printlabel(stdout, MR_succip);
-        printf("%-9s", "curfr:");   MR_printnondstack(MR_curfr);
-        printf("%-9s", "maxfr:");   MR_printnondstack(MR_maxfr);
-        printf("%-9s", "hp:");      MR_printheap(MR_hp);
-        printf("%-9s", "sp:");      MR_printdetstack(MR_sp);
+        fprintf(fp, "%-9s", "succip:");
+        MR_printlabel(fp, MR_succip);
+        fprintf(fp, "%-9s", "curfr:");
+        MR_printnondetstack(fp, MR_curfr);
+        fprintf(fp, "%-9s", "maxfr:");
+        MR_printnondetstack(fp, MR_maxfr);
+        fprintf(fp, "%-9s", "hp:");
+        MR_printheap(fp, MR_hp);
+        fprintf(fp, "%-9s", "sp:");
+        MR_printdetstack(fp, MR_sp);
     }
 
     if (MR_ordregdebug) {
-        MR_print_ordinary_regs();
+        MR_print_ordinary_regs(fp);
     }
 }
 
 static void
-MR_print_ordinary_regs(void)
+MR_print_ordinary_regs(FILE *fp)
 {
-    int     i;
+    int         i;
     MR_Integer  value;
 
     for (i = 0; i < 8; i++) {
-        printf("r%d:      ", i + 1);
+        fprintf(fp, "r%d:      ", i + 1);
         value = (MR_Integer) MR_get_reg(i+1);
 
 #ifndef MR_CONSERVATIVE_GC
         if ((MR_Integer) MR_ENGINE(MR_eng_heap_zone)->min <= value
             && value < (MR_Integer) MR_ENGINE(MR_eng_heap_zone)->top)
         {
-            printf("(heap) ");
+            fprintf(fp, "(heap) ");
         }
 #endif
 
-        printf("%ld %lx\n", (long) value, (long) value);
+        fprintf(fp, "%ld %lx\n", (long) value, (long) value);
     }
 }
 
@@ -884,10 +806,10 @@ MR_assign_csd(MR_CallSiteDynamic *csd1, const MR_CallSiteDynamic *csd2)
 #endif  /* MR_DEEP_PROFILING */
 
 static void
-MR_do_watches(void)
+MR_do_watches(FILE *fp)
 {
     if (MR_watch_addr != NULL) {
-        printf("watch addr %p: 0x%lx %ld\n", MR_watch_addr,
+        fprintf(fp, "watch addr %p: 0x%lx %ld\n", MR_watch_addr,
             (long) *MR_watch_addr, (long) *MR_watch_addr);
     }
 
@@ -898,8 +820,8 @@ MR_do_watches(void)
                 MR_watch_csd_addr))
             {
                 MR_assign_csd(&MR_watched_csd_last_value, MR_watch_csd_addr);
-                printf("current call: %lu\n", MR_lld_cur_call);
-                MR_print_deep_prof_var(stdout, "watch_csd", MR_watch_csd_addr);
+                fprintf(fp, "current call: %lu\n", MR_lld_cur_call);
+                MR_print_deep_prof_var(fp, "watch_csd", MR_watch_csd_addr);
             }
         }
     }
@@ -907,7 +829,7 @@ MR_do_watches(void)
 }
 
 static MR_bool
-MR_proc_matches_name(MR_Code *proc, const char *name)
+MR_proc_matches_name(const MR_Code *proc, const char *name)
 {
 #ifdef  MR_NEED_ENTRY_LABEL_ARRAY
     MR_Entry    *entry;
@@ -928,56 +850,95 @@ MR_proc_matches_name(MR_Code *proc, const char *name)
 #ifndef MR_HIGHLEVEL_CODE
 
 void
-MR_printdetstackptr(const MR_Word *s)
-{
-    MR_print_detstackptr(stdout, s);
-}
-
-void
 MR_print_detstackptr(FILE *fp, const MR_Word *s)
 {
-    fprintf(fp, "det %3ld",
-        (long) (MR_Integer) MR_det_stack_offset(s));
+    MR_MemoryZone   *zone;
+    int             zone_num;
 
-    if (MR_print_raw_addrs) {
-        fprintf(fp, " (%p)", (const void *) s);
+    if (MR_find_zone_for_det_ptr(s, NULL, &zone, &zone_num)) {
+        if (zone_num == 0) {
+            fprintf(fp, "det %3ld",
+                (long) (MR_Integer) (s - zone->MR_zone_min));
+        } else {
+            fprintf(fp, "det %3ld, segment %d",
+                (long) (MR_Integer) (s - zone->MR_zone_min), zone_num);
+        }
+
+        if (MR_print_raw_addrs) {
+            fprintf(fp, " (%p)", (const void *) s);
+        }
+    } else {
+        fprintf(fp, "det raw %p", (const void *) s);
     }
 }
 
 void
-MR_printdetstack(const MR_Word *s)
+MR_printdetstack(FILE *fp, const MR_Word *s)
 {
-    if (MR_print_raw_addrs) {
-        printf("ptr %p, ", (const void *) s);
-    }
+    MR_MemoryZone   *zone;
+    int             zone_num;
 
-    printf("offset %3ld words\n", (long) (MR_Integer) MR_det_stack_offset(s));
-}
+    if (MR_find_zone_for_det_ptr(s, NULL, &zone, &zone_num)) {
+        if (MR_print_raw_addrs) {
+            fprintf(fp, "ptr %p, ", (const void *) s);
+        }
 
-void
-MR_printnondstackptr(const MR_Word *s)
-{
-    MR_print_nondstackptr(stdout, s);
-}
-
-void
-MR_print_nondstackptr(FILE *fp, const MR_Word *s)
-{
-    fprintf(fp, "non %3ld", (long) (MR_Integer) MR_non_stack_offset(s));
-
-    if (MR_print_raw_addrs) {
-        fprintf(fp, " (%p)", (const void *) s);
+        if (zone_num == 0) {
+            fprintf(fp, "offset %3ld words",
+                (long) (MR_Integer) (s - zone->MR_zone_min));
+        } else {
+            fprintf(fp, "offset %3ld words in segment %d",
+                (long) (MR_Integer) (s - zone->MR_zone_min), zone_num);
+        }
+    } else {
+        fprintf(fp, "raw ptr %p", (const void *) s);
     }
 }
 
 void
-MR_printnondstack(const MR_Word *s)
+MR_print_nondetstackptr(FILE *fp, const MR_Word *s)
 {
-    if (MR_print_raw_addrs) {
-        printf("ptr %p, ", (const void *) s);
-    }
+    MR_MemoryZone   *zone;
+    int             zone_num;
 
-    printf("offset %3ld words\n", (long) (MR_Integer) MR_non_stack_offset(s));
+    if (MR_find_zone_for_nondet_ptr(s, NULL, &zone, &zone_num)) {
+        if (zone_num == 0) {
+            fprintf(fp, "non %3ld",
+                (long) (MR_Integer) (s - zone->MR_zone_min));
+        } else {
+            fprintf(fp, "non %3ld, segment %d",
+                (long) (MR_Integer) (s - zone->MR_zone_min), zone_num);
+        }
+
+        if (MR_print_raw_addrs) {
+            fprintf(fp, " (%p)", (const void *) s);
+        }
+    } else {
+        fprintf(fp, "non raw %p", (const void *) s);
+    }
+}
+
+void
+MR_printnondetstack(FILE *fp, const MR_Word *s)
+{
+    MR_MemoryZone   *zone;
+    int             zone_num;
+
+    if (MR_find_zone_for_nondet_ptr(s, NULL, &zone, &zone_num)) {
+        if (MR_print_raw_addrs) {
+            fprintf(fp, "ptr %p, ", (const void *) s);
+        }
+
+        if (zone_num == 0) {
+            fprintf(fp, "offset %3ld words",
+                (long) (MR_Integer) (s - zone->MR_zone_min));
+        } else {
+            fprintf(fp, "offset %3ld words in segment %d",
+                (long) (MR_Integer) (s - zone->MR_zone_min), zone_num);
+        }
+    } else {
+        fprintf(fp, "raw ptr %p", (const void *) s);
+    }
 }
 
 #endif /* !MR_HIGHLEVEL_CODE */
@@ -993,12 +954,12 @@ MR_print_heapptr(FILE *fp, const MR_Word *s)
 #endif
 
     if (MR_print_raw_addrs) {
-        printf(" (%p)", (const void *) s);
+        fprintf(fp, " (%p)", (const void *) s);
     }
 }
 
 void
-MR_print_label(FILE *fp, /* const */ MR_Code *w)
+MR_print_label(FILE *fp, const MR_Code *w)
 {
     MR_Internal *internal;
 
@@ -1039,7 +1000,7 @@ MR_print_label(FILE *fp, /* const */ MR_Code *w)
 }
 
 void
-MR_printlabel(FILE *fp, /* const */ MR_Code *w)
+MR_printlabel(FILE *fp, const MR_Code *w)
 {
     MR_print_label(fp, w);
     fprintf(fp, "\n");
@@ -1105,3 +1066,200 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
     }
 #endif
 }
+
+/* auxiliary routines for the code that prints debugging messages */
+
+static MR_bool
+MR_find_zone_for_det_ptr_in_context(const MR_Word *ptr, MR_Context *ctxt,
+    MR_MemoryZone **zone_ptr, int *zone_num_ptr)
+{
+#ifdef  MR_HIGHLEVEL_CODE
+    return MR_FALSE;
+#else   /* !MR_HIGHLEVEL_CODE */
+    int             segment_number;
+    MR_MemoryZones  *remaining_zones;
+    MR_MemoryZone   *cur_zone;
+
+    remaining_zones = ctxt->MR_ctxt_prev_detstack_zones;
+    if (MR_in_zone(ptr, ctxt->MR_ctxt_detstack_zone)) {
+        if (zone_ptr != NULL) {
+            *zone_ptr = ctxt->MR_ctxt_detstack_zone;
+        }
+    } else {
+        while (remaining_zones != NULL) {
+            cur_zone = remaining_zones->MR_zones_head;
+            if (MR_in_zone(ptr, cur_zone)) {
+                if (zone_ptr != NULL) {
+                    *zone_ptr = cur_zone;
+                }
+
+                remaining_zones = remaining_zones->MR_zones_tail;
+                break;
+            }
+
+            remaining_zones = remaining_zones->MR_zones_tail;
+        }
+
+        return MR_FALSE;
+    }
+
+    if (zone_num_ptr != NULL) {
+        segment_number = 0;
+        while (remaining_zones != NULL) {
+            segment_number++;
+            remaining_zones = remaining_zones->MR_zones_tail;
+        }
+
+        *zone_num_ptr = segment_number;
+    }
+
+    return MR_TRUE;
+#endif  /* !MR_HIGHLEVEL_CODE */
+}
+
+static MR_bool
+MR_find_zone_for_nondet_ptr_in_context(const MR_Word *ptr, MR_Context *ctxt,
+    MR_MemoryZone **zone_ptr, int *zone_num_ptr)
+{
+#ifdef  MR_HIGHLEVEL_CODE
+    return MR_FALSE;
+#else   /* !MR_HIGHLEVEL_CODE */
+    int             segment_number;
+    MR_MemoryZones  *remaining_zones;
+    MR_MemoryZone   *cur_zone;
+
+    remaining_zones = ctxt->MR_ctxt_prev_nondetstack_zones;
+    if (MR_in_zone(ptr, ctxt->MR_ctxt_nondetstack_zone)) {
+        if (zone_ptr != NULL) {
+            *zone_ptr = ctxt->MR_ctxt_nondetstack_zone;
+        }
+    } else {
+        while (remaining_zones != NULL) {
+            cur_zone = remaining_zones->MR_zones_head;
+            if (MR_in_zone(ptr, cur_zone)) {
+                if (zone_ptr != NULL) {
+                    *zone_ptr = cur_zone;
+                }
+
+                remaining_zones = remaining_zones->MR_zones_tail;
+                break;
+            }
+
+            remaining_zones = remaining_zones->MR_zones_tail;
+        }
+
+        return MR_FALSE;
+    }
+
+    if (zone_num_ptr != NULL) {
+        segment_number = 0;
+        while (remaining_zones != NULL) {
+            segment_number++;
+            remaining_zones = remaining_zones->MR_zones_tail;
+        }
+
+        *zone_num_ptr = segment_number;
+    }
+
+    return MR_TRUE;
+#endif  /* !MR_HIGHLEVEL_CODE */
+}
+
+static MR_bool
+MR_find_zone_for_det_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
+    MR_MemoryZone **zone_ptr, int *zone_num_ptr)
+{
+#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
+
+    const MR_Dlist      *item;
+    const MR_Context    *ctxt;
+
+    if (MR_find_zone_for_det_ptr_in_context(ptr,
+        MR_ENGINE(MR_eng_main_context), zone_ptr, zone_num_ptr))
+    {
+        if (ctxt_ptr != NULL) {
+            *ctxt_ptr = MR_ENGINE(MR_eng_main_context);
+        }
+
+        return MR_TRUE;
+    }
+
+    MR_for_dlist(item, MR_ENGINE(MR_eng_gen_contexts)) {
+        ctxt = (MR_Context *) MR_dlist_data(item);
+        if (MR_find_zone_for_det_ptr_in_context(ptr, ctxt,
+            zone_ptr, zone_num_ptr))
+        {
+            if (ctxt_ptr != NULL) {
+                *ctxt_ptr = ctxt;
+            }
+
+            return MR_TRUE;
+        }
+    }
+
+#else   /* !MR_USE_MINIMAL_MODEL_OWN_STACKS */
+
+    if (MR_find_zone_for_det_ptr_in_context(ptr, &MR_ENGINE(MR_eng_context),
+        zone_ptr, zone_num_ptr))
+    {
+        if (ctxt_ptr != NULL) {
+            *ctxt_ptr = &MR_ENGINE(MR_eng_context);
+        }
+
+        return MR_TRUE;
+    }
+
+#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+
+    return MR_FALSE;
+}
+
+static MR_bool
+MR_find_zone_for_nondet_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
+    MR_MemoryZone **zone_ptr, int *zone_num_ptr)
+{
+#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
+
+    const MR_Dlist      *item;
+    const MR_Context    *ctxt;
+
+    if (MR_find_zone_for_nondet_ptr_in_context(ptr,
+        MR_ENGINE(MR_eng_main_context), zone_ptr, zone_num_ptr))
+    {
+        if (ctxt_ptr != NULL) {
+            *ctxt_ptr = MR_ENGINE(MR_eng_main_context);
+        }
+
+        return MR_TRUE;
+    }
+
+    MR_for_dlist(item, MR_ENGINE(MR_eng_gen_contexts)) {
+        ctxt = (MR_Context *) MR_dlist_data(item);
+        if (MR_find_zone_for_nondet_ptr_in_context(ptr, ctxt,
+            zone_ptr, zone_num_ptr))
+        {
+            if (ctxt_ptr != NULL) {
+                *ctxt_ptr = ctxt;
+            }
+
+            return MR_TRUE;
+        }
+    }
+
+#else   /* !MR_USE_MINIMAL_MODEL_OWN_STACKS */
+
+    if (MR_find_zone_for_nondet_ptr_in_context(ptr, &MR_ENGINE(MR_eng_context),
+        zone_ptr, zone_num_ptr))
+    {
+        if (ctxt_ptr != NULL) {
+            *ctxt_ptr = &MR_ENGINE(MR_eng_context);
+        }
+
+        return MR_TRUE;
+    }
+
+#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+
+    return MR_FALSE;
+}
+

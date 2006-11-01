@@ -259,8 +259,8 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         Instr = prune_tickets_to(_),
         StdInstr = Instr
     ;
-        Instr = incr_sp(NumSlots, _),
-        StdInstr = incr_sp(NumSlots, "")
+        Instr = incr_sp(NumSlots, _, Kind),
+        StdInstr = incr_sp(NumSlots, "", Kind)
     ;
         Instr = decr_sp(_),
         StdInstr = Instr

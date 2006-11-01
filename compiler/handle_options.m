@@ -1362,6 +1362,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % negation, disjunction, or commit.
         option_implies(use_trail, middle_rec, bool(no), !Globals),
 
+        % The cut-down stack frames used by middle recursion optimization
+        % don't include return addresses. Since stack extension arranges for
+        % the return to the old stack segments by overriding the return
+        % address, stack extension via stack segments and middle recursion
+        % optimization are incompatible.
+        option_implies(stack_segments, middle_rec, bool(no), !Globals),
+
         % Stack copy minimal model tabling needs to be able to rewrite all
         % the redoips in a given nondet stack segments. If we allow hijacks,
         % some of these redoips may have been saved in ordinary framevars,
@@ -1986,17 +1993,16 @@ convert_grade_option(GradeString, Options0, Options) :-
     set.init(NoComps),
     list.foldl2((pred(CompStr::in, Opts0::in, Opts::out,
             CompSet0::in, CompSet::out) is semidet :-
-        grade_component_table(CompStr, Comp, CompOpts, MaybeTargets,
-            _),
-            % Check that the component isn't mentioned
-            % more than once.
+        grade_component_table(CompStr, Comp, CompOpts, MaybeTargets, _),
+
+        % Check that the component isn't mentioned more than once.
         \+ set.member(Comp, CompSet0),
         set.insert(CompSet0, Comp, CompSet),
         add_option_list(CompOpts, Opts0, Opts1),
 
-            % XXX Here the behaviour matches what used to happen
-            % and that is to only set the target option iff there
-            % was only one possible target.  Is this a bug?
+        % XXX Here the behaviour matches what used to happen and that is
+        % to only set the target option iff there was only one possible target.
+        % Is this a bug?
         ( MaybeTargets = yes([Target]) ->
             add_option_list([target - Target], Opts1, Opts)
         ;
@@ -2060,28 +2066,23 @@ compute_grade_components(Options, GradeComponents) :-
     solutions.solutions((pred(CompData::out) is nondet :-
         grade_component_table(Name, Comp, CompOpts, MaybeTargets,
             IncludeInGradeString),
-            % For possible component of the grade string
-            % include it in the actual grade string if all
-            % the option setting that it implies are true.
-            % ie
-            %   all [Opt, Value] (
-            %       member(Opt - Value, CompOpts) =>
-            %       map.search(Options, Opt, Value)
-            %   )
-        \+ (
-            list.member(Opt - Value, CompOpts),
-            \+ map.search(Options, Opt, Value)
+
+        % For a possible component of the grade string include, it in the
+        % actual grade string if all the option settings that it implies
+        % are true.
+        all [Opt, Value] (
+            member(Opt - Value, CompOpts)
+        =>
+            map.search(Options, Opt, Value)
         ),
-            % Don't include `.mm' or `.dmm' in grade strings
-            % because they are just synonyms for `.mmsc' and
-            % `.dmmsc' respectively.
-            %
+
+        % Don't include `.mm' or `.dmm' in grade strings because they are just
+        % synonyms for `.mmsc' and `.dmmsc' respectively.
         IncludeInGradeString = yes,
 
-            % When checking gcc_ext there exist grades which
-            % can have more then one possible target, ensure that
-            % the target in the options table matches one of the
-            % possible targets.
+        % When checking gcc_ext there exist grades which can have more than one
+        % possible target, ensure that the target in the options table matches
+        % one of the possible targets.
         (
             MaybeTargets = yes(Targets),
             list.member(Target, Targets),
@@ -2108,7 +2109,7 @@ compute_grade_components(Options, GradeComponents) :-
 :- mode grade_component_table(out, in, out, out, out) is multi.
 :- mode grade_component_table(out, out, out, out, out) is multi.
 
-    % Base components
+    % Base components.
     % These specify the basic compilation model we use,
     % including the choice of back-end and the use of gcc extensions.
 grade_component_table("none", comp_gcc_ext, [
@@ -2219,13 +2220,13 @@ grade_component_table("java", comp_gcc_ext, [
     % Parallelism/multithreading components.
 grade_component_table("par", comp_par, [parallel - bool(yes)], no, yes).
 
-    % GC components
+    % GC components.
 grade_component_table("gc", comp_gc, [gc - string("boehm")], no, yes).
 grade_component_table("gcd", comp_gc, [gc - string("boehm_debug")], no, yes).
 grade_component_table("mps", comp_gc, [gc - string("mps")], no, yes).
 grade_component_table("agc", comp_gc, [gc - string("accurate")], no, yes).
 
-    % Profiling components
+    % Profiling components.
 grade_component_table("prof", comp_prof,
     [profile_time - bool(yes), profile_calls - bool(yes),
     profile_memory - bool(no), profile_deep - bool(no)], no, yes).
@@ -2245,7 +2246,7 @@ grade_component_table("profdeep", comp_prof,
     [profile_time - bool(no), profile_calls - bool(no),
     profile_memory - bool(no), profile_deep - bool(yes)], no, yes).
 
-    % Term size components
+    % Term size components.
 grade_component_table("tsw", comp_term_size,
     [record_term_sizes_as_words - bool(yes),
     record_term_sizes_as_cells - bool(no)], no, yes).
@@ -2253,13 +2254,13 @@ grade_component_table("tsc", comp_term_size,
     [record_term_sizes_as_words - bool(no),
     record_term_sizes_as_cells - bool(yes)], no, yes).
 
-    % Trailing components
+    % Trailing components.
 grade_component_table("tr", comp_trail, [use_trail - bool(yes)], no, yes).
 
-    % Tag reservation components
+    % Tag reservation components.
 grade_component_table("rt", comp_tag, [reserve_tag - bool(yes)], no, yes).
 
-    % Minimal model tabling components
+    % Minimal model tabling components.
     % NOTE: we do not include `.mm' and `.dmm' in grade strings
     % because they are just synonyms for `.mmsc' and `.dmmsc'.
     %
@@ -2288,22 +2289,26 @@ grade_component_table("dmmos", comp_minimal_model,
     use_minimal_model_own_stacks - bool(yes),
     minimal_model_debug - bool(yes)], no, yes).
 
-    % Pic reg components
+    % Pic reg components.
 grade_component_table("picreg", comp_pic, [pic_reg - bool(yes)], no, yes).
 
-    % Debugging/Tracing components
+    % Debugging/Tracing components.
 grade_component_table("decldebug", comp_trace,
     [exec_trace - bool(yes), decl_debug - bool(yes)], no, yes).
 grade_component_table("debug", comp_trace,
     [exec_trace - bool(yes), decl_debug - bool(no)], no, yes).
 
-    % Stack extension components
+    % Low (target) level debugging components.
 grade_component_table("ll_debug", comp_lowlevel,
     [target_debug - bool(yes)], no, yes).
 
-    % Stack extension components
+    % Stack extension components.
 grade_component_table("exts", comp_stack_extend,
-    [extend_stacks_when_needed - bool(yes)], no, yes).
+    [extend_stacks_when_needed - bool(yes), stack_segments - bool(no)],
+    no, yes).
+grade_component_table("stseg", comp_stack_extend,
+    [extend_stacks_when_needed - bool(no), stack_segments - bool(yes)],
+    no, yes).
 
 :- pred reset_grade_options(option_table::in, option_table::out) is det.
 

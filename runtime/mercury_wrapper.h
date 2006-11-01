@@ -194,9 +194,9 @@ extern	int		mercury_exit_status;
 /* sizes of the data areas, *including* the red zone size */
 extern	size_t		MR_heap_size;
 extern	size_t		MR_detstack_size;
-extern	size_t		MR_nondstack_size;
+extern	size_t		MR_nondetstack_size;
 extern	size_t		MR_small_detstack_size;
-extern	size_t		MR_small_nondstack_size;
+extern	size_t		MR_small_nondetstack_size;
 extern	size_t		MR_solutions_heap_size;
 extern	size_t		MR_trail_size;
 extern	size_t		MR_global_heap_size;
@@ -205,12 +205,12 @@ extern	size_t		MR_genstack_size;
 extern	size_t		MR_cutstack_size;
 extern	size_t		MR_pnegstack_size;
 extern	size_t		MR_gen_detstack_size;
-extern	size_t		MR_gen_nonstack_size;
+extern	size_t		MR_gen_nondetstack_size;
 
 /* sizes of the red zones */
 extern	size_t		MR_heap_zone_size;
 extern	size_t		MR_detstack_zone_size;
-extern	size_t		MR_nondstack_zone_size;
+extern	size_t		MR_nondetstack_zone_size;
 extern	size_t		MR_solutions_heap_zone_size;
 extern	size_t		MR_trail_zone_size;
 extern	size_t		MR_global_heap_zone_size;
@@ -219,13 +219,16 @@ extern	size_t		MR_genstack_zone_size;
 extern	size_t		MR_cutstack_zone_size;
 extern	size_t		MR_pnegstack_zone_size;
 extern	size_t		MR_gen_detstack_zone_size;
-extern	size_t		MR_gen_nonstack_zone_size;
+extern	size_t		MR_gen_nondetstack_zone_size;
 
 /* heap margin for MLDS->C accurate GC (documented in mercury_wrapper.c) */
 extern	size_t		MR_heap_margin_size;
 
 /* heap expansion factor for accurate GC (see mercury_accurate_gc.c) */
 extern  double		MR_heap_expansion_factor;
+
+/* margin for the stack segment test (documented in mercury_wrapper.c) */
+extern	size_t		MR_stack_margin_size;
 
 /* number of outstanding contexts we can create per thread (soft limit) */
 extern	MR_Unsigned	MR_contexts_per_thread;

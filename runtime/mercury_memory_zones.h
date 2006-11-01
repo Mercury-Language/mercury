@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -89,8 +89,12 @@ typedef MR_bool	MR_ZoneHandler(MR_Word *addr, MR_MemoryZone *zone,
 ** gc_threshold	This field, which is only used for heap zones, points to
 ** 		MR_heap_margin_size bytes before MR_zone_end (which is defined
 ** 		as one the fields above by the macros below). It is used to
-** 		decide when to do garbage collection without incurrent the
+** 		decide when to do garbage collection without incurring the
 ** 		expense of a subtraction on every allocation.
+**
+** extend_threshold
+** 		This field, which is only used for stack zones, points to
+** 		MR_stack_margin_size bytes before MR_zone_end.
 */
 
 struct MR_MemoryZone_Struct {
@@ -116,6 +120,10 @@ struct MR_MemoryZone_Struct {
 #if defined(MR_NATIVE_GC) && defined(MR_HIGHLEVEL_CODE)
 	char			*MR_zone_gc_threshold;
 				/* == MR_zone_end - MR_heap_margin_size */
+#endif
+#if defined(MR_STACK_SEGMENTS) && !defined(MR_HIGHLEVEL_CODE)
+	char			*MR_zone_extend_threshold;
+				/* == MR_zone_end - MR_stack_margin_size */
 #endif
 };
 
@@ -194,7 +202,7 @@ extern	MR_MemoryZone	*MR_create_zone(const char *name, int id,
 ** has the same behaviour as MR_create_zone, except instead of allocating
 ** the memory, it takes a pointer to a region of memory that must be at
 ** least Size + MR_unit[*] bytes, or if MR_PROTECTPAGE is defined, then it
-** must be at least Size + 2 * unit[*] bytes.
+** must be at least Size + 2 * MR_unit[*] bytes.
 ** If it fails to protect the redzone then it exits.
 ** If MR_CHECK_OVERFLOW_VIA_MPROTECT is unavailable, then the last two
 ** arguments are ignored.
@@ -250,6 +258,12 @@ extern	void		MR_debug_memory(FILE *fp);
 */
 
 extern	void		MR_debug_memory_zone(FILE *fp, MR_MemoryZone *zone);
+
+/*
+** Return the given zone to the list of free zones.
+*/
+
+extern	void		MR_unget_zone(MR_MemoryZone *zone);
 
 /*
 ** MR_next_offset() returns sucessive offsets across the primary cache. Useful

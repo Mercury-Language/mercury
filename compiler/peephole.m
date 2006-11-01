@@ -387,7 +387,7 @@ peephole.match(assign(redoip_slot(lval(Base)), Redoip), Comment, _,
     %   succip = detstackvar(N)
     %   decr_sp N
     %
-peephole.match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
+peephole.match(incr_sp(N, _, _), _, InvalidPatterns, Instrs0, Instrs) :-
     \+ list.member(incr_sp, InvalidPatterns),
     ( opt_util.no_stackvars_til_decr_sp(Instrs0, N, Between, Remain) ->
         Instrs = Between ++ Remain

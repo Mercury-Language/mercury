@@ -847,7 +847,7 @@ instr_refers_to_stack(Uinstr - _) = Refers :-
         Uinstr = prune_tickets_to(Rval),
         Refers = rval_refers_stackvars(Rval)
     ;
-        Uinstr = incr_sp(_, _),
+        Uinstr = incr_sp(_, _, _),
         Refers = yes
     ;
         Uinstr = decr_sp(_),
@@ -1000,7 +1000,7 @@ can_instr_branch_away(discard_ticket, no).
 can_instr_branch_away(prune_ticket, no).
 can_instr_branch_away(mark_ticket_stack(_), no).
 can_instr_branch_away(prune_tickets_to(_), no).
-can_instr_branch_away(incr_sp(_, _), no).
+can_instr_branch_away(incr_sp(_, _, _), no).
 can_instr_branch_away(decr_sp(_), no).
 can_instr_branch_away(decr_sp_and_return(_), yes).
 can_instr_branch_away(init_sync_term(_, _), no).
@@ -1076,7 +1076,7 @@ can_instr_fall_through(discard_ticket, yes).
 can_instr_fall_through(prune_ticket, yes).
 can_instr_fall_through(mark_ticket_stack(_), yes).
 can_instr_fall_through(prune_tickets_to(_), yes).
-can_instr_fall_through(incr_sp(_, _), yes).
+can_instr_fall_through(incr_sp(_, _, _), yes).
 can_instr_fall_through(decr_sp(_), yes).
 can_instr_fall_through(decr_sp_and_return(_), no).
 can_instr_fall_through(init_sync_term(_, _), yes).
@@ -1122,7 +1122,7 @@ can_use_livevals(discard_ticket, no).
 can_use_livevals(prune_ticket, no).
 can_use_livevals(mark_ticket_stack(_), no).
 can_use_livevals(prune_tickets_to(_), no).
-can_use_livevals(incr_sp(_, _), no).
+can_use_livevals(incr_sp(_, _, _), no).
 can_use_livevals(decr_sp(_), no).
 can_use_livevals(decr_sp_and_return(_), yes).
 can_use_livevals(init_sync_term(_, _), no).
@@ -1185,7 +1185,7 @@ instr_labels_2(discard_ticket, [], []).
 instr_labels_2(prune_ticket, [], []).
 instr_labels_2(mark_ticket_stack(_), [], []).
 instr_labels_2(prune_tickets_to(_), [], []).
-instr_labels_2(incr_sp(_, _), [], []).
+instr_labels_2(incr_sp(_, _, _), [], []).
 instr_labels_2(decr_sp(_), [], []).
 instr_labels_2(decr_sp_and_return(_), [], []) :-
     % XXX decr_sp_and_return does refer to a code addr, but the code addr it
@@ -1246,7 +1246,7 @@ possible_targets(discard_ticket, [], []).
 possible_targets(prune_ticket, [], []).
 possible_targets(mark_ticket_stack(_), [], []).
 possible_targets(prune_tickets_to(_), [], []).
-possible_targets(incr_sp(_, _), [], []).
+possible_targets(incr_sp(_, _, _), [], []).
 possible_targets(decr_sp(_), [], []).
 possible_targets(decr_sp_and_return(_), [], []) :-
     % See the comment in instr_labels_2.
@@ -1319,7 +1319,7 @@ instr_rvals_and_lvals(discard_ticket, [], []).
 instr_rvals_and_lvals(prune_ticket, [], []).
 instr_rvals_and_lvals(mark_ticket_stack(Lval), [], [Lval]).
 instr_rvals_and_lvals(prune_tickets_to(Rval), [Rval], []).
-instr_rvals_and_lvals(incr_sp(_, _), [], []).
+instr_rvals_and_lvals(incr_sp(_, _, _), [], []).
 instr_rvals_and_lvals(decr_sp(_), [], []).
 instr_rvals_and_lvals(decr_sp_and_return(_), [], []).
 instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
@@ -1463,7 +1463,7 @@ count_temps_instr(mark_ticket_stack(Lval), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(prune_tickets_to(Rval), !R, !F) :-
     count_temps_rval(Rval, !R, !F).
-count_temps_instr(incr_sp(_, _), !R, !F).
+count_temps_instr(incr_sp(_, _, _), !R, !F).
 count_temps_instr(decr_sp(_), !R, !F).
 count_temps_instr(decr_sp_and_return(_), !R, !F).
 count_temps_instr(init_sync_term(Lval, _), !R, !F) :-
@@ -1520,7 +1520,7 @@ has_both_incr_decr_sp(Instrs) :-
 
 has_both_incr_decr_sp_2([], !HasIncr, !HasDecr).
 has_both_incr_decr_sp_2([Uinstr - _ | Instrs], !HasIncr, !HasDecr) :-
-    ( Uinstr = incr_sp(_, _) ->
+    ( Uinstr = incr_sp(_, _, _) ->
         !:HasIncr = yes
     ;
         true
@@ -1556,7 +1556,7 @@ touches_nondet_ctrl_instr(Uinstr, Touch) :-
         ; Uinstr = discard_ticket
         ; Uinstr = prune_tickets_to(_)
         ; Uinstr = mark_ticket_stack(_)
-        ; Uinstr = incr_sp(_, _)
+        ; Uinstr = incr_sp(_, _, _)
         ; Uinstr = decr_sp(_)
         ; Uinstr = decr_sp_and_return(_)
         ),
@@ -1954,7 +1954,7 @@ replace_labels_instr(prune_tickets_to(Rval0), ReplMap, ReplData,
         ReplData = no,
         Rval = Rval0
     ).
-replace_labels_instr(incr_sp(Size, Msg), _, _, incr_sp(Size, Msg)).
+replace_labels_instr(incr_sp(Size, Msg, Kind), _, _, incr_sp(Size, Msg, Kind)).
 replace_labels_instr(decr_sp(Size), _, _, decr_sp(Size)).
 replace_labels_instr(decr_sp_and_return(Size), _, _, decr_sp_and_return(Size)).
 replace_labels_instr(init_sync_term(T, N), _, _, init_sync_term(T, N)).

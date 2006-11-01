@@ -411,7 +411,7 @@
             %   MR_ticket_counter = rval;
             %   MR_ticket_high_water = MR_ticket_counter;
 
-    ;       incr_sp(int, string)
+    ;       incr_sp(int, string, stack_incr_kind)
             % Increment the det stack pointer. The string is the name of the
             % procedure, for use in collecting statistics about stack frame
             % sizes.
@@ -492,6 +492,12 @@
             % The synchronisation term is specified by the given lval.
             % The label gives the address of the code following the parallel
             % conjunction. 
+
+:- type stack_incr_kind
+    --->    stack_incr_leaf         % The incr_sp creates the stack frame
+                                    % of a leaf procedure.
+    ;       stack_incr_nonleaf.     % The incr_sp creates the stack frame
+                                    % of a nonleaf procedure.
 
 :- type nondet_frame_info
     --->    temp_frame(

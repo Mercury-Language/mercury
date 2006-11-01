@@ -1,15 +1,17 @@
 #---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
 # Copyright (C) 1997-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 #
 # parse_grade_options.sh-subr:
-#	An `sh' subroutine for parsing grade-related options.
-#	Used by the `ml', `mgnuc' and `c2init' scripts.
+#   An `sh' subroutine for parsing grade-related options.
+#   Used by the `ml', `mgnuc' and `c2init' scripts.
 #
-#	The code here should be inserted in the case statement in a script's
-#	option-parsing loop.
+#   The code here should be inserted in the case statement in a script's
+#   option-parsing loop.
 #
 # IMPORTANT: any changes to the handling of grades here may also require
 # changes to all the files indicated by runtime/mercury_grade.h.
@@ -19,470 +21,479 @@
 #
 #---------------------------------------------------------------------------#
 
-	--target)
-		shift
-		case "$1" in
-			asm)
-				target=asm ;;
-			c|C)
-				target=c ;;
-			il|IL)
-				target=il ;;
-			java|Java)
-				target=java ;;
-			*)
-				echo "$0: invalid target \`$1'" 1>&2
-				exit 1
-				;;
-		esac
-		;;
+    --target)
+        shift
+        case "$1" in
+            asm)
+                target=asm ;;
+            c|C)
+                target=c ;;
+            il|IL)
+                target=il ;;
+            java|Java)
+                target=java ;;
+            *)
+                echo "$0: invalid target \`$1'" 1>&2
+                exit 1
+                ;;
+        esac
+        ;;
 
-	--il|--IL|--il-only|--IL-only)
-		target=il ;;
+    --il|--IL|--il-only|--IL-only)
+        target=il ;;
 
-	--java|--Java|--java-only|--Java-only)
-		target=java ;;
+    --java|--Java|--java-only|--Java-only)
+        target=java ;;
 
-	--high-level-code|-H)
-		highlevel_code=true ;;
-	--no-high-level-code|-H-)
-		highlevel_code=false ;;
+    --high-level-code|-H)
+        highlevel_code=true ;;
+    --no-high-level-code|-H-)
+        highlevel_code=false ;;
 
-	--high-level-data)
-		highlevel_data=true ;;
-	--no-high-level-data)
-		highlevel_data=false ;;
+    --high-level-data)
+        highlevel_data=true ;;
+    --no-high-level-data)
+        highlevel_data=false ;;
 
-	--gcc-nested-functions)
-		gcc_nested_functions=true ;;
-	--no-gcc-nested-functions)
-		gcc_nested_functions=false ;;
+    --gcc-nested-functions)
+        gcc_nested_functions=true ;;
+    --no-gcc-nested-functions)
+        gcc_nested_functions=false ;;
 
-	--asm-labels)
-		asm_labels=true ;;
-	--no-asm-labels)
-		asm_labels=false ;;
+    --asm-labels)
+        asm_labels=true ;;
+    --no-asm-labels)
+        asm_labels=false ;;
 
-	--gcc-non-local-gotos)
-		non_local_gotos=true ;;
-	--no-gcc-non-local-gotos)
-		non_local_gotos=false ;;
+    --gcc-non-local-gotos)
+        non_local_gotos=true ;;
+    --no-gcc-non-local-gotos)
+        non_local_gotos=false ;;
 
-	--gcc-global-registers)
-		global_regs=true ;;
-	--no-gcc-global-registers)
-		global_regs=false ;;
+    --gcc-global-registers)
+        global_regs=true ;;
+    --no-gcc-global-registers)
+        global_regs=false ;;
 
-	--gc)
-		shift
-		case "$1" in
-			accurate|conservative|boehm|boehm_debug|mps|none|automatic)
-				gc_method=$1 ;;
-			*)
-				echo "$0: invalid gc method \`$1'" 1>&2
-				exit 1
-				;;
-		esac
-		;;
+    --gc)
+        shift
+        case "$1" in
+            accurate|conservative|boehm|boehm_debug|mps|none|automatic)
+                gc_method=$1 ;;
+            *)
+                echo "$0: invalid gc method \`$1'" 1>&2
+                exit 1
+                ;;
+        esac
+        ;;
 
-	--parallel)
-		thread_safe=true ;;
+    --parallel)
+        thread_safe=true ;;
 
-	-p|--profiling|--time-profiling)
-		profile_time=true
-		profile_calls=true
-		profile_memory=false
-		profile_deep=false
-		;;
-	--memory-profiling)
-		profile_time=false
-		profile_calls=true
-		profile_memory=true
-		profile_deep=false
-		;;
-	--deep-profiling)
-		profile_time=false
-		profile_calls=false
-		profile_memory=false
-		profile_deep=true
-		;;
-	-p-|--no-profiling)
-		profile_time=false
-		profile_calls=false
-		profile_memory=false
-		profile_deep=false
-		;;
-	--profile-time)
-		profile_time=true ;;
-	--no-profile-time)
-		profile_time=false ;;
-	--profile-calls)
-		profile_calls=true ;;
-	--no-profile-calls)
-		profile_calls=false ;;
-	--profile-memory)
-		profile_memory=true ;;
-	--no-profile-memory)
-		profile_memory=false ;;
-	--profile-deep)
-		profile_deep=true ;;
-	--no-profile-deep)
-		profile_deep=false ;;
+    -p|--profiling|--time-profiling)
+        profile_time=true
+        profile_calls=true
+        profile_memory=false
+        profile_deep=false
+        ;;
+    --memory-profiling)
+        profile_time=false
+        profile_calls=true
+        profile_memory=true
+        profile_deep=false
+        ;;
+    --deep-profiling)
+        profile_time=false
+        profile_calls=false
+        profile_memory=false
+        profile_deep=true
+        ;;
+    -p-|--no-profiling)
+        profile_time=false
+        profile_calls=false
+        profile_memory=false
+        profile_deep=false
+        ;;
+    --profile-time)
+        profile_time=true ;;
+    --no-profile-time)
+        profile_time=false ;;
+    --profile-calls)
+        profile_calls=true ;;
+    --no-profile-calls)
+        profile_calls=false ;;
+    --profile-memory)
+        profile_memory=true ;;
+    --no-profile-memory)
+        profile_memory=false ;;
+    --profile-deep)
+        profile_deep=true ;;
+    --no-profile-deep)
+        profile_deep=false ;;
 
-	--record-term-sizes-as-words)
-		record_term_sizes_as_words=true ;;
-	--no-record-term-sizes-as-words)
-		record_term_sizes_as_words=false ;;
-	--record-term-sizes-as-cells)
-		record_term_sizes_as_cells=true ;;
-	--no-record-term-sizes-as-cells)
-		record_term_sizes_as_cells=false ;;
+    --record-term-sizes-as-words)
+        record_term_sizes_as_words=true ;;
+    --no-record-term-sizes-as-words)
+        record_term_sizes_as_words=false ;;
+    --record-term-sizes-as-cells)
+        record_term_sizes_as_cells=true ;;
+    --no-record-term-sizes-as-cells)
+        record_term_sizes_as_cells=false ;;
 
-	--use-trail)
-		use_trail=true ;;
-	--no-use-trail)
-		use_trail=false ;;
+    --use-trail)
+        use_trail=true ;;
+    --no-use-trail)
+        use_trail=false ;;
 
-	--reserve-tag)
-		reserve_tag=true ;;
-	--no-reserve-tag)
-		reserve_tag=false ;;
+    --reserve-tag)
+        reserve_tag=true ;;
+    --no-reserve-tag)
+        reserve_tag=false ;;
 
-	--use-minimal-model-stack-copy)
-		use_minimal_model_stack_copy=true ;;
-	--no-use-minimal-model-stack-copy)
-		use_minimal_model_stack_copy=false ;;
+    --use-minimal-model-stack-copy)
+        use_minimal_model_stack_copy=true ;;
+    --no-use-minimal-model-stack-copy)
+        use_minimal_model_stack_copy=false ;;
 
-	--use-minimal-model-own-stacks)
-		use_minimal_model_own_stacks=true ;;
-	--no-use-minimal-model-own-stacks)
-		use_minimal_model_own_stacks=false ;;
+    --use-minimal-model-own-stacks)
+        use_minimal_model_own_stacks=true ;;
+    --no-use-minimal-model-own-stacks)
+        use_minimal_model_own_stacks=false ;;
 
-	--minimal-model-debug)
-		minimal_model_debug=true ;;
-	--no-minimal-model-debug)
-		minimal_model_debug=false ;;
+    --minimal-model-debug)
+        minimal_model_debug=true ;;
+    --no-minimal-model-debug)
+        minimal_model_debug=false ;;
 
-	--pic-reg)
-		pic_reg=true ;;
-	--no-pic-reg)
-		pic_reg=false ;;
+    --pic-reg)
+        pic_reg=true ;;
+    --no-pic-reg)
+        pic_reg=false ;;
 
-	--debug)
-		debug=true ;;
-	--no-debug)
-		debug=false ;;
+    --debug)
+        debug=true ;;
+    --no-debug)
+        debug=false ;;
 
-	--decl-debug)
-		decl_debug=true ;;
-	--no-decl-debug)
-		decl_debug=false ;;
+    --decl-debug)
+        decl_debug=true ;;
+    --no-decl-debug)
+        decl_debug=false ;;
 
-	--low-level-debug)
-		ll_debug= true ;;
-	--no-low-level-debug)
-		ll_debug= false ;;
+    --low-level-debug)
+        ll_debug= true ;;
+    --no-low-level-debug)
+        ll_debug= false ;;
 
-	--extend-stacks-when-needed)
-		extend_stacks=true ;;
-	--no-extend-stacks-when-needed)
-		extend_stacks=false ;;
+    --extend-stacks-when-needed)
+        extend_stacks=true ;;
+    --no-extend-stacks-when-needed)
+        extend_stacks=false ;;
 
-	-s|--grade)
-		shift
-		grade="$1";
+    --stack-segments)
+        stack_segments=true ;;
+    --no-stack-segments)
+        stack_segments=false ;;
 
-		# Convert a grade to a set of options.
-		#
-		# IMPORTANT: any changes to the handling of grades here
-		# may also require changes to all the files indicated by
-		# runtime/mercury_grade.h.
+    -s|--grade)
+        shift
+        grade="$1";
 
-		target=c
-		highlevel_code=false
-		gcc_nested_functions=false
-		highlevel_data=false
-		asm_labels=false
-		non_local_gotos=false
-		global_regs=false
-		thread_safe=false
-		gc_method=none
-		profile_time=false
-		profile_calls=false
-		profile_memory=false
-		profile_deep=false
-		record_term_sizes_as_words=false
-		record_term_sizes_as_cells=false
-		use_trail=false
-		reserve_tag=false
-		use_minimal_model_stack_copy=false
-		use_minimal_model_own_stacks=false
-		minimal_model_debug=false
-		pic_reg=false
-		debug=false
-		decl_debug=false
-		ll_debug=false
-		extend_stacks=false
+        # Convert a grade to a set of options.
+        #
+        # IMPORTANT: any changes to the handling of grades here
+        # may also require changes to all the files indicated by
+        # runtime/mercury_grade.h.
 
-		grade_pieces=`echo $grade | tr '.' ' '`
-		for grade_piece in $grade_pieces
-		do
-			case "$grade_piece" in
-				il)
-					target=il
-					asm_labels=false
-					non_local_gotos=false
-					global_regs=false
-					highlevel_code=true
-					gcc_nested_functions=false
-					highlevel_data=true
-					;;
-				ilc)
-					target=il
-					asm_labels=false
-					non_local_gotos=false
-					global_regs=false
-					highlevel_code=true
-					gcc_nested_functions=false
-					highlevel_data=false
-					;;
-				java)
-					target=java
-					asm_labels=false
-					non_local_gotos=false
-					global_regs=false
-					highlevel_code=true
-					gcc_nested_functions=false
-					highlevel_data=true
-					;;
-				hl)
-					asm_labels=false
-					non_local_gotos=false
-					global_regs=false
-					highlevel_code=true
-					gcc_nested_functions=false
-					highlevel_data=true
-					;;
-				hlc)
-					asm_labels=false
-					non_local_gotos=false
-					global_regs=false
-					highlevel_code=true
-					gcc_nested_functions=false
-					highlevel_data=false
-					;;
-				hl_nest)
-					asm_labels=false
-					non_local_gotos=false
-					global_regs=false
-					highlevel_code=true
-					gcc_nested_functions=true
-					highlevel_data=true
-					;;
-				hlc_nest)
-					asm_labels=false
-					non_local_gotos=false
-					global_regs=false
-					highlevel_code=true
-					gcc_nested_functions=true
-					highlevel_data=false
-					;;
-				asm_fast)
-					target=c
-					asm_labels=true
-					non_local_gotos=true
-					global_regs=true
-					highlevel_code=false
-					gcc_nested_functions=false
-					highlevel_data=false
-					;;
-				asm_jump)
-					target=c
-					asm_labels=true
-					non_local_gotos=true
-					global_regs=false
-					highlevel_code=false
-					gcc_nested_functions=false
-					highlevel_data=false
-					;;
-				fast)
-					target=c
-					asm_labels=false
-					non_local_gotos=true
-					global_regs=true
-					highlevel_code=false
-					gcc_nested_functions=false
-					highlevel_data=false
-					;;
-				jump)
-					target=c
-					asm_labels=false
-					non_local_gotos=true
-					global_regs=false
-					highlevel_code=false
-					gcc_nested_functions=false
-					highlevel_data=false
-					;;
-				reg)
-					target=c
-					asm_labels=false
-					non_local_gotos=false
-					global_regs=true
-					highlevel_code=false
-					gcc_nested_functions=false
-					highlevel_data=false
-					;;
-				none)
-					target=c
-					asm_labels=false
-					non_local_gotos=false
-					global_regs=false
-					highlevel_code=false
-					gcc_nested_functions=false
-					highlevel_data=false
-					;;
+        target=c
+        highlevel_code=false
+        gcc_nested_functions=false
+        highlevel_data=false
+        asm_labels=false
+        non_local_gotos=false
+        global_regs=false
+        thread_safe=false
+        gc_method=none
+        profile_time=false
+        profile_calls=false
+        profile_memory=false
+        profile_deep=false
+        record_term_sizes_as_words=false
+        record_term_sizes_as_cells=false
+        use_trail=false
+        reserve_tag=false
+        use_minimal_model_stack_copy=false
+        use_minimal_model_own_stacks=false
+        minimal_model_debug=false
+        pic_reg=false
+        debug=false
+        decl_debug=false
+        ll_debug=false
+        extend_stacks=false
+        stack_segments=false
 
-				par)
-					thread_safe=true
-					;;
+        grade_pieces=`echo $grade | tr '.' ' '`
+        for grade_piece in $grade_pieces
+        do
+            case "$grade_piece" in
+                il)
+                    target=il
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=true
+                    gcc_nested_functions=false
+                    highlevel_data=true
+                    ;;
+                ilc)
+                    target=il
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=true
+                    gcc_nested_functions=false
+                    highlevel_data=false
+                    ;;
+                java)
+                    target=java
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=true
+                    gcc_nested_functions=false
+                    highlevel_data=true
+                    ;;
+                hl)
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=true
+                    gcc_nested_functions=false
+                    highlevel_data=true
+                    ;;
+                hlc)
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=true
+                    gcc_nested_functions=false
+                    highlevel_data=false
+                    ;;
+                hl_nest)
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=true
+                    gcc_nested_functions=true
+                    highlevel_data=true
+                    ;;
+                hlc_nest)
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=true
+                    gcc_nested_functions=true
+                    highlevel_data=false
+                    ;;
+                asm_fast)
+                    target=c
+                    asm_labels=true
+                    non_local_gotos=true
+                    global_regs=true
+                    highlevel_code=false
+                    gcc_nested_functions=false
+                    highlevel_data=false
+                    ;;
+                asm_jump)
+                    target=c
+                    asm_labels=true
+                    non_local_gotos=true
+                    global_regs=false
+                    highlevel_code=false
+                    gcc_nested_functions=false
+                    highlevel_data=false
+                    ;;
+                fast)
+                    target=c
+                    asm_labels=false
+                    non_local_gotos=true
+                    global_regs=true
+                    highlevel_code=false
+                    gcc_nested_functions=false
+                    highlevel_data=false
+                    ;;
+                jump)
+                    target=c
+                    asm_labels=false
+                    non_local_gotos=true
+                    global_regs=false
+                    highlevel_code=false
+                    gcc_nested_functions=false
+                    highlevel_data=false
+                    ;;
+                reg)
+                    target=c
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=true
+                    highlevel_code=false
+                    gcc_nested_functions=false
+                    highlevel_data=false
+                    ;;
+                none)
+                    target=c
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=false
+                    gcc_nested_functions=false
+                    highlevel_data=false
+                    ;;
 
-				agc)
-					gc_method=accurate
-					;;
-				mps)
-					gc_method=mps
-					;;
-				gc)
-					gc_method=boehm
-					;;
-				gcd)
-					gc_method=boehm_debug
-					;;
-				nogc)
-					gc_method=none
-					;;
+                par)
+                    thread_safe=true
+                    ;;
 
-				memprof)
-					profile_time=false
-					profile_calls=true
-					profile_memory=true
-					profile_deep=false
-					;;
-				prof)
-					profile_time=true
-					profile_calls=true
-					profile_memory=false
-					profile_deep=false
-					;;
-				proftime)	
-					profile_time=true
-					profile_calls=false
-					profile_memory=false
-					profile_deep=false
-					;;
-				profcalls)	
-					profile_time=false
-					profile_calls=true
-					profile_memory=false
-					profile_deep=false
-					;;
-				profall)
-					profile_time=true
-					profile_calls=true
-					profile_memory=true
-					profile_deep=false
-					;;
-				profdeep)
-					profile_time=false
-					profile_calls=false
-					profile_memory=false
-					profile_deep=true
-					;;
+                agc)
+                    gc_method=accurate
+                    ;;
+                mps)
+                    gc_method=mps
+                    ;;
+                gc)
+                    gc_method=boehm
+                    ;;
+                gcd)
+                    gc_method=boehm_debug
+                    ;;
+                nogc)
+                    gc_method=none
+                    ;;
 
-				tsw)
-					record_term_sizes_as_words=true
-					record_term_sizes_as_cells=false
-					;;
+                memprof)
+                    profile_time=false
+                    profile_calls=true
+                    profile_memory=true
+                    profile_deep=false
+                    ;;
+                prof)
+                    profile_time=true
+                    profile_calls=true
+                    profile_memory=false
+                    profile_deep=false
+                    ;;
+                proftime)   
+                    profile_time=true
+                    profile_calls=false
+                    profile_memory=false
+                    profile_deep=false
+                    ;;
+                profcalls)  
+                    profile_time=false
+                    profile_calls=true
+                    profile_memory=false
+                    profile_deep=false
+                    ;;
+                profall)
+                    profile_time=true
+                    profile_calls=true
+                    profile_memory=true
+                    profile_deep=false
+                    ;;
+                profdeep)
+                    profile_time=false
+                    profile_calls=false
+                    profile_memory=false
+                    profile_deep=true
+                    ;;
 
-				tsc)
-					record_term_sizes_as_words=false
-					record_term_sizes_as_cells=true
-					;;
+                tsw)
+                    record_term_sizes_as_words=true
+                    record_term_sizes_as_cells=false
+                    ;;
 
-				tr)
-					use_trail=true
-					;;
+                tsc)
+                    record_term_sizes_as_words=false
+                    record_term_sizes_as_cells=true
+                    ;;
 
-				rt)
-					reserve_tag=true
-					;;
+                tr)
+                    use_trail=true
+                    ;;
 
-				mm)
-					use_minimal_model_stack_copy=true
-					minimal_model_debug=false
-					;;
+                rt)
+                    reserve_tag=true
+                    ;;
 
-				dmm)
-					use_minimal_model_stack_copy=true
-					minimal_model_debug=true
-					;;
+                mm)
+                    use_minimal_model_stack_copy=true
+                    minimal_model_debug=false
+                    ;;
 
-				mmsc)
-					use_minimal_model_stack_copy=true
-					minimal_model_debug=false
-					;;
+                dmm)
+                    use_minimal_model_stack_copy=true
+                    minimal_model_debug=true
+                    ;;
 
-				dmmsc)
-					use_minimal_model_stack_copy=true
-					minimal_model_debug=true
-					;;
+                mmsc)
+                    use_minimal_model_stack_copy=true
+                    minimal_model_debug=false
+                    ;;
 
-				mmos)
-					use_minimal_model_own_stacks=true
-					minimal_model_debug=false
-					;;
+                dmmsc)
+                    use_minimal_model_stack_copy=true
+                    minimal_model_debug=true
+                    ;;
 
-				dmmos)
-					use_minimal_model_own_stacks=true
-					minimal_model_debug=true
-					;;
+                mmos)
+                    use_minimal_model_own_stacks=true
+                    minimal_model_debug=false
+                    ;;
 
-				picreg)
-					pic_reg=true
-					;;
+                dmmos)
+                    use_minimal_model_own_stacks=true
+                    minimal_model_debug=true
+                    ;;
 
-				debug)
-					debug=true
-					;;
+                picreg)
+                    pic_reg=true
+                    ;;
 
-				decldebug)
-					decl_debug=true
-					;;
+                debug)
+                    debug=true
+                    ;;
 
-				ll_debug)
-					ll_debug=true
-					;;
+                decldebug)
+                    decl_debug=true
+                    ;;
 
-				exts)
-					extend_stacks=true
-					;;
+                ll_debug)
+                    ll_debug=true
+                    ;;
 
-				*)
-					echo "$0: unknown grade component" \
-						"\`$grade_piece'" 1>&2
-					exit 1
-					;;
-			esac
-		done
-		;;
+                exts)
+                    extend_stacks=true
+                    ;;
 
-	-s*)
-		grade="` expr $1 : '-s\(.*\)' `"
-		# just insert it as `--grade $grade' and then reparse it
-		shift
-		case $# in
-			0) set - x --grade "$grade" ;;
-			*) set - x --grade "$grade" "$@" ;;
-		esac
-		;;
+                stseg)
+                    stack_segments=true
+                    ;;
+
+                *)
+                    echo "$0: unknown grade component \`$grade_piece'" 1>&2
+                    exit 1
+                    ;;
+            esac
+        done
+        ;;
+
+    -s*)
+        grade="` expr $1 : '-s\(.*\)' `"
+        # just insert it as `--grade $grade' and then reparse it
+        shift
+        case $# in
+            0) set - x --grade "$grade" ;;
+            *) set - x --grade "$grade" "$@" ;;
+        esac
+        ;;
 

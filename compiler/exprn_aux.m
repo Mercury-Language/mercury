@@ -349,7 +349,7 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
         ; Uinstr0 = goto(_)
         ; Uinstr0 = prune_ticket
         ; Uinstr0 = discard_ticket
-        ; Uinstr0 = incr_sp(_, _)
+        ; Uinstr0 = incr_sp(_, _, _)
         ; Uinstr0 = decr_sp(_)
         ; Uinstr0 = decr_sp_and_return(_)
         ; Uinstr0 = fork(_)

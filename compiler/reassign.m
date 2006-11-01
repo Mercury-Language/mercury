@@ -264,7 +264,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
 %       Uinstr0 = discard_tickets_to(_),
 %       !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
-        Uinstr0 = incr_sp(_, _),
+        Uinstr0 = incr_sp(_, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % All stackvars now refer to new locations. Rather than delete
         % only stackvars from KnownContentsMap, we delete everything.

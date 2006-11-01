@@ -296,6 +296,7 @@
     ;       type_layout
     ;       maybe_thread_safe_opt
     ;       extend_stacks_when_needed
+    ;       stack_segments
 
     % Data representation compilation model options
     ;       reserve_tag
@@ -1040,6 +1041,7 @@ option_defaults_2(compilation_model_option, [
     use_trail                           -   bool(no),
     maybe_thread_safe_opt               -   string("no"),
     extend_stacks_when_needed           -   bool(no),
+    stack_segments                      -   bool(no),
     use_minimal_model_stack_copy        -   bool(no),
     use_minimal_model_own_stacks        -   bool(no),
     minimal_model_debug                 -   bool(no),
@@ -1774,6 +1776,7 @@ long_option("use-trail",            use_trail).
 long_option("type-layout",          type_layout).
 long_option("maybe-thread-safe",    maybe_thread_safe_opt).
 long_option("extend-stacks-when-needed",    extend_stacks_when_needed).
+long_option("stack-segments",       stack_segments).
 % Data representation options
 long_option("reserve-tag",          reserve_tag).
 long_option("use-minimal-model-stack_copy", use_minimal_model_stack_copy).
@@ -3575,7 +3578,10 @@ options_help_compilation_model -->
         "\tattribute.  The default is no.",
         "--extend-stacks-when-needed",
         "\tSpecify that code that increments a stack pointer must",
-        "\textend the stack when this is needed."
+        "\textend the stack when this is needed.",
+        "--stack-segments",
+        "\tSpecify that code that increments a stack pointer must allocate",
+        "\ta new stack segment when the limit on the old one is reached."
     ]),
 
     io.write_string("\n    LLDS back-end compilation model options:\n"),

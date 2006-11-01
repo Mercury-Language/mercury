@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
+# Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -37,6 +37,15 @@ esac
 #
 case $use_trail,$use_minimal_model in true,true)
 	echo "trailing and minimal model tabling are not compatible" 1>&2
+	exit 1 ;;
+esac
+
+#
+# .exts grade is not compatible with .stseg
+#	(they are alternative ways of doing the same thing)
+#
+case $extend_stacks,$stack_segments in true,true)
+	echo "--extend-stacks-when-needed and --stack-segments are not compatible" 1>&2
 	exit 1 ;;
 esac
 

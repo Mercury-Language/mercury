@@ -273,7 +273,7 @@ livemap.build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
         Uinstr0 = prune_tickets_to(Rval),
         livemap.make_live_in_rval(Rval, !Livevals)
     ;
-        Uinstr0 = incr_sp(_, _)
+        Uinstr0 = incr_sp(_, _, _)
     ;
         Uinstr0 = decr_sp(_)
     ;

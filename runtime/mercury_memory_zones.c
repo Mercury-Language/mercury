@@ -310,7 +310,6 @@ static MR_MemoryZone    *free_memory_zones = NULL;
 
 static void             MR_init_offsets(void);
 static MR_MemoryZone    *MR_get_zone(void);
-static void             MR_unget_zone(MR_MemoryZone *zone);
 
     /*
     ** We manage the handing out of offsets through the cache by
@@ -361,8 +360,8 @@ MR_get_zone(void)
     MR_MemoryZone   *zone;
 
     /*
-    ** unlink the first zone on the free-list,
-    ** link it onto the used-list and return it.
+    ** Unlink the first zone on the free-list, link it onto the used-list
+    ** and return it.
     */
     MR_LOCK(&free_memory_zones_lock, "get_zone");
     if (free_memory_zones == NULL) {
@@ -379,19 +378,17 @@ MR_get_zone(void)
     return zone;
 }
 
-#if 0
-/* this function is not currently used */
-
-static void
+void
 MR_unget_zone(MR_MemoryZone *zone)
 {
     MR_MemoryZone   *prev;
     MR_MemoryZone   *tmp;
 
     /*
-    ** Find the zone on the used list, and unlink it from
-    ** the list, then link it onto the start of the free-list.
+    ** Find the zone on the used list, and unlink it from the list,
+    ** then link it onto the start of the free-list.
     */
+
     MR_LOCK(&free_memory_zones_lock, "unget_zone");
     for(prev = NULL, tmp = used_memory_zones; tmp != NULL && tmp != zone;
         prev = tmp, tmp = tmp->MR_zone_next)
@@ -414,17 +411,15 @@ MR_unget_zone(MR_MemoryZone *zone)
     MR_UNLOCK(&free_memory_zones_lock, "unget_zone");
 }
 
-#endif
-
 /*
-** successive calls to next_offset return offsets modulo the primary
+** Successive calls to next_offset return offsets modulo the primary
 ** cache size (carefully avoiding ever giving an offset that clashes
 ** with fake_reg_array). This is used to give different memory zones
-** different starting points across the caches so that it is better
-** utilized.
+** different starting points across the caches so that it is better utilized.
+**
 ** An alternative implementation would be to increment the offset by
-** a fixed amount (eg 2Kb) so that as primary caches get bigger, we
-** allocate more offsets across them.
+** a fixed amount (eg 2Kb) so that as primary caches get bigger, we allocate
+** more offsets across them.
 */
 
 size_t
@@ -626,6 +621,11 @@ MR_setup_redzones(MR_MemoryZone *zone)
 #if defined(MR_NATIVE_GC) && defined(MR_HIGHLEVEL_CODE)
     zone->MR_zone_gc_threshold = (char *) zone->MR_zone_end
         - MR_heap_margin_size;
+#endif
+
+#if defined(MR_STACK_SEGMENTS) && !defined(MR_HIGHLEVEL_CODE)
+    zone->MR_zone_extend_threshold = (char *) zone->MR_zone_end
+        - MR_stack_margin_size;
 #endif
 }
 

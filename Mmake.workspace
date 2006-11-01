@@ -155,7 +155,7 @@ MERC_DLL_DIR = $(LIBRARY_DIR)
 # passed to echo in order to preserve double-quotes (e.g. for
 # file names containing spaces).
 #
-GC_LIBS_0=`ml --grade $(GRADE) --print-gc-grade`
+GC_LIBS_0=`$(ML) --grade $(GRADE) --print-gc-grade`
 GC_LIBS=$(shell echo $(GC_LIBS_0))
 
 STATIC_GC_LIBS_0 = 						\

@@ -394,6 +394,12 @@
   #if defined(MR_HIGHLEVEL_CODE)
     #error "--extend-stacks-when-needed and --high-level-code are not compatible"
   #endif
+#elif defined(MR_STACK_SEGMENTS)
+  #define MR_GRADE_PART_16	MR_PASTE2(MR_GRADE_PART_15, _stseg)
+  #define MR_GRADE_OPT_PART_16	MR_GRADE_OPT_PART_15 ".stseg"
+  #if defined(MR_HIGHLEVEL_CODE)
+    #error "--stack-segments and --high-level-code are not compatible"
+  #endif
 #else
   #define MR_GRADE_PART_16	MR_GRADE_PART_15
   #define MR_GRADE_OPT_PART_16	MR_GRADE_OPT_PART_15

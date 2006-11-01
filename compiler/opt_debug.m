@@ -108,13 +108,15 @@
 
 :- func dump_bool(bool) = string.
 
+:- func dump_code_model(code_model) = string.
+
+:- func dump_stack_incr_kind(stack_incr_kind) = string.
+
 :- func dump_instr(proc_label, bool, instr) = string.
 
 :- func dump_fullinstr(proc_label, bool, instruction) = string.
 
 :- func dump_fullinstrs(proc_label, bool, list(instruction)) = string.
-
-:- func dump_code_model(code_model) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -636,6 +638,9 @@ dump_code_model(model_det) = "model_det".
 dump_code_model(model_semi) = "model_semi".
 dump_code_model(model_non) = "model_non".
 
+dump_stack_incr_kind(stack_incr_leaf) = "leaf".
+dump_stack_incr_kind(stack_incr_nonleaf) = "nonleaf".
+
 dump_instr(ProcLabel, PrintComments, Instr) = Str :-
     (
         Instr = comment(Comment),
@@ -774,8 +779,9 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Instr = prune_tickets_to(Rval),
         Str = "prune_tickets_to(" ++ dump_rval(Rval) ++ ")"
     ;
-        Instr = incr_sp(Size, _),
-        Str = "incr_sp(" ++ int_to_string(Size) ++ ")"
+        Instr = incr_sp(Size, _, Kind),
+        Str = "incr_sp(" ++ int_to_string(Size) ++ ", " ++
+            dump_stack_incr_kind(Kind) ++ ")"
     ;
         Instr = decr_sp(Size),
         Str = "decr_sp(" ++ int_to_string(Size) ++ ")"

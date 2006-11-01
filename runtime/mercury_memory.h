@@ -1,12 +1,12 @@
 /*
-** Copyright (C) 1994-2000,2002, 2004 The University of Melbourne.
+** Copyright (C) 1994-2000,2002, 2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
-** mercury_memory.h - 	general memory-allocation related stuff for the
-**			Mercury runtime.
+** mercury_memory.h:
+** general memory-allocation related stuff for the Mercury runtime.
 **
 ** This defines the different memory areas used by the Mercury runtime,
 ** including the det & nondet stacks, the heap (and solutions heap),
@@ -43,9 +43,21 @@
 
 #define MR_round_up(amount, align)	((((amount) - 1) | ((align) - 1)) + 1)
 
-/* 
-** For these functions, see the comments in mercury_memory.c and 
-** mercury_engine.c 
+/*
+** MR_kilobytes_to_bytes_and_round_up(var) takes an original value in var
+** which represents an memory size measured in kilobytes, and converts it to
+** a memory size measured in bytes, and then rounds it up to be the next
+** multiple of MR_unit.
+*/
+
+#define MR_kilobytes_to_bytes_and_round_up(var)				\
+	do {								\
+		var = MR_round_up(var * 1024, MR_unit);			\
+	} while (0)
+
+/*
+** For these functions, see the comments in mercury_memory.c and
+** mercury_engine.c
 */
 
 extern	void	MR_init_memory(void);
@@ -58,29 +70,28 @@ extern	void	MR_init_heap(void);
 /*---------------------------------------------------------------------------*/
 
 /*
-** MR_malloc() and MR_realloc() are like the standard C
-** malloc() and realloc() functions, except that the return values
-** are checked.
+** MR_malloc() and MR_realloc() are like the standard C malloc() and realloc()
+** functions, except that the return values are checked.
 **
-** Structures allocated with MR_malloc() and MR_realloc()
-** must NOT contain pointers into GC'ed memory, because those
-** pointers will never be traced by the conservative GC.
-** Use MR_GC_malloc() or MR_GC_malloc_uncollectable() for that.
+** Structures allocated with MR_malloc() and MR_realloc() must NOT contain
+** pointers into GC'ed memory, because those pointers will never be traced
+** by the conservative GC. ** Use MR_GC_malloc() or
+** MR_GC_malloc_uncollectable() for that.
 **
 ** MR_NEW(type):
-**	allocates space for an object of the specified type.
+**	Allocates space for an object of the specified type.
 **
 ** MR_NEW_ARRAY(type, num):
-**	allocates space for an array of objects of the specified type.
+**	Allocates space for an array of objects of the specified type.
 **
 ** MR_RESIZE_ARRAY(ptr, type, num):
-**	resizes the array, as with realloc().
+**	Resizes the array, as with realloc().
 **
 ** MR_malloc(bytes):
-**	allocates the given number of bytes.
+**	Allocates the given number of bytes.
 **
 ** MR_free(ptr):
-**	deallocates the memory.
+**	Deallocates the memory.
 */
 
 extern	void	*MR_malloc(size_t n);
@@ -98,9 +109,8 @@ extern	void	*MR_realloc(void *old, size_t n);
 #define MR_RESIZE_ARRAY(ptr, type, num) \
 	((type *) MR_realloc((ptr), (num) * sizeof(type)))
 
-
 /*
-** These routines all allocate memory that will be traced by the 
+** These routines all allocate memory that will be traced by the
 ** conservative garbage collector, if conservative GC is enabled.
 ** (For the native GC, you need to call MR_add_root() to register roots.)
 ** These routines all check for a null return value themselves,
@@ -114,30 +124,29 @@ extern	void	*MR_realloc(void *old, size_t n);
 **	is not GC-traced.  Nor is thread-local storage.
 **
 ** MR_GC_NEW_UNCOLLECTABLE(type):
-**	allocates space for an object of the specified type.
-**	The object will not be garbage collected even if it is
-**	not reference or only referenced from thread-local
-**	storage or storage allocated with malloc().
-**	It should be explicitly deallocated with MR_GC_free().
+**	Allocates space for an object of the specified type.
+**	The object will not be garbage collected even if it is not referenced,
+**	or only referenced from thread-local storage or storage allocated
+**	with malloc(). It should be explicitly deallocated with MR_GC_free().
 **
 ** MR_GC_NEW_ARRAY(type, num):
-**	allocates space for an array of objects of the specified type.
+**	Allocates space for an array of objects of the specified type.
 **
 ** MR_GC_RESIZE_ARRAY(ptr, type, num):
-**	resizes the array, as with realloc().
+**	Resizes the array, as with realloc().
 **
 ** MR_GC_malloc(bytes):
-**	allocates the given number of bytes.
+**	Allocates the given number of bytes.
 **	If conservative GC is enabled, the memory will be garbage collected
 **	when it is no longer referenced from GC-traced memory (see above).
 **
 ** MR_GC_malloc_uncollectable(bytes):
-**	allocates the given number of bytes.
+**	Allocates the given number of bytes.
 **	The memory will not be garbage collected, and so
 **	it should be explicitly deallocated using MR_GC_free().
 **
 ** MR_GC_free(ptr):
-**	deallocates the memory.
+**	Deallocates the memory.
 */
 
 extern	void	*MR_GC_malloc(size_t num_bytes);
@@ -184,12 +193,11 @@ extern	size_t          MR_page_size;
 /*---------------------------------------------------------------------------*/
 
 /*
-** Users need to call MR_add_root() for any global variable which
-** contains pointers to the Mercury heap.  This information is only
-** used for agc grades.
+** Users need to call MR_add_root() for any global variable which contains
+** pointers to the Mercury heap. This information is only used for agc grades.
 */
 #ifdef MR_NATIVE_GC
-  #define MR_add_root(root_ptr, type_info) \
+  #define MR_add_root(root_ptr, type_info) 				\
 	MR_agc_add_root((root_ptr), (type_info))
 #else
   #define MR_add_root(root_ptr, type_info) /* nothing */

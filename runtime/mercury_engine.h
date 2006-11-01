@@ -50,7 +50,7 @@ extern  MR_bool MR_debugflag[];
 #define MR_CALLFLAG                      2
 #define MR_HEAPFLAG                      3
 #define MR_DETSTACKFLAG                  4
-#define MR_NONDSTACKFLAG                 5
+#define MR_NONDETSTACKFLAG               5
 #define MR_FINALFLAG                     6
 #define MR_MEMFLAG                       7
 #define MR_SREGFLAG                      8
@@ -93,7 +93,7 @@ extern  MR_bool MR_debugflag[];
 ** MR_calldebug controls whether we should generate diagnostics when control
 ** crosses procedure boundaries, i.e. calls, exits, redos and fails.
 **
-** MR_detstackdebug and MR_nondstackdebug control whether we should generate
+** MR_detstackdebug and MR_nondetstackdebug control whether we should generate
 ** diagnostics when incrementing and decrementing the pointers to the
 ** respective stacks.
 **
@@ -148,7 +148,7 @@ extern  MR_bool MR_debugflag[];
 #define MR_calldebug                MR_debugflag[MR_CALLFLAG]
 #define MR_heapdebug                MR_debugflag[MR_HEAPFLAG]
 #define MR_detstackdebug            MR_debugflag[MR_DETSTACKFLAG]
-#define MR_nondstackdebug           MR_debugflag[MR_NONDSTACKFLAG]
+#define MR_nondetstackdebug         MR_debugflag[MR_NONDETSTACKFLAG]
 #define MR_finaldebug               MR_debugflag[MR_FINALFLAG]
 #define MR_memdebug                 MR_debugflag[MR_MEMFLAG]
 #define MR_sregdebug                MR_debugflag[MR_SREGFLAG]
@@ -185,20 +185,20 @@ extern  MR_Debug_Flag_Info  MR_debug_flag_info[MR_MAXFLAG];
 */ 
 
 typedef struct {
-        jmp_buf     *mercury_env;   /* used to save MR_ENGINE(MR_eng_jmp_buf) */
-        jmp_buf     env;            /* used by calls to setjmp and longjmp */
-        MR_Word     *saved_succip;
-        MR_Word     *saved_sp;
-        MR_Word     *saved_curfr;
-        MR_Word     *saved_maxfr;
-        MR_IF_USE_TRAIL(MR_TrailEntry   *saved_trail_ptr;)
-        MR_IF_USE_TRAIL(MR_Unsigned     saved_ticket_counter;)
-        MR_IF_USE_TRAIL(MR_Unsigned     saved_ticket_high_water;)
+    jmp_buf     *mercury_env;   /* used to save MR_ENGINE(MR_eng_jmp_buf) */
+    jmp_buf     env;            /* used by calls to setjmp and longjmp */
+    MR_Word     *saved_succip;
+    MR_Word     *saved_sp;
+    MR_Word     *saved_curfr;
+    MR_Word     *saved_maxfr;
+    MR_IF_USE_TRAIL(MR_TrailEntry   *saved_trail_ptr;)
+    MR_IF_USE_TRAIL(MR_Unsigned     saved_ticket_counter;)
+    MR_IF_USE_TRAIL(MR_Unsigned     saved_ticket_high_water;)
 
 #if MR_NUM_REAL_REGS > 0
-        MR_Word     regs[MR_NUM_REAL_REGS];
+    MR_Word     regs[MR_NUM_REAL_REGS];
 #endif /* MR_NUM_REAL_REGS > 0 */
-    } MR_jmp_buf;
+} MR_jmp_buf;
 
 /*---------------------------------------------------------------------------*/
 
@@ -465,21 +465,16 @@ typedef struct MR_mercury_engine_struct {
 
 #define MR_load_engine_regs(eng)                                              \
     do {                                                                      \
-        MR_IF_NOT_CONSERVATIVE_GC(MR_hp_word = (MR_Word)                      \
-            (eng)->MR_eng_hp;)                                                \
-        MR_IF_NOT_CONSERVATIVE_GC(MR_sol_hp =                                 \
-            (eng)->MR_eng_sol_hp;)                                            \
-        MR_IF_NOT_CONSERVATIVE_GC(MR_global_hp =                              \
-            (eng)->MR_eng_global_hp;)                                         \
+        MR_IF_NOT_CONSERVATIVE_GC(MR_hp_word = (MR_Word) (eng)->MR_eng_hp;)   \
+        MR_IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->MR_eng_sol_hp;)          \
+        MR_IF_NOT_CONSERVATIVE_GC(MR_global_hp = (eng)->MR_eng_global_hp;)    \
     } while (0)
 
 #define MR_save_engine_regs(eng)                                              \
     do {                                                                      \
         MR_IF_NOT_CONSERVATIVE_GC((eng)->MR_eng_hp = MR_hp;)                  \
-        MR_IF_NOT_CONSERVATIVE_GC((eng)->MR_eng_sol_hp =                      \
-            MR_sol_hp;)                                                       \
-        MR_IF_NOT_CONSERVATIVE_GC((eng)->MR_eng_global_hp =                   \
-            MR_global_hp;)                                                    \
+        MR_IF_NOT_CONSERVATIVE_GC((eng)->MR_eng_sol_hp = MR_sol_hp;)          \
+        MR_IF_NOT_CONSERVATIVE_GC((eng)->MR_eng_global_hp = MR_global_hp;)    \
     } while (0)
 
 /*
@@ -511,7 +506,7 @@ extern  void            MR_dump_prev_locations(void);
 /*---------------------------------------------------------------------------*/
 
 /*
-** Builtin labels that point to commonly used code fragments.
+** Builtin labels that point to some standard code fragments.
 */
 
 MR_declare_entry(MR_do_redo);

@@ -1164,9 +1164,9 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 #ifdef  MR_DEBUG_RETRY_STACKS
     MR_print_detstackptr(MR_mdb_out, *sp_ptr);
     fprintf(MR_mdb_out, "\n");
-    MR_print_nondstackptr(MR_mdb_out, *curfr_ptr);
+    MR_print_nondetstackptr(MR_mdb_out, *curfr_ptr);
     fprintf(MR_mdb_out, "\n");
-    MR_print_nondstackptr(MR_mdb_out, *maxfr_ptr);
+    MR_print_nondetstackptr(MR_mdb_out, *maxfr_ptr);
     fprintf(MR_mdb_out, "\n");
 #endif
 
@@ -1184,9 +1184,9 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 #ifdef  MR_DEBUG_RETRY_STACKS
     MR_print_detstackptr(MR_mdb_out, *sp_ptr);
     fprintf(MR_mdb_out, "\n");
-    MR_print_nondstackptr(MR_mdb_out, *curfr_ptr);
+    MR_print_nondetstackptr(MR_mdb_out, *curfr_ptr);
     fprintf(MR_mdb_out, "\n");
-    MR_print_nondstackptr(MR_mdb_out, *maxfr_ptr);
+    MR_print_nondetstackptr(MR_mdb_out, *maxfr_ptr);
     fprintf(MR_mdb_out, "\n");
 #endif
 
@@ -1206,9 +1206,9 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 #ifdef  MR_DEBUG_RETRY_STACKS
         MR_print_detstackptr(MR_mdb_out, *sp_ptr);
         fprintf(MR_mdb_out, "\n");
-        MR_print_nondstackptr(MR_mdb_out, *curfr_ptr);
+        MR_print_nondetstackptr(MR_mdb_out, *curfr_ptr);
         fprintf(MR_mdb_out, "\n");
-        MR_print_nondstackptr(MR_mdb_out, *maxfr_ptr);
+        MR_print_nondetstackptr(MR_mdb_out, *maxfr_ptr);
         fprintf(MR_mdb_out, "\n");
 #endif
 
@@ -1238,9 +1238,9 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 #ifdef  MR_DEBUG_RETRY_STACKS
     MR_print_detstackptr(MR_mdb_out, *sp_ptr);
     fprintf(MR_mdb_out, "\n");
-    MR_print_nondstackptr(MR_mdb_out, *curfr_ptr);
+    MR_print_nondetstackptr(MR_mdb_out, *curfr_ptr);
     fprintf(MR_mdb_out, "\n");
-    MR_print_nondstackptr(MR_mdb_out, *maxfr_ptr);
+    MR_print_nondetstackptr(MR_mdb_out, *maxfr_ptr);
     fprintf(MR_mdb_out, "\n");
 #endif
 
@@ -1267,7 +1267,7 @@ MR_undo_updates_of_maxfr(const MR_Proc_Layout *level_layout,
                 level_layout->MR_sle_maybe_maxfr);
 #if MR_DEBUG_RETRY
             fprintf(stdout, "resetting maxfr to ");
-            MR_print_nondstackptr(stdout, *maxfr_ptr);
+            MR_print_nondetstackptr(stdout, *maxfr_ptr);
             fprintf(stdout, "\n");
 #endif
         } /* else we need do nothing */

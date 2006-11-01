@@ -306,7 +306,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
                 - "test on upward loop"]
     ;
         PushMsg = proc_gen.push_msg(ModuleInfo, PredId, ProcId),
-        MaybeIncrSp = [incr_sp(FrameSize, PushMsg) - ""],
+        MaybeIncrSp = [incr_sp(FrameSize, PushMsg, stack_incr_nonleaf) - ""],
         MaybeDecrSp = [decr_sp(FrameSize) - ""],
         InitAuxReg =  [assign(AuxReg, lval(sp))
             - "initialize counter register"],
@@ -529,7 +529,7 @@ find_used_registers_instr(mark_ticket_stack(Lval), !Used) :-
     find_used_registers_lval(Lval, !Used).
 find_used_registers_instr(prune_tickets_to(Rval), !Used) :-
     find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(incr_sp(_, _), !Used).
+find_used_registers_instr(incr_sp(_, _, _), !Used).
 find_used_registers_instr(decr_sp(_), !Used).
 find_used_registers_instr(decr_sp_and_return(_), !Used).
 find_used_registers_instr(pragma_c(_, Components, _, _, _, _, _, _, _),

@@ -399,6 +399,11 @@ case $extend_stacks in
     false)          EXTEND_STACKS_OPTS="" ;;
 esac
 
+case $stack_segments in
+    true)           STACK_SEGMENTS_OPTS="-DMR_STACK_SEGMENTS" ;;
+    false)          STACK_SEGMENTS_OPTS="" ;;
+esac
+
 GCC_OPTS="$NEST_OPTS $ASM_OPTS $GOTO_OPTS $REG_OPTS"
 
 # check that special grades are only used with gcc
@@ -584,6 +589,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $DECL_DEBUG_OPTS\
     $LL_DEBUG_OPTS\
     $EXTEND_STACKS_OPTS\
+    $STACK_SEGMENTS_OPTS\
     $LLDEBUG_OPTS\
     $C_DEBUG_OPTS\
     $PROF_TIME_OPTS\

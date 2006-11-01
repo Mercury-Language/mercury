@@ -1967,7 +1967,7 @@ output_instr_decls(_, mark_ticket_stack(Lval), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
 output_instr_decls(_, prune_tickets_to(Rval), !DeclSet, !IO) :-
     output_rval_decls(Rval, !DeclSet, !IO).
-output_instr_decls(_, incr_sp(_, _), !DeclSet, !IO).
+output_instr_decls(_, incr_sp(_, _, _), !DeclSet, !IO).
 output_instr_decls(_, decr_sp(_), !DeclSet, !IO).
 output_instr_decls(_, decr_sp_and_return(_), !DeclSet, !IO).
 output_instr_decls(StackLayoutLabels, pragma_c(_, Comps, _, _,
@@ -2523,8 +2523,18 @@ output_instruction(prune_tickets_to(Rval), _, !IO) :-
     output_rval_as_type(Rval, word, !IO),
     io.write_string(");\n", !IO).
 
-output_instruction(incr_sp(N, _Msg), _, !IO) :-
-    io.write_string("\tMR_incr_sp(", !IO),
+output_instruction(incr_sp(N, _Msg, Kind), _, !IO) :-
+    (
+        Kind = stack_incr_leaf,
+        ( N < max_leaf_stack_frame_size ->
+            io.write_string("\tMR_incr_sp_leaf(", !IO)
+        ;
+            io.write_string("\tMR_incr_sp(", !IO)
+        )
+    ;
+        Kind = stack_incr_nonleaf,
+        io.write_string("\tMR_incr_sp(", !IO)
+    ),
     io.write_int(N, !IO),
     io.write_string(");\n", !IO).
     % Use the code below instead of the code above if you want to run
@@ -2569,6 +2579,12 @@ output_instruction(join_and_continue(Lval, Label), _, !IO) :-
     io.write_string(", ", !IO),
     output_label_as_code_addr(Label, !IO),
     io.write_string(");\n", !IO).
+
+:- func max_leaf_stack_frame_size = int.
+
+% This should be kept in sync with the value of MR_stack_margin_size
+% in runtime/mercury_wrapper.c. See the documentation there.
+max_leaf_stack_frame_size = 128.
 
 :- pred output_pragma_c_component(pragma_c_component::in, io::di, io::uo)
     is det.
