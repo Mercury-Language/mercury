@@ -197,7 +197,7 @@ rename_apart(NewVarSet, Terms0, Terms, VarSet0, VarSet) :-
 :- pred unify(term, term, varset, varset).
 :- mode unify(in, in, in, out) is semidet.
 
-unify(term__variable(X), term__variable(Y), VarSet0, VarSet) :-
+unify(term__variable(X, _), term__variable(Y, _), VarSet0, VarSet) :-
 	(
 		varset__search_var(VarSet0, X, BindingOfX)
 	->
@@ -211,7 +211,7 @@ unify(term__variable(X), term__variable(Y), VarSet0, VarSet) :-
 			% Y is a variable which hasn't been bound yet
 			apply_rec_substitution(BindingOfX, VarSet0,
 				SubstBindingOfX),
-			( SubstBindingOfX = term__variable(Y) ->
+			( SubstBindingOfX = term__variable(Y, _) ->
 			 	VarSet = VarSet0
 			;
 				\+ occurs(SubstBindingOfX, Y, VarSet0),
@@ -226,7 +226,7 @@ unify(term__variable(X), term__variable(Y), VarSet0, VarSet) :-
 			% X is a variable which hasn't been bound yet
 			apply_rec_substitution(BindingOfY2, VarSet0,
 				SubstBindingOfY2),
-			( SubstBindingOfY2 = term__variable(X) ->
+			( SubstBindingOfY2 = term__variable(X, _) ->
 				VarSet = VarSet0
 			;
 				\+ occurs(SubstBindingOfY2, X, VarSet0),
@@ -239,13 +239,13 @@ unify(term__variable(X), term__variable(Y), VarSet0, VarSet) :-
 			( X = Y ->
 				VarSet = VarSet0
 			;
-				varset__bind_var(VarSet0, X, term__variable(Y),
-					VarSet)
+				varset__bind_var(VarSet0, X,
+					term.variable(Y, context_init), VarSet)
 			)
 		)
 	).
 
-unify(term__variable(X), term__functor(F, As, C), VarSet0, VarSet) :-
+unify(term__variable(X, _), term__functor(F, As, C), VarSet0, VarSet) :-
 	(
 		varset__search_var(VarSet0, X, BindingOfX)
 	->
@@ -256,7 +256,7 @@ unify(term__variable(X), term__functor(F, As, C), VarSet0, VarSet) :-
 		varset__bind_var(VarSet0, X, term__functor(F, As, C), VarSet)
 	).
 
-unify(term__functor(F, As, C), term__variable(X), VarSet0, VarSet) :-
+unify(term__functor(F, As, C), term__variable(X, _), VarSet0, VarSet) :-
 	(
 		varset__search_var(VarSet0, X, BindingOfX)
 	->
@@ -287,7 +287,7 @@ unify_list([X | Xs], [Y | Ys]) -->
 :- pred occurs(term, var, varset).
 :- mode occurs(in, in, in) is semidet.
 
-occurs(term__variable(X), Y, VarSet) :-
+occurs(term__variable(X, _), Y, VarSet) :-
 	X = Y
 	;
 	varset__search_var(VarSet, X, BindingOfX),
@@ -313,14 +313,14 @@ occurs_list([Term | Terms], Y, VarSet) :-
 :- pred apply_rec_substitution(term, varset, term).
 :- mode apply_rec_substitution(in, in, out) is det.
 
-apply_rec_substitution(term__variable(Var), VarSet, Term) :-
+apply_rec_substitution(term__variable(Var, _), VarSet, Term) :-
 	(
 		varset__search_var(VarSet, Var, Replacement)
 	->
 		% recursively apply the substition to the replacement
 		apply_rec_substitution(Replacement, VarSet, Term)
 	;
-		Term = term__variable(Var)
+		Term = term__variable(Var, context_init)
 	).
 apply_rec_substitution(term__functor(Name, Args0, Context), VarSet,
 		 term__functor(Name, Args, Context)) :-
