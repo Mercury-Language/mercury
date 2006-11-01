@@ -469,16 +469,16 @@ rename_in_goal_expr(OldVar, NewVar,
 rename_in_goal_expr(OldVar, NewVar,
         event_expr(Name, Terms0),
         event_expr(Name, Terms)) :-
-    term.substitute_list(Terms0, OldVar, term.variable(NewVar), Terms).
+    term.substitute_list(Terms0, OldVar, variable(NewVar, context_init), Terms).
 rename_in_goal_expr(OldVar, NewVar,
         call_expr(SymName, Terms0, Purity),
         call_expr(SymName, Terms, Purity)) :-
-    term.substitute_list(Terms0, OldVar, term.variable(NewVar), Terms).
+    term.substitute_list(Terms0, OldVar, variable(NewVar, context_init), Terms).
 rename_in_goal_expr(OldVar, NewVar,
         unify_expr(TermA0, TermB0, Purity),
         unify_expr(TermA, TermB, Purity)) :-
-    term.substitute(TermA0, OldVar, term.variable(NewVar), TermA),
-    term.substitute(TermB0, OldVar, term.variable(NewVar), TermB).
+    term.substitute(TermA0, OldVar, term.variable(NewVar, context_init), TermA),
+    term.substitute(TermB0, OldVar, term.variable(NewVar, context_init), TermB).
 
 :- pred rename_in_trace_mutable_var(prog_var::in, prog_var::in,
     trace_mutable_var::in, trace_mutable_var::out) is det.
@@ -779,8 +779,8 @@ substitute_vars(Vars0, Subst, Vars) :-
 :- func substitute_var(substitution(T), var(T)) = var(T).
 
 substitute_var(Subst, Var0) = Var :-
-    term.apply_substitution(term.variable(Var0), Subst, Term),
-    ( Term = term.variable(Var1) ->
+    term.apply_substitution(term.variable(Var0, context_init), Subst, Term),
+    ( Term = term.variable(Var1, _) ->
         Var = Var1
     ;
         unexpected(this_file, "substitute_var: invalid substitution")

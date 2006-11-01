@@ -396,7 +396,7 @@ rename_apart_inst_vars_in_inst(Sub, ground(U, GI0), ground(U, GI)) :-
     ).
 rename_apart_inst_vars_in_inst(_, not_reached, not_reached).
 rename_apart_inst_vars_in_inst(Sub, inst_var(Var0), inst_var(Var)) :-
-    ( map.search(Sub, Var0, term.variable(Var1)) ->
+    ( map.search(Sub, Var0, term.variable(Var1, _)) ->
         Var = Var1
     ;
         Var = Var0
@@ -405,7 +405,7 @@ rename_apart_inst_vars_in_inst(Sub, constrained_inst_vars(Vars0, Inst0),
         constrained_inst_vars(Vars, Inst)) :-
     rename_apart_inst_vars_in_inst(Sub, Inst0, Inst),
     Vars = set.map(func(Var0) =
-        ( map.search(Sub, Var0, term.variable(Var)) ->
+        ( map.search(Sub, Var0, term.variable(Var, _)) ->
             Var
         ;
             Var0

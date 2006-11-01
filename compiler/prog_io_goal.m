@@ -107,8 +107,7 @@ parse_goal(Term, MaybeGoal, !VarSet) :-
     (
         Term = term.functor(_, _, Context)
     ;
-        Term = term.variable(_),
-        term.context_init(Context)
+        Term = term.variable(_, Context)
     ),
     % We just check if it matches the appropriate pattern for one of the
     % builtins. If it doesn't match any of the builtins, then it's just
@@ -647,7 +646,7 @@ parse_trace_params(Context, Term, MaybeComponentsTerms) :-
             Msg = "invalid trace goal paramater",
             MaybeComponentsTerms = error1([Msg - Term])
         ;
-            Term = term.variable(_),
+            Term = term.variable(_, _),
             Msg = "expected trace goal paramater, found variable",
             ErrorTerm = term.functor(term.atom(""), [], Context),
             MaybeComponentsTerms = error1([Msg - ErrorTerm])
@@ -711,7 +710,7 @@ parse_trace_component(ErrorTerm, Term, MaybeComponentTerm) :-
                 ( SubTerms = [SubTerm] ->
                     (
                         SubTerm = term.functor(term.atom("!"),
-                            [term.variable(Var)], _)
+                            [term.variable(Var, _)], _)
                     ->
                         term.coerce_var(Var, ProgVar),
                         Component = trace_component_maybe_io(ProgVar),
@@ -737,7 +736,7 @@ parse_trace_component(ErrorTerm, Term, MaybeComponentTerm) :-
                             SubTermA = term.functor(_, _, _),
                             MutableErrorTerm = SubTermA
                         ;
-                            SubTermA = term.variable(_),
+                            SubTermA = term.variable(_, _),
                             MutableErrorTerm = Term
                         ),
                         MutableMsg = "the first argument of " ++ Atom ++
@@ -746,7 +745,7 @@ parse_trace_component(ErrorTerm, Term, MaybeComponentTerm) :-
                     ),
                     (
                         SubTermB = term.functor(term.atom("!"),
-                            [term.variable(Var)], _)
+                            [term.variable(Var, _)], _)
                     ->
                         MaybeVar = ok1(Var)
                     ;
@@ -754,7 +753,7 @@ parse_trace_component(ErrorTerm, Term, MaybeComponentTerm) :-
                             SubTermB = term.functor(_, _, _),
                             VarErrorTerm = SubTermB
                         ;
-                            SubTermB = term.variable(_),
+                            SubTermB = term.variable(_, _),
                             VarErrorTerm = Term
                         ),
                         VarMsg = "the second argument of " ++ Atom ++
@@ -789,7 +788,7 @@ parse_trace_component(ErrorTerm, Term, MaybeComponentTerm) :-
             MaybeComponentTerm = error1([Msg - Term])
         )
     ;
-        Term = term.variable(_),
+        Term = term.variable(_, _),
         Msg = "expected trace goal paramater, found variable",
         MaybeComponentTerm = error1([Msg - ErrorTerm])
     ).
@@ -904,7 +903,7 @@ parse_trace_compiletime(ErrorTerm, Term, MaybeCompiletime) :-
             MaybeCompiletime = error1([Msg - Term])
         )
     ;
-        Term = term.variable(_),
+        Term = term.variable(_, _),
         Msg = "expected compile_time paramater, found variable",
         MaybeCompiletime = error1([Msg - ErrorTerm])
     ).
@@ -956,7 +955,7 @@ parse_trace_runtime(ErrorTerm, Term, MaybeRuntime) :-
             MaybeRuntime = error1([Msg - Term])
         )
     ;
-        Term = term.variable(_),
+        Term = term.variable(_, _),
         Msg = "expected run_time paramater, found variable",
         MaybeRuntime = error1([Msg - ErrorTerm])
     ).

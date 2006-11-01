@@ -304,7 +304,7 @@ get_du_functors_for_type_def(TypeDef) = Functors :-
 
 :- func constructor_to_sym_name_and_arity(constructor) = sym_name_and_arity.
 
-constructor_to_sym_name_and_arity(ctor(_, _, Name, Args)) =
+constructor_to_sym_name_and_arity(ctor(_, _, Name, Args, _)) =
     Name / list.length(Args).
 
     % multi_map_set is the same as multi_map.set, except that the arguments are

@@ -279,7 +279,7 @@ parse_datastruct(Term) = Datastruct :-
         Term = term.functor(term.atom(Cons), Args, _),
         Cons = "cel",
         Args = [VarTerm, SelectorTerm],
-        VarTerm = term.variable(Var)
+        VarTerm = term.variable(Var, _)
     ->
         Datastruct = selected_cel(term.coerce_var(Var),
             parse_selector(SelectorTerm))
@@ -504,7 +504,7 @@ parse_user_annotated_sharing_pair_term(Term, SharingPair) :-
 
 parse_user_annotated_datastruct_term(Term, Datastruct) :- 
     Term = term.functor(term.atom("cel"), [VarTerm, TypesTerm], _),
-    VarTerm = term.variable(GenericVar),
+    VarTerm = term.variable(GenericVar, _),
     term.coerce_var(GenericVar, ProgVar),
     get_list_term_arguments(TypesTerm, TypeTermsList),
     parse_types(TypeTermsList, ok1(Types)),

@@ -1763,7 +1763,7 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
         ),
         term.context_init(Context),
         Functor = term.atom("class_method_call"),
-        TCInfoTerm = term.variable(TCInfoVar),
+        TCInfoTerm = term.variable(TCInfoVar, Context),
         MethodNumTerm = term.functor(term.integer(MethodNum), [], Context),
         term.var_list_to_term_list(ArgVars, ArgTerms),
         Term = term.functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
@@ -3321,7 +3321,7 @@ write_constructors_2(Indent, TVarSet, [C | Cs], TagValues, !IO) :-
 
 write_ctor(C, TVarSet, TagValues, !IO) :-
     mercury_output_ctor(C, TVarSet, !IO),
-    C = ctor(_, _, Name, Args),
+    C = ctor(_, _, Name, Args, _),
     ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
     ( map.search(TagValues, ConsId, TagValue) ->
         io.write_string("\t% tag: ", !IO),
@@ -3980,11 +3980,11 @@ inst_to_term_with_context(ground(Uniq, GroundInstInfo), Context) = Term :-
         Term = make_atom(inst_uniqueness(Uniq, "ground"), Context)
     ).
 inst_to_term_with_context(inst_var(Var), _) =
-    term.coerce(term.variable(Var)).
+    term.coerce(term.variable(Var, context_init)).
 inst_to_term_with_context(constrained_inst_vars(Vars, Inst), Context) =
     set.fold(func(Var, Term) =
             term.functor(term.atom("=<"),
-                [term.coerce(term.variable(Var)), Term], Context),
+                [term.coerce(term.variable(Var, context_init)), Term], Context),
         Vars, inst_to_term_with_context(Inst, Context)).
 inst_to_term_with_context(abstract_inst(Name, Args), Context) =
     inst_name_to_term(user_inst(Name, Args), Context).

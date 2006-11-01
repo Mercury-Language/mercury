@@ -968,7 +968,7 @@ constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
             type_util.get_cons_defn(ModuleInfo, TypeCtor, CtorId, ConsDefn)
         ->
             ConsDefn = hlds_cons_defn(_, _, ConsArgDefns, _, _),
-            assoc_list.values(ConsArgDefns, ConsArgTypes0),
+            ConsArgTypes0 = list.map(func(C) = C ^ arg_type, ConsArgDefns),
 
             % There may have been additional types inserted to hold the
             % type_infos and type_class_infos for existentially quantified
@@ -1426,7 +1426,8 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
 
 ml_field_names_and_types(Info, Type, ConsId, ArgTypes, Fields) :-
     % Lookup the field types for the arguments of this cons_id.
-    MakeUnnamedField = (func(FieldType) = no - FieldType),
+    Context = term.context_init,
+    MakeUnnamedField = (func(FieldType) = ctor_arg(no, FieldType, Context)),
     (
         type_is_tuple(Type, _),
         list.length(ArgTypes, TupleArity)
@@ -1493,7 +1494,8 @@ ml_gen_unify_args_2(ConsId, [Arg | Args], [Mode | Modes], [ArgType | ArgTypes],
 
 ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
         Offset, ArgNum, Tag, Context, !Statements, !Info) :-
-    Field = MaybeFieldName - FieldType,
+    MaybeFieldName = Field ^ arg_field_name,
+    FieldType = Field ^ arg_type,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),

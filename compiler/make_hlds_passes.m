@@ -1586,7 +1586,7 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
     % Construct the semipure get predicate.
     %
     UnsafeGetPredName = mutable_unsafe_get_pred_sym_name(ModuleName, Name),
-    UnsafeGetCallArgs = [variable(X)],
+    UnsafeGetCallArgs = [variable(X, Context)],
     CallUnsafeGet = call_expr(UnsafeGetPredName, UnsafeGetCallArgs,
         purity_semipure) - Context,
     
@@ -1600,7 +1600,7 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
         ProgVarSet0,
         predicate,
         GetPredName,
-        [variable(X)],
+        [variable(X, context_init)],
         StdGetBody
     ),
     
@@ -1610,7 +1610,7 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
     % Construct the impure set predicate.
     %
     UnsafeSetPredName = mutable_unsafe_set_pred_sym_name(ModuleName, Name),
-    UnsafeSetCallArgs = [variable(X)],
+    UnsafeSetCallArgs = [variable(X, context_init)],
     StdSetCallUnsafeSet = call_expr(UnsafeSetPredName, UnsafeSetCallArgs,
         purity_impure) - Context,
 
@@ -1622,7 +1622,7 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
         ProgVarSet0,
         predicate,
         SetPredName,
-        [variable(X)],
+        [variable(X, context_init)],
         StdSetBody
     ),
     
@@ -1639,12 +1639,13 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
         IOGetBody = promise_purity_expr(dont_make_implicit_promises,
             purity_pure, GetBody) - Context,
     
+        Ctxt = context_init,
         IOGetClause = item_clause(
             compiler(mutable_decl),
             ProgVarSet,
             predicate,
             GetPredName,
-            [variable(X), variable(IO), variable(IO)],
+            [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
             IOGetBody
         ),
     
@@ -1664,7 +1665,7 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
             ProgVarSet,
             predicate,
             SetPredName,
-            [variable(X), variable(IO), variable(IO)],
+            [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
             IOSetBody
         ),
         

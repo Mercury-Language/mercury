@@ -181,7 +181,7 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
 % of counted arguments.
 
 find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
-    Ctor = ctor(_ExistQVars, _Constraints, SymName, Args),
+    Ctor = ctor(_ExistQVars, _Constraints, SymName, Args, _),
     list.length(Args, Arity),
     ( Arity > 0 ->
         find_and_count_nonrec_args(Args, TypeCtor, Params,
@@ -226,7 +226,7 @@ find_and_count_nonrec_args([Arg | Args], Id, Params, NonRecArgs, ArgInfo) :-
     list(type_param)::in) is semidet.
 
 is_arg_recursive(Arg, TypeCtor, Params) :-
-    Arg = _Name - ArgType,
+    ArgType = Arg ^ arg_type,
     type_to_ctor_and_args(ArgType, ArgTypeCtor, ArgTypeArgs),
     TypeCtor = ArgTypeCtor,
     prog_type.type_list_to_var_list(ArgTypeArgs, ArgTypeParams),

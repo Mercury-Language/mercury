@@ -667,8 +667,8 @@ replace_in_ctors_location(Location, EqvMap, !Ctors, !VarSet, !Info,
     used_modules::in, used_modules::out) is det.
 
 replace_in_ctor(Location, EqvMap,
-        ctor(ExistQVars, Constraints0, TName, Targs0),
-        ctor(ExistQVars, Constraints, TName, Targs),
+        ctor(ExistQVars, Constraints0, TName, Targs0, Ctxt),
+        ctor(ExistQVars, Constraints, TName, Targs, Ctxt),
         !VarSet, !Info, !UsedModules) :-
     replace_in_ctor_arg_list(Location,
         EqvMap, Targs0, Targs, _, !VarSet, !Info, !UsedModules),
@@ -751,8 +751,8 @@ replace_in_ctor_arg_list(Location,
 
 replace_in_ctor_arg_list_2(_Location, _EqvMap, _Seen, [], [],
         !Circ, !VarSet, !Info, !UsedModules).
-replace_in_ctor_arg_list_2(Location,
-        EqvMap, Seen, [N - T0 | As0], [N - T | As],
+replace_in_ctor_arg_list_2(Location, EqvMap, Seen,
+        [ctor_arg(N, T0, C) | As0], [ctor_arg(N, T, C) | As],
         !Circ, !VarSet, !Info, !UsedModules) :-
     replace_in_type_location_2(Location, EqvMap, Seen, T0, T, _, ContainsCirc,
         !VarSet, !Info, !UsedModules),

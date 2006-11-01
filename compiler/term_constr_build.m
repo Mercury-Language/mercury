@@ -1101,7 +1101,7 @@ find_deconstruct_fail_bound(unify(_, _, _, Kind, _), Info, Polyhedron) :-
                 "find_deconstruct_fail_bound/3: non cons cons_id.")
     ),
     FindComplement = (pred(Ctor::in) is semidet :-
-        Ctor = ctor(_, _, SymName, Args),
+        Ctor = ctor(_, _, SymName, Args, _),
         list.length(Args, Arity),
         not (
             SymName = ConsName,
@@ -1155,7 +1155,7 @@ bounds_on_var(Norm, ModuleInfo, TypeCtor, Var, Constructors, Polyhedron) :-
 :- func lower_bound(functor_info, module_info, type_ctor, constructor) = int.
 
 lower_bound(Norm, Module, TypeCtor, Constructor) = LowerBound :-
-    Constructor = ctor(_, _, SymName, Args),
+    Constructor = ctor(_, _, SymName, Args, _),
     Arity = list.length(Args),
     ConsId = cons(SymName, Arity),
     LowerBound = functor_lower_bound(Norm, TypeCtor, ConsId, Module).
@@ -1179,8 +1179,9 @@ upper_bound_constraints(Norm, Module, Var, TypeCtor, Ctors, Constraints) :-
     % finite size but I'm not sure that it's worth it. 
     %
     FindUpperBound = (pred(Ctor::in, !.B::in, !:B::out) is semidet :-
-        Ctor = ctor(_, _, SymName, Args),
-        all [Arg] (list.member(Arg, Args) => zero_size_type(Module, snd(Arg))),
+        Ctor = ctor(_, _, SymName, Args, _),
+        all [Arg] (list.member(Arg, Args) =>
+                zero_size_type(Module, Arg ^ arg_type)),
         Arity = list.length(Args),
         ConsId = cons(SymName, Arity),
         Bound = functor_lower_bound(Norm, TypeCtor, ConsId, Module),

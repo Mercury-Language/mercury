@@ -235,7 +235,7 @@ ml_gen_enum_value_member(Context) =
 
 ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
     % Figure out the value of this enumeration constant.
-    Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
+    Ctor = ctor(_ExistQTVars, _Constraints, Name, Args, _Ctxt),
     list.length(Args, Arity),
     map.lookup(ConsTagValues, cons(Name, Arity), TagVal),
     ( TagVal = int_tag(Int) ->
@@ -449,7 +449,7 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
         % we don't do the same thing for primary tags, so this is most useful
         % in the `--tags none' case, where there will be no primary tags.
 
-        Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args),
+        Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, _Ctxt),
         UnqualifiedName = unqualify_name(Name),
         ConstValue = const(mlconst_int(SecondaryTag)),
         MLDS_Defn = mlds_defn(
@@ -507,7 +507,7 @@ tagval_is_reserved_addr(shared_with_reserved_addresses_tag(_, TagVal), RA) :-
 :- func get_tagval(cons_tag_values, constructor) = cons_tag.
 
 get_tagval(ConsTagValues, Ctor) = TagVal :-
-    Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
+    Ctor = ctor(_ExistQTVars, _Constraints, Name, Args, _Ctxt),
     list.length(Args, Arity),
     map.lookup(ConsTagValues, cons(Name, Arity), TagVal).
 
@@ -566,7 +566,7 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId,
 ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
         SecondaryTagClassId, TypeDefn, ConsTagValues, Ctor,
         MLDS_Members0, MLDS_Members, MLDS_CtorMethods0, MLDS_CtorMethods) :-
-    Ctor = ctor(ExistQTVars, Constraints, CtorName, Args),
+    Ctor = ctor(ExistQTVars, Constraints, CtorName, Args, _Ctxt),
 
     % XXX We should keep a context for the constructor,
     % but we don't, so we just use the context from the type.
@@ -888,10 +888,9 @@ ml_gen_type_info_member(ModuleInfo, Context, TypeVar, MLDS_Defn,
 :- pred ml_gen_du_ctor_field(module_info::in, prog_context::in,
     constructor_arg::in, mlds_defn::out, int::in, int::out) is det.
 
-ml_gen_du_ctor_field(ModuleInfo, Context, MaybeFieldName - Type, MLDS_Defn,
-        ArgNum0, ArgNum) :-
-    ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
-        ArgNum0, ArgNum).
+ml_gen_du_ctor_field(ModuleInfo, Context, Arg, MLDS_Defn, ArgNum0, ArgNum) :-
+    ml_gen_field(ModuleInfo, Context, Arg ^ arg_field_name, Arg ^ arg_type,
+        MLDS_Defn, ArgNum0, ArgNum).
 
 :- pred ml_gen_field(module_info::in, prog_context::in,
     maybe(ctor_field_name)::in, mer_type::in, mlds_defn::out,

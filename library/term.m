@@ -36,7 +36,8 @@
                 term.context
             )
     ;       variable(
-                var(T)
+                var(T),
+                term.context
             ).
 
 :- type const
@@ -399,15 +400,16 @@
     % Abort (call error/1) if the list contains any non-variables.
     %
 :- func term_list_to_var_list(list(term(T))) = list(var(T)).
-:- pred term_list_to_var_list(list(term(T))::in, list(var(T))::out) is det.
+
+    % Convert a list of terms which are all vars into a list of vars.
+    %
+:- pred term_list_to_var_list(list(term(T))::in, list(var(T))::out) is semidet.
 
     % Convert a list of terms which are all vars into a list of vars
     % (or vice versa).
     %
 :- func var_list_to_term_list(list(var(T))) = list(term(T)).
-:- pred var_list_to_term_list(list(var(T)), list(term(T))).
-:- mode var_list_to_term_list(in, out) is det.
-:- mode var_list_to_term_list(out, in) is semidet.
+:- pred var_list_to_term_list(list(var(T))::in, list(term(T))::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -497,7 +499,7 @@ try_term_to_univ(Term, Type, Result) :-
     type_desc::in, term_to_type_context::in,
     term_to_type_result(univ, T)::out) is det.
 
-try_term_to_univ_2(variable(Var), _Type, Context,
+try_term_to_univ_2(variable(Var, _), _Type, Context,
         error(mode_error(Var, Context))).
 try_term_to_univ_2(Term, Type, Context, Result) :-
     Term = functor(Functor, ArgTerms, TermContext),
@@ -782,7 +784,7 @@ vars(Term, Vars) :-
 vars_list(Terms, Vars) :-
     vars_2_list(Terms, [], Vars).
 
-vars_2(variable(Var), !Vars) :-
+vars_2(variable(Var, _), !Vars) :-
     !:Vars = [Var | !.Vars].
 vars_2(functor(_, Args, _), !Vars) :-
     vars_2_list(Args, !Vars).
@@ -797,7 +799,7 @@ vars_2_list([Term | Terms], !Vars) :-
 
 %-----------------------------------------------------------------------------%
 
-contains_var(variable(Var), Var).
+contains_var(variable(Var, _), Var).
 contains_var(functor(_, Args, _), Var) :-
     contains_var_list(Args, Var).
 
@@ -815,7 +817,7 @@ context_init(File, LineNumber, context(File, LineNumber)).
 
 %-----------------------------------------------------------------------------%
 
-unify_term(variable(X), variable(Y), !Bindings) :-
+unify_term(variable(X, _), VarY @ variable(Y, _), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
         ( map.search(!.Bindings, Y, BindingOfY) ->
             % Both X and Y already have bindings - just unify the terms
@@ -824,7 +826,7 @@ unify_term(variable(X), variable(Y), !Bindings) :-
         ;
             % Y is a variable which hasn't been bound yet.
             apply_rec_substitution(BindingOfX, !.Bindings, SubstBindingOfX),
-            ( SubstBindingOfX = variable(Y) ->
+            ( SubstBindingOfX = variable(Y, _) ->
                 true
             ;
                 \+ occurs(SubstBindingOfX, Y, !.Bindings),
@@ -835,7 +837,7 @@ unify_term(variable(X), variable(Y), !Bindings) :-
         ( map.search(!.Bindings, Y, BindingOfY) ->
             % X is a variable which hasn't been bound yet
             apply_rec_substitution(BindingOfY, !.Bindings, SubstBindingOfY),
-            ( SubstBindingOfY = variable(X) ->
+            ( SubstBindingOfY = variable(X, _) ->
                 true
             ;
                 \+ occurs(SubstBindingOfY, X, !.Bindings),
@@ -847,12 +849,12 @@ unify_term(variable(X), variable(Y), !Bindings) :-
             ( X = Y ->
                 true
             ;
-                map.set(!.Bindings, X, variable(Y), !:Bindings)
+                map.set(!.Bindings, X, VarY, !:Bindings)
             )
         )
     ).
 
-unify_term(term.variable(X), term.functor(F, As, C), !Bindings) :-
+unify_term(term.variable(X, _), term.functor(F, As, C), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
         unify_term(BindingOfX, functor(F, As, C), !Bindings)
     ;
@@ -860,7 +862,7 @@ unify_term(term.variable(X), term.functor(F, As, C), !Bindings) :-
         map.set(!.Bindings, X, functor(F, As, C), !:Bindings)
     ).
 
-unify_term(functor(F, As, C), variable(X), !Bindings) :-
+unify_term(functor(F, As, C), variable(X, _), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
         unify_term(functor(F, As, C), BindingOfX, !Bindings)
     ;
@@ -876,7 +878,8 @@ unify_term_list([X | Xs], [Y | Ys], !Bindings) :-
     unify_term(X, Y, !Bindings),
     unify_term_list(Xs, Ys, !Bindings).
 
-unify_term_dont_bind(variable(X), variable(Y), BoundVars, !Bindings) :-
+unify_term_dont_bind(variable(X, _), VarY @ variable(Y, _),
+        BoundVars, !Bindings) :-
     ( list.member(Y, BoundVars) ->
         unify_term_bound_var(X, Y, BoundVars, !Bindings)
     ; list.member(X, BoundVars) ->
@@ -889,7 +892,7 @@ unify_term_dont_bind(variable(X), variable(Y), BoundVars, !Bindings) :-
         ;
             apply_rec_substitution(BindingOfX, !.Bindings, SubstBindingOfX),
             % Y is a variable which hasn't been bound yet.
-            ( SubstBindingOfX = variable(Y) ->
+            ( SubstBindingOfX = variable(Y, _) ->
                 true
             ;
                 \+ occurs(SubstBindingOfX, Y, !.Bindings),
@@ -900,7 +903,7 @@ unify_term_dont_bind(variable(X), variable(Y), BoundVars, !Bindings) :-
         ( map.search(!.Bindings, Y, BindingOfY) ->
             apply_rec_substitution(BindingOfY, !.Bindings, SubstBindingOfY),
             % X is a variable which hasn't been bound yet.
-            ( SubstBindingOfY = variable(X) ->
+            ( SubstBindingOfY = variable(X, _) ->
                 true
             ;
                 \+ occurs(SubstBindingOfY, X, !.Bindings),
@@ -911,12 +914,12 @@ unify_term_dont_bind(variable(X), variable(Y), BoundVars, !Bindings) :-
             ( X = Y ->
                 true
             ;
-                svmap.det_insert(X, variable(Y), !Bindings)
+                svmap.det_insert(X, VarY, !Bindings)
             )
         )
     ).
 
-unify_term_dont_bind(variable(X), functor(F, As, C), BoundVars, !Bindings) :-
+unify_term_dont_bind(variable(X, _), functor(F, As, C), BoundVars, !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
         unify_term_dont_bind(BindingOfX, functor(F, As, C), BoundVars,
             !Bindings)
@@ -926,7 +929,7 @@ unify_term_dont_bind(variable(X), functor(F, As, C), BoundVars, !Bindings) :-
         svmap.det_insert(X, functor(F, As, C), !Bindings)
     ).
 
-unify_term_dont_bind(functor(F, As, C), variable(X), BoundVars, !Bindings) :-
+unify_term_dont_bind(functor(F, As, C), variable(X, _), BoundVars, !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
         unify_term_dont_bind(functor(F, As, C), BindingOfX, BoundVars,
             !Bindings)
@@ -959,14 +962,14 @@ unify_term_list_dont_bind([X | Xs], [Y | Ys], BoundVars, !Bindings) :-
 
 unify_term_bound_var(Var, BoundVar, BoundVars, !Bindings) :-
     ( map.search(!.Bindings, Var, BindingOfVar) ->
-        BindingOfVar = variable(Var2),
+        BindingOfVar = variable(Var2, _),
         unify_term_bound_var(Var2, BoundVar, BoundVars, !Bindings)
     ;
         ( Var = BoundVar ->
             true
         ;
             \+ list.member(Var, BoundVars),
-            svmap.det_insert(Var, variable(BoundVar), !Bindings)
+            svmap.det_insert(Var, variable(BoundVar, context_init), !Bindings)
         )
     ).
 
@@ -979,7 +982,7 @@ list_subsumes(Terms1, Terms2, Subst) :-
 
 %-----------------------------------------------------------------------------%
 
-occurs(variable(X), Y, Bindings) :-
+occurs(variable(X, _), Y, Bindings) :-
     ( X = Y ->
         true
     ;
@@ -998,11 +1001,11 @@ occurs_list([Term | Terms], Y, Bindings) :-
 
 %-----------------------------------------------------------------------------%
 
-substitute(variable(Var), SearchVar, Replacement, Term) :-
+substitute(V @ variable(Var, _), SearchVar, Replacement, Term) :-
     ( Var = SearchVar ->
         Term = Replacement
     ;
-        Term = variable(Var)
+        Term = V
     ).
 substitute(functor(Name, Args0, Context), Var, Replacement,
          functor(Name, Args, Context)) :-
@@ -1039,12 +1042,12 @@ substitute_corresponding_2([S | Ss], [R | Rs], !Subst) :-
 
 %-----------------------------------------------------------------------------%
 
-apply_rec_substitution(variable(Var), Substitution, Term) :-
+apply_rec_substitution(V @ variable(Var, _), Substitution, Term) :-
     ( map.search(Substitution, Var, Replacement) ->
         % Recursively apply the substition to the replacement.
         apply_rec_substitution(Replacement, Substitution, Term)
     ;
-        Term = variable(Var)
+        Term = V
     ).
 apply_rec_substitution(functor(Name, Args0, Context), Substitution,
          functor(Name, Args, Context)) :-
@@ -1058,11 +1061,11 @@ apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
 
 %-----------------------------------------------------------------------------%
 
-apply_substitution(variable(Var), Substitution, Term) :-
+apply_substitution(V @ variable(Var, _), Substitution, Term) :-
     ( map.search(Substitution, Var, Replacement) ->
         Term = Replacement
     ;
-        Term = variable(Var)
+        Term = V
     ).
 apply_substitution(functor(Name, Args0, Context), Substitution,
          functor(Name, Args, Context)) :-
@@ -1108,7 +1111,8 @@ var_supply_max_var(var_supply(V)) = var(V).
 relabel_variable(functor(Const, Terms0, Cont), OldVar, NewVar,
         functor(Const, Terms, Cont)) :-
     relabel_variables(Terms0, OldVar, NewVar, Terms).
-relabel_variable(variable(Var0), OldVar, NewVar, variable(Var)) :-
+relabel_variable(variable(Var0, Context),
+        OldVar, NewVar, variable(Var, Context)) :-
     ( Var0 = OldVar ->
         Var = NewVar
     ;
@@ -1123,8 +1127,8 @@ relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
 apply_variable_renaming(functor(Const, Args0, Cont), Renaming,
         functor(Const, Args, Cont)) :-
     apply_variable_renaming_to_list(Args0, Renaming, Args).
-apply_variable_renaming(variable(Var0), Renaming,
-        variable(Var)) :-
+apply_variable_renaming(variable(Var0, Context), Renaming,
+        variable(Var, Context)) :-
     apply_variable_renaming_to_var(Renaming, Var0, Var).
 
 apply_variable_renaming_to_list([], _, []).
@@ -1146,20 +1150,17 @@ apply_variable_renaming_to_vars(Renaming, [Var0 | Vars0], [Var | Vars]) :-
 
 %-----------------------------------------------------------------------------%
 
-term_list_to_var_list(Terms, Vars) :-
-    ( var_list_to_term_list(Vars0, Terms) ->
-        Vars = Vars0
-    ;
-        error("term.term_list_to_var_list")
-    ).
+term_list_to_var_list([], []).
+term_list_to_var_list([variable(Var, _) | Terms], [Var | Vars]) :-
+    term_list_to_var_list(Terms, Vars).
 
 var_list_to_term_list([], []).
-var_list_to_term_list([Var | Vars], [variable(Var) | Terms]) :-
+var_list_to_term_list([Var | Vars], [variable(Var, context_init) | Terms]) :-
     var_list_to_term_list(Vars, Terms).
 
 %-----------------------------------------------------------------------------%
 
-is_ground_in_bindings(variable(V), Bindings) :-
+is_ground_in_bindings(variable(V, _), Bindings) :-
     map.search(Bindings, V, Binding),
     is_ground_in_bindings(Binding, Bindings).
 is_ground_in_bindings(functor(_, Args, _), Bindings) :-
@@ -1288,7 +1289,11 @@ context_init(S, N) = C :-
     context_init(S, N, C).
 
 term_list_to_var_list(Ts) = Vs :-
-    term_list_to_var_list(Ts, Vs).
+    ( term_list_to_var_list(Ts, Vs0) ->
+        Vs = Vs0
+    ;
+        error("term.term_list_to_var_list: not all vars")
+    ).
 
 var_list_to_term_list(Vs) = Ts :-
     var_list_to_term_list(Vs, Ts).

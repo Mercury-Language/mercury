@@ -1787,7 +1787,8 @@ maybe_add_existential_quantifier(HeadTypeParams, !Term) :-
 
 make_list_term([]) = term.functor(term.atom("[]"), [], term.context_init).
 make_list_term([Var | Vars]) = term.functor(term.atom("[|]"),
-    [term.variable(Var), make_list_term(Vars)], term.context_init).
+    [term.variable(Var, context_init), make_list_term(Vars)],
+    term.context_init).
 
 %-----------------------------------------------------------------------------%
 

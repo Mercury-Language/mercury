@@ -402,6 +402,13 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+    % Report why the file is not able to be opened,
+    % and set the exit status to be 1.
+    %
+:- pred unable_to_open_file(string::in, io.error::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1275,6 +1282,18 @@ capitalize(Str0) = Str :-
 report_warning(Context, Indent, Components, !IO) :-
     record_warning(!IO),
     write_error_pieces(Context, Indent, Components, !IO).
+
+%-----------------------------------------------------------------------------%
+
+unable_to_open_file(FileName, IOErr, !IO) :-
+    io.stderr_stream(StdErr, !IO),
+    io.write_string(StdErr, "Unable to open file: '", !IO),
+    io.write_string(StdErr, FileName, !IO),
+    io.write_string(StdErr, "' because\n", !IO),
+    io.write_string(StdErr, io.error_message(IOErr), !IO),
+    io.nl(StdErr, !IO),
+
+    io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -27,6 +27,11 @@ Changes to the Mercury standard library:
 * We have added string.c_pointer_to_string/{1,2} and string.from_c_pointer/1
   to convert c_pointers to a human readable form.
 
+* We have changed term.variable so that it records the context where
+  the variable was used.  This required the backward mode of
+  term.var_list_to_term_list to be removed.  The backwards mode is
+  now accessed via term.term_list_to_var_list.
+
 * We have renamed some library predicates whose names were ambiguous.
 
 Changes to the Mercury compiler:

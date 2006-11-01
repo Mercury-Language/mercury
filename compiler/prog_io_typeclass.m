@@ -233,7 +233,7 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
         MaybeClassName = ok2(ClassName, TermVars0),
         list.map(term.coerce, TermVars0, TermVars),
         (
-            term.var_list_to_term_list(Vars, TermVars),
+            term.term_list_to_var_list(TermVars, Vars),
             list.sort_and_remove_dups(TermVars, SortedTermVars),
             list.length(SortedTermVars) = list.length(TermVars) : int
         ->
@@ -482,7 +482,7 @@ parse_arbitrary_constraint(ConstraintTerm, Result) :-
 
 parse_inst_constraint(Term, InstVar, Inst) :-
     Term = term.functor(term.atom("=<"), [Arg1, Arg2], _),
-    Arg1 = term.variable(InstVar0),
+    Arg1 = term.variable(InstVar0, _),
     term.coerce_var(InstVar0, InstVar),
     convert_inst(no_allow_constrained_inst_var, Arg2, Inst).
 
@@ -506,7 +506,7 @@ parse_fundep(Term, Result) :-
 parse_fundep_2(Term, TVars) :-
     TypeTerm = term.coerce(Term),
     conjunction_to_list(TypeTerm, List),
-    term.var_list_to_term_list(TVars, List).
+    term.term_list_to_var_list(List, TVars).
 
 :- pred constraint_is_not_simple(prog_constraint::in) is semidet.
 

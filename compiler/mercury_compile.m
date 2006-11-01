@@ -139,6 +139,7 @@
 :- import_module check_hlds.goal_path.
 :- import_module check_hlds.inst_check.
 :- import_module check_hlds.unused_imports.
+:- import_module check_hlds.xml_documentation.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
@@ -1461,6 +1462,8 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
             MakeTransOptInt, !IO),
         globals.io_lookup_bool_option(make_analysis_registry,
             MakeAnalysisRegistry, !IO),
+        globals.io_lookup_bool_option(make_xml_documentation,
+            MakeXmlDocumentation, !IO),
         ( TypeCheckOnly = yes ->
             FactTableObjFiles = []
         ; ErrorCheckOnly = yes ->
@@ -1483,6 +1486,9 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
             FactTableObjFiles = []
         ; MakeAnalysisRegistry = yes ->
             output_analysis_file(ModuleName, HLDS21, !DumpInfo, !IO),
+            FactTableObjFiles = []
+        ; MakeXmlDocumentation = yes ->
+            xml_documentation(HLDS21, !IO),
             FactTableObjFiles = []
         ;
             mercury_compile_after_front_end(NestedSubModules,
@@ -2092,8 +2098,8 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
                 MakeOptInt = no,
                 % Now go ahead and do the rest of mode checking
                 % and determinism analysis.
-                frontend_pass_by_phases(!HLDS, FoundModeOrDetError, !DumpInfo,
-                    !IO),
+                frontend_pass_by_phases(!HLDS,
+                    FoundModeOrDetError, !DumpInfo, !IO),
                 !:FoundError = !.FoundError `or` FoundModeOrDetError
             )
         )
@@ -3508,6 +3514,7 @@ maybe_unused_imports(Verbose, Stats, HLDS, Specs, !IO) :-
         WarnUnusedImports = no,
         Specs = []
     ).
+
 
 :- pred maybe_type_ctor_infos(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

@@ -1056,10 +1056,16 @@
                 cons_constraints    :: list(prog_constraint),
                                     % existential constraints
                 cons_name           :: sym_name,
-                cons_args           :: list(constructor_arg)
+                cons_args           :: list(constructor_arg),
+                cons_context        :: prog_context
             ).
 
-:- type constructor_arg == pair(maybe(ctor_field_name), mer_type).
+:- type constructor_arg
+    --->    ctor_arg(
+                arg_field_name      :: maybe(ctor_field_name),
+                arg_type            :: mer_type,
+                arg_context         :: prog_context
+            ).
 
 :- type ctor_field_name == sym_name.
 
@@ -1949,7 +1955,7 @@ tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
 :- pred convert_subst_term_to_tvar(tvar::in, term(tvar_type)::in, tvar::out)
     is det.
 
-convert_subst_term_to_tvar(_, variable(TVar), TVar).
+convert_subst_term_to_tvar(_, variable(TVar, _), TVar).
 convert_subst_term_to_tvar(_, functor(_, _, _), _) :-
     unexpected(this_file, "non-variable found in renaming").
 

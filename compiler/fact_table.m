@@ -387,7 +387,7 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
     int::in, fact_result::out, error_reports::in, error_reports::out,
     io::di, io::uo) is det.
 
-check_fact_term(_, _, _, _, term.variable(_V), _, _, _, _, error,
+check_fact_term(_, _, _, _, term.variable(_V, _), _, _, _, _, error,
         !Errors, !IO) :-
     io.get_line_number(LineNum, !IO),
     io.input_stream_name(FileName, !IO),
@@ -489,7 +489,7 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
         Context0, Result, !Errors) :-
     ArgNum = ArgNum0 + 1,
     (
-        Term = term.variable(_),
+        Term = term.variable(_, _),
         Msg = "Error: non-ground term in fact.",
         add_error_report(Context0, [words(Msg)], !Errors),
         Result = error

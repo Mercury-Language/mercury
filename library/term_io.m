@@ -291,7 +291,7 @@ term_io.write_arg_term(Ops, Term, !VarSet, !N, !IO) :-
     varset(T)::in, varset(T)::out, int::in, int::out,
     io::di, io::uo) is det <= op_table(Ops).
 
-term_io.write_term_3(Ops, term.variable(Id), _, !VarSet, !N, !IO) :-
+term_io.write_term_3(Ops, term.variable(Id, _), _, !VarSet, !N, !IO) :-
     term_io.write_variable_2(Ops, Id, !VarSet, !N, !IO).
 term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         !VarSet, !N, !IO) :-
@@ -328,7 +328,7 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         % gets parsed as ''(Var, Arg). When writing it out, we want to use
         % the nice syntax.
         Functor = term.atom(""),
-        Args = [term.variable(Var), FirstArg | OtherArgs]
+        Args = [term.variable(Var, _), FirstArg | OtherArgs]
     ->
         term_io.write_variable_2(Ops, Var, !VarSet, !N, !IO),
         io.write_char('(', !IO),
@@ -432,7 +432,7 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
 
 term_io.write_list_tail(Ops, Term, !VarSet, !N, !IO) :-
     (
-        Term = term.variable(Id),
+        Term = term.variable(Id, _),
         varset.search_var(!.VarSet, Id, Val)
     ->
         term_io.write_list_tail(Ops, Val, !VarSet, !N, !IO)

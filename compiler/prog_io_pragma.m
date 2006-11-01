@@ -1823,7 +1823,7 @@ parse_pragma_c_code_varlist(_, [], [], no).
 parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
     (
         V = term.functor(term.atom("::"), [VarTerm, ModeTerm], _),
-        VarTerm = term.variable(Var)
+        VarTerm = term.variable(Var, _)
     ->
         ( varset.search_name(VarSet, Var, VarName) ->
             ( convert_mode(allow_constrained_inst_var, ModeTerm, Mode0) ->
@@ -2180,8 +2180,8 @@ convert_int_list(ListTerm, Result) :-
 :- pred convert_list(term::in, pred(term, T)::(pred(in, out) is semidet),
     string::in, maybe1(list(T))::out) is det.
 
-convert_list(term.variable(V), _, UnrecognizedMsg,
-        error1([UnrecognizedMsg - term.variable(V)])).
+convert_list(term.variable(V, C), _, UnrecognizedMsg,
+        error1([UnrecognizedMsg - term.variable(V, C)])).
 convert_list(term.functor(Functor, Args, Context), Pred, UnrecognizedMsg,
         Result) :-
     (
@@ -2220,8 +2220,8 @@ convert_list(term.functor(Functor, Args, Context), Pred, UnrecognizedMsg,
     pred(term, maybe1(T))::(pred(in, out) is semidet),
     string::in, maybe1(list(T))::out) is det.
 
-convert_maybe_list(term.variable(V), _, UnrecognizedMsg,
-        error1([UnrecognizedMsg - term.variable(V)])).
+convert_maybe_list(term.variable(V, C), _, UnrecognizedMsg,
+        error1([UnrecognizedMsg - term.variable(V, C)])).
 convert_maybe_list(term.functor(Functor, Args, Context), Pred, UnrecognizedMsg,
         Result) :-
     (
@@ -2261,7 +2261,7 @@ convert_maybe_list(term.functor(Functor, Args, Context), Pred, UnrecognizedMsg,
 
 convert_type_spec_pair(Term, TypeSpec) :-
     Term = term.functor(term.atom("="), [TypeVarTerm, SpecTypeTerm0], _),
-    TypeVarTerm = term.variable(TypeVar0),
+    TypeVarTerm = term.variable(TypeVar0, _),
     term.coerce_var(TypeVar0, TypeVar),
     parse_type(SpecTypeTerm0, ok1(SpecType)),
     TypeSpec = TypeVar - SpecType.

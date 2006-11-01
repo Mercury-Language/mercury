@@ -362,7 +362,7 @@ corresponding_members([_ | As], [_ | Bs], A, B) :-
 merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
     varset.merge_subst_without_names(VarSet0, NewVarSet, VarSet, Sub0),
     (
-        map.map_values(pred(_::in, term.variable(V)::in, V::out) is semidet,
+        map.map_values(pred(_::in, term.variable(V, _)::in, V::out) is semidet,
             Sub0, Sub1)
     ->
         Sub = Sub1

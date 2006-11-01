@@ -950,12 +950,12 @@ expand_bang_state_var_args(Args) =
 
 :- func expand_bang_state_var(prog_term, list(prog_term)) = list(prog_term).
 
-expand_bang_state_var(T @ variable(_), Ts) = [T | Ts].
+expand_bang_state_var(T @ variable(_, _), Ts) = [T | Ts].
 
 expand_bang_state_var(T @ functor(Const, Args, Ctxt), Ts) =
     (
         Const = atom("!"),
-        Args = [variable(_StateVar)]
+        Args = [variable(_StateVar, _)]
     ->
         [functor(atom("!."), Args, Ctxt), functor(atom("!:"), Args, Ctxt) | Ts]
     ;
@@ -1015,15 +1015,15 @@ substitute_state_var_mappings([Arg0 | Args0], [Arg | Args], !VarSet, !SInfo,
 
 substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !Specs) :-
     (
-        Arg0 = functor(atom("!."), [variable(StateVar)], Context)
+        Arg0 = functor(atom("!."), [variable(StateVar, _)], Context)
     ->
         dot(Context, StateVar, Var, !VarSet, !SInfo, !Specs),
-        Arg  = variable(Var)
+        Arg  = variable(Var, context_init)
     ;
-        Arg0 = functor(atom("!:"), [variable(StateVar)], Context)
+        Arg0 = functor(atom("!:"), [variable(StateVar, _)], Context)
     ->
         colon(Context, StateVar, Var, !VarSet, !SInfo, !Specs),
-        Arg  = variable(Var)
+        Arg  = variable(Var, context_init)
     ;
         Arg  = Arg0
     ).
@@ -1031,12 +1031,12 @@ substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !Specs) :-
 %-----------------------------------------------------------------------------%
 
 illegal_state_var_func_result(function, Args, StateVar) :-
-    list.last(Args, functor(atom("!"), [variable(StateVar)], _Ctxt)).
+    list.last(Args, functor(atom("!"), [variable(StateVar, _)], _Ctxt)).
 
 %-----------------------------------------------------------------------------%
 
 lambda_args_contain_bang_state_var([Arg | Args], StateVar) :-
-    ( Arg      = functor(atom("!"), [variable(StateVar0)], _) ->
+    ( Arg = functor(atom("!"), [variable(StateVar0, _)], _) ->
         StateVar = StateVar0
     ;
         lambda_args_contain_bang_state_var(Args, StateVar)

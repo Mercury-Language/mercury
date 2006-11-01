@@ -498,7 +498,7 @@ varset.merge_subst_2(IncludeNames, N, Max, Names, Values, !VarSet, !Subst) :-
         ;
             true
         ),
-        map.set(!.Subst, VarN, term.variable(VarId), !:Subst),
+        map.set(!.Subst, VarN, term.variable(VarId, context_init), !:Subst),
         varset.merge_subst_2(IncludeNames, N1, Max, Names, Values,
             !VarSet, !Subst)
     ).

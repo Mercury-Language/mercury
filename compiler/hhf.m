@@ -410,7 +410,7 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
     type_ctor::in, constructor::in, hhf_info::in, hhf_info::out) is det.
 
 maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeId, Ctor, !HI) :-
-    Ctor = ctor(_, _, Name, Args),
+    Ctor = ctor(_, _, Name, Args, _),
     ConsId = make_cons_id(Name, Args, TypeId),
     map.lookup(!.HI ^ inst_graph, Var, node(Functors0, MaybeParent)),
     ( map.contains(Functors0, ConsId) ->
@@ -429,7 +429,7 @@ maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeId, Ctor, !HI) :-
     is det.
 
 add_cons_id(Var, ModuleInfo, BaseVars, Arg, NewVar, !HI) :-
-    Arg = _ - ArgType,
+    ArgType = Arg ^ arg_type,
     !.HI = hhf_info(InstGraph0, VarSet0, VarTypes0),
     (
         find_var_with_type(Var, ArgType, InstGraph0, VarTypes0,

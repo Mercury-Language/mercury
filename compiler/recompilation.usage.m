@@ -1068,7 +1068,7 @@ find_items_used_by_type_body(hlds_solver_type(_, _), !Info).
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_ctor(Ctor, !Info) :-
-    Ctor = ctor(_, Constraints, _, CtorArgs),
+    Ctor = ctor(_, Constraints, _, CtorArgs, _),
     find_items_used_by_class_constraints(Constraints, !Info),
     list.foldl(find_items_used_by_ctor_arg, CtorArgs, !Info).
 
@@ -1076,7 +1076,7 @@ find_items_used_by_ctor(Ctor, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_ctor_arg(CtorArg, !Info) :-
-    CtorArg = _ - ArgType,
+    ArgType = CtorArg ^ arg_type,
     find_items_used_by_type(ArgType, !Info).
 
 :- pred find_items_used_by_mode_defn(hlds_mode_defn::in,

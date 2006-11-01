@@ -605,10 +605,10 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
             % Check whether the unification is a deconstruction unification
             % on either Var or on a variable aliased to Var.
             UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _, _),
-            term.apply_rec_substitution(term.variable(Var),
-                !.Subst, term.variable(SubstVar)),
-            term.apply_rec_substitution(term.variable(UnifyVar),
-                !.Subst, term.variable(SubstUnifyVar)),
+            term.apply_rec_substitution(term.variable(Var, context_init),
+                !.Subst, term.variable(SubstVar, context_init)),
+            term.apply_rec_substitution(term.variable(UnifyVar, context_init),
+                !.Subst, term.variable(SubstUnifyVar, context_init)),
             SubstVar = SubstUnifyVar
         ->
             call(ProcessUnify, Var, Goal0, Goals, !Result, !Info),

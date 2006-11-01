@@ -315,6 +315,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
@@ -608,9 +609,11 @@ type_constructors(Type, ModuleInfo, Constructors) :-
         % Tuples are never existentially typed.
         ExistQVars = [],
         ClassConstraints = [],
-        CtorArgs = list.map((func(ArgType) = no - ArgType), TypeArgs),
+        Context = term.context_init,
+        CtorArgs = list.map(
+                (func(ArgType) = ctor_arg(no, ArgType, Context)), TypeArgs),
         Constructors = [ctor(ExistQVars, ClassConstraints, unqualified("{}"),
-            CtorArgs)]
+            CtorArgs, Context)]
     ;
         module_info_get_type_table(ModuleInfo, TypeTable),
         map.search(TypeTable, TypeCtor, TypeDefn),
@@ -646,17 +649,18 @@ substitute_type_args_2(Subst, [Ctor0 | Ctors0], [Ctor | Ctors]) :-
     % constraints can only contain existentially quantified variables,
     % so there's no need to worry about applying the substitution to ExistQVars
     % or Constraints.
-    Ctor0 = ctor(ExistQVars, Constraints, Name, Args0),
+    Ctor0 = ctor(ExistQVars, Constraints, Name, Args0, Ctxt),
     substitute_type_args_3(Subst, Args0, Args),
     substitute_type_args_2(Subst, Ctors0, Ctors),
-    Ctor = ctor(ExistQVars, Constraints, Name, Args).
+    Ctor = ctor(ExistQVars, Constraints, Name, Args, Ctxt).
 
 :- pred substitute_type_args_3(tsubst::in, list(constructor_arg)::in,
     list(constructor_arg)::out) is det.
 
 substitute_type_args_3(_, [], []).
-substitute_type_args_3(Subst, [Name - Arg0 | Args0], [Name - Arg | Args]) :-
-    apply_subst_to_type(Subst, Arg0, Arg),
+substitute_type_args_3(Subst, [Arg0 | Args0], [Arg | Args]) :-
+    apply_subst_to_type(Subst, Arg0 ^ arg_type, ArgType),
+    Arg = Arg0 ^ arg_type := ArgType,
     substitute_type_args_3(Subst, Args0, Args).
 
 %-----------------------------------------------------------------------------%
@@ -732,7 +736,7 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
             ),
 
             map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
-            assoc_list.values(Args, ArgTypes0),
+            ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
             apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes)
         ;
             ArgTypes = []
@@ -760,7 +764,7 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
 
     map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
-    assoc_list.values(Args, ArgTypes0),
+    ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
     apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes).
 
 is_existq_cons(ModuleInfo, VarType, ConsId) :-
@@ -804,7 +808,7 @@ get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
 get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
     is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
     ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, _, _),
-    assoc_list.values(Args, ArgTypes),
+    ArgTypes = list.map(func(C) = C ^ arg_type, Args),
     module_info_get_type_table(ModuleInfo, Types),
     type_to_ctor_and_args(VarType, TypeCtor, _),
     map.lookup(Types, TypeCtor, TypeDefn),

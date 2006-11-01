@@ -754,7 +754,7 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
     ->
         Arity = list.length(SingleCtorArgs),
         ConsId = cons(SingleCtorName, Arity),
-        ExpandedTypes = list.map(snd, SingleCtorArgs),
+        ExpandedTypes = list.map(func(C) = C ^ arg_type, SingleCtorArgs),
         Expansion = expansion(ConsId, ExpandedTypes)
     ;
         Expansion = no_expansion

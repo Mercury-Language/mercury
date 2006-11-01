@@ -678,9 +678,9 @@ convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 ctors_add([], _, _, _, _, _, _, !FieldNameTable, !Ctors, !Specs).
-ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
+ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, _Context,
         ImportStatus, !FieldNameTable, !Ctors, !Specs) :-
-    Ctor = ctor(ExistQVars, Constraints, Name, Args),
+    Ctor = ctor(ExistQVars, Constraints, Name, Args, Context),
     QualifiedConsId = make_cons_id(Name, Args, TypeCtor),
     ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, TypeCtor,
         Context),
@@ -727,7 +727,8 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
         list.map_foldl(add_ctor(ConsName, Arity, ConsDefn),
             PartialQuals, _PartiallyQualifiedConsIds, !Ctors),
 
-        assoc_list.keys(Args, FieldNames),
+        FieldNames = list.map(func(C) = C ^ arg_field_name, Args),
+
         FirstField = 1,
 
         add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,

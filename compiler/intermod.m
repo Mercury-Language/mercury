@@ -1672,7 +1672,7 @@ strip_headvar_unifications(HeadVars, clause(ProcIds, Goal0, Lang, Context),
                 ( map.search(HeadVarMap, HeadVar0, HeadTerm0) ->
                     HeadTerm = HeadTerm0
                 ;
-                    HeadTerm = term.variable(HeadVar0)
+                    HeadTerm = term.variable(HeadVar0, Context)
                 )
             ), HeadVars, HeadTerms),
         conj_list_to_goal(Goals, GoalInfo0, Goal)
@@ -1694,12 +1694,12 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
     (
         Goal = unify(LHSVar, RHS, _, _, _) - _,
         list.member(LHSVar, HeadVars),
+        term.context_init(Context),
         (
             RHS = rhs_var(RHSVar),
-            RHSTerm = term.variable(RHSVar)
+            RHSTerm = term.variable(RHSVar, Context)
         ;
             RHS = rhs_functor(ConsId, _, Args),
-            term.context_init(Context),
             (
                 ConsId = int_const(Int),
                 RHSTerm = term.functor(term.integer(Int), [], Context)

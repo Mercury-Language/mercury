@@ -1136,7 +1136,7 @@ check_type_defn_ambiguity_with_functor(_, _, parse_tree_solver_type(_, _),
     constructor::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities(NeedQualifier, TypeCtor, ctor(_, _, Name, Args),
+check_functor_ambiguities(NeedQualifier, TypeCtor, ctor(_, _, Name, Args, _),
         !Info) :-
     TypeCtorItem = type_ctor_to_item_name(TypeCtor),
     ResolvedCtor = resolved_functor_constructor(TypeCtorItem),
@@ -1152,9 +1152,9 @@ check_functor_ambiguities(NeedQualifier, TypeCtor, ctor(_, _, Name, Args),
     constructor_arg::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_field_ambiguities(_, _, no - _, !Info).
-check_field_ambiguities(NeedQualifier, ResolvedCtor, yes(FieldName) - _,
-        !Info) :-
+check_field_ambiguities(_, _, ctor_arg(no, _, _) , !Info).
+check_field_ambiguities(NeedQualifier, ResolvedCtor,
+        ctor_arg(yes(FieldName), _, _), !Info) :-
     % XXX The arities to match below will need to change if we ever
     % allow taking the address of field access functions.
     field_access_function_name(get, FieldName, ExtractFuncName),

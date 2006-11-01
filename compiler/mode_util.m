@@ -763,7 +763,7 @@ constructors_to_bound_any_insts(ModuleInfo, Uniq, Constructors, BoundInsts) :-
 constructors_to_bound_insts_2(_, _, [], _, []).
 constructors_to_bound_insts_2(ModuleInfo, Uniq, [Ctor | Ctors], ArgInst,
         [BoundInst | BoundInsts]) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
+    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
     list.length(Insts, Arity),
     BoundInst = bound_functor(cons(Name, Arity), Insts),
@@ -774,7 +774,7 @@ constructors_to_bound_insts_2(ModuleInfo, Uniq, [Ctor | Ctors], ArgInst,
     list(mer_inst)::out) is det.
 
 ctor_arg_list_to_inst_list([], _, []).
-ctor_arg_list_to_inst_list([_Name - _Type | Args], Inst, [Inst | Insts]) :-
+ctor_arg_list_to_inst_list([_ | Args], Inst, [Inst | Insts]) :-
     ctor_arg_list_to_inst_list(Args, Inst, Insts).
 
 :- pred propagate_ctor_info_2(module_info::in, mer_type::in,
@@ -844,14 +844,14 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeModule, Constructors,
     (
         ConsId = cons(ConsName, Arity),
         GetCons = (pred(Ctor::in) is semidet :-
-                Ctor = ctor(_, _, ConsName, CtorArgs),
+                Ctor = ctor(_, _, ConsName, CtorArgs, _),
                 list.length(CtorArgs, Arity)
             ),
         list.filter(GetCons, Constructors, [Constructor])
     ->
-        Constructor = ctor(_ExistQVars, _Constraints, _Name, Args),
+        Constructor = ctor(_ExistQVars, _Constraints, _Name, Args, _Ctxt),
         GetArgTypes = (pred(CtorArg::in, ArgType::out) is det :-
-                CtorArg = _ArgName - ArgType
+                ArgType = CtorArg ^ arg_type
             ),
         list.map(GetArgTypes, Args, ArgTypes),
         propagate_types_into_inst_list(ModuleInfo, Subst, ArgTypes,

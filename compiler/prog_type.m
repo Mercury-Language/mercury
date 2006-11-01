@@ -754,7 +754,7 @@ is_builtin_dummy_argument_type("io", "state", 0).    % io.state/0
 is_builtin_dummy_argument_type("store", "store", 1). % store.store/1.
 
 constructor_list_represents_dummy_argument_type([Ctor], no) :-
-    Ctor = ctor([], [], _, []).
+    Ctor = ctor([], [], _, [], _).
 
 type_is_io_state(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, []),
@@ -943,7 +943,7 @@ type_constructors_are_type_info(Ctors) :-
 type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName, ArgType) :-
     Ctors = [SingleCtor],
     SingleCtor = ctor(ExistQVars, _Constraints, Ctor,
-        [MaybeArgName - ArgType]),
+        [ctor_arg(MaybeArgName, ArgType, _)], _Ctxt),
     ExistQVars = [].
 
 :- pred ctor_is_type_info(sym_name::in) is semidet.

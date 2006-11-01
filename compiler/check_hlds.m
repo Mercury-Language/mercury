@@ -79,6 +79,9 @@
 % Warnings about unused imports
 :- include_module unused_imports.
 
+% Output XML representation useful for documentation of module
+:- include_module xml_documentation.
+
 :- include_module goal_path.
 
 %-----------------------------------------------------------------------------%

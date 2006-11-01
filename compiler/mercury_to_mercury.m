@@ -1066,13 +1066,13 @@ mercury_write_module_spec_list([ModuleName | ModuleNames], !IO) :-
 
 mercury_output_inst_defn(VarSet, Name, Args, abstract_inst, Context, !IO) :-
     io.write_string(":- inst (", !IO),
-    list.map(pred(V::in, variable(V)::out) is det, Args, ArgTerms),
+    ArgTerms = list.map(func(V) = variable(V, Context), Args),
     construct_qualified_term(Name, ArgTerms, Context, InstTerm),
     mercury_output_term(InstTerm, VarSet, no, !IO),
     io.write_string(").\n", !IO).
 mercury_output_inst_defn(VarSet, Name, Args, eqv_inst(Body), Context, !IO) :-
     io.write_string(":- inst (", !IO),
-    list.map(pred(V::in, variable(V)::out) is det, Args, ArgTerms),
+    ArgTerms = list.map(func(V) = variable(V, Context), Args),
     construct_qualified_term(Name, ArgTerms, Context, InstTerm),
     mercury_output_term(InstTerm, VarSet, no, !IO),
     io.write_string(") == ", !IO),
@@ -1648,7 +1648,7 @@ mercury_format_constrained_inst_vars(Vars0, Inst, InstInfo, !U) :-
 
 mercury_format_mode_defn(VarSet, Name, Args, eqv_mode(Mode), Context, !U) :-
     add_string(":- mode (", !U),
-    list.map(pred(V::in, variable(V)::out) is det, Args, ArgTerms),
+    ArgTerms = list.map(func(V) = variable(V, Context), Args),
     construct_qualified_term(Name, ArgTerms, Context, ModeTerm),
     mercury_format_term(ModeTerm, VarSet, no, !U),
     add_string(") == ", !U),
@@ -1720,7 +1720,7 @@ mercury_format_mode(user_defined_mode(Name, Args), InstInfo, !U) :-
 mercury_output_type_defn(TVarSet, Name, TParams,
         parse_tree_abstract_type(IsSolverType), Context, !IO) :-
     mercury_output_begin_type_decl(IsSolverType, !IO),
-    Args = list.map((func(V) = term.variable(V)), TParams),
+    Args = list.map((func(V) = term.variable(V, Context)), TParams),
     construct_qualified_term(Name, Args, Context, TypeTerm),
     mercury_output_term(TypeTerm, TVarSet, no, next_to_graphic_token, !IO),
     io.write_string(".\n", !IO).
@@ -1728,7 +1728,7 @@ mercury_output_type_defn(TVarSet, Name, TParams,
 mercury_output_type_defn(TVarSet, Name, TParams, parse_tree_eqv_type(Body),
         Context, !IO) :-
     mercury_output_begin_type_decl(non_solver_type, !IO),
-    Args = list.map((func(V) = term.variable(V)), TParams),
+    Args = list.map((func(V) = term.variable(V, Context)), TParams),
     construct_qualified_term(Name, Args, Context, TypeTerm),
     mercury_output_term(TypeTerm, TVarSet, no, !IO),
     io.write_string(" == ", !IO),
@@ -1738,7 +1738,7 @@ mercury_output_type_defn(TVarSet, Name, TParams, parse_tree_eqv_type(Body),
 mercury_output_type_defn(TVarSet, Name, TParams,
         parse_tree_du_type(Ctors, MaybeUserEqComp), Context, !IO) :-
     mercury_output_begin_type_decl(non_solver_type, !IO),
-    Args = list.map((func(V) = term.variable(V)), TParams),
+    Args = list.map((func(V) = term.variable(V, Context)), TParams),
     construct_qualified_term(Name, Args, Context, TypeTerm),
     mercury_output_term(TypeTerm, TVarSet, no, !IO),
     io.write_string("\n\t--->\t", !IO),
@@ -1750,7 +1750,7 @@ mercury_output_type_defn(TVarSet, Name, TParams,
         parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
         Context, !IO) :-
     mercury_output_begin_type_decl(solver_type, !IO),
-    Args = list.map((func(V) = term.variable(V)), TParams),
+    Args = list.map((func(V) = term.variable(V, Context)), TParams),
     construct_qualified_term(Name, Args, Context, TypeTerm),
     mercury_output_term(TypeTerm, TVarSet, no, !IO),
     mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
@@ -1771,7 +1771,7 @@ mercury_output_type_defn(TVarSet, Name, TParams,
         ForeignType = java(_),
         io.write_string("java, ", !IO)
     ),
-    Args = list.map((func(V) = term.variable(V)), TParams),
+    Args = list.map((func(V) = term.variable(V, context_init)), TParams),
     construct_qualified_term(Name, Args, MercuryType),
     mercury_output_term(MercuryType, TVarSet, no, !IO),
     io.write_string(", \"", !IO),
@@ -1930,7 +1930,7 @@ mercury_output_ctors([Ctor | Ctors], VarSet, !IO) :-
     mercury_output_ctors(Ctors, VarSet, !IO).
 
 mercury_output_ctor(Ctor, VarSet, !IO) :-
-    Ctor = ctor(ExistQVars, Constraints, SymName, Args),
+    Ctor = ctor(ExistQVars, Constraints, SymName, Args, _Ctxt),
 
         % We'll have attached the module name to the type definition,
         % so there's no point adding it to the constructor as well.
@@ -1994,15 +1994,14 @@ mercury_output_ctor(Ctor, VarSet, !IO) :-
 :- pred mercury_output_ctor_arg(tvarset::in, constructor_arg::in,
     io::di, io::uo) is det.
 
-mercury_output_ctor_arg(Varset, N - T, !IO) :-
+mercury_output_ctor_arg(Varset, ctor_arg(N, T, _), !IO) :-
     mercury_output_ctor_arg_name_prefix(N, !IO),
     mercury_output_type(Varset, no, T, !IO).
 
 mercury_output_remaining_ctor_args(_Varset, [], !IO).
-mercury_output_remaining_ctor_args(Varset, [N - T | As], !IO) :-
+mercury_output_remaining_ctor_args(Varset, [A | As], !IO) :-
     io.write_string(", ", !IO),
-    mercury_output_ctor_arg_name_prefix(N, !IO),
-    mercury_output_type(Varset, no, T, !IO),
+    mercury_output_ctor_arg(Varset, A, !IO),
     mercury_output_remaining_ctor_args(Varset, As, !IO).
 
 :- pred mercury_output_ctor_arg_name_prefix(maybe(ctor_field_name)::in,
@@ -3694,7 +3693,7 @@ mercury_format_term(Term, VarSet, AppendVarnums, !U) :-
 :- pred mercury_format_term(term(T)::in, varset(T)::in, bool::in,
     needs_quotes::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_term(term.variable(Var), VarSet, AppendVarnums, _, !U) :-
+mercury_format_term(term.variable(Var, _), VarSet, AppendVarnums, _, !U) :-
     mercury_format_var(VarSet, AppendVarnums, Var, !U).
 mercury_format_term(term.functor(Functor, Args, _), VarSet, AppendVarnums,
         NextToGraphicToken, !U) :-
@@ -4289,7 +4288,7 @@ output_list([Item | Items], Sep, Pred, !Str) :-
 :- pred builtin_inst_name(sym_name::in, list(inst_var)::in) is semidet.
 
 builtin_inst_name(unqualified(Name), Args0) :-
-    Args1 = list.map(func(V) = term.variable(term.coerce_var(V)), Args0),
+    Args1 = list.map(func(V) = variable(coerce_var(V), context_init), Args0),
     Term = term.functor(term.atom(Name), Args1, term.context_init),
     convert_inst(no_allow_constrained_inst_var, Term, Inst),
     Inst \= defined_inst(user_inst(_, _)).

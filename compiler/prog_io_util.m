@@ -287,7 +287,7 @@ parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
     %
 parse_type(Term, Result) :-
     (
-        Term = term.variable(Var0)
+        Term = term.variable(Var0, _)
     ->
         term.coerce_var(Var0, Var),
         Result = ok1(type_variable(Var, kind_star))
@@ -391,7 +391,7 @@ parse_purity_annotation(Term0, Purity, Term) :-
         Term = Term0
     ).
 
-unparse_type(type_variable(TVar, _), term.variable(Var)) :-
+unparse_type(type_variable(TVar, _), term.variable(Var, context_init)) :-
     Var = term.coerce_var(TVar).
 unparse_type(defined_type(SymName, Args, _), Term) :-
     unparse_type_list(Args, ArgTerms),
@@ -423,7 +423,7 @@ unparse_type(apply_n_type(TVar, Args, _), Term) :-
     Context = term.context_init,
     Var = term.coerce_var(TVar),
     unparse_type_list(Args, ArgTerms),
-    Term = term.functor(term.atom(""), [term.variable(Var) | ArgTerms],
+    Term = term.functor(term.atom(""), [term.variable(Var, Context) | ArgTerms],
         Context).
 unparse_type(kinded_type(_, _), _) :-
     unexpected(this_file, "prog_io_util: kind annotation").
@@ -522,7 +522,7 @@ convert_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
     convert_inst(AllowConstrainedInstVar, H0, H),
     convert_inst_list(AllowConstrainedInstVar, T0, T).
 
-convert_inst(_, term.variable(V0), inst_var(V)) :-
+convert_inst(_, term.variable(V0, _), inst_var(V)) :-
     term.coerce_var(V0, V).
 convert_inst(AllowConstrainedInstVar, Term, Result) :-
     Term = term.functor(term.atom(Name), Args0, _Context),
@@ -579,7 +579,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
             Result)
     ; Name = "=<", Args0 = [VarTerm, InstTerm] ->
         AllowConstrainedInstVar = allow_constrained_inst_var,
-        VarTerm = term.variable(Var),
+        VarTerm = term.variable(Var, _),
         % Do not allow nested constrained_inst_vars.
         convert_inst(no_allow_constrained_inst_var, InstTerm, Inst),
         Result = constrained_inst_vars(set.make_singleton_set(
@@ -752,14 +752,14 @@ combine_list_results(ok1(X), ok1(Xs), ok1([X | Xs])).
 parse_list_of_vars(term.functor(term.atom("[]"), [], _), []).
 parse_list_of_vars(term.functor(term.atom("[|]"), [Head, Tail], _),
         [V | Vs]) :-
-    Head = term.variable(V),
+    Head = term.variable(V, _),
     parse_list_of_vars(Tail, Vs).
 
 parse_vars(Term, MaybeVars) :-
     ( Term = functor(atom("[]"), [], _) ->
         MaybeVars = ok1([])
     ; Term = functor(atom("[|]"), [Head, Tail], _) ->
-        ( Head = variable(V) ->
+        ( Head = variable(V, _) ->
             parse_vars(Tail, MaybeVarsTail),
             (
                 MaybeVarsTail = ok1(TailVars),
@@ -784,11 +784,11 @@ parse_quantifier_vars(Term, MaybeQVars) :-
     ; Term = functor(atom("[|]"), [Head, Tail], _) ->
         (
             (
-                Head = functor(atom("!"), [variable(SV)], _),
+                Head = functor(atom("!"), [variable(SV, _)], _),
                 HeadVars = [],
                 HeadStateVars = [SV]
             ;
-                Head = variable(V),
+                Head = variable(V, _),
                 HeadVars = [V],
                 HeadStateVars = []
             )
@@ -818,22 +818,22 @@ parse_vars_and_state_vars(Term, MaybeVars) :-
     ; Term = functor(atom("[|]"), [Head, Tail], _) ->
         (
             (
-                Head = functor(atom("!"), [variable(SV)], _),
+                Head = functor(atom("!"), [variable(SV, _)], _),
                 HeadVars = [],
                 HeadDotVars = [SV],
                 HeadColonVars = [SV]
             ;
-                Head = functor(atom("!."), [variable(SV)], _),
+                Head = functor(atom("!."), [variable(SV, _)], _),
                 HeadVars = [],
                 HeadDotVars = [SV],
                 HeadColonVars = []
             ;
-                Head = functor(atom("!:"), [variable(SV)], _),
+                Head = functor(atom("!:"), [variable(SV, _)], _),
                 HeadVars = [],
                 HeadDotVars = [],
                 HeadColonVars = [SV]
             ;
-                Head = variable(V),
+                Head = variable(V, _),
                 HeadVars = [V],
                 HeadDotVars = [],
                 HeadColonVars = []

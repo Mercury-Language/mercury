@@ -2567,8 +2567,8 @@ process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
         % existentially quantified or occur in the head.
 
         list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQVars, _Constraints, _CtorName, CtorArgs),
-        assoc_list.values(CtorArgs, CtorArgTypes),
+        Ctor = ctor(ExistQVars, _Constraints, _CtorName, CtorArgs, _Ctxt),
+        CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
         type_list_contains_var(CtorArgTypes, Var),
         \+ list.member(Var, ExistQVars),
         \+ list.member(Var, Params)
@@ -2581,7 +2581,7 @@ process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
         % If we were to allow it, we would need to rename them apart.)
 
         list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQVars, _Constraints, _CtorName, _CtorArgs),
+        Ctor = ctor(ExistQVars, _Constraints, _CtorName, _CtorArgs, _Ctxt),
         list.member(Var, ExistQVars),
         list.member(Var, Params)
     ->
@@ -2593,9 +2593,9 @@ process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
         % somewhere in the constructor argument types or constraints.
 
         list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs),
+        Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs, _Ctxt),
         list.member(Var, ExistQVars),
-        assoc_list.values(CtorArgs, CtorArgTypes),
+        CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
         \+ type_list_contains_var(CtorArgTypes, Var),
         constraint_list_get_tvars(Constraints, ConstraintTVars),
         \+ list.member(Var, ConstraintTVars)
@@ -2608,7 +2608,7 @@ process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
         % the existential quantifiers.
 
         list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQVars, Constraints, _CtorName, _CtorArgs),
+        Ctor = ctor(ExistQVars, Constraints, _CtorName, _CtorArgs, _Ctxt),
         list.member(Constraint, Constraints),
         Constraint = constraint(_Name, ConstraintArgs),
         type_list_contains_var(ConstraintArgs, Var),
@@ -2650,7 +2650,7 @@ process_abstract_type_2(ok2(Functor, Params), IsSolverType, Result) :-
 %-----------------------------------------------------------------------------%
 
 parse_type_defn_head(ModuleName, Head, Body, Result) :-
-    ( Head = term.variable(_) ->
+    ( Head = term.variable(_, _) ->
         % `Head' has no term.context, so we need to get the
         % context from `Body'.
         ( Body = term.functor(_, _, Context) ->
@@ -2677,7 +2677,7 @@ parse_type_defn_head_2(ok2(Name, Args), Head, Result) :-
 
 parse_type_defn_head_3(Name, Args, Head, Result) :-
     % Check that all the head args are variables.
-    ( var_list_to_term_list(Params0, Args) ->
+    ( term_list_to_var_list(Args, Params0) ->
         % Check that all the head arg variables are distinct.
         (
             list.member(_, Params0, [Param | OtherParams]),
@@ -2786,9 +2786,15 @@ convert_constructor_3(ModuleName, ExistQVars, Constraints, Term0, Term1) =
             Result  = error1(Errors)
         ;
             Result1 = ok1(Args),
-            Result  = ok1(ctor(ExistQVars, Constraints, F, Args))
+            Ctxt = term_context(Term1),
+            Result  = ok1(ctor(ExistQVars, Constraints, F, Args, Ctxt))
         )
     ).
+
+:- func term_context(term(T)) = prog_context.
+
+term_context(functor(_, _, C)) = C.
+term_context(variable(_, C)) = C.
 
 %-----------------------------------------------------------------------------%
 
@@ -3488,7 +3494,7 @@ convert_inst_defn_2(error2(Errors), _, _, error1(Errors)).
 convert_inst_defn_2(ok2(Name, ArgTerms), Head, Body, Result) :-
     (
         % Check that all the head args are variables.
-        term.var_list_to_term_list(Args, ArgTerms)
+        term.term_list_to_var_list(ArgTerms, Args)
     ->
         (
             % Check that all the head arg variables are distinct.
@@ -3552,7 +3558,7 @@ convert_abstract_inst_defn_2(error2(Errors), _, error1(Errors)).
 convert_abstract_inst_defn_2(ok2(Name, ArgTerms), Head, Result) :-
     (
         % Check that all the head args are variables.
-        term.var_list_to_term_list(Args, ArgTerms)
+        term.term_list_to_var_list(ArgTerms, Args)
     ->
         (
             % Check that all the head arg variables are distinct.
@@ -3619,7 +3625,7 @@ convert_mode_defn_2(error2(Errors), _, _, error1(Errors)).
 convert_mode_defn_2(ok2(Name, ArgTerms), Head, Body, Result) :-
     (
         % Check that all the head args are variables.
-        term.var_list_to_term_list(Args, ArgTerms)
+        term.term_list_to_var_list(ArgTerms, Args)
     ->
         (
             % Check that all the head arg variables are distinct.
@@ -3870,7 +3876,7 @@ parse_module_specifier(Term, Result) :-
     maybe1(module_name)::out) is det.
 
 parse_module_name(DefaultModuleName, Term, Result) :-
-    ( Term = term.variable(_) ->
+    ( Term = term.variable(_, _) ->
         dummy_term(ErrorContext),
         Msg = "module names starting with capital letters " ++
             "must be quoted using single quotes (e.g. "":- module 'Foo'."")",
@@ -4190,7 +4196,7 @@ parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
             % Since variables don't have any term.context, if Term is
             % a variable, we use ContainingTerm instead (hopefully that
             % _will_ have a term.context).
-            ( Term = term.variable(_) ->
+            ( Term = term.variable(_, _) ->
                 ErrorTerm0 = ContainingTerm
             ;
                 ErrorTerm0 = Term
@@ -4294,7 +4300,8 @@ convert_constructor_arg_list_2(ModuleName, MaybeFieldName, TypeTerm, Terms) =
     parse_type(TypeTerm, TypeResult),
     (
         TypeResult = ok1(Type),
-        Arg = MaybeFieldName - Type,
+        Context = term_context(TypeTerm),
+        Arg = ctor_arg(MaybeFieldName, Type, Context),
         Result0 = convert_constructor_arg_list(ModuleName, Terms),
         (
             Result0 = error1(Errors),

@@ -263,7 +263,7 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body) :-
         SpecialPredId \= spec_pred_init,
         Ctors = Body ^ du_type_ctors,
         list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQTVars, _, _, _),
+        Ctor = ctor(ExistQTVars, _, _, _, _),
         ExistQTVars = [_ | _]
     ;
         SpecialPredId = spec_pred_init,

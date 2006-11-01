@@ -1041,7 +1041,7 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TypeTVarSet),
     hlds_data.get_type_defn_kind_map(TypeDefn, TypeKindMap),
 
-    assoc_list.values(ConsArgs, ConsArgTypes),
+    ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgs),
     arg_type_list_subsumes(TVarSet, ArgTypes, TypeTVarSet, TypeKindMap,
         ConsExistQVars, ConsArgTypes).
 
@@ -1207,7 +1207,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
     type_util.get_type_and_cons_defn(ModuleInfo, TermType, ConsId,
         TypeDefn, ConsDefn),
     ConsDefn = hlds_cons_defn(ConsExistQVars, ConsConstraints, ConsArgs, _, _),
-    assoc_list.values(ConsArgs, ConsArgTypes),
+    ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgs),
 
     (
         ConsExistQVars = [],
@@ -1338,7 +1338,7 @@ get_constructor_containing_field_2([], _, _, _) :-
         "get_constructor_containing_field: can't find field").
 get_constructor_containing_field_2([Ctor | Ctors], FieldName,
         ConsId, FieldNumber) :-
-    Ctor = ctor(_, _, SymName, CtorArgs),
+    Ctor = ctor(_, _, SymName, CtorArgs, _Ctxt),
     (
         get_constructor_containing_field_3(CtorArgs,
             FieldName, 1, FieldNumber0)
@@ -1354,10 +1354,10 @@ get_constructor_containing_field_2([Ctor | Ctors], FieldName,
 :- pred get_constructor_containing_field_3(list(constructor_arg)::in,
     ctor_field_name::in, int::in, int::out) is semidet.
 
-get_constructor_containing_field_3([MaybeArgFieldName - _ | CtorArgs],
+get_constructor_containing_field_3([CtorArg | CtorArgs],
         FieldName, FieldNumber0, FieldNumber) :-
     (
-        MaybeArgFieldName = yes(ArgFieldName),
+        CtorArg ^ arg_field_name = yes(ArgFieldName),
         UnqualFieldName = unqualify_name(ArgFieldName),
         UnqualFieldName = unqualify_name(FieldName)
     ->

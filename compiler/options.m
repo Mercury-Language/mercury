@@ -164,6 +164,7 @@
     ;       make_optimization_interface
     ;       make_transitive_opt_interface
     ;       make_analysis_registry
+    ;       make_xml_documentation
     ;       generate_source_file_mapping
     ;       generate_dependency_file
     ;       generate_dependencies
@@ -936,6 +937,7 @@ option_defaults_2(output_option, [
     make_optimization_interface         -   bool(no),
     make_transitive_opt_interface       -   bool(no),
     make_analysis_registry              -   bool(no),
+    make_xml_documentation              -   bool(no),
     convert_to_mercury                  -   bool(no),
     typecheck_only                      -   bool(no),
     errorcheck_only                     -   bool(no),
@@ -1560,6 +1562,7 @@ short_option('t', typecheck_only).
 short_option('v', verbose).
 short_option('V', very_verbose).
 short_option('w', inhibit_warnings).
+short_option('x', make_xml_documentation).
 short_option('?', help).
 
 % warning options
@@ -1661,6 +1664,8 @@ long_option("make-transitive-optimisation-interface",
         make_transitive_opt_interface).
 long_option("make-trans-opt",       make_transitive_opt_interface).
 long_option("make-analysis-registry",   make_analysis_registry).
+long_option("make-xml-doc",         make_xml_documentation).
+long_option("make-xml-documentation",   make_xml_documentation).
 long_option("convert-to-mercury",   convert_to_mercury).
 long_option("convert-to-Mercury",   convert_to_mercury).
 long_option("pretty-print",         convert_to_mercury).
@@ -3054,6 +3059,10 @@ options_help_output -->
         "--make-transitive-optimization-interface",
         "\tOutput transitive optimization information",
         "\tinto the `<module>.trans_opt' file.",
+        "\tThis option should only be used by mmake.",
+        "-x,--make-xml-doc,--make-xml-documentation",
+        "\tOutput XML documentation of the module",
+        "\tinto the `<module>.xml' file.",
         "\tThis option should only be used by mmake.",
         "-P, --convert-to-mercury",
         "\tConvert to Mercury. Output to file `<module>.ugly'",

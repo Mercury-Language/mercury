@@ -491,17 +491,17 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
 
 parse_backquoted_operator(Qualifier, OpName, VariableTerm, !PS) :-
     parser_get_token_context(Token, Context, !PS),
+    get_term_context(!.PS, Context, TermContext),
     (
         Token = variable(VariableOp),
         Qualifier = no,
         OpName = "",
         add_var(VariableOp, Var, !PS),
-        VariableTerm = [variable(Var)]
+        VariableTerm = [variable(Var, TermContext)]
     ;
         Token = name(OpName0),
         VariableTerm = [],
-        get_term_context(!.PS, Context, OpCtxt0),
-        parse_backquoted_operator_2(no, Qualifier, OpCtxt0, OpName0, OpName,
+        parse_backquoted_operator_2(no, Qualifier, TermContext, OpName0, OpName,
             !PS)
     ).
 
@@ -597,9 +597,10 @@ parse_simple_term_2(name(Atom), Context, Prec, Term, !PS) :-
         Term = ok(term.functor(term.atom(Atom), [], TermContext))
     ).
 
-parse_simple_term_2(variable(VarName), _, _, Term, !PS) :-
+parse_simple_term_2(variable(VarName), Context, _, Term, !PS) :-
     add_var(VarName, Var, !PS),
-    Term = ok(term.variable(Var)).
+    get_term_context(!.PS, Context, TermContext),
+    Term = ok(term.variable(Var, TermContext)).
 
 parse_simple_term_2(integer(Int), Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),

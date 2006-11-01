@@ -511,10 +511,11 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
         ExistQVars = [],
         ClassConstraints = [],
 
-        MakeUnamedField = (func(ArgType) = no - ArgType),
+        MakeUnamedField = (func(ArgType) = ctor_arg(no, ArgType, Context)),
         CtorArgs = list.map(MakeUnamedField, TupleArgTypes),
 
-        Ctor = ctor(ExistQVars, ClassConstraints, CtorSymName, CtorArgs),
+        Ctor = ctor(ExistQVars,
+                ClassConstraints, CtorSymName, CtorArgs, Context),
 
         CtorSymName = unqualified("{}"),
         ConsId = cons(CtorSymName, TupleArity),
@@ -1283,7 +1284,7 @@ quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
 generate_du_unify_clauses([], _X, _Y, _Context, [], !Info).
 generate_du_unify_clauses([Ctor | Ctors], X, Y, Context, [Clause | Clauses],
         !Info) :-
-    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes),
+    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes, _Ctxt),
     list.length(ArgTypes, FunctorArity),
     FunctorConsId = cons(FunctorName, FunctorArity),
     (
@@ -1360,7 +1361,7 @@ can_compare_constants_as_ints(Info) = CanCompareAsInt :-
 generate_du_index_clauses([], _X, _Index, _Context, _N, [], !Info).
 generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
         [Clause | Clauses], !Info) :-
-    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes),
+    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes, _Ctxt),
     list.length(ArgTypes, FunctorArity),
     FunctorConsId = cons(FunctorName, FunctorArity),
     make_fresh_vars(ArgTypes, ExistQTVars, ArgVars, !Info),
@@ -1662,7 +1663,7 @@ generate_compare_cases([Ctor | Ctors], R, X, Y, Context, [Case | Cases],
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_case(Ctor, R, X, Y, Context, Kind, Case, !Info) :-
-    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes),
+    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes, _Ctxt),
     list.length(ArgTypes, FunctorArity),
     FunctorConsId = cons(FunctorName, FunctorArity),
     (
@@ -1708,8 +1709,8 @@ generate_compare_case(Ctor, R, X, Y, Context, Kind, Case, !Info) :-
 
 generate_asymmetric_compare_case(Ctor1, Ctor2, CompareOp, R, X, Y, Context,
         Case, !Info) :-
-    Ctor1 = ctor(ExistQTVars1, _Constraints1, FunctorName1, ArgTypes1),
-    Ctor2 = ctor(ExistQTVars2, _Constraints2, FunctorName2, ArgTypes2),
+    Ctor1 = ctor(ExistQTVars1, _Constraints1, FunctorName1, ArgTypes1, _Ctxt1),
+    Ctor2 = ctor(ExistQTVars2, _Constraints2, FunctorName2, ArgTypes2, _Ctxt2),
     list.length(ArgTypes1, FunctorArity1),
     list.length(ArgTypes2, FunctorArity2),
     FunctorConsId1 = cons(FunctorName1, FunctorArity1),
@@ -1773,10 +1774,12 @@ compare_args(ArgTypes, ExistQTVars, Xs, Ys, R, Context, Goal, !Info) :-
 
 compare_args_2([], _, [], [], R, Context, Return_Equal, !Info) :-
     generate_return_equal(R, Context, Return_Equal).
-compare_args_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys], R,
+compare_args_2([Arg | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys], R,
         Context, Goal, !Info) :-
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
+
+    Type = Arg ^ arg_type,
 
     % When comparing existentially typed arguments, the arguments may have
     % different types; in that case, rather than just comparing them,
@@ -1906,7 +1909,7 @@ make_fresh_vars_from_types([Type | Types], [Var | Vars], !Info) :-
 make_fresh_vars(CtorArgs, ExistQTVars, Vars, !Info) :-
     (
         ExistQTVars = [],
-        assoc_list.values(CtorArgs, ArgTypes),
+        ArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
         make_fresh_vars_from_types(ArgTypes, Vars, !Info)
     ;
         ExistQTVars = [_ | _],
@@ -1939,8 +1942,9 @@ unify_var_lists(ArgTypes, ExistQVars, Vars1, Vars2, Goal, !Info) :-
     unify_proc_info::in, unify_proc_info::out) is semidet.
 
 unify_var_lists_2([], _, [], [], [], !Info).
-unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys],
+unify_var_lists_2([Arg | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys],
         [Goal | Goals], !Info) :-
+    Type = Arg ^ arg_type,
     term.context_init(Context),
     (
         info_get_module_info(!.Info, ModuleInfo),

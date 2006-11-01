@@ -6008,6 +6008,14 @@ a @samp{.opt} file can only hold information derived directly
 from the corresponding @samp{.m} file.
 
 @sp 1
+@item --make-xml-documentation
+@findex --make-xml-documentation
+Output an XML representation of all the declarations in the module
+into the `<module>.xml' file.
+This XML file can then be transformed via a XSL transform into
+another documentation format.
+
+@sp 1
 @item -P
 @itemx --pretty-print
 @itemx --convert-to-mercury

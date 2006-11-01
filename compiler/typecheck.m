@@ -2292,7 +2292,7 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
 apply_substitution_to_var_list(Vars0, RenameSubst, Vars) :-
     term.var_list_to_term_list(Vars0, Terms0),
     term.apply_substitution_to_list(Terms0, RenameSubst, Terms),
-    term.term_list_to_var_list(Terms, Vars).
+    Vars = term.term_list_to_var_list(Terms).
 
 :- pred apply_var_renaming_to_var_list(list(var(T))::in, map(var(T),
     var(T))::in, list(var(T))::out) is det.
@@ -3025,7 +3025,7 @@ convert_cons_defn_list(Info, GoalPath, Action, [X | Xs], [Y | Ys]) :-
 convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     HLDS_ConsDefn = hlds_cons_defn(ExistQVars0, ExistProgConstraints, Args,
         TypeCtor, _),
-    assoc_list.values(Args, ArgTypes),
+    ArgTypes = list.map(func(C) = C ^ arg_type, Args),
     typecheck_info_get_types(Info, Types),
     map.lookup(Types, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),

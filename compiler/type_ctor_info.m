@@ -601,7 +601,7 @@ make_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms, Details) :-
 make_enum_functors([], _, _, []).
 make_enum_functors([Functor | Functors], NextOrdinal0, ConsTagMap,
         [EnumFunctor | EnumFunctors]) :-
-    Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs),
+    Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs, _Context),
     expect(unify(ExistTvars, []), this_file,
         "existential arguments in functor in enum"),
     expect(unify(Constraints, []), this_file,
@@ -695,7 +695,7 @@ make_du_details(Ctors, ConsTagMap, TypeArity, EqualityAxioms, ModuleInfo,
 make_maybe_res_functors([], _, _, _, _, []).
 make_maybe_res_functors([Functor | Functors], NextOrdinal, ConsTagMap,
         TypeArity, ModuleInfo, [MaybeResFunctor | MaybeResFunctors]) :-
-    Functor = ctor(ExistTvars, Constraints, SymName, ConstructorArgs),
+    Functor = ctor(ExistTvars, Constraints, SymName, ConstructorArgs, _Context),
     list.length(ConstructorArgs, Arity),
     FunctorName = unqualify_name(SymName),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, ConstructorArgs),
@@ -774,7 +774,7 @@ process_cons_tag(ConsTag, ConsRep) :-
     du_arg_info::out) is det.
 
 generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo) :-
-    ConstructorArg = MaybeArgSymName - ArgType,
+    ConstructorArg = ctor_arg(MaybeArgSymName, ArgType, _Ctxt),
     (
         MaybeArgSymName = yes(SymName),
         ArgName = unqualify_name(SymName),

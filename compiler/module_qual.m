@@ -825,11 +825,11 @@ qualify_type_defn(parse_tree_solver_type(SolverTypeDetails0, MaybeUserEqComp),
 
 qualify_constructors([], [], !Info, !Specs).
 qualify_constructors([Ctor0 | Ctors0], [Ctor | Ctors], !Info, !Specs) :-
-    Ctor0 = ctor(ExistQVars, Constraints0, SymName, Args0),
+    Ctor0 = ctor(ExistQVars, Constraints0, SymName, Args0, Ctxt),
     qualify_constructor_arg_list(Args0, Args, !Info, !Specs),
     qualify_constructors(Ctors0, Ctors, !Info, !Specs),
     qualify_prog_constraint_list(Constraints0, Constraints, !Info, !Specs),
-    Ctor  = ctor(ExistQVars, Constraints, SymName, Args).
+    Ctor  = ctor(ExistQVars, Constraints, SymName, Args, Ctxt).
 
     % Qualify the inst parameters of an inst definition.
     %
@@ -1006,9 +1006,9 @@ qualify_bound_inst_list([bound_functor(ConsId, Insts0) | BoundInsts0],
     list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_constructor_arg_list([], [], !Info, !Specs).
-qualify_constructor_arg_list([Name - Type0 | Args0], [Name - Type | Args],
-        !Info, !Specs) :-
-    qualify_type(Type0, Type, !Info, !Specs),
+qualify_constructor_arg_list([Arg0 | Args0], [Arg | Args], !Info, !Specs) :-
+    qualify_type(Arg0 ^ arg_type, Type, !Info, !Specs),
+    Arg = Arg0 ^ arg_type := Type,
     qualify_constructor_arg_list(Args0, Args, !Info, !Specs).
 
 :- pred qualify_type_list(list(mer_type)::in, list(mer_type)::out,

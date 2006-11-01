@@ -307,14 +307,14 @@ do_insert_arg_unifications_with_supplied_contexts_2(Vars, Terms, ArgContexts,
 do_insert_arg_unification(Var, Arg, Context, ArgContext, N1, ArgUnifyConj,
         MaybeThreshold, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !Specs) :-
-    ( Arg = term.variable(Var) ->
+    ( Arg = term.variable(Var, _) ->
         % Skip unifications of the form `X = X'
         ArgUnifyConj = [],
         NumAdded = 0
     ;
         arg_context_to_unify_context(ArgContext, N1, UnifyMainContext,
             UnifySubContext),
-        do_unravel_unification(term.variable(Var), Arg, Context,
+        do_unravel_unification(term.variable(Var, Context), Arg, Context,
             UnifyMainContext, UnifySubContext, purity_pure, Goal,
             MaybeThreshold, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !Specs),
@@ -384,14 +384,14 @@ do_append_arg_unifications_2([Var | Vars], [Arg | Args], Context, ArgContext,
 do_append_arg_unification(Var, Arg, Context, ArgContext, N1, ConjList,
         MaybeThreshold, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !Specs) :-
-    ( Arg = term.variable(Var) ->
+    ( Arg = term.variable(Var, _) ->
         % Skip unifications of the form `X = X'.
         ConjList = [],
         NumAdded = 0
     ;
         arg_context_to_unify_context(ArgContext, N1, UnifyMainContext,
             UnifySubContext),
-        do_unravel_unification(term.variable(Var), Arg, Context,
+        do_unravel_unification(term.variable(Var, Context), Arg, Context,
             UnifyMainContext, UnifySubContext, purity_pure, Goal,
             MaybeThreshold, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !Specs),
@@ -418,7 +418,7 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
     (
         MaybeThreshold = yes(Threshold),
         NumAdded > Threshold,
-        LHS = term.variable(X),
+        LHS = term.variable(X, _),
         ground_term(RHS)
     ->
         Goal0 = _ - GoalInfo,
@@ -439,20 +439,20 @@ classify_unravel_unification(TermX, TermY, Context, MainContext, SubContext,
         !Specs) :-
     (
         % `X = Y' needs no unravelling.
-        TermX = term.variable(X),
-        TermY = term.variable(Y),
+        TermX = term.variable(X, _),
+        TermY = term.variable(Y, _),
         make_atomic_unification(X, rhs_var(Y), Context, MainContext,
             SubContext, Purity, Goal, !QualInfo),
         NumAdded = 0
     ;
-        TermX = term.variable(X),
+        TermX = term.variable(X, _),
         TermY = term.functor(F, Args, FunctorContext),
         unravel_var_functor_unification(X, F, Args, FunctorContext,
             Context, MainContext, SubContext, Purity, Goal, NumAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
     ;
         TermX = term.functor(F, Args, FunctorContext),
-        TermY = term.variable(Y),
+        TermY = term.variable(Y, _),
         unravel_var_functor_unification(Y, F, Args, FunctorContext,
             Context, MainContext, SubContext, Purity, Goal, NumAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
@@ -465,10 +465,10 @@ classify_unravel_unification(TermX, TermY, Context, MainContext, SubContext,
         TermX = term.functor(_, _, _),
         TermY = term.functor(_, _, _),
         varset.new_var(!.VarSet, TmpVar, !:VarSet),
-        do_unravel_unification(term.variable(TmpVar), TermX,
+        do_unravel_unification(term.variable(TmpVar, Context), TermX,
             Context, MainContext, SubContext, Purity, GoalX, no, NumAddedX,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        do_unravel_unification(term.variable(TmpVar), TermY,
+        do_unravel_unification(term.variable(TmpVar, Context), TermY,
             Context, MainContext, SubContext, Purity, GoalY, no, NumAddedY,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
         goal_to_conj_list(GoalX, ConjListX),
@@ -530,18 +530,18 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
                 report_error_in_type_qualification(GenericVarSet, Context),
                 Errors, !Specs)
         ),
-        do_unravel_unification(term.variable(X), RVal, Context, MainContext,
-            SubContext, Purity, Goal, no, NumAdded, !VarSet, !ModuleInfo,
-            !QualInfo, !SInfo, !Specs)
+        do_unravel_unification(term.variable(X, Context), RVal,
+            Context, MainContext, SubContext, Purity, Goal, no, NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
     ;
         % Handle unification expressions.
         F = term.atom("@"),
         Args = [LVal, RVal]
     ->
-        do_unravel_unification(term.variable(X), LVal, Context,
+        do_unravel_unification(term.variable(X, Context), LVal, Context,
             MainContext, SubContext, Purity, Goal1, no, NumAdded1,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        do_unravel_unification(term.variable(X), RVal, Context,
+        do_unravel_unification(term.variable(X, Context), RVal, Context,
             MainContext, SubContext, Purity, Goal2, no, NumAdded2,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
         NumAdded = NumAdded1 + NumAdded2,
@@ -603,7 +603,8 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         parse_dcg_pred_goal(GoalTerm, MaybeParsedGoal, DCG0, DCGn, !VarSet),
         (
             MaybeParsedGoal = ok1(ParsedGoal),
-            Vars1 = Vars0 ++ [term.variable(DCG0), term.variable(DCGn)],
+            Vars1 = Vars0 ++
+                [term.variable(DCG0, Context), term.variable(DCGn, Context)],
             build_lambda_expression(X, Purity, DCGLambdaPurity, predicate,
                 EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
                 SubContext, Goal0, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
@@ -646,13 +647,13 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
 
             finish_if_then_else_expr_condition(BeforeSInfo, !SInfo),
 
-            do_unravel_unification(term.variable(X), ThenTerm,
+            do_unravel_unification(term.variable(X, Context), ThenTerm,
                 Context, MainContext, SubContext, Purity, ThenGoal, no,
                 ThenAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
 
             finish_if_then_else_expr_then_goal(StateVars, BeforeSInfo, !SInfo),
 
-            do_unravel_unification(term.variable(X), ElseTerm,
+            do_unravel_unification(term.variable(X, Context), ElseTerm,
                 Context, MainContext, SubContext, Purity, ElseGoal, no,
                 ElseAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
 
@@ -1061,7 +1062,7 @@ make_fresh_arg_vars_2([Arg | Args], Vars0, Vars, !VarSet, !SInfo, !Specs) :-
 make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SInfo, !Specs) :-
     substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !Specs),
     (
-        Arg = term.variable(ArgVar),
+        Arg = term.variable(ArgVar, _),
         \+ list.member(ArgVar, Vars0)
     ->
         Var = ArgVar

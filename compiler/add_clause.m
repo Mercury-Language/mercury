@@ -132,7 +132,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             (
                 GoalType = goal_type_promise(_)
             ->
-                term.term_list_to_var_list(Args, HeadVars),
+                HeadVars = term.term_list_to_var_list(Args),
                 preds_add_implicit_for_assertion(HeadVars, !.ModuleInfo,
                     ModuleName, PredName, Arity, Status, Context, PredOrFunc,
                     PredId, !PredicateTable),
@@ -868,11 +868,11 @@ transform_goal_2(unify_expr(A0, B0, Purity), Context, Subst, Goal,
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     % It is an error for the left or right hand side of a
     % unification to be !X (it may be !.X or !:X, however).
-    ( A0 = functor(atom("!"), [variable(StateVarA)], _) ->
+    ( A0 = functor(atom("!"), [variable(StateVarA, _)], _) ->
         report_svar_unify_error(Context, !.VarSet, StateVarA, !Specs),
         Goal = true_goal,
         NumAdded = 0
-    ; B0 = functor(atom("!"), [variable(StateVarB)], _) ->
+    ; B0 = functor(atom("!"), [variable(StateVarB, _)], _) ->
         report_svar_unify_error(Context, !.VarSet, StateVarB, !Specs),
         Goal = true_goal,
         NumAdded = 0
@@ -896,8 +896,8 @@ extract_trace_mutable_var(Context, VarSet, Mutable, MutableHLDS, StateVar,
     MutableHLDS = trace_mutable_var_hlds(MutableName, StateVarName),
     GetPredName = unqualified("get_" ++ MutableName),
     SetPredName = unqualified("set_" ++ MutableName),
-    SetVar = functor(atom("!:"), [variable(StateVar)], Context),
-    UseVar = functor(atom("!."), [variable(StateVar)], Context),
+    SetVar = functor(atom("!:"), [variable(StateVar, Context)], Context),
+    UseVar = functor(atom("!."), [variable(StateVar, Context)], Context),
     GetPurity = purity_semipure,
     SetPurity = purity_impure,
     GetGoal = call_expr(GetPredName, [SetVar], GetPurity) - Context,
@@ -910,8 +910,8 @@ extract_trace_io_var(Context, StateVar, GetGoal, SetGoal) :-
     Builtin = mercury_private_builtin_module,
     GetPredName = qualified(Builtin, "trace_get_io_state"),
     SetPredName = qualified(Builtin, "trace_set_io_state"),
-    SetVar = functor(atom("!:"), [variable(StateVar)], Context),
-    UseVar = functor(atom("!."), [variable(StateVar)], Context),
+    SetVar = functor(atom("!:"), [variable(StateVar, Context)], Context),
+    UseVar = functor(atom("!."), [variable(StateVar, Context)], Context),
     GetPurity = purity_semipure,
     SetPurity = purity_impure,
     GetGoal = call_expr(GetPredName, [SetVar], GetPurity) - Context,
