@@ -393,7 +393,8 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
         ** the succip slot of that frame without checking what kind
         ** of frame it is.
         */
-        assert(location == -1); /* succip is saved in succip_slot */
+        assert(location.MR_long_lval == -1);
+            /* succip is saved in succip_slot */
         saved_success_location = MR_succip_slot_addr(curfr_at_signal);
         saved_success = *saved_success_location;
     }
@@ -486,7 +487,7 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
     ** The new heap pointer starts at the bottom of the new heap.
     */
     swap_heaps();
-    MR_virtual_hp = new_heap->MR_zone_min;
+    MR_virtual_hp_word = (MR_Word) new_heap->MR_zone_min;
 
     label = MR_lookup_internal_by_addr(success_ip);
     label_layout = label->i_layout;
@@ -505,7 +506,7 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
         ** easier to reset it than debug the problem at the moment
         */
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-        MR_virtual_hp = new_heap->MR_zone_min;
+        MR_virtual_hp_word = (MR_Word) new_heap->MR_zone_min;
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
     }
 
@@ -552,7 +553,7 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
             stack_pointer, current_frame, max_frame);
 
         /* XXX restore this, it appears to get clobbered */
-        MR_virtual_hp = new_hp;
+        MR_virtual_hp_word = (MR_Word) new_hp;
     }
 
     notify_gc_end(old_heap, new_heap, old_hp);
