@@ -2065,7 +2065,7 @@ construct_string([_ - Bit|Bits], Grade) :-
     list(pair(grade_component, string))::out) is det.
 
 compute_grade_components(Options, GradeComponents) :-
-    solutions.solutions((pred(CompData::out) is nondet :-
+    solutions((pred(CompData::out) is nondet :-
         grade_component_table(Name, Comp, CompOpts, MaybeTargets,
             IncludeInGradeString),
 
@@ -2073,7 +2073,7 @@ compute_grade_components(Options, GradeComponents) :-
         % actual grade string if all the option settings that it implies
         % are true.
         all [Opt, Value] (
-            member(Opt - Value, CompOpts)
+            list.member(Opt - Value, CompOpts)
         =>
             map.search(Options, Opt, Value)
         ),
