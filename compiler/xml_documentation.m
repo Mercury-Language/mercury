@@ -132,7 +132,7 @@ build_comments(S, comments(!.C), comments(!:C), !IO) :-
     ;
         LineResult = error(E),
             % XXX we should recover more gracefully from this error.
-        unexpected("xml_documentation.m", io.error_message(E))
+        unexpected(this_file, io.error_message(E))
     ).
     
     %
@@ -171,13 +171,22 @@ is_not_comment_char(C) :-
 % Comment selection strategies
 
     %
-    % Get the XML representation of the comment associated
-    % with the given prog_context.
+    % If the prog_context given has a comment associated with it
+    % add a child element which contains the comment to the
+    % given XML.
     %
-:- func comment(comments, prog_context) = xml.
+:- func maybe_add_comment(comments, prog_context, xml) = xml.
 
-comment(Comments, Context) =
-    elem("comment", [], [cdata(get_comment(Comments, Context))]).
+maybe_add_comment(Comments, Context, Xml) =
+    ( Xml = elem(N, As, Cs) ->
+        ( Comment = get_comment(Comments, Context), Comment \= "" ->
+            elem(N, As, [elem("comment", [], [data(Comment)]) | Cs])
+        ;
+            Xml
+        )
+    ;
+        unexpected(this_file, "maybe_add_comment: not an element")
+    ).
     
     %
     % Get the comment string associated with the given prog_context.
@@ -298,14 +307,17 @@ type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
         get_type_defn_body(TypeDefn, TypeBody),
         get_type_defn_tvarset(TypeDefn, TVarset),
         get_type_defn_context(TypeDefn, Context),
+        get_type_defn_tparams(TypeDefn, TParams),
 
-        XmlComment = comment(C, Context),
+        XmlName = name(TypeName),
+        XmlTypeParams = xml_list("type_params", type_param(TVarset), TParams),
 
         Tag = type_xml_tag(TypeBody),
         Id = attr("id", sym_name_and_arity_to_id("type", TypeName, TypeArity)),
-        Children = [XmlComment, prog_context(Context) |
+        Children = [XmlName, XmlTypeParams, prog_context(Context) |
                 type_body(C, TVarset, TypeBody)],
-        Xml = elem(Tag, [Id], Children),
+        Xml0 = elem(Tag, [Id], Children),
+        Xml = maybe_add_comment(C, Context, Xml0),
 
         !:Xmls = [Xml | !.Xmls]
     ;
@@ -320,13 +332,20 @@ type_xml_tag(hlds_foreign_type(_)) = "foreign_type".
 type_xml_tag(hlds_solver_type(_, _)) = "solver_type".
 type_xml_tag(hlds_abstract_type(_)) = "abstract_type".
 
+:- func type_param(tvarset, type_param) = xml.
+
+type_param(TVarset, TVar) = Xml :-
+    TVarName = varset.lookup_name(TVarset, TVar),
+    Xml = tagged_string("type_variable", TVarName).
+
 :- func type_body(comments, tvarset, hlds_type_body) = list(xml).
 
-type_body(C, TVarset, hlds_du_type(Ctors, _, _, _, _, _)) = Xml :-
-    Xml = [xml_list("constructors", constructor(C, TVarset), Ctors)].
+type_body(C, TVarset, hlds_du_type(Ctors, _, _, _, _, _)) =
+    [xml_list("constructors", constructor(C, TVarset), Ctors)].
+type_body(_, TVarset, hlds_eqv_type(Type)) =
+    [elem("equivalent_type", [], [mer_type(TVarset, Type)])].
 
     % XXX TODO
-type_body(_, _, hlds_eqv_type(_)) = [nyi("hlds_eqv_type")].
 type_body(_, _, hlds_foreign_type(_)) = [nyi("hlds_foreign_type")].
 type_body(_, _, hlds_solver_type(_, _)) = [nyi("hlds_solver_type")].
 type_body(_, _, hlds_abstract_type(_)) = [nyi("hlds_abstract_type")].
@@ -336,19 +355,17 @@ type_body(_, _, hlds_abstract_type(_)) = [nyi("hlds_abstract_type")].
 
 constructor(C, TVarset,
         ctor(_Exist, _Constraints, Name, Args, Context)) = Xml :-
-    Id = attr("id", sym_name_and_arity_to_id("cons", Name, length(Args))),
+    Id = attr("id", sym_name_and_arity_to_id("ctor", Name, length(Args))),
     XmlName = name(Name),
-    XmlComment = comment(C, Context),
     XmlContext = prog_context(Context),
-    XmlArgs = [xml_list("args", constructor_arg(C, TVarset), Args)],
-    Xml = elem("constructor", [Id],
-            [XmlName, XmlComment, XmlContext | XmlArgs]).
+    XmlArgs = [xml_list("ctor_args", constructor_arg(C, TVarset), Args)],
+    Xml0 = elem("constructor", [Id], [XmlName, XmlContext | XmlArgs]),
+    Xml = maybe_add_comment(C, Context, Xml0).
 
 :- func constructor_arg(comments, tvarset, constructor_arg) = xml.
 
 constructor_arg(C, TVarset, ctor_arg(MaybeFieldName, Type, Context)) = Xml :-
-    XmlType = elem("type", [], [mer_type(TVarset, Type)]),
-    Comment = comment(C, Context),
+    XmlType = elem("arg_type", [], [mer_type(TVarset, Type)]),
     XmlContext = prog_context(Context),
     (
         MaybeFieldName = yes(FieldName),
@@ -359,17 +376,16 @@ constructor_arg(C, TVarset, ctor_arg(MaybeFieldName, Type, Context)) = Xml :-
         XmlMaybeFieldName = []
     ),
 
-    Xml = elem("arg", [], [XmlType, Comment, XmlContext | XmlMaybeFieldName]).
+    Xml0 = elem("ctor_arg", [], [XmlType, XmlContext | XmlMaybeFieldName]),
+    Xml = maybe_add_comment(C, Context, Xml0).
 
 :- func mer_type(tvarset, mer_type) = xml.
 
-mer_type(TVarset, type_variable(TVar, _)) = Xml :-
-    TVarName = varset.lookup_name(TVarset, TVar),
-    Xml = tagged_string("type_variable", TVarName).
+mer_type(TVarset, type_variable(TVar, _)) = type_param(TVarset, TVar).
 mer_type(TVarset, defined_type(TypeName, Args, _)) = Xml :-
     Ref = attr("ref", sym_name_and_arity_to_id("type", TypeName, length(Args))),
     XmlName = name(TypeName),
-    XmlArgs = xml_list("args", mer_type(TVarset), Args),
+    XmlArgs = xml_list("type_args", mer_type(TVarset), Args),
     Xml = elem("type", [Ref], [XmlName, XmlArgs]).
 mer_type(_, builtin_type(builtin_type_int)) = elem("int", [], []).
 mer_type(_, builtin_type(builtin_type_float)) = elem("float", [], []).
@@ -419,7 +435,7 @@ sym_name_to_id(Prefix, Name) = prefixed_sym_name(Prefix, Name).
 :- func sym_name_and_arity_to_id(string, sym_name, int) = string.
 
 sym_name_and_arity_to_id(Prefix, Name, Arity) =
-    prefixed_sym_name(Prefix, Name) ++ "/" ++ int_to_string(Arity).
+    prefixed_sym_name(Prefix, Name) ++ "-" ++ int_to_string(Arity).
 
 :- func prefixed_sym_name(string, sym_name) = string.
 
@@ -448,5 +464,11 @@ xml_list(Tag, F, L) = elem(Tag, [], list.map(F, L)).
 
 nyi(Tag) = tagged_string(Tag, "Not yet implemented!").
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "xml_documentation.m".
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
