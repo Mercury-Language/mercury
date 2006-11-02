@@ -354,12 +354,16 @@ type_body(_, _, hlds_abstract_type(_)) = [nyi("hlds_abstract_type")].
 :- func constructor(comments, tvarset, constructor) = xml.
 
 constructor(C, TVarset,
-        ctor(_Exist, _Constraints, Name, Args, Context)) = Xml :-
+        ctor(Exists, Constraints, Name, Args, Context)) = Xml :-
     Id = attr("id", sym_name_and_arity_to_id("ctor", Name, length(Args))),
     XmlName = name(Name),
     XmlContext = prog_context(Context),
-    XmlArgs = [xml_list("ctor_args", constructor_arg(C, TVarset), Args)],
-    Xml0 = elem("constructor", [Id], [XmlName, XmlContext | XmlArgs]),
+    XmlArgs = xml_list("ctor_args", constructor_arg(C, TVarset), Args),
+    XmlExistVars = xml_list("ctor_exist_vars", type_param(TVarset), Exists),
+    XmlConstraints =
+            xml_list("ctor_constraints", prog_constraint(TVarset), Constraints),
+    Xml0 = elem("constructor", [Id],
+            [XmlName, XmlContext, XmlArgs, XmlExistVars, XmlConstraints]),
     Xml = maybe_add_comment(C, Context, Xml0).
 
 :- func constructor_arg(comments, tvarset, constructor_arg) = xml.
@@ -415,6 +419,16 @@ prog_context(context(FileName, LineNumber)) =
     elem("context", [], [
         tagged_string("filename", FileName),
         tagged_int("line", LineNumber)]).
+
+%-----------------------------------------------------------------------------%
+
+:- func prog_constraint(tvarset, prog_constraint) = xml.
+
+prog_constraint(TVarset, constraint(ClassName, Types)) = Xml :-
+    Id = sym_name_and_arity_to_id("constraint", ClassName, list.length(Types)),
+    XmlName = name(ClassName),
+    XmlTypes = xml_list("constraint_types", mer_type(TVarset), Types),
+    Xml = elem("constraint", [attr("ref", Id)], [XmlName, XmlTypes]).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
