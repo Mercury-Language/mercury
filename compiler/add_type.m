@@ -219,7 +219,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         globals.lookup_bool_option(Globals, make_optimization_interface,
             MakeOptInt),
         ( Body = hlds_foreign_type(_) ->
-            module_info_contains_foreign_type(!ModuleInfo)
+            module_info_set_contains_foreign_type(!ModuleInfo)
         ;
             true
         ),

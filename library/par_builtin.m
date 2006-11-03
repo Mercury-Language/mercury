@@ -27,19 +27,21 @@
 
 :- type future(T).
 
-    % Allocate a new future object.  A future acts as a intermediary for a
+    % Allocate a new future object.  A future acts as an intermediary for a
     % shared variable between parallel conjuncts, when one conjunct produces
     % the value for other conjuncts.
     %
 :- pred new_future(future(T)::uo) is det.
 
-    % wait(Future, Value)
+    % wait(Future, Value):
+    %
     % Wait until Future is signalled, blocking if necessary.  Then the value
     % bound to the variable associated with the future is bound to Value.
     %
 :- pred wait(future(T)::in, T::out) is det.
 
-    % get(Future, Value)
+    % get(Future, Value):
+    %
     % Like wait but assumes the future has been signalled already.
     %
 :- pred get(future(T)::in, T::out) is det.
@@ -50,6 +52,11 @@
     % once.
     %
 :- impure pred signal(future(T)::in, T::in) is det.
+
+    % A hook for the compiler's granularity transformation to hang
+    % an arbitrary test on.
+    %
+:- impure pred evaluate_parallelism_condition is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -306,6 +313,14 @@ INIT mercury_par_builtin_wait_resume
     MR_fatal_error(""internal error: par_builtin.signal"");
 
 #endif
+").
+
+:- pragma foreign_proc("C",
+    evaluate_parallelism_condition,
+    [will_not_call_mercury, thread_safe],
+"
+    /* All uses of this predicate should override the body. */
+    MR_fatal_error(""evaluate_parallelism_condition called"");
 ").
 
 %-----------------------------------------------------------------------------%

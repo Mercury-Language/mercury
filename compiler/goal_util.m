@@ -190,6 +190,22 @@
 :- mode goal_calls_pred_id(in, in) is semidet.
 :- mode goal_calls_pred_id(in, out) is nondet.
 
+    % goal_calls_proc_in_list(Goal, PredProcIds):
+    %
+    % Returns the subset of PredProcIds that are called from somewhere inside
+    % Goal via plain_call.
+    %
+:- func goal_calls_proc_in_list(hlds_goal, list(pred_proc_id))
+    = list(pred_proc_id).
+
+    % goal_list_calls_proc_in_list(Goal, PredProcIds):
+    %
+    % Returns the subset of PredProcIds that are called from somewhere inside
+    % Goals via plain_call.
+    %
+:- func goal_list_calls_proc_in_list(list(hlds_goal), list(pred_proc_id))
+    = list(pred_proc_id).
+
     % Test whether the goal contains a reconstruction
     % (a construction where the `cell_to_reuse' field is `yes(_)').
     %
@@ -1295,6 +1311,76 @@ goal_expr_calls_pred_id(negation(Goal), PredId) :-
 goal_expr_calls_pred_id(scope(_, Goal), PredId) :-
     goal_calls_pred_id(Goal, PredId).
 goal_expr_calls_pred_id(plain_call(PredId, _, _, _, _, _), PredId).
+
+%-----------------------------------------------------------------------------%
+
+goal_calls_proc_in_list(Goal, PredProcIds) = CalledPredProcIds :-
+    goal_calls_proc_in_list_2(Goal, PredProcIds, set.init, CalledSet),
+    set.to_sorted_list(CalledSet, CalledPredProcIds).
+
+goal_list_calls_proc_in_list(Goals, PredProcIds) = CalledPredProcIds :-
+    goal_list_calls_proc_in_list_2(Goals, PredProcIds, set.init, CalledSet),
+    set.to_sorted_list(CalledSet, CalledPredProcIds).
+
+:- pred goal_calls_proc_in_list_2(hlds_goal::in, list(pred_proc_id)::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+
+goal_calls_proc_in_list_2(GoalExpr - _GoalInfo, PredProcIds, !CalledSet) :-
+    (
+        GoalExpr = unify(_, _, _, _, _)
+    ;
+        GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
+        ( list.member(proc(PredId, ProcId), PredProcIds) ->
+            svset.insert(proc(PredId, ProcId), !CalledSet)
+        ;
+            true
+        )
+    ;
+        GoalExpr = generic_call(_, _, _, _)
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+    ;
+        GoalExpr = conj(_, Goals),
+        goal_list_calls_proc_in_list_2(Goals, PredProcIds, !CalledSet)
+    ;
+        GoalExpr = disj(Goals),
+        goal_list_calls_proc_in_list_2(Goals, PredProcIds, !CalledSet)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        case_list_calls_proc_in_list(Cases, PredProcIds, !CalledSet)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        goal_calls_proc_in_list_2(Cond, PredProcIds, !CalledSet),
+        goal_calls_proc_in_list_2(Then, PredProcIds, !CalledSet),
+        goal_calls_proc_in_list_2(Else, PredProcIds, !CalledSet)
+    ;
+        GoalExpr = negation(Goal),
+        goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
+    ;
+        GoalExpr = scope(_, Goal),
+        goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "goal__calls_proc_in_list_2: shorthand")
+    ).
+
+:- pred goal_list_calls_proc_in_list_2(list(hlds_goal)::in,
+    list(pred_proc_id)::in, set(pred_proc_id)::in, set(pred_proc_id)::out)
+    is det.
+
+goal_list_calls_proc_in_list_2([], _, !CalledSet).
+goal_list_calls_proc_in_list_2([Goal | Goals], PredProcIds, !CalledSet) :-
+    goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet),
+    goal_list_calls_proc_in_list_2(Goals, PredProcIds, !CalledSet).
+
+:- pred case_list_calls_proc_in_list(list(case)::in, list(pred_proc_id)::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+
+case_list_calls_proc_in_list([], _, !CalledSet).
+case_list_calls_proc_in_list([Case | Cases], PredProcIds, !CalledSet) :-
+    Case = case(_, Goal),
+    goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet),
+    case_list_calls_proc_in_list(Cases, PredProcIds, !CalledSet).
 
 %-----------------------------------------------------------------------------%
 

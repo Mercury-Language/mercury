@@ -2480,8 +2480,8 @@ goal_info_set_reuse(Reuse, !GoalInfo) :-
 
 :- func this_file = string.
 
-this_file = "hlds_goal".
+this_file = "hlds_goal.m".
 
 %-----------------------------------------------------------------------------%
-:- end_module hlds_goal.
+:- end_module hlds.hlds_goal.
 %-----------------------------------------------------------------------------%

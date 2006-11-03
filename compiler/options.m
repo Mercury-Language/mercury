@@ -538,13 +538,16 @@
     ;       deforestation_cost_factor
     ;       deforestation_vars_threshold
     ;       deforestation_size_threshold
-    ;       termination
-    ;       check_termination
-    ;       verbose_check_termination
-    ;       termination_single_args
-    ;       termination_norm
-    ;       termination_error_limit
-    ;       termination_path_limit
+    ;       analyse_trail_usage
+    ;       optimize_trail_usage
+    ;       analyse_mm_tabling
+    ;       untuple
+    ;       tuple
+    ;       tuple_trace_counts_file
+    ;       tuple_costs_ratio
+    ;       tuple_min_args
+    ;       control_granularity
+    ;       parallelism_target
 
     % Stuff for the CTGC system (structure sharing / structure reuse).
     ;       structure_sharing_analysis
@@ -552,6 +555,15 @@
     ;       structure_reuse_analysis
     ;           structure_reuse_constraint
     ;           structure_reuse_constraint_arg
+
+    % Stuff for the old termination analyser.
+    ;       termination
+    ;       termination_check
+    ;       verbose_check_termination
+    ;       termination_single_args
+    ;       termination_norm
+    ;       termination_error_limit
+    ;       termination_path_limit
 
     % Stuff for the new termination analyser.
     ;       termination2
@@ -564,14 +576,6 @@
     ;          term2_maximum_matrix_size
     ;       analyse_exceptions
     ;       analyse_closures
-    ;       analyse_trail_usage
-    ;       optimize_trail_usage
-    ;       analyse_mm_tabling
-    ;       untuple
-    ;       tuple
-    ;       tuple_trace_counts_file
-    ;       tuple_costs_ratio
-    ;       tuple_min_args
 
     %   - HLDS->LLDS
     ;       smart_indexing
@@ -1187,7 +1191,7 @@ option_defaults_2(special_optimization_option, [
     transitive_optimization             -   bool(no),
     intermodule_analysis                -   bool(no),
     analysis_repeat                     -   int(0),
-    check_termination                   -   bool(no),
+    termination_check                   -   bool(no),
     verbose_check_termination           -   bool(no),
     structure_sharing_analysis          -   bool(no), 
     structure_sharing_widening          -   int(0),
@@ -1290,6 +1294,8 @@ option_defaults_2(optimization_option, [
     tuple_trace_counts_file             -   string(""),
     tuple_costs_ratio                   -   int(100),
     tuple_min_args                      -   int(4),
+    control_granularity                 -   bool(no),
+    parallelism_target                  -   int(4),
 
     % HLDS -> LLDS
     smart_indexing                      -   bool(no),
@@ -1993,9 +1999,9 @@ long_option("deforestation-vars-threshold", deforestation_vars_threshold).
 long_option("deforestation-size-threshold", deforestation_size_threshold).
 long_option("enable-termination",   termination).
 long_option("enable-term",          termination).
-long_option("check-termination",    check_termination).
-long_option("check-term",           check_termination).
-long_option("chk-term",             check_termination).
+long_option("check-termination",    termination_check).
+long_option("check-term",           termination_check).
+long_option("chk-term",             termination_check).
 long_option("verbose-check-termination",verbose_check_termination).
 long_option("verb-check-term",      verbose_check_termination).
 long_option("verb-chk-term",        verbose_check_termination).
@@ -2039,6 +2045,8 @@ long_option("tuple",                tuple).
 long_option("tuple-trace-counts-file",  tuple_trace_counts_file).
 long_option("tuple-costs-ratio",    tuple_costs_ratio).
 long_option("tuple-min-args",       tuple_min_args).
+long_option("control-granularity",  control_granularity).
+long_option("parallelism-target",   parallelism_target).
 
 % CTGC related options.
 long_option("structure-sharing",    structure_sharing_analysis).
@@ -4176,7 +4184,7 @@ options_help_hlds_hlds_optimization -->
         "\tIdentify those goals that do not call procedures",
         "\tthat are evaluated using minimal model tabling.",
         "\tThis information is used to reduce the overhead",
-        "\tof minimal model tabling."
+        "\tof minimal model tabling.",
         % "--untuple",
         % "\tExpand out procedure arguments when the argument type",
         % "\tis a tuple or a type with exactly one functor.",
@@ -4201,7 +4209,13 @@ options_help_hlds_hlds_optimization -->
         % "\tThe minimum number of input arguments that the tupling",
         % "\ttransformation will consider passing together as a",
         % "\ttuple. This is mostly to speed up the compilation",
-        % "\tprocess by not pursuing (presumably) unfruitful searches."
+        % "\tprocess by not pursuing (presumably) unfruitful searches.",
+        "--control-granularity",
+        "\tDon't try to generate more parallelism than the machine can",
+        "\thandle, which is specified using --parallelism-target.",
+        "--parallelism-target N",
+        "\tSpecified the number of CPUs of the target machine, for use by",
+        "\tthe --control-granularity option."
     ]).
 
 :- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.

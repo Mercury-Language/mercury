@@ -39,6 +39,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
 
+:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -56,7 +57,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
-:- import_module bool.
 :- import_module int.
 :- import_module string.
 :- import_module svmap.
@@ -334,9 +334,15 @@
 :- pred module_info_set_globals(globals::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_contains_foreign_type(module_info::in) is semidet.
+:- pred module_info_get_contains_foreign_type(module_info::in, bool::out)
+    is det.
 
-:- pred module_info_contains_foreign_type(module_info::in, module_info::out)
+:- pred module_info_set_contains_foreign_type(module_info::in,
+    module_info::out) is det.
+
+:- pred module_info_get_contains_par_conj(module_info::in, bool::out) is det.
+
+:- pred module_info_set_contains_par_conj(module_info::in, module_info::out)
     is det.
 
 :- pred module_info_get_foreign_decl(module_info::in, foreign_decl_info::out)
@@ -664,6 +670,7 @@
     --->    module_sub_info(
                 module_name                 :: module_name,
                 globals                     :: globals,
+                contains_par_conj           :: bool,
                 contains_foreign_type       :: bool,
                 foreign_decl_info           :: foreign_decl_info,
                 foreign_body_info           :: foreign_body_info,
@@ -752,10 +759,10 @@
                 % Information about which procedures implement structure reuse.
                 structure_reuse_map         :: structure_reuse_map,
 
-                % The modules which have already been calculated as being
-                % used.  Currently this is the module imports inherited from
-                % the parent modules plus those calculated during expansion
-                % of equivalence types and insts.
+                % The modules which have already been calculated as being used.
+                % Currently this is the module imports inherited from the
+                % parent modules plus those calculated during expansion of
+                % equivalence types and insts.
                 used_modules                :: used_modules,
 
                 % All the directly imported module specifiers in the interface.
@@ -798,8 +805,8 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     map.init(FieldNameTable),
 
     map.init(NoTagTypes),
-    ModuleSubInfo = module_sub_info(Name, Globals, no, [], [], [], [], no, 0,
-        [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
+    ModuleSubInfo = module_sub_info(Name, Globals, no, no, [], [], [], [],
+        no, 0, [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
         MM_TablingInfo, map.init, counter.init(1), ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
         init_analysis_info(mmc), [], [],
@@ -857,8 +864,9 @@ module_info_set_maybe_recompilation_info(I, MI,
 
 module_info_get_name(MI, MI ^ sub_info ^ module_name).
 module_info_get_globals(MI, MI ^ sub_info ^ globals).
-module_info_contains_foreign_type(MI) :-
-    MI ^ sub_info ^ contains_foreign_type = yes.
+module_info_get_contains_foreign_type(MI,
+    MI ^ sub_info ^ contains_foreign_type).
+module_info_get_contains_par_conj(MI, MI ^ sub_info ^ contains_par_conj).
 module_info_get_foreign_decl(MI, MI ^ sub_info ^ foreign_decl_info).
 module_info_get_foreign_body_code(MI, MI ^ sub_info ^ foreign_body_info).
 module_info_get_foreign_import_module(MI,
@@ -955,8 +963,10 @@ module_info_user_final_pred_c_names(MI, CNames) :-
 
 module_info_set_globals(NewVal, MI,
     MI ^ sub_info ^ globals := NewVal).
-module_info_contains_foreign_type(MI,
+module_info_set_contains_foreign_type(MI,
     MI ^ sub_info ^ contains_foreign_type := yes).
+module_info_set_contains_par_conj(MI,
+    MI ^ sub_info ^ contains_par_conj := yes).
 module_info_set_foreign_decl(NewVal, MI,
     MI ^ sub_info ^ foreign_decl_info := NewVal).
 module_info_set_foreign_body_code(NewVal, MI,
@@ -1275,6 +1285,7 @@ predicate_arity(ModuleInfo, PredId) = Arity :-
 :- pred hlds_dependency_info_get_dependency_graph(dependency_info(T)::in,
     dependency_graph(T)::out) is det.
 
+    % XXX document whether the dependency_ordering is ascending or descending.
 :- pred hlds_dependency_info_get_dependency_ordering(dependency_info(T)::in,
     dependency_ordering(T)::out) is det.
 

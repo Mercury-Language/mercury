@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mercury_compile.m.
 % Main authors: fjh, zs.
-% 
+%
 % This is the top-level of the Mercury compiler.
-% 
+%
 % This module invokes the different passes of the compiler as appropriate.
 % The constraints on pass ordering are documented in
 % compiler/notes/compiler_design.html.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -94,6 +94,7 @@
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
+:- import_module transform_hlds.granularity.
 :- import_module transform_hlds.dep_par_conj.
 :- import_module transform_hlds.size_prof.
 :- import_module ll_backend.deep_profiling.
@@ -429,7 +430,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
                 file_name_to_module_name(FirstModule,
                     MainModuleName),
                 globals.get_target(Globals, Target),
-                ( 
+                (
                     Target = target_java,
                     % For Java, at the "link" step we just generate a shell
                     % script; the actual linking will be done at runtime by
@@ -658,7 +659,7 @@ do_rename_file(OldFileName, NewFileName, Result, !IO) :-
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
     io.rename_file(OldFileName, NewFileName, Result0, !IO),
-    ( 
+    (
         Result0 = error(Error0),
         maybe_write_string(VeryVerbose, " failed.\n", !IO),
         maybe_flush_output(VeryVerbose, !IO),
@@ -1541,7 +1542,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             ),
             %
             % Produce the grade independent header file <module>.mh
-            % containing function prototypes for the procedures 
+            % containing function prototypes for the procedures
             % referred to by foreign_export pragmas.
             %
             export.get_foreign_export_decls(!.HLDS, ExportDecls),
@@ -2005,7 +2006,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         WarnInstsWithNoMatchingType),
     (
         WarnInstsWithNoMatchingType = yes,
-        maybe_write_string(Verbose, 
+        maybe_write_string(Verbose,
             "% Checking that insts have matching types... ", !IO),
         check_hlds.inst_check.check_insts_have_matching_types(!.HLDS, !IO),
         maybe_write_string(Verbose, "done.\n", !IO),
@@ -2119,10 +2120,10 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, termination, Termination),
     globals.lookup_bool_option(Globals, termination2, Termination2),
-    globals.lookup_bool_option(Globals, structure_sharing_analysis, 
-        SharingAnalysis), 
-    globals.lookup_bool_option(Globals, structure_reuse_analysis, 
-        ReuseAnalysis), 
+    globals.lookup_bool_option(Globals, structure_sharing_analysis,
+        SharingAnalysis),
+    globals.lookup_bool_option(Globals, structure_reuse_analysis,
+        ReuseAnalysis),
     globals.lookup_bool_option(Globals, analyse_exceptions,
         ExceptionAnalysis),
     globals.lookup_bool_option(Globals, analyse_closures,
@@ -2152,7 +2153,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         ->
             frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo, !IO),
             (
-                FoundModeError = no, 
+                FoundModeError = no,
                 (
                     % Closure analysis assumes that lambda expressions have
                     % been converted into separate predicates.
@@ -2208,7 +2209,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     SharingAnalysis = no
                 ),
                 (
-                    ReuseAnalysis = yes, 
+                    ReuseAnalysis = yes,
                     maybe_structure_reuse_analysis(Verbose, Stats,
                         !HLDS, !IO)
                 ;
@@ -2235,7 +2236,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             module_info_get_name(!.HLDS, ModuleName),
             module_name_to_search_file_name(ModuleName, ".opt", OptName, !IO),
             search_for_file(IntermodDirs, OptName, Found, !IO),
-            ( 
+            (
                 Found = ok(_),
                 UpdateStatus = yes,
                 io.seen(!IO)
@@ -2511,20 +2512,23 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 175, "lco", !DumpInfo, !IO),
 
     maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 190, "dead_procs", !DumpInfo, !IO),
-   
+    maybe_dump_hlds(!.HLDS, 180, "dead_procs", !DumpInfo, !IO),
+
     maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 200, "mm_tabling_analysis", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
 
-    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO), 
-    maybe_dump_hlds(!.HLDS, 210, "structure_sharing", !DumpInfo, !IO), 
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 190, "structure_sharing", !DumpInfo, !IO),
 
-    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO), 
-    maybe_dump_hlds(!.HLDS, 212, "structure_reuse", !DumpInfo, !IO), 
+    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 195, "structure_reuse", !DumpInfo, !IO),
+
+    maybe_control_granularity(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 200, "granularity", !DumpInfo, !IO),
 
     maybe_dependent_par_conj(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 214, "dependent_par_conj", !DumpInfo, !IO), 
-    
+    maybe_dump_hlds(!.HLDS, 205, "dependent_par_conj", !DumpInfo, !IO),
+
     % If we are compiling in a deep profiling grade then now rerun simplify.
     % The reason for doing this now is that we want to take advantage of any
     % opportunities the other optimizations have provided for constant
@@ -3365,7 +3369,7 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
         module_name_to_file_name(ModuleName, ".dependency_graph", yes,
             FileName, !IO),
         io.open_output(FileName, Res, !IO),
-        ( 
+        (
             Res = ok(FileStream),
             io.set_output_stream(FileStream, OutputStream, !IO),
             dependency_graph.write_dependency_graph(!HLDS, !IO),
@@ -3817,42 +3821,89 @@ maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
     (
         Sharing = yes,
         maybe_write_string(Verbose, "% Structure sharing analysis...\n",
-            !IO), 
-        maybe_flush_output(Verbose, !IO), 
-        structure_sharing_analysis(!HLDS, !IO), 
+            !IO),
+        maybe_flush_output(Verbose, !IO),
+        structure_sharing_analysis(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
         Sharing = no
     ).
 
+:- pred maybe_control_granularity(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, control_granularity, Control),
+    module_info_get_contains_par_conj(!.HLDS, ContainsParConj),
+    (
+        % If either of these is false, there is no parallelism to control.
+        Parallel = yes,
+        ContainsParConj = yes,
+
+        % Our mechanism for granularity control only works for the low level
+        % backend.
+        HighLevelCode = no,
+
+        % If this is false, then the user hasn't asked for granularity control.
+        Control = yes
+    ->
+        globals.get_target(Globals, Target),
+        (
+            Target = target_c,
+            maybe_write_string(Verbose,
+                "% Granularity control transformation...\n", !IO),
+            maybe_flush_output(Verbose, !IO),
+            control_granularity(!HLDS),
+            maybe_write_string(Verbose, "% done.\n", !IO),
+            maybe_report_stats(Stats, !IO)
+        ;
+            ( Target = target_il
+            ; Target = target_java
+            ; Target = target_asm
+            )
+            % Leave the HLDS alone. We cannot implement parallelism,
+            % so there is not point in controlling its granularity.
+        )
+    ;
+        true
+    ).
+
 :- pred maybe_dependent_par_conj(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_dependent_par_conj(Verbose, Stats, !HLDS, !IO) :- 
-    % XXX only do this if the module actually has parallel conjunctions
-    % This pass also converts dependent parallel conjunctions into
-    % plain conjunctions if we are not building in a parallel grade.
-    maybe_write_string(Verbose,
-        "% Dependent parallel conjunction transformation...\n", !IO), 
-    maybe_flush_output(Verbose, !IO), 
-    dependent_par_conj(!HLDS, !IO), 
-    maybe_write_string(Verbose, "% done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+maybe_dependent_par_conj(Verbose, Stats, !HLDS, !IO) :-
+    module_info_get_contains_par_conj(!.HLDS, ContainsParConj),
+    (
+        ContainsParConj = yes,
+        % This pass also converts dependent parallel conjunctions into
+        % plain conjunctions if we are not building in a parallel grade.
+        maybe_write_string(Verbose,
+            "% Dependent parallel conjunction transformation...\n", !IO),
+        maybe_flush_output(Verbose, !IO),
+        dependent_par_conj(!HLDS, !IO),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        ContainsParConj = no
+    ).
 
 :- pred maybe_structure_reuse_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :- 
+maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, structure_reuse_analysis, 
-        ReuseAnalysis), 
+    globals.lookup_bool_option(Globals, structure_reuse_analysis,
+        ReuseAnalysis),
     (
-        ReuseAnalysis = yes, 
+        ReuseAnalysis = yes,
         maybe_write_string(Verbose, "% Structure reuse analysis...\n",
-            !IO), 
-        maybe_flush_output(Verbose, !IO), 
-        structure_reuse_analysis(!HLDS, !IO), 
+            !IO),
+        maybe_flush_output(Verbose, !IO),
+        structure_reuse_analysis(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

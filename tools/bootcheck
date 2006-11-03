@@ -1386,21 +1386,18 @@ then
         then
             true
         else
-        case "$grade" in
-            *debug*)
-                # These files take up a lot of disk
-                # space, so we compress them. This
-                # reduces the probability that running
-                # the tests will run out of disk space,
-                # while still allowing the original
-                # files to be reconstructed
-                # relatively quickly.
-                gzip $root/$stage2dir/library/*.c
-                gzip $root/$stage2dir/mdbcomp/*.c
-                gzip $root/$stage2dir/browser/*.c
-                gzip $root/$stage2dir/compiler/*.c
-                ;;
-        esac
+            case "$grade" in
+                *debug*)
+                    # These files take up a lot of disk space, so we compress
+                    # them. This reduces the probability that running the tests
+                    # will run out of disk space, while still allowing the
+                    # original files to be reconstructed relatively quickly.
+                    gzip $root/$stage2dir/library/*.c
+                    gzip $root/$stage2dir/mdbcomp/*.c
+                    gzip $root/$stage2dir/browser/*.c
+                    gzip $root/$stage2dir/compiler/*.c
+                    ;;
+            esac
         fi
     fi
 

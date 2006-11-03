@@ -345,11 +345,13 @@ simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
         !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
     ),
     % This is ugly, but we want to avoid running the dependent parallel
-    % conjunction pass on predicates not containing parallel conjunctions
-    % (nearly all of them).  Since simplification is always done, we use it
-    % to mark predicates containing parallel conjunctions.
+    % conjunction pass on predicates and even modules that do not contain
+    % parallel conjunctions (nearly all of them).  Since simplification
+    % is always done, we use it to mark modules and predicates containing
+    % parallel conjunctions.
     (
         MayHaveParallelConj = yes,
+        module_info_set_contains_par_conj(!ModuleInfo),
         pred_info_get_markers(!.PredInfo, Markers0),
         add_marker(marker_may_have_parallel_conj, Markers0, Markers),
         pred_info_set_markers(Markers, !PredInfo)

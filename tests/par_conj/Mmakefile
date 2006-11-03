@@ -51,6 +51,7 @@ DEP_PAR_CONJ_PROGS= \
 INDEP_PAR_CONJ_PROGS = \
 	indep_par_append \
 	indep_par_nested \
+	par_fib \
 	threads_hang
 
 # These tests require debugging, which hasn't been implemented for

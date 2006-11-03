@@ -366,8 +366,9 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
 
 #ifndef MR_HIGHLEVEL_CODE
   /*
-  ** fork_new_child(MR_Code *child);
-  ** create a new spark to execute the code at `child'.  The new spark is put
+  ** fork_new_child(MR_Code *child):
+  **
+  ** Create a new spark to execute the code at `child'.  The new spark is put
   ** on the global spark queue or the context-local spark stack.  The current
   ** context resumes at `parent'.  MR_parent_sp must already be set
   ** appropriately before this instruction is executed.
@@ -402,6 +403,9 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
         spark->MR_spark_next = ssl_ctxt->MR_ctxt_spark_stack;           \
         ssl_ctxt->MR_ctxt_spark_stack = spark;                          \
     } while (0)
+
+  #define MR_choose_parallel_over_sequential_cond(target_cpus)          \
+      (MR_num_outstanding_contexts_and_sparks < target_cpus)
 
 #endif /* !MR_HIGHLEVEL_CODE */
 

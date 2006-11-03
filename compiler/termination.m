@@ -499,7 +499,7 @@ set_termination_infos([PPId | PPIds], TerminationInfo, !ModuleInfo) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 report_termination_errors(SCC, Errors, !ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(check_termination, NormalErrors, !IO),
+    globals.io_lookup_bool_option(termination_check, NormalErrors, !IO),
     globals.io_lookup_bool_option(verbose_check_termination,
         VerboseErrors, !IO),
     (

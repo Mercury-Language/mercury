@@ -7340,7 +7340,7 @@ Perform analyses such as termination analysis and
 unused argument elimination across module boundaries.
 This option is not yet fully implemented.
 
-@item --analysis-repeat <n>
+@item --analysis-repeat @var{n}
 @findex --analysis-repeat
 The maximum number of times to repeat analyses of suboptimal modules with
 @samp{--intermodule-analyses} (default: 0).  This option only works with
@@ -7476,7 +7476,7 @@ provided the language semantics options allow the deletion or movement
 of the goal.
 
 @sp 1
-@item --unneeded-code-copy-limit
+@item --unneeded-code-copy-limit @var{limit}
 @findex --unneeded-code-copy-limit
 Gives the maximum number of places to which a goal may be copied
 when removing it from computation paths on which its outputs are not needed.
@@ -7508,7 +7508,7 @@ See the ``Type specialization'' section in the ``Pragmas''
 chapter of the Mercury Language Reference Manual for more details.
 
 @sp 1
-@item --higher-order-size-limit
+@item --higher-order-size-limit @var{limit}
 @findex --higher-order-size-limit
 Set the maximum goal size of specialized versions created by
 @samp{--optimize-higher-order} and @samp{--type-specialization}.
@@ -7516,8 +7516,8 @@ Goal size is measured as the number of calls, unifications
 and branched goals.
 
 @sp 1
-@item --higher-order-arg-limit
-@item --higher-order-arg-limit
+@item --higher-order-arg-limit @var{limit}
+@findex --higher-order-arg-limit
 Set the maximum size of higher-order arguments to
 be specialized by @samp{--optimize-higher-order} and
 @samp{--type-specialization}.
@@ -7583,21 +7583,20 @@ is to avoid the construction of intermediate data structures and to avoid
 repeated traversals over data structures within a conjunction.
 
 @sp 1
-@item --deforestation-depth-limit
+@item --deforestation-depth-limit @var{limit}
 @findex --deforestation-depth-limit
-Specify a depth limit to prevent infinite loops in the
-deforestation algorithm.
+Specify a depth limit to prevent infinite loops in the deforestation algorithm.
 A value of -1 specifies no depth limit. The default is 4.
 
 @sp 1
-@item --deforestation-vars-threshold
+@item --deforestation-vars-threshold @var{threshold}
 @findex --deforestation-vars-threshold
 Specify a rough limit on the number of variables
 in a procedure created by deforestation.
 A value of -1 specifies no limit. The default is 200.
 
 @sp 1
-@item --deforestation-size-threshold
+@item --deforestation-size-threshold @var{threshold}
 @findex --deforestation-size-threshold
 Specify a rough limit on the size of a goal
 to be optimized by deforestation.
@@ -7606,9 +7605,8 @@ A value of -1 specifies no limit. The default is 15.
 @sp 1
 @item --analyse-exceptions
 @findex --analyse-exceptions
-Try to identify those procedures that cannot throw an
-exception.  This information can be used by some
-optimization passes.
+Try to identify those procedures that cannot throw an exception.
+This information can be used by some optimization passes.
 
 @c XXX The documentation `--analyse-closures' can be uncommented
 @c when we actually have something that makes use of it.
@@ -7623,18 +7621,16 @@ optimization passes.
 @sp 1
 @item --analyse-trail-usage
 @findex --analyse-trail-usage
-Enable trail usage analysis.  Identify those
-procedures that will not modify the trail.
-This information is used to reduce the overhead
-of trailing.
+Enable trail usage analysis.
+Identify those procedures that will not modify the trail.
+This information is used to reduce the overhead of trailing.
 
 @sp 1
 @item --analyse-mm-tabling
 @findex --analyse-mm-tabling
 Identify those goals that do not calls procedures
 that are evaluated using minimal model tabling.
-This information is used to reduce the overhead
-of minimal model tabling.
+This information is used to reduce the overhead of minimal model tabling.
 
 @c @sp 1
 @c @item --untuple
@@ -7679,6 +7675,18 @@ of minimal model tabling.
 @c transformation will consider passing together as a
 @c tuple. This is mostly to speed up the compilation
 @c process by not pursuing (presumably) unfruitful searches.
+
+@sp 1
+@item --control-granularity
+@findex --control-granularity
+Don't try to generate more parallelism than the machine can handle,
+which is specified using --parallelism-target.
+
+@sp 1
+@item --parallelism-target @var{num_cpus}
+@findex --parallelism-target
+Specifies the number of CPUs of the target machine,
+for use by --control-granularity option.
 
 @end table
 

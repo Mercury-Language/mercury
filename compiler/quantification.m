@@ -69,7 +69,7 @@
     --->    ordinary_nonlocals
     ;       code_gen_nonlocals.
 
-:- pred implicitly_quantify_clause_body(nonlocals_to_recompute::in,
+:- pred implicitly_quantify_clause_body_general(nonlocals_to_recompute::in,
     list(prog_var)::in, list(quant_warning)::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
@@ -81,7 +81,7 @@
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
-:- pred implicitly_quantify_goal(nonlocals_to_recompute::in,
+:- pred implicitly_quantify_goal_general(nonlocals_to_recompute::in,
     set(prog_var)::in, list(quant_warning)::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
@@ -92,7 +92,7 @@
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
-:- pred requantify_proc(nonlocals_to_recompute::in,
+:- pred requantify_proc_general(nonlocals_to_recompute::in,
     proc_info::in, proc_info::out) is det.
 
     % As above, with `ordinary_nonlocals' passed as the first argument.
@@ -197,27 +197,27 @@
 
 %-----------------------------------------------------------------------------%
 
-implicitly_quantify_clause_body(HeadVars, Warnings,
-        !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
-    implicitly_quantify_clause_body(ordinary_nonlocals, HeadVars, Warnings,
-        !Goal, !Varset, !VarTypes, !RttiVarMaps).
+implicitly_quantify_clause_body(HeadVars,
+        Warnings, !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
+    implicitly_quantify_clause_body_general(ordinary_nonlocals, HeadVars,
+        Warnings, !Goal, !Varset, !VarTypes, !RttiVarMaps).
 
-implicitly_quantify_clause_body(RecomputeNonLocals, HeadVars, Warnings,
+implicitly_quantify_clause_body_general(RecomputeNonLocals, HeadVars, Warnings,
         !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
     list_to_set(HeadVars, OutsideVars),
-    implicitly_quantify_goal(RecomputeNonLocals, OutsideVars, Warnings,
+    implicitly_quantify_goal_general(RecomputeNonLocals, OutsideVars, Warnings,
         !Goal, !Varset, !VarTypes, !RttiVarMaps).
 
 requantify_proc(ProcInfo0, ProcInfo) :-
-    requantify_proc(ordinary_nonlocals, ProcInfo0, ProcInfo).
+    requantify_proc_general(ordinary_nonlocals, ProcInfo0, ProcInfo).
 
-requantify_proc(RecomputeNonLocals, !ProcInfo) :-
+requantify_proc_general(RecomputeNonLocals, !ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_varset(!.ProcInfo, Varset0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarmaps0),
-    implicitly_quantify_clause_body(RecomputeNonLocals, HeadVars, _,
+    implicitly_quantify_clause_body_general(RecomputeNonLocals, HeadVars, _,
         Goal0, Goal, Varset0, Varset, VarTypes0, VarTypes,
         RttiVarmaps0, RttiVarmaps),
     proc_info_set_varset(Varset, !ProcInfo),
@@ -227,10 +227,10 @@ requantify_proc(RecomputeNonLocals, !ProcInfo) :-
 
 implicitly_quantify_goal(OutsideVars, Warnings, !Goal, !Varset, !VarTypes, 
         !RttiVarMaps) :-
-    implicitly_quantify_goal(ordinary_nonlocals, OutsideVars, Warnings,
+    implicitly_quantify_goal_general(ordinary_nonlocals, OutsideVars, Warnings,
         !Goal, !Varset, !VarTypes, !RttiVarMaps).
 
-implicitly_quantify_goal(RecomputeNonLocals, OutsideVars, Warnings,
+implicitly_quantify_goal_general(RecomputeNonLocals, OutsideVars, Warnings,
         !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
     implicitly_quantify_goal_2(ordinary_nonlocals, OutsideVars, Warnings,
         !Goal, !Varset, !VarTypes, !RttiVarMaps),

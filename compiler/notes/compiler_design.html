@@ -116,10 +116,10 @@ Taking all this into account, the structure looks like this:
                <li> 6b. output code
      	       (MLDS -&gt; C or MLDS -&gt; MSIL or MLDS -&gt; Java, etc.)
                </ul>
-          <li> d. bytecode back-end
+          <li> c. bytecode back-end
                <br> Package: bytecode_backend.m
                <ul type=disc>
-               <li> 4d. code generation (annotated HLDS -&gt; bytecode)
+               <li> 4c. code generation (annotated HLDS -&gt; bytecode)
                </ul>
           <li> There's also a package backend_libs.m which contains
 	       modules which are shared between several different back-ends.
@@ -1059,8 +1059,32 @@ specialized versions without them (unused_args.m); type_infos are often unused.
 
 <li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
   specialization and the elimination of unused args can make procedures dead
+  even if the user doesn't, and automatically constructed unification and
+  comparison predicates are often dead as well.
+
+<li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
+  specialization and the elimination of unused args can make procedures dead
   even the user doesn't, and automatically constructed unification and
   comparison predicates are often dead as well.
+
+<li> tupling.m looks for predicates that pass around several arguments,
+  and modifies the code to pass around a single tuple of these arguments
+  instead if this looks like reducing the cost of parameter passing.
+
+<li> untupling.m does the opposite of tupling.m: it replaces tuple arguments
+  with their components. This can be useful both for finding out how much
+  tupling has already been done manually in the source code, and to break up
+  manual tupling in favor of possibly more profitable automatic tupling.
+
+<li> dep_par_conj.m transforms parallel conjunctions to add the wait and signal
+  operations required by dependent AND parallelism. To maximize the amount of
+  parallelism available, it tries to push the signals as early as possible
+  in producers and the waits as late as possible in the consumers, creating
+  specialized versions of predicates as needed.
+
+<li> granularity.m tries to ensure that programs do not generate too much
+  parallelism. Its goal is to minimize parallelism's overhead while still
+  gaining all the parallelism the machine can actually exploit.
 
 </ul>
 
@@ -1698,6 +1722,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2006-11-01 06:33:32 $ by $Author: petdr $@cs.mu.oz.au. <br>
+Last update was $Date: 2006-11-03 08:31:18 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -143,31 +143,31 @@ extern  MR_bool MR_debugflag[];
 ** whenever it extends a stack.
 */
 
-#define MR_progdebug                MR_debugflag[MR_PROGFLAG]
-#define MR_gotodebug                MR_debugflag[MR_GOTOFLAG]
-#define MR_calldebug                MR_debugflag[MR_CALLFLAG]
-#define MR_heapdebug                MR_debugflag[MR_HEAPFLAG]
-#define MR_detstackdebug            MR_debugflag[MR_DETSTACKFLAG]
-#define MR_nondetstackdebug         MR_debugflag[MR_NONDETSTACKFLAG]
-#define MR_finaldebug               MR_debugflag[MR_FINALFLAG]
-#define MR_memdebug                 MR_debugflag[MR_MEMFLAG]
-#define MR_sregdebug                MR_debugflag[MR_SREGFLAG]
-#define MR_tracedebug               MR_debugflag[MR_TRACEFLAG]
-#define MR_tabledebug               MR_debugflag[MR_TABLEFLAG]
-#define MR_hashdebug                MR_debugflag[MR_TABLEHASHFLAG]
-#define MR_tablestackdebug          MR_debugflag[MR_TABLESTACKFLAG]
-#define MR_unbufdebug               MR_debugflag[MR_UNBUFFLAG]
-#define MR_agc_debug                MR_debugflag[MR_AGC_FLAG]
-#define MR_ordregdebug              MR_debugflag[MR_ORDINARY_REG_FLAG]
-#define MR_anyregdebug              MR_debugflag[MR_ANY_REG_FLAG]
-#define MR_printlocndebug           MR_debugflag[MR_PRINT_LOCN_FLAG]
-#define MR_lld_debug_enabled        MR_debugflag[MR_LLD_DEBUG_ENABLED_FLAG]
-#define MR_not_nearest_flag         MR_debugflag[MR_NOT_NEAREST_FLAG]
-#define MR_debug_slots_flag         MR_debugflag[MR_DEBUG_SLOTS_FLAG]
+#define MR_progdebug                    MR_debugflag[MR_PROGFLAG]
+#define MR_gotodebug                    MR_debugflag[MR_GOTOFLAG]
+#define MR_calldebug                    MR_debugflag[MR_CALLFLAG]
+#define MR_heapdebug                    MR_debugflag[MR_HEAPFLAG]
+#define MR_detstackdebug                MR_debugflag[MR_DETSTACKFLAG]
+#define MR_nondetstackdebug             MR_debugflag[MR_NONDETSTACKFLAG]
+#define MR_finaldebug                   MR_debugflag[MR_FINALFLAG]
+#define MR_memdebug                     MR_debugflag[MR_MEMFLAG]
+#define MR_sregdebug                    MR_debugflag[MR_SREGFLAG]
+#define MR_tracedebug                   MR_debugflag[MR_TRACEFLAG]
+#define MR_tabledebug                   MR_debugflag[MR_TABLEFLAG]
+#define MR_hashdebug                    MR_debugflag[MR_TABLEHASHFLAG]
+#define MR_tablestackdebug              MR_debugflag[MR_TABLESTACKFLAG]
+#define MR_unbufdebug                   MR_debugflag[MR_UNBUFFLAG]
+#define MR_agc_debug                    MR_debugflag[MR_AGC_FLAG]
+#define MR_ordregdebug                  MR_debugflag[MR_ORDINARY_REG_FLAG]
+#define MR_anyregdebug                  MR_debugflag[MR_ANY_REG_FLAG]
+#define MR_printlocndebug               MR_debugflag[MR_PRINT_LOCN_FLAG]
+#define MR_lld_debug_enabled            MR_debugflag[MR_LLD_DEBUG_ENABLED_FLAG]
+#define MR_not_nearest_flag             MR_debugflag[MR_NOT_NEAREST_FLAG]
+#define MR_debug_slots_flag             MR_debugflag[MR_DEBUG_SLOTS_FLAG]
 #define MR_deep_prof_debug_file_flag    MR_debugflag[\
                                             MR_DEEP_PROF_DEBUG_FILE_FLAG]
-#define MR_stack_extend_debug       MR_debugflag[MR_STACK_EXTEND_FLAG]
-#define MR_detaildebug              MR_debugflag[MR_DETAILFLAG]
+#define MR_stack_extend_debug           MR_debugflag[MR_STACK_EXTEND_FLAG]
+#define MR_detaildebug                  MR_debugflag[MR_DETAILFLAG]
 
 typedef struct {
     const char      *MR_debug_flag_name;
@@ -176,13 +176,13 @@ typedef struct {
 
 extern  MR_Debug_Flag_Info  MR_debug_flag_info[MR_MAXFLAG];
 
-/* 
+/*
 ** MR_setjmp and MR_longjmp are wrappers around setjmp and longjmp to ensure
 ** that
-**   call C -> setjmp -> call Mercury -> call C -> longjmp 
+**   call C -> setjmp -> call Mercury -> call C -> longjmp
 ** works correctly. This is used by the exception handling code for
 ** the ODBC interface, and probably shouldn't be used for anything else.
-*/ 
+*/
 
 typedef struct {
     jmp_buf     *mercury_env;   /* used to save MR_ENGINE(MR_eng_jmp_buf) */
@@ -255,9 +255,10 @@ typedef struct {
 
 /*
 ** MR_longjmp(MR_jmp_buf *env)
-** 
+**
 ** Call longjmp(), MR_setjmp() will handle the rest.
 */
+
 #define MR_longjmp(setjmp_env)  longjmp((setjmp_env)->env, 1)
 
 /*---------------------------------------------------------------------------*/
