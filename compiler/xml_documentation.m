@@ -287,7 +287,12 @@ get_comment_backwards(Comments, Line) = Comment :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         map.foldl(type_documentation(Comments), TypeTable, [], TypeXmls),
         TypeXml = elem("types", [], TypeXmls),
-        Xml = elem("module", [], [TypeXml])
+
+        module_info_preds(ModuleInfo, PredTable),
+        map.foldl(pred_documentation(Comments), PredTable, [], PredXmls),
+        PredXml = elem("preds", [], PredXmls),
+
+        Xml = elem("module", [], [TypeXml, PredXml])
     )
 ].
 
@@ -373,7 +378,7 @@ constructor_arg(C, TVarset, ctor_arg(MaybeFieldName, Type, Context)) = Xml :-
     XmlContext = prog_context(Context),
     (
         MaybeFieldName = yes(FieldName),
-        Id = attr("Id", sym_name_to_id("field", FieldName)),
+        Id = attr("id", sym_name_to_id("field", FieldName)),
         XmlMaybeFieldName = [elem("field", [Id], [name(FieldName)])]
     ;
         MaybeFieldName = no,
@@ -399,6 +404,67 @@ mer_type(_, higher_order_type(_, _, _, _)) = nyi("higher_order_type").
 mer_type(_, tuple_type(_, _)) = nyi("tuple_type").
 mer_type(_, apply_n_type(_, _, _)) = nyi("apply_n_type").
 mer_type(_, kinded_type(_, _)) = nyi("kinded_type").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred pred_documentation(comments::in, pred_id::in, pred_info::in,
+    list(xml)::in, list(xml)::out) is det.
+
+pred_documentation(C, _PredId, PredInfo, !Xml) :-
+    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_origin(PredInfo, Origin),
+
+    (
+        status_defined_in_this_module(ImportStatus) = yes,
+        Origin = origin_user(_)
+    ->
+        Module = pred_info_module(PredInfo),
+        Name = pred_info_name(PredInfo),
+        PredName = qualified(Module, Name), 
+
+        Arity = pred_info_orig_arity(PredInfo),
+        pred_info_context(PredInfo, Context),
+        IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
+
+        pred_info_get_typevarset(PredInfo, TVarset),
+        pred_info_get_arg_types(PredInfo, Types),
+
+        pred_info_get_exist_quant_tvars(PredInfo, Exists),
+        pred_info_get_class_context(PredInfo, Constraints),
+
+        (
+            IsPredOrFunc = predicate,
+            Tag = "predicate"
+        ;
+            IsPredOrFunc = function,
+            Tag = "function"
+        ),
+        Id = sym_name_and_arity_to_id(Tag, PredName, Arity),
+
+        XmlName = name(qualified(Module, Name)),
+        XmlContext = prog_context(Context),
+        XmlTypes = xml_list("pred_types", mer_type(TVarset), Types),
+        XmlExistVars = xml_list("pred_exist_vars", type_param(TVarset), Exists),
+        XmlConstraints = prog_constraints(TVarset, Constraints),
+
+        Xml0 = elem(Tag, [attr("id", Id)],
+                [XmlName, XmlTypes, XmlContext, XmlExistVars, XmlConstraints]),
+
+        Xml = maybe_add_comment(C, Context, Xml0),
+
+        !:Xml = [Xml | !.Xml]
+    ;
+        true
+    ).
+
+:- func prog_constraints(tvarset, prog_constraints) = xml.
+
+prog_constraints(TVarset, constraints(Univs, Exists)) = Xml :-
+    XmlUnivs = xml_list("pred_universal", prog_constraint(TVarset), Univs),
+    XmlExists = xml_list("pred_exist", prog_constraint(TVarset), Exists),
+    
+    Xml = elem("pred_constraints", [], [XmlUnivs, XmlExists]).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
