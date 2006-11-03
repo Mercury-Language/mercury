@@ -73,6 +73,7 @@ DEFAULT_MCFLAGS=\
 		--create-archive-command-output-flag "@AR_LIBFILE_OPT@" \
 		--create-archive-command-flags "@ARFLAGS@" \
 		--ranlib-command "@RANLIB@" \
+		--ranlib-flags "@RANLIBFLAGS@" \
 		--link-executable-command "@LINK_EXE@" \
 		--link-shared-lib-command "@LINK_SHARED_OBJ@" \
 		--trace-libs "@TRACE_LIBS_SYSTEM@" \

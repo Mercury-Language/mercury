@@ -375,6 +375,7 @@ EOF
 			--record-term-sizes-as-words \
 			--output-grade-string \
 			--shlib-linker-install-name-flag "-dummy_flag" \
+			--ranlib-flags "" \
 			</dev/null >&AC_FD_CC 2>&1
 	then
 		AC_MSG_RESULT(yes)
@@ -812,6 +813,7 @@ if test "$ac_microsoft" = "yes" ; then
 
 		# MS doesn't use a ranlib.
 	RANLIB="echo"
+	RANLIBFLAGS=""
 	AC_SUBST(RANLIB)
 else
 	# Use Unix-style file names and command-line options
@@ -855,6 +857,7 @@ else
 	FIX_PATH_FOR_CC=echo
 
 	AC_PROG_RANLIB
+	RANLIBFLAGS=""
 
 	# On MacOS 10.1 (and other MacOS systems?),
 	# we need to pass the `-c' option to ranlib.
@@ -864,12 +867,12 @@ else
 	# that brain-damaged and non-standard-conforming mode the default?
 
 	case "$host" in *-apple-darwin*)
-		RANLIB="$RANLIB -c"
-		AC_SUBST(RANLIB)
+		RANLIBFLAGS="-c"
 		;;
 	esac
 fi
 
+AC_SUBST(RANLIBFLAGS)
 AC_SUBST(OBJFILE_OPT)
 AC_SUBST(AR)
 AC_SUBST(ARFLAGS)
