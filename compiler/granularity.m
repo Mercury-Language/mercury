@@ -137,7 +137,7 @@ runtime_granularity_test_in_goal(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo,
                     Attributes = !.Attributes
                 ),
                 generate_foreign_proc(ModuleName, ProcName, predicate,
-                    only_mode, detism_semi, purity_semipure, Attributes,
+                    only_mode, detism_semi, purity_impure, Attributes,
                     Args, ExtraArgs, MaybeRuntimeCond, Code, Features,
                     InstMapDeltaSrc, ModuleInfo, Context, Cond),
 
