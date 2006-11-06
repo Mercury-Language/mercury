@@ -45,6 +45,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.source_file_map.
 
 :- import_module bool.
@@ -54,6 +55,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
@@ -82,6 +84,17 @@
                 % A line containing code.
     ;       code
     .
+
+:- interface.
+:- import_module term_to_xml.
+        % my latest typeclass
+:- typeclass tc(T) <= xmlable(T) where [
+    pred p(T, line_type),
+    mode p(in, out) is det,
+    mode p(in, in) is semidet,
+    func f(T) = string % Simple function
+].
+:- implementation.
 
 %-----------------------------------------------------------------------------%
 
@@ -292,7 +305,11 @@ get_comment_backwards(Comments, Line) = Comment :-
         map.foldl(pred_documentation(Comments), PredTable, [], PredXmls),
         PredXml = elem("preds", [], PredXmls),
 
-        Xml = elem("module", [], [TypeXml, PredXml])
+        module_info_get_class_table(ModuleInfo, ClassTable),
+        map.foldl(class_documentation(Comments), ClassTable, [], ClassXmls),
+        ClassXml = elem("typeclasses", [], ClassXmls),
+
+        Xml = elem("module", [], [TypeXml, PredXml, ClassXml])
     )
 ].
 
@@ -414,49 +431,61 @@ mer_type(_, kinded_type(_, _)) = nyi("kinded_type").
 pred_documentation(C, _PredId, PredInfo, !Xml) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
     pred_info_get_origin(PredInfo, Origin),
+    pred_info_get_markers(PredInfo, Markers),
 
     (
         status_defined_in_this_module(ImportStatus) = yes,
-        Origin = origin_user(_)
+        Origin = origin_user(_),
+        not check_marker(Markers, marker_class_method)
     ->
+        pred_info_get_typevarset(PredInfo, TVarset),
+        pred_info_get_exist_quant_tvars(PredInfo, Exists),
+
+        IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
         Module = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),
         PredName = qualified(Module, Name), 
 
-        Arity = pred_info_orig_arity(PredInfo),
-        pred_info_context(PredInfo, Context),
-        IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
-
-        pred_info_get_typevarset(PredInfo, TVarset),
         pred_info_get_arg_types(PredInfo, Types),
-
-        pred_info_get_exist_quant_tvars(PredInfo, Exists),
         pred_info_get_class_context(PredInfo, Constraints),
+        pred_info_context(PredInfo, Context),
 
-        (
-            IsPredOrFunc = predicate,
-            Tag = "predicate"
-        ;
-            IsPredOrFunc = function,
-            Tag = "function"
-        ),
-        Id = sym_name_and_arity_to_id(Tag, PredName, Arity),
-
-        XmlName = name(qualified(Module, Name)),
-        XmlContext = prog_context(Context),
-        XmlTypes = xml_list("pred_types", mer_type(TVarset), Types),
-        XmlExistVars = xml_list("pred_exist_vars", type_param(TVarset), Exists),
-        XmlConstraints = prog_constraints(TVarset, Constraints),
-
-        Xml0 = elem(Tag, [attr("id", Id)],
-                [XmlName, XmlTypes, XmlContext, XmlExistVars, XmlConstraints]),
-
-        Xml = maybe_add_comment(C, Context, Xml0),
+        Xml = predicate_documentation(C, TVarset, Exists,
+                        IsPredOrFunc, PredName, Types, Constraints, Context),
 
         !:Xml = [Xml | !.Xml]
     ;
         true
     ).
+
+:- func predicate_documentation(comments,
+            tvarset, existq_tvars, pred_or_func, sym_name,
+            list(mer_type), prog_constraints, prog_context) = xml.
+
+predicate_documentation(C, TVarset, Exists,
+        IsPredOrFunc, PredName, Types, Constraints, Context) = Xml :-
+    Arity0 = list.length(Types),
+    (
+        IsPredOrFunc = predicate,
+        Tag = "predicate",
+        Arity = Arity0
+    ;
+        IsPredOrFunc = function,
+        Tag = "function",
+        Arity = Arity0 - 1
+    ),
+    Id = sym_name_and_arity_to_id(Tag, PredName, Arity),
+
+    XmlName = name(PredName),
+    XmlContext = prog_context(Context),
+    XmlTypes = xml_list("pred_types", mer_type(TVarset), Types),
+    XmlExistVars = xml_list("pred_exist_vars", type_param(TVarset), Exists),
+    XmlConstraints = prog_constraints(TVarset, Constraints),
+
+    Xml0 = elem(Tag, [attr("id", Id)],
+            [XmlName, XmlTypes, XmlContext, XmlExistVars, XmlConstraints]),
+
+    Xml = maybe_add_comment(C, Context, Xml0).
 
 :- func prog_constraints(tvarset, prog_constraints) = xml.
 
@@ -465,6 +494,75 @@ prog_constraints(TVarset, constraints(Univs, Exists)) = Xml :-
     XmlExists = xml_list("pred_exist", prog_constraint(TVarset), Exists),
     
     Xml = elem("pred_constraints", [], [XmlUnivs, XmlExists]).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred class_documentation(comments::in, class_id::in, hlds_class_defn::in,
+    list(xml)::in, list(xml)::out) is det.
+
+class_documentation(C, class_id(Name, Arity), ClassDefn, !Xml) :-
+    ImportStatus = ClassDefn ^ class_status,
+    ( status_defined_in_this_module(ImportStatus) = yes ->
+        Id = sym_name_and_arity_to_id("class", Name, Arity),
+
+        Context = ClassDefn ^ class_context,
+        TVarset = ClassDefn ^ class_tvarset,
+        Vars = ClassDefn ^ class_vars,
+
+        XmlName = name(Name),
+        XmlClassVars = xml_list("class_vars", type_param(TVarset), Vars),
+        XmlSupers = xml_list("superclasses",
+                prog_constraint(TVarset), ClassDefn ^ class_supers),
+        XmlFundeps = xml_list("fundeps",
+                fundep(TVarset, Vars), ClassDefn ^ class_fundeps),
+        XmlMethods = class_methods(C, ClassDefn ^ class_interface),
+        XmlContext = prog_context(Context),
+
+        Xml0 = elem("typeclass", [attr("id", Id)],
+                [XmlName, XmlClassVars, XmlSupers,
+                XmlFundeps, XmlMethods, XmlContext]),
+
+        Xml = maybe_add_comment(C, Context, Xml0),
+
+        !:Xml = [Xml | !.Xml]
+    ;
+        true
+    ).
+
+:- func fundep(tvarset, list(tvar), hlds_class_fundep) = xml.
+
+fundep(TVarset, Vars, fundep(Domain, Range)) = Xml :-
+    XmlDomain = fundep_2("domain", TVarset, Vars, Domain),
+    XmlRange = fundep_2("range", TVarset, Vars, Range),
+    Xml = elem("fundep", [], [XmlDomain, XmlRange]).
+    
+
+:- func fundep_2(string, tvarset, list(tvar), set(hlds_class_argpos)) = xml.
+
+fundep_2(Tag, TVarset, Vars, Set) =
+    xml_list(Tag, type_param(TVarset), restrict_list_elements(Set, Vars)).
+
+:- func class_methods(comments, class_interface) = xml.
+
+class_methods(_, class_interface_abstract) = elem("methods", [], []).
+class_methods(C, class_interface_concrete(Methods)) =
+    xml_list("methods", class_method(C), Methods).
+
+:- func class_method(comments, class_method) = xml.
+
+class_method(C, method_pred_or_func(TVarset, _, Exist, PredOrFunc,
+        Name, TypeAndModes, _, _, _, _, _, Constraints, Context)) =
+    predicate_documentation(C, TVarset, Exist, PredOrFunc,
+            Name, list.map(type_only, TypeAndModes), Constraints, Context).
+class_method(_, method_pred_or_func_mode(_, _, _, _, _, _, _, _)) =
+    nyi("method_pred_or_func_mode").
+
+:- func type_only(type_and_mode) = mer_type.
+
+type_only(type_only(T)) = T.
+type_only(type_and_mode(T, _)) = T.
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
