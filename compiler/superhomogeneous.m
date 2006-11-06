@@ -801,7 +801,7 @@ qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes, Context,
 
 report_error_in_type_qualification(GenericVarSet, Context, Error, !Specs) :-
     Error = ErrorMsg - ErrorTerm,
-    TermStr = mercury_term_to_string(ErrorTerm, GenericVarSet, no),
+    TermStr = mercury_term_to_string(GenericVarSet, no, ErrorTerm),
     Pieces = [words("In explicit type qualification:"),
         words(ErrorMsg), suffix(":"), quote(TermStr), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
@@ -1077,7 +1077,7 @@ make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_string_term_error(Context, VarSet, ErrorMsg - ErrorTerm, !Specs) :-
-    TermStr = mercury_term_to_string(ErrorTerm, VarSet, no),
+    TermStr = mercury_term_to_string(VarSet, no, ErrorTerm),
     Pieces = [words("Error:"), words(ErrorMsg), suffix(":"),
         quote(TermStr), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),

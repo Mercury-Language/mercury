@@ -309,18 +309,16 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
     instmap_delta_restrict(NonLocalVarsSet, InstMapDelta0, InstMapDelta),
     goal_info_set_instmap_delta(InstMapDelta, GoalInfo2, GoalInfo).
 
+    % After this pass, explicit quantifiers are redundant, since all variables
+    % which were explicitly quantified have been renamed apart. So we don't
+    % keep them. We need to keep the structure, though, so that mode analysis
+    % doesn't try to reorder through quantifiers. (Actually it would make sense
+    % to allow mode analysis to do that, but the reference manual says it
+    % doesn't, so we don't.)  Thus we replace `scope(exist_quant(Vars), Goal0)'
+    % with an empty quantifier `scope(exist_quant([]), Goal)'.
+    %
 :- pred implicitly_quantify_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     prog_context::in, quant_info::in, quant_info::out) is det.
-
-    % After this pass, explicit quantifiers are redundant,
-    % since all variables which were explicitly quantified
-    % have been renamed apart.  So we don't keep them.
-    % We need to keep the structure, though, so that mode
-    % analysis doesn't try to reorder through quantifiers.
-    % (Actually it would make sense to allow mode analysis
-    % to do that, but the reference manual says it doesn't,
-    % so we don't.)  Thus we replace `scope(exist_quant(Vars), Goal0)'
-    % with an empty quantifier `scope(exist_quant([]), Goal)'.
 
 implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
     Expr0 = scope(Reason0, Goal0),
@@ -348,9 +346,8 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
         Reason1 = Reason0,
         Vars0 = []
     ;
-        Reason0 = trace_goal(_, _, _, _),
-        Reason1 = Reason0,
-        Vars0 = []
+        Reason0 = trace_goal(_, _, _, _, Vars0),
+        Reason1 = Reason0
     ),
     get_outside(!.Info, OutsideVars),
     get_lambda_outside(!.Info, LambdaOutsideVars),
@@ -382,7 +379,7 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
             ; Reason1 = commit(_)
             ; Reason1 = barrier(_)
             ; Reason1 = from_ground_term(_)
-            ; Reason1 = trace_goal(_, _, _, _)
+            ; Reason1 = trace_goal(_, _, _, _, _)
             ),
             Reason = Reason1
         )
@@ -1175,7 +1172,7 @@ goal_vars_2(NonLocalsToRecompute, scope(Reason, Goal), Set0, !:Set,
     ;
         Reason = from_ground_term(_)
     ;
-        Reason = trace_goal(_, _, _, _)
+        Reason = trace_goal(_, _, _, _, _)
     ),
     union(Set0, !Set),
     union(LambdaSet0, !LambdaSet).

@@ -1444,7 +1444,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets, DetInfo, Detism,
             GoalFailingContexts, !Specs)
     ;
-        Reason = trace_goal(_, _, _, _),
+        Reason = trace_goal(_, _, _, _, _),
         det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets0, DetInfo,
             Detism, GoalFailingContexts, !Specs),
@@ -1538,7 +1538,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
             proc_info_get_varset(ProcInfo, VarSet),
             (
                 GoalContext = ccuc_switch,
-                VarStr = mercury_var_to_string(Var, VarSet, no),
+                VarStr = mercury_var_to_string(VarSet, no, Var),
                 Pieces0 = [words("In switch on variable"), quote(VarStr),
                     suffix(":"), nl]
             ;
@@ -1578,7 +1578,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
             proc_info_get_varset(ProcInfo, VarSet),
             (
                 GoalContext = ccuc_switch,
-                VarStr = mercury_var_to_string(Var, VarSet, no),
+                VarStr = mercury_var_to_string(VarSet, no, Var),
                 Pieces0 = [words("In switch on variable `" ++ VarStr ++ "':"),
                     nl]
             ;

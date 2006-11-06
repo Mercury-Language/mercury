@@ -929,7 +929,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         rename_var(no, !.VarRename, Var0, Var),
         Reason = from_ground_term(Var)
     ;
-        Reason0 = trace_goal(_, _, _, _),
+        Reason0 = trace_goal(_, _, _, _, _),
         Reason = Reason0
     ),
     record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,

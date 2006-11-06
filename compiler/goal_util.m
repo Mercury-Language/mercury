@@ -585,7 +585,7 @@ rename_vars_in_goal_expr(Must, Subn,
         rename_var(Must, Subn, Var0, Var),
         Reason = from_ground_term(Var)
     ;
-        Reason0 = trace_goal(_Flag, _Grade, _Env, _Vars),
+        Reason0 = trace_goal(_Flag, _Grade, _Env, _Vars, _QuantVars),
         Reason = Reason0
     ),
     rename_vars_in_goal(Must, Subn, Goal0, Goal).
@@ -859,7 +859,7 @@ goal_vars_2(scope(Reason, Goal - _), !Set) :-
         Reason = from_ground_term(Var),
         set.insert(!.Set, Var, !:Set)
     ;
-        Reason = trace_goal(_, _, _, _)
+        Reason = trace_goal(_, _, _, _, _)
     ),
     goal_vars_2(Goal, !Set).
 

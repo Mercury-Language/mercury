@@ -539,7 +539,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
         det_get_proc_info(DetInfo, ProcInfo),
         proc_info_get_varset(ProcInfo, VarSet),
         det_info_get_module_info(DetInfo, ModuleInfo),
-        VarStr = mercury_var_to_string(Var, VarSet, no),
+        VarStr = mercury_var_to_string(VarSet, no, Var),
         (
             det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
@@ -811,7 +811,7 @@ det_diagnose_switch_context([SwitchContext | SwitchContexts], DetInfo,
     proc_info_get_varset(ProcInfo, VarSet),
     SwitchContext = switch_context(Var, ConsId),
     ConsIdStr = cons_id_to_string(ConsId),
-    VarStr = mercury_var_to_string(Var, VarSet, no),
+    VarStr = mercury_var_to_string(VarSet, no, Var),
     HeadPieces = [words("Inside the case"), fixed(ConsIdStr),
         words("of the switch on"), fixed(VarStr), words(":")],
     det_diagnose_switch_context(SwitchContexts, DetInfo, TailPieces).
@@ -917,10 +917,10 @@ det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
             \+ varset.search_name(VarSet, RV, _)
         ->
             Pieces = [words(StartWords), words("with"),
-                words(add_quotes(mercury_var_to_string(LHS, VarSet, no)))]
+                words(add_quotes(mercury_var_to_string(VarSet, no, LHS)))]
         ;
             Pieces = [words(StartWords), words("of"),
-                words(add_quotes(mercury_var_to_string(LHS, VarSet, no))),
+                words(add_quotes(mercury_var_to_string(VarSet, no, LHS))),
                 words("and"),
                 words(add_quotes(
                     unify_rhs_to_string(RHS, ModuleInfo, VarSet, no)))]
@@ -942,7 +942,7 @@ promise_solutions_kind_str(equivalent_solution_sets_arbitrary)
     = "arbitrary".
 
 lookup_var_name_in_varset(VarSet, Var) =
-    mercury_var_to_string(Var, VarSet, no).
+    mercury_var_to_string(VarSet, no, Var).
 
 failing_contexts_description(ModuleInfo, VarSet, FailingContexts) =
     list.map(failing_context_description(ModuleInfo, VarSet), FailingContexts).
@@ -953,20 +953,20 @@ failing_contexts_description(ModuleInfo, VarSet, FailingContexts) =
 failing_context_description(ModuleInfo, VarSet, Context - FailingGoal) = Msg :-
     (
         FailingGoal = incomplete_switch(Var),
-        VarStr = mercury_var_to_string(Var, VarSet, no),
+        VarStr = mercury_var_to_string(VarSet, no, Var),
         Pieces = [words("Switch on"), fixed(VarStr), words("is incomplete.")]
     ;
         FailingGoal = fail_goal,
         Pieces = [words("Fail goal can fail.")]
     ;
         FailingGoal = test_goal(Var1, Var2),
-        Var1Str = mercury_var_to_string(Var1, VarSet, no),
-        Var2Str = mercury_var_to_string(Var2, VarSet, no),
+        Var1Str = mercury_var_to_string(VarSet, no, Var1),
+        Var2Str = mercury_var_to_string(VarSet, no, Var2),
         Pieces = [words("Unification of"), fixed(Var1Str),
             words("and"), fixed(Var2Str), words("can fail.")]
     ;
         FailingGoal = deconstruct_goal(Var, ConsId),
-        VarStr = mercury_var_to_string(Var, VarSet, no),
+        VarStr = mercury_var_to_string(VarSet, no, Var),
         ConsIdStr = cons_id_to_string(ConsId),
         Pieces = [words("Unification of"), fixed(VarStr),
             words("with"), fixed(ConsIdStr), words("can fail.")]

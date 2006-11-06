@@ -125,7 +125,7 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
         (
             Verbose = yes,
             io.write_string("\t", !IO),
-            mercury_output_var(Var, VarSet, no, !IO),
+            mercury_output_var(VarSet, no, Var, !IO),
             io.write_string(" ::", !IO),
             io.write_string(" unchanged\n", !IO)
         ;
@@ -133,7 +133,7 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
         )
     ;
         io.write_string("\t", !IO),
-        mercury_output_var(Var, VarSet, no, !IO),
+        mercury_output_var(VarSet, no, Var, !IO),
         io.write_string(" ::", !IO),
         (
             Minimal = yes,

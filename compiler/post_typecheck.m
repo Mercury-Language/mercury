@@ -371,7 +371,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarSet, Errs,
     pair(prog_var, mer_type)) = list(format_component).
 
 var_and_type_to_pieces(VarSet, TVarSet, Var - Type) =
-    [words(mercury_var_to_string(Var, VarSet, no)), suffix(":"),
+    [words(mercury_var_to_string(VarSet, no, Var)), suffix(":"),
     words(mercury_type_to_string(TVarSet, no, Type)), nl].
 
 %-----------------------------------------------------------------------------%

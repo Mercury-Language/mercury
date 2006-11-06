@@ -47,7 +47,7 @@
 
 generate_scope(Reason, AddTrailOps, OuterCodeModel, Goal, Code, !CI) :-
     (
-        Reason = trace_goal(_, MaybeTraceRuntimeCond, _, _),
+        Reason = trace_goal(_, MaybeTraceRuntimeCond, _, _, _),
         MaybeTraceRuntimeCond = yes(_)
     ->
         % These goals should have been transformed into other forms of goals

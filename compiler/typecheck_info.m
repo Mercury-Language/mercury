@@ -719,7 +719,7 @@ write_type_assign(TypeAssign, VarSet, !IO) :-
     ;
         HeadTypeParams = [_ | _],
         io.write_string("some [", !IO),
-        mercury_output_vars(HeadTypeParams, TypeVarSet, varnums, !IO),
+        mercury_output_vars(TypeVarSet, varnums, HeadTypeParams, !IO),
         io.write_string("]\n\t", !IO)
     ),
     write_type_assign_types(Vars, VarSet, VarTypes, TypeBindings, TypeVarSet,
@@ -755,7 +755,7 @@ type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) = Pieces :-
         HeadPieces = []
     ;
         HeadTypeParams = [_ | _],
-        VarsStr = mercury_vars_to_string(HeadTypeParams, TypeVarSet, varnums),
+        VarsStr = mercury_vars_to_string(TypeVarSet, varnums, HeadTypeParams), 
         HeadPieces = [words("some [" ++ VarsStr ++ "]"), nl]
     ),
     TypePieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
@@ -783,7 +783,7 @@ write_type_assign_types([Var | Vars], VarSet, VarTypes, TypeBindings,
         ;
             FoundOne = no
         ),
-        mercury_output_var(Var, VarSet, varnums, !IO),
+        mercury_output_var(VarSet, varnums, Var, !IO),
         io.write_string(": ", !IO),
         write_type_with_bindings(Type, TypeVarSet, TypeBindings, !IO),
         write_type_assign_types(Vars, VarSet, VarTypes, TypeBindings,
@@ -814,7 +814,7 @@ type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
             FoundOne = no,
             PrefixPieces = []
         ),
-        VarStr = mercury_var_to_string(Var, VarSet, varnums),
+        VarStr = mercury_var_to_string(VarSet, varnums, Var),
         TypeStr = type_with_bindings_to_string(Type, TypeVarSet, TypeBindings),
         AssignPieces = [fixed(VarStr), suffix(":"), words(TypeStr)],
         TailPieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,

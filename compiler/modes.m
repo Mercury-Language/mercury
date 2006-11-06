@@ -1395,7 +1395,7 @@ modecheck_goal_expr(negation(SubGoal0), GoalInfo0, negation(SubGoal),
 modecheck_goal_expr(scope(Reason, SubGoal0), GoalInfo0, GoalExpr, !ModeInfo,
         !IO) :-
     (
-        Reason = trace_goal(_, _, _, _),
+        Reason = trace_goal(_, _, _, _, _),
         mode_checkpoint(enter, "scope", !ModeInfo, !IO),
         mode_info_get_instmap(!.ModeInfo, InstMap0),
         goal_info_get_nonlocals(GoalInfo0, NonLocals),

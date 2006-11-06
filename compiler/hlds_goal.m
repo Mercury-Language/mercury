@@ -313,7 +313,8 @@
                 trace_compiletime   :: maybe(trace_expr(trace_compiletime)),
                 trace_runtime       :: maybe(trace_expr(trace_runtime)),
                 trace_maybe_io      :: maybe(string),
-                trace_mutable_vars  :: list(trace_mutable_var_hlds)
+                trace_mutable_vars  :: list(trace_mutable_var_hlds),
+                trace_quant_vars    :: list(prog_var)
             ).
             % The goal inside the scope is trace code that is executed only
             % conditionally, and should have no effect on the semantics of

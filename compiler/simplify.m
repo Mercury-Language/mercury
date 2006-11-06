@@ -1401,7 +1401,7 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
             KeepCommon = no
         ;
             FinalReason = trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr,
-                _, _),
+                _, _, _),
             ( simplify_do_after_front_end(!.Info) ->
                 (
                     MaybeCompiletimeExpr = yes(CompiletimeExpr),

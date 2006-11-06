@@ -101,11 +101,11 @@ warn_overlap_to_spec(VarSet, PredCallId, Warn) = Spec :-
         [words("In clause for"), simple_call(PredCallId), suffix(":"), nl],
     ( Vars = [Var] ->
         Pieces2 = [words("warning: variable"),
-            quote(mercury_var_to_string(Var, VarSet, no)),
+            quote(mercury_var_to_string(VarSet, no, Var)),
             words("has overlapping scopes.")]
     ;
         Pieces2 = [words("warning: variables"),
-            quote(mercury_vars_to_string(Vars, VarSet, no)),
+            quote(mercury_vars_to_string(VarSet, no, Vars)),
             words("each have overlapping scopes.")]
     ),
     Msg = simple_msg(Context,
@@ -329,7 +329,7 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
         SinglesPreamble = [words("In clause for"),
             simple_call(PredOrFuncCallId), suffix(":"), nl],
         SingleVarsPiece =
-            quote(mercury_vars_to_string(SingletonVars, VarSet, no)),
+            quote(mercury_vars_to_string(VarSet, no, SingletonVars)),
         ( SingletonVars = [_] ->
             SinglesPieces = [words("warning: variable"), SingleVarsPiece,
                 words("occurs only once in this scope."), nl]
@@ -359,7 +359,7 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
         MultiVars = [_ | _],
         MultiPreamble = [words("In clause for"),
             simple_call(PredOrFuncCallId), suffix(":"), nl],
-        MultiVarsPiece = quote(mercury_vars_to_string(MultiVars, VarSet, no)),
+        MultiVarsPiece = quote(mercury_vars_to_string(VarSet, no, MultiVars)),
         ( MultiVars = [_] ->
             MultiPieces = [words("warning: variable"), MultiVarsPiece,
                 words("occurs more than once in this scope."), nl]

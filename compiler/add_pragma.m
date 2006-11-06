@@ -1080,7 +1080,7 @@ pragma_type_spec_to_pieces(PredInfo) = Pieces :-
 
 report_variables(SubExistQVars, VarSet) =
     [words(choose_number(SubExistQVars, "variable", "variables")),
-    quote(mercury_vars_to_string(SubExistQVars, VarSet, no))].
+    quote(mercury_vars_to_string(VarSet, no, SubExistQVars))].
 
     % Check that the mode list for a `:- pragma type_spec' declaration
     % specifies a known procedure.
@@ -2519,12 +2519,12 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         (
             MultipleArgs = [MultipleArg],
             Pieces2 = [words("error: variable"),
-                quote(mercury_var_to_string(MultipleArg, PVarSet, no)),
+                quote(mercury_var_to_string(PVarSet, no, MultipleArg)),
                 words("occurs multiple times in the argument list.")]
         ;
             MultipleArgs = [_, _ | _],
             Pieces2 = [words("error: variables"),
-                quote(mercury_vars_to_string(MultipleArgs, PVarSet, no)),
+                quote(mercury_vars_to_string(PVarSet, no, MultipleArgs)),
                 words("occur multiple times in the argument list.")]
         ),
         Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),

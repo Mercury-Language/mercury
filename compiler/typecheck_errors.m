@@ -485,12 +485,12 @@ report_error_unif_var_var(Info, X, Y, TypeAssignSet) = Spec :-
     unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
 
     MainPieces = [words("type error in unification of variable"),
-        quote(mercury_var_to_string(X, VarSet, no)), nl,
+        quote(mercury_var_to_string(VarSet, no, X)), nl,
         words("and variable"),
-        quote(mercury_var_to_string(Y, VarSet, no)), suffix("."), nl,
-        quote(mercury_var_to_string(X, VarSet, no))] ++
+        quote(mercury_var_to_string(VarSet, no, Y)), suffix("."), nl,
+        quote(mercury_var_to_string(VarSet, no, X))] ++
         type_of_var_to_pieces(TypeAssignSet, X) ++ [suffix(","), nl,
-        quote(mercury_var_to_string(Y, VarSet, no))] ++
+        quote(mercury_var_to_string(VarSet, no, Y))] ++
         type_of_var_to_pieces(TypeAssignSet, Y) ++ [suffix("."), nl],
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
     Msg = simple_msg(Context,
@@ -514,15 +514,15 @@ report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
     (
         PredOrFunc = predicate,
         Pieces2 = [words("and"), prefix("pred("),
-            words(mercury_vars_to_string(ArgVars, VarSet, no)),
+            words(mercury_vars_to_string(VarSet, no, ArgVars)),
             suffix(")"), words(":- ...':"), nl]
     ;
         PredOrFunc = function,
         pred_args_to_func_args(ArgVars, FuncArgs, RetVar),
         Pieces2 = [words("and"), prefix("func("),
-            words(mercury_vars_to_string(FuncArgs, VarSet, no)),
+            words(mercury_vars_to_string(VarSet, no, FuncArgs)),
             suffix(")"), fixed("="),
-            words(mercury_var_to_string(RetVar, VarSet, no)),
+            words(mercury_var_to_string(VarSet, no, RetVar)),
             words(":- ...':"), nl]
     ),
 
@@ -793,7 +793,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
     ),
     ( varset.search_name(VarSet, Var, _) ->
         Pieces2 = [prefix("("),
-            words(mercury_var_to_string(Var, VarSet, no)),
+            words(mercury_var_to_string(VarSet, no, Var)),
             suffix(")")]
     ;
         Pieces2 = []
@@ -1126,11 +1126,11 @@ report_cons_error(Context, ConsError) = Msgs :-
                 "report_invalid_field_update: no type variables")
         ;
             TVars = [TVar],
-            TVarsStr = mercury_var_to_string(TVar, TVarSet, no),
+            TVarsStr = mercury_var_to_string(TVarSet, no, TVar),
             Pieces2 = [words("variable"), quote(TVarsStr), words("occurs")]
         ;
             TVars = [_, _ | _],
-            TVarsStr = mercury_vars_to_string(TVars, TVarSet, no),
+            TVarsStr = mercury_vars_to_string(TVarSet, no, TVars),
             Pieces2 = [words("variables"), quote(TVarsStr), words("occur")]
         ),
         ConsIdStr = cons_id_to_string(ConsId),
@@ -1213,7 +1213,7 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
         type_assign_get_typevarset(TypeAssign1, TVarSet1),
         type_assign_get_typevarset(TypeAssign2, TVarSet2),
         HeadPieces =
-            [words(mercury_var_to_string(Var, VarSet, no)), suffix(":")] ++
+            [words(mercury_var_to_string(VarSet, no, Var)), suffix(":")] ++
             type_to_pieces(T1, TVarSet1, HeadTypeParams1) ++ [words("or")] ++
             type_to_pieces(T2, TVarSet2, HeadTypeParams2) ++ [nl]
     ;
@@ -1302,7 +1302,7 @@ types_of_vars_to_pieces([Var | Vars], VarSet, Info, TypeAssignSet) =
 argument_name_to_pieces(VarSet, Var) = Pieces :-
     ( varset.search_name(VarSet, Var, _) ->
         Pieces = [words("variable"),
-            quote(mercury_var_to_string(Var, VarSet, no))]
+            quote(mercury_var_to_string(VarSet, no, Var))]
     ;
         Pieces = [words("argument")]
     ).
@@ -1469,7 +1469,7 @@ type_to_pieces(Type0, TVarSet, HeadTypeParams) = Pieces :-
     list.map(term.coerce_var, HeadTypeParams, ExistQVars),
     maybe_add_existential_quantifier(ExistQVars, Term0, Term),
     varset.coerce(TVarSet, VarSet),
-    Pieces = [words(mercury_term_to_string(Term, VarSet, no))].
+    Pieces = [words(mercury_term_to_string(VarSet, no, Term))].
 
     % Return a description of the given list of types.
     %
@@ -1719,7 +1719,7 @@ typestuff_to_typestr(TypeStuff) = TypeStr :-
     list.map(term.coerce_var, HeadTypeParams, ExistQVars),
     maybe_add_existential_quantifier(ExistQVars, Term0, Term),
     varset.coerce(TypeVarSet, VarSet),
-    TypeStr = mercury_term_to_string(Term, VarSet, no).
+    TypeStr = mercury_term_to_string(VarSet, no, Term).
 
     % Given an arg type assignment set and a variable id, return the list of
     % possible different types for the argument and the variable.

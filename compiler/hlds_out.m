@@ -889,7 +889,7 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
             HeadTypeParams = [_ | _],
             io.write_string("% head_type_params:\n", !IO),
             io.write_string("% ", !IO),
-            mercury_output_vars(HeadTypeParams, TVarSet, AppendVarNums, !IO),
+            mercury_output_vars(TVarSet, AppendVarNums, HeadTypeParams, !IO),
             io.write_string("\n", !IO)
         ;
             HeadTypeParams = []
@@ -1195,8 +1195,8 @@ write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
         write_qualified_functor_with_term_args(ModuleName,
             term.atom(PredName), FuncArgs, VarSet, AppendVarNums, !IO),
         io.write_string(" = ", !IO),
-        mercury_output_term(RetVal, VarSet, AppendVarNums,
-            next_to_graphic_token, !IO)
+        mercury_output_term_nq(VarSet, AppendVarNums, next_to_graphic_token,
+            RetVal, !IO)
     ;
         PredOrFunc = predicate,
         write_qualified_functor_with_term_args(ModuleName,
@@ -1256,7 +1256,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
             NonLocalsList = [_ | _],
             write_indent(Indent, !IO),
             io.write_string("% nonlocals: ", !IO),
-            mercury_output_vars(NonLocalsList, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, NonLocalsList, !IO),
             io.write_string("\n", !IO)
         ;
             NonLocalsList = []
@@ -1272,7 +1272,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
         ->
             write_indent(Indent, !IO),
             io.write_string("% pre-deaths: ", !IO),
-            mercury_output_vars(PreDeathList, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, PreDeathList, !IO),
             io.write_string("\n", !IO)
         ;
             true
@@ -1284,7 +1284,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
         ->
             write_indent(Indent, !IO),
             io.write_string("% pre-births: ", !IO),
-            mercury_output_vars(PreBirthList, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, PreBirthList, !IO),
             io.write_string("\n", !IO)
         ;
             true
@@ -1298,7 +1298,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
             set.to_sorted_list(ProducingVars, ProducingVarsList),
             write_indent(Indent, !IO),
             io.write_string("% producing vars: ", !IO),
-            mercury_output_vars(ProducingVarsList, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, ProducingVarsList, !IO),
             io.write_string("\n", !IO)
         ;
             true
@@ -1309,7 +1309,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
             set.to_sorted_list(ConsumingVars, ConsumingVarsList),
             write_indent(Indent, !IO),
             io.write_string("% consuming vars: ", !IO),
-            mercury_output_vars(ConsumingVarsList, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, ConsumingVarsList, !IO),
             io.write_string("\n", !IO)
         ;
             true
@@ -1320,7 +1320,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
             set.to_sorted_list(MakeVisibleVars, MakeVisibleVarsList),
             write_indent(Indent, !IO),
             io.write_string("% make_visible vars: ", !IO),
-            mercury_output_vars(MakeVisibleVarsList, VarSet, AppendVarNums,
+            mercury_output_vars(VarSet, AppendVarNums, MakeVisibleVarsList,
                 !IO),
             io.write_string("\n", !IO)
         ;
@@ -1332,7 +1332,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
             set.to_sorted_list(NeedVisibleVars, NeedVisibleVarsList),
             write_indent(Indent, !IO),
             io.write_string("% need_visible vars: ", !IO),
-            mercury_output_vars(NeedVisibleVarsList, VarSet, AppendVarNums,
+            mercury_output_vars(VarSet, AppendVarNums, NeedVisibleVarsList,
                 !IO),
             io.write_string("\n", !IO)
         ;
@@ -1385,7 +1385,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
         ->
             write_indent(Indent, !IO),
             io.write_string("% post-deaths: ", !IO),
-            mercury_output_vars(PostDeathList, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, PostDeathList, !IO),
             io.write_string("\n", !IO)
         ;
             true
@@ -1397,7 +1397,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
         ->
             write_indent(Indent, !IO),
             io.write_string("% post-births: ", !IO),
-            mercury_output_vars(PostBirthList, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, PostBirthList, !IO),
             io.write_string("\n", !IO)
         ;
             true
@@ -1415,11 +1415,11 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
         ->
             write_indent(Indent, !IO),
             io.write_string("% LFU: ", !IO),
-            mercury_output_vars(ListLFU, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, ListLFU, !IO),
             io.write_string("\n", !IO),
             write_indent(Indent, !IO),
             io.write_string("% LBU: ", !IO),
-            mercury_output_vars(ListLBU, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, ListLBU, !IO),
             io.write_string("\n", !IO),
 
             write_indent(Indent, !IO),
@@ -1486,7 +1486,7 @@ write_goal_2(switch(Var, CanFail, CasesList), ModuleInfo, VarSet,
     io.write_string("( % ", !IO),
     write_can_fail(CanFail, !IO),
     io.write_string(" switch on `", !IO),
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string("'\n", !IO),
     Indent1 = Indent + 1,
     (
@@ -1510,7 +1510,7 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
     (
         Reason = exist_quant(Vars),
         io.write_string("some [", !IO),
-        mercury_output_vars(Vars, VarSet, AppendVarNums, !IO),
+        mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
         io.write_string("] (\n", !IO)
     ;
         Reason = promise_purity(Implicit, Purity),
@@ -1544,7 +1544,7 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
             io.write_string("arbitrary", !IO)
         ),
         io.write_string(" [", !IO),
-        mercury_output_vars(Vars, VarSet, AppendVarNums, !IO),
+        mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
         io.write_string("] (\n", !IO)
     ;
         Reason = barrier(removable),
@@ -1571,11 +1571,11 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
         io.write_string("(\n", !IO),
         write_indent(Indent, !IO),
         io.write_string("% from_ground_term [", !IO),
-        mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+        mercury_output_var(VarSet, AppendVarNums, Var, !IO),
         io.write_string("]\n", !IO)
     ;
         Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
-            MutableVars),
+            MutableVars, QuantVars),
         io.write_string("(\n", !IO),
         write_indent(Indent + 1, !IO),
         io.write_string("% trace\n", !IO),
@@ -1606,7 +1606,11 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
         ;
             MaybeIO = no
         ),
-        list.foldl(write_trace_mutable_var_hlds(Indent + 1), MutableVars, !IO)
+        list.foldl(write_trace_mutable_var_hlds(Indent + 1), MutableVars, !IO),
+        write_indent(Indent + 1, !IO),
+        io.write_string("% quantified vars ", !IO),
+        list.foldl(mercury_output_var(VarSet, AppendVarNums), QuantVars, !IO),
+        io.nl(!IO)
     ),
     write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1, "\n",
         TypeQual, !IO),
@@ -1746,7 +1750,7 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
                 FuncArgVars, FuncRetVar),
             write_indent(Indent, !IO),
             write_purity_prefix(Purity, !IO),
-            mercury_output_var(FuncRetVar, VarSet, AppendVarNums, !IO),
+            mercury_output_var(VarSet, AppendVarNums, FuncRetVar, !IO),
             io.write_string(" = ", !IO),
             write_functor(term.atom("apply"), FuncArgVars, VarSet,
                 AppendVarNums, !IO)
@@ -1769,7 +1773,7 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
         Term = term.functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
             Context),
         write_indent(Indent, !IO),
-        mercury_output_term(Term, VarSet, AppendVarNums, !IO),
+        mercury_output_term(VarSet, AppendVarNums, Term, !IO),
         io.write_string(Follow, !IO)
     ;
         GenericCall = event_call(EventName),
@@ -1785,7 +1789,7 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
         term.var_list_to_term_list(ArgVars, ArgTerms),
         Term = term.functor(Functor, ArgTerms, Context),
         write_indent(Indent, !IO),
-        mercury_output_term(Term, VarSet, AppendVarNums, !IO),
+        mercury_output_term(VarSet, AppendVarNums, Term, !IO),
         io.write_string(Follow, !IO)
     ;
         GenericCall = cast(CastType),
@@ -1811,7 +1815,7 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
         term.context_init(Context),
         Term = term.functor(Functor, ArgTerms, Context),
         write_indent(Indent, !IO),
-        mercury_output_term(Term, VarSet, AppendVarNums, !IO),
+        mercury_output_term(VarSet, AppendVarNums, Term, !IO),
         io.write_string(Follow, !IO)
     ).
 
@@ -1850,7 +1854,7 @@ write_goal_2(plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
     ;
         PredOrFunc = function,
         pred_args_to_func_args(ArgVars, NewArgVars, LHSVar),
-        mercury_output_var(LHSVar, VarSet, AppendVarNums, !IO),
+        mercury_output_var(VarSet, AppendVarNums, LHSVar, !IO),
         io.write_string(" = ", !IO)
     ),
     write_sym_name_and_args(PredName, NewArgVars, VarSet, AppendVarNums, !IO),
@@ -1877,7 +1881,7 @@ write_goal_2(plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
             CallUnifyContext = call_unify_context(Var, RHS, _UnifyContext),
             write_indent(Indent, !IO),
             io.write_string("% unify context: ", !IO),
-            mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+            mercury_output_var(VarSet, AppendVarNums, Var, !IO),
             io.write_string(" = ", !IO),
             % XXX Fake the inst varset.
             varset.init(InstVarSet),
@@ -1893,7 +1897,7 @@ write_goal_2(plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
 write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet, AppendVarNums,
         Indent, Follow, TypeQual, !IO) :-
     write_indent(Indent, !IO),
-    mercury_output_var(A, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, A, !IO),
     io.write_string(" = ", !IO),
     (
         TypeQual = varset_vartypes(_, VarTypes),
@@ -2052,7 +2056,7 @@ write_trace_mutable_var_hlds(Indent, MutableVar, !IO) :-
 write_foreign_args([], _, _, _, !IO).
 write_foreign_args([Arg | Args], VarSet, TVarSet, AppendVarNums, !IO) :-
     Arg = foreign_arg(Var, MaybeNameMode, Type, BoxPolicy),
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     (
         MaybeNameMode = yes(Name - Mode),
         io.write_string("/" ++ Name ++ "(", !IO),
@@ -2127,7 +2131,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
                 Locs = resume_locs_stack_and_orig,
                 io.write_string("stack and orig ", !IO)
             ),
-            mercury_output_vars(ResumeVarList, VarSet, AppendVarNums, !IO),
+            mercury_output_vars(VarSet, AppendVarNums, ResumeVarList, !IO),
             io.write_string("\n", !IO)
         )
     ;
@@ -2163,7 +2167,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
             io.write_string("none\n", !IO)
         ;
             CallForwardList = [_ | _],
-            write_vars(CallForwardList, VarSet, AppendVarNums, !IO),
+            write_vars(VarSet, AppendVarNums, CallForwardList, !IO),
             io.write_string("\n", !IO)
         ),
 
@@ -2174,7 +2178,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
             io.write_string("none\n", !IO)
         ;
             CallResumeList = [_ | _],
-            write_vars(CallResumeList, VarSet, AppendVarNums, !IO),
+            write_vars(VarSet, AppendVarNums, CallResumeList, !IO),
             io.write_string("\n", !IO)
         ),
 
@@ -2185,7 +2189,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
             io.write_string("none\n", !IO)
         ;
             CallNondetList = [_ | _],
-            write_vars(CallNondetList, VarSet, AppendVarNums, !IO),
+            write_vars(VarSet, AppendVarNums, CallNondetList, !IO),
             io.write_string("\n", !IO)
         )
     ;
@@ -2216,7 +2220,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
             io.write_string("none\n", !IO)
         ;
             ResumeResumeList = [_ | _],
-            write_vars(ResumeResumeList, VarSet, AppendVarNums, !IO),
+            write_vars(VarSet, AppendVarNums, ResumeResumeList, !IO),
             io.write_string("\n", !IO)
         ),
 
@@ -2227,7 +2231,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
             io.write_string("none\n", !IO)
         ;
             ResumeNondetList = [_ | _],
-            write_vars(ResumeNondetList, VarSet, AppendVarNums, !IO),
+            write_vars(VarSet, AppendVarNums, ResumeNondetList, !IO),
             io.write_string("\n", !IO)
         )
     ;
@@ -2242,22 +2246,22 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
         set.to_sorted_list(ParConjSet, ParConjList),
         write_indent(Indent, !IO),
         io.write_string("% need in par_conj vars: ", !IO),
-        write_vars(ParConjList, VarSet, AppendVarNums, !IO),
+        write_vars(VarSet, AppendVarNums, ParConjList, !IO),
         io.write_string("\n", !IO)
     ;
         true
     ).
 
-:- pred write_vars(list(prog_var)::in, prog_varset::in, bool::in,
+:- pred write_vars(prog_varset::in, bool::in, list(prog_var)::in,
     io::di, io::uo) is det.
 
-write_vars([], _, _, !IO).
-write_vars([Var], VarSet, AppendVarNums, !IO) :-
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO).
-write_vars([Var1, Var2 | Vars], VarSet, AppendVarNums, !IO) :-
-    mercury_output_var(Var1, VarSet, AppendVarNums, !IO),
+write_vars(_, _, [], !IO).
+write_vars(VarSet, AppendVarNums, [Var], !IO) :-
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO).
+write_vars(VarSet, AppendVarNums, [Var1, Var2 | Vars], !IO) :-
+    mercury_output_var(VarSet, AppendVarNums, Var1, !IO),
     io.write_string(", ", !IO),
-    write_vars([Var2 | Vars], VarSet, AppendVarNums, !IO).
+    write_vars(VarSet, AppendVarNums, [Var2 | Vars], !IO).
 
 :- pred write_varnum_list(list(prog_var)::in, io::di, io::uo) is det.
 
@@ -2298,18 +2302,18 @@ write_unification(assign(X, Y), _, ProgVarSet, _InstVarSet, AppendVarNums,
         Indent, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
-    mercury_output_var(X, ProgVarSet, AppendVarNums, !IO),
+    mercury_output_var(ProgVarSet, AppendVarNums, X, !IO),
     io.write_string(" := ", !IO),
-    mercury_output_var(Y, ProgVarSet, AppendVarNums, !IO),
+    mercury_output_var(ProgVarSet, AppendVarNums, Y, !IO),
     io.write_string("\n", !IO).
 
 write_unification(simple_test(X, Y), _, ProgVarSet, _, AppendVarNums, Indent,
         !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
-    mercury_output_var(X, ProgVarSet, AppendVarNums, !IO),
+    mercury_output_var(ProgVarSet, AppendVarNums, X, !IO),
     io.write_string(" == ", !IO),
-    mercury_output_var(Y, ProgVarSet, AppendVarNums, !IO),
+    mercury_output_var(ProgVarSet, AppendVarNums, Y, !IO),
     io.write_string("\n", !IO).
 
 write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
@@ -2317,7 +2321,7 @@ write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
         AppendVarNums, Indent, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
-    mercury_output_var(Var, ProgVarSet, AppendVarNums, !IO),
+    mercury_output_var(ProgVarSet, AppendVarNums, Var, !IO),
     io.write_string(" := ", !IO),
     write_functor_and_submodes(ConsId, ArgVars, ArgModes, ModuleInfo,
         ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO),
@@ -2353,7 +2357,7 @@ write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
             ;
                 SizeSource = dynamic_size(SizeVar),
                 io.write_string("var ", !IO),
-                mercury_output_var(SizeVar, ProgVarSet, AppendVarNums, !IO),
+                mercury_output_var(ProgVarSet, AppendVarNums, SizeVar, !IO),
                 io.write_string("\n", !IO)
             )
         ;
@@ -2373,7 +2377,7 @@ write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
         CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds, _FieldAssigns),
         write_indent(Indent, !IO),
         io.write_string("% reuse cell: ", !IO),
-        mercury_output_var(ReuseVar, ProgVarSet, AppendVarNums, !IO),
+        mercury_output_var(ProgVarSet, AppendVarNums, ReuseVar, !IO),
         io.write_string("\n", !IO)
     ).
 
@@ -2390,7 +2394,7 @@ write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail, CanCGC),
     ),
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
-    mercury_output_var(Var, ProgVarSet, AppendVarNums, !IO),
+    mercury_output_var(ProgVarSet, AppendVarNums, Var, !IO),
     (
         CanFail = can_fail,
         io.write_string(" ?= ", !IO)
@@ -2417,7 +2421,7 @@ write_unification(complicated_unify(Mode, CanFail, TypeInfoVars), _ModuleInfo,
     io.write_string("\n", !IO),
     write_indent(Indent, !IO),
     io.write_string("% type-info vars: ", !IO),
-    mercury_output_vars(TypeInfoVars, ProgVarSet, AppendVarNums, !IO),
+    mercury_output_vars(ProgVarSet, AppendVarNums, TypeInfoVars, !IO),
     io.write_string("\n", !IO).
 
 :- pred write_static_cons(int::in, int::in, prog_varset::in, bool::in,
@@ -2437,7 +2441,7 @@ write_static_cons(Indent, Depth, VarSet, AppendVarNums, StaticCons, !IO) :-
         write_indent(Indent, !IO),
         io.write_string("% ", !IO),
         write_indent(Depth, !IO),
-        mercury_output_vars(ArgVars, VarSet, AppendVarNums, !IO),
+        mercury_output_vars(VarSet, AppendVarNums, ArgVars, !IO),
         io.write_string("\n", !IO)
     ),
     list.foldl(write_static_cons(Indent, Depth + 1, VarSet, AppendVarNums),
@@ -2456,7 +2460,7 @@ write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo, ProgVarSet,
     ;
         ArgVars = [_ | _],
         io.write_string(" (", !IO),
-        mercury_output_vars(ArgVars, ProgVarSet, AppendVarNums, !IO),
+        mercury_output_vars(ProgVarSet, AppendVarNums, ArgVars, !IO),
         io.write_string(")\n", !IO),
         globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
         ( string.contains_char(Verbose, 'a') ->
@@ -2489,7 +2493,7 @@ write_unify_rhs_2(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
     maybe_vartypes::in, io::di, io::uo) is det.
 
 write_unify_rhs_3(rhs_var(Var), _, VarSet, _, AppendVarNums, _, _, _, !IO) :-
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO).
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO).
 write_unify_rhs_3(rhs_functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
         VarSet, _, AppendVarNums, _Indent, MaybeType, TypeQual, !IO) :-
     (
@@ -2578,7 +2582,7 @@ write_unify_rhs_3(rhs_lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
             NonLocals = [_ | _],
             write_indent(Indent1, !IO),
             io.write_string("% lambda nonlocals: ", !IO),
-            mercury_output_vars(NonLocals, VarSet, AppendVarNums, !IO)
+            mercury_output_vars(VarSet, AppendVarNums, NonLocals, !IO)
         ;
             NonLocals = []
         )
@@ -2587,7 +2591,7 @@ write_unify_rhs_3(rhs_lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
     ).
 
 unify_rhs_to_string(rhs_var(Var), _ModuleInfo, VarSet, AppendVarNums)
-    = mercury_var_to_string(Var, VarSet, AppendVarNums).
+    = mercury_var_to_string(VarSet, AppendVarNums, Var).
 unify_rhs_to_string(rhs_functor(ConsId0, IsExistConstruct, ArgVars),
         ModuleInfo, VarSet, AppendVarNums) = Str :-
     (
@@ -2642,8 +2646,8 @@ functor_to_string_maybe_needs_quotes(Functor, ArgVars, VarSet, AppendVarNums,
     term.context_init(Context),
     term.var_list_to_term_list(ArgVars, ArgTerms),
     Term = term.functor(Functor, ArgTerms, Context),
-    Str = mercury_term_to_string(Term, VarSet, AppendVarNums,
-        NextToGraphicToken).
+    Str = mercury_term_nq_to_string(VarSet, AppendVarNums, NextToGraphicToken,
+        Term).
 
 :- pred write_qualified_functor(module_name::in, const::in,
     list(prog_var)::in, prog_varset::in, bool::in, io::di, io::uo) is det.
@@ -2678,8 +2682,9 @@ qualified_functor_with_term_args_to_string(ModuleName, Functor, ArgTerms,
         VarSet, AppendVarNums) = Str :-
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
     term.context_init(Context),
-    TermStr = mercury_term_to_string(term.functor(Functor, ArgTerms, Context),
-        VarSet, AppendVarNums, next_to_graphic_token),
+    Term = term.functor(Functor, ArgTerms, Context),
+    TermStr = mercury_term_nq_to_string(VarSet, AppendVarNums,
+        next_to_graphic_token, Term),
     Str = ModuleNameStr ++ "." ++ TermStr.
 
 write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums,
@@ -2786,7 +2791,7 @@ write_var_mode(VarSet, InstVarSet, AppendVarNums, Var - Mode, !IO) :-
     pair(prog_var, mer_mode)) = string.
 
 var_mode_to_string(VarSet, InstVarSet, AppendVarNums, Var - Mode) =
-    mercury_var_to_string(Var, VarSet, AppendVarNums)
+    mercury_var_to_string(VarSet, AppendVarNums, Var)
         ++ "::" ++ mercury_mode_to_string(Mode, InstVarSet).
 
 :- pred write_conj(hlds_goal::in, list(hlds_goal)::in,
@@ -2838,7 +2843,7 @@ write_case(case(ConsId, Goal), Var, ModuleInfo, VarSet, AppendVarNums, Indent,
         VarTypes, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string(" has functor ", !IO),
     write_cons_id(ConsId, !IO),
     io.write_string("\n", !IO),
@@ -2886,7 +2891,7 @@ write_instmap(InstMap, VarSet, AppendVarNums, Indent, !IO) :-
 
 write_instmap_2([], _, _, _, !IO).
 write_instmap_2([Var - Inst | Rest], VarSet, AppendVarNums, Indent, !IO) :-
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string(" -> ", !IO),
     varset.init(InstVarSet),
     mercury_output_inst(Inst, InstVarSet, !IO),
@@ -2919,7 +2924,7 @@ write_instmap_delta_vars(InstMapDelta, VarSet, AppendVarNums, !IO) :-
     ;
         instmap_delta_to_assoc_list(InstMapDelta, AssocList),
         assoc_list.keys(AssocList, Vars),
-        write_vars(Vars, VarSet, AppendVarNums, !IO)
+        write_vars(VarSet, AppendVarNums, Vars, !IO)
     ).
 
 write_import_status(Status, !IO) :-
@@ -2987,7 +2992,7 @@ write_var_types_2([Var | Vars], Indent, VarSet, AppendVarNums, VarTypes,
     map.lookup(VarTypes, Var, Type),
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string(" (number ", !IO),
     term.var_to_int(Var, VarNum),
     io.write_int(VarNum, !IO),
@@ -3026,7 +3031,7 @@ write_type_info_locn(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, TVar,
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
 
-    mercury_output_var(TVar, TVarSet, AppendVarNums, !IO),
+    mercury_output_var(TVarSet, AppendVarNums, TVar, !IO),
     io.write_string(" (number ", !IO),
     term.var_to_int(TVar, TVarNum),
     io.write_int(TVarNum, !IO),
@@ -3037,12 +3042,12 @@ write_type_info_locn(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, TVar,
     (
         Locn = type_info(Var),
         io.write_string("type_info(", !IO),
-        mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+        mercury_output_var(VarSet, AppendVarNums, Var, !IO),
         io.write_string(") ", !IO)
     ;
         Locn = typeclass_info(Var, Index),
         io.write_string("typeclass_info(", !IO),
-        mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+        mercury_output_var(VarSet, AppendVarNums, Var, !IO),
         io.write_string(", ", !IO),
         io.write_int(Index, !IO),
         io.write_string(") ", !IO)
@@ -3063,7 +3068,7 @@ write_typeclass_info_var(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet,
     mercury_output_constraint(TVarSet, AppendVarNums, Constraint, !IO),
     io.write_string(" -> ", !IO),
     rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint, Var),
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.nl(!IO).
 
 :- pred write_rtti_var_info(int::in, bool::in, rtti_varmaps::in,
@@ -3073,7 +3078,7 @@ write_rtti_var_info(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, Var,
         !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string(" (number ", !IO),
     term.var_to_int(Var, VarNum),
     io.write_int(VarNum, !IO),
@@ -3111,7 +3116,7 @@ write_var_to_abs_locns([Var - Loc | VarLocs], VarSet, AppendVarNums,
         Indent, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%\t", !IO),
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string("\t-> ", !IO),
     io.write_string(abs_locn_to_string(Loc), !IO),
     io.write_string("\n", !IO),
@@ -3133,9 +3138,9 @@ write_untuple_info(untuple_proc_info(UntupleMap), VarSet, AppendVarNums,
 write_untuple_info_2(VarSet, AppendVarNums, Indent, OldVar, NewVars, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%\t", !IO),
-    mercury_output_var(OldVar, VarSet, AppendVarNums, !IO),
+    mercury_output_var(VarSet, AppendVarNums, OldVar, !IO),
     io.write_string("\t-> ", !IO),
-    mercury_output_vars(NewVars, VarSet, AppendVarNums, !IO),
+    mercury_output_vars(VarSet, AppendVarNums, NewVars, !IO),
     io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
@@ -3212,12 +3217,12 @@ type_name_to_string(type_ctor(Name, _Arity)) =
 write_type_params(_TVarSet, [], !IO).
 write_type_params(TVarSet, [P], !IO) :-
     io.write_string("(", !IO),
-    mercury_output_var(P, TVarSet, no, !IO),
+    mercury_output_var(TVarSet, no, P, !IO),
     io.write_string(")", !IO).
 write_type_params(TVarSet, [P | Ps], !IO) :-
     Ps = [_ | _],
     io.write_string("(", !IO),
-    mercury_output_var(P, TVarSet, no, !IO),
+    mercury_output_var(TVarSet, no, P, !IO),
     write_type_params_2(TVarSet, Ps, !IO).
 
 :- pred write_type_params_2(tvarset::in, list(type_param)::in,
@@ -3227,7 +3232,7 @@ write_type_params_2(_TVarSet, [], !IO) :-
     io.write_string(")", !IO).
 write_type_params_2(TVarSet, [P | Ps], !IO) :-
     io.write_string(", ", !IO),
-    mercury_output_var(P, TVarSet, no, !IO),
+    mercury_output_var(TVarSet, no, P, !IO),
     write_type_params_2(TVarSet, Ps, !IO).
 
 :- pred write_type_body(int::in, tvarset::in, hlds_type_body::in,
@@ -3376,7 +3381,7 @@ write_class_defn(Indent, ClassId - ClassDefn, !IO) :-
 
     write_indent(Indent, !IO),
     io.write_string("% Vars: ", !IO),
-    mercury_output_vars(Vars, VarSet, AppendVarNums, !IO),
+    mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
     io.nl(!IO),
 
     write_indent(Indent, !IO),
@@ -3652,7 +3657,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     (
         MaybeCallTableTip = yes(CallTableTip),
         io.write_string("% call table tip: ", !IO),
-        mercury_output_var(CallTableTip, VarSet, AppendVarNums, !IO),
+        mercury_output_var(VarSet, AppendVarNums, CallTableTip, !IO),
         io.write_string("\n", !IO)
     ;
         MaybeCallTableTip = no
@@ -3690,13 +3695,13 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
                 MaybeOldOutermost),
             io.write_string("% deep layout info: ", !IO),
             io.write_string("TopCSD is ", !IO),
-            mercury_output_var(TopCSD, VarSet, AppendVarNums, !IO),
+            mercury_output_var(VarSet, AppendVarNums, TopCSD, !IO),
             io.write_string(", MiddleCSD is ", !IO),
-            mercury_output_var(MiddleCSD, VarSet, AppendVarNums, !IO),
+            mercury_output_var(VarSet, AppendVarNums, MiddleCSD, !IO),
             (
                 MaybeOldOutermost = yes(OldOutermost),
                 io.write_string(", OldOutermost is ", !IO),
-                mercury_output_var(OldOutermost, VarSet, AppendVarNums, !IO)
+                mercury_output_var(VarSet, AppendVarNums, OldOutermost, !IO)
             ;
                 MaybeOldOutermost = no
             ),
@@ -4189,7 +4194,7 @@ write_short_reuse_description(ShortDescription, VarSet, AppendVarnums, !IO):-
     ;
         ShortDescription = cell_reused(Var, IsConditional, _, _),
         io.write_string("cell reuse - ", !IO),
-        mercury_output_var(Var, VarSet, AppendVarnums, !IO),
+        mercury_output_var(VarSet, AppendVarnums, Var, !IO),
         io.write_string(" - ", !IO), 
         write_is_conditional(IsConditional, !IO)
     ;

@@ -1330,7 +1330,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         ;
             Reason = from_ground_term(_)
         ;
-            Reason = trace_goal(_, _, _, _)
+            Reason = trace_goal(_, _, _, _, _)
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;

@@ -690,8 +690,6 @@ transform_goal_2(
         GetGoals = MutableGetGoals,
         SetGoals = MutableSetGoals
     ),
-    Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIOHLDS,
-        MutableHLDSs),
     Goal1 = goal_list_to_conj(Context, GetGoals ++ [Goal0] ++ SetGoals),
     BeforeSInfo = !.SInfo,
     substitute_vars(StateVars0, Subst, StateVars),
@@ -699,7 +697,9 @@ transform_goal_2(
     transform_goal(Goal1, Subst, Goal, NumAdded1, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !Specs),
     NumAdded = list.length(GetGoals) + NumAdded1 + list.length(SetGoals),
-    finish_local_state_vars(StateVars, _Vars, BeforeSInfo, !SInfo),
+    finish_local_state_vars(StateVars, Vars, BeforeSInfo, !SInfo),
+    Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIOHLDS,
+        MutableHLDSs, Vars),
     goal_info_init(GoalInfo).
 transform_goal_2(if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
         Context, Subst, if_then_else(Vars, Cond, Then, Else) - GoalInfo,
@@ -1043,7 +1043,7 @@ report_dcg_field_error(Context, AccessType, VarSet, Error, !Specs) :-
         Action = "extraction"
     ),
     GenericVarSet = varset.coerce(VarSet),
-    TermStr = mercury_term_to_string(ErrorTerm, GenericVarSet, no),
+    TermStr = mercury_term_to_string(GenericVarSet, no, ErrorTerm),
     Pieces = [words("In DCG field"), words(Action), words("goal:"), nl,
         words("error:"), words(ErrorMsg), words("at term"),
         quote(TermStr), suffix("."), nl],

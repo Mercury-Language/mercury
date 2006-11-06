@@ -622,7 +622,7 @@ compute_expr_purity(scope(Reason, Goal0), scope(Reason, Goal),
         Reason = from_ground_term(_),
         compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
     ;
-        Reason = trace_goal(_, _, _, _),
+        Reason = trace_goal(_, _, _, _, _),
         compute_goal_purity(Goal0, Goal, _SubPurity, _, !Info),
         Purity = purity_pure,
         ContainsTrace = contains_trace_goal
