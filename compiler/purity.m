@@ -941,18 +941,6 @@ compute_parallel_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity,
     compute_parallel_goals_purity(Goals0, Goals, !Purity, !ContainsTrace,
         !Info).
 
-:- func worst_contains_trace(contains_trace_goal, contains_trace_goal)
-    = contains_trace_goal.
-
-worst_contains_trace(contains_trace_goal, contains_trace_goal) =
-    contains_trace_goal.
-worst_contains_trace(contains_trace_goal, contains_no_trace_goal) =
-    contains_trace_goal.
-worst_contains_trace(contains_no_trace_goal, contains_trace_goal) =
-    contains_trace_goal.
-worst_contains_trace(contains_no_trace_goal, contains_no_trace_goal) =
-    contains_no_trace_goal.
-
 %-----------------------------------------------------------------------------%
 
 :- pred check_closure_purity(hlds_goal_info::in, purity::in, purity::in,

@@ -255,7 +255,8 @@ pd_simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
     simplify_info_init(DetInfo0, Simplifications, InstMap0, ProcInfo0,
         SimplifyInfo0),
 
-    simplify_process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo, !IO),
+    simplify_process_clause_body_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo,
+        !IO),
 
     % Deconstruct the simplify_info.
     simplify_info_get_module_info(SimplifyInfo, ModuleInfo),

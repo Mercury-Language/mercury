@@ -62,7 +62,7 @@
     proc_info::in, proc_info::out, list(error_spec)::out, bool::out,
     io::di, io::uo) is det.
 
-:- pred simplify_process_goal(hlds_goal::in, hlds_goal::out,
+:- pred simplify_process_clause_body_goal(hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
     % Find out which simplifications should be run from the options table
@@ -404,7 +404,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         Goal1 = Goal0
     ),
 
-    simplify_process_goal(Goal1, Goal, Info0, Info, !IO),
+    simplify_process_clause_body_goal(Goal1, Goal, Info0, Info, !IO),
 
     simplify_info_get_varset(Info, VarSet),
     simplify_info_get_var_types(Info, VarTypes),
@@ -446,9 +446,9 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         IsDefinedHere = yes,
         ErrorSpecs = ErrorSpecs1
     ),
-    MayHaveParallelConj = Info ^ may_have_parallel_conj.
+    simplify_info_get_may_have_parallel_conj(Info, MayHaveParallelConj).
 
-simplify_process_goal(Goal0, Goal, !Info, !IO) :-
+simplify_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
     simplify_info_get_simplifications(!.Info, Simplifications0),
     simplify_info_get_instmap(!.Info, InstMap0),
     (
@@ -461,7 +461,7 @@ simplify_process_goal(Goal0, Goal, !Info, !IO) :-
             ^ do_excess_assign := no),
         simplify_info_set_simplifications(Simplifications1, !Info),
 
-        do_process_goal(Goal0, Goal1, !Info, !IO),
+        do_process_clause_body_goal(Goal0, Goal1, !Info, !IO),
 
         Simplifications2 = ((((Simplifications0
             ^ do_warn_simple_code := no)
@@ -474,12 +474,20 @@ simplify_process_goal(Goal0, Goal, !Info, !IO) :-
     ),
     % On the second pass do excess assignment elimination and some cleaning up
     % after the common structure pass.
-    do_process_goal(Goal1, Goal, !Info, !IO).
+    do_process_clause_body_goal(Goal1, Goal2, !Info, !IO),
+    simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
+    (
+        FoundContainsTrace = no,
+        Goal = Goal2
+    ;
+        FoundContainsTrace = yes,
+        goal_contains_trace(Goal2, Goal, _)
+    ).
 
-:- pred do_process_goal(hlds_goal::in, hlds_goal::out,
+:- pred do_process_clause_body_goal(hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-do_process_goal(Goal0, Goal, !Info, !IO) :-
+do_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
     simplify_info_get_instmap(!.Info, InstMap0),
     simplify_goal(Goal0, Goal1, !Info, !IO),
     simplify_info_get_varset(!.Info, VarSet0),
@@ -550,6 +558,11 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
         InsideDuplForSwitch),
     ( goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) ->
         simplify_info_set_inside_duplicated_for_switch(yes, !Info)
+    ;
+        true
+    ),
+    ( goal_info_has_feature(GoalInfo0, feature_contains_trace) ->
+        simplify_info_set_found_contains_trace(yes, !Info)
     ;
         true
     ),
@@ -805,7 +818,7 @@ simplify_goal_2(conj(ConjType, Goals0), Goal, GoalInfo0, GoalInfo,
             GoalInfo = GoalInfo0,
             simplify_par_conj(Goals0, Goals, !.Info, !Info, !IO),
             Goal = conj(parallel_conj, Goals),
-            !:Info = !.Info ^ may_have_parallel_conj := yes
+            simplify_info_set_may_have_parallel_conj(yes, !Info)
         )
     ).
 
@@ -2657,6 +2670,84 @@ contains_multisoln_goal(Goals) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred goal_contains_trace(hlds_goal::in, hlds_goal::out,
+    contains_trace_goal::out) is det.
+
+goal_contains_trace(GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo,
+        ContainsTrace) :-
+    (
+        ( GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0,
+        ContainsTrace = contains_no_trace_goal
+    ;
+        GoalExpr0 = conj(ConjType, SubGoals0),
+        goal_list_contains_trace(SubGoals0, SubGoals,
+            contains_no_trace_goal, ContainsTrace),
+        GoalExpr = conj(ConjType, SubGoals)
+    ;
+        GoalExpr0 = disj(SubGoals0),
+        goal_list_contains_trace(SubGoals0, SubGoals,
+            contains_no_trace_goal, ContainsTrace),
+        GoalExpr = disj(SubGoals)
+    ;
+        GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
+        case_list_contains_trace(Cases0, Cases,
+            contains_no_trace_goal, ContainsTrace),
+        GoalExpr = switch(SwitchVar, CanFail, Cases)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        goal_contains_trace(Cond0, Cond, CondContainsTrace),
+        goal_contains_trace(Then0, Then, ThenContainsTrace),
+        goal_contains_trace(Else0, Else, ElseContainsTrace),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        ContainsTrace = worst_contains_trace(CondContainsTrace,
+            worst_contains_trace(ThenContainsTrace, ElseContainsTrace))
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        goal_contains_trace(SubGoal0, SubGoal, ContainsTrace),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        goal_contains_trace(SubGoal0, SubGoal, ContainsTrace),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, "goal_contains_trace: shorthand")
+    ),
+    (
+        ContainsTrace = contains_trace_goal,
+        goal_info_add_feature(feature_contains_trace, GoalInfo0, GoalInfo)
+    ;
+        ContainsTrace = contains_no_trace_goal,
+        goal_info_remove_feature(feature_contains_trace, GoalInfo0, GoalInfo)
+    ).
+
+:- pred goal_list_contains_trace(list(hlds_goal)::in, list(hlds_goal)::out,
+    contains_trace_goal::in, contains_trace_goal::out) is det.
+
+goal_list_contains_trace([], [], !ContainsTrace).
+goal_list_contains_trace([Goal0 | Goals0], [Goal | Goals], !ContainsTrace) :-
+    goal_contains_trace(Goal0, Goal, GoalContainsTrace),
+    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
+    goal_list_contains_trace(Goals0, Goals, !ContainsTrace).
+
+:- pred case_list_contains_trace(list(case)::in, list(case)::out,
+    contains_trace_goal::in, contains_trace_goal::out) is det.
+
+case_list_contains_trace([], [], !ContainsTrace).
+case_list_contains_trace([Case0 | Cases0], [Case | Cases], !ContainsTrace) :-
+    Case0 = case(ConsId, Goal0),
+    goal_contains_trace(Goal0, Goal, GoalContainsTrace),
+    Case = case(ConsId, Goal),
+    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
+    case_list_contains_trace(Cases0, Cases, !ContainsTrace).
+
+%-----------------------------------------------------------------------------%
+
 :- type simplify_info
     --->    simplify_info(
                 det_info                :: det_info,
@@ -2690,8 +2781,11 @@ contains_multisoln_goal(Goals) :-
                 inside_dupl_for_switch  :: bool,
                                         % Are we currently inside a goal
                                         % that was duplicated for a switch?
-                may_have_parallel_conj  :: bool
+                may_have_parallel_conj  :: bool,
                                         % Have we seen a parallel conjunction?
+                found_contains_trace    :: bool
+                                        % Have we seen a goal with a feature
+                                        % that says it contains a trace goal?
             ).
 
 simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
@@ -2700,7 +2794,7 @@ simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     Info = simplify_info(DetInfo, [], Simplifications,
         common_info_init, InstMap, VarSet, InstVarSet,
-        no, no, no, 0, 0, RttiVarMaps, no, no, no).
+        no, no, no, 0, 0, RttiVarMaps, no, no, no, no).
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
@@ -2770,6 +2864,10 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
 :- pred simplify_info_get_format_calls(simplify_info::in, bool::out) is det.
 :- pred simplify_info_get_inside_duplicated_for_switch(simplify_info::in,
     bool::out) is det.
+:- pred simplify_info_get_may_have_parallel_conj(simplify_info::in, bool::out)
+    is det.
+:- pred simplify_info_get_found_contains_trace(simplify_info::in, bool::out)
+    is det.
 
 simplify_info_get_det_info(Info, Info ^ det_info).
 simplify_info_get_error_specs(Info, Info ^ error_specs).
@@ -2790,6 +2888,8 @@ simplify_info_get_rtti_varmaps(Info, Info ^ rtti_varmaps).
 simplify_info_get_format_calls(Info, Info ^ format_calls).
 simplify_info_get_inside_duplicated_for_switch(Info,
     Info ^ inside_dupl_for_switch).
+simplify_info_get_may_have_parallel_conj(Info, Info ^ may_have_parallel_conj).
+simplify_info_get_found_contains_trace(Info, Info ^ found_contains_trace).
 
 simplify_info_get_module_info(Info, ModuleInfo) :-
     simplify_info_get_det_info(Info, DetInfo),
@@ -2827,6 +2927,10 @@ simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_inside_duplicated_for_switch(bool::in,
     simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_may_have_parallel_conj(bool::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_found_contains_trace(bool::in,
+    simplify_info::in, simplify_info::out) is det.
 
 :- pred simplify_info_add_error_spec(error_spec::in,
     simplify_info::in, simplify_info::out) is det.
@@ -2858,6 +2962,10 @@ simplify_info_set_rtti_varmaps(Rtti, Info, Info ^ rtti_varmaps := Rtti).
 simplify_info_set_format_calls(FC, Info, Info ^ format_calls := FC).
 simplify_info_set_inside_duplicated_for_switch(IDFS, Info,
     Info ^ inside_dupl_for_switch := IDFS).
+simplify_info_set_may_have_parallel_conj(MHPC, Info,
+    Info ^ may_have_parallel_conj := MHPC).
+simplify_info_set_found_contains_trace(FCT, Info,
+    Info ^ found_contains_trace := FCT).
 
 simplify_info_incr_cost_delta(Incr, Info,
     Info ^ cost_delta := Info ^ cost_delta + Incr).

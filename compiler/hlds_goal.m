@@ -920,13 +920,16 @@
 
 :- pred goal_get_nonlocals(hlds_goal::in, set(prog_var)::out) is det.
 
-:- pred goal_get_purity(hlds_goal::in, purity::out) is det.
-
-:- pred goal_set_purity(purity::in, hlds_goal::in, hlds_goal::out) is det.
-
 :- type contains_trace_goal
     --->    contains_trace_goal
     ;       contains_no_trace_goal.
+
+:- func worst_contains_trace(contains_trace_goal, contains_trace_goal)
+    = contains_trace_goal.
+
+:- pred goal_get_purity(hlds_goal::in, purity::out) is det.
+
+:- pred goal_set_purity(purity::in, hlds_goal::in, hlds_goal::out) is det.
 
 :- pred goal_get_goal_purity(hlds_goal::in,
     purity::out, contains_trace_goal::out) is det.
@@ -1800,6 +1803,15 @@ need_visible_vars(GoalInfo) = NeedVisibleVars :-
     goal_info_set_need_visible_vars(NeedVisibleVars, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
+
+worst_contains_trace(contains_trace_goal, contains_trace_goal) =
+    contains_trace_goal.
+worst_contains_trace(contains_trace_goal, contains_no_trace_goal) =
+    contains_trace_goal.
+worst_contains_trace(contains_no_trace_goal, contains_trace_goal) =
+    contains_trace_goal.
+worst_contains_trace(contains_no_trace_goal, contains_no_trace_goal) =
+    contains_no_trace_goal.
 
 goal_get_purity(_GoalExpr - GoalInfo, Purity) :-
     goal_info_get_purity(GoalInfo, Purity).
