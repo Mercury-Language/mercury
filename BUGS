@@ -191,3 +191,13 @@ Date: unknown
 
 The deep profiler may cause a segmentation fault when profiling large
 programs.  There is currently no known workaround for this problem.
+
+-----------------------------------------------------------------------------
+
+Subject: parallel mmake does not work with nested sub-modules
+Date: unknown
+
+Parallel mmake does not work correctly with programs that contain
+nested sub-modules.  (Separate sub-modules should be okay though.)
+
+-----------------------------------------------------------------------------
