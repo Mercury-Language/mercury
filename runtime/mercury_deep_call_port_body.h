@@ -11,7 +11,7 @@
 ** The implementation of {det,semi,non}_call_port_code_{ac,sr}.
 **
 ** The code including this file should define the following macros:
-** 
+**
 ** MR_PROCNAME:                 The name of the procedure whose body this is.
 ** MR_VERSION_AC or MR_VERSION_SR:
 **                              Says whether the procedure whose body this is
