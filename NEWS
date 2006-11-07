@@ -1,7 +1,7 @@
-NEWS for Mercury 0.13.1-beta
-----------------------------
+NEWS for Mercury 0.13.1
+-----------------------
 
-This release (will be) primarily a bug-fix release.
+This release is primarily a bug-fix release.
 The problems fixed include:
 
 * polymorphic insts and mode-specific clauses did not work together.
@@ -10,7 +10,9 @@ The problems fixed include:
   variables in instance declarations should be distinct.
 * the compiler sometimes performed superclass reduction incorrectly,
   causing it to reject valid typeclass constraints.
-* parallel builds using mmake now work again.
+* installation of static archives on Mac OS X using mmc --make now
+  works correctly.  Previously, static archives caused linking problems
+  because the table of contents was not being updated after installation.
 
 In addition to bug-fixes we have the following addition to the 
 standard library.
