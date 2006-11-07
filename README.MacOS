@@ -33,14 +33,11 @@ of Mac OS X 10.3 and 10.4 use this version.
 Apple gcc 4.0 does not work with Mercury.  Users of Mac OS X 10.4 should
 note that this version of gcc is the default one on their systems.
 
-You can use the gcc_select command to select which version of the gcc
-is the default gcc.  Alternatively it is probably easier to point Mercury to
-the actual correct version via the `--with-cc' option to configure.  e.g.
-
-	./configure --with-cc=/usr/bin/gcc-3.3  
-
-(/usr/bin/gcc is a symbolic link to the actual version; gcc_select just
-changes what the link currently points to.)
+If you are using an Apple build of gcc then you must use the gcc_select
+command to set the system's default gcc to that version of gcc.  It is not
+sufficient to just point Mercury to a version of gcc using the configure
+script's `--with-cc' option.  This restriction applies only to the builds
+of gcc supplied by Apple.
 
 Also, Apple's version of gcc includes support for precompiled headers.
 Unfortunately this support seems to be somewhat buggy, causing it to sometimes
@@ -107,7 +104,7 @@ process should take care of this if deep profiling is enabled.
 To ensure the webserver is running:
 
 - Open the Apple Menu and open the System Preferences window.
-- In the `System Preferences' window, click on the icon labeled `Sharing'.
+- In the `System Preferences' window, click on the icon labelled `Sharing'.
 - Make sure that `Personal Web Sharing' is enabled.  If it is then
   the webserver should be running.
 
