@@ -39,6 +39,7 @@ TYPECLASS_PROGS= \
 	repeated_class_constraint \
 	superclass_bug \
 	superclass_improvement \
+	tc_map_lookup \
 	typeclass_constraint_no_var \
 	typeclass_constraint_nonvar_bug \
 	typeclass_det_warning
