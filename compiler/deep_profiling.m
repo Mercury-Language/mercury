@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: deep_profiling.m.
 % Main author: conway.
-% 
+%
 % This module applies the deep profiling transformation described in the paper
 % ``Engineering a profiler for a logic programming language'' by Thomas Conway
 % and Zoltan Somogyi.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.deep_profiling.
@@ -450,22 +450,21 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
         unexpected(this_file,
             "deep profiling is incompatible with nondet foreign code")
     ;
-        % We don't want to transform the procedures for
-        % managing the deep profiling call graph, or we'd get
-        % infinite recursion.
+        % We don't want to transform the procedures for managing the deep
+        % profiling call graph, or we'd get infinite recursion.
         PredModuleName = mercury_profiling_builtin_module
     ->
         true
     ;
-        transform_procedure2(ModuleInfo, proc(PredId, ProcId),
+        deep_prof_transform_proc(ModuleInfo, proc(PredId, ProcId),
             ProcInfo0, ProcInfo),
         map.det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable)
     ).
 
-:- pred transform_procedure2(module_info::in, pred_proc_id::in,
+:- pred deep_prof_transform_proc(module_info::in, pred_proc_id::in,
     proc_info::in, proc_info::out) is det.
 
-transform_procedure2(ModuleInfo, PredProcId, !ProcInfo) :-
+deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepInfo),
     proc_info_interface_code_model(!.ProcInfo, CodeModel),
     (
@@ -548,11 +547,11 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
         extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
         DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
-            counter.init(0), [], !.VarSet, !.VarTypes,
-            FileName, MaybeRecInfo)
+            counter.init(0), [], !.VarSet, !.VarTypes, FileName, MaybeRecInfo)
     ),
 
-    transform_goal([], Goal0, TransformedGoal, _, DeepInfo0, DeepInfo),
+    deep_prof_transform_goal([], Goal0, TransformedGoal, _,
+        DeepInfo0, DeepInfo),
 
     Vars = DeepInfo ^ vars,
     VarTypes = DeepInfo ^ var_types,
@@ -646,7 +645,8 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             FileName, MaybeRecInfo)
     ),
 
-    transform_goal([], Goal0, TransformedGoal, _, DeepInfo0, DeepInfo),
+    deep_prof_transform_goal([], Goal0, TransformedGoal, _,
+        DeepInfo0, DeepInfo),
 
     Vars = DeepInfo ^ vars,
     VarTypes = DeepInfo ^ var_types,
@@ -758,7 +758,8 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             counter.init(0), [], !.VarSet, !.VarTypes, FileName, MaybeRecInfo)
     ),
 
-    transform_goal([], Goal0, TransformedGoal, _, DeepInfo0, DeepInfo),
+    deep_prof_transform_goal([], Goal0, TransformedGoal, _,
+        DeepInfo0, DeepInfo),
 
     Vars = DeepInfo ^ vars,
     VarTypes = DeepInfo ^ var_types,
@@ -875,7 +876,8 @@ transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         counter.init(0), [], VarSet1, VarTypes1,
         FileName, MaybeRecInfo),
 
-    transform_goal([], Goal0, TransformedGoal, _, DeepInfo0, DeepInfo),
+    deep_prof_transform_goal([], Goal0, TransformedGoal, _,
+        DeepInfo0, DeepInfo),
 
     VarSet = DeepInfo ^ vars,
     VarTypes = DeepInfo ^ var_types,
@@ -902,178 +904,188 @@ is_proc_in_interface(ModuleInfo, PredId, _ProcId) = IsInInterface :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_goal(goal_path::in, hlds_goal::in, hlds_goal::out, bool::out,
-    deep_info::in, deep_info::out) is det.
+:- pred deep_prof_transform_goal(goal_path::in, hlds_goal::in, hlds_goal::out,
+    bool::out, deep_info::in, deep_info::out) is det.
 
-transform_goal(Path, conj(ConjType, Goals0) - GoalInfo0,
-        conj(ConjType, Goals) - GoalInfo, AddedImpurity, !DeepInfo) :-
-    transform_conj(0, Path, Goals0, Goals, AddedImpurity, !DeepInfo),
-    add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
-
-transform_goal(Path, switch(Var, CF, Cases0) - GoalInfo0,
-        switch(Var, CF, Cases) - GoalInfo, AddedImpurity, !DeepInfo) :-
-    transform_switch(list.length(Cases0), 0, Path, Cases0, Cases,
-        AddedImpurity, !DeepInfo),
-    add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
-
-transform_goal(Path, disj(Goals0) - GoalInfo0, disj(Goals) - GoalInfo,
-        AddedImpurity, !DeepInfo) :-
-    transform_disj(0, Path, Goals0, Goals, AddedImpurity, !DeepInfo),
-    add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
-
-transform_goal(Path, negation(Goal0) - GoalInfo0, negation(Goal) - GoalInfo,
-        AddedImpurity, !DeepInfo) :-
-    transform_goal([neg | Path], Goal0, Goal, AddedImpurity, !DeepInfo),
-    add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
-
-transform_goal(Path, scope(Reason0, SubGoal0) - GoalInfo0, Goal,
-        AddedImpurity, !DeepInfo) :-
-    SubGoal0 = _ - InnerInfo,
-    goal_info_get_determinism(GoalInfo0, OuterDetism),
-    goal_info_get_determinism(InnerInfo, InnerDetism),
-    ( InnerDetism = OuterDetism ->
-        MaybeCut = no_cut,
-        Reason = Reason0,
-        AddForceCommit = no
+deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
+    Goal0 = GoalExpr0 - GoalInfo0,
+    (
+        GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
+        ( BuiltinState \= inline_builtin ->
+            deep_prof_wrap_call(Path, Goal0, Goal, !DeepInfo),
+            AddedImpurity = yes
+        ;
+            Goal = Goal0,
+            AddedImpurity = no
+        )
     ;
-        % Given a subgoal containing both at_most_many code and impure code,
-        % determinism analysis will remove the `scope' wrapped around that
-        % subgoal if it is allowed to. If we get here, then the subgoal inside
-        % the `scope' contains at_most_many code (which means that removing
-        % the scope will change its determinism) and the deep profiling
-        % transformation will make it impure as well.
-        %
-        MaybeCut = cut,
-        ( Reason0 = commit(_) ->
-            Reason = commit(force_pruning),
+        GoalExpr0 = generic_call(GenericCall, _, _, _),
+        (
+            ( GenericCall = higher_order(_, _, _, _)
+            ; GenericCall = class_method(_, _, _, _)
+            ),
+            deep_prof_wrap_call(Path, Goal0, Goal, !DeepInfo),
+            AddedImpurity = yes
+        ;
+            ( GenericCall = event_call(_)
+            ; GenericCall = cast(_)
+            ),
+            Goal = Goal0,
+            AddedImpurity = no
+        )
+    ;
+        GoalExpr0 = call_foreign_proc(Attrs, _, _, _, _, _, _),
+        ( get_may_call_mercury(Attrs) = proc_may_call_mercury ->
+            deep_prof_wrap_foreign_code(Path, Goal0, Goal, !DeepInfo),
+            AddedImpurity = yes
+        ;
+            Goal = Goal0,
+            AddedImpurity = no
+        )
+    ;
+        GoalExpr0 = unify(_, _, _, _, _),
+        Goal = Goal0,
+        AddedImpurity = no
+    ;
+        GoalExpr0 = conj(ConjType, Goals0),
+        deep_prof_transform_conj(0, Path, Goals0, Goals, AddedImpurity,
+            !DeepInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        GoalExpr = conj(ConjType, Goals),
+        Goal = GoalExpr - GoalInfo
+    ;
+        GoalExpr0 = disj(Goals0),
+        deep_prof_transform_disj(0, Path, Goals0, Goals, AddedImpurity,
+            !DeepInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        GoalExpr = disj(Goals),
+        Goal = GoalExpr - GoalInfo
+    ;
+        GoalExpr0 = switch(Var, CF, Cases0),
+        deep_prof_transform_switch(list.length(Cases0), 0, Path, Cases0, Cases,
+            AddedImpurity, !DeepInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        GoalExpr = switch(Var, CF, Cases),
+        Goal = GoalExpr - GoalInfo
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        deep_prof_transform_goal([neg | Path], SubGoal0, SubGoal,
+            AddedImpurity, !DeepInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        GoalExpr = negation(SubGoal),
+        Goal = GoalExpr - GoalInfo
+    ;
+        GoalExpr0 = if_then_else(IVars, Cond0, Then0, Else0),
+        deep_prof_transform_goal([ite_cond | Path], Cond0, Cond,
+            AddedImpurityC, !DeepInfo),
+        deep_prof_transform_goal([ite_then | Path], Then0, Then,
+            AddedImpurityT, !DeepInfo),
+        deep_prof_transform_goal([ite_else | Path], Else0, Else,
+            AddedImpurityE, !DeepInfo),
+        (
+            ( AddedImpurityC = yes
+            ; AddedImpurityT = yes
+            ; AddedImpurityE = yes
+            )
+        ->
+            AddedImpurity = yes
+        ;
+            AddedImpurity = no
+        ),
+        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        GoalExpr = if_then_else(IVars, Cond, Then, Else),
+        Goal = GoalExpr - GoalInfo
+    ;
+        GoalExpr0 = scope(Reason0, SubGoal0),
+        SubGoal0 = _ - InnerInfo,
+        goal_info_get_determinism(GoalInfo0, OuterDetism),
+        goal_info_get_determinism(InnerInfo, InnerDetism),
+        ( InnerDetism = OuterDetism ->
+            MaybeCut = no_cut,
+            Reason = Reason0,
             AddForceCommit = no
         ;
-            Reason = Reason0,
-            AddForceCommit = yes
+            % Given a subgoal containing both at_most_many code and impure
+            % code, determinism analysis will remove the `scope' wrapped
+            % around that subgoal if it is allowed to. If we get here, then
+            % the subgoal inside the `scope' contains at_most_many code
+            % (which means that removing the scope will change its determinism)
+            % and the deep profiling transformation will make it impure
+            % as well.
+
+            MaybeCut = cut,
+            ( Reason0 = commit(_) ->
+                Reason = commit(force_pruning),
+                AddForceCommit = no
+            ;
+                Reason = Reason0,
+                AddForceCommit = yes
+            )
+        ),
+        deep_prof_transform_goal([scope(MaybeCut) | Path], SubGoal0, SubGoal,
+            AddedImpurity, !DeepInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+        (
+            AddForceCommit = no,
+            Goal = scope(Reason, SubGoal) - GoalInfo
+        ;
+            AddForceCommit = yes,
+            InnerGoal = scope(Reason, SubGoal) - GoalInfo,
+            Goal = scope(commit(force_pruning), InnerGoal) - GoalInfo
         )
-    ),
-    transform_goal([scope(MaybeCut) | Path], SubGoal0, SubGoal,
-        AddedImpurity, !DeepInfo),
-    add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
-    (
-        AddForceCommit = no,
-        Goal = scope(Reason, SubGoal) - GoalInfo
     ;
-        AddForceCommit = yes,
-        InnerGoal = scope(Reason, SubGoal) - GoalInfo,
-        Goal = scope(commit(force_pruning), InnerGoal) - GoalInfo
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file,
+            "deep_prof_transform_goal: shorthand should have gone by now")
     ).
 
-transform_goal(Path, if_then_else(IVars, Cond0, Then0, Else0) - GoalInfo0,
-        if_then_else(IVars, Cond, Then, Else) - GoalInfo,
+:- pred deep_prof_transform_conj(int::in, goal_path::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
+    deep_info::in, deep_info::out) is det.
+
+deep_prof_transform_conj(_, _, [], [], no, !DeepInfo).
+deep_prof_transform_conj(N, Path, [Goal0 | Goals0], [Goal | Goals],
         AddedImpurity, !DeepInfo) :-
-    transform_goal([ite_cond | Path], Cond0, Cond, AddedImpurityC, !DeepInfo),
-    transform_goal([ite_then | Path], Then0, Then, AddedImpurityT, !DeepInfo),
-    transform_goal([ite_else | Path], Else0, Else, AddedImpurityE, !DeepInfo),
-    (
-        ( AddedImpurityC = yes
-        ; AddedImpurityT = yes
-        ; AddedImpurityE = yes
-        )
-    ->
-        AddedImpurity = yes
-    ;
-        AddedImpurity = no
-    ),
-    add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
+    N1 = N + 1,
+    deep_prof_transform_goal([conj(N1) | Path], Goal0, Goal, AddedImpurityFirst,
+        !DeepInfo),
+    deep_prof_transform_conj(N1, Path, Goals0, Goals, AddedImpurityLater,
+        !DeepInfo),
+    bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 
-transform_goal(_, shorthand(_) - _, _, _, !DeepInfo) :-
-    unexpected(this_file,
-        "transform_goal/6: shorthand should have gone by now").
-
-transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
-        !DeepInfo) :-
-    Goal0 = call_foreign_proc(Attrs, _, _, _, _, _, _),
-    ( get_may_call_mercury(Attrs) = proc_may_call_mercury ->
-        wrap_foreign_code(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo),
-        AddedImpurity = yes
-    ;
-        GoalAndInfo = Goal0 - GoalInfo0,
-        AddedImpurity = no
-    ).
-
-transform_goal(_Path, Goal - GoalInfo, Goal - GoalInfo, no, !DeepInfo) :-
-    Goal = unify(_, _, _, _, _).
-
-transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, yes, !DeepInfo) :-
-    Goal0 = plain_call(_, _, _, BuiltinState, _, _),
-    ( BuiltinState \= inline_builtin ->
-        wrap_call(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo)
-    ;
-        GoalAndInfo = Goal0 - GoalInfo0
-    ).
-
-transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
-        !DeepInfo) :-
-    Goal0 = generic_call(GenericCall, _, _, _),
-    (
-        GenericCall = higher_order(_, _, _, _),
-        wrap_call(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo),
-        AddedImpurity = yes
-    ;
-        GenericCall = class_method(_, _, _, _),
-        wrap_call(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo),
-        AddedImpurity = yes
-    ;
-        GenericCall = event_call(_),
-        GoalAndInfo = Goal0 - GoalInfo0,
-        AddedImpurity = no
-    ;
-        GenericCall = cast(_),
-        GoalAndInfo = Goal0 - GoalInfo0,
-        AddedImpurity = no
-    ).
-
-:- pred transform_conj(int::in, goal_path::in,
+:- pred deep_prof_transform_disj(int::in, goal_path::in,
     list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
     deep_info::in, deep_info::out) is det.
 
-transform_conj(_, _, [], [], no, !DeepInfo).
-transform_conj(N, Path, [Goal0 | Goals0], [Goal | Goals], AddedImpurity,
-        !DeepInfo) :-
+deep_prof_transform_disj(_, _, [], [], no, !DeepInfo).
+deep_prof_transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals],
+        AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    transform_goal([conj(N1) | Path], Goal0, Goal, AddedImpurityFirst,
+    deep_prof_transform_goal([disj(N1) | Path], Goal0, Goal, AddedImpurityFirst,
         !DeepInfo),
-    transform_conj(N1, Path, Goals0, Goals, AddedImpurityLater, !DeepInfo),
+    deep_prof_transform_disj(N1, Path, Goals0, Goals, AddedImpurityLater,
+        !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 
-:- pred transform_disj(int::in, goal_path::in,
-    list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
-    deep_info::in, deep_info::out) is det.
-
-transform_disj(_, _, [], [], no, !DeepInfo).
-transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals], AddedImpurity,
-        !DeepInfo) :-
-    N1 = N + 1,
-    transform_goal([disj(N1) | Path], Goal0, Goal, AddedImpurityFirst,
-        !DeepInfo),
-    transform_disj(N1, Path, Goals0, Goals, AddedImpurityLater, !DeepInfo),
-    bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
-
-:- pred transform_switch(int::in, int::in, goal_path::in,
+:- pred deep_prof_transform_switch(int::in, int::in, goal_path::in,
     list(case)::in, list(case)::out, bool::out,
     deep_info::in, deep_info::out) is det.
 
-transform_switch(_, _, _, [], [], no, !DeepInfo).
-transform_switch(NumCases, N, Path, [case(Id, Goal0) | Goals0],
+deep_prof_transform_switch(_, _, _, [], [], no, !DeepInfo).
+deep_prof_transform_switch(NumCases, N, Path, [case(Id, Goal0) | Goals0],
         [case(Id, Goal) | Goals], AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    transform_goal([switch(NumCases, N1) | Path], Goal0, Goal,
+    deep_prof_transform_goal([switch(NumCases, N1) | Path], Goal0, Goal,
         AddedImpurityFirst, !DeepInfo),
-    transform_switch(NumCases, N1, Path, Goals0, Goals,
+    deep_prof_transform_switch(NumCases, N1, Path, Goals0, Goals,
         AddedImpurityLater, !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 
-:- pred wrap_call(goal_path::in, hlds_goal::in, hlds_goal::out,
+:- pred deep_prof_wrap_call(goal_path::in, hlds_goal::in, hlds_goal::out,
     deep_info::in, deep_info::out) is det.
 
-wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
-    Goal0 = GoalExpr - GoalInfo0,
+deep_prof_wrap_call(GoalPath, GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo,
+        !DeepInfo) :-
     ModuleInfo = !.DeepInfo ^ module_info,
     goal_info_get_features(GoalInfo0, GoalFeatures),
     goal_info_remove_feature(feature_tailcall, GoalInfo0, GoalInfo1),
@@ -1087,7 +1099,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
     % invariants of the deep profiling tree (which allows this field to be
     % NULL only temporarily, between the prepare_for_{...}_call and the
     % call port code).
-    Goal1 = GoalExpr - GoalInfo,
+    Goal1 = GoalExpr0 - GoalInfo,
 
     SiteNumCounter0 = !.DeepInfo ^ site_num_counter,
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
@@ -1095,17 +1107,17 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
     IntType = int_type,
     map.set(!.DeepInfo ^ var_types, SiteNumVar, IntType, VarTypes1),
     generate_unify(int_const(SiteNum), SiteNumVar, SiteNumVarGoal),
-    !:DeepInfo = (((!.DeepInfo ^ vars := VarSet1)
-        ^ var_types := VarTypes1)
-        ^ site_num_counter := SiteNumCounter),
+    !:DeepInfo = !.DeepInfo ^ vars := VarSet1,
+    !:DeepInfo = !.DeepInfo ^ var_types := VarTypes1,
+    !:DeepInfo = !.DeepInfo ^ site_num_counter := SiteNumCounter,
 
     goal_info_get_context(GoalInfo0, Context),
     FileName0 = term.context_file(Context),
     LineNumber = term.context_line(Context),
     compress_filename(!.DeepInfo, FileName0, FileName),
-    classify_call(ModuleInfo, GoalExpr, CallKind),
+    CallKind = classify_call(ModuleInfo, GoalExpr0),
     (
-        CallKind = normal(PredProcId),
+        CallKind = call_class_normal(PredProcId),
         ( set.member(feature_tailcall, GoalFeatures) ->
             generate_deep_det_call(ModuleInfo, "prepare_for_tail_call", 1,
                 [SiteNumVar], [], PrepareGoal)
@@ -1114,7 +1126,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
                 [SiteNumVar], [], PrepareGoal)
         ),
         PredProcId = proc(PredId, ProcId),
-        TypeSubst = compute_type_subst(GoalExpr, !.DeepInfo),
+        TypeSubst = compute_type_subst(GoalExpr0, !.DeepInfo),
         MaybeRecInfo = !.DeepInfo ^ maybe_rec_info,
         (
             MaybeRecInfo = yes(RecInfo1),
@@ -1141,13 +1153,13 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
             FileName, LineNumber, GoalPath),
         Goal2 = Goal1
     ;
-        CallKind = special(_PredProcId, TypeInfoVar),
+        CallKind = call_class_special(_PredProcId, TypeInfoVar),
         generate_deep_det_call(ModuleInfo, "prepare_for_special_call", 2,
             [SiteNumVar, TypeInfoVar], [], PrepareGoal),
         CallSite = special_call(FileName, LineNumber, GoalPath),
         Goal2 = Goal1
     ;
-        CallKind = generic(Generic),
+        CallKind = call_class_generic(Generic),
         (
             Generic = higher_order(ClosureVar, _, _, _),
             generate_deep_det_call(ModuleInfo, "prepare_for_ho_call", 2,
@@ -1160,16 +1172,14 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
             map.set(!.DeepInfo ^ var_types, MethodNumVar, IntType, VarTypes2),
             generate_unify(int_const(MethodNum), MethodNumVar,
                 MethodNumVarGoal),
-            !:DeepInfo = ((!.DeepInfo ^ vars := VarSet2)
-                ^ var_types := VarTypes2),
+            !:DeepInfo = !.DeepInfo ^ vars := VarSet2,
+            !:DeepInfo = !.DeepInfo ^ var_types := VarTypes2,
             generate_deep_det_call(ModuleInfo, "prepare_for_method_call", 3,
                 [SiteNumVar, TypeClassInfoVar, MethodNumVar],
                 [], PrepareCallGoal),
             PrepareCallGoal = _ - PrepareCallGoalInfo,
-            PrepareGoal = conj(plain_conj, [
-                MethodNumVarGoal,
-                PrepareCallGoal
-            ]) - PrepareCallGoalInfo,
+            PrepareGoal = conj(plain_conj,
+                [MethodNumVarGoal, PrepareCallGoal]) - PrepareCallGoalInfo,
             CallSite = method_call(FileName, LineNumber, GoalPath)
         ;
             Generic = event_call(_),
@@ -1180,11 +1190,11 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
         ),
         goal_info_get_code_model(GoalInfo0, GoalCodeModel),
         module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals,
-            use_zeroing_for_ho_cycles, UseZeroing),
+        globals.lookup_bool_option(Globals, use_zeroing_for_ho_cycles,
+            UseZeroing),
         (
             UseZeroing = yes,
-            transform_higher_order_call(Globals, GoalCodeModel,
+            deep_prof_transform_higher_order_call(Globals, GoalCodeModel,
                 Goal1, Goal2, !DeepInfo)
         ;
             UseZeroing = no,
@@ -1211,8 +1221,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
             VisSCC = [SCCmember],
             generate_recursion_counter_saves_and_restores(
                 SCCmember ^ rec_call_sites, MiddleCSD,
-                CallGoals, ExitGoals, FailGoals,
-                SaveRestoreVars, !DeepInfo)
+                CallGoals, ExitGoals, FailGoals, SaveRestoreVars, !DeepInfo)
         ;
             VisSCC = [_, _ | _],
             unexpected(this_file,
@@ -1226,9 +1235,8 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
                 [SiteNumVarGoal, PrepareGoal, Goal2],
                 ExitGoals
             ], Goals),
-            Goal = conj(plain_conj, Goals) - GoalInfo
+            GoalExpr = conj(plain_conj, Goals)
         ;
-
             ExtraVars = list_to_set([MiddleCSD | SaveRestoreVars]),
             WrappedGoalGoalInfo =
                 goal_info_add_nonlocals_make_impure(GoalInfo, ExtraVars),
@@ -1253,17 +1261,17 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
                     conj(plain_conj, FailGoalsAndFail) - ReturnFailsGoalInfo
                 ]) - WrappedGoalGoalInfo]
             ], Goals),
-            Goal = conj(plain_conj, Goals) - GoalInfo
+            GoalExpr = conj(plain_conj, Goals)
         )
     ;
-        Goal = conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal2])
-            - GoalInfo
+        GoalExpr = conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal2])
     ).
 
-:- pred transform_higher_order_call(globals::in, code_model::in,
+:- pred deep_prof_transform_higher_order_call(globals::in, code_model::in,
     hlds_goal::in, hlds_goal::out, deep_info::in, deep_info::out) is det.
 
-transform_higher_order_call(Globals, CodeModel, Goal0, Goal, !DeepInfo) :-
+deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
+        !DeepInfo) :-
     VarSet0 = !.DeepInfo ^ vars,
     VarTypes0 = !.DeepInfo ^ var_types,
 
@@ -1375,10 +1383,10 @@ transform_higher_order_call(Globals, CodeModel, Goal0, Goal, !DeepInfo) :-
         ]) - GoalInfo
     ).
 
-:- pred wrap_foreign_code(goal_path::in, hlds_goal::in, hlds_goal::out,
-    deep_info::in, deep_info::out) is det.
+:- pred deep_prof_wrap_foreign_code(goal_path::in,
+    hlds_goal::in, hlds_goal::out, deep_info::in, deep_info::out) is det.
 
-wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
+deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
     Goal0 = _ - GoalInfo0,
     ModuleInfo = !.DeepInfo ^ module_info,
 
@@ -1415,20 +1423,19 @@ compress_filename(Deep, FileName0, FileName) :-
     ).
 
 :- type call_class
-    --->    normal(pred_proc_id)
+    --->    call_class_normal(pred_proc_id)
             % For normal first order calls
 
-    ;       special(pred_proc_id, prog_var)
+    ;       call_class_special(pred_proc_id, prog_var)
             % For calls to unify/2, compare/3 and
             % compare_representation/3
 
-    ;       generic(generic_call).
+    ;       call_class_generic(generic_call).
             % For higher order and typeclass method calls
 
-:- pred classify_call(module_info::in, hlds_goal_expr::in,
-    call_class::out) is det.
+:- func classify_call(module_info, hlds_goal_expr) = call_class.
 
-classify_call(ModuleInfo, Expr, Class) :-
+classify_call(ModuleInfo, Expr) = Class :-
     ( Expr = plain_call(PredId, ProcId, Args, _, _, _) ->
         (
             lookup_builtin_pred_proc_id(ModuleInfo,
@@ -1436,14 +1443,14 @@ classify_call(ModuleInfo, Expr, Class) :-
                 predicate, 2, mode_no(0), PredId, _),
             Args = [TypeInfoVar | _]
         ->
-            Class = special(proc(PredId, ProcId), TypeInfoVar)
+            Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         ;
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module, "compare",
                 predicate, 3, mode_no(0), PredId, _),
             Args = [TypeInfoVar | _]
         ->
-            Class = special(proc(PredId, ProcId), TypeInfoVar)
+            Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         ;
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module,
@@ -1451,12 +1458,12 @@ classify_call(ModuleInfo, Expr, Class) :-
                 mode_no(0), PredId, _),
             Args = [TypeInfoVar | _]
         ->
-            Class = special(proc(PredId, ProcId), TypeInfoVar)
+            Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         ;
-            Class = normal(proc(PredId, ProcId))
+            Class = call_class_normal(proc(PredId, ProcId))
         )
     ; Expr = generic_call(Generic, _, _, _) ->
-        Class = generic(Generic)
+        Class = call_class_generic(Generic)
     ;
         unexpected(this_file, "unexpected goal type in classify_call/2")
     ).
