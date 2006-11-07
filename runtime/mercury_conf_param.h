@@ -200,6 +200,10 @@
 **	(integers, strings, pointers, etc) of the deep profiling data
 **	structures.
 **
+** MR_DEEP_PROFILING_LOG
+**	Enables the code that writes out a log of the actions of the deep
+**	profiling code.
+**
 ** MR_DEBUG_DD_BACK_END
 **	Enables low-level debugging messages on the operation of the
 **	declarative debugging back end.

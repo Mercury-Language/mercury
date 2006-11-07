@@ -620,6 +620,12 @@ mercury_runtime_init(int argc, char **argv)
         MR_deep_prof_init();
         MR_deep_prof_turn_on_time_profiling();
     }
+
+  #ifdef  MR_DEEP_PROFILING_LOG
+    if (MR_deep_prof_log_file != NULL) {
+        MR_deep_log_proc_statics(MR_deep_prof_log_file);
+    }
+  #endif
 #endif
 
 #ifdef  MR_RECORD_TERM_SIZES
@@ -1070,6 +1076,8 @@ enum MR_long_option {
     MR_NUM_OUTPUT_ARGS,
     MR_DEBUG_THREADS_OPT,
     MR_DEEP_PROF_DEBUG_FILE_OPT,
+    MR_DEEP_PROF_LOG_FILE_OPT,
+    MR_DEEP_PROF_LOG_PROG_OPT,
     MR_TABLING_STATISTICS_OPT,
     MR_TRACE_COUNT_OPT,
     MR_TRACE_COUNT_IF_EXEC_OPT,
@@ -1156,6 +1164,8 @@ struct MR_option MR_long_opts[] = {
     { "num-output-args",                1, 0, MR_NUM_OUTPUT_ARGS },
     { "debug-threads",                  0, 0, MR_DEBUG_THREADS_OPT },
     { "deep-debug-file",                0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT },
+    { "deep-log-file",                  1, 0, MR_DEEP_PROF_LOG_FILE_OPT },
+    { "deep-log-prog",                  1, 0, MR_DEEP_PROF_LOG_PROG_OPT },
     { "tabling-statistics",             0, 0, MR_TABLING_STATISTICS_OPT },
     { "trace-count",                    0, 0, MR_TRACE_COUNT_OPT },
     { "trace-count-if-exec",            1, 0, MR_TRACE_COUNT_IF_EXEC_OPT },
@@ -1584,6 +1594,38 @@ MR_process_options(int argc, char **argv)
 
             case MR_DEEP_PROF_DEBUG_FILE_OPT:
                 MR_deep_prof_debug_file_flag = MR_TRUE;
+                break;
+
+            case MR_DEEP_PROF_LOG_FILE_OPT:
+#if defined(MR_DEEP_PROFILING) && defined(MR_DEEP_PROFILING_LOG)
+                MR_deep_prof_log_file = fopen(MR_optarg, "w");
+                if (MR_deep_prof_log_file == NULL) {
+                    perror(MR_optarg);
+                    exit(1);
+                }
+#else
+                printf("Mercury runtime: `--deep-log-file' is specified "
+                    "in MERCURY_OPTIONS\n");
+                printf("but support for it is not enabled.\n");  
+                fflush(stdout);
+                exit(1);
+#endif
+                break;
+
+            case MR_DEEP_PROF_LOG_PROG_OPT:
+#if defined(MR_DEEP_PROFILING) && defined(MR_DEEP_PROFILING_LOG)
+                MR_deep_prof_log_file = popen(MR_optarg, "w");
+                if (MR_deep_prof_log_file == NULL) {
+                    perror(MR_optarg);
+                    exit(1);
+                }
+#else
+                printf("Mercury runtime: `--deep-log-prog' is specified "
+                    "in MERCURY_OPTIONS\n");
+                printf("but support for it is not enabled.\n");  
+                fflush(stdout);
+                exit(1);
+#endif
                 break;
 
             case MR_TABLING_STATISTICS_OPT:
@@ -2473,6 +2515,9 @@ mercury_runtime_terminate(void)
     if (MR_deep_profiling_save_results) {
         MR_write_out_profiling_tree();
     }
+  #ifdef MR_DEEP_PROFILING_LOG
+    (void) fclose(MR_deep_prof_log_file);
+  #endif
 #endif
 
 #ifdef MR_RECORD_TERM_SIZES

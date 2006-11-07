@@ -116,35 +116,39 @@ unsigned            MR_deep_prof_cur_call_seq = 0;
 
 #ifdef  MR_DEEP_PROFILING_STATISTICS
 
-int MR_deep_num_csd_nodes = 0;
-int MR_deep_num_pd_nodes = 0;
-int MR_deep_num_pd_array_slots = 0;
-int MR_deep_num_dynlist_nodes = 0;
+int     MR_deep_num_csd_nodes = 0;
+int     MR_deep_num_pd_nodes = 0;
+int     MR_deep_num_pd_array_slots = 0;
+int     MR_deep_num_dynlist_nodes = 0;
 
-int MR_dictionary_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
-int MR_closure_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
-int MR_method_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
+int     MR_dictionary_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
+int     MR_closure_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
+int     MR_method_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
 
-int MR_deep_prof_prep_normal_new = 0;
-int MR_deep_prof_prep_normal_old = 0;
-int MR_deep_prof_prep_special_new = 0;
-int MR_deep_prof_prep_special_old = 0;
-int MR_deep_prof_prep_ho_new = 0;
-int MR_deep_prof_prep_ho_old = 0;
-int MR_deep_prof_prep_method_new = 0;
-int MR_deep_prof_prep_method_old = 0;
-int MR_deep_prof_prep_callback_new = 0;
-int MR_deep_prof_prep_callback_old = 0;
-int MR_deep_prof_prep_tail_old = 0;
-int MR_deep_prof_prep_tail_new = 0;
+int     MR_deep_prof_prep_normal_new = 0;
+int     MR_deep_prof_prep_normal_old = 0;
+int     MR_deep_prof_prep_special_new = 0;
+int     MR_deep_prof_prep_special_old = 0;
+int     MR_deep_prof_prep_ho_new = 0;
+int     MR_deep_prof_prep_ho_old = 0;
+int     MR_deep_prof_prep_method_new = 0;
+int     MR_deep_prof_prep_method_old = 0;
+int     MR_deep_prof_prep_callback_new = 0;
+int     MR_deep_prof_prep_callback_old = 0;
+int     MR_deep_prof_prep_tail_old = 0;
+int     MR_deep_prof_prep_tail_new = 0;
 
-int MR_deep_prof_call_new = 0;
-int MR_deep_prof_call_rec = 0;
-int MR_deep_prof_call_old = 0;
-int MR_deep_prof_call_builtin_new = 0;
-int MR_deep_prof_call_builtin_old = 0;
+int     MR_deep_prof_call_new = 0;
+int     MR_deep_prof_call_rec = 0;
+int     MR_deep_prof_call_old = 0;
+int     MR_deep_prof_call_builtin_new = 0;
+int     MR_deep_prof_call_builtin_old = 0;
 
 #endif  /* MR_DEEP_PROFILING_STATISTICS */
+
+#ifdef MR_DEEP_PROFILING_LOG
+FILE    *MR_deep_prof_log_file = NULL;
+#endif
 
 void
 MR_deep_assert_failed(const MR_CallSiteDynamic *csd, const MR_Proc_Layout *pl,
@@ -666,6 +670,18 @@ MR_write_out_uci_proc_static(FILE *fp, const MR_Proc_Layout_UCI *proc_layout)
     MR_write_out_proc_static(fp, (const MR_Proc_Layout *) proc_layout);
 }
 
+#ifdef  MR_DEEP_PROFILING_LOG
+MR_bool MR_deep_prof_doing_logging = MR_FALSE;
+
+void
+MR_deep_log_proc_statics(FILE *fp)
+{
+    MR_deep_prof_doing_logging = MR_TRUE;
+    (*MR_address_of_write_out_proc_statics)(fp);
+    MR_deep_prof_doing_logging = MR_FALSE;
+}
+#endif  /* MR_DEEP_PROFILING_LOG */
+
 void
 MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
 {
@@ -685,6 +701,80 @@ MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
     }
 
     ps = proc_layout->MR_sle_proc_static;
+
+#ifdef  MR_DEEP_PROFILING_LOG
+    if (MR_deep_prof_doing_logging) {
+        procid = &proc_layout->MR_sle_proc_id;
+        if (MR_PROC_ID_IS_UCI(*procid)) {
+            fprintf(fp,
+                "proc_static_uci(%ld,\"%s\",\"%s\",\"%s\",\"%s\",%d,%d,[",
+                (long) proc_layout->MR_sle_proc_static,
+                procid->MR_proc_uci.MR_uci_type_name,
+                procid->MR_proc_uci.MR_uci_type_module,
+                procid->MR_proc_uci.MR_uci_def_module,
+                procid->MR_proc_uci.MR_uci_pred_name,
+                procid->MR_proc_uci.MR_uci_type_arity,
+                procid->MR_proc_uci.MR_uci_mode);
+        } else {
+            fprintf(fp,
+                "proc_static_user(%ld,%s,\"%s\",\"%s\",\"%s\",%d,%d,[",
+                (long) proc_layout->MR_sle_proc_static,
+                procid->MR_proc_user.MR_user_pred_or_func == MR_PREDICATE ?
+                    "p" : "f",
+                procid->MR_proc_user.MR_user_decl_module,
+                procid->MR_proc_user.MR_user_def_module,
+                procid->MR_proc_user.MR_user_name,
+                procid->MR_proc_user.MR_user_arity,
+                procid->MR_proc_user.MR_user_mode);
+        }
+
+        for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
+            if (i == 0) {
+                fputs("\n\t", fp);
+            } else {
+                fputs(",\n\t", fp);
+            }
+
+            switch (ps->MR_ps_call_sites[i].MR_css_kind) {
+                case MR_normal_call:
+                    fprintf(fp, "css_normal(%ld, %ld)",
+                        (long) &ps->MR_ps_call_sites[i],
+                        (long) &ps->MR_ps_call_sites[i].
+                            MR_css_callee_ptr_if_known->MR_sle_proc_static);
+                    break;
+
+                case MR_special_call:
+                    fprintf(fp, "css_special(%ld)",
+                        (long) &ps->MR_ps_call_sites[i]);
+                    break;
+
+                case MR_higher_order_call:
+                    fprintf(fp, "css_higher_order(%ld)",
+                        (long) &ps->MR_ps_call_sites[i]);
+                    break;
+
+                case MR_method_call:
+                    fprintf(fp, "css_method(%ld)",
+                        (long) &ps->MR_ps_call_sites[i]);
+                    break;
+
+                case MR_callback:
+                    fprintf(fp, "css_callback(%ld)",
+                        (long) &ps->MR_ps_call_sites[i]);
+                    break;
+
+                default:
+                    fprintf(fp, "css_unknown(%ld)",
+                        (long) &ps->MR_ps_call_sites[i]);
+                    break;
+            }
+        }
+
+        fprintf(fp, "]).\n");
+        return;
+    }
+#endif
+
     if (ps == NULL) {
         procid = &proc_layout->MR_sle_proc_id;
         if (MR_PROC_ID_IS_UCI(*procid)) {

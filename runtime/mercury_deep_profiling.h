@@ -352,6 +352,12 @@ extern	int	MR_deep_prof_call_builtin_old;
 
 #endif	/* MR_DEEP_PROFILING_STATISTICS */
 
+#ifdef MR_DEEP_PROFILING_LOG
+extern	FILE	*MR_deep_prof_log_file;
+
+extern	void	MR_deep_log_proc_statics(FILE *fp);
+#endif
+
 extern	void	MR_deep_assert_failed(const MR_CallSiteDynamic *csd,
 			const MR_Proc_Layout *pl, const MR_ProcStatic *ps,
 			const char *cond, const char *filename,
