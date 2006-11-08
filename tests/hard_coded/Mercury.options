@@ -54,6 +54,7 @@ MCFLAGS-switch_detect	=	--halt-at-warn
 MCFLAGS-trace_goal_1	=	--trace-flag=abc --trace-flag def
 MCFLAGS-trace_goal_env_1 =	--trace-flag=abc
 MCFLAGS-trace_goal_env_2 =	--trace-flag=abc
+MCFLAGS-trace_goal_3 = --trace-flag=abc
 MCFLAGS-trans_intermod_user_equality = --intermodule-optimization \
 				--transitive-intermodule-optimization
 MCFLAGS-trans_intermod_user_equality2 = --intermodule-optimization \
