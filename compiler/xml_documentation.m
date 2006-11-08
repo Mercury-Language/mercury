@@ -37,6 +37,7 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.
@@ -87,13 +88,18 @@
 
 :- interface.
 :- import_module term_to_xml.
+:- inst myinst ---> blank;code_and_comment(ground).
+:- mode myout == free >> myinst.
         % my latest typeclass
+
 :- typeclass tc(T) <= xmlable(T) where [
-    pred p(T, line_type),
-    mode p(in, out) is det,
+    pred p(T, line_type) <= x(T),
+    mode p(in, out(myinst)) is det,
     mode p(in, in) is semidet,
     func f(T) = string % Simple function
 ].
+
+:- typeclass x(T) where [].
 :- implementation.
 
 %-----------------------------------------------------------------------------%
@@ -306,7 +312,8 @@ get_comment_backwards(Comments, Line) = Comment :-
         PredXml = elem("preds", [], PredXmls),
 
         module_info_get_class_table(ModuleInfo, ClassTable),
-        map.foldl(class_documentation(Comments), ClassTable, [], ClassXmls),
+        map.foldl(class_documentation(Comments, PredTable),
+                ClassTable, [], ClassXmls),
         ClassXml = elem("typeclasses", [], ClassXmls),
 
         Xml = elem("module", [], [TypeXml, PredXml, ClassXml])
@@ -417,8 +424,18 @@ mer_type(_, builtin_type(builtin_type_int)) = elem("int", [], []).
 mer_type(_, builtin_type(builtin_type_float)) = elem("float", [], []).
 mer_type(_, builtin_type(builtin_type_string)) = elem("string", [], []).
 mer_type(_, builtin_type(builtin_type_character)) = elem("character", [], []).
-mer_type(_, higher_order_type(_, _, _, _)) = nyi("higher_order_type").
-mer_type(_, tuple_type(_, _)) = nyi("tuple_type").
+mer_type(TVarset, higher_order_type(Types, MaybeResult, _, _)) = Xml :-
+    XmlTypes = xml_list("higher_order_type_args", mer_type(TVarset), Types),
+    ( MaybeResult = yes(ResultType),
+        XmlReturn = elem("return_type", [], [mer_type(TVarset, ResultType)]),
+        XmlChildren = [XmlTypes, XmlReturn]
+    ; MaybeResult = no,
+        XmlChildren = [XmlTypes]
+    ),
+    Xml = elem("higher_order_type", [], XmlChildren).
+mer_type(TVarset, tuple_type(Types, _)) = Xml :-
+    XmlArgs = xml_list("tuple_types", mer_type(TVarset), Types),
+    Xml = elem("tuple", [], [XmlArgs]).
 mer_type(_, apply_n_type(_, _, _)) = nyi("apply_n_type").
 mer_type(_, kinded_type(_, _)) = nyi("kinded_type").
 
@@ -438,41 +455,33 @@ pred_documentation(C, _PredId, PredInfo, !Xml) :-
         Origin = origin_user(_),
         not check_marker(Markers, marker_class_method)
     ->
-        pred_info_get_typevarset(PredInfo, TVarset),
-        pred_info_get_exist_quant_tvars(PredInfo, Exists),
-
-        IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        Module = pred_info_module(PredInfo),
-        Name = pred_info_name(PredInfo),
-        PredName = qualified(Module, Name), 
-
-        pred_info_get_arg_types(PredInfo, Types),
-        pred_info_get_class_context(PredInfo, Constraints),
-        pred_info_context(PredInfo, Context),
-
-        Xml = predicate_documentation(C, TVarset, Exists,
-                        IsPredOrFunc, PredName, Types, Constraints, Context),
-
+        Xml = predicate_documentation(C, PredInfo),
         !:Xml = [Xml | !.Xml]
     ;
         true
     ).
 
-:- func predicate_documentation(comments,
-            tvarset, existq_tvars, pred_or_func, sym_name,
-            list(mer_type), prog_constraints, prog_context) = xml.
+:- func predicate_documentation(comments, pred_info) = xml.
 
-predicate_documentation(C, TVarset, Exists,
-        IsPredOrFunc, PredName, Types, Constraints, Context) = Xml :-
-    Arity0 = list.length(Types),
+predicate_documentation(C, PredInfo) = Xml :-
+    pred_info_get_typevarset(PredInfo, TVarset),
+    pred_info_get_exist_quant_tvars(PredInfo, Exists),
+
+    IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    Module = pred_info_module(PredInfo),
+    Name = pred_info_name(PredInfo),
+    PredName = qualified(Module, Name), 
+    Arity = pred_info_orig_arity(PredInfo),
+
+    Types = get_orig_arg_types(PredInfo),
+    pred_info_get_class_context(PredInfo, Constraints),
+    pred_info_context(PredInfo, Context),
     (
         IsPredOrFunc = predicate,
-        Tag = "predicate",
-        Arity = Arity0
+        Tag = "predicate"
     ;
         IsPredOrFunc = function,
-        Tag = "function",
-        Arity = Arity0 - 1
+        Tag = "function"
     ),
     Id = sym_name_and_arity_to_id(Tag, PredName, Arity),
 
@@ -482,10 +491,32 @@ predicate_documentation(C, TVarset, Exists,
     XmlExistVars = xml_list("pred_exist_vars", type_param(TVarset), Exists),
     XmlConstraints = prog_constraints(TVarset, Constraints),
 
+    pred_info_get_procedures(PredInfo, ProcTable),
+    map.foldl(pred_mode_documentation(C), ProcTable, [], XmlProcs),
+    XmlModes = elem("pred_modes", [], XmlProcs),
+
     Xml0 = elem(Tag, [attr("id", Id)],
-            [XmlName, XmlTypes, XmlContext, XmlExistVars, XmlConstraints]),
+            [XmlName, XmlTypes, XmlContext,
+             XmlExistVars, XmlConstraints, XmlModes]),
 
     Xml = maybe_add_comment(C, Context, Xml0).
+
+:- func get_orig_arg_types(pred_info) = list(mer_type).
+
+get_orig_arg_types(PredInfo) = Types :-
+    pred_info_get_arg_types(PredInfo, Types0),
+    Types = keep_last_n(pred_info_orig_arity(PredInfo), Types0).
+
+:- import_module require.
+
+:- func keep_last_n(int, list(T)) = list(T).
+
+keep_last_n(N, L0) =
+    ( list.drop(list.length(L0) - N, L0, L) ->
+        L
+    ;
+        func_error("keep_last_n")
+    ).
 
 :- func prog_constraints(tvarset, prog_constraints) = xml.
 
@@ -498,10 +529,120 @@ prog_constraints(TVarset, constraints(Univs, Exists)) = Xml :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred class_documentation(comments::in, class_id::in, hlds_class_defn::in,
+:- pred pred_mode_documentation(comments::in, proc_id::in, proc_info::in,
     list(xml)::in, list(xml)::out) is det.
 
-class_documentation(C, class_id(Name, Arity), ClassDefn, !Xml) :-
+pred_mode_documentation(_C, _ProcId, ProcInfo, !Xml) :-
+        % XXX do we ever need to remove arguments here?
+    proc_info_get_inst_varset(ProcInfo, IVarSet),
+    proc_info_declared_argmodes(ProcInfo, Modes),
+    proc_info_interface_determinism(ProcInfo, Determinism),
+
+    XmlModes = xml_list("modes", mer_mode(IVarSet), Modes),
+    XmlDet = determinism(Determinism),
+    Xml = elem("pred_mode", [], [XmlModes, XmlDet]),
+
+    !:Xml = [Xml | !.Xml].
+    
+:- func mer_mode(inst_varset, mer_mode) = xml.
+
+mer_mode(IVarset, A -> B) = Xml :-
+    XmlFrom = xml_list("from", mer_inst(IVarset), [A]),
+    XmlTo = xml_list("to", mer_inst(IVarset), [B]),
+    Xml = elem("inst_to_inst", [], [XmlFrom, XmlTo]).
+mer_mode(IVarset, user_defined_mode(Name, Args)) = Xml :-
+    Ref = attr("ref", sym_name_and_arity_to_id("mode", Name, length(Args))),
+    XmlArgs = xml_list("mode_args", mer_inst(IVarset), Args),
+    Xml = elem("user_defined_mode" , [Ref], [name(Name), XmlArgs]).
+
+:- func mer_inst(inst_varset, mer_inst) = xml.
+
+mer_inst(_, any(U)) = elem("any", [], [uniqueness(U)]).
+mer_inst(_, free) = elem("free", [], []).
+mer_inst(_, free(_)) = elem("free", [], []).
+mer_inst(IVarset, bound(U, BoundInsts)) = Xml :-
+    XmlUniq = uniqueness(U),
+    XmlInsts = xml_list("bound_insts", bound_inst(IVarset), BoundInsts),
+    Xml = elem("bound", [], [XmlUniq, XmlInsts]).
+mer_inst(_, ground(U, _)) = elem("ground", [], [uniqueness(U)]).
+mer_inst(_, not_reached) = elem("not_reached", [] , []).
+mer_inst(IVarset, inst_var(IVar)) = Xml :-
+    IVarName = varset.lookup_name(IVarset, IVar),
+    Xml = tagged_string("inst_var", IVarName).
+mer_inst(_, constrained_inst_vars(_, _)) = nyi("constrained_inst_vars").
+mer_inst(IVarset, defined_inst(Name)) = Xml :-
+    XmlName = inst_name(IVarset, Name),
+    Xml = elem("defined_inst", [], [XmlName]).
+mer_inst(IVarset, abstract_inst(SymName, Insts)) =
+    mer_inst(IVarset, defined_inst(user_inst(SymName, Insts))).
+
+:- func inst_name(inst_varset, inst_name) = xml.
+
+inst_name(IVarset, user_inst(Name, Insts)) = Xml :-
+    Ref = attr("ref", sym_name_and_arity_to_id("inst", Name, length(Insts))),
+    XmlName = name(Name),
+    XmlInsts = xml_list("inst_args", mer_inst(IVarset), Insts),
+    Xml = elem("user_inst", [Ref], [XmlName, XmlInsts]).
+inst_name(_, merge_inst(_, _)) = nyi("merge_inst").
+inst_name(_, unify_inst(_, _, _, _)) = nyi("unify_inst").
+inst_name(_, ground_inst(_, _, _, _)) = nyi("ground_inst").
+inst_name(_, any_inst(_, _, _, _)) = nyi("any_inst").
+inst_name(_, shared_inst(_)) = nyi("shared_inst").
+inst_name(_, mostly_uniq_inst(_)) = nyi("mostly_uniq_inst").
+inst_name(_, typed_ground(_, _)) = nyi("typed_ground").
+inst_name(_, typed_inst(_, _)) = nyi("typed_inst").
+
+:- func uniqueness(uniqueness) = xml.
+
+uniqueness(U) = tagged_string("uniqueness", string(U)).
+
+:- func bound_inst(inst_varset, bound_inst) = xml.
+
+bound_inst(IVarset, bound_functor(ConsId, Insts)) = Xml :-
+    XmlCons = cons_id(ConsId),
+    XmlInsts = xml_list("insts", mer_inst(IVarset), Insts),
+    Xml = elem("bound_functor", [], [XmlCons, XmlInsts]).
+
+:- func cons_id(cons_id) = xml.
+
+cons_id(cons(Name, Arity)) = elem("cons", [], [name(Name), arity(Arity)]).
+cons_id(int_const(I)) = tagged_int("int", I).
+cons_id(string_const(S)) = tagged_string("string", S).
+cons_id(float_const(F)) = tagged_float("float", F).
+cons_id(pred_const(_, _)) = nyi("pred_const").
+cons_id(type_ctor_info_const(_, _, _)) = nyi("type_ctor_info_const").
+cons_id(base_typeclass_info_const(_,_,_,_)) = nyi("base_typeclass_info_const").
+cons_id(type_info_cell_constructor(_)) = nyi("type_info_cell_constructor").
+cons_id(typeclass_info_cell_constructor) =
+    nyi("typeclass_info_cell_constructor").
+cons_id(tabling_info_const(_)) = nyi("tabling_info_const").
+cons_id(deep_profiling_proc_layout(_)) = nyi("deep_profiling_proc_layout").
+cons_id(table_io_decl(_)) = nyi("table_io_decl").
+
+:- func arity(int) = xml.
+
+arity(Arity) = tagged_int("arity", Arity).
+
+
+:- func determinism(determinism) = xml.
+
+determinism(detism_det) = tagged_string("determinism", "det").
+determinism(detism_semi) = tagged_string("determinism", "semi").
+determinism(detism_multi) = tagged_string("determinism", "multi").
+determinism(detism_non) = tagged_string("determinism", "non").
+determinism(detism_cc_non) = tagged_string("determinism", "cc_non").
+determinism(detism_cc_multi) = tagged_string("determinism", "cc_multi").
+determinism(detism_erroneous) = tagged_string("determinism", "erroneous").
+determinism(detism_failure) = tagged_string("determinism", "failure").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred class_documentation(comments::in, pred_table::in,
+    class_id::in, hlds_class_defn::in,
+    list(xml)::in, list(xml)::out) is det.
+
+class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
     ImportStatus = ClassDefn ^ class_status,
     ( status_defined_in_this_module(ImportStatus) = yes ->
         Id = sym_name_and_arity_to_id("class", Name, Arity),
@@ -516,7 +657,8 @@ class_documentation(C, class_id(Name, Arity), ClassDefn, !Xml) :-
                 prog_constraint(TVarset), ClassDefn ^ class_supers),
         XmlFundeps = xml_list("fundeps",
                 fundep(TVarset, Vars), ClassDefn ^ class_fundeps),
-        XmlMethods = class_methods(C, ClassDefn ^ class_interface),
+        XmlMethods = class_methods(C,
+                PredTable, ClassDefn ^ class_hlds_interface),
         XmlContext = prog_context(Context),
 
         Xml0 = elem("typeclass", [attr("id", Id)],
@@ -543,26 +685,13 @@ fundep(TVarset, Vars, fundep(Domain, Range)) = Xml :-
 fundep_2(Tag, TVarset, Vars, Set) =
     xml_list(Tag, type_param(TVarset), restrict_list_elements(Set, Vars)).
 
-:- func class_methods(comments, class_interface) = xml.
+:- func class_methods(comments, pred_table, hlds_class_interface) = xml.
 
-class_methods(_, class_interface_abstract) = elem("methods", [], []).
-class_methods(C, class_interface_concrete(Methods)) =
-    xml_list("methods", class_method(C), Methods).
-
-:- func class_method(comments, class_method) = xml.
-
-class_method(C, method_pred_or_func(TVarset, _, Exist, PredOrFunc,
-        Name, TypeAndModes, _, _, _, _, _, Constraints, Context)) =
-    predicate_documentation(C, TVarset, Exist, PredOrFunc,
-            Name, list.map(type_only, TypeAndModes), Constraints, Context).
-class_method(_, method_pred_or_func_mode(_, _, _, _, _, _, _, _)) =
-    nyi("method_pred_or_func_mode").
-
-:- func type_only(type_and_mode) = mer_type.
-
-type_only(type_only(T)) = T.
-type_only(type_and_mode(T, _)) = T.
-
+class_methods(C, PredTable, Methods) = Xml :-
+    AllPredIds = list.map(func(hlds_class_proc(PredId, _)) = PredId, Methods),
+    PredIds = list.sort_and_remove_dups(AllPredIds),
+    PredInfos = list.map(func(Id) = map.lookup(PredTable, Id), PredIds),
+    Xml = xml_list("methods", predicate_documentation(C), PredInfos).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -629,6 +758,10 @@ tagged_string(E, S) = elem(E, [], [data(S)]).
 :- func tagged_int(string, int) = xml.
 
 tagged_int(E, I) = elem(E, [], [data(int_to_string(I))]).
+
+:- func tagged_float(string, float) = xml.
+
+tagged_float(E, F) = elem(E, [], [data(float_to_string(F))]).
 
 %-----------------------------------------------------------------------------%
 
