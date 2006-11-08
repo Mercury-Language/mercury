@@ -1494,7 +1494,17 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
         % types and dummy types in the implementation.
         get_requirements_of_impl_exported_types(!.IntTypesMap, !.ImplTypesMap,
             NecessaryDummyTypeCtors, NecessaryEqvTypeCtors,
-            NecessaryImplImports),
+            NecessaryTypeImplImports),
+
+        % Work out which module imports in the implementation section of
+        % the interface are required by the definitions of typeclasses
+        % in the implementation.  Specifically, we require that ones
+        % that are needed by any constraints on the typeclasses.
+        get_requirements_of_impl_typeclasses(!.ImplItems,
+            NecessaryTypeclassImplImports),
+
+        NecessaryImplImports = NecessaryTypeImplImports `set.union`
+            NecessaryTypeclassImplImports,
 
         % If a type in the implementation section isn't dummy and doesn't have
         % foreign type alternatives, make it abstract.
@@ -2010,6 +2020,94 @@ gather_type_defns(!.InInterface, [Item - Context | ItemContexts],
 
 gather_type_defn(TypeCtor, Body, Item, DefnMap0, DefnMap) :-
     multi_map.set(DefnMap0, TypeCtor, Body - Item, DefnMap).
+ 
+:- pred get_requirements_of_impl_typeclasses(item_list::in,
+    set(module_name)::out) is det.
+
+get_requirements_of_impl_typeclasses(ImplItems, Modules) :-
+    list.foldl(get_requirements_of_impl_typeclass,
+        ImplItems, set.init, Modules).
+
+:- pred get_requirements_of_impl_typeclass(item_and_context::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+get_requirements_of_impl_typeclass(Item - _, !Modules) :-
+    (
+        Item = typeclass(Constraints, _, _, _, _, _),
+        list.foldl(get_requirements_of_impl_from_constraint, Constraints,
+            !Modules)
+    ;
+        ( Item = clause(_, _, _, _, _, _)
+        ; Item = type_defn(_, _, _, _, _)
+        ; Item = inst_defn(_, _, _, _, _)
+        ; Item = mode_defn(_, _, _, _, _)
+        ; Item = module_defn(_, _)
+        ; Item = pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)
+        ; Item = pred_or_func_mode(_, _, _, _, _, _, _)
+        ; Item = pragma(_, _)
+        ; Item = promise(_, _, _, _)
+        ; Item = instance(_, _, _, _, _, _)
+        ; Item = initialise(_, _, _)
+        ; Item = finalise(_, _, _)
+        ; Item = mutable(_, _, _, _, _, _)
+        ; Item = nothing(_)
+        )
+    ).
+ 
+:- pred get_requirements_of_impl_from_constraint(prog_constraint::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+get_requirements_of_impl_from_constraint(Constraint, !Modules) :-
+    Constraint = constraint(ClassName, Args),
+    % NOTE: this assumes that everything has been module qualified.
+    ( sym_name_get_module_name(ClassName, ModuleName) ->
+        svset.insert(ModuleName, !Modules)
+    ;
+        unexpected(this_file, "get_requirements_of_impl_from_constraint: " ++
+            "unknown typeclass in constraint.")
+    ),
+    get_modules_from_constraint_arg_types(Args, !Modules).
+
+:- pred get_modules_from_constraint_arg_types(list(mer_type)::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+get_modules_from_constraint_arg_types(ArgTypes, !Modules) :-
+    list.foldl(get_modules_from_constraint_arg_type, ArgTypes, !Modules).
+
+:- pred get_modules_from_constraint_arg_type(mer_type::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+get_modules_from_constraint_arg_type(ArgType, !Modules) :-
+    (
+        % Do nothing for these types - they cannot affect the set of 
+        % implementation imports in an interface file.
+        ( ArgType = variable(_, _)
+        ; ArgType = builtin(_)
+        )
+    ;
+        ArgType = defined(TypeName, Args, _),
+        ( sym_name_get_module_name(TypeName, ModuleName) ->
+            svset.insert(ModuleName, !Modules)
+        ; 
+            unexpected(this_file, "get_modules_from_constraint_arg: " ++
+                "unknown type encountered.")
+        ),
+        get_modules_from_constraint_arg_types(Args, !Modules)
+    ;
+        ( ArgType = tuple(Args, _)
+        ; ArgType = apply_n(_, Args, _)
+        ; ArgType = kinded(KindedType, _), Args = [KindedType]
+        ; ArgType = higher_order(Args0, MaybeRetType, _, _),
+          (
+                MaybeRetType = yes(RetType),
+                Args = [ RetType  | Args0 ]
+          ;
+                MaybeRetType = no,
+                Args = Args0
+          )
+        ),
+        get_modules_from_constraint_arg_types(Args, !Modules)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -7302,20 +7400,7 @@ item_needs_imports(module_defn(_, _)) = no.
 item_needs_imports(pragma(_, _)) = yes.
 item_needs_imports(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
 item_needs_imports(pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
-item_needs_imports(Item @ typeclass(_, _, _, _, _, _)) =
-    (
-        Item ^ tc_class_methods = abstract,
-        \+ (
-            list.member(Constraint, Item ^ tc_constraints),
-            Constraint = constraint(_, ConstraintArgs),
-            list.member(ConstraintArg, ConstraintArgs),
-            type_is_nonvar(ConstraintArg)
-        )
-    ->
-        no
-    ;
-        yes
-    ).
+item_needs_imports(typeclass(_, _, _, _, _, _)) = yes.
 item_needs_imports(instance(_, _, _, _, _, _)) = yes.
 item_needs_imports(promise(_, _, _, _)) = yes.
 item_needs_imports(initialise(_, _, _)) = yes.
