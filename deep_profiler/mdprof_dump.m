@@ -131,22 +131,22 @@ options_description =
     "Options:\n" ++
     "\t-h, --help\n" ++
     "\t\tDisplay this message.\n" ++
-    "\t--D csd\n" ++
+    "\t-D csd\n" ++
     "\t\tDump call-site dynamics.\n" ++
-    "\t--D pd\n" ++
+    "\t-D pd\n" ++
     "\t\tDump proc dynamics.\n" ++
-    "\t--D css\n" ++
+    "\t-D css\n" ++
     "\t\tDump call-site statics.\n" ++
-    "\t--D ps\n" ++
+    "\t-D ps\n" ++
     "\t\tDump proc statics.\n" ++
-    "\t--D restrict\n" ++
+    "\t-D restrict\n" ++
     "\t\tDo not dump proc and call-site statics that are\n" ++
     "\t\tnot referenced from the proc dynamics\n" ++
-    "\t--D clique\n" ++
+    "\t-D clique\n" ++
     "\t\tDump information about cliques.\n" ++
-    "\t--D rev\n" ++
+    "\t-D rev\n" ++
     "\t\tDump reverse links.\n" ++
-    "\t--D prop\n" ++
+    "\t-D prop\n" ++
     "\t\tDump propagated measurement information.\n".
 
 %----------------------------------------------------------------------------%
