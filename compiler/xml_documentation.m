@@ -86,22 +86,6 @@
     ;       code
     .
 
-:- interface.
-:- import_module term_to_xml.
-:- inst myinst ---> blank;code_and_comment(ground).
-:- mode myout == free >> myinst.
-        % my latest typeclass
-
-:- typeclass tc(T) <= xmlable(T) where [
-    pred p(T, line_type) <= x(T),
-    mode p(in, out(myinst)) is det,
-    mode p(in, in) is semidet,
-    func f(T) = string % Simple function
-].
-
-:- typeclass x(T) where [].
-:- implementation.
-
 %-----------------------------------------------------------------------------%
 
 xml_documentation(ModuleInfo, !IO) :-
@@ -114,11 +98,17 @@ xml_documentation(ModuleInfo, !IO) :-
         SrcResult = ok(SrcStream),
         build_comments(SrcStream, comments(map.init), Comments, !IO),
 
+            %
+            % XXX We should find the ":- module " declaration
+            % and get the comment from there.
+            %
+        ModuleComment = get_comment_forwards(Comments, 1),
+
         io.open_output(FileName, OpenResult, !IO),
         (
             OpenResult = ok(Stream),
-            ModuleInfoXmlDoc = module_info_xml_doc(Comments, ModuleInfo),
-            write_xml_doc(Stream, ModuleInfoXmlDoc, !IO)
+            MIXmlDoc = module_info_xml_doc(Comments, ModuleComment, ModuleInfo),
+            write_xml_doc(Stream, MIXmlDoc, !IO)
         ;
             OpenResult = error(Err),
             unable_to_open_file(FileName, Err, !IO)
@@ -299,10 +289,12 @@ get_comment_backwards(Comments, Line) = Comment :-
 %-----------------------------------------------------------------------------%
 
 :- type module_info_xml_doc
-    --->     module_info_xml_doc(comments, module_info).
+    --->     module_info_xml_doc(comments, string, module_info).
 
 :- instance xmlable(module_info_xml_doc) where [
-    (to_xml(module_info_xml_doc(Comments, ModuleInfo)) = Xml :-
+    (to_xml(module_info_xml_doc(Comments, ModuleComment, ModuleInfo)) = Xml :-
+        CommentXml = elem("comment", [], [data(ModuleComment)]),
+
         module_info_get_type_table(ModuleInfo, TypeTable),
         map.foldl(type_documentation(Comments), TypeTable, [], TypeXmls),
         TypeXml = elem("types", [], TypeXmls),
@@ -316,7 +308,7 @@ get_comment_backwards(Comments, Line) = Comment :-
                 ClassTable, [], ClassXmls),
         ClassXml = elem("typeclasses", [], ClassXmls),
 
-        Xml = elem("module", [], [TypeXml, PredXml, ClassXml])
+        Xml = elem("module", [], [CommentXml, TypeXml, PredXml, ClassXml])
     )
 ].
 
@@ -340,11 +332,12 @@ type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
 
         XmlName = name(TypeName),
         XmlTypeParams = xml_list("type_params", type_param(TVarset), TParams),
+        XmlVisibility = visibility(ImportStatus),
 
         Tag = type_xml_tag(TypeBody),
         Id = attr("id", sym_name_and_arity_to_id("type", TypeName, TypeArity)),
-        Children = [XmlName, XmlTypeParams, prog_context(Context) |
-                type_body(C, TVarset, TypeBody)],
+        Children = [XmlName, XmlTypeParams, XmlVisibility,
+                prog_context(Context) | type_body(C, TVarset, TypeBody)],
         Xml0 = elem(Tag, [Id], Children),
         Xml = maybe_add_comment(C, Context, Xml0),
 
@@ -472,6 +465,7 @@ predicate_documentation(C, PredInfo) = Xml :-
     Name = pred_info_name(PredInfo),
     PredName = qualified(Module, Name), 
     Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_import_status(PredInfo, ImportStatus),
 
     Types = get_orig_arg_types(PredInfo),
     pred_info_get_class_context(PredInfo, Constraints),
@@ -490,6 +484,7 @@ predicate_documentation(C, PredInfo) = Xml :-
     XmlTypes = xml_list("pred_types", mer_type(TVarset), Types),
     XmlExistVars = xml_list("pred_exist_vars", type_param(TVarset), Exists),
     XmlConstraints = prog_constraints(TVarset, Constraints),
+    XmlVisibility = visibility(ImportStatus),
 
     pred_info_get_procedures(PredInfo, ProcTable),
     map.foldl(pred_mode_documentation(C), ProcTable, [], XmlProcs),
@@ -497,7 +492,7 @@ predicate_documentation(C, PredInfo) = Xml :-
 
     Xml0 = elem(Tag, [attr("id", Id)],
             [XmlName, XmlTypes, XmlContext,
-             XmlExistVars, XmlConstraints, XmlModes]),
+             XmlExistVars, XmlConstraints, XmlVisibility, XmlModes]),
 
     Xml = maybe_add_comment(C, Context, Xml0).
 
@@ -569,7 +564,7 @@ mer_inst(_, not_reached) = elem("not_reached", [] , []).
 mer_inst(IVarset, inst_var(IVar)) = Xml :-
     IVarName = varset.lookup_name(IVarset, IVar),
     Xml = tagged_string("inst_var", IVarName).
-mer_inst(_, constrained_inst_vars(_, _)) = nyi("constrained_inst_vars").
+mer_inst(IVarSet, constrained_inst_vars(_, Inst)) = mer_inst(IVarSet, Inst).
 mer_inst(IVarset, defined_inst(Name)) = Xml :-
     XmlName = inst_name(IVarset, Name),
     Xml = elem("defined_inst", [], [XmlName]).
@@ -659,11 +654,12 @@ class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
                 fundep(TVarset, Vars), ClassDefn ^ class_fundeps),
         XmlMethods = class_methods(C,
                 PredTable, ClassDefn ^ class_hlds_interface),
+        XmlVisibility = visibility(ImportStatus),
         XmlContext = prog_context(Context),
 
         Xml0 = elem("typeclass", [attr("id", Id)],
                 [XmlName, XmlClassVars, XmlSupers,
-                XmlFundeps, XmlMethods, XmlContext]),
+                XmlFundeps, XmlMethods, XmlVisibility, XmlContext]),
 
         Xml = maybe_add_comment(C, Context, Xml0),
 
@@ -722,6 +718,22 @@ prog_constraint(TVarset, constraint(ClassName, Types)) = Xml :-
     XmlName = name(ClassName),
     XmlTypes = xml_list("constraint_types", mer_type(TVarset), Types),
     Xml = elem("constraint", [attr("ref", Id)], [XmlName, XmlTypes]).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- func visibility(import_status) = xml.
+
+visibility(Status) = tagged_string("visibility", Visibility) :-
+    ( status_defined_in_impl_section(Status) = yes ->
+        ( Status = status_abstract_exported ->
+            Visibility = "abstract"
+        ;
+            Visibility = "implementation"
+        )
+    ;
+        Visibility = "interface"
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
