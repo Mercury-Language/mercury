@@ -185,6 +185,8 @@ ORDINARY_PROGS=	\
 	solver_ite_inits \
 	space \
 	stable_sort \
+	stream_format \
+	stream_ignore_ws \
 	stream_test \
 	string_alignment \
 	string_alignment_bug \
@@ -577,6 +579,9 @@ nonascii_gen:	nonascii_gen.c
 
 stream_test.out: stream_test
 	./stream_test < stream_test.data > stream_test.out
+
+stream_ignore_ws.out: stream_ignore_ws
+	./stream_ignore_ws < stream_ignore_ws.data > stream_ignore_ws.out
 
 # The trace_goal_env_1 and trace_goal_env_2 test cases differ from each other
 # only in that the latter is executed with the TRACE_ABC environment variable

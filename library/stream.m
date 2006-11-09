@@ -20,6 +20,8 @@
 :- interface.
 
 :- import_module bool.
+:- import_module char.
+:- import_module list.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -28,6 +30,11 @@
 %
 
 :- type stream.name == string.
+
+:- type stream.result(Error)
+    --->    ok
+    ;       eof
+    ;       error(Error).
 
 :- type stream.result(T, Error)
     --->    ok(T)
@@ -270,6 +277,22 @@
     is cc_multi.
 
 %-----------------------------------------------------------------------------%
+%
+% Misc. operations on streams
+%
+
+    % A version of io.format that works for arbitrary string writers.
+    %
+:- pred stream.format(Stream::in, string::in, list(poly_type)::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
+
+    % Discard all the whitespace from the specified stream.
+    %
+:- pred stream.ignore_whitespace(Stream::in, stream.result(Error)::out,
+    State::di, State::uo)
+    is det <= stream.putback(Stream, char, State, Error).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -347,6 +370,32 @@ stream.input_stream_fold2_state_maybe_stop(Stream, Pred, T0, Res, !S) :-
         Res = error(T0, Error)
     ).
 
+%-----------------------------------------------------------------------------%
+
+stream.format(Stream, FormatString, Arguments, !State) :-
+    string.format(FormatString, Arguments, String),
+    put(Stream, String, !State).
+    
+%-----------------------------------------------------------------------------%
+    
+stream.ignore_whitespace(Stream, Result, !State) :-
+    get(Stream, CharResult, !State),
+    (
+        CharResult = error(Error),
+        Result = error(Error)
+    ;
+        CharResult = eof,
+        Result = eof
+    ;
+        CharResult = ok(Char),
+        ( is_whitespace(Char) ->
+            stream.ignore_whitespace(Stream, Result, !State)
+        ;
+            unget(Stream, Char, !State),
+            Result = ok
+        )
+    ).
+    
 %-----------------------------------------------------------------------------%
 :- end_module stream.
 %-----------------------------------------------------------------------------%

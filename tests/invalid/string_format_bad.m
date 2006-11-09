@@ -14,6 +14,7 @@
 :- import_module float.
 :- import_module int.
 :- import_module list.
+:- import_module stream.
 :- import_module string.
 
 main(!IO) :-
@@ -24,6 +25,7 @@ main(!IO) :-
     io.stdout_stream(OutputStream, !IO),
     io.format("%d", [s("x3")], !IO),
     io.format(OutputStream, "%d", [s("x4")], !IO),
+    stream.format(OutputStream, "%d", [s("x4")], !IO),
     io.format("%w", [i(5)], !IO),
     io.write_string(p(s("five")), !IO),
     F6 = "%s %f",

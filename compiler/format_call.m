@@ -9,11 +9,11 @@
 % File: format_call.m.
 % Author: zs.
 % 
-% The job of this module is to generate warnings about calls to string.format
-% and io.format in which the format string and the supplied lists of values
-% do not agree. The difficult part of this job is actually finding the values
-% of the variables representing the format string and the list of values to
-% be printed.
+% The job of this module is to generate warnings about calls to
+% string.format, io.format and stream.format in which the format string and
+% the supplied lists of values do not agree. The difficult part of this job
+% is actually finding the values of the variables representing the format
+% string and the list of values to be printed.
 %
 % The general approach is a backwards traversal of the procedure body. During
 % this traversal, we assign an id to every conjunction (considering a cond and
@@ -194,6 +194,11 @@ is_format_call(ModuleName, Name, Args, FormatStringVar, FormattedValuesVar) :-
         ( Args = [FormatStringVar, FormattedValuesVar, _IOIn, _IOOut]
         ; Args = [_Stream, FormatStringVar, FormattedValuesVar, _IOIn, _IOOut]
         )
+    ; ModuleName = mercury_std_lib_module_name("stream") ->
+        % Since we do this check after polymorphism there will have been
+        % a typeclassinfo inserted at the front of the argument list.
+        Args = [_TC_InfoForStream, _Stream, FormatStringVar,
+            FormattedValuesVar, _StateIn, _StateOut]
     ;
         fail
     ).

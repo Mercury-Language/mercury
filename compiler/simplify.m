@@ -2777,7 +2777,8 @@ case_list_contains_trace([Case0 | Cases0], [Case | Cases], !ContainsTrace) :-
                                         % typeclass_infos.
                 format_calls            :: bool,
                                         % Do we have any calls to
-                                        % string.format and io.format?
+                                        % string.format, stream.format and
+                                        % io.format?
                 inside_dupl_for_switch  :: bool,
                                         % Are we currently inside a goal
                                         % that was duplicated for a switch?

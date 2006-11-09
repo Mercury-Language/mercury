@@ -14,6 +14,7 @@
 :- import_module float.
 :- import_module int.
 :- import_module list.
+:- import_module stream.
 :- import_module string.
 
 main(!IO) :-
@@ -36,6 +37,7 @@ main(!IO) :-
         V6 = [s("six"), V6A],
         copy(V6, C6),
         io.format(OutputStream, F6, C6, !IO),
+        stream.format(OutputStream, F6, C6, !IO),
         make_bool(7, T7),
         F7 = "%d %s %d",
         (
