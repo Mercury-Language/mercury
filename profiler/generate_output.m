@@ -6,8 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% generate_output.m
-%
+% File: generate_output.m
 % Main author: petdr.
 %
 % Takes the prof structure and generates the output.
@@ -30,7 +29,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_output.main(prof::in, map(string, int)::out, output::out,
+:- pred generate_prof_output(prof::in, map(string, int)::out, output::out,
     io::di, io::uo) is det.
 
 :- func checked_float_divide(float, float) = float.
@@ -47,10 +46,11 @@
 :- import_module list.
 :- import_module rbtree.
 :- import_module relation.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
-    % rbtrees are used because they allow duplicate values to be stored.
+    % We use rbtrees because they allow duplicate values to be stored.
     % This means that we can then convert to a sorted list of names which
     % can be used to lookup the output_prof map when we actually output.
 :- type profiling
@@ -71,7 +71,7 @@
 
 %-----------------------------------------------------------------------------%
 
-generate_output.main(Prof, IndexMap, Output, !IO) :-
+generate_prof_output(Prof, IndexMap, Output, !IO) :-
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 
     % Get intitial values of use.
@@ -104,9 +104,10 @@ process_prof_node_list([PN | PNs], Prof, VeryVerbose, !OutputProf, !IO) :-
     process_prof_node(PN, Prof, !OutputProf),
     process_prof_node_list(PNs, Prof, VeryVerbose, !OutputProf, !IO).
 
-    % process_prof_node:
-    % This is the main function.  It converts the prof_node
-    % structure to the output_prof structure.
+    % process_prof_node(ProfNode, Prof, !OutputProf):
+    %
+    % This is the main function.  It converts the prof_node structure
+    % to the output_prof structure.
     %
 :- pred process_prof_node(prof_node::in, prof::in,
     profiling::in, profiling::out) is det.
@@ -114,20 +115,20 @@ process_prof_node_list([PN | PNs], Prof, VeryVerbose, !OutputProf, !IO) :-
 process_prof_node(ProfNode, Prof, !OutputProf) :-
     prof_node_type(ProfNode, ProfNodeType),
     ( ProfNodeType = predicate ->
-        generate_output.single_predicate(ProfNode, Prof, !OutputProf)
+        generate_output_for_single_predicate(ProfNode, Prof, !OutputProf)
     ;
         true
-        % generate_output.cycle(ProfNode, Prof, OutputProf0,
-        %   OutputProf)
+        % generate_output.cycle(ProfNode, Prof, OutputProf0, OutputProf)
     ).
 
-    % generate_output.cycle
+    % generate_output_for_cycle(ProfNode, Prof, !OutputProf):
+    %
     % XXX
     %
-:- pred generate_output.cycle(prof_node::in, prof::in,
+:- pred generate_output_for_cycle(prof_node::in, prof::in,
     profiling::in, profiling::out) is det.
 
-generate_output.cycle(ProfNode, Prof, !OutputProf) :-
+generate_output_for_cycle(ProfNode, Prof, !OutputProf) :-
     prof_get_entire(Prof, Scale, _Units, IntTotalCounts, _, _, _CycleMap),
     TotalCounts = float.float(IntTotalCounts),
 
@@ -136,9 +137,8 @@ generate_output.cycle(ProfNode, Prof, !OutputProf) :-
 
     !.OutputProf = profiling(InfoMap0, CallTree0, FreeTree),
 
-    % Calculate proportion of time in current predicate and its
-    % descendents as a percentage.
-    %
+    % Calculate proportion of time in current predicate and its descendants
+    % as a percentage.
     InitialFloat = float.float(Initial),
     ( TotalCounts = 0.0 ->
         DescPercentage = 0.0
@@ -148,7 +148,7 @@ generate_output.cycle(ProfNode, Prof, !OutputProf) :-
 
     % Calculate the self time spent in the current predicate.
     % Calculate the descendant time, which is the time spent in the
-    % current predicate and its descendants
+    % current predicate and its descendants.
     SelfTime = InitialFloat * Scale,
     DescTime = (InitialFloat + Prop) * Scale,
 
@@ -160,13 +160,14 @@ generate_output.cycle(ProfNode, Prof, !OutputProf) :-
 
     !:OutputProf = profiling(InfoMap, CallTree, FreeTree).
 
-    % generate_output.single_predicate:
+    % generate_output_for_single_predicate(ProfNode, Prof, !OutputProf):
+    %
     % Fills out the output_prof structure when pred is a single predicate.
     %
-:- pred generate_output.single_predicate(prof_node::in, prof::in,
+:- pred generate_output_for_single_predicate(prof_node::in, prof::in,
     profiling::in, profiling::out) is det.
 
-generate_output.single_predicate(ProfNode, Prof, !OutputProf) :-
+generate_output_for_single_predicate(ProfNode, Prof, !OutputProf) :-
     prof_get_entire(Prof, Scale, _Units, IntTotalCounts, _, _, CycleMap),
     TotalCounts = float.float(IntTotalCounts),
 
@@ -185,7 +186,7 @@ generate_output.single_predicate(ProfNode, Prof, !OutputProf) :-
         Name = LabelName ++ construct_name(NameList),
 
         % Calculate proportion of time in current predicate and its
-        % descendents as a percentage.
+        % descendants as a percentage.
         % Calculate proportion of time in current predicate
         % as a percentage.
         InitialFloat = float.float(Initial),
@@ -193,8 +194,7 @@ generate_output.single_predicate(ProfNode, Prof, !OutputProf) :-
             DescPercentage = 0.0,
             FlatPercentage = 0.0
         ;
-            DescPercentage = (InitialFloat + Prop) / TotalCounts
-                * 100.0,
+            DescPercentage = (InitialFloat + Prop) / TotalCounts * 100.0,
             FlatPercentage = InitialFloat / TotalCounts * 100.0
         ),
 
@@ -210,16 +210,11 @@ generate_output.single_predicate(ProfNode, Prof, !OutputProf) :-
         process_prof_node_children(ChildList, CycleNum, CycleMap,
             Prof, OutputChildList, OutputCycleChildList),
 
-        OutputProfNode = output_prof(
-            Name,           CycleNum,
-            DescPercentage,
-            FlatPercentage, SelfTime,
-            DescTime,       TotalCalls,
-            SelfCalls,
-            OutputParentList,
-            OutputChildList,
-            OutputCycleParentList,
-            OutputCycleChildList
+        OutputProfNode = output_prof(Name, CycleNum,
+            DescPercentage, FlatPercentage, SelfTime, DescTime,
+            TotalCalls, SelfCalls,
+            OutputParentList, OutputChildList,
+            OutputCycleParentList, OutputCycleChildList
         ),
 
         map.det_insert(InfoMap0, LabelName, OutputProfNode, InfoMap),
@@ -233,8 +228,9 @@ generate_output.single_predicate(ProfNode, Prof, !OutputProf) :-
     ).
 
     % construct_name:
-    % When more then one predicate maps to the same address.  This predicate
+    % When more then one predicate maps to the same address, this predicate
     % will build a string of all the different names separated by 'or's.
+    %
 :- func construct_name(list(string)) = string.
 
 construct_name([]) = "".
@@ -244,7 +240,8 @@ construct_name([Name | Names]) = NameStr :-
     string.append(NameStr1, NameStr0, NameStr).
 
     % process_prof_node_parents:
-    %   generate the parents output structure.
+    %
+    % Generate the parents output structure.
     %
 :- pred process_prof_node_parents(list(pred_info)::in, float::in, float::in,
     int::in, int::in, cycle_map::in, list(parent)::out, list(parent)::out)
@@ -258,10 +255,12 @@ process_prof_node_parents(Parents0, SelfTime, DescTime, TotalCalls0, CycleNum,
     process_prof_node_parents_2(Parents, SelfTime, DescTime, FltTotalCalls,
         CycleMap, OutputParentList).
 
-    % remove_cycle_members
-    %   removes any members of the same cycle from the parent listing
-    %   of a predicate. Then adjusts the total calls so as not to include
-    %   that predicate.
+    % remove_cycle_members(PredInfos, CycleNum, CycleMap, !TotalCalls, List,
+    %   OutputCycleParentList):
+    %
+    % Removes any members of the same cycle from the parent listing
+    % of a predicate. Then adjusts the total calls so as not to include
+    % that predicate.
     %
 :- pred remove_cycle_members(list(pred_info)::in, int::in, cycle_map::in,
     int::in, int::out, list(pred_info)::out, list(parent)::out) is det.
@@ -309,10 +308,8 @@ process_prof_node_parents_3([PN | PNs], SelfTime, DescTime, TotalCalls,
         CycleMap, !Output) :-
     pred_info_get_entire(PN, LabelName, Calls),
 
-    (
-        % if parent member of cycle
-        map.search(CycleMap, LabelName, ParentCycleNum0)
-    ->
+    % Check if the parent is a member of a cycle.
+    ( map.search(CycleMap, LabelName, ParentCycleNum0) ->
         ParentCycleNum = ParentCycleNum0
     ;
         ParentCycleNum = 0
@@ -414,15 +411,16 @@ process_prof_node_children_2([PN | PNs], Prof, !Output) :-
     rbtree.insert_duplicate(!.Output, Calls, Child, !:Output),
     process_prof_node_children_2(PNs, Prof, !Output).
 
-    % assign_index_numbers:
+    % assign_index_numbers(IndexMap, RevList, List):
+    %
     % Reverses the output list so that the predicates which account for
     % most of the time come first, and then assigns index numbers.
     %
 :- pred assign_index_numbers(map(string, int)::out,
     list(string)::in, list(string)::out) is det.
 
-assign_index_numbers(IndexMap, List0, List) :-
-    list.reverse(List0, List),
+assign_index_numbers(IndexMap, RevList, List) :-
+    list.reverse(RevList, List),
     assign_index_numbers_2(List, 1, map.init, IndexMap).
 
 :- pred assign_index_numbers_2(list(string)::in, int::in,
@@ -430,7 +428,7 @@ assign_index_numbers(IndexMap, List0, List) :-
 
 assign_index_numbers_2([], _, !IndexMap).
 assign_index_numbers_2([X0 | Xs0], N, !IndexMap) :-
-    map.det_insert(!.IndexMap, X0, N, !:IndexMap),
+    svmap.det_insert(X0, N, !IndexMap),
     assign_index_numbers_2(Xs0, N + 1, !IndexMap).
 
 :- func profiling_init = profiling.

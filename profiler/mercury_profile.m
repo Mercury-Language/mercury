@@ -9,15 +9,12 @@
 % Mercury profiler
 % Main author: petdr.
 %
-% Notes:
-%   Processes the Prof.* and the *.prof files to produce an output very
-%   similar to `gprof'
+% Processes the Prof.* and the *.prof files to produce an output very similar
+% to `gprof'
 %
-%   Based on the profiling scheme described in [1].
-%
-%   [1] Graham, Kessler and McKusick "Gprof: a call graph execution
-%       profiler". In Proceedings of the 1982 SIGPLAN Symposium
-%       on Compiler Construction, pages 120-126.
+% Based on the profiling scheme described in the paper: Graham, Kessler and
+% McKusick "Gprof: a call graph execution profiler", Proceedings of the 1982
+% SIGPLAN Symposium on Compiler Construction, pages 120-126.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -161,17 +158,17 @@ main_2(no, Args, !IO) :-
         globals.io_lookup_bool_option(verbose, Verbose, !IO),
 
         maybe_write_string(Verbose, "% Processing input files...", !IO),
-        process_file.main(Prof0, CallGraph0, !IO),
+        process_profiling_data_files(Prof0, CallGraph0, !IO),
         maybe_write_string(Verbose, " done\n", !IO),
 
         (
             CallGraphOpt = yes,
             maybe_write_string(Verbose, "% Building call graph...", !IO),
-            call_graph.main(Args, CallGraph0, CallGraph, !IO),
+            build_call_graph(Args, CallGraph0, CallGraph, !IO),
             maybe_write_string(Verbose, " done\n", !IO),
 
             maybe_write_string(Verbose, "% Propagating counts...", !IO),
-            propagate.counts(CallGraph, Prof0, Prof, !IO),
+            propagate_counts(CallGraph, Prof0, Prof, !IO),
             maybe_write_string(Verbose, " done\n", !IO)
         ;
             CallGraphOpt = no,
@@ -179,11 +176,11 @@ main_2(no, Args, !IO) :-
         ),
 
         maybe_write_string(Verbose, "% Generating output...", !IO),
-        generate_output.main(Prof, IndexMap, OutputProf, !IO),
+        generate_prof_output(Prof, IndexMap, OutputProf, !IO),
         maybe_write_string(Verbose, " done\n", !IO),
 
         io.set_output_stream(StdOut, _, !IO),
-        output.main(OutputProf, IndexMap, !IO),
+        output_profile(OutputProf, IndexMap, !IO),
         io.nl(!IO)
     ).
 

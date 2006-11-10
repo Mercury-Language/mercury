@@ -6,8 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% process_file.m
-%
+% File: process_file.m
 % Main author: petdr.
 %
 % Processs the files that contain the label declarations, label counts and
@@ -27,8 +26,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_file.main(prof::out, relation(string)::out, io::di, io::uo)
-    is det.
+:- pred process_profiling_data_files(prof::out, relation(string)::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -52,7 +51,7 @@
 
 %-----------------------------------------------------------------------------%
 
-process_file.main(Prof, DynamicCallGraph, !IO) :-
+process_profiling_data_files(Prof, DynamicCallGraph, !IO) :-
     globals.io_lookup_bool_option(very_verbose, VVerbose, !IO),
     globals.io_lookup_string_option(declfile, DeclFile, !IO),
     globals.io_lookup_string_option(countfile, CountFile, !IO),
@@ -103,13 +102,14 @@ process_file.main(Prof, DynamicCallGraph, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % process_addr_decl:
+    % process_addr_decl(AddrDeclMap, ProfNodeMap, !IO):
+    %
     % Reads in the Prof.Decl file.
     % Builds the addrdecl map which associates label names(key)
     % with label addresses.
     % Also builds the prof_node_map which associates label addresses
-    % with the prof_node structure.  Initialises and inserts the
-    % label name into the structure at the same time.
+    % with the prof_node structure.  Initialises and inserts the label name
+    % into the structure at the same time.
     %
 :- pred process_addr_decl(addrdecl::out, prof_node_map::out,
     io::di, io::uo) is det.
@@ -154,9 +154,11 @@ process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % process_addr:
-    % Reads in the Prof.Counts file and stores all the counts in the
-    % prof_node structure.  Also sums the total counts at the same time.
+    % process_addr(!ProfNodeMap, WhatToProfile, Scale, Units, TotalCounts,
+    %   !IO):
+    %
+    % Reads in the Prof.Counts file and stores all the counts in the prof_node
+    % structure. Also sums the total counts at the same time.
     %
 :- pred process_addr(prof_node_map::in, prof_node_map::out,
     what_to_profile::out, float::out, string::out, int::out,
@@ -209,9 +211,8 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
             svmap.set(LabelAddr, ProfNode, !ProfNodeMap),
             !:TotalCounts = !.TotalCounts + Count
         ;
-            io.format("\nWarning address " ++
-                "%d not found!  Ignoring address and " ++
-                "continuing computation.\n",
+            io.format("\nWarning address %d not found!  " ++
+                "Ignoring address and continuing computation.\n",
                 [i(LabelAddr)], !IO)
         ),
         process_addr_2(!TotalCounts, !ProfNodeMap, !IO)
@@ -221,7 +222,8 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % process_addr_pair:
+    % process_addr_pair(!ProfNodeMap, !AddrDecl, DynamicCallGraph, !IO):
+    %
     % Reads in the Prof.CallPair file and stores the data in the relevant
     % lists of the prof_node structure.  Also calculates the number of
     % times a predicate is called.
@@ -259,19 +261,18 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
         read_label_addr(CalleeAddr, !IO),
         read_int(Count, !IO),
 
-        % Get child and parent information
+        % Get child and parent information.
         lookup_addr(CallerAddr, CallerProfNode0, !AddrDecl, !ProfNodeMap),
         lookup_addr(CalleeAddr, CalleeProfNode0, !AddrDecl, !ProfNodeMap),
         prof_node_get_pred_name(CallerProfNode0, CallerName),
         prof_node_get_pred_name(CalleeProfNode0, CalleeName),
 
-        % Insert child information
-
+        % Insert child information.
         prof_node_concat_to_child(CalleeName, Count, CallerProfNode0,
             CallerProfNode),
         svmap.set(CallerAddr, CallerProfNode, !ProfNodeMap),
 
-        % Update the total calls field if not self recursive
+        % Update the total calls field if not self recursive.
         ( CalleeAddr \= CallerAddr ->
             prof_node_get_total_calls(CalleeProfNode0, TotalCalls0),
             TotalCalls = TotalCalls0 + Count,
@@ -283,7 +284,7 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
             prof_node_set_self_calls(Count, CalleeProfNode0, CalleeProfNode)
         ),
 
-        % Insert parent information
+        % Insert parent information.
         svmap.set(CalleeAddr, CalleeProfNode, !ProfNodeMap),
 
         % Add edge to call graph if generating dynamic call graph.
@@ -303,8 +304,9 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
 
 %-----------------------------------------------------------------------------%
 
-    % process_library_callgraph:
-    %   XXX
+    % process_library_callgraph(LibraryATSort, LibPredMap, !IO):
+    %
+    % XXX
     %
 :- pred process_library_callgraph(list(string)::out, map(string, unit)::out,
     io::di, io::uo) is det.

@@ -6,8 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% prof_info.m
-
+% File: prof_info.m
 % Main author: petdr.
 %
 % Declare the main data structures for mercury.profile and their access
@@ -28,16 +27,16 @@
 %-----------------------------------------------------------------------------%
 
     % prof: Data structure which contains ALL the relevant info for use
-    %   in generating the output.
+    % in generating the output.
 :- type prof.
 
-    % addrdecl = map(label_name, label_address)
+    % Maps label names to label addresses.
 :- type addrdecl    ==  map(string, int).
 
-    % prof_node_map = map(label_address, prof_node)
+    % Maps label addresses to prof nodes.
 :- type prof_node_map   ==  map(int, prof_node).
 
-    % cycle_map == map(predicate_name, cycle it is in).
+    % Maps predicate names to the cycle the predicate is in.
 :- type cycle_map   ==  map(string, int).
 
     % prof_node: Contains all the info used for output, for a single pred.
@@ -230,7 +229,7 @@
                                         % address.
             )
     ;       cycle_node(
-                % A node which is built up with more then one predicate
+                % A node which is built up with more than one predicate
                 % and is a cycle.
 
                 cycle_name              :: string,
@@ -262,7 +261,8 @@
 %-----------------------------------------------------------------------------%
 
     % get_prof_node:
-    %   Gets the prof_node given a label name.
+    %
+    % Gets the prof_node given a label name.
     %
 get_prof_node(Pred, AddrMap, ProfNodeMap, ProfNode) :-
     map.lookup(AddrMap, Pred, Key),
@@ -392,7 +392,7 @@ prof_node_concat_to_name_list(_, cycle_node(_, _, _, _, _, _, _), _) :-
 prof_node_concat_to_member(Name, Count, cycle_node(A, B, C, D, CList, F, G),
     cycle_node(A, B, C, D, [pred_info(Name,Count) | CList], F, G)).
 prof_node_concat_to_member(_, _, pred_node(_, _, _, _, _, _, _, _, _), _) :-
-        error("prof_node_concat_to_member: pred_node has no members\n").
+    error("prof_node_concat_to_member: pred_node has no members\n").
 
 %-----------------------------------------------------------------------------%
 

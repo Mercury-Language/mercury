@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: options.m.
 % Main author: fjh.
-
-% This defines the stuff necessary so that getopt.m
-% can parse the command-line options.
-
+%
+% This defines the stuff necessary so that getopt.m can parse the command line
+% options.
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

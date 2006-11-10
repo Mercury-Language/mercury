@@ -6,8 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% call_graph.m
-%
+% File: call_graph.m
 % Main author: petdr.
 %
 % Responsible for building the static call graph. The dynamic call graph is
@@ -27,7 +26,7 @@
 %-----------------------------------------------------------------------------%
 
 
-:- pred call_graph.main(list(string)::in,
+:- pred build_call_graph(list(string)::in,
     relation(string)::in, relation(string)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -42,10 +41,11 @@
 :- import_module bool.
 :- import_module maybe.
 :- import_module require.
+:- import_module svrelation.
 
 %-----------------------------------------------------------------------------%
 
-call_graph.main(Args, !StaticCallGraph, !IO) :-
+build_call_graph(Args, !StaticCallGraph, !IO) :-
     globals.io_lookup_bool_option(dynamic_cg, Dynamic, !IO),
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     %
@@ -61,6 +61,7 @@ call_graph.main(Args, !StaticCallGraph, !IO) :-
     ).
 
     % build_static_call_graph:
+    %
     % Builds the static call graph located in the *.prof files.
     %
 :- pred build_static_call_graph(list(string)::in, bool::in,
@@ -70,6 +71,7 @@ build_static_call_graph(Files, VeryVerbose, !StaticCallGraph, !IO) :-
     list.foldl2(process_prof_file(VeryVerbose), Files, !StaticCallGraph, !IO).
 
     % process_prof_file:
+    %
     % Puts all the Caller and Callee label pairs from File into the
     % static call graph relation.
     %
@@ -103,8 +105,7 @@ process_prof_file_2(!StaticCallGraph, !IO) :-
         read_label_name(CalleeLabel, !IO),
         relation.lookup_element(!.StaticCallGraph, CallerLabel, CallerKey),
         relation.lookup_element(!.StaticCallGraph, CalleeLabel, CalleeKey),
-        relation.add(!.StaticCallGraph, CallerKey, CalleeKey,
-            !:StaticCallGraph),
+        svrelation.add(CallerKey, CalleeKey, !StaticCallGraph),
         process_prof_file_2(!StaticCallGraph, !IO)
     ;
         true

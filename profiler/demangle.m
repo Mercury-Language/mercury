@@ -9,8 +9,7 @@
 % File: demangle.m
 % Author: fjh
 %
-% A mercury symbol demangler.
-% This is used to convert symbol names back
+% A Mercury symbol demangler. This is used to convert symbol names back
 % into a form that users can understand.
 %
 % BEWARE: the code here is duplicated in util/mdemangle.c,

@@ -6,9 +6,10 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% read.m: Input predicates for use with mercury_profile
-%
+% File: read.m.
 % Main author: petdr.
+%
+% Input predicates for use with mercury_profile.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -67,8 +68,8 @@ maybe_read_label_addr(MaybeLabelAddr, !IO) :-
             ( string.base_string_to_int(16, LabelAddrStr, LabelAddrHex) ->
                 MaybeLabelAddr = yes(LabelAddrHex)
             ;
-                error("maybe_read_label_addr: Label " ++
-                    "address not hexadecimal or integer\n")
+                error("maybe_read_label_addr: " ++
+                    "Label address not hexadecimal or integer\n")
             )
         )
     ;

@@ -6,9 +6,10 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% prof_debug.m: Debuging predicates for the mercury profiler
-%
+% File: prof_debug.m.
 % Main author: petdr.
+%
+% Debugging predicates for the Mercury profiler.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -23,6 +24,7 @@
 :- import_module string.
 
     % output_cliques:
+    %
     % Used to check that the topological ordering is being done correctly.
     %
 :- pred output_cliques(list(set(string))::in, io::di, io::uo) is det.

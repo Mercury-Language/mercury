@@ -6,12 +6,11 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% atsort_callgraph.m
-%
+% File: atsort_callgraph.m.
 % Main author: petdr.
 %
 % Takes a list of files which contains the callgraph of a Mercury module
-% and approximately topologically sorts them to std out.
+% and approximately topologically sorts them to standard output.
 %
 %-----------------------------------------------------------------------------%
 

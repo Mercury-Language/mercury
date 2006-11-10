@@ -6,11 +6,10 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% output.m
-%
+% File: output.m
 % Main author: petdr.
 %
-% Prints out the output.
+% Prints out the output of the profiler.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -27,7 +26,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred output.main(output::in, map(string, int)::in, io::di, io::uo) is det.
+:- pred output_profile(output::in, map(string, int)::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -47,7 +47,7 @@
 
 %-----------------------------------------------------------------------------%
 
-output.main(Output, IndexMap, !IO) :-
+output_profile(Output, IndexMap, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.get_what_to_profile(Globals, WhatToProfile),
     what_to_profile(WhatToProfileString, WhatToProfile),
@@ -243,11 +243,11 @@ output_formatted_prof_node(ProfNode, Index, IndexMap, !IO) :-
         io.format("%67s", [s("<spontaneous>\n")], !IO)
     ;
         list.sort(CycleParentList, SortedCycleParentList),
-        output_formatted_cycle_parent_list(SortedCycleParentList,
-            IndexMap, !IO),
+        output_formatted_cycle_parent_list(SortedCycleParentList, IndexMap,
+            !IO),
         list.sort(ParentList, SortedParentList),
-        output_formatted_parent_list(SortedParentList, IndexMap,
-            TotalCalls, !IO)
+        output_formatted_parent_list(SortedParentList, IndexMap, TotalCalls,
+            !IO)
     ),
 
 
@@ -297,12 +297,13 @@ output_formatted_parent_list([Parent | Parents], IndexMap, TotalCalls, !IO) :-
     Parent = parent(LabelName, CycleNum, Self, Descendant, Calls),
     Name = construct_name(LabelName, CycleNum),
     Index = IndexMap ^ det_elem(LabelName),
-    io.format("%20.2f %11.2f %7d/%-11d %s [%d]\n", [f(Self),
-        f(Descendant), i(Calls), i(TotalCalls),
-        s(Name), i(Index)], !IO),
+    io.format("%20.2f %11.2f %7d/%-11d %s [%d]\n",
+        [f(Self), f(Descendant), i(Calls), i(TotalCalls), s(Name), i(Index)],
+        !IO),
     output_formatted_parent_list(Parents, IndexMap, TotalCalls, !IO).
 
-    % output_formatted_cycle_child_list
+    % output_formatted_cycle_child_list:
+    %
     % Outputs the children of a procedure that are in the same cycle.
     %
 :- pred output_formatted_cycle_child_list(list(child)::in,
@@ -318,6 +319,7 @@ output_formatted_cycle_child_list([Child | Childs], IndexMap, !IO) :-
     output_formatted_cycle_child_list(Childs, IndexMap, !IO).
 
     % output_formatted_child_list:
+    %
     % outputs the child list of the current procedure.
     %
 :- pred output_formatted_child_list(list(child)::in, map(string, int)::in,
@@ -419,11 +421,8 @@ output.flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap, !IO) :-
     string.int_to_string(Index, IndexStr0),
     string.append_list(["[", IndexStr0, "] "], IndexStr),
     io.format("%5.1f %10.2f %8.2f %8d %8.2f %8.2f %s %s\n",
-        [ f(Percentage),    f(CumTime),
-          f(Self),      i(Calls),
-          f(SelfMs),        f(DescMs),
-          s(FullName),      s(IndexStr)
-        ],
+        [f(Percentage), f(CumTime), f(Self), i(Calls),
+        f(SelfMs), f(DescMs), s(FullName), s(IndexStr)],
         !IO),
 
     output.flat_profile(LNs, CumTime, InfoMap, IndexMap, !IO).
@@ -448,7 +447,8 @@ output_alphabet_listing_2([Name - Index | T], !IO) :-
     io.format("[%d]\t%-30s\n", [i(Index), s(Name)], !IO),
     output_alphabet_listing_2(T, !IO).
 
-    % output.construct_name
+    % output.construct_name:
+    %
     % Constructs an output name with an optional cycle number if required.
     %
 :- func construct_name(string, int) = string.

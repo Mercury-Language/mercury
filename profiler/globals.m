@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: globals.m.
 % Main author: fjh.
-
+%
 % This module exports the `globals' type and associated access predicates.
 % The globals type is used to collect together all the various data
 % that would be global variables in an imperative language.
-% This global data is stored in the io.
-
+% This global data is stored in the io state.
+%
 %-----------------------------------------------------------------------------%
 
 :- module globals.
@@ -113,9 +113,9 @@ what_to_profile("real-time", real_time).
 
 :- type globals
     --->    globals(
-            what_to_profile :: what_to_profile,
-            option_table    :: option_table
-        ).
+                what_to_profile :: what_to_profile,
+                option_table    :: option_table
+            ).
 
 globals.init(Options, globals(user_plus_system_time, Options)).
 
