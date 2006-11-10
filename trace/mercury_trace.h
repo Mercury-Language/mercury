@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab
+*/
+/*
 ** Copyright (C) 1997-2003, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -21,10 +24,10 @@
 #ifndef MERCURY_TRACE_H
 #define MERCURY_TRACE_H
 
-#include "mercury_memory_zones.h"	/* for MR_MAX_FAKE_REG */
-#include "mercury_types.h"		/* for MR_Unsigned etc */
-#include "mercury_trace_base.h"		/* for MR_Trace_Port   */
-#include "mercury_std.h"		/* for MR_bool            */
+#include "mercury_memory_zones.h"   /* for MR_MAX_FAKE_REG */
+#include "mercury_types.h"      /* for MR_Unsigned etc */
+#include "mercury_trace_base.h"     /* for MR_Trace_Port   */
+#include "mercury_std.h"        /* for MR_bool            */
 
 /*
 ** MR_Event_Info is used to hold the information for a trace event.  One
@@ -33,14 +36,14 @@
 */
 
 typedef struct MR_Event_Info_Struct {
-	MR_Unsigned			MR_event_number;
-	MR_Unsigned			MR_call_seqno;
-	MR_Unsigned			MR_call_depth;
-	MR_Trace_Port			MR_trace_port;
-	const MR_Label_Layout		*MR_event_sll;
-	const char 			*MR_event_path;
-	MR_Word				MR_saved_regs[MR_MAX_FAKE_REG];
-	int				MR_max_mr_num;
+    MR_Unsigned             MR_event_number;
+    MR_Unsigned             MR_call_seqno;
+    MR_Unsigned             MR_call_depth;
+    MR_Trace_Port           MR_trace_port;
+    const MR_Label_Layout   *MR_event_sll;
+    const char              *MR_event_path;
+    MR_Word                 MR_saved_regs[MR_MAX_FAKE_REG];
+    int                     MR_max_mr_num;
 } MR_Event_Info;
 
 /*
@@ -124,28 +127,25 @@ extern  MR_Code *MR_trace_real_decl_implicit_subtree(const MR_Label_Layout *);
 ** will be set to MR_TRUE, otherwise it will be set to MR_FALSE.  
 */
 
-typedef	enum {
-	MR_RETRY_IO_FORCE,
-	MR_RETRY_IO_INTERACTIVE,
-	MR_RETRY_IO_ONLY_IF_SAFE
+typedef enum {
+    MR_RETRY_IO_FORCE,
+    MR_RETRY_IO_INTERACTIVE,
+    MR_RETRY_IO_ONLY_IF_SAFE
 } MR_Retry_Across_Io;
 
-typedef	enum {
-	MR_RETRY_OK_DIRECT,
-	MR_RETRY_OK_FINISH_FIRST,
-	MR_RETRY_OK_FAIL_FIRST,
-	MR_RETRY_ERROR
+typedef enum {
+    MR_RETRY_OK_DIRECT,
+    MR_RETRY_OK_FINISH_FIRST,
+    MR_RETRY_OK_FAIL_FIRST,
+    MR_RETRY_ERROR
 } MR_Retry_Result;
 
-extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
-				int ancestor_level,
-				MR_Retry_Across_Io across_io,
-				MR_bool assume_all_io_is_tabled,
-				const char *retry_interactive_message,
-				MR_bool *unsafe_retry,
-				const char **problem,
-				FILE *in_fp, FILE *out_fp,
-				MR_Code **jumpaddr);
+extern  MR_Retry_Result MR_trace_retry(MR_Event_Info *event_info,
+                            int ancestor_level, MR_Retry_Across_Io across_io,
+                            MR_bool assume_all_io_is_tabled,
+                            const char *retry_interactive_message,
+                            MR_bool *unsafe_retry, const char **problem,
+                            FILE *in_fp, FILE *out_fp, MR_Code **jumpaddr);
 
 /*
 ** MR_trace_cmd says what mode the tracer is in, i.e. how events should be
@@ -189,67 +189,66 @@ extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
 */
 
 typedef enum {
-	MR_CMD_COLLECT,
-	MR_CMD_GOTO,
-	MR_CMD_NEXT,
-	MR_CMD_FINISH,
-	MR_CMD_FAIL,
-	MR_CMD_RESUME_FORWARD,
-	MR_CMD_EXCP,
-	MR_CMD_RETURN,
-	MR_CMD_MIN_DEPTH,
-	MR_CMD_MAX_DEPTH,
-	MR_CMD_TO_END
+    MR_CMD_COLLECT,
+    MR_CMD_GOTO,
+    MR_CMD_NEXT,
+    MR_CMD_FINISH,
+    MR_CMD_FAIL,
+    MR_CMD_RESUME_FORWARD,
+    MR_CMD_EXCP,
+    MR_CMD_RETURN,
+    MR_CMD_MIN_DEPTH,
+    MR_CMD_MAX_DEPTH,
+    MR_CMD_TO_END
 } MR_Trace_Cmd_Type;
 
 typedef enum {
-	MR_PRINT_LEVEL_NONE,	/* no events at all                        */
-	MR_PRINT_LEVEL_SOME,	/* events matching an active spy point     */
-	MR_PRINT_LEVEL_ALL	/* all events                              */
+    MR_PRINT_LEVEL_NONE,    /* no events at all                        */
+    MR_PRINT_LEVEL_SOME,    /* events matching an active spy point     */
+    MR_PRINT_LEVEL_ALL      /* all events                              */
 } MR_Trace_Print_Level;
 
 /*
 ** Type of pointers to filter/4 procedures for collect request
 */
 
-typedef void (*MR_FilterFuncPtr)(MR_Integer, MR_Integer,
-	MR_Integer, MR_Word, MR_Word, MR_String, MR_String, MR_String,
-	MR_Integer, MR_Integer, MR_Word, MR_Integer, MR_String, MR_Integer,
-	MR_Word, MR_Word *, MR_Char *);
+typedef void    (*MR_FilterFuncPtr)(MR_Integer, MR_Integer, MR_Integer,
+                    MR_Word, MR_Word, MR_String, MR_String, MR_String,
+                    MR_Integer, MR_Integer, MR_Word, MR_Integer, MR_String,
+                    MR_Integer, MR_Word, MR_Word *, MR_Char *);
 
 typedef struct {
-	MR_Trace_Cmd_Type	MR_trace_cmd;	
-				/*
-				** The MR_trace_stop_depth field is meaningful
-				** if MR_trace_cmd is MR_CMD_NEXT or
-				** MR_CMD_FINISH.
-				*/
-	MR_Unsigned		MR_trace_stop_depth;
-				/*
-				** The MR_trace_stop_event field is meaningful
-				** if MR_trace_cmd is MR_CMD_GOTO  
-				*/
-	MR_Unsigned		MR_trace_stop_event;
-	MR_Trace_Print_Level	MR_trace_print_level;
-	MR_bool			MR_trace_strict;
-#ifdef	MR_TRACE_CHECK_INTEGRITY
-	MR_bool			MR_trace_check_integrity;
+    MR_Trace_Cmd_Type       MR_trace_cmd;   
+                            /*
+                            ** The MR_trace_stop_depth field is meaningful
+                            ** if MR_trace_cmd is MR_CMD_NEXT or MR_CMD_FINISH.
+                            */
+    MR_Unsigned             MR_trace_stop_depth;
+                            /*
+                            ** The MR_trace_stop_event field is meaningful
+                            ** if MR_trace_cmd is MR_CMD_GOTO  .
+                            */
+    MR_Unsigned             MR_trace_stop_event;
+    MR_Trace_Print_Level    MR_trace_print_level;
+    MR_bool                 MR_trace_strict;
+#ifdef  MR_TRACE_CHECK_INTEGRITY
+    MR_bool                 MR_trace_check_integrity;
 #endif
 
-				/*
-				** The next field is an optimization;
-				** it must be set to !MR_trace_strict ||
-				** MR_trace_print_level != MR_PRINT_LEVEL_NONE
-				** || MR_trace_check_integrity (the last only
-				** if defined, of course).
-				*/
-	MR_bool			MR_trace_must_check;
+                            /*
+                            ** The next field is an optimization;
+                            ** it must be set to !MR_trace_strict ||
+                            ** MR_trace_print_level != MR_PRINT_LEVEL_NONE
+                            ** || MR_trace_check_integrity (the last only
+                            ** if defined, of course).
+                            */
+    MR_bool                 MR_trace_must_check;
 
-				/*
-				** The MR_filter_ptr field points to the
-				** filter/4 procedure during a collect request
-				*/
-	MR_FilterFuncPtr	MR_filter_ptr;
+                            /*
+                            ** The MR_filter_ptr field points to the filter/4
+                            ** procedure during a collect request.
+                            */
+    MR_FilterFuncPtr        MR_filter_ptr;
 } MR_Trace_Cmd_Info;
 
 /*
@@ -257,23 +256,23 @@ typedef struct {
 ** what to do. Exported only for use by mercury_trace_declarative.c.
 */
 
-extern	MR_Trace_Cmd_Info   	MR_trace_ctrl;
+extern  MR_Trace_Cmd_Info       MR_trace_ctrl;
 
-#ifdef	MR_TRACE_CHECK_INTEGRITY
-  #define MR_init_trace_check_integrity(cmd)	\
-	do { (cmd)->MR_trace_check_integrity = MR_FALSE; } while (0)
+#ifdef  MR_TRACE_CHECK_INTEGRITY
+  #define MR_init_trace_check_integrity(cmd)                            \
+    do { (cmd)->MR_trace_check_integrity = MR_FALSE; } while (0)
 #else
-  #define MR_init_trace_check_integrity(cmd)	((void) 0)
+  #define MR_init_trace_check_integrity(cmd)    ((void) 0)
 #endif
 
-#define	MR_port_is_final(port)		((port) == MR_PORT_EXIT || \
-					 (port) == MR_PORT_FAIL || \
-					 (port) == MR_PORT_EXCEPTION)
+#define MR_port_is_final(port)      ((port) == MR_PORT_EXIT || \
+                                     (port) == MR_PORT_FAIL || \
+                                     (port) == MR_PORT_EXCEPTION)
 
-#define	MR_port_is_interface(port)	((port) <= MR_PORT_EXCEPTION)
+#define MR_port_is_interface(port)  ((port) <= MR_PORT_EXCEPTION)
 
-#define	MR_port_is_entry(port)		((port) == MR_PORT_CALL)
+#define MR_port_is_entry(port)      ((port) == MR_PORT_CALL)
 
-extern	void	MR_trace_init_modules(void);
+extern  void    MR_trace_init_modules(void);
 
 #endif /* MERCURY_TRACE_H */
