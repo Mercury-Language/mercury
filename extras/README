@@ -5,6 +5,8 @@ Most of these can be built by running the commands `mmake depend' and
 then `mmake' in the relevant subdirectory, and many can be installed by
 running `mmake install'.
 
+base64          A library for base64 encoding and decoding.
+
 cgi		A couple of Mercury library modules for doing HTML forms
 		programming using CGI (Common Gateway Interface).
 
@@ -28,6 +30,9 @@ curses		A Mercury library providing a (partial) binding to
 dynamic_linking
 		An interface to the C functions dlopen(), dlsym(), etc.
 		that are supported by most modern Unix systems.
+
+fixed		An implementation of fixed-point arithmetic with
+		the COBOL semantics.
 
 graphics	Some packages for doing graphics programming
 		and GUIs in Mercury: a Mercury interface to Tcl/Tk,
