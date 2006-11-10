@@ -50,6 +50,9 @@ lex		A lexer package for Mercury that works over the IO state,
 		standard regular expressions and the user is free to add
 		their own.                                                      
 
+log4m		A Mercury implementation of logging, in the spirit of
+		log4j <http://logging.apache.org/log4j/docs/>.
+
 moose		A parser generator for Mercury.  Moose works much like
 		yacc or bison, it takes a grammar and generates a table
 		driven LALR parser for it.  You can add code to the
