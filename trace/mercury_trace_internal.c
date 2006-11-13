@@ -140,14 +140,11 @@ FILE    *MR_mdb_out;
 FILE    *MR_mdb_err;
 
 /*
-** MR_have_mdb_window and MR_mdb_window_pid are set by
-** mercury_trace_internal.c after the xterm window for
-** mdb has been spawned. The window process is killed by
-** MR_trace_internal_kill_mdb_window(), which is called by
-** MR_trace_final() through the MR_trace_shutdown() pointer.
-** This indirect call is used to avoid references to the
-** non-ISO header file <unistd.h> (for pid_t) in the runtime
-** headers.
+** MR_have_mdb_window and MR_mdb_window_pid are set by mercury_trace_internal.c ** after the xterm window for mdb has been spawned. The window process is
+** killed by MR_trace_internal_kill_mdb_window(), which is called by
+** MR_trace_final() through the MR_trace_shutdown() pointer. This indirect call
+** is used to avoid references to the non-ISO header file <unistd.h>
+** (for pid_t) in the runtime headers.
 */
 static  MR_bool     MR_have_mdb_window = MR_FALSE;
 static  pid_t       MR_mdb_window_pid = 0;
@@ -159,7 +156,7 @@ static  pid_t       MR_mdb_window_pid = 0;
 MR_Trace_Source_Server  MR_trace_source_server =
     { NULL, NULL, MR_FALSE };
 
-MR_bool     MR_trace_internal_interacting = MR_FALSE;
+MR_bool             MR_trace_internal_interacting = MR_FALSE;
 
 static  MR_Line     *MR_line_head = NULL;
 static  MR_Line     *MR_line_tail = NULL;
@@ -200,10 +197,10 @@ MR_Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
     MR_Spy_Print_List print_list, MR_Event_Info *event_info)
 {
-    MR_Code             *jumpaddr;
-    char                *line;
-    MR_Next             res;
-    const char          *prompt;
+    MR_Code     *jumpaddr;
+    char        *line;
+    MR_Next     res;
+    const char  *prompt;
 
     if (! interactive) {
         return MR_trace_event_internal_report(cmd, print_list, event_info);
@@ -318,9 +315,8 @@ MR_trace_internal_ensure_init(void)
 
         if (MR_mdb_in_window) {
             /*
-            ** If opening the window fails, fall back on
-            ** using MR_mdb_*_filename, or stdin, stdout
-            ** and stderr.
+            ** If opening the window fails, fall back on using
+            ** MR_mdb_*_filename, or stdin, stdout and stderr.
             */
             MR_mdb_in_window = MR_trace_internal_create_mdb_window();
             if (! MR_mdb_in_window) {
@@ -467,8 +463,8 @@ MR_trace_internal_create_mdb_window(void)
 
 #if defined(MR_HAVE_SETPGID)
         /*
-        ** Put the xterm in a new process group so it won't be
-        ** killed by SIGINT signals sent to the program.
+        ** Put the xterm in a new process group so it won't be killed
+        ** by SIGINT signals sent to the program.
         */
         if (setpgid(0, 0) < 0) {
             MR_mdb_perror("setpgid() failed");
@@ -478,16 +474,15 @@ MR_trace_internal_create_mdb_window(void)
 #endif
 
         /*
-        ** The XX part is required by xterm, but it's not
-        ** needed for the way we are using xterm (it's meant
-        ** to be an identifier for the pseudo-terminal).
-        ** Different versions of xterm use different
-        ** formats, so it's best to just leave it blank.
+        ** The XX part is required by xterm, but it's not needed for the way
+        ** we are using xterm (it's meant to be an identifier for the
+        ** pseudo-terminal). Different versions of xterm use different formats,
+        ** so it's best to just leave it blank.
         **
-        ** XXX Some versions of xterm (such as that distributed
-        ** with XFree86 3.3.6) give a warning about this (but it
-        ** still works). The latest version distributed with
-        ** XFree86 4 does not give a warning.
+        ** XXX Some versions of xterm (such as that distributed with
+        ** XFree86 3.3.6) give a warning about this (but it still works).
+        ** The latest version distributed with XFree86 4 does not give
+        ** a warning.
         */
         sprintf(xterm_arg, "-SXX%d", master_fd);
 
@@ -496,13 +491,12 @@ MR_trace_internal_create_mdb_window(void)
         exit(EXIT_FAILURE);
     } else {
         /*
-        ** Parent - set up the mdb I/O streams to point
-        ** to the pseudo-terminal.
+        ** Parent - set up the mdb I/O streams to point to the pseudo-terminal.
         */
-        MR_signal_action old_alarm_action;
-        int wait_status;
-        int err_fd = -1;
-        int out_fd = -1;
+        MR_signal_action    old_alarm_action;
+        int                 wait_status;
+        int                 err_fd = -1;
+        int                 out_fd = -1;
 
         MR_mdb_in = MR_mdb_out = MR_mdb_err = NULL;
         MR_have_mdb_window = MR_TRUE;
@@ -510,11 +504,11 @@ MR_trace_internal_create_mdb_window(void)
         close(master_fd);
 
         /*
-        ** Read the first line of output -- this is a window ID
-        ** written by xterm. The alarm() and associated signal handling
-        ** is to gracefully handle the case where the xterm failed to
-        ** start, for example because the DISPLAY variable was invalid.
-        ** We don't want to restart the read() below if it times out.
+        ** Read the first line of output -- this is a window ID written by
+        ** xterm. The alarm() and associated signal handling is to gracefully
+        ** handle the case where the xterm failed to start, for example
+        ** because the DISPLAY variable was invalid. We don't want to restart
+        ** the read() below if it times out.
         */
         MR_get_signal_action(SIGALRM, &old_alarm_action,
             "error retrieving alarm handler");
@@ -743,8 +737,7 @@ void
 MR_trace_do_noop(void)
 {
     fflush(MR_mdb_out);
-    fprintf(MR_mdb_err,
-        "This command is a no-op from this port.\n");
+    fprintf(MR_mdb_err, "This command is a no-op from this port.\n");
 }
 
 /*
@@ -870,10 +863,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
     MR_trace_expand_aliases(&words, &word_max, &word_count);
 
     /*
-    ** At this point, the first word_count members of the words
-    ** array contain the command. We save the value of words for
-    ** freeing just before return, since the variable words itself
-    ** can be overwritten by option processing.
+    ** At this point, the first word_count members of the words array contain
+    ** the command. We save the value of words for freeing just before return,
+    ** since the variable words itself can be overwritten by option processing.
     */
     orig_words = words;
 
@@ -888,9 +880,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
         */
         next = KEEP_INTERACTING;
     } else {
-        /*
-        ** Call the command dispatcher
-        */
+        /* Call the command dispatcher. */
         next = MR_trace_handle_cmd(words, word_count, cmd, event_info,
             jumpaddr);
     }
@@ -917,10 +907,10 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     const MR_Trace_Command_Info *cmd_info;
 
     /*
-    ** The code for many commands calls getopt, and getopt may print to
-    ** stderr. We flush MR_mdb_out here to make sure that all normal output
-    ** so far (including the echoed command, if echoing is turned on) gets
-    ** output first.
+    ** The code for many commands calls getopt, and getopt may print to stderr.
+    ** We flush MR_mdb_out here to make sure that all normal output so far
+    ** (including the echoed command, if echoing is turned on) gets output
+    ** first.
     */
 
     fflush(MR_mdb_out);
@@ -1028,8 +1018,8 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
     }
 
     /*
-    ** If the first word is a number, try to exchange it
-    ** with the command word, to put the command word first.
+    ** If the first word is a number, try to exchange it with the command word,
+    ** to put the command word first.
     */
 
     if (raw_word_count > 1 && MR_trace_is_natural_number(raw_words[0], &i)
@@ -1076,7 +1066,7 @@ MR_trace_break_into_words(char *line, char ***words_ptr, int *word_max_ptr,
     word_max = 0;
     words = NULL;
 
-    /* each iteration of this loop processes one token, or end of line */
+    /* Each iteration of this loop processes one token, or end of line. */
     for (;;) {
         while (line[char_pos] != '\0' && MR_isspace(line[char_pos])) {
             char_pos++;
@@ -1159,12 +1149,12 @@ MR_trace_break_off_one_word(char *line, int char_pos, int *new_char_pos_ptr)
 }
 
 /*
-** Call MR_trace_getline to get the next line of input, then do some
-** further processing.  If the input has reached EOF, return the command
-** "quit".  If the line contains multiple commands then split it and
-** only return the first one.  If the newline at the end is either quoted
-** or escaped, read another line (using the prompt '>') and append it to
-** the first.  The command is returned in a MR_malloc'd buffer.
+** Call MR_trace_getline to get the next line of input, then do some further
+** processing. If the input has reached EOF, return the command "quit".
+** If the line contains multiple commands then split it and only return
+** the first one. If the newline at the end is either quoted or escaped,
+** read another line (using the prompt '>') and append it to the first.
+** The command is returned in a MR_malloc'd buffer.
 */
 
 char *
@@ -1182,8 +1172,7 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 
     if (line == NULL) {
         /*
-        ** We got an EOF.
-        ** We arrange things so we don't have to treat this case
+        ** We got an EOF. We arrange things so we don't have to treat this case
         ** specially in the command interpreter.
         */
         line = MR_copy_string("quit");
@@ -1198,10 +1187,9 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
     double_quoted = MR_FALSE;
     while (MR_trace_continue_line(ptr, &single_quoted, &double_quoted)) {
         /*
-        ** We were inside quotes when the end of the line was
-        ** reached, or the newline was escaped, so input continues
-        ** on the next line.  We append it to the first line,
-        ** allocating more space if necessary.
+        ** We were inside quotes when the end of the line was reached,
+        ** or the newline was escaped, so input continues on the next line.
+        ** We append it to the first line, allocating more space if necessary.
         */
         line = MR_trace_getline("> ", mdb_in, mdb_out);
         if (line == NULL) {
@@ -1348,9 +1336,9 @@ MR_trace_continue_line(char *ptr, MR_bool *single_quoted,
             *double_quoted = ! (*double_quoted);
         } else if (! (*single_quoted) && ! (*double_quoted) && *ptr == ';') {
             /*
-            ** The line contains at least two commands.
-            ** Return only the first command now; put the
-            ** others back in the input to be processed later.
+            ** The line contains at least two commands. Return only the first
+            ** command now; put the others back in the input to be processed
+            ** later.
             */
             *ptr = '\0';
             MR_insert_line_at_head(MR_copy_string(ptr + 1));
@@ -1361,9 +1349,7 @@ MR_trace_continue_line(char *ptr, MR_bool *single_quoted,
     }
 
     if (escaped) {
-        /*
-        ** Replace the escaped newline with a space.
-        */
+        /* Replace the escaped newline with a space. */
         *(ptr - 1) = ' ';
     }
 
@@ -1443,10 +1429,13 @@ void
 MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 {
     const MR_Label_Layout   *parent;
-    const char              *filename, *parent_filename;
-    int                     lineno, parent_lineno;
+    const char              *filename;
+    const char              *parent_filename;
+    int                     lineno;
+    int                     parent_lineno;
     const char              *problem; /* not used */
-    MR_Word                 *base_sp, *base_curfr;
+    MR_Word                 *base_sp;
+    MR_Word                 *base_curfr;
     int                     indent;
 
     lineno = 0;
@@ -1578,8 +1567,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         NULL, MR_trace_module_completer },
 
     /*
-    ** XXX For queries we should complete on all modules, not
-    ** just those that were compiled with tracing enabled.
+    ** XXX For queries we should complete on all modules, not just those
+    ** that were compiled with tracing enabled.
     */
     { "queries", "query", MR_trace_cmd_query,
         NULL, MR_trace_module_completer },
