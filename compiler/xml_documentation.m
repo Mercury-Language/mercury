@@ -250,16 +250,19 @@ comment_directly_above(Comments, Line, Comment) :-
 :- func get_comment_forwards(comments, int) = string.
 
 get_comment_forwards(Comments, Line) = Comment :-
-    LineType = map.lookup(Comments ^ line_types, Line),
-    (
-        LineType = comment(CurrentComment),
-        CommentBelow = get_comment_backwards(Comments, Line + 1),
-        Comment = CurrentComment ++ CommentBelow
+    ( map.search(Comments ^ line_types, Line, LineType) ->
+        (
+            LineType = comment(CurrentComment),
+            CommentBelow = get_comment_forwards(Comments, Line + 1),
+            Comment = CurrentComment ++ CommentBelow
+        ;
+            ( LineType = blank
+            ; LineType = code
+            ; LineType = code_and_comment(_)
+            ),
+            Comment = ""
+        )
     ;
-        ( LineType = blank
-        ; LineType = code
-        ; LineType = code_and_comment(_)
-        ),
         Comment = ""
     ).
 
@@ -271,16 +274,19 @@ get_comment_forwards(Comments, Line) = Comment :-
 :- func get_comment_backwards(comments, int) = string.
 
 get_comment_backwards(Comments, Line) = Comment :-
-    LineType = map.lookup(Comments ^ line_types, Line),
-    (
-        LineType = comment(CurrentComment),
-        CommentAbove = get_comment_backwards(Comments, Line - 1),
-        Comment = CommentAbove ++ CurrentComment
+    ( map.search(Comments ^ line_types, Line, LineType) ->
+        (
+            LineType = comment(CurrentComment),
+            CommentAbove = get_comment_backwards(Comments, Line - 1),
+            Comment = CommentAbove ++ CurrentComment
+        ;
+            ( LineType = blank
+            ; LineType = code
+            ; LineType = code_and_comment(_)
+            ),
+            Comment = ""
+        )
     ;
-        ( LineType = blank
-        ; LineType = code
-        ; LineType = code_and_comment(_)
-        ),
         Comment = ""
     ).
 
