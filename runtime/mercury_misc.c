@@ -1,20 +1,23 @@
 /*
-** Copyright (C) 1996-2000,2002 The University of Melbourne.
+** vim: ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1996-2000,2002, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include	"mercury_conf.h"
+#include    "mercury_conf.h"
 #ifndef MR_HIGHLEVEL_CODE
-  #include	"mercury_imp.h"
+  #include  "mercury_imp.h"
 #endif
-#include	"mercury_string.h"
-#include	"mercury_misc.h"
-#include	"mercury_array_macros.h"
+#include    "mercury_string.h"
+#include    "mercury_misc.h"
+#include    "mercury_array_macros.h"
 
-#include	<stdio.h>
-#include	<stdarg.h>
-#include	<errno.h>
+#include    <stdio.h>
+#include    <stdarg.h>
+#include    <errno.h>
 
 static void MR_print_warning(const char *prog, const char *fmt, va_list args);
 static void MR_do_perror(const char *prog, const char *message);
@@ -22,60 +25,58 @@ static void MR_do_perror(const char *prog, const char *message);
 void
 MR_warning(const char *fmt, ...)
 {
-	va_list args;
-	va_start(args, fmt);
-	MR_print_warning("Mercury runtime", fmt, args);
-	va_end(args);
-	
+    va_list args;
+    va_start(args, fmt);
+    MR_print_warning("Mercury runtime", fmt, args);
+    va_end(args);
 }
 
 void
 MR_mdb_warning(const char *fmt, ...)
 {
-	va_list args;
-	va_start(args, fmt);
-	MR_print_warning("mdb", fmt, args);
-	va_end(args);
+    va_list args;
+    va_start(args, fmt);
+    MR_print_warning("mdb", fmt, args);
+    va_end(args);
 }
 
 static void
 MR_print_warning(const char *prog, const char *fmt, va_list args)
 {
+    fflush(stdout);     /* in case stdout and stderr are the same */
 
-	fflush(stdout);		/* in case stdout and stderr are the same */
+    fprintf(stderr, prog);
+    fprintf(stderr, ": ");
+    vfprintf(stderr, fmt, args);
+    fprintf(stderr, "\n");
 
-	fprintf(stderr, prog);
-	fprintf(stderr, ": ");
-	vfprintf(stderr, fmt, args);
-	fprintf(stderr, "\n");
-
-	fflush(stderr);
+    fflush(stderr);
 }
 
 void
 MR_perror(const char *message)
 {
-	MR_do_perror("Mercury runtime", message);
+    MR_do_perror("Mercury runtime", message);
 }
 
 void
 MR_mdb_perror(const char *message)
 {
-	MR_do_perror("mdb", message);
+    MR_do_perror("mdb", message);
 }
 
 static void
 MR_do_perror(const char *prog, const char *message)
 {
-	int saved_errno;
+    int saved_errno;
 
-	saved_errno = errno;
-	fflush(stdout);		/* in case stdout and stderr are the same */
+    saved_errno = errno;
+    fflush(stdout);     /* in case stdout and stderr are the same */
 
-	fprintf(stderr, prog);
-	fprintf(stderr, ": ");
-	errno = saved_errno;
-	perror(message);
+    fprintf(stderr, prog);
+    fprintf(stderr, ": ");
+    errno = saved_errno;
+    perror(message);
 }
 
 /*
@@ -83,55 +84,55 @@ MR_do_perror(const char *prog, const char *message)
 ** (and cleanup resources, etc....)
 */
 
-void 
+void
 MR_fatal_error(const char *fmt, ...)
 {
-	va_list args;
+    va_list args;
 
-	fflush(stdout);		/* in case stdout and stderr are the same */
+    fflush(stdout);     /* in case stdout and stderr are the same */
 
-	fprintf(stderr, "Mercury runtime: ");
-	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
-	va_end(args);
-	fprintf(stderr, "\n");
+    fprintf(stderr, "Mercury runtime: ");
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    fprintf(stderr, "\n");
 
 #ifndef MR_HIGHLEVEL_CODE
-	MR_trace_report(stderr);
+    MR_trace_report(stderr);
 #endif
 
-	fflush(NULL);		/* flushes all stdio output streams */
+    fflush(NULL);       /* flushes all stdio output streams */
 
-	exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
 }
 
 typedef struct {
-	void	(*func)(void *);
-	void	*data;
+    void    (*func)(void *);
+    void    *data;
 } MR_cleanup_record;
 
-static	MR_cleanup_record	*MR_cleanup_records = NULL;
-static	int			MR_cleanup_record_next = 0;
-static	int			MR_cleanup_record_max = 0;
+static  MR_cleanup_record   *MR_cleanup_records = NULL;
+static  int                 MR_cleanup_record_next = 0;
+static  int                 MR_cleanup_record_max = 0;
 
-#define	INIT_CLEANUP_RECORD_ARRAY_SIZE	10
+#define INIT_CLEANUP_RECORD_ARRAY_SIZE  10
 
 void
 MR_register_exception_cleanup(void (*func)(void *), void *data)
 {
-	MR_ensure_room_for_next(MR_cleanup_record, MR_cleanup_record,
-		INIT_CLEANUP_RECORD_ARRAY_SIZE);
-	MR_cleanup_records[MR_cleanup_record_next].func = func;
-	MR_cleanup_records[MR_cleanup_record_next].data = data;
-	MR_cleanup_record_next++;
+    MR_ensure_room_for_next(MR_cleanup_record, MR_cleanup_record,
+        INIT_CLEANUP_RECORD_ARRAY_SIZE);
+    MR_cleanup_records[MR_cleanup_record_next].func = func;
+    MR_cleanup_records[MR_cleanup_record_next].data = data;
+    MR_cleanup_record_next++;
 }
 
 void
 MR_perform_registered_exception_cleanups(void)
 {
-	int	i;
+    int i;
 
-	for (i = 0; i < MR_cleanup_record_next; i++) {
-		MR_cleanup_records[i].func(MR_cleanup_records[i].data);
-	}
+    for (i = 0; i < MR_cleanup_record_next; i++) {
+        MR_cleanup_records[i].func(MR_cleanup_records[i].data);
+    }
 }

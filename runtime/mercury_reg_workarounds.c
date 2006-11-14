@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1998, 2001-2004 The University of Melbourne.
+** vim: ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1998, 2001-2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,23 +17,23 @@
 #include "mercury_reg_workarounds.h"
 #include <stdlib.h>
 
-#ifdef	MR_CAN_DO_PENDING_IO
+#ifdef  MR_CAN_DO_PENDING_IO
 
-	#ifdef MR_BZERO_NEEDS_STRINGS_HEADER
-		#include <strings.h>
-	#endif
+  #ifdef MR_BZERO_NEEDS_STRINGS_HEADER
+    #include <strings.h>
+  #endif
 
-#include <sys/types.h>	/* for fd_set and FD_ZERO() */
-#include <sys/time.h>	/* for FD_ZERO() */
+#include <sys/types.h>  /* for fd_set and FD_ZERO() */
+#include <sys/time.h>   /* for FD_ZERO() */
 
 #ifdef MR_HAVE_UNISTD_H
-  #include <unistd.h>	/* for FD_ZERO() */
+  #include <unistd.h>   /* for FD_ZERO() */
 #endif
 
 void
 MR_fd_zero(fd_set *fdset)
 {
-	FD_ZERO(fdset);
+    FD_ZERO(fdset);
 }
 
 #endif /* MR_CAN_DO_PENDING_IO */
@@ -45,11 +48,12 @@ MR_fd_zero(fd_set *fdset)
 void
 MR_memcpy(void *dest, const void *src, size_t nbytes)
 {
-	char		*d = (char *) dest;
-	const char	*s = (const char *) src;
+    char        *d = (char *) dest;
+    const char  *s = (const char *) src;
 
-	while (nbytes-- > 0)
-		*d++ = *s++;
+    while (nbytes-- > 0) {
+        *d++ = *s++;
+    }
 }
 
 /*
@@ -59,10 +63,11 @@ MR_memcpy(void *dest, const void *src, size_t nbytes)
 void
 MR_memset(void *dest, char c, size_t nbytes)
 {
-	char		*d = (char *) dest;
+    char        *d = (char *) dest;
 
-	while (nbytes-- > 0)
-		*d++ = c;
+    while (nbytes-- > 0) {
+        *d++ = c;
+    }
 }
 
 #endif /* MR_CANNOT_USE_STRUCTURE_ASSIGNMENT && MR_USE_GCC_GLOBAL_REGISTERS */

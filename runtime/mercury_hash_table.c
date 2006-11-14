@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1993-2000, 2004-2005 The University of Melbourne.
+** vim: ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1993-2000, 2004-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,123 +16,121 @@
 ** a primary key and a hash function on it.
 */
 
-#include	"mercury_imp.h" 
+#include    "mercury_imp.h"
 
-#include	<stdio.h>
-#include	"mercury_std.h"
-#include	"mercury_dlist.h"
-#include	"mercury_hash_table.h"
+#include    <stdio.h>
+#include    "mercury_std.h"
+#include    "mercury_dlist.h"
+#include    "mercury_hash_table.h"
 
-void 
+void
 MR_ht_init_table(MR_Hash_Table *table)
 {
-	int	i;
+    int i;
 
-	table->MR_ht_store = MR_GC_NEW_ARRAY(MR_Dlist *, table->MR_ht_size);
+    table->MR_ht_store = MR_GC_NEW_ARRAY(MR_Dlist *, table->MR_ht_size);
 
-	for (i = 0; i < table->MR_ht_size; i++) {
-		table->MR_ht_store[i] = NULL;
-	}
+    for (i = 0; i < table->MR_ht_size; i++) {
+        table->MR_ht_store[i] = NULL;
+    }
 }
 
 void *
 MR_ht_lookup_table(const MR_Hash_Table *table, const void *key)
 {
-	MR_Dlist	*ptr;
-	int		h;
+    MR_Dlist    *ptr;
+    int         h;
 
-	h = MR_tablehash(table)(key);
+    h = MR_tablehash(table)(key);
 
-#ifdef	MR_HASHDEBUG
-	if (! (0 <= h && h < table->MR_ht_size)) {
-		fprintf(stderr, "internal error: bad hash index in "
-			"lookup_table: %d, table size %d\n", 
-			h, table->MR_ht_size);
-	}
+#ifdef  MR_HASHDEBUG
+    if (! (0 <= h && h < table->MR_ht_size)) {
+        fprintf(stderr, "internal error: bad hash index in lookup_table: "
+            "%d, table size %d\n",
+            h, table->MR_ht_size);
+    }
 #endif
 
-	MR_for_dlist (ptr, table->MR_ht_store[h]) {
-		if (MR_tableequal(table)(key,
-			MR_tablekey(table)(MR_dlist_data(ptr))))
-		{
-			return (void *) MR_dlist_data(ptr);
-		}
-	}
+    MR_for_dlist (ptr, table->MR_ht_store[h]) {
+        if (MR_tableequal(table)(key, MR_tablekey(table)(MR_dlist_data(ptr))))
+        {
+            return (void *) MR_dlist_data(ptr);
+        }
+    }
 
-	return NULL;
+    return NULL;
 }
 
 const void *
 MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 {
-	MR_Dlist	*ptr;
-	const void	*key;
-	int		h;
+    MR_Dlist    *ptr;
+    const void  *key;
+    int         h;
 
-	key = MR_tablekey(table)(entry);
-	h   = MR_tablehash(table)(key);
+    key = MR_tablekey(table)(entry);
+    h   = MR_tablehash(table)(key);
 
-#ifdef	MR_HASHDEBUG
-	if (! (0 <= h && h < table->MR_ht_size)) {
-		fprintf(stderr, "internal error: bad hash index in "
-			"lookup_table: %d, table size %d\n", 
-			h, table->MR_ht_size);
-	}
+#ifdef  MR_HASHDEBUG
+    if (! (0 <= h && h < table->MR_ht_size)) {
+        fprintf(stderr, "internal error: bad hash index in lookup_table: "
+            "%d, table size %d\n",
+            h, table->MR_ht_size);
+    }
 #endif
 
-	MR_for_dlist (ptr, table->MR_ht_store[h]) {
-		if (MR_tableequal(table)(key,
-			MR_tablekey(table)(MR_dlist_data(ptr))))
-		{
-			return MR_dlist_data(ptr);
-		}
-	}
+    MR_for_dlist (ptr, table->MR_ht_store[h]) {
+        if (MR_tableequal(table)(key, MR_tablekey(table)(MR_dlist_data(ptr))))
+        {
+            return MR_dlist_data(ptr);
+        }
+    }
 
-	table->MR_ht_store[h] = MR_dlist_addhead(table->MR_ht_store[h], entry);
-	return NULL;
+    table->MR_ht_store[h] = MR_dlist_addhead(table->MR_ht_store[h], entry);
+    return NULL;
 }
 
 MR_Dlist *
 MR_ht_get_all_entries(const MR_Hash_Table *table)
 {
-	MR_Dlist	*list;
-	int		i;
+    MR_Dlist    *list;
+    int         i;
 
-	list = MR_dlist_makelist0();
-	for (i = 0; i < table->MR_ht_size; i++) {
-		MR_dlist_addndlist(list, table->MR_ht_store[i]);
-	}
+    list = MR_dlist_makelist0();
+    for (i = 0; i < table->MR_ht_size; i++) {
+        MR_dlist_addndlist(list, table->MR_ht_store[i]);
+    }
 
-	return list;
+    return list;
 }
 
 void
 MR_ht_process_all_entries(const MR_Hash_Table *table, void f(const void *))
 {
-	MR_Dlist	*ptr;
-	int		i;
+    MR_Dlist    *ptr;
+    int         i;
 
-	for (i = 0; i < table->MR_ht_size; i++) {
-		MR_for_dlist (ptr, table->MR_ht_store[i]) {
-			f(MR_dlist_data(ptr));
-		}
-	}
+    for (i = 0; i < table->MR_ht_size; i++) {
+        MR_for_dlist (ptr, table->MR_ht_store[i]) {
+            f(MR_dlist_data(ptr));
+        }
+    }
 }
 
-int 
+int
 MR_ht_str_to_int(const char *cs)
 {
-	int		h;
-	const char	*s;
+    int         h;
+    const char  *s;
 
-	s = cs;
-	for (h = 0; *s != '\0'; s++) {
-		h = (h << 1) + *s;
-	}
+    s = cs;
+    for (h = 0; *s != '\0'; s++) {
+        h = (h << 1) + *s;
+    }
 
-	if (h < 0) {
-		h = -h;
-	}
+    if (h < 0) {
+        h = -h;
+    }
 
-	return h;
+    return h;
 }
