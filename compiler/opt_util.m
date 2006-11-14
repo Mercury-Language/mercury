@@ -57,7 +57,8 @@
 
     % Find the next assignment to the redoip of the frame whose address
     % is given by the base addresses in the second argument, provided
-    % it is guaranteed to be reached from here.
+    % it is guaranteed to be reached from here, and guaranteed not to be
+    % reached from anywhere else by a jump.
     %
 :- pred next_assign_to_redoip(list(instruction)::in, list(lval)::in,
     list(instruction)::in, code_addr::out, list(instruction)::out,
@@ -409,6 +410,11 @@ next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
         Rest = Instrs
     ;
         Uinstr = mkframe(_, _)
+    ->
+        fail
+
+    ;
+        Uinstr = label(_)
     ->
         fail
     ;

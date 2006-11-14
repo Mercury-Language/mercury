@@ -15,6 +15,7 @@ ORDINARY_PROGS=	\
 	boyer \
 	brace \
 	builtin_inst_rename \
+	c_write_string \
 	cc_and_non_cc_test \
 	cc_multi_bug \
 	cc_nondet_disj \
@@ -35,7 +36,6 @@ ORDINARY_PROGS=	\
 	curry \
 	curry2 \
 	cut_test \
-	c_write_string \
 	cycles \
 	cycles2 \
 	deconstruct_arg \
@@ -65,8 +65,8 @@ ORDINARY_PROGS=	\
 	existential_float \
 	existential_reordering \
 	existential_reordering_class \
-	existential_types_test \
 	existential_type_switch_opt \
+	existential_types_test \
 	expand \
 	export_test \
 	external_unification_pred \
@@ -109,6 +109,7 @@ ORDINARY_PROGS=	\
 	impure_init_and_final \
 	impure_prune \
 	initialise_decl \
+	int_fold_up_down \
 	integer_test \
 	intermod_c_code \
 	intermod_foreign_type \
@@ -117,7 +118,6 @@ ORDINARY_PROGS=	\
 	intermod_pragma_clause \
 	intermod_type_qual \
 	intermod_unused_args \
-	int_fold_up_down \
 	join_list \
 	list_series_int \
 	loop_inv_test \
@@ -134,13 +134,14 @@ ORDINARY_PROGS=	\
 	no_fully_strict \
 	no_inline \
 	no_inline_builtins \
+	no_warn_singleton \
 	nonascii \
 	nondet_copy_out \
 	nondet_ctrl_vn \
-	no_warn_singleton \
-	nullary_ho_func \
 	null_char \
+	nullary_ho_func \
 	one_member \
+	opt_dup_bug \
 	ppc_bug \
 	pprint_test \
 	pprint_test2 \
@@ -152,9 +153,9 @@ ORDINARY_PROGS=	\
 	pretty_printing \
 	prince_frameopt \
 	print_stream \
+	promise_equiv_with_svars \
 	promise_equivalent_clauses \
 	promise_equivalent_solutions_test \
-	promise_equiv_with_svars \
 	pure_mutable \
 	qual_adv_test \
 	qual_basic_test \
@@ -204,13 +205,13 @@ ORDINARY_PROGS=	\
 	test_cord \
 	test_imported_no_tag \
 	test_promise_impure_implicit \
-	time_test \
 	tim_qual1 \
+	time_test \
 	trace_goal_1 \
 	trace_goal_2 \
 	trace_goal_3 \
-	transform_value \
 	trans_intermod_user_equality \
+	transform_value \
 	transitive_inst_type \
 	trigraphs \
 	tuple_test \

@@ -45,6 +45,7 @@ MCFLAGS-puzzle_detism_bug = 	--trace-optimized --inlining
 MCFLAGS-no_inline_builtins =	--no-inline-builtins
 MCFLAGS-no_warn_singleton =	--halt-at-warn
 MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out
+MCFLAGS-opt_dup_bug	=	-O2 --optimize-dups --optimize-frames
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
 MCFLAGS-split_c_files	=	--trace rep

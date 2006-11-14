@@ -213,8 +213,11 @@ peephole.match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
 
     % If a `mkframe' is followed by an assignment to its redoip slot,
     % with the instructions in between containing only straight-line code,
-    % we can delete the assignment and instead just set the redoip
-    % directly in the `mkframe'.
+    % and no labels, we can delete the assignment and instead just set
+    % the redoip directly in the `mkframe'. (If the code between the
+    % mkframe and the redoip contains a label, then we need to keep the
+    % redoip assign, in case we reach it via the label and not from the
+    % mkframe above.
     %
     %   mkframe(NFI, _)             =>  mkframe(NFI, Redoip)
     %   <straightline instrs>           <straightline instrs>
@@ -336,8 +339,8 @@ peephole.match(store_ticket(Lval), Comment, _, Instrs0, Instrs) :-
     Instrs = [store_ticket(Lval) - Comment | Instrs2].
 
     % If an assignment to a redoip slot is followed by another, with
-    % the instructions in between containing only straight-line code,
-    % we can delete one of the asignments:
+    % the instructions in between containing only straight-line code
+    % without labels, we can delete one of the asignments:
     %
     %   assign(redoip(Fr), Redoip1) =>  assign(redoip(Fr), Redoip2)
     %   <straightline instrs>           <straightline instrs>
