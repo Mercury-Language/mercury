@@ -1292,6 +1292,7 @@ typedef struct MR_Module_File_Layout_Struct {
 } MR_Module_File_Layout;
 
 struct MR_Module_Layout_Struct {
+	MR_uint_least8_t                MR_ml_version_number;
 	MR_ConstString			MR_ml_name;
 	MR_Integer			MR_ml_string_table_size;
 	const char			*MR_ml_string_table;
