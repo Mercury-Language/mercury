@@ -182,7 +182,7 @@ install_headers: install_dirs
 install_lib: lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) install_dirs
 	cp `vpath_find lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_GC_LIB_DIR)
-	$(RANLIB) $(INSTALL_MERC_GC_LIB_DIR)/lib$(GC_GRADE).$A
+	$(RANLIB) $(RANLIBFLAGS) $(INSTALL_MERC_GC_LIB_DIR)/lib$(GC_GRADE).$A
 
 .PHONY: install_dll
 install_dll:
