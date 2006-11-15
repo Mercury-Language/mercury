@@ -27,6 +27,7 @@ ORDINARY_PROGS=	\
 		frameopt_mkframe_bug \
 		hello_again \
 		higher_order \
+		hlc_name_mangling \
 		intermod_type \
 		interpreter \
 		io_foldl \

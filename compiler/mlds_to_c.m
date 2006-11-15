@@ -611,8 +611,8 @@ output_required_calls([ Call | Calls ], !IO) :-
 output_init_fn_name(ModuleName, Suffix, !IO) :-
     % Here we ensure that we only get one "mercury__" at the start
     % of the function name.
-    sym_name_to_string(mlds_module_name_to_sym_name(ModuleName), "__",
-        ModuleNameString0),
+    ModuleNameString0 = sym_name_mangle(
+        mlds_module_name_to_sym_name(ModuleName)),
     ( string.prefix(ModuleNameString0, "mercury__") ->
         ModuleNameString = ModuleNameString0
     ;
@@ -634,8 +634,8 @@ output_init_fn_name(ModuleName, Suffix, !IO) :-
 output_required_fn_name(ModuleName, Suffix, !IO) :-
     % Here we ensure that we only get one "mercury__" at the start
     % of the function name.
-    sym_name_to_string(mlds_module_name_to_sym_name(ModuleName), "__",
-        ModuleNameString0),
+    ModuleNameString0 = sym_name_mangle(
+        mlds_module_name_to_sym_name(ModuleName)),
     ( string.prefix(ModuleNameString0, "mercury__") ->
         ModuleNameString = ModuleNameString0
     ;
