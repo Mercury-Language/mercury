@@ -62,6 +62,9 @@ moose		A parser generator for Mercury.  Moose works much like
 
 morphine	A trace analysis system for Mercury.
 
+net		A network library which uses the standard library stream
+		interface.
+
 odbc		A Mercury interface to ODBC (Open Database Connectivity),
 		for interfacing to standard relational database packages.
 
@@ -78,6 +81,8 @@ solver_types	Contains versions of some standard library modules
 		types.
 
 stream		Generic IO interface using typeclasses.
+		Note this interface has been superceded by the one
+		in standard library.
 
 trailed_update	Some library modules that make use of backtrackable
 		destructive update, including a module which provides
