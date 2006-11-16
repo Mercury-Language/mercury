@@ -60,6 +60,8 @@ moose		A parser generator for Mercury.  Moose works much like
 		Currently you need to write your own lexer to interface
 		to moose.
 
+mopenssl	A Mercury binding to the openssl library.
+
 morphine	A trace analysis system for Mercury.
 
 net		A network library which uses the standard library stream
