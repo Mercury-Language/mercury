@@ -613,7 +613,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     globals.io_lookup_bool_option(low_level_debug, LL_Debug, !IO),
     (
         LL_Debug = yes,
-        LL_DebugOpt = "-DMR_LOW_LEVEL_DEBUG "
+        LL_DebugOpt = "-DMR_LL_DEBUG "
     ;
         LL_Debug = no,
         LL_DebugOpt = ""

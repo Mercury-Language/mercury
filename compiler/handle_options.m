@@ -2302,7 +2302,7 @@ grade_component_table("debug", comp_trace,
 
     % Low (target) level debugging components.
 grade_component_table("ll_debug", comp_lowlevel,
-    [target_debug - bool(yes)], no, yes).
+    [low_level_debug - bool(yes), target_debug - bool(yes)], no, yes).
 
     % Stack extension components.
 grade_component_table("exts", comp_stack_extend,

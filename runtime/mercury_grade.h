@@ -5,7 +5,7 @@
 */
 
 /*
-** mercury_grades.h - defines the MR_GRADE macro.
+** mercury_grade.h - defines the MR_GRADE macro.
 **
 ** This is used to get the linker to ensure that different object files
 ** were compiled with consistent grades.
