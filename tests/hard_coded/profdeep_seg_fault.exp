@@ -1,0 +1,1 @@
+[t_sig([t_typevar("BAR")], t_bool), t_sig([t_typevar("FOO")], t_bool), t_sig([t_bool], t_bool), t_sig([t_bool], t_bool)]
