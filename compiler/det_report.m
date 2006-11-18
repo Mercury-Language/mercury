@@ -52,6 +52,11 @@
     ;       generic_call_goal(generic_call)
     ;       negated_goal.
 
+    % XXX if this declaration is left out the compiler incorrectly accepts the
+    % code, but an exception is thrown when --smart-recompilation is used.
+    %
+:- type switch_context.
+
 %-----------------------------------------------------------------------------%
 
     % Check all the determinism declarations in this module.
