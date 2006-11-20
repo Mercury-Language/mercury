@@ -1,6 +1,6 @@
 % vim: ft=mercury ts=4 sw=4 et
 % The following program exposes a bug in the deep profiler.
-% When compiled in a deep profiling grade it aborts with a 
+% When compiled in a deep profiling grade at -O2 or below it aborts with a 
 % segmentation fault.
 %
 :- module profdeep_seg_fault.

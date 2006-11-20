@@ -41,6 +41,11 @@ MCFLAGS-loop_inv_test2 	= 	--loop-invariants --trace-optimized
 MCFLAGS-prince_frameopt = 		--intermodule-optimization -O5
 MCFLAGS-prince_frameopt_css = 		--intermodule-optimization -O5
 MCFLAGS-prince_frameopt_css.style = 	--intermodule-optimization -O5
+
+# This bug only shows up at optimization levels -O2 and below.
+#
+MCFLAGS-profdeep_seg_fault = -O2
+
 MCFLAGS-puzzle_detism_bug = 	--trace-optimized --inlining
 MCFLAGS-no_inline_builtins =	--no-inline-builtins
 MCFLAGS-no_warn_singleton =	--halt-at-warn
