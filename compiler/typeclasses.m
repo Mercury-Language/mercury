@@ -124,10 +124,13 @@ perform_context_reduction(OrigTypeAssignSet, !Info, !IO) :-
     ->
         report_unsatisfiable_constraints(TypeAssignSet0, !Info, !IO),
         DeleteConstraints = (pred(TA0::in, TA::out) is det :-
+            % Make a new hlds_constraints structure for the type assign,
+            % with the same assumed constraints but all unproven constraints
+            % deleted.
             type_assign_get_typeclass_constraints(TA0, Constraints0),
-            Constraints = (Constraints0
-                    ^ unproven := [])
-                    ^ redundant := multi_map.init,
+            type_assign_get_typevarset(TA0, TVarSet),
+            make_hlds_constraints(ClassTable, TVarSet, [],
+                Constraints0 ^ assumed, Constraints),
             type_assign_set_typeclass_constraints(Constraints, TA0, TA)
         ),
         list.map(DeleteConstraints, OrigTypeAssignSet, NewTypeAssignSet),
