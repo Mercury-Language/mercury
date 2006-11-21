@@ -162,7 +162,7 @@ install_cgi_progs: mdprof_cgi mdprof_dump mdprof_test mdprof_feedback
 	# fail during a first-time installation. The rm is before the move
 	# in case this is the third or later installation.
 	-if test $(ENABLE_DEEP_PROFILER) = yes ; then \
-		rm $(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
+		rm -f $(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
 		mv $(INSTALL_CGI_DIR)/mdprof_cgi \
 			$(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
 		cp mdprof_cgi $(INSTALL_CGI_DIR) ; \
@@ -191,6 +191,6 @@ uninstall:
 	# value of $(ENABLE_DEEP_PROFILER) to check for the latter wouldn't
 	# necessarily do any good, since its setting may have changed since
 	# the original install.)
-	-rm $(INSTALL_CGI_DIR)/mdprof_cgi
+	-rm -f $(INSTALL_CGI_DIR)/mdprof_cgi
 
 #-----------------------------------------------------------------------------#
