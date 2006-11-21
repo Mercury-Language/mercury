@@ -61,7 +61,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Succeeds iff the module refered to by the module name is one
+    % Succeeds iff the module referred to by the module name is one
     % of the modules in the standard library.
     %
 :- pred mercury_std_library_module_name(module_name::in) is semidet.
@@ -3121,6 +3121,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             !IO),
         module_name_to_file_name(ModuleName, ".java_date", no,
             JavaDateFileName, !IO),
+        % XXX Why is the extension hardcoded to .pic_o here?  That looks
+        % wrong.  It should probably be .$(EXT_FOR_PIC_OBJECT) - juliensf.
         module_name_to_file_name(ModuleName, ".pic_o", no, PicObjFileName,
             !IO),
         module_name_to_file_name(ModuleName, ".int0", no, Int0FileName, !IO),
@@ -3411,7 +3413,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             get_item_list_foreign_code(Globals, Items, LangSet,
                 ForeignImports1, _),
             % If we're generating the `.dep' file, ForeignImports0 will contain
-            % a conservative % approximation to the set of foreign imports
+            % a conservative approximation to the set of foreign imports
             % needed which will include imports required by imported modules.
             (
                 ForeignImports0 = [],
@@ -3444,27 +3446,36 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             ForeignImportedModules = [_ | _],
             (
                 Target = target_il,
-                ForeignImportTarget = DllFileName,
+                ForeignImportTargets = [DllFileName],
                 ForeignImportExt = ".dll"
             ;
                 Target = target_java,
-                ForeignImportTarget = ClassFileName,
+                ForeignImportTargets = [ClassFileName],
                 ForeignImportExt = ".java"
             ;
                 Target = target_c,
-                ForeignImportTarget = ObjFileName,
+                % NOTE: for C (and asm) the possible targets might be a .o
+                % file _or_ a .pic_o file.  We need to include dependencies
+                % for the latter otherwise invoking mmake with a <module>.pic_o
+                % target will break.
+                ForeignImportTargets = [ObjFileName, PicObjFileName],
                 ForeignImportExt = ".mh"
             ;
                 Target = target_asm,
-                ForeignImportTarget = ObjFileName,
+                ForeignImportTargets = [ObjFileName, PicObjFileName],
                 ForeignImportExt = ".mh"
             ),
-            io.write_string(DepStream, "\n\n", !IO),
-            io.write_string(DepStream, ForeignImportTarget, !IO),
-            io.write_string(DepStream, " : ", !IO),
-            write_dependencies_list(ForeignImportedModules, ForeignImportExt,
-                DepStream, !IO),
-            io.write_string(DepStream, "\n\n", !IO)
+            WriteForeignImportTarget = (pred(ForeignImportTarget::in,
+                    !.IO::di, !:IO::uo) is det :-
+                io.write_string(DepStream, "\n\n", !IO),
+                io.write_string(DepStream, ForeignImportTarget, !IO),
+                io.write_string(DepStream, " : ", !IO),
+                write_dependencies_list(ForeignImportedModules,
+                    ForeignImportExt, DepStream, !IO),
+                io.write_string(DepStream, "\n\n", !IO)
+            ),
+            list.foldl(WriteForeignImportTarget, ForeignImportTargets,
+                !IO)
         ),
 
         (
@@ -4316,7 +4327,7 @@ generate_dependencies_write_d_files([Dep | Deps],
 get_dependencies_from_relation(DepsRel0, ModuleName, Deps) :-
     svrelation.add_element(ModuleName, ModuleKey, DepsRel0, DepsRel),
     relation.lookup_key_set_from(DepsRel, ModuleKey, DepsKeysSet),
-    foldl(
+    sparse_bitset.foldl(
         (pred(Key::in, Deps0::in, [Dep | Deps0]::out) is det :-
             relation.lookup_key(DepsRel, Key, Dep)
         ), DepsKeysSet, [], Deps).
