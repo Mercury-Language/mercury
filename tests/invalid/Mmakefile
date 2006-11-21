@@ -209,6 +209,7 @@ SINGLEMODULE= \
 	uniq_mutable \
 	uniq_neg \
 	unsatisfiable_constraint \
+	unsatisfiable_constraint_bug \
 	unsatisfiable_super \
 	user_eq_dummy \
 	uu_type \
