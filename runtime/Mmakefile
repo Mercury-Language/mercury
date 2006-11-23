@@ -69,11 +69,9 @@ HDRS		=	\
 			mercury_overflow.h	\
 			mercury_proc_id.h	\
 			mercury_prof.h		\
-			mercury_profiling_builtin.h	\
 			mercury_prof_mem.h	\
 			mercury_prof_time.h	\
 			mercury_profiling_builtin.h	\
-			mercury_reg_workarounds.h	\
 			mercury_regs.h		\
 			mercury_reg_workarounds.h	\
 			mercury_runtime_util.h	\
@@ -438,13 +436,17 @@ tags_file_exists:
 # installation rules
 
 .PHONY: install
-install: install_headers install_init install_lib
+install: install_headers install_lib
 
+# XXX Trace goal fix.
+#
 .PHONY: install_dirs
 install_dirs:
 	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
 		mkdir -p $(INSTALL_INC_DIR)/machdeps
 	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	-[ -d $(INSTALL_GRADE_MODULE_DIR) ] || \
+		mkdir -p $(INSTALL_GRADE_MODULE_DIR)
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 	-[ -d $(INSTALL_CONF_DIR) ] || mkdir -p $(INSTALL_CONF_DIR)
 	-[ -d $(INSTALL_RECONF_DIR)/runtime ] || \
@@ -497,17 +499,16 @@ install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) \
 	cp `vpath_find mercury_conf.h.in` $(INSTALL_RECONF_DIR)/runtime
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
+# XXX Trace goal fix.
+#
 .PHONY: install_init
 install_init: $(RT_LIB_NAME).init install_dirs
 	cp `vpath_find $(RT_LIB_NAME).init` $(INSTALL_MODULE_DIR)
-	# "$(RT_LIB_NAME).init" used to be called "runtime.init".
-	# If there is still a version with an old name lying around,
-	# then delete it; otherwise the initialization would get done twice.
-	rm -f $(INSTALL_MODULE_DIR)/runtime.init
+	cp `vpath_find $(RT_LIB_NAME).init` $(INSTALL_GRADE_MODULE_DIR)
 
-.PHONY: install_lib install_dirs
+.PHONY: install_lib 
 install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
-		install_dirs
+		install_dirs install_init
 	cp `vpath_find lib$(RT_LIB_NAME).$A \
 		lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)

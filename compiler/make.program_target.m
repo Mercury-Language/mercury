@@ -794,6 +794,7 @@ install_library(MainModuleName, Succeeded, !Info, !IO) :-
     ->
         globals.io_lookup_string_option(install_prefix, Prefix, !IO),
 
+        % XXX Trace goal fix.
         ModulesDir = Prefix/"lib"/"mercury"/"modules",
         module_name_to_file_name(MainModuleName, ".init", no, InitFileName,
             !IO),
@@ -1013,14 +1014,28 @@ install_library_grade_files(LinkSucceeded0, GradeDir, ModuleName, AllModules,
             )
         ),
 
+        install_grade_init(GradeDir, ModuleName, InitSucceded, !IO),
+
         list.map_foldl2(
             install_grade_ints_and_headers(LinkSucceeded, GradeDir),
             AllModules, IntsHeadersSucceeded, !Info, !IO),
-        Succeeded = bool.and_list([LibsSucceeded | IntsHeadersSucceeded])
+        Succeeded =
+            bool.and_list([LibsSucceeded, InitSucceded | IntsHeadersSucceeded])
     ;
         DirResult = no,
         Succeeded = no
     ).
+
+    % Install the `.init' file for the current grade.
+    %
+:- pred install_grade_init(string::in, module_name::in, bool::out,
+    io::di, io::uo) is det.
+
+install_grade_init(GradeDir, ModuleName, Succeeded, !IO) :-
+    globals.io_lookup_string_option(install_prefix, Prefix, !IO),
+    GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
+    module_name_to_file_name(ModuleName, ".init", no, InitFileName, !IO),
+    install_file(InitFileName, GradeModulesDir, Succeeded, !IO).
 
     % Install the `.opt', `.analysis' and `.mih' files for the current grade.
     %
@@ -1201,7 +1216,10 @@ make_grade_install_dirs(Grade, Result, LinkResult, !IO) :-
     GradeIncSubdir = LibDir/"lib"/Grade/"inc"/"Mercury",
     make_directory(GradeIncSubdir, Result2, !IO),
 
-    Results0 = [Result1, Result2],
+    GradeModuleSubdir = LibDir/"modules"/Grade,
+    make_directory(GradeModuleSubdir, Result3, !IO),
+
+    Results0 = [Result1, Result2, Result3],
 
     make_install_symlink(GradeIncSubdir, "mih", LinkResult0, !IO),
     list.map_foldl(make_install_symlink(GradeIntsSubdir),

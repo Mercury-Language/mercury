@@ -477,14 +477,20 @@ lib%.install: lib%.install_ints lib%.install_hdrs lib%.install_init \
 		lib%.install_library
 	$(MMAKE) lib$*.install_grades || { mercury_cleanup_install && exit 1; }
 
+# XXX Trace goal fix.
+#
 .PHONY: lib%.install_init
 lib%.install_init: %.init install_lib_dirs
 	$(INSTALL) `vpath_find $*.init` $(INSTALL_MODULE_DIR)
 
+.PHONY: lib%.install_grade_init
+lib%.install_grade_init: %.init install_grade_dirs
+	$(INSTALL) `vpath_find $*.init` $(INSTALL_GRADE_MODULE_DIR)
+
 .PHONY: lib%.install_library
 lib%.install_library: lib%.$A lib%.$(EXT_FOR_SHARED_LIB) \
 			install_grade_dirs lib%.install_grade_hdrs \
-			lib%.install_opts
+			lib%.install_opts lib%.install_grade_init
 	$(INSTALL) `vpath_find lib$*.$A lib$*.$(EXT_FOR_SHARED_LIB)` \
 			$(INSTALL_MERC_LIB_DIR)
 	$(RANLIB) $(RANLIBFLAGS) $(INSTALL_MERC_LIB_DIR)/lib$*.$A
@@ -544,6 +550,8 @@ install_grade_dirs: #install_lib_dirs
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)
 	-[ -d $(INSTALL_GRADE_INT_DIR) ] || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INT_DIR)
+	-[ -d $(INSTALL_GRADE_MODULE_DIR) ] || \
+		$(INSTALL_MKDIR) $(INSTALL_GRADE_MODULE_DIR)
 	# The following is needed to support the `--use-subdirs' option
 	-[ -d $(INSTALL_GRADE_INC_DIR)/Mercury ] || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)/Mercury
