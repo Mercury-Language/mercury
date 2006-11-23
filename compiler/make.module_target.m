@@ -96,7 +96,7 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
     dependency_status(Dep, Status, !Info, !IO),
     (
         Status = deps_status_not_considered,
-        TargetFile = ModuleName - FileType,
+        TargetFile = target_file(ModuleName, FileType),
         get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
         (
             MaybeImports = no,
@@ -115,8 +115,10 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
                 CompilationTask = process_module(_) - _,
                 Imports ^ source_file_module_name \= ModuleName
             ->
+                NestedTargetFile = target_file(
+                    Imports ^ source_file_module_name, FileType),
                 make_module_target_extra_options(ExtraOptions,
-                    dep_target(Imports ^ source_file_module_name - FileType),
+                    dep_target(NestedTargetFile),
                     Succeeded, !Info, !IO)
             ;
                 CompilationTask = CompilationTaskType - _,
@@ -137,7 +139,10 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
                     union_deps(target_dependencies(Globals, FileType)),
                     ModulesToCheck, DepsSuccess, set.init, DepFiles0,
                     !Info, !IO),
-                ( TargetFile = _ - module_target_private_interface ->
+                (
+                    TargetFile = target_file(_, TargetType),
+                    TargetType = module_target_private_interface
+                ->
                     % Avoid circular dependencies (the `.int0' files
                     % for the nested sub-modules depend on this module's
                     % `.int0' file).
@@ -201,7 +206,10 @@ make_module_target_extra_options(ExtraOptions, dep_target(TargetFile) @ Dep,
         Succeeded = yes
     ;
         Status = deps_status_being_built,
-        ( TargetFile = _FileName - module_target_foreign_il_asm(_Lang) ->
+        ( 
+            TargetFile = target_file(_FileName, FileType),
+            FileType = module_target_foreign_il_asm(_Lang)
+        ->
             io.write_string("Error: circular dependency detected " ++
                 "while building\n", !IO),
             io.write_string("  `", !IO),
@@ -249,7 +257,10 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
         debug_file_msg(TargetFile, "target file does not exist", !IO),
         DepsResult = deps_out_of_date
     ;
-        ( TargetFile = ModuleName - module_target_analysis_registry ->
+        (
+            TargetFile = target_file(ModuleName, FileType),
+            FileType = module_target_analysis_registry
+        ->
             force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis,
                 !.Info, !IO)
         ;
@@ -307,33 +318,33 @@ force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis, Info,
 build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
         TouchedFiles, ExtraOptions, Succeeded, !Info, !IO) :-
     maybe_make_target_message(TargetFile, !IO),
-    TargetFile = ModuleName - _FileType,
+    TargetFile = target_file(ModuleName, _FileType),
     CompilationTask = Task - TaskOptions,
     (
         CompilationTask = process_module(ModuleTask) - _,
         forkable_module_compilation_task_type(ModuleTask) = yes,
         \+ can_fork
     ->
-        % We need a temporary file to pass the arguments to
-        % the mmc process which will do the compilation.
-        % It's created here (not in invoke_mmc) so it can be
-        % cleaned up by build_with_check_for_interrupt.
+        % We need a temporary file to pass the arguments to the mmc process
+        % which will do the compilation.  It's created here
+        % (not in invoke_mmc) so it can be cleaned up by
+        % build_with_check_for_interrupt.
         io.make_temp(ArgFileName, !IO),
         MaybeArgFileName = yes(ArgFileName)
     ;
         MaybeArgFileName = no
     ),
     Cleanup =
-        (pred(MakeInfo0::in, MakeInfo::out, di, uo) is det -->
+        (pred(!.MakeInfo::in, !:MakeInfo::out, !.IO::di, !:IO::uo) is det :-
             % XXX Remove `.int.tmp' files.
             list.foldl2(make_remove_target_file, TouchedTargetFiles,
-                MakeInfo0, MakeInfo1),
-            list.foldl2(make_remove_file, TouchedFiles, MakeInfo1, MakeInfo),
+                !MakeInfo, !IO),
+            list.foldl2(make_remove_file, TouchedFiles, !MakeInfo, !IO),
             (
-                { MaybeArgFileName = yes(ArgFileName2) },
-                io.remove_file(ArgFileName2, _)
+                MaybeArgFileName = yes(ArgFileName2),
+                io.remove_file(ArgFileName2, _, !IO)
             ;
-                { MaybeArgFileName = no }
+                MaybeArgFileName = no
             )
         ),
     build_with_check_for_interrupt(
@@ -366,16 +377,15 @@ build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
         Verbose = no
     ),
 
-    % Run compilations to target code in a separate process.
-    % This is necessary for `--target asm' because the GCC
-    % backend can only be invoked once per process. It's a good
-    % idea for other the backends because it avoids problems with
-    % the Boehm GC retaining memory by scanning too much of the
-    % Mercury stacks. If the compilation is run in a separate
-    % process, it is also easier to kill if an interrupt arrives.
-    % We do the same for intermodule-optimization interfaces
-    % because if type checking gets overloaded by ambiguities
-    % it can be difficult to kill the compiler otherwise.
+    % Run compilations to target code in a separate process.  This is
+    % necessary for `--target asm' because the GCC backend can only be
+    % invoked once per process. It's a good idea for other the backends
+    % because it avoids problems with the Boehm GC retaining memory by
+    % scanning too much of the Mercury stacks. If the compilation is run in
+    % a separate process, it is also easier to kill if an interrupt arrives.
+    % We do the same for intermodule-optimization interfaces because if type
+    % checking gets overloaded by ambiguities it can be difficult to kill
+    % the compiler otherwise.
     io.set_output_stream(ErrorStream, OldOutputStream, !IO),
     (
         forkable_module_compilation_task_type(ModuleTask) = yes
@@ -576,15 +586,13 @@ invoke_mmc(ErrorStream, MaybeArgFileName, Args, Succeeded, !IO) :-
 
     QuotedArgs = list.map(quote_arg, Args),
 
-    % Some operating systems (e.g. Windows) have shells with
-    % ludicrously short limits on the length of command lines,
-    % so we need to write the arguments to a file which will
-    % be read by the child mmc process.
-    % This code is only called if fork() doesn't work, so there's
-    % no point checking whether the shell actually has this
-    % limitation.
-    % The temporary file is created by the caller so that it will be
-    % removed by build_with_check_for_interrupt if an interrupt occurs.
+    % Some operating systems (e.g. Windows) have shells with ludicrously
+    % short limits on the length of command lines, so we need to write the
+    % arguments to a file which will be read by the child mmc process.
+    % This code is only called if fork() doesn't work, so there's no point
+    % checking whether the shell actually has this limitation.
+    % The temporary file is created by the caller so that it will be removed
+    % by build_with_check_for_interrupt if an interrupt occurs.
     (
         MaybeArgFileName = yes(ArgFileName)
     ;
@@ -722,7 +730,7 @@ get_pic_flags(non_pic) = [].
 
 touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         TouchedFileNames, !Info, !IO) :-
-    TargetFile = ModuleName - FileType,
+    TargetFile = target_file(ModuleName, FileType),
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports0),
@@ -787,7 +795,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
                 % a header file.
                 %
                 HeaderModuleNames = SourceFileModuleNames,
-                HeaderTargets0 = make_target_list(HeaderModuleNames,
+                HeaderTargets0 = make_target_file_list(HeaderModuleNames,
                     module_target_c_header(header_mih))
             ;
                 HighLevelCode = no,
@@ -805,13 +813,12 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
                         contains_foreign_code(_) =
                             MImports ^ has_foreign_code
                     ), ModuleImportsList),
-            HeaderTargets0 = make_target_list(HeaderModuleNames,
+            HeaderTargets0 = make_target_file_list(HeaderModuleNames,
                 module_target_c_header(header_mih))
         ;
-            CompilationTarget = target_il,
-            HeaderTargets0 = []
-        ;
-            CompilationTarget = target_java,
+            ( CompilationTarget = target_il
+            ; CompilationTarget = target_java
+            ),
             HeaderTargets0 = []
         ),
 
@@ -822,13 +829,14 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         ->
             Names = SourceFileModuleNames,
             HeaderTargets =
-                make_target_list(Names, module_target_c_header(header_mh))
+                make_target_file_list(Names, module_target_c_header(header_mh))
                 ++ HeaderTargets0
         ;
             HeaderTargets = HeaderTargets0
         ),
 
-        TouchedTargetFiles0 = make_target_list(TargetModuleNames, FileType),
+        TouchedTargetFiles0 = make_target_file_list(TargetModuleNames,
+            FileType),
         TouchedTargetFiles = TouchedTargetFiles0 ++ HeaderTargets
     ;
         Task = task_make_interface,
@@ -836,9 +844,11 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         % when making the interface.
         ForeignCodeFiles = [],
         TouchedTargetFiles =
-            make_target_list(TargetModuleNames, module_target_long_interface)
+            make_target_file_list(TargetModuleNames,
+                module_target_long_interface)
             ++
-            make_target_list(TargetModuleNames, module_target_short_interface)
+            make_target_file_list(TargetModuleNames,
+                module_target_short_interface)
     ;
         ( Task = task_errorcheck
         ; Task = task_make_short_interface
@@ -847,12 +857,14 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         ; Task = task_make_analysis_registry
         ),
         ForeignCodeFiles = [],
-        TouchedTargetFiles = make_target_list(TargetModuleNames, FileType)
+        TouchedTargetFiles = make_target_file_list(TargetModuleNames, FileType)
     ),
     globals.io_get_globals(Globals, !IO),
     list.foldl2(
-        (pred((TargetModuleName - TargetFileType)::in, !.TimestampFiles::in,
-            !:TimestampFiles::out, !.IO::di, !:IO::uo) is det :-
+        (pred(TouchedTargetFile::in,
+            !.TimestampFiles::in, !:TimestampFiles::out, !.IO::di, !:IO::uo)
+            is det :-
+        TouchedTargetFile = target_file(TargetModuleName, TargetFileType),
         ( TimestampExt = timestamp_extension(Globals, TargetFileType) ->
             module_name_to_file_name(TargetModuleName, TimestampExt, no,
                 TimestampFile, !IO),
@@ -868,13 +880,13 @@ touched_files(TargetFile, target_code_to_object_code(_), [TargetFile], [],
 
 touched_files(TargetFile, foreign_code_to_object_code(PIC, Lang),
         [TargetFile], [ForeignObjectFile], !Info, !IO) :-
-    TargetFile = ModuleName - _,
+    TargetFile = target_file(ModuleName, _),
     foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile, !IO),
     ForeignObjectFile = ForeignCodeFile ^ object_file.
 
 touched_files(TargetFile, fact_table_code_to_object_code(PIC, FactTableName),
         [TargetFile], [FactTableObjectFile], !Info, !IO) :-
-    TargetFile = ModuleName - _,
+    TargetFile = target_file(ModuleName, _),
     globals.io_get_globals(Globals, !IO),
     ObjExt = get_object_extension(Globals, PIC),
     fact_table_file_name(ModuleName, FactTableName, ObjExt, yes,

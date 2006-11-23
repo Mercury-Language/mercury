@@ -129,11 +129,11 @@ union_deps(FindDeps, ModuleName, Success, Deps0, set.union(Deps0, Deps),
         !Info, !IO) :-
     FindDeps(ModuleName, Success, Deps, !Info, !IO).
 
-    % Note that we go to some effort in this module to stop
-    % dependency calculation as soon as possible if there are errors.
-    % This is important because the calls to get_module_dependencies
-    % from the dependency calculation predicates can result in
-    % every module in the program being read.
+    % Note that we go to some effort in this module to stop dependency
+    % calculation as soon as possible if there are errors.
+    % This is important because the calls to get_module_dependencies from
+    % the dependency calculation predicates can result in every module in
+    % the program being read.
     %
 :- func combine_deps(find_module_deps(T)::in(find_module_deps),
     find_module_deps(T)::in(find_module_deps)) =
@@ -735,11 +735,11 @@ filter_module_names(Filter, F, ModuleName, Success, Modules, !Info, !IO) :-
     Modules = set.filter((pred(M::in) is semidet :- Filter(ModuleName, M)),
         Modules0).
 
-    % If the current module we are compiling is not in the standard
-    % library and the module we are importing is then remove it,
-    % otherwise keep it.  When compiling with `--target il', if the
-    % current module is not in the standard library, we link with
-    % mercury.dll rather than the DLL file for the imported module.
+    % If the current module we are compiling is not in the standard library
+    % and the module we are importing is then remove it, otherwise keep it.
+    % When compiling with `--target il', if the current module is not in the
+    % standard library, we link with mercury.dll rather than the DLL file
+    % for the imported module.
     %
 :- pred maybe_keep_std_lib_module(module_name::in, module_name::in) is semidet.
 
@@ -965,7 +965,7 @@ check_dependencies_timestamps_write_missing_deps(TargetFileName,
         BuildDepsSucceeded, DepFiles, WriteDepFile, DepTimestamps, !IO) :-
     assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
         DepTimestampAL),
-    solutions.solutions(
+    solutions(
         (pred(DepFile::out) is nondet :-
             list.member(DepFile - error(_), DepTimestampAL)
         ), ErrorDeps),
@@ -1050,7 +1050,7 @@ debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
     io.write_string(": newer dependencies: ", !IO),
     assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
         DepTimestampAL),
-    solutions.solutions(
+    solutions(
         (pred(DepFile::out) is nondet :-
             list.member(DepFile - MaybeDepTimestamp, DepTimestampAL),
             (
@@ -1086,7 +1086,7 @@ dependency_status(dep_file(FileName, _) @ Dep, Status, !Info, !IO) :-
         !:Info = !.Info ^ dependency_status ^ elem(Dep) := Status
     ).
 dependency_status(dep_target(Target) @ Dep, Status, !Info, !IO) :-
-    Target = ModuleName - FileType,
+    Target = target_file(ModuleName, FileType),
     ( FileType = module_target_source ->
         % Source files are always up-to-date.
         ModuleTarget = module_target(module_target_source),

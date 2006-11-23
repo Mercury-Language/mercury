@@ -50,7 +50,8 @@
 
 %-----------------------------------------------------------------------------%
 
-make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
+make_linked_target(LinkedTargetFile, Succeeded, !Info, !IO) :-
+    LinkedTargetFile = linked_target_file(MainModuleName, FileType),
     (
         FileType = shared_library,
         ExtraOptions = ["--compile-to-shared-lib"]
@@ -91,7 +92,8 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
         (
             Succeeded0 = yes,
             build_with_module_options(MainModuleName, ExtraOptions,
-                make_linked_target_2(MainModuleName - FileType),
+                make_linked_target_2(
+                    linked_target_file(MainModuleName, FileType)),
                 Succeeded, !Info, !IO)
         ;
             Succeeded0 = no,
@@ -102,7 +104,8 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
 :- pred make_linked_target_2(linked_target_file::in, list(string)::in,
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
+make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
+    LinkedTargetFile = linked_target_file(MainModuleName, FileType),
     find_reachable_local_modules(MainModuleName, DepsSuccess,
         AllModules, !Info, !IO),
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
@@ -192,8 +195,8 @@ get_target_modules(TargetType, AllModules, TargetModules, !Info, !IO) :-
     ->
         % `.err' and `.s' files are only produced for the top-level module
         % in each source file.
-        list.foldl3(get_target_modules_2, AllModules,
-            [], TargetModules, !Info, !IO)
+        list.foldl3(get_target_modules_2, AllModules, [], TargetModules,
+            !Info, !IO)
     ;
         TargetModules = AllModules
     ).
@@ -234,15 +237,16 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
         Imports ^ has_foreign_code = contains_foreign_code(Langs),
         set.member(lang_c, Langs)
     ->
-        ForeignObjectTargets =
-            [dep_target(ModuleName
-                - module_target_foreign_object(PIC, lang_c))]
+        ForeignObjectFileType = module_target_foreign_object(PIC, lang_c),
+        ForeignObjectTarget   = target_file(ModuleName, ForeignObjectFileType),
+        ForeignObjectTargets  = [dep_target(ForeignObjectTarget)]
     ;
         CompilationTarget = target_il,
         Imports ^ has_foreign_code = contains_foreign_code(Langs)
     ->
         ForeignObjectTargets = list.map(
-            (func(L) = dep_target(ModuleName - module_target_foreign_il_asm(L))
+            (func(L) = dep_target(target_file(ModuleName,
+                module_target_foreign_il_asm(L)))
             ), set.to_sorted_list(Langs))
     ;
         ForeignObjectTargets = []
@@ -256,8 +260,8 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
         ),
         FactObjectTargets = list.map(
             (func(FactFile) =
-                dep_target(ModuleName -
-                    module_target_fact_table_object(PIC, FactFile))
+                dep_target(target_file(ModuleName,
+                    module_target_fact_table_object(PIC, FactFile)))
             ),
             Imports ^ fact_table_deps),
         ObjectTargets = FactObjectTargets ++ ForeignObjectTargets
@@ -576,14 +580,16 @@ make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
             IntSucceeded, !Info, !IO),
         (
             IntSucceeded = yes,
-            make_linked_target(MainModuleName - static_library,
+            make_linked_target(
+                linked_target_file(MainModuleName, static_library),
                 StaticSucceeded, !Info, !IO),
             shared_libraries_supported(SharedLibsSupported, !IO),
             (
                 StaticSucceeded = yes,
                 (
                     SharedLibsSupported = yes,
-                    make_linked_target(MainModuleName - shared_library,
+                    make_linked_target(
+                        linked_target_file(MainModuleName, shared_library),
                         SharedLibsSucceeded, !Info, !IO)
                 ;
                     SharedLibsSupported = no,
@@ -770,7 +776,7 @@ modules_needing_reanalysis(ReanalyseSuboptimal, [Module | Modules],
 
 reset_analysis_registry_dependency_status(ModuleName, Info,
         Info ^ dependency_status ^ elem(Dep) := deps_status_not_considered) :-
-    Dep = dep_target(ModuleName - module_target_analysis_registry).
+    Dep = dep_target(target_file(ModuleName, module_target_analysis_registry)).
 
 %-----------------------------------------------------------------------------%
 
@@ -855,7 +861,7 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
         globals.io_get_target(Target, !IO),
         (
             % `.mh' files are (were) only generated for modules containing
-            % `:- pragma export' declarations.
+            % `:- pragma foreign_export' declarations.
             % But `.mh' files are expected by Mmake so always generate them,
             % otherwise there is trouble using libraries installed by
             % `mmc --make' with Mmake.
@@ -943,7 +949,7 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
         StatusMap = map.from_assoc_list(list.filter(
             (pred((File - _)::in) is semidet :-
                 \+ (
-                    File = dep_target(_ - Target),
+                    File = dep_target(target_file(_, Target)),
                     target_is_grade_or_arch_dependent(Target)
                 )
             ),

@@ -18,7 +18,7 @@
 % deconstructions of known cells, replacing them with assignments to the
 % arguments where this is guaranteed to not increase the number of stack slots
 % required by the goal.  Repeated calls to predicates with the same input
-% arguments are replaced by assigments and warnings are returned.
+% arguments are replaced by assignments and warnings are returned.
 %
 % IMPORTANT: This module does a small subset of the job of compile-time
 % garbage collection, but it does so without paying attention to uniqueness
@@ -177,11 +177,11 @@
     % type to information about cells involving that cons_id.
     %
     % The reason why we need the principal type constructors is that two
-    % syntactially identical structures have compatible representations if and
+    % syntactically identical structures have compatible representations if and
     % only if their principal type constructors are the same.  For example, if
     % we have:
     %
-    %   :- type maybe_err(T) --> ok(T) ; err(string).
+    %   :- type maybe_err(T) ---> ok(T) ; err(string).
     %
     %   :- pred p(maybe_err(foo)::in, maybe_err(bar)::out) is semidet.
     %   p(err(X), err(X)).
@@ -347,7 +347,7 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
     (
         % Don't optimise partially instantiated deconstruction unifications,
         % because it would be tricky to work out how to mode the replacement
-        % asssignment unifications. In the vast majority of cases, the variable
+        % assignment unifications. In the vast majority of cases, the variable
         % is ground.
         Mode = LVarMode - _,
         mode_get_insts(ModuleInfo, LVarMode, Inst0, _),

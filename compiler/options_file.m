@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: options_file.m.
 % Main author: stayl.
-
+% 
 % Code to deal with options for `mmc --make', including code to parse
-% an Mmakefile equivalent.
-
+% Mercury.options files.
+% 
 %-----------------------------------------------------------------------------%
 
 :- module make.options_file.
@@ -91,6 +91,7 @@
 :- import_module map.
 :- import_module std_util.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 :- import_module univ.
 
@@ -460,11 +461,11 @@ update_variable(VarName, AddToValue, NewValue0, !Variables, !IO) :-
             ),
             OptVarValue = options_variable_value(NewValue, Words,
                 options_file),
-            map.set(!.Variables, VarName, OptVarValue, !:Variables)
+            svmap.set(VarName, OptVarValue, !Variables)
         )
     ;
         OptVarValue = options_variable_value(NewValue1, Words1, options_file),
-        map.set(!.Variables, VarName, OptVarValue, !:Variables)
+        svmap.set(VarName, OptVarValue, !Variables)
     ).
 
 :- pred expand_variables(options_variables::in, list(char)::in,

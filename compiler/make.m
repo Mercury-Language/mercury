@@ -160,8 +160,6 @@
     ;       make_error_dependencies(module_name)
     ;       make_error_other(string).
 
-:- type compilation_task == pair(compilation_task_type, module_name).
-
 :- type compilation_task_type
     --->    process_module(module_compilation_task_type)
 
@@ -222,8 +220,17 @@
     ;       deps_status_up_to_date
     ;       deps_status_error.
 
-:- type target_file == pair(module_name, module_target_type).
-:- type linked_target_file == pair(module_name, linked_target_type).
+:- type target_file
+    --->    target_file(
+                target_file_name :: module_name,
+                target_file_type :: module_target_type
+            ).
+
+:- type linked_target_file 
+    --->    linked_target_file(
+                linked_tf_name :: module_name,
+                linked_tf_type :: linked_target_type
+            ).
 
 %-----------------------------------------------------------------------------%
 
@@ -266,10 +273,9 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
         globals.io_get_globals(Globals, !IO),
 
         %
-        % Accept and ignore `.depend' targets.
-        % `mmc --make' does not need a separate
-        % make depend step. The dependencies for
-        % each module are regenerated on demand.
+        % Accept and ignore `.depend' targets.  `mmc --make' does not
+        % need a separate make depend step. The dependencies for each
+        % module are regenerated on demand.
         %
         NonDependTargets = list.filter(
             (pred(Target::in) is semidet :-
@@ -314,11 +320,13 @@ make_target(Target, Success, !Info, !IO) :-
     Target = ModuleName - TargetType,
     (
         TargetType = module_target(ModuleTargetType),
-        make_module_target(dep_target(ModuleName - ModuleTargetType), Success,
+        TargetFile = target_file(ModuleName, ModuleTargetType),
+        make_module_target(dep_target(TargetFile), Success,
             !Info, !IO)
     ;
         TargetType = linked_target(ProgramTargetType),
-        make_linked_target(ModuleName - ProgramTargetType, Success, !Info, !IO)
+        LinkedTargetFile = linked_target_file(ModuleName, ProgramTargetType),
+        make_linked_target(LinkedTargetFile, Success, !Info, !IO)
     ;
         TargetType = misc_target(MiscTargetType),
         make_misc_target(ModuleName - MiscTargetType, Success, !Info, !IO)

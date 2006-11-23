@@ -186,6 +186,9 @@
 
 :- func make_target_list(list(K), V) = assoc_list(K, V).
 
+:- func make_target_file_list(list(module_name), module_target_type) = 
+    list(target_file).
+
 :- func make_dependency_list(list(module_name), module_target_type)
     = list(dependency_file).
 
@@ -249,8 +252,8 @@
     %
 :- pred file_error(file_name::in, io::di, io::uo) is det.
 
-    % If the given target was specified on the command
-    % line, warn that it was already up to date.
+    % If the given target was specified on the command line, warn that it
+    % was already up to date.
     %
 :- pred maybe_warn_up_to_date_target(pair(module_name, target_type)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -528,8 +531,8 @@ write_error_char(FullOutputStream, PartialOutputStream, Char,
 
 %-----------------------------------------------------------------------------%
 
-get_timestamp_file_timestamp(ModuleName - FileType, MaybeTimestamp,
-        !Info, !IO) :-
+get_timestamp_file_timestamp(target_file(ModuleName, FileType),
+        MaybeTimestamp, !Info, !IO) :-
     globals.io_get_globals(Globals, !IO),
     ( TimestampExt = timestamp_extension(Globals, FileType) ->
         module_name_to_file_name(ModuleName, TimestampExt, no, FileName, !IO)
@@ -557,7 +560,7 @@ get_dependency_timestamp(dep_file(FileName, MaybeOption), MaybeTimestamp,
 get_dependency_timestamp(dep_target(Target), MaybeTimestamp, !Info, !IO) :-
     get_target_timestamp(yes, Target, MaybeTimestamp0, !Info, !IO),
     (
-        Target = _ - module_target_c_header(header_mih),
+        Target = target_file(_, module_target_c_header(header_mih)),
         MaybeTimestamp0 = ok(_)
     ->
         % Don't rebuild the `.o' file if an irrelevant part of a
@@ -571,7 +574,7 @@ get_dependency_timestamp(dep_target(Target), MaybeTimestamp, !Info, !IO) :-
     ).
 
 get_target_timestamp(Search, Target, MaybeTimestamp, !Info, !IO) :-
-    ( Target = ModuleName - module_target_analysis_registry ->
+    ( Target = target_file(ModuleName, module_target_analysis_registry) ->
         get_target_timestamp_analysis_registry(Search, ModuleName,
             MaybeTimestamp, !Info, !IO)
     ;
@@ -599,8 +602,8 @@ get_target_timestamp_analysis_registry(Search, ModuleName, MaybeTimestamp,
             ; Status = suboptimal
             ),
             get_timestamp_file_timestamp(
-                ModuleName - module_target_analysis_registry, MaybeTimestamp0,
-                !Info, !IO),
+                target_file(ModuleName, module_target_analysis_registry),
+                MaybeTimestamp0, !Info, !IO),
             (
                 MaybeTimestamp0 = ok(_),
                 MaybeTimestamp = MaybeTimestamp0
@@ -619,17 +622,17 @@ get_target_timestamp_analysis_registry(Search, ModuleName, MaybeTimestamp,
     ;
         MaybeStatus = no,
         get_target_timestamp_2(Search,
-            ModuleName - module_target_analysis_registry, MaybeTimestamp,
-            !Info, !IO)
+            target_file(ModuleName, module_target_analysis_registry),
+            MaybeTimestamp, !Info, !IO)
     ).
 
 :- pred get_target_timestamp_2(bool::in, target_file::in,
     maybe_error(timestamp)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-get_target_timestamp_2(Search, ModuleName - FileType, MaybeTimestamp,
-        !Info, !IO) :-
-    get_file_name(Search, ModuleName - FileType, FileName, !Info, !IO),
+get_target_timestamp_2(Search, TargetFile, MaybeTimestamp, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, FileType),
+    get_file_name(Search, TargetFile, FileName, !Info, !IO),
     (
         Search = yes,
         get_search_directories(FileType, SearchDirs, !IO)
@@ -664,7 +667,8 @@ get_target_timestamp_2(Search, ModuleName - FileType, MaybeTimestamp,
         MaybeTimestamp = MaybeTimestamp0
     ).
 
-get_file_name(Search, ModuleName - FileType, FileName, !Info, !IO) :-
+get_file_name(Search, TargetFile, FileName, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, FileType),
     ( FileType = module_target_source ->
         % In some cases the module name won't match the file name
         % (module mdb.parse might be in parse.m or mdb.m), so we need to
@@ -757,7 +761,7 @@ find_oldest_timestamp(ok(Timestamp1), ok(Timestamp2)) = ok(Timestamp) :-
 
 %-----------------------------------------------------------------------------%
 
-make_remove_target_file(ModuleName - FileType, !Info, !IO) :-
+make_remove_target_file(target_file(ModuleName, FileType), !Info, !IO) :-
     make_remove_target_file(ModuleName, FileType, !Info, !IO).
 
 make_remove_target_file(ModuleName, FileType, !Info, !IO) :-
@@ -791,8 +795,13 @@ report_remove_file(FileName, !IO) :-
 
 make_target_list(Ks, V) = list.map((func(K) = K - V), Ks).
 
+make_target_file_list(ModuleNames, FileType) = 
+    list.map((func(ModuleName) = target_file(ModuleName, FileType)),
+        ModuleNames).
+
 make_dependency_list(ModuleNames, FileType) =
-    list.map((func(Module) = dep_target(Module - FileType)), ModuleNames).
+    list.map((func(Module) = dep_target(target_file(Module, FileType))),
+        ModuleNames).
 
 target_extension(_, module_target_source) = yes(".m").
 target_extension(_, module_target_errors) = yes(".err").
@@ -821,17 +830,17 @@ target_extension(_, module_target_foreign_object(_, _)) = no.
 target_extension(_, module_target_foreign_il_asm(_)) = no.
 target_extension(_, module_target_fact_table_object(_, _)) = no.
 
-linked_target_file_name(ModuleName, executable, FileName) -->
-    globals.io_lookup_string_option(executable_file_extension, Ext),
-    module_name_to_file_name(ModuleName, Ext, no, FileName).
-linked_target_file_name(ModuleName, static_library, FileName) -->
-    globals.io_lookup_string_option(library_extension, Ext),
-    module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName).
-linked_target_file_name(ModuleName, shared_library, FileName) -->
-    globals.io_lookup_string_option(shared_library_extension, Ext),
-    module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName).
-linked_target_file_name(ModuleName, java_archive, FileName) -->
-    module_name_to_file_name(ModuleName, ".jar", no, FileName).
+linked_target_file_name(ModuleName, executable, FileName, !IO) :-
+    globals.io_lookup_string_option(executable_file_extension, Ext, !IO),
+    module_name_to_file_name(ModuleName, Ext, no, FileName, !IO).
+linked_target_file_name(ModuleName, static_library, FileName, !IO) :-
+    globals.io_lookup_string_option(library_extension, Ext, !IO),
+    module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName, !IO).
+linked_target_file_name(ModuleName, shared_library, FileName, !IO) :-
+    globals.io_lookup_string_option(shared_library_extension, Ext, !IO),
+    module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName, !IO).
+linked_target_file_name(ModuleName, java_archive, FileName, !IO) :-
+    module_name_to_file_name(ModuleName, ".jar", no, FileName, !IO).
 
 :- pred module_target_to_file_name(module_name::in, module_target_type::in,
     bool::in, file_name::out, io::di, io::uo) is det.
@@ -1005,11 +1014,11 @@ verbose_msg(P, !IO) :-
 
 debug_file_msg(TargetFile, Msg, !IO) :-
     debug_msg(
-        (pred(di, uo) is det -->
-            write_target_file(TargetFile),
-            io.write_string(": "),
-            io.write_string(Msg),
-            io.nl
+        (pred(!.IO::di, !:IO::uo) is det :-
+            write_target_file(TargetFile, !IO),
+            io.write_string(": ", !IO),
+            io.write_string(Msg, !IO),
+            io.nl(!IO)
         ), !IO).
 
 write_dependency_file(dep_target(TargetFile), !IO) :-
@@ -1017,16 +1026,17 @@ write_dependency_file(dep_target(TargetFile), !IO) :-
 write_dependency_file(dep_file(FileName, _), !IO) :-
     io.write_string(FileName, !IO).
 
-write_target_file(ModuleName - FileType, !IO) :-
+write_target_file(TargetFile, !IO) :-
+    TargetFile = target_file(ModuleName, FileType),
     module_target_to_file_name(ModuleName, FileType, no, FileName, !IO),
     io.write_string(FileName, !IO).
 
 maybe_make_linked_target_message(TargetFile, !IO) :-
     verbose_msg(
-        (pred(di, uo) is det -->
-            io.write_string("Making "),
-            io.write_string(TargetFile),
-            io.nl
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.write_string("Making ", !IO),
+            io.write_string(TargetFile, !IO),
+            io.nl(!IO)
         ), !IO).
 
 maybe_make_target_message(TargetFile, !IO) :-
@@ -1035,12 +1045,12 @@ maybe_make_target_message(TargetFile, !IO) :-
 
 maybe_make_target_message_to_stream(OutputStream, TargetFile, !IO) :-
     verbose_msg(
-        (pred(di, uo) is det -->
-            io.set_output_stream(OutputStream, OldOutputStream),
-            io.write_string("Making "),
-            write_target_file(TargetFile),
-            io.nl,
-            io.set_output_stream(OldOutputStream, _)
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.set_output_stream(OutputStream, OldOutputStream, !IO),
+            io.write_string("Making ", !IO),
+            write_target_file(TargetFile, !IO),
+            io.nl(!IO),
+            io.set_output_stream(OldOutputStream, _, !IO)
         ), !IO).
 
 maybe_reanalyse_modules_message(!IO) :-
@@ -1093,7 +1103,8 @@ maybe_symlink_or_copy_linked_target_message(Target, !IO) :-
 write_module_or_linked_target(ModuleName - FileType, !IO) :-
     (
         FileType = module_target(ModuleTargetType),
-        write_target_file(ModuleName - ModuleTargetType, !IO)
+        TargetFile = target_file(ModuleName, ModuleTargetType),
+        write_target_file(TargetFile, !IO)
     ;
         FileType = linked_target(LinkedTargetType),
         linked_target_file_name(ModuleName, LinkedTargetType, FileName, !IO),

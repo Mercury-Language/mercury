@@ -144,11 +144,10 @@ do_get_module_dependencies(RebuildDeps, ModuleName, !:MaybeImports, !Info,
         read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO),
 
         %
-        % Check for the case where the module name doesn't match
-        % the source file name (e.g. parse.m contains module
-        % mdb.parse). Get the correct source file name from
-        % the module dependency file, then check whether the
-        % module dependency file is up to date.
+        % Check for the case where the module name doesn't match the
+        % source file name (e.g. parse.m contains module mdb.parse). Get
+        % the correct source file name from the module dependency file,
+        % then check whether the module dependency file is up to date.
         %
         map.lookup(!.Info ^ module_dependencies, ModuleName, !:MaybeImports),
         (
@@ -186,11 +185,10 @@ do_get_module_dependencies(RebuildDeps, ModuleName, !:MaybeImports, !Info,
         MaybeDepFileTimestamp = error(_),
 
         %
-        % Try to make the dependencies. This will succeed
-        % when the module name doesn't match the file name
-        % and the dependencies for this module haven't been
-        % built before. It will fail if the source file is
-        % in another directory.
+        % Try to make the dependencies. This will succeed when the
+        % module name doesn't match the file name and the dependencies
+        % for this module haven't been built before. It will fail if the
+        % source file is in another directory.
         %
         (
             RebuildDeps = yes,
@@ -271,12 +269,12 @@ do_write_module_dep_file(Imports, !IO) :-
             mercury_output_foreign_language_string, !IO),
         io.write_string("},\n\t{", !IO),
         io.write_list(Imports  ^ foreign_import_modules, ", ",
-            (pred(ForeignImportModule::in, di, uo) is det -->
-                { ForeignImportModule = foreign_import_module_info(Lang,
-                    ForeignImport, _) },
-                mercury_output_foreign_language_string(Lang),
-                io.write_string(" - "),
-                mercury_output_bracketed_sym_name(ForeignImport)
+            (pred(ForeignImportModule::in, !.IO::di, !:IO::uo) is det :-
+                ForeignImportModule = foreign_import_module_info(Lang,
+                    ForeignImport, _),
+                mercury_output_foreign_language_string(Lang, !IO),
+                io.write_string(" - ", !IO),
+                mercury_output_bracketed_sym_name(ForeignImport, !IO)
             ), !IO),
         io.write_string("},\n\t", !IO),
         io.write(Imports ^ contains_foreign_export, !IO),
@@ -417,12 +415,11 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
                 := yes(Imports),
 
             %
-            % Read the dependencies for the nested children.
-            % If something goes wrong (for example one of the
-            % files was removed), the dependencies for all
-            % modules in the source file will be remade
-            % (make_module_dependencies expects to be given
-            % the top-level module in the source file).
+            % Read the dependencies for the nested children.  If something
+            % goes wrong (for example one of the files was removed), the
+            % dependencies for all modules in the source file will be remade
+            % (make_module_dependencies expects to be given the top-level
+            % module in the source file).
             %
             SubRebuildDeps = no,
             list.foldl2(read_module_dependencies(SubRebuildDeps),
@@ -552,9 +549,10 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
             % while we have the contents of the module. The `int3'
             % file doesn't depend on anything else.
             %
-            ( Error = no_module_errors ->
-                Target = ModuleName -
-                    module_target_unqualified_short_interface,
+            (
+                Error = no_module_errors,
+                Target = target_file(ModuleName,
+                    module_target_unqualified_short_interface),
                 maybe_make_target_message_to_stream(OldOutputStream, Target,
                     !IO),
                 build_with_check_for_interrupt(
@@ -566,6 +564,9 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
                     cleanup_short_interfaces(SubModuleNames),
                     Succeeded, !Info, !IO)
             ;
+                ( Error = some_module_errors
+                ; Error = fatal_module_errors
+                ),
                 Succeeded = no
             ),
 
@@ -575,8 +576,9 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
                         ModuleImportList)
                 ), cleanup_module_dep_files(SubModuleNames), _, !Info, !IO),
 
-            record_made_target(
-                ModuleName - module_target_unqualified_short_interface,
+            MadeTarget = target_file(ModuleName,
+                module_target_unqualified_short_interface),
+            record_made_target(MadeTarget,
                 process_module(task_make_short_interface), Succeeded,
                 !Info, !IO),
             unredirect_output(ModuleName, ErrorStream, !Info, !IO)
@@ -630,9 +632,9 @@ cleanup_module_dep_files(SubModuleNames, !Info, !IO) :-
 maybe_write_importing_module(_, no, !IO).
 maybe_write_importing_module(ModuleName, yes(ImportingModuleName), !IO) :-
     io.write_string("** Module `", !IO),
-    prog_out.write_sym_name(ModuleName, !IO),
+    write_sym_name(ModuleName, !IO),
     io.write_string("' is imported or included by module `", !IO),
-    prog_out.write_sym_name(ImportingModuleName, !IO),
+    write_sym_name(ImportingModuleName, !IO),
     io.write_string("'.\n", !IO).
 
 %-----------------------------------------------------------------------------%

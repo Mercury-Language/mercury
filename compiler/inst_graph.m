@@ -275,8 +275,8 @@ foldl_reachable_aux(P, InstGraph, Var, Seen, !Acc) :-
         ), Args, MAcc0, MAcc)
     ), Functors, !Acc).
 
-foldl_reachable_from_list(P, InstGraph, Vars) -->
-    list.foldl(foldl_reachable(P, InstGraph), Vars).
+foldl_reachable_from_list(P, InstGraph, Vars, !Acc) :-
+    list.foldl(foldl_reachable(P, InstGraph), Vars, !Acc).
 
 foldl_reachable2(P, InstGraph, Var, !Acc1, !Acc2) :-
     % A possible alternate implementation:
