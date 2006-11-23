@@ -176,7 +176,8 @@
     ;       task_make_private_interface
     ;       task_make_optimization_interface
     ;       task_make_analysis_registry
-    ;       task_compile_to_target_code.
+    ;       task_compile_to_target_code
+    ;       task_make_xml_doc.
 
 :- type module_target_type
     --->    module_target_source
@@ -196,7 +197,8 @@
     ;       module_target_object_code(pic)
     ;       module_target_foreign_il_asm(foreign_language)
     ;       module_target_foreign_object(pic, foreign_language)
-    ;       module_target_fact_table_object(pic, file_name).
+    ;       module_target_fact_table_object(pic, file_name)
+    ;       module_target_xml_doc.
 
 :- type c_header_type
     --->    header_mh      % For `:- pragma export' declarations.
@@ -210,7 +212,8 @@
     ;       misc_target_build_all(module_target_type)
     ;       misc_target_build_analyses
     ;       misc_target_build_library
-    ;       misc_target_install_library.
+    ;       misc_target_install_library
+    ;       misc_target_build_xml_docs.
 
 :- type file_timestamps == map(string, maybe_error(timestamp)).
 
@@ -347,7 +350,7 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
         string.length(FileName, NameLength),
         search_backwards_for_dot(FileName, NameLength - 1, DotLocn),
         string.split(FileName, DotLocn, ModuleNameStr0, Suffix),
-        solutions.solutions(classify_target_2(Globals, ModuleNameStr0, Suffix),
+        solutions(classify_target_2(Globals, ModuleNameStr0, Suffix),
             TargetFiles),
         TargetFiles = [TargetFile]
     ->
@@ -425,6 +428,11 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
     ->
         ModuleNameStr = ModuleNameStr1,
         TargetType = misc_target(misc_target_install_library)
+    ;
+        Suffix = ".doc"
+    ->
+        ModuleNameStr = ModuleNameStr0,
+        TargetType = misc_target(misc_target_build_xml_docs)
     ;
         fail
     ),

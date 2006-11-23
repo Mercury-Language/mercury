@@ -626,6 +626,20 @@ make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
             LibSucceeded = no,
             Succeeded = no
         )
+    ;
+        TargetType = misc_target_build_xml_docs,
+        get_target_modules(module_target_xml_doc, AllModules,
+            TargetModules, !Info, !IO),
+        globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
+        ( Succeeded0 = no, KeepGoing = no ->
+            Succeeded = no
+        ;
+            foldl2_maybe_stop_at_error(KeepGoing,
+                make_module_target,
+                make_dependency_list(TargetModules, module_target_xml_doc),
+                Succeeded1, !Info, !IO),
+            Succeeded = Succeeded0 `and` Succeeded1
+        )
     ).
 
 :- pred build_analysis_files(module_name::in, list(module_name)::in,
@@ -730,7 +744,7 @@ lookup_module_imports(ModuleDeps, ModuleName) = ModuleImports :-
 modules_needing_reanalysis(_, [], [], [], !IO).
 modules_needing_reanalysis(ReanalyseSuboptimal, [Module | Modules],
         InvalidModules, SuboptimalModules, !IO) :-
-    analysis.read_module_overall_status(mmc, module_name_to_module_id(Module),
+    read_module_overall_status(mmc, module_name_to_module_id(Module),
         MaybeModuleStatus, !IO),
     (
         MaybeModuleStatus = yes(ModuleStatus),

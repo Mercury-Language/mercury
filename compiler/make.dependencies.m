@@ -257,6 +257,13 @@ target_dependencies(Globals, module_target_foreign_object(PIC, _)) =
     get_foreign_deps(Globals, PIC).
 target_dependencies(Globals, module_target_fact_table_object(PIC, _)) =
     get_foreign_deps(Globals, PIC).
+target_dependencies(_, module_target_xml_doc) = 
+    combine_deps_list([
+        module_target_source `of` self,
+        module_target_private_interface `of` parents,
+        module_target_long_interface `of` non_intermod_direct_imports,
+        module_target_short_interface `of` non_intermod_indirect_imports
+    ]).
 
 :- func get_foreign_deps(globals::in, pic::in) =
     (find_module_deps(dependency_file)::out(find_module_deps)) is det.

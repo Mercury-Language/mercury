@@ -878,13 +878,11 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
         (
             UseSubdirs = no
         ;
-            %
-            % If we're searching for (rather than writing)
-            % a `.mih' file, use the plain file name.
-            % This is so that searches for files in installed
-            % libraries will work.  `--c-include-directory' is
-            % set so that searches for files in the current
-            % directory will work.
+            % If we're searching for (rather than writing) a `.mih' file,
+            % use the plain file name.  This is so that searches for files
+            % in installed libraries will work.  `--c-include-directory' is
+            % set so that searches for files in the current directory will
+            % work.
             %
             Search = yes,
             ( Ext = ".mih"
@@ -895,21 +893,20 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
         FileName = BaseName
     ;
         %
-        % the source files, the final executables,
-        % library files (including .init files)
-        % output files intended for use by the user,
-        % and phony Mmake targets names go in the current directory
+        % The source files, the final executables, library files (including
+        % .init files) output files intended for use by the user, and phony
+        % Mmake targets names go in the current directory
         %
         \+ (
             UseGradeSubdirs = yes,
             file_is_arch_or_grade_dependent(Globals, Ext)
         ),
         (
-            % executable files
+            % Executable files.
             ( Ext = ""
             ; Ext = ".exe"
             ; Ext = ".dll"
-            % library files
+            % Library files.
             ; Ext = ".a"
             ; Ext = ".$A"
             ; Ext = ".so"
@@ -934,24 +931,12 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
                     % be in the same directory as the
                     % `.mh' files.
             ; Ext = ".mh.tmp"
-            ; Ext = ".h"    % `.h' files are being replaced with
-                    % `.mh' files (for the
-                    % `:- pragma export'  declarations),
-                    % and `.mih' files (for the high-level
-                    % C backend's function declarations).
-                    % We still generate the `.h' files
-                    % for bootstrapping (the trace
-                    % directory refers to std_util.h
-                    % and io.h).
-            ; Ext = ".h.tmp"
             ; Ext = ".err"
             ; Ext = ".ugly"
             ; Ext = ".hlds_dump"
             ; Ext = ".mlds_dump"
             ; Ext = ".dependency_graph"
             ; Ext = ".order"
-            ; Ext = ".rla"
-            ; Ext = ".rl_dump"
             % Mmake targets
             ; Ext = ".clean"
             ; Ext = ".realclean"
@@ -972,7 +957,8 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             ; Ext = ".trans_opts"
             )
         ;
-            % output files intended for use by the user
+            % Output files intended for use by the user.
+            %
             ( string.prefix(Ext, ".c_dump")
             ; string.prefix(Ext, ".mih_dump")
             )
@@ -981,7 +967,7 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
         FileName = BaseName
     ;
         %
-        % we need to handle a few cases specially
+        % We need to handle a few cases specially.
         %
         (
             ( Ext = ".dir/*.o"
@@ -1027,8 +1013,7 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
         ->
             SubDirName = "deps"
         ;
-            % the usual case: `*.foo' files go in the `foos'
-            % subdirectory
+            % The usual case: `*.foo' files go in the `foos' subdirectory.
             string.append(".", ExtName, Ext)
         ->
             string.append(ExtName, "s", SubDirName)
@@ -1139,12 +1124,11 @@ make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO) :-
     (
         UseGradeSubdirs = yes,
         file_is_arch_or_grade_dependent(Globals, Ext),
-
         %
-        % If we're searching for (rather than writing) the file,
-        % just search in Mercury/<ext>s. This is so that searches
-        % for files in installed libraries work.
-        % `--intermod-directories' is set so this will work.
+        % If we're searching for (rather than writing) the file, just search
+        % in Mercury/<ext>s. This is so that searches for files in installed
+        % libraries work.  `--intermod-directories' is set so this will
+        % work.
         %
         \+ (
             Search = yes,
@@ -1158,11 +1142,11 @@ make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO) :-
     ->
         grade_directory_component(Globals, Grade),
 
-        % The extra "Mercury" is needed so we can use
-        % `--intermod-directory Mercury/<grade>/<fullarch>' and
-        % `--c-include Mercury/<grade>/<fullarch>' to find
-        % the local `.opt' and `.mih' files without messing
-        % up the search for the files for installed libraries.
+        % The extra "Mercury" is needed so we can use `--intermod-directory
+        % Mercury/<grade>/<fullarch>' and `--c-include
+        % Mercury/<grade>/<fullarch>' to find the local `.opt' and `.mih'
+        % files without messing up the search for the files for installed
+        % libraries.
         DirName = "Mercury"/Grade/FullArch/"Mercury"/SubDirName
     ;
         DirName = "Mercury"/SubDirName

@@ -503,6 +503,7 @@ forkable_module_compilation_task_type(task_make_private_interface) = no.
 forkable_module_compilation_task_type(task_make_optimization_interface) = yes.
 forkable_module_compilation_task_type(task_make_analysis_registry) = yes.
 forkable_module_compilation_task_type(task_compile_to_target_code) = yes.
+forkable_module_compilation_task_type(task_make_xml_doc) = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -713,6 +714,8 @@ compilation_task(_, module_target_foreign_object(PIC, Lang)) =
     foreign_code_to_object_code(PIC, Lang) - get_pic_flags(PIC).
 compilation_task(_, module_target_fact_table_object(PIC, FactTable)) =
     fact_table_code_to_object_code(PIC, FactTable) - get_pic_flags(PIC).
+compilation_task(_, module_target_xml_doc) = 
+    process_module(task_make_xml_doc) - ["--make-xml-doc"].
 
 :- func get_pic_flags(pic) = list(string).
 
@@ -855,6 +858,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         ; Task = task_make_private_interface
         ; Task = task_make_optimization_interface
         ; Task = task_make_analysis_registry
+        ; Task = task_make_xml_doc
         ),
         ForeignCodeFiles = [],
         TouchedTargetFiles = make_target_file_list(TargetModuleNames, FileType)

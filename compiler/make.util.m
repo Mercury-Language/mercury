@@ -824,6 +824,7 @@ target_extension(_, module_target_asm_code(link_with_pic)) = yes(".s").
 target_extension(_, module_target_asm_code(pic)) = yes(".pic_s").
 target_extension(Globals, module_target_object_code(PIC)) = yes(Ext) :-
     maybe_pic_object_file_extension(Globals, PIC, Ext).
+target_extension(_, module_target_xml_doc) = yes(".xml").
 
     % These all need to be handled as special cases.
 target_extension(_, module_target_foreign_object(_, _)) = no.
@@ -956,6 +957,7 @@ search_for_file_type(module_target_object_code(_)) = no.
 search_for_file_type(module_target_foreign_object(_, _)) = no.
 search_for_file_type(module_target_foreign_il_asm(_)) = no.
 search_for_file_type(module_target_fact_table_object(_, _)) = no.
+search_for_file_type(module_target_xml_doc) = no.
 
 target_is_grade_or_arch_dependent(Target) :-
     is_target_grade_or_arch_dependent(Target) = yes.
@@ -971,6 +973,7 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_short_interface
         ; Target = module_target_unqualified_short_interface
         ; Target = module_target_c_header(header_mh)
+        ; Target = module_target_xml_doc
         ),
         IsDependent = no
     ;
