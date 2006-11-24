@@ -84,7 +84,8 @@ HAND_EVENTSPEC_SRCS	=	\
 # The list of automatically created C header files.
 # Keep this list in alphabetical order, please.
 GEN_EVENTSPEC_HDRS	=	\
-			mercury_event_parser.h
+			mercury_event_parser.h \
+			mercury_event_scanner.h
 
 # The list of automatically created C source files.
 # Keep this list in alphabetical order, please.
@@ -208,6 +209,8 @@ mercury_event_scanner.$(O): $(GEN_EVENTSPEC_HDRS)
 mercury_event_scanner.$(EXT_FOR_PIC_OBJECTS): $(GEN_EVENTSPEC_HDRS)
 mercury_event_parser.$(O): $(GEN_EVENTSPEC_HDRS)
 mercury_event_parser.$(EXT_FOR_PIC_OBJECTS): $(GEN_EVENTSPEC_HDRS)
+mercury_event_spec.$(O): $(GEN_EVENTSPEC_HDRS)
+mercury_event_spec.$(EXT_FOR_PIC_OBJECTS): $(GEN_EVENTSPEC_HDRS)
 
 #-----------------------------------------------------------------------------#
 
