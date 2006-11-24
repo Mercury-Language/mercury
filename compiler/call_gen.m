@@ -244,18 +244,23 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     code_tree::out, code_info::in, code_info::out) is det.
 
 generate_event_call(EventName, Args, GoalInfo, Code, !CI) :-
-    ( event_arg_names(EventName, AttributeNames) ->
+    code_info.get_module_info(!.CI, ModuleInfo),
+    module_info_get_event_spec_map(ModuleInfo, EventSpecMap),
+    (
+        event_arg_names(EventSpecMap, EventName, AttributeNames),
+        event_number(EventSpecMap, EventName, EventNumber)
+    ->
         generate_event_attributes(AttributeNames, Args, Attributes, AttrCodes,
             !CI),
-        SolverEventInfo = solver_event_info(EventName, Attributes),
-        generate_solver_event_code(SolverEventInfo, GoalInfo, EventCode, !CI),
+        UserEventInfo = user_event_info(EventNumber, EventName, Attributes),
+        generate_user_event_code(UserEventInfo, GoalInfo, EventCode, !CI),
         Code = tree(tree_list(AttrCodes), EventCode)
     ;
         unexpected(this_file, "generate_event_call: bad event name")
     ).
 
 :- pred generate_event_attributes(list(string)::in, list(prog_var)::in,
-    list(solver_attribute)::out, list(code_tree)::out,
+    list(user_attribute)::out, list(code_tree)::out,
     code_info::in, code_info::out) is det.
 
 generate_event_attributes([], [], [], [], !CI).
@@ -267,7 +272,7 @@ generate_event_attributes([Name | Names], [Var | Vars], [Attr | Attrs],
         [Code | Codes], !CI) :-
     produce_variable(Var, Code, Rval, !CI),
     Type = variable_type(!.CI, Var),
-    Attr = solver_attribute(Rval, Type, Name),
+    Attr = user_attribute(Rval, Type, Name),
     generate_event_attributes(Names, Vars, Attrs, Codes, !CI).
 
 %---------------------------------------------------------------------------%

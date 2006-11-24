@@ -196,9 +196,9 @@
 :- pred maybe_generate_pragma_event_code(nondet_pragma_trace_port::in,
     prog_context::in, code_tree::out, code_info::in, code_info::out) is det.
 
-    % Generate code for a solver trace event.
+    % Generate code for a user-defined trace event.
     %
-:- pred generate_solver_event_code(solver_event_info::in, hlds_goal_info::in,
+:- pred generate_user_event_code(user_event_info::in, hlds_goal_info::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
 :- type external_event_info
@@ -276,7 +276,7 @@
                                 % (one way or another) this port
                                 % represents.
             )
-    ;       port_info_solver(
+    ;       port_info_user(
                 goal_path       % The path of the goal.
             )
     ;       port_info_nondet_pragma.
@@ -782,15 +782,15 @@ maybe_generate_pragma_event_code(PragmaPort, Context, Code, !CI) :-
         Code = empty
     ).
 
-generate_solver_event_code(SolverInfo, GoalInfo, Code, !CI) :-
+generate_user_event_code(UserInfo, GoalInfo, Code, !CI) :-
     goal_info_get_goal_path(GoalInfo, Path),
     goal_info_get_context(GoalInfo, Context),
-    Port = port_solver,
-    PortInfo = port_info_solver(Path),
+    Port = port_user,
+    PortInfo = port_info_user(Path),
     MaybeTraceInfo = no,
     HideEvent = no,
     generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
-        yes(SolverInfo), _Label, _TvarDataMap, Code, !CI).
+        yes(UserInfo), _Label, _TvarDataMap, Code, !CI).
 
 generate_external_event_code(ExternalPort, TraceInfo, Context,
         MaybeExternalInfo, !CI) :-
@@ -811,12 +811,12 @@ generate_external_event_code(ExternalPort, TraceInfo, Context,
 
 :- pred generate_event_code(trace_port::in, trace_port_info::in,
     maybe(trace_info)::in, prog_context::in, bool::in,
-    maybe(solver_event_info)::in, label::out,
+    maybe(user_event_info)::in, label::out,
     map(tvar, set(layout_locn))::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
 generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
-        MaybeSolverInfo, Label, TvarDataMap, Code, !CI) :-
+        MaybeUserInfo, Label, TvarDataMap, Code, !CI) :-
     code_info.get_next_label(Label, !CI),
     code_info.get_known_variables(!.CI, LiveVars0),
     (
@@ -833,7 +833,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         PortInfo = port_info_negation_end(Path),
         LiveVars = LiveVars0
     ;
-        PortInfo = port_info_solver(Path),
+        PortInfo = port_info_user(Path),
         LiveVars = LiveVars0
     ;
         PortInfo = port_info_nondet_pragma,
@@ -878,14 +878,14 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
     LabelStr = llds_out.label_to_c_string(Label, no),
     (
-        MaybeSolverInfo = no,
+        MaybeUserInfo = no,
         TraceStmt = "\t\tMR_EVENT(" ++ LabelStr ++ ")\n"
     ;
-        MaybeSolverInfo = yes(_),
-        TraceStmt = "\t\tMR_SOLVER_EVENT(" ++ LabelStr ++ ")\n"
+        MaybeUserInfo = yes(_),
+        TraceStmt = "\t\tMR_USER_EVENT(" ++ LabelStr ++ ")\n"
     ),
     code_info.add_trace_layout_for_label(Label, Context, Port, HideEvent,
-        Path, MaybeSolverInfo, LayoutLabelInfo, !CI),
+        Path, MaybeUserInfo, LayoutLabelInfo, !CI),
     (
         Port = port_fail,
         MaybeTraceInfo = yes(TraceInfo),

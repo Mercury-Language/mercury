@@ -382,8 +382,7 @@ convert_port_name("frst") = port_nondet_pragma_first.
 convert_port_name("nondet_pragma_first") = port_nondet_pragma_first.
 convert_port_name("latr") = port_nondet_pragma_first.
 convert_port_name("nondet_pragma_later") = port_nondet_pragma_later.
-convert_port_name("slvr") = port_solver.
-convert_port_name("solver") = port_solver.
+convert_port_name("user") = port_user.
 
 :- func convert_port_class_name(string) = list(trace_port) is semidet.
 
@@ -444,8 +443,8 @@ trace_level_rep(decl_rep) = "MR_TRACE_LEVEL_DECL_REP".
             % the declarative debugger needs to know when (potentially)
             % negated contexts start and end.
 
-    ;       port_cat_solver.
-            % Solver events.
+    ;       port_cat_user.
+            % User defined events.
 
 :- func trace_port_category(trace_port) = port_category.
 
@@ -464,16 +463,16 @@ trace_port_category(port_switch)              = port_cat_internal.
 trace_port_category(port_disj)                = port_cat_internal.
 trace_port_category(port_nondet_pragma_first) = port_cat_internal.
 trace_port_category(port_nondet_pragma_later) = port_cat_internal.
-trace_port_category(port_solver)              = port_cat_solver.
+trace_port_category(port_user)                = port_cat_user.
 
 :- func trace_level_port_categories(trace_level) = list(port_category).
 
 trace_level_port_categories(none) = [].
 trace_level_port_categories(shallow) = [port_cat_interface].
 trace_level_port_categories(deep) =
-    [port_cat_interface, port_cat_internal, port_cat_context, port_cat_solver].
+    [port_cat_interface, port_cat_internal, port_cat_context, port_cat_user].
 trace_level_port_categories(decl_rep) =
-    [port_cat_interface, port_cat_internal, port_cat_context, port_cat_solver].
+    [port_cat_interface, port_cat_internal, port_cat_context, port_cat_user].
 
 :- func trace_level_allows_port_suppression(trace_level) = bool.
 
@@ -528,4 +527,4 @@ port_number(port_disj) = 12.
 port_number(port_switch) = 13.
 port_number(port_nondet_pragma_first) = 14.
 port_number(port_nondet_pragma_later) = 15.
-port_number(port_solver) = 16.
+port_number(port_user) = 16.

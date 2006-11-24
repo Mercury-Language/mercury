@@ -151,7 +151,7 @@ MR_compare_addr(const void *address1, const void *address2)
 static int
 MR_search_spy_table_for_proc(const MR_Proc_Layout *entry)
 {
-    int slot;
+    int     slot;
     MR_bool found;
 
     MR_bsearch(MR_spied_proc_next, slot, found,

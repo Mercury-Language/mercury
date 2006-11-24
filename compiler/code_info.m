@@ -739,7 +739,7 @@ set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
 :- pred succip_is_used(code_info::in, code_info::out) is det.
 
 :- pred add_trace_layout_for_label(label::in, term.context::in,
-    trace_port::in, bool::in, goal_path::in, maybe(solver_event_info)::in,
+    trace_port::in, bool::in, goal_path::in, maybe(user_event_info)::in,
     layout_label_info::in, code_info::in, code_info::out) is det.
 
 :- pred get_cur_proc_label(code_info::in, proc_label::out) is det.

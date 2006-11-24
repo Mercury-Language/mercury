@@ -192,13 +192,14 @@
 :- pred invoke_system_command(io.output_stream::in,
     command_verbosity::in, string::in, bool::out, io::di, io::uo) is det.
 
-    % invoke_system_command(ErrorStream, Verbosity, Command,
-    %   ProcessOutput, Succeeded)
+    % invoke_system_command_maybe_filter_output(ErrorStream, Verbosity,
+    %   Command, MaybeProcessOutput, Succeeded)
     %
     % Invoke an executable. Both standard and error output will go to the
-    % specified output stream after being piped through `ProcessOutput'.
+    % specified output stream after being piped through `ProcessOutput'
+    % if MaybeProcessOutput is yes(ProcessOutput).
     %
-:- pred invoke_system_command(io.output_stream::in,
+:- pred invoke_system_command_maybe_filter_output(io.output_stream::in,
     command_verbosity::in, string::in, maybe(string)::in, bool::out,
     io::di, io::uo) is det.
 
@@ -426,9 +427,10 @@ maybe_set_exit_status(yes, !IO).
 maybe_set_exit_status(no, !IO) :- io.set_exit_status(1, !IO).
 
 invoke_system_command(ErrorStream, Verbosity, Command, Succeeded, !IO) :-
-    invoke_system_command(ErrorStream, Verbosity, Command, no, Succeeded, !IO).
+    invoke_system_command_maybe_filter_output(ErrorStream, Verbosity, Command,
+        no, Succeeded, !IO).
 
-invoke_system_command(ErrorStream, Verbosity, Command,
+invoke_system_command_maybe_filter_output(ErrorStream, Verbosity, Command,
         MaybeProcessOutput, Succeeded, !IO) :-
     % This predicate shouldn't alter the exit status of mercury_compile.
     io.get_exit_status(OldStatus, !IO),

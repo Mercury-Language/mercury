@@ -59,6 +59,7 @@ GENERATED_DOCS = README INSTALL WORK_IN_PROGRESS TODO
 RT_LIB_NAME = mer_rt
 STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
+EVENTSPEC_LIB_NAME = mer_eventspec
 MDBCOMP_LIB_NAME = mer_mdbcomp
 BROWSER_LIB_NAME = mer_browser
 ANALYSIS_LIB_NAME = mer_analysis

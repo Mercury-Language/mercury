@@ -115,8 +115,8 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
         MR_fatal_error(""cterm_deconstruct: NULL term"");
     }
 
-    Functor = Term->term_functor;
-    Args = Term->term_args;
+    Functor = Term->MR_term_functor;
+    Args = Term->MR_term_args;
 ").
 
 :- pragma foreign_proc(c,
@@ -126,8 +126,8 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
     if (Args == NULL) {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
-        Head = Args->args_head;
-        Tail = Args->args_tail;
+        Head = Args->MR_args_head;
+        Tail = Args->MR_args_tail;
         SUCCESS_INDICATOR = MR_TRUE;
     }
 ").

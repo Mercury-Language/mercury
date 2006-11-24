@@ -459,12 +459,12 @@ dump_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)) = Str :-
         LabelVarsStr = "label_has_no_var_info"
     ),
     Str = "label_layout(" ++ LabelStr ++ ", " ++ LabelVarsStr ++ ")".
-dump_layout_name(solver_event_layout(ProcLabel, LabelNum)) = Str :-
+dump_layout_name(user_event_layout(ProcLabel, LabelNum)) = Str :-
     LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
-    Str = "solver_event_layout(" ++ LabelStr ++ ")".
-dump_layout_name(solver_event_attr_names(ProcLabel, LabelNum)) = Str :-
+    Str = "user_event_layout(" ++ LabelStr ++ ")".
+dump_layout_name(user_event_attr_names(ProcLabel, LabelNum)) = Str :-
     LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
-    Str = "solver_event_attr_names(" ++ LabelStr ++ ")".
+    Str = "user_event_attr_names(" ++ LabelStr ++ ")".
 dump_layout_name(proc_layout(RttiProcLabel, _)) =
     "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(proc_layout_exec_trace(RttiProcLabel)) =
@@ -496,6 +496,8 @@ dump_layout_name(module_layout_proc_vector(ModuleName)) =
 dump_layout_name(module_layout_label_exec_count(ModuleName, NumLabels)) =
     "module_layout_label_exec_count(" ++ sym_name_mangle(ModuleName)
         ++ ", " ++ int_to_string(NumLabels) ++ ")".
+dump_layout_name(module_layout_event_specs(ModuleName)) =
+    "module_layout_event_specs(" ++ sym_name_mangle(ModuleName) ++ ")".
 dump_layout_name(module_layout(ModuleName)) =
     "module_layout(" ++ sym_name_mangle(ModuleName) ++ ")".
 dump_layout_name(proc_static(RttiProcLabel)) =

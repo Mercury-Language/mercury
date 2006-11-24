@@ -1190,6 +1190,7 @@ file in your @samp{CLASSPATH}, which you can set using
 * Tracing optimized code::
 * Mercury debugger invocation::
 * Mercury debugger concepts::
+* User defined events::
 * I/O tabling::
 * Debugger commands::
 * Declarative debugging::
@@ -1253,9 +1254,9 @@ mdb>
 
 @end example
 
-For each trace event, the debugger prints out several pieces of
-information.  The three numbers at the start of the display are the
-event number, the call sequence number, and the call depth.
+For each trace event, the debugger prints out several pieces of information.
+The three numbers at the start of the display are
+the event number, the call sequence number, and the call depth.
 (You don't really need to pay too much attention to those.)
 They are followed by the event type (e.g.@: @samp{CALL} or @samp{EXIT}).
 After that comes the identification of the procedure
@@ -1432,9 +1433,8 @@ highlight the correct location in the source code.
 
 The Mercury debugger is based on a modified version of the box model
 on which the four-port debuggers of most Prolog systems are based.
-Such debuggers abstract the execution of a program
-into a sequence, also called a @emph{trace},
-of execution events of various kinds.
+Such debuggers abstract the execution of a program into a sequence,
+also called a @emph{trace}, of execution events of various kinds.
 The four kinds of events supported by most Prolog systems (their @emph{ports})
 are
 
@@ -1554,7 +1554,7 @@ The path associated with the event specifies which negation goal this is.
 
 @cindex path
 @cindex goal path
-A path is a sequence of path components separated by semicolons.
+A goal path is a sequence of path components separated by semicolons.
 Each path component is one of the following:
 
 @table @code
@@ -1580,12 +1580,12 @@ The goal inside an existential quantification or other scope
 that doesn't change the determinism of the goal.
 @end table
 
-A path describes the position of a goal
+A goal path describes the position of a goal
 inside the body of a procedure definition.
 For example, if the procedure body is a disjunction
 in which each disjunct is a conjunction,
-then the path @samp{d2;c3;} denotes the third conjunct
-within the second disjunct.
+then the goal path @samp{d2;c3;} denotes
+the third conjunct within the second disjunct.
 If the third conjunct within the second disjunct is an atomic goal
 such as a call or a unification,
 then this will be the only goal with whose path has @samp{d2;c3;} as a prefix.
@@ -1595,7 +1595,7 @@ e.g.@: if it is an if-then-else,
 then its three components will have the paths
 @samp{d2;c3;?;}, @samp{d2;c3;t;} and @samp{d2;c3;e;}.
 
-Paths refer to the internal form of the procedure definition.
+Goal paths refer to the internal form of the procedure definition.
 When debugging is enabled
 (and the option @samp{--trace-optimized} is not given),
 the compiler will try to keep this form
@@ -1656,11 +1656,12 @@ which is very convenient.
 
 The ``decldebug'' grades improve declarative debugging by allowing the user
 to track the source of subterms (see @ref{Improving the search}).
-Doing this increases the size of executables so these
-grades should only be used when the subterm dependency tracking feature
-of the declarative debugger is required.
-Note that declarative debugging, with the exception of the subterm dependency
-tracking features, also works in the .debug grades.
+Doing this increases the size of executables,
+so these grades should only be used when you need
+the subterm dependency tracking feature of the declarative debugger.
+Note that declarative debugging,
+with the exception of the subterm dependency tracking features,
+also works in the .debug grades.
 
 The two drawbacks of using a debugging grade
 are the large size of the resulting executables,
@@ -2062,6 +2063,31 @@ also accept the names of held variables;
 users can ask for a held variable
 by prefixing the name of the held variable with a dollar sign.
 @sp 1
+@item user defined events
+@cindex user defined events (in mdb)
+Besides the built-in set of events,
+the Mercury debugger also supports events defined by the user.
+Each event appears in the source code of the Mercury program
+as a call prefixed by the keyword @samp{event},
+with each argument of the call giving the value of an event @emph{attribute}.
+Users can specify the set of user defined events that can appear in a program,
+and the names, types and order of the attributes
+of each kind of user defined event,
+by giving the name of an event set specification file to the compiler
+when compiling that program.
+For more details, see @ref{User defined events}.
+@sp 1
+@item user defined event attributes
+@cindex user defined event attributes (in mdb)
+Normally, the only variables from the program accessible in the debugger
+are the variables in the current environment at the current program point.
+However, if the current event is a user defined event,
+then the attributes of that event are also available.
+All the commands that accept variable names
+also accept the names of attributes;
+users can ask for a held variable
+by prefixing the name of the attribute with an exclamation point.
+@sp 1
 @item procedure specification
 @cindex procedure specification (in mdb)
 @cindex debugger procedure specification
@@ -2113,6 +2139,73 @@ that specifies the mode number of the procedure
 within the predicate or function to which the procedure belongs.
 @end itemize
 @end table
+
+@node User defined events
+@section User defined events
+
+Besides the built-in set of events,
+the Mercury debugger also supports events defined by the user.
+The intention is that users can define one kind of event
+for each semantically important event in the program
+that isn't captured by the standard builtin events,
+and can then generate those events at the appropriate point in the source code.
+Each event appears in the source code
+as a call prefixed by the keyword @samp{event},
+with each argument of the call giving the value of an event @emph{attribute}.
+
+Users can specify the set of user defined events that can appear in a program,
+and the names, types and order of the attributes
+of each kind of user defined event,
+by giving the name of an event set specification file to the compiler
+when compiling that program
+as the argument of the @samp{event-spec-file-name} option.
+This file should contain a sequence of one or more event specifications,
+like this:
+
+@c XXX replace with more realistic example
+@example
+	event nodiag_fail(
+		test_failed:	string,
+		arg_b:		int,
+		arg_d:		int,
+		arg_list:	list(int)
+	)
+
+	event safe_test(
+		test_list:	listint
+	)
+
+	event noargs
+@end example
+
+Each event specification consists of the keyword @samp{event},
+the name of the event, and,
+if the event has any attributes, a parenthesized list of those attributes.
+Each attribute's specification consists of
+a name, a colon and the Mercury type of that attribute.
+
+Each event goal in the program must use
+the name of one of the events defined here as the predicate name of the call,
+and the call's arguments must match the types of that event's attributes.
+This event goal is fine,
+@example
+	event safe_test([1, 2, 3])
+@end example
+but this goal
+@example
+	event safe_test([1], [2])
+@end example
+this goal
+@example
+	event safe_test(42)
+@end example
+and this goal
+@example
+	event nonexistent_event(42)
+@end example
+will all generate errors.
+
+All event attributes are always input, and the event goal is always @samp{det}.
 
 @node I/O tabling
 @section I/O tabling
@@ -2403,6 +2496,19 @@ By default, this command is strict, and it uses the default print level.
 Continues the program until the program finished returning,
 i.e.@: until it reaches a port other than EXIT.
 Reports an error if the current event already refers to such a port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item user [-NSans]
+@kindex return (mdb command)
+Continues the program until the next user defined event.
 @sp 1
 The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
 @samp{-a} or @samp{--all} specify the print level to use

@@ -634,7 +634,7 @@ output_type_tables_init_list([Data | Datas], !IO) :-
 
 output_debugger_init_list_decls([], !DeclSet, !IO).
 output_debugger_init_list_decls([Data | Datas], !DeclSet, !IO) :-
-    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _) ->
+    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _, _) ->
         output_data_addr_decls(layout_addr(module_layout(ModuleName)),
             !DeclSet, !IO)
     ;
@@ -651,7 +651,7 @@ output_debugger_init_list_decls([Data | Datas], !DeclSet, !IO) :-
 
 output_debugger_init_list([], !IO).
 output_debugger_init_list([Data | Datas], !IO) :-
-    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _) ->
+    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _, _) ->
         io.write_string("\tif (MR_register_module_layout != NULL) {\n", !IO),
         io.write_string("\t\t(*MR_register_module_layout)(", !IO),
         io.write_string("\n\t\t\t&", !IO),

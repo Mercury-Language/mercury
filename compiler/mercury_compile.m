@@ -48,6 +48,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.source_file_map.
+:- import_module parse_tree.prog_event.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.equiv_type.
 :- import_module hlds.make_hlds.
@@ -1710,15 +1711,15 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, MMCMake),
-    DontWriteDFile1 = DontWriteDFile0 `or` MMCMake,
+    DontWriteDFile1 = bool.or(DontWriteDFile0, MMCMake),
 
     % Don't write the `.d' file when making the `.opt' file because
     % we can't work out the full transitive implementation dependencies.
     globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
-    DontWriteDFile = DontWriteDFile1 `or` MakeOptInt,
+    DontWriteDFile = bool.or(DontWriteDFile1, MakeOptInt),
 
-    module_imports_get_module_name(ModuleImports0, Module),
+    module_imports_get_module_name(ModuleImports0, ModuleName),
     (
         DontWriteDFile = yes,
         % The only time the TransOptDeps are required is when
@@ -1728,22 +1729,46 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         MaybeTransOptDeps = no
     ;
         DontWriteDFile = no,
-        maybe_read_dependency_file(Module, MaybeTransOptDeps, !IO)
+        maybe_read_dependency_file(ModuleName, MaybeTransOptDeps, !IO)
     ),
 
     % Errors in .opt and .trans_opt files result in software errors.
     maybe_grab_optfiles(ModuleImports0, Verbose, MaybeTransOptDeps,
         ModuleImports1, IntermodError, !IO),
 
+    globals.lookup_string_option(Globals, event_spec_file_name,
+        EventSpecFileName),
+    ( EventSpecFileName = "" ->
+        EventSpecMap1 = map.init,
+        EventSpecErrors = no
+    ;
+        read_event_specs(EventSpecFileName, EventSpecMap0, EventSpecErrorSpecs,
+            !IO),
+        (
+            EventSpecErrorSpecs = [],
+            EventSpecMap1 = EventSpecMap0,
+            EventSpecErrors = no
+        ;
+            EventSpecErrorSpecs = [_ | _],
+            EventSpecMap1 = map.init,
+            EventSpecErrors = yes,
+            % XXX _NumErrors
+            write_error_specs(EventSpecErrorSpecs, Globals,
+                0, _EventSpecNumWarnings, 0, _EventSpecNumErrors, !IO)
+        )
+    ),
+
     module_imports_get_items(ModuleImports1, Items1),
     MaybeTimestamps = ModuleImports1 ^ maybe_timestamps,
 
-    invoke_module_qualify_items(Items1, Items2, Module, Verbose, Stats,
-        MQInfo0, UndefTypes0, UndefModes0, !IO),
+    invoke_module_qualify_items(Items1, Items2, EventSpecMap1, EventSpecMap2,
+        ModuleName, EventSpecFileName, Verbose, Stats, MQInfo0,
+        MQUndefTypes, MQUndefModes, !IO),
 
     mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
-    expand_equiv_types(Module, Verbose, Stats, Items2, Items,
-        EqvMap, UsedModules, RecompInfo0, RecompInfo, ExpandSpecs, !IO),
+    expand_equiv_types(ModuleName, Verbose, Stats, Items2, Items,
+        EventSpecMap2, EventSpecMap, EqvMap, UsedModules,
+        RecompInfo0, RecompInfo, ExpandSpecs, !IO),
     mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
     (
         ExpandSpecs = [],
@@ -1752,17 +1777,17 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         ExpandSpecs = [_ | _],
         CircularTypes = yes,
         % XXX _NumErrors
-        write_error_specs(ExpandSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
-            !IO)
+        write_error_specs(ExpandSpecs, Globals,
+            0, _ExpandNumWarnings, 0, _ExpandNumErrors, !IO)
     ),
-    bool.or(UndefTypes0, CircularTypes, UndefTypes1),
 
-    make_hlds(Module, Items, MQInfo, EqvMap, UsedModules,
+    make_hlds(ModuleName, Items, EventSpecMap, MQInfo, EqvMap, UsedModules,
         Verbose, Stats, HLDS0, QualInfo,
-        UndefTypes2, UndefModes2, FoundError, !IO),
+        MakeHLDSUndefTypes, MakeHLDSUndefModes, FoundError, !IO),
 
-    bool.or(UndefTypes1, UndefTypes2, UndefTypes),
-    bool.or(UndefModes0, UndefModes2, UndefModes),
+    bool.or_list([MQUndefTypes, EventSpecErrors, CircularTypes,
+        MakeHLDSUndefTypes], UndefTypes),
+    bool.or(MQUndefModes, MakeHLDSUndefModes, UndefModes),
 
     maybe_dump_hlds(HLDS0, 1, "initial", !DumpInfo, !IO),
 
@@ -1794,17 +1819,20 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
     ).
 
 :- pred invoke_module_qualify_items(item_list::in, item_list::out,
-    module_name::in, bool::in, bool::in, mq_info::out,
+    event_spec_map::in, event_spec_map::out,
+    module_name::in, string::in, bool::in, bool::in, mq_info::out,
     bool::out, bool::out, io::di, io::uo) is det.
 
-invoke_module_qualify_items(Items0, Items, ModuleName, Verbose, Stats, MQInfo,
+invoke_module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap,
+        ModuleName, EventSpecFileName, Verbose, Stats, MQInfo,
         UndefTypes, UndefModes, !IO) :-
     maybe_write_string(Verbose, "% Module qualifying items...\n", !IO),
     maybe_flush_output(Verbose, !IO),
     globals.io_get_globals(Globals, !IO),
     module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
-    module_qualify_items(Items0, Items, Globals, ModuleName, yes(FileName),
-        MQInfo, UndefTypes, UndefModes, [], Specs),
+    module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap,
+        Globals, ModuleName, yes(FileName), EventSpecFileName, MQInfo,
+        UndefTypes, UndefModes, [], Specs),
     write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
@@ -1892,32 +1920,36 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
     bool.or(Error1, Error2, Error).
 
 :- pred expand_equiv_types(module_name::in, bool::in, bool::in,
-    item_list::in, item_list::out, eqv_map::out, used_modules::out,
+    item_list::in, item_list::out, event_spec_map::in, event_spec_map::out,
+    eqv_map::out, used_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     list(error_spec)::out, io::di, io::uo) is det.
 
 expand_equiv_types(ModuleName, Verbose, Stats, Items0, Items,
-        EqvMap, UsedModules, RecompInfo0, RecompInfo, Specs, !IO) :-
+        EventSpecMap0, EventSpecMap, EqvMap, UsedModules,
+        RecompInfo0, RecompInfo, Specs, !IO) :-
     maybe_write_string(Verbose, "% Expanding equivalence types...", !IO),
     maybe_flush_output(Verbose, !IO),
     equiv_type.expand_eqv_types(ModuleName, Items0, Items,
-        EqvMap, UsedModules, RecompInfo0, RecompInfo, Specs),
+        EventSpecMap0, EventSpecMap, EqvMap, UsedModules,
+        RecompInfo0, RecompInfo, Specs),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred make_hlds(module_name::in, item_list::in, mq_info::in,
-    eqv_map::in, used_modules::in, bool::in, bool::in, module_info::out,
-    make_hlds_qual_info::out, bool::out, bool::out, bool::out, io::di, io::uo)
-    is det.
+:- pred make_hlds(module_name::in, item_list::in, event_spec_map::in,
+    mq_info::in, eqv_map::in, used_modules::in, bool::in, bool::in,
+    module_info::out, make_hlds_qual_info::out,
+    bool::out, bool::out, bool::out, io::di, io::uo) is det.
 
-make_hlds(Module, Items, MQInfo, EqvMap, UsedModules,
-        Verbose, Stats, HLDS, QualInfo,
+make_hlds(Module, Items, EventSpecMap, MQInfo, EqvMap, UsedModules,
+        Verbose, Stats, !:HLDS, QualInfo,
         UndefTypes, UndefModes, FoundSemanticError, !IO) :-
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
     Prog = unit_module(Module, Items),
-    parse_tree_to_hlds(Prog, MQInfo, EqvMap, UsedModules, HLDS, QualInfo,
+    parse_tree_to_hlds(Prog, MQInfo, EqvMap, UsedModules, !:HLDS, QualInfo,
         UndefTypes, UndefModes, !IO),
-    module_info_get_num_errors(HLDS, NumErrors),
+    module_info_set_event_spec_map(EventSpecMap, !HLDS),
+    module_info_get_num_errors(!.HLDS, NumErrors),
     io.get_exit_status(Status, !IO),
     (
         ( Status \= 0

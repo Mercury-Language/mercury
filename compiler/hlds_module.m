@@ -502,6 +502,12 @@
 :- pred module_info_get_interface_module_specifiers(module_info::in,
     set(module_name)::out) is det.
 
+:- pred module_info_get_event_spec_map(module_info::in,
+    event_spec_map::out) is det.
+
+:- pred module_info_set_event_spec_map(event_spec_map::in,
+    module_info::in, module_info::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_preds(module_info::in, pred_table::out) is det.
@@ -767,7 +773,9 @@
 
                 % All the directly imported module specifiers in the interface.
                 % (Used by unused_imports analysis).
-                interface_module_specifiers :: set(module_specifier)
+                interface_module_specifiers :: set(module_specifier),
+
+                event_spec_map              :: event_spec_map
             ).
 
 module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
@@ -810,7 +818,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         MM_TablingInfo, map.init, counter.init(1), ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
         init_analysis_info(mmc), [], [],
-        map.init, used_modules_init, set.init),
+        map.init, used_modules_init, set.init, map.init),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, InstanceTable, AssertionTable, ExclusiveTable,
@@ -900,6 +908,7 @@ module_info_get_structure_reuse_map(MI, MI ^ sub_info ^ structure_reuse_map).
 module_info_get_used_modules(MI, MI ^ sub_info ^ used_modules).
 module_info_get_interface_module_specifiers(MI,
     MI ^ sub_info ^ interface_module_specifiers).
+module_info_get_event_spec_map(MI, MI ^ sub_info ^ event_spec_map).
 
     % XXX There is some debate as to whether duplicate initialise directives
     % in the same module should constitute an error. Currently it is not, but
@@ -1025,13 +1034,14 @@ module_info_set_structure_reuse_map(ReuseMap, MI,
     MI ^ sub_info ^ structure_reuse_map := ReuseMap).
 module_info_set_used_modules(UsedModules, MI,
     MI ^ sub_info ^ used_modules := UsedModules).
+module_info_set_event_spec_map(EventSpecMap, MI,
+    MI ^ sub_info ^ event_spec_map := EventSpecMap).
 
 module_info_add_parents_to_used_modules(Modules, MI,
         MI ^ sub_info ^ used_modules := UsedModules) :-
     module_info_get_used_modules(MI, UsedModules0),
     list.foldl(add_all_modules(visibility_public),
             Modules, UsedModules0, UsedModules).
-        
 
 %-----------------------------------------------------------------------------%
 

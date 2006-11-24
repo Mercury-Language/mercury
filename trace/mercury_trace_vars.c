@@ -65,17 +65,41 @@
 */
 
 typedef struct {
-    char            *MR_var_fullname;
-    char            *MR_var_basename;
-    int             MR_var_num_suffix;
-    MR_bool         MR_var_has_suffix;
-    int             MR_var_is_headvar;
-    MR_bool         MR_var_is_ambiguous;
-    int             MR_var_hlds_number;
-    int             MR_var_seq_num_in_label;
-    MR_TypeInfo     MR_var_type;
-    MR_Word         MR_var_value;
-} MR_Var_Details;
+    char                *MR_var_fullname;
+    char                *MR_var_basename;
+    int                 MR_var_num_suffix;
+    MR_bool             MR_var_has_suffix;
+    int                 MR_var_is_headvar;
+    MR_bool             MR_var_is_ambiguous;
+    int                 MR_var_hlds_number;
+    int                 MR_var_seq_num_in_label;
+} MR_ProgVarDetails;
+
+typedef struct {
+    unsigned            MR_attr_num;
+    char                *MR_attr_name;
+} MR_AttributeDetails;
+
+typedef union {
+    MR_ProgVarDetails   MR_details_var;
+    MR_AttributeDetails MR_details_attr;
+} MR_KindDetails;
+
+typedef enum {
+    /* Some of the code below depends on attributes coming before variables. */
+    MR_VALUE_ATTRIBUTE,
+    MR_VALUE_PROG_VAR
+} MR_ValueKind;
+
+typedef struct {
+    MR_ValueKind    MR_value_kind;
+    MR_KindDetails  MR_value_details;
+    MR_TypeInfo     MR_value_type;
+    MR_Word         MR_value_value;
+} MR_ValueDetails;
+
+#define MR_value_var    MR_value_details.MR_details_var
+#define MR_value_attr   MR_value_details.MR_details_attr
 
 /*
 ** This structure contains all of the debugger's information about
@@ -120,14 +144,20 @@ typedef struct {
     MR_Word                 *MR_point_level_base_curfr;
     int                     MR_point_var_count;
     int                     MR_point_var_max;
-    MR_Var_Details          *MR_point_vars;
+    MR_ValueDetails         *MR_point_vars;
 } MR_Point;
 
 static  MR_bool         MR_trace_type_is_ignored(
                             MR_PseudoTypeInfo pseudo_type_info,
                             MR_bool print_optionals);
-static  int             MR_trace_compare_var_details(const void *arg1,
-                            const void *arg2);
+static  int             MR_trace_compare_value_details(
+                            const void *arg1, const void *arg2);
+static  int             MR_trace_compare_attr_details(
+                            const MR_AttributeDetails *attr1,
+                            const MR_AttributeDetails *attr2);
+static  int             MR_trace_compare_var_details(
+                            const MR_ProgVarDetails *var1,
+                            const MR_ProgVarDetails *var2);
 static  int             MR_compare_slots_on_headvar_num(const void *p1,
                             const void *p2);
 static  const char      *MR_trace_browse_one_path(FILE *out,
@@ -147,8 +177,8 @@ static  const char      *MR_lookup_var_spec(MR_Var_Spec var_spec,
 static  char            *MR_trace_var_completer_next(const char *word,
                             size_t word_len, MR_Completer_Data *data);
 static  int             MR_trace_print_var_name(FILE *out,
-                            MR_Var_Details *var);
-static  const char      *MR_trace_printed_var_name(MR_Var_Details *var);
+                            MR_ValueDetails *var);
+static  const char      *MR_trace_printed_var_name(MR_ValueDetails *var);
 static  const char      *MR_trace_valid_var_number(int var_number);
 
 #define MR_INIT_VAR_DETAIL_COUNT        20
@@ -319,8 +349,11 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
     MR_bool print_optionals)
 {
     const MR_Proc_Layout    *entry;
+    const MR_UserEvent      *user;
     MR_Word                 *valid_saved_regs;
     int                     var_count;
+    int                     attr_count;
+    int                     total_count;
     int                     num_added_args;
     int                     arity;
     MR_PredFunc             pred_or_func;
@@ -335,6 +368,8 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
     const char              *name;
     const char              *filename;
     int                     linenumber;
+    char                    *attr_name;
+    MR_bool                 succeeded;
 
     entry = level_layout->MR_sll_entry;
     if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -345,16 +380,19 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
         return "there is no information about live variables";
     }
 
+    if (level_layout->MR_sll_var_nums == NULL) {
+        return "there are no names for the live variables";
+    }
+
     if (! MR_find_context(level_layout, &filename, &linenumber)) {
         filename = "";
         linenumber = 0;
     }
 
     /*
-    ** After this point, we cannot find any more problems
-    ** that would prevent us from assembling an accurate picture
-    ** of the set of live variables at the given level,
-    ** so we are free to modify the MR_point structure.
+    ** After this point, we cannot find any more problems that would prevent us
+    ** from assembling an accurate picture of the set of live variables
+    ** at the given level, so we are free to modify the MR_point structure.
     */
 
     MR_point.MR_point_problem = NULL;
@@ -369,22 +407,26 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
         var_count = MR_all_desc_var_count(level_layout);
     } else {
         /*
-        ** If the count of variables is zero, then the rest of the
-        ** information about the set of live variables (e.g. the
-        ** type parameter array pointer) is not present. Continuing
-        ** would therefore lead to a core dump.
+        ** If the count of variables is zero, then the rest of the information
+        ** about the set of live variables (e.g. the type parameter array
+        ** pointer) is not present. Continuing would therefore lead to a
+        ** core dump.
         **
-        ** Instead, we set up the remaining meaningful fields
-        ** of MR_point.
+        ** Instead, we set up the remaining meaningful fields of MR_point.
         */
 
         MR_point.MR_point_var_count = 0;
         return NULL;
     }
 
-    if (level_layout->MR_sll_var_nums == NULL) {
-        return "there are no names for the live variables";
+    user = level_layout->MR_sll_user_event;
+    if (user != NULL) {
+        attr_count = user->MR_ue_num_attrs;
+    } else {
+        attr_count = 0;
     }
+
+    total_count = var_count + attr_count;
 
     if (MR_saved_curfr(MR_point.MR_point_top_saved_regs) == base_curfr
         && MR_saved_sp(MR_point.MR_point_top_saved_regs) == base_sp
@@ -398,19 +440,55 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
     type_params = MR_materialize_type_params_base(level_layout,
         valid_saved_regs, base_sp, base_curfr);
 
-    MR_ensure_big_enough(var_count, MR_point.MR_point_var,
-        MR_Var_Details, MR_INIT_VAR_DETAIL_COUNT);
+    MR_ensure_big_enough(total_count, MR_point.MR_point_var,
+        MR_ValueDetails, MR_INIT_VAR_DETAIL_COUNT);
 
     for (slot = 0; slot < MR_point.MR_point_var_count; slot++) {
-        /* free the memory allocated by previous MR_copy_string */
-        MR_free(MR_point.MR_point_vars[slot].MR_var_fullname);
-        MR_free(MR_point.MR_point_vars[slot].MR_var_basename);
+        switch (MR_point.MR_point_vars[slot].MR_value_kind) {
+            /*
+            ** Free the memory allocated by invocations of MR_copy_string
+            ** in the previous call to this function.
+            */
+
+            case MR_VALUE_PROG_VAR:
+                MR_free(MR_point.MR_point_vars[slot].MR_value_var.
+                    MR_var_fullname);
+                MR_free(MR_point.MR_point_vars[slot].MR_value_var.
+                    MR_var_basename);
+                break;
+
+            case MR_VALUE_ATTRIBUTE:
+                MR_free(MR_point.MR_point_vars[slot].MR_value_attr.
+                    MR_attr_name);
+                break;
+        }
     }
 
     MR_proc_id_arity_addedargs_predfunc(entry, &arity, &num_added_args,
         &pred_or_func);
 
     slot = 0;
+    for (i = 0; i < attr_count; i++) {
+        succeeded = MR_FALSE;
+
+        value = MR_lookup_long_lval_base(user->MR_ue_attr_locns[i],
+            valid_saved_regs, base_sp, base_curfr, &succeeded);
+
+        if (! succeeded) {
+            MR_fatal_error("cannot look up value of attribute");
+        }
+
+        type_info = user->MR_ue_attr_types[i];
+        attr_name = MR_copy_string(user->MR_ue_attr_names[i]);
+
+        MR_point.MR_point_vars[slot].MR_value_kind = MR_VALUE_ATTRIBUTE;
+        MR_point.MR_point_vars[slot].MR_value_type = type_info;
+        MR_point.MR_point_vars[slot].MR_value_value = value;
+        MR_point.MR_point_vars[slot].MR_value_attr.MR_attr_num = i;
+        MR_point.MR_point_vars[slot].MR_value_attr.MR_attr_name = attr_name;
+        slot++;
+    }
+
     for (i = 0; i < var_count; i++) {
         int     hlds_var_num;
         int     head_var_num;
@@ -420,7 +498,7 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
         hlds_var_num = level_layout->MR_sll_var_nums[i];
         name = MR_hlds_var_name(entry, hlds_var_num);
         if (name == NULL || MR_streq(name, "")) {
-            /* this value is not a variable or is not named by the user */
+            /* This value is not a variable or is not named by the user. */
             continue;
         }
 
@@ -432,52 +510,59 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
         if (! MR_get_type_and_value_base(level_layout, i, valid_saved_regs,
             base_sp, base_curfr, type_params, &type_info, &value))
         {
-            /* this value is not a variable */
+            /* This value is not a variable. */
             continue;
         }
 
-        MR_point.MR_point_vars[slot].MR_var_hlds_number = hlds_var_num;
-        MR_point.MR_point_vars[slot].MR_var_seq_num_in_label = i;
+        MR_point.MR_point_vars[slot].MR_value_kind = MR_VALUE_PROG_VAR;
+        MR_point.MR_point_vars[slot].MR_value_type = type_info;
+        MR_point.MR_point_vars[slot].MR_value_value = value;
+
+        MR_point.MR_point_vars[slot].MR_value_var.MR_var_hlds_number =
+            hlds_var_num;
+        MR_point.MR_point_vars[slot].MR_value_var.MR_var_seq_num_in_label = i;
 
         copy = MR_copy_string(name);
-        MR_point.MR_point_vars[slot].MR_var_fullname = copy;
-        MR_point.MR_point_vars[slot].MR_var_type = type_info;
-        MR_point.MR_point_vars[slot].MR_var_value = value;
+        MR_point.MR_point_vars[slot].MR_value_var.MR_var_fullname = copy;
 
-        /* we need another copy we can cut apart */
+        /* We need another copy we can cut apart. */
         copy = MR_copy_string(name);
         start_of_num = MR_find_start_of_num_suffix(copy);
 
         if (start_of_num < 0) {
-            MR_point.MR_point_vars[slot].MR_var_has_suffix = MR_FALSE;
-            /* num_suffix should not be used */
-            MR_point.MR_point_vars[slot].MR_var_num_suffix = -1;
-            MR_point.MR_point_vars[slot].MR_var_basename = copy;
+            MR_point.MR_point_vars[slot].MR_value_var.MR_var_has_suffix =
+                MR_FALSE;
+            /* Num_suffix should not be used. */
+            MR_point.MR_point_vars[slot].MR_value_var.MR_var_num_suffix = -1;
+            MR_point.MR_point_vars[slot].MR_value_var.MR_var_basename = copy;
         } else {
             if (start_of_num == 0) {
                 MR_fatal_error("variable name starts with digit");
             }
 
             num_addr = copy + start_of_num;
-            MR_point.MR_point_vars[slot].MR_var_has_suffix = MR_TRUE;
-            MR_point.MR_point_vars[slot].MR_var_num_suffix = atoi(num_addr);
+            MR_point.MR_point_vars[slot].MR_value_var.MR_var_has_suffix =
+                MR_TRUE;
+            MR_point.MR_point_vars[slot].MR_value_var.MR_var_num_suffix =
+                atoi(num_addr);
             *num_addr = '\0';
-            MR_point.MR_point_vars[slot].MR_var_basename = copy;
+            MR_point.MR_point_vars[slot].MR_value_var.MR_var_basename = copy;
         }
 
-        MR_point.MR_point_vars[slot].MR_var_is_headvar = 0;
+        MR_point.MR_point_vars[slot].MR_value_var.MR_var_is_headvar = 0;
         for (head_var_num = num_added_args;
             head_var_num < entry->MR_sle_num_head_vars;
             head_var_num++)
         {
             if (entry->MR_sle_head_var_nums[head_var_num] == hlds_var_num) {
-                MR_point.MR_point_vars[slot].MR_var_is_headvar =
+                MR_point.MR_point_vars[slot].MR_value_var.MR_var_is_headvar =
                     head_var_num - num_added_args + 1;
                 break;
             }
         }
 
-        MR_point.MR_point_vars[slot].MR_var_is_ambiguous = MR_FALSE;
+        MR_point.MR_point_vars[slot].MR_value_var.MR_var_is_ambiguous =
+            MR_FALSE;
         slot++;
     }
 
@@ -485,27 +570,29 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
     MR_free(type_params);
 
     if (slot_max > 0) {
-        qsort(MR_point.MR_point_vars, slot_max, sizeof(MR_Var_Details),
-            MR_trace_compare_var_details);
+        qsort(MR_point.MR_point_vars, slot_max, sizeof(MR_ValueDetails),
+            MR_trace_compare_value_details);
 
-        slot = 1;
-        for (i = 1; i < slot_max; i++) {
-            if (MR_point.MR_point_vars[i].MR_var_hlds_number ==
-                MR_point.MR_point_vars[i-1].MR_var_hlds_number)
+        /* This depends on attributes coming before program variables. */
+        slot = attr_count + 1;
+        for (i = attr_count + 1; i < slot_max; i++) {
+            if (MR_point.MR_point_vars[i].MR_value_var.MR_var_hlds_number ==
+                MR_point.MR_point_vars[i - 1].MR_value_var.MR_var_hlds_number)
             {
                 continue;
             }
 
             MR_memcpy(&MR_point.MR_point_vars[slot],
-                &MR_point.MR_point_vars[i],
-                sizeof(MR_Var_Details));
+                &MR_point.MR_point_vars[i], sizeof(MR_ValueDetails));
 
             if (MR_streq(
-                MR_point.MR_point_vars[slot].MR_var_fullname,
-                MR_point.MR_point_vars[slot-1].MR_var_fullname))
+                MR_point.MR_point_vars[slot].MR_value_var.MR_var_fullname,
+                MR_point.MR_point_vars[slot - 1].MR_value_var.MR_var_fullname))
             {
-                MR_point.MR_point_vars[slot - 1].MR_var_is_ambiguous = MR_TRUE;
-                MR_point.MR_point_vars[slot].MR_var_is_ambiguous = MR_TRUE;
+                MR_point.MR_point_vars[slot - 1].MR_value_var.
+                    MR_var_is_ambiguous = MR_TRUE;
+                MR_point.MR_point_vars[slot].MR_value_var.
+                    MR_var_is_ambiguous = MR_TRUE;
             }
 
             slot++;
@@ -519,13 +606,17 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 }
 
 /*
-** This comparison function is used to sort variables
+** This comparison function is used to sort values
 **
-**  - first on basename,
-**  - then on suffix,
-**  - and then, if necessary, on HLDS number.
+**  - first on attribute vs variable
+**  - then,
+**      - for attributes, on attribute number
+**      - for variables, on
+**          - on basename,
+**          - then on suffix,
+**          - and then, if necessary, on HLDS number.
 **
-** The sorting on basenames is alphabetical except for head variables,
+** The sorting on variable basenames is alphabetical except for head variables,
 ** which always come out first.
 **
 ** The sorting on suffixes orders variables with the same basename
@@ -535,16 +626,50 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 */
 
 static int
-MR_trace_compare_var_details(const void *arg1, const void *arg2)
+MR_trace_compare_value_details(const void *arg1, const void *arg2)
 {
-    MR_Var_Details  *var1;
-    MR_Var_Details  *var2;
+    MR_ValueDetails *value1;
+    MR_ValueDetails *value2;
+    int             diff;
+
+    value1 = (MR_ValueDetails *) arg1;
+    value2 = (MR_ValueDetails *) arg2;
+
+    if (value1->MR_value_kind != value2->MR_value_kind) {
+        return (int) value1->MR_value_kind - (int) value2->MR_value_kind;
+    }
+
+    switch (value1->MR_value_kind) {
+        case MR_VALUE_ATTRIBUTE:
+            return MR_trace_compare_attr_details(
+                &value1->MR_value_attr, &value2->MR_value_attr);
+
+        case MR_VALUE_PROG_VAR:
+            return MR_trace_compare_var_details(
+                &value1->MR_value_var, &value2->MR_value_var);
+    }
+
+    MR_fatal_error("MR_trace_compare_value_details: fall through");
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+MR_trace_compare_attr_details(
+    const MR_AttributeDetails *attr1,
+    const MR_AttributeDetails *attr2)
+{
+    return attr1->MR_attr_num - attr2->MR_attr_num;
+}
+
+static int
+MR_trace_compare_var_details(
+    const MR_ProgVarDetails *var1,
+    const MR_ProgVarDetails *var2)
+{
     int             var1_is_headvar;
     int             var2_is_headvar;
     int             diff;
-
-    var1 = (MR_Var_Details *) arg1;
-    var2 = (MR_Var_Details *) arg2;
 
     var1_is_headvar = var1->MR_var_is_headvar;
     var2_is_headvar = var2->MR_var_is_headvar;
@@ -642,26 +767,44 @@ MR_trace_list_vars(FILE *out)
 const char *
 MR_trace_list_var_details(FILE *out)
 {
-    MR_Var_Details  *details;
-    int             i;
+    MR_ValueDetails     *value;
+    MR_AttributeDetails *attr;
+    MR_ProgVarDetails   *var;
+    int                 i;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
     }
 
     for (i = 0; i < MR_point.MR_point_var_count; i++) {
-        details = &MR_point.MR_point_vars[i];
-        fprintf(out, "\n");
-        fprintf(out, "slot %d, seq %d, hlds %d: headvar: %d, ambiguous: %s\n",
-            i, details->MR_var_seq_num_in_label,
-            details->MR_var_hlds_number, details->MR_var_is_headvar,
-            details->MR_var_is_ambiguous ? "yes" : "no");
-        fprintf(out, "full <%s>, base <%s>, num_suffix %d, has_suffix %s\n",
-            details->MR_var_fullname, details->MR_var_basename,
-            details->MR_var_num_suffix,
-            details->MR_var_has_suffix ? "yes" : "no");
+        value = &MR_point.MR_point_vars[i];
+        switch (MR_point.MR_point_vars[i].MR_value_kind) {
+            case MR_VALUE_ATTRIBUTE:
+                attr = &value->MR_value_attr;
+                fprintf(out, "\n");
+                fprintf(out,
+                    "slot %d, attr number %d, attribute name %s\n",
+                    i, attr->MR_attr_num, attr->MR_attr_name);
+                break;
+
+            case MR_VALUE_PROG_VAR:
+                var = &value->MR_value_var;
+                fprintf(out, "\n");
+                fprintf(out,
+                    "slot %d, seq %d, hlds %d: headvar: %d, ambiguous: %s\n",
+                    i, var->MR_var_seq_num_in_label,
+                    var->MR_var_hlds_number, var->MR_var_is_headvar,
+                    var->MR_var_is_ambiguous ? "yes" : "no");
+                fprintf(out,
+                    "full <%s>, base <%s>, num_suffix %d, has_suffix %s\n",
+                    var->MR_var_fullname, var->MR_var_basename,
+                    var->MR_var_num_suffix,
+                    var->MR_var_has_suffix ? "yes" : "no");
+                break;
+        }
+
         fprintf(out, "typeinfo %p, value %" MR_INTEGER_LENGTH_MODIFIER "x\n",
-            details->MR_var_type, details->MR_var_value);
+            value->MR_value_type, value->MR_value_value);
     }
 
     return NULL;
@@ -671,16 +814,21 @@ const char *
 MR_trace_return_hlds_var_info(int hlds_num, MR_TypeInfo *type_info_ptr, 
     MR_Word *value_ptr)
 {
-    int i;
+    MR_ValueDetails     *value;
+    int                 i;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
     }
 
     for (i = 0; i < MR_point.MR_point_var_count; i++) {
-        if (MR_point.MR_point_vars[i].MR_var_hlds_number == hlds_num) {
-            *type_info_ptr = MR_point.MR_point_vars[i].MR_var_type;
-            *value_ptr = MR_point.MR_point_vars[i].MR_var_value;
+        value = &MR_point.MR_point_vars[i];
+
+        if (value->MR_value_kind == MR_VALUE_PROG_VAR &&
+            value->MR_value_var.MR_var_hlds_number == hlds_num)
+        {
+            *type_info_ptr = value->MR_value_type;
+            *value_ptr = value->MR_value_value;
             return NULL;
         }
     }
@@ -692,7 +840,7 @@ const char *
 MR_trace_return_var_info(int var_number, const char **name_ptr,
     MR_TypeInfo *type_info_ptr, MR_Word *value_ptr)
 {
-    const MR_Var_Details    *details;
+    const MR_ValueDetails   *details;
     const char              *problem;
 
     if (MR_point.MR_point_problem != NULL) {
@@ -707,13 +855,23 @@ MR_trace_return_var_info(int var_number, const char **name_ptr,
     details = &MR_point.MR_point_vars[var_number - 1];
 
     if (name_ptr != NULL) {
-        *name_ptr = details->MR_var_fullname;
+        switch (details->MR_value_kind) {
+            case MR_VALUE_PROG_VAR:
+                *name_ptr = details->MR_value_var.MR_var_fullname;
+                break;
+
+            case MR_VALUE_ATTRIBUTE:
+                *name_ptr = details->MR_value_attr.MR_attr_name;
+                break;
+        }
     }
+
     if (type_info_ptr != NULL) {
-        *type_info_ptr = details->MR_var_type;
+        *type_info_ptr = details->MR_value_type;
     }
+
     if (value_ptr != NULL) {
-        *value_ptr = details->MR_var_value;
+        *value_ptr = details->MR_value_value;
     }
 
     return NULL;
@@ -722,7 +880,7 @@ MR_trace_return_var_info(int var_number, const char **name_ptr,
 const char *
 MR_trace_headvar_num(int var_number, int *arg_pos)
 {
-    const MR_Var_Details    *details;
+    const MR_ValueDetails   *details;
     const char              *problem;
 
     if (MR_point.MR_point_problem != NULL) {
@@ -736,11 +894,15 @@ MR_trace_headvar_num(int var_number, int *arg_pos)
 
     details = &MR_point.MR_point_vars[var_number - 1];
 
-    if (!details->MR_var_is_headvar) {
+    if (details->MR_value_kind != MR_VALUE_PROG_VAR) {
+        return "not a variable";
+    }
+
+    if (!details->MR_value_var.MR_var_is_headvar) {
         return "not a head variable";
     }
 
-    *arg_pos = details->MR_var_num_suffix;
+    *arg_pos = details->MR_value_var.MR_var_num_suffix;
     return NULL;
 }
 
@@ -770,6 +932,10 @@ MR_convert_arg_to_var_spec(const char *word_spec, MR_Var_Spec *var_spec)
         var_spec->MR_var_spec_kind = MR_VAR_SPEC_HELD_NAME;
         var_spec->MR_var_spec_name = word_spec + 1;
         var_spec->MR_var_spec_number = -1; /* unused */
+    } else if (word_spec[0] == '!') {
+        var_spec->MR_var_spec_kind = MR_VAR_SPEC_ATTRIBUTE;
+        var_spec->MR_var_spec_name = word_spec + 1;
+        var_spec->MR_var_spec_number = -1; /* unused */
     } else {
         var_spec->MR_var_spec_kind = MR_VAR_SPEC_NAME;
         var_spec->MR_var_spec_name = word_spec;
@@ -780,24 +946,38 @@ MR_convert_arg_to_var_spec(const char *word_spec, MR_Var_Spec *var_spec)
 static int
 MR_compare_slots_on_headvar_num(const void *p1, const void *p2)
 {
-    MR_Var_Details  *vars;
+    MR_ValueDetails *vars;
     int             s1;
     int             s2;
+    int             hv1;
+    int             hv2;
 
     vars = MR_point.MR_point_vars;
     s1 = * (int *) p1;
     s2 = * (int *) p2;
 
-    if (! vars[s1].MR_var_is_headvar) {
-        MR_fatal_error("MR_compare_slots_on_headvar_num: s1");
-    }
-    if (! vars[s2].MR_var_is_headvar) {
-        MR_fatal_error("MR_compare_slots_on_headvar_num: s2");
+    if (vars[s1].MR_value_kind != MR_VALUE_PROG_VAR) {
+        MR_fatal_error("MR_compare_slots_on_headvar_num: s1 is not var");
     }
 
-    if (vars[s1].MR_var_is_headvar < vars[s2].MR_var_is_headvar) {
+    if (vars[s2].MR_value_kind != MR_VALUE_PROG_VAR) {
+        MR_fatal_error("MR_compare_slots_on_headvar_num: s2 is not var");
+    }
+
+    if (! vars[s1].MR_value_var.MR_var_is_headvar) {
+        MR_fatal_error("MR_compare_slots_on_headvar_num: s1 is not headvar");
+    }
+
+    if (! vars[s2].MR_value_var.MR_var_is_headvar) {
+        MR_fatal_error("MR_compare_slots_on_headvar_num: s2 is not headvar");
+    }
+
+    hv1 = vars[s1].MR_value_var.MR_var_is_headvar;
+    hv2 = vars[s2].MR_value_var.MR_var_is_headvar;
+
+    if (hv1 < hv2) {
         return -1;
-    } else if (vars[s1].MR_var_is_headvar > vars[s2].MR_var_is_headvar) {
+    } else if (hv1 > hv2) {
         return 1;
     } else {
         return 0;
@@ -815,7 +995,7 @@ MR_convert_goal_to_synthetic_term(const char **functor_ptr,
     MR_Word                 arg_list;
     MR_Word                 arg;
     MR_TypeInfo             arg_list_typeinfo;
-    MR_Var_Details          *vars;
+    MR_ValueDetails         *vars;
     int                     headvar_num;
     int                     arity;
     int                     slot;
@@ -834,10 +1014,12 @@ MR_convert_goal_to_synthetic_term(const char **functor_ptr,
 
     next = 0;
     for (slot = MR_point.MR_point_var_count - 1; slot >= 0; slot--) {
-        headvar_num = vars[slot].MR_var_is_headvar;
-        if (headvar_num) {
-            var_slot_array[next] = slot;
-            next++;
+        if (vars[slot].MR_value_kind == MR_VALUE_PROG_VAR) {
+            headvar_num = vars[slot].MR_value_var.MR_var_is_headvar;
+            if (headvar_num) {
+                var_slot_array[next] = slot;
+                next++;
+            }
         }
     }
 
@@ -846,21 +1028,21 @@ MR_convert_goal_to_synthetic_term(const char **functor_ptr,
     MR_TRACE_USE_HP(
 
         /*
-        ** Replace the slot numbers in the argument list
-        ** with the argument values, adding entries for
-        ** any unbound arguments (they will be printed
-        ** as `_').
+        ** Replace the slot numbers in the argument list with the argument
+        ** values, adding entries for any unbound arguments (they will be
+        ** printed as `_').
         */
         arg_list = MR_list_empty();
         i = next - 1;
         for (headvar_num = arity; headvar_num > 0; headvar_num--) {
             if (i >= 0 &&
-                vars[var_slot_array[i]].MR_var_is_headvar == headvar_num)
+                vars[var_slot_array[i]].MR_value_var.MR_var_is_headvar
+                    == headvar_num)
             {
                 slot = var_slot_array[i];
                 i--;
-                MR_new_univ_on_hp(arg, vars[slot].MR_var_type,
-                    vars[slot].MR_var_value);
+                MR_new_univ_on_hp(arg, vars[slot].MR_value_type,
+                    vars[slot].MR_value_value);
             } else {
                 MR_new_univ_on_hp(arg,
                     (MR_TypeInfo) &MR_unbound_typeinfo_struct, MR_UNBOUND);
@@ -1091,7 +1273,8 @@ MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
             var_num++;
         } while (var_num < MR_point.MR_point_var_count &&
             MR_streq(var_spec.MR_var_spec_name,
-            MR_point.MR_point_vars[var_num].MR_var_fullname));
+                MR_point.MR_point_vars[var_num].MR_value_var.MR_var_fullname));
+        /* Attribute names cannot be ambiguous; the compiler enforces this. */
 
         if (success_count == 0) {
             return "the selected path does not exist "
@@ -1134,8 +1317,8 @@ MR_trace_print_size_one(FILE *out, char *word_spec)
         do {
             fprintf(out, "%20s: %6u\n",
                 MR_point.MR_point_vars[var_num].MR_var_fullname,
-                MR_term_size(MR_point.MR_point_vars[var_num].MR_var_type,
-                    MR_point.MR_point_vars[var_num].MR_var_value));
+                MR_term_size(MR_point.MR_point_vars[var_num].MR_value_type,
+                    MR_point.MR_point_vars[var_num].MR_value_value));
             var_num++;
         } while (var_num < MR_point.MR_point_var_count &&
             MR_streq(var_spec.MR_var_spec_name,
@@ -1165,8 +1348,8 @@ MR_trace_print_size_all(FILE *out)
     for (var_num = 0; var_num < MR_point.MR_point_var_count; var_num++) {
         fprintf(out, "%-20s %6u\n",
             MR_point.MR_point_vars[var_num].MR_var_fullname,
-            MR_term_size(MR_point.MR_point_vars[var_num].MR_var_type,
-                MR_point.MR_point_vars[var_num].MR_var_value));
+            MR_term_size(MR_point.MR_point_vars[var_num].MR_value_type,
+                MR_point.MR_point_vars[var_num].MR_value_value));
     }
 
     return NULL;
@@ -1208,8 +1391,8 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
 
     for (var_num = 0; var_num < MR_point.MR_point_var_count; var_num++) {
         (void) MR_trace_browse_var(out, MR_TRUE,
-            MR_point.MR_point_vars[var_num].MR_var_type,
-            MR_point.MR_point_vars[var_num].MR_var_value,
+            MR_point.MR_point_vars[var_num].MR_value_type,
+            MR_point.MR_point_vars[var_num].MR_value_value,
             MR_trace_printed_var_name(&MR_point.MR_point_vars[var_num]),
             NULL, browser, MR_BROWSE_CALLER_PRINT_ALL, format);
     }
@@ -1375,9 +1558,10 @@ MR_lookup_var_spec(MR_Var_Spec var_spec, MR_TypeInfo *type_info_ptr,
     MR_Word *value_ptr, const char **name_ptr, int *var_index_ptr,
     MR_bool *is_ambiguous_ptr)
 {
-    int         vn;
-    MR_bool     found;
-    const char  *problem;
+    int             vn;
+    MR_bool         found;
+    const char      *problem;
+    MR_ValueDetails *value;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
@@ -1392,8 +1576,8 @@ MR_lookup_var_spec(MR_Var_Spec var_spec, MR_TypeInfo *type_info_ptr,
 
             vn = var_spec.MR_var_spec_number - 1;
             *var_index_ptr = vn;
-            *type_info_ptr = MR_point.MR_point_vars[vn].MR_var_type;
-            *value_ptr = MR_point.MR_point_vars[vn].MR_var_value;
+            *type_info_ptr = MR_point.MR_point_vars[vn].MR_value_type;
+            *value_ptr = MR_point.MR_point_vars[vn].MR_value_value;
             *name_ptr = MR_trace_printed_var_name(&MR_point.MR_point_vars[vn]);
             *is_ambiguous_ptr = MR_FALSE;
             return NULL;
@@ -1401,8 +1585,10 @@ MR_lookup_var_spec(MR_Var_Spec var_spec, MR_TypeInfo *type_info_ptr,
         case MR_VAR_SPEC_NAME:
             found = MR_FALSE;
             for (vn = 0; vn < MR_point.MR_point_var_count; vn++) {
-                if (MR_streq(var_spec.MR_var_spec_name,
-                    MR_point.MR_point_vars[vn].MR_var_fullname))
+                value = &MR_point.MR_point_vars[vn];
+                if (value->MR_value_kind == MR_VALUE_PROG_VAR &&
+                    MR_streq(var_spec.MR_var_spec_name,
+                        value->MR_value_var.MR_var_fullname))
                 {
                     found = MR_TRUE;
                     break;
@@ -1414,14 +1600,39 @@ MR_lookup_var_spec(MR_Var_Spec var_spec, MR_TypeInfo *type_info_ptr,
             }
 
             *var_index_ptr = vn;
-            *type_info_ptr = MR_point.MR_point_vars[vn].MR_var_type;
-            *value_ptr = MR_point.MR_point_vars[vn].MR_var_value;
-            *name_ptr = MR_trace_printed_var_name(&MR_point.MR_point_vars[vn]);
-            if (MR_point.MR_point_vars[vn].MR_var_is_ambiguous) {
+            *type_info_ptr = MR_point.MR_point_vars[vn].MR_value_type;
+            *value_ptr = MR_point.MR_point_vars[vn].MR_value_value;
+            *name_ptr = MR_trace_printed_var_name(value);
+            if (value->MR_value_var.MR_var_is_ambiguous) {
                 *is_ambiguous_ptr = MR_TRUE;
             } else {
                 *is_ambiguous_ptr = MR_FALSE;
             }
+
+            return NULL;
+
+        case MR_VAR_SPEC_ATTRIBUTE:
+            found = MR_FALSE;
+            for (vn = 0; vn < MR_point.MR_point_var_count; vn++) {
+                value = &MR_point.MR_point_vars[vn];
+                if (value->MR_value_kind == MR_VALUE_ATTRIBUTE &&
+                    MR_streq(var_spec.MR_var_spec_name,
+                        value->MR_value_attr.MR_attr_name))
+                {
+                    found = MR_TRUE;
+                    break;
+                }
+            }
+
+            if (! found) {
+                return "there is no such variable";
+            }
+
+            *var_index_ptr = vn;
+            *type_info_ptr = MR_point.MR_point_vars[vn].MR_value_type;
+            *value_ptr = MR_point.MR_point_vars[vn].MR_value_value;
+            *name_ptr = MR_trace_printed_var_name(value);
+            *is_ambiguous_ptr = MR_FALSE;
 
             return NULL;
 
@@ -1459,7 +1670,18 @@ MR_trace_var_completer_next(const char *word, size_t word_len,
 
     slot = (MR_Integer) *data;
     while (slot < MR_point.MR_point_var_count) {
-        var_name = MR_point.MR_point_vars[slot].MR_var_fullname;
+        switch (MR_point.MR_point_vars[slot].MR_value_kind) {
+            case MR_VALUE_ATTRIBUTE:
+                var_name =
+                    MR_point.MR_point_vars[slot].MR_value_attr.MR_attr_name;
+                break;
+
+            case MR_VALUE_PROG_VAR:
+                var_name =
+                    MR_point.MR_point_vars[slot].MR_value_var.MR_var_fullname;
+                break;
+        }
+
         slot++;
         if (MR_strneq(var_name, word, word_len)) {
             *data = (MR_Completer_Data) slot;
@@ -1470,34 +1692,14 @@ MR_trace_var_completer_next(const char *word, size_t word_len,
 }
 
 static int
-MR_trace_print_var_name(FILE *out, MR_Var_Details *var)
+MR_trace_print_var_name(FILE *out, MR_ValueDetails *value)
 {
-    int len;
+    const char  *buf;
+    int         len;
 
-    len = strlen(var->MR_var_fullname);
-    fputs(var->MR_var_fullname, out);
-    if (var->MR_var_is_ambiguous) {
-        char    buf[256]; /* this should be plenty big enough */
-
-        sprintf(buf, "(%d)", var->MR_var_hlds_number);
-        len += strlen(buf);
-        fputs(buf, out);
-    }
-
-    /*
-    ** If the variable starts with "HeadVar__" then the
-    ** argument number is part of the name.
-    */
-    if (var->MR_var_is_headvar &&
-            ! MR_streq(var->MR_var_basename, "HeadVar__"))
-    {
-        char    buf[256]; /* this should be plenty big enough */
-
-        sprintf(buf, " (arg %d)", var->MR_var_is_headvar);
-        len += strlen(buf);
-        fputs(buf, out);
-    }
-
+    buf = MR_trace_printed_var_name(value);
+    len = strlen(buf);
+    fputs(buf, out);
     return len;
 }
 
@@ -1506,51 +1708,75 @@ MR_trace_print_var_name(FILE *out, MR_Var_Details *var)
 static  char    MR_var_name_buf[MR_TRACE_VAR_NAME_BUF_SIZE];
 
 static const char *
-MR_trace_printed_var_name(MR_Var_Details *var)
+MR_trace_printed_var_name(MR_ValueDetails *value)
 {
-    /*
-    ** If the variable starts with "HeadVar__" then the
-    ** argument number is part of the name.
-    */
-    if (var->MR_var_is_headvar &&
-        ! MR_streq(var->MR_var_basename, "HeadVar__"))
-    {
-        if (var->MR_var_is_ambiguous) {
+    MR_ProgVarDetails   *var;
+    MR_AttributeDetails *attr;
+
+    switch (value->MR_value_kind) {
+        case MR_VALUE_ATTRIBUTE:
+            attr = &value->MR_value_attr;
 #ifdef  MR_HAVE_SNPRINTF
             snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
-                "%s(%d) (arg %d)", var->MR_var_fullname,
-                var->MR_var_hlds_number, var->MR_var_is_headvar);
+                "%s (attr %d)", attr->MR_attr_name, attr->MR_attr_num);
 #else
-            sprintf(MR_var_name_buf, "%s(%d) (arg %d)",
-                var->MR_var_fullname,
-                var->MR_var_hlds_number, var->MR_var_is_headvar);
+            sprintf(MR_var_name_buf, "%s (attr %d)",
+                attr->MR_attr_name, attr->MR_attr_num);
 #endif
-        } else {
+            break;
+
+        case MR_VALUE_PROG_VAR:
+            var = &value->MR_value_var;
+
+            /*
+            ** If the variable name starts with "HeadVar__", then the
+            ** argument number is part of the name.
+            */
+
+            if (var->MR_var_is_headvar &&
+                ! MR_streq(var->MR_var_basename, "HeadVar__"))
+            {
+                if (var->MR_var_is_ambiguous) {
 #ifdef  MR_HAVE_SNPRINTF
-            snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
-                "%s (arg %d)", var->MR_var_fullname, var->MR_var_is_headvar);
+                    snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                        "%s(%d) (arg %d)", var->MR_var_fullname,
+                        var->MR_var_hlds_number, var->MR_var_is_headvar);
 #else
-            sprintf(MR_var_name_buf, "%s (arg %d)",
-                var->MR_var_fullname, var->MR_var_is_headvar);
+                    sprintf(MR_var_name_buf, "%s(%d) (arg %d)",
+                        var->MR_var_fullname,
+                        var->MR_var_hlds_number, var->MR_var_is_headvar);
 #endif
-        }
-    } else {
-        if (var->MR_var_is_ambiguous) {
+                } else {
 #ifdef  MR_HAVE_SNPRINTF
-            snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
-                "%s(%d)", var->MR_var_fullname, var->MR_var_hlds_number);
+                    snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                        "%s (arg %d)", var->MR_var_fullname,
+                        var->MR_var_is_headvar);
 #else
-            sprintf(MR_var_name_buf, "%s(%d)",
-                var->MR_var_fullname, var->MR_var_hlds_number);
+                    sprintf(MR_var_name_buf, "%s (arg %d)",
+                        var->MR_var_fullname, var->MR_var_is_headvar);
 #endif
-        } else {
+                }
+            } else {
+                if (var->MR_var_is_ambiguous) {
 #ifdef  MR_HAVE_SNPRINTF
-            snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE, "%s",
-                var->MR_var_fullname);
+                    snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                        "%s(%d)", var->MR_var_fullname,
+                        var->MR_var_hlds_number);
 #else
-            sprintf(MR_var_name_buf, "%s", var->MR_var_fullname);
+                    sprintf(MR_var_name_buf, "%s(%d)",
+                        var->MR_var_fullname, var->MR_var_hlds_number);
 #endif
-        }
+                } else {
+#ifdef  MR_HAVE_SNPRINTF
+                    snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE, "%s",
+                        var->MR_var_fullname);
+#else
+                    sprintf(MR_var_name_buf, "%s", var->MR_var_fullname);
+#endif
+                }
+            }
+
+            break;
     }
 
     return MR_var_name_buf;
@@ -1587,18 +1813,17 @@ MR_trace_check_integrity_on_cur_level(void)
         ** most misconstructed terms.
         */
         (void) MR_trace_browse_var(stdout, MR_TRUE,
-            MR_point.MR_point_vars[i].MR_var_type,
-            MR_point.MR_point_vars[i].MR_var_value,
-            MR_point.MR_point_vars[i].MR_var_fullname,
-            (MR_String) (MR_Integer) "", MR_trace_print,
+            MR_point.MR_point_vars[i].MR_value_type,
+            MR_point.MR_point_vars[i].MR_value_value,
+            "IntegrityCheck", (MR_String) (MR_Integer) "", MR_trace_print,
             MR_BROWSE_CALLER_PRINT, MR_BROWSE_DEFAULT_FORMAT);
 
         /*
         ** Looking up the term size can lead to a crash if the term has a
         ** memory cell that should have but doesn't have a size slot.
         */
-        (void) MR_term_size(MR_point.MR_point_vars[i].MR_var_type,
-            MR_point.MR_point_vars[i].MR_var_value);
+        (void) MR_term_size(MR_point.MR_point_vars[i].MR_value_type,
+            MR_point.MR_point_vars[i].MR_value_value);
     }
 }
 

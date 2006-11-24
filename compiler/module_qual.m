@@ -37,17 +37,23 @@
 
 %-----------------------------------------------------------------------------%
 
-    % module_qualify_items(Items0, Items, Globals, ModuleName,
-    %   MaybeFileName, MQ_Info, UndefTypes, UndefModes, !Specs, !IO):
+    % module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap,
+    %   Globals, ModuleName, MaybeFileName, EventSpecFileName, MQ_Info,
+    %   UndefTypes, UndefModes, !Specs, !IO):
     %
-    % Items is Items0 with all items module qualified as much as possible.
+    % Items is Items0 with all items module qualified as much as possible;
+    % likewise for EventSpecMap0 and EventSpecMap.
+    %
     % If MaybeFileName is `yes(FileName)', then report undefined types, insts
-    % and modes. MaybeFileName should be `no' when module qualifying the short
-    % interface.
+    % and modes in Items0. MaybeFileName should be `no' when module qualifying
+    % the short interface.
     %
-:- pred module_qualify_items(item_list::in, item_list::out, globals::in,
-    module_name::in, maybe(string)::in, mq_info::out, bool::out, bool::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    % Errors in EventSpecMap0 will be reported as being for EventSpecFileName.
+    %
+:- pred module_qualify_items(item_list::in, item_list::out,
+    event_spec_map::in, event_spec_map::out, globals::in,
+    module_name::in, maybe(string)::in, string::in, mq_info::out,
+    bool::out, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
     % This is called from make_hlds to qualify the mode of a lambda expression.
     %
@@ -144,8 +150,9 @@
 
 %-----------------------------------------------------------------------------%
 
-module_qualify_items(Items0, Items, Globals, ModuleName, MaybeFileName, Info,
-        UndefTypes, UndefModes, !Specs) :-
+module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap, Globals,
+        ModuleName, MaybeFileName, EventSpecFileName, !:Info, UndefTypes,
+        UndefModes, !Specs) :-
     (
         MaybeFileName = yes(_),
         ReportErrors = yes
@@ -153,14 +160,18 @@ module_qualify_items(Items0, Items, Globals, ModuleName, MaybeFileName, Info,
         MaybeFileName = no,
         ReportErrors = no
     ),
-    init_mq_info(Items0, Globals, ReportErrors, ModuleName, Info0),
-    collect_mq_info(Items0, Info0, Info1),
-    do_module_qualify_items(Items0, Items, Info1, Info, !Specs),
-    mq_info_get_type_error_flag(Info, UndefTypes),
-    mq_info_get_mode_error_flag(Info, UndefModes),
+    init_mq_info(Items0, Globals, ReportErrors, ModuleName, !:Info),
+    collect_mq_info(Items0, !Info),
+    do_module_qualify_items(Items0, Items, !Info, !Specs),
+    map.to_assoc_list(EventSpecMap0, EventSpecList0),
+    do_module_qualify_event_specs(EventSpecFileName,
+        EventSpecList0, EventSpecList, !Info, !Specs),
+    map.from_assoc_list(EventSpecList, EventSpecMap),
+    mq_info_get_type_error_flag(!.Info, UndefTypes),
+    mq_info_get_mode_error_flag(!.Info, UndefModes),
     (
         MaybeFileName = yes(FileName),
-        mq_info_get_unused_interface_modules(Info, UnusedImports0),
+        mq_info_get_unused_interface_modules(!.Info, UnusedImports0),
         set.to_sorted_list(UnusedImports0, UnusedImports),
         maybe_warn_unused_interface_imports(ModuleName, FileName,
             UnusedImports, !Specs)
@@ -200,7 +211,6 @@ qualify_type_qualification(Type0, Type, Context, !Info, !Specs) :-
                 modes                       :: mode_id_set,
                 classes                     :: class_id_set,
 
-
                 % Modules imported in the interface that are not definitely
                 % needed in the interface.
                 unused_interface_modules    :: set(module_name),
@@ -223,7 +233,7 @@ qualify_type_qualification(Type0, Type, Context, !Info, !Specs) :-
                 % The context of the current item.
                 error_context               :: error_context,
 
-                % The name of the current module
+                % The name of the current module.
                 this_module                 :: module_name,
 
                 % Must uses of the current item be explicitly module qualified.
@@ -257,8 +267,8 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
 collect_mq_info([], !Info).
 collect_mq_info([Item - _ | Items], !Info) :-
     ( Item = item_module_defn(_, md_transitively_imported) ->
-        % Don't process the transitively imported items (from `.int2'
-        % files). They can't be used in the current module.
+        % Don't process the transitively imported items (from `.int2' files).
+        % They can't be used in the current module.
         true
     ;
         collect_mq_info_2(Item, !Info),
@@ -269,8 +279,8 @@ collect_mq_info([Item - _ | Items], !Info) :-
 
 collect_mq_info_2(item_clause(_, _, _, _, _, _), !Info).
 collect_mq_info_2(item_type_defn(_, SymName, Params, _, _), !Info) :-
-    % This item is not visible in the current module.
     ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+        % This item is not visible in the current module.
         true
     ;
         list.length(Params, Arity),
@@ -284,8 +294,8 @@ collect_mq_info_2(item_type_defn(_, SymName, Params, _, _), !Info) :-
         mq_info_set_impl_types(ImplTypes, !Info)
     ).
 collect_mq_info_2(item_inst_defn(_, SymName, Params, _, _), !Info) :-
-    % This item is not visible in the current module.
     ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+        % This item is not visible in the current module.
         true
     ;
         list.length(Params, Arity),
@@ -295,8 +305,8 @@ collect_mq_info_2(item_inst_defn(_, SymName, Params, _, _), !Info) :-
         mq_info_set_insts(Insts, !Info)
     ).
 collect_mq_info_2(item_mode_defn(_, SymName, Params, _, _), !Info) :-
-    % This item is not visible in the current module.
     ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+        % This item is not visible in the current module.
         true
     ;
         list.length(Params, Arity),
@@ -327,8 +337,8 @@ collect_mq_info_2(item_promise(_PromiseType, Goal, _ProgVarSet, _UnivVars),
     ).
 collect_mq_info_2(item_nothing(_), !Info).
 collect_mq_info_2(item_typeclass(_, _, SymName, Params, _, _), !Info) :-
-    % This item is not visible in the current module.
     ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+        % This item is not visible in the current module.
         true
     ;
         list.length(Params, Arity),
@@ -724,10 +734,10 @@ module_qualify_item(
     ).
 
 module_qualify_item(
-        item_instance(Constraints0, Name0, Types0, Body0, VarSet,
-            ModName) - Context,
-        item_instance(Constraints, Name, Types, Body, VarSet,
-            ModName) - Context,
+        item_instance(Constraints0, Name0, Types0, Body0, VarSet, ModName)
+            - Context,
+        item_instance(Constraints, Name, Types, Body, VarSet, ModName)
+            - Context,
         !Info, yes, !Specs) :-
     list.length(Types0, Arity),
     Id = mq_id(Name0, Arity),
@@ -757,6 +767,50 @@ module_qualify_item(
     mq_info_set_error_context(mqec_mutable(Name) - Context, !Info),
     qualify_type(Type0, Type, !Info, !Specs),
     qualify_inst(Inst0, Inst, !Info, !Specs).
+
+:- pred do_module_qualify_event_specs(string::in,
+    assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+do_module_qualify_event_specs(_, [], [], !Info, !Specs).
+do_module_qualify_event_specs(FileName,
+        [Name - Spec0 | NameSpecs0], [Name - Spec | NameSpecs],
+        !Info, !Specs) :-
+    do_module_qualify_event_spec(FileName, Name, Spec0, Spec, !Info, !Specs),
+    do_module_qualify_event_specs(FileName, NameSpecs0, NameSpecs,
+        !Info, !Specs).
+
+:- pred do_module_qualify_event_spec(string::in, string::in,
+    event_spec::in, event_spec::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+do_module_qualify_event_spec(EventName, FileName, EventSpec0, EventSpec,
+        !Info, !Specs) :-
+    EventSpec0 = event_spec(EventNumber, EventLineNumber,
+        VisAttrs0, AllAttrs0),
+    list.map_foldl2(
+        do_module_qualify_event_attr(EventName, FileName, EventLineNumber),
+        VisAttrs0, VisAttrs, !Info, !Specs),
+    list.map_foldl2(
+        do_module_qualify_event_attr(EventName, FileName, EventLineNumber),
+        AllAttrs0, AllAttrs, !Info, !Specs),
+    EventSpec = event_spec(EventNumber, EventLineNumber,
+        VisAttrs, AllAttrs).
+
+:- pred do_module_qualify_event_attr(string::in, string::in, int::in,
+    event_attribute::in, event_attribute::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+do_module_qualify_event_attr(EventName, FileName, LineNumber, Attr0, Attr,
+        !Info, !Specs) :-
+    Attr0 = event_attribute(AttrName, AttrType0, AttrMode0, MaybeSynthCall),
+    MQErrorContext = mqec_event_spec_attr(EventName, AttrName),
+    Context = context(FileName, LineNumber),
+    mq_info_set_error_context(MQErrorContext - Context, !Info),
+    qualify_type(AttrType0, AttrType, !Info, !Specs),
+    qualify_mode(AttrMode0, AttrMode, !Info, !Specs),
+    Attr = event_attribute(AttrName, AttrType, AttrMode, MaybeSynthCall).
 
 :- pred update_import_status(module_defn::in, mq_info::in, mq_info::out,
     bool::out) is det.
@@ -1433,7 +1487,8 @@ qualify_user_sharing(!UserSharing, !Info, !Specs) :-
     ;       mqec_type_qual
     ;       mqec_class(mq_id)
     ;       mqec_instance(mq_id)
-    ;       mqec_mutable(string).
+    ;       mqec_mutable(string)
+    ;       mqec_event_spec_attr(string, string). % event name, attr name
 
 :- func id_to_sym_name_and_arity(mq_id) = sym_name_and_arity.
 
@@ -1556,6 +1611,8 @@ mq_error_context_to_pieces(mqec_mutable(Name)) =
         words(Name),
         suffix("'")
     ].
+mq_error_context_to_pieces(mqec_event_spec_attr(EventName, AttrName)) =
+    [words("attribute"), quote(AttrName), words("for"), quote(EventName)].
 
 :- pred id_type_to_string(id_type::in, string::out) is det.
 

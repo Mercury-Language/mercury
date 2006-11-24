@@ -709,6 +709,7 @@ then
             cd trace
             $LN_S $root/trace/*.h .
             $LN_S $root/trace/*.c .
+            $LN_S $root/trace/*.[yl] .
             cp $root/trace/Mmake* .
             cp $root/trace/.mgnu* .
             $LN_S $root/trace/RESERVED_MACRO_NAMES .

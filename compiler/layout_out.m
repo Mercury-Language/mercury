@@ -126,10 +126,10 @@ output_layout_data_defn(Data, !DeclSet, !IO) :-
     (
         Data = label_layout_data(ProcLabel, LabelNum, ProcLayoutAddr,
             MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
-            MaybeSolverData, MaybeVarInfo),
+            MaybeUserData, MaybeVarInfo),
         output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr,
             MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
-            MaybeSolverData, MaybeVarInfo, !DeclSet, !IO)
+            MaybeUserData, MaybeVarInfo, !DeclSet, !IO)
     ;
         Data = proc_layout_data(ProcLabel, Traversal, MaybeRest),
         output_proc_layout_data_defn(ProcLabel, Traversal, MaybeRest,
@@ -143,10 +143,10 @@ output_layout_data_defn(Data, !DeclSet, !IO) :-
     ;
         Data = module_layout_data(ModuleName, StringTableSize,
             StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
-            SuppressedEvents, NumLabels),
+            SuppressedEvents, NumLabels, MaybeEventSpecs),
         output_module_layout_data_defn(ModuleName, StringTableSize,
             StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
-            SuppressedEvents, NumLabels, !DeclSet, !IO)
+            SuppressedEvents, NumLabels, MaybeEventSpecs, !DeclSet, !IO)
     ;
         Data = table_io_decl_data(RttiProcLabel, Kind, NumPTIs,
             PTIVectorRval, TypeParamsRval),
@@ -196,7 +196,7 @@ extract_layout_name(Data, LayoutName) :-
             _, _, _, _, _),
         LayoutName = closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)
     ;
-        Data = module_layout_data(ModuleName, _, _, _, _, _, _, _),
+        Data = module_layout_data(ModuleName, _, _, _, _, _, _, _, _),
         LayoutName = module_layout(ModuleName)
     ;
         Data = table_io_decl_data(RttiProcLabel, _, _, _, _),
@@ -237,15 +237,15 @@ output_layout_name(Data, !IO) :-
         io.write_string(
             label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
     ;
-        Data = solver_event_layout(ProcLabel, LabelNum),
+        Data = user_event_layout(ProcLabel, LabelNum),
         io.write_string(mercury_data_prefix, !IO),
-        io.write_string("_solver_event_layout__", !IO),
+        io.write_string("_user_event_layout__", !IO),
         io.write_string(
             label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
     ;
-        Data = solver_event_attr_names(ProcLabel, LabelNum),
+        Data = user_event_attr_names(ProcLabel, LabelNum),
         io.write_string(mercury_data_prefix, !IO),
-        io.write_string("_solver_event_attr_names__", !IO),
+        io.write_string("_user_event_attr_names__", !IO),
         io.write_string(
             label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
     ;
@@ -337,6 +337,12 @@ output_layout_name(Data, !IO) :-
         ModuleNameStr = sym_name_mangle(ModuleName),
         io.write_string(ModuleNameStr, !IO)
     ;
+        Data = module_layout_event_specs(ModuleName),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_module_layout_event_specs__", !IO),
+        ModuleNameStr = sym_name_mangle(ModuleName),
+        io.write_string(ModuleNameStr, !IO)
+    ;
         Data = module_layout(ModuleName),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_module_layout__", !IO),
@@ -370,13 +376,13 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         io.write_string(" ", !IO),
         output_layout_name(label_layout(ProcLabel, LabelNum, LabelVars), !IO)
     ;
-        Data = solver_event_layout(ProcLabel, LabelNum),
-        io.write_string("static const struct MR_Solver_Event_Struct ", !IO),
-        output_layout_name(solver_event_layout(ProcLabel, LabelNum), !IO)
+        Data = user_event_layout(ProcLabel, LabelNum),
+        io.write_string("static const struct MR_UserEvent_Struct ", !IO),
+        output_layout_name(user_event_layout(ProcLabel, LabelNum), !IO)
     ;
-        Data = solver_event_attr_names(ProcLabel, LabelNum),
+        Data = user_event_attr_names(ProcLabel, LabelNum),
         io.write_string("static const char * ", !IO),
-        output_layout_name(solver_event_attr_names(ProcLabel, LabelNum), !IO),
+        output_layout_name(user_event_attr_names(ProcLabel, LabelNum), !IO),
         io.write_string("[]", !IO)
     ;
         Data = proc_layout(ProcLabel, Kind),
@@ -473,6 +479,11 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         output_layout_name(module_layout_proc_vector(ModuleName), !IO),
         io.write_string("[]", !IO)
     ;
+        Data = module_layout_event_specs(ModuleName),
+        io.write_string("static const char ", !IO),
+        output_layout_name(module_layout_event_specs(ModuleName), !IO),
+        io.write_string("[]", !IO)
+    ;
         Data = module_layout(ModuleName),
         io.write_string("static const MR_Module_Layout ", !IO),
         output_layout_name(module_layout(ModuleName), !IO)
@@ -492,8 +503,8 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
     ).
 
 layout_name_would_include_code_addr(label_layout(_, _, _)) = no.
-layout_name_would_include_code_addr(solver_event_layout(_, _)) = no.
-layout_name_would_include_code_addr(solver_event_attr_names(_, _)) = no.
+layout_name_would_include_code_addr(user_event_layout(_, _)) = no.
+layout_name_would_include_code_addr(user_event_attr_names(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout_exec_trace(_)) = yes.
 layout_name_would_include_code_addr(proc_layout_head_var_nums(_)) = no.
@@ -508,6 +519,7 @@ layout_name_would_include_code_addr(module_layout_string_table(_)) = no.
 layout_name_would_include_code_addr(module_layout_file_vector(_)) = no.
 layout_name_would_include_code_addr(module_layout_proc_vector(_)) = no.
 layout_name_would_include_code_addr(module_layout_label_exec_count(_, _)) = no.
+layout_name_would_include_code_addr(module_layout_event_specs(_)) = no.
 layout_name_would_include_code_addr(module_layout(_)) = no.
 layout_name_would_include_code_addr(proc_static(_)) = no.
 layout_name_would_include_code_addr(proc_static_call_sites(_)) = no.
@@ -546,44 +558,47 @@ output_rval_or_numpair_or_none(kind_none, !IO).
 
 :- pred output_label_layout_data_defn(proc_label::in, int::in, layout_name::in,
     maybe(trace_port)::in, maybe(bool)::in, int::in, maybe(int)::in,
-    maybe(solver_event_data)::in, maybe(label_var_info)::in,
+    maybe(user_event_data)::in, maybe(label_var_info)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
-        MaybeIsHidden, LabelNumberInModule, MaybeGoalPath, MaybeSolverData,
+        MaybeIsHidden, LabelNumberInModule, MaybeGoalPath, MaybeUserData,
         MaybeVarInfo, !DeclSet, !IO) :-
     output_layout_decl(ProcLayoutAddr, !DeclSet, !IO),
     (
-        MaybeSolverData = no,
-        SolverChars = ""
+        MaybeUserData = no,
+        UserChars = ""
     ;
-        MaybeSolverData = yes(SolverData),
-        SolverChars = "_S",
-        SolverData = solver_event_data(SolverEventName, SolverNumAttributes,
-            SolverLocnsRval, SolverTypesRval, SolverAttrNames),
+        MaybeUserData = yes(UserData),
+        UserChars = "_U",
+        UserData = user_event_data(UserEventNumber, UserEventName,
+            UserNumAttributes, UserLocnsRval, UserTypesRval,
+            UserAttrNames),
 
-        AttrNamesLayoutName = solver_event_attr_names(ProcLabel, LabelNum),
+        AttrNamesLayoutName = user_event_attr_names(ProcLabel, LabelNum),
         AttrNamesDataAddr = layout_addr(AttrNamesLayoutName),
         AttrNamesRval = const(llconst_data_addr(AttrNamesDataAddr, no)),
         decl_set_insert(decl_data_addr(AttrNamesDataAddr), !DeclSet),
         output_layout_name_storage_type_name(AttrNamesLayoutName, no, !IO),
         io.write_string(" = {\n", !IO),
-        io.write_list(SolverAttrNames, ", ", io.write, !IO),
+        io.write_list(UserAttrNames, ", ", io.write, !IO),
         io.write_string("};\n\n", !IO),
 
-        SolverLayoutName = solver_event_layout(ProcLabel, LabelNum),
-        SolverDataAddr = layout_addr(SolverLayoutName),
-        decl_set_insert(decl_data_addr(SolverDataAddr), !DeclSet),
-        output_layout_name_storage_type_name(SolverLayoutName, no, !IO),
-        io.write_string(" = {\n""", !IO),
-        io.write_string(SolverEventName, !IO),
+        UserLayoutName = user_event_layout(ProcLabel, LabelNum),
+        UserDataAddr = layout_addr(UserLayoutName),
+        decl_set_insert(decl_data_addr(UserDataAddr), !DeclSet),
+        output_layout_name_storage_type_name(UserLayoutName, no, !IO),
+        io.write_string(" = {\n", !IO),
+        io.write_int(UserEventNumber, !IO),
+        io.write_string(",\n""", !IO),
+        io.write_string(UserEventName, !IO),
         io.write_string(""",\n", !IO),
-        io.write_int(SolverNumAttributes, !IO),
-        io.write_string(",\n", !IO),
-        output_rval_as_addr(SolverLocnsRval, !IO),
-        io.write_string(",\n", !IO),
-        output_rval_as_addr(SolverTypesRval, !IO),
-        io.write_string(",\n", !IO),
+        io.write_int(UserNumAttributes, !IO),
+        io.write_string(",\n(MR_Long_Lval *) ", !IO),
+        output_rval_as_addr(UserLocnsRval, !IO),
+        io.write_string(",\n(MR_TypeInfo *) ", !IO),
+        output_rval_as_addr(UserTypesRval, !IO),
+        io.write_string(",\n(const char **)", !IO),
         output_rval_as_addr(AttrNamesRval, !IO),
         io.write_string("};\n\n", !IO)
     ),
@@ -649,7 +664,7 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
         Macro0 = "MR_DEF_LLNVI" ++ HiddenChars,
         MaybeVarInfoTuple = no
     ),
-    Macro = Macro0 ++ SolverChars,
+    Macro = Macro0 ++ UserChars,
     LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
     io.write_string("\n", !IO),
     io.write_string(Macro, !IO),
@@ -729,7 +744,7 @@ trace_port_to_string(port_disj) =                "DISJ".
 trace_port_to_string(port_switch) =              "SWITCH".
 trace_port_to_string(port_nondet_pragma_first) = "PRAGMA_FIRST".
 trace_port_to_string(port_nondet_pragma_later) = "PRAGMA_LATER".
-trace_port_to_string(port_solver) =              "SOLVER".
+trace_port_to_string(port_user) =                "USER".
 
 %-----------------------------------------------------------------------------%
 
@@ -1280,14 +1295,29 @@ subst_to_name(TVar - Type) =
 
 %-----------------------------------------------------------------------------%
 
+    % The version of the layout data structures -- useful for bootstrapping.
+    % If you write runtime code that checks this version number and can
+    % at least handle the previous version of the data structure,
+    % it makes it easier to bootstrap changes to these data structures.
+    %
+    % This number should be kept in sync with MR_LAYOUT_VERSION in
+    % runtime/mercury_stack_layout.h.  This means you need to update
+    % the code in the runtime (including the trace directory) that uses
+    % layout structures to conform to whatever changes the new version
+    % introduces.
+    %
+:- func layout_version_number = int.
+
+layout_version_number = 1.
+
 :- pred output_module_layout_data_defn(module_name::in, int::in,
     string_with_0s::in, list(layout_name)::in, list(file_layout_data)::in,
-    trace_level::in, int::in, int::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
+    trace_level::in, int::in, int::in, maybe(string)::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
         ProcLayoutNames, FileLayouts, TraceLevel, SuppressedEvents,
-        NumLabels, !DeclSet, !IO) :-
+        NumLabels, MaybeEventSpecs, !DeclSet, !IO) :-
     output_module_string_table(ModuleName, StringTableSize, StringTable,
         !DeclSet, !IO),
     output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
@@ -1304,12 +1334,18 @@ output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
     io.write_string(";\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LabelExecCountName)), !DeclSet),
 
+    (
+        MaybeEventSpecs = no
+    ;
+        MaybeEventSpecs = yes(EventSpecs),
+        output_event_specs_defn(ModuleName, EventSpecs, !DeclSet, !IO)
+    ),
+
     ModuleLayoutName = module_layout(ModuleName),
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(ModuleLayoutName, yes, !IO),
     io.write_string(" = {\n", !IO),
-    VersionNumber = 0,
-    io.write_int(VersionNumber, !IO),
+    io.write_int(layout_version_number, !IO),
     io.write_string(",\n", !IO),
     quote_and_write_string(sym_name_to_string(ModuleName), !IO),
     io.write_string(",\n", !IO),
@@ -1335,6 +1371,15 @@ output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
     io.write_int(NumLabels, !IO),
     io.write_string(",\n", !IO),
     output_layout_name(LabelExecCountName, !IO),
+    io.write_string(",\n", !IO),
+    (
+        MaybeEventSpecs = no,
+        io.write_string("NULL", !IO)
+    ;
+        MaybeEventSpecs = yes(_),
+        EventSpecLayoutName = module_layout_event_specs(ModuleName),
+        output_layout_name(EventSpecLayoutName, !IO)
+    ),
     io.write_string("\n};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(ModuleLayoutName)), !DeclSet).
 
@@ -1376,6 +1421,20 @@ output_proc_layout_name_in_vector(LayoutName, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- pred output_event_specs_defn(module_name::in, string::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_event_specs_defn(ModuleName, EventSpecs, !DeclSet, !IO) :-
+    LayoutName = module_layout_event_specs(ModuleName),
+    io.write_string("\n", !IO),
+    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    io.write_string(" = {", !IO),
+    string.length(EventSpecs, EventSpecsSize),
+    output_module_string_table_chars_driver(0, EventSpecsSize - 1,
+        string_with_0s(EventSpecs), !IO),
+    io.write_string("};\n", !IO),
+    decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
 
     % The string table cannot be zero size; it must contain at least an
     % empty string.

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2006 The University of Melbourne. 
+# Copyright (C) 1995-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -142,7 +142,7 @@ case "$host" in
 		;;
 esac
 #-----------------------------------------------------------------------------#
-# MMC_INVOKE_CMD is the the command used to invoke mercury_compile in 
+# MMC_INVOKE_CMD is the the command used to invoke mercury_compile in
 # scripts/mmc.
 # On MSYS (MinGW) we cannot use exec, since exec will not find the file because
 # it will expect a path relative to the MSYS home directory and will not work
@@ -189,7 +189,7 @@ AC_SUBST(CONFIG_PREFIX)
 AC_SUBST(CONFIG_LIBDIR)
 #-----------------------------------------------------------------------------#
 
-case "$host" in 
+case "$host" in
 	i*86-*-solaris2.*)	link_static_opt= ;;
 	*solaris2.10)		link_static_opt= ;;
 	*powerpc*apple*darwin*) link_static_opt= ;;
@@ -214,14 +214,14 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- implementation.
 
 		:- import_module bool, char, string, int, list, univ.
-       	
+
 		:- mutable(global_var,
 			int,
 			561,
 			ground,
 			[[untrailed, attach_to_io_state]]
 		).
-       	
+
 		main(!IO) :-
 			return_rtti_version(Version),
 			p(T),
@@ -258,7 +258,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 				( T = b ; T = c(_) ),
 				N = 1
 			).
-		
+
 		:- type a    ---> ac(int).
 
 		:- func a ^ elem(int, int) = int.
@@ -319,7 +319,7 @@ EOF
 		# when doing this test because term size profiling
 		# requires an LLDS grade.
 		# This also tests for the --shlib-linker-intall-name-flag,
-		# --warn-known-bad-format-calls and 
+		# --warn-known-bad-format-calls and
 		# --warn-insts-without-matching-type options.
 		$BOOTSTRAP_MC \
 			--grade none.gc \
@@ -435,7 +435,7 @@ case $enable_gcc_back_end in
 			AC_MSG_ERROR(
 [--enable-gcc-back-end=$gcc_src_dir specified,
 	but GCC source code not found in $gcc_src_dir])
-		fi		
+		fi
 		;;
 esac
 AC_MSG_RESULT($gcc_src_dir)
@@ -474,7 +474,7 @@ case $enable_gcc_back_end in
 		fi
 		;;
 esac
-	
+
 AC_MSG_RESULT($enable_gcc_back_end)
 ENABLE_GCC_BACK_END=$enable_gcc_back_end
 GCC_SRC_DIR=$gcc_src_dir
@@ -549,7 +549,7 @@ AC_PATH_PROG(MKTEMP,mktemp)
 if test "$MKTEMP" != ""; then
 	# check that it really works
 	TMPFILE="`mktemp $TMPDIR/configure.XXXXXX < /dev/null`"
-	case "$TMPFILE" in 
+	case "$TMPFILE" in
 		$TMPDIR/configure.*) rm -f $TMPFILE ;;
 		*) MKTEMP="" ;;
 	esac
@@ -600,7 +600,7 @@ case "$HOSTNAMECMD" in
 		# doesn't have a `-f' flag.
 		# XXX We should probably check that the user isn't
 		# using GNU's hostname on OS X instead.
-		case "$host" in 
+		case "$host" in
 			powerpc*apple*darwin*)
 				HOSTNAMECMD="$HOSTNAMECMD" ;;
 			*)
@@ -794,7 +794,7 @@ else
 	# Mercury debugger.  For gcc, this linker option can be enabled by
 	# passing either `-rdynamic' or `-Wl,-export-dynamic' to gcc;
 	# we use the former.  For lcc 4.2, we need to use `-Wl-export-dynamic'.
-	# 
+	#
 	case $FULLARCH in
 		*-linux*aout) ;; # no special options needed
 		*-linux*)
@@ -893,7 +893,7 @@ AC_SUBST(MATH_LIB)
 
 #-----------------------------------------------------------------------------#
 # Microsoft.NET configuration
-# 
+#
 MERCURY_CHECK_DOTNET
 
 #-----------------------------------------------------------------------------#
@@ -1142,7 +1142,7 @@ if test $mercury_cv_sigcontext_struct = yes; then
 	#include <stdio.h>
 
 	#if MR_HAVE_SIGCONTEXT_STRUCT_3ARG
-	extern void handler(int signum, int code, 
+	extern void handler(int signum, int code,
 			struct sigcontext_struct context);
 	#else
 	extern void handler(int signum, struct sigcontext_struct context);
@@ -1876,13 +1876,13 @@ AC_CACHE_VAL(mercury_cv_have_ocreat_oexcl,
 	#if defined(O_CREAT) && defined(O_EXCL)
 
 	#else
-	/* 
+	/*
 	** As these macros are not defined the compilation must fail.
 	** Unmatched brackets should do that for us.
 	*/
 		}
 	#endif
-	], 
+	],
 	[mercury_cv_have_ocreat_oexcl=yes],
 	[mercury_cv_have_ocreat_oexcl=no])
 )
@@ -1901,13 +1901,13 @@ AC_CACHE_VAL(mercury_cv_normal_system_retval,
 	int main() {
 		#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
 			defined (WIFSIGNALED) && defined (WTERMSIG)
-		/* 
+		/*
 		** All the necessary macros for handling the return values of
 		** system() are defined, so we do not need to test the return
 		** value of system()
 		*/
 		exit(0);
-	
+
 		#else
 		/*
 		** Normal return values from system() are considered to be
@@ -1931,13 +1931,13 @@ AC_CACHE_VAL(mercury_cv_normal_system_retval,
 		defined (WIFSIGNALED) && defined (WTERMSIG)
 
 	#else
-	/* 
+	/*
 	** As these macros are not defined the compilation must fail.
 	** Unmatched brackets should do that for us.
 	*/
 		}
 	#endif
-	], 
+	],
 	[mercury_cv_normal_system_retval=yes],
 	[mercury_cv_normal_system_retval=no]))
 )
@@ -1980,9 +1980,9 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 
 AC_MSG_CHECKING(to see if strings.h is needed for bzero)
 AC_CACHE_VAL(mercury_cv_bzero_needs_strings_header, [
-	
+
 	save_CC="$CC"
-	
+
 	case $CC in
 		*gcc*) CC="$CC -Wall -Werror" ;;
 	esac
@@ -1990,11 +1990,11 @@ AC_CACHE_VAL(mercury_cv_bzero_needs_strings_header, [
 	cat > conftest.c << EOF
 		#ifdef MR_BZERO_NEEDS_STRINGS_HEADER
 			#include <strings.h>
-		#endif	
+		#endif
 		#include <sys/types.h>
 		#include <sys/time.h>
 		#include <unistd.h>
-		
+
 		void MR_fd_zero(fd_set *fdset);
 
 		void
@@ -2003,7 +2003,7 @@ AC_CACHE_VAL(mercury_cv_bzero_needs_strings_header, [
 			FD_ZERO(fdset);
 		}
 EOF
-	
+
 	if $CC -c conftest.c < /dev/null >&AC_FD_CC 2>&1
 	then
 		mercury_cv_bzero_needs_strings_header=no
@@ -2014,9 +2014,9 @@ EOF
 			mercury_cv_bzero_needs_strings_header=yes
 		else
 			mercury_cv_bzero_needs_strings_header=no
-		fi			
+		fi
 	fi
-	
+
 	rm -f conftest*
 	CC="$save_CC"
 ])
@@ -2083,7 +2083,7 @@ case $ac_cv_prog_gcc in yes)
 	i*86-*|x86_64*)
 		CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
 		;;
-	# We need a special-case hack here, because the auto-config 
+	# We need a special-case hack here, because the auto-config
 	# gets it wrong on the Alpha: the little example program
 	# works fine in fast.gc mode, but big programs don't,
 	# due to problems with the `gp' register.  Ideally we
@@ -2274,9 +2274,9 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 	#define MR_USE_GCC_NONLOCAL_GOTOS
 	#define MR_USE_GCC_GLOBAL_REGISTERS
 	#include "mercury_engine.h"
-	changequote(<<,>>) 
+	changequote(<<,>>)
 	MercuryEngine MR_engine_base;
-	changequote([,]) 
+	changequote([,])
 	main() {
 		MR_mr0 = 20;
 		MR_mr7 = 22;
@@ -2306,9 +2306,9 @@ AC_CACHE_VAL(mercury_cv_gcc_model_reg,
 AC_TRY_RUN([
 #define MR_USE_GCC_GLOBAL_REGISTERS
 #include "mercury_engine.h"
-changequote(<<,>>) 
+changequote(<<,>>)
 MercuryEngine MR_engine_base;
-changequote([,]) 
+changequote([,])
 main() {
 	MR_mr0 = 20;
 	MR_mr7 = 22;
@@ -2342,7 +2342,7 @@ AC_TRY_CPP([
 #include	<sys/time.h>
 #endif
 
-/* 
+/*
 ** if HZ is not defined, we may be able to use sysconf(_SC_CLK_TCK) instead
 */
 #if !defined(HZ) && defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
@@ -2450,7 +2450,7 @@ if test $mercury_cv_enable_deep_profiler = yes; then
 	else
 		AC_MSG_RESULT($enable_deep_profiler)
 		AC_MSG_ERROR(CGI script directory $mercury_cv_cgi_dir does not exist)
-	fi		
+	fi
 fi
 
 AC_MSG_RESULT($mercury_cv_enable_deep_profiler)
@@ -2541,7 +2541,7 @@ case "$host" in
 
 	# Theoretically we should change this check to *apple*darwin*)
 	# as darwin should be the same whether or not we are on a powerpc or
-	# an i386, but since we don't have access to an i386 with darwin 
+	# an i386, but since we don't have access to an i386 with darwin
 	# installed to test this, we currently restrict ourselves to the
 	# powerpc architecture.
 	*powerpc*apple*darwin*)
@@ -2561,7 +2561,7 @@ case "$host" in
 
 ###	# The threads stuff on HPUX is not yet enabled because
 ###	# we don't have an HPUX box to test it on.
-###	*hpux*)    
+###	*hpux*)
 ###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE" # XXX incomplete
 ###		THREAD_LIBS="-lpthread -lrt" ;;
 
@@ -2573,7 +2573,7 @@ case "$host" in
 ###		THREAD_LIBS="-lpthread"
 ###		;;
 
-	*)	
+	*)
 		# Multithreading not (yet) supported on other architectures.
 		# For multithreading, we need (1) Posix threads and
 		# (2) a port of the Boehm gc for that architecture
@@ -2604,7 +2604,7 @@ AC_MSG_RESULT($mercury_cv_thread_local_storage)
 # with shared objects and TLS.
 
 if test "$mercury_cv_thread_local_storage" = yes; then
-	case "$host" in 
+	case "$host" in
 		*-solaris2.*)	;;
 		*)		AC_DEFINE(MR_THREAD_LOCAL_STORAGE) ;;
 	esac
@@ -2682,7 +2682,7 @@ AC_ARG_WITH(default-grade,
         ;;
      esac], [])
 
-if test "$DEFAULT_GRADE" = ""; then                                             
+if test "$DEFAULT_GRADE" = ""; then
 	DEFAULT_GRADE=$DEFAULT_BASE_GRADE.gc
 fi
 
@@ -2820,7 +2820,7 @@ AC_ARG_ENABLE(hlc-prof-grades,
                           install profiling versions of the high level C grade],
 enable_hlc_prof_grades="$enableval",enable_hlc_prof_grades=no)
 
-# We don't enable the .NET grades by default because that may lead to 
+# We don't enable the .NET grades by default because that may lead to
 # installation process breaking on Linux systems that have DotGNU or Mono
 # installed.
 #
@@ -2828,7 +2828,7 @@ AC_ARG_ENABLE(dotnet-grades,
 [  --enable-dotnet-grades  install the .NET grades],
 enable_dotnet_grades="$enableval",enable_dotnet_grades=no)
 
-# XXX The java backend is currently broken, so we don't 
+# XXX The java backend is currently broken, so we don't
 # enable the java grade by default.
 AC_ARG_ENABLE(java-grade,
 [  --enable-java-grade     install the Java grade],
@@ -3197,9 +3197,9 @@ if test "$AS" != ""; then
 
 	foo(x)
 EOF
-	if 
+	if
 		echo $AS conftest.s >&AC_FD_CC 2>&1 &&
-		$AS conftest.s </dev/null >&AC_FD_CC 2>&1 
+		$AS conftest.s </dev/null >&AC_FD_CC 2>&1
 	then
 		mercury_cv_asm_does_full_preprocessing="yes"
 	else
@@ -3210,7 +3210,7 @@ else
 	mercury_cv_asm_does_full_preprocessing="no"
 fi
 ])
-AC_MSG_RESULT($mercury_cv_asm_does_full_preprocessing)	
+AC_MSG_RESULT($mercury_cv_asm_does_full_preprocessing)
 if test $mercury_cv_asm_does_full_preprocessing = "no"; then
 	AS="$GCC_PROG -c -x assembler-with-cpp"
 fi
@@ -3219,7 +3219,7 @@ AC_SUBST(AS)
 AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
 AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
 AC_TRY_RUN([
-changequote(<<,>>) 
+changequote(<<,>>)
 
 /* MR_USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
 /* We define MR_USE_GCC_NONLOCAL_GOTOS because some platforms (e.g. SPARCs) */
@@ -3241,7 +3241,7 @@ int main() {
 #else
 	exit(0);
 #endif
-changequote([,]) 
+changequote([,])
 }],
 [mercury_cv_cannot_use_structure_assignment=no],
 [mercury_cv_cannot_use_structure_assignment=yes],
@@ -3436,7 +3436,7 @@ case "$host" in
 		# actually do the fixups at runtime for non-PIC code.
 		# (The code is mapped copy-on-write, and when the linker
 		# does the fixups, it gets copied.  Hence the lack of
-		# runtime sharing.) 
+		# runtime sharing.)
 		# We need to link with `gcc -shared -mimpure-text'
 		# rather than `gcc -shared', because `gcc -shared'
 		# passes `-z text' to the linker, which causes it to
@@ -3543,12 +3543,12 @@ case "$host" in
 		    # namespaces be used.
 		    darwin_flat_namespaces=no
 		    AC_ARG_ENABLE(darwin-flat-namespace,
-  			  [  --enable-darwin-flat-namespace  
+  			  [  --enable-darwin-flat-namespace
 			  enable flat namespaces on Darwin.  This is the
 			  default for Darwin versions less than 7 (Mac OS
 			  10.3).  On versions greater than or equal to 7
 			  two-level namespaces are used by default.  This
-			  option therefore only affects Darwin versions 
+			  option therefore only affects Darwin versions
 			  greater than or equal to 7.],
 		    [ darwin_flat_namespaces=yes ])
 		    SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
@@ -3557,7 +3557,7 @@ case "$host" in
 		    EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		    CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
 		    ERROR_UNDEFINED="-undefined error"
-		    # Test if the Darwin version is >= 7.  If it is 
+		    # Test if the Darwin version is >= 7.  If it is
 		    # then we can use the -undefined dynamic_lookup option
 		    # and two-level namespaces.  If it isn't then we use
 		    # flat namespaces.
@@ -3568,7 +3568,7 @@ case "$host" in
 		    then
 		        AC_MSG_RESULT(yes)
 			# The MACOSX_DEPLOYMENT_TARGET environment variable
-			# needs to be set when linking with two level 
+			# needs to be set when linking with two level
 			# namespaces so we can use the
 			# `-undefined dynamic_lookup' option.
 		        SET_MACOSX_DEPLOYMENT_TARGET="\
@@ -3577,7 +3577,7 @@ case "$host" in
 			AC_SUBST(SET_MACOSX_DEPLOYMENT_TARGET)
 		        LINK_SHARED_OBJ="$GCC_PROG -multiply_defined suppress \
 				 -dynamiclib -single_module"
-		        LINK_SHARED_OBJ_SH="$GCC_PROG -multiply_defined \ 
+		        LINK_SHARED_OBJ_SH="$GCC_PROG -multiply_defined \
 				suppress -dynamiclib -single_module"
 		        ALLOW_UNDEFINED="-undefined dynamic_lookup"
 		    else
@@ -3601,7 +3601,7 @@ case "$host" in
  		EXT_FOR_SHARED_LIB=so
  		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
  		# One can build gcc with a default PIC register other than sl
- 		# so let's force it. If you change this, 
+ 		# so let's force it. If you change this,
  		# update MR_ARM_PIC_REG in runtime/mercury_goto.h as well.
  		CFLAGS_FOR_PIC="-mpic-register=sl $CFLAGS_FOR_PIC"
  		;;
@@ -3927,7 +3927,7 @@ LIBS="$LIBS $SOCKET_LIBRARY $NSL_LIBRARY"
 AC_MSG_CHECKING(whether we can use sockets (for Morphine))
 AC_CACHE_VAL(mercury_cv_sockets_work,
 AC_TRY_LINK([
-	changequote(<<,>>) 
+	changequote(<<,>>)
 	/*
 	** The following code was copied from
 	** runtime/mercury_trace_external.c
@@ -3991,13 +3991,12 @@ AC_TRY_LINK([
 				"environment variables");
 		}
 		if (unix_socket) {
-		
 			addr_family = AF_UNIX;
 			(memset)(&unix_address, 0, sizeof(unix_address));
 			unix_address.sun_family = AF_UNIX;
 			strcpy(unix_address.sun_path, unix_socket);
 			addr = (struct sockaddr *) &unix_address;
-			len = strlen(unix_address.sun_path) + 
+			len = strlen(unix_address.sun_path) +
 				sizeof(unix_address.sun_family);
 		} else {
 			char hostname[255];
@@ -4011,7 +4010,7 @@ AC_TRY_LINK([
 			** where <hostname> is numeric (e.g. "123.456.78.90").
 			*/
 
-			if (sscanf(inet_socket, "%254s %254s", hostname, port_string) 
+			if (sscanf(inet_socket, "%254s %254s", hostname, port_string)
 				!= 2)
 			{
 				fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
@@ -4028,7 +4027,7 @@ AC_TRY_LINK([
 
 			fprintf(stderr, "Mercury runtime: host = %s, port = %d\n",
 					hostname, port);
-		
+
 			inet_address.sin_family = AF_INET;
 			inet_address.sin_addr.s_addr = host_addr;
 			inet_address.sin_port = htons(port);
@@ -4074,7 +4073,7 @@ AC_TRY_LINK([
 			fprintf(stderr, "Mercury runtime: fdopen(): ok\n");
 		}
 	}
-	changequote([,]) 
+	changequote([,])
 ],[mercury_cv_sockets_work=yes],[mercury_cv_sockets_work=no]))
 
 #
@@ -4115,7 +4114,7 @@ if test "$mercury_cv_enable_extern_debug" = "yes"; then
 	else
 		AC_MSG_RESULT(no)
 		AC_MSG_ERROR(Cannot enable external debugger because sockets do not work)
-	fi		
+	fi
 else
 	AC_MSG_RESULT(no)
 
@@ -4192,6 +4191,21 @@ AC_SUBST(USE_MSVCRT)
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
 
+AC_PROG_LEX
+if test "`basename $LEX`" != "flex"
+then
+	AC_MSG_ERROR([You need flex to build Mercury])
+fi
+
+AC_PROG_YACC
+# AC_PROG_YACC may bind YACC to e.g. "bison -y"; we care only about
+# the program name.
+YACCPROG=`echo $YACC | sed 's/ .*//'`
+if test "`basename $YACCPROG`" != "bison"
+then
+	AC_MSG_ERROR([You need bison to build Mercury])
+fi
+
 #-----------------------------------------------------------------------------#
 # Check for a XUL browser and xslrproc and if we find both then set the
 # default xml_browser_command and xml_tmp_filename mdb options.
@@ -4213,8 +4227,6 @@ AC_SUBST(DEFAULT_XML_BROWSER_CMD)
 AC_SUBST(DEFAULT_XML_TMP_FILENAME)
 
 #-----------------------------------------------------------------------------#
-
-
 
 mercury_check_c_files () {
     c_dir=$1
@@ -4262,7 +4274,7 @@ if test "$BOOTSTRAP_MC" != "" ; then
           false)
             MERCURY_MSG("there are no existing Mercury-generated C files")
             ;;
-          esac 
+          esac
     else
         case $some_kept in
           true)
@@ -4286,7 +4298,7 @@ fi
 
 AC_MSG_CHECKING(for C shell executable)
 cshpath=""
-for prog in tcsh csh 
+for prog in tcsh csh
 do
 	for dir in `echo $PATH | tr '[:]' '[ ]'`
 	do
@@ -4407,7 +4419,7 @@ case $reconfiguring in no)
 	rm -f runtime/libmer_rt.so library/libmer_std.so bytecode/libmbi.so
 	rm -f trace/libmer_trace.so browser/libmer_browser.so
 	rm -f mdbcomp/libmer_mdbcomp.so
-	rm -f runtime/libmer_rt.dylib library/libmer_std.dylib 
+	rm -f runtime/libmer_rt.dylib library/libmer_std.dylib
 	rm -f boehm_gc/libgc.dylib bytecode/libmbi.dylib
 	rm -f trace/libmer_trace.dylib browser/libmer_browser.dylib
 	rm -f mdbcomp/libmer_mdbcomp.dylib

@@ -17,6 +17,7 @@
 #include "mercury_imp.h"
 #include "mercury_label.h"
 #include "mercury_array_macros.h"
+#include "mercury_stack_layout.h"
 #include "mercury_stack_trace.h"
 #include "mercury_dlist.h"
 
@@ -28,6 +29,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+
+const char      *MR_consensus_event_specs = NULL;
+MR_bool         MR_event_specs_have_conflict = MR_FALSE;
+
 
 /*
 ** We record module layout structures in two tables. The MR_module_infos
@@ -165,6 +170,20 @@ MR_register_module_layout_real(const MR_Module_Layout *module)
 
     if (MR_search_module_info_by_name(module->MR_ml_name) == NULL) {
         MR_insert_module_info(module);
+
+        if (module->MR_ml_version_number >= MR_LAYOUT_VERSION__USER_DEFINED) {
+            if (module->MR_ml_event_specs != NULL) {
+                if (MR_consensus_event_specs == NULL) {
+                    MR_consensus_event_specs = module->MR_ml_event_specs;
+                } else {
+                    if (MR_strdiff(MR_consensus_event_specs,
+                        module->MR_ml_event_specs))
+                    {
+                        MR_event_specs_have_conflict = MR_TRUE;
+                    } /* else this module has the same specs as the consensus */
+                }
+            }
+        }
     }
 }
 

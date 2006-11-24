@@ -45,30 +45,30 @@ ENDINIT
 
 #define MR_TRACE_COUNT_SUMMARY_MAX_DEFAULT  20
 
-void            (*MR_trace_shutdown)(void) = NULL;
+void                (*MR_trace_shutdown)(void) = NULL;
 
-MR_bool         MR_trace_count_enabled = MR_FALSE;
-MR_bool         MR_coverage_test_enabled = MR_FALSE;
-const char      *MR_trace_count_summary_file = NULL;
-const char      *MR_trace_count_summary_cmd = "mtc_union";
-unsigned int    MR_trace_count_summary_max =
-                    MR_TRACE_COUNT_SUMMARY_MAX_DEFAULT;
-char            *MR_trace_counts_file = NULL;
+MR_bool             MR_trace_count_enabled = MR_FALSE;
+MR_bool             MR_coverage_test_enabled = MR_FALSE;
+const char          *MR_trace_count_summary_file = NULL;
+const char          *MR_trace_count_summary_cmd = "mtc_union";
+unsigned int        MR_trace_count_summary_max =
+                        MR_TRACE_COUNT_SUMMARY_MAX_DEFAULT;
+char                *MR_trace_counts_file = NULL;
 
-MR_bool         MR_debug_ever_enabled = MR_FALSE;
-MR_bool         MR_debug_enabled = MR_FALSE;
-MR_bool         MR_trace_func_enabled = MR_FALSE;
-MR_Code         *(*volatile MR_selected_trace_func_ptr)(
-                    const MR_Label_Layout *);
-MR_Unsigned     MR_trace_call_seqno = 0;
-MR_Unsigned     MR_trace_call_depth = 0;
-MR_Unsigned     MR_trace_event_number = 0;
-MR_bool         MR_trace_from_full = MR_TRUE;
-MR_bool         MR_standardize_event_details = MR_FALSE;
-MR_Trace_Type   MR_trace_handler = MR_TRACE_INTERNAL;
+MR_bool             MR_debug_ever_enabled = MR_FALSE;
+MR_bool             MR_debug_enabled = MR_FALSE;
+MR_bool             MR_trace_func_enabled = MR_FALSE;
+MR_Code             *(*volatile MR_selected_trace_func_ptr)(
+                        const MR_Label_Layout *);
+MR_Unsigned         MR_trace_call_seqno = 0;
+MR_Unsigned         MR_trace_call_depth = 0;
+MR_Unsigned         MR_trace_event_number = 0;
+MR_bool             MR_trace_from_full = MR_TRUE;
+MR_bool             MR_standardize_event_details = MR_FALSE;
+MR_Trace_Type       MR_trace_handler = MR_TRACE_INTERNAL;
 
-MR_bool         MR_trace_unhide_events = MR_FALSE;
-MR_bool         MR_trace_have_unhid_events = MR_FALSE;
+MR_bool             MR_trace_unhide_events = MR_FALSE;
+MR_bool             MR_trace_have_unhid_events = MR_FALSE;
 
 /*
 ** I/O tabling is documented in library/table_builtin.m
@@ -119,7 +119,7 @@ const char  *MR_port_names[] =
     "SWTC",
     "FRST",
     "LATR",
-    "SLVR",
+    "USER",
     "NONE",
 };
 
@@ -147,7 +147,7 @@ MR_trace(const MR_Label_Layout *layout)
 }
 
 MR_Code *
-MR_solver_trace(const MR_Label_Layout *layout)
+MR_user_trace(const MR_Label_Layout *layout)
 {
     if (! MR_trace_func_enabled) {
         return NULL;

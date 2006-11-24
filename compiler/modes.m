@@ -1521,7 +1521,9 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
         unexpected(this_file, "modecheck_goal_expr: class_method_call")
     ;
         GenericCall = event_call(EventName),
-        ( event_arg_modes(EventName, ModesPrime) ->
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+        module_info_get_event_spec_map(ModuleInfo, EventSpecMap),
+        ( event_arg_modes(EventSpecMap, EventName, ModesPrime) ->
             Modes = ModesPrime
         ;
             % The typechecker should have caught the unknown event,

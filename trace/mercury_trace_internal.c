@@ -23,6 +23,8 @@
 #include "mercury_builtin_types.h"
 #include "mercury_deep_profiling.h"
 
+#include "mercury_event_spec.h"
+
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
 #include "mercury_trace_cmds.h"
@@ -296,8 +298,8 @@ MR_trace_internal_ensure_init(void)
     static  MR_bool MR_trace_internal_initialized = MR_FALSE;
 
     if (! MR_trace_internal_initialized) {
-        char    *env;
-        int     n;
+        char        *env;
+        int         n;
 
         if (MR_mdb_benchmark_silent) {
             (void) close(1);
@@ -354,6 +356,18 @@ MR_trace_internal_ensure_init(void)
         MR_io_tabling_phase = MR_IO_TABLING_BEFORE;
         MR_io_tabling_start = MR_IO_ACTION_MAX;
         MR_io_tabling_end = MR_IO_ACTION_MAX;
+
+        if (MR_event_specs_have_conflict) {
+            fprintf(MR_mdb_out,
+                "The executable's modules were compiled with "
+                "an inconsistent set of user event specifications.\n");
+        } else if (MR_consensus_event_specs != NULL) {
+            if (! MR_read_event_specs(MR_consensus_event_specs)) {
+                fprintf(MR_mdb_out,
+                    "Internal error: "
+                    "could not parse the event set specification.\n");
+            }
+        }
 
         MR_trace_internal_initialized = MR_TRUE;
     }
@@ -1503,6 +1517,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
     { "forward", "exception", MR_trace_cmd_exception,
         MR_trace_movement_cmd_args, MR_trace_null_completer },
     { "forward", "return", MR_trace_cmd_return,
+        MR_trace_movement_cmd_args, MR_trace_null_completer },
+    { "forward", "user", MR_trace_cmd_user,
         MR_trace_movement_cmd_args, MR_trace_null_completer },
     { "forward", "forward", MR_trace_cmd_forward,
         MR_trace_movement_cmd_args, MR_trace_null_completer },

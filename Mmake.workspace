@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2006 The University of Melbourne. 
+# Copyright (C) 2002-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -7,7 +7,7 @@
 # not an installed library.
 #
 # The variable WORKSPACE must be set externally.
-# 
+#
 # If the variable LINK_STATIC is set to `yes', the names of the `.a' files
 # for the Mercury libraries will be included in MLLIBS, otherwise
 # `-l' options will be included.
@@ -16,7 +16,7 @@
 # will be passed to ml for each of the directories containing the
 # Mercury libraries. If SET_RPATH is set to `no', these options will
 # not be passed. This is useful for building the Mercury libraries,
-# for which the rpath must be set in each Mmakefile to point to 
+# for which the rpath must be set in each Mmakefile to point to
 # the installed library directory.
 #
 # Setting LINK_BOEHM_GC_ONLY to `yes' causes only the boehm_gc directory
@@ -80,6 +80,7 @@ MPS_GC_OBJ_DIR=$(MPS_GC_DIR)/$(MPS_PFM)/$(MPS_VARIETY)
 RT_LIB_NAME = mer_rt
 STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
+EVENTSPEC_LIB_NAME = mer_eventspec
 BROWSER_LIB_NAME = mer_browser
 MDBCOMP_LIB_NAME = mer_mdbcomp
 ANALYSIS_LIB_NAME = mer_analysis
@@ -188,6 +189,7 @@ ifneq ($(LINK_RUNTIME_ONLY),yes)
 STATIC_STD_LIBS = $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 ifneq ($(LINK_STDLIB_ONLY),yes)
 STATIC_TRACE_LIBS = $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
+		$(TRACE_DIR)/lib$(EVENTSPEC_LIB_NAME).$A \
 		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
 		$(MDBCOMP_DIR)/lib$(MDBCOMP_LIB_NAME).$A
 endif
@@ -208,14 +210,14 @@ LINK_RT_LIB_OPTS = -l$(RT_LIB_NAME)
 ifneq ($(LINK_RUNTIME_ONLY),yes)
 LINK_STD_LIB_OPTS = -l$(STD_LIB_NAME)
 ifneq ($(LINK_STDLIB_ONLY),yes)
-LINK_TRACE_LIB_OPTS = -l$(TRACE_LIB_NAME) -l$(BROWSER_LIB_NAME) \
-	-l$(MDBCOMP_LIB_NAME)
+LINK_TRACE_LIB_OPTS = -l$(TRACE_LIB_NAME) -l$(EVENTSPEC_LIB_NAME) \
+	-l$(BROWSER_LIB_NAME) -l$(MDBCOMP_LIB_NAME)
 endif
 endif
 endif
 
 LINK_LIB_OPTS = $(LINK_TRACE_LIB_OPTS) $(LINK_STD_LIB_OPTS) \
-		$(LINK_RT_LIB_OPTS) $(SHARED_GC_LIBS) 
+		$(LINK_RT_LIB_OPTS) $(SHARED_GC_LIBS)
 LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(MPS_GC_DIR) -L$(RUNTIME_DIR) \
 		-L$(LIBRARY_DIR) -L$(TRACE_DIR) -L$(MDBCOMP_DIR) \
 		-L$(BROWSER_DIR)

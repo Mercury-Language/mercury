@@ -1246,8 +1246,8 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
         module_imports_get_items(Module, Items1),
         globals.io_get_globals(Globals, !IO),
         module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
-        module_qualify_items(Items1, Items2, Globals, ModuleName,
-            yes(FileName), _, _, _, [], Specs),
+        module_qualify_items(Items1, Items2, map.init, _, Globals, ModuleName,
+            yes(FileName), "", _, _, _, [], Specs),
         (
             Specs = [_ | _],
             sort_error_specs(Specs, SortedSpecs),
@@ -1366,8 +1366,8 @@ make_interface(SourceFileName, SourceFileModuleName, ModuleName,
             % Module-qualify all items.
             globals.io_get_globals(Globals, !IO),
             module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
-            module_qualify_items(!InterfaceItems, Globals, ModuleName,
-                yes(FileName), _, _, _, [], Specs),
+            module_qualify_items(!InterfaceItems, map.init, _, Globals,
+                ModuleName, yes(FileName), "", _, _, _, [], Specs),
 
             % We want to finish writing the interface file (and keep
             % the exit status at zero) if we found some warnings.
@@ -1415,7 +1415,7 @@ make_short_interface(SourceFileName, ModuleName, Items0, !IO) :-
     get_short_interface(InterfaceItems, int3, ShortInterfaceItems0),
     globals.io_get_globals(Globals, !IO),
     module_qualify_items(ShortInterfaceItems0, ShortInterfaceItems,
-        Globals, ModuleName, no, _, _, _, [], Specs),
+        map.init, _, Globals, ModuleName, no, "", _, _, _, [], Specs),
     sort_error_specs(Specs, SortedSpecs),
     write_error_specs(SortedSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
         !IO),

@@ -175,6 +175,9 @@ extern  MR_Retry_Result MR_trace_retry(MR_Event_Info *event_info,
 ** If MR_trace_cmd == MR_CMD_RETURN, the event handler will stop at
 ** the next event of any call whose port is *not* EXIT.
 **
+** If MR_trace_cmd == MR_CMD_USER, the event handler will stop at the
+** next user-defined event.
+**
 ** If MR_trace_cmd == MR_CMD_MIN_DEPTH, the event handler will stop at
 ** the next event of any call whose depth is at least MR_trace_stop_depth.
 **
@@ -197,6 +200,7 @@ typedef enum {
     MR_CMD_RESUME_FORWARD,
     MR_CMD_EXCP,
     MR_CMD_RETURN,
+    MR_CMD_USER,
     MR_CMD_MIN_DEPTH,
     MR_CMD_MAX_DEPTH,
     MR_CMD_TO_END

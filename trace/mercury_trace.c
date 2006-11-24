@@ -305,6 +305,15 @@ MR_trace_real(const MR_Label_Layout *layout)
                 goto check_stop_print;
             }
 
+        case MR_CMD_USER:
+            port = (MR_Trace_Port) layout->MR_sll_port;
+            if (port == MR_PORT_USER) {
+                return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
+                    seqno, depth);
+            } else {
+                goto check_stop_print;
+            }
+
         case MR_CMD_MIN_DEPTH:
             if (MR_trace_ctrl.MR_trace_stop_depth <= depth) {
                 port = (MR_Trace_Port) layout->MR_sll_port;

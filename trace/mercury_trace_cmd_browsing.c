@@ -185,7 +185,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
     MR_Browse_Format    format;
     MR_bool             xml;
-    int             n;
+    int                 n;
 
     if (! MR_trace_options_format(&format, &xml, &words, &word_count)) {
         ; /* the usage message has already been printed */
@@ -196,8 +196,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         const char  *problem;
 
         problem = MR_trace_browse_one_goal(MR_mdb_out,
-            MR_trace_browse_goal_internal,
-            MR_BROWSE_CALLER_PRINT, format);
+            MR_trace_browse_goal_internal, MR_BROWSE_CALLER_PRINT, format);
 
         if (problem != NULL) {
             fflush(MR_mdb_out);

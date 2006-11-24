@@ -39,7 +39,7 @@ cp runtime/machdeps/*.h tmp_dir/runtime/machdeps
 mkdir tmp_dir/trace
 cp trace/Mmake* tmp_dir/trace
 cp trace/.mgnuc* tmp_dir/trace
-cp trace/*.[ch] tmp_dir/trace
+cp trace/*.[chyl] tmp_dir/trace
 mkdir tmp_dir/library
 cp library/Mmake* tmp_dir/library
 cp library/Mercury.* tmp_dir/library

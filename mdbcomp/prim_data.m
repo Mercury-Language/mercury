@@ -48,7 +48,7 @@
     ;       port_switch
     ;       port_nondet_pragma_first
     ;       port_nondet_pragma_later
-    ;       port_solver.
+    ;       port_user.
 
 % was in compiler/prog_data.m
 

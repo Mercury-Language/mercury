@@ -15,7 +15,8 @@ end
 document_category 200 forward
 forward    - Commands that move execution forward.
              The forward commands are `step', `goto', `next', `finish',
-             `exception', `forward', `mindepth', `maxdepth' and `continue'.
+             `fail', `exception', `return', `user, `forward',
+	     `mindepth', `maxdepth' and `continue'.
 
 end
 document_category 300 backward

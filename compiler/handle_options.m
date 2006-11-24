@@ -369,6 +369,22 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
     some [!Globals] (
         globals.io_get_globals(!:Globals, !IO),
 
+        globals.lookup_string_option(!.Globals, event_spec_file_name,
+            EventSpecFileName0),
+        ( EventSpecFileName0 = "" ->
+            io.get_environment_var("MERCURY_EVENT_SPEC_FILE_NAME",
+                MaybeEventSpecFileName, !IO),
+            (
+                MaybeEventSpecFileName = yes(EventSpecFileName),
+                globals.set_option(event_spec_file_name,
+                    string(EventSpecFileName), !Globals)
+            ;
+                MaybeEventSpecFileName = no
+            )
+        ;
+            true
+        ),
+
         % Conservative GC implies --no-reclaim-heap-*
         ( gc_is_conservative(GC_Method) = yes ->
             globals.set_option(reclaim_heap_on_semidet_failure, bool(no),

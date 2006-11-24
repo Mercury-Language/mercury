@@ -46,12 +46,12 @@ typedef	enum {
 	MR_PORT_SWITCH,
 	MR_PORT_PRAGMA_FIRST,
 	MR_PORT_PRAGMA_LATER,
-	MR_PORT_SOLVER,
+	MR_PORT_USER,
 	MR_PORT_NONE
 } MR_Trace_Port;
 
 /*
-** The following array says if a label inside a procedure is 
+** The following array says if a label inside a procedure is
 ** uniquely identifiable by its goal path only, its port only or
 ** whether both the port and goal path are necessary.
 */
@@ -102,7 +102,7 @@ extern	MR_Code	*MR_trace(const MR_Label_Layout *);
 extern	MR_Code	*MR_trace_fake(const MR_Label_Layout *);
 extern	MR_Code	*MR_trace_count(const MR_Label_Layout *);
 
-extern	MR_Code	*MR_solver_trace(const MR_Label_Layout *);
+extern	MR_Code	*MR_user_trace(const MR_Label_Layout *);
 
 /*
 ** These three variables implement a table of module layout structures,
@@ -120,7 +120,7 @@ extern	void	MR_insert_module_info_into_module_table(
 
 /*
 ** For every label reachable from the module table, write the id of the label
-** and the number of times it has been executed to the specified file. For 
+** and the number of times it has been executed to the specified file. For
 ** labels that haven't been executed, write them out only if the coverage_test
 ** argument is true. The return value is the number of labels whose trace count
 ** information was actually written out.
@@ -578,7 +578,7 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 #endif	/* !MR_HIGHLEVEL_CODE */
 
 /*
-** The compiler emits the following macro at each non-solver trace event.
+** The compiler emits the following macro at each system-defined trace event.
 */
 
 #define	MR_EVENT(label)							\
@@ -592,14 +592,14 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 	}
 
 /*
-** The compiler emits the following macro at each solver trace event.
+** The compiler emits the following macro at each user-defined trace event.
 */
 
-#define	MR_SOLVER_EVENT(label)						\
+#define	MR_USER_EVENT(label)						\
 	{								\
 		MR_Code *MR_jumpaddr;					\
 		MR_save_transient_registers();				\
-		MR_jumpaddr = MR_solver_trace((const MR_Label_Layout *)	\
+		MR_jumpaddr = MR_user_trace((const MR_Label_Layout *)	\
 			&MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));	\
 		MR_restore_transient_registers();			\
 		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);		\

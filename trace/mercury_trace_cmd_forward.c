@@ -259,6 +259,25 @@ MR_trace_cmd_return(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
+MR_trace_cmd_user(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+    MR_Event_Info *event_info, MR_Code **jumpaddr)
+{
+    cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level = MR_default_print_level;
+    MR_init_trace_check_integrity(cmd);
+    if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
+        ; /* the usage message has already been printed */
+    } else if (word_count == 1) {
+        cmd->MR_trace_cmd = MR_CMD_USER;
+        return STOP_INTERACTING;
+    } else {
+        MR_trace_usage_cur_cmd();
+    }
+
+    return KEEP_INTERACTING;
+}
+
+MR_Next
 MR_trace_cmd_forward(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Code **jumpaddr)
 {

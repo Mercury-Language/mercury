@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2005 The University of Melbourne.
+** Copyright (C) 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -42,8 +42,8 @@ MR_create_cterm(char *str, char **rest)
 
         if (str[i] == '"') {
             term = MR_malloc(sizeof(struct MR_CTerm_Struct));
-            term->term_functor = &str[0];
-            term->term_args = NULL;
+            term->MR_term_functor = &str[0];
+            term->MR_term_args = NULL;
             *rest = &str[i + 1];
             return term;
         }
@@ -63,20 +63,20 @@ MR_create_cterm(char *str, char **rest)
     term = MR_malloc(sizeof(struct MR_CTerm_Struct));
 
     if ((str[i] == '\0') || str[i] == ',' || str[i] == ')') {
-        term->term_functor = str;
-        term->term_args = NULL;
+        term->MR_term_functor = str;
+        term->MR_term_args = NULL;
         *rest = &str[i];
         return term;
     } else if (str[i] == '(') {
         str[i] = '\0';
-        term->term_functor = str;
+        term->MR_term_functor = str;
         args = MR_create_cargs(&str[i + 1], rest);
         if (args == NULL) {
             MR_free(term);
             return NULL;
         }
 
-        term->term_args = args;
+        term->MR_term_args = args;
         return term;
     }
 
@@ -99,11 +99,11 @@ MR_create_cargs(char *str, char **rest)
     }
 
     args = MR_malloc(sizeof(struct MR_CArgs_Struct));
-    args->args_head = term;
+    args->MR_args_head = term;
 
     if (more[0] == ')') {
         more[0] = '\0'; /* to terminate the just previous functor, if any */
-        args->args_tail = NULL;
+        args->MR_args_tail = NULL;
         *rest = &more[1];
         return args;
     } else if (more[0] == ',') {
@@ -124,7 +124,7 @@ MR_create_cargs(char *str, char **rest)
             return NULL;
         }
 
-        args->args_tail = tail;
+        args->MR_args_tail = tail;
         return args;
     }
 
@@ -138,17 +138,17 @@ MR_print_cterm(FILE *fp, MR_CTerm term)
     MR_CArgs    args;
     int         i;
 
-    fprintf(fp, "%s", term->term_functor);
-    if (term->term_args != NULL) {
+    fprintf(fp, "%s", term->MR_term_functor);
+    if (term->MR_term_args != NULL) {
         fprintf(fp, "(");
         i = 0;
-        args = term->term_args;
+        args = term->MR_term_args;
         while (args != NULL) {
             if (i > 0) {
                 fprintf(fp, ", ");
             }
-            MR_print_cterm(fp, args->args_head);
-            args = args->args_tail;
+            MR_print_cterm(fp, args->MR_args_head);
+            args = args->MR_args_tail;
             i++;
         }
         fprintf(fp, ")");
@@ -159,7 +159,7 @@ void
 MR_delete_cterm(MR_CTerm term)
 {
     if (term != NULL) {
-        MR_delete_cargs(term->term_args);
+        MR_delete_cargs(term->MR_term_args);
         MR_free(term);
     }
 }
@@ -168,8 +168,8 @@ static void
 MR_delete_cargs(MR_CArgs args)
 {
     if (args != NULL) {
-        MR_delete_cargs(args->args_tail);
-        MR_delete_cterm(args->args_head);
+        MR_delete_cargs(args->MR_args_tail);
+        MR_delete_cterm(args->MR_args_head);
         MR_free(args);
     }
 }

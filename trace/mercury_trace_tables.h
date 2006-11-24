@@ -41,6 +41,25 @@ extern  void        MR_register_module_layout_real(
                         const MR_Module_Layout *module);
 
 /*
+** Every module that generates user defined events has a specification of the
+** set of user events it was compiled with in its module layout structure.
+** The debugger needs to know what these specifications are, and if they
+** are consistent (which in this case means identical).
+**
+** If no modules have user defined events, MR_event_specs_have_conflict will
+** be false and MR_consensus_event_specs will be NULL. If there are some user
+** defined events in some modules and the modules are consistent, then
+** MR_event_specs_have_conflict will still be false and the string will contain
+** a copy of the original specification file in a canonical form (standard
+** indentation, comments stripped). If there is an inconsistency, then
+** MR_event_specs_have_conflict will be TRUE, and MR_consensus_event_specs
+** will not be meaningful.
+*/
+
+extern  const char      *MR_consensus_event_specs;
+extern  MR_bool         MR_event_specs_have_conflict;
+
+/*
 ** MR_process_file_line_layouts searches all the module layout structures
 ** of the program for label layout structures corresponding to the given
 ** filename/linenumber combination. For all such labels, it calls the supplied

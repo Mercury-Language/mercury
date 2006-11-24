@@ -53,7 +53,8 @@ $(GCC_MAIN_LIBS): force
 	cd $(GCC_SRC_DIR)/gcc && $(MAKE) mercury_gcc_backend_libs
 
 MCFLAGS	     += --flags COMP_FLAGS $(CONFIG_OVERRIDE)
-MLOBJS       := ../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A $(MLOBJS)
+MLOBJS       := ../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A \
+		../trace/lib$(EVENTSPEC_LIB_NAME).$A $(MLOBJS)
 ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS      += --no-main --shared
 C2INITARGS   += $(ANALYSIS_DIR)/$(ANALYSIS_LIB_NAME).init
@@ -237,6 +238,7 @@ $(MC_PROG): $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 $(MC_PROG): $(MDBCOMP_DIR)/lib$(MDBCOMP_LIB_NAME).$A
 $(MC_PROG): $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
 $(MC_PROG): $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A
+$(MC_PROG): $(TRACE_DIR)/lib$(EVENTSPEC_LIB_NAME).$A
 $(MC_PROG): $(ANALYSIS_DIR)/lib$(ANALYSIS_LIB_NAME).$A
 # XXX should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
 # if in .gc(.prof) grade

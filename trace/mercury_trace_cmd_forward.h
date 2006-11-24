@@ -18,6 +18,7 @@ extern  MR_TraceCmdFunc     MR_trace_cmd_finish;
 extern  MR_TraceCmdFunc     MR_trace_cmd_fail;
 extern  MR_TraceCmdFunc     MR_trace_cmd_exception;
 extern  MR_TraceCmdFunc     MR_trace_cmd_return;
+extern  MR_TraceCmdFunc     MR_trace_cmd_user;
 extern  MR_TraceCmdFunc     MR_trace_cmd_forward;
 extern  MR_TraceCmdFunc     MR_trace_cmd_mindepth;
 extern  MR_TraceCmdFunc     MR_trace_cmd_maxdepth;

@@ -1514,7 +1514,9 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
     typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_event_call(EventName, Args, !Info) :-
-    ( event_arg_types(EventName, EventArgTypes) ->
+    typecheck_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_event_spec_map(ModuleInfo, EventSpecMap),
+    ( event_arg_types(EventSpecMap, EventName, EventArgTypes) ->
         typecheck_var_has_type_list(Args, EventArgTypes, 1, !Info)
     ;
         Spec = report_unknown_event_call_error(!.Info, EventName),

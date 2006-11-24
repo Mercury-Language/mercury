@@ -1389,15 +1389,16 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
             (
                 Demangle = yes,
                 globals.io_lookup_string_option(demangle_command,
-                    DemamngleCmd, !IO),
-                MaybeDemangleCmd = yes(DemamngleCmd)
+                    DemangleCmd, !IO),
+                MaybeDemangleCmd = yes(DemangleCmd)
             ;
                 Demangle = no,
                 MaybeDemangleCmd = no
             ),
 
-            invoke_system_command(ErrorStream, cmd_verbose_commands, LinkCmd,
-                MaybeDemangleCmd, LinkSucceeded, !IO)
+            invoke_system_command_maybe_filter_output(ErrorStream,
+                cmd_verbose_commands, LinkCmd, MaybeDemangleCmd, LinkSucceeded,
+                !IO)
         ;
             LibrariesSucceeded = no,
             LinkSucceeded = no
@@ -1511,15 +1512,19 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
                 ("libmer_trace" ++ LibExt)) ++
             " " ++
             quote_arg(StdLibDir/"lib"/GradeDir/
+                ("libmer_event_spec" ++ LibExt)) ++
+            " " ++
+            quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_browser" ++ LibExt)) ++
             " " ++
             quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_mdbcomp" ++ LibExt)),
         make_link_lib(TargetType, "mer_trace", TraceLib, !IO),
+        make_link_lib(TargetType, "mer_eventspec", EventSpecLib, !IO),
         make_link_lib(TargetType, "mer_browser", BrowserLib, !IO),
         make_link_lib(TargetType, "mer_mdbcomp", MdbCompLib, !IO),
         SharedTraceLibs = string.join_list(" ",
-            [TraceLib, BrowserLib, MdbCompLib])
+            [TraceLib, EventSpecLib, BrowserLib, MdbCompLib])
     ),
 
     globals.io_lookup_string_option(mercury_linkage, MercuryLinkage, !IO),

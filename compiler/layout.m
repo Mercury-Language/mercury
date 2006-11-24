@@ -61,7 +61,7 @@
                 maybe_is_hidden         :: maybe(bool),
                 label_num_in_module     :: int,
                 maybe_goal_path         :: maybe(int), % offset
-                maybe_solver_info       :: maybe(solver_event_data),
+                maybe_user_info         :: maybe(user_event_data),
                 maybe_var_info          :: maybe(label_var_info)
             )
     ;       proc_layout_data(           % defines MR_Proc_Layout
@@ -77,7 +77,8 @@
                 file_layouts            :: list(file_layout_data),
                 trace_level             :: trace_level,
                 suppressed_events       :: int,
-                num_label_exec_count    :: int
+                num_label_exec_count    :: int,
+                maybe_event_specs       :: maybe(string)
             )
     ;       closure_proc_id_data(       % defines MR_Closure_Id
                 caller_proc_label       :: proc_label,
@@ -98,13 +99,14 @@
                 table_io_decl_type_params :: rval
             ).
 
-:- type solver_event_data
-    --->    solver_event_data(
-                solver_event_name       :: string,
-                solver_event_num_attr   :: int,
-                solver_event_locns      :: rval,
-                solver_event_types      :: rval,
-                solver_event_names      :: list(string)
+:- type user_event_data
+    --->    user_event_data(
+                user_event_number       :: int,
+                user_event_name         :: string,
+                user_event_num_attr     :: int,
+                user_event_locns        :: rval,
+                user_event_types        :: rval,
+                user_event_names        :: list(string)
             ).
 
 :- type label_var_info
@@ -197,8 +199,8 @@
 
 :- type layout_name
     --->    label_layout(proc_label, int, label_vars)
-    ;       solver_event_layout(proc_label, int)
-    ;       solver_event_attr_names(proc_label, int)
+    ;       user_event_layout(proc_label, int)
+    ;       user_event_attr_names(proc_label, int)
     ;       proc_layout(rtti_proc_label, proc_layout_kind)
             % A proc layout structure for stack tracing, accurate gc,
             % deep profiling and/or execution tracing.
@@ -220,6 +222,7 @@
     ;       module_layout_file_vector(module_name)
     ;       module_layout_proc_vector(module_name)
     ;       module_layout_label_exec_count(module_name, int)
+    ;       module_layout_event_specs(module_name)
     ;       module_layout(module_name)
     ;       proc_static(rtti_proc_label)
     ;       proc_static_call_sites(rtti_proc_label).

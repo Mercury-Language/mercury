@@ -34,13 +34,13 @@ dice                 mm_stacks            unalias
 diff                 mmc_options          unhide_events
 disable              modules              untrust
 document             next                 up
-document_category    nondet_stack         v
-down                 open                 var_details
-dump                 p                    vars
-e                    pass_trace_counts    view
-echo                 pneg_stack           xml_browser_cmd
-enable               pop_list_dir         xml_tmp_filename
-exception            print                
+document_category    nondet_stack         user
+down                 open                 v
+dump                 p                    var_details
+e                    pass_trace_counts    vars
+echo                 pneg_stack           view
+enable               pop_list_dir         xml_browser_cmd
+exception            print                xml_tmp_filename
 excp                 print_optionals      
 h              help           histogram_exp  
 held_vars      histogram_all  hold           

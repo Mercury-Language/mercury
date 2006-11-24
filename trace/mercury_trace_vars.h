@@ -69,13 +69,15 @@ typedef void    (*MR_GoalBrowser)(MR_ConstString name, MR_Word arg_list,
 typedef enum {
     MR_VAR_SPEC_NUMBER,
     MR_VAR_SPEC_NAME,
-    MR_VAR_SPEC_HELD_NAME
+    MR_VAR_SPEC_HELD_NAME,
+    MR_VAR_SPEC_ATTRIBUTE
 } MR_Var_Spec_Kind;
 
 typedef struct {
     MR_Var_Spec_Kind    MR_var_spec_kind;
     int                 MR_var_spec_number; /* valid if NUMBER */
-    const char          *MR_var_spec_name;  /* valid if NAME or HELD_NAME */
+    const char          *MR_var_spec_name;  /* valid if NAME, HELD_NAME */
+                                            /* or ATTRIBUTE */
 } MR_Var_Spec;
 
 /*

@@ -744,7 +744,7 @@ MR_trace_construct_node(MR_Event_Info *event_info)
             trace = MR_trace_decl_excp(event_info, trace);
             break;
 
-        case MR_PORT_SOLVER:
+        case MR_PORT_USER:
             /* do nothing */
             break;
 

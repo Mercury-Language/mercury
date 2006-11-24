@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2005 The University of Melbourne.
+** Copyright (C) 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,17 +14,30 @@
 #ifndef MERCURY_TRACE_TERM_H
 #define MERCURY_TRACE_TERM_H
 
-typedef	struct MR_CTerm_Struct	*MR_CTerm;
-typedef	struct MR_CArgs_Struct	*MR_CArgs;
+typedef	struct MR_CTerm_Struct		*MR_CTerm;
+typedef	struct MR_CArgs_Struct		*MR_CArgs;
+
+typedef	struct MR_FlatTerm_Struct	*MR_FlatTerm;
+typedef	struct MR_FlatArgs_Struct	*MR_FlatArgs;
 
 struct MR_CTerm_Struct {
-	char		*term_functor;
-	MR_CArgs	term_args;
+	char		*MR_term_functor;
+	MR_CArgs	MR_term_args;
 };
 
 struct MR_CArgs_Struct {
-	MR_CTerm	args_head;
-	MR_CArgs	args_tail;
+	MR_CTerm	MR_args_head;
+	MR_CArgs	MR_args_tail;
+};
+
+struct MR_FlatTerm_Struct {
+	char		*MR_flat_term_functor;
+	MR_FlatArgs	MR_flat_term_args;
+};
+
+struct MR_FlatArgs_Struct {
+	char		*MR_flat_args_head;
+	MR_FlatArgs	MR_flat_args_tail;
 };
 
 /*

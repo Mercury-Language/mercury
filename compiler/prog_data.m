@@ -47,7 +47,7 @@
     %
 :- type promise_type
             % promise ex declarations
-    --->    promise_type_exclusive                  
+    --->    promise_type_exclusive
             % Each disjunct is mutually exclusive.
 
     ;       promise_type_exhaustive
@@ -143,19 +143,6 @@
     is det.
 
 :- pred det_switch_canfail(can_fail::in, can_fail::in, can_fail::out) is det.
-
-    % The `is_solver_type' type specifies whether a type is a "solver" type,
-    % for which `any' insts are interpreted as "don't know", or a non-solver
-    % type for which `any' is the same as `bound(...)'.
-    %
-:- type is_solver_type
-    --->    non_solver_type
-            % The inst `any' is always `bound' for this type.
-
-    ;       solver_type.
-            % The inst `any' is not always `bound' for this type
-            % (i.e. the type was declared with
-            % `:- solver type ...').
 
 %-----------------------------------------------------------------------------%
 %
@@ -1046,6 +1033,19 @@
                 foreign_assertions  :: list(foreign_type_assertion)
             ).
 
+    % The `is_solver_type' type specifies whether a type is a "solver" type,
+    % for which `any' insts are interpreted as "don't know", or a non-solver
+    % type for which `any' is the same as `bound(...)'.
+    %
+:- type is_solver_type
+    --->    non_solver_type
+            % The inst `any' is always `bound' for this type.
+
+    ;       solver_type.
+            % The inst `any' is not always `bound' for this type
+            % (i.e. the type was declared with
+            % `:- solver type ...').
+
 :- type foreign_type_assertion
     --->    foreign_type_can_pass_as_mercury_type
     ;       foreign_type_stable.
@@ -1523,7 +1523,6 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-
 :- type item_visibility
     --->    visibility_public
     ;       visibility_private.
@@ -1554,6 +1553,35 @@
     used_modules::in, used_modules::out) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% Event specifications
+%
+
+:- type event_attribute
+    --->    event_attribute(
+                attr_name                   :: string,
+                attr_type                   :: mer_type,
+                attr_mode                   :: mer_mode,
+                attr_maybe_synth_call       :: maybe(event_attr_synth_call)
+            ).
+
+:- type event_attr_synth_call
+    --->    event_attr_synth_call(
+                synth_func_attr_name        :: string,
+                synth_arg_attr_names        :: list(string)
+            ).
+
+:- type event_spec
+    --->    event_spec(
+                event_spec_num              :: int,
+                event_spec_linenum          :: int,
+                event_spec_visible_attrs    :: list(event_attribute),
+                event_spec_all_attrs        :: list(event_attribute)
+            ).
+
+    % This type maps the name of an event to the event's specification.
+:- type event_spec_map == map(string, event_spec).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

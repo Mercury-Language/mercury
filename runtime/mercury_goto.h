@@ -84,8 +84,8 @@
 	MR_PASTE2(mercury_data__proc_layout__,label)
 #define MR_LABEL_LAYOUT_NAME(label)					\
 	MR_PASTE2(mercury_data__label_layout__,label)
-#define MR_SOLVER_LAYOUT_NAME(label)					\
-	MR_PASTE2(mercury_data__solver_layout__,label)
+#define MR_USER_LAYOUT_NAME(label)					\
+	MR_PASTE2(mercury_data__user_event_layout__,label)
 
 #define MR_PROC_LAYOUT(label)						\
 	((const MR_Proc_Layout *) (MR_Word) &MR_PROC_LAYOUT_NAME(label))

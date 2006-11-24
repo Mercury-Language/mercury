@@ -101,6 +101,7 @@
 :- import_module ll_backend.prog_rep.
 :- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
@@ -119,9 +120,9 @@
 
 %---------------------------------------------------------------------------%
 
-generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
+generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
     global_data_get_all_proc_layouts(!.GlobalData, ProcLayoutList),
-    module_info_get_globals(ModuleInfo0, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
     globals.lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
     globals.lookup_bool_option(Globals, procid_stack_layout,
@@ -136,10 +137,10 @@ generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
     StringTable0 = string_table(StringMap0, [], 0),
     global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
     counter.init(1, LabelCounter0),
-    LayoutInfo0 = stack_layout_info(ModuleInfo0,
+    LayoutInfo0 = stack_layout_info(ModuleInfo,
         AgcLayout, TraceLayout, ProcIdLayout, StaticCodeAddr,
         LabelCounter0, [], [], [], LayoutLabels0, [],
-        StringTable0, LabelTables0, StaticCellInfo0),
+        StringTable0, LabelTables0, StaticCellInfo0, no),
     lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
     lookup_string_in_table("<too many variables>", _,
         LayoutInfo1, LayoutInfo2),
@@ -162,7 +163,7 @@ generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
     list.condense([TableIoDecls, ProcLayouts, InternalLayouts], Layouts0),
     (
         TraceLayout = yes,
-        module_info_get_name(ModuleInfo0, ModuleName),
+        module_info_get_name(ModuleInfo, ModuleName),
         globals.lookup_bool_option(Globals, rtti_line_numbers, LineNumbers),
         (
             LineNumbers = yes,
@@ -173,9 +174,19 @@ generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
         ),
         format_label_tables(EffLabelTables, SourceFileLayouts),
         SuppressedEvents = encode_suppressed_events(TraceSuppress),
+        HasUserEvent = LayoutInfo ^ has_user_event,
+        (
+            HasUserEvent = no,
+            MaybeEventSpecs = no
+        ;
+            HasUserEvent = yes,
+            module_info_get_event_spec_map(ModuleInfo, EventSpecMap),
+            EventSpecs = event_set_description(EventSpecMap),
+            MaybeEventSpecs = yes(EventSpecs)
+        ),
         ModuleLayout = module_layout_data(ModuleName,
             StringOffset, ConcatStrings, ProcLayoutNames, SourceFileLayouts,
-            TraceLevel, SuppressedEvents, NumLabels),
+            TraceLevel, SuppressedEvents, NumLabels, MaybeEventSpecs),
         Layouts = [ModuleLayout | Layouts0]
     ;
         TraceLayout = no,
@@ -808,9 +819,9 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         Trace = no,
         set.init(TraceLiveVarSet),
         map.init(TraceTypeVarMap),
-        MaybeSolverInfo = no
+        MaybeUserInfo = no
     ;
-        Trace = yes(trace_port_layout_info(_,_,_,_, MaybeSolverInfo,
+        Trace = yes(trace_port_layout_info(_,_,_,_, MaybeUserInfo,
             TraceLayout)),
         TraceLayout = layout_label_info(TraceLiveVarSet, TraceTypeVarMap)
     ),
@@ -910,27 +921,29 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         LabelVars = label_has_var_info
     ),
     (
-        MaybeSolverInfo = no,
-        MaybeSolverData = no
+        MaybeUserInfo = no,
+        MaybeUserData = no
     ;
-        MaybeSolverInfo = yes(SolverInfo),
-        SolverInfo = solver_event_info(SolverEventName, Attributes),
+        MaybeUserInfo = yes(UserInfo),
+        set_has_user_event(yes, !Info),
+        UserInfo = user_event_info(UserEventNumber, UserEventName,
+            Attributes),
         list.length(Attributes, NumAttributes),
-        construct_solver_data_array(Attributes,
-            SolverLocnsArray, SolverTypesArray, SolverAttrNames, !Info),
+        construct_user_data_array(Attributes,
+            UserLocnsArray, UserTypesArray, UserAttrNames, !Info),
 
         get_static_cell_info(!.Info, StaticCellInfo0),
-        add_scalar_static_cell(SolverLocnsArray, SolverLocnsDataAddr,
+        add_scalar_static_cell(UserLocnsArray, UserLocnsDataAddr,
             StaticCellInfo0, StaticCellInfo1),
-        add_scalar_static_cell(SolverTypesArray, SolverTypesDataAddr,
+        add_scalar_static_cell(UserTypesArray, UserTypesDataAddr,
             StaticCellInfo1, StaticCellInfo),
         set_static_cell_info(StaticCellInfo, !Info),
 
-        SolverLocnsRval = const(llconst_data_addr(SolverLocnsDataAddr, no)),
-        SolverTypesRval = const(llconst_data_addr(SolverTypesDataAddr, no)),
-        SolverData = solver_event_data(SolverEventName, NumAttributes,
-            SolverLocnsRval, SolverTypesRval, SolverAttrNames),
-        MaybeSolverData = yes(SolverData)
+        UserLocnsRval = const(llconst_data_addr(UserLocnsDataAddr, no)),
+        UserTypesRval = const(llconst_data_addr(UserTypesDataAddr, no)),
+        UserData = user_event_data(UserEventNumber, UserEventName,
+            NumAttributes, UserLocnsRval, UserTypesRval, UserAttrNames),
+        MaybeUserData = yes(UserData)
     ),
 
     (
@@ -949,22 +962,22 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         LabelNumber = 0
     ),
     LayoutData = label_layout_data(ProcLabel, LabelNum, ProcLayoutName,
-        MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath, MaybeSolverData,
+        MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath, MaybeUserData,
         MaybeVarInfo),
     LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
     Label = internal_label(LabelNum, ProcLabel),
     add_internal_layout_data(LayoutData, Label, LayoutName, !Info),
     LabelLayout = {ProcLabel, LabelNum, LabelVars, Internal}.
 
-:- pred construct_solver_data_array(list(solver_attribute)::in,
+:- pred construct_user_data_array(list(user_attribute)::in,
     assoc_list(rval, llds_type)::out, assoc_list(rval, llds_type)::out,
     list(string)::out, stack_layout_info::in, stack_layout_info::out) is det.
 
-construct_solver_data_array([], [], [], [], !Info).
-construct_solver_data_array([Attr | Attrs],
+construct_user_data_array([], [], [], [], !Info).
+construct_user_data_array([Attr | Attrs],
         [LocnRvalAndType | LocnRvalAndTypes],
         [TypeRvalAndType | TypeRvalAndTypes], [Name | Names], !Info) :-
-    Attr = solver_attribute(Locn, Type, Name),
+    Attr = user_attribute(Locn, Type, Name),
     represent_locn_or_const_as_int_rval(Locn, LocnRval, LocnRvalType, !Info),
     LocnRvalAndType = LocnRval - LocnRvalType,
 
@@ -977,7 +990,7 @@ construct_solver_data_array([Attr | Attrs],
     set_static_cell_info(StaticCellInfo, !Info),
     TypeRvalAndType = TypeRval - TypeRvalType,
 
-    construct_solver_data_array(Attrs, LocnRvalAndTypes, TypeRvalAndTypes,
+    construct_user_data_array(Attrs, LocnRvalAndTypes, TypeRvalAndTypes,
         Names, !Info).
 
 %---------------------------------------------------------------------------%
@@ -1659,7 +1672,7 @@ represent_lval_as_byte(parent_sp, Byte) :-
 :- pred make_tagged_byte(int::in, int::in, int::out) is det.
 
 make_tagged_byte(Tag, Value, TaggedValue) :-
-    TaggedValue is unchecked_left_shift(Value, short_lval_tag_bits) + Tag.
+    TaggedValue = unchecked_left_shift(Value, short_lval_tag_bits) + Tag.
 
 :- func short_lval_tag_bits = int.
 
@@ -1719,7 +1732,8 @@ represent_determinism_rval(Detism,
                                         % contributes labels to this module
                                         % to a table describing those
                                         % labels.
-                static_cell_info        :: static_cell_info
+                static_cell_info        :: static_cell_info,
+                has_user_event          :: bool
             ).
 
 :- pred get_module_info(stack_layout_info::in, module_info::out) is det.
@@ -1739,6 +1753,7 @@ represent_determinism_rval(Detism,
     is det.
 :- pred get_static_cell_info(stack_layout_info::in, static_cell_info::out)
     is det.
+:- pred get_has_user_event(stack_layout_info::in, bool::out) is det.
 
 get_module_info(LI, LI ^ module_info).
 get_agc_stack_layout(LI, LI ^ agc_stack_layout).
@@ -1752,6 +1767,7 @@ get_label_set(LI, LI ^ label_set).
 get_string_table(LI, LI ^ string_table).
 get_label_tables(LI, LI ^ label_tables).
 get_static_cell_info(LI, LI ^ static_cell_info).
+get_has_user_event(LI, LI ^ has_user_event).
 
 :- pred allocate_label_number(int::out,
     stack_layout_info::in, stack_layout_info::out) is det.
@@ -1809,9 +1825,13 @@ add_internal_layout_data(InternalLayout, Label, LayoutName, !LI) :-
 :- pred set_static_cell_info(static_cell_info::in,
     stack_layout_info::in, stack_layout_info::out) is det.
 
+:- pred set_has_user_event(bool::in,
+    stack_layout_info::in, stack_layout_info::out) is det.
+
 set_string_table(ST, LI, LI ^ string_table := ST).
 set_label_tables(LT, LI, LI ^ label_tables := LT).
 set_static_cell_info(SCI, LI, LI ^ static_cell_info := SCI).
+set_has_user_event(HUE, LI, LI ^ has_user_event := HUE).
 
 %---------------------------------------------------------------------------%
 %
