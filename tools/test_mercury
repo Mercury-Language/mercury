@@ -420,10 +420,10 @@ case $HOST in
 	jupiter)
 		# Ensure that the nogc grades get installed and tested
 		# on at least one host
-		CONFIG_OPTS="--disable-java-grade --enable-nogc-grades"
+		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-java-grade --enable-nogc-grades"
 		;;
 	earth)
-		CONFIG_OPTS="--disable-dotnet-grades"
+		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-dotnet-grades"
 		INSTALL_LIBGRADES="asm_fast.gc			\
 				asm_fast.gc.tr			\
 				asm_fast.gc.debug.tr 		\
@@ -451,8 +451,7 @@ case $HOST in
 	swordfish)
 		# swordfish is being used by the G12 group at the moment, so
 		# it requires trailing versions of most of the grades.
-		# XXX Most of this should be moved to saturn when it is ready.
-		CONFIG_OPTS="--disable-java-grade"
+		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-java-grade"
 		case $BRANCH in
 			g12)
 				DEFAULT_GRADE="hlc.gc.tr"
