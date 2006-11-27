@@ -3359,6 +3359,16 @@ case "$host" in
 				DEFAULT_LINKAGE=shared
 				;;
 		esac
+		
+		# On x86_64 machines we use -fPIC rather than -fpic
+		# in order to avoid limits on the size of the global
+		# offset table implied by the latter.
+		case "$host" in
+			x86_64-*-linux*)
+				CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
+				EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+			;;
+		esac
 		;;
 	m68*-linux|m68*-linux-gnu)
 		AC_MSG_RESULT(yes)
