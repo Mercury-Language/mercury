@@ -134,14 +134,18 @@ do_get_module_dependencies(RebuildDeps, ModuleName, !:MaybeImports, !Info,
             ; compare((>), DepFileTimestamp, SourceFileTimestamp)
             )
         ->
-            read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO)
+            % Since the source file was found in this directory, don't
+            % use module_dep files which might be for installed copies
+            % of the module.
+            read_module_dependencies_no_search(RebuildDeps, ModuleName,
+                !Info, !IO)
         ;
             make_module_dependencies(ModuleName, !Info, !IO)
         )
     ;
         MaybeSourceFileTimestamp = error(_),
         MaybeDepFileTimestamp = ok(DepFileTimestamp),
-        read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO),
+        read_module_dependencies_search(RebuildDeps, ModuleName, !Info, !IO),
 
         %
         % Check for the case where the module name doesn't match the
@@ -291,14 +295,27 @@ do_write_module_dep_file(Imports, !IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred read_module_dependencies(bool::in, module_name::in,
+:- pred read_module_dependencies_search(bool::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
+read_module_dependencies_search(RebuildDeps, ModuleName, !Info, !IO) :-
+    globals.io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
+    read_module_dependencies_2(RebuildDeps, SearchDirs, ModuleName,
+        !Info, !IO).
+
+:- pred read_module_dependencies_no_search(bool::in, module_name::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+read_module_dependencies_no_search(RebuildDeps, ModuleName, !Info, !IO) :-
+    read_module_dependencies_2(RebuildDeps, [dir.this_directory], ModuleName,
+        !Info, !IO).
+
+:- pred read_module_dependencies_2(bool::in, list(dir_name)::in,
+    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
+
+read_module_dependencies_2(RebuildDeps, SearchDirs, ModuleName, !Info, !IO) :-
     module_name_to_search_file_name(ModuleName, make_module_dep_file_extension,
         ModuleDepFile, !IO),
-    globals.io_lookup_accumulating_option(search_directories, SearchDirs,
-        !IO),
     io.input_stream(OldInputStream, !IO),
     search_for_file_returning_dir(SearchDirs, ModuleDepFile, SearchResult,
         !IO),
@@ -422,7 +439,7 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
             % module in the source file).
             %
             SubRebuildDeps = no,
-            list.foldl2(read_module_dependencies(SubRebuildDeps),
+            list.foldl2(read_module_dependencies_2(SubRebuildDeps, SearchDirs),
                 NestedChildren, !Info, !IO),
             (
                 list.member(NestedChild, NestedChildren),
