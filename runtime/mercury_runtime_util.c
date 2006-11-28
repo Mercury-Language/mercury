@@ -85,3 +85,36 @@ MR_checked_atexit(void (*func)(void))
         exit(EXIT_FAILURE);
     }
 }
+
+#if ! defined(MR_HAVE_PUTENV) && defined(MR_HAVE__PUTENV)
+  #define putenv _putenv
+#endif
+
+int
+MR_setenv(const char *name, const char *value, int overwrite)
+{
+#if defined(MR_HAVE_SETENV)
+    return setenv(name, value, overwrite);
+#elif defined(MR_HAVE_PUTENV) || defined(MR_HAVE__PUTENV)
+    char *env;
+    int length;
+
+    if (!overwrite && getenv(name) != NULL) {
+        return 0;
+    }
+
+    length = strlen(name) + strlen(value) + 2;
+    env = MR_NEW_ARRAY(char, length);
+
+    env[0] = '\0';
+    strcat(env, name);
+    strcat(env, "=");
+    strcat(env, value);
+
+    MR_free(env);
+    
+    return putenv(env);
+#else
+  #error "MR_setenv: unable to define"
+#endif
+}

@@ -415,9 +415,9 @@ MR_trace_record_label_exec_counts(void *dummy)
 
         old_options = getenv("MERCURY_OPTIONS");
         if (old_options != NULL) {
-            (void) setenv("MERCURY_OPTIONS", "", MR_TRUE);
+            (void) MR_setenv("MERCURY_OPTIONS", "", MR_TRUE);
             summary_status = system(cmd);
-            (void) setenv("MERCURY_OPTIONS", old_options, MR_TRUE);
+            (void) MR_setenv("MERCURY_OPTIONS", old_options, MR_TRUE);
         } else {
             summary_status = system(cmd);
         }

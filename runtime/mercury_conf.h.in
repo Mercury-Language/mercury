@@ -245,6 +245,9 @@
 **	MR_HAVE_SYMLINK		we have the symlink function.
 **	MR_HAVE_READLINK	we have the readlink function.
 **	MR_HAVE_GETTIMEOFDAY	we have the gettimeofday function.
+**	MR_HAVE_SETENV		we have the setenv() function.
+**	MR_HAVE_PUTENV		we have the putenv() function.
+**	MR_HAVE__PUTENV		we have the _putenv() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -301,6 +304,9 @@
 #undef	MR_HAVE_SYMLINK
 #undef	MR_HAVE_READLINK
 #undef	MR_HAVE_GETTIMEOFDAY
+#undef	MR_HAVE_SETENV
+#undef	MR_HAVE_PUTENV
+#undef	MR_HAVE__PUTENV
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

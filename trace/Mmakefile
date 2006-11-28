@@ -153,7 +153,7 @@ ALLOW_MDBCOMP_PREFIX=no
 BISON		= bison
 BISON_OPTS	= -v
 FLEX		= flex
-FLEX_OPTS	= --8bit
+FLEX_OPTS	= -8
 
 MERCURY_DIR=..
 LINK_STDLIB_ONLY=yes
@@ -241,10 +241,10 @@ mercury_event_parser.c mercury_event_parser.h: mercury_event_parser.y
 
 mercury_event_scanner.c mercury_event_scanner.h: \
 		mercury_event_scanner.l mercury_event_parser.h
-	$(FLEX) $(FLEX_OPTS) -s -P mercury_event_ \
-		-o mercury_event_scanner.c \
-		--header-file=mercury_event_scanner.h \
+	$(FLEX) $(FLEX_OPTS) -s -Pmercury_event_ \
+		-omercury_event_scanner.c \
 		mercury_event_scanner.l
+	echo "extern int mercury_event_lex(void);" >  mercury_event_scanner.h
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
 RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)

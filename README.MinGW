@@ -26,9 +26,13 @@ To build the source distribution under MSYS follow these steps:
     and the following MSYS packages:
       * MSYS-1.0.10.exe
       * msysDTK-1.0.1.exe
+      * msys-autoconf-2.59.tar.bz2
     Later versions of the above packages may also work, but earlier versions
     should be avoided.
     
+    You also need to download and install the flex and bison packages
+    from GnuWin32 <http://sourceforge.net/projects/gnuwin32/>.
+
 2.  Open an MSYS session and unpack the source distribution with a command 
     like:
     

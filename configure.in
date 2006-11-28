@@ -31,19 +31,22 @@ AC_PREREQ(2.58)
 # The environment variable `SUPPRESS_LOG_FILE_RECURSION' is used to prevent
 # infinite recursion.
 #
-if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
-	SUPPRESS_LOG_FILE_RECURSION=yes
-	export SUPPRESS_LOG_FILE_RECURSION
-	trap 0 1 2 3 13 15
-	rm -f configure.exit_status
-	{ case $# in
-		0) ${CONFIG_SHELL-/bin/sh} "$0"      ;;
-		*) ${CONFIG_SHELL-/bin/sh} "$0" "$@" ;;
-	esac; echo $? > configure.exit_status; } | exec tee configure.log
-	status=`cat configure.exit_status`
-	rm -f configure.exit_status
-	exit $status
-fi
+
+# XXX Currently this is commented out because autoconf 2.60 breaks
+# how this works.
+#if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
+#	SUPPRESS_LOG_FILE_RECURSION=yes
+#	export SUPPRESS_LOG_FILE_RECURSION
+#	trap 0 1 2 3 13 15
+#	rm -f configure.exit_status
+#	{ case $# in
+#		0) ${CONFIG_SHELL-/bin/sh} "$0"      ;;
+#		*) ${CONFIG_SHELL-/bin/sh} "$0" "$@" ;;
+#	esac; echo $? > configure.exit_status; } | exec tee configure.log
+#	status=`cat configure.exit_status`
+#	rm -f configure.exit_status
+#	exit $status
+#fi
 
 #-----------------------------------------------------------------------------#
 # Work out the default arguments to configure when reconfiguring,
@@ -932,7 +935,7 @@ mercury_check_for_functions \
 		getpid setpgid fork execlp wait kill \
 		grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
 		access sleep opendir readdir closedir mkdir symlink readlink \
-		gettimeofday
+		gettimeofday setenv putenv _putenv
 
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_FOR_HEADERS( \
