@@ -41,6 +41,7 @@ MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization \
 MCFLAGS-impure_method_impl =	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization \
 				--verbose-error-messages
+MCFLAGS-invalid_event =		--event-spec-file-name invalid_event_spec
 MCFLAGS-loopcheck =		--warn-inferred-erroneous \
 				--verbose-error-messages
 MCFLAGS-method_impl =		--no-intermodule-optimization \

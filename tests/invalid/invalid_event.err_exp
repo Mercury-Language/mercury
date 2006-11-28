@@ -1,0 +1,3 @@
+invalid_event.m:032: Error: wrong number of arguments (2; should be 1) in event
+invalid_event.m:032:   `safe_test'.
+invalid_event.m:055: Error: there is no event named `nodiag_succeed'.

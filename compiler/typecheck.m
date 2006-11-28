@@ -1517,7 +1517,13 @@ typecheck_event_call(EventName, Args, !Info) :-
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_event_spec_map(ModuleInfo, EventSpecMap),
     ( event_arg_types(EventSpecMap, EventName, EventArgTypes) ->
-        typecheck_var_has_type_list(Args, EventArgTypes, 1, !Info)
+        ( list.same_length(Args, EventArgTypes) ->
+            typecheck_var_has_type_list(Args, EventArgTypes, 1, !Info)
+        ;
+            Spec = report_event_args_mismatch(!.Info, EventName, EventArgTypes,
+                Args),
+            typecheck_info_add_error(Spec, !Info)
+        )
     ;
         Spec = report_unknown_event_call_error(!.Info, EventName),
         typecheck_info_add_error(Spec, !Info)

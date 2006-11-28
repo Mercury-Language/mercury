@@ -44,6 +44,9 @@
 
 :- func report_unknown_event_call_error(typecheck_info, string) = error_spec.
 
+:- func report_event_args_mismatch(typecheck_info, string, list(mer_type),
+    list(prog_var)) = error_spec.
+
 :- func report_no_clauses(module_info, pred_id, pred_info) = error_spec.
 
 :- func report_no_clauses_stub(module_info, pred_id, pred_info) = error_spec.
@@ -291,9 +294,19 @@ report_apply_instead_of_pred = Components :-
 
 report_unknown_event_call_error(Info, EventName) = Spec :-
     typecheck_info_get_context(Info, Context),
-    Pieces = [words("There is no event named"), quote(EventName), suffix(".")],
+    Pieces = [words("Error: there is no event named"),
+        quote(EventName), suffix(".")],
     Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_type_check, [Msg]).
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+report_event_args_mismatch(Info, EventName, EventArgTypes, Args) = Spec :-
+    typecheck_info_get_context(Info, Context),
+    Pieces = 
+        [words("Error:")] ++
+        error_num_args_to_pieces(no, length(Args), [length(EventArgTypes)]) ++
+        [words("in event"), quote(EventName), suffix(".")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
