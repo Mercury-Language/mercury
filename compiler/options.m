@@ -693,6 +693,7 @@
     ;       link_objects
     ;       mercury_library_directories
     ;       mercury_library_directory_special
+    ;       search_library_files_directories
     ;       search_library_files_directory_special
     ;       mercury_libraries
     ;       mercury_library_special
@@ -1429,8 +1430,9 @@ option_defaults_2(link_option, [
     link_libraries                      -   accumulating([]),
     link_objects                        -   accumulating([]),
     mercury_library_directory_special   -   string_special,
-    search_library_files_directory_special - string_special,
     mercury_library_directories         -   accumulating([]),
+    search_library_files_directory_special - string_special,
+    search_library_files_directories    -   accumulating([]),
     mercury_library_special             -   string_special,
     mercury_libraries                   -   accumulating([]),
     mercury_standard_library_directory  -   maybe_string(no),
@@ -2505,17 +2507,20 @@ option_table_add_mercury_library_directory(OptionTable0, Dir) =
     list.foldl(append_to_accumulating_option, [
         search_directories          - dir.make_path_name(Dir, "ints"),
         c_include_directory         - dir.make_path_name(Dir, "inc"),
+        % XXX Trace goal fix.
         init_file_directories       - dir.make_path_name(Dir, "modules"),
         mercury_library_directories - Dir
     ], OptionTable0).
 
 option_table_add_search_library_files_directory(OptionTable0, Dir) =
+    % Grade dependent directories need to be handled in handle_options.m
+    % when we know the grade.
     list.foldl(append_to_accumulating_option, [
         search_directories          - Dir,
-        intermod_directories        - Dir,
         c_include_directory         - Dir,
+        % XXX Trace goal fix.
         init_file_directories       - Dir,
-        link_library_directories    - Dir
+        search_library_files_directories - Dir
     ], OptionTable0).
 
 :- func append_to_accumulating_option(pair(option, string),
@@ -4516,7 +4521,8 @@ options_help_link -->
         "\tLink with the specified object file.",
         "--search-lib-files-dir <directory>",
         "--search-library-files-directory <directory>",
-        "\tEquivalent to adding <directory> using all of the",
+        "\tSearch <directory> for Mercury library files have not yet been",
+        "\tinstalled.  Similar to adding <directory> using all of the",
         "\t`--search-directory', `--intermod-directory',",
         "\t`--library-directory', `--init-file-directory' and",
         "\t`--c-include-directory' options.",

@@ -871,9 +871,12 @@ extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, MkDir, FileName,
     bool::in, file_name::out, io::di, io::uo) is det.
 
 choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
-    globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
     globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    globals.lookup_string_option(Globals, library_extension, LibExt),
+    globals.lookup_string_option(Globals, shared_library_extension,
+        SharedLibExt),
     (
         (
             UseSubdirs = no
@@ -973,7 +976,6 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             ( Ext = ".dir/*.o"
             ; Ext = ".dir/*.$O"
             )
-
         ->
             SubDirName = "dirs"
         ;
@@ -1012,6 +1014,13 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             Ext = ".dv"
         ->
             SubDirName = "deps"
+        ;
+            % Static and shared libraries go in the `lib' subdirectory.
+            ( Ext = LibExt
+            ; Ext = SharedLibExt
+            )
+        ->
+            SubDirName = "lib"
         ;
             % The usual case: `*.foo' files go in the `foos' subdirectory.
             string.append(".", ExtName, Ext)
@@ -1118,9 +1127,9 @@ make_symlink_or_copy_file(SourceFileName, DestinationFileName, Succeeded,
     string::in, file_name::out, io::di, io::uo) is det.
 
 make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO) :-
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
-    globals.io_lookup_string_option(fullarch, FullArch, !IO),
     globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    globals.lookup_string_option(Globals, fullarch, FullArch),
     (
         UseGradeSubdirs = yes,
         file_is_arch_or_grade_dependent(Globals, Ext),

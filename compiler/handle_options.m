@@ -1563,9 +1563,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ),
 
         %
-        % Handle the `.opt', C header and library search directories.
-        % These couldn't be handled by options.m because they are grade
-        % dependent.
+        % Handle the `.opt', C header and library search directories
+        % for installed libraries.  These couldn't be handled by options.m
+        % because they are grade dependent.
         %
         globals.lookup_accumulating_option(!.Globals,
             mercury_library_directories, MercuryLibDirs),
@@ -1578,9 +1578,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 ), MercuryLibDirs),
 
             globals.lookup_accumulating_option(!.Globals,
-                link_library_directories, LinkLibDirs),
+                link_library_directories, LinkLibDirs1),
             globals.set_option(link_library_directories,
-                accumulating(LinkLibDirs ++ ExtraLinkLibDirs), !Globals),
+                accumulating(LinkLibDirs1 ++ ExtraLinkLibDirs), !Globals),
 
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath),
@@ -1628,6 +1628,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         globals.lookup_bool_option(!.Globals, use_grade_subdirs,
             UseGradeSubdirs),
+        globals.lookup_accumulating_option(!.Globals,
+            search_library_files_directories, SearchLibFilesDirs),
+        globals.lookup_accumulating_option(!.Globals,
+            intermod_directories, IntermodDirs2),
+        ToGradeSubdir = (func(Dir) = Dir/"Mercury"/GradeString/FullArch),
         (
             UseGradeSubdirs = yes,
             %
@@ -1640,36 +1645,63 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             % `--intermod-directory Mercury/<grade>/<fullarch>'
             % to find the `.opt' files in the current directory.
             %
-            globals.lookup_accumulating_option(!.Globals,
-                intermod_directories, IntermodDirs2),
-            GradeSubdirIntermodDirs =
-                ["Mercury"/GradeString/FullArch |
-                list.filter(isnt(unify(dir.this_directory)), IntermodDirs2)],
-            globals.set_option(intermod_directories,
-                accumulating(GradeSubdirIntermodDirs), !Globals)
+            GradeSubdir = "Mercury"/GradeString/FullArch,
+            %
+            % Directories listed with --search-library-files-directories need
+            % to be treated in the same way as the current directory.
+            %
+            SearchLibFilesGradeSubdirs = list.map(ToGradeSubdir,
+                SearchLibFilesDirs),
+            IntermodDirs3 = [GradeSubdir] ++ SearchLibFilesGradeSubdirs ++
+                list.filter(isnt(unify(dir.this_directory)), IntermodDirs2)
         ;
-            UseGradeSubdirs = no
+            UseGradeSubdirs = no,
+            IntermodDirs3 = SearchLibFilesDirs ++ IntermodDirs2
         ),
+        globals.set_option(intermod_directories,
+            accumulating(IntermodDirs3), !Globals),
+
+        globals.lookup_accumulating_option(!.Globals,
+            link_library_directories, LinkLibDirs2),
+        (
+            UseGradeSubdirs = yes,
+            %
+            % With --use-grade-subdirs we need to search in
+            % `Mercury/<grade>/<fullarch>/Mercury/lib' for libraries, for
+            % each directory listed with --search-library-files-directory.
+            %
+            ToGradeLibDir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"lib"),
+            SearchGradeLibDirs = list.map(ToGradeLibDir, SearchLibFilesDirs),
+            LinkLibDirs = SearchGradeLibDirs ++ LinkLibDirs2
+        ;
+            UseGradeSubdirs = no,
+            LinkLibDirs = SearchLibFilesDirs ++ LinkLibDirs2
+        ),
+        globals.set_option(link_library_directories,
+            accumulating(LinkLibDirs), !Globals),
 
         %
         % When searching for a header (.mh or .mih) file,
         % module_name_to_file_name uses the plain header name, so we need to
-        % add the full path to the header files in the current directory.
+        % add the full path to the header files in the current directory,
+        % and any directories listed with --search-library-files-directory.
         %
         globals.lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
         (
             ( UseGradeSubdirs = yes ->
-                MihsSubdir = "Mercury"/GradeString/FullArch/"Mercury"/"mihs"
+                ToMihsSubdir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs")
             ; UseSubdirs = yes ->
-                MihsSubdir = "Mercury"/"mihs"
+                ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs")
             ;
                 fail
             )
         ->
             globals.lookup_accumulating_option(!.Globals, c_include_directory,
                 CIncludeDirs1),
-            SubdirCIncludeDirs =
-                [dir.this_directory, MihsSubdir | CIncludeDirs1],
+            MihsSubdir = ToMihsSubdir(dir.this_directory),
+            SearchLibMihsSubdirs = list.map(ToMihsSubdir, SearchLibFilesDirs),
+            SubdirCIncludeDirs = [dir.this_directory, MihsSubdir |
+                SearchLibMihsSubdirs ++ CIncludeDirs1],
             globals.set_option(c_include_directory,
                 accumulating(SubdirCIncludeDirs), !Globals)
         ;

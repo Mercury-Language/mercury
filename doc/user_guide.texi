@@ -8475,10 +8475,13 @@ Link with the specified object file.
 @findex --search-library-files-directory
 @cindex Directories for libraries
 @cindex Search path for libraries
-Equivalent to adding @var{directory} using all of the
+Search @var{directory} for Mercury library files have not yet been
+installed.  Similar to adding @var{directory} using all of the
 @samp{--search-directory}, @samp{--intermod-directory},
 @samp{--library-directory}, @samp{--init-file-directory} and
-@samp{--c-include-directory} options.
+@samp{--c-include-directory} options, but
+does the right thing when @samp{--use-subdirs} or
+@samp{--use-grade-subdirs} options are used.
 
 @sp 1
 @item --mld @var{directory}
