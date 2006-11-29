@@ -98,6 +98,7 @@ MR_setenv(const char *name, const char *value, int overwrite)
 #elif defined(MR_HAVE_PUTENV) || defined(MR_HAVE__PUTENV)
     char *env;
     int length;
+    int result;
 
     if (!overwrite && getenv(name) != NULL) {
         return 0;
@@ -111,9 +112,11 @@ MR_setenv(const char *name, const char *value, int overwrite)
     strcat(env, "=");
     strcat(env, value);
 
+    result = putenv(env);
+
     MR_free(env);
     
-    return putenv(env);
+    return result;
 #else
   #error "MR_setenv: unable to define"
 #endif
