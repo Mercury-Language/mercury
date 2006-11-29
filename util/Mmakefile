@@ -39,7 +39,8 @@ MGNUCFLAGS-mkinit = --no-ansi
 all:	$(PROGS) $(TAGS_FILE_EXISTS)
 
 .c:
-	$(MGNUC) $(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
+	$(MGNUC) --no-mercury-stdlib-dir \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
 
 tags:
 	ctags $(SRC)

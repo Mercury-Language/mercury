@@ -1397,6 +1397,7 @@ if test "$mercury_cv_word_type" = unknown; then
 	[mercury_cv_word_type=unknown],
 	[mercury_cv_word_type=unknown])
 fi
+mercury_cv_word_type=`echo $mercury_cv_word_type | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_word_type)
 AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
 MR_WORD_TYPE=$mercury_cv_word_type
@@ -1510,6 +1511,7 @@ AC_CACHE_VAL(mercury_cv_int_least32_type,
 	[mercury_cv_int_least32_type=unknown],
 	[mercury_cv_int_least32_type=unknown])
 )
+mercury_cv_int_least32_type=`echo $mercury_cv_int_least32_type | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_int_least32_type)
 AC_DEFINE_UNQUOTED(MR_INT_LEAST32_TYPE, $mercury_cv_int_least32_type)
 MR_INT_LEAST32_TYPE=$mercury_cv_int_least32_type
@@ -1571,6 +1573,7 @@ AC_CACHE_VAL(mercury_cv_int_least16_type,
 	[mercury_cv_int_least16_type=unknown],
 	[mercury_cv_int_least16_type=unknown])
 )
+mercury_cv_int_least16_type=`echo $mercury_cv_int_least16_type | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_int_least16_type)
 AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
 MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
@@ -1623,6 +1626,7 @@ AC_CACHE_VAL(mercury_cv_low_tag_bits,
 	[mercury_cv_low_tag_bits=0],
 	[mercury_cv_low_tag_bits=0])
 )
+mercury_cv_low_tag_bits=`echo $mercury_cv_low_tag_bits | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_low_tag_bits)
 if test "$mercury_cv_low_tag_bits" -lt 2; then
 	if test "$BOOTSTRAP_MC" = ""; then
@@ -1659,6 +1663,7 @@ AC_CACHE_VAL(mercury_cv_bytes_per_word,
 	[mercury_cv_bytes_per_word=0],
 	[mercury_cv_bytes_per_word=0])
 )
+mercury_cv_bytes_per_word=`echo $mercury_cv_bytes_per_word | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_bytes_per_word)
 AC_DEFINE_UNQUOTED(MR_BYTES_PER_WORD, $mercury_cv_bytes_per_word)
 BYTES_PER_WORD=$mercury_cv_bytes_per_word
@@ -1691,6 +1696,7 @@ AC_CACHE_VAL(mercury_cv_sync_term_size,
 	[mercury_cv_sync_term_size=0],
 	[mercury_cv_sync_term_size=0])
 )
+mercury_cv_sync_term_size=`echo $mercury_cv_sync_term_size | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_sync_term_size)
 AC_DEFINE_UNQUOTED(MR_SYNC_TERM_SIZE, $mercury_cv_sync_term_size)
 SYNC_TERM_SIZE=$mercury_cv_sync_term_size
@@ -1716,6 +1722,7 @@ AC_CACHE_VAL(mercury_cv_bits_per_word,
 	[mercury_cv_bits_per_word=0],
 	[mercury_cv_bits_per_word=0])
 )
+mercury_cv_bits_per_word=`echo $mercury_cv_bits_per_word | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_bits_per_word)
 AC_DEFINE_UNQUOTED(MR_BITS_PER_WORD, $mercury_cv_bits_per_word)
 BITS_PER_WORD=$mercury_cv_bits_per_word

@@ -12,7 +12,7 @@ MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
 
 
-MGNUC		= $(SCRIPTS_DIR)/mgnuc
+MGNUC		= $(SCRIPTS_DIR)/mgnuc --no-mercury-stdlib-dir
 
 EXTRA_CFLAGS	= -I$(BROWSER_DIR) -I$(LIBRARY_DIR) -I$(RUNTIME_DIR) \
 			-I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include
