@@ -46,7 +46,7 @@ MR_bool         MR_event_specs_have_conflict = MR_FALSE;
 typedef struct {
     const char          *MR_nick_name;
     MR_Dlist            *MR_nick_layouts;
-                        /* the list entries are MR_Module_Layouts */
+                        /* the list entries are MR_ModuleLayouts */
 } MR_Module_Nick;
 
 static  MR_Module_Nick  *MR_module_nicks;
@@ -57,19 +57,19 @@ static  int             MR_module_info_proc_count = 0;
 
 #define INIT_MODULE_TABLE_SIZE  10
 
-static  const MR_Module_Layout
+static  const MR_ModuleLayout
                         *MR_search_module_info_by_name(const char *name);
 static  MR_Dlist        *MR_search_module_info_by_nickname(const char *name);
-static  const MR_Module_Layout
+static  const MR_ModuleLayout
                         *MR_search_module_info_by_unique_name(FILE *fp,
                             const char *name);
 
-static  void            MR_insert_module_info(const MR_Module_Layout *module);
+static  void            MR_insert_module_info(const MR_ModuleLayout *module);
 static  void            MR_process_matching_procedures_in_module(
-                            const MR_Module_Layout *module, MR_Proc_Spec *spec,
-                            void f(void *, const MR_Proc_Layout *),
+                            const MR_ModuleLayout *module, MR_ProcSpec *spec,
+                            void f(void *, const MR_ProcLayout *),
                             void *data);
-static  void            MR_process_line_layouts(const MR_Module_File_Layout
+static  void            MR_process_line_layouts(const MR_ModuleFileLayout
                             *file_layout, int line,
                             MR_file_line_callback callback_func,
                             int callback_arg);
@@ -93,40 +93,37 @@ typedef struct {
     MR_PredFunc MR_complete_pf;
 
                 /*
-                ** The word to complete, with `__'
-                ** translated into '.'.
+                ** The word to complete, with `__' translated into '.'.
                 */
     char        *MR_complete_name;
     int         MR_complete_name_len;
     MR_bool     MR_complete_name_is_qualified;
 
                 /*
-                ** Slot number of a module for which we should
-                ** return all procedures as completions, -1 if
-                ** there is none.
+                ** Slot number of a module for which we should return all
+                ** procedures as completions, -1 if there is none.
                 */
-    int     MR_unambiguous_matching_module;
+    int         MR_unambiguous_matching_module;
 
                 /*
-                ** Length of the part of the word to skip
-                ** when testing for module qualified completions
-                ** in the current module, zero if we shouldn't
-                ** test for module qualified completions in
-                ** the current module.
+                ** Length of the part of the word to skip when testing for module
+                ** qualified completions in the current module, zero if we
+                ** shouldn't test for module qualified completions in the
+                ** current module.
                 */
-    int     MR_complete_word_matches_module;
-    int     MR_complete_current_module;
-    int     MR_complete_current_proc;
-} MR_Proc_Completer_Data;
+    int         MR_complete_word_matches_module;
+    int         MR_complete_current_module;
+    int         MR_complete_current_proc;
+} MR_ProcCompleterData;
 
 static  char    *MR_trace_proc_spec_completer_next(const char *word,
-                    size_t word_len, MR_Completer_Data *completer_data);
+                    size_t word_len, MR_CompleterData *completer_data);
 static  void    MR_trace_proc_spec_completer_init_module(
-                    MR_Proc_Completer_Data *data);
-static  char    *MR_trace_complete_proc(MR_Proc_Completer_Data *data);
+                    MR_ProcCompleterData *data);
+static  char    *MR_trace_complete_proc(MR_ProcCompleterData *data);
 static  char    *MR_format_proc_spec_completion(MR_PredFunc pred_or_func,
                     const char *module, const char *name);
-static  void    MR_free_proc_completer_data(MR_Completer_Data completer_data);
+static  void    MR_free_proc_completer_data(MR_CompleterData completer_data);
 
 void
 MR_register_all_modules_and_procs(FILE *fp, MR_bool verbose)
@@ -159,7 +156,7 @@ MR_register_all_modules_and_procs(FILE *fp, MR_bool verbose)
 }
 
 void
-MR_register_module_layout_real(const MR_Module_Layout *module)
+MR_register_module_layout_real(const MR_ModuleLayout *module)
 {
     /*
     ** MR_register_module_layout_real should only be called from
@@ -187,7 +184,7 @@ MR_register_module_layout_real(const MR_Module_Layout *module)
     }
 }
 
-static const MR_Module_Layout *
+static const MR_ModuleLayout *
 MR_search_module_info_by_name(const char *name)
 {
     int     slot;
@@ -217,10 +214,10 @@ MR_search_module_info_by_nickname(const char *name)
     }
 }
 
-static const MR_Module_Layout *
+static const MR_ModuleLayout *
 MR_search_module_info_by_unique_name(FILE *fp, const char *name)
 {
-    const MR_Module_Layout  *module;
+    const MR_ModuleLayout   *module;
     const MR_Dlist          *modules;
     const MR_Dlist          *element_ptr;
 
@@ -235,13 +232,13 @@ MR_search_module_info_by_unique_name(FILE *fp, const char *name)
             fprintf(fp, "Module name `%s' is ambiguous.\n", name);
             fprintf(fp, "The matches are:\n");
             MR_for_dlist (element_ptr, modules) {
-                module = (const MR_Module_Layout *) MR_dlist_data(element_ptr);
+                module = (const MR_ModuleLayout *) MR_dlist_data(element_ptr);
                 fprintf(fp, "%s\n", module->MR_ml_name);
             }
 
             return NULL;
         } else {
-            module = (const MR_Module_Layout *) MR_dlist_first(modules);
+            module = (const MR_ModuleLayout *) MR_dlist_first(modules);
         }
     }
 
@@ -249,7 +246,7 @@ MR_search_module_info_by_unique_name(FILE *fp, const char *name)
 }
 
 static void
-MR_insert_module_info(const MR_Module_Layout *module)
+MR_insert_module_info(const MR_ModuleLayout *module)
 {
     int         slot;
     MR_bool     found;
@@ -285,8 +282,9 @@ void
 MR_process_file_line_layouts(const char *file, int line,
     MR_file_line_callback callback_func, int callback_arg)
 {
-    int                         i, j;
-    const MR_Module_File_Layout *file_layout;
+    const MR_ModuleFileLayout   *file_layout;
+    int                         i;
+    int                         j;
 
     for (i = 0; i < MR_module_info_next; i++) {
         for (j = 0; j < MR_module_infos[i]->MR_ml_filename_count; j++) {
@@ -300,7 +298,7 @@ MR_process_file_line_layouts(const char *file, int line,
 }
 
 static void
-MR_process_line_layouts(const MR_Module_File_Layout *file_layout, int line,
+MR_process_line_layouts(const MR_ModuleFileLayout *file_layout, int line,
     MR_file_line_callback callback_func, int callback_arg)
 {
     int         k;
@@ -333,9 +331,10 @@ void
 MR_dump_module_tables(FILE *fp, MR_bool separate, MR_bool uci,
     char *module_name)
 {
-    int                     i, j;
-    const MR_Module_Layout  *module;
-    const MR_Proc_Layout    *proc;
+    const MR_ModuleLayout   *module;
+    const MR_ProcLayout     *proc;
+    int                     i;
+    int                     j;
 
     if (module_name != NULL) {
         module = MR_search_module_info_by_unique_name(fp, module_name);
@@ -379,9 +378,9 @@ MR_dump_module_list(FILE *fp)
 void
 MR_dump_module_procs(FILE *fp, const char *name)
 {
-    const MR_Module_Layout  *module;
-    int                     i;
+    const MR_ModuleLayout   *module;
     MR_ConstString          decl_module;
+    int                     i;
 
     module = MR_search_module_info_by_unique_name(fp, name);
     if (module == NULL) {
@@ -458,14 +457,14 @@ MR_module_in_arena(const char *name, char **names, int num_names)
 static int
 MR_compare_proc_layout_by_name(const void *ptr1, const void *ptr2)
 {
-    const MR_Proc_Layout    **proc_addr1;
-    const MR_Proc_Layout    **proc_addr2;
-    const MR_Proc_Layout    *proc1;
-    const MR_Proc_Layout    *proc2;
+    const MR_ProcLayout     **proc_addr1;
+    const MR_ProcLayout     **proc_addr2;
+    const MR_ProcLayout     *proc1;
+    const MR_ProcLayout     *proc2;
     int                     result;
 
-    proc_addr1 = (const MR_Proc_Layout **) ptr1;
-    proc_addr2 = (const MR_Proc_Layout **) ptr2;
+    proc_addr1 = (const MR_ProcLayout **) ptr1;
+    proc_addr2 = (const MR_ProcLayout **) ptr2;
     proc1 = *proc_addr1;
     proc2 = *proc_addr2;
 
@@ -615,9 +614,9 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
     int                         num_functors;
     int                         next_proc_num;
     int                         procs_in_module;
-    const MR_Module_Layout      *module;
-    const MR_Proc_Layout        **procs;
-    const MR_Proc_Layout        *cur_proc;
+    const MR_ModuleLayout       *module;
+    const MR_ProcLayout         **procs;
+    const MR_ProcLayout         *cur_proc;
     MR_TypeCtorInfo             *type_ctors;
     MR_TypeCtorInfo             type_ctor_info;
     MR_FunctorTypeCtor          *functors;
@@ -651,7 +650,7 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
     ** procedures.
     */
 
-    procs = malloc(sizeof(const MR_Proc_Layout *) * num_procs);
+    procs = malloc(sizeof(const MR_ProcLayout *) * num_procs);
     if (procs == NULL) {
         fprintf(MR_mdb_err, "Error: could not allocate sufficient memory\n");
         return;
@@ -681,7 +680,7 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
     }
 
     num_procs = next_proc_num;
-    qsort(procs, num_procs, sizeof(const MR_Proc_Layout *),
+    qsort(procs, num_procs, sizeof(const MR_ProcLayout *),
         MR_compare_proc_layout_by_name);
 
     if (print_procs) {
@@ -1020,7 +1019,7 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
 }
 
 MR_bool
-MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
+MR_parse_proc_spec(char *str, MR_ProcSpec *spec)
 {
     char    *dash;
     char    *start;
@@ -1033,7 +1032,7 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
     spec->MR_proc_name   = NULL;
     spec->MR_proc_arity  = -1;
     spec->MR_proc_mode   = -1;
-    spec->MR_proc_prefix = (MR_Proc_Prefix) -1;
+    spec->MR_proc_prefix = (MR_ProcPrefix) -1;
 
     len = strlen(str);
 
@@ -1199,21 +1198,21 @@ MR_parse_trailing_number(char *start, char **end, int *number)
 #define MR_INIT_MATCH_PROC_SIZE     8
 
 static void
-MR_register_matches(void *data, const MR_Proc_Layout *entry)
+MR_register_matches(void *data, const MR_ProcLayout *entry)
 {
-    MR_Matches_Info *m;
+    MR_MatchesInfo *m;
 
-    m = (MR_Matches_Info *) data;
-    MR_ensure_room_for_next(m->match_proc, const MR_Proc_Layout *,
+    m = (MR_MatchesInfo *) data;
+    MR_ensure_room_for_next(m->match_proc, const MR_ProcLayout *,
         MR_INIT_MATCH_PROC_SIZE);
     m->match_procs[m->match_proc_next] = entry;
     m->match_proc_next++;
 }
 
-MR_Matches_Info
-MR_search_for_matching_procedures(MR_Proc_Spec *spec)
+MR_MatchesInfo
+MR_search_for_matching_procedures(MR_ProcSpec *spec)
 {
-    MR_Matches_Info m;
+    MR_MatchesInfo m;
 
     m.match_procs = NULL;
     m.match_proc_max = 0;
@@ -1228,16 +1227,16 @@ MR_search_for_matching_procedures(MR_Proc_Spec *spec)
 */
 
 typedef struct {
-    const MR_Proc_Layout    *matching_entry;
+    const MR_ProcLayout     *matching_entry;
     MR_bool                 match_unique;
-} MR_Match_Info;
+} MR_MatchInfo;
 
 static void
-MR_register_match(void *data, const MR_Proc_Layout *entry)
+MR_register_match(void *data, const MR_ProcLayout *entry)
 {
-    MR_Match_Info   *m;
+    MR_MatchInfo   *m;
 
-    m = (MR_Match_Info *) data;
+    m = (MR_MatchInfo *) data;
     if (m->matching_entry == NULL) {
         m->matching_entry = entry;
     } else {
@@ -1245,10 +1244,10 @@ MR_register_match(void *data, const MR_Proc_Layout *entry)
     }
 }
 
-const MR_Proc_Layout *
-MR_search_for_matching_procedure(MR_Proc_Spec *spec, MR_bool *unique)
+const MR_ProcLayout *
+MR_search_for_matching_procedure(MR_ProcSpec *spec, MR_bool *unique)
 {
-    MR_Match_Info   m;
+    MR_MatchInfo   m;
 
     m.matching_entry = NULL;
     m.match_unique = MR_TRUE;
@@ -1258,11 +1257,11 @@ MR_search_for_matching_procedure(MR_Proc_Spec *spec, MR_bool *unique)
 }
 
 void
-MR_process_matching_procedures(MR_Proc_Spec *spec,
-    void f(void *, const MR_Proc_Layout *), void *data)
+MR_process_matching_procedures(MR_ProcSpec *spec,
+    void f(void *, const MR_ProcLayout *), void *data)
 {
     if (spec->MR_proc_module != NULL) {
-        const MR_Module_Layout  *module;
+        const MR_ModuleLayout   *module;
 
         module = MR_search_module_info_by_name(spec->MR_proc_module);
         if (module != NULL) {
@@ -1273,7 +1272,7 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 
             modules = MR_search_module_info_by_nickname(spec->MR_proc_module);
             MR_for_dlist (element_ptr, modules) {
-                module = (const MR_Module_Layout *) MR_dlist_data(element_ptr);
+                module = (const MR_ModuleLayout *) MR_dlist_data(element_ptr);
                 MR_process_matching_procedures_in_module(module, spec, f,
                     data);
             }
@@ -1331,10 +1330,10 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
     ))
 
 static void
-MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
-    MR_Proc_Spec *spec, void f(void *, const MR_Proc_Layout *), void *data)
+MR_process_matching_procedures_in_module(const MR_ModuleLayout *module,
+    MR_ProcSpec *spec, void f(void *, const MR_ProcLayout *), void *data)
 {
-    const MR_Proc_Layout    *proc;
+    const MR_ProcLayout     *proc;
     int                     j;
 
     for (j = 0; j < module->MR_ml_proc_count; j++) {
@@ -1360,11 +1359,11 @@ MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
 }
 
 void
-MR_filter_user_preds(MR_Matches_Info *matches)
+MR_filter_user_preds(MR_MatchesInfo *matches)
 {
+    const MR_ProcLayout     *entry;
     int                     filter_pos;
     int                     i;
-    const MR_Proc_Layout    *entry;
 
     filter_pos = 0;
     for(i = 0; i < matches->match_proc_next; i++) {
@@ -1379,7 +1378,7 @@ MR_filter_user_preds(MR_Matches_Info *matches)
     matches->match_proc_next = filter_pos;
 }
 
-MR_Completer_List *
+MR_CompleterList *
 MR_trace_module_completer(const char *word, size_t word_len)
 {
     return MR_trace_sorted_array_completer(word, word_len, MR_module_info_next,
@@ -1392,16 +1391,16 @@ MR_get_module_info_name(int slot)
     return (char *) MR_module_infos[slot]->MR_ml_name;
 }
 
-MR_Completer_List *
+MR_CompleterList *
 MR_trace_proc_spec_completer(const char *word, size_t word_len)
 {
-    MR_Proc_Completer_Data  *data;
+    MR_ProcCompleterData    *data;
     int                     slot;
     MR_bool                 found;
 
     MR_register_all_modules_and_procs(MR_mdb_out, MR_FALSE);
 
-    data = MR_NEW(MR_Proc_Completer_Data);
+    data = MR_NEW(MR_ProcCompleterData);
 
     if (MR_strneq(word, "pred*", 5)) {
         data->MR_complete_pf = MR_PREDICATE;
@@ -1463,21 +1462,21 @@ MR_trace_proc_spec_completer(const char *word, size_t word_len)
     }
 
     return MR_new_completer_elem(MR_trace_proc_spec_completer_next,
-        (MR_Completer_Data) data, MR_free_proc_completer_data);
+        (MR_CompleterData) data, MR_free_proc_completer_data);
 }
 
 static char *
 MR_trace_proc_spec_completer_next(const char *dont_use_this_word,
-    size_t dont_use_this_len, MR_Completer_Data *completer_data)
+    size_t dont_use_this_len, MR_CompleterData *completer_data)
 {
-    MR_Proc_Completer_Data  *data;
+    MR_ProcCompleterData    *data;
     char                    *name;
     size_t                  name_len;
     const char              *module_name;
     int                     module_name_len;
     char                    *completion;
 
-    data = (MR_Proc_Completer_Data *) *completer_data;
+    data = (MR_ProcCompleterData *) *completer_data;
 
     name = data->MR_complete_name;
     name_len = data->MR_complete_name_len;
@@ -1486,8 +1485,7 @@ try_completion:
     if (data->MR_complete_current_module == -1 ||
         data->MR_complete_current_proc == -1 ||
         data->MR_complete_current_proc >=
-            MR_module_infos[data->MR_complete_current_module]
-            ->MR_ml_proc_count)
+            MR_module_infos[data->MR_complete_current_module]->MR_ml_proc_count)
     {
         /*
         ** Move on to the next module.
@@ -1533,7 +1531,7 @@ try_completion:
 */
 
 static void
-MR_trace_proc_spec_completer_init_module(MR_Proc_Completer_Data *data)
+MR_trace_proc_spec_completer_init_module(MR_ProcCompleterData *data)
 {
     char    *name;
     size_t  name_len;
@@ -1598,7 +1596,7 @@ MR_trace_proc_spec_completer_init_module(MR_Proc_Completer_Data *data)
 */
 
 static char *
-MR_trace_complete_proc(MR_Proc_Completer_Data *data)
+MR_trace_complete_proc(MR_ProcCompleterData *data)
 {
     char                    *completion;
     char                    *name;
@@ -1606,8 +1604,8 @@ MR_trace_complete_proc(MR_Proc_Completer_Data *data)
     char                    *unqualified_name;
     int                     unqualified_name_len;
     char                    *complete_module;
-    const MR_Module_Layout  *module_layout;
-    const MR_Proc_Layout    *proc_layout;
+    const MR_ModuleLayout   *module_layout;
+    const MR_ProcLayout     *proc_layout;
 
     name = data->MR_complete_name;
     name_len = data->MR_complete_name_len;
@@ -1703,25 +1701,25 @@ MR_format_proc_spec_completion(MR_PredFunc pred_or_func,
 }
 
 static void
-MR_free_proc_completer_data(MR_Completer_Data completer_data)
+MR_free_proc_completer_data(MR_CompleterData completer_data)
 {
-    MR_Proc_Completer_Data *data;
+    MR_ProcCompleterData    *data;
 
-    data = (MR_Proc_Completer_Data *) completer_data;
+    data = (MR_ProcCompleterData *) completer_data;
 
     MR_free(data->MR_complete_name);
     MR_free(data);
 }
 
 void
-MR_print_proc_id_and_nl(FILE *fp, const MR_Proc_Layout *entry_layout)
+MR_print_proc_id_and_nl(FILE *fp, const MR_ProcLayout *entry_layout)
 {
     MR_print_proc_id(fp, entry_layout);
     fprintf(fp, "\n");
 }
 
 MR_ConstString
-MR_get_proc_decl_module(const MR_Proc_Layout *proc)
+MR_get_proc_decl_module(const MR_ProcLayout *proc)
 {
     if (MR_PROC_LAYOUT_IS_UCI(proc)) {
         return (&proc->MR_sle_uci)->MR_uci_type_module;
@@ -1731,7 +1729,7 @@ MR_get_proc_decl_module(const MR_Proc_Layout *proc)
 }
 
 void
-MR_print_pred_id_and_nl(FILE *fp, const MR_Proc_Layout *entry_layout)
+MR_print_pred_id_and_nl(FILE *fp, const MR_ProcLayout *entry_layout)
 {
     MR_print_pred_id(fp, entry_layout);
     fprintf(fp, "\n");
@@ -1740,8 +1738,8 @@ MR_print_pred_id_and_nl(FILE *fp, const MR_Proc_Layout *entry_layout)
 void
 MR_proc_layout_stats(FILE *fp)
 {
-    const MR_Module_Layout      *module_layout;
-    const MR_Proc_Layout        *proc_layout;
+    const MR_ModuleLayout       *module_layout;
+    const MR_ProcLayout         *proc_layout;
     int                         module_num, proc_num;
     MR_Determinism              detism;
     int                         total;
@@ -1782,13 +1780,13 @@ MR_proc_layout_stats(FILE *fp)
 void
 MR_label_layout_stats(FILE *fp)
 {
-    const MR_Module_Layout      *module_layout;
-    const MR_Module_File_Layout *file_layout;
-    const MR_Label_Layout       *label_layout;
+    const MR_ModuleLayout       *module_layout;
+    const MR_ModuleFileLayout   *file_layout;
+    const MR_LabelLayout        *label_layout;
     int                         module_num;
     int                         file_num;
     int                         label_num;
-    MR_Trace_Port               port;
+    MR_TracePort                port;
     int                         total;
     int                         histogram[MR_PORT_NUM_PORTS];
 
@@ -1804,8 +1802,7 @@ MR_label_layout_stats(FILE *fp)
             file_num < module_layout->MR_ml_filename_count;
             file_num++)
         {
-            file_layout = module_layout->
-                MR_ml_module_file_layout[file_num];
+            file_layout = module_layout->MR_ml_module_file_layout[file_num];
 
             for (label_num = 0;
                 label_num < file_layout->MR_mfl_label_count;
@@ -1833,8 +1830,8 @@ MR_label_layout_stats(FILE *fp)
 void
 MR_var_name_stats(FILE *fp)
 {
-    const MR_Module_Layout      *module_layout;
-    const MR_Proc_Layout        *proc_layout;
+    const MR_ModuleLayout       *module_layout;
+    const MR_ProcLayout         *proc_layout;
     const MR_uint_least32_t     *var_names;
     int                         module_num;
     int                         proc_num;

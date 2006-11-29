@@ -64,7 +64,7 @@ ENDINIT
         csd = MR_next_call_site_dynamic;                                      \
         pd = csd->MR_csd_callee_ptr;                                          \
         if (pd == NULL) {                                                     \
-            MR_new_proc_dynamic(pd, (MR_Proc_Layout *) &pl);                  \
+            MR_new_proc_dynamic(pd, (MR_ProcLayout *) &pl);                  \
             csd->MR_csd_callee_ptr = pd;                                      \
             maybe_incr_prof_call_builtin_new();                               \
         } else {                                                              \
@@ -797,8 +797,8 @@ MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
 {
     MR_Closure_Layout   *x_layout;
     MR_Closure_Layout   *y_layout;
-    MR_Proc_Id          *x_proc_id;
-    MR_Proc_Id          *y_proc_id;
+    MR_ProcId           *x_proc_id;
+    MR_ProcId           *y_proc_id;
     MR_ConstString      x_module_name;
     MR_ConstString      y_module_name;
     MR_ConstString      x_pred_name;
@@ -924,7 +924,7 @@ MR_make_closure(MR_Code *proc_addr)
     static  int                 closure_counter = 0;
     MR_Closure                  *closure;
     MR_Word                     closure_word;
-    MR_Closure_Id               *closure_id;
+    MR_ClosureId                *closure_id;
     MR_Closure_Dyn_Link_Layout  *closure_layout;
     char                        buf[80];
     int                         num_hidden_args;
@@ -941,9 +941,9 @@ MR_make_closure(MR_Code *proc_addr)
     */
 
     /*
-    ** Construct the MR_Closure_Id.
+    ** Construct the MR_ClosureId.
     */
-    MR_incr_hp_type(closure_id, MR_Closure_Id);
+    MR_incr_hp_type(closure_id, MR_ClosureId);
     closure_id->MR_closure_proc_id.MR_proc_user.MR_user_pred_or_func =
         MR_PREDICATE;
     closure_id->MR_closure_proc_id.MR_proc_user.MR_user_decl_module =

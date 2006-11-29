@@ -55,14 +55,14 @@ typedef enum {
     MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_CALLER_PRINT),
     MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_CALLER_BROWSE),
     MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_CALLER_PRINT_ALL)
-} MR_Browse_Caller_Type;
+} MR_BrowseCallerType;
 
 typedef enum {
     MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_FORMAT_FLAT),
     MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_FORMAT_RAW_PRETTY),
     MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_FORMAT_VERBOSE),
     MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_FORMAT_PRETTY)
-} MR_Browse_Format;
+} MR_BrowseFormat;
 
 /*
 ** This value must be different from any of the MR_BROWSE_FORMAT_* values.
@@ -71,24 +71,24 @@ typedef enum {
 #define MR_BROWSE_DEFAULT_FORMAT    -1
 
 /*
-** If *str represents a value of type MR_Browse_Format, set *format to that
+** If *str represents a value of type MR_BrowseFormat, set *format to that
 ** value.
 */
 
 extern  MR_bool     MR_trace_is_portray_format(const char *str,
-                        MR_Browse_Format *format);
+                        MR_BrowseFormat *format);
 
 /*
 ** Interactively browse a term.
 */
 
 extern  void        MR_trace_browse(MR_Word type_info, MR_Word value,
-                        MR_Browse_Format format);
+                        MR_BrowseFormat format);
 extern  void        MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list,
-                        MR_Word is_func, MR_Browse_Format format);
+                        MR_Word is_func, MR_BrowseFormat format);
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 extern  void        MR_trace_browse_external(MR_Word type_info, MR_Word value,
-                        MR_Browse_Caller_Type caller, MR_Browse_Format format);
+                        MR_BrowseCallerType caller, MR_BrowseFormat format);
 #endif
 
 /*
@@ -102,10 +102,10 @@ extern  void        MR_trace_save_and_invoke_xml_browser(MR_Word browser_term);
 */
 
 extern  void        MR_trace_print(MR_Word type_info, MR_Word value,
-                        MR_Browse_Caller_Type caller, MR_Browse_Format format);
+                        MR_BrowseCallerType caller, MR_BrowseFormat format);
 extern  void        MR_trace_print_goal(MR_ConstString name, MR_Word arg_list,
-                        MR_Word is_func, MR_Browse_Caller_Type caller,
-                        MR_Browse_Format format);
+                        MR_Word is_func, MR_BrowseCallerType caller,
+                        MR_BrowseFormat format);
 
 
 /*
@@ -132,13 +132,13 @@ typedef enum {
     MR_DEFINE_MERCURY_ENUM_CONST(MR_NORMAL_QUERY),
     MR_DEFINE_MERCURY_ENUM_CONST(MR_CC_QUERY),
     MR_DEFINE_MERCURY_ENUM_CONST(MR_IO_QUERY)
-} MR_Query_Type;
+} MR_QueryType;
 
-extern  void        MR_trace_query(MR_Query_Type type, const char *options,
+extern  void        MR_trace_query(MR_QueryType type, const char *options,
                         int num_imports, /* const */ char *imports[]);
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-extern  void        MR_trace_query_external(MR_Query_Type type,
+extern  void        MR_trace_query_external(MR_QueryType type,
                         MR_String options, int num_imports,
                         MR_Word imports_list);
 #endif

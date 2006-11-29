@@ -28,10 +28,10 @@
 
 #ifdef MR_DEEP_PROFILING
 {
-    MR_CallSiteDynamic  *csd;
+    MR_CallSiteDynamic      *csd;
     const MR_ProcDynamic    *pd;
-    const MR_Proc_Layout    *pl;
-    MR_ProcStatic       *ps;
+    const MR_ProcLayout     *pl;
+    MR_ProcStatic           *ps;
 
   #ifdef MR_EXEC_TRACE
     if (! MR_disable_deep_profiling_in_debugger) {

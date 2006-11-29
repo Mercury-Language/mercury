@@ -228,7 +228,7 @@ MR_trace_add_help_word(const char *word)
     }
 }
 
-MR_Completer_List *
+MR_CompleterList *
 MR_trace_help_completer(const char *word, size_t word_len)
 {
     return MR_trace_sorted_array_completer(word, word_len,

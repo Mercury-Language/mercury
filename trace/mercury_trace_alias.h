@@ -83,7 +83,7 @@ extern  void        MR_trace_expand_aliases(char ***words, int *word_max,
                         int *word_count);
 
 /* A Readline completer for aliases. */ 
-extern  MR_Completer_List
+extern  MR_CompleterList
                     *MR_trace_alias_completer(const char *word,
                         size_t word_length);
 

@@ -12,7 +12,7 @@
 #include "mercury_stack_trace.h"    /* for MR_Context_Position  */
 
 #include "mercury_trace_cmds.h"
-#include "mercury_trace_spy.h"      /* for MR_Spy_When          */
+#include "mercury_trace_spy.h"      /* for MR_SpyWhen          */
 
 /*
 ** Options to pass to mmc when compiling queries.
@@ -25,7 +25,7 @@ extern  char                *MR_mmc_options;
 ** we don't stop.
 */
 
-extern  MR_Trace_Print_Level MR_default_print_level;
+extern  MR_TracePrintLevel MR_default_print_level;
 
 /*
 ** These variables say (a) whether the printing of event sequences will pause
@@ -80,7 +80,7 @@ extern  char                *MR_dice_fail_trace_counts_file;
 ** and if so, where.
 */
 
-extern  MR_Context_Position MR_context_position;
+extern  MR_ContextPosition  MR_context_position;
 
 /*
 ** MR_print_goal_paths specifies whether we print goal paths at events.
@@ -104,7 +104,7 @@ extern  void                MR_trace_listing_path_ensure_init(void);
 
 extern  int                 MR_num_context_lines;
 
-extern  MR_Spy_When         MR_default_breakpoint_scope;
+extern  MR_SpyWhen          MR_default_breakpoint_scope;
 
 extern  MR_TraceCmdFunc     MR_trace_cmd_mmc_options;
 extern  MR_TraceCmdFunc     MR_trace_cmd_printlevel;

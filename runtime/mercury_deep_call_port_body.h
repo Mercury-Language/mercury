@@ -38,7 +38,7 @@
 #ifdef MR_DEEP_PROFILING
 {
     MR_CallSiteDynamic      *csd;
-    const MR_Proc_Layout    *pl;
+    const MR_ProcLayout     *pl;
     MR_ProcStatic           *ps;
 
   #ifdef MR_EXEC_TRACE
@@ -59,7 +59,7 @@
         fprintf(MR_deep_prof_log_file, "callport(%ld,%ld,%ld).\n",
             (long) MR_current_call_site_dynamic,
             (long) MR_next_call_site_dynamic,
-            (long) ((const MR_Proc_Layout *) ProcLayout)->MR_sle_proc_static);
+            (long) ((const MR_ProcLayout *) ProcLayout)->MR_sle_proc_static);
         fflush(MR_deep_prof_log_file);
     }
   #endif
@@ -91,7 +91,7 @@
     MR_next_call_site_dynamic = NULL;
   #endif
 
-    pl = (const MR_Proc_Layout *) ProcLayout;
+    pl = (const MR_ProcLayout *) ProcLayout;
     MR_deep_assert(csd, pl, NULL, pl != NULL);
     ps = pl->MR_sle_proc_static;
     MR_deep_assert(csd, pl, ps, ps != NULL);

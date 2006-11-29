@@ -32,24 +32,24 @@
 /****************************************************************************/
 
 MR_Next
-MR_trace_cmd_query(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_query(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_trace_query(MR_NORMAL_QUERY, MR_mmc_options, word_count - 1, words + 1);
     return KEEP_INTERACTING;
 }
 
 MR_Next
-MR_trace_cmd_cc_query(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_cc_query(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_trace_query(MR_CC_QUERY, MR_mmc_options, word_count - 1, words + 1);
     return KEEP_INTERACTING;
 }
 
 MR_Next
-MR_trace_cmd_io_query(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_io_query(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_trace_query(MR_IO_QUERY, MR_mmc_options, word_count - 1, words + 1);
     return KEEP_INTERACTING;

@@ -52,58 +52,58 @@
 #define MERCURY_TRACE_VARS_H
 
 #include "mercury_types.h"              /* for MR_Word etc         */
-#include "mercury_stack_layout.h"       /* for MR_Label_Layout etc */
+#include "mercury_stack_layout.h"       /* for MR_LabelLayout etc */
 #include "mercury_type_info.h"          /* for MR_TypeInfo         */
-#include "mercury_trace_base.h"         /* for MR_Trace_Port       */
+#include "mercury_trace_base.h"         /* for MR_TracePort       */
 #include "mercury_trace_browse.h"       /* for MR_Browser          */
-#include "mercury_trace_completion.h"   /* for MR_Completer_List   */
+#include "mercury_trace_completion.h"   /* for MR_CompleterList   */
 #include <stdio.h>
 
 typedef void    (*MR_Browser)(MR_Word type_info, MR_Word value,
-                    MR_Browse_Caller_Type caller, MR_Browse_Format format);
+                    MR_BrowseCallerType caller, MR_BrowseFormat format);
 
 typedef void    (*MR_GoalBrowser)(MR_ConstString name, MR_Word arg_list,
-                    MR_Word is_func, MR_Browse_Caller_Type caller,
-                    MR_Browse_Format format);
+                    MR_Word is_func, MR_BrowseCallerType caller,
+                    MR_BrowseFormat format);
 
 typedef enum {
     MR_VAR_SPEC_NUMBER,
     MR_VAR_SPEC_NAME,
     MR_VAR_SPEC_HELD_NAME,
     MR_VAR_SPEC_ATTRIBUTE
-} MR_Var_Spec_Kind;
+} MR_VarSpecKind;
 
 typedef struct {
-    MR_Var_Spec_Kind    MR_var_spec_kind;
+    MR_VarSpecKind      MR_var_spec_kind;
     int                 MR_var_spec_number; /* valid if NUMBER */
     const char          *MR_var_spec_name;  /* valid if NAME, HELD_NAME */
                                             /* or ATTRIBUTE */
-} MR_Var_Spec;
+} MR_VarSpec;
 
 /*
-** This function converts a variable name or variable number to MR_Var_Spec
+** This function converts a variable name or variable number to MR_VarSpec
 ** format.
 */
 
 extern  void        MR_convert_arg_to_var_spec(const char *word_spec,
-                        MR_Var_Spec *var_spec);
+                        MR_VarSpec *var_spec);
 
 /*
 ** These functions are documented near the top of this file.
 */
 
-extern  void        MR_trace_init_point_vars(const MR_Label_Layout *top_layout,
-                        MR_Word *saved_regs, MR_Trace_Port port,
+extern  void        MR_trace_init_point_vars(const MR_LabelLayout *top_layout,
+                        MR_Word *saved_regs, MR_TracePort port,
                         MR_bool print_optionals);
 extern  const char  *MR_trace_set_level(int ancestor_level,
                         MR_bool print_optionals);
 extern  const char  *MR_trace_set_level_from_layout(
-                        const MR_Label_Layout *level_layout,
+                        const MR_LabelLayout *level_layout,
                         MR_Word *base_sp, MR_Word *base_curfr,
                         int ancestor_level, MR_bool print_optionals);
 extern  int         MR_trace_current_level(void);
 extern  void        MR_trace_current_level_details(
-                        const MR_Proc_Layout **entry_ptr,
+                        const MR_ProcLayout **entry_ptr,
                         const char **filename_ptr, int *linenumber_ptr,
                         MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr);
 
@@ -165,8 +165,8 @@ extern  const char  *MR_trace_headvar_num(int n, int *num);
 */
 
 extern  const char  *MR_trace_browse_one_goal(FILE *out,
-                        MR_GoalBrowser browser, MR_Browse_Caller_Type caller,
-                        MR_Browse_Format format);
+                        MR_GoalBrowser browser, MR_BrowseCallerType caller,
+                        MR_BrowseFormat format);
 
 /*
 ** Print I/O action <action_number> as a goal.
@@ -178,8 +178,8 @@ extern  const char  *MR_trace_browse_one_goal(FILE *out,
 */
 
 extern  const char  *MR_trace_browse_action(FILE *out, int action_number,
-                        MR_GoalBrowser browser, MR_Browse_Caller_Type caller,
-                        MR_Browse_Format format);
+                        MR_GoalBrowser browser, MR_BrowseCallerType caller,
+                        MR_BrowseFormat format);
 
 /*
 ** Parse the given word into a variable specification and the specification
@@ -190,7 +190,7 @@ extern  const char  *MR_trace_browse_action(FILE *out, int action_number,
 */
 
 extern  const char  *MR_trace_parse_var_path(char *word_spec,
-                        MR_Var_Spec *var_spec, char **path);
+                        MR_VarSpec *var_spec, char **path);
 
 /*
 ** Parse the given word into a variable specification and the specification
@@ -223,8 +223,8 @@ extern  const char  *MR_trace_parse_lookup_var_path(char *word_spec,
 
 extern  const char  *MR_trace_parse_browse_one(FILE *out,
                         MR_bool print_var_name, char *word_spec,
-                        MR_Browser browser, MR_Browse_Caller_Type caller,
-                        MR_Browse_Format format, MR_bool must_be_unique);
+                        MR_Browser browser, MR_BrowseCallerType caller,
+                        MR_BrowseFormat format, MR_bool must_be_unique);
 
 /*
 ** Print the (name and) value of the specified variable.
@@ -237,8 +237,8 @@ extern  const char  *MR_trace_parse_browse_one(FILE *out,
 */
 
 extern  const char  *MR_trace_browse_one(FILE *out, MR_bool print_var_name,
-                        MR_Var_Spec var_spec, MR_Browser browser,
-                        MR_Browse_Caller_Type caller, MR_Browse_Format format,
+                        MR_VarSpec var_spec, MR_Browser browser,
+                        MR_BrowseCallerType caller, MR_BrowseFormat format,
                         MR_bool must_be_unique);
 
 /*
@@ -251,7 +251,7 @@ extern  const char  *MR_trace_browse_one(FILE *out, MR_bool print_var_name,
 */
 
 extern  const char  *MR_trace_browse_all(FILE *out, MR_Browser browser,
-                        MR_Browse_Format format);
+                        MR_BrowseFormat format);
 
 
 /*
@@ -263,7 +263,7 @@ extern  const char  *MR_trace_browse_all(FILE *out, MR_Browser browser,
 */
 
 extern  const char  *MR_trace_browse_all_on_level(FILE *out,
-                        const MR_Label_Layout *level_layout,
+                        const MR_LabelLayout *level_layout,
                         MR_Word *base_sp, MR_Word *base_curfr,
                         int ancestor_level, MR_bool print_optionals);
 
@@ -275,7 +275,7 @@ extern  const char  *MR_trace_browse_all_on_level(FILE *out,
 ** message if this is not possible.
 */
 
-extern  const char  *MR_lookup_unambiguous_var_spec(MR_Var_Spec var_spec,
+extern  const char  *MR_lookup_unambiguous_var_spec(MR_VarSpec var_spec,
                         MR_TypeInfo *type_info, MR_Word *value,
                         const char **name);
 
@@ -322,7 +322,7 @@ extern  void        MR_convert_goal_to_synthetic_term(const char **functor_ptr,
 ** A Readline completer for variable names.
 */
 
-extern  MR_Completer_List *MR_trace_var_completer(const char *word,
+extern  MR_CompleterList *MR_trace_var_completer(const char *word,
                         size_t word_len);
 
 #ifdef  MR_TRACE_CHECK_INTEGRITY
@@ -332,8 +332,8 @@ extern  MR_Completer_List *MR_trace_var_completer(const char *word,
 ** references to terms with corrupted representations.
 */
 
-extern  void        MR_trace_check_integrity(const MR_Label_Layout *layout,
-                        MR_Trace_Port port);
+extern  void        MR_trace_check_integrity(const MR_LabelLayout *layout,
+                        MR_TracePort port);
 
 #endif  /* MR_TRACE_CHECK_INTEGRITY */
 

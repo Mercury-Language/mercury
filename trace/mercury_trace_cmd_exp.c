@@ -54,7 +54,7 @@ static  MR_bool     MR_trace_options_dice(char **pass_trace_counts_file,
 
 MR_Next
 MR_trace_cmd_histogram_all(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
 #ifdef  MR_TRACE_HISTOGRAM
 
@@ -92,7 +92,7 @@ MR_trace_cmd_histogram_all(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_histogram_exp(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
 #ifdef  MR_TRACE_HISTOGRAM
 
@@ -130,7 +130,7 @@ MR_trace_cmd_histogram_exp(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_clear_histogram(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
 #ifdef  MR_TRACE_HISTOGRAM
 
@@ -155,8 +155,8 @@ MR_trace_cmd_clear_histogram(char **words, int word_count,
 }
 
 MR_Next
-MR_trace_cmd_dice(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_dice(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     char    *pass_trace_counts_file;
     char    *fail_trace_counts_file;

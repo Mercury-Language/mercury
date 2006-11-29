@@ -173,7 +173,7 @@ MR_print_r_regs(FILE *fp, MR_Word *saved_regs)
 }
 
 void
-MR_print_debug_vars(FILE *fp, MR_Event_Info *event_info)
+MR_print_debug_vars(FILE *fp, MR_EventInfo *event_info)
 {
 #ifndef MR_HIGHLEVEL_CODE
     fprintf(fp, "from event info:\n");
@@ -190,9 +190,9 @@ MR_print_debug_vars(FILE *fp, MR_Event_Info *event_info)
 }
 
 MR_bool
-MR_trace_proc_layout_is_builtin_catch(const MR_Proc_Layout *layout)
+MR_trace_proc_layout_is_builtin_catch(const MR_ProcLayout *layout)
 {
-    const MR_User_Proc_Id   *user;
+    const MR_UserProcId *user;
 
     if (MR_PROC_LAYOUT_HAS_PROC_ID(layout)) {
         if (! MR_PROC_LAYOUT_IS_UCI(layout)) {

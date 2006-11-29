@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2003, 2005 The University of Melbourne.
+** Copyright (C) 1998-2003, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,7 +12,7 @@
 
 #include "mercury_std.h"
 #include "mercury_types.h"          /* for MR_Word, etc. */
-#include "mercury_stack_layout.h"   /* for MR_Label_Layout, etc. */
+#include "mercury_stack_layout.h"   /* for MR_LabelLayout, etc. */
 #include "mercury_type_info.h"      /* for MR_TypeInfoParams, etc. */
 #include "mercury_ho_call.h"        /* for MR_Closure */
 
@@ -25,17 +25,17 @@ extern  void    MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs);
 extern  void    MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
 
 /*
-** A MR_Label_Layout describes the variables that are live at a given
+** A MR_LabelLayout describes the variables that are live at a given
 ** program point. Some of the types of these variables may contain type
 ** variables. Since the values of those type variables are not known until
-** runtime, the MR_Label_Layout cannot include full typeinfos for the
+** runtime, the MR_LabelLayout cannot include full typeinfos for the
 ** variables. Instead, it contains pseudo-typeinfos, in which some parts
 ** of some typeinfo structures may contain an indication "this data is
 ** not available at compile time, but at runtime it will be in this location".
 **
-** MR_materialize_type_params takes as input a MR_Label_Layout structure.
+** MR_materialize_type_params takes as input a MR_LabelLayout structure.
 ** It returns a vector of typeinfos which has one entry for each
-** type variable in the MR_Label_Layout structure, with this typeinfo
+** type variable in the MR_LabelLayout structure, with this typeinfo
 ** being the value of the corresponding type variable.
 ** Since type variable numbers start at one, the element of this array at
 ** index zero will not have a type_info in it.  We store a dummy type_ctor_info
@@ -52,7 +52,7 @@ extern  void    MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
 ** is non-null.
 **
 ** MR_materialize_closure_type_params does much the same except that
-** it takes an MR_Closure rather than an MR_Label_Layout,
+** it takes an MR_Closure rather than an MR_LabelLayout,
 ** and it gets the type_infos from a closure using the closure_layout,
 ** rather than getting them from the registers/stacks using a label_layout.
 **
@@ -63,10 +63,10 @@ extern  void    MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
 */
 
 extern  MR_TypeInfoParams   MR_materialize_type_params(
-                                const MR_Label_Layout *label_layout,
+                                const MR_LabelLayout *label_layout,
                                 MR_Word *saved_regs);
 extern  MR_TypeInfoParams   MR_materialize_type_params_base(
-                                const MR_Label_Layout *label_layout,
+                                const MR_LabelLayout *label_layout,
                                 MR_Word *saved_regs,
                                 MR_Word *base_sp, MR_Word *base_curfr);
 extern  MR_TypeInfoParams   MR_materialize_closure_type_params(
@@ -75,7 +75,7 @@ extern  MR_TypeInfoParams   MR_materialize_typeclass_info_type_params(
                                 MR_Word typeclass_info,
                                 MR_Closure_Layout *closure_layout);
 extern  MR_TypeInfoParams   MR_materialize_answer_block_type_params(
-                                const MR_Type_Param_Locns *tvar_locns,
+                                const MR_TypeParamLocns *tvar_locns,
                                 MR_Word *answer_block, int block_size);
 
 /*
@@ -83,8 +83,8 @@ extern  MR_TypeInfoParams   MR_materialize_answer_block_type_params(
 ** If it does not, return -1.
 */
 
-extern  int MR_get_register_number_long(MR_Long_Lval locn);
-extern  int MR_get_register_number_short(MR_Short_Lval locn);
+extern  int MR_get_register_number_long(MR_LongLval locn);
+extern  int MR_get_register_number_short(MR_ShortLval locn);
 
 /*
 ** Given an location either in a long or short form, return the value
@@ -99,14 +99,14 @@ extern  int MR_get_register_number_short(MR_Short_Lval locn);
 ** non-null.
 */
 
-extern  MR_Word MR_lookup_long_lval(MR_Long_Lval locn,
+extern  MR_Word MR_lookup_long_lval(MR_LongLval locn,
                     MR_Word *saved_regs, MR_bool *succeeded);
-extern  MR_Word MR_lookup_long_lval_base(MR_Long_Lval locn,
+extern  MR_Word MR_lookup_long_lval_base(MR_LongLval locn,
                     MR_Word *saved_regs, MR_Word *base_sp,
                     MR_Word *base_curfr, MR_bool *succeeded);
-extern  MR_Word MR_lookup_short_lval(MR_Short_Lval locn,
+extern  MR_Word MR_lookup_short_lval(MR_ShortLval locn,
                     MR_Word *saved_regs, MR_bool *succeeded);
-extern  MR_Word MR_lookup_short_lval_base(MR_Short_Lval locn,
+extern  MR_Word MR_lookup_short_lval_base(MR_ShortLval locn,
                     MR_Word *saved_regs, MR_Word *base_sp,
                     MR_Word *base_curfr, MR_bool *succeeded);
 
@@ -135,18 +135,18 @@ extern  MR_Word MR_lookup_short_lval_base(MR_Short_Lval locn,
 ** be allocated on the Mercury heap.
 */
 
-extern  MR_bool MR_get_type_and_value(const MR_Label_Layout *label_layout,
+extern  MR_bool MR_get_type_and_value(const MR_LabelLayout *label_layout,
                     int var, MR_Word *saved_regs, MR_TypeInfo *type_params,
                     MR_TypeInfo *type_info, MR_Word *value);
-extern  MR_bool MR_get_type_and_value_base(const MR_Label_Layout *label_layout,
+extern  MR_bool MR_get_type_and_value_base(const MR_LabelLayout *label_layout,
                     int var, MR_Word *saved_regs,
                     MR_Word *base_sp, MR_Word *base_curfr,
                     MR_TypeInfo *type_params, MR_TypeInfo *type_info,
                     MR_Word *value);
-extern  MR_bool MR_get_type(const MR_Label_Layout *label_layout, int var,
+extern  MR_bool MR_get_type(const MR_LabelLayout *label_layout, int var,
                     MR_Word *saved_regs, MR_TypeInfo *type_params,
                     MR_TypeInfo *type_info);
-extern  MR_bool MR_get_type_base(const MR_Label_Layout *label_layout, int var,
+extern  MR_bool MR_get_type_base(const MR_LabelLayout *label_layout, int var,
                     MR_Word *saved_regs, MR_Word *base_sp,
                     MR_Word *base_curfr, MR_TypeInfo *type_params,
                     MR_TypeInfo *type_info);
@@ -166,7 +166,7 @@ extern  void    MR_write_variable(MR_TypeInfo type_info, MR_Word value);
 ** in *is_func_ptr,
 */
 
-extern  void    MR_generate_proc_name_from_layout(const MR_Proc_Layout
+extern  void    MR_generate_proc_name_from_layout(const MR_ProcLayout
                     *proc_layout, MR_ConstString *proc_name_ptr,
                     int *arity_ptr, MR_Word *is_func_ptr);
 
@@ -177,7 +177,7 @@ extern  void    MR_generate_proc_name_from_layout(const MR_Proc_Layout
 ** or a function.
 */
 
-extern  void    MR_proc_id_arity_addedargs_predfunc(const MR_Proc_Layout *proc,
+extern  void    MR_proc_id_arity_addedargs_predfunc(const MR_ProcLayout *proc,
                     int *arity_ptr, int *num_added_args_ptr,
                     MR_PredFunc *pred_or_func_ptr);
 

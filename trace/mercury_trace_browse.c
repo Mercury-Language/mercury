@@ -132,7 +132,7 @@ MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
 }
 
 MR_bool
-MR_trace_is_portray_format(const char *str, MR_Browse_Format *format)
+MR_trace_is_portray_format(const char *str, MR_BrowseFormat *format)
 {
     *format = MR_BROWSE_DEFAULT_FORMAT;
 
@@ -154,7 +154,7 @@ MR_trace_is_portray_format(const char *str, MR_Browse_Format *format)
 }
 
 void
-MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
+MR_trace_browse(MR_Word type_info, MR_Word value, MR_BrowseFormat format)
 {
     MercuryFile mdb_in;
     MercuryFile mdb_out;
@@ -195,7 +195,7 @@ MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 
 void
 MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
-    MR_Browse_Format format)
+    MR_BrowseFormat format)
 {
     MercuryFile mdb_in;
     MercuryFile mdb_out;
@@ -244,7 +244,7 @@ MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 
 void
 MR_trace_browse_external(MR_Word type_info, MR_Word value,
-        MR_Browse_Caller_Type caller, MR_Browse_Format format)
+        MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     MR_trace_browse_ensure_init();
 
@@ -263,8 +263,8 @@ MR_trace_browse_external(MR_Word type_info, MR_Word value,
 #endif
 
 void
-MR_trace_print(MR_Word type_info, MR_Word value, MR_Browse_Caller_Type caller,
-    MR_Browse_Format format)
+MR_trace_print(MR_Word type_info, MR_Word value, MR_BrowseCallerType caller,
+    MR_BrowseFormat format)
 {
     MercuryFile mdb_out;
     MR_Word     browser_term;
@@ -293,7 +293,7 @@ MR_trace_print(MR_Word type_info, MR_Word value, MR_Browse_Caller_Type caller,
 
 void
 MR_trace_print_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format)
+    MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     MercuryFile mdb_out;
     MR_Word     browser_term;
@@ -361,7 +361,7 @@ MR_trace_browse_ensure_init(void)
 }
 
 void
-MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
+MR_trace_query(MR_QueryType type, const char *options, int num_imports,
     char *imports[])
 {
     MR_ConstString  options_on_heap;
@@ -399,7 +399,7 @@ MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 
 void
-MR_trace_query_external(MR_Query_Type type, MR_String options, int num_imports,
+MR_trace_query_external(MR_QueryType type, MR_String options, int num_imports,
     MR_Word imports_list)
 {
     MR_TRACE_CALL_MERCURY(

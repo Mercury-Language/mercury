@@ -208,16 +208,16 @@ typedef struct MR_TrailEntry_Struct             *MR_TrailEntryPtr;
 typedef struct MR_Closure_Struct                MR_Closure;
 typedef const MR_Closure                        *MR_ClosurePtr;
 
-typedef struct MR_Closure_Id_Struct             MR_Closure_Id;
-typedef struct MR_User_Closure_Id_Struct        MR_User_Closure_Id;
-typedef struct MR_UCI_Closure_Id_Struct         MR_UCI_Closure_Id;
+typedef struct MR_ClosureId_Struct             MR_ClosureId;
+typedef struct MR_UserClosureId_Struct        MR_UserClosureId;
+typedef struct MR_UCIClosureId_Struct         MR_UCIClosureId;
 
-typedef struct MR_Type_Param_Locns_Struct       MR_Type_Param_Locns;
+typedef struct MR_TypeParamLocns_Struct       MR_TypeParamLocns;
 
-typedef struct MR_User_Proc_Id_Struct           MR_User_Proc_Id;
-typedef struct MR_UCI_Proc_Id_Struct            MR_UCI_Proc_Id;
-typedef struct MR_No_Proc_Id_Struct             MR_No_Proc_Id;
-typedef union  MR_Proc_Id_Union                 MR_Proc_Id;
+typedef struct MR_UserProcId_Struct           MR_UserProcId;
+typedef struct MR_UCIProcId_Struct            MR_UCIProcId;
+typedef struct MR_NoProcId_Struct             MR_NoProcId;
+typedef union  MR_ProcId_Union                 MR_ProcId;
 
 typedef struct MR_CallSiteStatic_Struct         MR_CallSiteStatic;
 typedef struct MR_CallSiteDynamic_Struct        MR_CallSiteDynamic;
@@ -229,10 +229,10 @@ typedef struct MR_ProfilingMetrics_Struct       MR_ProfilingMetrics;
 
 typedef struct MR_CallSiteDynList_Struct        MR_CallSiteDynList;
 
-typedef struct MR_Long_Lval_Struct              MR_Long_Lval;
-typedef struct MR_Proc_Layout_Struct            MR_Proc_Layout;
-typedef struct MR_Module_Layout_Struct          MR_Module_Layout;
-typedef struct MR_Label_Layout_Struct           MR_Label_Layout;
+typedef struct MR_LongLval_Struct              MR_LongLval;
+typedef struct MR_ProcLayout_Struct            MR_ProcLayout;
+typedef struct MR_ModuleLayout_Struct          MR_ModuleLayout;
+typedef struct MR_LabelLayout_Struct           MR_LabelLayout;
 typedef struct MR_UserEvent_Struct              MR_UserEvent;
 
 typedef union MR_TableNode_Union                MR_TableNode;

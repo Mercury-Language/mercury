@@ -58,7 +58,7 @@ MR_ProcStatic   MR_main_parent_proc_static =
     -1
 };
 
-MR_Proc_Layout_User MR_main_parent_proc_layout =
+MR_ProcLayoutUser MR_main_parent_proc_layout =
 {
     { MR_do_not_reached, { MR_LONG_LVAL_TYPE_UNKNOWN }, -1, MR_DETISM_DET },
     { MR_PREDICATE, "Mercury runtime", "Mercury runtime",
@@ -74,7 +74,7 @@ MR_CallSiteDynamic  *MR_main_parent_call_site_dynamics[1] =
 
 MR_ProcDynamic      MR_main_parent_proc_dynamic =
 {
-    (MR_Proc_Layout *) &MR_main_parent_proc_layout,
+    (MR_ProcLayout *) &MR_main_parent_proc_layout,
     &MR_main_parent_call_site_dynamics[0]
 };
 
@@ -151,7 +151,7 @@ FILE    *MR_deep_prof_log_file = NULL;
 #endif
 
 void
-MR_deep_assert_failed(const MR_CallSiteDynamic *csd, const MR_Proc_Layout *pl,
+MR_deep_assert_failed(const MR_CallSiteDynamic *csd, const MR_ProcLayout *pl,
     const MR_ProcStatic *ps, const char *cond,
     const char *filename, int linenumber)
 {
@@ -315,7 +315,7 @@ typedef struct {
 static  MR_ProfilingHashTable   *MR_create_hash_table(int size);
 
 static  MR_bool                 MR_insert_proc_layout(
-                                    const MR_Proc_Layout *pl, int *id,
+                                    const MR_ProcLayout *pl, int *id,
                                     MR_bool *already_written,
                                     MR_bool init_written);
 static  MR_bool                 MR_insert_proc_dynamic(
@@ -332,7 +332,7 @@ static  MR_bool                 MR_insert_call_site_dynamic(
                                     MR_bool init_written);
 
 static  void                    MR_flag_written_proc_layout(
-                                    const MR_Proc_Layout *pl);
+                                    const MR_ProcLayout *pl);
 static  void                    MR_flag_written_proc_dynamic(
                                     const MR_ProcDynamic *pd);
 static  void                    MR_flag_written_call_site_static(
@@ -372,7 +372,7 @@ MR_write_out_profiling_tree(void)
 {
     int                     i;
     MR_ProfilingHashNode    *n;
-    MR_Proc_Id              *pid;
+    MR_ProcId               *pid;
     int                     root_pd_id;
     FILE                    *fp;
     int                     ticks_per_sec;
@@ -659,15 +659,15 @@ MR_write_out_id_string(FILE *fp)
 }
 
 void
-MR_write_out_user_proc_static(FILE *fp, const MR_Proc_Layout_User *proc_layout)
+MR_write_out_user_proc_static(FILE *fp, const MR_ProcLayoutUser *proc_layout)
 {
-    MR_write_out_proc_static(fp, (const MR_Proc_Layout *) proc_layout);
+    MR_write_out_proc_static(fp, (const MR_ProcLayout *) proc_layout);
 }
 
 void
-MR_write_out_uci_proc_static(FILE *fp, const MR_Proc_Layout_UCI *proc_layout)
+MR_write_out_uci_proc_static(FILE *fp, const MR_ProcLayoutUCI *proc_layout)
 {
-    MR_write_out_proc_static(fp, (const MR_Proc_Layout *) proc_layout);
+    MR_write_out_proc_static(fp, (const MR_ProcLayout *) proc_layout);
 }
 
 #ifdef  MR_DEEP_PROFILING_LOG
@@ -683,10 +683,10 @@ MR_deep_log_proc_statics(FILE *fp)
 #endif  /* MR_DEEP_PROFILING_LOG */
 
 void
-MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
+MR_write_out_proc_static(FILE *fp, const MR_ProcLayout *proc_layout)
 {
     const MR_ProcStatic *ps;
-    const MR_Proc_Id    *procid;
+    const MR_ProcId     *procid;
     int                 ps_id;
     int                 css_id;
     MR_bool             already_written;
@@ -1087,7 +1087,7 @@ static void
 MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
 {
     const MR_ProcStatic     *ps;
-    const MR_Proc_Layout    *pl;
+    const MR_ProcLayout     *pl;
     int                     pd_id;
     int                     ps_id;
     MR_bool                 already_written;
@@ -1393,7 +1393,7 @@ static  int                     MR_hash_table_check_all_written_INTERNAL(
                                     void write_func(FILE *fp, const void *));
 
 static MR_bool
-MR_insert_proc_layout(const MR_Proc_Layout *pl, int *id,
+MR_insert_proc_layout(const MR_ProcLayout *pl, int *id,
     MR_bool *already_written, MR_bool init_written)
 {
     return MR_hash_table_insert_INTERNAL(MR_proc_layout_table,
@@ -1425,7 +1425,7 @@ MR_insert_call_site_dynamic(const MR_CallSiteDynamic *csd, int *id,
 }
 
 static void
-MR_flag_written_proc_layout(const MR_Proc_Layout *pl)
+MR_flag_written_proc_layout(const MR_ProcLayout *pl)
 {
     MR_hash_table_flag_written_INTERNAL(MR_proc_layout_table,
         (const void *) pl);
@@ -1582,10 +1582,10 @@ MR_unwritten_csd_handler(FILE *fp, const void *csd)
 static void
 MR_unwritten_pl_handler(FILE *fp, const void *pl)
 {
-    const MR_Proc_Layout    *proc_layout;
-    const MR_Proc_Id        *procid;
+    const MR_ProcLayout *proc_layout;
+    const MR_ProcId     *procid;
 
-    proc_layout = (const MR_Proc_Layout *) pl;
+    proc_layout = (const MR_ProcLayout *) pl;
 
     if (! MR_PROC_LAYOUT_HAS_PROC_ID(proc_layout)) {
         MR_fatal_error("MR_write_out_proc_layout_from_void: no proc_id\n");

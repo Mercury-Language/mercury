@@ -37,7 +37,7 @@
 :- pred get_context_from_label_layout(label_layout::in, string::out, int::out)
     is semidet.
 
-:- type proc_layout. 
+:- type proc_layout.
 
 :- func get_proc_label_from_layout(proc_layout) = proc_label.
 
@@ -70,11 +70,11 @@
 :- import_module require.
 :- import_module string.
 
-:- pragma foreign_type("C", label_layout, "const MR_Label_Layout *",
+:- pragma foreign_type("C", label_layout, "const MR_LabelLayout *",
     [can_pass_as_mercury_type, stable]).
 
     % stub only
-:- pragma foreign_type("Java", label_layout, "java.lang.Object", []). 
+:- pragma foreign_type("Java", label_layout, "java.lang.Object", []).
 
 :- pragma foreign_proc("C",
     get_proc_layout_from_label_layout(Label::in) = (ProcLayout::out),
@@ -90,17 +90,17 @@
     GoalPath = (MR_String) MR_label_goal_path(Label);
 ").
 
-get_goal_path_from_maybe_label(yes(Label)) 
+get_goal_path_from_maybe_label(yes(Label))
     = get_goal_path_from_label_layout(Label).
 get_goal_path_from_maybe_label(no) = "".
 
 :- pragma foreign_proc("C",
-    get_context_from_label_layout(Label::in, FileName::out, LineNo::out), 
+    get_context_from_label_layout(Label::in, FileName::out, LineNo::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     const char  *filename;
     int         line_no;
-    
+
     SUCCESS_INDICATOR = MR_find_context(Label, &filename, &line_no);
     LineNo = (MR_Integer) line_no;
     MR_TRACE_USE_HP(
@@ -109,7 +109,7 @@ get_goal_path_from_maybe_label(no) = "".
 ").
 
 :- pragma foreign_proc("C",
-    get_port_from_label_layout(Label::in) = (Port::out), 
+    get_port_from_label_layout(Label::in) = (Port::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     Port = Label->MR_sll_port;
@@ -125,7 +125,7 @@ get_path_port_from_label_layout(Label) = PathPort :-
     ),
     PathPort = make_path_port(GoalPath, Port).
 
-:- pragma foreign_type("C", proc_layout, "const MR_Proc_Layout *",
+:- pragma foreign_type("C", proc_layout, "const MR_ProcLayout *",
     [can_pass_as_mercury_type, stable]).
 :- pragma foreign_type("Java", proc_layout, "java.lang.Object", []). %stub only
 
@@ -140,7 +140,7 @@ get_proc_label_from_layout(Layout) = ProcLabel :-
         ),
         SymDefModule = string_to_sym_name(DefModule),
         SymTypeModule = string_to_sym_name(TypeModule),
-        ProcLabel = special_proc_label(SymDefModule, SpecialId, 
+        ProcLabel = special_proc_label(SymDefModule, SpecialId,
             SymTypeModule, TypeName, TypeArity, ModeNum)
     ;
         proc_layout_get_non_uci_fields(Layout, PredOrFunc,
@@ -152,7 +152,7 @@ get_proc_label_from_layout(Layout) = ProcLabel :-
     ).
 
 get_proc_name(ordinary_proc_label(_, _, _, ProcName, _, _)) = ProcName.
-get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName. 
+get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
 
 :- pred proc_layout_is_uci(proc_layout::in) is semidet.
 
@@ -175,7 +175,7 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
         DefModule::out, PredName::out, TypeArity::out, ModeNum::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    const MR_UCI_Proc_Id    *proc_id;
+    const MR_UCIProcId  *proc_id;
 
     proc_id = &Layout->MR_sle_uci;
 
@@ -197,7 +197,7 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
         Arity::out, ModeNum::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    const MR_User_Proc_Id   *proc_id;
+    const MR_UserProcId *proc_id;
 
     proc_id = &Layout->MR_sle_user;
 
@@ -214,9 +214,9 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
     find_initial_version_arg_num(Layout::in, OutArgNum::in, InArgNum::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    const MR_Proc_Layout    *proc;
-    int         out_hlds_num;
-    const char      *out_name;
+    const MR_ProcLayout     *proc;
+    int                     out_hlds_num;
+    const char              *out_name;
 
     proc = Layout;
 
@@ -241,7 +241,7 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
         int                     head_var_num;
         int                     call_var_num;
         int                     call_num_vars;
-        const MR_Label_Layout   *call_label;
+        const MR_LabelLayout    *call_label;
         MR_bool                 found;
 
         start_of_num = MR_find_start_of_num_suffix(out_name);
@@ -256,8 +256,8 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
         num_matches = 0;
         in_arg_num = -1;
 
-        for (head_var_num = 0; head_var_num < proc->MR_sle_num_head_vars; 
-            head_var_num++) 
+        for (head_var_num = 0; head_var_num < proc->MR_sle_num_head_vars;
+            head_var_num++)
         {
             in_hlds_num = proc->MR_sle_head_var_nums[head_var_num];
             in_name = MR_hlds_var_name(proc, in_hlds_num);
@@ -269,14 +269,14 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
             if (start_of_num < 0) {
                 continue;
             }
- 
+
             if (! (
                     (
                         /*
                         ** The names are exactly the same except
                         ** for the numerical suffix.
                         */
-                        start_of_num == out_base_name_len && 
+                        start_of_num == out_base_name_len &&
                         strneq(out_name, in_name, start_of_num)
                     )
                 ||
@@ -348,12 +348,12 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
     get_all_modes_for_layout(Layout::in) = (Layouts::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    const MR_Module_Layout  *module;
-    const MR_Proc_Layout    *proc;
+    const MR_ModuleLayout   *module;
+    const MR_ProcLayout     *proc;
     int                     i;
     MR_Word                 list;
     MR_bool                 match;
-    const MR_Proc_Layout    *selected_proc;
+    const MR_ProcLayout     *selected_proc;
 
     selected_proc = Layout;
 
@@ -372,8 +372,8 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
         if (MR_PROC_LAYOUT_IS_UCI(selected_proc)
             && MR_PROC_LAYOUT_IS_UCI(proc))
         {
-            const MR_UCI_Proc_Id    *proc_id;
-            const MR_UCI_Proc_Id    *selected_proc_id;
+            const MR_UCIProcId  *proc_id;
+            const MR_UCIProcId  *selected_proc_id;
 
             proc_id = &proc->MR_sle_uci;
             selected_proc_id = &selected_proc->MR_sle_uci;
@@ -394,8 +394,8 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
         } else if (!MR_PROC_LAYOUT_IS_UCI(selected_proc)
             && !MR_PROC_LAYOUT_IS_UCI(proc))
         {
-            const MR_User_Proc_Id   *proc_id;
-            const MR_User_Proc_Id   *selected_proc_id;
+            const MR_UserProcId *proc_id;
+            const MR_UserProcId *selected_proc_id;
 
             proc_id = &proc->MR_sle_user;
             selected_proc_id = &selected_proc->MR_sle_user;

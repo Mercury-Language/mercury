@@ -12,10 +12,35 @@
 ** will go away eventually, so don't use them!
 */
 
-#define	MR_Table_Trie_Step	MR_TableTrieStep
-
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
+
+#ifndef	MR_DISABLE_ALIASES
+#define	MR_Table_Trie_Step		MR_TableTrieStep
+#define	MR_Long_Lval_Type		MR_LongLvalType
+#define	MR_Long_Lval			MR_LongLval
+#define	MR_Short_Lval			MR_ShortLval
+#define	MR_Label_Layout_No_Var_Info	MR_LabelLayoutNoVarInfo
+#define	MR_Label_Layout			MR_LabelLayout
+#define	MR_Type_Param_Locns		MR_TypeParamLocns
+#define	MR_Table_Io_Decl		MR_TableIoDecl
+#define	MR_Table_Info			MR_TableInfo
+#define	MR_Stack_Traversal		MR_StackTraversal
+#define	MR_Exec_Trace			MR_ExecTrace
+#define	MR_Proc_Layout_User		MR_ProcLayoutUser
+#define	MR_Proc_Layout_UCI		MR_ProcLayoutUCI
+#define	MR_Proc_Layout			MR_ProcLayout
+#define	MR_Module_Layout		MR_ModuleLayout
+#define	MR_Trace_Level			MR_TraceLevel
+#define	MR_Module_File_Layout		MR_ModuleFileLayout
+#define	MR_Closure_Id			MR_ClosureId
+#define	MR_User_Closure_Id		MR_UserClosureId
+#define	MR_UCI_Closure_Id		MR_UCIClosureId
+#define	MR_Proc_Id			MR_ProcId
+#define	MR_Stack_Walk_Step_Result	MR_StackWalkStepResult
+#define	MR_Context_Position		MR_ContextPosition
+#define	MR_find_first_call_seq_or_event	MR_FindFirstCallSeqOrEvent
+#endif
 
 #define	MR_STATIC(l)		MR_ENTRY(l)
 #define	MR_GOTO_STATIC(l)	MR_GOTO_ENTRY(l)
@@ -27,12 +52,12 @@
 
 #ifndef MR_NO_BACKWARDS_COMPAT
 
-/* 
+/*
 ** For a long time the Mercury C types were defined as Char, Float,
 ** Integer, Word, etc.  There will doubtless be lots of C code in
-** libraries that relies upon these names.  
+** libraries that relies upon these names.
 **
-** People may have written code that relies upon these names, so  
+** People may have written code that relies upon these names, so
 ** if you remove these names you need to give warning (unlike some of
 ** the other changes in this file).
 */
@@ -117,7 +142,7 @@ typedef MR_Bool			Bool;
 */
 #ifdef IN_GCC
   /*
-  ** We need to make sure that we pick up GCC's definition of bool, 
+  ** We need to make sure that we pick up GCC's definition of bool,
   ** to ensure that we don't define `bool' below.  Otherwise we get
   ** conflicts because some declarations use the <stdbool.h> definition
   ** of bool (an enum), and some use our definition (a #define for char)

@@ -38,7 +38,7 @@ extern  void        MR_register_all_modules_and_procs(FILE *fp,
 */
 
 extern  void        MR_register_module_layout_real(
-                        const MR_Module_Layout *module);
+                        const MR_ModuleLayout *module);
 
 /*
 ** Every module that generates user defined events has a specification of the
@@ -67,7 +67,7 @@ extern  MR_bool         MR_event_specs_have_conflict;
 ** with the supplied integer callback argument.
 */
 
-typedef void        (*MR_file_line_callback)(const MR_Label_Layout *, int);
+typedef void        (*MR_file_line_callback)(const MR_LabelLayout *, int);
 
 extern  void        MR_process_file_line_layouts(const char *file, int line,
                         MR_file_line_callback callback_func, int callback_arg);
@@ -137,15 +137,15 @@ typedef enum {
     MR_PREFIX_COMP,
     MR_PREFIX_INDX,
     MR_PREFIX_INIT
-} MR_Proc_Prefix;
+} MR_ProcPrefix;
 
 typedef struct {
     const char          *MR_proc_module;
     const char          *MR_proc_name;
     int                 MR_proc_arity;
     int                 MR_proc_mode;
-    MR_Proc_Prefix      MR_proc_prefix;
-} MR_Proc_Spec;
+    MR_ProcPrefix      MR_proc_prefix;
+} MR_ProcSpec;
 
 /*
 ** Given a string containing the specification of a procedure in the form
@@ -153,13 +153,13 @@ typedef struct {
 **  [`pred*'|`func*']module:name/arity-mode
 **
 ** in which some of the five components (but not the name) may be missing,
-** parse it into the more usable form of a MR_Proc_Spec. The original string
+** parse it into the more usable form of a MR_ProcSpec. The original string
 ** may be overwritten in the process.
 **
 ** Returns MR_TRUE if the string was correctly formed, and MR_FALSE otherwise.
 */
 
-extern  MR_bool MR_parse_proc_spec(char *str, MR_Proc_Spec *spec);
+extern  MR_bool MR_parse_proc_spec(char *str, MR_ProcSpec *spec);
 
 /*
 ** Search the tables for a procedure that matches the given specification.
@@ -170,8 +170,8 @@ extern  MR_bool MR_parse_proc_spec(char *str, MR_Proc_Spec *spec);
 ** and set *unique to MR_FALSE.
 */
 
-extern  const MR_Proc_Layout    *MR_search_for_matching_procedure(
-                                    MR_Proc_Spec *spec, MR_bool *unique);
+extern  const MR_ProcLayout     *MR_search_for_matching_procedure(
+                                    MR_ProcSpec *spec, MR_bool *unique);
 
 /*
 ** Search the tables for procedures that matches the given specification.
@@ -182,18 +182,18 @@ extern  const MR_Proc_Layout    *MR_search_for_matching_procedure(
 */
 
 typedef struct {
-    const MR_Proc_Layout    **match_procs;
+    const MR_ProcLayout     **match_procs;
     int                     match_proc_max;
     int                     match_proc_next;
-} MR_Matches_Info;
+} MR_MatchesInfo;
 
-extern  MR_Matches_Info MR_search_for_matching_procedures(MR_Proc_Spec *spec);
+extern  MR_MatchesInfo MR_search_for_matching_procedures(MR_ProcSpec *spec);
 
 /*
 ** Filter out UCI procs and keep only mode number 0.
 */
 
-extern  void            MR_filter_user_preds(MR_Matches_Info *matches);
+extern  void            MR_filter_user_preds(MR_MatchesInfo *matches);
 
 /*
 ** MR_process_matching_procedures(spec, f, data):
@@ -204,8 +204,8 @@ extern  void            MR_filter_user_preds(MR_Matches_Info *matches);
 ** information needed by the function `f'.
 */
 
-extern  void    MR_process_matching_procedures(MR_Proc_Spec *spec,
-                    void f(void *, const MR_Proc_Layout *), void *data);
+extern  void            MR_process_matching_procedures(MR_ProcSpec *spec,
+                            void f(void *, const MR_ProcLayout *), void *data);
 
 /*
 ** MR_print_proc_id_and_nl(fp, proc):
@@ -213,16 +213,18 @@ extern  void    MR_process_matching_procedures(MR_Proc_Spec *spec,
 ** Print the id of the procedure identified by proc, followed by a newline.
 */
 
-extern  void    MR_print_proc_id_and_nl(FILE *fp, const MR_Proc_Layout *proc);
+extern  void            MR_print_proc_id_and_nl(FILE *fp,
+                            const MR_ProcLayout *proc);
 
 /*
 ** MR_print_pred_id_and_nl(fp, proc):
 **
-** Print the id of the predicate/function identified by proc, 
+** Print the id of the predicate/function identified by proc,
 ** followed by a newline.
 */
 
-extern  void    MR_print_pred_id_and_nl(FILE *fp, const MR_Proc_Layout *proc);
+extern  void            MR_print_pred_id_and_nl(FILE *fp,
+                            const MR_ProcLayout *proc);
 
 /*
 ** MR_get_proc_decl_module(proc):
@@ -230,7 +232,7 @@ extern  void    MR_print_pred_id_and_nl(FILE *fp, const MR_Proc_Layout *proc);
 ** Return the module name the procedure is declared in.
 */
 
-extern  MR_ConstString  MR_get_proc_decl_module(const MR_Proc_Layout *proc);
+extern  MR_ConstString  MR_get_proc_decl_module(const MR_ProcLayout *proc);
 
 /*
 ** MR_proc_layout_stats(fp):
@@ -238,7 +240,7 @@ extern  MR_ConstString  MR_get_proc_decl_module(const MR_Proc_Layout *proc);
 ** Prints statistics about the proc layout structures of the program.
 */
 
-extern  void    MR_proc_layout_stats(FILE *fp);
+extern  void            MR_proc_layout_stats(FILE *fp);
 
 /*
 ** MR_label_layout_stats(fp):
@@ -246,7 +248,7 @@ extern  void    MR_proc_layout_stats(FILE *fp);
 ** Prints statistics about the label layout structures of the program.
 */
 
-extern  void    MR_label_layout_stats(FILE *fp);
+extern  void            MR_label_layout_stats(FILE *fp);
 
 /*
 ** MR_var_name_stats(fp):
@@ -255,13 +257,12 @@ extern  void    MR_label_layout_stats(FILE *fp);
 ** in the layout structures of the program.
 */
 
-extern  void    MR_var_name_stats(FILE *fp);
+extern  void            MR_var_name_stats(FILE *fp);
 
 /* A Readline completer for module names. */
-extern  MR_Completer_List   *MR_trace_module_completer(const char *, size_t);
+extern  MR_CompleterList    *MR_trace_module_completer(const char *, size_t);
 
 /* A Readline completer for procedure specifications. */
-extern  MR_Completer_List   *MR_trace_proc_spec_completer(const char *,
-                                size_t);
+extern  MR_CompleterList    *MR_trace_proc_spec_completer(const char *, size_t);
 
 #endif  /* not MERCURY_TRACE_TABLES_H */

@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2005 The University of Melbourne.
+** Copyright (C) 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,7 +18,7 @@
 #include "mercury_stack_layout.h"
 
 MR_ConstString
-MR_hlds_var_name(const MR_Proc_Layout *entry, int hlds_var_num)
+MR_hlds_var_name(const MR_ProcLayout *entry, int hlds_var_num)
 {
     const char  *string_table;
     MR_Integer  string_table_size;

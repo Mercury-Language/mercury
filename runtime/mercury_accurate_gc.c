@@ -66,26 +66,26 @@
   static void   MR_LLDS_garbage_collect(MR_Code *saved_success,
                         MR_bool callee_model_semi, MR_Word *stack_pointer,
                         MR_Word *max_frame, MR_Word *current_frame);
-  static void   traverse_det_stack(const MR_Label_Layout *label_layout,
+  static void   traverse_det_stack(const MR_LabelLayout *label_layout,
                         MR_bool callee_model_semi,
                         MR_Word *stack_pointer, MR_Word *current_frame);
-  static void   traverse_nondet_stack(const MR_Label_Layout *label_layout,
+  static void   traverse_nondet_stack(const MR_LabelLayout *label_layout,
                         MR_bool callee_model_semi, MR_Word *stack_pointer,
                         MR_Word *max_frame, MR_Word *current_frame);
   static void   traverse_nondet_frame(void *user_data,
-                        const MR_Label_Layout *label_layout,
+                        const MR_LabelLayout *label_layout,
                         MR_Word *stack_pointer, MR_Word *current_frame);
   static MR_bool are_registers_live(MR_bool is_first_frame,
                         MR_bool callee_model_semi);
   static void   traverse_frame(MR_bool registers_live,
-                        const MR_Label_Layout *label_layout,
+                        const MR_LabelLayout *label_layout,
                         MR_Word *stack_pointer, MR_Word *current_frame);
   static void   resize_and_reset_redzone(MR_MemoryZone *old_heap,
                         MR_MemoryZone *new_heap);
-  static void   copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, 
+  static void   copy_long_value(MR_LongLval locn, MR_TypeInfo type_info, 
                         MR_bool registers_live, MR_Word *stack_pointer,
                         MR_Word *current_frame);
-  static void   copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
+  static void   copy_short_value(MR_ShortLval locn, MR_TypeInfo type_info,
                         MR_bool registers_live, MR_Word *stack_pointer,
                         MR_Word *current_frame);
 
@@ -269,9 +269,9 @@ void
 MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     MR_Word *curfr_at_signal)
 {
-    const MR_Proc_Layout    *proc_layout;
-    MR_Long_Lval_Type       type;
-    MR_Long_Lval            location;
+    const MR_ProcLayout     *proc_layout;
+    MR_LongLvalType         type;
+    MR_LongLval             location;
     MR_Entry                *entry_label = NULL;
     int                     number;
     MR_Determinism          determinism;
@@ -466,7 +466,7 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
     MR_MemoryZone                   *old_heap, *new_heap;
     MR_Word                         *old_hp;
     MR_Internal                     *label;
-    const MR_Label_Layout           *label_layout;
+    const MR_LabelLayout            *label_layout;
 
     old_heap = MR_ENGINE(MR_eng_heap_zone);
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
@@ -567,7 +567,7 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
 ** frames.
 */
 static void
-traverse_det_stack(const MR_Label_Layout *label_layout,
+traverse_det_stack(const MR_LabelLayout *label_layout,
     MR_bool callee_model_semi, MR_Word *stack_pointer, MR_Word *current_frame)
 {
     /*
@@ -581,7 +581,7 @@ traverse_det_stack(const MR_Label_Layout *label_layout,
     ** For each stack frame ...
     */
     do {
-        const MR_Proc_Layout            *proc_layout;
+        const MR_ProcLayout             *proc_layout;
         MR_Stack_Walk_Step_Result       result;
         const char                      *problem;
 
@@ -632,13 +632,13 @@ are_registers_live(MR_bool is_first_frame, MR_bool callee_model_semi)
 */ 
 
 struct first_frame_data {
-    const MR_Label_Layout   *first_frame_layout;
+    const MR_LabelLayout    *first_frame_layout;
     MR_Word                 *first_frame_curfr;
     MR_bool                 first_frame_callee_model_semi;
 };
     
 static void
-traverse_nondet_stack(const MR_Label_Layout *first_frame_layout,
+traverse_nondet_stack(const MR_LabelLayout *first_frame_layout,
     MR_bool callee_model_semi, MR_Word *stack_pointer,
     MR_Word *max_frame, MR_Word *current_frame)
 {
@@ -651,7 +651,7 @@ traverse_nondet_stack(const MR_Label_Layout *first_frame_layout,
 }
 
 static void
-traverse_nondet_frame(void *user_data, const MR_Label_Layout *label_layout,
+traverse_nondet_frame(void *user_data, const MR_LabelLayout *label_layout,
     MR_Word *stack_pointer, MR_Word *current_frame)
 {   
     MR_bool                 is_first_frame;
@@ -677,16 +677,19 @@ traverse_nondet_frame(void *user_data, const MR_Label_Layout *label_layout,
 ** Traverse a stack frame (it could be either a det frame or a nondet frame).
 */
 static void
-traverse_frame(MR_bool registers_live, const MR_Label_Layout *label_layout,
+traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
     MR_Word *stack_pointer, MR_Word *current_frame)
 {
-    int                             short_var_count, long_var_count;
+    int                             short_var_count;
+    int                             long_var_count;
     int                             i;
-    MR_MemoryList                   allocated_memory_cells = NULL;
+    MR_MemoryList                   allocated_memory_cells;
     MR_TypeInfoParams               type_params;
-    MR_Short_Lval                   locn;
+    MR_ShortLval                    locn;
     MR_PseudoTypeInfo               pseudo_type_info;
     MR_TypeInfo                     type_info;
+
+    allocated_memory_cells = NULL;
 
     if (MR_agc_debug) {
         /*
@@ -760,7 +763,7 @@ traverse_frame(MR_bool registers_live, const MR_Label_Layout *label_layout,
 */
 
 static void
-copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info,
+copy_long_value(MR_LongLval locn, MR_TypeInfo type_info,
     MR_bool registers_live, MR_Word *stack_pointer, MR_Word *current_frame)
 {
     int     locn_num;
@@ -829,13 +832,13 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info,
         break;
 
     default:
-        MR_fatal_error("Unknown MR_Long_Lval_Type in copy_long_value");
+        MR_fatal_error("Unknown MR_LongLvalType in copy_long_value");
         break;
     }
 }
 
 static void
-copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
+copy_short_value(MR_ShortLval locn, MR_TypeInfo type_info,
      MR_bool registers_live, MR_Word *stack_pointer, MR_Word *current_frame)
 {
     int     locn_num;
@@ -869,7 +872,7 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
         break;
 
     default:
-        MR_fatal_error("Unknown MR_Short_Lval_Type in copy_short_value");
+        MR_fatal_error("Unknown MR_ShortLval_Type in copy_short_value");
         break;
     }
 }

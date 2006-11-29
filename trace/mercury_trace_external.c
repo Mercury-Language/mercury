@@ -212,11 +212,11 @@ static void     MR_send_message_to_socket(const char *message);
 static void     MR_read_request_from_socket(MR_Word *debugger_request_ptr, 
                     MR_Integer *debugger_request_type_ptr);
     
-static MR_bool  MR_found_match(const MR_Label_Layout *layout,
-                    MR_Trace_Port port, MR_Unsigned seqno, MR_Unsigned depth,
+static MR_bool  MR_found_match(const MR_LabelLayout *layout,
+                    MR_TracePort port, MR_Unsigned seqno, MR_Unsigned depth,
                     /* XXX registers */ const char *path, MR_Word search_data);
-static void     MR_output_current_slots(const MR_Label_Layout *layout,
-                    MR_Trace_Port port, MR_Unsigned seqno,
+static void     MR_output_current_slots(const MR_LabelLayout *layout,
+                    MR_TracePort port, MR_Unsigned seqno,
                     MR_Unsigned depth, const char *path, int lineno);
 static void     MR_output_current_vars(MR_Word var_list, MR_Word string_list);
 static void     MR_output_current_nth_var(MR_Word var);
@@ -227,10 +227,10 @@ static MR_Word  MR_trace_make_var_names_list(void);
 static MR_Word  MR_trace_make_type_list(void);
 static MR_Word  MR_trace_make_nth_var(MR_Word debugger_request);
 static int      MR_get_var_number(MR_Word debugger_request);
-static void     MR_print_proc_id_to_socket(const MR_Proc_Layout *entry,
+static void     MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
                     const char *extra, MR_Word *base_sp, MR_Word *base_curfr);
 static void     MR_dump_stack_record_print_to_socket(FILE *fp, 
-                    const MR_Proc_Layout *entry_layout, int count,
+                    const MR_ProcLayout *entry_layout, int count,
                     int start_level, MR_Word *base_sp, MR_Word *base_curfr,
                     const char *filename, int linenumber,
                     const char *goal_path, MR_bool context_mismatch);
@@ -243,7 +243,7 @@ static void     MR_get_object_file_name(MR_Word debugger_request,
                     MR_String *object_file_name_ptr);
 static void     MR_get_variable_name(MR_Word debugger_request,
                     MR_String *var_name_ptr);
-static void     MR_trace_browse_one_external(MR_Var_Spec which_var);
+static void     MR_trace_browse_one_external(MR_VarSpec which_var);
 static void     MR_send_collect_result(void);
 
 #if 0
@@ -510,7 +510,7 @@ MR_trace_final_external(void)
 }
 
 MR_Code *
-MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
+MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
 {
     static MR_Word          search_data;
     static void             (*initialize_ptr)(MR_Word *);
@@ -526,15 +526,15 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
     MR_Code                 *jumpaddr = NULL;
     const char              *message;
     MR_bool                 include_trace_data = MR_TRUE;
-    const MR_Label_Layout   *layout = event_info->MR_event_sll;
+    const MR_LabelLayout    *layout = event_info->MR_event_sll;
     MR_Unsigned             seqno = event_info->MR_call_seqno;
     MR_Unsigned             depth = event_info->MR_call_depth;
-    MR_Trace_Port           port = event_info->MR_trace_port;
+    MR_TracePort            port = event_info->MR_trace_port;
     const char              *path = event_info->MR_event_path;
     MR_Word                 *saved_regs = event_info->MR_saved_regs;
     MR_Integer              modules_list_length;
     MR_Word                 modules_list;
-    MR_Retry_Result         retry_result;
+    MR_RetryResult          retry_result;
     static MR_String        MR_object_file_name;
     int                     lineno = 0;
     MR_bool                 unsafe_retry;
@@ -746,7 +746,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
             case MR_REQUEST_BROWSE:
                 {
                     char        *var_name;
-                    MR_Var_Spec var_spec;
+                    MR_VarSpec  var_spec;
 
                     if (MR_debug_socket) {
                         fprintf(stderr, "\nMercury runtime: "
@@ -897,8 +897,8 @@ done:
 }
 
 static void
-MR_output_current_slots(const MR_Label_Layout *layout,
-    MR_Trace_Port port, MR_Unsigned seqno, MR_Unsigned depth,
+MR_output_current_slots(const MR_LabelLayout *layout,
+    MR_TracePort port, MR_Unsigned seqno, MR_Unsigned depth,
     const char *path, int lineno)
 {
     if (MR_PROC_LAYOUT_IS_UCI(layout->MR_sll_entry)) {
@@ -995,8 +995,8 @@ MR_read_request_from_socket(MR_Word *debugger_request_ptr,
 }
  
 static MR_bool
-MR_found_match(const MR_Label_Layout *layout,
-    MR_Trace_Port port, MR_Unsigned seqno, MR_Unsigned depth,
+MR_found_match(const MR_LabelLayout *layout,
+    MR_TracePort port, MR_Unsigned seqno, MR_Unsigned depth,
     /* XXX live vars */
     const char *path, MR_Word search_data)
 {
@@ -1276,7 +1276,7 @@ MR_get_var_number(MR_Word debugger_request)
 
 static void
 MR_dump_stack_record_print_to_socket(FILE *fp, 
-    const MR_Proc_Layout *entry_layout, int count, int start_level, 
+    const MR_ProcLayout *entry_layout, int count, int start_level, 
     MR_Word *base_sp, MR_Word *base_curfr,
     const char *filename, int linenumber,
     const char *goal_path, MR_bool context_mismatch)
@@ -1286,7 +1286,7 @@ MR_dump_stack_record_print_to_socket(FILE *fp,
 }
 
 static void
-MR_print_proc_id_to_socket(const MR_Proc_Layout *entry,
+MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
     const char *extra, MR_Word *base_sp, MR_Word *base_curfr)
 {
     if (! MR_PROC_LAYOUT_HAS_PROC_ID(entry)) {
@@ -1425,7 +1425,7 @@ MR_get_variable_name(MR_Word debugger_request, MR_String *var_name_ptr)
 */
 
 static void
-MR_trace_browse_one_external(MR_Var_Spec var_spec)
+MR_trace_browse_one_external(MR_VarSpec var_spec)
 {
     const char  *problem;
 
@@ -1444,7 +1444,7 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 */
 void
 MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno, 
-    MR_Unsigned depth, MR_Trace_Port port, const MR_Label_Layout *layout, 
+    MR_Unsigned depth, MR_TracePort port, const MR_LabelLayout *layout, 
     const char *path, int lineno, MR_bool *stop_collecting)
 {
     MR_Char result;     
@@ -1493,11 +1493,11 @@ MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno,
 */
 
 int
-MR_get_line_number(MR_Word *saved_regs, const MR_Label_Layout *layout, 
-    MR_Trace_Port port)
+MR_get_line_number(MR_Word *saved_regs, const MR_LabelLayout *layout, 
+    MR_TracePort port)
 {
     const char              *filename;
-    const MR_Label_Layout   *parent_layout;
+    const MR_LabelLayout    *parent_layout;
     const char              *problem; 
     int                     lineno = 0;
     MR_Word                 *base_sp;

@@ -132,12 +132,12 @@ typedef struct {
 */
 
 typedef struct {
-    const MR_Label_Layout   *MR_point_top_layout;
+    const MR_LabelLayout    *MR_point_top_layout;
     MR_Word                 *MR_point_top_saved_regs;
-    MR_Trace_Port           MR_point_top_port;
+    MR_TracePort            MR_point_top_port;
     const char              *MR_point_problem;
     int                     MR_point_level;
-    const MR_Proc_Layout    *MR_point_level_entry;
+    const MR_ProcLayout     *MR_point_level_entry;
     const char              *MR_point_level_filename;
     int                     MR_point_level_linenumber;
     MR_Word                 *MR_point_level_base_sp;
@@ -161,21 +161,21 @@ static  int             MR_trace_compare_var_details(
 static  int             MR_compare_slots_on_headvar_num(const void *p1,
                             const void *p2);
 static  const char      *MR_trace_browse_one_path(FILE *out,
-                            MR_bool print_var_name, MR_Var_Spec var_spec,
+                            MR_bool print_var_name, MR_VarSpec var_spec,
                             char *path, MR_Browser browser,
-                            MR_Browse_Caller_Type caller,
-                            MR_Browse_Format format, MR_bool must_be_unique);
+                            MR_BrowseCallerType caller,
+                            MR_BrowseFormat format, MR_bool must_be_unique);
 static  char            *MR_trace_browse_var(FILE *out, MR_bool print_var_name,
                             MR_TypeInfo type_info, MR_Word value,
                             const char *name, char *path,
-                            MR_Browser browser, MR_Browse_Caller_Type caller,
-                            MR_Browse_Format format);
-static  const char      *MR_lookup_var_spec(MR_Var_Spec var_spec,
+                            MR_Browser browser, MR_BrowseCallerType caller,
+                            MR_BrowseFormat format);
+static  const char      *MR_lookup_var_spec(MR_VarSpec var_spec,
                             MR_TypeInfo *type_info_ptr, MR_Word *value_ptr,
                             const char **name_ptr, int *var_index_ptr,
                             MR_bool *is_ambiguous_ptr);
 static  char            *MR_trace_var_completer_next(const char *word,
-                            size_t word_len, MR_Completer_Data *data);
+                            size_t word_len, MR_CompleterData *data);
 static  int             MR_trace_print_var_name(FILE *out,
                             MR_ValueDetails *var);
 static  const char      *MR_trace_printed_var_name(MR_ValueDetails *var);
@@ -304,8 +304,8 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info,
 }
 
 void
-MR_trace_init_point_vars(const MR_Label_Layout *top_layout,
-    MR_Word *saved_regs, MR_Trace_Port port, MR_bool print_optionals)
+MR_trace_init_point_vars(const MR_LabelLayout *top_layout,
+    MR_Word *saved_regs, MR_TracePort port, MR_bool print_optionals)
 {
     MR_point.MR_point_top_layout = top_layout;
     MR_point.MR_point_top_saved_regs = saved_regs;
@@ -320,8 +320,8 @@ MR_trace_set_level(int ancestor_level, MR_bool print_optionals)
     const char              *problem;
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
-    const MR_Label_Layout   *top_layout;
-    const MR_Label_Layout   *level_layout;
+    const MR_LabelLayout    *top_layout;
+    const MR_LabelLayout    *level_layout;
 
     problem = NULL;
     top_layout = MR_point.MR_point_top_layout;
@@ -344,11 +344,11 @@ MR_trace_set_level(int ancestor_level, MR_bool print_optionals)
 }
 
 const char *
-MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
+MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
     MR_Word *base_sp, MR_Word *base_curfr, int ancestor_level,
     MR_bool print_optionals)
 {
-    const MR_Proc_Layout    *entry;
+    const MR_ProcLayout     *entry;
     const MR_UserEvent      *user;
     MR_Word                 *valid_saved_regs;
     int                     var_count;
@@ -707,7 +707,7 @@ MR_trace_current_level(void)
 }
 
 void
-MR_trace_current_level_details(const MR_Proc_Layout **entry_ptr,
+MR_trace_current_level_details(const MR_ProcLayout **entry_ptr,
     const char **filename_ptr, int *linenumber_ptr,
     MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr)
 {
@@ -811,7 +811,7 @@ MR_trace_list_var_details(FILE *out)
 }
 
 const char *
-MR_trace_return_hlds_var_info(int hlds_num, MR_TypeInfo *type_info_ptr, 
+MR_trace_return_hlds_var_info(int hlds_num, MR_TypeInfo *type_info_ptr,
     MR_Word *value_ptr)
 {
     MR_ValueDetails     *value;
@@ -920,7 +920,7 @@ static
 MR_static_type_info_arity_0(MR_unbound_typeinfo_struct, &unbound_ctor_name);
 
 void
-MR_convert_arg_to_var_spec(const char *word_spec, MR_Var_Spec *var_spec)
+MR_convert_arg_to_var_spec(const char *word_spec, MR_VarSpec *var_spec)
 {
     int n;
 
@@ -989,7 +989,7 @@ MR_convert_goal_to_synthetic_term(const char **functor_ptr,
     MR_Word *arg_list_ptr,
     MR_bool *is_func_ptr)
 {
-    const MR_Proc_Layout    *proc_layout;
+    const MR_ProcLayout     *proc_layout;
     MR_ConstString          proc_name;
     MR_Word                 is_func;
     MR_Word                 arg_list;
@@ -1026,12 +1026,12 @@ MR_convert_goal_to_synthetic_term(const char **functor_ptr,
     qsort(var_slot_array, next, sizeof(int), MR_compare_slots_on_headvar_num);
 
     MR_TRACE_USE_HP(
-
         /*
         ** Replace the slot numbers in the argument list with the argument
         ** values, adding entries for any unbound arguments (they will be
         ** printed as `_').
         */
+
         arg_list = MR_list_empty();
         i = next - 1;
         for (headvar_num = arity; headvar_num > 0; headvar_num--) {
@@ -1059,7 +1059,7 @@ MR_convert_goal_to_synthetic_term(const char **functor_ptr,
 
 const char *
 MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format)
+    MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     const char  *functor;
     MR_Word     arg_list;
@@ -1077,7 +1077,7 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
 
 const char *
 MR_trace_browse_action(FILE *out, int action_number, MR_GoalBrowser browser,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format)
+    MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     MR_ConstString  proc_name;
     MR_Word         is_func;
@@ -1099,7 +1099,7 @@ MR_trace_browse_action(FILE *out, int action_number, MR_GoalBrowser browser,
 }
 
 const char *
-MR_trace_parse_var_path(char *word_spec, MR_Var_Spec *var_spec, char **path)
+MR_trace_parse_var_path(char *word_spec, MR_VarSpec *var_spec, char **path)
 {
     char    *s;
     char    *start;
@@ -1145,7 +1145,7 @@ const char *
 MR_trace_parse_lookup_var_path(char *word_spec, MR_TypeInfo *type_info_ptr,
     MR_Word *value_ptr, MR_bool *bad_subterm_ptr)
 {
-    MR_Var_Spec var_spec;
+    MR_VarSpec var_spec;
     MR_TypeInfo var_type_info;
     MR_Word     var_value;
     MR_TypeInfo sub_type_info;
@@ -1182,10 +1182,10 @@ MR_trace_parse_lookup_var_path(char *word_spec, MR_TypeInfo *type_info_ptr,
 
 const char *
 MR_trace_parse_browse_one(FILE *out, MR_bool print_var_name, char *word_spec,
-    MR_Browser browser, MR_Browse_Caller_Type caller, MR_Browse_Format format,
+    MR_Browser browser, MR_BrowseCallerType caller, MR_BrowseFormat format,
     MR_bool must_be_unique)
 {
-    MR_Var_Spec var_spec;
+    MR_VarSpec  var_spec;
     char        *path;
     const char  *problem;
 
@@ -1199,8 +1199,8 @@ MR_trace_parse_browse_one(FILE *out, MR_bool print_var_name, char *word_spec,
 }
 
 const char *
-MR_trace_browse_one(FILE *out, MR_bool print_var_name, MR_Var_Spec var_spec,
-    MR_Browser browser, MR_Browse_Caller_Type caller, MR_Browse_Format format,
+MR_trace_browse_one(FILE *out, MR_bool print_var_name, MR_VarSpec var_spec,
+    MR_Browser browser, MR_BrowseCallerType caller, MR_BrowseFormat format,
     MR_bool must_be_unique)
 {
     return MR_trace_browse_one_path(out, print_var_name, var_spec, NULL,
@@ -1208,7 +1208,7 @@ MR_trace_browse_one(FILE *out, MR_bool print_var_name, MR_Var_Spec var_spec,
 }
 
 const char *
-MR_lookup_unambiguous_var_spec(MR_Var_Spec var_spec,
+MR_lookup_unambiguous_var_spec(MR_VarSpec var_spec,
     MR_TypeInfo *type_info_ptr, MR_Word *value_ptr, const char **name_ptr)
 {
     int         var_num;
@@ -1230,8 +1230,8 @@ MR_lookup_unambiguous_var_spec(MR_Var_Spec var_spec,
 
 static const char *
 MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
-    MR_Var_Spec var_spec, char *path, MR_Browser browser,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format,
+    MR_VarSpec var_spec, char *path, MR_Browser browser,
+    MR_BrowseCallerType caller, MR_BrowseFormat format,
     MR_bool must_be_unique)
 {
     int         var_num;
@@ -1297,7 +1297,7 @@ MR_trace_print_size_one(FILE *out, char *word_spec)
     int         var_num;
     MR_bool     is_ambiguous;
     const char  *problem;
-    MR_Var_Spec var_spec;
+    MR_VarSpec  var_spec;
     MR_TypeInfo type_info;
     MR_Word     value;
     const char  *name;
@@ -1377,7 +1377,7 @@ MR_trace_bad_path(const char *path)
 }
 
 const char *
-MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
+MR_trace_browse_all(FILE *out, MR_Browser browser, MR_BrowseFormat format)
 {
     int var_num;
 
@@ -1401,7 +1401,7 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
 }
 
 const char *
-MR_trace_browse_all_on_level(FILE *out, const MR_Label_Layout *level_layout,
+MR_trace_browse_all_on_level(FILE *out, const MR_LabelLayout *level_layout,
     MR_Word *base_sp, MR_Word *base_curfr, int ancestor_level,
     MR_bool print_optionals)
 {
@@ -1489,8 +1489,8 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
 static char *
 MR_trace_browse_var(FILE *out, MR_bool print_var_name,
     MR_TypeInfo var_type_info, MR_Word var_value, const char *name,
-    char *path, MR_Browser browser, MR_Browse_Caller_Type caller,
-    MR_Browse_Format format)
+    char *path, MR_Browser browser, MR_BrowseCallerType caller,
+    MR_BrowseFormat format)
 {
     MR_TypeInfo type_info;
     MR_Word     *value;
@@ -1554,7 +1554,7 @@ MR_trace_browse_var(FILE *out, MR_bool print_var_name,
 */
 
 static const char *
-MR_lookup_var_spec(MR_Var_Spec var_spec, MR_TypeInfo *type_info_ptr,
+MR_lookup_var_spec(MR_VarSpec var_spec, MR_TypeInfo *type_info_ptr,
     MR_Word *value_ptr, const char **name_ptr, int *var_index_ptr,
     MR_bool *is_ambiguous_ptr)
 {
@@ -1654,16 +1654,16 @@ MR_lookup_var_spec(MR_Var_Spec var_spec, MR_TypeInfo *type_info_ptr,
     return NULL;
 }
 
-MR_Completer_List *
+MR_CompleterList *
 MR_trace_var_completer(const char *word, size_t word_len)
 {
     return MR_new_completer_elem(&MR_trace_var_completer_next,
-        (MR_Completer_Data) 0, MR_trace_no_free);
+        (MR_CompleterData) 0, MR_trace_no_free);
 }
 
 static char *
 MR_trace_var_completer_next(const char *word, size_t word_len,
-    MR_Completer_Data *data)
+    MR_CompleterData *data)
 {
     MR_Integer slot;
     const char *var_name;
@@ -1684,7 +1684,7 @@ MR_trace_var_completer_next(const char *word, size_t word_len,
 
         slot++;
         if (MR_strneq(var_name, word, word_len)) {
-            *data = (MR_Completer_Data) slot;
+            *data = (MR_CompleterData) slot;
             return MR_copy_string(var_name);
         }
     }
@@ -1830,7 +1830,7 @@ MR_trace_check_integrity_on_cur_level(void)
 #define MR_INTEGRITY_ERROR_BUF_SIZE    512
 
 void
-MR_trace_check_integrity(const MR_Label_Layout *layout, MR_Trace_Port port)
+MR_trace_check_integrity(const MR_LabelLayout *layout, MR_TracePort port)
 {
     int             level;
     const char      *problem;

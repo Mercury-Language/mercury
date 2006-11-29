@@ -34,7 +34,7 @@ static  void        MR_trace_print_alias_num(FILE *fp, int slot,
                         MR_bool mdb_command_format);
 static  char        *MR_trace_get_alias_slot_name(int slot);
 static  MR_bool     MR_trace_filter_alias_completions(const char *word,
-                        MR_Completer_Data *data);
+                        MR_CompleterData *data);
 
 void
 MR_trace_add_alias(char *name, char **words, int word_count)
@@ -161,7 +161,7 @@ MR_trace_print_alias_num(FILE *fp, int slot, MR_bool mdb_command_format)
     fprintf(fp, "\n");
 }
 
-MR_Completer_List *
+MR_CompleterList *
 MR_trace_alias_completer(const char *word, size_t word_length)
 {
     /*
@@ -180,7 +180,7 @@ MR_trace_get_alias_slot_name(int slot)
 }
 
 static MR_bool
-MR_trace_filter_alias_completions(const char *word, MR_Completer_Data *data)
+MR_trace_filter_alias_completions(const char *word, MR_CompleterData *data)
 {
     return (MR_strdiff(word, "EMPTY") && MR_strdiff(word, "NUMBER"));
 }

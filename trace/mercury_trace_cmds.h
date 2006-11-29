@@ -22,7 +22,7 @@ typedef enum {
 } MR_Next;
 
 typedef MR_Next MR_TraceCmdFunc(char **words, int word_count,
-                    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+                    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info,
                     MR_Code **jumpaddr);
 
 /*
@@ -52,7 +52,7 @@ typedef struct
     const char                  *MR_cmd_name;
     MR_TraceCmdFunc             *MR_cmd_function;
     const char *const           *MR_cmd_arg_strings;
-    const MR_Make_Completer     MR_cmd_arg_completer;
+    const MR_MakeCompleter      MR_cmd_arg_completer;
 } MR_Trace_Command_Info;
 
 #endif  /* MERCURY_TRACE_CMDS_H */

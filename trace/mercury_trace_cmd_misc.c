@@ -43,8 +43,8 @@ static  MR_bool     MR_trace_options_confirmed(MR_bool *confirmed,
 /****************************************************************************/
 
 MR_Next
-MR_trace_cmd_source(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_source(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_bool ignore_errors;
     char    **args;
@@ -73,8 +73,8 @@ MR_trace_cmd_source(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_save(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_save(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 2) {
         FILE    *fp;
@@ -212,8 +212,8 @@ MR_trace_cmd_save(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_quit(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_quit(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_bool confirmed;
 

@@ -40,16 +40,16 @@
 ** Complete on NULL terminated array of strings.
 ** The strings will not be `free'd.
 */
-static  MR_Completer_List   *MR_trace_string_array_completer(
+static  MR_CompleterList    *MR_trace_string_array_completer(
                                 const char *const *strings);
 
 static  char                *MR_trace_completer_list_next(const char *word,
-                                size_t word_len, MR_Completer_List **list);
+                                size_t word_len, MR_CompleterList **list);
 static  void                MR_trace_free_completer_list(
-                                MR_Completer_List *completer_list);
+                                MR_CompleterList *completer_list);
 
 static  char                *MR_prepend_string(char *completion,
-                                MR_Completer_Data *data);
+                                MR_CompleterData *data);
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -66,7 +66,7 @@ MR_trace_line_completer(const char *passed_word, int state)
 #ifdef MR_NO_USE_READLINE
     return NULL;
 #else
-    static MR_Completer_List    *completer_list;
+    static MR_CompleterList     *completer_list;
     static char                 *word;
     static size_t               word_len;
     char                        *completion;
@@ -119,8 +119,8 @@ MR_trace_line_completer(const char *passed_word, int state)
             /* We're completing the command itself. */
             int                 num_digits;
             char                *digits;
-            MR_Completer_List   *command_completer;
-            MR_Completer_List   *alias_completer;
+            MR_CompleterList    *command_completer;
+            MR_CompleterList    *alias_completer;
 
             /*
             ** Strip off any number preceding the command
@@ -156,9 +156,9 @@ MR_trace_line_completer(const char *passed_word, int state)
             int                 command_len;
             char                **words;
             int                 word_count;
-            MR_Make_Completer   command_completer;
+            MR_MakeCompleter    command_completer;
             const char *const   *command_fixed_args;
-            MR_Completer_List   *arg_completer;
+            MR_CompleterList    *arg_completer;
 
             command_len = command_end - command_start;
             if (command_len >= MR_MAX_COMMAND_NAME_LEN) {
@@ -218,7 +218,7 @@ MR_trace_line_completer(const char *passed_word, int state)
 }
 
 static char *
-MR_prepend_string(char *string, MR_Completer_Data *data)
+MR_prepend_string(char *string, MR_CompleterData *data)
 {
     char    *string_to_prepend;
     int     string_to_prepend_len;
@@ -237,9 +237,9 @@ MR_prepend_string(char *string, MR_Completer_Data *data)
 
 static char *
 MR_trace_completer_list_next(const char *word, size_t word_len,
-    MR_Completer_List **list)
+    MR_CompleterList **list)
 {
-    MR_Completer_List   *current_completer;
+    MR_CompleterList    *current_completer;
     char                *result;
 
     if (list == NULL) {
@@ -265,9 +265,10 @@ MR_trace_completer_list_next(const char *word, size_t word_len,
 }
 
 static void
-MR_trace_free_completer_list(MR_Completer_List *completer_list)
+MR_trace_free_completer_list(MR_CompleterList *completer_list)
 {
-    MR_Completer_List *tmp_list;
+    MR_CompleterList    *tmp_list;
+
     while (completer_list != NULL) {
         tmp_list = completer_list;
         completer_list = completer_list->MR_completer_list_next;
@@ -280,7 +281,7 @@ MR_trace_free_completer_list(MR_Completer_List *completer_list)
 /*---------------------------------------------------------------------------*/
 /* No completions. */
 
-MR_Completer_List *
+MR_CompleterList *
 MR_trace_null_completer(const char *word, size_t word_len)
 {
     return NULL;
@@ -290,22 +291,22 @@ MR_trace_null_completer(const char *word, size_t word_len)
 /* Complete on the labels of a sorted array. */
 
 typedef struct {
-    MR_Get_Slot_Name    MR_sorted_array_get_slot_name;
-    int                 MR_sorted_array_current_offset;
-    int                 MR_sorted_array_size;
-} MR_Sorted_Array_Completer_Data;
+    MR_GetSlotName  MR_sorted_array_get_slot_name;
+    int             MR_sorted_array_current_offset;
+    int             MR_sorted_array_size;
+} MR_SortedArrayCompleterData;
 
 static  char    *MR_trace_sorted_array_completer_next(const char *word,
-                    size_t word_length, MR_Completer_Data *data);
+                    size_t word_length, MR_CompleterData *data);
 
-MR_Completer_List *
+MR_CompleterList *
 MR_trace_sorted_array_completer(const char *word, size_t word_length,
-    int array_size, MR_Get_Slot_Name get_slot_name)
+    int array_size, MR_GetSlotName get_slot_name)
 {
-    MR_Completer_List               *completer;
-    MR_bool                         found;
-    int                             slot;
-    MR_Sorted_Array_Completer_Data  *data;
+    MR_CompleterList            *completer;
+    MR_bool                     found;
+    int                         slot;
+    MR_SortedArrayCompleterData *data;
 
     /*
     ** Find the slot containing the first possible match, optimizing for the
@@ -320,13 +321,12 @@ MR_trace_sorted_array_completer(const char *word, size_t word_length,
     }
 
     if (found) {
-        data = MR_NEW(MR_Sorted_Array_Completer_Data);
+        data = MR_NEW(MR_SortedArrayCompleterData);
         data->MR_sorted_array_get_slot_name = get_slot_name;
         data->MR_sorted_array_current_offset = slot;
         data->MR_sorted_array_size = array_size;
-        completer = MR_new_completer_elem(
-            MR_trace_sorted_array_completer_next,
-            (MR_Completer_Data) data, MR_free_func);
+        completer = MR_new_completer_elem(MR_trace_sorted_array_completer_next,
+            (MR_CompleterData) data, MR_free_func);
     } else {
         completer = NULL;
     }
@@ -335,12 +335,12 @@ MR_trace_sorted_array_completer(const char *word, size_t word_length,
 
 static char *
 MR_trace_sorted_array_completer_next(const char *word,
-    size_t word_length, MR_Completer_Data *completer_data)
+    size_t word_length, MR_CompleterData *completer_data)
 {
-    MR_Sorted_Array_Completer_Data  *data;
-    char                            *completion;
+    MR_SortedArrayCompleterData *data;
+    char                        *completion;
 
-    data = (MR_Sorted_Array_Completer_Data *) *completer_data;
+    data = (MR_SortedArrayCompleterData *) *completer_data;
 
     if (data->MR_sorted_array_current_offset < data->MR_sorted_array_size) {
         completion = data->MR_sorted_array_get_slot_name(
@@ -359,34 +359,34 @@ MR_trace_sorted_array_completer_next(const char *word,
 /*---------------------------------------------------------------------------*/
 /* Complete on the elements of an unsorted array of strings. */
 
-typedef struct MR_String_Array_Completer_Data_struct {
+typedef struct MR_StringArrayCompleterData_struct {
     char    **MR_string_array;
     int     MR_string_array_current_offset;
-} MR_String_Array_Completer_Data;
+} MR_StringArrayCompleterData;
 
 static  char    *MR_trace_string_array_completer_next(const char *word,
-                    size_t word_len, MR_Completer_Data *data);
+                    size_t word_len, MR_CompleterData *data);
 
-static MR_Completer_List *
+static MR_CompleterList *
 MR_trace_string_array_completer(const char *const *strings)
 {
-    MR_String_Array_Completer_Data  *data;
+    MR_StringArrayCompleterData *data;
 
-    data = MR_NEW(MR_String_Array_Completer_Data);
+    data = MR_NEW(MR_StringArrayCompleterData);
     data->MR_string_array = (char **) strings;
     data->MR_string_array_current_offset = 0;
     return MR_new_completer_elem(&MR_trace_string_array_completer_next,
-        (MR_Completer_Data) data, MR_free_func);
+        (MR_CompleterData) data, MR_free_func);
 }
 
 static char *
 MR_trace_string_array_completer_next(const char *word, size_t word_len,
-    MR_Completer_Data *data)
+    MR_CompleterData *data)
 {
-    MR_String_Array_Completer_Data  *completer_data;
-    char                            *result;
+    MR_StringArrayCompleterData *completer_data;
+    char                        *result;
 
-    completer_data = (MR_String_Array_Completer_Data *) *data;
+    completer_data = (MR_StringArrayCompleterData *) *data;
 
     while (1) {
         result = completer_data->MR_string_array[
@@ -406,18 +406,18 @@ MR_trace_string_array_completer_next(const char *word, size_t word_len,
 /* Use Readline's filename completer. */
 
 static  char    *MR_trace_filename_completer_next(const char *word,
-                    size_t word_len, MR_Completer_Data *);
+                    size_t word_len, MR_CompleterData *);
 
-MR_Completer_List *
+MR_CompleterList *
 MR_trace_filename_completer(const char *word, size_t word_len)
 {
     return MR_new_completer_elem(&MR_trace_filename_completer_next,
-        (MR_Completer_Data) 0, MR_trace_no_free);
+        (MR_CompleterData) 0, MR_trace_no_free);
 }
 
 static char *
 MR_trace_filename_completer_next(const char *word, size_t word_len,
-    MR_Completer_Data *data)
+    MR_CompleterData *data)
 {
 #ifdef MR_NO_USE_READLINE
     return NULL;
@@ -425,7 +425,7 @@ MR_trace_filename_completer_next(const char *word, size_t word_len,
     MR_Integer  state;
 
     state = (MR_Integer) *data;
-    *data = (MR_Completer_Data) 1;
+    *data = (MR_CompleterData) 1;
     return filename_completion_function((char *) word, (int) state);
 #endif /* ! MR_NO_USE_READLINE */
 }
@@ -434,22 +434,22 @@ MR_trace_filename_completer_next(const char *word, size_t word_len,
 /* Apply a filter to the output of a completer. */
 
 typedef struct {
-    MR_Completer_Filter     MR_filter_func;
-    MR_Completer_Data       MR_filter_data;
-    MR_Free_Completer_Data  MR_filter_free_data;
-    MR_Completer_List       *MR_filter_list;
+    MR_CompleterFilter      MR_filter_func;
+    MR_CompleterData        MR_filter_data;
+    MR_FreeCompleterData    MR_filter_free_data;
+    MR_CompleterList        *MR_filter_list;
 } MR_Filter_Completer_Data;
 
 static  char    *MR_trace_filter_completer_next(const char *word,
-                    size_t word_len, MR_Completer_Data *);
-static  void    MR_trace_free_filter_completer_data(MR_Completer_Data data);
+                    size_t word_len, MR_CompleterData *);
+static  void    MR_trace_free_filter_completer_data(MR_CompleterData data);
 
-MR_Completer_List *
-MR_trace_filter_completer(MR_Completer_Filter filter,
-    MR_Completer_Data filter_data, MR_Free_Completer_Data free_filter_data,
-    MR_Completer_List *list)
+MR_CompleterList *
+MR_trace_filter_completer(MR_CompleterFilter filter,
+    MR_CompleterData filter_data, MR_FreeCompleterData free_filter_data,
+    MR_CompleterList *list)
 {
-    MR_Filter_Completer_Data *data;
+    MR_Filter_Completer_Data    *data;
 
     data = MR_NEW(MR_Filter_Completer_Data);
     data->MR_filter_func = filter;
@@ -457,12 +457,12 @@ MR_trace_filter_completer(MR_Completer_Filter filter,
     data->MR_filter_free_data = free_filter_data;
     data->MR_filter_list = list;
     return MR_new_completer_elem(MR_trace_filter_completer_next,
-        (MR_Completer_Data) data, MR_trace_free_filter_completer_data);
+        (MR_CompleterData) data, MR_trace_free_filter_completer_data);
 }
 
 static char *
 MR_trace_filter_completer_next(const char *word, size_t word_len,
-    MR_Completer_Data *completer_data)
+    MR_CompleterData *completer_data)
 {
     MR_Filter_Completer_Data    *data;
     char                        *completion;
@@ -482,7 +482,7 @@ MR_trace_filter_completer_next(const char *word, size_t word_len,
 }
 
 static void
-MR_trace_free_filter_completer_data(MR_Completer_Data completer_data)
+MR_trace_free_filter_completer_data(MR_CompleterData completer_data)
 {
     MR_Filter_Completer_Data    *data;
 
@@ -497,38 +497,38 @@ MR_trace_free_filter_completer_data(MR_Completer_Data completer_data)
 
 typedef struct {
     MR_Completer_Map        MR_map_func;
-    MR_Completer_Data       MR_map_data;
-    MR_Free_Completer_Data  MR_map_free_data;
-    MR_Completer_List       *MR_map_list;
-} MR_Map_Completer_Data;
+    MR_CompleterData        MR_map_data;
+    MR_FreeCompleterData    MR_map_free_data;
+    MR_CompleterList        *MR_map_list;
+} MR_MapCompleterData;
 
 static  char    *MR_trace_map_completer_next(const char *word,
-                    size_t word_len, MR_Completer_Data *);
-static  void    MR_trace_free_map_completer_data(MR_Completer_Data data);
+                    size_t word_len, MR_CompleterData *);
+static  void    MR_trace_free_map_completer_data(MR_CompleterData data);
 
-MR_Completer_List *
-MR_trace_map_completer(MR_Completer_Map map, MR_Completer_Data map_data,
-    MR_Free_Completer_Data free_data, MR_Completer_List *list)
+MR_CompleterList *
+MR_trace_map_completer(MR_Completer_Map map, MR_CompleterData map_data,
+    MR_FreeCompleterData free_data, MR_CompleterList *list)
 {
-    MR_Map_Completer_Data *data;
+    MR_MapCompleterData *data;
 
-    data = MR_NEW(MR_Map_Completer_Data);
+    data = MR_NEW(MR_MapCompleterData);
     data->MR_map_func = map;
     data->MR_map_data = map_data;
     data->MR_map_free_data = free_data;
     data->MR_map_list = list;
     return MR_new_completer_elem(MR_trace_map_completer_next,
-        (MR_Completer_Data) data, MR_trace_free_map_completer_data);
+        (MR_CompleterData) data, MR_trace_free_map_completer_data);
 }
 
 static char *
 MR_trace_map_completer_next(const char *word, size_t word_len,
-    MR_Completer_Data *completer_data)
+    MR_CompleterData *completer_data)
 {
-    MR_Map_Completer_Data   *data;
-    char                    *completion;
+    MR_MapCompleterData *data;
+    char                *completion;
 
-    data = (MR_Map_Completer_Data *) *completer_data;
+    data = (MR_MapCompleterData *) *completer_data;
     completion = MR_trace_completer_list_next(word, word_len,
         &data->MR_map_list);
     if (completion == NULL) {
@@ -539,11 +539,11 @@ MR_trace_map_completer_next(const char *word, size_t word_len,
 }
 
 static void
-MR_trace_free_map_completer_data(MR_Completer_Data completer_data)
+MR_trace_free_map_completer_data(MR_CompleterData completer_data)
 {
-    MR_Map_Completer_Data   *data;
+    MR_MapCompleterData *data;
 
-    data = (MR_Map_Completer_Data *) completer_data;
+    data = (MR_MapCompleterData *) completer_data;
     data->MR_map_free_data(data->MR_map_data);
     MR_trace_free_completer_list(data->MR_map_list);
     MR_free(data);
@@ -551,12 +551,13 @@ MR_trace_free_map_completer_data(MR_Completer_Data completer_data)
 
 /*---------------------------------------------------------------------------*/
 
-MR_Completer_List *
-MR_new_completer_elem(MR_Completer completer, MR_Completer_Data data,
-    MR_Free_Completer_Data free_data)
+MR_CompleterList *
+MR_new_completer_elem(MR_Completer completer, MR_CompleterData data,
+    MR_FreeCompleterData free_data)
 {
-    MR_Completer_List *result;
-    result = MR_NEW(MR_Completer_List);
+    MR_CompleterList    *result;
+
+    result = MR_NEW(MR_CompleterList);
     result->MR_completer_func = completer;
     result->MR_completer_func_data = data;
     result->MR_free_completer_func_data = free_data;
@@ -565,6 +566,6 @@ MR_new_completer_elem(MR_Completer completer, MR_Completer_Data data,
 }
 
 void
-MR_trace_no_free(MR_Completer_Data data)
+MR_trace_no_free(MR_CompleterData data)
 {
 }

@@ -40,7 +40,7 @@ static  void            MR_table_mmos_make_gen_follow_leader(
 */
 
 /* set by MR_trace_event, used by table_nondet_setup */
-const MR_Proc_Layout          *MR_subgoal_debug_cur_proc = NULL;
+const MR_ProcLayout     *MR_subgoal_debug_cur_proc = NULL;
 
 struct MR_ConsDebug_Struct
 {
@@ -273,7 +273,7 @@ MR_gen_num_name(int gen_index)
 }
 
 void
-MR_print_gen_debug(FILE *fp, const MR_Proc_Layout *proc,
+MR_print_gen_debug(FILE *fp, const MR_ProcLayout *proc,
     MR_GenDebug *gen_debug)
 {
     if (gen_debug == NULL) {
@@ -284,7 +284,7 @@ MR_print_gen_debug(FILE *fp, const MR_Proc_Layout *proc,
 }
 
 void
-MR_print_generator(FILE *fp, const MR_Proc_Layout *proc,
+MR_print_generator(FILE *fp, const MR_ProcLayout *proc,
     MR_Generator *generator)
 {
     MR_SubgoalList  follower;
@@ -351,7 +351,7 @@ MR_print_generator(FILE *fp, const MR_Proc_Layout *proc,
 }
 
 void
-MR_print_cons_debug(FILE *fp, const MR_Proc_Layout *proc,
+MR_print_cons_debug(FILE *fp, const MR_ProcLayout *proc,
     MR_ConsDebug *cons_debug)
 {
     if (cons_debug == NULL) {
@@ -362,7 +362,7 @@ MR_print_cons_debug(FILE *fp, const MR_Proc_Layout *proc,
 }
 
 void
-MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc, MR_Consumer *consumer)
+MR_print_consumer(FILE *fp, const MR_ProcLayout *proc, MR_Consumer *consumer)
 {
     if (consumer == NULL) {
         fprintf(fp, "NULL consumer\n");

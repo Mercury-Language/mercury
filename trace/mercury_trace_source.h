@@ -38,7 +38,7 @@ typedef struct {
     char        *server_name;
     char        *server_cmd;
     MR_bool     split;
-} MR_Trace_Source_Server;
+} MR_TraceSourceServer;
 
 /*
 ** Start a server in a new window. The arguments are:
@@ -62,7 +62,7 @@ typedef struct {
 ** describing the problem.
 */
 
-const char  *MR_trace_source_open_server(MR_Trace_Source_Server *server,
+const char  *MR_trace_source_open_server(MR_TraceSourceServer *server,
                 const char *window_cmd, int timeout, MR_bool verbose);
 
 /*
@@ -70,7 +70,7 @@ const char  *MR_trace_source_open_server(MR_Trace_Source_Server *server,
 ** otherwise it returns a string describing the problem.
 */
 
-const char  *MR_trace_source_attach(MR_Trace_Source_Server *server,
+const char  *MR_trace_source_attach(MR_TraceSourceServer *server,
                 int timeout, MR_bool verbose);
 
 /*
@@ -80,7 +80,7 @@ const char  *MR_trace_source_attach(MR_Trace_Source_Server *server,
 ** and does nothing else; returns NULL if there were no problems.
 */
 
-const char  *MR_trace_source_sync(MR_Trace_Source_Server *server,
+const char  *MR_trace_source_sync(MR_TraceSourceServer *server,
                 const char *filename, int lineno, const char *parent_filename,
                 int parent_lineno, MR_bool verbose);
 
@@ -90,7 +90,7 @@ const char  *MR_trace_source_sync(MR_Trace_Source_Server *server,
 ** modified the code in the source window, for example.
 */
 
-const char  *MR_trace_source_close(MR_Trace_Source_Server *server,
+const char  *MR_trace_source_close(MR_TraceSourceServer *server,
                 MR_bool verbose);
 
 #endif /* not MERCURY_TRACE_SOURCE_H */

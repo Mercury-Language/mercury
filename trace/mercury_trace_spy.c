@@ -52,7 +52,7 @@ const char      *MR_spy_when_names[] =
 ** free slot and how many slots are allocated.
 */
 
-MR_Spy_Point    **MR_spy_points;
+MR_SpyPoint    **MR_spy_points;
 int             MR_spy_point_next = 0;
 int             MR_spy_point_max  = 0;
 
@@ -70,11 +70,11 @@ int             MR_most_recent_spy_point = -1;
 */
 
 typedef struct {
-    const MR_Proc_Layout    *spy_proc;
-    MR_Spy_Point            *spy_points;
-} MR_Spied_Proc;
+    const MR_ProcLayout     *spy_proc;
+    MR_SpyPoint            *spy_points;
+} MR_SpiedProc;
 
-static  MR_Spied_Proc       *MR_spied_procs;
+static  MR_SpiedProc       *MR_spied_procs;
 static  int                 MR_spied_proc_next = 0;
 static  int                 MR_spied_proc_max = 0;
 
@@ -89,11 +89,11 @@ static  int                 MR_spied_proc_max = 0;
 */
 
 typedef struct {
-    const MR_Label_Layout   *spy_label;
+    const MR_LabelLayout    *spy_label;
     int                     spy_point_num;
-} MR_Spied_Label;
+} MR_SpiedLabel;
 
-static  MR_Spied_Label      *MR_spied_labels;
+static  MR_SpiedLabel      *MR_spied_labels;
 static  int                 MR_spied_label_next = 0;
 static  int                 MR_spied_label_max = 0;
 
@@ -104,19 +104,19 @@ static  int                 MR_spied_label_max = 0;
 
 static  int         MR_compare_addr(const void *address1,
                         const void *address2);
-static  int         MR_search_spy_table_for_proc(const MR_Proc_Layout *entry);
+static  int         MR_search_spy_table_for_proc(const MR_ProcLayout *entry);
 static  int         MR_search_spy_table_for_label(
-                        const MR_Label_Layout *label);
-static  MR_bool     MR_spy_cond_is_true(MR_Spy_Point *point,
-                        const MR_Label_Layout *label);
+                        const MR_LabelLayout *label);
+static  MR_bool     MR_spy_cond_is_true(MR_SpyPoint *point,
+                        const MR_LabelLayout *label);
 static  void        MR_add_line_spy_point_callback(
-                        const MR_Label_Layout *label, int spy_point_num);
+                        const MR_LabelLayout *label, int spy_point_num);
 static  int         MR_compare_spied_labels(const void *, const void *);
-static  void        MR_delete_spy_print_list(MR_Spy_Print_List print_list);
-static  void        MR_update_enabled_action(MR_Spy_Point *point,
-                        MR_Trace_Port port, MR_Spy_Action *action_ptr,
+static  void        MR_delete_spy_print_list(MR_SpyPrintList print_list);
+static  void        MR_update_enabled_action(MR_SpyPoint *point,
+                        MR_TracePort port, MR_SpyAction *action_ptr,
                         MR_bool *enabled_ptr);
-static  const char  *MR_ignore_when_to_string(MR_Spy_Ignore_When ignore_when);
+static  const char  *MR_ignore_when_to_string(MR_SpyIgnore_When ignore_when);
 
 /*
 ** Compare two addresses, and return an integer which is <0, 0, or >0
@@ -149,7 +149,7 @@ MR_compare_addr(const void *address1, const void *address2)
 */
 
 static int
-MR_search_spy_table_for_proc(const MR_Proc_Layout *entry)
+MR_search_spy_table_for_proc(const MR_ProcLayout *entry)
 {
     int     slot;
     MR_bool found;
@@ -169,7 +169,7 @@ MR_search_spy_table_for_proc(const MR_Proc_Layout *entry)
 */
 
 static int
-MR_search_spy_table_for_label(const MR_Label_Layout *label)
+MR_search_spy_table_for_label(const MR_LabelLayout *label)
 {
     int     slot;
     MR_bool found;
@@ -184,15 +184,15 @@ MR_search_spy_table_for_label(const MR_Label_Layout *label)
 }
 
 MR_bool
-MR_event_matches_spy_point(const MR_Label_Layout *layout,
-    MR_Trace_Port port, MR_Spy_Action *action_ptr,
-    MR_Spy_Print_List *print_list)
+MR_event_matches_spy_point(const MR_LabelLayout *layout,
+    MR_TracePort port, MR_SpyAction *action_ptr,
+    MR_SpyPrintList *print_list)
 {
     int                     slot;
     MR_bool                 enabled;
-    MR_Spy_Point            *point;
-    MR_Spy_Action           action;
-    const MR_Label_Layout   *parent;
+    MR_SpyPoint            *point;
+    MR_SpyAction           action;
+    const MR_LabelLayout    *parent;
     const char              *problem;
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
@@ -323,8 +323,8 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 }
 
 static void
-MR_update_enabled_action(MR_Spy_Point *point, MR_Trace_Port port,
-    MR_Spy_Action *action_ptr, MR_bool *enabled_ptr)
+MR_update_enabled_action(MR_SpyPoint *point, MR_TracePort port,
+    MR_SpyAction *action_ptr, MR_bool *enabled_ptr)
 {
     if (point->spy_enabled) {
         if (point->spy_ignore_count == 0) {
@@ -359,14 +359,14 @@ MR_update_enabled_action(MR_Spy_Point *point, MR_Trace_Port port,
 }
 
 const char  *MR_spy_point_cond_problem = NULL;
-MR_Spy_Cond *MR_spy_point_cond_bad = NULL;
+MR_SpyCond *MR_spy_point_cond_bad = NULL;
 
 static MR_bool
-MR_spy_cond_is_true(MR_Spy_Point *point, const MR_Label_Layout *label_layout)
+MR_spy_cond_is_true(MR_SpyPoint *point, const MR_LabelLayout *label_layout)
 {
     int             max_mr_num;
     MR_Word         saved_regs[MR_MAX_FAKE_REG];
-    MR_Var_Spec     var_spec;
+    MR_VarSpec      var_spec;
     char            *path;
     const char      *problem;
     char            *bad_path;
@@ -379,7 +379,7 @@ MR_spy_cond_is_true(MR_Spy_Point *point, const MR_Label_Layout *label_layout)
     MR_Word         match;
     MR_bool         saved_trace_func_enabled;
     MR_bool         retval;
-    MR_Spy_Cond     *cond;
+    MR_SpyCond      *cond;
 
     if (point->spy_cond == NULL) {
         return MR_TRUE;
@@ -402,7 +402,7 @@ MR_spy_cond_is_true(MR_Spy_Point *point, const MR_Label_Layout *label_layout)
     /* This also saves the regs in MR_fake_regs. */
     MR_copy_regs_to_saved_regs(max_mr_num, saved_regs);
     MR_trace_init_point_vars(label_layout, saved_regs,
-        (MR_Trace_Port) label_layout->MR_sll_port, MR_FALSE);
+        (MR_TracePort) label_layout->MR_sll_port, MR_FALSE);
 
     problem = MR_lookup_unambiguous_var_spec(cond->cond_var_spec,
         &type_info, &value, &name);
@@ -488,12 +488,12 @@ static const char *incompatible =
     "Ignore count is not compatible with break point specification";
 
 int
-MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
-    MR_Spy_Ignore_When ignore_when, int ignore_count,
-    const MR_Proc_Layout *entry, const MR_Label_Layout *label,
-    MR_Spy_Print_List print_list, const char **problem)
+MR_add_proc_spy_point(MR_SpyWhen when, MR_SpyAction action,
+    MR_SpyIgnore_When ignore_when, int ignore_count,
+    const MR_ProcLayout *entry, const MR_LabelLayout *label,
+    MR_SpyPrintList print_list, const char **problem)
 {
-    MR_Spy_Point    *point;
+    MR_SpyPoint     *point;
     int             point_slot;
     int             proc_slot;
     int             i;
@@ -502,7 +502,7 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
 
     proc_slot = MR_search_spy_table_for_proc(entry);
     if (proc_slot < 0) {
-        MR_ensure_room_for_next(MR_spied_proc, MR_Spied_Proc,
+        MR_ensure_room_for_next(MR_spied_proc, MR_SpiedProc,
             MR_INIT_SPIED_PROCS);
         MR_prepare_insert_into_sorted(MR_spied_procs,
             MR_spied_proc_next, proc_slot,
@@ -512,7 +512,7 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
     }
 
     /* Insert the spy point at the head of the list for the proc. */
-    point = MR_NEW(MR_Spy_Point);
+    point = MR_NEW(MR_SpyPoint);
     point->spy_when    = when;
     point->spy_exists  = MR_TRUE;
     point->spy_enabled = MR_TRUE;
@@ -534,7 +534,7 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
         }
     }
 
-    MR_ensure_room_for_next(MR_spy_point, MR_Spy_Point *, MR_INIT_SPY_POINTS);
+    MR_ensure_room_for_next(MR_spy_point, MR_SpyPoint *, MR_INIT_SPY_POINTS);
     point_slot = MR_spy_point_next;
     MR_spy_points[point_slot] = point;
     MR_spy_point_next++;
@@ -548,11 +548,11 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
 static char MR_error_msg_buf[MR_ERROR_MSG_BUF_SIZE];
 
 int
-MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
+MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
     int ignore_count, const char *orig_filename, int linenumber,
-    MR_Spy_Print_List print_list, const char **problem)
+    MR_SpyPrintList print_list, const char **problem)
 {
-    MR_Spy_Point    *point;
+    MR_SpyPoint     *point;
     int             point_slot;
     int             old_size;
     int             new_size;
@@ -600,10 +600,10 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
     ** We must make the table sorted again.
     */
 
-    qsort(MR_spied_labels, MR_spied_label_next, sizeof(MR_Spied_Label),
+    qsort(MR_spied_labels, MR_spied_label_next, sizeof(MR_SpiedLabel),
         MR_compare_spied_labels);
 
-    point = MR_NEW(MR_Spy_Point);
+    point = MR_NEW(MR_SpyPoint);
     point->spy_when       = MR_SPY_LINENO;
     point->spy_exists     = MR_TRUE;
     point->spy_enabled    = MR_TRUE;
@@ -615,7 +615,7 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
     point->spy_filename   = filename;
     point->spy_linenumber = linenumber;
 
-    MR_ensure_room_for_next(MR_spy_point, MR_Spy_Point *, MR_INIT_SPY_POINTS);
+    MR_ensure_room_for_next(MR_spy_point, MR_SpyPoint *, MR_INIT_SPY_POINTS);
     MR_spy_points[point_slot] = point;
     MR_spy_point_next++;
 
@@ -624,11 +624,11 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
 }
 
 static void
-MR_add_line_spy_point_callback(const MR_Label_Layout *label, int spy_point_num)
+MR_add_line_spy_point_callback(const MR_LabelLayout *label, int spy_point_num)
 {
     int spied_label_slot;
 
-    MR_ensure_room_for_next(MR_spied_label, MR_Spied_Label,
+    MR_ensure_room_for_next(MR_spied_label, MR_SpiedLabel,
         MR_INIT_SPIED_LABELS);
     spied_label_slot = MR_spied_label_next;
     MR_spied_labels[spied_label_slot].spy_label = label;
@@ -639,20 +639,20 @@ MR_add_line_spy_point_callback(const MR_Label_Layout *label, int spy_point_num)
 static int
 MR_compare_spied_labels(const void *l1, const void *l2)
 {
-    const MR_Spied_Label    *label1;
-    const MR_Spied_Label    *label2;
+    const MR_SpiedLabel    *label1;
+    const MR_SpiedLabel    *label2;
 
-    label1 = (const MR_Spied_Label *) l1;
-    label2 = (const MR_Spied_Label *) l2;
+    label1 = (const MR_SpiedLabel *) l1;
+    label2 = (const MR_SpiedLabel *) l2;
 
     return (int) ((MR_Integer) label1->spy_label
         - (MR_Integer) label2->spy_label);
 }
 
 void
-MR_add_spy_point_print_list_start(int point_slot, MR_Spy_Print_List print_list)
+MR_add_spy_point_print_list_start(int point_slot, MR_SpyPrintList print_list)
 {
-    MR_Spy_Print_List   list;
+    MR_SpyPrintList list;
 
     list = print_list;
     if (list == NULL) {
@@ -670,9 +670,9 @@ MR_add_spy_point_print_list_start(int point_slot, MR_Spy_Print_List print_list)
 }
 
 void
-MR_add_spy_point_print_list_end(int point_slot, MR_Spy_Print_List print_list)
+MR_add_spy_point_print_list_end(int point_slot, MR_SpyPrintList print_list)
 {
-    MR_Spy_Print_List   list;
+    MR_SpyPrintList list;
 
     list = MR_spy_points[point_slot]->spy_print_list;
     if (list == NULL) {
@@ -697,7 +697,7 @@ MR_clear_spy_point_print_list(int point_slot)
 }
 
 const char *
-MR_ignore_spy_point(int point_slot, MR_Spy_Ignore_When ignore_when,
+MR_ignore_spy_point(int point_slot, MR_SpyIgnore_When ignore_when,
     int ignore_count)
 {
     switch (MR_spy_points[point_slot]->spy_when) {
@@ -722,7 +722,7 @@ MR_ignore_spy_point(int point_slot, MR_Spy_Ignore_When ignore_when,
 }
 
 static void
-MR_delete_spy_print_list(MR_Spy_Print_List print_list)
+MR_delete_spy_print_list(MR_SpyPrintList print_list)
 {
     if (print_list == NULL) {
         return;
@@ -741,9 +741,9 @@ MR_delete_spy_print_list(MR_Spy_Print_List print_list)
 void
 MR_delete_spy_point(int point_table_slot)
 {
-    MR_Spy_Point    *point;
-    MR_Spy_Point    **cur_addr;
-    MR_Spy_Point    *cur;
+    MR_SpyPoint     *point;
+    MR_SpyPoint     **cur_addr;
+    MR_SpyPoint     *cur;
     int             proc_table_slot;
     int             i;
     int             label_slot;
@@ -823,8 +823,8 @@ MR_delete_spy_point(int point_table_slot)
 void
 MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
 {
-    MR_Spy_Point    *point;
-    MR_Spy_Cond     *cond;
+    MR_SpyPoint *point;
+    MR_SpyCond  *cond;
 
     point = MR_spy_points[spy_point_num];
     fprintf(fp, "%2d: %1s %-5s %9s ",
@@ -869,8 +869,8 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
     }
 
     if (verbose && point->spy_print_list != NULL) {
-        MR_Spy_Print_List   list;
-        MR_Spy_Print        node;
+        MR_SpyPrintList list;
+        MR_SpyPrint     node;
 
         fprintf(fp, "%12s", "");
         for (list = point->spy_print_list; list != NULL; list = list->pl_next)
@@ -937,7 +937,7 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
 }
 
 void
-MR_print_spy_cond(FILE *fp, MR_Spy_Cond *cond)
+MR_print_spy_cond(FILE *fp, MR_SpyCond *cond)
 {
     switch (cond->cond_var_spec.MR_var_spec_kind) {
         case MR_VAR_SPEC_NUMBER:
@@ -975,7 +975,7 @@ MR_print_spy_cond(FILE *fp, MR_Spy_Cond *cond)
 }
 
 static const char *
-MR_ignore_when_to_string(MR_Spy_Ignore_When ignore_when)
+MR_ignore_when_to_string(MR_SpyIgnore_When ignore_when)
 {
     switch (ignore_when) {
         case MR_SPY_IGNORE_ENTRY:
@@ -992,9 +992,9 @@ MR_ignore_when_to_string(MR_Spy_Ignore_When ignore_when)
 MR_bool
 MR_save_spy_points(FILE *fp, FILE *err_fp)
 {
-    MR_Spy_Point    *point;
-    int             i;
-    int             spy_point_num;
+    MR_SpyPoint *point;
+    int         i;
+    int         spy_point_num;
 
     spy_point_num = 0;
     for (i = 0; i < MR_spy_point_next; i++) {
@@ -1067,7 +1067,7 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
         }
 
         if (point->spy_cond != NULL) {
-            MR_Spy_Cond *cond;
+            MR_SpyCond *cond;
 
             cond = point->spy_cond;
             fprintf(fp, "condition ");
@@ -1102,8 +1102,8 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
         }
 
         if (point->spy_print_list != NULL) {
-            MR_Spy_Print_List   list;
-            MR_Spy_Print        node;
+            MR_SpyPrintList   list;
+            MR_SpyPrint        node;
 
             list = point->spy_print_list;
             for (; list != NULL; list = list->pl_next) {

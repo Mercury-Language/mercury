@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002, 2004 The University of Melbourne.
+** Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,7 +29,7 @@
   #ifdef MR_DEEP_PROFILING_TAIL_RECURSION
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
-	const MR_Proc_Layout	*pl;
+	const MR_ProcLayout	*pl;
 	MR_ProcStatic		*ps;
 
 	MR_enter_instrumentation();

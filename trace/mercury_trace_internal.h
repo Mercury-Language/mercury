@@ -13,21 +13,21 @@
 #include "mercury_types.h"              /* for MR_Code */
 #include "mercury_trace_base.h"         /* for MR_SavedDebugState */
 
-#include "mercury_trace.h"              /* for MR_Event_Info, etc. */
+#include "mercury_trace.h"              /* for MR_EventInfo, etc. */
 #include "mercury_std.h"                /* for MR_bool */
-#include "mercury_trace_cmds.h"         /* for MR_Spy_Print_List */
-#include "mercury_trace_completion.h"   /* for MR_Make_Completer */
-#include "mercury_trace_spy.h"          /* for MR_Spy_Print_List */
-#include "mercury_trace_source.h"       /* for MR_Trace_Source_Server */
+#include "mercury_trace_cmds.h"         /* for MR_SpyPrintList */
+#include "mercury_trace_completion.h"   /* for MR_MakeCompleter */
+#include "mercury_trace_spy.h"          /* for MR_SpyPrintList */
+#include "mercury_trace_source.h"       /* for MR_TraceSourceServer */
 
 #include <stdio.h>                      /* for FILE */
 
-extern  MR_Code     *MR_trace_event_internal(MR_Trace_Cmd_Info *cmd,
-                        MR_bool interactive, MR_Spy_Print_List print_list,
-                        MR_Event_Info *event_info);
+extern  MR_Code     *MR_trace_event_internal(MR_TraceCmdInfo *cmd,
+                        MR_bool interactive, MR_SpyPrintList print_list,
+                        MR_EventInfo *event_info);
 
 extern  void        MR_trace_event_print_internal_report(
-                        MR_Event_Info *event_info);
+                        MR_EventInfo *event_info);
 
 
 /*
@@ -75,7 +75,7 @@ extern  char        *MR_trace_getline_queue(void);
 ** The details of the source server, if any.
 */
 
-extern  MR_Trace_Source_Server  MR_trace_source_server;
+extern  MR_TraceSourceServer  MR_trace_source_server;
 
 /*
 ** Source commands from the given file. Print an error message if the file
@@ -138,14 +138,14 @@ extern  MR_SavedDebugState
 */
 
 extern  MR_bool MR_trace_command_completion_info(const char *word,
-                    MR_Make_Completer *completer,
+                    MR_MakeCompleter *completer,
                     const char *const **fixed_args);
 
 /*
 ** A Readline completer for command names.
 */
 
-extern  MR_Completer_List
+extern  MR_CompleterList
                 *MR_trace_command_completer(const char *word, size_t word_len);
 
 #endif  /* MERCURY_TRACE_INTERNAL_H */

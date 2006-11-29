@@ -985,7 +985,7 @@ MR_memo_non_status(MR_MemoNonStatus status)
 }
 
 void
-MR_print_loopcheck_tip(FILE *fp, const MR_Proc_Layout *proc, MR_TrieNode table)
+MR_print_loopcheck_tip(FILE *fp, const MR_ProcLayout *proc, MR_TrieNode table)
 {
     switch (table->MR_loop_status) {
         case MR_LOOP_INACTIVE:
@@ -1000,7 +1000,7 @@ MR_print_loopcheck_tip(FILE *fp, const MR_Proc_Layout *proc, MR_TrieNode table)
 }
 
 void
-MR_print_memo_tip(FILE *fp, const MR_Proc_Layout *proc, MR_TrieNode table)
+MR_print_memo_tip(FILE *fp, const MR_ProcLayout *proc, MR_TrieNode table)
 {
     switch (table->MR_memo_status) {
         case MR_MEMO_INACTIVE:
@@ -1024,7 +1024,7 @@ MR_print_memo_tip(FILE *fp, const MR_Proc_Layout *proc, MR_TrieNode table)
 }
 
 void
-MR_print_memo_non_record(FILE *fp, const MR_Proc_Layout *proc,
+MR_print_memo_non_record(FILE *fp, const MR_ProcLayout *proc,
     MR_MemoNonRecordPtr record)
 {
     MR_AnswerList   answer_list;
@@ -1065,7 +1065,7 @@ MR_print_memo_non_record(FILE *fp, const MR_Proc_Layout *proc,
 }
 
 void
-MR_print_answerblock(FILE *fp, const MR_Proc_Layout *proc,
+MR_print_answerblock(FILE *fp, const MR_ProcLayout *proc,
     MR_Word *answer_block)
 {
     const MR_PseudoTypeInfo *ptis;

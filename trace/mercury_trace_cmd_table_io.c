@@ -35,8 +35,8 @@ static  void        MR_print_unsigned_var(FILE *fp, const char *var,
 /****************************************************************************/
 
 MR_Next
-MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_table_io(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 1) {
         if (! MR_io_tabling_allowed) {

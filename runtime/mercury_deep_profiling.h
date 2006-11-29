@@ -57,7 +57,7 @@ struct MR_ProfilingMetrics_Struct {
 
 struct MR_CallSiteStatic_Struct {
     	MR_CallSite_Kind			MR_css_kind;
-	MR_Proc_Layout				*MR_css_callee_ptr_if_known;
+	MR_ProcLayout				*MR_css_callee_ptr_if_known;
 	MR_ConstString				MR_css_type_subst_if_known;
 	MR_ConstString				MR_css_file_name;
 	int					MR_css_line_number;
@@ -86,7 +86,7 @@ struct MR_CallSiteDynamic_Struct {
 };
 
 struct MR_ProcDynamic_Struct {
-	const MR_Proc_Layout			*MR_pd_proc_layout;
+	const MR_ProcLayout			*MR_pd_proc_layout;
 	MR_CallSiteDynamic			**MR_pd_call_site_ptr_ptrs;
 };
 
@@ -359,15 +359,15 @@ extern	void	MR_deep_log_proc_statics(FILE *fp);
 #endif
 
 extern	void	MR_deep_assert_failed(const MR_CallSiteDynamic *csd,
-			const MR_Proc_Layout *pl, const MR_ProcStatic *ps,
+			const MR_ProcLayout *pl, const MR_ProcStatic *ps,
 			const char *cond, const char *filename,
 			int linenumber);
 extern	void	MR_setup_callback(void *entry);
 extern	void	MR_write_out_user_proc_static(FILE *fp,
-			const MR_Proc_Layout_User *ptr);
+			const MR_ProcLayoutUser *ptr);
 extern	void	MR_write_out_uci_proc_static(FILE *fp,
-			const MR_Proc_Layout_UCI *ptr);
-extern	void	MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *ptr);
+			const MR_ProcLayoutUCI *ptr);
+extern	void	MR_write_out_proc_static(FILE *fp, const MR_ProcLayout *ptr);
 extern	void	MR_write_out_profiling_tree(void);
 
 extern	void	MR_deep_prof_init(void);

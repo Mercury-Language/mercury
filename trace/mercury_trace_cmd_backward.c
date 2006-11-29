@@ -41,21 +41,21 @@
     "Retry across I/O operations is not always safe.\n" \
     "Are you sure you want to do it? "
 
-static  MR_bool     MR_trace_options_retry(MR_Retry_Across_Io *across_io,
+static  MR_bool     MR_trace_options_retry(MR_RetryAcrossIo *across_io,
                         MR_bool *assume_all_io_is_tabled,
                         char ***words, int *word_count);
 
 /****************************************************************************/
 
 MR_Next
-MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int                 n;
     int                 ancestor_level;
-    MR_Retry_Across_Io  across_io;
+    MR_RetryAcrossIo    across_io;
     const char          *problem;
-    MR_Retry_Result     result;
+    MR_RetryResult      result;
     MR_bool             assume_all_io_is_tabled;
     MR_bool             unsafe_retry;
 
@@ -146,7 +146,7 @@ static struct MR_option MR_trace_retry_opts[] =
 };
 
 static MR_bool
-MR_trace_options_retry(MR_Retry_Across_Io *across_io,
+MR_trace_options_retry(MR_RetryAcrossIo *across_io,
     MR_bool *assume_all_io_is_tabled, char ***words, int *word_count)
 {
     int c;

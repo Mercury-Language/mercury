@@ -180,7 +180,7 @@ struct MR_MemoNonRecord_Struct {
 **
 ** To enable debugging (especially performance debugging) of tabled predicates,
 ** the compiler generates one of these structures for each tabled predicate
-** (except I/O primitives, for which it generates an MR_Table_Io_Decl
+** (except I/O primitives, for which it generates an MR_TableIoDecl
 ** structure).
 **
 ** Each argument of a tabled predicate is an input or an output. Inputs are put
@@ -295,7 +295,7 @@ struct MR_ProcTableInfo_Struct {
 	const MR_TableTrieStep		*MR_pt_output_steps;
 	const MR_Integer		*MR_pt_output_enum_params;
 	const MR_PseudoTypeInfo		*MR_pt_ptis;
-	const MR_Type_Param_Locns	*MR_pt_type_params;
+	const MR_TypeParamLocns		*MR_pt_type_params;
 
 	MR_TableNode			MR_pt_tablenode;
 
@@ -326,7 +326,7 @@ typedef struct MR_Table_Gen_Struct {
 	const MR_TableTrieStep		*MR_table_gen_input_steps;
 	const MR_Integer		*MR_table_gen_enum_params;
 	const MR_PseudoTypeInfo		*MR_table_gen_ptis;
-	const MR_Type_Param_Locns	*MR_table_gen_type_params;
+	const MR_TypeParamLocns		*MR_table_gen_type_params;
 } MR_Table_Gen;
 
 /*---------------------------------------------------------------------------*/
@@ -490,11 +490,11 @@ extern	const char	*MR_memo_non_status(MR_MemoNonStatus);
 */
 
 extern	void		MR_print_loopcheck_tip(FILE *fp,
-				const MR_Proc_Layout *proc, MR_TrieNode table);
+				const MR_ProcLayout *proc, MR_TrieNode table);
 extern	void		MR_print_memo_tip(FILE *fp,
-				const MR_Proc_Layout *proc, MR_TrieNode table);
+				const MR_ProcLayout *proc, MR_TrieNode table);
 extern	void		MR_print_memo_non_record(FILE *fp,
-				const MR_Proc_Layout *proc,
+				const MR_ProcLayout *proc,
 				MR_MemoNonRecordPtr record);
 
 /*
@@ -502,7 +502,7 @@ extern	void		MR_print_memo_non_record(FILE *fp,
 */
 
 extern	void		MR_print_answerblock(FILE *fp,
-				const MR_Proc_Layout *proc,
+				const MR_ProcLayout *proc,
 				MR_Word *answer_block);
 
 /*---------------------------------------------------------------------------*/
@@ -637,7 +637,7 @@ extern	void		MR_print_answerblock(FILE *fp,
 #include "mercury_tabling_macros.h"
 #include "mercury_tabling_preds.h"
 
-#include "mercury_stack_layout.h"	/* for MR_Proc_Layout and */
-					/* MR_Type_Param_Locns */
+#include "mercury_stack_layout.h"	/* for MR_ProcLayout and */
+					/* MR_TypeParamLocns */
 
 #endif	/* not MERCURY_TABLING_H */

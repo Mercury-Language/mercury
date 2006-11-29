@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2003-2005 The University of Melbourne.
+** Copyright (C) 2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -80,7 +80,7 @@ typedef struct {
 
 #ifdef	MR_MINIMAL_MODEL_DEBUG
 	/* to make it possible to generate more detailed debugging output */
-	const MR_Label_Layout	*MR_ss_top_layout;
+	const MR_LabelLayout	*MR_ss_top_layout;
 #endif
 } MR_SavedState;
 
@@ -189,13 +189,13 @@ struct MR_Subgoal_Struct {
 	MR_Word			*MR_sg_generator_fr;
 	MR_Word			*MR_sg_deepest_nca_fr;
 #ifdef	MR_MINIMAL_MODEL_DEBUG
-	const MR_Proc_Layout	*MR_sg_proc_layout;
+	const MR_ProcLayout	*MR_sg_proc_layout;
 #endif
 };
 
 /*---------------------------------------------------------------------------*/
 
-extern	const MR_Proc_Layout	*MR_subgoal_debug_cur_proc;
+extern	const MR_ProcLayout	*MR_subgoal_debug_cur_proc;
 
 extern	void		MR_enter_consumer_debug(MR_Consumer *consumer);
 extern	MR_ConsumerDebug *MR_lookup_consumer_debug_addr(MR_Consumer *consumer);
@@ -213,14 +213,14 @@ extern	const char	*MR_subgoal_num_name(int subgoal_index);
 extern	const char	*MR_subgoal_status(MR_SubgoalStatus status);
 
 extern	void		MR_print_subgoal_debug(FILE *fp,
-				const MR_Proc_Layout *proc,
+				const MR_ProcLayout *proc,
 				MR_SubgoalDebug *subgoal_debug);
-extern	void		MR_print_subgoal(FILE *fp, const MR_Proc_Layout *proc,
+extern	void		MR_print_subgoal(FILE *fp, const MR_ProcLayout *proc,
 				MR_Subgoal *subgoal);
 extern	void		MR_print_consumer_debug(FILE *fp,
-				const MR_Proc_Layout *proc,
+				const MR_ProcLayout *proc,
 				MR_ConsumerDebug *consumer_debug);
-extern	void		MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc,
+extern	void		MR_print_consumer(FILE *fp, const MR_ProcLayout *proc,
 				MR_Consumer *consumer);
 
 extern	MR_Subgoal	*MR_setup_subgoal(MR_TrieNode);

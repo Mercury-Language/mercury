@@ -53,7 +53,7 @@
     --->    string_with_0s(string).
 
 :- type layout_data
-    --->    label_layout_data(          % defines MR_Label_Layout
+    --->    label_layout_data(          % defines MR_LabelLayout
                 proc_label              :: proc_label,
                 label_num               :: int,
                 proc_layout_name        :: layout_name,
@@ -64,12 +64,12 @@
                 maybe_user_info         :: maybe(user_event_data),
                 maybe_var_info          :: maybe(label_var_info)
             )
-    ;       proc_layout_data(           % defines MR_Proc_Layout
+    ;       proc_layout_data(           % defines MR_ProcLayout
                 proc_layout_label       :: rtti_proc_label,
                 proc_layout_trav        :: proc_layout_stack_traversal,
                 proc_layout_more        :: maybe_proc_id_and_more
             )
-    ;       module_layout_data(         % defines MR_Module_Layout
+    ;       module_layout_data(         % defines MR_ModuleLayout
                 module_name             :: module_name,
                 string_table_size       :: int,
                 string_table            :: string_with_0s,
@@ -80,7 +80,7 @@
                 num_label_exec_count    :: int,
                 maybe_event_specs       :: maybe(string)
             )
-    ;       closure_proc_id_data(       % defines MR_Closure_Id
+    ;       closure_proc_id_data(       % defines MR_ClosureId
                 caller_proc_label       :: proc_label,
                 caller_closure_seq_no   :: int,
                 closure_proc_label      :: proc_label,
@@ -110,14 +110,14 @@
             ).
 
 :- type label_var_info
-    --->    label_var_info(             % part of MR_Label_Layout
+    --->    label_var_info(             % part of MR_LabelLayout
                 encoded_var_count       :: int,
                 locns_types             :: rval,
                 var_nums                :: rval,
                 type_params             :: rval
             ).
 
-:- type proc_layout_stack_traversal     % defines MR_Stack_Traversal
+:- type proc_layout_stack_traversal     % defines MR_StackTraversal
     --->    proc_layout_stack_traversal(
                 entry_label             :: maybe(label),
                                         % The proc entry label; will be `no'
@@ -157,7 +157,7 @@
                 maybe(proc_layout_exec_trace)
             ).
 
-:- type proc_layout_exec_trace          % defines MR_Exec_Trace
+:- type proc_layout_exec_trace          % defines MR_ExecTrace
     --->    proc_layout_exec_trace(
                 call_label_layout       :: layout_name,
                 proc_body_bytes         :: list(int),

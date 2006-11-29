@@ -1550,11 +1550,12 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
     MR_Word *base_curfr)
 {
     const MR_Internal               *label;
-    const MR_Label_Layout           *return_label_layout;
+    const MR_LabelLayout            *return_label_layout;
 
     /*
-    ** Find the layout info for the stack frame pointed to by MR_succip
+    ** Find the layout info for the stack frame pointed to by MR_succip.
     */
+
     label = MR_lookup_internal_by_addr(success_pointer);
     if (label == NULL) {
         WARNING(""internal label not found\\n"");
@@ -1563,13 +1564,13 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
     return_label_layout = label->i_layout;
 
     while (return_label_layout != NULL) {
-        const MR_Proc_Layout        *entry_layout;
+        const MR_ProcLayout         *entry_layout;
         MR_Code                     *MR_jumpaddr;
-        MR_Stack_Walk_Step_Result   result;
+        MR_StackWalkStepResult      result;
         const char                  *problem;
   #ifdef MR_DEEP_PROFILING
         MR_CallSiteDynamic          *csd;
-        const MR_Proc_Layout        *pl;
+        const MR_ProcLayout         *pl;
         MR_ProcStatic               *ps;
         MR_ProcStatic               *proc_static;
         int                         top_csd_slot;
@@ -1583,8 +1584,9 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
   #endif
 
         /*
-        ** check if we've reached a frame with an exception handler
+        ** Check if we've reached a frame with an exception handler.
         */
+
         entry_layout = return_label_layout->MR_sll_entry;
         if (!MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)
             && MR_redoip_slot(base_curfr) ==
@@ -2116,12 +2118,13 @@ MR_BEGIN_CODE
 
 /*
 ** builtin_throw(Exception):
-**  Throw the specified exception.
-**  That means unwinding the nondet stack until we find a handler,
-**  unwinding all the other Mercury stacks, and then
-**  calling longjmp() to unwind the C stack.
-**  The longjmp() will branch to builtin_catch which will then
-**  call Handler(Exception, Result).
+**
+** Throw the specified exception.
+** That means unwinding the nondet stack until we find a handler,
+** unwinding all the other Mercury stacks, and then
+** calling longjmp() to unwind the C stack.
+** The longjmp() will branch to builtin_catch which will then
+** call Handler(Exception, Result).
 **
 ** On entry, we have Exception in MR_r1.
 */
@@ -2140,8 +2143,9 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
     exception_event_number = MR_trace_event_number;
 
     /*
-    ** let the debugger and/or the deep profiler trace exception throwing
+    ** Let the debugger and/or the deep profiler trace exception throwing.
     */
+
 #ifdef  MR_DEEP_PROFILING
     walk_stack = MR_TRUE;
 #else
@@ -2171,6 +2175,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
     ** are still on the nondet stack because they left choice points
     ** behind.
     */
+
     orig_curfr = MR_curfr;
     while (MR_redoip_slot(MR_curfr)
         != MR_ENTRY(MR_exception_handler_do_fail))
@@ -2280,9 +2285,8 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 {
     MR_Word * saved_solns_heap_ptr;
 
-    /* switch to the solutions heap */
-    if (MR_ENGINE(MR_eng_heap_zone) == MR_EXCEPTION_STRUCT->MR_excp_heap_zone)
-    {
+    /* Switch to the solutions heap. */
+    if (MR_ENGINE(MR_eng_heap_zone) == MR_EXCEPTION_STRUCT->MR_excp_heap_zone) {
         swap_heaps();
     }
 
@@ -2302,14 +2306,14 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
         MR_EXCEPTION_STRUCT->MR_excp_heap_zone->MR_zone_top);
     MR_restore_transient_registers();
 
-    /* switch back to the ordinary heap */
+    /* Switch back to the ordinary heap. */
     swap_heaps();
 
-    /* reset the heap */
+    /* Reset the heap. */
     assert(MR_EXCEPTION_STRUCT->MR_excp_heap_ptr <= MR_hp);
     MR_hp_word = (MR_Word) MR_EXCEPTION_STRUCT->MR_excp_heap_ptr;
 
-    /* MR_deep_copy the exception back to the ordinary heap */
+    /* MR_deep_copy the exception back to the ordinary heap. */
     assert(MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr <=
         MR_ENGINE(MR_eng_solutions_heap_zone)->MR_zone_top);
     MR_save_transient_registers();
@@ -2319,19 +2323,17 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
         MR_ENGINE(MR_eng_solutions_heap_zone)->MR_zone_top);
     MR_restore_transient_registers();
 
-    /* reset the solutions heap */
-    assert(MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr
-        <= saved_solns_heap_ptr);
+    /* Reset the solutions heap. */
+    assert(MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr <= saved_solns_heap_ptr);
     assert(saved_solns_heap_ptr <= MR_sol_hp);
     if (catch_code_model == MR_MODEL_NON_HANDLER) {
         /*
-        ** If the code inside the try (catch) was nondet,
-        ** then its caller (which may be solutions/2) may
-        ** have put some more stuff on the solutions-heap
-        ** after the goal succeeded; the goal may have
-        ** only thrown after being re-entered on backtracking.
-        ** Thus we can only reset the solutions heap to
-        ** where it was before copying the exception object to it.
+        ** If the code inside the try (catch) was nondet, then its caller
+        ** (which may be solutions/2) may have put some more stuff on the
+        ** solutions-heap after the goal succeeded; the goal may have only thrown
+        ** after being re-entered on backtracking. Thus we can only reset the
+        ** solutions heap to where it was before copying the exception object
+        ** to it.
         */
         MR_sol_hp = saved_solns_heap_ptr;
     } else {
@@ -2354,8 +2356,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
     MR_curfr_word = MR_succfr_slot_word(MR_curfr);
 
     /*
-    ** Now longjmp to the catch, which will invoke the handler
-    ** that we found.
+    ** Now longjmp to the catch, which will invoke the handler that we found.
     */
 
 #ifdef  MR_DEBUG_JMPBUFS
@@ -2412,7 +2413,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 MR_define_label(mercury__exception__builtin_throw_1_0_i1);
     MR_update_prof_current_proc(
         MR_LABEL(mercury__exception__builtin_throw_1_0));
-    /* we've just returned from mercury__do_call_closure_compact */
+    /* We've just returned from mercury__do_call_closure_compact. */
     MR_r2 = MR_r1;
     MR_r1 = MR_TRUE;
     MR_succip_word = MR_stackvar(1);

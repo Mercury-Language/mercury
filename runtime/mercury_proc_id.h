@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2003-2005 The University of Melbourne.
+** Copyright (C) 2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -27,13 +27,14 @@ typedef	enum {
 
 /*
 ** This value should be distinct from any of the values in MR_PredFuncEnum.
-** It is used in MR_Proc_Id in the place where an MR_PredFunc field would be,
+** It is used in MR_ProcId in the place where an MR_PredFunc field would be,
 ** and indicates that no proc id exists.
 */
+
 #define MR_NO_PROC_ID -1
 
 /*
-** MR_Proc_Id is a union. The first alternative identifies ordinary
+** MR_ProcId is a union. The first alternative identifies ordinary
 ** procedures, while the second alternative identifies automatically generated
 ** unification, comparison, index and initialisation procedures.  The third
 ** alternative indicates that no proc id exists.  The meanings of the fields
@@ -43,8 +44,8 @@ typedef	enum {
 ** the macro MR_PROC_ID_IS_UCI, which will return true only if the proc id
 ** exists and the procedure is of the second type.
 **
-** The compiler generates MR_User_Proc_Id and MR_UCI_Proc_Id structures
-** in order to avoid having to initialize the MR_Proc_Id union through the
+** The compiler generates MR_UserProcId and MR_UCIProcId structures
+** in order to avoid having to initialize the MR_ProcId union through the
 ** inapplicable alternative, since the C standard in widespread use now
 ** doesn't support that.
 **
@@ -52,7 +53,7 @@ typedef	enum {
 ** browser/dl.m and besides all the places that refer to the C types below.
 */
 
-struct MR_User_Proc_Id_Struct {
+struct MR_UserProcId_Struct {
 	MR_PredFunc		MR_user_pred_or_func;
 	MR_ConstString		MR_user_decl_module;
 	MR_ConstString		MR_user_def_module;
@@ -61,7 +62,7 @@ struct MR_User_Proc_Id_Struct {
 	MR_int_least16_t	MR_user_mode;
 };
 
-struct MR_UCI_Proc_Id_Struct {
+struct MR_UCIProcId_Struct {
 	MR_ConstString		MR_uci_type_name;
 	MR_ConstString		MR_uci_type_module;
 	MR_ConstString		MR_uci_def_module;
@@ -70,27 +71,25 @@ struct MR_UCI_Proc_Id_Struct {
 	MR_int_least16_t	MR_uci_mode;
 };
 
-struct MR_No_Proc_Id_Struct {
+struct MR_NoProcId_Struct {
 	/*
-	** This field should align with the first field of
-	** MR_User_Proc_Id_Struct, which means that it should have the same
-	** size as MR_PredFunc.  Its value should always be equal to
-	** MR_NO_PROC_ID.
+	** This field should align with the first field of MR_UserProcId_Struct,
+	** which means that it should have the same size as MR_PredFunc.
+	** Its value should always be equal to MR_NO_PROC_ID.
 	*/
 	int			MR_no_proc_id_flag;
 };
 
-union MR_Proc_Id_Union {
-	MR_User_Proc_Id		MR_proc_user;
-	MR_UCI_Proc_Id		MR_proc_uci;
-	MR_No_Proc_Id		MR_proc_none;
+union MR_ProcId_Union {
+	MR_UserProcId		MR_proc_user;
+	MR_UCIProcId		MR_proc_uci;
+	MR_NoProcId		MR_proc_none;
 };
 
 #define MR_PROC_ID_EXISTS(proc_id)					\
 	((proc_id).MR_proc_none.MR_no_proc_id_flag != MR_NO_PROC_ID)
 
 #define	MR_PROC_ID_IS_UCI(proc_id)					\
-	((MR_Unsigned) (proc_id).MR_proc_user.MR_user_pred_or_func	\
-	 	> MR_FUNCTION)
+	((MR_Unsigned) (proc_id).MR_proc_user.MR_user_pred_or_func > MR_FUNCTION)
 
 #endif /* not MERCURY_PROC_ID_H */

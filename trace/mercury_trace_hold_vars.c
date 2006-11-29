@@ -17,12 +17,12 @@ typedef struct {
     const char  *MR_held_name;
     MR_TypeInfo MR_held_type;
     MR_Word     MR_held_value;
-} MR_Held_Var;
+} MR_HeldVar;
 
 /* The initial size of the held vars table. */
 #define MR_INIT_HELD_VARS   10
 
-static MR_Held_Var  *MR_held_vars;
+static MR_HeldVar   *MR_held_vars;
 static int          MR_held_var_max = 0;
 static int          MR_held_var_next = 0;
 
@@ -42,7 +42,7 @@ MR_add_hold_var(const char *name, const MR_TypeInfo typeinfo, MR_Word value)
         typeinfo_type_word = ML_get_type_info_for_type_info();
     );
 
-    MR_ensure_room_for_next(MR_held_var, MR_Held_Var, MR_INIT_HELD_VARS);
+    MR_ensure_room_for_next(MR_held_var, MR_HeldVar, MR_INIT_HELD_VARS);
     MR_prepare_insert_into_sorted(MR_held_vars, MR_held_var_next, slot,
         strcmp(MR_held_vars[slot].MR_held_name, name));
     MR_held_vars[slot].MR_held_name = strdup(name);

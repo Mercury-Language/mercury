@@ -42,21 +42,21 @@
 
 static  void        MR_trace_set_level_and_report(int ancestor_level,
                         MR_bool detailed, MR_bool print_optionals);
-static  const char  *MR_trace_browse_exception(MR_Event_Info *event_info,
-                        MR_Browser browser, MR_Browse_Caller_Type caller,
-                        MR_Browse_Format format);
-static  const char  *MR_trace_browse_proc_body(MR_Event_Info *event_info,
-                        MR_Browser browser, MR_Browse_Caller_Type caller,
-                        MR_Browse_Format format);
+static  const char  *MR_trace_browse_exception(MR_EventInfo *event_info,
+                        MR_Browser browser, MR_BrowseCallerType caller,
+                        MR_BrowseFormat format);
+static  const char  *MR_trace_browse_proc_body(MR_EventInfo *event_info,
+                        MR_Browser browser, MR_BrowseCallerType caller,
+                        MR_BrowseFormat format);
                         
 /* Functions to invoke the user's XML browser on terms or goals */
 static  void        MR_trace_browse_xml(MR_Word type_info, MR_Word value,
-                        MR_Browse_Caller_Type caller, MR_Browse_Format format);
+                        MR_BrowseCallerType caller, MR_BrowseFormat format);
 static  void        MR_trace_browse_goal_xml(MR_ConstString name,
                         MR_Word arg_list, MR_Word is_func,
-                        MR_Browse_Caller_Type caller, MR_Browse_Format format);
+                        MR_BrowseCallerType caller, MR_BrowseFormat format);
 
-static  void        MR_trace_cmd_stack_2(MR_Event_Info *event_info,
+static  void        MR_trace_cmd_stack_2(MR_EventInfo *event_info,
                         MR_bool detailed, int frame_limit, int line_limit);
 
 static  const char  *MR_trace_new_source_window(const char *window_cmd,
@@ -68,7 +68,7 @@ static  MR_bool     MR_trace_options_detailed(MR_bool *detailed, char ***words,
                         int *word_count);
 static  MR_bool     MR_trace_options_stack_trace(MR_bool *detailed,
                         int *frame_limit, char ***words, int *word_count);
-static  MR_bool     MR_trace_options_format(MR_Browse_Format *format,
+static  MR_bool     MR_trace_options_format(MR_BrowseFormat *format,
                         MR_bool *xml, char ***words, int *word_count);
 static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         const char **server_cmd, const char **server_name,
@@ -83,8 +83,8 @@ static  MR_bool     MR_trace_options_dump(MR_bool *xml,
 /****************************************************************************/
 
 MR_Next
-MR_trace_cmd_level(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_level(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int n;
     MR_bool detailed;
@@ -102,8 +102,8 @@ MR_trace_cmd_level(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_up(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_up(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int     n;
     MR_bool detailed;
@@ -125,8 +125,8 @@ MR_trace_cmd_up(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_down(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_down(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int     n;
     MR_bool detailed;
@@ -148,8 +148,8 @@ MR_trace_cmd_down(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_vars(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_vars(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 1) {
         const char  *problem;
@@ -167,8 +167,8 @@ MR_trace_cmd_vars(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_held_vars(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_held_vars(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 1) {
         MR_trace_list_held_vars(MR_mdb_out);
@@ -180,10 +180,10 @@ MR_trace_cmd_held_vars(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_Browse_Format    format;
+    MR_BrowseFormat    format;
     MR_bool             xml;
     int                 n;
 
@@ -248,10 +248,10 @@ MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_browse(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_Browse_Format    format;
+    MR_BrowseFormat     format;
     MR_bool             xml;
     int                 n;
     MR_GoalBrowser      goal_browser;
@@ -321,8 +321,8 @@ MR_trace_cmd_browse(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_bool     detailed;
     int         frame_limit = 0;
@@ -349,8 +349,8 @@ MR_trace_cmd_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_current(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_current(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 1) {
         MR_trace_event_print_internal_report(event_info);
@@ -362,8 +362,8 @@ MR_trace_cmd_current(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_view(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_view(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     const char      *window_cmd = NULL;
     const char      *server_cmd = NULL;
@@ -399,8 +399,8 @@ MR_trace_cmd_view(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_hold(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_hold(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     char        *event_var_name;
     char        *held_var_name;
@@ -451,8 +451,8 @@ MR_trace_cmd_hold(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_diff(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_diff(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int         start;
     int         max;
@@ -508,8 +508,8 @@ MR_trace_cmd_diff(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_dump(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_bool         verbose = MR_FALSE;
     MR_Word         browser_term;
@@ -545,7 +545,7 @@ MR_trace_cmd_dump(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
                 browser_term = MR_univ_to_browser_term(exception);
             }
         } else if (MR_streq(words[1], "proc_body")) {
-            const MR_Proc_Layout    *entry;
+            const MR_ProcLayout     *entry;
             MR_Word                 rep;
 
             entry = event_info->MR_event_sll->MR_sll_entry;
@@ -562,7 +562,7 @@ MR_trace_cmd_dump(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
                     (MR_TypeInfo) ML_proc_rep_type(), rep);
             }
         } else {
-            MR_Var_Spec var_spec;
+            MR_VarSpec  var_spec;
             MR_TypeInfo type_info;
             MR_Word     value;
             const char  *name;
@@ -605,9 +605,9 @@ MR_trace_cmd_dump(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 MR_Next
 MR_trace_cmd_list(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    const MR_Proc_Layout    *entry_ptr;
+    const MR_ProcLayout     *entry_ptr;
     const char              *filename;
     int                     lineno;
     MR_Word                 *base_sp_ptr;
@@ -647,7 +647,7 @@ MR_trace_set_level_and_report(int ancestor_level, MR_bool detailed,
     MR_bool print_optionals)
 {
     const char              *problem;
-    const MR_Proc_Layout    *entry;
+    const MR_ProcLayout     *entry;
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
     const char              *filename;
@@ -684,7 +684,7 @@ MR_trace_set_level_and_report(int ancestor_level, MR_bool detailed,
 
 void
 MR_trace_browse_internal(MR_Word type_info, MR_Word value,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format)
+    MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     switch (caller) {
 
@@ -706,7 +706,7 @@ MR_trace_browse_internal(MR_Word type_info, MR_Word value,
 
 void
 MR_trace_browse_goal_internal(MR_ConstString name, MR_Word arg_list,
-    MR_Word is_func, MR_Browse_Caller_Type caller, MR_Browse_Format format)
+    MR_Word is_func, MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     switch (caller) {
 
@@ -728,8 +728,8 @@ MR_trace_browse_goal_internal(MR_ConstString name, MR_Word arg_list,
 }
 
 static const char *
-MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format)
+MR_trace_browse_exception(MR_EventInfo *event_info, MR_Browser browser,
+    MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     MR_TypeInfo type_info;
     MR_Word     value;
@@ -752,10 +752,10 @@ MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
 }
 
 static const char *
-MR_trace_browse_proc_body(MR_Event_Info *event_info, MR_Browser browser,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format)
+MR_trace_browse_proc_body(MR_EventInfo *event_info, MR_Browser browser,
+    MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
-    const MR_Proc_Layout    *entry;
+    const MR_ProcLayout     *entry;
     MR_Word                 rep;
 
     entry = event_info->MR_event_sll->MR_sll_entry;
@@ -775,7 +775,7 @@ MR_trace_browse_proc_body(MR_Event_Info *event_info, MR_Browser browser,
 
 static void
 MR_trace_browse_xml(MR_Word type_info, MR_Word value,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format)
+    MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     MR_Word     browser_term;
 
@@ -787,7 +787,7 @@ MR_trace_browse_xml(MR_Word type_info, MR_Word value,
 
 static void
 MR_trace_browse_goal_xml(MR_ConstString name, MR_Word arg_list,
-    MR_Word is_func, MR_Browse_Caller_Type caller, MR_Browse_Format format)
+    MR_Word is_func, MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
     MR_Word     browser_term;
 
@@ -796,10 +796,10 @@ MR_trace_browse_goal_xml(MR_ConstString name, MR_Word arg_list,
 }
 
 static void
-MR_trace_cmd_stack_2(MR_Event_Info *event_info, MR_bool detailed,
+MR_trace_cmd_stack_2(MR_EventInfo *event_info, MR_bool detailed,
     int frame_limit, int line_limit)
 {
-    const MR_Label_Layout   *layout;
+    const MR_LabelLayout    *layout;
     MR_Word                 *saved_regs;
     const char              *msg;
 
@@ -874,9 +874,9 @@ MR_trace_new_source_window(const char *window_cmd, const char *server_cmd,
 }
 
 void
-MR_trace_maybe_sync_source_window(MR_Event_Info *event_info, MR_bool verbose)
+MR_trace_maybe_sync_source_window(MR_EventInfo *event_info, MR_bool verbose)
 {
-    const MR_Label_Layout   *parent;
+    const MR_LabelLayout    *parent;
     const char              *filename;
     int                     lineno;
     const char              *parent_filename;
@@ -1039,7 +1039,7 @@ static struct MR_option MR_trace_format_opts[] =
 };
 
 static MR_bool
-MR_trace_options_format(MR_Browse_Format *format, MR_bool *xml, char ***words,
+MR_trace_options_format(MR_BrowseFormat *format, MR_bool *xml, char ***words,
     int *word_count)
 {
     int c;

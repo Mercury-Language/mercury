@@ -37,7 +37,7 @@
 #ifdef MR_DEEP_PROFILING
 {
     MR_CallSiteDynamic      *csd;
-    const MR_Proc_Layout    *pl;
+    const MR_ProcLayout     *pl;
     MR_ProcStatic           *ps;
 
   #ifdef MR_EXEC_TRACE

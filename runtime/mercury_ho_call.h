@@ -21,7 +21,7 @@
 #ifndef	MERCURY_HO_CALL_H
 #define	MERCURY_HO_CALL_H
 
-#include "mercury_stack_layout.h"	/* for MR_Closure_Id etc */
+#include "mercury_stack_layout.h"	/* for MR_ClosureId etc */
 #include "mercury_type_info.h"		/* for MR_PseudoTypeInfo */
 #include "mercury_types.h"		    /* for MR_Closure */
 #ifndef	MR_HIGHLEVEL_CODE
@@ -37,7 +37,7 @@
 ** in any closure that calls that procedure. It is represented as a
 ** vector of words containing
 **
-**	a pointer to an MR_Closure_Id structure
+**	a pointer to an MR_ClosureId structure
 **	a pointer to information about the locations of typeinfos
 **		for the type parameters of the procedure
 **		(NULL if there are no type parameters)
@@ -62,7 +62,7 @@
 ** for argument j. (If we ever allow code to take the address of a procedure
 ** whose signature includes an existential type, we may have to rethink this.)
 **
-** The MR_Live_Lvals inside MR_Type_Param_Locns, which encode the locations
+** The MR_Live_Lvals inside MR_TypeParamLocns, which encode the locations
 ** of the typeinfos for the type variables in the signature of the procedure,
 ** assume that argument i is in register ri. While this will be true at the
 ** time of the call, code that wants to manipulate the closure as an
@@ -83,15 +83,15 @@
 */
 
 typedef struct MR_Closure_Layout_Struct {
-	MR_Closure_Id		    *MR_closure_id;
-	MR_Type_Param_Locns	    *MR_closure_type_params;
+	MR_ClosureId		    *MR_closure_id;
+	MR_TypeParamLocns	    *MR_closure_type_params;
 	MR_Integer		        MR_closure_num_all_args;
 	MR_PseudoTypeInfo	    MR_closure_arg_pseudo_type_info[MR_VARIABLE_SIZED];
 } MR_Closure_Layout;
 
 typedef struct MR_Closure_Dyn_Link_Layout_Struct {
-	MR_Closure_Id		    *MR_closure_dl_id;
-	MR_Type_Param_Locns	    *MR_closure_dl_type_params;
+	MR_ClosureId		    *MR_closure_dl_id;
+	MR_TypeParamLocns	    *MR_closure_dl_type_params;
 	MR_Integer		        MR_closure_dl_num_all_args;
 } MR_Closure_Dyn_Link_Layout;
 

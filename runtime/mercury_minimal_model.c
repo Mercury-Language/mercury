@@ -44,7 +44,7 @@ static  MR_Word *real_to_saved_nondet_stack(MR_SavedState *saved_state,
 static  MR_Word *nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2);
 static  void    save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
                     const char *who, const char *what,
-                    const MR_Label_Layout *top_layout);
+                    const MR_LabelLayout *top_layout);
 static  void    restore_state(MR_SavedState *saved_state, const char *who,
                     const char *what);
 static  void    prune_right_branches(MR_SavedState *saved_state,
@@ -129,7 +129,7 @@ int             MR_minmodel_stats_cnt_dupl_check_not_dupl;
 */
 
 /* set by MR_trace_event, used by table_mm_setup */
-const MR_Proc_Layout          *MR_subgoal_debug_cur_proc = NULL;
+const MR_ProcLayout     *MR_subgoal_debug_cur_proc = NULL;
 
 struct MR_ConsumerDebug_Struct
 {
@@ -379,7 +379,7 @@ MR_subgoal_status(MR_SubgoalStatus status)
 }
 
 void
-MR_print_subgoal_debug(FILE *fp, const MR_Proc_Layout *proc,
+MR_print_subgoal_debug(FILE *fp, const MR_ProcLayout *proc,
     MR_SubgoalDebug *subgoal_debug)
 {
     if (subgoal_debug == NULL) {
@@ -390,7 +390,7 @@ MR_print_subgoal_debug(FILE *fp, const MR_Proc_Layout *proc,
 }
 
 void
-MR_print_subgoal(FILE *fp, const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
+MR_print_subgoal(FILE *fp, const MR_ProcLayout *proc, MR_Subgoal *subgoal)
 {
     MR_SubgoalList  follower;
     MR_ConsumerList consumer;
@@ -458,7 +458,7 @@ MR_print_subgoal(FILE *fp, const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
 }
 
 void
-MR_print_consumer_debug(FILE *fp, const MR_Proc_Layout *proc,
+MR_print_consumer_debug(FILE *fp, const MR_ProcLayout *proc,
     MR_ConsumerDebug *consumer_debug)
 {
     if (consumer_debug == NULL) {
@@ -469,7 +469,7 @@ MR_print_consumer_debug(FILE *fp, const MR_Proc_Layout *proc,
 }
 
 void
-MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc, MR_Consumer *consumer)
+MR_print_consumer(FILE *fp, const MR_ProcLayout *proc, MR_Consumer *consumer)
 {
     if (consumer == NULL) {
         fprintf(fp, "NULL consumer\n");
@@ -878,7 +878,7 @@ nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2)
 
 static void
 save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
-    const char *who, const char *what, const MR_Label_Layout *top_layout)
+    const char *who, const char *what, const MR_LabelLayout *top_layout)
 {
     MR_Word     *common_ancestor_fr;
     MR_Word     *start_non;
@@ -1884,7 +1884,7 @@ MR_define_label(SUSPEND_LABEL(Call));
     MR_save_transient_registers();
     save_state(&(consumer->MR_cns_saved_state), subgoal->MR_sg_generator_fr,
         "suspension", "consumer",
-        (const MR_Label_Layout *) &MR_LAYOUT_FROM_LABEL(SUSPEND_LABEL(Call)));
+        (const MR_LabelLayout *) &MR_LAYOUT_FROM_LABEL(SUSPEND_LABEL(Call)));
     MR_restore_transient_registers();
 
     MR_register_suspension(consumer);

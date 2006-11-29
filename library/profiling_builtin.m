@@ -239,7 +239,7 @@
 :- type proc_dynamic        ---> proc_dynamic(c_pointer).
 :- type call_site_dynamic   ---> call_site_dynamic(c_pointer).
 
-:- pragma foreign_type("C", proc_layout,    "MR_Proc_Layout *").
+:- pragma foreign_type("C", proc_layout,    "MR_ProcLayout *").
 :- pragma foreign_type("C", proc_dynamic,   "MR_ProcDynamic *").
 :- pragma foreign_type("C", call_site_dynamic,  "MR_CallSiteDynamic *").
 
@@ -618,7 +618,7 @@
   #ifdef MR_USE_ACTIVATION_COUNTS
     MR_CallSiteDynamic      *csd;
     MR_ProcDynamic          *pd;
-    const MR_Proc_Layout    *pl;
+    const MR_ProcLayout     *pl;
     MR_ProcStatic           *ps;
 
     MR_enter_instrumentation();
@@ -652,7 +652,7 @@
   #ifndef MR_USE_ACTIVATION_COUNTS
     MR_CallSiteDynamic      *csd;
     MR_ProcDynamic          *pd;
-    const MR_Proc_Layout    *pl;
+    const MR_ProcLayout     *pl;
     MR_ProcStatic           *ps;
 
     MR_enter_instrumentation();
@@ -684,7 +684,7 @@
   #ifdef MR_USE_ACTIVATION_COUNTS
     MR_CallSiteDynamic      *csd;
     MR_ProcDynamic          *pd;
-    const MR_Proc_Layout    *pl;
+    const MR_ProcLayout     *pl;
     MR_ProcStatic           *ps;
 
     MR_enter_instrumentation();
@@ -716,7 +716,7 @@
   #ifndef MR_USE_ACTIVATION_COUNTS
     MR_CallSiteDynamic      *csd;
     MR_ProcDynamic          *pd;
-    const MR_Proc_Layout    *pl;
+    const MR_ProcLayout     *pl;
     MR_ProcStatic           *ps;
 
     MR_enter_instrumentation();
@@ -747,7 +747,7 @@
   #ifdef MR_USE_ACTIVATION_COUNTS
     MR_CallSiteDynamic      *csd;
     MR_ProcDynamic          *pd;
-    const MR_Proc_Layout    *pl;
+    const MR_ProcLayout     *pl;
     MR_ProcStatic           *ps;
 
     MR_enter_instrumentation();
@@ -779,7 +779,7 @@
   #ifndef MR_USE_ACTIVATION_COUNTS
     MR_CallSiteDynamic      *csd;
     MR_ProcDynamic          *pd;
-    const MR_Proc_Layout    *pl;
+    const MR_ProcLayout     *pl;
     MR_ProcStatic           *ps;
 
     MR_enter_instrumentation();

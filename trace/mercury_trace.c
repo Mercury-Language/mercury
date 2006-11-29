@@ -56,7 +56,7 @@
 
 #include <stdio.h>
 
-MR_Trace_Cmd_Info   MR_trace_ctrl = {
+MR_TraceCmdInfo MR_trace_ctrl = {
     MR_CMD_GOTO,
     0,                      /* stop depth */
     0,                      /* stop event */
@@ -69,42 +69,42 @@ MR_Trace_Cmd_Info   MR_trace_ctrl = {
     NULL                    /* pointer to filter/4 for collect queries */
 };
 
-MR_Code             *MR_trace_real(const MR_Label_Layout *layout);
-static  MR_Code     *MR_trace_event(MR_Trace_Cmd_Info *cmd,
-                        MR_bool interactive, const MR_Label_Layout *layout,
-                        MR_Trace_Port port, MR_Unsigned seqno,
+MR_Code             *MR_trace_real(const MR_LabelLayout *layout);
+static  MR_Code     *MR_trace_event(MR_TraceCmdInfo *cmd,
+                        MR_bool interactive, const MR_LabelLayout *layout,
+                        MR_TracePort port, MR_Unsigned seqno,
                         MR_Unsigned depth);
-static  MR_bool     MR_in_traced_region(const MR_Proc_Layout *proc_layout,
+static  MR_bool     MR_in_traced_region(const MR_ProcLayout *proc_layout,
                         MR_Word *base_sp, MR_Word *base_curfr);
 static  MR_bool     MR_is_io_state(MR_TypeInfoParams type_params,
                         MR_PseudoTypeInfo pti);
-static  MR_bool     MR_find_saved_io_counter(const MR_Label_Layout *call_label,
+static  MR_bool     MR_find_saved_io_counter(const MR_LabelLayout *call_label,
                         MR_Word *base_sp, MR_Word *base_curfr,
                         MR_Unsigned *saved_io_counter_ptr);
 static  MR_bool     MR_retry_within_io_tabled_region(MR_bool all_actions_tabled,
                         MR_Unsigned retry_event_num, MR_Unsigned cur_event_num);
-static  const MR_Label_Layout
-                    *MR_unwind_stacks_for_retry(const MR_Label_Layout
+static  const MR_LabelLayout
+                    *MR_unwind_stacks_for_retry(const MR_LabelLayout
                         *top_layout, int ancestor_level, MR_Word **base_sp_ptr,
                         MR_Word **base_curfr_ptr, MR_Word **base_maxfr_ptr,
                         const char **problem);
-static  const char  *MR_undo_updates_of_maxfr(const MR_Proc_Layout
+static  const char  *MR_undo_updates_of_maxfr(const MR_ProcLayout
                         *level_layout, MR_Word *base_sp, MR_Word *base_curfr,
                         MR_Word **maxfr_ptr);
-static  MR_Word     MR_trace_find_input_arg(const MR_Label_Layout *label,
+static  MR_Word     MR_trace_find_input_arg(const MR_LabelLayout *label,
                         MR_Word *saved_regs, MR_Word *base_sp,
                         MR_Word *base_curfr, MR_uint_least16_t var_num,
                         MR_bool *succeeded);
 
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
-static  MR_Retry_Result
-                    MR_check_minimal_model_calls(MR_Event_Info *event_info,
+static  MR_RetryResult
+                    MR_check_minimal_model_calls(MR_EventInfo *event_info,
                         int ancestor_level, MR_Word *target_maxfr,
                         const char **problem);
 #endif
 
 static  void        MR_init_call_table_array(void);
-static  void        MR_maybe_record_call_table(const MR_Proc_Layout
+static  void        MR_maybe_record_call_table(const MR_ProcLayout
                         *level_layout, MR_Word *base_sp, MR_Word *base_curfr);
 static  void        MR_reset_call_table_array(void);
 static  void        MR_abandon_call_table_array(void);
@@ -126,7 +126,7 @@ static  void        MR_abandon_call_table_array(void);
 
 #if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) && defined(MR_MINIMAL_MODEL_DEBUG)
   #define MR_TRACE_SETUP_MAYBE_SAVE_SUBGOAL_CUR_PROC                          \
-        if ((MR_Trace_Port) layout->MR_sll_port == MR_PORT_CALL) {            \
+        if ((MR_TracePort) layout->MR_sll_port == MR_PORT_CALL) {            \
             MR_subgoal_debug_cur_proc = layout->MR_sll_entry;                 \
         }
 #else
@@ -165,14 +165,14 @@ static  void        MR_abandon_call_table_array(void);
     } while (0)
 
 MR_Code *
-MR_trace_real(const MR_Label_Layout *layout)
+MR_trace_real(const MR_LabelLayout *layout)
 {
     MR_Integer          maybe_from_full;
     MR_Unsigned         seqno;
     MR_Unsigned         depth;
-    MR_Spy_Action       action;
+    MR_SpyAction        action;
     MR_bool             match;
-    MR_Trace_Port       port;
+    MR_TracePort        port;
 
     MR_TRACE_REAL_SETUP_CODE();
 
@@ -200,14 +200,14 @@ MR_trace_real(const MR_Label_Layout *layout)
         case MR_CMD_COLLECT:
           {
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-            MR_Event_Info   event_info;
+            MR_EventInfo    event_info;
             MR_Word         *saved_regs = event_info.MR_saved_regs;
             const char      *path;
             MR_bool         stop_collecting = MR_FALSE;
             int             lineno = 0;
 
             MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);
-            port = (MR_Trace_Port) layout->MR_sll_port;
+            port = (MR_TracePort) layout->MR_sll_port;
             path = MR_label_goal_path(layout);
             MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
             MR_trace_init_point_vars(layout, saved_regs, port, MR_FALSE);
@@ -231,7 +231,7 @@ MR_trace_real(const MR_Label_Layout *layout)
 
         case MR_CMD_GOTO:
             if (MR_trace_event_number >= MR_trace_ctrl.MR_trace_stop_event) {
-                port = (MR_Trace_Port) layout->MR_sll_port;
+                port = (MR_TracePort) layout->MR_sll_port;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
                     seqno, depth);
             } else {
@@ -242,7 +242,7 @@ MR_trace_real(const MR_Label_Layout *layout)
             if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
                 goto check_stop_print;
             } else {
-                port = (MR_Trace_Port) layout->MR_sll_port;
+                port = (MR_TracePort) layout->MR_sll_port;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
                     seqno, depth);
             }
@@ -251,7 +251,7 @@ MR_trace_real(const MR_Label_Layout *layout)
             if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
                 goto check_stop_print;
             } else {
-                port = (MR_Trace_Port) layout->MR_sll_port;
+                port = (MR_TracePort) layout->MR_sll_port;
 
                 if (! MR_port_is_final(port)) {
                     goto check_stop_print;
@@ -265,7 +265,7 @@ MR_trace_real(const MR_Label_Layout *layout)
             if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
                 goto check_stop_print;
             } else {
-                port = (MR_Trace_Port) layout->MR_sll_port;
+                port = (MR_TracePort) layout->MR_sll_port;
 
                 if (port == MR_PORT_FAIL || port == MR_PORT_EXCEPTION) {
                     return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout,
@@ -276,7 +276,7 @@ MR_trace_real(const MR_Label_Layout *layout)
             }
 
         case MR_CMD_RESUME_FORWARD:
-            port = (MR_Trace_Port) layout->MR_sll_port;
+            port = (MR_TracePort) layout->MR_sll_port;
             if (port != MR_PORT_REDO &&
                 port != MR_PORT_FAIL &&
                 port != MR_PORT_EXCEPTION)
@@ -288,7 +288,7 @@ MR_trace_real(const MR_Label_Layout *layout)
             }
 
         case MR_CMD_EXCP:
-            port = (MR_Trace_Port) layout->MR_sll_port;
+            port = (MR_TracePort) layout->MR_sll_port;
             if (port == MR_PORT_EXCEPTION) {
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
                     seqno, depth);
@@ -297,7 +297,7 @@ MR_trace_real(const MR_Label_Layout *layout)
             }
 
         case MR_CMD_RETURN:
-            port = (MR_Trace_Port) layout->MR_sll_port;
+            port = (MR_TracePort) layout->MR_sll_port;
             if (port != MR_PORT_EXIT) {
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
                     seqno, depth);
@@ -306,7 +306,7 @@ MR_trace_real(const MR_Label_Layout *layout)
             }
 
         case MR_CMD_USER:
-            port = (MR_Trace_Port) layout->MR_sll_port;
+            port = (MR_TracePort) layout->MR_sll_port;
             if (port == MR_PORT_USER) {
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
                     seqno, depth);
@@ -316,7 +316,7 @@ MR_trace_real(const MR_Label_Layout *layout)
 
         case MR_CMD_MIN_DEPTH:
             if (MR_trace_ctrl.MR_trace_stop_depth <= depth) {
-                port = (MR_Trace_Port) layout->MR_sll_port;
+                port = (MR_TracePort) layout->MR_sll_port;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
                     seqno, depth);
             } else {
@@ -325,7 +325,7 @@ MR_trace_real(const MR_Label_Layout *layout)
 
         case MR_CMD_MAX_DEPTH:
             if (MR_trace_ctrl.MR_trace_stop_depth >= depth) {
-                port = (MR_Trace_Port) layout->MR_sll_port;
+                port = (MR_TracePort) layout->MR_sll_port;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
                     seqno, depth);
             } else {
@@ -360,7 +360,7 @@ check_stop_print:
         ** that MR_trace_must_check is false.
         */
 
-        port = (MR_Trace_Port) layout->MR_sll_port;
+        port = (MR_TracePort) layout->MR_sll_port;
 
 #ifdef  MR_TRACE_CHECK_INTEGRITY
         if (MR_trace_ctrl.MR_trace_check_integrity) {
@@ -379,7 +379,7 @@ check_stop_print:
             ** here is only to find out if we want to stop.
             */
 
-            MR_Spy_Print_List   print_list;
+            MR_SpyPrintList print_list;
             match = MR_event_matches_spy_point(layout, port, &action,
                 &print_list);
         }
@@ -423,11 +423,11 @@ check_stop_print:
 */
 
 static MR_Code *
-MR_trace_interrupt(const MR_Label_Layout *layout)
+MR_trace_interrupt(const MR_LabelLayout *layout)
 {
     MR_Unsigned     seqno;
     MR_Unsigned     depth;
-    MR_Trace_Port   port;
+    MR_TracePort    port;
 
     /* restore the original MR_selected_trace_func_ptr value */
     MR_selected_trace_func_ptr = MR_trace_real;
@@ -447,7 +447,7 @@ MR_trace_interrupt(const MR_Label_Layout *layout)
         depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);
     }
 
-    port = (MR_Trace_Port) layout->MR_sll_port;
+    port = (MR_TracePort) layout->MR_sll_port;
     MR_trace_event_number++;
     return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port, seqno, depth);
 }
@@ -475,7 +475,7 @@ MR_trace_interrupt_handler(void)
 
 #define MR_TRACE_EVENT_DECL_AND_SETUP                                         \
     MR_Code         *jumpaddr;                                                \
-    MR_Event_Info   event_info;                                               \
+    MR_EventInfo    event_info;                                               \
     MR_Word         *saved_regs = event_info.MR_saved_regs;                   \
                                                                               \
     event_info.MR_event_number = MR_trace_event_number;                       \
@@ -515,8 +515,8 @@ MR_trace_interrupt_handler(void)
     return jumpaddr;
 
 static MR_Code *
-MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
-    const MR_Label_Layout *layout, MR_Trace_Port port,
+MR_trace_event(MR_TraceCmdInfo *cmd, MR_bool interactive,
+    const MR_LabelLayout *layout, MR_TracePort port,
     MR_Unsigned seqno, MR_Unsigned depth)
 {
     MR_TRACE_EVENT_DECL_AND_SETUP
@@ -538,8 +538,8 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
             ** if MR_USE_EXTERNAL_DEBUGGER is not defined.
             */
             {
-                MR_Spy_Action       action;         /* ignored */
-                MR_Spy_Print_List   print_list;
+                MR_SpyAction        action;         /* ignored */
+                MR_SpyPrintList     print_list;
 
                 (void) MR_event_matches_spy_point(layout, port, &action,
                     &print_list);
@@ -555,16 +555,16 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 }
 
 MR_Code *
-MR_trace_real_decl(const MR_Label_Layout *layout)
+MR_trace_real_decl(const MR_LabelLayout *layout)
 {
     MR_Integer          maybe_from_full;
     MR_Unsigned         seqno;
     MR_Unsigned         depth;
-    MR_Trace_Port       port;
+    MR_TracePort        port;
 
     MR_TRACE_REAL_SETUP_CODE();
 
-    port = (MR_Trace_Port) layout->MR_sll_port;
+    port = (MR_TracePort) layout->MR_sll_port;
 
     {
         MR_TRACE_EVENT_DECL_AND_SETUP
@@ -574,17 +574,17 @@ MR_trace_real_decl(const MR_Label_Layout *layout)
 }
 
 MR_Code *
-MR_trace_real_decl_implicit_subtree(const MR_Label_Layout *layout)
+MR_trace_real_decl_implicit_subtree(const MR_LabelLayout *layout)
 {
     MR_Integer          maybe_from_full;
     MR_Unsigned         seqno;
     MR_Unsigned         depth;
-    MR_Trace_Port       port;
+    MR_TracePort        port;
     MR_Unsigned         node_depth;
 
     MR_TRACE_REAL_SETUP_CODE();
 
-    port = (MR_Trace_Port) layout->MR_sll_port;
+    port = (MR_TracePort) layout->MR_sll_port;
 
     /*
     ** Note that we do not check for suppressed events or events from compiler
@@ -621,9 +621,9 @@ MR_trace_real_decl_implicit_subtree(const MR_Label_Layout *layout)
 /* The initial size of arrays of argument values. */
 #define MR_INIT_ARG_COUNT   20
 
-MR_Retry_Result
-MR_trace_retry(MR_Event_Info *event_info,
-    int ancestor_level, MR_Retry_Across_Io across_io,
+MR_RetryResult
+MR_trace_retry(MR_EventInfo *event_info,
+    int ancestor_level, MR_RetryAcrossIo across_io,
     MR_bool assume_all_io_is_tabled, const char *retry_interactive_message,
     MR_bool *unsafe_retry, const char **problem,
     FILE *in_fp, FILE *out_fp, MR_Code **jumpaddr)
@@ -631,10 +631,10 @@ MR_trace_retry(MR_Event_Info *event_info,
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
     MR_Word                 *base_maxfr;
-    const MR_Label_Layout   *top_layout;
-    const MR_Label_Layout   *return_label_layout;
-    const MR_Label_Layout   *call_label;
-    const MR_Proc_Layout    *level_layout;
+    const MR_LabelLayout    *top_layout;
+    const MR_LabelLayout    *return_label_layout;
+    const MR_LabelLayout    *call_label;
+    const MR_ProcLayout     *level_layout;
     MR_Word                 *args;
     int                     arg_max;
     int                     arg_num;
@@ -649,7 +649,7 @@ MR_trace_retry(MR_Event_Info *event_info,
     MR_bool                 found_io_action_counter;
     MR_Unsigned             saved_io_action_counter;
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
-    MR_Retry_Result         result;
+    MR_RetryResult          result;
 #endif
 
 #ifdef  MR_DEEP_PROFILING
@@ -759,12 +759,12 @@ MR_trace_retry(MR_Event_Info *event_info,
             }
 
             if (i < MR_long_desc_var_count(call_label)) {
-                MR_Long_Lval    long_locn;
+                MR_LongLval     long_locn;
 
                 long_locn.MR_long_lval = MR_long_desc_var_locn(call_label, i);
                 arg_num = MR_get_register_number_long(long_locn);
             } else {
-                MR_Short_Lval    short_locn;
+                MR_ShortLval    short_locn;
 
                 short_locn = MR_short_desc_var_locn(call_label, i);
                 arg_num = MR_get_register_number_short(short_locn);
@@ -935,7 +935,7 @@ MR_trace_retry(MR_Event_Info *event_info,
     MR_trace_from_full = MR_TRUE;
 
     if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
-        MR_Long_Lval    location;
+        MR_LongLval     location;
         MR_Word         *this_frame;
 
         location = level_layout->MR_sle_succip_locn;
@@ -1047,7 +1047,7 @@ report_problem:
 }
 
 static MR_bool
-MR_in_traced_region(const MR_Proc_Layout *proc_layout,
+MR_in_traced_region(const MR_ProcLayout *proc_layout,
     MR_Word *base_sp, MR_Word *base_curfr)
 {
     if (proc_layout->MR_sle_maybe_from_full <= 0) {
@@ -1086,10 +1086,10 @@ MR_is_io_state(MR_TypeInfoParams type_params, MR_PseudoTypeInfo pti)
 }
 
 static MR_bool
-MR_find_saved_io_counter(const MR_Label_Layout *call_label,
+MR_find_saved_io_counter(const MR_LabelLayout *call_label,
     MR_Word *base_sp, MR_Word *base_curfr, MR_Unsigned *saved_io_counter_ptr)
 {
-    const MR_Proc_Layout    *level_layout;
+    const MR_ProcLayout     *level_layout;
     MR_Unsigned             saved_io_counter;
 
     level_layout = call_label->MR_sll_entry;
@@ -1152,14 +1152,14 @@ MR_retry_within_io_tabled_region(MR_bool all_actions_tabled,
 ** to point to a string giving the reason for its failure.
 */
 
-static const MR_Label_Layout *
-MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
+static const MR_LabelLayout *
+MR_unwind_stacks_for_retry(const MR_LabelLayout *top_layout,
     int ancestor_level, MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr,
     MR_Word **base_maxfr_ptr, const char **problem)
 {
-    MR_Stack_Walk_Step_Result   result;
-    const MR_Proc_Layout        *level_layout;
-    const MR_Label_Layout       *return_label_layout;
+    MR_StackWalkStepResult      result;
+    const MR_ProcLayout         *level_layout;
+    const MR_LabelLayout        *return_label_layout;
     int                         i;
 
     if (ancestor_level < 0) {
@@ -1254,7 +1254,7 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 }
 
 static const char *
-MR_undo_updates_of_maxfr(const MR_Proc_Layout *level_layout,
+MR_undo_updates_of_maxfr(const MR_ProcLayout *level_layout,
     MR_Word *level_sp, MR_Word *level_curfr, MR_Word **maxfr_ptr)
 {
     if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
@@ -1289,7 +1289,7 @@ MR_undo_updates_of_maxfr(const MR_Proc_Layout *level_layout,
 }
 
 static MR_Word
-MR_trace_find_input_arg(const MR_Label_Layout *label_layout,
+MR_trace_find_input_arg(const MR_LabelLayout *label_layout,
     MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
     MR_uint_least16_t var_num, MR_bool *succeeded)
 {
@@ -1303,14 +1303,14 @@ MR_trace_find_input_arg(const MR_Label_Layout *label_layout,
     for (i = 0; i < MR_all_desc_var_count(label_layout); i++) {
         if (var_num == label_layout->MR_sll_var_nums[i]) {
             if (i < MR_long_desc_var_count(label_layout)) {
-                MR_Long_Lval    long_locn;
+                MR_LongLval     long_locn;
 
                 long_locn.MR_long_lval =
                     MR_long_desc_var_locn(label_layout, i);
                 return MR_lookup_long_lval_base(long_locn,
                     saved_regs, base_sp, base_curfr, succeeded);
             } else {
-                MR_Short_Lval    short_locn;
+                MR_ShortLval    short_locn;
 
                 short_locn = MR_short_desc_var_locn(label_layout, i);
                 return MR_lookup_short_lval_base(short_locn,
@@ -1348,21 +1348,21 @@ typedef struct {
     MR_Subgoal  *record_subgoal;
     MR_Subgoal  *record_leader;
     MR_bool     found_leader_generator;
-} MR_Minimal_Model_Record;
+} MR_MinimalModelRecord;
 
-static MR_Retry_Result
-MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
+static MR_RetryResult
+MR_check_minimal_model_calls(MR_EventInfo *event_info, int ancestor_level,
     MR_Word *target_maxfr, const char **problem)
 {
-    const MR_Label_Layout   *label_layout;
-    const MR_Proc_Layout    *proc_layout;
+    const MR_LabelLayout    *label_layout;
+    const MR_ProcLayout     *proc_layout;
     MR_Word                 *top_maxfr;
     MR_Word                 *cur_maxfr;
     MR_Code                 *redoip;
     MR_TrieNode             trienode;
     MR_Subgoal              *subgoal;
     MR_Subgoal              *leader;
-    MR_Minimal_Model_Record *record_ptrs;
+    MR_MinimalModelRecord   *record_ptrs;
     int                     record_ptr_max;
     int                     record_ptr_next;
     int                     frame_size;
@@ -1450,7 +1450,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
             leader = subgoal;
         }
 
-        MR_ensure_room_for_next(record_ptr, MR_Minimal_Model_Record,
+        MR_ensure_room_for_next(record_ptr, MR_MinimalModelRecord,
             INIT_RECORD_ARRAY_SIZE);
 
         record_ptrs[record_ptr_next].record_subgoal = subgoal;
@@ -1535,12 +1535,12 @@ MR_init_call_table_array(void)
 }
 
 static void
-MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
+MR_maybe_record_call_table(const MR_ProcLayout *level_layout,
     MR_Word *base_sp, MR_Word *base_curfr)
 {
-    MR_TrieNode             call_table;
-    MR_EvalMethod           eval_method;
-    const MR_User_Proc_Id   *user;
+    MR_TrieNode         call_table;
+    MR_EvalMethod       eval_method;
+    const MR_UserProcId *user;
 
     if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
         if (MR_PROC_LAYOUT_HAS_PROC_ID(level_layout)) {

@@ -100,7 +100,7 @@
 		cmodule, cname, carity, cmode, line)			\
 	static const MR_CallSiteStatic					\
 	MR_call_sites_uci_name(module, name, type, arity, mode)[] = {	\
-		{ MR_normal_call, (MR_Proc_Layout *)			\
+		{ MR_normal_call, (MR_ProcLayout *)			\
 		&MR_proc_layout_user_name(cmodule, cname, carity, cmode),\
 		NULL, "", line, "" }					\
 	}

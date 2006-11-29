@@ -23,7 +23,7 @@
 #include "mercury_types.h"          /* for MR_Word etc */
 #include "mercury_library_types.h"  /* for MercuryFile */
 #include <stdio.h>                  /* for FILE        */
-#include "mercury_trace.h"          /* for MR_Event_Info */
+#include "mercury_trace.h"          /* for MR_EventInfo */
 
 /*
 ** MR_c_file_to_mercury_file is used to convert MR_mdb_in and MR_mdb_out
@@ -71,7 +71,7 @@ extern  void    MR_print_heap_regs(FILE *fp, MR_Word *saved_regs);
 extern  void    MR_print_tabling_regs(FILE *fp, MR_Word *saved_regs);
 extern  void    MR_print_succip_reg(FILE *fp, MR_Word *saved_regs);
 extern  void    MR_print_r_regs(FILE *fp, MR_Word *saved_regs);
-extern  void    MR_print_debug_vars(FILE *fp, MR_Event_Info *event_info);
+extern  void    MR_print_debug_vars(FILE *fp, MR_EventInfo *event_info);
 
 /*
 ** This function returns MR_TRUE if the layout is for exception.builtin_catch
@@ -80,7 +80,7 @@ extern  void    MR_print_debug_vars(FILE *fp, MR_Event_Info *event_info);
 */
 
 extern  MR_bool MR_trace_proc_layout_is_builtin_catch(
-                    const MR_Proc_Layout *layout);
+                    const MR_ProcLayout *layout);
 
 /*
 ** MR_trace_call_system_display_error_on_failure executes the given command

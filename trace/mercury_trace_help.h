@@ -52,7 +52,7 @@ extern  void                MR_trace_help_cat_item(const char *cat,
                                 const char *item);
 
 /* A Readline completer for help topics. */
-extern  MR_Completer_List   *MR_trace_help_completer(const char *word,
+extern  MR_CompleterList    *MR_trace_help_completer(const char *word,
                                 size_t word_len);
 
 #endif  /* MERCURY_TRACE_HELP_H */

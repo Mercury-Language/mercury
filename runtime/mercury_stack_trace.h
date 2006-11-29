@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001, 2003-2005 The University of Melbourne.
+** Copyright (C) 1998-2001, 2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -62,7 +62,7 @@ extern	void	MR_dump_stack(MR_Code *success_pointer,
 */
 
 typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
-				const MR_Proc_Layout *proc_layout,
+				const MR_ProcLayout *proc_layout,
 				int count, int level,
 				MR_Word *base_sp, MR_Word * base_curfr,
 				const char *filename, int linenumber,
@@ -70,7 +70,7 @@ typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
 				MR_bool context_mismatch);
 
 extern	const char	*MR_dump_stack_from_layout(FILE *fp,
-				const MR_Label_Layout *label_layout,
+				const MR_LabelLayout *label_layout,
 				MR_Word *det_stack_pointer,
 				MR_Word *current_frame,
 				MR_bool include_trace_data,
@@ -101,7 +101,7 @@ extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr,
 
 extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
 			MR_Word *limit_addr, int frame_limit, int line_limit,
-			MR_Word *maxfr, const MR_Label_Layout *label_layout,
+			MR_Word *maxfr, const MR_LabelLayout *label_layout,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
@@ -112,11 +112,11 @@ extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
 */
 
 typedef void MR_Traverse_Nondet_Frame_Func(void *user_data,
-			const MR_Label_Layout *layout, MR_Word *base_sp,
+			const MR_LabelLayout *layout, MR_Word *base_sp,
 			MR_Word *base_curfr);
 
 extern	void	MR_traverse_nondet_stack_from_layout(
-			MR_Word *maxfr, const MR_Label_Layout *label_layout,
+			MR_Word *maxfr, const MR_LabelLayout *label_layout,
 			MR_Word *base_sp, MR_Word *base_curfr,
 			MR_Traverse_Nondet_Frame_Func *traverse_frame_func,
 			void *traverse_frame_func_data);
@@ -137,8 +137,8 @@ extern	void	MR_traverse_nondet_stack_from_layout(
 ** and problem will point to an error message.
 */
 
-extern	const MR_Label_Layout *MR_find_nth_ancestor(
-			const MR_Label_Layout *label_layout,
+extern	const MR_LabelLayout *MR_find_nth_ancestor(
+			const MR_LabelLayout *label_layout,
 			int ancestor_level, MR_Word **stack_trace_sp,
 			MR_Word **stack_trace_curfr, const char **problem);
 
@@ -175,11 +175,11 @@ typedef enum {
 	MR_STEP_ERROR_BEFORE,
 	MR_STEP_ERROR_AFTER,
 	MR_STEP_OK
-} MR_Stack_Walk_Step_Result;
+} MR_StackWalkStepResult;
 
-extern  MR_Stack_Walk_Step_Result
-		MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
-			const MR_Label_Layout **return_label_layout,
+extern  MR_StackWalkStepResult
+		MR_stack_walk_step(const MR_ProcLayout *entry_layout,
+			const MR_LabelLayout **return_label_layout,
 			MR_Word **stack_trace_sp_ptr,
 			MR_Word **stack_trace_curfr_ptr,
 			const char **problem_ptr);
@@ -216,7 +216,7 @@ extern	const char *MR_detism_names[];
 ** otherwise, it returns MR_FALSE.
 */
 
-extern	MR_bool	MR_find_context(const MR_Label_Layout *label,
+extern	MR_bool	MR_find_context(const MR_LabelLayout *label,
 			const char **fileptr, int *lineptr);
 
 /*
@@ -232,12 +232,12 @@ extern	MR_bool	MR_find_context(const MR_Label_Layout *label,
 */
 
 extern	void	MR_print_call_trace_info(FILE *fp,
-			const MR_Proc_Layout *entry,
+			const MR_ProcLayout *entry,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 extern	void	MR_maybe_print_call_trace_info(FILE *fp,
 			MR_bool include_trace_data,
-			const MR_Proc_Layout *entry,
+			const MR_ProcLayout *entry,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
@@ -247,21 +247,21 @@ extern	void	MR_maybe_print_call_trace_info(FILE *fp,
 ** the caller can put something else after the procedure id on the same line.
 */
 
-extern	void	MR_print_proc_id(FILE *fp, const MR_Proc_Layout *entry);
+extern	void	MR_print_proc_id(FILE *fp, const MR_ProcLayout *entry);
 
 /*
 ** MR_print_pred_id prints everything that MR_print_proc_id does, except
 ** the mode number and determinism.
 */
 
-extern	void	MR_print_pred_id(FILE *fp, const MR_Proc_Layout *entry);
+extern	void	MR_print_pred_id(FILE *fp, const MR_ProcLayout *entry);
 
 /*
 ** MR_print_proc_spec prints a string that uniquely specifies the given
 ** procedure to the debugger.
 */
 
-extern	void	MR_print_proc_spec(FILE *fp, const MR_Proc_Layout *entry);
+extern	void	MR_print_proc_spec(FILE *fp, const MR_ProcLayout *entry);
 
 /*
 ** MR_print_proc_separate prints a string that uniquely specifies the given
@@ -269,7 +269,7 @@ extern	void	MR_print_proc_spec(FILE *fp, const MR_Proc_Layout *entry);
 ** to allow the output to be processed by tools (e.g. awk scripts).
 */
 
-extern	void	MR_print_proc_separate(FILE *fp, const MR_Proc_Layout *entry);
+extern	void	MR_print_proc_separate(FILE *fp, const MR_ProcLayout *entry);
 
 /*
 ** MR_print_proc_id_trace_and_context prints an identification of the given
@@ -284,11 +284,11 @@ typedef	enum {
 	MR_CONTEXT_AFTER,
 	MR_CONTEXT_PREVLINE,
 	MR_CONTEXT_NEXTLINE
-} MR_Context_Position;
+} MR_ContextPosition;
 
 extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
-			MR_bool include_trace_data, MR_Context_Position pos,
-			const MR_Proc_Layout *entry,
+			MR_bool include_trace_data, MR_ContextPosition pos,
+			const MR_ProcLayout *entry,
 			MR_Word *base_sp, MR_Word *base_curfr,
 			const char *path, const char *filename, int lineno,
 			MR_bool print_parent, const char *parent_filename,
@@ -299,7 +299,7 @@ extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
 */
 
 extern	void	MR_dump_stack_record_print(FILE *fp,
-			const MR_Proc_Layout *entry_layout, int count,
+			const MR_ProcLayout *entry_layout, int count,
 			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
 			const char *goal_path, MR_bool context_mismatch);
@@ -316,12 +316,12 @@ extern	void	MR_dump_stack_record_print(FILE *fp,
 typedef	enum {
 	MR_FIND_FIRST_CALL_BEFORE_SEQ,
 	MR_FIND_FIRST_CALL_BEFORE_EVENT
-} MR_find_first_call_seq_or_event;
+} MR_FindFirstCallSeqOrEvent;
 
 extern	int	MR_find_first_call_less_eq_seq_or_event(
-			MR_find_first_call_seq_or_event seq_or_event,
+			MR_FindFirstCallSeqOrEvent seq_or_event,
 			MR_Unsigned seq_no_or_event_no,
-			const MR_Label_Layout *label_layout,
+			const MR_LabelLayout *label_layout,
 			MR_Word *det_stack_pointer, MR_Word *current_frame,
 			const char **problem);
 

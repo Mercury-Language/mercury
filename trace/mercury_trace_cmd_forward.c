@@ -31,14 +31,14 @@
 
 /****************************************************************************/
 
-static  MR_bool     MR_trace_options_movement_cmd(MR_Trace_Cmd_Info *cmd,
+static  MR_bool     MR_trace_options_movement_cmd(MR_TraceCmdInfo *cmd,
                         char ***words, int *word_count);
 
 /****************************************************************************/
 
 MR_Next
-MR_trace_cmd_step(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_step(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int n;
 
@@ -63,8 +63,8 @@ MR_trace_cmd_step(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_goto(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_goto(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Unsigned n;
 
@@ -91,8 +91,8 @@ MR_trace_cmd_goto(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_next(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_next(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Unsigned depth;
     int         stop_depth;
@@ -126,8 +126,8 @@ MR_trace_cmd_next(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_finish(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Unsigned depth;
     int         stop_depth;
@@ -161,8 +161,8 @@ MR_trace_cmd_finish(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_fail(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_fail(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Determinism  detism;
     MR_Unsigned     depth;
@@ -213,8 +213,8 @@ MR_trace_cmd_fail(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_exception(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_exception(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level = MR_default_print_level;
@@ -236,8 +236,8 @@ MR_trace_cmd_exception(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_return(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_return(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level = MR_default_print_level;
@@ -259,8 +259,8 @@ MR_trace_cmd_return(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_user(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_user(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level = MR_default_print_level;
@@ -278,8 +278,8 @@ MR_trace_cmd_user(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_forward(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_forward(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level = MR_default_print_level;
@@ -287,7 +287,7 @@ MR_trace_cmd_forward(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
         ; /* the usage message has already been printed */
     } else if (word_count == 1) {
-        MR_Trace_Port   port;
+        MR_TracePort    port;
 
         port = event_info->MR_trace_port;
         if (port == MR_PORT_FAIL ||
@@ -307,8 +307,8 @@ MR_trace_cmd_forward(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_mindepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_mindepth(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int newdepth;
 
@@ -331,8 +331,8 @@ MR_trace_cmd_mindepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_maxdepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_maxdepth(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int newdepth;
 
@@ -355,17 +355,17 @@ MR_trace_cmd_maxdepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_continue(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_continue(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_FALSE;
-    cmd->MR_trace_print_level = (MR_Trace_Cmd_Type) -1;
+    cmd->MR_trace_print_level = (MR_TraceCmdType) -1;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
         ; /* the usage message has already been printed */
     } else if (word_count == 1) {
         cmd->MR_trace_cmd = MR_CMD_TO_END;
-        if (cmd->MR_trace_print_level == (MR_Trace_Cmd_Type) -1) {
+        if (cmd->MR_trace_print_level == (MR_TraceCmdType) -1) {
             /*
             ** The user did not specify the print level;
             ** select the intelligent default.
@@ -407,7 +407,7 @@ static struct MR_option MR_trace_movement_cmd_opts[] =
 };
 
 static MR_bool
-MR_trace_options_movement_cmd(MR_Trace_Cmd_Info *cmd,
+MR_trace_options_movement_cmd(MR_TraceCmdInfo *cmd,
     char ***words, int *word_count)
 {
     int c;

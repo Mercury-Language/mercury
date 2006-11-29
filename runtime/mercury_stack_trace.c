@@ -26,9 +26,9 @@
   #define snprintf	_snprintf
 #endif
 
-static  MR_Stack_Walk_Step_Result
+static  MR_StackWalkStepResult
                     MR_stack_walk_succip_layout(MR_Code *success,
-                        const MR_Label_Layout **return_label_layout,
+                        const MR_LabelLayout **return_label_layout,
                         MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr,
                         const char **problem_ptr);
 
@@ -48,7 +48,7 @@ typedef struct {
 
 typedef void        MR_Dump_Or_Traverse_Nondet_Frame_Func(void *user_data,
                         MR_Nondet_Frame_Category category, MR_Word *top_fr,
-                        const MR_Label_Layout *layout, MR_Word *base_sp,
+                        const MR_LabelLayout *layout, MR_Word *base_sp,
                         MR_Word *base_curfr, int level_number);
 
 static MR_Dump_Or_Traverse_Nondet_Frame_Func MR_dump_nondet_stack_frame;
@@ -58,7 +58,7 @@ static  const char  *MR_step_over_nondet_frame(
                         MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
                         void *func_data, int level_number, MR_Word *fr);
 static void         MR_init_nondet_branch_infos(MR_Word *base_maxfr,
-                    	const MR_Label_Layout *top_layout, MR_Word *base_sp,
+                    	const MR_LabelLayout *top_layout, MR_Word *base_sp,
                         MR_Word *base_curfr);
 static  MR_bool     MR_find_matching_branch(MR_Word *fr, int *branch_ptr);
 static  void        MR_record_temp_redoip(MR_Word *fr);
@@ -71,7 +71,7 @@ static  void        MR_erase_temp_redoip(MR_Word *fr);
 static  void        MR_dump_stack_record_init(MR_bool include_trace_data,
                         MR_bool include_contexts);
 static  int         MR_dump_stack_record_frame(FILE *fp,
-                        const MR_Label_Layout *label_layout,
+                        const MR_LabelLayout *label_layout,
                         MR_Word *base_sp, MR_Word *base_curfr,
                         MR_Print_Stack_Record print_stack_record,
                         MR_bool at_line_limit);
@@ -79,7 +79,7 @@ static  void        MR_dump_stack_record_flush(FILE *fp,
                         MR_Print_Stack_Record print_stack_record);
 
 static  void        MR_print_proc_id_internal(FILE *fp,
-                        const MR_Proc_Layout *entry, MR_bool spec, 
+                        const MR_ProcLayout *entry, MR_bool spec,
                         MR_bool print_mode, MR_bool separate);
 
 static  void        MR_maybe_print_context(FILE *fp,
@@ -88,12 +88,12 @@ static  void        MR_maybe_print_parent_context(FILE *fp,
                         MR_bool print_parent, MR_bool verbose,
                         const char *filename, int lineno);
 
-static  MR_bool     MR_call_details_are_valid(const MR_Proc_Layout *entry, 
+static  MR_bool     MR_call_details_are_valid(const MR_ProcLayout *entry,
                         MR_Word *base_sp, MR_Word *base_curfr);
 static  MR_bool     MR_call_is_before_event_or_seq(
-                        MR_find_first_call_seq_or_event seq_or_event, 
-                        MR_Unsigned seq_no_or_event_no, 
-                        const MR_Proc_Layout *entry, MR_Word *base_sp, 
+                        MR_FindFirstCallSeqOrEvent seq_or_event,
+                        MR_Unsigned seq_no_or_event_no,
+                        const MR_ProcLayout *entry, MR_Word *base_sp,
                         MR_Word *base_curfr);
 
 /* see comments in mercury_stack_trace.h */
@@ -105,7 +105,7 @@ MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
     MR_Word *current_frame, MR_bool include_trace_data)
 {
     const MR_Internal       *label;
-    const MR_Label_Layout   *layout;
+    const MR_LabelLayout    *layout;
     const char              *result;
     MR_bool                 stack_dump_available;
     char                    *env_suppress;
@@ -144,15 +144,15 @@ MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 }
 
 const char *
-MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
+MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
     MR_Word *det_stack_pointer, MR_Word *current_frame,
     MR_bool include_trace_data, MR_bool include_contexts,
     int frame_limit, int line_limit, MR_Print_Stack_Record print_stack_record)
 {
-    MR_Stack_Walk_Step_Result       result;
-    const MR_Proc_Layout            *entry_layout;
-    const MR_Label_Layout           *cur_label_layout;
-    const MR_Label_Layout           *prev_label_layout;
+    MR_StackWalkStepResult          result;
+    const MR_ProcLayout             *entry_layout;
+    const MR_LabelLayout            *cur_label_layout;
+    const MR_LabelLayout            *prev_label_layout;
     const char                      *problem;
     MR_Word                         *stack_trace_sp;
     MR_Word                         *stack_trace_curfr;
@@ -214,14 +214,14 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
     return NULL;
 }
 
-const MR_Label_Layout *
-MR_find_nth_ancestor(const MR_Label_Layout *label_layout, int ancestor_level,
+const MR_LabelLayout *
+MR_find_nth_ancestor(const MR_LabelLayout *label_layout, int ancestor_level,
     MR_Word **stack_trace_sp, MR_Word **stack_trace_curfr,
     const char **problem)
 {
-    MR_Stack_Walk_Step_Result       result;
-    const MR_Label_Layout           *return_label_layout;
-    int                             i;
+    MR_StackWalkStepResult  result;
+    const MR_LabelLayout    *return_label_layout;
+    int                     i;
 
     if (ancestor_level < 0) {
         *problem = "no such stack frame";
@@ -249,14 +249,14 @@ MR_find_nth_ancestor(const MR_Label_Layout *label_layout, int ancestor_level,
     return label_layout;
 }
 
-MR_Stack_Walk_Step_Result
-MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
-    const MR_Label_Layout **return_label_layout,
+MR_StackWalkStepResult
+MR_stack_walk_step(const MR_ProcLayout *entry_layout,
+    const MR_LabelLayout **return_label_layout,
     MR_Word **stack_trace_sp_ptr, MR_Word **stack_trace_curfr_ptr,
     const char **problem_ptr)
 {
-    MR_Long_Lval            location;
-    MR_Long_Lval_Type       type;
+    MR_LongLval             location;
+    MR_LongLvalType         type;
     int                     number;
     int                     determinism;
     MR_Code                 *success;
@@ -306,9 +306,9 @@ MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
         stack_trace_sp_ptr, stack_trace_curfr_ptr, problem_ptr);
 }
 
-static MR_Stack_Walk_Step_Result
+static MR_StackWalkStepResult
 MR_stack_walk_succip_layout(MR_Code *success,
-    const MR_Label_Layout **return_label_layout,
+    const MR_LabelLayout **return_label_layout,
     MR_Word **stack_trace_sp_ptr, MR_Word **stack_trace_curfr_ptr,
     const char **problem_ptr)
 {
@@ -368,7 +368,7 @@ MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, int frame_limit,
 void
 MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
     int frame_limit, int line_limit,
-    MR_Word *base_maxfr, const MR_Label_Layout *top_layout,
+    MR_Word *base_maxfr, const MR_LabelLayout *top_layout,
     MR_Word *base_sp, MR_Word *base_curfr)
 {
     MR_fatal_error("MR_dump_nondet_stack_from_layout in high level grade");
@@ -431,7 +431,7 @@ typedef struct
 {
     MR_Word                 *branch_sp;
     MR_Word                 *branch_curfr;
-    const MR_Label_Layout   *branch_layout;
+    const MR_LabelLayout    *branch_layout;
     MR_Word                 *branch_topfr;
 } MR_Nondet_Branch_Info;
 
@@ -444,15 +444,15 @@ static int                      MR_nondet_branch_info_max = 0;
 void
 MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
     int frame_limit, int line_limit, MR_Word *base_maxfr,
-    const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
+    const MR_LabelLayout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
 {
     int                     frame_size;
     int                     level_number;
     MR_bool                 print_vars;
     const char              *problem;
     int                     branch;
-    const MR_Label_Layout   *label_layout;
-    const MR_Proc_Layout    *proc_layout;
+    const MR_LabelLayout    *label_layout;
+    const MR_ProcLayout     *proc_layout;
     int                     frames_traversed_so_far;
     int                     lines_dumped_so_far;
 
@@ -596,7 +596,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
 
 static void
 MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
-    MR_Word *top_fr, const MR_Label_Layout *top_layout, MR_Word *base_sp,
+    MR_Word *top_fr, const MR_LabelLayout *top_layout, MR_Word *base_sp,
     MR_Word *base_curfr, int level_number)
 {
     FILE *dump_fp = fp;
@@ -644,7 +644,7 @@ MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
 
 void
 MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
-    const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr,
+    const MR_LabelLayout *top_layout, MR_Word *base_sp, MR_Word *base_curfr,
     MR_Traverse_Nondet_Frame_Func *func, void *func_data)
 {
     int             frame_size;
@@ -696,7 +696,7 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
 
 static void
 MR_traverse_nondet_stack_frame(void *info, MR_Nondet_Frame_Category category,
-    MR_Word *top_fr, const MR_Label_Layout *top_layout, MR_Word *base_sp,
+    MR_Word *top_fr, const MR_LabelLayout *top_layout, MR_Word *base_sp,
     MR_Word *base_curfr, int level_number)
 {
     MR_Traverse_Nondet_Frame_Func_Info *func_info = info;
@@ -707,11 +707,18 @@ MR_traverse_nondet_stack_frame(void *info, MR_Nondet_Frame_Category category,
 
 static void
 MR_init_nondet_branch_infos(MR_Word *base_maxfr,
-	const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
+	const MR_LabelLayout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
 {
-    const MR_Label_Layout *label_layout = top_layout;
-    MR_Word *stack_pointer = base_sp;
-    MR_Word *current_frame = base_curfr;
+    const MR_LabelLayout        *label_layout;
+    const MR_ProcLayout         *proc_layout;
+    MR_Word                     *stack_pointer;
+    MR_Word                     *current_frame;
+    MR_StackWalkStepResult      result;
+    const char                  *problem;
+
+    label_layout = top_layout;
+    stack_pointer = base_sp;
+    current_frame = base_curfr;
 
     MR_nondet_branch_info_next = 0;
 
@@ -719,10 +726,6 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
     ** Skip past any model_det frames.
     */
     do {
-        const MR_Proc_Layout            *proc_layout;
-        MR_Stack_Walk_Step_Result       result;
-        const char                      *problem;
-
         proc_layout = label_layout->MR_sll_entry;
         if (!MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
             break;
@@ -753,20 +756,20 @@ static const char *
 MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
     void *func_data, int level_number, MR_Word *fr)
 {
-    MR_Stack_Walk_Step_Result       result;
-    MR_Determinism                  determinism;
-    const MR_Internal               *internal;
-    int                             branch;
-    int                             last;
-    MR_Word                         *base_sp;
-    MR_Word                         *base_curfr;
-    MR_Word                         *topfr;
-    const MR_Label_Layout           *label_layout;
-    const MR_Proc_Layout            *proc_layout;
-    MR_Code                         *redoip;
-    MR_Code                         *success;
-    const char                      *problem;
-    MR_Nondet_Frame_Category        category;
+    MR_StackWalkStepResult      result;
+    MR_Determinism              determinism;
+    const MR_Internal           *internal;
+    int                         branch;
+    int                         last;
+    MR_Word                     *base_sp;
+    MR_Word                     *base_curfr;
+    MR_Word                     *topfr;
+    const MR_LabelLayout        *label_layout;
+    const MR_ProcLayout         *proc_layout;
+    MR_Code                     *redoip;
+    MR_Code                     *success;
+    const char                  *problem;
+    MR_Nondet_Frame_Category    category;
 
     if (MR_find_matching_branch(fr, &branch)) {
         base_sp = MR_nondet_branch_infos[branch].branch_sp;
@@ -880,13 +883,12 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
         determinism = proc_layout->MR_sle_detism;
         if (MR_DETISM_DET_STACK(determinism)) {
             /*
-            ** We must have found the common ancestor of the
-            ** procedure call whose variables we just printed
-            ** and the call currently being executed. While this
-            ** common ancestor must include model_non code, this
-            ** may be inside a commit in a procedure that lives on
-            ** the det stack. If that is the case, the common
-            ** ancestor must not be put into MR_nondet_branch_info.
+            ** We must have found the common ancestor of the procedure call
+            ** whose variables we just printed and the call currently being
+            ** executed. While this common ancestor must include model_non code,
+            ** this may be inside a commit in a procedure that lives on the
+            ** det stack. If that is the case, the common ancestor must not be
+            ** put into MR_nondet_branch_info.
             */
 
             return NULL;
@@ -1036,7 +1038,7 @@ MR_erase_temp_redoip(MR_Word *fr)
 
 /**************************************************************************/
 
-static  const MR_Proc_Layout    *prev_entry_layout;
+static  const MR_ProcLayout    *prev_entry_layout;
 static  int                     prev_entry_layout_count;
 static  int                     prev_entry_start_level;
 static  MR_Word                 *prev_entry_base_sp;
@@ -1061,11 +1063,11 @@ MR_dump_stack_record_init(MR_bool include_trace_data, MR_bool include_contexts)
 }
 
 static int
-MR_dump_stack_record_frame(FILE *fp, const MR_Label_Layout *label_layout,
+MR_dump_stack_record_frame(FILE *fp, const MR_LabelLayout *label_layout,
     MR_Word *base_sp, MR_Word *base_curfr,
     MR_Print_Stack_Record print_stack_record, MR_bool at_line_limit)
 {
-    const MR_Proc_Layout    *entry_layout;
+    const MR_ProcLayout     *entry_layout;
     const char              *filename;
     int                     linenumber;
     MR_bool                 must_flush;
@@ -1080,16 +1082,13 @@ MR_dump_stack_record_frame(FILE *fp, const MR_Label_Layout *label_layout,
     }
 
     /*
-    ** We cannot merge two calls if they are to different
-    ** procedures.
+    ** We cannot merge two calls if they are to different procedures.
     **
-    ** We cannot merge two calls even to the same procedure
-    ** if we are printing trace data, since this will differ
-    ** between the calls.
+    ** We cannot merge two calls even to the same procedure if we are printing
+    ** trace data, since this will differ between the calls.
     **
-    ** Note that it is not possible for two calls to the same
-    ** procedure to differ on whether the procedure has trace
-    ** layout data or not.
+    ** Note that it is not possible for two calls to the same procedure to differ
+    ** on whether the procedure has trace layout data or not.
     */
     must_flush = (entry_layout != prev_entry_layout) || trace_data_enabled;
 
@@ -1135,7 +1134,7 @@ MR_dump_stack_record_flush(FILE *fp, MR_Print_Stack_Record print_stack_record)
 }
 
 void
-MR_dump_stack_record_print(FILE *fp, const MR_Proc_Layout *entry_layout,
+MR_dump_stack_record_print(FILE *fp, const MR_ProcLayout *entry_layout,
     int count, int start_level, MR_Word *base_sp, MR_Word *base_curfr,
     const char *filename, int linenumber, const char *goal_path,
     MR_bool context_mismatch)
@@ -1174,12 +1173,12 @@ MR_dump_stack_record_print(FILE *fp, const MR_Proc_Layout *entry_layout,
 }
 
 MR_bool
-MR_find_context(const MR_Label_Layout *label, const char **fileptr,
+MR_find_context(const MR_LabelLayout *label, const char **fileptr,
     int *lineptr)
 {
-    const MR_Proc_Layout            *proc;
-    const MR_Module_Layout          *module;
-    const MR_Module_File_Layout     *file_layout;
+    const MR_ProcLayout             *proc;
+    const MR_ModuleLayout           *module;
+    const MR_ModuleFileLayout       *file_layout;
     int                             i, j;
 
     proc = label->MR_sll_entry;
@@ -1204,7 +1203,7 @@ MR_find_context(const MR_Label_Layout *label, const char **fileptr,
 
 void
 MR_maybe_print_call_trace_info(FILE *fp, MR_bool include_trace_data,
-    const MR_Proc_Layout *entry, MR_Word *base_sp, MR_Word *base_curfr)
+    const MR_ProcLayout *entry, MR_Word *base_sp, MR_Word *base_curfr)
 {
     if (include_trace_data) {
         MR_print_call_trace_info(fp, entry, base_sp, base_curfr);
@@ -1217,7 +1216,7 @@ MR_maybe_print_call_trace_info(FILE *fp, MR_bool include_trace_data,
 */
 
 void
-MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
+MR_print_call_trace_info(FILE *fp, const MR_ProcLayout *entry,
     MR_Word *base_sp, MR_Word *base_curfr)
 {
     MR_bool print_details;
@@ -1282,35 +1281,35 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
 }
 
 void
-MR_print_proc_id(FILE *fp, const MR_Proc_Layout *entry)
+MR_print_proc_id(FILE *fp, const MR_ProcLayout *entry)
 {
     MR_print_proc_id_internal(fp, entry, MR_FALSE, MR_TRUE, MR_FALSE);
 }
 
 void
-MR_print_pred_id(FILE *fp, const MR_Proc_Layout *entry)
+MR_print_pred_id(FILE *fp, const MR_ProcLayout *entry)
 {
     MR_print_proc_id_internal(fp, entry, MR_FALSE, MR_FALSE, MR_FALSE);
 }
 
 void
-MR_print_proc_spec(FILE *fp, const MR_Proc_Layout *entry)
+MR_print_proc_spec(FILE *fp, const MR_ProcLayout *entry)
 {
     MR_print_proc_id_internal(fp, entry, MR_TRUE, MR_TRUE, MR_FALSE);
 }
 
 void
-MR_print_proc_separate(FILE *fp, const MR_Proc_Layout *entry)
+MR_print_proc_separate(FILE *fp, const MR_ProcLayout *entry)
 {
     MR_print_proc_id_internal(fp, entry, MR_TRUE, MR_TRUE, MR_TRUE);
 }
 
 static void
-MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec,
+MR_print_proc_id_internal(FILE *fp, const MR_ProcLayout *entry, MR_bool spec,
     MR_bool print_mode, MR_bool separate)
 {
-    const MR_User_Proc_Id *user;
-    const MR_UCI_Proc_Id  *uci;
+    const MR_UserProcId *user;
+    const MR_UCIProcId  *uci;
 
     if (! MR_PROC_LAYOUT_HAS_PROC_ID(entry)) {
         MR_fatal_error("cannot print procedure id without layout");
@@ -1418,7 +1417,7 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec,
 
 void
 MR_print_proc_id_trace_and_context(FILE *fp, MR_bool include_trace_data,
-    MR_Context_Position pos, const MR_Proc_Layout *entry, MR_Word *base_sp,
+    MR_ContextPosition pos, const MR_ProcLayout *entry, MR_Word *base_sp,
     MR_Word *base_curfr, const char *path, const char *filename, int lineno,
     MR_bool print_parent, const char *parent_filename, int parent_lineno,
     int indent)
@@ -1493,7 +1492,7 @@ MR_print_proc_id_trace_and_context(FILE *fp, MR_bool include_trace_data,
             break;
 
         default:
-            MR_fatal_error("invalid MR_Context_Position");
+            MR_fatal_error("invalid MR_ContextPosition");
     }
 }
 
@@ -1519,7 +1518,7 @@ MR_maybe_print_parent_context(FILE *fp, MR_bool print_parent, MR_bool verbose,
 }
 
 static  MR_bool
-MR_call_details_are_valid(const MR_Proc_Layout *entry, MR_Word *base_sp, 
+MR_call_details_are_valid(const MR_ProcLayout *entry, MR_Word *base_sp,
     MR_Word *base_curfr)
 {
     if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -1545,13 +1544,13 @@ MR_call_details_are_valid(const MR_Proc_Layout *entry, MR_Word *base_sp,
 }
 
 static MR_bool
-MR_call_is_before_event_or_seq(MR_find_first_call_seq_or_event seq_or_event, 
-    MR_Unsigned seq_no_or_event_no, 
-    const MR_Proc_Layout *entry, MR_Word *base_sp, MR_Word *base_curfr)
+MR_call_is_before_event_or_seq(MR_FindFirstCallSeqOrEvent seq_or_event,
+    MR_Unsigned seq_no_or_event_no,
+    const MR_ProcLayout *entry, MR_Word *base_sp, MR_Word *base_curfr)
 {
     MR_Unsigned     call_event_num;
     MR_Unsigned     call_seq_num;
-    
+
     if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
         if (base_sp == NULL) {
             return MR_FALSE;
@@ -1575,7 +1574,7 @@ MR_call_is_before_event_or_seq(MR_find_first_call_seq_or_event seq_or_event,
         } else if (seq_or_event == MR_FIND_FIRST_CALL_BEFORE_SEQ) {
             return call_seq_num <= seq_no_or_event_no;
         } else {
-            MR_fatal_error("Unknown MR_find_first_call_seq_or_event");
+            MR_fatal_error("Unknown MR_FindFirstCallSeqOrEvent");
         }
     } else {
         return MR_FALSE;
@@ -1584,16 +1583,15 @@ MR_call_is_before_event_or_seq(MR_find_first_call_seq_or_event seq_or_event,
 
 int
 MR_find_first_call_less_eq_seq_or_event(
-    MR_find_first_call_seq_or_event seq_or_event, 
-    MR_Unsigned seq_no_or_event_no, 
-    const MR_Label_Layout *label_layout, MR_Word *det_stack_pointer, 
-    MR_Word *current_frame, const char **problem)
+    MR_FindFirstCallSeqOrEvent seq_or_event,
+    MR_Unsigned seq_no_or_event_no, const MR_LabelLayout *label_layout,
+    MR_Word *det_stack_pointer, MR_Word *current_frame, const char **problem)
 {
-    MR_Stack_Walk_Step_Result       result;
-    const MR_Label_Layout           *cur_label_layout;
-    MR_Word                         *stack_trace_sp;
-    MR_Word                         *stack_trace_curfr;
-    int                             ancestor_level;
+    MR_StackWalkStepResult  result;
+    const MR_LabelLayout    *cur_label_layout;
+    MR_Word                 *stack_trace_sp;
+    MR_Word                 *stack_trace_curfr;
+    int                     ancestor_level;
 
     MR_do_init_modules();
 
@@ -1603,21 +1601,20 @@ MR_find_first_call_less_eq_seq_or_event(
     cur_label_layout = label_layout;
 
     ancestor_level = 0;
-
     while (cur_label_layout != NULL) {
 
-        if (MR_call_is_before_event_or_seq(seq_or_event, seq_no_or_event_no, 
+        if (MR_call_is_before_event_or_seq(seq_or_event, seq_no_or_event_no,
                 cur_label_layout->MR_sll_entry, stack_trace_sp,
                 stack_trace_curfr)) {
             return ancestor_level;
         }
 
-        result = MR_stack_walk_step(cur_label_layout->MR_sll_entry, 
+        result = MR_stack_walk_step(cur_label_layout->MR_sll_entry,
             &cur_label_layout, &stack_trace_sp, &stack_trace_curfr, problem);
-        
+
         if (result != MR_STEP_OK) {
             return -1;
-        } 
+        }
 
         ancestor_level++;
 

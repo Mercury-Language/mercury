@@ -34,7 +34,7 @@
 #include "mercury_std.h"			/* for MR_VARIABLE_SIZED */
 #include "mercury_tags.h"
 #include "mercury_type_info.h"			/* for MR_PseudoTypeInfo */
-#include "mercury_proc_id.h"			/* for MR_Proc_Id */
+#include "mercury_proc_id.h"			/* for MR_ProcId */
 #include "mercury_goto.h"			/* for MR_PROC_LAYOUT etc */
 #include "mercury_tabling.h"			/* for MR_TableTrieStep etc */
 #include "mercury_bootstrap.h"			/* for MR_Table_Trie_Step */
@@ -83,18 +83,18 @@ typedef	MR_int_least16_t	MR_Determinism;
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_Long_Lval and MR_Short_Lval
+** Definitions for MR_LongLval and MR_ShortLval
 */
 
 /*
-** MR_Long_Lval is a MR_uint_least32_t which describes an location.
+** MR_LongLval is a MR_uint_least32_t which describes an location.
 ** This includes lvals such as stack slots, general registers, and special
 ** registers such as succip, hp, etc, as well as locations whose address is
 ** given as a typeinfo inside the type class info structure pointed to by an
 ** lval.
 **
-** What kind of location an MR_Long_Lval refers to is encoded using
-** a low tag with MR_LONG_LVAL_TAGBITS bits; the type MR_Long_Lval_Type
+** What kind of location an MR_LongLval refers to is encoded using
+** a low tag with MR_LONG_LVAL_TAGBITS bits; the type MR_LongLvalType
 ** describes the different tag values. The interpretation of the rest of
 ** the word depends on the location type:
 **
@@ -122,15 +122,15 @@ typedef	MR_int_least16_t	MR_Determinism;
 ** the typeinfo inside a type class info (to be interpreted by
 ** MR_typeclass_info_type_info or the predicate
 ** private_builtin:type_info_from_typeclass_info, which calls it) and
-** (b) a MR_Long_Lval value giving the location of the pointer to the
-** type class info. This MR_Long_Lval value will *not* have an indirect
+** (b) a MR_LongLval value giving the location of the pointer to the
+** type class info. This MR_LongLval value will *not* have an indirect
 ** tag.
 **
 ** This data is generated in stack_layout.represent_locn_as_int,
 ** which must be kept in sync with the constants and macros defined here.
 */
 
-struct MR_Long_Lval_Struct {
+struct MR_LongLval_Struct {
 	MR_uint_least32_t	MR_long_lval;
 };
 
@@ -150,7 +150,7 @@ typedef enum {
 	MR_LONG_LVAL_TYPE_CONS_3,
 	MR_LONG_LVAL_TYPE_INDIRECT,
 	MR_LONG_LVAL_TYPE_UNKNOWN
-} MR_Long_Lval_Type;
+} MR_LongLvalType;
 
 /* This must be in sync with stack_layout.long_lval_tag_bits */
 #define MR_LONG_LVAL_TAGBITS		4
@@ -158,7 +158,7 @@ typedef enum {
 #define MR_LONG_LVAL_CONST_TAGBITS	2
 
 #define MR_LONG_LVAL_TYPE(Locn)						\
-	((MR_Long_Lval_Type)						\
+	((MR_LongLvalType)						\
 		((Locn).MR_long_lval & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
 
 #define MR_LONG_LVAL_NUMBER(Locn)					\
@@ -189,12 +189,12 @@ typedef enum {
 	(((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
 
 /*
-** MR_Short_Lval is a MR_uint_least8_t which describes an location. This
+** MR_ShortLval is a MR_uint_least8_t which describes an location. This
 ** includes lvals such as stack slots and general registers that have small
 ** numbers, and special registers such as succip, hp, etc.
 **
-** What kind of location an MR_Long_Lval refers to is encoded using
-** a low tag with 2 bits; the type MR_Short_Lval_Type describes
+** What kind of location an MR_LongLval refers to is encoded using
+** a low tag with 2 bits; the type MR_ShortLval_Type describes
 ** the different tag values. The interpretation of the rest of the word
 ** depends on the location type:
 **
@@ -202,41 +202,41 @@ typedef enum {
 ** MR_r(Num)		 0	Num (register number)
 ** MR_stackvar(Num)	 1	Num (stack slot number)
 ** MR_framevar(Num)	 2	Num (stack slot number)
-** special reg		 3	MR_Long_Lval_Type
+** special reg		 3	MR_LongLvalType
 **
 ** This data is generated in stack_layout.represent_locn_as_byte,
 ** which must be kept in sync with the constants and macros defined here.
 */
 
-typedef MR_uint_least8_t	MR_Short_Lval;
+typedef MR_uint_least8_t	MR_ShortLval;
 
 typedef enum {
 	MR_SHORT_LVAL_TYPE_R,
 	MR_SHORT_LVAL_TYPE_STACKVAR,
 	MR_SHORT_LVAL_TYPE_FRAMEVAR,
 	MR_SHORT_LVAL_TYPE_SPECIAL
-} MR_Short_Lval_Type;
+} MR_ShortLval_Type;
 
 /* This must be in sync with stack_layout.short_lval_tag_bits */
 #define MR_SHORT_LVAL_TAGBITS	2
 
 #define MR_SHORT_LVAL_TYPE(Locn)					\
-	((MR_Short_Lval_Type)						\
+	((MR_ShortLval_Type)						\
 		(((MR_Word) Locn) & ((1 << MR_SHORT_LVAL_TAGBITS) - 1)))
 
 #define MR_SHORT_LVAL_NUMBER(Locn)					\
 	((int) ((MR_Word) Locn) >> MR_SHORT_LVAL_TAGBITS)
 
 #define	MR_SHORT_LVAL_STACKVAR(n)					\
-	((MR_Short_Lval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
+	((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
 		+ MR_SHORT_LVAL_TYPE_STACKVAR))
 
 #define	MR_SHORT_LVAL_FRAMEVAR(n)					\
-	((MR_Short_Lval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
+	((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
 		+ MR_SHORT_LVAL_TYPE_FRAMEVAR))
 
 #define	MR_SHORT_LVAL_R_REG(n)						\
-	((MR_Short_Lval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
+	((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
 		+ MR_SHORT_LVAL_TYPE_R))
 
 /*-------------------------------------------------------------------------*/
@@ -273,18 +273,18 @@ struct MR_UserEvent_Struct {
 	MR_uint_least16_t		MR_ue_port_number;
 	const char			*MR_ue_port_name;
 	MR_uint_least16_t		MR_ue_num_attrs;
-	MR_Long_Lval			*MR_ue_attr_locns;
+	MR_LongLval			*MR_ue_attr_locns;
 	MR_TypeInfo			*MR_ue_attr_types;
 	const char			**MR_ue_attr_names;
 };
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_Label_Layout
+** Definitions for MR_LabelLayout
 */
 
 /*
-** An MR_Label_Layout structure describes the debugging and accurate gc
+** An MR_LabelLayout structure describes the debugging and accurate gc
 ** information available at a given label.
 **
 ** The MR_sll_entry field points to the proc layout structure of the procedure
@@ -292,7 +292,7 @@ struct MR_UserEvent_Struct {
 **
 ** The MR_sll_port field will contain a negative number if there is no
 ** execution tracing port associated with the label. If there is, the
-** field will contain a value of type MR_Trace_Port. For labels associated
+** field will contain a value of type MR_TracePort. For labels associated
 ** with events, this will be the port of the event. For return labels,
 ** this port will be exception (since exception events are associated with
 ** the return from the call that raised the exception).
@@ -320,18 +320,18 @@ struct MR_UserEvent_Struct {
 ** MR_has_valid_var_count macro will return true and the last three fields are
 ** meaningful; if it is not available, the macro will return false and the last
 ** three fields are not meaningful (i.e. you are looking at an
-** MR_Label_Layout_No_Var_Info structure).
+** MR_LabelLayoutNoVarInfo structure).
 **
 ** The format in which we store information about the values live at the label
 ** is somewhat complicated, due to our desire to make this information compact.
-** We can represent a location in one of two ways, as an 8-bit MR_Short_Lval
-** or as a 32-bit MR_Long_Lval. We prefer representing a location as an
-** MR_Short_Lval, but of course not all locations can be represented in
-** this way, so those other locations are represented as MR_Long_Lvals.
+** We can represent a location in one of two ways, as an 8-bit MR_ShortLval
+** or as a 32-bit MR_LongLval. We prefer representing a location as an
+** MR_ShortLval, but of course not all locations can be represented in
+** this way, so those other locations are represented as MR_LongLvals.
 **
 ** The MR_sll_var_count field, if it is valid, is encoded by the formula
 ** (#Long << MR_SHORT_COUNT_BITS + #Short), where #Short is the number
-** data items whose descriptions fit into an MR_Short_Lval and #Long is the
+** data items whose descriptions fit into an MR_ShortLval and #Long is the
 ** number of data items whose descriptions do not. (The number of distinct
 ** values that fit into 8 bits also fits into 8 bits, but since some
 ** locations hold the value of more than one variable at a time, not all
@@ -343,8 +343,8 @@ struct MR_UserEvent_Struct {
 ** elements, each of which is a pointer to a MR_PseudoTypeInfo giving the type
 ** of a live data item, with a small integer instead of a pointer representing
 ** a special kind of live data item (e.g. a saved succip or hp). The second
-** vector is an array of #Long MR_Long_Lvals, and the third is an array of
-** #Short MR_Short_Lvals, each of which describes a location. The
+** vector is an array of #Long MR_LongLvals, and the third is an array of
+** #Short MR_ShortLvals, each of which describes a location. The
 ** pseudotypeinfo pointed to by the slot at subscript i in the first vector
 ** describes the type of the data stored in slot i in the second vector if
 ** i < #Long, and the type of the data stored in slot i - #Long in the third
@@ -365,7 +365,7 @@ struct MR_UserEvent_Struct {
 **
 ** The types of the live variables may or may not have type variables in them.
 ** If they do not, the MR_sll_tvars field will be NULL. If they do, it will
-** point to an MR_Type_Param_Locns structure that gives the locations of the
+** point to an MR_TypeParamLocns structure that gives the locations of the
 ** typeinfos for those type variables. This structure gives the number of type
 ** variables and their locations, so that the code that needs the type
 ** parameters can materialize all the type parameters from their location
@@ -398,13 +398,13 @@ struct MR_UserEvent_Struct {
 ** are ground.
 */
 
-struct MR_Type_Param_Locns_Struct {
+struct MR_TypeParamLocns_Struct {
 	MR_uint_least32_t		MR_tp_param_count;
-	MR_Long_Lval			MR_tp_param_locns[MR_VARIABLE_SIZED];
+	MR_LongLval			MR_tp_param_locns[MR_VARIABLE_SIZED];
 };
 
-struct MR_Label_Layout_Struct {
-	const MR_Proc_Layout		*MR_sll_entry;
+struct MR_LabelLayout_Struct {
+	const MR_ProcLayout		*MR_sll_entry;
 	MR_int_least8_t			MR_sll_port;
 	MR_int_least8_t			MR_sll_hidden;
 	MR_uint_least16_t		MR_sll_label_num_in_module;
@@ -413,18 +413,18 @@ struct MR_Label_Layout_Struct {
 	MR_Integer			MR_sll_var_count; /* >= 0 */
 	const void			*MR_sll_locns_types;
 	const MR_uint_least16_t		*MR_sll_var_nums;
-	const MR_Type_Param_Locns	*MR_sll_tvars;
+	const MR_TypeParamLocns	*MR_sll_tvars;
 };
 
-typedef	struct MR_Label_Layout_No_Var_Info_Struct {
-	const MR_Proc_Layout		*MR_sll_entry;
+typedef	struct MR_LabelLayoutNoVarInfo_Struct {
+	const MR_ProcLayout		*MR_sll_entry;
 	MR_int_least8_t			MR_sll_port;
 	MR_int_least8_t			MR_sll_hidden;
 	MR_uint_least16_t		MR_sll_label_num_in_module;
 	MR_uint_least32_t		MR_sll_goal_path;
 	const MR_UserEvent		*MR_sll_user_event;
 	MR_Integer			MR_sll_var_count; /* < 0 */
-} MR_Label_Layout_No_Var_Info;
+} MR_LabelLayoutNoVarInfo;
 
 #define	MR_label_goal_path(layout)					\
 	((MR_PROC_LAYOUT_HAS_EXEC_TRACE((layout)->MR_sll_entry)) ?	\
@@ -475,12 +475,12 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	MR_PASTE2(mercury_data__label_layout__, label)
 
 #define	MR_LABEL_LAYOUT_REF(label)					\
-	((const MR_Label_Layout *) &MR_LAYOUT_FROM_LABEL(MR_add_prefix(label)))
+	((const MR_LabelLayout *) &MR_LAYOUT_FROM_LABEL(MR_add_prefix(label)))
 
 #define MR_MAKE_USER_INTERNAL_LAYOUT(module, name, arity, mode, label)	\
-	MR_Label_Layout_No_Var_Info					\
+	MR_LabelLayoutNoVarInfo					\
 	MR_label_layout_user_name(module, name, arity, mode, label) = {	\
-		(MR_Proc_Layout *) &					\
+		(MR_ProcLayout *) &					\
 			MR_proc_layout_user_name(module, name, arity, mode), \
 		0,							\
 		-1,							\
@@ -493,11 +493,11 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 /*
 ** These macros are used as shorthands in generated C source files.
 ** The first two arguments are the entry label name and the label number;
-** the others are the fields of MR_Label_Layouts.
+** the others are the fields of MR_LabelLayouts.
 */
 
 #define	MR_DEF_LL_GEN(e, ln, port, h, num, path, s, vc, lt, vn, tv)	\
-	static const MR_Label_Layout					\
+	static const MR_LabelLayout					\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
 	= {								\
 		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
@@ -505,11 +505,11 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 		(h), (num), (path), (s), (vc),				\
 		((const void *) lt),					\
 		((const MR_uint_least16_t *) vn),			\
-		((const MR_Type_Param_Locns *) tv)			\
+		((const MR_TypeParamLocns *) tv)			\
 	}
 
 #define	MR_DEF_LLNVI_GEN(e, ln, port, s, h, num, path)			\
-	static const MR_Label_Layout_No_Var_Info			\
+	static const MR_LabelLayoutNoVarInfo			\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
 	= {								\
 		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
@@ -604,12 +604,12 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 
 #define MR_DECL_LL(e, ln)						\
 	MR_declare_label(MR_label_name(MR_add_prefix(e), ln));		\
-	static const MR_Label_Layout					\
+	static const MR_LabelLayout					\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)); \
 
 #define MR_DECL_LLNVI(e, ln)						\
 	MR_declare_label(MR_label_name(MR_add_prefix(e), ln));		\
-	static const MR_Label_Layout_No_Var_Info			\
+	static const MR_LabelLayoutNoVarInfo			\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)); \
 
 #define MR_DECL_LL1(e, ln1)						\
@@ -689,16 +689,16 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_Proc_Layout
+** Definitions for MR_ProcLayout
 */
 
 /*
-** The MR_Table_Io_Decl structure.
+** The MR_TableIoDecl structure.
 **
 ** To enable declarative debugging of I/O actions, the compiler generates one
 ** of these structures for each I/O primitive. The compiler transforms the
 ** bodies of those primitives to create a block of memory and fill it in with
-** (1) a pointer to the primitive's MR_Table_Io_Decl structure and (2) the
+** (1) a pointer to the primitive's MR_TableIoDecl structure and (2) the
 ** values of the primitive's arguments (both input and output, but excluding
 ** the I/O states). The array of pseudo-typeinfos pointed to by the ptis field
 ** gives the types of these arguments, while the filtered_arity field gives
@@ -709,15 +709,15 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 ** to describe the I/O action to the user.
 */
 
-typedef struct MR_Table_Io_Decl_Struct {
-	const MR_Proc_Layout		*MR_table_io_decl_proc;
+typedef struct MR_TableIoDecl_Struct {
+	const MR_ProcLayout		*MR_table_io_decl_proc;
 	MR_Integer			MR_table_io_decl_filtered_arity;
 	const MR_PseudoTypeInfo		*MR_table_io_decl_ptis;
-	const MR_Type_Param_Locns	*MR_table_io_decl_type_params;
-} MR_Table_Io_Decl;
+	const MR_TypeParamLocns	*MR_table_io_decl_type_params;
+} MR_TableIoDecl;
 
 /*
-** MR_Table_Info: compiler generated information describing the tabling
+** MR_TableInfo: compiler generated information describing the tabling
 ** data structures used by a procedure.
 **
 ** For I/O tabled procedures, the information is in the io_decl field.
@@ -730,13 +730,13 @@ typedef struct MR_Table_Io_Decl_Struct {
 
 typedef union {
 	const void			*MR_table_init;
-	const MR_Table_Io_Decl		*MR_table_io_decl;
+	const MR_TableIoDecl		*MR_table_io_decl;
 	const MR_Table_Gen		*MR_table_gen;
 	MR_ProcTableInfo		*MR_table_proc;
-} MR_Table_Info;
+} MR_TableInfo;
 
 /*
-** The MR_Stack_Traversal structure contains the following fields:
+** The MR_StackTraversal structure contains the following fields:
 **
 ** The code_addr field points to the start of the procedure's code.
 ** This allows the profiler to figure out which procedure a sampled program
@@ -753,18 +753,18 @@ typedef union {
 ** The detism field encodes the determinism of the procedure.
 */
 
-typedef struct MR_Stack_Traversal_Struct {
+typedef struct MR_StackTraversal_Struct {
 	MR_Code			*MR_trav_code_addr;
-	MR_Long_Lval		MR_trav_succip_locn;
+	MR_LongLval		MR_trav_succip_locn;
 	MR_int_least16_t	MR_trav_stack_slots;
 	MR_Determinism		MR_trav_detism;
-} MR_Stack_Traversal;
+} MR_StackTraversal;
 
 #define	MR_PROC_LAYOUT_IS_UCI(entry)			\
 	MR_PROC_ID_IS_UCI(entry->MR_sle_proc_id)
 
 /*
-** The MR_Exec_Trace structure contains the following fields.
+** The MR_ExecTrace structure contains the following fields.
 **
 ** The call_label field points to the label layout structure for the label
 ** associated with the call event at the entry to the procedure. The purpose
@@ -865,21 +865,21 @@ typedef	enum {
 
 typedef	MR_int_least8_t		MR_EvalMethodInt;
 
-typedef	enum {
-	MR_TRACELEVEL_NONE,
-	MR_TRACELEVEL_SHALLOW,
-	MR_TRACELEVEL_DEEP,
-	MR_TRACELEVEL_DECL_REP
+typedef enum {
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_NONE),
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_SHALLOW),
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DEEP),
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DECL_REP)
 } MR_TraceLevel;
 
 typedef	MR_int_least8_t		MR_TraceLevelInt;
 
-typedef	struct MR_Exec_Trace_Struct {
-	const MR_Label_Layout	*MR_exec_call_label;
-	const MR_Module_Layout	*MR_exec_module_layout;
+typedef	struct MR_ExecTrace_Struct {
+	const MR_LabelLayout	*MR_exec_call_label;
+	const MR_ModuleLayout	*MR_exec_module_layout;
 	const MR_uint_least8_t	*MR_exec_body_bytes;
 	MR_Word			MR_exec_unused;
-	MR_Table_Info		MR_exec_table_info;
+	MR_TableInfo		MR_exec_table_info;
 	const MR_uint_least16_t	*MR_exec_head_var_nums;
 	const MR_uint_least32_t	*MR_exec_used_var_names;
 	MR_uint_least16_t	MR_exec_num_head_vars;
@@ -893,7 +893,7 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_int_least8_t		MR_exec_maybe_call_table;
 	MR_TraceLevelInt	MR_exec_trace_level_CAST_ME;
 	MR_uint_least8_t	MR_exec_flags;
-} MR_Exec_Trace;
+} MR_ExecTrace;
 
 #define MR_compute_max_mr_num(max_mr_num, layout)			\
 	do {								\
@@ -908,78 +908,78 @@ typedef	struct MR_Exec_Trace_Struct {
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_Proc_Layout
+** Definitions for MR_ProcLayout
 **
 ** Proc layout structures contain one, two or three substructures.
 **
-** - The first substructure is the MR_Stack_Traversal structure, which contains
+** - The first substructure is the MR_StackTraversal structure, which contains
 **   information that enables the stack to be traversed, e.g. for accurate gc.
 **   It is always present if proc layouts are present at all.
 **
-** - The second group is the MR_Proc_Id union, which identifies the
+** - The second group is the MR_ProcId union, which identifies the
 **   procedure in terms that are meaningful to both humans and machines.
 **   It will be generated only if the module is compiled with stack tracing,
-**   execution tracing or profiling. The MR_Proc_Id union has two alternatives,
+**   execution tracing or profiling. The MR_ProcId union has two alternatives,
 **   one for user-defined procedures and one for procedures of the compiler
 **   generated Unify, Index and Compare predicates.
 **
-** - The third group is the MR_Exec_Trace and MR_ProcStatic structures, which
+** - The third group is the MR_ExecTrace and MR_ProcStatic structures, which
 **   contain information specifically intended for the debugger and the deep
-**   profiler respectively. The MR_Exec_Trace structure will be generated
+**   profiler respectively. The MR_ExecTrace structure will be generated
 **   only if the module is compiled with execution tracing, while the
 **   MR_ProcStatic structure will be generated only if the module is compiled
 **   in a deep profiling grade.
 **
 ** The runtime system considers all proc layout structures to be of type
-** MR_Proc_Layout, but must use the macros defined below to check for the
+** MR_ProcLayout, but must use the macros defined below to check for the
 ** existence of each substructure before accessing the fields of that
 ** substructure. The macros are MR_PROC_LAYOUT_HAS_PROC_ID to check for the
-** MR_Proc_Id substructure, MR_PROC_LAYOUT_HAS_EXEC_TRACE to check for the
-** MR_Exec_Trace substructure, and MR_PROC_LAYOUT_HAS_PROC_STATIC to check for
+** MR_ProcId substructure, MR_PROC_LAYOUT_HAS_EXEC_TRACE to check for the
+** MR_ExecTrace substructure, and MR_PROC_LAYOUT_HAS_PROC_STATIC to check for
 ** the MR_ProcStatic substructure.
 **
 ** The reason why some substructures may be missing is to save space.
 ** If the options with which a module is compiled do not require execution
-** tracing, then the MR_Exec_Trace substructure will not present, and if the
-** options do not require procedure identification, then the MR_Proc_Id
+** tracing, then the MR_ExecTrace substructure will not present, and if the
+** options do not require procedure identification, then the MR_ProcId
 ** substructure will not be present either
 **
 ** The compiler itself generates proc layout structures using the following
 ** three types.
 **
 ** - When generating only stack traversal information, the compiler will
-**   generate proc layout structures of type MR_Proc_Layout_Traversal.
+**   generate proc layout structures of type MR_ProcLayout_Traversal.
 **
 ** - When generating stack traversal and procedure id information, plus
 **   possibly others, the compiler will generate proc layout structures of
-**   types MR_Proc_Layout_User and MR_Proc_Layout_UCI.
+**   types MR_ProcLayoutUser and MR_ProcLayoutUCI.
 */
 
-struct MR_Proc_Layout_Struct {
-	MR_Stack_Traversal			MR_sle_traversal;
-	MR_Proc_Id				MR_sle_proc_id;
-	MR_STATIC_CODE_CONST MR_Exec_Trace	*MR_sle_exec_trace;
+struct MR_ProcLayout_Struct {
+	MR_StackTraversal			MR_sle_traversal;
+	MR_ProcId				MR_sle_proc_id;
+	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
 };
 
-typedef	struct MR_Proc_Layout_User_Struct {
-	MR_Stack_Traversal			MR_user_traversal;
-	MR_User_Proc_Id				MR_user_id;
-	MR_STATIC_CODE_CONST MR_Exec_Trace	*MR_sle_exec_trace;
+typedef	struct MR_ProcLayoutUser_Struct {
+	MR_StackTraversal			MR_user_traversal;
+	MR_UserProcId				MR_user_id;
+	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
-} MR_Proc_Layout_User;
+} MR_ProcLayoutUser;
 
-typedef	struct MR_Proc_Layout_UCI_Struct {
-	MR_Stack_Traversal			MR_uci_traversal;
-	MR_UCI_Proc_Id				MR_uci_id;
-	MR_STATIC_CODE_CONST MR_Exec_Trace	*MR_sle_exec_trace;
+typedef	struct MR_ProcLayoutUCI_Struct {
+	MR_StackTraversal			MR_uci_traversal;
+	MR_UCIProcId				MR_uci_id;
+	MR_STATIC_CODE_CONST MR_ExecTrace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
-} MR_Proc_Layout_UCI;
+} MR_ProcLayoutUCI;
 
-typedef	struct MR_Proc_Layout_Traversal_Struct {
-	MR_Stack_Traversal	MR_trav_traversal;
+typedef	struct MR_ProcLayout_Traversal_Struct {
+	MR_StackTraversal	MR_trav_traversal;
 	MR_Word			MR_trav_no_proc_id;	/* will be -1 */
-} MR_Proc_Layout_Traversal;
+} MR_ProcLayout_Traversal;
 
 #define	MR_PROC_LAYOUT_HAS_PROC_ID(entry)			\
 		(MR_PROC_ID_EXISTS(entry->MR_sle_proc_id))
@@ -1036,7 +1036,7 @@ typedef	struct MR_Proc_Layout_Traversal_Struct {
 ** in the procedure indicated by the first argument.
 */
 
-extern	MR_ConstString	MR_hlds_var_name(const MR_Proc_Layout *entry,
+extern	MR_ConstString	MR_hlds_var_name(const MR_ProcLayout *entry,
 				int hlds_var_num);
 
 /*
@@ -1081,7 +1081,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
  #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		((MR_Code *) NULL)
  #define	MR_INIT_PROC_LAYOUT_ADDR(entry)				\
 		do {							\
-			((MR_Proc_Layout *) &				\
+			((MR_ProcLayout *) &				\
 			MR_PASTE2(mercury_data__proc_layout__, entry))	\
 				->MR_sle_code_addr = MR_ENTRY(entry);	\
 		} while (0)
@@ -1091,7 +1091,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 		pf, module, name, arity, mode, proc_static)		\
 	MR_declare_entry(MR_proc_entry_user_name(module, name,		\
 		arity, mode));						\
-	sc const MR_Proc_Layout_User					\
+	sc const MR_ProcLayoutUser					\
 	MR_proc_layout_user_name(module, name, arity, mode) = {		\
 		{							\
 			MR_MAKE_PROC_LAYOUT_ADDR(			\
@@ -1117,7 +1117,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 		module, name, type, arity, mode, proc_static)		\
 	MR_declare_entry(MR_proc_entry_uci_name(module, name,		\
 		type, arity, mode));					\
-	sc const MR_Proc_Layout_UCI					\
+	sc const MR_ProcLayoutUCI					\
 	MR_proc_layout_uci_name(module, name, type, arity, mode) = {	\
 		{							\
 			MR_MAKE_PROC_LAYOUT_ADDR(			\
@@ -1171,11 +1171,11 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 		succip_locn, pf, module, name, arity, mode, NULL)
 
 #define MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(mod, n, a)                       \
-	const MR_Proc_Layout_UCI					\
+	const MR_ProcLayoutUCI					\
 		MR_proc_layout_uci_name(mod, __Unify__, n, a, 0);	\
-	const MR_Proc_Layout_UCI					\
+	const MR_ProcLayoutUCI					\
 		MR_proc_layout_uci_name(mod, __Compare__, n, a, 0);	\
-	const MR_Proc_Layout_UCI					\
+	const MR_ProcLayoutUCI					\
 		MR_proc_layout_uci_name(mod, __CompareRep__, n, a, 0);
 
 /*
@@ -1226,7 +1226,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_Module_Layout
+** Definitions for MR_ModuleLayout
 **
 ** The layout structure for a module contains the following fields.
 **
@@ -1253,7 +1253,7 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 ** require padding.) The labels are sorted on line number.
 **
 ** The MR_ml_trace_level field gives the trace level that the module was
-** compiled with. If the MR_Trace_Level enum is modified, then the
+** compiled with. If the MR_TraceLevel enum is modified, then the
 ** corresponding function in compiler/trace_params.m must also be updated.
 **
 ** The MR_ml_suppressed_events events field encodes the set of event types
@@ -1275,20 +1275,13 @@ extern	int		MR_find_start_of_num_suffix(const char *str);
 ** in the MR_ml_label_exec_count array.
 */
 
-typedef enum {
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_NONE),
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_SHALLOW),
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DEEP),
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DECL_REP)
-} MR_Trace_Level;
-
-typedef struct MR_Module_File_Layout_Struct {
+typedef struct MR_ModuleFileLayout_Struct {
 	MR_ConstString			MR_mfl_filename;
 	MR_Integer			MR_mfl_label_count;
 	/* the following fields point to arrays of size MR_mfl_label_count */
 	const MR_int_least16_t		*MR_mfl_label_lineno;
-	const MR_Label_Layout		**MR_mfl_label_layout;
-} MR_Module_File_Layout;
+	const MR_LabelLayout		**MR_mfl_label_layout;
+} MR_ModuleFileLayout;
 
 /*
 ** The version of the data structures in this file -- useful for bootstrapping.
@@ -1303,16 +1296,16 @@ typedef struct MR_Module_File_Layout_Struct {
 #define	MR_LAYOUT_VERSION		MR_LAYOUT_VERSION__USER_DEFINED
 #define	MR_LAYOUT_VERSION__USER_DEFINED	1
 
-struct MR_Module_Layout_Struct {
+struct MR_ModuleLayout_Struct {
 	MR_uint_least8_t                MR_ml_version_number;
 	MR_ConstString			MR_ml_name;
 	MR_Integer			MR_ml_string_table_size;
 	const char			*MR_ml_string_table;
 	MR_Integer			MR_ml_proc_count;
-	const MR_Proc_Layout		**MR_ml_procs;
+	const MR_ProcLayout		**MR_ml_procs;
 	MR_Integer			MR_ml_filename_count;
-	const MR_Module_File_Layout	**MR_ml_module_file_layout;
-	MR_Trace_Level			MR_ml_trace_level;
+	const MR_ModuleFileLayout	**MR_ml_module_file_layout;
+	MR_TraceLevel			MR_ml_trace_level;
 	MR_int_least32_t		MR_ml_suppressed_events;
 	MR_int_least32_t		MR_ml_num_label_exec_counts;
 	MR_Unsigned			*MR_ml_label_exec_count;
@@ -1321,35 +1314,35 @@ struct MR_Module_Layout_Struct {
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_Closure_Id
+** Definitions for MR_ClosureId
 **
-** Each closure contains an MR_Closure_Id structure. The proc_id field
+** Each closure contains an MR_ClosureId structure. The proc_id field
 ** identifies the procedure called by the closure. The other fields identify
 ** the context where the closure was created.
 **
-** The compiler generates closure id structures as either MR_User_Closure_Id
-** or MR_UCI_Closure_Id structures in order to avoid initializing the
-** MR_Proc_Id union through an inappropriate member.
+** The compiler generates closure id structures as either MR_UserClosureId
+** or MR_UCIClosureId structures in order to avoid initializing the
+** MR_ProcId union through an inappropriate member.
 */
 
-struct MR_Closure_Id_Struct {
-	MR_Proc_Id		MR_closure_proc_id;
+struct MR_ClosureId_Struct {
+	MR_ProcId		MR_closure_proc_id;
 	MR_ConstString		MR_closure_module_name;
 	MR_ConstString		MR_closure_file_name;
 	MR_Integer		MR_closure_line_number;
 	MR_ConstString		MR_closure_goal_path;
 };
 
-struct MR_User_Closure_Id_Struct {
-	MR_User_Proc_Id		MR_user_closure_proc_id;
+struct MR_UserClosureId_Struct {
+	MR_UserProcId		MR_user_closure_proc_id;
 	MR_ConstString		MR_user_closure_module_name;
 	MR_ConstString		MR_user_closure_file_name;
 	MR_Integer		MR_user_closure_line_number;
 	MR_ConstString		MR_user_closure_goal_path;
 };
 
-struct MR_UCI_Closure_Id_Struct {
-	MR_UCI_Proc_Id		MR_uci_closure_proc_id;
+struct MR_UCIClosureId_Struct {
+	MR_UCIProcId		MR_uci_closure_proc_id;
 	MR_ConstString		MR_uci_closure_module_name;
 	MR_ConstString		MR_uci_closure_file_name;
 	MR_Integer		MR_uci_closure_line_number;

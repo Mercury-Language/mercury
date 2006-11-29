@@ -1007,7 +1007,7 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
     io.write_string("(const MR_PseudoTypeInfo *) ", !IO),
     output_rval(PTIVectorRval, !IO),
     io.write_string(",\n", !IO),
-    io.write_string("(const MR_Type_Param_Locns *) ", !IO),
+    io.write_string("(const MR_TypeParamLocns *) ", !IO),
     output_rval(TypeParamsRval, !IO),
     io.write_string(",\n", !IO),
     io.write_string("{ 0 },\n", !IO),

@@ -407,7 +407,7 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         output_layout_name(proc_layout(ProcLabel, Kind), !IO)
     ;
         Data = proc_layout_exec_trace(ProcLabel),
-        io.write_string("static MR_STATIC_CODE_CONST MR_Exec_Trace\n\t", !IO),
+        io.write_string("static MR_STATIC_CODE_CONST MR_ExecTrace\n\t", !IO),
         output_layout_name(proc_layout_exec_trace(ProcLabel), !IO)
     ;
         Data = proc_layout_head_var_nums(ProcLabel),
@@ -432,16 +432,16 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         io.write_string("static const ", !IO),
         (
             ClosureProcLabel = ordinary_proc_label(_, _, _, _, _, _),
-            io.write_string("MR_User_Closure_Id\n", !IO)
+            io.write_string("MR_UserClosureId\n", !IO)
         ;
             ClosureProcLabel = special_proc_label(_, _, _, _, _, _),
-            io.write_string("MR_UCI_Closure_Id\n", !IO)
+            io.write_string("MR_UCIClosureId\n", !IO)
         ),
         output_layout_name(closure_proc_id(CallerProcLabel, SeqNo,
             ClosureProcLabel), !IO)
     ;
         Data = file_layout(ModuleName, FileNum),
-        io.write_string("static const MR_Module_File_Layout ", !IO),
+        io.write_string("static const MR_ModuleFileLayout ", !IO),
         output_layout_name(file_layout(ModuleName, FileNum), !IO)
     ;
         Data = file_layout_line_number_vector(ModuleName, FileNum),
@@ -451,7 +451,7 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         io.write_string("[]", !IO)
     ;
         Data = file_layout_label_layout_vector(ModuleName, FileNum),
-        io.write_string("static const MR_Label_Layout *", !IO),
+        io.write_string("static const MR_LabelLayout *", !IO),
         output_layout_name(
             file_layout_label_layout_vector(ModuleName, FileNum), !IO),
         io.write_string("[]", !IO)
@@ -462,7 +462,7 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         io.write_string("[]", !IO)
     ;
         Data = module_layout_file_vector(ModuleName),
-        io.write_string("static const MR_Module_File_Layout *", !IO),
+        io.write_string("static const MR_ModuleFileLayout *", !IO),
         output_layout_name(module_layout_file_vector(ModuleName), !IO),
         io.write_string("[]", !IO)
     ;
@@ -475,7 +475,7 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         io.write_string("]", !IO)
     ;
         Data = module_layout_proc_vector(ModuleName),
-        io.write_string("static const MR_Proc_Layout *", !IO),
+        io.write_string("static const MR_ProcLayout *", !IO),
         output_layout_name(module_layout_proc_vector(ModuleName), !IO),
         io.write_string("[]", !IO)
     ;
@@ -485,7 +485,7 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         io.write_string("[]", !IO)
     ;
         Data = module_layout(ModuleName),
-        io.write_string("static const MR_Module_Layout ", !IO),
+        io.write_string("static const MR_ModuleLayout ", !IO),
         output_layout_name(module_layout(ModuleName), !IO)
     ;
         Data = proc_static(RttiProcLabel),
@@ -498,7 +498,7 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         io.write_string("[]", !IO)
     ;
         Data = table_io_decl(RttiProcLabel),
-        io.write_string("static const MR_Table_Io_Decl ", !IO),
+        io.write_string("static const MR_TableIoDecl ", !IO),
         output_layout_name(table_io_decl(RttiProcLabel), !IO)
     ).
 
@@ -527,14 +527,14 @@ layout_name_would_include_code_addr(table_io_decl(_)) = no.
 
 :- func label_vars_to_type(label_vars) = string.
 
-label_vars_to_type(label_has_var_info) =    "MR_Label_Layout".
-label_vars_to_type(label_has_no_var_info) = "MR_Label_Layout_No_Var_Info".
+label_vars_to_type(label_has_var_info) =    "MR_LabelLayout".
+label_vars_to_type(label_has_no_var_info) = "MR_LabelLayoutNoVarInfo".
 
 :- func proc_layout_kind_to_type(proc_layout_kind) = string.
 
-proc_layout_kind_to_type(proc_layout_traversal) = "MR_Proc_Layout_Traversal".
-proc_layout_kind_to_type(proc_layout_proc_id(user)) = "MR_Proc_Layout_User".
-proc_layout_kind_to_type(proc_layout_proc_id(uci)) = "MR_Proc_Layout_UCI".
+proc_layout_kind_to_type(proc_layout_traversal) = "MR_ProcLayout_Traversal".
+proc_layout_kind_to_type(proc_layout_proc_id(user)) = "MR_ProcLayoutUser".
+proc_layout_kind_to_type(proc_layout_proc_id(uci)) = "MR_ProcLayoutUCI".
 
 %-----------------------------------------------------------------------------%
 
@@ -594,7 +594,7 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
         io.write_string(UserEventName, !IO),
         io.write_string(""",\n", !IO),
         io.write_int(UserNumAttributes, !IO),
-        io.write_string(",\n(MR_Long_Lval *) ", !IO),
+        io.write_string(",\n(MR_LongLval *) ", !IO),
         output_rval_as_addr(UserLocnsRval, !IO),
         io.write_string(",\n(MR_TypeInfo *) ", !IO),
         output_rval_as_addr(UserTypesRval, !IO),
@@ -1001,7 +1001,7 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
     ;
         unexpected(this_file, "output_layout_exec_trace: bad call layout")
     ),
-    io.write_string("),\n(const MR_Module_Layout *) &", !IO),
+    io.write_string("),\n(const MR_ModuleLayout *) &", !IO),
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
     ModuleName = get_defining_module_name(ProcLabel),
     output_layout_name(module_layout(ModuleName), !IO),
@@ -1775,7 +1775,7 @@ output_call_site_static(CallSiteStatic, Index, Index + 1, !IO) :-
     (
         CallSiteStatic = normal_call(Callee, TypeSubst, FileName, LineNumber,
             GoalPath),
-        io.write_string("MR_normal_call, (MR_Proc_Layout *)\n&", !IO),
+        io.write_string("MR_normal_call, (MR_ProcLayout *)\n&", !IO),
         CalleeProcLabel = make_proc_label_from_rtti(Callee),
         CalleeUserOrUci = proc_label_user_or_uci(CalleeProcLabel),
         output_layout_name(proc_layout(Callee,
@@ -1844,13 +1844,13 @@ output_table_io_decl(RttiProcLabel, ProcLayoutKind, NumPTIs,
 
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(LayoutName, yes, !IO),
-    io.write_string(" = {\n(const MR_Proc_Layout *) &", !IO),
+    io.write_string(" = {\n(const MR_ProcLayout *) &", !IO),
     output_layout_name(ProcLayoutName, !IO),
     io.write_string(",\n", !IO),
     io.write_int(NumPTIs, !IO),
     io.write_string(",\n(const MR_PseudoTypeInfo *) ", !IO),
     output_rval(PTIVectorRval, !IO),
-    io.write_string(",\n(const MR_Type_Param_Locns *) ", !IO),
+    io.write_string(",\n(const MR_TypeParamLocns *) ", !IO),
     output_rval(TypeParamsRval, !IO),
     io.write_string("\n};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).

@@ -37,11 +37,11 @@
 
 /****************************************************************************/
 
-static  void        MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info,
+static  void        MR_trace_cmd_nondet_stack_2(MR_EventInfo *event_info,
                         MR_bool detailed, int frame_limit, int line_limit);
 
-static  const MR_Proc_Layout
-                    *MR_find_single_matching_proc(MR_Proc_Spec *spec,
+static  const MR_ProcLayout
+                    *MR_find_single_matching_proc(MR_ProcSpec *spec,
                         MR_bool verbose);
 
 /*
@@ -49,7 +49,7 @@ static  const MR_Proc_Layout
 ** input arguments of tabled procedures. We use them to decode the call tables
 ** of such procedures.
 **
-** We use one MR_Call_Table_Arg structure for each input argument.
+** We use one MR_CallTableArg structure for each input argument.
 **
 ** The step field specifies what data structure the tabling system uses to
 ** implement the trie nodes at the level of the call table corresponding to
@@ -85,7 +85,7 @@ static  const MR_Proc_Layout
 ** value itself. (The contents of the cur_value field can be deduced from the
 ** contents of the other fields with use 2, but not with use 1.)
 **
-** The valid field in the MR_Call_Table_Arg structure gives the validity
+** The valid field in the MR_CallTableArg structure gives the validity
 ** of the values subfield of its arg_values field; if it is false, then the
 ** array is logically considered empty.
 */
@@ -123,7 +123,7 @@ typedef struct {
     MR_TrieNode                 MR_cta_start_node;
     MR_bool                     MR_cta_valid;
     MR_TableArgValues           MR_cta_arg_values;
-} MR_Call_Table_Arg;
+} MR_CallTableArg;
 
 #define MR_cta_int_values       MR_cta_arg_values.MR_cta_values_int.\
                                     MR_ctai_values
@@ -163,15 +163,15 @@ typedef struct {
 static  MR_bool     MR_trace_fill_in_int_table_arg_slot(
                         MR_TrieNode *table_cur_ptr,
                         int arg_num, MR_ConstString given_arg,
-                        MR_Call_Table_Arg *call_table_arg_ptr);
+                        MR_CallTableArg *call_table_arg_ptr);
 static  MR_bool     MR_trace_fill_in_float_table_arg_slot(
                         MR_TrieNode *table_cur_ptr,
                         int arg_num, MR_ConstString given_arg,
-                        MR_Call_Table_Arg *call_table_arg_ptr);
+                        MR_CallTableArg *call_table_arg_ptr);
 static  MR_bool     MR_trace_fill_in_string_table_arg_slot(
                         MR_TrieNode *table_cur_ptr,
                         int arg_num, MR_ConstString given_arg,
-                        MR_Call_Table_Arg *call_table_arg_ptr);
+                        MR_CallTableArg *call_table_arg_ptr);
 
 /*
 ** These functions fill in the data structure describing one input argument
@@ -181,33 +181,33 @@ static  MR_bool     MR_trace_fill_in_string_table_arg_slot(
 */
 
 static  MR_bool     MR_update_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
-                        MR_Call_Table_Arg *call_table_arg_ptr);
+                        MR_CallTableArg *call_table_arg_ptr);
 static  MR_bool     MR_update_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
-                        MR_Call_Table_Arg *call_table_arg_ptr);
+                        MR_CallTableArg *call_table_arg_ptr);
 static  MR_bool     MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
-                        MR_Call_Table_Arg *call_table_arg_ptr);
+                        MR_CallTableArg *call_table_arg_ptr);
 
 /* Prints the given subgoal of the given procedure to MR_mdb_out. */
-static  void        MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc,
+static  void        MR_trace_cmd_table_print_tip(const MR_ProcLayout *proc,
                         int filtered_num_inputs,
-                        MR_Call_Table_Arg *call_table_args, MR_TrieNode table);
+                        MR_CallTableArg *call_table_args, MR_TrieNode table);
 
 /* Prints the given subgoal of the given procedure to MR_mdb_out. */
-static  void        MR_trace_print_subgoal(const MR_Proc_Layout *proc,
+static  void        MR_trace_print_subgoal(const MR_ProcLayout *proc,
                         MR_Subgoal *subgoal);
-static  void        MR_trace_print_subgoal_debug(const MR_Proc_Layout *proc,
+static  void        MR_trace_print_subgoal_debug(const MR_ProcLayout *proc,
                         MR_SubgoalDebug *subgoal_debug);
 
 /* Prints the given generator of the given procedure to MR_mdb_out. */
-static  void        MR_trace_print_generator(const MR_Proc_Layout *proc,
+static  void        MR_trace_print_generator(const MR_ProcLayout *proc,
                         MR_Generator *generator);
-static  void        MR_trace_print_generator_debug(const MR_Proc_Layout *proc,
+static  void        MR_trace_print_generator_debug(const MR_ProcLayout *proc,
                         MR_GenDebug *generator_debug);
 
 /* Prints the given consumer of the given procedure to MR_mdb_out. */
-static  void        MR_trace_print_consumer(const MR_Proc_Layout *proc,
+static  void        MR_trace_print_consumer(const MR_ProcLayout *proc,
                         MR_Consumer *consumer);
-static  void        MR_trace_print_consumer_debug(const MR_Proc_Layout *proc,
+static  void        MR_trace_print_consumer_debug(const MR_ProcLayout *proc,
                         MR_ConsumerDebug *consumer_debug);
 
 /* Prints the requested information inside the given MR_TypeCtorInfo. */
@@ -247,8 +247,8 @@ static  MR_bool     MR_trace_options_ambiguity(const char **outfile,
 /****************************************************************************/
 
 MR_Next
-MR_trace_cmd_var_details(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_var_details(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int n;
 
@@ -268,8 +268,8 @@ MR_trace_cmd_var_details(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_term_size(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_term_size(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int n;
 
@@ -294,8 +294,8 @@ MR_trace_cmd_term_size(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_flag(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_flag(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     const char  *name;
     MR_bool     *flagptr;
@@ -377,8 +377,8 @@ MR_trace_cmd_flag(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_subgoal(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_subgoal(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
@@ -410,8 +410,8 @@ MR_trace_cmd_subgoal(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_consumer(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_consumer(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
@@ -443,8 +443,8 @@ MR_trace_cmd_consumer(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_gen_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_gen_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
@@ -471,8 +471,8 @@ MR_trace_cmd_gen_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_cut_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_cut_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
@@ -499,8 +499,8 @@ MR_trace_cmd_cut_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_pneg_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_pneg_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
@@ -527,8 +527,8 @@ MR_trace_cmd_pneg_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_mm_stacks(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_mm_stacks(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
@@ -559,8 +559,8 @@ MR_trace_cmd_mm_stacks(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_nondet_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_nondet_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_bool     detailed;
     int         frame_limit = 0;
@@ -588,8 +588,8 @@ MR_trace_cmd_nondet_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_stack_regs(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_stack_regs(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Word     *saved_regs;
 
@@ -605,8 +605,8 @@ MR_trace_cmd_stack_regs(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_all_regs(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_all_regs(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Word     *saved_regs;
 
@@ -629,8 +629,8 @@ MR_trace_cmd_all_regs(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_debug_vars(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_debug_vars(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 1) {
         MR_print_debug_vars(MR_mdb_out, event_info);
@@ -642,8 +642,8 @@ MR_trace_cmd_debug_vars(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_stats(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_stats(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     char    *filename;
     FILE    *fp;
@@ -695,7 +695,7 @@ MR_trace_cmd_stats(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 MR_Next
 MR_trace_cmd_print_optionals(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 2 && MR_streq(words[1], "off")) {
         MR_print_optionals = MR_FALSE;
@@ -715,7 +715,7 @@ MR_trace_cmd_print_optionals(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_unhide_events(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 2 && MR_streq(words[1], "off")) {
         MR_trace_unhide_events = MR_FALSE;
@@ -736,11 +736,11 @@ MR_trace_cmd_unhide_events(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_table(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_Call_Table_Arg       *call_table_args;
-    const MR_Proc_Layout    *proc;
-    MR_Proc_Spec            spec;
+    MR_CallTableArg         *call_table_args;
+    const MR_ProcLayout     *proc;
+    MR_ProcSpec             spec;
     MR_ProcTableInfo        *pt;
     MR_TrieNode             table_cur;
     int                     num_inputs;
@@ -804,7 +804,7 @@ MR_trace_cmd_table(char **words, int word_count,
         return KEEP_INTERACTING;
     }
 
-    call_table_args = MR_GC_NEW_ARRAY(MR_Call_Table_Arg, num_inputs);
+    call_table_args = MR_GC_NEW_ARRAY(MR_CallTableArg, num_inputs);
     if (call_table_args == NULL) {
         MR_fatal_error("MR_trace_cmd_table: "
             "couldn't allocate call_table_args");
@@ -1038,7 +1038,7 @@ MR_trace_cmd_table(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_type_ctor(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     const char      *module_name;
     const char      *name;
@@ -1076,7 +1076,7 @@ MR_trace_cmd_type_ctor(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_class_decl(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     const char              *module_name;
     const char              *name;
@@ -1115,7 +1115,7 @@ MR_trace_cmd_class_decl(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_all_type_ctors(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_bool         print_rep;
     MR_bool         print_functors;
@@ -1173,7 +1173,7 @@ MR_trace_cmd_all_type_ctors(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_all_class_decls(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_bool                 print_methods;
     MR_bool                 print_instances;
@@ -1232,7 +1232,7 @@ MR_trace_cmd_all_class_decls(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_all_procedures(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     const char      *filename;
     MR_bool         separate;
@@ -1276,7 +1276,7 @@ MR_trace_cmd_all_procedures(char **words, int word_count,
 
 MR_Next
 MR_trace_cmd_ambiguity(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     const char      *filename;
     MR_bool         print_procs;
@@ -1336,10 +1336,10 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
 /****************************************************************************/
 
 static void
-MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info, MR_bool detailed,
+MR_trace_cmd_nondet_stack_2(MR_EventInfo *event_info, MR_bool detailed,
     int frame_limit, int line_limit)
 {
-    const MR_Label_Layout   *layout;
+    const MR_LabelLayout    *layout;
     MR_Word                 *saved_regs;
 
     layout = event_info->MR_event_sll;
@@ -1360,10 +1360,10 @@ MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info, MR_bool detailed,
     }
 }
 
-static const MR_Proc_Layout *
-MR_find_single_matching_proc(MR_Proc_Spec *spec, MR_bool verbose)
+static const MR_ProcLayout *
+MR_find_single_matching_proc(MR_ProcSpec *spec, MR_bool verbose)
 {
-    MR_Matches_Info     matches;
+    MR_MatchesInfo      matches;
     int                 n;
     int                 i;
 
@@ -1414,7 +1414,7 @@ MR_find_single_matching_proc(MR_Proc_Spec *spec, MR_bool verbose)
 static MR_bool
 MR_trace_fill_in_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
     int arg_num, MR_ConstString given_arg,
-    MR_Call_Table_Arg *call_table_arg_ptr)
+    MR_CallTableArg *call_table_arg_ptr)
 {
     MR_Integer  n;
     MR_TrieNode table_next;
@@ -1446,7 +1446,7 @@ MR_trace_fill_in_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
 static MR_bool
 MR_trace_fill_in_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
     int arg_num, MR_ConstString given_arg,
-    MR_Call_Table_Arg *call_table_arg_ptr)
+    MR_CallTableArg *call_table_arg_ptr)
 {
     MR_Float    f;
     MR_TrieNode table_next;
@@ -1478,7 +1478,7 @@ MR_trace_fill_in_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
 static MR_bool
 MR_trace_fill_in_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
     int arg_num, MR_ConstString given_arg,
-    MR_Call_Table_Arg *call_table_arg_ptr)
+    MR_CallTableArg *call_table_arg_ptr)
 {
     MR_ConstString  s;
     MR_TrieNode table_next;
@@ -1506,7 +1506,7 @@ MR_trace_fill_in_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
 
 static MR_bool
 MR_update_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
-    MR_Call_Table_Arg *call_table_arg_ptr)
+    MR_CallTableArg *call_table_arg_ptr)
 {
     MR_TrieNode table_next;
     MR_Integer  *values;
@@ -1557,11 +1557,11 @@ MR_update_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
 
 static MR_bool
 MR_update_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
-    MR_Call_Table_Arg *call_table_arg_ptr)
+    MR_CallTableArg *call_table_arg_ptr)
 {
     MR_TrieNode table_next;
     MR_Float    *values;
-    int     value_next;
+    int         value_next;
 
     if (call_table_arg_ptr->MR_cta_valid
         && call_table_arg_ptr->MR_cta_float_values != NULL)
@@ -1608,7 +1608,7 @@ MR_update_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
 
 static MR_bool
 MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
-    MR_Call_Table_Arg *call_table_arg_ptr)
+    MR_CallTableArg *call_table_arg_ptr)
 {
     MR_TrieNode     table_next;
     MR_ConstString  *values;
@@ -1659,8 +1659,8 @@ MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
 }
 
 static void
-MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc,
-    int num_filtered_inputs, MR_Call_Table_Arg *call_table_args,
+MR_trace_cmd_table_print_tip(const MR_ProcLayout *proc,
+    int num_filtered_inputs, MR_CallTableArg *call_table_args,
     MR_TrieNode table)
 {
     int             i;
@@ -1757,7 +1757,7 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc,
 }
 
 static void
-MR_trace_print_subgoal(const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
+MR_trace_print_subgoal(const MR_ProcLayout *proc, MR_Subgoal *subgoal)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
     MR_print_subgoal(MR_mdb_out, proc, subgoal);
@@ -1767,7 +1767,7 @@ MR_trace_print_subgoal(const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
 }
 
 static void
-MR_trace_print_subgoal_debug(const MR_Proc_Layout *proc,
+MR_trace_print_subgoal_debug(const MR_ProcLayout *proc,
     MR_SubgoalDebug *subgoal_debug)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
@@ -1778,7 +1778,7 @@ MR_trace_print_subgoal_debug(const MR_Proc_Layout *proc,
 }
 
 static void
-MR_trace_print_generator(const MR_Proc_Layout *proc, MR_Generator *generator)
+MR_trace_print_generator(const MR_ProcLayout *proc, MR_Generator *generator)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
     MR_print_generator(MR_mdb_out, proc, generator);
@@ -1788,7 +1788,7 @@ MR_trace_print_generator(const MR_Proc_Layout *proc, MR_Generator *generator)
 }
 
 static void
-MR_trace_print_generator_debug(const MR_Proc_Layout *proc,
+MR_trace_print_generator_debug(const MR_ProcLayout *proc,
     MR_GenDebug *generator_debug)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
@@ -1799,7 +1799,7 @@ MR_trace_print_generator_debug(const MR_Proc_Layout *proc,
 }
 
 static void
-MR_trace_print_consumer(const MR_Proc_Layout *proc, MR_Consumer *consumer)
+MR_trace_print_consumer(const MR_ProcLayout *proc, MR_Consumer *consumer)
 {
 #if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) \
         || defined(MR_USE_MINIMAL_MODEL_OWN_STACKS)
@@ -1810,7 +1810,7 @@ MR_trace_print_consumer(const MR_Proc_Layout *proc, MR_Consumer *consumer)
 }
 
 static void
-MR_trace_print_consumer_debug(const MR_Proc_Layout *proc,
+MR_trace_print_consumer_debug(const MR_ProcLayout *proc,
     MR_ConsumerDebug *consumer_debug)
 {
 #if defined(MR_USE_MINIMAL_MODEL_STACK_COPY)

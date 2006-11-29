@@ -88,9 +88,9 @@
 	MR_PASTE2(mercury_data__user_event_layout__,label)
 
 #define MR_PROC_LAYOUT(label)						\
-	((const MR_Proc_Layout *) (MR_Word) &MR_PROC_LAYOUT_NAME(label))
+	((const MR_ProcLayout *) (MR_Word) &MR_PROC_LAYOUT_NAME(label))
 #define MR_LABEL_LAYOUT(label) 						\
-	((const MR_Label_Layout *) (MR_Word) &MR_LABEL_LAYOUT_NAME(label))
+	((const MR_LabelLayout *) (MR_Word) &MR_LABEL_LAYOUT_NAME(label))
 
 #define MR_PROC_LAYOUT1(label)						\
 	MR_PROC_LAYOUT(MR_add_prefix(label)),

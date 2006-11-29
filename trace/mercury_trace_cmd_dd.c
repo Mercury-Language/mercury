@@ -35,7 +35,7 @@
 
 static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_Unsigned *default_depth, MR_Unsigned *num_nodes,
-                        MR_Decl_Search_Mode *search_mode,
+                        MR_DeclSearchMode *search_mode,
                         MR_bool *search_mode_was_set,
                         MR_bool *search_mode_requires_trace_counts,
                         char **pass_trace_counts_file,
@@ -46,10 +46,10 @@ static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
 /****************************************************************************/
 
 MR_Next
-MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_Decl_Search_Mode search_mode;
+    MR_DeclSearchMode   search_mode;
     MR_bool             search_mode_was_set = MR_FALSE;
     MR_bool             new_session = MR_TRUE;
     MR_bool             search_mode_requires_trace_counts = MR_FALSE;
@@ -59,7 +59,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_bool             testing = MR_FALSE;
     MR_bool             debug = MR_FALSE;
     const char          *filename;
-    MR_Decl_Mode        decl_mode;
+    MR_DeclMode         decl_mode;
 
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
     MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
@@ -128,18 +128,18 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_trust(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_Proc_Spec        spec;
-    MR_Matches_Info     matches;
+    MR_ProcSpec         spec;
+    MR_MatchesInfo      matches;
 
     if (word_count == 2) {
         spec.MR_proc_module = NULL;
         spec.MR_proc_name   = NULL;
         spec.MR_proc_arity  = -1;
         spec.MR_proc_mode   = -1;
-        spec.MR_proc_prefix = (MR_Proc_Prefix) -1;
+        spec.MR_proc_prefix = (MR_ProcPrefix) -1;
 
         MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
 
@@ -221,8 +221,8 @@ MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_untrust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_untrust(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int i;
 
@@ -237,8 +237,8 @@ MR_trace_cmd_untrust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_trusted(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_trusted(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 1) {
         MR_decl_print_all_trusted(MR_mdb_out, MR_FALSE);
@@ -278,7 +278,7 @@ static struct MR_option MR_trace_dd_opts[] =
 static MR_bool
 MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
     MR_Unsigned *default_depth, MR_Unsigned *num_nodes,
-    MR_Decl_Search_Mode *search_mode, MR_bool *search_mode_was_set,
+    MR_DeclSearchMode *search_mode, MR_bool *search_mode_was_set,
     MR_bool *search_mode_requires_trace_counts,
     char **pass_trace_counts_file, char **fail_trace_counts_file,
     MR_bool *new_session, MR_bool *testing,  MR_bool *debug,

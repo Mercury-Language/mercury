@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2001-2002, 2005 The University of Melbourne.
+** Copyright (C) 2001-2002, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -180,7 +180,7 @@ MR_trace_source_check_server(const char *server_cmd, const char *server_name,
 }
 
 const char *
-MR_trace_source_open_server(MR_Trace_Source_Server *server,
+MR_trace_source_open_server(MR_TraceSourceServer *server,
     const char *window_cmd, int timeout, MR_bool verbose)
 {
     const char  *real_window_cmd;
@@ -318,7 +318,7 @@ MR_trace_source_open_server(MR_Trace_Source_Server *server,
 }
 
 const char *
-MR_trace_source_attach(MR_Trace_Source_Server *server, int timeout,
+MR_trace_source_attach(MR_TraceSourceServer *server, int timeout,
     MR_bool verbose)
 {
     const char  *real_server_cmd;
@@ -366,7 +366,7 @@ MR_trace_source_attach(MR_Trace_Source_Server *server, int timeout,
 }
 
 const char *
-MR_trace_source_sync(MR_Trace_Source_Server *server, const char *filename,
+MR_trace_source_sync(MR_TraceSourceServer *server, const char *filename,
     int lineno, const char *parent_filename, int parent_lineno,
     MR_bool verbose)
 {
@@ -504,7 +504,7 @@ MR_trace_source_jump(const char *server_cmd, const char *server_name,
 }
 
 const char *
-MR_trace_source_close(MR_Trace_Source_Server *server, MR_bool verbose)
+MR_trace_source_close(MR_TraceSourceServer *server, MR_bool verbose)
 {
     const char  *real_server_cmd;
     const char  *msg;

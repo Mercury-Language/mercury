@@ -90,7 +90,7 @@ MR_do_init_label_tables(void)
 
 void
 MR_insert_entry_label(const char *name, MR_Code *addr,
-    const MR_Proc_Layout *entry_layout)
+    const MR_ProcLayout *entry_layout)
 {
     MR_do_init_label_tables();
 
@@ -204,7 +204,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
 
 void
 MR_insert_internal_label(const char *name, MR_Code *addr,
-    const MR_Label_Layout *label_layout)
+    const MR_LabelLayout *label_layout)
 {
     MR_Internal *internal;
     MR_Internal *prev_internal;

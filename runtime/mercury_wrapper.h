@@ -15,7 +15,7 @@
 #include "mercury_regs.h"		/* needs to come first */
 #include <stddef.h>			/* for `size_t' */
 #include "mercury_std.h"		/* for `MR_bool' */
-#include "mercury_stack_layout.h"	/* for `MR_Label_Layout' etc */
+#include "mercury_stack_layout.h"	/* for `MR_LabelLayout' etc */
 #include "mercury_trace_base.h"		/* for `MR_trace_port' */
 #include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
 #include "mercury_type_info.h"		/* for `MR_TypeCtorInfo' */
@@ -131,7 +131,7 @@ extern	char *		(*MR_address_of_trace_get_command)(const char *,
 */
 
 extern	const char *	(*MR_address_of_trace_browse_all_on_level)(FILE *,
-				const MR_Label_Layout *, MR_Word *, MR_Word *,
+				const MR_LabelLayout *, MR_Word *, MR_Word *,
 				int, MR_bool);
 
 /*
@@ -152,7 +152,7 @@ extern	void		(*MR_address_of_trace_final_external)(void);
 ** file.
 */
 
-extern	MR_Code		*(*MR_exec_trace_func_ptr)(const MR_Label_Layout *);
+extern	MR_Code		*(*MR_exec_trace_func_ptr)(const MR_LabelLayout *);
 
 /*
 ** If the init file was built with tracing enabled, then
@@ -168,7 +168,7 @@ extern	void		(*MR_address_of_trace_interrupt_handler)(void);
 ** otherwise it is NULL.
 */
 
-extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
+extern	void		(*MR_register_module_layout)(const MR_ModuleLayout *);
 
 /*
 ** These global variables have their values defined in the program's _init.c

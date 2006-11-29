@@ -48,7 +48,7 @@ typedef	enum {
 	MR_PORT_PRAGMA_LATER,
 	MR_PORT_USER,
 	MR_PORT_NONE
-} MR_Trace_Port;
+} MR_TracePort;
 
 /*
 ** The following array says if a label inside a procedure is
@@ -98,11 +98,11 @@ extern	const char 			*MR_port_names[];
 ** after the event. (NULL means it should continue as usual.)
 */
 
-extern	MR_Code	*MR_trace(const MR_Label_Layout *);
-extern	MR_Code	*MR_trace_fake(const MR_Label_Layout *);
-extern	MR_Code	*MR_trace_count(const MR_Label_Layout *);
+extern	MR_Code	*MR_trace(const MR_LabelLayout *);
+extern	MR_Code	*MR_trace_fake(const MR_LabelLayout *);
+extern	MR_Code	*MR_trace_count(const MR_LabelLayout *);
 
-extern	MR_Code	*MR_user_trace(const MR_Label_Layout *);
+extern	MR_Code	*MR_user_trace(const MR_LabelLayout *);
 
 /*
 ** These three variables implement a table of module layout structures,
@@ -111,12 +111,12 @@ extern	MR_Code	*MR_user_trace(const MR_Label_Layout *);
 ** Insertions are handled by MR_insert_module_info_into_module_table.
 */
 
-extern	const MR_Module_Layout	**MR_module_infos;
+extern	const MR_ModuleLayout	**MR_module_infos;
 extern	unsigned		MR_module_info_next;
 extern	unsigned		MR_module_info_max;
 
 extern	void	MR_insert_module_info_into_module_table(
-			const MR_Module_Layout *module_layout);
+			const MR_ModuleLayout *module_layout);
 
 /*
 ** For every label reachable from the module table, write the id of the label
@@ -283,7 +283,7 @@ extern	MR_bool		MR_trace_func_enabled;
 */
 
 extern	MR_Code 	*(*volatile MR_selected_trace_func_ptr)(
-				const MR_Label_Layout *);
+				const MR_LabelLayout *);
 
 /*
 ** MR_trace_call_seqno counts distinct calls. The prologue of every
@@ -517,7 +517,7 @@ extern	MR_Word	MR_trace_get_exception_value(void);
 */
 
 extern	MR_Unsigned *MR_trace_lookup_trace_count(
-	const MR_Label_Layout *label_layout);
+	const MR_LabelLayout *label_layout);
 
 /*
 ** If MR_TRACE_HISTOGRAM is defined, MR_trace maintains two arrays of integers,
@@ -566,9 +566,9 @@ extern	void	MR_io_tabling_stats(FILE *fp);
 ** a zero return value means that the answer is "no".
 */
 
-extern	void	MR_insert_proc_rep(const MR_Proc_Layout *proc_layout,
+extern	void	MR_insert_proc_rep(const MR_ProcLayout *proc_layout,
 		MR_Word proc_rep);
-extern	MR_Word MR_lookup_proc_rep(const MR_Proc_Layout *proc_layout);
+extern	MR_Word MR_lookup_proc_rep(const MR_ProcLayout *proc_layout);
 
 #ifndef	MR_HIGHLEVEL_CODE
 
@@ -585,7 +585,7 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 	{								\
 		MR_Code *MR_jumpaddr;					\
 		MR_save_transient_registers();				\
-		MR_jumpaddr = MR_trace((const MR_Label_Layout *)	\
+		MR_jumpaddr = MR_trace((const MR_LabelLayout *)	\
 			&MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));	\
 		MR_restore_transient_registers();			\
 		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);		\
@@ -599,7 +599,7 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 	{								\
 		MR_Code *MR_jumpaddr;					\
 		MR_save_transient_registers();				\
-		MR_jumpaddr = MR_user_trace((const MR_Label_Layout *)	\
+		MR_jumpaddr = MR_user_trace((const MR_LabelLayout *)	\
 			&MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));	\
 		MR_restore_transient_registers();			\
 		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);		\

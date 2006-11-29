@@ -8,7 +8,7 @@
 */
 
 #include "mercury_imp.h"
-#include "mercury_stack_trace.h" /* for MR_Context_Position  */
+#include "mercury_stack_trace.h" /* for MR_ContextPosition  */
 
 #include "mercury_trace_cmds.h"
 

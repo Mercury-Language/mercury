@@ -384,7 +384,7 @@ MR_TypeInfo     MR_type_info_for_list_of_pseudo_type_info;
 char        *(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
 char        *(*MR_address_of_trace_get_command)(const char *, FILE *, FILE *);
 const char  *(*MR_address_of_trace_browse_all_on_level)(FILE *,
-                const MR_Label_Layout *, MR_Word *, MR_Word *, int, MR_bool);
+                const MR_LabelLayout *, MR_Word *, MR_Word *, int, MR_bool);
 
 #ifdef  MR_USE_EXTERNAL_DEBUGGER
 void        (*MR_address_of_trace_init_external)(void);
@@ -427,11 +427,11 @@ MR_bool     (*MR_DI_found_match)(MR_Integer, MR_Integer, MR_Integer, MR_Word,
 void        (*MR_DI_read_request_from_socket)(MR_Word, MR_Word *,
                 MR_Integer *);
 
-MR_Code     *(*MR_exec_trace_func_ptr)(const MR_Label_Layout *);
+MR_Code     *(*MR_exec_trace_func_ptr)(const MR_LabelLayout *);
 
 void        (*MR_address_of_trace_interrupt_handler)(void);
 
-void        (*MR_register_module_layout)(const MR_Module_Layout *);
+void        (*MR_register_module_layout)(const MR_ModuleLayout *);
 
 #ifdef  MR_RECORD_TERM_SIZES
 MR_ComplexityProc   *MR_complexity_procs;

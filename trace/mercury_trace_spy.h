@@ -17,15 +17,15 @@
 #ifndef MERCURY_TRACE_SPY_H
 #define MERCURY_TRACE_SPY_H
 
-#include "mercury_stack_layout.h"   /* for MR_Proc_Layout etc */
+#include "mercury_stack_layout.h"   /* for MR_ProcLayout etc */
 #include "mercury_trace_term.h"     /* for MR_CTerm */
-#include "mercury_trace_base.h"     /* for MR_Trace_Port etc  */
-#include "mercury_trace_browse.h"   /* for MR_Browse_Format */
-#include "mercury_trace_vars.h"     /* for MR_Var_Spec */
+#include "mercury_trace_base.h"     /* for MR_TracePort etc  */
+#include "mercury_trace_browse.h"   /* for MR_BrowseFormat */
+#include "mercury_trace_vars.h"     /* for MR_VarSpec */
 
 typedef enum {
     MR_SPY_PRINT, MR_SPY_STOP
-} MR_Spy_Action;
+} MR_SpyAction;
 
 #define MR_spy_action_string(a)     ((a == MR_SPY_STOP) ? "stop" :      \
                                     (a == MR_SPY_PRINT) ? "print" :     \
@@ -37,68 +37,68 @@ typedef enum {
     MR_SPY_ENTRY,
     MR_SPY_SPECIFIC,
     MR_SPY_LINENO
-} MR_Spy_When;
+} MR_SpyWhen;
 
 typedef enum {
     MR_SPY_DONT_IGNORE,
     MR_SPY_IGNORE_INTERFACE,
     MR_SPY_IGNORE_ENTRY
-} MR_Spy_Ignore_When;
+} MR_SpyIgnore_When;
 
 extern  const char                      *MR_spy_when_names[];
 
-typedef struct MR_Spy_Print_Struct      *MR_Spy_Print;
-typedef struct MR_Spy_Print_List_Struct *MR_Spy_Print_List;
+typedef struct MR_SpyPrint_Struct      *MR_SpyPrint;
+typedef struct MR_SpyPrintList_Struct *MR_SpyPrintList;
 
 typedef enum {
     MR_SPY_TEST_EQUAL, MR_SPY_TEST_NOT_EQUAL
-} MR_Spy_Test;
+} MR_SpyTest;
 
 typedef enum {
     MR_SPY_PRINT_GOAL,
     MR_SPY_PRINT_ALL,
     MR_SPY_PRINT_ONE,
-} MR_Spy_Print_What;
+} MR_SpyPrintWhat;
 
-struct MR_Spy_Print_Struct {
-    MR_Browse_Format    p_format;
-    MR_Spy_Print_What   p_what;
-    char                *p_name;    /* if MR_SPY_PRINT_ONE */
-    MR_bool             p_warn;
+struct MR_SpyPrint_Struct {
+    MR_BrowseFormat p_format;
+    MR_SpyPrintWhat p_what;
+    char            *p_name;    /* if MR_SPY_PRINT_ONE */
+    MR_bool         p_warn;
 };
 
-struct MR_Spy_Print_List_Struct {
-    MR_Spy_Print        pl_cur;
-    MR_Spy_Print_List   pl_next;
+struct MR_SpyPrintList_Struct {
+    MR_SpyPrint     pl_cur;
+    MR_SpyPrintList pl_next;
 };
 
-typedef struct MR_Spy_Point_Struct MR_Spy_Point;
+typedef struct MR_SpyPoint_Struct MR_SpyPoint;
 
 typedef struct {
-    MR_Var_Spec     cond_var_spec;
+    MR_VarSpec      cond_var_spec;
     char            *cond_path;
-    MR_Spy_Test     cond_test;
+    MR_SpyTest      cond_test;
     MR_CTerm        cond_term;
     MR_bool         cond_require_var;
     MR_bool         cond_require_path;
     char            *cond_what_string;
     char            *cond_term_string;
-} MR_Spy_Cond;
+} MR_SpyCond;
 
-struct MR_Spy_Point_Struct {
+struct MR_SpyPoint_Struct {
     MR_bool                 spy_exists;     /* MR_FALSE if deleted */
     MR_bool                 spy_enabled;
-    MR_Spy_When             spy_when;
-    MR_Spy_Action           spy_action;
-    MR_Spy_Ignore_When      spy_ignore_when;
+    MR_SpyWhen              spy_when;
+    MR_SpyAction            spy_action;
+    MR_SpyIgnore_When       spy_ignore_when;
     int                     spy_ignore_count;
-    MR_Spy_Cond             *spy_cond;
-    MR_Spy_Print_List       spy_print_list;
-    const MR_Proc_Layout    *spy_proc;      /* if not LINENO */
-    const MR_Label_Layout   *spy_label;     /* if SPECIFIC */
+    MR_SpyCond              *spy_cond;
+    MR_SpyPrintList         spy_print_list;
+    const MR_ProcLayout     *spy_proc;      /* if not LINENO */
+    const MR_LabelLayout    *spy_label;     /* if SPECIFIC */
     char                    *spy_filename;  /* if LINENO */
     int                     spy_linenumber; /* if LINENO */
-    MR_Spy_Point            *spy_next;      /* if not LINENO */
+    MR_SpyPoint             *spy_next;      /* if not LINENO */
 };
 
 /*
@@ -106,13 +106,13 @@ struct MR_Spy_Point_Struct {
 ** and how many slots are allocated.
 */
 
-extern  MR_Spy_Point    **MR_spy_points;
+extern  MR_SpyPoint     **MR_spy_points;
 extern  int             MR_spy_point_next;
 extern  int             MR_spy_point_max;
 
 extern  int             MR_most_recent_spy_point;
 
-extern  MR_Spy_Cond     *MR_spy_point_cond_bad;
+extern  MR_SpyCond      *MR_spy_point_cond_bad;
 extern  const char      *MR_spy_point_cond_problem;
 
 /*
@@ -123,9 +123,9 @@ extern  const char      *MR_spy_point_cond_problem;
 */
 
 extern  MR_bool         MR_event_matches_spy_point(
-                            const MR_Label_Layout *layout, MR_Trace_Port port,
-                            MR_Spy_Action *action,
-                            MR_Spy_Print_List *print_list);
+                            const MR_LabelLayout *layout, MR_TracePort port,
+                            MR_SpyAction *action,
+                            MR_SpyPrintList *print_list);
 
 /*
 ** Add a new spy point on a procedure (as opposed to on a line number)
@@ -133,11 +133,11 @@ extern  MR_bool         MR_event_matches_spy_point(
 ** *problem to point to an error message.
 */
 
-extern  int         MR_add_proc_spy_point(MR_Spy_When when,
-                        MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
-                        int ignore_count, const MR_Proc_Layout *entry,
-                        const MR_Label_Layout *label,
-                        MR_Spy_Print_List print_list, const char **problem);
+extern  int         MR_add_proc_spy_point(MR_SpyWhen when,
+                        MR_SpyAction action, MR_SpyIgnore_When ignore_when,
+                        int ignore_count, const MR_ProcLayout *entry,
+                        const MR_LabelLayout *label,
+                        MR_SpyPrintList print_list, const char **problem);
 
 /*
 ** Add a new spy point on a line number (as opposed to on a procedure)
@@ -145,10 +145,10 @@ extern  int         MR_add_proc_spy_point(MR_Spy_When when,
 ** *problem to point to an error message.
 */
 
-extern  int         MR_add_line_spy_point(MR_Spy_Action action,
-                        MR_Spy_Ignore_When ignore_when, int ignore_count,
+extern  int         MR_add_line_spy_point(MR_SpyAction action,
+                        MR_SpyIgnore_When ignore_when, int ignore_count,
                         const char *filename, int linenumber,
-                        MR_Spy_Print_List print_list, const char **problem);
+                        MR_SpyPrintList print_list, const char **problem);
 
 /*
 ** Add the given set of things to be printed to the spy point's list,
@@ -156,9 +156,9 @@ extern  int         MR_add_line_spy_point(MR_Spy_Action action,
 */
 
 extern  void        MR_add_spy_point_print_list_start(int point_slot,
-                        MR_Spy_Print_List print_list);
+                        MR_SpyPrintList print_list);
 extern  void        MR_add_spy_point_print_list_end(int point_slot,
-                        MR_Spy_Print_List print_list);
+                        MR_SpyPrintList print_list);
 
 /*
 ** Empty the set of things to be printed at the spy point.
@@ -173,7 +173,7 @@ extern  void        MR_clear_spy_point_print_list(int point_slot);
 */
 
 extern  const char  *MR_ignore_spy_point(int point_slot,
-                        MR_Spy_Ignore_When ignore_when, int ignore_count);
+                        MR_SpyIgnore_When ignore_when, int ignore_count);
 
 /*
 ** Delete a spy point from the table.
@@ -192,7 +192,7 @@ extern  void        MR_print_spy_point(FILE *fp, int i, MR_bool verbose);
 ** Print the given spy point condition in a user-friendly manner.
 */
 
-extern  void        MR_print_spy_cond(FILE *fp, MR_Spy_Cond *cond);
+extern  void        MR_print_spy_cond(FILE *fp, MR_SpyCond *cond);
 
 /*
 ** Print the set of current spy points (including those that are currently

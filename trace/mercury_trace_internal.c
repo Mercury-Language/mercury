@@ -155,7 +155,7 @@ static  pid_t       MR_mdb_window_pid = 0;
 ** The details of the source server, if any.
 */
 
-MR_Trace_Source_Server  MR_trace_source_server =
+MR_TraceSourceServer  MR_trace_source_server =
     { NULL, NULL, MR_FALSE };
 
 MR_bool             MR_trace_internal_interacting = MR_FALSE;
@@ -169,14 +169,14 @@ static  void        MR_trace_internal_kill_mdb_window(void);
 static  void        MR_trace_internal_init_from_env(void);
 static  void        MR_trace_internal_init_from_local(void);
 static  void        MR_trace_internal_init_from_home_dir(void);
-static  MR_Next     MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
-                        MR_Event_Info *event_info, MR_Code **jumpaddr);
+static  MR_Next     MR_trace_debug_cmd(char *line, MR_TraceCmdInfo *cmd,
+                        MR_EventInfo *event_info, MR_Code **jumpaddr);
 
 static  MR_TraceCmdFunc     MR_trace_handle_cmd;
 
 static  void        MR_mdb_print_proc_id_and_nl(void *data,
-                        const MR_Proc_Layout *entry_layout);
-static  int         MR_trace_var_print_list(MR_Spy_Print_List print_list);
+                        const MR_ProcLayout *entry_layout);
+static  int         MR_trace_var_print_list(MR_SpyPrintList print_list);
 
 static  const char  *MR_trace_parse_line(char *line, char ***words,
                         int *word_max, int *word_count);
@@ -186,18 +186,18 @@ static  const char  *MR_trace_break_off_one_word(char *line, int char_pos,
                         int *new_char_pos_ptr);
 static  MR_bool     MR_trace_continue_line(char *ptr, MR_bool *single_quoted,
                         MR_bool *double_quoted);
-static  MR_Code     *MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
-                        MR_Spy_Print_List print_list,
-                        MR_Event_Info *event_info);
+static  MR_Code     *MR_trace_event_internal_report(MR_TraceCmdInfo *cmd,
+                        MR_SpyPrintList print_list,
+                        MR_EventInfo *event_info);
 
 static  char        *MR_trace_command_completer_next(const char *word,
-                        size_t word_len, MR_Completer_Data *data);
+                        size_t word_len, MR_CompleterData *data);
 
 MR_SavedDebugState  MR_saved_debug_state;
 
 MR_Code *
-MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
-    MR_Spy_Print_List print_list, MR_Event_Info *event_info)
+MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
+    MR_SpyPrintList print_list, MR_EventInfo *event_info)
 {
     MR_Code     *jumpaddr;
     char        *line;
@@ -762,8 +762,8 @@ MR_trace_do_noop(void)
 */
 
 MR_Next
-MR_trace_cmd_shell(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_shell(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     char*       command_string;
     size_t      command_string_length;
@@ -787,7 +787,7 @@ MR_trace_cmd_shell(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static void
-MR_mdb_print_proc_id_and_nl(void *data, const MR_Proc_Layout *entry_layout)
+MR_mdb_print_proc_id_and_nl(void *data, const MR_ProcLayout *entry_layout)
 {
     FILE    *fp;
 
@@ -796,9 +796,9 @@ MR_mdb_print_proc_id_and_nl(void *data, const MR_Proc_Layout *entry_layout)
 }
 
 static int
-MR_trace_var_print_list(MR_Spy_Print_List print_list)
+MR_trace_var_print_list(MR_SpyPrintList print_list)
 {
-    MR_Spy_Print    node;
+    MR_SpyPrint    node;
     const char      *problem;
     char            *after_problem;
     int             count;
@@ -857,8 +857,8 @@ MR_trace_var_print_list(MR_Spy_Print_List print_list)
 }
 
 static MR_Next
-MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_debug_cmd(char *line, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     char        **words;
     char        **orig_words = NULL;
@@ -915,8 +915,8 @@ static  const char  *MR_current_cmd_name;
 */
 
 static MR_Next
-MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_handle_cmd(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     const MR_Trace_Command_Info *cmd_info;
 
@@ -1371,13 +1371,13 @@ MR_trace_continue_line(char *ptr, MR_bool *single_quoted,
 }
 
 static MR_Code *
-MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
-    MR_Spy_Print_List print_list, MR_Event_Info *event_info)
+MR_trace_event_internal_report(MR_TraceCmdInfo *cmd,
+    MR_SpyPrintList print_list, MR_EventInfo *event_info)
 {
-    char                *buf;
-    int                 i;
-    int                 len;
-    MR_Spy_Print_List   list;
+    char            *buf;
+    int             i;
+    int             len;
+    MR_SpyPrintList list;
 
     list = print_list;
     len = 0;
@@ -1440,9 +1440,9 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 }
 
 void
-MR_trace_event_print_internal_report(MR_Event_Info *event_info)
+MR_trace_event_print_internal_report(MR_EventInfo *event_info)
 {
-    const MR_Label_Layout   *parent;
+    const MR_LabelLayout    *parent;
     const char              *filename;
     const char              *parent_filename;
     int                     lineno;
@@ -1731,7 +1731,7 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
 
 MR_bool
 MR_trace_command_completion_info(const char *word,
-    MR_Make_Completer *completer, const char *const **fixed_args)
+    MR_MakeCompleter *completer, const char *const **fixed_args)
 {
     const MR_Trace_Command_Info *command_info;
 
@@ -1759,16 +1759,16 @@ MR_trace_valid_command(const char *word)
     return NULL;
 }
 
-MR_Completer_List *
+MR_CompleterList *
 MR_trace_command_completer(const char *word, size_t word_len)
 {
     return MR_new_completer_elem(&MR_trace_command_completer_next,
-        (MR_Completer_Data) 0, MR_trace_no_free);
+        (MR_CompleterData) 0, MR_trace_no_free);
 }
 
 static char *
 MR_trace_command_completer_next(const char *word, size_t word_len,
-    MR_Completer_Data *data)
+    MR_CompleterData *data)
 {
     MR_Integer command_index;
 

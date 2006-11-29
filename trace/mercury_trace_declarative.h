@@ -19,7 +19,7 @@
 ** MR_trace_decl_debug for each event.  
 */
 
-extern  MR_Code     *MR_trace_decl_debug(MR_Event_Info *event_info);
+extern  MR_Code     *MR_trace_decl_debug(MR_EventInfo *event_info);
 
 /*
 ** The following functions update the progress indicator when building a 
@@ -36,11 +36,11 @@ extern  void        MR_trace_show_progress_supertree(MR_Unsigned event_number);
 ** being entered.
 */
 
-typedef enum { MR_DECL_NODUMP, MR_DECL_DUMP } MR_Decl_Mode;
+typedef enum { MR_DECL_NODUMP, MR_DECL_DUMP } MR_DeclMode;
 
-extern  MR_bool     MR_trace_start_decl_debug(MR_Decl_Mode mode, 
+extern  MR_bool     MR_trace_start_decl_debug(MR_DeclMode mode, 
                         const char *outfile, MR_bool new_session,
-                        MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+                        MR_TraceCmdInfo *cmd, MR_EventInfo *event_info,
                         MR_Code **jumpaddr);
 
 /*
@@ -70,7 +70,7 @@ extern  MR_bool     MR_trace_decl_assume_all_io_is_tabled;
 
 extern  void        MR_decl_add_trusted_module(const char *module_name);
 extern  void        MR_decl_add_trusted_pred_or_func(
-                        const MR_Proc_Layout *entry);
+                        const MR_ProcLayout *entry);
 extern  void        MR_decl_trust_standard_library(void);
 extern  MR_bool     MR_decl_remove_trusted(int n);
 
@@ -79,10 +79,10 @@ extern  MR_bool     MR_decl_remove_trusted(int n);
 ** the analyser.
 */
 
-typedef MR_Word MR_Decl_Search_Mode;
+typedef MR_Word MR_DeclSearchMode;
 
 extern  void        MR_trace_decl_set_fallback_search_mode(
-                        MR_Decl_Search_Mode search_mode);
+                        MR_DeclSearchMode search_mode);
 
 /*
 ** This function checks to see if the supplied string is a valid
@@ -94,7 +94,7 @@ extern  void        MR_trace_decl_set_fallback_search_mode(
 
 extern	MR_bool	MR_trace_is_valid_search_mode_string(
                     const char *search_mode_string,
-                    MR_Decl_Search_Mode *search_mode,
+                    MR_DeclSearchMode *search_mode,
                     MR_bool *search_mode_requires_trace_counts);
 
 /*
@@ -102,7 +102,7 @@ extern	MR_bool	MR_trace_is_valid_search_mode_string(
 ** `dd' command is not given.
 */
 
-extern MR_Decl_Search_Mode MR_trace_get_default_search_mode(void);
+extern MR_DeclSearchMode MR_trace_get_default_search_mode(void);
 
 /*
 ** Prints a list of the trusted objects.  If mdb_command_format is true it
@@ -212,7 +212,7 @@ extern  MR_bool        MR_edt_building_supertree;
 ** values in the definitions in browser/declarative_execution.m.
 */
 
-typedef MR_Word MR_Trace_Node;
+typedef MR_Word MR_TraceNode;
 
 #define MR_TRACE_STATUS_SUCCEEDED    (MR_Word) 0
 #define MR_TRACE_STATUS_FAILED       (MR_Word) 1

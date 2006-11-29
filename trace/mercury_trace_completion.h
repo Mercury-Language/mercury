@@ -37,69 +37,69 @@ extern  char    *MR_trace_line_completer(const char *word, int state);
 ** completions.
 */
 
-typedef void    *MR_Completer_Data;
+typedef void    *MR_CompleterData;
 typedef char    *(*MR_Completer)(const char *word, size_t word_len,
-                    MR_Completer_Data *data);
+                    MR_CompleterData *data);
 
 /* Release the memory held by the completer data. */
-typedef void    (*MR_Free_Completer_Data)(MR_Completer_Data data);
+typedef void    (*MR_FreeCompleterData)(MR_CompleterData data);
 
-typedef struct MR_Completer_List_Struct {
+typedef struct MR_CompleterList_Struct {
     MR_Completer                    MR_completer_func;
-    MR_Completer_Data               MR_completer_func_data;
-    MR_Free_Completer_Data          MR_free_completer_func_data;
-    struct MR_Completer_List_Struct *MR_completer_list_next;
-} MR_Completer_List;
+    MR_CompleterData                MR_completer_func_data;
+    MR_FreeCompleterData            MR_free_completer_func_data;
+    struct MR_CompleterList_Struct  *MR_completer_list_next;
+} MR_CompleterList;
 
-typedef MR_Completer_List   *(* MR_Make_Completer)(const char *word,
+typedef MR_CompleterList    *(* MR_MakeCompleter)(const char *word,
                                 size_t word_len);
 
 /* No completions. */
-extern  MR_Completer_List   *MR_trace_null_completer(const char *word,
+extern  MR_CompleterList    *MR_trace_null_completer(const char *word,
                                 size_t word_len);
 
 /* Use Readline's filename completer. */
-extern  MR_Completer_List   *MR_trace_filename_completer(const char *word,
+extern  MR_CompleterList    *MR_trace_filename_completer(const char *word,
                                 size_t word_len);
 
 /*
-** Construct a MR_Completer_List with the given arguments.
+** Construct a MR_CompleterList with the given arguments.
 ** The MR_completer_list_next field of the structure will be NULL.
 */
 
-extern  MR_Completer_List   *MR_new_completer_elem(MR_Completer completer,
-                                MR_Completer_Data data,
-                                MR_Free_Completer_Data free_data);
+extern  MR_CompleterList    *MR_new_completer_elem(MR_Completer completer,
+                                MR_CompleterData data,
+                                MR_FreeCompleterData free_data);
 
 /* Used where the completer data is not malloc'ed. */
-extern  void                MR_trace_no_free(MR_Completer_Data);
+extern  void                MR_trace_no_free(MR_CompleterData);
 
 /*
 ** Complete on the labels of the elements of a sorted array.
-** A function of type MR_Get_Slot_Name is used to get the label of the
+** A function of type MR_GetSlotName is used to get the label of the
 ** element at the given index in the array.
 */
 
-typedef char                *(*MR_Get_Slot_Name)(int slot);
+typedef char                *(*MR_GetSlotName)(int slot);
 
-extern  MR_Completer_List   *MR_trace_sorted_array_completer(const char *word,
+extern  MR_CompleterList    *MR_trace_sorted_array_completer(const char *word,
                                 size_t word_length, int array_size,
-                                MR_Get_Slot_Name get_slot_name);
+                                MR_GetSlotName get_slot_name);
 
 /*
 ** Apply a filter to the output of a completer.
-** Functions of type MR_Completer_Filter return MR_TRUE if the given
+** Functions of type MR_CompleterFilter return MR_TRUE if the given
 ** string should be included in the list of completions.
 */
 
-typedef MR_bool (*MR_Completer_Filter)(const char *completion,
-                    MR_Completer_Data *data);
+typedef MR_bool            (*MR_CompleterFilter)(const char *completion,
+                                MR_CompleterData *data);
 
-extern MR_Completer_List    *MR_trace_filter_completer(
-                                MR_Completer_Filter filter,
-                                MR_Completer_Data data,
-                                MR_Free_Completer_Data free_data,
-                                MR_Completer_List *list);
+extern MR_CompleterList     *MR_trace_filter_completer(
+                                MR_CompleterFilter filter,
+                                MR_CompleterData data,
+                                MR_FreeCompleterData free_data,
+                                MR_CompleterList *list);
 
 /*
 ** Apply a mapping function to the output of a completer.
@@ -108,10 +108,10 @@ extern MR_Completer_List    *MR_trace_filter_completer(
 */
 
 typedef char                *(*MR_Completer_Map)(char *completion,
-                                MR_Completer_Data *data);
-extern MR_Completer_List    *MR_trace_map_completer(MR_Completer_Map map_func,
-                                MR_Completer_Data data,
-                                MR_Free_Completer_Data free_data,
-                                MR_Completer_List *list);
+                                MR_CompleterData *data);
+extern MR_CompleterList     *MR_trace_map_completer(MR_Completer_Map map_func,
+                                MR_CompleterData data,
+                                MR_FreeCompleterData free_data,
+                                MR_CompleterList *list);
 
 #endif /* MR_TRACE_COMPLETION_H */

@@ -119,7 +119,7 @@
 #include <stdio.h>
 #include "mercury_library_types.h" /* for MR_ArrayType */
 #include "mercury_layout_util.h"   /* for MR_materialize_closure_type_params */
-#include "mercury_ho_call.h"       /* for MR_Closure_Id etc */
+#include "mercury_ho_call.h"       /* for MR_ClosureId etc */
 
 #ifdef MR_DEEP_PROFILING
   #include  "mercury_deep_profiling.h"
@@ -757,9 +757,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             {
                 MR_Closure          *closure;
                 MR_Closure_Layout   *closure_layout;
-                MR_Proc_Id          *proc_id;
-                MR_User_Proc_Id     *user_proc_id;
-                MR_UCI_Proc_Id      *uci_proc_id;
+                MR_ProcId           *proc_id;
+                MR_UserProcId       *user_proc_id;
+                MR_UCIProcId        *uci_proc_id;
                 MR_ConstString      name;
                 int                 num_args;
                 int                 i;

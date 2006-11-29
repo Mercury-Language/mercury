@@ -1591,7 +1591,7 @@ make_tagged_word(Locn, Value, TaggedValue) :-
 :- pred locn_type_code(locn_type::in, int::out) is det.
 
 % The code of this predicate should be kept in sync with the enum type
-% MR_Long_Lval_Type in runtime/mercury_stack_layout.h. Note that the values
+% MR_LongLvalType in runtime/mercury_stack_layout.h. Note that the values
 % equal to 0 modulo 4 are reserved for representing constants.
 locn_type_code(lval_r_reg,           1).
 locn_type_code(lval_f_reg,           2).

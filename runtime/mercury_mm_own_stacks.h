@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2004-2005 The University of Melbourne.
+** Copyright (C) 2004-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -54,7 +54,7 @@
 struct MR_Generator_Struct {
     MR_TrieNode             MR_gen_back_ptr;
     MR_Context              *MR_gen_context;
-    const MR_Proc_Layout    *MR_gen_proc_layout;
+    const MR_ProcLayout     *MR_gen_proc_layout;
     MR_String               *MR_gen_pred_id;
     MR_Generator            *MR_gen_leader;
     MR_Dlist                *MR_gen_led_generators;
@@ -91,7 +91,7 @@ extern  MR_GeneratorPtr MR_mmos_new_generator;
 #define MR_table_mmos_get_answer_table(gen)                             \
                         &(gen)->MR_gen_answer_table;
 
-extern  const MR_Proc_Layout    *MR_subgoal_debug_cur_proc;
+extern  const MR_ProcLayout *MR_subgoal_debug_cur_proc;
 
 extern  void            MR_enter_cons_debug(MR_Consumer *consumer);
 extern  MR_ConsDebug    *MR_lookup_cons_debug_addr(MR_Consumer *consumer);
@@ -108,15 +108,15 @@ extern  const char      *MR_gen_addr_name(MR_Generator *gen);
 extern  const char      *MR_gen_num_name(int gen_index);
 
 extern  void            MR_print_gen_debug(FILE *fp,
-                            const MR_Proc_Layout *proc,
+                            const MR_ProcLayout *proc,
                             MR_GenDebug *gen_debug);
 extern  void            MR_print_generator(FILE *fp,
-                            const MR_Proc_Layout *proc, MR_Generator *gen);
+                            const MR_ProcLayout *proc, MR_Generator *gen);
 extern  void            MR_print_cons_debug(FILE *fp,
-                            const MR_Proc_Layout *proc,
+                            const MR_ProcLayout *proc,
                             MR_ConsDebug *consumer_debug);
 extern  void            MR_print_consumer(FILE *fp,
-                            const MR_Proc_Layout *proc, MR_Consumer *consumer);
+                            const MR_ProcLayout *proc, MR_Consumer *consumer);
 
 extern  MR_ConsumerPtr  MR_table_mmos_setup_consumer(MR_GeneratorPtr generator,
                             MR_ConstString pred_id);

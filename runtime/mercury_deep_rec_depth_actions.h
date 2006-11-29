@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002, 2004 The University of Melbourne.
+** Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,7 +16,7 @@
 ** the following variables:
 ** 
 ** pd:	should point to the MR_ProcDynamic structure of the caller.
-** pl: 	should point to the MR_Proc_Layout structure of the caller.
+** pl: 	should point to the MR_ProcLayout structure of the caller.
 ** ps: 	should point to the MR_ProcStatic structure of the caller.
 */
 

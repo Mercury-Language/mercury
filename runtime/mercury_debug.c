@@ -1016,9 +1016,9 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
         fprintf(fp, "\n");
     } else {
         const MR_ProcDynamic    *pd;
-        const MR_Proc_Layout    *pl;
+        const MR_ProcLayout     *pl;
         const MR_ProcStatic     *ps;
-        const MR_Proc_Id        *proc_id;
+        const MR_ProcId         *proc_id;
 
         fprintf(fp, ", depth %d,", csd->MR_csd_depth_count);
 

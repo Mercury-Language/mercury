@@ -41,7 +41,7 @@ static  const char  *MR_trace_read_help_text(void);
 
 MR_Next
 MR_trace_cmd_document_category(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int         slot;
     const char  *msg;
@@ -65,8 +65,8 @@ MR_trace_cmd_document_category(char **words, int word_count,
 }
 
 MR_Next
-MR_trace_cmd_document(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_document(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int         slot;
     const char  *msg;
@@ -91,8 +91,8 @@ MR_trace_cmd_document(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 MR_Next
-MR_trace_cmd_help(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Code **jumpaddr)
+MR_trace_cmd_help(char **words, int word_count, MR_TraceCmdInfo *cmd,
+    MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     if (word_count == 1) {
         MR_trace_help();

@@ -2099,7 +2099,7 @@ tabling_id_base_type(tabling_output_steps, "TableTrieStep", yes).
 tabling_id_base_type(tabling_input_enum_params,  "Integer", yes).
 tabling_id_base_type(tabling_output_enum_params, "Integer", yes).
 tabling_id_base_type(tabling_ptis, "PseudoTypeInfo", yes).
-tabling_id_base_type(tabling_type_param_locns, "MR_Type_Param_Locns", yes).
+tabling_id_base_type(tabling_type_param_locns, "MR_TypeParamLocns", yes).
 tabling_id_base_type(tabling_root_node, "TableNode", no).
 tabling_id_base_type(tabling_call_stats,        "TableStepStats", yes).
 tabling_id_base_type(tabling_prev_call_stats,   "TableStepStats", yes).

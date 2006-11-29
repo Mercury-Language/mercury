@@ -146,7 +146,7 @@ extern	char	*MR_trace_get_command(const char *, FILE *, FILE *);
 
 /* in trace/mercury_trace_vars.h */
 extern	const char *MR_trace_browse_all_on_level(FILE *,
-			const MR_Label_Layout *, MR_Word *, MR_Word *,
+			const MR_LabelLayout *, MR_Word *, MR_Word *,
 			int, MR_bool);
 
 /* in trace/mercury_trace_external.h */
@@ -157,14 +157,14 @@ extern	void	MR_trace_final_external(void);
 extern	MR_String	ML_type_name(MR_Word);
 
 /* in runtime/mercury_trace_base.c */
-extern	MR_Code	*MR_trace_fake(const MR_Label_Layout *);
+extern	MR_Code	*MR_trace_fake(const MR_LabelLayout *);
 
 /* in trace/mercury_trace.c */
-extern	MR_Code	*MR_trace_real(const MR_Label_Layout *);
+extern	MR_Code	*MR_trace_real(const MR_LabelLayout *);
 extern	void	MR_trace_interrupt_handler(void);
 
 /* in trace/mercury_trace_tables.c */
-extern	void	MR_register_module_layout_real(const MR_Module_Layout *);
+extern	void	MR_register_module_layout_real(const MR_ModuleLayout *);
 
 /*---------------------------------------------------------------------------*/
 

@@ -59,7 +59,7 @@ MR_bool             MR_debug_ever_enabled = MR_FALSE;
 MR_bool             MR_debug_enabled = MR_FALSE;
 MR_bool             MR_trace_func_enabled = MR_FALSE;
 MR_Code             *(*volatile MR_selected_trace_func_ptr)(
-                        const MR_Label_Layout *);
+                        const MR_LabelLayout *);
 MR_Unsigned         MR_trace_call_seqno = 0;
 MR_Unsigned         MR_trace_call_depth = 0;
 MR_Unsigned         MR_trace_event_number = 0;
@@ -137,7 +137,7 @@ static  MR_Unsigned MR_standardize_num(MR_Unsigned num,
 */
 
 MR_Code *
-MR_trace(const MR_Label_Layout *layout)
+MR_trace(const MR_LabelLayout *layout)
 {
     if (! MR_trace_func_enabled) {
         return NULL;
@@ -147,7 +147,7 @@ MR_trace(const MR_Label_Layout *layout)
 }
 
 MR_Code *
-MR_user_trace(const MR_Label_Layout *layout)
+MR_user_trace(const MR_LabelLayout *layout)
 {
     if (! MR_trace_func_enabled) {
         return NULL;
@@ -172,7 +172,7 @@ MR_tracing_not_enabled(void)
 }
 
 MR_Code *
-MR_trace_fake(const MR_Label_Layout *layout)
+MR_trace_fake(const MR_LabelLayout *layout)
 {
     MR_tracing_not_enabled();
     /*NOTREACHED*/
@@ -180,7 +180,7 @@ MR_trace_fake(const MR_Label_Layout *layout)
 }
 
 MR_Code *
-MR_trace_count(const MR_Label_Layout *label_layout)
+MR_trace_count(const MR_LabelLayout *label_layout)
 {
     MR_Unsigned     *exec_count;
 
@@ -188,10 +188,10 @@ MR_trace_count(const MR_Label_Layout *label_layout)
 
 #ifdef  MR_TRACE_COUNT_DEBUG
     {
-        const MR_Label_Layout   *call_label_layout;
+        const MR_LabelLayout    *call_label_layout;
         MR_uint_least16_t       call_label_number;
-        const MR_Module_Layout  *module_layout;
-        const MR_Proc_Layout    *proc_layout;
+        const MR_ModuleLayout   *module_layout;
+        const MR_ProcLayout     *proc_layout;
 
         proc_layout = label_layout->MR_sll_entry;
         module_layout = proc_layout->MR_sle_module_layout;
@@ -222,10 +222,10 @@ MR_trace_count(const MR_Label_Layout *label_layout)
 }
 
 MR_Unsigned *
-MR_trace_lookup_trace_count(const MR_Label_Layout *label_layout)
+MR_trace_lookup_trace_count(const MR_LabelLayout *label_layout)
 {
-    const MR_Module_Layout  *module_layout;
-    const MR_Proc_Layout    *proc_layout;
+    const MR_ModuleLayout   *module_layout;
+    const MR_ProcLayout     *proc_layout;
     MR_uint_least16_t       label_number;
 
     proc_layout = label_layout->MR_sll_entry;
@@ -244,16 +244,16 @@ MR_trace_lookup_trace_count(const MR_Label_Layout *label_layout)
 
 #define INIT_MODULE_TABLE_SIZE  10
 
-const MR_Module_Layout  **MR_module_infos;
+const MR_ModuleLayout   **MR_module_infos;
 unsigned                MR_module_info_next = 0;
 unsigned                MR_module_info_max  = 0;
 
 void
-MR_insert_module_info_into_module_table(const MR_Module_Layout *module)
+MR_insert_module_info_into_module_table(const MR_ModuleLayout *module)
 {
     int     slot;
 
-    MR_GC_ensure_room_for_next(MR_module_info, const MR_Module_Layout *,
+    MR_GC_ensure_room_for_next(MR_module_info, const MR_ModuleLayout *,
         INIT_MODULE_TABLE_SIZE);
     MR_prepare_insert_into_sorted(MR_module_infos, MR_module_info_next, slot,
         strcmp(MR_module_infos[slot]->MR_ml_name, module->MR_ml_name));
@@ -264,8 +264,8 @@ MR_insert_module_info_into_module_table(const MR_Module_Layout *module)
 static  void        MR_trace_write_quoted_atom(FILE *fp, const char *atom);
 static  void        MR_trace_write_string(FILE *fp, const char *atom);
 static  unsigned    MR_trace_write_label_exec_counts_for_file(FILE *fp,
-                        const MR_Module_Layout *module,
-                        const MR_Module_File_Layout *file,
+                        const MR_ModuleLayout *module,
+                        const MR_ModuleFileLayout *file,
                         const char *module_name,
                         MR_bool coverage_test);
 
@@ -457,8 +457,8 @@ unsigned
 MR_trace_write_label_exec_counts(FILE *fp, const char *progname,
     MR_bool coverage_test)
 {
-    const MR_Module_Layout      *module;
-    const MR_Module_File_Layout *file;
+    const MR_ModuleLayout       *module;
+    const MR_ModuleFileLayout   *file;
     int                         num_modules;
     int                         num_files;
     int                         module_num;
@@ -500,14 +500,14 @@ MR_trace_write_label_exec_counts(FILE *fp, const char *progname,
 
 static unsigned
 MR_trace_write_label_exec_counts_for_file(FILE *fp,
-    const MR_Module_Layout *module, const MR_Module_File_Layout *file,
+    const MR_ModuleLayout *module, const MR_ModuleFileLayout *file,
     const char *module_name, MR_bool coverage_test)
 {
-    const MR_Label_Layout       *label;
-    const MR_Proc_Layout        *prev_proc;
-    const MR_Proc_Layout        *proc;
-    const MR_User_Proc_Id       *id;
-    MR_Trace_Port               port;
+    const MR_LabelLayout        *label;
+    const MR_ProcLayout         *prev_proc;
+    const MR_ProcLayout         *proc;
+    const MR_UserProcId         *id;
+    MR_TracePort                port;
     int                         num_labels;
     int                         label_num;
     int                         label_index;
@@ -612,7 +612,7 @@ MR_trace_name_count_port_ensure_init()
     MR_do_init_modules_debugger();
 
     if (! done) {
-        MR_Trace_Port   port;
+        MR_TracePort    port;
 
         for (port = MR_PORT_CALL; port <= MR_PORT_NONE; port++) {
             MR_named_count_port[port] = PATH_ONLY;
@@ -995,8 +995,8 @@ MR_bool
 MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
     MR_Word *is_func_ptr, MR_Word *arg_list_ptr)
 {
-    const MR_Table_Io_Decl  *table_io_decl;
-    const MR_Proc_Layout    *proc_layout;
+    const MR_TableIoDecl    *table_io_decl;
+    const MR_ProcLayout     *proc_layout;
     MR_ConstString          proc_name;
     MR_Word                 is_func;
     MR_Word                 arg_list;
@@ -1024,7 +1024,7 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
         return MR_FALSE;
     }
 
-    table_io_decl = (const MR_Table_Io_Decl *) answer_block[0];
+    table_io_decl = (const MR_TableIoDecl *) answer_block[0];
     proc_layout = table_io_decl->MR_table_io_decl_proc;
     filtered_arity = table_io_decl->MR_table_io_decl_filtered_arity;
 
@@ -1158,7 +1158,7 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 #define MR_IO_TABLE_STATS_HASH_TABLE_SIZE 1024
 
 typedef struct {
-    const MR_Proc_Layout    *MR_io_tabling_stats_proc;
+    const MR_ProcLayout     *MR_io_tabling_stats_proc;
     MR_Unsigned             MR_io_tabling_stats_count;
 } MR_IO_Table_Stats_Hash_Record;
 
@@ -1178,7 +1178,7 @@ MR_hash_proc_layout(const void *proc)
 static MR_bool
 MR_equal_proc_layout(const void *proc1, const void *proc2)
 {
-    return (const MR_Proc_Layout *) proc1 == (const MR_Proc_Layout *) proc2;
+    return (const MR_ProcLayout *) proc1 == (const MR_ProcLayout *) proc2;
 }
 
 static MR_Hash_Table MR_io_tabling_stats_table = {
@@ -1222,8 +1222,8 @@ MR_compare_in_sort_arena(const void *addr1, const void *addr2)
 void
 MR_io_tabling_stats(FILE *fp)
 {
-    const MR_Table_Io_Decl          *table_io_decl;
-    const MR_Proc_Layout            *proc_layout;
+    const MR_TableIoDecl            *table_io_decl;
+    const MR_ProcLayout             *proc_layout;
     MR_ConstString                  proc_name;
     int                             arity;
     MR_Word                         is_func;
@@ -1259,7 +1259,7 @@ MR_io_tabling_stats(FILE *fp)
             continue;
         }
 
-        table_io_decl = (const MR_Table_Io_Decl *) answer_block[0];
+        table_io_decl = (const MR_TableIoDecl *) answer_block[0];
         proc_layout = table_io_decl->MR_table_io_decl_proc;
 
         hash_record = MR_lookup_hash_table(hash_table, proc_layout);
@@ -1315,9 +1315,9 @@ MR_io_tabling_stats(FILE *fp)
 #define PROC_REP_TABLE_SIZE (1 << 16)   /* 64k */
 
 typedef struct {
-    const MR_Proc_Layout    *plr_layout;
+    const MR_ProcLayout     *plr_layout;
     MR_Word                 plr_rep;
-} MR_Proc_Layout_Rep;
+} MR_ProcLayout_Rep;
 
 static  void                MR_do_init_proc_rep_table(void);
 static  const void          *proc_layout_rep_key(const void *proc_layout);
@@ -1341,13 +1341,13 @@ MR_do_init_proc_rep_table(void)
 }
 
 void
-MR_insert_proc_rep(const MR_Proc_Layout *proc_layout, MR_Word proc_rep)
+MR_insert_proc_rep(const MR_ProcLayout *proc_layout, MR_Word proc_rep)
 {
-    MR_Proc_Layout_Rep  *layout_rep;
+    MR_ProcLayout_Rep  *layout_rep;
 
     MR_do_init_proc_rep_table();
 
-    layout_rep = MR_GC_NEW(MR_Proc_Layout_Rep);
+    layout_rep = MR_GC_NEW(MR_ProcLayout_Rep);
     layout_rep->plr_layout = proc_layout;
     layout_rep->plr_rep = proc_rep;
 
@@ -1362,9 +1362,9 @@ MR_insert_proc_rep(const MR_Proc_Layout *proc_layout, MR_Word proc_rep)
 }
 
 MR_Word
-MR_lookup_proc_rep(const MR_Proc_Layout *proc_layout)
+MR_lookup_proc_rep(const MR_ProcLayout *proc_layout)
 {
-    const MR_Proc_Layout_Rep  *layout_rep;
+    const MR_ProcLayout_Rep  *layout_rep;
 
     MR_do_init_proc_rep_table();
 
@@ -1392,9 +1392,9 @@ MR_lookup_proc_rep(const MR_Proc_Layout *proc_layout)
 static const void *
 proc_layout_rep_key(const void *pair)
 {
-    MR_Proc_Layout_Rep  *proc_layout_rep;
+    MR_ProcLayout_Rep   *proc_layout_rep;
 
-    proc_layout_rep = (MR_Proc_Layout_Rep *) pair;
+    proc_layout_rep = (MR_ProcLayout_Rep *) pair;
     if (proc_layout_rep == NULL) {
         return NULL;
     } else {
@@ -1411,8 +1411,7 @@ hash_proc_layout_addr(const void *addr)
 static MR_bool
 equal_proc_layouts(const void *addr1, const void *addr2)
 {
-    return ((const MR_Proc_Layout *) addr1) ==
-        ((const MR_Proc_Layout *) addr2);
+    return ((const MR_ProcLayout *) addr1) == ((const MR_ProcLayout *) addr2);
 }
 
 /**************************************************************************/
@@ -1441,7 +1440,7 @@ MR_define_entry(MR_do_trace_redo_fail_shallow);
     {
         MR_Code *MR_jumpaddr;
         MR_save_transient_registers();
-        MR_jumpaddr = MR_trace((const MR_Label_Layout *)
+        MR_jumpaddr = MR_trace((const MR_LabelLayout *)
             MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
         MR_restore_transient_registers();
         if (MR_jumpaddr != NULL) {
@@ -1468,7 +1467,7 @@ MR_define_entry(MR_do_trace_redo_fail_deep);
         MR_Code *MR_jumpaddr;
 
         MR_save_transient_registers();
-        MR_jumpaddr = MR_trace((const MR_Label_Layout *)
+        MR_jumpaddr = MR_trace((const MR_LabelLayout *)
             MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
         MR_restore_transient_registers();
         if (MR_jumpaddr != NULL) {

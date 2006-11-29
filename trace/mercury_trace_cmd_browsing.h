@@ -35,15 +35,15 @@ extern  MR_TraceCmdFunc     MR_trace_cmd_list;
 */
 
 extern  void                MR_trace_maybe_sync_source_window(
-                                MR_Event_Info *event_info, MR_bool verbose);
+                                MR_EventInfo *event_info, MR_bool verbose);
 
 extern  void                MR_trace_browse_internal(MR_Word type_info,
-                                MR_Word value, MR_Browse_Caller_Type caller,
-                                MR_Browse_Format format);
+                                MR_Word value, MR_BrowseCallerType caller,
+                                MR_BrowseFormat format);
 extern  void                MR_trace_browse_goal_internal(MR_ConstString name,
                                 MR_Word arg_list, MR_Word is_func,
-                                MR_Browse_Caller_Type caller,
-                                MR_Browse_Format format);
+                                MR_BrowseCallerType caller,
+                                MR_BrowseFormat format);
 
 extern  const char *const   MR_trace_print_cmd_args[];
 extern  const char *const   MR_trace_stack_cmd_args[];
