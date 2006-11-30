@@ -111,8 +111,8 @@
             (t) = MR_RAW_TABLE_ANY((t0), (type_info), (value));             \
         }                                                                   \
         if (debug && MR_tabledebug) {                                       \
-            printf("TABLE %p: any %x type %p => %p\n",                      \
-                (t0), (value), (type_info), (t));                           \
+            printf("TABLE %p: any %lx type %p => %p\n",                     \
+                (t0), (long) (value), (type_info), (t));                    \
         }                                                                   \
     } while (0)
 
@@ -125,8 +125,8 @@
             (t) = MR_RAW_TABLE_ANY_ADDR((t0), (type_info), (value));        \
         }                                                                   \
         if (debug && MR_tabledebug) {                                       \
-            printf("TABLE %p: any %x type %p => %p\n",                      \
-                (t0), (value), (type_info), (t));                           \
+            printf("TABLE %p: any %lx type %p => %p\n",                     \
+                (t0), (long) (value), (type_info), (t));                    \
         }                                                                   \
     } while (0)
 
@@ -151,8 +151,8 @@
             (t) = MR_RAW_TABLE_ENUM((t0), (count), (value));                \
         }                                                                   \
         if (debug && MR_tabledebug) {                                       \
-            printf("TABLE %p: enum %d of %d => %p\n",                       \
-                (t0), (value), (count), (t));                               \
+            printf("TABLE %p: enum %ld of %ld => %p\n",                     \
+                (t0), (long) (value), (long) (count), (t));                 \
         }                                                                   \
     } while (0)
 
@@ -165,8 +165,8 @@
             (t) = MR_RAW_TABLE_START_INT((t0), (start), (value));           \
         }                                                                   \
         if (debug && MR_tabledebug) {                                       \
-            printf("TABLE %p: int %d - %d => %p\n",                         \
-                (t0), (value), (start), (t));                               \
+            printf("TABLE %p: int %ld - %ld => %p\n",                       \
+                (t0), (long) (value), (long) (start), (t));                 \
         }                                                                   \
     } while (0)
 
@@ -178,8 +178,8 @@
             (t) = MR_RAW_TABLE_WORD((t0), (value));                         \
         }                                                                   \
         if (debug && MR_tabledebug) {                                       \
-            printf("TABLE %p: word %d => %p\n",                             \
-                (t0), (value), (t));                                        \
+            printf("TABLE %p: word %ld => %p\n",                            \
+                (t0), (long) (value), (t));                                 \
         }                                                                   \
     } while (0)
 
@@ -191,8 +191,8 @@
             (t) = MR_RAW_TABLE_INT((t0), (value));                          \
         }                                                                   \
         if (MR_tabledebug) {                                                \
-            printf("TABLE %p: int %d => %p\n",                              \
-                (t0), (value), (t));                                        \
+            printf("TABLE %p: int %ld => %p\n",                             \
+                (t0), (long) (value), (t));                                 \
         }                                                                   \
     } while (0)
 

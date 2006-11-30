@@ -22,8 +22,8 @@
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
     if (DEBUG && MR_tabledebug) {
-        printf("ENTRY %p %x, data rep: %d\n",
-            table, data, MR_type_ctor_rep(type_ctor_info));
+        printf("ENTRY %p %lx, data rep: %d\n",
+            table, (long) data, MR_type_ctor_rep(type_ctor_info));
     }
 
     if (! MR_type_ctor_has_valid_rep(type_ctor_info)) {
