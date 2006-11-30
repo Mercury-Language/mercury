@@ -25,7 +25,7 @@ EXTRA_C_LIB_DIRS	= \
 EXTRA_C_INCL_DIRS	= \
 	$(patsubst %,%/lib/$(GRADESTRING)/inc,$(EXTRA_LIB_DIRS)) \
 	$(patsubst %,%/inc,$(EXTRA_LIB_DIRS))
-EXTRA_INIT_DIRS		= $(patsubst %,%/modules,$(EXTRA_LIB_DIRS))
+EXTRA_INIT_DIRS = $(patsubst %,%/modules/$(GRADESTRING),$(EXTRA_LIB_DIRS))
 MERCURY_EXTRA_INIT_DIRS = $(EXTRA_INIT_DIRS)
 else
 # mmc handles these itself when invoked with `--make'.
