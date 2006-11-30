@@ -15,7 +15,6 @@
 % It also contains code for handling the --grade option.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module libs.handle_options.
 :- interface.
@@ -1306,7 +1305,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % (e.g. `enum(var(T))'' in library/sparse_bitset.m),
         % which the current RTTI system can't handle.
         %
-        ( GC_Method = gc_accurate ->
+        (
+            GC_Method = gc_accurate,
             globals.set_option(agc_stack_layout, bool(yes), !Globals),
             globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
             globals.set_option(allow_hijacks, bool(no), !Globals),
@@ -1325,7 +1325,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(user_guided_type_specialization,
                 bool(no), !Globals)
         ;
-            true
+            ( GC_Method = gc_automatic
+            ; GC_Method = gc_none
+            ; GC_Method = gc_boehm
+            ; GC_Method = gc_boehm_debug
+            ; GC_Method = gc_mps
+            )
         ),
 
         % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
@@ -1481,8 +1486,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             bool(no), !Globals),
 
         % The results of trail usage analysis assume that trail usage
-        % optimization is being done, i.e that redundant trailing operations
-        % are really being eliminated.
+        % optimization is being done, i.e. that redundant trailing
+        % operations are really being eliminated.
         option_implies(analyse_trail_usage, optimize_trail_usage,
             bool(yes), !Globals),
 
@@ -1563,9 +1568,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ),
 
         %
-        % Handle the `.opt', C header and library search directories
-        % for installed libraries.  These couldn't be handled by options.m
-        % because they are grade dependent.
+        % Handle the `.opt', C header, init file and library search
+        % directories for installed libraries.  These couldn't be handled by
+        % options.m because they are grade dependent.
         %
         globals.lookup_accumulating_option(!.Globals,
             mercury_library_directories, MercuryLibDirs),
@@ -1604,7 +1609,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.lookup_accumulating_option(!.Globals,
                 intermod_directories, IntermodDirs0),
             globals.set_option(intermod_directories,
-                accumulating(ExtraIntermodDirs ++ IntermodDirs0), !Globals)
+                accumulating(ExtraIntermodDirs ++ IntermodDirs0), !Globals),
+            
+            ExtraInitDirs = list.map(
+                (func(MercuryLibDir) =
+                    MercuryLibDir / "modules" / GradeString
+                ), MercuryLibDirs),
+            
+            globals.lookup_accumulating_option(!.Globals,
+                init_file_directories, InitDirs1),
+            globals.set_option(init_file_directories,
+                accumulating(InitDirs1 ++ ExtraInitDirs), !Globals)
         ;
             MercuryLibDirs = []
         ),
@@ -2403,12 +2418,12 @@ split_grade_string(GradeStr, Components) :-
 
 split_grade_string_2([], []).
 split_grade_string_2(Chars, Components) :-
-    Chars = [_|_],
+    Chars = [_ | _],
     list.takewhile(char_is_not('.'), Chars, ThisChars, RestChars0),
     string.from_char_list(ThisChars, ThisComponent),
-    Components = [ThisComponent|RestComponents],
+    Components = [ThisComponent | RestComponents],
     (
-        RestChars0 = [_|RestChars], % discard the `.'
+        RestChars0 = [_ | RestChars], % Discard the `.'.
         split_grade_string_2(RestChars, RestComponents)
     ;
         RestChars0 = [],

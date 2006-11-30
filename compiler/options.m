@@ -2501,25 +2501,21 @@ special_handler(mercury_linkage_special, string(Flag),
 %-----------------------------------------------------------------------------%
 
 option_table_add_mercury_library_directory(OptionTable0, Dir) =
-    % The link_library_directories for Mercury libraries are grade
-    % dependent, so they need to be handled in handle_options.m
-    % when we know the grade.
+    % The init_file_directories and link_library_directories for Mercury
+    % libraries are grade dependent, so they need to be handled in
+    % handle_options.m after we know the grade.
     list.foldl(append_to_accumulating_option, [
         search_directories          - dir.make_path_name(Dir, "ints"),
         c_include_directory         - dir.make_path_name(Dir, "inc"),
-        % XXX Trace goal fix.
-        init_file_directories       - dir.make_path_name(Dir, "modules"),
         mercury_library_directories - Dir
     ], OptionTable0).
 
 option_table_add_search_library_files_directory(OptionTable0, Dir) =
     % Grade dependent directories need to be handled in handle_options.m
-    % when we know the grade.
+    % after we know the grade.
     list.foldl(append_to_accumulating_option, [
         search_directories          - Dir,
         c_include_directory         - Dir,
-        % XXX Trace goal fix.
-        init_file_directories       - Dir,
         search_library_files_directories - Dir
     ], OptionTable0).
 

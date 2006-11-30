@@ -924,7 +924,36 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
         module_name_to_file_name(MainModuleName, ".init", yes, InitFileName,
             !IO),
         update_interface_return_succeeded(InitFileName, Succeeded1, !IO),
-        Succeeded = Succeeded0 `and` Succeeded1
+        Succeeded2 = Succeeded0 `and` Succeeded1,
+        (
+            Succeeded2 = yes,
+            % Symlink or copy the .init files to the user's directory
+            % if --use-grade-subdirs is enabled.
+            globals.io_lookup_bool_option(use_grade_subdirs,
+                UseGradeSubDirs, !IO),
+            (
+                UseGradeSubDirs = yes,
+                io.set_output_stream(ErrorStream, OutputStream, !IO),
+                globals.io_set_option(use_subdirs, bool(no), !IO),
+                globals.io_set_option(use_grade_subdirs, bool(no), !IO),
+                module_name_to_file_name(MainModuleName, ".init", no,
+                    UserDirFileName, !IO),
+                globals.io_set_option(use_subdirs, bool(yes), !IO),
+                globals.io_set_option(use_grade_subdirs, bool(yes), !IO),
+                % Remove the target of the symlink/copy in case it already
+                % exists.
+                io.remove_file(UserDirFileName, _, !IO),
+                make_symlink_or_copy_file(InitFileName, UserDirFileName,
+                    Succeeded, !IO),
+                io.set_output_stream(OutputStream, _, !IO)
+            ;
+                UseGradeSubDirs = no,
+                Succeeded = yes
+            )
+        ;
+            Succeeded2 = no,
+            Succeeded  = no
+        )
     ;
         InitFileRes = error(Error),
         io.progname_base("mercury_compile", ProgName, !IO),
@@ -1060,13 +1089,16 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
         mercury_standard_library_directory, MaybeStdLibDir, !IO),
     (
         MaybeStdLibDir = yes(StdLibDir),
-        InitFileNamesList1 = [StdLibDir/"modules"/"mer_rt.init",
-            StdLibDir/"modules"/"mer_std.init" |
-            InitFileNamesList0],
-        TraceInitFileNamesList =
-            [StdLibDir/"modules"/"mer_browser.init",
-            StdLibDir/"modules"/"mer_mdbcomp.init" |
-            TraceInitFileNamesList0]
+        InitFileNamesList1 = [
+            StdLibDir / "modules" / Grade / "mer_rt.init",
+            StdLibDir / "modules" / Grade / "mer_std.init" |
+            InitFileNamesList0
+        ],
+        TraceInitFileNamesList = [
+            StdLibDir/"modules"/ Grade / "mer_browser.init",
+            StdLibDir/"modules"/ Grade / "mer_mdbcomp.init" |
+            TraceInitFileNamesList0
+        ]
     ;
         MaybeStdLibDir = no,
         InitFileNamesList1 = InitFileNamesList0,

@@ -79,11 +79,12 @@ fi
 
 if test "$mercury_stdlib_dir" != ""
 then
-	MERCURY_MOD_LIB_MODS="$mercury_stdlib_dir/modules/$RT_LIB_NAME.init \
-		$mercury_stdlib_dir/modules/$STD_LIB_NAME.init"
+	MERCURY_MOD_LIB_MODS="\
+		$mercury_stdlib_dir/modules/$GRADE/$RT_LIB_NAME.init \
+		$mercury_stdlib_dir/modules/$GRADE/$STD_LIB_NAME.init"
 	MERCURY_TRACE_LIB_MODS="\
-		$mercury_stdlib_dir/modules/$BROWSER_LIB_NAME.init \
-		$mercury_stdlib_dir/modules/$MDBCOMP_LIB_NAME.init"
+		$mercury_stdlib_dir/modules/$GRADE/$BROWSER_LIB_NAME.init \
+		$mercury_stdlib_dir/modules/$GRADE/$MDBCOMP_LIB_NAME.init"
 fi
 MERCURY_TRACE_LIB_MODS="$MERCURY_TRACE_LIB_MODS $trace_init_files"
 
