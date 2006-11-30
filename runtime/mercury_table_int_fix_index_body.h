@@ -18,7 +18,7 @@
     if (t->MR_fix_table == NULL) {
         record_alloc();
         t->MR_fix_table = MR_TABLE_NEW_ARRAY(MR_TableNode, range);
-        memset(t->MR_fix_table, 0, sizeof(MR_TableNode) * range);
+        MR_memset(t->MR_fix_table, 0, sizeof(MR_TableNode) * range);
     }
 
 #ifdef  MR_TABLE_DEBUG

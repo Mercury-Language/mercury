@@ -42,7 +42,7 @@
             /*
             ** If we are ever asked to table a value of a dummy type, we treat
             ** it mostly as an enum, with the exception being that we ignore
-            ** the actual value to be table (since it contains garbage) and
+            ** the actual value to be tabled (since it contains garbage) and
             ** substitute the constant zero, which ought to be the enum value
             ** assigned to the type's only function symbol.
             **

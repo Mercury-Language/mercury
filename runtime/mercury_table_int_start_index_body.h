@@ -26,7 +26,7 @@
         record_alloc();
         size = MR_max(MR_START_TABLE_INIT_SIZE, diff + 1);
         table->MR_start_table = MR_TABLE_NEW_ARRAY(MR_TableNode, size + 1);
-        memset(table->MR_start_table + 1, 0, sizeof(MR_TableNode) * size);
+        MR_memset(table->MR_start_table + 1, 0, sizeof(MR_TableNode) * size);
         table->MR_start_table[0].MR_integer = size;
     } else {
         size = table->MR_start_table[0].MR_integer;
