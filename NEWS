@@ -16,7 +16,7 @@ The problems fixed include:
 * non-exported typeclasses sometimes resulted in incomplete interface
   files being generated.
 
-In addition to bug-fixes we have the following addition to the 
+In addition to the above bug-fixes we have the following addition to the 
 standard library.
 
 Changes to the Mercury standard library:
