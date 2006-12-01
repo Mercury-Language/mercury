@@ -2906,6 +2906,9 @@ This release fixes some bugs with `mmc --make' and `--smart-recompilation'.
 Mercury 0.13.0, 14 September 2006
 ---------------------------------
 
+Mercury 0.13.1, 1 December 2006
+-------------------------------
+
 See the NEWS file.
 
 
