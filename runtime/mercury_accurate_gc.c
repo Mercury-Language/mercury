@@ -582,7 +582,7 @@ traverse_det_stack(const MR_LabelLayout *label_layout,
     */
     do {
         const MR_ProcLayout             *proc_layout;
-        MR_Stack_Walk_Step_Result       result;
+        MR_StackWalkStepResult          result;
         const char                      *problem;
 
         /*
