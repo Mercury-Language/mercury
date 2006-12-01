@@ -21,7 +21,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module set.
-:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % output_cliques:
     %

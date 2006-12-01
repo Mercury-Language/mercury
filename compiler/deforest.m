@@ -51,16 +51,11 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modes.
-:- import_module check_hlds.purity.
 :- import_module check_hlds.simplify.
-:- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
@@ -71,7 +66,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.dependency_graph.

@@ -32,10 +32,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
-:- import_module hlds.goal_form.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_module.
 :- import_module libs.compiler_util.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
@@ -45,7 +42,6 @@
 :- import_module ll_backend.proc_gen.
 :- import_module ll_backend.unify_gen.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -102,7 +102,6 @@
 :- import_module libs.compiler_util.
 :- import_module ll_backend.opt_util.
 
-:- import_module int.
 :- import_module pair.
 :- import_module svmap.
 :- import_module svset.

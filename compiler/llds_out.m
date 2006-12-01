@@ -180,20 +180,15 @@
 :- implementation.
 
 :- import_module backend_libs.c_util.
-:- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.export.
-:- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
-:- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.pragma_c_gen.
@@ -202,12 +197,10 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module char.
 :- import_module deconstruct.
-:- import_module dir.
 :- import_module int.
 :- import_module library.   % for the version number.
 :- import_module maybe.

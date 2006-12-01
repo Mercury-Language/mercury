@@ -120,9 +120,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.purity.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.

@@ -124,7 +124,6 @@
 :- import_module libs.compiler_util.
 
 :- import_module bool.
-:- import_module enum.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

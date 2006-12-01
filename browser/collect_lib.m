@@ -63,15 +63,16 @@
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.
 
 %------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mdb.dl.
 
 :- import_module char.
-:- import_module int.
 :- import_module io.
-:- import_module list.
+
+%------------------------------------------------------------------------------%
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 

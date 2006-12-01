@@ -115,9 +115,12 @@
 
 :- implementation.
 
+:- import_module parse_tree.prog_data.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
+:- import_module assoc_list.
+:- import_module dir.
 :- import_module solutions.
 
 %-----------------------------------------------------------------------------%

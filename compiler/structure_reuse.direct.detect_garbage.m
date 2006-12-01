@@ -32,9 +32,13 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.prog_data.
+:- import_module transform_hlds.ctgc.datastruct.
 
 :- import_module pair. 
+:- import_module set.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

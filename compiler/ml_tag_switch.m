@@ -40,10 +40,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_module.
 :- import_module libs.compiler_util.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_simplify_switch.
@@ -54,7 +51,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

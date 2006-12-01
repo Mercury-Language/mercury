@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: demangle.m
-% Author: fjh
+% File: demangle.m.
+% Author: fjh.
 %
 % A Mercury symbol demangler. This is used to convert symbol names back
 % into a form that users can understand.
@@ -19,8 +19,6 @@
 
 :- module demangle.
 :- interface.
-
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -36,8 +34,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
+:- import_module string.
 :- import_module pair.
-:- import_module require.
 
 %-----------------------------------------------------------------------------%
 

@@ -153,7 +153,6 @@
 
 :- import_module array.
 :- import_module bool.
-:- import_module counter.
 :- import_module exception.
 :- import_module float.
 :- import_module int.

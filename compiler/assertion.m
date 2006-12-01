@@ -132,22 +132,17 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module libs.compiler_util.
-:- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
 :- import_module solutions.
-:- import_module string.
 
 :- type subst == map(prog_var, prog_var).
 

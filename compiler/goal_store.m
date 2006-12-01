@@ -14,7 +14,6 @@
 % that are specific to hlds_goals.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.goal_store.
 :- interface.
@@ -54,7 +53,6 @@
 
 :- import_module hlds.goal_util.
 
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module solutions.

@@ -60,10 +60,8 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
@@ -76,7 +74,6 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 :- import_module transform_hlds.term_norm.
 
 :- import_module assoc_list.

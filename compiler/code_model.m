@@ -57,7 +57,6 @@
 :- implementation.
 
 :- import_module mdbcomp.program_representation.
-:- import_module int.
 
 determinism_to_code_model(detism_det,       model_det).
 determinism_to_code_model(detism_semi,      model_semi).

@@ -45,7 +45,6 @@
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
-:- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module svmap.

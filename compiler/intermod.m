@@ -103,8 +103,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.instmap.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
@@ -121,7 +119,6 @@
 :- import_module transform_hlds.inlining.
 
 :- import_module assoc_list.
-:- import_module dir.
 :- import_module getopt_io.
 :- import_module int.
 :- import_module list.

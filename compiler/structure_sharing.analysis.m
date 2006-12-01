@@ -41,7 +41,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.

@@ -764,7 +764,6 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
-:- import_module backend_libs.export.
 :- import_module backend_libs.foreign. % XXX needed for pragma foreign code
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
@@ -784,19 +783,14 @@
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.ml_util.
-:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.

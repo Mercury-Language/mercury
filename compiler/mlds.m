@@ -1716,7 +1716,6 @@
 :- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
-:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_type.
 
 :- import_module char.

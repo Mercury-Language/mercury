@@ -165,7 +165,6 @@
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module queue.

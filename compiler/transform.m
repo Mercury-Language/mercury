@@ -50,15 +50,9 @@
 :- implementation.
 
 :- import_module check_hlds.delay_info.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.instmap.
-:- import_module parse_tree.prog_data.
 
-:- import_module map.
 :- import_module pair.
-:- import_module set.
-:- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

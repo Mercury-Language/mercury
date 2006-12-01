@@ -31,6 +31,17 @@ MCFLAGS-make.module_dep_file = --no-ansi-c
 MCFLAGS-make.module_target = --no-ansi-c
 MCFLAGS-make.program_target = --no-ansi-c
 
+MCFLAGS-hlds = --no-warn-unused-imports
+MCFLAGS-ll_backend = --no-warn-unused-imports
+MCFLAGS-make = --no-warn-unused-imports
+MCFLAGS-ml_backend = --no-warn-unused-imports
+MCFLAGS-parse_tree = --no-warn-unused-imports
+MCFLAGS-recompilation = --no-warn-unused-imports
+MCFLAGS-top_level = --no-warn-unused-imports
+MCFLAGS-transform_hlds = --no-warn-unused-imports
+MCFLAGS-transform_hlds.ctgc.structure_reuse = --no-warn-unused-imports
+MCFLAGS-transform_hlds.ctgc.structure_sharing = --no-warn-unused-imports
+
 # Bug workarounds
 
 # This is the same bug as tests/valid/ho_and_type_spec_bug

@@ -77,20 +77,17 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
 :- import_module solutions.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

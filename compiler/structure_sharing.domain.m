@@ -61,7 +61,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -289,7 +288,6 @@
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_type_subst.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.util.
@@ -298,9 +296,8 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
-:- import_module require.
-:- import_module solutions.
 :- import_module string.
+:- import_module solutions.
 :- import_module svmap.
 :- import_module svset.
 :- import_module varset.

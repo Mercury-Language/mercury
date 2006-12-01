@@ -96,18 +96,10 @@
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
-:- import_module hlds.goal_form.
-:- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
-:- import_module libs.options.
-:- import_module parse_tree.prog_util.
 
-:- import_module char.
 :- import_module int.
-:- import_module set.
-:- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

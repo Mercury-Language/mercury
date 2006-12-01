@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Tool to take the difference of two trace counts.
-%
+% File: mtc_diff.m.
 % Author: Zoltan Somogyi.
+%
+% A tool to take the difference of two trace counts.
 %
 %-----------------------------------------------------------------------------%
 
 :- module mtc_diff.
-
 :- interface.
 
 :- import_module io.
@@ -28,15 +28,12 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.trace_counts.
 
-:- import_module assoc_list.
-:- import_module bool.
 :- import_module getopt.
-:- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module string.
-:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 main(!IO) :-
     io.command_line_arguments(Args0, !IO),

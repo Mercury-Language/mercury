@@ -41,8 +41,6 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
-:- import_module hlds.hlds_goal.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_errors.
@@ -56,7 +54,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module unit.
 

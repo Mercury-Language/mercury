@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: prog_io_dcg.m.
 % Main authors: fjh, zs.
-
+%
 % This module handles the parsing of clauses in Definite Clause Grammar
 % notation.
 %
@@ -16,7 +16,7 @@
 % XXX It may be an idea to recode this as a state variable transformation:
 % roughly     Head --> G1, G2, {G3}, G4.
 % becomes     Head(!DCG) :- G1(!DCG), G2(!DCG), G3, G4(!DCG).
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_dcg.
@@ -53,9 +53,7 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module counter.
-:- import_module int.
 :- import_module list.
-:- import_module map.
 :- import_module pair.
 :- import_module string.
 

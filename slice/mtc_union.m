@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Tool to combine several trace counts into one.
-%
+% File: mtc_union.m.
 % Main Author: Ian MacLarty.
+%
+% A tool to combine several trace counts into one.
 %
 %-----------------------------------------------------------------------------%
 
 :- module mtc_union.
-
 :- interface.
 
 :- import_module io.
@@ -28,16 +28,15 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.trace_counts.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module getopt.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module require.
 :- import_module set.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 main(!IO) :-
     io.command_line_arguments(Args0, !IO),

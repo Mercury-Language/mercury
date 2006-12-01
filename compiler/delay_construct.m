@@ -43,7 +43,6 @@
 :- implementation.
 
 :- import_module check_hlds.inst_match.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.

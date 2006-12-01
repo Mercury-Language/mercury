@@ -47,14 +47,12 @@
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.

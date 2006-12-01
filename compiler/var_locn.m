@@ -362,13 +362,11 @@
 
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
 
-:- import_module bag.
 :- import_module getopt_io.
 :- import_module int.
 :- import_module pair.

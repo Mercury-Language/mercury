@@ -6,13 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: canonical.m.
 % Authors: conway, zs.
 %
 % This module contains code for recursively merging sets of ProcDynamic and
 % CallSiteDynamic nodes.
+%
+%-----------------------------------------------------------------------------%
 
 :- module canonical.
-
 :- interface.
 
 :- import_module profile.

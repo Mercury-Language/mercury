@@ -83,7 +83,6 @@
 :- import_module libs.trace_params.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_io_util.
 
 :- import_module char.
 :- import_module dir.

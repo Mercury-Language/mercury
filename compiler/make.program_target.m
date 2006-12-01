@@ -42,11 +42,15 @@
 :- import_module analysis.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module libs.handle_options.
+:- import_module libs.process_util.
+:- import_module parse_tree.prog_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
+:- import_module dir.
+:- import_module getopt_io.
 :- import_module relation.
-:- import_module svrelation.
 
 %-----------------------------------------------------------------------------%
 

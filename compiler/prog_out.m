@@ -5,17 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: prog_out.m.
 % Main author: fjh.
-
+%
 % This module defines some predicates which output various parts
 % of the parse tree created by prog_io.
-
+%
 % WARNING - this module is mostly junk at the moment!
 % Only the first hundred lines or so are meaningful.
-
-%-----------------------------------------------------------------------------%
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_out.
@@ -158,7 +157,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_util.
 
-:- import_module int.
 :- import_module pair.
 :- import_module string.
 :- import_module term.

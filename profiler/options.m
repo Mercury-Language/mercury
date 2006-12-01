@@ -21,7 +21,6 @@
 :- import_module bool.
 :- import_module getopt.
 :- import_module io.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

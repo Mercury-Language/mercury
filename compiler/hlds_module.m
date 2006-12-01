@@ -50,17 +50,11 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_out.
 :- import_module transform_hlds.mmc_analysis.
 :- import_module parse_tree.modules.
-:- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module string.
-:- import_module svmap.
-:- import_module svmulti_map.
 
 %-----------------------------------------------------------------------------%
 

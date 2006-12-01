@@ -109,12 +109,16 @@
 
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module float.
 :- import_module int.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
+:- import_module set.
+:- import_module string.
 :- import_module svmulti_map.
 
 %-----------------------------------------------------------------------------%

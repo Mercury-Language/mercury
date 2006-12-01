@@ -100,16 +100,13 @@
 :- import_module backend_libs.interval.
 :- import_module check_hlds.goal_path.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
-:- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -141,7 +138,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
-:- import_module svset.
 :- import_module svvarset.
 :- import_module term.
 :- import_module unit.

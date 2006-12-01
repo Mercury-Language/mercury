@@ -49,17 +49,13 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.lp_rational.
-:- import_module libs.options.
 :- import_module libs.polyhedron.
 :- import_module libs.rat.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
@@ -73,7 +69,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 

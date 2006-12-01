@@ -36,17 +36,11 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_simplify_switch.
-:- import_module ml_backend.ml_switch_gen.
-:- import_module parse_tree.error_util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module list.

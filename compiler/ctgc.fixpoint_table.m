@@ -91,11 +91,9 @@
 
 :- import_module libs.compiler_util.
 
-:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%

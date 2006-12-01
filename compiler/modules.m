@@ -792,8 +792,6 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_io_util.
-:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.

@@ -24,6 +24,8 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+%-----------------------------------------------------------------------------%
+
     % perform_context_reduction(OrigTypeAssignSet, !Info) is true
     % iff either
     % (a) !:Info is the typecheck_info that results from performing
@@ -98,7 +100,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
-:- import_module pair.
 :- import_module set.
 :- import_module svmap.
 :- import_module term.

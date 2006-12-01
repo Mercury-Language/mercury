@@ -90,8 +90,6 @@
 
 :- import_module assoc_list.
 :- import_module char.
-:- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.

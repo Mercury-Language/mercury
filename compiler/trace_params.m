@@ -118,7 +118,6 @@
 
 :- implementation.
 
-:- import_module hlds.special_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: qual_info.m.
 % Main author: fjh.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.qual_info.
@@ -90,11 +90,11 @@
     is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds.hlds_data.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.

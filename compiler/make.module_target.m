@@ -72,8 +72,12 @@
 :- import_module analysis.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module libs.process_util.
+:- import_module parse_tree.prog_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
+
+:- import_module dir.
 
 %-----------------------------------------------------------------------------%
 
@@ -513,7 +517,7 @@ forkable_module_compilation_task_type(task_make_xml_doc) = yes.
 foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
     globals.io_get_globals(Globals, !IO),
     (
-        ForeignModName0 = foreign_language_module_name( ModuleName, Lang),
+        ForeignModName0 = foreign_language_module_name(ModuleName, Lang),
         SrcExt0 = foreign_language_file_extension(Lang)
     ->
         ForeignModName = ForeignModName0,

@@ -6,8 +6,10 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-MCFLAGS-mer_browser = --no-warn-nothing-exported
+MCFLAGS-mer_browser = --no-warn-nothing-exported --no-warn-unused-imports
 MCFLAGS-mdb.dice = --no-warn-nothing-exported
+
+MCFLAGS-mdb = --no-warn-unused-imports
 
 # XXX Disable higher order specialization for declarative_edt since this
 # optimization has a suspected bug that mdb.declarative_edt.revise_root/3

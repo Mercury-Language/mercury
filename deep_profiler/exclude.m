@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: exclude.m.
 % Author: zs.
 %
 % This module handles contour exclusion.
@@ -40,7 +41,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module exclude.
-
 :- interface.
 
 :- import_module profile.
@@ -67,7 +67,6 @@
 :- import_module char.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 

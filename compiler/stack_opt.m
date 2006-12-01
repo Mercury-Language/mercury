@@ -89,23 +89,17 @@
 :- import_module backend_libs.interval.
 :- import_module backend_libs.matching.
 :- import_module check_hlds.goal_path.
-:- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.simplify.
-:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
-:- import_module hlds.code_model.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
-:- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module ll_backend.call_gen.
 :- import_module ll_backend.live_vars.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.store_alloc.
@@ -113,7 +107,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
 :- import_module int.
@@ -124,9 +117,7 @@
 :- import_module set.
 :- import_module svmap.
 :- import_module svset.
-:- import_module svvarset.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

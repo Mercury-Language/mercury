@@ -341,7 +341,6 @@
 :- implementation.
 
 :- import_module set_ordlist.
-:- import_module set_unordlist.
 
 :- type set(T) ==   set_ordlist(T).
 

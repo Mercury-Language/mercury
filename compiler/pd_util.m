@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File pd_util.m.
 % Main author: stayl.
-
+%
 % Utility predicates for deforestation and partial evaluation.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.pd_util.
@@ -162,11 +162,8 @@
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.purity.
 :- import_module check_hlds.unique_modes.
-:- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
@@ -175,9 +172,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.constraint.
-:- import_module transform_hlds.pd_cost.
 :- import_module transform_hlds.pd_debug.
-:- import_module transform_hlds.unused_args.
 
 :- import_module assoc_list.
 :- import_module int.

@@ -15,7 +15,6 @@
 %------------------------------------------------------------------------------%
 
 :- module structure_reuse.versions.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -23,6 +22,8 @@
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 
 :- import_module io.
+
+%------------------------------------------------------------------------------%
 
 
     % For each of the entries in the reuse table: 
@@ -52,6 +53,7 @@
     module_info::in, module_info::out) is det.
 
 %------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -65,10 +67,10 @@
 
 :- import_module bool.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
-:- import_module string.
 :- import_module list.
+
+%------------------------------------------------------------------------------%
 
 :- type reuse_name == sym_name.
 

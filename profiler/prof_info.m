@@ -18,7 +18,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module prof_info.
-
 :- interface.
 
 :- import_module list.
@@ -166,7 +165,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, std_util.
+
+:- import_module require.
 
 :- type prof
     --->    prof(

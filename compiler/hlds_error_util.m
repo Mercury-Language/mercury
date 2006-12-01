@@ -69,7 +69,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module libs.compiler_util.

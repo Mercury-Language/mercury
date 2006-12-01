@@ -195,12 +195,9 @@
 :- implementation.
 
 :- import_module backend_libs.rtti.
-:- import_module check_hlds.type_util.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_unify_gen.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module list.

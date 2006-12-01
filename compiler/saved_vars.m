@@ -47,7 +47,6 @@
 :- import_module check_hlds.polymorphism.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.

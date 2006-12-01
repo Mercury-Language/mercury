@@ -16,6 +16,8 @@
 :- module make.util.
 :- interface.
 
+:- import_module assoc_list.
+
 %-----------------------------------------------------------------------------%
 %
 % Versions of foldl which stop if the supplied predicate returns `no'
@@ -271,8 +273,13 @@
 
 :- import_module analysis.
 :- import_module libs.compiler_util.
+:- import_module libs.handle_options.
+:- import_module parse_tree.prog_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
+
+:- import_module char.
+:- import_module dir.
 
 %-----------------------------------------------------------------------------%
 

@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+% 
+% File: util.m.
 % Authors: conway, zs.
 %
 % This module defines utility predicates for the CGI program.
 %-----------------------------------------------------------------------------%
 
 :- module util.
-
 :- interface.
 
 :- import_module char.
@@ -32,7 +32,6 @@
 
 :- implementation.
 
-:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

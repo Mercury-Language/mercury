@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
 %
-% File: post_term_analysis.m
-% Main author: juliensf
+% File: post_term_analysis.m.
+% Main author: juliensf.
 %
 % This module contains various checks that rely on the information produced by
 % termination analysis. 
@@ -35,9 +35,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
 :- import_module hlds.goal_form.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.

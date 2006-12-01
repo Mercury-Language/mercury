@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+% 
+% File: mdprof_test.m.
 % Author: zs.
 %
 % This file contains a tool for testing the behavior of the deep profiler.
 %-----------------------------------------------------------------------------%
 
 :- module mdprof_test.
-
 :- interface.
 
 :- import_module io.

@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
 % 
-% File: term_constr_build.m
-% Main author: juliensf
+% File: term_constr_build.m.
+% Main author: juliensf.
 % (partially based on code written by vjteag)
 % 
 % This module is responsible for building the abstract representation (AR)
@@ -60,18 +60,12 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util. 
-:- import_module hlds.hlds_data. 
 :- import_module hlds.hlds_goal. 
-:- import_module hlds.hlds_out.
 :- import_module hlds.quantification. 
 :- import_module libs.compiler_util.
-:- import_module libs.globals. 
 :- import_module libs.lp_rational. 
-:- import_module libs.options.
 :- import_module libs.polyhedron.
 :- import_module libs.rat.
-:- import_module parse_tree.mercury_to_mercury. 
-:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data. 
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.dependency_graph.
@@ -80,8 +74,6 @@
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_constr_util.
 
-:- import_module assoc_list.
-:- import_module counter.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.

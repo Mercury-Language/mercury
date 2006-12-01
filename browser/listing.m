@@ -25,7 +25,6 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -86,11 +85,7 @@
 
 :- implementation.
 
-:- import_module array.
-:- import_module char.
 :- import_module dir.
-:- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module type_desc.
 

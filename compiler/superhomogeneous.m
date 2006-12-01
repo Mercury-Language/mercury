@@ -114,7 +114,6 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.purity.
 :- import_module hlds.goal_util.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.field_access.
@@ -126,7 +125,6 @@
 :- import_module parse_tree.prog_io_dcg.
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_util.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
@@ -134,7 +132,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module svvarset.
 :- import_module svset.
 :- import_module term.

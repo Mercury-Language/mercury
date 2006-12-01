@@ -50,7 +50,6 @@
 :- import_module backend_libs.type_class_info.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module hlds.arg_info.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
@@ -63,11 +62,9 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.layout.
-:- import_module ll_backend.llds_out.
 :- import_module ll_backend.stack_layout.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.

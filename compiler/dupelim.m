@@ -65,7 +65,6 @@
 :- import_module ll_backend.basic_block.
 :- import_module ll_backend.opt_util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.

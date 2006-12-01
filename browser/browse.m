@@ -20,7 +20,6 @@
 % - Node expansion and contraction in the style of Windows Explorer.
 % 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
 :- module mdb.browse.
 :- interface.
@@ -175,13 +174,11 @@
 
 :- import_module bool.
 :- import_module char.
-:- import_module construct.
 :- import_module deconstruct.
 :- import_module getopt.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
-:- import_module parser.
 :- import_module pprint.
 :- import_module require.
 :- import_module string.

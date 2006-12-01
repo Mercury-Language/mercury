@@ -31,16 +31,13 @@
 
 :- implementation.
 
-:- import_module backend_libs.builtin_ops.
 :- import_module libs.compiler_util.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
-:- import_module parse_tree.prog_data.
 
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
-:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

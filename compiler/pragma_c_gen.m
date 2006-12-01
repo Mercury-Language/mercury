@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+%
 % File: pragma_c_gen.m
 % Main authors: dgj, conway, zs.
-
+%
 % The code in this module generates code for pragma_c_code goals.
 %
 % The schemes we use to generate code for model_det and model_semi
@@ -17,7 +17,7 @@
 %
 % The scheme for model_non pragma_c_codes is substantially different,
 % so we handle them separately.
-
+%
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.pragma_c_gen.
@@ -76,7 +76,6 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.

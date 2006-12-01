@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: pd_cost.m
-% Main author: stayl
-
+%
+% File: pd_cost.m.
+% Main author: stayl.
+%
 % goal_cost gives a very rough guess as to how much work a given goal
 % will cause at runtime. This only counts the local cost not including
 % the time taken by called predicates.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.pd_cost.
@@ -42,7 +42,6 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 

@@ -63,7 +63,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
-:- import_module string.
 :- import_module type_desc.
 
 %-----------------------------------------------------------------------------%

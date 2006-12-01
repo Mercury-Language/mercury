@@ -6,13 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: dump.m.
 % Authors: juliensf, zs.
 %
 % This module contains code for dumping out the deep profiler's data structures
 % for use in debugging the deep profiler.
+%
+%-----------------------------------------------------------------------------%
 
 :- module dump.
-
 :- interface.
 
 :- import_module profile.
@@ -60,7 +62,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module svset.
 

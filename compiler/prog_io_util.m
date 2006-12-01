@@ -183,23 +183,19 @@
 :- pred list_term_to_term_list(term::in, list(term)::out) is semidet.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
-:- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
-:- import_module bool.
 :- import_module set.
-:- import_module string.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 get_any_errors1(ok1(_)) = [].
 get_any_errors1(error1(Errors)) = Errors.

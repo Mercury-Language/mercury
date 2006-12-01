@@ -40,10 +40,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.goal_path.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module libs.globals.
@@ -52,12 +49,9 @@
 :- import_module libs.trace_params.
 :- import_module ll_backend.live_vars.
 :- import_module ll_backend.liveness.
-:- import_module ll_backend.llds.
-:- import_module ll_backend.stack_opt.
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module list.

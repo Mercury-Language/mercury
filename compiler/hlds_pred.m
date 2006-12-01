@@ -52,17 +52,13 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.make_hlds.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
-% Standard library modules.
 :- import_module int.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module unit.
 :- import_module varset.

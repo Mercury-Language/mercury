@@ -55,24 +55,17 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util. 
-:- import_module hlds.hlds_data. 
-:- import_module hlds.hlds_goal. 
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
-:- import_module libs.globals. 
 :- import_module libs.lp_rational. 
-:- import_module libs.options.
 :- import_module libs.polyhedron.
 :- import_module parse_tree.prog_data. 
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_constr_util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module set.
 :- import_module string.

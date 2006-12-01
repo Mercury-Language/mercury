@@ -94,7 +94,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
-:- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -107,7 +106,6 @@
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
-:- import_module svset.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.

@@ -131,10 +131,8 @@
 
 :- implementation.
 
-:- import_module backend_libs.rtti.
 :- import_module libs.compiler_util.
 :- import_module ll_backend.layout.
-:- import_module ll_backend.llds_out.
 
 :- import_module bimap.
 :- import_module counter.
@@ -142,7 +140,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module svbimap.
 :- import_module svmap.
 

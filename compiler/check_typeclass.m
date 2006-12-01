@@ -7,7 +7,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: check_typeclass.m.
-% Author: dgj, mark
+% Author: dgj, mark.
 %
 % This module checks conformance of instance declarations to the typeclass
 % declaration. It takes various steps to do this.
@@ -116,9 +116,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module bool.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.

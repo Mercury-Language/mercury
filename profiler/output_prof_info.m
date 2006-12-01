@@ -21,11 +21,8 @@
 
 :- interface.
 
-:- import_module float.
-:- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

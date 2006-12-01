@@ -66,7 +66,6 @@
 :- import_module hlds.make_hlds.add_pragma.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.field_access.
-:- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.superhomogeneous.
 :- import_module hlds.pred_table.
@@ -88,7 +87,6 @@
 :- import_module pair.
 :- import_module set.
 :- import_module string.
-:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

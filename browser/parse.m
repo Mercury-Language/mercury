@@ -124,7 +124,6 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -193,13 +192,10 @@
 
 :- import_module mdb.util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module int.
-:- import_module list.
-:- import_module map.
-:- import_module pair.
+:- import_module string.
 
 :- type token
     --->    (.)

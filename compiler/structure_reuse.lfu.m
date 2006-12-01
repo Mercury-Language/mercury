@@ -42,7 +42,6 @@
 :- import_module map.
 :- import_module set.
 :- import_module pair.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

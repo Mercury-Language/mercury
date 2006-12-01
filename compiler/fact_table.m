@@ -97,13 +97,10 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.export.
 :- import_module backend_libs.foreign.
-:- import_module backend_libs.name_mangle.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
-:- import_module hlds.hlds_out.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -114,7 +111,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
@@ -122,11 +118,9 @@
 :- import_module bool.
 :- import_module char.
 :- import_module float.
-:- import_module getopt_io.
 :- import_module int.
 :- import_module library.
 :- import_module map.
-:- import_module math.
 :- import_module maybe.
 :- import_module pair.
 :- import_module parser.

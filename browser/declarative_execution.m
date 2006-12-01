@@ -468,14 +468,12 @@
 :- implementation.
 
 :- import_module mdb.declarative_debugger.
-:- import_module mdb.declarative_edt.
 
 :- import_module exception.
 :- import_module int.
 :- import_module map.
 :- import_module require.
 :- import_module store.
-:- import_module string.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%

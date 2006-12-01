@@ -32,23 +32,17 @@
 
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
-:- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module ll_backend.code_util.
-:- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 :- import_module transform_hlds.
 :- import_module transform_hlds.dependency_graph.
 

@@ -20,7 +20,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module mercury_profile.
-
 :- interface.
 
 :- import_module io.
@@ -38,8 +37,6 @@
 :- import_module options.
 :- import_module output.
 :- import_module process_file.
-:- import_module prof_debug.
-:- import_module prof_info.
 :- import_module propagate.
 
 :- import_module bool.
@@ -47,8 +44,6 @@
 :- import_module library.
 :- import_module list.
 :- import_module maybe.
-:- import_module relation.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

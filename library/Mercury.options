@@ -46,3 +46,11 @@ MCFLAGS-mer_std = --no-warn-nothing-exported
 #
 MCFLAGS-array += --no-warn-insts-without-matching-type
 MCFLAGS-io += --no-warn-insts-without-matching-type
+
+# Avoid warnings about unused imports.
+#
+MCFLAGS-builtin += --no-warn-unused-imports
+MCFLAGS-construct += --no-warn-unused-imports
+MCFLAGS-deconstruct += --no-warn-unused-imports
+MCFLAGS-library += --no-warn-unused-imports
+MCFLAGS-mer_std += --no-warn-unused-imports

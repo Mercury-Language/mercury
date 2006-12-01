@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: html_format.m.
 % Author: zs.
 %
 % This module contains code that sets the format of the HTML tables
@@ -14,7 +15,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module html_format.
-
 :- interface.
 
 :- import_module interface.
@@ -145,7 +145,6 @@
 :- import_module char.
 :- import_module float.
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.

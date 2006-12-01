@@ -57,23 +57,16 @@
 :- implementation.
 
 :- import_module backend_libs.foreign.
-:- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.type_ctor_info.
-:- import_module check_hlds.type_util.
-:- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_util.
-:- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -83,7 +76,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module string.
 :- import_module term.
 :- import_module univ.
 

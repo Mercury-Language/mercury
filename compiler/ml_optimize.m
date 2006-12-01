@@ -45,15 +45,12 @@
 
 :- implementation.
 
-:- import_module backend_libs.builtin_ops.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_util.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.

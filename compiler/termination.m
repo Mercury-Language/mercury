@@ -56,15 +56,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_out.
 :- import_module hlds.passes_aux.
-:- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -74,7 +68,6 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.post_term_analysis.
 :- import_module transform_hlds.term_errors.
@@ -83,21 +76,16 @@
 :- import_module transform_hlds.term_pass2.
 :- import_module transform_hlds.term_util.
 
-:- import_module bag.
 :- import_module bool.
-:- import_module char.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module relation.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
 :- import_module unit.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

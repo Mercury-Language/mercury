@@ -58,15 +58,12 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_module.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.trace_gen.
 
-:- import_module char.
 :- import_module int.
 :- import_module list.
-:- import_module map.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%

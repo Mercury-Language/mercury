@@ -50,20 +50,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_analysis.
-:- import_module check_hlds.inst_match.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.modes.
-:- import_module check_hlds.type_util.
-:- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_out.
 :- import_module hlds.instmap.
-:- import_module hlds.passes_aux.
-:- import_module hlds.quantification.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 

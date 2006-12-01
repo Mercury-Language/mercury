@@ -91,10 +91,11 @@
 
 :- implementation.
 
-:- import_module type_desc.
 :- import_module require.
-:- import_module set.
 :- import_module string.
+:- import_module type_desc.
+
+%-----------------------------------------------------------------------------%
 
 assoc_list.reverse_members([], []).
 assoc_list.reverse_members([K - V | KVs], [V - K | VKs]) :-

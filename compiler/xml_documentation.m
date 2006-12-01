@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Module: xml_documentation.m
+% Module: xml_documentation.m.
 % Main authors: petdr.
 %
 % This module outputs an XML representation of a module,
@@ -16,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.xml_documentation.
-
 :- interface.
 
 :- import_module hlds.
@@ -46,7 +45,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.source_file_map.
 
 :- import_module bool.
@@ -55,7 +53,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

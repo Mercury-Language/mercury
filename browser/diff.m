@@ -1,39 +1,40 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % 
 % File: diff.m.
 % 
 % This module computes diffs between terms.
 %
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module mdb.diff.
 :- interface.
 
-:- import_module int.
 :- import_module io.
 :- import_module univ.
 
 :- pred report_diffs(int::in, int::in, univ::in, univ::in, io::di, io::uo)
     is cc_multi.
 
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mdbcomp.program_representation.
 
 :- import_module deconstruct.
+:- import_module int.
 :- import_module list.
 :- import_module require.
 :- import_module string.
-:- import_module type_desc.
+
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_export("C", report_diffs(in, in, in, in, di, uo),
     "ML_report_diffs").

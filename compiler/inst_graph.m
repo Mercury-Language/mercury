@@ -185,7 +185,6 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
 

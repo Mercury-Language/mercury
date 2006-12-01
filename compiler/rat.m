@@ -26,9 +26,7 @@
 :- module libs.rat.
 :- interface.
 
-:- import_module int.
 :- import_module io.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -82,6 +80,11 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
+
+:- import_module int.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % The normal form of a rat number has the following
     % properties:

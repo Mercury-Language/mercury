@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: sized_pretty.m:
 % Author: sthur.
-
+% 
 % When printing a term during debugging this module allows the user to put
 % a limit on the size of the term displayed. This limit is specified by
 % setting the number of lines you want and the width of these lines.
-
+% 
 % How to use sized_pretty.m :
 % ---------------------------
 %
@@ -165,8 +165,6 @@
 :- import_module mdb.browser_info.
 :- import_module mdb.browser_term.
 
-:- import_module int.
-:- import_module string.
 :- import_module univ.
 
 %---------------------------------------------------------------------------%
@@ -190,15 +188,15 @@
 
 :- implementation.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module deconstruct.
+:- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
 :- import_module pprint.
-:- import_module require.
 :- import_module std_util.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 

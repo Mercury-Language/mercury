@@ -5,7 +5,8 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+% 
+% File: mdprof_cgi.m.
 % Author of initial version: conway.
 % Author of this version: zs.
 %
@@ -15,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module mdprof_cgi.
-
 :- interface.
 
 :- import_module io.
@@ -37,10 +37,8 @@
 :- import_module timeout.
 :- import_module util.
 
-:- import_module array.
 :- import_module bool.
 :- import_module char.
-:- import_module exception.
 :- import_module getopt.
 :- import_module int.
 :- import_module library.
@@ -48,7 +46,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

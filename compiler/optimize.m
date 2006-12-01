@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: optimize.m.
 % Main author: zs.
-
+%
 % This module contains LLDS to LLDS optimizations.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.optimize.
@@ -35,11 +35,8 @@
 
 :- implementation.
 
-:- import_module backend_libs.name_mangle.
-:- import_module backend_libs.proc_label.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -50,7 +47,6 @@
 :- import_module ll_backend.jumpopt.
 :- import_module ll_backend.labelopt.
 :- import_module ll_backend.stdlabel.
-:- import_module ll_backend.llds_out.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.opt_util.
 :- import_module ll_backend.peephole.
@@ -58,7 +54,6 @@
 :- import_module ll_backend.use_local_vars.
 :- import_module ll_backend.wrap_blocks.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.

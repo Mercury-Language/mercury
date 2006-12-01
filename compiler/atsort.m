@@ -49,8 +49,6 @@
 
 :- import_module libs.compiler_util.
 
-:- import_module string.
-
 % :- pred main1(list(list(int))).
 % :- mode main1(out) is det.
 % 

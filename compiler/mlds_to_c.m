@@ -78,7 +78,6 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
@@ -93,14 +92,12 @@
                                          % handles derived classes
 :- import_module ml_backend.ml_type_gen. % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
-:- import_module ml_backend.rtti_to_mlds.% for mlds_rtti_type_name.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module library.

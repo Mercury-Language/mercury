@@ -24,6 +24,8 @@
 :- import_module maybe.
 :- import_module term.
 
+%-----------------------------------------------------------------------------%
+
     % compute_version_numbers(SourceFileModTime, NewItems, MaybeOldItems,
     %   VersionNumbers).
     %
@@ -44,8 +46,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.mercury_to_mercury.
@@ -59,6 +59,8 @@
 :- import_module map.
 :- import_module string.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 compute_version_numbers(SourceFileTime, Items, MaybeOldItems,
         version_numbers(ItemVersionNumbers, InstanceVersionNumbers)) :-

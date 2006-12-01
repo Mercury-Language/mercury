@@ -157,8 +157,6 @@
 
 :- import_module libs.compiler_util.
 :- import_module libs.options.
-:- import_module ll_backend.code_util.
-:- import_module ll_backend.livemap.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.opt_util.
 :- import_module parse_tree.prog_data.

@@ -113,7 +113,6 @@
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.

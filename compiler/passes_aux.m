@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: passes_aux.m.
 % Author: zs
-
+%
 % This file contains auxiliary routines for the passes of the front and back
 % ends of the compiler.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.passes_aux.
@@ -216,7 +216,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

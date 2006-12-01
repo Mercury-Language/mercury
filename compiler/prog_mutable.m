@@ -169,8 +169,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
-:- import_module string.
-
 %-----------------------------------------------------------------------------%
 
     % Create predmode declarations for the four primitive operations.
@@ -269,10 +267,10 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
-:- import_module libs.compiler_util.
 
 :- import_module list.
 :- import_module maybe.
+:- import_module string.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

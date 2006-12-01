@@ -48,11 +48,9 @@
 :- import_module libs.globals.
 :- import_module libs.tree.
 :- import_module ll_backend.call_gen.
-:- import_module ll_backend.code_util.
 :- import_module ll_backend.commit_gen.
 :- import_module ll_backend.disj_gen.
 :- import_module ll_backend.ite_gen.
-:- import_module ll_backend.middle_rec.
 :- import_module ll_backend.par_conj_gen.
 :- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.switch_gen.

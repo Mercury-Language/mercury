@@ -125,7 +125,6 @@
 
 :- implementation.
 
-:- import_module analysis.
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.

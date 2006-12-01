@@ -34,7 +34,6 @@
 :- module libs.lp.
 :- interface.
 
-:- import_module float.
 :- import_module io.
 :- import_module list.
 :- import_module map.
@@ -86,6 +85,7 @@
 :- import_module libs.compiler_util.
 
 :- import_module bool.
+:- import_module float.
 :- import_module int.
 :- import_module maybe.
 :- import_module set.
@@ -97,19 +97,17 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type lp_info --->
-    lp(
-        varset  :: varset,
-        urs_map :: map(var, pair(var)),
+:- type lp_info
+    --->    lp(
+                varset  :: varset,
+                urs_map :: map(var, pair(var)),
                             % Map from variables with URS to the
                             % corresponding pair of variables that
                             % represent that variable in the standard
                             % form (x = x' - x'', x', x'' >= 0).
-        
-        slack_vars :: list(var),      % slack variables
-        
-        artificial_vars :: list(var)  % artificial variables
-    ).
+                slack_vars :: list(var),      % slack variables
+                artificial_vars :: list(var)  % artificial variables
+            ).
 
 %-----------------------------------------------------------------------------%
 

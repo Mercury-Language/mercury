@@ -83,9 +83,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
@@ -107,7 +105,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 

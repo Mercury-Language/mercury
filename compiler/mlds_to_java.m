@@ -103,9 +103,6 @@
     %     c_util.make_float_literal.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
-:- import_module backend_libs.export.      % for export.type_to_type_string
-:- import_module backend_libs.foreign.
-:- import_module backend_libs.name_mangle.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_pred.           % for pred_proc_id.
@@ -118,19 +115,15 @@
 :- import_module ml_backend.ml_code_util.  % for ml_gen_local_var_decl_flags.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
-:- import_module ml_backend.rtti_to_mlds.  % for mlds_rtti_type_name.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.       % for mercury_std_library_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module library.
 :- import_module list.

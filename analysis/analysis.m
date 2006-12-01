@@ -22,14 +22,12 @@
 :- module analysis.
 :- interface.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
 :- import_module unit.
-:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 
@@ -266,14 +264,15 @@
 
 :- implementation.
 
-:- include_module analysis__file.
-:- import_module analysis__file.
+:- include_module analysis.file.
+:- import_module analysis.file.
 
-:- import_module bool.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module string.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 :- type analysis_info
 	---> some [Compiler] analysis_info(

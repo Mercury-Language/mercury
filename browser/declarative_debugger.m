@@ -72,7 +72,6 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
-:- import_module string.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -311,17 +310,13 @@
 
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_oracle.
-:- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.rtti_access.
-:- import_module mdbcomp.slice_and_dice.
-:- import_module mdbcomp.trace_counts.
 
 :- import_module bool.
 :- import_module exception.
 :- import_module int.
-:- import_module map.
-:- import_module require.
+:- import_module string.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%

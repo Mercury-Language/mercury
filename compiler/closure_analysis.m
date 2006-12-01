@@ -47,8 +47,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module counter.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: query.m.
 % Authors: conway, zs.
 %
 % This module contains the top level predicates for servicing individual
@@ -13,7 +14,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module query.
-
 :- interface.
 
 :- import_module profile.
@@ -39,16 +39,13 @@
 :- import_module array.
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module char.
 :- import_module exception.
-:- import_module float.
 :- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module univ.
 :- import_module unit.

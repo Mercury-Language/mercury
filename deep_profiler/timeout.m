@@ -5,7 +5,8 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+% 
+% File: timeout.m.
 % Author: zs.
 %
 % This module implements timeouts and cleanup for the deep profiler.
@@ -25,7 +26,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module timeout.
-
 :- interface.
 
 :- import_module bool.
@@ -86,9 +86,6 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module int.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

@@ -39,7 +39,8 @@
 
 :- import_module bool. 
 :- import_module io. 
-:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % A response that the oracle gives to a query about the
     % truth of an EDT node.
@@ -163,19 +164,16 @@
 :- implementation.
 
 :- import_module mdb.declarative_execution.
-:- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 
-:- import_module assoc_list.
 :- import_module bimap.
-:- import_module bool.
 :- import_module counter.
-:- import_module exception.
 :- import_module int.
 :- import_module library.
 :- import_module list.
 :- import_module map.
 :- import_module set.
+:- import_module string.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%

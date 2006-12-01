@@ -48,10 +48,8 @@
 :- implementation.
 
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 
 :- import_module char.
 :- import_module dir.

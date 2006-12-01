@@ -334,19 +334,18 @@
     int::out, bool::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mdb.term_rep.
 
 :- import_module deconstruct.
-:- import_module int.
-:- import_module io.
-:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
 
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_export("C", init_persistent_state(out),
     "ML_BROWSE_init_persistent_state").

@@ -160,20 +160,13 @@
 :- implementation.
 
 :- import_module hlds.hlds_error_util.
-:- import_module hlds.hlds_out.
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_out.
 :- import_module transform_hlds.term_util.
 
 :- import_module bag.
 :- import_module bool.
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module string.
 :- import_module term.

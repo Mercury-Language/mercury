@@ -20,8 +20,6 @@
 
 :- import_module backend_libs.builtin_ops.
 
-:- import_module string.
-
 %-----------------------------------------------------------------------------%
 
     % Succeeds iff the given string matches a reserved word in Java.
@@ -65,10 +63,6 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module parse_tree.error_util.
-
-:- import_module list.
 
 %-----------------------------------------------------------------------------%
 

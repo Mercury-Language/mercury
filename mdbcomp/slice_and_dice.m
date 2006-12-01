@@ -12,9 +12,10 @@
 % This module contains code for generating and manipulating slices and dices.
 % A dice is the difference between one or more passing test runs
 % and one (or more, but that is not yet implemented) failing test runs.
+%
+%-----------------------------------------------------------------------------%
 
 :- module mdbcomp.slice_and_dice.
-
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -174,9 +175,6 @@
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.rtti_access.
 
-:- import_module assoc_list.
-:- import_module bool.
-:- import_module char.
 :- import_module float.
 :- import_module int.
 :- import_module list.

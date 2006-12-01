@@ -576,17 +576,17 @@
 
 :- implementation.
 
+:- import_module mdb.declarative_execution.
+:- import_module mdb.term_rep.
+
 :- import_module bimap.
-:- import_module char.
 :- import_module counter.
 :- import_module exception.
-:- import_module float.
 :- import_module int.
 :- import_module svmap.
 :- import_module string.
 
-:- import_module mdb.declarative_execution.
-:- import_module mdb.term_rep.
+%-----------------------------------------------------------------------------%
 
     % A suspect is an edt node with some additional information relevant
     % to the bug search.

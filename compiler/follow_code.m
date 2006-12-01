@@ -52,10 +52,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_analysis.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -63,10 +61,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module map.
 :- import_module pair.
-:- import_module set.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

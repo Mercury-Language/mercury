@@ -69,8 +69,9 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module string.
+
+%---------------------------------------------------------------------------%
 
 from_string(Str) = [Str].
 

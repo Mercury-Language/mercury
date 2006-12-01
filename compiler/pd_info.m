@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: pd_info.m.
 % Main author: stayl.
-
+%
 % Types for deforestation.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.pd_info.
@@ -117,23 +117,18 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_util.
 :- import_module check_hlds.inst_match.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.pd_debug.
 :- import_module transform_hlds.pd_util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%

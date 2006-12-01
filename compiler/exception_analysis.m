@@ -128,13 +128,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.make_hlds.
-:- import_module hlds.passes_aux.
-:- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -143,7 +139,6 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.mmc_analysis.
 
@@ -153,7 +148,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 
 %----------------------------------------------------------------------------%

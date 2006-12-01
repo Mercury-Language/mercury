@@ -120,7 +120,6 @@
 :- import_module list.
 :- import_module require.
 :- import_module string.
-:- import_module term.
 
 % Note that there are two implementations of most predicates here:
 % one which deals with strings, the other that deals with io.states.

@@ -1,9 +1,9 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2005 University of Melbourne.
+# Copyright (C) 2005-2006 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-MCFLAGS-mer_mdbcomp = --no-warn-nothing-exported
+MCFLAGS-mer_mdbcomp = --no-warn-nothing-exported --no-warn-unused-imports

@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: pred_table.m.
 % Main authors: fjh, conway.
-
+%
 % This module defines the part of the High Level Data Structure or HLDS
 % that allows the compiler to look up predicates by name (qualified,
 % unqualified or some mixture) and/or arity.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.pred_table.
@@ -31,10 +31,8 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.

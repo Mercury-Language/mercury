@@ -159,7 +159,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
 :- import_module hlds.assertion.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
@@ -184,7 +183,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module multi_map.
 :- import_module pair.
 :- import_module set.
 :- import_module solutions.

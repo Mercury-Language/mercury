@@ -31,6 +31,8 @@
 :- import_module bool.
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
     % Given a Mercury representation of a layout structure, output its
     % definition in the appropriate C global variable.
     %
@@ -97,22 +99,16 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
-:- import_module backend_libs.rtti.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module libs.trace_params.
-:- import_module ll_backend.code_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 
-:- import_module char.
 :- import_module int.
 :- import_module list.
 :- import_module maybe.

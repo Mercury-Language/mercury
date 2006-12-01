@@ -184,29 +184,23 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
-:- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.
-:- import_module ll_backend.llds.
 :- import_module ll_backend.trace_gen.
-:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

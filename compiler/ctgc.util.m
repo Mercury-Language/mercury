@@ -51,17 +51,17 @@
     list(mer_type), tvarset) = tsubst.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_type_subst.
 
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 pred_requires_no_analysis(ModuleInfo, PredId) :-
     module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),

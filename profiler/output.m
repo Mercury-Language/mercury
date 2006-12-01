@@ -19,10 +19,8 @@
 
 :- import_module output_prof_info.
 
-:- import_module int.
 :- import_module io.
 :- import_module map.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -41,9 +39,11 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module float.
+:- import_module int.
 :- import_module list.
 :- import_module pair.
 :- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

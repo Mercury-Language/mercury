@@ -130,23 +130,18 @@
 
 :- import_module libs.compiler_util.
 :- import_module libs.options.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
-:- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module set.
 :- import_module solutions.
-:- import_module string.
 :- import_module svmap.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

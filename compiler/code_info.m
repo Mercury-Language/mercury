@@ -60,10 +60,8 @@
 :- implementation.
 
 :- import_module backend_libs.proc_label.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
-:- import_module hlds.goal_form.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
@@ -71,13 +69,9 @@
 :- import_module libs.trace_params.
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
-:- import_module ll_backend.exprn_aux.
-:- import_module ll_backend.llds_out.
 :- import_module ll_backend.var_locn.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
-:- import_module char.
 :- import_module int.
 :- import_module pair.
 :- import_module set.

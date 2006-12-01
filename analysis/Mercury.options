@@ -6,7 +6,7 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-MCFLAGS-mer_analysis = --no-warn-nothing-exported
+MCFLAGS-mer_analysis = --no-warn-nothing-exported --no-warn-unused-imports
 
 # XXX work around a bug that sometimes appears at -O4 and above.
 # mmc -r analysis.file.c -s asm_fast.gc -O4 --intermodule-optimisation

@@ -106,7 +106,6 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
@@ -117,7 +116,6 @@
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.code_info.
-:- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
 :- import_module parse_tree.prog_data.
@@ -129,7 +127,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module unit.
 
 %---------------------------------------------------------------------------%

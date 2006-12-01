@@ -45,26 +45,19 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
-:- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- import_module transform_hlds.ctgc.util.
 
 :- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module set.
-:- import_module string.
 :- import_module svmap.
 :- import_module term.
-:- import_module varset.
 
 :- include_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- include_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.

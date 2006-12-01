@@ -151,7 +151,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
@@ -166,10 +165,8 @@
 :- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.dependency_graph.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.

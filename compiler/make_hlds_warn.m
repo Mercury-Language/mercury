@@ -72,8 +72,6 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_out.
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_out.

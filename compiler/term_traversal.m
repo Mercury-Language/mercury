@@ -112,8 +112,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
-:- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 
@@ -121,7 +119,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module string.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%

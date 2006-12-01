@@ -56,14 +56,8 @@
 
 :- implementation.
 
-:- import_module mdb.declarative_debugger.
-
 :- import_module bool.
-:- import_module exception.
-:- import_module int.
 :- import_module maybe.
-:- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 

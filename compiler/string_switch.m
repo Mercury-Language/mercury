@@ -43,8 +43,6 @@
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.trace_gen.
 
-:- import_module assoc_list.
-:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.

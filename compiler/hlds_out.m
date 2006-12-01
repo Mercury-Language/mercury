@@ -260,7 +260,6 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_rtti.
@@ -283,7 +282,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
 :- import_module pair.
 :- import_module set.
 :- import_module string.

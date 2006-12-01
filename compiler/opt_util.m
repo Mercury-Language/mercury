@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: opt_util.m.
 % Main author: zs.
-
+%
 % Utilities for LLDS to LLDS optimization.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.opt_util.
@@ -309,12 +309,9 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.proc_label.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module ll_backend.exprn_aux.
-:- import_module ll_backend.llds_out.
 :- import_module parse_tree.prog_data.
 
 :- import_module int.

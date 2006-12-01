@@ -55,9 +55,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module libs.compiler_util.
 :- import_module libs.lp.
@@ -66,13 +63,10 @@
 
 :- import_module bag.
 :- import_module bool.
-:- import_module char.
 :- import_module float.
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
-:- import_module string.
 :- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.

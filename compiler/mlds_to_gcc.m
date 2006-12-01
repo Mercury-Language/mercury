@@ -3,10 +3,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % mlds_to_gcc - Convert MLDS to the GCC back-end representation.
 % Main author: fjh.
-
+%
 % Note that this does *not* compile to GNU C -- instead it
 % actually generates GCC's internal "Tree" representation,
 % and then invokes the GCC back-end to compile it to assembler,
@@ -32,9 +32,9 @@
 % Trailing will probably work too, but since trailing
 % is currently implemented using the C interface,
 % it will end up compiling everything via C.
-
+%
 % See also gcc/mercury/README.
-
+%
 % TODO:
 %	Fix configuration issues:
 %	- document installation procedure better
@@ -85,7 +85,7 @@
 %	- improve symbol table handling
 %
 %	See also the TODO list in ml_code_gen.m.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module mlds_to_gcc.
@@ -149,20 +149,14 @@
 :- use_module gcc.
 
 :- import_module backend_libs.
-:- import_module check_hlds.
 :- import_module hlds.
 :- import_module libs.
 :- import_module parse_tree.
 
-% XXX some of these imports might be unused
-
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.name_mangle.
-:- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.rtti.		% for rtti.addr_to_string.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.	% for proc_id_to_int and invalid_pred_id
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -177,11 +171,8 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module int.
-:- import_module library.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

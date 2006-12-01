@@ -6,17 +6,17 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% file: polyhedron.m
-% main author: juliensf
-
+% File: polyhedron.m.
+% Main author: juliensf.
+%
 % Provides closed convex polyhedra over Q^n.
 % These are useful as an abstract domain for describing numerical relational
 % information.  
-
+%
 % The set of closed convex polyhedra is partially ordered by subset inclusion.
 % It forms a lattice with intersection as the binary meet operation and convex
 % hull as the binary join operation.
-
+%
 % This module includes procedures for:
 %   - computing the intersection of two convex polyhedra
 %   - computing the convex hull of two convex polyhedra
@@ -25,9 +25,9 @@
 %     expensive.
 %   - converting a convex polyhedron to and from an equivalent system
 %     of linear constraints.
-
+%
 % It also includes an implementation of widening for convex polyhedra.
-
+%
 % NOTE: many of the operations in this module require you to pass in 
 % the varset that the variables in the constraints that define the polyhedron
 % were allocated from.  This because the code for computing the convex hull
@@ -35,10 +35,10 @@
 % variables.  
 %
 % XXX We could avoid this with some extra work.
-
+%
 % TODO:
 %   * See if using the double description method is any faster.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module libs.polyhedron.
@@ -187,10 +187,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.rat.
 
-:- import_module bool.
-:- import_module int.
 :- import_module pair.
-:- import_module string.
 :- import_module svmap.
 :- import_module svvarset.
 :- import_module varset.

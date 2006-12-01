@@ -14,7 +14,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -59,7 +58,6 @@
 
 :- implementation.
 
-:- import_module int.
 :- import_module require.
 
 is_predicate(predicate) = yes.

@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+%
 % File: prog_rep.m.
 % Authors: zs, maclarty.
-
+%
 % This module generates a representation of HLDS goals for the declarative
 % debugger. Since this representation is to be included in debuggable
 % executables, it should be as compact as possible, and therefore contains
 % only the information required by the declarative debugger. The structure
 % of this representation is defined by mdbcomp/program_representation.m.
-
+%
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.prog_rep.
@@ -57,14 +57,11 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
-:- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module maybe.

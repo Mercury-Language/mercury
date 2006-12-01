@@ -106,7 +106,6 @@
 :- import_module ll_backend.follow_code.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.liveness.
-:- import_module ll_backend.live_vars.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.optimize.
 :- import_module ll_backend.proc_gen.
@@ -143,7 +142,6 @@
 :- import_module check_hlds.unused_imports.
 :- import_module check_hlds.xml_documentation.
 :- import_module hlds.arg_info.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
@@ -159,7 +157,6 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_util.
 :- import_module recompilation.
 :- import_module recompilation.check.
 :- import_module recompilation.usage.
@@ -174,7 +171,6 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.export.
 :- import_module backend_libs.foreign.
-:- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
 :- import_module backend_libs.type_class_info.
@@ -190,11 +186,9 @@
 :- import_module assoc_list.
 :- import_module benchmarking.
 :- import_module bool.
-:- import_module dir.
 :- import_module gc.
 :- import_module getopt_io.
 :- import_module int.
-:- import_module library.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -203,7 +197,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%

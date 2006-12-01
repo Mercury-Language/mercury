@@ -437,20 +437,14 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_util.
-:- import_module parse_tree.prog_util.
-
-% The following imports are needed for mangling pred names.
-:- import_module hlds.hlds_pred.
-:- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 
 :- import_module bool.
 :- import_module counter.

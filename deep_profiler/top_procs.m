@@ -5,7 +5,8 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+% 
+% File: top_procs.m.
 % Author: zs.
 %
 % This module contains code to find the top procedures by several criteria.
@@ -15,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module top_procs.
-
 :- interface.
 
 :- import_module interface.
@@ -62,7 +62,6 @@
 :- import_module bool.
 :- import_module float.
 :- import_module int.
-:- import_module require.
 
 %-----------------------------------------------------------------------------%
 

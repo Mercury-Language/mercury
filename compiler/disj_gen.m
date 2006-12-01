@@ -34,7 +34,6 @@
 :- implementation.
 
 :- import_module hlds.goal_form.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -46,7 +45,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.

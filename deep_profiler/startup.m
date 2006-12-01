@@ -5,7 +5,8 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+% 
+% File: startup.m.
 % Authors: conway, zs.
 %
 % This module contains the code for turning the raw list of nodes read in by
@@ -16,7 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module startup.
-
 :- interface.
 
 :- import_module profile.
@@ -46,11 +46,9 @@
 :- import_module read_profile.
 
 :- import_module array.
-:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module svarray.
 :- import_module svmap.

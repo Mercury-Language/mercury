@@ -28,7 +28,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -747,7 +746,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
-:- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -755,11 +753,11 @@
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_gen.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module counter.
+:- import_module int.
 :- import_module pair.
 :- import_module stack.
 :- import_module string.

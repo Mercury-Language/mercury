@@ -131,10 +131,8 @@
 
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_util.
 
 :- import_module map.
-:- import_module pair.
 :- import_module set.
 :- import_module term.
 :- import_module varset.

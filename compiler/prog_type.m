@@ -409,12 +409,10 @@
 
 :- import_module libs.options.
 :- import_module libs.compiler_util.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type_subst.
 
-:- import_module pair.
 :- import_module string.
 :- import_module svmap.
 

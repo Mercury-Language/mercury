@@ -22,18 +22,16 @@
 :- module ll_backend.live_vars.
 :- interface.
 
-% Parse tree modules
-:- import_module parse_tree.prog_data.
-
-% HLDS modules
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
-% Standard library modules
 :- import_module bool.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
 :- type alloc_data
     --->    alloc_data(
@@ -62,24 +60,19 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
-:- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
-:- import_module ll_backend.liveness.
-:- import_module ll_backend.llds.
 
-:- import_module assoc_list.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
+
+%-----------------------------------------------------------------------------%
 
     % Information about which variables in a parallel conjunction need stack
     % slots.

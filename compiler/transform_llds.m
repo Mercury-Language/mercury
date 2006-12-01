@@ -37,20 +37,15 @@
 
 :- import_module hlds.hlds_pred.
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.proc_label.
 :- import_module hlds.code_model.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module ll_backend.opt_util.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module counter.
 :- import_module int.
 :- import_module list.
-:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module string.

@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: prog_io_typeclass.m.
 % Main authors: dgj.
-
+%
 % This module handles the parsing of typeclass declarations.
 % Perhaps some of this should go into prog_io_util.m?
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_typeclass.
@@ -58,16 +58,13 @@
 
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module set.
 :- import_module solutions.
 :- import_module string.
 :- import_module term.

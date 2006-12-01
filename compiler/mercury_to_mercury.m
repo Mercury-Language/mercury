@@ -401,14 +401,12 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.rat.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.version.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module lexer.
 :- import_module map.

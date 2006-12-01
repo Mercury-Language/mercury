@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: pd_term.m.
 % Main author: stayl.
-
+%
 % Termination checking for the deforestation process.
 % There are two places where care must be taken to ensure
 % termination of the process:
@@ -34,7 +34,7 @@
 % - Use homeomorphic embedding instead of term sizes as suggested in
 %   the papers on partial deduction from K.U. Leuven. This will be
 %   useful (necessary?) if we start propagating equality constraints.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.pd_term.
@@ -102,7 +102,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
@@ -112,7 +111,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 

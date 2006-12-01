@@ -69,7 +69,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
-:- import_module require.
 :- import_module sparse_bitset.
 :- import_module term.
 

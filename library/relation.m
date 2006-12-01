@@ -312,7 +312,6 @@
 :- import_module pair.
 :- import_module queue.
 :- import_module require.
-:- import_module stack.
 
 %------------------------------------------------------------------------------%
 

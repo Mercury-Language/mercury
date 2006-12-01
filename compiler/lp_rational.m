@@ -326,7 +326,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module exception.
 :- import_module int.
 :- import_module solutions.
 :- import_module string.

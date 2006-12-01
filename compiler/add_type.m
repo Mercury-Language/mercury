@@ -56,7 +56,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-:- import_module check_hlds.type_util.
 :- import_module hlds.make_hlds.add_special_pred.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_passes.
@@ -68,14 +67,11 @@
 :- import_module libs.options.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
-:- import_module pair.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.

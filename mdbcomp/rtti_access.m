@@ -11,6 +11,8 @@
 %
 % This module contains an interface to the label_layout and proc_layout
 % types which are used in the C backend of the debugger.
+%
+%-----------------------------------------------------------------------------%
 
 :- module mdbcomp.rtti_access.
 :- interface.
@@ -64,11 +66,11 @@
 :- func get_all_modes_for_layout(proc_layout) = list(proc_layout).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module require.
-:- import_module string.
 
 :- pragma foreign_type("C", label_layout, "const MR_LabelLayout *",
     [can_pass_as_mercury_type, stable]).

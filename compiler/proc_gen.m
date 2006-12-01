@@ -68,8 +68,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
@@ -77,8 +75,6 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
 :- import_module hlds.instmap.
-:- import_module hlds.passes_aux.
-:- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -98,7 +94,6 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -111,7 +106,6 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

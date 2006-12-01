@@ -33,40 +33,22 @@
 
 :- implementation.
 
-:- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.c_util.
-:- import_module backend_libs.foreign.
-:- import_module backend_libs.rtti.
-:- import_module check_hlds.type_util.
-:- import_module hlds.hlds_pred. % for `pred_proc_id'.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.tree.
 :- import_module ml_backend.ilasm.
-:- import_module ml_backend.ilds.
 :- import_module ml_backend.il_peephole.
-:- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.mlds_to_il.
 :- import_module ml_backend.mlds_to_managed.
-:- import_module ml_backend.ml_util.
 :- import_module parse_tree.modules.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 
-:- import_module assoc_list.
 :- import_module bool.
-:- import_module counter.
-:- import_module int.
-:- import_module library.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module set.
 :- import_module string.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

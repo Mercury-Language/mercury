@@ -280,8 +280,6 @@
 
 :- import_module libs.compiler_util.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_out.
 
 :- import_module bool.
 :- import_module int.

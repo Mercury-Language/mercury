@@ -66,13 +66,11 @@
 
 :- import_module check_hlds.mode_errors.
 :- import_module hlds.hlds_error_util.
-:- import_module hlds.hlds_out.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 
-:- import_module string.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

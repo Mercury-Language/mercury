@@ -63,8 +63,6 @@
 :- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.rtti.
 
-:- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module maybe.
 

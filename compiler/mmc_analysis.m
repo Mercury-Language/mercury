@@ -49,7 +49,6 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.trailing_analysis.
@@ -58,7 +57,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module string.
 :- import_module io.
 :- import_module unit.

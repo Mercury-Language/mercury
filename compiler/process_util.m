@@ -86,7 +86,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 

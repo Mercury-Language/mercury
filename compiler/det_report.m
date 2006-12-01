@@ -141,7 +141,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -150,7 +149,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
-:- import_module set.
 :- import_module solutions.
 :- import_module string.
 :- import_module term.

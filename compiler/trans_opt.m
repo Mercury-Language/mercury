@@ -83,7 +83,6 @@
 :- implementation.
 
 :- import_module hlds.hlds_pred.
-:- import_module hlds.passes_aux.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -107,10 +106,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
-:- import_module set.
-:- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

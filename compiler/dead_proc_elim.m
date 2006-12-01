@@ -80,7 +80,6 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.

@@ -172,12 +172,10 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.term_constr_main.
-:- import_module transform_hlds.term_util.
 
 :- import_module bool.
 :- import_module int.

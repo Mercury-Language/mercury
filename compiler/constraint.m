@@ -52,12 +52,8 @@
 :- implementation.
 
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.purity.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
-:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -67,7 +63,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 

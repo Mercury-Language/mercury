@@ -813,7 +813,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
 :- import_module int.

@@ -68,34 +68,18 @@
 
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.globals.
-:- import_module libs.handle_options.
 :- import_module libs.options.
-:- import_module libs.process_util.
 :- import_module libs.timestamp.
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_io_util.
-:- import_module parse_tree.prog_out.
 :- import_module top_level.mercury_compile. % XXX unwanted dependency
 
-:- import_module assoc_list.
 :- import_module bool.
-:- import_module char.
-:- import_module dir.
-:- import_module exception.
-:- import_module getopt_io.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module parser.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module term.
-:- import_module term_io.
 
 %-----------------------------------------------------------------------------%
 

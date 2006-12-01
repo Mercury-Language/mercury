@@ -58,7 +58,6 @@
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.io_action.
 :- import_module mdb.term_rep.
-:- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.rtti_access.
@@ -68,9 +67,7 @@
 :- import_module deconstruct.
 :- import_module exception.
 :- import_module int.
-:- import_module io.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.

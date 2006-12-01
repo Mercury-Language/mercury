@@ -99,23 +99,16 @@
 
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.name_mangle.
-:- import_module backend_libs.proc_label.
-:- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.type_ctor_info.
-:- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module counter.

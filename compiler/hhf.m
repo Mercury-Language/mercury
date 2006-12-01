@@ -43,10 +43,8 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
-:- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.

@@ -100,7 +100,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%

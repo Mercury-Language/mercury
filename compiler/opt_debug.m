@@ -5,11 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% Debugging support for LLDS to LLDS peephole optimization.
-
+%
+% File: opt_debug.m.
 % Main author: zs.
-
+%
+% Debugging support for LLDS to LLDS peephole optimization.
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.opt_debug.
@@ -119,23 +120,19 @@
 :- func dump_fullinstrs(proc_label, bool, list(instruction)) = string.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module ll_backend.code_util.
 :- import_module ll_backend.llds_out.
-:- import_module ll_backend.opt_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 
 :- import_module char.
 :- import_module int.

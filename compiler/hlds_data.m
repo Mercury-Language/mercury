@@ -5,14 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
+% File: hlds_data.m.
+% Main authors: fjh, conway.
+%
 % This module defines the part of the HLDS that deals with issues related
 % to data and its representation: function symbols, types, insts, modes.
-
-% Main authors: fjh, conway.
+% 
+%-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_data.
-
 :- interface.
 
 :- import_module hlds.hlds_pred.
@@ -32,7 +34,6 @@
 
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module int.

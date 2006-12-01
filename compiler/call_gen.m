@@ -64,12 +64,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
-:- import_module check_hlds.type_util.
-:- import_module check_hlds.unify_proc.
 :- import_module hlds.arg_info.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
@@ -83,11 +78,9 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module map.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

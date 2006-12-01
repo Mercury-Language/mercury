@@ -67,7 +67,6 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
 
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
