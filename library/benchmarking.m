@@ -508,7 +508,7 @@ ML_insert_into_table(const ML_memprof_report_entry *new_entry,
 #else
         memmove(&table[slot + 1], &table[slot],
             (table_size - slot - 1) * sizeof(*table));
-        memcpy(&table[slot], new_entry, sizeof(*table));
+        MR_memcpy(&table[slot], new_entry, sizeof(*table));
 #endif
 
         if (next_slot < table_size) {

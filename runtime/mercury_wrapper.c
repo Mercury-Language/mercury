@@ -2071,7 +2071,7 @@ mercury_runtime_main(void)
     */
 
     MR_global_pointer_2 = safety_buffer;    /* defeat optimization */
-    memset(safety_buffer, MAGIC_MARKER_2, SAFETY_BUFFER_SIZE);
+    MR_memset(safety_buffer, MAGIC_MARKER_2, SAFETY_BUFFER_SIZE);
 #endif
 
 #ifdef MR_LOWLEVEL_DEBUG

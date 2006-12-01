@@ -990,7 +990,7 @@ init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap, MR_Word *old_hp)
             MR_realloc(MR_has_forwarding_pointer, num_bytes_for_bitmap);
         prev_num_bytes_for_bitmap = num_bytes_for_bitmap;
     }
-    memset(MR_has_forwarding_pointer, 0, num_bytes_for_bitmap);
+    MR_memset(MR_has_forwarding_pointer, 0, num_bytes_for_bitmap);
 }
 
 /*

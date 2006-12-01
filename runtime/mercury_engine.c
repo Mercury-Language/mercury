@@ -435,7 +435,7 @@ call_engine_inner(MR_Code *entry_point)
     MR_global_pointer = locals;
 
 #ifdef MR_LOWLEVEL_DEBUG
-    memset((void *)locals, MAGIC_MARKER, LOCALS_SIZE);
+    MR_memset((void *)locals, MAGIC_MARKER, LOCALS_SIZE);
 #endif
     MR_debugmsg1("in `call_engine_inner', locals at %p\n", (void *)locals);
 

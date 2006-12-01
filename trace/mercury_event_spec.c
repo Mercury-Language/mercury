@@ -60,7 +60,7 @@ MR_event_get_input(char *buf, int buf_size)
         num_copied = MR_event_spec_char_max - MR_event_spec_char_next;
     }
 
-    memcpy(buf, MR_event_spec_chars + MR_event_spec_char_next, num_copied);
+    MR_memcpy(buf, MR_event_spec_chars + MR_event_spec_char_next, num_copied);
     MR_event_spec_char_next += num_copied;
 
 #if 0

@@ -146,7 +146,7 @@ struct MR_MemoryZone_Struct {
 ** memory retention due to false hits in the conservative garbage collector.
 */
 #define MR_clear_zone_for_GC(zone, start_address) \
-	((void) memset((start_address), 0, \
+	((void) MR_memset((start_address), 0, \
 		(char*)((zone)->MR_zone_end) - (char *)(start_address)))
 
 /*

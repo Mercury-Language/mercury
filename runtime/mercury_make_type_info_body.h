@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2000-2005 The University of Melbourne.
+** Copyright (C) 2000-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -131,7 +131,7 @@ exist_func(const params_type params, const MR_PseudoTypeInfo pseudo_type_info,
                 ALLOCATE_WORDS(type_info_arena_word,
                     arity + start_region_size);
                 type_info_arena = (MR_Word *) type_info_arena_word;
-                memcpy(type_info_arena, (MR_Word *) pseudo_type_info,
+                MR_memcpy(type_info_arena, (MR_Word *) pseudo_type_info,
                     (arity + start_region_size) * sizeof(MR_Word));
             }
 
