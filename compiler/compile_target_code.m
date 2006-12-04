@@ -1544,7 +1544,7 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
                 ("libmer_trace" ++ LibExt)) ++
             " " ++
             quote_arg(StdLibDir/"lib"/GradeDir/
-                ("libmer_event_spec" ++ LibExt)) ++
+                ("libmer_eventspec" ++ LibExt)) ++
             " " ++
             quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_browser" ++ LibExt)) ++
