@@ -224,6 +224,11 @@ then
     write_out_profile_data=false
 fi
 
+if test -f .PROGRESS
+then
+    progress=true
+fi
+
 # If you change these, you will also need to change the files indicated
 # in scripts/c2init.in.
 RT_LIB_NAME=mer_rt
