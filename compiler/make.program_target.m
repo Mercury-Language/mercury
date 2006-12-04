@@ -985,7 +985,18 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
             grade_directory_component(Globals, GradeDir),
             install_library_grade_files(LinkSucceeded0, GradeDir,
                 ModuleName, AllModules, Succeeded, Info2, Info3, !IO),
-            make_grade_clean(ModuleName, AllModules, Info3, _, !IO)
+            %
+            % Only remove grade-dependent files after installing if
+            % --use-grade-subdirs is not specified by the user.
+            %
+            globals.lookup_bool_option(OrigGlobals,
+                use_grade_subdirs, UseGradeSubdirs),
+            (
+                UseGradeSubdirs = yes
+            ;
+                UseGradeSubdirs = no,
+                make_grade_clean(ModuleName, AllModules, Info3, _, !IO)
+            )
         ;
             LibSucceeded = no,
             Succeeded = no
