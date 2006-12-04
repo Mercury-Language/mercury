@@ -473,15 +473,8 @@ clean_local: clean_prof_files
 # the `--high-level-code' option.
 
 .PHONY: lib%.install
-lib%.install: lib%.install_ints lib%.install_hdrs lib%.install_init \
-		lib%.install_library
+lib%.install: lib%.install_ints lib%.install_hdrs lib%.install_library
 	$(MMAKE) lib$*.install_grades || { mercury_cleanup_install && exit 1; }
-
-# XXX Trace goal fix.
-#
-.PHONY: lib%.install_init
-lib%.install_init: %.init install_lib_dirs
-	$(INSTALL) `vpath_find $*.init` $(INSTALL_MODULE_DIR)
 
 .PHONY: lib%.install_grade_init
 lib%.install_grade_init: %.init install_grade_dirs

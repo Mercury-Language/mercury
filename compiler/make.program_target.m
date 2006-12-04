@@ -810,14 +810,6 @@ install_library(MainModuleName, Succeeded, !Info, !IO) :-
         DepsSuccess = yes,
         DirSucceeded = yes
     ->
-        globals.io_lookup_string_option(install_prefix, Prefix, !IO),
-
-        % XXX Trace goal fix.
-        ModulesDir = Prefix/"lib"/"mercury"/"modules",
-        module_name_to_file_name(MainModuleName, ".init", no, InitFileName,
-            !IO),
-        install_file(InitFileName, ModulesDir, InitSucceeded, !IO),
-
         list.map_foldl2(install_ints_and_headers(LinkSucceeded), AllModules,
             IntsSucceeded, !Info, !IO),
 
@@ -826,7 +818,6 @@ install_library(MainModuleName, Succeeded, !Info, !IO) :-
         install_library_grade_files(LinkSucceeded, Grade, MainModuleName,
             AllModules, GradeSucceeded, !Info, !IO),
         (
-            InitSucceeded = yes,
             bool.and_list(IntsSucceeded) = yes,
             GradeSucceeded = yes
         ->

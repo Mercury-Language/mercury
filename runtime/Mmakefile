@@ -438,8 +438,6 @@ tags_file_exists:
 .PHONY: install
 install: install_headers install_lib
 
-# XXX Trace goal fix.
-#
 .PHONY: install_dirs
 install_dirs:
 	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
@@ -499,11 +497,8 @@ install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) \
 	cp `vpath_find mercury_conf.h.in` $(INSTALL_RECONF_DIR)/runtime
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
-# XXX Trace goal fix.
-#
 .PHONY: install_init
 install_init: $(RT_LIB_NAME).init install_dirs
-	cp `vpath_find $(RT_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 	cp `vpath_find $(RT_LIB_NAME).init` $(INSTALL_GRADE_MODULE_DIR)
 
 .PHONY: install_lib 
