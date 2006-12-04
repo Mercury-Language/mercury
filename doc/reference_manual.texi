@@ -6506,6 +6506,12 @@ corresponding C type, @code{MR_bool}.  C code can refer to the boolean
 data constructors @samp{yes} and @samp{no}, as @code{MR_YES} and
 @code{MR_NO} respectively.
 
+For the Mercury standard library type @samp{builtin.comparison_result}, there
+is a corresponding C type, @code{MR_Comparison_Result}.  C code can refer
+to the data constructors of this type, @samp{(<)}, @samp{(=)} and @samp{(>)},
+as @code{MR_COMPARE_LESS}, @code{MR_COMPARE_EQUAL} and
+@code{MR_COMPARE_GREATER} respectively.
+
 Mercury variables of a type for which there is a C @samp{pragma foreign_type}
 declaration (@pxref{Using foreign types from Mercury}) will be passed as
 the corresponding C type.
