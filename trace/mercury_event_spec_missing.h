@@ -24,7 +24,7 @@ extern  char            *mercury_event_text;
 extern  const char      *mercury_event_filename;
 extern  int             mercury_event_linenum;
 
-extern  MR_EventSpecs   mercury_event_parsetree;
+extern  MR_EventSet     mercury_event_parsetree;
 extern  int             mercury_event_parse(void);
 
 #endif  /* not MERCURY_TRACE_EVENT_MISSING_H */

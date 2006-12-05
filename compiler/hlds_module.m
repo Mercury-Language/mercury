@@ -339,6 +339,11 @@
 :- pred module_info_set_contains_par_conj(module_info::in, module_info::out)
     is det.
 
+:- pred module_info_get_contains_user_event(module_info::in, bool::out) is det.
+
+:- pred module_info_set_contains_user_event(module_info::in, module_info::out)
+    is det.
+
 :- pred module_info_get_foreign_decl(module_info::in, foreign_decl_info::out)
     is det.
 
@@ -496,10 +501,9 @@
 :- pred module_info_get_interface_module_specifiers(module_info::in,
     set(module_name)::out) is det.
 
-:- pred module_info_get_event_spec_map(module_info::in,
-    event_spec_map::out) is det.
+:- pred module_info_get_event_set(module_info::in, event_set::out) is det.
 
-:- pred module_info_set_event_spec_map(event_spec_map::in,
+:- pred module_info_set_event_set(event_set::in,
     module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -671,6 +675,7 @@
                 module_name                 :: module_name,
                 globals                     :: globals,
                 contains_par_conj           :: bool,
+                contains_user_event         :: bool,
                 contains_foreign_type       :: bool,
                 foreign_decl_info           :: foreign_decl_info,
                 foreign_body_info           :: foreign_body_info,
@@ -769,7 +774,7 @@
                 % (Used by unused_imports analysis).
                 interface_module_specifiers :: set(module_specifier),
 
-                event_spec_map              :: event_spec_map
+                event_set                   :: event_set
             ).
 
 module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
@@ -807,12 +812,13 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     map.init(FieldNameTable),
 
     map.init(NoTagTypes),
-    ModuleSubInfo = module_sub_info(Name, Globals, no, no, [], [], [], [],
+    EventSet = event_set("", map.init),
+    ModuleSubInfo = module_sub_info(Name, Globals, no, no, no, [], [], [], [],
         no, 0, [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
         MM_TablingInfo, map.init, counter.init(1), ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
         init_analysis_info(mmc), [], [],
-        map.init, used_modules_init, set.init, map.init),
+        map.init, used_modules_init, set.init, EventSet),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, InstanceTable, AssertionTable, ExclusiveTable,
@@ -869,6 +875,7 @@ module_info_get_globals(MI, MI ^ sub_info ^ globals).
 module_info_get_contains_foreign_type(MI,
     MI ^ sub_info ^ contains_foreign_type).
 module_info_get_contains_par_conj(MI, MI ^ sub_info ^ contains_par_conj).
+module_info_get_contains_user_event(MI, MI ^ sub_info ^ contains_user_event).
 module_info_get_foreign_decl(MI, MI ^ sub_info ^ foreign_decl_info).
 module_info_get_foreign_body_code(MI, MI ^ sub_info ^ foreign_body_info).
 module_info_get_foreign_import_module(MI,
@@ -902,7 +909,7 @@ module_info_get_structure_reuse_map(MI, MI ^ sub_info ^ structure_reuse_map).
 module_info_get_used_modules(MI, MI ^ sub_info ^ used_modules).
 module_info_get_interface_module_specifiers(MI,
     MI ^ sub_info ^ interface_module_specifiers).
-module_info_get_event_spec_map(MI, MI ^ sub_info ^ event_spec_map).
+module_info_get_event_set(MI, MI ^ sub_info ^ event_set).
 
     % XXX There is some debate as to whether duplicate initialise directives
     % in the same module should constitute an error. Currently it is not, but
@@ -970,6 +977,8 @@ module_info_set_contains_foreign_type(MI,
     MI ^ sub_info ^ contains_foreign_type := yes).
 module_info_set_contains_par_conj(MI,
     MI ^ sub_info ^ contains_par_conj := yes).
+module_info_set_contains_user_event(MI,
+    MI ^ sub_info ^ contains_user_event := yes).
 module_info_set_foreign_decl(NewVal, MI,
     MI ^ sub_info ^ foreign_decl_info := NewVal).
 module_info_set_foreign_body_code(NewVal, MI,
@@ -1028,8 +1037,7 @@ module_info_set_structure_reuse_map(ReuseMap, MI,
     MI ^ sub_info ^ structure_reuse_map := ReuseMap).
 module_info_set_used_modules(UsedModules, MI,
     MI ^ sub_info ^ used_modules := UsedModules).
-module_info_set_event_spec_map(EventSpecMap, MI,
-    MI ^ sub_info ^ event_spec_map := EventSpecMap).
+module_info_set_event_set(EventSet, MI, MI ^ sub_info ^ event_set := EventSet).
 
 module_info_add_parents_to_used_modules(Modules, MI,
         MI ^ sub_info ^ used_modules := UsedModules) :-

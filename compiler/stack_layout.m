@@ -171,16 +171,17 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
         HasUserEvent = LayoutInfo ^ has_user_event,
         (
             HasUserEvent = no,
-            MaybeEventSpecs = no
+            MaybeEventSet = no
         ;
             HasUserEvent = yes,
-            module_info_get_event_spec_map(ModuleInfo, EventSpecMap),
+            module_info_get_event_set(ModuleInfo, EventSet),
+            EventSet = event_set(EventSetName, EventSpecMap),
             EventSpecs = event_set_description(EventSpecMap),
-            MaybeEventSpecs = yes(EventSpecs)
+            MaybeEventSet = yes(EventSetName - EventSpecs)
         ),
         ModuleLayout = module_layout_data(ModuleName,
             StringOffset, ConcatStrings, ProcLayoutNames, SourceFileLayouts,
-            TraceLevel, SuppressedEvents, NumLabels, MaybeEventSpecs),
+            TraceLevel, SuppressedEvents, NumLabels, MaybeEventSet),
         Layouts = [ModuleLayout | Layouts0]
     ;
         TraceLayout = no,
@@ -204,6 +205,7 @@ valid_proc_layout(ProcLayoutInfo) :-
     % concat_string_list appends a list of strings together,
     % appending a null character after each string.
     % The resulting string will contain embedded null characters,
+    %
 :- pred concat_string_list(list(string)::in, int::in,
     string_with_0s::out) is det.
 
@@ -379,7 +381,7 @@ construct_layouts(ProcLayoutInfo, !Info) :-
 %---------------------------------------------------------------------------%
 
     % Add the given label layout to the module-wide label tables.
-
+    %
 :- pred update_label_table(
     {proc_label, int, label_vars, internal_layout_info}::in,
     map(string, label_table)::in, map(string, label_table)::out) is det.
@@ -540,7 +542,7 @@ construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
         _ForceProcIdLayout,
         VarSet,
         VarTypes,
-        _InternalMap,
+        InternalMap,
         MaybeTableInfo,
         NeedsAllNames,
         MaybeProcStatic),
@@ -554,7 +556,7 @@ construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
         get_trace_stack_layout(!.Info, TraceStackLayout),
         (
             TraceStackLayout = yes,
-            given_trace_level_is_none(EffTraceLevel) = no,
+            not map.is_empty(InternalMap),
             valid_proc_layout(ProcLayoutInfo)
         ->
             construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
@@ -606,26 +608,25 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
         prog_rep.represent_proc(HeadVars, Goal, InstMap, VarTypes, VarNumMap,
             ModuleInfo, !Info, ProcBytes)
     ),
-    (
-        MaybeCallLabel = yes(CallLabelPrime),
-        CallLabel = CallLabelPrime
-    ;
-        MaybeCallLabel = no,
-        unexpected(this_file,
-            "construct_trace_layout: call label not present")
-    ),
     TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
         MaybeTrailSlots, MaybeMaxfrSlot, MaybeCallTableSlot),
-    % The label associated with an event must have variable info.
     (
-        CallLabel = internal_label(CallLabelNum, CallProcLabel)
+        MaybeCallLabel = yes(CallLabel),
+        % The label associated with an event must have variable info.
+        (
+            CallLabel = internal_label(CallLabelNum, CallProcLabel)
+        ;
+            CallLabel = entry_label(_, _),
+            unexpected(this_file,
+                "construct_trace_layout: entry call label")
+        ),
+        CallLabelDetails = label_layout_details(CallProcLabel, CallLabelNum,
+            label_has_var_info),
+        MaybeCallLabelDetails = yes(CallLabelDetails)
     ;
-        CallLabel = entry_label(_, _),
-        unexpected(this_file,
-            "construct_trace_layout: entry call label")
+        MaybeCallLabel = no,
+        MaybeCallLabelDetails = no
     ),
-    CallLabelLayout = label_layout(CallProcLabel, CallLabelNum,
-        label_has_var_info),
     (
         MaybeTableInfo = no,
         MaybeTableDataAddr = no
@@ -644,7 +645,7 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
     ),
     encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes,
         0, Flags),
-    ExecTrace = proc_layout_exec_trace(CallLabelLayout, ProcBytes,
+    ExecTrace = proc_layout_exec_trace(MaybeCallLabelDetails, ProcBytes,
         MaybeTableDataAddr, HeadVarNumVector, VarNameVector,
         MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
         MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
@@ -728,20 +729,29 @@ compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap) :-
             !VarNumMap, !Counter),
         list.foldl2(add_var_to_var_number_map(VarSet), HeadVars,
             !VarNumMap, !Counter),
-        list.foldl2(internal_var_number_map, Internals, !VarNumMap,
+        list.foldl2(internal_var_number_map(VarSet), Internals, !VarNumMap,
             !.Counter, _),
         VarNumMap = !.VarNumMap
     ).
 
-:- pred internal_var_number_map(pair(int, internal_layout_info)::in,
+:- pred internal_var_number_map(prog_varset::in,
+    pair(int, internal_layout_info)::in,
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
 
-internal_var_number_map(_Label - Internal, !VarNumMap, !Counter) :-
+internal_var_number_map(VarSet, _Label - Internal, !VarNumMap, !Counter) :-
     Internal = internal_layout_info(MaybeTrace, MaybeResume, MaybeReturn),
     (
         MaybeTrace = yes(Trace),
-        Trace = trace_port_layout_info(_, _, _, _, _, TraceLayout),
-        label_layout_var_number_map(TraceLayout, !VarNumMap, !Counter)
+        Trace = trace_port_layout_info(_, _, _, _, MaybeUser, TraceLayout),
+        label_layout_var_number_map(TraceLayout, !VarNumMap, !Counter),
+        (
+            MaybeUser = no
+        ;
+            MaybeUser = yes(UserEvent),
+            UserEvent = user_event_info(_PortNum, _PortName, Attributes),
+            list.foldl2(user_attribute_var_num_map(VarSet), Attributes,
+                !VarNumMap, !Counter)
+        )
     ;
         MaybeTrace = no
     ),
@@ -772,6 +782,13 @@ label_layout_var_number_map(LabelLayout, !VarNumMap, !Counter) :-
     list.filter_map(FindVar, VarInfos, VarsNames),
     list.foldl2(add_named_var_to_var_number_map, VarsNames,
         !VarNumMap, !Counter).
+
+:- pred user_attribute_var_num_map(prog_varset::in, user_attribute::in,
+    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+user_attribute_var_num_map(VarSet, Attribute, !VarNumMap, !Counter) :-
+    Attribute = user_attribute(_Locn, _Type, _Name, Var),
+    add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter).
 
 :- pred add_var_to_var_number_map(prog_varset::in, prog_var::in,
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
@@ -923,8 +940,9 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         UserInfo = user_event_info(UserEventNumber, UserEventName,
             Attributes),
         list.length(Attributes, NumAttributes),
-        construct_user_data_array(Attributes,
-            UserLocnsArray, UserTypesArray, UserAttrNames, !Info),
+        construct_user_data_array(VarNumMap, Attributes,
+            UserLocnsArray, UserTypesArray, UserAttrNames, UserAttrVarNums,
+            !Info),
 
         get_static_cell_info(!.Info, StaticCellInfo0),
         add_scalar_static_cell(UserLocnsArray, UserLocnsDataAddr,
@@ -936,7 +954,8 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         UserLocnsRval = const(llconst_data_addr(UserLocnsDataAddr, no)),
         UserTypesRval = const(llconst_data_addr(UserTypesDataAddr, no)),
         UserData = user_event_data(UserEventNumber, UserEventName,
-            NumAttributes, UserLocnsRval, UserTypesRval, UserAttrNames),
+            NumAttributes, UserLocnsRval, UserTypesRval, UserAttrNames,
+            UserAttrVarNums),
         MaybeUserData = yes(UserData)
     ),
 
@@ -963,15 +982,18 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     add_internal_layout_data(LayoutData, Label, LayoutName, !Info),
     LabelLayout = {ProcLabel, LabelNum, LabelVars, Internal}.
 
-:- pred construct_user_data_array(list(user_attribute)::in,
+:- pred construct_user_data_array(var_num_map::in, list(user_attribute)::in,
     assoc_list(rval, llds_type)::out, assoc_list(rval, llds_type)::out,
-    list(string)::out, stack_layout_info::in, stack_layout_info::out) is det.
+    list(string)::out, list(int)::out,
+    stack_layout_info::in, stack_layout_info::out) is det.
 
-construct_user_data_array([], [], [], [], !Info).
-construct_user_data_array([Attr | Attrs],
+construct_user_data_array(_, [], [], [], [], [], !Info).
+construct_user_data_array(VarNumMap, [Attr | Attrs],
         [LocnRvalAndType | LocnRvalAndTypes],
-        [TypeRvalAndType | TypeRvalAndTypes], [Name | Names], !Info) :-
-    Attr = user_attribute(Locn, Type, Name),
+        [TypeRvalAndType | TypeRvalAndTypes], [Name | Names],
+        [VarNum | VarNums], !Info) :-
+    Attr = user_attribute(Locn, Type, Name, Var),
+    convert_var_to_int(VarNumMap, Var, VarNum),
     represent_locn_or_const_as_int_rval(Locn, LocnRval, LocnRvalType, !Info),
     LocnRvalAndType = LocnRval - LocnRvalType,
 
@@ -984,8 +1006,8 @@ construct_user_data_array([Attr | Attrs],
     set_static_cell_info(StaticCellInfo, !Info),
     TypeRvalAndType = TypeRval - TypeRvalType,
 
-    construct_user_data_array(Attrs, LocnRvalAndTypes, TypeRvalAndTypes,
-        Names, !Info).
+    construct_user_data_array(VarNumMap, Attrs, LocnRvalAndTypes,
+        TypeRvalAndTypes, Names, VarNums, !Info).
 
 %---------------------------------------------------------------------------%
 

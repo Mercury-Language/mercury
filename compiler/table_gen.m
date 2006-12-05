@@ -1895,7 +1895,6 @@ keep_marker(marker_does_not_terminate) = yes.
 keep_marker(marker_check_termination) = no.
 keep_marker(marker_calls_are_fully_qualified) = yes.
 keep_marker(marker_mode_check_clauses) = yes.
-keep_marker(marker_may_have_parallel_conj) = yes.
 keep_marker(marker_mutable_access_pred) = yes.
 
 %-----------------------------------------------------------------------------%

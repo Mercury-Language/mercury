@@ -19,6 +19,7 @@
 
 #include    "mercury_stack_layout.h"
 #include    "mercury_trace_completion.h"
+#include    "mercury_event_spec.h"          /* for MR_EventSet */
 #include    <stdio.h>
 
 /*
@@ -44,20 +45,34 @@ extern  void        MR_register_module_layout_real(
 ** Every module that generates user defined events has a specification of the
 ** set of user events it was compiled with in its module layout structure.
 ** The debugger needs to know what these specifications are, and if they
-** are consistent (which in this case means identical).
+** are consistent (which means that any two event sets with the same name
+** must be identical).
 **
-** If no modules have user defined events, MR_event_specs_have_conflict will
-** be false and MR_consensus_event_specs will be NULL. If there are some user
-** defined events in some modules and the modules are consistent, then
-** MR_event_specs_have_conflict will still be false and the string will contain
-** a copy of the original specification file in a canonical form (standard
-** indentation, comments stripped). If there is an inconsistency, then
-** MR_event_specs_have_conflict will be TRUE, and MR_consensus_event_specs
-** will not be meaningful.
+** MR_trace_event_sets points to dynamically resizable array of
+** MR_TraceEventSets, with MR_trace_event_set_max giving the current size
+** of the array and MR_trace_event_set_next giving the number of elements
+** currently filled in. The array is not sorted.
+**
+** The name field of an MR_TraceEventSet gives the name of the event set, while
+** the string field will contain the string representation of the event set.
+** The is_consistent field will be true iff all modules that use the event set
+** with the same name have the same representation. The event_set field
+** contains the parsed form of the string field; it is meaningful only if
+** is_consistent is true.
 */
 
-extern  const char      *MR_consensus_event_specs;
-extern  MR_bool         MR_event_specs_have_conflict;
+typedef struct {
+    const char      *MR_tes_name;
+    const char      *MR_tes_string;
+    MR_bool         MR_tes_is_consistent;
+    MR_EventSet     MR_tes_event_set;
+} MR_TraceEventSet;
+
+extern  MR_TraceEventSet    *MR_trace_event_sets;
+extern  int                 MR_trace_event_set_next;
+extern  int                 MR_trace_event_set_max;
+
+extern  MR_bool             MR_trace_event_sets_are_all_consistent;
 
 /*
 ** MR_process_file_line_layouts searches all the module layout structures

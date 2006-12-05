@@ -336,9 +336,9 @@ optimize_repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         ;
             VeryVerbose = no
         ),
-        jumpopt_main(LayoutLabelSet, MayAlterRtti, ProcLabel, FullJumpopt,
-            Final, PessimizeTailCalls, CheckedNondetTailCalls, !C, !Instrs,
-            Mod1),
+        optimize_jumps_in_proc(LayoutLabelSet, MayAlterRtti, ProcLabel,
+            FullJumpopt, Final, PessimizeTailCalls, CheckedNondetTailCalls,
+            !C, !Instrs, Mod1),
         maybe_opt_debug(!.Instrs, !.C, "jump", "after jump opt",
             ProcLabel, !OptDebugInfo, !IO)
     ;
@@ -458,9 +458,9 @@ optimize_middle(Final, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti, !C,
             ;
                 VeryVerbose = no
             ),
-            jumpopt_main(LayoutLabelSet, MayAlterRtti, ProcLabel, FullJumpopt,
-                Final, PessimizeTailCalls, CheckedNondetTailCalls, !C, !Instrs,
-                _Mod2),
+            optimize_jumps_in_proc(LayoutLabelSet, MayAlterRtti, ProcLabel,
+                FullJumpopt, Final, PessimizeTailCalls, CheckedNondetTailCalls,
+                !C, !Instrs, _Mod2),
             maybe_opt_debug(!.Instrs, !.C, "jump", "after jumps",
                 ProcLabel, !OptDebugInfo, !IO)
         ;

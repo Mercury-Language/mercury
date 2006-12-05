@@ -71,13 +71,14 @@ typedef struct {
     MR_bool             MR_var_has_suffix;
     int                 MR_var_is_headvar;
     MR_bool             MR_var_is_ambiguous;
-    int                 MR_var_hlds_number;
+    MR_uint_least16_t   MR_var_hlds_number;
     int                 MR_var_seq_num_in_label;
 } MR_ProgVarDetails;
 
 typedef struct {
     unsigned            MR_attr_num;
     char                *MR_attr_name;
+    MR_uint_least16_t   MR_attr_var_hlds_number;
 } MR_AttributeDetails;
 
 typedef union {
@@ -129,6 +130,10 @@ typedef struct {
 ** point. This many of the elements of the vars array are valid.
 ** The number of elements of the vars array for which space has been
 ** reserved is held in var_max.
+**
+** The attr_var_max field gives the hlds number of the highest numbered
+** variable that is also an attribute of an user defined event. If there are
+** no such attributes, attr_var_max will be negative.
 */
 
 typedef struct {
@@ -144,6 +149,7 @@ typedef struct {
     MR_Word                 *MR_point_level_base_curfr;
     int                     MR_point_var_count;
     int                     MR_point_var_max;
+    int                     MR_point_attr_var_max;
     MR_ValueDetails         *MR_point_vars;
 } MR_Point;
 
@@ -177,8 +183,11 @@ static  const char      *MR_lookup_var_spec(MR_VarSpec var_spec,
 static  char            *MR_trace_var_completer_next(const char *word,
                             size_t word_len, MR_CompleterData *data);
 static  int             MR_trace_print_var_name(FILE *out,
-                            MR_ValueDetails *var);
-static  const char      *MR_trace_printed_var_name(MR_ValueDetails *var);
+                            const MR_ProcLayout *proc,
+                            const MR_ValueDetails *var);
+static  const char      *MR_trace_printed_var_name(
+                            const MR_ProcLayout *proc,
+                            const MR_ValueDetails *var);
 static  const char      *MR_trace_valid_var_number(int var_number);
 
 #define MR_INIT_VAR_DETAIL_COUNT        20
@@ -467,6 +476,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
     MR_proc_id_arity_addedargs_predfunc(entry, &arity, &num_added_args,
         &pred_or_func);
 
+    MR_point.MR_point_attr_var_max = -1;
     slot = 0;
     for (i = 0; i < attr_count; i++) {
         succeeded = MR_FALSE;
@@ -486,14 +496,21 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         MR_point.MR_point_vars[slot].MR_value_value = value;
         MR_point.MR_point_vars[slot].MR_value_attr.MR_attr_num = i;
         MR_point.MR_point_vars[slot].MR_value_attr.MR_attr_name = attr_name;
+        MR_point.MR_point_vars[slot].MR_value_attr.MR_attr_var_hlds_number =
+            user->MR_ue_attr_var_nums[i];
+
+        if (user->MR_ue_attr_var_nums[i] > MR_point.MR_point_attr_var_max) {
+            MR_point.MR_point_attr_var_max = user->MR_ue_attr_var_nums[i];
+        }
+
         slot++;
     }
 
     for (i = 0; i < var_count; i++) {
-        int     hlds_var_num;
-        int     head_var_num;
-        int     start_of_num;
-        char    *num_addr;
+        MR_uint_least16_t   hlds_var_num;
+        int                 head_var_num;
+        int                 start_of_num;
+        char                *num_addr;
 
         hlds_var_num = level_layout->MR_sll_var_nums[i];
         name = MR_hlds_var_name(entry, hlds_var_num);
@@ -757,7 +774,8 @@ MR_trace_list_vars(FILE *out)
 
     for (i = 0; i < MR_point.MR_point_var_count; i++) {
         fprintf(out, "%9d ", i + 1);
-        MR_trace_print_var_name(out, &MR_point.MR_point_vars[i]);
+        MR_trace_print_var_name(out, MR_point.MR_point_level_entry,
+            &MR_point.MR_point_vars[i]);
         fprintf(out, "\n");
     }
 
@@ -783,8 +801,9 @@ MR_trace_list_var_details(FILE *out)
                 attr = &value->MR_value_attr;
                 fprintf(out, "\n");
                 fprintf(out,
-                    "slot %d, attr number %d, attribute name %s\n",
-                    i, attr->MR_attr_num, attr->MR_attr_name);
+                    "slot %d, attr number %d, attribute name %s, hlds %d\n",
+                    i, attr->MR_attr_num, attr->MR_attr_name,
+                    attr->MR_attr_var_hlds_number);
                 break;
 
             case MR_VALUE_PROG_VAR:
@@ -1379,7 +1398,11 @@ MR_trace_bad_path(const char *path)
 const char *
 MR_trace_browse_all(FILE *out, MR_Browser browser, MR_BrowseFormat format)
 {
-    int var_num;
+    MR_bool             *already_printed;
+    MR_int_least16_t    attr_hlds_num;
+    MR_int_least16_t    var_hlds_num;
+    int                 var_num;
+    int                 i;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
@@ -1389,14 +1412,53 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_BrowseFormat format)
         fprintf(out, "mdb: there are no live variables.\n");
     }
 
+    already_printed = NULL;
+    if (MR_point.MR_point_attr_var_max >= 0) {
+        already_printed = MR_NEW_ARRAY(MR_bool, 
+            MR_point.MR_point_attr_var_max + 1);
+
+        for (i = 0; i <= MR_point.MR_point_attr_var_max; i++) {
+            already_printed[i] = MR_FALSE;
+        }
+    }
+
     for (var_num = 0; var_num < MR_point.MR_point_var_count; var_num++) {
+        switch (MR_point.MR_point_vars[var_num].MR_value_kind) {
+            case MR_VALUE_ATTRIBUTE:
+                attr_hlds_num = MR_point.MR_point_vars[var_num].
+                    MR_value_attr.MR_attr_var_hlds_number;
+
+                /*
+                ** We are about to print the value of the variable with HLDS
+                ** number attr_var_num, so mark it as not to be printed again.
+                */
+
+                MR_assert(attr_hlds_num <= MR_point.MR_point_attr_var_max);
+                already_printed[attr_hlds_num] = MR_TRUE;
+                break;
+
+            case MR_VALUE_PROG_VAR:
+                var_hlds_num = MR_point.MR_point_vars[var_num].
+                    MR_value_var.MR_var_hlds_number;
+                if (var_hlds_num <= MR_point.MR_point_attr_var_max &&
+                    already_printed[var_hlds_num])
+                {
+                    /* We have already printed this variable; skip it */
+                    continue;
+                }
+
+                break;
+        }
+
         (void) MR_trace_browse_var(out, MR_TRUE,
             MR_point.MR_point_vars[var_num].MR_value_type,
             MR_point.MR_point_vars[var_num].MR_value_value,
-            MR_trace_printed_var_name(&MR_point.MR_point_vars[var_num]),
+            MR_trace_printed_var_name(MR_point.MR_point_level_entry,
+                &MR_point.MR_point_vars[var_num]),
             NULL, browser, MR_BROWSE_CALLER_PRINT_ALL, format);
     }
 
+    MR_free(already_printed);
     return NULL;
 }
 
@@ -1578,7 +1640,9 @@ MR_lookup_var_spec(MR_VarSpec var_spec, MR_TypeInfo *type_info_ptr,
             *var_index_ptr = vn;
             *type_info_ptr = MR_point.MR_point_vars[vn].MR_value_type;
             *value_ptr = MR_point.MR_point_vars[vn].MR_value_value;
-            *name_ptr = MR_trace_printed_var_name(&MR_point.MR_point_vars[vn]);
+            *name_ptr =
+                MR_trace_printed_var_name(MR_point.MR_point_level_entry,
+                    &MR_point.MR_point_vars[vn]);
             *is_ambiguous_ptr = MR_FALSE;
             return NULL;
 
@@ -1602,7 +1666,9 @@ MR_lookup_var_spec(MR_VarSpec var_spec, MR_TypeInfo *type_info_ptr,
             *var_index_ptr = vn;
             *type_info_ptr = MR_point.MR_point_vars[vn].MR_value_type;
             *value_ptr = MR_point.MR_point_vars[vn].MR_value_value;
-            *name_ptr = MR_trace_printed_var_name(value);
+            *name_ptr =
+                MR_trace_printed_var_name(MR_point.MR_point_level_entry,
+                    value);
             if (value->MR_value_var.MR_var_is_ambiguous) {
                 *is_ambiguous_ptr = MR_TRUE;
             } else {
@@ -1631,7 +1697,9 @@ MR_lookup_var_spec(MR_VarSpec var_spec, MR_TypeInfo *type_info_ptr,
             *var_index_ptr = vn;
             *type_info_ptr = MR_point.MR_point_vars[vn].MR_value_type;
             *value_ptr = MR_point.MR_point_vars[vn].MR_value_value;
-            *name_ptr = MR_trace_printed_var_name(value);
+            *name_ptr =
+                MR_trace_printed_var_name(MR_point.MR_point_level_entry,
+                    value);
             *is_ambiguous_ptr = MR_FALSE;
 
             return NULL;
@@ -1692,12 +1760,13 @@ MR_trace_var_completer_next(const char *word, size_t word_len,
 }
 
 static int
-MR_trace_print_var_name(FILE *out, MR_ValueDetails *value)
+MR_trace_print_var_name(FILE *out, const MR_ProcLayout *proc,
+    const MR_ValueDetails *value)
 {
     const char  *buf;
     int         len;
 
-    buf = MR_trace_printed_var_name(value);
+    buf = MR_trace_printed_var_name(proc, value);
     len = strlen(buf);
     fputs(buf, out);
     return len;
@@ -1708,20 +1777,38 @@ MR_trace_print_var_name(FILE *out, MR_ValueDetails *value)
 static  char    MR_var_name_buf[MR_TRACE_VAR_NAME_BUF_SIZE];
 
 static const char *
-MR_trace_printed_var_name(MR_ValueDetails *value)
+MR_trace_printed_var_name(const MR_ProcLayout *proc,
+    const MR_ValueDetails *value)
 {
-    MR_ProgVarDetails   *var;
-    MR_AttributeDetails *attr;
+    const MR_ProgVarDetails     *var;
+    const MR_AttributeDetails   *attr;
+    MR_ConstString              attr_var_name;
 
     switch (value->MR_value_kind) {
         case MR_VALUE_ATTRIBUTE:
             attr = &value->MR_value_attr;
+            attr_var_name =
+                MR_hlds_var_name(proc, attr->MR_attr_var_hlds_number);
 #ifdef  MR_HAVE_SNPRINTF
-            snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
-                "%s (attr %d)", attr->MR_attr_name, attr->MR_attr_num);
+            if (attr_var_name != NULL && strcmp(attr_var_name, "") != 0) {
+                snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                    "%s (attr %d, %s)", attr->MR_attr_name,
+                    attr->MR_attr_num, attr_var_name);
+            } else {
+                snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                    "%s (attr %d)", attr->MR_attr_name,
+                    attr->MR_attr_num);
+            }
 #else
-            sprintf(MR_var_name_buf, "%s (attr %d)",
-                attr->MR_attr_name, attr->MR_attr_num);
+            if (attr_var_name != NULL && strcmp(attr_var_name, "") != 0) {
+                sprintf(MR_var_name_buf,
+                    "%s (attr %d, %s)", attr->MR_attr_name,
+                    attr->MR_attr_num, attr_var_name);
+            } else {
+                sprintf(MR_var_name_buf,
+                    "%s (attr %d)", attr->MR_attr_name,
+                    attr->MR_attr_num);
+            }
 #endif
             break;
 

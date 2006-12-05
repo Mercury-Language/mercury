@@ -347,9 +347,10 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     globals.get_trace_level(Globals, TraceLevel),
     code_info.get_created_temp_frame(CodeInfo, CreatedTempFrame),
 
-    EffTraceIsNone = eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel),
+    code_info.get_proc_trace_events(CodeInfo, ProcTraceEvents),
+    % You can have user trace events even if the effective trace level is none.
     (
-        EffTraceIsNone = no,
+        ProcTraceEvents =  yes,
         CreatedTempFrame = yes,
         CodeModel \= model_non
     ->
@@ -376,8 +377,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         % The set of recorded live values at calls (for value numbering)
         % and returns (for accurate gc and execution tracing) do not yet record
         % the stack slot holding the succip, so add it to those sets.
-        add_saved_succip(Instructions0,
-            SuccipSlot, Instructions)
+        add_saved_succip(Instructions0, SuccipSlot, Instructions)
     ;
         MaybeSuccipSlot = no,
         Instructions = Instructions0
@@ -390,8 +390,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         )
     ->
         % Create the procedure layout structure.
-        RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo,
-            PredId, ProcId),
+        RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         code_info.get_layout_info(CodeInfo, InternalMap),
         EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
         proc_info_get_eval_method(ProcInfo, EvalMethod),
@@ -402,14 +401,14 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         proc_info_get_vartypes(ProcInfo, VarTypes),
         globals.get_trace_suppress(Globals, TraceSuppress),
         (
-            eff_trace_needs_proc_body_reps(PredInfo, ProcInfo,
+            eff_trace_needs_proc_body_reps(ModuleInfo, PredInfo, ProcInfo,
                 TraceLevel, TraceSuppress) = yes
         ->
             NeedGoalRep = yes
         ;
             NeedGoalRep = no
         ),
-        NeedsAllNames = eff_trace_needs_all_var_names(PredInfo,
+        NeedsAllNames = eff_trace_needs_all_var_names(ModuleInfo, PredInfo,
             ProcInfo, TraceLevel, TraceSuppress),
         proc_info_get_maybe_deep_profile_info(ProcInfo,
             MaybeHLDSDeepInfo),
@@ -422,7 +421,8 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
             MaybeHLDSDeepInfo = no,
             MaybeDeepProfInfo = no
         ),
-        EffTraceLevel = eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+        EffTraceLevel = eff_trace_level(ModuleInfo, PredInfo, ProcInfo,
+            TraceLevel),
         ProcLayout = proc_layout_info(RttiProcLabel, EntryLabel,
             Detism, TotalSlots, MaybeSuccipSlot, EvalMethod,
             EffTraceLevel, MaybeTraceCallLabel, MaxTraceReg,
@@ -446,11 +446,12 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     Arity = pred_info_orig_arity(PredInfo),
 
     code_info.get_label_counter(CodeInfo, LabelCounter),
+    % You can have user trace events even if the effective trace level is none.
     (
-        EffTraceIsNone = yes,
+        ProcTraceEvents = no,
         MayAlterRtti = may_alter_rtti
     ;
-        EffTraceIsNone = no,
+        ProcTraceEvents = yes,
         MayAlterRtti = must_not_alter_rtti
     ),
 
@@ -669,22 +670,12 @@ generate_category_code(model_det, ProcContext, Goal, ResumePoint,
         code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
         (
             MaybeTraceInfo = yes(TraceInfo),
-            generate_external_event_code(external_port_call, TraceInfo,
-                ProcContext, MaybeCallExternalInfo, !CI),
-            (
-                MaybeCallExternalInfo = yes(CallExternalInfo),
-                CallExternalInfo = external_event_info(TraceCallLabel, _,
-                    TraceCallCode)
-            ;
-                MaybeCallExternalInfo = no,
-                unexpected(this_file,
-                    "generate_category_code: call events suppressed")
-            ),
-            MaybeTraceCallLabel = yes(TraceCallLabel)
+            generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
+                TraceCallCode, !CI)
         ;
             MaybeTraceInfo = no,
-            TraceCallCode = empty,
-            MaybeTraceCallLabel = no
+            MaybeTraceCallLabel = no,
+            TraceCallCode = empty
         ),
         generate_goal(model_det, Goal, BodyCode, !CI),
         generate_entry(!.CI, model_det, Goal, ResumePoint, FrameInfo,
@@ -705,18 +696,8 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        generate_external_event_code(external_port_call, TraceInfo,
-            ProcContext, MaybeCallExternalInfo, !CI),
-        (
-            MaybeCallExternalInfo = yes(CallExternalInfo),
-            CallExternalInfo = external_event_info(TraceCallLabel, _,
-                TraceCallCode)
-        ;
-            MaybeCallExternalInfo = no,
-            unexpected(this_file,
-                "generate_category_code: call events suppressed")
-        ),
-        MaybeTraceCallLabel = yes(TraceCallLabel),
+        generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
+            TraceCallCode, !CI),
         generate_goal(model_semi, Goal, BodyCode, !CI),
         generate_entry(!.CI, model_semi, Goal, ResumePoint,
             FrameInfo, EntryCode),
@@ -758,18 +739,8 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        generate_external_event_code(external_port_call, TraceInfo,
-            ProcContext, MaybeCallExternalInfo, !CI),
-        (
-            MaybeCallExternalInfo = yes(CallExternalInfo),
-            CallExternalInfo = external_event_info(TraceCallLabel, _,
-                TraceCallCode)
-        ;
-            MaybeCallExternalInfo = no,
-            unexpected(this_file,
-                "generate_category_code: call events suppressed")
-        ),
-        MaybeTraceCallLabel = yes(TraceCallLabel),
+        generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
+            TraceCallCode, !CI),
         generate_goal(model_non, Goal, BodyCode, !CI),
         generate_entry(!.CI, model_non, Goal, ResumePoint,
             FrameInfo, EntryCode),
@@ -829,6 +800,26 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
         generate_exit(model_non, FrameInfo, TraceSlotInfo,
             ProcContext, _, ExitCode, !CI),
         Code = tree_list([EntryCode, BodyCode, ExitCode])
+    ).
+
+:- pred generate_call_event(trace_info::in, prog_context::in,
+    maybe(label)::out, code_tree::out, code_info::in, code_info::out) is det.
+
+generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel, TraceCallCode,
+        !CI) :-
+    generate_external_event_code(external_port_call, TraceInfo,
+        ProcContext, MaybeCallExternalInfo, !CI),
+    (
+        MaybeCallExternalInfo = yes(CallExternalInfo),
+        CallExternalInfo = external_event_info(TraceCallLabel, _,
+            TraceCallCode),
+        MaybeTraceCallLabel = yes(TraceCallLabel)
+    ;
+        MaybeCallExternalInfo = no,
+        % This can happen for procedures containing user events
+        % in shallow traced modules.
+        TraceCallCode = empty,
+        MaybeTraceCallLabel = no
     ).
 
 %---------------------------------------------------------------------------%

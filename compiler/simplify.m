@@ -59,7 +59,7 @@
 
 :- pred simplify_proc_return_msgs(simplifications::in, pred_id::in,
     proc_id::in, module_info::in, module_info::out,
-    proc_info::in, proc_info::out, list(error_spec)::out, bool::out,
+    proc_info::in, proc_info::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
 :- pred simplify_process_clause_body_goal(hlds_goal::in, hlds_goal::out,
@@ -324,12 +324,32 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo, !Specs, !IO) :-
 simplify_procs(_, _, [], !ModuleInfo, !PredInfo, !MaybeSpecs, !IO).
 simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
         !PredInfo, !MaybeSpecs, !IO) :-
-    pred_info_get_procedures(!.PredInfo, Procs0),
-    map.lookup(Procs0, ProcId, Proc0),
+    pred_info_get_procedures(!.PredInfo, ProcTable0),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
-        !ModuleInfo, Proc0, Proc, ProcSpecs, MayHaveParallelConj, !IO),
-    map.det_update(Procs0, ProcId, Proc, Procs),
-    pred_info_set_procedures(Procs, !PredInfo),
+        !ModuleInfo, ProcInfo0, ProcInfo, ProcSpecs, !IO),
+    % This is ugly, but we want to avoid running the dependent parallel
+    % conjunction pass on predicates and even modules that do not contain
+    % parallel conjunctions (nearly all of them).  Since simplification
+    % is always done, we use it to mark modules and procedures containing
+    % parallel conjunctions.
+    proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
+    (
+        HasParallelConj = yes,
+        module_info_set_contains_par_conj(!ModuleInfo)
+    ;
+        HasParallelConj = no
+    ),
+    proc_info_get_has_user_event(ProcInfo, HasUserEvent),
+    (
+        HasUserEvent = yes,
+        module_info_set_contains_user_event(!ModuleInfo)
+    ;
+        HasUserEvent = no
+    ),
+    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    pred_info_set_procedures(ProcTable, !PredInfo),
+
     list.filter((pred(error_spec(_, Phase, _)::in) is semidet :-
             Phase = phase_simplify(report_only_if_in_all_modes)
         ), ProcSpecs, ProcAllModeSpecs, ProcAnyModeSpecs),
@@ -344,34 +364,20 @@ simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
         !.MaybeSpecs = no,
         !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
     ),
-    % This is ugly, but we want to avoid running the dependent parallel
-    % conjunction pass on predicates and even modules that do not contain
-    % parallel conjunctions (nearly all of them).  Since simplification
-    % is always done, we use it to mark modules and predicates containing
-    % parallel conjunctions.
-    (
-        MayHaveParallelConj = yes,
-        module_info_set_contains_par_conj(!ModuleInfo),
-        pred_info_get_markers(!.PredInfo, Markers0),
-        add_marker(marker_may_have_parallel_conj, Markers0, Markers),
-        pred_info_set_markers(Markers, !PredInfo)
-    ;
-        MayHaveParallelConj = no
-    ),
     simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
         !MaybeSpecs, !IO).
 
-simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !Proc, !IO)  :-
+simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo, !IO)  :-
     write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo, !IO),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
-        !Proc, _, _, !IO).
+        !ProcInfo, _, !IO).
 
 :- func turn_off_common_struct_threshold = int.
 
 turn_off_common_struct_threshold = 1000.
 
 simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
-        !ProcInfo, ErrorSpecs, MayHaveParallelConj, !IO) :-
+        !ProcInfo, ErrorSpecs, !IO) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     NumVars = map.count(VarTypes0),
     ( NumVars > turn_off_common_struct_threshold ->
@@ -413,6 +419,13 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
+
+    simplify_info_get_has_parallel_conj(Info, HasParallelConj),
+    proc_info_set_has_parallel_conj(HasParallelConj, !ProcInfo),
+
+    simplify_info_get_has_user_event(Info, HasUserEvent),
+    proc_info_set_has_user_event(HasUserEvent, !ProcInfo),
+
     simplify_info_get_module_info(Info, !:ModuleInfo),
     simplify_info_get_error_specs(Info, ErrorSpecs0),
     (
@@ -445,8 +458,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     ;
         IsDefinedHere = yes,
         ErrorSpecs = ErrorSpecs1
-    ),
-    simplify_info_get_may_have_parallel_conj(Info, MayHaveParallelConj).
+    ).
 
 simplify_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
     simplify_info_get_simplifications(!.Info, Simplifications0),
@@ -818,7 +830,7 @@ simplify_goal_2(conj(ConjType, Goals0), Goal, GoalInfo0, GoalInfo,
             GoalInfo = GoalInfo0,
             simplify_par_conj(Goals0, Goals, !.Info, !Info, !IO),
             Goal = conj(parallel_conj, Goals),
-            simplify_info_set_may_have_parallel_conj(yes, !Info)
+            simplify_info_set_has_parallel_conj(yes, !Info)
         )
     ).
 
@@ -985,27 +997,37 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
 simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
     Goal0 = generic_call(GenericCall, Args, Modes, Det),
     (
-        simplify_do_opt_duplicate_calls(!.Info),
-        % XXX We should do duplicate call elimination for
-        % class method calls here.
         GenericCall = higher_order(Closure, Purity, _, _),
-        % XXX Should we handle semipure higher-order calls too?
-        Purity = purity_pure
-    ->
-        common_optimise_higher_order_call(Closure, Args, Modes, Det,
-            GoalInfo, Goal0, Goal, !Info)
+        (
+            simplify_do_opt_duplicate_calls(!.Info),
+            % XXX We should do duplicate call elimination for
+            % class method calls here.
+            % XXX Should we handle semipure higher-order calls too?
+            Purity = purity_pure
+        ->
+            common_optimise_higher_order_call(Closure, Args, Modes, Det,
+                GoalInfo, Goal0, Goal, !Info)
+        ;
+            simplify_do_warn_duplicate_calls(!.Info),
+            % XXX Should we handle impure/semipure higher-order calls too?
+            Purity = purity_pure
+        ->
+            % We need to do the pass, for the warnings, but we ignore
+            % the optimized goal and instead use the original one.
+            common_optimise_higher_order_call(Closure, Args, Modes, Det,
+                GoalInfo, Goal0, _Goal1, !Info),
+            Goal = Goal0
+        ;
+            Goal = Goal0
+        )
     ;
-        simplify_do_warn_duplicate_calls(!.Info),
-        GenericCall = higher_order(Closure, Purity, _, _),
-        % XXX Should we handle impure/semipure higher-order calls too?
-        Purity = purity_pure
-    ->
-        % We need to do the pass, for the warnings, but we ignore
-        % the optimized goal and instead use the original one.
-        common_optimise_higher_order_call(Closure, Args, Modes, Det,
-            GoalInfo, Goal0, _Goal1, !Info),
+        GenericCall = event_call(_),
+        simplify_info_set_has_user_event(yes, !Info),
         Goal = Goal0
     ;
+        ( GenericCall = class_method(_, _, _, _)
+        ; GenericCall = cast(_)
+        ),
         Goal = Goal0
     ).
 
@@ -1569,7 +1591,8 @@ evaluate_compile_time_condition(trace_base(Base), Info) = Result :-
         Base = trace_trace_level(Level),
         globals.get_trace_level(Globals, TraceLevel),
         simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo),
-        EffTraceLevel = eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+        EffTraceLevel = eff_trace_level(ModuleInfo, PredInfo, ProcInfo,
+            TraceLevel),
         (
             Level = trace_level_shallow,
             Result = at_least_at_shallow(EffTraceLevel)
@@ -2782,11 +2805,13 @@ case_list_contains_trace([Case0 | Cases0], [Case | Cases], !ContainsTrace) :-
                 inside_dupl_for_switch  :: bool,
                                         % Are we currently inside a goal
                                         % that was duplicated for a switch?
-                may_have_parallel_conj  :: bool,
+                has_parallel_conj       :: bool,
                                         % Have we seen a parallel conjunction?
-                found_contains_trace    :: bool
+                found_contains_trace    :: bool,
                                         % Have we seen a goal with a feature
                                         % that says it contains a trace goal?
+                has_user_event          :: bool
+                                        % Have we seen an event call?
             ).
 
 simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
@@ -2795,7 +2820,7 @@ simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     Info = simplify_info(DetInfo, [], Simplifications,
         common_info_init, InstMap, VarSet, InstVarSet,
-        no, no, no, 0, 0, RttiVarMaps, no, no, no, no).
+        no, no, no, 0, 0, RttiVarMaps, no, no, no, no, no).
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
@@ -2810,7 +2835,8 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
     !:Info = !.Info ^ recompute_atomic := no,
     !:Info = !.Info ^ rerun_det := no,
     !:Info = !.Info ^ lambdas := 0,
-    !:Info = !.Info ^ may_have_parallel_conj := no.
+    !:Info = !.Info ^ has_parallel_conj := no,
+    !:Info = !.Info ^ has_user_event := no.
 
     % exported for common.m
 :- interface.
@@ -2865,10 +2891,11 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
 :- pred simplify_info_get_format_calls(simplify_info::in, bool::out) is det.
 :- pred simplify_info_get_inside_duplicated_for_switch(simplify_info::in,
     bool::out) is det.
-:- pred simplify_info_get_may_have_parallel_conj(simplify_info::in, bool::out)
+:- pred simplify_info_get_has_parallel_conj(simplify_info::in, bool::out)
     is det.
 :- pred simplify_info_get_found_contains_trace(simplify_info::in, bool::out)
     is det.
+:- pred simplify_info_get_has_user_event(simplify_info::in, bool::out) is det.
 
 simplify_info_get_det_info(Info, Info ^ det_info).
 simplify_info_get_error_specs(Info, Info ^ error_specs).
@@ -2889,8 +2916,9 @@ simplify_info_get_rtti_varmaps(Info, Info ^ rtti_varmaps).
 simplify_info_get_format_calls(Info, Info ^ format_calls).
 simplify_info_get_inside_duplicated_for_switch(Info,
     Info ^ inside_dupl_for_switch).
-simplify_info_get_may_have_parallel_conj(Info, Info ^ may_have_parallel_conj).
+simplify_info_get_has_parallel_conj(Info, Info ^ has_parallel_conj).
 simplify_info_get_found_contains_trace(Info, Info ^ found_contains_trace).
+simplify_info_get_has_user_event(Info, Info ^ has_user_event).
 
 simplify_info_get_module_info(Info, ModuleInfo) :-
     simplify_info_get_det_info(Info, DetInfo),
@@ -2928,9 +2956,11 @@ simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_inside_duplicated_for_switch(bool::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_may_have_parallel_conj(bool::in,
+:- pred simplify_info_set_has_parallel_conj(bool::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_found_contains_trace(bool::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_has_user_event(bool::in,
     simplify_info::in, simplify_info::out) is det.
 
 :- pred simplify_info_add_error_spec(error_spec::in,
@@ -2963,10 +2993,11 @@ simplify_info_set_rtti_varmaps(Rtti, Info, Info ^ rtti_varmaps := Rtti).
 simplify_info_set_format_calls(FC, Info, Info ^ format_calls := FC).
 simplify_info_set_inside_duplicated_for_switch(IDFS, Info,
     Info ^ inside_dupl_for_switch := IDFS).
-simplify_info_set_may_have_parallel_conj(MHPC, Info,
-    Info ^ may_have_parallel_conj := MHPC).
+simplify_info_set_has_parallel_conj(MHPC, Info,
+    Info ^ has_parallel_conj := MHPC).
 simplify_info_set_found_contains_trace(FCT, Info,
     Info ^ found_contains_trace := FCT).
+simplify_info_set_has_user_event(HUE, Info, Info ^ has_user_event := HUE).
 
 simplify_info_incr_cost_delta(Incr, Info,
     Info ^ cost_delta := Info ^ cost_delta + Incr).

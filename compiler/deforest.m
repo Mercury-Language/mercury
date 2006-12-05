@@ -1815,21 +1815,22 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
         inlining.do_inline_call(UnivQVars, Args, CalledPredInfo,
             CalledProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
-            TypeVarSet0, TypeVarSet, RttiVarMaps0, RttiVarMaps,
-            MayHaveParallelConj, Goal1),
-        pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo1),
-        (
-            MayHaveParallelConj = yes,
-            pred_info_get_markers(PredInfo1, Markers1),
-            add_marker(marker_may_have_parallel_conj, Markers1, Markers),
-            pred_info_set_markers(Markers, PredInfo1, PredInfo)
-        ;
-            MayHaveParallelConj = no,
-            PredInfo = PredInfo1
-        ),
+            TypeVarSet0, TypeVarSet, RttiVarMaps0, RttiVarMaps, Goal1),
+        pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo),
+        proc_info_get_has_parallel_conj(CalledProcInfo, CalledHasParallelConj),
+
         proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1),
         proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
-        proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo2, ProcInfo),
+        proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo2, ProcInfo3),
+        (
+            CalledHasParallelConj = yes,
+            proc_info_set_has_parallel_conj(yes, ProcInfo3, ProcInfo)
+        ;
+            CalledHasParallelConj = no,
+            % Leave the has_parallel_conj field of the proc_info as it is.
+            ProcInfo = ProcInfo3
+        ),
+
         pd_info_set_pred_info(PredInfo, !PDInfo),
         pd_info_set_proc_info(ProcInfo, !PDInfo),
 

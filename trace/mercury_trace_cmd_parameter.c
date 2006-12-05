@@ -58,6 +58,8 @@ char                    *MR_dice_fail_trace_counts_file = NULL;
 
 MR_ContextPosition      MR_context_position = MR_CONTEXT_AFTER;
 
+MR_UserEventContext     MR_user_event_context = MR_USER_EVENT_CONTEXT_FULL;
+
 MR_bool                 MR_print_goal_paths = MR_TRUE;
 
 MR_Word                 MR_listing_path;
@@ -274,17 +276,74 @@ MR_trace_cmd_context(char **words, int word_count, MR_TraceCmdInfo *cmd,
         }
     } else if (word_count == 1) {
         switch (MR_context_position) {
-        case MR_CONTEXT_NOWHERE:
-        case MR_CONTEXT_BEFORE:
-        case MR_CONTEXT_AFTER:
-        case MR_CONTEXT_PREVLINE:
-        case MR_CONTEXT_NEXTLINE:
-            fprintf(MR_mdb_out, "%s\n",
-                MR_context_report_msg[MR_context_position]);
-            break;
+            case MR_CONTEXT_NOWHERE:
+            case MR_CONTEXT_BEFORE:
+            case MR_CONTEXT_AFTER:
+            case MR_CONTEXT_PREVLINE:
+            case MR_CONTEXT_NEXTLINE:
+                fprintf(MR_mdb_out, "%s\n",
+                    MR_context_report_msg[MR_context_position]);
+                break;
 
-        default:
-            MR_fatal_error("invalid MR_context_position");
+            default:
+                MR_fatal_error("invalid MR_context_position");
+        }
+    } else {
+        MR_trace_usage_cur_cmd();
+    }
+
+    return KEEP_INTERACTING;
+}
+
+static const char   *MR_user_event_context_set_msg[] = {
+    "User events will get no contexts printed.",
+    "User events will get only file contexts printed.",
+    "User events will get only procedure contexts printed.",
+    "User events will get full contexts printed.",
+};
+
+static const char   *MR_user_event_context_report_msg[] = {
+    "User events get no contexts printed.",
+    "User events get only file contexts printed.",
+    "User events get only procedure contexts printed.",
+    "User events get full contexts printed.",
+};
+
+MR_Next
+MR_trace_cmd_user_event_context(char **words, int word_count,
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
+{
+    if (word_count == 2) {
+        if (MR_streq(words[1], "none")) {
+            MR_user_event_context = MR_USER_EVENT_CONTEXT_NONE;
+        } else if (MR_streq(words[1], "file")) {
+            MR_user_event_context = MR_USER_EVENT_CONTEXT_FILE;
+        } else if (MR_streq(words[1], "proc")) {
+            MR_user_event_context = MR_USER_EVENT_CONTEXT_PROC;
+        } else if (MR_streq(words[1], "full")) {
+            MR_user_event_context = MR_USER_EVENT_CONTEXT_FULL;
+        } else {
+            MR_trace_usage_cur_cmd();
+            return KEEP_INTERACTING;
+        }
+
+        if (MR_trace_internal_interacting) {
+            fprintf(MR_mdb_out, "%s\n",
+                MR_user_event_context_set_msg[MR_user_event_context]);
+        }
+    } else if (word_count == 1) {
+        switch (MR_user_event_context) {
+            case MR_USER_EVENT_CONTEXT_NONE:
+            case MR_USER_EVENT_CONTEXT_FILE:
+            case MR_USER_EVENT_CONTEXT_PROC:
+            case MR_USER_EVENT_CONTEXT_FULL:
+
+                fprintf(MR_mdb_out, "%s\n",
+                    MR_user_event_context_report_msg[MR_user_event_context]);
+                break;
+
+            default:
+                MR_fatal_error("invalid MR_user_event_context");
         }
     } else {
         MR_trace_usage_cur_cmd();
@@ -591,20 +650,20 @@ MR_trace_cmd_max_io_actions(char **words, int word_count,
                 &MR_trace_browser_persistent_state);
         );
     } else if (word_count == 1) {
-    
+
         MR_Integer n;
-        
+
         MR_TRACE_CALL_MERCURY(
             ML_BROWSE_get_num_io_actions(
                 MR_trace_browser_persistent_state, &n);
         );
-        
+
         /*
         ** We do this to avoid warnings about MR_Integer and int
         ** having different sizes on 64-bit architectures.
         */
         num_io_actions = (int) n;
-        
+
         fprintf(MR_mdb_out,
             "The maximum number of I/O actions printed is %d\n",
             num_io_actions);
@@ -854,13 +913,16 @@ MR_trace_listing_path_ensure_init(void)
 
 const char *const    MR_trace_printlevel_cmd_args[] =
     { "none", "some", "all", NULL };
-    
+
 const char *const    MR_trace_on_off_args[] =
     { "on", "off", NULL };
-                        
+
 const char *const    MR_trace_context_cmd_args[] =
     { "none", "before", "after", "prevline", "nextline", NULL };
-        
+
+const char *const    MR_trace_user_event_context_cmd_args[] =
+    { "none", "file", "proc", "full", NULL };
+
 const char *const    MR_trace_scope_cmd_args[] =
     { "all", "interface", "entry", NULL };
 
@@ -868,7 +930,7 @@ const char *const    MR_trace_format_cmd_args[] =
     { "-A", "-B", "-P",
     "--print-all", "--print", "--browse",
     "flat", "pretty", "verbose", NULL };
- 
+
 const char *const    MR_trace_format_param_cmd_args[] =
     { "-A", "-B", "-P", "-f", "-p", "-v",
     "--print-all", "--print", "--browse",

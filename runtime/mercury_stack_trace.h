@@ -61,7 +61,7 @@ extern	void	MR_dump_stack(MR_Code *success_pointer,
 ** why the dump was cut short.
 */
 
-typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
+typedef	void		(*MR_PrintStackRecord)(FILE *fp,
 				const MR_ProcLayout *proc_layout,
 				int count, int level,
 				MR_Word *base_sp, MR_Word * base_curfr,
@@ -76,7 +76,7 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				MR_bool include_trace_data,
 				MR_bool include_contexts,
 				int frame_limit, int line_limit,
-				MR_Print_Stack_Record print_stack_record);
+				MR_PrintStackRecord print_stack_record);
 
 /*
 ** MR_dump_nondet_stack
@@ -232,12 +232,12 @@ extern	MR_bool	MR_find_context(const MR_LabelLayout *label,
 */
 
 extern	void	MR_print_call_trace_info(FILE *fp,
-			const MR_ProcLayout *entry,
+			const MR_ProcLayout *proc_layout,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 extern	void	MR_maybe_print_call_trace_info(FILE *fp,
 			MR_bool include_trace_data,
-			const MR_ProcLayout *entry,
+			const MR_ProcLayout *proc_layout,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
@@ -275,7 +275,9 @@ extern	void	MR_print_proc_separate(FILE *fp, const MR_ProcLayout *entry);
 ** MR_print_proc_id_trace_and_context prints an identification of the given
 ** procedure, together with call trace information (if available), a context
 ** within the procedure, and possibly a context identifying the caller.
-** The position argument says where (if anywhere) the contexts should appear.
+** The pos argument says where (if anywhere) the contexts should appear;
+** the user_event_context argument says what parts of the context (if any)
+** to print for user defined events.
 */
 
 typedef	enum {
@@ -286,12 +288,22 @@ typedef	enum {
 	MR_CONTEXT_NEXTLINE
 } MR_ContextPosition;
 
+typedef	enum {
+	MR_USER_EVENT_CONTEXT_NONE,
+	MR_USER_EVENT_CONTEXT_FILE,
+	MR_USER_EVENT_CONTEXT_PROC,
+	MR_USER_EVENT_CONTEXT_FULL
+} MR_UserEventContext;
+
 extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
 			MR_bool include_trace_data, MR_ContextPosition pos,
-			const MR_ProcLayout *entry,
+			MR_UserEventContext user_event_context,
+			const MR_ProcLayout *proc_layout,
+			const char *maybe_user_event_name,
 			MR_Word *base_sp, MR_Word *base_curfr,
 			const char *path, const char *filename, int lineno,
-			MR_bool print_parent, const char *parent_filename,
+			MR_bool print_parent,
+			const char *parent_filename,
 			int parent_lineno, int indent);
 
 /*
@@ -299,7 +311,7 @@ extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
 */
 
 extern	void	MR_dump_stack_record_print(FILE *fp,
-			const MR_ProcLayout *entry_layout, int count,
+			const MR_ProcLayout *proc_layout, int count,
 			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
 			const char *goal_path, MR_bool context_mismatch);

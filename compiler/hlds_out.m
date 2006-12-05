@@ -1016,7 +1016,6 @@ marker_name(marker_check_termination, "check_termination").
 marker_name(marker_does_not_terminate, "does_not_terminate").
 marker_name(marker_calls_are_fully_qualified, "calls_are_fully_qualified").
 marker_name(marker_mode_check_clauses, "mode_check_clauses").
-marker_name(marker_may_have_parallel_conj, "may_have_parallel_conj").
 marker_name(marker_mutable_access_pred, "mutable_access_pred").
 
 write_marker(Marker, !IO) :-
@@ -3587,6 +3586,8 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     proc_info_get_rtti_varmaps(Proc, RttiVarMaps),
     proc_info_get_eval_method(Proc, EvalMethod),
     proc_info_get_is_address_taken(Proc, IsAddressTaken),
+    proc_info_get_has_parallel_conj(Proc, HasParallelConj),
+    proc_info_get_has_user_event(Proc, HasUserEvent),
     proc_info_get_call_table_tip(Proc, MaybeCallTableTip),
     proc_info_get_maybe_deep_profile_info(Proc, MaybeDeepProfileInfo),
     proc_info_get_maybe_untuple_info(Proc, MaybeUntupleInfo),
@@ -3642,6 +3643,22 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     ;
         IsAddressTaken = address_is_not_taken,
         io.write_string("% address is not taken\n", !IO)
+    ),
+
+    (
+        HasParallelConj = yes,
+        io.write_string("% contains parallel conjunction\n", !IO)
+    ;
+        HasParallelConj = no,
+        io.write_string("% does not contain parallel conjunction\n", !IO)
+    ),
+
+    (
+        HasUserEvent = yes,
+        io.write_string("% contains user event\n", !IO)
+    ;
+        HasUserEvent = no,
+        io.write_string("% does not contain user event\n", !IO)
     ),
 
     ( EvalMethod = eval_normal ->

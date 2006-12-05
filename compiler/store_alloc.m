@@ -89,7 +89,10 @@ allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
     globals.get_trace_level(Globals, TraceLevel),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ( eff_trace_level_is_none(PredInfo, !.ProcInfo, TraceLevel) = no ->
+    (
+        eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
+            TraceLevel) = yes
+    ->
         trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
     ;
         set.init(ResumeVars0)

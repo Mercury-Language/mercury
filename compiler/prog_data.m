@@ -1582,6 +1582,12 @@
     % This type maps the name of an event to the event's specification.
 :- type event_spec_map == map(string, event_spec).
 
+:- type event_set
+    --->    event_set(
+                event_set_name              :: string,
+                event_set_spec_map          :: event_spec_map
+            ).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

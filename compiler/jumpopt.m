@@ -26,9 +26,9 @@
 
 %-----------------------------------------------------------------------------%
 
-    % jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
-    %   Recjump, PessimizeTailCalls, CheckedNondetTailCall, !LabelCounter,
-    %   !Instrs, Mod):
+    % optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel,
+    %   Fulljumpopt, Recjump, PessimizeTailCalls, CheckedNondetTailCall,
+    %   !LabelCounter, !Instrs, Mod):
     %
     % Take an instruction list and optimize jumps. This includes the jumps
     % implicit in procedure returns.
@@ -53,9 +53,10 @@
     % Mod will say whether the instruction sequence was modified
     % by the optimization.
     %
-:- pred jumpopt_main(set(label)::in, may_alter_rtti::in, proc_label::in,
-    bool::in, bool::in, bool::in, bool::in, counter::in, counter::out,
-    list(instruction)::in, list(instruction)::out, bool::out) is det.
+:- pred optimize_jumps_in_proc(set(label)::in, may_alter_rtti::in,
+    proc_label::in, bool::in, bool::in, bool::in, bool::in,
+    counter::in, counter::out, list(instruction)::in, list(instruction)::out,
+    bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -98,8 +99,9 @@
 % frameopt, which can do a better job of optimizing this block, have
 % been applied.
 
-jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt, Recjump,
-        PessimizeTailCalls, CheckedNondetTailCall, !C, !Instrs, Mod) :-
+optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
+        Recjump, PessimizeTailCalls, CheckedNondetTailCall, !C, !Instrs,
+        Mod) :-
     some [!Instrmap, !Blockmap, !Lvalmap, !Procmap, !Sdprocmap, !Succmap,
             !Forkmap] (
         Instrs0 = !.Instrs,
@@ -109,9 +111,9 @@ jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt, Recjump,
         map.init(!:Procmap),
         map.init(!:Sdprocmap),
         map.init(!:Succmap),
-        jumpopt.build_maps(!.Instrs, Recjump, !Instrmap, !Blockmap, !Lvalmap,
+        jump_opt_build_maps(!.Instrs, Recjump, !Instrmap, !Blockmap, !Lvalmap,
             !Procmap, !Sdprocmap, !Succmap),
-        jumpopt.build_forkmap(!.Instrs, !.Sdprocmap, map.init, !:Forkmap),
+        jump_opt_build_forkmap(!.Instrs, !.Sdprocmap, map.init, !:Forkmap),
         (
             PessimizeTailCalls = no
         ;
@@ -124,7 +126,7 @@ jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt, Recjump,
         (
             CheckedNondetTailCall = yes,
             CheckedNondetTailCallInfo0 = yes(ProcLabel - !.C),
-            jumpopt.instr_list(!.Instrs, comment(""), !.Instrmap, !.Blockmap,
+            jump_opt_instr_list(!.Instrs, comment(""), !.Instrmap, !.Blockmap,
                 !.Lvalmap, !.Procmap, !.Sdprocmap, !.Forkmap, !.Succmap,
                 LayoutLabels, Fulljumpopt, MayAlterRtti,
                 CheckedNondetTailCallInfo0, CheckedNondetTailCallInfo,
@@ -139,7 +141,7 @@ jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt, Recjump,
         ;
             CheckedNondetTailCall = no,
             CheckedNondetTailCallInfo0 = no,
-            jumpopt.instr_list(!.Instrs, comment(""), !.Instrmap, !.Blockmap,
+            jump_opt_instr_list(!.Instrs, comment(""), !.Instrmap, !.Blockmap,
                 !.Lvalmap, !.Procmap, !.Sdprocmap, !.Forkmap, !.Succmap,
                 LayoutLabels, Fulljumpopt, MayAlterRtti,
                 CheckedNondetTailCallInfo0, _, [], RevInstrs)
@@ -155,14 +157,14 @@ jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt, Recjump,
 
 %-----------------------------------------------------------------------------%
 
-:- pred jumpopt.build_maps(list(instruction)::in, bool::in,
+:- pred jump_opt_build_maps(list(instruction)::in, bool::in,
     instrmap::in, instrmap::out, tailmap::in, tailmap::out,
     lvalmap::in, lvalmap::out, tailmap::in, tailmap::out,
     tailmap::in, tailmap::out, tailmap::in, tailmap::out) is det.
 
-jumpopt.build_maps([], _, !Instrmap, !Blockmap,
+jump_opt_build_maps([], _, !Instrmap, !Blockmap,
         !Lvalmap, !Procmap, !Sdprocmap, !Succmap).
-jumpopt.build_maps([Instr0 | Instrs0], Recjump, !Instrmap, !Blockmap,
+jump_opt_build_maps([Instr0 | Instrs0], Recjump, !Instrmap, !Blockmap,
         !Lvalmap, !Procmap, !Sdprocmap, !Succmap) :-
     Instr0 = Uinstr0 - _,
     ( Uinstr0 = label(Label) ->
@@ -208,17 +210,17 @@ jumpopt.build_maps([Instr0 | Instrs0], Recjump, !Instrmap, !Blockmap,
     ;
         true
     ),
-    jumpopt.build_maps(Instrs0, Recjump, !Instrmap, !Blockmap, !Lvalmap,
+    jump_opt_build_maps(Instrs0, Recjump, !Instrmap, !Blockmap, !Lvalmap,
         !Procmap, !Sdprocmap, !Succmap).
 
     % Find labels followed by a test of r1 where both paths set r1 to
     % its original value and proceed.
     %
-:- pred jumpopt.build_forkmap(list(instruction)::in, tailmap::in,
+:- pred jump_opt_build_forkmap(list(instruction)::in, tailmap::in,
     tailmap::in, tailmap::out) is det.
 
-jumpopt.build_forkmap([], _Sdprocmap, !Forkmap).
-jumpopt.build_forkmap([Instr - _Comment|Instrs], Sdprocmap, !Forkmap) :-
+jump_opt_build_forkmap([], _Sdprocmap, !Forkmap).
+jump_opt_build_forkmap([Instr - _Comment|Instrs], Sdprocmap, !Forkmap) :-
     (
         Instr = label(Label),
         opt_util.is_forkproceed_next(Instrs, Sdprocmap, Between)
@@ -227,7 +229,7 @@ jumpopt.build_forkmap([Instr - _Comment|Instrs], Sdprocmap, !Forkmap) :-
     ;
         true
     ),
-    jumpopt.build_forkmap(Instrs, Sdprocmap, !Forkmap).
+    jump_opt_build_forkmap(Instrs, Sdprocmap, !Forkmap).
 
 %-----------------------------------------------------------------------------%
 
@@ -266,17 +268,17 @@ jumpopt.build_forkmap([Instr - _Comment|Instrs], Sdprocmap, !Forkmap) :-
     % building it in right order would make instr_list not tail recursive,
     % and thus unable to handle very long instruction lists.
     %
-:- pred jumpopt.instr_list(list(instruction)::in, instr::in, instrmap::in,
+:- pred jump_opt_instr_list(list(instruction)::in, instr::in, instrmap::in,
     tailmap::in, lvalmap::in, tailmap::in, tailmap::in, tailmap::in,
     tailmap::in, set(label)::in, bool::in, may_alter_rtti::in,
     maybe(pair(proc_label, counter))::in,
     maybe(pair(proc_label, counter))::out,
     list(instruction)::in, list(instruction)::out) is det.
 
-jumpopt.instr_list([], _PrevInstr, _Instrmap, _Blockmap, _Lvalmap,
+jump_opt_instr_list([], _PrevInstr, _Instrmap, _Blockmap, _Lvalmap,
         _Procmap, _Sdprocmap, _Forkmap, _Succmap, _LayoutLabels,
         _Fulljumpopt, _MayAlterRtti, !CheckedNondetTailCallInfo, !RevInstrs).
-jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
+jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
         Fulljumpopt, MayAlterRtti, !CheckedNondetTailCallInfo, !RevInstrs) :-
     Instr0 = Uinstr0 - Comment0,
@@ -462,7 +464,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 % DestLabel from Blockmap, though only while
                 % processing AdjustedBlock.
                 map.delete(Blockmap, DestLabel, CrippledBlockmap),
-                jumpopt.instr_list(AdjustedBlock, comment(""), Instrmap,
+                jump_opt_instr_list(AdjustedBlock, comment(""), Instrmap,
                     CrippledBlockmap, Lvalmap, Procmap, Sdprocmap, Forkmap,
                     Succmap, LayoutLabels, Fulljumpopt, MayAlterRtti,
                     !CheckedNondetTailCallInfo, [], RevNewInstrs),
@@ -716,7 +718,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 %               short_label(Instrmap, FixNoLayout, FixNoLayoutDest),
 %               FixNoLayoutDest \= FixNoLayout
 %           ->
-%               error("jumpopt.instr_list: pragma_c fix_no_layout")
+%               error("jump_opt_instr_list: pragma_c fix_no_layout")
 %           ;
 %               true
 %           ),
@@ -725,7 +727,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 %               short_label(Instrmap, FixLayout, FixLayoutDest),
 %               FixLayoutDest \= FixLayout
 %           ->
-%               error("jumpopt.instr_list: pragma_c fix_layout")
+%               error("jump_opt_instr_list: pragma_c fix_layout")
 %           ;
 %               true
 %           ),
@@ -734,7 +736,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 %               short_label(Instrmap, FixOnlyLayout, FixOnlyLayoutDest),
 %               FixOnlyLayoutDest \= FixOnlyLayout
 %           ->
-%               error("jumpopt.instr_list: pragma_c fix_only_layout")
+%               error("jump_opt_instr_list: pragma_c fix_only_layout")
 %           ;
 %               true
 %           ),
@@ -830,7 +832,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
     ;
         NewPrevInstr = Uinstr0
     ),
-    jumpopt.instr_list(RecurseInstrs, NewPrevInstr, Instrmap, Blockmap,
+    jump_opt_instr_list(RecurseInstrs, NewPrevInstr, Instrmap, Blockmap,
         Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
         Fulljumpopt, MayAlterRtti, !CheckedNondetTailCallInfo, !RevInstrs).
 

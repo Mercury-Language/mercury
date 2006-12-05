@@ -1421,11 +1421,11 @@ and then selecting the ``Print variable'' command from the
 Most of the menu commands also have keyboard short-cuts,
 which are displayed on the menu.
 
-Note that mdb's @samp{context} command should not be used if
-you are using the Emacs interface, otherwise the Emacs
-interface won't be able to parse the file names and
-line numbers that mdb outputs, and so it won't be able to
-highlight the correct location in the source code.
+Note that mdb's @samp{context} and @samp{user_event_context} commands
+should not be used if you are using the Emacs interface,
+otherwise the Emacs interface won't be able to parse
+the file names and line numbers that mdb outputs,
+and so it won't be able to highlight the correct location in the source code.
 
 @node Tracing of Mercury programs
 @section Tracing of Mercury programs
@@ -2158,12 +2158,15 @@ and the names, types and order of the attributes
 of each kind of user defined event,
 by giving the name of an event set specification file to the compiler
 when compiling that program
-as the argument of the @samp{event-spec-file-name} option.
-This file should contain a sequence of one or more event specifications,
+as the argument of the @samp{event-set-file-name} option.
+This file should contain a header giving the event set's name,
+followed by a sequence of one or more event specifications,
 like this:
 
 @c XXX replace with more realistic example
 @example
+	event set queens
+
 	event nodiag_fail(
 		test_failed:	string,
 		arg_b:		int,
@@ -2178,6 +2181,8 @@ like this:
 	event noargs
 @end example
 
+The header consists of the keywords @samp{event set}
+and an identifier giving the event set name.
 Each event specification consists of the keyword @samp{event},
 the name of the event, and,
 if the event has any attributes, a parenthesized list of those attributes.
@@ -3446,6 +3451,26 @@ after the identification of the event or call to which they refer.
 @sp 1
 @item context
 Reports where contexts are being printed.
+@sp 1
+@item user_event_context none
+@kindex user_event_context (mdb command)
+When reporting user-defined events,
+does not print either filename/line number pairs or procedure ids.
+@sp 1
+@item user_event_context file
+When reporting user-defined events,
+prints only filename/line number pairs, not procedure ids.
+@sp 1
+@item user_event_context proc
+When reporting user-defined events,
+prints only procedure ids, not filename/line number pairs.
+@sp 1
+@item user_event_context full
+When reporting user-defined events,
+prints both filename/line number pairs and procedure ids.
+@sp 1
+@item user_event_context
+Reports what parts of the context are being printed at user events.
 @sp 1
 @item list_context_lines @var{num}
 @kindex list_context_lines (mdb command)

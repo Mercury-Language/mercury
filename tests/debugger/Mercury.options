@@ -41,7 +41,9 @@ MCFLAGS-uci = -O2 --compare-specialization 2
 # asm_fast.gc.debug.tr.
 MCFLAGS-uci_index = --compare-specialization 2 --intermodule-optimization
 
-MCFLAGS-user_event = --event-spec-file-name user_event_spec
+MCFLAGS-user_event = --event-set-file-name user_event_spec
+
+MCFLAGS-user_event_shallow = --event-set-file-name user_event_spec --trace shallow
 
 # The solver_test test case exercises the printing of a procedure name, and
 # that procedure is dead, so we must prevent it being optimized away.

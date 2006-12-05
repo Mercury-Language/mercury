@@ -399,11 +399,6 @@
                         % inst_match.bound_inst_list_contains_instname and
                         % instmap.merge) would be unacceptable.
 
-    ;       marker_may_have_parallel_conj
-                        % The predicate may contain parallel conjunctions.
-                        % It should be run through the dependent parallel
-                        % conjunction transformation.
-
     ;       marker_mutable_access_pred.
                         % This predicate is part of the machinery used to
                         % access mutables.  This marker is used to inform
@@ -1740,6 +1735,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     maybe(list(arg_info))::out) is det.
 :- pred proc_info_get_liveness_info(proc_info::in, liveness_info::out) is det.
 :- pred proc_info_get_need_maxfr_slot(proc_info::in, bool::out) is det.
+:- pred proc_info_get_has_user_event(proc_info::in, bool::out) is det.
+:- pred proc_info_get_has_parallel_conj(proc_info::in, bool::out) is det.
 :- pred proc_info_get_call_table_tip(proc_info::in,
     maybe(prog_var)::out) is det.
 :- pred proc_info_get_maybe_proc_table_info(proc_info::in,
@@ -1790,6 +1787,10 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_liveness_info(liveness_info::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_need_maxfr_slot(bool::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_has_user_event(bool::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_has_parallel_conj(bool::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_call_table_tip(maybe(prog_var)::in,
     proc_info::in, proc_info::out) is det.
@@ -2061,6 +2062,20 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % during the live_vars pass; it is invalid before then.
                 need_maxfr_slot             :: bool,
 
+                % Does this procedure contain a user event?
+                %
+                % This slot is set by the simplification pass.
+                proc_has_user_event         :: bool,
+
+                % Does this procedure contain parallel conjunction?
+                % If yes, it should be run through the dependent parallel
+                % conjunction transformation.
+                %
+                % This slot is set by the simplification pass.
+                % Note that after some optimization passes, this flag
+                % may be a conservative approximation.
+                proc_has_parallel_conj        :: bool,
+
                 % If the procedure's evaluation method is memo, loopcheck or
                 % minimal, this slot identifies the variable that holds the tip
                 % of the call table. Otherwise, this field will be set to `no'.
@@ -2200,7 +2215,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
-        ArgInfo, InitialLiveness, no, no, no, no, no, no,
+        ArgInfo, InitialLiveness, no, no, no, no, no, no, no, no,
         SharingInfo, ReuseInfo),
     ProcInfo = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
@@ -2216,7 +2231,7 @@ proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
     ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(ArgSizes, Termination, Termination2,
         IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no, no, no,
-        no, SharingInfo, ReuseInfo),
+        no, no, no, SharingInfo, ReuseInfo),
     ProcInfo = proc_info(Context, BodyVarSet, BodyTypes, HeadVars,
         InstVarSet, no, HeadModes, no, HeadLives,
         DeclaredDetism, InferredDetism, Goal, CanProcess, ModeErrors,
@@ -2239,7 +2254,7 @@ proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken,
-        StackSlots, no, Liveness, no, no, no, no, no, no,
+        StackSlots, no, Liveness, no, no, no, no, no, no, no, no,
         SharingInfo, ReuseInfo),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, no, HeadModes, no, MaybeHeadLives,
@@ -2276,6 +2291,9 @@ proc_info_get_stack_slots(PI, PI ^ proc_sub_info ^ stack_slots).
 proc_info_maybe_arg_info(PI, PI ^ proc_sub_info ^ arg_pass_info).
 proc_info_get_liveness_info(PI, PI ^ proc_sub_info ^ initial_liveness).
 proc_info_get_need_maxfr_slot(PI, PI ^ proc_sub_info ^ need_maxfr_slot).
+proc_info_get_has_user_event(PI, PI ^ proc_sub_info ^ proc_has_user_event).
+proc_info_get_has_parallel_conj(PI,
+    PI ^ proc_sub_info ^ proc_has_parallel_conj).
 proc_info_get_call_table_tip(PI, PI ^ proc_sub_info ^ call_table_tip).
 proc_info_get_maybe_proc_table_info(PI, PI ^ proc_sub_info ^ maybe_table_info).
 proc_info_get_table_attributes(PI, PI ^ proc_sub_info ^ table_attributes).
@@ -2309,6 +2327,10 @@ proc_info_set_liveness_info(IL, PI,
     PI ^ proc_sub_info ^ initial_liveness := IL).
 proc_info_set_need_maxfr_slot(NMS, PI,
     PI ^ proc_sub_info ^ need_maxfr_slot := NMS).
+proc_info_set_has_user_event(HUE, PI,
+    PI ^ proc_sub_info ^ proc_has_user_event := HUE).
+proc_info_set_has_parallel_conj(HPC, PI,
+    PI ^ proc_sub_info ^ proc_has_parallel_conj := HPC).
 proc_info_set_call_table_tip(CTT, PI,
     PI ^ proc_sub_info ^ call_table_tip := CTT).
 proc_info_set_maybe_proc_table_info(MTI, PI,

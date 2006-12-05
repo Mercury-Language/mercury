@@ -1804,7 +1804,6 @@ should_output_marker(marker_does_not_terminate, yes).
 should_output_marker(marker_check_termination, no).
 should_output_marker(marker_calls_are_fully_qualified, no).
 should_output_marker(marker_mode_check_clauses, yes).
-should_output_marker(marker_may_have_parallel_conj, no).
 should_output_marker(marker_mutable_access_pred, no).
 
 :- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mer_mode)::in,

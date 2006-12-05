@@ -257,16 +257,22 @@ typedef enum {
 ** The next three fields all point to an array whose length is the number of
 ** attributes.
 **
-** user_event->MR_ue_attr_locns[i] gives the location where we can find
-** the value of the (i+1)th attribute (since we start counting attributes at
-** one). This field will stay.
+** MR_ue_attr_locns[i] gives the location where we can find the value of the
+** (i+1)th attribute (since we start counting attributes at one).
 **
-** user_event->MR_ue_attr_types[i] is the typeinfo giving the type of the
-** (i+1)th attribute. If we find that all attributes of all events have
-** a fixed type, this field may disappear.
+** MR_ue_attr_types[i] is the typeinfo giving the type of the (i+1)th
+** attribute.
 **
-** user_event->MR_ue_attr_names[i] gives the name of the (i+1)th attribute.
-** In the future, this field may disappear.
+** MR_ue_attr_names[i] gives the name of the (i+1)th attribute.
+** (In the future, this field may disappear.)
+** 
+** user_event->MR_ue_attr_var_nums[i] gives the variable number of the (i+1)th
+** attribute. This field is used by the debugger to display the associated
+** value just once (not twice, as both attribute and variable value) with
+** "print *". (Note that We don't delete the variables that are also attributes
+** from the set of live variables in layout structures, because that would
+** require any native garbage collector to look at the list of attributes
+** as well as the list of other variables, slowing it down.)
 */
 
 struct MR_UserEvent_Struct {
@@ -276,6 +282,7 @@ struct MR_UserEvent_Struct {
 	MR_LongLval			*MR_ue_attr_locns;
 	MR_TypeInfo			*MR_ue_attr_types;
 	const char			**MR_ue_attr_names;
+	const MR_uint_least16_t		*MR_ue_attr_var_nums;
 };
 
 /*-------------------------------------------------------------------------*/
@@ -867,6 +874,8 @@ typedef	MR_int_least8_t		MR_EvalMethodInt;
 
 typedef enum {
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_NONE),
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_BASIC),
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_BASIC_USER),
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_SHALLOW),
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DEEP),
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DECL_REP)
@@ -1293,8 +1302,9 @@ typedef struct MR_ModuleFileLayout_Struct {
 ** compiler/layout_out.m.
 */
 
-#define	MR_LAYOUT_VERSION		MR_LAYOUT_VERSION__USER_DEFINED
+#define	MR_LAYOUT_VERSION		MR_LAYOUT_VERSION__EVENTSETNAME
 #define	MR_LAYOUT_VERSION__USER_DEFINED	1
+#define	MR_LAYOUT_VERSION__EVENTSETNAME	2
 
 struct MR_ModuleLayout_Struct {
 	MR_uint_least8_t                MR_ml_version_number;
@@ -1309,6 +1319,7 @@ struct MR_ModuleLayout_Struct {
 	MR_int_least32_t		MR_ml_suppressed_events;
 	MR_int_least32_t		MR_ml_num_label_exec_counts;
 	MR_Unsigned			*MR_ml_label_exec_count;
+	const char			*MR_ml_event_set_name;
 	const char			*MR_ml_event_specs;
 };
 

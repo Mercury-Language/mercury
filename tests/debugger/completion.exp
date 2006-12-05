@@ -35,13 +35,13 @@ diff                 mmc_options          unhide_events
 disable              modules              untrust
 document             next                 up
 document_category    nondet_stack         user
-down                 open                 v
-dump                 p                    var_details
-e                    pass_trace_counts    vars
-echo                 pneg_stack           view
-enable               pop_list_dir         xml_browser_cmd
-exception            print                xml_tmp_filename
-excp                 print_optionals      
+down                 open                 user_event_context
+dump                 p                    v
+e                    pass_trace_counts    var_details
+echo                 pneg_stack           vars
+enable               pop_list_dir         view
+exception            print                xml_browser_cmd
+excp                 print_optionals      xml_tmp_filename
 h              help           histogram_exp  
 held_vars      histogram_all  hold           
 var_details  vars         view         

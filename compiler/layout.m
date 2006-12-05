@@ -45,6 +45,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -78,7 +79,8 @@
                 trace_level             :: trace_level,
                 suppressed_events       :: int,
                 num_label_exec_count    :: int,
-                maybe_event_specs       :: maybe(string)
+                maybe_event_specs       :: maybe(pair(string, string))
+                                        % event set name, event specifications
             )
     ;       closure_proc_id_data(       % defines MR_ClosureId
                 caller_proc_label       :: proc_label,
@@ -106,7 +108,8 @@
                 user_event_num_attr     :: int,
                 user_event_locns        :: rval,
                 user_event_types        :: rval,
-                user_event_names        :: list(string)
+                user_event_names        :: list(string),
+                user_event_var_nums     :: list(int)
             ).
 
 :- type label_var_info
@@ -159,7 +162,7 @@
 
 :- type proc_layout_exec_trace          % defines MR_ExecTrace
     --->    proc_layout_exec_trace(
-                call_label_layout       :: layout_name,
+                maybe_call_label_layout :: maybe(label_layout_details),
                 proc_body_bytes         :: list(int),
                                         % The procedure body represented as
                                         % a list of bytecodes.
@@ -201,6 +204,7 @@
     --->    label_layout(proc_label, int, label_vars)
     ;       user_event_layout(proc_label, int)
     ;       user_event_attr_names(proc_label, int)
+    ;       user_event_attr_var_nums(proc_label, int)
     ;       proc_layout(rtti_proc_label, proc_layout_kind)
             % A proc layout structure for stack tracing, accurate gc,
             % deep profiling and/or execution tracing.
@@ -226,6 +230,9 @@
     ;       module_layout(module_name)
     ;       proc_static(rtti_proc_label)
     ;       proc_static_call_sites(rtti_proc_label).
+
+:- type label_layout_details
+    --->    label_layout_details(proc_label, int, label_vars).
 
 :- type label_vars
     --->    label_has_var_info

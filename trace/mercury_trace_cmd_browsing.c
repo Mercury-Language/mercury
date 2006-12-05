@@ -674,8 +674,9 @@ MR_trace_set_level_and_report(int ancestor_level, MR_bool detailed,
         }
 
         MR_print_proc_id_trace_and_context(MR_mdb_out, MR_FALSE,
-            MR_context_position, entry, base_sp, base_curfr, "",
-            filename, lineno, MR_FALSE, "", 0, indent);
+            MR_context_position, MR_user_event_context, entry, MR_FALSE,
+            base_sp, base_curfr, "", filename, lineno, MR_FALSE,
+            "", 0, indent);
     } else {
         fflush(MR_mdb_out);
         fprintf(MR_mdb_err, "%s.\n", problem);

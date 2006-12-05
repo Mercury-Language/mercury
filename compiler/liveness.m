@@ -325,7 +325,10 @@ detect_liveness_proc_2(PredId, ModuleInfo, !ProcInfo, !IO) :-
     ),
 
     globals.get_trace_level(Globals, TraceLevel),
-    ( eff_trace_level_is_none(PredInfo, !.ProcInfo, TraceLevel) = no ->
+    (
+        eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
+            TraceLevel) = yes
+    ->
         trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
     ;
         set.init(ResumeVars0)

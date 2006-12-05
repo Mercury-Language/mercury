@@ -30,9 +30,11 @@
 #include <string.h>
 #include <ctype.h>
 
-const char      *MR_consensus_event_specs = NULL;
-MR_bool         MR_event_specs_have_conflict = MR_FALSE;
+MR_TraceEventSet    *MR_trace_event_sets = NULL;
+int                 MR_trace_event_set_next = 0;
+int                 MR_trace_event_set_max = 0;
 
+MR_bool             MR_trace_event_sets_are_all_consistent = MR_TRUE;
 
 /*
 ** We record module layout structures in two tables. The MR_module_infos
@@ -155,6 +157,8 @@ MR_register_all_modules_and_procs(FILE *fp, MR_bool verbose)
     }
 }
 
+#define MR_INIT_EVENT_SET_TABLE_SIZE    10
+
 void
 MR_register_module_layout_real(const MR_ModuleLayout *module)
 {
@@ -168,16 +172,40 @@ MR_register_module_layout_real(const MR_ModuleLayout *module)
     if (MR_search_module_info_by_name(module->MR_ml_name) == NULL) {
         MR_insert_module_info(module);
 
-        if (module->MR_ml_version_number >= MR_LAYOUT_VERSION__USER_DEFINED) {
+        if (module->MR_ml_version_number >= MR_LAYOUT_VERSION__EVENTSETNAME) {
             if (module->MR_ml_event_specs != NULL) {
-                if (MR_consensus_event_specs == NULL) {
-                    MR_consensus_event_specs = module->MR_ml_event_specs;
-                } else {
-                    if (MR_strdiff(MR_consensus_event_specs,
-                        module->MR_ml_event_specs))
+                int                 i;
+                MR_bool             found;
+                const char          *event_set_name;
+                MR_TraceEventSet    *trace_event_set;
+                
+                event_set_name = module->MR_ml_event_set_name;
+
+                for (i = 0; i < MR_trace_event_set_next; i++) {
+                    if (MR_streq(MR_trace_event_sets[i].MR_tes_name,
+                        event_set_name))
                     {
-                        MR_event_specs_have_conflict = MR_TRUE;
-                    } /* else this module has the same specs as the consensus */
+                        trace_event_set = &MR_trace_event_sets[i];
+                        if (MR_strdiff(trace_event_set->MR_tes_string,
+                            module->MR_ml_event_specs))
+                        {
+                            trace_event_set->MR_tes_is_consistent = MR_FALSE;
+                        }
+
+                        found = MR_TRUE;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    MR_ensure_room_for_next(MR_trace_event_set,
+                        MR_TraceEventSet, MR_INIT_EVENT_SET_TABLE_SIZE);
+                    trace_event_set =
+                        &MR_trace_event_sets[MR_trace_event_set_next];
+                    trace_event_set->MR_tes_name = event_set_name;
+                    trace_event_set->MR_tes_string = module->MR_ml_event_specs;
+                    trace_event_set->MR_tes_is_consistent = MR_TRUE;
+                    MR_trace_event_set_next++;
                 }
             }
         }

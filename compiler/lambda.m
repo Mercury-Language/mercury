@@ -119,6 +119,7 @@
                 inst_varset,            % from the proc_info
                 rtti_varmaps,           % from the proc_info
                 pred_markers,           % from the pred_info
+                bool,                   % has_parallel_conj, from the proc_info
                 pred_or_func,
                 string,                 % pred/func name
                 module_info,
@@ -176,15 +177,16 @@ process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet0),
+    proc_info_get_has_parallel_conj(!.ProcInfo, HasParallelConj),
     MustRecomputeNonLocals0 = no,
 
     % Process the goal.
     Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
-        InstVarSet0, RttiVarMaps0, Markers, PredOrFunc,
+        InstVarSet0, RttiVarMaps0, Markers, HasParallelConj, PredOrFunc,
         PredName, !.ModuleInfo, MustRecomputeNonLocals0),
     process_goal(Goal0, Goal1, Info0, Info1),
     Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet,
-        _, RttiVarMaps1, _, _, _, !:ModuleInfo, MustRecomputeNonLocals),
+        _, RttiVarMaps1, _, _, _, _, !:ModuleInfo, MustRecomputeNonLocals),
 
     % Check if we need to requantify.
     (
@@ -305,7 +307,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         OrigNonLocals0, LambdaGoal, Unification0, Functor,
         Unification, LambdaInfo0, LambdaInfo) :-
     LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
-        InstVarSet, RttiVarMaps, Markers, POF, OrigPredName,
+        InstVarSet, RttiVarMaps, Markers, HasParallelConj, POF, OrigPredName,
         ModuleInfo0, MustRecomputeNonLocals0),
 
     % Calculate the constraints which apply to this lambda expression.
@@ -442,8 +444,8 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         goal_info_get_context(LambdaGoalInfo, LambdaContext),
         % The TVarSet is a superset of what it really ought be,
         % but that shouldn't matter.
-        % Existentially typed lambda expressions are not
-        % yet supported (see the documentation at top of this file)
+        % Existentially typed lambda expressions are not yet supported
+        % (see the documentation at top of this file).
         ExistQVars = [],
         uni_modes_to_modes(UniModes1, OrigArgModes),
 
@@ -463,19 +465,12 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         map.apply_to_list(ArgVars, ArgModesMap1, ArgModes1),
 
         % Recompute the uni_modes.
-        mode_util.modes_to_uni_modes(ModuleInfo1, ArgModes1, ArgModes1,
-            UniModes),
+        modes_to_uni_modes(ModuleInfo1, ArgModes1, ArgModes1, UniModes),
 
         list.append(ArgModes1, Modes, AllArgModes),
         map.apply_to_list(AllArgVars, VarTypes, ArgTypes),
 
-        purity_to_markers(Purity, LambdaMarkers0),
-        ( check_marker(Markers, marker_may_have_parallel_conj) ->
-            add_marker(marker_may_have_parallel_conj,
-                LambdaMarkers0, LambdaMarkers)
-        ;
-            LambdaMarkers = LambdaMarkers0
-        ),
+        purity_to_markers(Purity, LambdaMarkers),
 
         % Now construct the proc_info and pred_info for the new single-mode
         % predicate, using the information computed above.
@@ -486,15 +481,21 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         % The debugger ignores unnamed variables.
         ensure_all_headvars_are_named(ProcInfo0, ProcInfo1),
 
+        % If the original procedure contained parallel conjunctions, then the
+        % one we are creating here may have them as well. If it does not, then
+        % the value in the proc_info of the lambda predicate will be an
+        % overconservative estimate.
+        proc_info_set_has_parallel_conj(HasParallelConj, ProcInfo1, ProcInfo2),
+
         % If we previously already needed to recompute the nonlocals,
         % then we'd better to that recomputation for the procedure
         % that we just created.
         (
             MustRecomputeNonLocals0 = yes,
-            requantify_proc(ProcInfo1, ProcInfo)
+            requantify_proc(ProcInfo2, ProcInfo)
         ;
             MustRecomputeNonLocals0 = no,
-            ProcInfo = ProcInfo1
+            ProcInfo = ProcInfo2
         ),
         set.init(Assertions),
         pred_info_create(ModuleName, PredName, PredOrFunc, LambdaContext,
@@ -516,7 +517,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
     Unification = construct(Var, ConsId, ArgVars, UniModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-        InstVarSet, RttiVarMaps, Markers, POF, OrigPredName,
+        InstVarSet, RttiVarMaps, Markers, HasParallelConj, POF, OrigPredName,
         ModuleInfo, MustRecomputeNonLocals).
 
 :- pred constraint_contains_vars(list(tvar)::in, prog_constraint::in)

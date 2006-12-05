@@ -300,6 +300,7 @@ MR_trace_internal_ensure_init(void)
     if (! MR_trace_internal_initialized) {
         char        *env;
         int         n;
+        int         i;
 
         if (MR_mdb_benchmark_silent) {
             (void) close(1);
@@ -357,15 +358,21 @@ MR_trace_internal_ensure_init(void)
         MR_io_tabling_start = MR_IO_ACTION_MAX;
         MR_io_tabling_end = MR_IO_ACTION_MAX;
 
-        if (MR_event_specs_have_conflict) {
-            fprintf(MR_mdb_out,
-                "The executable's modules were compiled with "
-                "an inconsistent set of user event specifications.\n");
-        } else if (MR_consensus_event_specs != NULL) {
-            if (! MR_read_event_specs(MR_consensus_event_specs)) {
+        for (i = 0; i < MR_trace_event_set_next; i++) {
+            if (! MR_trace_event_sets[i].MR_tes_is_consistent) {
                 fprintf(MR_mdb_out,
-                    "Internal error: "
-                    "could not parse the event set specification.\n");
+                    "The executable's modules were compiled with "
+                    "inconsistent definitions of user event set %s.\n",
+                    MR_trace_event_sets[i].MR_tes_name);
+            } else {
+                MR_trace_event_sets[i].MR_tes_event_set =
+                    MR_read_event_set(MR_trace_event_sets[i].MR_tes_string);
+                if (MR_trace_event_sets[i].MR_tes_event_set == NULL) {
+                    fprintf(MR_mdb_out,
+                        "Internal error: could not parse "
+                        "the specification of event set %s.\n",
+                        MR_trace_event_sets[i].MR_tes_name);
+                }
             }
         }
 
@@ -1442,6 +1449,7 @@ MR_trace_event_internal_report(MR_TraceCmdInfo *cmd,
 void
 MR_trace_event_print_internal_report(MR_EventInfo *event_info)
 {
+    const MR_LabelLayout    *label_layout;
     const MR_LabelLayout    *parent;
     const char              *filename;
     const char              *parent_filename;
@@ -1451,6 +1459,7 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
     int                     indent;
+    const char              *maybe_user_event_name;
 
     lineno = 0;
     parent_lineno = 0;
@@ -1477,23 +1486,34 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
             MR_port_names[event_info->MR_trace_port]);
     }
 
-    /* the printf printed 24 characters */
+    /* The printf printed 24 characters. */
     indent = 24;
 
-    (void) MR_find_context(event_info->MR_event_sll, &filename, &lineno);
+    label_layout = event_info->MR_event_sll;
+    (void) MR_find_context(label_layout, &filename, &lineno);
     if (MR_port_is_interface(event_info->MR_trace_port)) {
         base_sp = MR_saved_sp(event_info->MR_saved_regs);
         base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
-        parent = MR_find_nth_ancestor(event_info->MR_event_sll, 1,
-            &base_sp, &base_curfr, &problem);
+        parent = MR_find_nth_ancestor(label_layout, 1, &base_sp, &base_curfr,
+            &problem);
         if (parent != NULL) {
             (void) MR_find_context(parent, &parent_filename, &parent_lineno);
         }
     }
 
+    if (label_layout->MR_sll_port >= 0 &&
+        (MR_TracePort) label_layout->MR_sll_port == MR_PORT_USER)
+    {
+        maybe_user_event_name =
+            label_layout->MR_sll_user_event->MR_ue_port_name;
+        fprintf(MR_mdb_out, " <%s>", maybe_user_event_name);
+    } else {
+        maybe_user_event_name = NULL;
+    }
+
     MR_print_proc_id_trace_and_context(MR_mdb_out, MR_FALSE,
-        MR_context_position, event_info->MR_event_sll->MR_sll_entry,
-        base_sp, base_curfr,
+        MR_context_position, MR_user_event_context, label_layout->MR_sll_entry,
+        maybe_user_event_name, base_sp, base_curfr,
         ( MR_print_goal_paths ? event_info->MR_event_path : "" ),
         filename, lineno, MR_port_is_interface(event_info->MR_trace_port),
         parent_filename, parent_lineno, indent);
@@ -1612,6 +1632,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         MR_trace_on_off_args, MR_trace_null_completer },
     { "parameter", "context", MR_trace_cmd_context,
         MR_trace_context_cmd_args, MR_trace_null_completer },
+    { "parameter", "user_event_context", MR_trace_cmd_user_event_context,
+        MR_trace_user_event_context_cmd_args, MR_trace_null_completer },
     { "parameter", "list_context_lines", MR_trace_cmd_list_context_lines,
         NULL, MR_trace_null_completer },
     { "parameter", "list_path", MR_trace_cmd_list_path,

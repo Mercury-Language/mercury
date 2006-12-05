@@ -182,6 +182,10 @@
     %
 :- pred get_layout_info(code_info::in, proc_label_layout_info::out) is det.
 
+:- pred get_proc_trace_events(code_info::in, bool::out) is det.
+
+:- pred set_proc_trace_events(bool::in, code_info::in, code_info::out) is det.
+
     % Get the global static data structures that have
     % been created during code generation for closure layouts.
     %
@@ -394,6 +398,9 @@
                                     % are live and where at which labels,
                                     % for tracing and/or accurate gc.
 
+                proc_trace_events   :: bool,
+                                    % Did the procedure have any trace events?
+
                 stackslot_max       :: int,
                                     % The maximum number of extra
                                     % temporary stackslots that have been
@@ -457,7 +464,10 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     globals.get_options(Globals, Options),
     globals.get_trace_level(Globals, TraceLevel),
-    ( eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no ->
+    (
+        eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
+            = no
+    ->
         trace_fail_vars(ModuleInfo, ProcInfo, FailVars),
         MaybeFailVars = yes(FailVars),
         set.union(Liveness, FailVars, EffLiveness)
@@ -528,6 +538,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             counter.init(1),
             SaveSuccip,
             LayoutMap,
+            no,
             0,
             TempContentMap,
             PersistentTemps,
@@ -550,7 +561,10 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
 
 init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
         ProcInfo, TraceSlotInfo, !CI) :-
-    ( eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no ->
+    (
+        eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
+            = no
+    ->
         trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
             TraceInfo, !CI),
         set_maybe_trace_info(yes(TraceInfo), !CI)
@@ -582,6 +596,7 @@ get_par_conj_depth(CI, CI ^ code_info_loc_dep ^ par_conj_depth).
 get_label_counter(CI, CI ^ code_info_persistent ^ label_num_src).
 get_succip_used(CI, CI ^ code_info_persistent ^ store_succip).
 get_layout_info(CI, CI ^ code_info_persistent ^ label_info).
+get_proc_trace_events(CI, CI ^ code_info_persistent ^ proc_trace_events).
 get_max_temp_slot_count(CI, CI ^ code_info_persistent ^ stackslot_max).
 get_temp_content_map(CI, CI ^ code_info_persistent ^ temp_contents).
 get_persistent_temps(CI, CI ^ code_info_persistent ^ persistent_temps).
@@ -606,6 +621,8 @@ set_par_conj_depth(N, CI, CI ^ code_info_loc_dep ^ par_conj_depth := N).
 set_label_counter(LC, CI, CI ^ code_info_persistent ^ label_num_src := LC).
 set_succip_used(SU, CI, CI ^ code_info_persistent ^ store_succip := SU).
 set_layout_info(LI, CI, CI ^ code_info_persistent ^ label_info := LI).
+set_proc_trace_events(PTE, CI,
+    CI ^ code_info_persistent ^ proc_trace_events := PTE).
 set_max_temp_slot_count(TM, CI,
     CI ^ code_info_persistent ^ stackslot_max := TM).
 set_temp_content_map(CM, CI, CI ^ code_info_persistent ^ temp_contents := CM).

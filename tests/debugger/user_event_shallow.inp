@@ -1,0 +1,25 @@
+echo on
+register --quiet
+user
+retry
+print *
+browse !test_list
+p
+^2^1
+p
+quit
+user_event_context proc
+user
+user_event_context none
+current
+user_event_context
+user_event_context full
+current
+user_event_context file
+current
+vars
+print *
+print !arg_b
+user
+print *
+continue

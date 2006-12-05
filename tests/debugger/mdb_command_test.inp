@@ -69,6 +69,7 @@ goal_paths           xyzzy xyzzy xyzzy xyzzy xyzzy
 scope                xyzzy xyzzy xyzzy xyzzy xyzzy
 echo                 xyzzy xyzzy xyzzy xyzzy xyzzy
 context              xyzzy xyzzy xyzzy xyzzy xyzzy
+user_event_context   xyzzy xyzzy xyzzy xyzzy xyzzy
 list_context_lines   xyzzy xyzzy xyzzy xyzzy xyzzy
 list_path            xyzzy xyzzy xyzzy xyzzy xyzzy
 push_list_dir        xyzzy xyzzy xyzzy xyzzy xyzzy

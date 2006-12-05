@@ -83,6 +83,12 @@ extern  char                *MR_dice_fail_trace_counts_file;
 extern  MR_ContextPosition  MR_context_position;
 
 /*
+** MR_user_event_context specifies what context to print at user events.
+*/
+
+extern  MR_UserEventContext MR_user_event_context;
+
+/*
 ** MR_print_goal_paths specifies whether we print goal paths at events.
 */
 
@@ -111,6 +117,7 @@ extern  MR_TraceCmdFunc     MR_trace_cmd_printlevel;
 extern  MR_TraceCmdFunc     MR_trace_cmd_scroll;
 extern  MR_TraceCmdFunc     MR_trace_cmd_stack_default_limit;
 extern  MR_TraceCmdFunc     MR_trace_cmd_context;
+extern  MR_TraceCmdFunc     MR_trace_cmd_user_event_context;
 extern  MR_TraceCmdFunc     MR_trace_cmd_goal_paths;
 extern  MR_TraceCmdFunc     MR_trace_cmd_scope;
 extern  MR_TraceCmdFunc     MR_trace_cmd_echo;
@@ -131,6 +138,7 @@ extern  MR_TraceCmdFunc     MR_trace_cmd_unalias;
 extern  const char *const   MR_trace_printlevel_cmd_args[];
 extern  const char *const   MR_trace_on_off_args[];
 extern  const char *const   MR_trace_context_cmd_args[];
+extern  const char *const   MR_trace_user_event_context_cmd_args[];
 extern  const char *const   MR_trace_scope_cmd_args[];
 extern  const char *const   MR_trace_format_cmd_args[];
 extern  const char *const   MR_trace_format_param_cmd_args[];

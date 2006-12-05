@@ -36,6 +36,7 @@
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 
@@ -80,29 +81,33 @@
     % These functions check for various properties of the given procedure's
     % effective trace level.
     %
-:- func eff_trace_level_is_none(pred_info, proc_info, trace_level) = bool.
-:- func eff_trace_level_needs_input_vars(pred_info, proc_info, trace_level)
-    = bool.
-:- func eff_trace_level_needs_fixed_slots(pred_info, proc_info, trace_level)
-    = bool.
-:- func eff_trace_level_needs_from_full_slot(pred_info, proc_info, trace_level)
-    = bool.
-:- func eff_trace_needs_all_var_names(pred_info, proc_info, trace_level,
-    trace_suppress_items) = bool.
-:- func eff_trace_needs_proc_body_reps(pred_info, proc_info, trace_level,
-    trace_suppress_items) = bool.
-:- func eff_trace_needs_port(pred_info, proc_info, trace_level,
+:- func eff_trace_level_is_none(module_info, pred_info, proc_info,
+    trace_level) = bool.
+:- func eff_trace_level_needs_input_vars(module_info, pred_info, proc_info,
+    trace_level) = bool.
+:- func eff_trace_level_needs_fail_vars(module_info, pred_info, proc_info,
+    trace_level) = bool.
+:- func eff_trace_level_needs_fixed_slots(module_info, pred_info, proc_info,
+    trace_level) = bool.
+:- func eff_trace_level_needs_from_full_slot(module_info, pred_info, proc_info,
+    trace_level) = bool.
+:- func eff_trace_needs_all_var_names(module_info, pred_info, proc_info,
+    trace_level, trace_suppress_items) = bool.
+:- func eff_trace_needs_proc_body_reps(module_info, pred_info, proc_info,
+    trace_level, trace_suppress_items) = bool.
+:- func eff_trace_needs_port(module_info, pred_info, proc_info, trace_level,
     trace_suppress_items, trace_port) = bool.
 
-:- func eff_trace_level(pred_info, proc_info, trace_level) = trace_level.
+:- func eff_trace_level(module_info, pred_info, proc_info, trace_level)
+    = trace_level.
 
 :- func trace_level_none = trace_level.
 
 :- func at_least_at_shallow(trace_level) = bool.
 :- func at_least_at_deep(trace_level) = bool.
 
-    % Given a trace level for a module, return the trace level we should
-    % use for compiler-generated unify, index and compare predicates.
+    % Given a trace level for a module, return the trace level we should use
+    % for compiler-generated unify, index and compare predicates.
     %
 :- func trace_level_for_unify_compare(trace_level) = trace_level.
 
@@ -130,8 +135,28 @@
 
 %-----------------------------------------------------------------------------%
 
+% The trace levels none, shallow, deep and decl_rep correspond to the similarly
+% named options. The trace levels basic and basic_user cannot be specified on
+% the command line; they can only be effective trace levels.
+%
+% Basic_user is the effective trace level for procedures in shallow traced
+% modules that contain a user defined event. This event requires, among other
+% things, the preservation of variables in the procedure in which it occurs.
+% It also requires the transmission of depth information through all procedures
+% in the module that otherwise wouldn't be traced, which is what trace level
+% basic does.
+%
+% In theory, in a shallow traced module, we could set the trace level of
+% a procedure to none if that procedure is not the ancestor of any procedure
+% containing a user event. However, that test is not one that can be
+% implemented easily or at all, given that the call trees of procedures may
+% cross module boundaries, and, in particular, may cross out of this module
+% and then back again through a different entry point.
+
 :- type trace_level
     --->    none
+    ;       basic
+    ;       basic_user
     ;       shallow
     ;       deep
     ;       decl_rep.
@@ -147,16 +172,22 @@
 trace_level_none = none.
 
 trace_level_for_unify_compare(none) = none.
+trace_level_for_unify_compare(basic) = none.
+trace_level_for_unify_compare(basic_user) = none.
 trace_level_for_unify_compare(shallow) = shallow.
 trace_level_for_unify_compare(deep) = shallow.
 trace_level_for_unify_compare(decl_rep) = shallow.
 
 at_least_at_shallow(none) = no.
+at_least_at_shallow(basic) = no.
+at_least_at_shallow(basic_user) = no.
 at_least_at_shallow(shallow) = yes.
 at_least_at_shallow(deep) = yes.
 at_least_at_shallow(decl_rep) = yes.
 
 at_least_at_deep(none) = no.
+at_least_at_deep(basic) = no.
+at_least_at_deep(basic_user) = no.
 at_least_at_deep(shallow) = no.
 at_least_at_deep(deep) = yes.
 at_least_at_deep(decl_rep) = yes.
@@ -174,7 +205,7 @@ convert_trace_level("default", no,  no,  yes(none)).
 convert_trace_level("default", yes, no,  yes(deep)).
 convert_trace_level("default", _,   yes, yes(decl_rep)).
 
-eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
+eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
     ( TraceLevel = none ->
         EffTraceLevel = none
     ;
@@ -218,7 +249,22 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
                 status_is_exported(Status) = no,
                 proc_info_get_is_address_taken(ProcInfo, address_is_not_taken)
             ->
-                EffTraceLevel = none
+                proc_info_get_has_user_event(ProcInfo, ProcHasUserEvent),
+                (
+                    ProcHasUserEvent = yes,
+                    EffTraceLevel = basic_user
+                ;
+                    ProcHasUserEvent = no,
+                    module_info_get_contains_user_event(ModuleInfo,
+                        ModuleHasUserEvent),
+                    (
+                        ModuleHasUserEvent = yes,
+                        EffTraceLevel = basic
+                    ;
+                        ModuleHasUserEvent = no,
+                        EffTraceLevel = none
+                    )
+                )
             ;
                 EffTraceLevel = TraceLevel
             )
@@ -228,29 +274,41 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 given_trace_level_is_none(TraceLevel) =
     trace_level_is_none(TraceLevel).
 
-eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) =
-    trace_level_is_none(eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
-eff_trace_level_needs_input_vars(PredInfo, ProcInfo, TraceLevel) =
+eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
+    trace_level_is_none(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+eff_trace_level_needs_input_vars(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
     trace_level_needs_input_vars(
-        eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
-eff_trace_level_needs_fixed_slots(PredInfo, ProcInfo, TraceLevel) =
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
+    trace_level_needs_fail_vars(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+eff_trace_level_needs_fixed_slots(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
     trace_level_needs_fixed_slots(
-        eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
-eff_trace_level_needs_from_full_slot(PredInfo, ProcInfo, TraceLevel) =
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+eff_trace_level_needs_from_full_slot(ModuleInfo, PredInfo, ProcInfo,
+        TraceLevel) =
     trace_level_needs_from_full_slot(
-        eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
-eff_trace_needs_all_var_names(PredInfo, ProcInfo, TraceLevel, SuppressItems) =
-    trace_needs_all_var_names(eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+eff_trace_needs_all_var_names(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
+        SuppressItems) =
+    trace_needs_all_var_names(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
         SuppressItems).
-eff_trace_needs_proc_body_reps(PredInfo, ProcInfo, TraceLevel, SuppressItems) =
-    trace_needs_proc_body_reps(eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+eff_trace_needs_proc_body_reps(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
+        SuppressItems) =
+    trace_needs_proc_body_reps(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
         SuppressItems).
-eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel, SuppressItems, Port) =
-    trace_needs_port(eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo, TraceLevel, SuppressItems,
+        Port) =
+    trace_needs_port(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
         SuppressItems, Port).
 
 :- func trace_level_is_none(trace_level) = bool.
 :- func trace_level_needs_input_vars(trace_level) = bool.
+:- func trace_level_needs_fail_vars(trace_level) = bool.
 :- func trace_level_needs_fixed_slots(trace_level) = bool.
 :- func trace_level_needs_from_full_slot(trace_level) = bool.
 :- func trace_needs_all_var_names(trace_level, trace_suppress_items) = bool.
@@ -258,31 +316,50 @@ eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel, SuppressItems, Port) =
 :- func trace_needs_port(trace_level, trace_suppress_items, trace_port) = bool.
 
 trace_level_is_none(none) = yes.
+trace_level_is_none(basic) = no.
+trace_level_is_none(basic_user) = no.
 trace_level_is_none(shallow) = no.
 trace_level_is_none(deep) = no.
 trace_level_is_none(decl_rep) = no.
 
 trace_level_needs_input_vars(none) = no.
+trace_level_needs_input_vars(basic) = no.
+trace_level_needs_input_vars(basic_user) = no.
 trace_level_needs_input_vars(shallow) = yes.
 trace_level_needs_input_vars(deep) = yes.
 trace_level_needs_input_vars(decl_rep) = yes.
 
+trace_level_needs_fail_vars(none) = no.
+trace_level_needs_fail_vars(basic) = no.
+trace_level_needs_fail_vars(basic_user) = yes.
+trace_level_needs_fail_vars(shallow) = yes.
+trace_level_needs_fail_vars(deep) = yes.
+trace_level_needs_fail_vars(decl_rep) = yes.
+
 trace_level_needs_fixed_slots(none) = no.
+trace_level_needs_fixed_slots(basic) = yes.
+trace_level_needs_fixed_slots(basic_user) = yes.
 trace_level_needs_fixed_slots(shallow) = yes.
 trace_level_needs_fixed_slots(deep) = yes.
 trace_level_needs_fixed_slots(decl_rep) = yes.
 
 trace_level_needs_from_full_slot(none) = no.
+trace_level_needs_from_full_slot(basic) = no.
+trace_level_needs_from_full_slot(basic_user) = no.
 trace_level_needs_from_full_slot(shallow) = yes.
 trace_level_needs_from_full_slot(deep) = no.
 trace_level_needs_from_full_slot(decl_rep) = no.
 
 trace_level_allows_delay_death(none) = no.
+trace_level_allows_delay_death(basic) = no.
+trace_level_allows_delay_death(basic_user) = yes.
 trace_level_allows_delay_death(shallow) = no.
 trace_level_allows_delay_death(deep) = yes.
 trace_level_allows_delay_death(decl_rep) = yes.
 
 trace_level_needs_meaningful_var_names(none) = no.
+trace_level_needs_meaningful_var_names(basic) = no.
+trace_level_needs_meaningful_var_names(basic_user) = yes.
 trace_level_needs_meaningful_var_names(shallow) = no.
 trace_level_needs_meaningful_var_names(deep) = yes.
 trace_level_needs_meaningful_var_names(decl_rep) = yes.
@@ -322,16 +399,22 @@ trace_needs_proc_body_reps(TraceLevel, TraceSuppressItems) = Need :-
 :- func trace_level_has_proc_body_reps(trace_level) = bool.
 
 trace_level_has_return_info(none) = no.
+trace_level_has_return_info(basic) = yes.
+trace_level_has_return_info(basic_user) = yes.
 trace_level_has_return_info(shallow) = yes.
 trace_level_has_return_info(deep) = yes.
 trace_level_has_return_info(decl_rep) = yes.
 
 trace_level_has_all_var_names(none) = no.
+trace_level_has_all_var_names(basic) = no.
+trace_level_has_all_var_names(basic_user) = no.
 trace_level_has_all_var_names(shallow) = no.
 trace_level_has_all_var_names(deep) = no.
 trace_level_has_all_var_names(decl_rep) = yes.
 
 trace_level_has_proc_body_reps(none) = no.
+trace_level_has_proc_body_reps(basic) = no.
+trace_level_has_proc_body_reps(basic_user) = no.
 trace_level_has_proc_body_reps(shallow) = no.
 trace_level_has_proc_body_reps(deep) = no.
 trace_level_has_proc_body_reps(decl_rep) = yes.
@@ -421,10 +504,12 @@ wrap_port(Port, port(Port)).
 
     % If this is modified, then the corresponding code in
     % runtime/mercury_stack_layout.h needs to be updated.
-trace_level_rep(none)     = "MR_TRACE_LEVEL_NONE".
-trace_level_rep(shallow)  = "MR_TRACE_LEVEL_SHALLOW".
-trace_level_rep(deep)     = "MR_TRACE_LEVEL_DEEP".
-trace_level_rep(decl_rep) = "MR_TRACE_LEVEL_DECL_REP".
+trace_level_rep(none)       = "MR_TRACE_LEVEL_NONE".
+trace_level_rep(basic)      = "MR_TRACE_LEVEL_BASIC".
+trace_level_rep(basic_user) = "MR_TRACE_LEVEL_BASIC_USER".
+trace_level_rep(shallow)    = "MR_TRACE_LEVEL_SHALLOW".
+trace_level_rep(deep)       = "MR_TRACE_LEVEL_DEEP".
+trace_level_rep(decl_rep)   = "MR_TRACE_LEVEL_DECL_REP".
 
 %-----------------------------------------------------------------------------%
 
@@ -467,6 +552,8 @@ trace_port_category(port_user)                = port_cat_user.
 :- func trace_level_port_categories(trace_level) = list(port_category).
 
 trace_level_port_categories(none) = [].
+trace_level_port_categories(basic) = [].
+trace_level_port_categories(basic_user) = [port_cat_user].
 trace_level_port_categories(shallow) = [port_cat_interface].
 trace_level_port_categories(deep) =
     [port_cat_interface, port_cat_internal, port_cat_context, port_cat_user].
@@ -476,6 +563,8 @@ trace_level_port_categories(decl_rep) =
 :- func trace_level_allows_port_suppression(trace_level) = bool.
 
 trace_level_allows_port_suppression(none) = no.     % no ports exist
+trace_level_allows_port_suppression(basic) = yes.
+trace_level_allows_port_suppression(basic_user) = yes.
 trace_level_allows_port_suppression(shallow) = yes.
 trace_level_allows_port_suppression(deep) = yes.
 trace_level_allows_port_suppression(decl_rep) = no.

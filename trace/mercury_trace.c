@@ -698,7 +698,7 @@ MR_trace_retry(MR_EventInfo *event_info,
     }
 
     call_label = level_layout->MR_sle_call_label;
-    if (call_label->MR_sll_var_count < 0) {
+    if (call_label == NULL || call_label->MR_sll_var_count < 0) {
         *problem = "Cannot perform retry because information about "
             "the input arguments is not available.";
         goto report_problem;
@@ -1091,6 +1091,10 @@ MR_find_saved_io_counter(const MR_LabelLayout *call_label,
 {
     const MR_ProcLayout     *level_layout;
     MR_Unsigned             saved_io_counter;
+
+    if (call_label == NULL) {
+        return MR_FALSE;
+    }
 
     level_layout = call_label->MR_sll_entry;
     if (level_layout->MR_sle_maybe_io_seq <= 0) {

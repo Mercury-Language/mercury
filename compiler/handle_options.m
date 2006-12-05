@@ -367,17 +367,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
     some [!Globals] (
         globals.io_get_globals(!:Globals, !IO),
 
-        globals.lookup_string_option(!.Globals, event_spec_file_name,
-            EventSpecFileName0),
-        ( EventSpecFileName0 = "" ->
-            io.get_environment_var("MERCURY_EVENT_SPEC_FILE_NAME",
-                MaybeEventSpecFileName, !IO),
+        globals.lookup_string_option(!.Globals, event_set_file_name,
+            EventSetFileName0),
+        ( EventSetFileName0 = "" ->
+            io.get_environment_var("MERCURY_EVENT_SET_FILE_NAME",
+                MaybeEventSetFileName, !IO),
             (
-                MaybeEventSpecFileName = yes(EventSpecFileName),
-                globals.set_option(event_spec_file_name,
-                    string(EventSpecFileName), !Globals)
+                MaybeEventSetFileName = yes(EventSetFileName),
+                globals.set_option(event_set_file_name,
+                    string(EventSetFileName), !Globals)
             ;
-                MaybeEventSpecFileName = no
+                MaybeEventSetFileName = no
             )
         ;
             true
@@ -1222,8 +1222,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ->
             true
         ;
-            add_error("debugging is available only in " ++
-                "low level C grades", !Errors)
+            add_error("debugging is available only in low level C grades",
+                !Errors)
         ),
 
         % The pthreads headers on some architectures (Solaris, Linux)

@@ -462,6 +462,9 @@ dump_layout_name(user_event_layout(ProcLabel, LabelNum)) = Str :-
 dump_layout_name(user_event_attr_names(ProcLabel, LabelNum)) = Str :-
     LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
     Str = "user_event_attr_names(" ++ LabelStr ++ ")".
+dump_layout_name(user_event_attr_var_nums(ProcLabel, LabelNum)) = Str :-
+    LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
+    Str = "user_event_attr_var_nums(" ++ LabelStr ++ ")".
 dump_layout_name(proc_layout(RttiProcLabel, _)) =
     "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(proc_layout_exec_trace(RttiProcLabel)) =

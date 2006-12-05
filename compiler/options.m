@@ -241,7 +241,7 @@
     ;       infer_all
     ;       type_inference_iteration_limit
     ;       mode_inference_iteration_limit
-    ;       event_spec_file_name
+    ;       event_set_file_name
 
     % Compilation Model options
     ;       grade
@@ -1008,7 +1008,7 @@ option_defaults_2(language_semantics_option, [
     infer_all                           -   bool_special,
     type_inference_iteration_limit      -   int(60),
     mode_inference_iteration_limit      -   int(30),
-    event_spec_file_name                -   string("")
+    event_set_file_name                 -   string("")
 ]).
 option_defaults_2(compilation_model_option, [
     % Compilation model options (ones that affect binary compatibility).
@@ -1747,7 +1747,7 @@ long_option("infer-determinism",    infer_det).
 long_option("infer-det",            infer_det).
 long_option("type-inference-iteration-limit", type_inference_iteration_limit).
 long_option("mode-inference-iteration-limit", mode_inference_iteration_limit).
-long_option("event-spec-file-name", event_spec_file_name).
+long_option("event-set-file-name",  event_set_file_name).
 
 % compilation model options
 long_option("grade",                grade).
@@ -3312,7 +3312,7 @@ options_help_semantics -->
         "\tPerform at most <n> passes of type inference (default: 60).",
         "--mode-inference-iteration-limit <n>",
         "\tPerform at most <n> passes of mode inference (default: 30).",
-        "--event-spec-file-name <filename>",
+        "--event-set-file-name <filename>",
         "\tGet the specification of user-defined events from <filename>."
     ]).
 

@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: continuation_info.m.
 % Main author: trd.
 % Extensive modifications by zs.
-% 
+%
 % This file defines the data structures the code generator uses to collect
 % information that will later be converted into layout tables for accurate
 % garbage collection, stack tracing, execution tracing, deep profiling and
@@ -46,7 +46,7 @@
 %
 % stack_layout.m converts the information collected in this module into
 % stack_layout tables.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.continuation_info.
@@ -276,7 +276,8 @@
     --->    user_attribute(
                 attr_locn               :: rval,
                 attr_type               :: mer_type,
-                attr_name               :: string
+                attr_name               :: string,
+                attr_var                :: prog_var
             ).
 
 :- type user_event_info

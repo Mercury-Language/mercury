@@ -1514,7 +1514,8 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
 
 typecheck_event_call(EventName, Args, !Info) :-
     typecheck_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_event_spec_map(ModuleInfo, EventSpecMap),
+    module_info_get_event_set(ModuleInfo, EventSet),
+    EventSpecMap = EventSet ^ event_set_spec_map,
     ( event_arg_types(EventSpecMap, EventName, EventArgTypes) ->
         ( list.same_length(Args, EventArgTypes) ->
             typecheck_var_has_type_list(Args, EventArgTypes, 1, !Info)

@@ -1,3 +1,5 @@
+event set invalid_event
+
 event nodiag_fail(
 	test_failed:	string,
 	arg_b:		int,

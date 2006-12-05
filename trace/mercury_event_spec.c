@@ -34,10 +34,6 @@
 ** free slot and how many slots are allocated.
 */
 
-MR_EventSpec        *MR_event_specs = NULL;
-int                 MR_event_spec_next = 0;
-int                 MR_event_spec_max = 0;
-
 static const char   *MR_event_spec_chars;
 static unsigned     MR_event_spec_char_next;
 static unsigned     MR_event_spec_char_max;
@@ -78,10 +74,13 @@ MR_event_get_input(char *buf, int buf_size)
     return num_copied;
 }
 
-MR_bool
-MR_read_event_specs(const char *input_data)
+MR_EventSet
+MR_read_event_set(const char *input_data)
 {
-    MR_EventSpecs cur;
+    MR_EventSet     event_set;
+    MR_EventSpecs   cur;
+    MR_Unsigned     num_events;
+    MR_Unsigned     i;
 
     /*
     ** Set these globals up for calls to MR_event_get_input by the scanner.
@@ -93,22 +92,30 @@ MR_read_event_specs(const char *input_data)
     MR_event_spec_char_next = 0;
 
     if (mercury_event_parse() != 0) {
-        return MR_FALSE;
+        return NULL;
     }
 
-    MR_event_spec_max = 0;
-    for (cur = mercury_event_parsetree; cur != NULL; cur = cur->MR_events_tail)
+    event_set = MR_NEW(struct MR_EventSet_Struct);
+    event_set->MR_event_set_name = mercury_event_parsetree->MR_event_set_name;
+    event_set->MR_event_set_spec_list =
+        mercury_event_parsetree->MR_event_set_spec_list;
+
+    num_events = 0;
+    for (cur = event_set->MR_event_set_spec_list;
+        cur != NULL; cur = cur->MR_events_tail)
     {
-        MR_event_spec_max++;
+        num_events++;
     }
 
-    MR_event_specs = MR_NEW_ARRAY(MR_EventSpec, MR_event_spec_max);
+    event_set->MR_event_set_num_events = num_events;
+    event_set->MR_event_set_specs = MR_NEW_ARRAY(MR_EventSpec, num_events);
 
-    MR_event_spec_next = 0;
-    for (cur = mercury_event_parsetree; cur != NULL; cur = cur->MR_events_tail)
+    i = 0;
+    for (cur = event_set->MR_event_set_spec_list;
+        cur != NULL; cur = cur->MR_events_tail)
     {
-        MR_event_specs[MR_event_spec_next] = cur->MR_events_head;
-        MR_event_spec_next++;
+        event_set->MR_event_set_specs[i] = cur->MR_events_head;
+        i++;
     }
 
     /*
@@ -122,7 +129,7 @@ MR_read_event_specs(const char *input_data)
         MR_compare_event_specs);
 #endif
 
-    return MR_TRUE;
+    return event_set;
 }
 
 static int
@@ -138,17 +145,22 @@ MR_compare_event_specs(const void *a, const void *b)
 }
 
 void
-MR_print_event_specs(FILE *fp)
+MR_print_event_set(FILE *fp, MR_EventSet event_set)
 {
     int             event_num;
     MR_EventSpec    event;
+    MR_EventSpecs   events;
     MR_EventAttr    attr;
     MR_EventAttrs   attrs;
 
+    fprintf(fp, "event_set_spec(\"%s\",\n", event_set->MR_event_set_name);
     fprintf(fp, "[\n");
 
-    for (event_num = 0; event_num < MR_event_spec_max; event_num++) {
-        event = MR_event_specs[event_num];
+    for (event_num = 0, events = event_set->MR_event_set_spec_list;
+        events != NULL;
+        event_num++, events = events->MR_events_tail)
+    {
+        event = events->MR_events_head;
         fprintf(fp, "event_spec_term(\"%s\", %d, %d, [\n",
             event->MR_event_name, event->MR_event_num, event->MR_event_lineno);
 
@@ -188,14 +200,14 @@ MR_print_event_specs(FILE *fp)
             }
         }
 
-        if (event_num == MR_event_spec_max - 1) {
-            fprintf(fp, "])\n");
-        } else {
+        if (events->MR_events_tail != NULL) {
             fprintf(fp, "]),\n");
+        } else {
+            fprintf(fp, "])\n");
         }
     }
 
-    fprintf(fp, "].\n");
+    fprintf(fp, "]).\n");
 }
 
 static void

@@ -1729,24 +1729,27 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
     maybe_grab_optfiles(ModuleImports0, Verbose, MaybeTransOptDeps,
         ModuleImports1, IntermodError, !IO),
 
-    globals.lookup_string_option(Globals, event_spec_file_name,
-        EventSpecFileName),
-    ( EventSpecFileName = "" ->
+    globals.lookup_string_option(Globals, event_set_file_name,
+        EventSetFileName),
+    ( EventSetFileName = "" ->
+        EventSetName = "",
         EventSpecMap1 = map.init,
-        EventSpecErrors = no
+        EventSetErrors = no
     ;
-        read_event_specs(EventSpecFileName, EventSpecMap0, EventSpecErrorSpecs,
-            !IO),
+        read_event_set(EventSetFileName, EventSetName0, EventSpecMap0,
+            EventSetErrorSpecs, !IO),
         (
-            EventSpecErrorSpecs = [],
+            EventSetErrorSpecs = [],
+            EventSetName = EventSetName0,
             EventSpecMap1 = EventSpecMap0,
-            EventSpecErrors = no
+            EventSetErrors = no
         ;
-            EventSpecErrorSpecs = [_ | _],
+            EventSetErrorSpecs = [_ | _],
+            EventSetName = "",
             EventSpecMap1 = map.init,
-            EventSpecErrors = yes,
+            EventSetErrors = yes,
             % XXX _NumErrors
-            write_error_specs(EventSpecErrorSpecs, Globals,
+            write_error_specs(EventSetErrorSpecs, Globals,
                 0, _EventSpecNumWarnings, 0, _EventSpecNumErrors, !IO)
         )
     ),
@@ -1755,7 +1758,7 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
     MaybeTimestamps = ModuleImports1 ^ maybe_timestamps,
 
     invoke_module_qualify_items(Items1, Items2, EventSpecMap1, EventSpecMap2,
-        ModuleName, EventSpecFileName, Verbose, Stats, MQInfo0,
+        ModuleName, EventSetFileName, Verbose, Stats, MQInfo0,
         MQUndefTypes, MQUndefModes, !IO),
 
     mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
@@ -1774,11 +1777,12 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
             0, _ExpandNumWarnings, 0, _ExpandNumErrors, !IO)
     ),
 
-    make_hlds(ModuleName, Items, EventSpecMap, MQInfo, EqvMap, UsedModules,
+    EventSet = event_set(EventSetName, EventSpecMap),
+    make_hlds(ModuleName, Items, EventSet, MQInfo, EqvMap, UsedModules,
         Verbose, Stats, HLDS0, QualInfo,
         MakeHLDSUndefTypes, MakeHLDSUndefModes, FoundError, !IO),
 
-    bool.or_list([MQUndefTypes, EventSpecErrors, CircularTypes,
+    bool.or_list([MQUndefTypes, EventSetErrors, CircularTypes,
         MakeHLDSUndefTypes], UndefTypes),
     bool.or(MQUndefModes, MakeHLDSUndefModes, UndefModes),
 
@@ -1929,19 +1933,19 @@ expand_equiv_types(ModuleName, Verbose, Stats, Items0, Items,
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred make_hlds(module_name::in, item_list::in, event_spec_map::in,
+:- pred make_hlds(module_name::in, item_list::in, event_set::in,
     mq_info::in, eqv_map::in, used_modules::in, bool::in, bool::in,
     module_info::out, make_hlds_qual_info::out,
     bool::out, bool::out, bool::out, io::di, io::uo) is det.
 
-make_hlds(Module, Items, EventSpecMap, MQInfo, EqvMap, UsedModules,
+make_hlds(Module, Items, EventSet, MQInfo, EqvMap, UsedModules,
         Verbose, Stats, !:HLDS, QualInfo,
         UndefTypes, UndefModes, FoundSemanticError, !IO) :-
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
     Prog = unit_module(Module, Items),
     parse_tree_to_hlds(Prog, MQInfo, EqvMap, UsedModules, !:HLDS, QualInfo,
         UndefTypes, UndefModes, !IO),
-    module_info_set_event_spec_map(EventSpecMap, !HLDS),
+    module_info_set_event_set(EventSet, !HLDS),
     module_info_get_num_errors(!.HLDS, NumErrors),
     io.get_exit_status(Status, !IO),
     (

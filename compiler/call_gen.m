@@ -238,7 +238,8 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
 
 generate_event_call(EventName, Args, GoalInfo, Code, !CI) :-
     code_info.get_module_info(!.CI, ModuleInfo),
-    module_info_get_event_spec_map(ModuleInfo, EventSpecMap),
+    module_info_get_event_set(ModuleInfo, EventSet),
+    EventSpecMap = EventSet ^ event_set_spec_map,
     (
         event_arg_names(EventSpecMap, EventName, AttributeNames),
         event_number(EventSpecMap, EventName, EventNumber)
@@ -265,7 +266,7 @@ generate_event_attributes([Name | Names], [Var | Vars], [Attr | Attrs],
         [Code | Codes], !CI) :-
     produce_variable(Var, Code, Rval, !CI),
     Type = variable_type(!.CI, Var),
-    Attr = user_attribute(Rval, Type, Name),
+    Attr = user_attribute(Rval, Type, Name, Var),
     generate_event_attributes(Names, Vars, Attrs, Codes, !CI).
 
 %---------------------------------------------------------------------------%

@@ -64,10 +64,11 @@ runtime_granularity_test_in_scc(SCC, !ModuleInfo) :-
 runtime_granularity_test_in_proc(SCC, proc(PredId, ProcId), !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_markers(PredInfo0, Markers),
-    ( check_marker(Markers, marker_may_have_parallel_conj) ->
-        pred_info_get_procedures(PredInfo0, ProcTable0),
-        map.lookup(ProcTable0, ProcId, ProcInfo0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
+    proc_info_get_has_parallel_conj(ProcInfo0, HasParallelConj),
+    (
+        HasParallelConj = yes,
         proc_info_get_goal(ProcInfo0, Goal0),
         runtime_granularity_test_in_goal(Goal0, Goal, no, Changed,
             SCC, !.ModuleInfo),
@@ -83,9 +84,9 @@ runtime_granularity_test_in_proc(SCC, proc(PredId, ProcId), !ModuleInfo) :-
             module_info_set_preds(PredTable, !ModuleInfo)
         )
     ;
+        HasParallelConj = no
         % There is no parallelism in this procedure, so there is no granularity
         % to control.
-        true
     ).
 
 :- pred runtime_granularity_test_in_goal(hlds_goal::in, hlds_goal::out,

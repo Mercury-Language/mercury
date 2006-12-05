@@ -23,13 +23,13 @@
 :- import_module io.
 :- import_module list.
 
-    % read_event_specs(FileName, EventSpecMap, ErrorSpecs, !IO):
+    % read_event_set(FileName, EventSetName, EventSpecMap, ErrorSpecs, !IO):
     %
     % Read in a set of event specifications from FileName, and return them
-    % in EventSpecMap. Set ErrorSpecs to a list of all the errors discovered
-    % during the process.
+    % in EventSetName and EventSpecMap. Set ErrorSpecs to a list of all the
+    % errors discovered during the process.
     %
-:- pred read_event_specs(string::in, event_spec_map::out,
+:- pred read_event_set(string::in, string::out, event_spec_map::out,
     list(error_spec)::out, io::di, io::uo) is det.
 
     % Return a description of the given event set.
@@ -76,7 +76,7 @@
 :- import_module svrelation.
 :- import_module term.
 
-read_event_specs(SpecsFileName, EventSpecMap, ErrorSpecs, !IO) :-
+read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
     % Currently, we convert the event specification file into a Mercury term
     % by using the yacc parser in the trace directory to create a C data
     % structure to represent its contents, writing out that data structure
@@ -98,11 +98,13 @@ read_event_specs(SpecsFileName, EventSpecMap, ErrorSpecs, !IO) :-
             TermOpenRes = ok(TermStream),
             io.read(TermStream, TermReadRes, !IO),
             (
-                TermReadRes = ok(EventSpecsTerm),
+                TermReadRes = ok(EventSetTerm),
+                EventSetTerm = event_set_spec(EventSetName, EventSpecsTerm),
                 convert_list_to_spec_map(TermFileName, EventSpecsTerm,
                     map.init, EventSpecMap, [], ErrorSpecs)
             ;
                 TermReadRes = eof,
+                EventSetName = "",
                 EventSpecMap = map.init,
                 Pieces = [words("eof in term specification file"), nl],
                 ErrorSpec = error_spec(severity_error,
@@ -111,6 +113,7 @@ read_event_specs(SpecsFileName, EventSpecMap, ErrorSpecs, !IO) :-
                 ErrorSpecs = [ErrorSpec]
             ;
                 TermReadRes = error(TermReadMsg, LineNumber),
+                EventSetName = "",
                 EventSpecMap = map.init,
                 Pieces = [words(TermReadMsg), nl],
                 ErrorSpec = error_spec(severity_error,
@@ -122,6 +125,7 @@ read_event_specs(SpecsFileName, EventSpecMap, ErrorSpecs, !IO) :-
             io.close_input(TermStream, !IO)
         ;
             TermOpenRes = error(TermOpenError),
+            EventSetName = "",
             EventSpecMap = map.init,
             Pieces = [words(io.error_message(TermOpenError)), nl],
             ErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -129,6 +133,7 @@ read_event_specs(SpecsFileName, EventSpecMap, ErrorSpecs, !IO) :-
             ErrorSpecs = [ErrorSpec]
         )
     ;
+        EventSetName = "",
         EventSpecMap = map.init,
         Pieces = [words(Problem), nl],
         ErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -148,7 +153,7 @@ read_event_specs(SpecsFileName, EventSpecMap, ErrorSpecs, !IO) :-
 
 :- pragma foreign_proc("C",
     read_specs_file(SpecsFileName::in, TermFileName::in, Problem::out,
-    _IO0::di, _IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     int     spec_fd;
@@ -202,9 +207,12 @@ read_event_specs(SpecsFileName, EventSpecMap, ErrorSpecs, !IO) :-
                     sprintf(buf, ""could not read in %s"", SpecsFileName);
                     MR_make_aligned_string_copy(Problem, buf);
                 } else {
+                    MR_EventSet event_set;
+
                     /* NULL terminate the string we have read in. */
                     spec_buf[num_bytes_read] = '\\0';
-                    if (! MR_read_event_specs(spec_buf)) {
+                    event_set = MR_read_event_set(spec_buf);
+                    if (event_set == NULL) {
                         char    buf[4096];
 
                         sprintf(buf, ""could not parse %s"", SpecsFileName);
@@ -218,7 +226,7 @@ read_event_specs(SpecsFileName, EventSpecMap, ErrorSpecs, !IO) :-
                                 TermFileName, strerror(errno));
                             MR_make_aligned_string_copy(Problem, buf);
                         } else {
-                            MR_print_event_specs(term_fp);
+                            MR_print_event_set(term_fp, event_set);
                             fclose(term_fp);
 
                             /*
@@ -240,6 +248,12 @@ read_event_specs(SpecsFileName, EventSpecMap, ErrorSpecs, !IO) :-
 ").
 
 %-----------------------------------------------------------------------------%
+
+:- type event_set_spec
+    --->    event_set_spec(
+                event_set_name  :: string,
+                event_set_specs :: list(event_spec_term)
+            ).
 
 :- type event_spec_term
     --->    event_spec_term(

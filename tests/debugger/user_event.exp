@@ -3,11 +3,10 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> user
-      E2:     C2 USER pred user_event.queen/2-0 (nondet) c3; user_event.m:32
+      E2:     C2 USER <safe_test> pred user_event.queen/2-0 (nondet) c3; user_event.m:32
 mdb> print *
-       test_list (attr 0)     	[1, 2, 3, 4, 5]
+       test_list (attr 0, Out)	[1, 2, 3, 4, 5]
        Data (arg 1)           	[1, 2, 3, 4, 5]
-       Out (arg 2)            	[1, 2, 3, 4, 5]
 mdb> browse !test_list
 browser> p
 [1, 2, 3, 4, 5]
@@ -16,12 +15,12 @@ browser> p
 2
 browser> quit
 mdb> user
-      E3:     C3 USER pred user_event.nodiag/3-0 (semidet) s2;c6;t;c2; user_event.m:64
+      E3:     C3 USER <nodiag_fail> pred user_event.nodiag/3-0 (semidet) s2;c6;t;c2; user_event.m:64
 mdb> vars
         1 test_failed (attr 0)
-        2 arg_b (attr 1)
-        3 arg_d (attr 2)
-        4 arg_list (attr 3)
+        2 arg_b (attr 1, B)
+        3 arg_d (attr 2, N)
+        4 arg_list (attr 3, HeadVar__3)
         5 HeadVar__1
         6 HeadVar__2
         7 HeadVar__3
@@ -33,25 +32,21 @@ mdb> vars
        13 NmB
 mdb> print *
        test_failed (attr 0)   	"N - B"
-       arg_b (attr 1)         	1
-       arg_d (attr 2)         	2
-       arg_list (attr 3)      	[2, 3, 4, 5]
+       arg_b (attr 1, B)      	1
+       arg_d (attr 2, N)      	2
+       arg_list (attr 3, HeadVar__3)	[2, 3, 4, 5]
        HeadVar__1             	1
        HeadVar__2             	1
-       HeadVar__3             	[2, 3, 4, 5]
-       B                      	1
        BmN                    	-1
        D                      	1
        L                      	[3, 4, 5]
-       N                      	2
        NmB                    	1
 mdb> print !arg_b
-       arg_b (attr 1)         	1
+       arg_b (attr 1, B)      	1
 mdb> user
-      E4:     C2 USER pred user_event.queen/2-0 (nondet) c3; user_event.m:32
+      E4:     C2 USER <safe_test> pred user_event.queen/2-0 (nondet) c3; user_event.m:32
 mdb> print *
-       test_list (attr 0)     	[1, 2, 3, 5, 4]
+       test_list (attr 0, Out)	[1, 2, 3, 5, 4]
        Data (arg 1)           	[1, 2, 3, 4, 5]
-       Out (arg 2)            	[1, 2, 3, 5, 4]
 mdb> continue
 [1, 3, 5, 2, 4]

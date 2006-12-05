@@ -1522,7 +1522,8 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
     ;
         GenericCall = event_call(EventName),
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-        module_info_get_event_spec_map(ModuleInfo, EventSpecMap),
+        module_info_get_event_set(ModuleInfo, EventSet),
+        EventSpecMap = EventSet ^ event_set_spec_map,
         ( event_arg_modes(EventSpecMap, EventName, ModesPrime) ->
             Modes = ModesPrime
         ;

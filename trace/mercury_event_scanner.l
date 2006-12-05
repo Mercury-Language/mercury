@@ -92,6 +92,7 @@ nonl    [^\n\f]
                         mercury_event_lval.Uline = mercury_event_linenum;
                         return TOKEN_EVENT;
                     }
+"set"               { return TOKEN_SET;                 }
 "function"          { return TOKEN_FUNCTION;            }
 "synthesized"       { return TOKEN_SYNTHESIZED;         }
 "by"                { return TOKEN_BY;                  }

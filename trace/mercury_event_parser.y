@@ -25,7 +25,7 @@
 #include "mercury_event_parser.h"
 #include "mercury_event_scanner.h"          /* for mercury_event_lex etc */
 
-MR_EventSpecs       mercury_event_parsetree;
+MR_EventSet         mercury_event_parsetree;
 static  unsigned    mercury_event_next_num = 0;
 static  void        mercury_event_error(const char *s);
 %}
@@ -36,6 +36,7 @@ static  void        mercury_event_error(const char *s);
 {
     int                 Uline;
     char                *Uid;
+    MR_EventSet         Ufile;
     MR_EventSpecs       Uevents;
     MR_EventSpec        Uevent;
     MR_EventAttrs       Uattrs;
@@ -48,6 +49,7 @@ static  void        mercury_event_error(const char *s);
 }
 
 %token  <Uline>     TOKEN_EVENT
+%token              TOKEN_SET
 %token              TOKEN_FUNCTION
 %token              TOKEN_SYNTHESIZED
 %token              TOKEN_BY
@@ -62,6 +64,7 @@ static  void        mercury_event_error(const char *s);
 
 %token              GARBAGE
 
+%type   <Ufile>     file
 %type   <Uevents>   events
 %type   <Uevent>    event
 %type   <Uattrs>    maybe_attrs
@@ -78,9 +81,15 @@ static  void        mercury_event_error(const char *s);
 
 /**********************************************************************/
 
-file        :   events
+file        :   TOKEN_EVENT TOKEN_SET TOKEN_ID events
                 {
-                    mercury_event_parsetree = $1;
+                    $$ = MR_NEW(struct MR_EventSet_Struct);
+                    $$->MR_event_set_name = $3;
+                    $$->MR_event_set_spec_list = $4;
+                    /* The following fields are filled in later. */
+                    $$->MR_event_set_specs = NULL;
+                    $$->MR_event_set_num_events = 0;
+                    mercury_event_parsetree = $$;
                 }
             ;
 
