@@ -27,7 +27,7 @@
 
 :- interface.
 
-:- import_module stream.
+:- import_module stream_old.
 :- import_module bool, char, io.
 
 	% A handle on the lowlevel stream.
@@ -72,7 +72,7 @@
 	% implementation can be used in instance declarations for the
 	% stream__input type class.
 
-:- pred low_read_char(lowlevel(S), stream__result(char),
+:- pred low_read_char(lowlevel(S), stream_old.result(char),
 		io__state, io__state) <= lowlevel__input(S).
 :- mode low_read_char(in, out, di, uo) is det.
 

@@ -1,30 +1,25 @@
-This directory contains an implementation of generic IO streams in Mercury.
-The streams interface uses type classes, so that users can define their
-own stream types and can write generic code that will work on any
-appropriate stream.
+This directory contains various instances of the stream typeclass defined
+in the Mercury standard library.  The instances implement various utility
+streams.
 
-To build this library you need mvar.m and semaphore.m from the
-extras/concurrency directory.  (The Mmakefile rules should copy these
-here automatically.)
+stream_util.m:
+	The top-level package.
 
-The following files implement the stream interfaces at various levels
+stream_util.string_builder.m:
+	An output stream that can be used to build up strings from predicates
+	that write to any string or character streams.
 
-    stream.m
-        The pure high-level interface.  This is the interface external
-        code should use to the stream library.  The file also contains
-        examples of extending any stream with infinite putback and/or
-        line numbering.
+tests/:
+	Some test cases.  To run the tests, change to this directory and
+	type "make".
 
-    lowlevel.m
-        A pure low-level interface.  This interface is more useful for
-        using the foreign language binding to define a new stream
-        type.  This file also provides implementations of read/write one
-        char which can be used in instance declarations for the
-        highlevel stream typeclasses.  This allows an implementor to do
-        the minimum amount of work to achieve an instance of the
-        highlevel stream type class.
-         
-    impure.m
-        An impure low-level interface, which provides the same
-        functionality as lowlevel.m except the interface methods are
-        impure.
+lowlevel.m:
+impure.m:
+stream_old.m:
+	These files are part of the old stream interface, which has now been
+	deprecated.
+
+	Similar functionality is available in the standard library's            
+	stream module.
+
+	To build the stream_old library do "mmake old_stream".

@@ -1,16 +1,19 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2001 The University of Melbourne.
+# Copyright (C) 2000-2001, 2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 -include ../Mmake.params
 
-MAIN_TARGET=libstream
+MAIN_TARGET=libstream_util
 
-depend: stream.depend
+depend: stream_util.depend
 
-stream stream.depend: mvar.m semaphore.m
+.PHONY: old_stream
+old_stream: mvar.m semaphore.m
+	mmake stream_old.depend
+	mmake libstream_old
 
 mvar.m: ../concurrency/mvar.m
 	cp ../concurrency/mvar.m .
@@ -19,6 +22,3 @@ semaphore.m: ../concurrency/semaphore.m
 
 realclean:
 	rm -f mvar.m semaphore.m
-
-check: libstream
-	true

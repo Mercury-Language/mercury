@@ -30,7 +30,7 @@
 
 :- interface.
 
-:- import_module stream.
+:- import_module stream_old.
 :- import_module char.
 :- import_module io.
 
@@ -66,7 +66,7 @@
 	% implementation can be used in instance declarations for the
 	% stream__input type class.
 
-:- pred pure_read_char(impure(S), stream__result(char),
+:- pred pure_read_char(impure(S), stream_old.result(char),
 		io__state, io__state) <= impure__input(S).
 :- mode pure_read_char(in, out, di, uo) is det.
 

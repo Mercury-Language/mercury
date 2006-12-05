@@ -1,0 +1,18 @@
+Hello, world!
+<?xml version="1.0"?>
+<List functor="[|]" type="list.list(int)" arity="2">
+	<Int type="int">1</Int>
+	<List functor="[|]" type="list.list(int)" arity="2">
+		<Int type="int">2</Int>
+		<List functor="[|]" type="list.list(int)" arity="2">
+			<Int type="int">3</Int>
+			<Nil functor="[]" type="list.list(int)" arity="0" />
+		</List>
+	</List>
+</List>
+
+[
+ 4, 
+ 5, 
+ 6]
+3.14

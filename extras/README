@@ -82,9 +82,12 @@ solver_types	Contains versions of some standard library modules
 		adapted to make them suitable for use with solver
 		types.
 
-stream		Generic IO interface using typeclasses.
-		Note this interface has been superceded by the one
-		in standard library.
+stream		Utility streams that use the stream interface in the
+		standard library.
+
+		This directory also contains an old version of generate IO
+		streams, which has now been superceded by the stream.m module
+		in the standard library.
 
 trailed_update	Some library modules that make use of backtrackable
 		destructive update, including a module which provides

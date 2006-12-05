@@ -4,7 +4,7 @@
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
 %
-% File: stream.m.
+% File: stream_old.m.
 % Main author: petdr
 % Stability: exceptionally low.
 %
@@ -17,7 +17,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module stream.
+:- module stream_old.
 
 :- interface.
 
@@ -29,19 +29,19 @@
 	% The type of exceptions thrown by this module.
 :- type stream_error ---> stream_error(string).
 
-:- type stream__result(T)
+:- type stream_old.result(T)
 	--->	ok(T)
 	;	eof
 	;	error(string)
 	.
 
-:- type stream__result
+:- type stream_old.result
 	--->	ok
 	;	eof
 	;	error(string)
 	.
 
-:- type stream__res
+:- type stream_old.res
 	--->	ok
 	;	error(string)
 	.
@@ -56,38 +56,38 @@
 :- typeclass stream(S) where [
 		% A human-readable name describing the current stream
 		% suitable for use in (e.g.) error messages.
-	func stream__name(S) = string
+	func stream_old.name(S) = string
 ].
 
 	% Streams from which you can read input.
-:- typeclass stream__input(S) <= stream(S) where [
+:- typeclass stream_old.input(S) <= stream(S) where [
 		% Read one character from the stream S.
-		% Errors are reported via the stream__result type.
-	pred stream__read_char(S::in, stream__result(char)::out,
+		% Errors are reported via the stream_old.result type.
+	pred stream_old.read_char(S::in, stream_old.result(char)::out,
 			io__state::di, io__state::uo) is det
 ].
 
 	% Streams to which you can write output.
-:- typeclass stream__output(S) <= stream(S) where [
+:- typeclass stream_old.output(S) <= stream(S) where [
 		% Write one character to the stream S.
 		% Throws a stream_error exception if a problem occurs.
-	pred stream__write_char(S::in, char::in,
+	pred stream_old.write_char(S::in, char::in,
 			io__state::di, io__state::uo) is det
 ].
 
 	% Streams which can be both read from and written to.
-:- typeclass stream__duplex(S)
-		<= (stream__input(S), stream__output(S)) where [].
+:- typeclass stream_old.duplex(S)
+		<= (stream_old.input(S), stream_old.output(S)) where [].
 
 	% Stream for which characters can be put back at the start of
 	% the stream.
-:- typeclass stream__putback(S) <= stream__input(S) where [
+:- typeclass stream_old.putback(S) <= stream_old.input(S) where [
 		% Putback one character on the input stream.
 		% The implementation must guarantee at least one
 		% character of putback and throw a stream_error
 		% exception if a problem is encountered during the
 		% putback.
-	pred stream__putback_char(S::in, char::in,
+	pred stream_old.putback_char(S::in, char::in,
 			io__state::di, io__state::uo) is det
 ].
 
@@ -96,16 +96,16 @@
 	% there's no limit on the amount of putback except available
 	% memory, so unless you run out of heap space, the putback_char
 	% method must always succeed.
-:- typeclass stream__unbounded_putback(S) <= stream__putback(S) where [].
+:- typeclass stream_old.unbounded_putback(S) <= stream_old.putback(S) where [].
 
-:- typeclass stream__line(S) <= stream__input(S) where [
+:- typeclass stream_old.line(S) <= stream_old.input(S) where [
 		% Return the line number of the input stream.
 		% Lines are numbered starting from one.
-	pred stream__line_number(S::in, int::out,
+	pred stream_old.line_number(S::in, int::out,
 			io__state::di, io__state::uo) is det,
 
 		% Set the line number of the input stream.
-	pred stream__set_line_number(S::in, int::in,
+	pred stream_old.set_line_number(S::in, int::in,
 			io__state::di, io__state::uo) is det
 
 ].
@@ -117,12 +117,12 @@
 	%
 :- type putback(S).
 :- instance stream(putback(S)) <= stream(S).
-:- instance stream__input(putback(S)) <= stream__input(S).
-:- instance stream__putback(putback(S)) <= stream__input(S).
+:- instance stream_old.input(putback(S)) <= stream_old.input(S).
+:- instance stream_old.putback(putback(S)) <= stream_old.input(S).
 
 	% Create the putback stream.
 :- pred putback_stream(S::in, putback(S)::out,
-		io__state::di, io__state::uo) is det <= stream__input(S).
+		io__state::di, io__state::uo) is det <= stream_old.input(S).
 
 	% Retrieve the original stream.
 :- func putback_base_stream(putback(S)) = S.
@@ -135,13 +135,13 @@
 	%
 :- type linenumber(S).
 :- instance stream(linenumber(S)) <= stream(S).
-:- instance stream__input(linenumber(S)) <= stream__input(S).
-:- instance stream__putback(linenumber(S)) <= stream__putback(S).
-:- instance stream__line(linenumber(S)) <= stream__input(S).
+:- instance stream_old.input(linenumber(S)) <= stream_old.input(S).
+:- instance stream_old.putback(linenumber(S)) <= stream_old.putback(S).
+:- instance stream_old.line(linenumber(S)) <= stream_old.input(S).
 
 	% Create a line-number counting stream.
 :- pred linenumber_stream(S::in, linenumber(S)::out,
-		io__state::di, io__state::uo) is det <= stream__input(S).
+		io__state::di, io__state::uo) is det <= stream_old.input(S).
 
 	% Retrieve the original stream.
 :- func linenumber_base_stream(linenumber(S)) = S.
@@ -155,20 +155,20 @@
 % Predicates which require an input stream.
 
 	% Reads one line of input from the current input stream.
-:- pred stream__read_line(S::in, stream__result(list(char))::out,
-		io__state::di, io__state::uo) is det <= stream__input(S).
+:- pred stream_old.read_line(S::in, stream_old.result(list(char))::out,
+		io__state::di, io__state::uo) is det <= stream_old.input(S).
 
 %-----------------------------------------------------------------------------%
 
 % Predicates which require an input stream with putback.
 
 	% Reads a whitespace delimited word from the current input stream.
-:- pred stream__read_word(S::in, stream__result(list(char))::out,
-		io__state::di, io__state::uo) is det <= stream__putback(S).
+:- pred stream_old.read_word(S::in, stream_old.result(list(char))::out,
+		io__state::di, io__state::uo) is det <= stream_old.putback(S).
 
 	% Discards all the whitespace from the input stream.
-:- pred stream__ignore_whitespace(S::in, stream__result::out,
-		io__state::di, io__state::uo) is det <= stream__putback(S).
+:- pred stream_old.ignore_whitespace(S::in, stream_old.result::out,
+		io__state::di, io__state::uo) is det <= stream_old.putback(S).
 
 %-----------------------------------------------------------------------------%
 
@@ -176,8 +176,8 @@
 % On failure these predicates will throw an stream_error exception.
 
 	% Write the string to the output stream.
-:- pred stream__write_string(S::in, string::in,
-		io__state::di, io__state::uo) is det <= stream__output(S).
+:- pred stream_old.write_string(S::in, string::in,
+		io__state::di, io__state::uo) is det <= stream_old.output(S).
 
 %-----------------------------------------------------------------------------%
 
@@ -185,11 +185,11 @@
 
 	% Echo stream InputS onto stream OutputS.
 	% Errors associated with stream InputS are reported through the
-	% stream__res argument.  Errors associated with stream OutputS
+	% stream_old.res argument.  Errors associated with stream OutputS
 	% throw a stream_error exception.
-:- pred cat(InputS::in, OutputS::in, stream__res::out,
+:- pred cat(InputS::in, OutputS::in, stream_old.res::out,
 		io__state::di, io__state::uo) is det
-		<= (stream__input(InputS), stream__output(OutputS)).
+		<= (stream_old.input(InputS), stream_old.output(OutputS)).
 
 %-----------------------------------------------------------------------------%
 
@@ -213,15 +213,15 @@
 		).
 
 :- instance stream(putback(S)) <= stream(S) where [
-	(stream__name(pb(S, _)) = stream__name(S))
+	(stream_old.name(pb(S, _)) = stream_old.name(S))
 ].
 
-:- instance stream__input(putback(S)) <= stream__input(S) where [
-	pred(stream__read_char/4) is putback_read_char
+:- instance stream_old.input(putback(S)) <= stream_old.input(S) where [
+	pred(stream_old.read_char/4) is putback_read_char
 ].
 
-:- instance stream__putback(putback(S)) <= stream__input(S) where [
-	pred(stream__putback_char/4) is putback_putback_char
+:- instance stream_old.putback(putback(S)) <= stream_old.input(S) where [
+	pred(stream_old.putback_char/4) is putback_putback_char
 ].
 
 putback_stream(Stream, pb(Stream, MPutbackChars)) -->
@@ -230,15 +230,15 @@ putback_stream(Stream, pb(Stream, MPutbackChars)) -->
 
 putback_base_stream(pb(Stream, _)) = Stream.
 
-:- pred putback_read_char(putback(S)::in, stream__result(char)::out,
-		io__state::di, io__state::uo) is det <= stream__input(S).
+:- pred putback_read_char(putback(S)::in, stream_old.result(char)::out,
+		io__state::di, io__state::uo) is det <= stream_old.input(S).
 
 putback_read_char(pb(Stream, MPutbackChars), Result) -->
 	mvar__take(MPutbackChars, PutbackChars),
 	(
 		{ PutbackChars = [] },
 		{ NewPutbackChars = PutbackChars },
-		stream__read_char(Stream, Result)
+		stream_old.read_char(Stream, Result)
 	;
 		{ PutbackChars = [Char | NewPutbackChars] },
 		{ Result = ok(Char) }
@@ -246,7 +246,7 @@ putback_read_char(pb(Stream, MPutbackChars), Result) -->
 	mvar__put(MPutbackChars, NewPutbackChars).
 
 :- pred putback_putback_char(putback(S)::in, char::in,
-		io__state::di, io__state::uo) is det <= stream__input(S).
+		io__state::di, io__state::uo) is det <= stream_old.input(S).
 
 putback_putback_char(pb(_Stream, MPutbackChars), Char) -->
 	mvar__take(MPutbackChars, PutbackChars),
@@ -261,20 +261,20 @@ putback_putback_char(pb(_Stream, MPutbackChars), Char) -->
 		).
 
 :- instance stream(linenumber(S)) <= stream(S) where [
-	(stream__name(line(S, _)) = stream__name(S))
+	(stream_old.name(line(S, _)) = stream_old.name(S))
 ].
 
-:- instance stream__input(linenumber(S)) <= stream__input(S) where [
-	pred(stream__read_char/4) is linenumber_read_char
+:- instance stream_old.input(linenumber(S)) <= stream_old.input(S) where [
+	pred(stream_old.read_char/4) is linenumber_read_char
 ].
 
-:- instance stream__putback(linenumber(S)) <= stream__putback(S) where [
-	pred(stream__putback_char/4) is linenumber_putback_char
+:- instance stream_old.putback(linenumber(S)) <= stream_old.putback(S) where [
+	pred(stream_old.putback_char/4) is linenumber_putback_char
 ].
 
-:- instance stream__line(linenumber(S)) <= stream__input(S) where [
-	pred(stream__line_number/4) is linenumber,
-	pred(stream__set_line_number/4) is set_linenumber
+:- instance stream_old.line(linenumber(S)) <= stream_old.input(S) where [
+	pred(stream_old.line_number/4) is linenumber,
+	pred(stream_old.set_line_number/4) is set_linenumber
 ].
 
 linenumber_stream(S, line(S, MLine)) -->
@@ -283,11 +283,11 @@ linenumber_stream(S, line(S, MLine)) -->
 
 linenumber_base_stream(line(Stream, _)) = Stream.
 
-:- pred linenumber_read_char(linenumber(S)::in, stream__result(char)::out,
-		io__state::di, io__state::uo) is det <= stream__input(S).
+:- pred linenumber_read_char(linenumber(S)::in, stream_old.result(char)::out,
+		io__state::di, io__state::uo) is det <= stream_old.input(S).
 
 linenumber_read_char(line(Stream, MLine), Result) -->
-	stream__read_char(Stream, Result),
+	stream_old.read_char(Stream, Result),
 	( { Result = ok('\n') } ->
 		mvar__take(MLine, Line),
 		mvar__put(MLine, Line + 1)
@@ -296,10 +296,10 @@ linenumber_read_char(line(Stream, MLine), Result) -->
 	).
 
 :- pred linenumber_putback_char(linenumber(S)::in, char::in,
-		io__state::di, io__state::uo) is det <= stream__putback(S).
+		io__state::di, io__state::uo) is det <= stream_old.putback(S).
 
 linenumber_putback_char(line(Stream, MLine), Char) -->
-	stream__putback_char(Stream, Char),
+	stream_old.putback_char(Stream, Char),
 	( { Char = '\n' } ->
 		mvar__take(MLine, Line),
 		mvar__put(MLine, Line - 1)
@@ -324,7 +324,7 @@ set_linenumber(line(_, MLine), Line) -->
 %-----------------------------------------------------------------------------%
 
 read_line(Stream, Result) -->
-	stream__read_char(Stream, CharResult),
+	stream_old.read_char(Stream, CharResult),
 	(
 		{ CharResult = error(Error) },
 		{ Result = error(Error) }
@@ -365,8 +365,8 @@ read_word(Stream, Result) -->
 		read_word_2(Stream, Result)
 	).
 
-:- pred read_word_2(S::in, stream__result(list(char))::out,
-		io__state::di, io__state::uo) is det <= stream__putback(S).
+:- pred read_word_2(S::in, stream_old.result(list(char))::out,
+		io__state::di, io__state::uo) is det <= stream_old.putback(S).
 
 read_word_2(Stream, Result) -->
 	read_char(Stream, CharResult),
@@ -422,10 +422,10 @@ write_string(Stream, String) -->
 %-----------------------------------------------------------------------------%
 
 cat(In, Out, Result) -->
-	stream__read_char(In, Res),
+	stream_old.read_char(In, Res),
 	(
 		{ Res = ok(Char) },
-		stream__write_char(Out, Char),
+		stream_old.write_char(Out, Char),
 		cat(In, Out, Result)
 	;
 		{ Res = eof },
