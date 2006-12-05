@@ -808,6 +808,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             !Globals),
         option_implies(make_short_interface, smart_recompilation, bool(no),
             !Globals),
+        option_implies(make_xml_documentation, smart_recompilation, bool(no),
+            !Globals),
         option_implies(output_grade_string, smart_recompilation, bool(no),
             !Globals),
         option_implies(make_optimization_interface,
@@ -840,6 +842,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(make_short_interface, generate_item_version_numbers,
             bool(no), !Globals),
 
+        % The combination of --make-xml-documentation and
+        % --intermodule-optimization can causes spurious warnings about
+        % missing .opt files if they haven't been built yet.
+        %
+        option_implies(make_xml_documentation, intermodule_optimization,
+            bool(no), !Globals),
+    
         % XXX Smart recompilation does not yet work with inter-module
         % optimization, but we still want to generate version numbers
         % in interface files for users of a library compiled with
