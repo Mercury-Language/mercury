@@ -901,28 +901,14 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
     io::di, io::uo) is det.
 
 install_library_grade(LinkSucceeded0, ModuleName, AllModules, Grade, Succeeded,
-        !Info, !IO) :-
-    % Building the library in the new grade is done in a separate process
-    % to make it easier to stop and clean up on an interrupt.
-
-    Cleanup = make_grade_clean(ModuleName, AllModules),
-    build_with_check_for_interrupt(
-        ( pred(GradeSuccess::out, MInfo::in, MInfo::out, !.IO::di, !:IO::uo)
-                is det :-
-            call_in_forked_process(
-                (pred(GradeSuccess0::out, !.IO::di, !:IO::uo) is det :-
-                install_library_grade_2(LinkSucceeded0,
-                    Grade, ModuleName, AllModules,
-                    MInfo, GradeSuccess0, !IO)
-                ), GradeSuccess, !IO)
-        ), Cleanup, Succeeded, !Info, !IO).
-
-:- pred install_library_grade_2(bool::in, string::in, module_name::in,
-    list(module_name)::in, make_info::in, bool::out, io::di, io::uo) is det.
-
-install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
-        Info0, Succeeded, !IO) :-
+        Info0, Info, !IO) :-
     globals.io_get_globals(OrigGlobals, !IO),
+
+    % Only remove grade-dependent files after installing if
+    % --use-grade-subdirs is not specified by the user.
+    globals.lookup_bool_option(OrigGlobals,
+        use_grade_subdirs, UseGradeSubdirs),
+    CleanAfter = not(UseGradeSubdirs),
 
     % Set up so that grade-dependent files for the current grade
     % don't overwrite the files for the default grade.
@@ -949,7 +935,8 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
     (
         OptionsErrors = [_ | _],
         usage_errors(OptionsErrors, !IO),
-        Succeeded = no
+        Succeeded = no,
+        Info = Info0
     ;
         OptionsErrors = [],
 
@@ -966,34 +953,45 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
             map.to_assoc_list(StatusMap0))),
         Info1 = (Info0 ^ dependency_status := StatusMap)
             ^ option_args := OptionArgs,
-        make_misc_target(ModuleName - misc_target_build_library, LibSucceeded,
-            Info1, Info2, !IO),
-        (
-            LibSucceeded = yes,
-            % `GradeDir' differs from `Grade' in that it is in canonical form,
-            % and it does not include any `.picreg' component.
-            globals.io_get_globals(Globals, !IO),
-            grade_directory_component(Globals, GradeDir),
-            install_library_grade_files(LinkSucceeded0, GradeDir,
-                ModuleName, AllModules, Succeeded, Info2, Info3, !IO),
-            %
-            % Only remove grade-dependent files after installing if
-            % --use-grade-subdirs is not specified by the user.
-            %
-            globals.lookup_bool_option(OrigGlobals,
-                use_grade_subdirs, UseGradeSubdirs),
-            (
-                UseGradeSubdirs = yes
-            ;
-                UseGradeSubdirs = no,
-                make_grade_clean(ModuleName, AllModules, Info3, _, !IO)
-            )
-        ;
-            LibSucceeded = no,
-            Succeeded = no
-        )
+
+        % Building the library in the new grade is done in a separate process
+        % to make it easier to stop and clean up on an interrupt.
+        Cleanup = maybe_make_grade_clean(CleanAfter, ModuleName, AllModules),
+        build_with_check_for_interrupt(
+            ( pred(GradeSuccess::out, MInfo::in, MInfo::out, !.IO::di, !:IO::uo)
+                    is det :-
+                call_in_forked_process(
+                    (pred(GradeSuccess0::out, !.IO::di, !:IO::uo) is det :-
+                        install_library_grade_2(LinkSucceeded0,
+                            ModuleName, AllModules, MInfo, CleanAfter,
+                            GradeSuccess0, !IO)
+                    ), GradeSuccess, !IO)
+            ), Cleanup, Succeeded, Info1, Info, !IO)
     ),
     globals.io_set_globals(unsafe_promise_unique(OrigGlobals), !IO).
+
+:- pred install_library_grade_2(bool::in, module_name::in,
+    list(module_name)::in, make_info::in, bool::in, bool::out,
+    io::di, io::uo) is det.
+
+install_library_grade_2(LinkSucceeded0, ModuleName, AllModules,
+        Info0, CleanAfter, Succeeded, !IO) :-
+    make_misc_target(ModuleName - misc_target_build_library, LibSucceeded,
+        Info0, Info1, !IO),
+    (
+        LibSucceeded = yes,
+        % `GradeDir' differs from `Grade' in that it is in canonical form,
+        % and it does not include any `.picreg' component.
+        globals.io_get_globals(Globals, !IO),
+        grade_directory_component(Globals, GradeDir),
+        install_library_grade_files(LinkSucceeded0, GradeDir,
+            ModuleName, AllModules, Succeeded, Info1, Info2, !IO),
+        maybe_make_grade_clean(CleanAfter, ModuleName, AllModules,
+            Info2, _Info, !IO)
+    ;
+        LibSucceeded = no,
+        Succeeded = no
+    ).
 
     % Install the `.a', `.so', `.jar', `.opt' and `.mih' files for the current
     % grade.
@@ -1303,6 +1301,18 @@ generate_archive_index(FileName, InstallDir, Succeeded, !IO) :-
     invoke_system_command(OutputStream, cmd_verbose, Command, Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
+
+:- pred maybe_make_grade_clean(bool::in, module_name::in,
+    list(module_name)::in, make_info::in, make_info::out, io::di, io::uo)
+    is det.
+
+maybe_make_grade_clean(Clean, ModuleName, AllModules, !Info, !IO) :-
+    (
+        Clean = yes,
+        make_grade_clean(ModuleName, AllModules, !Info, !IO)
+    ;
+        Clean = no
+    ).
 
     % Clean up grade-dependent files.
     %
