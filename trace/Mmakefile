@@ -364,6 +364,8 @@ clean_o:
 realclean_local:
 	rm -f lib$(TRACE_LIB_NAME).$A
 	rm -f lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+	rm -f lib$(EVENTSPEC_LIB_NAME).$A
+	rm -f lib$(EVENTSPEC_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 	rm -f $(GEN_EVENTSPEC_SRCS) $(GEN_EVENTSPEC_HDRS)
 
 #-----------------------------------------------------------------------------#
