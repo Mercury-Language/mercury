@@ -753,7 +753,7 @@ help(Debugger, !IO) :-
 "\tcd [path]      -- cd to the specified subterm (default is root)\n",
 "\tcdr n path     -- repeatedly apply the cd command n times\n",
 "\tpwd            -- print the path to the current subterm\n",
-"\tformat [format_options] <flat|raw-prety|verbose|pretty>\n",
+"\tformat [format_options] <flat|raw-pretty|verbose|pretty>\n",
 "\t               -- set the format\n",
 "\tdepth [format_param_options] <n>\n",
 "\tsize  [format_param_options] <n>\n",
