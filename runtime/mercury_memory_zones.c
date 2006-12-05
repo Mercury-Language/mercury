@@ -168,6 +168,12 @@ MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
     return ptr;
 }
 
+static void
+MR_dealloc_zone_memory(void *base, size_t size)
+{
+    VirtualFree(base, size, MEM_RELEASE);
+}
+
 #elif defined(MR_CONSERVATIVE_GC)
 
 static void *
@@ -185,6 +191,13 @@ MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
     (void) MR_memcpy(ptr, old_base, copy_size);
     GC_free(old_base);
     return ptr;
+}
+
+static void
+MR_dealloc_zone_memory(void *base, size_t size)
+{
+    (void) size;
+    GC_free(base);
 }
 
 #elif defined(MR_HAVE_POSIX_MEMALIGN_XXX)
@@ -219,6 +232,13 @@ MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
     return ptr;
 }
 
+static void
+MR_dealloc_zone_memory(void *base, size_t size)
+{
+    (void) size;
+    free(base);
+}
+
 #elif defined(MR_HAVE_MEMALIGN)
 
 static void *
@@ -243,6 +263,14 @@ MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
     return ptr;
 }
 
+static void
+MR_dealloc_zone_memory(void *base, size_t size)
+{
+    /* See above about calling free(base) here. */
+    (void) base;
+    (void) size;
+}
+
 #else
 
 static void *
@@ -256,6 +284,13 @@ MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
 {
     /* the copying is done by realloc */
     return realloc(old_base, new_size);
+}
+
+static void
+MR_dealloc_zone_memory(void *base, size_t size)
+{
+    (void) size;
+    free(base);
 }
 
 #endif
@@ -301,6 +336,9 @@ MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
 /*---------------------------------------------------------------------------*/
 
 #define MAX_ZONES   16
+
+/* Enables a workaround in MR_unget_zone(). */
+#define MEMORY_ZONE_FREELIST_WORKAROUND 1
 
 static MR_MemoryZone    *used_memory_zones = NULL;
 static MR_MemoryZone    *free_memory_zones = NULL;
@@ -381,6 +419,26 @@ MR_get_zone(void)
 void
 MR_unget_zone(MR_MemoryZone *zone)
 {
+#ifdef  MEMORY_ZONE_FREELIST_WORKAROUND
+    /*
+    ** XXX MR_construct_zone() does not yet reuse previously allocated memory
+    ** zones properly and simply leaks memory when it tries to do so.  As a
+    ** workaround, we never put memory zones on the free list and deallocate
+    ** them immediately here.
+    */
+    size_t          redsize;
+    int             res;
+
+    redsize = zone->MR_zone_redzone_size;
+    res = MR_protect_pages((char *) zone->MR_zone_redzone,
+        redsize + MR_unit, NORMAL_PROT);
+    assert(res == 0);
+
+    MR_dealloc_zone_memory(zone->MR_zone_bottom,
+        ((char *) zone->MR_zone_top) - ((char *) zone->MR_zone_bottom));
+
+#else   /* !MEMORY_ZONE_FREELIST_WORKAROUND */
+
     MR_MemoryZone   *prev;
     MR_MemoryZone   *tmp;
 
@@ -409,6 +467,8 @@ MR_unget_zone(MR_MemoryZone *zone)
     zone->MR_zone_next = free_memory_zones;
     free_memory_zones = zone;
     MR_UNLOCK(&free_memory_zones_lock, "unget_zone");
+
+#endif  /* MEMORY_ZONE_FREELIST_WORKAROUND */
 }
 
 /*
@@ -484,6 +544,13 @@ MR_construct_zone(const char *name, int id, MR_Word *base,
     zone->MR_zone_handler = handler;
 #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 
+    /*
+    ** XXX If `zone' is pulled off the free-list (rather than newly allocated)
+    ** then zone->MR_zone_bottom will be pointing to a previously allocated
+    ** memory region.  Setting it to point to `base' therefore causes a memory
+    ** leak.  `base' should not be allocated in the first place if `zone' is
+    ** to be reused.  See also the workaround in MR_unget_zone().
+    */
     zone->MR_zone_bottom = base;
 
 #ifdef  MR_PROTECTPAGE
