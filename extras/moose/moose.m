@@ -528,7 +528,7 @@ terminal_to_term(Name/Arity, _, Term) :-
 	varset__new_vars(V0, Arity, Vars, _),
 	term__context_init(Ctxt),
 	list__map((pred(Var::in, T::out) is det :-
-		T = variable(Var)
+		T = variable(Var, Ctxt)
 	), Vars, Args),
 	Term = functor(atom(Name), Args, Ctxt).
 terminal_to_term(($), End, End).
@@ -610,7 +610,7 @@ nonterminal_to_term(Name/Arity, Term) :-
 	varset__new_vars(V0, Arity, Vars, _),
 	term__context_init(Ctxt),
 	list__map((pred(Var::in, T::out) is det :-
-		T = variable(Var)
+		T = variable(Var, Ctxt)
 	), Vars, Args),
 	Term = functor(atom(Name), Args, Ctxt).
 
@@ -718,7 +718,7 @@ mkstartargs(N, !Terms, !Varset) :-
 	;
 		string__format("V%d", [i(N)], VarName),
 		varset__new_named_var(!.Varset, VarName, Var, !:Varset),
-		Term = term__variable(Var),
+		Term = term__variable(Var, context_init),
 		list__append([Term], !Terms),
 		mkstartargs(N - 1, !Terms, !Varset)
 	).
@@ -802,30 +802,30 @@ reduce0(%s, S0, S, T0, T, U0, U) :-
 				s(InAtom), s(OutAtom)],
 			!IO),
 		Rule = rule(RNt, Head, _, Body, Actions, Varset0, _C),
-		varset__new_named_var(Varset0, "M_St0", St0v, Varset1),
-		St0 = variable(St0v),
-		varset__new_named_var(Varset1, "M_St1", St1v, Varset2),
-		St1 = variable(St1v),
-		varset__new_named_var(Varset2, "M_Sy0", Sy0v, Varset3),
-		Sy0 = variable(Sy0v),
-		varset__new_named_var(Varset3, "M_Sy1", Sy1v, Varset4),
-		Sy1 = variable(Sy1v),
-		varset__new_named_var(Varset4, "M_RedRes", Resv, Varset5),
-		Res = variable(Resv),
-		ResS = functor(atom("n"), [variable(Resv)], Ctxt),
-		varset__new_named_var(Varset5, "M_D", Dv, Varset6),
-		_D = variable(Dv),
-		varset__new_named_var(Varset6, "M_S", Sv, Varset7),
-		_S = variable(Sv),
-		varset__new_named_var(Varset7, "M_St", Stv, Varset8),
-		St = variable(Stv),
-		varset__new_named_var(Varset8, "M_Sy", Syv, Varset9),
-		Sy = variable(Syv),
-		varset__new_named_var(Varset9, "M_Ts0", Ts0v, Varset10),
-		Ts0 = variable(Ts0v),
-		varset__new_named_var(Varset10, "M_Ts", Tsv, Varset11),
-		Ts = variable(Tsv),
 		term__context_init(Ctxt),
+		varset__new_named_var(Varset0, "M_St0", St0v, Varset1),
+		St0 = variable(St0v, Ctxt),
+		varset__new_named_var(Varset1, "M_St1", St1v, Varset2),
+		St1 = variable(St1v, Ctxt),
+		varset__new_named_var(Varset2, "M_Sy0", Sy0v, Varset3),
+		Sy0 = variable(Sy0v, Ctxt),
+		varset__new_named_var(Varset3, "M_Sy1", Sy1v, Varset4),
+		Sy1 = variable(Sy1v, Ctxt),
+		varset__new_named_var(Varset4, "M_RedRes", Resv, Varset5),
+		Res = variable(Resv, Ctxt),
+		ResS = functor(atom("n"), [variable(Resv, Ctxt)], Ctxt),
+		varset__new_named_var(Varset5, "M_D", Dv, Varset6),
+		_D = variable(Dv, Ctxt),
+		varset__new_named_var(Varset6, "M_S", Sv, Varset7),
+		_S = variable(Sv, Ctxt),
+		varset__new_named_var(Varset7, "M_St", Stv, Varset8),
+		St = variable(Stv, Ctxt),
+		varset__new_named_var(Varset8, "M_Sy", Syv, Varset9),
+		Sy = variable(Syv, Ctxt),
+		varset__new_named_var(Varset9, "M_Ts0", Ts0v, Varset10),
+		Ts0 = variable(Ts0v, Ctxt),
+		varset__new_named_var(Varset10, "M_Ts", Tsv, Varset11),
+		Ts = variable(Tsv, Ctxt),
 		string__format("reduction 0x%x failed!", [i(Rn)], Err),
 		mkstacks(Body, St1, Sts, Sy1, Sys, Varset11, Varset12),
 		Cond = functor(atom(","), [
@@ -910,7 +910,7 @@ mkstacks([E0 | Es], !St, !Sy, !VS) :-
 		E = functor(atom("n"), [EN], Ctxt)
 	),
 	!:Sy = functor(atom("[|]"), [E, !.Sy], Ctxt),
-	!:St = functor(atom("[|]"), [variable(U), !.St], Ctxt),
+	!:St = functor(atom("[|]"), [variable(U, Ctxt), !.St], Ctxt),
 	mkstacks(Es, !St, !Sy, !VS).
 
 :- pred mkactions(list(term), term, term).

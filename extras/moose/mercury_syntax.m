@@ -285,8 +285,7 @@ cons_decl(Atom, DeclTerm, Term) :-
 :- pred get_context(term, context).
 :- mode get_context(in, out) is det.
 
-get_context(variable(_), Context) :-
-	term__context_init(Context).
+get_context(variable(_, Context), Context).
 get_context(functor(_, _, Context), Context).
 
 %------------------------------------------------------------------------------%
