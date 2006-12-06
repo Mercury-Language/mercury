@@ -535,8 +535,8 @@ tabled_read_decl_goto.out: tabled_read_decl_goto tabled_read_decl_goto.inp
 # particular line numbers in the standard library source code.
 throw.out: throw throw.inp
 	$(MDB_STD) ./throw < throw.inp 2>&1 | \
-		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' | \
-		sed -e '/EXCP/s/).*/)/' > throw.out 2>&1 \
+		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		> throw.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 trust.out: trust trust.inp
