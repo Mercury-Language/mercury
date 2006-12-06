@@ -1630,6 +1630,7 @@ then
             mv "$type_stats" "$type_stats".test.$$
         fi
 
+        cd $root/${tests_prefix}tests
         for tcdir in PASSED_TC_DIR FAILED_TC_DIR
         do
             if test "`cat $tcdir/NEXT_NUMBER`" -gt 0
