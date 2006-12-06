@@ -4,23 +4,23 @@ Command echo enabled.
 mdb> untrust 0
 mdb> table_io start
 I/O tabling started.
-mdb> break io.write_string/3
- 0: + stop  interface pred io.write_string/3-0 (det)
+mdb> break io.write_string/4
+ 0: + stop  interface pred io.write_string/4-0 (det)
 mdb> condition Message = "english"
- 0: + stop  interface pred io.write_string/3-0 (det)
+ 0: + stop  interface pred io.write_string/4-0 (det)
             Message = "english"
 mdb> continue
 <?xml version="1.0"?>
 <translations>
 	<word>
-		<      E2:     C2 CALL pred io.write_string/3-0 (det) io.m:NNNN (term_to_xml.m:NNNN)
+		<      E2:     C2 CALL pred io.write_string/4-0 (det) io.m:NNNN (term_to_xml.m:NNNN)
 mdb> finish
-english      E3:     C2 EXIT pred io.write_string/3-0 (det) io.m:NNNN (term_to_xml.m:NNNN)
+english      E3:     C2 EXIT pred io.write_string/4-0 (det) io.m:NNNN (term_to_xml.m:NNNN)
 mdb> dd
 write_string("english", _, _)
 1 tabled IO action:
 write_string("english")
-Valid? browse 1
+Valid? browse 2
 browser> track
 >critical</english>
 		<dutch>kritiek</dutch>

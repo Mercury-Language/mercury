@@ -824,6 +824,9 @@ MR_trace_list_var_details(FILE *out)
 
         fprintf(out, "typeinfo %p, value %" MR_INTEGER_LENGTH_MODIFIER "x\n",
             value->MR_value_type, value->MR_value_value);
+        fprintf(out, "type is ");
+        MR_print_type(out, value->MR_value_type);
+        fprintf(out, "\n");
     }
 
     return NULL;

@@ -57,9 +57,10 @@
 #define MERCURY_TYPE_INFO_H
 
 #include "mercury_std.h"    /* for `MR_STRINGIFY', `MR_PASTEn' and MR_CALL */
-#include "mercury_types.h"  /* for `MR_Word' */
-#include "mercury_tags.h"   /* for `MR_DEFINE_BUILTIN_ENUM_CONST' */
-#include "mercury_hlc_types.h" /* for `MR_Mercury_Type_Info' */
+#include "mercury_types.h"      /* for `MR_Word' */
+#include "mercury_tags.h"       /* for `MR_DEFINE_BUILTIN_ENUM_CONST' */
+#include "mercury_hlc_types.h"  /* for `MR_Mercury_Type_Info' */
+#include <stdio.h>              /* for FILE */
 
 /*---------------------------------------------------------------------------*/
 
@@ -1857,6 +1858,15 @@ extern  MR_Word     MR_arg_name_vector_to_list(int arity,
 extern  MR_Word     MR_pseudo_type_info_vector_to_pseudo_type_info_list(
                         int arity, MR_TypeInfoParams type_params,
                         const MR_PseudoTypeInfo *arg_pseudo_type_infos);
+
+/*
+** MR_print_type:
+**
+** Print a representation of the type represented by the given typeinfo to the
+** given file.
+*/
+
+extern  void        MR_print_type(FILE *fp, MR_TypeInfo type_info);
 
 /*---------------------------------------------------------------------------*/
 

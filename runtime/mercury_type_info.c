@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -897,3 +897,40 @@ MR_typeclass_ref_error(MR_Word tci, int n, const char *msg)
     /* not reached */
     return 0;
 }
+
+/*---------------------------------------------------------------------------*/
+
+void
+MR_print_type(FILE *fp, MR_TypeInfo type_info)
+{
+    MR_TypeCtorInfo tci;
+    MR_TypeInfo     *arg_vector;
+    int             arity;
+    int             i;
+
+    tci = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+    if (MR_type_ctor_has_variable_arity(tci)) {
+        arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
+        arg_vector = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
+    } else {
+        arity = tci->MR_type_ctor_arity;
+        arg_vector = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
+    }
+
+    fprintf(fp, "%s.%s",
+        tci->MR_type_ctor_module_name, tci->MR_type_ctor_name);
+    if (arity > 0) {
+        fprintf(fp, "(");
+
+        for (i = 1; i <= arity; i++) {
+            MR_print_type(fp, arg_vector[i]);
+            if (i < arity) {
+                fprintf(fp, ", ");
+            }
+        }
+
+        fprintf(fp, ")");
+    }
+}
+
+/*---------------------------------------------------------------------------*/
