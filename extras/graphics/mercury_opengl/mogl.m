@@ -32,6 +32,8 @@
 :- module mogl.
 :- interface.
 
+:- include_module mogl.type_tables.
+
 :- import_module bool.
 :- import_module float.
 :- import_module int.
@@ -352,6 +354,17 @@
     ;       luminance
     ;       luminance_alpha.
 
+:- inst pixel_format_non_stencil_or_depth
+    --->    color_index
+    ;       red
+    ;       green
+    ;       blue
+    ;       alpha
+    ;       rgb
+    ;       rgba
+    ;       luminance
+    ;       luminance_alpha.
+
 :- type pixel_type
     --->    unsigned_byte
     ;       bitmap
@@ -399,6 +412,7 @@
 
 :- inst texture_1d ---> texture_1d ; proxy_texture_1d.
 :- inst texture_2d ---> texture_2d ; proxy_texture_2d.
+% :- inst texture_3d ---> texture_3d ; proxy_texture_3d.
 
 :- inst non_proxy_texture_target ---> texture_1d ; texture_2d.
 
@@ -519,6 +533,35 @@
     ;       sphere_map.
 
 :- pred tex_gen(texture_coord::in, texture_gen_parameter::in,
+    io::di, io::uo) is det.
+
+:- inst border ---> 0 ; 1.
+
+:- type pixel_data.
+:- pragma foreign_type("C", pixel_data, "const GLvoid *").
+
+:- pred tex_image_1d(texture_target::in(texture_1d), int::in,
+    texture_format::in, int::in, int::in(border),
+    pixel_format::in(pixel_format_non_stencil_or_depth),
+    pixel_type::in, pixel_data::in, io::di, io::uo) is det.
+
+:- pred tex_image_2d(texture_target::in(texture_2d), int::in,
+    texture_format::in, int::in, int::in, int::in(border),
+    pixel_format::in(pixel_format_non_stencil_or_depth),
+    pixel_type::in, pixel_data::in, io::di, io::uo) is det.
+
+% Requires OpenGL 1.2
+% :- pred tex_image_3d(texture_target::in(texture_3d), int::in,
+%     texture_format::in, int::in, int::in, int::in, int::in(border),
+%     pixel_format::in(pixel_format_non_stencil_or_depth),
+%     pixel_type::in, pixel_data::in, io::di, io::uo) is det.
+
+:- pred copy_tex_image_1d(texture_target::in(bound(texture_1d)), int::in,
+    texture_format::in, int::in, int::in, int::in, int::in(border),
+    io::di, io::uo) is det.
+
+:- pred copy_tex_image_2d(texture_target::in(bound(texture_2d)), int::in,
+    texture_format::in, int::in, int::in, int::in, int::in, int::in(border),
     io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -1159,6 +1202,8 @@
 
 :- implementation.
 
+:- import_module mogl.type_tables.
+
 :- import_module exception.
 :- import_module require.
 
@@ -1177,6 +1222,8 @@
         #include <GL/gl.h>
     #endif
 ").
+
+:- pragma foreign_import_module("C", mogl.type_tables).
 
 %------------------------------------------------------------------------------%
 %
@@ -2516,9 +2563,6 @@ copy_type_to_int(depth)   = 2.
         pixel_data   :: pixel_data
     ).
 
-:- type pixel_data.
-:- pragma foreign_type("C", pixel_data, "const GLvoid *").  
-
 read_buffer(Buffer, !IO) :-
     read_buffer_to_int_and_offset(Buffer, BufferFlag, Offset),
     read_buffer_2(BufferFlag, Offset, !IO).
@@ -2591,90 +2635,6 @@ texture_target_to_int(proxy_texture_2d, 3).
 :- pragma foreign_decl("C", "
     extern const GLenum texture_format_flags[];
 ").
-
-:- pragma foreign_code("C", "
-    const GLenum texture_format_flags[] = {
-        GL_ALPHA,
-        GL_LUMINANCE,
-        GL_LUMINANCE_ALPHA,
-        GL_INTENSITY,
-        GL_RGB,
-        GL_RGBA,
-        GL_ALPHA4,
-        GL_ALPHA8,
-        GL_ALPHA12,
-        GL_ALPHA16,
-        GL_LUMINANCE4,
-        GL_LUMINANCE8,
-        GL_LUMINANCE12,
-        GL_LUMINANCE16,
-        GL_LUMINANCE4_ALPHA4,
-        GL_LUMINANCE6_ALPHA2,
-        GL_LUMINANCE8_ALPHA8,
-        GL_LUMINANCE12_ALPHA4,
-        GL_LUMINANCE12_ALPHA12,
-        GL_LUMINANCE16_ALPHA16,
-        GL_INTENSITY4,
-        GL_INTENSITY8,
-        GL_INTENSITY12,
-        GL_INTENSITY16,
-        GL_R3_G3_B2,
-        GL_RGB4,
-        GL_RGB5,
-        GL_RGB10,
-        GL_RGB12,
-        GL_RGB16,
-        GL_RGBA2,
-        GL_RGBA4,
-        GL_RGB5_A1,
-        GL_RGBA8,
-        GL_RGB10_A2,
-        GL_RGBA12,
-        GL_RGBA16
-    };
-").
-
-:- pred texture_format_to_int(texture_format, int).
-:- mode texture_format_to_int(in, out) is det.
-%:- mode texture_format_to_int(out, in) is semidet.
-
-texture_format_to_int(alpha, 0).        
-texture_format_to_int(luminance, 1).
-texture_format_to_int(luminance_alpha, 2).
-texture_format_to_int(intensity, 3).
-texture_format_to_int(rgb, 4).
-texture_format_to_int(rgba, 5).
-texture_format_to_int(alpha4, 6).
-texture_format_to_int(alpha8, 7).
-texture_format_to_int(alpha12, 8).
-texture_format_to_int(alpha16, 9).
-texture_format_to_int(luminance4, 10).
-texture_format_to_int(luminance8, 11).
-texture_format_to_int(luminance12, 12).
-texture_format_to_int(luminance16, 13).
-texture_format_to_int(luminance4_alpha4, 14).
-texture_format_to_int(luminance6_alpha2, 15).
-texture_format_to_int(luminance8_alpha8, 16).
-texture_format_to_int(luminance12_alpha4, 17).
-texture_format_to_int(luminance12_alpha12, 18).
-texture_format_to_int(luminance16_alpha16, 19).
-texture_format_to_int(intensity4, 20).
-texture_format_to_int(intensity8, 21).
-texture_format_to_int(intensity12, 22).
-texture_format_to_int(intensity16, 23).
-texture_format_to_int(r3_g3_b2, 24).
-texture_format_to_int(rgb4, 25).
-texture_format_to_int(rgb5, 26).
-texture_format_to_int(rgb10, 27).
-texture_format_to_int(rgb12, 28).
-texture_format_to_int(rgb16, 29).
-texture_format_to_int(rgba2, 30).
-texture_format_to_int(rgba4, 31).
-texture_format_to_int(rgb5_a1, 32).
-texture_format_to_int(rgba8, 33).
-texture_format_to_int(rgb10_a2, 34).
-texture_format_to_int(rgba12, 35).
-texture_format_to_int(rgba16, 36).
 
 :- pragma foreign_decl("C", "
     extern const GLenum texture_parameter_flags[];
@@ -3065,6 +3025,108 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
         glTexGendv(texture_coord_flags[Coord], GL_EYE_PLANE,
             coefficients);
     }
+    IO = IO0;
+").
+
+tex_image_1d(Target, Level, InternalFormat, Width, Border,
+        Format, Type, Pixels, !IO) :-
+    texture_target_to_int(Target, TargetInt),
+    texture_format_to_int(InternalFormat, InternalFormatInt),
+    tex_image_1d_2(TargetInt, Level, InternalFormatInt, Width, Border,
+        pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels, !IO).
+
+:- pred tex_image_1d_2(int::in, int::in, int::in, int::in, int::in, int::in,
+    int::in, pixel_data::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+    tex_image_1d_2(Target::in, Level::in, InternalFormat::in,
+        Width::in, Border::in, Format::in, Type::in,
+        Pixels::in, IO0::di, IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
+"
+    glTexImage1D(texture_target_flags[Target], Level,
+        texture_format_flags[InternalFormat], Width, Border,
+        pixel_format_flags[Format], pixel_type_flags[Type], Pixels);
+    IO = IO0;
+").
+
+tex_image_2d(Target, Level, InternalFormat, Width, Height, Border,
+        Format, Type, Pixels, !IO) :-
+    texture_target_to_int(Target, TargetInt),
+    texture_format_to_int(InternalFormat, InternalFormatInt),
+    tex_image_2d_2(TargetInt, Level, InternalFormatInt, Width, Height, Border,
+        pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels, !IO).
+
+:- pred tex_image_2d_2(int::in, int::in, int::in, int::in, int::in, int::in,
+    int::in, int::in, pixel_data::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+    tex_image_2d_2(Target::in, Level::in, InternalFormat::in,
+        Width::in, Height::in, Border::in, Format::in, Type::in, Pixels::in,
+        IO0::di, IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
+"
+    glTexImage2D(texture_target_flags[Target], Level,
+        texture_format_flags[InternalFormat], Width, Height, Border,
+        pixel_format_flags[Format], pixel_type_flags[Type], Pixels);
+    IO = IO0;
+").
+
+% Requires OpenGL 1.2
+% tex_image_3d(Target, Level, InternalFormat, Width, Height, Depth, Border,
+%         Format, Type, Pixels, !IO) :-
+%     texture_target_to_int(Target, TargetInt),
+%     texture_format_to_int(InternalFormat, InternalFormatInt),
+%     tex_image_3d_2(TargetInt, Level, InternalFormatInt, Width, Height, Depth,
+%         Border, pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels,
+%         !IO).
+% 
+% :- pred tex_image_3d_2(int::in, int::in, int::in, int::in, int::in, int::in,
+%     int::in, int::in, int::in, pixel_data::in, io::di, io::uo) is det.
+% :- pragma foreign_proc("C", 
+%     tex_image_3d_2(Target::in, Level::in, InternalFormat::in,
+%         Width::in, Height::in, Depth::in, Border::in, Format::in, Type::in,
+%         Pixels::in, IO0::di, IO::uo),
+%     [will_not_call_mercury, tabled_for_io, promise_pure],
+% "
+%     glTexImage3D(texture_target_flags[Target], Level,
+%         texture_format_flags[InternalFormat], Width, Height, Depth, Border,
+%         pixel_format_flags[Format], pixel_type_flags[Type], Pixels);
+%     IO = IO0;
+% ").
+
+copy_tex_image_1d(Target, Level, InternalFormat, X, Y, Width, Border, !IO) :-
+    texture_target_to_int(Target, TargetInt),
+    texture_format_to_int(InternalFormat, InternalFormatInt),
+    copy_tex_image_1d_2(TargetInt, Level, InternalFormatInt, X, Y, Width,
+        Border, !IO).
+
+:- pred copy_tex_image_1d_2(int::in, int::in, int::in, int::in, int::in,
+    int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+    copy_tex_image_1d_2(Target::in, Level::in, InternalFormat::in,
+        X::in, Y::in, Width::in, Border::in, IO0::di, IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
+"
+    glCopyTexImage1D(texture_target_flags[Target], Level,
+        texture_format_flags[InternalFormat], X, Y, Width, Border);
+    IO = IO0;
+").
+
+copy_tex_image_2d(Target, Level, InternalFormat, X, Y, Width, Height, Border,
+        !IO) :-
+    texture_target_to_int(Target, TargetInt),
+    texture_format_to_int(InternalFormat, InternalFormatInt),
+    copy_tex_image_2d_2(TargetInt, Level, InternalFormatInt, X, Y,
+        Width, Height, Border, !IO).
+
+:- pred copy_tex_image_2d_2(int::in, int::in, int::in, int::in, int::in,
+    int::in, int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+    copy_tex_image_2d_2(Target::in, Level::in, InternalFormat::in,
+        X::in, Y::in, Width::in, Height::in, Border::in, IO0::di, IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
+"
+    glCopyTexImage2D(texture_target_flags[Target], Level,
+        texture_format_flags[InternalFormat], X, Y, Width, Height, Border);
     IO = IO0;
 ").
 
