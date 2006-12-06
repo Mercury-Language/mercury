@@ -538,7 +538,6 @@
 :- inst border ---> 0 ; 1.
 
 :- type pixel_data.
-:- pragma foreign_type("C", pixel_data, "const GLvoid *").
 
 :- pred tex_image_1d(texture_target::in(texture_1d), int::in,
     texture_format::in, int::in, int::in(border),
@@ -1196,6 +1195,14 @@
     is det.
 
 :- pred pop_client_attrib(io::di, io::uo) is det.
+
+%------------------------------------------------------------------------------%
+
+% A less public interface.
+
+:- interface.
+
+:- pragma foreign_type("C", pixel_data, "const GLvoid *").
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
