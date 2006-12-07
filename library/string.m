@@ -5,27 +5,29 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: string.m.
 % Main authors: fjh, petdr.
 % Stability: medium to high.
-% 
+%
 % This modules provides basic string handling facilities.
-% 
+%
 % Note that in the current implementation, strings are represented as in C,
 % using a null character as the string terminator. Future implementations,
 % however, might allow null characters in strings. Programmers should
 % avoid creating strings that might contain null characters.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module string.
 :- interface.
 
+:- import_module assoc_list.
 :- import_module char.
 :- import_module deconstruct.
 :- import_module list.
+:- import_module maybe.
 :- import_module ops.
 
 %-----------------------------------------------------------------------------%
@@ -721,6 +723,12 @@
     %
 :- func string.format_table(list(justified_column), string) = string.
 
+    % format_table_max(Columns, Separator) does the same job as format_table,
+    % but allows the caller to associate an maximum width with each column.
+    %
+:- func string.format_table_max(assoc_list(justified_column, maybe(int)),
+    string) = string.
+
 :- type justified_column
     --->    left(list(string))
     ;       right(list(string)).
@@ -753,6 +761,7 @@
 :- import_module int.
 :- import_module integer.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module std_util.
 :- import_module type_desc.
@@ -1479,9 +1488,8 @@ join_list_2(Sep, [H | T]) = Sep ++ H ++ join_list_2(Sep, T).
 
 %-----------------------------------------------------------------------------%
 
-    % NOTE: string.hash is also defined as MR_hash_string in 
-    %       runtime/mercury_string.h.  The two definitions must be kept
-    %       identical.
+    % NOTE: string.hash is also defined as MR_hash_string in
+    % runtime/mercury_string.h. The two definitions must be kept identical.
     %
 string.hash(String, HashVal) :-
     string.length(String, Length),
@@ -4583,6 +4591,10 @@ char_list_equal([X | Xs], [X | Ys]) :-
 
 string.format_table(Columns, Separator) = Table :-
     MaxWidths = list.map(find_max_length, Columns),
+    % Maybe the code below should be replaced by the code of format_table_max,
+    % with all maybe widths set to "no". They do the same job; the code of
+    % format_table_max just does it more directly, without the excessive use
+    % of higher order calls.
     PaddedColumns = list.map_corresponding(pad_column, MaxWidths, Columns),
     (
         PaddedColumns = [PaddedHead | PaddedTail],
@@ -4594,16 +4606,132 @@ string.format_table(Columns, Separator) = Table :-
     ),
     Table = string.join_list("\n", Rows).
 
+string.format_table_max(ColumnsLimits, Separator) = Table :-
+    MaxWidthsSenses = list.map(find_max_length_with_limit, ColumnsLimits),
+    Columns = list.map(project_column_strings, ColumnsLimits),
+    SepLen = string.length(Separator),
+    generate_rows(MaxWidthsSenses, Separator, SepLen, Columns, [], RevRows),
+    list.reverse(RevRows, Rows),
+    Table = string.join_list("\n", Rows).
+
+:- func project_column_strings(pair(justified_column, maybe(int)))
+    = list(string).
+
+project_column_strings(left(Strings) - _) = Strings.
+project_column_strings(right(Strings) - _) = Strings.
+
+:- pred generate_rows(assoc_list(justify_sense, int)::in, string::in, int::in,
+    list(list(string))::in, list(string)::in, list(string)::out) is det.
+
+generate_rows(MaxWidthsSenses, Separator, SepLen, Columns0, !RevRows) :-
+    ( all_empty(Columns0) ->
+        true
+    ;
+        get_next_line(Columns0, Line, Columns),
+        pad_row(MaxWidthsSenses, Line, Separator, SepLen, 0, Row),
+        !:RevRows = [Row | !.RevRows],
+        generate_rows(MaxWidthsSenses, Separator, SepLen, Columns, !RevRows)
+    ).
+
+:- pred all_empty(list(list(string))::in) is semidet.
+
+all_empty([]).
+all_empty([List | Lists]) :-
+    List = [],
+    all_empty(Lists).
+
+:- pred get_next_line(list(list(string))::in,
+    list(string)::out, list(list(string))::out) is det.
+
+get_next_line([], [], []).
+get_next_line([Column | Columns], [ColumnTop | ColumnTops],
+        [ColumnRest | ColumnRests]) :-
+    (
+        Column = [],
+        error("list length mismatch in get_next_line")
+    ;
+        Column = [ColumnTop | ColumnRest]
+    ),
+    get_next_line(Columns, ColumnTops, ColumnRests).
+
+:- pred pad_row(assoc_list(justify_sense, int)::in, list(string)::in,
+    string::in, int::in, int::in, string::out) is det.
+
+pad_row([], [], _, _, _, "").
+pad_row([Justify - MaxWidth | JustifyWidths], [ColumnString0 | ColumnStrings0],
+        Separator, SepLen, CurColumn, Line) :-
+    NextColumn = CurColumn + MaxWidth + SepLen,
+    pad_row(JustifyWidths, ColumnStrings0, Separator, SepLen, NextColumn,
+        LineRest),
+    ( string.length(ColumnString0) =< MaxWidth ->
+        (
+            Justify = just_left,
+            ColumnString = string.pad_right(ColumnString0, ' ', MaxWidth)
+        ;
+            Justify = just_right,
+            ColumnString = string.pad_left(ColumnString0, ' ', MaxWidth)
+        ),
+        (
+            JustifyWidths = [],
+            Line = ColumnString
+        ;
+            JustifyWidths = [_ | _],
+            Line = ColumnString ++ Separator ++ LineRest
+        )
+    ;
+        (
+            JustifyWidths = [],
+            Line = ColumnString0
+        ;
+            JustifyWidths = [_ | _],
+            Line = ColumnString0 ++ Separator ++ "\n" ++
+                string.duplicate_char(' ', NextColumn) ++ LineRest
+        )
+    ).
+pad_row([], [_ | _], _, _, _, _) :-
+    error("list length mismatch in pad_row").
+pad_row([_ | _], [], _, _, _, _) :-
+    error("list length mismatch in pad_row").
+
 :- func join_rev_columns(string, string, string) = string.
 
 join_rev_columns(Separator, Col1, Col2) = Col2 ++ Separator ++ Col1.
 
 :- func find_max_length(justified_column) = int.
 
-find_max_length(left(Strings)) = MaxLength :-
-    list.foldl2(max_str_length, Strings, 0, MaxLength, "", _).
-find_max_length(right(Strings)) = MaxLength :-
-    list.foldl2(max_str_length, Strings, 0, MaxLength, "", _).
+find_max_length(JustColumn) = MaxLength :-
+    ( JustColumn = left(Strings)
+    ; JustColumn = right(Strings)
+    ),
+    list.foldl(max_str_length, Strings, 0, MaxLength).
+
+:- type justify_sense
+    --->    just_left
+    ;       just_right.
+
+:- func find_max_length_with_limit(pair(justified_column, maybe(int)))
+    = pair(justify_sense, int).
+
+find_max_length_with_limit(JustColumn - MaybeLimit) = Sense - MaxLength :-
+    (
+        JustColumn = left(Strings),
+        Sense = just_left
+    ;
+        JustColumn = right(Strings),
+        Sense = just_right
+    ),
+    list.foldl(max_str_length, Strings, 0, MaxLength0),
+    (
+        MaybeLimit = yes(Limit),
+        ( MaxLength0 > Limit ->
+            MaxLength = Limit
+        ;
+            MaxLength = MaxLength0
+        )
+    ;
+        MaybeLimit = no,
+        MaxLength = MaxLength0
+    ).
 
 :- func pad_column(int, justified_column) = list(string).
 
@@ -4618,17 +4746,14 @@ rpad(Chr, N, Str) = string.pad_right(Str, Chr, N).
 
 lpad(Chr, N, Str) = string.pad_left(Str, Chr, N).
 
-:- pred max_str_length(string::in, int::in, int::out, string::in, string::out)
-    is det.
+:- pred max_str_length(string::in, int::in, int::out) is det.
 
-max_str_length(Str, PrevMaxLen, MaxLen, PrevMaxStr, MaxStr) :-
+max_str_length(Str, PrevMaxLen, MaxLen) :-
     Length = string.length(Str),
     ( Length > PrevMaxLen ->
-        MaxLen = Length,
-        MaxStr = Str
+        MaxLen = Length
     ;
-        MaxLen = PrevMaxLen,
-        MaxStr = PrevMaxStr
+        MaxLen = PrevMaxLen
     ).
 
 %-----------------------------------------------------------------------------%

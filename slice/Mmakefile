@@ -113,9 +113,10 @@ ints:	$(INTS)
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(LIBRARY_DIR)/*.m
+tags:	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
+		$(mtc_diff.ms) $(LIBRARY_DIR)/*.m
 	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
-	$(mtc_diff.ms) $($(LIBRARY_DIR)/*.m
+		$(mtc_diff.ms) $($(LIBRARY_DIR)/*.m
 
 .PHONY: tags_file_exists
 tags_file_exists:

@@ -4988,7 +4988,7 @@ in the trace counts file analysed by the mslice tool.
 
 The mslice tool is invoked using a command of the form:
 @example
-mslice [-s sortspec] [-l N] [-m module] file
+mslice [-s sortspec] [-l N] [-m module] [-n N] [-p N] [-f N] file
 @end example
 @sp 1
 where @samp{file} is a trace count file,
@@ -5012,10 +5012,24 @@ by the Count column in ascending order.
 If the counts for two or more events are the same,
 then those events will be sorted by number of runs in descending order.
 @sp 1
+The default is to sort descending on the Count column.
+@sp 1
 The @samp{-l} or @samp{--limit} option limits the output to @samp{N} lines.
 @sp 1
 The @samp{-m} or @samp{--module} option limits the output
 to events only from the given module.
+@sp 1
+The @samp{-n} or @samp{--max-name-column} option's argument
+gives the maximum width of the column containing predicate names.
+If the argument is zero, there is no maximum width.
+@sp 1
+The @samp{-p} or @samp{--max-path-column} option's argument
+gives the maximum width of the column containing ports and goal paths.
+If the argument is zero, there is no maximum width.
+@sp 1
+The @samp{-f} or @samp{--max-file-column} option's argument
+gives the maximum width of the column containing file names and line numbers.
+If the argument is zero, there is no maximum width.
 @sp 1
 
 @node Dicing
@@ -5081,7 +5095,7 @@ and P is the number of times the goal was executed in passing runs.
 The @samp{mdice} tool is invoked with a command of the form:
 @sp 1
 @example
-mdice [-s sortspec] [-l N] [-m module] passfile failfile
+mdice [-s sortspec] [-l N] [-m module] [-n N] [-p N] [-f N] passfile failfile
 @end example
 @samp{passfile} is a trace count file,
 generated either directly by a passing program run
@@ -5111,12 +5125,25 @@ sort the table by suspicion in descending order,
 and if any two suspicions are the same,
 then by number of executions in the failing run(s), also in descending order.
 @sp 1
+The default is to sort descending on the Suspicion column.
+@sp 1
 The option @samp{-l} or @samp{--limit}
 can be used to limit the number of lines displayed.
 @sp 1
 The @samp{-m} or @samp{--module} option
 limits the output to the given module and any submodules.
-
+@sp 1
+The @samp{-n} or @samp{--max-name-column} option's argument
+gives the maximum width of the column containing predicate names.
+If the argument is zero, there is no maximum width.
+@sp 1
+The @samp{-p} or @samp{--max-path-column} option's argument
+gives the maximum width of the column containing ports and goal paths.
+If the argument is zero, there is no maximum width.
+@sp 1
+The @samp{-f} or @samp{--max-file-column} option's argument
+gives the maximum width of the column containing file names and line numbers.
+If the argument is zero, there is no maximum width.
 @sp 1
 
 @node Coverage testing

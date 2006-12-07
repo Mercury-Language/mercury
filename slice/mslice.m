@@ -28,6 +28,8 @@
 
 :- import_module getopt.
 :- import_module list.
+:- import_module maybe.
+:- import_module string.
 
 main(!IO) :-
     io.command_line_arguments(Args0, !IO),
@@ -41,10 +43,29 @@ main(!IO) :-
         ;
             Args = [FileName],
             lookup_string_option(OptionTable, sort, SortStr),
-            lookup_int_option(OptionTable, limit, Limit),
+            lookup_int_option(OptionTable, max_row, MaxRow),
+            lookup_int_option(OptionTable, max_pred_column, MaxPredColumn),
+            lookup_int_option(OptionTable, max_path_column, MaxPathColumn),
+            lookup_int_option(OptionTable, max_file_column, MaxFileColumn),
             lookup_string_option(OptionTable, modulename, Module),
-            read_slice_to_string(FileName, SortStr, Limit, Module, SliceStr,
-                Problem, !IO),
+            ( MaxPredColumn = 0 ->
+                MaybeMaxPredColumn = no
+            ;
+                MaybeMaxPredColumn = yes(MaxPredColumn)
+            ),
+            ( MaxPathColumn = 0 ->
+                MaybeMaxPathColumn = no
+            ;
+                MaybeMaxPathColumn = yes(MaxPathColumn)
+            ),
+            ( MaxFileColumn = 0 ->
+                MaybeMaxFileColumn = no
+            ;
+                MaybeMaxFileColumn = yes(MaxFileColumn)
+            ),
+            read_slice_to_string(FileName, SortStr, MaxRow,
+                MaybeMaxPredColumn, MaybeMaxPathColumn, MaybeMaxFileColumn,
+                Module, SliceStr, Problem, !IO),
             ( Problem = "" ->
                 io.write_string(SliceStr, !IO)
             ;
@@ -66,13 +87,18 @@ main(!IO) :-
 
 usage(!IO) :-
     io.write_string(
-        "Usage: mslice [-s sortspec] [-l N] [-m module] filename\n", !IO).
+        "Usage: mslice [-s sortspec] [-m module] [-l N] [-n N] [-p N] [-f N] "
+        ++ "filename\n",
+        !IO).
 
 %-----------------------------------------------------------------------------%
 
 :- type option
     --->    sort
-    ;       limit
+    ;       max_row
+    ;       max_pred_column
+    ;       max_path_column
+    ;       max_file_column
     ;       modulename.
 
 :- type option_table == option_table(option).
@@ -81,16 +107,25 @@ usage(!IO) :-
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_default(option::out, option_data::out) is multi.
 
-option_default(sort,        string("")).
-option_default(limit,       int(100)).
-option_default(modulename,  string("")).
+option_default(sort,            string("C")).
+option_default(max_row,         int(100)).
+option_default(max_pred_column, int(35)).
+option_default(max_path_column, int(12)).
+option_default(max_file_column, int(20)).
+option_default(modulename,      string("")).
 
-short_option('s',           sort).
-short_option('l',           limit).
-short_option('m',           modulename).
+short_option('s',               sort).
+short_option('l',               max_row).
+short_option('n',               max_pred_column).
+short_option('p',               max_path_column).
+short_option('f',               max_file_column).
+short_option('m',               modulename).
 
-long_option("sort",         sort).
-long_option("limit",        limit).
-long_option("module",       modulename).
+long_option("sort",             sort).
+long_option("limit",            max_row).
+long_option("max-name-column",  max_pred_column).
+long_option("max-path-column",  max_path_column).
+long_option("max-file-column",  max_file_column).
+long_option("module",           modulename).
 
 %-----------------------------------------------------------------------------%

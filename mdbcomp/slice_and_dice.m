@@ -57,14 +57,20 @@
     %
 :- pred read_slice(string::in, maybe_error(slice)::out, io::di, io::uo) is det.
 
-    % read_slice_to_string(File, SortStr, N, Module, SliceStr, Problem, !IO):
+    % read_slice_to_string(File, SortStr, MaxRows, MaybeMaxPredColumns,
+    %   MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns,
+    %   Module, SliceStr, Problem, !IO):
     %
     % Read the slice from File, and convert it to a string suitable for
     % displaying on the screen, sorting it first using SortStr. SortStr
     % can be any combination of the letters "cCtT" and indicates how the slice
     % is to be sorted. See the documentation for the `mslice' tool in the
-    % user guide for an explanation of the sort string. Take only the top N
-    % lines of the sorted list.
+    % user guide for an explanation of the sort string. Take only the top
+    % MaxRows lines of the sorted list. If MaybeMaxPredColumns is yes,
+    % allow only the number of columns it specifies for predicate names.
+    % If MaybeMaxPathColumns is yes, allow only the number of columns it
+    % specifies for ports and paths. If MaybeMaxFileColumns is yes, allow
+    % only the number of columns it specifies for file names and line numbers.
     %
     % If Module is not the empty string then only labels from the named module
     % will be included in the dice string, otherwise all modules will be
@@ -75,6 +81,7 @@
     % will be the empty string, otherwise Problem will be the empty string.
     %
 :- pred read_slice_to_string(string::in, string::in, int::in,
+    maybe(int)::in, maybe(int)::in, maybe(int)::in,
     string::in, string::out, string::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -121,8 +128,9 @@
 :- pred read_dice(string::in, string::in, maybe_error(dice)::out,
     io::di, io::uo) is det.
 
-    % read_dice_to_string(PassFile, FailFile, SortStr, N, Module, DiceStr,
-    %   Problem, !IO):
+    % read_dice_to_string(PassFile, FailFile, SortStr, MaxRow,
+    %   MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns,
+    %   Module, DiceStr, Problem, !IO):
     %
     % Read the slice from PassFile, interpreting it as (a union of) passing
     % slices; read the slices from FailFile, interpreting it as (a union of)
@@ -132,8 +140,12 @@
     % sorting it first using SortStr. SortStr can be any combination of the
     % letters "sSpPfPdD" and indicates how the dice is to be sorted.
     % See the documentation for the `dice' command in the user guide
-    % for an explanation of the sort string. Take only the top N lines
-    % of the sorted list.
+    % for an explanation of the sort string. Take only the top
+    % MaxRows lines of the sorted list. If MaybeMaxPredColumns is yes,
+    % allow only the number of columns it specifies for predicate names.
+    % If MaybeMaxPathColumns is yes, allow only the number of columns it
+    % specifies for ports and paths. If MaybeMaxFileColumns is yes, allow
+    % only the number of columns it specifies for file names and line numbers.
     %
     % If Module is not the empty string then only labels from the named module
     % will be included in the dice string, otherwise all modules will be
@@ -144,6 +156,7 @@
     % will be the empty string, otherwise Problem will be the empty string.
     %
 :- pred read_dice_to_string(string::in, string::in, string::in, int::in,
+    maybe(int)::in, maybe(int)::in, maybe(int)::in,
     string::in, string::out, string::out, io::di, io::uo) is det.
 
     % suspicion_ratio(PassCount, FailCount) = Suspicion.
@@ -210,7 +223,7 @@ read_slice(File, Result, !IO) :-
 slice_merge_trace_counts(TraceCounts, !SliceProcMap) :-
     map.foldl(slice_merge_proc_trace_counts, TraceCounts, !SliceProcMap).
 
-:- pred slice_merge_proc_trace_counts(proc_label_in_context::in, 
+:- pred slice_merge_proc_trace_counts(proc_label_in_context::in,
     proc_trace_counts::in, slice_proc_map::in, slice_proc_map::out) is det.
 
 slice_merge_proc_trace_counts(ProcLabelAndFile, ProcTraceCounts,
@@ -314,7 +327,7 @@ det_maybe_dice_error_to_dice(error(_), _) :-
 dice_merge_trace_counts(Kind, TraceCounts, !DiceProcMap) :-
     map.foldl(dice_merge_proc_trace_counts(Kind), TraceCounts, !DiceProcMap).
 
-:- pred dice_merge_proc_trace_counts(trace_counts_kind::in, 
+:- pred dice_merge_proc_trace_counts(trace_counts_kind::in,
     proc_label_in_context::in, proc_trace_counts::in, dice_proc_map::in,
     dice_proc_map::out) is det.
 
@@ -376,11 +389,9 @@ dice_add_trace_count(fail_slice, LineNoAndCount, ExecCounts0, ExecCounts) :-
 % A mechanism for sorting and formatting slices. The structure is similar
 % to the mechanism for sorting and formatting dices below.
 
-:- pragma foreign_export("C",
-    read_slice_to_string(in, in, in, in, out, out, di, uo),
-    "MR_MDB_read_slice_to_string").
-
-read_slice_to_string(File, SortStr0, N, Module, SliceStr, Problem, !IO) :-
+read_slice_to_string(File, SortStr0, MaxRows,
+        MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns,
+        Module, SliceStr, Problem, !IO) :-
     ( slice_sort_string_is_valid(SortStr0) ->
         read_slice(File, ReadSliceResult, !IO),
         (
@@ -403,13 +414,14 @@ read_slice_to_string(File, SortStr0, N, Module, SliceStr, Problem, !IO) :-
             ),
             list.sort(slice_label_count_compare(SortStr), FilteredLabelCounts,
                 SortedLabelCounts),
-            ( list.take(N, SortedLabelCounts, Taken) ->
+            ( list.take(MaxRows, SortedLabelCounts, Taken) ->
                 TopNLabelCounts = Taken
             ;
                 TopNLabelCounts = SortedLabelCounts
             ),
             Problem = "",
-            SliceStr = format_slice_label_counts(TopNLabelCounts, TotalTests)
+            SliceStr = format_slice_label_counts(TopNLabelCounts, TotalTests,
+                MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns)
         ;
             ReadSliceResult = error(Problem),
             SliceStr = ""
@@ -521,22 +533,36 @@ make_slice_label_count(ProcLabel, PathPort - ExecCount, SliceLabelCount) :-
 
     % Produce a formatted table from a list of slice_label_counts.
     %
-:- func format_slice_label_counts(list(slice_label_count), int) = string.
+:- func format_slice_label_counts(list(slice_label_count), int,
+    maybe(int), maybe(int), maybe(int)) = string.
 
-format_slice_label_counts(LabelCounts, TotalTests) = Str :-
+format_slice_label_counts(LabelCounts, TotalTests,
+        MaybeMaxPredColumns, MaybePathColumns, MaybeMaxFileColumns) = Str :-
     list.map5(deconstruct_slice_label_count, LabelCounts, ProcLabels,
         PathPorts, FormattedContexts, Counts, Tests),
     FormattedProcLabels = list.map(format_proc_label, ProcLabels),
     FormattedPathPorts = list.map(format_path_port, PathPorts),
     CountStrs = list.map(string.int_to_string_thousands, Counts),
-    TestsStrs = list.map(bracket_int, Tests),
-    TotalTestsStr = "(" ++ int_to_string_thousands(TotalTests) ++ ")",
-    Str = string.format_table([
-        left( ["Procedure"       | FormattedProcLabels]),
-        left( ["Path/Port"       | FormattedPathPorts]),
-        left( ["File:Line"       | FormattedContexts]),
-        right(["Count"           | CountStrs]),
-        right([TotalTestsStr     | TestsStrs])], " ") ++ "\n".
+    AlwaysColumns = [
+        left( ["Procedure"       | FormattedProcLabels]) - MaybeMaxPredColumns,
+        left( ["Path/Port"       | FormattedPathPorts]) - MaybePathColumns,
+        left( ["File:Line"       | FormattedContexts]) - MaybeMaxFileColumns,
+        right(["Count"           | CountStrs]) - no],
+    filter(unify(1), Tests, _OneTests, OtherTests),
+    (
+        % All events were executed in one test. Don't include the redundant
+        % column containing "(1)" at the end of each line.
+        %
+        OtherTests = [],
+        Columns = AlwaysColumns
+    ;
+        OtherTests = [_ | _],
+        TestsStrs = list.map(bracket_int, Tests),
+        TotalTestsStr = "(" ++ int_to_string_thousands(TotalTests) ++ ")",
+        Columns = AlwaysColumns ++ 
+            [right([TotalTestsStr     | TestsStrs]) - no]
+    ),
+    Str = string.format_table_max(Columns, " ") ++ "\n".
 
 :- pred deconstruct_slice_label_count(slice_label_count::in, proc_label::out,
     path_port::out, string::out, int::out, int::out) is det.
@@ -559,11 +585,20 @@ format_slice_exec_count(slice_exec_count(_, _, Count, Tests)) =
 % to the mechanism for sorting and formatting slices above.
 
 :- pragma foreign_export("C",
-    read_dice_to_string(in, in, in, in, in, out, out, di, uo),
+    read_dice_to_string_no_limit(in, in, in, in, in, out, out, di, uo),
     "MR_MDB_read_dice_to_string").
 
-read_dice_to_string(PassFile, FailFile, SortStr, N, Module, DiceStr, Problem,
-        !IO) :-
+:- pred read_dice_to_string_no_limit(string::in, string::in, string::in,
+    int::in, string::in, string::out, string::out, io::di, io::uo) is det.
+
+read_dice_to_string_no_limit(PassFile, FailFile, SortStr, MaxRow,
+        Module, DiceStr, Problem, !IO) :-
+    read_dice_to_string(PassFile, FailFile, SortStr, MaxRow, no, no, no,
+        Module, DiceStr, Problem, !IO).
+
+read_dice_to_string(PassFile, FailFile, SortStr, MaxRow,
+        MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns,
+        Module, DiceStr, Problem, !IO) :-
     ( dice_sort_string_is_valid(SortStr) ->
         read_dice(PassFile, FailFile, ReadDiceResult, !IO),
         (
@@ -578,14 +613,15 @@ read_dice_to_string(PassFile, FailFile, SortStr, N, Module, DiceStr, Problem,
             ),
             list.sort(dice_label_count_compare(SortStr), FilteredLabelCounts,
                 SortedLabelCounts),
-            ( list.take(N, SortedLabelCounts, Taken) ->
+            ( list.take(MaxRow, SortedLabelCounts, Taken) ->
                 TopNLabelCounts = Taken
             ;
                 TopNLabelCounts = SortedLabelCounts
             ),
             Problem = "",
             DiceStr = format_dice_label_counts(TopNLabelCounts,
-                TotalPassTests, TotalFailTests)
+                TotalPassTests, TotalFailTests,
+                MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns)
         ;
             ReadDiceResult = error(Problem),
             DiceStr = ""
@@ -713,9 +749,11 @@ make_dice_label_count(ProcLabel, PathPort - ExecCount, DiceLabelCount) :-
 
     % Produce a formatted table from a list of dice_label_counts.
     %
-:- func format_dice_label_counts(list(dice_label_count), int, int) = string.
+:- func format_dice_label_counts(list(dice_label_count), int, int,
+    maybe(int), maybe(int), maybe(int)) = string.
 
-format_dice_label_counts(LabelCounts, TotalPassTests, _TotalFailTests) = Str :-
+format_dice_label_counts(LabelCounts, TotalPassTests, _TotalFailTests,
+        MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns) = Str :-
     list.map7(deconstruct_dice_label_count, LabelCounts, ProcLabels,
         PathPorts, FormattedContexts, PassCounts, PassTests, FailCounts,
         _FailTests),
@@ -728,14 +766,15 @@ format_dice_label_counts(LabelCounts, TotalPassTests, _TotalFailTests) = Str :-
         PassCounts, FailCounts),
     FormattedSuspicionIndices = list.map(format_float(2), SuspicionIndices),
     TotalPassTestsStr = "(" ++ int_to_string_thousands(TotalPassTests) ++ ")",
-    Str = string.format_table([
-        left( ["Procedure"       | FormattedProcLabels]),
-        left( ["Path/Port"       | FormattedPathPorts]),
-        left( ["File:Line"       | FormattedContexts]),
-        right(["Pass"            | PassCountStrs]),
-        right([TotalPassTestsStr | PassTestsStrs]),
-        right(["Fail"            | FailCountStrs]),
-        right(["Suspicion"       | FormattedSuspicionIndices])], " ") ++ "\n".
+    Columns = [
+        left( ["Procedure"       | FormattedProcLabels]) - MaybeMaxPredColumns,
+        left( ["Path/Port"       | FormattedPathPorts]) - MaybeMaxPathColumns,
+        left( ["File:Line"       | FormattedContexts]) - MaybeMaxFileColumns,
+        right(["Pass"            | PassCountStrs]) - no,
+        right([TotalPassTestsStr | PassTestsStrs]) - no,
+        right(["Fail"            | FailCountStrs]) - no,
+        right(["Suspicion"       | FormattedSuspicionIndices]) - no],
+    Str = string.format_table_max(Columns, " ") ++ "\n".
 
 :- pred deconstruct_dice_label_count(dice_label_count::in, proc_label::out,
     path_port::out, string::out, int::out, int::out, int::out, int::out)
