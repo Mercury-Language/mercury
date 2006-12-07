@@ -917,8 +917,8 @@ jumpopt.adjust_livevals(PrevInstr, Instrs0, Instrs) :-
         ( BetweenLivevals = PrevLivevals ->
             Instrs = Instrs2
         ;
-            unexpected(this_file, "adjust_livevals: " ++
-                "BetweenLivevals and PrevLivevals differ")
+            unexpected(this_file,
+                "adjust_livevals: BetweenLivevals and PrevLivevals differ")
         )
     ;
         Instrs = Instrs0
