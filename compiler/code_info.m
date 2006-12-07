@@ -424,7 +424,7 @@
                                     % released even when the code generator
                                     % resets its location-dependent state.
 
-                closure_layout_seq :: counter,
+                closure_layout_seq  :: counter,
 
                 closure_layouts     :: list(layout_data),
                                     % Closure layout structures generated
