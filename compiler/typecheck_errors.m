@@ -699,11 +699,8 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
 
 :- type type_mismatch
     --->    type_mismatch(
-                mer_type,   % actual type of that variable
-                mer_type,   % expected type of that variable
-                tvarset,    % the type vars in the expected
-                            % and expected types
-                head_type_params % existentially quantified type vars
+                actual_type_desc    :: list(format_component),
+                expected_type_desc  :: list(format_component)
             ).
 
 :- pred find_mismatched_args(assoc_list(prog_var, mer_type)::in,
@@ -712,32 +709,26 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
 
 find_mismatched_args([], _, _, [], [], []).
 find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
-        SimpleMismatches, ComplexMismatches, AllMismatches) :-
+        !:SimpleMismatches, !:ComplexMismatches, !:AllMismatches) :-
     ArgNum1 = ArgNum0 + 1,
     find_mismatched_args(ArgExpTypes, TypeAssignSet, ArgNum1,
-        SimpleMismatchesTail, ComplexMismatchesTail,
-        AllMismatchesTail),
+        !:SimpleMismatches, !:ComplexMismatches, !:AllMismatches),
     get_type_stuff(TypeAssignSet, Arg, TypeStuffList),
     list.filter_map(substitute_types_check_match(ExpType), TypeStuffList,
         TypeMismatches0),
     list.sort_and_remove_dups(TypeMismatches0, TypeMismatches),
     (
-        TypeMismatches = [],
-        SimpleMismatches = SimpleMismatchesTail,
-        ComplexMismatches = ComplexMismatchesTail,
-        AllMismatches = AllMismatchesTail
+        TypeMismatches = []
     ;
         TypeMismatches = [_],
         Mismatch = mismatch_info(ArgNum0, Arg, TypeMismatches),
-        SimpleMismatches = [Mismatch | SimpleMismatchesTail],
-        ComplexMismatches = ComplexMismatchesTail,
-        AllMismatches = [Mismatch | AllMismatchesTail]
+        !:SimpleMismatches = [Mismatch | !.SimpleMismatches],
+        !:AllMismatches = [Mismatch | !.AllMismatches]
     ;
         TypeMismatches = [_, _ | _],
         Mismatch = mismatch_info(ArgNum0, Arg, TypeMismatches),
-        SimpleMismatches = SimpleMismatchesTail,
-        ComplexMismatches = [Mismatch | ComplexMismatchesTail],
-        AllMismatches = [Mismatch | AllMismatchesTail]
+        !:ComplexMismatches = [Mismatch | !.ComplexMismatches],
+        !:AllMismatches = [Mismatch | !.AllMismatches]
     ).
 
 :- pred substitute_types_check_match(mer_type::in, type_stuff::in,
@@ -749,19 +740,20 @@ substitute_types_check_match(ExpType, TypeStuff, TypeMismatch) :-
     apply_rec_subst_to_type(TypeBindings, ExpType, FullExpType),
     (
         (
-            % There is no mismatch if the actual type of the
-            % argument is the same as the expected type.
+            % There is no mismatch if the actual type of the argument
+            % is the same as the expected type.
             identical_types(FullArgType, FullExpType)
         ;
-            % There is no mismatch if the actual type of the
-            % argument has no constraints on it.
+            % There is no mismatch if the actual type of the argument
+            % has no constraints on it.
             FullArgType = defined_type(unqualified("<any>"), [], _)
         )
     ->
         fail
     ;
-        TypeMismatch = type_mismatch(FullArgType, FullExpType,
-            TVarSet, HeadTypeParams)
+        ActualPieces = type_to_pieces(FullArgType, TVarSet, HeadTypeParams),
+        ExpectedPieces = type_to_pieces(FullExpType, TVarSet, HeadTypeParams),
+        TypeMismatch = type_mismatch(ActualPieces, ExpectedPieces)
     ).
 
 :- func mismatched_args_to_pieces(list(mismatch_info), bool, prog_varset,
@@ -772,7 +764,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
         = Pieces :-
     Mismatch = mismatch_info(ArgNum, Var, TypeMismatches),
     ( TypeMismatches = [TypeMismatch] ->
-        TypeMismatch = type_mismatch(ActType, ExpType, TVarSet, HeadTypeParams)
+        TypeMismatch = type_mismatch(ActTypePieces, ExpTypePieces)
     ;
         unexpected(this_file,
             "report_mismatched_args: more than one type mismatch")
@@ -812,10 +804,10 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
         Pieces2 = []
     ),
     Pieces3 = [words("has type"), prefix("`")] ++
-        type_to_pieces(ActType, TVarSet, HeadTypeParams) ++
+        ActTypePieces ++
         [suffix("'"), suffix(","), nl] ++
         [words("expected type was"), prefix("`")] ++
-        type_to_pieces(ExpType, TVarSet, HeadTypeParams) ++
+        ExpTypePieces ++
         [suffix("'")],
     (
         Mismatches = [],
