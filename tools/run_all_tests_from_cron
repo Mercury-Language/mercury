@@ -96,19 +96,21 @@ case "$BRANCH" in
 		BRANCH=latest
 	   	;;
 	   jupiter)
-		case $DAY in
-			*[13579]) BRANCH=$release_branch ;;
-			*) BRANCH=latest ;;
-		esac
+		BRANCH=latest
+		#case $DAY in
+		#	*[13579]) BRANCH=$release_branch ;;
+		#	*) BRANCH=latest ;;
+		#esac
 	   	;;
 	   uranus|swordfish)
 		BRANCH=latest
 		;;
 	   saturn)
- 	       	case $DAY in
-			*[02468]) BRANCH=$release_branch ;;
-		        *) BRANCH=latest ;;
-	       	esac
+ 	       	BRANCH=latest
+		#case $DAY in
+		#	*[02468]) BRANCH=$release_branch ;;
+		#        *) BRANCH=latest ;;
+	       	#esac
 	       	;;	
 	   *)
 	    	# On anything else just test the main branch.
