@@ -138,16 +138,18 @@
 % The argument passing convention is that the new parameters
 % introduced by this pass are placed in the following order:
 %
-%   First the UnivTypeInfos for universally quantified type variables,
-%   in the order that the type variables first appear in the argument types;
+%   First the type_infos for unconstrained universally quantified type
+%   variables, in the order that the type variables first appear in the
+%   argument types;
 %
-%   then the ExistTypeInfos for existentially quantified type variables,
-%   in the order that the type variables first appear in the argument types;
+%   then the type_infos for unconstrained existentially quantified type
+%   variables, in the order that the type variables first appear in the
+%   argument types;
 %
-%   then the UnivTypeClassInfos for universally quantified constraints,
+%   then the typeclass_infos for universally quantified constraints,
 %   in the order that the constraints appear in the class context;
 %
-%   then the ExistTypeClassInfos for existentially quantified constraints,
+%   then the typeclass_infos for existentially quantified constraints,
 %   in the order that the constraints appear in the class context;
 %
 %   and finally the original arguments of the predicate.
@@ -160,13 +162,13 @@
 % in by do_call_class_method (in runtime/mercury_ho_call.c):
 %
 %   First the type_infos for the unconstrained type variables in the
-%   instance declaration, in the order that they first appear in the
-%   instance arguments;
+%   instance declaration, in the order that the type variables first appear
+%   in the instance arguments;
 %
 %   then the typeclass_infos for the class constraints on the instance
-%   declaration, in the order that they appear in the declaration;
+%   declaration, in the order that the constraints appear in the declaration;
 %
-%   then the remainder of the type_infos and typeclass_infos as above.
+%   then the remainder of the arguments as above.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -494,8 +496,8 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
         \+ map.is_empty(Subn)
     ->
         pred_info_set_existq_tvar_binding(Subn, PredInfo1, PredInfo2),
-        polymorphism_introduce_exists_casts_pred(!.ModuleInfo, Subn,
-            ExtraHeadVars, PredInfo2, PredInfo)
+        polymorphism_introduce_exists_casts_pred(!.ModuleInfo, PredInfo2,
+            PredInfo)
     ;
         PredInfo = PredInfo1
     ),
@@ -503,32 +505,10 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
     map.det_update(PredTable0, PredId, PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
-:- pred polymorphism_introduce_exists_casts_pred(module_info::in, tsubst::in,
-    list(prog_var)::in, pred_info::in, pred_info::out) is det.
+:- pred polymorphism_introduce_exists_casts_pred(module_info::in,
+    pred_info::in, pred_info::out) is det.
 
-polymorphism_introduce_exists_casts_pred(ModuleInfo, Subn, ExtraHeadVars,
-        !PredInfo) :-
-    % Note that updating the vartypes here, and also below, only needs
-    % to be done because type_info/1 and typeclass_info/1 have types
-    % appearing in their respective arguments.  When we get rid of those,
-    % updating the vartypes will no longer be required.
-    %
-    % We need to update the clauses_info here because later on modes.m
-    % may once again copy the clauses to the procs.  We don't need to
-    % introduce exists_casts in the clauses_info, however.  Instead,
-    % we make sure that they are introduced again if the clauses are copied.
-    %
-    pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_get_vartypes(ClausesInfo0, VarTypes0),
-    list.foldl(
-        (pred(HeadVar::in, Types0::in, Types::out) is det :-
-            map.lookup(Types0, HeadVar, HeadVarType0),
-            apply_rec_subst_to_type(Subn, HeadVarType0, HeadVarType),
-            map.set(Types0, HeadVar, HeadVarType, Types)
-        ), ExtraHeadVars, VarTypes0, VarTypes),
-    clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),
-    pred_info_set_clauses_info(ClausesInfo, !PredInfo),
-
+polymorphism_introduce_exists_casts_pred(ModuleInfo, !PredInfo) :-
     pred_info_get_procedures(!.PredInfo, Procs0),
     map.map_values(
         (pred(_::in, !.ProcInfo::in, !:ProcInfo::out) is det :-
@@ -1554,12 +1534,7 @@ polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars,
     list.delete_elems(PredTypeVars1, UnivConstrainedVars, PredTypeVars2),
     list.delete_elems(PredTypeVars2, ExistConstrainedVars, PredTypeVars),
 
-    % The argument order is as follows:
-    % first the UnivTypeInfos (for universally quantified type variables)
-    % then the ExistTypeInfos (for existentially quantified type variables)
-    % then the UnivTypeClassInfos (for universally quantified constraints)
-    % then the ExistTypeClassInfos (for existentially quantified constraints)
-    % and finally the original arguments of the predicate.
+    % The argument order is described at the top of this file.
 
     in_mode(In),
     out_mode(Out),
@@ -2101,52 +2076,54 @@ make_typeclass_info_from_instance(Constraint, Seen, ClassId, InstanceNum,
         ExistQVars, Context, MaybeVar, !ExtraGoals, !Info) :-
     Constraint = constraint(_ClassName, ConstrainedTypes),
     TypeVarSet = !.Info ^ typevarset,
-    Proofs = !.Info ^ proof_map,
+    Proofs0 = !.Info ^ proof_map,
     ModuleInfo = !.Info ^ module_info,
 
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.lookup(InstanceTable, ClassId, InstanceList),
     list.index1_det(InstanceList, InstanceNum, ProofInstanceDefn),
 
-    ProofInstanceDefn = hlds_instance_defn(_, _, _, InstanceConstraints0,
-        InstanceTypes0, _, _, InstanceTVarset, SuperClassProofs0),
+    ProofInstanceDefn = hlds_instance_defn(_, _, _, InstanceConstraints,
+        InstanceTypes, _, _, InstanceTVarset, InstanceProofs),
 
     % XXX kind inference:
     % we assume all tvars have kind `star'.
     map.init(KindMap),
 
-    type_vars_list(InstanceTypes0, InstanceTvars),
-    get_unconstrained_tvars(InstanceTvars, InstanceConstraints0,
-        UnconstrainedTvars0),
+    type_vars_list(InstanceTypes, InstanceTvars),
+    get_unconstrained_tvars(InstanceTvars, InstanceConstraints,
+        UnconstrainedTvars),
 
-    % We can ignore the typevarset because all the type variables that are
-    % created are bound when we call type_list_subsumes then apply the
-    % resulting bindings.
-    % XXX expand this comment.
+    % We can ignore the new typevarset because all the type variables in the
+    % instance constraints and superclass proofs must appear in the arguments
+    % of the instance, and all such variables are bound when we call
+    % type_list_subsumes then apply the resulting bindings.
     tvarset_merge_renaming(TypeVarSet, InstanceTVarset, _NewTVarset, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
-        InstanceTypes),
-    type_list_subsumes_det(InstanceTypes, ConstrainedTypes, InstanceSubst),
+    apply_variable_renaming_to_type_list(Renaming, InstanceTypes,
+        RenamedInstanceTypes),
+    type_list_subsumes_det(RenamedInstanceTypes, ConstrainedTypes,
+        InstanceSubst),
     apply_variable_renaming_to_prog_constraint_list(Renaming,
-        InstanceConstraints0, InstanceConstraints1),
+        InstanceConstraints, RenamedInstanceConstraints),
     apply_rec_subst_to_prog_constraint_list(InstanceSubst,
-        InstanceConstraints1, InstanceConstraints2),
+        RenamedInstanceConstraints, ActualInstanceConstraints0),
     % XXX document diamond as guess
-    InstanceConstraints = InstanceConstraints2 `list.delete_elems` Seen,
+    % XXX does anyone know what the preceding line means?
+    ActualInstanceConstraints =
+        ActualInstanceConstraints0 `list.delete_elems` Seen,
     apply_variable_renaming_to_constraint_proofs(Renaming,
-        SuperClassProofs0, SuperClassProofs1),
+        InstanceProofs, RenamedInstanceProofs),
     apply_rec_subst_to_constraint_proofs(InstanceSubst,
-        SuperClassProofs1, SuperClassProofs2),
+        RenamedInstanceProofs, ActualInstanceProofs),
 
-    apply_variable_renaming_to_tvar_list(Renaming, UnconstrainedTvars0,
-        UnconstrainedTvars1),
+    apply_variable_renaming_to_tvar_list(Renaming, UnconstrainedTvars,
+        RenamedUnconstrainedTvars),
     apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap,
         RenamedKindMap),
     apply_rec_subst_to_tvar_list(RenamedKindMap, InstanceSubst,
-        UnconstrainedTvars1, UnconstrainedTypes),
+        RenamedUnconstrainedTvars, ActualUnconstrainedTypes),
 
-    % XXX why name of output?
-    map.overlay(Proofs, SuperClassProofs2, SuperClassProofs),
+    map.overlay(Proofs0, ActualInstanceProofs, Proofs),
 
     % Make the type_infos for the types that are constrained by this.
     % These are packaged in the typeclass_info.
@@ -2155,14 +2132,14 @@ make_typeclass_info_from_instance(Constraint, Seen, ClassId, InstanceNum,
 
     % Make the typeclass_infos for the constraints from the context of the
     % instance decl.
-    make_typeclass_info_vars_2(InstanceConstraints, Seen, ExistQVars, Context,
-        [], InstanceExtraTypeClassInfoVars0, !ExtraGoals, !Info),
+    make_typeclass_info_vars_2(ActualInstanceConstraints, Seen, ExistQVars,
+        Context, [], InstanceExtraTypeClassInfoVars0, !ExtraGoals, !Info),
 
     % Make the type_infos for the unconstrained type variables from the head
     % of the instance declaration.
-    polymorphism_make_type_info_vars(UnconstrainedTypes, Context,
-        InstanceExtraTypeInfoUnconstrainedVars,
-        UnconstrainedTypeInfoGoals, !Info),
+    polymorphism_make_type_info_vars(ActualUnconstrainedTypes, Context,
+        InstanceExtraTypeInfoUnconstrainedVars, UnconstrainedTypeInfoGoals,
+        !Info),
 
     % The variables are built up in reverse order.
     list.reverse(InstanceExtraTypeClassInfoVars0,
@@ -2171,7 +2148,7 @@ make_typeclass_info_from_instance(Constraint, Seen, ClassId, InstanceNum,
     construct_typeclass_info(InstanceExtraTypeInfoUnconstrainedVars,
         InstanceExtraTypeInfoVars, InstanceExtraTypeClassInfoVars,
         ClassId, Constraint, InstanceNum, ConstrainedTypes,
-        SuperClassProofs, ExistQVars, Var, NewGoals, !Info),
+        Proofs, ExistQVars, Var, NewGoals, !Info),
 
     MaybeVar = yes(Var),
 
