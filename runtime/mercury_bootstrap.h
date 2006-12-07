@@ -76,12 +76,6 @@ typedef MR_UnsignedChar 	UnsignedChar;
 typedef MR_String 		String;
 typedef MR_ConstString 		ConstString;
 
-#if 0
-#ifndef	MR_HIGHLEVEL_CODE
-typedef	MR_Context		Context;
-#endif
-#endif
-
 /*
 ** MR_Bool is the C representation for the Mercury type bool__bool.
 ** For ordinary booleans, use MR_bool in mercury_std.h.
@@ -366,20 +360,6 @@ typedef MR_Bool			Bool;
 #define	word_to_float(w)		MR_word_to_float(w)
 #define	float_const(f)			MR_float_const(f)
 #define	hash_float(f)			MR_hash_float(f)
-
-#if 0
-/*
-** All the places that use these macros
-** should have been updated to use the new forms.
-*/
-#define LVALUE_CAST(type, lval)		MR_LVALUE_CAST((type), (lval))
-#define LVALUE_SEQ(expr, lval)		MR_LVALUE_SEQ((expr), (lval))
-#define LVALUE_COND(expr, x, y)		MR_LVALUE_COND((expr), (x), (y))
-
-#define	count_usage(num, reg)		MR_count_usage((num), (reg))
-#define	saved_reg(save_area, n)		MR_saved_reg((save_area), (n))
-#define	virtual_reg(n)			MR_virtual_reg((n))
-#endif
 
 /*---------------------------------------------------------------------------*/
 
