@@ -17,13 +17,12 @@
 %
 % Currently the following forms of indexing are used:
 %
-% For switches on atomic data types (int, char, enums),
-% if the cases are not sparse, we use the value of the switch variable
-% to index into a jump table.
+% For switches on atomic data types (int, char, enums), if the cases are not
+% sparse, we use the value of the switch variable to index into a jump table.
 %
 % If all the alternative goals for a switch on an atomic data type
 % contain only construction unifications of constants, then we generate
-% a dense lookup table (an array) for each output variable of the switch,
+% a dense lookup table (an array) for the output variables of the switch,
 % rather than a dense jump table, so that executing the switch becomes
 % a matter of doing an array index for each output variable - avoiding
 % the branch overhead of the jump-table.
@@ -35,7 +34,7 @@
 % in the form of a try-me-else chain, a try chain, a dense jump table
 % or a binary search.
 %
-% For switches on strings, we lookup the address to jump to in a hash table,
+% For switches on strings, we look up the address to jump to in a hash table,
 % using open addressing to resolve hash collisions.
 %
 % For all other cases (or if the --smart-indexing option was disabled),

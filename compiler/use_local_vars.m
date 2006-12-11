@@ -116,7 +116,8 @@ use_local_vars_proc(Instrs0, Instrs, NumRealRRegs, AccessThreshold,
         flatten_basic_blocks(EBBLabelSeq, EBBBlockMap, Instrs1),
         (
             AutoComments = yes,
-            NewComment = comment("\n" ++ dump_livemap(LiveMap)) - "",
+            NewComment = comment("\n" ++
+                dump_livemap(yes(ProcLabel), LiveMap)) - "",
             Comments = Comments0 ++ [NewComment]
         ;
             AutoComments = no,

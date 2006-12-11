@@ -1,0 +1,10 @@
+peek 1
+peek 2
+peek 3
+peek 4
+peek 5
+solution 1.10 -   one, 11, a
+solution 2.20 -   two, 12, b
+solution 3.30 - three, 13, c
+solution 4.40 -  four, 14, f(a)
+solution 5.50 -  five, 15, g(a)

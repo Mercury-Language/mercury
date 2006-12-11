@@ -316,12 +316,14 @@ endif
 # The foreign_type_assertion test is currently meaningful only in C grades.
 # Mutables work properly only in C grades.
 # Trace goal with runtime conditions work properly only in C grades.
+# The lookup_disj test case uses C foreign_proc code to print progress reports.
 ifeq "$(filter il% java%,$(GRADE))" ""
 	C_ONLY_PROGS= \
 		factt \
 		factt_sort_test \
 		float_gv \
 		foreign_type_assertion \
+		lookup_disj \
 		trace_goal_env_1 \
 		trace_goal_env_2
 else

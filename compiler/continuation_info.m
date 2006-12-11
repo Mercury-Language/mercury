@@ -317,6 +317,7 @@
     --->    ticket          % A ticket (trail pointer).
     ;       ticket_counter  % A copy of the ticket counter.
     ;       trace_data
+    ;       lookup_disj_cur
     ;       lookup_switch_cur
     ;       lookup_switch_max
     ;       sync_term       % A syncronization term used
@@ -908,6 +909,7 @@ live_value_type(ticket, live_value_unwanted).
     % XXX we may need to modify this, if the GC is going to garbage-collect
     % the trail.
 live_value_type(ticket_counter, live_value_unwanted).
+live_value_type(lookup_disj_cur, live_value_unwanted).
 live_value_type(lookup_switch_cur, live_value_unwanted).
 live_value_type(lookup_switch_max, live_value_unwanted).
 live_value_type(sync_term, live_value_unwanted).

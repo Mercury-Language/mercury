@@ -2051,7 +2051,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             % This can happen if fulljump optimization has redirected the
             % return.
             Comments = [comment("exit side labels "
-                ++ dump_labels_for_proc(ProcLabel, SideLabels)) - ""]
+                ++ dump_labels(yes(ProcLabel), SideLabels)) - ""]
         ),
         PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
         ( Type = exit_block(ExitInfo) ->
@@ -2221,19 +2221,19 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
         SideLabels, MaybeFallThrough, Type),
     expect(unify(Label, BlockLabel), this_file,
         "describe_block: label mismatch"),
-    LabelStr = dump_label_for_proc(ProcLabel, Label),
+    LabelStr = dump_label(yes(ProcLabel), Label),
     BlockInstrsStr = dump_fullinstrs(ProcLabel, yes, BlockInstrs),
     Heading = "\nBLOCK " ++ LabelStr ++ "\n\n",
     ( map.search(PredMap, Label, PredLabel) ->
         PredStr = "previous label " ++
-            dump_label_for_proc(ProcLabel, PredLabel) ++ "\n"
+            dump_label(yes(ProcLabel), PredLabel) ++ "\n"
     ;
         PredStr = "no previous label\n"
     ),
     (
         FallInto = yes(FallIntoFromLabel),
         FallIntoStr = "fallen into from " ++
-            dump_label_for_proc(ProcLabel, FallIntoFromLabel) ++ "\n"
+            dump_label(yes(ProcLabel), FallIntoFromLabel) ++ "\n"
     ;
         FallInto = no,
         FallIntoStr = "not fallen into\n"
@@ -2244,12 +2244,12 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
     ;
         SideLabels = [_ | _],
         SideStr = "side labels " ++
-            dump_labels_for_proc(ProcLabel, SideLabels) ++ "\n"
+            dump_labels(yes(ProcLabel), SideLabels) ++ "\n"
     ),
     (
         MaybeFallThrough = yes(FallThroughLabel),
         FallThroughStr = "falls through to " ++
-            dump_label_for_proc(ProcLabel, FallThroughLabel) ++ "\n"
+            dump_label(yes(ProcLabel), FallThroughLabel) ++ "\n"
     ;
         MaybeFallThrough = no,
         FallThroughStr = "does not fall through\n"
@@ -2336,7 +2336,7 @@ describe_nondet_entry(nondet_entry(Msg, Size, Redoip)) =
     ++ ", size: "
     ++ int_to_string(Size)
     ++ ", redoip: "
-    ++ dump_code_addr(Redoip)
+    ++ dump_code_addr(no, Redoip)
     ++ "\n".
 
 :- func describe_nondet_exit(proc_label, nondet_exit_info) = string.
@@ -2369,20 +2369,20 @@ describe_top_reasons(ProcLabel, [Reason | Reasons]) =
 :- func describe_reason(proc_label, needs_frame_reason) = string.
 
 describe_reason(ProcLabel, code_needs_frame(Label)) =
-    "code " ++ dump_label_for_proc(ProcLabel, Label).
+    "code " ++ dump_label(yes(ProcLabel), Label).
 describe_reason(_ProcLabel, keep_frame) = "keep_frame".
 describe_reason(_ProcLabel, redoip_label) = "redoip_label".
 describe_reason(ProcLabel, frontier(Label, Reasons)) =
-    "frontier(" ++ dump_label_for_proc(ProcLabel, Label) ++ ", {"
+    "frontier(" ++ dump_label(yes(ProcLabel), Label) ++ ", {"
         ++ describe_reasons(ProcLabel, to_sorted_list(Reasons)) ++ "})".
 describe_reason(ProcLabel, jump_around(Label, Reasons)) =
-    "jump_around(" ++ dump_label_for_proc(ProcLabel, Label) ++ ", {"
+    "jump_around(" ++ dump_label(yes(ProcLabel), Label) ++ ", {"
         ++ describe_reasons(ProcLabel, to_sorted_list(Reasons)) ++ "})".
 describe_reason(ProcLabel, succ_propagated(Label, Reason)) =
-    "successor(" ++ dump_label_for_proc(ProcLabel, Label) ++ ", "
+    "successor(" ++ dump_label(yes(ProcLabel), Label) ++ ", "
         ++ describe_reason(ProcLabel, Reason) ++ ")".
 describe_reason(ProcLabel, pred_propagated(Label, Reason)) =
-    "predecessor(" ++ dump_label_for_proc(ProcLabel, Label) ++ ", "
+    "predecessor(" ++ dump_label(yes(ProcLabel), Label) ++ ", "
         ++ describe_reason(ProcLabel, Reason) ++ ")".
 
 :- func describe_reasons(proc_label, list(needs_frame_reason)) = string.

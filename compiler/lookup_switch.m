@@ -11,8 +11,8 @@
 % 
 % For switches on atomic types in which the cases contain only the
 % construction of constants, generate code which just assigns the values of
-% the output variables by indexing into an array of values for each output
-% variable.
+% the output variables by indexing into an array of values for the output
+% variables.
 %
 % For switches that can fail, the generated code does a range check on the
 % index, and then does a lookup in a bit-vector to see if there is a value for
@@ -156,10 +156,10 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
         StoreMap, !MaybeEnd, CodeModel, LookupSwitchInfo, !CI) :-
     % We need the code_info structure to generate code for the cases to
     % get the constants (if they exist). We can't throw it away at the
-    % end because we may have allocated some new static ground term labels.
+    % end because we may have allocated some new static ground terms.
 
     % Since lookup switches rely on static ground terms to work efficiently,
-    % there is no point in using a lookup switch if static-ground-terms are
+    % there is no point in using a lookup switch if static ground terms are
     % not enabled. Well, actually, it is possible that they might be a win in
     % some circumstances, but it would take a pretty complex heuristic to get
     % it right, so, lets just use a simple one - no static ground terms,
@@ -240,8 +240,9 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
     ),
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
     code_info.remember_position(!.CI, CurPos),
-    generate_constants(TaggedCases, OutVars, StoreMap, !MaybeEnd,
-        CaseSolns, MaybeLiveness, set.init, ResumeVars, no, GoalTrailOps, !CI),
+    generate_constants_for_lookup_switch(TaggedCases, OutVars, StoreMap,
+        CaseSolns, !MaybeEnd, MaybeLiveness, set.init, ResumeVars,
+        no, GoalTrailOps, !CI),
     code_info.reset_to_position(CurPos, !CI),
     (
         MaybeLiveness = yes(Liveness)
@@ -310,16 +311,17 @@ filter_out_failing_cases([Case | Cases], !RevTaggedCases, !SwitchCanFail) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_constants(cases_list::in, list(prog_var)::in,
-    abs_store_map::in, branch_end::in, branch_end::out,
-    assoc_list(int, soln_consts)::out, maybe(set(prog_var))::out,
+:- pred generate_constants_for_lookup_switch(cases_list::in,
+    list(prog_var)::in, abs_store_map::in, assoc_list(int, soln_consts)::out,
+    branch_end::in, branch_end::out, maybe(set(prog_var))::out,
     set(prog_var)::in, set(prog_var)::out, bool::in, bool::out,
     code_info::in, code_info::out) is semidet.
 
-generate_constants([], _Vars, _StoreMap, !MaybeEnd, [], no, !ResumeVars,
-    !GoalTrailOps, !CI).
-generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, [CaseVal | Rest],
-        MaybeLiveness, !ResumeVars, !GoalTrailOps, !CI) :-
+generate_constants_for_lookup_switch([], _Vars, _StoreMap, [], !MaybeEnd, no,
+        !ResumeVars, !GoalTrailOps, !CI).
+generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
+        [CaseVal | Rest], !MaybeEnd, MaybeLiveness, !ResumeVars,
+        !GoalTrailOps, !CI) :-
     Case = extended_case(_, int_tag(CaseTag), _, Goal),
     Goal = GoalExpr - GoalInfo,
 
@@ -354,23 +356,23 @@ generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, [CaseVal | Rest],
         % generate_constants_for_disjuncts in lookup_util.m.
         code_info.pre_goal_update(GoalInfo, no, !CI),
         code_info.get_instmap(!.CI, InstMap),
-        generate_constants_for_disjuncts(Disjuncts, Vars, StoreMap, !MaybeEnd,
-            Solns, MaybeLiveness, !CI),
+        generate_constants_for_disjuncts(Disjuncts, Vars, StoreMap, Solns,
+            !MaybeEnd, MaybeLiveness, !CI),
         code_info.set_instmap(InstMap, !CI),
         code_info.post_goal_update(GoalInfo, !CI),
         CaseVal = CaseTag - several_solns(Solns)
     ;
         goal_is_conj_of_unify(Goal),
-        % The pre- and post-goal updates for the goals themselves are
-        % done as part of the call to generate_goal in
+        % The pre- and post-goal updates for the goals themselves
+        % are done as part of the call to generate_goal in
         % generate_constants_for_disjuncts in lookup_util.m.
-        generate_constants_for_arm(Goal, Vars, StoreMap, !MaybeEnd, Soln,
-            Liveness, !CI),
+        generate_constants_for_arm(Goal, Vars, StoreMap, Soln,
+            !MaybeEnd, Liveness, !CI),
         MaybeLiveness = yes(Liveness),
         CaseVal = CaseTag - one_soln(Soln)
     ),
-    generate_constants(Cases, Vars, StoreMap, !MaybeEnd, Rest, _, !ResumeVars,
-        !GoalTrailOps, !CI).
+    generate_constants_for_lookup_switch(Cases, Vars, StoreMap, Rest,
+        !MaybeEnd, _, !ResumeVars, !GoalTrailOps, !CI).
 
 %---------------------------------------------------------------------------%
 
@@ -540,7 +542,7 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     % Now generate the static cells into which we do the lookups of the values
     % of the output variables, if there are any.
     %
-    % We put a dummy row at the start
+    % We put a dummy row at the start.
     list.length(LLDSTypes, NumLLDSTypes),
     InitRowNumber = 1,
     DummyLaterSolnRow = list.map(default_value_for_type, LLDSTypes),
@@ -689,8 +691,8 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
 
         % Forget the variables that are needed only at the resumption point at
         % the start of the next disjunct, so that we don't generate exceptions
-        % when their storage is clobbered by the movement of the live
-        % variables to the places indicated in the store map.
+        % when their storage is clobbered by the movement of the live variables
+        % to the places indicated in the store map.
         code_info.pop_resume_point(!CI),
         code_info.pickup_zombies(FirstZombies, !CI),
         code_info.make_vars_forward_dead(FirstZombies, !CI),
@@ -749,8 +751,8 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
 
         % Forget the variables that are needed only at the resumption point at
         % the start of the next disjunct, so that we don't generate exceptions
-        % when their storage is clobbered by the movement of the live
-        % variables to the places indicated in the store map.
+        % when their storage is clobbered by the movement of the live variables
+        % to the places indicated in the store map.
         code_info.pop_resume_point(!CI),
         code_info.pickup_zombies(LaterZombies, !CI),
         code_info.make_vars_forward_dead(LaterZombies, !CI),
@@ -793,18 +795,6 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         Code = tree_list([TestCode, KindCode, NextKindLabelCode,
             LaterKindsCode])
     ).
-
-:- pred set_liveness_and_end_branch(abs_store_map::in, branch_end::in,
-    set(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
-
-set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness, BranchEndCode,
-        !CI) :-
-    % We keep track of what variables are supposed to be live at the end
-    % of cases. We have to do this explicitly because generating a `fail' slot
-    % last would yield the wrong liveness.
-    code_info.set_forward_live_vars(Liveness, !CI),
-    code_info.generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd,
-        BranchEndCode, !CI).
 
     % Note that we specify --optimise-constructor-last-call for this module
     % in order to make this predicate tail recursive.
@@ -989,19 +979,6 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
     Rval = const(llconst_int(WordVal)),
     Count1 = Count + 1,
     generate_bit_vec_args(Remainder, Count1, Rvals).
-
-%-----------------------------------------------------------------------------%
-
-:- pred generate_offset_assigns(list(prog_var)::in, int::in, lval::in,
-    code_info::in, code_info::out) is det.
-
-generate_offset_assigns([], _, _, !CI).
-generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
-    LookupLval = field(yes(0), lval(BaseReg), const(llconst_int(Offset))),
-    code_info.assign_lval_to_var(Var, LookupLval, Code, !CI),
-    expect(tree.is_empty(Code), this_file,
-        "generate_offset_assigns: nonempty code"),
-    generate_offset_assigns(Vars, Offset + 1, BaseReg, !CI).
 
 %-----------------------------------------------------------------------------%
 

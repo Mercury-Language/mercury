@@ -40,30 +40,26 @@
 
 :- func dump_intlist(list(int)) = string.
 
-:- func dump_livemap(livemap) = string.
+:- func dump_livemap(maybe(proc_label), livemap) = string.
 
-:- func dump_livemap_for_proc(proc_label, livemap) = string.
-
-:- func dump_livemaplist(assoc_list(label, lvalset)) = string.
-
-:- func dump_livemaplist_for_proc(proc_label, assoc_list(label, lvalset))
+:- func dump_livemaplist(maybe(proc_label), assoc_list(label, lvalset))
     = string.
 
-:- func dump_livevals(lvalset) = string.
+:- func dump_livevals(maybe(proc_label), lvalset) = string.
 
-:- func dump_livelist(list(lval)) = string.
+:- func dump_livelist(maybe(proc_label), list(lval)) = string.
 
 :- func dump_reg(reg_type, int) = string.
 
-:- func dump_lval(lval) = string.
+:- func dump_lval(maybe(proc_label), lval) = string.
 
-:- func dump_rval(rval) = string.
+:- func dump_rval(maybe(proc_label), rval) = string.
 
-:- func dump_rvals(list(rval)) = string.
+:- func dump_rvals(maybe(proc_label), list(rval)) = string.
 
-:- func dump_mem_ref(mem_ref) = string.
+:- func dump_mem_ref(maybe(proc_label), mem_ref) = string.
 
-:- func dump_const(rval_const) = string.
+:- func dump_const(maybe(proc_label), rval_const) = string.
 
 :- func dump_data_addr(data_addr) = string.
 
@@ -85,27 +81,19 @@
 
 :- func dump_binop(binary_op) = string.
 
-:- func dump_label(label) = string.
+:- func dump_label(maybe(proc_label), label) = string.
 
-:- func dump_label_for_proc(proc_label, label) = string.
+:- func dump_labels(maybe(proc_label), list(label)) = string.
 
-:- func dump_labels(list(label)) = string.
-
-:- func dump_labels_for_proc(proc_label, list(label)) = string.
-
-:- func dump_label_pairs(list(pair(label))) = string.
+:- func dump_label_pairs(maybe(proc_label), list(pair(label))) = string.
 
 :- func dump_proclabel(proc_label) = string.
 
-:- func dump_maybe_rvals(list(maybe(rval)), int) = string.
+:- func dump_maybe_rvals(maybe(proc_label), list(maybe(rval)), int) = string.
 
-:- func dump_code_addr(code_addr) = string.
+:- func dump_code_addr(maybe(proc_label), code_addr) = string.
 
-:- func dump_code_addr_for_proc(proc_label, code_addr) = string.
-
-:- func dump_code_addrs(list(code_addr)) = string.
-
-:- func dump_code_addrs_for_proc(proc_label, list(code_addr)) = string.
+:- func dump_code_addrs(maybe(proc_label), list(code_addr)) = string.
 
 :- func dump_bool(bool) = string.
 
@@ -205,65 +193,58 @@ dump_intlist([]) = "".
 dump_intlist([H | T]) =
     " " ++ int_to_string(H) ++ dump_intlist(T).
 
-dump_livemap(Livemap) =
-    dump_livemaplist(map.to_assoc_list(Livemap)).
+dump_livemap(MaybeProcLabel, Livemap) =
+    dump_livemaplist(MaybeProcLabel, map.to_assoc_list(Livemap)).
 
-dump_livemap_for_proc(ProcLabel, Livemap) =
-    dump_livemaplist_for_proc(ProcLabel, map.to_assoc_list(Livemap)).
+dump_livemaplist(_, []) = "".
+dump_livemaplist(MaybeProcLabel, [Label - Lvalset | Livemaplist]) =
+    dump_label(MaybeProcLabel, Label) ++ " ->" ++
+        dump_livevals(MaybeProcLabel, Lvalset) ++ "\n" ++
+        dump_livemaplist(MaybeProcLabel, Livemaplist).
 
-dump_livemaplist([]) = "".
-dump_livemaplist([Label - Lvalset | Livemaplist]) =
-    dump_label(Label) ++ " ->" ++ dump_livevals(Lvalset) ++ "\n"
-        ++ dump_livemaplist(Livemaplist).
+dump_livevals(MaybeProcLabel, Lvalset) =
+    dump_livelist(MaybeProcLabel, set.to_sorted_list(Lvalset)).
 
-dump_livemaplist_for_proc(_ProcLabel, []) = "".
-dump_livemaplist_for_proc(ProcLabel, [Label - Lvalset | Livemaplist]) =
-    dump_label_for_proc(ProcLabel, Label) ++ " ->" ++
-        dump_livevals(Lvalset) ++ "\n" ++
-        dump_livemaplist_for_proc(ProcLabel, Livemaplist).
+dump_livelist(MaybeProcLabel, Lvals) =
+    dump_livelist_2(MaybeProcLabel, Lvals, "").
 
-dump_livevals(Lvalset) =
-    dump_livelist(set.to_sorted_list(Lvalset)).
+:- func dump_livelist_2(maybe(proc_label), list(lval), string) = string.
 
-dump_livelist(Lvals) =
-    dump_livelist_2(Lvals, "").
-
-:- func dump_livelist_2(list(lval), string) = string.
-
-dump_livelist_2([], _) = "".
-dump_livelist_2([Lval | Lvallist], Prefix) =
-    Prefix ++ dump_lval(Lval) ++ dump_livelist_2(Lvallist, " ").
+dump_livelist_2(_, [], _) = "".
+dump_livelist_2(MaybeProcLabel, [Lval | Lvallist], Prefix) =
+    Prefix ++ dump_lval(MaybeProcLabel, Lval) ++
+        dump_livelist_2(MaybeProcLabel, Lvallist, " ").
 
 dump_reg(reg_r, N) =
     "r" ++ int_to_string(N).
 dump_reg(reg_f, N) =
     "f" ++ int_to_string(N).
 
-dump_lval(reg(Type, Num)) =
+dump_lval(_, reg(Type, Num)) =
     dump_reg(Type, Num).
-dump_lval(stackvar(N)) =
+dump_lval(_, stackvar(N)) =
     "sv" ++ int_to_string(N).
-dump_lval(parent_stackvar(N)) =
+dump_lval(_, parent_stackvar(N)) =
     "parent_sv" ++ int_to_string(N).
-dump_lval(framevar(N)) =
+dump_lval(_, framevar(N)) =
     "fv" ++ int_to_string(N).
-dump_lval(succip) = "succip".
-dump_lval(maxfr) = "maxfr".
-dump_lval(curfr) = "curfr".
-dump_lval(succfr_slot(R)) =
-    "succfr_slot(" ++ dump_rval(R) ++ ")".
-dump_lval(prevfr_slot(R)) =
-    "prevfr_slot(" ++ dump_rval(R) ++ ")".
-dump_lval(redofr_slot(R)) =
-    "redofr_slot(" ++ dump_rval(R) ++ ")".
-dump_lval(redoip_slot(R)) =
-    "redoip_slot(" ++ dump_rval(R) ++ ")".
-dump_lval(succip_slot(R)) =
-    "succip_slot(" ++ dump_rval(R) ++ ")".
-dump_lval(hp) = "hp".
-dump_lval(sp) = "sp".
-dump_lval(parent_sp) = "parent_sp".
-dump_lval(field(MT, N, F)) = Str :-
+dump_lval(_, succip) = "succip".
+dump_lval(_, maxfr) = "maxfr".
+dump_lval(_, curfr) = "curfr".
+dump_lval(MaybeProcLabel, succfr_slot(R)) =
+    "succfr_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
+dump_lval(MaybeProcLabel, prevfr_slot(R)) =
+    "prevfr_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
+dump_lval(MaybeProcLabel, redofr_slot(R)) =
+    "redofr_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
+dump_lval(MaybeProcLabel, redoip_slot(R)) =
+    "redoip_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
+dump_lval(MaybeProcLabel, succip_slot(R)) =
+    "succip_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
+dump_lval(_, hp) = "hp".
+dump_lval(_, sp) = "sp".
+dump_lval(_, parent_sp) = "parent_sp".
+dump_lval(MaybeProcLabel, field(MT, N, F)) = Str :-
     (
         MT = yes(T),
         string.int_to_string(T, T_str)
@@ -271,72 +252,76 @@ dump_lval(field(MT, N, F)) = Str :-
         MT = no,
         T_str = "no"
     ),
-    Str = "field(" ++ T_str ++ ", " ++ dump_rval(N) ++ ", "
-        ++ dump_rval(F) ++ ")".
-dump_lval(lvar(_)) = "lvar(_)".
-dump_lval(temp(Type, Num)) =
+    Str = "field(" ++ T_str ++ ", " ++ dump_rval(MaybeProcLabel, N) ++ ", "
+        ++ dump_rval(MaybeProcLabel, F) ++ ")".
+dump_lval(_, lvar(_)) = "lvar(_)".
+dump_lval(_, temp(Type, Num)) =
     "temp_" ++ dump_reg(Type, Num).
-dump_lval(mem_ref(R)) =
-    "mem_ref(" ++ dump_rval(R) ++ ")".
-dump_lval(global_var_ref(env_var_ref(VarName))) =
+dump_lval(MaybeProcLabel, mem_ref(R)) =
+    "mem_ref(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
+dump_lval(_, global_var_ref(env_var_ref(VarName))) =
     "global_var_ref(env_var_ref(" ++ VarName ++ "))".
 
-dump_rval(lval(Lval)) =
-    dump_lval(Lval).
-dump_rval(var(Var)) =
+dump_rval(MaybeProcLabel, lval(Lval)) =
+    dump_lval(MaybeProcLabel, Lval).
+dump_rval(_, var(Var)) =
     "var(" ++ int_to_string(term.var_to_int(Var)) ++ ")".
-dump_rval(mkword(T, N)) =
-    "mkword(" ++ int_to_string(T) ++ ", " ++ dump_rval(N) ++ ")".
-dump_rval(const(C)) =
-    dump_const(C).
-dump_rval(unop(O, N)) =
-    dump_unop(O) ++ "(" ++ dump_rval(N) ++ ")".
-dump_rval(binop(O, N1, N2)) =
+dump_rval(MaybeProcLabel, mkword(T, N)) =
+    "mkword(" ++ int_to_string(T) ++ ", " ++
+        dump_rval(MaybeProcLabel, N) ++ ")".
+dump_rval(MaybeProcLabel, const(C)) =
+    dump_const(MaybeProcLabel, C).
+dump_rval(MaybeProcLabel, unop(O, N)) =
+    dump_unop(O) ++ "(" ++ dump_rval(MaybeProcLabel, N) ++ ")".
+dump_rval(MaybeProcLabel, binop(O, N1, N2)) =
     (
         ( N1 = binop(_, _, _)
         ; N2 = binop(_, _, _)
         )
     ->
         "binop(" ++ dump_binop(O) ++ ", "
-            ++ dump_rval(N1) ++ ", " ++ dump_rval(N2) ++ ")"
+            ++ dump_rval(MaybeProcLabel, N1) ++ ", " ++
+            dump_rval(MaybeProcLabel, N2) ++ ")"
     ;
-        dump_rval(N1) ++ " " ++ dump_binop(O) ++ " " ++ dump_rval(N2)
+        dump_rval(MaybeProcLabel, N1) ++ " " ++ dump_binop(O) ++ " " ++
+        dump_rval(MaybeProcLabel, N2)
     ).
-dump_rval(mem_addr(M)) =
-    "mem_addr(" ++ dump_mem_ref(M) ++ ")".
+dump_rval(MaybeProcLabel, mem_addr(M)) =
+    "mem_addr(" ++ dump_mem_ref(MaybeProcLabel, M) ++ ")".
 
-dump_rvals([]) = "".
-dump_rvals([Rval | Rvals]) =
-    dump_rval(Rval) ++ ", " ++ dump_rvals(Rvals).
+dump_rvals(_, []) = "".
+dump_rvals(MaybeProcLabel, [Rval | Rvals]) =
+    dump_rval(MaybeProcLabel, Rval) ++ ", " ++
+        dump_rvals(MaybeProcLabel, Rvals).
 
-dump_mem_ref(stackvar_ref(N)) =
-    "stackvar_ref(" ++ dump_rval(N) ++ ")".
-dump_mem_ref(framevar_ref(N)) =
-    "framevar_ref(" ++ dump_rval(N) ++ ")".
-dump_mem_ref(heap_ref(R, T, N)) =
-    "heap_ref(" ++ dump_rval(R) ++ ", " ++ int_to_string(T) ++ ", "
-        ++ dump_rval(N) ++ ")".
+dump_mem_ref(MaybeProcLabel, stackvar_ref(N)) =
+    "stackvar_ref(" ++ dump_rval(MaybeProcLabel, N) ++ ")".
+dump_mem_ref(MaybeProcLabel, framevar_ref(N)) =
+    "framevar_ref(" ++ dump_rval(MaybeProcLabel, N) ++ ")".
+dump_mem_ref(MaybeProcLabel, heap_ref(R, T, N)) =
+    "heap_ref(" ++ dump_rval(MaybeProcLabel, R) ++ ", " ++ int_to_string(T) ++ ", "
+        ++ dump_rval(MaybeProcLabel, N) ++ ")".
 
-dump_const(llconst_true) = "true".
-dump_const(llconst_false) = "false".
-dump_const(llconst_int(I)) =
+dump_const(_, llconst_true) = "true".
+dump_const(_, llconst_false) = "false".
+dump_const(_, llconst_int(I)) =
     int_to_string(I).
-dump_const(llconst_float(F)) =
+dump_const(_, llconst_float(F)) =
     float_to_string(F).
-dump_const(llconst_string(S)) =
+dump_const(_, llconst_string(S)) =
     """" ++ S ++ """".
-dump_const(llconst_multi_string(L, _S)) =
+dump_const(_, llconst_multi_string(L, _S)) =
     "multi_string(" ++ int_to_string(L) ++ ")".
-dump_const(llconst_code_addr(CodeAddr)) =
-    "code_addr_const(" ++ dump_code_addr(CodeAddr) ++ ")".
-dump_const(llconst_data_addr(DataAddr, MaybeOffset)) = Str :-
-    DataAddr_str = dump_data_addr(DataAddr),
+dump_const(MaybeProcLabel, llconst_code_addr(CodeAddr)) =
+    "code_addr_const(" ++ dump_code_addr(MaybeProcLabel, CodeAddr) ++ ")".
+dump_const(_, llconst_data_addr(DataAddr, MaybeOffset)) = Str :-
+    DataAddrStr = dump_data_addr(DataAddr),
     (
         MaybeOffset = no,
-        Str = "data_addr_const(" ++ DataAddr_str ++ ")"
+        Str = "data_addr_const(" ++ DataAddrStr ++ ")"
     ;
         MaybeOffset = yes(Offset),
-        Str = "data_addr_const(" ++ DataAddr_str ++ ", "
+        Str = "data_addr_const(" ++ DataAddrStr ++ ", "
             ++ int_to_string(Offset) ++ ")"
     ).
 
@@ -447,7 +432,7 @@ dump_rtti_type_class_instance_types(TCTypes) = Str :-
     Str = "tc_instance(" ++ TypesStr ++ ")".
 
 dump_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)) = Str :-
-    LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
+    LabelStr = dump_label(no, internal_label(LabelNum, ProcLabel)),
     (
         LabelVars = label_has_var_info,
         LabelVarsStr = "label_has_var_info"
@@ -457,13 +442,13 @@ dump_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)) = Str :-
     ),
     Str = "label_layout(" ++ LabelStr ++ ", " ++ LabelVarsStr ++ ")".
 dump_layout_name(user_event_layout(ProcLabel, LabelNum)) = Str :-
-    LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
+    LabelStr = dump_label(no, internal_label(LabelNum, ProcLabel)),
     Str = "user_event_layout(" ++ LabelStr ++ ")".
 dump_layout_name(user_event_attr_names(ProcLabel, LabelNum)) = Str :-
-    LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
+    LabelStr = dump_label(no, internal_label(LabelNum, ProcLabel)),
     Str = "user_event_attr_names(" ++ LabelStr ++ ")".
 dump_layout_name(user_event_attr_var_nums(ProcLabel, LabelNum)) = Str :-
-    LabelStr = dump_label(internal_label(LabelNum, ProcLabel)),
+    LabelStr = dump_label(no, internal_label(LabelNum, ProcLabel)),
     Str = "user_event_attr_var_nums(" ++ LabelStr ++ ")".
 dump_layout_name(proc_layout(RttiProcLabel, _)) =
     "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
@@ -520,90 +505,70 @@ dump_unop(bitwise_complement) = "bitwise_complement".
 dump_binop(Op) =
     llds_out.binary_op_to_string(Op).
 
-dump_maybe_rvals([], _) = "".
-dump_maybe_rvals([MR | MRs], N) = Str :-
+dump_maybe_rvals(_, [], _) = "".
+dump_maybe_rvals(MaybeProcLabel, [MR | MRs], N) = Str :-
     ( N > 0 ->
         (
             MR = yes(R),
-            MR_str = dump_rval(R)
+            MR_str = dump_rval(MaybeProcLabel, R)
         ;
             MR = no,
             MR_str = "no"
         ),
-        Str = MR_str ++ ", " ++ dump_maybe_rvals(MRs, N - 1)
+        Str = MR_str ++ ", " ++ dump_maybe_rvals(MaybeProcLabel, MRs, N - 1)
     ;
         Str = "truncated"
     ).
 
-dump_code_addr(code_label(Label)) = dump_label(Label).
-dump_code_addr(code_imported_proc(ProcLabel)) = dump_proclabel(ProcLabel).
-dump_code_addr(code_succip) = "succip".
-dump_code_addr(do_succeed(Last)) = Str :-
-    (
-        Last = no,
-        Str = "do_succeed"
-    ;
-        Last = yes,
-        Str = "do_last_succeed"
-    ).
-dump_code_addr(do_redo) = "do_redo".
-dump_code_addr(do_fail) = "do_fail".
-dump_code_addr(do_trace_redo_fail_shallow) =
-    "do_trace_redo_fail_shallow".
-dump_code_addr(do_trace_redo_fail_deep) = "do_trace_redo_fail_deep".
-dump_code_addr(do_call_closure(Variant)) =
+dump_code_addr(MaybeProcLabel, code_label(Label)) =
+    dump_label(MaybeProcLabel, Label).
+dump_code_addr(_, code_imported_proc(ProcLabel)) = dump_proclabel(ProcLabel).
+dump_code_addr(_, code_succip) = "succip".
+dump_code_addr(_, do_succeed(no)) = "do_succeed".
+dump_code_addr(_, do_succeed(yes)) = "do_last_succeed".
+dump_code_addr(_, do_redo) = "do_redo".
+dump_code_addr(_, do_fail) = "do_fail".
+dump_code_addr(_, do_trace_redo_fail_shallow) = "do_trace_redo_fail_shallow".
+dump_code_addr(_, do_trace_redo_fail_deep) = "do_trace_redo_fail_deep".
+dump_code_addr(_, do_call_closure(Variant)) =
     "do_call_closure_" ++ ho_call_variant_to_string(Variant).
-dump_code_addr(do_call_class_method(Variant)) =
+dump_code_addr(_, do_call_class_method(Variant)) =
     "do_call_class_method_" ++ ho_call_variant_to_string(Variant).
-dump_code_addr(do_not_reached) = "do_not_reached".
+dump_code_addr(_, do_not_reached) = "do_not_reached".
 
-dump_code_addr_for_proc(ProcLabel, CodeAddr) =
-    ( CodeAddr = code_label(Label) ->
-        dump_label_for_proc(ProcLabel, Label)
-    ;
-        dump_code_addr(CodeAddr)
-    ).
+dump_code_addrs(_, []) = "".
+dump_code_addrs(MaybeProcLabel, [Addr | Addrs]) =
+    " " ++ dump_code_addr(MaybeProcLabel, Addr) ++
+        dump_code_addrs(MaybeProcLabel, Addrs).
 
-dump_code_addrs([]) = "".
-dump_code_addrs([Addr | Addrs]) =
-    " " ++ dump_code_addr(Addr) ++ dump_code_addrs(Addrs).
-
-dump_code_addrs_for_proc(_, []) = "".
-dump_code_addrs_for_proc(ProcLabel, [Addr | Addrs]) =
-    " " ++ dump_code_addr_for_proc(ProcLabel, Addr) ++
-        dump_code_addrs_for_proc(ProcLabel, Addrs).
-
-dump_label(internal_label(N, ProcLabel)) =
+dump_label(no, internal_label(N, ProcLabel)) =
     dump_proclabel(ProcLabel) ++ "_i" ++ int_to_string(N).
-dump_label(entry_label(_, ProcLabel)) =
+dump_label(no, entry_label(_, ProcLabel)) =
     dump_proclabel(ProcLabel).
-
-dump_label_for_proc(CurProcLabel, internal_label(N, ProcLabel)) = Str :-
+dump_label(yes(CurProcLabel), internal_label(N, ProcLabel)) = Str :-
     string.int_to_string(N, N_str),
     ( CurProcLabel = ProcLabel ->
         Str = "local_" ++ N_str
     ;
         Str = dump_proclabel(ProcLabel) ++ "_" ++ N_str
     ).
-dump_label_for_proc(CurProcLabel, entry_label(_, ProcLabel)) = Str :-
+dump_label(yes(CurProcLabel), entry_label(_, ProcLabel)) = Str :-
     ( CurProcLabel = ProcLabel ->
         Str = "CUR_PROC_ENTRY"
     ;
         Str = dump_proclabel(ProcLabel)
     ).
 
-dump_labels([]) = "".
-dump_labels([Label | Labels]) =
-    " " ++ dump_label(Label) ++ dump_labels(Labels).
+dump_labels(_, []) = "".
+dump_labels(MaybeProcLabel, [Label | Labels]) =
+    " " ++ dump_label(MaybeProcLabel, Label) ++
+        dump_labels(MaybeProcLabel, Labels).
 
-dump_labels_for_proc(_, []) = "".
-dump_labels_for_proc(ProcLabel, [Label | Labels]) =
-    " " ++ dump_label_for_proc(ProcLabel, Label) ++
-        dump_labels_for_proc(ProcLabel, Labels).
-
-dump_label_pairs([]) = "".
-dump_label_pairs([L1 - L2 | Labels]) =
-    " " ++ dump_label(L1) ++ "-" ++ dump_label(L2) ++ dump_label_pairs(Labels).
+dump_label_pairs(_, []) = "".
+dump_label_pairs(MaybeProcLabel, [L1 - L2 | Labels]) =
+    " " ++ dump_label(MaybeProcLabel, L1) ++ "-" ++
+        dump_label(MaybeProcLabel, L2) ++
+        dump_label_pairs(MaybeProcLabel, Labels).
 
 :- func dump_rttiproclabel(rtti_proc_label) = string.
 
@@ -649,7 +614,7 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "comment(" ++ Comment ++ ")"
     ;
         Instr = livevals(Livevals),
-        Str = "livevals(" ++ dump_livevals(Livevals) ++ ")"
+        Str = "livevals(" ++ dump_livevals(yes(ProcLabel), Livevals) ++ ")"
     ;
         Instr = block(RTemps, FTemps, Instrs),
         Str = "block(" ++ int_to_string(RTemps) ++ ", "
@@ -658,7 +623,8 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             ++ ")"
     ;
         Instr = assign(Lval, Rval),
-        Str = dump_lval(Lval) ++ " := " ++ dump_rval(Rval)
+        Str = dump_lval(yes(ProcLabel), Lval) ++ " := " ++
+            dump_rval(yes(ProcLabel), Rval)
     ;
         Instr = llcall(Callee, ReturnLabel, _LiveInfo, _Context, _GoalPath,
             CallModel),
@@ -678,14 +644,14 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             CallModel = call_model_nondet(unchecked_tail_call),
             CallModelStr = "nondet unchecked_tail_call"
         ),
-        Str = "call(" ++ dump_code_addr_for_proc(ProcLabel, Callee) ++ ", "
-            ++ dump_code_addr_for_proc(ProcLabel, ReturnLabel) ++ ", ..., "
+        Str = "call(" ++ dump_code_addr(yes(ProcLabel), Callee) ++ ", "
+            ++ dump_code_addr(yes(ProcLabel), ReturnLabel) ++ ", ..., "
             ++ CallModelStr ++ ")"
     ;
         Instr = mkframe(FrameInfo, MaybeRedoip),
         (
             MaybeRedoip = yes(Redoip),
-            R_str = dump_code_addr_for_proc(ProcLabel, Redoip)
+            R_str = dump_code_addr(yes(ProcLabel), Redoip)
         ;
             MaybeRedoip = no,
             R_str = "no_redoip"
@@ -713,27 +679,27 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         )
     ;
         Instr = label(Label),
-        Str = dump_label_for_proc(ProcLabel, Label) ++ ":"
+        Str = dump_label(yes(ProcLabel), Label) ++ ":"
     ;
         Instr = goto(CodeAddr),
-        Str = "goto " ++ dump_code_addr_for_proc(ProcLabel, CodeAddr)
+        Str = "goto " ++ dump_code_addr(yes(ProcLabel), CodeAddr)
     ;
         Instr = computed_goto(Rval, Labels),
-        Str = "computed_goto " ++ dump_rval(Rval) ++ ":"
-            ++ dump_labels_for_proc(ProcLabel, Labels)
+        Str = "computed_goto " ++ dump_rval(yes(ProcLabel), Rval) ++ ":"
+            ++ dump_labels(yes(ProcLabel), Labels)
     ;
         Instr = arbitrary_c_code(Code, _),
         Str = "arbitrary_c_code(" ++ Code ++ ")"
     ;
         Instr = if_val(Rval, CodeAddr),
-        Str = "if (" ++ dump_rval(Rval) ++ ") goto "
-            ++ dump_code_addr_for_proc(ProcLabel, CodeAddr)
+        Str = "if (" ++ dump_rval(yes(ProcLabel), Rval) ++ ") goto "
+            ++ dump_code_addr(yes(ProcLabel), CodeAddr)
     ;
         Instr = save_maxfr(Lval),
-        Str = "save_maxfr(" ++ dump_lval(Lval) ++ ")"
+        Str = "save_maxfr(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
     ;
         Instr = restore_maxfr(Lval),
-        Str = "restore_maxfr(" ++ dump_lval(Lval) ++ ")"
+        Str = "restore_maxfr(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
     ;
         Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Size, _, MayUseAtomic),
         (
@@ -750,24 +716,25 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             MaybeOffset = yes(Offset),
             string.int_to_string(Offset, O_str)
         ),
-        Str = "incr_hp(" ++ dump_lval(Lval) ++ ", " ++ T_str ++ ", " ++ O_str
-            ++ ", " ++ dump_rval(Size) ++
-            ", " ++ dump_may_use_atomic(MayUseAtomic) ++ ")"
+        Str = "incr_hp(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", " ++
+            T_str ++ ", " ++ O_str ++ ", " ++
+            dump_rval(yes(ProcLabel), Size) ++ ", " ++
+            dump_may_use_atomic(MayUseAtomic) ++ ")"
     ;
         Instr = mark_hp(Lval),
-        Str = "mark_hp(" ++ dump_lval(Lval) ++ ")"
+        Str = "mark_hp(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
     ;
         Instr = restore_hp(Rval),
-        Str = "restore_hp(" ++ dump_rval(Rval) ++ ")"
+        Str = "restore_hp(" ++ dump_rval(yes(ProcLabel), Rval) ++ ")"
     ;
         Instr = free_heap(Rval),
-        Str = "free_heap(" ++ dump_rval(Rval) ++ ")"
+        Str = "free_heap(" ++ dump_rval(yes(ProcLabel), Rval) ++ ")"
     ;
         Instr = store_ticket(Lval),
-        Str = "store_ticket(" ++ dump_lval(Lval) ++ ")"
+        Str = "store_ticket(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
     ;
         Instr = reset_ticket(Rval, _Reason),
-        Str = "reset_ticket(" ++ dump_rval(Rval) ++ ", _)"
+        Str = "reset_ticket(" ++ dump_rval(yes(ProcLabel), Rval) ++ ", _)"
     ;
         Instr = discard_ticket,
         Str = "discard_ticket"
@@ -776,10 +743,10 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "prune_ticket"
     ;
         Instr = mark_ticket_stack(Lval),
-        Str = "mark_ticket_stack(" ++ dump_lval(Lval) ++ ")"
+        Str = "mark_ticket_stack(" ++ dump_lval(yes(ProcLabel), Lval) ++ ")"
     ;
         Instr = prune_tickets_to(Rval),
-        Str = "prune_tickets_to(" ++ dump_rval(Rval) ++ ")"
+        Str = "prune_tickets_to(" ++ dump_rval(yes(ProcLabel), Rval) ++ ")"
     ;
         Instr = incr_sp(Size, _, Kind),
         Str = "incr_sp(" ++ int_to_string(Size) ++ ", " ++
@@ -792,25 +759,26 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "decr_sp_and_return(" ++ int_to_string(Size) ++ ")"
     ;
         Instr = init_sync_term(Lval, N),
-        Str = "init_sync_term(" ++ dump_lval(Lval) ++ ", "
+        Str = "init_sync_term(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", "
             ++ int_to_string(N) ++ ")"
     ;
         Instr = fork(Child),
-        Str = "fork(" ++ dump_label_for_proc(ProcLabel, Child) ++ ")"
+        Str = "fork(" ++ dump_label(yes(ProcLabel), Child) ++ ")"
     ;
         Instr = join_and_continue(Lval, Label),
-        Str = "join(" ++ dump_lval(Lval) ++ ", "
-            ++ dump_label_for_proc(ProcLabel, Label) ++ ")"
+        Str = "join(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", "
+            ++ dump_label(yes(ProcLabel), Label) ++ ")"
     ;
         Instr = pragma_c(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF, SSR, MD),
+        MaybeProcLabel = yes(ProcLabel),
         Str = "pragma_c(\n"
             ++ "declarations:\n" ++ dump_decls(Decls)
-            ++ "components:\n" ++ dump_components(ProcLabel, Comps)
+            ++ "components:\n" ++ dump_components(MaybeProcLabel, Comps)
             ++ dump_may_call_mercury(MCM) ++ "\n"
-            ++ dump_maybe_label_for_proc("fix nolayout:", ProcLabel, MFNL)
-            ++ dump_maybe_label_for_proc("fix layout:", ProcLabel, MFL)
-            ++ dump_maybe_label_for_proc("fix onlylayout:", ProcLabel, MFOL)
-            ++ dump_maybe_label_for_proc("nofix:", ProcLabel, MNF)
+            ++ dump_maybe_label("fix nolayout:", MaybeProcLabel, MFNL)
+            ++ dump_maybe_label("fix layout:", MaybeProcLabel, MFL)
+            ++ dump_maybe_label("fix onlylayout:", MaybeProcLabel, MFOL)
+            ++ dump_maybe_label("nofix:", MaybeProcLabel, MNF)
             ++ dump_bool_msg("stack slot ref:", SSR)
             ++ dump_bool_msg("may duplicate:", MD)
             ++ ")"
@@ -821,11 +789,11 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
 dump_may_call_mercury(proc_may_call_mercury) = "may_call_mercury".
 dump_may_call_mercury(proc_will_not_call_mercury) = "will_not_call_mercury".
 
-:- func dump_maybe_label_for_proc(string, proc_label, maybe(label)) = string.
+:- func dump_maybe_label(string, maybe(proc_label), maybe(label)) = string.
 
-dump_maybe_label_for_proc(_Msg, _ProcLabel, no) = "".
-dump_maybe_label_for_proc(Msg, ProcLabel, yes(Label)) =
-    Msg ++ " " ++ dump_label_for_proc(ProcLabel, Label) ++ "\n".
+dump_maybe_label(_Msg, _MaybeProcLabel, no) = "".
+dump_maybe_label(Msg, MaybeProcLabel, yes(Label)) =
+    Msg ++ " " ++ dump_label(MaybeProcLabel, Label) ++ "\n".
 
 :- func dump_bool_msg(string, bool) = string.
 
@@ -850,45 +818,54 @@ dump_decl(pragma_c_arg_decl(_MerType, TypeStr, VarName)) =
 dump_decl(pragma_c_struct_ptr_decl(StructTag, VarName)) =
     "decl struct" ++ StructTag ++ " " ++ VarName ++ "\n".
 
-:- func dump_components(proc_label, list(pragma_c_component)) = string.
+:- func dump_components(maybe(proc_label), list(pragma_c_component)) = string.
 
 dump_components(_, []) = "".
-dump_components(ProcLabel, [Comp | Comps]) =
-    dump_component(ProcLabel, Comp) ++ dump_components(ProcLabel, Comps).
+dump_components(MaybeProcLabel, [Comp | Comps]) =
+    dump_component(MaybeProcLabel, Comp) ++
+        dump_components(MaybeProcLabel, Comps).
 
-:- func dump_component(proc_label, pragma_c_component) = string.
+:- func dump_component(maybe(proc_label), pragma_c_component) = string.
 
-dump_component(_, pragma_c_inputs(Inputs)) = dump_input_components(Inputs).
-dump_component(_, pragma_c_outputs(Outputs)) = dump_output_components(Outputs).
+dump_component(MaybeProcLabel, pragma_c_inputs(Inputs)) =
+    dump_input_components(MaybeProcLabel, Inputs).
+dump_component(MaybeProcLabel, pragma_c_outputs(Outputs)) =
+    dump_output_components(MaybeProcLabel, Outputs).
 dump_component(_, pragma_c_user_code(_, Code)) = Code ++ "\n".
 dump_component(_, pragma_c_raw_code(Code, _, _)) = Code ++ "\n".
-dump_component(ProcLabel, pragma_c_fail_to(Label)) =
-    "fail to " ++ dump_label_for_proc(ProcLabel, Label) ++ "\n".
+dump_component(MaybeProcLabel, pragma_c_fail_to(Label)) =
+    "fail to " ++ dump_label(MaybeProcLabel, Label) ++ "\n".
 dump_component(_, pragma_c_noop) = "".
 
-:- func dump_input_components(list(pragma_c_input)) = string.
+:- func dump_input_components(maybe(proc_label), list(pragma_c_input))
+    = string.
 
-dump_input_components([]) = "".
-dump_input_components([Input | Inputs]) =
-    dump_input_component(Input) ++ "\n" ++
-    dump_input_components(Inputs).
+dump_input_components(_, []) = "".
+dump_input_components(MaybeProcLabel, [Input | Inputs]) =
+    dump_input_component(MaybeProcLabel, Input) ++ "\n" ++
+    dump_input_components(MaybeProcLabel, Inputs).
 
-:- func dump_output_components(list(pragma_c_output)) = string.
+:- func dump_output_components(maybe(proc_label), list(pragma_c_output))
+    = string.
 
-dump_output_components([]) = "".
-dump_output_components([Input | Inputs]) =
-    dump_output_component(Input) ++ "\n" ++
-    dump_output_components(Inputs).
+dump_output_components(_, []) = "".
+dump_output_components(MaybeProcLabel, [Input | Inputs]) =
+    dump_output_component(MaybeProcLabel, Input) ++ "\n" ++
+    dump_output_components(MaybeProcLabel, Inputs).
 
-:- func dump_input_component(pragma_c_input) = string.
+:- func dump_input_component(maybe(proc_label), pragma_c_input) = string.
 
-dump_input_component(pragma_c_input(Var, _, Dummy, _, Rval, _, _)) =
-    Var ++ dump_maybe_dummy(Dummy) ++ " := " ++ dump_rval(Rval).
+dump_input_component(MaybeProcLabel,
+        pragma_c_input(Var, _, Dummy, _, Rval, _, _)) =
+    Var ++ dump_maybe_dummy(Dummy) ++ " := " ++
+        dump_rval(MaybeProcLabel, Rval).
 
-:- func dump_output_component(pragma_c_output) = string.
+:- func dump_output_component(maybe(proc_label), pragma_c_output) = string.
 
-dump_output_component(pragma_c_output(Lval, _, Dummy, _, Var, _, _)) =
-    dump_lval(Lval) ++ " := " ++ Var ++ dump_maybe_dummy(Dummy).
+dump_output_component(MaybeProcLabel,
+        pragma_c_output(Lval, _, Dummy, _, Var, _, _)) =
+    dump_lval(MaybeProcLabel, Lval) ++ " := " ++ Var ++
+        dump_maybe_dummy(Dummy).
 
 :- func dump_maybe_dummy(bool) = string.
 

@@ -58,13 +58,19 @@
     % does steps 2, 3 and 4).
     %
 :- pred generate_constants_for_arm(hlds_goal::in, list(prog_var)::in,
-    abs_store_map::in, branch_end::in, branch_end::out, list(rval)::out,
+    abs_store_map::in, list(rval)::out, branch_end::in, branch_end::out,
     set(prog_var)::out, code_info::in, code_info::out) is semidet.
 
 :- pred generate_constants_for_disjuncts(list(hlds_goal)::in,
-    list(prog_var)::in, abs_store_map::in, branch_end::in, branch_end::out,
-    list(list(rval))::out, maybe(set(prog_var))::out,
+    list(prog_var)::in, abs_store_map::in, list(list(rval))::out,
+    branch_end::in, branch_end::out, maybe(set(prog_var))::out,
     code_info::in, code_info::out) is semidet.
+
+:- pred set_liveness_and_end_branch(abs_store_map::in, branch_end::in,
+    set(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+
+:- pred generate_offset_assigns(list(prog_var)::in, int::in, lval::in,
+    code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -73,12 +79,14 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
 :- import_module hlds.instmap.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.exprn_aux.
 
 :- import_module bool.
+:- import_module int.
 :- import_module pair.
 :- import_module solutions.
 
@@ -132,19 +140,23 @@ generate_constants_for_arm(Goal, Vars, StoreMap, !MaybeEnd, CaseRvals,
         CaseRvals, Liveness, !CI).
 
 :- pred do_generate_constants_for_arm(hlds_goal::in, list(prog_var)::in,
-    abs_store_map::in, bool::in, branch_end::in, branch_end::out,
-    list(rval)::out, set(prog_var)::out, code_info::in, code_info::out)
-    is semidet.
+    abs_store_map::in, bool::in, list(rval)::out,
+    branch_end::in, branch_end::out, set(prog_var)::out,
+    code_info::in, code_info::out) is semidet.
 
-do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, !MaybeEnd,
-        CaseRvals, Liveness, !CI) :-
+do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
+        !MaybeEnd, Liveness, !CI) :-
     code_info.remember_position(!.CI, BranchStart),
     Goal = _GoalExpr - GoalInfo,
     goal_info_get_code_model(GoalInfo, CodeModel),
     code_gen.generate_goal(CodeModel, Goal, Code, !CI),
     tree.tree_of_lists_is_empty(Code),
     code_info.get_forward_live_vars(!.CI, Liveness),
-    get_arm_rvals(Vars, CaseRvals, !CI),
+
+    code_info.get_globals(!.CI, Globals),
+    globals.get_options(Globals, Options),
+    exprn_aux.init_exprn_opts(Options, ExprnOpts),
+    get_arm_rvals(Vars, CaseRvals, !CI, ExprnOpts),
     (
         SetToUnknown = no
     ;
@@ -157,35 +169,32 @@ do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, !MaybeEnd,
     code_info.generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !CI),
     code_info.reset_to_position(BranchStart, !CI).
 
-generate_constants_for_disjuncts([], _Vars, _StoreMap, !MaybeEnd, [],
+generate_constants_for_disjuncts([], _Vars, _StoreMap, [], !MaybeEnd,
         no, !CI).
 generate_constants_for_disjuncts([Disjunct0 | Disjuncts], Vars, StoreMap,
-        !MaybeEnd, [Soln | Solns], yes(Liveness), !CI) :-
-    % The pre_goal_update sanity check insists on no_resume_point, to make
-    % sure that all resume points have been handled by surrounding code.
+        [Soln | Solns], !MaybeEnd, yes(Liveness), !CI) :-
+    % The pre_goal_update sanity check insists on no_resume_point, to ensure
+    % that all resume points have been handled by surrounding code.
     Disjunct0 = DisjunctGoalExpr - DisjunctGoalInfo0,
     goal_info_set_resume_point(no_resume_point,
         DisjunctGoalInfo0, DisjunctGoalInfo),
     Disjunct = DisjunctGoalExpr - DisjunctGoalInfo,
-    do_generate_constants_for_arm(Disjunct, Vars, StoreMap, yes, !MaybeEnd,
-        Soln, Liveness, !CI),
-    generate_constants_for_disjuncts(Disjuncts, Vars, StoreMap, !MaybeEnd,
-        Solns, _, !CI).
+    do_generate_constants_for_arm(Disjunct, Vars, StoreMap, yes, Soln,
+        !MaybeEnd, Liveness, !CI),
+    generate_constants_for_disjuncts(Disjuncts, Vars, StoreMap, Solns,
+        !MaybeEnd, _, !CI).
 
 %---------------------------------------------------------------------------%
 
 :- pred get_arm_rvals(list(prog_var)::in, list(rval)::out,
-    code_info::in, code_info::out) is semidet.
+    code_info::in, code_info::out, exprn_opts::in) is semidet.
 
-get_arm_rvals([], [], !CI).
-get_arm_rvals([Var | Vars], [Rval | Rvals], !CI) :-
+get_arm_rvals([], [], !CI, _ExprnOpts).
+get_arm_rvals([Var | Vars], [Rval | Rvals], !CI, ExprnOpts) :-
     code_info.produce_variable(Var, Code, Rval, !CI),
     tree.tree_of_lists_is_empty(Code),
-    code_info.get_globals(!.CI, Globals),
-    globals.get_options(Globals, Options),
-    exprn_aux.init_exprn_opts(Options, ExprnOpts),
     rval_is_constant(Rval, ExprnOpts),
-    get_arm_rvals(Vars, Rvals, !CI).
+    get_arm_rvals(Vars, Rvals, !CI, ExprnOpts).
 
     % rval_is_constant(Rval, ExprnOpts) is true iff Rval is a constant.
     % This depends on the options governing nonlocal gotos, asm labels enabled
@@ -202,5 +211,30 @@ rval_is_constant(binop(_, Exprn0, Exprn1), ExprnOpts) :-
     rval_is_constant(Exprn1, ExprnOpts).
 rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
     rval_is_constant(Exprn0, ExprnOpts).
+
+%---------------------------------------------------------------------------%
+
+set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness, BranchEndCode,
+        !CI) :-
+    % We keep track of what variables are supposed to be live at the end
+    % of cases. We have to do this explicitly because generating a `fail' slot
+    % last would yield the wrong liveness.
+    code_info.set_forward_live_vars(Liveness, !CI),
+    code_info.generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd,
+        BranchEndCode, !CI).
+
+generate_offset_assigns([], _, _, !CI).
+generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
+    LookupLval = field(yes(0), lval(BaseReg), const(llconst_int(Offset))),
+    code_info.assign_lval_to_var(Var, LookupLval, Code, !CI),
+    expect(tree.is_empty(Code), this_file,
+        "generate_offset_assigns: nonempty code"),
+    generate_offset_assigns(Vars, Offset + 1, BaseReg, !CI).
+
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "lookup_util.m".
 
 %---------------------------------------------------------------------------%
