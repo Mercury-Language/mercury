@@ -50,7 +50,6 @@
 **          (for updating the MC++ backend RTTI structures)
 **      java/ *.java
 **          (for updating the Java backend RTTI structures)
-**     
 */
 
 #ifndef MERCURY_TYPE_INFO_H
@@ -339,7 +338,7 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 
 #define MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(pseudo_type_info) \
     ((MR_PseudoTypeInfoParams) &(pseudo_type_info)->MR_pti_var_arity_arity)
-  
+
 /*
 ** Macros for creating type_infos and pseudo_type_infos.
 */
@@ -427,12 +426,12 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
     /*
     ** In reserve-tag grades, enumerations are disabled, so the
     ** representation of the 'comparison_result' type is quite different.
-    ** The enumeration constants (for (<), (=) and (>)) wind up sharing 
+    ** The enumeration constants (for (<), (=) and (>)) wind up sharing
     ** the same primary tag (1), and are all allocated secondary tags
     ** starting from 0.
     */
   #define MR_ENUM_TAG         MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG)
- 
+
   #define MR_COMPARE_EQUAL    ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(0)))
   #define MR_COMPARE_LESS     ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(1)))
   #define MR_COMPARE_GREATER  ((MR_Word) MR_mkword(MR_ENUM_TAG, MR_mkbody(2)))
@@ -631,7 +630,7 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_EQUIV),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FUNC),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_INT),
-    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_CHAR), 
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_CHAR),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FLOAT),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STRING),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_PRED),
@@ -797,7 +796,7 @@ typedef struct {
 ** This structure contains information about the typeinfos of the
 ** existentially quantified type variables occurring in the types of some
 ** of the arguments of a functor in a du type.
-** 
+**
 ** The MR_exist_typeinfos_plain field gives the number of typeinfos
 ** directly inserted at the start of the memory cell of the functor, while
 ** the MR_exist_tcis field gives the number of typeclassinfos
@@ -805,16 +804,16 @@ typedef struct {
 ** these two blocks, which means that when accessing them, one must add
 ** the sum of MR_exist_typeinfos_plain and MR_exist_tcis to
 ** the visible argument number in order to arrive at an offset in the cell.
-** 
+**
 ** It is possible for a typeclassinfo to contain more than one type variable.
 ** The MR_exist_typeinfos_in_tci field contains the total number of typeinfos
 ** stored inside the typeclassinfos of the cell.
-** 
+**
 ** The MR_exist_typeinfo_locns field points to an array of
 ** MR_ExistTypeInfoLocns.  This array has MR_exist_typeinfos_plain +
 ** MR_exist_typeinfos_in_tci elements, each one of which describes
 ** the location (directly in the cell or indirectly inside a typeclassinfo)
-** of the typeinfo for an existentially quantified type variable. 
+** of the typeinfo for an existentially quantified type variable.
 ** The typeinfo for type variable N will be at the offset
 ** N - MR_PSEUDOTYPEINFO_EXIST_VAR_BASE - 1. (The one is subtracted to convert
 ** from type var numbering, which starts at 1, to array offset numbering).
@@ -841,7 +840,7 @@ typedef struct {
 ** Functor descriptors are reachable from both the layout and functor tables.
 ** They all the information one may need about the function symbol, even
 ** though some of this information may be redundant along some access paths.
-** 
+**
 ** The fields that you are likely to be interested in when you arrive at the
 ** functor descriptor through the functor table are clustered at the front,
 ** the fields that you are likely to be interested in when you arrive at the
@@ -854,7 +853,7 @@ typedef struct {
 ** The ordinal field gives the position of the function symbol in the
 ** list of function symbols of the type; one function symbol compares
 ** as less than another iff its ordinal number is smaller.
-** 
+**
 ** The orig_arity field records the visible arity of the functor, without
 ** the typeinfos and/or typeclass_infos added for existentially typed
 ** arguments.
@@ -1047,7 +1046,7 @@ typedef struct {
     MR_int_least16_t                    MR_ra_num_res_symbolic_addrs;
     const void * const                  *MR_ra_res_symbolic_addrs;
     MR_ReservedAddrFunctorDescPtr const *MR_ra_constants;
-    MR_DuTypeLayout                     MR_ra_other_functors;  
+    MR_DuTypeLayout                     MR_ra_other_functors;
 } MR_ReservedAddrTypeDesc;
 
 typedef MR_ReservedAddrTypeDesc *MR_ReservedAddrTypeLayout;
@@ -1090,7 +1089,7 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
 ** This type describes the layout in any kind of discriminated union
 ** type: du, enum, notag, or reserved_addr.
 ** In an equivalence type, it gives the identity of the equivalent-to type.
-** 
+**
 ** The layout_init alternative is used only for static initializers,
 ** because ANSI C89 does not allow you to say which member of a union
 ** you are initializing, and instead forces you to initialize the first member.
@@ -1137,7 +1136,7 @@ typedef struct {
 **
 ** The intention is that if you have a function symbol you want to represent,
 ** you can do binary search on the array for the symbol name and arity.
-** 
+**
 ** The functors_init alternative is used only for static initializers;
 ** see the comment for MR_TypeLayout above.
 */
@@ -1158,7 +1157,7 @@ typedef union {
     ** type constructor.  One of these is generated for every
     ** `:- type' declaration.
     **
-    ** A change in the TypeCtorInfo structure also requires changes in the 
+    ** A change in the TypeCtorInfo structure also requires changes in the
     ** files listed at the top of this file, as well as in the macros below.
     */
 
@@ -1476,7 +1475,7 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
       /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1) */
 
 #endif
-  
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -1725,7 +1724,7 @@ extern  MR_PseudoTypeInfo MR_collapse_equivalences_pseudo(
 extern  MR_PseudoTypeInfo MR_collapse_equivalences_pseudo(
                     MR_PseudoTypeInfo pseudo_type_info);
 
-/* 
+/*
 ** MR_create_type and MR_make_type_info both turn a pseudo typeinfo into
 ** a typeinfo, looking up the typeinfos associated with the type variables
 ** in the pseudointo typeinfo in the supplied vector of type parameters.

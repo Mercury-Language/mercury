@@ -81,7 +81,7 @@ MR_Debug_Flag_Info  MR_debug_flag_info[MR_MAXFLAG] = {
 ** stuff for allocating memory-zones and other runtime areas (such as
 ** the zone structures and context structures).
 */
-void 
+void
 MR_init_engine(MercuryEngine *eng)
 {
     /*
@@ -153,7 +153,7 @@ void MR_finalize_engine(MercuryEngine *eng)
 {
     /*
     ** XXX There are lots of other resources in MercuryEngine that
-    ** might need to be finalized.  
+    ** might need to be finalized.
     */
     if (eng->MR_eng_this_context) {
         MR_destroy_context(eng->MR_eng_this_context);
@@ -193,7 +193,7 @@ MR_destroy_engine(MercuryEngine *eng)
 ** we don't save the previous locations.
 */
 
-void 
+void
 MR_dump_prev_locations(void) {}
 
 #else /* !MR_HIGHLEVEL_CODE */
@@ -245,7 +245,7 @@ MR_dump_prev_locations(void) {}
 **
 **  MR_call_engine() calls setjmp() and then invokes call_engine_inner()
 **  which does the real work.  call_engine_inner() exits by calling
-**  longjmp() to return to MR_call_engine().  There are two 
+**  longjmp() to return to MR_call_engine().  There are two
 **  different implementations of call_engine_inner(), one for gcc,
 **  and another portable version that works on standard ANSI C compilers.
 */
@@ -336,7 +336,7 @@ MR_call_engine(MR_Code *entry_point, MR_bool catch_exceptions)
 
 
     MR_ENGINE(MR_eng_jmp_buf) = &curr_jmp_buf;
-  
+
     /*
     ** If call profiling is enabled, and this is a case of Mercury calling C
     ** code which then calls Mercury, then we record the Mercury caller
@@ -351,7 +351,7 @@ MR_call_engine(MR_Code *entry_point, MR_bool catch_exceptions)
     /*
     ** XXX There's not much we can do in this case to keep the call counts
     ** accurate, since we don't know who the caller is.
-    */ 
+    */
   #endif
 #endif /* MR_MPROF_PROFILE_CALLS */
 
@@ -381,7 +381,7 @@ MR_call_engine(MR_Code *entry_point, MR_bool catch_exceptions)
 
 /* The gcc-specific version */
 
-static void 
+static void
 call_engine_inner(MR_Code *entry_point)
 {
     /*
@@ -435,9 +435,9 @@ call_engine_inner(MR_Code *entry_point)
     MR_global_pointer = locals;
 
 #ifdef MR_LOWLEVEL_DEBUG
-    MR_memset((void *)locals, MAGIC_MARKER, LOCALS_SIZE);
+    MR_memset((void *) locals, MAGIC_MARKER, LOCALS_SIZE);
 #endif
-    MR_debugmsg1("in `call_engine_inner', locals at %p\n", (void *)locals);
+    MR_debugmsg1("in `call_engine_inner', locals at %p\n", (void *) locals);
 
     /*
     ** We need to ensure that there is at least one real function call
@@ -555,7 +555,7 @@ MR_define_label(engine_done);
 }} /* end call_engine_inner() */
 
 /* with nonlocal gotos, we don't save the previous locations */
-void 
+void
 MR_dump_prev_locations(void)
 {
 }
@@ -607,14 +607,14 @@ typedef MR_Code *Func(void);
 static MR_Code  *prev_fps[NUM_PREV_FPS];
 static int      prev_fp_index = 0;
 
-void 
+void
 MR_dump_prev_locations(void)
 {
     int i;
     int pos;
 
 #if !defined(MR_DEBUG_GOTOS)
-    if (MR_tracedebug) 
+    if (MR_tracedebug)
 #endif
     {
         printf("previous %d locations:\n", NUM_PREV_FPS);
@@ -625,7 +625,7 @@ MR_dump_prev_locations(void)
     }
 }
 
-static void 
+static void
 call_engine_inner(MR_Code *entry_point)
 {
     register Func   *fp;

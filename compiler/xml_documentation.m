@@ -23,7 +23,6 @@
 
 :- import_module io.
 
-    %
     % Output a representation of the module in XML which can be used
     % to document the module.
     %
@@ -60,28 +59,26 @@
 :- import_module term_to_xml.
 :- import_module varset.
 
-    %
     % Record all the locations of comments in a file.
     %
 :- type comments
     --->    comments(
-                    % For each line record what is on the line.
+                % For each line record what is on the line.
                 line_types  :: map(int, line_type)
             ).
 
 :- type line_type
-                % A line containing only whitespace.
     --->    blank
+            % A line containing only whitespace.
 
-                % A line containing just a comment.
     ;       comment(string)
+            % A line containing just a comment.
 
-                % A line which contains both a comment and code.
     ;       code_and_comment(string)
+            % A line which contains both a comment and code.
 
-                % A line containing code.
-    ;       code
-    .
+    ;       code.
+            % A line containing code.
 
 %-----------------------------------------------------------------------------%
 
@@ -104,7 +101,8 @@ xml_documentation(ModuleInfo, !IO) :-
         io.open_output(FileName, OpenResult, !IO),
         (
             OpenResult = ok(Stream),
-            MIXmlDoc = module_info_xml_doc(Comments, ModuleComment, ModuleInfo),
+            MIXmlDoc = module_info_xml_doc(Comments, ModuleComment,
+                ModuleInfo),
             write_xml_doc(Stream, MIXmlDoc, !IO)
         ;
             OpenResult = error(Err),
@@ -118,7 +116,6 @@ xml_documentation(ModuleInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    %
     % Given the input_stream build the comments datastructure which
     % represents this stream.
     %
@@ -139,9 +136,8 @@ build_comments(S, comments(!.C), comments(!:C), !IO) :-
             % XXX we should recover more gracefully from this error.
         unexpected(this_file, io.error_message(E))
     ).
-    
-    %
-    % Given a list of characters representing one line
+
+    % Given a list of characters representing one line,
     % return the type of the line.
     %
     % Note this predicate is pretty stupid at the moment.
@@ -156,9 +152,11 @@ line_type(Line) = LineType :-
     ( Rest = [] ->
         LineType = blank
     ; Comment = [_ | _] ->
-        ( Decl = [],
+        (
+            Decl = [],
             LineType = comment(string.from_char_list(Comment))
-        ; Decl = [_ | _],
+        ;
+            Decl = [_ | _],
             LineType = code_and_comment(string.from_char_list(Comment))
         )
     ;
@@ -169,16 +167,14 @@ line_type(Line) = LineType :-
 
 is_not_comment_char(C) :-
     C \= '%'.
-    
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 % Comment selection strategies
 
-    %
     % If the prog_context given has a comment associated with it
-    % add a child element which contains the comment to the
-    % given XML.
+    % add a child element which contains the comment to the given XML.
     %
 :- func maybe_add_comment(comments, prog_context, xml) = xml.
 
@@ -192,8 +188,7 @@ maybe_add_comment(Comments, Context, Xml) =
     ;
         unexpected(this_file, "maybe_add_comment: not an element")
     ).
-    
-    %
+
     % Get the comment string associated with the given prog_context.
     %
 :- func get_comment(comments, prog_context) = string.
@@ -215,7 +210,6 @@ get_comment(Comments, context(_, Line)) =
 
 %-----------------------------------------------------------------------------%
 
-    %
     % Succeeds if the current line has a comment.
     % The comment is extended with all the lines following
     % the current line which just contain a comment.
@@ -227,10 +221,9 @@ comment_on_current_line(Comments, Line, Comment) :-
     RestComment = get_comment_forwards(Comments, Line + 1),
     Comment = Comment0 ++ RestComment.
 
-    %
     % Succeeds if the comment is directly above the current line.
-    % The comment above ends when we find a line above the current
-    % line which doesn't just contain a comment.
+    % The comment above ends when we find a line above the current line
+    % which doesn't just contain a comment.
     %
 :- pred comment_directly_above(comments::in, int::in, string::out) is semidet.
 
@@ -238,7 +231,6 @@ comment_directly_above(Comments, Line, Comment) :-
     map.search(Comments ^ line_types, Line - 1, comment(_)),
     Comment = get_comment_backwards(Comments, Line - 1).
 
-    %
     % Return the string which represents the comment starting at the given
     % line.  The comment ends when a line which is not a plain comment line
     % is found.
@@ -262,7 +254,6 @@ get_comment_forwards(Comments, Line) = Comment :-
         Comment = ""
     ).
 
-    %
     % Return the string which represents the comment ending at the given line.
     % The comment extends backwards until the the line above the given
     % line is not a comment only line.
@@ -286,7 +277,6 @@ get_comment_backwards(Comments, Line) = Comment :-
         Comment = ""
     ).
 
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -306,8 +296,8 @@ get_comment_backwards(Comments, Line) = Comment :-
         PredXml = elem("preds", [], PredXmls),
 
         module_info_get_class_table(ModuleInfo, ClassTable),
-        map.foldl(class_documentation(Comments, PredTable),
-                ClassTable, [], ClassXmls),
+        map.foldl(class_documentation(Comments, PredTable), ClassTable,
+            [], ClassXmls),
         ClassXml = elem("typeclasses", [], ClassXmls),
 
         Xml = elem("module", [], [CommentXml, TypeXml, PredXml, ClassXml])
@@ -317,7 +307,6 @@ get_comment_backwards(Comments, Line) = Comment :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    %
     % Output the documentation of one type.
     %
 :- pred type_documentation(comments::in, type_ctor::in, hlds_type_defn::in,
@@ -374,7 +363,6 @@ type_body(_, _, hlds_foreign_type(_)) = [nyi("hlds_foreign_type")].
 type_body(_, _, hlds_solver_type(_, _)) = [nyi("hlds_solver_type")].
 type_body(_, _, hlds_abstract_type(_)) = [nyi("hlds_abstract_type")].
 
-
 :- func constructor(comments, tvarset, constructor) = xml.
 
 constructor(C, TVarset,
@@ -385,9 +373,9 @@ constructor(C, TVarset,
     XmlArgs = xml_list("ctor_args", constructor_arg(C, TVarset), Args),
     XmlExistVars = xml_list("ctor_exist_vars", type_param(TVarset), Exists),
     XmlConstraints =
-            xml_list("ctor_constraints", prog_constraint(TVarset), Constraints),
+        xml_list("ctor_constraints", prog_constraint(TVarset), Constraints),
     Xml0 = elem("constructor", [Id],
-            [XmlName, XmlContext, XmlArgs, XmlExistVars, XmlConstraints]),
+        [XmlName, XmlContext, XmlArgs, XmlExistVars, XmlConstraints]),
     Xml = maybe_add_comment(C, Context, Xml0).
 
 :- func constructor_arg(comments, tvarset, constructor_arg) = xml.
@@ -465,7 +453,7 @@ predicate_documentation(C, PredInfo) = Xml :-
     IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
-    PredName = qualified(Module, Name), 
+    PredName = qualified(Module, Name),
     Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
 
@@ -493,8 +481,8 @@ predicate_documentation(C, PredInfo) = Xml :-
     XmlModes = elem("pred_modes", [], XmlProcs),
 
     Xml0 = elem(Tag, [attr("id", Id)],
-            [XmlName, XmlTypes, XmlContext,
-             XmlExistVars, XmlConstraints, XmlVisibility, XmlModes]),
+        [XmlName, XmlTypes, XmlContext,
+        XmlExistVars, XmlConstraints, XmlVisibility, XmlModes]),
 
     Xml = maybe_add_comment(C, Context, Xml0).
 
@@ -520,7 +508,7 @@ keep_last_n(N, L0) =
 prog_constraints(TVarset, constraints(Univs, Exists)) = Xml :-
     XmlUnivs = xml_list("pred_universal", prog_constraint(TVarset), Univs),
     XmlExists = xml_list("pred_exist", prog_constraint(TVarset), Exists),
-    
+
     Xml = elem("pred_constraints", [], [XmlUnivs, XmlExists]).
 
 %-----------------------------------------------------------------------------%
@@ -540,7 +528,7 @@ pred_mode_documentation(_C, _ProcId, ProcInfo, !Xml) :-
     Xml = elem("pred_mode", [], [XmlModes, XmlDet]),
 
     !:Xml = [Xml | !.Xml].
-    
+
 :- func mer_mode(inst_varset, mer_mode) = xml.
 
 mer_mode(IVarset, A -> B) = Xml :-
@@ -620,7 +608,6 @@ cons_id(table_io_decl(_)) = nyi("table_io_decl").
 
 arity(Arity) = tagged_int("arity", Arity).
 
-
 :- func determinism(determinism) = xml.
 
 determinism(detism_det) = tagged_string("determinism", "det").
@@ -651,17 +638,17 @@ class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
         XmlName = name(Name),
         XmlClassVars = xml_list("class_vars", type_param(TVarset), Vars),
         XmlSupers = xml_list("superclasses",
-                prog_constraint(TVarset), ClassDefn ^ class_supers),
+            prog_constraint(TVarset), ClassDefn ^ class_supers),
         XmlFundeps = xml_list("fundeps",
-                fundep(TVarset, Vars), ClassDefn ^ class_fundeps),
+            fundep(TVarset, Vars), ClassDefn ^ class_fundeps),
         XmlMethods = class_methods(C,
-                PredTable, ClassDefn ^ class_hlds_interface),
+            PredTable, ClassDefn ^ class_hlds_interface),
         XmlVisibility = visibility(ImportStatus),
         XmlContext = prog_context(Context),
 
         Xml0 = elem("typeclass", [attr("id", Id)],
-                [XmlName, XmlClassVars, XmlSupers,
-                XmlFundeps, XmlMethods, XmlVisibility, XmlContext]),
+            [XmlName, XmlClassVars, XmlSupers,
+            XmlFundeps, XmlMethods, XmlVisibility, XmlContext]),
 
         Xml = maybe_add_comment(C, Context, Xml0),
 
@@ -676,7 +663,6 @@ fundep(TVarset, Vars, fundep(Domain, Range)) = Xml :-
     XmlDomain = fundep_2("domain", TVarset, Vars, Domain),
     XmlRange = fundep_2("range", TVarset, Vars, Range),
     Xml = elem("fundep", [], [XmlDomain, XmlRange]).
-    
 
 :- func fundep_2(string, tvarset, list(tvar), set(hlds_class_argpos)) = xml.
 
@@ -740,7 +726,6 @@ visibility(Status) = tagged_string("visibility", Visibility) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    %
     % sym_name_to_id(P, S) converts the sym_name, S, into
     % a string with prefix, P, prefixed to the generated name.
     %
@@ -748,7 +733,6 @@ visibility(Status) = tagged_string("visibility", Visibility) :-
 
 sym_name_to_id(Prefix, Name) = prefixed_sym_name(Prefix, Name).
 
-    %
     % sym_name_to_id(P, S, A) converts the sym_name, S, with
     % arity, A, into a string with prefix, P, prefixed to the
     % generated name.
@@ -795,5 +779,6 @@ nyi(Tag) = tagged_string(Tag, "Not yet implemented!").
 :- func this_file = string.
 
 this_file = "xml_documentation.m".
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

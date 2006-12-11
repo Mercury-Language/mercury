@@ -20,11 +20,10 @@ ENDINIT
 */
 
 /*
-** Note that the routines here don't need any special handling for
-** accurate GC, since they only do tail-calls (or equivalent);
-** their stack stack frames will never be live on the stack
-** when a garbage collection occurs (or if they are, will never
-** contain any live variables that might contain pointers to
+** Note that the routines here don't need any special handling for accurate GC,
+** since they only do tail-calls (or equivalent); their stack stack frames
+** will never be live on the stack when a garbage collection occurs (or if they
+** are, will never contain any live variables that might contain pointers to
 ** the Mercury heap).
 */
 
