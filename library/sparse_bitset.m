@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: sparse_bitset.m.
 % Author: stayl.
 % Stability: medium.
-% 
+%
 % This module provides an ADT for storing sets of integers.
 % If the integers stored are closely grouped, a sparse_bitset
 % is much more compact than the representation provided by set.m,
@@ -36,7 +36,7 @@
 % In the asymptotic complexities of the operations below,
 % `rep_size(Set)' is the number of pairs needed to represent `Set',
 % and `card(Set)' is the number of elements in `Set'.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -668,7 +668,7 @@ count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
 make_singleton_set(A) = insert(init, A).
 
 insert(sparse_bitset(Set), Elem) =
-        sparse_bitset(insert_2(Set, enum.to_int(Elem))).
+    sparse_bitset(insert_2(Set, enum.to_int(Elem))).
 
 :- func insert_2(bitset_impl, int) = bitset_impl.
 
@@ -818,6 +818,7 @@ list_to_set(List) =
     % in the same bitset_elem as the first element. The assumption here is that
     % the items in the input list will have similar values, so that only a few
     % passes will be needed.
+    %
 :- func list_to_set_2(list(T), bitset_impl) = bitset_impl <= enum(T).
 :- pragma type_spec(list_to_set_2/2, T = var(_)).
 :- pragma type_spec(list_to_set_2/2, T = int).
@@ -831,6 +832,7 @@ list_to_set_2([H | T], List0) = List :-
 
     % Go through the list picking out the elements which belong in the same
     % bitset_elem as the first element, returning the uncollected elements.
+    %
 :- pred list_to_set_3(list(T)::in, int::in, int::in, int::out,
     list(T)::in, list(T)::out) is det <= enum(T).
 :- pragma type_spec(list_to_set_3/6, T = var(_)).
@@ -846,8 +848,9 @@ list_to_set_3([H | T], Offset, !Bits, !Rest) :-
     ),
     list_to_set_3(T, Offset, !Bits, !Rest).
 
-    % The list of elements here is pretty much guaranteed
-    % to be small, so use an insertion sort.
+    % The list of elements here is pretty much guaranteed to be small,
+    % so use an insertion sort.
+    %
 :- func insert_bitset_elem(bitset_elem, bitset_impl) = bitset_impl.
 
 insert_bitset_elem(Data, []) = [Data].
@@ -897,9 +900,11 @@ sorted_list_to_set_3(Elem1, [Elem2 | Elems], Offset, Bits, Rest) :-
 
 %-----------------------------------------------------------------------------%
 
-subset(Subset, Set) :- intersect(Set, Subset, Subset).
+subset(Subset, Set) :-
+    intersect(Set, Subset, Subset).
 
-superset(Superset, Set) :- subset(Set, Superset).
+superset(Superset, Set) :-
+    subset(Set, Superset).
 
 %-----------------------------------------------------------------------------%
 
@@ -1059,6 +1064,7 @@ difference_2(Set1, Set2) = Set :-
 
     % Return the offset of the element of a set which should contain the given
     % element, and an int with the bit corresponding to that element set.
+    %
 :- pred bits_for_index(int::in, int::out, int::out) is det.
 :- pragma inline(bits_for_index/3).
 
@@ -1084,6 +1090,7 @@ clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1, Bit).
 
     % `mask(N)' returns a mask which can be `and'ed with an integer to return
     % the lower `N' bits of the integer. `N' must be less than bits_per_int.
+    %
 :- func mask(int) = int.
 :- pragma inline(mask/1).
 
