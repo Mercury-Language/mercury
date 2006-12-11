@@ -757,7 +757,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
             !:Specs = [Spec | !.Specs]
         ),
         %
-        % Check that the inst in the mutable delcaration is a valid inst for a
+        % Check that the inst in the mutable declaration is a valid inst for a
         % mutable declaration.
         %
         ( is_valid_mutable_inst(!.ModuleInfo, Inst) ->
@@ -1053,16 +1053,18 @@ add_item_clause(item_promise(PromiseType, Goal, VarSet, UnivVars),
         !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     % If the outermost universally quantified variables are placed in the head
     % of the dummy predicate, the typechecker will avoid warning about unbound
-    % type variables as this implicity adds a universal quantification of the
-    % typevariables needed.
-
+    % type variables as this implicitly adds a universal quantification of the
+    % type variables needed.
     term.var_list_to_term_list(UnivVars, HeadVars),
-
-    % extra error checking for promise ex declarations
-    ( PromiseType \= promise_type_true ->
+    (
+        % Extra error checking for promise ex declarations.
+        ( PromiseType = promise_type_exclusive
+        ; PromiseType = promise_type_exhaustive
+        ; PromiseType = promise_type_exclusive_exhaustive
+        ),
         check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !Specs)
     ;
-        true
+        PromiseType = promise_type_true
     ),
     % Add as dummy predicate.
     add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context,
@@ -1164,7 +1166,8 @@ add_item_clause(item_initialise(compiler(Details), SymName, _Arity),
     % variables.  These predicates *must* be impure in order to prevent the
     % compiler optimizing them away.
 
-    ( Details = mutable_decl ->
+    (
+        Details = mutable_decl,
         module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
         ExportLang = lang_c,    % XXX Implement for other backends.
         PragmaExportItem =
@@ -1174,6 +1177,12 @@ add_item_clause(item_initialise(compiler(Details), SymName, _Arity),
         add_item_clause(PragmaExportItem, !Status, Context,
             !ModuleInfo, !QualInfo, !Specs)
     ;
+        ( Details = initialise_decl
+        ; Details = finalise_decl
+        ; Details = solver_type
+        ; Details = pragma_memo_attribute
+        ; Details = foreign_imports
+        ),
         unexpected(this_file, "Bad introduced initialise declaration.")
     ).
 add_item_clause(item_finalise(Origin, SymName, Arity),
@@ -1183,11 +1192,12 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
     % (2) add `:- pragma foreign_export("C", finalpred(di, uo), CName).',
     % (3) record the finalpred/cname pair in the ModuleInfo so that
     % code generation can ensure cname is called during module finalisation.
-
-    ( Origin \= user ->
+    
+    ( 
+        Origin = compiler(_),
         unexpected(this_file, "Bad introduced finalise declaration.")
     ;
-        true
+        Origin = user 
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     (
