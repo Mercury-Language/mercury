@@ -135,9 +135,9 @@ MercuryFile         MR_debugger_socket_out;
 static MR_String    MR_external_mmc_options;
 
 /*
-** Type of a static variable that indicates in which mode the external 
+** Type of a static variable that indicates in which mode the external
 ** debugger is. When the external debugger is in mode:
-** (1) `MR_searching', it tries to find an event that matches a forward 
+** (1) `MR_searching', it tries to find an event that matches a forward
 **     move request,
 ** (2) `MR_reading_request', it reads a new request on the socket,
 ** (3) `MR_collecting', it is collecting information (after a `collect'
@@ -148,11 +148,11 @@ typedef enum {
     MR_searching, MR_reading_request, MR_collecting
 } MR_external_debugger_mode_type;
 
-static  MR_external_debugger_mode_type 
+static  MR_external_debugger_mode_type
     external_debugger_mode = MR_reading_request;
 
 /*
-** Global variable that is used to store the information collected during 
+** Global variable that is used to store the information collected during
 ** a collect request.
 */
 
@@ -171,7 +171,7 @@ static  MR_Word MR_collected_variable;
 static void (*post_process_ptr)(MR_Word, MR_Word *);
 
 /*
-** Function pointer used to sent the collecting variable to the external 
+** Function pointer used to sent the collecting variable to the external
 ** debugger.
 */
 
@@ -185,7 +185,7 @@ static  void    (*send_collect_result_ptr)(MR_Word, MR_Word);
 static  MR_Word collect_lib_maybe_handle;
 
 /*
-** Static variable that tells whether the list of arguments is available 
+** Static variable that tells whether the list of arguments is available
 ** within a collect module.
 */
 
@@ -193,7 +193,7 @@ static  MR_bool MR_collect_arguments = MR_FALSE;
 
 /*
 ** Use a GNU C extension to enforce static type checking
-** for printf-style functions. 
+** for printf-style functions.
 ** (See the "Function attributes" section of "C extensions"
 ** chapter of the GNU C manual for detailed documentation.)
 */
@@ -209,9 +209,9 @@ static void     MR_send_message_to_socket_format(const char *format, ...)
                     MR_LIKE_PRINTF(1, 2);
 
 static void     MR_send_message_to_socket(const char *message);
-static void     MR_read_request_from_socket(MR_Word *debugger_request_ptr, 
+static void     MR_read_request_from_socket(MR_Word *debugger_request_ptr,
                     MR_Integer *debugger_request_type_ptr);
-    
+
 static MR_bool  MR_found_match(const MR_LabelLayout *layout,
                     MR_TracePort port, MR_Unsigned seqno, MR_Unsigned depth,
                     /* XXX registers */ const char *path, MR_Word search_data);
@@ -220,7 +220,7 @@ static void     MR_output_current_slots(const MR_LabelLayout *layout,
                     MR_Unsigned depth, const char *path, int lineno);
 static void     MR_output_current_vars(MR_Word var_list, MR_Word string_list);
 static void     MR_output_current_nth_var(MR_Word var);
-static void     MR_output_current_live_var_names(MR_Word var_names_list, 
+static void     MR_output_current_live_var_names(MR_Word var_names_list,
                      MR_Word type_list);
 static MR_Word  MR_trace_make_var_list(void);
 static MR_Word  MR_trace_make_var_names_list(void);
@@ -229,17 +229,17 @@ static MR_Word  MR_trace_make_nth_var(MR_Word debugger_request);
 static int      MR_get_var_number(MR_Word debugger_request);
 static void     MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
                     const char *extra, MR_Word *base_sp, MR_Word *base_curfr);
-static void     MR_dump_stack_record_print_to_socket(FILE *fp, 
+static void     MR_dump_stack_record_print_to_socket(FILE *fp,
                     const MR_ProcLayout *entry_layout, int count,
                     int start_level, MR_Word *base_sp, MR_Word *base_curfr,
                     const char *filename, int linenumber,
                     const char *goal_path, MR_bool context_mismatch);
-static void     MR_get_list_modules_to_import(MR_Word debugger_request, 
+static void     MR_get_list_modules_to_import(MR_Word debugger_request,
                     MR_Integer *modules_list_length_ptr,
                     MR_Word *modules_list_ptr);
-static void     MR_get_mmc_options(MR_Word debugger_request, 
+static void     MR_get_mmc_options(MR_Word debugger_request,
                     MR_String *mmc_options_ptr);
-static void     MR_get_object_file_name(MR_Word debugger_request, 
+static void     MR_get_object_file_name(MR_Word debugger_request,
                     MR_String *object_file_name_ptr);
 static void     MR_get_variable_name(MR_Word debugger_request,
                     MR_String *var_name_ptr);
@@ -274,7 +274,7 @@ accept(Sock, _, New_Sock).
 #endif
 
 #if 0
-    
+
 static void
 MR_init_unix_address(const char *name, struct sockaddr_un *unix_addr)
 {
@@ -320,12 +320,14 @@ MR_trace_init_external(void)
     MR_Word             debugger_request;
     MR_Integer          debugger_request_type;
 
-    /* 
+    /*
     ** MR_external_mmc_options contains the options to pass to mmc
     ** when compiling queries. We initialize it to the MR_String "".
     */
 
-    MR_TRACE_CALL_MERCURY(ML_DI_init_mercury_string(&MR_external_mmc_options));
+    MR_TRACE_CALL_MERCURY(
+        ML_DI_init_mercury_string(&MR_external_mmc_options)
+    );
 
     /*
     ** We presume that the user's program has been invoked from
@@ -339,16 +341,13 @@ MR_trace_init_external(void)
     unix_socket = getenv("MERCURY_DEBUGGER_UNIX_SOCKET");
     inet_socket = getenv("MERCURY_DEBUGGER_INET_SOCKET");
     if (unix_socket == NULL && inet_socket == NULL) {
-        MR_fatal_error("you must set either the "
-            "MERCURY_DEBUGGER_UNIX_SOCKET\n"
-            "or MERCURY_DEBUGGER_INET_SOCKET "
-            "environment variable");
+        MR_fatal_error("you must set either the MERCURY_DEBUGGER_UNIX_SOCKET\n"
+            "or MERCURY_DEBUGGER_INET_SOCKET environment variable");
     }
     if (unix_socket != NULL && inet_socket != NULL) {
         MR_fatal_error("you must set only one of the "
-            "MERCURY_DEBUGGER_UNIX_SOCKET "
-            "and MERCURY_DEBUGGER_INET_SOCKET\n"
-            "environment variables");
+            "MERCURY_DEBUGGER_UNIX_SOCKET\n"
+            "and MERCURY_DEBUGGER_INET_SOCKET environment variables");
     }
     if (unix_socket) {
         /*
@@ -359,19 +358,18 @@ MR_trace_init_external(void)
         ** between our use of global register variables and the inline
         ** assembler macro definition of memset.
         */
-         
+
         addr_family = AF_UNIX;
         (memset)(&unix_address, 0, sizeof(unix_address));
         unix_address.sun_family = AF_UNIX;
         strcpy(unix_address.sun_path, unix_socket);
         addr = (struct sockaddr *) &unix_address;
-        len = strlen(unix_address.sun_path) + 
-            sizeof(unix_address.sun_family);
+        len = strlen(unix_address.sun_path) + sizeof(unix_address.sun_family);
     } else {
-        char hostname[255];
-        char port_string[255];
-        unsigned short port;
-        int host_addr;
+        char            hostname[255];
+        char            port_string[255];
+        unsigned short  port;
+        int             host_addr;
 
         /*
         ** Parse the MERCURY_DEBUGGER_INET_SOCKET environment variable.
@@ -379,19 +377,15 @@ MR_trace_init_external(void)
         ** where <hostname> is numeric (e.g. "123.456.78.90").
         */
 
-        if (sscanf(inet_socket, "%254s %254s", hostname, port_string) 
-            != 2)
-        {
+        if (sscanf(inet_socket, "%254s %254s", hostname, port_string) != 2) {
             MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
         }
         host_addr = inet_addr(hostname);
         if (host_addr == -1) {
-            MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
-                "invalid address");
+            MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET: invalid address");
         }
         if (sscanf(port_string, "%hu", &port) != 1) {
-            MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
-                "invalid port");
+            MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET: invalid port");
         }
 
         if (MR_debug_socket) {
@@ -420,8 +414,9 @@ MR_trace_init_external(void)
     }
 
     /*
-    ** Connect to the socket
+    ** Connect to the socket.
     */
+
     if (connect(fd, addr, len) < 0) {
         fprintf(stderr, "Mercury runtime: connect() failed: %s\n",
             strerror(errno));
@@ -431,8 +426,9 @@ MR_trace_init_external(void)
     }
 
     /*
-    ** Convert the socket fd to a Mercury stream
+    ** Convert the socket fd to a Mercury stream.
     */
+
     file_in = fdopen(fd, "r");
     file_out = fdopen(fd, "w");
     if ((file_in == NULL)||(file_out == NULL)) {
@@ -447,7 +443,7 @@ MR_trace_init_external(void)
     MR_mercuryfile_init(file_out, 1, &MR_debugger_socket_out);
 
     /*
-    ** Send hello
+    ** Send hello.
     */
 
     MR_send_message_to_socket("hello");
@@ -456,7 +452,7 @@ MR_trace_init_external(void)
     }
 
     /*
-    ** Wait for hello_reply  
+    ** Wait for hello_reply.
     */
 
     MR_read_request_from_socket(&debugger_request, &debugger_request_type);
@@ -468,7 +464,7 @@ MR_trace_init_external(void)
     }
 
     /*
-    ** Send start to start the synchronous communication with the debugger
+    ** Send start to start the synchronous communication with the debugger.
     */
 
     MR_send_message_to_socket("start");
@@ -481,10 +477,9 @@ void
 MR_trace_final_external(void)
 {
     /*
-    ** This can only happen during a forward_move or a 
-    ** collect request. In the first case, we want to tell 
-    ** the debugger that no match was found; in the second 
-    ** one we send the result of the collect activity.
+    ** This can only happen during a forward_move or a collect request.
+    ** In the first case, we want to tell the debugger that no match was found;
+    ** in the second one we send the result of the collect activity.
     */
 
     switch(external_debugger_mode) {
@@ -500,12 +495,12 @@ MR_trace_final_external(void)
         default:
             MR_fatal_error("Error in the external debugger");
     }
+
     /*
-    ** Maybe we should loop to process requests from the
-    ** debugger socket here?  Currently we just return,
-    ** which will result in the debuggee terminating.
-    ** (This will need to change if the debuggee is to record
-    ** trace history and support a `move_backward' request.)
+    ** Maybe we should loop to process requests from the debugger socket here?
+    ** Currently we just return, which will result in the debuggee terminating.
+    ** (This will need to change if the debuggee is to record trace history
+    ** and support a `move_backward' request.)
     */
 }
 
@@ -543,14 +538,13 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
     MR_update_trace_func_enabled();
 
     MR_trace_init_point_vars(event_info->MR_event_sll,
-        event_info->MR_saved_regs, event_info->MR_trace_port,
-        MR_FALSE);
+        event_info->MR_saved_regs, event_info->MR_trace_port, MR_FALSE);
 
     switch(external_debugger_mode) {
         case MR_searching:
-            /* 
-            ** XXX should also pass registers here, since they're 
-            ** needed for checking for matches with the arguments 
+            /*
+            ** XXX Should also pass the registers here, since they are needed
+            ** for checking for matches with the arguments.
             */
             if (MR_found_match(layout, port, seqno, depth,
                 /* XXX registers, */ path, search_data))
@@ -563,7 +557,7 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
             break;
 
         case MR_collecting:
-            MR_send_collect_result(); 
+            MR_send_collect_result();
             MR_send_message_to_socket("execution_continuing");
             break;
 
@@ -573,10 +567,10 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
         default:
             MR_fatal_error("Software error in the debugger.\n");
     }
-    
+
     lineno = MR_get_line_number(event_info->MR_saved_regs, layout, port);
 
-    /* loop to process requests read from the debugger socket */
+    /* Loop to process requests read from the debugger socket. */
     for(;;) {
         MR_read_request_from_socket(&debugger_request, &debugger_request_type);
         switch((int) debugger_request_type) {
@@ -585,8 +579,7 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
 
             case MR_REQUEST_FORWARD_MOVE:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "FORWARD_MOVE\n");
+                    fprintf(stderr, "\nMercury runtime: FORWARD_MOVE\n");
                 }
                 search_data = debugger_request;
                 external_debugger_mode = MR_searching;
@@ -604,8 +597,8 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
 
             case MR_REQUEST_CURRENT_VARS:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_CURRENT_VARS\n");
+                    fprintf(stderr,
+                        "\nMercury runtime: REQUEST_CURRENT_VARS\n");
                 }
                 var_list = MR_trace_make_var_list();
                 var_names_list = MR_trace_make_var_names_list();
@@ -614,17 +607,17 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
 
             case MR_REQUEST_CURRENT_NTH_VAR:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_NTH_CURRENT_VAR\n");
+                    fprintf(stderr,
+                        "\nMercury runtime: REQUEST_NTH_CURRENT_VAR\n");
                 }
                 var = MR_trace_make_nth_var(debugger_request);
                 MR_output_current_nth_var(var);
-                break;          
+                break;
 
             case MR_REQUEST_CURRENT_SLOTS:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_CURRENT_SLOTS\n");
+                    fprintf(stderr,
+                        "\nMercury runtime: REQUEST_CURRENT_SLOTS\n");
                 }
                 MR_output_current_slots(layout, port, seqno, depth, path,
                     lineno);
@@ -632,12 +625,11 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
 
             case MR_REQUEST_RETRY:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_RETRY\n");
+                    fprintf(stderr, "\nMercury runtime: REQUEST_RETRY\n");
                 }
 
                 retry_result = MR_trace_retry(event_info, 0,
-                    MR_RETRY_IO_ONLY_IF_SAFE, MR_FALSE, "", &unsafe_retry, 
+                    MR_RETRY_IO_ONLY_IF_SAFE, MR_FALSE, "", &unsafe_retry,
                     &message, NULL, NULL, &jumpaddr);
                 if (retry_result == MR_RETRY_OK_DIRECT) {
                     MR_send_message_to_socket("ok");
@@ -649,11 +641,10 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                         message);
                 }
                 break;
-                
+
             case MR_REQUEST_STACK:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_STACK\n");
+                    fprintf(stderr, "\nMercury runtime: REQUEST_STACK\n");
                 }
                 MR_trace_init_modules();
                 message = MR_dump_stack_from_layout(stdout, layout,
@@ -667,31 +658,31 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                 } else {
                     MR_send_message_to_socket("ok");
                 }
-                break; 
-            
-            case MR_REQUEST_NONDET_STACK: 
+                break;
+
+            case MR_REQUEST_NONDET_STACK:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_NONDET_STACK\n");
+                    fprintf(stderr,
+                        "\nMercury runtime: REQUEST_NONDET_STACK\n");
                 }
                 MR_trace_init_modules();
-                /* 
+                /*
                 ** XXX As in stack dump, we could send the output of this
                 ** function on the socket. But the outputs are done via
                 ** fprintf() and printlabel(), so we would need to define new
                 ** fprintf() and printlabel() and pass them down as parameters
                 ** of MR_dump_nondet_stack() (as we do with
                 ** MR_dump_stack_record_print()).
-                */                      
+                */
                 MR_dump_nondet_stack(stdout, NULL, 0, 0,
                     MR_saved_maxfr(saved_regs));
                 MR_send_message_to_socket("ok");
                 break;
-            
+
             case MR_REQUEST_STACK_REGS:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_STACK_REGS\n");
+                    fprintf(stderr,
+                        "\nMercury runtime: REQUEST_STACK_REGS\n");
                 }
                 MR_send_message_to_socket_format(
                     "stack_regs(%lu, %lu, %lu).\n",
@@ -699,7 +690,7 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                     (unsigned long) MR_saved_curfr(saved_regs),
                     (unsigned long) MR_saved_maxfr(saved_regs));
                 break;
-            
+
             case MR_REQUEST_INTERACTIVE_QUERY_NORMAL:
                 if (MR_debug_socket) {
                     fprintf(stderr, "\nMercury runtime: "
@@ -707,8 +698,8 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                 }
                 MR_get_list_modules_to_import(debugger_request,
                     &modules_list_length, &modules_list);
-                MR_trace_query_external(MR_NORMAL_QUERY, 
-                    MR_external_mmc_options, modules_list_length, 
+                MR_trace_query_external(MR_NORMAL_QUERY,
+                    MR_external_mmc_options, modules_list_length,
                     modules_list);
                 break;
 
@@ -736,8 +727,8 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
 
             case MR_REQUEST_MMC_OPTIONS:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_MMC_OPTIONS\n");
+                    fprintf(stderr,
+                        "\nMercury runtime: REQUEST_MMC_OPTIONS\n");
                 }
                 MR_get_mmc_options(debugger_request, &MR_external_mmc_options);
                 MR_send_message_to_socket("mmc_options_ok");
@@ -749,8 +740,8 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                     MR_VarSpec  var_spec;
 
                     if (MR_debug_socket) {
-                        fprintf(stderr, "\nMercury runtime: "
-                            "REQUEST_BROWSE\n");
+                        fprintf(stderr,
+                            "\nMercury runtime: REQUEST_BROWSE\n");
                     }
                     MR_get_variable_name(debugger_request, &var_name);
                     var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
@@ -771,8 +762,8 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                     MR_Word MR_accumulator_variable_type;
 
                     if (MR_debug_socket) {
-                        fprintf(stderr, "\nMercury runtime: "
-                            "REQUEST_LINK_COLLECT\n");
+                        fprintf(stderr,
+                            "\nMercury runtime: REQUEST_LINK_COLLECT\n");
                     }
                     MR_get_object_file_name(debugger_request,
                         &MR_object_file_name);
@@ -792,7 +783,8 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                         MR_send_message_to_socket("link_collect_succeeded");
                         MR_TRACE_CALL_MERCURY(
                             (*get_collect_var_type_ptr)(
-                                &MR_accumulator_variable_type));
+                                &MR_accumulator_variable_type);
+                        );
                         MR_accumulator_variable = MR_make_permanent(
                             MR_accumulator_variable,
                             (MR_TypeInfo) MR_accumulator_variable_type);
@@ -803,14 +795,13 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                   }
             case MR_REQUEST_COLLECT:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_COLLECT\n");
+                    fprintf(stderr, "\nMercury runtime: REQUEST_COLLECT\n");
                 }
                 if (collect_linked) {
                     MR_send_message_to_socket("collect_linked");
                     external_debugger_mode = MR_collecting;
                     MR_TRACE_CALL_MERCURY(
-                        (*initialize_ptr)(&MR_accumulator_variable)
+                        (*initialize_ptr)(&MR_accumulator_variable);
                     );
 
                     /*
@@ -828,8 +819,7 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                     } else {
                         /*
                         ** For efficiency, the remaining calls
-                        ** to MR_COLLECT_filter() are done in 
-                        ** MR_trace_real().
+                        ** to MR_COLLECT_filter() are done in MR_trace_real().
                         */
 
                         cmd->MR_trace_cmd = MR_CMD_COLLECT;
@@ -846,17 +836,17 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
 
             case MR_REQUEST_CURRENT_GRADE:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_CURRENT_GRADE\n");
+                    fprintf(stderr,
+                        "\nMercury runtime: REQUEST_CURRENT_GRADE\n");
                 }
-                MR_send_message_to_socket_format("grade(\"%s\").\n", 
+                MR_send_message_to_socket_format("grade(\"%s\").\n",
                     MR_GRADE_OPT);
                 break;
 
             case MR_REQUEST_COLLECT_ARG_ON:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_COLLECT_ARG_ON\n");
+                    fprintf(stderr,
+                        "\nMercury runtime: REQUEST_COLLECT_ARG_ON\n");
                 }
                 MR_collect_arguments = MR_TRUE;
                 MR_send_message_to_socket("collect_arg_on_ok");
@@ -864,8 +854,8 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
 
             case MR_REQUEST_COLLECT_ARG_OFF:
                 if (MR_debug_socket) {
-                    fprintf(stderr, "\nMercury runtime: "
-                        "REQUEST_COLLECT_ARG_OFF\n");
+                    fprintf(stderr,
+                        "\nMercury runtime: REQUEST_COLLECT_ARG_OFF\n");
                 }
                 MR_collect_arguments = MR_FALSE;
                 MR_send_message_to_socket("collect_arg_off_ok");
@@ -879,8 +869,8 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
 
 done:
     /*
-    ** Recalculate the `must_check' flag, in case we
-    ** changed the command strictness or print-level
+    ** Recalculate the `must_check' flag, in case we changed the command
+    ** strictness or print-level.
     */
     cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
         (cmd->MR_trace_print_level != MR_PRINT_LEVEL_NONE);
@@ -904,46 +894,46 @@ MR_output_current_slots(const MR_LabelLayout *layout,
     if (MR_PROC_LAYOUT_IS_UCI(layout->MR_sll_entry)) {
         MR_TRACE_CALL_MERCURY(
             ML_DI_output_current_slots_comp(
-            MR_trace_event_number,
-            seqno,
-            depth,
-            port,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_type_name,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_type_module,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_def_module,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_pred_name,
-            /* is the type_ctor's arity what is wanted? XXX */
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_type_arity,
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_mode,
-            layout->MR_sll_entry->MR_sle_detism,
-            (MR_String) (MR_Word) path,
-            lineno,
-            MR_wrap_output_stream(&MR_debugger_socket_out));
+                MR_trace_event_number,
+                seqno,
+                depth,
+                port,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_type_name,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_type_module,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_def_module,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_pred_name,
+                /* is the type_ctor's arity what is wanted? XXX */
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_type_arity,
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_mode,
+                layout->MR_sll_entry->MR_sle_detism,
+                (MR_String) (MR_Word) path,
+                lineno,
+                MR_wrap_output_stream(&MR_debugger_socket_out));
         );
     } else {
         MR_TRACE_CALL_MERCURY(
             ML_DI_output_current_slots_user(
-            MR_trace_event_number,
-            seqno,
-            depth,
-            port,
-            layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_user.MR_user_name,
-            layout->MR_sll_entry->MR_sle_user.MR_user_arity,
-            layout->MR_sll_entry->MR_sle_user.MR_user_mode,
-            layout->MR_sll_entry->MR_sle_detism,
-            (MR_String) (MR_Word) path,
-            lineno,
-            MR_wrap_output_stream(&MR_debugger_socket_out));
+                MR_trace_event_number,
+                seqno,
+                depth,
+                port,
+                layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_user.MR_user_name,
+                layout->MR_sll_entry->MR_sle_user.MR_user_arity,
+                layout->MR_sll_entry->MR_sle_user.MR_user_mode,
+                layout->MR_sll_entry->MR_sle_detism,
+                (MR_String) (MR_Word) path,
+                lineno,
+                MR_wrap_output_stream(&MR_debugger_socket_out));
         );
     }
 }
@@ -952,10 +942,10 @@ static void
 MR_output_current_vars(MR_Word var_list, MR_Word string_list)
 {
     MR_TRACE_CALL_MERCURY(
-    ML_DI_output_current_vars(
-        var_list,
-        string_list,
-        MR_wrap_output_stream(&MR_debugger_socket_out));
+        ML_DI_output_current_vars(
+            var_list,
+            string_list,
+            MR_wrap_output_stream(&MR_debugger_socket_out));
     );
 }
 
@@ -963,9 +953,9 @@ static void
 MR_output_current_nth_var(MR_Word var)
 {
     MR_TRACE_CALL_MERCURY(
-    ML_DI_output_current_nth_var(
-        var,
-        MR_wrap_output_stream(&MR_debugger_socket_out));
+        ML_DI_output_current_nth_var(
+            var,
+            MR_wrap_output_stream(&MR_debugger_socket_out));
     );
 }
 
@@ -973,27 +963,27 @@ static void
 MR_output_current_live_var_names(MR_Word var_names_list, MR_Word type_list)
 {
     MR_TRACE_CALL_MERCURY(
-    ML_DI_output_current_live_var_names(
-        var_names_list,
-        type_list,
-        MR_wrap_output_stream(&MR_debugger_socket_out));
+        ML_DI_output_current_live_var_names(
+            var_names_list,
+            type_list,
+            MR_wrap_output_stream(&MR_debugger_socket_out));
     );
 }
 
 static void
-MR_read_request_from_socket(MR_Word *debugger_request_ptr, 
+MR_read_request_from_socket(MR_Word *debugger_request_ptr,
     MR_Integer *debugger_request_type_ptr)
-{       
+{
     fflush(MR_file(MR_debugger_socket_in));
 
     MR_TRACE_CALL_MERCURY(
-    ML_DI_read_request_from_socket(
-        MR_wrap_input_stream(&MR_debugger_socket_in), 
-        debugger_request_ptr, 
-        debugger_request_type_ptr);
+        ML_DI_read_request_from_socket(
+            MR_wrap_input_stream(&MR_debugger_socket_in),
+            debugger_request_ptr,
+            debugger_request_type_ptr);
     );
 }
- 
+
 static MR_bool
 MR_found_match(const MR_LabelLayout *layout,
     MR_TracePort port, MR_Unsigned seqno, MR_Unsigned depth,
@@ -1007,53 +997,53 @@ MR_found_match(const MR_LabelLayout *layout,
     if (MR_PROC_LAYOUT_IS_UCI(layout->MR_sll_entry)) {
         MR_TRACE_CALL_MERCURY(
             result = ML_DI_found_match_comp(
-            MR_trace_event_number,
-            seqno,
-            depth,
-            port,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_type_name,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_type_module,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_def_module,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_pred_name,
-            /* is the type_ctor's arity what is wanted? XXX */
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_type_arity,
-            layout->MR_sll_entry->MR_sle_uci.MR_uci_mode,
-            layout->MR_sll_entry->MR_sle_detism,
-            arguments,
-            (MR_String) (MR_Word) path,
-            search_data);
+                MR_trace_event_number,
+                seqno,
+                depth,
+                port,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_type_name,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_type_module,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_def_module,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_pred_name,
+                /* is the type_ctor's arity what is wanted? XXX */
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_type_arity,
+                layout->MR_sll_entry->MR_sle_uci.MR_uci_mode,
+                layout->MR_sll_entry->MR_sle_detism,
+                arguments,
+                (MR_String) (MR_Word) path,
+                search_data);
         );
     } else {
         MR_TRACE_CALL_MERCURY(
             result = ML_DI_found_match_user(
-            MR_trace_event_number,
-            seqno,
-            depth,
-            port,
-            layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
-            (MR_String)
-            layout->MR_sll_entry->MR_sle_user.MR_user_name,
-            layout->MR_sll_entry->MR_sle_user.MR_user_arity,
-            layout->MR_sll_entry->MR_sle_user.MR_user_mode,
-            layout->MR_sll_entry->MR_sle_detism,
-            arguments,
-            (MR_String) path,
-            search_data);
+                MR_trace_event_number,
+                seqno,
+                depth,
+                port,
+                layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+                (MR_String)
+                layout->MR_sll_entry->MR_sle_user.MR_user_name,
+                layout->MR_sll_entry->MR_sle_user.MR_user_arity,
+                layout->MR_sll_entry->MR_sle_user.MR_user_mode,
+                layout->MR_sll_entry->MR_sle_detism,
+                arguments,
+                (MR_String) path,
+                search_data);
         );
     }
 
     return result;
 }
 
-static void    
+static void
 MR_send_message_to_socket_format(const char *format, ...)
 {
     va_list args;
@@ -1222,8 +1212,8 @@ MR_trace_make_nth_var(MR_Word debugger_request)
         );
     } else {
         /*
-        ** Should never occur since we check in the external debugger
-        ** process if a variable is live before retrieving it.
+        ** Should never occur since we check in the external debugger process
+        ** if a variable is live before retrieving it.
         */
 
         MR_fatal_error(problem);
@@ -1234,7 +1224,7 @@ MR_trace_make_nth_var(MR_Word debugger_request)
 
 /*
 ** This function is called only when debugger_request = current_nth_var(n).
-** It returns the integer 'n'.  
+** It returns the integer 'n'.
 */
 
 static int
@@ -1249,15 +1239,15 @@ MR_get_var_number(MR_Word debugger_request)
 
 /*
 ** The protocol between the debugged Mercury program and the external debugger
-** is the following: 
+** is the following:
 ** 1) The debugger sends "stack";
 ** 2) For each procedure in the stack that is not generated by the compiler, the
-**    debuggee sends: 
+**    debuggee sends:
 **  - level(int) (the level of the procedure in the stack)
 **  - detail(unsigned long, unsigned long, unsigned long) if available
-**    (the call event number, call sequence number and depth of the goal 
+**    (the call event number, call sequence number and depth of the goal
 **    of the procedure)
-**  - the atom 'pred' or 'func' depending if the procedure is a function 
+**  - the atom 'pred' or 'func' depending if the procedure is a function
 **    or not
 **  - proc(string, string, long, long) (the procedure)
 **  - det(string) (the determinism of the procedure)
@@ -1267,7 +1257,7 @@ MR_get_var_number(MR_Word debugger_request)
 **    For each compiler generated procedures, the debuggee sends:
 **  - level(int) (as above)
 **  - detail(unsigned long, unsigned long, unsigned long) (as above)
-**  - proc(string, string, string, long, long) (the name of the 
+**  - proc(string, string, string, long, long) (the name of the
 **    compiler-generated procedure)
 **  - det(string) (as above)
 **  - def_module(string) (as above)
@@ -1275,8 +1265,8 @@ MR_get_var_number(MR_Word debugger_request)
 */
 
 static void
-MR_dump_stack_record_print_to_socket(FILE *fp, 
-    const MR_ProcLayout *entry_layout, int count, int start_level, 
+MR_dump_stack_record_print_to_socket(FILE *fp,
+    const MR_ProcLayout *entry_layout, int count, int start_level,
     MR_Word *base_sp, MR_Word *base_curfr,
     const char *filename, int linenumber,
     const char *goal_path, MR_bool context_mismatch)
@@ -1320,19 +1310,19 @@ MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
         }
         if (print_details) {
             if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-                MR_send_message_to_socket_format( 
+                MR_send_message_to_socket_format(
                     "detail(%lu, %lu, %lu).\n",
                     (unsigned long) MR_event_num_stackvar(base_sp) + 1,
                     (unsigned long) MR_call_num_stackvar(base_sp),
                     (unsigned long) MR_call_depth_stackvar(base_sp));
             } else {
-                MR_send_message_to_socket_format( 
+                MR_send_message_to_socket_format(
                     "detail(%lu, %lu, %lu).\n",
                     (unsigned long) MR_event_num_framevar(base_curfr) + 1,
                     (unsigned long) MR_call_num_framevar(base_curfr),
                     (unsigned long) MR_call_depth_framevar(base_curfr));
             }
-        } 
+        }
     }
 
     if (MR_PROC_LAYOUT_IS_UCI(entry)) {
@@ -1348,8 +1338,7 @@ MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
         if (strcmp(entry->MR_sle_uci.MR_uci_type_module,
             entry->MR_sle_uci.MR_uci_def_module) != 0)
         {
-            MR_send_message_to_socket_format(
-                "def_module(\"%s\").\n",
+            MR_send_message_to_socket_format("def_module(\"%s\").\n",
                 entry->MR_sle_uci.MR_uci_def_module);
         }
     } else {
@@ -1360,7 +1349,7 @@ MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
         } else {
             MR_fatal_error("procedure is not pred or func");
         }
-        
+
         MR_send_message_to_socket_format(
             /* XXX Names with " may cause some problems here */
             "proc(\"%s\",\"%s\",%ld,%ld).\n",
@@ -1377,17 +1366,16 @@ MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
         }
     }
 
-    MR_send_message_to_socket_format("det(\"%s\").\n", 
+    MR_send_message_to_socket_format("det(\"%s\").\n",
         MR_detism_names[entry->MR_sle_detism]);
-
 }
 
 static void
-MR_get_list_modules_to_import(MR_Word debugger_request, 
+MR_get_list_modules_to_import(MR_Word debugger_request,
     MR_Integer *modules_list_length_ptr, MR_Word *modules_list_ptr)
 {
     MR_TRACE_CALL_MERCURY(
-        ML_DI_get_list_modules_to_import(debugger_request, 
+        ML_DI_get_list_modules_to_import(debugger_request,
             modules_list_length_ptr, modules_list_ptr);
     );
 }
@@ -1418,9 +1406,9 @@ MR_get_variable_name(MR_Word debugger_request, MR_String *var_name_ptr)
 }
 
 /*
-** This function does the same thing as MR_trace_browse_one() defined in 
+** This function does the same thing as MR_trace_browse_one() defined in
 ** mercury_trace_internal.c except it sends/receives program-readable terms
-** from/to the socket instead of sending human-readable strings from/to 
+** from/to the socket instead of sending human-readable strings from/to
 ** mdb_in/mdb_out.
 */
 
@@ -1430,8 +1418,8 @@ MR_trace_browse_one_external(MR_VarSpec var_spec)
     const char  *problem;
 
     problem = MR_trace_browse_one(NULL, MR_FALSE, var_spec,
-            MR_trace_browse_external, MR_BROWSE_CALLER_BROWSE,
-            MR_BROWSE_DEFAULT_FORMAT, MR_TRUE);
+        MR_trace_browse_external, MR_BROWSE_CALLER_BROWSE,
+        MR_BROWSE_DEFAULT_FORMAT, MR_TRUE);
 
     if (problem != NULL) {
         MR_send_message_to_socket_format("error(\"%s\").\n", problem);
@@ -1443,21 +1431,21 @@ MR_trace_browse_one_external(MR_VarSpec var_spec)
 ** and dynamically link with the execution.
 */
 void
-MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno, 
-    MR_Unsigned depth, MR_TracePort port, const MR_LabelLayout *layout, 
+MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno,
+    MR_Unsigned depth, MR_TracePort port, const MR_LabelLayout *layout,
     const char *path, int lineno, MR_bool *stop_collecting)
 {
-    MR_Char result;     
+    MR_Char result;
     MR_Word arguments;
 
-    /* 
+    /*
     ** Only pass the arguments list down filter
     ** if required, i.e. if MR_collect_arguments
-    ** is set to MR_TRUE. We need to do that in 
-    ** order to not penalize the performance 
+    ** is set to MR_TRUE. We need to do that in
+    ** order to not penalize the performance
     ** of collect in the cases where the argument
     ** list (which might be very big) is not used.
-    ** 
+    **
     */
     if (MR_collect_arguments) {
         arguments = MR_trace_make_var_list();
@@ -1466,24 +1454,25 @@ MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno,
             arguments = MR_list_empty()
         );
     }
-    MR_TRACE_CALL_MERCURY((*filter_ptr)(
-        MR_trace_event_number,
-        seqno,
-        depth,
-        port,
-        layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
-        (MR_String) layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
-        (MR_String) layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
-        (MR_String) layout->MR_sll_entry->MR_sle_user.MR_user_name,
-        layout->MR_sll_entry->MR_sle_user.MR_user_arity,
-        layout->MR_sll_entry->MR_sle_user.MR_user_mode,
-        arguments,
-        layout->MR_sll_entry->MR_sle_detism,
-        (MR_String) path,
-        lineno,
-        MR_accumulator_variable,
-        &MR_accumulator_variable,
-        &result)
+    MR_TRACE_CALL_MERCURY(
+        (*filter_ptr)(
+            MR_trace_event_number,
+            seqno,
+            depth,
+            port,
+            layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
+            (MR_String) layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
+            (MR_String) layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+            (MR_String) layout->MR_sll_entry->MR_sle_user.MR_user_name,
+            layout->MR_sll_entry->MR_sle_user.MR_user_arity,
+            layout->MR_sll_entry->MR_sle_user.MR_user_mode,
+            arguments,
+            layout->MR_sll_entry->MR_sle_detism,
+            (MR_String) path,
+            lineno,
+            MR_accumulator_variable,
+            &MR_accumulator_variable,
+            &result)
     );
     *stop_collecting = (result == 'y');
 }
@@ -1493,18 +1482,18 @@ MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno,
 */
 
 int
-MR_get_line_number(MR_Word *saved_regs, const MR_LabelLayout *layout, 
+MR_get_line_number(MR_Word *saved_regs, const MR_LabelLayout *layout,
     MR_TracePort port)
 {
     const char              *filename;
     const MR_LabelLayout    *parent_layout;
-    const char              *problem; 
+    const char              *problem;
     int                     lineno = 0;
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
 
     if MR_port_is_interface(port) {
-        /* 
+        /*
         ** At external events, we want the line number where the call is made,
         ** not the one where the procedure is defined.
         */
@@ -1529,12 +1518,14 @@ MR_send_collect_result(void)
     MR_TRACE_CALL_MERCURY(
         (*post_process_ptr)(MR_accumulator_variable, &MR_collected_variable);
 
-        (*send_collect_result_ptr)(MR_collected_variable, 
+        (*send_collect_result_ptr)(MR_collected_variable,
             (MR_Word) &MR_debugger_socket_out)
     );
 
 #if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLCLOSE)
-    MR_TRACE_CALL_MERCURY(ML_CL_unlink_collect(collect_lib_maybe_handle));
+    MR_TRACE_CALL_MERCURY(
+        ML_CL_unlink_collect(collect_lib_maybe_handle)
+    );
 #endif
 }
 

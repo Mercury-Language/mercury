@@ -922,9 +922,7 @@ MR_trace_decl_redo(MR_EventInfo *event_info, MR_TraceNode prev)
         {
             MR_fatal_error("MR_trace_decl_redo: no matching EXIT");
         }
-    );
 
-    MR_TRACE_CALL_MERCURY(
         last_interface = MR_DD_call_node_get_last_interface((MR_Word) call);
         node = (MR_TraceNode) MR_DD_construct_redo_node((MR_Word) prev,
             last_interface, (MR_Word) event_info->MR_event_number,
@@ -957,9 +955,9 @@ MR_trace_decl_fail(MR_EventInfo *event_info, MR_TraceNode prev)
 
     MR_TRACE_CALL_MERCURY(
         /*
-        ** We need to add 1 to MR_edt_depth since this is a FAIL
-        ** event, so 1 should already have been subtracted from
-        ** MR_edt_depth in MR_trace_calculate_event_depth.
+        ** We need to add 1 to MR_edt_depth since this is a FAIL event,
+        ** so 1 should already have been subtracted from MR_edt_depth
+        ** in MR_trace_calculate_event_depth.
         */
         MR_trace_maybe_update_implicit_tree_ideal_depth(
             MR_edt_depth + 1, call);
@@ -986,9 +984,9 @@ MR_trace_decl_excp(MR_EventInfo *event_info, MR_TraceNode prev)
 
     MR_TRACE_CALL_MERCURY(
         /*
-        ** We need to add 1 to MR_edt_depth since this is an EXCP
-        ** event, so 1 should already have been subtracted from
-        ** MR_edt_depth in MR_trace_calculate_event_depth.
+        ** We need to add 1 to MR_edt_depth since this is an EXCP event,
+        ** so 1 should already have been subtracted from MR_edt_depth
+        ** in MR_trace_calculate_event_depth.
         */
         MR_trace_maybe_update_implicit_tree_ideal_depth(MR_edt_depth + 1,
             call);
@@ -1208,9 +1206,8 @@ MR_trace_matching_call(MR_TraceNode node)
     MR_TraceNode    next;
 
     /*
-    ** Search through contour for any CALL event.  Since there
-    ** is only one CALL event which can be reached, we assume it
-    ** is the correct one.
+    ** Search through contour for any CALL event. Since there is only one
+    ** CALL event which can be reached, we assume it is the correct one.
     */
     next = node;
     while (MR_trace_node_port(next) != MR_PORT_CALL) {
@@ -1369,13 +1366,12 @@ MR_decl_make_atom_args(const MR_LabelLayout *layout, MR_Word *saved_regs,
 
         hlds_num = entry->MR_sle_head_var_nums[hv];
 
-        is_prog_visible_headvar =
-                hv >= num_added_args ? MR_TRUE : MR_FALSE;
+        is_prog_visible_headvar = hv >= num_added_args ? MR_TRUE : MR_FALSE;
 
         problem = MR_trace_return_hlds_var_info(hlds_num, &arg_type,
                 &arg_value);
         if (problem != NULL) {
-            /* this head variable is not live at this port */
+            /* This head variable is not live at this port. */
             MR_TRACE_CALL_MERCURY(
                 MR_DD_add_trace_atom_arg_no_value(hlds_num,
                     is_prog_visible_headvar, atom_args, &atom_args);
@@ -1441,8 +1437,7 @@ MR_trace_decl_set_testing_flag(MR_bool testing)
 
 MR_bool
 MR_trace_is_valid_search_mode_string(const char *search_mode_string,
-    MR_DeclSearchMode *search_mode,
-    MR_bool *search_mode_requires_trace_counts)
+    MR_DeclSearchMode *search_mode, MR_bool *search_mode_requires_trace_counts)
 {
     MR_bool is_valid;
 
@@ -1911,8 +1906,7 @@ MR_decl_diagnosis(MR_TraceNode root, MR_TraceCmdInfo *cmd,
     if (require_subtree) {
         /*
         ** The front end requires a subtree to be made explicit.
-        ** Restart the declarative debugger with the appropriate depth
-        ** limit.
+        ** Restart the declarative debugger with the appropriate depth limit.
         */
         return MR_trace_restart_decl_debug(call_preceding, final_event,
             topmost_seqno, MR_FALSE, requested_subtree_depth, cmd, event_info);
@@ -1962,9 +1956,9 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_TraceCmdInfo *cmd,
 
         if (ancestor_level >= 0) {
             /*
-            ** Perform a retry to get to before the
-            ** given event.  Then set the command to go to the
-            ** given event and return to interactive mode.
+            ** Perform a retry to get to before the given event. Then set
+            ** the command to go to the given event and return to interactive
+            ** mode.
             */
 #ifdef    MR_DEBUG_RETRY
             MR_print_stack_regs(stdout, event_info->MR_saved_regs);
@@ -2284,14 +2278,10 @@ MR_trace_decl_init_suspicion_table(char *pass_trace_counts_file,
             file = module->MR_ml_module_file_layout[file_num];
             num_labels = file->MR_mfl_label_count;
 
-            for (label_num = 0; label_num < num_labels;
-                label_num++)
-            {
+            for (label_num = 0; label_num < num_labels; label_num++) {
                 label = file->MR_mfl_label_layout[label_num];
-                label_index =
-                    label->MR_sll_label_num_in_module;
-                table_cell = &(module->MR_ml_label_exec_count[
-                    label_index]);
+                label_index = label->MR_sll_label_num_in_module;
+                table_cell = &(module->MR_ml_label_exec_count[label_index]);
                 MR_TRACE_CALL_MERCURY(
                     f_suspicion =
                         MR_DD_get_suspicion_for_label_layout(dice, label);
@@ -2345,9 +2335,9 @@ void
 MR_trace_show_progress_supertree(MR_Unsigned event_number)
 {
     /*
-    ** If we are building a supertree we don't know what the final event will be,
-    ** so we just show a tick every MR_DECL_DISPLAY_PROGRESS_DELAY milliseconds,
-    ** so at least the user knows something is happening.
+    ** If we are building a supertree we don't know what the final event
+    ** will be, so we just show a tick every MR_DECL_DISPLAY_PROGRESS_DELAY
+    ** milliseconds, so at least the user knows something is happening.
     */
 
     if (MR_edt_progress_last_tick == 0 &&
@@ -2414,9 +2404,9 @@ MR_decl_checkpoint_loc(const char *str, MR_TraceNode node)
 static void
 MR_decl_print_edt_stats(void)
 {
-    MR_bool             debug_enabled_before = MR_debug_enabled;
-    pid_t               pid;
-    char                cmdstr[200];
+    MR_bool debug_enabled_before = MR_debug_enabled;
+    pid_t   pid;
+    char    cmdstr[200];
 
     MR_edt_stats_total_constructed_nodes +=
         MR_edt_stats_constructed_nodes_this_time;

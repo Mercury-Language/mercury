@@ -175,8 +175,7 @@ MR_trace_help_cat_item(const char *category, const char *item)
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
     MR_TRACE_CALL_MERCURY(
         ML_HELP_path(MR_trace_help_system, path,
-            MR_wrap_output_stream(&mdb_out),
-            &result);
+            MR_wrap_output_stream(&mdb_out), &result);
         error = ML_HELP_result_is_error(result, &msg);
     );
 
