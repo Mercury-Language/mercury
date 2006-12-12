@@ -1682,14 +1682,6 @@ attribute_list_to_attributes(Attributes, Attributes).
     maybe(list(mer_mode))::in, list(mer_mode)::in, maybe(list(is_live))::in,
     maybe(determinism)::in, is_address_taken::in, proc_info::out) is det.
 
-:- pred proc_info_set(prog_context::in, prog_varset::in, vartypes::in,
-    list(prog_var)::in, inst_varset::in, list(mer_mode)::in,
-    maybe(list(is_live))::in, maybe(determinism)::in, determinism::in,
-    hlds_goal::in, bool::in, rtti_varmaps::in,
-    maybe(arg_size_info)::in, maybe(termination_info)::in,
-    termination2_info::in, is_address_taken::in, stack_slots::in,
-    maybe(list(arg_info))::in, liveness_info::in, proc_info::out) is det.
-
 :- pred proc_info_create(prog_context::in, prog_varset::in, vartypes::in,
     list(prog_var)::in, inst_varset::in, list(mer_mode)::in,
     determinism::in, hlds_goal::in, rtti_varmaps::in,
@@ -2221,21 +2213,6 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
         ClauseBody, CanProcess, ModeErrors, RttiVarMaps, eval_normal,
         ProcSubInfo).
-
-proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
-        HeadLives, DeclaredDetism, InferredDetism, Goal, CanProcess,
-        RttiVarMaps, ArgSizes, Termination, Termination2,
-        IsAddressTaken, StackSlots, ArgInfo, Liveness, ProcInfo) :-
-    ModeErrors = [],
-    SharingInfo = structure_sharing_info_init,
-    ReuseInfo = structure_reuse_info_init,
-    ProcSubInfo = proc_sub_info(ArgSizes, Termination, Termination2,
-        IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no, no, no,
-        no, no, no, SharingInfo, ReuseInfo),
-    ProcInfo = proc_info(Context, BodyVarSet, BodyTypes, HeadVars,
-        InstVarSet, no, HeadModes, no, HeadLives,
-        DeclaredDetism, InferredDetism, Goal, CanProcess, ModeErrors,
-        RttiVarMaps, eval_normal, ProcSubInfo).
 
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
         HeadModes, Detism, Goal, RttiVarMaps, IsAddressTaken, ProcInfo) :-
