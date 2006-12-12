@@ -165,7 +165,7 @@ process_proc(PredId, ProcId, !ModuleInfo) :-
     pred_info::in, pred_info::out, module_info::in, module_info::out) is det.
 
 process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
-    % grab the appropriate fields from the pred_info and proc_info
+    % Grab the appropriate fields from the pred_info and proc_info.
     PredName = pred_info_name(!.PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
     pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
@@ -331,10 +331,14 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         LambdaNonLocals, ExtraTypeInfos),
     OrigVars = OrigNonLocals0,
 
-    ( Unification0 = construct(Var0, _, _, UniModes0, _, _, _) ->
-        Var = Var0,
-        UniModes1 = UniModes0
+    (   
+        Unification0 = construct(Var, _, _, UniModes0, _, _, _)
     ;
+        ( Unification0 = deconstruct(_, _, _, _, _, _)
+        ; Unification0 = assign(_, _)
+        ; Unification0 = simple_test(_, _)
+        ; Unification0 = complicated_unify(_, _, _)
+        ),
         unexpected(this_file, "transform_lambda: weird unification")
     ),
 
@@ -447,7 +451,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         % Existentially typed lambda expressions are not yet supported
         % (see the documentation at top of this file).
         ExistQVars = [],
-        uni_modes_to_modes(UniModes1, OrigArgModes),
+        uni_modes_to_modes(UniModes0, OrigArgModes),
 
         % We have to jump through hoops to work out the mode of the lambda
         % predicate. For introduced type_info arguments, we use the mode "in".
