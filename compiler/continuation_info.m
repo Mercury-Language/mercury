@@ -275,16 +275,13 @@
 :- type user_attribute
     --->    user_attribute(
                 attr_locn               :: rval,
-                attr_type               :: mer_type,
-                attr_name               :: string,
                 attr_var                :: prog_var
             ).
 
 :- type user_event_info
     --->    user_event_info(
                 user_port_number      :: int,
-                user_port_name        :: string,
-                user_attributes       :: list(user_attribute)
+                user_attributes       :: list(maybe(user_attribute))
             ).
 
 :- type closure_layout_info

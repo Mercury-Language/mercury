@@ -34,16 +34,24 @@
 #include <ctype.h>
 
 /*
-** This structure contains all the debugger's information about a variable.
+** MR_ValueDetails structures contain all the debugger's information about
+** a value.
 **
-** The fullname field obviously contains the variable's full name.
-** If this name ends with a sequence of digits, then the basename field will
-** contain the name of the variable minus those digits, the num_suffix field
-** will contain the numeric value of this sequence of digits, and the
-** has_suffix field will be set to true. If the full name does not end with
-** a sequence of digits, then the basename field will contain the same string
-** as the fullname field, and the has_suffix field will be set to false
-** (the num_suffix field will not contain anything meaningful).
+** A value can be the value of an attribute or the value of a program variable.
+** The value_kind field says which kind of value this is (and therefore which
+** alternative of the value_details union is valid), while the value_value
+** and value_type fields contain the value itself and the typeinfo describing
+** its type.
+**
+** For program variables' values, the fullname field obviously contains
+** the variable's full name. If this name ends with a sequence of digits,
+** then the basename field will contain the name of the variable minus
+** those digits, the num_suffix field will contain the numeric value of
+** this sequence of digits, and the has_suffix field will be set to true.
+** If the full name does not end with a sequence of digits, then the basename
+** field will contain the same string as the fullname field, and the has_suffix
+** field will be set to false (the num_suffix field will not contain anything
+** meaningful).
 **
 ** If the variable is an argument (but not a type-info argument), the
 ** is_headvar field is set to the argument number (starting at 1).
@@ -60,8 +68,14 @@
 ** variable numbers occurring in the RTTI are renumbered to be a dense set,
 ** whereas the original variable numbers are not guaranteed to be dense.)
 **
-** The last two fields contain the value of the variable and the typeinfo
-** describing the type of this value.
+** For attribute values, the num field gives the position of this attribute
+** in the attribute list (the first attribute is attribute #0). The name
+** field gives the attribute's name. For non-synthesized attributes, the
+** var_hlds_number field gives the HLDS number of the variable whose value
+** gives the attribute value, and the synth_attr field will be NULL.
+** For synthesized attributes, the var_hlds_number field will contain zero,
+** and the synth_attr field will point to the description of the call that
+** synthesizes the attribute's value.
 */
 
 typedef struct {
@@ -71,14 +85,15 @@ typedef struct {
     MR_bool             MR_var_has_suffix;
     int                 MR_var_is_headvar;
     MR_bool             MR_var_is_ambiguous;
-    MR_uint_least16_t   MR_var_hlds_number;
+    MR_HLDSVarNum       MR_var_hlds_number;
     int                 MR_var_seq_num_in_label;
 } MR_ProgVarDetails;
 
 typedef struct {
     unsigned            MR_attr_num;
     char                *MR_attr_name;
-    MR_uint_least16_t   MR_attr_var_hlds_number;
+    MR_HLDSVarNum       MR_attr_var_hlds_number;
+    MR_SynthAttr        *MR_attr_synth_attr;
 } MR_AttributeDetails;
 
 typedef union {
@@ -153,6 +168,9 @@ typedef struct {
     MR_ValueDetails         *MR_point_vars;
 } MR_Point;
 
+#define MR_slot_value(slot_number) \
+        MR_point.MR_point_vars[(slot_number)].MR_value_value
+
 static  MR_bool         MR_trace_type_is_ignored(
                             MR_PseudoTypeInfo pseudo_type_info,
                             MR_bool print_optionals);
@@ -200,6 +218,11 @@ static  MR_Point        MR_point;
 ** these structures (some which are in Mercury and some of which are in C)
 ** do not export them. The types are a lie, but a safe lie.
 */
+
+MR_declare_entry(mercury__do_call_closure_compact);
+
+extern const struct MR_TypeCtorInfo_Struct
+  MR_TYPE_CTOR_INFO_NAME(univ, univ, 0);
 
 extern const struct MR_TypeCtorInfo_Struct
   MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 0);
@@ -359,6 +382,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
 {
     const MR_ProcLayout     *entry;
     const MR_UserEvent      *user;
+    MR_UserEventSpec        *user_spec;
     MR_Word                 *valid_saved_regs;
     int                     var_count;
     int                     attr_count;
@@ -373,12 +397,19 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
     int                     i;
     int                     slot;
     int                     slot_max;
+    int                     synth_slot;
+    int                     arg;
     char                    *copy;
     const char              *name;
     const char              *filename;
     int                     linenumber;
     char                    *attr_name;
     MR_bool                 succeeded;
+    MR_AttributeDetails     *attr_details;
+    MR_ProgVarDetails       *var_details;
+    int                     num_synth_attr;
+    MR_SynthAttr            *synth_attr;
+    MR_Word                 *engine_result;
 
     entry = level_layout->MR_sll_entry;
     if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -430,8 +461,10 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
 
     user = level_layout->MR_sll_user_event;
     if (user != NULL) {
-        attr_count = user->MR_ue_num_attrs;
+        user_spec = &MR_user_event_spec(level_layout);
+        attr_count = user_spec->MR_ues_num_attrs;
     } else {
+        user_spec = NULL;
         attr_count = 0;
     }
 
@@ -478,39 +511,139 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
 
     MR_point.MR_point_attr_var_max = -1;
     slot = 0;
-    for (i = 0; i < attr_count; i++) {
-        succeeded = MR_FALSE;
+    if (attr_count > 0) {
+        num_synth_attr = 0;
 
-        value = MR_lookup_long_lval_base(user->MR_ue_attr_locns[i],
-            valid_saved_regs, base_sp, base_curfr, &succeeded);
+        for (i = 0; i < attr_count; i++) {
+            if (user_spec->MR_ues_synth_attrs != NULL
+                && user_spec->MR_ues_synth_attrs[i].MR_sa_func_attr >= 0)
+            {
+                /*
+                ** This is a synthesized attribute; we can't look up its value.
+                ** Fill in a dummy as the value, but fill in all other fields
+                ** for real. The value field will be filled in after we know
+                ** the values of all non-synthesized attributes.
+                */
+                num_synth_attr++;
+                value = 0;
+                synth_attr = &user_spec->MR_ues_synth_attrs[i];
+#ifdef  MR_DEBUG_SYNTH_ATTR
+                fprintf(stderr, "skipping attr %d\n", i);
+#endif
+            } else {
+                succeeded = MR_FALSE;
+                value = MR_lookup_long_lval_base(user->MR_ue_attr_locns[i],
+                    valid_saved_regs, base_sp, base_curfr, &succeeded);
 
-        if (! succeeded) {
-            MR_fatal_error("cannot look up value of attribute");
+                if (! succeeded) {
+                    MR_fatal_error("cannot look up value of attribute");
+                }
+
+                synth_attr = NULL;
+
+#ifdef  MR_DEBUG_SYNTH_ATTR
+                fprintf(stderr, "set attr %d = %x\n", i, value);
+#endif
+            }
+
+            type_info = user_spec->MR_ues_attr_types[i];
+            attr_name = MR_copy_string(user_spec->MR_ues_attr_names[i]);
+
+            MR_point.MR_point_vars[slot].MR_value_kind = MR_VALUE_ATTRIBUTE;
+            MR_point.MR_point_vars[slot].MR_value_type = type_info;
+            MR_point.MR_point_vars[slot].MR_value_value = value;
+
+            attr_details = &MR_point.MR_point_vars[slot].MR_value_attr;
+
+            attr_details->MR_attr_num = i;
+            attr_details->MR_attr_name = attr_name;
+            attr_details->MR_attr_var_hlds_number =
+                user->MR_ue_attr_var_nums[i];
+            attr_details->MR_attr_synth_attr = synth_attr;
+
+            if (user->MR_ue_attr_var_nums[i] > MR_point.MR_point_attr_var_max)
+            {
+                MR_point.MR_point_attr_var_max = user->MR_ue_attr_var_nums[i];
+            }
+
+            slot++;
         }
 
-        type_info = user->MR_ue_attr_types[i];
-        attr_name = MR_copy_string(user->MR_ue_attr_names[i]);
+        if (num_synth_attr > 0) {
+            /* Sanity check. */
+            if (user_spec->MR_ues_synth_attr_order == NULL) {
+                MR_fatal_error("no order for synthesized attributes");
+            }
 
-        MR_point.MR_point_vars[slot].MR_value_kind = MR_VALUE_ATTRIBUTE;
-        MR_point.MR_point_vars[slot].MR_value_type = type_info;
-        MR_point.MR_point_vars[slot].MR_value_value = value;
-        MR_point.MR_point_vars[slot].MR_value_attr.MR_attr_num = i;
-        MR_point.MR_point_vars[slot].MR_value_attr.MR_attr_name = attr_name;
-        MR_point.MR_point_vars[slot].MR_value_attr.MR_attr_var_hlds_number =
-            user->MR_ue_attr_var_nums[i];
+            for (i = 0; user_spec->MR_ues_synth_attr_order[i] >= 0; i++) {
+                num_synth_attr--;
 
-        if (user->MR_ue_attr_var_nums[i] > MR_point.MR_point_attr_var_max) {
-            MR_point.MR_point_attr_var_max = user->MR_ue_attr_var_nums[i];
+                synth_slot = user_spec->MR_ues_synth_attr_order[i];
+                synth_attr = &user_spec->MR_ues_synth_attrs[synth_slot];
+
+#ifdef  MR_DEBUG_SYNTH_ATTR
+                fprintf(stderr, "\nsynthesizing attr %d\n", synth_slot);
+#endif
+
+                MR_save_registers();
+                MR_virtual_reg_assign(1,
+                    MR_slot_value(synth_attr->MR_sa_func_attr));
+                MR_virtual_reg_assign(2, synth_attr->MR_sa_num_arg_attrs);
+#ifdef  MR_DEBUG_SYNTH_ATTR
+                fprintf(stderr, "func attr %d = %x\n",
+                    synth_attr->MR_sa_func_attr,
+                    MR_virtual_reg_value(1));
+                fprintf(stderr, "num args = %d\n",
+                    MR_virtual_reg_value(2));
+#endif
+                for (arg = 0; arg < synth_attr->MR_sa_num_arg_attrs; arg++) {
+                    /*
+                    ** Argument numbers start at zero, but register numbers
+                    ** start at one. The first argument (arg 0) goes into r3.
+                    */
+
+                    MR_virtual_reg_assign(arg + 3,
+                        MR_slot_value(synth_attr->MR_sa_arg_attrs[arg]));
+#ifdef  MR_DEBUG_SYNTH_ATTR
+                    fprintf(stderr, "arg %d = %x\n",
+                        synth_attr->MR_sa_arg_attrs[arg],
+                        MR_virtual_reg_value(arg + 2));
+#endif
+                }
+                MR_restore_registers();
+
+                MR_save_transient_registers();
+                MR_TRACE_CALL_MERCURY(
+                    engine_result = MR_call_engine(
+                        MR_ENTRY(mercury__do_call_closure_compact), MR_TRUE);
+                );
+                MR_restore_transient_registers();
+
+                if (engine_result == NULL) {
+                    MR_point.MR_point_vars[synth_slot].MR_value_value = MR_r1;
+                } else {
+                    /*
+                    ** Replace the value with the univ thrown by the exception.
+                    */
+                    MR_point.MR_point_vars[synth_slot].MR_value_value =
+                        (MR_Word) engine_result;
+                    MR_point.MR_point_vars[synth_slot].MR_value_type =
+                        (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(univ, univ, 0);
+                }
+            }
+
+            /* Another sanity check. */
+            if (num_synth_attr != 0) {
+                MR_fatal_error("mismatch on number of synthesized attributes");
+            }
         }
-
-        slot++;
     }
 
     for (i = 0; i < var_count; i++) {
-        MR_uint_least16_t   hlds_var_num;
-        int                 head_var_num;
-        int                 start_of_num;
-        char                *num_addr;
+        MR_HLDSVarNum   hlds_var_num;
+        int             head_var_num;
+        int             start_of_num;
+        char            *num_addr;
 
         hlds_var_num = level_layout->MR_sll_var_nums[i];
         name = MR_hlds_var_name(entry, hlds_var_num);
@@ -535,35 +668,33 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         MR_point.MR_point_vars[slot].MR_value_type = type_info;
         MR_point.MR_point_vars[slot].MR_value_value = value;
 
-        MR_point.MR_point_vars[slot].MR_value_var.MR_var_hlds_number =
-            hlds_var_num;
-        MR_point.MR_point_vars[slot].MR_value_var.MR_var_seq_num_in_label = i;
+        var_details = &MR_point.MR_point_vars[slot].MR_value_var;
+
+        var_details->MR_var_hlds_number = hlds_var_num;
+        var_details->MR_var_seq_num_in_label = i;
 
         copy = MR_copy_string(name);
-        MR_point.MR_point_vars[slot].MR_value_var.MR_var_fullname = copy;
+        var_details->MR_var_fullname = copy;
 
         /* We need another copy we can cut apart. */
         copy = MR_copy_string(name);
         start_of_num = MR_find_start_of_num_suffix(copy);
 
         if (start_of_num < 0) {
-            MR_point.MR_point_vars[slot].MR_value_var.MR_var_has_suffix =
-                MR_FALSE;
+            var_details->MR_var_has_suffix = MR_FALSE;
             /* Num_suffix should not be used. */
-            MR_point.MR_point_vars[slot].MR_value_var.MR_var_num_suffix = -1;
-            MR_point.MR_point_vars[slot].MR_value_var.MR_var_basename = copy;
+            var_details->MR_var_num_suffix = -1;
+            var_details->MR_var_basename = copy;
         } else {
             if (start_of_num == 0) {
                 MR_fatal_error("variable name starts with digit");
             }
 
             num_addr = copy + start_of_num;
-            MR_point.MR_point_vars[slot].MR_value_var.MR_var_has_suffix =
-                MR_TRUE;
-            MR_point.MR_point_vars[slot].MR_value_var.MR_var_num_suffix =
-                atoi(num_addr);
+            var_details->MR_var_has_suffix = MR_TRUE;
+            var_details->MR_var_num_suffix = atoi(num_addr);
             *num_addr = '\0';
-            MR_point.MR_point_vars[slot].MR_value_var.MR_var_basename = copy;
+            var_details->MR_var_basename = copy;
         }
 
         MR_point.MR_point_vars[slot].MR_value_var.MR_var_is_headvar = 0;
@@ -572,14 +703,13 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
             head_var_num++)
         {
             if (entry->MR_sle_head_var_nums[head_var_num] == hlds_var_num) {
-                MR_point.MR_point_vars[slot].MR_value_var.MR_var_is_headvar =
+                var_details->MR_var_is_headvar =
                     head_var_num - num_added_args + 1;
                 break;
             }
         }
 
-        MR_point.MR_point_vars[slot].MR_value_var.MR_var_is_ambiguous =
-            MR_FALSE;
+        var_details->MR_var_is_ambiguous = MR_FALSE;
         slot++;
     }
 
@@ -788,7 +918,9 @@ MR_trace_list_var_details(FILE *out)
     MR_ValueDetails     *value;
     MR_AttributeDetails *attr;
     MR_ProgVarDetails   *var;
+    MR_SynthAttr        *synth;
     int                 i;
+    int                 arg;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
@@ -804,6 +936,21 @@ MR_trace_list_var_details(FILE *out)
                     "slot %d, attr number %d, attribute name %s, hlds %d\n",
                     i, attr->MR_attr_num, attr->MR_attr_name,
                     attr->MR_attr_var_hlds_number);
+
+                if (attr->MR_attr_synth_attr != NULL) {
+                    synth = attr->MR_attr_synth_attr;
+
+                    fprintf(out, "synthesized by attr %d(",
+                        synth->MR_sa_func_attr);
+                    for (arg = 0; arg < synth->MR_sa_num_arg_attrs; arg++) {
+                        if (arg > 0) {
+                            fprintf(out, ", ");
+                        }
+                        fprintf(out, "attr %d", synth->MR_sa_arg_attrs[arg]);
+                    }
+                    fprintf(out, ")\n");
+                }
+
                 break;
 
             case MR_VALUE_PROG_VAR:
@@ -1402,8 +1549,8 @@ const char *
 MR_trace_browse_all(FILE *out, MR_Browser browser, MR_BrowseFormat format)
 {
     MR_bool             *already_printed;
-    MR_int_least16_t    attr_hlds_num;
-    MR_int_least16_t    var_hlds_num;
+    MR_HLDSVarNum       attr_hlds_num;
+    MR_HLDSVarNum       var_hlds_num;
     int                 var_num;
     int                 i;
 
@@ -1417,7 +1564,7 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_BrowseFormat format)
 
     already_printed = NULL;
     if (MR_point.MR_point_attr_var_max >= 0) {
-        already_printed = MR_NEW_ARRAY(MR_bool, 
+        already_printed = MR_NEW_ARRAY(MR_bool,
             MR_point.MR_point_attr_var_max + 1);
 
         for (i = 0; i <= MR_point.MR_point_attr_var_max; i++) {

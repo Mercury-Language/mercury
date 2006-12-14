@@ -47,9 +47,10 @@ NONRETRY_PROGS = \
 	print_table			\
 	queens_rep			\
 	resume_typeinfos		\
-	shell				\
 	save				\
+	shell				\
 	solver_test			\
+	synth_attr			\
 	type_desc_test			\
 	uci_index			\
 	user_event
@@ -527,6 +528,9 @@ uci.out: uci uci.inp
 
 uci_index.out: uci_index uci_index.inp
 	$(MDB_STD) ./uci_index < uci_index.inp 2>&1 > uci_index.out 2>&1
+
+synth_attr.out: synth_attr synth_attr.inp synth_attr_spec
+	$(MDB_STD) ./synth_attr < synth_attr.inp 2>&1 > synth_attr.out 2>&1
 
 user_event.out: user_event user_event.inp user_event_spec
 	$(MDB_STD) ./user_event < user_event.inp 2>&1 > user_event.out 2>&1

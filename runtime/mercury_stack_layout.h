@@ -241,49 +241,108 @@ typedef enum {
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_UserEvent
+** Definitions for MR_UserEvent and MR_UserEventSpec
 */
 
 /*
-** This is the initial, temporary definition of the user-defined event
-** structure.
-**
-** The port is represented as both an integer and a string.
-**
-** The num_attributes field gives the number of attributes. Once the runtime
-** system knows the number of attributes of each kind of event, this field may
-** disappear.
-**
-** The next three fields all point to an array whose length is the number of
-** attributes.
-**
-** MR_ue_attr_locns[i] gives the location where we can find the value of the
-** (i+1)th attribute (since we start counting attributes at one).
-**
-** MR_ue_attr_types[i] is the typeinfo giving the type of the (i+1)th
-** attribute.
-**
-** MR_ue_attr_names[i] gives the name of the (i+1)th attribute.
-** (In the future, this field may disappear.)
-** 
-** user_event->MR_ue_attr_var_nums[i] gives the variable number of the (i+1)th
-** attribute. This field is used by the debugger to display the associated
-** value just once (not twice, as both attribute and variable value) with
-** "print *". (Note that We don't delete the variables that are also attributes
-** from the set of live variables in layout structures, because that would
-** require any native garbage collector to look at the list of attributes
-** as well as the list of other variables, slowing it down.)
+** Our layout structures link to information about user events from two places:
+** the label layout structures of labels that correspond to user events,
+** and the module layout structures of modules that contain user events.
+** Label layout structures link to MR_UserEvent structures; module layout
+** structures link to MR_UserEventSpec structures. Most of the information
+** is in the MR_UserEventSpec structures; MR_UserEvent structures contain
+** only information that may differ between two instances of the same event.
 */
 
+/*
+** The fields of MR_UserEvent:
+**
+** The event_number field contains the ordinal number of the event in the
+** event set the module was compiled with: it gives the identity of the event.
+** (Event numbers start at zero.) This field is also the link to the rest of
+** the information about the event, contained in the MR_UserEventSpec structure
+** linked to by the module layout structure. The MR_user_event_spec macro
+** follows this link.
+**
+** The next two fields all point to arrays whose length is the number of
+** attributes (which is available in the MR_UserEventSpec structure).
+**
+** attr_locns[i] gives the location where we can find the value of the
+** i'th attribute (the first attribute is attribute zero). This is
+** meaningful only if the attribute is not a synthesized attribute.
+** 
+** attr_var_nums[i] gives the variable number of the i'th attribute;
+** if it contains zero, that means the attribute is synthesized. This field
+** is used by the debugger to display the associated value just once
+** (not twice, as both attribute and variable value) with "print *". (Note
+** that we don't delete the variables that are also attributes from the set of
+** live variables in layout structures, because that would require any native
+** garbage collector to look at the list of attributes as well as the list of
+** other variables, slowing it down.)
+*/
+
+typedef	MR_uint_least16_t		MR_HLDSVarNum;
+
 struct MR_UserEvent_Struct {
-	MR_uint_least16_t		MR_ue_port_number;
-	const char			*MR_ue_port_name;
-	MR_uint_least16_t		MR_ue_num_attrs;
+	MR_uint_least16_t		MR_ue_event_number;
 	MR_LongLval			*MR_ue_attr_locns;
-	MR_TypeInfo			*MR_ue_attr_types;
-	const char			**MR_ue_attr_names;
-	const MR_uint_least16_t		*MR_ue_attr_var_nums;
+	const MR_HLDSVarNum		*MR_ue_attr_var_nums;
 };
+
+/*
+** The fields of MR_UserEventSpec:
+**
+** The event_name field contains the name of the event.
+**
+** The num_attrs field gives the number of attributes.
+**
+** The next three fields (attr_names, attr_types and synth_attrs) all point
+** to arrays whose length is the number of attributes.
+**
+** attr_names[i] gives the name of the i'th attribute.
+**
+** attr_types[i] is the typeinfo giving the type of the i'th attribute.
+**
+** If the i'th attribute is synthesized, synth_attrs[i] points to the
+** information required to synthesize it: the number of the attribute
+** containing the synthesis function, the number of arguments of the synthesis
+** function, and an array of attribute numbers (of length num_arg_attrs)
+** giving the list of those arguments. The depend_attrs field will point to
+** a list of numbers of the synthesized attributes whose values must be
+** materialized before this attribute can be evaluated. (This list will include
+** the argument attributes, and will be in a feasible evaluation order.)
+** If the i'th attribute is not synthesized, synth_attrs[i] and depend_attrs[i]
+** will both be NULL. (For now, depend_attrs[i] will not be filled in for
+** synthesized attributes either.)
+** 
+** The synth_attr_order field points to an array of attribute numbers that
+** gives the order in which the values of the synthesized attributes should be
+** evaluated. The array is ended by -1 as a sentinel.
+**
+** The synth_attrs and synth_attr_order fields will both be NULL for events
+** that have no synthesized attributes.
+*/
+
+struct MR_SynthAttr_Struct {
+	MR_int_least16_t		MR_sa_func_attr;
+	MR_int_least16_t		MR_sa_num_arg_attrs;
+	MR_uint_least16_t		*MR_sa_arg_attrs;
+	MR_uint_least16_t		*MR_sa_depend_attrs;
+};
+
+struct MR_UserEventSpec_Struct {
+	const char			*MR_ues_event_name;
+	MR_uint_least16_t		MR_ues_num_attrs;
+	const char			**MR_ues_attr_names;
+	MR_TypeInfo			*MR_ues_attr_types;
+	MR_SynthAttr			*MR_ues_synth_attrs;
+	MR_int_least16_t		*MR_ues_synth_attr_order;
+};
+
+#define	MR_user_event_spec(label_layout)	\
+	label_layout->MR_sll_entry->MR_sle_module_layout->		\
+	MR_ml_user_event_specs[label_layout->MR_sll_user_event->	\
+		MR_ue_event_number]
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -419,8 +478,8 @@ struct MR_LabelLayout_Struct {
 	const MR_UserEvent		*MR_sll_user_event;
 	MR_Integer			MR_sll_var_count; /* >= 0 */
 	const void			*MR_sll_locns_types;
-	const MR_uint_least16_t		*MR_sll_var_nums;
-	const MR_TypeParamLocns	*MR_sll_tvars;
+	const MR_HLDSVarNum		*MR_sll_var_nums;
+	const MR_TypeParamLocns		*MR_sll_tvars;
 };
 
 typedef	struct MR_LabelLayoutNoVarInfo_Struct {
@@ -1302,9 +1361,10 @@ typedef struct MR_ModuleFileLayout_Struct {
 ** compiler/layout_out.m.
 */
 
-#define	MR_LAYOUT_VERSION		MR_LAYOUT_VERSION__EVENTSETNAME
+#define	MR_LAYOUT_VERSION		MR_LAYOUT_VERSION__SYNTH_ATTR
 #define	MR_LAYOUT_VERSION__USER_DEFINED	1
 #define	MR_LAYOUT_VERSION__EVENTSETNAME	2
+#define	MR_LAYOUT_VERSION__SYNTH_ATTR	3
 
 struct MR_ModuleLayout_Struct {
 	MR_uint_least8_t                MR_ml_version_number;
@@ -1319,8 +1379,11 @@ struct MR_ModuleLayout_Struct {
 	MR_int_least32_t		MR_ml_suppressed_events;
 	MR_int_least32_t		MR_ml_num_label_exec_counts;
 	MR_Unsigned			*MR_ml_label_exec_count;
-	const char			*MR_ml_event_set_name;
-	const char			*MR_ml_event_specs;
+	const char			*MR_ml_user_event_set_name;
+	const char			*MR_ml_user_event_set_desc;
+	MR_int_least16_t		MR_ml_user_event_max_num_attr;
+	MR_int_least16_t		MR_ml_num_user_event_specs;
+	MR_UserEventSpec		*MR_ml_user_event_specs;
 };
 
 /*-------------------------------------------------------------------------*/

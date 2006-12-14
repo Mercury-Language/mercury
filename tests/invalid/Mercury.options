@@ -69,6 +69,8 @@ MCFLAGS-string_format_unknown =	--halt-at-warn --warn-known-bad-format-calls \
 MCFLAGS-sub_c = 		--verbose-error-messages \
 				--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+MCFLAGS-synth_attr_error =	--event-set-file-name synth_attr_error_spec
+MCFLAGS-syntax_error_event =	--event-set-file-name syntax_error_event_spec
 
 # Force this test to be compiled in a non-trailing grade since in this
 # case the error we want to report is the absence of trailing.

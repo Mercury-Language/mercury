@@ -366,7 +366,8 @@ MR_trace_internal_ensure_init(void)
                     MR_trace_event_sets[i].MR_tes_name);
             } else {
                 MR_trace_event_sets[i].MR_tes_event_set =
-                    MR_read_event_set(MR_trace_event_sets[i].MR_tes_string);
+                    MR_read_event_set("no input file",
+                        MR_trace_event_sets[i].MR_tes_desc);
                 if (MR_trace_event_sets[i].MR_tes_event_set == NULL) {
                     fprintf(MR_mdb_out,
                         "Internal error: could not parse "
@@ -1505,7 +1506,7 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
         (MR_TracePort) label_layout->MR_sll_port == MR_PORT_USER)
     {
         maybe_user_event_name =
-            label_layout->MR_sll_user_event->MR_ue_port_name;
+            MR_user_event_spec(label_layout).MR_ues_event_name;
         fprintf(MR_mdb_out, " <%s>", maybe_user_event_name);
     } else {
         maybe_user_event_name = NULL;

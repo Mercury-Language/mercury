@@ -185,22 +185,22 @@ typedef       struct MR_PseudoTypeInfo_Almost_Struct    *MR_NCPseudoTypeInfo;
 typedef const void                                      *MR_ReservedAddr;
 
 #ifdef  MR_HIGHLEVEL_CODE
-  typedef MR_Box                                        MR_BaseTypeclassInfo;
+  typedef MR_Box                                MR_BaseTypeclassInfo;
 #else
-  typedef MR_Code                                       *MR_BaseTypeclassInfo;
+  typedef MR_Code                               *MR_BaseTypeclassInfo;
 #endif
 
-typedef       struct MR_TypeClassDecl_Struct            MR_TypeClassDeclStruct;
-typedef const struct MR_TypeClassDecl_Struct            *MR_TypeClassDecl;
-typedef       struct MR_Instance_Struct                 MR_InstanceStruct;
-typedef const struct MR_Instance_Struct                 *MR_Instance;
-typedef       struct MR_DictId_Struct                   MR_DictIdStruct;
-typedef const struct MR_DictId_Struct                   *MR_DictId;
-typedef       struct MR_Dictionary_Struct               MR_DictionaryStruct;
-typedef const struct MR_Dictionary_Struct               *MR_Dictionary;
-typedef       struct MR_TypeClassId_Struct              MR_TypeClassId;
-typedef       struct MR_TypeClassMethod_Struct          MR_TypeClassMethod;
-typedef       struct MR_ClassDict_Struct                MR_ClassDict;
+typedef       struct MR_TypeClassDecl_Struct    MR_TypeClassDeclStruct;
+typedef const struct MR_TypeClassDecl_Struct    *MR_TypeClassDecl;
+typedef       struct MR_Instance_Struct         MR_InstanceStruct;
+typedef const struct MR_Instance_Struct         *MR_Instance;
+typedef       struct MR_DictId_Struct           MR_DictIdStruct;
+typedef const struct MR_DictId_Struct           *MR_DictId;
+typedef       struct MR_Dictionary_Struct       MR_DictionaryStruct;
+typedef const struct MR_Dictionary_Struct       *MR_Dictionary;
+typedef       struct MR_TypeClassId_Struct      MR_TypeClassId;
+typedef       struct MR_TypeClassMethod_Struct  MR_TypeClassMethod;
+typedef       struct MR_ClassDict_Struct        MR_ClassDict;
 
 typedef struct MR_TrailEntry_Struct             MR_TrailEntry;
 typedef struct MR_TrailEntry_Struct             *MR_TrailEntryPtr;
@@ -208,16 +208,16 @@ typedef struct MR_TrailEntry_Struct             *MR_TrailEntryPtr;
 typedef struct MR_Closure_Struct                MR_Closure;
 typedef const MR_Closure                        *MR_ClosurePtr;
 
-typedef struct MR_ClosureId_Struct             MR_ClosureId;
-typedef struct MR_UserClosureId_Struct        MR_UserClosureId;
-typedef struct MR_UCIClosureId_Struct         MR_UCIClosureId;
+typedef struct MR_ClosureId_Struct              MR_ClosureId;
+typedef struct MR_UserClosureId_Struct          MR_UserClosureId;
+typedef struct MR_UCIClosureId_Struct           MR_UCIClosureId;
 
-typedef struct MR_TypeParamLocns_Struct       MR_TypeParamLocns;
+typedef struct MR_TypeParamLocns_Struct         MR_TypeParamLocns;
 
-typedef struct MR_UserProcId_Struct           MR_UserProcId;
-typedef struct MR_UCIProcId_Struct            MR_UCIProcId;
-typedef struct MR_NoProcId_Struct             MR_NoProcId;
-typedef union  MR_ProcId_Union                 MR_ProcId;
+typedef struct MR_UserProcId_Struct             MR_UserProcId;
+typedef struct MR_UCIProcId_Struct              MR_UCIProcId;
+typedef struct MR_NoProcId_Struct               MR_NoProcId;
+typedef union  MR_ProcId_Union                  MR_ProcId;
 
 typedef struct MR_CallSiteStatic_Struct         MR_CallSiteStatic;
 typedef struct MR_CallSiteDynamic_Struct        MR_CallSiteDynamic;
@@ -229,11 +229,13 @@ typedef struct MR_ProfilingMetrics_Struct       MR_ProfilingMetrics;
 
 typedef struct MR_CallSiteDynList_Struct        MR_CallSiteDynList;
 
-typedef struct MR_LongLval_Struct              MR_LongLval;
-typedef struct MR_ProcLayout_Struct            MR_ProcLayout;
-typedef struct MR_ModuleLayout_Struct          MR_ModuleLayout;
-typedef struct MR_LabelLayout_Struct           MR_LabelLayout;
+typedef struct MR_LongLval_Struct               MR_LongLval;
+typedef struct MR_ProcLayout_Struct             MR_ProcLayout;
+typedef struct MR_ModuleLayout_Struct           MR_ModuleLayout;
+typedef struct MR_LabelLayout_Struct            MR_LabelLayout;
+typedef struct MR_SynthAttr_Struct              MR_SynthAttr;
 typedef struct MR_UserEvent_Struct              MR_UserEvent;
+typedef struct MR_UserEventSpec_Struct          MR_UserEventSpec;
 
 typedef union MR_TableNode_Union                MR_TableNode;
 typedef MR_TableNode                            *MR_TrieNode;

@@ -62,10 +62,12 @@ extern  void        MR_register_module_layout_real(
 */
 
 typedef struct {
-    const char      *MR_tes_name;
-    const char      *MR_tes_string;
-    MR_bool         MR_tes_is_consistent;
-    MR_EventSet     MR_tes_event_set;
+    const char              *MR_tes_name;
+    const char              *MR_tes_desc;
+    MR_bool                 MR_tes_is_consistent;
+    MR_EventSet             MR_tes_event_set;
+    int                     MR_tes_num_specs;
+    MR_UserEventSpec        *MR_tes_specs;
 } MR_TraceEventSet;
 
 extern  MR_TraceEventSet    *MR_trace_event_sets;
@@ -73,6 +75,7 @@ extern  int                 MR_trace_event_set_next;
 extern  int                 MR_trace_event_set_max;
 
 extern  MR_bool             MR_trace_event_sets_are_all_consistent;
+extern  int                 MR_trace_event_sets_max_num_attr;
 
 /*
 ** MR_process_file_line_layouts searches all the module layout structures

@@ -1781,11 +1781,12 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
         ;
             true
         ),
+        write_indent(Indent, !IO),
+        io.write_string("event ", !IO),
         term.context_init(Context),
         Functor = term.atom(EventName),
         term.var_list_to_term_list(ArgVars, ArgTerms),
         Term = term.functor(Functor, ArgTerms, Context),
-        write_indent(Indent, !IO),
         mercury_output_term(VarSet, AppendVarNums, Term, !IO),
         io.write_string(Follow, !IO)
     ;

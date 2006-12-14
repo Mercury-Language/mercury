@@ -2171,6 +2171,10 @@ like this:
 		test_failed:	string,
 		arg_b:		int,
 		arg_d:		int,
+		arg_list_len:   int synthesized by list_len_func(sorted_list),
+		sorted_list:    list(int) synthesized by list_sort_func(arg_list),
+		list_len_func:  function,
+		list_sort_func: function,
 		arg_list:	list(int)
 	)
 
@@ -2187,30 +2191,65 @@ Each event specification consists of the keyword @samp{event},
 the name of the event, and,
 if the event has any attributes, a parenthesized list of those attributes.
 Each attribute's specification consists of
-a name, a colon and the Mercury type of that attribute.
+a name, a colon and information about the attribute.
+
+There are three kinds of attributes.
+@itemize
+@item
+For ordinary attributes, like @samp{arg_b}, 
+the information about the attribute is the Mercury type of that attribute.
+@item
+For function attributes, like @samp{list_sort_func}, 
+the information about the attribute is just the keyword @samp{function}.
+@item
+For synthesized attributes, like @samp{sorted_list}, 
+the information about the attribute is the type of the attribute,
+the keywords @samp{synthesized by},
+and a description of the Mercury function call
+required to synthesize the value of the attribute.
+The synthesis call consists of the name of a function attribute
+and a list of the names of one or more argument attributes.
+Argument attributes cannot be function attributes;
+they may be either ordinary attributes, or previously synthesized attributes.
+A synthesized attribute is not allowed
+to depend on itself directly or indirectly,
+but there are no restrictions on the positions of of synthesized attributes
+compared to the positions of the function attributes computing them
+or of the argument attributes of the synthesis functions.
+@end itemize
+
+The result types of function attributes
+are given by the types of the synthesized attributes they compute.
+The argument types of function attributes (and the number of those arguments)
+are given by the types of the arguments they are applied to.
+Each function attribute must be used
+to compute at least one synthesized attribute,
+otherwise there would be no way to compute its type.
+If it is used to compute more than one synthesized attribute,
+the result and argument types must be consistent.
 
 Each event goal in the program must use
 the name of one of the events defined here as the predicate name of the call,
-and the call's arguments must match the types of that event's attributes.
-This event goal is fine,
+and the call's arguments must match
+the types of that event's non-synthesized attributes.
+Given that B and N are integers and L is a list of integers,
+these event goals are fine,
 @example
+	event nodiag_fail("N - B", B, N, list.length, list.sort, [N | L]),
 	event safe_test([1, 2, 3])
 @end example
-but this goal
+but these goals
 @example
+	event nodiag_fail("N - B", B, N, list.sort, list.length, [N | L]),
+	event nodiag_fail("N - B", B, list.length, N, list.sort, [N | L]),
 	event safe_test([1], [2])
-@end example
-this goal
-@example
 	event safe_test(42)
-@end example
-and this goal
-@example
 	event nonexistent_event(42)
 @end example
 will all generate errors.
 
-All event attributes are always input, and the event goal is always @samp{det}.
+The attributes of event calls are always input,
+and the event goal is always @samp{det}.
 
 @node I/O tabling
 @section I/O tabling

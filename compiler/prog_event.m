@@ -34,16 +34,16 @@
 
     % Return a description of the given event set.
     %
-:- func event_set_description(event_spec_map) = string.
+:- func derive_event_set_data(event_set) = event_set_data.
 
     % Given an event name, returns its number.
     %
 :- pred event_number(event_spec_map::in, string::in, int::out) is semidet.
 
-    % Given an event name, returns the names of the arguments of the event.
+    % Given an event name, returns the attributes of the event.
     %
-:- pred event_arg_names(event_spec_map::in, string::in, list(string)::out)
-    is semidet.
+:- pred event_attributes(event_spec_map::in, string::in,
+    list(event_attribute)::out) is semidet.
 
     % Given an event name, returns the types of the arguments of the event.
     %
@@ -63,12 +63,15 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 
+:- import_module assoc_list.
 :- import_module bimap.
 :- import_module bool.
+:- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module map.
 :- import_module relation.
 :- import_module string.
 :- import_module svbimap.
@@ -100,7 +103,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
             (
                 TermReadRes = ok(EventSetTerm),
                 EventSetTerm = event_set_spec(EventSetName, EventSpecsTerm),
-                convert_list_to_spec_map(TermFileName, EventSpecsTerm,
+                convert_list_to_spec_map(SpecsFileName, EventSpecsTerm,
                     map.init, EventSpecMap, [], ErrorSpecs)
             ;
                 TermReadRes = eof,
@@ -211,7 +214,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
 
                     /* NULL terminate the string we have read in. */
                     spec_buf[num_bytes_read] = '\\0';
-                    event_set = MR_read_event_set(spec_buf);
+                    event_set = MR_read_event_set(SpecsFileName, spec_buf);
                     if (event_set == NULL) {
                         char    buf[4096];
 
@@ -251,22 +254,29 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
 
 :- type event_set_spec
     --->    event_set_spec(
-                event_set_name  :: string,
-                event_set_specs :: list(event_spec_term)
+                event_set_name      :: string,
+                event_set_specs     :: list(event_spec_term)
             ).
 
 :- type event_spec_term
     --->    event_spec_term(
-                event_name      :: string,
-                event_num       :: int,
-                event_linenum   :: int,
-                event_attrs     :: list(event_attr_term)
+                event_name          :: string,
+                event_num           :: int,
+                event_linenumber    :: int,
+                event_attrs         :: list(event_attr_term)
             ).
 
 :- type event_attr_term
     --->    event_attr_term(
-                attr_name       :: string,
-                attr_type       :: event_attr_type
+                attr_name           :: string,
+                attr_linenum        :: int,
+                attr_type           :: event_attr_type
+            ).
+
+:- type event_attr_synth_call_term
+    --->    event_attr_synth_call_term(
+                func_attr_name  :: string,
+                arg_attr_names  :: list(string)
             ).
 
 :- type event_attr_type
@@ -275,7 +285,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
             )
     ;       event_attr_type_synthesized(
                 event_attr_type_term,
-                event_attr_synth_call
+                event_attr_synth_call_term
             )
     ;       event_attr_type_function.
 
@@ -322,28 +332,33 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
     % It does the data format conversion, and performs the last checks.
 
     build_plain_type_map(EventName, FileName, EventLineNumber, AttrTerms,
-        map.init, AttrTypeMap0, bimap.init, KeyMap, relation.init, DepRel0,
-        !ErrorSpecs),
-    build_dep_map(EventName, FileName, EventLineNumber, KeyMap, AttrTerms,
+        0, map.init, AttrMap, map.init, AttrTypeMap0, bimap.init, KeyMap,
+        relation.init, DepRel0, !ErrorSpecs),
+    build_dep_map(EventName, FileName, AttrMap, KeyMap, AttrTerms,
         AttrTypeMap0, AttrTypeMap, DepRel0, DepRel, !ErrorSpecs),
-    convert_terms_to_attrs(EventName, FileName, EventLineNumber, AttrTypeMap,
-        AttrTerms, [], RevVisAttrs, [], RevAllAttrs, !ErrorSpecs),
-    ( relation.tsort(DepRel, _AttrOrder) ->
+    convert_terms_to_attrs(EventName, FileName, AttrMap, AttrTypeMap,
+        0, AttrTerms, [], RevAttrs, !ErrorSpecs),
+    ( relation.tsort(DepRel, AllAttrNameOrder) ->
         % There is an order for computing the synthesized attributes.
-        % XXX We should record this order for use by the debugger.
-        true
+        % list.reverse(RevAllAttrNameOrder, AllAttrNameOrder),
+        keep_only_synth_attr_nums(AttrMap, AllAttrNameOrder, SynthAttrNumOrder)
     ;
+        % It would be nice to print a list of the attributes involved in the
+        % (one or more) circular dependencies detected by relation.tsort,
+        % but at present relation.m does not have any predicates that can
+        % report the information we would need for that.
         Pieces = [words("Circular dependency among"),
             words("the synthesized attributes of event"),
             quote(EventName), suffix("."), nl],
         CircErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(context(FileName, EventLineNumber),
                 [always(Pieces)])]),
-        !:ErrorSpecs = [CircErrorSpec | !.ErrorSpecs]
+        !:ErrorSpecs = [CircErrorSpec | !.ErrorSpecs],
+        SynthAttrNumOrder = []
     ),
-    list.reverse(RevVisAttrs, VisAttrs),
-    list.reverse(RevAllAttrs, AllAttrs),
-    EventSpec = event_spec(EventNumber, EventLineNumber, VisAttrs, AllAttrs),
+    list.reverse(RevAttrs, Attrs),
+    EventSpec = event_spec(EventNumber, EventName, EventLineNumber,
+        Attrs, SynthAttrNumOrder),
     ( map.search(!.EventSpecMap, EventName, OldEventSpec) ->
         OldLineNumber = OldEventSpec ^ event_spec_linenum,
         Pieces1 = [words("Duplicate event specification for event"),
@@ -357,6 +372,33 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
         svmap.det_insert(EventName, EventSpec, !EventSpecMap)
     ).
 
+:- pred keep_only_synth_attr_nums(attr_map::in, list(string)::in,
+    list(int)::out) is det.
+
+keep_only_synth_attr_nums(_, [], []).
+keep_only_synth_attr_nums(AttrMap, [AttrName | AttrNames], SynthAttrNums) :-
+    keep_only_synth_attr_nums(AttrMap, AttrNames, SynthAttrNumsTail),
+    map.lookup(AttrMap, AttrName, attr_info(AttrNum, _, AttrType)),
+    (
+        ( AttrType = event_attr_type_ordinary(_)
+        ; AttrType = event_attr_type_function
+        ),
+        SynthAttrNums = SynthAttrNumsTail
+    ;
+        AttrType = event_attr_type_synthesized(_, _),
+        SynthAttrNums = [AttrNum | SynthAttrNumsTail]
+    ).
+
+:- type attr_info
+    --->    attr_info(
+                attr_info_number        :: int,
+                attr_info_linenumber    :: int,
+                attr_info_type          :: event_attr_type
+            ).
+
+:- func attr_info_number(attr_info) = int.
+
+:- type attr_map == map(string, attr_info).
 :- type attr_type_map == map(string, mer_type).
 :- type attr_dep_rel == relation(string).
 :- type attr_key_map == bimap(string, relation_key).
@@ -365,23 +407,27 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
     % of this predicate.
     %
 :- pred build_plain_type_map(string::in, string::in, int::in,
-    list(event_attr_term)::in, attr_type_map::in, attr_type_map::out,
+    list(event_attr_term)::in, int::in, attr_map::in, attr_map::out,
+    attr_type_map::in, attr_type_map::out,
     attr_key_map::in, attr_key_map::out, attr_dep_rel::in, attr_dep_rel::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-build_plain_type_map(_, _, _, [], !AttrTypeMap, !KeyMap, !DepRel, !ErrorSpecs).
-build_plain_type_map(EventName, FileName, LineNumber, [AttrTerm | AttrTerms],
-        !AttrTypeMap, !KeyMap, !DepRel, !ErrorSpecs) :-
-    AttrTerm = event_attr_term(AttrName, AttrTypeTerm),
+build_plain_type_map(_, _, _, [], _, !AttrMap, !AttrTypeMap, !KeyMap, !DepRel,
+        !ErrorSpecs).
+build_plain_type_map(EventName, FileName, EventLineNumber, [AttrTerm | AttrTerms],
+        AttrNum, !AttrMap, !AttrTypeMap, !KeyMap, !DepRel, !ErrorSpecs) :-
+    AttrTerm = event_attr_term(AttrName, AttrLineNumber, AttrTypeTerm),
     svrelation.add_element(AttrName, AttrKey, !DepRel),
     ( svbimap.insert(AttrName, AttrKey, !KeyMap) ->
-        true
+        AttrInfo = attr_info(AttrNum, AttrLineNumber, AttrTypeTerm),
+        svmap.det_insert(AttrName, AttrInfo, !AttrMap)
     ;
         Pieces = [words("Event"), quote(EventName),
             words("has more than one attribute named"),
             quote(AttrName), suffix("."), nl],
         ErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(context(FileName, LineNumber), [always(Pieces)])]),
+            [simple_msg(context(FileName, EventLineNumber),
+                [always(Pieces)])]),
         !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
     ),
     (
@@ -398,53 +444,90 @@ build_plain_type_map(EventName, FileName, LineNumber, [AttrTerm | AttrTerms],
     ;
         AttrTypeTerm = event_attr_type_function
     ),
-    build_plain_type_map(EventName, FileName, LineNumber, AttrTerms,
-        !AttrTypeMap, !KeyMap, !DepRel, !ErrorSpecs).
+    build_plain_type_map(EventName, FileName, EventLineNumber, AttrTerms,
+        AttrNum + 1, !AttrMap, !AttrTypeMap, !KeyMap, !DepRel, !ErrorSpecs).
 
     % See the big comment in convert_term_to_spec_map for the documentation
     % of this predicate.
     %
-:- pred build_dep_map(string::in, string::in, int::in,
-    attr_key_map::in, list(event_attr_term)::in,
+:- pred build_dep_map(string::in, string::in,
+    attr_map::in, attr_key_map::in, list(event_attr_term)::in,
     attr_type_map::in, attr_type_map::out, attr_dep_rel::in, attr_dep_rel::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 build_dep_map(_, _, _, _, [], !AttrTypeMap, !DepRel, !ErrorSpecs).
-build_dep_map(EventName, FileName, LineNumber, KeyMap,
-        [AttrTerm | AttrTerms], !AttrTypeMap, !DepRel, !ErrorSpecs) :-
-    AttrTerm = event_attr_term(AttrName, AttrTypeTerm),
+build_dep_map(EventName, FileName, AttrMap, KeyMap, [AttrTerm | AttrTerms],
+        !AttrTypeMap, !DepRel, !ErrorSpecs) :-
+    AttrTerm = event_attr_term(AttrName, AttrLineNumber, AttrTypeTerm),
     bimap.lookup(KeyMap, AttrName, AttrKey),
     (
-        AttrTypeTerm = event_attr_type_synthesized(_TypeTerm, SynthCall),
-        SynthCall = event_attr_synth_call(FuncAttrName, ArgAttrs),
-        record_arg_dependencies(EventName, FileName, LineNumber, KeyMap,
-            AttrName, AttrKey, ArgAttrs, !DepRel, [], AttrErrorSpecs),
+        AttrTypeTerm = event_attr_type_synthesized(_TypeTerm, SynthCallTerm),
+        SynthCallTerm = event_attr_synth_call_term(FuncAttrName, ArgAttrNames),
+        record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
+            AttrName, AttrKey, ArgAttrNames, !DepRel, [], AttrErrorSpecs),
         (
             AttrErrorSpecs = [_ | _],
+            % We still record the fact that FuncAttrName is used, to prevent
+            % us from generating error messages saying that it is unused.
+            svmap.det_insert(FuncAttrName, void_type, !AttrTypeMap),
             !:ErrorSpecs = AttrErrorSpecs ++ !.ErrorSpecs
         ;
             AttrErrorSpecs = [],
-            map.lookup(!.AttrTypeMap, AttrName, AttrType),
-            ArgTypes = list.map(map.lookup(!.AttrTypeMap), ArgAttrs),
-            FuncAttrType = higher_order_type(ArgTypes, yes(AttrType),
-                purity_pure, lambda_normal),
-            ( map.search(!.AttrTypeMap, FuncAttrName, OldFuncAttrType) ->
-                ( FuncAttrType = OldFuncAttrType ->
-                    % AttrTypeMap already contains the correct info.
-                    true
+            ( map.search(!.AttrTypeMap, AttrName, AttrType) ->
+                ArgTypes = list.map(map.lookup(!.AttrTypeMap), ArgAttrNames),
+                FuncAttrType = higher_order_type(ArgTypes, yes(AttrType),
+                    purity_pure, lambda_normal),
+                (
+                    map.search(AttrMap, FuncAttrName, AttrInfo),
+                    AttrInfo ^ attr_info_type = event_attr_type_function
+                ->
+                    (
+                        map.search(!.AttrTypeMap, FuncAttrName,
+                            OldFuncAttrType)
+                    ->
+                        ( FuncAttrType = OldFuncAttrType ->
+                            % AttrTypeMap already contains the correct info.
+                            true
+                        ;
+                            (
+                                map.search(AttrMap, FuncAttrName,
+                                    FuncAttrInfo)
+                            ->
+                                FuncAttrLineNumber =
+                                    FuncAttrInfo ^ attr_info_linenumber
+                            ;
+                                % This is the best line number we can give,
+                                FuncAttrLineNumber = AttrLineNumber
+                            ),
+                            % XXX Maybe we should give the types themselves.
+                            Pieces = [words("Attribute"), quote(FuncAttrName),
+                                words("is assigned inconsistent types"),
+                                words("by synthesized attributes."), nl],
+                            ErrorSpec = error_spec(severity_error,
+                                phase_term_to_parse_tree,
+                                [simple_msg(
+                                    context(FileName, FuncAttrLineNumber),
+                                    [always(Pieces)])]),
+                            !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
+                        )
+                    ;
+                        svmap.det_insert(FuncAttrName, FuncAttrType,
+                            !AttrTypeMap)
+                    )
                 ;
-                    % XXX Maybe we should give the types themselves.
-                    Pieces = [words("Attribute"), quote(FuncAttrName),
-                        words("is assigned inconsistent types"),
-                        words("by synthesized attributes."), nl],
+                    Pieces = [words("Attribute"), quote(AttrName),
+                        words("cannot be synthesized"),
+                        words("by non-function attribute"),
+                        quote(FuncAttrName), suffix("."), nl],
                     ErrorSpec = error_spec(severity_error,
                         phase_term_to_parse_tree,
-                        [simple_msg(context(FileName, LineNumber),
+                        [simple_msg(context(FileName, AttrLineNumber),
                             [always(Pieces)])]),
                     !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
                 )
             ;
-                svmap.det_insert(FuncAttrName, FuncAttrType, !AttrTypeMap)
+                % The error message was already generated in the previous pass.
+                true
             )
         )
     ;
@@ -452,7 +535,7 @@ build_dep_map(EventName, FileName, LineNumber, KeyMap,
     ;
         AttrTypeTerm = event_attr_type_function
     ),
-    build_dep_map(EventName, FileName, LineNumber, KeyMap, AttrTerms,
+    build_dep_map(EventName, FileName, AttrMap, KeyMap, AttrTerms,
         !AttrTypeMap, !DepRel, !ErrorSpecs).
 
 :- pred record_arg_dependencies(string::in, string::in, int::in,
@@ -461,66 +544,78 @@ build_dep_map(EventName, FileName, LineNumber, KeyMap,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 record_arg_dependencies(_, _, _, _, _, _, [], !DepRel, !ErrorSpecs).
-record_arg_dependencies(EventName, FileName, LineNumber, KeyMap,
-        FunctionAttrName, FunctionAttrKey, [AttrName | AttrNames],
+record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
+        SynthAttrName, SynthAttrKey, [AttrName | AttrNames],
         !DepRel, !ErrorSpecs) :-
     ( bimap.search(KeyMap, AttrName, AttrKey) ->
-        svrelation.add(FunctionAttrKey, AttrKey, !DepRel)
+        svrelation.add(AttrKey, SynthAttrKey, !DepRel)
     ;
-        Pieces = [words("Attribute"), quote(FunctionAttrName),
+        Pieces = [words("Attribute"), quote(SynthAttrName),
             words("of event"), quote(EventName),
             words("uses nonexistent attribute"), quote(AttrName),
             words("in its synthesis."), nl],
         ErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(context(FileName, LineNumber), [always(Pieces)])]),
+            [simple_msg(context(FileName, AttrLineNumber), [always(Pieces)])]),
         !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
     ),
-    record_arg_dependencies(EventName, FileName, LineNumber, KeyMap,
-        FunctionAttrName, FunctionAttrKey, AttrNames, !DepRel, !ErrorSpecs).
+    record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
+        SynthAttrName, SynthAttrKey, AttrNames, !DepRel, !ErrorSpecs).
 
     % See the big comment in convert_term_to_spec_map for the documentation
     % of this predicate.
     %
-:- pred convert_terms_to_attrs(string::in, string::in, int::in,
-    attr_type_map::in, list(event_attr_term)::in,
-    list(event_attribute)::in, list(event_attribute)::out,
+:- pred convert_terms_to_attrs(string::in, string::in,
+    attr_map::in, attr_type_map::in, int::in, list(event_attr_term)::in,
     list(event_attribute)::in, list(event_attribute)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-convert_terms_to_attrs(_, _, _, _, [], !RevVisAttrs, !RevAllAttrs,
-        !ErrorSpecs).
-convert_terms_to_attrs(EventName, FileName, LineNumber, AttrTypeMap,
-        [AttrTerm | AttrTerms], !RevVisAttrs, !RevAllAttrs, !ErrorSpecs) :-
-    AttrTerm = event_attr_term(AttrName, AttrTypeTerm),
+convert_terms_to_attrs(_, _, _, _, _, [], !RevAttrs, !ErrorSpecs).
+convert_terms_to_attrs(EventName, FileName, AttrMap,
+        AttrTypeMap, AttrNum, [AttrTerm | AttrTerms], !RevAttrs,
+        !ErrorSpecs) :-
+    AttrTerm = event_attr_term(AttrName, AttrLineNumber, AttrTypeTerm),
     (
         AttrTypeTerm = event_attr_type_ordinary(_),
         map.lookup(AttrTypeMap, AttrName, AttrType),
-        EventAttr = event_attribute(AttrName, AttrType, in_mode, no),
-        !:RevVisAttrs = [EventAttr | !.RevVisAttrs],
-        !:RevAllAttrs = [EventAttr | !.RevAllAttrs]
+        EventAttr = event_attribute(AttrNum, AttrName, AttrType, in_mode, no),
+        !:RevAttrs = [EventAttr | !.RevAttrs]
     ;
-        AttrTypeTerm = event_attr_type_synthesized(_, SynthCall),
+        AttrTypeTerm = event_attr_type_synthesized(_, SynthCallTerm),
         map.lookup(AttrTypeMap, AttrName, AttrType),
-        EventAttr = event_attribute(AttrName, AttrType, in_mode,
-            yes(SynthCall)),
-        !:RevAllAttrs = [EventAttr | !.RevAllAttrs]
+        SynthCallTerm = event_attr_synth_call_term(FuncAttrName, ArgAttrNames),
+        FuncAttrNum = map.lookup(AttrMap, FuncAttrName) ^ attr_info_number,
+        ( list.map(map.search(AttrMap), ArgAttrNames, ArgAttrInfos) ->
+            ArgAttrNums = list.map(attr_info_number, ArgAttrInfos),
+            ArgAttrNameNums = assoc_list.from_corresponding_lists(ArgAttrNames,
+                ArgAttrNums),
+            SynthCall = event_attr_synth_call(FuncAttrName - FuncAttrNum,
+                ArgAttrNameNums),
+            EventAttr = event_attribute(AttrNum, AttrName, AttrType, in_mode,
+                yes(SynthCall)),
+            !:RevAttrs = [EventAttr | !.RevAttrs]
+        ;
+            % The error that caused the map search failure has already had
+            % an error message generated for it.
+            true
+        )
     ;
         AttrTypeTerm = event_attr_type_function,
         ( map.search(AttrTypeMap, AttrName, AttrType) ->
-            EventAttr = event_attribute(AttrName, AttrType, in_mode, no),
-            !:RevVisAttrs = [EventAttr | !.RevVisAttrs],
-            !:RevAllAttrs = [EventAttr | !.RevAllAttrs]
+            EventAttr = event_attribute(AttrNum, AttrName, AttrType, in_mode,
+                no),
+            !:RevAttrs = [EventAttr | !.RevAttrs]
         ;
             Pieces = [words("Event"), quote(EventName),
                 words("does not use the function attribute"),
                 quote(AttrName), suffix("."), nl],
             ErrorSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(context(FileName, LineNumber), [always(Pieces)])]),
+                [simple_msg(context(FileName, AttrLineNumber),
+                    [always(Pieces)])]),
             !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
         )
     ),
-    convert_terms_to_attrs(EventName, FileName, LineNumber, AttrTypeMap,
-        AttrTerms, !RevVisAttrs, !RevAllAttrs, !ErrorSpecs).
+    convert_terms_to_attrs(EventName, FileName, AttrMap, AttrTypeMap,
+        AttrNum + 1, AttrTerms, !RevAttrs, !ErrorSpecs).
 
 :- func convert_term_to_type(event_attr_type_term) = mer_type.
 
@@ -539,41 +634,51 @@ convert_term_to_type(Term) = Type :-
 
 %-----------------------------------------------------------------------------%
 
-event_set_description(EventSpecMap) = Desc :-
-    map.to_assoc_list(EventSpecMap, EventSpecList),
+derive_event_set_data(EventSet) = EventSetData :-
+    EventSet = event_set(EventSetName, EventSpecMap),
+    map.values(EventSpecMap, EventSpecList),
     list.sort(compare_event_specs_by_num, EventSpecList, SortedEventSpecList),
     DescStrings = list.map(describe_event_spec, SortedEventSpecList),
-    string.append_list(DescStrings, Desc).
+    string.append_list(DescStrings, Desc),
+    list.foldl(update_max_num_attr, EventSpecList, -1, MaxNumAttr),
+    EventSetData = event_set_data(EventSetName, Desc, SortedEventSpecList,
+        MaxNumAttr).
 
-:- pred compare_event_specs_by_num(
-    pair(string, event_spec)::in, pair(string, event_spec)::in,
+:- pred update_max_num_attr(event_spec::in, int::in, int::out) is det.
+
+update_max_num_attr(Spec, !MaxNumAttr) :-
+    AllAttrs = Spec ^ event_spec_attrs,
+    list.length(AllAttrs, NumAttr),
+    !:MaxNumAttr = int.max(!.MaxNumAttr, NumAttr).
+
+:- pred compare_event_specs_by_num(event_spec::in, event_spec::in,
     comparison_result::out) is det.
 
-compare_event_specs_by_num(_NameA - SpecA, _NameB - SpecB, Result) :-
+compare_event_specs_by_num(SpecA, SpecB, Result) :-
     compare(Result, SpecA ^ event_spec_num, SpecB ^ event_spec_num).
 
-:- func describe_event_spec(pair(string, event_spec)) = string.
+:- func describe_event_spec(event_spec) = string.
 
-describe_event_spec(Name - Spec) = Desc :-
-    Spec = event_spec(_EventNumber, _EventLineNumber, _VisAttrs, AllAttrs),
-    AttrDescs = string.join_list(",\n",
-        list.map(describe_event_attr, AllAttrs)),
-    Desc = "event " ++ Name ++ "(" ++ AttrDescs ++ ")".
+describe_event_spec(Spec) = Desc :-
+    Spec = event_spec(_EventNumber, EventName, _EventLineNumber,
+        Attrs, _SynthAttrNumOrder),
+    AttrDescs = string.join_list(",\n", list.map(describe_event_attr, Attrs)),
+    Desc = "event " ++ EventName ++ "(" ++ AttrDescs ++ ")".
 
 :- func describe_event_attr(event_attribute) = string.
 
 describe_event_attr(Attr) = Desc :-
-    Attr = event_attribute(Name, Type, _Mode, MaybeSynthCall),
+    Attr = event_attribute(_Num, Name, Type, _Mode, MaybeSynthCall),
     TypeDesc = describe_attr_type(Type),
     (
         MaybeSynthCall = no,
         SynthCallDesc = ""
     ;
         MaybeSynthCall = yes(SynthCall),
-        SynthCall = event_attr_synth_call(FuncAttrName, ArgAttrNames),
-        ArgAttrDesc = string.join_list(", ", ArgAttrNames),
+        SynthCall = event_attr_synth_call(FuncAttrNameNum, ArgAttrNameNums),
+        ArgAttrDesc = string.join_list(", ", assoc_list.keys(ArgAttrNameNums)),
         SynthCallDesc = "synthesized by " ++
-            FuncAttrName ++ "(" ++ ArgAttrDesc ++ ")"
+            fst(FuncAttrNameNum) ++ "(" ++ ArgAttrDesc ++ ")"
     ),
     Desc = Name ++ ": " ++ TypeDesc ++ SynthCallDesc.
 
@@ -609,32 +714,32 @@ event_number(EventSpecMap, EventName, EventNumber) :-
     map.search(EventSpecMap, EventName, EventSpec),
     EventNumber = EventSpec ^ event_spec_num.
 
-event_arg_names(EventSpecMap, EventName, ArgNames) :-
+event_attributes(EventSpecMap, EventName, Attributes) :-
     map.search(EventSpecMap, EventName, EventSpec),
-    ArgInfos = EventSpec ^ event_spec_visible_attrs,
-    ArgNames = list.map(project_event_arg_name, ArgInfos).
+    Attributes = EventSpec ^ event_spec_attrs.
 
 event_arg_types(EventSpecMap, EventName, ArgTypes) :-
-    map.search(EventSpecMap, EventName, EventSpec),
-    ArgInfos = EventSpec ^ event_spec_visible_attrs,
-    ArgTypes = list.map(project_event_arg_type, ArgInfos).
+    event_attributes(EventSpecMap, EventName, Attributes),
+    list.filter_map(project_event_arg_type, Attributes, ArgTypes).
 
 event_arg_modes(EventSpecMap, EventName, ArgModes) :-
-    map.search(EventSpecMap, EventName, EventSpec),
-    ArgInfos = EventSpec ^ event_spec_visible_attrs,
-    ArgModes = list.map(project_event_arg_mode, ArgInfos).
+    event_attributes(EventSpecMap, EventName, Attributes),
+    list.filter_map(project_event_arg_mode, Attributes, ArgModes).
 
-:- func project_event_arg_name(event_attribute) = string.
+:- pred project_event_arg_name(event_attribute::in, string::out) is semidet.
 
-project_event_arg_name(Attribute) = Attribute ^ attr_name.
+project_event_arg_name(Attribute, Attribute ^ attr_name) :-
+    Attribute ^ attr_maybe_synth_call = no.
 
-:- func project_event_arg_type(event_attribute) = mer_type.
+:- pred project_event_arg_type(event_attribute::in, mer_type::out) is semidet.
 
-project_event_arg_type(Attribute) = Attribute ^ attr_type.
+project_event_arg_type(Attribute, Attribute ^ attr_type) :-
+    Attribute ^ attr_maybe_synth_call = no.
 
-:- func project_event_arg_mode(event_attribute) = mer_mode.
+:- pred project_event_arg_mode(event_attribute::in, mer_mode::out) is semidet.
 
-project_event_arg_mode(Attribute) = Attribute ^ attr_mode.
+project_event_arg_mode(Attribute, Attribute ^ attr_mode) :-
+    Attribute ^ attr_maybe_synth_call = no.
 
 %-----------------------------------------------------------------------------%
 

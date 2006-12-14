@@ -772,26 +772,22 @@ do_module_qualify_event_specs(_, [], [], !Info, !Specs).
 do_module_qualify_event_specs(FileName,
         [Name - Spec0 | NameSpecs0], [Name - Spec | NameSpecs],
         !Info, !Specs) :-
-    do_module_qualify_event_spec(FileName, Name, Spec0, Spec, !Info, !Specs),
+    do_module_qualify_event_spec(FileName, Spec0, Spec, !Info, !Specs),
     do_module_qualify_event_specs(FileName, NameSpecs0, NameSpecs,
         !Info, !Specs).
 
-:- pred do_module_qualify_event_spec(string::in, string::in,
+:- pred do_module_qualify_event_spec(string::in,
     event_spec::in, event_spec::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-do_module_qualify_event_spec(EventName, FileName, EventSpec0, EventSpec,
-        !Info, !Specs) :-
-    EventSpec0 = event_spec(EventNumber, EventLineNumber,
-        VisAttrs0, AllAttrs0),
+do_module_qualify_event_spec(FileName, EventSpec0, EventSpec, !Info, !Specs) :-
+    EventSpec0 = event_spec(EventNumber, EventName, EventLineNumber,
+        Attrs0, SynthAttrNumOrder),
     list.map_foldl2(
         do_module_qualify_event_attr(EventName, FileName, EventLineNumber),
-        VisAttrs0, VisAttrs, !Info, !Specs),
-    list.map_foldl2(
-        do_module_qualify_event_attr(EventName, FileName, EventLineNumber),
-        AllAttrs0, AllAttrs, !Info, !Specs),
-    EventSpec = event_spec(EventNumber, EventLineNumber,
-        VisAttrs, AllAttrs).
+        Attrs0, Attrs, !Info, !Specs),
+    EventSpec = event_spec(EventNumber, EventName, EventLineNumber,
+        Attrs, SynthAttrNumOrder).
 
 :- pred do_module_qualify_event_attr(string::in, string::in, int::in,
     event_attribute::in, event_attribute::out, mq_info::in, mq_info::out,
@@ -799,13 +795,15 @@ do_module_qualify_event_spec(EventName, FileName, EventSpec0, EventSpec,
 
 do_module_qualify_event_attr(EventName, FileName, LineNumber, Attr0, Attr,
         !Info, !Specs) :-
-    Attr0 = event_attribute(AttrName, AttrType0, AttrMode0, MaybeSynthCall),
+    Attr0 = event_attribute(AttrNum, AttrName, AttrType0, AttrMode0,
+        MaybeSynthCall),
     MQErrorContext = mqec_event_spec_attr(EventName, AttrName),
     Context = context(FileName, LineNumber),
     mq_info_set_error_context(MQErrorContext - Context, !Info),
     qualify_type(AttrType0, AttrType, !Info, !Specs),
     qualify_mode(AttrMode0, AttrMode, !Info, !Specs),
-    Attr = event_attribute(AttrName, AttrType, AttrMode, MaybeSynthCall).
+    Attr = event_attribute(AttrNum, AttrName, AttrType, AttrMode,
+        MaybeSynthCall).
 
 :- pred update_import_status(module_defn::in, mq_info::in, mq_info::out,
     bool::out) is det.

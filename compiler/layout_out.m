@@ -109,8 +109,10 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
@@ -239,12 +241,6 @@ output_layout_name(Data, !IO) :-
         io.write_string(
             label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
     ;
-        Data = user_event_attr_names(ProcLabel, LabelNum),
-        io.write_string(mercury_data_prefix, !IO),
-        io.write_string("_user_event_attr_names__", !IO),
-        io.write_string(
-            label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
-    ;
         Data = user_event_attr_var_nums(ProcLabel, LabelNum),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_user_event_attr_var_nums__", !IO),
@@ -339,6 +335,47 @@ output_layout_name(Data, !IO) :-
         ModuleNameStr = sym_name_mangle(ModuleName),
         io.write_string(ModuleNameStr, !IO)
     ;
+        Data = module_layout_event_set_desc(ModuleName),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_module_layout_event_set_desc__", !IO),
+        ModuleNameStr = sym_name_mangle(ModuleName),
+        io.write_string(ModuleNameStr, !IO)
+    ;
+        Data = module_layout_event_arg_names(ModuleName, EventNumber),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_module_layout_event_arg_names__", !IO),
+        ModuleNameStr = sym_name_mangle(ModuleName),
+        io.write_string(ModuleNameStr, !IO),
+        io.write_string("_", !IO),
+        io.write_int(EventNumber, !IO)
+    ;
+        Data = module_layout_event_synth_attrs(ModuleName, EventNumber),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_module_layout_event_synth_attrs__", !IO),
+        ModuleNameStr = sym_name_mangle(ModuleName),
+        io.write_string(ModuleNameStr, !IO),
+        io.write_string("_", !IO),
+        io.write_int(EventNumber, !IO)
+    ;
+        Data = module_layout_event_synth_attr_args(ModuleName,
+            EventNumber, SynthCallArgNumber),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_module_layout_event_synth_attr_args__", !IO),
+        ModuleNameStr = sym_name_mangle(ModuleName),
+        io.write_string(ModuleNameStr, !IO),
+        io.write_string("_", !IO),
+        io.write_int(EventNumber, !IO),
+        io.write_string("_", !IO),
+        io.write_int(SynthCallArgNumber, !IO)
+    ;
+        Data = module_layout_event_synth_order(ModuleName, EventNumber),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_module_layout_event_synth_order__", !IO),
+        ModuleNameStr = sym_name_mangle(ModuleName),
+        io.write_string(ModuleNameStr, !IO),
+        io.write_string("_", !IO),
+        io.write_int(EventNumber, !IO)
+    ;
         Data = module_layout_event_specs(ModuleName),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_module_layout_event_specs__", !IO),
@@ -370,29 +407,24 @@ output_layout_name(Data, !IO) :-
         output_proc_label_no_prefix(ProcLabel, !IO)
     ).
 
-output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
+output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
     (
-        Data = label_layout(ProcLabel, LabelNum, LabelVars),
+        Name = label_layout(_ProcLabel, _LabelNum, LabelVars),
         io.write_string("static const ", !IO),
         io.write_string(label_vars_to_type(LabelVars), !IO),
         io.write_string(" ", !IO),
-        output_layout_name(label_layout(ProcLabel, LabelNum, LabelVars), !IO)
+        output_layout_name(Name, !IO)
     ;
-        Data = user_event_layout(ProcLabel, LabelNum),
+        Name = user_event_layout(_ProcLabel, _LabelNum),
         io.write_string("static const struct MR_UserEvent_Struct ", !IO),
-        output_layout_name(user_event_layout(ProcLabel, LabelNum), !IO)
+        output_layout_name(Name, !IO)
     ;
-        Data = user_event_attr_names(ProcLabel, LabelNum),
-        io.write_string("static const char * ", !IO),
-        output_layout_name(user_event_attr_names(ProcLabel, LabelNum), !IO),
+        Name = user_event_attr_var_nums(_ProcLabel, _LabelNum),
+        io.write_string("static const MR_HLDSVarNum ", !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = user_event_attr_var_nums(ProcLabel, LabelNum),
-        io.write_string("static const MR_uint_least16_t ", !IO),
-        output_layout_name(user_event_attr_var_nums(ProcLabel, LabelNum), !IO),
-        io.write_string("[]", !IO)
-    ;
-        Data = proc_layout(ProcLabel, Kind),
+        Name = proc_layout(ProcLabel, Kind),
         ProcIsImported = ProcLabel ^ proc_is_imported,
         ProcIsExported = ProcLabel ^ proc_is_exported,
         (
@@ -411,31 +443,31 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         io.write_string("const ", !IO),
         io.write_string(proc_layout_kind_to_type(Kind), !IO),
         io.write_string(" ", !IO),
-        output_layout_name(proc_layout(ProcLabel, Kind), !IO)
+        output_layout_name(Name, !IO)
     ;
-        Data = proc_layout_exec_trace(ProcLabel),
+        Name = proc_layout_exec_trace(_ProcLabel),
         io.write_string("static MR_STATIC_CODE_CONST MR_ExecTrace\n\t", !IO),
-        output_layout_name(proc_layout_exec_trace(ProcLabel), !IO)
+        output_layout_name(Name, !IO)
     ;
-        Data = proc_layout_head_var_nums(ProcLabel),
+        Name = proc_layout_head_var_nums(_ProcLabel),
         io.write_string("static const ", !IO),
         io.write_string("MR_uint_least16_t ", !IO),
-        output_layout_name(proc_layout_head_var_nums(ProcLabel), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = proc_layout_var_names(ProcLabel),
+        Name = proc_layout_var_names(_ProcLabel),
         io.write_string("static const ", !IO),
         io.write_string("MR_uint_least32_t ", !IO),
-        output_layout_name(proc_layout_var_names(ProcLabel), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = proc_layout_body_bytecode(ProcLabel),
+        Name = proc_layout_body_bytecode(_ProcLabel),
         io.write_string("static const ", !IO),
         io.write_string("MR_uint_least8_t ", !IO),
-        output_layout_name(proc_layout_body_bytecode(ProcLabel), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel),
+        Name = closure_proc_id(_CallerProcLabel, _SeqNo, ClosureProcLabel),
         io.write_string("static const ", !IO),
         (
             ClosureProcLabel = ordinary_proc_label(_, _, _, _, _, _),
@@ -444,74 +476,95 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
             ClosureProcLabel = special_proc_label(_, _, _, _, _, _),
             io.write_string("MR_UCIClosureId\n", !IO)
         ),
-        output_layout_name(closure_proc_id(CallerProcLabel, SeqNo,
-            ClosureProcLabel), !IO)
+        output_layout_name(Name, !IO)
     ;
-        Data = file_layout(ModuleName, FileNum),
+        Name = file_layout(_ModuleName, _FileNum),
         io.write_string("static const MR_ModuleFileLayout ", !IO),
-        output_layout_name(file_layout(ModuleName, FileNum), !IO)
+        output_layout_name(Name, !IO)
     ;
-        Data = file_layout_line_number_vector(ModuleName, FileNum),
+        Name = file_layout_line_number_vector(_ModuleName, _FileNum),
         io.write_string("static const MR_int_least16_t ", !IO),
-        output_layout_name(
-            file_layout_line_number_vector(ModuleName, FileNum), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = file_layout_label_layout_vector(ModuleName, FileNum),
+        Name = file_layout_label_layout_vector(_ModuleName, _FileNum),
         io.write_string("static const MR_LabelLayout *", !IO),
-        output_layout_name(
-            file_layout_label_layout_vector(ModuleName, FileNum), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = module_layout_string_table(ModuleName),
+        Name = module_layout_string_table(_ModuleName),
         io.write_string("static const char ", !IO),
-        output_layout_name(module_layout_string_table(ModuleName), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = module_layout_file_vector(ModuleName),
+        Name = module_layout_file_vector(_ModuleName),
         io.write_string("static const MR_ModuleFileLayout *", !IO),
-        output_layout_name(module_layout_file_vector(ModuleName), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = module_layout_label_exec_count(ModuleName, NumElements),
+        Name = module_layout_label_exec_count(_ModuleName, NumElements),
         io.write_string("static MR_Unsigned ", !IO),
-        output_layout_name(
-            module_layout_label_exec_count(ModuleName, NumElements), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[", !IO),
         io.write_int(NumElements, !IO),
         io.write_string("]", !IO)
     ;
-        Data = module_layout_proc_vector(ModuleName),
+        Name = module_layout_proc_vector(_ModuleName),
         io.write_string("static const MR_ProcLayout *", !IO),
-        output_layout_name(module_layout_proc_vector(ModuleName), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = module_layout_event_specs(ModuleName),
+        Name = module_layout_event_set_desc(_ModuleName),
         io.write_string("static const char ", !IO),
-        output_layout_name(module_layout_event_specs(ModuleName), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = module_layout(ModuleName),
+        Name = module_layout_event_arg_names(_ModuleName, _EventNumber),
+        io.write_string("static const char * ", !IO),
+        output_layout_name(Name, !IO),
+        io.write_string("[]", !IO)
+    ;
+        Name = module_layout_event_synth_attrs(_ModuleName, _EventNumber),
+        io.write_string("static MR_SynthAttr ", !IO),
+        output_layout_name(Name, !IO),
+        io.write_string("[]", !IO)
+    ;
+        Name = module_layout_event_synth_attr_args(_ModuleName,
+            _EventNumber, _SynthCallArgNumber),
+        io.write_string("static MR_uint_least16_t ", !IO),
+        output_layout_name(Name, !IO),
+        io.write_string("[]", !IO)
+    ;
+        Name = module_layout_event_synth_order(_ModuleName, _EventNumber),
+        io.write_string("static MR_int_least16_t ", !IO),
+        output_layout_name(Name, !IO),
+        io.write_string("[]", !IO)
+    ;
+        Name = module_layout_event_specs(_ModuleName),
+        io.write_string("static MR_UserEventSpec ", !IO),
+        output_layout_name(Name, !IO),
+        io.write_string("[]", !IO)
+    ;
+        Name = module_layout(_ModuleName),
         io.write_string("static const MR_ModuleLayout ", !IO),
-        output_layout_name(module_layout(ModuleName), !IO)
+        output_layout_name(Name, !IO)
     ;
-        Data = proc_static(RttiProcLabel),
+        Name = proc_static(_RttiProcLabel),
         io.write_string("static MR_ProcStatic ", !IO),
-        output_layout_name(proc_static(RttiProcLabel), !IO)
+        output_layout_name(Name, !IO)
     ;
-        Data = proc_static_call_sites(RttiProcLabel),
+        Name = proc_static_call_sites(_RttiProcLabel),
         io.write_string("static const MR_CallSiteStatic ", !IO),
-        output_layout_name(proc_static_call_sites(RttiProcLabel), !IO),
+        output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
-        Data = table_io_decl(RttiProcLabel),
+        Name = table_io_decl(_RttiProcLabel),
         io.write_string("static const MR_TableIoDecl ", !IO),
-        output_layout_name(table_io_decl(RttiProcLabel), !IO)
+        output_layout_name(Name, !IO)
     ).
 
 layout_name_would_include_code_addr(label_layout(_, _, _)) = no.
 layout_name_would_include_code_addr(user_event_layout(_, _)) = no.
-layout_name_would_include_code_addr(user_event_attr_names(_, _)) = no.
 layout_name_would_include_code_addr(user_event_attr_var_nums(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout_exec_trace(_)) = yes.
@@ -527,6 +580,14 @@ layout_name_would_include_code_addr(module_layout_string_table(_)) = no.
 layout_name_would_include_code_addr(module_layout_file_vector(_)) = no.
 layout_name_would_include_code_addr(module_layout_proc_vector(_)) = no.
 layout_name_would_include_code_addr(module_layout_label_exec_count(_, _)) = no.
+layout_name_would_include_code_addr(module_layout_event_set_desc(_)) = no.
+layout_name_would_include_code_addr(module_layout_event_arg_names(_, _)) = no.
+layout_name_would_include_code_addr(module_layout_event_synth_attrs(_, _))
+    = no.
+layout_name_would_include_code_addr(
+    module_layout_event_synth_attr_args(_, _, _)) = no.
+layout_name_would_include_code_addr(module_layout_event_synth_order(_, _))
+    = no.
 layout_name_would_include_code_addr(module_layout_event_specs(_)) = no.
 layout_name_would_include_code_addr(module_layout(_)) = no.
 layout_name_would_include_code_addr(proc_static(_)) = no.
@@ -579,24 +640,15 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
     ;
         MaybeUserData = yes(UserData),
         UserChars = "_U",
-        UserData = user_event_data(UserEventNumber, UserEventName,
-            UserNumAttributes, UserLocnsRval, UserTypesRval,
-            UserAttrNames, UserAttrVarNums),
-
-        AttrNamesLayoutName = user_event_attr_names(ProcLabel, LabelNum),
-        AttrNamesDataAddr = layout_addr(AttrNamesLayoutName),
-        decl_set_insert(decl_data_addr(AttrNamesDataAddr), !DeclSet),
-        output_layout_name_storage_type_name(AttrNamesLayoutName, no, !IO),
-        io.write_string(" = {\n", !IO),
-        io.write_list(UserAttrNames, ", ", io.write, !IO),
-        io.write_string("\n};\n\n", !IO),
+        UserData = user_event_data(UserEventNumber, UserLocnsRval,
+            UserAttrMaybeVarNums),
 
         AttrVarNumsLayoutName = user_event_attr_var_nums(ProcLabel, LabelNum),
         AttrVarNumsDataAddr = layout_addr(AttrVarNumsLayoutName),
         decl_set_insert(decl_data_addr(AttrVarNumsDataAddr), !DeclSet),
         output_layout_name_storage_type_name(AttrVarNumsLayoutName, no, !IO),
         io.write_string(" = {\n", !IO),
-        io.write_list(UserAttrVarNums, ", ", io.write, !IO),
+        io.write_list(UserAttrMaybeVarNums, ", ", output_maybe_var_num, !IO),
         io.write_string("\n};\n\n", !IO),
 
         UserLayoutName = user_event_layout(ProcLabel, LabelNum),
@@ -605,16 +657,8 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
         output_layout_name_storage_type_name(UserLayoutName, no, !IO),
         io.write_string(" = {\n", !IO),
         io.write_int(UserEventNumber, !IO),
-        io.write_string(",\n""", !IO),
-        io.write_string(UserEventName, !IO),
-        io.write_string(""",\n", !IO),
-        io.write_int(UserNumAttributes, !IO),
         io.write_string(",\n(MR_LongLval *) ", !IO),
         output_rval_as_addr(UserLocnsRval, !IO),
-        io.write_string(",\n(MR_TypeInfo *) ", !IO),
-        output_rval_as_addr(UserTypesRval, !IO),
-        io.write_string(",\n", !IO),
-        output_layout_name(AttrNamesLayoutName, !IO),
         io.write_string(",\n", !IO),
         output_layout_name(AttrVarNumsLayoutName, !IO),
         io.write_string("\n};\n\n", !IO)
@@ -720,6 +764,14 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
     ),
     io.write_string(");\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
+
+:- pred output_maybe_var_num(maybe(int)::in, io::di, io::uo) is det.
+
+output_maybe_var_num(no, !IO) :-
+    % Zero means not a variable, which is what we want.
+    io.write_int(0, !IO).
+output_maybe_var_num(yes(VarNum), !IO) :-
+    io.write_int(VarNum, !IO).
 
     % Output the rval in a context in which it is immediately cast to an
     % address.
@@ -1343,12 +1395,12 @@ layout_version_number = 1.
 
 :- pred output_module_layout_data_defn(module_name::in, int::in,
     string_with_0s::in, list(layout_name)::in, list(file_layout_data)::in,
-    trace_level::in, int::in, int::in, maybe(pair(string, string))::in,
+    trace_level::in, int::in, int::in, maybe(event_set_layout_data)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
         ProcLayoutNames, FileLayouts, TraceLevel, SuppressedEvents,
-        NumLabels, MaybeEventSet, !DeclSet, !IO) :-
+        NumLabels, MaybeEventSetLayout, !DeclSet, !IO) :-
     output_module_string_table(ModuleName, StringTableSize, StringTable,
         !DeclSet, !IO),
     output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
@@ -1366,10 +1418,16 @@ output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
     decl_set_insert(decl_data_addr(layout_addr(LabelExecCountName)), !DeclSet),
 
     (
-        MaybeEventSet = no
+        MaybeEventSetLayout = no
     ;
-        MaybeEventSet = yes(_EventSetName - EventSpecs),
-        output_event_specs_defn(ModuleName, EventSpecs, !DeclSet, !IO)
+        MaybeEventSetLayout = yes(EventSetDataLayout),
+        EventSetDataLayout =
+            event_set_layout_data(EventSetDataA, TypesRvalMap),
+        EventSetDataA = event_set_data(_EventSetName, EventSetDesc,
+            EventSpecsA, _MaxNumAttr),
+        output_event_set_desc_defn(ModuleName, EventSetDesc, !DeclSet, !IO),
+        output_event_specs_and_components(EventSpecsA, ModuleName,
+            TypesRvalMap, !DeclSet, !IO)
     ),
 
     ModuleLayoutName = module_layout(ModuleName),
@@ -1404,18 +1462,188 @@ output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
     output_layout_name(LabelExecCountName, !IO),
     io.write_string(",\n", !IO),
     (
-        MaybeEventSet = no,
+        MaybeEventSetLayout = no,
         io.write_string("NULL,\n", !IO),
+        io.write_string("NULL,\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("0,\n", !IO),
         io.write_string("NULL", !IO)
     ;
-        MaybeEventSet = yes(EventSetName - _),
+        MaybeEventSetLayout = yes(EventSetDataLayoutB),
+        EventSetDataLayoutB =
+            event_set_layout_data(EventSetDataB, _TypesRvalMap),
+        EventSetDataB = event_set_data(EventSetName, _EventSetDesc,
+            EventSpecsB, MaxNumAttr),
         quote_and_write_string(EventSetName, !IO),
+        io.write_string(",\n", !IO),
+        EventSetDescLayoutName = module_layout_event_set_desc(ModuleName),
+        output_layout_name(EventSetDescLayoutName, !IO),
+        io.write_string(",\n", !IO),
+        io.write_int(MaxNumAttr, !IO),
+        io.write_string(",\n", !IO),
+        io.write_int(list.length(EventSpecsB), !IO),
         io.write_string(",\n", !IO),
         EventSpecLayoutName = module_layout_event_specs(ModuleName),
         output_layout_name(EventSpecLayoutName, !IO)
     ),
     io.write_string("\n};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(ModuleLayoutName)), !DeclSet).
+
+:- pred output_event_specs_and_components(list(event_spec)::in,
+    module_name::in, map(int, rval)::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_event_specs_and_components(EventSpecs, ModuleName, TypesRvalMap,
+        !DeclSet, !IO) :-
+    list.foldl2(output_event_spec_components(ModuleName), EventSpecs,
+        !DeclSet, !IO),
+
+    LayoutName = module_layout_event_specs(ModuleName),
+    DataAddr = layout_addr(LayoutName),
+    decl_set_insert(decl_data_addr(DataAddr), !DeclSet),
+    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    io.write_string(" = {\n", !IO),
+    io.write_list(EventSpecs, ",\n",
+        output_event_spec(ModuleName, TypesRvalMap), !IO),
+    io.write_string("\n};\n\n", !IO).
+
+:- pred output_event_spec_components(module_name::in, event_spec::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_event_spec_components(ModuleName, EventSpec, !DeclSet, !IO) :-
+    EventSpec = event_spec(EventNumber, _EventName, _EventLineNumber,
+        Attrs, SynthOrder),
+
+    AttrNamesLayoutName =
+        module_layout_event_arg_names(ModuleName, EventNumber),
+    AttrNamesDataAddr = layout_addr(AttrNamesLayoutName),
+    decl_set_insert(decl_data_addr(AttrNamesDataAddr), !DeclSet),
+    output_layout_name_storage_type_name(AttrNamesLayoutName, yes, !IO),
+    io.write_string(" = {\n", !IO),
+    io.write_list(Attrs, ", ", output_attr_name, !IO),
+    io.write_string("\n};\n\n", !IO),
+
+    (
+        SynthOrder = []
+    ;
+        SynthOrder = [_ | _],
+
+        list.foldl2(output_synth_attr_args(ModuleName, EventNumber),
+            Attrs, !DeclSet, !IO),
+
+        SynthAttrsLayoutName =
+            module_layout_event_synth_attrs(ModuleName, EventNumber),
+        SynthAttrsDataAddr = layout_addr(SynthAttrsLayoutName),
+        decl_set_insert(decl_data_addr(SynthAttrsDataAddr), !DeclSet),
+        output_layout_name_storage_type_name(SynthAttrsLayoutName, yes, !IO),
+        io.write_string(" = {\n", !IO),
+        io.write_list(Attrs, ",\n",
+            output_synth_attr(ModuleName, EventNumber), !IO),
+        io.write_string("\n};\n\n", !IO),
+
+        SynthOrderLayoutName =
+            module_layout_event_synth_order(ModuleName, EventNumber),
+        SynthOrderDataAddr = layout_addr(SynthOrderLayoutName),
+        decl_set_insert(decl_data_addr(SynthOrderDataAddr), !DeclSet),
+        output_layout_name_storage_type_name(SynthOrderLayoutName, yes, !IO),
+        io.write_string(" = {\n", !IO),
+        % The -1 acts as sentinel.
+        io.write_list(SynthOrder ++ [-1], ", ", io.write_int, !IO),
+        io.write_string("\n};\n\n", !IO)
+    ).
+
+:- pred output_attr_name(event_attribute::in, io::di, io::uo) is det.
+
+output_attr_name(Attr, !IO) :-
+    io.write_string("""", !IO),
+    io.write_string(Attr ^ attr_name, !IO),
+    io.write_string("""", !IO).
+
+:- pred output_synth_attr_args(module_name::in, int::in, event_attribute::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_synth_attr_args(ModuleName, EventNumber, Attr, !DeclSet, !IO) :-
+    MaybeSynthCall = Attr ^ attr_maybe_synth_call,
+    (
+        MaybeSynthCall = yes(SynthCall),
+        SynthCall = event_attr_synth_call(_FuncAttrNameNum, ArgAttrNameNums),
+        assoc_list.values(ArgAttrNameNums, ArgAttrNums),
+        AttrNumber = Attr ^ attr_num,
+        LayoutName = module_layout_event_synth_attr_args(ModuleName,
+            EventNumber, AttrNumber),
+
+        DataAddr = layout_addr(LayoutName),
+        decl_set_insert(decl_data_addr(DataAddr), !DeclSet),
+        output_layout_name_storage_type_name(LayoutName, yes, !IO),
+        io.write_string(" =\n{ ", !IO),
+        io.write_list(ArgAttrNums, ", ", io.write_int, !IO),
+        io.write_string(" };\n\n", !IO)
+    ;
+        MaybeSynthCall = no
+    ).
+
+:- pred output_synth_attr(module_name::in, int::in, event_attribute::in,
+    io::di, io::uo) is det.
+
+output_synth_attr(ModuleName, EventNumber, Attr, !IO) :-
+    io.write_string("{ ", !IO),
+    MaybeSynthCall = Attr ^ attr_maybe_synth_call,
+    (
+        MaybeSynthCall = yes(SynthCall),
+        SynthCall = event_attr_synth_call(_FuncAttrName - FuncAttrNum,
+            ArgAttrNameNums),
+        io.write_int(FuncAttrNum, !IO),
+        io.write_string(", ", !IO),
+        io.write_int(list.length(ArgAttrNameNums), !IO),
+        io.write_string(", ", !IO),
+        AttrNumber = Attr ^ attr_num,
+        LayoutName = module_layout_event_synth_attr_args(ModuleName,
+            EventNumber, AttrNumber),
+        output_layout_name(LayoutName, !IO),
+        % XXX Add the code to write out the list of attributes we depend on,
+        % directly and indirectly.
+        io.write_string(", NULL", !IO)
+    ;
+        MaybeSynthCall = no,
+        io.write_string("-1, -1, NULL, NULL", !IO)
+    ),
+    io.write_string(" }", !IO).
+
+:- pred output_event_spec(module_name::in, map(int, rval)::in, event_spec::in,
+    io::di, io::uo) is det.
+
+output_event_spec(ModuleName, TypesRvalMap, EventSpec, !IO) :-
+    EventSpec = event_spec(EventNumber, EventName, _EventLineNumber, Attrs,
+        SynthOrder),
+    map.lookup(TypesRvalMap, EventNumber, TypesRval),
+
+    io.write_string("{ """, !IO),
+    io.write_string(EventName, !IO),
+    io.write_string(""", ", !IO),
+    io.write_int(list.length(Attrs), !IO),
+    io.write_string(",\n\t", !IO),
+
+    AttrNamesLayoutName =
+        module_layout_event_arg_names(ModuleName, EventNumber),
+    output_layout_name(AttrNamesLayoutName, !IO),
+    io.write_string(",\n\t(MR_TypeInfo *) ", !IO),
+    output_rval_as_addr(TypesRval, !IO),
+    io.write_string(",\n\t", !IO),
+
+    (
+        SynthOrder = [],
+        io.write_string("NULL, NULL }", !IO)
+    ;
+        SynthOrder = [_ | _],
+        SynthAttrsLayoutName =
+            module_layout_event_synth_attrs(ModuleName, EventNumber),
+        SynthOrderLayoutName =
+            module_layout_event_synth_order(ModuleName, EventNumber),
+        output_layout_name(SynthAttrsLayoutName, !IO),
+        io.write_string(",\n\t", !IO),
+        output_layout_name(SynthOrderLayoutName, !IO),
+        io.write_string(" }", !IO)
+    ).
 
 :- pred output_module_layout_proc_vector_defn(module_name::in,
     list(layout_name)::in, layout_name::out, decl_set::in, decl_set::out,
@@ -1456,17 +1684,17 @@ output_proc_layout_name_in_vector(LayoutName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_event_specs_defn(module_name::in, string::in,
+:- pred output_event_set_desc_defn(module_name::in, string::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_event_specs_defn(ModuleName, EventSpecs, !DeclSet, !IO) :-
-    LayoutName = module_layout_event_specs(ModuleName),
+output_event_set_desc_defn(ModuleName, EventSetDesc, !DeclSet, !IO) :-
+    LayoutName = module_layout_event_set_desc(ModuleName),
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(LayoutName, yes, !IO),
     io.write_string(" = {", !IO),
-    string.length(EventSpecs, EventSpecsSize),
-    output_module_string_table_chars_driver(0, EventSpecsSize - 1,
-        string_with_0s(EventSpecs), !IO),
+    string.length(EventSetDesc, EventSetDescSize),
+    output_module_string_table_chars_driver(0, EventSetDescSize - 1,
+        string_with_0s(EventSetDesc), !IO),
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
 

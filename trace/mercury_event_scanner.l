@@ -52,7 +52,7 @@
 extern  void    mercury_event_init(void);
 
 const char      *mercury_event_filename = "no input file";
-int             mercury_event_linenum = 0;
+int             mercury_event_linenum = 1;
 
 /*
 ** Add the declarations for local functions that flex is too lazy to add.
@@ -83,6 +83,12 @@ sp      [ \t]
 nl      [\n\f]
 nonl    [^\n\f]
 
+sc      "/*"
+ec      "*/"
+string  \"[^"]*\"
+inside  [^*]|("*"[^/])|{string}
+comment {sc}{inside}*{ec}
+
 %pointer
 %option noyywrap
 
@@ -100,7 +106,10 @@ nonl    [^\n\f]
 "("                 { return TOKEN_LPAREN;              }
 ")"                 { return TOKEN_RPAREN;              }
 ","                 { return TOKEN_COMMA;               }
-":"                 { return TOKEN_COLON;               }
+":"                 {
+                        mercury_event_lval.Uline = mercury_event_linenum;
+                        return TOKEN_COLON;
+                    }
 
 {alpha}{alnum}*     {
                         mercury_event_lval.Uid = strdup(yytext);
@@ -121,6 +130,15 @@ nonl    [^\n\f]
                     }
 
 "%"{nonl}*{nl}      { mercury_event_linenum++;          }
+{comment}           {
+                        const char  *s;
+
+                        for (s = yytext; *s != '\0'; s++) {
+                            if (*s == '\n') {
+                                mercury_event_linenum++;
+                            }
+                        }
+                    }
 
 {sp}+               {}
 {nl}                { mercury_event_linenum++;          }

@@ -75,7 +75,7 @@ MR_event_get_input(char *buf, int buf_size)
 }
 
 MR_EventSet
-MR_read_event_set(const char *input_data)
+MR_read_event_set(const char *filename, const char *input_data)
 {
     MR_EventSet     event_set;
     MR_EventSpecs   cur;
@@ -90,6 +90,8 @@ MR_read_event_set(const char *input_data)
     MR_event_spec_chars = input_data;
     MR_event_spec_char_max = strlen(input_data) - 1;
     MR_event_spec_char_next = 0;
+
+    mercury_event_filename = filename;
 
     if (mercury_event_parse() != 0) {
         return NULL;
@@ -162,14 +164,16 @@ MR_print_event_set(FILE *fp, MR_EventSet event_set)
     {
         event = events->MR_events_head;
         fprintf(fp, "event_spec_term(\"%s\", %d, %d, [\n",
-            event->MR_event_name, event->MR_event_num, event->MR_event_lineno);
+            event->MR_event_name, event->MR_event_num,
+            event->MR_event_linenumber);
 
         for (attrs = event->MR_event_attributes; attrs != NULL;
             attrs = attrs->MR_attrs_tail)
         {
             attr = attrs->MR_attrs_head;
 
-            fprintf(fp, "    event_attr_term(\"%s\", ", attr->MR_attr_name);
+            fprintf(fp, "    event_attr_term(\"%s\", %d, ",
+                attr->MR_attr_name, attr->MR_attr_linenumber);
             switch (attr->MR_attr_type->MR_type_kind) {
                 case MR_EVENT_ATTR_ORDINARY:
                     fprintf(fp, "event_attr_type_ordinary(");
@@ -232,7 +236,8 @@ MR_print_attr_synth_call(FILE *fp, MR_FlatTerm call)
 {
     MR_FlatArgs args;
 
-    fprintf(fp, "attr_synth_call(\"%s\", [", call->MR_flat_term_functor);
+    fprintf(fp, "event_attr_synth_call_term(\"%s\", [",
+        call->MR_flat_term_functor);
 
     for (args = call->MR_flat_term_args; args != NULL;
         args = args->MR_flat_args_tail)

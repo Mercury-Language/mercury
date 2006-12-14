@@ -44,14 +44,22 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
     % This type is for strings which may contain embedded null characters.
 :- type string_with_0s
     --->    string_with_0s(string).
+
+:- type event_set_layout_data
+    --->    event_set_layout_data(
+                event_set_data,
+                map(int, rval)          % Maps each event number to an rval
+                                        % that gives the vector of typeinfos
+                                        % for the arguments of that event.
+            ).
 
 :- type layout_data
     --->    label_layout_data(          % defines MR_LabelLayout
@@ -79,8 +87,7 @@
                 trace_level             :: trace_level,
                 suppressed_events       :: int,
                 num_label_exec_count    :: int,
-                maybe_event_specs       :: maybe(pair(string, string))
-                                        % event set name, event specifications
+                maybe_event_specs       :: maybe(event_set_layout_data)
             )
     ;       closure_proc_id_data(       % defines MR_ClosureId
                 caller_proc_label       :: proc_label,
@@ -104,12 +111,8 @@
 :- type user_event_data
     --->    user_event_data(
                 user_event_number       :: int,
-                user_event_name         :: string,
-                user_event_num_attr     :: int,
                 user_event_locns        :: rval,
-                user_event_types        :: rval,
-                user_event_names        :: list(string),
-                user_event_var_nums     :: list(int)
+                user_event_var_nums     :: list(maybe(int))
             ).
 
 :- type label_var_info
@@ -203,7 +206,6 @@
 :- type layout_name
     --->    label_layout(proc_label, int, label_vars)
     ;       user_event_layout(proc_label, int)
-    ;       user_event_attr_names(proc_label, int)
     ;       user_event_attr_var_nums(proc_label, int)
     ;       proc_layout(rtti_proc_label, proc_layout_kind)
             % A proc layout structure for stack tracing, accurate gc,
@@ -226,6 +228,11 @@
     ;       module_layout_file_vector(module_name)
     ;       module_layout_proc_vector(module_name)
     ;       module_layout_label_exec_count(module_name, int)
+    ;       module_layout_event_set_desc(module_name)
+    ;       module_layout_event_arg_names(module_name, int)
+    ;       module_layout_event_synth_attrs(module_name, int)
+    ;       module_layout_event_synth_attr_args(module_name, int, int)
+    ;       module_layout_event_synth_order(module_name, int)
     ;       module_layout_event_specs(module_name)
     ;       module_layout(module_name)
     ;       proc_static(rtti_proc_label)

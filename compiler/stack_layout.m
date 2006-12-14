@@ -148,8 +148,7 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
     ProcLayoutNames = LayoutInfo ^ proc_layout_name_list,
     StringTable = LayoutInfo ^ string_table,
     LabelTables = LayoutInfo ^ label_tables,
-    global_data_set_static_cell_info(LayoutInfo ^ static_cell_info,
-        !GlobalData),
+    StaticCellInfo1 = LayoutInfo ^ static_cell_info,
     StringTable = string_table(_, RevStringList, StringOffset),
     list.reverse(RevStringList, StringList),
     concat_string_list(StringList, StringOffset, ConcatStrings),
@@ -171,13 +170,19 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
         HasUserEvent = LayoutInfo ^ has_user_event,
         (
             HasUserEvent = no,
-            MaybeEventSet = no
+            MaybeEventSet = no,
+            StaticCellInfo = StaticCellInfo1
         ;
             HasUserEvent = yes,
             module_info_get_event_set(ModuleInfo, EventSet),
-            EventSet = event_set(EventSetName, EventSpecMap),
-            EventSpecs = event_set_description(EventSpecMap),
-            MaybeEventSet = yes(EventSetName - EventSpecs)
+            EventSetData = derive_event_set_data(EventSet),
+            list.foldl2(build_event_arg_type_info_map,
+                EventSetData ^ event_set_data_specs,
+                map.init, EventArgTypeInfoMap,
+                StaticCellInfo1, StaticCellInfo),
+            EventSetLayoutData = event_set_layout_data(EventSetData,
+                EventArgTypeInfoMap),
+            MaybeEventSet = yes(EventSetLayoutData)
         ),
         ModuleLayout = module_layout_data(ModuleName,
             StringOffset, ConcatStrings, ProcLayoutNames, SourceFileLayouts,
@@ -185,8 +190,10 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
         Layouts = [ModuleLayout | Layouts0]
     ;
         TraceLayout = no,
-        Layouts = Layouts0
-    ).
+        Layouts = Layouts0,
+        StaticCellInfo = StaticCellInfo1
+    ),
+    global_data_set_static_cell_info(StaticCellInfo, !GlobalData).
 
 :- pred valid_proc_layout(proc_layout_info::in) is semidet.
 
@@ -199,6 +206,32 @@ valid_proc_layout(ProcLayoutInfo) :-
     ;
         ProcLabel = special_proc_label(_, _, _, _, _, _)
     ).
+
+:- pred build_event_arg_type_info_map(event_spec::in,
+    map(int, rval)::in, map(int, rval)::out,
+    static_cell_info::in, static_cell_info::out) is det.
+
+build_event_arg_type_info_map(EventSpec, !EventArgTypeInfoMap,
+        !StaticCellInfo) :-
+    EventNumber = EventSpec ^ event_spec_num,
+    Attrs = EventSpec ^ event_spec_attrs,
+    list.map_foldl(build_event_arg_type_info, Attrs, RvalsAndTypes,
+        !StaticCellInfo),
+    add_scalar_static_cell(RvalsAndTypes, TypesDataAddr, !StaticCellInfo),
+    Rval = const(llconst_data_addr(TypesDataAddr, no)),
+    svmap.det_insert(EventNumber, Rval, !EventArgTypeInfoMap).
+
+:- pred build_event_arg_type_info(event_attribute::in,
+    pair(rval, llds_type)::out,
+    static_cell_info::in, static_cell_info::out) is det.
+
+build_event_arg_type_info(Attr, TypeRvalAndType, !StaticCellInfo) :-
+    Type = Attr ^ attr_type,
+    ExistQTvars = [],
+    NumUnivQTvars = -1,
+    ll_pseudo_type_info.construct_typed_llds_pseudo_type_info(Type,
+        NumUnivQTvars, ExistQTvars, !StaticCellInfo, TypeRval, TypeRvalType),
+    TypeRvalAndType = TypeRval - TypeRvalType.
 
 %---------------------------------------------------------------------------%
 
@@ -577,10 +610,10 @@ construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
         MaybeTableInfo = no
     ;
         MaybeTableInfo = yes(TableInfo),
-        get_static_cell_info(!.Info, StaticCellInfo0),
+        get_layout_static_cell_info(!.Info, StaticCellInfo0),
         make_table_data(RttiProcLabel, Kind, TableInfo, MaybeTableData,
             StaticCellInfo0, StaticCellInfo),
-        set_static_cell_info(StaticCellInfo, !Info),
+        set_layout_static_cell_info(StaticCellInfo, !Info),
         add_table_data(MaybeTableData, !Info)
     ).
 
@@ -748,7 +781,7 @@ internal_var_number_map(VarSet, _Label - Internal, !VarNumMap, !Counter) :-
             MaybeUser = no
         ;
             MaybeUser = yes(UserEvent),
-            UserEvent = user_event_info(_PortNum, _PortName, Attributes),
+            UserEvent = user_event_info(_UserEventNumber, Attributes),
             list.foldl2(user_attribute_var_num_map(VarSet), Attributes,
                 !VarNumMap, !Counter)
         )
@@ -783,12 +816,17 @@ label_layout_var_number_map(LabelLayout, !VarNumMap, !Counter) :-
     list.foldl2(add_named_var_to_var_number_map, VarsNames,
         !VarNumMap, !Counter).
 
-:- pred user_attribute_var_num_map(prog_varset::in, user_attribute::in,
+:- pred user_attribute_var_num_map(prog_varset::in, maybe(user_attribute)::in,
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
 
-user_attribute_var_num_map(VarSet, Attribute, !VarNumMap, !Counter) :-
-    Attribute = user_attribute(_Locn, _Type, _Name, Var),
-    add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter).
+user_attribute_var_num_map(VarSet, MaybeAttribute, !VarNumMap, !Counter) :-
+    (
+        MaybeAttribute = yes(Attribute),
+        Attribute = user_attribute(_Locn, Var),
+        add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter)
+    ;
+        MaybeAttribute = no
+    ).
 
 :- pred add_var_to_var_number_map(prog_varset::in, prog_var::in,
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
@@ -937,24 +975,17 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     ;
         MaybeUserInfo = yes(UserInfo),
         set_has_user_event(yes, !Info),
-        UserInfo = user_event_info(UserEventNumber, UserEventName,
-            Attributes),
-        list.length(Attributes, NumAttributes),
+        UserInfo = user_event_info(UserEventNumber, Attributes),
         construct_user_data_array(VarNumMap, Attributes,
-            UserLocnsArray, UserTypesArray, UserAttrNames, UserAttrVarNums,
-            !Info),
+            UserLocnsArray, UserAttrVarNums, !Info),
 
-        get_static_cell_info(!.Info, StaticCellInfo0),
+        get_layout_static_cell_info(!.Info, StaticCellInfo0),
         add_scalar_static_cell(UserLocnsArray, UserLocnsDataAddr,
-            StaticCellInfo0, StaticCellInfo1),
-        add_scalar_static_cell(UserTypesArray, UserTypesDataAddr,
-            StaticCellInfo1, StaticCellInfo),
-        set_static_cell_info(StaticCellInfo, !Info),
+            StaticCellInfo0, StaticCellInfo),
+        set_layout_static_cell_info(StaticCellInfo, !Info),
 
         UserLocnsRval = const(llconst_data_addr(UserLocnsDataAddr, no)),
-        UserTypesRval = const(llconst_data_addr(UserTypesDataAddr, no)),
-        UserData = user_event_data(UserEventNumber, UserEventName,
-            NumAttributes, UserLocnsRval, UserTypesRval, UserAttrNames,
+        UserData = user_event_data(UserEventNumber, UserLocnsRval,
             UserAttrVarNums),
         MaybeUserData = yes(UserData)
     ),
@@ -982,32 +1013,30 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     add_internal_layout_data(LayoutData, Label, LayoutName, !Info),
     LabelLayout = {ProcLabel, LabelNum, LabelVars, Internal}.
 
-:- pred construct_user_data_array(var_num_map::in, list(user_attribute)::in,
-    assoc_list(rval, llds_type)::out, assoc_list(rval, llds_type)::out,
-    list(string)::out, list(int)::out,
+:- pred construct_user_data_array(var_num_map::in,
+    list(maybe(user_attribute))::in,
+    assoc_list(rval, llds_type)::out, list(maybe(int))::out,
     stack_layout_info::in, stack_layout_info::out) is det.
 
-construct_user_data_array(_, [], [], [], [], [], !Info).
-construct_user_data_array(VarNumMap, [Attr | Attrs],
-        [LocnRvalAndType | LocnRvalAndTypes],
-        [TypeRvalAndType | TypeRvalAndTypes], [Name | Names],
-        [VarNum | VarNums], !Info) :-
-    Attr = user_attribute(Locn, Type, Name, Var),
-    convert_var_to_int(VarNumMap, Var, VarNum),
-    represent_locn_or_const_as_int_rval(Locn, LocnRval, LocnRvalType, !Info),
-    LocnRvalAndType = LocnRval - LocnRvalType,
-
-    ExistQTvars = [],
-    NumUnivQTvars = -1,
-    get_static_cell_info(!.Info, StaticCellInfo0),
-    ll_pseudo_type_info.construct_typed_llds_pseudo_type_info(Type,
-        NumUnivQTvars, ExistQTvars, StaticCellInfo0, StaticCellInfo,
-        TypeRval, TypeRvalType),
-    set_static_cell_info(StaticCellInfo, !Info),
-    TypeRvalAndType = TypeRval - TypeRvalType,
-
-    construct_user_data_array(VarNumMap, Attrs, LocnRvalAndTypes,
-        TypeRvalAndTypes, Names, VarNums, !Info).
+construct_user_data_array(_, [], [], [], !Info).
+construct_user_data_array(VarNumMap, [MaybeAttr | MaybeAttrs],
+        [LocnRvalAndType | LocnRvalAndTypes], [MaybeVarNum | MaybeVarNums],
+        !Info) :-
+    (
+        MaybeAttr = yes(Attr),
+        Attr = user_attribute(Locn, Var),
+        represent_locn_or_const_as_int_rval(Locn, LocnRval, LocnRvalType,
+            !Info),
+        LocnRvalAndType = LocnRval - LocnRvalType,
+        convert_var_to_int(VarNumMap, Var, VarNum),
+        MaybeVarNum = yes(VarNum)
+    ;
+        MaybeAttr = no,
+        LocnRvalAndType = const(llconst_int(0)) - uint_least32,
+        MaybeVarNum = no
+    ),
+    construct_user_data_array(VarNumMap, MaybeAttrs, LocnRvalAndTypes,
+        MaybeVarNums, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -1207,11 +1236,11 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
     list.map(associate_type(uint_least8), ByteLocns, ByteLocnsTypes),
     list.append(IntLocnsTypes, ByteLocnsTypes, AllLocnsTypes),
     list.append(AllTypeRvalsTypes, AllLocnsTypes, TypeLocnVectorRvalsTypes),
-    get_static_cell_info(!.Info, StaticCellInfo0),
+    get_layout_static_cell_info(!.Info, StaticCellInfo0),
     add_scalar_static_cell(TypeLocnVectorRvalsTypes, TypeLocnVectorAddr,
         StaticCellInfo0, StaticCellInfo1),
     TypeLocnVector = const(llconst_data_addr(TypeLocnVectorAddr, no)),
-    set_static_cell_info(StaticCellInfo1, !Info),
+    set_layout_static_cell_info(StaticCellInfo1, !Info),
 
     get_trace_stack_layout(!.Info, TraceStackLayout),
     (
@@ -1219,10 +1248,10 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
         list.foldl(AddRevNums, AllArrayInfo, [], RevVarNumRvals),
         list.reverse(RevVarNumRvals, VarNumRvals),
         list.map(associate_type(uint_least16), VarNumRvals, VarNumRvalsTypes),
-        get_static_cell_info(!.Info, StaticCellInfo2),
+        get_layout_static_cell_info(!.Info, StaticCellInfo2),
         add_scalar_static_cell(VarNumRvalsTypes, NumVectorAddr,
             StaticCellInfo2, StaticCellInfo),
-        set_static_cell_info(StaticCellInfo, !Info),
+        set_layout_static_cell_info(StaticCellInfo, !Info),
         NumVector = const(llconst_data_addr(NumVectorAddr, no))
     ;
         TraceStackLayout = no,
@@ -1447,11 +1476,11 @@ represent_live_value_type(live_value_var(_, _, Type, _), Rval, LldsType,
     % we can take the variable number directly from the procedure's tvar set.
     ExistQTvars = [],
     NumUnivQTvars = -1,
-    get_static_cell_info(!.Info, StaticCellInfo0),
+    get_layout_static_cell_info(!.Info, StaticCellInfo0),
     ll_pseudo_type_info.construct_typed_llds_pseudo_type_info(Type,
         NumUnivQTvars, ExistQTvars, StaticCellInfo0, StaticCellInfo,
         Rval, LldsType),
-    set_static_cell_info(StaticCellInfo, !Info).
+    set_layout_static_cell_info(StaticCellInfo, !Info).
 
 :- pred represent_special_live_value_type(string::in, rval::out) is det.
 
@@ -1477,16 +1506,20 @@ represent_locn_or_const_as_int_rval(LvalOrConst, Rval, Type, !Info) :-
         globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
         rval_type_as_arg(LvalOrConst, UnboxedFloat, LLDSType),
 
-        get_static_cell_info(!.Info, StaticCellInfo0),
+        get_layout_static_cell_info(!.Info, StaticCellInfo0),
         add_scalar_static_cell([LvalOrConst - LLDSType], DataAddr,
             StaticCellInfo0, StaticCellInfo),
-        set_static_cell_info(StaticCellInfo, !Info),
+        set_layout_static_cell_info(StaticCellInfo, !Info),
         Rval = const(llconst_data_addr(DataAddr, no)),
         Type = data_ptr
     ;
+        LvalOrConst = mkword(Tag, LvalOrConstBase),
+        represent_locn_or_const_as_int_rval(LvalOrConstBase, BaseRval, Type,
+            !Info),
+        Rval = mkword(Tag, BaseRval)
+    ;
         ( LvalOrConst = binop(_, _, _)
         ; LvalOrConst = unop(_, _)
-        ; LvalOrConst = mkword(_, _)
         ; LvalOrConst = mem_addr(_)
         ; LvalOrConst = var(_)
         ),
@@ -1767,8 +1800,8 @@ represent_determinism_rval(Detism,
 :- pred get_string_table(stack_layout_info::in, string_table::out) is det.
 :- pred get_label_tables(stack_layout_info::in, map(string, label_table)::out)
     is det.
-:- pred get_static_cell_info(stack_layout_info::in, static_cell_info::out)
-    is det.
+:- pred get_layout_static_cell_info(stack_layout_info::in,
+    static_cell_info::out) is det.
 :- pred get_has_user_event(stack_layout_info::in, bool::out) is det.
 
 get_module_info(LI, LI ^ module_info).
@@ -1782,7 +1815,7 @@ get_internal_layout_data(LI, LI ^ internal_layouts).
 get_label_set(LI, LI ^ label_set).
 get_string_table(LI, LI ^ string_table).
 get_label_tables(LI, LI ^ label_tables).
-get_static_cell_info(LI, LI ^ static_cell_info).
+get_layout_static_cell_info(LI, LI ^ static_cell_info).
 get_has_user_event(LI, LI ^ has_user_event).
 
 :- pred allocate_label_number(int::out,
@@ -1838,7 +1871,7 @@ add_internal_layout_data(InternalLayout, Label, LayoutName, !LI) :-
 :- pred set_label_tables(map(string, label_table)::in,
     stack_layout_info::in, stack_layout_info::out) is det.
 
-:- pred set_static_cell_info(static_cell_info::in,
+:- pred set_layout_static_cell_info(static_cell_info::in,
     stack_layout_info::in, stack_layout_info::out) is det.
 
 :- pred set_has_user_event(bool::in,
@@ -1846,7 +1879,7 @@ add_internal_layout_data(InternalLayout, Label, LayoutName, !LI) :-
 
 set_string_table(ST, LI, LI ^ string_table := ST).
 set_label_tables(LT, LI, LI ^ label_tables := LT).
-set_static_cell_info(SCI, LI, LI ^ static_cell_info := SCI).
+set_layout_static_cell_info(SCI, LI, LI ^ static_cell_info := SCI).
 set_has_user_event(HUE, LI, LI ^ has_user_event := HUE).
 
 %---------------------------------------------------------------------------%

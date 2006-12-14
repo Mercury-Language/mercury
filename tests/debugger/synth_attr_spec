@@ -1,0 +1,18 @@
+event set queens
+
+event nodiag_fail(
+/* 0 */	test_failed:	string,
+/* 1 */	arg_b:		int,
+/* 2 */	arg_d:		int,
+/* 3 */	arg_list_len:	int synthesized by list_len_func(sorted_list),
+/* 4 */	sorted_list:	list(int) synthesized by list_sort_func(arg_list),
+/* 5 */	list_len_func:	function,
+/* 6 */	list_sort_func:	function,
+/* 7 */	arg_list:	list(int)
+)
+
+event safe_test(
+	test_list:	listint,
+	f:		function,
+	excp:		int synthesized by f(test_list)
+)

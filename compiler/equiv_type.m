@@ -541,14 +541,12 @@ replace_in_event_spec_list(
 
 replace_in_event_spec(EventSpec0, EventSpec, EqvMap, EqvInstMap,
         !RecompInfo, !UsedModules, !Specs) :-
-    EventSpec0 = event_spec(EventNumber, EventLineNumber,
-        VisAttrs0, AllAttrs0),
-    replace_in_event_attrs(VisAttrs0, VisAttrs, EqvMap, EqvInstMap,
+    EventSpec0 = event_spec(EventNumber, EventName, EventLineNumber,
+        Attrs0, SyntAttrNumOrder),
+    replace_in_event_attrs(Attrs0, Attrs, EqvMap, EqvInstMap,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_event_attrs(AllAttrs0, AllAttrs, EqvMap, EqvInstMap,
-        !RecompInfo, !UsedModules, !Specs),
-    EventSpec = event_spec(EventNumber, EventLineNumber,
-        VisAttrs, AllAttrs).
+    EventSpec = event_spec(EventNumber, EventName, EventLineNumber,
+        Attrs, SyntAttrNumOrder).
 
 :- pred replace_in_event_attrs(
     list(event_attribute)::in, list(event_attribute)::out,
@@ -576,12 +574,14 @@ replace_in_event_attr(Attr0, Attr, EqvMap, _EqvInstMap,
         !RecompInfo, !UsedModules, !Specs) :-
     % We construct the attributes' modes ourselves in event_spec.m; they should
     % not contain type names.
-    Attr0 = event_attribute(AttrName, AttrType0, AttrMode, MaybeSynthCall),
+    Attr0 = event_attribute(AttrNum, AttrName, AttrType0, AttrMode,
+        MaybeSynthCall),
     TVarSet0 = varset.init,
     replace_in_type_location(eqv_type_out_of_module, EqvMap,
         AttrType0, AttrType, _Changed, TVarSet0, _TVarSet, no, _EquivTypeInfo,
         !UsedModules),
-    Attr = event_attribute(AttrName, AttrType, AttrMode, MaybeSynthCall).
+    Attr = event_attribute(AttrNum, AttrName, AttrType, AttrMode,
+        MaybeSynthCall).
 
 :- pred replace_in_type_defn(eqv_type_location::in, eqv_map::in, type_ctor::in,
     type_defn::in, type_defn::out, bool::out, tvarset::in, tvarset::out,

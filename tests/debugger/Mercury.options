@@ -45,6 +45,8 @@ MCFLAGS-user_event = --event-set-file-name user_event_spec
 
 MCFLAGS-user_event_shallow = --event-set-file-name user_event_spec --trace shallow
 
+MCFLAGS-synth_attr = --event-set-file-name synth_attr_spec
+
 # The solver_test test case exercises the printing of a procedure name, and
 # that procedure is dead, so we must prevent it being optimized away.
 # The -O2 is to prevent spurious inconsistencies.

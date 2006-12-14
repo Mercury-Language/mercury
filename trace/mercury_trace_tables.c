@@ -35,6 +35,7 @@ int                 MR_trace_event_set_next = 0;
 int                 MR_trace_event_set_max = 0;
 
 MR_bool             MR_trace_event_sets_are_all_consistent = MR_TRUE;
+int                 MR_trace_event_sets_max_num_attr = -1;
 
 /*
 ** We record module layout structures in two tables. The MR_module_infos
@@ -173,21 +174,21 @@ MR_register_module_layout_real(const MR_ModuleLayout *module)
         MR_insert_module_info(module);
 
         if (module->MR_ml_version_number >= MR_LAYOUT_VERSION__EVENTSETNAME) {
-            if (module->MR_ml_event_specs != NULL) {
+            if (module->MR_ml_user_event_set_desc != NULL) {
                 int                 i;
                 MR_bool             found;
                 const char          *event_set_name;
                 MR_TraceEventSet    *trace_event_set;
                 
-                event_set_name = module->MR_ml_event_set_name;
+                event_set_name = module->MR_ml_user_event_set_name;
 
                 for (i = 0; i < MR_trace_event_set_next; i++) {
                     if (MR_streq(MR_trace_event_sets[i].MR_tes_name,
                         event_set_name))
                     {
                         trace_event_set = &MR_trace_event_sets[i];
-                        if (MR_strdiff(trace_event_set->MR_tes_string,
-                            module->MR_ml_event_specs))
+                        if (MR_strdiff(trace_event_set->MR_tes_desc,
+                            module->MR_ml_user_event_set_desc))
                         {
                             trace_event_set->MR_tes_is_consistent = MR_FALSE;
                         }
@@ -203,9 +204,20 @@ MR_register_module_layout_real(const MR_ModuleLayout *module)
                     trace_event_set =
                         &MR_trace_event_sets[MR_trace_event_set_next];
                     trace_event_set->MR_tes_name = event_set_name;
-                    trace_event_set->MR_tes_string = module->MR_ml_event_specs;
+                    trace_event_set->MR_tes_desc =
+                            module->MR_ml_user_event_set_desc;
                     trace_event_set->MR_tes_is_consistent = MR_TRUE;
+                    trace_event_set->MR_tes_specs =
+                            module->MR_ml_user_event_specs;
                     MR_trace_event_set_next++;
+
+                    if (MR_trace_event_sets_max_num_attr <
+                        module->MR_ml_user_event_max_num_attr)
+                    {
+                        MR_trace_event_sets_max_num_attr =
+                            module->MR_ml_user_event_max_num_attr;
+                    }
+
                 }
             }
         }

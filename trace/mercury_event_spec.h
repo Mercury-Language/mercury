@@ -55,13 +55,14 @@ struct MR_EventAttrs_Struct {
 
 struct MR_EventSpec_Struct {
     unsigned            MR_event_num;
-    int                 MR_event_lineno;
+    int                 MR_event_linenumber;
     const char          *MR_event_name;
     MR_EventAttrs       MR_event_attributes;
 };
 
 struct MR_EventAttr_Struct {
     const char          *MR_attr_name;
+    int                 MR_attr_linenumber;
     MR_EventAttrType    MR_attr_type;
 };
 
@@ -86,12 +87,14 @@ struct MR_EventAttrType_Struct {
 extern  int             MR_event_get_input(char *buf, int buf_size);
 
 /*
-** Read the specification of a set of event types from the given string, which
-** should be the contents of the event set specification file. If the operation
-** succeeded, return the result; otherwise, return NULL.
+** Read the specification of a set of event types from the string given by
+** event_set, which should be the contents of the event set specification file
+** named filename. If the operation succeeded, return the result; otherwise,
+** return NULL.
 */
 
-extern  MR_EventSet     MR_read_event_set(const char *event_set);
+extern  MR_EventSet     MR_read_event_set(const char *filename,
+                            const char *event_set);
 
 /*
 ** Print out the set of event specifications given by event_set to the given

@@ -56,7 +56,7 @@ static  void        mercury_event_error(const char *s);
 
 %token              TOKEN_LPAREN
 %token              TOKEN_RPAREN
-%token              TOKEN_COLON
+%token  <Uline>     TOKEN_COLON
 %token              TOKEN_COMMA
 
 %token  <Uid>       TOKEN_ID
@@ -109,7 +109,7 @@ event       :   TOKEN_EVENT TOKEN_ID TOKEN_LPAREN maybe_attrs TOKEN_RPAREN
                 {
                     $$ = MR_NEW(struct MR_EventSpec_Struct);
                     $$->MR_event_num = mercury_event_next_num;
-                    $$->MR_event_lineno = $1;
+                    $$->MR_event_linenumber = $1;
                     $$->MR_event_name = $2;
                     $$->MR_event_attributes = $4;
                     mercury_event_next_num++;
@@ -140,6 +140,7 @@ attr        :   TOKEN_ID TOKEN_COLON type
                 {
                     $$ = MR_NEW(struct MR_EventAttr_Struct);
                     $$->MR_attr_name = $1;
+                    $$->MR_attr_linenumber = $2;
                     $$->MR_attr_type = $3;
                 }
             ;

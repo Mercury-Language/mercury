@@ -78,6 +78,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -241,33 +242,49 @@ generate_event_call(EventName, Args, GoalInfo, Code, !CI) :-
     module_info_get_event_set(ModuleInfo, EventSet),
     EventSpecMap = EventSet ^ event_set_spec_map,
     (
-        event_arg_names(EventSpecMap, EventName, AttributeNames),
+        event_attributes(EventSpecMap, EventName, Attributes),
         event_number(EventSpecMap, EventName, EventNumber)
     ->
-        generate_event_attributes(AttributeNames, Args, Attributes, AttrCodes,
-            !CI),
-        UserEventInfo = user_event_info(EventNumber, EventName, Attributes),
+        generate_event_attributes(Attributes, Args, MaybeUserAttributes,
+            AttrCodes, !CI),
+        UserEventInfo = user_event_info(EventNumber, MaybeUserAttributes),
         generate_user_event_code(UserEventInfo, GoalInfo, EventCode, !CI),
         Code = tree(tree_list(AttrCodes), EventCode)
     ;
         unexpected(this_file, "generate_event_call: bad event name")
     ).
 
-:- pred generate_event_attributes(list(string)::in, list(prog_var)::in,
-    list(user_attribute)::out, list(code_tree)::out,
+:- pred generate_event_attributes(list(event_attribute)::in,
+    list(prog_var)::in, list(maybe(user_attribute))::out, list(code_tree)::out,
     code_info::in, code_info::out) is det.
 
-generate_event_attributes([], [], [], [], !CI).
-generate_event_attributes([], [_ | _], _, _, !CI) :-
-    unexpected(this_file, "generate_event_attributes: list length mismatch").
-generate_event_attributes([_ | _], [], _, _, !CI) :-
-    unexpected(this_file, "generate_event_attributes: list length mismatch").
-generate_event_attributes([Name | Names], [Var | Vars], [Attr | Attrs],
-        [Code | Codes], !CI) :-
-    produce_variable(Var, Code, Rval, !CI),
-    Type = variable_type(!.CI, Var),
-    Attr = user_attribute(Rval, Type, Name, Var),
-    generate_event_attributes(Names, Vars, Attrs, Codes, !CI).
+generate_event_attributes([], !.Vars, [], [], !CI) :-
+    (
+        !.Vars = [_ | _],
+        unexpected(this_file, "generate_event_attributes: var")
+    ;
+        !.Vars = []
+    ).
+generate_event_attributes([Attribute | Attributes], !.Vars,
+        [MaybeUserAttr | MaybeUserAttrs], [Code | Codes], !CI) :-
+    SynthCall = Attribute ^ attr_maybe_synth_call,
+    (
+        SynthCall = no,
+        (
+            !.Vars = [Var | !:Vars],
+            produce_variable(Var, Code, Rval, !CI),
+            UserAttr = user_attribute(Rval, Var),
+            MaybeUserAttr = yes(UserAttr)
+        ;
+            !.Vars = [],
+            unexpected(this_file, "generate_event_attributes: no var")
+        )
+    ;
+        SynthCall = yes(_),
+        MaybeUserAttr = no,
+        Code = empty
+    ),
+    generate_event_attributes(Attributes, !.Vars, MaybeUserAttrs, Codes, !CI).
 
 %---------------------------------------------------------------------------%
 
