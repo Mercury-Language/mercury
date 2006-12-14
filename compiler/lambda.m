@@ -114,7 +114,6 @@
     --->    lambda_info(
                 prog_varset,            % from the proc_info
                 vartypes,               % from the proc_info
-                prog_constraints,       % from the pred_info
                 tvarset,                % from the proc_info
                 inst_varset,            % from the proc_info
                 rtti_varmaps,           % from the proc_info
@@ -170,7 +169,6 @@ process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
     pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
     pred_info_get_markers(!.PredInfo, Markers),
-    pred_info_get_class_context(!.PredInfo, Constraints0),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
@@ -181,11 +179,11 @@ process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     MustRecomputeNonLocals0 = no,
 
     % Process the goal.
-    Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
+    Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0,
         InstVarSet0, RttiVarMaps0, Markers, HasParallelConj, PredOrFunc,
         PredName, !.ModuleInfo, MustRecomputeNonLocals0),
     process_goal(Goal0, Goal1, Info0, Info1),
-    Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet,
+    Info1 = lambda_info(VarSet1, VarTypes1, TypeVarSet,
         _, RttiVarMaps1, _, _, _, _, !:ModuleInfo, MustRecomputeNonLocals),
 
     % Check if we need to requantify.
@@ -207,8 +205,7 @@ process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
-    pred_info_set_typevarset(TypeVarSet, !PredInfo),
-    pred_info_set_class_context(Constraints, !PredInfo).
+    pred_info_set_typevarset(TypeVarSet, !PredInfo).
 
     % The job of process_goal is to traverse the goal, processing each
     % unification with process_unify_goal.
@@ -306,7 +303,7 @@ process_unify_goal(XVar, Y0, Mode, Unification0, Context, GoalExpr, !Info) :-
 process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         OrigNonLocals0, LambdaGoal, Unification0, Functor,
         Unification, LambdaInfo0, LambdaInfo) :-
-    LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
+    LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet,
         InstVarSet, RttiVarMaps, Markers, HasParallelConj, POF, OrigPredName,
         ModuleInfo0, MustRecomputeNonLocals0),
 
@@ -520,7 +517,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
     Unification = construct(Var, ConsId, ArgVars, UniModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
-    LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
+    LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet,
         InstVarSet, RttiVarMaps, Markers, HasParallelConj, POF, OrigPredName,
         ModuleInfo, MustRecomputeNonLocals).
 
