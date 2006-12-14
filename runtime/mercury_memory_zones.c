@@ -426,6 +426,7 @@ MR_unget_zone(MR_MemoryZone *zone)
     ** workaround, we never put memory zones on the free list and deallocate
     ** them immediately here.
     */
+  #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
     size_t          redsize;
     int             res;
 
@@ -433,6 +434,7 @@ MR_unget_zone(MR_MemoryZone *zone)
     res = MR_protect_pages((char *) zone->MR_zone_redzone,
         redsize + MR_unit, NORMAL_PROT);
     assert(res == 0);
+  #endif
 
     MR_dealloc_zone_memory(zone->MR_zone_bottom,
         ((char *) zone->MR_zone_top) - ((char *) zone->MR_zone_bottom));
