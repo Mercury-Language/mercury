@@ -219,20 +219,17 @@
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.
 
-    % int.max_int is the maximum value of an int
-    % on this machine.
+    % int.max_int is the maximum value of an int on this machine.
     %
 :- func int.max_int = int.
 :- pred int.max_int(int::out) is det.
 
-    % int.min_int is the minimum value of an int
-    % on this machine.
+    % int.min_int is the minimum value of an int on this machine.
     %
 :- func int.min_int = int.
 :- pred int.min_int(int::out) is det.
 
-    % int.bits_per_int is the number of bits in an int
-    % on this machine.
+    % int.bits_per_int is the number of bits in an int on this machine.
     %
 :- func int.bits_per_int = int.
 :- pred int.bits_per_int(int::out) is det.

@@ -161,23 +161,18 @@
 :- pred delete_list(sparse_bitset(T)::in, list(T)::in, sparse_bitset(T)::out)
     is det <= enum(T).
 
-    % `remove(Set, X)' returns the difference of `Set' and the set containing
-    % only `X', failing if `Set' does not contain `X'. Takes O(rep_size(Set))
-    % time and space.
+    % `remove(Set0, X, Set)' returns in `Set' the difference of `Set0'
+    % and the set containing only `X', failing if `Set0' does not contain `X'.
+    % Takes O(rep_size(Set)) time and space.
     %
-:- func remove(sparse_bitset(T)::in, T::in) = (sparse_bitset(T)::out)
-    is semidet <= enum(T).
 :- pred remove(sparse_bitset(T)::in, T::in, sparse_bitset(T)::out)
     is semidet <= enum(T).
 
-    % `remove_list(Set, X)' returns the difference of `Set' and the set
-    % containing all the elements of `X', failing if any element of `X'
-    % is not in `Set0'.
-    % Same as `subset(list_to_set(X), Set), difference(Set, list_to_set(X))',
-    % but may be more efficient.
+    % `remove_list(Set0, X, Set)' returns in `Set' the difference of `Set0'
+    % and the set containing all the elements of `X', failing if any element
+    % of `X' is not in `Set0'. Same as `subset(list_to_set(X), Set0),
+    % difference(Set0, list_to_set(X), Set)', but may be more efficient.
     %
-:- func remove_list(sparse_bitset(T)::in, list(T)::in) = (sparse_bitset(T)::out)
-    is semidet <= enum(T).
 :- pred remove_list(sparse_bitset(T)::in, list(T)::in, sparse_bitset(T)::out)
     is semidet <= enum(T).
 
@@ -190,7 +185,7 @@
     is det <= enum(T).
 
     % `remove_gt(Set, X)' returns `Set' with all elements greater than `X'
-    % removed. In other words, it returns the set containing % all the elements
+    % removed. In other words, it returns the set containing all the elements
     % of `Set' which are less than or equal to `X'.
     %
 :- func remove_gt(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
@@ -459,7 +454,8 @@ do_foldl_pred(P, [H | T], !Acc) :-
     fold_bits(low_to_high, P, H ^ offset, H ^ bits, bits_per_int, !Acc),
     do_foldl_pred(P, T, !Acc).
 
-:- pred do_foldl2_pred(pred(T, U, U, V, V), bitset_impl, U, U, V, V) <= enum(T).
+:- pred do_foldl2_pred(pred(T, U, U, V, V), bitset_impl, U, U, V, V)
+    <= enum(T).
 :- mode do_foldl2_pred(pred(in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
 :- mode do_foldl2_pred(pred(in, in, out, di, uo) is det,
@@ -699,11 +695,11 @@ insert_list(Set, List) = union(list_to_set(List), Set).
 delete(Set, Elem) = difference(Set, insert(init, Elem)).
 delete_list(Set, List) = difference(Set, list_to_set(List)).
 
-remove(Set0, Elem) = Set :-
+remove(Set0, Elem, Set) :-
     contains(Set0, Elem),
     Set = delete(Set0, Elem).
 
-remove_list(Set0, Elems) = Set :-
+remove_list(Set0, Elems, Set) :-
     list_to_set(Elems, ElemsSet),
     subset(ElemsSet, Set0),
     Set = difference(Set0, ElemsSet).
@@ -1138,10 +1134,6 @@ insert_list(A, B, insert_list(A, B)).
 delete(A, B, delete(A, B)).
 
 delete_list(A, B, delete_list(A, B)).
-
-remove(A, B, remove(A, B)).
-
-remove_list(A, B, remove_list(A, B)).
 
 remove_leq(A, B, remove_leq(A, B)).
 
