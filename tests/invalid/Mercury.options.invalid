@@ -1,0 +1,3 @@
+# Test that we give a proper error message for words in MLLIBS that
+# aren't `-l' options.
+MLLIBS = invalid sdfksjdkljs 

@@ -138,10 +138,10 @@ read_args_file(OptionsFile, MaybeMCFlags, !IO) :-
                 "arguments file does not set MCFLAGS.\n", !IO),
             MaybeMCFlags = no
         ;
-            FlagsResult = var_result_error(Msg),
+            FlagsResult = var_result_error(ErrorSpec),
             MaybeMCFlags = no,
-            io.write_string(Msg, !IO),
-            io.nl(!IO)
+            globals.io_get_globals(Globals, !IO),
+            write_error_spec(ErrorSpec, Globals, 0, _, 0, _, !IO)
         )
     ;
         MaybeVariables = no,
@@ -271,10 +271,14 @@ read_options_file_params(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
                 ;
                     ErrorFile = FileToFind
                 ),
-                io.write_string("Error reading options file `", !IO),
-                io.write_string(ErrorFile, !IO),
-                io.write_string("'.\n", !IO),
-                io.set_exit_status(1, !IO)
+                ErrorSpec = error_spec(severity_error, phase_read_files,
+                        [error_msg(no, no, 0,
+                            [always([words("Error reading options file"),
+                                quote(ErrorFile), suffix(".")])
+                            ])
+                        ]),
+                globals.io_get_globals(Globals, !IO),
+                write_error_spec(ErrorSpec, Globals, 0, _, 0, _, !IO)
             ;
                 ErrorIfNotExist = no_error
             )
@@ -893,7 +897,7 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
     % libraries).
     % `MERCURY_STDLIB_DIR' and `MERCURY_CONFIG_DIR' should come before
     % `MCFLAGS'. Settings in `MCFLAGS' (e.g. `--no-mercury-stdlib-dir')
-    % should override settings of these MERCURY_STDLIB_DIR in the environment.
+    % should override settings of these in the environment.
 options_variable_types =
     [grade_flags, linkage, mercury_linkage, lib_grades, lib_linkages,
     stdlib_dir, config_dir, mmc_flags, c_flags, java_flags, ilasm_flags,
@@ -1012,7 +1016,7 @@ mmc_option_type(mercury_linkage) = option([], "--mercury-linkage").
 :- type variable_result(T)
     --->    var_result_set(T)
     ;       var_result_unset
-    ;       var_result_error(string).
+    ;       var_result_error(error_spec).
 
 :- pred lookup_options_variable(options_variables::in,
     options_variable_class::in, options_variable_type::in,
@@ -1050,11 +1054,50 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
     %       Failing to maintain this order will result in the user being unable
     %       to override the default value of many of the compiler's options.
     %
-    Result =
+    Result0 =
         DefaultFlagsResult  `combine_var_results`
         FlagsResult         `combine_var_results`
         ExtraFlagsResult    `combine_var_results`
-        ModuleFlagsResult.
+        ModuleFlagsResult,
+
+    %
+    % Check the result is valid for the variable type.
+    %
+    (
+        Result0 = var_result_unset, Result = var_result_unset
+    ;
+        Result0 = var_result_error(E), Result = var_result_error(E)
+    ;
+        Result0 = var_result_set(V),
+        ( FlagsVar = ml_libs ->
+            BadLibs = list.filter(
+                        (pred(LibFlag::in) is semidet :-
+                                \+ string__prefix(LibFlag, "-l")
+                                
+                        ), V),
+            (
+                BadLibs = [],
+                Result = Result0
+            ;
+                BadLibs = [_ | _],
+                ErrorSpec = error_spec(severity_error, phase_read_files,
+                        [error_msg(no, no, 0,
+                            [always([words("Error: MLLIBS must contain only"),
+                                words("`-l' options, found") |
+                                list_to_pieces(
+                                    map(func(Lib) = add_quotes(Lib), BadLibs))]
+                                ++ [suffix(".")]
+                            )]
+                        )]
+                    ),
+                globals.io_get_globals(Globals, !IO),
+                write_error_spec(ErrorSpec, Globals, 0, _, 0, _, !IO),
+                Result = var_result_error(ErrorSpec)
+            )
+        ;
+            Result = Result0
+        )
+    ).
 
 :- func combine_var_results(variable_result(list(T)), variable_result(list(T)))
     = variable_result(list(T)).
@@ -1076,9 +1119,9 @@ combine_var_results(var_result_error(E), _) = var_result_error(E).
 
 lookup_variable_words_report_error(Vars, VarName, Result, !IO) :-
     lookup_variable_words(Vars, VarName, Result, !IO),
-    ( Result = var_result_error(Error) ->
-        io.write_string(Error, !IO),
-        io.nl(!IO)
+    ( Result = var_result_error(ErrorSpec) ->
+        globals.io_get_globals(Globals, !IO),
+        write_error_spec(ErrorSpec, Globals, 0, _, 0, _, !IO)
     ;
         true
     ).
@@ -1109,8 +1152,15 @@ lookup_variable_words_maybe_env(LookupEnv, Vars, VarName, Result, !IO) :-
             Result = var_result_set(EnvWords)
         ;
             SplitResult = error(Msg),
-            Result = var_result_error("Error: in environment variable `"
-                ++ VarName ++ "': " ++ Msg)
+            
+            ErrorSpec = error_spec(severity_error, phase_read_files,
+                        [error_msg(no, no, 0,
+                            [always([words("Error: in environment variable"),
+                                quote(VarName), suffix(":"), words(Msg)
+                            ])]
+                        )]
+                    ),
+            Result = var_result_error(ErrorSpec)
         )
     ;
         MaybeEnvValue = no,

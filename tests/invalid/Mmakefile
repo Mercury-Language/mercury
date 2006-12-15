@@ -106,6 +106,7 @@ SINGLEMODULE= \
 	invalid_export_detism \
 	invalid_import_detism \
 	invalid_main \
+	invalid_mllibs \
 	invalid_new \
 	invalid_typeclass \
 	io_in_ite_cond \
