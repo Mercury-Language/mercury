@@ -135,7 +135,7 @@ delete_list(SetA - SetB, List) =
 		delete_list(SetA, List) - set__delete_list(SetB, List)).
 
 remove(SetA0 - SetB0, Elem) = Result :-
-	( SetA1 = remove(SetA0, Elem) ->
+	( remove(SetA0, Elem, SetA1) ->
 		( remove(SetB0, Elem, SetB1) ->
 			SetA = SetA1,
 			SetB = SetB1
@@ -150,7 +150,7 @@ remove(SetA0 - SetB0, Elem) = Result :-
 	Result = check("remove", SetA0 - SetB0, SetA - SetB).
 
 remove_list(SetA0 - SetB0, List) = Result :-
-	( SetA1 = remove_list(SetA0, List) ->
+	( remove_list(SetA0, List, SetA1) ->
 		( set__remove_list(SetB0, List, SetB1) ->
 			SetA = SetA1,
 			SetB = SetB1
