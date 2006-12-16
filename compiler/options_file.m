@@ -1072,7 +1072,7 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
         ( FlagsVar = ml_libs ->
             BadLibs = list.filter(
                         (pred(LibFlag::in) is semidet :-
-                                \+ string__prefix(LibFlag, "-l")
+                                \+ string.prefix(LibFlag, "-l")
                                 
                         ), V),
             (
@@ -1085,7 +1085,8 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
                             [always([words("Error: MLLIBS must contain only"),
                                 words("`-l' options, found") |
                                 list_to_pieces(
-                                    map(func(Lib) = add_quotes(Lib), BadLibs))]
+                                    list.map(func(Lib) =
+                                        add_quotes(Lib), BadLibs))]
                                 ++ [suffix(".")]
                             )]
                         )]
