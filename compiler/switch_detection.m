@@ -529,20 +529,32 @@ partition_disj_trial([Goal0 | Goals], Var, !Left, !Cases) :-
     list(hlds_goal)::out, maybe(cons_id)::in, maybe(cons_id)::out,
     unit::in, unit::out) is det.
 
-find_bind_var_for_switch_in_deconstruct(_UnifyVar, Goal0, Goals,
+find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
         _Result0, Result, _, unit) :-
     (
         Goal0 = GoalExpr0 - GoalInfo,
         UnifyInfo0 = GoalExpr0 ^ unify_kind,
-        UnifyInfo0 = deconstruct(_, Functor, _, _, _, _)
+        UnifyInfo0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _)
     ->
         Result = yes(Functor),
-        % The deconstruction unification now becomes deterministic, since
-        % the test will get carried out in the switch.
-        UnifyInfo = UnifyInfo0 ^ deconstruct_can_fail := cannot_fail,
-        GoalExpr = GoalExpr0 ^ unify_kind := UnifyInfo,
-        Goal = GoalExpr - GoalInfo,
-        Goals = [Goal]
+        (
+            ArgVars = [],
+            SwitchVar = UnifyVar
+        ->
+            % The test will get carried out in the switch, there are no
+            % argument values to pick up, and the test was on the switch
+            % variable (not on one of its aliases), so the unification
+            % serve no further purpose. We delete it here, so simplify
+            % doesn't have to.
+            Goals = []
+        ;
+            % The deconstruction unification now becomes deterministic, since
+            % the test will get carried out in the switch.
+            UnifyInfo = UnifyInfo0 ^ deconstruct_can_fail := cannot_fail,
+            GoalExpr = GoalExpr0 ^ unify_kind := UnifyInfo,
+            Goal = GoalExpr - GoalInfo,
+            Goals = [Goal]
+        )
     ;
         unexpected(this_file, "find_bind_var_for_switch_in_deconstruct")
     ).
