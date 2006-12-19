@@ -37,11 +37,11 @@
 % merge duplicate definitions (like Borland C++).  However the amount of
 % code duplication involved is probably very small, so it's definitely not
 % worth worrying about right now.
-% 
+%
 % XXX What about complicated unification of an abstract type in a partially
 % instantiated mode?  Currently we don't implement it correctly. Probably
 % it should be disallowed, but we should issue a proper error message.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.unify_proc.
@@ -584,12 +584,12 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
     % so just go on to post_typecheck.
     (
         Item = clauses,
-        post_typecheck.finish_pred_no_io(!.ModuleInfo,
+        post_typecheck_finish_pred_no_io(!.ModuleInfo,
             ErrorProcs, PredInfo0, PredInfo)
     ;
         Item = declaration,
-        post_typecheck.finish_imported_pred_no_io(!.ModuleInfo,
-            ErrorProcs,  PredInfo0, PredInfo)
+        post_typecheck_finish_imported_pred_no_io(!.ModuleInfo,
+            ErrorProcs, PredInfo0, PredInfo)
     ),
     expect(unify(ErrorProcs, []), this_file,
         "add_lazily_generated_special_pred: error in post_typecheck"),

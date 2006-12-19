@@ -223,7 +223,7 @@ finish_typecheck_and_check_preds_purity(FoundTypeError, PostTypecheckError,
     % Only report error messages for unbound type variables if we didn't get
     % any type errors already; this avoids a lot of spurious diagnostics.
     ReportTypeErrors = bool.not(FoundTypeError),
-    post_typecheck.finish_preds(PredIds, ReportTypeErrors, NumPostErrors,
+    post_typecheck_finish_preds(PredIds, ReportTypeErrors, NumPostErrors,
         !ModuleInfo, !Specs),
     ( NumPostErrors > 0 ->
         PostTypecheckError = yes
@@ -258,7 +258,7 @@ check_preds_purity([PredId | PredIds], !ModuleInfo, !Specs) :-
     % Finish processing of promise declarations.
     pred_info_get_goal_type(PredInfo, GoalType),
     ( GoalType = goal_type_promise(PromiseType) ->
-        post_typecheck.finish_promise(PromiseType, PredId, !ModuleInfo, !Specs)
+        post_typecheck_finish_promise(PromiseType, PredId, !ModuleInfo, !Specs)
     ;
         true
     ),

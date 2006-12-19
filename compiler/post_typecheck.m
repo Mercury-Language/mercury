@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File      : post_typecheck.m
 % Author    : fjh
 % Purpose   : finish off type checking.
-
+%
 % This module does the final parts of type analysis:
 %
 %   - it resolves predicate overloading
@@ -51,7 +51,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % finish_preds(PredIds, ReportTypeErrors, NumErrors, !ModuleInfo, !Specs):
+    % post_typecheck_finish_preds(PredIds, ReportTypeErrors, NumErrors,
+    %   !ModuleInfo, !Specs):
     %
     % Check that the all of the types which have been inferred for the
     % variables in the clause do not contain any unbound type variables
@@ -64,27 +65,27 @@
     % make sense. NumErrors will be nonzero if there were errors which
     % should prevent further processing (e.g. polymorphism or mode analysis).
     %
-:- pred finish_preds(list(pred_id)::in, bool::in, int::out,
+:- pred post_typecheck_finish_preds(list(pred_id)::in, bool::in, int::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % As above, but return the list of procedures containing unbound inst
     % variables instead of reporting the errors directly.
     %
-:- pred finish_pred_no_io(module_info::in, list(proc_id)::out,
+:- pred post_typecheck_finish_pred_no_io(module_info::in, list(proc_id)::out,
     pred_info::in, pred_info::out) is det.
 
-:- pred finish_imported_pred_no_io(module_info::in,
+:- pred post_typecheck_finish_imported_pred_no_io(module_info::in,
     list(proc_id)::out, pred_info::in, pred_info::out) is det.
 
-:- pred finish_ill_typed_pred(module_info::in, pred_id::in,
+:- pred post_typecheck_finish_ill_typed_pred(module_info::in, pred_id::in,
     pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Now that the assertion has finished being typechecked, remove it
     % from further processing and store it in the assertion_table.
     %
-:- pred finish_promise(promise_type::in, pred_id::in,
+:- pred post_typecheck_finish_promise(promise_type::in, pred_id::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -142,23 +143,34 @@
 
 %-----------------------------------------------------------------------------%
 
-finish_preds(PredIds, ReportTypeErrors, NumErrors, !ModuleInfo, !Specs) :-
-    do_finish_preds(PredIds, ReportTypeErrors, !ModuleInfo,
+post_typecheck_finish_preds(PredIds, ReportTypeErrors, NumErrors,
+        !ModuleInfo, !Specs) :-
+    post_typecheck_do_finish_preds(PredIds, ReportTypeErrors, !ModuleInfo,
         0, TotalNumUnsatisfiedConstraints, !Specs),
-    check_for_missing_definitions(!.ModuleInfo,
-        [], MissingTypeDefnSpecs),
+    check_for_missing_definitions(!.ModuleInfo, [], MissingTypeDefnSpecs),
     NumMissingTypeDefns = list.length(MissingTypeDefnSpecs),
     NumErrors = TotalNumUnsatisfiedConstraints + NumMissingTypeDefns,
     !:Specs = !.Specs ++ MissingTypeDefnSpecs.
 
-:- pred do_finish_preds(list(pred_id)::in, bool::in,
+:- pred post_typecheck_do_finish_preds(list(pred_id)::in, bool::in,
     module_info::in, module_info::out, int::in, int::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-do_finish_preds([], _, !ModuleInfo, !TotalNumUnsatisfiedConstraints, !Specs).
-do_finish_preds([PredId | PredIds], ReportTypeErrors, !ModuleInfo,
-!TotalNumUnsatisfiedConstraints,
-        !Specs) :-
+post_typecheck_do_finish_preds([], _,
+        !ModuleInfo, !TotalNumUnsatisfiedConstraints, !Specs).
+post_typecheck_do_finish_preds([PredId | PredIds], ReportTypeErrors,
+        !ModuleInfo, !TotalNumUnsatisfiedConstraints, !Specs) :-
+    post_typecheck_do_finish_pred(PredId, ReportTypeErrors,
+        !ModuleInfo, !TotalNumUnsatisfiedConstraints, !Specs),
+    post_typecheck_do_finish_preds(PredIds, ReportTypeErrors,
+        !ModuleInfo, !TotalNumUnsatisfiedConstraints, !Specs).
+
+:- pred post_typecheck_do_finish_pred(pred_id::in, bool::in,
+    module_info::in, module_info::out, int::in, int::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+post_typecheck_do_finish_pred(PredId, ReportTypeErrors, !ModuleInfo,
+        !TotalNumUnsatisfiedConstraints, !Specs) :-
     some [!PredInfo] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         (
@@ -166,15 +178,17 @@ do_finish_preds([PredId | PredIds], ReportTypeErrors, !ModuleInfo,
             ; pred_info_is_pseudo_imported(!.PredInfo)
             )
         ->
-            finish_imported_pred(!.ModuleInfo, PredId, !PredInfo, !Specs)
+            post_typecheck_finish_imported_pred(!.ModuleInfo, PredId,
+                !PredInfo, !Specs)
         ;
             % Only report error messages for unbound type variables
             % if we didn't get any type errors already; this avoids
             % a lot of spurious diagnostics.
-            check_type_bindings(!.ModuleInfo, PredId, !PredInfo,
+            check_pred_type_bindings(!.ModuleInfo, PredId, !PredInfo,
                 ReportTypeErrors, NumUnsatisfiedConstraints, !Specs),
 
-            finish_pred_no_io(!.ModuleInfo, ErrorProcs, !PredInfo),
+            post_typecheck_finish_pred_no_io(!.ModuleInfo, ErrorProcs,
+                !PredInfo),
             report_unbound_inst_vars(!.ModuleInfo, PredId, ErrorProcs,
                 !PredInfo, !Specs),
             check_for_indistinguishable_modes(!.ModuleInfo, PredId,
@@ -192,21 +206,20 @@ do_finish_preds([PredId | PredIds], ReportTypeErrors, !ModuleInfo,
                 !.TotalNumUnsatisfiedConstraints + NumUnsatisfiedConstraints
         ),
         module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
-    ),
-    do_finish_preds(PredIds, ReportTypeErrors, !ModuleInfo,
-        !TotalNumUnsatisfiedConstraints, !Specs). 
+    ).
+
 %-----------------------------------------------------------------------------%
 
     % Check that the all of the types which have been inferred for the
-    % variables in the clause do not contain any unbound type variables
+    % variables in the predicate do not contain any unbound type variables
     % other than those that occur in the types of head variables, and that
     % there are no unsatisfied type class constraints.
     %
-:- pred check_type_bindings(module_info::in, pred_id::in,
+:- pred check_pred_type_bindings(module_info::in, pred_id::in,
     pred_info::in, pred_info::out, bool::in, int::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
+check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
         !Specs) :-
     (
         ReportErrs = yes,
@@ -228,7 +241,7 @@ check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
     clauses_info_get_vartypes(ClausesInfo0, VarTypesMap0),
     map.to_assoc_list(VarTypesMap0, VarTypesList),
     set.init(Set0),
-    check_type_bindings_2(VarTypesList, HeadTypeParams,
+    check_var_type_bindings(VarTypesList, HeadTypeParams,
         [], UnresolvedVarsTypes, Set0, Set),
     (
         UnresolvedVarsTypes = []
@@ -253,25 +266,50 @@ check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
         pred_info_set_constraint_map(ConstraintMap, !PredInfo)
     ).
 
-:- pred check_type_bindings_2(assoc_list(prog_var, mer_type)::in,
+    % The number of variables can be huge here (hundred of thousands for
+    % Doug Auclair's training_cars program). The code below prevents stack
+    % overflows in grades that do not permit tail recursion.
+    %
+:- pred check_var_type_bindings(assoc_list(prog_var, mer_type)::in,
     list(tvar)::in,
     assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-check_type_bindings_2([], _, !UnresolvedVarsTypes, !Set).
-check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
-        !UnresolvedVarsTypes, !Set) :-
-    type_vars(Type, TVars),
-    set.list_to_set(TVars, TVarsSet0),
-    set.delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
-    ( \+ set.empty(TVarsSet1) ->
-        !:UnresolvedVarsTypes = [Var - Type | !.UnresolvedVarsTypes],
-        set.union(!.Set, TVarsSet1, !:Set)
+check_var_type_bindings(VarTypes, HeadTypeParams, !UnresolvedVarsTypes,
+        !Set) :-
+    check_var_type_bindings_2(VarTypes, HeadTypeParams, 1000, LeftOverVarTypes,
+        !UnresolvedVarsTypes, !Set),
+    (
+        LeftOverVarTypes = []
     ;
-        true
-    ),
-    check_type_bindings_2(VarTypes, HeadTypeParams,
-        !UnresolvedVarsTypes, !Set).
+        LeftOverVarTypes = [_ | _],
+        check_var_type_bindings(LeftOverVarTypes, HeadTypeParams,
+            !UnresolvedVarsTypes, !Set)
+    ).
+
+:- pred check_var_type_bindings_2(assoc_list(prog_var, mer_type)::in,
+    list(tvar)::in, int::in, assoc_list(prog_var, mer_type)::out,
+    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
+    set(tvar)::in, set(tvar)::out) is det.
+
+check_var_type_bindings_2([], _, _, [], !UnresolvedVarsTypes, !Set).
+check_var_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
+        VarsToDo, LeftOverVarTypes, !UnresolvedVarsTypes, !Set) :-
+    ( VarsToDo < 0 ->
+        LeftOverVarTypes = [Var - Type | VarTypes]
+    ;
+        type_vars(Type, TVars),
+        set.list_to_set(TVars, TVarsSet0),
+        set.delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
+        ( \+ set.empty(TVarsSet1) ->
+            !:UnresolvedVarsTypes = [Var - Type | !.UnresolvedVarsTypes],
+            set.union(!.Set, TVarsSet1, !:Set)
+        ;
+            true
+        ),
+        check_var_type_bindings_2(VarTypes, HeadTypeParams,
+            VarsToDo - 1, LeftOverVarTypes, !UnresolvedVarsTypes, !Set)
+    ).
 
     % Bind all the type variables in `UnboundTypeVarsSet' to the type `void'.
     %
@@ -405,14 +443,14 @@ get_qualified_pred_name(ModuleInfo, PredId)
 
 %-----------------------------------------------------------------------------%
 
-finish_pred_no_io(ModuleInfo, ErrorProcs, !PredInfo) :-
+post_typecheck_finish_pred_no_io(ModuleInfo, ErrorProcs, !PredInfo) :-
     propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo).
 
     % For ill-typed preds, we just need to set the modes up correctly
     % so that any calls to that pred from correctly-typed predicates
     % won't result in spurious mode errors.
     %
-finish_ill_typed_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
+post_typecheck_finish_ill_typed_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
     propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo),
     report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
         !Specs),
@@ -421,19 +459,21 @@ finish_ill_typed_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
     % For imported preds, we just need to ensure that all constructors
     % occurring in predicate mode declarations are module qualified.
     %
-:- pred finish_imported_pred(module_info::in, pred_id::in,
+:- pred post_typecheck_finish_imported_pred(module_info::in, pred_id::in,
     pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-finish_imported_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
+post_typecheck_finish_imported_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
     % XXX Maybe the rest should be replaced with a call to
     % finish_ill_typed_pred? [zs]
-    finish_imported_pred_no_io(ModuleInfo, ErrorProcs, !PredInfo),
+    post_typecheck_finish_imported_pred_no_io(ModuleInfo, ErrorProcs,
+        !PredInfo),
     report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
         !Specs),
     check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !Specs).
 
-finish_imported_pred_no_io(ModuleInfo, ErrorProcIds, !PredInfo) :-
+post_typecheck_finish_imported_pred_no_io(ModuleInfo, ErrorProcIds,
+        !PredInfo) :-
     % Make sure the var-types field in the clauses_info is valid for imported
     % predicates. Unification procedures have clauses generated, so they
     % already have valid var-types.
@@ -449,6 +489,7 @@ finish_imported_pred_no_io(ModuleInfo, ErrorProcIds, !PredInfo) :-
     ),
     propagate_types_into_modes(ModuleInfo, ErrorProcIds, !PredInfo).
 
+post_typecheck_finish_promise(PromiseType, PromiseId, !ModuleInfo, !Specs) :-
     % Now that the promise has finished being typechecked, and has had all
     % of its pred_ids identified, remove the promise from the list of pred ids
     % to be processed in the future and place the pred_id associated with the
@@ -458,8 +499,7 @@ finish_imported_pred_no_io(ModuleInfo, ErrorProcIds, !PredInfo) :-
     % predicate that is used in an assertion which assertion it is used in,
     % or for a promise ex declaration record in the promise ex table
     % the predicates used by the declaration.
-    %
-finish_promise(PromiseType, PromiseId, !ModuleInfo, !Specs) :-
+
     % Store the declaration in the appropriate table and get the goal
     % for the promise.
     store_promise(PromiseType, PromiseId, !ModuleInfo, Goal),
@@ -926,8 +966,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         pred_info_get_markers(!.PredInfo, Markers),
         module_info_get_predicate_table(ModuleInfo, PredTable),
         predicate_table_search_func_sym_arity(PredTable,
-            calls_are_fully_qualified(Markers),
-            PredName, Arity, PredIds),
+            calls_are_fully_qualified(Markers), PredName, Arity, PredIds),
 
         % Check if any of the candidate functions have argument/return types
         % which subsume the actual argument/return types of this function call,
@@ -937,8 +976,8 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         list.append(ArgTypes0, [TypeOfX], ArgTypes),
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
-        ConstraintSearch = search_hlds_constraint_list(ConstraintMap, unproven,
-            GoalPath),
+        ConstraintSearch =
+            search_hlds_constraint_list(ConstraintMap, unproven, GoalPath),
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
             yes(ConstraintSearch), PredId, QualifiedFuncName)
     ->
@@ -1241,8 +1280,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
         apply_rec_subst_to_type_list(ExistTSubst, ParentArgTypes,
             ActualArgTypes0),
 
-            % The kinds will be ignored when the types are converted back
-            % to tvars.
+        % The kinds will be ignored when the types are converted back to tvars.
         map.init(KindMap),
         apply_rec_subst_to_tvar_list(KindMap, ExistTSubst, ParentExistQVars,
             ActualExistQVarTypes),
@@ -1340,8 +1378,8 @@ get_constructor_containing_field_2([Ctor | Ctors], FieldName,
         ConsId, FieldNumber) :-
     Ctor = ctor(_, _, SymName, CtorArgs, _Ctxt),
     (
-        get_constructor_containing_field_3(CtorArgs,
-            FieldName, 1, FieldNumber0)
+        get_constructor_containing_field_3(CtorArgs, FieldName,
+            1, FieldNumber0)
     ->
         list.length(CtorArgs, Arity),
         ConsId = cons(SymName, Arity),
