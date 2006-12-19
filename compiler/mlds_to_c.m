@@ -650,7 +650,7 @@ mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns, InitPreds,
 :- pred output_required_calls(list(string)::in, io::di, io::uo) is det.
 
 output_required_calls([], !IO).
-output_required_calls([ Call | Calls ], !IO) :-
+output_required_calls([Call | Calls], !IO) :-
     io.write_string("\t" ++ Call ++ "();\n", !IO),
     output_required_calls(Calls, !IO).
 

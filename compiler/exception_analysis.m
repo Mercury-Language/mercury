@@ -540,14 +540,14 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result, !ModuleInfo,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 check_goals_for_exceptions(_, _, [], !Result, !ModuleInfo, !IO).
-check_goals_for_exceptions(SCC, VarTypes, [ Goal | Goals ], !Result,
-        !ModuleInfo, !IO) :-
+check_goals_for_exceptions(SCC, VarTypes, [Goal | Goals], !Result, !ModuleInfo,
+        !IO) :-
     check_goal_for_exceptions(SCC, VarTypes, Goal, !Result, !ModuleInfo, !IO),
-    %
-    % We can stop searching if we find a user exception.  However if we
-    % find a type exception then we still need to check that there is
-    % not a user exception somewhere in the rest of the SCC.
-    %
+
+    % We can stop searching if we find a user exception.  However if we find
+    % a type exception then we still need to check that there is not a user
+    % exception somewhere in the rest of the SCC.
+
     CurrentStatus = !.Result ^ status,
     (
         CurrentStatus = may_throw(user_exception)
