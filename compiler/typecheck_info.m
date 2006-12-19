@@ -490,15 +490,35 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 
     % Fully expand the types of the variables by applying the type bindings.
     %
+    % The number of variables can be huge here (hundred of thousands for
+    % Doug Auclair's training_cars program). The code below prevents stack
+    % overflows in grades that do not permit tail recursion.
+    %
 :- pred expand_types(list(prog_var)::in, tsubst::in,
     vartypes::in, vartypes::out) is det.
 
-expand_types([], _, !VarTypes).
-expand_types([Var | Vars], TypeSubst, !VarTypes) :-
-    map.lookup(!.VarTypes, Var, Type0),
-    apply_rec_subst_to_type(TypeSubst, Type0, Type),
-    map.det_update(!.VarTypes, Var, Type, !:VarTypes),
-    expand_types(Vars, TypeSubst, !VarTypes).
+expand_types(Vars, TypeSubst, !VarTypes) :-
+    expand_types_2(Vars, TypeSubst, 1000, LeftOverVars, !VarTypes),
+    (
+        LeftOverVars = []
+    ;
+        LeftOverVars = [_ | _],
+        expand_types(LeftOverVars, TypeSubst, !VarTypes)
+    ).
+
+:- pred expand_types_2(list(prog_var)::in, tsubst::in, int::in,
+    list(prog_var)::out, vartypes::in, vartypes::out) is det.
+
+expand_types_2([], _, _, [], !VarTypes).
+expand_types_2([Var | Vars], TypeSubst, VarsToDo, LeftOverVars, !VarTypes) :-
+    ( VarsToDo < 0 ->
+        LeftOverVars = [Var | Vars]
+    ;
+        map.lookup(!.VarTypes, Var, Type0),
+        apply_rec_subst_to_type(TypeSubst, Type0, Type),
+        map.det_update(!.VarTypes, Var, Type, !:VarTypes),
+        expand_types_2(Vars, TypeSubst, VarsToDo - 1, LeftOverVars, !VarTypes)
+    ).
 
     % We rename any existentially quantified type variables which get mapped
     % to other type variables, unless they are mapped to universally quantified
