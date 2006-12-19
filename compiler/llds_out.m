@@ -2131,7 +2131,7 @@ output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo, !IO) :-
         ;
             io.write_string("\t\t/* ", !IO),
             io.write_string(Comment, !IO),
-            io.write_string("*/\n", !IO)
+            io.write_string(" */\n", !IO)
         )
     ).
 

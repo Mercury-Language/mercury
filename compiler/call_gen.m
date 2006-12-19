@@ -103,7 +103,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     code_info.get_module_info(!.CI, ModuleInfo),
     Address = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, yes),
     code_info.get_next_label(ReturnLabel, !CI),
-    call_gen.call_comment(CodeModel, CallComment),
+    call_gen.call_comment(!.CI, PredId, CodeModel, CallComment),
     goal_info_get_context(GoalInfo, Context),
     goal_info_get_goal_path(GoalInfo, GoalPath),
     CallCode = node([
@@ -454,11 +454,31 @@ handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
         FailHandlingCode = empty
     ).
 
-:- pred call_comment(code_model::in, string::out) is det.
+:- pred call_comment(code_info::in, pred_id::in, code_model::in, string::out)
+    is det.
 
-call_comment(model_det,  "branch to det procedure").
-call_comment(model_semi, "branch to semidet procedure").
-call_comment(model_non,  "branch to nondet procedure").
+call_comment(CI, PredId, CodeModel, Msg) :-
+    (
+        CodeModel = model_det,
+        BaseMsg = "branch to det procedure"
+    ;
+        CodeModel = model_semi,
+        BaseMsg = "branch to semidet procedure"
+    ;
+        CodeModel = model_non,
+        BaseMsg = "branch to nondet procedure"
+    ),
+    code_info.get_auto_comments(CI, AutoComments),
+    (
+        AutoComments = yes,
+        code_info.get_module_info(CI, ModuleInfo),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        PredName = pred_info_name(PredInfo),
+        Msg = BaseMsg ++ " " ++ PredName
+    ;
+        AutoComments = no,
+        Msg = BaseMsg
+    ).
 
 %---------------------------------------------------------------------------%
 

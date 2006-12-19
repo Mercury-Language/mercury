@@ -213,6 +213,8 @@
 
 :- pred get_opt_trail_ops(code_info::in, bool::out) is det.
 
+:- pred get_auto_comments(code_info::in, bool::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -341,9 +343,12 @@
                 emit_trail_ops      :: bool,
                                     % Should we emit trail operations?
 
-                opt_trail_ops       :: bool
+                opt_trail_ops       :: bool,
                                     % Should we try to avoid emiting trail
                                     % operations?
+
+                auto_comments       :: bool
+                                    % The setting of --auto-comments.
             ).
 
 :- type code_info_loc_dep
@@ -510,6 +515,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         EmitTrailOps = no
     ),
     globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailOps),
+    globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     CodeInfo0 = code_info(
         code_info_static(
             Globals,
@@ -523,7 +529,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             no,
             OptNoReturnCalls,
             EmitTrailOps,
-            OptTrailOps
+            OptTrailOps,
+            AutoComments
         ),
         code_info_loc_dep(
             Liveness,
@@ -586,6 +593,7 @@ get_maybe_trace_info(CI, CI ^ code_info_static ^ maybe_trace_info).
 get_opt_no_return_calls(CI, CI ^ code_info_static ^ opt_no_resume_calls).
 get_emit_trail_ops(CI, CI ^ code_info_static ^ emit_trail_ops).
 get_opt_trail_ops(CI, CI ^ code_info_static ^ opt_trail_ops).
+get_auto_comments(CI, CI ^ code_info_static ^ auto_comments).
 get_forward_live_vars(CI, CI ^ code_info_loc_dep ^ forward_live_vars).
 get_instmap(CI, CI ^ code_info_loc_dep ^ instmap).
 get_zombies(CI, CI ^ code_info_loc_dep ^ zombies).
