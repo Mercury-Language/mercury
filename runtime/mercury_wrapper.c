@@ -1023,7 +1023,7 @@ MR_process_environment_options(void)
 }
 
 enum MR_long_option {
-    MR_HEAP_SIZE,
+    MR_HEAP_SIZE = 256,
     MR_HEAP_SIZE_KWORDS,
     MR_DETSTACK_SIZE,
     MR_DETSTACK_SIZE_KWORDS,
