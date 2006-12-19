@@ -16,6 +16,12 @@
 % It also determines which imports aren't used in the interface, and thus
 % should only be in the implementation.
 %
+% XXX The analysis carried out here can break in the presence of procedures
+% that have both foreign language clauses and default Mercury clauses.
+% The problem is that some of module imports may only be required by
+% the Mercury clauses but these are thrown away if we use the foreign clauses.
+% As a result the module imports may appear to be unused.
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.unused_imports.
