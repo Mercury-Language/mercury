@@ -1087,16 +1087,17 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
         TraceInitFileNamesList0, !IO),
     globals.io_lookup_maybe_string_option(
         mercury_standard_library_directory, MaybeStdLibDir, !IO),
+    grade_directory_component(Globals, GradeDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
         InitFileNamesList1 = [
-            StdLibDir / "modules" / Grade / "mer_rt.init",
-            StdLibDir / "modules" / Grade / "mer_std.init" |
+            StdLibDir / "modules" / GradeDir / "mer_rt.init",
+            StdLibDir / "modules" / GradeDir / "mer_std.init" |
             InitFileNamesList0
         ],
         TraceInitFileNamesList = [
-            StdLibDir/"modules"/ Grade / "mer_browser.init",
-            StdLibDir/"modules"/ Grade / "mer_mdbcomp.init" |
+            StdLibDir/"modules"/ GradeDir / "mer_browser.init",
+            StdLibDir/"modules"/ GradeDir / "mer_mdbcomp.init" |
             TraceInitFileNamesList0
         ]
     ;
