@@ -1606,7 +1606,7 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
         list.foldl(write_trace_mutable_var_hlds(Indent + 1), MutableVars, !IO),
         write_indent(Indent + 1, !IO),
         io.write_string("% quantified vars ", !IO),
-        list.foldl(mercury_output_var(VarSet, AppendVarNums), QuantVars, !IO),
+        mercury_output_vars(VarSet, AppendVarNums, QuantVars, !IO),
         io.nl(!IO)
     ),
     write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1, "\n",

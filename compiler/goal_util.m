@@ -583,8 +583,9 @@ rename_vars_in_goal_expr(Must, Subn,
         rename_var(Must, Subn, Var0, Var),
         Reason = from_ground_term(Var)
     ;
-        Reason0 = trace_goal(_Flag, _Grade, _Env, _Vars, _QuantVars),
-        Reason = Reason0
+        Reason0 = trace_goal(Flag, Grade, Env, Vars, QuantVars0),
+        rename_var_list(Must, Subn, QuantVars0, QuantVars),
+        Reason = trace_goal(Flag, Grade, Env, Vars, QuantVars)
     ),
     rename_vars_in_goal(Must, Subn, Goal0, Goal).
 

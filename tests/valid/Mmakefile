@@ -148,6 +148,7 @@ OTHER_PROGS= \
 	mc_hhf_nonlocals_bug \
 	mc_implied_modes \
 	merge_ground_any \
+	mert \
 	middle_rec_labels \
 	modes_bug \
 	mode_syntax \
