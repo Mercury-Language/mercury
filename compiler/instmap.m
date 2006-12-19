@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: instmap.m.
 % Main author: bromage.
-% 
+%
 % This module contains code which implements the instmap and instmap_delta
 % ADTs.
-% 
+%
 % An instmap stores information on what instantiation states a set of
 % variables have.  An instmap_delta stores information on how these
 % instantiation states change across a goal.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.instmap.
@@ -736,14 +736,17 @@ lookup_var_in_instmap(Var, InstMap, Inst) :-
     %   bound(f; g; h; i)
     %
     % Our current algorithm uses a number of passes, each of which divides the
-    % number of insts in half by merging adjacent pairs of insts. The overall
-    % complexity is thus N log N, not N^2.
+    % number of insts by four by merging groups of four adjacent insts.
+    % The overall complexity is thus closer to N log N than N^2.
     %
 :- pred merge_var(list(mer_inst)::in, prog_var::in, mer_type::in,
     module_info::in, module_info::out, maybe(mer_inst)::out) is det.
 
 merge_var(Insts, Var, Type, !ModuleInfo, MaybeMergedInst) :-
-    merge_var_2(Insts, Var, Type, [], MergedInsts, !ModuleInfo, no, Error),
+    % Construct yes(Type) here once per merge_var pass to avoid merge_var_2 
+    % constructing the yes(Type) cell N times per pass.
+    merge_var_2(Insts, Var, yes(Type), [], MergedInsts, !ModuleInfo,
+        no, Error),
     (
         Error = yes,
         MaybeMergedInst = no
@@ -761,20 +764,48 @@ merge_var(Insts, Var, Type, !ModuleInfo, MaybeMergedInst) :-
         )
     ).
 
-:- pred merge_var_2(list(mer_inst)::in, prog_var::in, mer_type::in,
+:- pred merge_var_2(list(mer_inst)::in, prog_var::in, maybe(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::out, module_info::in, module_info::out,
     bool::in, bool::out) is det.
 
-merge_var_2([], _, _, !MergedInsts, !ModuleInfo, !Error).
-merge_var_2([Inst], _Var, _Type, !MergedInsts, !ModuleInfo, !Error) :-
-    !:MergedInsts = [Inst | !.MergedInsts].
-merge_var_2([Inst1, Inst2 | Insts], Var, Type, !MergedInsts, !ModuleInfo,
-        !Error) :-
-    ( inst_merge(Inst1, Inst2, yes(Type), MergedInst, !ModuleInfo) ->
-        !:MergedInsts = [MergedInst | !.MergedInsts],
-        merge_var_2(Insts, Var, Type, !MergedInsts, !ModuleInfo, !Error)
+merge_var_2(Insts, Var, YesType, !MergedInsts, !ModuleInfo, !Error) :-
+    (
+        Insts = []
     ;
-        !:Error = yes
+        Insts = [Inst1],
+        !:MergedInsts = [Inst1 | !.MergedInsts]
+    ;
+        Insts = [Inst1, Inst2],
+        (
+            inst_merge(Inst1, Inst2, YesType, Inst12, !ModuleInfo)
+        ->
+            !:MergedInsts = [Inst12 | !.MergedInsts]
+        ;
+            !:Error = yes
+        )
+    ;
+        Insts = [Inst1, Inst2, Inst3],
+        (
+            inst_merge(Inst1, Inst2, YesType, Inst12, !ModuleInfo),
+            inst_merge(Inst12, Inst3, YesType, Inst123, !ModuleInfo)
+        ->
+            !:MergedInsts = [Inst123 | !.MergedInsts]
+        ;
+            !:Error = yes
+        )
+    ;
+        Insts = [Inst1, Inst2, Inst3, Inst4 | MoreInsts],
+        (
+            inst_merge(Inst1, Inst2, YesType, Inst12, !ModuleInfo),
+            inst_merge(Inst3, Inst4, YesType, Inst34, !ModuleInfo),
+            inst_merge(Inst12, Inst34, YesType, Inst1234, !ModuleInfo)
+        ->
+            !:MergedInsts = [Inst1234 | !.MergedInsts],
+            merge_var_2(MoreInsts, Var, YesType, !MergedInsts, !ModuleInfo,
+                !Error)
+        ;
+            !:Error = yes
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -801,18 +832,37 @@ merge_instmap_deltas(InstMap, NonLocals, VarTypes, Deltas,
     list(instmap_delta)::in, list(instmap_delta)::in, list(instmap_delta)::out,
     module_info::in, module_info::out) is det.
 
-merge_instmap_deltas_2(_InstMap, _NonLocals, _VarTypes, [], !MergedDeltas,
-        !ModuleInfo).
-merge_instmap_deltas_2(_InstMap, _NonLocals, _VarTypes, [Delta], !MergedDeltas,
-        !ModuleInfo) :-
-    !:MergedDeltas = [Delta | !.MergedDeltas].
-merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, [Delta1, Delta2 | Deltas],
+merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
         !MergedDeltas, !ModuleInfo) :-
-    merge_instmap_delta(InstMap, NonLocals, VarTypes, Delta1, Delta2,
-        MergedDelta, !ModuleInfo),
-    !:MergedDeltas = [MergedDelta | !.MergedDeltas],
-    merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
-        !MergedDeltas, !ModuleInfo).
+    (
+        Deltas = []
+    ;
+        Deltas = [Delta1],
+        !:MergedDeltas = [Delta1 | !.MergedDeltas]
+    ;
+        Deltas = [Delta1, Delta2],
+        merge_instmap_delta(InstMap, NonLocals, VarTypes, Delta1, Delta2,
+            Delta12, !ModuleInfo),
+        !:MergedDeltas = [Delta12 | !.MergedDeltas]
+    ;
+        Deltas = [Delta1, Delta2, Delta3],
+        merge_instmap_delta(InstMap, NonLocals, VarTypes, Delta1, Delta2,
+            Delta12, !ModuleInfo),
+        merge_instmap_delta(InstMap, NonLocals, VarTypes, Delta12, Delta3,
+            Delta123, !ModuleInfo),
+        !:MergedDeltas = [Delta123 | !.MergedDeltas]
+    ;
+        Deltas = [Delta1, Delta2, Delta3, Delta4 | MoreDeltas],
+        merge_instmap_delta(InstMap, NonLocals, VarTypes, Delta1, Delta2,
+            Delta12, !ModuleInfo),
+        merge_instmap_delta(InstMap, NonLocals, VarTypes, Delta3, Delta4,
+            Delta34, !ModuleInfo),
+        merge_instmap_delta(InstMap, NonLocals, VarTypes, Delta12, Delta34,
+            Delta1234, !ModuleInfo),
+        !:MergedDeltas = [Delta1234 | !.MergedDeltas],
+        merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, MoreDeltas,
+            !MergedDeltas, !ModuleInfo)
+    ).
 
 %-----------------------------------------------------------------------------%
 
