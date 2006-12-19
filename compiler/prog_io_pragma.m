@@ -308,515 +308,6 @@ parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms, ErrorTerm,
         Result = error1([Msg - ErrorTerm])
     ).
 
-:- pred parse_foreign_decl_is_local(term::in, foreign_decl_is_local::out)
-    is semidet.
-
-parse_foreign_decl_is_local(term.functor(Functor, [], _), IsLocal) :-
-    (
-        Functor = term.string(String)
-    ;
-        Functor = term.atom(String)
-    ),
-    (
-        String = "local",
-        IsLocal = foreign_decl_is_local
-    ;
-        String = "exported",
-        IsLocal = foreign_decl_is_exported
-    ).
-
-parse_foreign_language(term.functor(term.string(String), _, _), Lang) :-
-    globals.convert_foreign_language(String, Lang).
-parse_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
-    globals.convert_foreign_language(String, Lang).
-
-:- pred parse_foreign_language_type(term::in, foreign_language::in,
-    maybe1(foreign_language_type)::out) is det.
-
-parse_foreign_language_type(InputTerm, Language, Result) :-
-    (
-        Language = lang_il,
-        ( InputTerm = term.functor(term.string(ILTypeName), [], _) ->
-            parse_il_type_name(ILTypeName, InputTerm, Result)
-        ;
-            Result = error1(["invalid backend specification term" - InputTerm])
-        )
-    ;
-        Language = lang_c,
-        ( InputTerm = term.functor(term.string(CTypeName), [], _) ->
-            Result = ok1(c(c_type(CTypeName)))
-        ;
-            Result = error1(["invalid backend specification term" - InputTerm])
-        )
-    ;
-        Language = lang_java,
-        ( InputTerm = term.functor(term.string(JavaTypeName), [], _) ->
-            Result = ok1(java(java_type(JavaTypeName)))
-        ;
-            Result = error1(["invalid backend specification term" - InputTerm])
-        )
-    ;
-        ( Language = lang_managed_cplusplus
-        ; Language = lang_csharp
-        ),
-        Msg = "unsupported language specified, unable to parse backend type",
-        Result = error1([Msg - InputTerm])
-    ).
-
-:- pred parse_il_type_name(string::in, term::in,
-    maybe1(foreign_language_type)::out) is det.
-
-parse_il_type_name(String0, ErrorTerm, ForeignType) :-
-    (
-        parse_special_il_type_name(String0, ForeignTypeResult)
-    ->
-        ForeignType = ok1(il(ForeignTypeResult))
-    ;
-        string.append("class [", String1, String0),
-        string.sub_string_search(String1, "]", Index)
-    ->
-        string.left(String1, Index, AssemblyName),
-        string.split(String1, Index + 1, _, TypeNameStr),
-        TypeSymName = string_to_sym_name(TypeNameStr),
-        ForeignType = ok1(il(il_type(reference, AssemblyName, TypeSymName)))
-    ;
-        string.append("valuetype [", String1, String0),
-        string.sub_string_search(String1, "]", Index)
-    ->
-        string.left(String1, Index, AssemblyName),
-        string.split(String1, Index + 1, _, TypeNameStr),
-        TypeSymName = string_to_sym_name(TypeNameStr),
-        ForeignType = ok1(il(il_type(value, AssemblyName, TypeSymName)))
-    ;
-        ForeignType = error1(["invalid foreign language type description" -
-            ErrorTerm])
-    ).
-
-    % Parse all the special assembler names for all the builtin types.
-    % See Partition I 'Built-In Types' (Section 8.2.2) for the list
-    % of all builtin types.
-    %
-:- pred parse_special_il_type_name(string::in, il_foreign_type::out)
-    is semidet.
-
-parse_special_il_type_name("bool", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Boolean"))).
-parse_special_il_type_name("char", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Char"))).
-parse_special_il_type_name("object", il_type(reference, "mscorlib",
-        qualified(unqualified("System"), "Object"))).
-parse_special_il_type_name("string", il_type(reference, "mscorlib",
-        qualified(unqualified("System"), "String"))).
-parse_special_il_type_name("float32", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Single"))).
-parse_special_il_type_name("float64", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Double"))).
-parse_special_il_type_name("int8", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "SByte"))).
-parse_special_il_type_name("int16", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Int16"))).
-parse_special_il_type_name("int32", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Int32"))).
-parse_special_il_type_name("int64", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Int64"))).
-parse_special_il_type_name("natural int", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "IntPtr"))).
-parse_special_il_type_name("native int", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "IntPtr"))).
-parse_special_il_type_name("natural unsigned int", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UIntPtr"))).
-parse_special_il_type_name("native unsigned int", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UIntPtr"))).
-parse_special_il_type_name("refany", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "TypedReference"))).
-parse_special_il_type_name("typedref", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "TypedReference"))).
-parse_special_il_type_name("unsigned int8", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Byte"))).
-parse_special_il_type_name("unsigned int16", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UInt16"))).
-parse_special_il_type_name("unsigned int32", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UInt32"))).
-parse_special_il_type_name("unsigned int64", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UInt64"))).
-
-:- pred parse_maybe_foreign_type_assertions(maybe(term)::in,
-    list(foreign_type_assertion)::out) is semidet.
-
-parse_maybe_foreign_type_assertions(no, []).
-parse_maybe_foreign_type_assertions(yes(Term), Assertions) :-
-    parse_foreign_type_assertions(Term, Assertions).
-
-:- pred parse_foreign_type_assertions(term::in,
-    list(foreign_type_assertion)::out) is semidet.
-
-parse_foreign_type_assertions(Term, Assertions) :-
-    ( Term = term.functor(term.atom("[]"), [], _) ->
-        Assertions = []
-    ;
-        Term = term.functor(term.atom("[|]"), [Head, Tail], _),
-        parse_foreign_type_assertion(Head, HeadAssertion),
-        parse_foreign_type_assertions(Tail, TailAssertions),
-        Assertions = [HeadAssertion | TailAssertions]
-    ).
-
-:- pred parse_foreign_type_assertion(term::in,
-    foreign_type_assertion::out) is semidet.
-
-parse_foreign_type_assertion(Term, Assertion) :-
-    Term = term.functor(term.atom(Constant), [], _),
-    Constant = "can_pass_as_mercury_type",
-    Assertion = foreign_type_can_pass_as_mercury_type.
-parse_foreign_type_assertion(Term, Assertion) :-
-    Term = term.functor(term.atom(Constant), [], _),
-    Constant = "stable",
-    Assertion = foreign_type_stable.
-
-    % This predicate parses both c_header_code and foreign_decl pragmas.
-    %
-:- pred parse_pragma_foreign_decl_pragma(module_name::in, string::in,
-    list(term)::in, term::in, varset::in, maybe1(item)::out) is det.
-
-parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
-        ErrorTerm, _VarSet, Result) :-
-    string.format("invalid `:- pragma %s' declaration ", [s(Pragma)],
-        InvalidDeclStr),
-    (
-        (
-            PragmaTerms = [LangTerm, HeaderTerm],
-            IsLocal = foreign_decl_is_exported
-        ;
-            PragmaTerms = [LangTerm, IsLocalTerm, HeaderTerm],
-            parse_foreign_decl_is_local(IsLocalTerm, IsLocal)
-        )
-    ->
-        ( parse_foreign_language(LangTerm, ForeignLanguage) ->
-            ( HeaderTerm = term.functor(term.string( HeaderCode), [], _) ->
-                DeclCode = pragma_foreign_decl(ForeignLanguage, IsLocal,
-                    HeaderCode),
-                Result = ok1(item_pragma(user, DeclCode))
-            ;
-                ErrMsg = "-- expected string for foreign declaration code",
-                Result = error1([string.append(InvalidDeclStr, ErrMsg) -
-                    HeaderTerm])
-            )
-        ;
-            ErrMsg = "-- invalid language parameter",
-            Result = error1([(InvalidDeclStr ++ ErrMsg) - LangTerm])
-        )
-    ;
-        string.format("invalid `:- pragma %s' declaration ",
-            [s(Pragma)], ErrorStr),
-        Result = error1([ErrorStr - ErrorTerm])
-    ).
-
-    % This predicate parses both c_code and foreign_code pragmas.
-    % Processing of foreign_proc (or c_code that defines a procedure)
-    % is handled in parse_pragma_foreign_proc_pragma below.
-    %
-:- pred parse_pragma_foreign_code_pragma(module_name::in, string::in,
-    list(term)::in, term::in, varset::in, maybe1(item)::out) is det.
-
-parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
-        ErrorTerm, _VarSet, Result) :-
-    string.format("invalid `:- pragma %s' declaration ", [s(Pragma)],
-        InvalidDeclStr),
-    ( PragmaTerms = [LangTerm, CodeTerm] ->
-        ( parse_foreign_language(LangTerm, ForeignLanguagePrime) ->
-            ForeignLanguage = ForeignLanguagePrime,
-            LangErrs = []
-        ;
-            LangMsg = InvalidDeclStr ++ "-- invalid language parameter",
-            LangErrs = [LangMsg - LangTerm],
-            ForeignLanguage = lang_c    % Dummy, ignored when LangErrs \= []
-        ),
-        ( CodeTerm = term.functor(term.string(CodePrime), [], _) ->
-            Code = CodePrime,
-            CodeErrs = []
-        ;
-            Code = "",                  % Dummy, ignored when CodeErrs \= []
-            CodeMsg = InvalidDeclStr ++ "-- expected string for foreign code",
-            CodeErrs = [CodeMsg - CodeTerm]
-        ),
-        Errs = LangErrs ++ CodeErrs,
-        (
-            Errs = [],
-            Result = ok1(item_pragma(user,
-                pragma_foreign_code(ForeignLanguage, Code)))
-        ;
-            Errs = [_ | _],
-            Result = error1(Errs)
-        )
-    ;
-        Msg = InvalidDeclStr ++ "-- wrong number of arguments",
-        Result = error1([Msg - ErrorTerm])
-    ).
-
-    % This predicate parses both c_code and foreign_proc pragmas.
-    %
-:- pred parse_pragma_foreign_proc_pragma(module_name::in, string::in,
-    list(term)::in, term::in, varset::in, maybe1(item)::out) is det.
-
-parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
-        ErrorTerm, VarSet, Result) :-
-    string.format("invalid `:- pragma %s' declaration ", [s(Pragma)],
-        InvalidDeclStr),
-    (
-        PragmaTerms = [LangTerm | RestTerms],
-        ( parse_foreign_language(LangTerm, ForeignLanguagePrime) ->
-            ForeignLanguage = ForeignLanguagePrime,
-            LangErrs = []
-        ;
-            ForeignLanguage = lang_c,   % Dummy, ignored when LangErrs \= []
-            LangMsg = "-- invalid language parameter",
-            LangErrs = [(InvalidDeclStr ++ LangMsg) - LangTerm]
-        ),
-        (
-            (
-                RestTerms = [PredAndVarsTerm, CodeTerm],
-                parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName,
-                    Pragma, VarSet, PredAndVarsTerm, CodeTerm, ErrorTerm,
-                    ForeignLanguage, InvalidDeclStr, RestResult)
-            ;
-                RestTerms = [PredAndVarsTerm, FlagsTerm, CodeTerm],
-                parse_pragma_ordinary_foreign_proc_pragma(ModuleName, Pragma,
-                    VarSet, PredAndVarsTerm, FlagsTerm, CodeTerm,
-                    ForeignLanguage, InvalidDeclStr, RestResult)
-            ;
-                RestTerms = [PredAndVarsTerm, FlagsTerm, FieldsTerm,
-                    FirstTerm, LaterTerm],
-                term.context_init(DummyContext),
-                SharedTerm = term.functor(term.atom("common_code"),
-                    [term.functor(term.string(""), [], DummyContext)],
-                    DummyContext),
-                parse_pragma_model_non_foreign_proc_pragma(ModuleName, Pragma,
-                    VarSet, PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm,
-                    LaterTerm, SharedTerm, ForeignLanguage, InvalidDeclStr,
-                    RestResult)
-            ;
-                RestTerms = [PredAndVarsTerm, FlagsTerm, FieldsTerm,
-                    FirstTerm, LaterTerm, SharedTerm],
-                parse_pragma_model_non_foreign_proc_pragma(ModuleName, Pragma,
-                    VarSet, PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm,
-                    LaterTerm, SharedTerm, ForeignLanguage, InvalidDeclStr,
-                    RestResult)
-            )
-        ->
-            (
-                RestResult = ok1(Item),
-                (
-                    LangErrs = [],
-                    Result = ok1(Item)
-                ;
-                    LangErrs = [_ | _],
-                    Result = error1(LangErrs)
-                )
-            ;
-                RestResult = error1(RestErrs),
-                Result = error1(LangErrs ++ RestErrs)
-            )
-        ;
-            ErrMsg = "-- wrong number of arguments",
-            Result = error1([(InvalidDeclStr ++ ErrMsg) - ErrorTerm])
-        )
-    ;
-        PragmaTerms = [],
-        ErrMsg = "-- wrong number of arguments",
-        Result = error1([(InvalidDeclStr ++ ErrMsg) - ErrorTerm])
-    ).
-
-:- pred parse_pragma_ordinary_foreign_proc_pragma_old(module_name::in,
-    string::in, varset::in, term::in, term::in, term::in, foreign_language::in,
-    string::in, maybe1(item)::out) is det.
-
-parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName, Pragma, VarSet,
-        PredAndVarsTerm, CodeTerm, ErrorTerm, ForeignLanguage, InvalidDeclStr,
-        Result) :-
-    % XXX We should issue a warning; this syntax is deprecated. We will
-    % continue to accept this if c_code is used, but not with foreign_code.
-    ( Pragma = "c_code" ->
-        Attributes0 = default_attributes(ForeignLanguage),
-        set_legacy_purity_behaviour(yes, Attributes0, Attributes),
-        ( CodeTerm = term.functor(term.string(Code), [], CodeContext) ->
-            Impl = fc_impl_ordinary(Code, yes(CodeContext)),
-            parse_pragma_foreign_code(ModuleName, Attributes,
-                PredAndVarsTerm, Impl, VarSet, Result)
-        ;
-            ErrMsg = "-- expecting either `may_call_mercury' or "
-                ++ "`will_not_call_mercury', and a string for foreign code",
-            Result = error1([(InvalidDeclStr ++ ErrMsg) - CodeTerm])
-        )
-    ;
-        ErrMsg = "-- doesn't say whether it can call mercury",
-        Result = error1([(InvalidDeclStr ++ ErrMsg) - ErrorTerm])
-    ).
-
-:- pred parse_pragma_ordinary_foreign_proc_pragma(module_name::in, string::in,
-    varset::in, term::in, term::in, term::in, foreign_language::in,
-    string::in, maybe1(item)::out) is det.
-
-parse_pragma_ordinary_foreign_proc_pragma(ModuleName, Pragma, VarSet,
-        SecondTerm, ThirdTerm, CodeTerm, ForeignLanguage, InvalidDeclStr,
-        Result) :-
-    ( CodeTerm = term.functor(term.string(CodePrime), [], CodeContextPrime) ->
-        Code = CodePrime,
-        CodeContext = CodeContextPrime,
-        CodeErrs = []
-    ;
-        Code = "",                                      % Dummy
-        CodeContext = term.context_init,                % Dummy
-        CodeMsg = "-- invalid fourth argument, "
-            ++ "expecting string containing foreign code",
-        CodeErrs = [(InvalidDeclStr ++ CodeMsg) - CodeTerm]
-    ),
-    parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, VarSet,
-        ThirdTerm, MaybeFlagsThird),
-    (
-        MaybeFlagsThird = ok1(Flags),
-        FlagsErrs = [],
-        PredAndVarsTerm = SecondTerm
-    ;
-        MaybeFlagsThird = error1(FlagsThirdErrors),
-        parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma,
-            VarSet, SecondTerm, MaybeFlagsSecond),
-        (
-            MaybeFlagsSecond = ok1(Flags),
-            % XXX We should issue a warning; this syntax is deprecated.
-            % We will continue to accept this if c_code is used,
-            % but not with foreign_code.
-            ( Pragma = "c_code" ->
-                PredAndVarsTerm = ThirdTerm,
-                FlagsErrs = []
-            ;
-                PredAndVarsTerm = ThirdTerm,                % Dummy
-                FlagsMsg = "-- invalid second argument, "
-                    ++ "expecting predicate or function mode",
-                FlagsErrs = [(InvalidDeclStr ++ FlagsMsg) - SecondTerm]
-            )
-        ;
-            MaybeFlagsSecond = error1(_),
-            Flags = default_attributes(ForeignLanguage),    % Dummy
-            PredAndVarsTerm = SecondTerm,                   % Dummy
-            % We report the error appropriate to the preferred syntax.
-            FlagsErrs = assoc_list.map_keys_only(string.append(
-                InvalidDeclStr ++ "-- invalid third argument: "),
-                FlagsThirdErrors)
-        )
-    ),
-    Errs = CodeErrs ++ FlagsErrs,
-    (
-        Errs = [],
-        Impl = fc_impl_ordinary(Code, yes(CodeContext)),
-        parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm,
-            Impl, VarSet, Result)
-    ;
-        Errs = [_ | _],
-        Result = error1(Errs)
-    ).
-
-:- pred parse_pragma_model_non_foreign_proc_pragma(module_name::in, string::in,
-    varset::in, term::in, term::in, term::in, term::in, term::in,
-    term::in, foreign_language::in, string::in, maybe1(item)::out) is det.
-
-parse_pragma_model_non_foreign_proc_pragma(ModuleName, Pragma, VarSet,
-        PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm, LaterTerm,
-        SharedTerm, ForeignLanguage, InvalidDeclStr, Result) :-
-    parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma,
-        VarSet, FlagsTerm, MaybeFlags),
-    (
-        MaybeFlags = ok1(Flags),
-        FlagsErrs = []
-    ;
-        MaybeFlags = error1(FlagErrs0),
-        Flags = default_attributes(ForeignLanguage),    % Dummy
-        FlagsErrs = assoc_list.map_keys_only(string.append(
-            InvalidDeclStr ++ "-- invalid third argument: "), FlagErrs0)
-    ),
-    (
-        parse_pragma_keyword("local_vars", FieldsTerm,
-            FieldsPrime, FieldsContextPrime)
-    ->
-        Fields = FieldsPrime,
-        FieldsContext = FieldsContextPrime,
-        LocalErrs = []
-    ;
-        Fields = "",                                    % Dummy
-        FieldsContext = term.context_init,              % Dummy
-        LocalMsg = "-- invalid fourth argument, "
-            ++ "expecting `local_vars(<fields>)'",
-        LocalErrs = [(InvalidDeclStr ++ LocalMsg) - FieldsTerm]
-    ),
-    (
-        parse_pragma_keyword("first_code", FirstTerm,
-            FirstPrime, FirstContextPrime)
-    ->
-        First = FirstPrime,
-        FirstContext = FirstContextPrime,
-        FirstErrs = []
-    ;
-        First = "",                                     % Dummy
-        FirstContext = term.context_init,               % Dummy
-        FirstMsg = "-- invalid fifth argument, expecting `first_code(<code>)'",
-        FirstErrs = [(InvalidDeclStr ++ FirstMsg) - FirstTerm]
-    ),
-    (
-        parse_pragma_keyword("retry_code", LaterTerm,
-            LaterPrime, LaterContextPrime)
-    ->
-        Later = LaterPrime,
-        LaterContext = LaterContextPrime,
-        LaterErrs = []
-    ;
-        Later = "",                                     % Dummy
-        LaterContext = term.context_init,               % Dummy
-        LaterMsg = "-- invalid sixth argument, expecting `retry_code(<code>)'",
-        LaterErrs = [(InvalidDeclStr ++ LaterMsg) - LaterTerm]
-    ),
-    (
-        parse_pragma_keyword("shared_code", SharedTerm,
-            SharedPrime, SharedContextPrime)
-    ->
-        Shared = SharedPrime,
-        SharedContext = SharedContextPrime,
-        Treatment = share,
-        SharedErrs = []
-    ;
-        parse_pragma_keyword("duplicated_code", SharedTerm,
-            SharedPrime, SharedContextPrime)
-    ->
-        Shared = SharedPrime,
-        SharedContext = SharedContextPrime,
-        Treatment = duplicate,
-        SharedErrs = []
-    ;
-        parse_pragma_keyword("common_code", SharedTerm,
-            SharedPrime, SharedContextPrime)
-    ->
-        Shared = SharedPrime,
-        SharedContext = SharedContextPrime,
-        Treatment = automatic,
-        SharedErrs = []
-    ;
-        Shared = "",                                    % Dummy
-        SharedContext = term.context_init,              % Dummy
-        Treatment = automatic,                          % Dummy
-        SharedMsg = "-- invalid seventh argument, "
-            ++ "expecting `common_code(<code>)'",
-        SharedErrs = [(InvalidDeclStr ++ SharedMsg) - SharedTerm]
-    ),
-    Errs = FlagsErrs ++ LocalErrs ++ FirstErrs ++ LaterErrs ++ SharedErrs,
-    (
-        Errs = [],
-        Impl = fc_impl_model_non(Fields, yes(FieldsContext),
-            First, yes(FirstContext), Later, yes(LaterContext),
-            Treatment, Shared, yes(SharedContext)),
-        parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm,
-            Impl, VarSet, Result)
-    ;
-        Errs = [_ | _],
-        Result = error1(Errs)
-    ).
-
 parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, VarSet,
         Result) :-
     % XXX We assume all imports are C.
@@ -1401,6 +892,515 @@ parse_pragma_type(ModuleName, "mode_check_clauses", PragmaTerms, ErrorTerm,
         Pragma = pragma_mode_check_clauses(Name, Arity)),
     parse_simple_pragma(ModuleName, "mode_check_clauses", MakePragma,
         PragmaTerms, ErrorTerm, Result).
+
+:- pred parse_foreign_decl_is_local(term::in, foreign_decl_is_local::out)
+    is semidet.
+
+parse_foreign_decl_is_local(term.functor(Functor, [], _), IsLocal) :-
+    (
+        Functor = term.string(String)
+    ;
+        Functor = term.atom(String)
+    ),
+    (
+        String = "local",
+        IsLocal = foreign_decl_is_local
+    ;
+        String = "exported",
+        IsLocal = foreign_decl_is_exported
+    ).
+
+parse_foreign_language(term.functor(term.string(String), _, _), Lang) :-
+    globals.convert_foreign_language(String, Lang).
+parse_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
+    globals.convert_foreign_language(String, Lang).
+
+:- pred parse_foreign_language_type(term::in, foreign_language::in,
+    maybe1(foreign_language_type)::out) is det.
+
+parse_foreign_language_type(InputTerm, Language, Result) :-
+    (
+        Language = lang_il,
+        ( InputTerm = term.functor(term.string(ILTypeName), [], _) ->
+            parse_il_type_name(ILTypeName, InputTerm, Result)
+        ;
+            Result = error1(["invalid backend specification term" - InputTerm])
+        )
+    ;
+        Language = lang_c,
+        ( InputTerm = term.functor(term.string(CTypeName), [], _) ->
+            Result = ok1(c(c_type(CTypeName)))
+        ;
+            Result = error1(["invalid backend specification term" - InputTerm])
+        )
+    ;
+        Language = lang_java,
+        ( InputTerm = term.functor(term.string(JavaTypeName), [], _) ->
+            Result = ok1(java(java_type(JavaTypeName)))
+        ;
+            Result = error1(["invalid backend specification term" - InputTerm])
+        )
+    ;
+        ( Language = lang_managed_cplusplus
+        ; Language = lang_csharp
+        ),
+        Msg = "unsupported language specified, unable to parse backend type",
+        Result = error1([Msg - InputTerm])
+    ).
+
+:- pred parse_il_type_name(string::in, term::in,
+    maybe1(foreign_language_type)::out) is det.
+
+parse_il_type_name(String0, ErrorTerm, ForeignType) :-
+    (
+        parse_special_il_type_name(String0, ForeignTypeResult)
+    ->
+        ForeignType = ok1(il(ForeignTypeResult))
+    ;
+        string.append("class [", String1, String0),
+        string.sub_string_search(String1, "]", Index)
+    ->
+        string.left(String1, Index, AssemblyName),
+        string.split(String1, Index + 1, _, TypeNameStr),
+        TypeSymName = string_to_sym_name(TypeNameStr),
+        ForeignType = ok1(il(il_type(reference, AssemblyName, TypeSymName)))
+    ;
+        string.append("valuetype [", String1, String0),
+        string.sub_string_search(String1, "]", Index)
+    ->
+        string.left(String1, Index, AssemblyName),
+        string.split(String1, Index + 1, _, TypeNameStr),
+        TypeSymName = string_to_sym_name(TypeNameStr),
+        ForeignType = ok1(il(il_type(value, AssemblyName, TypeSymName)))
+    ;
+        ForeignType = error1(["invalid foreign language type description" -
+            ErrorTerm])
+    ).
+
+    % Parse all the special assembler names for all the builtin types.
+    % See Partition I 'Built-In Types' (Section 8.2.2) for the list
+    % of all builtin types.
+    %
+:- pred parse_special_il_type_name(string::in, il_foreign_type::out)
+    is semidet.
+
+parse_special_il_type_name("bool", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "Boolean"))).
+parse_special_il_type_name("char", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "Char"))).
+parse_special_il_type_name("object", il_type(reference, "mscorlib",
+        qualified(unqualified("System"), "Object"))).
+parse_special_il_type_name("string", il_type(reference, "mscorlib",
+        qualified(unqualified("System"), "String"))).
+parse_special_il_type_name("float32", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "Single"))).
+parse_special_il_type_name("float64", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "Double"))).
+parse_special_il_type_name("int8", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "SByte"))).
+parse_special_il_type_name("int16", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "Int16"))).
+parse_special_il_type_name("int32", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "Int32"))).
+parse_special_il_type_name("int64", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "Int64"))).
+parse_special_il_type_name("natural int", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "IntPtr"))).
+parse_special_il_type_name("native int", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "IntPtr"))).
+parse_special_il_type_name("natural unsigned int", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "UIntPtr"))).
+parse_special_il_type_name("native unsigned int", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "UIntPtr"))).
+parse_special_il_type_name("refany", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "TypedReference"))).
+parse_special_il_type_name("typedref", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "TypedReference"))).
+parse_special_il_type_name("unsigned int8", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "Byte"))).
+parse_special_il_type_name("unsigned int16", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "UInt16"))).
+parse_special_il_type_name("unsigned int32", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "UInt32"))).
+parse_special_il_type_name("unsigned int64", il_type(value, "mscorlib",
+        qualified(unqualified("System"), "UInt64"))).
+
+:- pred parse_maybe_foreign_type_assertions(maybe(term)::in,
+    list(foreign_type_assertion)::out) is semidet.
+
+parse_maybe_foreign_type_assertions(no, []).
+parse_maybe_foreign_type_assertions(yes(Term), Assertions) :-
+    parse_foreign_type_assertions(Term, Assertions).
+
+:- pred parse_foreign_type_assertions(term::in,
+    list(foreign_type_assertion)::out) is semidet.
+
+parse_foreign_type_assertions(Term, Assertions) :-
+    ( Term = term.functor(term.atom("[]"), [], _) ->
+        Assertions = []
+    ;
+        Term = term.functor(term.atom("[|]"), [Head, Tail], _),
+        parse_foreign_type_assertion(Head, HeadAssertion),
+        parse_foreign_type_assertions(Tail, TailAssertions),
+        Assertions = [HeadAssertion | TailAssertions]
+    ).
+
+:- pred parse_foreign_type_assertion(term::in,
+    foreign_type_assertion::out) is semidet.
+
+parse_foreign_type_assertion(Term, Assertion) :-
+    Term = term.functor(term.atom(Constant), [], _),
+    Constant = "can_pass_as_mercury_type",
+    Assertion = foreign_type_can_pass_as_mercury_type.
+parse_foreign_type_assertion(Term, Assertion) :-
+    Term = term.functor(term.atom(Constant), [], _),
+    Constant = "stable",
+    Assertion = foreign_type_stable.
+
+    % This predicate parses both c_header_code and foreign_decl pragmas.
+    %
+:- pred parse_pragma_foreign_decl_pragma(module_name::in, string::in,
+    list(term)::in, term::in, varset::in, maybe1(item)::out) is det.
+
+parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
+        ErrorTerm, _VarSet, Result) :-
+    string.format("invalid `:- pragma %s' declaration ", [s(Pragma)],
+        InvalidDeclStr),
+    (
+        (
+            PragmaTerms = [LangTerm, HeaderTerm],
+            IsLocal = foreign_decl_is_exported
+        ;
+            PragmaTerms = [LangTerm, IsLocalTerm, HeaderTerm],
+            parse_foreign_decl_is_local(IsLocalTerm, IsLocal)
+        )
+    ->
+        ( parse_foreign_language(LangTerm, ForeignLanguage) ->
+            ( HeaderTerm = term.functor(term.string( HeaderCode), [], _) ->
+                DeclCode = pragma_foreign_decl(ForeignLanguage, IsLocal,
+                    HeaderCode),
+                Result = ok1(item_pragma(user, DeclCode))
+            ;
+                ErrMsg = "-- expected string for foreign declaration code",
+                Result = error1([string.append(InvalidDeclStr, ErrMsg) -
+                    HeaderTerm])
+            )
+        ;
+            ErrMsg = "-- invalid language parameter",
+            Result = error1([(InvalidDeclStr ++ ErrMsg) - LangTerm])
+        )
+    ;
+        string.format("invalid `:- pragma %s' declaration ",
+            [s(Pragma)], ErrorStr),
+        Result = error1([ErrorStr - ErrorTerm])
+    ).
+
+    % This predicate parses both c_code and foreign_code pragmas.
+    % Processing of foreign_proc (or c_code that defines a procedure)
+    % is handled in parse_pragma_foreign_proc_pragma below.
+    %
+:- pred parse_pragma_foreign_code_pragma(module_name::in, string::in,
+    list(term)::in, term::in, varset::in, maybe1(item)::out) is det.
+
+parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
+        ErrorTerm, _VarSet, Result) :-
+    string.format("invalid `:- pragma %s' declaration ", [s(Pragma)],
+        InvalidDeclStr),
+    ( PragmaTerms = [LangTerm, CodeTerm] ->
+        ( parse_foreign_language(LangTerm, ForeignLanguagePrime) ->
+            ForeignLanguage = ForeignLanguagePrime,
+            LangErrs = []
+        ;
+            LangMsg = InvalidDeclStr ++ "-- invalid language parameter",
+            LangErrs = [LangMsg - LangTerm],
+            ForeignLanguage = lang_c    % Dummy, ignored when LangErrs \= []
+        ),
+        ( CodeTerm = term.functor(term.string(CodePrime), [], _) ->
+            Code = CodePrime,
+            CodeErrs = []
+        ;
+            Code = "",                  % Dummy, ignored when CodeErrs \= []
+            CodeMsg = InvalidDeclStr ++ "-- expected string for foreign code",
+            CodeErrs = [CodeMsg - CodeTerm]
+        ),
+        Errs = LangErrs ++ CodeErrs,
+        (
+            Errs = [],
+            Result = ok1(item_pragma(user,
+                pragma_foreign_code(ForeignLanguage, Code)))
+        ;
+            Errs = [_ | _],
+            Result = error1(Errs)
+        )
+    ;
+        Msg = InvalidDeclStr ++ "-- wrong number of arguments",
+        Result = error1([Msg - ErrorTerm])
+    ).
+
+    % This predicate parses both c_code and foreign_proc pragmas.
+    %
+:- pred parse_pragma_foreign_proc_pragma(module_name::in, string::in,
+    list(term)::in, term::in, varset::in, maybe1(item)::out) is det.
+
+parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
+        ErrorTerm, VarSet, Result) :-
+    string.format("invalid `:- pragma %s' declaration ", [s(Pragma)],
+        InvalidDeclStr),
+    (
+        PragmaTerms = [LangTerm | RestTerms],
+        ( parse_foreign_language(LangTerm, ForeignLanguagePrime) ->
+            ForeignLanguage = ForeignLanguagePrime,
+            LangErrs = []
+        ;
+            ForeignLanguage = lang_c,   % Dummy, ignored when LangErrs \= []
+            LangMsg = "-- invalid language parameter",
+            LangErrs = [(InvalidDeclStr ++ LangMsg) - LangTerm]
+        ),
+        (
+            (
+                RestTerms = [PredAndVarsTerm, CodeTerm],
+                parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName,
+                    Pragma, VarSet, PredAndVarsTerm, CodeTerm, ErrorTerm,
+                    ForeignLanguage, InvalidDeclStr, RestResult)
+            ;
+                RestTerms = [PredAndVarsTerm, FlagsTerm, CodeTerm],
+                parse_pragma_ordinary_foreign_proc_pragma(ModuleName, Pragma,
+                    VarSet, PredAndVarsTerm, FlagsTerm, CodeTerm,
+                    ForeignLanguage, InvalidDeclStr, RestResult)
+            ;
+                RestTerms = [PredAndVarsTerm, FlagsTerm, FieldsTerm,
+                    FirstTerm, LaterTerm],
+                term.context_init(DummyContext),
+                SharedTerm = term.functor(term.atom("common_code"),
+                    [term.functor(term.string(""), [], DummyContext)],
+                    DummyContext),
+                parse_pragma_model_non_foreign_proc_pragma(ModuleName, Pragma,
+                    VarSet, PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm,
+                    LaterTerm, SharedTerm, ForeignLanguage, InvalidDeclStr,
+                    RestResult)
+            ;
+                RestTerms = [PredAndVarsTerm, FlagsTerm, FieldsTerm,
+                    FirstTerm, LaterTerm, SharedTerm],
+                parse_pragma_model_non_foreign_proc_pragma(ModuleName, Pragma,
+                    VarSet, PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm,
+                    LaterTerm, SharedTerm, ForeignLanguage, InvalidDeclStr,
+                    RestResult)
+            )
+        ->
+            (
+                RestResult = ok1(Item),
+                (
+                    LangErrs = [],
+                    Result = ok1(Item)
+                ;
+                    LangErrs = [_ | _],
+                    Result = error1(LangErrs)
+                )
+            ;
+                RestResult = error1(RestErrs),
+                Result = error1(LangErrs ++ RestErrs)
+            )
+        ;
+            ErrMsg = "-- wrong number of arguments",
+            Result = error1([(InvalidDeclStr ++ ErrMsg) - ErrorTerm])
+        )
+    ;
+        PragmaTerms = [],
+        ErrMsg = "-- wrong number of arguments",
+        Result = error1([(InvalidDeclStr ++ ErrMsg) - ErrorTerm])
+    ).
+
+:- pred parse_pragma_ordinary_foreign_proc_pragma_old(module_name::in,
+    string::in, varset::in, term::in, term::in, term::in, foreign_language::in,
+    string::in, maybe1(item)::out) is det.
+
+parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName, Pragma, VarSet,
+        PredAndVarsTerm, CodeTerm, ErrorTerm, ForeignLanguage, InvalidDeclStr,
+        Result) :-
+    % XXX We should issue a warning; this syntax is deprecated. We will
+    % continue to accept this if c_code is used, but not with foreign_code.
+    ( Pragma = "c_code" ->
+        Attributes0 = default_attributes(ForeignLanguage),
+        set_legacy_purity_behaviour(yes, Attributes0, Attributes),
+        ( CodeTerm = term.functor(term.string(Code), [], CodeContext) ->
+            Impl = fc_impl_ordinary(Code, yes(CodeContext)),
+            parse_pragma_foreign_code(ModuleName, Attributes,
+                PredAndVarsTerm, Impl, VarSet, Result)
+        ;
+            ErrMsg = "-- expecting either `may_call_mercury' or "
+                ++ "`will_not_call_mercury', and a string for foreign code",
+            Result = error1([(InvalidDeclStr ++ ErrMsg) - CodeTerm])
+        )
+    ;
+        ErrMsg = "-- doesn't say whether it can call mercury",
+        Result = error1([(InvalidDeclStr ++ ErrMsg) - ErrorTerm])
+    ).
+
+:- pred parse_pragma_ordinary_foreign_proc_pragma(module_name::in, string::in,
+    varset::in, term::in, term::in, term::in, foreign_language::in,
+    string::in, maybe1(item)::out) is det.
+
+parse_pragma_ordinary_foreign_proc_pragma(ModuleName, Pragma, VarSet,
+        SecondTerm, ThirdTerm, CodeTerm, ForeignLanguage, InvalidDeclStr,
+        Result) :-
+    ( CodeTerm = term.functor(term.string(CodePrime), [], CodeContextPrime) ->
+        Code = CodePrime,
+        CodeContext = CodeContextPrime,
+        CodeErrs = []
+    ;
+        Code = "",                                      % Dummy
+        CodeContext = term.context_init,                % Dummy
+        CodeMsg = "-- invalid fourth argument, "
+            ++ "expecting string containing foreign code",
+        CodeErrs = [(InvalidDeclStr ++ CodeMsg) - CodeTerm]
+    ),
+    parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, VarSet,
+        ThirdTerm, MaybeFlagsThird),
+    (
+        MaybeFlagsThird = ok1(Flags),
+        FlagsErrs = [],
+        PredAndVarsTerm = SecondTerm
+    ;
+        MaybeFlagsThird = error1(FlagsThirdErrors),
+        parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma,
+            VarSet, SecondTerm, MaybeFlagsSecond),
+        (
+            MaybeFlagsSecond = ok1(Flags),
+            % XXX We should issue a warning; this syntax is deprecated.
+            % We will continue to accept this if c_code is used,
+            % but not with foreign_code.
+            ( Pragma = "c_code" ->
+                PredAndVarsTerm = ThirdTerm,
+                FlagsErrs = []
+            ;
+                PredAndVarsTerm = ThirdTerm,                % Dummy
+                FlagsMsg = "-- invalid second argument, "
+                    ++ "expecting predicate or function mode",
+                FlagsErrs = [(InvalidDeclStr ++ FlagsMsg) - SecondTerm]
+            )
+        ;
+            MaybeFlagsSecond = error1(_),
+            Flags = default_attributes(ForeignLanguage),    % Dummy
+            PredAndVarsTerm = SecondTerm,                   % Dummy
+            % We report the error appropriate to the preferred syntax.
+            FlagsErrs = assoc_list.map_keys_only(string.append(
+                InvalidDeclStr ++ "-- invalid third argument: "),
+                FlagsThirdErrors)
+        )
+    ),
+    Errs = CodeErrs ++ FlagsErrs,
+    (
+        Errs = [],
+        Impl = fc_impl_ordinary(Code, yes(CodeContext)),
+        parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm,
+            Impl, VarSet, Result)
+    ;
+        Errs = [_ | _],
+        Result = error1(Errs)
+    ).
+
+:- pred parse_pragma_model_non_foreign_proc_pragma(module_name::in, string::in,
+    varset::in, term::in, term::in, term::in, term::in, term::in,
+    term::in, foreign_language::in, string::in, maybe1(item)::out) is det.
+
+parse_pragma_model_non_foreign_proc_pragma(ModuleName, Pragma, VarSet,
+        PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm, LaterTerm,
+        SharedTerm, ForeignLanguage, InvalidDeclStr, Result) :-
+    parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma,
+        VarSet, FlagsTerm, MaybeFlags),
+    (
+        MaybeFlags = ok1(Flags),
+        FlagsErrs = []
+    ;
+        MaybeFlags = error1(FlagErrs0),
+        Flags = default_attributes(ForeignLanguage),    % Dummy
+        FlagsErrs = assoc_list.map_keys_only(string.append(
+            InvalidDeclStr ++ "-- invalid third argument: "), FlagErrs0)
+    ),
+    (
+        parse_pragma_keyword("local_vars", FieldsTerm,
+            FieldsPrime, FieldsContextPrime)
+    ->
+        Fields = FieldsPrime,
+        FieldsContext = FieldsContextPrime,
+        LocalErrs = []
+    ;
+        Fields = "",                                    % Dummy
+        FieldsContext = term.context_init,              % Dummy
+        LocalMsg = "-- invalid fourth argument, "
+            ++ "expecting `local_vars(<fields>)'",
+        LocalErrs = [(InvalidDeclStr ++ LocalMsg) - FieldsTerm]
+    ),
+    (
+        parse_pragma_keyword("first_code", FirstTerm,
+            FirstPrime, FirstContextPrime)
+    ->
+        First = FirstPrime,
+        FirstContext = FirstContextPrime,
+        FirstErrs = []
+    ;
+        First = "",                                     % Dummy
+        FirstContext = term.context_init,               % Dummy
+        FirstMsg = "-- invalid fifth argument, expecting `first_code(<code>)'",
+        FirstErrs = [(InvalidDeclStr ++ FirstMsg) - FirstTerm]
+    ),
+    (
+        parse_pragma_keyword("retry_code", LaterTerm,
+            LaterPrime, LaterContextPrime)
+    ->
+        Later = LaterPrime,
+        LaterContext = LaterContextPrime,
+        LaterErrs = []
+    ;
+        Later = "",                                     % Dummy
+        LaterContext = term.context_init,               % Dummy
+        LaterMsg = "-- invalid sixth argument, expecting `retry_code(<code>)'",
+        LaterErrs = [(InvalidDeclStr ++ LaterMsg) - LaterTerm]
+    ),
+    (
+        parse_pragma_keyword("shared_code", SharedTerm,
+            SharedPrime, SharedContextPrime)
+    ->
+        Shared = SharedPrime,
+        SharedContext = SharedContextPrime,
+        Treatment = share,
+        SharedErrs = []
+    ;
+        parse_pragma_keyword("duplicated_code", SharedTerm,
+            SharedPrime, SharedContextPrime)
+    ->
+        Shared = SharedPrime,
+        SharedContext = SharedContextPrime,
+        Treatment = duplicate,
+        SharedErrs = []
+    ;
+        parse_pragma_keyword("common_code", SharedTerm,
+            SharedPrime, SharedContextPrime)
+    ->
+        Shared = SharedPrime,
+        SharedContext = SharedContextPrime,
+        Treatment = automatic,
+        SharedErrs = []
+    ;
+        Shared = "",                                    % Dummy
+        SharedContext = term.context_init,              % Dummy
+        Treatment = automatic,                          % Dummy
+        SharedMsg = "-- invalid seventh argument, "
+            ++ "expecting `common_code(<code>)'",
+        SharedErrs = [(InvalidDeclStr ++ SharedMsg) - SharedTerm]
+    ),
+    Errs = FlagsErrs ++ LocalErrs ++ FirstErrs ++ LaterErrs ++ SharedErrs,
+    (
+        Errs = [],
+        Impl = fc_impl_model_non(Fields, yes(FieldsContext),
+            First, yes(FirstContext), Later, yes(LaterContext),
+            Treatment, Shared, yes(SharedContext)),
+        parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm,
+            Impl, VarSet, Result)
+    ;
+        Errs = [_ | _],
+        Result = error1(Errs)
+    ).
 
     % This parses a pragma that refers to a predicate or function.
     %
