@@ -1258,25 +1258,21 @@ module_add_fact_table_file(FileName, !Module) :-
 %-----------------------------------------------------------------------------%
 
 predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity) :-
-    module_info_preds(ModuleInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo).
 
 predicate_module(ModuleInfo, PredId) = ModuleName :-
-    module_info_preds(ModuleInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo).
 
 predicate_name(ModuleInfo, PredId) = PredName :-
-    module_info_preds(ModuleInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredName = pred_info_name(PredInfo).
 
 predicate_arity(ModuleInfo, PredId) = Arity :-
-    module_info_preds(ModuleInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     Arity = pred_info_orig_arity(PredInfo).
 
 %-----------------------------------------------------------------------------%

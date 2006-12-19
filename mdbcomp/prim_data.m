@@ -214,6 +214,8 @@
     %
 :- func mercury_std_lib_module_name(string) = sym_name.
 
+:- pred is_std_lib_module_name(sym_name::in, string::out) is semidet.
+
     % Succeeds iff the specified module is one of the builtin modules listed
     % above which may be automatically imported.
     %
@@ -228,6 +230,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module library.
 :- import_module list.
 :- import_module string.
 
@@ -295,6 +298,10 @@ mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_par_builtin_module = unqualified("par_builtin").
 mercury_std_lib_module_name(Name) = unqualified(Name).
+
+is_std_lib_module_name(SymName, Name) :-
+    SymName = unqualified(Name),
+    mercury_std_library_module(Name).
 
 any_mercury_builtin_module(Module) :-
     ( Module = mercury_public_builtin_module

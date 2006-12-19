@@ -16,6 +16,8 @@ MCFLAGS-tree234 += $(TYPE_SPEC_FLAGS) --optimize-constructor-last-call
 MCFLAGS-set += $(TYPE_SPEC_FLAGS)
 MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 
+MCFLAGS-sparse_bitset += --optimize-constant-propagation
+
 # Bug workarounds.
 MCFLAGS-std_util += --no-halt-at-warn
 MCFLAGS-dir += --no-halt-at-warn

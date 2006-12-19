@@ -785,6 +785,7 @@
     ;       help
     ;       version
     ;       fullarch
+    ;       cross_compiling
     ;       local_module_id
     ;       compiler_sufficiently_recent
             % This option is used to test that the compiler is sufficiently
@@ -1534,6 +1535,7 @@ option_defaults_2(miscellaneous_option, [
     help                                -   bool(no),
     version                             -   bool(no),
     fullarch                            -   string(""),
+    cross_compiling                     -   bool(no),
     local_module_id                     -   accumulating([]),
     compiler_sufficiently_recent        -   bool(no),
     experiment                          -   string("")
@@ -2302,6 +2304,7 @@ long_option("help",                 help).
 long_option("version",              version).
 long_option("filenames-from-stdin", filenames_from_stdin).
 long_option("fullarch",             fullarch).
+long_option("cross-compiling",      cross_compiling).
 long_option("local-module-id",      local_module_id).
 long_option("bug-intermod-2002-06-13",  compiler_sufficiently_recent).
 long_option("bug-intermod-2006-09-28",  compiler_sufficiently_recent).
@@ -4717,10 +4720,14 @@ options_help_misc -->
         "\tcompile several modules without the overhead of process",
         "\tcreation for each one.)",
         "--version",
-        "\tDisplay the compiler version."
+        "\tDisplay the compiler version.",
 
         % The `--fullarch' option is reserved for
         % use by the `Mercury.config' file.
+
+        "--cross-compiling",
+        "\tDo not assume that the code being generated is for the",
+        "\tplatform the compiler is running on."
 
         % The `--local-module-id' option is used by `mmc --make'.
     ]).

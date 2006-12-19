@@ -1684,11 +1684,11 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
-        !Info) :-
-    simplify_info_get_module_info(!.Info, ModuleInfo),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
-    goal_info_get_context(GoalInfo0, GoalContext),
+call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
+    simplify_info_get_module_info(!.Info, ModuleInfo0),
+    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+        PredInfo, ProcInfo),
+    goal_info_get_context(!.GoalInfo, GoalContext),
     % Check for calls to predicates with `pragma obsolete' declarations.
     (
         simplify_do_warn_obsolete(!.Info),
@@ -1706,13 +1706,13 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
         % Don't warn about calls from predicates that also have a
         % `pragma obsolete' declaration.  Doing so just results in
         % spurious warnings.
-        module_info_pred_info(ModuleInfo, ThisPredId, ThisPredInfo),
+        module_info_pred_info(ModuleInfo0, ThisPredId, ThisPredInfo),
         pred_info_get_markers(ThisPredInfo, ThisPredMarkers),
         not check_marker(ThisPredMarkers, marker_obsolete)
     ->
         % XXX warn_obsolete isn't really a simple code warning.
         % We should add a separate warning type for this.
-        ObsoletePredPieces = describe_one_pred_name(ModuleInfo,
+        ObsoletePredPieces = describe_one_pred_name(ModuleInfo0,
             should_module_qualify, PredId),
         ObsoletePieces = [words("Warning: call to obsolete")] ++
             ObsoletePredPieces ++ [suffix("."), nl],
@@ -1817,45 +1817,138 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
     % Check for duplicate calls to the same procedure.
     (
         simplify_do_opt_duplicate_calls(!.Info),
-        goal_info_get_purity(GoalInfo0, purity_pure)
+        goal_info_get_purity(!.GoalInfo, purity_pure)
     ->
-        common_optimise_call(PredId, ProcId, Args, GoalInfo0, Goal0, Goal1,
+        common_optimise_call(PredId, ProcId, Args, !.GoalInfo, !GoalExpr,
             !Info)
     ;
         simplify_do_warn_duplicate_calls(!.Info),
-        goal_info_get_purity(GoalInfo0, purity_pure)
+        goal_info_get_purity(!.GoalInfo, purity_pure)
     ->
         % We need to do the pass, for the warnings, but we ignore
         % the optimized goal and instead use the original one.
-        common_optimise_call(PredId, ProcId, Args, GoalInfo0, Goal0, _Goal1,
-            !Info),
-        Goal1 = Goal0
+        common_optimise_call(PredId, ProcId, Args, !.GoalInfo,
+            !.GoalExpr, _NewGoalExpr, !Info)
     ;
-        Goal1 = Goal0
+        true
     ),
 
     % Try to evaluate the call at compile-time.
-    ( simplify_do_const_prop(!.Info) ->
-        simplify_info_get_instmap(!.Info, Instmap0),
+    (
         simplify_info_get_module_info(!.Info, ModuleInfo2),
+        simplify_do_const_prop(!.Info),
+        !.GoalExpr = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
+        module_info_pred_info(ModuleInfo2, CallPredId, CallPredInfo),
+        CallModuleSymName = pred_info_module(CallPredInfo),
+        is_std_lib_module_name(CallModuleSymName, CallModuleName)
+    ->
+        simplify_info_get_instmap(!.Info, Instmap0),
         simplify_info_get_var_types(!.Info, VarTypes),
+
+        CallPredName = pred_info_name(CallPredInfo),
+        proc_id_to_int(CallProcId, CallModeNum),
         (
-            Goal1 = plain_call(_, _, _, _, _, _),
-            const_prop.evaluate_call(PredId, ProcId, Args, VarTypes,
-                Instmap0, ModuleInfo2, Goal2, GoalInfo0, GoalInfo2)
+            const_prop.evaluate_call(CallModuleName, CallPredName, CallModeNum,
+                CallArgs, VarTypes, Instmap0, ModuleInfo2, GoalExprPrime,
+                !GoalInfo)
         ->
-            Goal = Goal2,
-            GoalInfo = GoalInfo2,
-            simplify_info_set_module_info(ModuleInfo2, !Info),
+            !:GoalExpr = GoalExprPrime,
             simplify_info_set_requantify(!Info)
         ;
-            Goal = Goal1,
-            GoalInfo = GoalInfo0
+            module_info_get_globals(ModuleInfo2, Globals),
+            globals.lookup_bool_option(Globals, cross_compiling,
+                CrossCompiling),
+            simplify_library_call(CallModuleName, CallPredName, CallModeNum,
+                CrossCompiling, CallArgs, GoalExprPrime, !GoalInfo, !Info)
+        ->
+            !:GoalExpr = GoalExprPrime,
+            simplify_info_set_requantify(!Info)
+        ;
+            true
         )
     ;
-        Goal = Goal1,
-        GoalInfo = GoalInfo0
+        true
     ).
+
+    % simplify_det_call(ModuleName, ProcName, ModeNum, CrossCompiling,
+    %   Args, GoalExpr, !GoalInfo, !Info):
+    %
+    % This attempts to simplify a call to
+    %   ModuleName.ProcName(ArgList)
+    % whose mode is specified by ModeNum.
+    %
+:- pred simplify_library_call(string::in, string::in, int::in, bool::in,
+    list(prog_var)::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out) is semidet.
+
+simplify_library_call("int", PredName, _ModeNum, CrossCompiling, Args,
+        GoalExpr, !GoalInfo, !Info) :-
+    (
+        PredName = "quot_bits_per_int",
+        Args = [X, Y],
+        CrossCompiling = no,
+        % There is no point in checking whether bits_per_int is 0; it isn't.
+        Op = "unchecked_quotient",
+        IsBuiltin = inline_builtin
+    ;
+        PredName = "times_bits_per_int",
+        Args = [X, Y],
+        CrossCompiling = no,
+        Op = "*",
+        IsBuiltin = inline_builtin
+    ;
+        PredName = "rem_bits_per_int",
+        Args = [X, Y],
+        CrossCompiling = no,
+        % There is no point in checking whether bits_per_int is 0; it isn't.
+        Op = "unchecked_rem",
+        IsBuiltin = inline_builtin
+    ),
+
+    simplify_info_get_varset(!.Info, VarSet0),
+    simplify_info_get_var_types(!.Info, VarTypes0),
+    varset.new_var(VarSet0, ConstVar, VarSet),
+    map.det_insert(VarTypes0, ConstVar, int_type, VarTypes),
+    simplify_info_set_varset(VarSet, !Info),
+    simplify_info_set_var_types(VarTypes, !Info),
+
+    ConstConsId = int_const(int.bits_per_int),
+    ConstUnification = construct(ConstVar, ConstConsId, [], [],
+        construct_dynamically, cell_is_shared, no_construct_sub_info),
+    ConstRHS = rhs_functor(ConstConsId, no, []),
+    % The context shouldn't matter.
+    ConstUnifyContext = unify_context(umc_explicit, []),
+    ConstMode = (free -> ground_inst) - (ground_inst -> ground_inst),
+    ConstGoalExpr = unify(ConstVar, ConstRHS, ConstMode, ConstUnification,
+        ConstUnifyContext),
+    ConstNonLocals = set.make_singleton_set(ConstVar),
+    instmap_delta_from_assoc_list([ConstVar - ground_inst], InstMapDelta),
+    goal_info_init(ConstNonLocals, InstMapDelta,
+        detism_det, purity_pure, ConstGoalInfo),
+    ConstGoal = ConstGoalExpr - ConstGoalInfo,
+
+    IntModuleSymName = mercury_std_lib_module_name("int"),
+    OpSymName = qualified(IntModuleSymName, Op),
+    simplify_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    predicate_table_search_func_sym_arity(PredTable, is_fully_qualified,
+        OpSymName, 2, OpPredIds),
+    OpPredIds = [OpPredId],
+    OpProcIdInt = 0,
+    proc_id_to_int(OpProcId, OpProcIdInt),
+    OpArgs = [X, ConstVar, Y],
+    MaybeUnifyContext = no,
+    OpGoalExpr = plain_call(OpPredId, OpProcId, OpArgs, IsBuiltin,
+        MaybeUnifyContext, OpSymName),
+
+    OpGoalInfo0 = !.GoalInfo,
+    goal_info_get_nonlocals(OpGoalInfo0, OpNonLocals0),
+    set.insert(OpNonLocals0, ConstVar, OpNonLocals),
+    goal_info_set_nonlocals(OpNonLocals, OpGoalInfo0, OpGoalInfo),
+    OpGoal = OpGoalExpr - OpGoalInfo,
+
+    GoalExpr = conj(plain_conj, [ConstGoal, OpGoal]).
 
 %-----------------------------------------------------------------------------%
 

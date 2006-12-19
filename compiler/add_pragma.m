@@ -2473,7 +2473,33 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         PredId, ProcId, PVarSet, PVars, OrigArgTypes, PragmaImpl0,
         Context, PredOrFunc, PredName, Arity, Markers, !ClausesInfo,
         !ModuleInfo, !Specs) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    ( pred_info_is_builtin(PredInfo) ->
+        % When bootstrapping a change that redefines a builtin as
+        % normal Mercury code, you may need to disable this action.
+        Msg = simple_msg(Context,
+            [always([words("Error: foreign_proc for builtin.")])]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ;
+        clauses_info_do_add_pragma_foreign_proc(Origin, Purity, Attributes0,
+            PredId, ProcId, PVarSet, PVars, OrigArgTypes, PragmaImpl0,
+            Context, PredOrFunc, PredName, Arity, Markers, !ClausesInfo,
+            !ModuleInfo, !Specs)
+    ).
 
+:- pred clauses_info_do_add_pragma_foreign_proc(foreign_proc_origin::in,
+    purity::in, pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+    prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
+    pragma_foreign_code_impl::in, prog_context::in, pred_or_func::in,
+    sym_name::in, arity::in, pred_markers::in,
+    clauses_info::in, clauses_info::out, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+clauses_info_do_add_pragma_foreign_proc(Origin, Purity, Attributes0,
+        PredId, ProcId, PVarSet, PVars, OrigArgTypes, PragmaImpl0,
+        Context, PredOrFunc, PredName, Arity, Markers, !ClausesInfo,
+        !ModuleInfo, !Specs) :-
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
         InferredVarTypes, HeadVars, ClauseRep, RttiVarMaps,
         _HasForeignClauses),
@@ -2553,9 +2579,9 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
             true
         ;
             ForeignAttributePurity = get_purity(Attributes1),
-            (
-                ForeignAttributePurity \= Purity
-            ->
+            ( ForeignAttributePurity = Purity ->
+                true
+            ;
                 purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
                 purity_name(Purity, PurityStr),
                 Pieces = [words("Error: foreign clause for"),
@@ -2568,8 +2594,6 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
                 Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                     [Msg]),
                 !:Specs = [Spec | !.Specs]
-            ;
-                true
             )
         ),
         % Put the purity in the goal_info in case this foreign code is inlined.
