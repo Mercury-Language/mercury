@@ -18,8 +18,6 @@
 :- module require.
 :- interface.
 
-:- type software_error ---> software_error(string).
-
     % error(Message):
     %
     % Throw a `software_error(Message)' exception.

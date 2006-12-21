@@ -37,6 +37,9 @@ Changes to the Mercury standard library:
 
 * We have renamed some library predicates whose names were ambiguous.
 
+* The type software_error/0 has been moved from the require module into
+  the exception module.
+
 Changes to the Mercury compiler:
 
 * The compiler now issues a warning when an inst declaration is not

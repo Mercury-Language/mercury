@@ -31,6 +31,12 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Exceptions of this type are used by many parts of the Mercury
+    % implementation to indicate an internal error.
+    %
+:- type software_error
+    --->    software_error(string).
+
     % throw(Exception):
     %   Throw the specified exception.
     %
@@ -205,7 +211,6 @@
 
 :- implementation.
 
-:- import_module require.
 :- import_module solutions.
 :- import_module string.
 :- import_module unit.
@@ -288,32 +293,32 @@
 get_determinism(_Pred::(pred(out) is det),
         Det::out(bound(exp_detism_det))) :-
     ( cc_multi_equal(exp_detism_det, Det)
-    ; error("get_determinism")
+    ; throw(software_error("get_determinism"))
     ).
 get_determinism(_Pred::(pred(out) is semidet),
         Det::out(bound(exp_detism_semidet))) :-
     ( cc_multi_equal(exp_detism_semidet, Det)
-    ; error("get_determinism")
+    ; throw(software_error("get_determinism"))
     ).
 get_determinism(_Pred::(pred(out) is cc_multi),
         Det::out(bound(exp_detism_cc_multi))) :-
     ( cc_multi_equal(exp_detism_cc_multi, Det)
-    ; error("get_determinism")
+    ; throw(software_error("get_determinism"))
     ).
 get_determinism(_Pred::(pred(out) is cc_nondet),
         Det::out(bound(exp_detism_cc_nondet))) :-
     ( cc_multi_equal(exp_detism_cc_nondet, Det)
-    ; error("get_determinism")
+    ; throw(software_error("get_determinism"))
     ).
 get_determinism(_Pred::(pred(out) is multi),
         Det::out(bound(exp_detism_multi))) :-
     ( cc_multi_equal(exp_detism_multi, Det)
-    ; error("get_determinism")
+    ; throw(software_error("get_determinism"))
     ).
 get_determinism(_Pred::(pred(out) is nondet),
         Det::out(bound(exp_detism_nondet))) :-
     ( cc_multi_equal(exp_detism_nondet, Det)
-    ; error("get_determinism")
+    ; throw(software_error("get_determinism"))
     ).
 
 :- pragma promise_equivalent_clauses(get_determinism_2/2).
@@ -321,12 +326,12 @@ get_determinism(_Pred::(pred(out) is nondet),
 get_determinism_2(_Pred::pred(out, di, uo) is det,
         Det::out(bound(exp_detism_det))) :-
     ( cc_multi_equal(exp_detism_det, Det)
-    ; error("get_determinism_2")
+    ; throw(software_error("get_determinism_2"))
     ).
 get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
         Det::out(bound(exp_detism_cc_multi))) :-
     ( cc_multi_equal(exp_detism_cc_multi, Det)
-    ; error("get_determinism_2")
+    ; throw(software_error("get_determinism_2"))
     ).
 
 % These are not worth inlining, since they will (presumably) not be called
@@ -390,7 +395,7 @@ finally_2(P, Cleanup, PRes, CleanupRes, !IO) :-
         ->
             rethrow(ExcpResult)
         ;
-            error("exception.finally_2")
+            throw(software_error("exception.finally_2"))
         )
     ).
 
@@ -534,7 +539,7 @@ process_one_exception_result(exception(E), !MaybeException, !Solutions) :-
 process_one_exception_result(succeeded(S), !MaybeException, !Solutions) :-
     !:Solutions = [S | !.Solutions].
 process_one_exception_result(failed, !MaybeException, !Solutions) :-
-    error("exception.process_one_exception_result: unexpected failure").
+    throw(software_error("process_one_exception_result: unexpected failure")).
 
 incremental_try_all(Goal, AccPred, !Acc) :-
     WrappedGoal = (pred(R::out) is nondet :-
