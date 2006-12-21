@@ -68,6 +68,7 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.
@@ -239,7 +240,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         %
         % The non-local vars are just the head variables.
         %
-        set.list_to_set(HeadVars, NonLocalVars),
+        NonLocalVars = proc_arg_vector_to_set(HeadVars),
         goal_info_set_nonlocals(NonLocalVars, GoalInfo1, GoalInfo2),
 
         %
@@ -256,7 +257,10 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 
         Goal = disj(GoalList) - GoalInfo
     ),
-    proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiInfo, !Proc).
+    % XXX ARGVEC - when the proc_info is converted to use proc_arg_vectors
+    %     we should just pass the headvar vector in directly.
+    HeadVarList = proc_arg_vector_to_list(HeadVars),
+    proc_info_set_body(VarSet, VarTypes, HeadVarList, Goal, RttiInfo, !Proc).
 
 :- pred contains_nonpure_goal(list(hlds_goal)::in) is semidet.
 

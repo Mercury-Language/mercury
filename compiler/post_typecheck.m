@@ -481,7 +481,7 @@ post_typecheck_finish_imported_pred_no_io(ModuleInfo, ErrorProcIds,
         true
     ;
         pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-        clauses_info_get_headvars(ClausesInfo0, HeadVars),
+        clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
         pred_info_get_arg_types(!.PredInfo, ArgTypes),
         map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
         clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),

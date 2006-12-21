@@ -149,6 +149,7 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_out.
 :- import_module hlds.instmap.
 :- import_module hlds.make_hlds.
@@ -671,10 +672,11 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
         info_extract(!.Info, VarSet, Types)
     ),
     map.init(TVarNameMap),
-    rtti_varmaps_init(RttiVarMaps),
+    ArgVec = proc_arg_vector_init(predicate, Args),
     set_clause_list(Clauses, ClausesRep),
+    rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = yes,
-    ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, Args,
+    ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, ArgVec,
         ClausesRep, RttiVarMaps, HasForeignClauses).
 
 :- pred generate_initialise_clauses(mer_type::in,

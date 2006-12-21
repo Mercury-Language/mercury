@@ -76,7 +76,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.typecheck.
-
 :- interface.
 
 :- import_module hlds.
@@ -109,6 +108,7 @@
 :- import_module check_hlds.typecheck_info.
 :- import_module check_hlds.typeclasses.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
@@ -139,6 +139,8 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+:- import_module svmap.
+:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -378,7 +380,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
     some [!ClausesInfo, !Info, !HeadTypeParams] (
         pred_info_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0),
-        clauses_info_get_headvars(!.ClausesInfo, HeadVars),
+        clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
         clauses_info_get_varset(!.ClausesInfo, VarSet0),
         clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes0),
         pred_info_get_markers(!.PredInfo, Markers0),
@@ -415,7 +417,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
             % There are no clauses for class methods. The clauses are generated
             % later on, in polymorphism.expand_class_method_bodies.
             ( check_marker(Markers0, marker_class_method) ->
-                % For the moment, we just insert the types of the head varss
+                % For the moment, we just insert the types of the head vars
                 % into the clauses_info.
                 map.from_corresponding_lists(HeadVars, ArgTypes0, VarTypes),
                 clauses_info_set_vartypes(VarTypes, !ClausesInfo),
@@ -881,7 +883,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         status_defined_in_this_module(ImportStatus) = yes
     ->
         clauses_info_get_headvars(ClausesInfo0, HeadVars),
-        pred_args_to_func_args(HeadVars, FuncArgs, FuncRetVal),
+        proc_arg_vector_to_func_args(HeadVars, FuncArgs, FuncRetVal),
         pred_info_context(!.PredInfo, Context),
         FuncModule = pred_info_module(!.PredInfo),
         FuncName = pred_info_name(!.PredInfo),
@@ -892,10 +894,10 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
             rhs_functor(cons(FuncSymName, FuncArity), no, FuncArgs),
             Context, umc_explicit, [], Goal0),
         Goal0 = GoalExpr - GoalInfo0,
-        set.list_to_set(HeadVars, NonLocals),
+        NonLocals = proc_arg_vector_to_set(HeadVars),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo,
-        ProcIds = [], % the clause applies to all procedures.
+        ProcIds = [], % The clause applies to all procedures.
         Clause = clause(ProcIds, Goal, impl_lang_mercury, Context),
         clauses_info_set_clauses([Clause], ClausesInfo0, ClausesInfo),
         pred_info_update_goal_type(goal_type_clause_and_foreign, !PredInfo),
@@ -946,7 +948,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         conj_list_to_goal(list.reverse(RevConj), GoalInfo, Goal),
 
-        apply_partial_map_to_list(Subst, HeadVars0, HeadVars),
+        apply_renaming_to_proc_arg_vector(Subst, HeadVars0, HeadVars),
         clauses_info_set_headvars(HeadVars, ClausesInfo0, ClausesInfo1),
 
         SingleClause = clause(ApplicableProcs, Goal, Language, Context),
@@ -975,8 +977,9 @@ maybe_update_headvar_name(HeadVar, MaybeHeadVarName, VarSet0, VarSet) :-
         VarSet = VarSet0
     ).
 
-:- pred improve_single_clause_headvars(list(hlds_goal)::in, list(prog_var)::in,
-    list(prog_var)::in, prog_varset::in, prog_varset::out,
+:- pred improve_single_clause_headvars(list(hlds_goal)::in,
+    proc_arg_vector(prog_var)::in, list(prog_var)::in,
+    prog_varset::in, prog_varset::out,
     map(prog_var, prog_var)::in, map(prog_var, prog_var)::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
@@ -989,7 +992,7 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
         (
             % The headvars must be distinct variables, so check that this
             % variable doesn't already appear in the argument list.
-            \+ list.member(OtherVar, HeadVars),
+            \+ proc_arg_vector_member(HeadVars, OtherVar),
             \+ list.member(OtherVar, SeenVars0),
 
             \+ ( some [OtherGoal] (
@@ -1002,14 +1005,14 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
             ))
         ->
             SeenVars = [OtherVar | SeenVars0],
-            !:Subst = map.det_insert(!.Subst, HeadVar, OtherVar),
+            svmap.det_insert(HeadVar, OtherVar, !Subst),
 
             % If the variable wasn't named, use the `HeadVar__n' name.
             (
                 \+ varset.search_name(!.VarSet, OtherVar, _),
                 varset.search_name(!.VarSet, HeadVar, HeadVarName)
             ->
-                varset.name_var(!.VarSet, OtherVar, HeadVarName, !:VarSet)
+                svvarset.name_var(OtherVar, HeadVarName, !VarSet)
             ;
                 true
             )
@@ -1019,10 +1022,10 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
             ( varset.search_name(!.VarSet, OtherVar, OtherVarName) ->
                 % The unification can't be eliminated,
                 % so just rename the head variable.
-                varset.name_var(!.VarSet, HeadVar, OtherVarName, !:VarSet)
+                svvarset.name_var(HeadVar, OtherVarName, !VarSet)
             ; varset.search_name(!.VarSet, HeadVar, HeadVarName) ->
                 % If the variable wasn't named, use the `HeadVar__n' name.
-                varset.name_var(!.VarSet, OtherVar, HeadVarName, !:VarSet)
+                svvarset.name_var(OtherVar, HeadVarName, !VarSet)
             ;
                 true
             )
@@ -1031,19 +1034,19 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
         !:RevConj = [Goal | !.RevConj],
         SeenVars = SeenVars0
     ),
-    improve_single_clause_headvars(Conj0, HeadVars, SeenVars,
-        !VarSet, !Subst, !RevConj).
+    improve_single_clause_headvars(Conj0, HeadVars, SeenVars, !VarSet,
+        !Subst, !RevConj).
 
     % Head variables that have the same name in each clause
     % will have an entry of `yes(Name)' in the result map.
     %
 :- pred find_headvar_names_in_clause(prog_varset::in,
-    list(prog_var)::in, clause::in,
+    proc_arg_vector(prog_var)::in, clause::in,
     map(prog_var, maybe(string))::in, map(prog_var, maybe(string))::out,
     bool::in, bool::out) is det.
 
-find_headvar_names_in_clause(VarSet, HeadVars, Clause, HeadVarMap0, HeadVarMap,
-        IsFirstClause, no) :-
+find_headvar_names_in_clause(VarSet, HeadVars, Clause,
+        HeadVarMap0, HeadVarMap, IsFirstClause, no) :-
     Goal = Clause ^ clause_body,
     goal_to_conj_list(Goal, Conj),
     ClauseHeadVarMap = list.foldl(
@@ -1082,10 +1085,11 @@ find_headvar_names_in_clause(VarSet, HeadVars, Clause, HeadVarMap0, HeadVarMap,
             ), HeadVarMap1, HeadVarMap1)
     ).
 
-:- func find_headvar_names_in_goal(prog_varset, list(prog_var), hlds_goal,
-    map(prog_var, maybe(string))) = map(prog_var, maybe(string)).
+:- func find_headvar_names_in_goal(prog_varset, proc_arg_vector(prog_var),
+    hlds_goal, map(prog_var, maybe(string))) = map(prog_var, maybe(string)).
 
-find_headvar_names_in_goal(VarSet, HeadVars, Goal, HeadVarMap0) = HeadVarMap :-
+find_headvar_names_in_goal(VarSet, HeadVars, Goal, HeadVarMap0)
+        = HeadVarMap :-
     ( goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) ->
         maybe_pred(varset.search_name(VarSet), OtherVar, MaybeOtherVarName),
         ( map.search(HeadVarMap0, HeadVar, MaybeHeadVarName) ->
@@ -1101,15 +1105,15 @@ find_headvar_names_in_goal(VarSet, HeadVars, Goal, HeadVarMap0) = HeadVarMap :-
         HeadVarMap = HeadVarMap0
     ).
 
-:- pred goal_is_headvar_unification(list(prog_var)::in, hlds_goal::in,
-    prog_var::out, prog_var::out) is semidet.
+:- pred goal_is_headvar_unification(proc_arg_vector(prog_var)::in,
+    hlds_goal::in, prog_var::out, prog_var::out) is semidet.
 
 goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) :-
     Goal = unify(LVar, rhs_var(RVar), _, _, _) - _,
-    ( list.member(LVar, HeadVars) ->
+    ( proc_arg_vector_member(HeadVars, LVar) ->
         HeadVar = LVar,
         OtherVar = RVar
-    ; list.member(RVar, HeadVars) ->
+    ; proc_arg_vector_member(HeadVars, RVar) ->
         HeadVar = RVar,
         OtherVar = LVar
     ;

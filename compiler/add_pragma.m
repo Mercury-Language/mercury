@@ -129,6 +129,7 @@
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -595,7 +596,7 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
             PredOrFunc, SymName, Arity, [PredId])
     ->
         module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
-        % convert the mode number to a proc_id
+        % Convert the mode number to a proc_id.
         proc_id_to_int(ProcId, ModeNum),
         map.set(UnusedArgInfo0, proc(PredId, ProcId), UnusedArgs,
             UnusedArgInfo),
@@ -790,11 +791,13 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
                 SymName, Args, GoalInfo, Goal),
             Clause = clause(ProcIds, Goal, impl_lang_mercury, Context),
             map.init(TVarNameMap),
+            ArgsVec = proc_arg_vector_init(PredOrFunc, Args),
+            set_clause_list([Clause], ClausesRep),
             rtti_varmaps_init(RttiVarMaps),
             HasForeignClauses = no,
-            set_clause_list([Clause], ClausesRep),
             Clauses = clauses_info(ArgVarSet, VarTypes0, TVarNameMap,
-                VarTypes0, Args, ClausesRep, RttiVarMaps, HasForeignClauses),
+                VarTypes0, ArgsVec, ClausesRep, RttiVarMaps,
+                HasForeignClauses),
             pred_info_get_markers(PredInfo0, Markers0),
             add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
             map.init(Proofs),
@@ -2598,17 +2601,20 @@ clauses_info_do_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         ),
         % Put the purity in the goal_info in case this foreign code is inlined.
         goal_info_set_purity(Purity, GoalInfo1, GoalInfo),
-        make_foreign_args(HeadVars, ArgInfo, OrigArgTypes, ForeignArgs),
+        % XXX ARGVEC - the foreign_args field in the hlds_goal_expr type
+        %     should also be a an proc_arg_vector rather than a list.
+        HeadVarList = proc_arg_vector_to_list(HeadVars), 
+        make_foreign_args(HeadVarList, ArgInfo, OrigArgTypes, ForeignArgs),
         % Perform some renaming in any user annotated sharing information.
         maybe_rename_user_annotated_sharing_information(Globals,
-            Args0, HeadVars, OrigArgTypes, Attributes1, Attributes),
+            Args0, HeadVarList, OrigArgTypes, Attributes1, Attributes),
         ExtraArgs = [],
         MaybeTraceRuntimeCond = no,
         HldsGoal0 = call_foreign_proc(Attributes, PredId, ProcId, ForeignArgs,
             ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl) - GoalInfo,
         map.init(EmptyVarTypes),
         rtti_varmaps_init(EmptyRttiVarmaps),
-        implicitly_quantify_clause_body(HeadVars, _Warnings,
+        implicitly_quantify_clause_body(HeadVarList, _Warnings,
             HldsGoal0, HldsGoal, VarSet0, VarSet, EmptyVarTypes, _,
             EmptyRttiVarmaps, _),
         NewClause = clause([ProcId], HldsGoal, impl_lang_foreign(NewLang),

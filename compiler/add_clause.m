@@ -58,6 +58,7 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.mode_errors.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
@@ -537,17 +538,19 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
             HasForeignClauses)
     ).
 
-:- pred add_clause_transform(prog_substitution::in, list(prog_var)::in,
-    list(prog_term)::in, goal::in, prog_context::in, pred_or_func::in,
-    arity::in, goal_type::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, list(quant_warning)::out,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
+:- pred add_clause_transform(prog_substitution::in,
+    proc_arg_vector(prog_var)::in, list(prog_term)::in, goal::in,
+    prog_context::in, pred_or_func::in, arity::in, goal_type::in,
+    hlds_goal::out, prog_varset::in, prog_varset::out,
+    list(quant_warning)::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_clause_transform(Subst, HeadVars, Args0, ParseBody, Context, PredOrFunc,
         Arity, GoalType, Goal, !VarSet, Warnings, !ModuleInfo,
         !QualInfo, !Specs) :-
     some [!SInfo] (
+        HeadVarList = proc_arg_vector_to_list(HeadVars),
         prepare_for_head(!:SInfo),
         term.apply_substitution_to_list(Args0, Subst, Args1),
         substitute_state_var_mappings(Args1, Args, !VarSet, !SInfo, !Specs),
@@ -556,7 +559,7 @@ add_clause_transform(Subst, HeadVars, Args0, ParseBody, Context, PredOrFunc,
             HeadGoal = HeadGoal0
         ;
             ArgContext = ac_head(PredOrFunc, Arity),
-            insert_arg_unifications(HeadVars, Args, Context, ArgContext,
+            insert_arg_unifications(HeadVarList, Args, Context, ArgContext,
                 HeadGoal0, HeadGoal1, _, !VarSet, !ModuleInfo, !QualInfo,
                 !SInfo, !Specs),
             attach_features_to_all_goals([feature_from_head],
@@ -573,7 +576,7 @@ add_clause_transform(Subst, HeadVars, Args0, ParseBody, Context, PredOrFunc,
         % ones are not introduced until typechecking and polymorphism.
         %
         rtti_varmaps_init(EmptyRttiVarmaps),
-        implicitly_quantify_clause_body(HeadVars, Warnings, Goal0, Goal,
+        implicitly_quantify_clause_body(HeadVarList, Warnings, Goal0, Goal,
             !VarSet, VarTypes0, VarTypes, EmptyRttiVarmaps, _),
         qual_info_set_var_types(VarTypes, !QualInfo)
     ).

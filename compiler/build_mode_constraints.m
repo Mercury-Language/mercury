@@ -197,6 +197,7 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module libs.
 :- import_module libs.compiler_util.
@@ -263,9 +264,9 @@ add_mc_vars_for_scc_heads(ModuleInfo, PredIds, !VarInfo) :-
 add_mc_vars_for_pred_head(ModuleInfo, PredId, !VarInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_get_headvars(ClausesInfo, Headvars),
+    clauses_info_get_headvar_list(ClausesInfo, HeadVars),
     clauses_info_get_varset(ClausesInfo, ProgVarset),
-    list.foldl(add_mc_var_for_pred_head(ProgVarset, PredId), Headvars,
+    list.foldl(add_mc_var_for_pred_head(ProgVarset, PredId), HeadVars,
         !VarInfo).
 
     % add_mc_var_for_pred_head(ProgVarset, PredId, ProgVar, !VarInfo)
@@ -363,7 +364,7 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         % annotations.
         MainGoal = disj(Goals),
         HeadGoalPath = [],
-        Nonlocals = set.list_to_set(HeadVars),
+        Nonlocals = proc_arg_vector_to_set(HeadVars),
         add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, MainGoal,
             Context, HeadGoalPath, Nonlocals, !VarInfo, !Constraints)
     ).
@@ -439,7 +440,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, CallerPredId, GoalExpr,
     ( pred_info_infer_modes(CalleePredInfo) ->
         % No modes declared so just constrain the hearvars
         pred_info_clauses_info(CalleePredInfo, CalleeClausesInfo),
-        clauses_info_get_headvars(CalleeClausesInfo, CalleeHeadVars),
+        clauses_info_get_headvar_list(CalleeClausesInfo, CalleeHeadVars),
         add_mode_infer_callee(CalleePredId, !Constraints),
         add_call_headvar_constraints(ProgVarset, Context, GoalPath,
             CallerPredId, Args, CalleePredId, CalleeHeadVars,

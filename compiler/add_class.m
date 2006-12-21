@@ -50,6 +50,7 @@
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
@@ -535,17 +536,18 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         IntroducedClause = clause([], IntroducedGoal, impl_lang_mercury,
             Context),
 
-        map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
         map.init(TVarNameMap),
+        map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+        HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
+        set_clause_list([IntroducedClause], ClausesRep),
         rtti_varmaps_init(RttiVarMaps),
         HasForeignClauses = no,
-        set_clause_list([IntroducedClause], ClausesRep),
         ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-            HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses)
+            HeadVarVec, ClausesRep, RttiVarMaps, HasForeignClauses)
     ;
         % Handle the arbitrary clauses syntax.
         InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),
-        clauses_info_init(PredArity, ClausesInfo0),
+        clauses_info_init(PredOrFunc, PredArity, ClausesInfo0),
         list.foldl4(
             produce_instance_method_clause(PredOrFunc, Context, Status),
             InstanceClauses, !ModuleInfo, !QualInfo,

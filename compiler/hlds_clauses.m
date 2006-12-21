@@ -12,18 +12,21 @@
 % This module defines the part of the HLDS that deals with clauses.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_clauses.
 :- interface.
 
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module parse_tree.prog_data.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % The clauses_info structure contains the clauses for a predicate
     % after conversion from the item_list by make_hlds.m.
@@ -32,6 +35,7 @@
     % After mode analysis the clauses and the procedure goals are not
     % guaranteed to be the same, and the clauses are only kept so that
     % the optimized goal can be compared with the original in HLDS dumps.
+    %
 :- type clauses_info
     --->    clauses_info(
                 varset                  :: prog_varset,
@@ -51,7 +55,7 @@
                                         % Variable types inferred by
                                         % typecheck.m.
 
-                headvars                :: list(prog_var),
+                headvars                :: proc_arg_vector(prog_var),
                                         % The head variables.
 
                 clauses_rep             :: clauses_rep,
@@ -64,7 +68,7 @@
                                         % Do we have foreign language clauses?
         ).
 
-:- pred clauses_info_init(int::in, clauses_info::out) is det.
+:- pred clauses_info_init(pred_or_func::in, int::in, clauses_info::out) is det.
 
 :- pred clauses_info_init_for_assertion(prog_vars::in, clauses_info::out)
     is det.
@@ -115,7 +119,15 @@
 :- pred clauses_info_get_rtti_varmaps(clauses_info::in, rtti_varmaps::out)
     is det.
 
-:- pred clauses_info_get_headvars(clauses_info::in, list(prog_var)::out) is det.
+:- pred clauses_info_get_headvars(clauses_info::in,
+    proc_arg_vector(prog_var)::out) is det.
+
+    % Return the headvars as a list rather than as a proc_arg_vector.
+    % New code should avoid using this and should instead be written to
+    % work with the arg_vector structure directly.
+    % 
+:- pred clauses_info_get_headvar_list(clauses_info::in, list(prog_var)::out)
+    is det.
 
 :- pred clauses_info_get_clauses_rep(clauses_info::in, clauses_rep::out) is det.
 
@@ -129,7 +141,7 @@
 :- pred clauses_info_clauses(list(clause)::out,
     clauses_info::in, clauses_info::out) is det.
 
-:- pred clauses_info_set_headvars(list(prog_var)::in,
+:- pred clauses_info_set_headvars(proc_arg_vector(prog_var)::in,
     clauses_info::in, clauses_info::out) is det.
 
 :- pred clauses_info_set_clauses(list(clause)::in,
@@ -181,31 +193,37 @@
 
 %-----------------------------------------------------------------------------%
 
-clauses_info_init(Arity, ClausesInfo) :-
+clauses_info_init(PredOrFunc, Arity, ClausesInfo) :-
     map.init(VarTypes),
     map.init(TVarNameMap),
     varset.init(VarSet0),
     make_n_fresh_vars("HeadVar__", Arity, HeadVars, VarSet0, VarSet),
+    HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     set_clause_list([], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses).
+        HeadVarVec, ClausesRep, RttiVarMaps, HasForeignClauses).
 
 clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
+    varset.init(VarSet),
     map.init(VarTypes),
     map.init(TVarNameMap),
-    varset.init(VarSet),
+    % Procedures introduced for assertions are always predicates, never
+    % functions.
+    HeadVarVec = proc_arg_vector_init(predicate, HeadVars),
+    set_clause_list([], ClausesRep),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
-    set_clause_list([], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses).
+        HeadVarVec, ClausesRep, RttiVarMaps, HasForeignClauses).
 
 clauses_info_get_varset(CI, CI ^ varset).
 clauses_info_get_explicit_vartypes(CI, CI ^ explicit_vartypes).
 clauses_info_get_vartypes(CI, CI ^ vartypes).
 clauses_info_get_headvars(CI, CI ^ headvars).
+clauses_info_get_headvar_list(CI, List) :-
+    List = proc_arg_vector_to_list(CI ^ headvars).
 clauses_info_get_clauses_rep(CI, CI ^ clauses_rep).
 clauses_info_get_rtti_varmaps(CI, CI ^ clauses_rtti_varmaps).
 

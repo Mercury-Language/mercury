@@ -221,12 +221,12 @@ correct_nonlocals_in_pred(PredId, !ModuleInfo) :-
     some [!ClausesInfo, !Varset, !Vartypes, !Clauses, !Goals, !RttiVarMaps] (
         pred_info_clauses_info(PredInfo0, !:ClausesInfo),
         clauses_info_clauses_only(!.ClausesInfo, !:Clauses),
-        clauses_info_get_headvars(!.ClausesInfo, Headvars),
+        clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
         clauses_info_get_varset(!.ClausesInfo, !:Varset),
         clauses_info_get_vartypes(!.ClausesInfo, !:Vartypes),
         clauses_info_get_rtti_varmaps(!.ClausesInfo, !:RttiVarMaps),
         !:Goals = list.map(func(X) = clause_body(X), !.Clauses),
-        list.map_foldl3(correct_nonlocals_in_clause_body(Headvars), !Goals,
+        list.map_foldl3(correct_nonlocals_in_clause_body(HeadVars), !Goals,
             !Varset, !Vartypes, !RttiVarMaps),
         !:Clauses = list.map_corresponding(
             func(Clause, Goal) = 'clause_body :='(Clause, Goal),
@@ -369,7 +369,7 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
         PredInfo0, PredInfo1),
 
     pred_info_clauses_info(PredInfo1, ClausesInfo0),
-    clauses_info_get_headvars(ClausesInfo0, HeadVars),
+    clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
     InstGraph = PredInfo1 ^ inst_graph_info ^ implementation_inst_graph,
     inst_graph.foldl_reachable_from_list(
         ( pred(V::in, S0::in, S::out) is det :-
@@ -600,7 +600,7 @@ process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
     InstGraph = PredInfo0 ^ inst_graph_info ^ implementation_inst_graph,
     pred_info_get_procedures(PredInfo0, ProcTable0),
     pred_info_clauses_info(PredInfo0, ClausesInfo0),
-    clauses_info_get_headvars(ClausesInfo0, HeadVars),
+    clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
 
     HOModes0 = map.init,
     ( ( map.is_empty(ProcTable0) ; pred_info_infer_modes(PredInfo0) ) ->
@@ -650,12 +650,12 @@ process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     InstGraph = PredInfo0 ^ inst_graph_info ^ implementation_inst_graph,
     pred_info_clauses_info(PredInfo0, ClausesInfo),
-    clauses_info_get_headvars(ClausesInfo, HeadVars),
+    clauses_info_get_headvar_list(ClausesInfo, HeadVars),
 
     % DMO document this better
     % XXX Needed for analysing calls. May want to store the constraint
     % as an ROBDD instead.
-    solutions.solutions(arg_modes_map(HeadVars, InstGraph, ModeConstraint,
+    solutions(arg_modes_map(HeadVars, InstGraph, ModeConstraint,
         ModeConstraintInfo0), Modes),
     PredInfo = PredInfo0 ^ modes := Modes,
     % PredInfo = PredInfo0,
@@ -1022,7 +1022,7 @@ process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
         VeryVerbose = no
     ),
 
-    clauses_info_get_headvars(!.ClausesInfo, HeadVars),
+    clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
     map.foldl2(input_output_constraints(HeadVars, InstGraph),
         InstGraph, !Constraint, !ConstraintInfo),
 
@@ -1256,7 +1256,7 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
         % XXX we currently assume that all recursive calls are to the
         % same mode of the predicate.
         pred_info_clauses_info(PredInfo, ClausesInfo),
-        clauses_info_get_headvars(ClausesInfo, HeadVars),
+        clauses_info_get_headvar_list(ClausesInfo, HeadVars),
         call_constraints(GoalPath, PredId, HeadVars, Args,
             !Constraint, !GCInfo)
     ;
@@ -1283,8 +1283,8 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
             ArgModes = PredInfo ^ modes,
             PredInstGraph = PredInfo ^ inst_graph_info ^ interface_inst_graph,
             pred_info_clauses_info(PredInfo, PredClausesInfo),
-            clauses_info_get_headvars(PredClausesInfo, PredHeadVars),
-            solutions.solutions((pred((V - W)::out) is nondet :-
+            clauses_info_get_headvar_list(PredClausesInfo, PredHeadVars),
+            solutions((pred((V - W)::out) is nondet :-
                 inst_graph.corresponding_nodes_from_lists(
                     PredInstGraph, InstGraph, PredHeadVars, Args, V, W)
                 ), CorrespondingNodes),

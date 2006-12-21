@@ -381,6 +381,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
@@ -465,18 +466,10 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
     pred_info_get_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
-    list.length(ArgTypes0, NumOldArgs),
-    list.length(HeadVars, NumNewArgs),
-    NumExtraArgs = NumNewArgs - NumOldArgs,
-    ( list.split_list(NumExtraArgs, HeadVars, ExtraHeadVars0, OldHeadVars0) ->
-        ExtraHeadVars = ExtraHeadVars0,
-        OldHeadVars = OldHeadVars0
-    ;
-        unexpected(this_file,
-            "fixup_pred_polymorphism: list.split_list failed")
-    ),
+    proc_arg_vector_partition_poly_args(HeadVars, ExtraHeadVarList,
+        OldHeadVarList),
 
-    map.apply_to_list(ExtraHeadVars, VarTypes0, ExtraArgTypes),
+    map.apply_to_list(ExtraHeadVarList, VarTypes0, ExtraArgTypes),
     list.append(ExtraArgTypes, ArgTypes0, ArgTypes),
     pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
         PredInfo0, PredInfo1),
@@ -491,7 +484,7 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
         ExistQVars = [_ | _],
         % This can fail for unification procedures
         % of equivalence types.
-        map.apply_to_list(OldHeadVars, VarTypes0, OldHeadVarTypes),
+        map.apply_to_list(OldHeadVarList, VarTypes0, OldHeadVarTypes),
         type_list_subsumes(ArgTypes0, OldHeadVarTypes, Subn),
         \+ map.is_empty(Subn)
     ->
@@ -592,8 +585,9 @@ polymorphism_process_clause_info(PredInfo0, ModuleInfo0, !ClausesInfo, !:Info,
         VarTypes, HeadVars, ClausesRep, RttiVarMaps,
         !.ClausesInfo ^ have_foreign_clauses).
 
-:- pred polymorphism_process_clause(pred_info::in, list(prog_var)::in,
-    list(prog_var)::in, list(tvar)::in, list(prog_var)::in, list(prog_var)::in,
+:- pred polymorphism_process_clause(pred_info::in,
+    proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::in,
+    list(tvar)::in, list(prog_var)::in, list(prog_var)::in,
     clause::in, clause::out, poly_info::in, poly_info::out) is det.
 
 polymorphism_process_clause(PredInfo0, OldHeadVars, NewHeadVars,
@@ -645,11 +639,14 @@ polymorphism_process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
         % of the compiler (e.g. unused_args.m) depend on these fields being
         % valid even for imported procedures.
 
+        % XXX ARGVEC - when the proc_info uses the proc_arg_vector just
+        %     pass the headvar vector directly to the proc_info.
         clauses_info_get_headvars(ClausesInfo, HeadVars),
+        HeadVarList = proc_arg_vector_to_list(HeadVars),
         clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),
         clauses_info_get_varset(ClausesInfo, VarSet),
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
-        proc_info_set_headvars(HeadVars, !ProcInfo),
+        proc_info_set_headvars(HeadVarList, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo)
@@ -668,8 +665,9 @@ polymorphism_process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
     % existential/universal type_infos and type_class_infos
     % in a more consistent manner.
     %
-:- pred setup_headvars(pred_info::in, list(prog_var)::in,
-    list(prog_var)::out, list(mer_mode)::out, list(tvar)::out, list(tvar)::out,
+:- pred setup_headvars(pred_info::in, proc_arg_vector(prog_var)::in,
+    proc_arg_vector(prog_var)::out, list(mer_mode)::out,
+    list(tvar)::out, list(tvar)::out,
     list(prog_var)::out, list(prog_var)::out,
     poly_info::in, poly_info::out) is det.
 
@@ -684,13 +682,11 @@ setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
             ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars, !Info)
     ;
         pred_info_get_class_context(PredInfo, ClassContext),
-        ExtraHeadVars0 = [],
         ExtraArgModes0 = [],
         InstanceTVars = [],
         InstanceUnconstrainedTVars = [],
         InstanceUnconstrainedTypeInfoVars = [],
-        setup_headvars_2(PredInfo, ClassContext,
-            ExtraHeadVars0, ExtraArgModes0,
+        setup_headvars_2(PredInfo, ClassContext, ExtraArgModes0,
             InstanceTVars, InstanceUnconstrainedTVars,
             InstanceUnconstrainedTypeInfoVars, HeadVars0, HeadVars,
             ExtraArgModes, HeadTypeVars, UnconstrainedTVars,
@@ -703,12 +699,12 @@ setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
     %
 :- pred setup_headvars_instance_method(pred_info::in,
     instance_method_constraints::in,
-    list(prog_var)::in, list(prog_var)::out,
+    proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::out,
     list(mer_mode)::out, list(tvar)::out, list(tvar)::out, list(prog_var)::out,
     list(prog_var)::out, poly_info::in, poly_info::out) is det.
 
 setup_headvars_instance_method(PredInfo,
-        InstanceMethodConstraints, HeadVars0, HeadVars, ExtraArgModes,
+        InstanceMethodConstraints, !HeadVars, ExtraArgModes,
         HeadTypeVars, UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !Info) :-
 
@@ -727,25 +723,35 @@ setup_headvars_instance_method(PredInfo,
     list.foldl(rtti_reuse_typeclass_info_var,
         InstanceHeadTypeClassInfoVars, RttiVarMaps0, RttiVarMaps),
     poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
-    list.append(UnconstrainedInstanceTypeInfoVars,
-        InstanceHeadTypeClassInfoVars, ExtraHeadVars0),
     in_mode(InMode),
-    list.duplicate(list.length(ExtraHeadVars0), InMode, ExtraArgModes0),
+    list.duplicate(list.length(UnconstrainedInstanceTypeInfoVars),
+        InMode, UnconstrainedInstanceTypeInfoModes),
+    list.duplicate(list.length(InstanceHeadTypeClassInfoVars),
+        InMode, InstanceHeadTypeClassInfoModes),
+  
+    ExtraArgModes0 = UnconstrainedInstanceTypeInfoModes ++
+        InstanceHeadTypeClassInfoModes,
+
+    proc_arg_vector_set_instance_type_infos(UnconstrainedInstanceTypeInfoVars,
+        !HeadVars),
+    proc_arg_vector_set_instance_typeclass_infos(InstanceHeadTypeClassInfoVars,
+        !HeadVars),
+
     setup_headvars_2(PredInfo, ClassContext,
-        ExtraHeadVars0, ExtraArgModes0, InstanceTVars,
+        ExtraArgModes0, InstanceTVars,
         UnconstrainedInstanceTVars, UnconstrainedInstanceTypeInfoVars,
-        HeadVars0, HeadVars, ExtraArgModes, HeadTypeVars,
+        !HeadVars, ExtraArgModes, HeadTypeVars,
         UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !Info).
 
 :- pred setup_headvars_2(pred_info::in, prog_constraints::in,
-    list(prog_var)::in, list(mer_mode)::in, list(tvar)::in, list(tvar)::in,
-    list(prog_var)::in, list(prog_var)::in, list(prog_var)::out,
+    list(mer_mode)::in, list(tvar)::in, list(tvar)::in, list(prog_var)::in,
+    proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::out,
     list(mer_mode)::out, list(tvar)::out, list(tvar)::out,
     list(prog_var)::out, list(prog_var)::out,
     poly_info::in, poly_info::out) is det.
 
-setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
+setup_headvars_2(PredInfo, ClassContext,
         ExtraArgModes0, InstanceTVars, UnconstrainedInstanceTVars,
         UnconstrainedInstanceTypeInfoVars, HeadVars0,
         HeadVars, ExtraArgModes, HeadTypeVars, AllUnconstrainedTVars,
@@ -796,9 +802,6 @@ setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
     make_typeclass_info_head_vars(do_record_type_info_locns, UnivConstraints,
         UnivHeadTypeClassInfoVars, !Info),
 
-    list.append(UnivHeadTypeClassInfoVars, ExistHeadTypeClassInfoVars,
-        ExtraHeadTypeClassInfoVars),
-
     type_vars_list(ArgTypes, HeadTypeVars),
     list.delete_elems(HeadTypeVars, UnivConstrainedTVars,
         UnconstrainedTVars0),
@@ -835,10 +838,16 @@ setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
         ++ ExtraHeadTypeInfoVars,
     list.condense([UnconstrainedInstanceTVars, UnconstrainedUnivTVars,
         UnconstrainedExistTVars], AllUnconstrainedTVars),
-
-    HeadVars = ExtraHeadVars0 ++ ExtraHeadTypeInfoVars
-        ++ ExtraHeadTypeClassInfoVars ++ HeadVars0,
-
+    
+    proc_arg_vector_set_univ_type_infos(UnivHeadTypeInfoVars,
+        HeadVars0, HeadVars1),
+    proc_arg_vector_set_exist_type_infos(ExistHeadTypeInfoVars,
+        HeadVars1, HeadVars2),
+    proc_arg_vector_set_univ_typeclass_infos(UnivHeadTypeClassInfoVars,
+        HeadVars2, HeadVars3),
+    proc_arg_vector_set_exist_typeclass_infos(ExistHeadTypeClassInfoVars,
+        HeadVars3, HeadVars),
+ 
     % Figure out the modes of the introduced type_info and typeclass_info
     % arguments.
 
@@ -892,11 +901,11 @@ setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
     % existential/universal type_infos and type_class_infos
     % in a more consistent manner.
     %
-:- pred produce_existq_tvars(pred_info::in, list(prog_var)::in,
+:- pred produce_existq_tvars(pred_info::in, proc_arg_vector(prog_var)::in,
     list(tvar)::in, list(prog_var)::in, list(prog_var)::in,
     hlds_goal::in, hlds_goal::out, poly_info::in, poly_info::out) is det.
 
-produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
+produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
         TypeInfoHeadVars, ExistTypeClassInfoHeadVars, Goal0, Goal, !Info) :-
     poly_info_get_var_types(!.Info, VarTypes0),
     poly_info_get_constraint_map(!.Info, ConstraintMap),
@@ -930,7 +939,8 @@ produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
         % This can happen for compiler generated procedures.
         map.init(PredToActualTypeSubst)
     ;
-        map.apply_to_list(HeadVars0, VarTypes0, ActualArgTypes),
+        HeadVarList = proc_arg_vector_to_list(HeadVars),
+        map.apply_to_list(HeadVarList, VarTypes0, ActualArgTypes),
         type_list_subsumes(ArgTypes, ActualArgTypes, ArgTypeSubst)
     ->
         PredToActualTypeSubst = ArgTypeSubst
@@ -1903,7 +1913,7 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
     % type(class)-info. The nonlocals for those goals are adjusted by
     % the code which creates/alters them.
     %
-:- pred fixup_quantification(list(prog_var)::in,
+:- pred fixup_quantification(proc_arg_vector(prog_var)::in,
     existq_tvars::in, hlds_goal::in, hlds_goal::out,
     poly_info::in, poly_info::out) is det.
 
@@ -1918,7 +1928,7 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
         poly_info_get_varset(!.Info, VarSet0),
         poly_info_get_var_types(!.Info, VarTypes0),
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-        set.list_to_set(HeadVars, OutsideVars),
+        OutsideVars = proc_arg_vector_to_set(HeadVars),
         implicitly_quantify_goal(OutsideVars, _Warnings, Goal0, Goal,
             VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         poly_info_set_varset_and_types(VarSet, VarTypes, !Info),

@@ -16,7 +16,6 @@
 % David Overton's PhD thesis.
 % 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module hlds.hhf.
 :- interface.
@@ -43,6 +42,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
@@ -67,7 +67,7 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
         % AAA
         % PredInfo2 = PredInfo0
         pred_info_clauses_info(PredInfo0, ClausesInfo),
-        clauses_info_get_headvars(ClausesInfo, HeadVars),
+        clauses_info_get_headvar_list(ClausesInfo, HeadVars),
         clauses_info_get_varset(ClausesInfo, VarSet),
         some [!IG] (
             !:IG = PredInfo0 ^ inst_graph_info,
@@ -91,10 +91,10 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
             !:IG = !.IG ^ implementation_inst_graph := ImplementationInstGraph,
 
             % AAA only for non-imported preds with no mode decls.
-            clauses_info_get_headvars(ClausesInfo, HeadVars),
+            clauses_info_get_headvar_list(ClausesInfo, HeadVars),
             clauses_info_get_varset(ClausesInfo, VarSet),
             !:IG = !.IG ^ interface_inst_graph := ImplementationInstGraph,
-            solutions.solutions(
+            solutions(
                 (pred(V::out) is nondet :-
                     list.member(V0, HeadVars),
                     inst_graph.reachable(ImplementationInstGraph,
@@ -143,7 +143,7 @@ process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     inst_graph.init(VarTypes0 ^ keys, InstGraph0),
     Info0 = hhf_info(InstGraph0, VarSet0, VarTypes0),
 
-    clauses_info_get_headvars(!.ClausesInfo, HeadVars),
+    clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
     clauses_info_clauses(Clauses0, !ClausesInfo),
 
     (

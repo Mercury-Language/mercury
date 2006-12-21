@@ -33,6 +33,7 @@
 :- module hlds.hlds_out.
 :- interface.
 
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
@@ -133,8 +134,9 @@
     %   HeadVars, PredOrFunc, Clauses, MaybeVarTypes).
     %
 :- pred write_clauses(int::in, module_info::in, pred_id::in,
-    prog_varset::in, bool::in, list(prog_var)::in, pred_or_func::in,
-    list(clause)::in, maybe_vartypes::in, io::di, io::uo) is det.
+    prog_varset::in, bool::in, proc_arg_vector(prog_var)::in,
+    pred_or_func::in, list(clause)::in, maybe_vartypes::in,
+    io::di, io::uo) is det.
 
     % write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
     %   HeadTerms, PredOrFunc, Clause, UseDeclaredModes, MaybeVarTypes).
@@ -1052,8 +1054,9 @@ write_promise(PromiseType, Indent, ModuleInfo, _PredId, VarSet,
 
 write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         HeadVars, PredOrFunc, Clauses0, TypeQual, !IO) :-
+    HeadVarList = proc_arg_vector_to_list(HeadVars),
     write_clauses_2(Indent, ModuleInfo, PredId, VarSet,
-        AppendVarNums, HeadVars, PredOrFunc, Clauses0, TypeQual, 1, !IO).
+        AppendVarNums, HeadVarList, PredOrFunc, Clauses0, TypeQual, 1, !IO).
 
 :- pred write_clauses_2(int::in, module_info::in, pred_id::in,
     prog_varset::in, bool::in, list(prog_var)::in, pred_or_func::in,

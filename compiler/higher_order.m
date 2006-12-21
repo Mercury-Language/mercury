@@ -49,6 +49,7 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -2618,8 +2619,9 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     % This isn't looked at after here, and just clutters up HLDS dumps
     % if it's filled in.
     set_clause_list([], ClausesRep),
+    EmptyHeadVars = proc_arg_vector_init(predicate, []),
     ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
-        EmptyTVarNameMap, EmptyVarTypes, [], ClausesRep,
+        EmptyTVarNameMap, EmptyVarTypes, EmptyHeadVars, ClausesRep,
         EmptyRttiVarMaps, no),
     Origin = origin_transformed(Transform, OrigOrigin, CallerPredId),
     pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,

@@ -73,6 +73,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -173,7 +174,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     ;
         PredName = qualified(MNameOfPred, PName),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-        clauses_info_init(Arity, ClausesInfo),
+        clauses_info_init(PredOrFunc, Arity, ClausesInfo),
         map.init(Proofs),
         map.init(ConstraintMap),
         purity_to_markers(Purity, PurityMarkers),
@@ -230,9 +231,12 @@ add_builtin(PredId, Types, !PredInfo) :-
     pred_info_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_varset(ClausesInfo0, VarSet0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
+    % XXX ARGVEC - clean this up after the pred_info is converted to
+    %     use the arg_vector structure.
+    clauses_info_get_headvar_list(ClausesInfo0, HeadVarList),
 
     goal_info_init(Context, GoalInfo0),
-    set.list_to_set(HeadVars, NonLocals),
+    NonLocals = proc_arg_vector_to_set(HeadVars),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     (
         Module = mercury_private_builtin_module,
@@ -266,8 +270,8 @@ add_builtin(PredId, Types, !PredInfo) :-
         AssignGoal = AssignExpr - GoalInfoWithZero,
 
         CastExpr = generic_call(cast(unsafe_type_inst_cast),
-            [ZeroVar] ++ HeadVars, [in_mode, uo_mode], detism_det),
-        goal_info_set_nonlocals(set.list_to_set([ZeroVar] ++ HeadVars),
+            [ZeroVar] ++ HeadVarList, [in_mode, uo_mode], detism_det),
+        goal_info_set_nonlocals(set.list_to_set([ZeroVar] ++ HeadVarList),
             GoalInfo0, GoalInfoWithZeroHeadVars),
         CastGoal = CastExpr - GoalInfoWithZeroHeadVars,
 
@@ -293,7 +297,8 @@ add_builtin(PredId, Types, !PredInfo) :-
         % Mode checking will figure out the mode.
         ModeId = invalid_proc_id,
         MaybeUnifyContext = no,
-        GoalExpr = plain_call(PredId, ModeId, HeadVars, inline_builtin,
+        % XXX ARGVEC
+        GoalExpr = plain_call(PredId, ModeId, HeadVarList, inline_builtin,
             MaybeUnifyContext, SymName),
         ExtraVars = [],
         ExtraTypes = [],
@@ -306,7 +311,7 @@ add_builtin(PredId, Types, !PredInfo) :-
 
     % Put the clause we just built into the pred_info,
     % annotated with the appropriate types.
-    map.from_corresponding_lists(ExtraVars ++ HeadVars, ExtraTypes ++ Types,
+    map.from_corresponding_lists(ExtraVars ++ HeadVarList, ExtraTypes ++ Types,
         VarTypes),
     map.init(TVarNameMap),
     rtti_varmaps_init(RttiVarMaps),
@@ -436,7 +441,7 @@ preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
 
 preds_add_implicit(ModuleInfo, ModuleName, PredName, Arity, Status, Context,
         Origin, PredOrFunc, PredId, !PredicateTable) :-
-    clauses_info_init(Arity, ClausesInfo),
+    clauses_info_init(PredOrFunc, Arity, ClausesInfo),
     preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
         Arity, Status, Context, Origin, PredOrFunc, PredId, !PredicateTable).
 

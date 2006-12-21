@@ -1554,7 +1554,7 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
 
     pred_info_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_varset(ClausesInfo, VarSet),
-    clauses_info_get_headvars(ClausesInfo, HeadVars),
+    clauses_info_get_headvar_list(ClausesInfo, HeadVars),
     clauses_info_clauses_only(ClausesInfo, Clauses),
     clauses_info_get_vartypes(ClausesInfo, VarTypes),
 

@@ -2603,7 +2603,7 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
     mode_info_get_predid(!.ModeInfo, PredId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_get_headvars(ClausesInfo, HeadVars),
+    clauses_info_get_headvar_list(ClausesInfo, HeadVars),
     filter_headvar_unification_goals(HeadVars, DelayedGoals0,
         HeadVarUnificationGoals, NonHeadVarUnificationGoals0),
     modecheck_delayed_solver_goals(plain_conj, Goals,

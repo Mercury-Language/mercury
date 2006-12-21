@@ -51,6 +51,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
@@ -1053,8 +1054,9 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     map.init(TVarNameMap),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     HasForeignClauses = no,
+    HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, Clauses, RttiVarMaps, HasForeignClauses),
+        HeadVarVec, Clauses, RttiVarMaps, HasForeignClauses),
 
     map.init(Procs0),
     next_mode_id(Procs0, ProcId),

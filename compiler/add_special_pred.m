@@ -347,15 +347,23 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     module_info_get_name(!.ModuleInfo, ModuleName),
     special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Det),
     Name = special_pred_name(SpecialPredId, TypeCtor),
-    ( SpecialPredId = spec_pred_init ->
+    (
+        SpecialPredId = spec_pred_init,
         TypeCtor = type_ctor(TypeSymName, _TypeArity),
         sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
         PredName = qualified(TypeModuleName, Name)
     ;
+        ( SpecialPredId = spec_pred_unify
+        ; SpecialPredId = spec_pred_index
+        ; SpecialPredId = spec_pred_compare
+        ),
         PredName = unqualified(Name)
     ),
     Arity = get_special_pred_id_arity(SpecialPredId),
-    clauses_info_init(Arity, ClausesInfo0),
+    % XXX we probably shouldn't hardcode this as predicate but since
+    % all current special_preds are predicates at the moment it doesn't
+    % matter.
+    clauses_info_init(predicate, Arity, ClausesInfo0),
     Origin = origin_special_pred(SpecialPredId - TypeCtor),
     adjust_special_pred_status(SpecialPredId, Status0, Status),
     map.init(Proofs),

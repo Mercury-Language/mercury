@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prop_mode_constraints.m.
 % Main author: richardf.
-
+% 
 % XXX This module essentially serves as interface between the
 % pre-existing mode_constraints module and the new
 % abstract_mode_constraints and build_mode_constraints modules.
 % Ultimately its contents should probably be moved into those
 % modules respectively.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.prop_mode_constraints.
@@ -77,6 +77,7 @@
 :- implementation.
 
 :- import_module check_hlds.goal_path.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
@@ -241,7 +242,7 @@ ensure_unique_arguments(PredId, !ModuleInfo) :-
     clauses_info_get_vartypes(ClausesInfo0, Vartypes0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
-    SeenSoFar = set.from_list(HeadVars),
+    SeenSoFar = proc_arg_vector_to_set(HeadVars),
     BodyGoals0 = list.map(func(X) = clause_body(X), Clauses0),
     list.map_foldl3(ensure_unique_arguments_in_goal, BodyGoals0, BodyGoals,
         SeenSoFar, _, Varset0, Varset, Vartypes0, Vartypes),
