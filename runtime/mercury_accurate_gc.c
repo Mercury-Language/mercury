@@ -1042,7 +1042,7 @@ maybe_clear_old_heap(MR_MemoryZone *old_heap, MR_Word *old_hp)
 
     if (MR_agc_debug) {
         fprintf(stderr, "Clearing old heap:\n");
-        for (tmp_hp = old_heap->MR_zone_min; tmp_hp <= old_hp; tmp_hp++) {
+        for (tmp_hp = old_heap->MR_zone_min; tmp_hp < old_hp; tmp_hp++) {
             *tmp_hp = 0xDEADBEAF;
         }
     }
