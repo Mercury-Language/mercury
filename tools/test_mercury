@@ -781,7 +781,7 @@ case $HOST in $ROTD_HOST|$G12_ROTD_HOST)
 	mercury_cv_bits_per_word=32 \
 	mercury_cv_unboxed_floats=no \
 	sh configure --prefix=$INSTALL_DIR &&
-	mmake MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space' $PARALLEL" tar &&
+	mmake MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling' $PARALLEL" tar &&
 	cd .. &&
 	rm -f $UNSTABLE/* &&
 	cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version-unstable.txt &&
@@ -793,8 +793,8 @@ case $HOST in $ROTD_HOST|$G12_ROTD_HOST)
 	mv mercury-tests-$version.tar.gz	\
 	    $UNSTABLE/mercury-tests-$version-unstable.tar.gz
 	} || set_status "making source distribution"
-	# later parts of this script assume that we've already run configure,
-	# so we need to redo that
+	# Later parts of this script assume that we've already run configure,
+	# so we need to redo that.
 	cd $DIR/mercury && sh configure --prefix=$INSTALL_DIR
 	cd $DIR
 	;;
