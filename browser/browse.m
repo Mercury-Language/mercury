@@ -181,6 +181,8 @@
 :- import_module pair.
 :- import_module pprint.
 :- import_module require.
+:- import_module stream.
+:- import_module stream.string_writer.
 :- import_module string.
 :- import_module term_to_xml.
 :- import_module type_desc.
@@ -841,8 +843,8 @@ portray_flat(Debugger, BrowserTerm, Params, !IO) :-
     % io.write handles the special cases such as lists, operators, etc better,
     % so we prefer to use it if we can. However, io.write doesn't have
     % a depth or size limit, so we need to check the size first; if the term
-    % is small enough, we use io.write (actually io.write_univ), otherwise
-    % we use term_to_string/4.
+    % is small enough, we use string_writer.write (actually
+    % string_writer.write_univ), otherwise we use term_to_string/4.
     %
     % XXX This ignores the maximum number of lines.
 
@@ -863,7 +865,7 @@ portray_flat(Debugger, BrowserTerm, Params, !IO) :-
 
 portray_flat_write_browser_term(plain_term(Univ), !IO) :-
     io.output_stream(Stream, !IO),
-    io.write_univ(Stream, include_details_cc, Univ, !IO).
+    string_writer.write_univ(Stream, include_details_cc, Univ, !IO).
 portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn),
         !IO) :-
     io.write_string(Functor, !IO),
@@ -879,7 +881,7 @@ portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn),
     (
         MaybeReturn = yes(Return),
         io.write_string(" = ", !IO),
-        io.write_univ(Stream, include_details_cc, Return, !IO)
+        string_writer.write_univ(Stream, include_details_cc, Return, !IO)
     ;
         MaybeReturn = no
     ).
@@ -968,7 +970,7 @@ write_univ_or_unbound(Stream, Univ, !IO) :-
     ( univ_to_type(Univ, _ `with_type` unbound) ->
         io.write_char(Stream, '_', !IO)
     ;
-        io.write_univ(Stream, include_details_cc, Univ, !IO)
+        string_writer.write_univ(Stream, include_details_cc, Univ, !IO)
     ).
 
 :- pred report_deref_error(debugger::in, list(dir)::in, dir::in,

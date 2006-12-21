@@ -10,10 +10,10 @@
 % Author: zs.
 % 
 % The job of this module is to generate warnings about calls to
-% string.format, io.format and stream.format in which the format string and
-% the supplied lists of values do not agree. The difficult part of this job
-% is actually finding the values of the variables representing the format
-% string and the list of values to be printed.
+% string.format, io.format and stream.string_writer.format in which the format
+% string and the supplied lists of values do not agree. The difficult part of
+% this job is actually finding the values of the variables representing the
+% format string and the list of values to be printed.
 %
 % The general approach is a backwards traversal of the procedure body. During
 % this traversal, we assign an id to every conjunction (considering a cond and
@@ -186,15 +186,22 @@
 
 is_format_call(ModuleName, Name, Args, FormatStringVar, FormattedValuesVar) :-
     Name = "format",
-    ( ModuleName = mercury_std_lib_module_name("string") ->
+    (
+        ModuleName = mercury_std_lib_module_name(unqualified("string"))
+    ->
         % We have these arguments regardless of whether we call the
         % predicate or function version of string.format.
         Args = [FormatStringVar, FormattedValuesVar, _ResultVar]
-    ; ModuleName = mercury_std_lib_module_name("io") ->
+    ;
+        ModuleName = mercury_std_lib_module_name(unqualified("io"))
+    ->
         ( Args = [FormatStringVar, FormattedValuesVar, _IOIn, _IOOut]
         ; Args = [_Stream, FormatStringVar, FormattedValuesVar, _IOIn, _IOOut]
         )
-    ; ModuleName = mercury_std_lib_module_name("stream") ->
+    ;
+        ModuleName = mercury_std_lib_module_name(
+                    qualified(unqualified("stream"), "string_writer"))
+    ->
         % Since we do this check after polymorphism there will have been
         % a typeclassinfo inserted at the front of the argument list.
         Args = [_TC_InfoForStream, _Stream, FormatStringVar,
@@ -498,7 +505,8 @@ traverse_unify(Unification, CurId, !ConjMaps, !PredMap, !RelevantVars) :-
                 ConjMap = conj_map(StringMap, ListMap0, ElementMap0, EqvMap0)
             ;
                 ConsId = cons(SymName, _Arity),
-                StringModule = mercury_std_lib_module_name("list"),
+                StringModule =
+                    mercury_std_lib_module_name(unqualified("list")),
                 SymName = qualified(StringModule, Functor),
                 (
                     Functor = "[|]",
@@ -517,7 +525,8 @@ traverse_unify(Unification, CurId, !ConjMaps, !PredMap, !RelevantVars) :-
             ;
                 ConsId = cons(SymName, Arity),
                 Arity = 1,
-                StringModule = mercury_std_lib_module_name("string"),
+                StringModule =
+                    mercury_std_lib_module_name(unqualified("string")),
                 SymName = qualified(StringModule, Functor),
                 (
                     Functor = "f",

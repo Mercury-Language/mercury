@@ -204,8 +204,8 @@ output_language_specific_header_code(lang_managed_cplusplus, ModuleName,
         (pred(Import::in, Result::out) is det :-
             ( Import = mercury_import(_, Name) ->
                 ( is_std_lib_module(Name, StdLibName) ->
-                    ( mercury_std_library_module_name(ModuleName) ->
-                        Str = StdLibName
+                    ( mercury_std_library_module_name(StdLibName) ->
+                        Str = sym_name_to_string(StdLibName)
                     ;
                         Str = "mercury"
                     )

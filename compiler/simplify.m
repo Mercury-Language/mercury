@@ -1928,7 +1928,7 @@ simplify_library_call("int", PredName, _ModeNum, CrossCompiling, Args,
         detism_det, purity_pure, ConstGoalInfo),
     ConstGoal = ConstGoalExpr - ConstGoalInfo,
 
-    IntModuleSymName = mercury_std_lib_module_name("int"),
+    IntModuleSymName = mercury_std_lib_module_name(unqualified("int")),
     OpSymName = qualified(IntModuleSymName, Op),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredTable),

@@ -819,8 +819,13 @@
 
 mercury_std_library_module_name(unqualified(Name)) :-
     mercury_std_library_module(Name).
-mercury_std_library_module_name(qualified(unqualified("mercury"), Name)) :-
-    mercury_std_library_module(Name).
+mercury_std_library_module_name(qualified(Module, Name)) :-
+    module_name_to_file_name(qualified(Module, Name), ModuleNameStr), 
+    mercury_std_library_module(ModuleNameStr).
+mercury_std_library_module_name(qualified(Module, Name)) :-
+    strip_outermost_qualifier(qualified(Module, Name), "mercury", ModuleName),
+    module_name_to_file_name(ModuleName, ModuleNameStr), 
+    mercury_std_library_module(ModuleNameStr).
 
 module_name_to_search_file_name(ModuleName, Ext, FileName, !IO) :-
     module_name_to_file_name(ModuleName, Ext, yes, no, FileName, !IO).
@@ -3710,8 +3715,7 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
             io.write_strings(DepStream,
                 ["CSHARP_ASSEMBLY_REFS-", ForeignModuleNameString, "="], !IO),
             (
-                ModuleName = unqualified(Str),
-                mercury_std_library_module(Str)
+                mercury_std_library_module_name(ModuleName)
             ->
                 Prefix = "/addmodule:"
             ;
@@ -5967,8 +5971,7 @@ referenced_dlls(Module, DepModules0) = Modules :-
         % std library then replace all the std library dlls with
         % one reference to mercury.dll.
     (
-        Module = unqualified(Str),
-        mercury_std_library_module(Str)
+        mercury_std_library_module_name(Module)
     ->
             % In the standard library we need to add the
             % runtime dlls.
@@ -5978,8 +5981,7 @@ referenced_dlls(Module, DepModules0) = Modules :-
     ;
         F = (func(M) =
             (
-                M = unqualified(S),
-                mercury_std_library_module(S)
+                mercury_std_library_module_name(M)
             ->
                 unqualified("mercury")
             ;
@@ -6001,7 +6003,7 @@ referenced_dlls(Module, DepModules0) = Modules :-
 submodules(Module, Modules0) = Modules :-
     (
         Module = unqualified(Str),
-        \+ mercury_std_library_module(Str)
+        \+ mercury_std_library_module_name(Module)
     ->
         P = (pred(M::in) is semidet :-
             Str = outermost_qualifier(M),

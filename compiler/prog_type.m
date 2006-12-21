@@ -756,7 +756,7 @@ constructor_list_represents_dummy_argument_type([Ctor], no) :-
 
 type_is_io_state(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, []),
-    ModuleName = mercury_std_lib_module_name("io"),
+    ModuleName = mercury_std_lib_module_name(unqualified("io")),
     TypeCtor = type_ctor(qualified(ModuleName, "state"), 0).
 
 type_ctor_is_array(type_ctor(qualified(unqualified("array"), "array"), 1)).
@@ -862,7 +862,7 @@ type_ctor_info_type = defined_type(Name, [], kind_star) :-
     Name = qualified(BuiltinModule, "type_ctor_info").
 
 io_state_type = defined_type(Name, [], kind_star) :-
-    Module = mercury_std_lib_module_name("io"),
+    Module = mercury_std_lib_module_name(unqualified("io")),
     Name = qualified(Module, "state").
 
 %-----------------------------------------------------------------------------%

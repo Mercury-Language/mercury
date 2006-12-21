@@ -8,7 +8,8 @@
 :- import_module injection.
 :- import_module int.
 :- import_module list.
-:- import_module pair .
+:- import_module pair.
+:- import_module univ.
 
 :- type test_inj == injection(int, int).
 :- type test_data == assoc_list(int, int).
@@ -138,7 +139,7 @@ test(Pred, Name, !IO) :-
 	;
 		Result = exception(Univ),
 		io.write_string("threw exception: ", !IO),
-		io.write_univ(Univ, !IO),
+		io.write(univ_value(Univ), !IO),
 		io.write_string("\n", !IO)
 	).
 

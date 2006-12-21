@@ -161,8 +161,7 @@ output_mlds(ModuleInfo, MLDS, !IO) :-
 qualified_name_is_stdlib(unqualified(_)) :- fail.
 qualified_name_is_stdlib(qualified(Module, Name)) :-
     (
-        mercury_std_library_module(Name),
-        Module = unqualified("mercury")
+        mercury_std_library_module_name(qualified(Module, Name))
     ;
         qualified_name_is_stdlib(Module)
     ).

@@ -148,9 +148,20 @@
     % The old names are no longer appropriate.
 :- type ops.table == ops.mercury_op_table.
 
+%
+% For use by parser.m, term_io.m, stream.string_writer.m.
+%
+
+:- pred adjust_priority_for_assoc(ops.priority::in, ops.assoc::in,
+    ops.priority::out) is det.
+
+:- func ops.mercury_max_priority(mercury_op_table) = ops.priority.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module int.
 
 :- type ops.mercury_op_table
     --->    ops.mercury_op_table.
@@ -264,8 +275,6 @@ ops.lookup_mercury_op_infos(_OpTable, Name, Info, OtherInfos) :-
 
     % Left associative, lower priority than everything except record syntax.
 ops.lookup_mercury_operator_term(_OpTable, 120, y, x).
-
-:- func ops.mercury_max_priority(mercury_op_table) = ops.priority.
 
 ops.mercury_max_priority(_Table) = 1200.
 
@@ -445,5 +454,12 @@ ops.op_table(Op, Info, OtherInfos) :-
         Info = op_info(prefix(x), 950),
         OtherInfos = []
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma inline(adjust_priority_for_assoc/3).
+
+adjust_priority_for_assoc(Priority, y, Priority).
+adjust_priority_for_assoc(Priority, x, Priority - 1).
 
 %-----------------------------------------------------------------------------%

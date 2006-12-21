@@ -106,6 +106,13 @@
     %
 :- func outermost_qualifier(sym_name) = string.
 
+:- func add_outermost_qualifier(string, sym_name) = sym_name.
+
+    % Remove and return the top level qualifier of a sym_name.
+    %
+:- pred strip_outermost_qualifier(sym_name::in,
+    string::out, sym_name::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
     % adjust_func_arity(PredOrFunc, FuncArity, PredArity).
@@ -315,6 +322,17 @@ construct_qualified_term(SymName, Args, Term) :-
 
 outermost_qualifier(unqualified(Name)) = Name.
 outermost_qualifier(qualified(Module, _Name)) = outermost_qualifier(Module).
+
+add_outermost_qualifier(Qual, unqualified(Name)) =
+        qualified(unqualified(Qual), Name).
+add_outermost_qualifier(Qual, qualified(Module, Name)) =
+        qualified(add_outermost_qualifier(Qual, Module), Name).
+
+strip_outermost_qualifier(qualified(unqualified(OuterQual), Name),
+        OuterQual, unqualified(Name)).
+strip_outermost_qualifier(qualified(Module @ qualified(_, _), Name),
+        OuterQual, qualified(RemainingQual, Name)) :-
+    strip_outermost_qualifier(Module, OuterQual, RemainingQual).
 
 %-----------------------------------------------------------------------------%
 

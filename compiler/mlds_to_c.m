@@ -97,6 +97,7 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.
@@ -231,10 +232,10 @@ mlds_output_src_import(_Indent, Import, !IO) :-
 
         % Strip off the "mercury" qualifier for standard library modules.
         (
-            ModuleName0 = qualified(unqualified("mercury"), ModuleName1),
-            mercury_std_library_module(ModuleName1)
+            strip_outermost_qualifier(ModuleName0, "mercury", ModuleName1),
+            mercury_std_library_module_name(ModuleName1)
         ->
-            ModuleName = unqualified(ModuleName1)
+            ModuleName = ModuleName1
         ;
             ModuleName = ModuleName0
         )
@@ -751,8 +752,8 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode, !IO) :-
     ForeignCode = mlds_foreign_code(RevHeaderCode, _RevImports,
         _RevBodyCode, _ExportDefns),
     HeaderCode = list.reverse(RevHeaderCode),
-    ( is_std_lib_module(ModuleName, ModuleNameStr) ->
-        SymName = unqualified(ModuleNameStr)
+    ( is_std_lib_module(ModuleName, StdlibModuleName) ->
+        SymName = StdlibModuleName
     ;
         SymName = mlds_module_name_to_sym_name(ModuleName)
     ),

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -262,7 +262,7 @@ demangle(const char *orig_name)
 	** making sure that we don't overflow the buffer
 	*/
 	if (strlen(orig_name) >= sizeof(name)) {
-		goto wrong_format;
+		goto too_long;
 	}
 	strcpy(name, orig_name);
 
@@ -846,7 +846,15 @@ typeclass_info:
 	return;
 
 wrong_format:
-	printf("%s", orig_name);
+	strcpy(name, orig_name);
+	start = name;
+	end = name + strlen(name);
+	start = fix_mangled_ascii(start, &end);
+	printf(name);
+	return;
+
+too_long:
+	printf(orig_name);
 	return;
 } /* end demangle() */
 

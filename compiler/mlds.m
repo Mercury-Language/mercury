@@ -450,7 +450,8 @@
     % Is the current module a member of the std library,
     % and if so which module is it?
     %
-:- pred is_std_lib_module(mlds_module_name::in, string::out) is semidet.
+:- pred is_std_lib_module(mlds_module_name::in,
+    mercury_module_name::out) is semidet.
 
     % Given an MLDS module name (e.g. `foo.bar'), append another class
     % qualifier (e.g. for a class `baz'), and return the result (e.g.
@@ -1716,11 +1717,12 @@
 :- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
+:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module char.
 :- import_module int.
-:- import_module library.
 :- import_module string.
 :- import_module term.
 
@@ -1863,20 +1865,17 @@ mercury_module_and_package_name_to_mlds(MLDS_Package, MercuryModule)
 mercury_module_name_to_mlds(MercuryModule)
         = name(MLDS_Package, MLDS_Package) :-
     (
-        MercuryModule = unqualified(ModuleName),
-        mercury_std_library_module(ModuleName)
+        mercury_std_library_module_name(MercuryModule)
     ->
-        MLDS_Package = qualified(unqualified("mercury"), ModuleName)
+        MLDS_Package = add_outermost_qualifier("mercury", MercuryModule)
     ;
         MLDS_Package = MercuryModule
     ).
 
-is_std_lib_module(Module, UnqualifiedName) :-
-    Name = Module ^ module_name,
-    ( Name = unqualified(UnqualifiedName)
-    ; Name = qualified(unqualified("mercury"), UnqualifiedName)
-    ),
-    mercury_std_library_module(UnqualifiedName).
+is_std_lib_module(Module, Name) :-
+    Name0 = Module ^ module_name,
+    strip_outermost_qualifier(Name0, "mercury", Name),
+    mercury_std_library_module_name(Name).
 
 mlds_module_name_to_sym_name(Module) = Module ^ module_name.
 

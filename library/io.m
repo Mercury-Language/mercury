@@ -1482,12 +1482,6 @@
 
 :- pred io.set_op_table(ops.table::di, io::di, io::uo) is det.
 
-:- pred adjust_priority_for_assoc(ops.priority::in, ops.assoc::in,
-    ops.priority::out) is det.
-
-:- pred maybe_write_paren(char::in, ops.priority::in, ops.priority::in,
-    io::di, io::uo) is det.
-
 %
 % For use by browser/browse.m:
 %
@@ -1558,19 +1552,6 @@
 :- func io.binary_output_stream_info(io.stream_db, io.binary_output_stream)
     = io.maybe_stream_info.
 
-% Predicates for writing out univs.
-
-:- pred io.write_univ(univ::in, io::di, io::uo) is det.
-
-:- pred io.write_univ(io.output_stream::in, univ::in, io::di, io::uo) is det.
-
-:- pred io.write_univ(io.output_stream, deconstruct.noncanon_handling, univ,
-    io, io).
-:- mode io.write_univ(in, in(do_not_allow), in, di, uo) is det.
-:- mode io.write_univ(in, in(canonicalize), in, di, uo) is det.
-:- mode io.write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
-:- mode io.write_univ(in, in, in, di, uo) is cc_multi.
-
 %
 % For use by compiler/process_util.m:
 %
@@ -1594,6 +1575,7 @@
 :- import_module map.
 :- import_module parser.
 :- import_module require.
+:- import_module stream.string_writer.
 :- import_module term.
 :- import_module term_io.
 :- import_module type_desc.
@@ -3856,83 +3838,26 @@ io.write_many(Stream, [f(F) | Rest], !IO) :-
     "ML_io_print_to_cur_stream").
 
 io.print(Term, !IO) :-
-    io.do_print(canonicalize, Term, !IO).
+    io.output_stream(Stream, !IO),
+    stream.string_writer.print(Stream, canonicalize, Term, !IO).
 
-    % NOTE: in order to ensure that the signature for the exported 
-    % predicate matches that expected in the runtime we actually export
-    % io.print_2/4 rather than io.print/4 here.
-    %
-:- pragma foreign_export("C", io.print_2(in, in, di, uo),
-    "ML_io_print_to_stream").
+io.print(Stream, Term, !IO) :-
+    stream.string_writer.print(Stream, canonicalize, Term, !IO).
 
-io.print(output_stream(Stream), Term, !IO) :-
-    io.print_2(Stream, Term, !IO).
-
-:- pred io.print_2(io.stream::in, T::in, io::di, io::uo) is det.
-
-io.print_2(Stream, Term, !IO) :-
-    io.print(output_stream(Stream), canonicalize, Term, !IO).
-
-:- pragma foreign_export("C", io.print_2(in, in(do_not_allow), in, di, uo),
-    "ML_io_print_dna_to_stream").
-:- pragma foreign_export("C", io.print_2(in, in(canonicalize), in, di, uo),
-    "ML_io_print_can_to_stream").
-:- pragma foreign_export("C",
-    io.print_2(in, in(include_details_cc), in, di, uo),
-    "ML_io_print_cc_to_stream").
-
-io.print(output_stream(Stream), NonCanon, Term, !IO) :-
-    io.print_2(Stream, NonCanon, Term, !IO).
-
-:- pred io.print_2(io.stream, deconstruct.noncanon_handling, T, io, io).
-:- mode io.print_2(in, in(do_not_allow), in, di, uo) is det.
-:- mode io.print_2(in, in(canonicalize), in, di, uo) is det.
-:- mode io.print_2(in, in(include_details_cc), in, di, uo) is cc_multi.
-:- mode io.print_2(in, in, in, di, uo) is cc_multi.
-
-io.print_2(Stream, NonCanon, Term, !IO) :-
-    io.set_output_stream(output_stream(Stream), OrigStream, !IO),
-    io.do_print(NonCanon, Term, !IO),
-    io.set_output_stream(OrigStream, _Stream, !IO).
+io.print(Stream, NonCanon, Term, !IO) :-
+    stream.string_writer.print(Stream, NonCanon, Term, !IO).
 
 io.print_cc(Term, !IO) :-
-    io.do_print(include_details_cc, Term, !IO).
+    io.output_stream(Stream, !IO),
+    stream.string_writer.print_cc(Stream, Term, !IO).
 
-:- pred io.do_print(deconstruct.noncanon_handling, T, io, io).
-:- mode io.do_print(in(do_not_allow), in, di, uo) is det.
-:- mode io.do_print(in(canonicalize), in, di, uo) is det.
-:- mode io.do_print(in(include_details_cc), in, di, uo) is cc_multi.
-:- mode io.do_print(in, in, di, uo) is cc_multi.
+:- pred io.print_to_stream(io.stream::in, T::in, io::di, io::uo) is det.
 
-io.do_print(NonCanon, Term, !IO) :-
-    % `string', `char' and `univ' are special cases for io.print
-    type_to_univ(Term, Univ),
-    ( univ_to_type(Univ, String) ->
-        io.write_string(String, !IO)
-    ; univ_to_type(Univ, Char) ->
-        io.write_char(Char, !IO)
-    ; univ_to_type(Univ, OrigUniv) ->
-        io.write_univ(OrigUniv, !IO)
-    ;
-        io.print_quoted(NonCanon, Term, !IO)
-    ).
+:- pragma foreign_export("C", io.print_to_stream(in, in, di, uo),
+    "ML_io_print_to_stream").
 
-:- pred io.print_quoted(deconstruct.noncanon_handling, T, io, io).
-:- mode io.print_quoted(in(do_not_allow), in, di, uo) is det.
-:- mode io.print_quoted(in(canonicalize), in, di, uo) is det.
-:- mode io.print_quoted(in(include_details_cc), in, di, uo) is cc_multi.
-:- mode io.print_quoted(in, in, di, uo) is cc_multi.
-
-io.print_quoted(NonCanon, Term, !IO) :-
-    io.do_write(NonCanon, Term, !IO).
-% When we have runtime type classes membership tests, then instead
-% of io.write(Term), we will want to do something like
-%   ( univ_to_type_class(Univ, Portrayable) ->
-%       portray(Portrayable, !IO)
-%   ;
-%       ... code like io.write, but which prints the arguments
-%       using io.print_quoted, rather than io.write ...
-%   )
+io.print_to_stream(Stream, Term, !IO) :-
+    io.print(output_stream(Stream), canonicalize, Term, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3940,474 +3865,18 @@ io.print_quoted(NonCanon, Term, !IO) :-
 %
 
 io.write(X, !IO) :-
-    io.do_write(canonicalize, X, !IO).
+    io.output_stream(Stream, !IO),
+    stream.string_writer.write(Stream, canonicalize, X, !IO).
 
 io.write(Stream, X, !IO) :-
-    io.write(Stream, canonicalize, X, !IO).
+    stream.string_writer.write(Stream, canonicalize, X, !IO).
 
 io.write(Stream, NonCanon, X, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    io.do_write(NonCanon, X, !IO),
-    io.set_output_stream(OrigStream, _Stream, !IO).
+    stream.string_writer.write(Stream, NonCanon, X, !IO).
 
 io.write_cc(X, !IO) :-
-    io.do_write(include_details_cc, X, !IO).
-
-:- pred io.do_write(deconstruct.noncanon_handling, T, io, io).
-:- mode io.do_write(in(do_not_allow), in, di, uo) is det.
-:- mode io.do_write(in(canonicalize), in, di, uo) is det.
-:- mode io.do_write(in(include_details_cc), in, di, uo) is cc_multi.
-:- mode io.do_write(in, in, di, uo) is cc_multi.
-
-io.do_write(NonCanon, Term, !IO) :-
-    type_to_univ(Term, Univ),
-    io.do_write_univ(NonCanon, Univ, !IO).
-
-%-----------------------------------------------------------------------------%
-%
-% Various different versions of io.write_univ
-%
-
-io.write_univ(Univ, !IO) :-
-    io.do_write_univ(canonicalize, Univ, !IO).
-
-io.write_univ(Stream, Univ, !IO) :-
-    io.write_univ(Stream, canonicalize, Univ, !IO).
-
-io.write_univ(Stream, NonCanon, Univ, !IO) :-
-    io.set_output_stream(Stream, OrigStream, !IO),
-    io.do_write_univ(NonCanon, Univ, !IO),
-    io.set_output_stream(OrigStream, _Stream, !IO).
-
-:- pred io.do_write_univ(deconstruct.noncanon_handling, univ, io, io).
-:- mode io.do_write_univ(in(do_not_allow), in, di, uo) is det.
-:- mode io.do_write_univ(in(canonicalize), in, di, uo) is det.
-:- mode io.do_write_univ(in(include_details_cc), in, di, uo) is cc_multi.
-:- mode io.do_write_univ(in, in, di, uo) is cc_multi.
-
-io.do_write_univ(NonCanon, Univ, !IO) :-
-    io.get_op_table(OpTable, !IO),
-    io.do_write_univ_prio(NonCanon, Univ, ops.max_priority(OpTable) + 1, !IO).
-
-:- pred io.do_write_univ_prio(deconstruct.noncanon_handling, univ, ops.priority,
-    io, io).
-:- mode io.do_write_univ_prio(in(do_not_allow), in, in, di, uo) is det.
-:- mode io.do_write_univ_prio(in(canonicalize), in, in, di, uo) is det.
-:- mode io.do_write_univ_prio(in(include_details_cc), in, in, di, uo)
-    is cc_multi.
-:- mode io.do_write_univ_prio(in, in, in, di, uo) is cc_multi.
-
-io.do_write_univ_prio(NonCanon, Univ, Priority, !IO) :-
-    % We need to special-case the builtin types:
-    %   int, char, float, string
-    %   type_info, univ, c_pointer, array
-    %   and private_builtin.type_info
-    %
-    ( univ_to_type(Univ, String) ->
-        term_io.quote_string(String, !IO)
-    ; univ_to_type(Univ, Char) ->
-        term_io.quote_char(Char, !IO)
-    ; univ_to_type(Univ, Int) ->
-        io.write_int(Int, !IO)
-    ; univ_to_type(Univ, Float) ->
-        io.write_float(Float, !IO)
-    ; univ_to_type(Univ, TypeDesc) ->
-        io.write_type_desc(TypeDesc, !IO)
-    ; univ_to_type(Univ, TypeCtorDesc) ->
-        io.write_type_ctor_desc(TypeCtorDesc, !IO)
-    ; univ_to_type(Univ, input_stream(Stream)) ->
-        io.write_stream(NonCanon, Stream, Priority, !IO)
-    ; univ_to_type(Univ, output_stream(Stream)) ->
-        io.write_stream(NonCanon, Stream, Priority, !IO)
-    ; univ_to_type(Univ, binary_input_stream(Stream)) ->
-        io.write_stream(NonCanon, Stream, Priority, !IO)
-    ; univ_to_type(Univ, binary_output_stream(Stream)) -> 
-        io.write_stream(NonCanon, Stream, Priority, !IO)
-    ; univ_to_type(Univ, Stream) ->
-        io.write_stream(NonCanon, Stream, Priority, !IO)
-    ; univ_to_type(Univ, C_Pointer) ->
-        io.write_c_pointer(C_Pointer, !IO)
-    ;
-        % Check if the type is array.array/1. We can't just use univ_to_type
-        % here since array.array/1 is a polymorphic type.
-        %
-        % The calls to type_ctor_name and type_ctor_module_name are not really
-        % necessary -- we could use univ_to_type in the condition instead
-        % of det_univ_to_type in the body. However, this way of doing things
-        % is probably more efficient in the common case when the thing being
-        % printed is *not* of type array.array/1.
-        %
-        % The ordering of the tests here (arity, then name, then module name,
-        % rather than the reverse) is also chosen for efficiency, to find
-        % failure cheaply in the common cases, rather than for readability.
-        %
-        type_ctor_and_args(univ_type(Univ), TypeCtor, ArgTypes),
-        ArgTypes = [ElemType],
-        type_ctor_name(TypeCtor) = "array",
-        type_ctor_module_name(TypeCtor) = "array"
-    ->
-        % Now that we know the element type, we can constrain the type
-        % of the variable `Array' so that we can use det_univ_to_type.
-
-        has_type(Elem, ElemType),
-        same_array_elem_type(Array, Elem),
-        det_univ_to_type(Univ, Array),
-        io.write_array(Array, !IO)
-    ;
-        % Check if the type is private_builtin.type_info/1.
-        % See the comments above for array.array/1.
-
-        type_ctor_and_args(univ_type(Univ), TypeCtor, ArgTypes),
-        ArgTypes = [ElemType],
-        type_ctor_name(TypeCtor) = "type_info",
-        type_ctor_module_name(TypeCtor) = "private_builtin"
-    ->
-        has_type(Elem, ElemType),
-        same_private_builtin_type(PrivateBuiltinTypeInfo, Elem),
-        det_univ_to_type(Univ, PrivateBuiltinTypeInfo),
-        io.write_private_builtin_type_info(PrivateBuiltinTypeInfo, !IO)
-    ;
-        io.write_ordinary_term(NonCanon, Univ, Priority, !IO)
-    ).
-
-:- pred same_array_elem_type(array(T)::unused, T::unused) is det.
-
-same_array_elem_type(_, _).
-
-:- pred same_private_builtin_type(private_builtin.type_info::unused,
-    T::unused) is det.
-
-same_private_builtin_type(_, _).
-
-:- pred io.write_stream(deconstruct.noncanon_handling, io.stream,
-    ops.priority, io, io).
-:- mode io.write_stream(in(do_not_allow), in, in, di, uo) is det.
-:- mode io.write_stream(in(canonicalize), in, in, di, uo) is det.
-:- mode io.write_stream(in(include_details_cc), in, in, di, uo) is cc_multi.
-:- mode io.write_stream(in, in, in, di, uo) is cc_multi.
-
-io.write_stream(NonCanon, Stream, Priority, !IO) :-
-    io.get_stream_db(StreamDb, !IO),
-    io.maybe_stream_info(StreamDb, Stream) = StreamInfo,
-    type_to_univ(StreamInfo, StreamInfoUniv),
-    io.do_write_univ_prio(NonCanon, StreamInfoUniv, Priority, !IO).
-
-:- pred io.write_ordinary_term(deconstruct.noncanon_handling, univ,
-    ops.priority, io, io).
-:- mode io.write_ordinary_term(in(do_not_allow), in, in, di, uo) is det.
-:- mode io.write_ordinary_term(in(canonicalize), in, in, di, uo) is det.
-:- mode io.write_ordinary_term(in(include_details_cc), in, in, di, uo)
-    is cc_multi.
-:- mode io.write_ordinary_term(in, in, in, di, uo) is cc_multi.
-
-io.write_ordinary_term(NonCanon, Univ, Priority, !IO) :-
-    univ_value(Univ) = Term,
-    deconstruct.deconstruct(Term, NonCanon, Functor, _Arity, Args),
-    io.get_op_table(OpTable, !IO),
-    (
-        Functor = "[|]",
-        Args = [ListHead, ListTail]
-    ->
-        io.write_char('[', !IO),
-        io.write_arg(NonCanon, ListHead, !IO),
-        io.write_list_tail(NonCanon, ListTail, !IO),
-        io.write_char(']', !IO)
-    ;
-        Functor = "[]",
-        Args = []
-    ->
-        io.write_string("[]", !IO)
-    ;
-        Functor = "{}",
-        Args = [BracedHead | BracedTail]
-    ->
-        (
-            BracedTail = [],
-            io.write_string("{ ", !IO),
-            io.do_write_univ(NonCanon, BracedHead, !IO),
-            io.write_string(" }", !IO)
-        ;
-            BracedTail = [_ | _],
-            io.write_char('{', !IO),
-            io.write_arg(NonCanon, BracedHead, !IO),
-            io.write_term_args(NonCanon, BracedTail, !IO),
-            io.write_char('}', !IO)
-        )
-    ;
-        ops.lookup_op_infos(OpTable, Functor, FirstOpInfo, OtherOpInfos)
-    ->
-        select_op_info_and_print(NonCanon, FirstOpInfo, OtherOpInfos,
-            Priority, Functor, Args, !IO)
-    ;
-        io.write_functor_and_args(NonCanon, Functor, Args, !IO)
-    ).
-
-:- pred select_op_info_and_print(deconstruct.noncanon_handling,
-    op_info, list(op_info), ops.priority, string, list(univ), io, io) is det.
-:- mode select_op_info_and_print(in(do_not_allow), in, in, in, in, in, di, uo)
-    is det.
-:- mode select_op_info_and_print(in(canonicalize), in, in, in, in, in, di, uo)
-    is det.
-:- mode select_op_info_and_print(in(include_details_cc), in, in, in, in, in,
-    di, uo) is cc_multi.
-:- mode select_op_info_and_print(in, in, in, in, in, in, di, uo) is cc_multi.
-
-select_op_info_and_print(NonCanon, OpInfo, OtherOpInfos, Priority,
-        Functor, Args, !IO) :-
-    OpInfo = op_info(OpClass, _),
-    (
-        OpClass = prefix(_OpAssoc),
-        ( Args = [Arg] ->
-            OpInfo = op_info(_, OpPriority),
-            maybe_write_paren('(', Priority, OpPriority, !IO),
-            term_io.quote_atom(Functor, !IO),
-            io.write_char(' ', !IO),
-            OpClass = prefix(OpAssoc),
-            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
-            io.do_write_univ_prio(NonCanon, Arg, NewPriority, !IO),
-            maybe_write_paren(')', Priority, OpPriority, !IO)
-        ;
-            select_remaining_op_info_and_print(NonCanon, OtherOpInfos,
-                Priority, Functor, Args, !IO)
-        )
-    ;
-        OpClass = postfix(_OpAssoc),
-        ( Args = [PostfixArg] ->
-            OpInfo = op_info(_, OpPriority),
-            maybe_write_paren('(', Priority, OpPriority, !IO),
-            OpClass = postfix(OpAssoc),
-            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
-            io.do_write_univ_prio(NonCanon, PostfixArg, NewPriority, !IO),
-            io.write_char(' ', !IO),
-            term_io.quote_atom(Functor, !IO),
-            maybe_write_paren(')', Priority, OpPriority, !IO)
-        ;
-            select_remaining_op_info_and_print(NonCanon, OtherOpInfos,
-                Priority, Functor, Args, !IO)
-        )
-    ;
-        OpClass = infix(_LeftAssoc, _RightAssoc),
-        ( Args = [Arg1, Arg2] ->
-            OpInfo = op_info(_, OpPriority),
-            maybe_write_paren('(', Priority, OpPriority, !IO),
-            OpClass = infix(LeftAssoc, _),
-            adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
-            io.do_write_univ_prio(NonCanon, Arg1, LeftPriority, !IO),
-            ( Functor = "," ->
-                io.write_string(", ", !IO)
-            ;
-                io.write_char(' ', !IO),
-                term_io.quote_atom(Functor, !IO),
-                io.write_char(' ', !IO)
-            ),
-            OpClass = infix(_, RightAssoc),
-            adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
-            io.do_write_univ_prio(NonCanon, Arg2, RightPriority, !IO),
-            maybe_write_paren(')', Priority, OpPriority, !IO)
-        ;
-            select_remaining_op_info_and_print(NonCanon, OtherOpInfos,
-                Priority, Functor, Args, !IO)
-        )
-    ;
-        OpClass = binary_prefix(_FirstAssoc, _SecondAssoc),
-        ( Args = [Arg1, Arg2] ->
-            OpInfo = op_info(_, OpPriority),
-            maybe_write_paren('(', Priority, OpPriority, !IO),
-            term_io.quote_atom(Functor, !IO),
-            io.write_char(' ', !IO),
-            OpClass = binary_prefix(FirstAssoc, _),
-            adjust_priority_for_assoc(OpPriority, FirstAssoc,
-                FirstPriority),
-            io.do_write_univ_prio(NonCanon, Arg1, FirstPriority, !IO),
-            io.write_char(' ', !IO),
-            OpClass = binary_prefix(_, SecondAssoc),
-            adjust_priority_for_assoc(OpPriority, SecondAssoc,
-                SecondPriority),
-            io.do_write_univ_prio(NonCanon, Arg2, SecondPriority, !IO),
-            maybe_write_paren(')', Priority, OpPriority, !IO)
-        ;
-            select_remaining_op_info_and_print(NonCanon, OtherOpInfos,
-                Priority, Functor, Args, !IO)
-        )
-    ).
-
-:- pred select_remaining_op_info_and_print(deconstruct.noncanon_handling,
-    list(op_info), ops.priority, string, list(univ), io, io) is det.
-:- mode select_remaining_op_info_and_print(in(do_not_allow), in, in, in, in,
-    di, uo) is det.
-:- mode select_remaining_op_info_and_print(in(canonicalize), in, in, in, in,
-    di, uo) is det.
-:- mode select_remaining_op_info_and_print(in(include_details_cc), in, in, in,
-    in, di, uo) is cc_multi.
-:- mode select_remaining_op_info_and_print(in, in, in, in, in, di, uo)
-    is cc_multi.
-
-select_remaining_op_info_and_print(NonCanon, [FirstOpInfo | MoreOpInfos],
-        Priority, Functor, Args, !IO) :-
-    select_op_info_and_print(NonCanon, FirstOpInfo, MoreOpInfos,
-        Priority, Functor, Args, !IO).
-select_remaining_op_info_and_print(NonCanon, [],
-        Priority, Functor, Args, !IO) :-
-    io.get_op_table(OpTable, !IO),
-    (
-        Args = [],
-        Priority =< ops.max_priority(OpTable)
-    ->
-        io.write_char('(', !IO),
-        term_io.quote_atom(Functor, !IO),
-        io.write_char(')', !IO)
-    ;
-        io.write_functor_and_args(NonCanon, Functor, Args, !IO)
-    ).
-
-:- pred io.write_functor_and_args(deconstruct.noncanon_handling, string,
-    list(univ), io, io).
-:- mode io.write_functor_and_args(in(do_not_allow), in, in, di, uo) is det.
-:- mode io.write_functor_and_args(in(canonicalize), in, in, di, uo) is det.
-:- mode io.write_functor_and_args(in(include_details_cc), in, in, di, uo)
-    is cc_multi.
-:- mode io.write_functor_and_args(in, in, in, di, uo) is cc_multi.
-
-:- pragma inline(io.write_functor_and_args/5).
-
-io.write_functor_and_args(NonCanon, Functor, Args, !IO) :-
-    term_io.quote_atom_agt(Functor, maybe_adjacent_to_graphic_token, !IO),
-    (
-        Args = [X | Xs],
-        io.write_char('(', !IO),
-        io.write_arg(NonCanon, X, !IO),
-        io.write_term_args(NonCanon, Xs, !IO),
-        io.write_char(')', !IO)
-    ;
-        Args = []
-    ).
-
-:- pragma inline(adjust_priority_for_assoc/3).
-
-adjust_priority_for_assoc(Priority, y, Priority).
-adjust_priority_for_assoc(Priority, x, Priority - 1).
-
-:- pragma inline(maybe_write_paren/5).
-
-maybe_write_paren(Char, Priority, OpPriority, !IO) :-
-    ( OpPriority > Priority ->
-        io.write_char(Char, !IO)
-    ;
-        true
-    ).
-
-:- pred io.write_list_tail(deconstruct.noncanon_handling, univ, io, io).
-:- mode io.write_list_tail(in(do_not_allow), in, di, uo) is det.
-:- mode io.write_list_tail(in(canonicalize), in, di, uo) is det.
-:- mode io.write_list_tail(in(include_details_cc), in, di, uo) is cc_multi.
-:- mode io.write_list_tail(in, in, di, uo) is cc_multi.
-
-io.write_list_tail(NonCanon, Univ, !IO) :-
-    Term = univ_value(Univ),
-    deconstruct.deconstruct(Term, NonCanon, Functor, _Arity, Args),
-    (
-        Functor = "[|]",
-        Args = [ListHead, ListTail]
-    ->
-        io.write_string(", ", !IO),
-        io.write_arg(NonCanon, ListHead, !IO),
-        io.write_list_tail(NonCanon, ListTail, !IO)
-    ;
-        Functor = "[]",
-        Args = []
-    ->
-        true
-    ;
-        io.write_string(" | ", !IO),
-        io.do_write_univ(NonCanon, Univ, !IO)
-    ).
-
-    % Write the remaining arguments.
-    %
-:- pred io.write_term_args(deconstruct.noncanon_handling, list(univ),
-    io, io).
-:- mode io.write_term_args(in(do_not_allow), in, di, uo) is det.
-:- mode io.write_term_args(in(canonicalize), in, di, uo) is det.
-:- mode io.write_term_args(in(include_details_cc), in, di, uo) is cc_multi.
-:- mode io.write_term_args(in, in, di, uo) is cc_multi.
-
-io.write_term_args(_, [], !IO).
-io.write_term_args(NonCanon, [X | Xs], !IO) :-
-    io.write_string(", ", !IO),
-    io.write_arg(NonCanon, X, !IO),
-    io.write_term_args(NonCanon, Xs, !IO).
-
-:- pred io.write_arg(deconstruct.noncanon_handling, univ, io, io).
-:- mode io.write_arg(in(do_not_allow), in, di, uo) is det.
-:- mode io.write_arg(in(canonicalize), in, di, uo) is det.
-:- mode io.write_arg(in(include_details_cc), in, di, uo) is cc_multi.
-:- mode io.write_arg(in, in, di, uo) is cc_multi.
-
-io.write_arg(NonCanon, X, !IO) :-
-    arg_priority(ArgPriority, !IO),
-    io.do_write_univ_prio(NonCanon, X, ArgPriority, !IO).
-
-:- pred arg_priority(int::out, io::di, io::uo) is det.
-
-% arg_priority(ArgPriority, !IO) :-
-%   io.get_op_table(OpTable, !IO),
-%   ( ops.lookup_infix_op(OpTable, ",", Priority, _, _) ->
-%       ArgPriority = Priority
-%   ;
-%       error("arg_priority: can't find the priority of `,'")
-%   ).
-%
-% We could implement this as above, but it's more efficient to just
-% hard-code it.
-arg_priority(1000, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred io.write_type_desc(type_desc::in, io::di, io::uo) is det.
-
-io.write_type_desc(TypeDesc, !IO) :-
-    io.write_string(type_name(TypeDesc), !IO).
-
-:- pred io.write_type_ctor_desc(type_ctor_desc::in, io::di, io::uo) is det.
-
-io.write_type_ctor_desc(TypeCtorDesc, !IO) :-
-    type_ctor_name_and_arity(TypeCtorDesc, ModuleName, Name, Arity0),
-    (
-        ModuleName = "builtin",
-        Name = "func"
-    ->
-        % The type ctor that we call `builtin:func/N' takes N + 1
-        % type parameters: N arguments plus one return value.
-        % So we need to subtract one from the arity here.
-        Arity = Arity0 - 1
-    ;
-        Arity = Arity0
-    ),
-    ( ModuleName = "builtin" ->
-        io.format("%s/%d", [s(Name), i(Arity)], !IO)
-    ;
-        io.format("%s.%s/%d", [s(ModuleName), s(Name), i(Arity)], !IO)
-    ).
-
-:- pred io.write_c_pointer(c_pointer::in, io::di, io::uo) is det.
-
-io.write_c_pointer(C_Pointer, !IO) :-
-    io.write_string(c_pointer_to_string(C_Pointer), !IO).
-
-:- pred io.write_array(array(T)::in, io::di, io::uo) is det.
-
-io.write_array(Array, !IO) :-
-    io.write_string("array(", !IO),
-    array.to_list(Array, List),
-    io.write(List, !IO),
-    io.write_string(")", !IO).
-
-:- pred io.write_private_builtin_type_info(private_builtin.type_info::in,
-    io::di, io::uo) is det.
-
-io.write_private_builtin_type_info(PrivateBuiltinTypeInfo, !IO) :-
-    TypeInfo = rtti_implementation.unsafe_cast(PrivateBuiltinTypeInfo),
-    io.write_type_desc(TypeInfo, !IO).
+    io.output_stream(Stream, !IO),
+    stream.string_writer.write(Stream, include_details_cc, X, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -9100,7 +8569,7 @@ io.result_to_stream_result(error(Error)) = error(Error).
 :- instance stream.writer(io.output_stream, univ, io)
     where
 [
-    pred(put/4) is io.write_univ
+    pred(put/4) is stream.string_writer.write_univ
 ].
 
 :- instance stream.line_oriented(io.output_stream, io) where

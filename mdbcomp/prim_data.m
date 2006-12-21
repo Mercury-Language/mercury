@@ -212,7 +212,7 @@
     % Returns the sym_name of the module with the given name in the
     % Mercury standard library.
     %
-:- func mercury_std_lib_module_name(string) = sym_name.
+:- func mercury_std_lib_module_name(sym_name) = sym_name.
 
 :- pred is_std_lib_module_name(sym_name::in, string::out) is semidet.
 
@@ -297,10 +297,10 @@ mercury_table_builtin_module = unqualified("table_builtin").
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_par_builtin_module = unqualified("par_builtin").
-mercury_std_lib_module_name(Name) = unqualified(Name).
+mercury_std_lib_module_name(Name) = Name.
 
 is_std_lib_module_name(SymName, Name) :-
-    SymName = unqualified(Name),
+    Name = sym_name_to_string(SymName),
     mercury_std_library_module(Name).
 
 any_mercury_builtin_module(Module) :-

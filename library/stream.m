@@ -24,6 +24,8 @@
 :- import_module list.
 :- import_module string.
 
+:- include_module string_writer.
+
 %-----------------------------------------------------------------------------%
 % 
 % Types used by streams
@@ -278,19 +280,32 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Misc. operations on streams
+% Misc. operations on input streams
 %
-
-    % A version of io.format that works for arbitrary string writers.
-    %
-:- pred stream.format(Stream::in, string::in, list(poly_type)::in,
-    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
     % Discard all the whitespace from the specified stream.
     %
 :- pred stream.ignore_whitespace(Stream::in, stream.result(Error)::out,
     State::di, State::uo)
     is det <= stream.putback(Stream, char, State, Error).
+
+%-----------------------------------------------------------------------------%
+%
+% Misc. operations on output streams
+%
+
+    % put_list(Stream, Write, Sep, List, !State).
+    %
+    % Write all the elements List to Stream separated by Sep.
+:- pred put_list(Stream, pred(Stream, T, State, State),
+    pred(Stream, State, State), list(T), State, State)
+    <= stream.output(Stream, State).
+:- mode put_list(in, pred(in, in, di, uo) is det, pred(in, di, uo) is det,
+    in, di, uo) is det.
+:- mode put_list(in, pred(in, in, di, uo) is cc_multi,
+    pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode put_list(in, pred(in, in, di, uo) is cc_multi,
+    pred(in, di, uo) is det, in, di, uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -371,12 +386,6 @@ stream.input_stream_fold2_state_maybe_stop(Stream, Pred, T0, Res, !S) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-stream.format(Stream, FormatString, Arguments, !State) :-
-    string.format(FormatString, Arguments, String),
-    put(Stream, String, !State).
-    
-%-----------------------------------------------------------------------------%
     
 stream.ignore_whitespace(Stream, Result, !State) :-
     get(Stream, CharResult, !State),
@@ -395,7 +404,20 @@ stream.ignore_whitespace(Stream, Result, !State) :-
             Result = ok
         )
     ).
-    
+
+%-----------------------------------------------------------------------------%
+
+put_list(_Stream, _Pred, _Sep, [], !State).
+put_list(Stream, Pred, Sep, [X | Xs], !State) :-
+    Pred(Stream, X, !State),
+    (
+        Xs = []
+    ;
+        Xs = [_ | _],
+        Sep(Stream, !State),
+        put_list(Stream, Pred, Sep, Xs, !State)
+    ).
+
 %-----------------------------------------------------------------------------%
 :- end_module stream.
 %-----------------------------------------------------------------------------%

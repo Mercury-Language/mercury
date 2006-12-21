@@ -23,6 +23,7 @@
 :- import_module char.
 :- import_module io.
 :- import_module ops.
+:- import_module stream.
 :- import_module term.
 :- import_module varset.
 
@@ -112,6 +113,11 @@
     %
 :- pred term_io.quote_string(string::in, io::di, io::uo) is det.
 
+:- pred term_io.quote_string(Stream::in, string::in,
+    State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
     % Like term_io.quote_string, but return the result in a string.
     %
 :- func term_io.quoted_string(string) = string.
@@ -120,6 +126,11 @@
     % with characters escaped if necessary, to stdout.
     %
 :- pred term_io.quote_atom(string::in, io::di, io::uo) is det.
+
+:- pred term_io.quote_atom(Stream::in, string::in,
+    State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
     % Like term_io.quote_atom, but return the result in a string.
     %
@@ -130,6 +141,11 @@
     %
 :- pred term_io.quote_char(char::in, io::di, io::uo) is det.
 
+:- pred term_io.quote_char(Stream::in, char::in,
+    State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
     % Like term_io.quote_char, but return the result in a string.
     %
 :- func term_io.quoted_char(char) = string.
@@ -139,6 +155,11 @@
     %
 :- pred term_io.write_escaped_char(char::in, io::di, io::uo) is det.
 
+:- pred term_io.write_escaped_char(Stream::in, char::in,
+    State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
     % Like term_io.write_escaped_char, but return the result in a string.
     %
 :- func term_io.escaped_char(char) = string.
@@ -147,6 +168,11 @@
     % to stdout. The string is not enclosed in quotes.
     %
 :- pred term_io.write_escaped_string(string::in, io::di, io::uo) is det.
+
+:- pred term_io.write_escaped_string(Stream::in, string::in,
+    State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
     % Like term_io.write_escaped_char, but return the result in a string.
     %
@@ -188,7 +214,25 @@
 :- pred term_io.quote_atom_agt(string::in, adjacent_to_graphic_token::in,
     io::di, io::uo) is det.
 
+:- pred term_io.quote_atom_agt(Stream::in, string::in,
+    adjacent_to_graphic_token::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
 :- func term_io.quoted_atom_agt(string, adjacent_to_graphic_token) = string.
+
+:- pragma type_spec(term_io.quote_string/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(term_io.quote_atom/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(term_io.write_escaped_string/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(term_io.write_escaped_char/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(term_io.quote_char/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(term_io.quote_atom_agt/5,
+            (Stream = io.output_stream, State = io.state)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -202,6 +246,7 @@
 :- import_module list.
 :- import_module parser.
 :- import_module string.
+:- import_module stream.string_writer.
 
 %-----------------------------------------------------------------------------%
 
@@ -340,29 +385,32 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         Functor = term.atom(OpName),
         ops.lookup_prefix_op(Ops, OpName, OpPriority, OpAssoc)
     ->
-        maybe_write_paren('(', Priority, OpPriority, !IO),
+        io.output_stream(Stream, !IO),
+        maybe_write_paren(Stream, '(', Priority, OpPriority, !IO),
         term_io.write_constant(Functor, !IO),
         io.write_char(' ', !IO),
         adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
         term_io.write_term_3(Ops, PrefixArg, NewPriority, !VarSet, !N, !IO),
-        maybe_write_paren(')', Priority, OpPriority, !IO)
+        maybe_write_paren(Stream, ')', Priority, OpPriority, !IO)
     ;
         Args = [PostfixArg],
         Functor = term.atom(OpName),
         ops.lookup_postfix_op(Ops, OpName, OpPriority, OpAssoc)
     ->
-        maybe_write_paren('(', Priority, OpPriority, !IO),
+        io.output_stream(Stream, !IO),
+        maybe_write_paren(Stream, '(', Priority, OpPriority, !IO),
         adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
         term_io.write_term_3(Ops, PostfixArg, NewPriority, !VarSet, !N, !IO),
         io.write_char(' ', !IO),
         term_io.write_constant(Functor, !IO),
-        maybe_write_paren(')', Priority, OpPriority, !IO)
+        maybe_write_paren(Stream, ')', Priority, OpPriority, !IO)
     ;
         Args = [Arg1, Arg2],
         Functor = term.atom(OpName),
         ops.lookup_infix_op(Ops, OpName, OpPriority, LeftAssoc, RightAssoc)
     ->
-        maybe_write_paren('(', Priority, OpPriority, !IO),
+        io.output_stream(Stream, !IO),
+        maybe_write_paren(Stream, '(', Priority, OpPriority, !IO),
         adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
         term_io.write_term_3(Ops, Arg1, LeftPriority, !VarSet, !N, !IO),
         ( OpName = "," ->
@@ -385,14 +433,15 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         ),
         adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
         term_io.write_term_3(Ops, Arg2, RightPriority, !VarSet, !N, !IO),
-        maybe_write_paren(')', Priority, OpPriority, !IO)
+        maybe_write_paren(Stream, ')', Priority, OpPriority, !IO)
     ;
         Args = [Arg1, Arg2],
         Functor = term.atom(OpName),
         ops.lookup_binary_prefix_op(Ops, OpName, OpPriority,
             FirstAssoc, SecondAssoc)
     ->
-        maybe_write_paren('(', Priority, OpPriority, !IO),
+        io.output_stream(Stream, !IO),
+        maybe_write_paren(Stream, '(', Priority, OpPriority, !IO),
         term_io.write_constant(Functor, !IO),
         io.write_char(' ', !IO),
         adjust_priority_for_assoc(OpPriority, FirstAssoc, FirstPriority),
@@ -400,7 +449,7 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         io.write_char(' ', !IO),
         adjust_priority_for_assoc(OpPriority, SecondAssoc, SecondPriority),
         term_io.write_term_3(Ops, Arg2, SecondPriority, !VarSet, !N, !IO),
-        maybe_write_paren(')', Priority, OpPriority, !IO)
+        maybe_write_paren(Stream, ')', Priority, OpPriority, !IO)
     ;
         (
             Args = [],
@@ -518,25 +567,35 @@ term_io.format_constant_agt(term.string(S), _) =
 term_io.quote_char(C, !IO) :-
     io.write_string(term_io.quoted_char(C), !IO).
 
+term_io.quote_char(Stream, C, !State) :-
+    stream.put(Stream, term_io.quoted_char(C), !State).
+
 term_io.quoted_char(C) =
     string.format("'%s'", [s(term_io.escaped_char(C))]).
 
 term_io.quote_atom(S, !IO) :-
     term_io.quote_atom_agt(S, not_adjacent_to_graphic_token, !IO).
 
+term_io.quote_atom(Stream, S, !State) :-
+    term_io.quote_atom_agt(Stream, S, not_adjacent_to_graphic_token, !State).
+
 term_io.quoted_atom(S) =
     term_io.quoted_atom_agt(S, not_adjacent_to_graphic_token).
 
 term_io.quote_atom_agt(S, NextToGraphicToken, !IO) :-
+    io.output_stream(Stream, !IO),
+    term_io.quote_atom_agt(Stream, S, NextToGraphicToken, !IO).
+
+term_io.quote_atom_agt(Stream, S, NextToGraphicToken, !State) :-
     ShouldQuote = should_atom_be_quoted(S, NextToGraphicToken),
     (
         ShouldQuote = no,
-        io.write_string(S, !IO)
+        stream.put(Stream, S, !State)
     ;
         ShouldQuote = yes,
-        io.write_char('''', !IO),
-        term_io.write_escaped_string(S, !IO),
-        io.write_char('''', !IO)
+        stream.put(Stream, '''', !State),
+        term_io.write_escaped_string(Stream, S, !State),
+        stream.put(Stream, '''', !State)
     ).
 
 term_io.quoted_atom_agt(S, NextToGraphicToken) = String :-
@@ -604,28 +663,37 @@ should_atom_be_quoted(S, NextToGraphicToken) = ShouldQuote :-
 % any changes here may require similar changes there.
 
 term_io.quote_string(S, !IO) :-
-    io.write_char('"', !IO),
-    term_io.write_escaped_string(S, !IO),
-    io.write_char('"', !IO).
+    io.output_stream(Stream, !IO),
+    term_io.quote_string(Stream, S, !IO).
+
+term_io.quote_string(Stream, S, !State) :-
+    stream.put(Stream, '"', !State),
+    term_io.write_escaped_string(Stream, S, !State),
+    stream.put(Stream, '"', !State).
 
 term_io.quoted_string(S) =
     string.append_list(["""", term_io.escaped_string(S), """"]).
 
 term_io.write_escaped_string(String, !IO) :-
-    string.foldl(term_io.write_escaped_char, String, !IO).
+    io.output_stream(Stream, !IO),
+    term_io.write_escaped_string(Stream, String, !IO).
+
+term_io.write_escaped_string(Stream, String, !State) :-
+    string.foldl(term_io.write_escaped_char(Stream), String, !State).
 
 term_io.escaped_string(String) =
-    string.foldl(term_io.add_escaped_char, String, "").
+    string.append_list(
+        reverse(string.foldl(term_io.add_escaped_char, String, []))).
 
-:- func term_io.add_escaped_char(char, string) = string.
+:- func term_io.add_escaped_char(char, list(string)) = list(string).
 
-term_io.add_escaped_char(Char, String0) = String :-
+term_io.add_escaped_char(Char, Strings0) = Strings :-
     ( mercury_escape_special_char(Char, QuoteChar) ->
-        String = String0 ++ from_char_list(['\\', QuoteChar])
+        Strings = [from_char_list(['\\', QuoteChar]) | Strings0]
     ; is_mercury_source_char(Char) ->
-        String = String0 ++ string.char_to_string(Char)
+        Strings = [string.char_to_string(Char) | Strings0]
     ;
-        String = String0 ++ mercury_escape_char(Char)
+        Strings = [mercury_escape_char(Char) | Strings0]
     ).
 
 % Note: the code of add_escaped_char and write_escaped_char should be
@@ -634,13 +702,17 @@ term_io.add_escaped_char(Char, String0) = String :-
 % similar changes there.
 
 term_io.write_escaped_char(Char, !IO) :-
+    io.output_stream(Stream, !IO),
+    term_io.write_escaped_char(Stream, Char, !IO).
+
+term_io.write_escaped_char(Stream, Char, !State) :-
     ( mercury_escape_special_char(Char, QuoteChar) ->
-        io.write_char('\\', !IO),
-        io.write_char(QuoteChar, !IO)
+        stream.put(Stream, ('\\'), !State),
+        stream.put(Stream, QuoteChar, !State)
     ; is_mercury_source_char(Char) ->
-        io.write_char(Char, !IO)
+        stream.put(Stream, Char, !State)
     ;
-        io.write_string(mercury_escape_char(Char), !IO)
+        stream.put(Stream, mercury_escape_char(Char), !State)
     ).
 
 term_io.escaped_char(Char) = String :-

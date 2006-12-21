@@ -402,6 +402,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.
@@ -2931,8 +2932,9 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
 
     % The first type_info will be just after the superclass infos.
     First = NumSuperClasses + 1,
-    type_vars_list(ClassTypes, ClassTypeVars0),
-    list.map_foldl(make_index, ClassTypeVars0, ClassTypeVars, First, _),
+    Last = NumSuperClasses + ClassArity,
+    assoc_list.from_corresponding_lists(ClassTypes, First `..` Last,
+        IndexedClassTypes),
 
     % Work out which type variables we haven't seen before, or which we
     % assumed earlier would be produced in a type_info (this can happen for
@@ -2940,15 +2942,17 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
     % quantified predicates or deconstructs existentially quantified
     % terms).
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    IsNew = (pred(TypeVar0::in) is semidet :-
-        TypeVar0 = TypeVar - _Index,
+    IsNew = (pred(TypeAndIndex::in, TVarAndIndex::out) is semidet :-
+        TypeAndIndex = Type - Index,
+        Type = type_variable(TypeVar, _),
         ( rtti_search_type_info_locn(RttiVarMaps0, TypeVar, TypeInfoLocn) ->
             TypeInfoLocn = type_info(_)
         ;
             true
-        )
+        ),
+        TVarAndIndex = TypeVar - Index
     ),
-    list.filter(IsNew, ClassTypeVars, NewClassTypeVars),
+    list.filter_map(IsNew, IndexedClassTypes, NewClassTypeVars),
 
     % Make an entry in the TypeInfo locations map for each new type
     % variable. The type variable can be found at the previously calculated

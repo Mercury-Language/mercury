@@ -417,9 +417,9 @@ AWK = awk
 		-DMERCURY_BOOTSTRAP_H -DMR_NO_CONF_BACKWARDS_COMPAT \
 		-E $*.check_mhdr.c -nostdinc -dN \
 		2> /dev/null | $(AWK) '/[ \t]*#define/ { print $$2; }' | \
-		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]'`_H | \
-		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]'`_MH | \
-		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]'`_DECL_GUARD | \
+		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]' | sed -e s/\\\\./__/`_H | \
+		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]' | sed -e s/\\\\./__/`_MH | \
+		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]' | sed -e s/\\\\./__/`_DECL_GUARD | \
 		$(HEADER_CLEAN_FILTER) | sort -u > $*.mactual
 	@comm -1 -3 $*.mbase $*.mactual > $@
 	@rm $*.mbase $*.mactual $*.mempty.c
