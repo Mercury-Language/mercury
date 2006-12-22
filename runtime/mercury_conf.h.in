@@ -450,6 +450,11 @@
 #undef MR_BZERO_NEEDS_STRINGS_HEADER
 
 /*
+** __builtin_setjmp is broken with some versions of gcc on Darwin.
+*/
+#undef MR_DARWIN_SETJMP_WORKAROUND
+
+/*
 ** MR_USE_EXTERNAL_DEBUGGER:
 **	Allow MR_trace() to use an external process debugger
 **	(with communication done via a socket interface)

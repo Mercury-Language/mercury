@@ -161,9 +161,12 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 **	    function as the call to __builtin_setjmp().
 */
 #if (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 8))
-  #define MR_builtin_setjmp(buf)	__builtin_setjmp((buf))
-  #define MR_builtin_longjmp(buf, val)	__builtin_longjmp((buf), (val))
-#else
+  #ifndef MR_DARWIN_SETJMP_WORKAROUND
+    #define MR_builtin_setjmp(buf)	__builtin_setjmp((buf))
+    #define MR_builtin_longjmp(buf, val)	__builtin_longjmp((buf), (val))
+  #endif
+#endif
+#ifndef MR_builtin_setjmp
   #define MR_builtin_setjmp(buf)	setjmp((buf))
   #define MR_builtin_longjmp(buf, val)	longjmp((buf), (val))
 #endif

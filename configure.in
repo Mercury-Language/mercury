@@ -195,7 +195,7 @@ AC_SUBST(CONFIG_LIBDIR)
 case "$host" in
 	i*86-*-solaris2.*)	link_static_opt= ;;
 	*solaris2.10)		link_static_opt= ;;
-	*powerpc*apple*darwin*) link_static_opt= ;;
+	*apple*darwin*)		link_static_opt= ;;
 	*)			link_static_opt="--linkage static" ;;
 esac
 
@@ -2036,6 +2036,22 @@ if test	"$mercury_cv_bzero_needs_strings_header" = yes; then
 	AC_DEFINE(MR_BZERO_NEEDS_STRINGS_HEADER)
 fi
 AC_SUBST(MR_BZERO_NEEDS_STRINGS_HEADER)
+
+#-----------------------------------------------------------------------------#
+#
+# With some versions of gcc on Darwin __builtin_setjmp is broken.
+# (See gcc bug 22099)
+
+# XXX we should only disable the use of __builtin_setjmp for those
+# versions of gcc that are broken - the problem will be fixed in gcc 4.2
+case "$host" in
+	i*86*apple*darwin*)
+	AC_DEFINE(MR_DARWIN_SETJMP_WORKAROUND)
+	;;
+esac
+
+AC_SUBST(MR_DARWIN_SETJMP_WORKAROUND)
+
 #-----------------------------------------------------------------------------#
 #
 # On sparc, x86, and probably on other architectures,
