@@ -232,6 +232,7 @@
     ;       module_layout_event_arg_names(module_name, int)
     ;       module_layout_event_synth_attrs(module_name, int)
     ;       module_layout_event_synth_attr_args(module_name, int, int)
+    ;       module_layout_event_synth_attr_order(module_name, int, int)
     ;       module_layout_event_synth_order(module_name, int)
     ;       module_layout_event_specs(module_name)
     ;       module_layout(module_name)

@@ -73,10 +73,12 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module relation.
+:- import_module set.
 :- import_module string.
 :- import_module svbimap.
 :- import_module svmap.
 :- import_module svrelation.
+:- import_module svset.
 :- import_module term.
 
 read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
@@ -332,16 +334,17 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
     % It does the data format conversion, and performs the last checks.
 
     build_plain_type_map(EventName, FileName, EventLineNumber, AttrTerms,
-        0, map.init, AttrMap, map.init, AttrTypeMap0, bimap.init, KeyMap,
+        0, map.init, _AttrNumMap, map.init, AttrNameMap,
+        map.init, AttrTypeMap0, bimap.init, KeyMap,
         relation.init, DepRel0, !ErrorSpecs),
-    build_dep_map(EventName, FileName, AttrMap, KeyMap, AttrTerms,
+    build_dep_map(EventName, FileName, AttrNameMap, KeyMap, AttrTerms,
         AttrTypeMap0, AttrTypeMap, DepRel0, DepRel, !ErrorSpecs),
-    convert_terms_to_attrs(EventName, FileName, AttrMap, AttrTypeMap,
-        0, AttrTerms, [], RevAttrs, !ErrorSpecs),
+    convert_terms_to_attrs(EventName, FileName, AttrNameMap,
+        AttrTypeMap, 0, AttrTerms, [], RevAttrs, !ErrorSpecs),
     ( relation.tsort(DepRel, AllAttrNameOrder) ->
         % There is an order for computing the synthesized attributes.
-        % list.reverse(RevAllAttrNameOrder, AllAttrNameOrder),
-        keep_only_synth_attr_nums(AttrMap, AllAttrNameOrder, SynthAttrNumOrder)
+        keep_only_synth_attr_nums(AttrNameMap, AllAttrNameOrder,
+            SynthAttrNumOrder)
     ;
         % It would be nice to print a list of the attributes involved in the
         % (one or more) circular dependencies detected by relation.tsort,
@@ -372,13 +375,13 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
         svmap.det_insert(EventName, EventSpec, !EventSpecMap)
     ).
 
-:- pred keep_only_synth_attr_nums(attr_map::in, list(string)::in,
+:- pred keep_only_synth_attr_nums(attr_name_map::in, list(string)::in,
     list(int)::out) is det.
 
 keep_only_synth_attr_nums(_, [], []).
 keep_only_synth_attr_nums(AttrMap, [AttrName | AttrNames], SynthAttrNums) :-
     keep_only_synth_attr_nums(AttrMap, AttrNames, SynthAttrNumsTail),
-    map.lookup(AttrMap, AttrName, attr_info(AttrNum, _, AttrType)),
+    map.lookup(AttrMap, AttrName, attr_info(AttrNum, _, _, AttrType)),
     (
         ( AttrType = event_attr_type_ordinary(_)
         ; AttrType = event_attr_type_function
@@ -392,14 +395,27 @@ keep_only_synth_attr_nums(AttrMap, [AttrName | AttrNames], SynthAttrNums) :-
 :- type attr_info
     --->    attr_info(
                 attr_info_number        :: int,
+                attr_info_name          :: string,
                 attr_info_linenumber    :: int,
                 attr_info_type          :: event_attr_type
             ).
 
 :- func attr_info_number(attr_info) = int.
 
-:- type attr_map == map(string, attr_info).
+    % Given an attribute number, return information about that attribute.
+:- type attr_num_map == map(int, attr_info).
+
+    % Given an attribute name, return information about that attribute.
+:- type attr_name_map == map(string, attr_info).
+
+    % Given an attribute number, return that attribute's type.
 :- type attr_type_map == map(string, mer_type).
+
+    % The dependency relation has a node for each attribute. The links between
+    % nodes represent the dependency of one attribute on another.
+    %
+    % The attr_key_map maps the name of each attribute to its key in
+    % attr_dep_rel.
 :- type attr_dep_rel == relation(string).
 :- type attr_key_map == bimap(string, relation_key).
 
@@ -407,20 +423,23 @@ keep_only_synth_attr_nums(AttrMap, [AttrName | AttrNames], SynthAttrNums) :-
     % of this predicate.
     %
 :- pred build_plain_type_map(string::in, string::in, int::in,
-    list(event_attr_term)::in, int::in, attr_map::in, attr_map::out,
+    list(event_attr_term)::in, int::in, attr_num_map::in, attr_num_map::out,
+    attr_name_map::in, attr_name_map::out,
     attr_type_map::in, attr_type_map::out,
     attr_key_map::in, attr_key_map::out, attr_dep_rel::in, attr_dep_rel::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-build_plain_type_map(_, _, _, [], _, !AttrMap, !AttrTypeMap, !KeyMap, !DepRel,
-        !ErrorSpecs).
-build_plain_type_map(EventName, FileName, EventLineNumber, [AttrTerm | AttrTerms],
-        AttrNum, !AttrMap, !AttrTypeMap, !KeyMap, !DepRel, !ErrorSpecs) :-
+build_plain_type_map(_, _, _, [], _, !AttrNumMap, !AttrNameMap, !AttrTypeMap,
+        !KeyMap, !DepRel, !ErrorSpecs).
+build_plain_type_map(EventName, FileName, EventLineNumber,
+        [AttrTerm | AttrTerms], AttrNum, !AttrNumMap, !AttrNameMap,
+        !AttrTypeMap, !KeyMap, !DepRel, !ErrorSpecs) :-
     AttrTerm = event_attr_term(AttrName, AttrLineNumber, AttrTypeTerm),
+    AttrInfo = attr_info(AttrNum, AttrName, AttrLineNumber, AttrTypeTerm),
+    svmap.det_insert(AttrNum, AttrInfo, !AttrNumMap),
     svrelation.add_element(AttrName, AttrKey, !DepRel),
     ( svbimap.insert(AttrName, AttrKey, !KeyMap) ->
-        AttrInfo = attr_info(AttrNum, AttrLineNumber, AttrTypeTerm),
-        svmap.det_insert(AttrName, AttrInfo, !AttrMap)
+        svmap.det_insert(AttrName, AttrInfo, !AttrNameMap)
     ;
         Pieces = [words("Event"), quote(EventName),
             words("has more than one attribute named"),
@@ -445,18 +464,19 @@ build_plain_type_map(EventName, FileName, EventLineNumber, [AttrTerm | AttrTerms
         AttrTypeTerm = event_attr_type_function
     ),
     build_plain_type_map(EventName, FileName, EventLineNumber, AttrTerms,
-        AttrNum + 1, !AttrMap, !AttrTypeMap, !KeyMap, !DepRel, !ErrorSpecs).
+        AttrNum + 1, !AttrNumMap, !AttrNameMap, !AttrTypeMap, !KeyMap, !DepRel,
+        !ErrorSpecs).
 
     % See the big comment in convert_term_to_spec_map for the documentation
     % of this predicate.
     %
 :- pred build_dep_map(string::in, string::in,
-    attr_map::in, attr_key_map::in, list(event_attr_term)::in,
+    attr_name_map::in, attr_key_map::in, list(event_attr_term)::in,
     attr_type_map::in, attr_type_map::out, attr_dep_rel::in, attr_dep_rel::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 build_dep_map(_, _, _, _, [], !AttrTypeMap, !DepRel, !ErrorSpecs).
-build_dep_map(EventName, FileName, AttrMap, KeyMap, [AttrTerm | AttrTerms],
+build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
         !AttrTypeMap, !DepRel, !ErrorSpecs) :-
     AttrTerm = event_attr_term(AttrName, AttrLineNumber, AttrTypeTerm),
     bimap.lookup(KeyMap, AttrName, AttrKey),
@@ -478,7 +498,7 @@ build_dep_map(EventName, FileName, AttrMap, KeyMap, [AttrTerm | AttrTerms],
                 FuncAttrType = higher_order_type(ArgTypes, yes(AttrType),
                     purity_pure, lambda_normal),
                 (
-                    map.search(AttrMap, FuncAttrName, AttrInfo),
+                    map.search(AttrNameMap, FuncAttrName, AttrInfo),
                     AttrInfo ^ attr_info_type = event_attr_type_function
                 ->
                     (
@@ -490,7 +510,7 @@ build_dep_map(EventName, FileName, AttrMap, KeyMap, [AttrTerm | AttrTerms],
                             true
                         ;
                             (
-                                map.search(AttrMap, FuncAttrName,
+                                map.search(AttrNameMap, FuncAttrName,
                                     FuncAttrInfo)
                             ->
                                 FuncAttrLineNumber =
@@ -535,7 +555,7 @@ build_dep_map(EventName, FileName, AttrMap, KeyMap, [AttrTerm | AttrTerms],
     ;
         AttrTypeTerm = event_attr_type_function
     ),
-    build_dep_map(EventName, FileName, AttrMap, KeyMap, AttrTerms,
+    build_dep_map(EventName, FileName, AttrNameMap, KeyMap, AttrTerms,
         !AttrTypeMap, !DepRel, !ErrorSpecs).
 
 :- pred record_arg_dependencies(string::in, string::in, int::in,
@@ -564,13 +584,13 @@ record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
     % See the big comment in convert_term_to_spec_map for the documentation
     % of this predicate.
     %
-:- pred convert_terms_to_attrs(string::in, string::in,
-    attr_map::in, attr_type_map::in, int::in, list(event_attr_term)::in,
+:- pred convert_terms_to_attrs(string::in, string::in, attr_name_map::in,
+    attr_type_map::in, int::in, list(event_attr_term)::in,
     list(event_attribute)::in, list(event_attribute)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 convert_terms_to_attrs(_, _, _, _, _, [], !RevAttrs, !ErrorSpecs).
-convert_terms_to_attrs(EventName, FileName, AttrMap,
+convert_terms_to_attrs(EventName, FileName, AttrNameMap,
         AttrTypeMap, AttrNum, [AttrTerm | AttrTerms], !RevAttrs,
         !ErrorSpecs) :-
     AttrTerm = event_attr_term(AttrName, AttrLineNumber, AttrTypeTerm),
@@ -583,13 +603,18 @@ convert_terms_to_attrs(EventName, FileName, AttrMap,
         AttrTypeTerm = event_attr_type_synthesized(_, SynthCallTerm),
         map.lookup(AttrTypeMap, AttrName, AttrType),
         SynthCallTerm = event_attr_synth_call_term(FuncAttrName, ArgAttrNames),
-        FuncAttrNum = map.lookup(AttrMap, FuncAttrName) ^ attr_info_number,
-        ( list.map(map.search(AttrMap), ArgAttrNames, ArgAttrInfos) ->
+        (
+            FuncAttrInfo = map.search(AttrNameMap, FuncAttrName),
+            FuncAttrNum = FuncAttrInfo ^ attr_info_number,
+            list.map(map.search(AttrNameMap), ArgAttrNames, ArgAttrInfos)
+        ->
             ArgAttrNums = list.map(attr_info_number, ArgAttrInfos),
             ArgAttrNameNums = assoc_list.from_corresponding_lists(ArgAttrNames,
                 ArgAttrNums),
+            compute_prev_synth_attr_order(AttrNameMap, AttrName,
+                set.init, set.init, _, PrevSynthAttrOrder),
             SynthCall = event_attr_synth_call(FuncAttrName - FuncAttrNum,
-                ArgAttrNameNums),
+                ArgAttrNameNums, PrevSynthAttrOrder),
             EventAttr = event_attribute(AttrNum, AttrName, AttrType, in_mode,
                 yes(SynthCall)),
             !:RevAttrs = [EventAttr | !.RevAttrs]
@@ -614,7 +639,7 @@ convert_terms_to_attrs(EventName, FileName, AttrMap,
             !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
         )
     ),
-    convert_terms_to_attrs(EventName, FileName, AttrMap, AttrTypeMap,
+    convert_terms_to_attrs(EventName, FileName, AttrNameMap, AttrTypeMap,
         AttrNum + 1, AttrTerms, !RevAttrs, !ErrorSpecs).
 
 :- func convert_term_to_type(event_attr_type_term) = mer_type.
@@ -631,6 +656,60 @@ convert_term_to_type(Term) = Type :-
         ArgTypes = list.map(convert_term_to_type, Args),
         Type = defined_type(SymName, ArgTypes, kind_star)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred compute_prev_synth_attr_order(attr_name_map::in, string::in,
+    set(string)::in, set(string)::in, set(string)::out, list(int)::out) is det.
+
+compute_prev_synth_attr_order(AttrNameMap, AttrName, Ancestors,
+        !AlreadyComputed, PrevSynthOrder) :-
+    ( set.member(AttrName, Ancestors) ->
+        % There is a circularity among the dependencies, which means that
+        % PrevSynthOrder won't actually be used.
+        PrevSynthOrder = []
+    ;
+        ( map.search(AttrNameMap, AttrName, AttrInfo) ->
+            AttrTerm = AttrInfo ^ attr_info_type,
+            (
+                ( AttrTerm = event_attr_type_ordinary(_)
+                ; AttrTerm = event_attr_type_function
+                ),
+                PrevSynthOrder = []
+            ;
+                AttrTerm = event_attr_type_synthesized(_, SynthCall),
+                SynthCall = event_attr_synth_call_term(FuncAttrName,
+                    ArgAttrNames),
+                set.insert(Ancestors, AttrName, SubAncestors),
+                compute_prev_synth_attr_order_for_args(AttrNameMap,
+                    [FuncAttrName | ArgAttrNames], SubAncestors,
+                    !AlreadyComputed, SubPrevSynthOrder),
+                svset.insert(AttrName, !AlreadyComputed),
+                % This append at the end makes our algorithm O(n^2),
+                % but since n will always be small, this doesn't matter.
+                AttrNum = AttrInfo ^ attr_info_number,
+                PrevSynthOrder = SubPrevSynthOrder ++ [AttrNum]
+            )
+        ;
+            % An error has occurred somewhere, which means that
+            % PrevSynthOrder won't actually be used.
+            PrevSynthOrder = []
+        )
+    ).
+
+:- pred compute_prev_synth_attr_order_for_args(attr_name_map::in,
+    list(string)::in, set(string)::in, set(string)::in, set(string)::out,
+    list(int)::out) is det.
+
+compute_prev_synth_attr_order_for_args(_AttrNameMap, [],
+        _Ancestors, !AlreadyComputed, []).
+compute_prev_synth_attr_order_for_args(AttrNameMap, [ArgName | ArgNames],
+        Ancestors, !AlreadyComputed, PrevSynthOrder) :-
+    compute_prev_synth_attr_order(AttrNameMap, ArgName,
+        Ancestors, !AlreadyComputed, PrevSynthOrderArg),
+    compute_prev_synth_attr_order_for_args(AttrNameMap, ArgNames,
+        Ancestors, !AlreadyComputed, PrevSynthOrderArgs),
+    PrevSynthOrder = PrevSynthOrderArg ++ PrevSynthOrderArgs.
 
 %-----------------------------------------------------------------------------%
 
@@ -675,7 +754,8 @@ describe_event_attr(Attr) = Desc :-
         SynthCallDesc = ""
     ;
         MaybeSynthCall = yes(SynthCall),
-        SynthCall = event_attr_synth_call(FuncAttrNameNum, ArgAttrNameNums),
+        SynthCall = event_attr_synth_call(FuncAttrNameNum, ArgAttrNameNums,
+            _Order),
         ArgAttrDesc = string.join_list(", ", assoc_list.keys(ArgAttrNameNums)),
         SynthCallDesc = "synthesized by " ++
             fst(FuncAttrNameNum) ++ "(" ++ ArgAttrDesc ++ ")"

@@ -490,7 +490,12 @@ dump_layout_name(module_layout_event_synth_attrs(ModuleName, EventNum)) =
         ", " ++ int_to_string(EventNum) ++ ")".
 dump_layout_name(module_layout_event_synth_attr_args(ModuleName,
         EventNum, ArgNum)) =
-    "module_layout_event_synth_attrs(" ++ sym_name_mangle(ModuleName) ++
+    "module_layout_event_synth_attr_args(" ++ sym_name_mangle(ModuleName) ++
+        ", " ++ int_to_string(EventNum) ++
+        ", " ++ int_to_string(ArgNum) ++ ")".
+dump_layout_name(module_layout_event_synth_attr_order(ModuleName,
+        EventNum, ArgNum)) =
+    "module_layout_event_synth_attr_order(" ++ sym_name_mangle(ModuleName) ++
         ", " ++ int_to_string(EventNum) ++
         ", " ++ int_to_string(ArgNum) ++ ")".
 dump_layout_name(module_layout_event_synth_order(ModuleName, EventNum)) =

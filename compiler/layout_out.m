@@ -368,6 +368,17 @@ output_layout_name(Data, !IO) :-
         io.write_string("_", !IO),
         io.write_int(SynthCallArgNumber, !IO)
     ;
+        Data = module_layout_event_synth_attr_order(ModuleName,
+            EventNumber, SynthCallArgNumber),
+        io.write_string(mercury_data_prefix, !IO),
+        io.write_string("_module_layout_event_synth_attr_order__", !IO),
+        ModuleNameStr = sym_name_mangle(ModuleName),
+        io.write_string(ModuleNameStr, !IO),
+        io.write_string("_", !IO),
+        io.write_int(EventNumber, !IO),
+        io.write_string("_", !IO),
+        io.write_int(SynthCallArgNumber, !IO)
+    ;
         Data = module_layout_event_synth_order(ModuleName, EventNumber),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_module_layout_event_synth_order__", !IO),
@@ -535,6 +546,12 @@ output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
         output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
+        Name = module_layout_event_synth_attr_order(_ModuleName,
+            _EventNumber, _SynthCallArgNumber),
+        io.write_string("static MR_uint_least16_t ", !IO),
+        output_layout_name(Name, !IO),
+        io.write_string("[]", !IO)
+    ;
         Name = module_layout_event_synth_order(_ModuleName, _EventNumber),
         io.write_string("static MR_int_least16_t ", !IO),
         output_layout_name(Name, !IO),
@@ -586,6 +603,8 @@ layout_name_would_include_code_addr(module_layout_event_synth_attrs(_, _))
     = no.
 layout_name_would_include_code_addr(
     module_layout_event_synth_attr_args(_, _, _)) = no.
+layout_name_would_include_code_addr(
+    module_layout_event_synth_attr_order(_, _, _)) = no.
 layout_name_would_include_code_addr(module_layout_event_synth_order(_, _))
     = no.
 layout_name_would_include_code_addr(module_layout_event_specs(_)) = no.
@@ -1566,17 +1585,28 @@ output_synth_attr_args(ModuleName, EventNumber, Attr, !DeclSet, !IO) :-
     MaybeSynthCall = Attr ^ attr_maybe_synth_call,
     (
         MaybeSynthCall = yes(SynthCall),
-        SynthCall = event_attr_synth_call(_FuncAttrNameNum, ArgAttrNameNums),
+        SynthCall = event_attr_synth_call(_FuncAttrNameNum, ArgAttrNameNums,
+            Order),
         assoc_list.values(ArgAttrNameNums, ArgAttrNums),
         AttrNumber = Attr ^ attr_num,
-        LayoutName = module_layout_event_synth_attr_args(ModuleName,
-            EventNumber, AttrNumber),
 
-        DataAddr = layout_addr(LayoutName),
-        decl_set_insert(decl_data_addr(DataAddr), !DeclSet),
-        output_layout_name_storage_type_name(LayoutName, yes, !IO),
+        ArgsLayoutName = module_layout_event_synth_attr_args(ModuleName,
+            EventNumber, AttrNumber),
+        ArgsDataAddr = layout_addr(ArgsLayoutName),
+        decl_set_insert(decl_data_addr(ArgsDataAddr), !DeclSet),
+        output_layout_name_storage_type_name(ArgsLayoutName, yes, !IO),
         io.write_string(" =\n{ ", !IO),
         io.write_list(ArgAttrNums, ", ", io.write_int, !IO),
+        io.write_string(" };\n\n", !IO),
+
+        OrderLayoutName = module_layout_event_synth_attr_order(ModuleName,
+            EventNumber, AttrNumber),
+        OrderDataAddr = layout_addr(OrderLayoutName),
+        decl_set_insert(decl_data_addr(OrderDataAddr), !DeclSet),
+        output_layout_name_storage_type_name(OrderLayoutName, yes, !IO),
+        io.write_string(" =\n{ ", !IO),
+        OrderSentinel = Order ++ [-1],
+        io.write_list(OrderSentinel, ", ", io.write_int, !IO),
         io.write_string(" };\n\n", !IO)
     ;
         MaybeSynthCall = no
@@ -1591,18 +1621,20 @@ output_synth_attr(ModuleName, EventNumber, Attr, !IO) :-
     (
         MaybeSynthCall = yes(SynthCall),
         SynthCall = event_attr_synth_call(_FuncAttrName - FuncAttrNum,
-            ArgAttrNameNums),
+            ArgAttrNameNums, _EvalOrder),
         io.write_int(FuncAttrNum, !IO),
         io.write_string(", ", !IO),
         io.write_int(list.length(ArgAttrNameNums), !IO),
-        io.write_string(", ", !IO),
+        io.write_string(",\n ", !IO),
+
         AttrNumber = Attr ^ attr_num,
-        LayoutName = module_layout_event_synth_attr_args(ModuleName,
+        ArgsLayoutName = module_layout_event_synth_attr_args(ModuleName,
             EventNumber, AttrNumber),
-        output_layout_name(LayoutName, !IO),
-        % XXX Add the code to write out the list of attributes we depend on,
-        % directly and indirectly.
-        io.write_string(", NULL", !IO)
+        output_layout_name(ArgsLayoutName, !IO),
+        io.write_string(",\n ", !IO),
+        OrderLayoutName = module_layout_event_synth_attr_order(ModuleName,
+            EventNumber, AttrNumber),
+        output_layout_name(OrderLayoutName, !IO)
     ;
         MaybeSynthCall = no,
         io.write_string("-1, -1, NULL, NULL", !IO)

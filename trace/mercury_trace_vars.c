@@ -920,6 +920,7 @@ MR_trace_list_var_details(FILE *out)
     MR_ProgVarDetails   *var;
     MR_SynthAttr        *synth;
     int                 i;
+    int                 j;
     int                 arg;
 
     if (MR_point.MR_point_problem != NULL) {
@@ -949,6 +950,12 @@ MR_trace_list_var_details(FILE *out)
                         fprintf(out, "attr %d", synth->MR_sa_arg_attrs[arg]);
                     }
                     fprintf(out, ")\n");
+
+                    fprintf(out, "synthesis order:");
+                    for (j = 0; synth->MR_sa_depend_attrs[j] >= 0; j++) {
+                        fprintf(out, " %d", synth->MR_sa_depend_attrs[j]);
+                    }
+                    fprintf(out, "\n");
                 }
 
                 break;

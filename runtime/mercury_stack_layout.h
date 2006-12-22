@@ -327,7 +327,7 @@ struct MR_SynthAttr_Struct {
 	MR_int_least16_t		MR_sa_func_attr;
 	MR_int_least16_t		MR_sa_num_arg_attrs;
 	MR_uint_least16_t		*MR_sa_arg_attrs;
-	MR_uint_least16_t		*MR_sa_depend_attrs;
+	MR_int_least16_t		*MR_sa_depend_attrs;
 };
 
 struct MR_UserEventSpec_Struct {

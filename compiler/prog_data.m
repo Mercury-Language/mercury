@@ -1569,7 +1569,8 @@
 :- type event_attr_synth_call
     --->    event_attr_synth_call(
                 synth_func_attr_name_num    :: pair(string, int),
-                synth_arg_attr_name_nums    :: assoc_list(string, int)
+                synth_arg_attr_name_nums    :: assoc_list(string, int),
+                synth_eval_order            :: list(int)
             ).
 
 :- type event_spec
