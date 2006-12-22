@@ -123,9 +123,10 @@
 :- import_module term_to_xml.
 :- import_module time.
 :- import_module tree234.
+:- import_module tree_bitset.
 :- import_module type_desc.
-:- import_module univ.
 :- import_module unit.
+:- import_module univ.
 :- import_module varset.
 :- import_module version_array.
 :- import_module version_array2d.
@@ -228,10 +229,10 @@ mercury_std_library_module("multi_map").
 mercury_std_library_module("mutvar").
 mercury_std_library_module("ops").
 mercury_std_library_module("pair").
+mercury_std_library_module("par_builtin").
 mercury_std_library_module("parser").
 mercury_std_library_module("pprint").
 mercury_std_library_module("pqueue").
-mercury_std_library_module("par_builtin").
 mercury_std_library_module("private_builtin").
 mercury_std_library_module("profiling_builtin").
 mercury_std_library_module("prolog").
@@ -246,10 +247,10 @@ mercury_std_library_module("rtree").
 mercury_std_library_module("rtti_implementation").
 mercury_std_library_module("set").
 mercury_std_library_module("set_bbbtree").
-mercury_std_library_module("set_ordlist").
-mercury_std_library_module("set_unordlist").
 mercury_std_library_module("set_ctree234").
+mercury_std_library_module("set_ordlist").
 mercury_std_library_module("set_tree234").
+mercury_std_library_module("set_unordlist").
 mercury_std_library_module("solutions").
 mercury_std_library_module("sparse_bitset").
 mercury_std_library_module("stack").
@@ -275,9 +276,10 @@ mercury_std_library_module("term_size_prof_builtin").
 mercury_std_library_module("term_to_xml").
 mercury_std_library_module("time").
 mercury_std_library_module("tree234").
+mercury_std_library_module("tree_bitset").
 mercury_std_library_module("type_desc").
-mercury_std_library_module("univ").
 mercury_std_library_module("unit").
+mercury_std_library_module("univ").
 % mercury_std_library_module("unsafe").
 mercury_std_library_module("varset").
 mercury_std_library_module("version_array").

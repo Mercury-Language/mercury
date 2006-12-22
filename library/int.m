@@ -140,14 +140,15 @@
     % `mod' has nicer mathematical properties for negative X,
     % but `rem' is typically more efficient.
     %
-    % Throws a `math.domain_error' exception if the right operand
-    % is zero. See the comments at the top of math.m to find out how to
-    % disable domain checks.
+    % Throws a `math.domain_error' exception if the right operand is zero.
+    % See the comments at the top of math.m to find out how to disable
+    % domain checks.
     %
 :- func (int::in) rem (int::in) = (int::uo) is det.
 
-    % unchecked_rem(X, Y) is the same as X rem Y, but the
-    % behaviour is undefined if the right operand is zero.
+    % unchecked_rem(X, Y) is the same as X rem Y, but the behaviour
+    % is undefined if the right operand is zero.
+    %
 :- func unchecked_rem(int::in, int::in) = (int::uo) is det.
 
     % Left shift.

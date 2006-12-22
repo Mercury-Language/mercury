@@ -82,8 +82,8 @@
 :- pred sorted_list_to_set(list(T)::in, sparse_bitset(T)::out)
     is det <= enum(T).
 
-    % `sorted_list_to_set(Set)' returns a bitset containing only the members
-    % of `Set'. `List' must be sorted. Takes O(card(Set)) time and space.
+    % `from_set(Set)' returns a bitset containing only the members of `Set'.
+    % Takes O(card(Set)) time and space.
     %
 :- func from_set(set.set(T)) = sparse_bitset(T) <= enum(T).
 

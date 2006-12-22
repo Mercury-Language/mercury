@@ -127,7 +127,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module sparse_bitset.
+:- import_module tree_bitset.
 :- import_module term.
 :- import_module varset.
 
@@ -160,8 +160,12 @@
     % None of the calls to the predicates and functions operating on sets
     % in this module are module qualified so we can switch representation
     % just by changing this line.
+    %
+    % If you want to debug a new set representation, just import a version
+    % of the bitset_tester module from tests/hard_coded, and make set_of_var
+    % equivalent to the bitset_tester type.
 % :- type set_of_var == set(prog_var).
-:- type set_of_var == sparse_bitset(prog_var).
+:- type set_of_var == tree_bitset(prog_var).
 
     % `OutsideVars' are the variables that have occurred free outside
     % this goal, not counting occurrences in parallel goals and not
@@ -254,8 +258,8 @@ implicitly_quantify_goal_general(RecomputeNonLocals, OutsideVars, Warnings,
 implicitly_quantify_goal_2(RecomputeNonLocals, OutsideVars0, Warnings,
         !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
     OutsideVars = set_to_bitset(OutsideVars0),
-    init(RecomputeNonLocals, OutsideVars, !.Varset, !.VarTypes, !.RttiVarMaps,
-        QuantInfo0),
+    init_quant_info(RecomputeNonLocals, OutsideVars, !.Varset, !.VarTypes,
+        !.RttiVarMaps, QuantInfo0),
     implicitly_quantify_goal_quant_info(!Goal, QuantInfo0, QuantInfo),
     get_varset(QuantInfo, !:Varset),
     get_vartypes(QuantInfo, !:VarTypes),
@@ -284,10 +288,10 @@ implicitly_quantify_goal_quant_info(Goal0 - GoalInfo0, Goal - GoalInfo,
     ->
         rename_apart(RenameVars, RenameMap,
             Goal1 - GoalInfo0, Goal - GoalInfo1, !Info),
-        %
+
         % Make sure that the information in the RTTI varmaps is updated
         % to reflect any new variables that we may have just introduced.
-        %
+
         some [!RttiVarMaps] (
             get_rtti_varmaps(!.Info, !:RttiVarMaps),
             map.foldl(rtti_var_info_duplicate, RenameMap, !RttiVarMaps),
@@ -299,12 +303,12 @@ implicitly_quantify_goal_quant_info(Goal0 - GoalInfo0, Goal - GoalInfo,
     ),
     set_goal_nonlocals(NonLocalVars, NonLocalVarsSet, GoalInfo1, GoalInfo2,
         !Info),
-    %
+
     % If the nonlocals set has shrunk (e.g. because some optimization
     % optimizes away the other occurrences of a variable, causing it
     % to become local when previously it was nonlocal),
     % then we may need to likewise shrink the instmap delta.
-    %
+
     goal_info_get_instmap_delta(GoalInfo2, InstMapDelta0),
     instmap_delta_restrict(NonLocalVarsSet, InstMapDelta0, InstMapDelta),
     goal_info_set_instmap_delta(InstMapDelta, GoalInfo2, GoalInfo).
@@ -354,7 +358,7 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
     get_lambda_outside(!.Info, LambdaOutsideVars),
     get_quant_vars(!.Info, QuantVars),
     % Rename apart all the quantified variables that occur outside this goal.
-    list_to_set(Vars0, QVars),
+    QVars = list_to_set(Vars0),
     intersect(OutsideVars, QVars, RenameVars1),
     intersect(LambdaOutsideVars, QVars, RenameVars2),
     union(RenameVars1, RenameVars2, RenameVars),
@@ -424,7 +428,7 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, _, !Info) :-
     get_quant_vars(!.Info, QuantVars),
     get_outside(!.Info, OutsideVars),
     union(OutsideVars, QuantVars, OutsideVars1),
-    init(QuantVars1),
+    QuantVars1 = init,
     set_quant_vars(QuantVars1, !Info),
     set_outside(OutsideVars1, !Info),
     implicitly_quantify_goal_quant_info(Goal0, Goal, !Info),
@@ -442,7 +446,7 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
     get_quant_vars(!.Info, QuantVars),
     get_outside(!.Info, OutsideVars),
     get_lambda_outside(!.Info, LambdaOutsideVars),
-    list_to_set(Vars0, QVars),
+    QVars = list_to_set(Vars0),
     % Rename apart those variables that are quantified to the cond and then
     % of the i-t-e that occur outside the i-t-e.
     intersect(OutsideVars, QVars, RenameVars1),
@@ -579,7 +583,7 @@ implicitly_quantify_goal_quant_info_2_shorthand(bi_implication(LHS0, RHS0),
     % quantified vars set to be empty (the lambda outside vars remain
     % unchanged).
     union(OutsideVars0, QuantVars0, OutsideVars1),
-    init(QuantVars1),
+    QuantVars1 = init,
     LambdaOutsideVars1 = LambdaOutsideVars0,
     set_quant_vars(QuantVars1, !Info),
 
@@ -653,7 +657,7 @@ implicitly_quantify_goal_quant_info_2_shorthand(bi_implication(LHS0, RHS0),
     quant_info::in, quant_info::out) is det.
 
 implicitly_quantify_atomic_goal(HeadVars, !Info) :-
-    list_to_set(HeadVars, GoalVars),
+    GoalVars = list_to_set(HeadVars),
     update_seen_vars(GoalVars, !Info),
     get_outside(!.Info, OutsideVars),
     get_lambda_outside(!.Info, LambdaOutsideVars),
@@ -668,7 +672,7 @@ implicitly_quantify_atomic_goal(HeadVars, !Info) :-
 
 implicitly_quantify_unify_rhs(_, _, !RHS, !Unification, !Info) :-
     !.RHS = rhs_var(X),
-    singleton_set(Vars, X),
+    Vars = make_singleton_set(X),
     set_nonlocals(Vars, !Info).
 implicitly_quantify_unify_rhs(ReuseArgs, _, !RHS, !Unification, !Info) :-
     !.RHS = rhs_functor(_, _, ArgVars),
@@ -680,9 +684,9 @@ implicitly_quantify_unify_rhs(ReuseArgs, _, !RHS, !Unification, !Info) :-
         % The fields taken from the reused cell aren't counted
         % as code-gen nonlocals.
         get_updated_fields(SetArgs, ArgVars, Vars0),
-        list_to_set(Vars0, Vars)
+        Vars = list_to_set(Vars0)
     ;
-        list_to_set(ArgVars, Vars)
+        Vars = list_to_set(ArgVars)
     ),
     set_nonlocals(Vars, !Info).
 implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
@@ -695,7 +699,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
     % does not assume this.
 
     get_outside(!.Info, OutsideVars0),
-    list_to_set(LambdaVars0, QVars),
+    QVars = list_to_set(LambdaVars0),
     % Figure out which variables have overlapping scopes because they occur
     % outside the goal and are also lambda-quantified vars.
     intersect(OutsideVars0, QVars, RenameVars0),
@@ -718,7 +722,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
     % and initialize the new quantified vars set to be empty.
     get_quant_vars(!.Info, QuantVars0),
     union(OutsideVars0, QuantVars0, OutsideVars1),
-    init(QuantVars),
+    QuantVars = init,
     set_quant_vars(QuantVars, !Info),
     % Add the lambda vars as outside vars, since they are outside of the
     % lambda goal.
@@ -728,7 +732,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
     % outside this lambda expression only in other lambda expressions
     % should not be considered nonlocal.
     get_lambda_outside(!.Info, LambdaOutsideVars0),
-    init(LambdaOutsideVars),
+    LambdaOutsideVars = init,
     set_lambda_outside(LambdaOutsideVars, !Info),
     implicitly_quantify_goal_quant_info(Goal1, Goal, !Info),
 
@@ -755,9 +759,9 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
 
     % For a unification that constructs a lambda expression, the argument
     % variables of the construction are the nonlocal variables of the lambda
-    % expression. So if we recompute the nonlocals, we need to recompute the
-    % argument variables of the construction, and hence we also need to
-    % recompute their modes. The nonlocals set must only ever decrease,
+    % expression. So if we recompute the nonlocals, we need to recompute
+    % the argument variables of the construction, and hence we also need
+    % to recompute their modes. The nonlocals set must only ever decrease,
     % not increase, so we can just use the old modes.
 
     (
@@ -774,7 +778,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
                 "lambda term has size info")
         ),
         map.from_corresponding_lists(Args0, ArgModes0, ArgModesMap),
-        to_sorted_list(NonLocals, Args),
+        Args = to_sorted_list(NonLocals),
         map.apply_to_list(Args, ArgModesMap, ArgModes),
         !:Unification = construct(ConstructVar, ConsId, Args,
             ArgModes, HowToConstruct, Uniq, SubInfo)
@@ -798,7 +802,7 @@ implicitly_quantify_conj(!Goals, !Info) :-
     quant_info::in, quant_info::out) is det.
 
 implicitly_quantify_conj_2(_, [], [], !Info) :-
-    init(NonLocalVars),
+    NonLocalVars = init,
     set_nonlocals(NonLocalVars, !Info).
 implicitly_quantify_conj_2([], [_ | _], _, _, _) :-
     unexpected(this_file, "implicitly_quantify_conj_2: length mismatch").
@@ -829,7 +833,7 @@ implicitly_quantify_conj_2(
     quant_info::in, quant_info::out) is det.
 
 implicitly_quantify_disj([], [], !Info) :-
-    init(NonLocalVars),
+    NonLocalVars = init,
     set_nonlocals(NonLocalVars, !Info).
 implicitly_quantify_disj([Goal0 | Goals0], [Goal | Goals], !Info) :-
     implicitly_quantify_goal_quant_info(Goal0, Goal, !Info),
@@ -843,7 +847,7 @@ implicitly_quantify_disj([Goal0 | Goals0], [Goal | Goals], !Info) :-
     quant_info::in, quant_info::out) is det.
 
 implicitly_quantify_cases([], [], !Info) :-
-    init(NonLocalVars),
+    NonLocalVars = init,
     set_nonlocals(NonLocalVars, !Info).
 implicitly_quantify_cases([case(Cons, Goal0) | Cases0],
         [case(Cons, Goal) | Cases], !Info) :-
@@ -903,8 +907,8 @@ get_vars(NonLocalsToRecompute, [_Goal | Goals],
 :- mode get_vars_2(in(code_gen_nonlocals), in, out, out, out) is det.
 
 get_vars_2(_, [], Set, LambdaSet, []) :-
-    init(Set),
-    init(LambdaSet).
+    Set = init,
+    LambdaSet = init.
 get_vars_2(NonLocalsToRecompute, [Goal | Goals], Set, LambdaSet,
         SetPairList) :-
     get_vars_2(NonLocalsToRecompute, Goals, Set0, LambdaSet0, SetPairList0),
@@ -933,14 +937,14 @@ disj_vars(NonLocalsToRecompute, Goals, !Set, !LambdaSet) :-
         [], GoalSets, [], GoalLambdaSets),
     (
         GoalSets = [],
-        init(GoalsSet)
+        GoalsSet = init
     ;
         GoalSets = [_ | _],
         union_list(GoalSets, GoalsSet)
     ),
     (
         GoalLambdaSets = [],
-        init(GoalsLambdaSet)
+        GoalsLambdaSet = init
     ;
         GoalLambdaSets = [_ | _],
         union_list(GoalLambdaSets, GoalsLambdaSet)
@@ -955,8 +959,8 @@ disj_vars(NonLocalsToRecompute, Goals, !Set, !LambdaSet) :-
 
 compute_disj_vars(_, [], !Sets, !LambdaSets).
 compute_disj_vars(NonLocalsToRecompute, [Goal | Goals], !Sets, !LambdaSets) :-
-    init(EmptySet),
-    init(EmptyLambdaSet),
+    EmptySet = init,
+    EmptyLambdaSet = init,
     Goal = GoalExpr - _,
     goal_vars_2(NonLocalsToRecompute, GoalExpr,
         EmptySet, GoalSet, EmptyLambdaSet, GoalLambdaSet),
@@ -997,8 +1001,8 @@ case_vars(NonLocalsToRecompute, Cases, !Set, !LambdaSet) :-
 compute_case_vars(_, [], !Sets, !LambdaSets).
 compute_case_vars(NonLocalsToRecompute, [Case | Cases], !Sets, !LambdaSets) :-
     Case = case(_Cons, Goal - _GoalInfo),
-    init(EmptySet),
-    init(EmptyLambdaSet),
+    EmptySet = init,
+    EmptyLambdaSet = init,
     goal_vars_2(NonLocalsToRecompute, Goal,
         EmptySet, GoalSet, EmptyLambdaSet, GoalLambdaSet),
     !:Sets = [GoalSet | !.Sets],
@@ -1010,7 +1014,7 @@ compute_case_vars(NonLocalsToRecompute, [Case | Cases], !Sets, !LambdaSets) :-
 union_list(Sets, Union) :-
     (
         Sets = [],
-        init(Union)
+        Union = init
     ;
         Sets = [_ | _],
         union_list_pass(Sets, [], MergedSets),
@@ -1093,8 +1097,8 @@ goal_vars_both_choose(NonLocalsToRecompute, Goal, Set, LambdaSet) :-
 :- mode goal_vars_both(in(code_gen_nonlocals), in, out, out) is det.
 
 goal_vars_both(NonLocalsToRecompute, Goal - _GoalInfo, Set, LambdaSet) :-
-    init(Set0),
-    init(LambdaSet0),
+    Set0 = init,
+    LambdaSet0 = init,
     goal_vars_2(NonLocalsToRecompute, Goal, Set0, Set, LambdaSet0, LambdaSet).
 
 :- pred goal_vars_2(nonlocals_to_recompute, hlds_goal_expr,
@@ -1296,7 +1300,7 @@ get_unify_typeinfos(Unification) =
     quant_info::in, quant_info::out) is det.
 
 warn_overlapping_scope(OverlapVars, Context, !Info) :-
-    to_sorted_list(OverlapVars, Vars),
+    Vars = to_sorted_list(OverlapVars),
     get_warnings(!.Info, Warnings0),
     Warnings = [warn_overlap(Vars, Context) | Warnings0],
     set_warnings(Warnings, !Info).
@@ -1327,7 +1331,7 @@ rename_apart(RenameSet, RenameMap, !Goal, !Info) :-
     ->
         map.init(RenameMap)
     ;
-        to_sorted_list(RenameSet, RenameList),
+        RenameList = to_sorted_list(RenameSet),
         get_varset(!.Info, Varset0),
         get_vartypes(!.Info, VarTypes0),
         map.init(RenameMap0),
@@ -1383,18 +1387,18 @@ set_to_bitset(Bitset) = sorted_list_to_set(set.to_sorted_list(Bitset)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred init(nonlocals_to_recompute::in, set_of_var::in,
+:- pred init_quant_info(nonlocals_to_recompute::in, set_of_var::in,
     prog_varset::in, vartypes::in, rtti_varmaps::in, quant_info::out) is det.
 
-init(RecomputeNonLocals, OutsideVars, Varset, VarTypes, RttiVarMaps,
+init_quant_info(RecomputeNonLocals, OutsideVars, Varset, VarTypes, RttiVarMaps,
         QuantInfo) :-
     OverlapWarnings = [],
     QuantInfo = quant_info(RecomputeNonLocals, OutsideVars, QuantVars,
         LambdaOutsideVars, NonLocals, Seen, Varset, VarTypes, OverlapWarnings,
         RttiVarMaps),
-    init(QuantVars),
-    init(NonLocals),
-    init(LambdaOutsideVars),
+    QuantVars = init,
+    NonLocals = init,
+    LambdaOutsideVars = init,
     Seen = OutsideVars.
 
 :- pred get_nonlocals_to_recompute(quant_info::in, nonlocals_to_recompute::out)

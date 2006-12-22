@@ -2978,8 +2978,10 @@ output_type_and_comma(TypeVarSet, AppendVarNums, Type, !IO) :-
     vartypes::in, tvarset::in, io::di, io::uo) is det.
 
 write_var_types(Indent, VarSet, AppendVarNums, VarTypes, TVarSet, !IO) :-
+    map.count(VarTypes, NumVarTypes),
     write_indent(Indent, !IO),
-    io.write_string("% variable types map:\n", !IO),
+    io.write_string("% variable types map ", !IO),
+    io.format("(%d entries): ", [i(NumVarTypes)], !IO),
     map.keys(VarTypes, Vars),
     write_var_types_2(Vars, Indent, VarSet, AppendVarNums, VarTypes, TVarSet,
         !IO).
