@@ -523,8 +523,8 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
         Params0 = mlds_func_params(Arguments0, RetValues),
         ml_maybe_add_args(Arguments0, FuncBody0, ModuleName,
             Context, ElimInfo0, ElimInfo1),
-        flatten_arguments(Arguments0, Arguments1, ElimInfo1, ElimInfo2),
-        flatten_statement(FuncBody0, FuncBody1, ElimInfo2, ElimInfo),
+        flatten_statement(FuncBody0, FuncBody1, ElimInfo1, ElimInfo2),
+        fixup_gc_statements(ElimInfo2, ElimInfo),
         elim_info_finish(ElimInfo, NestedFuncs0, Locals),
 
         % Split the locals that we need to process into local variables
@@ -589,7 +589,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
                 % functions, or (for accurate GC) may contain pointers,
                 % then we need to copy them to local variables in the
                 % environment structure.
-                ml_maybe_copy_args(Arguments1, FuncBody0, ElimInfo,
+                ml_maybe_copy_args(Arguments0, FuncBody0, ElimInfo,
                     EnvTypeName, EnvPtrTypeName, Context,
                     _ArgsToCopy, CodeToCopyArgs),
 
@@ -639,10 +639,10 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
             % annotation on the arguments anymore. We delete them here, because
             % otherwise the `#if 0 ... #endif' blocks output for the
             % annotations clutter up the generated C files.
-            Arguments = list.map(strip_gc_trace_code, Arguments1)
+            Arguments = list.map(strip_gc_statement, Arguments0)
         ;
             Action = hoist_nested_funcs,
-            Arguments = Arguments1
+            Arguments = Arguments0
         ),
         Params = mlds_func_params(Arguments, RetValues),
         DefnBody = mlds_function(PredProcId, Params,
@@ -654,11 +654,11 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
         Defns = [Defn0]
     ).
 
-:- func strip_gc_trace_code(mlds_argument) = mlds_argument.
+:- func strip_gc_statement(mlds_argument) = mlds_argument.
 
-strip_gc_trace_code(Argument0) = Argument :-
-    Argument0 = mlds_argument(Name, Type, _MaybeGCTraceCode),
-    Argument = mlds_argument(Name, Type, no).
+strip_gc_statement(Argument0) = Argument :-
+    Argument0 = mlds_argument(Name, Type, _GCStatement),
+    Argument = mlds_argument(Name, Type, gc_no_stmt).
 
     % Add any arguments which are used in nested functions
     % to the local_data field in the elim_info.
@@ -670,12 +670,12 @@ strip_gc_trace_code(Argument0) = Argument :-
 ml_maybe_add_args([], _, _, _, !Info).
 ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context, !Info) :-
     (
-        Arg = mlds_argument(entity_data(var(VarName)), _Type, GC_TraceCode),
-        ml_should_add_local_data(!.Info, var(VarName), GC_TraceCode,
+        Arg = mlds_argument(entity_data(var(VarName)), _Type, GCStatement),
+        ml_should_add_local_data(!.Info, var(VarName), GCStatement,
             [], [FuncBody])
     ->
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
-        elim_info_add_and_flatten_local_data(ArgToCopy, !Info)
+        elim_info_add_local_data(ArgToCopy, !Info)
     ;
         true
     ),
@@ -696,8 +696,8 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
     ModuleName = elim_info_get_module_name(ElimInfo),
     (
         Arg = mlds_argument(entity_data(var(VarName)), FieldType,
-            GC_TraceCode),
-        ml_should_add_local_data(ElimInfo, var(VarName), GC_TraceCode,
+            GCStatement),
+        ml_should_add_local_data(ElimInfo, var(VarName), GCStatement,
             [], [FuncBody])
     ->
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
@@ -809,21 +809,23 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     Fields0 = list.map(convert_local_to_field, LocalVars),
 
     % Extract the GC tracing code from the fields.
-    list.map2(extract_gc_trace_code, Fields0, Fields1, GC_TraceStatements0),
-    GC_TraceStatements = list.condense(GC_TraceStatements0),
+    list.map3(extract_gc_statements, Fields0, Fields1,
+        GC_InitStatements,GC_TraceStatements),
+    list.append(GC_InitStatements,GC_TraceStatements,GC_Statements0),
+    GC_Statements = list.condense(GC_Statements0),
 
     ( Action = chain_gc_stack_frames ->
-        ml_chain_stack_frames(Fields1, GC_TraceStatements, EnvTypeName,
+        ml_chain_stack_frames(Fields1, GC_Statements, EnvTypeName,
             Context, FuncName, ModuleName, Globals, Fields, EnvInitializer,
             LinkStackChain, GCTraceFuncDefns),
-        GC_TraceEnv = no
+        GCStatementEnv = gc_no_stmt
     ;
         (
-            GC_TraceStatements = [],
-            GC_TraceEnv = no
+            GC_Statements = [],
+            GCStatementEnv = gc_no_stmt
         ;
-            GC_TraceStatements = [_ | _],
-            GC_TraceEnv = yes(ml_block([], GC_TraceStatements, Context))
+            GC_Statements = [_ | _],
+            GCStatementEnv = gc_trace_code(ml_block([], GC_Statements, Context))
         ),
         Fields = Fields1,
         EnvInitializer = no_initializer,
@@ -846,7 +848,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     EnvVarName = mlds_var_name(env_name_base(Action), no),
     EnvVarEntityName = entity_data(var(EnvVarName)),
     EnvVarFlags = ml_gen_local_var_decl_flags,
-    EnvVarDefnBody = mlds_data(EnvTypeName, EnvInitializer, GC_TraceEnv),
+    EnvVarDefnBody = mlds_data(EnvTypeName, EnvInitializer, GCStatementEnv),
     EnvVarDecl = mlds_defn(EnvVarEntityName, Context, EnvVarFlags,
         EnvVarDefnBody),
 
@@ -919,14 +921,14 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     PrevFieldName = entity_data(var(mlds_var_name("prev", no))),
     PrevFieldFlags = ml_gen_public_field_decl_flags,
     PrevFieldType = ml_stack_chain_type,
-    PrevFieldDefnBody = mlds_data(PrevFieldType, no_initializer, no),
+    PrevFieldDefnBody = mlds_data(PrevFieldType, no_initializer, gc_no_stmt),
     PrevFieldDecl = mlds_defn(PrevFieldName, Context, PrevFieldFlags,
         PrevFieldDefnBody),
 
     TraceFieldName = entity_data(var(mlds_var_name("trace", no))),
     TraceFieldFlags = ml_gen_public_field_decl_flags,
     TraceFieldType = mlds_func_type(GCTraceFuncParams),
-    TraceFieldDefnBody = mlds_data(TraceFieldType, no_initializer, no),
+    TraceFieldDefnBody = mlds_data(TraceFieldType, no_initializer, gc_no_stmt),
     TraceFieldDecl = mlds_defn(TraceFieldName, Context, TraceFieldFlags,
         TraceFieldDefnBody),
 
@@ -972,7 +974,7 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
     % Compute the signature of the GC tracing function
     ArgName = entity_data(var(mlds_var_name("this_frame", no))),
     ArgType = mlds_generic_type,
-    Argument = mlds_argument(ArgName, ArgType, no),
+    Argument = mlds_argument(ArgName, ArgType, gc_no_stmt),
     FuncParams = mlds_func_params([Argument], []),
     Signature = mlds_get_func_signature(FuncParams),
 
@@ -1027,16 +1029,22 @@ ml_gen_gc_trace_func_decl_flags = MLDS_DeclFlags :-
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Finality, Constness, Abstractness).
 
-:- pred extract_gc_trace_code(mlds_defn::in, mlds_defn::out,
-    statements::out) is det.
+:- pred extract_gc_statements(mlds_defn::in, mlds_defn::out,
+    statements::out, statements::out) is det.
 
-extract_gc_trace_code(mlds_defn(Name, Context, Flags, Body0),
-        mlds_defn(Name, Context, Flags, Body), GCTraceStmts) :-
-    ( Body0 = mlds_data(Type, Init, yes(GCTraceStmt)) ->
-        Body = mlds_data(Type, Init, no),
+extract_gc_statements(mlds_defn(Name, Context, Flags, Body0),
+        mlds_defn(Name, Context, Flags, Body), GCInitStmts, GCTraceStmts) :-
+    ( Body0 = mlds_data(Type, Init, gc_trace_code(GCTraceStmt)) ->
+        Body = mlds_data(Type, Init, gc_no_stmt),
+        GCInitStmts = [],
         GCTraceStmts = [GCTraceStmt]
+    ; Body0 = mlds_data(Type, Init, gc_initialiser(GCInitStmt)) ->
+        Body = mlds_data(Type, Init, gc_no_stmt),
+        GCInitStmts = [GCInitStmt],
+        GCTraceStmts = []
     ;
         Body = Body0,
+        GCInitStmts = [],
         GCTraceStmts = []
     ).
 
@@ -1157,9 +1165,9 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     EnvPtrVarType = ml_make_env_ptr_type(Globals, EnvTypeName),
     % The env_ptr never needs to be traced by the GC, since the environment
     % that it points to will always be on the stack, not into the heap.
-    GC_TraceCode = no,
+    GCStatement = gc_no_stmt,
     EnvPtrVarDefnBody = mlds_data(EnvPtrVarType, no_initializer,
-        GC_TraceCode),
+        GCStatement),
     EnvPtrVarDecl = mlds_defn(EnvPtrVarEntityName, Context,
         EnvPtrVarFlags, EnvPtrVarDefnBody),
 
@@ -1183,9 +1191,9 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     mlds_defn::out) is det.
 
 ml_conv_arg_to_var(Context, Arg, LocalVar) :-
-    Arg = mlds_argument(Name, Type, GC_TraceCode),
+    Arg = mlds_argument(Name, Type, GCStatement),
     Flags = ml_gen_local_var_decl_flags,
-    DefnBody = mlds_data(Type, no_initializer, GC_TraceCode),
+    DefnBody = mlds_data(Type, no_initializer, GCStatement),
     LocalVar = mlds_defn(Name, Context, Flags, DefnBody).
 
     % Return the declaration flags appropriate for an environment struct
@@ -1311,10 +1319,9 @@ ml_module_name_string(ModuleName) = sym_name_to_string_sep(ModuleName, "__").
 
 %-----------------------------------------------------------------------------%
 
-% flatten_arguments:
-% flatten_argument:
 % flatten_function_body:
 % flatten_maybe_statement:
+% flatten_gc_statement:
 % flatten_statements:
 % flatten_statement:
 %   Recursively process the statement(s), calling fixup_var on every
@@ -1324,20 +1331,6 @@ ml_module_name_string(ModuleName) = sym_name_to_string_sep(ModuleName, "__").
 %
 %   Also, for Action = chain_gc_stack_frames, add code to save and
 %   restore the stack chain pointer at any `try_commit' statements.
-
-:- pred flatten_arguments(mlds_arguments::in, mlds_arguments::out,
-    elim_info::in, elim_info::out) is det.
-
-flatten_arguments(!Arguments, !Info) :-
-    list.map_foldl(flatten_argument, !Arguments, !Info).
-
-:- pred flatten_argument(mlds_argument::in, mlds_argument::out,
-    elim_info::in, elim_info::out) is det.
-
-flatten_argument(Argument0, Argument, !Info) :-
-    Argument0 = mlds_argument(Name, Type, MaybeGCTraceCode0),
-    flatten_maybe_statement(MaybeGCTraceCode0, MaybeGCTraceCode, !Info),
-    Argument = mlds_argument(Name, Type, MaybeGCTraceCode).
 
 :- pred flatten_function_body(mlds_function_body::in, mlds_function_body::out,
     elim_info::in, elim_info::out) is det.
@@ -1353,6 +1346,17 @@ flatten_function_body(body_defined_here(Statement0),
 
 flatten_maybe_statement(no, no, !Info).
 flatten_maybe_statement(yes(Statement0), yes(Statement), !Info) :-
+    flatten_statement(Statement0, Statement, !Info).
+
+:- pred flatten_gc_statement(mlds_gc_statement::in,
+    mlds_gc_statement::out, elim_info::in, elim_info::out) is det.
+
+flatten_gc_statement(gc_no_stmt, gc_no_stmt, !Info).
+flatten_gc_statement(gc_trace_code(Statement0), gc_trace_code(Statement),
+        !Info) :-
+    flatten_statement(Statement0, Statement, !Info).
+flatten_gc_statement(gc_initialiser(Statement0), gc_initialiser(Statement),
+        !Info) :-
     flatten_statement(Statement0, Statement, !Info).
 
 :- pred flatten_statements(statements::in, statements::out,
@@ -1574,7 +1578,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
         ),
         InitStatements = []
     ;
-        DefnBody0 = mlds_data(Type, Init0, MaybeGCTraceCode0),
+        DefnBody0 = mlds_data(Type, Init0, GCStatement0),
         % For local variable definitions, if they are referenced by any nested
         % functions, then strip them out and store them in the elim_info.
         (
@@ -1584,7 +1588,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
             % the testing burden), we do the same for the other back-ends too.
             ml_decl_is_static_const(Defn0)
         ->
-            elim_info_add_and_flatten_local_data(Defn0, !Info),
+            elim_info_add_local_data(Defn0, !Info),
             Defns = [],
             InitStatements = []
         ;
@@ -1592,7 +1596,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
             Name = entity_data(DataName),
             DataName = var(VarName),
             ml_should_add_local_data(!.Info,
-                DataName, MaybeGCTraceCode0,
+                DataName, GCStatement0,
                 FollowingDefns, FollowingStatements)
         ->
             % We need to strip out the initializer (if any) and convert it
@@ -1603,7 +1607,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
                 % work, because it doesn't handle the case when initializers in
                 % FollowingDefns reference this variable
                 Init1 = no_initializer,
-                DefnBody1 = mlds_data(Type, Init1, MaybeGCTraceCode0),
+                DefnBody1 = mlds_data(Type, Init1, GCStatement0),
                 Defn1 = mlds_defn(Name, Context, Flags0, DefnBody1),
                 VarLval = var(qual(!.Info ^ module_name, module_qual, VarName),
                     Type),
@@ -1613,13 +1617,11 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
                 Defn1 = Defn0,
                 InitStatements = []
             ),
-            elim_info_add_and_flatten_local_data(Defn1, !Info),
+            elim_info_add_local_data(Defn1, !Info),
             Defns = []
         ;
             fixup_initializer(Init0, Init, !Info),
-            flatten_maybe_statement(MaybeGCTraceCode0, MaybeGCTraceCode,
-                !Info),
-            DefnBody = mlds_data(Type, Init, MaybeGCTraceCode),
+            DefnBody = mlds_data(Type, Init, GCStatement0),
             Defn = mlds_defn(Name, Context, Flags0, DefnBody),
             Defns = [Defn],
             InitStatements = []
@@ -1642,15 +1644,19 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
     % top level (if it's a static const).
     %
 :- pred ml_should_add_local_data(elim_info::in, mlds_data_name::in,
-    mlds_maybe_gc_trace_code::in, mlds_defns::in, statements::in)
+    mlds_gc_statement::in, mlds_defns::in, statements::in)
     is semidet.
 
-ml_should_add_local_data(Info, DataName, MaybeGCTraceCode,
+ml_should_add_local_data(Info, DataName, GCStatement,
         FollowingDefns, FollowingStatements) :-
     Action = Info ^ action,
     (
         Action = chain_gc_stack_frames,
-        MaybeGCTraceCode = yes(_)
+        (
+            GCStatement = gc_trace_code(_)
+        ;
+            GCStatement = gc_initialiser(_)
+        )
     ;
         Action = hoist_nested_funcs,
         ml_need_to_hoist(Info ^ module_name, DataName,
@@ -1665,9 +1671,9 @@ ml_should_add_local_data(Info, DataName, MaybeGCTraceCode,
     % the last part of that is tricky, and for the Java and IL back-ends we
     % need to hoist out all static constants anyway, so to keep things simple
     % we do the same for the C back-end to, i.e. we always hoist all static
-    % %constants.
+    % constants.
     %
-    % XXX Do we need to check for references from the GC_TraceCode
+    % XXX Do we need to check for references from the GCStatement
     % fields here?
     %
 :- pred ml_need_to_hoist(mlds_module_name::in, mlds_data_name::in,
@@ -1688,32 +1694,6 @@ ml_need_to_hoist(ModuleName, DataName,
         FollowingDefn = mlds_defn(_, _, _, mlds_data(_, Initializer, _)),
         ml_decl_is_static_const(FollowingDefn),
         initializer_contains_var(Initializer, QualDataName)
-    ).
-
-    % Add the variable definition to the local_data field of the elim_info,
-    % fix up any references inside the GC tracing code, and then update
-    % the GC tracing code in the local_data.
-    %
-    % Note that we need to add the variable definition to the local_data
-    % *before* we fix up the GC tracing code, otherwise references to the
-    % variable itself in the GC tracing code won't get fixed.
-    %
-:- pred elim_info_add_and_flatten_local_data(mlds_defn::in,
-    elim_info::in, elim_info::out) is det.
-
-elim_info_add_and_flatten_local_data(Defn0, !Info) :-
-    (
-        Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
-        DefnBody0 = mlds_data(Type, Init, MaybeGCTraceCode0)
-    ->
-        elim_info_add_local_data(Defn0, !Info),
-        flatten_maybe_statement(MaybeGCTraceCode0, MaybeGCTraceCode, !Info),
-        DefnBody = mlds_data(Type, Init, MaybeGCTraceCode),
-        Defn = mlds_defn(Name, Context, Flags, DefnBody),
-        elim_info_remove_local_data(Defn0, !Info),
-        elim_info_add_local_data(Defn, !Info)
-    ;
-        elim_info_add_local_data(Defn0, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1862,6 +1842,38 @@ fixup_lval(mem_ref(Rval0, Type), mem_ref(Rval, Type), !Info) :-
 fixup_lval(global_var_ref(Ref), global_var_ref(Ref), !Info).
 fixup_lval(var(Var0, VarType), VarLval, !Info) :-
     fixup_var(Var0, VarType, VarLval, !Info).
+
+% fixup_gc_statements:
+%   Process the trace code in the locals that have been hoisted
+%   to the stack frame structure so that the code correctly refers to any
+%   variables that have been pulled out.
+%   It assumes the locals don't actually change during the process.
+%   I think this should be safe. (schmidt)
+
+:- pred fixup_gc_statements(elim_info::in, elim_info::out) is det.
+
+fixup_gc_statements(!Info) :-
+    Locals = elim_info_get_local_data(!.Info),
+    fixup_gc_statements_defns(Locals, !Info).
+
+:- pred fixup_gc_statements_defns(mlds_defns::in,
+    elim_info::in, elim_info::out) is det.
+
+fixup_gc_statements_defns([], !Info).
+fixup_gc_statements_defns([ Defn0 | Defns ], !Info) :-
+    (
+        Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
+        DefnBody0 = mlds_data(Type, Init, GCStatement0)
+    ->
+        flatten_gc_statement(GCStatement0, GCStatement, !Info),
+        DefnBody = mlds_data(Type, Init, GCStatement),
+        Defn = mlds_defn(Name, Context, Flags, DefnBody),
+        elim_info_remove_local_data(Defn0, !Info),
+        elim_info_add_local_data(Defn, !Info)
+    ;
+        true
+    ),
+    fixup_gc_statements_defns(Defns, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -2311,8 +2323,8 @@ gen_saved_stack_chain_var(Id, Context) = Defn :-
     Initializer = no_initializer,
     % The saved stack chain never needs to be traced by the GC,
     % since it will always point to the stack, not into the heap.
-    GCTraceCode = no,
-    DefnBody = mlds_data(Type, Initializer, GCTraceCode),
+    GCStatement = gc_no_stmt,
+    DefnBody = mlds_data(Type, Initializer, GCStatement),
     Defn = mlds_defn(Name, Context, Flags, DefnBody).
 
     % Generate a statement to save the stack chain pointer:

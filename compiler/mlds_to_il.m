@@ -417,9 +417,9 @@ wrapper_class(Members) =
 rename_defn(mlds_defn(Name, Context, Flags, Entity0))
         = mlds_defn(Name, Context, Flags, Entity) :-
     (
-        Entity0 = mlds_data(Type, Initializer, GC_TraceCode),
+        Entity0 = mlds_data(Type, Initializer, GCStatement),
         Entity = mlds_data(Type, rename_initializer(Initializer),
-            rename_maybe_statement(GC_TraceCode))
+            rename_gc_statement(GCStatement))
     ;
         Entity0 = mlds_function(MaybePredProcId, Params, FunctionBody0,
             Attributes, EnvVarNames),
@@ -445,6 +445,14 @@ rename_defn(mlds_defn(Name, Context, Flags, Entity0))
 
 rename_maybe_statement(no) = no.
 rename_maybe_statement(yes(Stmt)) = yes(rename_statement(Stmt)).
+
+:- func rename_gc_statement(mlds_gc_statement) = mlds_gc_statement.
+
+rename_gc_statement(gc_no_stmt) = gc_no_stmt.
+rename_gc_statement(gc_trace_code(Stmt))
+    = gc_trace_code(rename_statement(Stmt)).
+rename_gc_statement(gc_initialiser(Stmt))
+    = gc_initialiser(rename_statement(Stmt)).
 
 :- func rename_statement(statement) = statement.
 
@@ -954,7 +962,7 @@ interface_id_to_class_name(_) = Result :-
 
 generate_method(ClassName, _, mlds_defn(Name, Context, Flags, Entity),
         ClassMember, !Info) :-
-    Entity = mlds_data(Type, DataInitializer, _GC_TraceCode),
+    Entity = mlds_data(Type, DataInitializer, _GCStatement),
 
     FieldName = entity_name_to_ilds_id(Name),
 
@@ -1369,9 +1377,9 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
             % We don't need to worry about tracing variables for
             % accurate GC in the IL back-end -- the .NET runtime
             % system itself provides accurate GC.
-            GC_TraceCode = no,
+            GCStatement = gc_no_stmt,
             RV = ml_gen_mlds_var_decl(
-                var(VN), RT, no_initializer, GC_TraceCode,
+                var(VN), RT, no_initializer, GCStatement,
                 Context),
             Lval = var(qual(ModuleName, module_qual, VN), RT)
         ), RetTypes, ReturnVars, 0, _),
@@ -1386,7 +1394,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
     ),
     ArgTypes = mlds_get_arg_types(Inputs),
     ArgRvals = list.map(
-        (func(mlds_argument(EntName, Type, _GC_TraceCode)) =
+        (func(mlds_argument(EntName, Type, _GCStatement)) =
                 lval(var(VarName, Type)) :-
             VarName = EntNameToVarName(EntName)
         ), Inputs),
@@ -1442,7 +1450,7 @@ generate_defn_initializer(mlds_defn(Name, Context, _DeclFlags, Entity),
         !Tree, !Info) :-
     (
         Name = entity_data(DataName),
-        Entity = mlds_data(MLDSType, Initializer, _GC_TraceCode)
+        Entity = mlds_data(MLDSType, Initializer, _GCStatement)
     ->
         ( Initializer = no_initializer ->
             true
@@ -2987,7 +2995,7 @@ mlds_signature_to_ilds_type_params(DataRep,
 
 :- func mlds_arg_to_il_arg(mlds_argument) = pair(ilds.id, mlds_type).
 
-mlds_arg_to_il_arg(mlds_argument(EntityName, Type, _GC_TraceCode)) =
+mlds_arg_to_il_arg(mlds_argument(EntityName, Type, _GCStatement)) =
         Id - Type :-
     mangle_entity_name(EntityName, Id).
 
@@ -3038,7 +3046,7 @@ params_to_il_signature(DataRep, ModuleName, FuncParams) = ILSignature :-
     = ilds.param.
 
 input_param_to_ilds_type(DataRep, _ModuleName, Arg) = ILType - yes(Id) :-
-    Arg = mlds_argument(EntityName, MldsType, _GC_TraceCode),
+    Arg = mlds_argument(EntityName, MldsType, _GCStatement),
     mangle_entity_name(EntityName, Id),
     ILType = mlds_type_to_ilds_type(DataRep, MldsType).
 
@@ -3793,7 +3801,7 @@ defn_to_local(ModuleName, Defn, Id - MLDSType) :-
     Defn = mlds_defn(Name, _Context, _DeclFlags, Entity),
     (
         Name = entity_data(DataName),
-        Entity = mlds_data(MLDSType0, _Initializer, _GC_TraceCode)
+        Entity = mlds_data(MLDSType0, _Initializer, _GCStatement)
     ->
         mangle_dataname(DataName, MangledDataName),
         mangle_mlds_var(qual(ModuleName, module_qual,

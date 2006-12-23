@@ -225,7 +225,7 @@ ml_gen_enum_value_member(Context) =
     mlds_defn(entity_data(var(mlds_var_name("value", no))),
         mlds_make_context(Context),
         ml_gen_member_decl_flags,
-        mlds_data(mlds_native_int_type, no_initializer, no)).
+        mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)).
 
 :- func ml_gen_enum_constant(prog_context, cons_tag_values, constructor)
     = mlds_defn.
@@ -250,7 +250,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
     MLDS_Defn = mlds_defn(entity_data(var(mlds_var_name(UnqualifiedName, no))),
         mlds_make_context(Context),
         ml_gen_enum_constant_decl_flags,
-        mlds_data(mlds_native_int_type, init_obj(ConstValue), no)).
+        mlds_data(mlds_native_int_type, init_obj(ConstValue), gc_no_stmt)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -433,7 +433,7 @@ ml_gen_tag_member(Name, Context) =
     mlds_defn(entity_data(var(mlds_var_name(Name, no))),
         mlds_make_context(Context),
         ml_gen_member_decl_flags,
-        mlds_data(mlds_native_int_type, no_initializer, no)).
+        mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)).
 
 :- func ml_gen_tag_constant(prog_context, cons_tag_values, constructor)
     = mlds_defns.
@@ -453,7 +453,7 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
             entity_data(var(mlds_var_name(UnqualifiedName, no))),
             mlds_make_context(Context),
             ml_gen_enum_constant_decl_flags,
-            mlds_data(mlds_native_int_type, init_obj(ConstValue), no)),
+            mlds_data(mlds_native_int_type, init_obj(ConstValue), gc_no_stmt)),
         MLDS_Defns = [MLDS_Defn]
     ;
         MLDS_Defns = []
@@ -789,8 +789,8 @@ gen_constructor_function(Globals, BaseClassId, ClassType, ClassQualifier,
 :- func make_arg(mlds_defn) = mlds_argument is det.
 
 make_arg(mlds_defn(Name, _Context, _Flags, Defn)) = Arg :-
-    ( Defn = mlds_data(Type, _Init, GC_TraceCode) ->
-        Arg = mlds_argument(Name, Type, GC_TraceCode)
+    ( Defn = mlds_data(Type, _Init, GCStatement) ->
+        Arg = mlds_argument(Name, Type, GCStatement)
     ;
         unexpected(this_file, "make_arg: non-data member")
     ).
@@ -803,7 +803,7 @@ make_arg(mlds_defn(Name, _Context, _Flags, Defn)) = Arg :-
 gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         Statement :-
     Member = mlds_defn(EntityName, Context, _Flags, Defn),
-    ( Defn = mlds_data(Type0, _Init, _GC_TraceCode) ->
+    ( Defn = mlds_data(Type0, _Init, _GCStatement) ->
         Type = Type0
     ;
         unexpected(this_file, "gen_init_field: non-data member")
@@ -911,8 +911,8 @@ ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
 ml_gen_mlds_field_decl(DataName, MLDS_Type, Context) = MLDS_Defn :-
     Name = entity_data(DataName),
     % We only need GC tracing code for top-level variables, not for fields
-    GC_TraceCode = no,
-    Defn = mlds_data(MLDS_Type, no_initializer, GC_TraceCode),
+    GCStatement = gc_no_stmt,
+    Defn = mlds_data(MLDS_Type, no_initializer, GCStatement),
     DeclFlags = ml_gen_public_field_decl_flags,
     MLDS_Defn = mlds_defn(Name, Context, DeclFlags, Defn).
 

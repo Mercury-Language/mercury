@@ -1292,10 +1292,10 @@ init_stats(Id, _) =
 
 tabling_name_and_init_to_defn(ProcLabel, MLDS_Context, Constness, Id,
         Initializer) = Defn :-
-    GC_TraceCode = no,
+    GCStatement = gc_no_stmt,
     MLDS_Type = mlds_tabling_type(Id),
     Flags = tabling_data_decl_flags(Constness),
-    DefnBody = mlds_data(MLDS_Type, Initializer, GC_TraceCode),
+    DefnBody = mlds_data(MLDS_Type, Initializer, GCStatement),
     Name = entity_data(mlds_tabling_ref(ProcLabel, Id)),
     Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody).
 
@@ -2143,10 +2143,10 @@ ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
     LocalVarName = mlds_var_name(
         string.append("local_", OutputVarNameStr), MaybeNum),
     ml_gen_type(!.Info, Type, MLDS_Type),
-    ml_gen_maybe_gc_trace_code(LocalVarName, Type, Context, GC_TraceCode,
+    ml_gen_gc_statement(LocalVarName, Type, Context, GCStatement,
         !Info),
     LocalVarDefn = ml_gen_mlds_var_decl(var(LocalVarName), MLDS_Type,
-        GC_TraceCode, mlds_make_context(Context)),
+        GCStatement, mlds_make_context(Context)),
 
     % Generate code to assign from the local var to the output var.
     ml_gen_var(!.Info, OutputVar, OutputVarLval),
@@ -2164,7 +2164,7 @@ ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
 :- func ml_gen_commit_var_decl(mlds_context, mlds_var_name) = mlds_defn.
 
 ml_gen_commit_var_decl(Context, VarName) =
-    ml_gen_mlds_var_decl(var(VarName), mlds_commit_type, no, Context).
+    ml_gen_mlds_var_decl(var(VarName), mlds_commit_type, gc_no_stmt, Context).
 
     % Generate MLDS code for the different kinds of HLDS goals.
     %
@@ -2656,7 +2656,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
         SuccessIndicatorDecl = ml_gen_mlds_var_decl(
             var(SuccessIndicatorVarName),
             mlds_native_bool_type,
-            no_initializer, no, MLDSContext),
+            no_initializer, gc_no_stmt, MLDSContext),
         SuccessIndicatorLval = var(qual(MLDSModuleName, module_qual,
             SuccessIndicatorVarName), mlds_native_bool_type),
         SuccessIndicatorStatement = ml_gen_assign(SucceededLval,
@@ -2871,9 +2871,9 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
     % XXX Accurate GC is not supported for IL foreign code;
     % this would only be useful if interfacing to
     % IL when compiling to C, which is not yet supported.
-    GC_TraceCode = no,
+    GCStatement = gc_no_stmt,
     Defn = ml_gen_mlds_var_decl(var(NonMangledVarName), MLDSType,
-        Initializer, GC_TraceCode, MLDSContext).
+        Initializer, GCStatement, MLDSContext).
 
     % For ordinary (not model_non) pragma c_proc,
     % we generate code of the following form:

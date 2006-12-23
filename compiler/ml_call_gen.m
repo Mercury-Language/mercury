@@ -107,7 +107,7 @@
     % Generate the appropriate MLDS type for a continuation function
     % for a nondet procedure whose output arguments have the specified types.
     %
-    % WARNING: this does not fill in the maybe_gc_trace_code for the function
+    % WARNING: this does not fill in the gc_statement for the function
     % parameters. It is the caller's responsibility to fill these in properly
     % if needed.
     %
@@ -184,16 +184,16 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 
     % Insert the `closure_arg' parameter.
     %
-    % The GC_TraceCode for `closure_arg' here is wrong, but it doesn't matter,
+    % The GCStatement for `closure_arg' here is wrong, but it doesn't matter,
     % since `closure_arg' is only part of a type (a function parameter in the
     % function type). We won't use the GC tracing code generated here, since
     % we don't generate any actual local variable or parameter for
     % `closure_arg'.
-    GC_TraceCode = no,
+    GCStatement = gc_no_stmt,
     ClosureArgType = mlds_generic_type,
     ClosureArg =
         mlds_argument(entity_data(var(mlds_var_name("closure_arg", no))),
-            ClosureArgType, GC_TraceCode),
+            ClosureArgType, GCStatement),
     Params0 = mlds_func_params(ArgParams0, RetParam),
     Params = mlds_func_params([ClosureArg | ArgParams0], RetParam),
     Signature = mlds_get_func_signature(Params),
@@ -249,9 +249,9 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     FuncVarName = mlds_var_name(string.format("func_%d", [i(ConvVarNum)]), no),
     % The function address is always a pointer to code,
     % not to the heap, so the GC doesn't need to trace it.
-    GC_TraceCode = no,
+    GCStatement = gc_no_stmt,
     FuncVarDecl = ml_gen_mlds_var_decl(var(FuncVarName),
-        FuncType, GC_TraceCode, mlds_make_context(Context)),
+        FuncType, GCStatement, mlds_make_context(Context)),
     ml_gen_var_lval(!.Info, FuncVarName, FuncType, FuncVarLval),
     AssignFuncVar = ml_gen_assign(FuncVarLval, FuncRval, Context),
     FuncVarRval = lval(FuncVarLval),
@@ -513,7 +513,7 @@ ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
         % Create a new continuation function that just copies the outputs
         % to locals and then calls the original current continuation.
         %
-        % Note that ml_gen_cont_params does not fill in the maybe_gc_trace_code
+        % Note that ml_gen_cont_params does not fill in the gc_statement
         % for the parameters. This is OK, because the parameters of the
         % continuation function will not be live across any heap allocations or
         % procedure calls.
@@ -561,9 +561,9 @@ ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) :-
     % requires knowing the HLDS types, but here we only have the MLDS types.
     % So here we just leave it blank. The caller of ml_gen_cont_param has the
     % reponsibility of fillling this in properly if needed.
-    Maybe_GC_TraceCode = no,
+    GCStatement = gc_no_stmt,
     Argument =
-        mlds_argument(entity_data(var(ArgName)), Type, Maybe_GC_TraceCode),
+        mlds_argument(entity_data(var(ArgName)), Type, GCStatement),
     ml_gen_cont_params_2(Types, ArgNum + 1, Arguments).
 
 :- pred ml_gen_copy_args_to_locals(ml_gen_info::in, list(mlds_lval)::in,
@@ -823,7 +823,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         % type variable from the callee, not from the caller,
         % and we can't generate type_infos for type variables
         % from the callee.  Hence we need to call the version of
-        % ml_gen_maybe_gc_trace_code which takes two types:
+        % ml_gen_gc_statement which takes two types:
         % the CalleeType is used to determine the type for the
         % temporary variable declaration, but the CallerType is
         % used to construct the type_info.
@@ -847,10 +847,10 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             )
         ;
             ForClosureWrapper = no,
-            ml_gen_maybe_gc_trace_code(ArgVarName, CalleeType, CallerType,
-                Context, GC_TraceCode, !Info),
+            ml_gen_gc_statement(ArgVarName, CalleeType, CallerType,
+                Context, GC_Statements, !Info),
             ArgVarDecl = ml_gen_mlds_var_decl(var(ArgVarName), MLDS_CalleeType,
-                GC_TraceCode, mlds_make_context(Context))
+                GC_Statements, mlds_make_context(Context))
         ),
         ConvDecls = [ArgVarDecl],
 

@@ -66,9 +66,9 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     SlotVarName = mlds_var_name(
         string.format("slot_%d", [i(SlotVarSeq)]), no),
     SlotVarType = mlds_native_int_type,
-    SlotVarGCTraceCode = no, % never need to trace ints
+    SlotVarGCStatement = gc_no_stmt, % never need to trace ints
     SlotVarDefn = ml_gen_mlds_var_decl(var(SlotVarName), SlotVarType,
-        SlotVarGCTraceCode, MLDS_Context),
+        SlotVarGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, SlotVarName, SlotVarType, SlotVarLval),
 
     ml_gen_info_new_cond_var(StringVarSeq, !Info),
@@ -78,9 +78,9 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     % This variable always points to an element of the string_table array,
     % which are all static constants; it can never point into the heap.
     % So the GC never needs to trace it
-    StringVarGCTraceCode = no,
+    StringVarGCStatement = gc_no_stmt,
     StringVarDefn = ml_gen_mlds_var_decl(var(StringVarName),
-        StringVarType, StringVarGCTraceCode, MLDS_Context),
+        StringVarType, StringVarGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, StringVarName, StringVarType, StringVarLval),
 
     % Generate new labels.

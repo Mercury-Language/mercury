@@ -555,8 +555,8 @@ defn_contains_var(mlds_defn(_Name, _Context, _Flags, DefnBody), Name) :-
 :- pred defn_body_contains_var(mlds_entity_defn::in, mlds_data::in)
     is semidet.
 
-    % XXX Should we include variables in the GC_TraceCode field here?
-defn_body_contains_var(mlds_data(_Type, Initializer, _GC_TraceCode), Name) :-
+    % XXX Should we include variables in the GCStatement field here?
+defn_body_contains_var(mlds_data(_Type, Initializer, _GCStatement), Name) :-
     initializer_contains_var(Initializer, Name).
 defn_body_contains_var(mlds_function(_PredProcId, _Params, FunctionBody,
         _Attrs, _EnvVarNames), Name) :-

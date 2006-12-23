@@ -150,11 +150,11 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, MLDS_Defn) :-
 
     % The GC never needs to trace these definitions, because they are static
     % constants, and can point only to other static constants, not to the heap.
-    GC_TraceCode = no,
+    GCStatement = gc_no_stmt,
 
     % Generate the declaration body, i.e. the type and the initializer
     MLDS_Type = mlds_rtti_type(item_type(RttiId)),
-    DefnBody = mlds_data(MLDS_Type, Initializer, GC_TraceCode),
+    DefnBody = mlds_data(MLDS_Type, Initializer, GCStatement),
     MLDS_Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody).
 
     % Return the declaration flags appropriate for an rtti_data.

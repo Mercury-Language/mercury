@@ -692,7 +692,7 @@ write_field_selector(lang_managed_cplusplus, !IO) :-
 write_defn_decl(Lang, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
-        DefnBody = mlds_data(Type, _Initializer, _GC_TraceCode),
+        DefnBody = mlds_data(Type, _Initializer, _GCStatement),
         Name = entity_data(var(VarName))
     ->
         write_parameter_type(Lang, Type, !IO),
@@ -716,7 +716,7 @@ write_parameter_type(Lang, Type, !IO) :-
     mlds_argument::in, io::di, io::uo) is det.
 
 write_input_arg_as_foreign_type(Lang, Arg, !IO) :-
-    Arg = mlds_argument(EntityName, Type, _GC_TraceCode),
+    Arg = mlds_argument(EntityName, Type, _GCStatement),
     get_il_data_rep(DataRep, !IO),
     write_il_type_as_foreign_type(Lang, mlds_type_to_ilds_type(DataRep, Type),
         !IO),

@@ -564,8 +564,9 @@
                 mlds_type,
                 mlds_initializer,
                 % If accurate GC is enabled, we associate with each variable
-                % the code needed to trace that variable when doing GC.
-                mlds_maybe_gc_trace_code
+                % the code needed to initialise or trace that variable when
+                % doing GC (in the compiler-generated gc trace functions).
+                mlds_gc_statement
             )
     ;       mlds_function(
                 % Represents functions.
@@ -584,12 +585,20 @@
             ).
 
     % If accurate GC is enabled, we associate with each variable
-    % (including function parameters) the code needed to trace that
-    % variable when doing GC.
-    % `no' here indicates that no GC tracing code is needed,
-    % e.g. because accurate GC isn't enabled, or because the
-    % variable can never contain pointers to objects on the heap.
-:- type mlds_maybe_gc_trace_code == maybe(statement).
+    % (including function parameters) the code needed to initialise
+    % or trace that variable when doing GC (in the GC trace function).
+    % `gc_no_stmt' here indicates that no code is needed (e.g. because
+    % accurate GC isn't enabled, or because the variable can never
+    % contain pointers to objects on the heap).
+    % 'gc_trace_code' indicates that GC tracing code is required for the
+    % variable.
+    % 'gc_initialiser' indicates that the variable is a compiler-generated
+    % variable that needs to be initialised before tracing the other
+    % variables for the predicate (used when generating closures).
+:- type mlds_gc_statement
+    ---> gc_trace_code(statement)
+    ;    gc_initialiser(statement)
+    ;    gc_no_stmt.
 
     % It is possible for the function to be defined externally
     % (i.e. the original Mercury procedure was declared `:- external').
@@ -620,8 +629,8 @@
     --->    mlds_argument(
                 mlds_entity_name,          % Argument name.
                 mlds_type,                 % Argument type.
-                mlds_maybe_gc_trace_code   % GC tracing code for this argument,
-                                           % if needed.
+                mlds_gc_statement          % code for GC necessitated
+                                           % by this argument.
             ).
 
 :- type mlds_arg_types == list(mlds_type).

@@ -713,7 +713,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % function to when it calls the wrapped function, and garbage collection
     % can't occur in that time, since there are no allocations (only an
     % assignment to `closure_arg' and some unbox operations).
-    WrapperArgs1 = list.map(arg_delete_gc_trace_code, WrapperArgs0),
+    WrapperArgs1 = list.map(arg_delete_gc_statement, WrapperArgs0),
 
     % then insert the `closure_arg' parameter, if needed.
     ( ClosureKind = special_pred ->
@@ -723,11 +723,11 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         ClosureArgType = mlds_generic_type,
         ClosureArgName = mlds_var_name("closure_arg", no),
         ClosureArgDeclType = list.det_head(ml_make_boxed_types(1)),
-        gen_closure_gc_trace_code(ClosureArgName, ClosureArgDeclType,
+        gen_closure_gc_statement(ClosureArgName, ClosureArgDeclType,
             ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
-            Context, ClosureArgGCTraceCode, !Info),
+            Context, ClosureArgGCStatement, !Info),
         ClosureArg = mlds_argument(entity_data(var(ClosureArgName)),
-            ClosureArgType, ClosureArgGCTraceCode),
+            ClosureArgType, ClosureArgGCStatement),
         MaybeClosureA = yes({ClosureArgType, ClosureArgName}),
         WrapperArgs = [ClosureArg | WrapperArgs1]
     ),
@@ -759,16 +759,16 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         % If we were to generate GC tracing code for the closure
         % pointer, it would look like this:
         %   ClosureDeclType = list.det_head(ml_make_boxed_types(1)),
-        %   gen_closure_gc_trace_code(ClosureName, ClosureDeclType,
+        %   gen_closure_gc_statement(ClosureName, ClosureDeclType,
         %       ClosureKind, WrapperArgTypes, Purity,
-        %       PredOrFunc, Context, ClosureGCTraceCode),
+        %       PredOrFunc, Context, ClosureGCStatement),
         % But we don't need any GC tracing code for the closure pointer,
         % because it won't be live across an allocation, and because
         % (unlike the closure_arg parameter) it isn't referenced from
         % the GC tracing for other variables.
-        ClosureGCTraceCode = no,
+        ClosureGCStatement = gc_no_stmt,
         ClosureDecl = ml_gen_mlds_var_decl(var(ClosureName),
-            ClosureType, ClosureGCTraceCode, MLDS_Context),
+            ClosureType, ClosureGCStatement, MLDS_Context),
         ml_gen_var_lval(!.Info, ClosureName, ClosureType, ClosureLval),
         ml_gen_var_lval(!.Info, ClosureArgName1, ClosureArgType1,
             ClosureArgLval),
@@ -903,23 +903,23 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     WrapperFuncType = mlds_func_type(WrapperParams),
     ml_gen_info_add_extra_defn(WrapperFunc, !Info).
 
-:- func arg_delete_gc_trace_code(mlds_argument) = mlds_argument.
+:- func arg_delete_gc_statement(mlds_argument) = mlds_argument.
 
-arg_delete_gc_trace_code(Argument0) = Argument :-
-    Argument0 = mlds_argument(Name, Type, _GCTraceCode),
-    Argument = mlds_argument(Name, Type, no).
+arg_delete_gc_statement(Argument0) = Argument :-
+    Argument0 = mlds_argument(Name, Type, _GCStatement),
+    Argument = mlds_argument(Name, Type, gc_no_stmt).
 
-    % Generate the GC tracing code for `closure_arg' or `closure'
+    % Generate the GC trace code for `closure_arg' or `closure'
     % (see ml_gen_closure_wrapper above).
     %
-:- pred gen_closure_gc_trace_code(mlds_var_name::in, mer_type::in,
+:- pred gen_closure_gc_statement(mlds_var_name::in, mer_type::in,
     closure_kind::in, list(mer_type)::in, purity::in, pred_or_func::in,
-    prog_context::in, mlds_maybe_gc_trace_code::out,
+    prog_context::in, mlds_gc_statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_closure_gc_trace_code(ClosureName, ClosureDeclType,
+gen_closure_gc_statement(ClosureName, ClosureDeclType,
         ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
-        Context, ClosureGCTraceCode, !Info) :-
+        Context, ClosureGCStatement, !Info) :-
     % We can't use WrapperArgTypes here, because we don't have type_infos
     % for the type variables in WrapperArgTypes; those type variables come from
     % the callee. But when copying closures, we don't care what the types of
@@ -936,10 +936,10 @@ gen_closure_gc_trace_code(ClosureName, ClosureDeclType,
         ClosureActualType = sample_typeclass_info_type
     ;
         ClosureKind = special_pred,
-        unexpected(this_file, "gen_closure_gc_trace_code: special_pred")
+        unexpected(this_file, "gen_closure_gc_statement: special_pred")
     ),
-    ml_gen_maybe_gc_trace_code(ClosureName, ClosureDeclType,
-        ClosureActualType, Context, ClosureGCTraceCode, !Info).
+    ml_gen_gc_statement(ClosureName, ClosureDeclType,
+        ClosureActualType, Context, ClosureGCStatement, !Info).
 
 :- pred ml_gen_wrapper_func(ml_label_func::in, mlds_func_params::in,
     prog_context::in, statement::in, mlds_defn::out,
@@ -1073,8 +1073,12 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
     % This type is really `const MR_Closure_Layout *', but there's no easy
     % way to represent that in the MLDS; using MR_Box instead works fine.
     ClosureLayoutPtrType = mlds_generic_type,
+    % We use 'gc_initialiser' for the garbage collection code as it is code to
+    % initialise local variables used during garbage collection and must
+    % run before variables are traced.
     ClosureLayoutPtrDecl = ml_gen_mlds_var_decl(var(ClosureLayoutPtrName),
-        ClosureLayoutPtrType, yes(ClosureLayoutPtrGCInit), MLDS_Context),
+        ClosureLayoutPtrType, gc_initialiser(ClosureLayoutPtrGCInit),
+        MLDS_Context),
     ml_gen_var_lval(!.Info, ClosureLayoutPtrName, ClosureLayoutPtrType,
         ClosureLayoutPtrLval),
 
@@ -1082,8 +1086,11 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
     % This type is really MR_TypeInfoParams, but there's no easy way to
     % represent that in the MLDS; using MR_Box instead works fine.
     TypeParamsType = mlds_generic_type,
+    % We use 'gc_initialiser' for the garbage collection code as it is code to
+    % initialise local variables used during garbage collection and must
+    % run before variables are traced.
     TypeParamsDecl = ml_gen_mlds_var_decl(var(TypeParamsName),
-        TypeParamsType, yes(TypeParamsGCInit), MLDS_Context),
+        TypeParamsType, gc_initialiser(TypeParamsGCInit), MLDS_Context),
     ml_gen_var_lval(!.Info, TypeParamsName, TypeParamsType, TypeParamsLval),
     (
         ClosureKind = higher_order_proc_closure,
@@ -1176,13 +1183,17 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
     TypeInfoType = mercury_type_to_mlds_type(ModuleInfo, TypeInfoMercuryType),
     ml_gen_var_lval(!.Info, TypeInfoName, TypeInfoType, TypeInfoLval),
     TypeInfoDecl = ml_gen_mlds_var_decl(var(TypeInfoName), TypeInfoType,
-        no_initializer, no, MLDS_Context),
+        no_initializer, gc_no_stmt, MLDS_Context),
 
-    ml_gen_maybe_gc_trace_code_with_typeinfo(VarName, Type,
-        lval(TypeInfoLval), Context, MaybeGCTraceCode0, !Info),
+    ml_gen_gc_statement_with_typeinfo(VarName, Type,
+        lval(TypeInfoLval), Context, GCStatement0, !Info),
 
     (
-        MaybeGCTraceCode0 = yes(CallTraceFuncCode),
+        (
+            GCStatement0 = gc_trace_code(CallTraceFuncCode)
+        ;
+            GCStatement0 = gc_initialiser(CallTraceFuncCode)
+        ),
         MakeTypeInfoCode = atomic(inline_target_code(ml_target_c, [
             raw_target_code("{\n", []),
             raw_target_code("MR_MemoryList allocated_mem = NULL;\n", []),
@@ -1206,14 +1217,14 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
             CallTraceFuncCode,
             statement(DeallocateCode, MLDS_Context)
         ]),
-        MaybeGCTraceCode = yes(statement(GCTraceCode, MLDS_Context))
+        GCStatement = gc_trace_code(statement(GCTraceCode, MLDS_Context))
     ;
-        MaybeGCTraceCode0 = no,
-        MaybeGCTraceCode = MaybeGCTraceCode0
+        GCStatement0 = gc_no_stmt,
+        GCStatement = GCStatement0
     ),
     LocalVarDefn = ml_gen_mlds_var_decl(var(VarName),
         mercury_type_to_mlds_type(ModuleInfo, Type),
-        MaybeGCTraceCode, MLDS_Context).
+        GCStatement, MLDS_Context).
 
 :- pred ml_gen_closure_field_lvals(mlds_lval::in, int::in, int::in, int::in,
     list(mlds_lval)::out, ml_gen_info::in, ml_gen_info::out) is det.

@@ -598,7 +598,7 @@ method_ptrs_in_entity_defn(mlds_function(_MaybeID, _Params, Body,
     ;
         Body = body_external
     ).
-method_ptrs_in_entity_defn(mlds_data(_Type, Initializer, _GC_TraceCode),
+method_ptrs_in_entity_defn(mlds_data(_Type, Initializer, _GCStatement),
         !CodeAddrs) :-
     method_ptrs_in_initializer(Initializer, !CodeAddrs).
 method_ptrs_in_entity_defn(mlds_class(ClassDefn), !CodeAddrs) :-
@@ -888,7 +888,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
     % It will have the return type java.lang.Object
     MethodArgVariable = mlds_var_name("args", no),
     MethodArgType = mlds_argument(entity_data(var(MethodArgVariable)),
-        mlds_array_type(mlds_generic_type), no),
+        mlds_array_type(mlds_generic_type), gc_no_stmt),
     MethodRetType = mlds_generic_type,
     MethodArgs = [MethodArgType],
     MethodRets = [MethodRetType],
@@ -913,8 +913,8 @@ generate_call_method(CodeAddr, MethodDefn) :-
     ReturnEntityName = entity_data(var(ReturnVarName)),
 
     ReturnDecFlags = ml_gen_local_var_decl_flags,
-    GCTraceCode = no,  % The Java back-end does its own garbage collection.
-    ReturnEntityDefn = mlds_data(ReturnVarType, no_initializer, GCTraceCode),
+    GCStatement = gc_no_stmt,  % The Java back-end does its own GC.
+    ReturnEntityDefn = mlds_data(ReturnVarType, no_initializer, GCStatement),
     ReturnVarDefn = mlds_defn(ReturnEntityName, Context, ReturnDecFlags,
         ReturnEntityDefn),
     MethodDefns = [ReturnVarDefn],
@@ -1385,7 +1385,7 @@ output_enum_constants(Indent, ModuleInfo, EnumModuleName, EnumConsts, !IO) :-
 output_enum_constant(Indent, ModuleInfo, EnumModuleName, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
-        DefnBody = mlds_data(Type, Initializer, _GC_TraceCode)
+        DefnBody = mlds_data(Type, Initializer, _GCStatement)
     ->
         indent_line(Indent, !IO),
         io.write_string("public static final int ", !IO),
@@ -1650,7 +1650,7 @@ output_params(Indent, ModuleName, Context, Parameters, !IO) :-
     mlds_argument::in, io::di, io::uo) is det.
 
 output_param(Indent, _ModuleName, Context, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GC_TraceCode),
+    Arg = mlds_argument(Name, Type, _GCStatement),
     indent_line(Context, Indent, !IO),
     output_type(Type, !IO),
     io.write_char(' ', !IO),

@@ -804,7 +804,7 @@ build_field_defn(Defn, ModuleName, GlobalInfo, GCC_Defn) -->
 
 gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 	(
-		{ DefnBody = mlds_data(Type, Initializer, _GC_TraceCode) },
+		{ DefnBody = mlds_data(Type, Initializer, _GCStatement) },
 		{ LocalVars = map__init },
 		{ LabelTable = map__init },
 		{ DefnInfo = defn_info(GlobalInfo0, Name, LocalVars,
@@ -844,7 +844,7 @@ gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 
 build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 	(
-		{ DefnBody = mlds_data(Type, Initializer, _GC_TraceCode) },
+		{ DefnBody = mlds_data(Type, Initializer, _GCStatement) },
 		build_local_data_defn(Name, Flags, Type,
 			Initializer, DefnInfo, GCC_Defn)
 	;
@@ -871,7 +871,7 @@ build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo,
 		GCC_Defn) -->
 	(
-		{ DefnBody = mlds_data(Type, Initializer, _GC_TraceCode) },
+		{ DefnBody = mlds_data(Type, Initializer, _GCStatement) },
 		build_field_data_defn(Name, Type, Initializer, GlobalInfo,
 			GCC_Defn),
 		add_field_decl_flags(Flags, GCC_Defn)
@@ -1395,11 +1395,11 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
 	Type = ClassId,
 	% We only need GC tracing code for top-level variables,
 	% not for base classes.
-	GC_TraceCode = no,
+	GCStatement = gc_no_stmt,
 	MLDS_Defn = mlds_defn(
 		entity_data(var(mlds_var_name(BaseName, no))), Context,
 		ml_gen_public_field_decl_flags,
-		mlds_data(Type, no_initializer, GC_TraceCode)),
+		mlds_data(Type, no_initializer, GCStatement)),
 	BaseNum = BaseNum0 + 1.
 
 /***********
@@ -1702,7 +1702,7 @@ build_param_types_and_decls([Arg|Args], ModuleName, GlobalInfo,
 		ParamTypes, ParamDecls, SymbolTable) -->
 	build_param_types_and_decls(Args, ModuleName, GlobalInfo,
 		ParamTypes0, ParamDecls0, SymbolTable0),
-	{ Arg = mlds_argument(ArgName, Type, _GC_TraceCode) },
+	{ Arg = mlds_argument(ArgName, Type, _Statement) },
 	build_type(Type, GlobalInfo, GCC_Type),
 	( { ArgName = entity_data(var(ArgVarName)) } ->
 		{ GCC_ArgVarName = ml_var_name_to_string(ArgVarName) },

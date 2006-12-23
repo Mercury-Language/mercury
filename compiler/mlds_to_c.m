@@ -978,11 +978,11 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
 
     % Declare local variables corresponding to any foreign_type parameters.
     IsCForeignType = (pred(Arg::in) is semidet :-
-        Arg = mlds_argument(_Name, Type, _GCTraceCode),
+        Arg = mlds_argument(_Name, Type, _GCStatement),
         Type = mlds_foreign_type(c(_))
     ),
     IsCForeignTypePtr = (pred(Arg::in) is semidet :-
-        Arg = mlds_argument(_Name, Type, _GCTraceCode),
+        Arg = mlds_argument(_Name, Type, _GCStatement),
         Type = mlds_ptr_type(mlds_foreign_type(c(_)))
     ),
     CForeignTypeInputs = list.filter(IsCForeignType, Parameters),
@@ -1071,7 +1071,7 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_pragma_input_arg(ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GC_TraceCode),
+    Arg = mlds_argument(Name, Type, _GCStatement),
     QualName = qual(ModuleName, module_qual, Name),
     BoxedQualName = qual(ModuleName, module_qual, boxed_name(Name)),
     io.write_string("\tMR_MAYBE_BOX_FOREIGN_TYPE(", !IO),
@@ -1086,7 +1086,7 @@ mlds_output_pragma_input_arg(ModuleName, Arg, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_pragma_output_arg(ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GC_TraceCode),
+    Arg = mlds_argument(Name, Type, _GCStatement),
     QualName = qual(ModuleName, module_qual, Name),
     BoxedQualName = qual(ModuleName, module_qual, boxed_name(Name)),
     io.write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
@@ -1101,7 +1101,7 @@ mlds_output_pragma_output_arg(ModuleName, Arg, !IO) :-
     mlds_argument::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_input_defns(ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GC_TraceCode),
+    Arg = mlds_argument(Name, Type, _GCStatement),
     io.write_string("\t", !IO),
     mlds_output_data_decl_ho(mlds_output_type_prefix, mlds_output_type_suffix,
         qual(ModuleName, module_qual, boxed_name(Name)), Type, !IO),
@@ -1111,7 +1111,7 @@ mlds_output_pragma_export_input_defns(ModuleName, Arg, !IO) :-
     mlds_argument::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_output_defns(ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GC_TraceCode),
+    Arg = mlds_argument(Name, Type, _GCStatement),
     io.write_string("\t", !IO),
     mlds_output_data_decl_ho(mlds_output_type_prefix, mlds_output_type_suffix,
         qual(ModuleName, module_qual, boxed_name(Name)), pointed_to_type(Type),
@@ -1152,7 +1152,7 @@ mlds_output_pragma_export_call(ModuleName, FuncName, Parameters, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_pragma_export_arg(ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, _GC_TraceCode),
+    Arg = mlds_argument(Name, Type, _GCStatement),
     ( Type = mlds_foreign_type(c(_)) ->
         % This is a foreign_type input. Pass in the already-boxed value.
         BoxedName = boxed_name(Name),
@@ -1189,7 +1189,7 @@ det_func_signature(mlds_func_params(Args, _RetTypes)) = Params :-
     ),
     (
         ReturnArg = mlds_argument(_ReturnArgName,
-            mlds_ptr_type(ReturnArgType0), _GC_TraceCode)
+            mlds_ptr_type(ReturnArgType0), _GCStatement)
     ->
         ReturnArgType = ReturnArgType0
     ;
@@ -1316,7 +1316,7 @@ mlds_type_contains_type(mlds_array_type(Type), Type).
 mlds_type_contains_type(mlds_ptr_type(Type), Type).
 mlds_type_contains_type(mlds_func_type(Parameters), Type) :-
     Parameters = mlds_func_params(Arguments, RetTypes),
-    ( list.member(mlds_argument(_Name, Type, _GC_TraceCode), Arguments)
+    ( list.member(mlds_argument(_Name, Type, _GCStatement), Arguments)
     ; list.member(Type, RetTypes)
     ).
 
@@ -1365,7 +1365,7 @@ mlds_output_defn(Indent, Separate, ModuleName, Defn, !IO) :-
 
 mlds_output_decl_body(Indent, Name, Context, DefnBody, !IO) :-
     (
-        DefnBody = mlds_data(Type, Initializer, _GC_TraceCode),
+        DefnBody = mlds_data(Type, Initializer, _GCStatement),
         mlds_output_data_decl(Name, Type, initializer_array_size(Initializer),
             !IO)
     ;
@@ -1384,9 +1384,9 @@ mlds_output_decl_body(Indent, Name, Context, DefnBody, !IO) :-
 
 mlds_output_defn_body(Indent, Name, Context, DefnBody, !IO) :-
     (
-        DefnBody = mlds_data(Type, Initializer, Maybe_GC_TraceCode),
+        DefnBody = mlds_data(Type, Initializer, GCStatement),
         mlds_output_data_defn(Name, Type, Initializer, !IO),
-        mlds_output_maybe_gc_trace_code(Indent, Name, Maybe_GC_TraceCode, "",
+        mlds_output_gc_statement(Indent, Name, GCStatement, "",
             !IO)
     ;
         DefnBody = mlds_function(MaybePredProcId, Signature,
@@ -1398,22 +1398,28 @@ mlds_output_defn_body(Indent, Name, Context, DefnBody, !IO) :-
         mlds_output_class(Indent, Name, Context, ClassDefn, !IO)
     ).
 
-:- pred mlds_output_maybe_gc_trace_code(indent::in,
-    mlds_qualified_entity_name::in, maybe(statement)::in,
+:- pred mlds_output_gc_statement(indent::in,
+    mlds_qualified_entity_name::in, mlds_gc_statement::in,
     string::in, io::di, io::uo) is det.
 
-mlds_output_maybe_gc_trace_code(Indent, Name, Maybe_GC_TraceCode, MaybeNewLine,
+mlds_output_gc_statement(Indent, Name, GCStatement, MaybeNewLine,
         !IO) :-
     (
-        Maybe_GC_TraceCode = no
+        GCStatement = gc_no_stmt
     ;
-        Maybe_GC_TraceCode = yes(GC_TraceCode),
+        (
+            GCStatement = gc_trace_code(Statement),
+            Label = "#if 0 /* GC trace code */\n"
+        ;
+            GCStatement = gc_initialiser(Statement),
+            Label = "#if 0 /* GC initialiser */\n"
+        ),
         io.write_string(MaybeNewLine, !IO),
-        io.write_string("#if 0 /* GC trace code */\n", !IO),
+        io.write_string(Label, !IO),
         % XXX This value for FuncInfo is bogus. However, this output is only
         % for debugging anyway, so it doesn't really matter.
         FuncInfo = func_info(Name, mlds_func_signature([], [])),
-        mlds_output_statement(Indent, FuncInfo, GC_TraceCode, !IO),
+        mlds_output_statement(Indent, FuncInfo, Statement, !IO),
         io.write_string("#endif\n", !IO)
     ).
 
@@ -1529,10 +1535,10 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
     Type = ClassId,
     % We only need GC tracing code for top-level variables,
     % not for base classes.
-    GC_TraceCode = no,
+    GCStatement = gc_no_stmt,
     MLDS_Defn = mlds_defn(entity_data(var(BaseName)), Context,
         ml_gen_public_field_decl_flags,
-        mlds_data(Type, no_initializer, GC_TraceCode)),
+        mlds_data(Type, no_initializer, GCStatement)),
     BaseNum = BaseNum0 + 1.
 
     % Output the definitions of the enumeration constants
@@ -1565,7 +1571,7 @@ is_enum_const(Defn) :-
 
 mlds_output_enum_constant(Indent, EnumModuleName, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, _Flags, DefnBody),
-    ( DefnBody = mlds_data(Type, Initializer, _GC_TraceCode) ->
+    ( DefnBody = mlds_data(Type, Initializer, _GCStatement) ->
         mlds_indent(Context, Indent, !IO),
         mlds_output_fully_qualified_name(
             qual(EnumModuleName, type_qual, Name), !IO),
@@ -1802,11 +1808,11 @@ mlds_output_params(OutputPrefix, OutputSuffix, Indent, ModuleName,
 
 mlds_output_param(OutputPrefix, OutputSuffix, Indent, ModuleName, Context,
         Arg, !IO) :-
-    Arg = mlds_argument(Name, Type, Maybe_GC_TraceCode),
+    Arg = mlds_argument(Name, Type, GCStatement),
     QualName = qual(ModuleName, module_qual, Name),
     mlds_indent(Context, Indent, !IO),
     mlds_output_data_decl_ho(OutputPrefix, OutputSuffix, QualName, Type, !IO),
-    mlds_output_maybe_gc_trace_code(Indent, QualName, Maybe_GC_TraceCode,
+    mlds_output_gc_statement(Indent, QualName, GCStatement,
         "\n", !IO).
 
 :- pred mlds_output_func_type_prefix(mlds_func_params::in, io::di, io::uo)
@@ -1852,7 +1858,7 @@ mlds_output_param_types(Parameters, !IO) :-
 
 :- pred mlds_output_param_type(mlds_argument::in, io::di, io::uo) is det.
 
-mlds_output_param_type(mlds_argument(_Name, Type, _GC_TraceCode), !IO) :-
+mlds_output_param_type(mlds_argument(_Name, Type, _GCStatement), !IO) :-
     mlds_output_type(Type, !IO).
 
 %-----------------------------------------------------------------------------%

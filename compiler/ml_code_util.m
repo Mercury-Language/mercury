@@ -272,14 +272,14 @@
     % and the code to trace it for accurate GC (if needed).
     %
 :- func ml_gen_mlds_var_decl(mlds_data_name, mlds_type,
-    maybe(statement), mlds_context) = mlds_defn.
+    mlds_gc_statement, mlds_context) = mlds_defn.
 
     % Generate a declaration for an MLDS variable, given its MLDS type
     % and initializer, and given the code to trace it for accurate GC
     % (if needed).
     %
 :- func ml_gen_mlds_var_decl(mlds_data_name, mlds_type, mlds_initializer,
-    maybe(statement), mlds_context) = mlds_defn.
+    mlds_gc_statement, mlds_context) = mlds_defn.
 
     % Generate declaration flags for a local variable.
     %
@@ -456,17 +456,17 @@
 % Code to handle accurate GC
 %
 
-    % ml_gen_maybe_gc_trace_code(Var, Type, Context, Code):
+    % ml_gen_gc_statement(Var, Type, Context, Code):
     %
     % If accurate GC is enabled, and the specified variable might contain
     % pointers, generate code to call `private_builtin.gc_trace' to trace
     % the variable.
     %
-:- pred ml_gen_maybe_gc_trace_code(mlds_var_name::in, mer_type::in,
-    prog_context::in, maybe(statement)::out,
+:- pred ml_gen_gc_statement(mlds_var_name::in, mer_type::in,
+    prog_context::in, mlds_gc_statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % ml_gen_maybe_gc_trace_code(Var, DeclType, ActualType, Context, Code):
+    % ml_gen_gc_statement(Var, DeclType, ActualType, Context, Code):
     %
     % This is the same as the //4 version (above), except that it takes two
     % type arguments, rather than one. The first (DeclType) is the type that
@@ -484,23 +484,23 @@
     % doesn't (e.g. because DeclType may be a boxed float). So we need to pass
     % both.
     %
-:- pred ml_gen_maybe_gc_trace_code(mlds_var_name::in,
-    mer_type::in, mer_type::in, prog_context::in, maybe(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_gc_statement(mlds_var_name::in,
+    mer_type::in, mer_type::in, prog_context::in,
+    mlds_gc_statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-    % ml_gen_maybe_gc_trace_code_with_typeinfo(Var, DeclType, TypeInfoRval,
+    % ml_gen_gc_statement_with_typeinfo(Var, DeclType, TypeInfoRval,
     %   Context, Code):
     %
-    % This is the same as ml_gen_maybe_gc_trace_code//5, except that rather
+    % This is the same as ml_gen_gc_statement//5, except that rather
     % than passing ActualType, the caller constructs the type-info itself,
     % and just passes the rval for it to this routine.
     %
     % This is used by ml_closure_gen.m to generate GC tracing code
     % for the the local variables in closure wrapper functions.
     %
-:- pred ml_gen_maybe_gc_trace_code_with_typeinfo(mlds_var_name::in,
-    mer_type::in, mlds_rval::in, prog_context::in, maybe(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_gc_statement_with_typeinfo(mlds_var_name::in,
+    mer_type::in, mlds_rval::in, prog_context::in,
+    mlds_gc_statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1099,7 +1099,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
             \+ is_dummy_argument_type(ModuleInfo, ResultType)
         ->
             pred_args_to_func_args(FuncArgs0, FuncArgs, RetArg),
-            RetArg = mlds_argument(_RetArgName, RetTypePtr, _GC_TraceCode),
+            RetArg = mlds_argument(_RetArgName, RetTypePtr, _GCStatement),
             ( RetTypePtr = mlds_ptr_type(RetType) ->
                 RetTypes = [RetType]
             ;
@@ -1131,8 +1131,8 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         ContName = entity_data(var(mlds_var_name("cont", no))),
         % The cont variable always points to code, not to the heap,
         % so the GC never needs to trace it.
-        ContGCTraceCode = no,
-        ContArg = mlds_argument(ContName, ContType, ContGCTraceCode),
+        ContGCStatement = gc_no_stmt,
+        ContArg = mlds_argument(ContName, ContType, ContGCStatement),
         ContEnvType = mlds_generic_env_ptr_type,
         ContEnvName = entity_data(var(mlds_var_name("cont_env_ptr", no))),
         % The cont_env_ptr always points to the stack, since continuation
@@ -1140,9 +1140,9 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         % put_nondet_env_on_heap is true, which won't be the case when doing
         % our own GC -- this is enforced in handle_options.m).
         % So the GC doesn't need to trace it.
-        ContEnvGCTraceCode = no,
+        ContEnvGCStatement = gc_no_stmt,
         ContEnvArg = mlds_argument(ContEnvName, ContEnvType,
-            ContEnvGCTraceCode),
+            ContEnvGCStatement),
         globals.lookup_bool_option(Globals, gcc_nested_functions,
             NestedFunctions),
         (
@@ -1226,15 +1226,15 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg, !MaybeInfo) :-
         !.MaybeInfo = yes(Info0),
         % XXX We should fill in this Context properly.
         term.context_init(Context),
-        ml_gen_maybe_gc_trace_code(Var, Type, Context, Maybe_GC_TraceCode,
+        ml_gen_gc_statement(Var, Type, Context, GCStatement,
             Info0, Info),
         !:MaybeInfo = yes(Info)
     ;
         !.MaybeInfo = no,
-        Maybe_GC_TraceCode = no,
+        GCStatement = gc_no_stmt,
         !:MaybeInfo = no
     ),
-    FuncArg = mlds_argument(Name, MLDS_ArgType, Maybe_GC_TraceCode).
+    FuncArg = mlds_argument(Name, MLDS_ArgType, GCStatement).
 
 ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
@@ -1489,19 +1489,19 @@ ml_gen_var_lval(Info, VarName, VarType, QualifiedVarLval) :-
 
 ml_gen_var_decl(VarName, Type, Context, Defn, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_maybe_gc_trace_code(VarName, Type, Context, GC_TraceCode, !Info),
+    ml_gen_gc_statement(VarName, Type, Context, GCStatement, !Info),
     Defn = ml_gen_mlds_var_decl(var(VarName),
         mercury_type_to_mlds_type(ModuleInfo, Type),
-        GC_TraceCode, mlds_make_context(Context)).
+        GCStatement, mlds_make_context(Context)).
 
-ml_gen_mlds_var_decl(DataName, MLDS_Type, GC_TraceCode, Context) =
-    ml_gen_mlds_var_decl(DataName, MLDS_Type, no_initializer, GC_TraceCode,
+ml_gen_mlds_var_decl(DataName, MLDS_Type, GCStatement, Context) =
+    ml_gen_mlds_var_decl(DataName, MLDS_Type, no_initializer, GCStatement,
         Context).
 
-ml_gen_mlds_var_decl(DataName, MLDS_Type, Initializer, GC_TraceCode, Context) =
+ml_gen_mlds_var_decl(DataName, MLDS_Type, Initializer, GCStatement, Context) =
         MLDS_Defn :-
     Name = entity_data(DataName),
-    Defn = mlds_data(MLDS_Type, Initializer, GC_TraceCode),
+    Defn = mlds_data(MLDS_Type, Initializer, GCStatement),
     DeclFlags = ml_gen_local_var_decl_flags,
     MLDS_Defn = mlds_defn(Name, Context, DeclFlags, Defn).
 
@@ -1511,8 +1511,8 @@ ml_gen_static_const_defn(ConstName, ConstType, Access, Initializer, Context) =
     % The GC never needs to trace static constants,
     % because they can never point into the heap
     % (only to other static constants).
-    GC_TraceCode = no,
-    Defn = mlds_data(ConstType, Initializer, GC_TraceCode),
+    GCStatement = gc_no_stmt,
+    Defn = mlds_data(ConstType, Initializer, GCStatement),
     DeclFlags = mlds.set_access(ml_static_const_decl_flags, Access),
     MLDS_Context = mlds_make_context(Context),
     MLDS_Defn = mlds_defn(Name, MLDS_Context, DeclFlags, Defn).
@@ -1655,7 +1655,7 @@ ml_gen_failure(model_non, _, Statements, !Info) :-
 
 ml_gen_succeeded_var_decl(Context) =
     ml_gen_mlds_var_decl(var(mlds_var_name("succeeded", no)),
-        mlds_native_bool_type, no, Context).
+        mlds_native_bool_type, gc_no_stmt, Context).
 
 ml_success_lval(Info, SucceededLval) :-
     ml_gen_var_lval(Info, mlds_var_name("succeeded", no),
@@ -1680,7 +1680,7 @@ ml_gen_cond_var_name(CondVar) =
 
 ml_gen_cond_var_decl(CondVar, Context) =
     ml_gen_mlds_var_decl(var(ml_gen_cond_var_name(CondVar)),
-        mlds_native_bool_type, no, Context).
+        mlds_native_bool_type, gc_no_stmt, Context).
 
 ml_cond_var_lval(Info, CondVar, CondVarLval) :-
     ml_gen_var_lval(Info, ml_gen_cond_var_name(CondVar),
@@ -1790,7 +1790,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     % All we do is change the call rvals to be the input variables, and the
     % func rval to be the input variable for the continuation.
     %
-    % Note that ml_gen_cont_params does not fill in the gc_trace_code
+    % Note that ml_gen_cont_params does not fill in the gc_statement
     % for the parameters. This is OK, because the parameters will not be used
     % again after the call. (Also currently this is only used for IL, for which
     % GC is the .NET CLR implementation's problem, not ours.)
@@ -1811,9 +1811,9 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     PassedContVarName = mlds_var_name("passed_cont", no),
     % The passed_cont variable always points to code, not to heap,
     % so the GC never needs to trace it.
-    PassedContGCTraceCode = no,
+    PassedContGCStatement = gc_no_stmt,
     PassedContArg = mlds_argument(entity_data(var(PassedContVarName)),
-        InnerFuncArgType, PassedContGCTraceCode),
+        InnerFuncArgType, PassedContGCStatement),
     InnerFuncRval = lval(var(qual(MLDS_Module, module_qual,
         PassedContVarName), InnerFuncArgType)),
     InnerFuncParams = mlds_func_params([PassedContArg | InnerArgs0], Rets),
@@ -1859,7 +1859,7 @@ ml_get_env_ptr(Info, lval(EnvPtrLval)) :-
     ml_gen_var_lval(Info, mlds_var_name("env_ptr", no),
         mlds_unknown_type, EnvPtrLval).
 
-ml_declare_env_ptr_arg(mlds_argument(Name, Type, GC_TraceCode)) :-
+ml_declare_env_ptr_arg(mlds_argument(Name, Type, GCStatement)) :-
     Name = entity_data(var(mlds_var_name("env_ptr_arg", no))),
     Type = mlds_generic_env_ptr_type,
     % The env_ptr_arg always points to the stack, since continuation
@@ -1867,40 +1867,40 @@ ml_declare_env_ptr_arg(mlds_argument(Name, Type, GC_TraceCode)) :-
     % put_nondet_env_on_heap is true, which won't be the case when
     % doing our own GC -- this is enforced in handle_options.m).
     % So the GC doesn't need to trace it.
-    GC_TraceCode = no.
+    GCStatement = gc_no_stmt.
 
 %-----------------------------------------------------------------------------%
 %
 % Code to handle accurate GC
 %
 
-ml_gen_maybe_gc_trace_code(VarName, Type, Context, Maybe_GC_TraceCode,
+ml_gen_gc_statement(VarName, Type, Context, GCStatement,
         !Info) :-
-    ml_gen_maybe_gc_trace_code(VarName, Type, Type, Context,
-        Maybe_GC_TraceCode, !Info).
+    ml_gen_gc_statement(VarName, Type, Type, Context,
+        GCStatement, !Info).
 
-ml_gen_maybe_gc_trace_code(VarName, DeclType, ActualType, Context,
-        Maybe_GC_TraceCode, !Info) :-
+ml_gen_gc_statement(VarName, DeclType, ActualType, Context,
+        GCStatement, !Info) :-
     HowToGetTypeInfo = construct_from_type(ActualType),
-    ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo,
-        Context, Maybe_GC_TraceCode, !Info).
+    ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo,
+        Context, GCStatement, !Info).
 
-ml_gen_maybe_gc_trace_code_with_typeinfo(VarName, DeclType, TypeInfoRval,
-        Context, Maybe_GC_TraceCode, !Info) :-
+ml_gen_gc_statement_with_typeinfo(VarName, DeclType, TypeInfoRval,
+        Context, GCStatement, !Info) :-
     HowToGetTypeInfo = already_provided(TypeInfoRval),
-    ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo,
-        Context, Maybe_GC_TraceCode, !Info).
+    ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo,
+        Context, GCStatement, !Info).
 
 :- type how_to_get_type_info
     --->    construct_from_type(mer_type)
     ;       already_provided(mlds_rval).
 
-:- pred ml_gen_maybe_gc_trace_code_2(mlds_var_name::in, mer_type::in,
-    how_to_get_type_info::in, prog_context::in, maybe(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_gc_statement_2(mlds_var_name::in, mer_type::in,
+    how_to_get_type_info::in, prog_context::in,
+    mlds_gc_statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo, Context,
-        Maybe_GC_TraceCode, !Info) :-
+ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo, Context,
+        GCStatement, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_gc_method(Globals, GC),
@@ -1929,9 +1929,9 @@ ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo, Context,
             ml_gen_trace_var(!.Info, VarName, DeclType, TypeInfoRval,
                 Context, GC_TraceCode)
         ),
-        Maybe_GC_TraceCode = yes(GC_TraceCode)
+        GCStatement = gc_trace_code(GC_TraceCode)
     ;
-        Maybe_GC_TraceCode = no
+        GCStatement = gc_no_stmt
     ).
 
     % Return `yes' if the type needs to be traced by the accurate garbage
@@ -2080,7 +2080,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
             map.lookup(VarTypes, Var, LocalVarType),
             MLDS_Defn = ml_gen_mlds_var_decl(var(LocalVarName),
                 mercury_type_to_mlds_type(ModuleInfo, LocalVarType),
-                no, MLDS_Context)
+                gc_no_stmt, MLDS_Context)
         ),
     set.to_sorted_list(NonLocals, NonLocalVarList),
     MLDS_NonLocalVarDecls = list.map(GenLocalVarDecl, NonLocalVarList),
@@ -2301,10 +2301,10 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         Initializer = init_array(NullPointers),
         % This is used for the type_infos allocated during tracing,
         % and we don't need to trace them.
-        MaybeGCTraceCode = no,
+        GCStatement = gc_no_stmt,
         Context = !.Fixup ^ context,
         VarDecl = ml_gen_mlds_var_decl(var(VarName), VarType, Initializer,
-            MaybeGCTraceCode, Context),
+            GCStatement, Context),
         !:Fixup = !.Fixup ^ next_id := NextId,
         !:Fixup= !.Fixup ^ locals := !.Fixup ^ locals ++ [VarDecl],
 

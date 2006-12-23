@@ -317,7 +317,7 @@ generate_assign_args(_, [], [_|_], [], []) :-
     unexpected(this_file, "generate_assign_args: length mismatch").
 generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
         Statements, TempDefns) :-
-    Arg = mlds_argument(Name, Type, _ArgGCTraceCode),
+    Arg = mlds_argument(Name, Type, _ArgGCStatement),
     (
         % Extract the variable name.
         Name = entity_data(var(VarName))
@@ -356,9 +356,9 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
             Initializer = no_initializer,
             % We don't need to trace the temporary variables for GC, since they
             % are not live across a call or a heap allocation.
-            GC_TraceCode = no,
+            GCStatement = gc_no_stmt,
             TempDefn = ml_gen_mlds_var_decl(var(TempName), Type, Initializer,
-                GC_TraceCode, OptInfo ^ context),
+                GCStatement, OptInfo ^ context),
             TempInitStatement = statement(
                 atomic(assign(var(QualTempName, Type), ArgRval)),
                 OptInfo ^ context),
@@ -640,9 +640,9 @@ set_initializer([Defn0 | Defns0], VarName, Rval, [Defn | Defns]) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
         Name = entity_data(var(VarName)),
-        DefnBody0 = mlds_data(Type, _OldInitializer, GC_TraceCode)
+        DefnBody0 = mlds_data(Type, _OldInitializer, GCStatement)
     ->
-        DefnBody = mlds_data(Type, init_obj(Rval), GC_TraceCode),
+        DefnBody = mlds_data(Type, init_obj(Rval), GCStatement),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         Defns = Defns0
     ;
@@ -724,7 +724,7 @@ try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Statements) :-
     % Check if this definition is a local variable definition...
     Name = entity_data(var(VarName)),
     Flags = ml_gen_local_var_decl_flags,
-    DefnBody = mlds_data(_Type, Initializer, _MaybeGCTraceCode),
+    DefnBody = mlds_data(_Type, Initializer, _GCStatement),
 
     % ... with a known initial value.
     QualVarName = qual(OptInfo ^ module_name, module_qual, VarName),
@@ -909,9 +909,9 @@ eliminate_var_in_defns(!Defns, !VarElimInfo) :-
 eliminate_var_in_defn(Defn0, Defn, !VarElimInfo) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        DefnBody0 = mlds_data(Type, Initializer0, MaybeGCTraceCode),
+        DefnBody0 = mlds_data(Type, Initializer0, GCStatement),
         eliminate_var_in_initializer(Initializer0, Initializer, !VarElimInfo),
-        DefnBody = mlds_data(Type, Initializer, MaybeGCTraceCode)
+        DefnBody = mlds_data(Type, Initializer, GCStatement)
     ;
         DefnBody0 = mlds_class(_),
         % We assume that nested classes don't refer to local variables
