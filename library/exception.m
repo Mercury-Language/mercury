@@ -1842,8 +1842,12 @@ MR_proc_static_user_one_site(exception, builtin_catch, 3, 5,
 ** (e.g. browser/declarative_debugger.m), and deep profiling may therefore
 ** need the address of the proc_layout structure for the call's
 ** call_site_static structure.
+**
+** Additionally, the compiler generated declaration for the proc_layout
+** structure will be declared extern if the address is required in other
+** modules.  GCC 4 and above consider a static definition and a non-static
+** declaration to be an error.
 */
-
 MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
     MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
     MR_PREDICATE, exception, builtin_catch, 3, 0);
@@ -1916,7 +1920,13 @@ MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 8);
 
 MR_proc_static_user_no_site(exception, builtin_throw, 1, 0,
     ""exception.m"", MR_DUMMY_LINE, MR_TRUE);
-MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+
+/*
+** See the above comments regarding builtin_catch for the reason we
+** must use MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT instead of 
+** MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT here.
+*/
+MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
         MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR_INT(1),
         MR_PREDICATE, exception, builtin_throw, 1, 0);
 MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_throw, 1, 0, 1);
