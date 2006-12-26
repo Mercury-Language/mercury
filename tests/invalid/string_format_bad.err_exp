@@ -9,7 +9,7 @@ string_format_bad.m:026:   invalid conversion specifier.
 string_format_bad.m:027: Mismatched format and values in call to `io.format'/5:
 string_format_bad.m:027:   invalid conversion specifier.
 string_format_bad.m:028: Mismatched format and values in call to
-string_format_bad.m:028:   `stream.format'/5:
+string_format_bad.m:028:   `stream.string_writer.format'/5:
 string_format_bad.m:028:   invalid conversion specifier.
 string_format_bad.m:029: Mismatched format and values in call to `io.format'/4:
 string_format_bad.m:029:   invalid conversion specifier.
