@@ -57,7 +57,7 @@
     % are also secondary indexes on each of name, name+arity, and
     % module+name+arity, for both functions and predicates.
 
-    % Initialize the predicate table
+    % Initialize the predicate table.
     %
 :- pred predicate_table_init(predicate_table::out) is det.
 
@@ -71,8 +71,8 @@
 :- pred predicate_table_get_preds(predicate_table::in, pred_table::out) is det.
 
     % Restrict the predicate table to the list of predicates. This predicate
-    % should only be used when the set of predicates to restrict the table
-    % to is significantly smaller then the predicate_table size, as rather than
+    % should only be used when the set of predicates to restrict the table to
+    % is significantly smaller than the predicate_table size, as rather than
     % removing entries from the table it builds a new table from scratch.
     %
 :- pred predicate_table_restrict(partial_qualifier_info::in,

@@ -65,6 +65,15 @@
 :- pred simplify_process_clause_body_goal(hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
+    % simplify_may_introduce_calls(ModuleName, PredName, Arity):
+    %
+    % Succeed if the simplify module may introduce calls to a predicate
+    % or function with the given name. ModuleName should be a standard library
+    % module.
+    %
+:- pred simplify_may_introduce_calls(string::in, string::in, arity::in)
+    is semidet.
+
     % Find out which simplifications should be run from the options table
     % stored in the globals. The first argument states whether warnings
     % should be issued during this pass of simplification.
@@ -1533,32 +1542,52 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
     ),
     Goal = GoalExpr - GoalInfo.
 
-simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
-    Goal0 = call_foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs0,
-        MaybeTraceRuntimeCond, Impl),
-    BoxPolicy = get_box_policy(Attributes),
+simplify_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !Info, !IO) :-
+    GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
+        Args0, ExtraArgs0, MaybeTraceRuntimeCond, Impl),
     (
-        BoxPolicy = native_if_possible,
-        Args = Args0,
-        ExtraArgs = ExtraArgs0,
-        Goal1 = Goal0
-    ;
-        BoxPolicy = always_boxed,
-        Args = list.map(make_arg_always_boxed, Args0),
-        ExtraArgs = list.map(make_arg_always_boxed, ExtraArgs0),
-        Goal1 = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-            MaybeTraceRuntimeCond, Impl)
-    ),
-    (
-        simplify_do_opt_duplicate_calls(!.Info),
-        goal_info_get_purity(GoalInfo, purity_pure),
-        ExtraArgs = []
+        simplify_do_const_prop(!.Info),
+        simplify_info_get_module_info(!.Info, ModuleInfo),
+        module_info_pred_info(ModuleInfo, PredId, CallPredInfo),
+        CallModuleSymName = pred_info_module(CallPredInfo),
+        is_std_lib_module_name(CallModuleSymName, CallModuleName),
+        ExtraArgs0 = [],
+
+        CallPredName = pred_info_name(CallPredInfo),
+        proc_id_to_int(ProcId, CallModeNum),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, cross_compiling, CrossCompiling),
+        ArgVars = list.map(foreign_arg_var, Args0),
+        simplify_library_call(CallModuleName, CallPredName, CallModeNum,
+            CrossCompiling, ArgVars, GoalExprPrime, !GoalInfo, !Info)
     ->
-        ArgVars = list.map(foreign_arg_var, Args),
-        common_optimise_call(PredId, ProcId, ArgVars, GoalInfo, Goal1, Goal,
-            !Info)
+        GoalExpr = GoalExprPrime,
+        simplify_info_set_requantify(!Info)
     ;
-        Goal = Goal1
+        BoxPolicy = get_box_policy(Attributes),
+        (
+            BoxPolicy = native_if_possible,
+            Args = Args0,
+            ExtraArgs = ExtraArgs0,
+            GoalExpr1 = GoalExpr0
+        ;
+            BoxPolicy = always_boxed,
+            Args = list.map(make_arg_always_boxed, Args0),
+            ExtraArgs = list.map(make_arg_always_boxed, ExtraArgs0),
+            GoalExpr1 = call_foreign_proc(Attributes, PredId, ProcId,
+                Args, ExtraArgs, MaybeTraceRuntimeCond, Impl)
+        ),
+        (
+            simplify_do_opt_duplicate_calls(!.Info),
+            goal_info_get_purity(!.GoalInfo, purity_pure),
+            ExtraArgs = []
+        ->
+            ArgVars = list.map(foreign_arg_var, Args),
+            common_optimise_call(PredId, ProcId, ArgVars, !.GoalInfo,
+                GoalExpr1, GoalExpr, !Info)
+        ;
+            GoalExpr = GoalExpr1
+        )
     ).
 
 simplify_goal_2(shorthand(_), _, _, _, _, _, _, _) :-
@@ -1877,6 +1906,11 @@ call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
     %   ModuleName.ProcName(ArgList)
     % whose mode is specified by ModeNum.
     %
+    % The list of predicates and/or functions that we may wish to introduce
+    % calls to should be listed in simplify_may_introduce_calls, to prevent
+    % dead_proc_elim from deleting them from the predicate table before we
+    % get here.
+    %
 :- pred simplify_library_call(string::in, string::in, int::in, bool::in,
     list(prog_var)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
@@ -1919,7 +1953,8 @@ simplify_library_call("int", PredName, _ModeNum, CrossCompiling, Args,
     ConstRHS = rhs_functor(ConstConsId, no, []),
     % The context shouldn't matter.
     ConstUnifyContext = unify_context(umc_explicit, []),
-    ConstMode = (free -> ground_inst) - (ground_inst -> ground_inst),
+    Ground = ground_inst,
+    ConstMode = (free -> Ground) - (Ground -> Ground),
     ConstGoalExpr = unify(ConstVar, ConstRHS, ConstMode, ConstUnification,
         ConstUnifyContext),
     ConstNonLocals = set.make_singleton_set(ConstVar),
@@ -1949,6 +1984,13 @@ simplify_library_call("int", PredName, _ModeNum, CrossCompiling, Args,
     OpGoal = OpGoalExpr - OpGoalInfo,
 
     GoalExpr = conj(plain_conj, [ConstGoal, OpGoal]).
+
+% For some reason, the compiler records the original arity of
+% int.unchecked_quotient as 3, not 2. Don't check the arities
+% until this is fixed.
+simplify_may_introduce_calls("int", "unchecked_quotient", _).
+simplify_may_introduce_calls("int", "unchecked_rem", _).
+simplify_may_introduce_calls("int", "*", _).
 
 %-----------------------------------------------------------------------------%
 

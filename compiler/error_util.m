@@ -113,6 +113,7 @@
     ;       phase_purity_check
     ;       phase_detism_check
     ;       phase_simplify(mode_report_control)
+    ;       phase_dead_code
     ;       phase_termination_analysis
     ;       phase_accumulator_intro
     ;       phase_interface_gen
