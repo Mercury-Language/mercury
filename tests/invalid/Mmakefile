@@ -26,6 +26,7 @@ MULTIMODULE_PROGS= \
 	undef_mod_qual
 
 SINGLEMODULE= \
+	actual_expected \
 	after_end_module \
 	ambiguous_method \
 	ambiguous_method_2 \

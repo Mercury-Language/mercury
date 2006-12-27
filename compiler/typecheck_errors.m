@@ -834,15 +834,17 @@ report_error_var(Info, Var, Type, TypeAssignSet0) = Spec :-
     CallContextPieces = call_context_to_pieces(PredMarkers, CalledPredId,
         ArgNum, UnifyContext),
 
+    ActualExpectedList0 = list.map(type_stuff_to_actual_expected(Type),
+        TypeStuffList),
+    list.sort_and_remove_dups(ActualExpectedList0, ActualExpectedList),
+
     Pieces1 = [words("type error:")],
-    ( TypeStuffList = [SingleTypeStuff] ->
-        SingleTypeStuff = type_stuff(VType, TVarSet, TBinding, HeadTypeParams),
+    ( ActualExpectedList = [ActualExpected] ->
+        ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
         Pieces2 = argument_name_to_pieces(VarSet, Var) ++
-            [words("has type"), prefix("`")] ++
-            bound_type_to_pieces(VType, TVarSet, TBinding, HeadTypeParams) ++
+            [words("has type"), prefix("`")] ++ ActualPieces ++
             [suffix("'"), suffix(","), nl,
-            words("expected type was"), prefix("`")] ++
-            bound_type_to_pieces(Type, TVarSet, TBinding, HeadTypeParams) ++
+            words("expected type was"), prefix("`")] ++ ExpectedPieces ++
             [suffix("'"), suffix("."), nl]
     ;
         Pieces2 = [words("type of")] ++
@@ -850,7 +852,7 @@ report_error_var(Info, Var, Type, TypeAssignSet0) = Spec :-
             [words("does not match its expected type;"), nl] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("has overloaded actual/expected types {"), nl] ++
-            var_type_stuff_list_to_pieces(TypeStuffList, Type) ++
+            actual_expected_types_list_to_pieces(ActualExpectedList) ++
             [nl, fixed("}."), nl]
     ),
 
@@ -876,16 +878,17 @@ report_error_arg_var(Info, Var, ArgTypeAssignSet0) = Spec :-
     CallContextPieces = call_context_to_pieces(PredMarkers, CalledPredId,
         ArgNum, UnifyContext),
 
+    ActualExpectedList0 = list.map(arg_type_stuff_to_actual_expected,
+        ArgTypeStuffList),
+    list.sort_and_remove_dups(ActualExpectedList0, ActualExpectedList),
+
     Pieces1 = [words("type error:")],
-    ( ArgTypeStuffList = [SingleArgTypeStuff] ->
-        SingleArgTypeStuff = arg_type_stuff(Type0, VType0, TVarSet,
-            HeadTypeParams),
+    ( ActualExpectedList = [ActualExpected] ->
+        ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
         Pieces2 = argument_name_to_pieces(VarSet, Var) ++
-            [words("has type"), prefix("`")] ++
-            type_to_pieces(VType0, TVarSet, HeadTypeParams) ++
+            [words("has type"), prefix("`")] ++ ActualPieces ++
             [suffix("'"), suffix(","), nl,
-            words("expected type was"), prefix("`")] ++
-            type_to_pieces(Type0, TVarSet, HeadTypeParams) ++
+            words("expected type was"), prefix("`")] ++ ExpectedPieces ++
             [suffix("'"), suffix("."), nl]
     ;
         Pieces2 = [words("type of")] ++
@@ -893,7 +896,7 @@ report_error_arg_var(Info, Var, ArgTypeAssignSet0) = Spec :-
             [words("does not match its expected type;"), nl] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("has overloaded actual/expected types {"), nl] ++
-            arg_type_stuff_list_to_pieces(ArgTypeStuffList) ++
+            actual_expected_types_list_to_pieces(ActualExpectedList) ++
             [nl, fixed("}."), nl]
     ),
 
@@ -1490,27 +1493,46 @@ types_list_to_pieces(TypeStrs) =
 
 string_to_pieces(Str) = [words(Str)].
 
-:- func var_type_stuff_list_to_pieces(list(type_stuff), mer_type)
-    = list(format_component).
+:- type actual_expected_types
+    --->    actual_expected_types(
+                actual_type     :: list(format_component),
+                expected_type   :: list(format_component)
+            ).
 
-var_type_stuff_list_to_pieces(TypeStuffs, Type) =
-    component_list_to_line_pieces(
-        list.map(var_type_stuff_to_pieces(Type), TypeStuffs), []).
+:- func type_stuff_to_actual_expected(mer_type, type_stuff)
+    = actual_expected_types.
 
-    % Return a description of the given list of types.
-    %
-    % The caller should ensure that these pieces are indented one or two levels
-    % to separate them from surrounding material.
-    %
-:- func var_type_stuff_to_pieces(mer_type, type_stuff)
-    = list(format_component).
-
-var_type_stuff_to_pieces(Type, VarTypeStuff) = Pieces :-
+type_stuff_to_actual_expected(Type, VarTypeStuff) = ActualExpected :-
     VarTypeStuff = type_stuff(VarType, TVarSet, TypeBinding, HeadTypeParams),
-    Pieces = [words("(inferred)")] ++
-        bound_type_to_pieces(VarType, TVarSet, TypeBinding, HeadTypeParams) ++
-        [suffix(","), nl, words("(expected)")] ++
-        bound_type_to_pieces(Type, TVarSet, TypeBinding, HeadTypeParams).
+    ActualPieces =
+        bound_type_to_pieces(VarType, TVarSet, TypeBinding, HeadTypeParams),
+    ExpectedPieces =
+        bound_type_to_pieces(Type, TVarSet, TypeBinding, HeadTypeParams),
+    ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces).
+
+:- func arg_type_stuff_to_actual_expected(arg_type_stuff) =
+    actual_expected_types.
+
+arg_type_stuff_to_actual_expected(ArgTypeStuff) = ActualExpected :-
+    ArgTypeStuff = arg_type_stuff(Type, VarType, TVarSet, HeadTypeParams),
+    ActualPieces = type_to_pieces(VarType, TVarSet, HeadTypeParams),
+    ExpectedPieces = type_to_pieces(Type, TVarSet, HeadTypeParams),
+    ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces).
+
+:- func actual_expected_types_list_to_pieces(list(actual_expected_types))
+    = list(format_component).
+
+actual_expected_types_list_to_pieces(ActualExpectedList) =
+    component_list_to_line_pieces(
+        list.map(actual_expected_types_to_pieces, ActualExpectedList), []).
+
+:- func actual_expected_types_to_pieces(actual_expected_types)
+    = list(format_component).
+
+actual_expected_types_to_pieces(ActualExpected) = Pieces :-
+    ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
+    Pieces = [words("(inferred)")] ++ ActualPieces ++ [suffix(","), nl] ++
+        [words("(expected)")] ++ ExpectedPieces.
 
 :- func bound_type_to_pieces(mer_type, tvarset, tsubst, head_type_params)
     = list(format_component).
@@ -1519,22 +1541,6 @@ bound_type_to_pieces(Type0, TypeVarSet, TypeBindings, HeadTypeParams)
         = Pieces :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type),
     Pieces = type_to_pieces(Type, TypeVarSet, HeadTypeParams).
-
-:- func arg_type_stuff_list_to_pieces(list(arg_type_stuff))
-    = list(format_component).
-
-arg_type_stuff_list_to_pieces(TypeStuffs) =
-    component_list_to_line_pieces(
-        list.map(arg_type_stuff_to_pieces, TypeStuffs), []).
-
-:- func arg_type_stuff_to_pieces(arg_type_stuff) = list(format_component).
-
-arg_type_stuff_to_pieces(ArgTypeStuff) = Pieces :-
-    ArgTypeStuff = arg_type_stuff(Type, VarType, TVarSet, HeadTypeParams),
-    Pieces = [words("(inferred)")] ++
-        type_to_pieces(VarType, TVarSet, HeadTypeParams) ++
-        [suffix(","), nl, words("(expected)")] ++
-        type_to_pieces(Type, TVarSet, HeadTypeParams).
 
 %-----------------------------------------------------------------------------%
 
@@ -1678,17 +1684,17 @@ identical_types(Type1, Type2) :-
 
 %-----------------------------------------------------------------------------%
 
+:- type type_stuff
+    --->    type_stuff(
+                type_stuff_base_type        :: mer_type,
+                type_stuff_tvarset          :: tvarset,
+                type_stuff_binding          :: tsubst,
+                type_stuff_head_type_params :: head_type_params
+            ).
+
     % Given a type assignment set and a variable, return the list of possible
     % different types for the variable.
     %
-:- type type_stuff
-    --->    type_stuff(
-                mer_type,
-                tvarset,
-                tsubst,
-                head_type_params
-            ).
-
 :- pred get_type_stuff(type_assign_set::in, prog_var::in,
     list(type_stuff)::out) is det.
 
@@ -1702,9 +1708,8 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
     ( map.search(VarTypes, Var, Type0) ->
         Type = Type0
     ;
-        % This shouldn't happen - how can a variable which has
-        % not yet been assigned a type variable fail to have
-        % the correct type?
+        % This shouldn't happen - how can a variable which has not yet been
+        % assigned a type variable fail to have the correct type?
         Type = defined_type(unqualified("<any>"), [], kind_star)
     ),
     TypeStuff = type_stuff(Type, TVarSet, TypeBindings, HeadTypeParams),
@@ -1726,17 +1731,17 @@ typestuff_to_typestr(TypeStuff) = TypeStr :-
     varset.coerce(TypeVarSet, VarSet),
     TypeStr = mercury_term_to_string(VarSet, no, Term).
 
+:- type arg_type_stuff
+    --->    arg_type_stuff(
+                arg_type_stuff_arg_type         :: mer_type,
+                arg_type_stuff_var_type         :: mer_type,
+                arg_type_stuff_tvarset          :: tvarset,
+                arg_type_stuff_head_type_params :: head_type_params
+            ).
+
     % Given an arg type assignment set and a variable id, return the list of
     % possible different types for the argument and the variable.
     %
-:- type arg_type_stuff
-    --->    arg_type_stuff(
-                mer_type,
-                mer_type,
-                tvarset,
-                head_type_params
-            ).
-
 :- pred get_arg_type_stuff(args_type_assign_set::in, prog_var::in,
     list(arg_type_stuff)::out) is det.
 
@@ -1759,8 +1764,7 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
     list.index0_det(ArgTypes, 0, ArgType),
     apply_rec_subst_to_type(TypeBindings, ArgType, ArgType2),
     apply_rec_subst_to_type(TypeBindings, VarType, VarType2),
-    ArgTypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet,
-        HeadTypeParams),
+    ArgTypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet, HeadTypeParams),
     ( list.member(ArgTypeStuff, TailArgTypeStuffs) ->
         ArgTypeStuffs = TailArgTypeStuffs
     ;
