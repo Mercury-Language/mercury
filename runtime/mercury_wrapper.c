@@ -636,23 +636,27 @@ mercury_runtime_init(int argc, char **argv)
 #endif
 
     /*
-    ** We need to call MR_save_registers(), since we're about to
-    ** call a C->Mercury interface function, and the C->Mercury
-    ** interface convention expects them to be saved.  And before we
-    ** can do that, we need to call MR_restore_transient_registers(),
-    ** since we've just returned from a C call.
+    ** We need to call MR_save_registers(), since we're about to call
+    ** a C->Mercury interface function, and the C->Mercury interface convention
+    ** expects them to be saved. And before we can do that, we need to call
+    ** MR_restore_transient_registers(), since we've just returned
+    ** from a C call.
     */
     MR_restore_transient_registers();
     MR_save_registers();
 
     MR_trace_init();
 
-    /* initialize the Mercury library */
+    /* Initialize the Mercury library. */
     (*MR_library_initializer)();
 
-    /* run any user-defined initialisation predicates */
+    /* Run any user-defined initialisation predicates. */
     (*MR_address_of_init_modules_required)();
 
+    /*
+    ** Copy the stuff we have set up in registers, stacks etc to the
+    ** current context of the engine.
+    */
 #ifndef MR_HIGHLEVEL_CODE
   #ifndef __LCC__
     MR_save_context(&(MR_ENGINE(MR_eng_context)));
@@ -684,8 +688,8 @@ mercury_runtime_init(int argc, char **argv)
         MR_register_module_layout = MR_insert_module_info_into_module_table;
         MR_selected_trace_func_ptr = MR_trace_count;
         /*
-        ** In case the program terminates with an exception,
-        ** we still want the trace count to be written out.
+        ** Even if the program terminates with an exception,
+        ** we still want the trace count file to be written out.
         */
         MR_register_exception_cleanup(MR_trace_record_label_exec_counts, NULL);
     }

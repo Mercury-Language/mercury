@@ -139,7 +139,12 @@
 :- pred write_purity_prefix(purity::in, io::di, io::uo) is det.
 :- func purity_prefix_to_string(purity) = string.
 
-    % Convert an eval_method to a string giving the name of the pragma.
+    % Convert an eval_method of a pragma to a string giving the name
+    % of the pragma.
+    %
+:- func eval_method_to_pragma_name(eval_method) = string.
+
+    % Convert an eval_method to a string description.
     %
 :- func eval_method_to_string(eval_method) = string.
 
@@ -393,20 +398,41 @@ purity_name(purity_pure, "pure").
 purity_name(purity_semipure, "semipure").
 purity_name(purity_impure, "impure").
 
-eval_method_to_string(eval_normal) = "normal".
-eval_method_to_string(eval_loop_check) = "loop_check".
-eval_method_to_string(eval_memo) =  "memo".
-eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
+eval_method_to_pragma_name(eval_normal) = _ :-
+    unexpected(this_file, "eval_method_to_pragma_name: normal").
+eval_method_to_pragma_name(eval_loop_check) = "loop_check".
+eval_method_to_pragma_name(eval_memo) =  "memo".
+eval_method_to_pragma_name(eval_minimal(MinimalMethod)) = Str :-
     (
-        MinimalMethod = own_stacks,
+        MinimalMethod = own_stacks_consumer,
         % The fact that this is not the name of the corresponding pragma
         % won't matter until this becomes the default way of doing minimal
         % model tabling, at which time we will return "minimal_model" here
         % and "minimal_model_stack_copy" in the other arm of the switch.
         Str = "minimal_model_own_stacks"
     ;
+        MinimalMethod = own_stacks_generator,
+        Str = "minimal_model_own_stacks_generator"
+    ;
         MinimalMethod = stack_copy,
         Str = "minimal_model"
+    ).
+eval_method_to_pragma_name(eval_table_io(_IsDecl, _IsUnitize)) = _ :-
+    unexpected(this_file, "eval_method_to_pragma_name: io").
+
+eval_method_to_string(eval_normal) = "normal".
+eval_method_to_string(eval_loop_check) = "loop_check".
+eval_method_to_string(eval_memo) =  "memo".
+eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
+    (
+        MinimalMethod = own_stacks_consumer,
+        Str = "minimal_model_own_stacks_consumer"
+    ;
+        MinimalMethod = own_stacks_generator,
+        Str = "minimal_model_own_stacks_generator"
+    ;
+        MinimalMethod = stack_copy,
+        Str = "minimal_model_stack_copy"
     ).
 eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
     (

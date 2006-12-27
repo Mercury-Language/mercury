@@ -198,8 +198,16 @@
 %
 
 :- type eval_minimal_method
-    --->    stack_copy      % Saving and restoring stack segments as necessary.
-    ;       own_stacks.     % Each generator has its own stacks.
+    --->    stack_copy
+            % Each minimal model procedure saves and restores stack segments
+            % as necessary. See the paper "Tabling in Mercury" by Zoltan
+            % Somogyi and Konstantinos Sagonas.
+
+    ;       own_stacks_consumer
+    ;       own_stacks_generator.
+            % Each minimal model procedure is split into two: the consumer
+            % and the generator. Each generator runs in its own context,
+            % and thus has its own stacks.
 
     % The evaluation method that should be used for a procedure.
     %
@@ -261,6 +269,8 @@
 
     ;       table_io_alone.     % The procedure is tabled for I/O by itself;
                                 % it can have no Mercury descendants.
+
+:- func eval_method_to_table_type(eval_method) = string.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1607,6 +1617,30 @@
 :- import_module libs.compiler_util.
 
 :- import_module string.
+
+eval_method_to_table_type(EvalMethod) = TableTypeStr :-
+    (
+        EvalMethod = eval_normal,
+        unexpected(this_file, "eval_method_to_table_type: eval_normal")
+    ;
+        EvalMethod = eval_table_io(_, _),
+        unexpected(this_file, "eval_method_to_table_type: eval_table_io")
+    ;
+        EvalMethod = eval_loop_check,
+        TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
+    ;
+        EvalMethod = eval_memo,
+        TableTypeStr = "MR_TABLE_TYPE_MEMO"
+    ;
+        EvalMethod = eval_minimal(stack_copy),
+        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY"
+    ;
+        EvalMethod = eval_minimal(own_stacks_consumer),
+        unexpected(this_file, "eval_method_to_table_type: own_stacks_consumer")
+    ;
+        EvalMethod = eval_minimal(own_stacks_generator),
+        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"
+    ).
 
 default_memo_table_attributes =
     table_attributes(all_strict, no, table_dont_gather_statistics,

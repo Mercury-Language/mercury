@@ -67,8 +67,10 @@ struct MR_Generator_Struct {
 };
 
 struct MR_Consumer_Struct {
+    MR_ConstString          MR_cons_pred_id;
     MR_Generator            *MR_cons_answer_generator;
     MR_Generator            *MR_cons_containing_generator;
+    MR_Context              *MR_cons_context;
     MR_Integer              MR_cons_num_returned_answers;
     MR_AnswerList           *MR_cons_remaining_answer_list_ptr;
 };
@@ -78,12 +80,12 @@ struct MR_Consumer_Struct {
 extern  MR_Word         MR_mmos_arg_regs[MR_MAX_FAKE_REG];
 extern  MR_GeneratorPtr MR_mmos_new_generator;
 
-#define MR_mmos_save_input_arg(pos, arg)                                \
+#define MR_table_mmos_save_input_arg(pos, arg)                          \
                         do {                                            \
                             MR_mmos_arg_regs[(pos)] = (arg);            \
                         } while (0)
 
-#define MR_mmos_pickup_input_arg(pos, arg)                              \
+#define MR_table_mmos_pickup_input_arg(pos, arg)                        \
                         do {                                            \
                             (arg) = MR_mmos_arg_regs[(pos)];            \
                         } while (0)
@@ -118,6 +120,8 @@ extern  void            MR_print_cons_debug(FILE *fp,
 extern  void            MR_print_consumer(FILE *fp,
                             const MR_ProcLayout *proc, MR_Consumer *consumer);
 
+extern  void            MR_mm_own_stacks_report_stats(FILE *fp);
+
 extern  MR_ConsumerPtr  MR_table_mmos_setup_consumer(MR_GeneratorPtr generator,
                             MR_ConstString pred_id);
 extern  MR_GeneratorPtr MR_table_mmos_setup_generator(MR_TrieNode trie_node,
@@ -126,8 +130,6 @@ extern  MR_GeneratorPtr MR_table_mmos_setup_generator(MR_TrieNode trie_node,
                             MR_ConstString pred_id);
 extern  MR_AnswerBlock  MR_table_mmos_consumer_get_next_answer(
                             MR_ConsumerPtr consumer);
-extern  MR_AnswerBlock  MR_table_mmos_create_answer_block(MR_GeneratorPtr
-                            generator);
 
 #endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 

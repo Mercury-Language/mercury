@@ -603,7 +603,7 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
     ;
         Pragma = pragma_tabled(Type, Pred, Arity, _PredOrFunc, _Mode,
             MaybeAttributes),
-        PragmaName = eval_method_to_string(Type),
+        PragmaName = eval_method_to_pragma_name(Type),
         (
             MaybeAttributes = yes(Attributes),
             Attributes = table_attributes(Strictness, MaybeSizeLimit, Stats,

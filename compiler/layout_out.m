@@ -1170,8 +1170,11 @@ eval_method_to_c_string(eval_minimal(MinimalMethod)) = Str :-
         MinimalMethod = stack_copy,
         Str = "MR_EVAL_METHOD_MINIMAL_STACK_COPY"
     ;
-        MinimalMethod = own_stacks,
-        Str = "MR_EVAL_METHOD_MINIMAL_OWN_STACKS"
+        MinimalMethod = own_stacks_consumer,
+        Str = "MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER"
+    ;
+        MinimalMethod = own_stacks_generator,
+        Str = "MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR"
     ).
 eval_method_to_c_string(eval_table_io(Decl, Unitize)) = Str :-
     (

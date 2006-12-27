@@ -1614,8 +1614,14 @@ MR_maybe_record_call_table(const MR_ProcLayout *level_layout,
 
         return;
 
-    case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
-        MR_fatal_error("retry with MR_EVAL_METHOD_MINIMAL_OWN_STACKS: "
+    case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER:
+        MR_fatal_error(
+            "retry with MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER: "
+            "not yet implemented");
+
+    case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR:
+        MR_fatal_error(
+            "retry with MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR: "
             "not yet implemented");
 
     case MR_EVAL_METHOD_MINIMAL_STACK_COPY:

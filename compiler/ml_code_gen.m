@@ -1064,25 +1064,7 @@ ml_gen_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, EvalMethod,
     expect(isnt(unify(gc_accurate), GC_Method), this_file,
         "tabling and `--gc accurate'"),
 
-    (
-        EvalMethod = eval_normal,
-        unexpected(this_file, "ml_gen_add_table_var: eval_normal")
-    ;   
-        EvalMethod = eval_table_io(_, _),
-        unexpected(this_file, "ml_gen_add_table_var: eval_table_io")
-    ;   
-        EvalMethod = eval_loop_check,
-        TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
-    ;   
-        EvalMethod = eval_memo,
-        TableTypeStr = "MR_TABLE_TYPE_MEMO"
-    ;   
-        EvalMethod = eval_minimal(stack_copy),
-        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY"
-    ;   
-        EvalMethod = eval_minimal(own_stacks),
-        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"
-    ),
+    TableTypeStr = eval_method_to_table_type(EvalMethod),
     proc_info_get_maybe_proc_table_info(ProcInfo, MaybeTableInfo),
     (
         MaybeTableInfo = yes(TableInfo),

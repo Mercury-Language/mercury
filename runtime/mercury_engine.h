@@ -309,7 +309,7 @@ typedef struct MR_mercury_thread_list_struct {
 **              generators to be created without redoing the work required
 **              to allocate a new context.
 **
-** owner_thred
+** owner_thread
 ** c_depth
 ** saved_owners
 **              These three fields are used to ensure that when a thread

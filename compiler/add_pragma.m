@@ -1758,7 +1758,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
             OwnStacks),
         (
             OwnStacks = yes,
-            EvalMethod = eval_minimal(own_stacks)
+            EvalMethod = eval_minimal(own_stacks_consumer)
         ;
             OwnStacks = no,
             EvalMethod = eval_minimal(stack_copy)

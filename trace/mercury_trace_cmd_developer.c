@@ -774,8 +774,14 @@ MR_trace_cmd_table(char **words, int word_count,
         case MR_EVAL_METHOD_LOOP_CHECK:
         case MR_EVAL_METHOD_MEMO:
         case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
-        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR:
             break;
+
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER:
+            MR_print_proc_id(MR_mdb_out, proc);
+            fprintf(MR_mdb_out,
+                " is the consumer; the generator has the table.\n");
+            return KEEP_INTERACTING;
 
         case MR_EVAL_METHOD_TABLE_IO:
         case MR_EVAL_METHOD_TABLE_IO_DECL:
@@ -918,7 +924,7 @@ MR_trace_cmd_table(char **words, int word_count,
             break;
 
         case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
-        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER:
             fprintf(MR_mdb_out, "minimal model table for ");
             MR_print_proc_id(MR_mdb_out, proc);
             fprintf(MR_mdb_out, ":\n");
@@ -929,6 +935,7 @@ MR_trace_cmd_table(char **words, int word_count,
         case MR_EVAL_METHOD_TABLE_IO_DECL:
         case MR_EVAL_METHOD_TABLE_IO_UNITIZE:
         case MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL:
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR:
             MR_fatal_error("MR_trace_cmd_table: bad eval method");
     }
 
@@ -1712,7 +1719,7 @@ MR_trace_cmd_table_print_tip(const MR_ProcLayout *proc,
             }
             break;
 
-        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER:
             {
                 MR_GeneratorPtr generator;
 
@@ -1751,6 +1758,7 @@ MR_trace_cmd_table_print_tip(const MR_ProcLayout *proc,
         case MR_EVAL_METHOD_TABLE_IO_DECL:
         case MR_EVAL_METHOD_TABLE_IO_UNITIZE:
         case MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL:
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR:
             MR_fatal_error("MR_trace_cmd_table_print_tip: bad eval method");
             break;
     }

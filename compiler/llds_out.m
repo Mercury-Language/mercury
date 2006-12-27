@@ -952,25 +952,8 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
     io.write_string("\nstatic MR_ProcTableInfo ", !IO),
     output_data_addr(InfoDataAddr, !IO),
     io.write_string(" = {\n", !IO),
-    (
-        EvalMethod = eval_normal,
-        unexpected(this_file, "output_tabling_info_struct: eval_normal")
-    ;
-        EvalMethod = eval_loop_check,
-        io.write_string("MR_TABLE_TYPE_LOOPCHECK,\n", !IO)
-    ;
-        EvalMethod = eval_memo,
-        io.write_string("MR_TABLE_TYPE_MEMO,\n", !IO)
-    ;
-        EvalMethod = eval_minimal(stack_copy),
-        io.write_string("MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY,\n", !IO)
-    ;
-        EvalMethod = eval_minimal(own_stacks),
-        io.write_string("MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS,\n", !IO)
-    ;
-        EvalMethod = eval_table_io(_, _),
-        unexpected(this_file, "output_tabling_info_struct: eval_table_io")
-    ),
+    io.write_string(eval_method_to_table_type(EvalMethod), !IO),
+    io.write_string(",\n", !IO),
     io.write_int(NumInputs, !IO),
     io.write_string(",\n", !IO),
     io.write_int(NumOutputs, !IO),
@@ -2260,7 +2243,7 @@ output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
                 c_util.output_quoted_string(Msg, !IO),
                 io.write_string(""", ", !IO),
                 io.write_int(Num, !IO),
-                io.write_string(", ", !IO),
+                io.write_string(",\n\t\t", !IO),
                 io.write_string(StructName, !IO),
                 io.write_string(", ", !IO),
                 output_code_addr(FailCont, !IO),
@@ -2271,7 +2254,7 @@ output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
                 c_util.output_quoted_string(Msg, !IO),
                 io.write_string(""", ", !IO),
                 io.write_int(Num, !IO),
-                io.write_string(", ", !IO),
+                io.write_string(",\n\t\t", !IO),
                 io.write_string(StructName, !IO),
                 io.write_string(");\n", !IO)
             )
@@ -2283,7 +2266,7 @@ output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
                 c_util.output_quoted_string(Msg, !IO),
                 io.write_string(""", ", !IO),
                 io.write_int(Num, !IO),
-                io.write_string(", ", !IO),
+                io.write_string(",\n\t\t", !IO),
                 output_code_addr(FailCont, !IO),
                 io.write_string(");\n", !IO)
             ;
@@ -2648,7 +2631,7 @@ output_pragma_input_rval_decls([], !DeclSet, !IO).
 output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
     Input = pragma_c_input(_VarName, _VarType, _IsDummy, _OrigType, Rval,
         _, _),
-    output_rval_decls_format(Rval, "\t", "\t", 0, _N, !DeclSet, !IO),
+    output_rval_decls_format(Rval, "", "\t", 0, _N, !DeclSet, !IO),
     output_pragma_input_rval_decls(Inputs, !DeclSet, !IO).
 
     % Output the input variable assignments at the top of the

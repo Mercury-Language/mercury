@@ -773,8 +773,40 @@
 
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
 
-#define MR_MMOS_ERROR  \
-        "own stack minimal model code entered when not enabled"
+#define MR_tbl_mmos_create_answer_block(debug, Generator, Size, AnswerBlock)\
+    do {                                                                    \
+        MR_AnswerListNode   *answer_node;                                   \
+        MR_Word             **Slot;                                         \
+                                                                            \
+        Generator->MR_gen_num_answers++;                                    \
+                                                                            \
+        /*                                                                  \
+        ** We fill in the answer_data slot with a dummy value.              \
+        ** This slot will be filled in by the next piece of code            \
+        ** to be executed after we return, which is why we return           \
+        ** its address.                                                     \
+        */                                                                  \
+                                                                            \
+        answer_node = MR_TABLE_NEW(MR_AnswerListNode);                      \
+        answer_node->MR_aln_answer_block = NULL;                            \
+        answer_node->MR_aln_next_answer = NULL;                             \
+                                                                            \
+        if (debug && MR_tabledebug) {                                       \
+            printf("%s: new answer slot %d at %p(%p)\n",                    \
+                MR_gen_addr_name(Generator),                                \
+                Generator->MR_gen_num_answers, answer_node,                 \
+                &answer_node->MR_aln_answer_block);                         \
+            printf("\tstoring into %p\n",                                   \
+                Generator->MR_gen_answer_list_tail);                        \
+        }                                                                   \
+                                                                            \
+        *(Generator->MR_gen_answer_list_tail) = answer_node;                \
+        Generator->MR_gen_answer_list_tail =                                \
+            &(answer_node->MR_aln_next_answer);                             \
+        Slot = &(answer_node->MR_aln_answer_block);                         \
+        MR_TABLE_CREATE_NODE_ANSWER_BLOCK(debug, Slot, Size);               \
+        AnswerBlock = *Slot;                                                \
+    } while(0)
 
 #else   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
@@ -793,10 +825,12 @@
     do {                                                                    \
         MR_fatal_error(MR_MMOS_ERROR);                                      \
     } while(0)
-#define MR_tbl_mmos_create_answer_block(generator, blocksize, answerblock)  \
+
+#define MR_tbl_mmos_create_answer_block(debug, Generator, Size, AnswerBlock)\
     do {                                                                    \
         MR_fatal_error(MR_MMOS_ERROR);                                      \
     } while(0)
+
 #define MR_tbl_mmos_return_answer(generator, answerblock)                   \
     do {                                                                    \
         MR_fatal_error(MR_MMOS_ERROR);                                      \

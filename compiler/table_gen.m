@@ -470,34 +470,37 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         MaybeProcTableInfo = yes(ProcTableInfo)
     ;
         EvalMethod = eval_minimal(MinimalMethod),
+        expect(unify(CodeModel, model_non), this_file,
+            "table_gen_transform_proc: minimal model but not model_non"),
         (
-            CodeModel = model_det,
-            unexpected(this_file, "table_gen_transform_proc: minimal det")
-        ;
-            CodeModel = model_semi,
-            unexpected(this_file, "table_gen_transform_proc: minimal semi")
-        ;
-            CodeModel = model_non,
             MinimalMethod = stack_copy,
             create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
                 HeadVars, NumberedInputVars, NumberedOutputVars,
                 VarSet0, VarSet, VarTypes0, VarTypes, TableInfo0, TableInfo,
                 CallTableTip, Goal, InputSteps, OutputSteps),
-            MaybeCallTableTip = yes(CallTableTip)
+            MaybeCallTableTip = yes(CallTableTip),
+            MaybeOutputSteps = yes(OutputSteps),
+            generate_gen_proc_table_info(TableInfo, InputSteps,
+                MaybeOutputSteps, InputVarModeMethods, OutputVarModeMethods,
+                ProcTableInfo),
+            MaybeProcTableInfo = yes(ProcTableInfo)
         ;
-            CodeModel = model_non,
-            MinimalMethod = own_stacks,
+            MinimalMethod = own_stacks_consumer,
             do_own_stack_transform(Detism, OrigGoal, Statistics,
                 PredId, ProcId, !.PredInfo, !.ProcInfo,
                 HeadVars, NumberedInputVars, NumberedOutputVars,
                 VarSet0, VarSet, VarTypes0, VarTypes, TableInfo0, TableInfo,
-                !GenMap, Goal, InputSteps, OutputSteps),
-            MaybeCallTableTip = no
-        ),
-        MaybeOutputSteps = yes(OutputSteps),
-        generate_gen_proc_table_info(TableInfo, InputSteps, MaybeOutputSteps,
-            InputVarModeMethods, OutputVarModeMethods, ProcTableInfo),
-        MaybeProcTableInfo = yes(ProcTableInfo)
+                !GenMap, Goal, _InputSteps, _OutputSteps),
+            MaybeCallTableTip = no,
+            MaybeProcTableInfo = no
+        ;
+            MinimalMethod = own_stacks_generator,
+            % The own_stacks_generator minimal_method is only ever introduced
+            % by the transformation in this module; a procedure that hasn't
+            % been transformed yet should not have this eval_method.
+            unexpected(this_file,
+                "table_gen_transform_proc: own stacks generator")
+        )
     ),
 
     table_info_extract(TableInfo, !:ModuleInfo, !:PredInfo, !:ProcInfo),
@@ -1094,7 +1097,7 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
 %-----------------------------------------------------------------------------%
 
 % Example of transformation for tabling I/O, for I/O primitives (i.e.
-% predicates defined by pragma c_code that take an input/output pair of
+% predicates defined by foreign_procs that take an input/output pair of
 % io_state arguments) that have the tabled_for_io feature:
 %
 % :- pred p(int, string, io, io).
@@ -1507,13 +1510,12 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
 %           % Check for duplicate answers.
 %       semipure table_mmos_get_answer_table(Generator, AT0),
 %       impure table_lookup_insert_int(AT0, B, AT1),
-%           Fail if the answer is already in the table;
-%           otherwise, put it into the table.
+%           % Fail if the answer is already in the table;
+%           % otherwise, put it into the table.
 %       impure table_mmos_answer_is_not_duplicate(AT1),
 %
 %           % Save the new answer in the table.
-%       impure table_mmos_create_answer_block(Generator, 1,
-%           AnswerBlock),
+%       impure table_mmos_create_answer_block(Generator, 1, AnswerBlock),
 %       impure table_save_int_ans(AnswerBlock, 0, B),
 %       impure table_mmos_return_answer(Generator, AnswerBlock)
 %   ;
@@ -1577,7 +1579,8 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     make_const_construction(GeneratorPredVar, GeneratorConsId,
         MakeGeneratorVarGoal),
 
-    generate_call_table_lookup_goals(NumberedInputVars, PredId, ProcId,
+    generate_call_table_lookup_goals(NumberedInputVars,
+        GeneratorPredId, ProcId,
         Statistics, Context, !VarSet, !VarTypes, !TableInfo, InputSteps,
         _TableTipVar, _TableTipArg, InfoArg, LookupForeignArgs,
         LookupPrefixGoals, LookupCodeStr, _CallTableTipAssignStr),
@@ -1608,7 +1611,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         cur_table_node_name ++ "->MR_generator;\n" ++
         "\tif (" ++ generator_name ++ " == NULL) {\n" ++
             SaveInputVarCode ++
-            "\t\t" ++ generator_name ++ " = MR_tbl_mmos_setup_generator(" ++
+            "\t\t" ++ generator_name ++ " = MR_table_mmos_setup_generator(" ++
                 cur_table_node_name ++ ",\n\t\t\t"
                 ++ int_to_string(NumInputVars) ++ ", "
                 ++ GeneratorPredVarName ++ ", " ++
@@ -1616,7 +1619,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
             "\t\tMR_mmos_new_generator = " ++ generator_name ++ ";\n" ++
         "\t}\n" ++
         "\t" ++ consumer_name ++ " = " ++
-            "MR_tbl_mmos_setup_consumer(" ++ generator_name ++
+            "MR_table_mmos_setup_consumer(" ++ generator_name ++
             ", """ ++ PredName ++ """);\n",
     table_generate_foreign_proc(SetupPredName, detism_det,
         make_generator_c_attributes,
@@ -1655,7 +1658,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     RestoreAllPredName = "table_mmos_restore_answers",
     table_generate_foreign_proc(RestoreAllPredName, detism_det,
         tabling_c_attributes, [AnswerBlockArg], RestoreArgs, RestoreCodeStr,
-        purity_impure, RestoreInstMapDeltaSrc, ModuleInfo, Context,
+        purity_semipure, RestoreInstMapDeltaSrc, ModuleInfo, Context,
         RestoreGoal),
 
     GoalExpr = conj(plain_conj,
@@ -1672,7 +1675,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         PickupInputVarCode, PickupForeignArgs,
         NumberedInputVars, NumberedOutputVars,
         OrigNonLocals, OrigInstMapDelta, !.VarTypes, !.VarSet,
-        GeneratorTableInfo0, GeneratorTableInfo, OutputSteps),
+        GeneratorTableInfo0, GeneratorTableInfo, InputSteps, OutputSteps),
     !:TableInfo = !.TableInfo ^ table_module_info :=
         GeneratorTableInfo ^ table_module_info.
 
@@ -1695,26 +1698,27 @@ generate_save_input_vars_code([InputArg - Mode | InputArgModes], ModuleInfo,
     PickupMode = (free -> InitInst),
     PickupArg = foreign_arg(InputVar, yes(InputVarName - PickupMode), Type,
         native_if_possible),
-    SaveVarCode = "\t\tMR_mmos_save_input_arg(" ++
+    SaveVarCode = "\t\tMR_table_mmos_save_input_arg(" ++
         int_to_string(Pos) ++ ", " ++ InputVarName ++ ");\n",
-    PickupVarCode = "\t\tMR_mmos_pickup_input_arg(" ++
+    PickupVarCode = "\t\tMR_table_mmos_pickup_input_arg(" ++
         int_to_string(Pos) ++ ", " ++ InputVarName ++ ");\n",
     generate_save_input_vars_code(InputArgModes, ModuleInfo, Pos + 1,
         PickupArgs, SaveVarCodes, PickupVarCodes).
 
 :- pred do_own_stack_create_generator(pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, table_attr_statistics::in, term.context::in,
+    pred_info::in, proc_info::in,
+    table_attr_statistics::in, term.context::in,
     prog_var::in, string::in, list(foreign_arg)::in,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     set(prog_var)::in, instmap_delta::in,
     vartypes::in, prog_varset::in, table_info::in, table_info::out,
-    list(table_trie_step)::out) is det.
+    list(table_trie_step)::in, list(table_trie_step)::out) is det.
 
 do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
         Statistics, Context, GeneratorVar, PickupVarCode,
         PickupForeignArgs, NumberedInputVars, NumberedOutputVars,
         OrigNonLocals, OrigInstMapDelta, !.VarTypes, !.VarSet, !TableInfo,
-        OutputSteps) :-
+        InputSteps, OutputSteps) :-
     ModuleInfo0 = !.TableInfo ^ table_module_info,
 
     proc_info_set_headvars(list.map(project_var, NumberedOutputVars),
@@ -1731,7 +1735,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
         yes(generator_name - out_mode), generator_type, native_if_possible),
     table_generate_foreign_proc("table_mmos_pickup_inputs", detism_det,
         tabling_c_attributes, [PickupGeneratorArg], PickupForeignArgs,
-        PickupGeneratorCode ++ PickupVarCode, purity_semipure,
+        PickupGeneratorCode ++ PickupVarCode, purity_impure,
         PickupInstMapDeltaSrc, ModuleInfo0, Context, PickupGoal),
 
     list.length(NumberedOutputVars, BlockSize),
@@ -1752,6 +1756,15 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
 
     proc_info_set_vartypes(!.VarTypes, !ProcInfo),
     proc_info_set_varset(!.VarSet, !ProcInfo),
+
+    InputVarModeMethods = list.map(project_out_pos, NumberedInputVars),
+    OutputVarModeMethods = list.map(project_out_pos, NumberedOutputVars),
+    generate_gen_proc_table_info(!.TableInfo, InputSteps, yes(OutputSteps),
+        InputVarModeMethods, OutputVarModeMethods, ProcTableInfo),
+    proc_info_set_maybe_proc_table_info(yes(ProcTableInfo), !ProcInfo),
+
+    proc_info_set_eval_method(eval_minimal(own_stacks_generator), !ProcInfo),
+
     pred_info_get_procedures(!.PredInfo, ProcTable0),
     map.det_insert(ProcTable0, ProcId, !.ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
@@ -2557,8 +2570,8 @@ generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, PredId, ProcId,
         !VarSet, !VarTypes, !TableInfo, _SaveArgs,
         SavePrefixGoals, SaveCodeStr),
 
-    GetMacroName = "MR_tbl_mmos_get_answer_table",
-    CreateMacroName = "MR_tbl_mm_create_answer_block",
+    GetMacroName = "MR_table_mmos_get_answer_table",
+    CreateMacroName = "MR_tbl_mmos_create_answer_block",
     DuplCheckPredName = "table_mmos_answer_is_not_duplicate_shortcut",
     DuplCheckMacroName = "MR_tbl_mmos_answer_is_not_duplicate",
 
@@ -2570,11 +2583,10 @@ generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, PredId, ProcId,
         "\tMR_AnswerBlock " ++ answer_block_name ++ ";\n" ++
         "\tMR_bool " ++ SuccName ++ ";\n\n",
     GetCodeStr = "\t" ++ cur_table_node_name ++ " = " ++
-        GetMacroName ++ "(" ++ DebugArgStr ++ ", " ++
-        GeneratorName ++ ");\n",
+        GetMacroName ++ "(" ++ GeneratorName ++ ");\n",
     DuplCheckCodeStr =
-        "\t" ++ DuplCheckMacroName ++ "(" ++ cur_table_node_name ++ ", " ++
-            SuccName ++ ");\n",
+        "\t" ++ DuplCheckMacroName ++ "(" ++ DebugArgStr ++ ", " ++
+            cur_table_node_name ++ ", " ++ SuccName ++ ");\n",
     AssignSuccessCodeStr =
         "\t" ++ success_indicator_name ++ " = " ++ SuccName ++ ";\n",
     CreateCodeStr = "\t" ++ CreateMacroName ++ "(" ++ DebugArgStr ++ ", " ++
@@ -3196,6 +3208,11 @@ project_mode(var_mode_pos_method(_, Mode, _, _)) = Mode.
 
 project_out_arg_method(var_mode_pos_method(Var, Mode, Pos, _)) =
     var_mode_pos_method(Var, Mode, Pos, unit).
+
+:- func project_out_pos(var_mode_pos_method) = var_mode_method.
+
+project_out_pos(var_mode_pos_method(Var, Mode, _Pos, ArgMethod)) =
+    var_mode_method(Var, Mode, ArgMethod).
 
 :- pred allocate_slot_numbers(list(var_mode_method)::in,
     int::in, list(var_mode_pos_method)::out) is det.

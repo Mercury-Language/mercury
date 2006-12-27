@@ -1172,7 +1172,7 @@ MR_find_zone_for_det_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
 
     const MR_Dlist      *item;
-    const MR_Context    *ctxt;
+    MR_Context          *ctxt;
 
     if (MR_find_zone_for_det_ptr_in_context(ptr,
         MR_ENGINE(MR_eng_main_context), zone_ptr, zone_num_ptr))
@@ -1221,7 +1221,7 @@ MR_find_zone_for_nondet_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
 
     const MR_Dlist      *item;
-    const MR_Context    *ctxt;
+    MR_Context          *ctxt;
 
     if (MR_find_zone_for_nondet_ptr_in_context(ptr,
         MR_ENGINE(MR_eng_main_context), zone_ptr, zone_num_ptr))

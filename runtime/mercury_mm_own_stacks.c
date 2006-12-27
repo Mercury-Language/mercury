@@ -138,12 +138,16 @@ MR_cons_debug_name(MR_ConsDebug *cons_debug)
     }
 
     if (cons_debug->MR_cod_version_num > 0) {
-        sprintf(buf, "con %d/%d (%p)%s", cons_debug->MR_cod_sequence_num,
+        sprintf(buf, "con %d/%d (%p)%s for %s",
+            cons_debug->MR_cod_sequence_num,
             cons_debug->MR_cod_version_num,
-            cons_debug->MR_cod_consumer, warning);
+            cons_debug->MR_cod_consumer, warning,
+            cons_debug->MR_cod_consumer->MR_cons_pred_id);
     } else {
-        sprintf(buf, "con %d (%p)%s", cons_debug->MR_cod_sequence_num,
-            cons_debug->MR_cod_consumer, warning);
+        sprintf(buf, "con %d (%p)%s for %s",
+            cons_debug->MR_cod_sequence_num,
+            cons_debug->MR_cod_consumer, warning,
+            cons_debug->MR_cod_consumer->MR_cons_pred_id);
     }
 
     return strdup(buf);
@@ -239,12 +243,16 @@ MR_gen_debug_name(MR_GenDebug *gen_debug)
     }
 
     if (gen_debug->MR_gd_version_num > 0) {
-        sprintf(buf, "sub %d/%d (%p)%s", gen_debug->MR_gd_sequence_num,
+        sprintf(buf, "gen %d/%d (%p)%s for %s",
+            gen_debug->MR_gd_sequence_num,
             gen_debug->MR_gd_version_num,
-            gen_debug->MR_gd_generator, warning);
+            gen_debug->MR_gd_generator, warning,
+            gen_debug->MR_gd_generator->MR_gen_pred_id);
     } else {
-        sprintf(buf, "sub %d (%p)%s", gen_debug->MR_gd_sequence_num,
-            gen_debug->MR_gd_generator, warning);
+        sprintf(buf, "gen %d (%p)%s for %s",
+            gen_debug->MR_gd_sequence_num,
+            gen_debug->MR_gd_generator, warning,
+            gen_debug->MR_gd_generator->MR_gen_pred_id);
     }
 
     return strdup(buf);
@@ -390,6 +398,11 @@ MR_print_consumer(FILE *fp, const MR_ProcLayout *proc, MR_Consumer *consumer)
     }
 }
 
+void
+MR_mm_own_stacks_report_stats(FILE *fp)
+{
+}
+
 /*---------------------------------------------------------------------------*/
 
 static  int MR_next_gen_context = 1;
@@ -411,7 +424,7 @@ MR_get_context_for_gen(MR_Generator *gen)
 
         sprintf(buf, "gen%d", MR_next_gen_context);
         MR_next_gen_context++;
-        ctxt = MR_create_context(strdup(buf), MR_CONTEXT_SIZE_REGULAR, gen);
+        ctxt = MR_create_context(strdup(buf), MR_CONTEXT_SIZE_SMALL, gen);
     }
 
     ctxt->MR_ctxt_owner_generator = gen;
@@ -424,9 +437,16 @@ MR_table_mmos_setup_consumer(MR_GeneratorPtr generator, MR_ConstString pred_id)
     MR_ConsumerPtr  consumer;
 
     consumer = MR_TABLE_NEW(MR_Consumer);
+    consumer->MR_cons_pred_id = pred_id;
     consumer->MR_cons_answer_generator = generator;
     consumer->MR_cons_containing_generator =
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_generator;
+    if (consumer->MR_cons_containing_generator != NULL) {
+        consumer->MR_cons_context = 
+            consumer->MR_cons_containing_generator->MR_gen_context;
+    } else {
+        consumer->MR_cons_context = MR_ENGINE(MR_eng_main_context);
+    }
     consumer->MR_cons_num_returned_answers = 0;
     consumer->MR_cons_remaining_answer_list_ptr =
         generator->MR_gen_answer_list_tail;
@@ -545,7 +565,7 @@ MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
 MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1, 
     MR_PREDICATE, table_builtin, table_mmos_consume_next_answer_multi, 2, 0);
 
-#ifndef  MR_USE_MINIMAL_MODEL_STACK_COPY
+#ifndef  MR_USE_MINIMAL_MODEL_OWN_STACKS
 
 MR_BEGIN_MODULE(mmos_module)
     MR_init_entry_sl(MR_MMOS_RET_ALL_NONDET_ENTRY);
@@ -564,7 +584,7 @@ MR_define_entry(MR_MMOS_RET_ALL_MULTI_ENTRY);
 
 MR_END_MODULE
 
-#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#else   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
 MR_BEGIN_MODULE(mmos_module)
     MR_init_entry_sl(MR_MMOS_RET_ALL_NONDET_ENTRY);
@@ -574,14 +594,26 @@ MR_BEGIN_MODULE(mmos_module)
 MR_BEGIN_CODE
 
 MR_define_entry(MR_MMOS_RET_ALL_NONDET_ENTRY);
+{
+/*
+    MR_GeneratorPtr     generator;
+
+    generator = MR_r1;
+
+    XXX NumSlots 42
+    MR_mkframe("pred table_mmos_consume_next_answer_nondet/2-0", 42,
+        MR_ENTRY(MR_do_fail));
+    MR_fv(1) = MR_r1;
+*/
     MR_fatal_error("table_mmos_consume_next_answer_nondet/2 NYI");
+}
 
 MR_define_entry(MR_MMOS_RET_ALL_MULTI_ENTRY);
     MR_fatal_error("table_mmos_consume_next_answer_multi/2 NYI");
 
 MR_END_MODULE
 
-#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 #endif  /* MR_HIGHLEVEL_CODE */
 
 /* Ensure that the initialization code for the above module gets to run. */

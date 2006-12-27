@@ -3594,6 +3594,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     proc_info_get_is_address_taken(Proc, IsAddressTaken),
     proc_info_get_has_parallel_conj(Proc, HasParallelConj),
     proc_info_get_has_user_event(Proc, HasUserEvent),
+    proc_info_get_maybe_proc_table_info(Proc, MaybeProcTableInfo),
     proc_info_get_call_table_tip(Proc, MaybeCallTableTip),
     proc_info_get_maybe_deep_profile_info(Proc, MaybeDeepProfileInfo),
     proc_info_get_maybe_untuple_info(Proc, MaybeUntupleInfo),
@@ -3673,6 +3674,14 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         io.write_string("% eval method: ", !IO),
         write_eval_method(EvalMethod, !IO),
         io.write_string("\n", !IO)
+    ),
+
+    (
+        MaybeProcTableInfo = yes(ProcTableInfo),
+        write_proc_table_info(VarSet, TVarSet, AppendVarNums, ProcTableInfo,
+            !IO)
+    ;
+        MaybeProcTableInfo = no
     ),
 
     (
@@ -3817,6 +3826,118 @@ can_fail_to_string(cannot_fail) = "cannot_fail".
 
 write_eval_method(EvalMethod, !IO) :-
     io.write_string(eval_method_to_string(EvalMethod), !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred write_proc_table_info(prog_varset::in, tvarset::in, bool::in,
+    proc_table_info::in, io::di, io::uo) is det.
+
+write_proc_table_info(VarSet, TVarSet, AppendVarNums, ProcTableInfo, !IO) :-
+    io.write_string("% proc table info: ", !IO),
+    (
+        ProcTableInfo = table_io_decl_info(ArgInfos),
+        io.write_string(" io tabled\n", !IO),
+        write_table_arg_infos(VarSet, TVarSet, AppendVarNums, ArgInfos, !IO)
+    ;
+        ProcTableInfo = table_gen_info(NumInputs, NumOutputs,
+            InputSteps, MaybeOutputSteps, ArgInfos),
+        io.format("#inputs: %d, #outputs: %d\n", [i(NumInputs), i(NumOutputs)],
+            !IO),
+        io.write_string("% input steps:", !IO),
+        list.foldl(write_space_and_table_trie_step(TVarSet, AppendVarNums),
+            InputSteps, !IO),
+        io.nl(!IO),
+        (
+            MaybeOutputSteps = yes(OutputSteps),
+            io.write_string("% output steps:", !IO),
+            list.foldl(write_space_and_table_trie_step(TVarSet, AppendVarNums),
+                OutputSteps, !IO),
+            io.nl(!IO)
+        ;
+            MaybeOutputSteps = no,
+            io.write_string("% no output steps", !IO)
+        ),
+        write_table_arg_infos(VarSet, TVarSet, AppendVarNums, ArgInfos, !IO)
+    ).
+
+:- pred write_table_arg_infos(prog_varset::in, tvarset::in, bool::in,
+    table_arg_infos::in, io::di, io::uo) is det.
+
+write_table_arg_infos(VarSet, TVarSet, AppendVarNums, TableArgInfos, !IO) :-
+    TableArgInfos = table_arg_infos(ArgInfos, TVarMap),
+    io.write_string("% arg infos:\n", !IO),
+    list.foldl(write_table_arg_info(VarSet, TVarSet, AppendVarNums), ArgInfos,
+        !IO),
+    map.to_assoc_list(TVarMap, TVarPairs),
+    (
+        TVarPairs = []
+    ;
+        TVarPairs = [_ | _],
+        io.write_string("% type var map:\n", !IO),
+        list.foldl(write_table_tvar_map_entry(TVarSet, AppendVarNums),
+            TVarPairs, !IO)
+    ).
+
+:- pred write_table_arg_info(prog_varset::in, tvarset::in, bool::in,
+    table_arg_info::in, io::di, io::uo) is det.
+
+write_table_arg_info(VarSet, TVarSet, AppendVarNums, ArgInfo, !IO) :-
+    ArgInfo = table_arg_info(HeadVar, SlotNum, Type),
+    io.write_string("% ", !IO),
+    HeadVarStr = mercury_var_to_string(VarSet, AppendVarNums, HeadVar),
+    io.write_string(HeadVarStr, !IO),
+    io.write_string(" in slot ", !IO),
+    io.write_int(SlotNum, !IO),
+    io.write_string(", type ", !IO),
+    io.write_string(mercury_type_to_string(TVarSet, AppendVarNums, Type), !IO),
+    io.nl(!IO).
+
+:- pred write_table_tvar_map_entry(tvarset::in, bool::in,
+    pair(tvar, table_locn)::in, io::di, io::uo) is det.
+
+write_table_tvar_map_entry(TVarSet, AppendVarNums, TVar - Locn, !IO) :-
+    io.write_string("% typeinfo for ", !IO),
+    io.write_string(mercury_var_to_string(TVarSet, AppendVarNums, TVar), !IO),
+    io.write_string(" -> ", !IO),
+    (
+        Locn = direct(N),
+        io.format("direct in register %d\n", [i(N)], !IO)
+    ;
+        Locn = indirect(N, O),
+        io.format("indirect from register %d, offset %d\n", [i(N), i(O)], !IO)
+    ).
+
+:- pred write_space_and_table_trie_step(tvarset::in, bool::in,
+    table_trie_step::in, io::di, io::uo) is det.
+
+write_space_and_table_trie_step(TVarSet, AppendVarNums, TrieStep, !IO) :-
+    io.write_string(" ", !IO),
+    io.write_string(table_trie_step_desc(TVarSet, AppendVarNums, TrieStep),
+        !IO).
+
+:- func table_trie_step_desc(tvarset, bool, table_trie_step) = string.
+
+table_trie_step_desc(_, _, table_trie_step_int) = "int".
+table_trie_step_desc(_, _, table_trie_step_char) = "char".
+table_trie_step_desc(_, _, table_trie_step_string) = "string".
+table_trie_step_desc(_, _, table_trie_step_float) = "float".
+table_trie_step_desc(_, _, table_trie_step_dummy) = "dummy".
+table_trie_step_desc(_, _, table_trie_step_enum(N)) =
+        "enum(" ++ int_to_string(N) ++ ")".
+table_trie_step_desc(TVarSet, AppendVarNums,
+        table_trie_step_user(Type)) =
+    "user(" ++ mercury_type_to_string(TVarSet, AppendVarNums, Type) ++ ")".
+table_trie_step_desc(TVarSet, AppendVarNums,
+        table_trie_step_user_fast_loose(Type)) =
+    "user_fast_loose(" ++ mercury_type_to_string(TVarSet, AppendVarNums, Type)
+        ++ ")".
+table_trie_step_desc(_, _, table_trie_step_poly) = "poly".
+table_trie_step_desc(_, _, table_trie_step_poly_fast_loose) =
+        "poly_fast_loose".
+table_trie_step_desc(_, _, table_trie_step_typeinfo) = "typeinfo".
+table_trie_step_desc(_, _, table_trie_step_typeclassinfo) = "typeclassinfo".
+table_trie_step_desc(_, _, table_trie_step_promise_implied) =
+        "promise_implied".
 
 %-----------------------------------------------------------------------------%
 

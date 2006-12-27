@@ -2963,7 +2963,11 @@ eval_method_has_per_proc_tabling_pointer(eval_normal) = no.
 eval_method_has_per_proc_tabling_pointer(eval_loop_check) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_table_io(_, _)) = no.
 eval_method_has_per_proc_tabling_pointer(eval_memo) = yes.
-eval_method_has_per_proc_tabling_pointer(eval_minimal(_)) = yes.
+eval_method_has_per_proc_tabling_pointer(eval_minimal(stack_copy)) = yes.
+eval_method_has_per_proc_tabling_pointer(eval_minimal(own_stacks_consumer))
+    = no.
+eval_method_has_per_proc_tabling_pointer(eval_minimal(own_stacks_generator))
+    = yes.
 
 eval_method_requires_tabling_transform(eval_normal) = no.
 eval_method_requires_tabling_transform(eval_loop_check) = yes.

@@ -493,11 +493,11 @@ MR_define_entry(MR_do_runnext);
     MercuryThread   thd;
 
     /*
-    ** If this engine is holding onto a context, the context should not be in
-    ** the middle of running some code.
+    ** If this engine is holding onto a context, the context should not be
+    ** in the middle of running some code.
     */
     assert(MR_ENGINE(MR_eng_this_context) == NULL ||
-            MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_stack == NULL);
+        MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_stack == NULL);
 
     depth = MR_ENGINE(MR_eng_c_depth);
     thd = MR_ENGINE(MR_eng_owner_thread);
@@ -507,7 +507,7 @@ MR_define_entry(MR_do_runnext);
     MR_num_idle_engines++;
 
     while (1) {
-        if (MR_exit_now == MR_TRUE) {
+        if (MR_exit_now) {
             /*
             ** The primordial thread has the responsibility of cleaning
             ** up the Mercury runtime.  It cannot exit by this route.
