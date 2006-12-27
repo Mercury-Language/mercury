@@ -467,28 +467,6 @@ bits_per_level = 5.
 :- func make_leaf_node(int, int) = leaf_node.
 :- pragma inline(make_leaf_node/2).
 
-:- pragma foreign_decl("C", "
-    #include ""mercury_heap.h"" /* for MR_tag_offset_incr_hp_atomic_msg() */
-").
-
-    % The bit pattern will often look like a pointer, so allocate the pairs
-    % using GC_malloc_atomic() to avoid unnecessary memory retention. Doing
-    % this slows down the compiler by about 1%, but in a library module it is
-    % better to be safe.
-:- pragma foreign_proc("C",
-    make_leaf_node(A::in, B::in) = (Node::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"{
-#define ML_BITSET_TAG MR_FIRST_UNRESERVED_RAW_TAG
-
-    MR_tag_offset_incr_hp_atomic_msg(Node, MR_mktag(ML_BITSET_TAG),
-        MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 2,
-        MR_PROC_LABEL, ""tree_bitset:leaf_node/0"");
-    MR_define_size_slot(MR_mktag(ML_BITSET_TAG), Node, 1);
-    MR_field(MR_mktag(ML_BITSET_TAG), Node, 0) = A;
-    MR_field(MR_mktag(ML_BITSET_TAG), Node, 1) = B;
-}").
-
 make_leaf_node(Offset, Bits) = leaf_node(Offset, Bits).
 
 %-----------------------------------------------------------------------------%

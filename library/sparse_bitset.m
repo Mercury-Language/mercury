@@ -1095,30 +1095,6 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 :- func make_bitset_elem(int, int) = bitset_elem.
 :- pragma inline(make_bitset_elem/2).
 
-%make_bitset_elem(A, B) = bitset_elem(A, B).
-
-:- pragma foreign_decl("C", "
-    #include ""mercury_heap.h"" /* for MR_tag_offset_incr_hp_atomic_msg() */
-").
-
-    % The bit pattern will often look like a pointer, so allocate the pairs
-    % using GC_malloc_atomic() to avoid unnecessary memory retention. Doing
-    % this slows down the compiler by about 1%, but in a library module it is
-    % better to be safe.
-:- pragma foreign_proc("C",
-    make_bitset_elem(A::in, B::in) = (Pair::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"{
-#define ML_BITSET_TAG MR_FIRST_UNRESERVED_RAW_TAG
-
-    MR_tag_offset_incr_hp_atomic_msg(Pair, MR_mktag(ML_BITSET_TAG),
-        MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 2,
-        MR_PROC_LABEL, ""sparse_bitset:bitset_elem/0"");
-    MR_define_size_slot(MR_mktag(ML_BITSET_TAG), Pair, 1);
-    MR_field(MR_mktag(ML_BITSET_TAG), Pair, 0) = A;
-    MR_field(MR_mktag(ML_BITSET_TAG), Pair, 1) = B;
-}").
-
 make_bitset_elem(Offset, Bits) = bitset_elem(Offset, Bits).
 
 %-----------------------------------------------------------------------------%
