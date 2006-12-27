@@ -125,11 +125,11 @@
     inst_graph::in, list(prog_var)::in, T::in, T::out, U::in, U::out)
     is det.
 
-:- pred corresponding_nodes(inst_graph::in, prog_var::in, prog_var::in,
-    prog_var::out, prog_var::out) is multi.
+:- pred same_graph_corresponding_nodes(inst_graph::in,
+    prog_var::in, prog_var::in, prog_var::out, prog_var::out) is multi.
 
-:- pred corresponding_nodes(inst_graph::in, inst_graph::in, prog_var::in,
-    prog_var::in, prog_var::out, prog_var::out) is multi.
+:- pred two_graphs_corresponding_nodes(inst_graph::in, inst_graph::in,
+    prog_var::in, prog_var::in, prog_var::out, prog_var::out) is multi.
 
 :- pred corresponding_nodes_from_lists(inst_graph::in, inst_graph::in,
     list(prog_var)::in, list(prog_var)::in, prog_var::out, prog_var::out)
@@ -308,10 +308,10 @@ foldl_reachable_from_list2(P, InstGraph, Vars, !Acc1, !Acc2) :-
     list.foldl2(foldl_reachable2(P, InstGraph), Vars,
         !Acc1, !Acc2).
 
-corresponding_nodes(InstGraph, A, B, V, W) :-
-    corresponding_nodes(InstGraph, InstGraph, A, B, V, W).
+same_graph_corresponding_nodes(InstGraph, A, B, V, W) :-
+    two_graphs_corresponding_nodes(InstGraph, InstGraph, A, B, V, W).
 
-corresponding_nodes(InstGraphA, InstGraphB, A, B, V, W) :-
+two_graphs_corresponding_nodes(InstGraphA, InstGraphB, A, B, V, W) :-
     corresponding_nodes_2(InstGraphA, InstGraphB,
         set.init, set.init, A, B, V, W).
 
@@ -352,7 +352,7 @@ corresponding_nodes_2(InstGraphA, InstGraphB, SeenA0, SeenB0, A, B, V, W) :-
 
 corresponding_nodes_from_lists(InstGraphA, InstGraphB, VarsA, VarsB, V, W) :-
     corresponding_members(VarsA, VarsB, A, B),
-    corresponding_nodes(InstGraphA, InstGraphB, A, B, V, W).
+    two_graphs_corresponding_nodes(InstGraphA, InstGraphB, A, B, V, W).
 
 corresponding_members([A | _], [B | _], A, B).
 corresponding_members([_ | As], [_ | Bs], A, B) :-

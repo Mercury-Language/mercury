@@ -984,8 +984,8 @@ assign_var(Var1, Var2, Goal) :-
         Goal = true_goal
     ;
         term.context_init(Context),
-        create_atomic_complicated_unification(Var1, rhs_var(Var2), Context,
-            umc_explicit, [], Goal)
+        create_pure_atomic_complicated_unification(Var1, rhs_var(Var2),
+            Context, umc_explicit, [], Goal)
     ).
 
 :- pred get_improved_exists_head_constraints(constraint_map::in,

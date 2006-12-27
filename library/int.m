@@ -402,7 +402,7 @@ X div Y = Div :-
 :- pragma inline('//'/2).
 X // Y = Div :-
     (
-        domain_checks,
+        int_domain_checks,
         Y = 0
     ->
         throw(math.domain_error("int.'//'"))
@@ -416,7 +416,7 @@ X / Y = X // Y.
 :- pragma inline(rem/2).
 X rem Y = Rem :-
     (
-        domain_checks,
+        int_domain_checks,
         Y = 0
     ->
         throw(math.domain_error("int.rem"))
@@ -428,11 +428,11 @@ X rem Y = Rem :-
     % in math.m because we currently don't do transitive inter-module
     % inlining, so code which uses `//'/2 but doesn't import math.m
     % couldn't have the domain check optimized away.
-:- pred domain_checks is semidet.
-:- pragma inline(domain_checks/0).
+:- pred int_domain_checks is semidet.
+:- pragma inline(int_domain_checks/0).
 
 :- pragma foreign_proc("C",
-    domain_checks,
+    int_domain_checks,
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
@@ -443,7 +443,7 @@ X rem Y = Rem :-
 ").
 
 :- pragma foreign_proc("C#",
-    domain_checks,
+    int_domain_checks,
     [thread_safe, promise_pure],
 "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
@@ -453,7 +453,7 @@ X rem Y = Rem :-
 #endif
 ").
 :- pragma foreign_proc("Java",
-    domain_checks,
+    int_domain_checks,
     [thread_safe, promise_pure],
 "
     succeeded = true;
@@ -548,7 +548,7 @@ int.pow(Base, Exp) = Result :-
     int.pow(Base, Exp, Result).
 
 int.pow(Base, Exp, Result) :-
-    ( domain_checks, Exp < 0 ->
+    ( int_domain_checks, Exp < 0 ->
         throw(math.domain_error("int.pow"))
     ;
         Result = int.multiply_by_pow(1, Base, Exp)
@@ -575,7 +575,7 @@ int.log2(X) = N :-
     int.log2(X, N).
 
 int.log2(X, N) :-
-    ( domain_checks, X =< 0 ->
+    ( int_domain_checks, X =< 0 ->
         throw(math.domain_error("int.log2"))
     ;
         int.log2_2(X, 0, N)

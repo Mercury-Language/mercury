@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: float.m.
 % Main author: fjh.
 % Stability: medium.
-% 
+%
 % Floating point support.
 %
 % Note that implementations which support IEEE floating point
@@ -44,7 +44,7 @@
 % level of optimization, in particular inlining and evaluation
 % of constant expressions.
 % For example, the goal `1.0/9.0 = std_util.id(1.0)/9.0' may fail.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -240,22 +240,22 @@
 
 :- pragma inline('/'/2).
 X / Y = Z :-
-	( domain_checks, Y = 0.0 ->
+	( float_domain_checks, Y = 0.0 ->
 		throw(math.domain_error("float:'/'"))
 	;
 		Z = unchecked_quotient(X, Y)
 	).
 
-	% This code is included here rather than just calling the version in math.m
-    % because we currently don't do transitive inter-module inlining, so code
-    % which uses `/'/2 but doesn't import math.m couldn't have the domain check
-    % optimized away..
+	% This code is included here rather than just calling the version in
+    % math.m because we currently don't do transitive inter-module inlining,
+    % so code which uses `/'/2 but doesn't import math.m couldn't have the
+    % domain check optimized away.
     %
-:- pred domain_checks is semidet.
-:- pragma inline(domain_checks/0).
+:- pred float_domain_checks is semidet.
+:- pragma inline(float_domain_checks/0).
 
 :- pragma foreign_proc("C",
-	domain_checks,
+	float_domain_checks,
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
@@ -266,7 +266,7 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C#",
-	domain_checks,
+	float_domain_checks,
 	[thread_safe, promise_pure],
 "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
@@ -277,7 +277,7 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("Java",
-	domain_checks,
+	float_domain_checks,
 	[thread_safe, promise_pure],
 "
 	succeeded = true;
@@ -446,7 +446,7 @@ float.pow(Base, Exp) = Ans :-
 	( Exp >= 0 ->
 		Ans = float.multiply_by_pow(1.0, Base, Exp)
 	;
-		( domain_checks, Base = 0.0 ->
+		( float_domain_checks, Base = 0.0 ->
 			throw(math.domain_error("float:pow"))
 		;
 			Ans = unchecked_quotient(1.0,

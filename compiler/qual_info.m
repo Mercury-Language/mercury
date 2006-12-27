@@ -296,7 +296,7 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         list.length(FuncArgs, Arity),
         ConsId = cons(SymName, Arity),
         goal_info_get_context(GoalInfo, Context),
-        create_atomic_complicated_unification(RetArg,
+        create_pure_atomic_complicated_unification(RetArg,
             rhs_functor(ConsId, no, FuncArgs), Context, umc_explicit, [],
             GoalExpr - _),
         Goal = GoalExpr - GoalInfo

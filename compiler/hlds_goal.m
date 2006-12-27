@@ -1329,7 +1329,7 @@
 
     % As above, but with default purity pure.
     %
-:- pred create_atomic_complicated_unification(prog_var::in, unify_rhs::in,
+:- pred create_pure_atomic_complicated_unification(prog_var::in, unify_rhs::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
     hlds_goal::out) is det.
 
@@ -2190,7 +2190,7 @@ set_goal_contexts_2_shorthand(Context, bi_implication(LHS0, RHS0),
 
 %-----------------------------------------------------------------------------%
 
-create_atomic_complicated_unification(LHS, RHS, Context,
+create_pure_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, Goal) :-
     create_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, purity_pure, Goal).

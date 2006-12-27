@@ -40,13 +40,14 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.error_util.
 
-:- import_module io.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
 :- pred table_gen_process_module(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -71,7 +72,6 @@
 :- import_module ll_backend.
 :- import_module ll_backend.continuation_info.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -80,7 +80,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -104,54 +103,58 @@
     % of this code that is able to handle passing a module_info to
     % polymorphism and getting an updated module_info back.
     %
-table_gen_process_module(!ModuleInfo, !IO) :-
+table_gen_process_module(!ModuleInfo, !Specs) :-
     module_info_preds(!.ModuleInfo, Preds0),
     map.keys(Preds0, PredIds),
     map.init(GenMap0),
-    table_gen_process_preds(PredIds, !ModuleInfo, GenMap0, _, !IO).
+    table_gen_process_preds(PredIds, !ModuleInfo, GenMap0, _, !Specs).
 
 :- pred table_gen_process_preds(list(pred_id)::in,
     module_info::in, module_info::out,
-    generator_map::in, generator_map::out, io::di, io::uo) is det.
+    generator_map::in, generator_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-table_gen_process_preds([], !ModuleInfo, !GenMap, !IO).
-table_gen_process_preds([PredId | PredIds], !ModuleInfo, !GenMap, !IO) :-
-    table_gen_process_pred(PredId, !ModuleInfo, !GenMap, !IO),
-    table_gen_process_preds(PredIds, !ModuleInfo, !GenMap, !IO).
+table_gen_process_preds([], !ModuleInfo, !GenMap, !Specs).
+table_gen_process_preds([PredId | PredIds], !ModuleInfo, !GenMap, !Specs) :-
+    table_gen_process_pred(PredId, !ModuleInfo, !GenMap, !Specs),
+    table_gen_process_preds(PredIds, !ModuleInfo, !GenMap, !Specs).
 
 :- pred table_gen_process_pred(pred_id::in, module_info::in, module_info::out,
-    generator_map::in, generator_map::out, io::di, io::uo) is det.
+    generator_map::in, generator_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-table_gen_process_pred(PredId, !ModuleInfo, !GenMap, !IO) :-
+table_gen_process_pred(PredId, !ModuleInfo, !GenMap, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_procids(PredInfo),
-    table_gen_process_procs(PredId, ProcIds, !ModuleInfo, !GenMap, !IO).
+    table_gen_process_procs(PredId, ProcIds, !ModuleInfo, !GenMap, !Specs).
 
 :- pred table_gen_process_procs(pred_id::in, list(proc_id)::in,
     module_info::in, module_info::out,
-    generator_map::in, generator_map::out, io::di, io::uo) is det.
+    generator_map::in, generator_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-table_gen_process_procs(_PredId, [], !ModuleInfo, !GenMap, !IO).
+table_gen_process_procs(_PredId, [], !ModuleInfo, !GenMap, !Specs).
 table_gen_process_procs(PredId, [ProcId | ProcIds], !ModuleInfo, !GenMap,
-        !IO) :-
+        !Specs) :-
     module_info_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo0),
     table_gen_process_proc(PredId, ProcId, ProcInfo0, PredInfo,
-        !ModuleInfo, !GenMap, !IO),
-    table_gen_process_procs(PredId, ProcIds, !ModuleInfo, !GenMap, !IO).
+        !ModuleInfo, !GenMap, !Specs),
+    table_gen_process_procs(PredId, ProcIds, !ModuleInfo, !GenMap, !Specs).
 
 :- pred table_gen_process_proc(pred_id::in, proc_id::in, proc_info::in,
     pred_info::in, module_info::in, module_info::out,
-    generator_map::in, generator_map::out, io::di, io::uo) is det.
+    generator_map::in, generator_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 table_gen_process_proc(PredId, ProcId, ProcInfo0, PredInfo0, !ModuleInfo,
-        !GenMap, !IO) :-
+        !GenMap, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, EvalMethod),
     ( eval_method_requires_tabling_transform(EvalMethod) = yes ->
         table_gen_transform_proc_if_possible(EvalMethod, PredId,
-            ProcId, ProcInfo0, _, PredInfo0, _, !ModuleInfo, !GenMap, !IO)
+            ProcId, ProcInfo0, _, PredInfo0, _, !ModuleInfo, !GenMap, !Specs)
     ;
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, trace_table_io, yes),
@@ -175,8 +178,9 @@ table_gen_process_proc(PredId, ProcId, ProcInfo0, PredInfo0, !ModuleInfo,
             PredModuleName, AnnotationIsMissing, TransformPrimitive),
         (
             AnnotationIsMissing = yes,
-            report_missing_tabled_for_io(PredInfo0, PredId, ProcId,
-                !ModuleInfo, !IO)
+            Spec = report_missing_tabled_for_io(PredInfo0, PredId, ProcId,
+                !.ModuleInfo),
+            !:Specs = [Spec | !.Specs]
         ;
             AnnotationIsMissing = no
         ),
@@ -197,7 +201,7 @@ table_gen_process_proc(PredId, ProcId, ProcInfo0, PredInfo0, !ModuleInfo,
             proc_info_set_eval_method(TableIoMethod, ProcInfo0, ProcInfo1),
             table_gen_transform_proc_if_possible(TableIoMethod,
                 PredId, ProcId, ProcInfo1, _, PredInfo0, _, !ModuleInfo,
-                !GenMap, !IO)
+                !GenMap, !Specs)
         )
     ;
         true
@@ -297,34 +301,33 @@ subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
         \+ TabledForIoAttr = proc_not_tabled_for_io
     ).
 
-:- pred report_missing_tabled_for_io(pred_info::in, pred_id::in, proc_id::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- func report_missing_tabled_for_io(pred_info, pred_id, proc_id, module_info)
+    = error_spec.
 
-report_missing_tabled_for_io(PredInfo, PredId, ProcId, !ModuleInfo, !IO) :-
+report_missing_tabled_for_io(PredInfo, PredId, ProcId, ModuleInfo) = Spec :-
     pred_info_context(PredInfo, Context),
-    ProcPieces = describe_one_proc_name(!.ModuleInfo,
+    ProcPieces = describe_one_proc_name(ModuleInfo,
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = ProcPieces ++ [words("contains untabled I/O primitive."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_code_gen, [Msg]),
-    module_info_get_globals(!.ModuleInfo, Globals),
-    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-    module_info_incr_num_errors(NumErrors, !ModuleInfo).
+    Spec = error_spec(severity_error, phase_code_gen, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
 :- pred table_gen_transform_proc_if_possible(eval_method::in,
     pred_id::in, proc_id::in, proc_info::in, proc_info::out,
     pred_info::in, pred_info::out, module_info::in, module_info::out,
-    generator_map::in, generator_map::out, io::di, io::uo) is det.
+    generator_map::in, generator_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
-        !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !IO) :-
-    globals.io_get_target(Target, !IO),
-    globals.io_get_gc_method(GC_Method, !IO),
+        !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !Specs) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    globals.get_gc_method(Globals, GC_Method),
     ( Target = target_c, GC_Method \= gc_accurate ->
         table_gen_transform_proc(EvalMethod, PredId, ProcId,
-            !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !IO)
+            !ProcInfo, !PredInfo, !ModuleInfo, !GenMap)
     ;
         pred_info_context(!.PredInfo, Context),
         ProcPieces = describe_one_proc_name(!.ModuleInfo,
@@ -337,8 +340,7 @@ table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
         % We don't want to increment the error count, since that would combine
         % with --halt-at-warn to prevent the clean compilation of the library.
         Spec = error_spec(severity_informational, phase_code_gen, [Msg]),
-        module_info_get_globals(!.ModuleInfo, Globals),
-        write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+        !:Specs = [Spec | !.Specs],
 
         % XXX We set the evaluation method to eval_normal here to prevent
         % problems in the ml code generator if we are compiling in a grade
@@ -357,13 +359,13 @@ table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
 :- pred table_gen_transform_proc(eval_method::in, pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, pred_info::in, pred_info::out,
     module_info::in, module_info::out,
-    generator_map::in, generator_map::out, io::di, io::uo) is det.
+    generator_map::in, generator_map::out) is det.
 
 table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
-        !ModuleInfo, !GenMap, !IO) :-
+        !ModuleInfo, !GenMap) :-
     table_info_init(!.ModuleInfo, !.PredInfo, !.ProcInfo, TableInfo0),
 
-    % grab the appropriate fields from the pred_info and proc_info
+    % Grab the appropriate fields from the pred_info and proc_info.
     proc_info_interface_determinism(!.ProcInfo, Detism),
     determinism_to_code_model(Detism, CodeModel),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
@@ -500,17 +502,16 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 
     table_info_extract(TableInfo, !:ModuleInfo, !:PredInfo, !:ProcInfo),
 
-    % set the new values of the fields in proc_info and pred_info
-    % and save in the module info
+    % Set the new values of the fields in proc_info and pred_info
+    % and save in the module info.
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_call_table_tip(MaybeCallTableTip, !ProcInfo),
     proc_info_set_maybe_proc_table_info(MaybeProcTableInfo, !ProcInfo),
 
-    % Some of the instmap_deltas generated in this module
-    % are pretty dodgy (especially those for if-then-elses), so
-    % recompute them here.
+    % Some of the instmap_deltas generated in this module are pretty dodgy
+    % (especially those for if-then-elses), so recompute them here.
     RecomputeAtomic = no,
     recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo),
 
@@ -518,8 +519,8 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     map.det_update(ProcTable1, ProcId, !.ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
 
-    % The transformation doesn't pay attention to the purity
-    % of compound goals, so recompute the purity here.
+    % The transformation doesn't pay attention to the purity of compound goals,
+    % so recompute the purity here.
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
     module_info_preds(!.ModuleInfo, PredTable1),
     map.det_update(PredTable1, PredId, !.PredInfo, PredTable),

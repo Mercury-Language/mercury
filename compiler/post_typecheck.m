@@ -1162,16 +1162,15 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     list.append(VarsBeforeField, [FieldVar | VarsAfterField], ArgVars),
 
     goal_info_get_nonlocals(OldGoalInfo, RestrictNonLocals),
-    create_atomic_unification_with_nonlocals(TermInputVar,
-        rhs_functor(ConsId, no, ArgVars), OldGoalInfo,
-        RestrictNonLocals, [FieldVar, TermInputVar],
-        UnifyContext, FunctorGoal),
+    create_pure_atomic_unification_with_nonlocals(TermInputVar,
+        rhs_functor(ConsId, no, ArgVars), OldGoalInfo, RestrictNonLocals,
+        [FieldVar, TermInputVar], UnifyContext, FunctorGoal),
     FunctorGoal = GoalExpr - _.
 
-:- pred translate_set_function(module_info::in,
-    pred_info::in, pred_info::out, vartypes::in, vartypes::out,
-    prog_varset::in, prog_varset::out, ctor_field_name::in,
-    unify_context::in, prog_var::in, prog_var::in, prog_var::in,
+:- pred translate_set_function(module_info::in, pred_info::in, pred_info::out,
+    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+    ctor_field_name::in, unify_context::in,
+    prog_var::in, prog_var::in, prog_var::in,
     hlds_goal_info::in, hlds_goal_expr::out) is det.
 
 translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
@@ -1201,7 +1200,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
     set.insert_list(OldNonLocals, NonLocalArgs,
         DeconstructRestrictNonLocals),
 
-    create_atomic_unification_with_nonlocals(TermInputVar,
+    create_pure_atomic_unification_with_nonlocals(TermInputVar,
         rhs_functor(ConsId0, no, DeconstructArgs), OldGoalInfo,
         DeconstructRestrictNonLocals, [TermInputVar | DeconstructArgs],
         UnifyContext, DeconstructGoal),
@@ -1225,7 +1224,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
         )
     ),
 
-    create_atomic_unification_with_nonlocals(TermOutputVar,
+    create_pure_atomic_unification_with_nonlocals(TermOutputVar,
         rhs_functor(ConsId, no, ConstructArgs), OldGoalInfo,
         ConstructRestrictNonLocals, [TermOutputVar | ConstructArgs],
         UnifyContext, ConstructGoal),
@@ -1266,11 +1265,11 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
         apply_variable_renaming_to_prog_constraint_list(ConsToParentRenaming,
             ConsConstraints, ParentConstraints),
 
-            % Constrained existentially quantified tvars will have already
-            % been created during typechecking, so we need to ensure that the
-            % new ones we allocate here are bound to those created earlier,
-            % so that the varmaps remain meaningful.
-            %
+        % Constrained existentially quantified tvars will have already been
+        % created during typechecking, so we need to ensure that the new ones
+        % we allocate here are bound to those created earlier, so that
+        % the varmaps remain meaningful.
+
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
         list.length(ConsConstraints, NumConstraints),
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalPath,
@@ -1407,16 +1406,16 @@ get_constructor_containing_field_3([CtorArg | CtorArgs],
 
 %-----------------------------------------------------------------------------%
 
-:- pred create_atomic_unification_with_nonlocals(prog_var::in, unify_rhs::in,
-    hlds_goal_info::in, set(prog_var)::in, list(prog_var)::in,
+:- pred create_pure_atomic_unification_with_nonlocals(prog_var::in,
+    unify_rhs::in, hlds_goal_info::in, set(prog_var)::in, list(prog_var)::in,
     unify_context::in, hlds_goal::out) is det.
 
-create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
+create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
         RestrictNonLocals, VarsList, UnifyContext, Goal) :-
     goal_info_get_context(OldGoalInfo, Context),
     goal_info_get_goal_path(OldGoalInfo, GoalPath),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
-    create_atomic_complicated_unification(Var, RHS,
+    create_pure_atomic_complicated_unification(Var, RHS,
         Context, UnifyMainContext, UnifySubContext, Goal0),
     Goal0 = GoalExpr0 - GoalInfo0,
 

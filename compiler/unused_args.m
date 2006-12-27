@@ -49,13 +49,15 @@
 
 :- import_module analysis.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.error_util.
 
 :- import_module io.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
 :- pred unused_args.process_module(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -92,7 +94,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
@@ -103,7 +104,6 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -214,8 +214,9 @@ unused_args_answer_from_string(String) = unused_args(Args) :-
 
 %-----------------------------------------------------------------------------%
 
-process_module(!ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+process_module(!ModuleInfo, !Specs, !IO) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     init_var_usage(VarUsage0, PredProcs, ProcCallInfo0, !ModuleInfo, !IO),
     % maybe_write_string(VeryVerbose, "% Finished initialisation.\n", !IO),
 
@@ -227,7 +228,7 @@ process_module(!ModuleInfo, !IO) :-
         UnusedArgInfo0, UnusedArgInfo),
 
     map.keys(UnusedArgInfo, PredProcsToFix),
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOpt, !IO),
+    globals.lookup_bool_option(Globals, make_optimization_interface, MakeOpt),
     (
         MakeOpt = yes,
         module_info_get_name(!.ModuleInfo, ModuleName),
@@ -248,7 +249,7 @@ process_module(!ModuleInfo, !IO) :-
         MakeOpt = no,
         MaybeOptFile = no
     ),
-    globals.io_lookup_bool_option(warn_unused_args, DoWarn, !IO),
+    globals.lookup_bool_option(Globals, warn_unused_args, DoWarn),
     (
         ( DoWarn = yes
         ; MakeOpt = yes
@@ -256,7 +257,7 @@ process_module(!ModuleInfo, !IO) :-
     ->
         set.init(WarnedPredIds0),
         output_warnings_and_pragmas(!.ModuleInfo, UnusedArgInfo,
-            MaybeOptFile, DoWarn, PredProcsToFix, WarnedPredIds0, !IO)
+            MaybeOptFile, DoWarn, PredProcsToFix, WarnedPredIds0, !Specs, !IO)
     ;
         true
     ),
@@ -266,18 +267,18 @@ process_module(!ModuleInfo, !IO) :-
     ;
         MaybeOptFile = no
     ),
-    globals.io_lookup_bool_option(make_analysis_registry,
-        MakeAnalysisRegistry, !IO),
+    globals.lookup_bool_option(Globals, make_analysis_registry,
+        MakeAnalysisRegistry),
     (
         MakeAnalysisRegistry = yes,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-        list.foldl2(record_intermod_dependencies(!.ModuleInfo),
-            PredProcs, AnalysisInfo0, AnalysisInfo, !IO),
+        list.foldl(record_intermod_dependencies(!.ModuleInfo),
+            PredProcs, AnalysisInfo0, AnalysisInfo),
         module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
     ;
         MakeAnalysisRegistry = no
     ),
-    globals.io_lookup_bool_option(optimize_unused_args, DoFixup, !IO),
+    globals.lookup_bool_option(Globals, optimize_unused_args, DoFixup),
     (
         DoFixup = yes,
         list.foldl3(create_new_pred(UnusedArgInfo), PredProcsToFix,
@@ -1698,11 +1699,12 @@ fixup_goal_info(UnusedVars, !GoalInfo) :-
     %
 :- pred output_warnings_and_pragmas(module_info::in, unused_arg_info::in,
     maybe(io.output_stream)::in, bool::in, pred_proc_list::in,
-    set(pred_id)::in, io::di, io::uo) is det.
+    set(pred_id)::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-output_warnings_and_pragmas(_, _, _, _, [], _, !IO).
-output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
-        DoWarn, [proc(PredId, ProcId) | PredProcIds], !.WarnedPredIds, !IO) :-
+output_warnings_and_pragmas(_, _, _, _, [], _, !Specs, !IO).
+output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas, DoWarn,
+        [proc(PredId, ProcId) | PredProcIds], !.WarnedPredIds, !Specs, !IO) :-
     ( map.search(UnusedArgInfo, proc(PredId, ProcId), UnusedArgs) ->
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         (
@@ -1715,8 +1717,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
             \+ is_unify_or_compare_pred(PredInfo),
 
             % Don't warn about stubs for procedures with no clauses --
-            % in that case, we *expect* that none of the arguments
-            % will be used,
+            % in that case, we *expect* none of the arguments to be used.
             pred_info_get_markers(PredInfo, Markers),
             \+ check_marker(Markers, marker_stub),
 
@@ -1742,7 +1743,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
             write_unused_args_to_opt_file(WriteOptPragmas,
                 PredInfo, ProcId, UnusedArgs, !IO),
             maybe_warn_unused_args(DoWarn, ModuleInfo, PredInfo,
-                PredId, ProcId, UnusedArgs, !WarnedPredIds, !IO)
+                PredId, ProcId, UnusedArgs, !WarnedPredIds, !Specs)
         ;
             true
         )
@@ -1750,7 +1751,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
         true
     ),
     output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
-        DoWarn, PredProcIds, !.WarnedPredIds, !IO).
+        DoWarn, PredProcIds, !.WarnedPredIds, !Specs, !IO).
 
 :- pred write_unused_args_to_opt_file(maybe(io.output_stream)::in,
     pred_info::in, proc_id::in, list(int)::in, io::di, io::uo) is det.
@@ -1780,11 +1781,12 @@ write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs,
 
 :- pred maybe_warn_unused_args(bool::in, module_info::in, pred_info::in,
     pred_id::in, proc_id::in, list(int)::in,
-    set(pred_id)::in, set(pred_id)::out, io::di, io::uo) is det.
+    set(pred_id)::in, set(pred_id)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_warn_unused_args(no, _, _, _, _, _, !WarnedPredIds, !IO).
+maybe_warn_unused_args(no, _, _, _, _, _, !WarnedPredIds, !Specs).
 maybe_warn_unused_args(yes, ModuleInfo, PredInfo, PredId, ProcId,
-        UnusedArgs0, !WarnedPredIds, !IO) :-
+        UnusedArgs0, !WarnedPredIds, !Specs) :-
     ( set.member(PredId, !.WarnedPredIds) ->
         true
     ;
@@ -1800,7 +1802,8 @@ maybe_warn_unused_args(yes, ModuleInfo, PredInfo, PredId, ProcId,
         adjust_unused_args(NumToDrop, UnusedArgs0, UnusedArgs),
         (
             UnusedArgs = [_ | _],
-            report_unused_args(ModuleInfo, PredInfo, UnusedArgs, !IO)
+            Spec = report_unused_args(ModuleInfo, PredInfo, UnusedArgs),
+            !:Specs = [Spec | !.Specs]
         ;
             UnusedArgs = []
         )
@@ -1824,10 +1827,9 @@ adjust_unused_args(NumToDrop, [UnusedArgNo | UnusedArgNos0], AdjUnusedArgs) :-
     % in every mode of a predicate are warned about. The warning is
     % suppressed for type_infos.
     %
-:- pred report_unused_args(module_info::in, pred_info::in, list(int)::in,
-    io::di, io::uo) is det.
+:- func report_unused_args(module_info, pred_info, list(int)) = error_spec.
 
-report_unused_args(ModuleInfo, PredInfo, UnusedArgs, !IO) :-
+report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
     list.length(UnusedArgs, NumArgs),
     pred_info_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -1845,10 +1847,7 @@ report_unused_args(ModuleInfo, PredInfo, UnusedArgs, !IO) :-
             [words("are unused."), nl]
     ),
     Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
-    Spec = error_spec(severity_warning, phase_code_gen, [Msg]),
-    module_info_get_globals(ModuleInfo, Globals),
-    % XXX _NumErrors
-    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
+    Spec = error_spec(severity_warning, phase_code_gen, [Msg]).
 
 :- func format_arg_list(list(int)) = list(format_component).
 
@@ -1891,28 +1890,27 @@ format_arg_list_2(First, List) = Pieces :-
     % procedure is calling (directly or indirectly) which imported procedure.
     %
 :- pred record_intermod_dependencies(module_info::in, pred_proc_id::in,
-    analysis_info::in, analysis_info::out, io::di, io::uo) is det.
+    analysis_info::in, analysis_info::out) is det.
 
 record_intermod_dependencies(ModuleInfo, CallerPredProcId,
-        !AnalysisInfo, !IO) :-
+        !AnalysisInfo) :-
     module_info_pred_proc_info(ModuleInfo, CallerPredProcId,
         CallerPredInfo, CallerProcInfo),
     ( not pred_info_is_imported(CallerPredInfo) ->
         CallerModule = pred_info_module(CallerPredInfo),
         proc_info_get_goal(CallerProcInfo, Goal),
         pred_proc_ids_from_goal(Goal, CalleePredProcIds),
-        list.foldl2(record_intermod_dependencies_2(ModuleInfo, CallerModule),
-            CalleePredProcIds, !AnalysisInfo, !IO)
+        list.foldl(record_intermod_dependencies_2(ModuleInfo, CallerModule),
+            CalleePredProcIds, !AnalysisInfo)
     ;
         true
     ).
 
 :- pred record_intermod_dependencies_2(module_info::in, module_name::in,
-    pred_proc_id::in, analysis_info::in, analysis_info::out, io::di, io::uo)
-    is det.
+    pred_proc_id::in, analysis_info::in, analysis_info::out) is det.
 
 record_intermod_dependencies_2(ModuleInfo, CallerModule,
-        CalleePredProcId @ proc(CalleePredId, _), !AnalysisInfo, !IO) :-
+        CalleePredProcId @ proc(CalleePredId, _), !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
     ( pred_info_is_imported(CalleePredInfo) ->
         CallerModuleId = module_name_to_module_id(CallerModule),

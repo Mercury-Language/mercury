@@ -258,10 +258,10 @@
 
 ").
 
-:- pred domain_checks is semidet.
+:- pred math_domain_checks is semidet.
 
 :- pragma foreign_proc("C",
-    domain_checks,
+    math_domain_checks,
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
@@ -272,7 +272,7 @@
 ").
 
 :- pragma foreign_proc("C#",
-    domain_checks,
+    math_domain_checks,
     [thread_safe, promise_pure],
 "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
@@ -283,7 +283,7 @@
 ").
 
 :- pragma foreign_proc("Java",
-    domain_checks,
+    math_domain_checks,
     [thread_safe, promise_pure],
 "
     succeeded = true;
@@ -407,7 +407,7 @@ math.round(Num) = math.floor(Num + 0.5).
 math.truncate(X) = (X < 0.0 -> math.ceiling(X) ; math.floor(X)).
 
 math.sqrt(X) = SquareRoot :-
-    ( domain_checks, X < 0.0 ->
+    ( math_domain_checks, X < 0.0 ->
         throw(domain_error("math.sqrt"))
     ;
         SquareRoot = math.sqrt_2(X)
@@ -472,7 +472,7 @@ math.solve_quadratic(A, B, C) = Roots :-
     ).
 
 math.pow(X, Y) = Res :-
-    ( domain_checks, X < 0.0 ->
+    ( math_domain_checks, X < 0.0 ->
         throw(domain_error("math.pow"))
     ; X = 0.0 ->
         ( Y =< 0.0 ->
@@ -527,7 +527,7 @@ math.pow(X, Y) = Res :-
 ").
 
 math.ln(X) = Log :-
-    ( domain_checks, X =< 0.0 ->
+    ( math_domain_checks, X =< 0.0 ->
         throw(domain_error("math.ln"))
     ;
         Log = math.ln_2(X)
@@ -555,7 +555,7 @@ math.ln(X) = Log :-
 ").
 
 math.log10(X) = Log :-
-    ( domain_checks, X =< 0.0 ->
+    ( math_domain_checks, X =< 0.0 ->
         throw(domain_error("math.log10"))
     ;
         Log = math.log10_2(X)
@@ -579,7 +579,7 @@ math.log10(X) = Log :-
 math.log10_2(X) = math.ln_2(X) / math.ln_2(10.0).
 
 math.log2(X) = Log :-
-    ( domain_checks, X =< 0.0 ->
+    ( math_domain_checks, X =< 0.0 ->
         throw(domain_error("math.log2"))
     ;
         Log = math.log2_2(X)
@@ -609,7 +609,7 @@ math.log2_2(X) = math.ln_2(X) / math.ln_2(2.0).
 
 math.log(B, X) = Log :-
     (
-        domain_checks,
+        math_domain_checks,
         ( X =< 0.0
         ; B =< 0.0
         ; B = 1.0
@@ -696,7 +696,7 @@ math.log_2(B, X) = math.ln_2(X) / math.ln_2(B).
 
 math.asin(X) = ASin :-
     (
-        domain_checks,
+        math_domain_checks,
         ( X < -1.0
         ; X > 1.0
         )
@@ -729,7 +729,7 @@ math.asin(X) = ASin :-
 
 math.acos(X) = ACos :-
     (
-        domain_checks,
+        math_domain_checks,
         ( X < -1.0
         ; X > 1.0
         )

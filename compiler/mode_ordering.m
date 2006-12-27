@@ -243,7 +243,8 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
             NeedVisibleVars = list_to_set([VarA, VarB])
         ),
         ConsumingVars = solutions.solutions_set((pred(Var::out) is nondet :-
-            inst_graph.corresponding_nodes(InstGraph, VarA, VarB, VarC, VarD),
+            inst_graph.same_graph_corresponding_nodes(InstGraph,
+                VarA, VarB, VarC, VarD),
             ( ProdVars `contains` VarC ->
                 Var = VarD
             ; ProdVars `contains` VarD ->

@@ -628,7 +628,8 @@ combine_primitive_goals(GoalA, GoalB) = Goal :-
 % (These are for debugging only)
 %
 
-dump_abstract_scc(SCC, Module, !IO) :- dump_abstract_scc(SCC, 0, Module, !IO).
+dump_abstract_scc(SCC, Module, !IO) :-
+    dump_abstract_scc(SCC, 0, Module, !IO).
 
 dump_abstract_scc(SCC, Indent, Module, !IO) :-
     list.foldl((pred(Proc::in, !.IO::di, !:IO::uo) is det :-

@@ -3462,9 +3462,12 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
 tabling(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Transforming tabled predicates...", !IO),
     maybe_flush_output(Verbose, !IO),
-    table_gen_process_module(!HLDS, !IO),
+    table_gen_process_module(!HLDS, [], Specs),
     maybe_write_string(Verbose, " done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+    maybe_report_stats(Stats, !IO),
+    module_info_get_globals(!.HLDS, Globals),
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+    module_info_incr_num_errors(NumErrors, !HLDS).
 
 %-----------------------------------------------------------------------------%
 
@@ -3798,7 +3801,9 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     ->
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        unused_args.process_module(!HLDS, !IO),
+        unused_args.process_module(!HLDS, [], Specs, !IO),
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+        module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

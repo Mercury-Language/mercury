@@ -630,7 +630,7 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
     % mode analysis on the resulting goal. It would be nicer to generate
     % the right assignment unification directly, but that would require keeping
     % track of the inst of OFV.
-    create_atomic_complicated_unification(OFV, rhs_var(NFV),
+    create_pure_atomic_complicated_unification(OFV, rhs_var(NFV),
         Context, MainCtxt, SubCtxt, Goal),
     !:CseInfo = !.CseInfo ^ varset := VarSet,
     !:CseInfo = !.CseInfo ^ vartypes := VarTypes.
@@ -677,7 +677,7 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
         % mode analysis on the resulting goal. It would be nicer to generate
         % the right assignment unification directly, but that would require
         % keeping track of the inst of OldVar.
-        create_atomic_complicated_unification(HoistedVar, rhs_var(OldVar),
+        create_pure_atomic_complicated_unification(HoistedVar, rhs_var(OldVar),
             Context, MainCtxt, SubCtxt, Goal),
         Replacements = [Goal | Replacements1]
     ).

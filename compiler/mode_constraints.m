@@ -1549,7 +1549,7 @@ unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
     InstGraph = !.GCInfo ^ inst_graph,
     Generator =
         (pred((V - W)::out) is multi :-
-            inst_graph.corresponding_nodes(InstGraph, A, B, V, W)
+            inst_graph.same_graph_corresponding_nodes(InstGraph, A, B, V, W)
         ),
     Accumulator =
         (pred((V - W)::in, C0::in, C::out, S0::in, S::out) is det :-
@@ -1687,7 +1687,7 @@ call_constraints(GoalPath, PredId, HeadVars, Args, !Constraint, !GCInfo) :-
     Generator =
         (pred((V - W)::out) is nondet :-
             corresponding_members(HeadVars, Args, X, Y),
-            inst_graph.corresponding_nodes(InstGraph, X, Y, V, W)
+            inst_graph.same_graph_corresponding_nodes(InstGraph, X, Y, V, W)
         ),
     Accumulator =
         (pred((V - W)::in, C0::in, C::out, S0::in, S::out) is det :-
