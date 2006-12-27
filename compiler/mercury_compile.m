@@ -2833,6 +2833,8 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
 
     SimpList = [simp_do_once, simp_elim_removable_scopes | SimpList1],
     Simplifications = list_to_simplifications(SimpList),
+    write_proc_progress_message("% Simplifying ", PredId, ProcId,
+        !.HLDS, !IO),
     simplify_proc(Simplifications, PredId, ProcId, !HLDS, !ProcInfo, !IO),
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
         !.HLDS, !IO),

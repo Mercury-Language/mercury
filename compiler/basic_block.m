@@ -79,7 +79,7 @@
     % !.BlockMap, and the set of labels NewLabels that are not the targets of
     % gotos (e.g. because they were freshly created by create_basic_blocks),
     % delete from !.LabelSeq each label in NewLabels, merging its basic block
-    % with the immediately previous basic block. As a result, in block in
+    % with the immediately previous basic block. As a result, each block in
     % !:BlockMap is an extended basic block.
     %
 :- pred extend_basic_blocks(list(label)::in, list(label)::out,

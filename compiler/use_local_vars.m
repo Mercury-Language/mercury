@@ -55,6 +55,9 @@
 % structure. Again, we replace the false register or stack slot with a
 % temporary after assigning the value in the false register or stack slot to
 % the temporary.
+%
+% If we cannot find out what registers are live at each label, we still look
+% for the second and third patterns.
 % 
 %-----------------------------------------------------------------------------%
 
@@ -103,40 +106,35 @@ use_local_vars_proc(Instrs0, Instrs, NumRealRRegs, AccessThreshold,
         LabelSeq, BlockMap0),
     flatten_basic_blocks(LabelSeq, BlockMap0, TentativeInstrs),
     livemap.build(TentativeInstrs, MaybeLiveMap),
-    (
-        % Instrs0 must have contained C code which cannot be analyzed
-        MaybeLiveMap = no,
-        Instrs = Instrs0
-    ;
-        MaybeLiveMap = yes(LiveMap),
-        extend_basic_blocks(LabelSeq, EBBLabelSeq, BlockMap0, EBBBlockMap0,
-            NewLabels),
-        list.foldl(use_local_vars_block(LiveMap, NumRealRRegs,
-            AccessThreshold), EBBLabelSeq, EBBBlockMap0, EBBBlockMap),
-        flatten_basic_blocks(EBBLabelSeq, EBBBlockMap, Instrs1),
-        (
-            AutoComments = yes,
-            NewComment = comment("\n" ++
-                dump_livemap(yes(ProcLabel), LiveMap)) - "",
-            Comments = Comments0 ++ [NewComment]
-        ;
-            AutoComments = no,
-            Comments = Comments0
-        ),
-        Instrs = Comments ++ Instrs1
-    ).
+    extend_basic_blocks(LabelSeq, EBBLabelSeq, BlockMap0, EBBBlockMap0,
+        NewLabels),
+    list.foldl(use_local_vars_block(MaybeLiveMap, NumRealRRegs,
+        AccessThreshold), EBBLabelSeq, EBBBlockMap0, EBBBlockMap),
+    flatten_basic_blocks(EBBLabelSeq, EBBBlockMap, Instrs1),
 
-:- pred use_local_vars_block(livemap::in, int::in, int::in, label::in,
+    (
+        MaybeLiveMap = yes(LiveMap),
+        AutoComments = yes
+    ->
+        NewComment = comment("\n" ++
+            dump_livemap(yes(ProcLabel), LiveMap)) - "",
+        Comments = Comments0 ++ [NewComment]
+    ;
+        Comments = Comments0
+    ),
+    Instrs = Comments ++ Instrs1.
+
+:- pred use_local_vars_block(maybe(livemap)::in, int::in, int::in, label::in,
     block_map::in, block_map::out) is det.
 
-use_local_vars_block(LiveMap, NumRealRRegs, AccessThreshold, Label,
+use_local_vars_block(MaybeLiveMap, NumRealRRegs, AccessThreshold, Label,
         !BlockMap) :-
     map.lookup(!.BlockMap, Label, BlockInfo0),
     BlockInfo0 = block_info(BlockLabel, LabelInstr, RestInstrs0,
         FallInto, JumpLabels, MaybeFallThrough),
     counter.init(1, TempCounter0),
     use_local_vars_instrs(RestInstrs0, RestInstrs, TempCounter0, TempCounter,
-        NumRealRRegs, AccessThreshold, LiveMap, MaybeFallThrough),
+        NumRealRRegs, AccessThreshold, MaybeLiveMap, MaybeFallThrough),
     ( TempCounter = TempCounter0 ->
         true
     ;
@@ -148,12 +146,12 @@ use_local_vars_block(LiveMap, NumRealRRegs, AccessThreshold, Label,
 %-----------------------------------------------------------------------------%
 
 :- pred use_local_vars_instrs(list(instruction)::in, list(instruction)::out,
-    counter::in, counter::out, int::in, int::in, livemap::in, maybe(label)::in)
-    is det.
+    counter::in, counter::out, int::in, int::in, maybe(livemap)::in,
+    maybe(label)::in) is det.
 
 use_local_vars_instrs(!RestInstrs, !TempCounter,
-        NumRealRRegs, AccessThreshold, LiveMap, MaybeFallThrough) :-
-    opt_assign(!RestInstrs, !TempCounter, NumRealRRegs, LiveMap,
+        NumRealRRegs, AccessThreshold, MaybeLiveMap, MaybeFallThrough) :-
+    opt_assign(!RestInstrs, !TempCounter, NumRealRRegs, MaybeLiveMap,
         MaybeFallThrough),
     ( AccessThreshold >= 1 ->
         opt_access(!RestInstrs, !TempCounter, NumRealRRegs,
@@ -165,11 +163,12 @@ use_local_vars_instrs(!RestInstrs, !TempCounter,
 %-----------------------------------------------------------------------------%
 
 :- pred opt_assign(list(instruction)::in, list(instruction)::out,
-    counter::in, counter::out, int::in, livemap::in, maybe(label)::in) is det.
+    counter::in, counter::out, int::in, maybe(livemap)::in, maybe(label)::in)
+    is det.
 
 opt_assign([], [], !TempCounter, _, _, _).
 opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
-        LiveMap, MaybeFallThrough) :-
+        MaybeLiveMap, MaybeFallThrough) :-
     Instr0 = Uinstr0 - _Comment0,
     (
         ( Uinstr0 = assign(ToLval, _FromRval)
@@ -179,7 +178,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
     ->
         (
             ToLval = reg(_, _),
-            find_compulsory_lvals(TailInstrs0, LiveMap, MaybeFallThrough,
+            find_compulsory_lvals(TailInstrs0, MaybeLiveMap, MaybeFallThrough,
                 no, MaybeCompulsoryLvals),
             MaybeCompulsoryLvals = known(CompulsoryLvals),
             not set.member(ToLval, CompulsoryLvals)
@@ -191,7 +190,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
                 exprn_aux.substitute_lval_in_instr(ToLval, NewLval),
                 TailInstrs0, TailInstrs1, 0, _),
             opt_assign(TailInstrs1, TailInstrs, !TempCounter, NumRealRRegs,
-                LiveMap, MaybeFallThrough),
+                MaybeLiveMap, MaybeFallThrough),
             Instrs = [Instr | TailInstrs]
         ;
             counter.allocate(TempNum, !TempCounter),
@@ -203,16 +202,16 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             substitute_lval_in_defn(ToLval, NewLval, Instr0, Instr),
             CopyInstr = assign(ToLval, lval(NewLval)) - "",
             opt_assign(TailInstrs1, TailInstrs, !TempCounter, NumRealRRegs,
-                LiveMap, MaybeFallThrough),
+                MaybeLiveMap, MaybeFallThrough),
             Instrs = [Instr, CopyInstr | TailInstrs]
         ;
             opt_assign(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
-                LiveMap, MaybeFallThrough),
+                MaybeLiveMap, MaybeFallThrough),
             Instrs = [Instr0 | TailInstrs]
         )
     ;
         opt_assign(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
-            LiveMap, MaybeFallThrough),
+            MaybeLiveMap, MaybeFallThrough),
         Instrs = [Instr0 | TailInstrs]
     ).
 
@@ -222,26 +221,32 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
     --->    known(lvalset)
     ;       unknown_must_assume_all.
 
-:- pred find_compulsory_lvals(list(instruction)::in, livemap::in,
+:- pred find_compulsory_lvals(list(instruction)::in, maybe(livemap)::in,
     maybe(label)::in, bool::in, maybe_compulsory_lvals::out) is det.
 
-find_compulsory_lvals([], LiveMap, MaybeFallThrough, _PrevLivevals,
+find_compulsory_lvals([], MaybeLiveMap, MaybeFallThrough, _PrevLivevals,
         MaybeCompulsoryLvals) :-
     (
         MaybeFallThrough = yes(FallThrough),
-        map.lookup(LiveMap, FallThrough, CompulsoryLvals),
-        MaybeCompulsoryLvals = known(CompulsoryLvals)
+        (
+            MaybeLiveMap = yes(LiveMap),
+            map.lookup(LiveMap, FallThrough, CompulsoryLvals),
+            MaybeCompulsoryLvals = known(CompulsoryLvals)
+        ;
+            MaybeLiveMap = no,
+            MaybeCompulsoryLvals = unknown_must_assume_all
+        )
     ;
         MaybeFallThrough = no,
         MaybeCompulsoryLvals = unknown_must_assume_all
     ).
-find_compulsory_lvals([Instr | Instrs], LiveMap, MaybeFallThrough,
+find_compulsory_lvals([Instr | Instrs], MaybeLiveMap, MaybeFallThrough,
         PrevLivevals, !:MaybeCompulsoryLvals) :-
     Instr = Uinstr - _,
     (
         Uinstr = livevals(LiveLvals)
     ->
-        find_compulsory_lvals(Instrs, LiveMap, MaybeFallThrough,
+        find_compulsory_lvals(Instrs, MaybeLiveMap, MaybeFallThrough,
             yes, !:MaybeCompulsoryLvals),
         union_maybe_compulsory_lvals(LiveLvals, !MaybeCompulsoryLvals)
     ;
@@ -266,16 +271,22 @@ find_compulsory_lvals([Instr | Instrs], LiveMap, MaybeFallThrough,
             (
                 Labels = [],
                 % Optimize the common case
-                find_compulsory_lvals(Instrs, LiveMap, MaybeFallThrough,
+                find_compulsory_lvals(Instrs, MaybeLiveMap, MaybeFallThrough,
                     no, !:MaybeCompulsoryLvals)
             ;
                 Labels = [_ | _],
-                list.map(map.lookup(LiveMap), Labels, LabelsLiveLvals),
-                AllLabelsLiveLvals = set.union_list(LabelsLiveLvals),
-                find_compulsory_lvals(Instrs, LiveMap, MaybeFallThrough,
-                    no, !:MaybeCompulsoryLvals),
-                union_maybe_compulsory_lvals(AllLabelsLiveLvals,
-                    !MaybeCompulsoryLvals)
+                (
+                    MaybeLiveMap = yes(LiveMap),
+                    list.map(map.lookup(LiveMap), Labels, LabelsLiveLvals),
+                    AllLabelsLiveLvals = set.union_list(LabelsLiveLvals),
+                    find_compulsory_lvals(Instrs, MaybeLiveMap,
+                        MaybeFallThrough, no, !:MaybeCompulsoryLvals),
+                    union_maybe_compulsory_lvals(AllLabelsLiveLvals,
+                        !MaybeCompulsoryLvals)
+                ;
+                    MaybeLiveMap = no,
+                    !:MaybeCompulsoryLvals = unknown_must_assume_all
+                )
             )
         ;
             NonLabelCodeAddrs = [_ | _],
