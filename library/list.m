@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -590,6 +590,11 @@
     % An exception is raised if the list arguments differ in length.
     %
 :- func list.map_corresponding(func(A, B) = C, list(A), list(B)) = list(C).
+:- pred list.map_corresponding(pred(A, B, C), list(A), list(B), list(C)).
+:- mode list.map_corresponding(in(pred(in, in, out) is det), in, in, out)
+    is det.
+:- mode list.map_corresponding(in(pred(in, in, out) is semidet), in, in, out)
+    is semidet.
 
     % list.map_corresponding3(F, [A1, .. An], [B1, .. Bn], [C1, .. Cn]) =
     %   [F(A1, B1, C1), .., F(An, Bn, Cn)].
@@ -1803,6 +1808,15 @@ list.map_corresponding(_, [_ | _], []) =
     func_error("list.map_corresponding/3: mismatched list arguments").
 list.map_corresponding(F, [A | As], [B | Bs]) =
     [F(A, B) | list.map_corresponding(F, As, Bs)].
+
+list.map_corresponding(_, [], [], []).
+list.map_corresponding(_, [], [_ | _], _) :-
+    error("list.map_corresponding/4: mismatched list arguments.").
+list.map_corresponding(_, [_ | _], [], _) :-
+    error("list.map_corresponding/4: mismatched list arguments.").
+list.map_corresponding(P, [A | As], [B | Bs], [C | Cs]) :-
+    P(A, B, C),
+    list.map_corresponding(P, As, Bs, Cs).
 
 list.map_corresponding3(F, As, Bs, Cs) =
     (

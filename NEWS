@@ -15,6 +15,9 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We have added list.map_corresponding/4, a predicate version of 
+  list.map_corresponding/3.
+
 * We have added versions of list.foldl/4 and list.foldr/4 that have 
   determinism multi.
 
