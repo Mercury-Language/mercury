@@ -6,7 +6,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2006 The University of Melbourne.
+** Copyright (C) 1997-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1436,8 +1436,7 @@ MR_define_entry(MR_do_trace_redo_fail_shallow);
     ** If this code ever needs changing, you may also need to change
     ** the code in extras/exceptions/exception.m similarly.
     */
-    if (MR_redo_fromfull_framevar(MR_redofr_slot(MR_curfr)))
-    {
+    if (MR_redo_fromfull_framevar(MR_redofr_slot(MR_curfr))) {
         MR_Code *MR_jumpaddr;
         MR_save_transient_registers();
         MR_jumpaddr = MR_trace((const MR_LabelLayout *)

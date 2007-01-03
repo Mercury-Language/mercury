@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -131,7 +131,7 @@ MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
         if (label == NULL) {
             fprintf(stderr, "internal label not found\n");
         } else {
-            label_layout = label->i_layout;
+            label_layout = label->MR_internal_layout;
             result = MR_dump_stack_from_layout(stderr, label_layout,
                 det_stack_pointer, current_frame, include_trace_data,
                 MR_TRUE, 0, 0, &MR_dump_stack_record_print);
@@ -338,12 +338,12 @@ MR_stack_walk_succip_layout(MR_Code *success,
         return MR_STEP_ERROR_AFTER;
     }
 
-    if (label->i_layout == NULL) {
+    if (label->MR_internal_layout == NULL) {
         *problem_ptr = "reached label with no stack layout info";
         return MR_STEP_ERROR_AFTER;
     }
 
-    *return_label_layout = label->i_layout;
+    *return_label_layout = label->MR_internal_layout;
     return MR_STEP_OK;
 }
 
@@ -845,11 +845,11 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
                 &base_sp, &base_curfr, &problem);
         } else {
             internal = MR_lookup_internal_by_addr(redoip);
-            if (internal == NULL || internal->i_layout == NULL) {
+            if (internal == NULL || internal->MR_internal_layout == NULL) {
                 return "cannot find redoip label's layout structure";
             }
 
-            label_layout = internal->i_layout;
+            label_layout = internal->MR_internal_layout;
             (*func)(func_data, MR_TOP_FRAME_ON_SIDE_BRANCH, NULL, label_layout,
                 NULL, fr, level_number);
             MR_erase_temp_redoip(fr);
@@ -1237,9 +1237,9 @@ MR_print_call_trace_info(FILE *fp, const MR_ProcLayout *proc_layout,
         MR_call_details_are_valid(proc_layout, base_sp, base_curfr);
 
     if (print_details) {
-        unsigned long event_num;
-        unsigned long call_num;
-        unsigned long depth;
+        unsigned long   event_num;
+        unsigned long   call_num;
+        unsigned long   depth;
 
         if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
             event_num = MR_event_num_stackvar(base_sp) + 1;
@@ -1251,9 +1251,17 @@ MR_print_call_trace_info(FILE *fp, const MR_ProcLayout *proc_layout,
             depth = MR_call_depth_framevar(base_curfr);
         }
 
+        /*
+        ** The code below does has a job that is very similar to the job
+        ** of the function MR_trace_event_print_internal_report in
+        ** trace/mercury_trace_internal.c. Any changes here will probably
+        ** require similar changes there.
+        */
+
         if (MR_standardize_event_details) {
             char    buf[64];    /* plenty big enough */
 
+            /* Do not print the context id, since it is not standardized. */
             event_num = MR_standardize_event_num(event_num);
             call_num = MR_standardize_call_num(call_num);
             snprintf(buf, 64, "E%lu", event_num);
@@ -1262,6 +1270,10 @@ MR_print_call_trace_info(FILE *fp, const MR_ProcLayout *proc_layout,
             fprintf(fp, "%7s ", buf);
             fprintf(fp, "%4lu ", depth);
         } else {
+            /*
+            ** Do not print the context id, since it is the same for
+            ** all the calls in the stack.
+            */
             fprintf(fp, "%7lu %7lu %4lu ", event_num, call_num, depth);
         }
     } else {

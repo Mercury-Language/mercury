@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1675,6 +1675,18 @@ attribute_list_to_attributes(Attributes, Attributes).
                 gen_arg_infos       :: table_arg_infos
             ).
 
+:- type special_proc_return
+    --->    generator_return(
+                % The generator is stored in this location. We can't use an
+                % rval to represent the location, since we don't want this
+                % module to depend on the ll_backend package.
+                generator_rval          :: string,
+
+                % What should we pass as the value of the debug paramater
+                % in the call to MR_tbl_mmos_return_answer?
+                return_debug            :: string
+            ).
+
 :- type untuple_proc_info
     --->    untuple_proc_info(
                 map(prog_var, prog_vars)
@@ -1737,6 +1749,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     maybe(proc_table_info)::out) is det.
 :- pred proc_info_get_table_attributes(proc_info::in,
     maybe(table_attributes)::out) is det.
+:- pred proc_info_get_maybe_special_return(proc_info::in,
+    maybe(special_proc_return)::out) is det.
 :- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
     maybe(deep_profile_proc_info)::out) is det.
 :- pred proc_info_get_maybe_untuple_info(proc_info::in,
@@ -1791,6 +1805,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_maybe_proc_table_info(maybe(proc_table_info)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_table_attributes(maybe(table_attributes)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_maybe_special_return(maybe(special_proc_return)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_deep_profile_info(
     maybe(deep_profile_proc_info)::in,
@@ -2102,6 +2118,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 
                 table_attributes            :: maybe(table_attributes),
 
+                maybe_special_return        :: maybe(special_proc_return),
+
                 maybe_deep_profile_proc_info :: maybe(deep_profile_proc_info),
 
                 % If set, it means this procedure was created from another
@@ -2121,14 +2139,14 @@ attribute_list_to_attributes(Attributes, Attributes).
         ).
 
 :- type structure_sharing_info
-    ---> structure_sharing_info(
-            maybe_sharing           :: maybe(structure_sharing_domain),
-            maybe_imported_sharing  :: maybe(imported_sharing)
-                % Records the sharing information from any `.opt' or
-                % `.trans_opt' file. This information needs to be processed
-                % at the beginning of structure sharing analysis. After that
-                % this field is of no use.
-        ).
+    --->    structure_sharing_info(
+                maybe_sharing           :: maybe(structure_sharing_domain),
+                maybe_imported_sharing  :: maybe(imported_sharing)
+                    % Records the sharing information from any `.opt' or
+                    % `.trans_opt' file. This information needs to be processed
+                    % at the beginning of structure sharing analysis. After
+                    % that, this field is of no use.
+            ).
 
     % Sharing information is expressed in terms of headvariables and the
     % type variables occurring in their types. In order to correctly process
@@ -2209,7 +2227,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
-        ArgInfo, InitialLiveness, no, no, no, no, no, no, no, no,
+        ArgInfo, InitialLiveness, no, no, no, no, no, no, no, no, no,
         SharingInfo, ReuseInfo),
     ProcInfo = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
@@ -2233,7 +2251,7 @@ proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken,
-        StackSlots, no, Liveness, no, no, no, no, no, no, no, no,
+        StackSlots, no, Liveness, no, no, no, no, no, no, no, no, no,
         SharingInfo, ReuseInfo),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, no, HeadModes, no, MaybeHeadLives,
@@ -2276,6 +2294,8 @@ proc_info_get_has_parallel_conj(PI,
 proc_info_get_call_table_tip(PI, PI ^ proc_sub_info ^ call_table_tip).
 proc_info_get_maybe_proc_table_info(PI, PI ^ proc_sub_info ^ maybe_table_info).
 proc_info_get_table_attributes(PI, PI ^ proc_sub_info ^ table_attributes).
+proc_info_get_maybe_special_return(PI,
+    PI ^ proc_sub_info ^ maybe_special_return).
 proc_info_get_maybe_deep_profile_info(PI,
     PI ^ proc_sub_info ^ maybe_deep_profile_proc_info).
 proc_info_get_maybe_untuple_info(PI,
@@ -2316,6 +2336,8 @@ proc_info_set_maybe_proc_table_info(MTI, PI,
     PI ^ proc_sub_info ^ maybe_table_info := MTI).
 proc_info_set_table_attributes(TA, PI,
     PI ^ proc_sub_info ^ table_attributes := TA).
+proc_info_set_maybe_special_return(MSR, PI,
+    PI ^ proc_sub_info ^ maybe_special_return := MSR).
 proc_info_set_maybe_deep_profile_info(DPI, PI,
     PI ^ proc_sub_info ^ maybe_deep_profile_proc_info := DPI).
 proc_info_set_maybe_untuple_info(MUI, PI,

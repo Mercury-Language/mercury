@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -662,7 +662,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
         goal_info_get_goal_path(GoalInfo, GoalPath),
-        goal_path_to_string(GoalPath, GoalPathStr),
+        GoalPathStr = goal_path_to_string(GoalPath),
         code_info.get_cur_proc_label(!.CI, CallerProcLabel),
         code_info.get_next_closure_seq_no(SeqNo, !CI),
         code_info.get_static_cell_info(!.CI, StaticCellInfo0),

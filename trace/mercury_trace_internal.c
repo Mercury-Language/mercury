@@ -1216,10 +1216,9 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
         line = MR_trace_getline("> ", mdb_in, mdb_out);
         if (line == NULL) {
             /*
-            ** We got an EOF... we need to stop processing
-            ** the input, even though it is not syntactically
-            ** correct, otherwise we might get into an infinite
-            ** loop if we keep getting EOF.
+            ** We got an EOF... we need to stop processing the input,
+            ** even though it is not syntactically correct, otherwise we might
+            ** get into an infinite loop if we keep getting EOF.
             */
             break;
         }
@@ -1467,10 +1466,23 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
     filename = "";
     parent_filename = "";
 
+    /*
+    ** The code below does has a job that is very similar to the job
+    ** of the function MR_print_call_trace_info in
+    ** runtime/mercury_stack_trace.c. Any changes here will probably
+    ** require similar changes there.
+    */
+
     if (MR_standardize_event_details) {
         char        buf[64];
         MR_Unsigned event_num;
         MR_Unsigned call_num;
+
+        /*
+        ** Do not print the context id. It contains the values of the arguments
+        ** cast to integers. Since those arguments may originally have been
+        ** addresses, their values may differ from run to run.
+        */
 
         event_num = MR_standardize_event_num(event_info->MR_event_number);
         call_num = MR_standardize_call_num(event_info->MR_call_seqno);
@@ -1480,6 +1492,16 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
         fprintf(MR_mdb_out, "%6s ", buf);
         fprintf(MR_mdb_out, "%s", MR_port_names[event_info->MR_trace_port]);
     } else {
+#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
+        MR_Generator    *generator;
+        int             i;
+
+        generator = MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_generator;
+        if (generator != NULL) {
+            fprintf(MR_mdb_out, "%s ", MR_gen_subgoal(generator));
+        }
+#endif
+
         fprintf(MR_mdb_out, "%8ld: %6ld %2ld %s",
             (long) event_info->MR_event_number,
             (long) event_info->MR_call_seqno,

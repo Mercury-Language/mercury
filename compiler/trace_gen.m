@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -799,18 +799,18 @@ generate_user_event_code(UserInfo, GoalInfo, Code, !CI) :-
 generate_external_event_code(ExternalPort, TraceInfo, Context,
         MaybeExternalInfo, !CI) :-
     Port = convert_external_port_type(ExternalPort),
+    code_info.get_module_info(!.CI, ModuleInfo),
+    code_info.get_pred_info(!.CI, PredInfo),
+    code_info.get_proc_info(!.CI, ProcInfo),
+    NeedPort = eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
+        TraceInfo ^ trace_level, TraceInfo ^ trace_suppress_items, Port),
     (
-        code_info.get_module_info(!.CI, ModuleInfo),
-        code_info.get_pred_info(!.CI, PredInfo),
-        code_info.get_proc_info(!.CI, ProcInfo),
-        eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-            TraceInfo ^ trace_level,
-            TraceInfo ^ trace_suppress_items, Port) = yes
-    ->
+        NeedPort = yes,
         generate_event_code(Port, port_info_external, yes(TraceInfo), Context,
             no, no, Label, TvarDataMap, Code, !CI),
         MaybeExternalInfo = yes(external_event_info(Label, TvarDataMap, Code))
     ;
+        NeedPort = no,
         MaybeExternalInfo = no
     ).
 
@@ -867,10 +867,10 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     code_info.variable_locations(!.CI, VarLocs),
     code_info.get_proc_info(!.CI, ProcInfo),
     set.to_sorted_list(TvarSet, TvarList),
-    continuation_info.find_typeinfos_for_tvars(TvarList,
-        VarLocs, ProcInfo, TvarDataMap),
+    continuation_info.find_typeinfos_for_tvars(TvarList, VarLocs, ProcInfo,
+        TvarDataMap),
 
-    % compute the set of live lvals at the event
+    % Compute the set of live lvals at the event.
     VarLvals = list.map(find_lval_in_var_info, VarInfoList),
     map.values(TvarDataMap, TvarLocnSets),
     TvarLocnSet = set.union_list(TvarLocnSets),
@@ -884,11 +884,15 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     LabelStr = llds_out.label_to_c_string(Label, no),
     (
         MaybeUserInfo = no,
-        TraceStmt = "\t\tMR_EVENT(" ++ LabelStr ++ ")\n"
+        TraceStmt0 = "\t\tMR_EVENT(" ++ LabelStr ++ ")\n"
     ;
         MaybeUserInfo = yes(_),
-        TraceStmt = "\t\tMR_USER_EVENT(" ++ LabelStr ++ ")\n"
+        TraceStmt0 = "\t\tMR_USER_EVENT(" ++ LabelStr ++ ")\n"
     ),
+    TraceStmt = "\t\t/* port " ++ trace_port_to_string(Port) ++ ", " ++
+        "path <" ++ goal_path_to_string(Path) ++ "> */\n" ++
+        TraceStmt0,
+
     code_info.add_trace_layout_for_label(Label, Context, Port, HideEvent,
         Path, MaybeUserInfo, LayoutLabelInfo, !CI),
     code_info.set_proc_trace_events(yes, !CI),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -756,7 +756,7 @@ dump_proc_goal_paths(ProcTable, ProcId, !IO) :-
 
 dump_goal_goal_paths(Indent, GoalExpr - GoalInfo, !IO) :-
     goal_info_get_goal_path(GoalInfo, GoalPath),
-    goal_path_to_string(GoalPath, GoalPathString),
+    GoalPathString = goal_path_to_string(GoalPath),
     GoalPathFormat = [words(GoalPathString), nl],
     write_error_pieces_maybe_with_context(no, Indent, GoalPathFormat, !IO),
     dump_goal_expr_goal_paths(Indent+1, GoalExpr, !IO).

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2006 The University of Melbourne.
+** Copyright (C) 1997-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -179,6 +179,11 @@
 ** MR_TRACE_COUNT_DEBUG
 ** 	Enables runtime checking of the invariants involving the implementation
 ** 	of the --trace-count runtime option.
+**
+** MR_EXEC_TRACE_INFO_IN_CONTEXT
+**	(Implied by MR_USE_MINIMAL_MODEL_OWN_STACKS.)
+** 	Allows the debugger to distinguish between different contexts.
+** 	Currently used only by own stack minimal model tabling.
 **
 ** MR_LOWLEVEL_DEBUG
 **	Enables various low-level debugging stuff,
@@ -490,6 +495,17 @@
 
 #if defined(MR_USE_MINIMAL_MODEL_OWN_STACKS) && !defined(MR_CONSERVATIVE_GC)
   #error "MR_USE_MINIMAL_MODEL_OWN_STACKS requires MR_CONSERVATIVE_GC"
+#endif
+
+/*
+** If the execution engine uses multiple contexts, we want separate event
+** counters, call counters and depth counters in each context. Currently,
+** we use multiple contexts only in parallel grades, for which the debugger
+** doesn't (yet) work, and in own stack minimal model grades.
+*/
+
+#ifdef	MR_USE_MINIMAL_MODEL_OWN_STACKS
+  #define MR_EXEC_TRACE_INFO_IN_CONTEXT
 #endif
 
 #ifdef MR_MINIMAL_MODEL_DEBUG

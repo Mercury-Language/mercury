@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2004-2006 The University of Melbourne.
+** Copyright (C) 2004-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -778,8 +778,6 @@
         MR_AnswerListNode   *answer_node;                                   \
         MR_Word             **Slot;                                         \
                                                                             \
-        Generator->MR_gen_num_answers++;                                    \
-                                                                            \
         /*                                                                  \
         ** We fill in the answer_data slot with a dummy value.              \
         ** This slot will be filled in by the next piece of code            \
@@ -800,6 +798,8 @@
                 Generator->MR_gen_answer_list_tail);                        \
         }                                                                   \
                                                                             \
+        Generator->MR_gen_num_answers++;                                    \
+                                                                            \
         *(Generator->MR_gen_answer_list_tail) = answer_node;                \
         Generator->MR_gen_answer_list_tail =                                \
             &(answer_node->MR_aln_next_answer);                             \
@@ -808,34 +808,75 @@
         AnswerBlock = *Slot;                                                \
     } while(0)
 
+#define MR_tbl_mmos_return_answer(debug, generator)                         \
+    do {                                                                    \
+        MR_Dlist        *list;                                              \
+        MR_ConsumerPtr  consumer;                                           \
+        MR_Code         *target;                                            \
+                                                                            \
+        if (debug && MR_tabledebug) {                                       \
+            printf("generator %s returning answer #%d\n",                   \
+                MR_gen_addr_name(generator),                                \
+                generator->MR_gen_num_answers);                             \
+        }                                                                   \
+                                                                            \
+        /*                                                                  \
+        ** The choice of the consumer to return an answer to, made here,    \
+        ** implements the scheduling strategy. There is a wide range of     \
+        ** possible strategies, and we should investigate several.          \
+        ** For now, we use the simplest possible strategy.                  \
+        */                                                                  \
+                                                                            \
+        MR_for_dlist (list, generator->MR_gen_consumers) {                  \
+            consumer = (MR_ConsumerPtr) MR_dlist_data(list);                \
+            if (*(consumer->MR_cons_remaining_answer_list_ptr) != NULL) {   \
+                target = consumer->MR_cons_context->MR_ctxt_resume;         \
+                if (debug && MR_tabledebug) {                               \
+                    printf("scheduling consumer %s\n",                      \
+                        MR_cons_addr_name(consumer));                       \
+                    printf("resume target %p (%s)\n",                       \
+                        target, MR_lookup_entry_or_internal(target));       \
+                }                                                           \
+                                                                            \
+                MR_save_context(generator->MR_gen_context);                 \
+                generator->MR_gen_context->MR_ctxt_resume =                 \
+                    MR_ENTRY(MR_do_redo);                                   \
+                MR_load_context(consumer->MR_cons_context);                 \
+                MR_ENGINE(MR_eng_this_context) = consumer->MR_cons_context; \
+                MR_GOTO(consumer->MR_cons_context->MR_ctxt_resume);         \
+            }                                                               \
+        }                                                                   \
+                                                                            \
+        MR_fatal_error("MR_tbl_mmos_return_answer: no waiting consumers");  \
+    } while(0)
+
+#define MR_tbl_mmos_completion(debug, generator)                            \
+    do {                                                                    \
+        /* This code is a placeholder, since it doesn't work with coups. */ \
+        generator->MR_gen_is_complete = MR_TRUE;                            \
+                                                                            \
+        if (debug && MR_tabledebug) {                                       \
+            printf("completing generator %s\n",                             \
+                MR_gen_addr_name(generator));                               \
+        }                                                                   \
+                                                                            \
+        MR_fail();                                                          \
+    } while(0)
+
 #else   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
 #define MR_MMOS_ERROR  \
         "own stack minimal model code entered when not enabled"
 
-#define MR_tbl_mmos_save_inputs_shortcut(num_inputs)                        \
-    do {                                                                    \
-        MR_fatal_error(MR_MMOS_ERROR);                                      \
-    } while(0)
-#define MR_tbl_mmos_consume_next_answer_nondet(consumer, answerblock, succ) \
-    do {                                                                    \
-        MR_fatal_error(MR_MMOS_ERROR);                                      \
-    } while(0)
-#define MR_tbl_mmos_get_answer_table(generator, trienode)                   \
-    do {                                                                    \
-        MR_fatal_error(MR_MMOS_ERROR);                                      \
-    } while(0)
-
 #define MR_tbl_mmos_create_answer_block(debug, Generator, Size, AnswerBlock)\
     do {                                                                    \
         MR_fatal_error(MR_MMOS_ERROR);                                      \
     } while(0)
-
-#define MR_tbl_mmos_return_answer(generator, answerblock)                   \
+#define MR_tbl_mmos_return_answer(debug, generator)                         \
     do {                                                                    \
         MR_fatal_error(MR_MMOS_ERROR);                                      \
     } while(0)
-#define MR_tbl_mmos_completion(generator)                                   \
+#define MR_tbl_mmos_completion(debug, generator)                            \
     do {                                                                    \
         MR_fatal_error(MR_MMOS_ERROR);                                      \
     } while(0)

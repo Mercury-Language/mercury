@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1000,7 +1000,8 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         comment("End of procedure epilogue") - ""
     ]),
     FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma),
-    ( NondetPragma = yes ->
+    (
+        NondetPragma = yes,
         UndefStr = "#undef\tMR_ORDINARY_SLOTS\n",
         UndefComponents = [pragma_c_raw_code(UndefStr, cannot_branch_away,
             live_lvals_info(set.init))],
@@ -1011,6 +1012,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         RestoreDeallocCode = empty, % always empty for nondet code
         ExitCode = tree_list([StartComment, UndefCode, EndComment])
     ;
+        NondetPragma = no,
         code_info.get_instmap(!.CI, InstMap),
         ArgModes = code_info.get_arginfo(!.CI),
         HeadVars = code_info.get_headvars(!.CI),
@@ -1124,8 +1126,12 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             LiveLvals = OutLvals
         ),
 
+        code_info.get_proc_info(!.CI, ProcInfo),
+        proc_info_get_maybe_special_return(ProcInfo, MaybeSpecialReturn),
         (
             CodeModel = model_det,
+            expect(unify(MaybeSpecialReturn, no), this_file,
+                "generate_exit: det special_return"),
             SuccessCode = node([
                 livevals(LiveLvals) - "",
                 goto(code_succip) - "Return from procedure call"
@@ -1134,6 +1140,8 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 SuccessCode])
         ;
             CodeModel = model_semi,
+            expect(unify(MaybeSpecialReturn, no), this_file,
+                "generate_exit: semi special_return"),
             set.insert(LiveLvals, reg(reg_r, 1), SuccessLiveRegs),
             SuccessCode = node([
                 assign(reg(reg_r, 1), const(llconst_true)) - "Succeed",
@@ -1151,12 +1159,27 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 MaybeTraceInfo = no,
                 SetupRedoCode = empty
             ),
-            SuccessCode = node([
-                livevals(LiveLvals) - "",
-                goto(do_succeed(no)) - "Return from procedure call"
-            ]),
-            AllSuccessCode = tree_list([SetupRedoCode,
-                TraceExitCode, SuccessCode])
+            (
+                MaybeSpecialReturn = yes(SpecialReturn),
+                SpecialReturn = generator_return(GeneratorLocnStr, DebugStr),
+                ReturnMacroName = "MR_tbl_mmos_return_answer",
+                ReturnCodeStr = "\t" ++ ReturnMacroName ++ "(" ++
+                    DebugStr ++ ", " ++ GeneratorLocnStr ++ ");\n",
+                Component = pragma_c_user_code(no, ReturnCodeStr),
+                SuccessCode = node([
+                    livevals(LiveLvals) - "",
+                    pragma_c([], [Component], proc_may_call_mercury,
+                        no, no, no, no, no, no) - ""
+                ])
+            ;
+                MaybeSpecialReturn = no,
+                SuccessCode = node([
+                    livevals(LiveLvals) - "",
+                    goto(do_succeed(no)) - "Return from procedure call"
+                ])
+            ),
+            AllSuccessCode = tree_list([SetupRedoCode, TraceExitCode,
+                SuccessCode])
         ),
         ExitCode = tree_list([StartComment, FlushCode, AllSuccessCode,
             EndComment])

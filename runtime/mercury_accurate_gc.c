@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -306,7 +306,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     /* Search for the entry label */
 
     entry_label = MR_prev_entry_by_addr(pc_at_signal);
-    proc_layout = (entry_label != NULL ? entry_label->e_layout : NULL);
+    proc_layout = (entry_label != NULL ? entry_label->MR_entry_layout : NULL);
 
     determinism = (proc_layout != NULL ? proc_layout->MR_sle_detism : -1);
 
@@ -319,16 +319,17 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
             "attempt to schedule garbage collection failed\n");
         if (entry_label != NULL) {
             fprintf(stderr, "Mercury runtime: the label ");
-            if (entry_label->e_name != NULL) {
+            if (entry_label->MR_entry_name != NULL) {
                 fprintf(stderr, "%s has no stack layout info\n",
-                        entry_label->e_name);
+                        entry_label->MR_entry_name);
             } else {
                 fprintf(stderr, "at address %p "
-                    "has no stack layout info\n", entry_label->e_addr);
+                    "has no stack layout info\n", entry_label->MR_entry_addr);
             }
             fprintf(stderr, "Mercury runtime: PC address = %p\n", pc_at_signal);
             fprintf(stderr, "Mercury runtime: PC = label + 0x%lx\n",
-                (long) ((char *)pc_at_signal - (char *)entry_label->e_addr));
+                (long) ((char *) pc_at_signal -
+                    (char *)entry_label->MR_entry_addr));
         } else {
             fprintf(stderr, "Mercury runtime: no entry label ");
             fprintf(stderr, "for PC address %p\n", pc_at_signal);
@@ -338,13 +339,15 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
         return;
     }
 #ifdef MR_DEBUG_AGC_SCHEDULING
-    if (entry_label->e_name != NULL) {
+    if (entry_label->MR_entry_name != NULL) {
         fprintf(stderr, "scheduling called at: %s (%ld %lx)\n",
-            entry_label->e_name, (long) entry_label->e_addr,
-            (long) entry_label->e_addr);
+            entry_label->MR_entry_name,
+            (long) entry_label->MR_entry_addr,
+            (long) entry_label->MR_entry_addr);
     } else {
         fprintf(stderr, "scheduling called at: (%ld %lx)\n",
-            (long) entry_label->e_addr, (long) entry_label->e_addr);
+            (long) entry_label->MR_entry_addr,
+            (long) entry_label->MR_entry_addr);
     }
     fflush(NULL);
 #endif
@@ -490,7 +493,7 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
     MR_virtual_hp_word = (MR_Word) new_heap->MR_zone_min;
 
     label = MR_lookup_internal_by_addr(success_ip);
-    label_layout = label->i_layout;
+    label_layout = label->MR_internal_layout;
 
     if (MR_agc_debug) {
         fprintf(stderr, "BEFORE:\n");

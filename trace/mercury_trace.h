@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2003, 2005-2006 The University of Melbourne.
+** Copyright (C) 1997-2003, 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -156,8 +156,14 @@ extern  MR_RetryResult  MR_trace_retry(MR_EventInfo *event_info,
 ** the `stop_collecting' variable is set to MR_TRUE. It is the tracer mode
 ** after a `collect' request.
 **
+** If MR_trace_cmd == MR_CMD_STEP, the event handler will stop at the next
+** event.
+**
 ** If MR_trace_cmd == MR_CMD_GOTO, the event handler will stop at the next
 ** event whose event number is equal to or greater than MR_trace_stop_event.
+** In own stack minimal model grades, the MR_trace_stop_generator has to match
+** the current context as well, the matching being defined by the
+** MR_cur_generator_is_named() macro
 **
 ** If MR_trace_cmd == MR_CMD_NEXT, the event handler will stop at the next
 ** event at depth MR_trace_stop_depth.
@@ -193,6 +199,7 @@ extern  MR_RetryResult  MR_trace_retry(MR_EventInfo *event_info,
 
 typedef enum {
     MR_CMD_COLLECT,
+    MR_CMD_STEP,
     MR_CMD_GOTO,
     MR_CMD_NEXT,
     MR_CMD_FINISH,
@@ -230,9 +237,14 @@ typedef struct {
     MR_Unsigned             MR_trace_stop_depth;
                             /*
                             ** The MR_trace_stop_event field is meaningful
-                            ** if MR_trace_cmd is MR_CMD_GOTO  .
+                            ** if MR_trace_cmd is MR_CMD_GOTO.
+                            **
+                            ** The MR_trace_stop_generator field is meaningful
+                            ** if MR_trace_cmd is MR_CMD_GOTO and the grade
+                            ** is own stack minimal model.
                             */
     MR_Unsigned             MR_trace_stop_event;
+    const char              *MR_trace_stop_generator;
     MR_TracePrintLevel      MR_trace_print_level;
     MR_bool                 MR_trace_strict;
 #ifdef  MR_TRACE_CHECK_INTEGRITY
@@ -261,6 +273,50 @@ typedef struct {
 */
 
 extern  MR_TraceCmdInfo     MR_trace_ctrl;
+
+/*
+** MR_cur_generator_is_named(genname) succeeds if the current context
+** belongs to a generator named `genname' (using either MR_gen_addr_short_name
+** or MR_gen_subgoal), or genname is NULL or the empty string and the current
+** context does not belong to a generator.
+*/
+
+#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
+  #define   MR_cur_generator_is_named(genname)                              \
+    (                                                                       \
+        (MR_ENGINE(MR_eng_this_context) != NULL)                            \
+    &&                                                                      \
+        (                                                                   \
+            (                                                               \
+                (MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_generator    \
+                    == NULL)                                                \
+            &&                                                              \
+                ((genname) == NULL || MR_streq((genname), ""))              \
+            )                                                               \
+        ||                                                                  \
+            (                                                               \
+                (MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_generator    \
+                    != NULL)                                                \
+            &&                                                              \
+                ((genname) != NULL)                                         \
+            &&                                                              \
+                (                                                           \
+                    MR_streq((genname),                                     \
+                        MR_gen_addr_short_name(                             \
+                            MR_ENGINE(MR_eng_this_context)->                \
+                            MR_ctxt_owner_generator))                       \
+                ||                                                          \
+                    MR_streq((genname),                                     \
+                        MR_gen_subgoal(                                     \
+                            MR_ENGINE(MR_eng_this_context)->                \
+                            MR_ctxt_owner_generator))                       \
+                )                                                           \
+            )                                                               \
+        )                                                                   \
+    )
+#else   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+  #define   MR_cur_generator_is_named(genname)      MR_TRUE
+#endif   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
 #ifdef  MR_TRACE_CHECK_INTEGRITY
   #define MR_init_trace_check_integrity(cmd)                            \

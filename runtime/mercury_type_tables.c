@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000,2002-2005 The University of Melbourne.
+** Copyright (C) 2000,2002-2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -123,7 +123,7 @@ MR_do_register_type_class_decl(MR_TypeClassDecl type_class_decl)
     type_class_id = type_class_decl->MR_tc_decl_id;
 
     slot = MR_string_hash_lookup_or_add(&MR_type_class_decl_info_table,
-            type_class_id->MR_tc_id_name);
+        type_class_id->MR_tc_id_name);
 
     MR_for_dlist (element_ptr, slot->MR_type_table) {
         cur_type_class_decl_info =

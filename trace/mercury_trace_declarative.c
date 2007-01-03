@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1781,8 +1781,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     /*
     ** Single step through every event.
     */
-    cmd->MR_trace_cmd = MR_CMD_GOTO;
-    cmd->MR_trace_stop_event = 0;
+    cmd->MR_trace_cmd = MR_CMD_STEP;
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
     cmd->MR_trace_must_check = MR_FALSE;

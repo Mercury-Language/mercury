@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2006 The University of Melbourne.
+** Copyright (C) 1997-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -57,9 +57,10 @@
 #include <stdio.h>
 
 MR_TraceCmdInfo MR_trace_ctrl = {
-    MR_CMD_GOTO,
+    MR_CMD_STEP,
     0,                      /* stop depth */
     0,                      /* stop event */
+    NULL,                   /* stop generator */
     MR_PRINT_LEVEL_SOME,
     MR_FALSE,               /* not strict */
 #ifdef  MR_TRACE_CHECK_INTEGRITY
@@ -125,43 +126,43 @@ static  void        MR_abandon_call_table_array(void);
 */
 
 #if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) && defined(MR_MINIMAL_MODEL_DEBUG)
-  #define MR_TRACE_SETUP_MAYBE_SAVE_SUBGOAL_CUR_PROC                          \
-        if ((MR_TracePort) layout->MR_sll_port == MR_PORT_CALL) {            \
-            MR_subgoal_debug_cur_proc = layout->MR_sll_entry;                 \
+  #define MR_TRACE_SETUP_MAYBE_SAVE_SUBGOAL_CUR_PROC                        \
+        if ((MR_TracePort) layout->MR_sll_port == MR_PORT_CALL) {           \
+            MR_subgoal_debug_cur_proc = layout->MR_sll_entry;               \
         }
 #else
   #define MR_TRACE_SETUP_MAYBE_SAVE_SUBGOAL_CUR_PROC
 #endif
 
-#define MR_TRACE_REAL_SETUP_CODE()                                            \
-    do {                                                                      \
-        /* In case MR_sp or MR_curfr is transient. */                         \
-        MR_restore_transient_registers();                                     \
-                                                                              \
-        maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;       \
-        if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {       \
-            if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {      \
-                return NULL;                                                  \
-            }                                                                 \
-                                                                              \
-            seqno = (MR_Unsigned) MR_call_num_stackvar(MR_sp);                \
-            depth = (MR_Unsigned) MR_call_depth_stackvar(MR_sp);              \
-        } else {                                                              \
-            if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {      \
-                return NULL;                                                  \
-            }                                                                 \
-                                                                              \
-            seqno = (MR_Unsigned) MR_call_num_framevar(MR_curfr);             \
-            depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);           \
-        }                                                                     \
-                                                                              \
-        MR_TRACE_SETUP_MAYBE_SAVE_SUBGOAL_CUR_PROC                            \
-                                                                              \
-        if (layout->MR_sll_hidden && !MR_trace_unhide_events) {               \
-            return NULL;                                                      \
-        }                                                                     \
-                                                                              \
-        MR_trace_event_number++;                                              \
+#define MR_TRACE_REAL_SETUP_CODE()                                          \
+    do {                                                                    \
+        /* In case MR_sp or MR_curfr is transient. */                       \
+        MR_restore_transient_registers();                                   \
+                                                                            \
+        maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;     \
+        if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {     \
+            if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {    \
+                return NULL;                                                \
+            }                                                               \
+                                                                            \
+            seqno = (MR_Unsigned) MR_call_num_stackvar(MR_sp);              \
+            depth = (MR_Unsigned) MR_call_depth_stackvar(MR_sp);            \
+        } else {                                                            \
+            if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {    \
+                return NULL;                                                \
+            }                                                               \
+                                                                            \
+            seqno = (MR_Unsigned) MR_call_num_framevar(MR_curfr);           \
+            depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);         \
+        }                                                                   \
+                                                                            \
+        MR_TRACE_SETUP_MAYBE_SAVE_SUBGOAL_CUR_PROC                          \
+                                                                            \
+        if (layout->MR_sll_hidden && !MR_trace_unhide_events) {             \
+            return NULL;                                                    \
+        }                                                                   \
+                                                                            \
+        MR_trace_event_number++;                                            \
     } while (0)
 
 MR_Code *
@@ -218,7 +219,7 @@ MR_trace_real(const MR_LabelLayout *layout)
                 layout, path, lineno, &stop_collecting);
             MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs);
             if (stop_collecting) {
-                MR_trace_ctrl.MR_trace_cmd = MR_CMD_GOTO;
+                MR_trace_ctrl.MR_trace_cmd = MR_CMD_STEP;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
                     seqno, depth);
             }
@@ -229,8 +230,25 @@ MR_trace_real(const MR_LabelLayout *layout)
             goto check_stop_print;
           }
 
+        case MR_CMD_STEP:
+            port = (MR_TracePort) layout->MR_sll_port;
+            return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
+                seqno, depth);
+
         case MR_CMD_GOTO:
-            if (MR_trace_event_number >= MR_trace_ctrl.MR_trace_stop_event) {
+#if 0
+            /* This code is here in case this needs to be debugged again. */
+            printf("owner generator %p\n",
+                MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_generator);
+            printf("owner generator name %s\n",
+                MR_gen_addr_name(
+                    MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_generator));
+#endif
+
+            if (MR_trace_event_number >= MR_trace_ctrl.MR_trace_stop_event
+                && MR_cur_generator_is_named(
+                    MR_trace_ctrl.MR_trace_stop_generator))
+            {
                 port = (MR_TracePort) layout->MR_sll_port;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
                     seqno, depth);
@@ -1371,7 +1389,7 @@ MR_check_minimal_model_calls(MR_EventInfo *event_info, int ancestor_level,
     int                     record_ptr_next;
     int                     frame_size;
     int                     cur_gen;
-    MR_Internal             *label;
+    MR_Internal             *internal;
     int                     i;
     MR_bool                 any_missing_generators;
 
@@ -1415,19 +1433,19 @@ MR_check_minimal_model_calls(MR_EventInfo *event_info, int ancestor_level,
         */
 
         redoip = MR_redoip_slot(cur_maxfr);
-        label = MR_lookup_internal_by_addr(redoip);
-        if (label == NULL) {
+        internal = MR_lookup_internal_by_addr(redoip);
+        if (internal == NULL) {
             /* code in this file depends on the exact string we return here */
             *problem = "reached unknown label";
             return MR_RETRY_ERROR;
         }
 
-        if (label->i_layout == NULL) {
+        if (internal->MR_internal_layout == NULL) {
             *problem = "reached label without debugging info";
             return MR_RETRY_ERROR;
         }
 
-        label_layout = label->i_layout;
+        label_layout = internal->MR_internal_layout;
         proc_layout = label_layout->MR_sll_entry;
 
         if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1566,7 +1566,7 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
         WARNING(""internal label not found\\n"");
         return NULL;
     }
-    return_label_layout = label->i_layout;
+    return_label_layout = label->MR_internal_layout;
 
     while (return_label_layout != NULL) {
         const MR_ProcLayout         *entry_layout;

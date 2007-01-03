@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1083,7 +1083,7 @@ nonlocals_at_path_and_subpaths(ProgVarset, PredId, GoalPath, SubPaths,
 var_info_init = mc_var_info(varset.init, bimap.init).
 
 rep_var_to_string(ProgVarset, (ProgVar `in` _) `at` GoalPath) = RepString :-
-    goal_path_to_string(GoalPath, GoalPathString),
+    GoalPathString = goal_path_to_string(GoalPath),
     varset.lookup_name(ProgVarset, ProgVar, ProgVarString),
     ( GoalPathString = "" ->
         RepString = ProgVarString

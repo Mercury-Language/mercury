@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -48,8 +48,7 @@ MR_trace_cmd_step(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
         ; /* the usage message has already been printed */
     } else if (word_count == 1) {
-        cmd->MR_trace_cmd = MR_CMD_GOTO;
-        cmd->MR_trace_stop_event = MR_trace_event_number + 1;
+        cmd->MR_trace_cmd = MR_CMD_STEP;
         return STOP_INTERACTING;
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         cmd->MR_trace_cmd = MR_CMD_GOTO;
@@ -67,6 +66,7 @@ MR_trace_cmd_goto(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Unsigned n;
+    const char  *generator_name;
 
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level = MR_default_print_level;
@@ -74,15 +74,39 @@ MR_trace_cmd_goto(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
         ; /* the usage message has already been printed */
     } else if (word_count == 2 && MR_trace_is_unsigned(words[1], &n)) {
-        if (MR_trace_event_number < n) {
+        generator_name = NULL;
+        if (MR_trace_event_number < n
+            || !MR_cur_generator_is_named(generator_name))
+        {
             cmd->MR_trace_cmd = MR_CMD_GOTO;
             cmd->MR_trace_stop_event = n;
+            cmd->MR_trace_stop_generator = generator_name;
             return STOP_INTERACTING;
         } else {
             /* XXX this message is misleading */
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "The debugger cannot go to a past event.\n");
         }
+#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
+    } else if (word_count == 3 && MR_trace_is_unsigned(words[1], &n)) {
+        generator_name = words[2];
+        if (MR_trace_event_number < n
+            || !MR_cur_generator_is_named(generator_name))
+        {
+            cmd->MR_trace_cmd = MR_CMD_GOTO;
+            cmd->MR_trace_stop_event = n;
+            /*
+            ** We don't ever deallocate the memory allocated here,
+            ** but this memory leak leaks only negligible amounts of memory.
+            */
+            cmd->MR_trace_stop_generator = strdup(generator_name);
+            return STOP_INTERACTING;
+        } else {
+            /* XXX this message is misleading */
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err, "The debugger cannot go to a past event.\n");
+        }
+#endif
     } else {
         MR_trace_usage_cur_cmd();
     }

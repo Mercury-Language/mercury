@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1238,7 +1238,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
         goal_info_get_goal_path(GoalInfo, Path),
         (
             Path = [_ | _],
-            goal_path_to_string(Path, PathStr),
+            PathStr = goal_path_to_string(Path),
             write_indent(Indent, !IO),
             io.write_string("% goal path: ", !IO),
             io.write_string(PathStr, !IO),
@@ -4040,7 +4040,7 @@ write_constraint_id(ConstraintId, !IO) :-
         ConstraintType = unproven,
         io.write_string("(A, ", !IO)
     ),
-    goal_path_to_string(GoalPath, GoalPathStr),
+    GoalPathStr = goal_path_to_string(GoalPath),
     io.write_strings(["""", GoalPathStr, """, "], !IO),
     io.write_int(N, !IO),
     io.write_char(')', !IO).

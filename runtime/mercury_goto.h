@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001, 2003-2006 The University of Melbourne.
+** Copyright (C) 1995-2001, 2003-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -188,7 +188,7 @@
 ** label *has* a layout structure, use the _sl variant. The difference between
 ** the _ai and the _an variants is that the latter always inserts the name
 ** of the label as well. This is intended for a small number of labels that
-** are frequently needed in debugging, e.g. do_fail.
+** are frequently needed in debugging, e.g. MR_do_fail.
 */
 
 #define MR_make_label_ai(n, a, l)		MR_insert_internal(n, a, NULL)
@@ -198,13 +198,13 @@
 							MR_LABEL_LAYOUT(l))
 
 #define MR_make_local_ai(n, a, l)		MR_insert_entry(n, a, NULL)
-#define MR_make_local_an(n, a, l)		MR_insert_entry_label(n, \
+#define MR_make_local_an(n, a, l)		MR_do_insert_entry_label(n, \
 							a, NULL)
 #define MR_make_local_sl(n, a, l)		MR_insert_entry(n, a, \
 							MR_PROC_LAYOUT(l))
 
 #define MR_make_entry_ai(n, a, l)		MR_insert_entry(n, a, NULL)
-#define MR_make_entry_an(n, a, l)		MR_insert_entry_label(n, \
+#define MR_make_entry_an(n, a, l)		MR_do_insert_entry_label(n, \
 							a, NULL)
 #define MR_make_entry_sl(n, a, l)		MR_insert_entry(n, a, \
 							MR_PROC_LAYOUT(l))

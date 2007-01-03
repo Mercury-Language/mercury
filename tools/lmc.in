@@ -102,7 +102,7 @@ LINK_FLAGS=""
 
 if test "$MMC_CDEBUG" != ""
 then
-	CDEBUG_FLAGS="--target-debug"
+	CDEBUG_FLAGS="--target-debug --cflags -O0"
 else
 	CDEBUG_FLAGS=""
 fi

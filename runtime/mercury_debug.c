@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1996-2006 The University of Melbourne.
+** Copyright (C) 1996-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -835,8 +835,10 @@ MR_proc_matches_name(const MR_Code *proc, const char *name)
     MR_Entry    *entry;
 
     entry = MR_prev_entry_by_addr(proc);
-    if (entry != NULL && entry->e_addr == proc && entry->e_name != NULL) {
-        if (MR_streq(entry->e_name, name)) {
+    if (entry != NULL && entry->MR_entry_addr == proc
+            && entry->MR_entry_name != NULL)
+    {
+        if (MR_streq(entry->MR_entry_name, name)) {
             return MR_TRUE;
         }
     }
@@ -958,6 +960,12 @@ MR_print_heapptr(FILE *fp, const MR_Word *s)
     }
 }
 
+/*
+** The code of MR_print_label is similar to, but significantly more powerful
+** than, MR_lookup_entry_or_internal in mercury_label.c, since it does not
+** have to return a single short constant string.
+*/
+
 void
 MR_print_label(FILE *fp, const MR_Code *w)
 {
@@ -965,33 +973,30 @@ MR_print_label(FILE *fp, const MR_Code *w)
 
     internal = MR_lookup_internal_by_addr(w);
     if (internal != NULL) {
-        if (internal->i_name != NULL) {
-            fprintf(fp, "label %s", internal->i_name);
+        if (internal->MR_internal_name != NULL) {
+            fprintf(fp, "label %s", internal->MR_internal_name);
         } else {
-            fprintf(fp, "unnamed label %p", internal->i_addr);
+            fprintf(fp, "unnamed label %p", internal->MR_internal_addr);
         }
 #ifdef  MR_DEBUG_LABEL_GOAL_PATHS
-        if (internal->i_layout != NULL) {
-            fprintf(fp, " <%s>", MR_label_goal_path(internal->i_layout));
+        if (internal->MR_internal_layout != NULL) {
+            fprintf(fp, " <%s>",
+                MR_label_goal_path(internal->MR_internal_layout));
         }
 #endif
     } else {
-#ifdef  MR_NEED_ENTRY_LABEL_ARRAY
         MR_Entry    *entry;
 
         entry = MR_prev_entry_by_addr(w);
-        if (entry != NULL && entry->e_addr == w) {
-            if (entry->e_name != NULL) {
-                fprintf(fp, "entry label %s", entry->e_name);
+        if (entry != NULL && entry->MR_entry_addr == w) {
+            if (entry->MR_entry_name != NULL) {
+                fprintf(fp, "entry label %s", entry->MR_entry_name);
             } else {
-                fprintf(fp, "unnamed entry label %p", entry->e_addr);
+                fprintf(fp, "unnamed entry label %p", entry->MR_entry_addr);
             }
         } else {
             fprintf(fp, "label UNKNOWN %p", w);
         }
-#else
-        fprintf(fp, "label UNKNOWN %p", w);
-#endif  /* not MR_NEED_ENTRY_LABEL_ARRAY */
     }
 
     if (MR_print_raw_addrs) {

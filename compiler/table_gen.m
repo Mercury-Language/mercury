@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1507,26 +1507,32 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
 %           %
 %       ),
 %
-%           % Check for duplicate answers.
+%       % Check for duplicate answers.
 %       semipure table_mmos_get_answer_table(Generator, AT0),
 %       impure table_lookup_insert_int(AT0, B, AT1),
-%           % Fail if the answer is already in the table;
-%           % otherwise, put it into the table.
+%
+%       % Fail if the answer is already in the table;
+%       % otherwise, put it into the table.
 %       impure table_mmos_answer_is_not_duplicate(AT1),
 %
-%           % Save the new answer in the table.
+%       % Save the new answer in the table.
 %       impure table_mmos_create_answer_block(Generator, 1, AnswerBlock),
 %       impure table_save_int_ans(AnswerBlock, 0, B),
-%       impure table_mmos_return_answer(Generator, AnswerBlock)
 %   ;
 %       impure table_mmos_completion(Generator)
 %   ).
+%   MR_succeed is replaced by table_mmos_return_answer(Generator).
 %
 % p(A, B) :-
-%   table_mmos_save_inputs(1, A),       % into global variable
 %   CT0 = <table pointer for p/2>,
 %   impure table_lookup_insert_int(CT0, A, CT1),
-%   impure table_mmos_setup_consumer(CT1, 1, p2_gen, "p/2", Consumer),
+%   ( CT1 = NULL ->
+%       table_mmos_save_inputs(0, A),   % into global var MR_mmos_input_arg
+%       Generator = table_mmos_setup_generator(CT1, 1, p2_gen, "p"),
+%   ;
+%       Generator = trie_node_to_generator(CT1)
+%   ),
+%   impure table_mmos_setup_consumer(Generator, Consumer),
 %   impure table_mmos_consume_next_answer_nondet(Consumer, AnswerBlock),
 %   impure table_restore_int_ans(AnswerBlock, 0, B).
 
@@ -1671,7 +1677,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     table_info_init(ModuleInfo, GeneratorPredInfo, ProcInfo0,
         GeneratorTableInfo0),
     do_own_stack_create_generator(GeneratorPredId, ProcId, GeneratorPredInfo,
-        ProcInfo0, Statistics, Context, GeneratorPredVar,
+        ProcInfo0, Statistics, Context, GeneratorPredVar, DebugArgStr,
         PickupInputVarCode, PickupForeignArgs,
         NumberedInputVars, NumberedOutputVars,
         OrigNonLocals, OrigInstMapDelta, !.VarTypes, !.VarSet,
@@ -1708,14 +1714,14 @@ generate_save_input_vars_code([InputArg - Mode | InputArgModes], ModuleInfo,
 :- pred do_own_stack_create_generator(pred_id::in, proc_id::in,
     pred_info::in, proc_info::in,
     table_attr_statistics::in, term.context::in,
-    prog_var::in, string::in, list(foreign_arg)::in,
+    prog_var::in, string::in, string::in, list(foreign_arg)::in,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     set(prog_var)::in, instmap_delta::in,
     vartypes::in, prog_varset::in, table_info::in, table_info::out,
     list(table_trie_step)::in, list(table_trie_step)::out) is det.
 
 do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
-        Statistics, Context, GeneratorVar, PickupVarCode,
+        Statistics, Context, GeneratorVar, DebugArgStr, PickupVarCode,
         PickupForeignArgs, NumberedInputVars, NumberedOutputVars,
         OrigNonLocals, OrigInstMapDelta, !.VarTypes, !.VarSet, !TableInfo,
         InputSteps, OutputSteps) :-
@@ -1739,19 +1745,36 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
         PickupInstMapDeltaSrc, ModuleInfo0, Context, PickupGoal),
 
     list.length(NumberedOutputVars, BlockSize),
-    generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar,
+    generate_own_stack_save_return_goal(NumberedOutputVars, GeneratorVar,
         PredId, ProcId, BlockSize, Statistics, Context, !VarSet, !VarTypes,
-        !TableInfo, OutputSteps, SaveAnswerGoals),
+        !TableInfo, OutputSteps, SaveReturnAnswerGoals),
 
     proc_info_get_goal(!.ProcInfo, OrigGoal),
-    GoalExpr = conj(plain_conj, [PickupGoal, OrigGoal | SaveAnswerGoals]),
     OrigGoal = _ - OrigGoalInfo,
+
+    MainGoalExpr = conj(plain_conj, [OrigGoal | SaveReturnAnswerGoals]),
     goal_info_get_determinism(OrigGoalInfo, Detism),
     set.insert(OrigNonLocals, GeneratorVar, NonLocals),
     goal_info_init(NonLocals, OrigInstMapDelta, Detism, purity_impure, Context,
-        GoalInfo0),
-    goal_info_add_feature(feature_hide_debug_event, GoalInfo0, GoalInfo),
-    Goal = GoalExpr - GoalInfo,
+        MainGoalInfo0),
+    goal_info_add_feature(feature_hide_debug_event,
+        MainGoalInfo0, MainGoalInfo),
+    MainGoal = MainGoalExpr - MainGoalInfo,
+
+    CompletionCode = "\t\t" ++ "MR_tbl_mmos_completion(" ++
+        DebugArgStr ++ ", " ++ generator_name ++ ");\n",
+    CompletionArg = foreign_arg(GeneratorVar,
+        yes(generator_name - in_mode), generator_type, native_if_possible),
+    table_generate_foreign_proc("table_mmos_completion", detism_failure,
+        tabling_c_attributes, [CompletionArg], [],
+        CompletionCode, purity_impure,
+        [], ModuleInfo0, Context, CompletionGoal),
+
+    DisjGoalExpr = disj([MainGoal, CompletionGoal]),
+    DisjGoal = DisjGoalExpr - MainGoalInfo,
+
+    GoalExpr = conj(plain_conj, [PickupGoal, DisjGoal]),
+    Goal = GoalExpr - OrigGoalInfo,
     proc_info_set_goal(Goal, !ProcInfo),
 
     proc_info_set_vartypes(!.VarTypes, !ProcInfo),
@@ -1763,6 +1786,8 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
         InputVarModeMethods, OutputVarModeMethods, ProcTableInfo),
     proc_info_set_maybe_proc_table_info(yes(ProcTableInfo), !ProcInfo),
 
+    SpecialReturn = generator_return(returning_generator_locn, DebugArgStr),
+    proc_info_set_maybe_special_return(yes(SpecialReturn), !ProcInfo),
     proc_info_set_eval_method(eval_minimal(own_stacks_generator), !ProcInfo),
 
     pred_info_get_procedures(!.PredInfo, ProcTable0),
@@ -2547,16 +2572,16 @@ generate_all_save_goals(NumberedSaveVars, BaseVarName, BlockSize,
 
     % Generate a sequence of save goals for the given variables.
     %
-:- pred generate_own_stack_save_goal(list(var_mode_pos_method)::in,
+:- pred generate_own_stack_save_return_goal(list(var_mode_pos_method)::in,
     prog_var::in, pred_id::in, proc_id::in, int::in,
     table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, list(table_trie_step)::out,
     list(hlds_goal)::out) is det.
 
-generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, PredId, ProcId,
-        BlockSize, Statistics, Context, !VarSet, !VarTypes, !TableInfo,
-        OutputSteps, Goals) :-
+generate_own_stack_save_return_goal(NumberedOutputVars, GeneratorVar,
+        PredId, ProcId, BlockSize, Statistics, Context, !VarSet, !VarTypes,
+        !TableInfo, OutputSteps, Goals) :-
     GeneratorName = generator_name,
     GeneratorArg = foreign_arg(GeneratorVar, yes(GeneratorName - in_mode),
         generator_type, native_if_possible),
@@ -2592,9 +2617,12 @@ generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, PredId, ProcId,
     CreateCodeStr = "\t" ++ CreateMacroName ++ "(" ++ DebugArgStr ++ ", " ++
         GeneratorName ++ ", " ++ int_to_string(BlockSize) ++ ", " ++
         answer_block_name ++ ");\n",
-    CreateSaveCodeStr = CreateCodeStr ++ SaveCodeStr,
+    SetupReturnCodeStr = "\t" ++ returning_generator_locn ++ " = " ++
+        GeneratorName ++ ";\n",
+    CreateSaveSetupReturnCodeStr = CreateCodeStr ++ SaveCodeStr ++
+        SetupReturnCodeStr,
     CondSaveCodeStr = "\tif (" ++ SuccName ++ ") {\n" ++
-        CreateSaveCodeStr ++ "\t}\n",
+        CreateSaveSetupReturnCodeStr ++ "\t}\n",
     CodeStr = LookupSaveDeclCodeStr ++ GetCodeStr ++ LookupCodeStr ++
         DuplCheckCodeStr ++ CondSaveCodeStr ++ AssignSuccessCodeStr,
     ModuleInfo = !.TableInfo ^ table_module_info,
@@ -2602,7 +2630,8 @@ generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, PredId, ProcId,
         tabling_c_attributes, Args, LookupForeignArgs,
         CodeStr, purity_impure, [],
         ModuleInfo, Context, DuplicateCheckSaveGoal),
-    Goals = LookupPrefixGoals ++ SavePrefixGoals ++ [DuplicateCheckSaveGoal].
+    Goals = LookupPrefixGoals ++ SavePrefixGoals ++
+        [DuplicateCheckSaveGoal].
 
 :- pred generate_save_goals(list(var_mode_pos_method(T))::in, string::in,
     term.context::in, prog_varset::in, prog_varset::out,
@@ -3529,6 +3558,7 @@ dummy_type_var = Type :-
 :- func consumer_name = string.
 :- func generator_name = string.
 :- func generator_pred_name = string.
+:- func returning_generator_locn = string.
 
 proc_table_info_name = "proc_table_info".
 cur_table_node_name = "cur_node".
@@ -3547,6 +3577,7 @@ answer_table_name = "answer_table".
 consumer_name = "consumer".
 generator_name = "generator".
 generator_pred_name = "generator_pred".
+returning_generator_locn = "MR_mmos_returning_generator".
 
 %-----------------------------------------------------------------------------%
 

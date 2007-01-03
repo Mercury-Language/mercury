@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,6 +90,11 @@
     % Output a value of C type MR_PredFunc corrresponding to the argument.
     %
 :- pred output_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
+
+    % Return the name of the given port, as in the enum MR_Trace_Port
+    % in runtime/mercury_stack_layout.h.
+    %
+:- func trace_port_to_string(trace_port) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -811,11 +816,6 @@ output_rval_as_addr(Rval, !IO) :-
         io.write_string("\n", !IO),
         output_rval(Rval, !IO)
     ).
-
-    % Return the name of the given port, as in the enum MR_Trace_Port
-    % in runtime/mercury_stack_layout.h.
-    %
-:- func trace_port_to_string(trace_port) = string.
 
 trace_port_to_string(port_call) =                "CALL".
 trace_port_to_string(port_exit) =                "EXIT".
@@ -2102,7 +2102,7 @@ output_call_site_static(CallSiteStatic, Index, Index + 1, !IO) :-
     io.write_string(""", ", !IO),
     io.write_int(LineNumber, !IO),
     io.write_string(", """, !IO),
-    goal_path_to_string(GoalPath, GoalPathStr),
+    GoalPathStr = goal_path_to_string(GoalPath),
     io.write_string(GoalPathStr, !IO),
     io.write_string(""" },\n", !IO).
 

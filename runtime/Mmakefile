@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2006 The University of Melbourne.
+# Copyright (C) 1998-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -83,7 +83,6 @@ HDRS		=	\
 			mercury_string.h	\
 			mercury_tabling.h	\
 			mercury_tabling_macros.h	\
-			mercury_tabling_preds.h	\
 			mercury_tags.h		\
 			mercury_term_size.h	\
 			mercury_thread.h	\
@@ -121,8 +120,9 @@ BODY_HDRS	=	\
 			mercury_ml_functor_body.h	\
 			mercury_table_int_fix_index_body.h \
 			mercury_table_int_start_index_body.h \
-			mercury_table_typeinfo_body.h \
+			mercury_table_typeinfo_body.h 	\
 			mercury_table_type_body.h 	\
+			mercury_tabling_preds.h		\
 			mercury_tabling_stats_defs.h 	\
 			mercury_tabling_stats_nodefs.h 	\
 			mercury_tabling_stats_undefs.h 	\
@@ -286,7 +286,7 @@ mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_unify_compare_body.h
 
 # These files depend on several of the files in $(BODY_HDRS), and it is
 # easier to depend on them all than to specifically list only the ones
-# we mercury_tabling.c actually includes.
+# that mercury_tabling.c actually includes.
 mercury_tabling.$(O):				$(BODY_HDRS)
 mercury_tabling.$(EXT_FOR_PIC_OBJECTS):		$(BODY_HDRS)
 

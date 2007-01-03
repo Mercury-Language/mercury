@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2004-2006 The University of Melbourne.
+** Copyright (C) 2004-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -49,14 +49,19 @@
 ** list. Not yet functional.
 **
 ** XXX more fields
+**
+** XXX Try encoding the value of MR_cons_registered in the redoip.
 */
 
 struct MR_Generator_Struct {
     MR_TrieNode             MR_gen_back_ptr;
     MR_Context              *MR_gen_context;
     const MR_ProcLayout     *MR_gen_proc_layout;
-    MR_String               *MR_gen_pred_id;
-    MR_Generator            *MR_gen_leader;
+    MR_ConstString          MR_gen_pred_id;
+    MR_Integer              MR_gen_num_input_args;
+    MR_Word                 *MR_gen_input_args;
+    MR_Word                 MR_gen_closure;
+    MR_GeneratorPtr         MR_gen_leader;
     MR_Dlist                *MR_gen_led_generators;
     MR_Dlist                *MR_gen_consumers;
     MR_Integer              MR_gen_num_answers;
@@ -68,9 +73,10 @@ struct MR_Generator_Struct {
 
 struct MR_Consumer_Struct {
     MR_ConstString          MR_cons_pred_id;
-    MR_Generator            *MR_cons_answer_generator;
-    MR_Generator            *MR_cons_containing_generator;
+    MR_GeneratorPtr         MR_cons_answer_generator;
+    MR_GeneratorPtr         MR_cons_containing_generator;
     MR_Context              *MR_cons_context;
+    MR_bool                 MR_cons_registered;
     MR_Integer              MR_cons_num_returned_answers;
     MR_AnswerList           *MR_cons_remaining_answer_list_ptr;
 };
@@ -79,6 +85,8 @@ struct MR_Consumer_Struct {
 
 extern  MR_Word         MR_mmos_arg_regs[MR_MAX_FAKE_REG];
 extern  MR_GeneratorPtr MR_mmos_new_generator;
+
+extern  MR_GeneratorPtr MR_mmos_returning_generator;
 
 #define MR_table_mmos_save_input_arg(pos, arg)                          \
                         do {                                            \
@@ -100,6 +108,7 @@ extern  MR_ConsDebug    *MR_lookup_cons_debug_addr(MR_Consumer *consumer);
 extern  MR_ConsDebug    *MR_lookup_cons_debug_num(int consumer_index);
 extern  const char      *MR_cons_debug_name(MR_ConsDebug *consumer_dbg);
 extern  const char      *MR_cons_addr_name(MR_Consumer *consumer);
+extern  const char      *MR_cons_addr_short_name(MR_Consumer *consumer);
 extern  const char      *MR_cons_num_name(int consumer_index);
 
 extern  void            MR_enter_gen_debug(MR_Generator *gen);
@@ -107,6 +116,8 @@ extern  MR_GenDebug     *MR_lookup_gen_debug_addr(MR_Generator *gen);
 extern  MR_GenDebug     *MR_lookup_gen_debug_num(int gen_index);
 extern  const char      *MR_gen_debug_name(MR_GenDebug *gen_debug);
 extern  const char      *MR_gen_addr_name(MR_Generator *gen);
+extern  const char      *MR_gen_addr_short_name(MR_Generator *gen);
+extern  const char      *MR_gen_subgoal(MR_Generator *gen);
 extern  const char      *MR_gen_num_name(int gen_index);
 
 extern  void            MR_print_gen_debug(FILE *fp,
@@ -128,8 +139,6 @@ extern  MR_GeneratorPtr MR_table_mmos_setup_generator(MR_TrieNode trie_node,
                             MR_Integer num_input_args,
                             MR_Word genererator_pred,
                             MR_ConstString pred_id);
-extern  MR_AnswerBlock  MR_table_mmos_consumer_get_next_answer(
-                            MR_ConsumerPtr consumer);
 
 #endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 

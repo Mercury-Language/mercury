@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -633,8 +633,7 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                     &message, NULL, NULL, &jumpaddr);
                 if (retry_result == MR_RETRY_OK_DIRECT) {
                     MR_send_message_to_socket("ok");
-                    cmd->MR_trace_cmd = MR_CMD_GOTO;
-                    cmd->MR_trace_stop_event = MR_trace_event_number + 1;
+                    cmd->MR_trace_cmd = MR_CMD_STEP;
                     goto done;
                 } else {
                     MR_send_message_to_socket_format("error(\"%s\").\n",

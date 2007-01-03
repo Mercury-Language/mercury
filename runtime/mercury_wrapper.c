@@ -6,7 +6,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2006 The University of Melbourne.
+** Copyright (C) 1994-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -550,7 +550,7 @@ mercury_runtime_init(int argc, char **argv)
     MR_trace_count_enabled = MR_FALSE;
     MR_update_trace_func_enabled();
 
-#ifdef MR_NEED_INITIALIZATION_AT_START
+#if defined(MR_NEED_INITIALIZATION_AT_START) || defined(MR_MINIMAL_MODEL_DEBUG)
     MR_do_init_modules();
 #endif
 
@@ -669,6 +669,12 @@ mercury_runtime_init(int argc, char **argv)
       MR_save_context(eng_context);
     }
   #endif
+#endif
+
+#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
+    MR_ENGINE(MR_eng_main_context) = MR_NEW(MR_Context);
+    MR_save_context(MR_ENGINE(MR_eng_main_context));
+    MR_ENGINE(MR_eng_this_context) = MR_ENGINE(MR_eng_main_context);
 #endif
 
     /*

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -107,8 +107,8 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 
             label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
 
-            if (label && label->i_layout) {
-                MR_dump_live_variables(label->i_layout, heap_zone,
+            if (label && label->MR_internal_layout) {
+                MR_dump_live_variables(label->MR_internal_layout, heap_zone,
                     registers_valid, stack_pointer, MR_redofr_slot(max_frame));
             }
 
@@ -123,8 +123,8 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 
             label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
 
-            if (label && label->i_layout) {
-                MR_dump_live_variables(label->i_layout, heap_zone,
+            if (label && label->MR_internal_layout) {
+                MR_dump_live_variables(label->MR_internal_layout, heap_zone,
                     registers_valid, MR_tmp_detfr_slot(max_frame), max_frame);
                 /*
                 ** XXX should max_frame above be
@@ -148,10 +148,10 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
             /* XXX ??? */
             label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
 
-            if (label && label->i_layout) {
-                MR_dump_live_variables(label->i_layout, heap_zone,
+            if (label != NULL && label->MR_internal_layout) {
+                MR_dump_live_variables(label->MR_internal_layout, heap_zone,
                     registers_valid, stack_pointer, MR_redofr_slot(max_frame));
-                fprintf(stderr, " this label: %s\n", label->i_name);
+                fprintf(stderr, " this label: %s\n", label->MR_internal_name);
             }
         }
 
@@ -179,8 +179,8 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
     const MR_Code           *success_ip;
     MR_bool                 top_frame;
 
-    layout = label->i_layout;
-    success_ip = label->i_addr;
+    layout = label->MR_internal_layout;
+    success_ip = label->MR_internal_addr;
     entry_layout = layout->MR_sll_entry;
 
     /*
@@ -189,10 +189,10 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 
     top_frame = MR_TRUE;
     while (MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)) {
-        if (label->i_name != NULL) {
-            fprintf(stderr, "    label: %s\n", label->i_name);
+        if (label->MR_internal_name != NULL) {
+            fprintf(stderr, "    label: %s\n", label->MR_internal_name);
         } else {
-            fprintf(stderr, "    label: %p\n", label->i_addr);
+            fprintf(stderr, "    label: %p\n", label->MR_internal_addr);
         }
 
         if (success_ip == MR_stack_trace_bottom) {
@@ -222,7 +222,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
         }
 
         top_frame = MR_FALSE;
-        layout = label->i_layout;
+        layout = label->MR_internal_layout;
 
         if (layout != NULL) {
             entry_layout = layout->MR_sll_entry;

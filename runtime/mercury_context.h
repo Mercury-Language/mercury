@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2006 The University of Melbourne.
+** Copyright (C) 1997-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,8 +17,10 @@
 ** pointers that refer to them, a succip, and a thread-resumption continuation.
 ** Contexts are initally stored in a free-list.
 ** When one is running, the POSIX thread that is executing it has a pointer
-** to its context structure `this_context'. When a context suspends, it
-** calls `MR_save_context(context_ptr)' which copies the context from the
+** to its context structure `this_context'. (WARNING: code that manipulates
+** contexts must set this_context itself; it cannot rely on the generic
+** mechanisms below to set it.) When a context suspends, it calls
+** `MR_save_context(context_ptr)' which copies the context from the
 ** various registers and global variables into the structure referred to
 ** by `context_ptr'. The context contains no rN or fN registers - all
 ** registers are "context save" (by analogy to caller-save).
@@ -192,6 +194,12 @@ struct MR_Context_Struct {
 #ifndef MR_CONSERVATIVE_GC
     MR_Word             *MR_ctxt_hp;
     MR_Word             *MR_ctxt_min_hp_rec;
+#endif
+
+#ifdef  MR_EXEC_TRACE_INFO_IN_CONTEXT
+    MR_Unsigned         MR_ctxt_call_seqno;
+    MR_Unsigned         MR_ctxt_call_depth;
+    MR_Unsigned         MR_ctxt_event_number;
 #endif
 };
 
@@ -475,6 +483,12 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
   #define MR_IF_USE_MINIMAL_MODEL_STACK_COPY(x)
 #endif
 
+#ifdef MR_EXEC_TRACE_INFO_IN_CONTEXT
+  #define MR_IF_EXEC_TRACE_INFO_IN_CONTEXT(x) x
+#else
+  #define MR_IF_EXEC_TRACE_INFO_IN_CONTEXT(x)
+#endif
+
 #ifndef MR_HIGHLEVEL_CODE
   #define MR_IF_NOT_HIGHLEVEL_CODE(x) x
 #else
@@ -531,7 +545,12 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
                 MR_pneg_stack = (MR_PNegStackFrame *)                         \
                     MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->        \
                         MR_zone_min;                                          \
-             )                                                                \
+            )                                                                 \
+            MR_IF_EXEC_TRACE_INFO_IN_CONTEXT(                                 \
+                MR_trace_call_seqno = load_context_c->MR_ctxt_call_seqno;     \
+                MR_trace_call_depth = load_context_c->MR_ctxt_call_depth;     \
+                MR_trace_event_number = load_context_c->MR_ctxt_event_number; \
+            )                                                                 \
         )                                                                     \
         MR_set_min_heap_reclamation_point(load_context_c);                    \
     } while (0)
@@ -558,10 +577,8 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
         MR_IF_USE_TRAIL(                                                      \
             save_context_c->MR_ctxt_trail_zone = MR_trail_zone;               \
             save_context_c->MR_ctxt_trail_ptr = MR_trail_ptr;                 \
-            save_context_c->MR_ctxt_ticket_counter =                          \
-                MR_ticket_counter;                                            \
-            save_context_c->MR_ctxt_ticket_high_water =                       \
-                MR_ticket_high_water;                                         \
+            save_context_c->MR_ctxt_ticket_counter = MR_ticket_counter;       \
+            save_context_c->MR_ctxt_ticket_high_water = MR_ticket_high_water; \
         )                                                                     \
         MR_IF_NOT_HIGHLEVEL_CODE(                                             \
             save_context_c->MR_ctxt_detstack_zone =                           \
@@ -588,7 +605,12 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
                 MR_assert(MR_pneg_stack == (MR_PNegStackFrame *)              \
                     MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->        \
                         MR_zone_min);                                         \
-          )                                                                   \
+            )                                                                 \
+            MR_IF_EXEC_TRACE_INFO_IN_CONTEXT(                                 \
+                save_context_c->MR_ctxt_call_seqno = MR_trace_call_seqno;     \
+                save_context_c->MR_ctxt_call_depth = MR_trace_call_depth;     \
+                save_context_c->MR_ctxt_event_number = MR_trace_event_number; \
+            )                                                                 \
         )                                                                     \
         MR_save_hp_in_context(save_context_c);                                \
     } while (0)

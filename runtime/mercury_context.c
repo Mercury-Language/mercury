@@ -6,7 +6,7 @@ INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2006 The University of Melbourne.
+** Copyright (C) 1995-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -33,7 +33,7 @@ ENDINIT
 #include "mercury_reg_workarounds.h"    /* for `MR_fd*' stuff */
 
 static  void            MR_init_context_maybe_generator(MR_Context *c,
-                            const char *id, MR_Generator *gen);
+                            const char *id, MR_GeneratorPtr gen);
 
 /*---------------------------------------------------------------------------*/
 
@@ -104,7 +104,7 @@ MR_finalize_runqueue(void)
 
 static void 
 MR_init_context_maybe_generator(MR_Context *c, const char *id,
-    MR_Generator *gen)
+    MR_GeneratorPtr gen)
 {
     const char  *detstack_name;
     const char  *nondetstack_name;
@@ -256,6 +256,12 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 
     c->MR_ctxt_hp = NULL;
     c->MR_ctxt_min_hp_rec = NULL;
+#endif
+
+#ifdef  MR_EXEC_TRACE_INFO_IN_CONTEXT
+    c->MR_ctxt_call_seqno = 0;
+    c->MR_ctxt_call_depth = 0;
+    c->MR_ctxt_event_number = 0;
 #endif
 }
 

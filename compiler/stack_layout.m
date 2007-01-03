@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 University of Melbourne.
+% Copyright (C) 1997-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -887,7 +887,7 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         Return = no,
         MaybePort = yes(Port),
         MaybeIsHidden = yes(IsHidden),
-        goal_path_to_string(GoalPath, GoalPathStr),
+        GoalPathStr = goal_path_to_string(GoalPath),
         lookup_string_in_table(GoalPathStr, GoalPathNum, !Info),
         MaybeGoalPath = yes(GoalPathNum)
     ;
@@ -902,7 +902,7 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         % when we process "fail" commands in the debugger.
         ReturnInfo = return_layout_info(TargetsContexts, _),
         ( find_valid_return_context(TargetsContexts, _, _, GoalPath) ->
-            goal_path_to_string(GoalPath, GoalPathStr),
+            GoalPathStr = goal_path_to_string(GoalPath),
             lookup_string_in_table(GoalPathStr, GoalPathNum, !Info),
             MaybeGoalPath = yes(GoalPathNum)
         ;

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1994-2001, 2003-2004, 2006 The University of Melbourne.
+** Copyright (C) 1994-2001, 2003-2004, 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,10 +21,27 @@
 
 #include    "mercury_label.h"
 
-#include    "mercury_hash_table.h"  /* for MR_Hash_Table and its ops */
-#include    "mercury_prof.h"        /* for prof_output_addr_decl() */
-#include    "mercury_engine.h"      /* for MR_progdebug */
-#include    "mercury_wrapper.h"     /* for MR_do_init_modules() */
+#include    "mercury_stack_layout.h"    /* for MR_ProcLayout */
+#include    "mercury_hash_table.h"      /* for MR_Hash_Table and its ops */
+#include    "mercury_prof.h"            /* for prof_output_addr_decl() */
+#include    "mercury_engine.h"          /* for MR_progdebug */
+#include    "mercury_wrapper.h"         /* for MR_do_init_modules() */
+
+#if defined(MR_MINIMAL_MODEL_DEBUG) && !defined(MR_TABLE_DEBUG)
+  /*
+  ** MR_MINIMAL_MODEL_DEBUG implies MR_TABLE_DEBUG in some other files, since
+  ** if we want to debug minimal model tabling we need to enable all the
+  ** debugging facilities of those files. However, since MR_TABLE_DEBUG
+  ** increases object file sizes and link times significantly (by implying
+  ** MR_DEBUG_LABEL_NAMES), we don't necessarily want this implication
+  ** to hold globally. MR_TABLE_DEBUG therefore may not be defined globally.
+  ** If it isn't defined for this file, MR_NEED_ENTRY_LABEL_INFO and
+  ** MR_NEED_ENTRY_LABEL_ARRAY probably won't be defined either.
+  */
+
+  #define   MR_NEED_ENTRY_LABEL_INFO
+  #define   MR_NEED_ENTRY_LABEL_ARRAY
+#endif
 
 /*
 ** We record information about entry labels in an array that we sort
@@ -89,7 +106,7 @@ MR_do_init_label_tables(void)
 #ifdef  MR_NEED_ENTRY_LABEL_INFO
 
 void
-MR_insert_entry_label(const char *name, MR_Code *addr,
+MR_do_insert_entry_label(const char *name, MR_Code *addr,
     const MR_ProcLayout *entry_layout)
 {
     MR_do_init_label_tables();
@@ -98,7 +115,7 @@ MR_insert_entry_label(const char *name, MR_Code *addr,
     if (MR_profiling) {
         MR_prof_output_addr_decl(name, addr);
     }
-#endif
+#endif  /* MR_MPROF_PROFILE_CALLS */
 
 #ifdef  MR_LOWLEVEL_DEBUG
     if (MR_progdebug) {
@@ -113,7 +130,7 @@ MR_insert_entry_label(const char *name, MR_Code *addr,
             printf("recording entry label at %p\n", addr);
         }
     }
-#endif
+#endif  /* MR_LOWLEVEL_DEBUG */
 
 #ifdef  MR_NEED_ENTRY_LABEL_ARRAY
     if (entry_array_next >= entry_array_size) {
@@ -125,15 +142,27 @@ MR_insert_entry_label(const char *name, MR_Code *addr,
         }
     }
 
-    entry_array[entry_array_next].e_addr = addr;
-    entry_array[entry_array_next].e_name = name;
-    entry_array[entry_array_next].e_layout = entry_layout;
+    entry_array[entry_array_next].MR_entry_addr = addr;
+    entry_array[entry_array_next].MR_entry_name = name;
+    entry_array[entry_array_next].MR_entry_layout = entry_layout;
     entry_array_next++;
     entry_array_sorted = MR_FALSE;
-#endif
+#endif  /* MR_NEED_ENTRY_LABEL_ARRAY */
 }
 
-#endif
+#else   /* MR_NEED_ENTRY_LABEL_INFO */
+
+void
+MR_do_insert_entry_label(const char *name, MR_Code *addr,
+    const MR_ProcLayout *entry_layout)
+{
+    /*
+    ** Do nothing, but the function must still exist, since entry labels
+    ** defined with MR_init_entry_an will generate calls to it.
+    */
+}
+
+#endif  /* MR_NEED_ENTRY_LABEL_INFO */
 
 #ifdef  MR_NEED_ENTRY_LABEL_ARRAY
 
@@ -148,9 +177,9 @@ compare_entry_addr(const void *e1, const void *e2)
     entry1 = (const MR_Entry *) e1;
     entry2 = (const MR_Entry *) e2;
 
-    if (entry1->e_addr > entry2->e_addr) {
+    if (entry1->MR_entry_addr > entry2->MR_entry_addr) {
         return 1;
-    } else if (entry1->e_addr < entry2->e_addr) {
+    } else if (entry1->MR_entry_addr < entry2->MR_entry_addr) {
         return -1;
     } else {
         return 0;
@@ -178,29 +207,37 @@ MR_prev_entry_by_addr(const MR_Code *addr)
     lo = 0;
     hi = entry_array_next-1;
 
-    if (lo > hi || addr < entry_array[lo].e_addr) {
+    if (lo > hi || addr < entry_array[lo].MR_entry_addr) {
         return NULL;
     }
 
     while (lo <= hi) {
         mid = (lo + hi) / 2;
-        if (entry_array[mid].e_addr == addr) {
+        if (entry_array[mid].MR_entry_addr == addr) {
             return &entry_array[mid];
-        } else if (entry_array[mid].e_addr < addr) {
+        } else if (entry_array[mid].MR_entry_addr < addr) {
             lo = mid + 1;
         } else {
             hi = mid - 1;
         }
     }
 
-    if (lo < entry_array_next && entry_array[lo].e_addr < addr) {
+    if (lo < entry_array_next && entry_array[lo].MR_entry_addr < addr) {
         return &entry_array[lo];
     } else {
         return &entry_array[lo - 1];
     }
 }
 
-#endif
+#else   /* MR_NEED_ENTRY_LABEL_ARRAY */
+
+MR_Entry *
+MR_prev_entry_by_addr(const MR_Code *addr)
+{
+    return NULL;
+}
+
+#endif  /* MR_NEED_ENTRY_LABEL_ARRAY */
 
 void
 MR_insert_internal_label(const char *name, MR_Code *addr,
@@ -212,9 +249,9 @@ MR_insert_internal_label(const char *name, MR_Code *addr,
     MR_do_init_label_tables();
 
     internal = MR_GC_NEW(MR_Internal);
-    internal->i_addr = addr;
-    internal->i_layout = label_layout;
-    internal->i_name = name;
+    internal->MR_internal_addr = addr;
+    internal->MR_internal_layout = label_layout;
+    internal->MR_internal_name = name;
 
 #ifdef  MR_LOWLEVEL_DEBUG
     if (MR_progdebug) {
@@ -249,8 +286,8 @@ MR_insert_internal_label(const char *name, MR_Code *addr,
         ** either of their layout structures.
         */
 
-        if (prev_internal->i_layout == NULL) {
-            prev_internal->i_layout = label_layout;
+        if (prev_internal->MR_internal_layout == NULL) {
+            prev_internal->MR_internal_layout = label_layout;
         }
     }
 }
@@ -276,7 +313,8 @@ internal_addr(const void *internal)
     if (internal == NULL) {
         return NULL;
     } else {
-        return (const void *) (((const MR_Internal *) internal)->i_addr);
+        return (const void *)
+            (((const MR_Internal *) internal)->MR_internal_addr);
     }
 }
 
@@ -297,4 +335,36 @@ MR_process_all_internal_labels(void f(const void *))
 {
     MR_do_init_label_tables();
     MR_process_all_entries(internal_addr_table, f);
+}
+
+/*
+** The code of MR_lookup_entry_or_internal is similar to, but significantly
+** simpler than, MR_print_label in mercury_debug.c
+*/
+
+const char *
+MR_lookup_entry_or_internal(const MR_Code *addr)
+{
+    MR_Internal *internal;
+    MR_Entry    *entry;
+
+    internal = MR_lookup_internal_by_addr(addr);
+    if (internal != NULL) {
+        if (internal->MR_internal_name != NULL) {
+            return internal->MR_internal_name;
+        } else {
+            return "unnamed internal label";
+        }
+    }
+
+    entry = MR_prev_entry_by_addr(addr);
+    if (entry != NULL && entry->MR_entry_addr == addr) {
+        if (entry->MR_entry_name != NULL) {
+            return entry->MR_entry_name;
+        } else {
+            return "unnamed entry label";
+        }
+    }
+
+    return "unknown";
 }

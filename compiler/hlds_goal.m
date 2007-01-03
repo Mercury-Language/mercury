@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1103,7 +1103,7 @@
     % Convert a goal path to a string, using the format documented
     % in the Mercury user's guide.
     %
-:- pred goal_path_to_string(goal_path::in, string::out) is det.
+:- func goal_path_to_string(goal_path) = string.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1861,7 +1861,7 @@ goal_has_feature(_Goal - GoalInfo, Feature) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_path_to_string(Path, PathStr) :-
+goal_path_to_string(Path) = PathStr :-
     goal_path_steps_to_strings(Path, StepStrs),
     list.reverse(StepStrs, RevStepStrs),
     string.append_list(RevStepStrs, PathStr).

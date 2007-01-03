@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -924,7 +924,7 @@ MR_trace_cmd_table(char **words, int word_count,
             break;
 
         case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
-        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER:
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR:
             fprintf(MR_mdb_out, "minimal model table for ");
             MR_print_proc_id(MR_mdb_out, proc);
             fprintf(MR_mdb_out, ":\n");
@@ -935,7 +935,7 @@ MR_trace_cmd_table(char **words, int word_count,
         case MR_EVAL_METHOD_TABLE_IO_DECL:
         case MR_EVAL_METHOD_TABLE_IO_UNITIZE:
         case MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL:
-        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR:
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER:
             MR_fatal_error("MR_trace_cmd_table: bad eval method");
     }
 
@@ -1719,7 +1719,7 @@ MR_trace_cmd_table_print_tip(const MR_ProcLayout *proc,
             }
             break;
 
-        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER:
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR:
             {
                 MR_GeneratorPtr generator;
 
@@ -1758,7 +1758,7 @@ MR_trace_cmd_table_print_tip(const MR_ProcLayout *proc,
         case MR_EVAL_METHOD_TABLE_IO_DECL:
         case MR_EVAL_METHOD_TABLE_IO_UNITIZE:
         case MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL:
-        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR:
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER:
             MR_fatal_error("MR_trace_cmd_table_print_tip: bad eval method");
             break;
     }

@@ -2453,6 +2453,9 @@ if it were `step @var{num}'.
 An empty command line is interpreted as `step 1'.
 @sp 1
 @item goto [-NSans] @var{num}
+@c The @var{generatorname} option is enabled
+@c only in own stack minimal model grades.
+@c @item goto [-NSans] @var{num} [@var{generatorname}]
 @kindex goto (mdb command)
 Continues execution until the program reaches event number @var{num}.
 If the current event number is larger than @var{num}, it reports an error.
@@ -2463,6 +2466,11 @@ for the duration of the command,
 while the options @samp{-S} or @samp{--strict}
 and @samp{-N} or @samp{--nostrict} specify
 the strictness of the command.
+@c @sp 1
+@c If given, @var{generatorname} specifies
+@c the generator in which to reach the given event number.
+@c In this case, the command does not check
+@c whether the event has already passed.
 @sp 1
 By default, this command is strict, and it uses the default print level.
 @sp 1
