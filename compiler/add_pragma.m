@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -401,11 +401,10 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
             ;
                 % Emit a warning about using pragma foreign_export with
                 % a foreign language that is not supported.
-                % XXX That's currently all of them except C.
+                % XXX That's currently all of them except C and IL.
                 (
                     ( Lang = lang_java
                     ; Lang = lang_csharp
-                    ; Lang = lang_il
                     ; Lang = lang_managed_cplusplus
                     ),
                     Pieces = [words("Warning:"),
@@ -417,7 +416,9 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
                         phase_parse_tree_to_hlds, [Msg]),
                     !:Specs = [Spec | !.Specs]
                 ;
-                    Lang = lang_c
+                    ( Lang = lang_c
+                    ; Lang = lang_il
+                    )
                 ),
 
                 % Only add the foreign export if the specified language matches

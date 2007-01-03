@@ -7410,7 +7410,54 @@ Runtime types as specified in @ref{IL and C# data passing conventions}.
 @node Using pragma foreign_export for IL
 @subsubsection Using pragma foreign_export for IL
 
-@samp{pragma foreign_export} is currently not supported for IL.
+A @samp{pragma foreign_export} declaration for IL has the form:
+
+@example
+:- pragma foreign_export("IL", @var{MercuryMode}, "@var{IL_Name}").
+@end example
+
+For example,
+
+@example
+:- pragma foreign_export("IL", foo(in, in, out), "foo").
+@end example
+
+For each Mercury module containing @samp{pragma foreign_export} declarations
+for IL, the Mercury implementation will automatically create a static method
+@var{IL_Name}() in the <module_name>.mercury_code class for each of the
+@samp{pragma foreign_export} declarations.  Each such IL method is a .NET
+interface to the specified Mercury procedure, and should be usable from
+any .NET language.
+
+The type signature of the IL interface to a Mercury procedure is determined as
+follows.  Mercury types are converted to IL types according to the rules in
+@ref{IL and C# data passing conventions}.  Input arguments are passed by value.
+For output arguments, the caller must pass the address in which to store the
+result.  If the Mercury procedure can fail, then its IL interface method
+returns a truth value indicating success or failure.  If the Mercury procedure
+is a Mercury function that cannot fail, and the function result has an output
+mode, then the IL interface method will return the Mercury function result
+value.  Otherwise the function result is appended as an extra argument.
+@c XXX We need to update this for dummy unit types.
+Arguments of type @samp{io.state} or @samp{store.store(_)} are not passed
+at all.  (The reason for this is that these types represent mutable state,
+and in .NET modifications to mutable state are done via side effects, rather
+than argument passing.)
+
+Calling polymorphically typed Mercury procedures from .NET is a little bit more
+difficult than calling ordinary (monomorphically typed) Mercury procedures.
+The simplest method is to just create monomorphic forwarding procedures that
+call the polymorphic procedures, and export them, rather than exporting the
+polymorphic procedures.
+
+If you do export a polymorphically typed Mercury procedure, the compiler
+will prepend one @samp{type_info} argument to the parameter list of
+the IL interface method for each polymorphic type variable in the
+Mercury procedure's type signature.  The caller must arrange to pass
+in appropriate @samp{type_info} values corresponding to the types
+of the other arguments passed.  These @samp{type_info} arguments can
+be obtained using the Mercury @samp{type_of} function in the Mercury
+standard library module @samp{type_desc}.
 
 @node Using pragma foreign_decl for IL
 @subsubsection Using pragma foreign_decl for IL

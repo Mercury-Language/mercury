@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -818,6 +818,7 @@ ml_gen_foreign_code(ModuleInfo, AllForeignCode, !IO) :-
     module_info_get_foreign_decl(ModuleInfo, ForeignDecls),
     module_info_get_foreign_import_module(ModuleInfo, ForeignImports),
     module_info_get_foreign_body_code(ModuleInfo, ForeignBodys),
+    module_info_get_pragma_exported_procs(ModuleInfo, ForeignExports),
     globals.io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
 
     WantedForeignImports = list.condense(
@@ -826,27 +827,31 @@ ml_gen_foreign_code(ModuleInfo, AllForeignCode, !IO) :-
         ), BackendForeignLanguages)),
 
     list.foldl(ml_gen_foreign_code_lang(ModuleInfo, ForeignDecls,
-        ForeignBodys, WantedForeignImports),
+        ForeignBodys, WantedForeignImports, ForeignExports),
         BackendForeignLanguages, map.init, AllForeignCode).
 
 :- pred ml_gen_foreign_code_lang(module_info::in, foreign_decl_info::in,
     foreign_body_info::in, foreign_import_module_info_list::in,
-    foreign_language::in,
+    list(pragma_exported_proc)::in, foreign_language::in,
     map(foreign_language, mlds_foreign_code)::in,
     map(foreign_language, mlds_foreign_code)::out) is det.
 
 ml_gen_foreign_code_lang(ModuleInfo, ForeignDecls, ForeignBodys,
-        WantedForeignImports, Lang, Map0, Map) :-
+        WantedForeignImports, ForeignExports, Lang, Map0, Map) :-
     foreign.filter_decls(Lang, ForeignDecls, WantedForeignDecls,
         _OtherForeignDecls),
     foreign.filter_bodys(Lang, ForeignBodys, WantedForeignBodys,
         _OtherForeignBodys),
+    foreign.filter_exports(Lang, ForeignExports, WantedForeignExports,
+        _OtherForeignExports),
     ConvBody = (func(foreign_body_code(L, S, C)) =
         user_foreign_code(L, S, C)),
     MLDSWantedForeignBodys = list.map(ConvBody, WantedForeignBodys),
-    ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports),
+    list.map(ml_gen_pragma_export_proc(ModuleInfo),
+        WantedForeignExports, MLDSWantedForeignExports),
     MLDS_ForeignCode = mlds_foreign_code(WantedForeignDecls,
-        WantedForeignImports, MLDSWantedForeignBodys, MLDS_PragmaExports),
+        WantedForeignImports, MLDSWantedForeignBodys,
+        MLDSWantedForeignExports),
     map.det_insert(Map0, Lang, MLDS_ForeignCode, Map).
 
 :- pred ml_gen_imports(module_info::in, mlds_imports::out) is det.
@@ -909,14 +914,6 @@ ml_gen_defns(ModuleInfo, Defns, !IO) :-
 %
 % For each pragma export declaration we associate with it the information
 % used to generate the function prototype for the MLDS entity.
-
-:- pred ml_gen_pragma_export(module_info::in, list(mlds_pragma_export)::out)
-    is det.
-
-ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports) :-
-    module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
-    list.map(ml_gen_pragma_export_proc(ModuleInfo),
-        PragmaExports, MLDS_PragmaExports).
 
 :- pred ml_gen_pragma_export_proc(module_info::in, pragma_exported_proc::in,
     mlds_pragma_export::out) is det.

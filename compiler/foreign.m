@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -112,6 +112,15 @@
 :- pred filter_bodys(foreign_language::in, foreign_body_info::in,
     foreign_body_info::out, foreign_body_info::out) is det.
 
+    % Filter the foreign exports for the given foreign language.
+    % The first return value is the list of matches, the second is
+    % the list of mis-matches.
+    %
+:- pred filter_exports(foreign_language::in,
+    list(pragma_exported_proc)::in,
+    list(pragma_exported_proc)::out, list(pragma_exported_proc)::out)
+    is det.
+
     % Given some foreign code, generate some suitable proxy code for
     % calling the code via one of the given languages.
     % This might mean, for example, generating a call to a
@@ -193,6 +202,11 @@ filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
     IsWanted = (pred(foreign_body_code(Lang, _, _)::in) is semidet :-
         WantedLang = Lang),
     list.filter(IsWanted, Bodys0, LangBodys, NotLangBodys).
+
+filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
+    IsWanted = (pred(pragma_exported_proc(Lang, _, _, _, _)::in) is semidet :-
+        WantedLang = Lang),
+    list.filter(IsWanted, Exports0, LangExports, NotLangExports).
 
 extrude_pragma_implementation([], _PragmaVars, _PredName, _PredOrFunc,
         _Context, !ModuleInfo, !NewAttributes, !Impl) :-
