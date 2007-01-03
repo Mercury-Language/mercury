@@ -1686,22 +1686,33 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         globals.lookup_accumulating_option(!.Globals,
             link_library_directories, LinkLibDirs2),
+        globals.lookup_accumulating_option(!.Globals,
+            init_file_directories, InitDirs2),
         (
             UseGradeSubdirs = yes,
             %
             % With --use-grade-subdirs we need to search in
-            % `Mercury/<grade>/<fullarch>/Mercury/lib' for libraries, for
-            % each directory listed with --search-library-files-directory.
+            % `Mercury/<grade>/<fullarch>/Mercury/lib' for libraries and
+            % `Mercury/<grade>/<fullarch>/Mercury/inits' for init files,
+            % for each directory listed with --search-library-files-directory.
             %
             ToGradeLibDir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"lib"),
             SearchGradeLibDirs = list.map(ToGradeLibDir, SearchLibFilesDirs),
-            LinkLibDirs = SearchGradeLibDirs ++ LinkLibDirs2
+            LinkLibDirs = SearchGradeLibDirs ++ LinkLibDirs2,
+
+            ToGradeInitDir = (func(Dir) =
+                ToGradeSubdir(Dir)/"Mercury"/"inits"),
+            SearchGradeInitDirs = list.map(ToGradeInitDir, SearchLibFilesDirs),
+            InitDirs = SearchGradeInitDirs ++ InitDirs2
         ;
             UseGradeSubdirs = no,
-            LinkLibDirs = SearchLibFilesDirs ++ LinkLibDirs2
+            LinkLibDirs = SearchLibFilesDirs ++ LinkLibDirs2,
+            InitDirs = SearchLibFilesDirs ++ InitDirs2
         ),
         globals.set_option(link_library_directories,
             accumulating(LinkLibDirs), !Globals),
+        globals.set_option(init_file_directories,
+            accumulating(InitDirs), !Globals),
 
         %
         % When searching for a header (.mh or .mih) file,
