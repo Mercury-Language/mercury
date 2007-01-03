@@ -727,8 +727,8 @@ MR_trace_construct_node(MR_EventInfo *event_info)
             trace = MR_trace_decl_neg_failure(event_info, trace);
             break;
 
-        case MR_PORT_PRAGMA_FIRST:
-        case MR_PORT_PRAGMA_LATER:
+        case MR_PORT_FOREIGN_PROC_FIRST:
+        case MR_PORT_FOREIGN_PROC_LATER:
             MR_fatal_error("MR_trace_construct_node: "
                 "foreign language code is not handled (yet)");
 

@@ -830,8 +830,8 @@ trace_port_to_string(port_neg_success) =         "NEG_SUCCESS".
 trace_port_to_string(port_neg_failure) =         "NEG_FAILURE".
 trace_port_to_string(port_disj) =                "DISJ".
 trace_port_to_string(port_switch) =              "SWITCH".
-trace_port_to_string(port_nondet_pragma_first) = "PRAGMA_FIRST".
-trace_port_to_string(port_nondet_pragma_later) = "PRAGMA_LATER".
+trace_port_to_string(port_nondet_foreign_proc_first) = "FOREIGN_PROC_FIRST".
+trace_port_to_string(port_nondet_foreign_proc_later) = "FOREIGN_PROC_LATER".
 trace_port_to_string(port_user) =                "USER".
 
 %-----------------------------------------------------------------------------%

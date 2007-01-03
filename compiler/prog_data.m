@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -560,7 +560,7 @@
                     % into the procedure.  This code may not access the input
                     % variables.
 
-                pragma_shared_code_treatment,
+                foreign_proc_shared_code_treatment,
                     % How should the shared code be treated during code
                     % generation.
 
@@ -581,10 +581,10 @@
     % The use of this type is explained in the comment at the top of
     % pragma_c_gen.m.
     %
-:- type pragma_shared_code_treatment
-    --->    duplicate
-    ;       share
-    ;       automatic.
+:- type foreign_proc_shared_code_treatment
+    --->    shared_code_duplicate
+    ;       shared_code_share
+    ;       shared_code_automatic.
 
 :- type foreign_import_module_info_list  == list(foreign_import_module_info).
                     % in reverse order
@@ -686,6 +686,8 @@
 :- func default_attributes(foreign_language) = pragma_foreign_proc_attributes.
 :- func get_may_call_mercury(pragma_foreign_proc_attributes) =
     proc_may_call_mercury.
+:- func get_affects_liveness(pragma_foreign_proc_attributes) =
+    affects_liveness.
 :- func get_thread_safe(pragma_foreign_proc_attributes) = proc_thread_safe.
 :- func get_purity(pragma_foreign_proc_attributes) = purity.
 :- func get_terminates(pragma_foreign_proc_attributes) = proc_terminates.
@@ -708,6 +710,10 @@
     = pragma_foreign_proc_extra_attributes.
 
 :- pred set_may_call_mercury(proc_may_call_mercury::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_affects_liveness(affects_liveness::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -815,6 +821,11 @@
 :- type box_policy
     --->    native_if_possible
     ;       always_boxed.
+
+:- type affects_liveness
+    --->    affects_liveness
+    ;       doesnt_affect_liveness
+    ;       default_affects_liveness.
 
     % This type specifies the termination property of a procedure
     % defined using pragma c_code or pragma foreign_proc.
@@ -1669,6 +1680,7 @@ default_memo_table_attributes =
                 attr_may_modify_trail           :: proc_may_modify_trail,
                 attr_may_call_mm_tabled         :: may_call_mm_tabled,
                 attr_box_policy                 :: box_policy,
+                attr_affects_liveness           :: affects_liveness,
                 attr_extra_attributes ::
                     list(pragma_foreign_proc_extra_attribute)
             ).
@@ -1678,7 +1690,7 @@ default_attributes(Language) =
         proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
         no_user_annotated_sharing, default_exception_behaviour,
         no, no, proc_may_modify_trail, default_calls_mm_tabled,
-        native_if_possible, []).
+        native_if_possible, default_affects_liveness, []).
 
 get_may_call_mercury(Attrs) = Attrs ^ attr_may_call_mercury.
 get_thread_safe(Attrs) = Attrs ^ attr_thread_safe.
@@ -1693,6 +1705,7 @@ get_ordinary_despite_detism(Attrs) = Attrs ^ attr_ordinary_despite_detism.
 get_may_modify_trail(Attrs) = Attrs ^ attr_may_modify_trail.
 get_may_call_mm_tabled(Attrs) = Attrs ^ attr_may_call_mm_tabled.
 get_box_policy(Attrs) = Attrs ^ attr_box_policy.
+get_affects_liveness(Attrs) = Attrs ^ attr_affects_liveness.
 get_extra_attributes(Attrs) = Attrs ^ attr_extra_attributes.
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
@@ -1721,6 +1734,8 @@ set_may_call_mm_tabled(MayCallMM_Tabled, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ attr_may_call_mm_tabled := MayCallMM_Tabled.
 set_box_policy(BoxPolicyStr, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ attr_box_policy := BoxPolicyStr.
+set_affects_liveness(AffectsLiveness, Attrs0, Attrs) :-
+    Attrs = Attrs0 ^ attr_affects_liveness := AffectsLiveness.
 
 attributes_to_strings(Attrs) = StringList :-
     % We ignore Lang because it isn't an attribute that you can put
@@ -1729,7 +1744,7 @@ attributes_to_strings(Attrs) = StringList :-
     Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
         Purity, Terminates, _UserSharing, Exceptions, _LegacyBehaviour,
         OrdinaryDespiteDetism, MayModifyTrail, MayCallMM_Tabled,
-        BoxPolicy, ExtraAttributes),
+        BoxPolicy, AffectsLiveness, ExtraAttributes),
     (
         MayCallMercury = proc_may_call_mercury,
         MayCallMercuryStr = "may_call_mercury"
@@ -1818,10 +1833,20 @@ attributes_to_strings(Attrs) = StringList :-
         BoxPolicy = always_boxed,
         BoxPolicyStr = ["always_boxed"]
     ),
+    (
+        AffectsLiveness = affects_liveness,
+        AffectsLivenessStr = ["affects_liveness"]
+    ;
+        AffectsLiveness = doesnt_affect_liveness,
+        AffectsLivenessStr = ["doesnt_affect_liveness"]
+    ;
+        AffectsLiveness = default_affects_liveness,
+        AffectsLivenessStr = []
+    ),
     StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
         PurityStrList] ++ TerminatesStrList ++ ExceptionsStrList ++
         OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
-        MayCallMM_TabledStrList ++ BoxPolicyStr ++
+        MayCallMM_TabledStrList ++ BoxPolicyStr ++ AffectsLivenessStr ++
         list.map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(NewAttribute, Attributes0,

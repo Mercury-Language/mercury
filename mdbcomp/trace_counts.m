@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -699,8 +699,8 @@ string_to_trace_port("NEGS", port_neg_success).
 string_to_trace_port("NEGF", port_neg_failure).
 string_to_trace_port("DISJ", port_disj).
 string_to_trace_port("SWTC", port_switch).
-string_to_trace_port("FRST", port_nondet_pragma_first).
-string_to_trace_port("LATR", port_nondet_pragma_later).
+string_to_trace_port("FRST", port_nondet_foreign_proc_first).
+string_to_trace_port("LATR", port_nondet_foreign_proc_later).
 string_to_trace_port("USER", port_user).
 
 :- func string_to_goal_path(string) = goal_path is semidet.
@@ -731,8 +731,8 @@ make_path_port(GoalPath, port_neg_failure) =
     port_and_path(port_neg_failure, GoalPath).
 make_path_port(GoalPath, port_disj) = path_only(GoalPath).
 make_path_port(GoalPath, port_switch) = path_only(GoalPath).
-make_path_port(GoalPath, port_nondet_pragma_first) = path_only(GoalPath).
-make_path_port(GoalPath, port_nondet_pragma_later) = path_only(GoalPath).
+make_path_port(GoalPath, port_nondet_foreign_proc_first) = path_only(GoalPath).
+make_path_port(GoalPath, port_nondet_foreign_proc_later) = path_only(GoalPath).
 make_path_port(_GoalPath, port_user) = port_only(port_call).
 
 %-----------------------------------------------------------------------------%

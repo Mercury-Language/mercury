@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001,2003-2006 The University of Melbourne.
+% Copyright (C) 1994-2001,2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -521,7 +521,7 @@ divide_into_basic_blocks([], _, [], !C).
     % This is the only situation in which the base case can be reached.
 divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, Instrs, !C) :-
     Instr0 = Uinstr0 - _Comment,
-    ( opt_util.can_instr_branch_away(Uinstr0, yes) ->
+    ( opt_util.can_instr_branch_away(Uinstr0) = yes ->
         (
             Instrs0 = [Instr1 | _],
             ( Instr1 = label(_) - _ ->
@@ -738,8 +738,8 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
                 [], no, ordinary_block(NeedsFrame, is_not_dummy)),
             ( list.last(BlockInstrs, LastBlockInstr) ->
                 LastBlockInstr = LastBlockUinstr - _,
-                opt_util.can_instr_fall_through(LastBlockUinstr,
-                    NextFallIntoBool),
+                NextFallIntoBool =
+                    opt_util.can_instr_fall_through(LastBlockUinstr),
                 (
                     NextFallIntoBool = yes,
                     NextFallInto = yes(Label)
@@ -1085,10 +1085,10 @@ compute_block_needs_frame(Label, Instrs, NeedsFrame) :-
             ;
                 Uinstr = mkframe(_, _)
             ;
-                Uinstr = arbitrary_c_code(_, _)
+                Uinstr = arbitrary_c_code(_, _, _)
             ;
-                Uinstr = pragma_c(_, _, MayCallMercury, _, MaybeLayout,
-                    MaybeOnlyLayout, _, NeedStack, _),
+                Uinstr = foreign_proc_code(_, _, MayCallMercury, _,
+                    MaybeLayout, MaybeOnlyLayout, _, NeedStack, _),
                 (
                     MayCallMercury = proc_may_call_mercury
                 ;
@@ -1194,25 +1194,34 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
         list.split_last_det(BlockInstrs0, AllButLastInstrs, LastInstr0)
     ->
         LastInstr0 = LastUinstr0 - Comment,
-        ( LastUinstr0 = goto(GotoTarget0) ->
+        (
+            LastUinstr0 = goto(GotoTarget0)
+        ->
             replace_labels_code_addr(GotoTarget0, PreExitDummyLabelMap,
                 GotoTarget),
             LastUinstr = goto(GotoTarget),
             LastInstr = LastUinstr - Comment,
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
-        ; LastUinstr0 = if_val(Rval, GotoTarget0) ->
+        ;
+            LastUinstr0 = if_val(Rval, GotoTarget0)
+        ->
             replace_labels_code_addr(GotoTarget0, PreExitDummyLabelMap,
                 GotoTarget),
             LastUinstr = if_val(Rval, GotoTarget),
             LastInstr = LastUinstr - Comment,
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
-        ; LastUinstr0 = computed_goto(Rval, GotoTargets0) ->
+        ;
+            LastUinstr0 = computed_goto(Rval, GotoTargets0)
+        ->
             replace_labels_label_list(GotoTargets0, PreExitDummyLabelMap,
                 GotoTargets),
             LastUinstr = computed_goto(Rval, GotoTargets),
             LastInstr = LastUinstr - Comment,
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
-        ; LastUinstr0 = pragma_c(D, Comps0, MC, FNL, FL, FOL, NF0, S, MD) ->
+        ;
+            LastUinstr0 = foreign_proc_code(D, Comps0, MC, FNL, FL, FOL, NF0,
+                S, MD)
+        ->
             (
                 NF0 = no,
                 NF = no,
@@ -1223,7 +1232,8 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
                 NF = yes(NFLabel),
                 replace_labels_comps(Comps0, PreExitDummyLabelMap, Comps)
             ),
-            LastUinstr = pragma_c(D, Comps, MC, FNL, FL, FOL, NF, S, MD),
+            LastUinstr = foreign_proc_code(D, Comps, MC, FNL, FL, FOL, NF,
+                S, MD),
             LastInstr = LastUinstr - Comment,
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         ;
@@ -1233,7 +1243,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
         possible_targets(LastUinstr, SideLabels0, _SideCodeAddrs),
         list.filter(local_label(ProcLabel), SideLabels0, SideLabels),
         (
-            opt_util.can_instr_fall_through(LastUinstr, yes),
+            opt_util.can_instr_fall_through(LastUinstr) = yes,
             FollowingLabels = [NextLabel | _]
         ->
             MaybeFallThrough = yes(NextLabel)
@@ -1341,8 +1351,9 @@ can_clobber_succip([Label | Labels], BlockMap) = CanClobberSuccip :-
         (
             Uinstr = llcall(_, _, _, _, _, _)
         ;
-            % Only may_call_mercury pragma_c's can clobber succip.
-            Uinstr = pragma_c(_, _, proc_may_call_mercury, _, _, _, _, _, _)
+            % Only may_call_mercury foreign_proc_codes can clobber succip.
+            Uinstr = foreign_proc_code(_, _, proc_may_call_mercury,
+                _, _, _, _, _, _)
         )
     ->
         CanClobberSuccip = yes

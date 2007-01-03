@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003-2006 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,7 +127,7 @@ opt_labels_in_instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod,
             !.Fallthrough = no,
             eliminate_instr(Instr0, no, !RevInstrs, !Mod)
         ),
-        opt_util.can_instr_fall_through(Uinstr0, Canfallthrough),
+        opt_util.can_instr_fall_through(Uinstr0) = Canfallthrough,
         (
             Canfallthrough = yes
         ;

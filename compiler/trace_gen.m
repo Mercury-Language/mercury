@@ -30,17 +30,17 @@
 % However, some of these labels may be fallen into from other places,
 % and thus optimization may redirect references from labels to one of these
 % labels. This cannot happen in the opposite direction, due to the reference
-% to each event's label from the event's pragma C code instruction.
+% to each event's label from the event's foreign_proc_code instruction.
 % (This prevents labelopt from removing the label.)
 %
 % We classify events into three kinds: external events (call, exit, fail),
-% internal events (switch, disj, ite_then, ite_else), and nondet pragma C
+% internal events (switch, disj, ite_then, ite_else), and nondet foreign_proc
 % events (first, later). Code_gen.m, which calls this module to generate
 % all external events, checks whether tracing is required before calling us;
-% the predicates handing internal and nondet pragma C events must check this
-% themselves. The predicates generating internal events need the goal
+% the predicates handing internal and nondet foreign_proc events must check
+% this themselves. The predicates generating internal events need the goal
 % following the event as a parameter. For the first and later arms of
-% nondet pragma C code, there is no such hlds_goal, which is why these events
+% nondet foreign_proc, there is no such hlds_goal, which is why these events
 % need a bit of special treatment.
 %
 %-----------------------------------------------------------------------------%
@@ -83,9 +83,9 @@
     --->    neg_success
     ;       neg_failure.
 
-:- type nondet_pragma_trace_port
-    --->    nondet_pragma_first
-    ;       nondet_pragma_later.
+:- type nondet_foreign_proc_trace_port
+    --->    nondet_foreign_proc_first
+    ;       nondet_foreign_proc_later.
 
 :- type trace_info.
 
@@ -191,10 +191,11 @@
     code_info::in, code_info::out) is det.
 
     % If we are doing execution tracing, generate code for a nondet
-    % pragma C code trace event.
+    % foreign_proc trace event.
     %
-:- pred maybe_generate_pragma_event_code(nondet_pragma_trace_port::in,
-    prog_context::in, code_tree::out, code_info::in, code_info::out) is det.
+:- pred maybe_generate_foreign_proc_event_code(
+    nondet_foreign_proc_trace_port::in, prog_context::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
     % Generate code for a user-defined trace event.
     %
@@ -279,7 +280,7 @@
     ;       port_info_user(
                 goal_path       % The path of the goal.
             )
-    ;       port_info_nondet_pragma.
+    ;       port_info_nondet_foreign_proc.
 
 trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -622,11 +623,11 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         MaybeFromFullSlot = no,
         TraceStmt1 = FillSlotsUptoTrail
     ),
+    TraceComponents1 = [foreign_proc_raw_code(cannot_branch_away,
+        doesnt_affect_liveness, live_lvals_info(set.init), TraceStmt1)],
     TraceCode1 = node([
-        pragma_c([], [pragma_c_raw_code(TraceStmt1, cannot_branch_away,
-            live_lvals_info(set.init))], proc_will_not_call_mercury,
-            no, no, MaybeLayoutLabel, no, yes, no)
-            - ""
+        foreign_proc_code([], TraceComponents1, proc_will_not_call_mercury,
+            no, no, MaybeLayoutLabel, no, yes, no) - ""
     ]),
     (
         MaybeMaxfrLval = yes(MaxfrLval),
@@ -641,10 +642,11 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         MaybeCallTableLval = yes(CallTableLval),
         stackref_to_string(CallTableLval, CallTableLvalStr),
         TraceStmt3 = "\t\t" ++ CallTableLvalStr ++ " = 0;\n",
+        TraceComponents3 = [foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init), TraceStmt3)],
         TraceCode3 = node([
-            pragma_c([], [pragma_c_raw_code(TraceStmt3, cannot_branch_away,
-                live_lvals_info(set.init))],
-                proc_will_not_call_mercury, no, no, no, no, yes, no) - ""
+            foreign_proc_code([], TraceComponents3, proc_will_not_call_mercury,
+                no, no, no, no, yes, no) - ""
         ])
     ;
         MaybeCallTableLval = no,
@@ -669,7 +671,8 @@ trace_prepare_for_call(CI, TraceCode) :-
         ),
         ResetStmt = MacroStr ++ "(" ++ CallDepthStr ++ ");\n",
         TraceCode = node([
-            arbitrary_c_code(ResetStmt, live_lvals_info(set.init)) - ""
+            arbitrary_c_code(doesnt_affect_liveness, live_lvals_info(set.init),
+                ResetStmt) - ""
         ])
     ;
         MaybeTraceInfo = no,
@@ -768,11 +771,11 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
         Code = empty
     ).
 
-maybe_generate_pragma_event_code(PragmaPort, Context, Code, !CI) :-
+maybe_generate_foreign_proc_event_code(PragmaPort, Context, Code, !CI) :-
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        Port = convert_nondet_pragma_port_type(PragmaPort),
+        Port = convert_nondet_foreign_proc_port_type(PragmaPort),
         code_info.get_module_info(!.CI, ModuleInfo),
         code_info.get_pred_info(!.CI, PredInfo),
         code_info.get_proc_info(!.CI, ProcInfo),
@@ -780,8 +783,8 @@ maybe_generate_pragma_event_code(PragmaPort, Context, Code, !CI) :-
             TraceInfo ^ trace_level,
             TraceInfo ^ trace_suppress_items, Port) = yes
     ->
-        generate_event_code(Port, port_info_nondet_pragma, yes(TraceInfo),
-            Context, no, no, _, _, Code, !CI)
+        generate_event_code(Port, port_info_nondet_foreign_proc,
+            yes(TraceInfo), Context, no, no, _, _, Code, !CI)
     ;
         Code = empty
     ).
@@ -841,15 +844,15 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         PortInfo = port_info_user(Path),
         LiveVars = LiveVars0
     ;
-        PortInfo = port_info_nondet_pragma,
+        PortInfo = port_info_nondet_foreign_proc,
         LiveVars = [],
-        ( Port = port_nondet_pragma_first ->
+        ( Port = port_nondet_foreign_proc_first ->
             Path = [first]
-        ; Port = port_nondet_pragma_later ->
+        ; Port = port_nondet_foreign_proc_later ->
             Path = [later]
         ;
             unexpected(this_file,
-                "generate_event_code: bad nondet pragma port")
+                "generate_event_code: bad nondet foreign_proc port")
         )
     ),
     VarTypes = code_info.get_var_types(!.CI),
@@ -916,20 +919,19 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     ;
         true
     ),
+    TraceComponents = [foreign_proc_raw_code(cannot_branch_away,
+        doesnt_affect_liveness, live_lvals_info(LiveLvalSet), TraceStmt)],
     TraceCode =
         node([
             label(Label)
                 - "A label to hang trace liveness on",
-                % Referring to the label from the pragma_c
-                % prevents the label from being renamed
-                % or optimized away.
-                % The label is before the trace code
-                % because sometimes this pair is preceded
-                % by another label, and this way we can
+                % Referring to the label from the foreign_proc_code
+                % prevents the label from being renamed or optimized away.
+                % The label is before the trace code because sometimes this
+                % pair is preceded by another label, and this way we can
                 % eliminate this other label.
-            pragma_c([], [pragma_c_raw_code(TraceStmt, cannot_branch_away,
-                live_lvals_info(LiveLvalSet))],
-                proc_may_call_mercury, no, no, yes(Label), no, yes, no) - ""
+            foreign_proc_code([], TraceComponents, proc_may_call_mercury,
+                no, no, yes(Label), no, yes, no) - ""
         ]),
     Code = tree(ProduceCode, TraceCode).
 
@@ -1066,12 +1068,13 @@ convert_external_port_type(external_port_call) = port_call.
 convert_external_port_type(external_port_exit) = port_exit.
 convert_external_port_type(external_port_fail) = port_fail.
 
-:- func convert_nondet_pragma_port_type(nondet_pragma_trace_port) = trace_port.
+:- func convert_nondet_foreign_proc_port_type(nondet_foreign_proc_trace_port)
+    = trace_port.
 
-convert_nondet_pragma_port_type(nondet_pragma_first) =
-    port_nondet_pragma_first.
-convert_nondet_pragma_port_type(nondet_pragma_later) =
-    port_nondet_pragma_later. 
+convert_nondet_foreign_proc_port_type(nondet_foreign_proc_first) =
+    port_nondet_foreign_proc_first.
+convert_nondet_foreign_proc_port_type(nondet_foreign_proc_later) =
+    port_nondet_foreign_proc_later. 
 
 %-----------------------------------------------------------------------------%
 

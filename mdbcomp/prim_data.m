@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,8 +46,8 @@
     ;       port_neg_failure
     ;       port_disj
     ;       port_switch
-    ;       port_nondet_pragma_first
-    ;       port_nondet_pragma_later
+    ;       port_nondet_foreign_proc_first
+    ;       port_nondet_foreign_proc_later
     ;       port_user.
 
 % was in compiler/prog_data.m

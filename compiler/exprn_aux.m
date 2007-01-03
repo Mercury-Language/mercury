@@ -1,13 +1,13 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: exprn_aux.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.exprn_aux.
@@ -376,10 +376,10 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = computed_goto(Rval, Labels)
     ;
-        Uinstr0 = arbitrary_c_code(Code, LiveLvals0),
+        Uinstr0 = arbitrary_c_code(AffectsLiveness, LiveLvals0, Code),
         transform_lval_in_live_lval_info(Transform, LiveLvals0, LiveLvals,
             !Acc),
-        Uinstr = arbitrary_c_code(Code, LiveLvals)
+        Uinstr = arbitrary_c_code(AffectsLiveness, LiveLvals, Code)
     ;
         Uinstr0 = if_val(Rval0, CodeAddr),
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
@@ -431,12 +431,12 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
 %       transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
 %       Uinstr = discard_tickets_to(Rval)
     ;
-        Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
+        Uinstr0 = foreign_proc_code(Decls, Components0, MayCallMercury,
             MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
             ReferStackSlot, MayDupl),
         list.map_foldl(transform_lval_in_component(Transform),
             Components0, Components, !Acc),
-        Uinstr = pragma_c(Decls, Components, MayCallMercury,
+        Uinstr = foreign_proc_code(Decls, Components, MayCallMercury,
             MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
             ReferStackSlot, MayDupl)
     ;
@@ -450,31 +450,34 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
     ).
 
 :- pred transform_lval_in_component(transform_lval(T)::in(transform_lval),
-    pragma_c_component::in, pragma_c_component::out, T::in, T::out) is det.
+    foreign_proc_component::in, foreign_proc_component::out, T::in, T::out)
+    is det.
 
 transform_lval_in_component(Transform, Component0, Component, !Acc) :-
     (
-        Component0 = pragma_c_inputs(Inputs0),
-        list.map_foldl(transform_lval_in_pragma_c_input(Transform),
+        Component0 = foreign_proc_inputs(Inputs0),
+        list.map_foldl(transform_lval_in_foreign_proc_input(Transform),
             Inputs0, Inputs, !Acc),
-        Component = pragma_c_inputs(Inputs)
+        Component = foreign_proc_inputs(Inputs)
     ;
-        Component0 = pragma_c_outputs(Outputs0),
-        list.map_foldl(transform_lval_in_pragma_c_output(Transform),
+        Component0 = foreign_proc_outputs(Outputs0),
+        list.map_foldl(transform_lval_in_foreign_proc_output(Transform),
             Outputs0, Outputs, !Acc),
-        Component = pragma_c_outputs(Outputs)
+        Component = foreign_proc_outputs(Outputs)
     ;
-        Component0 = pragma_c_user_code(_, _),
+        Component0 = foreign_proc_user_code(_, _, _),
         Component = Component0
     ;
-        Component0 = pragma_c_raw_code(Code, CanBranchAway, LvalSet0),
+        Component0 = foreign_proc_raw_code(CanBranchAway, AffectsLiveness,
+            LvalSet0, Code),
         transform_lval_in_live_lval_info(Transform, LvalSet0, LvalSet, !Acc),
-        Component = pragma_c_raw_code(Code, CanBranchAway, LvalSet)
+        Component = foreign_proc_raw_code(CanBranchAway, AffectsLiveness,
+            LvalSet, Code)
     ;
-        Component0 = pragma_c_fail_to(_),
+        Component0 = foreign_proc_fail_to(_),
         Component = Component0
     ;
-        Component0 = pragma_c_noop,
+        Component0 = foreign_proc_noop,
         Component = Component0
     ).
 
@@ -489,24 +492,26 @@ transform_lval_in_live_lval_info(Transform,
     list.map_foldl(Transform, Lvals0, Lvals, !Acc),
     set.list_to_set(Lvals, LvalSet).
 
-:- pred transform_lval_in_pragma_c_input(transform_lval(T)::in(transform_lval),
-    pragma_c_input::in, pragma_c_input::out, T::in, T::out) is det.
+:- pred transform_lval_in_foreign_proc_input(
+    transform_lval(T)::in(transform_lval),
+    foreign_proc_input::in, foreign_proc_input::out, T::in, T::out) is det.
 
-transform_lval_in_pragma_c_input(Transform, Out0, Out, !Acc) :-
-    Out0 = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval0,
+transform_lval_in_foreign_proc_input(Transform, Out0, Out, !Acc) :-
+    Out0 = foreign_proc_input(Name, VarType, IsDummy, OrigType, Rval0,
         MaybeForeign, BoxPolicy),
     transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
-    Out = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval,
+    Out = foreign_proc_input(Name, VarType, IsDummy, OrigType, Rval,
         MaybeForeign, BoxPolicy).
 
-:- pred transform_lval_in_pragma_c_output(transform_lval(T)::in(transform_lval),
-    pragma_c_output::in, pragma_c_output::out, T::in, T::out) is det.
+:- pred transform_lval_in_foreign_proc_output(
+    transform_lval(T)::in(transform_lval),
+    foreign_proc_output::in, foreign_proc_output::out, T::in, T::out) is det.
 
-transform_lval_in_pragma_c_output(Transform, Out0, Out, !Acc) :-
-    Out0 = pragma_c_output(Lval0, VarType, IsDummy, OrigType, Name,
+transform_lval_in_foreign_proc_output(Transform, Out0, Out, !Acc) :-
+    Out0 = foreign_proc_output(Lval0, VarType, IsDummy, OrigType, Name,
         MaybeForeign, BoxPolicy),
     Transform(Lval0, Lval, !Acc),
-    Out = pragma_c_output(Lval, VarType, IsDummy, OrigType, Name,
+    Out = foreign_proc_output(Lval, VarType, IsDummy, OrigType, Name,
         MaybeForeign, BoxPolicy).
 
 transform_lval_in_rval(Transform, Rval0, Rval, !Acc) :-

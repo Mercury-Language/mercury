@@ -6379,6 +6379,17 @@ the @samp{will_not_call_mercury} attribute.  The default for foreign
 procedures that @samp{may_call_mercury}, in case none is specified, is
 @samp{may_call_mm_tabled}.
 
+@item @samp{affects_liveness/doesnt_affect_liveness}
+This attribute declares whether or not a foreign procedure
+uses and/or modifies any part of the Mercury virtual machine
+(registers, stack slots)
+through means other than its arguments.
+The @samp{affects_liveness} attribute says that it does;
+The @samp{doesnt_affect_liveness} attribute says that it does not.
+In the absence of either attribute,
+the compiler assumes @samp{affects_liveness},
+unless the code of the foreign_proc in question is empty.
+
 @c @item @samp{no_sharing/unknown_sharing/sharing(MaybeTypes, SharingList)}
 @c This attribute declares whether or not a foreign procedure creates any
 @c structure sharing @ref{Structure sharing analysis} between its input

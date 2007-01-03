@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1363,7 +1363,7 @@ parse_pragma_model_non_foreign_proc_pragma(ModuleName, Pragma, VarSet,
     ->
         Shared = SharedPrime,
         SharedContext = SharedContextPrime,
-        Treatment = share,
+        Treatment = shared_code_share,
         SharedErrs = []
     ;
         parse_pragma_keyword("duplicated_code", SharedTerm,
@@ -1371,7 +1371,7 @@ parse_pragma_model_non_foreign_proc_pragma(ModuleName, Pragma, VarSet,
     ->
         Shared = SharedPrime,
         SharedContext = SharedContextPrime,
-        Treatment = duplicate,
+        Treatment = shared_code_duplicate,
         SharedErrs = []
     ;
         parse_pragma_keyword("common_code", SharedTerm,
@@ -1379,12 +1379,12 @@ parse_pragma_model_non_foreign_proc_pragma(ModuleName, Pragma, VarSet,
     ->
         Shared = SharedPrime,
         SharedContext = SharedContextPrime,
-        Treatment = automatic,
+        Treatment = shared_code_automatic,
         SharedErrs = []
     ;
         Shared = "",                                    % Dummy
         SharedContext = term.context_init,              % Dummy
-        Treatment = automatic,                          % Dummy
+        Treatment = shared_code_automatic,              % Dummy
         SharedMsg = "-- invalid seventh argument, "
             ++ "expecting `common_code(<code>)'",
         SharedErrs = [(InvalidDeclStr ++ SharedMsg) - SharedTerm]
@@ -1494,7 +1494,8 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       coll_ordinary_despite_detism
     ;       coll_may_modify_trail(proc_may_modify_trail)
     ;       coll_may_call_mm_tabled(may_call_mm_tabled)
-    ;       coll_box_policy(box_policy).
+    ;       coll_box_policy(box_policy)
+    ;       coll_affects_liveness(affects_liveness).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
     string::in, varset::in, term::in,
@@ -1539,7 +1540,9 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Varset,
             coll_may_modify_trail(proc_will_not_modify_trail),
         coll_may_call_mercury(proc_will_not_call_mercury) -
             coll_may_call_mm_tabled(may_call_mm_tabled),
-        coll_box_policy(native_if_possible) - coll_box_policy(always_boxed)
+        coll_box_policy(native_if_possible) - coll_box_policy(always_boxed),
+        coll_affects_liveness(affects_liveness) -
+            coll_affects_liveness(doesnt_affect_liveness)
     ],
     (
         parse_pragma_foreign_proc_attributes_term0(Varset, Term, AttrList)
@@ -1578,6 +1581,8 @@ process_attribute(coll_purity(Pure), !Attrs) :-
     set_purity(Pure, !Attrs).
 process_attribute(coll_terminates(Terminates), !Attrs) :-
     set_terminates(Terminates, !Attrs).
+process_attribute(coll_user_annotated_sharing(UserSharing), !Attrs) :-
+    set_user_annotated_sharing(UserSharing, !Attrs).
 process_attribute(coll_will_not_throw_exception, !Attrs) :-
     set_may_throw_exception(proc_will_not_throw_exception, !Attrs).
 process_attribute(coll_max_stack_size(Size), !Attrs) :-
@@ -1592,8 +1597,8 @@ process_attribute(coll_may_call_mm_tabled(MayCallTabled), !Attrs) :-
     set_may_call_mm_tabled(MayCallTabled, !Attrs).
 process_attribute(coll_box_policy(BoxPolicy), !Attrs) :-
     set_box_policy(BoxPolicy, !Attrs).
-process_attribute(coll_user_annotated_sharing(UserSharing), !Attrs) :-
-    set_user_annotated_sharing(UserSharing, !Attrs).
+process_attribute(coll_affects_liveness(AffectsLiveness), !Attrs) :-
+    set_affects_liveness(AffectsLiveness, !Attrs).
 
     % Check whether all the required attributes have been set for
     % a particular language
@@ -1668,6 +1673,8 @@ parse_single_pragma_foreign_proc_attribute(Varset, Term, Flag) :-
         Flag = coll_may_call_mm_tabled(CallsTabled)
     ; parse_box_policy(Term, BoxPolicy) ->
         Flag = coll_box_policy(BoxPolicy)
+    ; parse_affects_liveness(Term, AffectsLiveness) ->
+        Flag = coll_affects_liveness(AffectsLiveness)
     ;
         fail
     ).
@@ -1714,6 +1721,18 @@ parse_box_policy(term.functor(term.atom("native_if_possible"), [], _),
     native_if_possible).
 parse_box_policy(term.functor(term.atom("always_boxed"), [], _),
     always_boxed).
+
+:- pred parse_affects_liveness(term::in, affects_liveness::out) is semidet.
+
+parse_affects_liveness(Term, AffectsLiveness) :-
+    Term = term.functor(term.atom(Functor), [], _),
+    (
+        Functor = "affects_liveness",
+        AffectsLiveness = affects_liveness
+    ;
+        Functor = "doesnt_affect_liveness",
+        AffectsLiveness = doesnt_affect_liveness
+    ).
 
 :- pred parse_tabled_for_io(term::in, proc_tabled_for_io::out) is semidet.
 

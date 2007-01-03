@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -68,7 +68,7 @@
     % the virtual machine registers that point to the nondet stack
     % (curfr and maxfr) and the fixed slots in nondet stack frames.
     %
-:- pred touches_nondet_ctrl(list(instruction)::in, bool::out) is det.
+:- func touches_nondet_ctrl(list(instruction)) = bool.
 
     % Find the instructions up to and including the next one that
     % cannot fall through.
@@ -179,18 +179,18 @@
 
     % Check whether an instruction can possibly branch away.
     %
-:- pred can_instr_branch_away(instr::in, bool::out) is det.
+:- func can_instr_branch_away(instr) = bool.
 
     % Check whether an instruction can possibly fall through
     % to the next instruction without using its label.
     %
-:- pred can_instr_fall_through(instr::in, bool::out) is det.
+:- func can_instr_fall_through(instr) = bool.
 
     % Check whether a code_addr, when the target of a goto, represents either
     % a call or a proceed/succeed; if so, it is the end of an extended basic
     % block and needs a livevals in front of it.
     %
-:- pred livevals_addr(code_addr::in, bool::out) is det.
+:- func livevals_addr(code_addr) = bool.
 
     % Determine all the labels and code addresses which are referenced
     % by an instruction. The code addresses that are labels are returned
@@ -291,8 +291,8 @@
 :- pred replace_labels_instruction_list(list(instruction)::in,
     map(label, label)::in, bool::in, bool::in, list(instruction)::out) is det.
 
-:- pred replace_labels_comps(list(pragma_c_component)::in,
-    map(label, label)::in, list(pragma_c_component)::out) is det.
+:- pred replace_labels_comps(list(foreign_proc_component)::in,
+    map(label, label)::in, list(foreign_proc_component)::out) is det.
 
 :- pred replace_labels_code_addr(code_addr::in, map(label, label)::in,
     code_addr::out) is det.
@@ -415,7 +415,7 @@ next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
     ->
         fail
     ;
-        can_instr_branch_away(Uinstr, CanBranchAway),
+        CanBranchAway = can_instr_branch_away(Uinstr),
         (
             CanBranchAway = no,
             next_assign_to_redoip(Instrs, AllowedBases, [Instr | RevSkip],
@@ -430,7 +430,7 @@ find_no_fallthrough([], []).
 find_no_fallthrough([Instr0 | Instrs0], Instrs) :-
     (
         Instr0 = Uinstr0 - _,
-        can_instr_fall_through(Uinstr0, no)
+        can_instr_fall_through(Uinstr0) = no
     ->
         Instrs = [Instr0]
     ;
@@ -603,8 +603,8 @@ straight_alternative_2([Instr0 | Instrs0], !Between, After) :-
         After = Instrs0
     ;
         (
-            can_instr_branch_away(Uinstr0, no),
-            touches_nondet_ctrl_instr(Uinstr0, no)
+            can_instr_branch_away(Uinstr0) = no,
+            touches_nondet_ctrl_instr(Uinstr0) = no
         ;
             Uinstr0 = if_val(_, CodeAddr),
             ( CodeAddr = do_fail ; CodeAddr = do_redo )
@@ -772,7 +772,7 @@ block_refers_to_stack([Instr | Instrs]) = Refers :-
     ;
         InstrRefers = no,
         Instr = Uinstr - _,
-        can_instr_fall_through(Uinstr, CanFallThrough),
+        CanFallThrough = can_instr_fall_through(Uinstr),
         (
             CanFallThrough = yes,
             Refers = block_refers_to_stack(Instrs)
@@ -787,7 +787,7 @@ instr_refers_to_stack(Uinstr - _) = Refers :-
         ( Uinstr = comment(_)
         ; Uinstr = livevals(_)
         ; Uinstr = label(_)
-        ; Uinstr = arbitrary_c_code(_, _)
+        ; Uinstr = arbitrary_c_code(_, _, _)
         ; Uinstr = discard_ticket
         ; Uinstr = prune_ticket
         ),
@@ -859,8 +859,8 @@ instr_refers_to_stack(Uinstr - _) = Refers :-
         Uinstr = decr_sp_and_return(_),
         Refers = yes
     ;
-        Uinstr = pragma_c(_, Components, _, _, _, _, _, _, _),
-        Refers = bool.or_list(list.map(pragma_c_component_refers_stackvars,
+        Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
+        Refers = bool.or_list(list.map(foreign_proc_component_refers_stackvars,
             Components))
     ;
         Uinstr = init_sync_term(Lval, _),
@@ -873,30 +873,30 @@ instr_refers_to_stack(Uinstr - _) = Refers :-
         Refers = lval_refers_stackvars(Lval)
     ).
 
-:- func pragma_c_component_refers_stackvars(pragma_c_component) = bool.
+:- func foreign_proc_component_refers_stackvars(foreign_proc_component) = bool.
 
-pragma_c_component_refers_stackvars(Component) = Refers :-
+foreign_proc_component_refers_stackvars(Component) = Refers :-
     (
-        Component = pragma_c_inputs(Inputs),
-        bool.or_list(list.map(pragma_c_input_refers_stackvars, Inputs),
+        Component = foreign_proc_inputs(Inputs),
+        bool.or_list(list.map(foreign_proc_input_refers_stackvars, Inputs),
             Refers)
     ;
-        Component = pragma_c_outputs(Outputs),
-        bool.or_list(list.map(pragma_c_output_refers_stackvars, Outputs),
+        Component = foreign_proc_outputs(Outputs),
+        bool.or_list(list.map(foreign_proc_output_refers_stackvars, Outputs),
             Refers)
     ;
-        ( Component = pragma_c_user_code(_, _)
-        ; Component = pragma_c_raw_code(_, _, _)
-        ; Component = pragma_c_fail_to(_)
-        ; Component = pragma_c_noop
+        ( Component = foreign_proc_user_code(_, _, _)
+        ; Component = foreign_proc_raw_code(_, _, _, _)
+        ; Component = foreign_proc_fail_to(_)
+        ; Component = foreign_proc_noop
         ),
         Refers = no
     ).
 
-:- func pragma_c_input_refers_stackvars(pragma_c_input) = bool.
+:- func foreign_proc_input_refers_stackvars(foreign_proc_input) = bool.
 
-pragma_c_input_refers_stackvars(Input) = Refers :-
-    Input = pragma_c_input(_Name, _Type, IsDummy, _OrigType, Rval,
+foreign_proc_input_refers_stackvars(Input) = Refers :-
+    Input = foreign_proc_input(_Name, _Type, IsDummy, _OrigType, Rval,
         _MaybeForeign, _BoxPolicy),
     (
         IsDummy = yes,
@@ -906,10 +906,10 @@ pragma_c_input_refers_stackvars(Input) = Refers :-
         Refers = rval_refers_stackvars(Rval)
     ).
 
-:- func pragma_c_output_refers_stackvars(pragma_c_output) = bool.
+:- func foreign_proc_output_refers_stackvars(foreign_proc_output) = bool.
 
-pragma_c_output_refers_stackvars(Input) = Refers :-
-    Input = pragma_c_output(Lval, _Type, IsDummy, _OrigType, _Name,
+foreign_proc_output_refers_stackvars(Input) = Refers :-
+    Input = foreign_proc_output(Lval, _Type, IsDummy, _OrigType, _Name,
         _MaybeForeign, _BoxPolicy),
     (
         IsDummy = yes,
@@ -980,50 +980,48 @@ is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
     Rval1 = Rval2,
     Taken = yes.
 
-can_instr_branch_away(comment(_), no).
-can_instr_branch_away(livevals(_), no).
-can_instr_branch_away(block(_, _, _), yes).
-can_instr_branch_away(assign(_, _), no).
-can_instr_branch_away(llcall(_, _, _, _, _, _), yes).
-can_instr_branch_away(mkframe(_, _), no).
-can_instr_branch_away(label(_), no).
-can_instr_branch_away(goto(_), yes).
-can_instr_branch_away(computed_goto(_, _), yes).
-can_instr_branch_away(arbitrary_c_code(_, _), no).
-can_instr_branch_away(if_val(_, _), yes).
-can_instr_branch_away(save_maxfr(_), no).
-can_instr_branch_away(restore_maxfr(_), no).
-can_instr_branch_away(incr_hp(_, _, _, _, _, _), no).
-can_instr_branch_away(mark_hp(_), no).
-can_instr_branch_away(restore_hp(_), no).
-can_instr_branch_away(free_heap(_), no).
-can_instr_branch_away(store_ticket(_), no).
-can_instr_branch_away(reset_ticket(_, _), no).
-can_instr_branch_away(discard_ticket, no).
-can_instr_branch_away(prune_ticket, no).
-can_instr_branch_away(mark_ticket_stack(_), no).
-can_instr_branch_away(prune_tickets_to(_), no).
-can_instr_branch_away(incr_sp(_, _, _), no).
-can_instr_branch_away(decr_sp(_), no).
-can_instr_branch_away(decr_sp_and_return(_), yes).
-can_instr_branch_away(init_sync_term(_, _), no).
-can_instr_branch_away(fork(_), no).
-can_instr_branch_away(join_and_continue(_, _), yes).
-can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _, _, _), BranchAway) :-
-    can_components_branch_away(Comps, BranchAway).
+can_instr_branch_away(comment(_)) = no.
+can_instr_branch_away(livevals(_)) = no.
+can_instr_branch_away(block(_, _, _)) = yes.
+can_instr_branch_away(assign(_, _)) = no.
+can_instr_branch_away(llcall(_, _, _, _, _, _)) = yes.
+can_instr_branch_away(mkframe(_, _)) = no.
+can_instr_branch_away(label(_)) = no.
+can_instr_branch_away(goto(_)) = yes.
+can_instr_branch_away(computed_goto(_, _)) = yes.
+can_instr_branch_away(arbitrary_c_code(_, _, _)) = no.
+can_instr_branch_away(if_val(_, _)) = yes.
+can_instr_branch_away(save_maxfr(_)) = no.
+can_instr_branch_away(restore_maxfr(_)) = no.
+can_instr_branch_away(incr_hp(_, _, _, _, _, _)) = no.
+can_instr_branch_away(mark_hp(_)) = no.
+can_instr_branch_away(restore_hp(_)) = no.
+can_instr_branch_away(free_heap(_)) = no.
+can_instr_branch_away(store_ticket(_)) = no.
+can_instr_branch_away(reset_ticket(_, _)) = no.
+can_instr_branch_away(discard_ticket) = no.
+can_instr_branch_away(prune_ticket) = no.
+can_instr_branch_away(mark_ticket_stack(_)) = no.
+can_instr_branch_away(prune_tickets_to(_)) = no.
+can_instr_branch_away(incr_sp(_, _, _)) = no.
+can_instr_branch_away(decr_sp(_)) = no.
+can_instr_branch_away(decr_sp_and_return(_)) = yes.
+can_instr_branch_away(init_sync_term(_, _)) = no.
+can_instr_branch_away(fork(_)) = no.
+can_instr_branch_away(join_and_continue(_, _)) = yes.
+can_instr_branch_away(foreign_proc_code(_, Comps, _, _, _, _, _, _, _)) =
+    can_components_branch_away(Comps).
 
-:- pred can_components_branch_away(list(pragma_c_component)::in,
-    bool::out) is det.
+:- func can_components_branch_away(list(foreign_proc_component)) = bool.
 
-can_components_branch_away([], no).
-can_components_branch_away([Component | Components], BranchAway) :-
-    can_component_branch_away(Component, BranchAway1),
+can_components_branch_away([]) = no.
+can_components_branch_away([Component | Components]) = !:BranchAway :-
+    !:BranchAway = can_component_branch_away(Component),
     (
-        BranchAway1 = yes,
-        BranchAway = yes
+        !.BranchAway = yes
     ;
-        BranchAway1 = no,
-        can_components_branch_away(Components, BranchAway)
+        !.BranchAway = no,
+        !:BranchAway = can_components_branch_away(Components)
     ).
 
     % The input and output components get expanded to straight line code.
@@ -1038,12 +1036,12 @@ can_components_branch_away([Component | Components], BranchAway) :-
     % but we are careful to preserve a declarative interface, and that
     % is incompatible with branching away.)
     %
-:- pred can_component_branch_away(pragma_c_component::in, bool::out) is det.
+:- func can_component_branch_away(foreign_proc_component) = bool.
 
-can_component_branch_away(pragma_c_inputs(_), no).
-can_component_branch_away(pragma_c_outputs(_), no).
-can_component_branch_away(pragma_c_raw_code(_, CanBranchAway, _),
-        CanBranchAwayBool) :-
+can_component_branch_away(foreign_proc_inputs(_)) = no.
+can_component_branch_away(foreign_proc_outputs(_)) = no.
+can_component_branch_away(foreign_proc_raw_code(CanBranchAway, _, _, _))
+        = CanBranchAwayBool :-
     (
         CanBranchAway = can_branch_away,
         CanBranchAwayBool = yes
@@ -1051,41 +1049,41 @@ can_component_branch_away(pragma_c_raw_code(_, CanBranchAway, _),
         CanBranchAway = cannot_branch_away,
         CanBranchAwayBool = no
     ).
-can_component_branch_away(pragma_c_user_code(_, _), no).
-can_component_branch_away(pragma_c_fail_to(_), yes).
-can_component_branch_away(pragma_c_noop, no).
+can_component_branch_away(foreign_proc_user_code(_, _, _)) = no.
+can_component_branch_away(foreign_proc_fail_to(_)) = yes.
+can_component_branch_away(foreign_proc_noop) = no.
 
-can_instr_fall_through(comment(_), yes).
-can_instr_fall_through(livevals(_), yes).
-can_instr_fall_through(block(_, _, Instrs), FallThrough) :-
+can_instr_fall_through(comment(_)) = yes.
+can_instr_fall_through(livevals(_)) = yes.
+can_instr_fall_through(block(_, _, Instrs)) = FallThrough :-
     can_block_fall_through(Instrs, FallThrough).
-can_instr_fall_through(assign(_, _), yes).
-can_instr_fall_through(llcall(_, _, _, _, _, _), no).
-can_instr_fall_through(mkframe(_, _), yes).
-can_instr_fall_through(label(_), yes).
-can_instr_fall_through(goto(_), no).
-can_instr_fall_through(computed_goto(_, _), no).
-can_instr_fall_through(arbitrary_c_code(_, _), yes).
-can_instr_fall_through(if_val(_, _), yes).
-can_instr_fall_through(save_maxfr(_), yes).
-can_instr_fall_through(restore_maxfr(_), yes).
-can_instr_fall_through(incr_hp(_, _, _, _, _, _), yes).
-can_instr_fall_through(mark_hp(_), yes).
-can_instr_fall_through(restore_hp(_), yes).
-can_instr_fall_through(free_heap(_), yes).
-can_instr_fall_through(store_ticket(_), yes).
-can_instr_fall_through(reset_ticket(_, _), yes).
-can_instr_fall_through(discard_ticket, yes).
-can_instr_fall_through(prune_ticket, yes).
-can_instr_fall_through(mark_ticket_stack(_), yes).
-can_instr_fall_through(prune_tickets_to(_), yes).
-can_instr_fall_through(incr_sp(_, _, _), yes).
-can_instr_fall_through(decr_sp(_), yes).
-can_instr_fall_through(decr_sp_and_return(_), no).
-can_instr_fall_through(init_sync_term(_, _), yes).
-can_instr_fall_through(fork(_), yes).
-can_instr_fall_through(join_and_continue(_, _), no).
-can_instr_fall_through(pragma_c(_, _, _, _, _, _, _, _, _), yes).
+can_instr_fall_through(assign(_, _)) = yes.
+can_instr_fall_through(llcall(_, _, _, _, _, _)) = no.
+can_instr_fall_through(mkframe(_, _)) = yes.
+can_instr_fall_through(label(_)) = yes.
+can_instr_fall_through(goto(_)) = no.
+can_instr_fall_through(computed_goto(_, _)) = no.
+can_instr_fall_through(arbitrary_c_code(_, _, _)) = yes.
+can_instr_fall_through(if_val(_, _)) = yes.
+can_instr_fall_through(save_maxfr(_)) = yes.
+can_instr_fall_through(restore_maxfr(_)) = yes.
+can_instr_fall_through(incr_hp(_, _, _, _, _, _)) = yes.
+can_instr_fall_through(mark_hp(_)) = yes.
+can_instr_fall_through(restore_hp(_)) = yes.
+can_instr_fall_through(free_heap(_)) = yes.
+can_instr_fall_through(store_ticket(_)) = yes.
+can_instr_fall_through(reset_ticket(_, _)) = yes.
+can_instr_fall_through(discard_ticket) = yes.
+can_instr_fall_through(prune_ticket) = yes.
+can_instr_fall_through(mark_ticket_stack(_)) = yes.
+can_instr_fall_through(prune_tickets_to(_)) = yes.
+can_instr_fall_through(incr_sp(_, _, _)) = yes.
+can_instr_fall_through(decr_sp(_)) = yes.
+can_instr_fall_through(decr_sp_and_return(_)) = no.
+can_instr_fall_through(init_sync_term(_, _)) = yes.
+can_instr_fall_through(fork(_)) = yes.
+can_instr_fall_through(join_and_continue(_, _)) = no.
+can_instr_fall_through(foreign_proc_code(_, _, _, _, _, _, _, _, _)) = yes.
 
     % Check whether an instruction sequence can possibly fall through
     % to the next instruction without using its label.
@@ -1094,7 +1092,7 @@ can_instr_fall_through(pragma_c(_, _, _, _, _, _, _, _, _), yes).
 
 can_block_fall_through([], yes).
 can_block_fall_through([Instr - _ | Instrs], FallThrough) :-
-    ( can_instr_fall_through(Instr, no) ->
+    ( can_instr_fall_through(Instr) = no ->
         FallThrough = no
     ;
         can_block_fall_through(Instrs, FallThrough)
@@ -1111,7 +1109,7 @@ can_use_livevals(mkframe(_, _), no).
 can_use_livevals(label(_), no).
 can_use_livevals(goto(_), yes).
 can_use_livevals(computed_goto(_, _), no).
-can_use_livevals(arbitrary_c_code(_, _), no).
+can_use_livevals(arbitrary_c_code(_, _, _), no).
 can_use_livevals(if_val(_, _), yes).
 can_use_livevals(save_maxfr(_), no).
 can_use_livevals(restore_maxfr(_), no).
@@ -1131,7 +1129,7 @@ can_use_livevals(decr_sp_and_return(_), yes).
 can_use_livevals(init_sync_term(_, _), no).
 can_use_livevals(fork(_), no).
 can_use_livevals(join_and_continue(_, _), no).
-can_use_livevals(pragma_c(_, _, _, _, _, _, _, _, _), no).
+can_use_livevals(foreign_proc_code(_, _, _, _, _, _, _, _, _), no).
 
 instr_labels(Instr, Labels, CodeAddrs) :-
     instr_labels_2(Instr, Labels0, CodeAddrs1),
@@ -1174,7 +1172,7 @@ instr_labels_2(mkframe(_, no), [], []).
 instr_labels_2(label(_), [], []).
 instr_labels_2(goto(Addr), [], [Addr]).
 instr_labels_2(computed_goto(_, Labels), Labels, []).
-instr_labels_2(arbitrary_c_code(_, _), [], []).
+instr_labels_2(arbitrary_c_code(_, _, _), [], []).
 instr_labels_2(if_val(_, Addr), [], [Addr]).
 instr_labels_2(save_maxfr(_), [], []).
 instr_labels_2(restore_maxfr(_), [], []).
@@ -1199,9 +1197,9 @@ instr_labels_2(decr_sp_and_return(_), [], []) :-
 instr_labels_2(init_sync_term(_, _), [], []).
 instr_labels_2(fork(Child), [Child], []).
 instr_labels_2(join_and_continue(_, Label), [Label], []).
-instr_labels_2(pragma_c(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
+instr_labels_2(foreign_proc_code(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
         MaybeOnlyLayoutLabel, MaybeSubLabel, _, _), Labels, []) :-
-    pragma_c_labels(MaybeFixLabel, MaybeLayoutLabel,
+    foreign_proc_labels(MaybeFixLabel, MaybeLayoutLabel,
         MaybeOnlyLayoutLabel, MaybeSubLabel, Labels).
 
 possible_targets(comment(_), [], []).
@@ -1228,7 +1226,7 @@ possible_targets(goto(CodeAddr), Labels, CodeAddrs) :-
         CodeAddrs = [CodeAddr]
     ).
 possible_targets(computed_goto(_, Labels), Labels, []).
-possible_targets(arbitrary_c_code(_, _), [], []).
+possible_targets(arbitrary_c_code(_, _, _), [], []).
 possible_targets(if_val(_, CodeAddr), Labels, CodeAddrs) :-
     ( CodeAddr = code_label(Label) ->
         Labels = [Label],
@@ -1257,15 +1255,15 @@ possible_targets(decr_sp_and_return(_), [], []) :-
 possible_targets(init_sync_term(_, _), [], []).
 possible_targets(fork(_Child), [], []).
 possible_targets(join_and_continue(_, L), [L], []).
-possible_targets(pragma_c(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
+possible_targets(foreign_proc_code(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
         _, MaybeSubLabel, _, _), Labels, []) :-
-    pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel,
+    foreign_proc_labels(MaybeFixedLabel, MaybeLayoutLabel,
         no, MaybeSubLabel, Labels).
 
-:- pred pragma_c_labels(maybe(label)::in, maybe(label)::in, maybe(label)::in,
-    maybe(label)::in, list(label)::out) is det.
+:- pred foreign_proc_labels(maybe(label)::in, maybe(label)::in,
+    maybe(label)::in, maybe(label)::in, list(label)::out) is det.
 
-pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel,
+foreign_proc_labels(MaybeFixedLabel, MaybeLayoutLabel,
         MaybeOnlyLayoutLabel, MaybeSubLabel, !:Labels) :-
     !:Labels = [],
     (
@@ -1308,7 +1306,7 @@ instr_rvals_and_lvals(mkframe(_, _), [], []).
 instr_rvals_and_lvals(label(_), [], []).
 instr_rvals_and_lvals(goto(_), [], []).
 instr_rvals_and_lvals(computed_goto(Rval, _), [Rval], []).
-instr_rvals_and_lvals(arbitrary_c_code(_, _), [], []).
+instr_rvals_and_lvals(arbitrary_c_code(_, _, _), [], []).
 instr_rvals_and_lvals(if_val(Rval, _), [Rval], []).
 instr_rvals_and_lvals(save_maxfr(Lval), [], [Lval]).
 instr_rvals_and_lvals(restore_maxfr(Lval), [], [Lval]).
@@ -1328,62 +1326,63 @@ instr_rvals_and_lvals(decr_sp_and_return(_), [], []).
 instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(fork(_), [], []).
 instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
-instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _, _, _, _),
+instr_rvals_and_lvals(foreign_proc_code(_, Cs, _, _, _, _, _, _, _),
         Rvals, Lvals) :-
-    pragma_c_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
+    foreign_proc_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
 
-    % Extract the rvals and lvals from the pragma_c_components.
+    % Extract the rvals and lvals from the foreign_proc_components.
     %
-:- pred pragma_c_components_get_rvals_and_lvals(list(pragma_c_component)::in,
+:- pred foreign_proc_components_get_rvals_and_lvals(
+    list(foreign_proc_component)::in,
     list(rval)::out, list(lval)::out) is det.
 
-pragma_c_components_get_rvals_and_lvals([], [], []).
-pragma_c_components_get_rvals_and_lvals([Comp | Comps], !:Rvals, !:Lvals) :-
-    pragma_c_components_get_rvals_and_lvals(Comps, !:Rvals, !:Lvals),
-    pragma_c_component_get_rvals_and_lvals(Comp, !Rvals, !Lvals).
+foreign_proc_components_get_rvals_and_lvals([], [], []).
+foreign_proc_components_get_rvals_and_lvals([Comp | Comps], !:Rvals, !:Lvals) :-
+    foreign_proc_components_get_rvals_and_lvals(Comps, !:Rvals, !:Lvals),
+    foreign_proc_component_get_rvals_and_lvals(Comp, !Rvals, !Lvals).
 
-    % Extract the rvals and lvals from the pragma_c_component
+    % Extract the rvals and lvals from the foreign_proc_component
     % and add them to the list.
     %
-:- pred pragma_c_component_get_rvals_and_lvals(pragma_c_component::in,
+:- pred foreign_proc_component_get_rvals_and_lvals(foreign_proc_component::in,
     list(rval)::in, list(rval)::out, list(lval)::in, list(lval)::out) is det.
 
-pragma_c_component_get_rvals_and_lvals(pragma_c_inputs(Inputs),
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_inputs(Inputs),
         !Rvals, !Lvals) :-
-    pragma_c_inputs_get_rvals(Inputs, NewRvals),
+    NewRvals = foreign_proc_inputs_get_rvals(Inputs),
     list.append(NewRvals, !Rvals).
-pragma_c_component_get_rvals_and_lvals(pragma_c_outputs(Outputs),
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_outputs(Outputs),
         !Rvals, !Lvals) :-
-    pragma_c_outputs_get_lvals(Outputs, NewLvals),
+    NewLvals = foreign_proc_outputs_get_lvals(Outputs),
     list.append(NewLvals, !Lvals).
-pragma_c_component_get_rvals_and_lvals(pragma_c_user_code(_, _),
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_user_code(_, _, _),
         !Rvals, !Lvals).
-pragma_c_component_get_rvals_and_lvals(pragma_c_raw_code(_, _, _),
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_raw_code(_, _, _, _),
         !Rvals, !Lvals).
-pragma_c_component_get_rvals_and_lvals(pragma_c_fail_to(_),
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_fail_to(_),
         !Rvals, !Lvals).
-pragma_c_component_get_rvals_and_lvals(pragma_c_noop,
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_noop,
         !Rvals, !Lvals).
 
-    % Extract the rvals from the pragma_c_input.
+    % Extract the rvals from the foreign_proc_input.
     %
-:- pred pragma_c_inputs_get_rvals(list(pragma_c_input)::in, list(rval)::out)
-    is det.
+:- func foreign_proc_inputs_get_rvals(list(foreign_proc_input)) = list(rval).
 
-pragma_c_inputs_get_rvals([], []).
-pragma_c_inputs_get_rvals([I | Inputs], [R | Rvals]) :-
-    I = pragma_c_input(_Name, _VarType, _IsDummy, _OrigType, R, _, _),
-    pragma_c_inputs_get_rvals(Inputs, Rvals).
+foreign_proc_inputs_get_rvals([]) = [].
+foreign_proc_inputs_get_rvals([Input | Inputs]) = [Rval | Rvals] :-
+    Input = foreign_proc_input(_Name, _VarType, _IsDummy, _OrigType, Rval,
+        _, _),
+    Rvals = foreign_proc_inputs_get_rvals(Inputs).
 
-    % Extract the lvals from the pragma_c_output.
+    % Extract the lvals from the foreign_proc_output.
     %
-:- pred pragma_c_outputs_get_lvals(list(pragma_c_output)::in, list(lval)::out)
-    is det.
+:- func foreign_proc_outputs_get_lvals(list(foreign_proc_output)) = list(lval).
 
-pragma_c_outputs_get_lvals([], []).
-pragma_c_outputs_get_lvals([O | Outputs], [L | Lvals]) :-
-    O = pragma_c_output(L, _VarType, _IsDummy, _OrigType, _Name, _, _),
-    pragma_c_outputs_get_lvals(Outputs, Lvals).
+foreign_proc_outputs_get_lvals([]) = [].
+foreign_proc_outputs_get_lvals([Output | Outputs]) = [Lval | Lvals] :-
+    Output = foreign_proc_output(Lval, _VarType, _IsDummy, _OrigType,
+        _Name, _, _),
+    Lvals = foreign_proc_outputs_get_lvals(Outputs).
 
     % Determine all the rvals and lvals referenced by a list of instructions.
     %
@@ -1404,7 +1403,7 @@ instr_list_labels([Uinstr - _ | Instrs], Labels, CodeAddrs) :-
     list.append(Labels0, Labels1, Labels),
     list.append(CodeAddrs0, CodeAddrs1, CodeAddrs).
 
-livevals_addr(code_label(Label), Result) :-
+livevals_addr(code_label(Label)) = Result :-
     (
         Label = internal_label(_, _),
         Result = no
@@ -1412,16 +1411,16 @@ livevals_addr(code_label(Label), Result) :-
         Label = entry_label(_, _),
         Result = yes
     ).
-livevals_addr(code_imported_proc(_), yes).
-livevals_addr(code_succip, yes).
-livevals_addr(do_succeed(_), yes).
-livevals_addr(do_redo, no).
-livevals_addr(do_fail, no).
-livevals_addr(do_trace_redo_fail_shallow, no).
-livevals_addr(do_trace_redo_fail_deep, no).
-livevals_addr(do_call_closure(_), yes).
-livevals_addr(do_call_class_method(_), yes).
-livevals_addr(do_not_reached, no).
+livevals_addr(code_imported_proc(_)) = yes.
+livevals_addr(code_succip) = yes.
+livevals_addr(do_succeed(_)) = yes.
+livevals_addr(do_redo) = no.
+livevals_addr(do_fail) = no.
+livevals_addr(do_trace_redo_fail_shallow) = no.
+livevals_addr(do_trace_redo_fail_deep) = no.
+livevals_addr(do_call_closure(_)) = yes.
+livevals_addr(do_call_class_method(_)) = yes.
+livevals_addr(do_not_reached) = no.
 
 count_temps_instr_list([], !R, !F).
 count_temps_instr_list([Uinstr - _Comment | Instrs], !R, !F) :-
@@ -1442,7 +1441,7 @@ count_temps_instr(computed_goto(Rval, _), !R, !F) :-
     count_temps_rval(Rval, !R, !F).
 count_temps_instr(if_val(Rval, _), !R, !F) :-
     count_temps_rval(Rval, !R, !F).
-count_temps_instr(arbitrary_c_code(_, _), !R, !F).
+count_temps_instr(arbitrary_c_code(_, _, _), !R, !F).
 count_temps_instr(save_maxfr(Lval), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(restore_maxfr(Lval), !R, !F) :-
@@ -1474,7 +1473,7 @@ count_temps_instr(init_sync_term(Lval, _), !R, !F) :-
 count_temps_instr(fork(_), !R, !F).
 count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
-count_temps_instr(pragma_c(_, _, _, _, _, _, _, _, _), !R, !F).
+count_temps_instr(foreign_proc_code(_, _, _, _, _, _, _, _, _), !R, !F).
 
 :- pred count_temps_lval(lval::in, int::in, int::out, int::in, int::out)
     is det.
@@ -1535,19 +1534,19 @@ has_both_incr_decr_sp_2([Uinstr - _ | Instrs], !HasIncr, !HasDecr) :-
     ),
     has_both_incr_decr_sp_2(Instrs, !HasIncr, !HasDecr).
 
-touches_nondet_ctrl([], no).
-touches_nondet_ctrl([Uinstr - _ | Instrs], !:Touch) :-
-    touches_nondet_ctrl_instr(Uinstr, !:Touch),
+touches_nondet_ctrl([]) = no.
+touches_nondet_ctrl([Uinstr - _ | Instrs]) = !:Touch :-
+    !:Touch = touches_nondet_ctrl_instr(Uinstr),
     (
         !.Touch = yes
     ;
         !.Touch = no,
-        touches_nondet_ctrl(Instrs, !:Touch)
+        !:Touch = touches_nondet_ctrl(Instrs)
     ).
 
-:- pred touches_nondet_ctrl_instr(instr::in, bool::out) is det.
+:- func touches_nondet_ctrl_instr(instr) = bool.
 
-touches_nondet_ctrl_instr(Uinstr, Touch) :-
+touches_nondet_ctrl_instr(Uinstr) = Touch :-
     (
         ( Uinstr = comment(_)
         ; Uinstr = livevals(_)
@@ -1570,7 +1569,7 @@ touches_nondet_ctrl_instr(Uinstr, Touch) :-
         ; Uinstr = computed_goto(_, _)
         ; Uinstr = llcall(_, _, _, _, _, _) % This is a safe approximation.
         ; Uinstr = if_val(_, _)
-        ; Uinstr = arbitrary_c_code(_, _)
+        ; Uinstr = arbitrary_c_code(_, _, _)
         ; Uinstr = save_maxfr(_)
         ; Uinstr = restore_maxfr(_)
         ; Uinstr = init_sync_term(_, _)     % This is a safe approximation.
@@ -1584,83 +1583,82 @@ touches_nondet_ctrl_instr(Uinstr, Touch) :-
         unexpected(this_file, "touches_nondet_ctrl_instr: block")
     ;
         Uinstr = assign(Lval, Rval),
-        touches_nondet_ctrl_lval(Lval, TouchLval),
-        touches_nondet_ctrl_rval(Rval, TouchRval),
+        TouchLval = touches_nondet_ctrl_lval(Lval),
+        TouchRval = touches_nondet_ctrl_rval(Rval),
         bool.or(TouchLval, TouchRval, Touch)
     ;
         Uinstr = incr_hp(Lval, _, _, Rval, _, _),
-        touches_nondet_ctrl_lval(Lval, TouchLval),
-        touches_nondet_ctrl_rval(Rval, TouchRval),
+        TouchLval = touches_nondet_ctrl_lval(Lval),
+        TouchRval = touches_nondet_ctrl_rval(Rval),
         bool.or(TouchLval, TouchRval, Touch)
     ;
         Uinstr = mark_hp(Lval),
-        touches_nondet_ctrl_lval(Lval, Touch)
+        Touch = touches_nondet_ctrl_lval(Lval)
     ;
         Uinstr = restore_hp(Rval),
-        touches_nondet_ctrl_rval(Rval, Touch)
+        Touch = touches_nondet_ctrl_rval(Rval)
     ;
-        Uinstr = pragma_c(_, Components, _, _, _, _, _, _, _),
-        touches_nondet_ctrl_components(Components, Touch)
+        Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
+        Touch = touches_nondet_ctrl_components(Components)
     ).
 
-:- pred touches_nondet_ctrl_lval(lval::in, bool::out) is det.
+:- func touches_nondet_ctrl_lval(lval) = bool.
 
-touches_nondet_ctrl_lval(reg(_, _), no).
-touches_nondet_ctrl_lval(stackvar(_), no).
-touches_nondet_ctrl_lval(parent_stackvar(_), no).
-touches_nondet_ctrl_lval(framevar(_), no).
-touches_nondet_ctrl_lval(succip, no).
-touches_nondet_ctrl_lval(maxfr, yes).
-touches_nondet_ctrl_lval(curfr, yes).
-touches_nondet_ctrl_lval(succfr_slot(_), yes).
-touches_nondet_ctrl_lval(prevfr_slot(_), yes).
-touches_nondet_ctrl_lval(redofr_slot(_), yes).
-touches_nondet_ctrl_lval(redoip_slot(_), yes).
-touches_nondet_ctrl_lval(succip_slot(_), yes).
-touches_nondet_ctrl_lval(hp, no).
-touches_nondet_ctrl_lval(sp, no).
-touches_nondet_ctrl_lval(parent_sp, no).
-touches_nondet_ctrl_lval(field(_, Rval1, Rval2), Touch) :-
-    touches_nondet_ctrl_rval(Rval1, Touch1),
-    touches_nondet_ctrl_rval(Rval2, Touch2),
+touches_nondet_ctrl_lval(reg(_, _)) = no.
+touches_nondet_ctrl_lval(stackvar(_)) = no.
+touches_nondet_ctrl_lval(parent_stackvar(_)) = no.
+touches_nondet_ctrl_lval(framevar(_)) = no.
+touches_nondet_ctrl_lval(succip) = no.
+touches_nondet_ctrl_lval(maxfr) = yes.
+touches_nondet_ctrl_lval(curfr) = yes.
+touches_nondet_ctrl_lval(succfr_slot(_)) = yes.
+touches_nondet_ctrl_lval(prevfr_slot(_)) = yes.
+touches_nondet_ctrl_lval(redofr_slot(_)) = yes.
+touches_nondet_ctrl_lval(redoip_slot(_)) = yes.
+touches_nondet_ctrl_lval(succip_slot(_)) = yes.
+touches_nondet_ctrl_lval(hp) = no.
+touches_nondet_ctrl_lval(sp) = no.
+touches_nondet_ctrl_lval(parent_sp) = no.
+touches_nondet_ctrl_lval(field(_, Rval1, Rval2)) = Touch :-
+    Touch1 = touches_nondet_ctrl_rval(Rval1),
+    Touch2 = touches_nondet_ctrl_rval(Rval2),
     bool.or(Touch1, Touch2, Touch).
-touches_nondet_ctrl_lval(lvar(_), no).
-touches_nondet_ctrl_lval(temp(_, _), no).
-touches_nondet_ctrl_lval(mem_ref(Rval), Touch) :-
-    touches_nondet_ctrl_rval(Rval, Touch).
-touches_nondet_ctrl_lval(global_var_ref(_), no).
+touches_nondet_ctrl_lval(lvar(_)) = no.
+touches_nondet_ctrl_lval(temp(_, _)) = no.
+touches_nondet_ctrl_lval(mem_ref(Rval)) =
+    touches_nondet_ctrl_rval(Rval).
+touches_nondet_ctrl_lval(global_var_ref(_)) = no.
 
-:- pred touches_nondet_ctrl_rval(rval::in, bool::out) is det.
+:- func touches_nondet_ctrl_rval(rval) = bool.
 
-touches_nondet_ctrl_rval(lval(Lval), Touch) :-
-    touches_nondet_ctrl_lval(Lval, Touch).
-touches_nondet_ctrl_rval(var(_), no).
-touches_nondet_ctrl_rval(mkword(_, Rval), Touch) :-
-    touches_nondet_ctrl_rval(Rval, Touch).
-touches_nondet_ctrl_rval(const(_), no).
-touches_nondet_ctrl_rval(unop(_, Rval), Touch) :-
-    touches_nondet_ctrl_rval(Rval, Touch).
-touches_nondet_ctrl_rval(binop(_, Rval1, Rval2), Touch) :-
-    touches_nondet_ctrl_rval(Rval1, Touch1),
-    touches_nondet_ctrl_rval(Rval2, Touch2),
+touches_nondet_ctrl_rval(lval(Lval)) =
+    touches_nondet_ctrl_lval(Lval).
+touches_nondet_ctrl_rval(var(_)) = no.
+touches_nondet_ctrl_rval(mkword(_, Rval)) =
+    touches_nondet_ctrl_rval(Rval).
+touches_nondet_ctrl_rval(const(_)) = no.
+touches_nondet_ctrl_rval(unop(_, Rval)) =
+    touches_nondet_ctrl_rval(Rval).
+touches_nondet_ctrl_rval(binop(_, Rval1, Rval2)) = Touch :-
+    Touch1 = touches_nondet_ctrl_rval(Rval1),
+    Touch2 = touches_nondet_ctrl_rval(Rval2),
     bool.or(Touch1, Touch2, Touch).
-touches_nondet_ctrl_rval(mem_addr(MemRef), Touch) :-
-    touches_nondet_ctrl_mem_ref(MemRef, Touch).
+touches_nondet_ctrl_rval(mem_addr(MemRef)) =
+    touches_nondet_ctrl_mem_ref(MemRef).
 
-:- pred touches_nondet_ctrl_mem_ref(mem_ref::in, bool::out) is det.
+:- func touches_nondet_ctrl_mem_ref(mem_ref) = bool.
 
-touches_nondet_ctrl_mem_ref(stackvar_ref(_), no).
-touches_nondet_ctrl_mem_ref(framevar_ref(_), no).
-touches_nondet_ctrl_mem_ref(heap_ref(Rval, _, _), Touch) :-
-    touches_nondet_ctrl_rval(Rval, Touch).
+touches_nondet_ctrl_mem_ref(stackvar_ref(_)) = no.
+touches_nondet_ctrl_mem_ref(framevar_ref(_)) = no.
+touches_nondet_ctrl_mem_ref(heap_ref(Rval, _, _)) =
+    touches_nondet_ctrl_rval(Rval).
 
-:- pred touches_nondet_ctrl_components(list(pragma_c_component)::in,
-    bool::out) is det.
+:- func touches_nondet_ctrl_components(list(foreign_proc_component)) = bool.
 
-touches_nondet_ctrl_components([], no).
-touches_nondet_ctrl_components([C | Cs], Touch) :-
-    touches_nondet_ctrl_component(C, Touch1),
-    touches_nondet_ctrl_components(Cs, Touch2),
+touches_nondet_ctrl_components([]) = no.
+touches_nondet_ctrl_components([Comp | Comps]) = Touch :-
+    Touch1 = touches_nondet_ctrl_component(Comp),
+    Touch2 = touches_nondet_ctrl_components(Comps),
     bool.or(Touch1, Touch2, Touch).
 
     % The inputs and outputs components get emitted as simple straight-line
@@ -1669,15 +1667,14 @@ touches_nondet_ctrl_components([C | Cs], Touch) :-
     % until we have prohibited the use of ordinary pragma C codes for model_non
     % procedures, some user code will need to ignore this restriction.
     %
-:- pred touches_nondet_ctrl_component(pragma_c_component::in, bool::out)
-    is det.
+:- func touches_nondet_ctrl_component(foreign_proc_component) = bool.
 
-touches_nondet_ctrl_component(pragma_c_inputs(_), no).
-touches_nondet_ctrl_component(pragma_c_outputs(_), no).
-touches_nondet_ctrl_component(pragma_c_raw_code(_, _, _), no).
-touches_nondet_ctrl_component(pragma_c_user_code(_, _), yes).
-touches_nondet_ctrl_component(pragma_c_fail_to(_), no).
-touches_nondet_ctrl_component(pragma_c_noop, no).
+touches_nondet_ctrl_component(foreign_proc_inputs(_)) = no.
+touches_nondet_ctrl_component(foreign_proc_outputs(_)) = no.
+touches_nondet_ctrl_component(foreign_proc_raw_code(_, _, _, _)) = no.
+touches_nondet_ctrl_component(foreign_proc_user_code(_, _, _)) = yes.
+touches_nondet_ctrl_component(foreign_proc_fail_to(_)) = no.
+touches_nondet_ctrl_component(foreign_proc_noop) = no.
 
 %-----------------------------------------------------------------------------%
 
@@ -1763,7 +1760,7 @@ propagate_livevals_2([Instr0 | Instrs0], Livevals0,
         Instr = Instr0,
         ( Uinstr0 = assign(Lval, _) ->
             set.delete(Livevals0, Lval, Livevals)
-        ; can_instr_fall_through(Uinstr0, no) ->
+        ; can_instr_fall_through(Uinstr0) = no ->
             set.init(Livevals)
         ;
             Livevals = Livevals0
@@ -1852,8 +1849,8 @@ replace_labels_instr(computed_goto(Rval0, Labels0), ReplMap,
         Rval = Rval0
     ),
     replace_labels_label_list(Labels0, ReplMap, Labels).
-replace_labels_instr(arbitrary_c_code(Code, Lvals), _, _,
-        arbitrary_c_code(Code, Lvals)).
+replace_labels_instr(arbitrary_c_code(Lvals, AffectsLiveness, Code), _, _,
+        arbitrary_c_code(Lvals, AffectsLiveness, Code)).
 replace_labels_instr(if_val(Rval0, Target0), ReplMap, ReplData,
         if_val(Rval, Target)) :-
     (
@@ -1967,9 +1964,9 @@ replace_labels_instr(join_and_continue(Lval0, Label0),
         Replmap, _, join_and_continue(Lval, Label)) :-
     replace_labels_label(Label0, Replmap, Label),
     replace_labels_lval(Lval0, Replmap, Lval).
-replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
+replace_labels_instr(foreign_proc_code(A, Comps0, C, MaybeFix, MaybeLayout,
         MaybeOnlyLayout, MaybeSub0, H, I), ReplMap, _,
-        pragma_c(A, Comps, C, MaybeFix, MaybeLayout, MaybeOnlyLayout,
+        foreign_proc_code(A, Comps, C, MaybeFix, MaybeLayout, MaybeOnlyLayout,
             MaybeSub, H, I)) :-
     (
         MaybeFix = no
@@ -2014,19 +2011,19 @@ replace_labels_comps([Comp0 | Comps0], ReplMap, [Comp | Comps]) :-
     replace_labels_comp(Comp0, ReplMap, Comp),
     replace_labels_comps(Comps0, ReplMap, Comps).
 
-:- pred replace_labels_comp(pragma_c_component::in,
-    map(label, label)::in, pragma_c_component::out) is det.
+:- pred replace_labels_comp(foreign_proc_component::in,
+    map(label, label)::in, foreign_proc_component::out) is det.
 
-replace_labels_comp(pragma_c_inputs(A), _, pragma_c_inputs(A)).
-replace_labels_comp(pragma_c_outputs(A), _, pragma_c_outputs(A)).
-replace_labels_comp(pragma_c_user_code(A, B), _,
-        pragma_c_user_code(A, B)).
-replace_labels_comp(pragma_c_raw_code(A, B, C), _,
-        pragma_c_raw_code(A, B, C)).
-replace_labels_comp(pragma_c_fail_to(Label0), ReplMap,
-        pragma_c_fail_to(Label)) :-
+replace_labels_comp(foreign_proc_inputs(A), _, foreign_proc_inputs(A)).
+replace_labels_comp(foreign_proc_outputs(A), _, foreign_proc_outputs(A)).
+replace_labels_comp(foreign_proc_user_code(A, B, C), _,
+        foreign_proc_user_code(A, B, C)).
+replace_labels_comp(foreign_proc_raw_code(A, B, C, D), _,
+        foreign_proc_raw_code(A, B, C, D)).
+replace_labels_comp(foreign_proc_fail_to(Label0), ReplMap,
+        foreign_proc_fail_to(Label)) :-
     replace_labels_label(Label0, ReplMap, Label).
-replace_labels_comp(pragma_c_noop, _, pragma_c_noop).
+replace_labels_comp(foreign_proc_noop, _, foreign_proc_noop).
 
 :- pred replace_labels_lval(lval::in, map(label, label)::in, lval::out) is det.
 

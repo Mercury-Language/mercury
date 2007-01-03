@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -203,7 +203,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init
     ;
-        Uinstr0 = arbitrary_c_code(_, _),
+        Uinstr0 = arbitrary_c_code(_, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The C code may clobber any lval.
         !:KnownContentsMap = map.init,
@@ -285,7 +285,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init
     ;
-        Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _),
+        Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The C code may clobber any lval.
         !:KnownContentsMap = map.init,

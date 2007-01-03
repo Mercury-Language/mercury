@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -9,13 +9,13 @@
 % File: pragma_c_gen.m
 % Main authors: dgj, conway, zs.
 %
-% The code in this module generates code for pragma_c_code goals.
+% The code in this module generates code for call_foreign_proc goals.
 %
 % The schemes we use to generate code for model_det and model_semi
-% pragma_c_codes are quite similar, so we handle them together.
+% call_foreign_proc goals are quite similar, so we handle them together.
 % The code that does this is reasonably simple.
 %
-% The scheme for model_non pragma_c_codes is substantially different,
+% The scheme for model_non call_foreign_procs is substantially different,
 % so we handle them separately.
 %
 %---------------------------------------------------------------------------%
@@ -36,19 +36,19 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_pragma_c_code(code_model::in,
+:- pred generate_foreign_proc_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in,
     maybe(trace_expr(trace_runtime))::in, pragma_foreign_code_impl::in,
     hlds_goal_info::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-:- func struct_name(module_name, string, int, proc_id) = string.
+:- func foreign_proc_struct_name(module_name, string, int, proc_id) = string.
 
     % The name of the variable model_semi foreign_procs in C assign to
     % to indicate success or failure. Exported for llds_out.m.
     %
-:- func pragma_succ_ind_name = string.
+:- func foreign_proc_succ_ind_name = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -87,9 +87,10 @@
 
 %---------------------------------------------------------------------------%
 
-% The code we generate for an ordinary (model_det or model_semi) pragma_c_code
-% must be able to fit into the middle of a procedure, since such
-% pragma_c_codes can be inlined. This code is of the following form:
+% The code we generate for an ordinary (model_det or model_semi)
+% call_foreign_proc goal must be able to fit into the middle of a procedure,
+% since such call_foreign_proc goals can be inlined. This code is of the
+% following form:
 %
 %   <save live variables onto the stack> /* see note (1) below */
 %   {
@@ -108,7 +109,7 @@
 %       #undef MR_PROC_LABEL /* see note (5) below */
 %   }
 %
-% In the case of a semidet pragma c_code, the above is followed by
+% In the case of a semidet foreign_proc, the above is followed by
 %
 %   goto skip_label;
 %   fail_label:
@@ -119,17 +120,17 @@
 %
 %   if (!r1) MR_GOTO_LABEL(fail_label);
 %
-% In the case of a pragma c_code with determinism failure, the above
+% In the case of a foreign_proc with determinism failure, the above
 % is followed by
 %
 %    <code to fail>
 %
 % and the <check of r1> is empty.
 %
-% The code we generate for nondet pragma_c_code assumes that this code is
-% the only thing between the procedure prolog and epilog; such pragma_c_codes
-% therefore cannot be inlined. The code of the procedure is of one of the
-% following two forms:
+% The code we generate for nondet call_foreign_proc goals assumes that this
+% code is the only thing between the procedure prolog and epilog; such
+% call_foreign_proc goals therefore cannot be inlined. The code of the
+% procedure is of one of the following two forms:
 %
 % form 1 (duplicated common code):
 % <proc entry label and comments>
@@ -289,18 +290,18 @@
 % The procedure prolog creates a nondet stack frame that includes space for
 % a struct that is saved across calls. Since the position of this struct in
 % the nondet stack frame is not known until the procedure prolog is created,
-% which is *after* the call to generate_pragma_c_code, the prolog will #define
-% MR_ORDINARY_SLOTS as the number of ordinary slots in the nondet frame.
-% From the size of the fixed portion of the nondet stack frame, from
+% which is *after* the call to generate_foreign_proc_code, the prolog will
+% #define MR_ORDINARY_SLOTS as the number of ordinary slots in the nondet
+% frame. From the size of the fixed portion of the nondet stack frame, from
 % MR_ORDINARY_SLOTS and from the size of the save struct itself, one can
 % calculate the address of the save struct itself. The epilog will #undef
 % MR_ORDINARY_SLOTS. It need not do anything else, since all the normal epilog
 % stuff has been done in the code above.
 %
-% Unlike with ordinary pragma C codes, with nondet C codes there are never
+% Unlike with ordinary foreign_procs, with nondet foreign_procs there are never
 % any live variables to save at the start, except for the input variables,
 % and saving these is a job for the included C code. Also unlike ordinary
-% pragma C codes, nondet C codes are never followed by any other code,
+% foreign_procs, nondet C codes are never followed by any other code,
 % so the exprn_info component of the code generator state need not be
 % kept up to date.
 %
@@ -330,7 +331,7 @@
 %   needs restoring.
 %
 %   When calling nondet code, maxfr may be changed. This is why we must call
-%   MR_restore_registers() from the code we generate for nondet pragma C codes
+%   MR_restore_registers() from the code we generate for nondet foreign_procs
 %   even if we are not using conservative gc.
 %
 % 4 These labels and the code following them can be optimized away by the C
@@ -343,65 +344,68 @@
 %   standard library that allocates memory manually can use MR_PROC_LABEL as
 %   the procname argument to incr_hp_msg(), for memory profiling. Hard-coding
 %   the procname argument in the C code would be wrong, since it wouldn't
-%   handle the case where the original pragma c_code procedure gets inlined
-%   and optimized away. Of course we also need to #undef it afterwards.
+%   handle the case where the original foreign_proc gets inlined and optimized
+%   away. Of course we also need to #undef it afterwards.
 
 %---------------------------------------------------------------------------%
 
-generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
-        MaybeTraceRuntimeCond, PragmaImpl, GoalInfo, Code, !CI) :-
+generate_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
+        Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl, GoalInfo, Code,
+        !CI) :-
     (
         PragmaImpl = fc_impl_ordinary(C_Code, Context),
         (
             MaybeTraceRuntimeCond = no,
             CanOptAwayUnnamedArgs = yes,
-            ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
-                Args, ExtraArgs, C_Code, Context, GoalInfo,
+            generate_ordinary_foreign_proc_code(CodeModel, Attributes,
+                PredId, ProcId, Args, ExtraArgs, C_Code, Context, GoalInfo,
                 CanOptAwayUnnamedArgs, Code, !CI)
         ;
             MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
             expect(unify(Args, []), this_file,
-                "generate_pragma_c_code: args runtime cond"),
+                "generate_foreign_proc_code: args runtime cond"),
             expect(unify(ExtraArgs, []), this_file,
-                "generate_pragma_c_code: extra args runtime cond"),
+                "generate_foreign_proc_code: extra args runtime cond"),
             expect(unify(CodeModel, model_semi), this_file,
-                "generate_pragma_c_code: non-semi runtime cond"),
-            trace_runtime_cond_pragma_c_code(TraceRuntimeCond, Code, !CI)
+                "generate_foreign_proc_code: non-semi runtime cond"),
+            generate_trace_runtime_cond_foreign_proc_code(TraceRuntimeCond,
+                Code, !CI)
         )
     ;
         PragmaImpl = fc_impl_model_non(Fields, FieldsContext,
             First, FirstContext, Later, LaterContext,
             Treat, Shared, SharedContext),
         expect(unify(ExtraArgs, []), this_file,
-            "generate_pragma_c_code: extra args nondet"),
+            "generate_foreign_proc_code: extra args nondet"),
         require(unify(MaybeTraceRuntimeCond, no),
-            "generate_pragma_c_code: runtime cond nondet"),
+            "generate_foreign_proc_code: runtime cond nondet"),
         CanOptAwayUnnamedArgs = yes,
-        nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
-            Args, Fields, FieldsContext,
+        generate_nondet_foreign_proc_code(CodeModel, Attributes,
+            PredId, ProcId, Args, Fields, FieldsContext,
             First, FirstContext, Later, LaterContext,
             Treat, Shared, SharedContext, CanOptAwayUnnamedArgs, Code, !CI)
     ;
         PragmaImpl = fc_impl_import(Name, HandleReturn, Vars, Context),
         expect(unify(ExtraArgs, []), this_file,
-            "generate_pragma_c_code: extra args import"),
+            "generate_foreign_proc_code: extra args import"),
         require(unify(MaybeTraceRuntimeCond, no),
-            "generate_pragma_c_code: runtime cond import"),
+            "generate_foreign_proc_code: runtime cond import"),
         C_Code = HandleReturn ++ " " ++ Name ++ "(" ++ Vars ++ ");",
 
         % The imported function was generated with all arguments present.
         CanOptAwayUnnamedArgs = no,
-        ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
-            Args, ExtraArgs, C_Code, Context, GoalInfo,
+        generate_ordinary_foreign_proc_code(CodeModel, Attributes,
+            PredId, ProcId, Args, ExtraArgs, C_Code, Context, GoalInfo,
             CanOptAwayUnnamedArgs, Code, !CI)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred trace_runtime_cond_pragma_c_code(trace_expr(trace_runtime)::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_trace_runtime_cond_foreign_proc_code(
+    trace_expr(trace_runtime)::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
-trace_runtime_cond_pragma_c_code(RuntimeExpr, Code, !CI) :-
+generate_trace_runtime_cond_foreign_proc_code(RuntimeExpr, Code, !CI) :-
     generate_runtime_cond_code(RuntimeExpr, CondRval, !CI),
     code_info.get_next_label(SuccessLabel, !CI),
     code_info.generate_failure(FailCode, !CI),
@@ -443,14 +447,15 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred ordinary_pragma_c_code(code_model::in,
+:- pred generate_ordinary_foreign_proc_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     maybe(prog_context)::in, hlds_goal_info::in, bool::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
-        C_Code, Context, GoalInfo, CanOptAwayUnnamedArgs, Code, !CI) :-
+generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
+        Args, ExtraArgs, C_Code, Context, GoalInfo, CanOptAwayUnnamedArgs,
+        Code, !CI) :-
     % Extract the attributes.
     MayCallMercury = get_may_call_mercury(Attributes),
     ThreadSafe = get_thread_safe(Attributes),
@@ -461,8 +466,8 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         ThreadSafe = proc_thread_safe
     ;
         ThreadSafe = proc_maybe_thread_safe,
-        unexpected(this_file,
-            "ordinary_pragma_c_code: maybe_thread_safe encountered.")
+        unexpected(this_file, "generate_ordinary_foreign_proc_code: " ++
+            "maybe_thread_safe encountered.")
     ;
         ThreadSafe = proc_not_thread_safe
     ),
@@ -472,8 +477,8 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
     code_info.get_module_info(!.CI, ModuleInfo),
     make_extra_c_arg_list(ExtraArgs, ModuleInfo, ArgInfos, ExtraCArgs),
     list.append(OrigCArgs, ExtraCArgs, CArgs),
-    pragma_select_in_args(CArgs, InCArgs),
-    pragma_select_out_args(CArgs, OutCArgs),
+    foreign_proc_select_in_args(CArgs, InCArgs),
+    foreign_proc_select_out_args(CArgs, OutCArgs),
 
     goal_info_get_post_deaths(GoalInfo, PostDeaths),
     set.init(DeadVars0),
@@ -499,17 +504,17 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
     % Generate the values of input variables.
     % (NB we need to be careful that the rvals generated here
     % remain valid below.)
-    get_pragma_input_vars(InCArgs, InputDescs, CanOptAwayUnnamedArgs,
+    get_foreign_proc_input_vars(InCArgs, InputDescs, CanOptAwayUnnamedArgs,
         InputVarsCode, !CI),
 
     % We cannot kill the forward dead input arguments until we have
     % finished generating the code producing the input variables.
-    % (The forward dead variables will be dead after the pragma_c_code,
+    % (The forward dead variables will be dead after the call_foreign_proc,
     % but are live during its input phase.)
     code_info.make_vars_forward_dead(DeadVars, !CI),
 
     % Generate <declaration of one local variable for each arg>.
-    make_pragma_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
+    make_foreign_proc_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
 
     % Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
     % and #undef MR_PROC_LABEL.
@@ -519,26 +524,27 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         ProcLabelHashDefine, ProcLabelHashUndef),
 
     % <assignment of input values from registers to local vars>
-    InputComp = pragma_c_inputs(InputDescs),
+    InputComp = foreign_proc_inputs(InputDescs),
 
     % MR_save_registers(); /* see notes (1) and (2) above */
     (
         MayCallMercury = proc_will_not_call_mercury,
-        SaveRegsComp = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set.init))
+        SaveRegsComp = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init), "")
     ;
         MayCallMercury = proc_may_call_mercury,
-        SaveRegsComp = pragma_c_raw_code("\tMR_save_registers();\n",
-            cannot_branch_away, live_lvals_info(set.init))
+        SaveRegsComp = foreign_proc_raw_code(cannot_branch_away,
+            affects_liveness, live_lvals_info(set.init),
+            "\tMR_save_registers();\n")
     ),
 
     % Code fragments to obtain and release the global lock.
     (
         ThreadSafe = proc_thread_safe,
-        ObtainLock = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set.init)),
-        ReleaseLock = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set.init))
+        ObtainLock = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init), ""),
+        ReleaseLock = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init), "")
     ;
         ThreadSafe = proc_not_thread_safe,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -546,45 +552,46 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         c_util.quote_string(Name, MangledName),
         ObtainLockStr = "\tMR_OBTAIN_GLOBAL_LOCK("""
             ++ MangledName ++ """);\n",
-        ObtainLock = pragma_c_raw_code(ObtainLockStr, cannot_branch_away,
-            live_lvals_info(set.init)),
+        ObtainLock = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init), ObtainLockStr),
         ReleaseLockStr = "\tMR_RELEASE_GLOBAL_LOCK("""
             ++ MangledName ++ """);\n",
-        ReleaseLock = pragma_c_raw_code(ReleaseLockStr, cannot_branch_away,
-            live_lvals_info(set.init))
+        ReleaseLock = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init), ReleaseLockStr)
     ),
 
     % <The C code itself>
-    C_Code_Comp = pragma_c_user_code(Context, C_Code),
+    C_Code_Comp = foreign_proc_user_code(Context, default_affects_liveness,
+        C_Code),
 
     % <for semidet code, check of SUCCESS_INDICATOR>
     goal_info_get_determinism(GoalInfo, Detism),
     ( CodeModel = model_semi ->
         ( Detism = detism_failure ->
-            CheckSuccess_Comp = pragma_c_noop,
+            CheckSuccess_Comp = foreign_proc_noop,
             MaybeFailLabel = no
         ;
             code_info.get_next_label(FailLabel, !CI),
-            CheckSuccess_Comp = pragma_c_fail_to(FailLabel),
+            CheckSuccess_Comp = foreign_proc_fail_to(FailLabel),
             MaybeFailLabel = yes(FailLabel)
         ),
-        DefSuccessComp = pragma_c_raw_code(
-            "\tMR_bool " ++ pragma_succ_ind_name ++ ";\n" ++
+        DefSuccessComp = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init),
+            "\tMR_bool " ++ foreign_proc_succ_ind_name ++ ";\n" ++
             "#undef SUCCESS_INDICATOR\n" ++
             "#define SUCCESS_INDICATOR " ++
-                pragma_succ_ind_name ++ "\n",
-            cannot_branch_away, live_lvals_info(set.init)),
-        UndefSuccessComp = pragma_c_raw_code(
+                foreign_proc_succ_ind_name ++ "\n"),
+        UndefSuccessComp = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init),
             "#undef SUCCESS_INDICATOR\n" ++
-            "#define SUCCESS_INDICATOR MR_r1\n",
-            cannot_branch_away, live_lvals_info(set.init))
+            "#define SUCCESS_INDICATOR MR_r1\n")
     ;
-        CheckSuccess_Comp = pragma_c_noop,
+        CheckSuccess_Comp = foreign_proc_noop,
         MaybeFailLabel = no,
-        DefSuccessComp = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set.init)),
-        UndefSuccessComp = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set.init))
+        DefSuccessComp = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init), ""),
+        UndefSuccessComp = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init), "")
     ),
 
     % #ifndef MR_CONSERVATIVE_GC
@@ -592,14 +599,13 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
     % #endif
     (
         MayCallMercury = proc_will_not_call_mercury,
-        RestoreRegsComp = pragma_c_noop
+        RestoreRegsComp = foreign_proc_noop
     ;
         MayCallMercury = proc_may_call_mercury,
-        RestoreRegsComp = pragma_c_raw_code(
+        RestoreRegsComp = foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init),
             "#ifndef MR_CONSERVATIVE_GC\n\t" ++
-                "MR_restore_registers();\n#endif\n",
-            cannot_branch_away, live_lvals_info(set.init)
-        )
+                "MR_restore_registers();\n#endif\n")
     ),
 
     % The C code may have called Mercury code which clobbered the regs,
@@ -619,12 +625,12 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
     ),
 
     % <assignment of the output values from local variables to registers>
-    pragma_acquire_regs(OutCArgs, Regs, !CI),
-    place_pragma_output_args_in_regs(OutCArgs, Regs, CanOptAwayUnnamedArgs,
-        OutputDescs, !CI),
-    OutputComp = pragma_c_outputs(OutputDescs),
+    foreign_proc_acquire_regs(OutCArgs, Regs, !CI),
+    place_foreign_proc_output_args_in_regs(OutCArgs, Regs,
+        CanOptAwayUnnamedArgs, OutputDescs, !CI),
+    OutputComp = foreign_proc_outputs(OutputDescs),
 
-    % Join all the components of the pragma_c together.
+    % Join all the components of the foreign_proc_code together.
     Components = [ProcLabelHashDefine, DefSuccessComp, InputComp,
         SaveRegsComp, ObtainLock, C_Code_Comp, ReleaseLock,
         CheckSuccess_Comp, RestoreRegsComp,
@@ -643,9 +649,9 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         RefersToLLDSSTack = no
     ),
     PragmaCCode = node([
-        pragma_c(Decls, Components, MayCallMercury, no, no, no,
+        foreign_proc_code(Decls, Components, MayCallMercury, no, no, no,
             MaybeFailLabel, RefersToLLDSSTack, MaybeDupl)
-            - "Pragma C inclusion"
+            - "foreign_proc inclusion"
     ]),
     %
     % For semidet code, we need to insert the failure handling code here:
@@ -680,16 +686,17 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
     Code = tree_list([SaveVarsCode, InputVarsCode, PragmaCCode, FailureCode]).
 
 :- pred make_proc_label_hash_define(module_info::in, pred_id::in, proc_id::in,
-    pragma_c_component::out, pragma_c_component::out) is det.
+    foreign_proc_component::out, foreign_proc_component::out) is det.
 
 make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
         ProcLabelHashDef, ProcLabelHashUndef) :-
-    ProcLabelHashDef = pragma_c_raw_code(string.append_list([
-        "#define\tMR_PROC_LABEL\t",
-        make_proc_label_string(ModuleInfo, PredId, ProcId), "\n"]),
-        cannot_branch_away, live_lvals_info(set.init)),
-    ProcLabelHashUndef = pragma_c_raw_code("#undef\tMR_PROC_LABEL\n",
-        cannot_branch_away, live_lvals_info(set.init)).
+    ProcLabelHashDef = foreign_proc_raw_code(cannot_branch_away,
+        doesnt_affect_liveness, live_lvals_info(set.init),
+        "#define\tMR_PROC_LABEL\t" ++
+            make_proc_label_string(ModuleInfo, PredId, ProcId) ++ "\n"),
+    ProcLabelHashUndef = foreign_proc_raw_code(cannot_branch_away,
+        doesnt_affect_liveness, live_lvals_info(set.init),
+        "#undef\tMR_PROC_LABEL\n").
 
 :- func make_proc_label_string(module_info, pred_id, proc_id) = string.
 
@@ -705,21 +712,22 @@ make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred nondet_pragma_c_code(code_model::in,
+:- pred generate_nondet_foreign_proc_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in,
     string::in, maybe(prog_context)::in,
     string::in, maybe(prog_context)::in,
-    string::in, maybe(prog_context)::in, pragma_shared_code_treatment::in,
+    string::in, maybe(prog_context)::in,
+    foreign_proc_shared_code_treatment::in,
     string::in, maybe(prog_context)::in, bool::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
+generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         Args, _Fields, _FieldsContext,
         First, FirstContext, Later, LaterContext, Treat, Shared, SharedContext,
         CanOptAwayUnnamedArgs, Code, !CI) :-
     expect(unify(CodeModel, model_non), this_file,
-        "inappropriate code model for nondet pragma C code"),
+        "inappropriate code model for nondet foreign_proc"),
     % Extract the may_call_mercury attribute.
     MayCallMercury = get_may_call_mercury(Attributes),
 
@@ -738,10 +746,11 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     % Get a list of input and output arguments.
     ArgInfos = code_info.get_pred_proc_arginfo(!.CI, PredId, ProcId),
     make_c_arg_list(Args, ArgInfos, CArgs),
-    pragma_select_in_args(CArgs, InCArgs),
-    pragma_select_out_args(CArgs, OutCArgs),
-    make_pragma_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
-    make_pragma_decls(OutCArgs, ModuleInfo, CanOptAwayUnnamedArgs, OutDecls),
+    foreign_proc_select_in_args(CArgs, InCArgs),
+    foreign_proc_select_out_args(CArgs, OutCArgs),
+    make_foreign_proc_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
+    make_foreign_proc_decls(OutCArgs, ModuleInfo, CanOptAwayUnnamedArgs,
+        OutDecls),
 
     input_descs_from_arg_info(!.CI, InCArgs, CanOptAwayUnnamedArgs,
         InputDescs),
@@ -752,8 +761,8 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    StructName = struct_name(ModuleName, PredName, Arity, ProcId),
-    SaveStructDecl = pragma_c_struct_ptr_decl(StructName, "LOCALS"),
+    StructName = foreign_proc_struct_name(ModuleName, PredName, Arity, ProcId),
+    SaveStructDecl = foreign_proc_struct_ptr_decl(StructName, "LOCALS"),
     string.format("\tLOCALS = (struct %s *) ((char *)
         (MR_curfr + 1 - MR_ORDINARY_SLOTS - MR_NONDET_FIXED_SIZE)
         - sizeof(struct %s));\n",
@@ -788,16 +797,16 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         FirstContext = no,
         term.context_init(ActualFirstContext)
     ),
-    maybe_generate_pragma_event_code(nondet_pragma_first, ActualFirstContext,
-        FirstTraceCode, !CI),
+    maybe_generate_foreign_proc_event_code(nondet_foreign_proc_first,
+        ActualFirstContext, FirstTraceCode, !CI),
     (
         LaterContext = yes(ActualLaterContext)
     ;
         LaterContext = no,
         term.context_init(ActualLaterContext)
     ),
-    maybe_generate_pragma_event_code(nondet_pragma_later, ActualLaterContext,
-        LaterTraceCode, !CI),
+    maybe_generate_foreign_proc_event_code(nondet_foreign_proc_later,
+        ActualLaterContext, LaterTraceCode, !CI),
 
     FirstDisjunctCode = tree_list([SaveHeapCode, SaveTicketCode,
          FirstTraceCode]),
@@ -858,9 +867,9 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         % how many C statements it has and thus how big its object code
         % is likely to be.
         (
-            Treat = duplicate
+            Treat = shared_code_duplicate
         ;
-            Treat = automatic,
+            Treat = shared_code_automatic,
             \+ pred_info_requested_no_inlining(PredInfo),
             CountSemis = (pred(Char::in, Count0::in, Count::out) is det :-
                 ( Char = (;) ->
@@ -875,81 +884,93 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     ->
         CallDecls = [SaveStructDecl | Decls],
         CallComponents = [
-            pragma_c_inputs(InputDescs),
-            pragma_c_raw_code(InitSaveStruct, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(SaveRegs, cannot_branch_away,
-                no_live_lvals_info),
+            foreign_proc_inputs(InputDescs),
+            foreign_proc_raw_code(cannot_branch_away,
+                doesnt_affect_liveness, no_live_lvals_info, InitSaveStruct),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SaveRegs),
             ProcLabelDefine,
-            pragma_c_raw_code(CallDef1, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(CallDef2, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(CallDef3, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_user_code(FirstContext, First),
-            pragma_c_user_code(SharedContext, Shared),
-            pragma_c_raw_code(CallSuccessLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(Succeed, can_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(CallLastSuccessLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(SucceedDiscard, can_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(Undef1, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef2, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef3, cannot_branch_away, no_live_lvals_info),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallDef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallDef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallDef3),
+            foreign_proc_user_code(FirstContext, default_affects_liveness,
+                First),
+            foreign_proc_user_code(SharedContext, default_affects_liveness,
+                Shared),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallSuccessLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Succeed),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallLastSuccessLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SucceedDiscard),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
         CallBlockCode = node([
-            pragma_c(CallDecls, CallComponents,
+            foreign_proc_code(CallDecls, CallComponents,
                 MayCallMercury, no, no, no, no, yes, no)
-                - "Call and shared pragma C inclusion"
+                - "Call and shared foreign_proc inclusion"
         ]),
 
         RetryDecls = [SaveStructDecl | OutDecls],
         RetryComponents = [
-            pragma_c_raw_code(InitSaveStruct, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(SaveRegs, cannot_branch_away,
-                no_live_lvals_info),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, InitSaveStruct),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SaveRegs),
             ProcLabelDefine,
-            pragma_c_raw_code(RetryDef1, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RetryDef2, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RetryDef3, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_user_code(LaterContext, Later),
-            pragma_c_user_code(SharedContext, Shared),
-            pragma_c_raw_code(RetrySuccessLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(Succeed, can_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(RetryLastSuccessLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(SucceedDiscard, can_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(Undef1, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef2, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef3, cannot_branch_away, no_live_lvals_info),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetryDef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetryDef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetryDef3),
+            foreign_proc_user_code(LaterContext, default_affects_liveness,
+                Later),
+            foreign_proc_user_code(SharedContext, default_affects_liveness,
+                Shared),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetrySuccessLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Succeed),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetryLastSuccessLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SucceedDiscard),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
         RetryBlockCode = node([
-            pragma_c(RetryDecls, RetryComponents,
+            foreign_proc_code(RetryDecls, RetryComponents,
                 MayCallMercury, no, no, no, no, yes, no)
-                - "Retry and shared pragma C inclusion"
+                - "Retry and shared foreign_proc inclusion"
         ]),
 
         Code = tree_list([ModFrameCode, FirstDisjunctCode, CallBlockCode,
@@ -979,121 +1000,136 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 
         CallDecls = [SaveStructDecl | Decls],
         CallComponents = [
-            pragma_c_inputs(InputDescs),
-            pragma_c_raw_code(InitSaveStruct, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(SaveRegs, cannot_branch_away,
-                no_live_lvals_info),
+            foreign_proc_inputs(InputDescs),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, InitSaveStruct),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SaveRegs),
             ProcLabelDefine,
-            pragma_c_raw_code(CallDef1, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(CallDef2, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(CallDef3, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_user_code(FirstContext, First),
-            pragma_c_raw_code(GotoSharedLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(CallSuccessLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(Succeed, can_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(CallLastSuccessLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(SucceedDiscard, can_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(Undef1, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef2, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef3, cannot_branch_away, no_live_lvals_info),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallDef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallDef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallDef3),
+            foreign_proc_user_code(FirstContext, default_affects_liveness,
+                First),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, GotoSharedLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallSuccessLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Succeed),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, CallLastSuccessLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SucceedDiscard),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
         CallBlockCode = node([
-            pragma_c(CallDecls, CallComponents, MayCallMercury,
+            foreign_proc_code(CallDecls, CallComponents, MayCallMercury,
                 yes(SharedLabel), no, no, no, yes, no)
-                - "Call pragma C inclusion"
+                - "Call foreign_proc inclusion"
         ]),
 
         RetryDecls = [SaveStructDecl | OutDecls],
         RetryComponents = [
-            pragma_c_raw_code(InitSaveStruct, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(SaveRegs, cannot_branch_away,
-                no_live_lvals_info),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, InitSaveStruct),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SaveRegs),
             ProcLabelDefine,
-            pragma_c_raw_code(RetryDef1, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RetryDef2, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RetryDef3, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_user_code(LaterContext, Later),
-            pragma_c_raw_code(GotoSharedLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RetrySuccessLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(Succeed, can_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(RetryLastSuccessLabel, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(SucceedDiscard, can_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(Undef1, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef2, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef3, cannot_branch_away, no_live_lvals_info),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetryDef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetryDef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetryDef3),
+            foreign_proc_user_code(LaterContext, default_affects_liveness,
+                Later),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, GotoSharedLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetrySuccessLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Succeed),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RetryLastSuccessLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SucceedDiscard),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
         RetryBlockCode = node([
-            pragma_c(RetryDecls, RetryComponents, MayCallMercury,
+            foreign_proc_code(RetryDecls, RetryComponents, MayCallMercury,
                 yes(SharedLabel), no, no, no, yes, no)
-                - "Retry pragma C inclusion"
+                - "Retry foreign_proc inclusion"
         ]),
 
         SharedDecls = [SaveStructDecl | OutDecls],
         SharedComponents = [
-            pragma_c_raw_code(InitSaveStruct, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(SaveRegs, cannot_branch_away,
-                no_live_lvals_info),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, InitSaveStruct),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SaveRegs),
             ProcLabelDefine,
-            pragma_c_raw_code(SharedDef1, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(SharedDef2, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(SharedDef3, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_user_code(SharedContext, Shared),
-            pragma_c_raw_code(SharedSuccessLabel,
-                cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(Succeed, can_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(SharedLastSuccessLabel,
-                cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(RestoreRegs, can_branch_away,
-                no_live_lvals_info),
-            pragma_c_outputs(OutputDescs),
-            pragma_c_raw_code(SucceedDiscard, cannot_branch_away,
-                no_live_lvals_info),
-            pragma_c_raw_code(Undef1, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef2, cannot_branch_away, no_live_lvals_info),
-            pragma_c_raw_code(Undef3, cannot_branch_away, no_live_lvals_info),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SharedDef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SharedDef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SharedDef3),
+            foreign_proc_user_code(SharedContext, default_affects_liveness,
+                Shared),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SharedSuccessLabel),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Succeed),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SharedLastSuccessLabel),
+            foreign_proc_raw_code(can_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, RestoreRegs),
+            foreign_proc_outputs(OutputDescs),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, SucceedDiscard),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef1),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef2),
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                no_live_lvals_info, Undef3),
             ProcLabelUndef
         ],
         SharedBlockCode = node([
-            pragma_c(SharedDecls, SharedComponents,
+            foreign_proc_code(SharedDecls, SharedComponents,
                 MayCallMercury, no, no, no, no, yes, no)
-                - "Shared pragma C inclusion"
+                - "Shared foreign_proc inclusion"
         ]),
 
         Code = tree_list([ModFrameCode, FirstDisjunctCode, CallBlockCode,
@@ -1131,9 +1167,9 @@ make_c_arg_list([Arg | ArgTail], [ArgInfo | ArgInfoTail], [CArg | CArgTail]) :-
     CArg = c_arg(Var, MaybeName, Type, BoxPolicy, ArgInfo),
     make_c_arg_list(ArgTail, ArgInfoTail, CArgTail).
 make_c_arg_list([], [_ | _], _) :-
-    unexpected(this_file, "pragma_c_gen.make_c_arg_list length mismatch").
+    unexpected(this_file, "make_c_arg_list length mismatch").
 make_c_arg_list([_ | _], [], _) :-
-    unexpected(this_file, "pragma_c_gen.make_c_arg_list length mismatch").
+    unexpected(this_file, "make_c_arg_list length mismatch").
 
 %---------------------------------------------------------------------------%
 
@@ -1182,14 +1218,14 @@ get_c_arg_list_vars([Arg | Args], [Var | Vars]) :-
 
 %---------------------------------------------------------------------------%
 
-    % pragma_select_out_args returns the list of variables which are outputs
+    % foreign_proc_select_out_args returns the list of variables which are outputs
     % for a procedure.
     %
-:- pred pragma_select_out_args(list(c_arg)::in, list(c_arg)::out) is det.
+:- pred foreign_proc_select_out_args(list(c_arg)::in, list(c_arg)::out) is det.
 
-pragma_select_out_args([], []).
-pragma_select_out_args([Arg | Rest], Out) :-
-    pragma_select_out_args(Rest, OutTail),
+foreign_proc_select_out_args([], []).
+foreign_proc_select_out_args([Arg | Rest], Out) :-
+    foreign_proc_select_out_args(Rest, OutTail),
     Arg = c_arg(_, _, _, _, ArgInfo),
     ArgInfo = arg_info(_Loc, Mode),
     ( Mode = top_out ->
@@ -1198,14 +1234,14 @@ pragma_select_out_args([Arg | Rest], Out) :-
         Out = OutTail
     ).
 
-    % Pragma_select_in_args returns the list of variables
+    % foreign_proc_select_in_args returns the list of variables
     % which are inputs for a procedure.
     %
-:- pred pragma_select_in_args(list(c_arg)::in, list(c_arg)::out) is det.
+:- pred foreign_proc_select_in_args(list(c_arg)::in, list(c_arg)::out) is det.
 
-pragma_select_in_args([], []).
-pragma_select_in_args([Arg | Rest], In) :-
-    pragma_select_in_args(Rest, InTail),
+foreign_proc_select_in_args([], []).
+foreign_proc_select_in_args([Arg | Rest], In) :-
+    foreign_proc_select_in_args(Rest, InTail),
     Arg = c_arg(_, _, _, _, ArgInfo),
     ArgInfo = arg_info(_Loc, Mode),
     ( Mode = top_in ->
@@ -1218,13 +1254,13 @@ pragma_select_in_args([Arg | Rest], In) :-
 
     % var_should_be_passed determines whether or not a variable with the given
     % user-defined name (if any) should be passed to the foreign_proc.
-    % 
+    %
     % Named non-singleton variables are always passed. Unnamed or singleton
     % variables are ignored if we are allowed to optimize them away, but we
     % aren't, we replace their name with UnnamedArgN.
     %
     % Singleton vars should be ignored when generating the declarations for
-    % pragma_c arguments because:
+    % call_foreign_proc arguments because:
     %
     %   - they should not appear in the C code
     %   - they could clash with the system name space
@@ -1251,16 +1287,17 @@ var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeName)
 
 %---------------------------------------------------------------------------%
 
-    % make_pragma_decls returns the list of pragma_decls for the pragma_c
-    % data structure in the LLDS. It is essentially a list of pairs of type and
-    % variable name, so that declarations of the form "Type Name;" can be made.
+    % make_foreign_proc_decls returns the list of foreign_proc_decls for the
+    % foreign_proc_code instruction in the LLDS. It is essentially a list of
+    % pairs of type and variable name, so that declarations of the form
+    % "Type Name;" can be made.
     %
-:- pred make_pragma_decls(list(c_arg)::in, module_info::in, bool::in,
-    list(pragma_c_decl)::out) is det.
+:- pred make_foreign_proc_decls(list(c_arg)::in, module_info::in, bool::in,
+    list(foreign_proc_decl)::out) is det.
 
-make_pragma_decls([], _, _, []).
-make_pragma_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
-    make_pragma_decls(Args, Module, CanOptAwayUnnamedArgs, DeclsTail),
+make_foreign_proc_decls([], _, _, []).
+make_foreign_proc_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
+    make_foreign_proc_decls(Args, Module, CanOptAwayUnnamedArgs, DeclsTail),
     Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
     MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
     (
@@ -1272,7 +1309,7 @@ make_pragma_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
             BoxPolicy = always_boxed,
             OrigTypeString = "MR_Word"
         ),
-        Decl = pragma_c_arg_decl(OrigType, OrigTypeString, Name),
+        Decl = foreign_proc_arg_decl(OrigType, OrigTypeString, Name),
         Decls = [Decl | DeclsTail]
     ;
         MaybeName = no,
@@ -1296,15 +1333,17 @@ find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
 
 %---------------------------------------------------------------------------%
 
-    % get_pragma_input_vars returns a list of pragma_c_inputs for the pragma_c
-    % data structure in the LLDS. It is essentially a list of the input
-    % variables, and the corresponding rvals assigned to those (C) variables.
+    % get_foreign_proc_input_vars returns a list of foreign_proc_inputs
+    % for the foreign_proc_code instruction in the LLDS. It is essentially
+    % a list of the input variables, and the corresponding rvals assigned
+    % to those (C) variables.
     %
-:- pred get_pragma_input_vars(list(c_arg)::in, list(pragma_c_input)::out,
-    bool::in, code_tree::out, code_info::in, code_info::out) is det.
+:- pred get_foreign_proc_input_vars(list(c_arg)::in,
+    list(foreign_proc_input)::out, bool::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
-get_pragma_input_vars([], [], _, empty, !CI).
-get_pragma_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
+get_foreign_proc_input_vars([], [], _, empty, !CI).
+get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
         !CI) :-
     Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
     MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
@@ -1319,20 +1358,21 @@ get_pragma_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
         ;
             IsDummy = no
         ),
-        Input = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval,
+        Input = foreign_proc_input(Name, VarType, IsDummy, OrigType, Rval,
             MaybeForeign, BoxPolicy),
-        get_pragma_input_vars(Args, Inputs1, CanOptAwayUnnamedArgs, RestCode,
-            !CI),
+        get_foreign_proc_input_vars(Args, Inputs1, CanOptAwayUnnamedArgs,
+            RestCode, !CI),
         Inputs = [Input | Inputs1],
         Code = tree(FirstCode, RestCode)
     ;
         MaybeName = no,
         % Just ignore the argument.
-        get_pragma_input_vars(Args, Inputs, CanOptAwayUnnamedArgs, Code, !CI)
+        get_foreign_proc_input_vars(Args, Inputs, CanOptAwayUnnamedArgs, Code,
+            !CI)
     ).
 
 :- func get_maybe_foreign_type_info(code_info, mer_type) =
-    maybe(pragma_c_foreign_type).
+    maybe(foreign_proc_type).
 
 get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
     code_info.get_module_info(CI, Module),
@@ -1347,7 +1387,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
         (
             MaybeC = yes(Data),
             Data = foreign_type_lang_data(c_type(Name), _, Assertions),
-            MaybeForeignTypeInfo = yes(pragma_c_foreign_type(Name, Assertions))
+            MaybeForeignTypeInfo = yes(foreign_proc_type(Name, Assertions))
         ;
             MaybeC = no,
             % This is ensured by check_foreign_type in make_hlds.
@@ -1360,32 +1400,32 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
 
 %---------------------------------------------------------------------------%
 
-    % pragma_acquire_regs acquires a list of registers in which to place each
-    % of the given arguments.
+    % foreign_proc_acquire_regs acquires a list of registers in which to place
+    % each of the given arguments.
     %
-:- pred pragma_acquire_regs(list(c_arg)::in, list(lval)::out,
+:- pred foreign_proc_acquire_regs(list(c_arg)::in, list(lval)::out,
     code_info::in, code_info::out) is det.
 
-pragma_acquire_regs([], [], !CI).
-pragma_acquire_regs([Arg | Args], [Reg | Regs], !CI) :-
+foreign_proc_acquire_regs([], [], !CI).
+foreign_proc_acquire_regs([Arg | Args], [Reg | Regs], !CI) :-
     Arg = c_arg(Var, _, _, _, _),
     code_info.acquire_reg_for_var(Var, Reg, !CI),
-    pragma_acquire_regs(Args, Regs, !CI).
+    foreign_proc_acquire_regs(Args, Regs, !CI).
 
 %---------------------------------------------------------------------------%
 
-    % place_pragma_output_args_in_regs returns a list of pragma_c_outputs,
-    % which are pairs of names of output registers and (C) variables which
-    % hold the output value.
+    % place_foreign_proc_output_args_in_regs returns a list of
+    % foreign_proc_outputs, which are pairs of names of output registers
+    % and (C) variables which hold the output value.
     %
-:- pred place_pragma_output_args_in_regs(list(c_arg)::in, list(lval)::in,
-    bool::in, list(pragma_c_output)::out, code_info::in, code_info::out)
+:- pred place_foreign_proc_output_args_in_regs(list(c_arg)::in, list(lval)::in,
+    bool::in, list(foreign_proc_output)::out, code_info::in, code_info::out)
     is det.
 
-place_pragma_output_args_in_regs([], [], _, [], !CI).
-place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs],
+place_foreign_proc_output_args_in_regs([], [], _, [], !CI).
+place_foreign_proc_output_args_in_regs([Arg | Args], [Reg | Regs],
         CanOptAwayUnnamedArgs, Outputs, !CI) :-
-    place_pragma_output_args_in_regs(Args, Regs, CanOptAwayUnnamedArgs,
+    place_foreign_proc_output_args_in_regs(Args, Regs, CanOptAwayUnnamedArgs,
         OutputsTail, !CI),
     Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
     code_info.release_reg(Reg, !CI),
@@ -1403,8 +1443,8 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs],
             ;
                 IsDummy = no
             ),
-            PragmaCOutput = pragma_c_output(Reg, VarType, IsDummy, OrigType,
-                Name, MaybeForeign, BoxPolicy),
+            PragmaCOutput = foreign_proc_output(Reg, VarType, IsDummy,
+                OrigType, Name, MaybeForeign, BoxPolicy),
             Outputs = [PragmaCOutput | OutputsTail]
         ;
             MaybeName = no,
@@ -1413,18 +1453,20 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs],
     ;
         Outputs = OutputsTail
     ).
-place_pragma_output_args_in_regs([_ | _], [], _, _, !CI) :-
-    unexpected(this_file, "place_pragma_output_args_in_regs: length mismatch").
-place_pragma_output_args_in_regs([], [_ | _], _, _, !CI) :-
-    unexpected(this_file, "place_pragma_output_args_in_regs: length mismatch").
+place_foreign_proc_output_args_in_regs([_ | _], [], _, _, !CI) :-
+    unexpected(this_file,
+        "place_foreign_proc_output_args_in_regs: length mismatch").
+place_foreign_proc_output_args_in_regs([], [_ | _], _, _, !CI) :-
+    unexpected(this_file,
+        "place_foreign_proc_output_args_in_regs: length mismatch").
 
 %---------------------------------------------------------------------------%
 
-    % input_descs_from_arg_info returns a list of pragma_c_inputs, which
+    % input_descs_from_arg_info returns a list of foreign_proc_inputs, which
     % are pairs of rvals and (C) variables which receive the input value.
     %
 :- pred input_descs_from_arg_info(code_info::in, list(c_arg)::in,
-    bool::in, list(pragma_c_input)::out) is det.
+    bool::in, list(foreign_proc_input)::out) is det.
 
 input_descs_from_arg_info(_, [], _, []).
 input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
@@ -1443,7 +1485,7 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
         ;
             IsDummy = no
         ),
-        Input = pragma_c_input(Name, VarType, IsDummy, OrigType, lval(Reg),
+        Input = foreign_proc_input(Name, VarType, IsDummy, OrigType, lval(Reg),
             MaybeForeign, BoxPolicy),
         Inputs = [Input | InputsTail]
     ;
@@ -1453,12 +1495,12 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
 
 %---------------------------------------------------------------------------%
 
-    % output_descs_from_arg_info returns a list of pragma_c_outputs, which
+    % output_descs_from_arg_info returns a list of foreign_proc_outputs, which
     % are pairs of names of output registers and (C) variables which hold the
     % output value.
     %
 :- pred output_descs_from_arg_info(code_info::in, list(c_arg)::in,
-    bool::in, list(pragma_c_output)::out) is det.
+    bool::in, list(foreign_proc_output)::out) is det.
 
 output_descs_from_arg_info(_, [], _, []).
 output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
@@ -1477,7 +1519,7 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
         ;
             IsDummy = no
         ),
-        Output = pragma_c_output(Reg, VarType, IsDummy, OrigType, Name,
+        Output = foreign_proc_output(Reg, VarType, IsDummy, OrigType, Name,
             MaybeForeign, BoxPolicy),
         Outputs = [Output | OutputsTail]
     ;
@@ -1487,12 +1529,12 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
 
 %---------------------------------------------------------------------------%
 
-pragma_c_gen.struct_name(ModuleName, PredName, Arity, ProcId) =
+foreign_proc_struct_name(ModuleName, PredName, Arity, ProcId) =
     "mercury_save__" ++ sym_name_mangle(ModuleName) ++ "__" ++
         name_mangle(PredName) ++ "__" ++ int_to_string(Arity) ++ "_" ++
         int_to_string(proc_id_to_int(ProcId)).
 
-pragma_succ_ind_name = "MercurySuccessIndicator".
+foreign_proc_succ_ind_name = "MercurySuccessIndicator".
 
 %---------------------------------------------------------------------------%
 

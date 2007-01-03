@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3300,13 +3300,13 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
         mercury_format_foreign_code_string(Later, !U),
         add_string("), ", !U),
         (
-            Treat = share,
+            Treat = shared_code_share,
             add_string("shared_code(", !U)
         ;
-            Treat = duplicate,
+            Treat = shared_code_duplicate,
             add_string("duplicated_code(", !U)
         ;
-            Treat = automatic,
+            Treat = shared_code_automatic,
             add_string("common_code(", !U)
         ),
         mercury_format_foreign_code_string(Shared, !U),

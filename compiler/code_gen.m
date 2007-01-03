@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -250,7 +250,7 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
             Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
         Lang = get_foreign_language(Attributes),
         (   Lang = lang_c,
-            generate_pragma_c_code(CodeModel, Attributes,
+            generate_foreign_proc_code(CodeModel, Attributes,
                 PredId, ProcId, Args, ExtraArgs, MaybeTraceRuntimeCond,
                 PragmaCode, GoalInfo, Code, !CI)
         ;

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2006 The University of Melbourne.
+** Copyright (C) 1997-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -44,8 +44,8 @@ typedef	enum {
 	MR_PORT_NEG_FAILURE,	/* negated goal succeeded; negation fails */
 	MR_PORT_DISJ,
 	MR_PORT_SWITCH,
-	MR_PORT_PRAGMA_FIRST,
-	MR_PORT_PRAGMA_LATER,
+	MR_PORT_FOREIGN_PROC_FIRST,
+	MR_PORT_FOREIGN_PROC_LATER,
 	MR_PORT_USER,
 	MR_PORT_NONE
 } MR_TracePort;

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -499,7 +499,7 @@ find_used_registers_instr(label(_), !Used).
 find_used_registers_instr(goto(_), !Used).
 find_used_registers_instr(computed_goto(Rval, _), !Used) :-
     find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(arbitrary_c_code(_, _), !Used).
+find_used_registers_instr(arbitrary_c_code(_, _, _), !Used).
 find_used_registers_instr(if_val(Rval, _), !Used) :-
     find_used_registers_rval(Rval, !Used).
 find_used_registers_instr(save_maxfr(Lval), !Used) :-
@@ -528,8 +528,8 @@ find_used_registers_instr(prune_tickets_to(Rval), !Used) :-
 find_used_registers_instr(incr_sp(_, _, _), !Used).
 find_used_registers_instr(decr_sp(_), !Used).
 find_used_registers_instr(decr_sp_and_return(_), !Used).
-find_used_registers_instr(pragma_c(_, Components, _, _, _, _, _, _, _),
-        !Used) :-
+find_used_registers_instr(foreign_proc_code(_, Components,
+        _, _, _, _, _, _, _), !Used) :-
     find_used_registers_components(Components, !Used).
 find_used_registers_instr(init_sync_term(Lval, _), !Used) :-
     find_used_registers_lval(Lval, !Used).
@@ -538,7 +538,7 @@ find_used_registers_instr(join_and_continue(Lval, _), !Used) :-
     find_used_registers_lval(Lval, !Used).
 
 :- pred find_used_registers_components(
-    list(pragma_c_component)::in,
+    list(foreign_proc_component)::in,
     set(int)::in, set(int)::out) is det.
 
 find_used_registers_components([], !Used).
@@ -546,17 +546,17 @@ find_used_registers_components([Comp | Comps], !Used) :-
     find_used_registers_component(Comp, !Used),
     find_used_registers_components(Comps, !Used).
 
-:- pred find_used_registers_component(pragma_c_component::in,
+:- pred find_used_registers_component(foreign_proc_component::in,
     set(int)::in, set(int)::out) is det.
 
-find_used_registers_component(pragma_c_inputs(In), !Used) :-
-    insert_pragma_c_input_registers(In, !Used).
-find_used_registers_component(pragma_c_outputs(Out), !Used) :-
-    insert_pragma_c_output_registers(Out, !Used).
-find_used_registers_component(pragma_c_user_code(_, _), !Used).
-find_used_registers_component(pragma_c_raw_code(_, _, _), !Used).
-find_used_registers_component(pragma_c_fail_to(_), !Used).
-find_used_registers_component(pragma_c_noop, !Used).
+find_used_registers_component(foreign_proc_inputs(In), !Used) :-
+    insert_foreign_proc_input_registers(In, !Used).
+find_used_registers_component(foreign_proc_outputs(Out), !Used) :-
+    insert_foreign_proc_output_registers(Out, !Used).
+find_used_registers_component(foreign_proc_user_code(_, _, _), !Used).
+find_used_registers_component(foreign_proc_raw_code(_, _, _, _), !Used).
+find_used_registers_component(foreign_proc_fail_to(_), !Used).
+find_used_registers_component(foreign_proc_noop, !Used).
 
 :- pred find_used_registers_lvals(list(lval)::in,
     set(int)::in, set(int)::out) is det.
@@ -632,23 +632,23 @@ find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
     ),
     find_used_registers_maybe_rvals(MaybeRvals, !Used).
 
-:- pred insert_pragma_c_input_registers(list(pragma_c_input)::in,
+:- pred insert_foreign_proc_input_registers(list(foreign_proc_input)::in,
     set(int)::in, set(int)::out) is det.
 
-insert_pragma_c_input_registers([], !Used).
-insert_pragma_c_input_registers([Input | Inputs], !Used) :-
-    Input = pragma_c_input(_, _, _, _, Rval, _, _),
+insert_foreign_proc_input_registers([], !Used).
+insert_foreign_proc_input_registers([Input | Inputs], !Used) :-
+    Input = foreign_proc_input(_, _, _, _, Rval, _, _),
     find_used_registers_rval(Rval, !Used),
-    insert_pragma_c_input_registers(Inputs, !Used).
+    insert_foreign_proc_input_registers(Inputs, !Used).
 
-:- pred insert_pragma_c_output_registers(list(pragma_c_output)::in,
+:- pred insert_foreign_proc_output_registers(list(foreign_proc_output)::in,
     set(int)::in, set(int)::out) is det.
 
-insert_pragma_c_output_registers([], !Used).
-insert_pragma_c_output_registers([Output | Outputs], !Used) :-
-    Output = pragma_c_output(Lval, _, _, _, _, _, _),
+insert_foreign_proc_output_registers([], !Used).
+insert_foreign_proc_output_registers([Output | Outputs], !Used) :-
+    Output = foreign_proc_output(Lval, _, _, _, _, _, _),
     find_used_registers_lval(Lval, !Used),
-    insert_pragma_c_output_registers(Outputs, !Used).
+    insert_foreign_proc_output_registers(Outputs, !Used).
 
 %---------------------------------------------------------------------------%
 

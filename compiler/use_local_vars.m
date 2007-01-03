@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,7 +105,7 @@ use_local_vars_proc(Instrs0, Instrs, NumRealRRegs, AccessThreshold,
     create_basic_blocks(Instrs0, Comments0, ProcLabel, !C, NewLabels,
         LabelSeq, BlockMap0),
     flatten_basic_blocks(LabelSeq, BlockMap0, TentativeInstrs),
-    livemap.build(TentativeInstrs, MaybeLiveMap),
+    build_livemap(TentativeInstrs, MaybeLiveMap),
     extend_basic_blocks(LabelSeq, EBBLabelSeq, BlockMap0, EBBBlockMap0,
         NewLabels),
     list.foldl(use_local_vars_block(MaybeLiveMap, NumRealRRegs,
@@ -536,9 +536,9 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     ;
         Uinstr0 = join_and_continue(_, _)
     ;
-        Uinstr0 = arbitrary_c_code(_, _)
+        Uinstr0 = arbitrary_c_code(_, _, _)
     ;
-        Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _)
+        Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _)
     ).
 
 %-----------------------------------------------------------------------------%

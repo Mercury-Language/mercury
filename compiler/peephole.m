@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2002-2006 The University of Melbourne.
+% Copyright (C) 1994-1998,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -263,7 +263,7 @@ peephole.match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
         ),
         opt_util.next_assign_to_redoip(Instrs0, AllowedBases, [], Redoip2,
             Skipped, Rest),
-        opt_util.touches_nondet_ctrl(Skipped, no)
+        opt_util.touches_nondet_ctrl(Skipped) = no
     ->
         Instrs1 = Skipped ++ Rest,
         Instrs = [mkframe(NondetFrameInfo, yes(Redoip2)) - Comment | Instrs1]
@@ -356,7 +356,7 @@ peephole.match(assign(redoip_slot(lval(Base)), Redoip), Comment, _,
     (
         opt_util.next_assign_to_redoip(Instrs0, [Base], [], Redoip2,
             Skipped, Rest),
-        opt_util.touches_nondet_ctrl(Skipped, no)
+        opt_util.touches_nondet_ctrl(Skipped) = no
     ->
         Instrs1 = Skipped ++ Rest,
         Instrs = [assign(redoip_slot(lval(Base)),
@@ -365,7 +365,7 @@ peephole.match(assign(redoip_slot(lval(Base)), Redoip), Comment, _,
         Base = curfr,
         Redoip = const(llconst_code_addr(do_fail)),
         opt_util.straight_alternative(Instrs0, Between, After),
-        opt_util.touches_nondet_ctrl(Between, no),
+        opt_util.touches_nondet_ctrl(Between) = no,
         string.sub_string_search(Comment, "curfr==maxfr", _)
     ->
         list.condense([Between,

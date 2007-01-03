@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2006 The University of Melbourne.
+% Copyright (C) 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -917,9 +917,9 @@ remap_instr(Remap, Instr0) = Instr :-
         Instr  = if_val(Rval, CodeAddr),
         Rval = remap_rval(Remap, Rval0)
     ;
-        Instr0 = pragma_c(A, Comps0, B, C, D, E, F, G, H),
-        Instr  = pragma_c(A, Comps,  B, C, D, E, F, G, H),
-        Comps = list.map(remap_pragma_c_component(Remap), Comps0)
+        Instr0 = foreign_proc_code(A, Comps0, B, C, D, E, F, G, H),
+        Instr  = foreign_proc_code(A, Comps,  B, C, D, E, F, G, H),
+        Comps = list.map(remap_foreign_proc_component(Remap), Comps0)
     ;
         ( Instr0 = comment(_)
         ; Instr0 = livevals(_)
@@ -928,7 +928,7 @@ remap_instr(Remap, Instr0) = Instr :-
         ; Instr0 = label(_)
         ; Instr0 = goto(_)
         ; Instr0 = computed_goto(_, _)
-        ; Instr0 = arbitrary_c_code(_, _)
+        ; Instr0 = arbitrary_c_code(_, _, _)
         ; Instr0 = save_maxfr(_)
         ; Instr0 = restore_maxfr(_)
         ; Instr0 = incr_hp(_, _, _, _, _, _)
@@ -951,39 +951,39 @@ remap_instr(Remap, Instr0) = Instr :-
         Instr = Instr0
     ).
 
-:- func remap_pragma_c_component(static_cell_remap_info, pragma_c_component)
-    = pragma_c_component.
+:- func remap_foreign_proc_component(static_cell_remap_info,
+        foreign_proc_component) = foreign_proc_component.
 
-remap_pragma_c_component(Remap, Comp0) = Comp :-
+remap_foreign_proc_component(Remap, Comp0) = Comp :-
     (
-        Comp0 = pragma_c_inputs(Inputs0),
-        Comp  = pragma_c_inputs(Inputs),
-        Inputs = list.map(remap_pragma_c_input(Remap), Inputs0) 
+        Comp0 = foreign_proc_inputs(Inputs0),
+        Comp  = foreign_proc_inputs(Inputs),
+        Inputs = list.map(remap_foreign_proc_input(Remap), Inputs0) 
     ;
-        Comp0 = pragma_c_outputs(Outputs0),
-        Comp  = pragma_c_outputs(Outputs),
-        Outputs = list.map(remap_pragma_c_output(Remap), Outputs0)
+        Comp0 = foreign_proc_outputs(Outputs0),
+        Comp  = foreign_proc_outputs(Outputs),
+        Outputs = list.map(remap_foreign_proc_output(Remap), Outputs0)
     ;
-        ( Comp0 = pragma_c_raw_code(_, _, _)
-        ; Comp0 = pragma_c_user_code(_, _)
-        ; Comp0 = pragma_c_fail_to(_)
-        ; Comp0 = pragma_c_noop
+        ( Comp0 = foreign_proc_raw_code(_, _, _, _)
+        ; Comp0 = foreign_proc_user_code(_, _, _)
+        ; Comp0 = foreign_proc_fail_to(_)
+        ; Comp0 = foreign_proc_noop
         ),
         Comp = Comp0
     ).
 
-:- func remap_pragma_c_input(static_cell_remap_info, pragma_c_input)
-    = pragma_c_input.
+:- func remap_foreign_proc_input(static_cell_remap_info, foreign_proc_input)
+    = foreign_proc_input.
 
-remap_pragma_c_input(Remap, pragma_c_input(A, B, C, D, Rval0, E, F))
-    = pragma_c_input(A, B, C, D, Rval, E, F) :-
+remap_foreign_proc_input(Remap, foreign_proc_input(A, B, C, D, Rval0, E, F))
+        = foreign_proc_input(A, B, C, D, Rval, E, F) :-
     Rval = remap_rval(Remap, Rval0).
 
-:- func remap_pragma_c_output(static_cell_remap_info, pragma_c_output)
-    = pragma_c_output.
+:- func remap_foreign_proc_output(static_cell_remap_info, foreign_proc_output)
+    = foreign_proc_output.
 
-remap_pragma_c_output(Remap, pragma_c_output(Lval0, A, B, C, D, E, F))
-    = pragma_c_output(Lval, A, B, C, D, E, F) :-
+remap_foreign_proc_output(Remap, foreign_proc_output(Lval0, A, B, C, D, E, F))
+        = foreign_proc_output(Lval, A, B, C, D, E, F) :-
     Lval = remap_lval(Remap, Lval0).
 
 :- func remap_lval(static_cell_remap_info, lval) = lval.
@@ -1088,21 +1088,17 @@ remap_data_name(Remap, DataName0) = DataName :-
     Remap = static_cell_remap_info(TypeNumRemap, ScalarCellGroupRemap),
     (
         DataName0 = scalar_common_ref(TypeNum0, _Offset),
-        (if
-            map.contains(TypeNumRemap, TypeNum0)
-        then
-            DataName = ScalarCellGroupRemap ^ det_elem(TypeNum0)
-                                            ^ det_elem(DataName0)
-        else
+        ( map.contains(TypeNumRemap, TypeNum0) ->
+            map.lookup(ScalarCellGroupRemap, TypeNum0, ScalarCellGroup),
+            map.lookup(ScalarCellGroup, DataName0, DataName)
+        ;
             DataName = DataName0
         )
     ;
         DataName0 = vector_common_ref(TypeNum0, Offset),
-        (if
-            map.search(TypeNumRemap, TypeNum0, TypeNum)
-        then
+        ( map.search(TypeNumRemap, TypeNum0, TypeNum) ->
             DataName = vector_common_ref(TypeNum, Offset)
-        else
+        ;
             DataName = DataName0
         )
     ;

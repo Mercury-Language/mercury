@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -477,7 +477,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                     TargetInstr, DestInstr),
                 DestInstr = UdestInstr - _Destcomment,
                 Shorted = "shortcircuited jump: " ++ Comment0,
-                opt_util.can_instr_fall_through(UdestInstr, Canfallthrough),
+                opt_util.can_instr_fall_through(UdestInstr) = Canfallthrough,
                 (
                     Canfallthrough = no,
                     NewInstrs0 = [UdestInstr - Shorted]
@@ -693,11 +693,11 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = usual_case
         )
     ;
-        Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
+        Uinstr0 = foreign_proc_code(Decls, Components0, MayCallMercury,
             MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
             MaybeNoFix0, StackSlotRef, MaybeDup),
         some [!Redirect] (
-            list.map_foldl(short_pragma_component(Instrmap),
+            list.map_foldl(short_foreign_proc_component(Instrmap),
                 Components0, Components, no, !:Redirect),
             (
                 MaybeNoFix0 = yes(NoFix),
@@ -709,16 +709,16 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 MaybeNoFix = no
             ),
 % These sanity checks are too strong, because we don't prohibit labels
-% appearing these slots of pragma_c instructions from appearing in Instrmap;
-% we only prohibit the use of those entries in Instrmap to optimize away these
-% labels.
+% appearing these slots of foreign_proc_code instructions from appearing
+% in Instrmap; we only prohibit the use of those entries in Instrmap
+% to optimize away these labels.
 %
 %           (
 %               MaybeFixNoLayout = yes(FixNoLayout),
 %               short_label(Instrmap, FixNoLayout, FixNoLayoutDest),
 %               FixNoLayoutDest \= FixNoLayout
 %           ->
-%               error("jump_opt_instr_list: pragma_c fix_no_layout")
+%               error("jump_opt_instr_list: foreign_proc_code fix_no_layout")
 %           ;
 %               true
 %           ),
@@ -727,7 +727,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 %               short_label(Instrmap, FixLayout, FixLayoutDest),
 %               FixLayoutDest \= FixLayout
 %           ->
-%               error("jump_opt_instr_list: pragma_c fix_layout")
+%               error("jump_opt_instr_list: foreign_proc_code fix_layout")
 %           ;
 %               true
 %           ),
@@ -736,7 +736,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 %               short_label(Instrmap, FixOnlyLayout, FixOnlyLayoutDest),
 %               FixOnlyLayoutDest \= FixOnlyLayout
 %           ->
-%               error("jump_opt_instr_list: pragma_c fix_only_layout")
+%               error("jump_opt_instr_list: foreign_proc_code fix_only_layout")
 %           ;
 %               true
 %           ),
@@ -746,7 +746,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             ;
                 !.Redirect = yes,
                 Comment = Comment0 ++ " (some redirects)",
-                Uinstr = pragma_c(Decls, Components, MayCallMercury,
+                Uinstr = foreign_proc_code(Decls, Components, MayCallMercury,
                     MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
                     MaybeNoFix, StackSlotRef, MaybeDup),
                 Instr = Uinstr - Comment,
@@ -781,7 +781,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = specified([Instr], Instrs0)
         )
     ;
-        ( Uinstr0 = arbitrary_c_code(_, _)
+        ( Uinstr0 = arbitrary_c_code(_, _, _)
         ; Uinstr0 = comment(_)
         ; Uinstr0 = livevals(_)
         ; Uinstr0 = label(_)
@@ -852,14 +852,14 @@ block_may_be_duplicated([Uinstr - _ | Instrs]) = BlockMayBeDuplicated :-
 :- func instr_may_be_duplicated(instr) = bool.
 
 instr_may_be_duplicated(Instr) = InstrMayBeDuplicated :-
-    ( Instr ^ pragma_c_fix_onlylayout = yes(_) ->
+    ( Instr ^ fproc_fix_onlylayout = yes(_) ->
         % This instruction is a trace event. Duplicating it would
         % increase code size, and may cost more in locality than
         % the benefit represented by the elimination of the jump.
         % When debugging is enabled, size is in any case more important
         % than the last bit of speed.
         InstrMayBeDuplicated = no
-    ; Instr ^ pragma_c_maybe_dupl = no ->
+    ; Instr ^ fproc_maybe_dupl = no ->
         InstrMayBeDuplicated = no
     ;
         InstrMayBeDuplicated = yes
@@ -1076,30 +1076,30 @@ jumpopt.short_labels_lval(Instrmap, mem_ref(Rval0), mem_ref(Rval)) :-
 jumpopt.short_labels_lval(_, lvar(_), _) :-
     unexpected(this_file, "lvar lval in short_labels_lval").
 
-:- pred short_pragma_component(instrmap::in,
-    pragma_c_component::in, pragma_c_component::out,
+:- pred short_foreign_proc_component(instrmap::in,
+    foreign_proc_component::in, foreign_proc_component::out,
     bool::in, bool::out) is det.
 
-short_pragma_component(Instrmap, !Component, !Redirect) :-
+short_foreign_proc_component(Instrmap, !Component, !Redirect) :-
     (
-        !.Component = pragma_c_inputs(_)
+        !.Component = foreign_proc_inputs(_)
     ;
-        !.Component = pragma_c_outputs(_)
+        !.Component = foreign_proc_outputs(_)
     ;
-        !.Component = pragma_c_user_code(_, _)
+        !.Component = foreign_proc_user_code(_, _, _)
     ;
-        !.Component = pragma_c_raw_code(_, _, _)
+        !.Component = foreign_proc_raw_code(_, _, _, _)
     ;
-        !.Component = pragma_c_fail_to(Label0),
+        !.Component = foreign_proc_fail_to(Label0),
         short_label(Instrmap, Label0, Label),
-        !:Component = pragma_c_fail_to(Label),
+        !:Component = foreign_proc_fail_to(Label),
         ( Label = Label0 ->
             true
         ;
             !:Redirect = yes
         )
     ;
-        !.Component = pragma_c_noop
+        !.Component = foreign_proc_noop
     ).
 
 %-----------------------------------------------------------------------------%

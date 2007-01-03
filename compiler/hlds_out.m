@@ -1998,13 +1998,13 @@ write_goal_2(call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         io.write_string(Later, !IO),
         io.write_string("""), ", !IO),
         (
-            Treat = share,
+            Treat = shared_code_share,
             io.write_string("shared_code(""", !IO)
         ;
-            Treat = duplicate,
+            Treat = shared_code_duplicate,
             io.write_string("duplicated_code(""", !IO)
         ;
-            Treat = automatic,
+            Treat = shared_code_automatic,
             io.write_string("common_code(""", !IO)
         ),
         io.write_string(Shared, !IO),

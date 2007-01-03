@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,7 +146,7 @@ dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
 
 add_pragma_pref_labels(Instr, !FoldFixed) :-
     (
-        Instr = pragma_c(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
+        Instr = foreign_proc_code(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
             MaybeOnlyLayoutLabel, _, _, _) - _
     ->
         (
@@ -350,7 +350,7 @@ standardize_instr(Instr1, Instr) :-
         Instr1 = computed_goto(_, _),
         Instr = Instr1
     ;
-        Instr1 = arbitrary_c_code(_, _),
+        Instr1 = arbitrary_c_code(_, _, _),
         Instr = Instr1
     ;
         Instr1 = if_val(Rval1, CodeAddr),
@@ -426,7 +426,7 @@ standardize_instr(Instr1, Instr) :-
         standardize_lval(Lval1, Lval),
         Instr = join_and_continue(Lval, Label)
     ;
-        Instr1 = pragma_c(_, _, _, _, _, _, _, _, _),
+        Instr1 = foreign_proc_code(_, _, _, _, _, _, _, _, _),
         Instr = Instr1
     ).
 
@@ -723,7 +723,7 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
         ; Instr1 = label(_)
         ; Instr1 = goto(_)
         ; Instr1 = computed_goto(_, _)
-        ; Instr1 = arbitrary_c_code(_, _)
+        ; Instr1 = arbitrary_c_code(_, _, _)
         ; Instr1 = save_maxfr(_)
         ; Instr1 = restore_maxfr(_)
         ; Instr1 = discard_ticket
@@ -731,7 +731,7 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
         ; Instr1 = incr_sp(_, _, _)
         ; Instr1 = decr_sp(_)
         ; Instr1 = decr_sp_and_return(_)
-        ; Instr1 = pragma_c(_, _, _, _, _, _, _, _, _)
+        ; Instr1 = foreign_proc_code(_, _, _, _, _, _, _, _, _)
         ; Instr1 = fork(_)
         ; Instr1 = init_sync_term(_, _)
         ; Instr1 = join_and_continue(_, _)

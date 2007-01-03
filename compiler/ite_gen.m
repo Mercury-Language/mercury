@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -444,31 +444,31 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         ),
 
         PNegCondComponents = [
-            pragma_c_raw_code(
-                wrap_transient("\t\tMR_pneg_enter_cond();\n"),
-                cannot_branch_away, live_lvals_info(set.init))
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                live_lvals_info(set.init),
+                wrap_transient("\t\tMR_pneg_enter_cond();\n"))
         ],
         PNegThenComponents = [
-            pragma_c_raw_code(
-                wrap_transient("\t\tMR_pneg_enter_then();\n"),
-                cannot_branch_away, live_lvals_info(set.init))
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                live_lvals_info(set.init),
+                wrap_transient("\t\tMR_pneg_enter_then();\n"))
         ],
         PNegElseComponents = [
-            pragma_c_raw_code(
-                wrap_transient("\t\tMR_pneg_enter_else(" ++ CtxtStr ++ ");\n"),
-                cannot_branch_away, live_lvals_info(set.init))
+            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+                live_lvals_info(set.init),
+                wrap_transient("\t\tMR_pneg_enter_else(" ++ CtxtStr ++ ");\n"))
         ],
         PNegCondCode = node([
-            pragma_c([], PNegCondComponents, proc_will_not_call_mercury,
-                no, no, no, no, yes, yes) - ""
+            foreign_proc_code([], PNegCondComponents,
+                proc_will_not_call_mercury, no, no, no, no, yes, yes) - ""
         ]),
         PNegThenCode = node([
-            pragma_c([], PNegThenComponents, proc_will_not_call_mercury,
-                no, no, no, no, yes, yes) - ""
+            foreign_proc_code([], PNegThenComponents,
+                proc_will_not_call_mercury, no, no, no, no, yes, yes) - ""
         ]),
         PNegElseCode = node([
-            pragma_c([], PNegElseComponents, proc_will_not_call_mercury,
-                no, no, no, no, yes, yes) - ""
+            foreign_proc_code([], PNegElseComponents,
+                proc_will_not_call_mercury, no, no, no, no, yes, yes) - ""
         ])
     ;
         PNegCondCode = empty,

@@ -904,19 +904,19 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
             PragmaCode = fc_impl_model_non(Fields, FieldsContext,
                 _, _, _, _, _, _, _)
         ->
-            StructName = pragma_c_gen.struct_name(ModuleName, PredName, Arity,
+            StructName = foreign_proc_struct_name(ModuleName, PredName, Arity,
                 ProcId),
-            Struct = pragma_c_struct(StructName, Fields, FieldsContext),
+            Struct = foreign_proc_struct(StructName, Fields, FieldsContext),
             string.format("#define\tMR_ORDINARY_SLOTS\t%d\n",
                 [i(TotalSlots)], DefineStr),
-            DefineComponents = [pragma_c_raw_code(DefineStr,
-                cannot_branch_away, live_lvals_info(set.init))],
+            DefineComponents = [foreign_proc_raw_code(cannot_branch_away,
+                doesnt_affect_liveness, live_lvals_info(set.init), DefineStr)],
             NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, yes(Struct)),
             AllocCode = node([
                 mkframe(NondetFrameInfo, yes(OutsideResumeAddress))
                     - "Allocate stack frame",
-                pragma_c([], DefineComponents, proc_will_not_call_mercury,
-                    no, no, no, no, no, no) - ""
+                foreign_proc_code([], DefineComponents,
+                    proc_will_not_call_mercury, no, no, no, no, no, no) - ""
             ]),
             NondetPragma = yes
         ;
@@ -1003,10 +1003,10 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
     (
         NondetPragma = yes,
         UndefStr = "#undef\tMR_ORDINARY_SLOTS\n",
-        UndefComponents = [pragma_c_raw_code(UndefStr, cannot_branch_away,
-            live_lvals_info(set.init))],
+        UndefComponents = [foreign_proc_raw_code(cannot_branch_away,
+            doesnt_affect_liveness, live_lvals_info(set.init), UndefStr)],
         UndefCode = node([
-            pragma_c([], UndefComponents, proc_will_not_call_mercury,
+            foreign_proc_code([], UndefComponents, proc_will_not_call_mercury,
                 no, no, no, no, no, no) - ""
         ]),
         RestoreDeallocCode = empty, % always empty for nondet code
@@ -1165,10 +1165,11 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 ReturnMacroName = "MR_tbl_mmos_return_answer",
                 ReturnCodeStr = "\t" ++ ReturnMacroName ++ "(" ++
                     DebugStr ++ ", " ++ GeneratorLocnStr ++ ");\n",
-                Component = pragma_c_user_code(no, ReturnCodeStr),
+                Component = foreign_proc_user_code(no, doesnt_affect_liveness,
+                    ReturnCodeStr),
                 SuccessCode = node([
                     livevals(LiveLvals) - "",
-                    pragma_c([], [Component], proc_may_call_mercury,
+                    foreign_proc_code([], [Component], proc_may_call_mercury,
                         no, no, no, no, no, no) - ""
                 ])
             ;
@@ -1260,20 +1261,20 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
         ], BytecodeCall),
 
     BytecodeInstructionsComponents = [
-        pragma_c_raw_code("\t{\n", cannot_branch_away,
-            live_lvals_info(set.init)),
-        pragma_c_raw_code(CallStruct, cannot_branch_away,
-            live_lvals_info(set.init)),
-        pragma_c_raw_code(BytecodeCall, cannot_branch_away,
-            no_live_lvals_info),
-        pragma_c_raw_code("\t}\n", cannot_branch_away,
-            live_lvals_info(set.init))
+        foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+            live_lvals_info(set.init), "\t{\n"),
+        foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+            live_lvals_info(set.init), CallStruct),
+        foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+            no_live_lvals_info, BytecodeCall),
+        foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+            live_lvals_info(set.init), "\t}\n")
     ],
 
     BytecodeInstructions = [
         label(EntryLabel) - "Procedure entry point",
-        pragma_c([], BytecodeInstructionsComponents, proc_may_call_mercury,
-            no, no, no, no, no, no) - "Entry stub"
+        foreign_proc_code([], BytecodeInstructionsComponents,
+            proc_may_call_mercury, no, no, no, no, no, no) - "Entry stub"
     ].
 
 %---------------------------------------------------------------------------%

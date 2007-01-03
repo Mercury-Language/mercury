@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1911,18 +1911,18 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
             % which is why we wrap the goal being committed across
             % inside MR_commit_{mark,cut}.
             Components = [
-                pragma_c_raw_code(
-                    "\t\tMR_save_transient_registers();\n",
-                    cannot_branch_away, live_lvals_info(set.init)),
-                pragma_c_raw_code(
-                    "\t\tMR_commit_mark();\n",
-                    cannot_branch_away, live_lvals_info(set.init)),
-                pragma_c_raw_code(
-                    "\t\tMR_restore_transient_registers();\n",
-                    cannot_branch_away, live_lvals_info(set.init))
+                foreign_proc_raw_code(cannot_branch_away,
+                    affects_liveness, live_lvals_info(set.init),
+                    "\t\tMR_save_transient_registers();\n"),
+                foreign_proc_raw_code(cannot_branch_away,
+                    doesnt_affect_liveness, live_lvals_info(set.init),
+                    "\t\tMR_commit_mark();\n"),
+                foreign_proc_raw_code(cannot_branch_away,
+                    affects_liveness, live_lvals_info(set.init),
+                    "\t\tMR_restore_transient_registers();\n")
             ],
             MarkCode = node([
-                pragma_c([], Components, proc_will_not_call_mercury,
+                foreign_proc_code([], Components, proc_will_not_call_mercury,
                     no, no, no, no, no, yes) - ""
             ])
         ;
@@ -1993,11 +1993,12 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
             UseMinimalModel = yes,
             % See the comment in prepare_for_semi_commit above.
             Components = [
-                pragma_c_raw_code("\t\tMR_commit_cut();\n",
-                    cannot_branch_away, live_lvals_info(set.init))
+                foreign_proc_raw_code(cannot_branch_away,
+                    doesnt_affect_liveness, live_lvals_info(set.init),
+                    "\t\tMR_commit_cut();\n")
             ],
             CutCode = node([
-                pragma_c([], Components, proc_will_not_call_mercury,
+                foreign_proc_code([], Components, proc_will_not_call_mercury,
                     no, no, no, no, no, yes) - "commit for temp frame hijack"
             ])
         ;

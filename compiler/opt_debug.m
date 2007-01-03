@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -677,7 +677,7 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         (
             FrameInfo = ordinary_frame(Name, Size, MaybePragma),
             (
-                MaybePragma = yes(pragma_c_struct(StructName, Fields, _)),
+                MaybePragma = yes(foreign_proc_struct(StructName, Fields, _)),
                 P_str = "yes(" ++ StructName ++ ", " ++ Fields ++ ")"
             ;
                 MaybePragma = no,
@@ -706,8 +706,9 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "computed_goto " ++ dump_rval(yes(ProcLabel), Rval) ++ ":"
             ++ dump_labels(yes(ProcLabel), Labels)
     ;
-        Instr = arbitrary_c_code(Code, _),
-        Str = "arbitrary_c_code(" ++ Code ++ ")"
+        Instr = arbitrary_c_code(AL, _, Code),
+        Str = "arbitrary_c_code(" ++ dump_affects_liveness(AL) ++ "\n" ++
+            Code ++ ")"
     ;
         Instr = if_val(Rval, CodeAddr),
         Str = "if (" ++ dump_rval(yes(ProcLabel), Rval) ++ ") goto "
@@ -787,9 +788,10 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "join(" ++ dump_lval(yes(ProcLabel), Lval) ++ ", "
             ++ dump_label(yes(ProcLabel), Label) ++ ")"
     ;
-        Instr = pragma_c(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF, SSR, MD),
+        Instr = foreign_proc_code(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF,
+            SSR, MD),
         MaybeProcLabel = yes(ProcLabel),
-        Str = "pragma_c(\n"
+        Str = "foreign_proc_code(\n"
             ++ "declarations:\n" ++ dump_decls(Decls)
             ++ "components:\n" ++ dump_components(MaybeProcLabel, Comps)
             ++ dump_may_call_mercury(MCM) ++ "\n"
@@ -823,39 +825,48 @@ dump_bool_msg(Msg, yes) = Msg ++ " yes\n".
 dump_may_use_atomic(may_use_atomic_alloc) = "may_use_atomic_alloc".
 dump_may_use_atomic(may_not_use_atomic_alloc) = "may_not_use_atomic_alloc".
 
-:- func dump_decls(list(pragma_c_decl)) = string.
+:- func dump_decls(list(foreign_proc_decl)) = string.
 
 dump_decls([]) = "".
 dump_decls([Decl | Decls]) =
     dump_decl(Decl) ++ dump_decls(Decls).
 
-:- func dump_decl(pragma_c_decl) = string.
+:- func dump_decl(foreign_proc_decl) = string.
 
-dump_decl(pragma_c_arg_decl(_MerType, TypeStr, VarName)) =
+dump_decl(foreign_proc_arg_decl(_MerType, TypeStr, VarName)) =
     "decl " ++ TypeStr ++ " " ++ VarName ++ "\n".
-dump_decl(pragma_c_struct_ptr_decl(StructTag, VarName)) =
+dump_decl(foreign_proc_struct_ptr_decl(StructTag, VarName)) =
     "decl struct" ++ StructTag ++ " " ++ VarName ++ "\n".
 
-:- func dump_components(maybe(proc_label), list(pragma_c_component)) = string.
+:- func dump_components(maybe(proc_label), list(foreign_proc_component))
+    = string.
 
 dump_components(_, []) = "".
 dump_components(MaybeProcLabel, [Comp | Comps]) =
     dump_component(MaybeProcLabel, Comp) ++
         dump_components(MaybeProcLabel, Comps).
 
-:- func dump_component(maybe(proc_label), pragma_c_component) = string.
+:- func dump_component(maybe(proc_label), foreign_proc_component) = string.
 
-dump_component(MaybeProcLabel, pragma_c_inputs(Inputs)) =
+dump_component(MaybeProcLabel, foreign_proc_inputs(Inputs)) =
     dump_input_components(MaybeProcLabel, Inputs).
-dump_component(MaybeProcLabel, pragma_c_outputs(Outputs)) =
+dump_component(MaybeProcLabel, foreign_proc_outputs(Outputs)) =
     dump_output_components(MaybeProcLabel, Outputs).
-dump_component(_, pragma_c_user_code(_, Code)) = Code ++ "\n".
-dump_component(_, pragma_c_raw_code(Code, _, _)) = Code ++ "\n".
-dump_component(MaybeProcLabel, pragma_c_fail_to(Label)) =
+dump_component(_, foreign_proc_user_code(_, AL, Code)) =
+    dump_affects_liveness(AL) ++ "\n" ++ Code ++ "\n".
+dump_component(_, foreign_proc_raw_code(_, AL, _, Code)) =
+    dump_affects_liveness(AL) ++ "\n" ++ Code ++ "\n".
+dump_component(MaybeProcLabel, foreign_proc_fail_to(Label)) =
     "fail to " ++ dump_label(MaybeProcLabel, Label) ++ "\n".
-dump_component(_, pragma_c_noop) = "".
+dump_component(_, foreign_proc_noop) = "".
 
-:- func dump_input_components(maybe(proc_label), list(pragma_c_input))
+:- func dump_affects_liveness(affects_liveness) = string.
+
+dump_affects_liveness(affects_liveness) = "affects_liveness".
+dump_affects_liveness(doesnt_affect_liveness) = "doesnt_affect_liveness".
+dump_affects_liveness(default_affects_liveness) = "default_affects_liveness".
+
+:- func dump_input_components(maybe(proc_label), list(foreign_proc_input))
     = string.
 
 dump_input_components(_, []) = "".
@@ -863,7 +874,7 @@ dump_input_components(MaybeProcLabel, [Input | Inputs]) =
     dump_input_component(MaybeProcLabel, Input) ++ "\n" ++
     dump_input_components(MaybeProcLabel, Inputs).
 
-:- func dump_output_components(maybe(proc_label), list(pragma_c_output))
+:- func dump_output_components(maybe(proc_label), list(foreign_proc_output))
     = string.
 
 dump_output_components(_, []) = "".
@@ -871,17 +882,17 @@ dump_output_components(MaybeProcLabel, [Input | Inputs]) =
     dump_output_component(MaybeProcLabel, Input) ++ "\n" ++
     dump_output_components(MaybeProcLabel, Inputs).
 
-:- func dump_input_component(maybe(proc_label), pragma_c_input) = string.
+:- func dump_input_component(maybe(proc_label), foreign_proc_input) = string.
 
 dump_input_component(MaybeProcLabel,
-        pragma_c_input(Var, _, Dummy, _, Rval, _, _)) =
+        foreign_proc_input(Var, _, Dummy, _, Rval, _, _)) =
     Var ++ dump_maybe_dummy(Dummy) ++ " := " ++
         dump_rval(MaybeProcLabel, Rval).
 
-:- func dump_output_component(maybe(proc_label), pragma_c_output) = string.
+:- func dump_output_component(maybe(proc_label), foreign_proc_output) = string.
 
 dump_output_component(MaybeProcLabel,
-        pragma_c_output(Lval, _, Dummy, _, Var, _, _)) =
+        foreign_proc_output(Lval, _, Dummy, _, Var, _, _)) =
     dump_lval(MaybeProcLabel, Lval) ++ " := " ++ Var ++
         dump_maybe_dummy(Dummy).
 

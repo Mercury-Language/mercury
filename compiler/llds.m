@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -300,7 +300,7 @@
             % (rval+1)th label in the list. e.g. computed_goto(2, [A, B, C, D])
             % will branch to label C.
 
-    ;       arbitrary_c_code(string, c_code_live_lvals)
+    ;       arbitrary_c_code(affects_liveness, c_code_live_lvals, string)
             % Do whatever is specified by the string, which can be any piece
             % of C code that does not have any non-local flow of control.
 
@@ -423,16 +423,16 @@
             % Pick up the return address from its slot in the stack frame,
             % decrement the det stack pointer, and jump to the return address.
 
-    ;       pragma_c(
-                pragma_c_decls          :: list(pragma_c_decl),
-                pragma_c_components     :: list(pragma_c_component),
-                pragma_c_may_call_merc  :: proc_may_call_mercury,
-                pragma_c_fix_nolayout   :: maybe(label),
-                pragma_c_fix_layout     :: maybe(label),
-                pragma_c_fix_onlylayout :: maybe(label),
-                pragma_c_nofix          :: maybe(label),
-                pragma_c_stack_slot_ref :: bool,
-                pragma_c_maybe_dupl     :: bool
+    ;       foreign_proc_code(
+                fproc_decls             :: list(foreign_proc_decl),
+                fproc_components        :: list(foreign_proc_component),
+                fproc_may_call_merc     :: proc_may_call_mercury,
+                fproc_fix_nolayout      :: maybe(label),
+                fproc_fix_layout        :: maybe(label),
+                fproc_fix_onlylayout    :: maybe(label),
+                fproc_nofix             :: maybe(label),
+                fproc_stack_slot_ref    :: bool,
+                fproc_maybe_dupl        :: bool
             )
             % The first argument says what local variable declarations
             % are required for the following components, which in turn
@@ -446,9 +446,9 @@
             %
             % The third argument says whether the user C code components
             % may call Mercury; certain optimizations can be performed
-            % across pragma_c instructions that cannot call Mercury.
+            % across foreign_proc_code instructions that cannot call Mercury.
             %
-            % Some components in some pragma_c instructions refer to
+            % Some components in some foreign_proc_code instructions refer to
             % a Mercury label. If they do, we must prevent the label
             % from being optimized away. To make it known to labelopt,
             % we mention it in the fourth, fifth or sixth arg. The fourth
@@ -463,7 +463,7 @@
             % else). The seventh argument may give the name of a label
             % that can be changed (because it is not mentioned in C code
             % and has no associated layout structure, being mentioned only
-            % in pragma_c_fail_to components).
+            % in foreign_proc_fail_to components).
             %
             % The stack_slot_ref argument says whether the contents of the
             % pragma C code can refer to stack slots. User-written
@@ -506,7 +506,8 @@
     ;       ordinary_frame(
                 string,                 % Name of the predicate.
                 int,                    % Number of framevar slots.
-                maybe(pragma_c_struct)  % If yes, the frame should also contain
+                maybe(foreign_proc_struct)
+                                        % If yes, the frame should also contain
                                         % this struct (for use by a model_non
                                         % pragma C code).
             ).
@@ -541,10 +542,10 @@
     % Our implementation saves this information in a C struct.
     % Programmers must include the declaration of the fields of this
     % C struct in the `pragma c_code' declaration itself.
-    % A pragma_c_struct holds information about this C struct.
+    % A foreign_proc_struct holds information about this C struct.
     %
-:- type pragma_c_struct
-    --->    pragma_c_struct(
+:- type foreign_proc_struct
+    --->    foreign_proc_struct(
                 string,     % The name of the struct tag.
                 string,     % The field declarations, supplied by the user
                             % in the `pragma foreign_proc' % declaration.
@@ -552,12 +553,12 @@
                             % Where the field declarations originally appeared.
             ).
 
-    % A pragma_c_decl holds the information needed for the declaration
-    % of a local variable in a block of C code emitted for a pragma_c
+    % A foreign_proc_decl holds the information needed for the declaration
+    % of a local variable in a block of C code emitted for a foreign_proc_code
     % instruction.
     %
-:- type pragma_c_decl
-    --->    pragma_c_arg_decl(
+:- type foreign_proc_decl
+    --->    foreign_proc_arg_decl(
                 % This local variable corresponds to a procedure arg.
                 mer_type,   % The Mercury type of the argument.
                 string,     % The string which is used to describe the type
@@ -565,7 +566,7 @@
                 string      % The name of the local variable that will hold
                             % the value of that argument inside the C block.
             )
-        ;   pragma_c_struct_ptr_decl(
+        ;   foreign_proc_struct_ptr_decl(
                 % This local variable holds the address of the save struct.
                 string,     % The name of the C struct tag of the save struct;
                             % the type of the local variable will be a pointer
@@ -573,25 +574,28 @@
                 string      % The name of the local variable.
             ).
 
-    % A pragma_c_component holds one component of a pragma_c instruction.
+    % A foreign_proc_component holds one component of a foreign_proc_code
+    % instruction.
     %
-:- type pragma_c_component
-    --->    pragma_c_inputs(list(pragma_c_input))
-    ;       pragma_c_outputs(list(pragma_c_output))
-    ;       pragma_c_user_code(maybe(prog_context), string)
-    ;       pragma_c_raw_code(string, can_branch_away, c_code_live_lvals)
-    ;       pragma_c_fail_to(label)
-    ;       pragma_c_noop.
+:- type foreign_proc_component
+    --->    foreign_proc_inputs(list(foreign_proc_input))
+    ;       foreign_proc_outputs(list(foreign_proc_output))
+    ;       foreign_proc_user_code(maybe(prog_context), affects_liveness,
+                string)
+    ;       foreign_proc_raw_code(can_branch_away, affects_liveness,
+                c_code_live_lvals, string)
+    ;       foreign_proc_fail_to(label)
+    ;       foreign_proc_noop.
 
 :- type can_branch_away
     --->    can_branch_away
     ;       cannot_branch_away.
 
-    % A pragma_c_input represents the code that initializes one
-    % of the input variables for a pragma_c instruction.
+    % A foreign_proc_input represents the code that initializes one
+    % of the input variables for a foreign_proc_code instruction.
     %
-:- type pragma_c_input
-    --->    pragma_c_input(
+:- type foreign_proc_input
+    --->    foreign_proc_input(
                 % The name of the foreign language variable.
                 in_foreign_lang_var_name    :: string,
 
@@ -612,16 +616,16 @@
 
                 % If in_original_type is a foreign type, info about
                 % that foreign type.
-                in_maybe_foreign_type       :: maybe(pragma_c_foreign_type),
+                in_maybe_foreign_type       :: maybe(foreign_proc_type),
 
                 in_box_policy               :: box_policy
             ).
 
-    % A pragma_c_output represents the code that stores one of
-    % of the outputs for a pragma_c instruction.
+    % A foreign_proc_output represents the code that stores one of
+    % of the outputs for a foreign_proc_code instruction.
     %
-:- type pragma_c_output
-    --->    pragma_c_output(
+:- type foreign_proc_output
+    --->    foreign_proc_output(
                 % The place where the foreign_proc should put this output.
                 out_arg_dest                :: lval,
 
@@ -640,13 +644,13 @@
 
                 % If in_original_type is a foreign type, info about
                 % that foreign type.
-                out_maybe_foreign_type      :: maybe(pragma_c_foreign_type),
+                out_maybe_foreign_type      :: maybe(foreign_proc_type),
 
                 out_box_policy              :: box_policy
             ).
 
-:- type pragma_c_foreign_type
-    --->    pragma_c_foreign_type(
+:- type foreign_proc_type
+    --->    foreign_proc_type(
                 string,         % The C type name.
                 list(foreign_type_assertion)
                                 % The assertions on the foreign_type

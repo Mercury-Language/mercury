@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001,2003-2006 The University of Melbourne.
+% Copyright (C) 1997-2001,2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -145,7 +145,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         ( list.last(BlockInstrs, LastInstr) ->
             LastInstr = LastUinstr - _,
             opt_util.possible_targets(LastUinstr, SideLabels, _SideCodeAddrs),
-            opt_util.can_instr_fall_through(LastUinstr, NextFallInto)
+            opt_util.can_instr_fall_through(LastUinstr) = NextFallInto
         ;
             SideLabels = [],
             NextFallInto = yes
@@ -174,7 +174,7 @@ take_until_end_of_block([Instr0 | Instrs0], BlockInstrs, Rest) :-
     ( Uinstr0 = label(_) ->
         BlockInstrs = [],
         Rest = [Instr0 | Instrs0]
-    ; opt_util.can_instr_branch_away(Uinstr0, yes) ->
+    ; opt_util.can_instr_branch_away(Uinstr0) = yes ->
         BlockInstrs = [Instr0],
         Rest = Instrs0
     ;

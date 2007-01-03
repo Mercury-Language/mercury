@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -138,7 +138,7 @@
     ;       decl_float_label(string)
     ;       decl_code_addr(code_addr)
     ;       decl_data_addr(data_addr)
-    ;       decl_pragma_c_struct(string)
+    ;       decl_foreign_proc_struct(string)
     ;       decl_c_global_var(c_global_var_ref)
     ;       decl_type_info_like_struct(int)
     ;       decl_typeclass_constraint_struct(int).
@@ -1875,15 +1875,16 @@ output_instr_decls(_, assign(Lval, Rval), !DeclSet, !IO) :-
 output_instr_decls(_, llcall(Target, ContLabel, _, _, _, _), !DeclSet, !IO) :-
     output_code_addr_decls(Target, !DeclSet, !IO),
     output_code_addr_decls(ContLabel, !DeclSet, !IO).
-output_instr_decls(_, arbitrary_c_code(_, _), !DeclSet, !IO).
+output_instr_decls(_, arbitrary_c_code(_, _, _), !DeclSet, !IO).
 output_instr_decls(_, mkframe(FrameInfo, MaybeFailureContinuation),
         !DeclSet, !IO) :-
     (
         FrameInfo = ordinary_frame(_, _, yes(Struct)),
-        Struct = pragma_c_struct(StructName, StructFields,
+        Struct = foreign_proc_struct(StructName, StructFields,
             MaybeStructFieldsContext)
     ->
-        ( decl_set_is_member(decl_pragma_c_struct(StructName), !.DeclSet) ->
+        DeclId = decl_foreign_proc_struct(StructName),
+        ( decl_set_is_member(DeclId, !.DeclSet) ->
             Msg = "struct " ++ StructName ++ " has been declared already",
             unexpected(this_file, Msg)
         ;
@@ -1902,7 +1903,7 @@ output_instr_decls(_, mkframe(FrameInfo, MaybeFailureContinuation),
             io.write_string(StructFields, !IO)
         ),
         io.write_string("\n};\n", !IO),
-        decl_set_insert(decl_pragma_c_struct(StructName), !DeclSet)
+        decl_set_insert(DeclId, !DeclSet)
     ;
         true
     ),
@@ -1946,7 +1947,7 @@ output_instr_decls(_, prune_tickets_to(Rval), !DeclSet, !IO) :-
 output_instr_decls(_, incr_sp(_, _, _), !DeclSet, !IO).
 output_instr_decls(_, decr_sp(_), !DeclSet, !IO).
 output_instr_decls(_, decr_sp_and_return(_), !DeclSet, !IO).
-output_instr_decls(StackLayoutLabels, pragma_c(_, Comps, _, _,
+output_instr_decls(StackLayoutLabels, foreign_proc_code(_, Comps, _, _,
         MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _, _), !DeclSet, !IO) :-
     (
         MaybeLayoutLabel = yes(Label),
@@ -1962,7 +1963,7 @@ output_instr_decls(StackLayoutLabels, pragma_c(_, Comps, _, _,
     ;
         MaybeOnlyLayoutLabel = no
     ),
-    list.foldl2(output_pragma_c_component_decls, Comps, !DeclSet, !IO).
+    list.foldl2(output_foreign_proc_component_decls, Comps, !DeclSet, !IO).
 output_instr_decls(_, init_sync_term(Lval, _), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
 output_instr_decls(_, fork(Child), !DeclSet, !IO) :-
@@ -1971,17 +1972,23 @@ output_instr_decls(_, join_and_continue(Lval, Label), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO),
     output_code_addr_decls(code_label(Label), !DeclSet, !IO).
 
-:- pred output_pragma_c_component_decls(pragma_c_component::in,
+:- pred output_foreign_proc_component_decls(foreign_proc_component::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_pragma_c_component_decls(pragma_c_inputs(Inputs), !DeclSet, !IO) :-
-    output_pragma_input_rval_decls(Inputs, !DeclSet, !IO).
-output_pragma_c_component_decls(pragma_c_outputs(Outputs), !DeclSet, !IO) :-
-    output_pragma_output_lval_decls(Outputs, !DeclSet, !IO).
-output_pragma_c_component_decls(pragma_c_raw_code(_, _, _), !DeclSet, !IO).
-output_pragma_c_component_decls(pragma_c_user_code(_, _), !DeclSet, !IO).
-output_pragma_c_component_decls(pragma_c_fail_to(_), !DeclSet, !IO).
-output_pragma_c_component_decls(pragma_c_noop, !DeclSet, !IO).
+output_foreign_proc_component_decls(Component, !DeclSet, !IO) :-
+    (
+        Component = foreign_proc_inputs(Inputs),
+        output_foreign_proc_input_rval_decls(Inputs, !DeclSet, !IO)
+    ;
+        Component = foreign_proc_outputs(Outputs),
+        output_foreign_proc_output_lval_decls(Outputs, !DeclSet, !IO)
+    ;
+        ( Component = foreign_proc_raw_code(_, _, _, _)
+        ; Component = foreign_proc_user_code(_, _, _)
+        ; Component = foreign_proc_fail_to(_)
+        ; Component = foreign_proc_noop
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -2228,15 +2235,15 @@ output_instruction(llcall(Target, ContLabel, LiveVals, _, _, _), ProfInfo,
     output_call(Target, ContLabel, CallerLabel, !IO),
     output_gc_livevals(LiveVals, !IO).
 
-output_instruction(arbitrary_c_code(C_Code_String, _), _, !IO) :-
+output_instruction(arbitrary_c_code(_, _, C_Code), _, !IO) :-
     io.write_string("\t", !IO),
-    io.write_string(C_Code_String, !IO).
+    io.write_string(C_Code, !IO).
 
 output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
     (
         FrameInfo = ordinary_frame(Msg, Num, MaybeStruct),
         (
-            MaybeStruct = yes(pragma_c_struct(StructName, _, _)),
+            MaybeStruct = yes(foreign_proc_struct(StructName, _, _)),
             (
                 MaybeFailCont = yes(FailCont),
                 io.write_string("\tMR_mkpragmaframe(""", !IO),
@@ -2531,10 +2538,11 @@ output_instruction(decr_sp_and_return(N), _, !IO) :-
     io.write_int(N, !IO),
     io.write_string(");\n", !IO).
 
-output_instruction(pragma_c(Decls, Components, _, _, _, _, _, _, _), _, !IO) :-
+output_instruction(foreign_proc_code(Decls, Components, _, _, _, _, _, _, _),
+        _, !IO) :-
     io.write_string("\t{\n", !IO),
-    output_pragma_decls(Decls, !IO),
-    list.foldl(output_pragma_c_component, Components, !IO),
+    output_foreign_proc_decls(Decls, !IO),
+    list.foldl(output_foreign_proc_component, Components, !IO),
     io.write_string("\t}\n", !IO).
 
 output_instruction(init_sync_term(Lval, N), _, !IO) :-
@@ -2562,14 +2570,15 @@ output_instruction(join_and_continue(Lval, Label), _, !IO) :-
 % in runtime/mercury_wrapper.c. See the documentation there.
 max_leaf_stack_frame_size = 128.
 
-:- pred output_pragma_c_component(pragma_c_component::in, io::di, io::uo)
-    is det.
+:- pred output_foreign_proc_component(foreign_proc_component::in,
+    io::di, io::uo) is det.
 
-output_pragma_c_component(pragma_c_inputs(Inputs), !IO) :-
-    output_pragma_inputs(Inputs, !IO).
-output_pragma_c_component(pragma_c_outputs(Outputs), !IO) :-
-    output_pragma_outputs(Outputs, !IO).
-output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code), !IO) :-
+output_foreign_proc_component(foreign_proc_inputs(Inputs), !IO) :-
+    output_foreign_proc_inputs(Inputs, !IO).
+output_foreign_proc_component(foreign_proc_outputs(Outputs), !IO) :-
+    output_foreign_proc_outputs(Outputs, !IO).
+output_foreign_proc_component(foreign_proc_user_code(MaybeContext, _, C_Code),
+        !IO) :-
     ( C_Code = "" ->
         true
     ;
@@ -2589,75 +2598,78 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code), !IO) :-
             io.write_string(";}\n", !IO)
         )
     ).
-output_pragma_c_component(pragma_c_raw_code(C_Code, _, _), !IO) :-
+output_foreign_proc_component(foreign_proc_raw_code(_, _, _, C_Code), !IO) :-
     io.write_string(C_Code, !IO).
-output_pragma_c_component(pragma_c_fail_to(Label), !IO) :-
-    io.write_string("if (!" ++ pragma_succ_ind_name ++ ") MR_GOTO_LAB(", !IO),
+output_foreign_proc_component(foreign_proc_fail_to(Label), !IO) :-
+    io.write_string(
+        "if (!" ++ foreign_proc_succ_ind_name ++ ") MR_GOTO_LAB(", !IO),
     output_label(Label, no, !IO),
     io.write_string(");\n", !IO).
-output_pragma_c_component(pragma_c_noop, !IO).
+output_foreign_proc_component(foreign_proc_noop, !IO).
 
     % Output the local variable declarations at the top of the
-    % pragma_foreign code for C.
+    % foreign_proc code for C.
     %
-:- pred output_pragma_decls(list(pragma_c_decl)::in, io::di, io::uo) is det.
+:- pred output_foreign_proc_decls(list(foreign_proc_decl)::in, io::di, io::uo)
+    is det.
 
-output_pragma_decls([], !IO).
-output_pragma_decls([Decl | Decls], !IO) :-
+output_foreign_proc_decls([], !IO).
+output_foreign_proc_decls([Decl | Decls], !IO) :-
     (
         % Apart from special cases, the local variables are MR_Words
-        Decl = pragma_c_arg_decl(_Type, TypeString, VarName),
+        Decl = foreign_proc_arg_decl(_Type, TypeString, VarName),
         io.write_string("\t", !IO),
         io.write_string(TypeString, !IO),
         io.write_string("\t", !IO),
         io.write_string(VarName, !IO),
         io.write_string(";\n", !IO)
     ;
-        Decl = pragma_c_struct_ptr_decl(StructTag, VarName),
+        Decl = foreign_proc_struct_ptr_decl(StructTag, VarName),
         io.write_string("\tstruct ", !IO),
         io.write_string(StructTag, !IO),
         io.write_string("\t*", !IO),
         io.write_string(VarName, !IO),
         io.write_string(";\n", !IO)
     ),
-    output_pragma_decls(Decls, !IO).
+    output_foreign_proc_decls(Decls, !IO).
 
     % Output declarations for any rvals used to initialize the inputs.
     %
-:- pred output_pragma_input_rval_decls(list(pragma_c_input)::in,
+:- pred output_foreign_proc_input_rval_decls(list(foreign_proc_input)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_pragma_input_rval_decls([], !DeclSet, !IO).
-output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
-    Input = pragma_c_input(_VarName, _VarType, _IsDummy, _OrigType, Rval,
+output_foreign_proc_input_rval_decls([], !DeclSet, !IO).
+output_foreign_proc_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
+    Input = foreign_proc_input(_VarName, _VarType, _IsDummy, _OrigType, Rval,
         _, _),
     output_rval_decls_format(Rval, "", "\t", 0, _N, !DeclSet, !IO),
-    output_pragma_input_rval_decls(Inputs, !DeclSet, !IO).
+    output_foreign_proc_input_rval_decls(Inputs, !DeclSet, !IO).
 
-    % Output the input variable assignments at the top of the
-    % pragma foreign_code code for C.
+    % Output the input variable assignments at the top of the foreign code
+    % for C.
     %
-:- pred output_pragma_inputs(list(pragma_c_input)::in, io::di, io::uo) is det.
+:- pred output_foreign_proc_inputs(list(foreign_proc_input)::in,
+    io::di, io::uo) is det.
 
-output_pragma_inputs([], !IO).
-output_pragma_inputs([Input | Inputs], !IO) :-
-    Input = pragma_c_input(_VarName, _VarType, IsDummy, _OrigType, _Rval,
+output_foreign_proc_inputs([], !IO).
+output_foreign_proc_inputs([Input | Inputs], !IO) :-
+    Input = foreign_proc_input(_VarName, _VarType, IsDummy, _OrigType, _Rval,
         _MaybeForeignTypeInfo, _BoxPolicy),
     (
         IsDummy = yes
     ;
         IsDummy = no,
-        output_pragma_input(Input, !IO)
+        output_foreign_proc_input(Input, !IO)
     ),
-    output_pragma_inputs(Inputs, !IO).
+    output_foreign_proc_inputs(Inputs, !IO).
 
-    % Output an input variable assignment at the top of the
-    % pragma foreign_code code for C.
+    % Output an input variable assignment at the top of the foreign code for C.
     %
-:- pred output_pragma_input(pragma_c_input::in, io::di, io::uo) is det.
+:- pred output_foreign_proc_input(foreign_proc_input::in, io::di, io::uo)
+    is det.
 
-output_pragma_input(Input, !IO) :-
-    Input = pragma_c_input(VarName, _VarType, _IsDummy, OrigType, Rval,
+output_foreign_proc_input(Input, !IO) :-
+    Input = foreign_proc_input(VarName, _VarType, _IsDummy, OrigType, Rval,
         MaybeForeignTypeInfo, BoxPolicy),
     io.write_string("\t", !IO),
     (
@@ -2669,15 +2681,18 @@ output_pragma_input(Input, !IO) :-
         BoxPolicy = native_if_possible,
         (
             MaybeForeignTypeInfo = yes(ForeignTypeInfo),
-            ForeignTypeInfo = pragma_c_foreign_type(ForeignType, Assertions),
+            ForeignTypeInfo = foreign_proc_type(ForeignType, Assertions),
             % For foreign types for which c_type_is_word_sized_int_or_ptr
             % succeeds, the code in the else branch is not only correct,
             % it also generates faster code than would be generated by
             % the then branch, because MR_MAYBE_UNBOX_FOREIGN_TYPE
             % invokes memcpy when given a word-sized type.
             (
-                ( c_type_is_word_sized_int_or_ptr(ForeignType)
-                ; list.member(foreign_type_can_pass_as_mercury_type, Assertions)
+                (
+                    c_type_is_word_sized_int_or_ptr(ForeignType)
+                ;
+                    list.member(foreign_type_can_pass_as_mercury_type,
+                        Assertions)
                 )
             ->
                 % Note that for this cast to be correct the foreign
@@ -2713,40 +2728,42 @@ output_pragma_input(Input, !IO) :-
 
     % Output declarations for any lvals used for the outputs.
     %
-:- pred output_pragma_output_lval_decls(list(pragma_c_output)::in,
+:- pred output_foreign_proc_output_lval_decls(list(foreign_proc_output)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_pragma_output_lval_decls([], !DeclSet, !IO).
-output_pragma_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
-    O = pragma_c_output(Lval, _VarType, _IsDummy, _OrigType, _VarName, _, _),
+output_foreign_proc_output_lval_decls([], !DeclSet, !IO).
+output_foreign_proc_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
+    O = foreign_proc_output(Lval, _VarType, _IsDummy, _OrigType, _VarName,
+        _, _),
     output_lval_decls_format(Lval, "\t", "\t", 0, _N, !DeclSet, !IO),
-    output_pragma_output_lval_decls(Outputs, !DeclSet, !IO).
+    output_foreign_proc_output_lval_decls(Outputs, !DeclSet, !IO).
 
-    % Output the output variable assignments at the bottom of the
-    % pragma foreign code for C.
+    % Output the output variable assignments at the bottom of the foreign code
+    % for C.
     %
-:- pred output_pragma_outputs(list(pragma_c_output)::in, io::di, io::uo)
-    is det.
+:- pred output_foreign_proc_outputs(list(foreign_proc_output)::in,
+    io::di, io::uo) is det.
 
-output_pragma_outputs([], !IO).
-output_pragma_outputs([Output | Outputs], !IO) :-
-    Output = pragma_c_output(_Lval, _VarType, IsDummy, _OrigType, _VarName,
+output_foreign_proc_outputs([], !IO).
+output_foreign_proc_outputs([Output | Outputs], !IO) :-
+    Output = foreign_proc_output(_Lval, _VarType, IsDummy, _OrigType, _VarName,
         _MaybeForeignType, _BoxPolicy),
     (
         IsDummy = yes
     ;
         IsDummy = no,
-        output_pragma_output(Output, !IO)
+        output_foreign_proc_output(Output, !IO)
     ),
-    output_pragma_outputs(Outputs, !IO).
+    output_foreign_proc_outputs(Outputs, !IO).
 
-    % Output a output variable assignment at the bottom of the
-    % pragma foreign code for C.
+    % Output a output variable assignment at the bottom of the foreign code
+    % for C.
     %
-:- pred output_pragma_output(pragma_c_output::in, io::di, io::uo) is det.
+:- pred output_foreign_proc_output(foreign_proc_output::in, io::di, io::uo)
+    is det.
 
-output_pragma_output(Output, !IO) :-
-    Output = pragma_c_output(Lval, _VarType, _IsDummy, OrigType, VarName,
+output_foreign_proc_output(Output, !IO) :-
+    Output = foreign_proc_output(Lval, _VarType, _IsDummy, OrigType, VarName,
         MaybeForeignType, BoxPolicy),
     io.write_string("\t", !IO),
     (
@@ -2758,7 +2775,7 @@ output_pragma_output(Output, !IO) :-
         BoxPolicy = native_if_possible,
         (
             MaybeForeignType = yes(ForeignTypeInfo),
-            ForeignTypeInfo = pragma_c_foreign_type(ForeignType, Assertions),
+            ForeignTypeInfo = foreign_proc_type(ForeignType, Assertions),
             ( list.member(foreign_type_can_pass_as_mercury_type, Assertions) ->
                 output_lval_as_word(Lval, !IO),
                 io.write_string(" = ", !IO),
@@ -3211,8 +3228,8 @@ output_decl_id(decl_code_addr(_CodeAddress), !IO) :-
     unexpected(this_file, "output_decl_id: code_addr unexpected").
 output_decl_id(decl_float_label(_Label), !IO) :-
     unexpected(this_file, "output_decl_id: float_label unexpected").
-output_decl_id(decl_pragma_c_struct(_Name), !IO) :-
-    unexpected(this_file, "output_decl_id: pragma_c_struct unexpected").
+output_decl_id(decl_foreign_proc_struct(_Name), !IO) :-
+    unexpected(this_file, "output_decl_id: foreign_proc_struct unexpected").
 output_decl_id(decl_c_global_var(_), !IO) :-
     unexpected(this_file, "output_decl_id: c_global_var unexpected").
 output_decl_id(decl_type_info_like_struct(_Name), !IO) :-

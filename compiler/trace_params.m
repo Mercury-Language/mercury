@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -460,10 +460,12 @@ convert_port_name("neg_failure") = port_neg_failure.
 convert_port_name("swtc") = port_switch.
 convert_port_name("switch") = port_switch.
 convert_port_name("disj") = port_disj.
-convert_port_name("frst") = port_nondet_pragma_first.
-convert_port_name("nondet_pragma_first") = port_nondet_pragma_first.
-convert_port_name("latr") = port_nondet_pragma_first.
-convert_port_name("nondet_pragma_later") = port_nondet_pragma_later.
+convert_port_name("frst") = port_nondet_foreign_proc_first.
+convert_port_name("nondet_foreign_proc_first") =
+    port_nondet_foreign_proc_first.
+convert_port_name("latr") = port_nondet_foreign_proc_later.
+convert_port_name("nondet_foreign_proc_later") =
+    port_nondet_foreign_proc_later.
 convert_port_name("user") = port_user.
 
 :- func convert_port_class_name(string) = list(trace_port) is semidet.
@@ -545,8 +547,8 @@ trace_port_category(port_neg_success)         = port_cat_context.
 trace_port_category(port_neg_failure)         = port_cat_context.
 trace_port_category(port_switch)              = port_cat_internal.
 trace_port_category(port_disj)                = port_cat_internal.
-trace_port_category(port_nondet_pragma_first) = port_cat_internal.
-trace_port_category(port_nondet_pragma_later) = port_cat_internal.
+trace_port_category(port_nondet_foreign_proc_first) = port_cat_internal.
+trace_port_category(port_nondet_foreign_proc_later) = port_cat_internal.
 trace_port_category(port_user)                = port_cat_user.
 
 :- func trace_level_port_categories(trace_level) = list(port_category).
@@ -613,6 +615,6 @@ port_number(port_neg_success) = 10.
 port_number(port_neg_failure) = 11.
 port_number(port_disj) = 12.
 port_number(port_switch) = 13.
-port_number(port_nondet_pragma_first) = 14.
-port_number(port_nondet_pragma_later) = 15.
+port_number(port_nondet_foreign_proc_first) = 14.
+port_number(port_nondet_foreign_proc_later) = 15.
 port_number(port_user) = 16.

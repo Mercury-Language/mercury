@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,7 +215,7 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         standardize_labels(Targets, StdTargets, DupProcMap),
         StdInstr = computed_goto(Rval, StdTargets)
     ;
-        Instr = arbitrary_c_code(_, _),
+        Instr = arbitrary_c_code(_, _, _),
         StdInstr = Instr
     ;
         Instr = save_maxfr(_),
@@ -279,8 +279,9 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         standardize_label(Label, StdLabel, DupProcMap),
         StdInstr = join_and_continue(Lval, StdLabel)
     ;
-        Instr = pragma_c(_, _, _, _, _, _, _, _, _),
-        % The labels occurring in pragma_c instructions cannot be substituted.
+        Instr = foreign_proc_code(_, _, _, _, _, _, _, _, _),
+        % The labels occurring in foreign_proc_code instructions
+        % cannot be substituted.
         StdInstr = Instr
     ).
 
