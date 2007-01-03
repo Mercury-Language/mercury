@@ -1260,6 +1260,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ProfileDeep = yes
         ),
 
+        % --optimize-constructor-last-call is currently not compatible with
+        % --highlevel-data.
+        option_implies(highlevel_data, optimize_constructor_last_call,
+            bool(no), !Globals),
+
         % --no-reorder-conj implies --no-deforestation,
         % --no-constraint-propagation and --no-local-constraint-propagation.
         option_neg_implies(reorder_conj, deforestation, bool(no), !Globals),
