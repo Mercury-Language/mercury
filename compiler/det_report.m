@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -254,7 +254,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, ModuleInfo, !Specs) :-
         proc_info_get_context(ProcInfo0, Context),
         MainPieces =
             [words("Error: `pragma "
-                ++ eval_method_to_string(EvalMethod) ++ "'"),
+                ++ eval_method_to_pragma_name(EvalMethod) ++ "'"),
             words("declaration not allowed for procedure"),
             words("with determinism"),
             quote(determinism_to_string(InferredDetism)), suffix(".")],
