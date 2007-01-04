@@ -634,7 +634,7 @@
 :- mode list.map_corresponding_foldl(pred(in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
 
-    % list.map_corresponding3_foldl7 is like list.map_corresponding3 except
+    % list.map_corresponding3_foldl/7 is like list.map_corresponding3 except
     % that it has an accumulator threaded through it.
     %
 :- pred list.map_corresponding3_foldl(pred(A, B, C, D, E, E),
@@ -832,6 +832,47 @@
     in, in, in, out, di, uo) is det.
 :- mode list.foldl2_corresponding(pred(in, in, in, out, di, uo) is cc_multi,
     in, in, in, out, di, uo) is cc_multi.
+
+    % list.foldl_corresponding3(P, As, Bs, Cs, !Acc):
+    % Like list.foldl_corresponding but folds over three corresponding
+    % lists.
+    %
+:- pred list.foldl_corresponding3(pred(A, B, C, D, D),
+    list(A), list(B), list(C), D, D).
+:- mode list.foldl_corresponding3(pred(in, in, in, in, out) is det,
+    in, in, in, in, out) is det.
+:- mode list.foldl_corresponding3(pred(in, in, in, di, uo) is det,
+    in, in, in, di, uo) is det.
+:- mode list.foldl_corresponding3(pred(in, in, in, in, out) is semidet,
+    in, in, in, in, out) is semidet.
+
+    % list.foldl2_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2):
+    % like list.foldl_corresponding3 but with two accumulators.
+    %
+:- pred list.foldl2_corresponding3(pred(A, B, C, D, D, E, E),
+    list(A), list(B), list(C), D, D, E, E).
+:- mode list.foldl2_corresponding3(pred(in, in, in, in, out, in, out) is det,
+    in, in, in, in, out, in, out) is det.
+:- mode list.foldl2_corresponding3(pred(in, in, in, in, out, di, uo) is det,
+    in, in, in, in, out, di, uo) is det.
+:- mode list.foldl2_corresponding3(
+    pred(in, in, in, in, out, in, out) is semidet,
+    in, in, in, in, out, in, out) is semidet.
+
+    % list.foldl3_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3):
+    % like list.foldl_corresponding3 but with three accumulators.
+    %
+:- pred list.foldl3_corresponding3(pred(A, B, C, D, D, E, E, F, F),
+    list(A), list(B), list(C), D, D, E, E, F, F).
+:- mode list.foldl3_corresponding3(
+    pred(in, in, in, in, out, in, out, in, out) is det,
+    in, in, in, in, out, in, out, in, out) is det.
+:- mode list.foldl3_corresponding3(
+    pred(in, in, in, in, out, in, out, di, uo) is det,
+    in, in, in, in, out, in, out, di, uo) is det.
+:- mode list.foldl3_corresponding3(
+    pred(in, in, in, in, out, in, out, in, out) is semidet,
+    in, in, in, in, out, in, out, in, out) is semidet.
 
     % list.map_foldl(Pred, InList, OutList, Start, End) calls Pred
     % with an accumulator (with the initial value of Start) on
@@ -1946,6 +1987,59 @@ list.foldl2_corresponding(_, [_ | _], [], _, _, _, _) :-
 list.foldl2_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2) :-
     P(A, B, !Acc1, !Acc2),
     list.foldl2_corresponding(P, As, Bs, !Acc1, !Acc2).
+
+list.foldl_corresponding3(_, [], [], [], !Acc).
+list.foldl_corresponding3(_, [_ | _], [], [], _, _) :-
+    error("list.foldl_corresponding3/6: mismatched list arguments").
+list.foldl_corresponding3(_, [], [_ | _], [], _, _) :-
+    error("list.foldl_corresponding3/6: mismatched list arguments").
+list.foldl_corresponding3(_, [], [], [_ | _], _, _) :-
+    error("list.foldl_corresponding3/6: mismatched list arguments").
+list.foldl_corresponding3(_, [], [_ | _], [_ | _], _, _) :-
+    error("list.foldl_corresponding3/6: mismatched list arguments").
+list.foldl_corresponding3(_, [_ | _], [], [_ | _], _, _) :-
+    error("list.foldl_corresponding3/6: mismatched list arguments").
+list.foldl_corresponding3(_, [_ | _], [_ | _], [], _, _) :-
+    error("list.foldl_corresponding3/6: mismatched list arguments").
+list.foldl_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs], !Acc) :-
+    P(A, B, C, !Acc),
+    list.foldl_corresponding3(P, As, Bs, Cs, !Acc).
+
+list.foldl2_corresponding3(_, [], [], [], !Acc1, !Acc2).
+list.foldl2_corresponding3(_, [_ | _], [], [], _, _, _, _) :-
+    error("list.foldl2_corresponding3/8: mismatched list arguments").
+list.foldl2_corresponding3(_, [], [_ | _], [], _, _, _, _) :-
+    error("list.foldl2_corresponding3/8: mismatched list arguments").
+list.foldl2_corresponding3(_, [], [], [_ | _], _, _, _, _) :-
+    error("list.foldl2_corresponding3/8: mismatched list arguments").
+list.foldl2_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _) :-
+    error("list.foldl2_corresponding3/8: mismatched list arguments").
+list.foldl2_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _) :-
+    error("list.foldl2_corresponding3/8: mismatched list arguments").
+list.foldl2_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _) :-
+    error("list.foldl2_corresponding3/8: mismatched list arguments").
+list.foldl2_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
+        !Acc1, !Acc2) :-
+    P(A, B, C, !Acc1, !Acc2),
+    list.foldl2_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2).
+
+list.foldl3_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3).
+list.foldl3_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _) :-
+    error("list.foldl3_corresponding3/10: mismatched list arguments").
+list.foldl3_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _) :-
+    error("list.foldl3_corresponding3/10: mismatched list arguments").
+list.foldl3_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _) :-
+    error("list.foldl3_corresponding3/10: mismatched list arguments").
+list.foldl3_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _) :-
+    error("list.foldl3_corresponding3/10: mismatched list arguments").
+list.foldl3_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _) :-
+    error("list.foldl3_corresponding3/10: mismatched list arguments").
+list.foldl3_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _) :-
+    error("list.foldl3_corresponding3/10: mismatched list arguments").
+list.foldl3_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
+        !Acc1, !Acc2, !Acc3) :-
+    P(A, B, C, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3).
 
 list.map_foldl(_, [], [], !A).
 list.map_foldl(P, [H0 | T0], [H | T], !A) :-
