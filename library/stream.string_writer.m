@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -331,6 +331,10 @@ do_write_univ(Stream, NonCanon, Univ, !State) :-
 :- pragma type_spec(do_write_univ_prio/6,
             (Stream = io.output_stream, State = io.state)).
 
+    % We only use the io.stream_db we read impurely when we have
+    % the io.state.
+:- pragma promise_pure(do_write_univ_prio/6).
+
 do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     % We need to special-case the builtin types:
     %   int, char, float, string
@@ -351,18 +355,13 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
         write_type_ctor_desc(Stream, TypeCtorDesc, !State)
     ; univ_to_type(Univ, C_Pointer) ->
         write_c_pointer(Stream, C_Pointer, !State)
-    ; univ_to_type(Univ, IOStream) ->
-        write_io_stream(Stream, NonCanon, io.input_stream_info,
-                IOStream, Priority, !State)
-    ; univ_to_type(Univ, IOStream) ->
-        write_io_stream(Stream, NonCanon, io.output_stream_info,
-                IOStream, Priority, !State)
-    ; univ_to_type(Univ, IOStream) ->
-        write_io_stream(Stream, NonCanon, io.binary_input_stream_info,
-                IOStream, Priority, !State)
-    ; univ_to_type(Univ, IOStream) ->
-        write_io_stream(Stream, NonCanon, io.binary_output_stream_info,
-                IOStream, Priority, !State)
+    ;
+        impure io.get_stream_db(StreamDB),
+        StreamInfo = get_io_stream_info(StreamDB, univ_value(Univ))
+    ->
+        type_to_univ(StreamInfo, StreamInfoUniv),
+        do_write_univ_prio(Stream, NonCanon, StreamInfoUniv, Priority,
+            !.State, !:State)
     ;
         % Check if the type is array.array/1. We can't just use univ_to_type
         % here since array.array/1 is a polymorphic type.
@@ -405,31 +404,6 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     ;
         write_ordinary_term(Stream, NonCanon, Univ, Priority, !State)
     ).
-
-:- pred write_io_stream(Stream, deconstruct.noncanon_handling,
-    (func(io.stream_db, T) = io.maybe_stream_info), T, ops.priority,
-    State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
-:- mode write_io_stream(in, in(do_not_allow), (func(in, in) = out is det),
-    in, in, di, uo) is det.
-:- mode write_io_stream(in, in(canonicalize), (func(in, in) = out is det),
-    in, in, di, uo) is det.
-:- mode write_io_stream(in, in(include_details_cc),
-    (func(in, in) = out is det), in, in, di, uo) is cc_multi.
-:- mode write_io_stream(in, in, (func(in, in) = out is det),
-    in, in, di, uo) is cc_multi.
-
-write_io_stream(Stream, NonCanon, GetStreamInfo, IOStream, Priority, !State) :-
-    ( dynamic_cast(!.State, IOState) ->
-        io.get_stream_db(StreamDb, unsafe_promise_unique(IOState), _),
-        StreamInfo = GetStreamInfo(StreamDb, IOStream)
-    ;
-        StreamInfo = unknown_stream
-    ),
-    type_to_univ(StreamInfo, StreamInfoUniv),
-    do_write_univ_prio(Stream, NonCanon, StreamInfoUniv, Priority,
-        unsafe_promise_unique(!.State), !:State).
 
 :- pred same_array_elem_type(array(T)::unused, T::unused) is det.
 

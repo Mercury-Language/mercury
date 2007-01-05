@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1527,6 +1527,7 @@
     % about those streams.
     %
 :- pred io.get_stream_db(io.stream_db::out, io::di, io::uo) is det.
+:- impure pred io.get_stream_db(io.stream_db::out) is det.
 
     % Returns the information associated with the specified input
     % stream in the given stream database.
@@ -1551,6 +1552,10 @@
     %
 :- func io.binary_output_stream_info(io.stream_db, io.binary_output_stream)
     = io.maybe_stream_info.
+
+    % If the univ contains an I/O stream, return information about that
+    % stream, otherwise fail.
+:- func get_io_stream_info(io.stream_db, T) = maybe_stream_info is semidet.
 
 %
 % For use by compiler/process_util.m:
@@ -4170,6 +4175,22 @@ io.maybe_stream_info(StreamDb, Stream) = Info :-
         Info  = unknown_stream
     ).
 
+get_io_stream_info(StreamDB, Stream) = StreamInfo :-
+    ( dynamic_cast(Stream, input_stream(IOStream0)) ->
+        IOStream = IOStream0
+    ; dynamic_cast(Stream, output_stream(IOStream0)) ->
+        IOStream = IOStream0
+    ; dynamic_cast(Stream, binary_input_stream(IOStream0)) ->
+        IOStream = IOStream0
+    ; dynamic_cast(Stream, binary_output_stream(IOStream0)) ->
+        IOStream = IOStream0
+    ; dynamic_cast(Stream, IOStream0) ->
+        IOStream = IOStream0
+    ;
+        fail
+    ),
+    StreamInfo = io.maybe_stream_info(StreamDB, IOStream).
+
 :- func maybe_source_name(maybe(stream_info)) = string.
 
 maybe_source_name(MaybeInfo) = Name :-
@@ -4190,6 +4211,13 @@ source_name(stdout) = "<standard output>".
 source_name(stderr) = "<standard error>".
 
 :- pragma foreign_proc("C",
+    io.get_stream_db(StreamDb::out),
+    [will_not_call_mercury, tabled_for_io],
+"
+    StreamDb = ML_io_stream_db;
+").
+
+:- pragma foreign_proc("C",
     io.get_stream_db(StreamDb::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -4208,6 +4236,13 @@ source_name(stderr) = "<standard error>".
 ").
 
 :- pragma foreign_proc("C#",
+    io.get_stream_db(StreamDb::out),
+    [will_not_call_mercury, tabled_for_io],
+"
+    StreamDb = ML_io_stream_db;
+").
+
+:- pragma foreign_proc("C#",
     io.get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -4219,6 +4254,13 @@ source_name(stderr) = "<standard error>".
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ML_io_stream_db = StreamDb;
+").
+
+:- pragma foreign_proc("Java",
+    io.get_stream_db(StreamDb::out),
+    [will_not_call_mercury, tabled_for_io],
+"
+    StreamDb = ML_io_stream_db;
 ").
 
 :- pragma foreign_proc("Java",
