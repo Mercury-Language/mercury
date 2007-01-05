@@ -32,11 +32,11 @@
 :- type functor_number_ordinal == int.
 :- type functor_number_lex == int.
 
-    % num_functors(TypeInfo).
+    % num_functors(Type).
     %
     % Returns the number of different functors for the top-level
-    % type constructor of the type specified by TypeInfo, or fail
-    % if the type is not a discriminated union type.
+    % type constructor of the type specified by Type.
+    % Fails if the type is not a discriminated union type.
     %
     % deconstruct.functor_number/3, deconstruct.deconstruct_du/5
     % and the semidet predicates and functions in this module will
@@ -92,10 +92,10 @@
 :- func get_functor_lex(type_desc, functor_number_ordinal) =
     functor_number_lex is semidet.
 
-    % construct(TypeInfo, I, Args) = Term.
+    % construct(Type, I, Args) = Term.
     %
-    % Returns a term of the type specified by TypeInfo whose functor
-    % is functor number I of the type given by TypeInfo, and whose
+    % Returns a term of the type specified by Type whose functor
+    % is functor number I of the type given by Type, and whose
     % arguments are given by Args.  Fails if the type is not a
     % discriminated union type, or if I is out of range, or if the
     % number of arguments supplied doesn't match the arity of the selected
