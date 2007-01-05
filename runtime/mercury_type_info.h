@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2006 The University of Melbourne.
+** Copyright (C) 1995-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -75,7 +75,7 @@
 ** compiler/type_ctor_info.m and with MR_RTTI_VERSION in mercury_mcpp.h.
 */
 
-#define MR_RTTI_VERSION                 MR_RTTI_VERSION__DUMMY
+#define MR_RTTI_VERSION                 MR_RTTI_VERSION__FUNCTOR_NUMBERS
 #define MR_RTTI_VERSION__INITIAL        2
 #define MR_RTTI_VERSION__USEREQ         3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT   4
@@ -86,6 +86,7 @@
 #define MR_RTTI_VERSION__STABLE_FOREIGN 9
 #define MR_RTTI_VERSION__TYPE_INFO_ZERO 10
 #define MR_RTTI_VERSION__DUMMY          11
+#define MR_RTTI_VERSION__FUNCTOR_NUMBERS 12
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -101,7 +102,7 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__DUMMY)
+    assert((typector)->MR_type_ctor_version == MR_RTTI_VERSION__FUNCTOR_NUMBERS)
 
 /*---------------------------------------------------------------------------*/
 
@@ -1149,6 +1150,12 @@ typedef union {
     MR_NotagFunctorDesc         *MR_functors_notag;
 } MR_TypeFunctors;
 
+/*
+** Map from ordinal (declaration order) functor numbers to lexicographic
+** functor numbers which can be passed to construct.construct.
+*/
+typedef const MR_Integer * MR_FunctorNumberMap;
+
 /*---------------------------------------------------------------------------*/
 
     /*
@@ -1174,6 +1181,7 @@ struct MR_TypeCtorInfo_Struct {
     MR_TypeLayout       MR_type_ctor_layout;
     MR_int_least32_t    MR_type_ctor_num_functors;
     MR_int_least16_t    MR_type_ctor_flags;
+    MR_FunctorNumberMap MR_type_ctor_functor_number_map;
 
 /*
 ** The following fields will be added later, once we can exploit them:
@@ -1367,10 +1375,10 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 
 #endif /* MR_HIGHLEVEL_CODE */
 
-#define MR_DEFINE_TYPE_CTOR_INFO_BODY_FLAG(m, n, a, cr, u, c, f)        \
+#define MR_DEFINE_TYPE_CTOR_INFO_BODY_FLAG(m, n, a, cr, u, c, f, fns)   \
     {                                                                   \
         a,                                                              \
-        MR_RTTI_VERSION__FLAG,                                          \
+        MR_RTTI_VERSION__FUNCTOR_NUMBERS,                               \
         -1,                                                             \
         MR_PASTE2(MR_TYPECTOR_REP_, cr),                                \
         MR_DEFINE_TYPE_CTOR_INFO_CODE(u),                               \
@@ -1380,18 +1388,23 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
         { 0 },                                                          \
         { 0 },                                                          \
         -1,                                                             \
-        f                                                               \
+        f,                                                              \
+        fns                                                             \
     }
 
-#define MR_DEFINE_TYPE_CTOR_INFO_FULL_FLAG(m, n, a, cr, u, c, f)        \
+#define MR_DEFINE_TYPE_CTOR_INFO_FULL_FLAG(m, n, a, cr, u, c, f, fns)   \
     MR_DEFINE_TYPE_CTOR_INFO_DECLARE_ADDRS(u, c, a)                     \
     MR_DEFINE_TYPE_CTOR_INFO_TYPE                                       \
     MR_TYPE_CTOR_INFO_NAME(m, n, a) =                                   \
-    MR_DEFINE_TYPE_CTOR_INFO_BODY_FLAG(m, n, a, cr, u, c, f)
+    MR_DEFINE_TYPE_CTOR_INFO_BODY_FLAG(m, n, a, cr, u, c, f, fns)
 
 #define MR_DEFINE_TYPE_CTOR_INFO_FLAG(m, n, a, cr, f)                   \
     MR_DEFINE_TYPE_CTOR_INFO_FULL_FLAG(m, n, a, cr,                     \
-        MR_TYPE_UNIFY_FUNC(m, n, a), MR_TYPE_COMPARE_FUNC(m, n, a), f)
+        MR_TYPE_UNIFY_FUNC(m, n, a), MR_TYPE_COMPARE_FUNC(m, n, a), f, NULL)
+
+#define MR_DEFINE_TYPE_CTOR_INFO_FLAG_FUNCTORS(m, n, a, cr, f, fns)     \
+    MR_DEFINE_TYPE_CTOR_INFO_FULL_FLAG(m, n, a, cr,                     \
+        MR_TYPE_UNIFY_FUNC(m, n, a), MR_TYPE_COMPARE_FUNC(m, n, a), f, fns)
 
 #define MR_DEFAULT_TYPE_CTOR_INFO_FLAG  0
 

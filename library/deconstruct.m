@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,6 +16,7 @@
 :- module deconstruct.
 :- interface.
 
+:- import_module construct.
 :- import_module list.
 :- import_module maybe.
 :- import_module univ.
@@ -50,6 +51,9 @@
 :- inst canonicalize_or_do_not_allow
     --->    do_not_allow
     ;       canonicalize.
+:- inst do_not_allow_or_include_details_cc
+    --->    do_not_allow
+    ;       include_details_cc.
 
     % functor, argument and deconstruct and their variants take any type
     % (including univ), and return representation information for that type.
@@ -116,6 +120,25 @@
 :- mode functor(in, in(canonicalize), out, out) is det.
 :- mode functor(in, in(include_details_cc), out, out) is cc_multi.
 :- mode functor(in, in, out, out) is cc_multi.
+
+    % functor_number(Data, FunctorNumber, Arity)
+    %
+    % Given a data item, return the number of the functor,
+    % suitable for use by construct.construct, and the arity.
+    % Fail if the item does not have a discriminated union type.
+    % Abort if the type has user-defined equality.
+    %
+:- pred functor_number(T::in, functor_number_lex::out, int::out) is semidet.
+
+    % functor_number_cc(Data, FunctorNumber, Arity)
+    %
+    % Given a data item, return the number of the functor,
+    % suitable for use by construct.construct, and the arity.
+    % Fail if the item does not have a discriminated union type.
+    % Don't abort if the type has user-defined equality.
+    %
+:- pred functor_number_cc(T::in, functor_number_lex::out,
+    int::out) is cc_nondet. 
 
     % arg(Data, NonCanon, Index, Argument)
     %
@@ -203,6 +226,22 @@
 :- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
 :- mode deconstruct(in, in, out, out, out) is cc_multi.
 
+    % deconstruct_du(Data, NonCanon, FunctorNumber, Arity, Arguments)
+    %
+    % Given a data item (Data) which has a discriminated union type, binds
+    % FunctorNumber to the number of the functor in lexicographic order,
+    % Arity to the arity of this data item, and Arguments to a list of
+    % arguments of the functor. The arguments in the list are each of type
+    % univ.
+    %
+    % Fails if Data does not have discriminated union type.
+    %
+:- pred deconstruct_du(T, noncanon_handling, functor_number_lex,
+    int, list(univ)).
+:- mode deconstruct_du(in, in(do_not_allow), out, out, out) is semidet.
+:- mode deconstruct_du(in, in(include_details_cc), out, out, out) is cc_nondet.
+:- mode deconstruct_du(in, in, out, out, out) is cc_nondet.
+
     % limited_deconstruct(Data, NonCanon, MaxArity,
     %   Functor, Arity, Arguments)
     %
@@ -229,8 +268,10 @@
 
 :- implementation.
 
+:- import_module construct.
 :- import_module int.
 :- import_module require.
+:- import_module type_desc.
 
 % For use by the Java and IL backends.
 %
@@ -251,6 +292,8 @@
 % will refer to an undefined variable.
 
 :- pragma no_inline(functor/4).
+:- pragma no_inline(functor_number/3).
+:- pragma no_inline(functor_number_cc/3).
 :- pragma no_inline(arg/4).
 :- pragma no_inline(named_arg/4).
 :- pragma no_inline(deconstruct/5).
@@ -372,13 +415,34 @@ det_named_arg(Term, NonCanon, Name, Argument) :-
 deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     (
         NonCanon = do_not_allow,
-        deconstruct_dna(Term, Functor, Arity, Arguments)
+        deconstruct_dna(Term, Functor, _, Arity, Arguments)
     ;
         NonCanon = canonicalize,
         deconstruct_can(Term, Functor, Arity, Arguments)
     ;
         NonCanon = include_details_cc,
-        deconstruct_idcc(Term, Functor, Arity, Arguments)
+        deconstruct_idcc(Term, Functor, _, Arity, Arguments)
+    ).
+
+deconstruct_du(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
+    ( _ = construct.num_functors(type_of(Term)) ->
+        (
+            NonCanon = do_not_allow,
+            deconstruct_dna(Term, _, FunctorNumber, Arity, Arguments)
+        ;
+            NonCanon = canonicalize,
+            error("deconstruct_du: canonicalize not supported")
+        ;
+            NonCanon = include_details_cc,
+            deconstruct_idcc(Term, _, FunctorNumber, Arity, Arguments)
+        ),
+        ( FunctorNumber >= 0 ->
+            true
+        ;
+            error("deconstruct_du: internal error (recompile needed?)")
+        )
+    ;
+        fail
     ).
 
 limited_deconstruct(Term, NonCanon, MaxArity, Functor, Arity, Arguments) :-
@@ -467,6 +531,53 @@ functor_can(Term::in, Functor::out, Arity::out) :-
 functor_idcc(Term::in, Functor::out, Arity::out) :-
     rtti_implementation.deconstruct(Term,
         include_details_cc, Functor, Arity, _Arguments).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    functor_number(Term::in, FunctorNumber::out, Arity::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"{
+#define TYPEINFO_ARG            TypeInfo_for_T
+#define TERM_ARG                Term
+#define FUNCTOR_NUMBER_ARG      FunctorNumber
+#undef  FUNCTOR_ARG
+#define ARITY_ARG               Arity
+#define NONCANON                MR_NONCANON_ABORT
+#include ""mercury_ml_functor_body.h""
+#undef  TYPEINFO_ARG
+#undef  TERM_ARG
+#undef  FUNCTOR_NUMBER_ARG
+#undef  ARITY_ARG
+#undef  NONCANON
+
+SUCCESS_INDICATOR = (FunctorNumber >= 0);
+}").
+
+:- pragma foreign_proc("C",
+    functor_number_cc(Term::in, FunctorNumber::out, Arity::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"{
+#define TYPEINFO_ARG            TypeInfo_for_T
+#define TERM_ARG                Term
+#define FUNCTOR_NUMBER_ARG      FunctorNumber
+#undef  FUNCTOR_ARG
+#define ARITY_ARG               Arity
+#define NONCANON                MR_NONCANON_ALLOW
+#include ""mercury_ml_functor_body.h""
+#undef  TYPEINFO_ARG
+#undef  TERM_ARG
+#undef  FUNCTOR_NUMBER_ARG
+#undef  ARITY_ARG
+#undef  NONCANON
+
+SUCCESS_INDICATOR = (FunctorNumber >= 0);
+}").
+
+functor_number(_Term::in, _FunctorNumber::out, _Arity::out) :-
+    private_builtin.sorry("deconstruct.functor_number").
+functor_number_cc(_Term::in, _FunctorNumber::out, _Arity::out) :-
+    private_builtin.sorry("deconstruct.functor_number_cc").
 
 %-----------------------------------------------------------------------------%
 
@@ -671,10 +782,11 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 
 %-----------------------------------------------------------------------------%
 
-:- pred deconstruct_dna(T::in, string::out, int::out, list(univ)::out) is det.
+:- pred deconstruct_dna(T::in, string::out,
+    int::out, int::out, list(univ)::out) is det.
 :- pred deconstruct_can(T::in, string::out, int::out, list(univ)::out) is det.
-:- pred deconstruct_idcc(T::in, string::out, int::out, list(univ)::out)
-    is cc_multi.
+:- pred deconstruct_idcc(T::in, string::out,
+    int::out, int::out, list(univ)::out) is cc_multi.
 
 :- pred limited_deconstruct_dna(T::in, int::in,
     string::out, int::out, list(univ)::out) is semidet.
@@ -684,7 +796,8 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
     string::out, int::out, list(univ)::out) is cc_multi.
 
 :- pragma foreign_proc("C",
-    deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out),
+    deconstruct_dna(Term::in, Functor::out, FunctorNumber::out,
+            Arity::out, Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
 #define EXPAND_INFO_TYPE        MR_Expand_Functor_Args_Info
@@ -692,6 +805,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #define TYPEINFO_ARG            TypeInfo_for_T
 #define TERM_ARG                Term
 #define FUNCTOR_ARG             Functor
+#define FUNCTOR_NUMBER_ARG      FunctorNumber
 #define ARITY_ARG               Arity
 #define ARGUMENTS_ARG           Arguments
 #define NONCANON                MR_NONCANON_ABORT
@@ -701,6 +815,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #undef  TYPEINFO_ARG
 #undef  TERM_ARG
 #undef  FUNCTOR_ARG
+#undef  FUNCTOR_NUMBER_ARG
 #undef  ARITY_ARG
 #undef  ARGUMENTS_ARG
 #undef  NONCANON
@@ -715,6 +830,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #define TYPEINFO_ARG            TypeInfo_for_T
 #define TERM_ARG                Term
 #define FUNCTOR_ARG             Functor
+#undef FUNCTOR_NUMBER_ARG
 #define ARITY_ARG               Arity
 #define ARGUMENTS_ARG           Arguments
 #define NONCANON                MR_NONCANON_ALLOW
@@ -730,7 +846,8 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 }").
 
 :- pragma foreign_proc("C",
-    deconstruct_idcc(Term::in, Functor::out, Arity::out, Arguments::out),
+    deconstruct_idcc(Term::in, Functor::out, FunctorNumber::out,
+        Arity::out, Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
 #define EXPAND_INFO_TYPE        MR_Expand_Functor_Args_Info
@@ -738,6 +855,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #define TYPEINFO_ARG            TypeInfo_for_T
 #define TERM_ARG                Term
 #define FUNCTOR_ARG             Functor
+#define FUNCTOR_NUMBER_ARG      FunctorNumber
 #define ARITY_ARG               Arity
 #define ARGUMENTS_ARG           Arguments
 #define NONCANON                MR_NONCANON_CC
@@ -747,6 +865,7 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 #undef  TYPEINFO_ARG
 #undef  TERM_ARG
 #undef  FUNCTOR_ARG
+#undef  FUNCTOR_NUMBER_ARG
 #undef  ARITY_ARG
 #undef  ARGUMENTS_ARG
 #undef  NONCANON
@@ -847,13 +966,17 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
     }
 }").
 
-deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out) :-
+deconstruct_dna(Term::in, Functor::out, FunctorNumber::out,
+        Arity::out, Arguments::out) :-
+    FunctorNumber = -1,
     rtti_implementation.deconstruct(Term, do_not_allow,
         Functor, Arity, Arguments).
 deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out) :-
     rtti_implementation.deconstruct(Term, canonicalize,
         Functor, Arity, Arguments).
-deconstruct_idcc(Term::in, Functor::out, Arity::out, Arguments::out) :-
+deconstruct_idcc(Term::in, Functor::out, FunctorNumber::out,
+        Arity::out, Arguments::out) :-
+    FunctorNumber = -1,
     rtti_implementation.deconstruct(Term, include_details_cc,
         Functor, Arity, Arguments).
 

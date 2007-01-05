@@ -3,7 +3,7 @@
 */
 
 /*
-** Copyright (C) 2002, 2005 The University of Melbourne.
+** Copyright (C) 2002, 2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -30,12 +30,14 @@ typedef struct {
 
 typedef struct {
     int                     arity;
+    int                     functor_number;
     MR_ConstString          functor;
     MR_Expand_Args_Fields   args;
 } MR_Expand_Functor_Args_Info;
 
 typedef struct {
     int                     arity;
+    int                     functor_number;
     MR_ConstString          functor;
     MR_Expand_Args_Fields   args;
     MR_bool                 limit_reached;
@@ -43,6 +45,7 @@ typedef struct {
 
 typedef struct {
     int                     arity;
+    int                     functor_number;
     MR_ConstString          functor_only;
 } MR_Expand_Functor_Only_Info;
 

@@ -44,5 +44,8 @@ write_it -->
 
 test_all(_T) -->
 	{ TypeInfo = type_of(poly_one([2399.3])) },
-	{ N = num_functors(TypeInfo) },
-	io__write_int(N).
+	( { N = num_functors(TypeInfo) } ->
+		io__write_int(N)
+	;
+		io__write_string("no functors")
+	).

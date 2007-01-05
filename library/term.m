@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2006 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -682,8 +682,12 @@ type_to_term(Val, Term) :- type_to_univ(Val, Univ),
 univ_to_term(Univ, Term) :-
     context_init(Context),
     Type = univ_type(Univ),
-    % NU-Prolog barfs on `num_functors(Type) < 0'
-    ( construct.num_functors(Type) = N, N < 0 ->
+    ( construct.num_functors(Type) = _ ->
+        deconstruct(univ_value(Univ), canonicalize, FunctorString,
+            _FunctorArity, FunctorArgs),
+        univ_list_to_term_list(FunctorArgs, TermArgs),
+        Term = functor(atom(FunctorString), TermArgs, Context)
+    ;
         (
             type_ctor_and_args(Type, TypeCtor, TypeArgs),
             TypeName = type_ctor_name(TypeCtor),
@@ -697,11 +701,6 @@ univ_to_term(Univ, Term) :-
                 ++ type_name(univ_type(Univ)) ++ "'",
             error(Message)
         )
-    ;
-        deconstruct(univ_value(Univ), canonicalize, FunctorString,
-            _FunctorArity, FunctorArgs),
-        univ_list_to_term_list(FunctorArgs, TermArgs),
-        Term = functor(atom(FunctorString), TermArgs, Context)
     ).
 
 :- pred univ_to_term_special_case(string::in, string::in,

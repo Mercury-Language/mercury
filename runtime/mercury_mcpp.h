@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2000-2006 The University of Melbourne.
+// Copyright (C) 2000-2007 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -127,7 +127,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP(a) MR_BOX_INT(mercury::runtime::Constants::a)
 
 // XXX This is hardcoded
-#define MR_RTTI_VERSION MR_BOX_INT(9)
+#define MR_RTTI_VERSION MR_BOX_INT(12)
 
 // XXX It is intended that we eventually define the constants in
 // private_builtin.m and mercury_mcpp.cpp in terms of these #defines

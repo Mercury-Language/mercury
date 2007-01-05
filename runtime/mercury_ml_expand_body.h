@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2001-2006 The University of Melbourne.
+** Copyright (C) 2001-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -178,12 +178,30 @@
                     name);                                              \
                 MR_save_transient_hp();                                 \
             } while (0)
+  #define handle_functor_number(num)                                    \
+            do {                                                        \
+                expand_info->functor_number = (num);                    \
+            } while (0)
+  #define handle_type_functor_number(tci, ordinal)                      \
+            do {                                                        \
+                if ((tci)->MR_type_ctor_version >=                      \
+                        MR_RTTI_VERSION__FUNCTOR_NUMBERS                \
+                        && (tci)->MR_type_ctor_functor_number_map)      \
+                {                                                       \
+                    expand_info->functor_number =                       \
+                            (tci)->MR_type_ctor_functor_number_map[ordinal]; \
+                }                                                       \
+            } while (0)
 #else   /* EXPAND_FUNCTOR_FIELD */
   #define handle_functor_name(name)                                     \
             ((void) 0)
   #define handle_noncanonical_name(tci)                                 \
             ((void) 0)
   #define handle_type_ctor_name(tci)                                    \
+            ((void) 0)
+  #define handle_functor_number(num)                                    \
+            ((void) 0)
+  #define handle_type_functor_number(tci, ordinal)                      \
             ((void) 0)
 #endif  /* EXPAND_FUNCTOR_FIELD */
 
@@ -267,6 +285,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
     expand_info->limit_reached = MR_FALSE;
 #endif  /* EXPAND_APPLY_LIMIT */
 
+    handle_functor_number(-1);
+
     if (! MR_type_ctor_has_valid_rep(type_ctor_info)) {
         MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
             ": term of unknown representation");
@@ -290,6 +310,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_ENUM:
             handle_functor_name(MR_type_ctor_layout(type_ctor_info).
                 MR_layout_enum[*data_word_ptr]->MR_enum_functor_name);
+            handle_type_functor_number(type_ctor_info,
+                MR_type_ctor_layout(type_ctor_info).
+                    MR_layout_enum[*data_word_ptr]->MR_enum_functor_ordinal);
             handle_zero_arity_args();
             return;
 
@@ -301,6 +324,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_functor_name(MR_type_ctor_layout(type_ctor_info).
                 MR_layout_enum[0]->MR_enum_functor_name);
             handle_zero_arity_args();
+            handle_functor_number(0);
             return;
 
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
@@ -335,6 +359,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 				{
 					handle_functor_name(ra_layout->MR_ra_constants[data]->
 							MR_ra_functor_name);
+                    handle_type_functor_number(type_ctor_info,
+					        ra_layout->MR_ra_constants[data]->
+						    	MR_ra_functor_ordinal);
 					handle_zero_arity_args();
 					return;
 				}
@@ -351,6 +378,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
                         handle_functor_name(ra_layout->
                             MR_ra_constants[offset]->MR_ra_functor_name);
+                        handle_type_functor_number(type_ctor_info,
+                            ra_layout->MR_ra_constants[offset]->
+                                MR_ra_functor_ordinal);
 						handle_zero_arity_args();
 						/* "break" here would just exit the "for" loop */
 						return;
@@ -435,6 +465,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 				}
 
                 handle_functor_name(functor_desc->MR_du_functor_name);
+                handle_type_functor_number(type_ctor_info,
+                    functor_desc->MR_du_functor_ordinal);
                 expand_info->arity = functor_desc->MR_du_functor_orig_arity;
 
 #if     defined(EXPAND_ARGS_FIELD) || defined(EXPAND_ONE_ARG)
@@ -537,6 +569,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_NOTAG:
             expand_info->arity = 1;
+            handle_functor_number(0);
             handle_functor_name(MR_type_ctor_layout(type_ctor_info).
                 MR_layout_notag->MR_notag_functor_name);
 
@@ -593,6 +626,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_NOTAG_GROUND:
             expand_info->arity = 1;
+            handle_functor_number(0);
             handle_functor_name(MR_type_ctor_layout(type_ctor_info).
                 MR_layout_notag->MR_notag_functor_name);
 
@@ -840,6 +874,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_TUPLE:
             expand_info->arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
+            handle_functor_number(0);
             handle_functor_name("{}");
 
 #ifdef  EXPAND_ARGS_FIELD
@@ -1327,6 +1362,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #undef  EXTRA_ARGS
 #undef  EXPAND_ONE_ARG
 #undef  handle_functor_name
+#undef  handle_functor_number
+#undef  handle_type_functor_number
 #undef  handle_noncanonical_name
 #undef  handle_type_ctor_name
 #undef  handle_zero_arity_args

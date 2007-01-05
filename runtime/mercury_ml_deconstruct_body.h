@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002, 2004 The University of Melbourne.
+** Copyright (C) 2002, 2004, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -32,6 +32,9 @@
 **
 ** FUNCTOR_ARG          Gives the name of the argument to which we assign
 **                      the function symbol of the term.
+**
+** FUNCTOR_NUMBER_ARG   (optional) Gives the name of the argument to which we
+**                      assign the function symbol number of the term.
 **
 ** ARITY_ARG            Gives the name of the argument to which the value of
 **                      the arity field should be assigned.
@@ -89,9 +92,13 @@
     max_arity_check_start
         MR_deconstruct_get_functor(expand_info, functor, conststring_functor);
         FUNCTOR_ARG = (MR_String) (MR_Integer) conststring_functor;
+
         MR_deconstruct_get_arity(expand_info, ARITY_ARG);
         MR_deconstruct_get_arg_list(expand_info, args, ARGUMENTS_ARG);
         MR_deconstruct_free_allocated_arg_type_infos(expand_info, args);
+#ifdef FUNCTOR_NUMBER_ARG
+        MR_deconstruct_get_functor_number(expand_info, FUNCTOR_NUMBER_ARG);
+#endif
     max_arity_check_end
 
 #ifdef SAVE_SUCCESS

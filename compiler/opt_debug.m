@@ -388,6 +388,7 @@ dump_rtti_name(type_ctor_maybe_res_addr_functor_desc) =
     "maybe_res_addr_functor_desc".
 dump_rtti_name(type_ctor_type_layout) = "type_layout".
 dump_rtti_name(type_ctor_type_functors) = "type_functors".
+dump_rtti_name(type_ctor_functor_number_map) = "functor_number_map".
 dump_rtti_name(type_ctor_type_ctor_info) = "type_ctor_info".
 dump_rtti_name(type_ctor_type_info(_TypeInfo)) = "type_info".
     % XXX Should give more info than this for _TypeInfo.

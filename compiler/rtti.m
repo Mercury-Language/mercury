@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,13 +178,17 @@
                 enum_functors       :: list(enum_functor),
                 enum_value_table    :: map(int, enum_functor),
                 enum_name_table     :: map(string, enum_functor),
-                enum_is_dummy       :: bool
+                enum_is_dummy       :: bool,
+                enum_functor_number_mapping
+                                    :: list(int)
             )
     ;       du(
                 du_axioms           :: equality_axioms,
                 du_functors         :: list(du_functor),
                 du_value_table      :: ptag_map,
-                du_name_table       :: map(string, map(int, du_functor))
+                du_name_table       :: map(string, map(int, du_functor)),
+                du_functor_number_mapping
+                                    :: list(int)
             )
     ;       reserved(
                 res_axioms          :: equality_axioms,
@@ -192,7 +196,9 @@
                 res_value_table_res :: list(reserved_functor),
                 res_value_table_du  :: ptag_map,
                 res_name_table      :: map(string,
-                                            map(int, maybe_reserved_functor))
+                                            map(int, maybe_reserved_functor)),
+                res_functor_number_mapping
+                                    :: list(int)
             )
     ;       notag(
                 notag_axioms        :: equality_axioms,
@@ -615,6 +621,7 @@
     ;       type_ctor_res_value_ordered_table
     ;       type_ctor_res_name_ordered_table
     ;       type_ctor_maybe_res_addr_functor_desc
+    ;       type_ctor_functor_number_map
     ;       type_ctor_type_functors
     ;       type_ctor_type_layout
     ;       type_ctor_type_ctor_info
@@ -1070,6 +1077,7 @@ ctor_rtti_name_is_exported(type_ctor_du_ptag_layout(_))           = no.
 ctor_rtti_name_is_exported(type_ctor_res_value_ordered_table)     = no.
 ctor_rtti_name_is_exported(type_ctor_res_name_ordered_table)      = no.
 ctor_rtti_name_is_exported(type_ctor_maybe_res_addr_functor_desc) = no.
+ctor_rtti_name_is_exported(type_ctor_functor_number_map)          = no.
 ctor_rtti_name_is_exported(type_ctor_type_functors)               = no.
 ctor_rtti_name_is_exported(type_ctor_type_layout)                 = no.
 ctor_rtti_name_is_exported(type_ctor_type_ctor_info)              = yes.
@@ -1256,6 +1264,10 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
     ;
         RttiName = type_ctor_maybe_res_addr_functor_desc,
         string.append_list([ModuleName, "__maybe_res_addr_functor_desc_",
+            TypeName, "_", A_str], Str)
+    ;
+        RttiName = type_ctor_functor_number_map,
+        string.append_list([ModuleName, "__functor_number_map_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_ctor_type_functors,
@@ -1522,7 +1534,7 @@ sectag_and_locn_to_locn_string(sectag_locn_remote(_), "MR_SECTAG_REMOTE").
 type_ctor_rep_to_string(TypeCtorData, RepStr) :-
     TypeCtorDetails = TypeCtorData ^ tcr_rep_details,
     (
-        TypeCtorDetails = enum(TypeCtorUserEq, _, _, _, IsDummy),
+        TypeCtorDetails = enum(TypeCtorUserEq, _, _, _, IsDummy, _),
         (
             IsDummy = yes,
             expect(unify(TypeCtorUserEq, standard), this_file,
@@ -1539,7 +1551,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             )
         )
     ;
-        TypeCtorDetails = du(TypeCtorUserEq, _, _, _),
+        TypeCtorDetails = du(TypeCtorUserEq, _, _, _, _),
         (
             TypeCtorUserEq = standard,
             RepStr = "MR_TYPECTOR_REP_DU"
@@ -1548,7 +1560,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             RepStr = "MR_TYPECTOR_REP_DU_USEREQ"
         )
     ;
-        TypeCtorDetails = reserved(TypeCtorUserEq, _, _, _, _),
+        TypeCtorDetails = reserved(TypeCtorUserEq, _, _, _, _, _),
         (
             TypeCtorUserEq = standard,
             RepStr = "MR_TYPECTOR_REP_RESERVED_ADDR"
@@ -1669,11 +1681,11 @@ maybe_pseudo_type_info_or_self_to_rtti_data(plain(TypeInfo)) =
 maybe_pseudo_type_info_or_self_to_rtti_data(self) =
     rtti_data_pseudo_type_info(type_var(0)).
 
-type_ctor_details_num_ptags(enum(_, _, _, _, _)) = -1.
-type_ctor_details_num_ptags(du(_, _, PtagMap, _)) = LastPtag + 1 :-
+type_ctor_details_num_ptags(enum(_, _, _, _, _, _)) = -1.
+type_ctor_details_num_ptags(du(_, _, PtagMap, _, _)) = LastPtag + 1 :-
     map.keys(PtagMap, Ptags),
     list.last_det(Ptags, LastPtag).
-type_ctor_details_num_ptags(reserved(_, _, _, PtagMap, _)) = NumPtags :-
+type_ctor_details_num_ptags(reserved(_, _, _, PtagMap, _, _)) = NumPtags :-
     map.keys(PtagMap, Ptags),
     (
         Ptags = [],
@@ -1689,11 +1701,11 @@ type_ctor_details_num_ptags(builtin(_)) = -1.
 type_ctor_details_num_ptags(impl_artifact(_)) = -1.
 type_ctor_details_num_ptags(foreign(_)) = -1.
 
-type_ctor_details_num_functors(enum(_, Functors, _, _, _)) =
+type_ctor_details_num_functors(enum(_, Functors, _, _, _, _)) =
     list.length(Functors).
-type_ctor_details_num_functors(du(_, Functors, _, _)) =
+type_ctor_details_num_functors(du(_, Functors, _, _, _)) =
     list.length(Functors).
-type_ctor_details_num_functors(reserved(_, Functors, _, _, _)) =
+type_ctor_details_num_functors(reserved(_, Functors, _, _, _, _)) =
     list.length(Functors).
 type_ctor_details_num_functors(notag(_, _)) = 1.
 type_ctor_details_num_functors(eqv(_)) = -1.
@@ -1763,6 +1775,7 @@ ctor_rtti_name_code_addr(type_ctor_du_ptag_layout(_)) =             no.
 ctor_rtti_name_code_addr(type_ctor_res_value_ordered_table) =       no.
 ctor_rtti_name_code_addr(type_ctor_res_name_ordered_table) =        no.
 ctor_rtti_name_code_addr(type_ctor_maybe_res_addr_functor_desc) =   no.
+ctor_rtti_name_code_addr(type_ctor_functor_number_map) =            no.
 ctor_rtti_name_code_addr(type_ctor_type_hashcons_pointer) =         no.
 ctor_rtti_name_code_addr(type_ctor_type_functors) =                 no.
 ctor_rtti_name_code_addr(type_ctor_type_layout) =                   no.
@@ -1958,6 +1971,8 @@ ctor_rtti_name_type(type_ctor_res_name_ordered_table,
         "MaybeResAddrFunctorDesc", yes).
 ctor_rtti_name_type(type_ctor_maybe_res_addr_functor_desc,
         "MaybeResAddrFunctorDesc", no).
+ctor_rtti_name_type(type_ctor_functor_number_map,
+        "Integer", yes).
 ctor_rtti_name_type(type_ctor_type_functors,
         "TypeFunctors", no).
 ctor_rtti_name_type(type_ctor_type_layout,

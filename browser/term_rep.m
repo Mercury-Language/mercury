@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -139,8 +139,12 @@ field_pos(FieldName, Term, Pos) :-
         Value = univ_value(Univ),
         deconstruct(Value, include_details_cc, Functor, Arity, _Args),
         Type = type_of(Value),
-        find_functor(1, num_functors(Type), Type, Functor, Arity,
-            MaybeFunctorNum),
+        ( NumFunctors = num_functors(Type) ->
+            find_functor(1, NumFunctors, Type, Functor, Arity,
+                MaybeFunctorNum)
+        ;
+            MaybeFunctorNum = no
+        ),
         (
             MaybeFunctorNum = yes(FunctorNum),
             (

@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002, 2004 The University of Melbourne.
+** Copyright (C) 2002, 2004, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,6 +24,9 @@
 ** FUNCTOR_ARG          Gives the name of the argument to which we assign
 **                      the function symbol of the term.
 **
+** FUNCTOR_NUMBER_ARG   Gives the name of the argument to which we assign
+**                      the function symbol number of the term.
+**
 ** ARITY_ARG            Gives the name of the argument to which we assign
 **                      the arity of the term.
 **
@@ -42,6 +45,13 @@
     MR_expand_functor_only(type_info, &TERM_ARG, NONCANON, &expand_info);
     MR_restore_transient_registers();
 
+#ifdef FUNCTOR_ARG
     MR_deconstruct_get_functor(expand_info, functor_only, conststring_functor);
     FUNCTOR_ARG = (MR_String) (MR_Integer) conststring_functor;
+#endif
     MR_deconstruct_get_arity(expand_info, ARITY_ARG);
+
+#ifdef FUNCTOR_NUMBER_ARG
+    MR_deconstruct_get_functor_number(expand_info, FUNCTOR_NUMBER_ARG);
+#endif
+

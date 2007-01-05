@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2157,6 +2157,8 @@ build_rtti_type_name(type_ctor_type_layout, GCC_Type, !IO) :-
 	build_struct_type("MR_TypeLayout",
 		[gcc__ptr_type_node	- "MR_layout_init"],
 		GCC_Type, !IO).
+build_rtti_type_name(type_ctor_functor_number_map, gcc__ptr_type_node,
+		!IO).
 build_rtti_type_name(type_ctor_type_ctor_info, GCC_Type, !IO) :-
 	% MR_Integer          MR_type_ctor_arity;
 	% MR_int_least8_t     MR_type_ctor_version;
@@ -2170,6 +2172,7 @@ build_rtti_type_name(type_ctor_type_ctor_info, GCC_Type, !IO) :-
 	% MR_TypeLayout       MR_type_ctor_layout;
 	% MR_int_least32_t    MR_type_ctor_num_functors;
 	% MR_int_least16_t    MR_type_ctor_flags;
+	% MR_Integer *        MR_type_ctor_functor_number_map;
 	build_rtti_type_name(type_ctor_type_functors, MR_TypeFunctors, !IO),
 	build_rtti_type_name(type_ctor_type_layout, MR_TypeLayout, !IO),
 	build_struct_type("MR_TypeCtorInfo_Struct",
@@ -2185,7 +2188,8 @@ build_rtti_type_name(type_ctor_type_ctor_info, GCC_Type, !IO) :-
 		 MR_TypeFunctors	- "MR_type_ctor_functors",
 		 MR_TypeLayout		- "MR_type_ctor_layout",
 		 'MR_int_least32_t'	- "MR_type_ctor_num_functors",
-		 'MR_int_least16_t'	- "MR_type_ctor_flags"],
+		 'MR_int_least16_t'	- "MR_type_ctor_flags",
+		 gcc__ptr_type_node	- "MR_type_ctor_functor_number_map"],
 		GCC_Type, !IO).
 build_rtti_type_name(type_ctor_type_info(TypeInfo), GCC_Type, !IO) :-
 	build_type_info_type(TypeInfo, GCC_Type, !IO).

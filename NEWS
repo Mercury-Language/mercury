@@ -46,6 +46,17 @@ Changes to the Mercury standard library:
 * The type software_error/0 has been moved from the require module into
   the exception module.
 
+* construct.num_functors/1 now fails rather than returning -1 for types
+  with no functors.  There is a new function construct.det_num_functors/1
+  which aborts for types which do not have functors.
+
+* We have added predicates deconstruct.functor_number/3 and
+  deconstruct.deconstruct_du/4 which return functor numbers suitable
+  for use by construct.construct, rather than functor strings.
+
+* We have added a function construct.get_functor_lex/2 which converts
+  an ordinal functor number into a lexicographic functor number.
+
 Changes to the Mercury compiler:
 
 * The compiler now issues a warning when an inst declaration is not

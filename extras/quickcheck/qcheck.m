@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -176,9 +176,9 @@
 	% If all tests pass, quickcheck will print a summary of the
 	% tests executed.
 	%
-	% Quickcheck makes the assumption that the distincation between
+	% Quickcheck makes the assumption that the distinction between
 	% a function and a discriminated union is that num_functors(FuncType) 
-	% is -1, while num_functors(UnionType) is not -1.
+	% fails for a function.
 	% As a result of this assumption, the function should not be called
 	% where qcheck needs to generate a type that is not supported by the
 	% default/custom generators.
@@ -796,7 +796,7 @@ gen_arg(Datatype, Frequencys, GF, UserGenerators, Univ, RS0, RS) :-
 		   ;	Datatype = type_of("String") ->
 				Temp = rand_string(RS0, RS),
 				Univ = univ(Temp)
-		   ;	num_functors(Datatype) = -1 ->
+		   ;	\+ num_functors(Datatype) = _ ->
                                 Univ = rand_function(Datatype, RS0, RS)
 		   ; 
 		    		Univ = rand_union(Datatype, Frequencys, 
@@ -888,9 +888,9 @@ rand_string(RS0, RS) = X :-
 		    [], RS0, RS),
 		string__from_char_list(Charlist,X).
 
-	% generate disciminated union
+	% generate discriminated union
 rand_union(Datatype, Frequencys, GF, UserGenerators, RS0, RS) = Univ :-
-		NumFunctors = num_functors(Datatype),
+		NumFunctors = det_num_functors(Datatype),
 		TempFreq = get_freq(Datatype, NumFunctors, 0, Frequencys, GF),
         	rnd__irange(0, freq_base(TempFreq) - 1, Selector, RS0, RS1),
 		{ Branch, SubBranch } = select_branch(Selector, 0, 0, TempFreq),  

@@ -32,7 +32,11 @@ foo(X) :-
 	TypeInfo = type_of([]), 
 	map__init(Map),
 	TypeInfo2 = type_of(Map), 
-	N = num_functors(TypeInfo),
-	M = num_functors(TypeInfo2),
-	X = N + M.
-
+	(
+		N = num_functors(TypeInfo),
+		M = num_functors(TypeInfo2)
+	->
+		X = N + M
+	;
+		X = -1
+	).

@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -19,15 +19,17 @@
 :- import_module term.
 :- import_module univ.
 
-:- pred test_builtins(io::di, io::uo) is det.
-:- pred test_discriminated(io::di, io::uo) is det.
-:- pred test_polymorphism(io::di, io::uo) is det.
-:- pred test_other(io::di, io::uo) is det.
+:- pred test_builtins(io::di, io::uo) is cc_multi.
+:- pred test_discriminated(io::di, io::uo) is cc_multi.
+:- pred test_polymorphism(io::di, io::uo) is cc_multi.
+:- pred test_other(io::di, io::uo) is cc_multi.
 :- pred newline(io::di, io::uo) is det.
 :- pred test_functor(T::in, io::di, io::uo) is det.
+:- pred test_functor_number(T::in, io::di, io::uo) is cc_multi.
 :- pred test_arg(T::in, io::di, io::uo) is det.
 :- pred test_expand(T::in, io::di, io::uo) is det.
-:- pred test_all(T::in, io::di, io::uo) is det.
+:- pred test_expand_du(T::in, io::di, io::uo) is cc_multi.
+:- pred test_all(T::in, io::di, io::uo) is cc_multi.
 
 :- type enum
 	--->	one
@@ -91,14 +93,25 @@ test_discriminated -->
 
 test_all(T) -->
 	test_functor(T), newline,
+	test_functor_number(T), newline,
 	test_arg(T), newline,
-	test_expand(T), newline.
+	test_expand(T), newline,
+	test_expand_du(T), newline.
 
 test_functor(T) -->
 	{ functor(T, canonicalize, Functor, Arity) },
 	io.write_string(Functor),
 	io.write_string("/"),
 	io.write_int(Arity).
+
+test_functor_number(T) -->
+	( { functor_number_cc(T, FunctorNumber, Arity) } ->
+		io.write_int(FunctorNumber),
+		io.write_string("/"),
+		io.write_int(Arity)
+	;
+		io.write_string("functor_number_cc failed")
+	).
 
 test_arg(T) -->
 	{ functor(T, canonicalize, Functor, Arity) },
@@ -121,6 +134,21 @@ test_expand(T) -->
 	io.write_string("["),
 	io.write_list(Arguments, ", ", io.print),
 	io.write_string("]").
+
+test_expand_du(T) -->
+	(
+		{ deconstruct_du(T, include_details_cc, FunctorNumber,
+			Arity, Arguments) }
+	->
+		{ string.format("expand: functor %d arity %d arguments ",
+			[i(FunctorNumber), i(Arity)], Str) },
+		io.write_string(Str),
+		io.write_string("["),
+		io.write_list(Arguments, ", ", io.print),
+		io.write_string("]")
+	;
+		io.write_string("deconstruct_du failed")
+	).	
 
 test_polymorphism -->
 	io.write_string("TESTING POLYMORPHISM\n"),

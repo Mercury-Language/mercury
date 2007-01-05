@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -474,7 +474,7 @@ make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
     %
 :- func type_ctor_info_rtti_version = int.
 
-type_ctor_info_rtti_version = 9.
+type_ctor_info_rtti_version = 12.
 
     % Construct an rtti_data for a pseudo_type_info, and also construct
     % rtti_data definitions for all of the pseudo_type_infos that it references
@@ -585,7 +585,9 @@ make_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms, Details) :-
     ;
         IsDummy = no
     ),
-    Details = enum(EqualityAxioms, EnumFunctors, ValueMap, NameMap, IsDummy).
+    FunctorNumberMap = make_functor_number_map(Ctors),
+    Details = enum(EqualityAxioms, EnumFunctors, ValueMap, NameMap, IsDummy,
+                    FunctorNumberMap).
 
     % Create an enum_functor structure for each functor in an enum type.
     % The functors are given to us in ordinal order (since that's how the HLDS
@@ -659,17 +661,19 @@ make_du_details(Ctors, ConsTagMap, TypeArity, EqualityAxioms, ModuleInfo,
     ResFunctors = list.filter_map(is_reserved_functor, MaybeResFunctors),
     list.foldl(make_du_ptag_ordered_table, DuFunctors,
         map.init, DuPtagTable),
+    FunctorNumberMap = make_functor_number_map(Ctors),
     (
         ResFunctors = [],
         list.foldl(make_du_name_ordered_table, DuFunctors,
             map.init, DuNameOrderedMap),
-        Details = du(EqualityAxioms, DuFunctors, DuPtagTable, DuNameOrderedMap)
+        Details = du(EqualityAxioms, DuFunctors, DuPtagTable, DuNameOrderedMap,
+                        FunctorNumberMap)
     ;
         ResFunctors = [_ | _],
         list.foldl(make_res_name_ordered_table, MaybeResFunctors,
             map.init, ResNameOrderedMap),
         Details = reserved(EqualityAxioms, MaybeResFunctors,
-            ResFunctors, DuPtagTable, ResNameOrderedMap)
+            ResFunctors, DuPtagTable, ResNameOrderedMap, FunctorNumberMap)
     ).
 
 :- type maybe_reserved_rep
@@ -942,6 +946,22 @@ make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
         NameMap = map.det_insert(map.init, Arity, MaybeResFunctor),
         svmap.det_insert(Name, NameMap, !NameTable)
     ).
+
+%---------------------------------------------------------------------------%
+
+    % Construct the array mapping ordinal constructor numbers
+    % to lexicographic constructor numbers.
+:- func make_functor_number_map(list(constructor)) = list(int).
+
+make_functor_number_map(Ctors) = Map :-
+    CtorNames : assoc_list(sym_name, int) =
+            list.map(
+                (func(Ctor) = Ctor ^ cons_name - length(Ctor ^ cons_args)),
+                Ctors),
+    SortedNameArityMap =
+            map.from_corresponding_lists(list.sort(CtorNames),
+                0 `..` (length(Ctors) - 1)),
+    Map = map.apply_to_list(CtorNames, SortedNameArityMap).
 
 %---------------------------------------------------------------------------%
 

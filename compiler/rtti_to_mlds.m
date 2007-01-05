@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -228,7 +228,7 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 
     some [!Defns] (
         gen_functors_layout_info(ModuleInfo, RttiTypeCtor,
-            TypeCtorDetails, FunctorsInfo, LayoutInfo, !:Defns),
+            TypeCtorDetails, FunctorsInfo, LayoutInfo, NumberMapInfo, !:Defns),
 
         % Note that gen_init_special_pred will by necessity add an extra level
         % of indirection to calling the special preds. However the backend
@@ -259,7 +259,9 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
             LayoutInfo
         ]),
         gen_init_int(NumFunctors),
-        gen_init_int(encode_type_ctor_flags(Flags))
+        gen_init_int(encode_type_ctor_flags(Flags)),
+        NumberMapInfo
+
         % These two are commented out while the corresponding fields of the
         % MR_TypeCtorInfo_Struct type are commented out.
         % gen_init_maybe(gen_init_rtti_name(RttiTypeCtor), MaybeHashCons),
@@ -500,27 +502,31 @@ gen_pseudo_type_info_defn(_, type_var(_), _, _, _) :-
 
 :- pred gen_functors_layout_info(module_info::in, rtti_type_ctor::in,
     type_ctor_details::in, mlds_initializer::out, mlds_initializer::out,
-    list(mlds_defn)::out) is det.
+    mlds_initializer::out, list(mlds_defn)::out) is det.
 
 gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
-        FunctorInit, LayoutInit, Defns) :-
+        FunctorInit, LayoutInit, NumberMapInit, Defns) :-
     module_info_get_name(ModuleInfo, ModuleName),
     (
         TypeCtorDetails = enum(_, EnumFunctors, EnumByValue, EnumByName,
-            _IsDummy),
+            _IsDummy, FunctorNumberMap),
         EnumFunctorDescs = list.map(
             gen_enum_functor_desc(ModuleInfo, RttiTypeCtor), EnumFunctors),
         ByValueDefn = gen_enum_value_ordered_table(ModuleInfo,
             RttiTypeCtor, EnumByValue),
         ByNameDefn = gen_enum_name_ordered_table(ModuleInfo,
             RttiTypeCtor, EnumByName),
+        NumberMapDefn = gen_functor_number_map(RttiTypeCtor, FunctorNumberMap),
         LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_enum_value_ordered_table),
         FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_enum_name_ordered_table),
-        Defns = EnumFunctorDescs ++ [ByValueDefn, ByNameDefn]
+        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_functor_number_map),
+        Defns = EnumFunctorDescs ++ [ByValueDefn, ByNameDefn, NumberMapDefn]
     ;
-        TypeCtorDetails = du(_, DuFunctors, DuByPtag, DuByName),
+        TypeCtorDetails = du(_, DuFunctors, DuByPtag,
+            DuByName, FunctorNumberMap),
         DuFunctorDefnLists = list.map(
             gen_du_functor_desc(ModuleInfo, RttiTypeCtor), DuFunctors),
         DuFunctorDefns = list.condense(DuFunctorDefnLists),
@@ -528,14 +534,17 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
             RttiTypeCtor, DuByPtag),
         ByNameDefn = gen_du_name_ordered_table(ModuleInfo,
             RttiTypeCtor, DuByName),
+        NumberMapDefn = gen_functor_number_map(RttiTypeCtor, FunctorNumberMap),
         LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_ptag_ordered_table),
         FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_name_ordered_table),
-        Defns = DuFunctorDefns ++ [ByNameDefn | ByPtagDefns]
+        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_functor_number_map),
+        Defns = DuFunctorDefns ++ [ByNameDefn, NumberMapDefn | ByPtagDefns]
     ;
         TypeCtorDetails = reserved(_, MaybeResFunctors, ResFunctors,
-            DuByPtag, MaybeResByName),
+            DuByPtag, MaybeResByName, FunctorNumberMap),
         MaybeResFunctorDefnLists = list.map(
             gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor),
             MaybeResFunctors),
@@ -544,39 +553,52 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
             RttiTypeCtor, ResFunctors, DuByPtag),
         ByNameDefn = gen_maybe_res_name_ordered_table(ModuleInfo,
             RttiTypeCtor, MaybeResByName),
+        NumberMapDefn = gen_functor_number_map(RttiTypeCtor, FunctorNumberMap),
         LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_res_value_ordered_table),
         FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_res_name_ordered_table),
-        Defns = [ByNameDefn | ByValueDefns ++ MaybeResFunctorDefns]
+        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_functor_number_map),
+        Defns = [ByNameDefn, NumberMapDefn
+                    | ByValueDefns ++ MaybeResFunctorDefns]
     ;
         TypeCtorDetails = notag(_, NotagFunctor),
-        Defns = gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctor),
+        NumberMapDefn = gen_functor_number_map(RttiTypeCtor, [0]),
         LayoutInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_notag_functor_desc),
         FunctorInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_notag_functor_desc)
+            type_ctor_notag_functor_desc),
+        NumberMapInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_functor_number_map),
+        Defns = [NumberMapDefn | gen_notag_functor_desc(ModuleInfo,
+                                    RttiTypeCtor, NotagFunctor)]
     ;
         TypeCtorDetails = eqv(EqvType),
         TypeRttiData = maybe_pseudo_type_info_to_rtti_data(EqvType),
         gen_pseudo_type_info(ModuleInfo, TypeRttiData, LayoutInit, Defns),
         % The type is a lie, but a safe one.
-        FunctorInit = gen_init_null_pointer(mlds_generic_type)
+        FunctorInit = gen_init_null_pointer(mlds_generic_type),
+        NumberMapInit = gen_init_null_pointer(mlds_generic_type)
+
     ;
         TypeCtorDetails = builtin(_),
         Defns = [],
         LayoutInit = gen_init_null_pointer(mlds_generic_type),
-        FunctorInit = gen_init_null_pointer(mlds_generic_type)
+        FunctorInit = gen_init_null_pointer(mlds_generic_type),
+        NumberMapInit = gen_init_null_pointer(mlds_generic_type)
     ;
         TypeCtorDetails = impl_artifact(_),
         Defns = [],
         LayoutInit = gen_init_null_pointer(mlds_generic_type),
-        FunctorInit = gen_init_null_pointer(mlds_generic_type)
+        FunctorInit = gen_init_null_pointer(mlds_generic_type),
+        NumberMapInit = gen_init_null_pointer(mlds_generic_type)
     ;
         TypeCtorDetails = foreign(_),
         Defns = [],
         LayoutInit = gen_init_null_pointer(mlds_generic_type),
-        FunctorInit = gen_init_null_pointer(mlds_generic_type)
+        FunctorInit = gen_init_null_pointer(mlds_generic_type),
+        NumberMapInit = gen_init_null_pointer(mlds_generic_type)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1069,6 +1091,14 @@ gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
                 maybe_res_functor_rtti_name(MaybeResFunctor))
         ])
     ).
+
+:- func gen_functor_number_map(rtti_type_ctor, list(int)) = mlds_defn.
+
+gen_functor_number_map(RttiTypeCtor, FunctorNumberMap) =
+        MLDS_Defn :-
+    Init = gen_init_array(gen_init_int, FunctorNumberMap),
+    RttiName = type_ctor_functor_number_map,
+    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
 
 %-----------------------------------------------------------------------------%
 

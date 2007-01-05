@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2004 The University of Melbourne.
+** Copyright (C) 2002-2004, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,6 +37,11 @@
 #define MR_deconstruct_get_functor(ei, functor_field, var)          \
     do {                                                            \
         MR_make_aligned_string(var, (ei).functor_field);            \
+    } while (0)
+
+#define MR_deconstruct_get_functor_number(ei, var)                  \
+    do {                                                            \
+        var = (ei).functor_number;                                  \
     } while (0)
 
 #define MR_deconstruct_get_arity(ei, var)                           \

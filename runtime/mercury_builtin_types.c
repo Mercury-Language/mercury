@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2006 The University of Melbourne.
+** Copyright (C) 2002-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -58,8 +58,10 @@ MR_DEFINE_TYPE_CTOR_INFO_FLAG(builtin, pred, 0, PRED,
     MR_TYPE_CTOR_FLAG_VARIABLE_ARITY);
 MR_DEFINE_TYPE_CTOR_INFO_FLAG(builtin, func, 0, FUNC,
     MR_TYPE_CTOR_FLAG_VARIABLE_ARITY);
-MR_DEFINE_TYPE_CTOR_INFO_FLAG(builtin, tuple, 0, TUPLE,
-    MR_TYPE_CTOR_FLAG_VARIABLE_ARITY);
+
+static MR_Integer MR_tuple_functor_number_map[] = {0};
+MR_DEFINE_TYPE_CTOR_INFO_FLAG_FUNCTORS(builtin, tuple, 0, TUPLE,
+    MR_TYPE_CTOR_FLAG_VARIABLE_ARITY, MR_tuple_functor_number_map);
 
 #ifndef MR_HIGHLEVEL_CODE
 MR_DEFINE_TYPE_CTOR_INFO(builtin, succip, 0, SUCCIP);

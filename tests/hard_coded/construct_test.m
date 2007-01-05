@@ -125,8 +125,11 @@ test_construct_2(TypeInfo, FunctorName, Arity, Args) -->
 	is det.
 
 find_functor(TypeInfo, Functor, Arity, FunctorNumber) :-
-	N = construct__num_functors(TypeInfo),
-	find_functor2(TypeInfo, Functor, Arity, N, FunctorNumber).
+	( N = construct__num_functors(TypeInfo) ->
+		find_functor2(TypeInfo, Functor, Arity, N, FunctorNumber)
+	;
+		error("unable to find functor")
+	).
 	
 :- pred find_functor2(type_desc__type_desc::in, string::in, int::in, int::in, 
 	int::out) is det.
@@ -149,12 +152,15 @@ find_functor2(TypeInfo, Functor, Arity, Num, FunctorNumber) :-
 
 test_all(T, !IO) :-
 	TypeInfo = type_desc__type_of(T),
-	N = construct__num_functors(TypeInfo),
-	io__write_int(N, !IO),
-	io__write_string(" functors in this type", !IO),
-	io__nl(!IO),
-	test_all_functors(TypeInfo, N, !IO),
-	io__nl(!IO).
+	( N = construct__num_functors(TypeInfo) ->
+		io__write_int(N, !IO),
+		io__write_string(" functors in this type", !IO),
+		io__nl(!IO),
+		test_all_functors(TypeInfo, N, !IO),
+		io__nl(!IO)
+	;
+		io__write_string("no functors in this type\n", !IO)
+	).
 
 :- pred test_all_functors(type_desc__type_desc::in, int::in, io::di, io::uo)
 	is det.
@@ -173,6 +179,8 @@ test_all_functors(TypeInfo, N, !IO) :-
 test_nth_functor(TypeInfo, N, !IO) :-
 	io__write_int(N, !IO),
 	(
+		Ordinal = construct__get_functor_ordinal(TypeInfo, N),
+		Lex = construct__get_functor_lex(TypeInfo, Ordinal),
 		construct__get_functor_with_names(TypeInfo, N, Name, Arity,
 			_List, Names)
 	->
@@ -182,7 +190,12 @@ test_nth_functor(TypeInfo, N, !IO) :-
 		io__write_int(Arity, !IO),
 		io__write_string(" [", !IO),
 		io__write_list(Names, ", ", print_maybe_name, !IO),
-		io__write_string("]\n", !IO)
+		io__write_string("] ", !IO),
+		io__write_string("ordinal: ", !IO),
+		io__write_int(Ordinal, !IO),
+		io__write_string(" lex: ", !IO),
+		io__write_int(Lex, !IO),
+		io__nl(!IO)
 	;
 		io__write_string(" failed ", !IO),
 		io__nl(!IO)

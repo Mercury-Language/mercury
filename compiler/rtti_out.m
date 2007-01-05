@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -565,7 +565,8 @@ output_type_ctor_data_defn(TypeCtorData, !DeclSet, !IO) :-
     TypeCtorData = type_ctor_data(Version, Module, TypeName, TypeArity,
         UnifyUniv, CompareUniv, Flags, TypeCtorDetails),
     output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
-        MaybeFunctorsName, MaybeLayoutName, !DeclSet, !IO),
+        MaybeFunctorsName, MaybeLayoutName, HaveFunctorNumberMap,
+        !DeclSet, !IO),
     det_univ_to_type(UnifyUniv, UnifyProcLabel),
     UnifyCodeAddr   = make_code_addr(UnifyProcLabel),
     det_univ_to_type(CompareUniv, CompareProcLabel),
@@ -617,6 +618,16 @@ output_type_ctor_data_defn(TypeCtorData, !DeclSet, !IO) :-
     io.write_int(type_ctor_details_num_functors(TypeCtorDetails), !IO),
     io.write_string(",\n\t", !IO),
     io.write_int(encode_type_ctor_flags(Flags), !IO),
+    io.write_string(",\n\t", !IO),
+    (
+        HaveFunctorNumberMap = yes,
+        FunctorNumberMapRttiId =
+            ctor_rtti_id(RttiTypeCtor, type_ctor_functor_number_map),
+        output_rtti_id(FunctorNumberMapRttiId, !IO)
+    ;
+        HaveFunctorNumberMap = no,
+        io.write_string("NULL", !IO)
+    ),
 % This code is commented out while the corresponding fields of the
 % MR_TypeCtorInfo_Struct type are commented out.
 %
@@ -635,47 +646,60 @@ output_type_ctor_data_defn(TypeCtorData, !DeclSet, !IO) :-
 
 :- pred output_type_ctor_details_defn(rtti_type_ctor::in,
     type_ctor_details::in,
-    maybe(ctor_rtti_name)::out, maybe(ctor_rtti_name)::out,
+    maybe(ctor_rtti_name)::out, maybe(ctor_rtti_name)::out, bool::out,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
-        MaybeFunctorsName, MaybeLayoutName, !DeclSet, !IO) :-
+        MaybeFunctorsName, MaybeLayoutName, HaveFunctorNumberMap,
+        !DeclSet, !IO) :-
     (
         TypeCtorDetails = enum(_, EnumFunctors, EnumByRep, EnumByName,
-            _IsDummy),
+            _IsDummy, FunctorNumberMap),
         list.foldl2(output_enum_functor_defn(RttiTypeCtor), EnumFunctors,
             !DeclSet, !IO),
         output_enum_value_ordered_table(RttiTypeCtor, EnumByRep,
             !DeclSet, !IO),
         output_enum_name_ordered_table(RttiTypeCtor, EnumByName,
             !DeclSet, !IO),
+        output_functor_number_map(RttiTypeCtor, FunctorNumberMap,
+            !DeclSet, !IO),
         MaybeLayoutName = yes(type_ctor_enum_value_ordered_table),
-        MaybeFunctorsName = yes(type_ctor_enum_name_ordered_table)
+        MaybeFunctorsName = yes(type_ctor_enum_name_ordered_table),
+        HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = du(_, DuFunctors, DuByRep, DuByName),
+        TypeCtorDetails = du(_, DuFunctors, DuByRep,
+            DuByName, FunctorNumberMap),
         list.foldl2(output_du_functor_defn(RttiTypeCtor), DuFunctors,
             !DeclSet, !IO),
         output_du_ptag_ordered_table(RttiTypeCtor, DuByRep, !DeclSet, !IO),
         output_du_name_ordered_table(RttiTypeCtor, DuByName, !DeclSet, !IO),
+        output_functor_number_map(RttiTypeCtor, FunctorNumberMap,
+            !DeclSet, !IO),
         MaybeLayoutName = yes(type_ctor_du_ptag_ordered_table),
-        MaybeFunctorsName = yes(type_ctor_du_name_ordered_table)
+        MaybeFunctorsName = yes(type_ctor_du_name_ordered_table),
+        HaveFunctorNumberMap = yes
     ;
         TypeCtorDetails = reserved(_, MaybeResFunctors, ResFunctors,
-            DuByRep, MaybeResByName),
+            DuByRep, MaybeResByName, FunctorNumberMap),
         list.foldl2(output_maybe_res_functor_defn(RttiTypeCtor),
             MaybeResFunctors, !DeclSet, !IO),
         output_res_value_ordered_table(RttiTypeCtor, ResFunctors, DuByRep,
             !DeclSet, !IO),
         output_res_name_ordered_table(RttiTypeCtor, MaybeResByName,
             !DeclSet, !IO),
+        output_functor_number_map(RttiTypeCtor, FunctorNumberMap,
+            !DeclSet, !IO),
         MaybeLayoutName = yes(type_ctor_res_value_ordered_table),
-        MaybeFunctorsName = yes(type_ctor_res_name_ordered_table)
+        MaybeFunctorsName = yes(type_ctor_res_name_ordered_table),
+        HaveFunctorNumberMap = yes
     ;
         TypeCtorDetails = notag(_, NotagFunctor),
         output_notag_functor_defn(RttiTypeCtor, NotagFunctor,
             !DeclSet, !IO),
+        output_functor_number_map(RttiTypeCtor, [0], !DeclSet, !IO),
         MaybeLayoutName = yes(type_ctor_notag_functor_desc),
-        MaybeFunctorsName = yes(type_ctor_notag_functor_desc)
+        MaybeFunctorsName = yes(type_ctor_notag_functor_desc),
+        HaveFunctorNumberMap = yes
     ;
         TypeCtorDetails = eqv(EqvType),
         output_maybe_pseudo_type_info_defn(EqvType, !DeclSet, !IO),
@@ -689,19 +713,23 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
             LayoutName = type_ctor_pseudo_type_info(PseudoTypeInfo)
         ),
         MaybeLayoutName = yes(LayoutName),
-        MaybeFunctorsName = no
+        MaybeFunctorsName = no,
+        HaveFunctorNumberMap = no
     ;
         TypeCtorDetails = builtin(_),
         MaybeLayoutName = no,
-        MaybeFunctorsName = no
+        MaybeFunctorsName = no,
+        HaveFunctorNumberMap = no
     ;
         TypeCtorDetails = impl_artifact(_),
         MaybeLayoutName = no,
-        MaybeFunctorsName = no
+        MaybeFunctorsName = no,
+        HaveFunctorNumberMap = no
     ;
         TypeCtorDetails = foreign(_),
         MaybeLayoutName = no,
-        MaybeFunctorsName = no
+        MaybeFunctorsName = no,
+        HaveFunctorNumberMap = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1232,6 +1260,19 @@ output_reserved_address(small_pointer(Val), !IO) :-
 output_reserved_address(reserved_object(_, _, _), !IO) :-
     % These should only be used for the MLDS back-end.
     unexpected(this_file, "reserved_object").
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_functor_number_map(rtti_type_ctor::in, list(int)::in,
+            decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_functor_number_map(RttiTypeCtor, FunctorNumberMap, !DeclSet, !IO) :-
+   output_generic_rtti_data_defn_start(
+        ctor_rtti_id(RttiTypeCtor, type_ctor_functor_number_map),
+        !DeclSet, !IO),
+    io.write_string(" = {\n\t", !IO),
+    io.write_list(FunctorNumberMap, ",\n\t", io.write_int, !IO),
+    io.write_string(" };\n\t", !IO).
 
 %-----------------------------------------------------------------------------%
 

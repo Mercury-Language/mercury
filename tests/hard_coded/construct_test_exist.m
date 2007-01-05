@@ -56,12 +56,15 @@ main(!IO) :-
 
 test_all(T, !IO) :-
 	TypeInfo = type_desc__type_of(T),
-	N = construct__num_functors(TypeInfo),
-	io__write_int(N, !IO),
-	io__write_string(" functors in this type", !IO),
-	io__nl(!IO),
-	test_all_functors(TypeInfo, N, !IO),
-	io__nl(!IO).
+	( N = construct__num_functors(TypeInfo) ->
+		io__write_int(N, !IO),
+		io__write_string(" functors in this type", !IO),
+		io__nl(!IO),
+		test_all_functors(TypeInfo, N, !IO),
+		io__nl(!IO)
+	;
+		io__write_string("no functors in this type\n", !IO)
+	).	
 
 :- pred test_all_functors(type_desc__type_desc::in, int::in, io::di, io::uo)
 	is det.
