@@ -3258,8 +3258,13 @@ get_ilds_type_class_name(ILType) = ClassName :-
     %     in = out) may clash with a predicate which has the
     %     same types and modes.
     %
-    %     To avoid this, we mangle all functions with
-    %     non-default modes by adding _f to the procedure name.
+    %     In addition, a function may clash with a predicate which
+    %     has the same types and modes and has been introduced
+    %     by inlining.These will then differ only in return type,
+    %     which is forbidden.
+    %
+    %     To avoid this, we mangle all functions by adding _f
+    %     to the procedure name.
     %
     %   - Problem:
     %     A predicate or function with more than one mode.
@@ -3287,7 +3292,7 @@ get_ilds_type_class_name(ILType) = ClassName :-
     % user names in the case where there is a <modulename>. - fjh
     %
 predlabel_to_id(mlds_user_pred_label(PredOrFunc, MaybeModuleName, Name, Arity,
-        CodeModel, NonOutputFunc), ProcId, MaybeSeqNum, Id) :-
+        CodeModel, _NonOutputFunc), ProcId, MaybeSeqNum, Id) :-
     (
         MaybeModuleName = yes(ModuleName),
         mlds_to_il.sym_name_to_string(ModuleName, MStr),
@@ -3297,17 +3302,15 @@ predlabel_to_id(mlds_user_pred_label(PredOrFunc, MaybeModuleName, Name, Arity,
         MaybeModuleStr = ""
     ),
     (
-        CodeModel = model_semi,
-        PredOrFunc = predicate
-    ->
-        PredOrFuncStr = "_p"
+        PredOrFunc = predicate,
+        ( CodeModel = model_semi ->
+            PredOrFuncStr = "_p"
+        ;
+            PredOrFuncStr = ""
+        )
     ;
         PredOrFunc = function,
-        NonOutputFunc = yes
-    ->
         PredOrFuncStr = "_f"
-    ;
-        PredOrFuncStr = ""
     ),
     proc_id_to_int(ProcId, ProcIdInt),
     ( ProcIdInt = 0 ->
