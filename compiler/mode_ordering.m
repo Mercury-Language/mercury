@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -172,7 +172,8 @@ leave_lambda_goal(!MOI) :-
 :- pred mode_order_goal(hlds_goal::in, hlds_goal::out,
     mode_ordering_info::in, mode_ordering_info::out) is det.
 
-mode_order_goal(GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo, !MOI) :-
+mode_order_goal(hlds_goal(GoalExpr0, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo), !MOI) :-
     mode_order_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !MOI).
 
 :- pred mode_order_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
@@ -304,13 +305,13 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     Goal0 = negation(SubGoal0),
     Goal = negation(SubGoal),
     mode_order_goal(SubGoal0, SubGoal, !MOI),
-    goal_info_copy_mode_var_sets(SubGoal ^ snd, !GoalInfo).
+    goal_info_copy_mode_var_sets(SubGoal ^ hlds_goal_info, !GoalInfo).
 
 mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     Goal0 = scope(Reason, SubGoal0),
     Goal = scope(Reason, SubGoal),
     mode_order_goal(SubGoal0, SubGoal, !MOI),
-    goal_info_copy_mode_var_sets(SubGoal ^ snd, !GoalInfo).
+    goal_info_copy_mode_var_sets(SubGoal ^ hlds_goal_info, !GoalInfo).
 
 mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     Goal0 = if_then_else(Locals, Cond0, Then0, Else0),
@@ -328,7 +329,7 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     !:GoalInfo = !.GoalInfo ^ need_visible_vars :=
         NeedVars `difference` !.GoalInfo ^ make_visible_vars,
 
-    combine_mode_vars_sets(Else ^ snd, !GoalInfo).
+    combine_mode_vars_sets(Else ^ hlds_goal_info, !GoalInfo).
 
 mode_order_goal_2(Goal0, _, !GoalInfo, !MOI) :-
     Goal0 = call_foreign_proc(_, _, _, _, _, _, _),
@@ -342,14 +343,14 @@ mode_order_goal_2(Goal0, _, !GoalInfo, !MOI) :-
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
 mode_order_disj([], !GoalInfo).
-mode_order_disj([_ - GI | Goals], !GoalInfo) :-
+mode_order_disj([hlds_goal(_, GI) | Goals], !GoalInfo) :-
     goal_info_copy_mode_var_sets(GI, !GoalInfo),
     list.foldl(mode_order_disj_2, Goals, !GoalInfo).
 
 :- pred mode_order_disj_2(hlds_goal::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-mode_order_disj_2(_ - GI, !GoalInfo) :-
+mode_order_disj_2(hlds_goal(_, GI), !GoalInfo) :-
     combine_mode_vars_sets(GI, !GoalInfo).
 
 :- pred combine_mode_vars_sets(hlds_goal_info::in,
@@ -384,7 +385,7 @@ union_mode_vars_set(Goal, !GoalInfo) :-
     ConsumVars0 = !.GoalInfo ^ consuming_vars,
     MakeVisibleVars0 = !.GoalInfo ^ make_visible_vars,
     NeedVisibleVars0 = !.GoalInfo ^ need_visible_vars,
-    Goal = _ - GI,
+    Goal = hlds_goal(_, GI),
 
     !:GoalInfo = !.GoalInfo ^ producing_vars
         := ProdVars0 `union` GI ^ producing_vars,
@@ -409,7 +410,7 @@ goal_info_copy_mode_var_sets(GI, !GoalInfo) :-
 mode_order_conj(Goals0, Goals) :-
     GoalMap = list.foldl((func(G, GM) = map.det_insert(GM, Index, G) :-
         (
-            G = _ - GI,
+            G = hlds_goal(_, GI),
             goal_info_get_goal_path(GI, GP),
             GP = [conj(Index0) | _]
         ->
@@ -421,18 +422,18 @@ mode_order_conj(Goals0, Goals) :-
     ProdMap =
         map.foldl((func(I, G, PM0) =
             list.foldl((func(V, PM1) = map.det_insert(PM1, V, I)),
-            set.to_sorted_list(G ^ snd ^ producing_vars), PM0)
+            set.to_sorted_list(G ^ hlds_goal_info ^ producing_vars), PM0)
         ), GoalMap, map.init),
 
     MakeVisMap =
         map.foldl((func(I, G, MVM0) =
             list.foldl((func(V, MVM1) = map.set(MVM1, V, I)),
                             % XXX disjunction required!
-            set.to_sorted_list(G ^ snd ^ make_visible_vars), MVM0)
+            set.to_sorted_list(G ^ hlds_goal_info ^ make_visible_vars), MVM0)
         ), GoalMap, map.init),
 
     Relation = map.foldl((func(I, G, R0) = R :-
-        GI = G ^ snd,
+        GI = G ^ hlds_goal_info,
         relation.add_element(R0, I, Key0, R1),
         R2 = list.foldl((func(V, R10) = R12 :-
                 ( Index1 = map.search(ProdMap, V) ->
@@ -575,8 +576,10 @@ report_ordering_mode_errors(_, !IO).
 lookup_pred_constraint(PCM, PredId, MC, MCInfo) :-
     map.lookup(PCM, PredId, pci(MC, MCInfo)).
 
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
 this_file = "mode_ordering.m.".
 
+%-----------------------------------------------------------------------------%

@@ -1,21 +1,21 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mark_static_terms.m.
 % Main author: fjh.
-% 
+%
 % This module traverses the HLDS, updating the `how_to_construct' field of
 % construction unifications.  For each construction which can be done
 % statically, i.e. whose arguments are all static, it replaces this field with
 % `construct_statically'.  This field is then used by the MLDS back-end to
 % determine when it can generate static initialized constants rather than
 % using new_object() MLDS statements.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mark_static_terms.
@@ -62,7 +62,8 @@ mark_static_terms(_ModuleInfo, !Proc) :-
 :- pred goal_mark_static_terms(hlds_goal::in, hlds_goal::out,
     static_info::in, static_info::out) is det.
 
-goal_mark_static_terms(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo, !SI) :-
+goal_mark_static_terms(hlds_goal(GoalExpr0, GoalInfo),
+        hlds_goal(GoalExpr, GoalInfo), !SI) :-
     goal_expr_mark_static_terms(GoalExpr0, GoalExpr, !SI).
 
 :- pred goal_expr_mark_static_terms(hlds_goal_expr::in, hlds_goal_expr::out,

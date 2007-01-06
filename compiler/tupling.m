@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: tupling.m.
 % Author: wangp.
-% 
+%
 % This module takes the HLDS and performs a tupling transformation on the
 % locally-defined procedures.  That is, instead of passing all of the
 % procedure's arguments separately, it will try to bundle some of them up and
@@ -78,7 +78,7 @@
 %
 % XXX: we need to check that mprof can demangle the names of the transformed
 % procedures correctly
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.tupling.
@@ -712,7 +712,7 @@ insert_proc_start_deconstruction(Goal0, Goal, !VarSet, !VarTypes,
     % other transformations to remove it if possible.
     make_inserted_goal(!VarSet, !VarTypes, map.init, VarRename,
         Insert, no, InsertGoal),
-    Goal0 = _ - GoalInfo,
+    Goal0 = hlds_goal(_, GoalInfo),
     conj_list_to_goal([InsertGoal, Goal0], GoalInfo, Goal).
 
 %-----------------------------------------------------------------------------%
@@ -736,7 +736,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     module_info_get_name(ModuleInfo0, ModuleName),
 
     proc_info_get_headvars(ProcInfo, AuxHeadVars),
-    proc_info_get_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
+    proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo0,
         InitialAuxInstMap),
     pred_info_get_typevarset(PredInfo, TVarSet),
@@ -980,12 +980,19 @@ count_load_stores_in_proc(CountInfo, Loads, Stores) :-
 %-----------------------------------------------------------------------------%
 
     % This code is based on interval.build_interval_info_in_goal.
-
+    %
 :- pred count_load_stores_in_goal(hlds_goal::in, count_info::in,
     count_state::in, count_state::out) is det.
 
-count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
-    Goal = call_foreign_proc(_Attributes, PredId, ProcId, Args, ExtraArgs,
+count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    count_load_stores_in_goal_expr(GoalExpr, GoalInfo, CountInfo, !CountState).
+
+:- pred count_load_stores_in_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
+    count_info::in, count_state::in, count_state::out) is det.
+
+count_load_stores_in_goal_expr(GoalExpr, GoalInfo, CountInfo, !CountState) :-
+    GoalExpr = call_foreign_proc(_Attributes, PredId, ProcId, Args, ExtraArgs,
         _MaybeTraceRuntimeCond, _PragmaCode),
     ModuleInfo = CountInfo ^ count_info_module,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -1010,8 +1017,8 @@ count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
         cls_clobber_regs(OutputArgVarSet, !CountState)
     ).
 
-count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
-    Goal = generic_call(GenericCall, ArgVars, ArgModes, _Detism),
+count_load_stores_in_goal_expr(GoalExpr, GoalInfo, CountInfo, !CountState) :-
+    GoalExpr = generic_call(GenericCall, ArgVars, ArgModes, _Detism),
     ProcInfo = CountInfo ^ count_info_proc,
     ModuleInfo = CountInfo ^ count_info_module,
     goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
@@ -1035,23 +1042,23 @@ count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
             MaybeNeedAcrossCall, GoalInfo, !CountState)
     ).
 
-count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
-    Goal = plain_call(PredId, ProcId, _, Builtin, _, _),
+count_load_stores_in_goal_expr(GoalExpr, GoalInfo, CountInfo, !CountState) :-
+    GoalExpr = plain_call(PredId, ProcId, _, Builtin, _, _),
     (
         Builtin = not_builtin,
         TuplingProposal = get_tupling_proposal(CountInfo,
             proc(PredId, ProcId)),
         TuplingProposal = tupling(_, _, _)
     ->
-        count_load_stores_in_call_to_tupled(Goal - GoalInfo,
+        count_load_stores_in_call_to_tupled(GoalExpr, GoalInfo,
             CountInfo, TuplingProposal, !CountState)
     ;
-        count_load_stores_in_call_to_not_tupled(Goal - GoalInfo,
+        count_load_stores_in_call_to_not_tupled(GoalExpr, GoalInfo,
             CountInfo, !CountState)
     ).
 
-count_load_stores_in_goal(Goal - _GoalInfo, CountInfo, !CountState) :-
-    Goal = unify(_, _, _, Unification, _),
+count_load_stores_in_goal_expr(GoalExpr, _GoalInfo, CountInfo, !CountState) :-
+    GoalExpr = unify(_, _, _, Unification, _),
     (
         Unification = construct(CellVar, _ConsId, ArgVars, _ArgModes,
             _HowToConstruct, _, _),
@@ -1073,11 +1080,11 @@ count_load_stores_in_goal(Goal - _GoalInfo, CountInfo, !CountState) :-
         unexpected(this_file, "count_load_stores_in_goal: complicated_unify")
     ).
 
-count_load_stores_in_goal(scope(_Reason, Goal) - _GoalInfo, CountInfo,
+count_load_stores_in_goal_expr(scope(_Reason, Goal), _GoalInfo, CountInfo,
         !CountState) :-
     count_load_stores_in_goal(Goal, CountInfo, !CountState).
 
-count_load_stores_in_goal(conj(ConjType, Goals) - _GoalInfo, CountInfo,
+count_load_stores_in_goal_expr(conj(ConjType, Goals), _GoalInfo, CountInfo,
         !CountState) :-
     (
         ConjType = plain_conj,
@@ -1087,16 +1094,17 @@ count_load_stores_in_goal(conj(ConjType, Goals) - _GoalInfo, CountInfo,
         sorry(this_file, "tupling with parallel conjunctions")
     ).
 
-count_load_stores_in_goal(disj(Goals) - _GoalInfo, CountInfo, !CountState) :-
+count_load_stores_in_goal_expr(disj(Goals), _GoalInfo, CountInfo,
+        !CountState) :-
     count_load_stores_in_disj(Goals, CountInfo, !CountState).
 
-count_load_stores_in_goal(switch(_Var, _Det, Cases) - _GoalInfo, CountInfo,
+count_load_stores_in_goal_expr(switch(_Var, _Det, Cases), _GoalInfo, CountInfo,
         !CountState) :-
     count_load_stores_in_cases(Cases, CountInfo, !CountState).
 
-count_load_stores_in_goal(negation(Goal) - _GoalInfo, CountInfo,
+count_load_stores_in_goal_expr(negation(Goal), _GoalInfo, CountInfo,
         !CountState) :-
-    goal_info_get_resume_point(snd(Goal), ResumePoint),
+    goal_info_get_resume_point(Goal ^ hlds_goal_info, ResumePoint),
     (
         ResumePoint = resume_point(LiveVars, _ResumeLocs),
         cls_require_flushed(CountInfo, LiveVars, !CountState)
@@ -1107,9 +1115,9 @@ count_load_stores_in_goal(negation(Goal) - _GoalInfo, CountInfo,
     ),
     count_load_stores_in_goal(Goal, CountInfo, !CountState).
 
-count_load_stores_in_goal(if_then_else(_, Cond, Then, Else) - _GoalInfo,
+count_load_stores_in_goal_expr(if_then_else(_, Cond, Then, Else), _GoalInfo,
         CountInfo, !CountState) :-
-    goal_info_get_resume_point(snd(Cond), ResumePoint),
+    goal_info_get_resume_point(Cond ^ hlds_goal_info, ResumePoint),
     (
         ResumePoint = resume_point(LiveVars, _ResumeLocs),
         cls_require_flushed(CountInfo, LiveVars, !CountState),
@@ -1122,8 +1130,8 @@ count_load_stores_in_goal(if_then_else(_, Cond, Then, Else) - _GoalInfo,
             ResetCountInfo, ElseCountInfo),
 
         ProcCounts = CountInfo ^ count_info_proc_counts,
-        goal_info_get_goal_path(snd(Then), ThenGoalPath),
-        goal_info_get_goal_path(snd(Else), ElseGoalPath),
+        goal_info_get_goal_path(Then ^ hlds_goal_info, ThenGoalPath),
+        goal_info_get_goal_path(Else ^ hlds_goal_info, ElseGoalPath),
         get_ite_relative_frequencies(ProcCounts,
             ThenGoalPath, ElseGoalPath,
             ThenRelFreq, ElseRelFreq),
@@ -1136,25 +1144,25 @@ count_load_stores_in_goal(if_then_else(_, Cond, Then, Else) - _GoalInfo,
             "count_load_stores_in_goal: no_resume_point for if_then_else")
     ).
 
-count_load_stores_in_goal(shorthand(_) - _, _, !_) :-
+count_load_stores_in_goal_expr(shorthand(_), _, _, !_) :-
     unexpected(this_file,
-        "count_load_stores_in_goal: unexpected shorthand").
+        "count_load_stores_in_goal_expr: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
 :- inst call_goal_expr
     ==  bound(plain_call(ground, ground, ground, ground, ground, ground)).
 :- mode in_call_goal
-    ==  in(pair(call_goal_expr, ground)).
+    ==  in(call_goal_expr).
 
-:- pred count_load_stores_in_call_to_tupled(hlds_goal::in_call_goal,
-    count_info::in,
+:- pred count_load_stores_in_call_to_tupled(hlds_goal_expr::in_call_goal,
+    hlds_goal_info::in, count_info::in,
     tupling_proposal::in(bound(tupling(ground, ground, ground))),
     count_state::in, count_state::out) is det.
 
-count_load_stores_in_call_to_tupled(Goal - GoalInfo, CountInfo,
+count_load_stores_in_call_to_tupled(GoalExpr, GoalInfo, CountInfo,
         CalleeTuplingProposal, !CountState) :-
-    Goal = plain_call(CalleePredId, CalleeProcId, ArgVars, _, _, _),
+    GoalExpr = plain_call(CalleePredId, CalleeProcId, ArgVars, _, _, _),
     CalleeTuplingProposal = tupling(CellVar, FieldVars, FieldVarArgPos),
     ModuleInfo = CountInfo ^ count_info_module,
     module_info_pred_proc_info(ModuleInfo, CalleePredId, CalleeProcId,
@@ -1197,12 +1205,13 @@ count_load_stores_in_call_to_tupled(Goal - GoalInfo, CountInfo,
     count_load_stores_for_call(CountInfo, Inputs, Outputs,
         MaybeNeedAcrossCall, GoalInfo, !CountState).
 
-:- pred count_load_stores_in_call_to_not_tupled(hlds_goal::in_call_goal,
-    count_info::in, count_state::in, count_state::out) is det.
+:- pred count_load_stores_in_call_to_not_tupled(hlds_goal_expr::in_call_goal,
+    hlds_goal_info::in, count_info::in, count_state::in, count_state::out)
+    is det.
 
-count_load_stores_in_call_to_not_tupled(Goal - GoalInfo, CountInfo,
+count_load_stores_in_call_to_not_tupled(GoalExpr, GoalInfo, CountInfo,
         !CountState) :-
-    Goal = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
+    GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
     ModuleInfo = CountInfo ^ count_info_module,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, CalleeProcInfo),
@@ -1256,7 +1265,7 @@ count_load_stores_in_conj([Goal | Goals], CountInfo, !CountState) :-
 
 count_load_stores_in_disj([], _CountInfo, !CountState).
 count_load_stores_in_disj([Goal | Goals], CountInfo, !CountState) :-
-    GoalInfo = snd(Goal),
+    GoalInfo = Goal ^ hlds_goal_info,
     goal_info_get_resume_point(GoalInfo, ResumePoint),
     (
         ResumePoint = resume_point(LiveVars, _ResumeLocs),
@@ -1279,7 +1288,7 @@ count_load_stores_in_disj([Goal | Goals], CountInfo, !CountState) :-
 count_load_stores_in_cases([], _CountInfo, !CountState).
 count_load_stores_in_cases([Case | Cases], CountInfo, !CountState) :-
     Case = case(_ConsId, Goal),
-    GoalInfo = snd(Goal),
+    GoalInfo = Goal ^ hlds_goal_info,
     goal_info_get_resume_point(GoalInfo, ResumePoint),
     (
         ResumePoint = resume_point(LiveVars, _ResumeLocs),
@@ -1542,8 +1551,8 @@ build_insert_map(CellVar, FieldVars, IntervalInfo, InsertMap) :-
     anchor::in, anchor_follow_info::in, insert_map::in, insert_map::out)
     is det.
 
-build_insert_map_2(CellVar, FieldVars, FieldVarsSet, Anchor, FollowVars - _,
-        !InsertMap) :-
+build_insert_map_2(CellVar, FieldVars, FieldVarsSet, Anchor,
+        anchor_follow_info(FollowVars, _), !InsertMap) :-
     NeededFieldVars = FieldVarsSet `set.intersect` FollowVars,
     ( set.empty(NeededFieldVars) ->
         true
@@ -1672,97 +1681,99 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
     rtti_varmaps::in, rtti_varmaps::out, transform_map::in)
     is det.
 
-fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, !_, _) :-
-    Goal = call_foreign_proc(_, _, _, _, _, _, _).
-
-fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, !_, _) :-
-    Goal = generic_call(_, _, _, _).
-
-fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
+fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
         TransformMap) :-
-    Goal0 = plain_call(CalledPredId0, CalledProcId0, Args0, Builtin,
-        _Context, _SymName),
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
-        Builtin = not_builtin,
-        map.search(TransformMap, proc(CalledPredId0, CalledProcId0),
-            TransformedProc),
-        TransformedProc = transformed_proc(_, TupleConsType, ArgsToTuple,
-            CallAux0 - CallAuxInfo)
-    ->
-        svvarset.new_named_var("TuplingCellVarForCall", CellVar, !VarSet),
-        svmap.det_insert(CellVar, TupleConsType, !VarTypes),
-        extract_tupled_args_from_list(Args0, ArgsToTuple,
-            TupledArgs, UntupledArgs),
-        construct_tuple(CellVar, TupledArgs, ConstructGoal),
-        (
-            NewArgs = UntupledArgs ++ [CellVar],
-            CallAux = CallAux0 ^ call_args := NewArgs
-        ->
-            CallGoal = CallAux - CallAuxInfo
-        ;
-            unexpected(this_file, "fix_calls_in_goal: not a call template")
+        ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
         ),
-        conj_list_to_goal([ConstructGoal, CallGoal], GoalInfo0, Goal1),
-        RequantifyVars = set.from_list([CellVar | Args0]),
-        implicitly_quantify_goal(RequantifyVars, _, Goal1, Goal,
-            !VarSet, !VarTypes, !RttiVarMaps)
+        Goal = hlds_goal(GoalExpr0, GoalInfo0)
     ;
-        Goal = Goal0 - GoalInfo0
-    ).
-
-fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, !_, _) :-
-    Goal = unify(_, _, _, _, _).
-
-fix_calls_in_goal(negation(Goal0) - GoalInfo, negation(Goal) - GoalInfo,
-        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
-        TransformMap).
-
-fix_calls_in_goal(scope(Reason, Goal0) - GoalInfo,
-        scope(Reason, Goal) - GoalInfo,
-        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
-        TransformMap).
-
-fix_calls_in_goal(conj(ConjType, Goals0) - GoalInfo,
-        conj(ConjType, Goals) - GoalInfo, !VarSet, !VarTypes, !RttiVarMaps,
-        TransformMap) :-
-    (
-        ConjType = plain_conj,
-        fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, !RttiVarMaps,
-            TransformMap)
+        GoalExpr0 = plain_call(CalledPredId0, CalledProcId0, Args0, Builtin,
+            _Context, _SymName),
+        (
+            Builtin = not_builtin,
+            map.search(TransformMap, proc(CalledPredId0, CalledProcId0),
+                TransformedProc),
+            TransformedProc = transformed_proc(_, TupleConsType, ArgsToTuple,
+                hlds_goal(CallAux0, CallAuxInfo))
+        ->
+            svvarset.new_named_var("TuplingCellVarForCall", CellVar, !VarSet),
+            svmap.det_insert(CellVar, TupleConsType, !VarTypes),
+            extract_tupled_args_from_list(Args0, ArgsToTuple,
+                TupledArgs, UntupledArgs),
+            construct_tuple(CellVar, TupledArgs, ConstructGoal),
+            (
+                NewArgs = UntupledArgs ++ [CellVar],
+                CallAux = CallAux0 ^ call_args := NewArgs
+            ->
+                CallGoal = hlds_goal(CallAux, CallAuxInfo)
+            ;
+                unexpected(this_file, "fix_calls_in_goal: not a call template")
+            ),
+            conj_list_to_goal([ConstructGoal, CallGoal], GoalInfo0, Goal1),
+            RequantifyVars = set.from_list([CellVar | Args0]),
+            implicitly_quantify_goal(RequantifyVars, _, Goal1, Goal,
+                !VarSet, !VarTypes, !RttiVarMaps)
+        ;
+            Goal = hlds_goal(GoalExpr0, GoalInfo0)
+        )
     ;
-        ConjType = parallel_conj,
-        % XXX: I am not sure whether parallel conjunctions should be treated
-        % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
-        % this is untested.
+        GoalExpr0 = negation(SubGoal0),
+        fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes, !RttiVarMaps,
+            TransformMap),
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes, !RttiVarMaps,
+            TransformMap),
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, !RttiVarMaps,
+                TransformMap)
+        ;
+            ConjType = parallel_conj,
+            % XXX: I am not sure whether parallel conjunctions should be treated
+            % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
+            % this is untested.
+            fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
+                !RttiVarMaps, TransformMap)
+        ),
+        GoalExpr = conj(ConjType, Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = disj(Goals0),
         fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
-            !RttiVarMaps, TransformMap)
+            !RttiVarMaps, TransformMap),
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes, !RttiVarMaps,
+            TransformMap),
+        GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        fix_calls_in_goal(Cond0, Cond, !VarSet, !VarTypes, !RttiVarMaps,
+            TransformMap),
+        fix_calls_in_goal(Then0, Then, !VarSet, !VarTypes, !RttiVarMaps,
+            TransformMap),
+        fix_calls_in_goal(Else0, Else, !VarSet, !VarTypes, !RttiVarMaps,
+            TransformMap),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, "fix_calls_in_goal: unexpected shorthand")
     ).
-
-fix_calls_in_goal(disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo,
-        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
-    fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
-        !RttiVarMaps, TransformMap).
-
-fix_calls_in_goal(switch(Var, CanFail, Cases0) - GoalInfo,
-        switch(Var, CanFail, Cases) - GoalInfo,
-        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
-    fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes, !RttiVarMaps,
-        TransformMap).
-
-fix_calls_in_goal(if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo,
-        if_then_else(Vars, Cond, Then, Else) - GoalInfo,
-        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
-    fix_calls_in_goal(Cond0, Cond, !VarSet, !VarTypes, !RttiVarMaps,
-        TransformMap),
-    fix_calls_in_goal(Then0, Then, !VarSet, !VarTypes, !RttiVarMaps,
-        TransformMap),
-    fix_calls_in_goal(Else0, Else, !VarSet, !VarTypes, !RttiVarMaps,
-        TransformMap).
-
-fix_calls_in_goal(shorthand(_) - _, _, _, _, _, _, _, _, _) :-
-    unexpected(this_file, "fix_calls_in_goal: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -1771,13 +1782,13 @@ fix_calls_in_goal(shorthand(_) - _, _, _, _, _, _, _, _, _) :-
     rtti_varmaps::in, rtti_varmaps::out, transform_map::in) is det.
 
 fix_calls_in_conj([], [], !VarSet, !VarTypes, !RttiVarMaps, _).
-fix_calls_in_conj([Goal0 | Goals0], Goals, !VarSet, !VarTypes, 
+fix_calls_in_conj([Goal0 | Goals0], Goals, !VarSet, !VarTypes,
         !RttiVarMaps, TransformMap) :-
     fix_calls_in_goal(Goal0, Goal1, !VarSet, !VarTypes, !RttiVarMaps,
         TransformMap),
     fix_calls_in_conj(Goals0, Goals1, !VarSet, !VarTypes, !RttiVarMaps,
         TransformMap),
-    ( Goal1 = conj(plain_conj, ConjGoals) - _ ->
+    ( Goal1 = hlds_goal(conj(plain_conj, ConjGoals), _) ->
         Goals = ConjGoals ++ Goals1
     ;
         Goals = [Goal1 | Goals1]
@@ -1942,7 +1953,7 @@ get_switch_total_count(ProcCounts, MdbGoalPath, Total) :-
 :- pred get_switch_total_count_2(mdbcomp_goal_path::in, path_port::in,
     line_no_and_count::in, int::in, int::out) is det.
 
-get_switch_total_count_2(SwitchGoalPath, PathPort, LineNoAndCount, 
+get_switch_total_count_2(SwitchGoalPath, PathPort, LineNoAndCount,
         !TotalAcc) :-
     ( case_in_switch(SwitchGoalPath, PathPort) ->
         !:TotalAcc = !.TotalAcc + LineNoAndCount ^ exec_count

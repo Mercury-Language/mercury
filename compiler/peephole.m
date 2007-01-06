@@ -63,11 +63,9 @@ peephole.optimize(GC_Method, Instrs0, Instrs, Mod) :-
     list(instruction)::out, bool::out) is det.
 
 peephole.optimize_2(_, [], [], no).
-peephole.optimize_2(InvalidPatterns, [Instr0 - Comment | Instrs0],
-        Instrs, Mod) :-
+peephole.optimize_2(InvalidPatterns, [Instr0 | Instrs0], Instrs, Mod) :-
     peephole.optimize_2(InvalidPatterns, Instrs0, Instrs1, Mod0),
-    peephole.opt_instr(Instr0, Comment, InvalidPatterns, Instrs1, Instrs,
-        Mod1),
+    peephole.opt_instr(Instr0, InvalidPatterns, Instrs1, Instrs, Mod1),
     ( Mod0 = no, Mod1 = no ->
         Mod = no
     ;
@@ -77,17 +75,18 @@ peephole.optimize_2(InvalidPatterns, [Instr0 - Comment | Instrs0],
     % Try to optimize the beginning of the given instruction sequence.
     % If successful, try it again.
     %
-:- pred peephole.opt_instr(instr::in, string::in, list(pattern)::in,
+:- pred peephole.opt_instr(instruction::in, list(pattern)::in,
     list(instruction)::in, list(instruction)::out, bool::out) is det.
 
-peephole.opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
+peephole.opt_instr(Instr0, InvalidPatterns, Instrs0, Instrs, Mod) :-
+    Instr0 = llds_instr(Uinstr0, Comment0),
     (
         opt_util.skip_comments(Instrs0, Instrs1),
-        peephole.match(Instr0, Comment0, InvalidPatterns, Instrs1, Instrs2)
+        peephole.match(Uinstr0, Comment0, InvalidPatterns, Instrs1, Instrs2)
     ->
         (
-            Instrs2 = [Instr2 - Comment2 | Instrs3],
-            peephole.opt_instr(Instr2, Comment2, InvalidPatterns,
+            Instrs2 = [llds_instr(Uinstr2, Comment2) | Instrs3],
+            peephole.opt_instr(llds_instr(Uinstr2, Comment2), InvalidPatterns,
                 Instrs3, Instrs, _)
         ;
             Instrs2 = [],
@@ -95,7 +94,7 @@ peephole.opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
         ),
         Mod = yes
     ;
-        Instrs = [Instr0 - Comment0 | Instrs0],
+        Instrs = [Instr0 | Instrs0],
         Mod = no
     ).
 
@@ -158,7 +157,7 @@ peephole.match(computed_goto(SelectorRval, Labels), Comment, _,
     (
         LabelValsList = [Label - _]
     ->
-        GotoInstr = goto(code_label(Label)) - Comment,
+        GotoInstr = llds_instr(goto(code_label(Label)), Comment),
         Instrs = [GotoInstr | Instrs0]
     ;
         LabelValsList = [LabelVals1, LabelVals2],
@@ -166,9 +165,10 @@ peephole.match(computed_goto(SelectorRval, Labels), Comment, _,
             Val, OtherLabel)
     ->
         CondRval = binop(eq, SelectorRval, const(llconst_int(Val))),
-        CommentInstr = comment(Comment) - "",
-        BranchInstr = if_val(CondRval, code_label(OneValLabel)) - "",
-        GotoInstr = goto(code_label(OtherLabel)) - Comment,
+        CommentInstr = llds_instr(comment(Comment), ""),
+        BranchInstr = llds_instr(if_val(CondRval, code_label(OneValLabel)),
+            ""),
+        GotoInstr = llds_instr(goto(code_label(OtherLabel)), Comment),
         Instrs = [CommentInstr, BranchInstr, GotoInstr | Instrs0]
     ;
         fail
@@ -189,7 +189,7 @@ peephole.match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
     ->
         (
             Taken = yes,
-            Instrs = [goto(CodeAddr) - Comment | Instrs0]
+            Instrs = [llds_instr(goto(CodeAddr), Comment) | Instrs0]
         ;
             Taken = no,
             Instrs = Instrs0
@@ -197,7 +197,7 @@ peephole.match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
     ;
         opt_util.skip_comments(Instrs0, Instrs1),
         Instrs1 = [Instr1 | _],
-        Instr1 = goto(CodeAddr) - _
+        Instr1 = llds_instr(goto(CodeAddr), _)
     ->
         Instrs = Instrs0
     ;
@@ -266,18 +266,19 @@ peephole.match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
         opt_util.touches_nondet_ctrl(Skipped) = no
     ->
         Instrs1 = Skipped ++ Rest,
-        Instrs = [mkframe(NondetFrameInfo, yes(Redoip2)) - Comment | Instrs1]
+        NewInstr = llds_instr(mkframe(NondetFrameInfo, yes(Redoip2)), Comment),
+        Instrs = [NewInstr | Instrs1]
     ;
         opt_util.skip_comments_livevals(Instrs0, Instrs1),
         Instrs1 = [Instr1 | Instrs2],
-        Instr1 = if_val(Test, Target) - Comment2,
+        Instr1 = llds_instr(if_val(Test, Target), Comment2),
         (
             Redoip1 = do_fail,
             ( Target = do_redo ; Target = do_fail)
         ->
             InstrsPrime = [
-                if_val(Test, do_redo) - Comment2,
-                mkframe(NondetFrameInfo, yes(do_fail)) - Comment
+                llds_instr(if_val(Test, do_redo), Comment2),
+                llds_instr(mkframe(NondetFrameInfo, yes(do_fail)), Comment)
                 | Instrs2
             ]
         ;
@@ -287,16 +288,17 @@ peephole.match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
                 Target = do_fail
             ->
                 InstrsPrime = [
-                    if_val(Test, do_redo) - Comment2,
-                    mkframe(NondetFrameInfo, yes(Redoip1)) - Comment
+                    llds_instr(if_val(Test, do_redo), Comment2),
+                    llds_instr(mkframe(NondetFrameInfo, yes(Redoip1)), Comment)
                     | Instrs2
                 ]
             ;
                 Target = do_redo
             ->
                 InstrsPrime = [
-                    mkframe(NondetFrameInfo, yes(Redoip1)) - Comment,
-                    if_val(Test, Redoip1) - Comment2
+                    llds_instr(mkframe(NondetFrameInfo, yes(Redoip1)),
+                        Comment),
+                    llds_instr(if_val(Test, Redoip1), Comment2)
                     | Instrs2
                 ]
             ;
@@ -310,16 +312,17 @@ peephole.match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
     ;
         opt_util.skip_comments_livevals(Instrs0, Instrs1),
         Instrs1 = [Instr1 | Instrs2],
-        Instr1 = goto(do_fail) - Comment2
+        Instr1 = llds_instr(goto(do_fail), Comment2)
     ->
-        Instrs = [goto(do_redo) - Comment2 | Instrs2]
+        Instrs = [llds_instr(goto(do_redo), Comment2) | Instrs2]
     ;
         Redoip1 = do_fail,
         no_stack_straight_line(Instrs0, Straight, Instrs1),
         Instrs1 = [Instr1 | Instrs2],
-        Instr1 = goto(do_succeed(_)) - _
+        Instr1 = llds_instr(goto(do_succeed(_)), _)
     ->
-        GotoSuccip = goto(code_succip) - "return from optimized away mkframe",
+        GotoSuccip = llds_instr(goto(code_succip),
+            "return from optimized away mkframe"),
         Instrs = Straight ++ [GotoSuccip | Instrs2]
     ;
         fail
@@ -333,8 +336,10 @@ peephole.match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
     %
 peephole.match(store_ticket(Lval), Comment, _, Instrs0, Instrs) :-
     opt_util.skip_comments(Instrs0, Instrs1),
-    Instrs1 = [reset_ticket(lval(Lval), _Reason) - _Comment2 | Instrs2],
-    Instrs = [store_ticket(Lval) - Comment | Instrs2].
+    Instrs1 = [Instr1 | Instrs2],
+    Instr1 = llds_instr(reset_ticket(lval(Lval), _Reason), _Comment2),
+    NewInstr2 = llds_instr(store_ticket(Lval), Comment),
+    Instrs = [NewInstr2 | Instrs2].
 
     % If an assignment to a redoip slot is followed by another, with
     % the instructions in between containing only straight-line code
@@ -359,8 +364,9 @@ peephole.match(assign(redoip_slot(lval(Base)), Redoip), Comment, _,
         opt_util.touches_nondet_ctrl(Skipped) = no
     ->
         Instrs1 = Skipped ++ Rest,
-        Instrs = [assign(redoip_slot(lval(Base)),
-            const(llconst_code_addr(Redoip2))) - Comment | Instrs1]
+        RedoipInstr = llds_instr(assign(redoip_slot(lval(Base)),
+            const(llconst_code_addr(Redoip2))), Comment),
+        Instrs = [RedoipInstr | Instrs1]
     ;
         Base = curfr,
         Redoip = const(llconst_code_addr(do_fail)),
@@ -368,8 +374,8 @@ peephole.match(assign(redoip_slot(lval(Base)), Redoip), Comment, _,
         opt_util.touches_nondet_ctrl(Between) = no,
         string.sub_string_search(Comment, "curfr==maxfr", _)
     ->
-        list.condense([Between,
-            [goto(do_succeed(yes)) - "early discard"], After], Instrs)
+        SucceedInstr = llds_instr(goto(do_succeed(yes)), "early discard"),
+        Instrs = Between ++ [SucceedInstr] ++ After
     ;
         fail
     ).
@@ -415,15 +421,15 @@ combine_decr_sp([], []).
 combine_decr_sp([Instr0 | Instrs0], Instrs) :-
     combine_decr_sp(Instrs0, Instrs1),
     (
-        Instr0 = assign(succip, lval(stackvar(N))) - _,
+        Instr0 = llds_instr(assign(succip, lval(stackvar(N))), _),
         opt_util.skip_comments_livevals(Instrs1, Instrs2),
         Instrs2 = [Instr2 | Instrs3],
-        Instr2 = decr_sp(N) - _,
+        Instr2 = llds_instr(decr_sp(N), _),
         opt_util.skip_comments_livevals(Instrs3, Instrs4),
         Instrs4 = [Instr4 | Instrs5],
-        Instr4 = goto(code_succip) - Comment
+        Instr4 = llds_instr(goto(code_succip), Comment)
     ->
-        NewInstr = decr_sp_and_return(N) - Comment,
+        NewInstr = llds_instr(decr_sp_and_return(N), Comment),
         Instrs = [NewInstr | Instrs5]
     ;
         Instrs = [Instr0 | Instrs1]

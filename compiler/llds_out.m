@@ -1731,8 +1731,8 @@ output_c_procedure(PrintComments, EmitCLoops, LocalThreadEngineBase, Proc,
 
 find_caller_label([], _) :-
     unexpected(this_file, "cannot find caller label").
-find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
-    ( Instr0 = label(Label) ->
+find_caller_label([llds_instr(Uinstr, _) | Instrs], CallerLabel) :-
+    ( Uinstr = label(Label) ->
         (
             Label = internal_label(_, _),
             unexpected(this_file, "caller label is internal label")
@@ -1751,26 +1751,26 @@ find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
     set_tree234(label)::in, set_tree234(label)::out) is det.
 
 find_cont_labels([], !ContLabelSet).
-find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
+find_cont_labels([llds_instr(Uinstr, _) | Instrs], !ContLabelSet) :-
     (
         (
-            Instr = llcall(_, code_label(ContLabel), _, _, _, _)
+            Uinstr = llcall(_, code_label(ContLabel), _, _, _, _)
         ;
-            Instr = mkframe(_, yes(code_label(ContLabel)))
+            Uinstr = mkframe(_, yes(code_label(ContLabel)))
         ;
-            Instr = join_and_continue(_, ContLabel)
+            Uinstr = join_and_continue(_, ContLabel)
         ;
-            Instr = assign(redoip_slot(_), const(Const)),
+            Uinstr = assign(redoip_slot(_), const(Const)),
             Const = llconst_code_addr(code_label(ContLabel))
         )
     ->
         set_tree234.insert(ContLabel, !ContLabelSet)
     ;
-        Instr = fork(Label1)
+        Uinstr = fork(Label1)
     ->
         set_tree234.insert(Label1, !ContLabelSet)
     ;
-        Instr = block(_, _, Block)
+        Uinstr = block(_, _, Block)
     ->
         find_cont_labels(Block, !ContLabelSet)
     ;
@@ -1781,18 +1781,18 @@ find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
     % Locate all the labels which can be profitably turned into
     % labels starting while loops. The idea is to do this transform:
     %
-    % L1:               L1:
-    %                    while (1) {
-    %   ...             ...
+    % L1:                       L1:
+    %                           while (1) {
+    %   ...                     ...
     %   if (...) goto L1        if (...) continue
     %   ...        =>       ...
     %   if (...) goto L?        if (...) goto L?
     %   ...             ...
     %   if (...) goto L1        if (...) continue
-    %   ...             ...
-    %                   break;
-    %                    }
-    % L2:               L2:
+    %   ...                     ...
+    %                           break;
+    %                           }
+    % L2:                       L2:
     %
     % The second of these is better if we don't have fast jumps.
     %
@@ -1800,9 +1800,9 @@ find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
     set_tree234(label)::in, set_tree234(label)::out) is det.
 
 find_while_labels([], !WhileSet).
-find_while_labels([Instr0 - _ | Instrs0], !WhileSet) :-
+find_while_labels([llds_instr(Uinstr0, _) | Instrs0], !WhileSet) :-
     (
-        Instr0 = label(Label),
+        Uinstr0 = label(Label),
         is_while_label(Label, Instrs0, Instrs1, 0, UseCount),
         UseCount > 0
     ->
@@ -1816,15 +1816,16 @@ find_while_labels([Instr0 - _ | Instrs0], !WhileSet) :-
     list(instruction)::in, list(instruction)::out, int::in, int::out) is det.
 
 is_while_label(_, [], [], !Count).
-is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs, !Count) :-
-    ( Instr0 = label(_) ->
-        Instrs = [Instr0 - Comment0 | Instrs0]
+is_while_label(Label, [Instr0 | Instrs0], Instrs, !Count) :-
+    Instr0 = llds_instr(Uinstr0, _),
+    ( Uinstr0 = label(_) ->
+        Instrs = [Instr0 | Instrs0]
     ;
-        ( Instr0 = goto(code_label(Label)) ->
+        ( Uinstr0 = goto(code_label(Label)) ->
             !:Count = !.Count + 1
-        ; Instr0 = if_val(_, code_label(Label)) ->
+        ; Uinstr0 = if_val(_, code_label(Label)) ->
             !:Count = !.Count + 1
-        ; Instr0 = block(_, _, BlockInstrs) ->
+        ; Uinstr0 = block(_, _, BlockInstrs) ->
             count_while_label_in_block(Label, BlockInstrs, !Count)
         ;
             true
@@ -1836,15 +1837,16 @@ is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs, !Count) :-
     int::in, int::out) is det.
 
 count_while_label_in_block(_, [], !Count).
-count_while_label_in_block(Label, [Instr0 - _Comment0 | Instrs0], !Count) :-
-    ( Instr0 = label(_) ->
+count_while_label_in_block(Label, [Instr0 | Instrs0], !Count) :-
+    Instr0 = llds_instr(Uinstr0, _),
+    ( Uinstr0 = label(_) ->
         unexpected(this_file, "label in block")
     ;
-        ( Instr0 = goto(code_label(Label)) ->
+        ( Uinstr0 = goto(code_label(Label)) ->
             !:Count = !.Count + 1
-        ; Instr0 = if_val(_, code_label(Label)) ->
+        ; Uinstr0 = if_val(_, code_label(Label)) ->
             !:Count = !.Count + 1
-        ; Instr0 = block(_, _, _) ->
+        ; Uinstr0 = block(_, _, _) ->
             unexpected(this_file, "block in block")
         ;
             true
@@ -1857,8 +1859,9 @@ count_while_label_in_block(Label, [Instr0 - _Comment0 | Instrs0], !Count) :-
 :- pred output_instruction_decls(map(label, data_addr)::in, instruction::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_instruction_decls(StackLayoutLabels, Instr - _Comment, !DeclSet, !IO) :-
-    output_instr_decls(StackLayoutLabels, Instr, !DeclSet, !IO).
+output_instruction_decls(StackLayoutLabels, Instr, !DeclSet, !IO) :-
+    Instr = llds_instr(Uinstr, _),
+    output_instr_decls(StackLayoutLabels, Uinstr, !DeclSet, !IO).
 
 :- pred output_instr_decls(map(label, data_addr)::in, instr::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1997,12 +2000,13 @@ output_foreign_proc_component_decls(Component, !DeclSet, !IO) :-
     io::di, io::uo) is det.
 
 output_instruction_list([], _, _, _, !IO).
-output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
-        WhileSet, !IO) :-
-    output_instruction_and_comment(Instr0, Comment0, PrintComments, ProfInfo,
+output_instruction_list([Instr | Instrs], PrintComments, ProfInfo, WhileSet,
+        !IO) :-
+    Instr = llds_instr(Uinstr, Comment),
+    output_instruction_and_comment(Uinstr, Comment, PrintComments, ProfInfo,
         !IO),
     (
-        Instr0 = label(Label),
+        Uinstr = label(Label),
         set_tree234.contains(WhileSet, Label)
     ->
         io.write_string("\twhile (1) {\n", !IO),
@@ -2012,8 +2016,7 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
         % when before the next label, before a goto that closes the loop,
         % or when we get to the end of Instrs.
     ;
-        output_instruction_list(Instrs, PrintComments, ProfInfo,
-            WhileSet, !IO)
+        output_instruction_list(Instrs, PrintComments, ProfInfo, WhileSet, !IO)
     ).
 
 :- pred output_instruction_list_while(list(instruction)::in, label::in,
@@ -2022,32 +2025,33 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
 
 output_instruction_list_while([], _, _, _, _, !IO) :-
     io.write_string("\tbreak; } /* end while */\n", !IO).
-output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
+output_instruction_list_while([Instr | Instrs], Label,
         PrintComments, ProfInfo, WhileSet, !IO) :-
-    ( Instr0 = label(_) ->
+    Instr = llds_instr(Uinstr, Comment),
+    ( Uinstr = label(_) ->
         io.write_string("\tbreak; } /* end while */\n", !IO),
-        output_instruction_list([Instr0 - Comment0 | Instrs],
+        output_instruction_list([Instr | Instrs],
             PrintComments, ProfInfo, WhileSet, !IO)
-    ; Instr0 = goto(code_label(Label)) ->
+    ; Uinstr = goto(code_label(Label)) ->
         io.write_string("\t/* continue */ } /* end while */\n", !IO),
         output_instruction_list(Instrs, PrintComments, ProfInfo, WhileSet, !IO)
-    ; Instr0 = if_val(Rval, code_label(Label)) ->
+    ; Uinstr = if_val(Rval, code_label(Label)) ->
         io.write_string("\tif (", !IO),
         output_test_rval(Rval, !IO),
         io.write_string(")\n\t\tcontinue;\n", !IO),
         (
             PrintComments = yes,
-            Comment0 \= ""
+            Comment \= ""
         ->
             io.write_string("\t\t/* ", !IO),
-            io.write_string(Comment0, !IO),
+            io.write_string(Comment, !IO),
             io.write_string(" */\n", !IO)
         ;
             true
         ),
         output_instruction_list_while(Instrs, Label,
             PrintComments, ProfInfo, WhileSet, !IO)
-    ; Instr0 = block(TempR, TempF, BlockInstrs) ->
+    ; Uinstr = block(TempR, TempF, BlockInstrs) ->
         output_block_start(TempR, TempF, !IO),
         output_instruction_list_while_block(BlockInstrs, Label, PrintComments,
             ProfInfo, !IO),
@@ -2055,7 +2059,7 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
         output_instruction_list_while(Instrs, Label,
             PrintComments, ProfInfo, WhileSet, !IO)
     ;
-        output_instruction_and_comment(Instr0, Comment0,
+        output_instruction_and_comment(Uinstr, Comment,
             PrintComments, ProfInfo, !IO),
         output_instruction_list_while(Instrs, Label,
             PrintComments, ProfInfo, WhileSet, !IO)
@@ -2065,34 +2069,35 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
     bool::in, pair(label, set_tree234(label))::in, io::di, io::uo) is det.
 
 output_instruction_list_while_block([], _, _, _, !IO).
-output_instruction_list_while_block([Instr0 - Comment0 | Instrs], Label,
+output_instruction_list_while_block([Instr | Instrs], Label,
         PrintComments, ProfInfo, !IO) :-
-    ( Instr0 = label(_) ->
+    Instr = llds_instr(Uinstr, Comment),
+    ( Uinstr = label(_) ->
         unexpected(this_file, "label in block")
-    ; Instr0 = goto(code_label(Label)) ->
+    ; Uinstr = goto(code_label(Label)) ->
         io.write_string("\tcontinue;\n", !IO),
         expect(unify(Instrs, []), this_file,
             "output_instruction_list_while_block: code after goto")
-    ; Instr0 = if_val(Rval, code_label(Label)) ->
+    ; Uinstr = if_val(Rval, code_label(Label)) ->
         io.write_string("\tif (", !IO),
         output_test_rval(Rval, !IO),
         io.write_string(")\n\t\tcontinue;\n", !IO),
         (
             PrintComments = yes,
-            Comment0 \= ""
+            Comment \= ""
         ->
             io.write_string("\t\t/* ", !IO),
-            io.write_string(Comment0, !IO),
+            io.write_string(Comment, !IO),
             io.write_string(" */\n", !IO)
         ;
             true
         ),
         output_instruction_list_while_block(Instrs, Label,
             PrintComments, ProfInfo, !IO)
-    ; Instr0 = block(_, _, _) ->
+    ; Uinstr = block(_, _, _) ->
         unexpected(this_file, "block in block")
     ;
-        output_instruction_and_comment(Instr0, Comment0,
+        output_instruction_and_comment(Uinstr, Comment,
             PrintComments, ProfInfo, !IO),
         output_instruction_list_while_block(Instrs, Label,
             PrintComments, ProfInfo, !IO)
@@ -2896,10 +2901,10 @@ output_layout_locns([Locn | Locns], !IO) :-
 
 output_layout_locn(Locn, !IO) :-
     (
-        Locn = direct(Lval),
+        Locn = locn_direct(Lval),
         output_lval(Lval, !IO)
     ;
-        Locn = indirect(Lval, Offset),
+        Locn = locn_indirect(Lval, Offset),
         io.write_string("offset ", !IO),
         io.write_int(Offset, !IO),
         io.write_string(" from ", !IO),
@@ -5392,7 +5397,7 @@ gather_labels_from_c_procs([Proc | Procs], !Labels) :-
 
 gather_labels_from_instrs([], !Labels).
 gather_labels_from_instrs([Instr | Instrs], !Labels) :-
-    ( Instr = label(Label) - _ ->
+    ( Instr = llds_instr(label(Label), _) ->
         !:Labels = [Label | !.Labels]
     ;
         true

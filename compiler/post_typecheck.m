@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -571,7 +571,8 @@ promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
 :- pred in_interface_check(module_info::in, pred_info::in, hlds_goal::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-in_interface_check(ModuleInfo, PredInfo, GoalExpr - GoalInfo, !Specs) :-
+in_interface_check(ModuleInfo, PredInfo, hlds_goal(GoalExpr, GoalInfo),
+        !Specs) :-
     (
         GoalExpr = plain_call(PredId, _, _, _, _,SymName),
         module_info_pred_info(ModuleInfo, PredId, CallPredInfo),
@@ -940,7 +941,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         HOCall = generic_call(
             higher_order(FuncVar, Purity, function, FullArity),
             ArgVars, Modes, Det),
-        Goal = HOCall - GoalInfo0
+        Goal = hlds_goal(HOCall, GoalInfo0)
     ;
         % Is the function symbol a user-defined function, rather than
         % a functor which represents a data constructor?
@@ -990,7 +991,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             rhs_functor(ConsId0, no, ArgVars0), UnifyContext),
         FuncCall = plain_call(PredId, ProcId, ArgVars, not_builtin,
             yes(FuncCallUnifyContext), QualifiedFuncName),
-        Goal = FuncCall - GoalInfo0
+        Goal = hlds_goal(FuncCall, GoalInfo0)
     ;
         % Is the function symbol a higher-order predicate
         % or function constant?
@@ -1014,8 +1015,9 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         get_proc_id(ModuleInfo, PredId, ProcId),
         ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
         ConsId = pred_const(ShroudedPredProcId, EvalMethod),
-        Goal = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
-            Unification0, UnifyContext) - GoalInfo0
+        GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
+            Unification0, UnifyContext),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         % Is it a call to an automatically generated field access function.
         % This test must come after the tests for function calls and
@@ -1053,8 +1055,9 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         ;
             ConsId = ConsId0
         ),
-        Goal = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
-            Unification0, UnifyContext) - GoalInfo0
+        GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
+            Unification0, UnifyContext),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1100,7 +1103,7 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
 
 finish_field_access_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
         AccessType, FieldName, UnifyContext, Var, Args, GoalInfo,
-        GoalExpr - GoalInfo) :-
+        hlds_goal(GoalExpr, GoalInfo)) :-
     (
         AccessType = get,
         field_extraction_function_args(Args, TermVar),
@@ -1165,7 +1168,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
         rhs_functor(ConsId, no, ArgVars), OldGoalInfo, RestrictNonLocals,
         [FieldVar, TermInputVar], UnifyContext, FunctorGoal),
-    FunctorGoal = GoalExpr - _.
+    FunctorGoal = hlds_goal(GoalExpr, _).
 
 :- pred translate_set_function(module_info::in, pred_info::in, pred_info::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
@@ -1229,7 +1232,8 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
         ConstructRestrictNonLocals, [TermOutputVar | ConstructArgs],
         UnifyContext, ConstructGoal),
 
-    Conj = conj(plain_conj, [DeconstructGoal, ConstructGoal]) - OldGoalInfo,
+    ConjExpr = conj(plain_conj, [DeconstructGoal, ConstructGoal]),
+    Conj = hlds_goal(ConjExpr, OldGoalInfo),
 
     % Make mode analysis treat the translated access function
     % as an atomic goal.
@@ -1417,7 +1421,7 @@ create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     create_pure_atomic_complicated_unification(Var, RHS,
         Context, UnifyMainContext, UnifySubContext, Goal0),
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
 
     % Compute the nonlocals of the goal.
     set.list_to_set(VarsList, NonLocals1),
@@ -1428,8 +1432,7 @@ create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
     % will be as expected.  (See the XXX comment near the definition of
     % constraint_id in hlds_data.m for more info.)
     goal_info_set_goal_path(GoalPath, GoalInfo1, GoalInfo),
-
-    Goal = GoalExpr0 - GoalInfo.
+    Goal = hlds_goal(GoalExpr0, GoalInfo).
 
 :- pred make_new_vars(list(mer_type)::in, list(prog_var)::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.

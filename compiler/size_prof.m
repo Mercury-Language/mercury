@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2006 The University of Melbourne.
+% Copyright (C) 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -279,7 +279,7 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     is det.
 
 process_goal(Goal0, Goal, !Info) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(LHS, RHS, UniMode, Unify0, UnifyContext),
         (
@@ -475,7 +475,7 @@ process_goal(Goal0, Goal, !Info) :-
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "size_prof.process_goal: shorthand")
     ),
-    Goal = GoalExpr - GoalInfo0.
+    Goal = hlds_goal(GoalExpr, GoalInfo0).
 
 %---------------------------------------------------------------------------%
 
@@ -486,7 +486,7 @@ process_conj([], [], !Info).
 process_conj([Goal0 | Goals0], Conj, !Info) :-
     process_goal(Goal0, Goal, !Info),
     process_conj(Goals0, Goals, !Info),
-    ( Goal = conj(plain_conj, SubConj) - _ ->
+    ( Goal = hlds_goal(conj(plain_conj, SubConj), _) ->
         % Flatten out any conjunction introduced by process_goal.
         % We never create conjunctions more than one level deep,
         % so this single test is sufficient to ensure that we never
@@ -675,7 +675,7 @@ process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr, !Info) :-
     (
         ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName)
     ->
-        Goal0 = GoalExpr - _
+        Goal0 = hlds_goal(GoalExpr, _)
     ;
         ConsId = cons(_Name, _Arity),
         Args = [_ | _]
@@ -685,7 +685,7 @@ process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr, !Info) :-
         % All ConsIds other than cons/2 deconstruct terms that we
         % consider zero-sized.
         record_known_size(Var, 0, !Info),
-        Goal0 = GoalExpr - _
+        Goal0 = hlds_goal(GoalExpr, _)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -729,7 +729,7 @@ process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type, ConsId,
         goal_info_get_nonlocals(GoalInfo0, NonLocals0),
         set.insert(NonLocals0, SizeVar, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-        UnifyGoal = UnifyExpr - GoalInfo,
+        UnifyGoal = hlds_goal(UnifyExpr, GoalInfo),
         Goals = list.condense([ArgGoals, SizeGoals, [UnifyGoal]]),
         GoalExpr = conj(plain_conj, Goals)
     ).
@@ -742,7 +742,7 @@ process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type, ConsId,
 
 process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
     find_defined_args(Args, ArgModes, DefinedArgs, _NonDefArgs, !.Info),
-    UnifyGoal = GoalExpr0 - GoalInfo0,
+    UnifyGoal = hlds_goal(GoalExpr0, GoalInfo0),
     goal_info_get_context(GoalInfo0, Context),
     process_args(DefinedArgs, 0, KnownSize,
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -173,7 +173,8 @@ expand_eqv_types(ModuleName, Items0, Items, EventSpecMap0, EventSpecMap,
     eqv_map::in, eqv_map::out, eqv_inst_map::in, eqv_inst_map::out) is det.
 
 build_eqv_map([], !EqvMap, !EqvInstMap).
-build_eqv_map([Item - _Context | Items0], !EqvMap, !EqvInstMap) :-
+build_eqv_map([ItemAndContext | Items0], !EqvMap, !EqvInstMap) :-
+    ItemAndContext = item_and_context(Item, _Context),
     (
         Item = item_module_defn(_, md_abstract_imported)
     ->
@@ -201,15 +202,17 @@ build_eqv_map([Item - _Context | Items0], !EqvMap, !EqvInstMap) :-
     list(item_and_context)::out) is det.
 
 skip_abstract_imported_items([], []).
-skip_abstract_imported_items([Item - _ | Items0], Items) :-
+skip_abstract_imported_items([ItemAndContext0 | ItemAndContexts0],
+        ItemAndContexts) :-
+    ItemAndContext0 = item_and_context(Item0, _Context),
     (
-        Item = item_module_defn(_, Defn),
+        Item0 = item_module_defn(_, Defn),
         is_section_defn(Defn) = yes,
         Defn \= md_abstract_imported
     ->
-        Items = Items0
+        ItemAndContexts = ItemAndContexts0
     ;
-        skip_abstract_imported_items(Items0, Items)
+        skip_abstract_imported_items(ItemAndContexts0, ItemAndContexts)
     ).
 
 :- func is_section_defn(module_defn) = bool.
@@ -245,9 +248,10 @@ is_section_defn(md_version_numbers(_, _)) = no.
 
 replace_in_item_list(_, _, [], _, _, !Items, !RecompInfo, !UsedModules,
         !Specs).
-replace_in_item_list(ModuleName, Location0, [ItemAndContext0 | Items0],
-        EqvMap, EqvInstMap, !ReplItems, !RecompInfo, !UsedModules, !Specs) :-
-    ItemAndContext0 = Item0 - Context,
+replace_in_item_list(ModuleName, Location0,
+        [ItemAndContext0 | ItemAndContexts0], EqvMap, EqvInstMap,
+        !ReplItems, !RecompInfo, !UsedModules, !Specs) :-
+    ItemAndContext0 = item_and_context(Item0, Context),
     ( Item0 = item_module_defn(_, ModuleDefn) ->
         ( ModuleDefn = md_interface,
             Location = eqv_type_in_interface
@@ -286,7 +290,7 @@ replace_in_item_list(ModuleName, Location0, [ItemAndContext0 | Items0],
         replace_in_item(ModuleName, Location, Item0, Context, EqvMap,
             EqvInstMap, Item, !RecompInfo, !UsedModules, ItemSpecs)
     ->
-        ItemAndContext = Item - Context,
+        ItemAndContext = item_and_context(Item, Context),
         % Discard the item if there were any errors.
         (
             ItemSpecs = [],
@@ -299,8 +303,8 @@ replace_in_item_list(ModuleName, Location0, [ItemAndContext0 | Items0],
         ItemAndContext = ItemAndContext0,
         !:ReplItems = [ItemAndContext | !.ReplItems]
     ),
-    replace_in_item_list(ModuleName, Location, Items0, EqvMap, EqvInstMap,
-        !ReplItems, !RecompInfo, !UsedModules, !Specs).
+    replace_in_item_list(ModuleName, Location, ItemAndContexts0,
+        EqvMap, EqvInstMap, !ReplItems, !RecompInfo, !UsedModules, !Specs).
 
 :- pred replace_in_item(module_name::in, eqv_type_location::in, item::in,
     prog_context::in, eqv_map::in, eqv_inst_map::in, item::out,

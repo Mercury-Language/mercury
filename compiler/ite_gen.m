@@ -64,7 +64,7 @@
 
 generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
         IteGoalInfo, Code, !CI) :-
-    CondGoal0 = CondExpr - CondInfo0,
+    CondGoal0 = hlds_goal(CondExpr, CondInfo0),
     goal_info_get_code_model(CondInfo0, CondCodeModel),
     (
         CodeModel = model_non,
@@ -85,7 +85,7 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
         % to make sure that all resume points have been handled by
         % surrounding code.
         goal_info_set_resume_point(no_resume_point, CondInfo0, CondInfo),
-        CondGoal = CondExpr - CondInfo
+        CondGoal = hlds_goal(CondExpr, CondInfo)
     ;
         unexpected(this_file,
             "condition of an if-then-else has no resume point")
@@ -207,10 +207,11 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
 
     code_info.get_next_label(EndLabel, !CI),
     JumpToEndCode = node([
-        goto(code_label(EndLabel)) - "Jump to the end of if-then-else"
+        llds_instr(goto(code_label(EndLabel)),
+            "Jump to the end of if-then-else")
     ]),
     EndLabelCode = node([
-        label(EndLabel) - "end of if-then-else"
+        llds_instr(label(EndLabel), "end of if-then-else")
     ]),
     make_pneg_context_wrappers(Globals, CondInfo, PNegCondCode, PNegThenCode,
         PNegElseCode),
@@ -243,24 +244,23 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
 
 %-----------------------------------------------------------------------------%
 
-generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
-        !CI) :-
+generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
     ( CodeModel = model_non ->
         unexpected(this_file, "generate_negation: nondet negation.")
     ;
         true
     ),
 
-    Goal0 = GoalExpr - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_get_resume_point(GoalInfo0, Resume),
     ( Resume = resume_point(ResumeVarsPrime, ResumeLocsPrime) ->
         ResumeVars = ResumeVarsPrime,
         ResumeLocs = ResumeLocsPrime,
         goal_info_set_resume_point(no_resume_point, GoalInfo0, GoalInfo),
-        Goal = GoalExpr - GoalInfo
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        unexpected(this_file, "generate_negation: " ++
-            "negated goal has no resume point.")
+        unexpected(this_file,
+            "generate_negation: negated goal has no resume point.")
     ),
     %
     % For a negated simple test, we can generate better code than the general
@@ -289,7 +289,8 @@ generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
             Op = eq
         ),
         TestCode = node([
-            if_val(binop(Op, ValL, ValR), CodeAddr) - "test inequality"
+            llds_instr(if_val(binop(Op, ValL, ValR), CodeAddr),
+                "test inequality")
         ]),
         code_info.leave_simple_neg(GoalInfo, SimpleNeg, !CI),
         Code = tree(tree(CodeL, CodeR), TestCode)
@@ -307,13 +308,12 @@ generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
 
 generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
         ResumeVars, ResumeLocs, Code, !CI) :-
-
     code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
-    %
+
     % Maybe save the heap state current before the condition; this ought to be
     % after we make the failure continuation because that causes the cache to
     % get flushed.
-    %
+
     code_info.get_globals(!.CI, Globals),
     (
         globals.lookup_bool_option(Globals,
@@ -459,16 +459,16 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
                 wrap_transient("\t\tMR_pneg_enter_else(" ++ CtxtStr ++ ");\n"))
         ],
         PNegCondCode = node([
-            foreign_proc_code([], PNegCondComponents,
-                proc_will_not_call_mercury, no, no, no, no, yes, yes) - ""
+            llds_instr(foreign_proc_code([], PNegCondComponents,
+                proc_will_not_call_mercury, no, no, no, no, yes, yes), "")
         ]),
         PNegThenCode = node([
-            foreign_proc_code([], PNegThenComponents,
-                proc_will_not_call_mercury, no, no, no, no, yes, yes) - ""
+            llds_instr(foreign_proc_code([], PNegThenComponents,
+                proc_will_not_call_mercury, no, no, no, no, yes, yes), "")
         ]),
         PNegElseCode = node([
-            foreign_proc_code([], PNegElseComponents,
-                proc_will_not_call_mercury, no, no, no, no, yes, yes) - ""
+            llds_instr(foreign_proc_code([], PNegElseComponents,
+                proc_will_not_call_mercury, no, no, no, no, yes, yes), "")
         ])
     ;
         PNegCondCode = empty,

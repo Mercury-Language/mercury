@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -306,9 +306,9 @@ check_proc_for_trail_mods(SCC, PPId, !Results, !ModuleInfo, !IO) :-
     trailing_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_goal_for_trail_mods(SCC, VarTypes, Goal - GoalInfo,
+check_goal_for_trail_mods(SCC, VarTypes, hlds_goal(GoalExpr, GoalInfo),
         Result, MaybeStatus, !ModuleInfo, !IO) :-
-    check_goal_for_trail_mods_2(SCC, VarTypes, Goal, GoalInfo,
+    check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, GoalInfo,
         Result, MaybeStatus, !ModuleInfo, !IO).
 
 :- pred check_goal_for_trail_mods_2(scc::in,
@@ -316,17 +316,17 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal - GoalInfo,
     trailing_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_goal_for_trail_mods_2(_, _, Goal, _, trail_will_not_modify, yes(optimal),
+check_goal_for_trail_mods_2(_, _, GoalExpr, _, trail_will_not_modify, yes(optimal),
         !ModuleInfo, !IO) :-
-    Goal = unify(_, _, _, Kind, _),
+    GoalExpr = unify(_, _, _, Kind, _),
     ( Kind = complicated_unify(_, _, _) ->
         unexpected(this_file, "complicated unify during trail usage analysis.")
     ;
         true
     ).
-check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
+check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
+    GoalExpr = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
     CallPPId = proc(CallPredId, CallProcId),
     module_info_pred_info(!.ModuleInfo, CallPredId, CallPredInfo),
     (
@@ -406,9 +406,9 @@ check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
         )
     ).
 
-check_goal_for_trail_mods_2(_, _VarTypes, Goal, _GoalInfo,
+check_goal_for_trail_mods_2(_, _VarTypes, GoalExpr, _GoalInfo,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = generic_call(Details, _Args, _ArgModes, _),
+    GoalExpr = generic_call(Details, _Args, _ArgModes, _),
     (
         % XXX Use results of closure analysis to handle this.
         Details = higher_order(_Var, _, _, _),
@@ -430,12 +430,12 @@ check_goal_for_trail_mods_2(SCC, VarTypes, negation(Goal), _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
     check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         !ModuleInfo, !IO).
-check_goal_for_trail_mods_2(SCC, VarTypes, Goal, OuterGoalInfo,
+check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, OuterGoalInfo,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = scope(_, InnerGoal),
+    GoalExpr = scope(_, InnerGoal),
     check_goal_for_trail_mods(SCC, VarTypes, InnerGoal, Result0,
         MaybeAnalysisStatus, !ModuleInfo, !IO),
-    InnerGoal = _ - InnerGoalInfo,
+    InnerGoal = hlds_goal(_, InnerGoalInfo),
     goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
     goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
     %
@@ -445,23 +445,23 @@ check_goal_for_trail_mods_2(SCC, VarTypes, Goal, OuterGoalInfo,
     % for the reason why.
     %
     Result = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, Result0).
-check_goal_for_trail_mods_2(_, _, Goal, _, Result, MaybeAnalysisStatus,
+check_goal_for_trail_mods_2(_, _, GoalExpr, _, Result, MaybeAnalysisStatus,
         !ModuleInfo, !IO) :-
-    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
+    GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
     Result = attributes_imply_trail_mod(Attributes),
     MaybeAnalysisStatus = yes(optimal).
 check_goal_for_trail_mods_2(_, _, shorthand(_), _, _, _, !ModuleInfo, !IO) :-
     unexpected(this_file,
         "shorthand goal encountered during trail usage analysis.").
-check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
+check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = switch(_, _, Cases),
+    GoalExpr = switch(_, _, Cases),
     CaseGoals = list.map((func(case(_, CaseGoal)) = CaseGoal), Cases),
     check_goals_for_trail_mods(SCC, VarTypes, CaseGoals,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO).
-check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
+check_goal_for_trail_mods_2(SCC, VarTypes, GoalExpr, _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = if_then_else(_, Cond, Then, Else),
+    GoalExpr = if_then_else(_, Cond, Then, Else),
     check_goals_for_trail_mods(SCC, VarTypes, [Cond, Then, Else],
         Result0, MaybeAnalysisStatus, !ModuleInfo, !IO),
     (
@@ -473,7 +473,7 @@ check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
         % of add_trail_ops.goal_expr_add_trail_ops that handles if_then_elses.
         %
         Result0 = trail_will_not_modify,
-        Cond = _CondGoalExpr - CondGoalInfo,
+        Cond = hlds_goal(_CondGoalExpr, CondGoalInfo),
         goal_info_get_code_model(CondGoalInfo, CondCodeModel),
         CondCodeModel \= model_non
     -> 
@@ -827,7 +827,7 @@ annotate_proc(PPId, !ModuleInfo, !IO) :-
     io::di, io::uo) is det.
 
 annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = GoalExpr0 - GoalInfo0,
+    !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     annotate_goal_2(VarTypes, GoalInfo0, GoalExpr0, GoalExpr, Status,
         !ModuleInfo, !IO),
     ( Status = trail_will_not_modify ->
@@ -836,7 +836,7 @@ annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
     ;
         GoalInfo = GoalInfo0
     ),
-    !:Goal = GoalExpr - GoalInfo.
+    !:Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred annotate_goal_2(vartypes::in, hlds_goal_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out, trailing_status::out,
@@ -943,7 +943,7 @@ annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
 annotate_goal_2(VarTypes, OuterGoalInfo, !Goal, Status, !ModuleInfo, !IO) :-
     !.Goal = scope(Reason, InnerGoal0),
     annotate_goal(VarTypes, InnerGoal0, InnerGoal, Status0, !ModuleInfo, !IO),
-    InnerGoal = _ - InnerGoalInfo,
+    InnerGoal = hlds_goal(_, InnerGoalInfo),
     goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
     goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
     Status = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, Status0),

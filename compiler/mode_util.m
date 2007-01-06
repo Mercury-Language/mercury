@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -945,19 +945,20 @@ recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstVarSet,
     vartypes::in, instmap::in, instmap_delta::out,
     recompute_info::in, recompute_info::out) is det.
 
-recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
+recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal,
         VarTypes, InstMap0, InstMapDelta, !RI) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         RecomputeAtomic = no,
-        goal_is_atomic(Goal0),
-        Goal0 \= unify(_, rhs_lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
+        goal_is_atomic(GoalExpr0),
+        GoalExpr0 \= unify(_, rhs_lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
         % Lambda expressions always need to be processed.
     ->
-        Goal = Goal0,
+        GoalExpr = GoalExpr0,
         GoalInfo1 = GoalInfo0
     ;
-        recompute_instmap_delta_2(RecomputeAtomic, Goal0, GoalInfo0,
-            Goal, VarTypes, InstMap0, InstMapDelta0, !RI),
+        recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalInfo0,
+            GoalExpr, VarTypes, InstMap0, InstMapDelta0, !RI),
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
         instmap_delta_restrict(NonLocals, InstMapDelta0, InstMapDelta1),
         goal_info_set_instmap_delta(InstMapDelta1, GoalInfo0, GoalInfo1)
@@ -971,6 +972,7 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
     ;
         GoalInfo = GoalInfo1
     ),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta).
 
 :- type recompute_info
@@ -1431,7 +1433,7 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
 %-----------------------------------------------------------------------------%
 
 fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
-    Goal0 = GoalExpr - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
     instmap.lookup_var(InstMap0, Var, Inst0),
     instmap.lookup_var(InstMap, Var, Inst),
@@ -1441,7 +1443,7 @@ fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
         instmap_delta_set(Var, Inst, InstMapDelta0, InstMapDelta),
         goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo)
     ),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

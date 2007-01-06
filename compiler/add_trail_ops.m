@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: add_trail_ops.m.
 % Authors: fjh, juliensf.
-% 
+%
 % This module is an HLDS-to-HLDS transformation that inserts code to
 % handle trailing.  The module implements two ways of doing this:
 %
@@ -23,7 +23,7 @@
 % is generally faster but results in larger executables.  The
 % `--generate-trail-ops-inline' option can be used to control which
 % of the methods is used.
-% 
+%
 % This pass is currently only used for the MLDS back-end.
 % For some reason (perhaps efficiency?? or more likely just historical?),
 % the LLDS back-end inserts the trail operations as it is generating
@@ -31,23 +31,23 @@
 %
 % See compiler/notes/trailing.html for more information about trailing
 % in the Mercury implementation.
-% 
+%
 % This module also implements trail usage optimization for those backends
 % that use it to implement trailing (see trailing_analysis.m for details).
-% 
+%
 % NOTE: it is important that passes following this one do not attempt
 %       to reorder disjunctions.  If trail usage optimization is being
 %       performed and a disjunction is reordered then the trail might
 %       be corrupted.
-% 
+%
 % TODO:
 %       - explore the space/time tradeoff between the inlining and
 %         non-inlining methods of implementing trailing.
-% 
+%
 %-----------------------------------------------------------------------------%
-% 
+%
 % XXX check goal_infos for correctness
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.add_trail_ops.
@@ -131,18 +131,19 @@ add_trail_ops(OptTrailUsage, GenerateInline, ModuleInfo0, !Proc) :-
     trail_ops_info::in, trail_ops_info::out) is det.
 
 goal_add_trail_ops(!Goal, !Info) :-
-    !.Goal = GoalExpr0 - GoalInfo,
+    !.Goal = hlds_goal(GoalExpr0, GoalInfo),
     goal_expr_add_trail_ops(GoalExpr0, GoalInfo, !:Goal, !Info).
 
 :- pred goal_expr_add_trail_ops(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, trail_ops_info::in, trail_ops_info::out) is det.
 
-goal_expr_add_trail_ops(conj(ConjType, Goals0), GI, conj(ConjType, Goals) - GI,
-        !Info) :-
+goal_expr_add_trail_ops(conj(ConjType, Goals0), GI,
+        hlds_goal(conj(ConjType, Goals), GI), !Info) :-
     conj_add_trail_ops(Goals0, Goals, !Info).
 
-goal_expr_add_trail_ops(disj([]), GI, disj([]) - GI, !Info).
-goal_expr_add_trail_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
+goal_expr_add_trail_ops(disj([]), GI, hlds_goal(disj([]), GI), !Info).
+goal_expr_add_trail_ops(disj(Goals0), GoalInfo, hlds_goal(GoalExpr, GoalInfo),
+        !Info) :-
     Goals0 = [_ | _],
     goal_info_get_context(GoalInfo, Context),
     goal_info_get_code_model(GoalInfo, CodeModel),
@@ -153,10 +154,11 @@ goal_expr_add_trail_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
     new_ticket_var(TicketVar, !Info),
     gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
     disj_add_trail_ops(Goals0, yes, CodeModel, TicketVar, Goals, !Info),
-    Goal = conj(plain_conj, [StoreTicketGoal, disj(Goals) - GoalInfo]).
+    GoalExpr = conj(plain_conj,
+        [StoreTicketGoal, hlds_goal(disj(Goals), GoalInfo)]).
 
-goal_expr_add_trail_ops(switch(A, B, Cases0), GI, switch(A, B, Cases) - GI,
-        !Info) :-
+goal_expr_add_trail_ops(switch(A, B, Cases0), GI,
+        hlds_goal(switch(A, B, Cases), GI), !Info) :-
     cases_add_trail_ops(Cases0, Cases, !Info).
 
 goal_expr_add_trail_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
@@ -165,7 +167,7 @@ goal_expr_add_trail_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     %   not(G)  ===>  (if G then fail else true)
     %
     goal_info_get_context(OuterGoalInfo, Context),
-    InnerGoal = _ - InnerGoalInfo,
+    InnerGoal = hlds_goal(_, InnerGoalInfo),
     goal_info_get_determinism(InnerGoalInfo, Determinism),
     determinism_components(Determinism, _CanFail, NumSolns),
     True = true_goal_with_context(Context),
@@ -187,8 +189,8 @@ goal_expr_add_trail_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     goal_expr_add_trail_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info).
 
 goal_expr_add_trail_ops(scope(Reason, Goal0), OuterGoalInfo,
-        Goal - OuterGoalInfo, !Info) :-
-    Goal0 = _ - InnerGoalInfo,
+        hlds_goal(GoalExpr, OuterGoalInfo), !Info) :-
+    Goal0 = hlds_goal(_, InnerGoalInfo),
     goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
     goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
     (
@@ -224,27 +226,30 @@ goal_expr_add_trail_ops(scope(Reason, Goal0), OuterGoalInfo,
         FailGoal = fail_goal_with_context(Context),
 
         % Put it all together.
-        Goal2 = scope(Reason, Goal1) - OuterGoalInfo,
-        SuccCode = conj(plain_conj,
-            [Goal2, ResetTicketCommitGoal, PruneTicketsToGoal])
-            - OuterGoalInfo,
+        Goal2 = hlds_goal(scope(Reason, Goal1), OuterGoalInfo),
+        SuccCode = hlds_goal(
+            conj(plain_conj,
+                [Goal2, ResetTicketCommitGoal, PruneTicketsToGoal]),
+            OuterGoalInfo),
         ( OuterCodeModel = model_semi ->
-            FailGoal = _ - FailGoalInfo,
-            FailCode = conj(plain_conj,
-                [ResetTicketUndoGoal, DiscardTicketGoal, FailGoal])
-                - FailGoalInfo,
-            Goal3 = disj([SuccCode, FailCode]) - OuterGoalInfo
+            FailGoal = hlds_goal(_, FailGoalInfo),
+            FailCode = hlds_goal(
+                conj(plain_conj,
+                    [ResetTicketUndoGoal, DiscardTicketGoal, FailGoal]),
+                FailGoalInfo),
+            Goal3 = hlds_goal(disj([SuccCode, FailCode]), OuterGoalInfo)
         ;
             Goal3 = SuccCode
         ),
-        Goal = conj(plain_conj, [MarkTicketStackGoal, StoreTicketGoal, Goal3])
+        GoalExpr =
+            conj(plain_conj, [MarkTicketStackGoal, StoreTicketGoal, Goal3])
     ;
         goal_add_trail_ops(Goal0, Goal1, !Info),
-        Goal = scope(Reason, Goal1)
+        GoalExpr = scope(Reason, Goal1)
     ).
 
-goal_expr_add_trail_ops(if_then_else(ExistQVars, Cond0, Then0, Else0), GoalInfo,
-        Goal - GoalInfo, !Info) :-
+goal_expr_add_trail_ops(if_then_else(ExistQVars, Cond0, Then0, Else0),
+        GoalInfo, hlds_goal(GoalExpr, GoalInfo), !Info) :-
     goal_add_trail_ops(Cond0, Cond, !Info),
     goal_add_trail_ops(Then0, Then1, !Info),
     goal_add_trail_ops(Else0, Else1, !Info),
@@ -253,14 +258,14 @@ goal_expr_add_trail_ops(if_then_else(ExistQVars, Cond0, Then0, Else0), GoalInfo,
     % any choicepoints then we can omit the trailing code around it.
     %
     OptTrailUsage = !.Info ^ opt_trail_usage,
-    Cond = _ - CondGoalInfo,
+    Cond = hlds_goal(_, CondGoalInfo),
     goal_info_get_code_model(CondGoalInfo, CondCodeModel),
     (
         OptTrailUsage = yes,
         CondCodeModel \= model_non,
         goal_cannot_modify_trail(CondGoalInfo) = yes
     ->
-        Goal = if_then_else(ExistQVars, Cond, Then1, Else1)
+        GoalExpr = if_then_else(ExistQVars, Cond, Then1, Else1)
     ;
         % Allocate a new trail ticket so that we can restore things if the
         % condition fails.
@@ -271,39 +276,46 @@ goal_expr_add_trail_ops(if_then_else(ExistQVars, Cond0, Then0, Else0), GoalInfo,
         %
         % Commit the trail ticket entries if the condition succeeds.
         %
-        Then1 = _ - Then1GoalInfo,
+        Then1 = hlds_goal(_, Then1GoalInfo),
         ( CondCodeModel = model_non ->
             gen_reset_ticket_solve(TicketVar, Context, ResetTicketSolveGoal,
                 !.Info),
-            Then =
-                conj(plain_conj, [ResetTicketSolveGoal, Then1]) - Then1GoalInfo
+            Then = hlds_goal(
+                conj(plain_conj, [ResetTicketSolveGoal, Then1]),
+                Then1GoalInfo)
         ;
             gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
                 !.Info),
             gen_prune_ticket(Context, PruneTicketGoal, !.Info),
-            Then = conj(plain_conj,
-                [ResetTicketCommitGoal, PruneTicketGoal, Then1])
-                - Then1GoalInfo
+            Then = hlds_goal(
+                conj(plain_conj,
+                    [ResetTicketCommitGoal, PruneTicketGoal, Then1]),
+                Then1GoalInfo)
         ),
         gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal, !.Info),
         gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
-        Else1 = _ - Else1GoalInfo,
-        Else = conj(plain_conj, [ResetTicketUndoGoal, DiscardTicketGoal, Else1])
-            - Else1GoalInfo,
-        IfThenElse = if_then_else(ExistQVars, Cond, Then, Else) - GoalInfo,
-        Goal = conj(plain_conj, [StoreTicketGoal, IfThenElse])
+        Else1 = hlds_goal(_, Else1GoalInfo),
+        Else = hlds_goal(
+            conj(plain_conj, [ResetTicketUndoGoal, DiscardTicketGoal, Else1]),
+            Else1GoalInfo),
+        IfThenElse = hlds_goal(
+            if_then_else(ExistQVars, Cond, Then, Else),
+            GoalInfo),
+        GoalExpr = conj(plain_conj, [StoreTicketGoal, IfThenElse])
     ).
 
-goal_expr_add_trail_ops(Goal @ plain_call(_, _, _, _, _, _), GI, Goal - GI,
-        !Info).
+goal_expr_add_trail_ops(GoalExpr @ plain_call(_, _, _, _, _, _), GI,
+        hlds_goal(GoalExpr, GI), !Info).
 
-goal_expr_add_trail_ops(Goal @ generic_call(_, _, _, _), GI, Goal - GI, !Info).
+goal_expr_add_trail_ops(GoalExpr @ generic_call(_, _, _, _), GI,
+        hlds_goal(GoalExpr, GI), !Info).
 
-goal_expr_add_trail_ops(Goal @ unify(_, _, _, _, _), GI, Goal - GI, !Info).
+goal_expr_add_trail_ops(GoalExpr @ unify(_, _, _, _, _), GI,
+        hlds_goal(GoalExpr, GI), !Info).
 
 goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
     PragmaForeign = call_foreign_proc(_, _, _, _, _, _, Impl),
-    ( 
+    (
         Impl = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
         % XXX Implementing trailing for nondet pragma foreign_code via
         % transformation is difficult, because there's nowhere in the HLDS
@@ -321,7 +333,7 @@ goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
         ( Impl = fc_impl_ordinary(_, _)
         ; Impl = fc_impl_import(_, _, _, _)
         ),
-        Goal = PragmaForeign - GoalInfo
+        Goal = hlds_goal(PragmaForeign, GoalInfo)
     ).
 
 goal_expr_add_trail_ops(shorthand(_), _, _, !Info) :-
@@ -341,7 +353,7 @@ conj_add_trail_ops(Goals0, Goals, !Info) :-
 disj_add_trail_ops([], _, _, _, [], !Info).
 disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, CodeModel, TicketVar,
         [Goal | Goals], !Info) :-
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     goal_info_get_context(GoalInfo0, Context),
 
     % First undo the effects of any earlier branches.
@@ -384,7 +396,7 @@ disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, CodeModel, TicketVar,
     %
     % Package up the stuff we built earlier.
     %
-    Goal1 = _ - GoalInfo1,
+    Goal1 = hlds_goal(_, GoalInfo1),
     conj_list_to_goal(UndoList ++ [Goal1] ++ PruneList, GoalInfo1, Goal),
     %
     % Recursively handle the remaining disjuncts.

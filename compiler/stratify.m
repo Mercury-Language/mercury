@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: stratify.m.
 % Main authors: ohutch, conway.
-% 
+%
 % This module performs stratification analysis.
 % It works by processing the call graph 1 scc at a time. It traverses
 % the goal for each procedure in the scc and reports an error or
@@ -25,7 +25,7 @@
 %
 % The second pass is necessary because the rebuilt call graph does not
 % allow the detection of definite non-stratification.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.stratify.
@@ -157,8 +157,8 @@ first_order_check_scc_2([PredProcId | Remaining], WholeScc, Error, !ModuleInfo,
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, Proc),
-    proc_info_get_goal(Proc, Goal - GoalInfo),
-    first_order_check_goal(Goal, GoalInfo, no, WholeScc,
+    proc_info_get_goal(Proc, hlds_goal(GoalExpr, GoalInfo)),
+    first_order_check_goal(GoalExpr, GoalInfo, no, WholeScc,
         PredProcId, Error, !ModuleInfo, !IO),
     first_order_check_scc_2(Remaining, WholeScc, Error, !ModuleInfo, !IO).
 
@@ -178,22 +178,24 @@ first_order_check_goal(switch(_Var, _Fail, Cases), _GoalInfo, Negated,
         WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
     first_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO).
-first_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo,
-        Else - EInfo), _GoalInfo, Negated, WholeScc, ThisPredProcId, Error,
-        !ModuleInfo, !IO) :-
-    first_order_check_goal(Cond, CInfo, yes, WholeScc, ThisPredProcId,
+first_order_check_goal(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
+        Negated, WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    Cond = hlds_goal(CondExpr, CInfo),
+    Then = hlds_goal(ThenExpr, TInfo),
+    Else = hlds_goal(ElseExpr, EInfo),
+    first_order_check_goal(CondExpr, CInfo, yes, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO),
-    first_order_check_goal(Then, TInfo, Negated, WholeScc, ThisPredProcId,
+    first_order_check_goal(ThenExpr, TInfo, Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO),
-    first_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
+    first_order_check_goal(ElseExpr, EInfo, Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO).
-first_order_check_goal(scope(_, Goal - GoalInfo), _GoalInfo, Negated,
-        WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
-    first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+first_order_check_goal(scope(_, hlds_goal(GoalExpr, GoalInfo)), _GoalInfo,
+        Negated, WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    first_order_check_goal(GoalExpr, GoalInfo, Negated, WholeScc,
         ThisPredProcId, Error, !ModuleInfo, !IO).
-first_order_check_goal(negation(Goal - GoalInfo), _GoalInfo, _Negated,
-        WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
-    first_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
+first_order_check_goal(negation(hlds_goal(GoalExpr, GoalInfo)), _GoalInfo,
+        _Negated, WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    first_order_check_goal(GoalExpr, GoalInfo, yes, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO).
 first_order_check_goal(call_foreign_proc(_Attributes, CPred, CProc,
         _, _, _, _), GoalInfo, Negated, WholeScc, ThisPredProcId, Error,
@@ -235,9 +237,9 @@ first_order_check_goal(shorthand(_), _, _, _, _, _, !ModuleInfo, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 first_order_check_goal_list([], _, _, _, _, !ModuleInfo, !IO).
-first_order_check_goal_list([Goal - GoalInfo | Goals], Negated, WholeScc,
-        ThisPredProcId, Error, !ModuleInfo, !IO) :-
-    first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+first_order_check_goal_list([hlds_goal(GoalExpr, GoalInfo) | Goals], Negated,
+        WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    first_order_check_goal(GoalExpr, GoalInfo, Negated, WholeScc,
         ThisPredProcId, Error, !ModuleInfo, !IO),
     first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO).
@@ -249,8 +251,8 @@ first_order_check_goal_list([Goal - GoalInfo | Goals], Negated, WholeScc,
 first_order_check_case_list([], _, _, _, _, !ModuleInfo, !IO).
 first_order_check_case_list([Case | Goals], Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO) :-
-    Case = case(_ConsId, Goal - GoalInfo),
-    first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+    Case = case(_ConsId, hlds_goal(GoalExpr, GoalInfo)),
+    first_order_check_goal(GoalExpr, GoalInfo, Negated, WholeScc,
         ThisPredProcId, Error, !ModuleInfo, !IO),
     first_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO).
@@ -294,8 +296,8 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
         ),
         pred_info_get_procedures(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, Proc),
-        proc_info_get_goal(Proc, Goal - GoalInfo),
-        higher_order_check_goal(Goal, GoalInfo, no, WholeScc,
+        proc_info_get_goal(Proc, hlds_goal(GoalExpr, GoalInfo)),
+        higher_order_check_goal(GoalExpr, GoalInfo, no, WholeScc,
             PredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
     ;
         true
@@ -318,22 +320,27 @@ higher_order_check_goal(switch(_Var, _Fail, Cases), _GoalInfo, Negated,
         WholeScc, ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
     higher_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO).
-higher_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo,
-        Else - EInfo), _GoalInfo, Negated, WholeScc,
-        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-    higher_order_check_goal(Cond, CInfo, yes, WholeScc, ThisPredProcId,
+higher_order_check_goal(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
+        Negated, WholeScc, ThisPredProcId, HighOrderLoops, Error,
+        !ModuleInfo, !IO) :-
+    Cond = hlds_goal(CondExpr, CInfo),
+    Then = hlds_goal(ThenExpr, TInfo),
+    Else = hlds_goal(ElseExpr, EInfo),
+    higher_order_check_goal(CondExpr, CInfo, yes, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO),
-    higher_order_check_goal(Then, TInfo, Negated, WholeScc, ThisPredProcId,
+    higher_order_check_goal(ThenExpr, TInfo, Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO),
-    higher_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
+    higher_order_check_goal(ElseExpr, EInfo, Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO).
-higher_order_check_goal(scope(_, Goal - GoalInfo), _GoalInfo, Negated,
-        WholeScc, ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-    higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+higher_order_check_goal(scope(_, hlds_goal(GoalExpr, GoalInfo)), _GoalInfo,
+        Negated, WholeScc, ThisPredProcId, HighOrderLoops, Error,
+        !ModuleInfo, !IO) :-
+    higher_order_check_goal(GoalExpr, GoalInfo, Negated, WholeScc,
         ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO).
-higher_order_check_goal(negation(Goal - GoalInfo), _GoalInfo, _Negated,
-        WholeScc, ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-    higher_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
+higher_order_check_goal(negation(hlds_goal(GoalExpr, GoalInfo)), _GoalInfo,
+        _Negated, WholeScc, ThisPredProcId, HighOrderLoops, Error,
+        !ModuleInfo, !IO) :-
+    higher_order_check_goal(GoalExpr, GoalInfo, yes, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO).
 higher_order_check_goal(call_foreign_proc(_IsRec, _, _, _, _, _, _), _GoalInfo,
         _Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, _,
@@ -386,9 +393,9 @@ higher_order_check_goal(shorthand(_), _, _, _, _, _, _, _, _, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 higher_order_check_goal_list([], _, _, _, _, _, !ModuleInfo, !IO).
-higher_order_check_goal_list([Goal - GoalInfo | Goals], Negated, WholeScc,
-        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-    higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+higher_order_check_goal_list([hlds_goal(GoalExpr, GoalInfo) | Goals], Negated,
+        WholeScc, ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
+    higher_order_check_goal(GoalExpr, GoalInfo, Negated, WholeScc,
         ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
     higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO).
@@ -400,8 +407,8 @@ higher_order_check_goal_list([Goal - GoalInfo | Goals], Negated, WholeScc,
 higher_order_check_case_list([], _, _, _, _, _, !ModuleInfo, !IO).
 higher_order_check_case_list([Case | Goals], Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO) :-
-    Case = case(_ConsId, Goal - GoalInfo),
-    higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+    Case = case(_ConsId, hlds_goal(GoalExpr, GoalInfo)),
+    higher_order_check_goal(GoalExpr, GoalInfo, Negated, WholeScc,
         ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
     higher_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO).
@@ -624,9 +631,9 @@ process_procs([ProcId | Procs], ModuleInfo, PredId, ArgTypes, ProcTable,
         !ProcCalls, !HOInfo, !CallsHO) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    proc_info_get_goal(ProcInfo, Goal - _GoalInfo),
+    proc_info_get_goal(ProcInfo, hlds_goal(GoalExpr, _GoalInfo)),
     PredProcId = proc(PredId, ProcId),
-    check_goal(Goal, Calls, HaveAT, CallsHigherOrder),
+    check_goal(GoalExpr, Calls, HaveAT, CallsHigherOrder),
     map.det_insert(!.ProcCalls, PredProcId, Calls, !:ProcCalls),
     higherorder_in_out(ArgTypes, ArgModes, ModuleInfo, HOInOut),
     map.det_insert(!.HOInfo, PredProcId, info(HaveAT, HOInOut), !:HOInfo),
@@ -708,9 +715,9 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), !Calls,
         % have addresses taken. This is not always to case, but should be
         % a suitable approximation for the stratification analysis.
         RHS = rhs_lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _NonLocals,
-            _Vars, _Modes, _Determinism, Goal - _GoalInfo)
+            _Vars, _Modes, _Determinism, hlds_goal(GoalExpr, _GoalInfo))
     ->
-        get_called_procs(Goal, [], CalledProcs),
+        get_called_procs(GoalExpr, [], CalledProcs),
         set.insert_list(!.HasAT, CalledProcs, !:HasAT)
     ;
         % Currently when this pass is run the construct/4 case will not happen
@@ -739,15 +746,17 @@ check_goal1(disj(Goals), !Calls, !HasAT, !CallsHO) :-
     check_goal_list(Goals, !Calls, !HasAT, !CallsHO).
 check_goal1(switch(_Var, _Fail, Cases), !Calls, !HasAT, !CallsHO) :-
     check_case_list(Cases, !Calls, !HasAT, !CallsHO).
-check_goal1(if_then_else(_Vars, Cond - _CInfo, Then - _TInfo, Else - _EInfo),
-        !Calls, !HasAT, !CallsHO) :-
-    check_goal1(Cond, !Calls, !HasAT, !CallsHO),
-    check_goal1(Then, !Calls, !HasAT, !CallsHO),
-    check_goal1(Else, !Calls, !HasAT, !CallsHO).
-check_goal1(scope(_, Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
-    check_goal1(Goal, !Calls, !HasAT, !CallsHO).
-check_goal1(negation(Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
-    check_goal1(Goal, !Calls, !HasAT, !CallsHO).
+check_goal1(if_then_else(_Vars, Cond, Then, Else), !Calls, !HasAT, !CallsHO) :-
+    Cond = hlds_goal(CondExpr, _),
+    Then = hlds_goal(ThenExpr, _),
+    Else = hlds_goal(ElseExpr, _),
+    check_goal1(CondExpr, !Calls, !HasAT, !CallsHO),
+    check_goal1(ThenExpr, !Calls, !HasAT, !CallsHO),
+    check_goal1(ElseExpr, !Calls, !HasAT, !CallsHO).
+check_goal1(scope(_, hlds_goal(GoalExpr, _)), !Calls, !HasAT, !CallsHO) :-
+    check_goal1(GoalExpr, !Calls, !HasAT, !CallsHO).
+check_goal1(negation(hlds_goal(GoalExpr, _)), !Calls, !HasAT, !CallsHO) :-
+    check_goal1(GoalExpr, !Calls, !HasAT, !CallsHO).
 check_goal1(call_foreign_proc(_Attrib, _CPred, _CProc, _, _, _, _),
         !Calls, !HasAT, !CallsHO).
 check_goal1(shorthand(_), _, _, _, _, _, _) :-
@@ -760,8 +769,8 @@ check_goal1(shorthand(_), _, _, _, _, _, _) :-
     bool::in, bool::out) is det.
 
 check_goal_list([], !Calls, !HasAT, !CallsHO).
-check_goal_list([Goal - _GoalInfo | Goals], !Calls, !HasAT, !CallsHO) :-
-    check_goal1(Goal, !Calls, !HasAT, !CallsHO),
+check_goal_list([hlds_goal(GoalExpr, _) | Goals], !Calls, !HasAT, !CallsHO) :-
+    check_goal1(GoalExpr, !Calls, !HasAT, !CallsHO),
     check_goal_list(Goals, !Calls, !HasAT, !CallsHO).
 
 :- pred check_case_list(list(case)::in,
@@ -771,8 +780,8 @@ check_goal_list([Goal - _GoalInfo | Goals], !Calls, !HasAT, !CallsHO) :-
 
 check_case_list([], !Calls, !HasAT, !CallsHO).
 check_case_list([Case | Goals], !Calls, !HasAT, !CallsHO) :-
-    Case = case(_ConsId, Goal - _GoalInfo),
-    check_goal1(Goal, !Calls, !HasAT, !CallsHO),
+    Case = case(_ConsId, hlds_goal(GoalExpr, _)),
+    check_goal1(GoalExpr, !Calls, !HasAT, !CallsHO),
     check_case_list(Goals, !Calls, !HasAT, !CallsHO).
 
     % This pred returns a list of all the calls in a given set of goals,
@@ -788,9 +797,9 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), !Calls) :-
         % have addresses taken. This is not always to case, but should be
         % a suitable approximation for the stratification analysis.
         RHS = rhs_lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _NonLocals,
-            _Vars, _Modes, _Determinism, Goal - _GoalInfo)
+            _Vars, _Modes, _Determinism, hlds_goal(GoalExpr, _GoalInfo))
     ->
-        get_called_procs(Goal, !Calls)
+        get_called_procs(GoalExpr, !Calls)
     ;
         % Currently when this pass is run the construct/4 case will not happen
         % as higher order constants have been transformed to lambda goals.
@@ -820,14 +829,17 @@ get_called_procs(disj(Goals), !Calls) :-
     check_goal_list(Goals, !Calls).
 get_called_procs(switch(_Var, _Fail, Cases), !Calls) :-
     check_case_list(Cases, !Calls).
-get_called_procs(if_then_else(_Vars, Cond - _, Then - _, Else - _), !Calls) :-
-    get_called_procs(Cond, !Calls),
-    get_called_procs(Then, !Calls),
-    get_called_procs(Else, !Calls).
-get_called_procs(scope(_, Goal - _GoalInfo), !Calls) :-
-    get_called_procs(Goal, !Calls).
-get_called_procs(negation(Goal - _GoalInfo), !Calls) :-
-    get_called_procs(Goal, !Calls).
+get_called_procs(if_then_else(_Vars, Cond, Then, Else), !Calls) :-
+    Cond = hlds_goal(CondExpr, _),
+    Then = hlds_goal(ThenExpr, _),
+    Else = hlds_goal(ElseExpr, _),
+    get_called_procs(CondExpr, !Calls),
+    get_called_procs(ThenExpr, !Calls),
+    get_called_procs(ElseExpr, !Calls).
+get_called_procs(scope(_, hlds_goal(GoalExpr, _)), !Calls) :-
+    get_called_procs(GoalExpr, !Calls).
+get_called_procs(negation(hlds_goal(GoalExpr, _)), !Calls) :-
+    get_called_procs(GoalExpr, !Calls).
 get_called_procs(call_foreign_proc(_Attrib, _CPred, _CProc, _, _, _, _),
         !Calls).
 get_called_procs(shorthand(_), !Calls) :-
@@ -838,8 +850,8 @@ get_called_procs(shorthand(_), !Calls) :-
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 check_goal_list([], !Calls).
-check_goal_list([Goal - _GoalInfo | Goals], !Calls) :-
-    get_called_procs(Goal, !Calls),
+check_goal_list([hlds_goal(GoalExpr, _) | Goals], !Calls) :-
+    get_called_procs(GoalExpr, !Calls),
     check_goal_list(Goals, !Calls).
 
 :- pred check_case_list(list(case)::in,
@@ -847,8 +859,8 @@ check_goal_list([Goal - _GoalInfo | Goals], !Calls) :-
 
 check_case_list([], !Calls).
 check_case_list([Case | Goals], !Calls) :-
-    Case = case(_ConsId, Goal - _GoalInfo),
-    get_called_procs(Goal, !Calls),
+    Case = case(_ConsId, hlds_goal(GoalExpr, _)),
+    get_called_procs(GoalExpr, !Calls),
     check_case_list(Goals, !Calls).
 
 %-----------------------------------------------------------------------------%

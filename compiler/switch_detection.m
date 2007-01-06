@@ -1,18 +1,18 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: switch_detection.m.
 % Main author: fjh.
-% 
+%
 % Switch detection - when a disjunction contains disjuncts that unify the
 % same input variable with different function symbols, replace (part of)
 % the disjunction with a switch.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.switch_detection.
@@ -173,10 +173,12 @@ detect_switches_in_goal(ModuleInfo, VarTypes, InstMap0, !Goal, !Requant) :-
     bool::in, bool::out) is det.
 
 detect_switches_in_goal_1(ModuleInfo, VarTypes, !InstMap,
-        Goal0 - GoalInfo, Goal - GoalInfo, !Requant) :-
+        Goal0, Goal, !Requant) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     detect_switches_in_goal_2(ModuleInfo, VarTypes, !.InstMap, GoalInfo,
-        Goal0, Goal, !Requant),
-    update_instmap(Goal0 - GoalInfo, !InstMap).
+        GoalExpr0, GoalExpr, !Requant),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    update_instmap(Goal0, !InstMap).
 
     % Here we process each of the different sorts of goals.
     %
@@ -336,8 +338,8 @@ detect_switches_in_disj([], Goals0, GoalInfo, InstMap,
             ModuleInfo, SwitchGoal, !Requant),
         detect_switches_in_disj(AllVars, Left0, GoalInfo, InstMap,
             VarTypes, AllVars, ModuleInfo, [], Left, !Requant),
-        goal_to_disj_list(Left - GoalInfo, LeftList),
-        Goals = [SwitchGoal - GoalInfo | LeftList]
+        goal_to_disj_list(hlds_goal(Left, GoalInfo), LeftList),
+        Goals = [hlds_goal(SwitchGoal, GoalInfo) | LeftList]
     ).
 
 :- pred select_best_switch(list(again)::in, again::in, again::out) is det.
@@ -451,7 +453,7 @@ expand_sub_disjs(Var, [LeftGoal | LeftGoals], !Cases) :-
     is semidet.
 
 expand_sub_disj(Var, Goal, !Cases) :-
-    Goal = GoalExpr - GoalInfo0,
+    Goal = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_add_feature(feature_duplicated_for_switch, GoalInfo0, GoalInfo),
     ( GoalExpr = conj(plain_conj, SubGoals) ->
         expand_sub_disj_process_conj(Var, SubGoals, [], GoalInfo, !Cases)
@@ -471,7 +473,7 @@ expand_sub_disj_process_conj(Var, ConjGoals, !.RevUnifies, GoalInfo,
         fail
     ;
         ConjGoals = [FirstGoal | RestGoals],
-        FirstGoal = FirstGoalExpr - _,
+        FirstGoal = hlds_goal(FirstGoalExpr, _),
         ( FirstGoalExpr = unify(_, _, _, _, _) ->
             !:RevUnifies = [FirstGoal | !.RevUnifies],
             expand_sub_disj_process_conj(Var, RestGoals, !.RevUnifies,
@@ -493,12 +495,12 @@ expand_sub_disj_process_conj(Var, ConjGoals, !.RevUnifies, GoalInfo,
     hlds_goal_info::in, hlds_goal::in, hlds_goal::out) is det.
 
 create_expanded_conjunction(Unifies, RestGoals, GoalInfo, Disjunct, Goal) :-
-    ( Disjunct = conj(plain_conj, DisjunctGoals) - _ ->
+    ( Disjunct = hlds_goal(conj(plain_conj, DisjunctGoals), _) ->
         Conjuncts = Unifies ++ DisjunctGoals ++ RestGoals
     ;
         Conjuncts = Unifies ++ [Disjunct] ++ RestGoals
     ),
-    Goal = conj(plain_conj, Conjuncts) - GoalInfo.
+    Goal = hlds_goal(conj(plain_conj, Conjuncts), GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -532,7 +534,7 @@ partition_disj_trial([Goal0 | Goals], Var, !Left, !Cases) :-
 find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
         _Result0, Result, _, unit) :-
     (
-        Goal0 = GoalExpr0 - GoalInfo,
+        Goal0 = hlds_goal(GoalExpr0, GoalInfo),
         UnifyInfo0 = GoalExpr0 ^ unify_kind,
         UnifyInfo0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _)
     ->
@@ -552,7 +554,7 @@ find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
             % the test will get carried out in the switch.
             UnifyInfo = UnifyInfo0 ^ deconstruct_can_fail := cannot_fail,
             GoalExpr = GoalExpr0 ^ unify_kind := UnifyInfo,
-            Goal = GoalExpr - GoalInfo,
+            Goal = hlds_goal(GoalExpr, GoalInfo),
             Goals = [Goal]
         )
     ;
@@ -589,13 +591,13 @@ find_bind_var(Var, ProcessUnify, !Goal, !Result, !Info, FoundDeconstruct) :-
 
 find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
         FoundDeconstruct) :-
-    Goal0 = GoalExpr0 - GoalInfo,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = scope(Reason, SubGoal0)
     ->
         find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal, !Subst,
             !Result, !Info, FoundDeconstruct),
-        Goal = scope(Reason, SubGoal) - GoalInfo
+        Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo)
     ;
         GoalExpr0 = conj(ConjType, SubGoals0),
         ConjType = plain_conj
@@ -608,7 +610,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
             SubGoals0 = [_ | _],
             conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
                 !Subst, !Result, !Info, FoundDeconstruct),
-            Goal = conj(ConjType, SubGoals) - GoalInfo
+            Goal = hlds_goal(conj(ConjType, SubGoals), GoalInfo)
         )
     ;
         GoalExpr0 = unify(LHS, RHS, _, UnifyInfo0, _)

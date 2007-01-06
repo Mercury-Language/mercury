@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -458,7 +458,11 @@ find_augmenting_path(BenefitNodes, Graph, Matching) = Path :-
 
 :- type edge_list == assoc_list(benefit_node, cost_node).
 
-:- type benefit_node_and_edge_list == pair(benefit_node, edge_list).
+:- type benefit_node_and_edge_list
+    --->    benefit_node_and_edge_list(
+                benefit_node,
+                edge_list
+            ).
 
     % Breadth-first search for an augmenting path.
 
@@ -479,7 +483,7 @@ find_first_path_bf(BenefitNodes, Graph, Matching) = Path :-
 
 initial_queue([], Q) = Q.
 initial_queue([N | Ns], Q0) = Q :-
-    Q1 = queue.put(Q0, N - []),
+    Q1 = queue.put(Q0, benefit_node_and_edge_list(N, [])),
     Q = initial_queue(Ns, Q1).
 
 :- func augpath_bf(queue(benefit_node_and_edge_list), list(benefit_node),
@@ -487,7 +491,7 @@ initial_queue([N | Ns], Q0) = Q :-
 
 augpath_bf(Queue0, Seen0, Graph, Matching) = Path :-
     queue.get(Queue0, NodePath, Queue1),
-    NodePath = BenefitNode - Path0,
+    NodePath = benefit_node_and_edge_list(BenefitNode, Path0),
     Graph = stack_slot_graph(_, BenefitToCostsMap),
     map.lookup(BenefitToCostsMap, BenefitNode, AdjCostNodes),
     Matching = matching(CostToBenefitMap, _),
@@ -518,19 +522,23 @@ find_unmatched_cost([CostNode - MaybeBenefitNode | Matches]) = Unmatched :-
     % (BenefitNode - CostNode).
     %
 :- pred add_alternates(assoc_list(cost_node, maybe(benefit_node))::in,
-    list(benefit_node)::in, list(benefit_node)::out, benefit_node::in,
-    edge_list::in, queue(benefit_node_and_edge_list)::in,
+    list(benefit_node)::in, list(benefit_node)::out,
+    benefit_node::in, edge_list::in,
+    queue(benefit_node_and_edge_list)::in,
     queue(benefit_node_and_edge_list)::out) is det.
 
 add_alternates([], !Seen, _, _, !Queue).
-add_alternates([CostNode - MaybeAdjBenefitNode | CostMatches], !Seen,
-        BenefitNode, Path, !Queue) :-
+add_alternates([CostMatch | CostMatches], !Seen, BenefitNode, Path, !Queue) :-
+    CostMatch = CostNode - MaybeAdjBenefitNode,
     (
         MaybeAdjBenefitNode = yes(AdjBenefitNode),
         not list.member(AdjBenefitNode, !.Seen)
     ->
         !:Seen = [AdjBenefitNode | !.Seen],
-        svqueue.put(AdjBenefitNode - [BenefitNode - CostNode | Path], !Queue)
+        NewPath = [BenefitNode - CostNode | Path],
+        BenefitNodeAndEdgeList =
+            benefit_node_and_edge_list(AdjBenefitNode, NewPath),
+        svqueue.put(BenefitNodeAndEdgeList, !Queue)
     ;
         true
     ),

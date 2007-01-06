@@ -514,7 +514,7 @@ construct_proc_traversal(EntryLabel, Detism, NumStackSlots,
         ;
             SuccipLval = stackvar(Location)
         ),
-        represent_locn_as_int(direct(SuccipLval), SuccipInt),
+        represent_locn_as_int(locn_direct(SuccipLval), SuccipInt),
         MaybeSuccipInt = yes(SuccipInt)
     ;
         MaybeSuccipLoc = no,
@@ -1096,7 +1096,7 @@ select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
         LocnInfo = layout_var_info(Locn, LvalType, _),
         LvalType = live_value_var(_, Name, _, _),
         Name \= "",
-        ( Locn = direct(Lval) ; Locn = indirect(Lval, _)),
+        ( Locn = locn_direct(Lval) ; Locn = locn_indirect(Lval, _)),
         ( Lval = stackvar(_) ; Lval = framevar(_) )
     ),
     list.filter(IsNamedReturnVar, Infos, TraceReturnInfos).
@@ -1280,7 +1280,7 @@ construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
         is_dummy_argument_type(ModuleInfo, Type),
         % We want to preserve I/O states in registers.
         \+ (
-            Locn = direct(reg(_, _))
+            Locn = locn_direct(reg(_, _))
         )
     ->
         unexpected(this_file, "construct_liveval_array_infos: " ++
@@ -1415,11 +1415,11 @@ convert_table_arg_info(TableArgInfos, NumPTIs,
 
 convert_slot_to_locn_map(_TVar, SlotLocn, LvalLocns) :-
     (
-        SlotLocn = direct(SlotNum),
-        LvalLocn = direct(reg(reg_r, SlotNum))
+        SlotLocn = table_locn_direct(SlotNum),
+        LvalLocn = locn_direct(reg(reg_r, SlotNum))
     ;
-        SlotLocn = indirect(SlotNum, Offset),
-        LvalLocn = indirect(reg(reg_r, SlotNum), Offset)
+        SlotLocn = table_locn_indirect(SlotNum, Offset),
+        LvalLocn = locn_indirect(reg(reg_r, SlotNum), Offset)
     ),
     LvalLocns = set.make_singleton_set(LvalLocn).
 
@@ -1497,7 +1497,7 @@ represent_special_live_value_type(SpecialTypeName, Rval) :-
 represent_locn_or_const_as_int_rval(LvalOrConst, Rval, Type, !Info) :-
     (
         LvalOrConst = lval(Lval),
-        represent_locn_as_int_rval(direct(Lval), Rval),
+        represent_locn_as_int_rval(locn_direct(Lval), Rval),
         Type = uint_least32
     ;
         LvalOrConst = const(_Const),
@@ -1548,9 +1548,9 @@ represent_locn_as_int_rval(Locn, Rval) :-
     represent_locn_as_int(Locn, Word),
     Rval = const(llconst_int(Word)).
 
-represent_locn_as_int(direct(Lval), Word) :-
+represent_locn_as_int(locn_direct(Lval), Word) :-
     represent_lval(Lval, Word).
-represent_locn_as_int(indirect(Lval, Offset), Word) :-
+represent_locn_as_int(locn_indirect(Lval, Offset), Word) :-
     represent_lval(Lval, BaseWord),
     expect((1 << long_lval_offset_bits) > Offset, this_file,
         "represent_locn: offset too large to be represented"),
@@ -1677,7 +1677,7 @@ long_lval_offset_bits = 6.
 :- pred represent_locn_as_byte(layout_locn::in, rval::out) is semidet.
 
 represent_locn_as_byte(LayoutLocn, Rval) :-
-    LayoutLocn = direct(Lval),
+    LayoutLocn = locn_direct(Lval),
     represent_lval_as_byte(Lval, Byte),
     0 =< Byte,
     Byte < 256,

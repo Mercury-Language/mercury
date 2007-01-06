@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -86,7 +86,7 @@ determine_dead_deconstructions(Background, Goal, DeadCellTable):-
 
 determine_dead_deconstructions_2(Background, TopGoal, !SharingAs, 
         !DeadCellTable) :- 
-    TopGoal = GoalExpr - GoalInfo, 
+    TopGoal = hlds_goal(GoalExpr, GoalInfo), 
     ModuleInfo = Background ^ module_info, 
     PredInfo = Background ^ pred_info, 
     ProcInfo = Background ^ proc_info, 

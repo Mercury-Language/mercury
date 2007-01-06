@@ -1,18 +1,18 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: complexity.m.
 % Author: zs.
-% 
+%
 % This module performs a program transformation that gathers information about
 % the relationship between the sizes of a procedure's input arguments and the
 % performance cost of the procedure in terms of memory and time.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.complexity.
@@ -265,7 +265,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
     % nonlocals from the headvars rather than getting it from the
     % nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
-    OrigGoal = _ - OrigGoalInfo,
+    OrigGoal = hlds_goal(_, OrigGoalInfo),
     goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
     goal_info_set_purity(purity_impure, OrigGoalInfo, ImpureOrigGoalInfo),
 
@@ -323,31 +323,38 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
         CodeModel = model_det,
         TransformedGoalExpr = conj(plain_conj,
             SlotGoals ++ [OrigGoal, ExitGoal]),
-        TransformedGoal = TransformedGoalExpr - ImpureOrigGoalInfo
+        TransformedGoal = hlds_goal(TransformedGoalExpr, ImpureOrigGoalInfo)
     ;
         CodeModel = model_semi,
-        OrigAfterGoal = conj(plain_conj, [OrigGoal, ExitGoal])
-            - ImpureOrigGoalInfo,
-        DisjGoal = disj([OrigAfterGoal, FailGoal]) - ImpureOrigGoalInfo,
-        TransformedGoal = conj(plain_conj,
-            SlotGoals ++ [DisjGoal]) - ImpureOrigGoalInfo
+        OrigAfterGoal = hlds_goal(conj(plain_conj, [OrigGoal, ExitGoal]),
+            ImpureOrigGoalInfo),
+        DisjGoal = hlds_goal(
+            disj([OrigAfterGoal, FailGoal]),
+            ImpureOrigGoalInfo),
+        TransformedGoal = hlds_goal(
+            conj(plain_conj, SlotGoals ++ [DisjGoal]),
+            ImpureOrigGoalInfo)
     ;
         CodeModel = model_non,
-        RedoGoal0 = RedoGoalExpr - RedoGoalInfo0,
+        RedoGoal0 = hlds_goal(RedoGoalExpr, RedoGoalInfo0),
         goal_info_add_feature(feature_preserve_backtrack_into,
             RedoGoalInfo0, RedoGoalInfo),
-        RedoGoal = RedoGoalExpr - RedoGoalInfo,
+        RedoGoal = hlds_goal(RedoGoalExpr, RedoGoalInfo),
 
         instmap_delta_init_reachable(AfterInstMapDelta),
         goal_info_init(list_to_set([SlotVar]), AfterInstMapDelta,
             detism_multi, purity_impure, Context, AfterGoalInfo),
-        AfterGoal = disj([ExitGoal, RedoGoal]) - AfterGoalInfo,
+        AfterGoal = hlds_goal(disj([ExitGoal, RedoGoal]), AfterGoalInfo),
 
-        OrigAfterGoal = conj(plain_conj, [OrigGoal, AfterGoal])
-            - ImpureOrigGoalInfo,
-        DisjGoal = disj([OrigAfterGoal, FailGoal]) - ImpureOrigGoalInfo,
-        TransformedGoal = conj(plain_conj, SlotGoals ++ [DisjGoal])
-            - ImpureOrigGoalInfo
+        OrigAfterGoal = hlds_goal(
+            conj(plain_conj, [OrigGoal, AfterGoal]),
+            ImpureOrigGoalInfo),
+        DisjGoal = hlds_goal(
+            disj([OrigAfterGoal, FailGoal]),
+            ImpureOrigGoalInfo),
+        TransformedGoal = hlds_goal(
+            conj(plain_conj, SlotGoals ++ [DisjGoal]),
+            ImpureOrigGoalInfo)
     ),
 
     TSPB = mercury_term_size_prof_builtin_module,
@@ -359,12 +366,12 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
     SwitchExpr = switch(IsActiveVar, cannot_fail, SwitchArms),
     goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, SwitchGoalInfo),
-    SwitchGoal = SwitchExpr - SwitchGoalInfo,
+    SwitchGoal = hlds_goal(SwitchExpr, SwitchGoalInfo),
 
     GoalExpr = conj(plain_conj, [IsActiveGoal, SwitchGoal]),
     goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
 
     proc_info_set_goal(Goal, !ProcInfo),
 

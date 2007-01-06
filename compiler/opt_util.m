@@ -325,7 +325,7 @@ get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
     gather_comments(Instrs0, Comments1, Instrs1),
     (
         Instrs1 = [Instr1 | Instrs2],
-        Instr1 = label(_) - _
+        Instr1 = llds_instr(label(_), _)
     ->
         LabelInstr = Instr1,
         gather_comments(Instrs2, Comments2, Instrs),
@@ -337,7 +337,7 @@ get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
 gather_comments(Instrs0, Comments, Instrs) :-
     (
         Instrs0 = [Instr0 | Instrs1],
-        Instr0 = comment(_) - _
+        Instr0 = llds_instr(comment(_), _)
     ->
         gather_comments(Instrs1, Comments0, Instrs),
         Comments = [Instr0 | Comments0]
@@ -349,7 +349,10 @@ gather_comments(Instrs0, Comments, Instrs) :-
 gather_comments_livevals(Instrs0, Comments, Instrs) :-
     (
         Instrs0 = [Instr0 | Instrs1],
-        ( Instr0 = comment(_) - _ ; Instr0 = livevals(_) - _ )
+        Instr0 = llds_instr(Uinstr0, _),
+        ( Uinstr0 = comment(_)
+        ; Uinstr0 = livevals(_)
+        )
     ->
         gather_comments_livevals(Instrs1, Comments0, Instrs),
         Comments = [Instr0 | Comments0]
@@ -359,36 +362,36 @@ gather_comments_livevals(Instrs0, Comments, Instrs) :-
     ).
 
 skip_comments(Instrs0, Instrs) :-
-    ( Instrs0 = [comment(_) - _ | Instrs1] ->
+    ( Instrs0 = [llds_instr(comment(_), _) | Instrs1] ->
         skip_comments(Instrs1, Instrs)
     ;
         Instrs = Instrs0
     ).
 
 skip_comments_livevals(Instrs0, Instrs) :-
-    ( Instrs0 = [comment(_) - _ | Instrs1] ->
+    ( Instrs0 = [llds_instr(comment(_), _) | Instrs1] ->
         skip_comments(Instrs1, Instrs)
-    ; Instrs0 = [livevals(_) - _ | Instrs1] ->
+    ; Instrs0 = [llds_instr(livevals(_), _) | Instrs1] ->
         skip_comments_livevals(Instrs1, Instrs)
     ;
         Instrs = Instrs0
     ).
 
 skip_comments_labels(Instrs0, Instrs) :-
-    ( Instrs0 = [comment(_) - _ | Instrs1] ->
+    ( Instrs0 = [llds_instr(comment(_), _) | Instrs1] ->
         skip_comments_labels(Instrs1, Instrs)
-    ; Instrs0 = [label(_) - _ | Instrs1] ->
+    ; Instrs0 = [llds_instr(label(_), _) | Instrs1] ->
         skip_comments_labels(Instrs1, Instrs)
     ;
         Instrs = Instrs0
     ).
 
 skip_comments_livevals_labels(Instrs0, Instrs) :-
-    ( Instrs0 = [comment(_) - _ | Instrs1] ->
+    ( Instrs0 = [llds_instr(comment(_), _) | Instrs1] ->
         skip_comments_livevals_labels(Instrs1, Instrs)
-    ; Instrs0 = [livevals(_) - _ | Instrs1] ->
+    ; Instrs0 = [llds_instr(livevals(_), _) | Instrs1] ->
         skip_comments_livevals_labels(Instrs1, Instrs)
-    ; Instrs0 = [label(_) - _ | Instrs1] ->
+    ; Instrs0 = [llds_instr(label(_), _) | Instrs1] ->
         skip_comments_livevals_labels(Instrs1, Instrs)
     ;
         Instrs = Instrs0
@@ -396,7 +399,7 @@ skip_comments_livevals_labels(Instrs0, Instrs) :-
 
 next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
         Redoip, Skip, Rest) :-
-    Instr = Uinstr - _Comment,
+    Instr = llds_instr(Uinstr, _Comment),
     (
         Uinstr = assign(redoip_slot(lval(Fr)),
             const(llconst_code_addr(Redoip0))),
@@ -429,7 +432,7 @@ next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
 find_no_fallthrough([], []).
 find_no_fallthrough([Instr0 | Instrs0], Instrs) :-
     (
-        Instr0 = Uinstr0 - _,
+        Instr0 = llds_instr(Uinstr0, _),
         can_instr_fall_through(Uinstr0) = no
     ->
         Instrs = [Instr0]
@@ -441,7 +444,7 @@ find_no_fallthrough([Instr0 | Instrs0], Instrs) :-
 find_first_label([], _) :-
     unexpected(this_file, "cannot find first label").
 find_first_label([Instr0 | Instrs0], Label) :-
-    ( Instr0 = label(LabelPrime) - _ ->
+    ( Instr0 = llds_instr(label(LabelPrime), _) ->
         Label = LabelPrime
     ;
         find_first_label(Instrs0, Label)
@@ -449,7 +452,7 @@ find_first_label([Instr0 | Instrs0], Label) :-
 
 skip_to_next_label([], [], []).
 skip_to_next_label([Instr0 | Instrs0], Before, Remain) :-
-    ( Instr0 = label(_) - _ ->
+    ( Instr0 = llds_instr(label(_), _) ->
         Before = [],
         Remain = [Instr0 | Instrs0]
     ;
@@ -458,7 +461,7 @@ skip_to_next_label([Instr0 | Instrs0], Before, Remain) :-
     ).
 
 is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
-    Instr = Uinstr - _Comment,
+    Instr = llds_instr(Uinstr, _Comment),
     ( Uinstr = comment(_) ->
         is_this_label_next(Label, Moreinstr, Remainder)
     ; Uinstr = livevals(_) ->
@@ -477,26 +480,26 @@ is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 is_proceed_next(Instrs0, InstrsBetween) :-
     skip_comments_labels(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
-    ( Instr1 = assign(succip, lval(stackvar(_))) - _ ->
+    ( Instr1 = llds_instr(assign(succip, lval(stackvar(_))), _) ->
         Instr1use = Instr1,
         skip_comments_labels(Instrs2, Instrs3)
     ;
-        Instr1use = comment("no succip restoration") - "",
+        Instr1use = llds_instr(comment("no succip restoration"), ""),
         Instrs3 = Instrs1
     ),
     Instrs3 = [Instr3 | Instrs4],
-    ( Instr3 = decr_sp(_) - _ ->
+    ( Instr3 = llds_instr(decr_sp(_), _) ->
         Instr3use = Instr3,
         skip_comments_labels(Instrs4, Instrs5)
     ;
-        Instr3use = comment("no sp restoration") - "",
+        Instr3use = llds_instr(comment("no sp restoration"), ""),
         Instrs5 = Instrs3
     ),
     Instrs5 = [Instr5 | Instrs6],
-    Instr5 = livevals(_) - _,
+    Instr5 = llds_instr(livevals(_), _),
     skip_comments_labels(Instrs6, Instrs7),
     Instrs7 = [Instr7 | _],
-    Instr7 = goto(code_succip) - _,
+    Instr7 = llds_instr(goto(code_succip), _),
     InstrsBetween = [Instr1use, Instr3use, Instr5].
 
 is_sdproceed_next(Instrs0, InstrsBetween) :-
@@ -505,23 +508,23 @@ is_sdproceed_next(Instrs0, InstrsBetween) :-
 is_sdproceed_next_sf(Instrs0, InstrsBetween, Success) :-
     skip_comments_labels(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
-    ( Instr1 = assign(succip, lval(stackvar(_))) - _ ->
+    ( Instr1 = llds_instr(assign(succip, lval(stackvar(_))), _) ->
         Instr1use = Instr1,
         skip_comments_labels(Instrs2, Instrs3)
     ;
-        Instr1use = comment("no succip restoration") - "",
+        Instr1use = llds_instr(comment("no succip restoration"), ""),
         Instrs3 = Instrs1
     ),
     Instrs3 = [Instr3 | Instrs4],
-    ( Instr3 = decr_sp(_) - _ ->
+    ( Instr3 = llds_instr(decr_sp(_), _) ->
         Instr3use = Instr3,
         skip_comments_labels(Instrs4, Instrs5)
     ;
-        Instr3use = comment("no sp restoration") - "",
+        Instr3use = llds_instr(comment("no sp restoration"), ""),
         Instrs5 = Instrs3
     ),
     Instrs5 = [Instr5 | Instrs6],
-    Instr5 = assign(reg(reg_r, 1), const(R1val)) - _,
+    Instr5 = llds_instr(assign(reg(reg_r, 1), const(R1val)), _),
     (
         R1val = llconst_true,
         Success = yes
@@ -531,25 +534,25 @@ is_sdproceed_next_sf(Instrs0, InstrsBetween, Success) :-
     ),
     skip_comments_labels(Instrs6, Instrs7),
     Instrs7 = [Instr7 | Instrs8],
-    Instr7 = livevals(_) - _,
+    Instr7 = llds_instr(livevals(_), _),
     skip_comments_labels(Instrs8, Instrs9),
     Instrs9 = [Instr9 | _],
-    Instr9 = goto(code_succip) - _,
+    Instr9 = llds_instr(goto(code_succip), _),
     InstrsBetween = [Instr1use, Instr3use, Instr5, Instr7].
 
 is_succeed_next(Instrs0, InstrsBetweenIncl) :-
     skip_comments_labels(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
-    Instr1 = livevals(_) - _,
+    Instr1 = llds_instr(livevals(_), _),
     skip_comments_labels(Instrs2, Instrs3),
     Instrs3 = [Instr3 | _],
-    Instr3 = goto(do_succeed(_)) - _,
+    Instr3 = llds_instr(goto(do_succeed(_)), _),
     InstrsBetweenIncl = [Instr1, Instr3].
 
 is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
     skip_comments_labels(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
-    Instr1 = Uinstr1 - _,
+    Instr1 = llds_instr(Uinstr1, _),
     (
         Uinstr1 = if_val(lval(reg(reg_r, 1)), code_label(JumpLabel))
     ->
@@ -576,7 +579,7 @@ is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
 filter_out_r1([], no, []).
 filter_out_r1([Instr0 | Instrs0], Success, Instrs) :-
     filter_out_r1(Instrs0, Success0, Instrs1),
-    ( Instr0 = assign(reg(reg_r, 1), const(Success1)) - _ ->
+    ( Instr0 = llds_instr(assign(reg(reg_r, 1), const(Success1)), _) ->
         Instrs = Instrs1,
         Success = yes(Success1)
     ;
@@ -592,7 +595,7 @@ straight_alternative(Instrs0, Between, After) :-
     list(instruction)::out, list(instruction)::out) is semidet.
 
 straight_alternative_2([Instr0 | Instrs0], !Between, After) :-
-    Instr0 = Uinstr0 - _,
+    Instr0 = llds_instr(Uinstr0, _),
     (
         Uinstr0 = label(_)
     ->
@@ -625,7 +628,7 @@ no_stack_straight_line(Instrs0, StraightLine, Instrs) :-
 
 no_stack_straight_line_2([], !RevStraightLine, []).
 no_stack_straight_line_2([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
-    Instr0 = Uinstr - _,
+    Instr0 = llds_instr(Uinstr, _),
     (
         (
             Uinstr = comment(_)
@@ -721,7 +724,7 @@ code_addr_refers_to_stack(do_call_class_method(_)) = no.
 code_addr_refers_to_stack(do_not_reached) = no.
 
 no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
-    Instr0 = Uinstr0 - _,
+    Instr0 = llds_instr(Uinstr0, _),
     (
         Uinstr0 = comment(_),
         no_stackvars_til_decr_sp(Instrs0, FrameSize, Between0, Remain),
@@ -741,7 +744,7 @@ no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
             Lval = succip,
             Rval = lval(stackvar(FrameSize)),
             skip_comments(Instrs0, Instrs1),
-            Instrs1 = [decr_sp(FrameSize) - _ | Instrs2]
+            Instrs1 = [llds_instr(decr_sp(FrameSize), _) | Instrs2]
         ->
             Between = [],
             Remain = Instrs2
@@ -771,7 +774,7 @@ block_refers_to_stack([Instr | Instrs]) = Refers :-
         Refers = yes
     ;
         InstrRefers = no,
-        Instr = Uinstr - _,
+        Instr = llds_instr(Uinstr, _),
         CanFallThrough = can_instr_fall_through(Uinstr),
         (
             CanFallThrough = yes,
@@ -782,7 +785,7 @@ block_refers_to_stack([Instr | Instrs]) = Refers :-
         )
     ).
 
-instr_refers_to_stack(Uinstr - _) = Refers :-
+instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
     (
         ( Uinstr = comment(_)
         ; Uinstr = livevals(_)
@@ -922,7 +925,7 @@ foreign_proc_output_refers_stackvars(Input) = Refers :-
 filter_out_labels([], []).
 filter_out_labels([Instr0 | Instrs0], Instrs) :-
     filter_out_labels(Instrs0, Instrs1),
-    ( Instr0 = label(_) - _ ->
+    ( Instr0 = llds_instr(label(_), _) ->
         Instrs = Instrs1
     ;
         Instrs = [Instr0 | Instrs1]
@@ -932,9 +935,9 @@ filter_out_bad_livevals([], []).
 filter_out_bad_livevals([Instr0 | Instrs0], Instrs) :-
     filter_out_bad_livevals(Instrs0, Instrs1),
     (
-        Instr0 = livevals(_) - _,
+        Instr0 = llds_instr(livevals(_), _),
         skip_comments(Instrs1, Instrs2),
-        Instrs2 = [Uinstr2 - _ | _],
+        Instrs2 = [llds_instr(Uinstr2, _) | _],
         can_use_livevals(Uinstr2, no)
     ->
         Instrs = Instrs1
@@ -945,7 +948,7 @@ filter_out_bad_livevals([Instr0 | Instrs0], Instrs) :-
 filter_out_livevals([], []).
 filter_out_livevals([Instr0 | Instrs0], Instrs) :-
     filter_out_livevals(Instrs0, Instrs1),
-    ( Instr0 = livevals(_) - _ ->
+    ( Instr0 = llds_instr(livevals(_), _) ->
         Instrs = Instrs1
     ;
         Instrs = [Instr0 | Instrs1]
@@ -954,7 +957,7 @@ filter_out_livevals([Instr0 | Instrs0], Instrs) :-
 filter_in_livevals([], []).
 filter_in_livevals([Instr0 | Instrs0], Instrs) :-
     filter_in_livevals(Instrs0, Instrs1),
-    ( Instr0 = livevals(_) - _ ->
+    ( Instr0 = llds_instr(livevals(_), _) ->
         Instrs = [Instr0 | Instrs1]
     ;
         Instrs = Instrs1
@@ -1091,8 +1094,8 @@ can_instr_fall_through(foreign_proc_code(_, _, _, _, _, _, _, _, _)) = yes.
 :- pred can_block_fall_through(list(instruction)::in, bool::out) is det.
 
 can_block_fall_through([], yes).
-can_block_fall_through([Instr - _ | Instrs], FallThrough) :-
-    ( can_instr_fall_through(Instr) = no ->
+can_block_fall_through([llds_instr(Uinstr, _) | Instrs], FallThrough) :-
+    ( can_instr_fall_through(Uinstr) = no ->
         FallThrough = no
     ;
         can_block_fall_through(Instrs, FallThrough)
@@ -1386,22 +1389,22 @@ foreign_proc_outputs_get_lvals([Output | Outputs]) = [Lval | Lvals] :-
 
     % Determine all the rvals and lvals referenced by a list of instructions.
     %
-:- pred instr_list_rvals_and_lvals(list(pair(instr, string))::in,
+:- pred instr_list_rvals_and_lvals(list(instruction)::in,
     list(rval)::out, list(lval)::out) is det.
 
 instr_list_rvals_and_lvals([], [], []).
-instr_list_rvals_and_lvals([Instr - _ | Instrs], Rvals, Lvals) :-
-    instr_rvals_and_lvals(Instr, Rvals0, Lvals0),
-    instr_list_rvals_and_lvals(Instrs, Rvals1, Lvals1),
-    list.append(Rvals0, Rvals1, Rvals),
-    list.append(Lvals0, Lvals1, Lvals).
+instr_list_rvals_and_lvals([llds_instr(Uinstr, _) | Instrs], Rvals, Lvals) :-
+    instr_rvals_and_lvals(Uinstr, HeadRvals, HeadLvals),
+    instr_list_rvals_and_lvals(Instrs, TailRvals, TailLvals),
+    Rvals = HeadRvals ++ TailRvals,
+    Lvals = HeadLvals ++ TailLvals.
 
 instr_list_labels([], [], []).
-instr_list_labels([Uinstr - _ | Instrs], Labels, CodeAddrs) :-
-    instr_labels(Uinstr, Labels0, CodeAddrs0),
-    instr_list_labels(Instrs, Labels1, CodeAddrs1),
-    list.append(Labels0, Labels1, Labels),
-    list.append(CodeAddrs0, CodeAddrs1, CodeAddrs).
+instr_list_labels([llds_instr(Uinstr, _) | Instrs], Labels, CodeAddrs) :-
+    instr_labels(Uinstr, HeadLabels, HeadCodeAddrs),
+    instr_list_labels(Instrs, TailLabels, TailCodeAddrs),
+    Labels = HeadLabels ++ TailLabels,
+    CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs.
 
 livevals_addr(code_label(Label)) = Result :-
     (
@@ -1423,7 +1426,7 @@ livevals_addr(do_call_class_method(_)) = yes.
 livevals_addr(do_not_reached) = no.
 
 count_temps_instr_list([], !R, !F).
-count_temps_instr_list([Uinstr - _Comment | Instrs], !R, !F) :-
+count_temps_instr_list([llds_instr(Uinstr, _Comment) | Instrs], !R, !F) :-
     count_temps_instr(Uinstr, !R, !F),
     count_temps_instr_list(Instrs, !R, !F).
 
@@ -1521,7 +1524,8 @@ has_both_incr_decr_sp(Instrs) :-
     bool::in, bool::out, bool::in, bool::out) is det.
 
 has_both_incr_decr_sp_2([], !HasIncr, !HasDecr).
-has_both_incr_decr_sp_2([Uinstr - _ | Instrs], !HasIncr, !HasDecr) :-
+has_both_incr_decr_sp_2([llds_instr(Uinstr, _) | Instrs],
+        !HasIncr, !HasDecr) :-
     ( Uinstr = incr_sp(_, _, _) ->
         !:HasIncr = yes
     ;
@@ -1535,7 +1539,7 @@ has_both_incr_decr_sp_2([Uinstr - _ | Instrs], !HasIncr, !HasDecr) :-
     has_both_incr_decr_sp_2(Instrs, !HasIncr, !HasDecr).
 
 touches_nondet_ctrl([]) = no.
-touches_nondet_ctrl([Uinstr - _ | Instrs]) = !:Touch :-
+touches_nondet_ctrl([llds_instr(Uinstr, _) | Instrs]) = !:Touch :-
     !:Touch = touches_nondet_ctrl_instr(Uinstr),
     (
         !.Touch = yes
@@ -1730,7 +1734,7 @@ count_incr_hp(Instrs, N) :-
 :- pred count_incr_hp_2(list(instruction)::in, int::in, int::out) is det.
 
 count_incr_hp_2([], !N).
-count_incr_hp_2([Uinstr0 - _ | Instrs], !N) :-
+count_incr_hp_2([llds_instr(Uinstr0, _) | Instrs], !N) :-
     ( Uinstr0 = incr_hp(_, _, _, _, _, _) ->
         !:N = !.N + 1
     ;
@@ -1752,10 +1756,10 @@ propagate_livevals(Instrs0, Instrs) :-
 propagate_livevals_2([], _, []).
 propagate_livevals_2([Instr0 | Instrs0], Livevals0,
         [Instr | Instrs]) :-
-    Instr0 = Uinstr0 - Comment,
+    Instr0 = llds_instr(Uinstr0, Comment),
     ( Uinstr0 = livevals(ThisLivevals) ->
         set.union(Livevals0, ThisLivevals, Livevals),
-        Instr = livevals(Livevals) - Comment
+        Instr = llds_instr(livevals(Livevals), Comment)
     ;
         Instr = Instr0,
         ( Uinstr0 = assign(Lval, _) ->
@@ -1777,19 +1781,19 @@ replace_labels_instruction_list([], _, _, _, []).
 replace_labels_instruction_list([Instr0 | Instrs0], ReplMap, ReplData,
         ReplLabel, [Instr | Instrs]) :-
     (
-        Instr0 = label(InstrLabel) - Comment,
+        Instr0 = llds_instr(label(InstrLabel), Comment),
         ReplLabel = yes
     ->
         replace_labels_label(InstrLabel, ReplMap, ReplInstrLabel),
-        Instr = label(ReplInstrLabel) - Comment
+        Instr = llds_instr(label(ReplInstrLabel), Comment)
     ;
         replace_labels_instruction(Instr0, ReplMap, ReplData, Instr)
     ),
     replace_labels_instruction_list(Instrs0, ReplMap, ReplData, ReplLabel,
         Instrs).
 
-replace_labels_instruction(Instr0 - Comment, ReplMap, ReplData,
-        Instr - Comment) :-
+replace_labels_instruction(llds_instr(Instr0, Comment), ReplMap, ReplData,
+        llds_instr(Instr, Comment)) :-
     replace_labels_instr(Instr0, ReplMap, ReplData, Instr).
 
 replace_labels_instr(comment(Comment), _, _, comment(Comment)).

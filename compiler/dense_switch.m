@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -152,7 +152,8 @@ generate_dense_switch(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
     % yield the wrong liveness and would not unset the failure continuation
     % for a nondet switch.
     DoJump = node([
-        computed_goto(Index, Labels) - "switch (using dense jump table)"
+        llds_instr(computed_goto(Index, Labels),
+            "switch (using dense jump table)")
     ]),
     % Assemble the code fragments.
     Code = tree_list([VarCode, RangeCheck, DoJump, CasesCode]).
@@ -166,17 +167,18 @@ generate_cases(Cases0, NextVal, EndVal, CodeModel, SwitchGoalInfo, EndLabel,
     ( NextVal > EndVal ->
         Labels = [],
         Code = node([
-            label(EndLabel) - "End of dense switch"
+            llds_instr(label(EndLabel), "End of dense switch")
         ])
     ;
         code_info.get_next_label(ThisLabel, !CI),
         generate_case(Cases0, Cases1, NextVal, CodeModel,
             SwitchGoalInfo, !MaybeEnd, ThisCode, Comment, !CI),
         LabelCode = node([
-            label(ThisLabel) - Comment
+            llds_instr(label(ThisLabel), Comment)
         ]),
         JumpCode = node([
-            goto(code_label(EndLabel)) - "branch to end of dense switch"
+            llds_instr(goto(code_label(EndLabel)),
+                "branch to end of dense switch")
         ]),
         % Generate the rest of the cases.
         NextVal1 = NextVal + 1,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -382,11 +382,17 @@ clause_used_modules(clause(_, Goal, _, _), !UsedModules) :-
 :- pred hlds_goal_used_modules(hlds_goal::in,
     used_modules::in, used_modules::out) is det.
 
-hlds_goal_used_modules(unify(_, Rhs, _, _, _) - _, !UsedModules) :-
+hlds_goal_used_modules(hlds_goal(GoalExpr, _), !UsedModules) :-
+    hlds_goal_expr_used_modules(GoalExpr, !UsedModules).
+
+:- pred hlds_goal_expr_used_modules(hlds_goal_expr::in,
+    used_modules::in, used_modules::out) is det.
+
+hlds_goal_expr_used_modules(unify(_, Rhs, _, _, _), !UsedModules) :-
     unify_rhs_used_modules(Rhs, !UsedModules).
-hlds_goal_used_modules(plain_call(_, _, _, _, _, Name) - _, !UsedModules) :-
+hlds_goal_expr_used_modules(plain_call(_, _, _, _, _, Name), !UsedModules) :-
     add_sym_name_module(visibility_private, Name, !UsedModules).
-hlds_goal_used_modules(generic_call(Call, _, _, _) - _, !UsedModules) :-
+hlds_goal_expr_used_modules(generic_call(Call, _, _, _), !UsedModules) :-
     (
         Call = class_method(_, _, ClassId, CallId),
         ClassId = class_id(ClassName, _),
@@ -400,27 +406,27 @@ hlds_goal_used_modules(generic_call(Call, _, _, _) - _, !UsedModules) :-
         ; Call = cast(_)
         )
     ).
-hlds_goal_used_modules(
-                call_foreign_proc(_, _, _, _, _, _, _) - _, !UsedModules).
-hlds_goal_used_modules(conj(_, Goals) - _, !UsedModules) :-
+hlds_goal_expr_used_modules(call_foreign_proc(_, _, _, _, _, _, _),
+        !UsedModules).
+hlds_goal_expr_used_modules(conj(_, Goals), !UsedModules) :-
     list.foldl(hlds_goal_used_modules, Goals, !UsedModules).
-hlds_goal_used_modules(disj(Goals) - _, !UsedModules) :-
+hlds_goal_expr_used_modules(disj(Goals), !UsedModules) :-
     list.foldl(hlds_goal_used_modules, Goals, !UsedModules).
-hlds_goal_used_modules(switch(_, _, Cases) - _, !UsedModules) :-
+hlds_goal_expr_used_modules(switch(_, _, Cases), !UsedModules) :-
     list.foldl(
         (pred(case(ConsId, Goal)::in, !.M::in, !:M::out) is det :-
             cons_id_used_modules(visibility_private, ConsId, !M),
             hlds_goal_used_modules(Goal, !M)
         ), Cases, !UsedModules).
-hlds_goal_used_modules(negation(Goal) - _, !UsedModules) :-
+hlds_goal_expr_used_modules(negation(Goal), !UsedModules) :-
     hlds_goal_used_modules(Goal, !UsedModules).
-hlds_goal_used_modules(scope(_, Goal) - _, !UsedModules) :-
+hlds_goal_expr_used_modules(scope(_, Goal), !UsedModules) :-
     hlds_goal_used_modules(Goal, !UsedModules).
-hlds_goal_used_modules(if_then_else(_, If, Then, Else) - _, !UsedModules) :-
+hlds_goal_expr_used_modules(if_then_else(_, If, Then, Else), !UsedModules) :-
     hlds_goal_used_modules(If, !UsedModules),
     hlds_goal_used_modules(Then, !UsedModules),
     hlds_goal_used_modules(Else, !UsedModules).
-hlds_goal_used_modules(shorthand(bi_implication(GoalA, GoalB)) - _,
+hlds_goal_expr_used_modules(shorthand(bi_implication(GoalA, GoalB)),
         !UsedModules) :-
     hlds_goal_used_modules(GoalA, !UsedModules),
     hlds_goal_used_modules(GoalB, !UsedModules).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2006 University of Melbourne.
+% Copyright (C) 1998-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -128,7 +128,7 @@ pd_debug_register_version_2(ModuleInfo, PredProcId, Version, !IO) :-
 
 pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
         !IO) :-
-    Version = version_info(Goal - GoalInfo, _, Args, _, InstMap,
+    Version = version_info(hlds_goal(GoalExpr, GoalInfo), _, Args, _, InstMap,
         InitialCost, CostDelta, Parents, _),
     PredName = predicate_name(ModuleInfo, PredId),
     io.write_string(PredName, !IO),
@@ -156,8 +156,8 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
     io.nl(!IO),
     hlds_out.write_instmap(InstMap1, VarSet, yes, 1, !IO),
     io.nl(!IO),
-    hlds_out.write_goal(Goal - GoalInfo, ModuleInfo, VarSet, yes, 1, "\n",
-        !IO),
+    hlds_out.write_goal(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet,
+        yes, 1, "\n", !IO),
     io.nl(!IO),
     io.write_string("Parents: ", !IO),
     set.to_sorted_list(Parents, ParentsList),
@@ -203,17 +203,17 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
 :- pred pd_debug_output_goal_2(pd_info::in, string::in, hlds_goal::in,
     io::di, io::uo) is det.
 
-pd_debug_output_goal_2(PDInfo, Msg, GoalExpr - GoalInfo, !IO) :-
+pd_debug_output_goal_2(PDInfo, Msg, hlds_goal(GoalExpr, GoalInfo), !IO) :-
     pd_info_get_proc_info(PDInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     pd_info_get_instmap(PDInfo, InstMap),
     pd_info_get_module_info(PDInfo, ModuleInfo),
     io.write_string(Msg, !IO),
-    goal_util.goal_vars(GoalExpr - GoalInfo, Vars),
+    goal_util.goal_vars(hlds_goal(GoalExpr, GoalInfo), Vars),
     instmap_restrict(Vars, InstMap, InstMap1),
     hlds_out.write_instmap(InstMap1, VarSet, yes, 1, !IO),
     io.nl(!IO),
-    hlds_out.write_goal(GoalExpr - GoalInfo, ModuleInfo, VarSet,
+    hlds_out.write_goal(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet,
         yes, 1, "\n", !IO),
     io.nl(!IO),
     io.flush_output(!IO).

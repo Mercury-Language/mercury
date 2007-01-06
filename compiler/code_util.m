@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -214,8 +214,8 @@ max_mentioned_abs_reg_2([Lval | Lvals], !MaxRegNum) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_may_alloc_temp_frame(Goal - _GoalInfo, May) :-
-    goal_may_alloc_temp_frame_2(Goal, May).
+goal_may_alloc_temp_frame(hlds_goal(GoalExpr, _GoalInfo), May) :-
+    goal_may_alloc_temp_frame_2(GoalExpr, May).
 
 :- pred goal_may_alloc_temp_frame_2(hlds_goal_expr::in, bool::out)
     is det.
@@ -229,7 +229,7 @@ goal_may_alloc_temp_frame_2(unify(_, _, _, _, _), no).
     % impact of being too conservative is probably not too bad.
 goal_may_alloc_temp_frame_2(call_foreign_proc(_, _, _, _, _, _, _), yes).
 goal_may_alloc_temp_frame_2(scope(_, Goal), May) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_code_model(GoalInfo, CodeModel),
     ( CodeModel = model_non ->
         May = yes
@@ -332,9 +332,9 @@ neg_op(float_ge, float_lt).
 negate_the_test([], _) :-
     unexpected(this_file, "negate_the_test on empty list").
 negate_the_test([Instr0 | Instrs0], Instrs) :-
-    ( Instr0 = if_val(Test, Target) - Comment ->
+    ( Instr0 = llds_instr(if_val(Test, Target), Comment) ->
         neg_rval(Test, NewTest),
-        Instrs = [if_val(NewTest, Target) - Comment]
+        Instrs = [llds_instr(if_val(NewTest, Target), Comment)]
     ;
         negate_the_test(Instrs0, Instrs1),
         Instrs = [Instr0 | Instrs1]

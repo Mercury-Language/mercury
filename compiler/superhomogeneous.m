@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -186,7 +186,7 @@ do_insert_arg_unifications(HeadVars, Args0, Context, ArgContext,
         NumAdded = 0
     ;
         HeadVars = [_ | _],
-        !.Goal = _ - GoalInfo0,
+        !.Goal = hlds_goal(_, GoalInfo0),
         goal_to_conj_list(!.Goal, Goals0),
         substitute_state_var_mappings(Args0, Args, !VarSet, !SInfo, !Specs),
         do_insert_arg_unifications_2(HeadVars, Args, Context, ArgContext,
@@ -249,7 +249,7 @@ do_insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0,
         NumAdded = 0
     ;
         ArgVars = [_ | _],
-        !.Goal = _ - GoalInfo0,
+        !.Goal = hlds_goal(_, GoalInfo0),
         goal_to_conj_list(!.Goal, GoalList0),
         substitute_state_var_mappings(ArgTerms0, ArgTerms, !VarSet, !SInfo,
             !Specs),
@@ -333,7 +333,7 @@ do_append_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal,
         NumAdded = 0
     ;
         HeadVars = [_ | _],
-        !.Goal = _ - GoalInfo,
+        !.Goal = hlds_goal(_, GoalInfo),
         goal_to_conj_list(!.Goal, GoalList0),
         substitute_state_var_mappings(Args0, Args, !VarSet, !SInfo, !Specs),
         do_append_arg_unifications_2(HeadVars, Args, Context, ArgContext,
@@ -418,8 +418,8 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
         LHS = term.variable(X, _),
         ground_term(RHS)
     ->
-        Goal0 = _ - GoalInfo,
-        Goal = scope(from_ground_term(X), Goal0) - GoalInfo
+        Goal0 = hlds_goal(_, GoalInfo),
+        Goal = hlds_goal(scope(from_ground_term(X), Goal0), GoalInfo)
     ;
         Goal = Goal0
     ).
@@ -606,9 +606,9 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
                 EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
                 SubContext, Goal0, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
                 !.SInfo, !Specs),
-            Goal0 = GoalExpr - GoalInfo0,
+            Goal0 = hlds_goal(GoalExpr, GoalInfo0),
             goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
-            Goal = GoalExpr - GoalInfo
+            Goal = hlds_goal(GoalExpr, GoalInfo)
         ;
             MaybeParsedGoal = error1(Errors),
             varset.coerce(!.VarSet, ProgVarSet),
@@ -658,7 +658,7 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             GoalExpr = if_then_else(StateVars ++ Vars,
                 CondGoal, ThenGoal, ElseGoal),
             goal_info_init(Context, GoalInfo),
-            Goal = GoalExpr - GoalInfo
+            Goal = hlds_goal(GoalExpr, GoalInfo)
         ;
             MaybeVarsCond = error3(Errors),
             varset.coerce(!.VarSet, ProgVarSet),
@@ -738,13 +738,13 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             make_atomic_unification(X, rhs_functor(ConsId, no, []),
                 Context, MainContext, SubContext, Purity, Goal0, !QualInfo),
             NumAdded = 1,
-            Goal0 = GoalExpr - GoalInfo0,
+            Goal0 = hlds_goal(GoalExpr, GoalInfo0),
             goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
             % We could wrap a from_ground_term(X) scope around Goal,
             % but there would be no gain from doing so, whereas the
             % increase would lead to a slight increase in memory and time
             % requirements.
-            Goal = GoalExpr - GoalInfo
+            Goal = hlds_goal(GoalExpr, GoalInfo)
         ;
             FunctorArgs = [_ | _],
             make_fresh_arg_vars(FunctorArgs, HeadVars, !VarSet, !SInfo,
@@ -763,9 +763,9 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
                     FunctorContext, ArgContext, Goal0, Goal, no, ArgAdded,
                     !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
             ;
-                Goal0 = GoalExpr0 - GoalInfo0,
+                Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
                 goal_info_set_purity(Purity, GoalInfo0, GoalInfo1),
-                Goal1 = GoalExpr0 - GoalInfo1,
+                Goal1 = hlds_goal(GoalExpr0, GoalInfo1),
                 do_insert_arg_unifications(HeadVars, FunctorArgs,
                     FunctorContext, ArgContext, Goal1, Goal, no, ArgAdded,
                     !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
@@ -903,20 +903,18 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
 
         map.init(Substitution),
         ArgContext = ac_head(PredOrFunc, NumArgs),
-        %
+
         % Create the unifications that need to come before the body of
         % the lambda expression; those corresponding to args whose mode
         % is input or unused.
-        %
         HeadBefore0 = true_goal,
         insert_arg_unifications(NonOutputLambdaVars, NonOutputArgs,
             Context, ArgContext, HeadBefore0, HeadBefore, NonOutputAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        %
+
         % Create the unifications that need to come after the body of
         % the lambda expression; those corresponding to args whose mode
         % is output.
-        %
         HeadAfter0 = true_goal,
         insert_arg_unifications(OutputLambdaVars, OutputArgs,
             Context, ArgContext, HeadAfter0, HeadAfter, OutputAdded,
@@ -928,15 +926,12 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
         NumAdded = NonOutputAdded + OutputAdded + BodyAdded,
 
-        %
         % Fix up any state variable unifications.
-        %
         finish_goals(Context, FinalSVarMap, [HeadBefore, Body, HeadAfter],
             HLDS_Goal0, !.SInfo),
-        %
+
         % Figure out which variables we need to explicitly existentially
         % quantify.
-        %
         (
             PredOrFunc = predicate,
             QuantifiedArgs = Args
@@ -948,12 +943,14 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
         list.sort_and_remove_dups(QuantifiedVars0, QuantifiedVars),
 
         goal_info_init(Context, GoalInfo),
-        HLDS_Goal = scope(exist_quant(QuantifiedVars), HLDS_Goal0) - GoalInfo,
-        %
+        HLDS_Goal = hlds_goal(
+            scope(exist_quant(QuantifiedVars), HLDS_Goal0),
+            GoalInfo),
+
         % We set the lambda nonlocals here to anything that could
         % possibly be nonlocal.  Quantification will reduce this down to
         % the proper set of nonlocal arguments.
-        %
+
         some [!LambdaGoalVars] (
             goal_util.goal_vars(HLDS_Goal, !:LambdaGoalVars),
             svset.delete_list(LambdaVars, !LambdaGoalVars),

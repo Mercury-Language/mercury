@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,12 +9,12 @@
 % File: cse_detection.m.
 % Main author: zs.
 % Much of the code is based on switch_detection.m by fjh.
-% 
+%
 % Common subexpression detection - hoist common subexpression goals out of
 % branched structures. This can enable us to find more indexing opportunities
 % and hence can make the code more deterministic.
 % This code is switched on/off with the `--common-goal' option.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.cse_detection.
@@ -230,9 +230,10 @@ detect_cse_in_goal(Goal0, InstMap0, !CseInfo, Redo, Goal) :-
 :- pred detect_cse_in_goal_1(hlds_goal::in, instmap::in, cse_info::in,
     cse_info::out, bool::out, hlds_goal::out, instmap::out) is det.
 
-detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, !CseInfo, Redo,
-        Goal - GoalInfo, InstMap) :-
-    detect_cse_in_goal_2(Goal0, GoalInfo, InstMap0, !CseInfo, Redo, Goal),
+detect_cse_in_goal_1(hlds_goal(GoalExpr0, GoalInfo), InstMap0, !CseInfo, Redo,
+        hlds_goal(GoalExpr, GoalInfo), InstMap) :-
+    detect_cse_in_goal_2(GoalExpr0, GoalInfo, InstMap0, !CseInfo, Redo,
+        GoalExpr),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
@@ -312,7 +313,7 @@ detect_cse_in_conj([Goal0 | Goals0], ConjType, InstMap0, !CseInfo, Redo,
     detect_cse_in_goal_1(Goal0, InstMap0, !CseInfo, Redo1, Goal, InstMap1),
     detect_cse_in_conj(Goals0, ConjType, InstMap1, !CseInfo, Redo2, TailGoals),
     (
-        Goal = conj(InnerConjType, ConjGoals) - _,
+        Goal = hlds_goal(conj(InnerConjType, ConjGoals), _),
         ConjType = InnerConjType
     ->
         Goals = ConjGoals ++ TailGoals
@@ -335,7 +336,7 @@ detect_cse_in_conj([Goal0 | Goals0], ConjType, InstMap0, !CseInfo, Redo,
 detect_cse_in_disj([], Goals0, _, InstMap, !CseInfo, Redo, disj(Goals)) :-
     detect_cse_in_disj_2(Goals0, InstMap, !CseInfo, Redo, Goals).
 detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap,
-        !CseInfo, Redo, Goal) :-
+        !CseInfo, Redo, GoalExpr) :-
     (
         instmap.lookup_var(InstMap, Var, VarInst0),
         ModuleInfo = !.CseInfo ^ module_info,
@@ -348,11 +349,12 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap,
     ->
         maybe_update_existential_data_structures(Unify,
             FirstOldNew, LaterOldNew, !CseInfo),
-        Goal = conj(plain_conj, [Unify, disj(Goals) - GoalInfo0]),
+        GoalExpr = conj(plain_conj,
+            [Unify, hlds_goal(disj(Goals), GoalInfo0)]),
         Redo = yes
     ;
         detect_cse_in_disj(Vars, Goals0, GoalInfo0, InstMap,
-            !CseInfo, Redo, Goal)
+            !CseInfo, Redo, GoalExpr)
     ).
 
 :- pred detect_cse_in_disj_2(list(hlds_goal)::in, instmap::in, cse_info::in,
@@ -373,7 +375,7 @@ detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo, InstMap,
         !CseInfo, Redo, switch(SwitchVar, CanFail, Cases)) :-
     detect_cse_in_cases_2(Cases0, InstMap, !CseInfo, Redo, Cases).
 detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
-        InstMap, !CseInfo, Redo, Goal) :-
+        InstMap, !CseInfo, Redo, GoalExpr) :-
     (
         Var \= SwitchVar,
         instmap.lookup_var(InstMap, Var, VarInst0),
@@ -386,12 +388,12 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
     ->
         maybe_update_existential_data_structures(Unify,
             FirstOldNew, LaterOldNew, !CseInfo),
-        Goal = conj(plain_conj,
-            [Unify, switch(SwitchVar, CanFail, Cases) - GoalInfo]),
+        GoalExpr = conj(plain_conj,
+            [Unify, hlds_goal(switch(SwitchVar, CanFail, Cases), GoalInfo)]),
         Redo = yes
     ;
         detect_cse_in_cases(Vars, SwitchVar, CanFail, Cases0, GoalInfo,
-            InstMap, !CseInfo, Redo, Goal)
+            InstMap, !CseInfo, Redo, GoalExpr)
     ).
 
 :- pred detect_cse_in_cases_2(list(case)::in, instmap::in, cse_info::in,
@@ -416,7 +418,7 @@ detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, InstMap, !CseInfo,
     detect_cse_in_ite_2(Cond0, Then0, Else0, InstMap, !CseInfo, Redo,
         Cond, Then, Else).
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
-        InstMap, !CseInfo, Redo, Goal) :-
+        InstMap, !CseInfo, Redo, GoalExpr) :-
     (
         ModuleInfo = !.CseInfo ^ module_info,
         instmap.lookup_var(InstMap, Var, VarInst0),
@@ -429,12 +431,12 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
     ->
         maybe_update_existential_data_structures(Unify,
             FirstOldNew, LaterOldNew, !CseInfo),
-        Goal = conj(plain_conj, [Unify, if_then_else(IfVars, Cond0, Then, Else)
-            - GoalInfo]),
+        IfGoal = hlds_goal(if_then_else(IfVars, Cond0, Then, Else), GoalInfo),
+        GoalExpr = conj(plain_conj, [Unify, IfGoal]),
         Redo = yes
     ;
         detect_cse_in_ite(Vars, IfVars, Cond0, Then0, Else0, GoalInfo,
-            InstMap, !CseInfo, Redo, Goal)
+            InstMap, !CseInfo, Redo, GoalExpr)
     ).
 
 :- pred detect_cse_in_ite_2(hlds_goal::in, hlds_goal::in, hlds_goal::in,
@@ -553,7 +555,7 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
     ;
         !.CseState = have_candidate(HoistedGoal,
             FirstOldNewVars, LaterOldNewVars0),
-        Goal0 = _ - GoalInfo,
+        Goal0 = hlds_goal(_, GoalInfo),
         goal_info_get_context(GoalInfo, Context),
         (
             find_similar_deconstruct(HoistedGoal,
@@ -577,8 +579,8 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
     cse_info::in, cse_info::out, assoc_list(prog_var)::out,
     hlds_goal::out, list(hlds_goal)::out) is det.
 
-construct_common_unify(Var, GoalExpr0 - GoalInfo, !CseInfo, OldNewVars,
-        HoistedGoal, Replacements) :-
+construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
+        OldNewVars, HoistedGoal, Replacements) :-
     (
         GoalExpr0 = unify(_, RHS, Umode, Unif0, Ucontext),
         Unif0 = deconstruct(_, Consid, Args, Submodes, CanFail, CanCGC)
@@ -594,7 +596,8 @@ construct_common_unify(Var, GoalExpr0 - GoalInfo, !CseInfo, OldNewVars,
         create_parallel_subterms(Args, Context, Ucontext, !CseInfo,
             OldNewVars, Replacements),
         map.from_assoc_list(OldNewVars, Sub),
-        rename_some_vars_in_goal(Sub, GoalExpr1 - GoalInfo, HoistedGoal)
+        rename_some_vars_in_goal(Sub, hlds_goal(GoalExpr1, GoalInfo),
+            HoistedGoal)
     ;
         unexpected(this_file, "non-unify goal in construct_common_unify")
     ).
@@ -644,10 +647,10 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
 find_similar_deconstruct(HoistedUnifyGoal, OldUnifyGoal, Context,
         OldHoistedVars, Replacements) :-
     (
-        HoistedUnifyGoal = unify(_, _, _, HoistedUnifyInfo, OC) - _,
+        HoistedUnifyGoal = hlds_goal(unify(_, _, _, HoistedUnifyInfo, OC), _),
         HoistedUnifyInfo = deconstruct(_, HoistedFunctor,
             HoistedVars, _, _, _),
-        OldUnifyGoal = unify(_, _, _, OldUnifyInfo, _NC) - _,
+        OldUnifyGoal = hlds_goal(unify(_, _, _, OldUnifyInfo, _NC), _),
         OldUnifyInfo = deconstruct(_, OldFunctor, OldVars, _, _, _)
     ->
         HoistedFunctor = OldFunctor,
@@ -753,7 +756,7 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
 maybe_update_existential_data_structures(Unify, FirstOldNew, LaterOldNew,
         !CseInfo) :-
     (
-        Unify = unify(_, _, _, UnifyInfo, _) - _,
+        Unify = hlds_goal(unify(_, _, _, UnifyInfo, _), _),
         UnifyInfo = deconstruct(Var, ConsId, _, _, _, _),
         ModuleInfo = !.CseInfo ^ module_info,
         VarTypes = !.CseInfo ^ vartypes,

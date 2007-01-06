@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -296,9 +296,9 @@ check_proc_for_mm_tabling(SCC, PPId, !Results, !ModuleInfo, !IO) :-
     mm_tabling_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.  
 
-check_goal_for_mm_tabling(SCC, VarTypes, Goal - GoalInfo, Result, MaybeStatus,
-        !ModuleInfo, !IO) :-
-    check_goal_for_mm_tabling_2(SCC, VarTypes, Goal, GoalInfo, Result,
+check_goal_for_mm_tabling(SCC, VarTypes, hlds_goal(GoalExpr, GoalInfo),
+        Result, MaybeStatus, !ModuleInfo, !IO) :-
+    check_goal_for_mm_tabling_2(SCC, VarTypes, GoalExpr, GoalInfo, Result,
         MaybeStatus, !ModuleInfo, !IO).
 
 :- pred check_goal_for_mm_tabling_2(scc::in, vartypes::in, hlds_goal_expr::in,
@@ -586,7 +586,7 @@ annotate_proc(PPId, !ModuleInfo, !IO) :-
     io::di, io::uo) is det.
 
 annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = GoalExpr0 - GoalInfo0,
+    !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     annotate_goal_2(VarTypes, GoalExpr0, GoalExpr, Status, !ModuleInfo, !IO),
     ( Status = mm_tabled_will_not_call ->
         goal_info_add_feature(feature_will_not_call_mm_tabled,
@@ -594,7 +594,7 @@ annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
     ;
         GoalInfo = GoalInfo0
     ),
-    !:Goal = GoalExpr - GoalInfo.
+    !:Goal = hlds_goal(GoalExpr, GoalInfo).
         
 :- pred annotate_goal_2(vartypes::in, hlds_goal_expr::in, hlds_goal_expr::out,
     mm_tabling_status::out, module_info::in, module_info::out, io::di, io::uo)

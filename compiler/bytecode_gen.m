@@ -1,17 +1,17 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: bytecode_gen.m.
 % Author: zs.
-% 
+%
 % This module generates bytecode, which is intended to be used by a
 % (not yet implemented) bytecode interpreter/debugger.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module bytecode_backend.bytecode_gen.
@@ -193,7 +193,7 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
 :- pred gen_goal(hlds_goal::in, byte_info::in, byte_info::out,
     byte_tree::out) is det.
 
-gen_goal(GoalExpr - GoalInfo, !ByteInfo, Code) :-
+gen_goal(hlds_goal(GoalExpr, GoalInfo), !ByteInfo, Code) :-
     gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, GoalCode),
     goal_info_get_context(GoalInfo, Context),
     term.context_line(Context, Line),
@@ -241,7 +241,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         GoalExpr = scope(_, InnerGoal),
         gen_goal(InnerGoal, !ByteInfo, InnerCode),
         goal_info_get_determinism(GoalInfo, OuterDetism),
-        InnerGoal = _ - InnerGoalInfo,
+        InnerGoal = hlds_goal(_, InnerGoalInfo),
         goal_info_get_determinism(InnerGoalInfo, InnerDetism),
         determinism_to_code_model(OuterDetism, OuterCodeModel),
         determinism_to_code_model(InnerDetism, InnerCodeModel),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3111,7 +3111,7 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !IO) :-
     maybe_write_string(Verbose,
         "% Checking for backtracking over unique modes...\n", !IO),
     module_info_get_num_errors(!.HLDS, NumErrors0),
-    unique_modes.check_module(!HLDS, !IO),
+    unique_modes_check_module(!HLDS, !IO),
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors \= NumErrors0 ->
         FoundError = yes,
@@ -3482,7 +3482,7 @@ tabling(Verbose, Stats, !HLDS, !IO) :-
 process_lambdas(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Transforming lambda expressions...", !IO),
     maybe_flush_output(Verbose, !IO),
-    lambda.process_module(!HLDS),
+    lambda_process_module(!HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

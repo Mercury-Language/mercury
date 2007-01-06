@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -595,10 +595,12 @@ goal_info_set_need_in_par_conj(NeedInParConj, !GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_set_follow_vars(FollowVars, Goal - GoalInfo0, Goal - GoalInfo) :-
+goal_set_follow_vars(FollowVars, hlds_goal(GoalExpr, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo)) :-
     goal_info_set_follow_vars(FollowVars, GoalInfo0, GoalInfo).
 
-goal_set_resume_point(ResumePoint, Goal - GoalInfo0, Goal - GoalInfo) :-
+goal_set_resume_point(ResumePoint, hlds_goal(GoalExpr, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo)) :-
     goal_info_set_resume_point(ResumePoint, GoalInfo0, GoalInfo).
 
 goal_info_resume_vars_and_loc(Resume, Vars, Locs) :-

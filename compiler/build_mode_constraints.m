@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: build_mode_constraints.m.
 % Main author: richardf.
-% 
+%
 % This module contains predicates and data structures needed for
 % traversing the HLDS and building a list of abstract constraint formulae to
 % describe variable producers in a Mercury program.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.build_mode_constraints.
@@ -286,7 +286,8 @@ add_mc_var_for_pred_head(ProgVarset, PredId, HeadVar, !VarInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-add_mc_vars_for_goal(PredId, ProgVarset, GoalExpr - GoalInfo, !VarInfo) :-
+add_mc_vars_for_goal(PredId, ProgVarset, hlds_goal(GoalExpr, GoalInfo),
+        !VarInfo) :-
     goal_info_get_nonlocals(GoalInfo, Nonlocals),
     goal_info_get_goal_path(GoalInfo, GoalPath),
 
@@ -382,8 +383,8 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
     hlds_goal::in, mc_var_info::in, mc_var_info::out, mode_constraints::in,
     mode_constraints::out) is det.
 
-add_goal_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr - GoalInfo,
-        !VarInfo, !Constraints) :-
+add_goal_constraints(ModuleInfo, ProgVarset, PredId,
+        hlds_goal(GoalExpr, GoalInfo), !VarInfo, !Constraints) :-
     goal_info_get_nonlocals(GoalInfo, Nonlocals),
     goal_info_get_goal_path(GoalInfo, GoalPath),
     goal_info_get_context(GoalInfo, Context),
@@ -530,7 +531,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         DisjunctGoalPaths, Nonlocals, NonlocalsHere, NonlocalsAtDisjuncts,
         !VarInfo),
 
-    list.map(snd, Goals, GoalInfos),
+    GoalInfos = list.map(get_hlds_goal_info, Goals),
     list.map(goal_info_get_goal_path, GoalInfos, DisjunctGoalPaths),
 
     list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
@@ -546,7 +547,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
 add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         negation(Goal), Context, GoalPath, Nonlocals, !VarInfo,
         !Constraints) :-
-    Goal = _ - NegatedGoalInfo,
+    Goal = hlds_goal(_, NegatedGoalInfo),
     goal_info_get_goal_path(NegatedGoalInfo, NegatedGoalPath),
     VarMap = rep_var_map(!.VarInfo),
     NonlocalsAtPath = set.fold(cons_prog_var_at_path(VarMap, PredId, GoalPath),
@@ -565,7 +566,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
 add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         scope(_Reason, Goal), Context, GoalPath, Nonlocals, !VarInfo,
         !Constraints) :-
-    Goal = _ - SomeGoalInfo,
+    Goal = hlds_goal(_, SomeGoalInfo),
     goal_info_get_goal_path(SomeGoalInfo, SomeGoalPath),
 
     % If a program variable is produced by the sub-goal of the some
@@ -588,7 +589,9 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
 add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         if_then_else(ExistVars, Cond, Then, Else),
         Context, GoalPath, Nonlocals, !VarInfo, !Constraints) :-
-    Cond = _ - CondInfo, Then = _ - ThenInfo, Else = _ - ElseInfo,
+    Cond = hlds_goal(_, CondInfo),
+    Then = hlds_goal(_, ThenInfo),
+    Else = hlds_goal(_, ElseInfo),
     goal_info_get_goal_path(CondInfo, CondPath),
     goal_info_get_goal_path(ThenInfo, ThenPath),
     goal_info_get_goal_path(ElseInfo, ElsePath),
@@ -603,10 +606,9 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         NonlocalsAtElse, !VarInfo),
     NonlocalsList = set.to_sorted_list(Nonlocals),
 
-    %
     % The existentially quantified variables shared between the condition
     % and the then-part have special constraints.
-    %
+
     goal_info_get_nonlocals(CondInfo, CondNonlocals),
     goal_info_get_nonlocals(ThenInfo, ThenNonlocals),
     list.filter(set.contains(CondNonlocals), ExistVars, NonlocalToCond),
@@ -832,7 +834,7 @@ single_mode_constraints(ModuleInfo, MCVar, Mode) =
     conj_constraints_info::in, conj_constraints_info::out) is det.
 
 add_goal_nonlocals_to_conjunct_production_maps(VarMap, PredId, Nonlocals,
-        _SubGoalExpr - SubGoalInfo, !ConjConstraintsInfo) :-
+        hlds_goal(_SubGoalExpr, SubGoalInfo), !ConjConstraintsInfo) :-
     goal_info_get_nonlocals(SubGoalInfo, SubGoalNonlocals),
     goal_info_get_goal_path(SubGoalInfo, SubGoalPath),
 

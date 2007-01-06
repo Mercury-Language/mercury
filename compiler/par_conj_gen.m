@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2006 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -150,20 +150,20 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     % of the sp register, and restore it when the parallel conjunction
     % finishes.
     code_info.get_par_conj_depth(!.CI, Depth),
-    (if Depth = 0 then
+    ( Depth = 0 ->
         code_info.acquire_temp_slot(lval(parent_sp), ParentSpSlot, !CI),
         MaybeSetParentSpCode = node([
-            assign(ParentSpSlot, lval(parent_sp))
-                - "save the old parent stack pointer",
-            assign(parent_sp, lval(sp))
-                - "set the parent stack pointer"
+            llds_instr(assign(ParentSpSlot, lval(parent_sp)),
+                "save the old parent stack pointer"),
+            llds_instr(assign(parent_sp, lval(sp)),
+                "set the parent stack pointer")
         ]),
         MaybeRestoreParentSpCode = node([
-            assign(parent_sp, lval(ParentSpSlot))
-                - "restore old parent stack pointer"
+            llds_instr(assign(parent_sp, lval(ParentSpSlot)),
+                "restore old parent stack pointer")
         ]),
         MaybeReleaseParentSpSlot = yes(ParentSpSlot)
-    else
+    ;
         MaybeSetParentSpCode = empty,
         MaybeRestoreParentSpCode = empty,
         MaybeReleaseParentSpSlot = no
@@ -183,21 +183,21 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     list.length(Goals, NumGoals),
     code_info.acquire_reg(reg_r, RegLval, !CI),
     code_info.acquire_persistent_temp_slot(sync_term, SyncSlot, !CI),
-    (if SyncSlot = stackvar(SlotNum) then
+    ( SyncSlot = stackvar(SlotNum) ->
         ParentSyncSlot = parent_stackvar(SlotNum)
-    else
+    ;
         unexpected(this_file, "generate_par_conj")
     ),
 
     MakeSyncTermCode = node([
         % The may_not_use_atomic here is conservative.
-        incr_hp(RegLval, no, no, const(llconst_int(STSize)),
-            "sync term", may_not_use_atomic_alloc)
-            - "allocate a sync term",
-        init_sync_term(RegLval, NumGoals)
-            - "initialize sync term",
-        assign(SyncSlot, lval(RegLval))
-            - "store the sync term on the stack"
+        llds_instr(incr_hp(RegLval, no, no, const(llconst_int(STSize)),
+            "sync term", may_not_use_atomic_alloc),
+            "allocate a sync term"),
+        llds_instr(init_sync_term(RegLval, NumGoals),
+            "initialize sync term"),
+        llds_instr(assign(SyncSlot, lval(RegLval)),
+            "store the sync term on the stack")
     ]),
     code_info.release_reg(RegLval, !CI),
 
@@ -209,8 +209,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     code_info.set_par_conj_depth(Depth, !CI),
 
     EndLabelCode = node([
-        label(EndLabel)
-            - "end of parallel conjunction"
+        llds_instr(label(EndLabel), "end of parallel conjunction")
     ]),
     Code = tree_list([
         MaybeSetParentSpCode, SaveCode, MakeSyncTermCode,
@@ -235,9 +234,9 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     %
     % XXX release sync slots of nested parallel conjunctions
     %
-    (if Depth = 0 then
+    ( Depth = 0 ->
         code_info.release_persistent_temp_slot(SyncSlot, !CI)
-    else
+    ;
         true
     ),
     (
@@ -275,21 +274,17 @@ generate_det_par_conj_2([Goal | Goals], ParentSyncTerm, EndLabel,
         code_info.get_next_label(NextConjunct, !CI),
         code_info.reset_to_position(StartPos, !CI),
         ForkCode = node([
-            fork(NextConjunct)
-                - "fork off a child"
+            llds_instr(fork(NextConjunct), "fork off a child")
         ]),
         JoinCode = node([
-            join_and_continue(ParentSyncTerm, EndLabel)
-                - "finish",
-            label(NextConjunct)
-                - "start of the next conjunct"
+            llds_instr(join_and_continue(ParentSyncTerm, EndLabel), "finish"),
+            llds_instr(label(NextConjunct), "start of the next conjunct")
         ])
     ;
         Goals = [],
         ForkCode = empty,
         JoinCode = node([
-            join_and_continue(ParentSyncTerm, EndLabel)
-                - "finish"
+            llds_instr(join_and_continue(ParentSyncTerm, EndLabel), "finish")
         ])
     ),
     ThisCode = tree_list([ForkCode, ThisGoalCode, SaveCode, JoinCode]),

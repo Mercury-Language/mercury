@@ -333,9 +333,9 @@ vars_in_mem_ref(heap_ref(BaseRval, _Tag, FieldRval), BaseVars ++ FieldVars) :-
 %-----------------------------------------------------------------------------%
 
 transform_lval_in_instr(Transform, Instr0, Instr, !Acc) :-
-    Instr0 = Uinstr0 - Comment,
+    Instr0 = llds_instr(Uinstr0, Comment),
     transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc),
-    Instr = Uinstr - Comment.
+    Instr = llds_instr(Uinstr, Comment).
 
 :- pred transform_lval_in_uinstr(transform_lval(T)::in(transform_lval),
     instr::in, instr::out, T::in, T::out) is det.

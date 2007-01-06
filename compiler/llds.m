@@ -36,7 +36,6 @@
 :- import_module assoc_list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 :- import_module counter.
 :- import_module term.
@@ -206,7 +205,11 @@
     %
 :- type code_tree   ==  tree(list(instruction)).
 
-:- type instruction ==  pair(instr, string).    % instruction, comment
+:- type instruction
+    --->    llds_instr(
+                llds_inst       :: instr,
+                llds_comment    :: string
+            ).
 
 :- type nondet_tail_call
     --->    no_tail_call
@@ -695,8 +698,8 @@
     % stack_layout.represent_locn.
     %
 :- type layout_locn
-    --->    direct(lval)
-    ;       indirect(lval, int).
+    --->    locn_direct(lval)
+    ;       locn_indirect(lval, int).
 
     % live_value_type describes the different sorts of data that
     % can be considered live.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -152,8 +152,8 @@
 is_commutativity_assertion(Module, AssertId, CallVars, CommutativeVars) :-
     assert_id_goal(Module, AssertId, Goal),
     goal_is_equivalence(Goal, P, Q),
-    P = plain_call(PredId, _, VarsP, _, _, _) - _,
-    Q = plain_call(PredId, _, VarsQ, _, _, _) - _,
+    P = hlds_goal(plain_call(PredId, _, VarsP, _, _, _), _),
+    Q = hlds_goal(plain_call(PredId, _, VarsQ, _, _, _), _),
     commutative_var_ordering(VarsP, VarsQ, CallVars, CommutativeVars).
 
     % commutative_var_ordering(Ps, Qs, Vs, CommutativeVs):
@@ -194,22 +194,22 @@ commutative_var_ordering_2(VarP, VarQ, [P | Ps], [Q | Qs], [V | Vs],
 
 is_associativity_assertion(Module, AssertId, CallVars,
         AssociativeVars, OutputVar) :-
-    assert_id_goal(Module, AssertId, Goal - GoalInfo),
-    goal_is_equivalence(Goal - GoalInfo, P, Q),
+    assert_id_goal(Module, AssertId, hlds_goal(GoalExpr, GoalInfo)),
+    goal_is_equivalence(hlds_goal(GoalExpr, GoalInfo), P, Q),
 
     goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
 
         % There may or may not be a some [] depending on whether
         % the user explicity qualified the call or not.
     (
-        P = scope(_, conj(plain_conj, PCalls0) - _) - _PGoalInfo,
-        Q = scope(_, conj(plain_conj, QCalls0) - _) - _QGoalInfo
+        P = hlds_goal(scope(_, hlds_goal(conj(plain_conj, PCalls0), _)), _),
+        Q = hlds_goal(scope(_, hlds_goal(conj(plain_conj, QCalls0), _)), _)
     ->
         PCalls = PCalls0,
         QCalls = QCalls0
     ;
-        P = conj(plain_conj, PCalls) - _PGoalInfo,
-        Q = conj(plain_conj, QCalls) - _QGoalInfo
+        P = hlds_goal(conj(plain_conj, PCalls), _PGoalInfo),
+        Q = hlds_goal(conj(plain_conj, QCalls), _QGoalInfo)
     ),
     promise_equivalent_solutions [AssociativeVars, OutputVar] (
          associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
@@ -301,21 +301,21 @@ number_of_associative_vars = 3.
 %-----------------------------------------------------------------------------%
 
 is_update_assertion(Module, AssertId, _PredId, CallVars, StateA - StateB) :-
-    assert_id_goal(Module, AssertId, Goal - GoalInfo),
-    goal_is_equivalence(Goal - GoalInfo, P, Q),
+    assert_id_goal(Module, AssertId, hlds_goal(GoalExpr, GoalInfo)),
+    goal_is_equivalence(hlds_goal(GoalExpr, GoalInfo), P, Q),
     goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
 
         % There may or may not be an explicit some [Vars] there,
         % as quantification now works correctly.
     (
-        P = scope(_, conj(plain_conj, PCalls0) - _) - _PGoalInfo,
-        Q = scope(_, conj(plain_conj, QCalls0) - _) - _QGoalInfo
+        P = hlds_goal(scope(_, hlds_goal(conj(plain_conj, PCalls0), _)), _),
+        Q = hlds_goal(scope(_, hlds_goal(conj(plain_conj, QCalls0), _)), _)
     ->
         PCalls = PCalls0,
         QCalls = QCalls0
     ;
-        P = conj(plain_conj, PCalls) - _PGoalInfo,
-        Q = conj(plain_conj, QCalls) - _QGoalInfo
+        P = hlds_goal(conj(plain_conj, PCalls), _PGoalInfo),
+        Q = hlds_goal(conj(plain_conj, QCalls), _QGoalInfo)
     ),
 
     solutions.solutions(update(PCalls, QCalls,
@@ -369,17 +369,16 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
 
 process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
         LinkingVar, Vars, VarsA) :-
-    Goals = [plain_call(PredId, _, VarsA, _, _, _) - _,
-        plain_call(PredId, _, VarsB, _, _, _) - _],
+    Goals = [hlds_goal(plain_call(PredId, _, VarsA, _, _, _), _),
+        hlds_goal(plain_call(PredId, _, VarsB, _, _, _), _)],
 
-        % Determine the linking variable, L.
-        % By definition it must be existentially quantified and
-        % a member of both variable lists.
+    % Determine the linking variable, L. By definition it must be
+    % existentially quantified and member of both variable lists.
     CommonVars = list_to_set(VarsA) `intersect` list_to_set(VarsB),
     set.singleton_set(CommonVars `difference` UniversiallyQuantifiedVars,
         LinkingVar),
 
-        % Set up mapping between the variables in the two calls.
+    % Set up mapping between the variables in the two calls.
     assoc_list.from_corresponding_lists(VarsA, VarsB, Vars).
 
 %-----------------------------------------------------------------------------%
@@ -395,12 +394,12 @@ is_construction_equivalence_assertion(Module, AssertId, ConsId, PredId) :-
         predicate_call(P, PredId)
     ).
 
-    % One side of the equivalence must be just the single
-    % unification with the correct cons_id.
+    % One side of the equivalence must be just the single unification
+    % with the correct cons_id.
     %
 :- pred single_construction(hlds_goal::in, cons_id::in) is semidet.
 
-single_construction(unify(_, UnifyRhs, _, _, _) - _,
+single_construction(hlds_goal(unify(_, UnifyRhs, _, _, _), _),
         cons(QualifiedSymName, Arity)) :-
     UnifyRhs = rhs_functor(cons(UnqualifiedSymName, Arity), _, _),
     match_sym_name(UnqualifiedSymName, QualifiedSymName).
@@ -412,19 +411,19 @@ single_construction(unify(_, UnifyRhs, _, _, _) - _,
 :- pred predicate_call(hlds_goal::in, pred_id::in) is semidet.
 
 predicate_call(Goal, PredId) :-
-    ( Goal = conj(plain_conj, Goals) - _ ->
+    ( Goal = hlds_goal(conj(plain_conj, Goals), _) ->
         list.member(Call, Goals),
-        Call = plain_call(PredId, _, _, _, _, _) - _,
+        Call = hlds_goal(plain_call(PredId, _, _, _, _, _), _),
         list.delete(Goals, Call, Unifications),
         P = (pred(G::in) is semidet :-
             not (
-                G = unify(_, UnifyRhs, _, _, _) - _,
+                G = hlds_goal(unify(_, UnifyRhs, _, _, _), _),
                 UnifyRhs = rhs_functor(_, _, _)
             )
         ),
         list.filter(P, Unifications, [])
     ;
-        Goal = plain_call(PredId, _, _, _, _, _) - _
+        Goal = hlds_goal(plain_call(PredId, _, _, _, _, _), _)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -449,22 +448,22 @@ assert_id_goal(Module, AssertId, Goal) :-
     is semidet.
 
 goal_is_implication(Goal, P, Q) :-
-        % Goal = (P => Q)
-    Goal = negation(conj(plain_conj, GoalList) - GI) - _,
+    % Goal = (P => Q)
+    Goal = hlds_goal(negation(hlds_goal(conj(plain_conj, GoalList), _)), GI),
     list.reverse(GoalList) = [NotQ | Ps],
     ( Ps = [P0] ->
         P = P0
     ;
-        P = conj(plain_conj, list.reverse(Ps)) - GI
+        P = hlds_goal(conj(plain_conj, list.reverse(Ps)), GI)
     ),
-    NotQ = negation(Q) - _.
+    NotQ = hlds_goal(negation(Q), _).
 
 :- pred goal_is_equivalence(hlds_goal::in, hlds_goal::out, hlds_goal::out)
     is semidet.
 
 goal_is_equivalence(Goal, P, Q) :-
-        % Goal = P <=> Q
-    Goal = conj(plain_conj, [A, B]) - _GoalInfo,
+    % Goal = P <=> Q
+    Goal = hlds_goal(conj(plain_conj, [A, B]), _GoalInfo),
     map.init(Subst),
     goal_is_implication(A, PA, QA),
     goal_is_implication(B, QB, PB),
@@ -483,53 +482,75 @@ goal_is_equivalence(Goal, P, Q) :-
 :- pred equal_goals(hlds_goal::in, hlds_goal::in,
     subst::in, subst::out) is semidet.
 
-equal_goals(conj(ConjType, GoalAs) - _, conj(ConjType, GoalBs) - _, !Subst) :-
-    equal_goals_list(GoalAs, GoalBs, !Subst).
-equal_goals(plain_call(PredId, _, VarsA, _, _, _) - _,
-        plain_call(PredId, _, VarsB, _, _, _) - _, !Subst) :-
-    equal_vars(VarsA, VarsB, !Subst).
-equal_goals(generic_call(Type, VarsA, _, _) - _,
-        generic_call(Type, VarsB, _, _) - _, !Subst) :-
-    equal_vars(VarsA, VarsB, !Subst).
-equal_goals(switch(Var, CanFail, CasesA) - _,
-        switch(Var, CanFail, CasesB) - _, !Subst) :-
-    equal_goals_cases(CasesA, CasesB, !Subst).
-equal_goals(unify(VarA, RHSA, _, _, _) - _, unify(VarB, RHSB, _, _, _) - _,
-        !Subst) :-
-    equal_vars([VarA], [VarB], !Subst),
-    equal_unification(RHSA, RHSB, !Subst).
-equal_goals(disj(GoalAs) - _, disj(GoalBs) - _, !Subst) :-
-    equal_goals_list(GoalAs, GoalBs, !Subst).
-equal_goals(negation(GoalA) - _, negation(GoalB) - _, !Subst) :-
-    equal_goals(GoalA, GoalB, !Subst).
-equal_goals(scope(ReasonA, GoalA) - _, scope(ReasonB, GoalB) - _, !Subst) :-
-    equal_reason(ReasonA, ReasonB, !Subst),
-    equal_goals(GoalA, GoalB, !Subst).
-equal_goals(if_then_else(VarsA, IfA, ThenA, ElseA) - _,
-        if_then_else(VarsB, IfB, ThenB, ElseB) - _, !Subst) :-
-    equal_vars(VarsA, VarsB, !Subst),
-    equal_goals(IfA, IfB, !Subst),
-    equal_goals(ThenA, ThenB, !Subst),
-    equal_goals(ElseA, ElseB, !Subst).
-equal_goals(
-        call_foreign_proc(Attribs, PredId, _, ArgsA, ExtraA, MaybeTraceA, _)
-            - _,
-        call_foreign_proc(Attribs, PredId, _, ArgsB, ExtraB, MaybeTraceB, _)
-            - _,
-        !Subst) :-
-    % Foreign_procs with extra args and trace runtime conditions are compiler
-    % generated, and as such will not participate in assertions.
-    ExtraA = [],
-    ExtraB = [],
-    MaybeTraceA = no,
-    MaybeTraceB = no,
-    VarsA = list.map(foreign_arg_var, ArgsA),
-    VarsB = list.map(foreign_arg_var, ArgsB),
-    equal_vars(VarsA, VarsB, !Subst).
-equal_goals(shorthand(ShorthandGoalA) - GoalInfoA,
-        shorthand(ShorthandGoalB) - GoalInfoB, !Subst) :-
-    equal_goals_shorthand(ShorthandGoalA - GoalInfoA,
-        ShorthandGoalB - GoalInfoB, !Subst).
+equal_goals(GoalA, GoalB, !Subst) :-
+    GoalA = hlds_goal(GoalExprA, _GoalInfoA),
+    GoalB = hlds_goal(GoalExprB, _GoalInfoB),
+    equal_goal_exprs(GoalExprA, GoalExprB, !Subst).
+
+:- pred equal_goal_exprs(hlds_goal_expr::in, hlds_goal_expr::in,
+    subst::in, subst::out) is semidet.
+
+equal_goal_exprs(GoalExprA, GoalExprB, !Subst) :-
+    (
+        GoalExprA = conj(ConjType, GoalsA),
+        GoalExprB = conj(ConjType, GoalsB),
+        equal_goals_list(GoalsA, GoalsB, !Subst)
+    ;
+        GoalExprA = plain_call(PredId, _, ArgVarsA, _, _, _),
+        GoalExprB = plain_call(PredId, _, ArgVarsB, _, _, _),
+        equal_vars(ArgVarsA, ArgVarsB, !Subst)
+    ;
+        GoalExprA = generic_call(CallDetails, ArgVarsA, _, _),
+        GoalExprB = generic_call(CallDetails, ArgVarsB, _, _),
+        equal_vars(ArgVarsA, ArgVarsB, !Subst)
+    ;
+        GoalExprA = switch(Var, CanFail, CasesA),
+        GoalExprB = switch(Var, CanFail, CasesB),
+        equal_goals_cases(CasesA, CasesB, !Subst)
+    ;
+        GoalExprA = unify(VarA, RHSA, _, _, _),
+        GoalExprB = unify(VarB, RHSB, _, _, _),
+        equal_var(VarA, VarB, !Subst),
+        equal_unification(RHSA, RHSB, !Subst)
+    ;
+        GoalExprA = disj(GoalsA),
+        GoalExprB = disj(GoalsB),
+        equal_goals_list(GoalsA, GoalsB, !Subst)
+    ;
+        GoalExprA = negation(SubGoalA),
+        GoalExprB = negation(SubGoalB),
+        equal_goals(SubGoalA, SubGoalB, !Subst)
+    ;
+        GoalExprA = scope(ReasonA, SubGoalA),
+        GoalExprB = scope(ReasonB, SubGoalB),
+        equal_reason(ReasonA, ReasonB, !Subst),
+        equal_goals(SubGoalA, SubGoalB, !Subst)
+    ;
+        GoalExprA = if_then_else(VarsA, CondA, ThenA, ElseA),
+        GoalExprB = if_then_else(VarsB, CondB, ThenB, ElseB),
+        equal_vars(VarsA, VarsB, !Subst),
+        equal_goals(CondA, CondB, !Subst),
+        equal_goals(ThenA, ThenB, !Subst),
+        equal_goals(ElseA, ElseB, !Subst)
+    ;
+        GoalExprA = call_foreign_proc(Attributes, PredId, _,
+            ArgsA, ExtraA, MaybeTraceA, _),
+        GoalExprB = call_foreign_proc(Attributes, PredId, _,
+            ArgsB, ExtraB, MaybeTraceB, _),
+        % Foreign_procs with extra args and trace runtime conditions are
+        % compiler generated, and as such will not participate in assertions.
+        ExtraA = [],
+        ExtraB = [],
+        MaybeTraceA = no,
+        MaybeTraceB = no,
+        VarsA = list.map(foreign_arg_var, ArgsA),
+        VarsB = list.map(foreign_arg_var, ArgsB),
+        equal_vars(VarsA, VarsB, !Subst)
+    ;
+        GoalExprA = shorthand(ShortHandA),
+        GoalExprB = shorthand(ShortHandB),
+        equal_goals_shorthand(ShortHandA, ShortHandB, !Subst)
+    ).
 
 :- pred equal_reason(scope_reason::in, scope_reason::in, subst::in, subst::out)
     is semidet.
@@ -541,12 +562,12 @@ equal_reason(commit(ForcePruning), commit(ForcePruning), !Subst).
 equal_reason(from_ground_term(VarA), from_ground_term(VarB), !Subst) :-
     equal_var(VarA, VarB, !Subst).
 
-:- pred equal_goals_shorthand(pair(shorthand_goal_expr, hlds_goal_info)::in,
-    pair(shorthand_goal_expr, hlds_goal_info)::in, subst::in, subst::out)
-    is semidet.
+:- pred equal_goals_shorthand(shorthand_goal_expr::in, shorthand_goal_expr::in,
+    subst::in, subst::out) is semidet.
 
-equal_goals_shorthand(bi_implication(LeftGoalA, RightGoalA) - GoalInfo,
-        bi_implication(LeftGoalB, RightGoalB) - GoalInfo, !Subst) :-
+equal_goals_shorthand(ShortHandA, ShortHandB, !Subst) :-
+    ShortHandA = bi_implication(LeftGoalA, RightGoalA),
+    ShortHandB = bi_implication(LeftGoalB, RightGoalB),
     equal_goals(LeftGoalA, LeftGoalB, !Subst),
     equal_goals(RightGoalA, RightGoalB, !Subst).
 
@@ -633,73 +654,96 @@ update_pred_info(AssertId, PredId, !Module) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-normalise_goal(Goal @ plain_call(_, _, _, _, _, _) - GI, Goal - GI).
-normalise_goal(Goal @ generic_call(_, _, _, _) - GI, Goal - GI).
-normalise_goal(Goal @ unify(_, _, _, _, _) - GI, Goal - GI).
-normalise_goal(Goal @ call_foreign_proc(_, _, _, _, _, _, _) - GI, Goal - GI).
-normalise_goal(conj(ConjType, Goals0) - GI, conj(ConjType, Goals) - GI) :-
+normalise_goal(Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+    normalise_goal_expr(GoalExpr0, GoalExpr),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+:- pred normalise_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out) is det.
+
+normalise_goal_expr(GoalExpr0, GoalExpr) :-
     (
-        ConjType = plain_conj,
-        normalise_conj(Goals0, Goals)
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
     ;
-        ConjType = parallel_conj,
-        normalise_goals(Goals0, Goals)
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            normalise_conj(Goals0, Goals)
+        ;
+            ConjType = parallel_conj,
+            normalise_goals(Goals0, Goals)
+        ),
+        GoalExpr = conj(ConjType, Goals)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        normalise_cases(Cases0, Cases),
+        GoalExpr = switch(Var, CanFail, Cases)
+    ;
+        GoalExpr0 = disj(Goals0),
+        normalise_goals(Goals0, Goals),
+        GoalExpr = disj(Goals)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        normalise_goal(SubGoal0, SubGoal),
+        GoalExpr = negation(SubGoal)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        normalise_goal(SubGoal0, SubGoal),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        normalise_goal(Cond0, Cond),
+        normalise_goal(Then0, Then),
+        normalise_goal(Else0, Else),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = shorthand(ShortHandGoal0),
+        normalise_goal_shorthand(ShortHandGoal0, ShortHandGoal),
+        GoalExpr = shorthand(ShortHandGoal)
     ).
-normalise_goal(switch(A,B,Case0s) - GI, switch(A,B,Cases)-GI) :-
-    normalise_cases(Case0s, Cases).
-normalise_goal(disj(Goal0s) - GI, disj(Goals) - GI) :-
-    normalise_goals(Goal0s, Goals).
-normalise_goal(negation(Goal0) - GI, negation(Goal) - GI) :-
-    normalise_goal(Goal0, Goal).
-normalise_goal(scope(Reason, Goal0) - GI,
-        scope(Reason, Goal) - GI) :-
-    normalise_goal(Goal0, Goal).
-normalise_goal(if_then_else(A, If0, Then0, Else0) - GI,
-        if_then_else(A, If, Then, Else) - GI) :-
-    normalise_goal(If0, If),
-    normalise_goal(Then0, Then),
-    normalise_goal(Else0, Else).
-normalise_goal(shorthand(ShortHandGoal0) - GI0,
-        shorthand(ShortHandGoal) - GI) :-
-    normalise_goal_shorthand(ShortHandGoal0 - GI0, ShortHandGoal - GI).
 
     % Place a shorthand goal into a standard form. Currently
     % all the code does is replace conj([G]) with G.
     %
-:- pred normalise_goal_shorthand(
-    pair(shorthand_goal_expr, hlds_goal_info)::in,
-    pair(shorthand_goal_expr, hlds_goal_info)::out) is det.
+:- pred normalise_goal_shorthand(shorthand_goal_expr::in,
+    shorthand_goal_expr::out) is det.
 
-normalise_goal_shorthand(bi_implication(LHS0, RHS0) - GI,
-        bi_implication(LHS, RHS) - GI) :-
+normalise_goal_shorthand(ShortHand0, ShortHand) :-
+    ShortHand0 = bi_implication(LHS0, RHS0),
     normalise_goal(LHS0, LHS),
-    normalise_goal(RHS0, RHS).
+    normalise_goal(RHS0, RHS),
+    ShortHand = bi_implication(LHS, RHS).
 
 %-----------------------------------------------------------------------------%
 
 :- pred normalise_conj(hlds_goals::in, hlds_goals::out) is det.
 
 normalise_conj([], []).
-normalise_conj([Goal0 | Goal0s], Goals) :-
+normalise_conj([Goal0 | Goals0], Goals) :-
     goal_to_conj_list(Goal0, ConjGoals),
-    normalise_conj(Goal0s, Goal1s),
-    list.append(ConjGoals, Goal1s, Goals).
+    normalise_conj(Goals0, Goals1),
+    list.append(ConjGoals, Goals1, Goals).
 
 :- pred normalise_cases(list(case)::in, list(case)::out) is det.
 
 normalise_cases([], []).
-normalise_cases([Case0 | Case0s], [Case | Cases]) :-
+normalise_cases([Case0 | Cases0], [Case | Cases]) :-
     Case0 = case(ConsId, Goal0),
     normalise_goal(Goal0, Goal),
     Case = case(ConsId, Goal),
-    normalise_cases(Case0s, Cases).
+    normalise_cases(Cases0, Cases).
 
 :- pred normalise_goals(hlds_goals::in, hlds_goals::out) is det.
 
 normalise_goals([], []).
-normalise_goals([Goal0 | Goal0s], [Goal | Goals]) :-
+normalise_goals([Goal0 | Goals0], [Goal | Goals]) :-
     normalise_goal(Goal0, Goal),
-    normalise_goals(Goal0s, Goals).
+    normalise_goals(Goals0, Goals).
 
 %-----------------------------------------------------------------------------%
 

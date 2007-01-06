@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -557,7 +557,7 @@ finish_if_then_else(Context, Then0, Then, Else0, Else,
         %
     StateVars = list.merge_and_remove_dups(map.keys(SInfoT0 ^ dot),
          map.keys(SInfoE  ^ dot)),
-    Then0 = _ - GoalInfo,
+    Then0 = hlds_goal(_, GoalInfo),
     goal_to_conj_list(Then0, Thens0),
     add_then_arm_specific_unifiers(Context, StateVars,
         SInfo0, SInfoC, SInfoT0, SInfoT, Thens0, Thens, !VarSet),
@@ -753,7 +753,7 @@ reconciled_svar_infos_colons(VarSet, SInfoX, StateVar, SInfo0) = SInfo :-
 add_disj_unifiers(Context, SInfo, StateVars, {GoalX, SInfoX}) = Goal :-
     Unifiers = list.foldl(add_disj_unifier(Context, SInfo, SInfoX),
         StateVars, []),
-    GoalX = _ - GoalInfo,
+    GoalX = hlds_goal(_, GoalInfo),
     goal_to_conj_list(GoalX, GoalsX),
     conj_list_to_goal(GoalsX ++ Unifiers, GoalInfo, Goal).
 

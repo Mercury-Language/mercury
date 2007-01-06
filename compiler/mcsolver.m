@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,8 +29,8 @@
 :- import_module pair.
 
     % Convenient abbreviations.
-:- type var == abstract_mode_constraints.mc_var.
-:- type vars == list(var).
+:- type mcvar == abstract_mode_constraints.mc_var.
+:- type mcvars == list(mcvar).
 
     % Structure in which to collect constraints.
     %
@@ -54,53 +54,57 @@
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred equivalent(var::in, var::in, prep_cstrts::in, prep_cstrts::out) is det.
+:- pred equivalent(mcvar::in, mcvar::in, prep_cstrts::in, prep_cstrts::out)
+    is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred equivalent(list(var)::in, prep_cstrts::in, prep_cstrts::out) is det.
+:- pred equivalent(list(mcvar)::in, prep_cstrts::in, prep_cstrts::out) is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred implies(var::in, var::in, prep_cstrts::in, prep_cstrts::out) is det.
+:- pred implies(mcvar::in, mcvar::in, prep_cstrts::in, prep_cstrts::out)
+    is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred not_both(var::in, var::in, prep_cstrts::in, prep_cstrts::out) is det.
+:- pred not_both(mcvar::in, mcvar::in, prep_cstrts::in, prep_cstrts::out)
+    is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred different(var::in, var::in, prep_cstrts::in, prep_cstrts::out) is det.
+:- pred different(mcvar::in, mcvar::in, prep_cstrts::in, prep_cstrts::out)
+    is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred assign(var::in, bool::in, prep_cstrts::in, prep_cstrts::out) is det.
+:- pred assign(mcvar::in, bool::in, prep_cstrts::in, prep_cstrts::out) is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred equivalent_to_disjunction(var::in, vars::in,
+:- pred equivalent_to_disjunction(mcvar::in, mcvars::in,
     prep_cstrts::in, prep_cstrts::out) is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred at_most_one(vars::in, prep_cstrts::in, prep_cstrts::out) is det.
+:- pred at_most_one(mcvars::in, prep_cstrts::in, prep_cstrts::out) is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred exactly_one(vars::in, prep_cstrts::in, prep_cstrts::out) is det.
+:- pred exactly_one(mcvars::in, prep_cstrts::in, prep_cstrts::out) is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
     %
-:- pred disjunction_of_assignments(list(list(pair(var, bool)))::in,
+:- pred disjunction_of_assignments(list(list(pair(mcvar, bool)))::in,
     prep_cstrts::in, prep_cstrts::out) is det.
 
     % Convert the set of constraints for use by the solver.
@@ -123,16 +127,19 @@
 :- import_module libs.compiler_util.
 
 :- import_module eqvclass.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
 :- import_module set.
+:- import_module string.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
     % Assignment constraints.
     %
-:- type assgt               --->    (var == bool).
+:- type assgt               --->    (mcvar == bool).
 :- type assgts              ==      list(assgt).
 
     % Binary implication constraints. (Not a logical implication,
@@ -144,10 +151,10 @@
     % Complex constraints.
     %
 :- type complex_cstrt
-    --->    eqv_disj(var, vars)
+    --->    eqv_disj(mcvar, mcvars)
                 % var <-> OR(vars)
-    ;       at_most_one(vars)
-    ;       exactly_one(vars)
+    ;       at_most_one(mcvars)
+    ;       exactly_one(mcvars)
     ;       disj_of_assgts(list(assgts)).
                 % Each element of the list is a list of assignments
                 % which should occur concurrently.
@@ -156,7 +163,7 @@
 
     % Map from a variable to the complex constraints it participates in.
     %
-:- type complex_cstrt_map   ==      multi_map(var, complex_cstrt).
+:- type complex_cstrt_map   ==      multi_map(mcvar, complex_cstrt).
 
     % A propagation graph is an optimised representation of a set of
     % binary implication constraints. It consists of a pair of mappings
@@ -164,13 +171,17 @@
     % is the mapping when the var in question is bound to `yes'
     % and the RHS is the mapping when the var in question is bound to `no'.
     %
-:- type prop_graph          ==      pair(multi_map(var, assgt)).
+:- type prop_graph
+    --->    prop_graph(
+                prop_graph_yes  :: multi_map(mcvar, assgt),
+                prop_graph_no   :: multi_map(mcvar, assgt)
+            ).
 
     % We keep track of variables known to be equivalent in order
     % to reduce the number of variables we have to worry about
     % when solving the constraints.
     %
-:- type eqv_vars            ==      eqvclass(var).
+:- type eqv_vars            ==      eqvclass(mcvar).
 
     % This type is just used to collect constraints before
     % we prepare them for use by the solver.
@@ -206,7 +217,7 @@
     %
 :- type solver_cstrts
     --->    solver_cstrts(
-                vars                :: vars,
+                vars                :: mcvars,
                 eqv_vars            :: eqv_vars,
                 assgts              :: assgts,
                 prop_graph          :: prop_graph,
@@ -238,7 +249,7 @@ prepare_abstract_constraint(conj(Formulae), !PCs) :-
     prepare_abstract_constraints(Formulae, !PCs).
 
 prepare_abstract_constraint(disj(Formulae), !PCs) :-
-    ( if
+    (
         % Build var - bool pairs assuming structure
         % disj(conj(assgts), conj(assgts, ...), otherwise fail.
         list.map(
@@ -247,9 +258,9 @@ prepare_abstract_constraint(disj(Formulae), !PCs) :-
                     (Var - Val)::out) is semidet), Fls, VarValPairs)
             ),
             Formulae, DisjOfAssgts)
-    then
+    ->
         disjunction_of_assignments(DisjOfAssgts, !PCs)
-    else
+    ;
         compiler_util.sorry(this_file,
             "Disjuction of constraints - general case.")
     ).
@@ -377,9 +388,7 @@ disjunction_of_assignments(DisjOfAssgts, PCs0, PCs) :-
 %-----------------------------------------------------------------------------%
 
 make_solver_cstrts(PCs) = SCs:-
-
-        % Simplify away equivalences.
-        %
+    % Simplify away equivalences.
     Eqvs = PCs ^ prep_eqv_vars,
 
     Assgts =
@@ -398,20 +407,20 @@ make_solver_cstrts(PCs) = SCs:-
     ComplexCstrts =
         list.map(eqv_complex_cstrt(Eqvs), PCs ^ prep_complex_cstrts),
 
-        % Construct the propagation graph.
-        %
+    % Construct the propagation graph.
     PropGraph =
         list.foldl(
-            func(((X == VX) `implies` (Y == VY)), YesPG - NoPG) =
-                ( if   VX = yes then set(YesPG, X, (Y == VY)) - NoPG
-                                else YesPG - set(NoPG, X, (Y == VY))
+            func(((X == VX) `implies` (Y == VY)), prop_graph(YesPG, NoPG)) =
+                ( VX = yes ->
+                    prop_graph(set(YesPG, X, (Y == VY)), NoPG)
+                ;
+                    prop_graph(YesPG, set(NoPG, X, (Y == VY)))
                 ),
             Impls,
-            multi_map.init - multi_map.init
+            prop_graph(multi_map.init, multi_map.init)
         ),
 
-        % Construct the complex constraints map.
-        %
+    % Construct the complex constraints map.
     ComplexCstrtsMap =
         list.foldl(
             func(ComplexCstrt, CCM) =
@@ -424,8 +433,7 @@ make_solver_cstrts(PCs) = SCs:-
             multi_map.init
         ),
 
-        % Find the set of variables we have to solve for.
-        %
+    % Find the set of variables we have to solve for.
     AssgtVars =
         list.foldl(
             func((X == _V), Vars) = [X | Vars],
@@ -450,26 +458,25 @@ make_solver_cstrts(PCs) = SCs:-
 
     AllVars = sort_and_remove_dups(AndComplexCstrtVars),
 
-        % Make the solver constraints record.
-        %
+    % Make the solver constraints record.
     SCs = solver_cstrts(AllVars, Eqvs, Assgts, PropGraph, ComplexCstrtsMap).
 
     % eqv_var(Eqvs, Var) returns a representative member of all the
     % variables equivalent to Var (in Eqvs)
     %
-:- func eqv_var(eqv_vars, var) = var.
+:- func eqv_var(eqv_vars, mcvar) = mcvar.
 
 eqv_var(Eqvs, X) = eqvclass.get_minimum_element(Eqvs, X).
 
     % eqv_vars(Eqvs, Vars) just maps eqv_var to each Var in Vars.
     %
-:- func eqv_vars(eqv_vars, vars) = vars.
+:- func eqv_vars(eqv_vars, mcvars) = mcvars.
 
 eqv_vars(Eqvs, Xs) = list.map(eqv_var(Eqvs), Xs).
 
     % Returns all the variables that participate in this constraint.
     %
-:- func complex_cstrt_vars(complex_cstrt) = vars.
+:- func complex_cstrt_vars(complex_cstrt) = mcvars.
 
 complex_cstrt_vars(eqv_disj(X, Ys)) = [X | Ys].
 complex_cstrt_vars(at_most_one(Xs)) = Xs.
@@ -504,8 +511,10 @@ eqv_complex_cstrt(Eqvs, disj_of_assgts(Assgtss)) =
     %
 solve(SCs, Bindings) :-
     solve(SCs, map.init, Bindings0),
-    bind_equivalent_vars(SCs, Bindings0, Bindings).
-%     unsafe.io(nl).
+    bind_equivalent_vars(SCs, Bindings0, Bindings),
+    trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
+        io.nl(!IO)
+    ).
 
     % solve(SCs, Bs0, Bs) succeeds if Bs satisfies the constraints SCs,
     % given that Bs0 is known to not conflict with any of the constraints
@@ -537,7 +546,8 @@ bind_equivalent_vars(SCs, !Bindings) :-
     % bind_all(Vars, Val, !Bindings) Binds Var to Val in Bindings for
     % every Var in Vars.
     %
-:- pred bind_all(vars::in, bool::in, mc_bindings::in, mc_bindings::out) is det.
+:- pred bind_all(mcvars::in, bool::in, mc_bindings::in, mc_bindings::out)
+    is det.
 
 bind_all(Vars, Val, !Bindings) :-
     list.foldl(
@@ -564,23 +574,26 @@ solve_assgts(SCs, Assgts, Bs0, Bs) :-
     mc_bindings::in, mc_bindings::out) is semidet.
 
 solve_assgt(SCs, (X == V), Bs0, Bs) :-
-    ( if Bs0 ^ elem(X) = V0 then
-
-% ( if V \= V0 then unsafe.io(write_string(X ++ " conflict")) else true ),
-
+    ( Bs0 ^ elem(X) = V0 ->
+        ( V = V0 ->
+            true
+        ;
+            trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
+                io.write_string(mc_var_to_string(X) ++ " conflict", !IO)
+            )
+        ),
         V  = V0,
         Bs = Bs0
-
-      else
-
-% unsafe.io(write_string(".")),
-
+    ;
+        trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
+            io.write_string(".", !IO)
+        ),
         Bs1 = Bs0 ^ elem(X) := V,
 
-        Assgts = SCs ^ prop_graph ^ var_consequents(X, V),
+        Assgts = var_consequents(SCs ^ prop_graph, X, V),
         solve_assgts(SCs, Assgts, Bs1, Bs2),
 
-        ComplexCstrts = SCs ^ complex_cstrt_map ^ var_complex_cstrts(X),
+        ComplexCstrts = var_complex_cstrts(SCs ^ complex_cstrt_map, X),
         solve_complex_cstrts(SCs, X, V, ComplexCstrts, Bs2, Bs)
     ).
 
@@ -591,7 +604,7 @@ solve_assgt(SCs, (X == V), Bs0, Bs) :-
     % is consistant with the complex constraints variable X participates
     % in SCs. It also propagates results where appropriate.
     %
-:- pred solve_complex_cstrts(solver_cstrts::in, var::in, bool::in,
+:- pred solve_complex_cstrts(solver_cstrts::in, mcvar::in, bool::in,
     complex_cstrts::in, mc_bindings::in, mc_bindings::out) is semidet.
 
 solve_complex_cstrts(SCs, X, V, ComplexCstrts, Bs0, Bs) :-
@@ -602,32 +615,42 @@ solve_complex_cstrts(SCs, X, V, ComplexCstrts, Bs0, Bs) :-
     % is consistant with ComplexCstrt (in which X should participate in SCs).
     % It also propagates results where appropriate.
     %
-:- pred solve_complex_cstrt(solver_cstrts::in, var::in, bool::in,
+:- pred solve_complex_cstrt(solver_cstrts::in, mcvar::in, bool::in,
     complex_cstrt::in, mc_bindings::in, mc_bindings::out) is semidet.
 
 solve_complex_cstrt(SCs, X, V, eqv_disj(Y, Zs), Bs0, Bs) :-
-    ( if X = Y then
+    ( X = Y ->
         (
             V  = yes,
-% unsafe.io(write_string("1<")),
+            trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
+                io.write_string("1<", !IO)
+            ),
             not all_no(Bs0, Zs),
             Bs = Bs0
         ;
             V  = no,
-% unsafe.io(write_string("0<")),
+            trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
+                io.write_string("0<", !IO)
+            ),
             solve_assgts(SCs, list.map(func(Z) = (Z == no), Zs), Bs0, Bs)
         )
-      else /* X in Zs */
+     ;
+        % X in Zs
         (
             V = yes,
-% unsafe.io(write_string(">1")),
+            trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
+                io.write_string(">1", !IO)
+            ),
             solve_assgt(SCs, (Y == yes), Bs0, Bs)
         ;
             V = no,
-% unsafe.io(write_string(">0")),
-            ( if   all_no(Bs0, Zs)
-              then solve_assgt(SCs, (Y == no), Bs0, Bs)
-              else Bs = Bs0
+            trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
+                io.write_string(">0", !IO)
+            ),
+            ( all_no(Bs0, Zs) ->
+                solve_assgt(SCs, (Y == no), Bs0, Bs)
+            ;
+                Bs = Bs0
             )
         )
     ).
@@ -670,10 +693,9 @@ solve_complex_cstrt(SCs, X, V, disj_of_assgts(Assgtss), Bs0, Bs) :-
         ),
         Assgtss,_Conflicts, NotConflicting),
 
-    %
     % If only one set of assignments is possible now, make them.
     % If none are possible, fail.
-    %
+
     (
         NotConflicting = [Assignments],
         solve_assgts(SCs, Assignments, Bs0, Bs)
@@ -684,48 +706,62 @@ solve_complex_cstrt(SCs, X, V, disj_of_assgts(Assgtss), Bs0, Bs) :-
 
 %-----------------------------------------------------------------------------%
 
-    % PropGraph ^ var_consequents(X, V) returns the assignments
+    % var_consequents(PropGraph, X, V) returns the assignments
     % directly entailed by biding X to V.
     %
-:- func prop_graph ^ var_consequents(var, bool) = assgts.
+:- func var_consequents(prop_graph, mcvar, bool) = assgts.
 
-(YesPG - _NoPG) ^ var_consequents(X, yes) =
-    ( if YesPG ^ elem(X) = Assgts then Assgts else [] ).
+var_consequents(prop_graph(YesPG, _NoPG), X, yes) =
+    ( YesPG ^ elem(X) = Assgts ->
+        Assgts
+    ;
+        []
+    ).
 
-(_YesPG - NoPG) ^ var_consequents(X, no ) =
-    ( if NoPG  ^ elem(X) = Assgts then Assgts else [] ).
+var_consequents(prop_graph(_YesPG, NoPG), X, no) =
+    ( NoPG  ^ elem(X) = Assgts ->
+        Assgts
+    ;
+        []
+    ).
 
 %-----------------------------------------------------------------------------%
 
-    % ComplexCstrtMap ^ var_complex_cstrts(X) returns the complex
-    % constraints, if any, that variable X participates in.
+    % var_complex_cstrts(ComplexCstrtMap, X) returns the complex constraints,
+    % if any, that variable X participates in.
     %
-:- func complex_cstrt_map ^ var_complex_cstrts(var) = complex_cstrts.
+:- func var_complex_cstrts(complex_cstrt_map, mcvar) = complex_cstrts.
 
-ComplexCstrtMap ^ var_complex_cstrts(X) =
-    ( if ComplexCstrtMap ^ elem(X) = CmplxCstrts then CmplxCstrts else [] ).
+var_complex_cstrts(ComplexCstrtMap, X) =
+    ( ComplexCstrtMap ^ elem(X) = CmplxCstrts ->
+        CmplxCstrts
+    ;
+        []
+    ).
 
 %-----------------------------------------------------------------------------%
 
     % solve_vars(SCs, Vars, Bs0, Bs) non-deterministically assigns a value
-    % to each of Vars and propagates results, looking for a solution
-    % to SCs.
+    % to each of Vars and propagates results, looking for a solution to SCs.
     %
-:- pred solve_vars(solver_cstrts::in, vars::in,
+:- pred solve_vars(solver_cstrts::in, mcvars::in,
     mc_bindings::in, mc_bindings::out) is nondet.
 
 solve_vars(SCs, Vars, Bs0, Bs) :-
     list.foldl(solve_var(SCs), Vars, Bs0, Bs).
 
-:- pred solve_var(solver_cstrts::in, var::in,
+:- pred solve_var(solver_cstrts::in, mcvar::in,
     mc_bindings::in, mc_bindings::out) is nondet.
 
 solve_var(SCs, X, Bs0, Bs) :-
-    ( if contains(Bs0, X) then
+    ( contains(Bs0, X) ->
         Bs = Bs0
-      else
+    ;
         ( V = yes ; V = no ),
-% unsafe.io(write_string("\n" ++ X ++ " = ")), unsafe.io(print(V)),
+        trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
+            write_string("\n" ++ mc_var_to_string(X) ++ " = ", !IO),
+            print(V, !IO)
+        ),
         solve_assgt(SCs, (X == V), Bs0, Bs)
     ).
 
@@ -733,7 +769,7 @@ solve_var(SCs, X, Bs0, Bs) :-
 
     % all_yes(Bs, Xs) succeeds if Bs indicates all Xs are bound to yes
     %
-:- pred all_yes(mc_bindings::in, vars::in) is semidet.
+:- pred all_yes(mc_bindings::in, mcvars::in) is semidet.
 
 all_yes(_,  []).
 all_yes(Bs, [X | Xs]) :-
@@ -742,7 +778,7 @@ all_yes(Bs, [X | Xs]) :-
 
     % all_no(Bs, Xs) succeeds if Bs indicates all Xs are bound to no
     %
-:- pred all_no(mc_bindings::in, vars::in) is semidet.
+:- pred all_no(mc_bindings::in, mcvars::in) is semidet.
 
 all_no(_,  []).
 all_no(Bs, [X | Xs]) :-
@@ -758,6 +794,10 @@ all_no(Bs, [X | Xs]) :-
 %     io.nl(!IO),
 %     io.write_list(NameBindingss, "\n\n", io.print, !IO),
 %     io.nl(!IO).
+
+:- func mc_var_to_string(mc_var) = string.
+
+mc_var_to_string(MCVar) = int_to_string(var_to_int(MCVar)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

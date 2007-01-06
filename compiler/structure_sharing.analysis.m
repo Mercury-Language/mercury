@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: structure_sharing.analysis.m.
 % Main authors: nancy.
-% 
+%
 % Implementation of the structure sharing analysis needed for compile-time
 % garbage collection (CTGC).
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_sharing.analysis.
@@ -25,13 +25,13 @@
 %-----------------------------------------------------------------------------%
 
     % Perform structure sharing analysis on the procedures defined in the
-    % current module. 
+    % current module.
     %
 :- pred structure_sharing_analysis(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
     % Write all the sharing information concerning the specified predicate as
-    % reuse pragmas.  
+    % reuse pragmas.
     %
 :- pred write_pred_sharing_info(module_info::in, pred_id::in,
     io::di, io::uo) is det.
@@ -73,10 +73,10 @@
 %-----------------------------------------------------------------------------%
 
 structure_sharing_analysis(!ModuleInfo, !IO) :-
-    % 
-    % Process all the imported sharing information. 
     %
-    process_imported_sharing(!ModuleInfo), 
+    % Process all the imported sharing information.
+    %
+    process_imported_sharing(!ModuleInfo),
     %
     % Annotate the HLDS with liveness information.
     %
@@ -84,7 +84,7 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
     %
     % Load all structure sharing information present in the HLDS.
     %
-    LoadedSharingTable = load_structure_sharing_table(!.ModuleInfo), 
+    LoadedSharingTable = load_structure_sharing_table(!.ModuleInfo),
     %
     % Analyse structure sharing for the module.
     %
@@ -106,53 +106,53 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
 % Preliminary steps
 %
 
-    % Process the imported sharing information. 
+    % Process the imported sharing information.
     %
 :- pred process_imported_sharing(module_info::in, module_info::out) is det.
 
 process_imported_sharing(!ModuleInfo):-
-    module_info_predids(!.ModuleInfo, PredIds), 
+    module_info_predids(!.ModuleInfo, PredIds),
     list.foldl(process_imported_sharing_in_pred, PredIds, !ModuleInfo).
 
 :- pred process_imported_sharing_in_pred(pred_id::in, module_info::in,
     module_info::out) is det.
 
-process_imported_sharing_in_pred(PredId, !ModuleInfo) :- 
+process_imported_sharing_in_pred(PredId, !ModuleInfo) :-
     some [!PredTable] (
-        module_info_preds(!.ModuleInfo, !:PredTable), 
-        PredInfo0 = !.PredTable ^ det_elem(PredId), 
+        module_info_preds(!.ModuleInfo, !:PredTable),
+        PredInfo0 = !.PredTable ^ det_elem(PredId),
         process_imported_sharing_in_procs(PredInfo0, PredInfo),
         svmap.det_update(PredId, PredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
     ).
 
-:- pred process_imported_sharing_in_procs(pred_info::in, 
+:- pred process_imported_sharing_in_procs(pred_info::in,
     pred_info::out) is det.
 
-process_imported_sharing_in_procs(!PredInfo) :- 
+process_imported_sharing_in_procs(!PredInfo) :-
     some [!ProcTable] (
-        pred_info_get_procedures(!.PredInfo, !:ProcTable), 
-        ProcIds = pred_info_procids(!.PredInfo), 
-        list.foldl(process_imported_sharing_in_proc(!.PredInfo), 
+        pred_info_get_procedures(!.PredInfo, !:ProcTable),
+        ProcIds = pred_info_procids(!.PredInfo),
+        list.foldl(process_imported_sharing_in_proc(!.PredInfo),
             ProcIds, !ProcTable),
         pred_info_set_procedures(!.ProcTable, !PredInfo)
     ).
 
-:- pred process_imported_sharing_in_proc(pred_info::in, proc_id::in, 
+:- pred process_imported_sharing_in_proc(pred_info::in, proc_id::in,
     proc_table::in, proc_table::out) is det.
 
-process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :- 
+process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
     some [!ProcInfo] (
-        !:ProcInfo = !.ProcTable ^ det_elem(ProcId), 
+        !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
         (
-            proc_info_get_imported_structure_sharing(!.ProcInfo, 
+            proc_info_get_imported_structure_sharing(!.ProcInfo,
                 ImpHeadVars, ImpTypes, ImpSharing)
         ->
             proc_info_get_headvars(!.ProcInfo, HeadVars),
             pred_info_get_arg_types(PredInfo, HeadVarTypes),
-            map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming), 
+            map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
             some [!TypeSubst] (
-                !:TypeSubst = map.init, 
+                !:TypeSubst = map.init,
                 (
                     type_unify_list(ImpTypes, HeadVarTypes, [], !.TypeSubst,
                         TypeSubstNew)
@@ -164,7 +164,7 @@ process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
                 rename_structure_sharing_domain(VarRenaming, !.TypeSubst,
                     ImpSharing, Sharing)
             ),
-            proc_info_set_structure_sharing(Sharing, !ProcInfo), 
+            proc_info_set_structure_sharing(Sharing, !ProcInfo),
             proc_info_reset_imported_structure_sharing(!ProcInfo),
             svmap.det_update(ProcId, !.ProcInfo, !ProcTable)
         ;
@@ -327,7 +327,7 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
 
 analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
         !FixpointTable, !SharingAs, !IO) :-
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = conj(ConjType, Goals),
         (
@@ -402,8 +402,8 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
         GoalExpr = call_foreign_proc(Attributes, ForeignPredId, ForeignProcId,
             _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
         goal_info_get_context(GoalInfo, Context),
-        !:SharingAs = add_foreign_proc_sharing(ModuleInfo, ProcInfo, 
-            proc(ForeignPredId, ForeignProcId), Attributes, Context, 
+        !:SharingAs = add_foreign_proc_sharing(ModuleInfo, ProcInfo,
+            proc(ForeignPredId, ForeignProcId), Attributes, Context,
             !.SharingAs)
     ;
         GoalExpr = shorthand(_),
@@ -449,7 +449,7 @@ analyse_case(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
 %
 % Code for handling calls
 %
-    
+
     % Lookup the sharing information of a procedure identified by its
     % pred_proc_id.
     %
@@ -603,7 +603,7 @@ make_opt_int(ModuleInfo, !IO) :-
     (
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_predids(ModuleInfo, PredIds),   
+        module_info_predids(ModuleInfo, PredIds),
         list.foldl(write_pred_sharing_info(ModuleInfo), PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(OptFile, !IO),
@@ -615,7 +615,7 @@ make_opt_int(ModuleInfo, !IO) :-
         io.write_strings(["Error opening file `",
             OptFileName, "' for output: ", IOErrorMessage], !IO),
         io.set_exit_status(1, !IO)
-    ).  
+    ).
 
 %-----------------------------------------------------------------------------%
 %

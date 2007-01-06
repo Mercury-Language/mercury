@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: interval.m.
 % Author: zs.
-% 
+%
 % This module contains a predicate to build up interval information for a
 % procedure; in particular the start and end points of intervals and the set
 % of variables needed in that interval.  It also contains a procedure to
@@ -26,7 +26,7 @@
 %    the next anchor it reaches is the right anchor of the pair.  We
 %    consider a call to be part of the atomic goals of the interval only if
 %    the call site is the right anchor of the interval, not the left anchor.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.interval.
@@ -44,7 +44,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -96,7 +95,11 @@
 
 :- type insert_map      ==  map(anchor, list(insert_spec)).
 
-:- type anchor_follow_info  ==  pair(set(prog_var), set(interval_id)).
+:- type anchor_follow_info
+    --->    anchor_follow_info(
+                set(prog_var),
+                set(interval_id)
+            ).
 
 :- type interval_params
     --->    interval_params(
@@ -192,6 +195,7 @@
 :- import_module ll_backend.call_gen.
 
 :- import_module assoc_list.
+:- import_module pair.
 :- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.
@@ -200,189 +204,190 @@
 
 %-----------------------------------------------------------------------------%
 
-build_interval_info_in_goal(conj(ConjType, Goals) - _GoalInfo, !IntervalInfo,
+build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         !Acc) :-
-    build_interval_info_in_conj(Goals, ConjType, !IntervalInfo, !Acc).
-
-build_interval_info_in_goal(disj(Goals) - GoalInfo, !IntervalInfo, !Acc) :-
     (
-        Goals = [FirstDisjunct | _],
-        reached_branch_end(GoalInfo, yes(FirstDisjunct), branch_disj,
-            StartAnchor, EndAnchor, BeforeId, AfterId,
-            MaybeResumeVars, !IntervalInfo, !Acc),
-        build_interval_info_in_disj(Goals, doesnt_need_flush,
-            StartAnchor, EndAnchor, BeforeId, AfterId,
-            OpenIntervals, !IntervalInfo, !Acc),
-        leave_branch_start(branch_disj, StartAnchor, BeforeId,
-            MaybeResumeVars, OpenIntervals, !IntervalInfo)
+        GoalExpr = conj(ConjType, Goals),
+        build_interval_info_in_conj(Goals, ConjType, !IntervalInfo, !Acc)
     ;
-        Goals = [],
-        % We could reset the set of variables in the current interval
-        % to the empty set, since any variable accesses after a fail
-        % goal (which is what an empty disjunction represent) will not
-        % be executed at runtime. However, simplify should have removed
-        % any goals in the current branch from after the fail, so the
-        % set of variables in the current interval will already be
-        % the empty set.
-        no_open_intervals(!IntervalInfo)
-    ).
-
-build_interval_info_in_goal(switch(Var, _Det, Cases) - GoalInfo,
-        !IntervalInfo, !Acc) :-
-    reached_branch_end(GoalInfo, no, branch_switch,
-        StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
-        !IntervalInfo, !Acc),
-    build_interval_info_in_cases(Cases, StartAnchor, EndAnchor,
-        BeforeId, AfterId, OpenIntervalsList, !IntervalInfo, !Acc),
-    OpenIntervals = set.union_list(OpenIntervalsList),
-    leave_branch_start(branch_switch, StartAnchor, BeforeId, MaybeResumeVars,
-        OpenIntervals, !IntervalInfo),
-    require_in_regs([Var], !IntervalInfo),
-    require_access([Var], !IntervalInfo).
-
-build_interval_info_in_goal(negation(Goal) - GoalInfo, !IntervalInfo, !Acc) :-
-    reached_branch_end(GoalInfo, yes(Goal), branch_neg,
-        StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
-        !IntervalInfo, !Acc),
-    enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
-    build_interval_info_in_goal(Goal, !IntervalInfo, !Acc),
-    reached_branch_start(needs_flush, StartAnchor, BeforeId,
-        OpenIntervals, !IntervalInfo, !Acc),
-    leave_branch_start(branch_neg, StartAnchor, BeforeId, MaybeResumeVars,
-        OpenIntervals, !IntervalInfo).
-
-build_interval_info_in_goal(if_then_else(_, Cond, Then, Else) - GoalInfo,
-                !IntervalInfo, !Acc) :-
-    reached_branch_end(GoalInfo, yes(Cond), branch_ite, StartAnchor, EndAnchor,
-        BeforeId, AfterId, MaybeResumeVars, !IntervalInfo, !Acc),
-    enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
-    build_interval_info_in_goal(Then, !IntervalInfo, !Acc),
-    reached_cond_then(GoalInfo, !IntervalInfo),
-    build_interval_info_in_goal(Cond, !IntervalInfo, !Acc),
-    reached_branch_start(doesnt_need_flush, StartAnchor, BeforeId,
-        CondOpenIntervals, !IntervalInfo, !Acc),
-    enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
-    build_interval_info_in_goal(Else, !IntervalInfo, !Acc),
-    reached_branch_start(needs_flush, StartAnchor, BeforeId,
-        _ElseOpenIntervals, !IntervalInfo, !Acc),
-    leave_branch_start(branch_ite, StartAnchor, BeforeId, MaybeResumeVars,
-        CondOpenIntervals, !IntervalInfo).
-
-build_interval_info_in_goal(scope(_Reason, Goal) - _GoalInfo, !IntervalInfo,
-        !Acc) :-
-    build_interval_info_in_goal(Goal, !IntervalInfo, !Acc).
-
-build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
-    Goal = generic_call(GenericCall, ArgVars, ArgModes, _Detism),
-    goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
-    IntParams = !.IntervalInfo ^ interval_params,
-    VarTypes = IntParams ^ var_types,
-    list.map(map.lookup(VarTypes), ArgVars, ArgTypes),
-    ModuleInfo = IntParams ^ module_info,
-    arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars, ArgModes, ArgTypes,
-        InputArgs, _OutputArgs),
-
-    % Casts are generated inline.
-    ( GenericCall = cast(_) ->
-        require_in_regs(InputArgs, !IntervalInfo),
-        require_access(InputArgs, !IntervalInfo)
-    ;
-        module_info_get_globals(ModuleInfo, Globals),
-        call_gen.generic_call_info(Globals, GenericCall,
-            length(InputArgs), _, GenericVarsArgInfos, _, _),
-        assoc_list.keys(GenericVarsArgInfos, GenericVars),
-        list.append(GenericVars, InputArgs, Inputs),
-        build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
-            !IntervalInfo, !Acc)
-    ).
-
-build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
-    Goal = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
-    IntParams = !.IntervalInfo ^ interval_params,
-    ModuleInfo = IntParams ^ module_info,
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        _PredInfo, ProcInfo),
-    VarTypes = IntParams ^ var_types,
-    arg_info.partition_proc_call_args(ProcInfo, VarTypes,
-        ModuleInfo, ArgVars, InputArgs, _, _),
-    set.to_sorted_list(InputArgs, Inputs),
-    ( Builtin = inline_builtin ->
-        require_in_regs(Inputs, !IntervalInfo),
-        require_access(Inputs, !IntervalInfo)
-    ;
-        goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
-        build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
-            !IntervalInfo, !Acc)
-    ).
-
-build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
-    Goal = call_foreign_proc(_Attributes, PredId, ProcId, Args, ExtraArgs,
-        _MaybeTraceRuntimeCond, _PragmaCode),
-    IntParams = !.IntervalInfo ^ interval_params,
-    ModuleInfo = IntParams ^ module_info,
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        _PredInfo, ProcInfo),
-    VarTypes = IntParams ^ var_types,
-    ArgVars = list.map(foreign_arg_var, Args),
-    ExtraVars = list.map(foreign_arg_var, ExtraArgs),
-    arg_info.partition_proc_call_args(ProcInfo, VarTypes,
-        ModuleInfo, ArgVars, InputArgVarSet, _, _),
-    set.to_sorted_list(InputArgVarSet, InputArgVars),
-    list.append(InputArgVars, ExtraVars, InputVars),
-    (
-        goal_info_maybe_get_maybe_need_across_call(GoalInfo,
-            MaybeNeedAcrossCall),
-        MaybeNeedAcrossCall = yes(_)
-    ->
-        build_interval_info_at_call(InputVars, MaybeNeedAcrossCall,
-            GoalInfo, !IntervalInfo, !Acc)
-    ;
-        require_in_regs(InputVars, !IntervalInfo),
-        require_access(InputVars, !IntervalInfo)
-    ).
-
-build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
-    Goal = unify(_, _, _, Unification, _),
-    (
-        Unification = construct(CellVar, _ConsId, ArgVars, _,
-            HowToConstruct, _, _),
-        ( HowToConstruct = reuse_cell(_) ->
-            unexpected(this_file, "build_interval_info_in_goal: reuse")
+        GoalExpr = disj(Goals),
+        (
+            Goals = [FirstDisjunct | _],
+            reached_branch_end(GoalInfo, yes(FirstDisjunct), branch_disj,
+                StartAnchor, EndAnchor, BeforeId, AfterId,
+                MaybeResumeVars, !IntervalInfo, !Acc),
+            build_interval_info_in_disj(Goals, doesnt_need_flush,
+                StartAnchor, EndAnchor, BeforeId, AfterId,
+                OpenIntervals, !IntervalInfo, !Acc),
+            leave_branch_start(branch_disj, StartAnchor, BeforeId,
+                MaybeResumeVars, OpenIntervals, !IntervalInfo)
         ;
-            true
-        ),
-        require_in_regs(ArgVars, !IntervalInfo),
-        require_access([CellVar | ArgVars], !IntervalInfo)
-        % use_cell(CellVar, ArgVars, ConsId, Goal - GoalInfo, !IntervalInfo)
-        % We cannot use such cells, because some of the ArgVars
-        % may need to be saved on the stack before this construction.
+            Goals = [],
+            % We could reset the set of variables in the current interval
+            % to the empty set, since any variable accesses after a fail
+            % goal (which is what an empty disjunction represent) will not
+            % be executed at runtime. However, simplify should have removed
+            % any goals in the current branch from after the fail, so the
+            % set of variables in the current interval will already be
+            % the empty set.
+            no_open_intervals(!IntervalInfo)
+        )
     ;
-        Unification = deconstruct(CellVar, ConsId, ArgVars, ArgModes, _, _),
+        GoalExpr = switch(Var, _Det, Cases),
+        reached_branch_end(GoalInfo, no, branch_switch,
+            StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
+            !IntervalInfo, !Acc),
+        build_interval_info_in_cases(Cases, StartAnchor, EndAnchor,
+            BeforeId, AfterId, OpenIntervalsList, !IntervalInfo, !Acc),
+        OpenIntervals = set.union_list(OpenIntervalsList),
+        leave_branch_start(branch_switch, StartAnchor, BeforeId,
+            MaybeResumeVars, OpenIntervals, !IntervalInfo),
+        require_in_regs([Var], !IntervalInfo),
+        require_access([Var], !IntervalInfo)
+    ;
+        GoalExpr = negation(SubGoal),
+        reached_branch_end(GoalInfo, yes(SubGoal), branch_neg,
+            StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
+            !IntervalInfo, !Acc),
+        enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
+        build_interval_info_in_goal(SubGoal, !IntervalInfo, !Acc),
+        reached_branch_start(needs_flush, StartAnchor, BeforeId,
+            OpenIntervals, !IntervalInfo, !Acc),
+        leave_branch_start(branch_neg, StartAnchor, BeforeId, MaybeResumeVars,
+            OpenIntervals, !IntervalInfo)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        reached_branch_end(GoalInfo, yes(Cond), branch_ite,
+            StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
+            !IntervalInfo, !Acc),
+        enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
+        build_interval_info_in_goal(Then, !IntervalInfo, !Acc),
+        reached_cond_then(GoalInfo, !IntervalInfo),
+        build_interval_info_in_goal(Cond, !IntervalInfo, !Acc),
+        reached_branch_start(doesnt_need_flush, StartAnchor, BeforeId,
+            CondOpenIntervals, !IntervalInfo, !Acc),
+        enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
+        build_interval_info_in_goal(Else, !IntervalInfo, !Acc),
+        reached_branch_start(needs_flush, StartAnchor, BeforeId,
+            _ElseOpenIntervals, !IntervalInfo, !Acc),
+        leave_branch_start(branch_ite, StartAnchor, BeforeId, MaybeResumeVars,
+            CondOpenIntervals, !IntervalInfo)
+    ;
+        GoalExpr = scope(_Reason, SubGoal),
+        build_interval_info_in_goal(SubGoal, !IntervalInfo, !Acc)
+    ;
+        GoalExpr = generic_call(GenericCall, ArgVars, ArgModes, _Detism),
+        goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
+        IntParams = !.IntervalInfo ^ interval_params,
+        VarTypes = IntParams ^ var_types,
+        list.map(map.lookup(VarTypes), ArgVars, ArgTypes),
+        ModuleInfo = IntParams ^ module_info,
+        arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars,
+            ArgModes, ArgTypes, InputArgs, _OutputArgs),
+
+        % Casts are generated inline.
+        ( GenericCall = cast(_) ->
+            require_in_regs(InputArgs, !IntervalInfo),
+            require_access(InputArgs, !IntervalInfo)
+        ;
+            module_info_get_globals(ModuleInfo, Globals),
+            call_gen.generic_call_info(Globals, GenericCall,
+                length(InputArgs), _, GenericVarsArgInfos, _, _),
+            assoc_list.keys(GenericVarsArgInfos, GenericVars),
+            list.append(GenericVars, InputArgs, Inputs),
+            build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
+                !IntervalInfo, !Acc)
+        )
+    ;
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
         IntParams = !.IntervalInfo ^ interval_params,
         ModuleInfo = IntParams ^ module_info,
-        ( shared_left_to_right_deconstruct(ModuleInfo, ArgModes) ->
-            use_cell(CellVar, ArgVars, ConsId, Goal - GoalInfo, !IntervalInfo,
-                !Acc)
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+            _PredInfo, ProcInfo),
+        VarTypes = IntParams ^ var_types,
+        arg_info.partition_proc_call_args(ProcInfo, VarTypes,
+            ModuleInfo, ArgVars, InputArgs, _, _),
+        set.to_sorted_list(InputArgs, Inputs),
+        ( Builtin = inline_builtin ->
+            require_in_regs(Inputs, !IntervalInfo),
+            require_access(Inputs, !IntervalInfo)
         ;
-            true
-        ),
-        require_in_regs([CellVar], !IntervalInfo),
-        require_access([CellVar | ArgVars], !IntervalInfo)
+            goal_info_get_maybe_need_across_call(GoalInfo,
+                MaybeNeedAcrossCall),
+            build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
+                !IntervalInfo, !Acc)
+        )
     ;
-        Unification = assign(ToVar, FromVar),
-        require_in_regs([FromVar], !IntervalInfo),
-        require_access([FromVar, ToVar], !IntervalInfo)
+        GoalExpr = call_foreign_proc(_Attributes, PredId, ProcId,
+            Args, ExtraArgs, _MaybeTraceRuntimeCond, _PragmaCode),
+        IntParams = !.IntervalInfo ^ interval_params,
+        ModuleInfo = IntParams ^ module_info,
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+            _PredInfo, ProcInfo),
+        VarTypes = IntParams ^ var_types,
+        ArgVars = list.map(foreign_arg_var, Args),
+        ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+        arg_info.partition_proc_call_args(ProcInfo, VarTypes,
+            ModuleInfo, ArgVars, InputArgVarSet, _, _),
+        set.to_sorted_list(InputArgVarSet, InputArgVars),
+        list.append(InputArgVars, ExtraVars, InputVars),
+        (
+            goal_info_maybe_get_maybe_need_across_call(GoalInfo,
+                MaybeNeedAcrossCall),
+            MaybeNeedAcrossCall = yes(_)
+        ->
+            build_interval_info_at_call(InputVars, MaybeNeedAcrossCall,
+                GoalInfo, !IntervalInfo, !Acc)
+        ;
+            require_in_regs(InputVars, !IntervalInfo),
+            require_access(InputVars, !IntervalInfo)
+        )
     ;
-        Unification = simple_test(Var1, Var2),
-        require_in_regs([Var1, Var2], !IntervalInfo),
-        require_access([Var1, Var2], !IntervalInfo)
+        GoalExpr = unify(_, _, _, Unification, _),
+        (
+            Unification = construct(CellVar, _ConsId, ArgVars, _,
+                HowToConstruct, _, _),
+            ( HowToConstruct = reuse_cell(_) ->
+                unexpected(this_file, "build_interval_info_in_goal: reuse")
+            ;
+                true
+            ),
+            require_in_regs(ArgVars, !IntervalInfo),
+            require_access([CellVar | ArgVars], !IntervalInfo)
+            % use_cell(CellVar, ArgVars, ConsId, GoalExpr - GoalInfo,
+            %   !IntervalInfo)
+            % We cannot use such cells, because some of the ArgVars
+            % may need to be saved on the stack before this construction.
+        ;
+            Unification = deconstruct(CellVar, ConsId, ArgVars, ArgModes,
+                _, _),
+            IntParams = !.IntervalInfo ^ interval_params,
+            ModuleInfo = IntParams ^ module_info,
+            ( shared_left_to_right_deconstruct(ModuleInfo, ArgModes) ->
+                Goal = hlds_goal(GoalExpr, GoalInfo),
+                use_cell(CellVar, ArgVars, ConsId, Goal, !IntervalInfo, !Acc)
+            ;
+                true
+            ),
+            require_in_regs([CellVar], !IntervalInfo),
+            require_access([CellVar | ArgVars], !IntervalInfo)
+        ;
+            Unification = assign(ToVar, FromVar),
+            require_in_regs([FromVar], !IntervalInfo),
+            require_access([FromVar, ToVar], !IntervalInfo)
+        ;
+            Unification = simple_test(Var1, Var2),
+            require_in_regs([Var1, Var2], !IntervalInfo),
+            require_access([Var1, Var2], !IntervalInfo)
+        ;
+            Unification = complicated_unify(_, _, _),
+            unexpected(this_file,
+                "build_interval_info_in_goal: complicated_unify")
+        )
     ;
-        Unification = complicated_unify(_, _, _),
-        unexpected(this_file, "build_interval_info_in_goal: complicated_unify")
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "shorthand in build_interval_info_in_goal")
     ).
-
-build_interval_info_in_goal(shorthand(_) - _, !IntervalInfo, !Acc) :-
-    unexpected(this_file, "shorthand in build_interval_info_in_goal").
 
 :- pred shared_left_to_right_deconstruct(module_info::in, list(uni_mode)::in)
     is semidet.
@@ -512,7 +517,7 @@ reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
     goal_info_get_goal_path(GoalInfo, GoalPath),
     record_branch_end_info(GoalPath, !IntervalInfo),
     (
-        MaybeResumeGoal = yes(_ResumeGoalExpr - ResumeGoalInfo),
+        MaybeResumeGoal = yes(hlds_goal(_ResumeGoalExpr, ResumeGoalInfo)),
         goal_info_maybe_get_resume_point(ResumeGoalInfo, ResumePoint),
         ResumePoint = resume_point(ResumeVars, ResumeLocs),
         ResumeLocs \= resume_locs_orig_only
@@ -638,14 +643,17 @@ assign_open_intervals_to_anchor(Anchor, !IntervalInfo) :-
     set.fold(gather_interval_vars(IntervalVarMap), CurOpenIntervals,
         set.init, CurOpenIntervalVars),
     ( map.search(AnchorFollowMap0, Anchor, AnchorFollowInfo0) ->
-        AnchorFollowInfo0 = OpenIntervalVars0 - OpenIntervals0,
+        AnchorFollowInfo0 =
+            anchor_follow_info(OpenIntervalVars0, OpenIntervals0),
         OpenIntervalVars = set.union(OpenIntervalVars0, CurOpenIntervalVars),
         OpenIntervals = set.union(OpenIntervals0, CurOpenIntervals),
-        AnchorFollowInfo = OpenIntervalVars - OpenIntervals,
+        AnchorFollowInfo =
+            anchor_follow_info(OpenIntervalVars, OpenIntervals),
         svmap.det_update(Anchor, AnchorFollowInfo,
             AnchorFollowMap0, AnchorFollowMap)
     ;
-        AnchorFollowInfo = CurOpenIntervalVars - CurOpenIntervals,
+        AnchorFollowInfo =
+            anchor_follow_info(CurOpenIntervalVars, CurOpenIntervals),
         svmap.det_insert(Anchor, AnchorFollowInfo,
             AnchorFollowMap0, AnchorFollowMap)
     ),
@@ -835,143 +843,131 @@ record_decisions_in_goal(!Goal, VarSet0, VarSet, VarTypes0, VarTypes,
 
 record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         MaybeFeature) :-
-    Goal0 = conj(ConjType, Goals0) - GoalInfo,
-    record_decisions_in_conj(Goals0, Goals, !VarInfo, !VarRename,
-        ConjType, InsertMap, MaybeFeature),
-    Goal = conj(ConjType, Goals) - GoalInfo.
-
-record_decisions_in_goal(Goal0,  Goal, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature) :-
-    Goal0 = disj(Goals0) - GoalInfo0,
-    construct_anchors(branch_disj, Goal0, StartAnchor, EndAnchor),
-    ( Goals0 = [FirstGoal0 | LaterGoals0] ->
-        record_decisions_in_goal(FirstGoal0, FirstGoal, !VarInfo,
-            !.VarRename, _, InsertMap, MaybeFeature),
-        lookup_inserts(InsertMap, StartAnchor, StartInserts),
-        record_decisions_in_disj(LaterGoals0, LaterGoals,
-            !VarInfo, !.VarRename, StartInserts, InsertMap, MaybeFeature),
-        Goals = [FirstGoal | LaterGoals],
-        Goal1 = disj(Goals) - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
+        GoalExpr0 = conj(ConjType, Goals0),
+        record_decisions_in_conj(Goals0, Goals, !VarInfo, !VarRename,
+            ConjType, InsertMap, MaybeFeature),
+        GoalExpr = conj(ConjType, Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = disj(Goals0),
+        construct_anchors(branch_disj, Goal0, StartAnchor, EndAnchor),
+        ( Goals0 = [FirstGoal0 | LaterGoals0] ->
+            record_decisions_in_goal(FirstGoal0, FirstGoal, !VarInfo,
+                !.VarRename, _, InsertMap, MaybeFeature),
+            lookup_inserts(InsertMap, StartAnchor, StartInserts),
+            record_decisions_in_disj(LaterGoals0, LaterGoals,
+                !VarInfo, !.VarRename, StartInserts, InsertMap, MaybeFeature),
+            Goals = [FirstGoal | LaterGoals],
+            Goal1 = hlds_goal(disj(Goals), GoalInfo0),
+            lookup_inserts(InsertMap, EndAnchor, Inserts),
+            insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
+                MaybeFeature)
+        ;
+            GoalExpr = disj(Goals0),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
+    ;
+        GoalExpr0 = switch(Var0, Det, Cases0),
+        record_decisions_in_cases(Cases0, Cases, !VarInfo, !.VarRename,
+            InsertMap, MaybeFeature),
+        rename_var(no, !.VarRename, Var0, Var),
+        Goal1 = hlds_goal(switch(Var, Det, Cases), GoalInfo0),
+        construct_anchors(branch_switch, Goal0, _StartAnchor, EndAnchor),
         lookup_inserts(InsertMap, EndAnchor, Inserts),
         insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
             MaybeFeature)
     ;
-        Goal = disj(Goals0) - GoalInfo0
-    ).
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature) :-
-    Goal0 = switch(Var0, Det, Cases0) - GoalInfo0,
-    record_decisions_in_cases(Cases0, Cases, !VarInfo, !.VarRename,
-        InsertMap, MaybeFeature),
-    rename_var(no, !.VarRename, Var0, Var),
-    Goal1 = switch(Var, Det, Cases) - GoalInfo0,
-    construct_anchors(branch_switch, Goal0, _StartAnchor, EndAnchor),
-    lookup_inserts(InsertMap, EndAnchor, Inserts),
-    insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
-        MaybeFeature).
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature) :-
-    Goal0 = negation(NegGoal0) - GoalInfo0,
-    record_decisions_in_goal(NegGoal0, NegGoal, !VarInfo, !.VarRename, _,
-        InsertMap, MaybeFeature),
-    Goal1 = negation(NegGoal) - GoalInfo0,
-    construct_anchors(branch_neg, Goal0, _StartAnchor, EndAnchor),
-    lookup_inserts(InsertMap, EndAnchor, Inserts),
-    % XXX
-    insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
-        MaybeFeature).
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature) :-
-    Goal0 = if_then_else(Vars0, Cond0, Then0, Else0) - GoalInfo0,
-    construct_anchors(branch_ite, Goal0, StartAnchor, EndAnchor),
-    rename_var_list(no, !.VarRename, Vars0, Vars),
-    record_decisions_in_goal(Cond0, Cond, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature),
-    record_decisions_in_goal(Then0, Then, !VarInfo, !.VarRename, _,
-        InsertMap, MaybeFeature),
-    lookup_inserts(InsertMap, StartAnchor, StartInserts),
-    make_inserted_goals(!VarInfo, map.init, VarRenameElse,
-        StartInserts, MaybeFeature, StartInsertGoals),
-    record_decisions_in_goal(Else0, Else1, !VarInfo, VarRenameElse, _,
-        InsertMap, MaybeFeature),
-    Else0 = _ - ElseGoalInfo0,
-    conj_list_to_goal(list.append(StartInsertGoals, [Else1]),
-        ElseGoalInfo0, Else),
-    Goal1 = if_then_else(Vars, Cond, Then, Else) - GoalInfo0,
-    lookup_inserts(InsertMap, EndAnchor, EndInserts),
-    insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, EndInserts,
-        MaybeFeature).
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature) :-
-    Goal0 = scope(Reason0, SubGoal0) - GoalInfo,
-    (
-        Reason0 = exist_quant(Vars0),
+        GoalExpr0 = negation(NegGoal0),
+        record_decisions_in_goal(NegGoal0, NegGoal, !VarInfo, !.VarRename, _,
+            InsertMap, MaybeFeature),
+        Goal1 = hlds_goal(negation(NegGoal), GoalInfo0),
+        construct_anchors(branch_neg, Goal0, _StartAnchor, EndAnchor),
+        lookup_inserts(InsertMap, EndAnchor, Inserts),
+        % XXX
+        insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
+            MaybeFeature)
+    ;
+        GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0),
+        construct_anchors(branch_ite, Goal0, StartAnchor, EndAnchor),
         rename_var_list(no, !.VarRename, Vars0, Vars),
-        Reason = exist_quant(Vars)
+        record_decisions_in_goal(Cond0, Cond, !VarInfo, !VarRename, InsertMap,
+            MaybeFeature),
+        record_decisions_in_goal(Then0, Then, !VarInfo, !.VarRename, _,
+            InsertMap, MaybeFeature),
+        lookup_inserts(InsertMap, StartAnchor, StartInserts),
+        make_inserted_goals(!VarInfo, map.init, VarRenameElse,
+            StartInserts, MaybeFeature, StartInsertGoals),
+        record_decisions_in_goal(Else0, Else1, !VarInfo, VarRenameElse, _,
+            InsertMap, MaybeFeature),
+        Else0 = hlds_goal(_, ElseGoalInfo0),
+        conj_list_to_goal(list.append(StartInsertGoals, [Else1]),
+            ElseGoalInfo0, Else),
+        Goal1 = hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo0),
+        lookup_inserts(InsertMap, EndAnchor, EndInserts),
+        insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, EndInserts,
+            MaybeFeature)
     ;
-        Reason0 = promise_purity(_, _),
-        Reason = Reason0
+        GoalExpr0 = scope(Reason0, SubGoal0),
+        (
+            Reason0 = exist_quant(Vars0),
+            rename_var_list(no, !.VarRename, Vars0, Vars),
+            Reason = exist_quant(Vars)
+        ;
+            Reason0 = promise_purity(_, _),
+            Reason = Reason0
+        ;
+            Reason0 = promise_solutions(_, _),
+            Reason = Reason0
+        ;
+            Reason0 = commit(_),
+            Reason = Reason0
+        ;
+            Reason0 = barrier(_),
+            Reason = Reason0
+        ;
+            Reason0 = from_ground_term(Var0),
+            rename_var(no, !.VarRename, Var0, Var),
+            Reason = from_ground_term(Var)
+        ;
+            Reason0 = trace_goal(_, _, _, _, _),
+            Reason = Reason0
+        ),
+        record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,
+            InsertMap, MaybeFeature),
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        Reason0 = promise_solutions(_, _),
-        Reason = Reason0
+        GoalExpr0 = generic_call(GenericCall, _ , _, _),
+        % Casts are generated inline.
+        ( GenericCall = cast(_) ->
+            MustHaveMap = no
+        ;
+            MustHaveMap = yes
+        ),
+        record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
+            MustHaveMap, InsertMap, MaybeFeature)
     ;
-        Reason0 = commit(_),
-        Reason = Reason0
+        GoalExpr0 = plain_call(_, _, _, Builtin, _, _),
+        ( Builtin = inline_builtin ->
+            MustHaveMap = no
+        ;
+            MustHaveMap = yes
+        ),
+        record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
+            MustHaveMap, InsertMap, MaybeFeature)
     ;
-        Reason0 = barrier(_),
-        Reason = Reason0
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        record_decisions_at_call_site(Goal0, Goal, !VarInfo,
+            !VarRename, no, InsertMap, MaybeFeature)
     ;
-        Reason0 = from_ground_term(Var0),
-        rename_var(no, !.VarRename, Var0, Var),
-        Reason = from_ground_term(Var)
+        GoalExpr0 = unify(_, _, _, _, _),
+        rename_some_vars_in_goal(!.VarRename, Goal0, Goal)
     ;
-        Reason0 = trace_goal(_, _, _, _, _),
-        Reason = Reason0
-    ),
-    record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,
-        InsertMap, MaybeFeature),
-    Goal = scope(Reason, SubGoal) - GoalInfo.
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature) :-
-    Goal0 = generic_call(GenericCall, _ , _, _) - _,
-    % Casts are generated inline.
-    ( GenericCall = cast(_) ->
-        MustHaveMap = no
-    ;
-        MustHaveMap = yes
-    ),
-    record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
-        MustHaveMap, InsertMap, MaybeFeature).
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature) :-
-    Goal0 = plain_call(_, _, _, Builtin, _, _) - _,
-    ( Builtin = inline_builtin ->
-        MustHaveMap = no
-    ;
-        MustHaveMap = yes
-    ),
-    record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
-        MustHaveMap, InsertMap, MaybeFeature).
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature) :-
-    Goal0 = call_foreign_proc(_, _, _, _, _, _, _) - _,
-    record_decisions_at_call_site(Goal0, Goal, !VarInfo,
-        !VarRename, no, InsertMap, MaybeFeature).
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, _InsertMap,
-        _MaybeFeature) :-
-    Goal0 = unify(_, _, _, _, _) - _,
-    rename_some_vars_in_goal(!.VarRename, Goal0, Goal).
-
-record_decisions_in_goal(shorthand(_) - _, _, !VarInfo, !VarRename, _, _) :-
-    unexpected(this_file, "shorthand in record_decisions_in_goal").
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, "shorthand in record_decisions_in_goal")
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -993,7 +989,7 @@ insert_goals_after(BranchesGoal, Goal, !VarInfo, VarRename, Inserts,
         MaybeFeature) :-
     make_inserted_goals(!VarInfo, map.init, VarRename, Inserts, MaybeFeature,
         InsertGoals),
-    BranchesGoal = _ - BranchesGoalInfo,
+    BranchesGoal = hlds_goal(_, BranchesGoalInfo),
     conj_list_to_goal([BranchesGoal | InsertGoals], BranchesGoalInfo, Goal).
 
 :- pred make_inserted_goals(var_info::in, var_info::out,
@@ -1012,7 +1008,7 @@ make_inserted_goals(!VarInfo, !VarRename, [Spec | Specs], MaybeFeature,
 
 make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal) :-
     Spec = insert_spec(Goal0, VarsToExtract),
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(_, _, _, Unification0, _),
         Unification0 = deconstruct(_, _, ArgVars, _, _, _)
@@ -1027,7 +1023,7 @@ make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal) :-
             MaybeFeature = no,
             GoalInfo2 = GoalInfo1
         ),
-        Goal2 = GoalExpr1 - GoalInfo2,
+        Goal2 = hlds_goal(GoalExpr1, GoalInfo2),
         !.VarInfo = var_info(VarSet0, VarTypes0),
         create_shadow_vars(ArgVars, VarsToExtract, VarSet0, VarSet,
             VarTypes0, VarTypes, map.init, NewRename, map.init, VoidRename),
@@ -1083,7 +1079,7 @@ create_shadow_var(Arg, VarsToExtract, !VarSet, !VarTypes,
 
 record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
         MustHaveMap, InsertMap, MaybeFeature) :-
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     rename_some_vars_in_goal(!.VarRename, Goal0, Goal1),
     (
         goal_info_maybe_get_maybe_need_across_call(GoalInfo0,
@@ -1119,7 +1115,7 @@ record_decisions_in_conj([Goal0 | Goals0], Goals, !VarInfo, !VarRename,
     record_decisions_in_conj(Goals0, TailGoals, !VarInfo, !VarRename,
         ConjType, InsertMap, MaybeFeature),
     (
-        Goal = conj(InnerConjType, SubGoals) - _,
+        Goal = hlds_goal(conj(InnerConjType, SubGoals), _),
         ConjType = InnerConjType
     ->
         Goals = SubGoals ++ TailGoals
@@ -1136,7 +1132,7 @@ record_decisions_in_disj([Goal0 | Goals0], [Goal | Goals], !VarInfo,
         VarRename0, Inserts, InsertMap, MaybeFeature) :-
     make_inserted_goals(!VarInfo, map.init, VarRename1,
         Inserts, MaybeFeature, InsertGoals),
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     record_decisions_in_goal(Goal0, Goal1, !VarInfo, VarRename1, _,
         InsertMap, MaybeFeature),
     conj_list_to_goal(list.append(InsertGoals, [Goal1]), GoalInfo0, Goal),
@@ -1186,7 +1182,7 @@ build_headvar_subst([HeadVar | HeadVars], RenameMap, !Subst) :-
     anchor::out, anchor::out) is det.
 
 construct_anchors(Construct, Goal, StartAnchor, EndAnchor) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_goal_path(GoalInfo, GoalPath),
     StartAnchor = anchor_branch_start(Construct, GoalPath),
     EndAnchor = anchor_branch_end(Construct, GoalPath).
@@ -1266,7 +1262,7 @@ dump_deletion(Vars, !IO) :-
     io::di, io::uo) is det.
 
 dump_anchor_follow(Anchor - AnchorFollowInfo, !IO) :-
-    AnchorFollowInfo = Vars - Intervals,
+    AnchorFollowInfo = anchor_follow_info(Vars, Intervals),
     io.write_string("\n", !IO),
     io.write(Anchor, !IO),
     io.write_string(" =>\n", !IO),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,36 +62,40 @@
 
 %-----------------------------------------------------------------------------%
 
-compute_version_numbers(SourceFileTime, Items, MaybeOldItems,
+compute_version_numbers(SourceFileTime,
+        ItemAndContexts, MaybeOldItemAndContexts,
         version_numbers(ItemVersionNumbers, InstanceVersionNumbers)) :-
-    gather_items(section_implementation, Items, GatheredItems,
-        InstanceItems),
+    gather_items(section_implementation, ItemAndContexts,
+        GatheredItemAndContexts, InstanceItemAndContexts),
     (
-        MaybeOldItems = yes(OldItems0),
-        OldItems0 = [FirstItem, VersionNumberItem | OldItems],
-        FirstItem = item_module_defn(_, md_interface) - _,
+        MaybeOldItemAndContexts = yes(OldItemAndContexts0),
+        OldItemAndContexts0 = [FirstItemAndContext, VersionNumberItemAndContext
+            | OldItemAndContexts],
+        FirstItemAndContext = item_and_context(FirstItem, _),
+        FirstItem = item_module_defn(_, md_interface),
+        VersionNumberItemAndContext = item_and_context(VersionNumberItem, _),
         VersionNumberItem = item_module_defn(_,
-            md_version_numbers(_, OldVersionNumbers)) - _
+            md_version_numbers(_, OldVersionNumbers))
     ->
         OldVersionNumbers = version_numbers(OldItemVersionNumbers,
             OldInstanceVersionNumbers),
-        gather_items(section_implementation, OldItems, GatheredOldItems,
-            OldInstanceItems)
+        gather_items(section_implementation, OldItemAndContexts,
+            GatheredOldItemAndContexts, OldInstanceItemAndContexts)
     ;
         % There were no old version numbers, so every item
         % gets the same timestamp as the source module.
         OldItemVersionNumbers = init_item_id_set(map.init),
-        GatheredOldItems = init_item_id_set(map.init),
-        map.init(OldInstanceItems),
+        GatheredOldItemAndContexts = init_item_id_set(map.init),
+        map.init(OldInstanceItemAndContexts),
         map.init(OldInstanceVersionNumbers)
     ),
 
     compute_item_version_numbers(SourceFileTime,
-        GatheredItems, GatheredOldItems,
+        GatheredItemAndContexts, GatheredOldItemAndContexts,
         OldItemVersionNumbers, ItemVersionNumbers),
 
     compute_instance_version_numbers(SourceFileTime,
-        InstanceItems, OldInstanceItems,
+        InstanceItemAndContexts, OldInstanceItemAndContexts,
         OldInstanceVersionNumbers, InstanceVersionNumbers).
 
 :- pred compute_item_version_numbers(timestamp::in,
@@ -99,10 +103,11 @@ compute_version_numbers(SourceFileTime, Items, MaybeOldItems,
     item_version_numbers::in, item_version_numbers::out) is det.
 
 compute_item_version_numbers(SourceFileTime,
-        GatheredItems, GatheredOldItems,
+        GatheredItemAndContexts, GatheredOldItemAndContexts,
         OldVersionNumbers, VersionNumbers) :-
     VersionNumbers = map_ids(compute_item_version_numbers_2(SourceFileTime,
-        GatheredOldItems, OldVersionNumbers), GatheredItems, map.init).
+        GatheredOldItemAndContexts, OldVersionNumbers),
+        GatheredItemAndContexts, map.init).
 
 :- func compute_item_version_numbers_2(timestamp, gathered_items,
     item_version_numbers, item_type,
@@ -180,7 +185,7 @@ gather_items(Section, Items, GatheredItems, Instances) :-
 
 distribute_pragma_items({ItemId, ItemAndContext, Section}, !GatheredItems) :-
     ItemId = MaybePredOrFunc - SymName / Arity,
-    ItemAndContext = Item - ItemContext,
+    ItemAndContext = item_and_context(Item, ItemContext),
 
     % For predicates defined using `with_type` annotations we don't know
     % the actual arity, so always we need to add entries for pragmas, even if
@@ -218,11 +223,12 @@ distribute_pragma_items({ItemId, ItemAndContext, Section}, !GatheredItems) :-
     assoc_list(section, item_and_context)::out) is det.
 
 distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
-        ItemAndContext, Section, _, !ClassItems) :-
+        ItemAndContext, Section, _, !ClassItemAndContexts) :-
     (
         % Does this pragma match any of the methods of this class.
-        list.member(_ - ClassItem, !.ClassItems),
-        ClassItem = item_typeclass(_, _, _, _, Interface, _) - _,
+        list.member(_ - ClassItemAndContext, !.ClassItemAndContexts),
+        ClassItemAndContext = item_and_context(ClassItem, _),
+        ClassItem = item_typeclass(_, _, _, _, Interface, _),
         Interface = class_interface_concrete(Methods),
         list.member(Method, Methods),
         Method = method_pred_or_func(_, _, _, MethodPredOrFunc, SymName,
@@ -241,7 +247,8 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
         )
     ->
         % XXX O(N^2), but shouldn't happen too often.
-        !:ClassItems = !.ClassItems ++ [Section - ItemAndContext]
+        !:ClassItemAndContexts = !.ClassItemAndContexts ++
+            [Section - ItemAndContext]
     ;
         true
     ).
@@ -267,7 +274,7 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
     gathered_item_info::in, gathered_item_info::out) is det.
 
 gather_items_2(ItemAndContext, !Section, !Info) :-
-    ItemAndContext = Item - ItemContext,
+    ItemAndContext = item_and_context(Item, ItemContext),
     (
         Item = item_module_defn(_, md_interface)
     ->
@@ -323,8 +330,9 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
         ;
             InstanceItems = []
         ),
-        map.set(Instances0, ClassItemName,
-            [!.Section - (Item - ItemContext) | InstanceItems], Instances),
+        NewInstanceItem = !.Section - item_and_context(Item, ItemContext),
+        map.set(Instances0, ClassItemName, [NewInstanceItem | InstanceItems],
+            Instances),
         !:Info = !.Info ^ instances := Instances
     ;
         % For predicates or functions defined using `with_inst` annotations
@@ -426,8 +434,8 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
         PredOrFuncModeItem = item_pred_or_func_mode(InstVarSet,
             MaybePredOrFunc, PredName, Modes, WithInst, Det, Cond),
         MatchingItems =
-            [Section - (PredOrFuncItem - ItemContext),
-            Section - (PredOrFuncModeItem - ItemContext)
+            [Section - item_and_context(PredOrFuncItem, ItemContext),
+            Section - item_and_context(PredOrFuncModeItem, ItemContext)
             | MatchingItems0]
     ;
         Item ^ tc_class_methods = class_interface_concrete(Methods0)
@@ -436,10 +444,11 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
         list.condense(MethodsList, Methods),
         TypeclassItem = Item ^ tc_class_methods
             := class_interface_concrete(Methods),
-        MatchingItems = [Section - (TypeclassItem - ItemContext)
+        MatchingItems = [Section - item_and_context(TypeclassItem, ItemContext)
             | MatchingItems0]
     ;
-        MatchingItems = [Section - (Item - ItemContext) | MatchingItems0]
+        MatchingItems = [Section - item_and_context(Item, ItemContext) |
+            MatchingItems0]
     ),
 
     IdMap0 = extract_ids(!.GatheredItems, ItemType),
@@ -620,8 +629,8 @@ is_pred_pragma(pragma_mode_check_clauses(Name, Arity), yes(no - Name / Arity)).
     assoc_list(section, item_and_context)::in) is semidet.
 
 items_are_unchanged([], []).
-items_are_unchanged([Section - (Item1 - _) | Items1],
-        [Section - (Item2 - _) | Items2]) :-
+items_are_unchanged([Section - item_and_context(Item1, _) | Items1],
+        [Section - item_and_context(Item2, _) | Items2]) :-
     yes = item_is_unchanged(Item1, Item2),
     items_are_unchanged(Items1, Items2).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -197,7 +197,7 @@ pd_info_set_created_versions(Versions, PDInfo,
 pd_info_set_useless_versions(Versions, PDInfo,
     PDInfo ^ useless_versions := Versions).
 
-pd_info_update_goal(_ - GoalInfo, !PDInfo) :-
+pd_info_update_goal(hlds_goal(_, GoalInfo), !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     goal_info_get_instmap_delta(GoalInfo, Delta),
     instmap.apply_instmap_delta(InstMap0, Delta, InstMap),
@@ -570,7 +570,7 @@ pd_info.goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
         Version, MaybeVersion) :-
     pd_util.goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes,
         NewGoal, NewVarTypes, OldNewRenaming, TypeRenaming),
-    OldGoal = _ - OldGoalInfo,
+    OldGoal = hlds_goal(_, OldGoalInfo),
     goal_info_get_nonlocals(OldGoalInfo, OldNonLocals0),
     set.to_sorted_list(OldNonLocals0, OldNonLocalsList),
     pd_info.check_insts(ModuleInfo, OldNonLocalsList, OldNewRenaming,
@@ -618,7 +618,7 @@ pd_info.check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
 
 pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap),
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     set.to_sorted_list(NonLocals, Args),
     pd_info_get_counter(!.PDInfo, Counter0),

@@ -279,7 +279,7 @@ may_call_mercury_attributes(Goal, MayCallMercuryAttrs) :-
 subgoal_may_call_mercury_attribute(Goal, MayCallMercuryAttr) :-
     some [SubGoal, Attrs] (
         goal_contains_goal(Goal, SubGoal),
-        SubGoal = call_foreign_proc(Attrs, _, _, _, _, _, _) - _,
+        SubGoal = hlds_goal(call_foreign_proc(Attrs, _, _, _, _, _, _), _),
         MayCallMercuryAttr = get_may_call_mercury(Attrs)
     ).
 
@@ -296,7 +296,7 @@ tabled_for_io_attributes(Goal, TabledForIoAttrs) :-
 subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
     some [SubGoal, Attrs] (
         goal_contains_goal(Goal, SubGoal),
-        SubGoal = call_foreign_proc(Attrs, _, _, _, _, _, _) - _,
+        SubGoal = hlds_goal(call_foreign_proc(Attrs, _, _, _, _, _, _), _),
         TabledForIoAttr = get_tabled_for_io(Attrs),
         \+ TabledForIoAttr = proc_not_tabled_for_io
     ).
@@ -630,7 +630,7 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
     % so we need to compute the nonlocals from the headvars rather
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
-    OrigGoal = _ - OrigGoalInfo,
+    OrigGoal = hlds_goal(_, OrigGoalInfo),
     goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
     goal_info_get_context(OrigGoalInfo, Context),
 
@@ -695,7 +695,7 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         set.list_to_set(ThenVars, ThenNonLocals),
         goal_info_init_hide(ThenNonLocals, InactiveInstmapDelta, Detism,
             purity_impure, Context, ThenGoalInfo),
-        ThenGoal = ThenGoalExpr - ThenGoalInfo,
+        ThenGoal = hlds_goal(ThenGoalExpr, ThenGoalInfo),
 
         InactiveGoalExpr = if_then_else([], RenamedOrigGoal,
             ThenGoal, MarkInactiveFailGoal)
@@ -706,17 +706,17 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         goal_info_init_hide(set.make_singleton_set(TableTipVar),
             AfterInstMapDelta, detism_multi, purity_impure, Context,
             AfterGoalInfo),
-        AfterGoal = AfterGoalExpr - AfterGoalInfo,
+        AfterGoal = hlds_goal(AfterGoalExpr, AfterGoalInfo),
         FirstGoalExpr = conj(plain_conj, [OrigGoal, AfterGoal]),
         goal_info_get_nonlocals(OrigGoalInfo, OrigGINonLocals),
         set.insert(OrigGINonLocals, TableTipVar, FirstNonlocals),
         goal_info_set_nonlocals(FirstNonlocals, OrigGoalInfo, FirstGoalInfo),
-        FirstGoal = FirstGoalExpr - FirstGoalInfo,
+        FirstGoal = hlds_goal(FirstGoalExpr, FirstGoalInfo),
         InactiveGoalExpr = disj([FirstGoal, MarkInactiveFailGoal])
     ),
     goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta, Detism,
         purity_impure, Context, InactiveGoalInfo),
-    InactiveGoal = InactiveGoalExpr - InactiveGoalInfo,
+    InactiveGoal = hlds_goal(InactiveGoalExpr, InactiveGoalInfo),
 
     TB = mercury_table_builtin_module,
     SwitchArms = [
@@ -728,12 +728,12 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         SwitchNonLocals),
     goal_info_init_hide(SwitchNonLocals, InactiveInstmapDelta, Detism,
         purity_impure, Context, SwitchGoalInfo),
-    SwitchGoal = SwitchExpr - SwitchGoalInfo,
+    SwitchGoal = hlds_goal(SwitchExpr, SwitchGoalInfo),
 
     GoalExpr = conj(plain_conj, [LookUpGoal, SwitchGoal]),
     goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, Detism,
         purity_impure, Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -871,7 +871,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     % so we need to compute the nonlocals from the headvars rather
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
-    OrigGoal = _ - OrigGoalInfo,
+    OrigGoal = hlds_goal(_, OrigGoalInfo),
     goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
     goal_info_get_context(OrigGoalInfo, Context),
 
@@ -917,7 +917,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         InactiveGoalExpr = conj(plain_conj, [OrigGoal | SaveAnswerGoals]),
         goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta,
             Detism, purity_impure, Context, InactiveGoalInfo),
-        InactiveGoal = InactiveGoalExpr - InactiveGoalInfo,
+        InactiveGoal = hlds_goal(InactiveGoalExpr, InactiveGoalInfo),
 
         TB = mercury_table_builtin_module,
         SwitchArms = [
@@ -936,7 +936,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         set.list_to_set(ThenVars, ThenNonLocals),
         goal_info_init_hide(ThenNonLocals, InactiveInstmapDelta,
             detism_det, purity_impure, Context, ThenGoalInfo),
-        ThenGoal = ThenGoalExpr - ThenGoalInfo,
+        ThenGoal = hlds_goal(ThenGoalExpr, ThenGoalInfo),
 
         MarkAsFailedPredName = "table_memo_mark_as_failed",
         MarkAsFailedMacroName = "MR_tbl_memo_mark_as_failed",
@@ -954,7 +954,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
             ThenGoal, ElseGoal),
         goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta, Detism,
             purity_impure, Context, InactiveGoalInfo),
-        InactiveGoal = InactiveGoalExpr - InactiveGoalInfo,
+        InactiveGoal = hlds_goal(InactiveGoalExpr, InactiveGoalInfo),
         FailedGoal = fail_goal,
 
         TB = mercury_table_builtin_module,
@@ -970,12 +970,12 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     set.insert(InactiveNonLocals, StatusVar, SwitchNonLocals),
     goal_info_init_hide(SwitchNonLocals, InactiveInstmapDelta,
         Detism, purity_impure, Context, SwitchGoalInfo),
-    SwitchGoal = SwitchExpr - SwitchGoalInfo,
+    SwitchGoal = hlds_goal(SwitchExpr, SwitchGoalInfo),
 
     GoalExpr = conj(plain_conj, [LookUpGoal, SwitchGoal]),
     goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred create_new_memo_non_goal(determinism::in, hlds_goal::in,
     table_attr_statistics::in, maybe(int)::in,
@@ -994,7 +994,7 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     % so we need to compute the nonlocals from the headvars rather
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
-    OrigGoal = _ - OrigGoalInfo,
+    OrigGoal = hlds_goal(_, OrigGoalInfo),
     goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
     goal_info_get_context(OrigGoalInfo, Context),
 
@@ -1056,20 +1056,20 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     instmap_delta_restrict(OrigSaveNonLocals, OrigSaveIMD0, OrigSaveIMD),
     goal_info_init_hide(OrigSaveNonLocals, OrigSaveIMD, detism_non,
         purity_impure, Context, OrigSaveGoalInfo),
-    OrigSaveGoal = OrigSaveExpr - OrigSaveGoalInfo,
+    OrigSaveGoal = hlds_goal(OrigSaveExpr, OrigSaveGoalInfo),
 
     AfterExpr = disj([MarkIncompleteGoal, MarkActiveGoal]),
     AfterNonLocals = set.make_singleton_set(RecordVar),
     create_instmap_delta([], AfterInstMapDelta),
     goal_info_init_hide(AfterNonLocals, AfterInstMapDelta, detism_non,
         purity_impure, Context, AfterGoalInfo),
-    AfterGoal = AfterExpr - AfterGoalInfo,
+    AfterGoal = hlds_goal(AfterExpr, AfterGoalInfo),
 
     OrigSaveAfterExpr = conj(plain_conj, [OrigSaveGoal, AfterGoal]),
-    OrigSaveAfterGoal = OrigSaveAfterExpr - OrigSaveGoalInfo,
+    OrigSaveAfterGoal = hlds_goal(OrigSaveAfterExpr, OrigSaveGoalInfo),
 
     InactiveExpr = disj([OrigSaveAfterGoal, MarkCompleteGoal]),
-    InactiveGoal = InactiveExpr - OrigSaveGoalInfo,
+    InactiveGoal = hlds_goal(InactiveExpr, OrigSaveGoalInfo),
 
     set.list_to_set([RecordVar | HeadVars], InactiveNonLocals),
     OutputVars = list.map(project_var, NumberedOutputVars),
@@ -1087,12 +1087,12 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     set.insert(InactiveNonLocals, StatusVar, SwitchNonLocals),
     goal_info_init_hide(SwitchNonLocals, InactiveInstmapDelta, Detism,
         purity_impure, Context, SwitchGoalInfo),
-    SwitchGoal = SwitchExpr - SwitchGoalInfo,
+    SwitchGoal = hlds_goal(SwitchExpr, SwitchGoalInfo),
 
     GoalExpr = conj(plain_conj, [LookUpGoal, SwitchGoal]),
     goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1174,7 +1174,7 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
 create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         PredId, ProcId, HeadVarModes, OrigInputVars, OrigOutputVars,
         !VarSet, !VarTypes, !TableInfo, Goal, MaybeProcTableInfo) :-
-    OrigGoal = _ - OrigGoalInfo,
+    OrigGoal = hlds_goal(_, OrigGoalInfo),
     ModuleInfo0 = !.TableInfo ^ table_module_info,
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
@@ -1190,7 +1190,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         %
         clone_proc_and_create_call(PredInfo, ProcId, CallExpr, ModuleInfo0,
             ModuleInfo),
-        NewGoal = CallExpr - OrigGoalInfo,
+        NewGoal = hlds_goal(CallExpr, OrigGoalInfo),
         !:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo
     ;
         NewGoal = OrigGoal,
@@ -1293,7 +1293,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
             [RestoreAnswerGoal0, IoStateAssignGoal]),
         create_instmap_delta([RestoreAnswerGoal0, IoStateAssignGoal],
             RestoreAnswerInstMapDelta0),
-        RestoreAnswerGoal0 = _ - RestoreAnswerGoal0Info,
+        RestoreAnswerGoal0 = hlds_goal(_, RestoreAnswerGoal0Info),
         goal_info_get_nonlocals(RestoreAnswerGoal0Info,
             RestoreAnswer0NonLocals),
         set.insert_list(RestoreAnswer0NonLocals,
@@ -1304,7 +1304,8 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         goal_info_init_hide(RestoreAnswerNonLocals,
             RestoreAnswerInstMapDelta, detism_det, purity_semipure, Context,
             RestoreAnswerGoalInfo),
-        RestoreAnswerGoal = RestoreAnswerGoalExpr - RestoreAnswerGoalInfo
+        RestoreAnswerGoal = hlds_goal(RestoreAnswerGoalExpr,
+            RestoreAnswerGoalInfo)
     ),
     generate_memo_save_goal(NumberedSaveVars, TipVar, BlockSize,
         Context, !VarSet, !VarTypes, !TableInfo, SaveAnswerGoals),
@@ -1334,7 +1335,8 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         detism_det, purity_impure, Context, CallSaveAnswerGoalInfo0),
     goal_info_add_feature(feature_hide_debug_event,
         CallSaveAnswerGoalInfo0, CallSaveAnswerGoalInfo),
-    CallSaveAnswerGoal = CallSaveAnswerGoalExpr - CallSaveAnswerGoalInfo,
+    CallSaveAnswerGoal = hlds_goal(CallSaveAnswerGoalExpr,
+        CallSaveAnswerGoalInfo),
 
     GenIfNecGoalExpr = if_then_else([], OccurredGoal,
         RestoreAnswerGoal, CallSaveAnswerGoal),
@@ -1345,7 +1347,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         GenIfNecInstMapDelta0, GenIfNecInstMapDelta),
     goal_info_init_hide(GenIfNecNonLocals, GenIfNecInstMapDelta, detism_det,
         purity_impure, Context, GenIfNecGoalInfo),
-    GenIfNecGoal = GenIfNecGoalExpr - GenIfNecGoalInfo,
+    GenIfNecGoal = hlds_goal(GenIfNecGoalExpr, GenIfNecGoalInfo),
 
     CheckAndGenAnswerGoalExpr = conj(plain_conj, [LookupGoal, GenIfNecGoal]),
     create_instmap_delta([LookupGoal, GenIfNecGoal],
@@ -1357,8 +1359,8 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
     goal_info_init_hide(CheckAndGenAnswerNonLocals,
         CheckAndGenAnswerInstMapDelta, detism_det, purity_impure, Context,
         CheckAndGenAnswerGoalInfo),
-    CheckAndGenAnswerGoal = CheckAndGenAnswerGoalExpr
-        - CheckAndGenAnswerGoalInfo,
+    CheckAndGenAnswerGoal = hlds_goal(CheckAndGenAnswerGoalExpr,
+        CheckAndGenAnswerGoalInfo),
 
     BodyGoalExpr = if_then_else([], InRangeGoal, CheckAndGenAnswerGoal,
         NewGoal),
@@ -1367,7 +1369,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
     instmap_delta_restrict(OrigNonLocals, BodyInstMapDelta0, BodyInstMapDelta),
     goal_info_init_hide(OrigNonLocals, BodyInstMapDelta, detism_det,
         purity_impure, Context, BodyGoalInfo),
-    Goal = BodyGoalExpr - BodyGoalInfo.
+    Goal = hlds_goal(BodyGoalExpr, BodyGoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1437,7 +1439,7 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
     % so we need to compute the nonlocals from the headvars rather
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
-    OrigGoal = _ - OrigGoalInfo,
+    OrigGoal = hlds_goal(_, OrigGoalInfo),
     goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
     goal_info_get_context(OrigGoalInfo, Context),
 
@@ -1461,13 +1463,13 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
     instmap_delta_restrict(MainNonLocals, MainIMD0, MainIMD),
     goal_info_init_hide(MainNonLocals, MainIMD, detism_non, purity_impure,
         Context, MainGoalInfo),
-    MainGoal = MainExpr - MainGoalInfo,
+    MainGoal = hlds_goal(MainExpr, MainGoalInfo),
 
     table_generate_call("table_mm_completion", detism_det, [SubgoalVar],
         purity_impure, [], ModuleInfo, Context, ResumeGoal0),
     append_fail(ResumeGoal0, ResumeGoal),
     InactiveExpr = disj([MainGoal, ResumeGoal]),
-    InactiveGoal = InactiveExpr - MainGoalInfo,
+    InactiveGoal = hlds_goal(InactiveExpr, MainGoalInfo),
 
     TB = mercury_table_builtin_module,
     SwitchArms = [
@@ -1478,12 +1480,12 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
     SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
     goal_info_add_feature(feature_hide_debug_event,
         MainGoalInfo, SwitchGoalInfo),
-    SwitchGoal = SwitchExpr - SwitchGoalInfo,
+    SwitchGoal = hlds_goal(SwitchExpr, SwitchGoalInfo),
 
     GoalExpr = conj(plain_conj, [LookUpGoal, SwitchGoal]),
     goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, detism_non,
         purity_impure, Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1563,7 +1565,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     % so we need to compute the nonlocals from the headvars rather
     % than getting it from the nonlocals field in the original goal.
     set.list_to_set(HeadVars, OrigNonLocals),
-    OrigGoal = _ - OrigGoalInfo,
+    OrigGoal = hlds_goal(_, OrigGoalInfo),
     goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
     goal_info_get_context(OrigGoalInfo, Context),
 
@@ -1671,7 +1673,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         LookupSetupGoals ++ [GetNextAnswerGoal, RestoreGoal]),
     goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
 
     module_info_pred_info(ModuleInfo, GeneratorPredId, GeneratorPredInfo),
     table_info_init(ModuleInfo, GeneratorPredInfo, ProcInfo0,
@@ -1750,7 +1752,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
         !TableInfo, OutputSteps, SaveReturnAnswerGoals),
 
     proc_info_get_goal(!.ProcInfo, OrigGoal),
-    OrigGoal = _ - OrigGoalInfo,
+    OrigGoal = hlds_goal(_, OrigGoalInfo),
 
     MainGoalExpr = conj(plain_conj, [OrigGoal | SaveReturnAnswerGoals]),
     goal_info_get_determinism(OrigGoalInfo, Detism),
@@ -1759,7 +1761,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
         MainGoalInfo0),
     goal_info_add_feature(feature_hide_debug_event,
         MainGoalInfo0, MainGoalInfo),
-    MainGoal = MainGoalExpr - MainGoalInfo,
+    MainGoal = hlds_goal(MainGoalExpr, MainGoalInfo),
 
     CompletionCode = "\t\t" ++ "MR_tbl_mmos_completion(" ++
         DebugArgStr ++ ", " ++ generator_name ++ ");\n",
@@ -1771,10 +1773,10 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
         [], ModuleInfo0, Context, CompletionGoal),
 
     DisjGoalExpr = disj([MainGoal, CompletionGoal]),
-    DisjGoal = DisjGoalExpr - MainGoalInfo,
+    DisjGoal = hlds_goal(DisjGoalExpr, MainGoalInfo),
 
     GoalExpr = conj(plain_conj, [PickupGoal, DisjGoal]),
-    Goal = GoalExpr - OrigGoalInfo,
+    Goal = hlds_goal(GoalExpr, OrigGoalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
 
     proc_info_set_vartypes(!.VarTypes, !ProcInfo),
@@ -2006,7 +2008,7 @@ generate_simple_call_table_lookup_goal(StatusType, PredName,
     set.list_to_set([StatusVar, TableTipVar | Vars], NonLocals),
     goal_info_init_hide(NonLocals, bind_vars([TableTipVar, StatusVar]),
         detism_det, purity_impure, Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % Generate a goal for doing lookups in call tables for
     % model_non memo predicates.
@@ -2063,7 +2065,7 @@ generate_memo_non_call_table_lookup_goal(NumberedVars, PredId, ProcId,
     set.list_to_set([StatusVar, RecordVar | Vars], NonLocals),
     goal_info_init_hide(NonLocals, bind_vars([RecordVar, StatusVar]),
         detism_det, purity_impure, Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % Generate a goal for doing lookups in call tables for
     % minimal model predicates.
@@ -2118,7 +2120,7 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
     set.list_to_set([StatusVar, SubgoalVar | Vars], NonLocals),
     goal_info_init_hide(NonLocals, bind_vars([SubgoalVar, StatusVar]),
         detism_det, purity_impure, Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2232,13 +2234,14 @@ generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
     InfoConsId = tabling_info_const(ShroudedPredProcId),
     make_const_construction(ProcTableInfoVar, InfoConsId,
-        GoalExpr - GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo0)),
     goal_info_set_purity(purity_impure, GoalInfo0, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred attach_call_table_tip(hlds_goal::in, hlds_goal::out) is det.
 
-attach_call_table_tip(GoalExpr - GoalInfo0, GoalExpr - GoalInfo) :-
+attach_call_table_tip(hlds_goal(GoalExpr, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo)) :-
     goal_info_get_features(GoalInfo0, Features0),
     set.insert(Features0, feature_call_table_gen, Features),
     goal_info_set_features(Features, GoalInfo0, GoalInfo).
@@ -2775,7 +2778,7 @@ generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
     set.list_to_set([RecordVar | OutputVars], NonLocals),
     goal_info_init_hide(NonLocals, OrigInstMapDelta, Detism, purity_semipure,
         Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % Generate a goal for restoring the output arguments from
     % an answer block in minimal model predicates without a suspension.
@@ -2849,7 +2852,7 @@ generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
     set.list_to_set([SubgoalVar | OutputVars], NonLocals),
     goal_info_init_hide(NonLocals, OrigInstMapDelta, Detism, Purity,
         Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2938,7 +2941,7 @@ generate_error_goal(TableInfo, Context, Msg, !VarSet, !VarTypes, Goal) :-
     GoalExpr = conj(plain_conj, [MessageStrGoal, CallGoal]),
     goal_info_init_hide(set.init, bind_vars([]), detism_erroneous,
         purity_impure, Context, GoalInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2999,13 +3002,14 @@ table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
 :- pred append_fail(hlds_goal::in, hlds_goal::out) is det.
 
 append_fail(Goal, GoalAndThenFail) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     goal_info_get_context(GoalInfo, Context),
     instmap_delta_init_unreachable(UnreachInstMapDelta),
     goal_info_init_hide(NonLocals, UnreachInstMapDelta, detism_failure,
         purity_impure, Context, ConjGoalInfo),
-    GoalAndThenFail = conj(plain_conj, [Goal, fail_goal]) - ConjGoalInfo.
+    GoalAndThenFail =
+        hlds_goal(conj(plain_conj, [Goal, fail_goal]), ConjGoalInfo).
 
 :- pred gen_int_construction(string::in, int::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
@@ -3170,7 +3174,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
 create_instmap_delta([], IMD) :-
     instmap_delta_from_assoc_list([], IMD).
 create_instmap_delta([Goal | Rest], IMD) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_instmap_delta(GoalInfo, IMD0),
     create_instmap_delta(Rest, IMD1),
     instmap_delta_apply_instmap_delta(IMD0, IMD1, test_size, IMD).

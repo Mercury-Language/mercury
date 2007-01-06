@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -250,7 +250,7 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
             intermod_info_set_var_types(VarTypes, !Info),
             intermod_info_set_tvarset(TVarSet, !Info),
             get_clause_list(ClausesRep0, Clauses0),
-            traverse_clauses(Clauses0, Clauses, DoWrite, !Info),
+            intermod_traverse_clauses(Clauses0, Clauses, DoWrite, !Info),
             set_clause_list(Clauses, ClausesRep)
         ;
             DoWrite0 = no,
@@ -386,16 +386,16 @@ clauses_contain_noninlinable_foreign_code(Target, [C | _Cs]) :-
 clauses_contain_noninlinable_foreign_code(Target, [_ | Cs]) :-
     clauses_contain_noninlinable_foreign_code(Target, Cs).
 
-:- pred traverse_clauses(list(clause)::in, list(clause)::out,
+:- pred intermod_traverse_clauses(list(clause)::in, list(clause)::out,
     bool::out, intermod_info::in, intermod_info::out) is det.
 
-traverse_clauses([], [], yes, !Info).
-traverse_clauses([clause(P, Goal0, L, C) | Clauses0],
+intermod_traverse_clauses([], [], yes, !Info).
+intermod_traverse_clauses([clause(P, Goal0, L, C) | Clauses0],
         [clause(P, Goal, L, C) | Clauses], DoWrite, !Info) :-
-    traverse_goal(Goal0, Goal, DoWrite1, !Info),
+    intermod_traverse_goal(Goal0, Goal, DoWrite1, !Info),
     (
         DoWrite1 = yes,
-        traverse_clauses(Clauses0, Clauses, DoWrite, !Info)
+        intermod_traverse_clauses(Clauses0, Clauses, DoWrite, !Info)
     ;
         DoWrite1 = no,
         Clauses = Clauses0,
@@ -453,7 +453,7 @@ goal_contains_one_branched_goal(GoalList) :-
 
 goal_contains_one_branched_goal([], yes).
 goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
-    Goal = GoalExpr - _,
+    Goal = hlds_goal(GoalExpr, _),
     (
         goal_is_branched(GoalExpr),
         FoundBranch0 = no,
@@ -467,20 +467,28 @@ goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
     % Go over the goal of an exported proc looking for proc decls, types,
     % insts and modes that we need to write to the optfile.
     %
-:- pred traverse_goal(hlds_goal::in, hlds_goal::out, bool::out,
+:- pred intermod_traverse_goal(hlds_goal::in, hlds_goal::out, bool::out,
     intermod_info::in, intermod_info::out) is det.
 
-traverse_goal(conj(ConjType, Goals0) - Info, conj(ConjType, Goals) - Info,
+intermod_traverse_goal(Goal0, Goal, DoWrite, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+    intermod_traverse_goal_expr(GoalExpr0, GoalExpr, DoWrite, !Info),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+:- pred intermod_traverse_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
+    bool::out, intermod_info::in, intermod_info::out) is det.
+
+intermod_traverse_goal_expr(conj(ConjType, Goals0), conj(ConjType, Goals),
         DoWrite, !Info) :-
-    traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
-traverse_goal(disj(Goals0) - Info, disj(Goals) - Info, DoWrite, !Info) :-
-    traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
-traverse_goal(Goal, Goal, DoWrite, !Info) :-
-    Goal = plain_call(PredId, _, _, _, _, _) - _,
+    intermod_traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
+intermod_traverse_goal_expr(disj(Goals0), disj(Goals), DoWrite, !Info) :-
+    intermod_traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
+intermod_traverse_goal_expr(Goal, Goal, DoWrite, !Info) :-
+    Goal = plain_call(PredId, _, _, _, _, _),
     % Ensure that the called predicate will be exported.
     add_proc(PredId, DoWrite, !Info).
-traverse_goal(Goal @ generic_call(CallType, _, _, _) - Info,
-        Goal - Info, DoWrite, !Info) :-
+intermod_traverse_goal_expr(Goal @ generic_call(CallType, _, _, _), Goal,
+        DoWrite, !Info) :-
     (
         CallType = higher_order(_, _, _, _),
         DoWrite = yes
@@ -491,57 +499,57 @@ traverse_goal(Goal @ generic_call(CallType, _, _, _) - Info,
         ),
         DoWrite = no
     ).
-traverse_goal(switch(Var, CanFail, Cases0) - Info,
-        switch(Var, CanFail, Cases) - Info, DoWrite, !Info) :-
-    traverse_cases(Cases0, Cases, DoWrite, !Info).
+intermod_traverse_goal_expr(switch(Var, CanFail, Cases0),
+        switch(Var, CanFail, Cases), DoWrite, !Info) :-
+    intermod_traverse_cases(Cases0, Cases, DoWrite, !Info).
     % Export declarations for preds used in higher order pred constants
     % or function calls.
-traverse_goal(unify(LVar, RHS0, C, D, E) - Info,
-        unify(LVar, RHS, C, D, E) - Info, DoWrite, !Info) :-
+intermod_traverse_goal_expr(unify(LVar, RHS0, C, D, E),
+        unify(LVar, RHS, C, D, E), DoWrite, !Info) :-
     module_qualify_unify_rhs(LVar, RHS0, RHS, DoWrite, !Info).
-traverse_goal(negation(Goal0) - Info, negation(Goal) - Info, DoWrite, !Info) :-
-    traverse_goal(Goal0, Goal, DoWrite, !Info).
-traverse_goal(scope(Reason, Goal0) - Info,
-        scope(Reason, Goal) - Info, DoWrite, !Info) :-
-    traverse_goal(Goal0, Goal, DoWrite, !Info).
-traverse_goal(if_then_else(Vars, Cond0, Then0, Else0) - Info,
-        if_then_else(Vars, Cond, Then, Else) - Info, DoWrite, !Info) :-
-    traverse_goal(Cond0, Cond, DoWrite1, !Info),
-    traverse_goal(Then0, Then, DoWrite2, !Info),
-    traverse_goal(Else0, Else, DoWrite3, !Info),
+intermod_traverse_goal_expr(negation(Goal0), negation(Goal), DoWrite, !Info) :-
+    intermod_traverse_goal(Goal0, Goal, DoWrite, !Info).
+intermod_traverse_goal_expr(scope(Reason, Goal0), scope(Reason, Goal),
+        DoWrite, !Info) :-
+    intermod_traverse_goal(Goal0, Goal, DoWrite, !Info).
+intermod_traverse_goal_expr(if_then_else(Vars, Cond0, Then0, Else0),
+        if_then_else(Vars, Cond, Then, Else), DoWrite, !Info) :-
+    intermod_traverse_goal(Cond0, Cond, DoWrite1, !Info),
+    intermod_traverse_goal(Then0, Then, DoWrite2, !Info),
+    intermod_traverse_goal(Else0, Else, DoWrite3, !Info),
     bool.and_list([DoWrite1, DoWrite2, DoWrite3], DoWrite).
     % Inlineable exported pragma_foreign_code goals can't use any
     % non-exported types, so we just write out the clauses.
-traverse_goal(Goal @ call_foreign_proc(_, _, _, _, _, _, _) - Info,
-        Goal - Info, yes, !Info).
-traverse_goal(shorthand(_) - _, _, _, _, _) :-
+intermod_traverse_goal_expr(Goal @ call_foreign_proc(_, _, _, _, _, _, _),
+        Goal, yes, !Info).
+intermod_traverse_goal_expr(shorthand(_), _, _, _, _) :-
     % These should have been expanded out by now.
     unexpected(this_file, "traverse_goal: unexpected shorthand").
 
-:- pred traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
+:- pred intermod_traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
     bool::out, intermod_info::in, intermod_info::out) is det.
 
-traverse_list_of_goals([], [], yes, !Info).
-traverse_list_of_goals([Goal0 | Goals0], [Goal | Goals], !:DoWrite, !Info) :-
-    traverse_goal(Goal0, Goal, !:DoWrite, !Info),
+intermod_traverse_list_of_goals([], [], yes, !Info).
+intermod_traverse_list_of_goals([Goal0 | Goals0], [Goal | Goals], !:DoWrite, !Info) :-
+    intermod_traverse_goal(Goal0, Goal, !:DoWrite, !Info),
     (
         !.DoWrite = yes,
-        traverse_list_of_goals(Goals0, Goals, !:DoWrite, !Info)
+        intermod_traverse_list_of_goals(Goals0, Goals, !:DoWrite, !Info)
     ;
         !.DoWrite = no,
         Goals = Goals0
     ).
 
-:- pred traverse_cases(list(case)::in, list(case)::out, bool::out,
+:- pred intermod_traverse_cases(list(case)::in, list(case)::out, bool::out,
     intermod_info::in, intermod_info::out) is det.
 
-traverse_cases([], [], yes, !Info).
-traverse_cases([case(F, Goal0) | Cases0],
+intermod_traverse_cases([], [], yes, !Info).
+intermod_traverse_cases([case(F, Goal0) | Cases0],
         [case(F, Goal) | Cases], !:DoWrite, !Info) :-
-    traverse_goal(Goal0, Goal, !:DoWrite, !Info),
+    intermod_traverse_goal(Goal0, Goal, !:DoWrite, !Info),
     (
         !.DoWrite = yes,
-        traverse_cases(Cases0, Cases, !:DoWrite, !Info)
+        intermod_traverse_cases(Cases0, Cases, !:DoWrite, !Info)
     ;
         !.DoWrite = no,
         Cases = Cases0
@@ -704,7 +712,7 @@ module_qualify_unify_rhs(_LHS, RHS @ rhs_var(_Var), RHS, yes, !Info).
 module_qualify_unify_rhs(_LHS,
         rhs_lambda_goal(A, B, C, D, E, F, G,Goal0),
         rhs_lambda_goal(A, B, C, D, E, F, G,Goal), DoWrite, !Info) :-
-    traverse_goal(Goal0, Goal, DoWrite, !Info).
+    intermod_traverse_goal(Goal0, Goal, DoWrite, !Info).
 module_qualify_unify_rhs(_LHS, RHS @ rhs_functor(Functor, _Exist, _Vars),
         RHS, DoWrite, !Info) :-
     % Is this a higher-order predicate or higher-order function
@@ -1599,15 +1607,15 @@ write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
     (
         (
             % Pull the foreign code out of the goal.
-            Goal = conj(plain_conj, Goals) - _,
+            Goal = hlds_goal(conj(plain_conj, Goals), _),
             list.filter((pred(X::in) is semidet :-
-                    X = call_foreign_proc(_, _, _, _, _, _, _) - _
+                    X = hlds_goal(call_foreign_proc(_, _, _, _, _, _, _), _)
                 ), Goals, [ForeignCodeGoal]),
-            ForeignCodeGoal = call_foreign_proc(Attributes,
-                _, _, Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode) - _
+            ForeignCodeGoal = hlds_goal(call_foreign_proc(Attributes,
+                _, _, Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode), _)
         ;
-            Goal = call_foreign_proc(Attributes, _, _, Args, _ExtraArgs,
-                _MaybeTraceRuntimeCond, PragmaCode) - _
+            Goal = hlds_goal(call_foreign_proc(Attributes, _, _,
+                Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode), _)
         )
     ->
         list.foldl(write_foreign_clause(Procs, PredOrFunc,
@@ -1657,7 +1665,7 @@ write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
 
 strip_headvar_unifications(HeadVars, clause(ProcIds, Goal0, Lang, Context),
         HeadTerms, clause(ProcIds, Goal, Lang, Context)) :-
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     goal_to_conj_list(Goal0, Goals0),
     map.init(HeadVarMap0),
     (
@@ -1689,7 +1697,7 @@ strip_headvar_unifications_from_goal_list([], _, RevGoals, Goals,
 strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
         RevGoals0, Goals, !HeadVarMap) :-
     (
-        Goal = unify(LHSVar, RHS, _, _, _) - _,
+        Goal = hlds_goal(unify(LHSVar, RHS, _, _, _), _),
         list.member(LHSVar, HeadVars),
         term.context_init(Context),
         (
@@ -2187,8 +2195,8 @@ grab_optfiles(!Module, FoundError, !IO) :-
         UnusedArgs = yes,
         read_optimization_interfaces(no, ModuleName, [ModuleName],
             set.init, [], LocalItems, no, UAError, !IO),
-        IsPragmaUnusedArgs = (pred(Item::in) is semidet :-
-            Item = item_pragma(_, PragmaType) - _,
+        IsPragmaUnusedArgs = (pred(ItemAndContext::in) is semidet :-
+            ItemAndContext = item_and_context(item_pragma(_, PragmaType), _),
             PragmaType = pragma_unused_args(_,_,_,_,_)
         ),
         list.filter(IsPragmaUnusedArgs, LocalItems, PragmaItems),

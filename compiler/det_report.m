@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: det_report.m.
 % Author: zs.
-% 
+%
 % This module handles reporting of determinism errors and warnings,
 % as well as errors and warnings from some other related compiler passes
 % such as simplify.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.det_report.
@@ -29,7 +29,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -41,7 +40,11 @@
     --->    ccuc_unify(unify_context)
     ;       ccuc_switch.
 
-:- type failing_context == pair(prog_context, failing_goal).
+:- type failing_context
+    --->    failing_context(
+                prog_context,
+                failing_goal
+            ).
 
 :- type failing_goal
     --->    incomplete_switch(prog_var)
@@ -149,6 +152,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
@@ -384,7 +388,7 @@ func_primary_mode_det_msg = [
 det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
         !Specs) :-
     compare_determinisms(DeclaredDetism, InferredDetism, Cmp),
-    ( 
+    (
         Cmp = tighter,
         det_info_get_pred_id(DetInfo, PredId),
         det_info_get_proc_id(DetInfo, ProcId),
@@ -489,10 +493,11 @@ compare_solncounts(at_most_many,    at_most_many,    sameas).
 :- pred det_diagnose_goal(hlds_goal::in, determinism::in,
     list(switch_context)::in, det_info::in, list(error_msg)::out) is det.
 
-det_diagnose_goal(Goal - GoalInfo, Desired, SwitchContext, DetInfo, Msgs) :-
+det_diagnose_goal(hlds_goal(GoalExpr, GoalInfo), Desired, SwitchContext,
+        DetInfo, Msgs) :-
     goal_info_get_determinism(GoalInfo, Actual),
     ( compare_determinisms(Desired, Actual, tighter) ->
-        det_diagnose_goal_2(Goal, GoalInfo, Desired, Actual, SwitchContext,
+        det_diagnose_goal_2(GoalExpr, GoalInfo, Desired, Actual, SwitchContext,
             DetInfo, Msgs)
     ;
         Msgs = []
@@ -591,7 +596,7 @@ det_diagnose_goal_2(unify(LHS, RHS, _, _, UnifyContext), GoalInfo,
 det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
         Desired, _Actual, SwitchContext, DetInfo, Msgs) :-
     determinism_components(Desired, _DesiredCanFail, DesiredSolns),
-    Cond = _CondGoal - CondInfo,
+    Cond = hlds_goal(_CondGoal, CondInfo),
     goal_info_get_determinism(CondInfo, CondDetism),
     determinism_components(CondDetism, _CondCanFail, CondSolns),
     (
@@ -630,7 +635,7 @@ det_diagnose_goal_2(negation(_), GoalInfo, Desired, Actual, _, _, Msgs) :-
 
 det_diagnose_goal_2(scope(_, Goal), _, Desired, Actual, SwitchContext, DetInfo,
         Msgs) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_determinism(GoalInfo, Internal),
     ( Actual = Internal ->
         InternalDesired = Desired
@@ -740,7 +745,7 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
     determinism_components(ClauseDesired, ClauseCanFail, DesiredSolns),
     det_diagnose_goal(Goal, ClauseDesired, SwitchContext, DetInfo, Msgs1),
     (
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_determinism(GoalInfo, GoalDetism),
         determinism_components(GoalDetism, _, at_most_zero)
     ->
@@ -953,7 +958,8 @@ failing_contexts_description(ModuleInfo, VarSet, FailingContexts) =
 :- func failing_context_description(module_info, prog_varset,
     failing_context) = error_msg.
 
-failing_context_description(ModuleInfo, VarSet, Context - FailingGoal) = Msg :-
+failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
+    FailingContext = failing_context(Context, FailingGoal),
     (
         FailingGoal = incomplete_switch(Var),
         VarStr = mercury_var_to_string(VarSet, no, Var),

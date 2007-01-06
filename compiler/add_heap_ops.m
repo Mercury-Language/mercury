@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: add_heap_ops.m.
 % Author: fjh.
-% 
+%
 % This module is an HLDS-to-HLDS transformation that inserts code to
 % handle heap reclamation on backtracking, by saving and restoring
 % the values of the heap pointer.
@@ -23,11 +23,11 @@
 % LLDS code, rather than via an HLDS to HLDS transformation.
 %
 % This module is very similar to add_trail_ops.m.
-% 
+%
 %-----------------------------------------------------------------------------%
-% 
+%
 % XXX check goal_infos for correctness
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.add_heap_ops.
@@ -100,18 +100,19 @@ add_heap_ops(ModuleInfo0, !Proc) :-
 :- pred goal_add_heap_ops(hlds_goal::in, hlds_goal::out,
     heap_ops_info::in, heap_ops_info::out) is det.
 
-goal_add_heap_ops(GoalExpr0 - GoalInfo, Goal, !Info) :-
+goal_add_heap_ops(hlds_goal(GoalExpr0, GoalInfo), Goal, !Info) :-
     goal_expr_add_heap_ops(GoalExpr0, GoalInfo, Goal, !Info).
 
 :- pred goal_expr_add_heap_ops(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, heap_ops_info::in, heap_ops_info::out) is det.
 
-goal_expr_add_heap_ops(conj(ConjType, Goals0), GI, conj(ConjType, Goals) - GI,
-        !Info) :-
+goal_expr_add_heap_ops(conj(ConjType, Goals0), GI,
+        hlds_goal(conj(ConjType, Goals), GI), !Info) :-
     conj_add_heap_ops(Goals0, Goals, !Info).
 
-goal_expr_add_heap_ops(disj([]), GI, disj([]) - GI, !Info).
-goal_expr_add_heap_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
+goal_expr_add_heap_ops(disj([]), GI, hlds_goal(disj([]), GI), !Info).
+goal_expr_add_heap_ops(disj(Goals0), GoalInfo, hlds_goal(GoalExpr, GoalInfo),
+        !Info) :-
     Goals0 = [FirstDisjunct | _],
 
     goal_info_get_context(GoalInfo, Context),
@@ -131,14 +132,15 @@ goal_expr_add_heap_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
         gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info),
         disj_add_heap_ops(Goals0, yes, yes(SavedHeapPointerVar), GoalInfo,
             Goals, !Info),
-        Goal = conj(plain_conj, [MarkHeapPointerGoal, disj(Goals) - GoalInfo])
+        GoalExpr = conj(plain_conj,
+            [MarkHeapPointerGoal, hlds_goal(disj(Goals), GoalInfo)])
     ;
         disj_add_heap_ops(Goals0, yes, no, GoalInfo, Goals, !Info),
-        Goal = disj(Goals)
+        GoalExpr = disj(Goals)
     ).
 
 goal_expr_add_heap_ops(switch(Var, CanFail, Cases0), GI,
-        switch(Var, CanFail, Cases) - GI, !Info) :-
+        hlds_goal(switch(Var, CanFail, Cases), GI), !Info) :-
     cases_add_heap_ops(Cases0, Cases, !Info).
 
 goal_expr_add_heap_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
@@ -147,7 +149,7 @@ goal_expr_add_heap_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     %   not(G)  ===>  (if G then fail else true)
     %
     goal_info_get_context(OuterGoalInfo, Context),
-    InnerGoal = _ - InnerGoalInfo,
+    InnerGoal = hlds_goal(_, InnerGoalInfo),
     goal_info_get_determinism(InnerGoalInfo, Determinism),
     determinism_components(Determinism, _CanFail, NumSolns),
     True = true_goal_with_context(Context),
@@ -168,11 +170,11 @@ goal_expr_add_heap_ops(negation(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     goal_expr_add_heap_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info).
 
 goal_expr_add_heap_ops(scope(Reason, Goal0), GoalInfo,
-        scope(Reason, Goal) - GoalInfo, !Info) :-
+        hlds_goal(scope(Reason, Goal), GoalInfo), !Info) :-
     goal_add_heap_ops(Goal0, Goal, !Info).
 
 goal_expr_add_heap_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
-        Goal - GoalInfo, !Info) :-
+        hlds_goal(GoalExpr, GoalInfo), !Info) :-
     goal_add_heap_ops(Cond0, Cond, !Info),
     goal_add_heap_ops(Then0, Then, !Info),
     goal_add_heap_ops(Else0, Else1, !Info),
@@ -188,19 +190,22 @@ goal_expr_add_heap_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
         % at the start of the Else branch.
         gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal,
             !Info),
-        Else1 = _ - Else1GoalInfo,
-        Else = conj(plain_conj, [RestoreHeapPointerGoal, Else1])
-            - Else1GoalInfo,
-        IfThenElse = if_then_else(A, Cond, Then, Else) - GoalInfo,
-        Goal = conj(plain_conj, [MarkHeapPointerGoal, IfThenElse])
+        Else1 = hlds_goal(_, Else1GoalInfo),
+        Else = hlds_goal(
+            conj(plain_conj, [RestoreHeapPointerGoal, Else1]),
+            Else1GoalInfo),
+        IfThenElse = hlds_goal(if_then_else(A, Cond, Then, Else), GoalInfo),
+        GoalExpr = conj(plain_conj, [MarkHeapPointerGoal, IfThenElse])
     ;
-        Goal = if_then_else(A, Cond, Then, Else1)
+        GoalExpr = if_then_else(A, Cond, Then, Else1)
     ).
 
-goal_expr_add_heap_ops(Goal @ plain_call(_, _, _, _, _, _), GI, Goal - GI,
-        !Info).
-goal_expr_add_heap_ops(Goal @ generic_call(_, _, _, _), GI, Goal - GI, !Info).
-goal_expr_add_heap_ops(Goal @ unify(_, _, _, _, _), GI, Goal - GI, !Info).
+goal_expr_add_heap_ops(GoalExpr @ plain_call(_, _, _, _, _, _), GI,
+        hlds_goal(GoalExpr, GI), !Info).
+goal_expr_add_heap_ops(GoalExpr @ generic_call(_, _, _, _), GI,
+        hlds_goal(GoalExpr, GI), !Info).
+goal_expr_add_heap_ops(GoalExpr @ unify(_, _, _, _, _), GI,
+        hlds_goal(GoalExpr, GI), !Info).
 
 goal_expr_add_heap_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
     PragmaForeign = call_foreign_proc(_, _, _, _, _, _, Impl),
@@ -218,7 +223,7 @@ goal_expr_add_heap_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
             SorryNotImplementedCode),
         Goal = SorryNotImplementedCode
     ;
-        Goal = PragmaForeign - GoalInfo
+        Goal = hlds_goal(PragmaForeign, GoalInfo)
     ).
 
 goal_expr_add_heap_ops(shorthand(_), _, _, !Info) :-
@@ -239,7 +244,7 @@ disj_add_heap_ops([], _, _, _, [], !Info).
 disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
         DisjGoalInfo, DisjGoals, !Info) :-
     goal_add_heap_ops(Goal0, Goal1, !Info),
-    Goal1 = _ - GoalInfo,
+    Goal1 = hlds_goal(_, GoalInfo),
     goal_info_get_context(GoalInfo, Context),
 
     % If needed, reset the heap pointer before executing the goal,
@@ -271,9 +276,11 @@ disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
         % Put this disjunct and the remaining disjuncts in a nested
         % disjunction, so that the heap pointer variable can scope over
         % these disjuncts.
-        Disj = disj([Goal | Goals1]) - DisjGoalInfo,
-        DisjGoals = [conj(plain_conj, [MarkHeapPointerGoal, Disj])
-            - DisjGoalInfo]
+        Disj = hlds_goal(disj([Goal | Goals1]), DisjGoalInfo),
+        DisjGoal = hlds_goal(
+            conj(plain_conj, [MarkHeapPointerGoal, Disj]),
+            DisjGoalInfo),
+        DisjGoals = [DisjGoal]
     ;
         % Just recursively handle the remaining disjuncts.
         disj_add_heap_ops(Goals0, no, MaybeSavedHeapPointerVar, DisjGoalInfo,

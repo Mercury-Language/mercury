@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -921,7 +921,7 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     get_improved_exists_head_constraints(ConstraintMap, PredExistConstraints,
         ActualExistConstraints),
     ExistQVarsForCall = [],
-    Goal0 = _ - GoalInfo,
+    Goal0 = hlds_goal(_, GoalInfo),
     goal_info_get_context(GoalInfo, Context),
     make_typeclass_info_vars(ActualExistConstraints,
         ExistQVarsForCall, Context, ExistTypeClassVars,
@@ -1013,81 +1013,81 @@ get_improved_exists_head_constraints(ConstraintMap,  ExistConstraints,
 :- pred polymorphism_process_goal(hlds_goal::in, hlds_goal::out,
     poly_info::in, poly_info::out) is det.
 
-polymorphism_process_goal(Goal0 - GoalInfo0, Goal, !Info) :-
-    polymorphism_process_goal_expr(Goal0, GoalInfo0, Goal, !Info).
+polymorphism_process_goal(Goal0, Goal, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info).
 
 :- pred polymorphism_process_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, poly_info::in, poly_info::out) is det.
 
-polymorphism_process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    % We don't need to add type_infos for higher order calls, since the
-    % type_infos are added when the closures are constructed, not when
-    % they are called.
-    GoalExpr = generic_call(_, _, _, _),
-    Goal = GoalExpr - GoalInfo.
-
-polymorphism_process_goal_expr(Goal0, GoalInfo0, Goal, !Info) :-
-    PredId = Goal0 ^ call_pred_id,
-    ArgVars0 = Goal0 ^ call_args,
-    polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
-        ExtraVars, ExtraGoals, !Info),
-    ArgVars = ExtraVars ++ ArgVars0,
-    CallExpr = Goal0 ^ call_args := ArgVars,
-    Call = CallExpr - GoalInfo,
-    list.append(ExtraGoals, [Call], GoalList),
-    conj_list_to_goal(GoalList, GoalInfo0, Goal).
-
-polymorphism_process_goal_expr(Goal0, GoalInfo0, Goal, !Info) :-
-    Goal0 = call_foreign_proc(_, PredId, _, _, _, _, _),
-    poly_info_get_module_info(!.Info, ModuleInfo),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PredModule = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
-
-    ( no_type_info_builtin(PredModule, PredName, PredArity) ->
-        Goal = Goal0 - GoalInfo0
+polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
+    (
+        % We don't need to add type_infos for higher order calls, since the
+        % type_infos are added when the closures are constructed, not when
+        % they are called.
+        GoalExpr0 = generic_call(_, _, _, _),
+        Goal = hlds_goal(GoalExpr0, GoalInfo0)
     ;
-        polymorphism_process_foreign_proc(ModuleInfo, PredInfo, Goal0,
+        GoalExpr0 = plain_call(PredId, _, ArgVars0, _, _, _),
+        polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
+            ExtraVars, ExtraGoals, !Info),
+        ArgVars = ExtraVars ++ ArgVars0,
+        CallExpr = GoalExpr0 ^ call_args := ArgVars,
+        Call = hlds_goal(CallExpr, GoalInfo),
+        list.append(ExtraGoals, [Call], GoalList),
+        conj_list_to_goal(GoalList, GoalInfo0, Goal)
+    ;
+        GoalExpr0 = call_foreign_proc(_, PredId, _, _, _, _, _),
+        poly_info_get_module_info(!.Info, ModuleInfo),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        PredModule = pred_info_module(PredInfo),
+        PredName = pred_info_name(PredInfo),
+        PredArity = pred_info_orig_arity(PredInfo),
+
+        ( no_type_info_builtin(PredModule, PredName, PredArity) ->
+            Goal = hlds_goal(GoalExpr0, GoalInfo0)
+        ;
+            polymorphism_process_foreign_proc(ModuleInfo, PredInfo, GoalExpr0,
+                GoalInfo0, Goal, !Info)
+        )
+    ;
+        GoalExpr0 = unify(XVar, Y, Mode, Unification, UnifyContext),
+        polymorphism_process_unify(XVar, Y, Mode, Unification, UnifyContext,
             GoalInfo0, Goal, !Info)
+    ;
+        % The rest of the cases just process goals recursively.
+        (
+            GoalExpr0 = conj(ConjType, Goals0),
+            polymorphism_process_goal_list(Goals0, Goals, !Info),
+            GoalExpr = conj(ConjType, Goals)
+        ;
+            GoalExpr0 = disj(Goals0),
+            polymorphism_process_goal_list(Goals0, Goals, !Info),
+            GoalExpr = disj(Goals)
+        ;
+            GoalExpr0 = negation(SubGoal0),
+            polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+            GoalExpr = negation(SubGoal)
+        ;
+            GoalExpr0 = switch(Var, CanFail, Cases0),
+            polymorphism_process_case_list(Cases0, Cases, !Info),
+            GoalExpr = switch(Var, CanFail, Cases)
+        ;
+            GoalExpr0 = scope(Reason, SubGoal0),
+            polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+            GoalExpr = scope(Reason, SubGoal)
+        ;
+            GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+            polymorphism_process_goal(Cond0, Cond, !Info),
+            polymorphism_process_goal(Then0, Then, !Info),
+            polymorphism_process_goal(Else0, Else, !Info),
+            GoalExpr = if_then_else(Vars, Cond, Then, Else)
+        ),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, "process_goal_expr: unexpected shorthand")
     ).
-
-polymorphism_process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = unify(XVar, Y, Mode, Unification, UnifyContext),
-    polymorphism_process_unify(XVar, Y, Mode, Unification, UnifyContext,
-        GoalInfo, Goal, !Info).
-
-    % The rest of the clauses just process goals recursively.
-polymorphism_process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = conj(ConjType, Goals0),
-    polymorphism_process_goal_list(Goals0, Goals, !Info),
-    Goal = conj(ConjType, Goals) - GoalInfo.
-polymorphism_process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = disj(Goals0),
-    polymorphism_process_goal_list(Goals0, Goals, !Info),
-    Goal = disj(Goals) - GoalInfo.
-polymorphism_process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = negation(SubGoal0),
-    polymorphism_process_goal(SubGoal0, SubGoal, !Info),
-    Goal = negation(SubGoal) - GoalInfo.
-polymorphism_process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = switch(Var, CanFail, Cases0),
-    polymorphism_process_case_list(Cases0, Cases, !Info),
-    Goal = switch(Var, CanFail, Cases) - GoalInfo.
-polymorphism_process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = scope(Reason, SubGoal0),
-    polymorphism_process_goal(SubGoal0, SubGoal, !Info),
-    Goal = scope(Reason, SubGoal) - GoalInfo.
-polymorphism_process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),
-    polymorphism_process_goal(Cond0, Cond, !Info),
-    polymorphism_process_goal(Then0, Then, !Info),
-    polymorphism_process_goal(Else0, Else, !Info),
-    Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo.
-polymorphism_process_goal_expr(GoalExpr, _GoalInfo, _Goal, !Info) :-
-    % These should have been expanded out by now.
-    GoalExpr = shorthand(_),
-    unexpected(this_file, "process_goal_expr: unexpected shorthand").
 
     % type_info_vars prepends a comma separated list of variables
     % onto a string of variables.
@@ -1142,7 +1142,8 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         map.lookup(VarTypes, XVar, Type),
         unification_typeinfos(Type, Unification0, Unification,
             GoalInfo0, GoalInfo, !Info),
-        Goal = unify(XVar, Y, Mode, Unification, UnifyContext) - GoalInfo
+        Goal = hlds_goal(unify(XVar, Y, Mode, Unification, UnifyContext),
+            GoalInfo)
     ;
         Y = rhs_functor(ConsId, _, Args),
         polymorphism_process_unify_functor(XVar, ConsId, Args, Mode,
@@ -1169,7 +1170,8 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         % Complicated (in-in) argument unifications are impossible for lambda
         % expressions, so we don't need to worry about adding the type_infos
         % that would be required for such unifications.
-        Goal = unify(XVar, Y1, Mode, Unification0, UnifyContext) - GoalInfo
+        Goal = hlds_goal(unify(XVar, Y1, Mode, Unification0, UnifyContext),
+            GoalInfo)
     ).
 
 :- pred unification_typeinfos(mer_type::in,
@@ -1311,8 +1313,9 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         unification_typeinfos(TypeOfX,
             Unification0, Unification, GoalInfo1, GoalInfo, !Info),
 
-        Unify = unify(X0, rhs_functor(ConsId, IsConstruction, ArgVars),
-            Mode0, Unification, UnifyContext) - GoalInfo,
+        UnifyExpr = unify(X0, rhs_functor(ConsId, IsConstruction, ArgVars),
+            Mode0, Unification, UnifyContext),
+        Unify = hlds_goal(UnifyExpr, GoalInfo),
         list.append(ExtraGoals, [Unify], GoalList),
         conj_list_to_goal(GoalList, GoalInfo0, Goal)
     ;
@@ -1322,8 +1325,9 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
 
         unification_typeinfos(TypeOfX,
             Unification0, Unification, GoalInfo0, GoalInfo, !Info),
-        Goal = unify(X0, rhs_functor(ConsId0, no, ArgVars0), Mode0,
-            Unification, UnifyContext) - GoalInfo
+        GoalExpr = unify(X0, rhs_functor(ConsId0, no, ArgVars0), Mode0,
+            Unification, UnifyContext),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
 convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
@@ -1362,7 +1366,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     goal_info_set_nonlocals(LambdaNonLocals, LambdaGoalInfo1, LambdaGoalInfo2),
     goal_info_set_purity(Purity, LambdaGoalInfo2, LambdaGoalInfo3),
     goal_info_set_goal_path(GoalPath, LambdaGoalInfo3, LambdaGoalInfo),
-    LambdaGoal = LambdaGoalExpr - LambdaGoalInfo,
+    LambdaGoal = hlds_goal(LambdaGoalExpr, LambdaGoalInfo),
 
     % Work out the modes of the introduced lambda variables and the determinism
     % of the lambda goal.
@@ -1380,8 +1384,8 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
         LambdaDet = Det
     ;
         MaybeDet = no,
-        sorry(this_file, "determinism inference " ++
-            "for higher order predicate terms.")
+        sorry(this_file,
+            "determinism inference for higher order predicate terms.")
     ),
 
     % Construct the lambda expression.
@@ -1519,7 +1523,7 @@ polymorphism_process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal,
     % Plug it all back together.
     CallExpr = call_foreign_proc(Attributes, PredId, ProcId,
         Args, ProcExtraArgs, MaybeTraceRuntimeCond, Impl),
-    Call = CallExpr - GoalInfo,
+    Call = hlds_goal(CallExpr, GoalInfo),
     list.append(ExtraGoals, [Call], GoalList),
     conj_list_to_goal(GoalList, GoalInfo0, Goal).
 
@@ -1895,7 +1899,7 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     CallGoalExpr = plain_call(PredId, ProcId, CallArgs, BuiltinState,
         MaybeCallUnifyContext, SymName),
-    CallGoal = CallGoalExpr - GoalInfo,
+    CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
     conj_list_to_goal(ExtraGoals ++ [CallGoal], GoalInfo, Goal).
 
 %-----------------------------------------------------------------------------%
@@ -1958,7 +1962,7 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
     ;
         poly_info_get_varset(!.Info, VarSet0),
         poly_info_get_var_types(!.Info, VarTypes0),
-        !.Goal = _ - GoalInfo0,
+        !.Goal = hlds_goal(_, GoalInfo0),
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
         set.insert_list(NonLocals, ArgVars, NonLocalsPlusArgs0),
         set.insert_list(NonLocalsPlusArgs0, LambdaVars, NonLocalsPlusArgs),
@@ -2286,7 +2290,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
     goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
         BaseGoalInfo),
 
-    BaseGoal = BaseUnify - BaseGoalInfo,
+    BaseGoal = hlds_goal(BaseUnify, BaseGoalInfo),
 
     % Build a unification to add the argvars to the base_typeclass_info.
     NewConsId = typeclass_info_cell_constructor,
@@ -2323,7 +2327,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
     goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
     goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
 
-    TypeClassInfoGoal = Unify - GoalInfo,
+    TypeClassInfoGoal = hlds_goal(Unify, GoalInfo),
     NewGoals0 = [TypeClassInfoGoal, BaseGoal],
     list.append(NewGoals0, SuperClassGoals, NewGoals).
 
@@ -2716,8 +2720,7 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
         [TypeInfoVar - bound(unique, [bound_functor(InstConsId, ArgInsts)])],
         InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
-
-    TypeInfoGoal = Unify - GoalInfo.
+    TypeInfoGoal = hlds_goal(Unify, GoalInfo).
 
 init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
         TypeCtorInfoGoal, ModuleInfo, !VarSet, !VarTypes, !RttiVarMaps) :-
@@ -2746,8 +2749,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
     instmap_delta_from_assoc_list([TypeCtorInfoVar - ground(shared, none)],
         InstmapDelta),
     goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure, GoalInfo),
-
-    TypeCtorInfoGoal = Unify - GoalInfo.
+    TypeCtorInfoGoal = hlds_goal(Unify, GoalInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -3173,7 +3175,7 @@ expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
         InstmapDelta),
     pred_info_get_purity(PredInfo0, Purity),
     goal_info_init(NonLocals, InstmapDelta, Detism, Purity, GoalInfo),
-    BodyGoal = BodyGoalExpr - GoalInfo,
+    BodyGoal = hlds_goal(BodyGoalExpr, GoalInfo),
 
     proc_info_set_goal(BodyGoal, ProcInfo0, ProcInfo),
     map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),

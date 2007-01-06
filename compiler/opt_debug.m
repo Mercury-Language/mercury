@@ -159,7 +159,8 @@ maybe_dump_instrs(OptDebug, ProcLabel, Instrs, !IO) :-
     io::di, io::uo) is det.
 
 dump_instrs_2([], _ProcLabel, _PrintComments, !IO).
-dump_instrs_2([Uinstr - Comment | Instrs], ProcLabel, PrintComments, !IO) :-
+dump_instrs_2([Instr | Instrs], ProcLabel, PrintComments, !IO) :-
+    Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(_) ->
         io.write_string(dump_instr(ProcLabel, PrintComments, Uinstr), !IO)
     ; Uinstr = comment(InstrComment) ->
@@ -902,7 +903,7 @@ dump_output_component(MaybeProcLabel,
 dump_maybe_dummy(no) = "".
 dump_maybe_dummy(yes) = " (dummy)".
 
-dump_fullinstr(ProcLabel, PrintComments, Uinstr - Comment) = Str :-
+dump_fullinstr(ProcLabel, PrintComments, llds_instr(Uinstr, Comment)) = Str :-
     (
         PrintComments = no,
         Str = dump_instr(ProcLabel, PrintComments, Uinstr) ++ "\n"

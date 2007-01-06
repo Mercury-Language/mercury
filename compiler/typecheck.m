@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -623,9 +623,9 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
 
 check_existq_clause(TypeVarSet, ExistQVars, Clause, !Info) :-
     Goal = Clause ^ clause_body,
-    ( Goal = call_foreign_proc(_, _, _, _, _, _, Impl) - _ ->
-        list.foldl(check_mention_existq_var(TypeVarSet, Impl),
-            ExistQVars, !Info)
+    ( Goal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, Impl), _) ->
+        list.foldl(check_mention_existq_var(TypeVarSet, Impl), ExistQVars,
+            !Info)
     ;
         true
     ).
@@ -682,7 +682,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
 
     % Combine the unification and call into a conjunction.
     goal_info_init(Context, GoalInfo),
-    Body = conj(plain_conj, [UnifyGoal, CallGoal]) - GoalInfo,
+    Body = hlds_goal(conj(plain_conj, [UnifyGoal, CallGoal]), GoalInfo),
     StubClause = clause([], Body, impl_lang_mercury, Context).
 
 :- pred rename_instance_method_constraints(tvar_renaming::in,
@@ -893,10 +893,10 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         create_pure_atomic_complicated_unification(FuncRetVal,
             rhs_functor(cons(FuncSymName, FuncArity), no, FuncArgs),
             Context, umc_explicit, [], Goal0),
-        Goal0 = GoalExpr - GoalInfo0,
+        Goal0 = hlds_goal(GoalExpr, GoalInfo0),
         NonLocals = proc_arg_vector_to_set(HeadVars),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-        Goal = GoalExpr - GoalInfo,
+        Goal = hlds_goal(GoalExpr, GoalInfo),
         ProcIds = [], % The clause applies to all procedures.
         Clause = clause(ProcIds, Goal, impl_lang_mercury, Context),
         clauses_info_set_clauses([Clause], ClausesInfo0, ClausesInfo),
@@ -938,7 +938,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
     ->
         SingleClause0 = clause(ApplicableProcs, Goal0, Language, Context),
 
-        Goal0 = _ - GoalInfo0,
+        Goal0 = hlds_goal(_, GoalInfo0),
         goal_to_conj_list(Goal0, Conj0),
         improve_single_clause_headvars(Conj0, HeadVars0, [],
             VarSet0, VarSet, map.init, Subst, [], RevConj),
@@ -999,7 +999,7 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
                 ( list.member(OtherGoal, Conj0)
                 ; list.member(OtherGoal, !.RevConj)
                 ),
-                OtherGoal = _ - OtherGoalInfo,
+                OtherGoal = hlds_goal(_, OtherGoalInfo),
                 goal_info_get_nonlocals(OtherGoalInfo, OtherNonLocals),
                 set.member(HeadVar, OtherNonLocals)
             ))
@@ -1109,7 +1109,7 @@ find_headvar_names_in_goal(VarSet, HeadVars, Goal, HeadVarMap0)
     hlds_goal::in, prog_var::out, prog_var::out) is semidet.
 
 goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) :-
-    Goal = unify(LVar, rhs_var(RVar), _, _, _) - _,
+    Goal = hlds_goal(unify(LVar, rhs_var(RVar), _, _, _), _),
     ( proc_arg_vector_member(HeadVars, LVar) ->
         HeadVar = LVar,
         OtherVar = RVar
@@ -1258,7 +1258,8 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info) :-
     % context saved in the type-info.  (That should probably be done
     % in make_hlds, but it was easier to do here.)
     %
-typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
+typecheck_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
+        !Info) :-
     goal_info_get_context(GoalInfo0, Context),
     term.context_init(EmptyContext),
     ( Context = EmptyContext ->
@@ -1268,7 +1269,7 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
         GoalInfo = GoalInfo0,
         typecheck_info_set_context(Context, !Info)
     ),
-    typecheck_goal_2(Goal0, Goal, GoalInfo, !Info),
+    typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info),
     check_warn_too_much_overloading(!Info).
 
 :- pred typecheck_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,

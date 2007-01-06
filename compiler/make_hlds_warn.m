@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -124,26 +124,26 @@ warn_singletons(VarSet, PredCallId, ModuleInfo, Body, !Specs) :-
     prog_varset::in, simple_call_id::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId,
-        ModuleInfo, !Specs) :-
+warn_singletons_in_goal(hlds_goal(GoalExpr, GoalInfo), QuantVars, VarSet,
+        PredCallId, ModuleInfo, !Specs) :-
     (
-        Goal = conj(_ConjType, Goals),
+        GoalExpr = conj(_ConjType, Goals),
         warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId,
             ModuleInfo, !Specs)
     ;
-        Goal = disj(Goals),
+        GoalExpr = disj(Goals),
         warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId,
             ModuleInfo, !Specs)
     ;
-        Goal = switch(_Var, _CanFail, Cases),
+        GoalExpr = switch(_Var, _CanFail, Cases),
         warn_singletons_in_cases(Cases, QuantVars, VarSet, PredCallId,
             ModuleInfo, !Specs)
     ;
-        Goal = negation(SubGoal),
+        GoalExpr = negation(SubGoal),
         warn_singletons_in_goal(SubGoal, QuantVars, VarSet, PredCallId,
             ModuleInfo, !Specs)
     ;
-        Goal = scope(Reason, SubGoal),
+        GoalExpr = scope(Reason, SubGoal),
         % Warn if any quantified variables occur only in the quantifier.
         (
             ( Reason = exist_quant(Vars)
@@ -163,7 +163,7 @@ warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId,
         warn_singletons_in_goal(SubGoal, SubQuantVars, VarSet, PredCallId,
             ModuleInfo, !Specs)
     ;
-        Goal = if_then_else(Vars, Cond, Then, Else),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
 
         % Warn if any quantified variables do not occur in the condition
         % or the "then" part of the if-then-else.
@@ -187,13 +187,13 @@ warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId,
         warn_singletons_in_goal(Else, QuantVars, VarSet, PredCallId,
             ModuleInfo, !Specs)
     ;
-        Goal = plain_call(_, _, Args, _, _, _),
+        GoalExpr = plain_call(_, _, Args, _, _, _),
         goal_info_get_nonlocals(GoalInfo, NonLocals),
         goal_info_get_context(GoalInfo, Context),
         warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, VarSet,
             Context, PredCallId, !Specs)
     ;
-        Goal = generic_call(GenericCall, Args0, _, _),
+        GoalExpr = generic_call(GenericCall, Args0, _, _),
         goal_util.generic_call_vars(GenericCall, Args1),
         list.append(Args0, Args1, Args),
         goal_info_get_nonlocals(GoalInfo, NonLocals),
@@ -201,18 +201,18 @@ warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId,
         warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, VarSet,
             Context, PredCallId, !Specs)
     ;
-        Goal = unify(Var, RHS, _, _, _),
+        GoalExpr = unify(Var, RHS, _, _, _),
         warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
             PredCallId, ModuleInfo, !Specs)
     ;
-        Goal = call_foreign_proc(Attrs, _, _, Args, _, _, PragmaImpl),
+        GoalExpr = call_foreign_proc(Attrs, _, _, Args, _, _, PragmaImpl),
         goal_info_get_context(GoalInfo, Context),
         Lang = get_foreign_language(Attrs),
         NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
         warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
             NamesModes, Context, PredCallId, ModuleInfo, !Specs)
     ;
-        Goal = shorthand(ShorthandGoal),
+        GoalExpr = shorthand(ShorthandGoal),
         warn_singletons_in_goal_2_shorthand(ShorthandGoal, GoalInfo,
             QuantVars, VarSet, PredCallId, ModuleInfo, !Specs)
     ).
@@ -273,7 +273,7 @@ warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _PredOrFunc, _Eval,
         _NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
         GoalInfo, QuantVars, VarSet, CallPredId, ModuleInfo, !Specs) :-
     % Warn if any lambda-quantified variables occur only in the quantifier.
-    LambdaGoal = _ - LambdaGoalInfo,
+    LambdaGoal = hlds_goal(_, LambdaGoalInfo),
     goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals),
     goal_info_get_context(GoalInfo, Context),
     warn_singletons_goal_vars(LambdaVars, GoalInfo, LambdaNonLocals, QuantVars,

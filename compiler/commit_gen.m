@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2006 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -58,7 +58,7 @@ generate_scope(Reason, AddTrailOps, OuterCodeModel, Goal, Code, !CI) :-
     hlds_goal::in, code_tree::out, code_info::in, code_info::out) is det.
 
 generate_commit(AddTrailOps, OuterCodeModel, Goal, Code, !CI) :-
-    Goal = _ - InnerGoalInfo,
+    Goal = hlds_goal(_, InnerGoalInfo),
     goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
     (
         OuterCodeModel = model_det,

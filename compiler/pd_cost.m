@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2006 University of Melbourne.
+% Copyright (C) 1998-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,23 +52,30 @@
 
 %-----------------------------------------------------------------------------%
 
-goal_cost(conj(_, Goals) - _, Cost) :-
+goal_cost(Goal, Cost) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    goal_expr_cost(GoalExpr, GoalInfo, Cost).
+
+:- pred goal_expr_cost(hlds_goal_expr::in, hlds_goal_info::in, int::out)
+    is det.
+
+goal_expr_cost(conj(_, Goals), _, Cost) :-
     goal_costs(Goals, 0, Cost).
 
-goal_cost(disj(Goals) - _, Cost) :-
+goal_expr_cost(disj(Goals), _, Cost) :-
     goal_costs(Goals, 0, Cost0),
     Cost = Cost0 + cost_of_stack_flush.
 
-goal_cost(switch(_, _, Cases) - _, Cost) :-
+goal_expr_cost(switch(_, _, Cases), _, Cost) :-
     cases_cost(Cases, cost_of_simple_test, Cost).
 
-goal_cost(if_then_else(_, Cond, Then, Else) - _, Cost) :-
+goal_expr_cost(if_then_else(_, Cond, Then, Else), _, Cost) :-
     goal_cost(Cond, Cost1),
     goal_cost(Then, Cost2),
     goal_cost(Else, Cost3),
     Cost = Cost1 + Cost2 + Cost3.
 
-goal_cost(plain_call(_, _, Args, BuiltinState, _, _) - _, Cost) :-
+goal_expr_cost(plain_call(_, _, Args, BuiltinState, _, _), _, Cost) :-
     ( BuiltinState = inline_builtin ->
         Cost = cost_of_builtin_call
     ;
@@ -78,22 +85,22 @@ goal_cost(plain_call(_, _, Args, BuiltinState, _, _) - _, Cost) :-
             + cost_of_reg_assign * InputArgs
     ).
 
-goal_cost(negation(Goal) - _, Cost) :-
+goal_expr_cost(negation(Goal), _, Cost) :-
     goal_cost(Goal, Cost).
 
-goal_cost(scope(_, Goal) - _, Cost) :-
+goal_expr_cost(scope(_, Goal), _, Cost) :-
     goal_cost(Goal, Cost).
 
-goal_cost(generic_call(_, Args, _, _) - _, Cost) :-
+goal_expr_cost(generic_call(_, Args, _, _), _, Cost) :-
     list.length(Args, Arity),
     Cost0 = cost_of_reg_assign * Arity // 2,
     Cost = Cost0 + cost_of_stack_flush + cost_of_higher_order_call.
 
-goal_cost(unify(_, _, _, Unification, _) - GoalInfo, Cost) :-
+goal_expr_cost(unify(_, _, _, Unification, _), GoalInfo, Cost) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     unify_cost(NonLocals, Unification, Cost).
 
-goal_cost(call_foreign_proc(Attributes, _, _, Args, _, _, _) - _, Cost) :-
+goal_expr_cost(call_foreign_proc(Attributes, _, _, Args, _, _, _), _, Cost) :-
     ( get_may_call_mercury(Attributes) = proc_will_not_call_mercury ->
         Cost1 = 0
     ;
@@ -104,7 +111,7 @@ goal_cost(call_foreign_proc(Attributes, _, _, Args, _, _, _) - _, Cost) :-
     InputArgs = Arity // 2, % rough
     Cost = Cost1 + cost_of_call + cost_of_reg_assign * InputArgs.
 
-goal_cost(shorthand(_) - _, _) :-
+goal_expr_cost(shorthand(_), _, _) :-
     % these should have been expanded out by now
     unexpected(this_file, "goal_cost: unexpected shorthand").
 

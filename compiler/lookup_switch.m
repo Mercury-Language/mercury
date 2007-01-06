@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -301,7 +301,7 @@ project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
 filter_out_failing_cases([], !RevTaggedCases, !SwitchCanFail).
 filter_out_failing_cases([Case | Cases], !RevTaggedCases, !SwitchCanFail) :-
     Case = extended_case(_, _, _, Goal),
-    Goal = GoalExpr - _,
+    Goal = hlds_goal(GoalExpr, _),
     ( GoalExpr = disj([]) ->
         !:SwitchCanFail = can_fail
     ;
@@ -323,7 +323,7 @@ generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
         [CaseVal | Rest], !MaybeEnd, MaybeLiveness, !ResumeVars,
         !GoalTrailOps, !CI) :-
     Case = extended_case(_, int_tag(CaseTag), _, Goal),
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
 
     % Goals with these features need special treatment in generate_goal.
     goal_info_get_features(GoalInfo, Features),
@@ -339,7 +339,7 @@ generate_constants_for_lookup_switch([Case | Cases], Vars, StoreMap,
             unexpected(this_file, "generate_constants: disj([])")
         ;
             Disjuncts = [FirstDisjunct | _],
-            FirstDisjunct = _ - FirstDisjunctGoalInfo,
+            FirstDisjunct = hlds_goal(_, FirstDisjunctGoalInfo),
             goal_info_get_resume_point(FirstDisjunctGoalInfo, ThisResumePoint),
             (
                 ThisResumePoint = resume_point(ThisResumeVars, _),
@@ -407,7 +407,7 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
 
     (
         CaseConsts = all_one_soln(CaseValues),
-        Comment = node([comment("simple lookup switch") - ""]),
+        Comment = node([llds_instr(comment("simple lookup switch"), "")]),
         generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
             StartVal, EndVal, CaseValues, OutVars, LLDSTypes,
             NeedBitVecCheck, Liveness, RestCode, !CI)
@@ -415,7 +415,9 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
         CaseConsts = some_several_solns(CaseSolns, ResumeVars, GoalTrailOps),
         get_emit_trail_ops(!.CI, EmitTrailOps),
         bool.and(EmitTrailOps, GoalTrailOps, AddTrailOps),
-        Comment = node([comment("several soln lookup switch") - ""]),
+        Comment = node([
+            llds_instr(comment("several soln lookup switch"), "")
+        ]),
         generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
             StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
             LLDSTypes, NeedBitVecCheck, Liveness, RestCode, !CI)
@@ -496,8 +498,9 @@ generate_simple_terms(IndexRval, OutVars, OutTypes, CaseVals, Start, BaseReg,
         BaseRval = binop(int_mul, IndexRval, const(llconst_int(NumOutVars)))
     ),
     Code = node([
-        assign(BaseReg, mem_addr(heap_ref(VectorAddrRval, 0, BaseRval)))
-            - "Compute base address for this case"
+        llds_instr(
+            assign(BaseReg, mem_addr(heap_ref(VectorAddrRval, 0, BaseRval))),
+            "Compute base address for this case")
     ]),
     generate_offset_assigns(OutVars, 0, BaseReg, !CI).
 
@@ -590,8 +593,10 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     % IndexRval has already had Start subtracted from it.
     BaseRval = binop(int_mul, IndexRval, const(llconst_int(MainRowWidth))),
     BaseRegInitCode = node([
-        assign(BaseReg, mem_addr(heap_ref(MainVectorAddrRval, 0, BaseRval)))
-            - "Compute base address for this case"
+        llds_instr(
+            assign(BaseReg,
+                mem_addr(heap_ref(MainVectorAddrRval, 0, BaseRval))),
+            "Compute base address for this case")
     ]),
 
     list.sort([FailCaseCount - kind_zero_solns,
@@ -608,7 +613,7 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
 
     code_info.set_resume_point_to_unknown(!CI),
     EndLabelCode = node([
-        label(EndLabel) - "end of several_soln lookup switch"
+        llds_instr(label(EndLabel), "end of several_soln lookup switch")
     ]),
     Code = tree_list([BaseRegInitCode, KindsCode, EndLabelCode]).
 
@@ -649,7 +654,8 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
             BranchEndCode, !CI),
         code_info.release_reg(BaseReg, !CI),
         GotoEndCode = node([
-            goto(code_label(EndLabel)) - "goto end of switch from one_soln"
+            llds_instr(goto(code_label(EndLabel)),
+                "goto end of switch from one_soln")
         ]),
         KindCode = tree_list([BranchEndCode, GotoEndCode])
     ;
@@ -663,12 +669,12 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
 
         code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
         SaveSlotsCode = node([
-            assign(CurSlot,
-                lval(field(yes(0), lval(BaseReg), const(llconst_int(0)))))
-                - "Setup current slot in the later solution array",
-            assign(MaxSlot,
-                lval(field(yes(0), lval(BaseReg), const(llconst_int(1)))))
-                - "Setup maximum slot in the later solution array"
+            llds_instr(assign(CurSlot,
+                lval(field(yes(0), lval(BaseReg), const(llconst_int(0))))),
+                "Setup current slot in the later solution array"),
+            llds_instr(assign(MaxSlot,
+                lval(field(yes(0), lval(BaseReg), const(llconst_int(1))))),
+                "Setup maximum slot in the later solution array")
         ]),
         code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode,
             MaybeTicketSlot, !CI),
@@ -702,7 +708,8 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         code_info.release_reg(BaseReg, !CI),
 
         GotoEndCode = node([
-            goto(code_label(EndLabel)) - "goto end of switch from several_soln"
+            llds_instr(goto(code_label(EndLabel)),
+                "goto end of switch from several_soln")
         ]),
 
         code_info.reset_to_position(DisjEntry, !CI),
@@ -717,26 +724,27 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         code_info.get_next_label(AfterUndoLabel, !CI),
         list.length(OutVars, NumOutVars),
         TestMoreSolnsCode = node([
-            assign(LaterBaseReg, lval(CurSlot))
-                - "Init later base register",
-            if_val(binop(int_ge, lval(LaterBaseReg), lval(MaxSlot)),
-                code_label(UndoLabel))
-                - "Jump to undo hijack code if there are no more solutions",
-            assign(CurSlot,
-                binop(int_add, lval(CurSlot), const(llconst_int(NumOutVars))))
-                - "Update current slot in the later solution array",
-            goto(code_label(AfterUndoLabel))
-                - "Jump around undo hijack code",
-            label(UndoLabel)
-                - "Undo hijack code"
+            llds_instr(assign(LaterBaseReg, lval(CurSlot)),
+                "Init later base register"),
+            llds_instr(if_val(binop(int_ge, lval(LaterBaseReg), lval(MaxSlot)),
+                code_label(UndoLabel)),
+                "Jump to undo hijack code if there are no more solutions"),
+            llds_instr(assign(CurSlot,
+                binop(int_add, lval(CurSlot), const(llconst_int(NumOutVars)))),
+                "Update current slot in the later solution array"),
+            llds_instr(goto(code_label(AfterUndoLabel)),
+                "Jump around undo hijack code"),
+            llds_instr(label(UndoLabel),
+                "Undo hijack code")
         ]),
         code_info.undo_disj_hijack(HijackInfo, UndoHijackCode, !CI),
         AfterUndoLabelCode = node([
-            label(AfterUndoLabel)
-                - "Return later answer code",
-            assign(LaterBaseReg,
-                mem_addr(heap_ref(LaterVectorAddrRval, 0, lval(LaterBaseReg))))
-                - "Compute base address in later array for this solution"
+            llds_instr(label(AfterUndoLabel),
+                "Return later answer code"),
+            llds_instr(assign(LaterBaseReg,
+                mem_addr(heap_ref(LaterVectorAddrRval, 0,
+                    lval(LaterBaseReg)))),
+                "Compute base address in later array for this solution")
         ]),
 
         % We need to call effect_resume_point in order to push ResumePoint
@@ -777,20 +785,21 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
             lval(field(yes(0), lval(BaseReg), const(llconst_int(0)))),
             const(llconst_int(0))),
         TestCode = node([
-            if_val(TestRval, code_label(NextKindLabel))
-                - "skip to next kind in several_soln lookup switch",
-            comment("This kind is " ++ case_kind_to_string(Kind))
-                - ""
+            llds_instr(if_val(TestRval, code_label(NextKindLabel)),
+                "skip to next kind in several_soln lookup switch"),
+            llds_instr(comment("This kind is " ++ case_kind_to_string(Kind)),
+                "")
         ]),
         generate_code_for_each_kind(Kinds, BaseReg, CurSlot, MaxSlot,
             LaterVectorAddrRval, EndLabel, BranchStart, ResumeVars,
             AddTrailOps, OutVars, StoreMap, MaybeEnd0, Liveness,
             LaterKindsCode, !CI),
         NextKindLabelCode = node([
-            label(NextKindLabel)
-                - "next kind in several_soln lookup switch",
-            comment("Next kind is " ++ case_kind_to_string(NextKind))
-                - ""
+            llds_instr(label(NextKindLabel),
+                "next kind in several_soln lookup switch"),
+            llds_instr(comment("Next kind is "
+                ++ case_kind_to_string(NextKind)),
+                "")
         ]),
         Code = tree_list([TestCode, KindCode, NextKindLabelCode,
             LaterKindsCode])

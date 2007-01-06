@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -107,10 +107,10 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     goal_info_get_context(GoalInfo, Context),
     goal_info_get_goal_path(GoalInfo, GoalPath),
     CallCode = node([
-        livevals(LiveVals) - "",
-        llcall(Address, code_label(ReturnLabel), ReturnLiveLvalues, Context,
-            GoalPath, CallModel) - CallComment,
-        label(ReturnLabel) - "continuation label"
+        llds_instr(livevals(LiveVals), ""),
+        llds_instr(llcall(Address, code_label(ReturnLabel), ReturnLiveLvalues,
+            Context, GoalPath, CallModel), CallComment),
+        llds_instr(label(ReturnLabel), "continuation label")
     ]),
 
     % Figure out what variables will be live at the return point, and where,
@@ -220,10 +220,10 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
         ReturnInstMap, ReturnLiveLvalues, !CI),
 
     CallCode = node([
-        livevals(LiveVals) - "",
-        llcall(CodeAddr, code_label(ReturnLabel), ReturnLiveLvalues,
-            Context, GoalPath, CallModel) - "Setup and call",
-        label(ReturnLabel) - "Continuation label"
+        llds_instr(livevals(LiveVals), ""),
+        llds_instr(llcall(CodeAddr, code_label(ReturnLabel), ReturnLiveLvalues,
+            Context, GoalPath, CallModel), "Setup and call"),
+        llds_instr(label(ReturnLabel), "Continuation label")
     ]),
 
     % If the call can fail, generate code to check for and handle the failure.
@@ -379,8 +379,8 @@ generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
         code_info.clobber_regs([reg(reg_r, 2)], !CI),
         list.length(InVars, NInVars),
         Code = node([
-            assign(reg(reg_r, 2), const(llconst_int(NInVars))) -
-                "Assign number of immediate input arguments"
+            llds_instr(assign(reg(reg_r, 2), const(llconst_int(NInVars))),
+                "Assign number of immediate input arguments")
         ])
     ).
 generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
@@ -389,18 +389,18 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
         HoCallVariant = ho_call_known_num,
         code_info.clobber_regs([reg(reg_r, 2)], !CI),
         Code = node([
-            assign(reg(reg_r, 2), const(llconst_int(Method))) -
-                "Index of class method in typeclass info"
+            llds_instr(assign(reg(reg_r, 2), const(llconst_int(Method))),
+                "Index of class method in typeclass info")
         ])
     ;
         HoCallVariant = ho_call_unknown,
         code_info.clobber_regs([reg(reg_r, 2), reg(reg_r, 3)], !CI),
         list.length(InVars, NInVars),
         Code = node([
-            assign(reg(reg_r, 2), const(llconst_int(Method))) -
-                "Index of class method in typeclass info",
-            assign(reg(reg_r, 3), const(llconst_int(NInVars))) -
-                "Assign number of immediate input arguments"
+            llds_instr(assign(reg(reg_r, 2), const(llconst_int(Method))),
+                "Index of class method in typeclass info"),
+            llds_instr(assign(reg(reg_r, 3), const(llconst_int(NInVars))),
+                "Assign number of immediate input arguments")
         ])
     ).
 generic_call_nonvar_setup(event_call(_), _, _, _, _, !CI) :-
@@ -440,12 +440,12 @@ handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
         ;
             code_info.get_next_label(ContLab, !CI),
             FailTestCode = node([
-                if_val(lval(reg(reg_r, 1)), code_label(ContLab))
-                    - "test for success"
+                llds_instr(if_val(lval(reg(reg_r, 1)), code_label(ContLab)),
+                    "test for success")
             ]),
             code_info.generate_failure(FailCode, !CI),
             ContLabelCode = node([
-                label(ContLab) - ""
+                llds_instr(label(ContLab), "")
             ]),
             FailHandlingCode = tree_list([FailTestCode,
                 FailCode, ContLabelCode])
@@ -592,7 +592,8 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
             SimpleCode = ref_assign(AddrVar, ValueVar),
             produce_variable(AddrVar, AddrVarCode, AddrRval, !CI),
             produce_variable(ValueVar, ValueVarCode, ValueRval, !CI),
-            StoreCode = node([assign(mem_ref(AddrRval), ValueRval) - ""]),
+            StoreInstr = llds_instr(assign(mem_ref(AddrRval), ValueRval), ""),
+            StoreCode = node([StoreInstr]),
             Code = tree_list([AddrVarCode, ValueVarCode, StoreCode])
         ;
             SimpleCode = test(_),
@@ -705,7 +706,7 @@ generate_call_vn_livevals(InputArgLocs, OutputArgs, Code, !CI) :-
     code_info.generate_call_vn_livevals(!.CI, InputArgLocs, OutputArgs,
         LiveVals),
     Code = node([
-        livevals(LiveVals) - ""
+        llds_instr(livevals(LiveVals), "")
     ]).
 
 %---------------------------------------------------------------------------%

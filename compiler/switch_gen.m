@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: switch_gen.m.
 % Authors: conway, fjh, zs.
-% 
+%
 % This module handles the generation of code for switches, which are
 % disjunctions that do not require backtracking.  Switches are detected
 % in switch_detection.m.  This is the module that determines what
@@ -39,7 +39,7 @@
 %
 % For all other cases (or if the --smart-indexing option was disabled),
 % we just generate a chain of if-then-elses.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.switch_gen.
@@ -277,7 +277,7 @@ generate_cases([], _Var, _CodeModel, CanFail, _GoalInfo, EndLabel, !MaybeEnd,
         CanFail = cannot_fail,
         FailCode = empty
     ),
-    EndCode = node([label(EndLabel) - "end of switch"]),
+    EndCode = node([llds_instr(label(EndLabel), "end of switch")]),
     Code = tree(FailCode, EndCode).
 
 generate_cases([extended_case(_, _, Cons, Goal) | Cases], Var, CodeModel,
@@ -296,8 +296,9 @@ generate_cases([extended_case(_, _, Cons, Goal) | Cases], Var, CodeModel,
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ElseCode = node([
-            goto(code_label(EndLabel)) - "skip to the end of the switch",
-            label(NextLabel) - "next case"
+            llds_instr(goto(code_label(EndLabel)),
+                "skip to the end of the switch"),
+            llds_instr(label(NextLabel), "next case")
         ]),
         ThisCaseCode = tree_list([TestCode, TraceCode, GoalCode, SaveCode,
              ElseCode])

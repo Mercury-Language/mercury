@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: use_local_vars.m
 % Author: zs.
-% 
+%
 % This module implements an LLDS->LLDS transformation that optimizes the
 % sequence of instructions in a procedure body by replacing references to
 % relatively expensive locations: fake registers (Mercury abstract machine
@@ -58,7 +58,7 @@
 %
 % If we cannot find out what registers are live at each label, we still look
 % for the second and third patterns.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.use_local_vars.
@@ -116,9 +116,9 @@ use_local_vars_proc(Instrs0, Instrs, NumRealRRegs, AccessThreshold,
         MaybeLiveMap = yes(LiveMap),
         AutoComments = yes
     ->
-        NewComment = comment("\n" ++
-            dump_livemap(yes(ProcLabel), LiveMap)) - "",
-        Comments = Comments0 ++ [NewComment]
+        NewComment = "\n" ++ dump_livemap(yes(ProcLabel), LiveMap),
+        NewCommentInstr = llds_instr(comment(NewComment), ""),
+        Comments = Comments0 ++ [NewCommentInstr]
     ;
         Comments = Comments0
     ),
@@ -169,7 +169,7 @@ use_local_vars_instrs(!RestInstrs, !TempCounter,
 opt_assign([], [], !TempCounter, _, _, _).
 opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
         MaybeLiveMap, MaybeFallThrough) :-
-    Instr0 = Uinstr0 - _Comment0,
+    Instr0 = llds_instr(Uinstr0, _Comment0),
     (
         ( Uinstr0 = assign(ToLval, _FromRval)
         ; Uinstr0 = incr_hp(ToLval, _MaybeTag, _SizeRval, _MO, _Type, _Atomic)
@@ -200,7 +200,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             NumSubst > 1
         ->
             substitute_lval_in_defn(ToLval, NewLval, Instr0, Instr),
-            CopyInstr = assign(ToLval, lval(NewLval)) - "",
+            CopyInstr = llds_instr(assign(ToLval, lval(NewLval)), ""),
             opt_assign(TailInstrs1, TailInstrs, !TempCounter, NumRealRRegs,
                 MaybeLiveMap, MaybeFallThrough),
             Instrs = [Instr, CopyInstr | TailInstrs]
@@ -242,7 +242,7 @@ find_compulsory_lvals([], MaybeLiveMap, MaybeFallThrough, _PrevLivevals,
     ).
 find_compulsory_lvals([Instr | Instrs], MaybeLiveMap, MaybeFallThrough,
         PrevLivevals, !:MaybeCompulsoryLvals) :-
-    Instr = Uinstr - _,
+    Instr = llds_instr(Uinstr, _),
     (
         Uinstr = livevals(LiveLvals)
     ->
@@ -314,7 +314,7 @@ union_maybe_compulsory_lvals(New, !MaybeCompulsoryLvals) :-
 opt_access([], [], !TempCounter, _, _, _).
 opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
         AlreadyTried0, AccessThreshold) :-
-    Instr0 = Uinstr0 - _Comment0,
+    Instr0 = llds_instr(Uinstr0, _Comment0),
     (
         Uinstr0 = assign(ToLval, FromRval),
         lvals_in_lval(ToLval, ToSubLvals),
@@ -335,8 +335,8 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             [Instr0 | TailInstrs0], Instrs1, 0, NumReplacements),
         set.insert(AlreadyTried0, ChosenLval, AlreadyTried1),
         ( NumReplacements >= AccessThreshold ->
-            TempAssign = assign(TempLval, lval(ChosenLval))
-                - "factor out common sub lval",
+            TempAssign = llds_instr(assign(TempLval, lval(ChosenLval)),
+                "factor out common sub lval"),
             Instrs2 = [TempAssign | Instrs1],
             opt_access(Instrs2, Instrs, !TempCounter, NumRealRRegs,
                 AlreadyTried1, AccessThreshold)
@@ -400,7 +400,7 @@ base_lval_worth_replacing_not_tried(AlreadyTried, NumRealRRegs, Lval) :-
     instruction::in, instruction::out) is det.
 
 substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
-    Instr0 = Uinstr0 - Comment,
+    Instr0 = llds_instr(Uinstr0, Comment),
     ( Uinstr0 = assign(ToLval, FromRval) ->
         expect(unify(ToLval, OldLval),
             this_file, "substitute_lval_in_defn: mismatch in assign"),
@@ -413,7 +413,7 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
         unexpected(this_file,
             "substitute_lval_in_defn: unexpected instruction")
     ),
-    Instr = Uinstr - Comment.
+    Instr = llds_instr(Uinstr, Comment).
 
     % Substitute NewLval for OldLval in an instruction sequence
     % until we come an instruction that may define OldLval.
@@ -455,7 +455,7 @@ substitute_lval_in_instr_until_defn(OldLval, NewLval,
     list(instruction)::in, list(instruction)::out, int::in, int::out) is det.
 
 substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
-    !.Instr = Uinstr0 - _,
+    !.Instr = llds_instr(Uinstr0, _),
     (
         Uinstr0 = comment(_),
         substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)

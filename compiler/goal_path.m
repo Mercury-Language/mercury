@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 University of Melbourne.
+% Copyright (C) 1997-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: goal_path.m.
 % Main author: zs.
-% 
+%
 % This module looks after goal paths, which associate each goal with its
 % position in a procedure definition,
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -109,7 +109,8 @@ fill_goal_path_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal) :-
 :- pred fill_goal_slots(goal_path::in, slot_info::in,
     hlds_goal::in, hlds_goal::out) is det.
 
-fill_goal_slots(Path0, SlotInfo, Expr0 - Info0, Expr - Info) :-
+fill_goal_slots(Path0, SlotInfo,
+        hlds_goal(Expr0, Info0), hlds_goal(Expr, Info)) :-
     OmitModeEquivPrefix = SlotInfo ^ omit_mode_equiv_prefix,
     (
         OmitModeEquivPrefix = yes,
@@ -160,7 +161,7 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         Goal = negation(SubGoal)
     ;
         Goal0 = scope(Reason, SubGoal0),
-        SubGoal0 = _ - InnerInfo,
+        SubGoal0 = hlds_goal(_, InnerInfo),
         goal_info_get_determinism(GoalInfo, OuterDetism),
         goal_info_get_determinism(InnerInfo, InnerDetism),
         ( InnerDetism = OuterDetism ->

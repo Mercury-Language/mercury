@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -471,7 +471,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
         Msgs2 = [simple_msg(Context, [always(Pieces)])]
     ;
         Culprit = goals_followed_by_impure_goal(ImpureGoal),
-        ImpureGoal = _ - ImpureGoalInfo,
+        ImpureGoal = hlds_goal(_, ImpureGoalInfo),
         goal_info_get_context(ImpureGoalInfo, ImpureGoalContext),
         Pieces1 = [words("The goal could not be reordered,"),
             words("because it was followed by an impure goal.")],

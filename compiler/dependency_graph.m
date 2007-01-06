@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -350,7 +350,7 @@ pred_proc_id_get_pred_id(proc(PredId, _)) = PredId.
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
-add_dependency_arcs_in_goal(GoalExpr - _GoalInfo, Caller, !DepGraph) :-
+add_dependency_arcs_in_goal(hlds_goal(GoalExpr, _), Caller, !DepGraph) :-
     (
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)

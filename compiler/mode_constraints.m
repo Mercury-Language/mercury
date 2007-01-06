@@ -1,19 +1,19 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mode_constraints.m.
 % Main author: dmo.
-% 
+%
 % This module implements the top level of the algorithm described in the
 % paper "Constraint-based mode analysis of Mercury" by David Overton,
 % Zoltan Somogyi and Peter Stuckey. That paper is the main documentation
 % of the concepts behind the algorithm as well as the algorithm itself.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_constraints.
@@ -405,7 +405,8 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
     number_robdd_info::in, number_robdd_info::out) is det.
 
 number_robdd_variables_in_goal(InstGraph, ParentNonLocals, Occurring,
-        GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo, !RInfo) :-
+        hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
+        !RInfo) :-
     goal_info_get_nonlocals(GoalInfo0, NonLocals),
     goal_info_get_goal_path(GoalInfo0, GoalPath),
     number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals,
@@ -1104,8 +1105,8 @@ input_output_constraints(HeadVars, InstGraph, V, Node, !Constraint, !MCI) :-
     hlds_goal::out, mode_constraint::in, mode_constraint::out,
     goal_constraints_info::in, goal_constraints_info::out) is det.
 
-goal_constraints(ParentNonLocals, CanSucceed, GoalExpr0 - GoalInfo0,
-        GoalExpr - GoalInfo, !Constraint, !GCInfo) :-
+goal_constraints(ParentNonLocals, CanSucceed, hlds_goal(GoalExpr0, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo), !Constraint, !GCInfo) :-
     ( goal_is_atomic(GoalExpr0) ->
         add_atomic_goal(GoalPath, !GCInfo)
     ;
@@ -2067,12 +2068,12 @@ arg_modes_map_2(MV - RV, Constraint0, Constraint, ArgModes0, ArgModes) :-
 
 :- func goal_path(hlds_goal) = goal_path.
 
-goal_path(_ - GoalInfo) = GoalPath :-
+goal_path(hlds_goal(_, GoalInfo)) = GoalPath :-
     goal_info_get_goal_path(GoalInfo, GoalPath).
 
 :- func vars(hlds_goal) = set(prog_var).
 
-vars(_ - GoalInfo) = OccurringVars :-
+vars(hlds_goal(_, GoalInfo)) = OccurringVars :-
     goal_info_get_occurring_vars(GoalInfo, OccurringVars).
 
 %------------------------------------------------------------------------%

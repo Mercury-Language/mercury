@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: live_vars.m.
 % Main authors: conway, zs.
-% 
+%
 % This module finds out what variables need to be saved across calls,
 % across goals that may fail, and in parallel conjunctions. It then does those
 % things with that information. First, it attaches that information to the
@@ -16,7 +16,7 @@
 % the relevant type class method of the allocator-specific data structure
 % it is passed; the basic stack slot allocator and the optimizing stack slot
 % allocator pass different instances of this type class.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.live_vars.
@@ -96,10 +96,10 @@
 % traversal of the goal. The liveness information is computed from the liveness
 % delta annotations.
 
-build_live_sets_in_goal_no_par_stack(Goal0 - GoalInfo0, Goal - GoalInfo,
+build_live_sets_in_goal_no_par_stack(Goal0, Goal,
         ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
     ParStackVars0 = parallel_stackvars(set.init, [], set.init),
-    build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
+    build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness,
         ParStackVars0, _ParStackVars).
 
@@ -110,8 +110,9 @@ build_live_sets_in_goal_no_par_stack(Goal0 - GoalInfo0, Goal - GoalInfo,
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
-build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
+build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     goal_info_get_pre_deaths(GoalInfo0, PreDeaths),
     goal_info_get_pre_births(GoalInfo0, PreBirths),
     goal_info_get_post_deaths(GoalInfo0, PostDeaths),
@@ -124,7 +125,7 @@ build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
     % If the goal is atomic, we want to apply the postdeaths before processing
     % the goal, but if the goal is a compound goal, then we want to apply them
     % after processing it.
-    ( goal_is_atomic(Goal0) ->
+    ( goal_is_atomic(GoalExpr0) ->
         set.difference(!.Liveness, PostDeaths, !:Liveness)
     ;
         true
@@ -149,16 +150,18 @@ build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
         record_resume_site(NeedInResume, GoalInfo0, GoalInfo1, !StackAlloc)
     ),
 
-    build_live_sets_in_goal_2(Goal0, Goal, GoalInfo1, GoalInfo, ResumeVars1,
-        AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
+    build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo1, GoalInfo,
+        ResumeVars1, AllocData, !StackAlloc, !Liveness, !NondetLiveness,
+        !ParStackVars),
 
-    ( goal_is_atomic(Goal0) ->
+    ( goal_is_atomic(GoalExpr0) ->
         true
     ;
         set.difference(!.Liveness, PostDeaths, !:Liveness)
     ),
 
-    set.union(!.Liveness, PostBirths, !:Liveness).
+    set.union(!.Liveness, PostBirths, !:Liveness),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred resume_locs_include_stack(resume_locs::in, bool::out) is det.
 
@@ -241,7 +244,7 @@ build_live_sets_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, GoalInfo,
         !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
     (
         Goals = [First | _],
-        First = _ - FirstGoalInfo,
+        First = hlds_goal(_, FirstGoalInfo),
         goal_info_get_resume_point(FirstGoalInfo, ResumePoint),
         (
             ResumePoint = resume_point(ResumeVars, _Locs),
@@ -259,7 +262,7 @@ build_live_sets_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, GoalInfo,
                 goal_info_get_code_model(GoalInfo, model_non),
                 some [Disjunct] (
                     list.member(Disjunct, Goals),
-                    Disjunct = _ - DisjunctGoalInfo,
+                    Disjunct = hlds_goal(_, DisjunctGoalInfo),
                     goal_info_get_resume_point(DisjunctGoalInfo,
                         DisjunctResumePoint),
                     DisjunctResumePoint = resume_point(_, Locs),
@@ -477,7 +480,7 @@ build_live_sets_in_conj([], [], _, _, !StackAlloc, !Liveness, !NondetLiveness,
 build_live_sets_in_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
     (
-        Goal0 = _ - GoalInfo,
+        Goal0 = hlds_goal(_, GoalInfo),
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
         instmap_delta_is_unreachable(InstMapDelta)
     ->
@@ -530,7 +533,7 @@ build_live_sets_in_disj([], [], _, _, _,
 build_live_sets_in_disj([Goal0 | Goals0], [Goal | Goals],
         DisjGoalInfo, ResumeVars0, AllocData, !StackAlloc,
         Liveness0, Liveness, NondetLiveness0, NondetLiveness, !ParStackVars) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
         !StackAlloc, Liveness0, Liveness,
         NondetLiveness0, NondetLiveness1, !ParStackVars),

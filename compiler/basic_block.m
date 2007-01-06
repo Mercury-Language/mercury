@@ -127,7 +127,7 @@ create_basic_blocks(Instrs0, Comments, ProcLabel, !C, NewLabels, LabelSeq,
 build_block_map([], [], _, _, !BlockMap, !NewLabels, !C).
 build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         !BlockMap, !NewLabels, !C) :-
-    ( OrigInstr0 = label(OrigLabel) - _ ->
+    ( OrigInstr0 = llds_instr(label(OrigLabel), _) ->
         Label = OrigLabel,
         LabelInstr = OrigInstr0,
         RestInstrs = OrigInstrs0
@@ -135,7 +135,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         counter.allocate(N, !C),
         Label = internal_label(N, ProcLabel),
         svset.insert(Label, !NewLabels),
-        LabelInstr = label(Label) - "",
+        LabelInstr = llds_instr(label(Label), ""),
         RestInstrs = [OrigInstr0 | OrigInstrs0]
     ),
     (
@@ -143,7 +143,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         build_block_map(Instrs1, LabelSeq1, ProcLabel, NextFallInto, !BlockMap,
             !NewLabels, !C),
         ( list.last(BlockInstrs, LastInstr) ->
-            LastInstr = LastUinstr - _,
+            LastInstr = llds_instr(LastUinstr, _),
             opt_util.possible_targets(LastUinstr, SideLabels, _SideCodeAddrs),
             opt_util.can_instr_fall_through(LastUinstr) = NextFallInto
         ;
@@ -170,7 +170,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
 
 take_until_end_of_block([], [], []).
 take_until_end_of_block([Instr0 | Instrs0], BlockInstrs, Rest) :-
-    Instr0 = Uinstr0 - _Comment,
+    Instr0 = llds_instr(Uinstr0, _Comment),
     ( Uinstr0 = label(_) ->
         BlockInstrs = [],
         Rest = [Instr0 | Instrs0]

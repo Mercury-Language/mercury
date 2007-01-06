@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: untupling.m.
 % Author: wangp.
-% 
+%
 % This module takes the HLDS and transforms the locally-defined procedures as
 % follows: if the formal parameter of a procedure has a type consisting of a
 % single function symbol then that parameter is expanded into multiple
@@ -263,11 +263,12 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
     type_table::in, untuple_map::out) is det.
 
 expand_args_in_proc_2(HeadVars0, ArgModes0, HeadVars, ArgModes,
-        Goal0, Goal - GoalInfo, !VarSet, !VarTypes, TypeTable, UntupleMap) :-
+        Goal0, hlds_goal(GoalExpr, GoalInfo), !VarSet, !VarTypes, TypeTable,
+        UntupleMap) :-
     expand_args_in_proc_3(HeadVars0, ArgModes0, ListOfHeadVars,
-        ListOfArgModes, Goal0, Goal - GoalInfo1, !VarSet,
+        ListOfArgModes, Goal0, hlds_goal(GoalExpr, GoalInfo1), !VarSet,
         !VarTypes, [], TypeTable),
-    goal_info_get_context(snd(Goal0), Context),
+    goal_info_get_context(Goal0 ^ hlds_goal_info, Context),
     goal_info_set_context(Context, GoalInfo1, GoalInfo),
     list.condense(ListOfHeadVars, HeadVars),
     list.condense(ListOfArgModes, ArgModes),
@@ -370,7 +371,7 @@ conjoin_goals_keep_detism(GoalA, GoalB, Goal) :-
     goal_list_determinism(GoalList, Determinism),
     goal_info_init(GoalInfo0),
     goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
-    Goal = conj(plain_conj, GoalList) - GoalInfo.
+    Goal = hlds_goal(conj(plain_conj, GoalList), GoalInfo).
 
 :- pred build_untuple_map(list(prog_var)::in, list(list(prog_var))::in,
     untuple_map::in, untuple_map::out) is det.
@@ -411,7 +412,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     module_info_get_name(!.ModuleInfo, ModuleName),
 
     proc_info_get_headvars(ProcInfo, AuxHeadVars),
-    proc_info_get_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
+    proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InitialAuxInstMap),
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -501,89 +502,90 @@ fix_calls_in_proc(TransformMap, PredId, ProcId, !ModuleInfo) :-
     prog_varset::out, vartypes::in, vartypes::out, transform_map::in,
     module_info::in) is det.
 
-fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _, _) :-
-    Goal = call_foreign_proc(_, _, _, _, _, _, _).
-
-fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _, _) :-
-    Goal = generic_call(_, _, _, _).
-
-fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes,
-        TransformMap, ModuleInfo) :-
-    Goal0 = plain_call(CalleePredId, CalleeProcId, OrigArgs, _, _, _),
+fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
-        map.search(TransformMap, proc(CalleePredId, CalleeProcId),
-            transformed_proc(_, CallAux0 - CallAuxInfo))
-    ->
-        module_info_get_type_table(ModuleInfo, TypeTable),
-        module_info_pred_proc_info(ModuleInfo, CalleePredId,
-            CalleeProcId, _CalleePredInfo, CalleeProcInfo),
-        proc_info_get_argmodes(CalleeProcInfo, OrigArgModes),
-        expand_call_args(OrigArgs, OrigArgModes, Args,
-            EnterUnifs, ExitUnifs, !VarSet, !VarTypes, TypeTable),
-        ( CallAux = CallAux0 ^ call_args := Args ->
-            Call = CallAux - CallAuxInfo,
-            ConjList = EnterUnifs ++ [Call] ++ ExitUnifs,
-            conj_list_to_goal(ConjList, GoalInfo0, Goal)
+        ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ),
+        Goal = Goal0
+    ;
+        GoalExpr0 = plain_call(CalleePredId, CalleeProcId, OrigArgs, _, _, _),
+        (
+            map.search(TransformMap, proc(CalleePredId, CalleeProcId),
+                transformed_proc(_, hlds_goal(CallAux0, CallAuxInfo)))
+        ->
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            module_info_pred_proc_info(ModuleInfo, CalleePredId,
+                CalleeProcId, _CalleePredInfo, CalleeProcInfo),
+            proc_info_get_argmodes(CalleeProcInfo, OrigArgModes),
+            expand_call_args(OrigArgs, OrigArgModes, Args,
+                EnterUnifs, ExitUnifs, !VarSet, !VarTypes, TypeTable),
+            ( CallAux = CallAux0 ^ call_args := Args ->
+                Call = hlds_goal(CallAux, CallAuxInfo),
+                ConjList = EnterUnifs ++ [Call] ++ ExitUnifs,
+                conj_list_to_goal(ConjList, GoalInfo0, Goal)
+            ;
+                unexpected(this_file, "fix_calls_in_goal: not a call template")
+            )
         ;
-            unexpected(this_file, "fix_calls_in_goal: not a call template")
+            Goal = hlds_goal(GoalExpr0, GoalInfo0)
         )
     ;
-        Goal = Goal0 - GoalInfo0
-    ).
-
-fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _, _) :-
-    Goal = unify(_, _, _, _, _).
-
-fix_calls_in_goal(negation(Goal0) - GoalInfo, negation(Goal) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo).
-
-fix_calls_in_goal(scope(Reason, Goal0) - GoalInfo,
-        scope(Reason, Goal) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo).
-
-fix_calls_in_goal(conj(ConjType, Goals0) - GoalInfo,
-        conj(ConjType, Goals) - GoalInfo, !VarSet, !VarTypes,
-        TransformMap, ModuleInfo) :-
-    (
-        ConjType = plain_conj,
-        fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, TransformMap,
-            ModuleInfo)
+        GoalExpr0 = negation(SubGoal0),
+        fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes, TransformMap,
+            ModuleInfo),
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        ConjType = parallel_conj,
-        % I am not sure whether parallel conjunctions should be treated
-        % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
-        % this is untested.
+        GoalExpr0 = scope(Reason, SubGoal0),
+        fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes, TransformMap,
+            ModuleInfo),
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, TransformMap,
+                ModuleInfo)
+        ;
+            ConjType = parallel_conj,
+            % I am not sure whether parallel conjunctions should be treated
+            % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
+            % this is untested.
+            fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
+                TransformMap, ModuleInfo)
+        ),
+        GoalExpr = conj(ConjType, Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = disj(Goals0),
         fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
-            TransformMap, ModuleInfo)
+            TransformMap, ModuleInfo),
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes, TransformMap,
+            ModuleInfo),
+        GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        fix_calls_in_goal(Cond0, Cond, !VarSet, !VarTypes, TransformMap,
+            ModuleInfo),
+        fix_calls_in_goal(Then0, Then, !VarSet, !VarTypes, TransformMap,
+            ModuleInfo),
+        fix_calls_in_goal(Else0, Else, !VarSet, !VarTypes, TransformMap,
+            ModuleInfo),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, "fix_calls_in_goal: unexpected shorthand")
     ).
-
-fix_calls_in_goal(disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
-    fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
-        TransformMap, ModuleInfo).
-
-fix_calls_in_goal(switch(Var, CanFail, Cases0) - GoalInfo,
-        switch(Var, CanFail, Cases) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
-    fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo).
-
-fix_calls_in_goal(if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo,
-        if_then_else(Vars, Cond, Then, Else) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
-    fix_calls_in_goal(Cond0, Cond, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo),
-    fix_calls_in_goal(Then0, Then, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo),
-    fix_calls_in_goal(Else0, Else, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo).
-
-fix_calls_in_goal(shorthand(_) - _, _, !_, !_, _, _) :-
-    unexpected(this_file, "fix_calls_in_goal: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -598,9 +600,9 @@ fix_calls_in_conj([Goal0 | Goals0], Goals, !VarSet, !VarTypes, TransformMap,
         ModuleInfo),
     fix_calls_in_conj(Goals0, Goals1, !VarSet, !VarTypes, TransformMap,
         ModuleInfo),
-    (if Goal1 = conj(plain_conj, ConjGoals) - _ then
+    ( Goal1 = hlds_goal(conj(plain_conj, ConjGoals), _) ->
         Goals = ConjGoals ++ Goals1
-    else
+    ;
         Goals = [Goal1 | Goals1]
     ).
 

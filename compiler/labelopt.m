@@ -68,7 +68,7 @@ labelopt_main(Final, LayoutLabelSet, Instrs0, Instrs, Mod) :-
 
 build_useset([], !Useset).
 build_useset([Instr | Instructions], !Useset) :-
-    Instr = Uinstr - _Comment,
+    Instr = llds_instr(Uinstr, _Comment),
     opt_util.instr_labels(Uinstr, Labels, _CodeAddresses),
     svset.insert_list(Labels, !Useset),
     build_useset(Instructions, !Useset).
@@ -102,7 +102,7 @@ opt_labels_in_instr_list(Instrs0, Instrs, Useset, Mod) :-
 opt_labels_in_instr_list_2([], !RevInstrs, !Mod, _Fallthrough, _Useset).
 opt_labels_in_instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod,
         !.Fallthrough, Useset) :-
-    Instr0 = Uinstr0 - _Comment,
+    Instr0 = llds_instr(Uinstr0, _Comment),
     ( Uinstr0 = label(Label) ->
         (
             (
@@ -147,7 +147,7 @@ opt_labels_in_instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod,
     list(instruction)::in, list(instruction)::out,
     bool::in, bool::out) is det.
 
-eliminate_instr(Uinstr0 - Comment0, Label, !RevInstrs, !Mod) :-
+eliminate_instr(llds_instr(Uinstr0, Comment0), Label, !RevInstrs, !Mod) :-
     labelopt_eliminate_total(Total),
     (
         Total = yes,
@@ -173,7 +173,7 @@ eliminate_instr(Uinstr0 - Comment0, Label, !RevInstrs, !Mod) :-
             ),
             !:Mod = yes
         ),
-        !:RevInstrs = [Uinstr - Comment0 | !.RevInstrs]
+        !:RevInstrs = [llds_instr(Uinstr, Comment0) | !.RevInstrs]
     ).
 
 :- pred labelopt_eliminate_total(bool::out) is det.

@@ -1,11 +1,11 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et tw=0 wm=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: loop_inv.m.
 % Main author: rafe,
 %
@@ -320,31 +320,36 @@ invariant_goal_candidates(PredProcId, Body, CandidateInvGoals, RecCallGoals) :-
         ) = invariant_goal_candidates_acc.
 
 invariant_goal_candidates_2(PPId,
-        Call @ plain_call(PredId, ProcId, _, _, _, _) - GoalInfo,  IGCs) =
+        hlds_goal(Call @ plain_call(PredId, ProcId, _, _, _, _), GoalInfo),
+        IGCs) =
     ( if   proc(PredId, ProcId) = PPId
-      then add_recursive_call(Call - GoalInfo, IGCs)
-      else invariant_goal_candidates_handle_non_recursive_call(Call - GoalInfo,
-                IGCs)
+      then add_recursive_call(hlds_goal(Call, GoalInfo), IGCs)
+      else invariant_goal_candidates_handle_non_recursive_call(
+                hlds_goal(Call, GoalInfo), IGCs)
     ).
 
 invariant_goal_candidates_2(_PPId,
-        Call @ generic_call(_, _, _, _)             - GoalInfo,  IGCs) =
-    invariant_goal_candidates_handle_non_recursive_call(Call - GoalInfo,
+        hlds_goal(Call @ generic_call(_, _, _, _), GoalInfo),  IGCs) =
+    invariant_goal_candidates_handle_non_recursive_call(
+        hlds_goal(Call, GoalInfo),
         IGCs).
 
 invariant_goal_candidates_2(_PPId,
-        Unification @ unify(_, _, _, _, _)          - GoalInfo,  IGCs) =
-    invariant_goal_candidates_handle_non_recursive_call(Unification - GoalInfo,
+        hlds_goal(Unification @ unify(_, _, _, _, _), GoalInfo), IGCs) =
+    invariant_goal_candidates_handle_non_recursive_call(
+        hlds_goal(Unification, GoalInfo),
         IGCs).
 
 invariant_goal_candidates_2(_PPId,
-        ForeignProc @ call_foreign_proc(_, _, _, _, _, _, _) - GoalInfo,
+        hlds_goal(ForeignProc @ call_foreign_proc(_, _, _, _, _, _, _),
+            GoalInfo),
         IGCs) =
-    invariant_goal_candidates_handle_non_recursive_call(ForeignProc - GoalInfo,
+    invariant_goal_candidates_handle_non_recursive_call(
+        hlds_goal(ForeignProc, GoalInfo),
         IGCs).
 
 invariant_goal_candidates_2(PPId,
-        conj(ConjType, Conjuncts)                - _GoalInfo, IGCs0)
+        hlds_goal(conj(ConjType, Conjuncts), _GoalInfo), IGCs0)
         = IGCs :-
     (
         ConjType = plain_conj,
@@ -357,29 +362,29 @@ invariant_goal_candidates_2(PPId,
     ).
 
 invariant_goal_candidates_2(PPId,
-        disj(Disjuncts)                              - _GoalInfo, IGCs) =
+        hlds_goal(disj(Disjuncts), _GoalInfo), IGCs) =
     list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
                 Disjuncts,
                 IGCs).
 
 invariant_goal_candidates_2(PPId,
-        switch(_, _, Cases)                          - _GoalInfo, IGCs) =
+        hlds_goal(switch(_, _, Cases), _GoalInfo), IGCs) =
     list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
                 case_goals(Cases),
                 IGCs).
 
 invariant_goal_candidates_2(PPId,
-        negation(NegatedGoal)                        - _GoalInfo, IGCs) =
+        hlds_goal(negation(NegatedGoal), _GoalInfo), IGCs) =
     invariant_goal_candidates_keeping_path_candidates(PPId, NegatedGoal, IGCs).
 
 invariant_goal_candidates_2(PPId,
-        scope(_, QuantifiedGoal)                     - _GoalInfo, IGCs) =
+        hlds_goal(scope(_, QuantifiedGoal), _GoalInfo), IGCs) =
     invariant_goal_candidates_2(PPId, QuantifiedGoal, IGCs).
 
 invariant_goal_candidates_2(PPId,
-        if_then_else(_XVs, Cond, Then, Else)         - GoalInfo,  IGCs0)
+        hlds_goal(if_then_else(_XVs, Cond, Then, Else), GoalInfo),  IGCs0)
         = IGCs :-
-    CondThenGoal = conj(plain_conj, [Cond, Then]) - GoalInfo,
+    CondThenGoal = hlds_goal(conj(plain_conj, [Cond, Then]), GoalInfo),
     IGCs1        = invariant_goal_candidates_keeping_path_candidates(PPId,
                         CondThenGoal, IGCs0),
     ElseGoal     = Else,
@@ -387,7 +392,7 @@ invariant_goal_candidates_2(PPId,
                         ElseGoal,     IGCs1).
 
 invariant_goal_candidates_2(_PPId,
-        shorthand(_)                                 - _GoalInfo, _IGCs) = _ :-
+        hlds_goal(shorthand(_), _GoalInfo), _IGCs) = _ :-
     unexpected(this_file,
         "invariant_goal_candidates_2/3: shorthand/1 in hlds_goal").
 
@@ -432,7 +437,7 @@ add_recursive_call(Goal, IGCs) =
         ) = invariant_goal_candidates_acc.
 
 invariant_goal_candidates_handle_non_recursive_call(
-        Goal @ (_GoalExpr - GoalInfo), IGCs) =
+        Goal @ hlds_goal(_GoalExpr, GoalInfo), IGCs) =
     ( if   not model_non(GoalInfo),
            goal_info_get_purity(GoalInfo, purity_pure)
       then IGCs ^ path_candidates := [Goal | IGCs ^ path_candidates]
@@ -474,7 +479,7 @@ common_goal(Goalss, Goal) :-
 
 :- pred equivalent_goals(hlds_goal::in, hlds_goal::in) is semidet.
 
-equivalent_goals(GoalExprX - _GoalInfoX, GoalExprY - _GoalInfoY) :-
+equivalent_goals(hlds_goal(GoalExprX, _), hlds_goal(GoalExprY, _)) :-
     (
         GoalExprX = GoalExprY
     ;
@@ -514,7 +519,7 @@ arg_to_maybe_inv_arg(ModuleInfo, Arg, Mode) =
 :- func refine_candidate_inv_args(hlds_goal, list(maybe(prog_var))) =
     list(maybe(prog_var)).
 
-refine_candidate_inv_args(RecCall - _RecCallInfo, MaybeInvArgs) =
+refine_candidate_inv_args(hlds_goal(RecCall, _RecCallInfo), MaybeInvArgs) =
     ( if   RecCall = plain_call(_, _, CallArgs, _, _, _)
       then list.map_corresponding(refine_candidate_inv_args_2,
                                    MaybeInvArgs,
@@ -580,7 +585,7 @@ inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
 
 :- pred has_uniquely_used_arg(prog_vars::in, hlds_goal::in) is semidet.
 
-has_uniquely_used_arg(UUVs, _GoalExpr - GoalInfo) :-
+has_uniquely_used_arg(UUVs, hlds_goal(_GoalExpr, GoalInfo)) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     list.member(UUV, UUVs),
     set.member(UUV, NonLocals).
@@ -641,7 +646,7 @@ dont_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
     %
 :- pred const_construction(hlds_goal::in) is semidet.
 
-const_construction(GoalExpr - _GoalInfo) :-
+const_construction(hlds_goal(GoalExpr, _GoalInfo)) :-
     Construction = GoalExpr ^ unify_kind,
     (   Construction ^ construct_args = []
     ;   Construction ^ construct_how  = construct_statically(_)
@@ -651,7 +656,7 @@ const_construction(GoalExpr - _GoalInfo) :-
 
 :- pred deconstruction(hlds_goal::in) is semidet.
 
-deconstruction(GoalExpr - _GoalInfo) :-
+deconstruction(hlds_goal(GoalExpr, _GoalInfo)) :-
     GoalExpr ^ unify_kind = deconstruct(_, _, _, _, _, _).
 
 %-----------------------------------------------------------------------------%
@@ -665,7 +670,7 @@ impure_goal(Goal) :-
 
 :- pred cannot_succeed(hlds_goal::in) is semidet.
 
-cannot_succeed(_GoalExpr - GoalInfo) :-
+cannot_succeed(hlds_goal(_GoalExpr, GoalInfo)) :-
     goal_info_get_determinism(GoalInfo, Detism),
     determinism_components(Detism, _CanFail, MaxSolns),
     MaxSolns = at_most_zero.
@@ -676,9 +681,9 @@ cannot_succeed(_GoalExpr - GoalInfo) :-
     % (generic) call is inst any.
     %
 :- pred call_has_inst_any(module_info::in, hlds_goal::in) is semidet.
-      
+
 call_has_inst_any(ModuleInfo, Goal) :-
-    Goal = GoalExpr - _GoalInfo,
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = generic_call(_, _, Modes, _)
     ;
@@ -740,7 +745,7 @@ add_output(UniquelyUsedVars, X, InvVars) =
 
 compute_initial_aux_instmap(Gs, IM) = list.foldl(ApplyGoalInstMap, Gs, IM) :-
     ApplyGoalInstMap =
-        ( func(_GoalExpr - GoalInfo, IM0) = IM1 :-
+        ( func(hlds_goal(_GoalExpr, GoalInfo), IM0) = IM1 :-
             goal_info_get_instmap_delta(GoalInfo, IMD),
             apply_instmap_delta(IM0, IMD, IM1)
         ).
@@ -754,15 +759,15 @@ compute_initial_aux_instmap(Gs, IM) = list.foldl(ApplyGoalInstMap, Gs, IM) :-
 create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         InitialAuxInstMap, AuxPredProcId, CallAux,
         AuxPredInfo, AuxProcInfo, ModuleInfo0, ModuleInfo) :-
-
     PredProcId = proc(PredId, ProcId),
 
     AuxHeadVars = HeadVars ++ ComputedInvArgs,
 
     module_info_get_name(ModuleInfo0, ModuleName),
-    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+        PredInfo, ProcInfo),
 
-    proc_info_get_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
+    proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     pred_info_get_class_context(PredInfo, ClassContext),
@@ -786,8 +791,6 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         AuxPredSymName = qualified(_ModuleSpecifier, AuxPredName)
     ),
 
-        % Put in oven at gas mark 11 and bake.
-        %
     Origin = origin_transformed(transform_loop_invariant(ProcNo),
         OrigOrigin, PredId),
     hlds_pred.define_new_pred(
@@ -814,10 +817,10 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         AuxPredProcId   % out   - The pred_proc_id for the new aux proc.
     ),
 
-        % Note on CallAux:
-        % - we change the call args as necessary in gen_aux_call;
-        % - we handle the changes to nonlocals by requantifying
-        %   over the entire goal after we've transformed it.
+    % Note on CallAux:
+    % - we change the call args as necessary in gen_aux_call;
+    % - we handle the changes to nonlocals by requantifying
+    %   over the entire goal after we've transformed it.
 
     AuxPredProcId = proc(AuxPredId, AuxProcId),
     module_info_pred_proc_info(ModuleInfo, AuxPredId, AuxProcId, AuxPredInfo,
@@ -863,45 +866,54 @@ gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
 
 :- func gen_aux_proc_2(gen_aux_proc_info, hlds_goal) = hlds_goal.
 
-gen_aux_proc_2(Info, Call @ plain_call(PredId, ProcId, _,_,_,_) - GoalInfo) =
+gen_aux_proc_2(Info,
+        hlds_goal(Call @ plain_call(PredId, ProcId, _,_,_,_), GoalInfo)) =
     ( if   proc(PredId, ProcId) = Info ^ pred_proc_id
-      then gen_aux_call(Info ^ call_aux_goal, Call - GoalInfo)
-      else gen_aux_proc_handle_non_recursive_call(Info, Call - GoalInfo)
+      then gen_aux_call(Info ^ call_aux_goal, hlds_goal(Call, GoalInfo))
+      else gen_aux_proc_handle_non_recursive_call(Info,
+        hlds_goal(Call, GoalInfo))
     ).
 
-gen_aux_proc_2(Info, Call @ generic_call(_, _, _, _) - GoalInfo) =
-    gen_aux_proc_handle_non_recursive_call(Info, Call - GoalInfo).
+gen_aux_proc_2(Info, hlds_goal(Call @ generic_call(_, _, _, _), GoalInfo)) =
+    gen_aux_proc_handle_non_recursive_call(Info, hlds_goal(Call, GoalInfo)).
 
-gen_aux_proc_2(Info, Unification @ unify(_, _, _, _, _) - GoalInfo) =
-    gen_aux_proc_handle_non_recursive_call(Info, Unification - GoalInfo).
+gen_aux_proc_2(Info, hlds_goal(Unification @ unify(_, _, _, _, _), GoalInfo)) =
+    gen_aux_proc_handle_non_recursive_call(Info,
+        hlds_goal(Unification, GoalInfo)).
 
-gen_aux_proc_2(Info, ForeignProc @ call_foreign_proc(_, _, _, _, _, _, _) -
-        GoalInfo) =
-    gen_aux_proc_handle_non_recursive_call(Info, ForeignProc - GoalInfo).
+gen_aux_proc_2(Info,
+        hlds_goal(ForeignProc @ call_foreign_proc(_, _, _, _, _, _, _),
+            GoalInfo)) =
+    gen_aux_proc_handle_non_recursive_call(Info,
+        hlds_goal(ForeignProc, GoalInfo)).
 
-gen_aux_proc_2(Info, conj(ConjType, Conjuncts) - GoalInfo) =
-    conj(ConjType, gen_aux_proc_list(Info, Conjuncts)) - GoalInfo.
+gen_aux_proc_2(Info, hlds_goal(conj(ConjType, Conjuncts), GoalInfo)) =
+    hlds_goal(conj(ConjType, gen_aux_proc_list(Info, Conjuncts)), GoalInfo).
 
-gen_aux_proc_2(Info, disj(Disjuncts) - GoalInfo) =
-    disj(gen_aux_proc_list(Info, Disjuncts)) - GoalInfo.
+gen_aux_proc_2(Info, hlds_goal(disj(Disjuncts), GoalInfo)) =
+    hlds_goal(disj(gen_aux_proc_list(Info, Disjuncts)), GoalInfo).
 
-gen_aux_proc_2(Info, switch(Var, CanFail, Cases) - GoalInfo) =
-    switch(Var, CanFail, gen_aux_proc_switch(Info, Cases)) - GoalInfo.
+gen_aux_proc_2(Info, hlds_goal(switch(Var, CanFail, Cases), GoalInfo)) =
+    hlds_goal(switch(Var, CanFail, gen_aux_proc_switch(Info, Cases)),
+        GoalInfo).
 
-gen_aux_proc_2(Info, negation(NegatedGoal) - GoalInfo) =
-    negation(gen_aux_proc_2(Info, NegatedGoal)) - GoalInfo.
+gen_aux_proc_2(Info, hlds_goal(negation(NegatedGoal), GoalInfo)) =
+    hlds_goal(negation(gen_aux_proc_2(Info, NegatedGoal)), GoalInfo).
 
-gen_aux_proc_2(Info, scope(Reason, QuantifiedGoal) - GoalInfo) =
-    scope(Reason, gen_aux_proc_2(Info, QuantifiedGoal)) - GoalInfo.
+gen_aux_proc_2(Info, hlds_goal(scope(Reason, QuantifiedGoal), GoalInfo)) =
+    hlds_goal(scope(Reason, gen_aux_proc_2(Info, QuantifiedGoal)), GoalInfo).
 
-gen_aux_proc_2(Info, if_then_else(XVars, Cond, Then, Else) - GoalInfo) =
-    if_then_else(XVars,
-                 gen_aux_proc_2(Info, Cond),
-                 gen_aux_proc_2(Info, Then),
-                 gen_aux_proc_2(Info, Else)
-    ) - GoalInfo.
+gen_aux_proc_2(Info,
+        hlds_goal(if_then_else(XVars, Cond, Then, Else), GoalInfo)) =
+    hlds_goal(
+        if_then_else(XVars,
+             gen_aux_proc_2(Info, Cond),
+             gen_aux_proc_2(Info, Then),
+             gen_aux_proc_2(Info, Else)
+        ),
+        GoalInfo).
 
-gen_aux_proc_2(_Info, shorthand(_) - _GoalInfo) = _ :-
+gen_aux_proc_2(_Info, hlds_goal(shorthand(_), _GoalInfo)) = _ :-
     unexpected(this_file, "gen_aux_proc_2/2: shorthand/1 in hlds_goal").
 
 %-----------------------------------------------------------------------------%
@@ -969,85 +981,91 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
 %-----------------------------------------------------------------------------%
 
     % gen_out_proc_2(PredProcId, CallAux, Goal0) = Goal:
-    %   Goal is Goal0 with calls to PredProcId replaced with CallAux.
+    %
+    % Goal is Goal0 with calls to PredProcId replaced with CallAux.
     %
 :- func gen_out_proc_2(pred_proc_id, hlds_goal, hlds_goal) = hlds_goal.
 
 gen_out_proc_2(PPId, CallAux,
-        Call @ plain_call(PredId, ProcId, _, _, _, _)  - GoalInfo) =
+        hlds_goal(Call @ plain_call(PredId, ProcId, _, _, _, _), GoalInfo)) =
     ( if   proc(PredId, ProcId) = PPId
-      then gen_aux_call(CallAux, Call - GoalInfo)
-      else Call - GoalInfo
+      then gen_aux_call(CallAux, hlds_goal(Call, GoalInfo))
+      else hlds_goal(Call, GoalInfo)
     ).
 
 gen_out_proc_2(_PPId, _CallAux,
-        Call @ generic_call(_, _, _, _)              - GoalInfo) =
-    Call - GoalInfo.
+        hlds_goal(Call @ generic_call(_, _, _, _), GoalInfo)) =
+    hlds_goal(Call, GoalInfo).
 
 gen_out_proc_2(_PPId, _CallAux,
-        Unification @ unify(_, _, _, _, _)           - GoalInfo) =
-    Unification - GoalInfo.
+        hlds_goal(Unification @ unify(_, _, _, _, _), GoalInfo)) =
+    hlds_goal(Unification, GoalInfo).
 
 gen_out_proc_2(_PPId, _CallAux,
-        ForeignProc @ call_foreign_proc(_, _, _, _, _, _, _) - GoalInfo) =
-    ForeignProc - GoalInfo.
+        hlds_goal(ForeignProc @ call_foreign_proc(_, _, _, _, _, _, _),
+            GoalInfo)) =
+    hlds_goal(ForeignProc, GoalInfo).
 
 gen_out_proc_2(PPId, CallAux,
-        conj(ConjType, Conjuncts)                     - GoalInfo) =
-    conj(ConjType, list.map(gen_out_proc_2(PPId, CallAux), Conjuncts))
-        - GoalInfo.
+        hlds_goal(conj(ConjType, Conjuncts), GoalInfo)) =
+    hlds_goal(
+        conj(ConjType, list.map(gen_out_proc_2(PPId, CallAux), Conjuncts)),
+        GoalInfo).
 
 gen_out_proc_2(PPId, CallAux,
-        disj(Disjuncts)                                - GoalInfo) =
-    disj(list.map(gen_out_proc_2(PPId, CallAux), Disjuncts)) - GoalInfo.
+        hlds_goal(disj(Disjuncts), GoalInfo)) =
+    hlds_goal(
+        disj(list.map(gen_out_proc_2(PPId, CallAux), Disjuncts)),
+        GoalInfo).
 
 gen_out_proc_2(PPId, CallAux,
-        switch(Var, CanFail, Cases)                    - GoalInfo) =
-    switch(Var, CanFail, list.map(GOPCase, Cases)) - GoalInfo
+        hlds_goal(switch(Var, CanFail, Cases), GoalInfo)) =
+    hlds_goal(switch(Var, CanFail, list.map(GOPCase, Cases)), GoalInfo)
  :-
     GOPCase =
         ( func(case(ConsId, Goal)) =
                 case(ConsId, gen_out_proc_2(PPId, CallAux, Goal)) ).
 
 gen_out_proc_2(PPId, CallAux,
-        negation(NegatedGoal)                          - GoalInfo) =
-    negation(gen_out_proc_2(PPId, CallAux, NegatedGoal)) - GoalInfo.
+        hlds_goal(negation(NegatedGoal), GoalInfo)) =
+    hlds_goal(negation(gen_out_proc_2(PPId, CallAux, NegatedGoal)), GoalInfo).
 
 gen_out_proc_2(PPId, CallAux,
-        scope(Reason, QuantifiedGoal)         - GoalInfo) =
-    scope(Reason, gen_out_proc_2(PPId, CallAux, QuantifiedGoal)) - GoalInfo.
+        hlds_goal(scope(Reason, QuantifiedGoal), GoalInfo)) =
+    hlds_goal(
+        scope(Reason, gen_out_proc_2(PPId, CallAux, QuantifiedGoal)),
+        GoalInfo).
 
 gen_out_proc_2(PPId, CallAux,
-        if_then_else(XVars, Cond, Then, Else)          - GoalInfo) =
-    if_then_else(
-        XVars,
-        gen_out_proc_2(PPId, CallAux, Cond),
-        gen_out_proc_2(PPId, CallAux, Then),
-        gen_out_proc_2(PPId, CallAux, Else)
-    ) - GoalInfo.
+        hlds_goal(if_then_else(XVars, Cond, Then, Else), GoalInfo)) =
+    hlds_goal(
+        if_then_else( XVars,
+            gen_out_proc_2(PPId, CallAux, Cond),
+            gen_out_proc_2(PPId, CallAux, Then),
+            gen_out_proc_2(PPId, CallAux, Else)),
+        GoalInfo).
 
-gen_out_proc_2(_PPId, _CallAux,
-        shorthand(_)                                   - _GoalInfo) = _ :-
+gen_out_proc_2(_PPId, _CallAux, hlds_goal(shorthand(_), _GoalInfo)) = _ :-
     unexpected(this_file, "gen_out_proc_2/3: shorthand/1 in hlds_goal").
 
 %-----------------------------------------------------------------------------%
 
 :- func gen_aux_call(hlds_goal, hlds_goal) = hlds_goal.
 
-gen_aux_call(CallAux0 - _CallAuxInfo0, Call - CallInfo) =
+gen_aux_call(hlds_goal(CallAux0, _CallAuxInfo0), hlds_goal(Call, CallInfo)) =
     ( if
         AuxArgs0      = CallAux0   ^ call_args,
         Args0         = Call       ^ call_args,
         Args          = replace_initial_args(Args0, AuxArgs0),
         CallAux       = ( CallAux0 ^ call_args := Args )
-            %
-            % Note that one might expect instmap_delta to change, however the
-            % invariant arguments are just that - invariant - hence their
-            % insts are not changed by the recursive call and there is no need
-            % to adjust the instmap_delta.  All other fields are correct for
-            % CallInfo.
+
+        % Note that one might expect instmap_delta to change, however the
+        % invariant arguments are just that -invariant- hence their insts
+        % are not changed by the recursive call and there is no need
+        % to adjust the instmap_delta.  All other fields are correct for
+        % CallInfo.
       then
-        CallAux - CallInfo
+        hlds_goal(CallAux, CallInfo)
       else
         unexpected(this_file, "gen_aux_call/2: args not both ordinary calls")
     ).
@@ -1083,15 +1101,20 @@ uniquely_used_vars(ModuleInfo, Goal) =
 
 :- func uniquely_used_vars_2(module_info, hlds_goal) = prog_vars.
 
-uniquely_used_vars_2(MI, plain_call(PredId, ProcId, Args, _, _, _) - _) =
+uniquely_used_vars_2(ModuleInfo, Goal) =
+    uniquely_used_vars_3(ModuleInfo, Goal ^ hlds_goal_expr).
+
+:- func uniquely_used_vars_3(module_info, hlds_goal_expr) = prog_vars.
+
+uniquely_used_vars_3(MI, plain_call(PredId, ProcId, Args, _, _, _)) =
     list.filter_map_corresponding(uniquely_used_args(MI), Args,
         argmodes(MI, PredId, ProcId)).
 
-uniquely_used_vars_2(MI, generic_call(_, Args, Modes, _) - _) =
+uniquely_used_vars_3(MI, generic_call(_, Args, Modes, _)) =
     list.filter_map_corresponding(uniquely_used_args(MI), Args, Modes).
 
-uniquely_used_vars_2(MI,
-        call_foreign_proc(_, PredId, ProcId, Args, Extras, _, _) - _) =
+uniquely_used_vars_3(MI,
+        call_foreign_proc(_, PredId, ProcId, Args, Extras, _, _)) =
     %
     % XXX `Extras' should be empty for pure calls.  We cannot apply LIO to
     % non-pure goals so we shouldn't need to consider `Extras'.  However, we
@@ -1106,30 +1129,30 @@ uniquely_used_vars_2(MI,
 
     % XXX This is very conservative!
     %
-uniquely_used_vars_2(_MI, unify(_LHS, _RHS, _UMode, _UKind, _) - _) = [].
+uniquely_used_vars_3(_MI, unify(_LHS, _RHS, _UMode, _UKind, _)) = [].
 
-uniquely_used_vars_2(MI, conj(_, Conjuncts) - _) =
+uniquely_used_vars_3(MI, conj(_, Conjuncts)) =
     list.condense(list.map(uniquely_used_vars_2(MI), Conjuncts)).
 
-uniquely_used_vars_2(MI, disj(Disjuncts) - _) =
+uniquely_used_vars_3(MI, disj(Disjuncts)) =
     list.condense(list.map(uniquely_used_vars_2(MI), Disjuncts)).
 
-uniquely_used_vars_2(MI, switch(_, _, Cases) - _) =
+uniquely_used_vars_3(MI, switch(_, _, Cases)) =
     list.condense(list.map(uniquely_used_vars_2(MI), case_goals(Cases))).
 
-uniquely_used_vars_2(MI, negation(NegatedGoal) - _) =
+uniquely_used_vars_3(MI, negation(NegatedGoal)) =
     uniquely_used_vars_2(MI, NegatedGoal).
 
-uniquely_used_vars_2(MI, scope(_, QuantifiedGoal) - _) =
+uniquely_used_vars_3(MI, scope(_, QuantifiedGoal)) =
     uniquely_used_vars_2(MI, QuantifiedGoal).
 
-uniquely_used_vars_2(MI, if_then_else(_, Cond, Then, Else) - _) =
+uniquely_used_vars_3(MI, if_then_else(_, Cond, Then, Else)) =
     uniquely_used_vars_2(MI, Cond) ++
         uniquely_used_vars_2(MI, Then) ++
             uniquely_used_vars_2(MI, Else).
 
-uniquely_used_vars_2(_MI, shorthand(_) - _) = _ :-
-    unexpected(this_file, "uniquely_used_vars_2/3: shorthand/1 in hlds_goal").
+uniquely_used_vars_3(_MI, shorthand(_)) = _ :-
+    unexpected(this_file, "uniquely_used_vars_3/2: shorthand/1 in hlds_goal").
 
 %-----------------------------------------------------------------------------%
 
@@ -1155,18 +1178,23 @@ argmodes(ModuleInfo, PredId, ProcId) = ArgModes :-
     %
 :- func goal_inputs(module_info, hlds_goal) = prog_vars.
 
-goal_inputs(MI, plain_call(PredId, ProcId, Args, _, _, _) - _) =
+goal_inputs(ModuleInfo, Goal) =
+    goal_expr_inputs(ModuleInfo, Goal ^ hlds_goal_expr).
+
+:- func goal_expr_inputs(module_info, hlds_goal_expr) = prog_vars.
+
+goal_expr_inputs(MI, plain_call(PredId, ProcId, Args, _, _, _)) =
     list.filter_map_corresponding(input_arg(MI), Args,
         argmodes(MI, PredId, ProcId)).
 
-goal_inputs(MI, generic_call(_, Args, ArgModes, _) - _) =
+goal_expr_inputs(MI, generic_call(_, Args, ArgModes, _)) =
     list.filter_map_corresponding(input_arg(MI), Args, ArgModes).
 
-goal_inputs(MI, call_foreign_proc(_, PredId, ProcId, Args, _, _, _) - _) =
+goal_expr_inputs(MI, call_foreign_proc(_, PredId, ProcId, Args, _, _, _)) =
     list.filter_map_corresponding(input_arg(MI),
         list.map(foreign_arg_var, Args), argmodes(MI, PredId, ProcId)).
 
-goal_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _) - _) = Inputs :-
+goal_expr_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _)) = Inputs :-
     (
             % The LHS is always an output var in constructions.
             %
@@ -1197,26 +1225,26 @@ goal_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _) - _) = Inputs :-
         Inputs = ( if UnifyRHS = rhs_var(RHS) then [LHS, RHS] else [LHS] )
     ).
 
-goal_inputs(_MI, conj(_, _) - _) = _ :-
-    unexpected(this_file, "goal_inputs/2: conj/2 in hlds_goal").
+goal_expr_inputs(_MI, conj(_, _)) = _ :-
+    unexpected(this_file, "goal_expr_inputs/2: conj/2 in hlds_goal").
 
-goal_inputs(_MI, switch(_, _, _) - _) = _ :-
-    unexpected(this_file, "goal_inputs/2: switch/3 in hlds_goal").
+goal_expr_inputs(_MI, switch(_, _, _)) = _ :-
+    unexpected(this_file, "goal_expr_inputs/2: switch/3 in hlds_goal").
 
-goal_inputs(_MI, disj(_) - _) = _ :-
-    unexpected(this_file, "goal_inputs/2: disj/1 in hlds_goal").
+goal_expr_inputs(_MI, disj(_)) = _ :-
+    unexpected(this_file, "goal_expr_inputs/2: disj/1 in hlds_goal").
 
-goal_inputs(_MI, negation(_) - _) = _ :-
-    unexpected(this_file, "goal_inputs/2: negation/1 in hlds_goal").
+goal_expr_inputs(_MI, negation(_)) = _ :-
+    unexpected(this_file, "goal_expr_inputs/2: negation/1 in hlds_goal").
 
-goal_inputs(_MI, scope(_, _) - _) = _ :-
-    unexpected(this_file, "goal_inputs/2: some/3 in hlds_goal").
+goal_expr_inputs(_MI, scope(_, _)) = _ :-
+    unexpected(this_file, "goal_expr_inputs/2: some/3 in hlds_goal").
 
-goal_inputs(_MI, if_then_else(_, _, _, _) - _) = _ :-
-    unexpected(this_file, "goal_inputs/2: if_then_else/4 in hlds_goal").
+goal_expr_inputs(_MI, if_then_else(_, _, _, _)) = _ :-
+    unexpected(this_file, "goal_expr_inputs/2: if_then_else/4 in hlds_goal").
 
-goal_inputs(_MI, shorthand(_) - _) = _ :-
-    unexpected(this_file, "goal_inputs/2: shorthand/1 in hlds_goal").
+goal_expr_inputs(_MI, shorthand(_)) = _ :-
+    unexpected(this_file, "goal_expr_inputs/2: shorthand/1 in hlds_goal").
 
 %-----------------------------------------------------------------------------%
 
@@ -1235,18 +1263,23 @@ input_arg(MI, X, M) = X :-
     %
 :- func goal_outputs(module_info, hlds_goal) = prog_vars.
 
-goal_outputs(MI, plain_call(PredId, ProcId, Args, _, _, _) - _) =
+goal_outputs(ModuleInfo, Goal) =
+    goal_expr_outputs(ModuleInfo, Goal ^ hlds_goal_expr).
+
+:- func goal_expr_outputs(module_info, hlds_goal_expr) = prog_vars.
+
+goal_expr_outputs(MI, plain_call(PredId, ProcId, Args, _, _, _)) =
     list.filter_map_corresponding(output_arg(MI), Args,
         argmodes(MI, PredId, ProcId)).
 
-goal_outputs(MI, generic_call(_, Args, ArgModes, _) - _) =
+goal_expr_outputs(MI, generic_call(_, Args, ArgModes, _)) =
     list.filter_map_corresponding(output_arg(MI), Args, ArgModes).
 
-goal_outputs(MI, call_foreign_proc(_, PredId, ProcId, Args, _, _, _) - _) =
+goal_expr_outputs(MI, call_foreign_proc(_, PredId, ProcId, Args, _, _, _)) =
     list.filter_map_corresponding(output_arg(MI),
         list.map(foreign_arg_var, Args), argmodes(MI, PredId, ProcId)).
 
-goal_outputs(MI, unify(LHS, _RHS, _, Kind, _) - _) = Outputs :-
+goal_expr_outputs(MI, unify(LHS, _RHS, _, Kind, _)) = Outputs :-
     (
             % The LHS is the only output in a construction.
             %
@@ -1275,26 +1308,26 @@ goal_outputs(MI, unify(LHS, _RHS, _, Kind, _) - _) = Outputs :-
         Outputs = []
     ).
 
-goal_outputs(_MI, conj(_, _) - _) = _ :-
-    unexpected(this_file, "goal_outputs/2: conj/2 in hlds_goal").
+goal_expr_outputs(_MI, conj(_, _)) = _ :-
+    unexpected(this_file, "goal_expr_outputs/2: conj/2 in hlds_goal").
 
-goal_outputs(_MI, switch(_, _, _) - _) = _ :-
-    unexpected(this_file, "goal_outputs/2: switch/3 in hlds_goal").
+goal_expr_outputs(_MI, switch(_, _, _)) = _ :-
+    unexpected(this_file, "goal_expr_outputs/2: switch/3 in hlds_goal").
 
-goal_outputs(_MI, disj(_) - _) = _ :-
-    unexpected(this_file, "goal_outputs/2: disj/1 in hlds_goal").
+goal_expr_outputs(_MI, disj(_)) = _ :-
+    unexpected(this_file, "goal_expr_outputs/2: disj/1 in hlds_goal").
 
-goal_outputs(_MI, negation(_) - _) = _ :-
-    unexpected(this_file, "goal_outputs/2: negation/1 in hlds_goal").
+goal_expr_outputs(_MI, negation(_)) = _ :-
+    unexpected(this_file, "goal_expr_outputs/2: negation/1 in hlds_goal").
 
-goal_outputs(_MI, scope(_, _) - _) = _ :-
-    unexpected(this_file, "goal_outputs/2: some/3 in hlds_goal").
+goal_expr_outputs(_MI, scope(_, _)) = _ :-
+    unexpected(this_file, "goal_expr_outputs/2: some/3 in hlds_goal").
 
-goal_outputs(_MI, if_then_else(_, _, _, _) - _) = _ :-
-    unexpected(this_file, "goal_outputs/2: if_then_else/4 in hlds_goal").
+goal_expr_outputs(_MI, if_then_else(_, _, _, _)) = _ :-
+    unexpected(this_file, "goal_expr_outputs/2: if_then_else/4 in hlds_goal").
 
-goal_outputs(_MI, shorthand(_) - _) = _ :-
-    unexpected(this_file, "goal_outputs/2: shorthand/1 in hlds_goal").
+goal_expr_outputs(_MI, shorthand(_)) = _ :-
+    unexpected(this_file, "goal_expr_outputs/2: shorthand/1 in hlds_goal").
 
 %-----------------------------------------------------------------------------%
 

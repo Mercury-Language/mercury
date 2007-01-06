@@ -55,7 +55,7 @@
 %---------------------------------------------------------------------------%
 
 match_and_generate(Goal, Instrs, !CI) :-
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     GoalExpr = switch(Var, cannot_fail, [Case1, Case2]),
     Case1 = case(ConsId1, Goal1),
     Case2 = case(ConsId2, Goal2),
@@ -86,15 +86,15 @@ match_and_generate(Goal, Instrs, !CI) :-
 :- pred contains_simple_recursive_call(hlds_goal::in, code_info::in)
     is semidet.
 
-contains_simple_recursive_call(Goal - _, CodeInfo) :-
-    Goal = conj(plain_conj, Goals),
+contains_simple_recursive_call(hlds_goal(GoalExpr, _), CodeInfo) :-
+    GoalExpr = conj(plain_conj, Goals),
     contains_simple_recursive_call_conj(Goals, CodeInfo).
 
 :- pred contains_simple_recursive_call_conj(list(hlds_goal)::in, code_info::in)
     is semidet.
 
 contains_simple_recursive_call_conj([Goal | Goals], CodeInfo) :-
-    Goal = GoalExpr - _,
+    Goal = hlds_goal(GoalExpr, _),
     ( contains_only_builtins_expr(GoalExpr) = yes ->
         contains_simple_recursive_call_conj(Goals, CodeInfo)
     ;
@@ -119,8 +119,8 @@ is_recursive_call(Goal, CodeInfo) :-
     %
 :- func contains_only_builtins(hlds_goal) = bool.
 
-contains_only_builtins(Goal - _GoalInfo) =
-    contains_only_builtins_expr(Goal).
+contains_only_builtins(hlds_goal(GoalExpr, _GoalInfo)) =
+    contains_only_builtins_expr(GoalExpr).
 
 :- func contains_only_builtins_expr(hlds_goal_expr) = bool.
 
@@ -259,7 +259,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 
     BaseCode = tree(BaseGoalCode, tree(BaseSaveCode, EpilogCode)),
     RecCode = tree(RecGoalCode, tree(RecSaveCode, EpilogCode)),
-    LiveValCode = [livevals(LiveArgs) - ""],
+    LiveValCode = [llds_instr(livevals(LiveArgs), "")],
 
     tree.flatten(BaseCode, BaseListList),
     list.condense(BaseListList, BaseList),
@@ -288,30 +288,44 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         MaybeIncrSp = [],
         MaybeDecrSp = [],
         InitAuxReg = [
-            assign(AuxReg, const(llconst_int(0)))
-                - "initialize counter register"],
+            llds_instr(assign(AuxReg, const(llconst_int(0))),
+                "initialize counter register")
+        ],
         IncrAuxReg = [
-            assign(AuxReg, binop(int_add, lval(AuxReg), const(llconst_int(1))))
-                - "increment loop counter"],
+            llds_instr(
+                assign(AuxReg,
+                    binop(int_add, lval(AuxReg), const(llconst_int(1)))),
+                "increment loop counter")
+        ],
         DecrAuxReg = [
-            assign(AuxReg, binop(int_sub, lval(AuxReg), const(llconst_int(1))))
-                - "decrement loop counter"],
+            llds_instr(
+                assign(AuxReg,
+                    binop(int_sub, lval(AuxReg), const(llconst_int(1)))),
+                "decrement loop counter")
+        ],
         TestAuxReg = [
-            if_val(binop(int_gt, lval(AuxReg), const(llconst_int(0))),
-                code_label(Loop2Label))
-                - "test on upward loop"]
+            llds_instr(
+                if_val(binop(int_gt, lval(AuxReg), const(llconst_int(0))),
+                    code_label(Loop2Label)),
+                "test on upward loop")
+        ]
     ;
         PushMsg = proc_gen.push_msg(ModuleInfo, PredId, ProcId),
-        MaybeIncrSp = [incr_sp(FrameSize, PushMsg, stack_incr_nonleaf) - ""],
-        MaybeDecrSp = [decr_sp(FrameSize) - ""],
-        InitAuxReg =  [assign(AuxReg, lval(sp))
-            - "initialize counter register"],
+        MaybeIncrSp = [
+            llds_instr(incr_sp(FrameSize, PushMsg, stack_incr_nonleaf), "")
+        ],
+        MaybeDecrSp = [llds_instr(decr_sp(FrameSize), "")],
+        InitAuxReg =  [
+            llds_instr(assign(AuxReg, lval(sp)),
+                "initialize counter register")
+        ],
         IncrAuxReg = [],
         DecrAuxReg = [],
         TestAuxReg = [
-            if_val(binop(int_gt, lval(sp), lval(AuxReg)),
-                code_label(Loop2Label))
-                - "test on upward loop"]
+            llds_instr(if_val(binop(int_gt, lval(sp), lval(AuxReg)),
+                code_label(Loop2Label)),
+                "test on upward loop")
+        ]
     ),
 
     % Even though the recursive call is followed by some goals in the HLDS,
@@ -323,22 +337,22 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         AfterList = [],
         list.condense([
             [
-                label(EntryLabel) - "Procedure entry point",
-                comment(SlotsComment) - ""
+                llds_instr(label(EntryLabel), "Procedure entry point"),
+                llds_instr(comment(SlotsComment), "")
             ],
             EntryTestList,
             [
-                label(Loop1Label) - "start of the down loop"
+                llds_instr(label(Loop1Label), "start of the down loop")
             ],
             BeforeList,
             Loop1Test,
             [
-                label(BaseLabel) - "start of base case"
+                llds_instr(label(BaseLabel), "start of base case")
             ],
             BaseList,
             LiveValCode,
             [
-                goto(code_succip) - "exit from base case"
+                llds_instr(goto(code_succip), "exit from base case")
             ]
         ], InstrList)
     ;
@@ -352,13 +366,13 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         BaseLabels = [],
         list.condense([
             [
-                label(EntryLabel) - "Procedure entry point",
-                comment(SlotsComment) - ""
+                llds_instr(label(EntryLabel), "Procedure entry point"),
+                llds_instr(comment(SlotsComment), "")
             ],
             EntryTestList,
             InitAuxReg,
             [
-                label(Loop1Label) - "start of the down loop"
+                llds_instr(label(Loop1Label), "start of the down loop")
             ],
             MaybeIncrSp,
             IncrAuxReg,
@@ -366,7 +380,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
             Loop1Test,
             BaseList,
             [
-                label(Loop2Label) - ""
+                llds_instr(label(Loop2Label), "")
             ],
             AfterList,
             MaybeDecrSp,
@@ -374,13 +388,13 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
             TestAuxReg,
             LiveValCode,
             [
-                goto(code_succip) - "exit from recursive case",
-                label(BaseLabel) - "start of base case"
+                llds_instr(goto(code_succip), "exit from recursive case"),
+                llds_instr(label(BaseLabel), "start of base case")
             ],
             BaseList,
             LiveValCode,
             [
-                goto(code_succip) - "exit from base case"
+                llds_instr(goto(code_succip), "exit from base case")
             ]
         ], InstrList)
     ),
@@ -395,7 +409,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 generate_downloop_test([], _, _) :-
     unexpected(this_file, "generate_downloop_test on empty list").
 generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
-    ( Instr0 = if_val(Test, _OldTarget) - _Comment ->
+    ( Instr0 = llds_instr(if_val(Test, _OldTarget), _Comment) ->
         (
             Instrs0 = []
         ;
@@ -405,8 +419,10 @@ generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
                 "if_val followed by other instructions")
         ),
         code_util.neg_rval(Test, NewTest),
-        Instrs = [if_val(NewTest, code_label(Target))
-            - "test on downward loop"]
+        Instrs = [
+            llds_instr(if_val(NewTest, code_label(Target)),
+                "test on downward loop")
+        ]
     ;
         generate_downloop_test(Instrs0, Target, Instrs1),
         Instrs = [Instr0 | Instrs1]
@@ -420,11 +436,11 @@ generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
 split_rec_code([], _, _) :-
     unexpected(this_file, "did not find call in split_rec_code").
 split_rec_code([Instr0 | Instrs1], Before, After) :-
-    ( Instr0 = llcall(_, _, _, _, _, _) - _ ->
+    ( Instr0 = llds_instr(llcall(_, _, _, _, _, _), _) ->
         (
             opt_util.skip_comments(Instrs1, Instrs2),
             Instrs2 = [Instr2 | Instrs3],
-            Instr2 = label(_) - _
+            Instr2 = llds_instr(label(_), _)
         ->
             Before = [],
             After = Instrs3
@@ -442,14 +458,14 @@ split_rec_code([Instr0 | Instrs1], Before, After) :-
     list(instruction)::out) is det.
 
 add_counter_to_livevals([], _Lval, []).
-add_counter_to_livevals([I0 | Is0], Lval, [I | Is]) :-
-    ( I0 = livevals(Lives0) - Comment ->
+add_counter_to_livevals([Instr0 | Instrs0], Lval, [Instr | Instrs]) :-
+    ( Instr0 = llds_instr(livevals(Lives0), Comment) ->
         set.insert(Lives0, Lval, Lives),
-        I = livevals(Lives) - Comment
+        Instr = llds_instr(livevals(Lives), Comment)
     ;
-        I = I0
+        Instr = Instr0
     ),
-    add_counter_to_livevals(Is0, Lval, Is).
+    add_counter_to_livevals(Instrs0, Lval, Instrs).
 
 %---------------------------------------------------------------------------%
 
@@ -477,8 +493,8 @@ find_unused_register_2([H | T], N, Reg) :-
     set(int)::in, set(int)::out) is det.
 
 find_used_registers([], !Used).
-find_used_registers([Instr - _ | Instrs], !Used) :-
-    find_used_registers_instr(Instr, !Used),
+find_used_registers([llds_instr(Uinstr, _) | Instrs], !Used) :-
+    find_used_registers_instr(Uinstr, !Used),
     find_used_registers(Instrs, !Used).
 
 :- pred find_used_registers_instr(instr::in,
@@ -663,10 +679,11 @@ find_labels(Instrs, Label2) :-
     list(label)::in, list(label)::out) is det.
 
 find_labels_2([], !Labels).
-find_labels_2([Instr - _ | Instrs], !Labels) :-
-    ( Instr = label(Label) ->
+find_labels_2([Instr | Instrs], !Labels) :-
+    Instr = llds_instr(Uinstr, _),
+    ( Uinstr = label(Label) ->
         !:Labels = [Label | !.Labels]
-    ; Instr = block(_, _, Block) ->
+    ; Uinstr = block(_, _, Block) ->
         find_labels_2(Block, !Labels)
     ;
         true

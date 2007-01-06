@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2006 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -72,15 +72,15 @@
 fill_branch_delay_slot([], []).
 fill_branch_delay_slot([Instr0 | Instrs0], Instrs) :-
     (
-        Instr0 = label(_) - _,
+        Instr0 = llds_instr(label(_), _),
         Instrs0 = [Instr1, Instr2, Instr3 | Tail0],
-        Instr1 = if_val(_, _) - _,
-        Instr2 = incr_sp(Size, _, _) - _,
-        Instr3 = assign(stackvar(Size), lval(succip)) - C2
+        Instr1 = llds_instr(if_val(_, _), _),
+        Instr2 = llds_instr(incr_sp(Size, _, _), _),
+        Instr3 = llds_instr(assign(stackvar(Size), lval(succip)), C2)
     ->
         fill_branch_delay_slot(Tail0, Tail1),
         string.append(C2, " (early save in delay slot)", NewC2),
-        EarlySave = assign(stackvar(0), lval(succip)) - NewC2,
+        EarlySave = llds_instr(assign(stackvar(0), lval(succip)), NewC2),
         Instrs = [Instr0, EarlySave, Instr1, Instr2 | Tail1]
     ;
         fill_branch_delay_slot(Instrs0, Instrs1),

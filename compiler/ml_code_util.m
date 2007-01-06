@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2036,7 +2036,8 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     ml_gen_make_type_info_var(ActualType, Context,
         TypeInfoVar, HLDS_TypeInfoGoals, !Info),
     NonLocalsList = list.map(
-        (func(_G - GI) = NL :- goal_info_get_nonlocals(GI, NL)),
+        (func(hlds_goal(_G, GI)) = NL :-
+            goal_info_get_nonlocals(GI, NL)),
         HLDS_TypeInfoGoals),
     NonLocals = set.union_list(NonLocalsList),
     instmap_delta_from_assoc_list([TypeInfoVar - ground(shared, none)],

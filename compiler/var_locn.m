@@ -1,20 +1,20 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: var_locn.m.
 % Author: zs.
-% 
+%
 % This module defines a set of predicates that operate on the abstract
 % 'var_locn_info' structure which maintains information about where variables
 % are stored, what their values are if they are not stored anywhere,
 % and which registers are reserved for purposes such as holding the arguments
 % of calls and tags that are to be switched upon.
-% 
+%
 %----------------------------------------------------------------------------%
 
 :- module ll_backend.var_locn.
@@ -879,9 +879,10 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         TotalSize = Size
     ),
     CellCode = node([
-        incr_hp(Lval, yes(Ptag), TotalOffset,
-            const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic)
-            - string.append("Allocating heap for ", VarName)
+        llds_instr(
+            incr_hp(Lval, yes(Ptag), TotalOffset,
+                const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic),
+            "Allocating heap for " ++ VarName)
     ]),
     var_locn_set_magic_var_location(Var, Lval, !VLI),
     (
@@ -923,12 +924,12 @@ assign_cell_args(ModuleInfo, [MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
                 add_additional_lval_for_var(Var, Target, !VLI),
                 get_var_name(!.VLI, Var, VarName),
                 Comment = "assigning from " ++ VarName,
-                AssignCode = node([assign(Target, Rval) - Comment])
+                AssignCode = node([llds_instr(assign(Target, Rval), Comment)])
             )
         ; Rval0 = const(_) ->
             EvalCode = empty,
             Comment = "assigning field from const",
-            AssignCode = node([assign(Target, Rval0) - Comment])
+            AssignCode = node([llds_instr(assign(Target, Rval0), Comment)])
         ;
             unexpected(this_file, "assign_cell_args: unknown rval")
         ),
@@ -1187,8 +1188,7 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
                 string.append("Placing ", VarName, Msg)
             ;
                 ForbiddenLvals = [_ | _],
-                string.int_to_string(list.length(ForbiddenLvals),
-                    LengthStr),
+                string.int_to_string(list.length(ForbiddenLvals), LengthStr),
                 string.append_list(["Placing ", VarName,
                     " (depth ", LengthStr, ")"], Msg)
             ),
@@ -1197,7 +1197,7 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
             ( is_dummy_argument_type(ModuleInfo, Type) ->
                 AssignCode = empty
             ;
-                AssignCode = node([assign(Target, Rval) - Msg])
+                AssignCode = node([llds_instr(assign(Target, Rval), Msg)])
             )
         ),
         Code = tree(FreeCode, tree(EvalCode, AssignCode))
@@ -1331,7 +1331,8 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
             Code = empty
         ;
             Code = node([
-                assign(Target, lval(Lval)) - "Freeing up the source lval"
+                llds_instr(assign(Target, lval(Lval)),
+                    "Freeing up the source lval")
             ])
         )
     ).
@@ -1459,7 +1460,7 @@ record_copy(Old, New, !VLI) :-
     % The reason why we don't need to modify the MaybeExprRval field in the
     % variable state is that the only lvals these fields can refer to are
     % of the form var(_).
-    % 
+    %
 :- pred record_copy_for_var(lval::in, lval::in, prog_var::in,
     var_state_map::in, var_state_map::out,
     loc_var_map::in, loc_var_map::out) is det.
@@ -2301,12 +2302,13 @@ nonempty_state(State) :-
 :- pred var_locn_get_varset(var_locn_info::in, prog_varset::out) is det.
 :- pred var_locn_get_vartypes(var_locn_info::in, vartypes::out) is det.
 :- pred var_locn_get_exprn_opts(var_locn_info::in, exprn_opts::out) is det.
-:- pred var_locn_get_var_state_map(var_locn_info::in, var_state_map::out) is det.
+:- pred var_locn_get_var_state_map(var_locn_info::in, var_state_map::out)
+    is det.
 :- pred var_locn_get_loc_var_map(var_locn_info::in, loc_var_map::out) is det.
 :- pred var_locn_get_acquired(var_locn_info::in, set(lval)::out) is det.
 :- pred var_locn_get_locked(var_locn_info::in, int::out) is det.
-:- pred var_locn_get_exceptions(var_locn_info::in, assoc_list(prog_var, lval)::out)
-    is det.
+:- pred var_locn_get_exceptions(var_locn_info::in,
+    assoc_list(prog_var, lval)::out) is det.
 
 :- pred var_locn_set_follow_var_map(abs_follow_vars_map::in,
     var_locn_info::in, var_locn_info::out) is det.

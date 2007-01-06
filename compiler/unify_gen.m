@@ -230,14 +230,14 @@ generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
         Reverse = no,
         string.append_list(["checking that ", VarName, " has functor ",
             ConsIdName], Comment),
-        CommentCode = node([comment(Comment) - ""]),
+        CommentCode = node([llds_instr(comment(Comment), "")]),
         Tag = cons_id_to_tag_for_var(!.CI, Var, ConsId),
         generate_tag_test_rval_2(Tag, Rval, TestRval)
     ;
         Reverse = yes(TestConsId),
         string.append_list(["checking that ", VarName, " has functor ",
             ConsIdName, " (inverted test)"], Comment),
-        CommentCode = node([comment(Comment) - ""]),
+        CommentCode = node([llds_instr(comment(Comment), "")]),
         Tag = cons_id_to_tag_for_var(!.CI, Var, TestConsId),
         generate_tag_test_rval_2(Tag, Rval, NegTestRval),
         code_util.neg_rval(NegTestRval, TestRval)
@@ -250,7 +250,9 @@ generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
         Sense = branch_on_failure,
         code_util.neg_rval(TestRval, TheRval)
     ),
-    TestCode = node([if_val(TheRval, code_label(ElseLab)) - "tag test"]),
+    TestCode = node([
+        llds_instr(if_val(TheRval, code_label(ElseLab)), "tag test")
+    ]),
     Code = tree(VarCode, tree(CommentCode, TestCode)).
 
 %---------------------------------------------------------------------------%
@@ -561,8 +563,8 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         EvalMethod = lambda_normal,
         Args = [CallPred | CallArgs],
         ProcHeadVars = [ProcPred | ProcArgs],
-        ProcInfoGoal = generic_call(higher_order(ProcPred, _, _, _),
-            ProcArgs, _, CallDeterminism) - _GoalInfo,
+        ProcInfoGoal = hlds_goal(generic_call(higher_order(ProcPred, _, _, _),
+            ProcArgs, _, CallDeterminism), _GoalInfo),
         determinism_to_code_model(CallDeterminism, CallCodeModel),
         % Check that the code models are compatible. Note that det is not
         % compatible with semidet, and semidet is not compatible with nondet,
@@ -605,42 +607,49 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             % The new closure contains a pointer to the old closure.
             NewClosureMayUseAtomic = may_not_use_atomic_alloc,
             NewClosureCode = node([
-                comment("build new closure from old closure") - "",
-                assign(NumOldArgs, lval(field(yes(0), OldClosure, Two)))
-                    - "get number of arguments",
-                incr_hp(NewClosure, no, no,
+                llds_instr(comment("build new closure from old closure"), ""),
+                llds_instr(
+                    assign(NumOldArgs, lval(field(yes(0), OldClosure, Two))),
+                    "get number of arguments"),
+                llds_instr(incr_hp(NewClosure, no, no,
                     binop(int_add, lval(NumOldArgs), NumNewArgsPlusThree_Rval),
-                    "closure", NewClosureMayUseAtomic)
-                    - "allocate new closure",
-                assign(field(yes(0), lval(NewClosure), Zero),
-                    lval(field(yes(0), OldClosure, Zero)))
-                    - "set closure layout structure",
-                assign(field(yes(0), lval(NewClosure), One),
-                    lval(field(yes(0), OldClosure, One)))
-                    - "set closure code pointer",
-                assign(field(yes(0), lval(NewClosure), Two),
-                    binop(int_add, lval(NumOldArgs), NumNewArgs_Rval))
-                    - "set new number of arguments",
-                assign(NumOldArgs, binop(int_add, lval(NumOldArgs), Three))
-                    - "set up loop limit",
-                assign(LoopCounter, Three)
-                    - "initialize loop counter",
+                    "closure", NewClosureMayUseAtomic),
+                    "allocate new closure"),
+                llds_instr(assign(field(yes(0), lval(NewClosure), Zero),
+                    lval(field(yes(0), OldClosure, Zero))),
+                    "set closure layout structure"),
+                llds_instr(assign(field(yes(0), lval(NewClosure), One),
+                    lval(field(yes(0), OldClosure, One))),
+                    "set closure code pointer"),
+                llds_instr(assign(field(yes(0), lval(NewClosure), Two),
+                    binop(int_add, lval(NumOldArgs), NumNewArgs_Rval)),
+                    "set new number of arguments"),
+                llds_instr(
+                    assign(NumOldArgs,
+                        binop(int_add, lval(NumOldArgs), Three)),
+                    "set up loop limit"),
+                llds_instr(assign(LoopCounter, Three),
+                    "initialize loop counter"),
                 % It is possible for the number of hidden arguments to be zero,
                 % in which case the body of this loop should not be executed
                 % at all. This is why we jump to the loop condition test.
-                goto(code_label(LoopTest))
-                    - ("enter the copy loop at the conceptual top"),
-                label(LoopStart) - "start of loop",
-                assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
-                    lval(field(yes(0), OldClosure, lval(LoopCounter))))
-                    - "copy old hidden argument",
-                assign(LoopCounter, binop(int_add, lval(LoopCounter), One))
-                    - "increment loop counter",
-                label(LoopTest)
-                    - ("do we have more old arguments to copy?"),
-                if_val(binop(int_lt, lval(LoopCounter), lval(NumOldArgs)),
-                    code_label(LoopStart))
-                    - "repeat the loop?"
+                llds_instr(goto(code_label(LoopTest)),
+                    "enter the copy loop at the conceptual top"),
+                llds_instr(label(LoopStart), "start of loop"),
+                llds_instr(
+                    assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
+                        lval(field(yes(0), OldClosure, lval(LoopCounter)))),
+                    "copy old hidden argument"),
+                llds_instr(
+                    assign(LoopCounter,
+                        binop(int_add, lval(LoopCounter), One)),
+                    "increment loop counter"),
+                llds_instr(label(LoopTest),
+                    "do we have more old arguments to copy?"),
+                llds_instr(
+                    if_val(binop(int_lt, lval(LoopCounter), lval(NumOldArgs)),
+                        code_label(LoopStart)),
+                    "repeat the loop?")
             ]),
             generate_extra_closure_args(CallArgs, LoopCounter, NewClosure,
                 ExtraArgsCode, !CI),
@@ -703,10 +712,11 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
     code_info.produce_variable(Var, Code0, Value, !CI),
     One = const(llconst_int(1)),
     Code1 = node([
-        assign(field(yes(0), lval(NewClosure), lval(LoopCounter)), Value)
-            - "set new argument field",
-        assign(LoopCounter, binop(int_add, lval(LoopCounter), One))
-            - "increment argument counter"
+        llds_instr(
+            assign(field(yes(0), lval(NewClosure), lval(LoopCounter)), Value),
+            "set new argument field"),
+        llds_instr(assign(LoopCounter, binop(int_add, lval(LoopCounter), One)),
+            "increment argument counter")
     ]),
     generate_extra_closure_args(Vars, LoopCounter, NewClosure, Code2, !CI),
     Code = tree_list([Code0, Code1, Code2]).
@@ -993,7 +1003,7 @@ generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
     code_info.generate_failure(FailCode, !CI),
     code_info.reset_to_position(AfterUnify, !CI),
     generate_det_deconstruction(Var, Tag, Args, Modes, DeconsCode, !CI),
-    SuccessLabelCode = node([label(SuccLab) - ""]),
+    SuccessLabelCode = node([llds_instr(label(SuccLab), "")]),
     Code = tree_list([TagTestCode, FailCode, SuccessLabelCode, DeconsCode]).
 
 %---------------------------------------------------------------------------%
@@ -1084,7 +1094,7 @@ generate_sub_assign(Left, Right, Code, !CI) :-
         % so generate immediately.
         code_info.produce_variable(Var, SourceCode, Source, !CI),
         code_info.materialize_vars_in_lval(Lval0, Lval, MaterializeCode, !CI),
-        CopyCode = node([assign(Lval, Source) - "Copy value"]),
+        CopyCode = node([llds_instr(assign(Lval, Source), "Copy value")]),
         Code = tree_list([SourceCode, MaterializeCode, CopyCode])
     ;
         Left = ref(Lvar),

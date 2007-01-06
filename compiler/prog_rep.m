@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 University of Melbourne.
+% Copyright (C) 2000-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -82,7 +82,7 @@
 
 represent_proc(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
         ModuleInfo, !StackInfo, ProcRepBytes) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_context(GoalInfo, Context),
     term.context_file(Context, FileName),
     MaxVarNum = map.foldl(max_var_num, VarNumMap, 0),
@@ -117,7 +117,8 @@ max_var_num(_, VarNum1 - _, VarNum2) = Max :-
 :- pred goal_to_byte_list(hlds_goal::in, instmap::in, prog_rep_info::in,
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
-goal_to_byte_list(GoalExpr - GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
+goal_to_byte_list(hlds_goal(GoalExpr, GoalInfo), InstMap0, Info,
+        !StackInfo, Bytes) :-
     goal_expr_to_byte_list(GoalExpr, GoalInfo, InstMap0, Info, !StackInfo, 
         Bytes).
 
@@ -142,7 +143,7 @@ goal_expr_to_byte_list(negation(Goal), _GoalInfo, InstMap0, Info, !StackInfo,
     Bytes = [goal_type_to_byte(goal_neg)] ++ GoalBytes.
 goal_expr_to_byte_list(if_then_else(_, Cond, Then, Else), _, InstMap0, Info,
         !StackInfo, Bytes) :- 
-    Cond = _ - CondGoalInfo,
+    Cond = hlds_goal(_, CondGoalInfo),
     goal_info_get_instmap_delta(CondGoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
     goal_to_byte_list(Cond, InstMap0, Info, !StackInfo, CondBytes),
@@ -211,7 +212,7 @@ goal_expr_to_byte_list(switch(_, _, Cases), _, InstMap0, Info, !StackInfo,
         length_to_byte_list(Cases) ++ CasesBytes.
 goal_expr_to_byte_list(scope(_, Goal), GoalInfo, InstMap0, Info, !StackInfo, 
         Bytes) :-
-    Goal = _ - InnerGoalInfo,
+    Goal = hlds_goal(_, InnerGoalInfo),
     goal_info_get_determinism(GoalInfo, OuterDetism),
     goal_info_get_determinism(InnerGoalInfo, InnerDetism),
     ( InnerDetism = OuterDetism ->
@@ -382,7 +383,7 @@ sym_base_name_to_string(qualified(_, String)) = String.
 conj_to_byte_list([], _, _, !StackInfo, []).
 conj_to_byte_list([Goal | Goals], InstMap0, Info, !StackInfo, Bytes) :-
     goal_to_byte_list(Goal, InstMap0, Info, !StackInfo, GoalBytes),
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
     conj_to_byte_list(Goals, InstMap1, Info, !StackInfo, GoalsBytes),

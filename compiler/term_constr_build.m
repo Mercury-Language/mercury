@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -376,7 +376,8 @@ set_intermod_status(Status, !TraversalInfo) :-
     traversal_info::in, traversal_info::out) is det.
 
 build_abstract_goal(Goal, AbstractGoal, !Info) :- 
-    build_abstract_goal_2(Goal, AbstractGoal0, !Info),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal0, !Info),
     partition_vars(Goal, Locals0, NonLocals0),
     VarMap = !.Info ^ var_map,
     Locals = prog_vars_to_size_vars(VarMap, Locals0),
@@ -384,23 +385,23 @@ build_abstract_goal(Goal, AbstractGoal, !Info) :-
     AbstractGoal = update_local_and_nonlocal_vars(AbstractGoal0,
         Locals, NonLocals).
             
-:- pred build_abstract_goal_2(hlds_goal::in, abstract_goal::out, 
-    traversal_info::in, traversal_info::out) is det.
+:- pred build_abstract_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
+    abstract_goal::out, traversal_info::in, traversal_info::out) is det.
 
-build_abstract_goal_2(conj(_, Goals) - _, AbstractGoal, !Info) :-
+build_abstract_goal_2(conj(_, Goals), _, AbstractGoal, !Info) :-
     % For the purposes of termination analysis there is no 
     % distinction between parallel conjunctions and normal ones.
     build_abstract_conj(Goals, AbstractGoal, !Info).
 
-build_abstract_goal_2(disj(Goals) - _, AbstractGoal, !Info) :-
+build_abstract_goal_2(disj(Goals), _, AbstractGoal, !Info) :-
     build_abstract_disj(non_switch(Goals), AbstractGoal, !Info).
 
-build_abstract_goal_2(Goal - _, AbstractGoal, !Info) :- 
-    Goal = switch(SwitchVar, _, Cases),
+build_abstract_goal_2(GoalExpr, _, AbstractGoal, !Info) :- 
+    GoalExpr = switch(SwitchVar, _, Cases),
     build_abstract_disj(switch(SwitchVar, Cases), AbstractGoal, !Info).
 
-build_abstract_goal_2(Goal - _, AbstractGoal, !Info) :-
-    Goal = if_then_else(_, Cond, Then, Else),
+build_abstract_goal_2(GoalExpr, _, AbstractGoal, !Info) :-
+    GoalExpr = if_then_else(_, Cond, Then, Else),
     %
     % Reduce the if-then goals to an abstract conjunction. 
     %
@@ -420,20 +421,20 @@ build_abstract_goal_2(Goal - _, AbstractGoal, !Info) :-
     AbstractDisjuncts = [AbstractSuccessGoal, AbstractFailureGoal],
     AbstractGoal = term_disj(AbstractDisjuncts, 2, [], []).
 
-build_abstract_goal_2(scope(_, Goal)-_, AbstractGoal, !Info) :- 
+build_abstract_goal_2(scope(_, Goal), _, AbstractGoal, !Info) :- 
     build_abstract_goal(Goal, AbstractGoal, !Info).
 
-build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :- 
-    Goal = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
+build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :- 
+    GoalExpr = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
     CallSizeArgs = prog_vars_to_size_vars(!.Info ^ var_map, CallArgs),
     build_abstract_call(proc(CallPredId, CallProcId), CallSizeArgs, 
         GoalInfo, AbstractGoal, !Info).
 
-build_abstract_goal_2(Goal - _, AbstractGoal, !Info) :- 
-    Goal = unify(_, _, _, Unification, _),
+build_abstract_goal_2(GoalExpr, _, AbstractGoal, !Info) :- 
+    GoalExpr = unify(_, _, _, Unification, _),
     build_abstract_unification(Unification, AbstractGoal, !Info).
 
-build_abstract_goal_2(negation(Goal) - _GoalInfo, AbstractGoal, !Info) :- 
+build_abstract_goal_2(negation(Goal), _GoalInfo, AbstractGoal, !Info) :- 
     %
     % Event though a negated goal cannot have any output we still
     % need to check it for calls to non-terminating procedures.
@@ -450,8 +451,8 @@ build_abstract_goal_2(negation(Goal) - _GoalInfo, AbstractGoal, !Info) :-
     % XXX Eventually we should provide some facility for specifying the
     % arg_size constraints for foreign_procs.
     %
-build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :- 
-    Goal = call_foreign_proc(Attrs, PredId, ProcId, Args, ExtraArgs, _, _), 
+build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :- 
+    GoalExpr = call_foreign_proc(Attrs, PredId, ProcId, Args, ExtraArgs, _, _), 
     %
     % Create non-negativity constraints for each non-zero argument
     % in the foreign proc.
@@ -483,8 +484,8 @@ build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :-
     % here just assume that any non-zero output variables from the HO call
     % are unbounded in size.
     %
-build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :-
-    Goal = generic_call(_, _, _, _),
+build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
+    GoalExpr = generic_call(_, _, _, _),
     goal_info_get_context(GoalInfo, Context),
     AbstractGoal = term_primitive(polyhedron.universe, [], []),
     info_update_ho_info(Context, !Info).
@@ -492,7 +493,7 @@ build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :-
     % shorthand/1 goals ought to have been transformed away by
     % the time we get round to termination analysis.
     % 
-build_abstract_goal_2(shorthand(_) - _, _, _, _) :- 
+build_abstract_goal_2(shorthand(_), _, _, _, _) :- 
     unexpected(this_file, "shorthand/1 goal during termination analysis.").
 
 %------------------------------------------------------------------------------%
@@ -730,16 +731,16 @@ build_abstract_switch_acc(SwitchProgVar, [case(ConsId, Goal) | Cases],
 
 :- pred detect_switch_var(hlds_goal::in, prog_var::in, cons_id::in) is semidet.
 
-detect_switch_var(unify(_, _, _, Kind, _)-_, SwitchVar, ConsId)  :-
+detect_switch_var(hlds_goal(unify(_, _, _, Kind, _), _), SwitchVar, ConsId)  :-
     ( Kind = deconstruct(SwitchVar, ConsId, _, _, _, _) ->
-            true
+        true
     ; Kind = complicated_unify(_, _, _) ->
-            unexpected(this_file,
+        unexpected(this_file,
             "complicated_unify/3 goal during termination analysis.")
     ;
         fail
     ).
-detect_switch_var(shorthand(_)-_, _, _) :- 
+detect_switch_var(hlds_goal(shorthand(_), _), _, _) :- 
     unexpected(this_file, "shorthand/1 goal during termination analysis").
 
 %------------------------------------------------------------------------------%
@@ -927,9 +928,9 @@ build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
     % 
 :- func local_vars(hlds_goal) = prog_vars.
 
-local_vars(GoalExpr - GoalInfo) = Locals :-
+local_vars(hlds_goal(GoalExpr, GoalInfo)) = Locals :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
-    QuantVars = free_goal_vars(GoalExpr - GoalInfo),
+    QuantVars = free_goal_vars(hlds_goal(GoalExpr, GoalInfo)),
     LocalsSet = set.difference(QuantVars, NonLocals),
     Locals = set.to_sorted_list(LocalsSet).
 
@@ -938,9 +939,9 @@ local_vars(GoalExpr - GoalInfo) = Locals :-
     %
 :- pred partition_vars(hlds_goal::in, prog_vars::out, prog_vars::out) is det.
 
-partition_vars(GoalExpr - GoalInfo, Locals, NonLocals) :-
+partition_vars(hlds_goal(GoalExpr, GoalInfo), Locals, NonLocals) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals0),
-    QuantVars = free_goal_vars(GoalExpr - GoalInfo),
+    QuantVars = free_goal_vars(hlds_goal(GoalExpr, GoalInfo)),
     Locals = set.to_sorted_list(set.difference(QuantVars, NonLocals0)),
     NonLocals = set.to_sorted_list(NonLocals0).
 
@@ -1023,7 +1024,7 @@ find_failure_constraint_for_goal(Goal, Info) = AbstractGoal :-
     ->
         AbstractGoal = AbstractGoal0
     ;
-        goal_info_get_nonlocals(snd(Goal), NonLocalProgVars0),
+        goal_info_get_nonlocals(Goal ^ hlds_goal_info, NonLocalProgVars0),
         NonLocalProgVars = set.to_sorted_list(NonLocalProgVars0),
         NonLocalSizeVars = prog_vars_to_size_vars(Info ^ var_map,
             NonLocalProgVars),
@@ -1039,8 +1040,9 @@ find_failure_constraint_for_goal(Goal, Info) = AbstractGoal :-
     % XXX We could factor out a lot of the code used for
     % substitutions below as the same code is used elsewhere.
     %
-find_failure_constraint_for_goal_2(Goal - _, Info, AbstractGoal) :-
-    Goal = plain_call(PredId, ProcId, CallArgs, _, _, _),
+find_failure_constraint_for_goal_2(hlds_goal(GoalExpr, _), Info,
+        AbstractGoal) :-
+    GoalExpr = plain_call(PredId, ProcId, CallArgs, _, _, _),
     CallSizeArgs0 = prog_vars_to_size_vars(Info ^ var_map, CallArgs),
     CallSizeArgs = list.filter(isnt(is_zero_size_var(Info ^ zeros)),
         CallSizeArgs0), 
@@ -1069,9 +1071,10 @@ find_failure_constraint_for_goal_2(Goal - _, Info, AbstractGoal) :-
     FailurePolyhedron = polyhedron.from_constraints(FailureConstraints),
     AbstractGoal = term_primitive(FailurePolyhedron, [], []).
 
-find_failure_constraint_for_goal_2(Goal @ unify(_, _, _, _, _) - _, Info, 
-        AbstractGoal) :-
-    find_deconstruct_fail_bound(Goal, Info, Polyhedron),
+find_failure_constraint_for_goal_2(
+        hlds_goal(GoalExpr @ unify(_, _, _, _, _), _),
+        Info, AbstractGoal) :-
+    find_deconstruct_fail_bound(GoalExpr, Info, Polyhedron),
     AbstractGoal = term_primitive(Polyhedron, [], []).   
 
     % Given a deconstruction unification and assuming that it has

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -124,7 +124,7 @@
 %-----------------------------------------------------------------------------%
 
 traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         goal_info_get_determinism(GoalInfo, Detism),
         determinism_components(Detism, _, at_most_zero)

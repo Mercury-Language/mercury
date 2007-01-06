@@ -66,13 +66,13 @@
 
 %---------------------------------------------------------------------------%
 
-generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
+generate_goal(ContextModel, hlds_goal(GoalExpr, GoalInfo), Code, !CI) :-
     % Generate a goal. This predicate arranges for the necessary updates of
     % the generic data structures before and after the actual code generation,
     % which is delegated to goal-specific predicates.
 
     % Make any changes to liveness before Goal
-    ( goal_is_atomic(Goal) ->
+    ( goal_is_atomic(GoalExpr) ->
         IsAtomic = yes
     ;
         IsAtomic = no
@@ -101,7 +101,7 @@ generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
             )
         ),
 
-        generate_goal_2(Goal, GoalInfo, CodeModel, GoalCode, !CI),
+        generate_goal_2(GoalExpr, GoalInfo, CodeModel, GoalCode, !CI),
         goal_info_get_features(GoalInfo, Features),
         code_info.get_proc_info(!.CI, ProcInfo),
 

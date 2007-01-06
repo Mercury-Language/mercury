@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -187,7 +187,7 @@ find_list_of_output_args_2([Var | Vars], [Mode | Modes], [Type | Types],
 
 apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
         Continue) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         Goal = Goal0,
@@ -214,7 +214,7 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
             GoalExpr = plain_call(ClonePredId, CloneProcId, Args,
                 Builtin, UnifyContext, SymName),
             goal_info_add_feature(feature_tailcall, GoalInfo0, GoalInfo),
-            Goal = GoalExpr - GoalInfo,
+            Goal = hlds_goal(GoalExpr, GoalInfo),
             !:FoundTailCall = yes
         ;
             Goal = Goal0
@@ -243,7 +243,7 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
             apply_tail_recursion_to_conj(Goals0, ApplyInfo, Goals,
                 !FoundTailCall, Continue),
             GoalExpr = conj(ConjType, Goals),
-            Goal = GoalExpr - GoalInfo0
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
             ConjType = parallel_conj,
             Goal = Goal0,
@@ -253,14 +253,14 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
         GoalExpr0 = disj(Goals0),
         apply_tail_recursion_to_disj(Goals0, ApplyInfo, Goals, !FoundTailCall),
         GoalExpr = disj(Goals),
-        Goal = GoalExpr - GoalInfo0,
+        Goal = hlds_goal(GoalExpr, GoalInfo0),
         Continue = no
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         apply_tail_recursion_to_cases(Cases0, ApplyInfo, Cases,
             !FoundTailCall),
         GoalExpr = switch(Var, CanFail, Cases),
-        Goal = GoalExpr - GoalInfo0,
+        Goal = hlds_goal(GoalExpr, GoalInfo0),
         Continue = no
     ;
         GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
@@ -269,7 +269,7 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
         apply_tail_recursion_to_goal(Else0, ApplyInfo, Else,
             !FoundTailCall, _),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
-        Goal = GoalExpr - GoalInfo0,
+        Goal = hlds_goal(GoalExpr, GoalInfo0),
         Continue = no
     ;
         GoalExpr0 = scope(_, _),
@@ -347,7 +347,7 @@ apply_tail_recursion_to_cases([case(ConsId, Goal0) | Cases0], ApplyInfo,
     list(int)::in, list(int)::out) is det.
 
 figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = call_foreign_proc(Attrs, _, _, _, _, _, _),
         ( get_may_call_mercury(Attrs) = proc_may_call_mercury ->
@@ -438,7 +438,7 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
     PredModuleName = predicate_module(ModuleInfo, PredId),
     (
         % XXX We need to eliminate nondet C code...
-        Goal0 = call_foreign_proc(_, _, _, _, _, _, Impl) - _,
+        Goal0 = hlds_goal(call_foreign_proc(_, _, _, _, _, _, Impl), _),
         Impl = fc_impl_model_non(_, _, _, _, _, _, _, _, _)
     ->
         unexpected(this_file,
@@ -510,7 +510,7 @@ deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
 transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     some [!VarSet, !VarTypes] (
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
@@ -588,12 +588,13 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     ),
 
     make_impure(GoalInfo0, GoalInfo),
-    Goal = conj(plain_conj, [
+    GoalExpr = conj(plain_conj, [
         BindProcStaticVarGoal,
         CallPortCode,
         TransformedGoal,
         ExitPortCode
-    ]) - GoalInfo,
+    ]),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     proc_info_set_varset(Vars, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
@@ -604,7 +605,7 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
 transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     some [!VarSet, !VarTypes] (
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
@@ -693,17 +694,18 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         NewNonlocals),
 
     make_impure(GoalInfo0, GoalInfo),
-    Goal = conj(plain_conj, [
+    GoalExpr = conj(plain_conj, [
         BindProcStaticVarGoal,
         CallPortCode,
-        disj([
-            conj(plain_conj, [
-                TransformedGoal,
-                ExitPortCode
-            ]) - ExitConjGoalInfo,
-            FailPortCode
-        ]) - ExitConjGoalInfo
-    ]) - GoalInfo,
+        hlds_goal(
+            disj([
+                hlds_goal(conj(plain_conj, [TransformedGoal, ExitPortCode]),
+                    ExitConjGoalInfo),
+                FailPortCode
+            ]),
+            ExitConjGoalInfo)
+    ]),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     proc_info_set_varset(Vars, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
@@ -714,7 +716,7 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
 transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     some [!VarSet, !VarTypes] (
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
@@ -804,10 +806,10 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         NewNonlocals = list_to_set([TopCSD, MiddleCSD])
     ),
 
-    RedoPortCode0 = RedoPortExpr - RedoPortGoalInfo0,
+    RedoPortCode0 = hlds_goal(RedoPortExpr, RedoPortGoalInfo0),
     goal_info_add_feature(feature_preserve_backtrack_into,
         RedoPortGoalInfo0, RedoPortGoalInfo),
-    RedoPortCode = RedoPortExpr - RedoPortGoalInfo,
+    RedoPortCode = hlds_goal(RedoPortExpr, RedoPortGoalInfo),
 
     % Even though the procedure has a model_non interface determinism, the
     % actual determinism of its original body goal may have been at_most once.
@@ -829,20 +831,27 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         ExitRedoNonLocals),
 
     make_impure(GoalInfo1, GoalInfo),
-    Goal = conj(plain_conj, [
+    GoalExpr = conj(plain_conj, [
         BindProcStaticVarGoal,
         CallPortCode,
-        disj([
-            conj(plain_conj, [
-                TransformedGoal,
-                disj([
-                    ExitPortCode,
-                    RedoPortCode
-                ]) - ExitRedoGoalInfo
-            ]) - CallExitRedoGoalInfo,
-            FailPortCode
-        ]) - CallExitRedoGoalInfo
-    ]) - GoalInfo,
+        hlds_goal(
+            disj([
+                hlds_goal(
+                    conj(plain_conj, [
+                        TransformedGoal,
+                        hlds_goal(
+                            disj([
+                                ExitPortCode,
+                                RedoPortCode
+                            ]),
+                            ExitRedoGoalInfo)
+                    ]),
+                    CallExitRedoGoalInfo),
+                FailPortCode
+            ]),
+            CallExitRedoGoalInfo)
+    ]),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     proc_info_set_varset(Vars, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
@@ -853,7 +862,7 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
 transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     CPointerType = c_pointer_type,
@@ -902,7 +911,7 @@ is_proc_in_interface(ModuleInfo, PredId, _ProcId) = IsInInterface :-
     bool::out, deep_info::in, deep_info::out) is det.
 
 deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
         ( BuiltinState \= inline_builtin ->
@@ -946,28 +955,28 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
             !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         GoalExpr = conj(ConjType, Goals),
-        Goal = GoalExpr - GoalInfo
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = disj(Goals0),
         deep_prof_transform_disj(0, Path, Goals0, Goals, AddedImpurity,
             !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         GoalExpr = disj(Goals),
-        Goal = GoalExpr - GoalInfo
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = switch(Var, CF, Cases0),
         deep_prof_transform_switch(list.length(Cases0), 0, Path, Cases0, Cases,
             AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         GoalExpr = switch(Var, CF, Cases),
-        Goal = GoalExpr - GoalInfo
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = negation(SubGoal0),
         deep_prof_transform_goal([neg | Path], SubGoal0, SubGoal,
             AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         GoalExpr = negation(SubGoal),
-        Goal = GoalExpr - GoalInfo
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = if_then_else(IVars, Cond0, Then0, Else0),
         deep_prof_transform_goal([ite_cond | Path], Cond0, Cond,
@@ -988,10 +997,10 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         ),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         GoalExpr = if_then_else(IVars, Cond, Then, Else),
-        Goal = GoalExpr - GoalInfo
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
-        SubGoal0 = _ - InnerInfo,
+        SubGoal0 = hlds_goal(_, InnerInfo),
         goal_info_get_determinism(GoalInfo0, OuterDetism),
         goal_info_get_determinism(InnerInfo, InnerDetism),
         ( InnerDetism = OuterDetism ->
@@ -1021,11 +1030,11 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         (
             AddForceCommit = no,
-            Goal = scope(Reason, SubGoal) - GoalInfo
+            Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo)
         ;
             AddForceCommit = yes,
-            InnerGoal = scope(Reason, SubGoal) - GoalInfo,
-            Goal = scope(commit(force_pruning), InnerGoal) - GoalInfo
+            InnerGoal = hlds_goal(scope(Reason, SubGoal), GoalInfo),
+            Goal = hlds_goal(scope(commit(force_pruning), InnerGoal), GoalInfo)
         )
     ;
         GoalExpr0 = shorthand(_),
@@ -1078,8 +1087,8 @@ deep_prof_transform_switch(NumCases, N, Path, [case(Id, Goal0) | Goals0],
 :- pred deep_prof_wrap_call(goal_path::in, hlds_goal::in, hlds_goal::out,
     deep_info::in, deep_info::out) is det.
 
-deep_prof_wrap_call(GoalPath, GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo,
-        !DeepInfo) :-
+deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo), !DeepInfo) :-
     ModuleInfo = !.DeepInfo ^ module_info,
     goal_info_get_features(GoalInfo0, GoalFeatures),
     goal_info_remove_feature(feature_tailcall, GoalInfo0, GoalInfo1),
@@ -1093,7 +1102,7 @@ deep_prof_wrap_call(GoalPath, GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo,
     % invariants of the deep profiling tree (which allows this field to be
     % NULL only temporarily, between the prepare_for_{...}_call and the
     % call port code).
-    Goal1 = GoalExpr0 - GoalInfo,
+    Goal1 = hlds_goal(GoalExpr0, GoalInfo),
 
     SiteNumCounter0 = !.DeepInfo ^ site_num_counter,
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
@@ -1171,9 +1180,10 @@ deep_prof_wrap_call(GoalPath, GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo,
             generate_deep_det_call(ModuleInfo, "prepare_for_method_call", 3,
                 [SiteNumVar, TypeClassInfoVar, MethodNumVar],
                 [], PrepareCallGoal),
-            PrepareCallGoal = _ - PrepareCallGoalInfo,
-            PrepareGoal = conj(plain_conj,
-                [MethodNumVarGoal, PrepareCallGoal]) - PrepareCallGoalInfo,
+            PrepareCallGoal = hlds_goal(_, PrepareCallGoalInfo),
+            PrepareGoalExpr = conj(plain_conj,
+                [MethodNumVarGoal, PrepareCallGoal]),
+            PrepareGoal = hlds_goal(PrepareGoalExpr, PrepareCallGoalInfo),
             CallSite = method_call(FileName, LineNumber, GoalPath)
         ;
             Generic = event_call(_),
@@ -1239,22 +1249,25 @@ deep_prof_wrap_call(GoalPath, GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo,
                 impure_unreachable_init_goal_info(ExtraVars, detism_failure),
 
             FailGoalInfo = fail_goal_info,
-            FailGoal = disj([]) - FailGoalInfo,
+            FailGoal = hlds_goal(disj([]), FailGoalInfo),
 
             list.append(FailGoals, [FailGoal], FailGoalsAndFail),
 
-            list.condense([
-                CallGoals,
-                [disj([
+            DisjGoalExpr = disj([
+                hlds_goal(
                     conj(plain_conj, [
                         SiteNumVarGoal,
                         PrepareGoal,
                         Goal2 |
                         ExitGoals
-                    ]) - WrappedGoalGoalInfo,
-                    conj(plain_conj, FailGoalsAndFail) - ReturnFailsGoalInfo
-                ]) - WrappedGoalGoalInfo]
-            ], Goals),
+                    ]),
+                    WrappedGoalGoalInfo),
+                hlds_goal(
+                    conj(plain_conj, FailGoalsAndFail),
+                    ReturnFailsGoalInfo)
+            ]),
+            DisjGoal = hlds_goal(DisjGoalExpr, WrappedGoalGoalInfo),
+            Goals = CallGoals ++ [DisjGoal],
             GoalExpr = conj(plain_conj, Goals)
         )
     ;
@@ -1314,7 +1327,7 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
             [], [], ReZeroStuff)
     ),
 
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     ExtGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo0,
         ExtraNonLocals),
 
@@ -1323,7 +1336,7 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
     goal_info_set_instmap_delta(EmptyDelta, ExtGoalInfo, NoBindExtGoalInfo),
 
     FailGoalInfo = fail_goal_info,
-    FailGoal = disj([]) - FailGoalInfo,
+    FailGoal = hlds_goal(disj([]), FailGoalInfo),
 
     RestoreFailGoalInfo = impure_unreachable_init_goal_info(ExtraNonLocals,
         detism_failure),
@@ -1334,54 +1347,58 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
     make_impure(GoalInfo0, GoalInfo),
     (
         CodeModel = model_det,
-        Goal = conj(plain_conj, [
-            SaveStuff,
-            Goal0,
-            RestoreStuff
-        ]) - GoalInfo
+        GoalExpr = conj(plain_conj, [SaveStuff, Goal0, RestoreStuff]),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         CodeModel = model_semi,
-        Goal = conj(plain_conj, [
+        GoalExpr = conj(plain_conj, [
             SaveStuff,
-            disj([
-                conj(plain_conj, [
-                    Goal0,
-                    RestoreStuff
-                ]) - ExtGoalInfo,
-                conj(plain_conj, [
-                    RestoreStuff,
-                    FailGoal
-                ]) - RestoreFailGoalInfo
-            ]) - ExtGoalInfo
-        ]) - GoalInfo
+            hlds_goal(
+                disj([
+                    hlds_goal(
+                        conj(plain_conj, [Goal0, RestoreStuff]),
+                        ExtGoalInfo),
+                    hlds_goal(
+                        conj(plain_conj, [RestoreStuff, FailGoal]),
+                        RestoreFailGoalInfo)
+                ]),
+                ExtGoalInfo)
+        ]),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         CodeModel = model_non,
-        Goal = conj(plain_conj, [
+        GoalExpr = conj(plain_conj, [
             SaveStuff,
-            disj([
-                conj(plain_conj, [
-                    Goal0,
-                    disj([
-                        RestoreStuff,
+            hlds_goal(
+                disj([
+                    hlds_goal(
                         conj(plain_conj, [
-                            ReZeroStuff,
-                            FailGoal
-                        ]) - RezeroFailGoalInfo
-                    ]) - NoBindExtGoalInfo
-                ]) - ExtGoalInfo,
-                conj(plain_conj, [
-                    RestoreStuff,
-                    FailGoal
-                ]) - RestoreFailGoalInfo
-            ]) - ExtGoalInfo
-        ]) - GoalInfo
+                            Goal0,
+                            hlds_goal(
+                                disj([
+                                    RestoreStuff,
+                                    hlds_goal(
+                                        conj(plain_conj,
+                                            [ReZeroStuff, FailGoal]),
+                                        RezeroFailGoalInfo)
+                                ]),
+                                NoBindExtGoalInfo)
+                        ]),
+                        ExtGoalInfo),
+                    hlds_goal(
+                        conj(plain_conj, [RestoreStuff, FailGoal]),
+                        RestoreFailGoalInfo)
+                ]),
+                ExtGoalInfo)
+        ]),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
 :- pred deep_prof_wrap_foreign_code(goal_path::in,
     hlds_goal::in, hlds_goal::out, deep_info::in, deep_info::out) is det.
 
 deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     ModuleInfo = !.DeepInfo ^ module_info,
 
     SiteNumCounter0 = !.DeepInfo ^ site_num_counter,
@@ -1400,7 +1417,8 @@ deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
     CallSite = callback(FileName, LineNumber, GoalPath),
 
     make_impure(GoalInfo0, GoalInfo),
-    Goal = conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal0]) - GoalInfo,
+    Goal = hlds_goal(conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal0]),
+        GoalInfo),
     !:DeepInfo = !.DeepInfo ^ site_num_counter := SiteNumCounter,
     !:DeepInfo = !.DeepInfo ^ vars := VarSet,
     !:DeepInfo = !.DeepInfo ^ var_types := VarTypes,
@@ -1626,7 +1644,7 @@ generate_deep_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
     SymName = unqualified(Name),
     GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
     GoalInfo = impure_init_goal_info(NonLocals, InstMapDelta, Detism),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred generate_unify(cons_id::in, prog_var::in, hlds_goal::out) is det.
 
@@ -1637,11 +1655,12 @@ generate_unify(ConsId, Var, Goal) :-
     Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
         GoalInfo),
-    Goal = unify(Var, rhs_functor(ConsId, no, []),
+    GoalExpr = unify(Var, rhs_functor(ConsId, no, []),
         (free -> Ground) - (Ground -> Ground),
         construct(Var, ConsId, [], [], construct_statically([]),
             cell_is_shared, no_construct_sub_info),
-        unify_context(umc_explicit, [])) - GoalInfo.
+        unify_context(umc_explicit, [])),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred generate_cell_unify(int::in, cons_id::in, list(prog_var)::in,
     prog_var::in, hlds_goal::out) is det.
@@ -1655,11 +1674,12 @@ generate_cell_unify(Length, ConsId, Args, Var, Goal) :-
         GoalInfo),
     ArgMode = ((free - Ground) -> (Ground - Ground)),
     list.duplicate(Length, ArgMode, ArgModes),
-    Goal = unify(Var, rhs_functor(ConsId, no, Args),
+    GoalExpr = unify(Var, rhs_functor(ConsId, no, Args),
         (free -> Ground) - (Ground -> Ground),
         construct(Var, ConsId, Args, ArgModes,
             construct_statically([]), cell_is_shared, no_construct_sub_info),
-        unify_context(umc_explicit, [])) - GoalInfo.
+        unify_context(umc_explicit, [])),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

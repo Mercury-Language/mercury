@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -288,8 +288,10 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         GoalInfo, Goal) :-
     (
         PredOrFunc = predicate,
-        Goal = plain_call(PredId, invalid_proc_id, Args, not_builtin, no,
-            SymName) - GoalInfo
+        Goal = hlds_goal(
+            plain_call(PredId, invalid_proc_id, Args, not_builtin, no,
+                SymName),
+            GoalInfo)
     ;
         PredOrFunc = function,
         pred_args_to_func_args(Args, FuncArgs, RetArg),
@@ -298,8 +300,8 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         goal_info_get_context(GoalInfo, Context),
         create_pure_atomic_complicated_unification(RetArg,
             rhs_functor(ConsId, no, FuncArgs), Context, umc_explicit, [],
-            GoalExpr - _),
-        Goal = GoalExpr - GoalInfo
+            hlds_goal(GoalExpr, _)),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
 %-----------------------------------------------------------------------------%

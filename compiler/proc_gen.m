@@ -299,7 +299,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     proc_info_interface_determinism(ProcInfo, Detism),
     proc_info_interface_code_model(ProcInfo, CodeModel),
     proc_info_get_goal(ProcInfo, Goal),
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
     (
         MaybeFollowVars = yes(FollowVars)
@@ -689,9 +689,9 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI) :-
     set.singleton_set(FailureLiveRegs, reg(reg_r, 1)),
     FailCode = node([
-        assign(reg(reg_r, 1), const(llconst_false)) - "Fail",
-        livevals(FailureLiveRegs) - "",
-        goto(code_succip) - "Return from procedure call"
+        llds_instr(assign(reg(reg_r, 1), const(llconst_false)), "Fail"),
+        llds_instr(livevals(FailureLiveRegs), ""),
+        llds_instr(goto(code_succip), "Return from procedure call")
     ]),
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
@@ -772,22 +772,23 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
                     llds.stack_slot_num_to_lval(model_non, FromFullSlot),
                 code_info.get_next_label(SkipLabel, !CI),
                 DiscardTraceTicketCode = node([
-                    if_val(unop(logical_not, lval(FromFullSlotLval)),
-                        code_label(SkipLabel)) - "",
-                    discard_ticket - "discard retry ticket",
-                    label(SkipLabel) - ""
+                    llds_instr(
+                        if_val(unop(logical_not, lval(FromFullSlotLval)),
+                            code_label(SkipLabel)), ""),
+                    llds_instr(discard_ticket, "discard retry ticket"),
+                    llds_instr(label(SkipLabel), "")
                 ])
             ;
                 MaybeFromFull = no,
                 DiscardTraceTicketCode = node([
-                    discard_ticket - "discard retry ticket"
+                    llds_instr(discard_ticket, "discard retry ticket")
                 ])
             )
         ;
             DiscardTraceTicketCode = empty
         ),
         FailCode = node([
-            goto(do_fail) - "fail after fail trace port"
+            llds_instr(goto(do_fail), "fail after fail trace port")
         ]),
         Code = tree_list([EntryCode, TraceCallCode, BodyCode, ExitCode,
             ResumeCode, TraceFailCode, DiscardTraceTicketCode, FailCode])
@@ -852,8 +853,8 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     code_info.get_varset(CI, VarSet),
     SlotsComment = explain_stack_slots(StackSlots, VarSet),
     StartComment = node([
-        comment("Start of procedure prologue") - "",
-        comment(SlotsComment) - ""
+        llds_instr(comment("Start of procedure prologue"), ""),
+        llds_instr(comment(SlotsComment), "")
     ]),
     code_info.get_total_stackslot_count(CI, MainSlots),
     code_info.get_pred_id(CI, PredId),
@@ -861,7 +862,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     code_info.get_module_info(CI, ModuleInfo),
     EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
     LabelCode = node([
-        label(EntryLabel) - "Procedure entry point"
+        llds_instr(label(EntryLabel), "Procedure entry point")
     ]),
     code_info.get_succip_used(CI, Used),
     (
@@ -872,7 +873,8 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     ->
         SuccipSlot = MainSlots + 1,
         SaveSuccipCode = node([
-            assign(stackvar(SuccipSlot), lval(succip)) - "Save the success ip"
+            llds_instr(assign(stackvar(SuccipSlot), lval(succip)),
+                "Save the success ip")
         ]),
         TotalSlots = SuccipSlot,
         MaybeSuccipSlot = yes(SuccipSlot)
@@ -900,7 +902,8 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         code_info.resume_point_stack_addr(OutsideResumePoint,
             OutsideResumeAddress),
         (
-            Goal = call_foreign_proc(_, _, _, _, _, _, PragmaCode) - _,
+            Goal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, PragmaCode),
+                _),
             PragmaCode = fc_impl_model_non(Fields, FieldsContext,
                 _, _, _, _, _, _, _)
         ->
@@ -913,17 +916,17 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
                 doesnt_affect_liveness, live_lvals_info(set.init), DefineStr)],
             NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, yes(Struct)),
             AllocCode = node([
-                mkframe(NondetFrameInfo, yes(OutsideResumeAddress))
-                    - "Allocate stack frame",
-                foreign_proc_code([], DefineComponents,
-                    proc_will_not_call_mercury, no, no, no, no, no, no) - ""
+                llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
+                    "Allocate stack frame"),
+                llds_instr(foreign_proc_code([], DefineComponents,
+                    proc_will_not_call_mercury, no, no, no, no, no, no), "")
             ]),
             NondetPragma = yes
         ;
             NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, no),
             AllocCode = node([
-                mkframe(NondetFrameInfo, yes(OutsideResumeAddress))
-                    - "Allocate stack frame"
+                llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
+                    "Allocate stack frame")
             ]),
             NondetPragma = no
         )
@@ -941,8 +944,8 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         ),
         ( TotalSlots > 0 ->
             AllocCode = node([
-                incr_sp(TotalSlots, PushMsg, StackIncrKind)
-                    - "Allocate stack frame"
+                llds_instr(incr_sp(TotalSlots, PushMsg, StackIncrKind),
+                    "Allocate stack frame")
             ])
         ;
             AllocCode = empty
@@ -951,7 +954,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     ),
     FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma),
     EndComment = node([
-        comment("End of procedure prologue") - ""
+        llds_instr(comment("End of procedure prologue"), "")
     ]),
     EntryCode = tree_list([StartComment, LabelCode, AllocCode,
         SaveSuccipCode, TraceFillCode, EndComment]).
@@ -994,10 +997,10 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
 generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         RestoreDeallocCode, ExitCode, !CI) :-
     StartComment = node([
-        comment("Start of procedure epilogue") - ""
+        llds_instr(comment("Start of procedure epilogue"), "")
     ]),
     EndComment = node([
-        comment("End of procedure epilogue") - ""
+        llds_instr(comment("End of procedure epilogue"), "")
     ]),
     FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma),
     (
@@ -1006,8 +1009,8 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         UndefComponents = [foreign_proc_raw_code(cannot_branch_away,
             doesnt_affect_liveness, live_lvals_info(set.init), UndefStr)],
         UndefCode = node([
-            foreign_proc_code([], UndefComponents, proc_will_not_call_mercury,
-                no, no, no, no, no, no) - ""
+            llds_instr(foreign_proc_code([], UndefComponents,
+                proc_will_not_call_mercury, no, no, no, no, no, no), "")
         ]),
         RestoreDeallocCode = empty, % always empty for nondet code
         ExitCode = tree_list([StartComment, UndefCode, EndComment])
@@ -1026,8 +1029,8 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         (
             MaybeSuccipSlot = yes(SuccipSlot),
             RestoreSuccipCode = node([
-                assign(succip, lval(stackvar(SuccipSlot))) -
-                    "restore the success ip"
+                llds_instr(assign(succip, lval(stackvar(SuccipSlot))),
+                    "restore the success ip")
             ])
         ;
             MaybeSuccipSlot = no,
@@ -1041,7 +1044,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             DeallocCode = empty
         ;
             DeallocCode = node([
-                decr_sp(TotalSlots) - "Deallocate stack frame"
+               llds_instr(decr_sp(TotalSlots), "Deallocate stack frame")
             ])
         ),
         (
@@ -1064,21 +1067,21 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 code_info.get_next_label(SkipLabel, !CI),
                 code_info.get_next_label(SkipLabelCopy, !CI),
                 PruneTraceTicketCode = node([
-                    if_val(unop(logical_not, lval(FromFullSlotLval)),
-                        code_label(SkipLabel)) - "",
-                    prune_ticket - "prune retry ticket",
-                    label(SkipLabel) - ""
+                    llds_instr(if_val(unop(logical_not, lval(FromFullSlotLval)),
+                        code_label(SkipLabel)), ""),
+                    llds_instr(prune_ticket, "prune retry ticket"),
+                    llds_instr(label(SkipLabel), "")
                 ]),
                 PruneTraceTicketCodeCopy = node([
-                    if_val(unop(logical_not, lval(FromFullSlotLval)),
-                        code_label(SkipLabelCopy)) - "",
-                    prune_ticket - "prune retry ticket",
-                    label(SkipLabelCopy) - ""
+                    llds_instr(if_val(unop(logical_not, lval(FromFullSlotLval)),
+                        code_label(SkipLabelCopy)), ""),
+                    llds_instr(prune_ticket, "prune retry ticket"),
+                    llds_instr(label(SkipLabelCopy), "")
                 ])
             ;
                 MaybeFromFull = no,
                 PruneTraceTicketCode = node([
-                    prune_ticket - "prune retry ticket"
+                    llds_instr(prune_ticket, "prune retry ticket")
                 ]),
                 PruneTraceTicketCodeCopy = PruneTraceTicketCode
             )
@@ -1113,9 +1116,9 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 list.member(LocnSet, TypeInfoLocnSets),
                 set.member(Locn, LocnSet),
                 (
-                    Locn = direct(Lval)
+                    Locn = locn_direct(Lval)
                 ;
-                    Locn = indirect(Lval, _)
+                    Locn = locn_indirect(Lval, _)
                 )
             ),
             solutions.solutions(FindBaseLvals, TypeInfoLvals),
@@ -1133,8 +1136,8 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             expect(unify(MaybeSpecialReturn, no), this_file,
                 "generate_exit: det special_return"),
             SuccessCode = node([
-                livevals(LiveLvals) - "",
-                goto(code_succip) - "Return from procedure call"
+                llds_instr(livevals(LiveLvals), ""),
+                llds_instr(goto(code_succip), "Return from procedure call")
             ]),
             AllSuccessCode = tree_list([TraceExitCode, RestoreDeallocCodeCopy,
                 SuccessCode])
@@ -1144,9 +1147,10 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 "generate_exit: semi special_return"),
             set.insert(LiveLvals, reg(reg_r, 1), SuccessLiveRegs),
             SuccessCode = node([
-                assign(reg(reg_r, 1), const(llconst_true)) - "Succeed",
-                livevals(SuccessLiveRegs) - "",
-                goto(code_succip) - "Return from procedure call"
+                llds_instr(assign(reg(reg_r, 1), const(llconst_true)),
+                    "Succeed"),
+                llds_instr(livevals(SuccessLiveRegs), ""),
+                llds_instr(goto(code_succip), "Return from procedure call")
             ]),
             AllSuccessCode = tree_list([TraceExitCode, RestoreDeallocCodeCopy,
                 SuccessCode])
@@ -1168,15 +1172,16 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 Component = foreign_proc_user_code(no, doesnt_affect_liveness,
                     ReturnCodeStr),
                 SuccessCode = node([
-                    livevals(LiveLvals) - "",
-                    foreign_proc_code([], [Component], proc_may_call_mercury,
-                        no, no, no, no, no, no) - ""
+                    llds_instr(livevals(LiveLvals), ""),
+                    llds_instr(foreign_proc_code([], [Component],
+                        proc_may_call_mercury, no, no, no, no, no, no), "")
                 ])
             ;
                 MaybeSpecialReturn = no,
                 SuccessCode = node([
-                    livevals(LiveLvals) - "",
-                    goto(do_succeed(no)) - "Return from procedure call"
+                    llds_instr(livevals(LiveLvals), ""),
+                    llds_instr(goto(do_succeed(no)),
+                        "Return from procedure call")
                 ])
             ),
             AllSuccessCode = tree_list([SetupRedoCode, TraceExitCode,
@@ -1196,27 +1201,29 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
     list(instruction)::out) is det.
 
 add_saved_succip([], _StackLoc, []).
-add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
-        [Instrn - Comment | Instrns]) :-
+add_saved_succip([Instr0 | Instrs0], StackLoc, [Instr | Instrs]) :-
+    Instr0 = llds_instr(Uinstr0, Comment),
     (
-        Instrn0 = livevals(LiveVals0),
-        Instrns0 \= [goto(code_succip) - _ | _]
+        Uinstr0 = livevals(LiveVals0),
+        Instrs0 \= [llds_instr(goto(code_succip), _) | _]
         % XXX We should also test for tailcalls
         % once we start generating them directly.
     ->
         set.insert(LiveVals0, stackvar(StackLoc), LiveVals1),
-        Instrn = livevals(LiveVals1)
+        Uinstr = livevals(LiveVals1),
+        Instr = llds_instr(Uinstr, Comment)
     ;
-        Instrn0 = llcall(Target, ReturnLabel, LiveVals0, Context, GP, CM)
+        Uinstr0 = llcall(Target, ReturnLabel, LiveVals0, Context, GP, CM)
     ->
         map.init(Empty),
-        LiveVals = [live_lvalue(direct(stackvar(StackLoc)),
+        LiveVals = [live_lvalue(locn_direct(stackvar(StackLoc)),
             live_value_succip, Empty) | LiveVals0],
-        Instrn = llcall(Target, ReturnLabel, LiveVals, Context, GP, CM)
+        Uinstr = llcall(Target, ReturnLabel, LiveVals, Context, GP, CM),
+        Instr = llds_instr(Uinstr, Comment)
     ;
-        Instrn = Instrn0
+        Instr = Instr0
     ),
-    add_saved_succip(Instrns0, StackLoc, Instrns).
+    add_saved_succip(Instrs0, StackLoc, Instrs).
 
 %---------------------------------------------------------------------------%
 
@@ -1272,9 +1279,9 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
     ],
 
     BytecodeInstructions = [
-        label(EntryLabel) - "Procedure entry point",
-        foreign_proc_code([], BytecodeInstructionsComponents,
-            proc_may_call_mercury, no, no, no, no, no, no) - "Entry stub"
+        llds_instr(label(EntryLabel), "Procedure entry point"),
+        llds_instr(foreign_proc_code([], BytecodeInstructionsComponents,
+            proc_may_call_mercury, no, no, no, no, no, no), "Entry stub")
     ].
 
 %---------------------------------------------------------------------------%

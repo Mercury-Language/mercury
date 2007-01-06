@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -407,7 +407,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
 compute_purity([], [], _, !Purity, !Info).
 compute_purity([Clause0 | Clauses0], [Clause | Clauses], PredInfo, !Purity,
         !Info) :-
-    Clause0 = clause(Ids, GoalExpr0 - GoalInfo0, Lang, Context),
+    Clause0 = clause(Ids, hlds_goal(GoalExpr0, GoalInfo0), Lang, Context),
     compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo0, BodyPurity0, _, !Info),
     % If this clause doesn't apply to all modes of this procedure,
     % i.e. the procedure has different clauses for different modes,
@@ -436,7 +436,7 @@ compute_purity([Clause0 | Clauses0], [Clause | Clauses], PredInfo, !Purity,
     BodyPurity = worst_purity(BodyPurity0, ClausePurity),
     goal_info_set_purity(BodyPurity, GoalInfo0, GoalInfo),
     !:Purity = worst_purity(!.Purity, BodyPurity),
-    Clause = clause(Ids, GoalExpr - GoalInfo, Lang, Context),
+    Clause = clause(Ids, hlds_goal(GoalExpr, GoalInfo), Lang, Context),
     compute_purity(Clauses0, Clauses, PredInfo, !Purity, !Info).
 
 :- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
@@ -523,10 +523,11 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
     Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext),
     (
         RHS0 = rhs_lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
-            Modes, K, Goal0 - Info0),
-        compute_expr_purity(Goal0, Goal, Info0, GoalPurity, _, !Info),
+            Modes, K, hlds_goal(LambdaGoalExpr0, LambdaGoalInfo0)),
+        compute_expr_purity(LambdaGoalExpr0, LambdaGoalExpr, LambdaGoalInfo0,
+            GoalPurity, _, !Info),
         RHS = rhs_lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
-            Modes, K, Goal - Info0),
+            Modes, K, hlds_goal(LambdaGoalExpr, LambdaGoalInfo0)),
         check_closure_purity(GoalInfo, LambdaPurity, GoalPurity, !Info),
         GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext),
         % the unification itself is always pure,
@@ -559,9 +560,9 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
             !:Info = !.Info ^ pred_info := PredInfo
         ;
             RunPostTypecheck = no,
-            Goal1 = Unif0 - GoalInfo
+            Goal1 = hlds_goal(Unif0, GoalInfo)
         ),
-        ( Goal1 = unify(_, _, _, _, _) - _ ->
+        ( Goal1 = hlds_goal(unify(_, _, _, _, _), _) ->
             check_higher_order_purity(GoalInfo, ConsId, Var, Args,
                 ActualPurity, !Info),
             ContainsTrace = contains_no_trace_goal,
@@ -570,7 +571,7 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
             compute_goal_purity(Goal1, Goal, ActualPurity, ContainsTrace,
                 !Info)
         ),
-        Goal = GoalExpr - _
+        Goal = hlds_goal(GoalExpr, _)
     ;
         RHS0 = rhs_var(_),
         GoalExpr = Unif0,
@@ -585,12 +586,12 @@ compute_expr_purity(negation(Goal0), NotGoal, GoalInfo0, Purity, ContainsTrace,
         !Info) :-
     % Eliminate double negation.
     negate_goal(Goal0, GoalInfo0, NotGoal0),
-    ( NotGoal0 = negation(Goal1) - _GoalInfo1 ->
+    ( NotGoal0 = hlds_goal(negation(Goal1), _) ->
         compute_goal_purity(Goal1, Goal, Purity, ContainsTrace, !Info),
         NotGoal = negation(Goal)
     ;
         compute_goal_purity(NotGoal0, NotGoal1, Purity, ContainsTrace, !Info),
-        NotGoal1 = NotGoal - _
+        NotGoal1 = hlds_goal(NotGoal, _)
     ).
 compute_expr_purity(scope(Reason, Goal0), scope(Reason, Goal),
         _, Purity, ContainsTrace, !Info) :-
@@ -877,9 +878,10 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
 :- pred compute_goal_purity(hlds_goal::in, hlds_goal::out, purity::out,
     contains_trace_goal::out, purity_info::in, purity_info::out) is det.
 
-compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, Purity, ContainsTrace,
-        !Info) :-
-    compute_expr_purity(Goal0, Goal, GoalInfo0, Purity, ContainsTrace, !Info),
+compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo0, Purity, ContainsTrace,
+        !Info),
     goal_info_set_purity(Purity, GoalInfo0, GoalInfo1),
     (
         ContainsTrace = contains_trace_goal,
@@ -887,7 +889,8 @@ compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, Purity, ContainsTrace,
     ;
         ContainsTrace = contains_no_trace_goal,
         goal_info_remove_feature(feature_contains_trace, GoalInfo1, GoalInfo)
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % Compute the purity of a list of hlds_goals.  Since the purity of a
     % disjunction is computed the same way as the purity of a conjunction,
@@ -931,7 +934,7 @@ compute_parallel_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity,
         )
     ;
         GoalPurity = purity_impure,
-        Goal0 = _ - GoalInfo0,
+        Goal0 = hlds_goal(_, GoalInfo0),
         goal_info_get_context(GoalInfo0, Context),
         Spec = impure_parallel_conjunct_error(Context, GoalPurity),
         purity_info_add_message(Spec, !Info)

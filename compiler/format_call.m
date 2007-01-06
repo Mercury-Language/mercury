@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: format_call.m.
 % Author: zs.
-% 
+%
 % The job of this module is to generate warnings about calls to
 % string.format, io.format and stream.string_writer.format in which the format
 % string and the supplied lists of values do not agree. The difficult part of
@@ -65,7 +65,7 @@
 % calls will be found in the same conjunction as the call itself, so the
 % typical number of conjunctions that has to be searched will in fact be one.
 %
-% Note that if the value of e.g. a format string is an input to the procedure 
+% Note that if the value of e.g. a format string is an input to the procedure
 % or is computed by a call rather than a unification, we won't be able to check
 % whether the values match the format string. Whether we give a warning in such
 % cases is controlled by a separate option, which is consulted in det_report.m.
@@ -74,7 +74,7 @@
 % functions such as string.append. However, there is no convenient way to
 % evaluate the extent of a need for this capability until this change is
 % bootstrapped, so that is left for future work.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.format_call.
@@ -410,7 +410,7 @@ traverse_conj([Goal | Goals], CurId, !FormatCallSites, !Counter,
         !ConjMaps, !PredMap, !RelevantVars, ModuleInfo) :-
     traverse_conj(Goals, CurId, !FormatCallSites, !Counter,
         !ConjMaps, !PredMap, !RelevantVars, ModuleInfo),
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = conj(_, Conjuncts),
         traverse_conj(Conjuncts, CurId, !FormatCallSites, !Counter,

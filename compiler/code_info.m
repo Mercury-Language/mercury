@@ -1480,7 +1480,7 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
     ->
         HijackInfo = disj_no_hijack,
         Code = node([
-            comment("disj no hijack") - ""
+            llds_instr(comment("disj no hijack"), "")
         ])
     ;
         CondEnv = inside_non_condition
@@ -1499,7 +1499,7 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
         ->
             HijackInfo = disj_quarter_hijack,
             Code = node([
-                comment("disj quarter hijack of do_fail") - ""
+                llds_instr(comment("disj quarter hijack of do_fail"), "")
             ])
         ;
             HijackInfo = disj_temp_frame,
@@ -1511,7 +1511,7 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
     ->
         HijackInfo = disj_quarter_hijack,
         Code = node([
-            comment("disj quarter hijack") - ""
+            llds_instr(comment("disj quarter hijack"), "")
         ])
     ;
         CurfrMaxfr = must_be_equal
@@ -1521,8 +1521,8 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
         acquire_temp_slot(lval(redoip_slot(lval(curfr))), RedoipSlot, !CI),
         HijackInfo = disj_half_hijack(RedoipSlot),
         Code = node([
-            assign(RedoipSlot, lval(redoip_slot(lval(curfr))))
-                - "prepare for half disj hijack"
+            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
+                "prepare for half disj hijack")
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
@@ -1530,12 +1530,12 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
         acquire_temp_slot(lval(redofr_slot(lval(maxfr))), RedofrSlot, !CI),
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
         Code = node([
-            assign(RedoipSlot, lval(redoip_slot(lval(maxfr))))
-                - "prepare for full disj hijack",
-            assign(RedofrSlot, lval(redofr_slot(lval(maxfr))))
-                - "prepare for full disj hijack",
-            assign(redofr_slot(lval(maxfr)), lval(curfr))
-                - "prepare for full disj hijack"
+            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
+                "prepare for full disj hijack"),
+            llds_instr(assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
+                "prepare for full disj hijack"),
+            llds_instr(assign(redofr_slot(lval(maxfr)), lval(curfr)),
+                "prepare for full disj hijack")
         ])
     ).
 
@@ -1549,8 +1549,8 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
     ;
         HijackInfo = disj_temp_frame,
         Code = node([
-            assign(maxfr, lval(prevfr_slot(lval(maxfr))))
-                - "restore maxfr for temp frame disj"
+            llds_instr(assign(maxfr, lval(prevfr_slot(lval(maxfr)))),
+                "restore maxfr for temp frame disj")
         ])
     ;
         HijackInfo = disj_quarter_hijack,
@@ -1561,8 +1561,8 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         LabelConst = const(llconst_code_addr(StackLabel)),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = node([
-            assign(redoip_slot(lval(curfr)), LabelConst)
-                - "restore redoip for quarter disj hijack (curfr==maxfr)"
+            llds_instr(assign(redoip_slot(lval(curfr)), LabelConst),
+                "restore redoip for quarter disj hijack (curfr==maxfr)")
         ])
     ;
         HijackInfo = disj_half_hijack(RedoipSlot),
@@ -1572,18 +1572,18 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
             "maxfr may differ from curfr in disj_half_hijack"),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = node([
-            assign(redoip_slot(lval(curfr)), lval(RedoipSlot))
-                - "restore redoip for half disj hijack (curfr==maxfr)"
+            llds_instr(assign(redoip_slot(lval(curfr)), lval(RedoipSlot)),
+                "restore redoip for half disj hijack (curfr==maxfr)")
         ])
     ;
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
         expect(unify(CurfrMaxfr, may_be_different), this_file,
             "maxfr same as curfr in disj_full_hijack"),
         Code = node([
-            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
-                - "restore redoip for full disj hijack",
-            assign(redofr_slot(lval(maxfr)), lval(RedofrSlot))
-                - "restore redofr for full disj hijack"
+            llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
+                "restore redoip for full disj hijack"),
+            llds_instr(assign(redofr_slot(lval(maxfr)), lval(RedofrSlot)),
+                "restore redofr for full disj hijack")
         ])
     ),
     (
@@ -1636,7 +1636,7 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
     ->
         HijackType = ite_no_hijack,
         Code = node([
-            comment("ite no hijack") - ""
+            llds_instr(comment("ite no hijack"), "")
         ])
     ;
         ( Allow = not_allowed ; CondEnv = inside_non_condition )
@@ -1645,7 +1645,7 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
         HijackType = ite_temp_frame(MaxfrSlot),
         create_temp_frame(do_fail, "prepare for ite", TempFrameCode, !CI),
         MaxfrCode = node([
-            assign(MaxfrSlot, lval(maxfr)) - "prepare for ite"
+            llds_instr(assign(MaxfrSlot, lval(maxfr)), "prepare for ite")
         ]),
         Code = tree(TempFrameCode, MaxfrCode)
     ;
@@ -1654,7 +1654,7 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
     ->
         HijackType = ite_quarter_hijack,
         Code = node([
-            comment("ite quarter hijack") - ""
+            llds_instr(comment("ite quarter hijack"), "")
         ])
     ;
         CurfrMaxfr = must_be_equal
@@ -1663,8 +1663,8 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
         acquire_temp_slot(lval(redoip_slot(lval(curfr))), RedoipSlot, !CI),
         HijackType = ite_half_hijack(RedoipSlot),
         Code = node([
-            assign(RedoipSlot, lval(redoip_slot(lval(curfr))))
-                - "prepare for half ite hijack"
+            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
+                "prepare for half ite hijack")
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
@@ -1673,14 +1673,14 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
         acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         Code = node([
-            assign(MaxfrSlot, lval(maxfr))
-                - "prepare for full ite hijack",
-            assign(RedoipSlot, lval(redoip_slot(lval(maxfr))))
-                - "prepare for full ite hijack",
-            assign(RedofrSlot, lval(redofr_slot(lval(maxfr))))
-                - "prepare for full ite hijack",
-            assign(redofr_slot(lval(maxfr)), lval(curfr))
-                - "prepare for full ite hijack"
+            llds_instr(assign(MaxfrSlot, lval(maxfr)),
+                "prepare for full ite hijack"),
+            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
+                "prepare for full ite hijack"),
+            llds_instr(assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
+                "prepare for full ite hijack"),
+            llds_instr(assign(redofr_slot(lval(maxfr)), lval(curfr)),
+                "prepare for full ite hijack")
         ])
     ),
     HijackInfo = ite_info(ResumeKnown, CondEnv, HijackType),
@@ -1703,14 +1703,14 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
         HijackType = ite_temp_frame(MaxfrSlot),
         ThenCode = node([
             % We can't remove the frame, it may not be on top.
-            assign(redoip_slot(lval(MaxfrSlot)),
-                const(llconst_code_addr(do_fail)))
-                - "soft cut for temp frame ite"
+            llds_instr(assign(redoip_slot(lval(MaxfrSlot)),
+                const(llconst_code_addr(do_fail))),
+                "soft cut for temp frame ite")
         ]),
         ElseCode = node([
             % XXX, search /assign(maxfr
-            assign(maxfr, lval(prevfr_slot(lval(MaxfrSlot))))
-                - "restore maxfr for temp frame ite"
+            llds_instr(assign(maxfr, lval(prevfr_slot(lval(MaxfrSlot)))),
+                "restore maxfr for temp frame ite")
         ])
     ;
         HijackType = ite_quarter_hijack,
@@ -1718,8 +1718,8 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
         ( maybe_pick_stack_resume_point(ResumePoint, _, StackLabel) ->
             LabelConst = const(llconst_code_addr(StackLabel)),
             ThenCode = node([
-                assign(redoip_slot(lval(curfr)), LabelConst)
-                    - "restore redoip for quarter ite hijack"
+                llds_instr(assign(redoip_slot(lval(curfr)), LabelConst),
+                    "restore redoip for quarter ite hijack")
             ])
         ;
             % This can happen only if ResumePoint is unreachable from here.
@@ -1729,23 +1729,23 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
     ;
         HijackType = ite_half_hijack(RedoipSlot),
         ThenCode = node([
-            assign(redoip_slot(lval(curfr)), lval(RedoipSlot))
-                - "restore redoip for half ite hijack"
+            llds_instr(assign(redoip_slot(lval(curfr)), lval(RedoipSlot)),
+                "restore redoip for half ite hijack")
         ]),
         ElseCode = ThenCode
     ;
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         ThenCode = node([
-            assign(redoip_slot(lval(MaxfrSlot)), lval(RedoipSlot))
-                - "restore redoip for full ite hijack",
-            assign(redofr_slot(lval(MaxfrSlot)), lval(RedofrSlot))
-                - "restore redofr for full ite hijack"
+            llds_instr(assign(redoip_slot(lval(MaxfrSlot)), lval(RedoipSlot)),
+                "restore redoip for full ite hijack"),
+            llds_instr(assign(redofr_slot(lval(MaxfrSlot)), lval(RedofrSlot)),
+                "restore redofr for full ite hijack")
         ]),
         ElseCode = node([
-            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
-                - "restore redoip for full ite hijack",
-            assign(redofr_slot(lval(maxfr)), lval(RedofrSlot))
-                - "restore redofr for full ite hijack"
+            llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
+                "restore redoip for full ite hijack"),
+            llds_instr(assign(redofr_slot(lval(maxfr)), lval(RedofrSlot)),
+                "restore redofr for full ite hijack")
         ])
     ),
     ( ResumeKnown0 = resume_point_unknown ->
@@ -1808,7 +1808,7 @@ prepare_for_det_commit(AddTrailOps, DetCommitInfo, Code, !CI) :-
         CurfrMaxfr = may_be_different,
         acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
         SaveMaxfrCode = node([
-            save_maxfr(MaxfrSlot) - "save the value of maxfr"
+            llds_instr(save_maxfr(MaxfrSlot), "save the value of maxfr")
         ]),
         MaybeMaxfrSlot = yes(MaxfrSlot)
     ;
@@ -1825,15 +1825,15 @@ generate_det_commit(DetCommitInfo, Code, !CI) :-
     (
         MaybeMaxfrSlot = yes(MaxfrSlot),
         RestoreMaxfrCode = node([
-            restore_maxfr(MaxfrSlot)
-                - "restore the value of maxfr - perform commit"
+            llds_instr(restore_maxfr(MaxfrSlot),
+                "restore the value of maxfr - perform commit")
         ]),
         release_temp_slot(MaxfrSlot, !CI)
     ;
         MaybeMaxfrSlot = no,
         RestoreMaxfrCode = node([
-            assign(maxfr, lval(curfr))
-                - "restore the value of maxfr - perform commit"
+            llds_instr(assign(maxfr, lval(curfr)),
+                "restore the value of maxfr - perform commit")
         ])
     ),
     maybe_restore_trail_info(MaybeTrailSlots, CommitTrailCode, _, !CI),
@@ -1889,8 +1889,8 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
     ->
         acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
         MaxfrCode = node([
-            save_maxfr(MaxfrSlot)
-                - "prepare for temp frame commit"
+            llds_instr(save_maxfr(MaxfrSlot),
+                "prepare for temp frame commit")
         ]),
         create_temp_frame(StackLabel,
             "prepare for temp frame commit", TempFrameCode, !CI),
@@ -1922,8 +1922,8 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
                     "\t\tMR_restore_transient_registers();\n")
             ],
             MarkCode = node([
-                foreign_proc_code([], Components, proc_will_not_call_mercury,
-                    no, no, no, no, no, yes) - ""
+                llds_instr(foreign_proc_code([], Components,
+                    proc_will_not_call_mercury, no, no, no, no, no, yes), "")
             ])
         ;
             UseMinimalModelStackCopyCut = no,
@@ -1936,8 +1936,8 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
     ->
         HijackInfo = commit_quarter_hijack,
         HijackCode = node([
-            assign(redoip_slot(lval(curfr)), StackLabelConst)
-                - "hijack the redofr slot"
+            llds_instr(assign(redoip_slot(lval(curfr)), StackLabelConst),
+                "hijack the redofr slot")
         ])
     ;
         CurfrMaxfr = must_be_equal
@@ -1948,10 +1948,10 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         acquire_temp_slot(lval(redoip_slot(lval(curfr))), RedoipSlot, !CI),
         HijackInfo = commit_half_hijack(RedoipSlot),
         HijackCode = node([
-            assign(RedoipSlot, lval(redoip_slot(lval(curfr))))
-                - "prepare for half commit hijack",
-            assign(redoip_slot(lval(curfr)), StackLabelConst)
-                - "hijack the redofr slot"
+            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(curfr)))),
+                "prepare for half commit hijack"),
+            llds_instr(assign(redoip_slot(lval(curfr)), StackLabelConst),
+                "hijack the redofr slot")
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
@@ -1960,16 +1960,16 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
         HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         HijackCode = node([
-            assign(RedoipSlot, lval(redoip_slot(lval(maxfr))))
-                - "prepare for full commit hijack",
-            assign(RedofrSlot, lval(redofr_slot(lval(maxfr))))
-                - "prepare for full commit hijack",
-            save_maxfr(MaxfrSlot)
-                - "prepare for full commit hijack",
-            assign(redofr_slot(lval(maxfr)), lval(curfr))
-                - "hijack the redofr slot",
-            assign(redoip_slot(lval(maxfr)), StackLabelConst)
-                - "hijack the redoip slot"
+            llds_instr(assign(RedoipSlot, lval(redoip_slot(lval(maxfr)))),
+                "prepare for full commit hijack"),
+            llds_instr(assign(RedofrSlot, lval(redofr_slot(lval(maxfr)))),
+                "prepare for full commit hijack"),
+            llds_instr(save_maxfr(MaxfrSlot),
+                "prepare for full commit hijack"),
+            llds_instr(assign(redofr_slot(lval(maxfr)), lval(curfr)),
+                "hijack the redofr slot"),
+            llds_instr(assign(redoip_slot(lval(maxfr)), StackLabelConst),
+                "hijack the redoip slot")
         ])
     ),
     maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI),
@@ -1986,8 +1986,8 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
     (
         HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModel),
         MaxfrCode = node([
-            restore_maxfr(MaxfrSlot)
-                - "restore maxfr for temp frame hijack"
+            llds_instr(restore_maxfr(MaxfrSlot),
+                "restore maxfr for temp frame hijack")
         ]),
         (
             UseMinimalModel = yes,
@@ -1998,8 +1998,9 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
                     "\t\tMR_commit_cut();\n")
             ],
             CutCode = node([
-                foreign_proc_code([], Components, proc_will_not_call_mercury,
-                    no, no, no, no, no, yes) - "commit for temp frame hijack"
+                llds_instr(foreign_proc_code([], Components,
+                    proc_will_not_call_mercury, no, no, no, no, no, yes),
+                    "commit for temp frame hijack")
             ])
         ;
             UseMinimalModel = no,
@@ -2014,42 +2015,42 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
         pick_stack_resume_point(TopResumePoint, _, StackLabel),
         StackLabelConst = const(llconst_code_addr(StackLabel)),
         SuccessUndoCode = node([
-            assign(maxfr, lval(curfr))
-                - "restore maxfr for quarter commit hijack",
-            assign(redoip_slot(lval(maxfr)), StackLabelConst)
-                - "restore redoip for quarter commit hijack"
+            llds_instr(assign(maxfr, lval(curfr)),
+                "restore maxfr for quarter commit hijack"),
+            llds_instr(assign(redoip_slot(lval(maxfr)), StackLabelConst),
+                "restore redoip for quarter commit hijack")
         ]),
         FailureUndoCode = node([
-            assign(redoip_slot(lval(maxfr)), StackLabelConst)
-                - "restore redoip for quarter commit hijack"
+            llds_instr(assign(redoip_slot(lval(maxfr)), StackLabelConst),
+                "restore redoip for quarter commit hijack")
         ])
     ;
         HijackInfo = commit_half_hijack(RedoipSlot),
         SuccessUndoCode = node([
-            assign(maxfr, lval(curfr))
-                - "restore maxfr for half commit hijack",
-            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
-                - "restore redoip for half commit hijack"
+            llds_instr(assign(maxfr, lval(curfr)),
+                "restore maxfr for half commit hijack"),
+            llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
+                "restore redoip for half commit hijack")
         ]),
         FailureUndoCode = node([
-            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
-                - "restore redoip for half commit hijack"
+            llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
+                "restore redoip for half commit hijack")
         ])
     ;
         HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         SuccessUndoCode = node([
-            restore_maxfr(MaxfrSlot)
-                - "restore maxfr for full commit hijack",
-            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
-                - "restore redoip for full commit hijack",
-            assign(redofr_slot(lval(maxfr)), lval(RedofrSlot))
-                - "restore redofr for full commit hijack"
+            llds_instr(restore_maxfr(MaxfrSlot),
+                "restore maxfr for full commit hijack"),
+            llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
+                "restore redoip for full commit hijack"),
+            llds_instr(assign(redofr_slot(lval(maxfr)), lval(RedofrSlot)),
+                "restore redofr for full commit hijack")
         ]),
         FailureUndoCode = node([
-            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
-                - "restore redoip for full commit hijack",
-            assign(redofr_slot(lval(maxfr)), lval(RedofrSlot))
-                - "restore redofr for full commit hijack"
+            llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
+                "restore redoip for full commit hijack"),
+            llds_instr(assign(redofr_slot(lval(maxfr)), lval(RedofrSlot)),
+                "restore redofr for full commit hijack")
         ])
     ),
 
@@ -2063,10 +2064,10 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
 
     get_next_label(SuccLabel, !CI),
     GotoSuccLabel = node([
-        goto(code_label(SuccLabel)) - "Jump to success continuation"
+        llds_instr(goto(code_label(SuccLabel)), "Jump to success continuation")
     ]),
     SuccLabelCode = node([
-        label(SuccLabel) - "Success continuation"
+        llds_instr(label(SuccLabel), "Success continuation")
     ]),
     SuccessCode = tree(SuccessUndoCode, CommitTrailCode),
     FailureCode = tree_list([ResumePointCode, FailureUndoCode,
@@ -2095,7 +2096,7 @@ create_temp_frame(Redoip, Comment, Code, !CI) :-
         Kind = det_stack_proc
     ),
     Code = node([
-        mkframe(temp_frame(Kind), yes(Redoip)) - Comment
+        llds_instr(mkframe(temp_frame(Kind), yes(Redoip)), Comment)
     ]),
     set_created_temp_frame(yes, !CI),
     get_fail_info(!.CI, FailInfo0),
@@ -2127,8 +2128,8 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
         pick_stack_resume_point(ResumePoint, _, StackLabel),
         LabelConst = const(llconst_code_addr(StackLabel)),
         Code = node([
-            assign(redoip_slot(lval(maxfr)), LabelConst)
-                - "hijack redoip to effect resume point"
+            llds_instr(assign(redoip_slot(lval(maxfr)), LabelConst),
+                "hijack redoip to effect resume point")
         ]),
         RedoipUpdate = has_been_done
     ;
@@ -2187,11 +2188,11 @@ generate_failure(Code, !CI) :-
             pick_and_place_vars(AssocList, _, PlaceCode, !CI),
             reset_to_position(CurPos, !CI)
         ),
-        BranchCode = node([goto(FailureAddress) - "fail"]),
+        BranchCode = node([llds_instr(goto(FailureAddress), "fail")]),
         Code = tree(PlaceCode, BranchCode)
     ;
         ResumeKnown = resume_point_unknown,
-        Code = node([goto(do_redo) - "fail"])
+        Code = node([llds_instr(goto(do_redo), "fail")])
     ).
 
 fail_if_rval_is_false(Rval0, Code, !CI) :-
@@ -2204,7 +2205,7 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
             % We branch away if the test *fails*
             code_util.neg_rval(Rval0, Rval),
             Code = node([
-                if_val(Rval, FailureAddress0) - "Test for failure"
+                llds_instr(if_val(Rval, FailureAddress0), "Test for failure")
             ])
         ;
             pick_first_resume_point(TopResumePoint, Map, FailureAddress),
@@ -2219,11 +2220,11 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
             % their failure locations and branches away to the failure
             % continuation.
             TestCode = node([
-                if_val(Rval0, SuccessAddress) - "Test for failure"
+                llds_instr(if_val(Rval0, SuccessAddress), "Test for failure")
             ]),
             TailCode = node([
-                goto(FailureAddress) - "Goto failure",
-                label(SuccessLabel) - "Success continuation"
+                llds_instr(goto(FailureAddress), "Goto failure"),
+                llds_instr(label(SuccessLabel), "Success continuation")
             ]),
             Code = tree(TestCode, tree(PlaceCode, TailCode))
         )
@@ -2232,7 +2233,7 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
         % We branch away if the test *fails*
         code_util.neg_rval(Rval0, Rval),
         Code = node([
-            if_val(Rval, do_redo) - "Test for failure"
+            llds_instr(if_val(Rval, do_redo), "Test for failure")
         ])
     ).
 
@@ -2527,14 +2528,14 @@ generate_resume_point(ResumePoint, Code, !CI) :-
         ResumePoint = orig_only(Map1, Addr1),
         extract_label_from_code_addr(Addr1, Label1),
         Code = node([
-            label(Label1) - "orig only failure continuation"
+            llds_instr(label(Label1), "orig only failure continuation")
         ]),
         set_var_locations(Map1, !CI)
     ;
         ResumePoint = stack_only(Map1, Addr1),
         extract_label_from_code_addr(Addr1, Label1),
         Code = node([
-            label(Label1) - "stack only failure continuation"
+            llds_instr(label(Label1), "stack only failure continuation")
         ]),
         set_var_locations(Map1, !CI),
         generate_resume_layout(Label1, Map1, !CI)
@@ -2543,14 +2544,14 @@ generate_resume_point(ResumePoint, Code, !CI) :-
         extract_label_from_code_addr(Addr1, Label1),
         extract_label_from_code_addr(Addr2, Label2),
         Label1Code = node([
-            label(Label1) - "stack failure continuation before orig"
+            llds_instr(label(Label1), "stack failure continuation before orig")
         ]),
         set_var_locations(Map1, !CI),
         generate_resume_layout(Label1, Map1, !CI),
         map.to_assoc_list(Map2, AssocList2),
         place_resume_vars(AssocList2, PlaceCode, !CI),
         Label2Code = node([
-            label(Label2) - "orig failure continuation after stack"
+            llds_instr(label(Label2), "orig failure continuation after stack")
         ]),
         set_var_locations(Map2, !CI),
         Code = tree(Label1Code, tree(PlaceCode, Label2Code))
@@ -2559,13 +2560,13 @@ generate_resume_point(ResumePoint, Code, !CI) :-
         extract_label_from_code_addr(Addr1, Label1),
         extract_label_from_code_addr(Addr2, Label2),
         Label1Code = node([
-            label(Label1) - "orig failure continuation before stack"
+            llds_instr(label(Label1), "orig failure continuation before stack")
         ]),
         set_var_locations(Map1, !CI),
         map.to_assoc_list(Map2, AssocList2),
         place_resume_vars(AssocList2, PlaceCode, !CI),
         Label2Code = node([
-            label(Label2) - "stack failure continuation after orig"
+            llds_instr(label(Label2), "stack failure continuation after orig")
         ]),
         set_var_locations(Map2, !CI),
         generate_resume_layout(Label2, Map2, !CI),
@@ -2650,8 +2651,10 @@ maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI) :-
         acquire_temp_slot(ticket, TrailPtrSlot, !CI),
         MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
         SaveTrailCode = node([
-            mark_ticket_stack(CounterSlot) - "save the ticket counter",
-            store_ticket(TrailPtrSlot) - "save the trail pointer"
+            llds_instr(mark_ticket_stack(CounterSlot),
+                "save the ticket counter"),
+            llds_instr(store_ticket(TrailPtrSlot),
+                "save the trail pointer")
         ])
     ;
         AddTrailOps = no,
@@ -2670,16 +2673,16 @@ maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode, !CI) :-
     ;
         MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
         CommitCode = node([
-            reset_ticket(lval(TrailPtrSlot), reset_reason_commit)
-                - "discard trail entries and restore trail ptr",
-            prune_tickets_to(lval(CounterSlot))
-                - ("restore ticket counter (but not high water mark)")
+            llds_instr(reset_ticket(lval(TrailPtrSlot), reset_reason_commit),
+                "discard trail entries and restore trail ptr"),
+            llds_instr(prune_tickets_to(lval(CounterSlot)),
+                "restore ticket counter (but not high water mark)")
         ]),
         RestoreCode = node([
-            reset_ticket(lval(TrailPtrSlot), reset_reason_undo)
-                - "apply trail entries and restore trail ptr",
-            discard_ticket
-                - "restore ticket counter and high water mark"
+            llds_instr(reset_ticket(lval(TrailPtrSlot), reset_reason_undo),
+                "apply trail entries and restore trail ptr"),
+            llds_instr(discard_ticket,
+                "restore ticket counter and high water mark")
         ]),
         release_temp_slot(CounterSlot, !CI),
         release_temp_slot(TrailPtrSlot, !CI)
@@ -2923,12 +2926,12 @@ pickup_zombies(Zombies, !CI) :-
 save_hp(Code, HpSlot, !CI) :-
     acquire_temp_slot(lval(hp), HpSlot, !CI),
     Code = node([
-        mark_hp(HpSlot) - "Save heap pointer"
+        llds_instr(mark_hp(HpSlot), "Save heap pointer")
     ]).
 
 restore_hp(HpSlot, Code) :-
     Code = node([
-        restore_hp(lval(HpSlot)) - "Restore heap pointer"
+        llds_instr(restore_hp(lval(HpSlot)), "Restore heap pointer")
     ]).
 
 release_hp(HpSlot, !CI) :-
@@ -2982,12 +2985,12 @@ maybe_restore_and_release_hp(MaybeHpSlot, Code, !CI) :-
 save_ticket(Code, TicketSlot, !CI) :-
     acquire_temp_slot(ticket, TicketSlot, !CI),
     Code = node([
-        store_ticket(TicketSlot) - "Save trail state"
+        llds_instr(store_ticket(TicketSlot), "Save trail state")
     ]).
 
 reset_ticket(TicketSlot, Reason, Code) :-
     Code = node([
-        reset_ticket(lval(TicketSlot), Reason) - "Reset trail"
+        llds_instr(reset_ticket(lval(TicketSlot), Reason), "Reset trail")
     ]).
 
 release_ticket(TicketSlot, !CI) :-
@@ -2995,33 +2998,33 @@ release_ticket(TicketSlot, !CI) :-
 
 reset_and_prune_ticket(TicketSlot, Reason, Code) :-
     Code = node([
-        reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
-        prune_ticket - "Prune ticket stack"
+        llds_instr(reset_ticket(lval(TicketSlot), Reason), "Restore trail"),
+        llds_instr(prune_ticket, "Prune ticket stack")
     ]).
 
 reset_prune_and_release_ticket(TicketSlot, Reason, Code, !CI) :-
     Code = node([
-        reset_ticket(lval(TicketSlot), Reason) - "Release trail",
-        prune_ticket - "Prune ticket stack"
+        llds_instr(reset_ticket(lval(TicketSlot), Reason), "Release trail"),
+        llds_instr(prune_ticket, "Prune ticket stack")
     ]),
     release_temp_slot(TicketSlot, !CI).
 
 reset_and_discard_ticket(TicketSlot, Reason, Code) :-
     Code = node([
-        reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
-        discard_ticket - "Pop ticket stack"
+        llds_instr(reset_ticket(lval(TicketSlot), Reason), "Restore trail"),
+        llds_instr(discard_ticket, "Pop ticket stack")
     ]).
 
 reset_discard_and_release_ticket(TicketSlot, Reason, Code, !CI) :-
     Code = node([
-        reset_ticket(lval(TicketSlot), Reason) - "Release trail",
-        discard_ticket - "Pop ticket stack"
+        llds_instr(reset_ticket(lval(TicketSlot), Reason), "Release trail"),
+        llds_instr(discard_ticket, "Pop ticket stack")
     ]),
     release_temp_slot(TicketSlot, !CI).
 
 discard_and_release_ticket(TicketSlot, Code, !CI) :-
     Code = node([
-        discard_ticket - "Pop ticket stack"
+        llds_instr(discard_ticket, "Pop ticket stack")
     ]),
     release_temp_slot(TicketSlot, !CI).
 

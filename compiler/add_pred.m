@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -267,16 +267,16 @@ add_builtin(PredId, Types, !PredInfo) :-
         AssignExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext),
         goal_info_set_nonlocals(set.make_singleton_set(ZeroVar),
             GoalInfo0, GoalInfoWithZero),
-        AssignGoal = AssignExpr - GoalInfoWithZero,
+        AssignGoal = hlds_goal(AssignExpr, GoalInfoWithZero),
 
         CastExpr = generic_call(cast(unsafe_type_inst_cast),
             [ZeroVar] ++ HeadVarList, [in_mode, uo_mode], detism_det),
         goal_info_set_nonlocals(set.list_to_set([ZeroVar] ++ HeadVarList),
             GoalInfo0, GoalInfoWithZeroHeadVars),
-        CastGoal = CastExpr - GoalInfoWithZeroHeadVars,
+        CastGoal = hlds_goal(CastExpr, GoalInfoWithZeroHeadVars),
 
         ConjExpr = conj(plain_conj, [AssignGoal, CastGoal]),
-        ConjGoal = ConjExpr - GoalInfoWithZeroHeadVars,
+        ConjGoal = hlds_goal(ConjExpr, GoalInfoWithZeroHeadVars),
 
         Reason = promise_purity(dont_make_implicit_promises, purity_semipure),
         GoalExpr = scope(Reason, ConjGoal)
@@ -285,7 +285,7 @@ add_builtin(PredId, Types, !PredInfo) :-
         Name = "trace_set_io_state"
     ->
         ConjExpr = conj(plain_conj, []),
-        ConjGoal = ConjExpr - GoalInfo,
+        ConjGoal = hlds_goal(ConjExpr, GoalInfo),
         Reason = promise_purity(dont_make_implicit_promises, purity_impure),
         GoalExpr = scope(Reason, ConjGoal),
         ExtraVars = [],
@@ -306,7 +306,7 @@ add_builtin(PredId, Types, !PredInfo) :-
     ),
 
     % Construct a clause containing that pseudo-recursive call.
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     Clause = clause([], Goal, impl_lang_mercury, Context),
 
     % Put the clause we just built into the pred_info,

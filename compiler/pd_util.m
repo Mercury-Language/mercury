@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2006 University of Melbourne.
+% Copyright (C) 1998-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -185,7 +185,7 @@
 goal_get_calls(Goal0, CalledPreds) :-
     goal_to_conj_list(Goal0, GoalList),
     GetCalls = (pred(Goal::in, CalledPred::out) is semidet :-
-        Goal = plain_call(PredId, ProcId, _, _, _, _) - _,
+        Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _),
         CalledPred = proc(PredId, ProcId)
     ),
     list.filter_map(GetCalls, GoalList, CalledPreds).
@@ -206,7 +206,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
         proc_info_get_vartypes(ProcInfo0, VarTypes0),
         proc_info_get_varset(ProcInfo0, VarSet0),
         constraint_info_init(ModuleInfo0, VarTypes0, VarSet0, InstMap, CInfo0),
-        Goal0 = _ - GoalInfo0,
+        Goal0 = hlds_goal(_, GoalInfo0),
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
         constraint.propagate_constraints_in_goal(!Goal, CInfo0, CInfo, !IO),
         constraint_info_deconstruct(CInfo, ModuleInfo, VarTypes, VarSet,
@@ -292,7 +292,7 @@ unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
     mode_info_init(ModuleInfo1, PredId, ProcId, Context, LiveVars, InstMap0,
         check_unique_modes, MayChangeCalledProc, ModeInfo0),
 
-    unique_modes.check_goal(Goal0, Goal, ModeInfo0, ModeInfo1, !IO),
+    unique_modes_check_goal(Goal0, Goal, ModeInfo0, ModeInfo1, !IO),
     globals.io_lookup_bool_option(debug_pd, Debug, !IO),
     (
         Debug = yes,
@@ -321,7 +321,7 @@ unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
 :- pred get_goal_live_vars(pd_info::in, hlds_goal::in,
     set(prog_var)::out) is det.
 
-get_goal_live_vars(PDInfo, _ - GoalInfo, !:Vars) :-
+get_goal_live_vars(PDInfo, hlds_goal(_, GoalInfo), !:Vars) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     pd_info_get_instmap(PDInfo, InstMap),
@@ -356,7 +356,7 @@ get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
     pd_info::in, pd_info::out, io::di, io::uo) is det.
 
 rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
 
     goal_info_get_determinism(GoalInfo0, Det),
     det_get_soln_context(Det, SolnContext),
@@ -538,7 +538,7 @@ get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
 get_branch_vars_goal_2(_, [], yes, _, _, !LeftVars, !Vars).
 get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], !.FoundBranch,
         VarTypes, InstMap0, !LeftVars, !Vars) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     ( get_branch_instmap_deltas(Goal, InstMapDeltas) ->
@@ -551,7 +551,7 @@ get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], !.FoundBranch,
         get_left_vars(Goal, !LeftVars),
         !:FoundBranch = yes
     ;
-        Goal = GoalExpr - _,
+        Goal = hlds_goal(GoalExpr, _),
         goal_is_atomic(GoalExpr)
     ),
     get_branch_vars_goal_2(ModuleInfo, Goals, !.FoundBranch,
@@ -561,21 +561,24 @@ get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], !.FoundBranch,
     list(instmap_delta)::out) is semidet.
 
 get_branch_instmap_deltas(Goal, [CondDelta, ThenDelta, ElseDelta]) :-
-    Goal = if_then_else(_, _ - CondInfo, _ - ThenInfo, _ - ElseInfo) - _,
+    Goal = hlds_goal(if_then_else(_, Cond, Then, Else), _),
+    Cond = hlds_goal(_, CondInfo),
+    Then = hlds_goal(_, ThenInfo),
+    Else = hlds_goal(_, ElseInfo),
     goal_info_get_instmap_delta(CondInfo, CondDelta),
     goal_info_get_instmap_delta(ThenInfo, ThenDelta),
     goal_info_get_instmap_delta(ElseInfo, ElseDelta).
-get_branch_instmap_deltas(switch(_, _, Cases) - _, InstMapDeltas) :-
+get_branch_instmap_deltas(hlds_goal(switch(_, _, Cases), _), InstMapDeltas) :-
     GetCaseInstMapDelta =
         (pred(Case::in, InstMapDelta::out) is det :-
-            Case = case(_, _ - CaseInfo),
+            Case = case(_, hlds_goal(_, CaseInfo)),
             goal_info_get_instmap_delta(CaseInfo, InstMapDelta)
         ),
     list.map(GetCaseInstMapDelta, Cases, InstMapDeltas).
-get_branch_instmap_deltas(disj(Disjuncts) - _, InstMapDeltas) :-
+get_branch_instmap_deltas(hlds_goal(disj(Disjuncts), _), InstMapDeltas) :-
     GetDisjunctInstMapDelta =
         (pred(Disjunct::in, InstMapDelta::out) is det :-
-            Disjunct = _ - DisjInfo,
+            Disjunct = hlds_goal(_, DisjInfo),
             goal_info_get_instmap_delta(DisjInfo, InstMapDelta)
         ),
     list.map(GetDisjunctInstMapDelta, Disjuncts, InstMapDeltas).
@@ -588,7 +591,7 @@ get_branch_instmap_deltas(disj(Disjuncts) - _, InstMapDeltas) :-
     set(prog_var)::in, set(prog_var)::out) is det.
 
 get_left_vars(Goal, Vars0, Vars) :-
-    ( Goal = switch(Var, _, _) - _ ->
+    ( Goal = hlds_goal(switch(Var, _, _), _) ->
         set.insert(Vars0, Var, Vars)
     ;
         Vars = Vars0
@@ -626,7 +629,15 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
 
     % We have extra information about a switched-on variable
     % at the end of each branch.
-    ( Goal = switch(SwitchVar, _, _) - _ ->
+/* ### In clause for predicate `get_branch_vars'/7: */
+/* ###   type error in unification of variable `Goal' */
+/* ###   and functor `-/2'. */
+/* ###   variable `Goal' has type `((hlds.hlds_goal).hlds_goal)', */
+/* ###   functor `-/2' has overloaded type */
+/* ###     { (T1 - T2): (pair.pair(T1, T2)), */
+/* ###     (int - int): int */
+/* ###   }. */
+    ( Goal = hlds_goal(switch(SwitchVar, _, _), _) ->
         ( map.search(!.ExtraVars, SwitchVar, SwitchVarSet0) ->
             set.insert(SwitchVarSet0, BranchNo, SwitchVarSet)
         ;
@@ -650,9 +661,9 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
 get_sub_branch_vars_goal(_, [], _, _, Vars, Vars, !Module).
 get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         VarTypes, InstMap0, Vars0, SubVars, !ModuleInfo) :-
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     ( GoalExpr = if_then_else(_, Cond, Then, Else) ->
-        Cond = _ - CondInfo,
+        Cond = hlds_goal(_, CondInfo),
         goal_info_get_instmap_delta(CondInfo, CondDelta),
         instmap.apply_instmap_delta(InstMap0, CondDelta, InstMap1),
         goal_to_conj_list(Then, ThenList),
@@ -714,7 +725,7 @@ examine_case_list(ProcArgInfo, BranchNo, Var,
 examine_branch(_, _, _, [], _, _, !Vars).
 examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
         VarTypes, InstMap, !Vars) :-
-    ( Goal = plain_call(PredId, ProcId, Args, _, _, _) - _ ->
+    ( Goal = hlds_goal(plain_call(PredId, ProcId, Args, _, _, _), _) ->
         ( map.search(ProcArgInfo, proc(PredId, ProcId), ThisProcArgInfo) ->
             convert_branch_info(ThisProcArgInfo, Args, BranchInfo),
             BranchInfo = pd_branch_info(!:Vars, _, _),
@@ -734,7 +745,7 @@ examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
     ;
         true
     ),
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(InstMap, InstMapDelta, InstMap1),
     examine_branch(ModuleInfo, ProcArgInfo, BranchNo,
@@ -959,7 +970,7 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
         map.search(OldNewRenaming, K1, V1)
     ),
     list.map(Search, OldArgs, NewArgs),
-    NewGoal = _ - NewGoalInfo,
+    NewGoal = hlds_goal(_, NewGoalInfo),
     goal_info_get_nonlocals(NewGoalInfo, NewNonLocals),
     set.delete_list(NewNonLocals, NewArgs, UnmatchedNonLocals),
     set.empty(UnmatchedNonLocals),
@@ -987,8 +998,7 @@ collect_matching_arg_types([Arg | Args], [Type | Types],
     ;
         true
     ),
-    collect_matching_arg_types(Args, Types,
-        Renaming, !MatchingTypes).
+    collect_matching_arg_types(Args, Types, Renaming, !MatchingTypes).
 
     % Check that the shape of the goals matches, and that there is a mapping
     % from the variables in the old goal to the variables in the new goal.
@@ -997,12 +1007,11 @@ collect_matching_arg_types([Arg | Args], [Type | Types],
     map(prog_var, prog_var)::in, map(prog_var, prog_var)::out) is semidet.
 
 goals_match_2([], [], !ONRenaming).
-goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
-        !ONRenaming) :-
+goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
     (
         (
-            OldGoal = unify(_, _, _, OldUnification, _) - _,
-            NewGoal = unify(_, _, _, NewUnification, _) - _,
+            OldGoal = hlds_goal(unify(_, _, _, OldUnification, _), _),
+            NewGoal = hlds_goal(unify(_, _, _, NewUnification, _), _),
             (
                 OldUnification = simple_test(OldVar1, OldVar2),
                 NewUnification = simple_test(NewVar1, NewVar2),
@@ -1029,14 +1038,18 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
                 NewArgs = [NewVar | NewArgs1]
             )
         ;
-            OldGoal = plain_call(PredId, ProcId, OldArgs, _, _, _) - _,
-            NewGoal = plain_call(PredId, ProcId, NewArgs, _, _, _) - _
+            OldGoal = hlds_goal(plain_call(PredId, ProcId, OldArgs, _, _, _),
+                _),
+            NewGoal = hlds_goal(plain_call(PredId, ProcId, NewArgs, _, _, _),
+                _)
         ;
             % We don't need to check the modes here - if the goals match
             % and the insts of the argument variables match, the modes
             % of the call must be the same.
-            OldGoal = generic_call(OldGenericCall, OldArgs1, _, Det) - _,
-            NewGoal = generic_call(NewGenericCall, NewArgs1, _, Det) - _,
+            OldGoal = hlds_goal(generic_call(OldGenericCall, OldArgs1, _, Det),
+                _),
+            NewGoal = hlds_goal(generic_call(NewGenericCall, NewArgs1, _, Det),
+                _),
             match_generic_call(OldGenericCall, NewGenericCall),
             goal_util.generic_call_vars(OldGenericCall, OldArgs0),
             goal_util.generic_call_vars(NewGenericCall, NewArgs0),
@@ -1058,11 +1071,11 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
         list.foldl(MapInsert, ONArgsList, !ONRenaming)
     ;
         (
-            OldGoal = negation(OldSubGoal) - _,
-            NewGoal = negation(NewSubGoal) - _
+            OldGoal = hlds_goal(negation(OldSubGoal), _),
+            NewGoal = hlds_goal(negation(NewSubGoal), _)
         ;
-            OldGoal = scope(_, OldSubGoal) - _,
-            NewGoal = scope(_, NewSubGoal) - _
+            OldGoal = hlds_goal(scope(_, OldSubGoal), _),
+            NewGoal = hlds_goal(scope(_, NewSubGoal), _)
         )
     ->
         goal_to_conj_list(OldSubGoal, OldSubGoalList),
@@ -1088,8 +1101,8 @@ pd_can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
     % The logic here is mostly duplicated in can_reorder_goals and
     % can_reorder_goals_old in goal_util.m.
 
-    EarlierGoal = _ - EarlierGoalInfo,
-    LaterGoal = _ - LaterGoalInfo,
+    EarlierGoal = hlds_goal(_, EarlierGoalInfo),
+    LaterGoal = hlds_goal(_, LaterGoalInfo),
 
     goal_info_get_determinism(EarlierGoalInfo, EarlierDetism),
     goal_info_get_determinism(LaterGoalInfo, LaterDetism),
@@ -1126,7 +1139,7 @@ pd_can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
 
 :- pred goal_depends_on_goal(hlds_goal::in, hlds_goal::in) is semidet.
 
-goal_depends_on_goal(_ - GoalInfo1, _ - GoalInfo2) :-
+goal_depends_on_goal(hlds_goal(_, GoalInfo1), hlds_goal(_, GoalInfo2)) :-
     goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
     instmap_delta_changed_vars(InstmapDelta1, ChangedVars1),
     goal_info_get_nonlocals(GoalInfo2, NonLocals2),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -693,9 +693,12 @@ check_imported_module(Term, !Info, !IO) :-
         (
             MaybeUsedItemsTerm = yes(UsedItemsTerm),
             Items = [InterfaceItem, VersionNumberItem | OtherItems],
-            InterfaceItem = item_module_defn(_, md_interface) - _,
-            VersionNumberItem = item_module_defn(_,
-                md_version_numbers(_, VersionNumbers)) - _
+            InterfaceItem =
+                item_and_context(item_module_defn(_, md_interface), _),
+            VersionNumberItem =
+                item_and_context(
+                    item_module_defn(_, md_version_numbers(_, VersionNumbers)),
+                    _)
         ->
             check_module_used_items(ImportedModuleName, NeedQualifier,
                 RecordedTimestamp, UsedItemsTerm, VersionNumbers,
@@ -853,57 +856,63 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
     item_version_numbers::in, item_and_context::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_ambiguities(_, _, _, item_clause(_, _, _, _, _, _) - _, !Info) :-
-    unexpected(this_file, "check_for_ambiguities: clause").
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        item_type_defn(_, Name, Params, Body, _) - _, !Info) :-
-    Arity = list.length(Params),
-    check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-        VersionNumbers, type_item, Name, Arity, NeedsCheck, !Info),
+        ItemAndContext, !Info) :-
+    ItemAndContext = item_and_context(Item, _Context),
     (
-        NeedsCheck = yes,
-        check_type_defn_ambiguity_with_functor(NeedQualifier,
-            type_ctor(Name, Arity), Body, !Info)
+        Item = item_clause(_, _, _, _, _, _),
+        unexpected(this_file, "check_for_ambiguities: clause")
     ;
-        NeedsCheck = no
-    ).
-check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        item_inst_defn(_, Name, Params, _, _) - _, !Info) :-
-    check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-        VersionNumbers, inst_item, Name, list.length(Params), _, !Info).
-check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        item_mode_defn(_, Name, Params, _, _) - _, !Info) :-
-    check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-        VersionNumbers, mode_item, Name, list.length(Params), _, !Info).
-check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        item_typeclass(_, _, Name, Params, Interface, _) - _, !Info) :-
-    check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-        VersionNumbers, typeclass_item, Name, list.length(Params),
-        NeedsCheck, !Info),
-    (
-        NeedsCheck = yes,
-        Interface = class_interface_concrete(Methods)
-    ->
-        list.foldl(check_class_method_for_ambiguities(NeedQualifier,
-            OldTimestamp, VersionNumbers), Methods, !Info)
+        Item = item_type_defn(_, Name, Params, Body, _),
+        Arity = list.length(Params),
+        check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
+            VersionNumbers, type_item, Name, Arity, NeedsCheck, !Info),
+        (
+            NeedsCheck = yes,
+            check_type_defn_ambiguity_with_functor(NeedQualifier,
+                type_ctor(Name, Arity), Body, !Info)
+        ;
+            NeedsCheck = no
+        )
     ;
-        true
+        Item = item_inst_defn(_, Name, Params, _, _),
+        check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
+            VersionNumbers, inst_item, Name, list.length(Params), _, !Info)
+    ;
+        Item = item_mode_defn(_, Name, Params, _, _),
+        check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
+            VersionNumbers, mode_item, Name, list.length(Params), _, !Info)
+    ;
+        Item = item_typeclass(_, _, Name, Params, Interface, _),
+        check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
+            VersionNumbers, typeclass_item, Name, list.length(Params),
+            NeedsCheck, !Info),
+        (
+            NeedsCheck = yes,
+            Interface = class_interface_concrete(Methods)
+        ->
+            list.foldl(check_class_method_for_ambiguities(NeedQualifier,
+                OldTimestamp, VersionNumbers), Methods, !Info)
+        ;
+            true
+        )
+    ;
+        Item = item_pred_or_func(_, _, _, _, PredOrFunc, Name, Args,
+            WithType, _, _, _, _, _),
+        check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
+            VersionNumbers, PredOrFunc, Name, Args, WithType, !Info)
+    ;
+        ( Item = item_pred_or_func_mode(_, _, _, _, _, _, _)
+        ; Item = item_pragma(_, _)
+        ; Item = item_promise(_, _, _, _)
+        ; Item = item_module_defn(_, _)
+        ; Item = item_instance(_, _, _, _, _, _)
+        ; Item = item_initialise(_, _, _)
+        ; Item = item_finalise(_, _, _)
+        ; Item = item_mutable(_, _, _, _, _, _)
+        ; Item = item_nothing(_)
+        )
     ).
-check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        item_pred_or_func(_, _, _, _, PredOrFunc, Name, Args,
-            WithType, _, _, _, _, _) - _, !Info) :-
-    check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
-        VersionNumbers, PredOrFunc, Name, Args, WithType, !Info).
-check_for_ambiguities(_, _, _,
-        item_pred_or_func_mode(_, _, _, _, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, item_pragma(_, _) - _, !Info).
-check_for_ambiguities(_, _, _, item_promise(_, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, item_module_defn(_, _) - _, !Info).
-check_for_ambiguities(_, _, _, item_instance(_, _, _, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, item_initialise(_, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, item_finalise(_, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, item_mutable(_, _, _, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, item_nothing(_) - _, !Info).
 
 :- pred check_class_method_for_ambiguities(need_qualifier::in, timestamp::in,
     item_version_numbers::in, class_method::in,

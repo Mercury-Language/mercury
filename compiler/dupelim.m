@@ -146,8 +146,8 @@ dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
 
 add_pragma_pref_labels(Instr, !FoldFixed) :-
     (
-        Instr = foreign_proc_code(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
-            MaybeOnlyLayoutLabel, _, _, _) - _
+        Instr = llds_instr(foreign_proc_code(_, _, _, MaybeFixedLabel,
+            MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _, _), _)
     ->
         (
             MaybeFixedLabel = yes(FixedLabel),
@@ -306,7 +306,7 @@ standardize_instr_block(Instrs0, MaybeFallThrough, Uinstrs) :-
 :- pred standardize_instrs(list(instruction)::in, list(instr)::out) is det.
 
 standardize_instrs([], []).
-standardize_instrs([Instr - _ | Instrs], StdInstrs) :-
+standardize_instrs([llds_instr(Instr, _) | Instrs], StdInstrs) :-
     standardize_instrs(Instrs, StdInstrs1),
     standardize_instr(Instr, StdInstr),
     ( StdInstr = comment(_) ->
@@ -515,11 +515,11 @@ standardize_block(Instrs, MaybeFallThrough, StdInstrs) :-
         MaybeFallThrough = yes(Label),
         (
             list.last(Instrs, LastInstr),
-            LastInstr = goto(code_label(Label)) - _
+            LastInstr = llds_instr(goto(code_label(Label)), _)
         ->
             StdInstrs = Instrs
         ;
-            Goto = goto(code_label(Label)) - "",
+            Goto = llds_instr(goto(code_label(Label)), ""),
             StdInstrs = Instrs ++ [Goto]
         )
     ;
@@ -542,7 +542,7 @@ most_specific_block(Instrs1, MaybeFallThrough1,
     % can delete comments from its input instruction sequences,
     % it cannot delete executable instructions.
     list.last_det(Instrs, LastInstr),
-    ( LastInstr = goto(code_label(Label)) - _ ->
+    ( LastInstr = llds_instr(goto(code_label(Label)), _) ->
         MaybeFallThrough = yes(Label)
     ;
         MaybeFallThrough = no
@@ -556,8 +556,8 @@ most_specific_instrs(Instrs1, Instrs2, Instrs) :-
         Instrs1 = [Instr1 | Tail1],
         Instrs2 = [Instr2 | Tail2]
     ->
-        Instr1 = Uinstr1 - Comment1,
-        Instr2 = Uinstr2 - Comment2,
+        Instr1 = llds_instr(Uinstr1, Comment1),
+        Instr2 = llds_instr(Uinstr2, Comment2),
         (
             most_specific_instr(Uinstr1, Uinstr2, yes(Uinstr))
         ->
@@ -566,7 +566,7 @@ most_specific_instrs(Instrs1, Instrs2, Instrs) :-
             ;
                 Comment = "unified intruction"
             ),
-            Instr = Uinstr - Comment,
+            Instr = llds_instr(Uinstr, Comment),
             most_specific_instrs(Tail1, Tail2, Tail),
             Instrs = [Instr | Tail]
         ;
@@ -587,12 +587,12 @@ most_specific_instrs(Instrs1, Instrs2, Instrs) :-
         Instrs = []
     ;
         Instrs1 = [Instr1 | Tail1],
-        Instr1 = comment(_) - _
+        Instr1 = llds_instr(comment(_), _)
     ->
         most_specific_instrs(Tail1, Instrs2, Instrs)
     ;
         Instrs2 = [Instr2 | Tail2],
-        Instr2 = comment(_) - _
+        Instr2 = llds_instr(comment(_), _)
     ->
         most_specific_instrs(Instrs1, Tail2, Instrs)
     ;

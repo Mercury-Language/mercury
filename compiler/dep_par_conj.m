@@ -1,18 +1,18 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: dep_par_conj.m.
 % Author: wangp.
-% 
+%
 % This module implements dependent parallel conjunction using a HLDS->HLDS
 % transformation.  The transformation adds calls to the synchronisation
 % predicates defined in library/par_builtin.m.
-% 
+%
 % For a parallel conjunction (A & B), if the goal B is dependent on a variable
 % X which is bound by goal A, we first transform the conjunction into the
 % following:
@@ -58,7 +58,7 @@
 % TODO:
 % - reconsider when this pass is run; in particular par_builtin primitives
 %   ought to be inlined
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.dep_par_conj.
@@ -122,7 +122,7 @@
 
                 dp_module_info  :: module_info,
                 % The current module.
-                                
+
                 dp_varset       :: prog_varset,
                 dp_vartypes     :: vartypes,
                 % The varset and vartypes for the procedure being analysed.
@@ -403,7 +403,7 @@ replace_head_vars(ModuleInfo, FutureMap,
             Mode = (ground(shared, none) -> ground(shared, none))
         ;
             sorry(this_file,
-                "dependent parallel conjunction transformation " ++ 
+                "dependent parallel conjunction transformation " ++
                 "only understands input and output modes")
         )
     ;
@@ -428,7 +428,7 @@ any_output_arguments(ModuleInfo, [Mode | Modes]) :-
 
     % Determine if a parallel conjunction is a dependent parallel conjunction.
     % If so, allocate futures for variables shared between conjuncts.
-    % Insert wait and signal calls for those futures into the conjuncts.  
+    % Insert wait and signal calls for those futures into the conjuncts.
     %
 :- pred search_goal_for_par_conj(hlds_goal::in, hlds_goal::out,
     instmap::in, instmap::out, dep_par_info::in, dep_par_info::out) is det.
@@ -441,7 +441,7 @@ search_goal_for_par_conj(Goal0, Goal, InstMap0, InstMap, !Info) :-
     instmap::in, dep_par_info::in, dep_par_info::out) is det.
 
 search_goal_for_par_conj_2(Goal0, Goal, InstMap0, !Info) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -455,36 +455,36 @@ search_goal_for_par_conj_2(Goal0, Goal, InstMap0, !Info) :-
     ;
         GoalExpr0 = disj(Goals0),
         search_disj_for_par_conj(Goals0, Goals, InstMap0, !Info),
-        Goal = disj(Goals) - GoalInfo0
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         search_cases_for_par_conj(Cases0, Cases, InstMap0, !Info),
-        Goal = switch(Var, CanFail, Cases) - GoalInfo0
+        GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Quant, If0, Then0, Else0),
         search_goal_for_par_conj(If0, If, InstMap0, InstMap1, !Info),
         search_goal_for_par_conj(Then0, Then, InstMap1, _InstMap2, !Info),
         search_goal_for_par_conj(Else0, Else, InstMap0, _InstMap3, !Info),
-        Goal = if_then_else(Quant, If, Then, Else) - GoalInfo0
+        GoalExpr = if_then_else(Quant, If, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
         search_goal_for_par_conj(SubGoal0, SubGoal, InstMap0, _, !Info),
-        Goal = negation(SubGoal) - GoalInfo0
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, ScopeGoal0),
         search_goal_for_par_conj(ScopeGoal0, ScopeGoal, InstMap0, _, !Info),
-        Goal = scope(Reason, ScopeGoal) - GoalInfo0
+        GoalExpr = scope(Reason, ScopeGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = unify(_, _, _, _Kind, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = plain_call(_CallPredId, _CallProcId, _CallArgs, _, _, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = generic_call(_Details, _Args, _ArgModes, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        ( GoalExpr0 = unify(_, _, _, _Kind, _)
+        ; GoalExpr0 = plain_call(_CallPredId, _CallProcId, _CallArgs, _, _, _)
+        ; GoalExpr0 = generic_call(_Details, _Args, _ArgModes, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),
@@ -592,7 +592,7 @@ maybe_transform_par_conj(Conjuncts0, GoalInfo, NewGoal, InstMap,
 :- pred transform_conjunction(set(prog_var)::in,
     hlds_goals::in, hlds_goal_info::in, hlds_goal::out, instmap::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    module_info::in, module_info::out, 
+    module_info::in, module_info::out,
     par_procs::in, par_procs::out) is det.
 
 transform_conjunction(SharedVars, Goals, GoalInfo, NewGoal, InstMap,
@@ -604,18 +604,19 @@ transform_conjunction(SharedVars, Goals, GoalInfo, NewGoal, InstMap,
         Goals, NewGoals,
         InstMap, _, !VarSet, !VarTypes, !ModuleInfo, !ParProcs),
 
-    Conj = AllocateFutures ++ [conj(parallel_conj, NewGoals) - GoalInfo],
+    LastGoal = hlds_goal(conj(parallel_conj, NewGoals), GoalInfo),
+    Conj = AllocateFutures ++ [LastGoal],
     conj_list_to_goal(Conj, GoalInfo, NewGoal0),
 
-    % Wrap a purity scope around the goal if purity would have been lessened 
+    % Wrap a purity scope around the goal if purity would have been lessened
     % by the addition of signal goals (which are impure) or calls to
     % parallelised procs (which may be impure).
     goal_info_get_purity(GoalInfo, Purity),
-    (if Purity = purity_impure then
+    ( Purity = purity_impure ->
         NewGoal = NewGoal0
-    else
+    ;
         Reason = promise_purity(dont_make_implicit_promises, Purity),
-        NewGoal = scope(Reason, NewGoal0) - GoalInfo
+        NewGoal = hlds_goal(scope(Reason, NewGoal0), GoalInfo)
     ).
 
 :- pred allocate_future(module_info::in, prog_var::in, hlds_goal::out,
@@ -639,10 +640,10 @@ transform_conjunct(SharedVars, FutureMap, Goal0, Goal, !InstMap,
         !VarSet, !VarTypes, !ModuleInfo, !ParProcs) :-
     goal_get_nonlocals(Goal0, Nonlocals),
     set.intersect(Nonlocals, SharedVars, Intersect),
-    (if set.empty(Intersect) then
+    ( set.empty(Intersect) ->
         Goal = Goal0
-    else
-        Goal0 = _ - GoalInfo0,
+    ;
+        Goal0 = hlds_goal(_, GoalInfo0),
         goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
 
         % Divide shared variables into those that are produced by this
@@ -689,7 +690,7 @@ find_shared_variables(ModuleInfo, InstMap, Goals) = SharedVars :-
 :- pred get_nonlocals_and_instmaps(hlds_goal::in,
     set(prog_var)::out, instmap_delta::out) is det.
 
-get_nonlocals_and_instmaps(_Goal - GoalInfo, Nonlocals, InstMapDelta) :-
+get_nonlocals_and_instmaps(hlds_goal(_, GoalInfo), Nonlocals, InstMapDelta) :-
     goal_info_get_nonlocals(GoalInfo, Nonlocals),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta).
 
@@ -736,10 +737,10 @@ changed_var(ModuleInfo, InstMapDeltas, UnboundVar) :-
 
 insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
-    (if var_in_nonlocals(ConsumedVar, Goal0) then
+    ( var_in_nonlocals(ConsumedVar, Goal0) ->
         insert_wait_in_goal_2(ModuleInfo, FutureMap, ConsumedVar,
             Goal0, Goal, !VarSet, !VarTypes)
-    else
+    ;
         Goal = Goal0
     ).
 
@@ -749,9 +750,9 @@ insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-insert_wait_in_goal_2(ModuleInfo, FutureMap, ConsumedVar, 
+insert_wait_in_goal_2(ModuleInfo, FutureMap, ConsumedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -762,59 +763,57 @@ insert_wait_in_goal_2(ModuleInfo, FutureMap, ConsumedVar,
             ConjType = parallel_conj,
             insert_wait_in_goals(ModuleInfo, FutureMap, ConsumedVar,
                 Goals0, Goals, !VarSet, !VarTypes),
-            Goal = conj(ConjType, Goals) - GoalInfo0
+            GoalExpr = conj(ConjType, Goals),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ;
         GoalExpr0 = disj(Goals0),
         insert_wait_in_goals(ModuleInfo, FutureMap, ConsumedVar,
             Goals0, Goals, !VarSet, !VarTypes),
-        Goal = disj(Goals) - GoalInfo0
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
-        (if ConsumedVar = SwitchVar then
+        ( ConsumedVar = SwitchVar ->
             insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
                 Goal0, Goal, !VarSet, !VarTypes)
-        else
+        ;
             insert_wait_in_cases(ModuleInfo, FutureMap, ConsumedVar,
                 Cases0, Cases, !VarSet, !VarTypes),
-            Goal = switch(SwitchVar, CanFail, Cases) - GoalInfo0
+            GoalExpr = switch(SwitchVar, CanFail, Cases),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ;
         GoalExpr0 = if_then_else(Quant, If, Then0, Else0),
-        (if var_in_nonlocals(ConsumedVar, If) then
+        ( var_in_nonlocals(ConsumedVar, If) ->
             insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
                 Goal0, Goal, !VarSet, !VarTypes)
-        else
+        ;
             insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
                 Then0, Then, !VarSet, !VarTypes),
             insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
                 Else0, Else, !VarSet, !VarTypes),
-            Goal = if_then_else(Quant, If, Then, Else) - GoalInfo0
+            GoalExpr = if_then_else(Quant, If, Then, Else),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ;
         GoalExpr0 = negation(SubGoal0),
         insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
             SubGoal0, SubGoal, !VarSet, !VarTypes),
-        Goal = negation(SubGoal) - GoalInfo0
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar,
             SubGoal0, SubGoal, !VarSet, !VarTypes),
-        Goal = scope(Reason, SubGoal) - GoalInfo0
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = unify(_LHS, _RHS0, _C, _D, _UnifyContext),
-        insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-            Goal0, Goal, !VarSet, !VarTypes)
-    ;
-        GoalExpr0 = plain_call(_PredId, _ProcId, _Args, _, _, _),
-        insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-            Goal0, Goal, !VarSet, !VarTypes)
-    ;
-        GoalExpr0 = generic_call(_GenericCall, _Args, _Modes, _Detism),
-        insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-            Goal0, Goal, !VarSet, !VarTypes)
-    ;
-        GoalExpr0 = call_foreign_proc(_, _PredId, _, _Args, _, _, _),
+        ( GoalExpr0 = unify(_LHS, _RHS0, _C, _D, _UnifyContext)
+        ; GoalExpr0 = plain_call(_PredId, _ProcId, _Args, _, _, _)
+        ; GoalExpr0 = generic_call(_GenericCall, _Args, _Modes, _Detism)
+        ; GoalExpr0 = call_foreign_proc(_, _PredId, _, _Args, _, _, _)
+        ),
         insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
             Goal0, Goal, !VarSet, !VarTypes)
     ;
@@ -905,9 +904,9 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-insert_signal_in_goal_2(ModuleInfo, FutureMap, ProducedVar, 
+insert_signal_in_goal_2(ModuleInfo, FutureMap, ProducedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -918,21 +917,24 @@ insert_signal_in_goal_2(ModuleInfo, FutureMap, ProducedVar,
             ConjType = parallel_conj,
             insert_signal_in_goals(ModuleInfo, FutureMap, ProducedVar,
                 Goals0, Goals, !VarSet, !VarTypes),
-            Goal = conj(ConjType, Goals) - GoalInfo0
+            GoalExpr = conj(ConjType, Goals),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ;
         GoalExpr0 = disj(Goals0),
         insert_signal_in_goals(ModuleInfo, FutureMap, ProducedVar,
             Goals0, Goals, !VarSet, !VarTypes),
-        Goal = disj(Goals) - GoalInfo0
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
-        (if ProducedVar = SwitchVar then
+        ( ProducedVar = SwitchVar ->
             unexpected(this_file, "switch on unbound shared variable")
-        else
+        ;
             insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
                 Cases0, Cases, !VarSet, !VarTypes),
-            Goal = switch(SwitchVar, CanFail, Cases) - GoalInfo0
+            GoalExpr = switch(SwitchVar, CanFail, Cases),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ;
         GoalExpr0 = if_then_else(Quant, If, Then0, Else0),
@@ -942,7 +944,8 @@ insert_signal_in_goal_2(ModuleInfo, FutureMap, ProducedVar,
             Then0, Then, !VarSet, !VarTypes),
         insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             Else0, Else, !VarSet, !VarTypes),
-        Goal = if_then_else(Quant, If, Then, Else) - GoalInfo0
+        GoalExpr = if_then_else(Quant, If, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
         expect(var_not_in_nonlocals(ProducedVar, SubGoal0),
@@ -952,21 +955,14 @@ insert_signal_in_goal_2(ModuleInfo, FutureMap, ProducedVar,
         GoalExpr0 = scope(Reason, SubGoal0),
         insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             SubGoal0, SubGoal, !VarSet, !VarTypes),
-        Goal = scope(Reason, SubGoal) - GoalInfo0
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = unify(_LHS, _RHS0, _C, _D, _UnifyContext),
-        insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
-            Goal0, Goal, !VarSet, !VarTypes)
-    ;
-        GoalExpr0 = plain_call(_PredId, _ProcId, _Args, _, _, _),
-        insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
-            Goal0, Goal, !VarSet, !VarTypes)
-    ;
-        GoalExpr0 = generic_call(_GenericCall, _Args, _Modes, _Detism),
-        insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
-            Goal0, Goal, !VarSet, !VarTypes)
-    ;
-        GoalExpr0 = call_foreign_proc(_, _PredId, _, _Args, _, _, _),
+        ( GoalExpr0 = unify(_LHS, _RHS0, _C, _D, _UnifyContext)
+        ; GoalExpr0 = plain_call(_PredId, _ProcId, _Args, _, _, _)
+        ; GoalExpr0 = generic_call(_GenericCall, _Args, _Modes, _Detism)
+        ; GoalExpr0 = call_foreign_proc(_, _PredId, _, _Args, _, _, _)
+        ),
         insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
             Goal0, Goal, !VarSet, !VarTypes)
     ;
@@ -1054,7 +1050,7 @@ var_not_in_nonlocals(Var, Goal) :-
     dep_par_info::in, dep_par_info::out) is det.
 
 replace_sequences_in_goal(Goal0, Goal, !Info) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -1064,41 +1060,42 @@ replace_sequences_in_goal(Goal0, Goal, !Info) :-
         ;
             ConjType = parallel_conj,
             replace_sequences_in_goals(Goals0, Goals, !Info),
-            Goal = conj(ConjType, Goals) - GoalInfo0
+            GoalExpr = conj(ConjType, Goals),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ;
         GoalExpr0 = disj(Goals0),
         replace_sequences_in_goals(Goals0, Goals, !Info),
-        Goal = disj(Goals) - GoalInfo0
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         replace_sequences_in_cases(Cases0, Cases, !Info),
-        Goal = switch(SwitchVar, CanFail, Cases) - GoalInfo0
+        GoalExpr = switch(SwitchVar, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Quant, If0, Then0, Else0),
         replace_sequences_in_goal(If0, If, !Info),
         replace_sequences_in_goal(Then0, Then, !Info),
         replace_sequences_in_goal(Else0, Else, !Info),
-        Goal = if_then_else(Quant, If, Then, Else) - GoalInfo0
+        GoalExpr = if_then_else(Quant, If, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
         replace_sequences_in_goal(SubGoal0, SubGoal, !Info),
-        Goal = negation(SubGoal) - GoalInfo0
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         replace_sequences_in_goal(SubGoal0, SubGoal, !Info),
-        Goal = scope(Reason, SubGoal) - GoalInfo0
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = unify(_LHS, _RHS0, _C, _D, _UnifyContext),
-        Goal = Goal0
-    ;
-        GoalExpr0 = plain_call(_PredId, _ProcId, _Args, _, _, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = generic_call(_GenericCall, _Args, _Modes, _Detism),
-        Goal = Goal0
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        ( GoalExpr0 = unify(_LHS, _RHS0, _C, _D, _UnifyContext)
+        ; GoalExpr0 = plain_call(_PredId, _ProcId, _Args, _, _, _)
+        ; GoalExpr0 = generic_call(_GenericCall, _Args, _Modes, _Detism)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),
@@ -1121,17 +1118,17 @@ replace_sequences_in_conj(Goals0, Goals, !Info) :-
 
 replace_sequences_in_conj_2(RevGoals, [], reverse(RevGoals), !Info).
 replace_sequences_in_conj_2(RevGoals0, [Goal0 | Goals0], Goals, !Info) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
-    (if
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
         GoalExpr0 = plain_call(_, _, _, _, _, _),
         not is_wait_goal(Goal0),
         not is_signal_goal(Goal0)
-    then
-        CallGoal0 = GoalExpr0 - GoalInfo0,  % dumb mode system
+    ->
+        CallGoal0 = hlds_goal(GoalExpr0, GoalInfo0),  % dumb mode system
         maybe_replace_call(RevGoals0, CallGoal0, Goals0, RevGoals1, Goals1,
             !Info),
         replace_sequences_in_conj_2(RevGoals1, Goals1, Goals, !Info)
-    else
+    ;
         replace_sequences_in_goal(Goal0, Goal, !Info),
         replace_sequences_in_conj_2([Goal | RevGoals0], Goals0, Goals, !Info)
     ).
@@ -1158,20 +1155,18 @@ replace_sequences_in_cases([Case0 | Cases0], [Case | Cases], !Info) :-
     ==  bound(plain_call(ground, ground, ground, ground, ground, ground)).
 
 :- inst call_goal
-    ==  bound(call_goal_expr - ground).
+    ==  bound(hlds_goal(call_goal_expr, ground)).
 
 :- pred maybe_replace_call(hlds_goals::in, hlds_goal::in(call_goal),
     hlds_goals::in, hlds_goals::out, hlds_goals::out,
     dep_par_info::in, dep_par_info::out) is det.
 
 maybe_replace_call(RevGoals0, Goal0, FwdGoals0, RevGoals, FwdGoals, !Info) :-
-    Goal0 = GoalExpr0 - _,
+    Goal0 = hlds_goal(GoalExpr0, _),
     GoalExpr0 = plain_call(PredId, ProcId, CallVars, _, _, _),
 
     module_info_pred_info(!.Info ^ dp_module_info, PredId, PredInfo),
-    (if
-        ProcId `list.member` pred_info_non_imported_procids(PredInfo)
-    then
+    ( list.member(ProcId, pred_info_non_imported_procids(PredInfo)) ->
         % RevGoals0 = WaitGoals1   ++ RevGoals1
         % FwdGoals0 = SignalGoals1 ++ FwdGoals1
         %
@@ -1187,13 +1182,13 @@ maybe_replace_call(RevGoals0, Goal0, FwdGoals0, RevGoals, FwdGoals, !Info) :-
         list.filter_map(relevant_signal_goal(CallVars), SignalGoals1,
             SignalPairs, IrrelevantSignalGoals),
 
-        (if
+        (
             WaitPairs = [],
             SignalPairs = []
-        then
+        ->
             RevGoals = [Goal0 | RevGoals0],
             FwdGoals = FwdGoals0
-        else
+        ;
             replace_call(WaitPairs, SignalPairs, Goal0, Goal, !Info),
 
             % After the replaced call may be further references to a signalled
@@ -1210,7 +1205,7 @@ maybe_replace_call(RevGoals0, Goal0, FwdGoals0, RevGoals, FwdGoals, !Info) :-
             RevGoals = GetGoals ++ [Goal] ++ IrrelevantWaitGoals ++ RevGoals1,
             FwdGoals = IrrelevantSignalGoals ++ FwdGoals1
         )
-    else
+    ;
         RevGoals = [Goal0 | RevGoals0],
         FwdGoals = FwdGoals0
     ).
@@ -1226,25 +1221,25 @@ maybe_replace_call(RevGoals0, Goal0, FwdGoals0, RevGoals, FwdGoals, !Info) :-
 :- pred relevant_wait_goal(list(prog_var)::in, hlds_goal::in,
     future_var_pair::out) is semidet.
 
-relevant_wait_goal(CallVars, Goal - _GoalInfo,
+relevant_wait_goal(CallVars, hlds_goal(GoalExpr, _GoalInfo),
         future_var_pair(Future, WaitVar)) :-
-    Goal = plain_call(_, _, [Future, WaitVar], _, _, _),
-    WaitVar `list.member` CallVars.
+    GoalExpr = plain_call(_, _, [Future, WaitVar], _, _, _),
+    list.member(WaitVar, CallVars).
 
-:- pred relevant_signal_goal(list(prog_var)::in, hlds_goal::in, 
+:- pred relevant_signal_goal(list(prog_var)::in, hlds_goal::in,
     future_var_pair::out) is semidet.
 
-relevant_signal_goal(CallVars, Goal - _GoalInfo,
+relevant_signal_goal(CallVars, hlds_goal(GoalExpr, _GoalInfo),
         future_var_pair(Future, SignalVar)) :-
-    Goal = plain_call(_, _, [Future, SignalVar], _, _, _),
-    SignalVar `list.member` CallVars.
+    GoalExpr = plain_call(_, _, [Future, SignalVar], _, _, _),
+    list.member(SignalVar, CallVars).
 
 :- pred replace_call(list(future_var_pair)::in, list(future_var_pair)::in,
-    hlds_goal::in(bound(call_goal_expr - ground)), hlds_goal::out,
+    hlds_goal::in(call_goal), hlds_goal::out,
     dep_par_info::in, dep_par_info::out) is det.
 
 replace_call(WaitPairs, SignalPairs, Goal0, Goal, !Info) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     GoalExpr0 = plain_call(PredId, ProcId, CallVars, _Builtin, Context, _Name),
     OrigPPId = proc(PredId, ProcId),
 
@@ -1253,12 +1248,12 @@ replace_call(WaitPairs, SignalPairs, Goal0, Goal, !Info) :-
     number_future_args(1, CallVars, WaitVars ++ SignalVars, [], FutureArgs),
 
     CallPattern = par_proc_call_pattern(OrigPPId, FutureArgs),
-    (if
+    (
         find_par_proc_for_call_pattern(!.Info ^ dp_par_procs,
             CallPattern, ParProc)
-    then
+    ->
         ParProc = new_par_proc(ParPPId, ParName)
-    else
+    ;
         % Queue a new parallel procedure to be made.
         !.Info = dep_par_info(ParProcs0, ModuleInfo0,
             VarSet, VarTypes, IgnoreVars),
@@ -1280,7 +1275,7 @@ replace_call(WaitPairs, SignalPairs, Goal0, Goal, !Info) :-
         CallVars, NewCallVars),
     GoalExpr = plain_call(ParPredId, ParProcId, NewCallVars, not_builtin,
         Context, ParName),
-    Goal = GoalExpr - GoalInfo0.
+    Goal = hlds_goal(GoalExpr, GoalInfo0).
 
 :- pred find_par_proc_for_call_pattern(par_procs::in,
     par_proc_call_pattern::in, new_par_proc::out) is semidet.
@@ -1299,8 +1294,8 @@ find_par_proc_for_call_pattern(par_procs(DoneParProcs, PendingProcs),
     par_procs::in, par_procs::out) is det.
 
 queue_par_proc(CallPattern, NewProc,
-    par_procs(Done, Pending),
-    par_procs(Done, [CallPattern - NewProc | Pending])).
+        par_procs(Done, Pending),
+        par_procs(Done, [CallPattern - NewProc | Pending])).
 
 :- pred replace_args_with_futures(list(future_var_pair)::in,
     prog_var::in, prog_var::out) is det.
@@ -1308,9 +1303,9 @@ queue_par_proc(CallPattern, NewProc,
 replace_args_with_futures([], Var, Var).
 replace_args_with_futures([H | T], Var0, Var) :-
     H = future_var_pair(Future, X),
-    (if X = Var0 then
+    ( X = Var0 ->
         Var = Future
-    else
+    ;
         replace_args_with_futures(T, Var0, Var)
     ).
 
@@ -1319,9 +1314,9 @@ replace_args_with_futures([H | T], Var0, Var) :-
 
 number_future_args(_, [], _, RevAcc, reverse(RevAcc)).
 number_future_args(ArgNo, [Arg | Args], WaitSignalVars, !RevAcc) :-
-    (if Arg `list.member` WaitSignalVars then
+    ( Arg `list.member` WaitSignalVars ->
         list.cons(ArgNo, !RevAcc)
-    else
+    ;
         true
     ),
     number_future_args(ArgNo+1, Args, WaitSignalVars, !RevAcc).
@@ -1435,7 +1430,7 @@ futurise_argtypes(_, [_|_], [], _) :-
 
 rename_apart_in_goal(ModuleInfo, Goal0, Goal, InstMap,
         !VarSet, !VarTypes) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -1459,55 +1454,54 @@ rename_apart_in_goal(ModuleInfo, Goal0, Goal, InstMap,
             rename_apart_in_goals(ModuleInfo,
                 Goals1, Goals, InstMap, !VarSet, !VarTypes)
         ),
-        Goal = conj(ConjType, Goals) - GoalInfo0
+        GoalExpr = conj(ConjType, Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
         rename_apart_in_goals(ModuleInfo,
             Goals0, Goals, InstMap, !VarSet, !VarTypes),
-        Goal = disj(Goals) - GoalInfo0
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         rename_apart_in_cases(ModuleInfo,
             Cases0, Cases, InstMap, !VarSet, !VarTypes),
-        Goal = switch(SwitchVar, CanFail, Cases) - GoalInfo0
+        GoalExpr = switch(SwitchVar, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Quant, If0, Then0, Else0),
         rename_apart_in_goal(ModuleInfo,
             If0, If, InstMap, !VarSet, !VarTypes),
         rename_apart_in_goal(ModuleInfo,
             Then0, Then, InstMap, !VarSet, !VarTypes),
-        rename_apart_in_goal(ModuleInfo, 
+        rename_apart_in_goal(ModuleInfo,
             Else0, Else, InstMap, !VarSet, !VarTypes),
-        Goal = if_then_else(Quant, If, Then, Else) - GoalInfo0
+        GoalExpr = if_then_else(Quant, If, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
-        rename_apart_in_goal(ModuleInfo, 
+        rename_apart_in_goal(ModuleInfo,
             SubGoal0, SubGoal, InstMap, !VarSet, !VarTypes),
-        Goal = negation(SubGoal) - GoalInfo0
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         rename_apart_in_goal(ModuleInfo,
             SubGoal0, SubGoal, InstMap, !VarSet, !VarTypes),
-        Goal = scope(Reason, SubGoal) - GoalInfo0
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = unify(_LHS, _RHS0, _C, _D, _UnifyContext),
-        Goal = Goal0
-    ;
-        GoalExpr0 = plain_call(_, _, _, _, _, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = generic_call(_, _, _, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = shorthand(_),
+        ( GoalExpr0 = unify(_LHS, _RHS0, _C, _D, _UnifyContext)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = shorthand(_)
+        ),
         Goal = Goal0
     ).
 
 :- pred rename_apart_in_conj(module_info::in,
-    hlds_goals::in, hlds_goals::out, instmap::in, 
+    hlds_goals::in, hlds_goals::out, instmap::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 rename_apart_in_conj(_ModuleInfo,
@@ -1521,7 +1515,7 @@ rename_apart_in_conj(ModuleInfo,
         Goals0, Goals, InstMap, !VarSet, !VarTypes).
 
 :- pred rename_apart_in_goals(module_info::in,
-    hlds_goals::in, hlds_goals::out, instmap::in, 
+    hlds_goals::in, hlds_goals::out, instmap::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 rename_apart_in_goals(_ModuleInfo,
@@ -1655,12 +1649,12 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, SignalGoal) :-
 
 :- pred is_wait_goal(hlds_goal::in) is semidet.
 
-is_wait_goal(plain_call(_, _, _, _, _, SymName) - _GoalInfo) :-
+is_wait_goal(hlds_goal(plain_call(_, _, _, _, _, SymName), _GoalInfo)) :-
     SymName = qualified(mercury_par_builtin_module, "wait").
 
 :- pred is_signal_goal(hlds_goal::in) is semidet.
 
-is_signal_goal(plain_call(_, _, _, _, _, SymName) - _GoalInfo) :-
+is_signal_goal(hlds_goal(plain_call(_, _, _, _, _, SymName), _GoalInfo)) :-
     SymName = qualified(mercury_par_builtin_module, "signal").
 
 %-----------------------------------------------------------------------------%
@@ -1669,7 +1663,7 @@ is_signal_goal(plain_call(_, _, _, _, _, SymName) - _GoalInfo) :-
     list(hlds_goal)::in, hlds_goal::out) is det.
 
 conjoin_goal_and_goal_list_update_goal_infos(Goal0, Goals, Goal) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( GoalExpr0 = conj(plain_conj, GoalList0) ->
         list.append(GoalList0, Goals, GoalList)
     ;
@@ -1682,13 +1676,13 @@ conjoin_goal_and_goal_list_update_goal_infos(Goal0, Goals, Goal) :-
     goal_info_set_determinism(Detism, GoalInfo1, GoalInfo2),
     goal_info_set_instmap_delta(InstMapDelta, GoalInfo2, GoalInfo),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred conjoin_goals_update_goal_infos(hlds_goal::in, hlds_goal::in,
     hlds_goal::out) is det.
 
 conjoin_goals_update_goal_infos(Goal1, Goal2, Goal) :-
-    ( Goal2 = conj(plain_conj, Goals2) - _ ->
+    ( Goal2 = hlds_goal(conj(plain_conj, Goals2), _) ->
         GoalList = Goals2
     ;
         GoalList = [Goal2]

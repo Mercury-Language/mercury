@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: goal_form.m.
 % Main authors: conway, zs.
-% 
+%
 % A module that provides functions that check whether goals fulfill particular
 % criteria.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -190,7 +190,7 @@
 % intermodule-analysis framework
 %
 
-goal_can_throw(GoalExpr - GoalInfo, Result, !ModuleInfo, !IO) :-
+goal_can_throw(hlds_goal(GoalExpr, GoalInfo), Result, !ModuleInfo, !IO) :-
     goal_info_get_determinism(GoalInfo, Determinism),
     ( Determinism \= detism_erroneous ->
         goal_can_throw_2(GoalExpr, GoalInfo, Result, !ModuleInfo, !IO)
@@ -336,7 +336,7 @@ goal_can_loop_or_throw(Goal) :-
 
 :- func goal_can_loop_func(maybe(module_info), hlds_goal) = bool.
 
-goal_can_loop_func(MaybeModuleInfo, GoalExpr - _) =
+goal_can_loop_func(MaybeModuleInfo, hlds_goal(GoalExpr, _)) =
     goal_expr_can_loop(MaybeModuleInfo, GoalExpr).
 
 :- func goal_expr_can_loop(maybe(module_info), hlds_goal_expr) = bool.
@@ -446,7 +446,8 @@ goal_cannot_throw(ModuleInfo, Goal) :-
 
 :- func goal_can_throw_func(maybe(module_info), hlds_goal) = bool.
 
-goal_can_throw_func(MaybeModuleInfo, GoalExpr - GoalInfo) = CanThrow :-
+goal_can_throw_func(MaybeModuleInfo, hlds_goal(GoalExpr, GoalInfo))
+        = CanThrow :-
     goal_info_get_determinism(GoalInfo, Determinism),
     ( Determinism = detism_erroneous ->
         CanThrow = yes
@@ -548,7 +549,7 @@ case_list_can_throw(MaybeModuleInfo, [case(_, Goal) | Cases]) =
 
 %-----------------------------------------------------------------------------%
 
-goal_is_flat(Goal - _GoalInfo) = goal_is_flat_expr(Goal).
+goal_is_flat(hlds_goal(GoalExpr, _GoalInfo)) = goal_is_flat_expr(GoalExpr).
 
 :- func goal_is_flat_expr(hlds_goal_expr) = bool.
 
@@ -591,8 +592,8 @@ goal_list_may_allocate_heap(Goals) :-
 
 :- pred goal_may_allocate_heap(hlds_goal::in, bool::out) is det.
 
-goal_may_allocate_heap(Goal - _GoalInfo, May) :-
-    goal_may_allocate_heap_2(Goal, May).
+goal_may_allocate_heap(hlds_goal(GoalExpr, _GoalInfo), May) :-
+    goal_may_allocate_heap_2(GoalExpr, May).
 
 :- pred goal_may_allocate_heap_2(hlds_goal_expr::in, bool::out) is det.
 
@@ -677,7 +678,7 @@ cases_may_allocate_heap([case(_, Goal) | Cases], May) :-
 
 %-----------------------------------------------------------------------------%
 
-cannot_stack_flush(GoalExpr - _) :-
+cannot_stack_flush(hlds_goal(GoalExpr, _)) :-
     cannot_stack_flush_2(GoalExpr).
 
 :- pred cannot_stack_flush_2(hlds_goal_expr::in) is semidet.
@@ -691,7 +692,7 @@ cannot_stack_flush_2(conj(ConjType, Goals)) :-
     cannot_stack_flush_goals(Goals).
 cannot_stack_flush_2(switch(_, _, Cases)) :-
     cannot_stack_flush_cases(Cases).
-cannot_stack_flush_2(negation(unify(_, _, _, Unify, _) - _)) :-
+cannot_stack_flush_2(negation(hlds_goal(unify(_, _, _, Unify, _), _))) :-
     Unify \= complicated_unify(_, _, _).
 
 :- pred cannot_stack_flush_goals(list(hlds_goal)::in) is semidet.
@@ -710,7 +711,7 @@ cannot_stack_flush_cases([case(_, Goal) | Cases]) :-
 
 %-----------------------------------------------------------------------------%
 
-cannot_fail_before_stack_flush(GoalExpr - GoalInfo) :-
+cannot_fail_before_stack_flush(hlds_goal(GoalExpr, GoalInfo)) :-
     goal_info_get_determinism(GoalInfo, Detism),
     determinism_components(Detism, CanFail, _),
     (
@@ -730,7 +731,7 @@ cannot_fail_before_stack_flush_2(conj(ConjType, Goals)) :-
 
 cannot_fail_before_stack_flush_conj([]).
 cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         (
             GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
@@ -751,8 +752,8 @@ cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
 
 %-----------------------------------------------------------------------------%
 
-count_recursive_calls(Goal - _, PredId, ProcId, Min, Max) :-
-    count_recursive_calls_2(Goal, PredId, ProcId, Min, Max).
+count_recursive_calls(hlds_goal(GoalExpr, _), PredId, ProcId, Min, Max) :-
+    count_recursive_calls_2(GoalExpr, PredId, ProcId, Min, Max).
 
 :- pred count_recursive_calls_2(hlds_goal_expr::in, pred_id::in, proc_id::in,
     int::out, int::out) is det.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -293,7 +293,7 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
     proc_info_get_varset(!.ProcInfo, Varset0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
     instmap.apply_instmap_delta(InitInstMap, InstMapDelta, FinalInstMap),
     proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo, NeededVarsList),
@@ -414,7 +414,7 @@ can_eliminate_or_move(Goal, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
     set.to_sorted_list(ChangedVarSet, ChangedVars),
     map.init(Empty),
     !:WhereInfo = branches(Empty),
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_goal_path(GoalInfo, CurrentPath),
     list.foldl(collect_where_needed(CurrentPath, WhereNeededMap), ChangedVars,
         !WhereInfo),
@@ -440,7 +440,7 @@ collect_where_needed(CurrentPath, WhereNeededMap, ChangedVar, !WhereInfo) :-
 
 adjust_where_needed(Goal, Options, !WhereInfo) :-
     (
-        Goal = GoalExpr - GoalInfo,
+        Goal = hlds_goal(GoalExpr, GoalInfo),
         (
             % Do not move goals that can fail, since doing so can cause
             % execution to reach goals it shouldn't, and those goals may have
@@ -509,7 +509,7 @@ detism_is_moveable(detism_cc_multi, yes).
     where_needed_map::in, where_needed_map::out) is det.
 
 demand_inputs(Goal, ModuleInfo, InitInstMap, WhereNeeded, !WhereNeededMap) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_nonlocals(GoalInfo, NonLocalSet),
     goal_info_get_goal_path(GoalInfo, GoalPath),
     set.to_sorted_list(NonLocalSet, NonLocals),
@@ -530,7 +530,7 @@ nonlocal_may_be_input(ModuleInfo, InstMap, Var) :-
     instmap::in, where_needed_map::in, where_needed_map::out) is det.
 
 undemand_virgin_outputs(Goal, ModuleInfo, InstMap, !WhereNeededMap) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_nonlocals(GoalInfo, NonLocalSet),
     set.to_sorted_list(NonLocalSet, NonLocals),
     list.filter(nonlocal_is_virgin_output(ModuleInfo, InstMap), NonLocals,
@@ -579,7 +579,7 @@ demand_var_everywhere(_Var, _WhereNeeded0, everywhere).
 
 process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(_, _, _, _, _),
         Goal = Goal0,
@@ -608,7 +608,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
                 VarTypes, ModuleInfo, Options, !WhereNeededMap, !RefinedGoals,
                 !Changed),
             GoalExpr = conj(plain_conj, Conjuncts),
-            Goal = GoalExpr - GoalInfo0
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
             ConjType = parallel_conj,
             Goal = Goal0,
@@ -618,7 +618,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         (
-            Cases0 = [case(_, _ - FirstCaseGoalInfo) | _],
+            Cases0 = [case(_, hlds_goal(_, FirstCaseGoalInfo)) | _],
             goal_info_get_goal_path(FirstCaseGoalInfo, FirstCaseGoalPath),
             FirstCaseGoalPath = [SwitchStep | _],
             SwitchStep = switch(_, NumCases)
@@ -638,7 +638,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
             BranchNeededMap, !:WhereNeededMap),
         demand_var(GoalPath, everywhere, SwitchVar, !WhereNeededMap),
         GoalExpr = switch(SwitchVar, CanFail, Cases),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
@@ -648,7 +648,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
             !.WhereNeededMap, !.WhereNeededMap, !:WhereNeededMap,
             !RefinedGoals, !Changed),
         GoalExpr = disj(Disjuncts),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
@@ -658,20 +658,20 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
             InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options, GoalPath,
             !WhereNeededMap, !RefinedGoals, !Changed),
         GoalExpr = if_then_else(Quant, Cond, Then, Else),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(NegGoal0),
         process_goal(NegGoal0, NegGoal, InitInstMap, FinalInstMap,
             VarTypes, ModuleInfo, Options,
             !WhereNeededMap, !RefinedGoals, !Changed),
         GoalExpr = negation(NegGoal),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SomeGoal0),
         process_goal(SomeGoal0, SomeGoal, InitInstMap, FinalInstMap, VarTypes,
             ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed),
         GoalExpr = scope(Reason, SomeGoal),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "shorthand in process_goal_internal")
@@ -703,7 +703,7 @@ build_bracketed_conj([Goal | Goals], InitInstMap, BracketedGoals) :-
     ( instmap.is_unreachable(InitInstMap) ->
         BracketedGoals = []
     ;
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
         instmap.apply_instmap_delta(InitInstMap, InstMapDelta, FinalInstMap),
         build_bracketed_conj(Goals, FinalInstMap, BracketedTail),
@@ -725,7 +725,7 @@ process_rev_bracketed_conj([BracketedGoal | BracketedGoals], Goals, VarTypes,
         ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed),
     process_rev_bracketed_conj(BracketedGoals, Goals1, VarTypes,
         ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed),
-    ( Goal1 = true_goal_expr - _ ->
+    ( Goal1 = hlds_goal(true_goal_expr, _) ->
         Goals = Goals1
     ;
         Goals = [Goal1 | Goals1]
@@ -790,7 +790,7 @@ process_cases([case(Var, Goal0) | Cases0], [case(Var, Goal) | Cases],
 process_ite(Cond0, Cond, Then0, Then, Else0, Else, BranchPoint,
         InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options,
         CurrentPath, !WhereNeededMap, !RefinedGoals, !Changed) :-
-    Cond0 = _ - CondInfo0,
+    Cond0 = hlds_goal(_, CondInfo0),
     goal_info_get_instmap_delta(CondInfo0, InstMapDelta),
     instmap.apply_instmap_delta(InitInstMap, InstMapDelta, InstMapCond),
 
@@ -886,7 +886,7 @@ add_alt_start([Var - BranchWhere0 | WhereNeededList],
     refined_goal_map::in, refined_goal_map::out) is det.
 
 refine_goal(Goal0, Goal, !RefinedGoals) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
@@ -900,7 +900,7 @@ refine_goal(Goal0, Goal, !RefinedGoals) :-
             ConjType = plain_conj,
             refine_conj(Conjuncts0, Conjuncts, !RefinedGoals),
             GoalExpr = conj(ConjType, Conjuncts),
-            Goal = GoalExpr - GoalInfo0
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
             ConjType = parallel_conj,
             Goal = Goal0
@@ -910,30 +910,30 @@ refine_goal(Goal0, Goal, !RefinedGoals) :-
         goal_info_get_goal_path(GoalInfo0, GoalPath),
         refine_cases(Cases0, Cases, !RefinedGoals, GoalPath, 1),
         GoalExpr = switch(SwitchVar, CanFail, Cases),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
         refine_disj(Disjuncts0, Disjuncts, !RefinedGoals, GoalPath, 1),
         GoalExpr = disj(Disjuncts),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
         refine_ite(Cond0, Cond, Then0, Then, Else0, Else, !RefinedGoals,
             GoalPath),
         GoalExpr = if_then_else(Quant, Cond, Then, Else),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(NegGoal0),
         refine_goal(NegGoal0, NegGoal, !RefinedGoals),
         GoalExpr = negation(NegGoal),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SomeGoal0),
         refine_goal(SomeGoal0, SomeGoal, !RefinedGoals),
         GoalExpr = scope(Reason, SomeGoal),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "shorthand in refine_goal")
@@ -946,7 +946,7 @@ refine_conj([], [], !RefinedGoals).
 refine_conj([Goal0 | Goals0], Goals, !RefinedGoals) :-
     refine_goal(Goal0, HeadGoal, !RefinedGoals),
     refine_conj(Goals0, TailGoals, !RefinedGoals),
-    ( HeadGoal = conj(plain_conj, HeadGoals) - _ ->
+    ( HeadGoal = hlds_goal(conj(plain_conj, HeadGoals), _) ->
         Goals = HeadGoals ++ TailGoals
     ;
         Goals = [HeadGoal | TailGoals]
@@ -1013,7 +1013,7 @@ refine_ite(Cond0, Cond, Then0, Then, Else0, Else,
 insert_refine_goals(ToInsertGoals, Goal0, Goal) :-
     list.append(ToInsertGoals, [Goal0], Conj),
     % XXX GoalInfo0
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     conj_list_to_goal(Conj, GoalInfo0, Goal).
 
 %-----------------------------------------------------------------------------%

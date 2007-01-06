@@ -329,9 +329,10 @@ solve_proc_reordering(VarMap, PredId, ProcId, SolverConstraints,
 :- pred goal_reordering(pred_id::in, mc_var_map::in, mc_bindings::in,
     hlds_goal::in, hlds_goal::out) is semidet.
 
-goal_reordering(PredId, VarMap, Bindings, GoalExpr0 - GoalInfo,
-    GoalExpr - GoalInfo) :-
-    goal_expr_reordering(PredId, VarMap, Bindings, GoalExpr0, GoalExpr).
+goal_reordering(PredId, VarMap, Bindings, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+    goal_expr_reordering(PredId, VarMap, Bindings, GoalExpr0, GoalExpr),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % goal_expr_reordering(PredId, VarMap, Bindings, !GoalExpr) applies
     % mode reordering to conjunctions in GoalExpr (from predicate
@@ -503,7 +504,7 @@ make_conjuncts_nonlocal_repvars(PredId, Goals, RepvarMap) :-
     prog_var_at_conjuncts_map::in, prog_var_at_conjuncts_map::out) is det.
 
 make_conjunct_nonlocal_repvars(PredId, Goal, !RepvarMap) :-
-    GoalInfo = snd(Goal),
+    GoalInfo = Goal ^ hlds_goal_info,
     goal_info_get_nonlocals(GoalInfo, Nonlocals),
     goal_info_get_goal_path(GoalInfo, GoalPath),
 
@@ -754,7 +755,7 @@ dump_proc_goal_paths(ProcTable, ProcId, !IO) :-
     %
 :- pred dump_goal_goal_paths(int::in, hlds_goal::in, io::di, io::uo) is det.
 
-dump_goal_goal_paths(Indent, GoalExpr - GoalInfo, !IO) :-
+dump_goal_goal_paths(Indent, hlds_goal(GoalExpr, GoalInfo), !IO) :-
     goal_info_get_goal_path(GoalInfo, GoalPath),
     GoalPathString = goal_path_to_string(GoalPath),
     GoalPathFormat = [words(GoalPathString), nl],

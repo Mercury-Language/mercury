@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -241,13 +241,14 @@ add_builtin_type_ctor_special_preds(TypeCtor, !ModuleInfo) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_item_list_decls_pass_1([], _, !ModuleInfo, !InvalidModes, !Specs).
-add_item_list_decls_pass_1([Item - Context | Items], !.Status, !ModuleInfo,
-        !InvalidModes, !Specs) :-
+add_item_list_decls_pass_1([ItemAndContext | ItemAndContexts], !.Status,
+        !ModuleInfo, !InvalidModes, !Specs) :-
+    ItemAndContext = item_and_context(Item, Context),
     add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo,
         NewInvalidModes, !Specs),
     !:InvalidModes = bool.or(!.InvalidModes, NewInvalidModes),
-    add_item_list_decls_pass_1(Items, !.Status, !ModuleInfo, !InvalidModes,
-        !Specs).
+    add_item_list_decls_pass_1(ItemAndContexts, !.Status,
+        !ModuleInfo, !InvalidModes, !Specs).
 
     % pass 2:
     % Add the type definitions and pragmas one by one to the module,
@@ -271,10 +272,11 @@ add_item_list_decls_pass_1([Item - Context | Items], !.Status, !ModuleInfo,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_item_list_decls_pass_2([], _, !ModuleInfo, !Specs).
-add_item_list_decls_pass_2([Item - Context | Items], !.Status, !ModuleInfo,
-        !Specs) :-
+add_item_list_decls_pass_2([ItemAndContext | ItemAndContexts], !.Status,
+        !ModuleInfo, !Specs) :-
+    ItemAndContext = item_and_context(Item, Context),
     add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs),
-    add_item_list_decls_pass_2(Items, !.Status, !ModuleInfo, !Specs).
+    add_item_list_decls_pass_2(ItemAndContexts, !.Status, !ModuleInfo, !Specs).
 
     % pass 3:
     % Add the clauses one by one to the module.
@@ -293,11 +295,13 @@ add_item_list_decls_pass_2([Item - Context | Items], !.Status, !ModuleInfo,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_item_list_clauses([], _Status, !ModuleInfo, !QualInfo, !Specs).
-add_item_list_clauses([Item - Context | Items], Status0,
+add_item_list_clauses([ItemAndContext | ItemAndContexts], Status0,
         !ModuleInfo, !QualInfo, !Specs) :-
-    add_item_clause(Item, Status0, Status1, Context, !ModuleInfo, !QualInfo,
-        !Specs),
-    add_item_list_clauses(Items, Status1, !ModuleInfo, !QualInfo, !Specs).
+    ItemAndContext = item_and_context(Item, Context),
+    add_item_clause(Item, Status0, Status1, Context,
+        !ModuleInfo, !QualInfo, !Specs),
+    add_item_list_clauses(ItemAndContexts, Status1,
+        !ModuleInfo, !QualInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 

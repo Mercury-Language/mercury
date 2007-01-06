@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -381,9 +381,10 @@ get_exported_proc_context([Proc | Procs], PredId, ProcId, Context) :-
 
 %-----------------------------------------------------------------------------%
 
-det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
-        RightFailingContexts, MaybePromiseEqvSolutionSets, DetInfo, Detism,
-        GoalFailingContexts, !Specs) :-
+det_infer_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
+        InstMap0, !.SolnContext, RightFailingContexts,
+        MaybePromiseEqvSolutionSets, DetInfo, Detism, GoalFailingContexts,
+        !Specs) :-
     goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
     goal_info_get_instmap_delta(GoalInfo0, InstmapDelta),
 
@@ -405,7 +406,7 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
         AddPruning = no
     ),
     (
-        Goal0 = scope(ScopeReason, _),
+        GoalExpr0 = scope(ScopeReason, _),
         (
             % Some other part of the compiler has determined that we need
             % to keep the cut represented by this quantification. This can
@@ -429,7 +430,7 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
         Prune = AddPruning
     ),
 
-    det_infer_goal_2(Goal0, Goal1, GoalInfo0, InstMap0, !.SolnContext,
+    det_infer_goal_2(GoalExpr0, GoalExpr1, GoalInfo0, InstMap0, !.SolnContext,
         RightFailingContexts, MaybePromiseEqvSolutionSets, DetInfo,
         InternalDetism0, GoalFailingContexts, !Specs),
 
@@ -478,7 +479,7 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
         % inside a `scope' to appease the code generator. (Both the MLDS and
         % LLDS back-ends rely on this.)
 
-        Goal1 = if_then_else(_, _ - CondInfo, _, _),
+        GoalExpr1 = if_then_else(_, hlds_goal(_, CondInfo), _, _),
         goal_info_get_determinism(CondInfo, CondDetism),
         determinism_components(CondDetism, _, at_most_many),
         Solns \= at_most_many
@@ -489,10 +490,10 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
         % nondet and multidet goals. If this happens, the conjunction is put
         % inside a scope goal to appease the code generator.
 
-        Goal1 = conj(plain_conj, ConjGoals),
+        GoalExpr1 = conj(plain_conj, ConjGoals),
         Solns = at_most_zero,
         some [ConjGoalInfo] (
-            list.member(_ - ConjGoalInfo, ConjGoals),
+            list.member(hlds_goal(_, ConjGoalInfo), ConjGoals),
             goal_info_get_determinism(ConjGoalInfo, ConjGoalDetism),
             determinism_components(ConjGoalDetism, _, at_most_many)
         )
@@ -513,18 +514,19 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
         % which avoids creating a choice point at all, rather than wrapping
         % a some [] around a nondet disj, which would create a choice point
         % and then prune it.
-        Goal1 \= disj(_),
+        GoalExpr1 \= disj(_),
 
         % Do we already have a commit?
-        Goal1 \= scope(_, _)
+        GoalExpr1 \= scope(_, _)
     ->
         % A commit is needed - we must introduce an explicit `commit' so that
         % the code generator knows to insert the appropriate code for pruning.
         goal_info_set_determinism(FinalInternalDetism, GoalInfo0, InnerInfo),
-        Goal = scope(commit(dont_force_pruning), Goal1 - InnerInfo)
+        GoalExpr = scope(commit(dont_force_pruning),
+            hlds_goal(GoalExpr1, InnerInfo))
     ;
         % Either no commit is needed, or a `scope' is already present.
-        Goal = Goal1
+        GoalExpr = GoalExpr1
     ).
 
 :- func promise_eqv_solutions_kind_prunes(promise_solutions_kind) = bool.
@@ -756,7 +758,8 @@ det_infer_disj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
     (
         Goals = [],
         goal_info_get_context(GoalInfo, Context),
-        GoalFailingContexts = [Context - fail_goal | GoalFailingContexts0]
+        FailingContext = failing_context(Context, fail_goal),
+        GoalFailingContexts = [FailingContext | GoalFailingContexts0]
     ;
         Goals = [_ | _],
         GoalFailingContexts = GoalFailingContexts0
@@ -779,7 +782,7 @@ det_infer_disj_goals([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
         MaybePromiseEqvSolutionSets, DetInfo, FirstDetism, GoalFailingContexts,
         !Specs),
     determinism_components(FirstDetism, FirstCanFail, FirstMaxSolns),
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     % If a disjunct cannot succeed but is marked with the
     % preserve_backtrack_into feature, treat it as being able to succeed
     % when computing the max number of solutions of the disjunction as a
@@ -859,8 +862,9 @@ det_infer_switch(Var, SwitchCanFail, Cases0, Cases, GoalInfo, InstMap0,
     (
         SwitchCanFail = can_fail,
         goal_info_get_context(GoalInfo, SwitchContext),
-        GoalFailingContexts = [SwitchContext - incomplete_switch(Var) |
-            GoalFailingContexts0]
+        FailingContext = failing_context(SwitchContext,
+            incomplete_switch(Var)),
+        GoalFailingContexts = [FailingContext | GoalFailingContexts0]
     ;
         SwitchCanFail = cannot_fail,
         GoalFailingContexts = GoalFailingContexts0
@@ -956,7 +960,8 @@ det_infer_call(PredId, ProcId0, ProcId, GoalInfo, SolnContext,
     (
         CanFail = can_fail,
         goal_info_get_context(GoalInfo, Context),
-        GoalFailingContexts = [Context - call_goal(PredId, ProcId)]
+        FailingContext = failing_context(Context, call_goal(PredId, ProcId)),
+        GoalFailingContexts = [FailingContext]
     ;
         CanFail = cannot_fail,
         GoalFailingContexts = []
@@ -1000,7 +1005,9 @@ det_infer_generic_call(GenericCall, CallDetism,
     ),
     (
         CanFail = can_fail,
-        GoalFailingContexts = [Context - generic_call_goal(GenericCall)]
+        FailingContext = failing_context(Context,
+            generic_call_goal(GenericCall)),
+        GoalFailingContexts = [FailingContext]
     ;
         CanFail = cannot_fail,
         GoalFailingContexts = []
@@ -1079,7 +1086,9 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
         (
             CanFail = can_fail,
             goal_info_get_context(GoalInfo, Context),
-            GoalFailingContexts = [Context - call_goal(PredId, ProcId)]
+            FailingContext = failing_context(Context,
+                call_goal(PredId, ProcId)),
+            GoalFailingContexts = [FailingContext]
         ;
             CanFail = cannot_fail,
             GoalFailingContexts = []
@@ -1152,16 +1161,21 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
         ;
             Unify = complicated_unify(_, _, _),
             ( RHS = rhs_var(RHSVar) ->
-                GoalFailingContexts = [Context - test_goal(LHS, RHSVar)]
+                FailingContext = failing_context(Context,
+                    test_goal(LHS, RHSVar)),
+                GoalFailingContexts = [FailingContext]
             ;
                 unexpected(this_file, "complicated_unify but no var")
             )
         ;
             Unify = deconstruct(Var, ConsId, _, _, _, _),
-            GoalFailingContexts = [Context - deconstruct_goal(Var, ConsId)]
+            FailingContext = failing_context(Context,
+                deconstruct_goal(Var, ConsId)),
+            GoalFailingContexts = [FailingContext]
         ;
             Unify = simple_test(Var1, Var2),
-            GoalFailingContexts = [Context - test_goal(Var1, Var2)]
+            FailingContext = failing_context(Context, test_goal(Var1, Var2)),
+            GoalFailingContexts = [FailingContext]
         )
     ;
         UnifyCanFail = cannot_fail,
@@ -1270,7 +1284,7 @@ det_infer_not(Goal0, Goal, GoalInfo, InstMap0, MaybePromiseEqvSolutionSets,
     (
         CanFail = can_fail,
         goal_info_get_context(GoalInfo, Context),
-        GoalFailingContexts = [Context - negated_goal]
+        GoalFailingContexts = [failing_context(Context, negated_goal)]
     ;
         CanFail = cannot_fail,
         GoalFailingContexts = []

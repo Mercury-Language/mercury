@@ -121,8 +121,9 @@ find_matching_model_proc([ModelId - ModelStdProc | ModelIdProcs], Id, Proc,
 maybe_redirect_proc(Proc0, Target, MaybeProc) :-
     Instrs0 = Proc0 ^ cproc_code,
     get_prologue(Instrs0, LabelInstr, _Comments, LaterInstrs),
-    Redirect = goto(code_label(entry_label(entry_label_local, Target))) -
-        "Redirect to procedure with identical body",
+    Redirect = llds_instr(
+        goto(code_label(entry_label(entry_label_local, Target))),
+        "Redirect to procedure with identical body"),
     list.filter(disallowed_instr, LaterInstrs, DisallowedInstrs),
     list.length(LaterInstrs, NumLaterInstrs),
     (
@@ -140,7 +141,7 @@ maybe_redirect_proc(Proc0, Target, MaybeProc) :-
 
 :- pred disallowed_instr(instruction::in) is semidet.
 
-disallowed_instr(Instr - _) :-
+disallowed_instr(llds_instr(Instr, _)) :-
     (
         Instr = if_val(_, _)
     ;
@@ -161,8 +162,8 @@ standardize_proc(CProc, StdCProc, DupProcMap) :-
     map(proc_label, proc_label)::in) is det.
 
 standardize_instrs([], [], _).
-standardize_instrs([Instr - _ | Instrs], [StdInstr - "" | StdInstrs],
-        DupProcMap) :-
+standardize_instrs([llds_instr(Instr, _) | Instrs],
+        [llds_instr(StdInstr, "") | StdInstrs], DupProcMap) :-
     standardize_instr(Instr, StdInstr, DupProcMap),
     standardize_instrs(Instrs, StdInstrs, DupProcMap).
 

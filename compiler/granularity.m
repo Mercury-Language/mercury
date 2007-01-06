@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,8 +92,8 @@ runtime_granularity_test_in_proc(SCC, proc(PredId, ProcId), !ModuleInfo) :-
 :- pred runtime_granularity_test_in_goal(hlds_goal::in, hlds_goal::out,
     bool::in, bool::out, list(pred_proc_id)::in, module_info::in) is det.
 
-runtime_granularity_test_in_goal(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo,
-        !Changed, SCC, ModuleInfo) :-
+runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = conj(parallel_conj, Goals0),
         runtime_granularity_test_in_goals(Goals0, Goals, !Changed, SCC,
@@ -141,9 +141,10 @@ runtime_granularity_test_in_goal(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo,
                     Args, ExtraArgs, MaybeRuntimeCond, Code, Features,
                     InstMapDeltaSrc, ModuleInfo, Context, Cond),
 
-                Then = conj(parallel_conj, Goals) - GoalInfo,
-                Else = conj(plain_conj, Goals) - GoalInfo,
-                IfThenElse = if_then_else([], Cond, Then, Else) - GoalInfo,
+                Then = hlds_goal(conj(parallel_conj, Goals), GoalInfo),
+                Else = hlds_goal(conj(plain_conj, Goals), GoalInfo),
+                IfThenElse = hlds_goal(if_then_else([], Cond, Then, Else),
+                    GoalInfo),
                 Reason = promise_purity(dont_make_implicit_promises,
                     purity_pure),
                 GoalExpr = scope(Reason, IfThenElse),
@@ -183,15 +184,15 @@ runtime_granularity_test_in_goal(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo,
             ModuleInfo),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        GoalExpr0 = negation(Goal0),
-        runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC,
+        GoalExpr0 = negation(SubGoal0),
+        runtime_granularity_test_in_goal(SubGoal0, SubGoal, !Changed, SCC,
             ModuleInfo),
-        GoalExpr = negation(Goal)
+        GoalExpr = negation(SubGoal)
     ;
-        GoalExpr0 = scope(Reason, Goal0),
-        runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC,
+        GoalExpr0 = scope(Reason, SubGoal0),
+        runtime_granularity_test_in_goal(SubGoal0, SubGoal, !Changed, SCC,
             ModuleInfo),
-        GoalExpr = scope(Reason, Goal)
+        GoalExpr = scope(Reason, SubGoal)
     ;
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _)
@@ -202,7 +203,8 @@ runtime_granularity_test_in_goal(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo,
     ;
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "runtime_granularity_test_in_goal: shorthand")
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred runtime_granularity_test_in_goals(
     list(hlds_goal)::in, list(hlds_goal)::out, bool::in, bool::out,

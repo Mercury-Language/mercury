@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2003-2006 The University of Melbourne.
+% Copyright (C) 1995-1998, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,7 +69,7 @@ reschedule_conj([Goal0 | Goals0], Goals, !ModeInfo) :-
         reschedule_conj(Goals1, Goals, !ModeInfo)
     ;
         WokenGoals = [],
-        Goal0 = _Goal0Goal - Goal0Info,
+        Goal0 = hlds_goal(_Goal0Goal, Goal0Info),
         goal_info_get_instmap_delta(Goal0Info, InstMapDelta),
         instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
         mode_info_set_instmap(InstMap1, !ModeInfo),

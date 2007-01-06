@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,6 +30,7 @@
 :- import_module recompilation.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
@@ -44,7 +45,7 @@
 
     % An error/warning message, and the term to which it relates.
     %
-:- type message_list == list(pair(string, term)).
+:- type message_list == assoc_list(string, term).
 
 :- type compilation_unit
     --->    unit_module(
@@ -89,7 +90,11 @@
 
 :- type item_list == list(item_and_context).
 
-:- type item_and_context == pair(item, prog_context).
+:- type item_and_context
+    --->    item_and_context(
+                item,
+                prog_context
+            ).
 
 :- type item
     --->    item_clause(

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,10 +79,10 @@ allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
         proc_info_get_vartypes(!.ProcInfo, VarTypes),
         find_follow_vars_in_goal(Goal0, Goal1, VarTypes, ModuleInfo,
             FollowVarsMap0, FollowVarsMap, NextNonReserved0, NextNonReserved),
-        Goal1 = GoalExpr1 - GoalInfo1,
+        Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
         FollowVars = abs_follow_vars(FollowVarsMap, NextNonReserved),
         goal_info_set_follow_vars(yes(FollowVars), GoalInfo1, GoalInfo2),
-        Goal2 = GoalExpr1 - GoalInfo2
+        Goal2 = hlds_goal(GoalExpr1, GoalInfo2)
     ;
         proc_info_get_goal(!.ProcInfo, Goal2)
     ),
@@ -130,7 +130,8 @@ initial_last_locns([Var - Lval | VarLvals]) =
     liveness_info::in, liveness_info::out, last_locns::in, last_locns::out,
     set(prog_var)::in, store_alloc_info::in) is det.
 
-store_alloc_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, Liveness0, Liveness,
+store_alloc_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo), Liveness0, Liveness,
         !LastLocns, ResumeVars0, StoreAllocInfo) :-
     % note: we must be careful to apply deaths before births
     goal_info_get_pre_deaths(GoalInfo0, PreDeaths),
@@ -140,14 +141,14 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, Liveness0, Liveness,
 
     set.difference(Liveness0,  PreDeaths, Liveness1),
     set.union(Liveness1, PreBirths, Liveness2),
-    store_alloc_in_goal_2(Goal0, Goal, Liveness2, Liveness3,
+    store_alloc_in_goal_2(GoalExpr0, GoalExpr, Liveness2, Liveness3,
         !LastLocns, ResumeVars0, PostDeaths, StoreAllocInfo),
     set.difference(Liveness3, PostDeaths, Liveness4),
     % If any variables magically become live in the PostBirths,
     % then they have to mundanely become live in a parallel goal,
     % so we don't need to allocate anything for them here.
     set.union(Liveness4, PostBirths, Liveness),
-    ( goal_util.goal_is_branched(Goal) ->
+    ( goal_util.goal_is_branched(GoalExpr) ->
         % Any variables that become magically live at the
         % end of the goal should not be included in the store map.
         % That is why we use Liveness4 instead of Liveness here.
@@ -194,7 +195,7 @@ store_alloc_in_goal_2(disj(Goals0), disj(Goals), !Liveness, !LastLocns,
 
 store_alloc_in_goal_2(negation(Goal0), negation(Goal), !Liveness, !LastLocns,
         _ResumeVars0, _, StoreAllocInfo) :-
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     goal_info_get_resume_point(GoalInfo0, ResumeNot),
     goal_info_resume_vars_and_loc(ResumeNot, ResumeNotVars, _),
     store_alloc_in_goal(Goal0, Goal, !Liveness, !.LastLocns, _,
@@ -210,7 +211,7 @@ store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
         if_then_else(Vars, Cond, Then, Else),
         Liveness0, Liveness, LastLocns0, LastLocns,
         ResumeVars0, _, StoreAllocInfo) :-
-    Cond0 = _ - CondGoalInfo0,
+    Cond0 = hlds_goal(_, CondGoalInfo0),
     goal_info_get_resume_point(CondGoalInfo0, ResumeCond),
     goal_info_resume_vars_and_loc(ResumeCond, ResumeCondVars, _),
     store_alloc_in_goal(Cond0, Cond, Liveness0, Liveness1,
@@ -253,7 +254,7 @@ store_alloc_in_conj([Goal0 | Goals0], [Goal | Goals], !Liveness, !LastLocns,
         ResumeVars0, StoreAllocInfo) :-
     (
         % XXX should be threading the instmap.
-        Goal0 = _ - GoalInfo,
+        Goal0 = hlds_goal(_, GoalInfo),
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
         instmap_delta_is_unreachable(InstMapDelta)
     ->
@@ -293,7 +294,7 @@ store_alloc_in_disj([], [], !Liveness, _, [], _, _).
 store_alloc_in_disj([Goal0 | Goals0], [Goal | Goals], Liveness0, Liveness,
         LastLocns0, [LastLocnsGoal | LastLocnsDisj],
         ResumeVars0, StoreAllocInfo) :-
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     goal_info_get_resume_point(GoalInfo0, ResumeGoal),
     (
         ResumeGoal = no_resume_point,

@@ -129,7 +129,7 @@ livemap_do_build([Instr0 | Instrs0], Livevals0,
 
 livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         !Livemap) :-
-    Instr0 = Uinstr0 - _,
+    Instr0 = llds_instr(Uinstr0, _),
     (
         Uinstr0 = comment(_)
     ;
@@ -387,7 +387,7 @@ build_livemap_foreign_proc_inputs([Input | Inputs], !Livevals) :-
 
 look_for_livevals(Instrs0, Instrs, !Livevals, Site, Compulsory, Found) :-
     opt_util.skip_comments(Instrs0, Instrs1),
-    ( Instrs1 = [livevals(Livevals1) - _ | Instrs2] ->
+    ( Instrs1 = [llds_instr(livevals(Livevals1), _) | Instrs2] ->
         livemap_filter_livevals(Livevals1, !:Livevals),
         Instrs = Instrs2,
         Found = yes

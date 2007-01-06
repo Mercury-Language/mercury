@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: delay_construct.m.
 % Author: zs.
-% 
+%
 % This module transforms sequences of goals in procedure bodies.  It looks for
 % a unification that constructs a ground term followed by primitive goals, at
 % least one of which can fail, and none of which take the variable
@@ -16,12 +16,12 @@
 % be constructed even if the following goal would fail, which is wasteful.
 % This module therefore reorders the sequence, moving the construction
 % unification past all the semidet primitives it can.
-% 
+%
 % The reason we don't move the construction past calls or composite goals is
 % that this may require storing the input arguments of the construction on the
 % stack, which may cause a slowdown bigger than the speedup available from not
 % having to construct the cell on some execution paths.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.delay_construct.
@@ -92,7 +92,8 @@ delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo) :-
 :- pred delay_construct_in_goal(hlds_goal::in, instmap::in,
     delay_construct_info::in, hlds_goal::out) is det.
 
-delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
+delay_construct_in_goal(hlds_goal(GoalExpr0, GoalInfo0), InstMap0, DelayInfo,
+        Goal) :-
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -127,44 +128,39 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
             Goals1 = Goals0
         ),
         delay_construct_in_goals(Goals1, InstMap0, DelayInfo, Goals),
-        Goal = conj(ConjType, Goals) - GoalInfo0
+        Goal = hlds_goal(conj(ConjType, Goals), GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
         delay_construct_in_goals(Goals0, InstMap0, DelayInfo, Goals),
-        Goal = disj(Goals) - GoalInfo0
+        Goal = hlds_goal(disj(Goals), GoalInfo0)
     ;
         GoalExpr0 = negation(NegGoal0),
         delay_construct_in_goal(NegGoal0, InstMap0, DelayInfo, NegGoal),
-        Goal = negation(NegGoal) - GoalInfo0
+        Goal = hlds_goal(negation(NegGoal), GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         delay_construct_in_cases(Cases0, InstMap0, DelayInfo, Cases),
-        Goal = switch(Var, CanFail, Cases) - GoalInfo0
+        Goal = hlds_goal(switch(Var, CanFail, Cases), GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        Cond0 = _ - CondInfo0,
+        Cond0 = hlds_goal(_, CondInfo0),
         goal_info_get_instmap_delta(CondInfo0, CondInstMapDelta),
         instmap.apply_instmap_delta(InstMap0, CondInstMapDelta, InstMapThen),
         delay_construct_in_goal(Cond0, InstMap0, DelayInfo, Cond),
         delay_construct_in_goal(Then0, InstMapThen, DelayInfo, Then),
         delay_construct_in_goal(Else0, InstMap0, DelayInfo, Else),
-        Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
+        Goal = hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         delay_construct_in_goal(SubGoal0, InstMap0, DelayInfo, SubGoal),
-        Goal = scope(Reason, SubGoal) - GoalInfo0
+        Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
     ;
-        GoalExpr0 = generic_call(_, _, _, _),
-        Goal = GoalExpr0 - GoalInfo0
-    ;
-        GoalExpr0 = plain_call(_, _, _, _, _, _),
-        Goal = GoalExpr0 - GoalInfo0
-    ;
-        GoalExpr0 = unify(_, _, _, _, _),
-        Goal = GoalExpr0 - GoalInfo0
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        Goal = GoalExpr0 - GoalInfo0
+        ( GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        Goal = hlds_goal(GoalExpr0, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
@@ -206,7 +202,7 @@ delay_construct_in_conj([], _, _, _, RevDelayedGoals, DelayedGoals) :-
     list.reverse(RevDelayedGoals, DelayedGoals).
 delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         ConstructedVars0, RevDelayedGoals0, Goals) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta0, InstMap1),
     (
@@ -223,7 +219,7 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
             ConstructedVars1, RevDelayedGoals1, Goals)
     ;
-        Goal0 = GoalExpr0 - GoalInfo0,
+        Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         delay_construct_skippable(GoalExpr0, GoalInfo0),
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
         maybe_complete_with_typeinfo_vars(NonLocals,

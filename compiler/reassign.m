@@ -136,7 +136,7 @@ remove_reassign(Instrs0, Instrs) :-
 remove_reassign_loop([], _, _, !RevInstrs).
 remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !RevInstrs) :-
-    Instr0 = Uinstr0 - _,
+    Instr0 = llds_instr(Uinstr0, _),
     (
         Uinstr0 = comment(_),
         !:RevInstrs = [Instr0 | !.RevInstrs]

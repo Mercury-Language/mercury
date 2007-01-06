@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -270,24 +270,25 @@ implicitly_quantify_goal_2(RecomputeNonLocals, OutsideVars0, Warnings,
 :- pred implicitly_quantify_goal_quant_info(hlds_goal::in, hlds_goal::out,
     quant_info::in, quant_info::out) is det.
 
-implicitly_quantify_goal_quant_info(Goal0 - GoalInfo0, Goal - GoalInfo,
-        !Info) :-
+implicitly_quantify_goal_quant_info(Goal0, Goal, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     get_seen(!.Info, SeenVars),
     goal_info_get_context(GoalInfo0, Context),
-    implicitly_quantify_goal_quant_info_2(Goal0, Goal1, Context, !Info),
+    implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr1, Context,
+        !Info),
     get_nonlocals(!.Info, NonLocalVars),
     get_nonlocals_to_recompute(!.Info, NonLocalsToRecompute),
     (
         % If there are any variables that are local to the goal
         % which we have come across before, then we rename them apart.
-        goal_vars_bitset_choose(NonLocalsToRecompute, Goal0 - GoalInfo0,
-            GoalVars0),
+        goal_vars_bitset_choose(NonLocalsToRecompute, Goal0, GoalVars0),
         difference(GoalVars0, NonLocalVars, LocalVars),
         intersect(SeenVars, LocalVars, RenameVars),
         \+ empty(RenameVars)
     ->
         rename_apart(RenameVars, RenameMap,
-            Goal1 - GoalInfo0, Goal - GoalInfo1, !Info),
+            hlds_goal(GoalExpr1, GoalInfo0), hlds_goal(GoalExpr, GoalInfo1),
+            !Info),
 
         % Make sure that the information in the RTTI varmaps is updated
         % to reflect any new variables that we may have just introduced.
@@ -298,7 +299,7 @@ implicitly_quantify_goal_quant_info(Goal0 - GoalInfo0, Goal - GoalInfo,
             set_rtti_varmaps(!.RttiVarMaps, !Info)
         )
     ;
-        Goal = Goal1,
+        GoalExpr = GoalExpr1,
         GoalInfo1 = GoalInfo0
     ),
     set_goal_nonlocals(NonLocalVars, NonLocalVarsSet, GoalInfo1, GoalInfo2,
@@ -311,7 +312,8 @@ implicitly_quantify_goal_quant_info(Goal0 - GoalInfo0, Goal - GoalInfo,
 
     goal_info_get_instmap_delta(GoalInfo2, InstMapDelta0),
     instmap_delta_restrict(NonLocalVarsSet, InstMapDelta0, InstMapDelta),
-    goal_info_set_instmap_delta(InstMapDelta, GoalInfo2, GoalInfo).
+    goal_info_set_instmap_delta(InstMapDelta, GoalInfo2, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % After this pass, explicit quantifiers are redundant, since all variables
     % which were explicitly quantified have been renamed apart. So we don't
@@ -571,7 +573,7 @@ implicitly_quantify_goal_quant_info_2(Expr0, Expr, Context, !Info) :-
     quant_info::in, quant_info::out) is det.
 
 implicitly_quantify_goal_quant_info_2_shorthand(bi_implication(LHS0, RHS0),
-        Context, Goal, !Info) :-
+        Context, GoalExpr, !Info) :-
 
     % Get the initial values of various settings.
     get_quant_vars(!.Info, QuantVars0),
@@ -639,19 +641,23 @@ implicitly_quantify_goal_quant_info_2_shorthand(bi_implication(LHS0, RHS0),
     set_goal_nonlocals(LHS_NonLocalVars, GoalInfo1, LHS_GI, !Info),
     set_goal_nonlocals(RHS_NonLocalVars, GoalInfo1, RHS_GI, !Info),
     set_goal_nonlocals(NonLocalVars, GoalInfo1, GI, !Info),
-    NotLHS = negation(LHS) - LHS_GI,
-    NotRHS = negation(RHS) - RHS_GI,
-    ForwardsImplication = negation(conj(plain_conj, [LHS, NotRHS]) - GI) - GI,
+    NotLHS = hlds_goal(negation(LHS), LHS_GI),
+    NotRHS = hlds_goal(negation(RHS), RHS_GI),
+    ForwardsImplication = hlds_goal(
+        negation(hlds_goal(conj(plain_conj, [LHS, NotRHS]), GI)),
+        GI),
 
     % Rename apart the local variables of the goals we've just duplicated.
-    ReverseImplication0 = negation(conj(plain_conj, [RHS, NotLHS]) - GI) - GI,
+    ReverseImplication0 = hlds_goal(
+        negation(hlds_goal(conj(plain_conj, [RHS, NotLHS]), GI)),
+        GI),
     goal_vars_bitset_choose(NonLocalsToRecompute, ReverseImplication0,
         GoalVars),
     difference(GoalVars, NonLocalVars, RenameVars),
     rename_apart(RenameVars, _, ReverseImplication0, ReverseImplication,
         !Info),
 
-    Goal = conj(plain_conj, [ForwardsImplication, ReverseImplication]).
+    GoalExpr = conj(plain_conj, [ForwardsImplication, ReverseImplication]).
 
 :- pred implicitly_quantify_atomic_goal(list(prog_var)::in,
     quant_info::in, quant_info::out) is det.
@@ -752,7 +758,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
     % make_hlds uses includes all variables in the lambda expression except
     % the quantified variables.
 
-    Goal = _ - LambdaGoalInfo,
+    Goal = hlds_goal(_, LambdaGoalInfo),
     goal_info_get_nonlocals(LambdaGoalInfo, LambdaGoalNonLocals),
     list.filter(contains(LambdaGoalNonLocals),
         LambdaNonLocals0, LambdaNonLocals),
@@ -923,8 +929,9 @@ get_vars_2(NonLocalsToRecompute, [Goal | Goals], Set, LambdaSet,
 :- mode conj_vars(in(code_gen_nonlocals), in, in, out, in, out) is det.
 
 conj_vars(_, [], !Set, !LambdaSet).
-conj_vars(NonLocalsToRecompute, [Goal - _GoalInfo| Goals], !Set, !LambdaSet) :-
-    goal_vars_2(NonLocalsToRecompute, Goal, !Set, !LambdaSet),
+conj_vars(NonLocalsToRecompute, [hlds_goal(GoalExpr, _GoalInfo) | Goals],
+        !Set, !LambdaSet) :-
+    goal_vars_2(NonLocalsToRecompute, GoalExpr, !Set, !LambdaSet),
     conj_vars(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
 
 :- pred disj_vars(nonlocals_to_recompute, list(hlds_goal),
@@ -961,7 +968,7 @@ compute_disj_vars(_, [], !Sets, !LambdaSets).
 compute_disj_vars(NonLocalsToRecompute, [Goal | Goals], !Sets, !LambdaSets) :-
     EmptySet = init,
     EmptyLambdaSet = init,
-    Goal = GoalExpr - _,
+    Goal = hlds_goal(GoalExpr, _),
     goal_vars_2(NonLocalsToRecompute, GoalExpr,
         EmptySet, GoalSet, EmptyLambdaSet, GoalLambdaSet),
     !:Sets = [GoalSet | !.Sets],
@@ -1000,7 +1007,7 @@ case_vars(NonLocalsToRecompute, Cases, !Set, !LambdaSet) :-
 
 compute_case_vars(_, [], !Sets, !LambdaSets).
 compute_case_vars(NonLocalsToRecompute, [Case | Cases], !Sets, !LambdaSets) :-
-    Case = case(_Cons, Goal - _GoalInfo),
+    Case = case(_Cons, hlds_goal(Goal, _GoalInfo)),
     EmptySet = init,
     EmptyLambdaSet = init,
     goal_vars_2(NonLocalsToRecompute, Goal,
@@ -1096,7 +1103,8 @@ goal_vars_both_choose(NonLocalsToRecompute, Goal, Set, LambdaSet) :-
 :- mode goal_vars_both(in(ordinary_nonlocals), in, out, out) is det.
 :- mode goal_vars_both(in(code_gen_nonlocals), in, out, out) is det.
 
-goal_vars_both(NonLocalsToRecompute, Goal - _GoalInfo, Set, LambdaSet) :-
+goal_vars_both(NonLocalsToRecompute, hlds_goal(Goal, _GoalInfo),
+        Set, LambdaSet) :-
     Set0 = init,
     LambdaSet0 = init,
     goal_vars_2(NonLocalsToRecompute, Goal, Set0, Set, LambdaSet0, LambdaSet).
@@ -1180,9 +1188,9 @@ goal_vars_2(NonLocalsToRecompute, scope(Reason, Goal), Set0, !:Set,
     union(Set0, !Set),
     union(LambdaSet0, !LambdaSet).
 
-goal_vars_2(NonLocalsToRecompute, negation(Goal - _GoalInfo),
+goal_vars_2(NonLocalsToRecompute, negation(hlds_goal(GoalExpr, _GoalInfo)),
         !Set, !LambdaSet) :-
-    goal_vars_2(NonLocalsToRecompute, Goal, !Set, !LambdaSet).
+    goal_vars_2(NonLocalsToRecompute, GoalExpr, !Set, !LambdaSet).
 
 goal_vars_2(NonLocalsToRecompute, if_then_else(Vars, Cond, Then, Else),
         !Set, !LambdaSet) :-

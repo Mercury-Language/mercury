@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -112,7 +112,7 @@ figure_out_output_vars(CI, GoalInfo, OutVars) :-
     ).
 
 goal_is_conj_of_unify(Goal) :-
-    Goal = _GoalExpr - GoalInfo,
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
     goal_info_get_code_model(GoalInfo, CodeModel),
     CodeModel = model_det,
     goal_to_conj_list(Goal, Conj),
@@ -127,7 +127,7 @@ all_disjuncts_are_conj_of_unify([Disjunct | Disjuncts]) :-
 
 only_constant_goals([]).
 only_constant_goals([Goal | Goals]) :-
-    Goal = GoalExpr - _,
+    Goal = hlds_goal(GoalExpr, _),
     % We could allow calls as well. Some procedures have an output inst
     % that fixes the value of the output variable, which is thus a constant.
     % However, calls to such procedures should have been inlined by now.
@@ -147,7 +147,7 @@ generate_constants_for_arm(Goal, Vars, StoreMap, !MaybeEnd, CaseRvals,
 do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
         !MaybeEnd, Liveness, !CI) :-
     code_info.remember_position(!.CI, BranchStart),
-    Goal = _GoalExpr - GoalInfo,
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
     goal_info_get_code_model(GoalInfo, CodeModel),
     code_gen.generate_goal(CodeModel, Goal, Code, !CI),
     tree.tree_of_lists_is_empty(Code),
@@ -175,10 +175,10 @@ generate_constants_for_disjuncts([Disjunct0 | Disjuncts], Vars, StoreMap,
         [Soln | Solns], !MaybeEnd, yes(Liveness), !CI) :-
     % The pre_goal_update sanity check insists on no_resume_point, to ensure
     % that all resume points have been handled by surrounding code.
-    Disjunct0 = DisjunctGoalExpr - DisjunctGoalInfo0,
+    Disjunct0 = hlds_goal(DisjunctGoalExpr, DisjunctGoalInfo0),
     goal_info_set_resume_point(no_resume_point,
         DisjunctGoalInfo0, DisjunctGoalInfo),
-    Disjunct = DisjunctGoalExpr - DisjunctGoalInfo,
+    Disjunct = hlds_goal(DisjunctGoalExpr, DisjunctGoalInfo),
     do_generate_constants_for_arm(Disjunct, Vars, StoreMap, yes, Soln,
         !MaybeEnd, Liveness, !CI),
     generate_constants_for_disjuncts(Disjuncts, Vars, StoreMap, Solns,

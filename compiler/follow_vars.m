@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: follow_vars.m.
 % Main authors: conway, zs.
-% 
+%
 % This module traverses the goal for every procedure, filling in the
 % follow_vars fields of some goals. These fields constitute an advisory
 % indication to the code generator as to what location each variable
@@ -20,11 +20,11 @@
 % accordingly. At each call or higher order call we reset the follow_vars set
 % to reflect where variables should be to make the setting up of the arguments
 % of the call as efficient as possible.
-% 
+%
 % See compiler/notes/allocation.html for a description of the framework that
 % this pass operates within, and for a description of which goals have their
 % follow_vars field filled in.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.follow_vars.
@@ -95,9 +95,10 @@ find_final_follow_vars_2([arg_info(RegNum, Mode) - Var | ArgInfoVars],
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-find_follow_vars_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo,
-        VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
-    find_follow_vars_in_goal_expr(Goal0, Goal, GoalInfo0, GoalInfo,
+find_follow_vars_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo), VarTypes, ModuleInfo,
+        !FollowVarsMap, !NextNonReserved) :-
+    find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved).
 
 %-----------------------------------------------------------------------------%
@@ -401,7 +402,7 @@ find_follow_vars_in_conj([], [], _, _ModuleInfo, _AttachToFirst,
 find_follow_vars_in_conj([Goal0 | Goals0], [Goal | Goals], VarTypes,
         ModuleInfo, AttachToFirst, !FollowVarsMap, !NextNonReserved) :-
     (
-        Goal0 = GoalExpr0 - _,
+        Goal0 = hlds_goal(GoalExpr0, _),
         (
             GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
             BuiltinState = inline_builtin

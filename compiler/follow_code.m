@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -106,8 +106,9 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
 :- pred move_follow_code_in_goal(hlds_goal::in, hlds_goal::out, pair(bool)::in,
     bool::in, bool::out) is det.
 
-move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, Flags, !R) :-
-    move_follow_code_in_goal_2(Goal0, Goal, Flags, !R).
+move_follow_code_in_goal(hlds_goal(GoalExpr0, GoalInfo),
+        hlds_goal(GoalExpr, GoalInfo), Flags, !R) :-
+    move_follow_code_in_goal_2(GoalExpr0, GoalExpr, Flags, !R).
 
 %-----------------------------------------------------------------------------%
 
@@ -192,7 +193,7 @@ move_follow_code_in_conj_2([Goal0 | Goals0], !RevPrevGoals, Flags, !R) :-
     Flags = PushFollowCode - _PushPrevCode,
     (
         PushFollowCode = yes,
-        Goal0 = GoalExpr0 - _,
+        Goal0 = hlds_goal(GoalExpr0, _),
         goal_util.goal_is_branched(GoalExpr0),
         move_follow_code_select(Goals0, FollowGoals, RestGoalsPrime),
         FollowGoals = [_ | _],
@@ -226,20 +227,21 @@ move_follow_code_select([Goal | Goals], FollowGoals, RestGoals) :-
 :- pred move_follow_code_move_goals(hlds_goal::in, list(hlds_goal)::in,
     hlds_goal::out) is semidet.
 
-move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
+move_follow_code_move_goals(hlds_goal(GoalExpr0, GoalInfo), FollowGoals,
+        hlds_goal(GoalExpr, GoalInfo)) :-
     (
-        Goal0 = switch(Var, Det, Cases0),
+        GoalExpr0 = switch(Var, Det, Cases0),
         move_follow_code_move_goals_cases(Cases0, FollowGoals, Cases),
-        Goal = switch(Var, Det, Cases)
+        GoalExpr = switch(Var, Det, Cases)
     ;
-        Goal0 = disj(Goals0),
+        GoalExpr0 = disj(Goals0),
         move_follow_code_move_goals_disj(Goals0, FollowGoals, Goals),
-        Goal = disj(Goals)
+        GoalExpr = disj(Goals)
     ;
-        Goal0 = if_then_else(Vars, Cond, Then0, Else0),
+        GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
         follow_code_conjoin_goal_and_goal_list(Then0, FollowGoals, Then),
         follow_code_conjoin_goal_and_goal_list(Else0, FollowGoals, Else),
-        Goal = if_then_else(Vars, Cond, Then, Else)
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -274,7 +276,7 @@ move_follow_code_move_goals_disj([Goal0|Goals0], FollowGoals, [Goal|Goals]) :-
     list(hlds_goal)::in, hlds_goal::out) is semidet.
 
 follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     goal_info_get_determinism(GoalInfo0, Detism0),
     determinism_components(Detism0, _CanFail0, MaxSolns0),
     ( MaxSolns0 = at_most_zero ->
@@ -287,7 +289,7 @@ follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
         ;
             GoalExpr = conj(plain_conj, [Goal0 | FollowGoals])
         ),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ).
 
     % This check is necessary to make sure that follow_code doesn't change
@@ -297,7 +299,7 @@ follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
     is semidet.
 
 check_follow_code_detism([], _).
-check_follow_code_detism([_ - GoalInfo | Goals], Detism0) :-
+check_follow_code_detism([hlds_goal(_, GoalInfo) | Goals], Detism0) :-
     goal_info_get_determinism(GoalInfo, Detism1),
     det_conjunction_detism(Detism0, Detism1, Detism0),
     check_follow_code_detism(Goals, Detism0).
@@ -306,10 +308,13 @@ check_follow_code_detism([_ - GoalInfo | Goals], Detism0) :-
 
 :- pred move_follow_code_is_builtin(hlds_goal::in) is semidet.
 
-move_follow_code_is_builtin(unify(_, _, _, Unification, _) - _GoalInfo) :-
-    Unification \= complicated_unify(_, _, _).
-move_follow_code_is_builtin(plain_call(_, _, _, Builtin, _, _) - _GoalInfo) :-
-    Builtin = inline_builtin.
+move_follow_code_is_builtin(hlds_goal(GoalExpr, _)) :-
+    (
+        GoalExpr = unify(_, _, _, Unification, _),
+        Unification \= complicated_unify(_, _, _)
+    ;
+        GoalExpr = plain_call(_, _, _, inline_builtin, _, _)
+    ).
 
 %-----------------------------------------------------------------------------%
 

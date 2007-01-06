@@ -1120,7 +1120,7 @@ write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
             Modes, VarSet, AppendVarNums, HeadTerms, PredOrFunc,
             UseDeclaredModes, !IO)
     ),
-    ( Goal = conj(plain_conj, []) - _GoalInfo ->
+    ( Goal = hlds_goal(conj(plain_conj, []), _GoalInfo) ->
         io.write_string(".\n", !IO)
     ;
         io.write_string(" :-\n", !IO),
@@ -1214,8 +1214,8 @@ write_goal(Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow, !IO) :-
 :- pred write_goal_a(hlds_goal::in, module_info::in, prog_varset::in,
     bool::in, int::in, string::in, maybe_vartypes::in, io::di, io::uo) is det.
 
-write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
-        Follow, TypeQual, !IO) :-
+write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
+        Indent, Follow, TypeQual, !IO) :-
     globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
     ( string.contains_char(Verbose, 'c') ->
         goal_info_get_context(GoalInfo, Context),
@@ -1350,7 +1350,7 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
     ;
         true
     ),
-    write_goal_2(Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
+    write_goal_2(GoalExpr, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
         TypeQual, !IO),
     ( string.contains_char(Verbose, 'i') ->
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
@@ -1636,7 +1636,7 @@ write_goal_2(if_then_else(Vars, Cond, Then, Else), ModuleInfo, VarSet,
     globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
     (
         Verbose \= "",
-        Else = if_then_else(_, _, _, _) - _
+        Else = hlds_goal(if_then_else(_, _, _, _), _)
     ->
         write_goal_a(Else, ModuleInfo, VarSet, AppendVarNums, Indent, "\n",
             TypeQual, !IO)
@@ -3900,10 +3900,10 @@ write_table_tvar_map_entry(TVarSet, AppendVarNums, TVar - Locn, !IO) :-
     io.write_string(mercury_var_to_string(TVarSet, AppendVarNums, TVar), !IO),
     io.write_string(" -> ", !IO),
     (
-        Locn = direct(N),
+        Locn = table_locn_direct(N),
         io.format("direct in register %d\n", [i(N)], !IO)
     ;
-        Locn = indirect(N, O),
+        Locn = table_locn_indirect(N, O),
         io.format("indirect from register %d, offset %d\n", [i(N), i(O)], !IO)
     ).
 

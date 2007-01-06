@@ -1073,7 +1073,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
         InstMap0, PredName, TVarSet, VarTypes0, ClassContext,
         RttiVarMaps, VarSet0, InstVarSet, Markers,
         IsAddressTaken, ModuleInfo0, ModuleInfo, PredProcId) :-
-    Goal0 = _GoalExpr - GoalInfo,
+    Goal0 = hlds_goal(_GoalExpr, GoalInfo),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 
@@ -1141,7 +1141,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
     module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
 
     GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     PredProcId = proc(PredId, ProcId).
 
 :- pred compute_arg_types_modes(list(prog_var)::in, vartypes::in,
@@ -1618,8 +1618,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     % the extended answer blocks used by I/O action tabling for declarative
     % debugging, not to lvals.
 :- type table_locn
-    --->    direct(int)
-    ;       indirect(int, int).
+    --->    table_locn_direct(int)
+    ;       table_locn_indirect(int, int).
 
     % This type differs from the type table_step_kind in
     % library/table_builtin.m in that (a) in gives more information about the
@@ -2220,7 +2220,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     set.init(InitialLiveness),
     ArgInfo = no,
     goal_info_init(GoalInfo),
-    ClauseBody = conj(plain_conj, []) - GoalInfo,
+    ClauseBody = hlds_goal(conj(plain_conj, []), GoalInfo),
     CanProcess = yes,
     rtti_varmaps_init(RttiVarMaps),
     Term2Info = term_constr_main.term2_info_init,

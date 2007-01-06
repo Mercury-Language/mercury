@@ -87,7 +87,7 @@
 % for any number of labels in a sequence, not just two.) Therefore the
 % handle_options module turns on the jump and label optimizations whenever
 % frame optimization is turned on.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.frameopt.
@@ -193,7 +193,7 @@ frameopt_main_det_stack(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
                 keep_frame_transform(LabelSeq0, FirstLabel, SecondLabel,
                     CanClobberSuccip, !BlockMap),
                 LabelSeq = LabelSeq0,
-                NewComment = comment("keeping stack frame") - "",
+                NewComment = llds_instr(comment("keeping stack frame"), ""),
                 Comments = Comments0 ++ [NewComment],
                 flatten_block_seq(LabelSeq, !.BlockMap, BodyInstrs),
                 Instrs = Comments ++ BodyInstrs,
@@ -276,7 +276,7 @@ maybe_add_comments(Globals, DescComments, Instrs0, Instrs, Mod) :-
     ;
         FrameoptComments = yes,
         Instrs =
-            [comment("could not delay frame creation") - ""]
+            [llds_instr(comment("could not delay frame creation"), "")]
             ++ DescComments ++ Instrs0,
         Mod = yes
     ).
@@ -288,7 +288,7 @@ frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
     opt_util.get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
     (
         nondetstack_setup(Instrs1, FrameInfo, Redoip, MkframeInstr, Remain),
-        MkframeInstr = MkframeUinstr - MkframeComment,
+        MkframeInstr = llds_instr(MkframeUinstr, MkframeComment),
         find_succeed_labels(Instrs1, map.init, SuccMap),
         counter.allocate(KeepFrameLabelNum, !C),
         KeepFrameLabel = internal_label(KeepFrameLabelNum, ProcLabel),
@@ -296,10 +296,10 @@ frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
             MkframeUinstr, SuccMap, LayoutLabels, no, yes)
     ->
         list.condense([[LabelInstr], Comments0,
-            [mkframe(FrameInfo, no) - MkframeComment,
-            label(KeepFrameLabel) - "tail recursion target",
-            assign(redoip_slot(lval(curfr)),
-                const(llconst_code_addr(Redoip))) - ""],
+            [llds_instr(mkframe(FrameInfo, no), MkframeComment),
+            llds_instr(label(KeepFrameLabel), "tail recursion target"),
+            llds_instr(assign(redoip_slot(lval(curfr)),
+                const(llconst_code_addr(Redoip))), "")],
             Instrs2], Instrs),
         Mod = yes
     ;
@@ -312,7 +312,7 @@ frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
 
 nondetstack_setup(Instrs0, FrameInfo, Redoip, MkframeInstr, Remain) :-
     Instrs0 = [MkframeInstr | Remain],
-    MkframeInstr = mkframe(FrameInfo, yes(Redoip)) - _,
+    MkframeInstr = llds_instr(mkframe(FrameInfo, yes(Redoip)), _),
     FrameInfo = ordinary_frame(_, _, _).
 
 :- pred find_succeed_labels(list(instruction)::in, tailmap::in, tailmap::out)
@@ -320,7 +320,7 @@ nondetstack_setup(Instrs0, FrameInfo, Redoip, MkframeInstr, Remain) :-
 
 find_succeed_labels([], !SuccMap).
 find_succeed_labels([Instr | Instrs], !SuccMap) :-
-    Instr = Uinstr - _,
+    Instr = llds_instr(Uinstr, _),
     (
         Uinstr = label(Label),
         opt_util.skip_comments(Instrs, TailInstrs),
@@ -339,7 +339,7 @@ find_succeed_labels([Instr | Instrs], !SuccMap) :-
 keep_nondet_frame([], [], _, _, _, _, _, !Changed).
 keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
         PrevInstr, SuccMap, LayoutLabels, !Changed) :-
-    Instr0 = Uinstr0 - Comment,
+    Instr0 = llds_instr(Uinstr0, Comment),
     (
         % Look for nondet style tailcalls which do not need
         % a runtime check.
@@ -347,7 +347,7 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
             code_label(RetLabel), _, _, _, CallModel),
         CallModel = call_model_nondet(unchecked_tail_call),
         map.search(SuccMap, RetLabel, BetweenIncl),
-        BetweenIncl = [livevals(_) - _, goto(_) - _],
+        BetweenIncl = [llds_instr(livevals(_), _), llds_instr(goto(_), _)],
         PrevInstr = livevals(Livevals),
         not set.member(RetLabel, LayoutLabels)
     ->
@@ -356,8 +356,8 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
         !:Changed = yes,
         NewComment = Comment ++ " (nondet tailcall)",
         Instrs = [
-            livevals(Livevals) - "",
-            goto(code_label(KeepFrameLabel)) - NewComment
+            llds_instr(livevals(Livevals), ""),
+            llds_instr(goto(code_label(KeepFrameLabel)), NewComment)
             | Instrs1
         ]
     ;
@@ -520,17 +520,17 @@ divide_into_basic_blocks([], _, [], !C).
     % ends with a call to another procedure that cannot succeed.
     % This is the only situation in which the base case can be reached.
 divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, Instrs, !C) :-
-    Instr0 = Uinstr0 - _Comment,
+    Instr0 = llds_instr(Uinstr0, _Comment),
     ( opt_util.can_instr_branch_away(Uinstr0) = yes ->
         (
             Instrs0 = [Instr1 | _],
-            ( Instr1 = label(_) - _ ->
+            ( Instr1 = llds_instr(label(_), _) ->
                 divide_into_basic_blocks(Instrs0, ProcLabel, Instrs1, !C),
                 Instrs = [Instr0 | Instrs1]
             ;
                 counter.allocate(N, !C),
                 NewLabel = internal_label(N, ProcLabel),
-                NewInstr = label(NewLabel) - "",
+                NewInstr = llds_instr(label(NewLabel), ""),
                 divide_into_basic_blocks(Instrs0, ProcLabel, Instrs1, !C),
                 Instrs = [Instr0, NewInstr | Instrs1]
             )
@@ -554,7 +554,7 @@ flatten_block_seq([Label | Labels], BlockMap, Instrs) :-
     (
         list.split_last(BlockInstrs, MostInstrs, LastInstr),
         Labels = [NextLabel | _],
-        LastInstr = goto(code_label(NextLabel)) - _
+        LastInstr = llds_instr(goto(code_label(NextLabel)), _)
     ->
         % Optimize away the redundant goto, which we probably introduced.
         % The next invocation of jumpopt would also do this, but doing it here
@@ -603,7 +603,7 @@ build_frame_block_map([], _, [], _, _, _, !BlockMap, !PredMap, !C,
 build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
         MaybePrevLabel, FallInto, ProcLabel, !BlockMap, !PredMap, !C,
         !PreExitDummyLabelMap) :-
-    ( Instr0 = label(Label) - _ ->
+    ( Instr0 = llds_instr(label(Label), _) ->
         (
             MaybePrevLabel = yes(PrevLabel),
             svmap.det_insert(Label, PrevLabel, !PredMap)
@@ -628,8 +628,8 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             EmptyLabel = internal_label(EmptyN, ProcLabel),
 
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
-            FallThroughToEmptyInstr = goto(code_label(EmptyLabel))
-                - "fall through",
+            FallThroughToEmptyInstr =
+                llds_instr(goto(code_label(EmptyLabel)), "fall through"),
             BlockInfo = frame_block_info(Label,
                 [Instr0 | EntryInstrs] ++ [FallThroughToEmptyInstr],
                 FallInto, [], no, entry_block(EntryInfo)),
@@ -639,20 +639,20 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             % that falls through to this label.
             (
                 Instrs1 = [Instr1 | _],
-                Instr1 = label(NextLabelPrime) - _
+                Instr1 = llds_instr(label(NextLabelPrime), _)
             ->
                 NextLabel = NextLabelPrime,
                 Instrs2 = Instrs1
             ;
                 counter.allocate(N, !C),
                 NextLabel = internal_label(N, ProcLabel),
-                NextLabelInstr = label(NextLabel) - "",
+                NextLabelInstr = llds_instr(label(NextLabel), ""),
                 Instrs2 = [NextLabelInstr | Instrs1]
             ),
 
-            EmptyLabelInstr = label(EmptyLabel) - "",
+            EmptyLabelInstr = llds_instr(label(EmptyLabel), ""),
             FallThroughFromEmptyInstr =
-                goto(code_label(NextLabel)) - "fall through",
+                llds_instr(goto(code_label(NextLabel)), "fall through"),
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
             EmptyBlockType = ordinary_block(block_doesnt_need_frame,
                 is_post_entry_dummy),
@@ -700,7 +700,8 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             ExitLabel = internal_label(N, ProcLabel),
 
             compute_block_needs_frame(Label, Extra, NeedsFrame),
-            FallThroughInstr = goto(code_label(ExitLabel)) - "fall through",
+            FallThroughInstr =
+                llds_instr(goto(code_label(ExitLabel)), "fall through"),
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
             (
                 Extra = [],
@@ -716,7 +717,7 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             ExtraInfo = frame_block_info(Label, ExtraInstrs, FallInto,
                 [], no, ExtraBlockType),
 
-            ExitLabelInstr = label(ExitLabel) - "",
+            ExitLabelInstr = llds_instr(label(ExitLabel), ""),
             LabelledBlock = [ExitLabelInstr | ExitInstrs],
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
             ExitBlockInfo = frame_block_info(ExitLabel, LabelledBlock,
@@ -737,7 +738,7 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             BlockInfo = frame_block_info(Label, BlockInstrs, FallInto,
                 [], no, ordinary_block(NeedsFrame, is_not_dummy)),
             ( list.last(BlockInstrs, LastBlockInstr) ->
-                LastBlockInstr = LastBlockUinstr - _,
+                LastBlockInstr = llds_instr(LastBlockUinstr, _),
                 NextFallIntoBool =
                     opt_util.can_instr_fall_through(LastBlockUinstr),
                 (
@@ -776,7 +777,7 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
 detect_det_entry(Instrs0, Setup, Others ++ Remain, EntryInfo) :-
     opt_util.gather_comments(Instrs0, Others0, Instrs1),
     Instrs1 = [SetupInstr1 | Instrs2],
-    SetupInstr1 = incr_sp(FrameSize, Msg, Kind) - _,
+    SetupInstr1 = llds_instr(incr_sp(FrameSize, Msg, Kind), _),
     detstack_setup(Instrs2, FrameSize, SetupInstr2, Others0, Others, Remain),
     Setup = [SetupInstr1, SetupInstr2],
     EntryInfo = det_entry(FrameSize, Msg, Kind).
@@ -786,7 +787,8 @@ detect_det_entry(Instrs0, Setup, Others ++ Remain, EntryInfo) :-
     is semidet.
 
 detstack_setup([Instr0 | Instrs0], FrameSize, Setup, !Others, Remain) :-
-    ( Instr0 = assign(Lval, Rval) - _ ->
+    Instr0 = llds_instr(Uinstr0, _),
+    ( Uinstr0 = assign(Lval, Rval) ->
         (
             Lval = stackvar(FrameSize),
             Rval = lval(succip)
@@ -802,7 +804,7 @@ detstack_setup([Instr0 | Instrs0], FrameSize, Setup, !Others, Remain) :-
         ;
             fail
         )
-    ; Instr0 = comment(_) - _ ->
+    ; Uinstr0 = comment(_) ->
         !:Others = !.Others ++ [Instr0],
         detstack_setup(Instrs0, FrameSize, Setup, !Others, Remain)
     ;
@@ -814,7 +816,7 @@ detstack_setup([Instr0 | Instrs0], FrameSize, Setup, !Others, Remain) :-
 
 detect_nondet_entry(Instrs0, [MkframeInstr], Remain, EntryInfo) :-
     Instrs0 = [MkframeInstr | Remain],
-    MkframeInstr = mkframe(FrameInfo, MaybeRedoip) - _,
+    MkframeInstr = llds_instr(mkframe(FrameInfo, MaybeRedoip), _),
     % We could allow MaybeRedoip to be `no', and search for the instruction
     % that sets the redoip of the new frame. That is left for future work.
     MaybeRedoip = yes(Redoip),
@@ -860,7 +862,7 @@ detect_det_exit(Instrs0, EntryInfo, Extra, ExitInstrs, Remain, ExitInfo) :-
 detstack_teardown([Instr0 | Instrs0], FrameSize, Extra, SuccipRestore, Decrsp,
         Livevals, Goto, Remain) :-
     (
-        Instr0 = label(_) - _
+        Instr0 = llds_instr(label(_), _)
     ->
         fail
     ;
@@ -891,7 +893,7 @@ detstack_teardown_2(Instrs0, FrameSize, !Extra, !SuccipRestore, !Decrsp,
         !Livevals, Goto, Remain) :-
     opt_util.skip_comments(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
-    Instr1 = Uinstr1 - _,
+    Instr1 = llds_instr(Uinstr1, _),
     % XXX allow other instruction types in Extras, e.g. incr_hp
     (
         Uinstr1 = assign(Lval, Rval),
@@ -979,7 +981,7 @@ detect_nondet_exit(Instrs0, _EntryInfo, Extra, ExitInstrs, Remain, ExitInfo) :-
 nondetstack_teardown([Instr0 | Instrs0], Extra, SuccipRestore, Maxfr, Curfr,
         Livevals, Goto, GotoTarget, Remain) :-
     (
-        Instr0 = label(_) - _
+        Instr0 = llds_instr(label(_), _)
     ->
         fail
     ;
@@ -1013,7 +1015,7 @@ nondetstack_teardown_2(Instrs0, !Extra, !SuccipRestore, !Maxfr, !Curfr,
         !Livevals, Goto, GotoTarget, Remain) :-
     opt_util.skip_comments(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
-    Instr1 = Uinstr1 - _,
+    Instr1 = llds_instr(Uinstr1, _),
     % XXX allow other instruction types in Extras, e.g. incr_hp
     (
         Uinstr1 = assign(Lval, Rval),
@@ -1079,7 +1081,7 @@ compute_block_needs_frame(Label, Instrs, NeedsFrame) :-
         ReferStackVars = no,
         (
             list.member(Instr, Instrs),
-            Instr = Uinstr - _,
+            Instr = llds_instr(Uinstr, _),
             (
                 Uinstr = llcall(_, _, _, _, _, _)
             ;
@@ -1193,14 +1195,14 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
         Label = BlockLabel, % sanity check
         list.split_last_det(BlockInstrs0, AllButLastInstrs, LastInstr0)
     ->
-        LastInstr0 = LastUinstr0 - Comment,
+        LastInstr0 = llds_instr(LastUinstr0, Comment),
         (
             LastUinstr0 = goto(GotoTarget0)
         ->
             replace_labels_code_addr(GotoTarget0, PreExitDummyLabelMap,
                 GotoTarget),
             LastUinstr = goto(GotoTarget),
-            LastInstr = LastUinstr - Comment,
+            LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         ;
             LastUinstr0 = if_val(Rval, GotoTarget0)
@@ -1208,7 +1210,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
             replace_labels_code_addr(GotoTarget0, PreExitDummyLabelMap,
                 GotoTarget),
             LastUinstr = if_val(Rval, GotoTarget),
-            LastInstr = LastUinstr - Comment,
+            LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         ;
             LastUinstr0 = computed_goto(Rval, GotoTargets0)
@@ -1216,7 +1218,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
             replace_labels_label_list(GotoTargets0, PreExitDummyLabelMap,
                 GotoTargets),
             LastUinstr = computed_goto(Rval, GotoTargets),
-            LastInstr = LastUinstr - Comment,
+            LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         ;
             LastUinstr0 = foreign_proc_code(D, Comps0, MC, FNL, FL, FOL, NF0,
@@ -1234,7 +1236,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
             ),
             LastUinstr = foreign_proc_code(D, Comps, MC, FNL, FL, FOL, NF,
                 S, MD),
-            LastInstr = LastUinstr - Comment,
+            LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         ;
             LastUinstr = LastUinstr0,
@@ -1304,7 +1306,7 @@ matching_entry_type(entry_label_c_local, entry_label_c_local).
 
 find_redoip_labels([], _, !RedoipLabels).
 find_redoip_labels([Instr | Instrs], ProcLabel, !RedoipLabels) :-
-    Instr = Uinstr - _,
+    Instr = llds_instr(Uinstr, _),
     (
         Uinstr = assign(redoip_slot(_),
             const(llconst_code_addr(code_label(Label)))),
@@ -1347,7 +1349,7 @@ can_clobber_succip([Label | Labels], BlockMap) = CanClobberSuccip :-
     Instrs = BlockInfo ^ fb_instrs,
     (
         list.member(Instr, Instrs),
-        Instr = Uinstr - _,
+        Instr = llds_instr(Uinstr, _),
         (
             Uinstr = llcall(_, _, _, _, _, _)
         ;
@@ -1380,12 +1382,12 @@ keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
     (
         BlockInfo0 = frame_block_info(Label, OrigInstrs, FallInto, [_], no,
             exit_block(det_exit(Succip, Livevals, Goto))),
-        Goto = goto(code_label(GotoLabel)) - Comment,
+        Goto = llds_instr(goto(code_label(GotoLabel)), Comment),
         matching_label_ref(FirstLabel, GotoLabel)
     ->
         (
             OrigInstrs = [OrigInstr0 | _],
-            OrigInstr0 = label(_) - _
+            OrigInstr0 = llds_instr(label(_), _)
         ->
             OrigLabelInstr = OrigInstr0
         ;
@@ -1393,7 +1395,7 @@ keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
                 "keep_frame_transform: block does not begin with label")
         ),
         string.append(Comment, " (keeping frame)", NewComment),
-        NewGoto = goto(code_label(SecondLabel)) - NewComment,
+        NewGoto = llds_instr(goto(code_label(SecondLabel)), NewComment),
         LivevalsGoto = Livevals ++ [NewGoto],
         (
             CanClobberSuccip = yes,
@@ -1578,7 +1580,8 @@ delay_frame_transform(!LabelSeq, EntryInfo, ProcLabel, PredMap, !C,
             DescComments = []
         ;
             FrameoptComments = yes,
-            TransformComments = [comment("delaying stack frame") - ""],
+            TransformComments =
+                [llds_instr(comment("delaying stack frame"), "")],
             list.map(describe_block(!.BlockMap, !.OrdNeedsFrame,
                 PredMap, ProcLabel), !.LabelSeq, DescComments)
         ),
@@ -1852,7 +1855,7 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
         Type = entry_block(_),
         (
             Instrs0 = [LabelInstrPrime | _],
-            LabelInstrPrime = label(_) - _
+            LabelInstrPrime = llds_instr(label(_), _)
         ->
             LabelInstr = LabelInstrPrime
         ;
@@ -1936,8 +1939,9 @@ transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0, OrdNeedsFrame,
         ( FallThroughLabel = FallThroughLabel0 ->
             RedirectFallThrough = []
         ;
-            RedirectFallThrough = [goto(code_label(FallThroughLabel))
-                - "redirect fallthrough"]
+            RedirectFallThrough =
+                [llds_instr(goto(code_label(FallThroughLabel)),
+                    "redirect fallthrough")]
             % We can expect this jump to be optimized away in most cases.
         )
     ;
@@ -2061,12 +2065,13 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             SideLabels = [_ | _],
             % This can happen if fulljump optimization has redirected the
             % return.
-            Comments = [comment("exit side labels "
-                ++ dump_labels(yes(ProcLabel), SideLabels)) - ""]
+            Comments = [llds_instr(comment("exit side labels "
+                ++ dump_labels(yes(ProcLabel), SideLabels)), "")]
         ),
         PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
         ( Type = exit_block(ExitInfo) ->
-            LabelInstr = label(ParallelLabel) - "non-teardown parallel",
+            LabelInstr = llds_instr(label(ParallelLabel),
+                "non-teardown parallel"),
             ReplacementCode = [LabelInstr] ++ Comments ++
                 non_teardown_exit_code(ExitInfo),
             (
@@ -2102,7 +2107,8 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             % including the label saves memory and reduces the amount of work
             % labelopt has to do. (The label *would* be optimized away, since
             % it can't be referred to from anywhere.)
-            JumpAroundCode = [goto(code_label(Label0)) - "jump around setup"],
+            JumpAroundCode =
+                [llds_instr(goto(code_label(Label0)), "jump around setup")],
             Labels = [JumpAroundLabel, SetupLabel, Label0 | Labels1],
             JumpAroundReason = jump_around(Label0, Reasons),
             JumpAroundBlockInfo = frame_block_info(JumpAroundLabel,
@@ -2118,7 +2124,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             Labels = [SetupLabel, Label0 | Labels1],
             SetupFallInto = no
         ),
-        SetupCode = [label(SetupLabel) - "late setup label"]
+        SetupCode = [llds_instr(label(SetupLabel), "late setup label")]
             ++ late_setup_code(EntryInfo),
         SetupBlockInfo = frame_block_info(SetupLabel, SetupCode,
             SetupFallInto, [], yes(Label0), entry_block(EntryInfo)),
@@ -2159,8 +2165,8 @@ is_ordinary_block(ordinary_block(_, _)).
 :- func det_late_setup(det_entry_info) = list(instruction).
 
 det_late_setup(det_entry(FrameSize, Msg, Kind)) =
-    [incr_sp(FrameSize, Msg, Kind) - "late setup",
-    assign(stackvar(FrameSize), lval(succip)) - "late save"].
+    [llds_instr(incr_sp(FrameSize, Msg, Kind), "late setup"),
+    llds_instr(assign(stackvar(FrameSize), lval(succip)), "late save")].
 
 :- func det_non_teardown_exit_code(det_exit_info) = list(instruction).
 
@@ -2169,12 +2175,13 @@ det_non_teardown_exit_code(det_exit(_, Livevals, Goto)) = Livevals ++ [Goto].
 :- func nondet_late_setup(nondet_entry_info) = list(instruction).
 
 nondet_late_setup(nondet_entry(Msg, FrameSize, Redoip)) =
-    [mkframe(ordinary_frame(Msg, FrameSize, no), yes(Redoip)) - "late setup"].
+    [llds_instr(mkframe(ordinary_frame(Msg, FrameSize, no), yes(Redoip)),
+        "late setup")].
 
 :- func nondet_non_teardown_exit_code(nondet_exit_info) = list(instruction).
 
 nondet_non_teardown_exit_code(nondet_plain_exit(Livevals, _Goto)) =
-    Livevals ++ [goto(code_succip) - ""].
+    Livevals ++ [llds_instr(goto(code_succip), "")].
 nondet_non_teardown_exit_code(nondet_teardown_exit(_, _, _, Livevals, Goto)) =
     Livevals ++ [Goto].
 
@@ -2319,7 +2326,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
     ),
     Comment = Heading ++ PredStr ++ FallIntoStr ++ SideStr ++ FallThroughStr
         ++ TypeStr ++ "CODE:\n" ++ BlockInstrsStr,
-    Instr = comment(Comment) - "".
+    Instr = llds_instr(comment(Comment), "").
 
 :- func describe_det_entry(det_entry_info) = string.
 

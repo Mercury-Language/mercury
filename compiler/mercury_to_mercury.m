@@ -467,10 +467,11 @@ convert_to_mercury(ModuleName, OutputFileName, Items, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_item_list(_, [], !IO).
-mercury_output_item_list(UnqualifiedItemNames, [Item - Context | Items],
-        !IO) :-
+mercury_output_item_list(UnqualifiedItemNames,
+        [ItemAndContext | ItemAndContexts], !IO) :-
+    ItemAndContext = item_and_context(Item, Context),
     mercury_output_item(UnqualifiedItemNames, Item, Context, !IO),
-    mercury_output_item_list(UnqualifiedItemNames, Items, !IO).
+    mercury_output_item_list(UnqualifiedItemNames, ItemAndContexts, !IO).
 
 %-----------------------------------------------------------------------------%
 

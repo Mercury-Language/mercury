@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1997-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -160,7 +160,9 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
         (
             proc_info_get_goal(!.ProcInfo, Goal),
-            Goal = call_foreign_proc(Attributes, _, _, _, _, _, _) - _GoalInfo
+            Goal = hlds_goal(
+                call_foreign_proc(Attributes, _, _, _, _, _, _),
+                _GoalInfo)
         ->
             proc_info_get_maybe_termination_info(!.ProcInfo, MaybeTermination),
             proc_info_get_context(!.ProcInfo, Context),

@@ -626,13 +626,14 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     TraceComponents1 = [foreign_proc_raw_code(cannot_branch_away,
         doesnt_affect_liveness, live_lvals_info(set.init), TraceStmt1)],
     TraceCode1 = node([
-        foreign_proc_code([], TraceComponents1, proc_will_not_call_mercury,
-            no, no, MaybeLayoutLabel, no, yes, no) - ""
+        llds_instr(foreign_proc_code([], TraceComponents1,
+            proc_will_not_call_mercury, no, no, MaybeLayoutLabel, no, yes, no),
+            "")
     ]),
     (
         MaybeMaxfrLval = yes(MaxfrLval),
         TraceCode2 = node([
-            assign(MaxfrLval, lval(maxfr)) - "save initial maxfr"
+            llds_instr(assign(MaxfrLval, lval(maxfr)), "save initial maxfr")
         ])
     ;
         MaybeMaxfrLval = no,
@@ -645,8 +646,8 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         TraceComponents3 = [foreign_proc_raw_code(cannot_branch_away,
             doesnt_affect_liveness, live_lvals_info(set.init), TraceStmt3)],
         TraceCode3 = node([
-            foreign_proc_code([], TraceComponents3, proc_will_not_call_mercury,
-                no, no, no, no, yes, no) - ""
+            llds_instr(foreign_proc_code([], TraceComponents3,
+                proc_will_not_call_mercury, no, no, no, no, yes, no), "")
         ])
     ;
         MaybeCallTableLval = no,
@@ -671,8 +672,8 @@ trace_prepare_for_call(CI, TraceCode) :-
         ),
         ResetStmt = MacroStr ++ "(" ++ CallDepthStr ++ ");\n",
         TraceCode = node([
-            arbitrary_c_code(doesnt_affect_liveness, live_lvals_info(set.init),
-                ResetStmt) - ""
+            llds_instr(arbitrary_c_code(doesnt_affect_liveness,
+                live_lvals_info(set.init), ResetStmt), "")
         ])
     ;
         MaybeTraceInfo = no,
@@ -683,7 +684,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_goal_path(GoalInfo, Path),
         (
             Path = [LastStep | _],
@@ -757,7 +758,7 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
             TraceInfo ^ trace_level,
             TraceInfo ^ trace_suppress_items, Port) = yes
     ->
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_goal_path(GoalInfo, Path),
         goal_info_get_context(GoalInfo, Context),
         ( goal_info_has_feature(OutsideGoalInfo, feature_hide_debug_event) ->
@@ -923,15 +924,15 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         doesnt_affect_liveness, live_lvals_info(LiveLvalSet), TraceStmt)],
     TraceCode =
         node([
-            label(Label)
-                - "A label to hang trace liveness on",
+            llds_instr(label(Label),
+                "A label to hang trace liveness on"),
                 % Referring to the label from the foreign_proc_code
                 % prevents the label from being renamed or optimized away.
                 % The label is before the trace code because sometimes this
                 % pair is preceded by another label, and this way we can
                 % eliminate this other label.
-            foreign_proc_code([], TraceComponents, proc_may_call_mercury,
-                no, no, yes(Label), no, yes, no) - ""
+            llds_instr(foreign_proc_code([], TraceComponents,
+                proc_may_call_mercury, no, no, yes(Label), no, yes, no), "")
         ]),
     Code = tree(ProduceCode, TraceCode).
 
@@ -942,8 +943,8 @@ find_lval_in_var_info(layout_var_info(LayoutLocn, _, _)) =
 
 :- func find_lval_in_layout_locn(layout_locn) = lval.
 
-find_lval_in_layout_locn(direct(Lval)) = Lval.
-find_lval_in_layout_locn(indirect(Lval, _)) = Lval.
+find_lval_in_layout_locn(locn_direct(Lval)) = Lval.
+find_lval_in_layout_locn(locn_indirect(Lval, _)) = Lval.
 
 maybe_setup_redo_event(TraceInfo, Code) :-
     TraceRedoLabel = TraceInfo ^ redo_label,
@@ -957,16 +958,16 @@ maybe_setup_redo_event(TraceInfo, Code) :-
             expect(unify(Lval, framevar(5)), this_file,
                 "from-full flag not stored in expected slot"),
             Code = node([
-                mkframe(temp_frame(nondet_stack_proc),
-                    yes(do_trace_redo_fail_shallow))
-                    - "set up shallow redo event"
+                llds_instr(mkframe(temp_frame(nondet_stack_proc),
+                    yes(do_trace_redo_fail_shallow)),
+                    "set up shallow redo event")
             ])
         ;
             MaybeFromFullSlot = no,
             Code = node([
-                mkframe(temp_frame(nondet_stack_proc),
-                    yes(do_trace_redo_fail_deep))
-                    - "set up deep redo event"
+                llds_instr(mkframe(temp_frame(nondet_stack_proc),
+                    yes(do_trace_redo_fail_deep)),
+                    "set up deep redo event")
             ])
         )
     ;
@@ -1013,7 +1014,7 @@ trace_produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
         LldsInst = llds_inst_partial(Inst)
     ),
     LiveType = live_value_var(Var, Name, Type, LldsInst),
-    VarInfo = layout_var_info(direct(Lval), LiveType, "trace"),
+    VarInfo = layout_var_info(locn_direct(Lval), LiveType, "trace"),
     type_vars(Type, TypeVars),
     set.insert_list(!.Tvars, TypeVars, !:Tvars).
 

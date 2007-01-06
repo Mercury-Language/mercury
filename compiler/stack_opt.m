@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File stack_opt.
 % Author: zs.
-% 
+%
 % The input to this module is a HLDS structure with annotations on three kinds
 % of goals:
 %
@@ -65,7 +65,7 @@
 %
 % The principles of this optimization are documented in the paper "Using the
 % heap to eliminate stack accesses" by Zoltan Somogyi and Peter Stuckey.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.stack_opt.
@@ -547,7 +547,7 @@ record_matching_result(CellVar, ConsId, ArgVars, ViaCellVars, Goal,
         list.foldl3(add_anchor_inserts(Goal, ViaCellVars, InsertIntervals),
             PotentialAnchorList, !IntervalInfo, !StackOptInfo,
             set.init, InsertAnchors),
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_goal_path(GoalInfo, GoalPath),
         MatchingResult = matching_result(CellVar, ConsId,
             ArgVars, ViaCellVars, GoalPath,
@@ -581,7 +581,7 @@ record_cell_var_for_interval(CellVar, ViaCellVars, IntervalId,
 add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, Anchor,
         !IntervalInfo, !StackOptInfo, !InsertAnchors) :-
     map.lookup(!.IntervalInfo ^ anchor_follow_map, Anchor, AnchorFollow),
-    AnchorFollow = _ - AnchorIntervals,
+    AnchorFollow = anchor_follow_info(_, AnchorIntervals),
     set.intersect(AnchorIntervals, InsertIntervals,
         AnchorInsertIntervals),
     ( set.non_empty(AnchorInsertIntervals) ->
@@ -926,7 +926,7 @@ apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
         ; Start = anchor_branch_start(_, _)
         ),
         map.search(IntervalInfo ^ anchor_follow_map, Start, StartInfo),
-        StartInfo = AnchorFollowVars - _,
+        StartInfo = anchor_follow_info(AnchorFollowVars, _),
         set.intersect(RelevantVars, AnchorFollowVars, NeededVars),
         set.non_empty(NeededVars)
     ->
@@ -1024,7 +1024,7 @@ dump_insert(insert_spec(Goal, Vars), !IO) :-
     write_int_list(VarNums, !IO),
     io.write_string("]: ", !IO),
     (
-        Goal = unify(_, _, _, Unification, _) - _,
+        Goal = hlds_goal(unify(_, _, _, Unification, _), _),
         Unification = deconstruct(CellVar, ConsId, ArgVars, _,_,_)
     ->
         term.var_to_int(CellVar, CellVarNum),

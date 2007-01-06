@@ -1,20 +1,20 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: prop_mode_constraints.m.
 % Main author: richardf.
-% 
+%
 % XXX This module essentially serves as interface between the
 % pre-existing mode_constraints module and the new
 % abstract_mode_constraints and build_mode_constraints modules.
 % Ultimately its contents should probably be moved into those
 % modules respectively.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.prop_mode_constraints.
@@ -272,8 +272,8 @@ ensure_unique_arguments(PredId, !ModuleInfo) :-
     set(prog_var)::in, set(prog_var)::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-ensure_unique_arguments_in_goal(!.GoalExpr - !.GoalInfo,
-        !:GoalExpr - !:GoalInfo, !SeenSoFar, !Varset, !Vartypes) :-
+ensure_unique_arguments_in_goal(hlds_goal(!.GoalExpr, !.GoalInfo),
+        hlds_goal(!:GoalExpr, !:GoalInfo), !SeenSoFar, !Varset, !Vartypes) :-
     (
         !.GoalExpr = conj(ConjType, Goals0),
         (
@@ -379,7 +379,7 @@ flatten_conjunction(!Goals) :-
     is det.
 
 add_to_conjunction(Goal, !Goals) :-
-    ( Goal = conj(plain_conj, SubGoals) - _ ->
+    ( Goal = hlds_goal(conj(plain_conj, SubGoals), _) ->
         list.append(SubGoals, !Goals)
     ;
         list.cons(Goal, !Goals)
@@ -416,24 +416,24 @@ make_unifications(Context, Unifications, !Args, !SeenSoFar,
 make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
         !Vartypes) :-
     ( set.contains(!.SeenSoFar, Var0) ->
-        %
         % Make new variable.
-        %
         OldVarName = varset.lookup_name(!.Varset, Var0),
         OldVarType = map.lookup(!.Vartypes, Var0),
         NewVarName = "Arg_" ++ OldVarName,
         svvarset.new_uniquely_named_var(NewVarName, Var, !Varset),
         svmap.set(Var, OldVarType, !Vartypes),
-        %
+
         % Make new unification.
-        %
         create_atomic_complicated_unification(Var0, rhs_var(Var), Context,
             umc_implicit("Making call arguments unique for constraints" ++
-            " based mode analysis"), [], purity_pure,
-            UnificationGoalExpr - UnificationGoalInfo0),
+            " based mode analysis"), [], purity_pure, UnificationGoal0),
+        UnificationGoal0 =
+            hlds_goal(UnificationGoalExpr, UnificationGoalInfo0),
         goal_info_set_nonlocals(set.from_list([Var0, Var]),
             UnificationGoalInfo0, UnificationGoalInfo),
-        list.cons(UnificationGoalExpr - UnificationGoalInfo, !Unifications)
+        UnificationGoal =
+            hlds_goal(UnificationGoalExpr, UnificationGoalInfo),
+        list.cons(UnificationGoal, !Unifications)
     ;
         Var = Var0
     ),
@@ -461,10 +461,9 @@ replace_call_with_conjunction(CallGoalExpr, Unifications, NewArgs, GoalExpr,
     goal_info_get_nonlocals(CallGoalInfo0, CallNonlocals0),
     CallNonlocals = set.insert_list(CallNonlocals0, NewArgs),
     goal_info_set_nonlocals(CallNonlocals, CallGoalInfo0, CallGoalInfo),
-    Goals = list.cons(CallGoalExpr - CallGoalInfo, Unifications),
-    %
+    Goals = list.cons(hlds_goal(CallGoalExpr, CallGoalInfo), Unifications),
+
     % Create the new conjunction
-    %
     GoalExpr = conj(plain_conj, Goals),
     goal_info_init(!:GoalInfo),
     goal_info_set_context(Context, !GoalInfo),

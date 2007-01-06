@@ -410,12 +410,12 @@ generate_trace_runtime_cond_foreign_proc_code(RuntimeExpr, Code, !CI) :-
     code_info.get_next_label(SuccessLabel, !CI),
     code_info.generate_failure(FailCode, !CI),
     CondCode = node([
-        if_val(CondRval, code_label(SuccessLabel))
-            - "environment variable tests"
+        llds_instr(if_val(CondRval, code_label(SuccessLabel)),
+            "environment variable tests")
     ]),
     SuccessLabelCode = node([
-        label(SuccessLabel)
-            - "environment variable tests successful"
+        llds_instr(label(SuccessLabel),
+            "environment variable tests successful")
     ]),
     Code = tree_list([CondCode, FailCode, SuccessLabelCode]).
 
@@ -649,9 +649,9 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         RefersToLLDSSTack = no
     ),
     PragmaCCode = node([
-        foreign_proc_code(Decls, Components, MayCallMercury, no, no, no,
-            MaybeFailLabel, RefersToLLDSSTack, MaybeDupl)
-            - "foreign_proc inclusion"
+        llds_instr(foreign_proc_code(Decls, Components, MayCallMercury,
+            no, no, no, MaybeFailLabel, RefersToLLDSSTack, MaybeDupl),
+            "foreign_proc inclusion")
     ]),
     %
     % For semidet code, we need to insert the failure handling code here:
@@ -670,10 +670,10 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         code_info.get_next_label(SkipLabel, !CI),
         code_info.generate_failure(FailCode, !CI),
         GotoSkipLabelCode = node([
-            goto(code_label(SkipLabel)) - "Skip past failure code"
+            llds_instr(goto(code_label(SkipLabel)), "Skip past failure code")
         ]),
-        SkipLabelCode = node([label(SkipLabel) - ""]),
-        FailLabelCode = node([label(TheFailLabel) - ""]),
+        SkipLabelCode = node([llds_instr(label(SkipLabel), "")]),
+        FailLabelCode = node([llds_instr(label(TheFailLabel), "")]),
         FailureCode = tree_list([GotoSkipLabelCode, FailLabelCode,
             FailCode, SkipLabelCode])
     ; Detism = detism_failure ->
@@ -771,12 +771,12 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
 
     code_info.get_next_label(RetryLabel, !CI),
     ModFrameCode = node([
-        assign(redoip_slot(lval(curfr)),
-            const(llconst_code_addr(code_label(RetryLabel))))
-            - "Set up backtracking to retry label"
+        llds_instr(assign(redoip_slot(lval(curfr)),
+            const(llconst_code_addr(code_label(RetryLabel)))),
+            "Set up backtracking to retry label")
     ]),
     RetryLabelCode = node([
-        label(RetryLabel) - "Start of the retry block"
+        llds_instr(label(RetryLabel), "Start of the retry block")
     ]),
 
     code_info.get_globals(!.CI, Globals),
@@ -923,9 +923,9 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             ProcLabelUndef
         ],
         CallBlockCode = node([
-            foreign_proc_code(CallDecls, CallComponents,
-                MayCallMercury, no, no, no, no, yes, no)
-                - "Call and shared foreign_proc inclusion"
+            llds_instr(foreign_proc_code(CallDecls, CallComponents,
+                MayCallMercury, no, no, no, no, yes, no),
+                "Call and shared foreign_proc inclusion")
         ]),
 
         RetryDecls = [SaveStructDecl | OutDecls],
@@ -968,9 +968,9 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             ProcLabelUndef
         ],
         RetryBlockCode = node([
-            foreign_proc_code(RetryDecls, RetryComponents,
-                MayCallMercury, no, no, no, no, yes, no)
-                - "Retry and shared foreign_proc inclusion"
+            llds_instr(foreign_proc_code(RetryDecls, RetryComponents,
+                MayCallMercury, no, no, no, no, yes, no),
+                "Retry and shared foreign_proc inclusion")
         ]),
 
         Code = tree_list([ModFrameCode, FirstDisjunctCode, CallBlockCode,
@@ -978,7 +978,7 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     ;
         code_info.get_next_label(SharedLabel, !CI),
         SharedLabelCode = node([
-            label(SharedLabel) - "Start of the shared block"
+            llds_instr(label(SharedLabel), "Start of the shared block")
         ]),
 
         SharedDef1 =
@@ -1039,9 +1039,9 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             ProcLabelUndef
         ],
         CallBlockCode = node([
-            foreign_proc_code(CallDecls, CallComponents, MayCallMercury,
-                yes(SharedLabel), no, no, no, yes, no)
-                - "Call foreign_proc inclusion"
+            llds_instr(foreign_proc_code(CallDecls, CallComponents,
+                MayCallMercury, yes(SharedLabel), no, no, no, yes, no),
+                "Call foreign_proc inclusion")
         ]),
 
         RetryDecls = [SaveStructDecl | OutDecls],
@@ -1084,9 +1084,9 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             ProcLabelUndef
         ],
         RetryBlockCode = node([
-            foreign_proc_code(RetryDecls, RetryComponents, MayCallMercury,
-                yes(SharedLabel), no, no, no, yes, no)
-                - "Retry foreign_proc inclusion"
+            llds_instr(foreign_proc_code(RetryDecls, RetryComponents,
+                MayCallMercury, yes(SharedLabel), no, no, no, yes, no),
+                "Retry foreign_proc inclusion")
         ]),
 
         SharedDecls = [SaveStructDecl | OutDecls],
@@ -1127,9 +1127,9 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             ProcLabelUndef
         ],
         SharedBlockCode = node([
-            foreign_proc_code(SharedDecls, SharedComponents,
-                MayCallMercury, no, no, no, no, yes, no)
-                - "Shared foreign_proc inclusion"
+            llds_instr(foreign_proc_code(SharedDecls, SharedComponents,
+                MayCallMercury, no, no, no, no, yes, no),
+                "Shared foreign_proc inclusion")
         ]),
 
         Code = tree_list([ModFrameCode, FirstDisjunctCode, CallBlockCode,

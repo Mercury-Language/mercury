@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -273,7 +273,7 @@ common_optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-common_optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
+common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
         GoalInfo0, GoalInfo, !Info) :-
     Mode = LVarMode - _,
     simplify_info_get_module_info(!.Info, ModuleInfo),
@@ -285,7 +285,7 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
         % is ground.
         \+ inst_is_ground(ModuleInfo, Inst)
     ->
-        Goal = Goal0,
+        GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;
         TypeCtor = lookup_var_type_ctor(!.Info, Var),
@@ -316,19 +316,19 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
                 % Constants don't use memory, so there's no point in
                 % optimizing away their construction; in fact, doing so
                 % could cause more stack usage.
-                Goal = Goal0,
+                GoalExpr = GoalExpr0,
                 GoalInfo = GoalInfo0
             ;
                 ArgVars = [_ | _],
                 UniMode = ((free - Inst) -> (Inst - Inst)),
                 generate_assign(Var, OldVar, UniMode, GoalInfo0,
-                    Goal - GoalInfo, !Info),
+                    hlds_goal(GoalExpr, GoalInfo), !Info),
                 simplify_info_set_requantify(!Info),
-                goal_cost(Goal0 - GoalInfo0, Cost),
+                goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
                 simplify_info_incr_cost_delta(Cost, !Info)
             )
         ;
-            Goal = Goal0,
+            GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0,
             Struct = structure(Var, ArgVars),
             record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv1, !Info)
@@ -342,7 +342,7 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
     simplify_info::in, simplify_info::out) is det.
 
 common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
-        Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
+        GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     (
         % Don't optimise partially instantiated deconstruction unifications,
@@ -353,7 +353,7 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
         mode_get_insts(ModuleInfo, LVarMode, Inst0, _),
         \+ inst_is_ground(ModuleInfo, Inst0)
     ->
-        Goal = Goal0
+        GoalExpr = GoalExpr0
     ;
         TypeCtor = lookup_var_type_ctor(!.Info, Var),
         simplify_info_get_common_info(!.Info, CommonInfo0),
@@ -378,8 +378,8 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
             simplify_info_set_common_info(CommonInfo, !Info),
             create_output_unifications(GoalInfo0, ArgVars, OldArgVars,
                 UniModes, Goals, !Info),
-            Goal = conj(plain_conj, Goals),
-            goal_cost(Goal0 - GoalInfo0, Cost),
+            GoalExpr = conj(plain_conj, Goals),
+            goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
             simplify_info_incr_cost_delta(Cost, !Info),
             simplify_info_set_requantify(!Info),
             (
@@ -389,7 +389,7 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
                 CanFail = cannot_fail
             )
         ;
-            Goal = Goal0,
+            GoalExpr = GoalExpr0,
             Struct = structure(Var, ArgVars),
             record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv1, !Info)
         )
@@ -549,7 +549,7 @@ check_call_detism(Det) :-
     simplify_info::in, simplify_info::out) is det.
 
 common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
-        Goal0, Goal, !Info) :-
+        GoalExpr0, GoalExpr, !Info) :-
     simplify_info_get_common_info(!.Info, CommonInfo0),
     Eqv0 = CommonInfo0 ^ var_eqv,
     SeenCalls0 = CommonInfo0 ^ seen_calls,
@@ -562,7 +562,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             modes_to_uni_modes(ModuleInfo, Modes, Modes, UniModes),
             create_output_unifications(GoalInfo, OutputArgs, OutputArgs2,
                 UniModes, Goals, !Info),
-            Goal = conj(plain_conj, Goals),
+            GoalExpr = conj(plain_conj, Goals),
             simplify_info_get_var_types(!.Info, VarTypes),
             (
                 simplify_do_warn_duplicate_calls(!.Info),
@@ -594,7 +594,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 true
             ),
             CommonInfo = CommonInfo0,
-            goal_cost(Goal0 - GoalInfo, Cost),
+            goal_cost(hlds_goal(GoalExpr0, GoalInfo), Cost),
             simplify_info_incr_cost_delta(Cost, !Info),
             simplify_info_set_requantify(!Info),
             goal_info_get_determinism(GoalInfo, Detism0),
@@ -609,14 +609,14 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             map.det_update(SeenCalls0, SeenCall, [ThisCall | SeenCallsList0],
                 SeenCalls),
             CommonInfo = CommonInfo0 ^ seen_calls := SeenCalls,
-            Goal = Goal0
+            GoalExpr = GoalExpr0
         )
     ;
         goal_info_get_context(GoalInfo, Context),
         ThisCall = call_args(Context, InputArgs, OutputArgs),
         map.det_insert(SeenCalls0, SeenCall, [ThisCall], SeenCalls),
         CommonInfo = CommonInfo0 ^ seen_calls := SeenCalls,
-        Goal = Goal0
+        GoalExpr = GoalExpr0
     ),
     simplify_info_set_common_info(CommonInfo, !Info).
 
@@ -795,7 +795,7 @@ generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
     instmap_delta_from_assoc_list([ToVar - ToVarInst], InstMapDelta),
 
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     record_equivalence(ToVar, FromVar, !Info).
 
 :- pred types_match_exactly(mer_type::in, mer_type::in) is semidet.

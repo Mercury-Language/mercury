@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -118,14 +118,18 @@
     % used.
     %
 :- type usage_info
-    --->    unused(set(prog_var), set(arg)).
+    --->    unused(set(prog_var), set(arg_var_in_proc)).
 
     % A collection of variable usages for each procedure.
 :- type var_usage == map(pred_proc_id, var_dep).
 
     % Arguments are stored as their variable id, not their index
     % in the argument vector.
-:- type arg == pair(pred_proc_id, prog_var).
+:- type arg_var_in_proc
+    --->    arg_var_in_proc(
+                pred_proc_id,
+                prog_var
+            ).
 
     % Contains dependency information for the variables in a procedure
     % that are not yet known to be used.
@@ -622,7 +626,7 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
     var_dep::in, var_dep::out) is det.
 
 traverse_goal(Info, Goal, !VarDep) :-
-    Goal = GoalExpr - _GoalInfo,
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = conj(_ConjType, Goals),
         traverse_list_of_goals(Info, Goals, !VarDep)
@@ -757,7 +761,7 @@ add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds, !VarDep) :-
 add_arg_dep(Var, PredProc, Arg, !VarDep) :-
     ( lookup_local_var(!.VarDep, Var, VarUsage0) ->
         VarUsage0 = unused(VarDep, ArgDep0),
-        set.insert(ArgDep0, PredProc - Arg, ArgDep),
+        set.insert(ArgDep0, arg_var_in_proc(PredProc, Arg), ArgDep),
         VarUsage = unused(VarDep, ArgDep),
         svmap.det_update(Var, VarUsage, !VarDep)
     ;
@@ -904,7 +908,7 @@ unused_args_check_all_vars(VarUsage, [Var | Vars], !Changed, !LocalVars) :-
                 % depends on are used.
                 some [Argument] (
                     set.member(Argument, ArgDep0),
-                    Argument = PredProc - ArgVar,
+                    Argument = arg_var_in_proc(PredProc, ArgVar),
                     var_is_used(PredProc, ArgVar, VarUsage)
                 )
             ;
@@ -1197,7 +1201,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
         !OldProc) :-
     proc_info_get_headvars(!.OldProc, HeadVars),
     proc_info_get_goal(!.OldProc, Goal0),
-    Goal0 = _GoalExpr - GoalInfo0,
+    Goal0 = hlds_goal(_GoalExpr, GoalInfo0),
 
     % We must use the interface determinism for determining the determinism
     % of the version of the goal with its arguments removed, not the actual
@@ -1217,7 +1221,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
     remove_listof_elements(1, UnusedArgs, HeadVars, NewHeadVars),
     GoalExpr = plain_call(NewPredId, NewProcId, NewHeadVars,
         not_builtin, no, qualified(PredModule, PredName)),
-    Goal1 = GoalExpr - GoalInfo1,
+    Goal1 = hlds_goal(GoalExpr, GoalInfo1),
     implicitly_quantify_goal(NonLocals, _, Goal1, Goal, VarSet0, VarSet,
         VarTypes1, VarTypes, RttiVarMaps0, RttiVarMaps),
     proc_info_set_goal(Goal, !OldProc),
@@ -1419,7 +1423,7 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 
 fixup_goal(Goal0, Goal, !Info, Changed) :-
     fixup_goal_expr(Goal0, Goal1, !Info, Changed),
-    Goal1 = GoalExpr1 - GoalInfo1,
+    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     (
         Changed = yes,
         UnusedVars = !.Info ^ fixup_unused_vars,
@@ -1428,32 +1432,32 @@ fixup_goal(Goal0, Goal, !Info, Changed) :-
         Changed = no,
         GoalInfo = GoalInfo1
     ),
-    Goal = GoalExpr1 - GoalInfo.
+    Goal = hlds_goal(GoalExpr1, GoalInfo).
 
 :- pred fixup_goal_expr(hlds_goal::in, hlds_goal::out,
     fixup_info::in, fixup_info::out, bool::out) is det.
 
-fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
+fixup_goal_expr(hlds_goal(GoalExpr0, GoalInfo0), Goal, !Info, Changed) :-
     (
         GoalExpr0 = conj(ConjType, Goals0),
         fixup_conjuncts(Goals0, Goals, !Info, no, Changed),
         GoalExpr = conj(ConjType, Goals),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
         fixup_disjuncts(Goals0, Goals, !Info, no, Changed),
         GoalExpr = disj(Goals),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(NegGoal0),
         fixup_goal(NegGoal0, NegGoal, !Info, Changed),
         GoalExpr = negation(NegGoal),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         fixup_cases(Cases0, Cases, !Info, no, Changed),
         GoalExpr = switch(Var, CanFail, Cases),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         fixup_goal(Cond0, Cond, !Info, Changed1),
@@ -1461,12 +1465,12 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
         fixup_goal(Else0, Else, !Info, Changed3),
         bool.or_list([Changed1, Changed2, Changed3], Changed),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         fixup_goal(SubGoal0, SubGoal, !Info, Changed),
         GoalExpr = scope(Reason, SubGoal),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = plain_call(PredId, ProcId, ArgVars0, Builtin,
             UnifyC, _Name),
@@ -1477,10 +1481,10 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
             remove_listof_elements(1, UnusedArgs, ArgVars0, ArgVars),
             GoalExpr = plain_call(NewPredId, NewProcId, ArgVars, Builtin,
                 UnifyC, NewName),
-            Goal = GoalExpr - GoalInfo0
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
             Changed = no,
-            Goal = GoalExpr0 - GoalInfo0
+            Goal = hlds_goal(GoalExpr0, GoalInfo0)
         )
     ;
         GoalExpr0 = unify(_Var, _RHS, _Mode, Unify, _Context),
@@ -1493,10 +1497,10 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
             GoalExpr = true_goal_expr,
             Changed = yes
         ),
-        Goal = GoalExpr - GoalInfo0
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = generic_call(_, _, _, _),
-        Goal = GoalExpr0 - GoalInfo0,
+        Goal = hlds_goal(GoalExpr0, GoalInfo0),
         Changed = no
     ;
         GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
@@ -1512,7 +1516,7 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
         GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
             Args, ExtraArgs, MaybeTraceRuntimeCond, Impl),
         rename_vars_in_goal_info(no, Subst, GoalInfo0, GoalInfo),
-        Goal = GoalExpr - GoalInfo
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
@@ -1564,7 +1568,7 @@ fixup_conjuncts([Goal0 | Goals0], Goals, !Info, !Changed) :-
         LocalChanged = no
     ),
     % Replacing a goal with true signals that it is no longer needed.
-    ( Goal = true_goal_expr - _ ->
+    ( Goal = hlds_goal(true_goal_expr, _) ->
         Goals = Goals1
     ;
         Goals = [Goal | Goals1]

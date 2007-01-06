@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1999-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Module: accumulator.m.
 % Main authors: petdr.
-% 
+%
 % Attempts to transform a single proc to a tail recursive form by
 % introducing accumulators.  The algorithm can do this if the code after
 % the recursive call has either the order independent state update or
@@ -136,10 +136,10 @@
 % transformation attempts to move each recursive call to the end
 % until one succeeds.  This makes the order of independent recursive
 % calls in the body irrelevant.
-% 
-% XXX replace calls to can_reorder_goals with calls to the version that
-%     use the intermodule-analysis framework.
-% 
+%
+% XXX Replace calls to can_reorder_goals with calls to the version that
+% use the intermodule-analysis framework.
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.accumulator.
@@ -421,10 +421,11 @@ attempt_transform_2([Id | Ids], C, M, Rec, HeadVars, InitialInstMap, TopLevel,
 
 standardize(Goal0, Goal) :-
     (
+        Goal0 = hlds_goal(GoalExpr0, _),
         (
-            Goal0 = conj(plain_conj, [Goal1]) - _
+            GoalExpr0 = conj(plain_conj, [Goal1])
         ;
-            Goal0 = disj([Goal1]) - _
+            GoalExpr0 = disj([Goal1])
         )
     ->
         standardize(Goal1, Goal)
@@ -446,8 +447,9 @@ standardize(Goal0, Goal) :-
 
 identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
         Type, Base, BaseInstMap, Rec, RecInstMap) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
-        Goal = switch(_Var, _CanFail, Cases) - _GoalInfo,
+        GoalExpr = switch(_Var, _CanFail, Cases),
         Cases = [case(_IdA, GoalA), case(_IdB, GoalB)],
         goal_to_conj_list(GoalA, GoalAList),
         goal_to_conj_list(GoalB, GoalBList)
@@ -466,7 +468,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
         BaseInstMap = InitialInstMap,
         RecInstMap = InitialInstMap
     ;
-        Goal = disj(Goals) - _GoalInfo,
+        GoalExpr = disj(Goals),
         Goals = [GoalA, GoalB],
         goal_to_conj_list(GoalA, GoalAList),
         goal_to_conj_list(GoalB, GoalBList)
@@ -485,10 +487,9 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
         BaseInstMap = InitialInstMap,
         RecInstMap = InitialInstMap
     ;
-        Goal = if_then_else(_Vars, If, Then, Else) - _GoalInfo,
-
-        If = _IfGoal - IfGoalInfo,
-        goal_info_get_instmap_delta(IfGoalInfo, IfInstMapDelta),
+        GoalExpr = if_then_else(_Vars, Cond, Then, Else),
+        Cond = hlds_goal(_CondGoalExpr, CondGoalInfo),
+        goal_info_get_instmap_delta(CondGoalInfo, CondInstMapDelta),
 
         goal_to_conj_list(Then, GoalAList),
         goal_to_conj_list(Else, GoalBList)
@@ -499,7 +500,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
             Rec = GoalAList,
 
             BaseInstMap = InitialInstMap,
-            instmap.apply_instmap_delta(InitialInstMap, IfInstMapDelta,
+            instmap.apply_instmap_delta(InitialInstMap, CondInstMapDelta,
                 RecInstMap)
         ; is_recursive_case(GoalBList, proc(PredId, ProcId)) ->
             Type = ite_base_rec,
@@ -507,7 +508,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
             Rec = GoalBList,
 
             RecInstMap = InitialInstMap,
-            instmap.apply_instmap_delta(InitialInstMap, IfInstMapDelta,
+            instmap.apply_instmap_delta(InitialInstMap, CondInstMapDelta,
                 BaseInstMap)
         ;
             fail
@@ -525,7 +526,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
 
 is_recursive_case(Goals, proc(PredId, ProcId)) :-
     list.append(_Initial, [RecursiveCall | _Final], Goals),
-    RecursiveCall = plain_call(PredId, ProcId, _, _, _, _) - _.
+    RecursiveCall = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -559,7 +560,7 @@ initialize_goal_store(Rec, RecInstMap, Base, BaseInstMap) = C :-
 :- pred store(int::in, hlds_goal::in, store_info::in, store_info::out) is det.
 
 store(Identifier, Goal, store_info(N, IM0, GS0), store_info(N+1, IM, GS)) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(IM0, InstMapDelta, IM),
 
@@ -579,7 +580,7 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
     P = (pred(Key::out) is nondet :-
         goal_store_member(GoalStore, Key, Goal - _InstMap),
         Key = rec - _,
-        Goal = plain_call(PredId, ProcId, _, _, _, _) - _
+        Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
     ),
     solutions.solutions(P, Ids).
 
@@ -606,7 +607,7 @@ identify_out_and_out_prime(_N - K, Rec, HeadVars, InitialInstMap, VarTypes,
     (
         list.take(K, Rec, InitialGoals),
         list.drop(K-1, Rec, FinalGoals),
-        FinalGoals = [plain_call(_, _, Args, _, _, _) - _ | Rest]
+        FinalGoals = [hlds_goal(plain_call(_, _, Args, _, _, _), _) | Rest]
     ->
         goal_list_instmap_delta(InitialGoals, InitInstMapDelta),
         instmap.apply_instmap_delta(InitialInstMap,
@@ -670,9 +671,9 @@ stage1(N - K, M, GoalStore, DoLCO, FullyStrict, VarTypes, ModuleInfo, Sets) :-
     Sets = sets(Before `set.union` set_upto(N, (K-1)), Assoc,
         ConstructAssoc, Construct, Update, Reject),
 
-        % Continue the transformation only if the set reject is
-        % empty and the set assoc or update contains something
-        % that needs to be moved before the recursive call.
+    % Continue the transformation only if the set reject is empty and
+    % the set assoc or update contains something that needs to be moved
+    % before the recursive call.
     set.empty(Reject),
     (
         not set.empty(Assoc)
@@ -681,9 +682,8 @@ stage1(N - K, M, GoalStore, DoLCO, FullyStrict, VarTypes, ModuleInfo, Sets) :-
     ),
     (
         DoLCO = no,
-            % If LCMC is not turned on then there must be no
-            % construction unifications after the recursive
-            % call.
+        % If LCMC is not turned on then there must be no construction
+        % unifications after the recursive call.
         set.empty(Construct),
         set.empty(ConstructAssoc)
     ;
@@ -802,7 +802,7 @@ before(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
 assoc(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
     goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
-    LaterGoal = plain_call(PredId, _, Args, _, _, _) - _,
+    LaterGoal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _),
     is_associative(PredId, ModuleInfo, Args, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
@@ -826,7 +826,7 @@ assoc(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
 construct(N - I, K, GoalStore, sets(Before, _, _, Construct, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
     goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
-    LaterGoal = unify(_, _, _, Unify, _) - _GoalInfo,
+    LaterGoal = hlds_goal(unify(_, _, _, Unify, _), _GoalInfo),
     Unify = construct(_, _, _, _, _, _, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
@@ -855,7 +855,7 @@ construct(N - I, K, GoalStore, sets(Before, _, _, Construct, _, _),
 construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
         _, _, _), FullyStrict, VarTypes, ModuleInfo) :-
     goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
-    LaterGoal = unify(_, _, _, Unify, _) - _GoalInfo,
+    LaterGoal = hlds_goal(unify(_, _, _, Unify, _), _GoalInfo),
     Unify = construct(_, ConsId, _, _, _, _, _),
 
     goal_store_all_ancestors(GoalStore, N - I, VarTypes, ModuleInfo,
@@ -863,7 +863,7 @@ construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
 
     set.singleton_set(Assoc `intersect` Ancestors, AssocId),
     goal_store_lookup(GoalStore, AssocId, AssocGoal - _AssocInstMap),
-    AssocGoal = plain_call(PredId, _, _, _, _, _) - _,
+    AssocGoal = hlds_goal(plain_call(PredId, _, _, _, _, _), _),
 
     is_associative_construction(ConsId, PredId, ModuleInfo),
     (
@@ -889,7 +889,7 @@ construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
 update(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
     goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
-    LaterGoal = plain_call(PredId, _, Args, _, _, _) - _,
+    LaterGoal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _),
     is_update(PredId, ModuleInfo, Args, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
@@ -1083,7 +1083,7 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
 
     P = (pred(Id::in, Set0::in, Set::out) is det :-
         goal_store_lookup(GoalStore, Id, Goal - _InstMap),
-        Goal = _GoalExpr - GoalInfo,
+        Goal = hlds_goal(_GoalExpr, GoalInfo),
         goal_info_get_nonlocals(GoalInfo, NonLocals),
         Set = NonLocals `union` Set0
     ),
@@ -1173,7 +1173,7 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
 
     lookup_call(GS, Id, Goal - InstMap),
 
-    Goal = plain_call(PredId, _, Args, _, _, _) - GoalInfo,
+    Goal = hlds_goal(plain_call(PredId, _, Args, _, _, _), GoalInfo),
     is_associative(PredId, ModuleInfo, Args, AssocInfo),
     AssocInfo = assoc(Vars, AssocOutput, IsCommutative),
     set.singleton_set(Vars `intersect` OutPrime, DuringAssocVar),
@@ -1264,7 +1264,7 @@ process_update_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
         UpdateSubst0),
     lookup_call(GS, Id, Goal - _InstMap),
 
-    Goal = plain_call(PredId, _, Args, _, _, _) - _GoalInfo,
+    Goal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _GoalInfo),
     is_update(PredId, ModuleInfo, Args, StateVarA - StateVarB),
 
     ( set.member(StateVarA, OutPrime) ->
@@ -1351,7 +1351,7 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
         (pred(Key::out) is nondet :-
             goal_store_member(GS, Key, Goal - InstMap0),
             Key = base - _,
-            Goal = _GoalExpr - GoalInfo,
+            Goal = hlds_goal(_GoalExpr, GoalInfo),
             goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
             apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
             instmap_changed_vars(InstMap0, InstMap, VarTypes,
@@ -1370,11 +1370,11 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
 %-----------------------------------------------------------------------------%
 
 :- inst plain_call
-    ---> plain_call(ground, ground, ground, ground, ground, ground).
+    --->    plain_call(ground, ground, ground, ground, ground, ground).
 :- inst hlds_plain_call
-    ---> plain_call - ground.
+    --->    hlds_goal(plain_call, ground).
 :- inst plain_call_goal
-    ---> hlds_plain_call - ground.
+    --->    hlds_plain_call - ground.
 
     % Do a goal_store_lookup where the result is known to be a call.
     %
@@ -1383,7 +1383,7 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
 
 lookup_call(GoalStore, Id, Call - InstMap) :-
     goal_store_lookup(GoalStore, Id, Goal - InstMap),
-    ( Goal = plain_call(_, _, _, _, _, _) - _ ->
+    ( Goal = hlds_goal(plain_call(_, _, _, _, _, _), _) ->
         Call = Goal
     ;
         unexpected(this_file, "lookup_call: not a call.")
@@ -1542,10 +1542,12 @@ create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
     is det.
 
 create_acc_call(OrigCall, Accs, AccPredId, AccProcId, AccName) = Call :-
-    OrigCall = plain_call(_PredId, _ProcId, Args, Builtin, Context, _Name)
-        - GI,
-    Call = plain_call(AccPredId, AccProcId, Accs ++ Args,
-        Builtin, Context, AccName) - GI.
+    OrigCall = hlds_goal(OrigCallExpr, GoalInfo),
+    OrigCallExpr = plain_call(_PredId, _ProcId, Args, Builtin,
+        Context, _Name),
+    CallExpr = plain_call(AccPredId, AccProcId, Accs ++ Args, Builtin,
+        Context, AccName),
+    Call = hlds_goal(CallExpr, GoalInfo).
 
     % Create the goals which are to replace the original predicate.
     %
@@ -1671,7 +1673,7 @@ acc_unification(Out - Acc, Goal) :-
     set.list_to_set([Out,Acc], NonLocalVars),
     instmap_delta_from_assoc_list([Out - ground(shared, none)], InstMapDelta),
     goal_info_init(NonLocalVars, InstMapDelta, detism_det, purity_pure, Info),
-    Goal = Expr - Info.
+    Goal = hlds_goal(Expr, Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -1685,76 +1687,76 @@ acc_unification(Out - Acc, Goal) :-
 top_level(switch_base_rec, Goal, OrigBaseGoal, OrigRecGoal,
         NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
     (
-        Goal = switch(Var, CanFail, Cases0) - GoalInfo,
+        Goal = hlds_goal(switch(Var, CanFail, Cases0), GoalInfo),
         Cases0 = [case(IdA, _), case(IdB, _)]
     ->
         OrigCases = [case(IdA, OrigBaseGoal), case(IdB, OrigRecGoal)],
-        OrigGoal = switch(Var, CanFail, OrigCases) - GoalInfo,
+        OrigGoal = hlds_goal(switch(Var, CanFail, OrigCases), GoalInfo),
 
         NewCases = [case(IdA, NewBaseGoal), case(IdB, NewRecGoal)],
-        NewGoal = switch(Var, CanFail, NewCases) - GoalInfo
+        NewGoal = hlds_goal(switch(Var, CanFail, NewCases), GoalInfo)
     ;
         unexpected(this_file, "top_level: not the correct top level")
     ).
 top_level(switch_rec_base, Goal, OrigBaseGoal, OrigRecGoal,
         NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
     (
-        Goal = switch(Var, CanFail, Cases0) - GoalInfo,
+        Goal = hlds_goal(switch(Var, CanFail, Cases0), GoalInfo),
         Cases0 = [case(IdA, _), case(IdB, _)]
     ->
         OrigCases = [case(IdA, OrigRecGoal), case(IdB, OrigBaseGoal)],
-        OrigGoal = switch(Var, CanFail, OrigCases) - GoalInfo,
+        OrigGoal = hlds_goal(switch(Var, CanFail, OrigCases), GoalInfo),
 
         NewCases = [case(IdA, NewRecGoal), case(IdB, NewBaseGoal)],
-        NewGoal = switch(Var, CanFail, NewCases) - GoalInfo
+        NewGoal = hlds_goal(switch(Var, CanFail, NewCases), GoalInfo)
     ;
         unexpected(this_file, "top_level: not the correct top level")
     ).
 top_level(disj_base_rec, Goal, OrigBaseGoal,
         OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
     (
-        Goal = disj(Goals) - GoalInfo,
+        Goal = hlds_goal(disj(Goals), GoalInfo),
         Goals = [_, _]
     ->
         OrigGoals = [OrigBaseGoal, OrigRecGoal],
-        OrigGoal = disj(OrigGoals) - GoalInfo,
+        OrigGoal = hlds_goal(disj(OrigGoals), GoalInfo),
 
         NewGoals = [NewBaseGoal, NewRecGoal],
-        NewGoal = disj(NewGoals) - GoalInfo
+        NewGoal = hlds_goal(disj(NewGoals), GoalInfo)
     ;
         unexpected(this_file, "top_level: not the correct top level")
     ).
 top_level(disj_rec_base, Goal, OrigBaseGoal,
         OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
     (
-        Goal = disj(Goals) - GoalInfo,
+        Goal = hlds_goal(disj(Goals), GoalInfo),
         Goals = [_, _]
     ->
         OrigGoals = [OrigRecGoal, OrigBaseGoal],
-        OrigGoal = disj(OrigGoals) - GoalInfo,
+        OrigGoal = hlds_goal(disj(OrigGoals), GoalInfo),
 
         NewGoals = [NewRecGoal, NewBaseGoal],
-        NewGoal = disj(NewGoals) - GoalInfo
+        NewGoal = hlds_goal(disj(NewGoals), GoalInfo)
     ;
         unexpected(this_file, "top_level: not the correct top level")
     ).
 top_level(ite_base_rec, Goal, OrigBaseGoal,
         OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
-    ( Goal = if_then_else(Vars, If, _, _) - GoalInfo ->
-        OrigGoal = if_then_else(Vars, If, OrigBaseGoal, OrigRecGoal)
-            - GoalInfo,
-        NewGoal = if_then_else(Vars, If, NewBaseGoal, NewRecGoal)
-            - GoalInfo
+    ( Goal = hlds_goal(if_then_else(Vars, If, _, _), GoalInfo) ->
+        OrigGoal = hlds_goal(if_then_else(Vars, If, OrigBaseGoal, OrigRecGoal),
+            GoalInfo),
+        NewGoal = hlds_goal(if_then_else(Vars, If, NewBaseGoal, NewRecGoal),
+            GoalInfo)
     ;
         unexpected(this_file, "top_level: not the correct top level")
     ).
 top_level(ite_rec_base, Goal, OrigBaseGoal,
         OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
-    ( Goal = if_then_else(Vars, If, _, _) - GoalInfo ->
-        OrigGoal = if_then_else(Vars, If, OrigRecGoal, OrigBaseGoal)
-            - GoalInfo,
-        NewGoal = if_then_else(Vars, If, NewRecGoal, NewBaseGoal)
-            - GoalInfo
+    ( Goal = hlds_goal(if_then_else(Vars, If, _, _), GoalInfo) ->
+        OrigGoal = hlds_goal(if_then_else(Vars, If, OrigRecGoal, OrigBaseGoal),
+            GoalInfo),
+        NewGoal = hlds_goal(if_then_else(Vars, If, NewRecGoal, NewBaseGoal),
+            GoalInfo)
     ;
         unexpected(this_file, "top_level: not the correct top level")
     ).
@@ -1825,7 +1827,7 @@ goal_list(Ids, GS) = Goals :-
 
 :- pred calculate_goal_info(hlds_goal_expr::in, hlds_goal::out) is det.
 
-calculate_goal_info(GoalExpr, GoalExpr - GoalInfo) :-
+calculate_goal_info(GoalExpr, hlds_goal(GoalExpr, GoalInfo)) :-
     ( GoalExpr = conj(plain_conj, GoalList) ->
         goal_list_nonlocals(GoalList, NonLocals),
         goal_list_instmap_delta(GoalList, InstMapDelta),

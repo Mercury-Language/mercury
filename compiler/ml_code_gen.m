@@ -1331,12 +1331,12 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
     % top-level non-locals but which are not really non-local will not be
     % declared.
 
-    Goal0 = GoalExpr - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals0),
     set.list_to_set(HeadVars, HeadVarsSet),
     set.intersect(HeadVarsSet, NonLocals0, NonLocals),
     goal_info_set_code_gen_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
 
     goal_info_get_context(GoalInfo, Context),
 
@@ -1489,7 +1489,7 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
 
 ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars, MLDS_LocalVars,
         !Info) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_context(GoalInfo, Context),
     goal_util.goal_vars(Goal, AllVarsSet),
     set.delete_list(AllVarsSet, HeadVars, LocalVarsSet),
@@ -1526,7 +1526,7 @@ ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
 
 ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
         Goal, Decls, Statements, !Info) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_context(GoalInfo, Context),
 
     % First just generate the code for the procedure's goal.
@@ -1665,7 +1665,7 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
     %
 ml_gen_goal(CodeModel, Goal, Statement, !Info) :-
     ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info),
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_context(GoalInfo, Context),
     Statement = ml_gen_block(Decls, Statements, Context).
 
@@ -1674,7 +1674,7 @@ ml_gen_goal(CodeModel, Goal, Statement, !Info) :-
     % and the other containing the generated statements.
     %
 ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info) :-
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     goal_info_get_context(GoalInfo, Context),
     % Generate the local variables for this goal. We need to declare any
     % variables which are local to this goal (including its subgoals),
@@ -1718,16 +1718,17 @@ goal_local_vars(Goal) = LocalVars :-
     % Find all the variables in the goal.
     goal_util.goal_vars(Goal, GoalVars),
     % Delete the non-locals.
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_code_gen_nonlocals(GoalInfo, NonLocalVars),
     set.difference(GoalVars, NonLocalVars, LocalVars).
 
 :- func union_of_direct_subgoal_locals(hlds_goal) = set(prog_var).
 
-union_of_direct_subgoal_locals(Goal - _GoalInfo) = UnionOfSubGoalLocals :-
+union_of_direct_subgoal_locals(hlds_goal(GoalExpr, _))
+        = UnionOfSubGoalLocals :-
     promise_equivalent_solutions [UnionOfSubGoalLocals] (
         set.init(EmptySet),
-        solutions.unsorted_aggregate(direct_subgoal(Goal),
+        solutions.unsorted_aggregate(direct_subgoal(GoalExpr),
             union_subgoal_locals, EmptySet, UnionOfSubGoalLocals)
     ).
 
@@ -1808,7 +1809,7 @@ ml_gen_wrap_goal(model_semi, model_non, _, _, _, !Info) :-
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_code_model(GoalInfo, GoalCodeModel),
     goal_info_get_context(GoalInfo, GoalContext),
 
@@ -3468,7 +3469,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
-    Cond = _ - CondGoalInfo,
+    Cond = hlds_goal(_, CondGoalInfo),
     goal_info_get_code_model(CondGoalInfo, CondCodeModel),
     (
         %   model_det Cond:
@@ -3551,7 +3552,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
 
         % Generate the `then_func'.
         % push nesting level
-        Then = _ - ThenGoalInfo,
+        Then = hlds_goal(_, ThenGoalInfo),
         goal_info_get_context(ThenGoalInfo, ThenContext),
         ml_gen_set_cond_var(!.Info, CondVar, const(mlconst_true), ThenContext,
             SetCondTrue),
@@ -3584,7 +3585,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
-    Cond = _ - CondGoalInfo,
+    Cond = hlds_goal(_, CondGoalInfo),
     goal_info_get_code_model(CondGoalInfo, CondCodeModel),
     (
         % model_det negation:
@@ -3649,7 +3650,7 @@ ml_gen_conj([SingleGoal], CodeModel, _Context, Decls, Statements, !Info) :-
     ml_gen_goal(CodeModel, SingleGoal, Decls, Statements, !Info).
 ml_gen_conj([First | Rest], CodeModel, Context, Decls, Statements, !Info) :-
     Rest = [_ | _],
-    First = _ - FirstGoalInfo,
+    First = hlds_goal(_, FirstGoalInfo),
     goal_info_get_determinism(FirstGoalInfo, FirstDeterminism),
     ( determinism_components(FirstDeterminism, _, at_most_zero) ->
         % the `Rest' code is unreachable
@@ -3730,7 +3731,7 @@ ml_gen_disj([First | Rest], CodeModel, Context, Decls, Statements, !Info) :-
         %       }
         %   }
 
-        First = _ - FirstGoalInfo,
+        First = hlds_goal(_, FirstGoalInfo),
         goal_info_get_code_model(FirstGoalInfo, FirstCodeModel),
         (
             FirstCodeModel = model_det,

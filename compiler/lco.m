@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -349,16 +349,17 @@ acceptable_detism_for_lco(detism_cc_non).
 :- pred lco_in_goal(hlds_goal::in, hlds_goal::out, lco_info::in, lco_info::out,
     lco_const_info::in) is det.
 
-lco_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, !Info, ConstInfo) :-
+lco_in_goal(hlds_goal(GoalExpr0, GoalInfo), hlds_goal(GoalExpr, GoalInfo),
+        !Info, ConstInfo) :-
     (
-        Goal0 = conj(ConjType, Goals0),
+        GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
             lco_in_conj(list.reverse(Goals0), [], bag.init, MaybeGoals,
                 !Info, ConstInfo),
             (
                 MaybeGoals = yes(Goals),
-                Goal = conj(plain_conj, Goals)
+                GoalExpr = conj(plain_conj, Goals)
             ;
                 MaybeGoals = no,
                 % If the top-level conjunction doesn't end with some
@@ -367,49 +368,49 @@ lco_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, !Info, ConstInfo) :-
                 % arms fit that pattern.
                 ( list.split_last(Goals0, AllButLast, Last0) ->
                     lco_in_goal(Last0, Last, !Info, ConstInfo),
-                    Goal = conj(plain_conj, AllButLast ++ [Last])
+                    GoalExpr = conj(plain_conj, AllButLast ++ [Last])
                 ;
-                    Goal = Goal0
+                    GoalExpr = GoalExpr0
                 )
             )
         ;
             ConjType = parallel_conj,
-            Goal = Goal0,
+            GoalExpr = GoalExpr0,
             !:Info = !.Info ^ permitted := not_permitted
         )
     ;
-        Goal0 = disj(Goals0),
+        GoalExpr0 = disj(Goals0),
         % There is no point in looking for tail calls in the non-last
         % disjuncts.
         ( list.split_last(Goals0, AllButLast, Last0) ->
             lco_in_goal(Last0, Last, !Info, ConstInfo),
-            Goal = disj(AllButLast ++ [Last])
+            GoalExpr = disj(AllButLast ++ [Last])
         ;
-            Goal = Goal0
+            GoalExpr = GoalExpr0
         )
     ;
-        Goal0 = switch(Var, CanFail, Cases0),
+        GoalExpr0 = switch(Var, CanFail, Cases0),
         lco_in_cases(Cases0, Cases, !Info, ConstInfo),
-        Goal = switch(Var, CanFail, Cases)
+        GoalExpr = switch(Var, CanFail, Cases)
     ;
-        Goal0 = if_then_else(Vars, Cond, Then0, Else0),
+        GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
         lco_in_goal(Then0, Then, !Info, ConstInfo),
         lco_in_goal(Else0, Else, !Info, ConstInfo),
-        Goal = if_then_else(Vars, Cond, Then, Else)
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        Goal0 = scope(Reason, SubGoal0),
+        GoalExpr0 = scope(Reason, SubGoal0),
         lco_in_goal(SubGoal0, SubGoal, !Info, ConstInfo),
-        Goal = scope(Reason, SubGoal)
+        GoalExpr = scope(Reason, SubGoal)
     ;
-        ( Goal0 = negation(_)
-        ; Goal0 = generic_call(_, _, _, _)
-        ; Goal0 = plain_call(_, _, _, _, _, _)
-        ; Goal0 = unify(_, _, _, _, _)
-        ; Goal0 = call_foreign_proc(_, _, _, _,  _, _, _)
+        ( GoalExpr0 = negation(_)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _,  _, _, _)
         ),
-        Goal = Goal0
+        GoalExpr = GoalExpr0
     ;
-        Goal0 = shorthand(_),
+        GoalExpr0 = shorthand(_),
         unexpected(this_file, "lco_in_goal: shorthand")
     ).
 
@@ -459,7 +460,7 @@ lco_in_cases([case(Cons, Goal0) | Cases0], [case(Cons, Goal) | Cases],
 lco_in_conj([], _Unifies, _UnifyInputVars, no, !Info, _ConstInfo).
 lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         !Info, ConstInfo) :-
-    RevGoal = RevGoalExpr - RevGoalInfo,
+    RevGoal = hlds_goal(RevGoalExpr, RevGoalInfo),
     ModuleInfo = !.Info ^ module_info,
     ProcInfo = ConstInfo ^ cur_proc_proc,
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -529,7 +530,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         UpdatedGoalExpr = plain_call(VariantPredId, VariantProcId, UpdatedArgs,
             Builtin, UnifyContext, SymName),
         UpdatedGoalInfo = RevGoalInfo,
-        UpdatedGoal = UpdatedGoalExpr - UpdatedGoalInfo,
+        UpdatedGoal = hlds_goal(UpdatedGoalExpr, UpdatedGoalInfo),
         Goals = list.reverse(RevGoals) ++ UpdatedUnifies ++ [UpdatedGoal],
         MaybeGoals = yes(Goals),
         !:Info = !.Info ^ changed := changed
@@ -680,7 +681,7 @@ clone_pred_proc(PredId, ClonePredId, !ModuleInfo) :-
     hlds_goal::in, hlds_goal::out) is det.
 
 update_construct(Subst, Goal0, Goal) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(LHS, RHS0, Mode, Unification0, UnifyContext),
         Unification0 = construct(Var, ConsId, ArgVars, UniModes,
@@ -721,7 +722,7 @@ update_construct(Subst, Goal0, Goal) :-
             GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),
 
             goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo),
-            Goal = GoalExpr - GoalInfo
+            Goal = hlds_goal(GoalExpr, GoalInfo)
         )
     ;
         unexpected(this_file, "update_construct: not construct")
@@ -843,7 +844,7 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
 
 transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
         Changed) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         ( ConjType = parallel_conj ->
@@ -907,7 +908,7 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
     (
         Changed = yes,
         goal_info_set_purity(purity_impure, GoalInfo0, GoalInfo),
-        Goal = GoalExpr - GoalInfo
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         Changed = no,
         Goal = Goal0
@@ -925,7 +926,7 @@ transform_variant_conj(ModuleInfo, VarToAddr, InstMap0, [Goal0 | Goals0],
     transform_variant_conj(ModuleInfo, VarToAddr, InstMap1, Goals0, Goals,
         TailChanged),
     Changed = bool.or(HeadChanged, TailChanged),
-    ( Goal = conj(plain_conj, SubConj) - _ ->
+    ( Goal = hlds_goal(conj(plain_conj, SubConj), _) ->
         Conj = SubConj ++ Goals
     ;
         Conj = [Goal | Goals]
@@ -945,7 +946,7 @@ transform_variant_case(ModuleInfo, VarToAddr, InstMap0,
 
 transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
         GoalExpr0, GoalExpr, Changed) :-
-    update_instmap(GoalExpr0 - GoalInfo, InstMap0, InstMap1),
+    update_instmap(hlds_goal(GoalExpr0, GoalInfo), InstMap0, InstMap1),
     list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
         GroundingVarToAddr),
     (
@@ -955,7 +956,8 @@ transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
     ;
         GroundingVarToAddr = [_ | _],
         list.map(make_store_goal(ModuleInfo), GroundingVarToAddr, StoreGoals),
-        GoalExpr = conj(plain_conj, [GoalExpr0 - GoalInfo | StoreGoals]),
+        GoalExpr = conj(plain_conj,
+            [hlds_goal(GoalExpr0, GoalInfo) | StoreGoals]),
         Changed = yes
     ).
 
@@ -975,14 +977,14 @@ make_store_goal(ModuleInfo, Var - AddrVar, Goal) :-
     generate_simple_call(mercury_private_builtin_module, "store_at_ref",
         predicate, only_mode, detism_det, purity_pure, [AddrVar, Var],
         [], [], ModuleInfo, term.context_init, Goal0),
-    %     
+    %
     % XXX the following hack is used to stop simplify from trying to
     %      optimise the introduced call away.  store_at_ref/2 should
     %      really be declared to be impure.
     %
-    Goal0 = GoalExpr - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_set_purity(purity_impure, GoalInfo0, GoalInfo),
-    Goal  = GoalExpr - GoalInfo.
+    Goal  = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

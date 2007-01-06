@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -347,15 +347,21 @@ is_simple_goal(CalledGoal, SimpleThreshold) :-
 
 :- pred is_flat_simple_goal(hlds_goal::in) is semidet.
 
-is_flat_simple_goal(conj(plain_conj, Goals) - _) :-
-    is_flat_simple_goal_list(Goals).
-is_flat_simple_goal(negation(Goal) - _) :-
-    is_flat_simple_goal(Goal).
-is_flat_simple_goal(scope(_, Goal) - _) :-
-    is_flat_simple_goal(Goal).
-is_flat_simple_goal(plain_call(_, _, _, BuiltinState, _, _) - _) :-
-    BuiltinState = inline_builtin.
-is_flat_simple_goal(unify(_, _, _, _, _) - _).
+is_flat_simple_goal(hlds_goal(GoalExpr, _)) :-
+    (
+        GoalExpr = conj(plain_conj, Goals),
+        is_flat_simple_goal_list(Goals)
+    ;
+        GoalExpr = negation(Goal),
+        is_flat_simple_goal(Goal)
+    ;
+        GoalExpr = scope(_, Goal),
+        is_flat_simple_goal(Goal)
+    ;
+        GoalExpr = plain_call(_, _, _, inline_builtin, _, _)
+    ;
+        GoalExpr = unify(_, _, _, _, _)
+    ).
 
 :- pred is_flat_simple_goal_list(hlds_goals::in) is semidet.
 
@@ -544,9 +550,10 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
 :- pred inlining_in_goal(hlds_goal::in, hlds_goal::out,
     inline_info::in, inline_info::out) is det.
 
-inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
+inlining_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo), !Info) :-
     (
-        Goal0 = conj(ConjType, Goals0),
+        GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
             inlining_in_conj(Goals0, Goals, !Info)
@@ -554,50 +561,50 @@ inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
             ConjType = parallel_conj,
             inlining_in_par_conj(Goals0, Goals, !Info)
         ),
-        Goal = conj(ConjType, Goals),
+        GoalExpr = conj(ConjType, Goals),
         GoalInfo = GoalInfo0
     ;
-        Goal0 = disj(Goals0),
+        GoalExpr0 = disj(Goals0),
         inlining_in_goals(Goals0, Goals, !Info),
-        Goal = disj(Goals),
+        GoalExpr = disj(Goals),
         GoalInfo = GoalInfo0
     ;
-        Goal0 = switch(Var, Det, Cases0),
+        GoalExpr0 = switch(Var, Det, Cases0),
         inlining_in_cases(Cases0, Cases, !Info),
-        Goal = switch(Var, Det, Cases),
+        GoalExpr = switch(Var, Det, Cases),
         GoalInfo = GoalInfo0
     ;
-        Goal0 = if_then_else(Vars, Cond0, Then0, Else0),
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         inlining_in_goal(Cond0, Cond, !Info),
         inlining_in_goal(Then0, Then, !Info),
         inlining_in_goal(Else0, Else, !Info),
-        Goal = if_then_else(Vars, Cond, Then, Else),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
         GoalInfo = GoalInfo0
     ;
-        Goal0 = negation(SubGoal0),
+        GoalExpr0 = negation(SubGoal0),
         inlining_in_goal(SubGoal0, SubGoal, !Info),
-        Goal = negation(SubGoal),
+        GoalExpr = negation(SubGoal),
         GoalInfo = GoalInfo0
     ;
-        Goal0 = scope(Reason, SubGoal0),
+        GoalExpr0 = scope(Reason, SubGoal0),
         inlining_in_goal(SubGoal0, SubGoal, !Info),
-        Goal = scope(Reason, SubGoal),
+        GoalExpr = scope(Reason, SubGoal),
         GoalInfo = GoalInfo0
     ;
-        ( Goal0 = generic_call(_, _, _, _)
-        ; Goal0 = unify(_, _, _, _, _)
-        ; Goal0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ( GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        Goal = Goal0,
+        GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;
-        Goal0 = shorthand(_),
+        GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
         unexpected(this_file, "inlining_in_goal: unexpected shorthand")
     ;
-        Goal0 = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
+        GoalExpr0 = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
         inlining_in_call(PredId, ProcId, ArgVars, Builtin,
-            Context, Sym, Goal, GoalInfo0, GoalInfo, !Info)
+            Context, Sym, GoalExpr, GoalInfo0, GoalInfo, !Info)
     ).
 
 :- pred inlining_in_call(pred_id::in, proc_id::in,
@@ -607,7 +614,7 @@ inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
     inline_info::in, inline_info::out) is det.
 
 inlining_in_call(PredId, ProcId, ArgVars, Builtin,
-        Context, Sym, Goal, GoalInfo0, GoalInfo, !Info) :-
+        Context, Sym, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     !.Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
         InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
         VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0, _DidInlining0,
@@ -636,7 +643,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
     ->
         do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
             VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
-            RttiVarMaps0, RttiVarMaps, Goal - GoalInfo),
+            RttiVarMaps0, RttiVarMaps, hlds_goal(GoalExpr, GoalInfo)),
 
         % If some of the output variables are not used in the calling
         % procedure, requantify the procedure.
@@ -682,7 +689,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
             VarSet, VarTypes, TypeVarSet, RttiVarMaps, DidInlining,
             InlinedParallel, Requantify, DetChanged, PurityChanged)
     ;
-        Goal = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
         GoalInfo = GoalInfo0
     ).
 
@@ -953,7 +960,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     proc_info_get_goal(ProcInfo, CalledGoal),
     \+ (
         HighLevelCode = no,
-        CalledGoal = call_foreign_proc(_, _, _, _, _, _, _) - _,
+        CalledGoal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, _), _),
         proc_info_interface_determinism(ProcInfo, Detism),
         ( Detism = detism_non ; Detism = detism_multi )
     ),
@@ -964,8 +971,8 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     globals.get_target(Globals, Target),
     (
         (
-            CalledGoal = call_foreign_proc(ForeignAttributes,
-                _, _, _, _, _, _) - _,
+            CalledGoal = hlds_goal(call_foreign_proc(ForeignAttributes,
+                _, _, _, _, _, _), _),
             ForeignLanguage = get_foreign_language(ForeignAttributes)
         )
     =>

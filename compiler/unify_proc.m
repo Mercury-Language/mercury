@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -469,7 +469,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
                 unexpected(this_file, "modecheck_queued_proc: found error")
             ),
             save_proc_info(ProcId, PredId, !.ModuleInfo, !OldPredTable),
-            unique_modes.check_proc(ProcId, PredId, !ModuleInfo, Changed2,
+            unique_modes_check_proc(ProcId, PredId, !ModuleInfo, Changed2,
                 !IO),
             bool.or(Changed1, Changed2, Changed)
         ;
@@ -699,7 +699,7 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
         ModeId = invalid_proc_id,
         Call = plain_call(PredId, ModeId, [X], not_builtin, no, InitPred),
         goal_info_init(Context, GoalInfo),
-        Goal = Call - GoalInfo,
+        Goal = hlds_goal(Call, GoalInfo),
         quantify_clauses_body([X], Goal, Context, Clauses, !Info)
     ;
         % If this is an equivalence type then we just generate a call
@@ -726,12 +726,12 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
         PredId   = invalid_pred_id,
         ModeId   = invalid_proc_id,
         InitCall = plain_call(PredId, ModeId, [X0], not_builtin, no, InitPred),
-        InitGoal = InitCall - GoalInfo,
+        InitGoal = hlds_goal(InitCall, GoalInfo),
 
         Any = any(shared),
         generate_cast_with_insts(equiv_type_cast, X0, X, Any, Any, Context,
             CastGoal),
-        Goal = conj(plain_conj, [InitGoal, CastGoal]) - GoalInfo,
+        Goal = hlds_goal(conj(plain_conj, [InitGoal, CastGoal]), GoalInfo),
         quantify_clauses_body([X], Goal, Context, Clauses, !Info)
     ;
         unexpected(this_file, "generate_initialise_clauses: " ++
@@ -885,7 +885,7 @@ generate_user_defined_unify_clauses(UserEqCompare, H1, H2, Context, Clauses,
         Call = plain_call(PredId, ModeId, [H1, H2], not_builtin, no,
             UnifyPredName),
         goal_info_init(Context, GoalInfo),
-        Goal = Call - GoalInfo
+        Goal = hlds_goal(Call, GoalInfo)
     ; MaybeCompare = yes(ComparePredName) ->
         % Just generate a call to the specified predicate, which is the
         % user-defined comparison pred for this type, and unify the result
@@ -898,11 +898,11 @@ generate_user_defined_unify_clauses(UserEqCompare, H1, H2, Context, Clauses,
         Call = plain_call(PredId, ModeId, [ResultVar, H1, H2], not_builtin, no,
             ComparePredName),
         goal_info_init(Context, GoalInfo),
-        CallGoal = Call - GoalInfo,
+        CallGoal = hlds_goal(Call, GoalInfo),
 
         create_pure_atomic_complicated_unification(ResultVar, equal_functor,
             Context, umc_explicit, [], UnifyGoal),
-        Goal = conj(plain_conj, [CallGoal, UnifyGoal]) - GoalInfo
+        Goal = hlds_goal(conj(plain_conj, [CallGoal, UnifyGoal]), GoalInfo)
     ;
         unexpected(this_file, "generate_user_defined_unify_clauses")
     ),
@@ -1171,7 +1171,7 @@ generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),
         Call = plain_call(PredId, ModeId, ArgVars, not_builtin, no,
             ComparePredName),
         goal_info_init(Context, GoalInfo),
-        Goal = Call - GoalInfo
+        Goal = hlds_goal(Call, GoalInfo)
     ;
         MaybeCompare = no,
         % Just generate code that will call error/1.
@@ -1604,20 +1604,29 @@ generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y, Context, Goal,
         umc_explicit, [], Return_R),
 
     generate_compare_cases(Ctors, R, X, Y, Context, Cases, !Info),
-    CasesGoal = disj(Cases) - GoalInfo,
+    CasesGoal = hlds_goal(disj(Cases), GoalInfo),
 
     build_call("compare_error", [], Context, Abort, !Info),
 
-    Goal = conj(plain_conj, [
-        Call_X_Index,
-        Call_Y_Index,
-        if_then_else([], Call_Less_Than, Return_Less_Than,
+    HandleEqualGoal =
+        hlds_goal(
+            if_then_else([], CasesGoal, Return_R, Abort),
+            GoalInfo),
+    HandleGreaterEqualGoal =
+        hlds_goal(
             if_then_else([], Call_Greater_Than, Return_Greater_Than,
-                if_then_else([], CasesGoal, Return_R, Abort)
-                - GoalInfo)
-            - GoalInfo)
-        - GoalInfo
-    ]) - GoalInfo.
+                HandleEqualGoal),
+            GoalInfo),
+    HandleLessGreaterEqualGoal =
+        hlds_goal(
+            if_then_else([], Call_Less_Than, Return_Less_Than,
+                HandleGreaterEqualGoal),
+            GoalInfo),
+    Goal =
+        hlds_goal(
+            conj(plain_conj,
+                [Call_X_Index, Call_Y_Index, HandleLessGreaterEqualGoal]),
+            GoalInfo).
 
     % generate_compare_cases: for a type such as
     %
@@ -1810,15 +1819,18 @@ compare_args_2([Arg | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys], R,
         build_call(ComparePred, [R1, X, Y], Context, Do_Comparison, !Info),
 
         make_const_construction(R1, equal_cons_id, Check_Equal),
-        Check_Not_Equal = negation(Check_Equal) - GoalInfo,
+        Check_Not_Equal = hlds_goal(negation(Check_Equal), GoalInfo),
 
         create_pure_atomic_complicated_unification(R, rhs_var(R1),
             Context, umc_explicit, [], Return_R1),
-        Condition = conj(plain_conj, [Do_Comparison, Check_Not_Equal])
-            - GoalInfo,
+        Condition = hlds_goal(
+            conj(plain_conj, [Do_Comparison, Check_Not_Equal]),
+            GoalInfo),
         compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R, Context, ElseCase,
             !Info),
-        Goal = if_then_else([], Condition, Return_R1, ElseCase) - GoalInfo
+        Goal = hlds_goal(
+            if_then_else([], Condition, Return_R1, ElseCase),
+            GoalInfo)
     ).
 
 :- pred generate_return_equal(prog_var::in, prog_context::in,
@@ -1867,7 +1879,7 @@ build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta, Detism,
         goal_info_init(NonLocals, InstmapDelta, Detism, purity_pure,
             GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo),
-        Goal = GoalExpr - GoalInfo
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         % build_specific_call is only ever used to build calls
         % to special preds for a type in the bodies of other special preds

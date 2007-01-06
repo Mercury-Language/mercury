@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -68,7 +68,7 @@ generate_disj(AddTrailOps, CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
         )
     ;
         Goals = [Goal | _],
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_resume_point(GoalInfo, Resume),
         ( Resume = resume_point(ResumeVarsPrime, _) ->
             ResumeVars = ResumeVarsPrime
@@ -199,13 +199,13 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     code_info.acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
 
     BaseRegInitCode = node([
-        assign(BaseReg,
-            mem_addr(heap_ref(SolnVectorAddrRval, 0, const(llconst_int(0)))))
-            - "Compute base address for this case"
+        llds_instr(assign(BaseReg,
+            mem_addr(heap_ref(SolnVectorAddrRval, 0, const(llconst_int(0))))),
+            "Compute base address for this case")
     ]),
     SaveSlotCode = node([
-        assign(CurSlot, const(llconst_int(NumOutVars)))
-            - "Setup current slot in the solution array"
+        llds_instr(assign(CurSlot, const(llconst_int(NumOutVars))),
+            "Setup current slot in the solution array")
     ]),
 
     code_info.remember_position(!.CI, DisjEntry),
@@ -230,7 +230,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     code_info.release_reg(BaseReg, !CI),
 
     GotoEndCode = node([
-        goto(code_label(EndLabel)) - "goto end of lookup disj"
+        llds_instr(goto(code_label(EndLabel)), "goto end of lookup disj")
     ]),
 
     code_info.reset_to_position(DisjEntry, !CI),
@@ -245,26 +245,27 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     code_info.get_next_label(AfterUndoLabel, !CI),
     MaxSlot = (NumSolns - 1) * NumOutVars,
     TestMoreSolnsCode = node([
-        assign(LaterBaseReg, lval(CurSlot))
-            - "Init later base register",
-        if_val(binop(int_ge, lval(LaterBaseReg), const(llconst_int(MaxSlot))),
-            code_label(UndoLabel))
-            - "Jump to undo hijack code if there are no more solutions",
-        assign(CurSlot,
-            binop(int_add, lval(CurSlot), const(llconst_int(NumOutVars))))
-            - "Update current slot",
-        goto(code_label(AfterUndoLabel))
-            - "Jump around undo hijack code",
-        label(UndoLabel)
-            - "Undo hijack code"
+        llds_instr(assign(LaterBaseReg, lval(CurSlot)),
+            "Init later base register"),
+        llds_instr(if_val(binop(int_ge, lval(LaterBaseReg),
+            const(llconst_int(MaxSlot))),
+            code_label(UndoLabel)),
+            "Jump to undo hijack code if there are no more solutions"),
+        llds_instr(assign(CurSlot,
+            binop(int_add, lval(CurSlot), const(llconst_int(NumOutVars)))),
+            "Update current slot"),
+        llds_instr(goto(code_label(AfterUndoLabel)),
+            "Jump around undo hijack code"),
+        llds_instr(label(UndoLabel),
+            "Undo hijack code")
     ]),
     code_info.undo_disj_hijack(HijackInfo, UndoHijackCode, !CI),
     AfterUndoLabelCode = node([
-        label(AfterUndoLabel)
-            - "Return later answer code",
-        assign(LaterBaseReg,
-            mem_addr(heap_ref(SolnVectorAddrRval, 0, lval(LaterBaseReg))))
-            - "Compute base address in later array for this solution"
+        llds_instr(label(AfterUndoLabel),
+            "Return later answer code"),
+        llds_instr(assign(LaterBaseReg,
+            mem_addr(heap_ref(SolnVectorAddrRval, 0, lval(LaterBaseReg)))),
+            "Compute base address in later array for this solution")
     ]),
 
     % We need to call effect_resume_point in order to push ResumePoint
@@ -291,10 +292,10 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     code_info.after_all_branches(StoreMap, MaybeEnd, !CI),
 
     EndLabelCode = node([
-        label(EndLabel) - "end of lookup disj"
+        llds_instr(label(EndLabel), "end of lookup disj")
     ]),
 
-    Comment = node([comment("lookup disj") - ""]),
+    Comment = node([llds_instr(comment("lookup disj"), "")]),
     Code = tree_list([Comment, FlushCode, BaseRegInitCode,
         SaveSlotCode, SaveTicketCode, SaveHpCode, PrepareHijackCode,
         UpdateRedoipCode, FirstFlushResumeVarsCode, FirstBranchEndCode,
@@ -397,7 +398,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         EntryResumePointCode = empty
     ),
 
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     goal_info_get_resume_point(GoalInfo0, Resume),
     ( Resume = resume_point(ResumeVars, ResumeLocs) ->
         % Emit code for a non-last disjunct, including setting things
@@ -421,7 +422,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         % The pre_goal_update sanity check insists on no_resume_point, to make
         % sure that all resume points have been handled by surrounding code.
         goal_info_set_resume_point(no_resume_point, GoalInfo0, GoalInfo),
-        Goal = GoalExpr0 - GoalInfo,
+        Goal = hlds_goal(GoalExpr0, GoalInfo),
 
         % Save hp if it needs to be saved and hasn't been saved previously.
         (
@@ -498,7 +499,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             !CI),
 
         BranchCode = node([
-            goto(code_label(EndLabel)) - "skip to end of nondet disj"
+            llds_instr(goto(code_label(EndLabel)),
+                "skip to end of nondet disj")
         ]),
 
         generate_disjuncts(Goals, CodeModel, FullResumeMap,
@@ -529,7 +531,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             !CI),
 
         EndCode = node([
-            label(EndLabel) - "End of nondet disj"
+            llds_instr(label(EndLabel), "End of nondet disj")
         ]),
         Code = tree_list([EntryResumePointCode, TraceCode, RestoreHpCode,
             RestoreTicketCode, UndoCode, GoalCode, SaveCode, EndCode])

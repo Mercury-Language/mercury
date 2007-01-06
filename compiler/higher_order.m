@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -533,8 +533,8 @@ fixup_proc_info(MustRecompute, Goal0, !Info) :-
 :- pred traverse_goal_2(hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_goal_2(conj(ConjType, Goals0) - GoalInfo,
-        conj(ConjType, Goals) - GoalInfo, !Info) :-
+traverse_goal_2(hlds_goal(conj(ConjType, Goals0), GoalInfo),
+        hlds_goal(conj(ConjType, Goals), GoalInfo), !Info) :-
     (
         ConjType = plain_conj,
         list.map_foldl(traverse_goal_2, Goals0, Goals, !Info)
@@ -543,11 +543,12 @@ traverse_goal_2(conj(ConjType, Goals0) - GoalInfo,
         traverse_independent_goals(Goals0, Goals, !Info)
     ).
 
-traverse_goal_2(disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo, !Info) :-
+traverse_goal_2(hlds_goal(disj(Goals0), GoalInfo),
+        hlds_goal(disj(Goals), GoalInfo), !Info) :-
     traverse_independent_goals(Goals0, Goals, !Info).
 
-traverse_goal_2(switch(Var, CanFail, Cases0) - GoalInfo,
-        switch(Var, CanFail, Cases) - GoalInfo, !Info) :-
+traverse_goal_2(hlds_goal(switch(Var, CanFail, Cases0), GoalInfo),
+        hlds_goal(switch(Var, CanFail, Cases), GoalInfo), !Info) :-
     % A switch is treated as a disjunction.
     %
     traverse_cases(Cases0, Cases, !Info).
@@ -555,7 +556,7 @@ traverse_goal_2(switch(Var, CanFail, Cases0) - GoalInfo,
     % Check whether this call could be specialized.
     %
 traverse_goal_2(Goal0, Goal, !Info) :-
-    Goal0 = generic_call(GenericCall, Args, _, _) - GoalInfo,
+    Goal0 = hlds_goal(generic_call(GenericCall, Args, _, _), GoalInfo),
     (
         (
             GenericCall = higher_order(Var, _, _, _),
@@ -575,13 +576,13 @@ traverse_goal_2(Goal0, Goal, !Info) :-
 traverse_goal_2(Goal0, Goal, !Info) :-
     % Check whether this call can be specialized.
     %
-    Goal0 = plain_call(_, _, _, _, _, _) - _,
+    Goal0 = hlds_goal(plain_call(_, _, _, _, _, _), _),
     maybe_specialize_call(Goal0, Goal, !Info).
 
 traverse_goal_2(Goal0, Goal, !Info) :-
     % if-then-elses are handled as disjunctions.
     %
-    Goal0 = if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo,
+    Goal0 = hlds_goal(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo),
     get_pre_branch_info(!.Info, PreInfo),
     traverse_goal_2(Cond0, Cond, !Info),
     traverse_goal_2(Then0, Then, !Info),
@@ -589,36 +590,36 @@ traverse_goal_2(Goal0, Goal, !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     traverse_goal_2(Else0, Else, !Info),
     get_post_branch_info(!.Info, PostElseInfo),
-    Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo,
+    Goal = hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo),
     merge_post_branch_infos(PostThenInfo, PostElseInfo, PostInfo),
     set_post_branch_info(PostInfo, !Info).
 
-traverse_goal_2(negation(NegGoal0) - GoalInfo, negation(NegGoal) - GoalInfo,
-        !Info) :-
+traverse_goal_2(hlds_goal(negation(NegGoal0), GoalInfo),
+        hlds_goal(negation(NegGoal), GoalInfo), !Info) :-
     traverse_goal_2(NegGoal0, NegGoal, !Info).
 
-traverse_goal_2(scope(Reason, Goal0) - GoalInfo,
-        scope(Reason, Goal) - GoalInfo, !Info) :-
+traverse_goal_2(hlds_goal(scope(Reason, Goal0), GoalInfo),
+        hlds_goal(scope(Reason, Goal), GoalInfo), !Info) :-
     traverse_goal_2(Goal0, Goal, !Info).
 
 traverse_goal_2(Goal, Goal, !Info) :-
-    Goal = call_foreign_proc(_, _, _, _, _, _, _) - _.
+    Goal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, _), _).
 
 traverse_goal_2(Goal0, Goal, !Info) :-
-    Goal0 = GoalExpr0 - _,
+    Goal0 = hlds_goal(GoalExpr0, _),
     GoalExpr0 = unify(_, _, _, Unify0, _),
     ( Unify0 = construct(_, pred_const(_, _), _, _, _, _, _) ->
         maybe_specialize_pred_const(Goal0, Goal, !Info)
     ;
         Goal = Goal0
     ),
-    ( Goal = unify(_, _, _, Unify, _) - _ ->
+    ( Goal = hlds_goal(unify(_, _, _, Unify, _), _) ->
         check_unify(Unify, !Info)
     ;
         true
     ).
 
-traverse_goal_2(shorthand(_) - _, _, !Info) :-
+traverse_goal_2(hlds_goal(shorthand(_), _), _, !Info) :-
     % These should have been expanded out by now.
     unexpected(this_file, "traverse_goal_2: unexpected shorthand").
 
@@ -884,7 +885,7 @@ is_interesting_cons_id(_Params, table_io_decl(_)) = no.
     higher_order_info::in, higher_order_info::out) is det.
 
 maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
-        Goal0 - GoalInfo, Goals, !Info) :-
+        hlds_goal(GoalExpr0, GoalInfo), Goals, !Info) :-
     ModuleInfo = !.Info ^ global_info ^ module_info,
     % We can specialize calls to call/N and class_method_call/N
     % if the closure or typeclass_info has a known value.
@@ -989,7 +990,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
         list.append(ExtraGoals, [Goal], Goals)
     ;
         % Non-specializable call/N or class_method_call/N.
-        Goals = [Goal0 - GoalInfo]
+        Goals = [hlds_goal(GoalExpr0, GoalInfo)]
     ).
 
 :- pred find_matching_instance_method(list(hlds_instance_defn)::in, int::in,
@@ -1110,8 +1111,9 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
     instmap_delta_insert(ResultVar, ground(shared, none),
         InstMapDelta0, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
-    CallGoal = plain_call(PredId, ProcId, CallArgs, not_builtin,
-        MaybeContext, SymName) - GoalInfo,
+    CallGoalExpr = plain_call(PredId, ProcId, CallArgs, not_builtin,
+        MaybeContext, SymName),
+    CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
     get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
         MakeResultType, Args, Index + 1, Goals, Vars, !ProcInfo).
 
@@ -1122,7 +1124,7 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
     higher_order_info::in, higher_order_info::out) is det.
 
 construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
-        Goal - GoalInfo, !Info) :-
+        hlds_goal(GoalExpr, GoalInfo), !Info) :-
     ModuleInfo = !.Info ^ global_info ^ module_info,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
@@ -1132,18 +1134,20 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
     Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
 
     MaybeContext = no,
-    Goal1 = plain_call(PredId, ProcId, AllArgs, Builtin, MaybeContext,
+    GoalExpr1 = plain_call(PredId, ProcId, AllArgs, Builtin, MaybeContext,
         SymName),
     !:Info = !.Info ^ changed := changed,
-    maybe_specialize_call(Goal1 - GoalInfo, Goal - _, !Info).
+    maybe_specialize_call(hlds_goal(GoalExpr1, GoalInfo),
+        hlds_goal(GoalExpr, _), !Info).
 
 :- pred maybe_specialize_call(hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
+maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
+        hlds_goal(GoalExpr, GoalInfo), !Info) :-
     ModuleInfo0 = !.Info ^ global_info ^ module_info,
-    ( Goal0 = plain_call(_, _, _, _, _, _) ->
-        Goal0 = plain_call(CalledPred, CalledProc, Args0, IsBuiltin,
+    ( GoalExpr0 = plain_call(_, _, _, _, _, _) ->
+        GoalExpr0 = plain_call(CalledPred, CalledProc, Args0, IsBuiltin,
             MaybeContext, _SymName0)
     ;
         unexpected(this_file, "maybe_specialize_call: expected call")
@@ -1155,16 +1159,16 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
     (
         % Look for calls to unify/2 and compare/3 that can be specialized.
         specialize_special_pred(CalledPred, CalledProc, Args0,
-            MaybeContext, GoalInfo, HaveSpecialPreds, Goal1, !Info)
+            MaybeContext, GoalInfo, HaveSpecialPreds, GoalExpr1, !Info)
     ->
-        Goal = Goal1,
+        GoalExpr = GoalExpr1,
         !:Info = !.Info ^ changed := changed
     ;
         polymorphism.is_typeclass_info_manipulator(ModuleInfo0,
             CalledPred, Manipulator)
     ->
         interpret_typeclass_info_manipulator(Manipulator, Args0,
-            Goal0, Goal, !Info)
+            GoalExpr0, GoalExpr, !Info)
     ;
         (
             pred_info_is_imported(CalleePredInfo),
@@ -1178,20 +1182,20 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
             pred_info_pragma_goal_type(CalleePredInfo)
         )
     ->
-        Goal = Goal0
+        GoalExpr = GoalExpr0
     ;
         CanRequest = yes,
         maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             CalleePredInfo, CalleeProcInfo, Args0, IsBuiltin, MaybeContext,
             GoalInfo, Result, !Info),
         (
-            Result = specialized(ExtraTypeInfoGoals, Goal1),
-            goal_to_conj_list(Goal1 - GoalInfo, GoalList1),
+            Result = specialized(ExtraTypeInfoGoals, GoalExpr1),
+            goal_to_conj_list(hlds_goal(GoalExpr1, GoalInfo), GoalList1),
             list.append(ExtraTypeInfoGoals, GoalList1, GoalList),
-            Goal = conj(plain_conj, GoalList)
+            GoalExpr = conj(plain_conj, GoalList)
         ;
             Result = not_specialized,
-            Goal = Goal0
+            GoalExpr = GoalExpr0
         )
     ).
 
@@ -1209,12 +1213,13 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
 :- pred maybe_specialize_pred_const(hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
+maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
+        hlds_goal(GoalExpr, GoalInfo), !Info) :-
     NewPreds   = !.Info ^ global_info ^ new_preds,
     ModuleInfo = !.Info ^ global_info ^ module_info,
     ProcInfo0  = !.Info ^ proc_info,
     (
-        Goal0 = unify(_, _, UniMode, Unify0, Context),
+        GoalExpr0 = unify(_, _, UniMode, Unify0, Context),
         Unify0 = construct(LVar, ConsId0, Args0, _,
             HowToConstruct, CellIsUnique, SubInfo),
         (
@@ -1252,9 +1257,10 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
             CalleePredInfo, CalleeProcInfo, Args1, IsBuiltin, MaybeContext,
             GoalInfo, Result, !Info),
         (
-            Result = specialized(ExtraTypeInfoGoals0, Goal1),
+            Result = specialized(ExtraTypeInfoGoals0, GoalExpr1),
             (
-                Goal1 = plain_call(NewPredId0, NewProcId0, NewArgs0, _, _, _),
+                GoalExpr1 =
+                    plain_call(NewPredId0, NewProcId0, NewArgs0, _, _, _),
                 list.remove_suffix(NewArgs0, UncurriedArgs, NewArgs1)
             ->
                 NewPredId = NewPredId0,
@@ -1290,7 +1296,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
             NewConsId = pred_const(NewShroudedPredProcId, EvalMethod),
             Unify = construct(LVar, NewConsId, NewArgs, UniModes,
                 HowToConstruct, CellIsUnique, no_construct_sub_info),
-            Goal2 = unify(LVar, rhs_functor(NewConsId, no, NewArgs),
+            GoalExpr2 = unify(LVar, rhs_functor(NewConsId, no, NewArgs),
                 UniMode, Unify, Context),
 
             % Make sure any constants in the ExtraTypeInfoGoals are recorded.
@@ -1298,20 +1304,20 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
                 ExtraTypeInfoGoals, !Info),
             (
                 ExtraTypeInfoGoals = [],
-                Goal = Goal2
+                GoalExpr = GoalExpr2
             ;
                 ExtraTypeInfoGoals = [_ | _],
-                Goal = conj(plain_conj,
-                    ExtraTypeInfoGoals ++ [Goal2 - GoalInfo])
+                GoalExpr = conj(plain_conj,
+                    ExtraTypeInfoGoals ++ [hlds_goal(GoalExpr2, GoalInfo)])
             )
         ;
             Result = not_specialized,
             % The dummy arguments can't be used anywhere.
             !:Info = !.Info ^ proc_info := ProcInfo0,
-            Goal = Goal0
+            GoalExpr = GoalExpr0
         )
     ;
-        Goal = Goal0
+        GoalExpr = GoalExpr0
     ).
 
 :- type specialization_result
@@ -2113,7 +2119,7 @@ specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
         MaybeResult = yes(ComparisonResult),
         Eq = cons(qualified(mercury_public_builtin_module, "="), 0),
         make_const_construction(ComparisonResult, Eq, Goal),
-        Goal = GoalExpr - _
+        Goal = hlds_goal(GoalExpr, _)
     ).
 
 :- pred specialize_unify_or_compare_pred_for_atomic(mer_type::in,
@@ -2158,7 +2164,7 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
             goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
                 Context, GoalInfo),
             GoalExpr = conj(plain_conj,
-                [CastGoal1, CastGoal2, Call - GoalInfo]),
+                [CastGoal1, CastGoal2, hlds_goal(Call, GoalInfo)]),
             !:Info = !.Info ^ proc_info := ProcInfo
         )
     ).
@@ -2191,7 +2197,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
         goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
             Context, GoalInfo),
         GoalExpr = conj(plain_conj,
-            [ExtractGoal1, ExtractGoal2, SpecialGoal - GoalInfo]),
+            [ExtractGoal1, ExtractGoal2, hlds_goal(SpecialGoal, GoalInfo)]),
         !:Info = !.Info ^ proc_info := ProcInfo2
     ;
         MaybeResult = yes(ComparisonResult),
@@ -2212,7 +2218,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
             goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
                 Context, GoalInfo),
             GoalExpr = conj(plain_conj, [ExtractGoal1, ExtractGoal2,
-                SpecialGoal - GoalInfo]),
+                hlds_goal(SpecialGoal, GoalInfo)]),
             !:Info = !.Info ^ proc_info := ProcInfo2
         ;
             NeedIntCast = yes,
@@ -2227,7 +2233,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
                 Context, GoalInfo),
             GoalExpr = conj(plain_conj,
                 [ExtractGoal1, CastGoal1, ExtractGoal2, CastGoal2,
-                SpecialGoal - GoalInfo]),
+                hlds_goal(SpecialGoal, GoalInfo)]),
             !:Info = !.Info ^ proc_info := ProcInfo4
         )
     ).
@@ -2373,11 +2379,12 @@ unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg, UnwrappedArg, Goal,
         InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
         GoalInfo),
-    Goal = unify(Arg, rhs_functor(ConsId, no, [UnwrappedArg]),
+    GoalExpr = unify(Arg, rhs_functor(ConsId, no, [UnwrappedArg]),
         in_mode - out_mode,
         deconstruct(Arg, ConsId, [UnwrappedArg], UniModes,
             cannot_fail, cannot_cgc),
-        unify_context(umc_explicit, [])) - GoalInfo.
+        unify_context(umc_explicit, [])),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2938,7 +2945,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     proc_info_set_argmodes(ArgModes, !NewProcInfo),
 
     proc_info_get_goal(!.NewProcInfo, Goal6),
-    Goal6 = _ - GoalInfo6,
+    Goal6 = hlds_goal(_, GoalInfo6),
     goal_to_conj_list(Goal6, GoalList6),
     conj_list_to_goal(list.append(ConstGoals, GoalList6), GoalInfo6, Goal),
     proc_info_set_goal(Goal, !NewProcInfo),
@@ -3111,16 +3118,16 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
             CurriedArgModes1, UniModes),
         set.list_to_set(CurriedHeadVars1, ConstNonLocals),
         ConstInst = ground(shared, GroundInstInfo),
-        instmap_delta_from_assoc_list([LVar - ConstInst],
-            ConstInstMapDelta),
+        instmap_delta_from_assoc_list([LVar - ConstInst], ConstInstMapDelta),
         goal_info_init(ConstNonLocals, ConstInstMapDelta, detism_det,
             purity_pure, ConstGoalInfo),
         RHS = rhs_functor(ConsId, no, CurriedHeadVars1),
         UniMode = (free -> ConstInst) - (ConstInst -> ConstInst),
-        ConstGoal = unify(LVar, RHS, UniMode,
+        ConstGoalExpr = unify(LVar, RHS, UniMode,
             construct(LVar, ConsId, CurriedHeadVars1, UniModes,
                 construct_dynamically, cell_is_unique, no_construct_sub_info),
-            unify_context(umc_explicit, [])) - ConstGoalInfo,
+            unify_context(umc_explicit, [])),
+        ConstGoal = hlds_goal(ConstGoalExpr, ConstGoalInfo),
         ConstGoals0 = CurriedConstGoals ++ [ConstGoal]
     ;
         IsConst = no,

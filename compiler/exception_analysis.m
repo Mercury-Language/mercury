@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -345,13 +345,13 @@ check_proc_for_exceptions(SCC, PPId, !Results, !ModuleInfo, !IO) :-
     hlds_goal::in, proc_result::in, proc_result::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_goal_for_exceptions(SCC, VarTypes, Goal - GoalInfo, !Result,
-        !ModuleInfo, !IO) :-
+check_goal_for_exceptions(SCC, VarTypes, hlds_goal(GoalExpr, GoalInfo),
+        !Result, !ModuleInfo, !IO) :-
     ( goal_info_get_determinism(GoalInfo, detism_erroneous) ->
         !:Result = !.Result ^ status := may_throw(user_exception)
     ;
-        check_goal_for_exceptions_2(SCC, VarTypes, Goal, GoalInfo, !Result,
-            !ModuleInfo, !IO)
+        check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
+            !Result, !ModuleInfo, !IO)
     ).
 
 :- pred check_goal_for_exceptions_2(scc::in, vartypes::in,

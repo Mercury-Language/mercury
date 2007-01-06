@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -596,8 +596,8 @@ make_assignment(OutputArg, InputArg, Goal) :-
 :- pred make_construction(arg_hlds_info::in, cons_id::in, hlds_goal_expr::out)
     is det.
 
-make_construction(Arg, ConsId, Goal) :-
-    make_const_construction(Arg ^ arg_var, ConsId, Goal - _).
+make_construction(Arg, ConsId, GoalExpr) :-
+    make_const_construction(Arg ^ arg_var, ConsId, hlds_goal(GoalExpr, _)).
 
 %---------------------------------------------------------------------------%
 

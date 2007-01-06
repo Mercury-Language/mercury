@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -109,7 +109,8 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
 :- pred saved_vars_in_goal(hlds_goal::in, hlds_goal::out,
     slot_info::in, slot_info::out) is det.
 
-saved_vars_in_goal(GoalExpr0 - GoalInfo0, Goal, !SlotInfo) :-
+saved_vars_in_goal(Goal0, Goal, !SlotInfo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -120,42 +121,42 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, Goal, !SlotInfo) :-
         ;
             ConjType = parallel_conj,
             saved_vars_in_independent_goals(Goals0, Goals, !SlotInfo),
-            Goal = conj(ConjType, Goals) - GoalInfo0
+            Goal = hlds_goal(conj(ConjType, Goals), GoalInfo0)
         )
     ;
         GoalExpr0 = disj(Goals0),
         saved_vars_in_independent_goals(Goals0, Goals, !SlotInfo),
-        Goal = disj(Goals) - GoalInfo0
+        GoalExpr = disj(Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(NegGoal0),
         saved_vars_in_goal(NegGoal0, NegGoal, !SlotInfo),
-        Goal = negation(NegGoal) - GoalInfo0
+        GoalExpr = negation(NegGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         saved_vars_in_switch(Cases0, Cases, !SlotInfo),
-        Goal = switch(Var, CanFail, Cases) - GoalInfo0
+        GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         saved_vars_in_goal(Cond0, Cond, !SlotInfo),
         saved_vars_in_goal(Then0, Then, !SlotInfo),
         saved_vars_in_goal(Else0, Else, !SlotInfo),
-        Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         saved_vars_in_goal(SubGoal0, SubGoal, !SlotInfo),
-        Goal = scope(Reason, SubGoal) - GoalInfo0
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = generic_call(_, _, _, _),
-        Goal = GoalExpr0 - GoalInfo0
-    ;
-        GoalExpr0 = plain_call(_, _, _, _, _, _),
-        Goal = GoalExpr0 - GoalInfo0
-    ;
-        GoalExpr0 = unify(_, _, _, _, _),
-        Goal = GoalExpr0 - GoalInfo0
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        Goal = GoalExpr0 - GoalInfo0
+        ( GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),
         % these should have been expanded out by now
@@ -181,7 +182,7 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, Goal, !SlotInfo) :-
 saved_vars_in_conj([], [], _, !SlotInfo).
 saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
     (
-        Goal0 = unify(_, _, _, Unif, _) - GoalInfo,
+        Goal0 = hlds_goal(unify(_, _, _, Unif, _), GoalInfo),
         Unif = construct(Var, _, [], _, _, _, _),
         goal_info_get_features(GoalInfo, Features),
         ( all [Feature]
@@ -240,7 +241,7 @@ ok_to_duplicate(feature_contains_trace) = yes.
 skip_constant_constructs([], [], []).
 skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
     (
-        Goal0 = unify(_, _, _, Unif, _) - _,
+        Goal0 = hlds_goal(unify(_, _, _, Unif, _), _),
         Unif = construct(_, _, [], _, _, _, _)
     ->
         skip_constant_constructs(Goals0, Constants1, Others),
@@ -260,7 +261,7 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 :- pred can_push(prog_var::in, hlds_goal::in) is semidet.
 
 can_push(Var, First) :-
-    First = FirstExpr - FirstInfo,
+    First = hlds_goal(FirstExpr, FirstInfo),
     goal_info_get_nonlocals(FirstInfo, FirstNonLocals),
     ( set.member(Var, FirstNonLocals) ->
         (
@@ -311,7 +312,7 @@ saved_vars_delay_goal([], Goals, Construct, _Var, IsNonLocal, !SlotInfo) :-
     ).
 saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         !SlotInfo) :-
-    Goal0 = Goal0Expr - Goal0Info,
+    Goal0 = hlds_goal(Goal0Expr, Goal0Info),
     goal_info_get_nonlocals(Goal0Info, Goal0NonLocals),
     ( set.member(Var, Goal0NonLocals) ->
         (
@@ -357,7 +358,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 ConjType = parallel_conj,
                 push_into_goals_rename(Conj0, Conj, Construct, Var,
                     !SlotInfo),
-                Goal1 = conj(ConjType, Conj) - Goal0Info,
+                Goal1 = hlds_goal(conj(ConjType, Conj), Goal0Info),
                 saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                     IsNonLocal, !SlotInfo),
                 Goals = [Goal1 | Goals1]
@@ -369,7 +370,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             rename_some_vars_in_goal(Subst, SomeGoal0, SomeGoal1),
             push_into_goal(SomeGoal1, SomeGoal, NewConstruct, NewVar,
                 !SlotInfo),
-            Goal1 = scope(Reason, SomeGoal) - Goal0Info,
+            Goal1 = hlds_goal(scope(Reason, SomeGoal), Goal0Info),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
@@ -380,7 +381,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             rename_some_vars_in_goal(Subst, NegGoal0, NegGoal1),
             push_into_goal(NegGoal1, NegGoal, NewConstruct, NewVar,
                 !SlotInfo),
-            Goal1 = negation(NegGoal) - Goal0Info,
+            Goal1 = hlds_goal(negation(NegGoal), Goal0Info),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
@@ -388,7 +389,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             Goal0Expr = disj(Disjuncts0),
             push_into_goals_rename(Disjuncts0, Disjuncts, Construct, Var,
                 !SlotInfo),
-            Goal1 = disj(Disjuncts) - Goal0Info,
+            Goal1 = hlds_goal(disj(Disjuncts), Goal0Info),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
@@ -401,7 +402,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             ;
                 push_into_cases_rename(Cases0, Cases, Construct, Var,
                     !SlotInfo),
-                Goal1 = switch(SwitchVar, CF, Cases) - Goal0Info,
+                Goal1 = hlds_goal(switch(SwitchVar, CF, Cases), Goal0Info),
                 saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                     IsNonLocal, !SlotInfo),
                 Goals = [Goal1 | Goals1]
@@ -411,7 +412,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             push_into_goal_rename(Cond0, Cond, Construct, Var, !SlotInfo),
             push_into_goal_rename(Then0, Then, Construct, Var, !SlotInfo),
             push_into_goal_rename(Else0, Else, Construct, Var, !SlotInfo),
-            Goal1 = if_then_else(V, Cond, Then, Else) - Goal0Info,
+            Goal1 = hlds_goal(if_then_else(V, Cond, Then, Else), Goal0Info),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
@@ -435,10 +436,10 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
 
 push_into_goal(Goal0, Goal, Construct, Var, !SlotInfo) :-
     saved_vars_in_goal(Goal0, Goal1, !SlotInfo),
-    Goal1 = _ - Goal1Info,
+    Goal1 = hlds_goal(_, GoalInfo1),
     goal_to_conj_list(Goal1, Conj1),
     saved_vars_delay_goal(Conj1, Conj, Construct, Var, no, !SlotInfo),
-    conj_list_to_goal(Conj, Goal1Info, Goal).
+    conj_list_to_goal(Conj, GoalInfo1, Goal).
 
     % Push a renamed version of the given construction into the
     % given goal.  If the goal does not refer to the variable bound
@@ -449,7 +450,7 @@ push_into_goal(Goal0, Goal, Construct, Var, !SlotInfo) :-
     prog_var::in, slot_info::in, slot_info::out) is det.
 
 push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo) :-
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     goal_info_get_nonlocals(GoalInfo0, NonLocals),
     ( set.member(Var, NonLocals) ->
         rename_var(Var, NewVar, Subst, !SlotInfo),

@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
 % File: string_switch.m.
 % Author: fjh.
-% 
+%
 % For switches on strings, we generate a hash table using open addressing
 % to resolve hash conflicts.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.string_switch.
@@ -103,33 +103,35 @@ generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
         add_scalar_static_cell_natural_types(Strings, StringTableAddr, !CI),
         StringTable = const(llconst_data_addr(StringTableAddr, no)),
         HashLookupCode = node([
-            comment("hashed string switch") - "",
-            assign(SlotReg,
+            llds_instr(comment("hashed string switch"), ""),
+            llds_instr(assign(SlotReg,
                 binop(bitwise_and, unop(hash_string, VarRval),
-                    const(llconst_int(HashMask))))
-                - "compute the hash value of the input string",
-            label(LoopLabel) - "begin hash chain loop",
-            assign(StringReg,
+                    const(llconst_int(HashMask)))),
+                "compute the hash value of the input string"),
+            llds_instr(label(LoopLabel), "begin hash chain loop"),
+            llds_instr(assign(StringReg,
                 binop(array_index(elem_type_string),
-                    StringTable, lval(SlotReg)))
-                - "lookup the string for this hash slot",
-            if_val(binop(logical_and, lval(StringReg),
+                    StringTable, lval(SlotReg))),
+                "lookup the string for this hash slot"),
+            llds_instr(if_val(binop(logical_and, lval(StringReg),
                 binop(str_eq, lval(StringReg), VarRval)),
-                code_label(JumpLabel))
-                - "did we find a match?",
-            assign(SlotReg,
+                    code_label(JumpLabel)),
+                "did we find a match?"),
+            llds_instr(assign(SlotReg,
                 binop(array_index(elem_type_int),
-                    NextSlotsTable, lval(SlotReg)))
-                - "not yet, so get next slot in hash chain",
-            if_val(binop(int_ge, lval(SlotReg), const(llconst_int(0))),
-                code_label(LoopLabel))
-                - "keep searching until we reach the end of the chain",
-            label(FailLabel) - "no match, so fail"
+                    NextSlotsTable, lval(SlotReg))),
+                "not yet, so get next slot in hash chain"),
+            llds_instr(
+                if_val(binop(int_ge, lval(SlotReg), const(llconst_int(0))),
+                    code_label(LoopLabel)),
+                "keep searching until we reach the end of the chain"),
+            llds_instr(label(FailLabel), "no match, so fail")
         ])
     ),
     JumpCode = node([
-        label(JumpLabel) - "we found a match",
-        computed_goto(lval(SlotReg), Labels) - "jump to the corresponding code"
+        llds_instr(label(JumpLabel), "we found a match"),
+        llds_instr(computed_goto(lval(SlotReg), Labels),
+            "jump to the corresponding code")
     ]),
     Code = tree_list([VarCode, HashLookupCode, FailCode, JumpCode, SlotsCode]).
 
@@ -146,7 +148,9 @@ gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, SwitchGoalInfo,
         Strings = [],
         Labels = [],
         NextSlots = [],
-        Code = node([label(EndLabel) - "end of hashed string switch"])
+        Code = node([
+            llds_instr(label(EndLabel), "end of hashed string switch")
+        ])
     ;
         gen_hash_slot(Slot, TableSize, HashSlotMap, CodeModel, SwitchGoalInfo,
             FailLabel, EndLabel, !MaybeEnd, String, Label, NextSlot,
@@ -179,7 +183,7 @@ gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
         StringRval = const(llconst_string(String)),
         code_info.get_next_label(Label, !CI),
         string.append_list(["case """, String, """"], Comment),
-        LabelCode = node([label(Label) - Comment]),
+        LabelCode = node([llds_instr(label(Label), Comment)]),
         code_info.remember_position(!.CI, BranchStart),
         maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
             !CI),
@@ -191,8 +195,9 @@ gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
         ;
             code_info.reset_to_position(BranchStart, !CI)
         ),
-        FinishCode = node([goto(code_label(EndLabel))
-            - "jump to end of switch"]),
+        FinishCode = node([
+            llds_instr(goto(code_label(EndLabel)), "jump to end of switch")
+        ]),
         Code = tree_list([LabelCode, TraceCode, GoalCode, SaveCode,
              FinishCode])
     ;

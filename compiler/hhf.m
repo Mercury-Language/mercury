@@ -1,20 +1,20 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: hhf.m.
 % Author: dmo.
-% 
+%
 % Convert superhomogeneous form to hyperhomogeneous form and output an
 % inst graph for the predicate based on this transformation.
 %
 % Hyperhomogeneous form and the transformation are documented in
 % David Overton's PhD thesis.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.hhf.
@@ -122,7 +122,7 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
 %           ^ interface_varset := VarSet,
 %       map.foldl(process_proc(ModuleInfo0, HeadVars),
 %           Procedures, InstGraphInfo0, InstGraphInfo1),
-% 
+%
 %       % Calculate interface vars.
 %       solutions((pred(V::out) is nondet :-
 %               list.member(V0, HeadVars),
@@ -130,7 +130,7 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
 %           ), InterfaceVars),
 %       InstGraphInfo = InstGraphInfo1 ^ interface_vars :=
 %           InterfaceVars,
-% 
+%
 %       PredInfo = PredInfo2 ^ inst_graph_info := InstGraphInfo
 %   ),
 
@@ -193,7 +193,7 @@ process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
 
 process_clause(_HeadVars, clause(ProcIds, Goal0, Lang, Context),
         clause(ProcIds, Goal, Lang, Context), !HI) :-
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     goal_info_get_nonlocals(GoalInfo0, NonLocals),
 
     process_goal(NonLocals, Goal0, Goal, !HI).
@@ -209,15 +209,19 @@ process_clause(_HeadVars, clause(ProcIds, Goal0, Lang, Context),
 :- pred process_goal(set(prog_var)::in, hlds_goal::in, hlds_goal::out,
     hhf_info::in, hhf_info::out) is det.
 
-process_goal(NonLocals, GoalExpr0 - GoalInfo, GoalExpr - GoalInfo, !HI) :-
-    process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI).
+process_goal(NonLocals, Goal0, Goal, !HI) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+    process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred goal_use_own_nonlocals(hlds_goal::in, hlds_goal::out,
     hhf_info::in, hhf_info::out) is det.
 
-goal_use_own_nonlocals(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo, !HI) :-
+goal_use_own_nonlocals(Goal0, Goal, !HI) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
-    process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI).
+    process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred process_goal_expr(set(prog_var)::in, hlds_goal_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out, hhf_info::in, hhf_info::out)
@@ -266,14 +270,14 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
     ;
         GoalExpr0 = if_then_else(Vs, Cond0, Then0, Else0),
         process_goal(NonLocals, Cond0, Cond, !HI),
-        Then0 = ThenExpr0 - ThenInfo,
+        Then0 = hlds_goal(ThenExpr0, ThenInfo),
         goal_info_get_nonlocals(ThenInfo, ThenNonLocals),
         process_goal_expr(ThenNonLocals, ThenInfo, ThenExpr0, ThenExpr, !HI),
-        Then = ThenExpr - ThenInfo,
-        Else0 = ElseExpr0 - ElseInfo,
+        Then = hlds_goal(ThenExpr, ThenInfo),
+        Else0 = hlds_goal(ElseExpr0, ElseInfo),
         goal_info_get_nonlocals(ElseInfo, ElseNonLocals),
         process_goal_expr(ElseNonLocals, ElseInfo, ElseExpr0, ElseExpr, !HI),
-        Else = ElseExpr - ElseInfo,
+        Else = hlds_goal(ElseExpr, ElseInfo),
         GoalExpr = if_then_else(Vs, Cond, Then, Else)
     ;
         GoalExpr0 = shorthand(_),
@@ -314,8 +318,9 @@ process_unify(rhs_functor(ConsId0, IsExistConstruct, ArgsA), NonLocals,
     goal_info_get_nonlocals(GoalInfo0, GINonlocals0),
     GINonlocals = GINonlocals0 `set.union` list_to_set(Args),
     goal_info_set_nonlocals(GINonlocals, GoalInfo0, GoalInfo),
-    UnifyGoal = unify(X, rhs_functor(ConsId, IsExistConstruct, Args),
-        Mode, Unif, Context) - GoalInfo,
+    UnifyGoalExpr = unify(X, rhs_functor(ConsId, IsExistConstruct, Args),
+        Mode, Unif, Context),
+    UnifyGoal = hlds_goal(UnifyGoalExpr, GoalInfo),
     GoalExpr = conj(plain_conj, [UnifyGoal | Unifications]).
 
 :- pred make_unifications(list(prog_var)::in, list(prog_var)::in,
@@ -328,7 +333,7 @@ make_unifications([_ | _], [], _, _, _, _, _) :-
 make_unifications([], [_ | _], _, _, _, _, _) :-
     unexpected(this_file, "hhf_make_unifications: length mismatch (2)").
 make_unifications([A | As], [B | Bs], GI0, M, U, C,
-        [unify(A, rhs_var(B), M, U, C) - GI | Us]) :-
+        [hlds_goal(unify(A, rhs_var(B), M, U, C), GI) | Us]) :-
     goal_info_get_nonlocals(GI0, GINonlocals0),
     GINonlocals = GINonlocals0 `set.insert` A `set.insert` B,
     goal_info_set_nonlocals(GINonlocals, GI0, GI),
@@ -343,7 +348,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
     add_unifications(As, NonLocals, GI0, M, U, C, Vs, Goals0, !HI),
     InstGraph0 = !.HI ^ inst_graph,
     (
-        ( 
+        (
             map.lookup(InstGraph0, A, Node),
             Node = node(_, parent(_))
         ;
@@ -363,7 +368,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
         goal_info_get_nonlocals(GI0, GINonlocals0),
         GINonlocals = GINonlocals0 `set.insert` V,
         goal_info_set_nonlocals(GINonlocals, GI0, GI),
-        Goals = [unify(A, rhs_var(V), M, U, C) - GI | Goals0]
+        Goals = [hlds_goal(unify(A, rhs_var(V), M, U, C), GI) | Goals0]
     ;
         V = A,
         Goals = Goals0
@@ -374,7 +379,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
 flatten_conj([], []).
 flatten_conj([Goal | Goals0], Goals) :-
     flatten_conj(Goals0, Goals1),
-    ( Goal = conj(plain_conj, SubGoals) - _ ->
+    ( Goal = hlds_goal(conj(plain_conj, SubGoals), _) ->
         list.append(SubGoals, Goals1, Goals)
     ;
         Goals = [Goal | Goals1]
@@ -497,29 +502,29 @@ same_type_list([A | As], [B | Bs]) :-
 %   % to the inst_graph.
 % :- pred process_proc(module_info::in, list(prog_var)::in, proc_id::in,
 %   proc_info::in, inst_graph::out, prog_varset::out) is det.
-% 
+%
 % process_proc(ModuleInfo, HeadVars, _ProcId, ProcInfo, Info0, Info) :-
 %   proc_info_get_argmodes(ProcInfo, ArgModes),
-% 
+%
 %   mode_list_get_initial_insts(ArgModes, ModuleInfo, InstsI),
 %   assoc_list.from_corresponding_lists(HeadVars, InstsI, VarInstsI),
 %   list.foldl(process_arg(ModuleInfo), VarInstsI, Info0, Info),
-% 
+%
 %   mode_list_get_final_insts(ArgModes, ModuleInfo, InstsF),
 %   assoc_list.from_corresponding_lists(HeadVars, InstsF, VarInstsF),
 %   list.foldl(process_arg(ModuleInfo), VarInstsF, Info0, Info).
-% 
+%
 % :- pred process_arg(module_info::in, pair(prog_var, inst)::in,
 %       inst_graph_info::in, inst_graph_info::out) is det.
-% 
+%
 % process_arg(ModuleInfo, Var - Inst, Info0, Info) :-
 %   map.init(Seen0),
 %   process_arg_inst(ModuleInfo, Var, Seen0, Inst, Info0, Info).
-% 
+%
 % :- pred process_arg_inst(module_info::in, prog_var::in,
 %       map(inst_name, prog_var)::in, inst::in, inst_graph_info::in,
 %       inst_graph_info::out) is det.
-% 
+%
 % process_arg_inst(ModuleInfo, Var, Seen0, Inst0, Info0, Info) :-
 %   ( Inst0 = defined_inst(InstName) ->
 %       map.det_insert(Seen0, InstName, Var, Seen),
@@ -531,7 +536,7 @@ same_type_list([A | As], [B | Bs]) :-
 %   ;
 %       Info = Info0
 %   ).
-% 
+%
 % :- pred process_bound_inst(module_info::in, prog_var::in,
 %       map(inst_name, prog_var)::in, bound_inst::in,
 %       inst_graph_info::in, inst_graph_info::out) is det.

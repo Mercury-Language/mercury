@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -199,7 +199,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
     select_matching_clauses(Clauses, ProcId, MatchingClauses),
     get_clause_goals(MatchingClauses, GoalList),
     ( GoalList = [SingleGoal] ->
-        SingleGoal = SingleExpr - _,
+        SingleGoal = hlds_goal(SingleExpr, _),
         (
             SingleExpr = call_foreign_proc(_, _, _, Args, ExtraArgs,
                 MaybeTraceRuntimeCond, _)
@@ -218,35 +218,30 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
     ;
         VarSet = VarSet0,
 
-        %
         % Convert the list of clauses into a disjunction,
         % and construct a goal_info for the disjunction.
-        %
 
-        %
-        % We use the context of the first clause, unless
-        % there weren't any clauses at all, in which case
-        % we use the context of the mode declaration.
+        % We use the context of the first clause, unless there weren't
+        % any clauses at all, in which case we use the context of the
+        % mode declaration.
         %
         goal_info_init(GoalInfo0),
         ( GoalList = [FirstGoal | _] ->
-            FirstGoal = _ - FirstGoalInfo,
+            FirstGoal = hlds_goal(_, FirstGoalInfo),
             goal_info_get_context(FirstGoalInfo, Context)
         ;
             proc_info_get_context(!.Proc, Context)
         ),
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
 
-        %
         % The non-local vars are just the head variables.
-        %
+
         NonLocalVars = proc_arg_vector_to_set(HeadVars),
         goal_info_set_nonlocals(NonLocalVars, GoalInfo1, GoalInfo2),
 
-        %
         % The disjunction is impure/semipure if any of the disjuncts
         % is impure/semipure.
-        %
+
         ( contains_nonpure_goal(GoalList) ->
             list.map(goal_get_purity, GoalList, PurityList),
             Purity = list.foldl(worst_purity, PurityList, purity_pure),
@@ -255,7 +250,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
             GoalInfo2 = GoalInfo
         ),
 
-        Goal = disj(GoalList) - GoalInfo
+        Goal = hlds_goal(disj(GoalList), GoalInfo)
     ),
     % XXX ARGVEC - when the proc_info is converted to use proc_arg_vectors
     %     we should just pass the headvar vector in directly.
@@ -403,13 +398,13 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
         ExtraModesAndVars, ExtraHeadVars, VarSet1, VarSet, VarTypes1, VarTypes,
         RttiVarMaps0, RttiVarMaps, [], ExistsCastExtraGoals),
 
-    Body0 = _ - GoalInfo0,
+    Body0 = hlds_goal(_, GoalInfo0),
     goal_to_conj_list(Body0, Goals0),
     Goals = Goals0 ++ ExistsCastHeadGoals ++ ExistsCastExtraGoals,
     HeadVars = ExtraHeadVars ++ OrigHeadVars,
     set.list_to_set(HeadVars, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-    Body = conj(plain_conj, Goals) - GoalInfo,
+    Body = hlds_goal(conj(plain_conj, Goals), GoalInfo),
     proc_info_set_body(VarSet, VarTypes, HeadVars, Body, RttiVarMaps,
         !ProcInfo).
 
@@ -491,8 +486,8 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
     (
         mode_is_output(ModuleInfo, ArgMode)
     ->
-            % Create the exists_cast goal.
-            %
+        % Create the exists_cast goal.
+
         term.context_init(Context),
         make_new_exist_cast_var(Var0, Var, !VarSet),
         map.lookup(!.VarTypes, Var0, VarType),
@@ -500,10 +495,10 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
         generate_cast(exists_cast, Var0, Var, Context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals],
 
-            % Update the rtti_varmaps.  The old variable needs to have the
-            % substitution applied to its type/constraint.  The new variable
-            % needs to be associated with the unsubstituted type/constraint.
-            %
+        % Update the rtti_varmaps.  The old variable needs to have the
+        % substitution applied to its type/constraint.  The new variable
+        % needs to be associated with the unsubstituted type/constraint.
+
         rtti_varmaps_var_info(!.RttiVarMaps, Var0, VarInfo),
         (
             VarInfo = type_info_var(TypeInfoType0),

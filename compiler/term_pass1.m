@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2006 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -306,7 +306,7 @@ check_proc_non_term_calls(PPId, !Errors, !ModuleInfo, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO) :-
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     check_goal_expr_non_term_calls(PPId, VarTypes, GoalExpr, GoalInfo,
         !Errors, !ModuleInfo, !IO).
 

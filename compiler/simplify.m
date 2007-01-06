@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -407,14 +407,14 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     pred_info_get_markers(PredInfo, Markers),
     (
         check_marker(Markers, marker_mode_check_clauses),
-        Goal0 = GoalExpr0 - GoalInfo0,
+        Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         ( GoalExpr0 = disj(_)
         ; GoalExpr0 = switch(_, _, _)
         )
     ->
         goal_info_add_feature(feature_mode_check_clauses_goal,
             GoalInfo0, GoalInfo1),
-        Goal1 = GoalExpr0 - GoalInfo1
+        Goal1 = hlds_goal(GoalExpr0, GoalInfo1)
     ;
         Goal1 = Goal0
     ),
@@ -515,7 +515,7 @@ do_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     ( simplify_info_requantify(!.Info) ->
-        Goal1 = _ - GoalInfo1,
+        Goal1 = hlds_goal(_, GoalInfo1),
         goal_info_get_nonlocals(GoalInfo1, NonLocals),
         implicitly_quantify_goal(NonLocals, _, Goal1, Goal2,
             VarSet0, VarSet1, VarTypes0, VarTypes1,
@@ -539,7 +539,7 @@ do_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
         Goal3 = Goal1
     ),
     ( simplify_info_rerun_det(!.Info) ->
-        Goal0 = _ - GoalInfo0,
+        Goal0 = hlds_goal(_, GoalInfo0),
         goal_info_get_determinism(GoalInfo0, Det),
         det_get_soln_context(Det, SolnContext),
 
@@ -573,8 +573,8 @@ do_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-
 :- pred simplify_goal(hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
-    Goal0 = _ - GoalInfo0,
+simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
+    Goal0 = hlds_goal(_, GoalInfo0),
     simplify_info_get_inside_duplicated_for_switch(!.Info,
         InsideDuplForSwitch),
     ( goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) ->
@@ -613,7 +613,7 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
             simplify_do_warn_simple_code(!.Info),
             \+ (
                     goal_contains_goal(Goal0, SubGoal),
-                    ( SubGoal = disj([]) - _
+                    ( SubGoal = hlds_goal(disj([]), _)
                     ; goal_is_call_to_builtin_false(SubGoal)
                     )
             )
@@ -720,14 +720,14 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
     % Remove unnecessary explicit quantifications before working
     % out whether the goal can cause a stack flush.
     %
-    ( Goal1 = scope(Reason1, SomeGoal1) - GoalInfo1 ->
+    ( Goal1 = hlds_goal(scope(Reason1, SomeGoal1), GoalInfo1) ->
         nested_scopes(Reason1, SomeGoal1, GoalInfo1, Goal2)
     ;
         Goal2 = Goal1
     ),
     (
         simplify_do_elim_removable_scopes(!.Info),
-        Goal2 = scope(Reason2, SomeGoal2) - _GoalInfo2,
+        Goal2 = hlds_goal(scope(Reason2, SomeGoal2), _GoalInfo2),
         ( Reason2 = barrier(removable)
         ; Reason2 = from_ground_term(_)
         )
@@ -737,9 +737,10 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
         Goal3 = Goal2
     ),
     simplify_info_maybe_clear_structs(before, Goal3, !Info),
-    Goal3 = GoalExpr3 - GoalInfo3,
+    Goal3 = hlds_goal(GoalExpr3, GoalInfo3),
     simplify_goal_2(GoalExpr3, GoalExpr, GoalInfo3, GoalInfo4, !Info, !IO),
-    simplify_info_maybe_clear_structs(after, GoalExpr - GoalInfo4, !Info),
+    simplify_info_maybe_clear_structs(after, hlds_goal(GoalExpr, GoalInfo4),
+        !Info),
     simplify_info_set_inside_duplicated_for_switch(InsideDuplForSwitch, !Info),
     enforce_invariant(GoalInfo4, GoalInfo, !Info).
 
@@ -774,8 +775,8 @@ enforce_invariant(GoalInfo0, GoalInfo, !Info) :-
 
 :- pred goal_is_call_to_builtin_false(hlds_goal::in) is semidet.
 
-goal_is_call_to_builtin_false(Goal - _) :-
-    Goal = plain_call(_, _, _, _, _, SymName),
+goal_is_call_to_builtin_false(hlds_goal(GoalExpr, _)) :-
+    GoalExpr = plain_call(_, _, _, _, _, SymName),
     SymName = qualified(mercury_public_builtin_module, "false").
 
 %-----------------------------------------------------------------------------%
@@ -795,19 +796,19 @@ simplify_goal_2(conj(ConjType, Goals0), Goal, GoalInfo0, GoalInfo,
         (
             Goals = [],
             goal_info_get_context(GoalInfo0, Context),
-            Goal - GoalInfo = true_goal_with_context(Context)
+            hlds_goal(Goal, GoalInfo) = true_goal_with_context(Context)
         ;
-            Goals = [SingleGoal - SingleGoalInfo],
+            Goals = [hlds_goal(SingleGoal, SingleGoalInfo)],
             % A singleton conjunction is equivalent to the goal itself.
             maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal,
                 Goal, GoalInfo, !Info)
         ;
             Goals = [_, _ | _],
-            %
+
             % Conjunctions that cannot produce solutions may nevertheless
             % contain nondet and multi goals. If this happens, the conjunction
             % is put inside a `scope' to appease the code generator.
-            %
+
             goal_info_get_determinism(GoalInfo0, Detism),
             (
                 simplify_do_once(!.Info),
@@ -816,7 +817,7 @@ simplify_goal_2(conj(ConjType, Goals0), Goal, GoalInfo0, GoalInfo,
             ->
                 determinism_components(InnerDetism, CanFail, at_most_many),
                 goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
-                InnerGoal = conj(plain_conj, Goals) - InnerInfo,
+                InnerGoal = hlds_goal(conj(plain_conj, Goals), InnerInfo),
                 Goal = scope(commit(dont_force_pruning), InnerGoal)
             ;
                 Goal = conj(plain_conj, Goals)
@@ -828,10 +829,11 @@ simplify_goal_2(conj(ConjType, Goals0), Goal, GoalInfo0, GoalInfo,
         (
             Goals0 = [],
             goal_info_get_context(GoalInfo0, Context),
-            Goal - GoalInfo = true_goal_with_context(Context)
+            hlds_goal(Goal, GoalInfo) = true_goal_with_context(Context)
         ;
             Goals0 = [SingleGoal0],
-            simplify_goal(SingleGoal0, SingleGoal - SingleGoalInfo, !Info, !IO),
+            simplify_goal(SingleGoal0, hlds_goal(SingleGoal, SingleGoalInfo),
+                !Info, !IO),
             maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal,
                 Goal, GoalInfo, !Info)
         ;
@@ -849,11 +851,11 @@ simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     (
         Disjuncts = [],
         goal_info_get_context(GoalInfo0, Context),
-        Goal - GoalInfo = fail_goal_with_context(Context)
+        hlds_goal(Goal, GoalInfo) = fail_goal_with_context(Context)
     ;
         Disjuncts = [SingleGoal],
         % A singleton disjunction is equivalent to the goal itself.
-        SingleGoal = Goal1 - GoalInfo1,
+        SingleGoal = hlds_goal(Goal1, GoalInfo1),
         maybe_wrap_goal(GoalInfo0, GoalInfo1, Goal1, Goal, GoalInfo, !Info)
     ;
         Disjuncts = [_, _ | _],
@@ -875,7 +877,6 @@ simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     list.length(Disjuncts, DisjunctsLength),
     list.length(Disjuncts0, Disjuncts0Length),
     ( DisjunctsLength \= Disjuncts0Length ->
-        %
         % If we pruned some disjuncts, variables used by those disjuncts
         % may no longer be non-local to the disjunction. Also, the determinism
         % may have changed (especially if we pruned all the disjuncts).
@@ -883,7 +884,7 @@ simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         % instmap_deltas and rerun determinism analysis to avoid aborts
         % in the code generator because the disjunction now cannot produce
         % variables it did before.
-        %
+
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
     ;
@@ -911,7 +912,7 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
         % An empty switch always fails.
         simplify_info_incr_cost_delta(cost_of_eliminate_switch, !Info),
         goal_info_get_context(GoalInfo0, Context),
-        Goal - GoalInfo = fail_goal_with_context(Context)
+        hlds_goal(Goal, GoalInfo) = fail_goal_with_context(Context)
     ;
         Cases = [case(ConsId, SingleGoal)],
         % A singleton switch is equivalent to the goal itself with a
@@ -967,7 +968,7 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
         ;
             % The var can only be bound to this cons_id, so a test
             % is unnecessary.
-            SingleGoal = Goal - GoalInfo
+            SingleGoal = hlds_goal(Goal, GoalInfo)
         ),
         simplify_info_incr_cost_delta(cost_of_eliminate_switch, !Info)
     ;
@@ -1078,7 +1079,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         RT0 = rhs_var(LT0)
     ->
         goal_info_get_context(GoalInfo0, Context),
-        Goal - GoalInfo = true_goal_with_context(Context)
+        hlds_goal(Goal, GoalInfo) = true_goal_with_context(Context)
     ;
         RT0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
             Vars, Modes, LambdaDeclaredDet, LambdaGoal0)
@@ -1110,7 +1111,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         ( RT0 = rhs_var(V) ->
             process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
                 GoalInfo0, Goal1, !Info, !IO),
-            Goal1 = Goal - GoalInfo
+            Goal1 = hlds_goal(Goal, GoalInfo)
         ;
             unexpected(this_file, "invalid RHS for complicated unify")
         )
@@ -1164,15 +1165,15 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
     % conjunction construct. This will change when constraint pushing
     % is finished, or when we start doing coroutining.
 
-    Cond0 = _ - CondInfo0,
+    Cond0 = hlds_goal(_, CondInfo0),
     goal_info_get_determinism(CondInfo0, CondDetism0),
     determinism_components(CondDetism0, CondCanFail0, CondSolns0),
     ( CondCanFail0 = cannot_fail ->
         goal_to_conj_list(Cond0, CondList),
         goal_to_conj_list(Then0, ThenList),
         list.append(CondList, ThenList, List),
-        simplify_goal(conj(plain_conj, List) - GoalInfo0, Goal - GoalInfo,
-            !Info, !IO),
+        simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
+            hlds_goal(Goal, GoalInfo), !Info, !IO),
         simplify_info_get_inside_duplicated_for_switch(!.Info,
             InsideDuplForSwitch),
         (
@@ -1200,7 +1201,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         % Optimize away the condition and the `then' part.
         det_negation_det(CondDetism0, MaybeNegDetism),
         (
-            Cond0 = negation(NegCond) - _,
+            Cond0 = hlds_goal(negation(NegCond), _),
             % XXX BUG! This optimization is only safe if it preserves mode
             % correctness, which means in particular that the negated goal
             % must not clobber any variables. For now I've just disabled
@@ -1227,12 +1228,12 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             goal_info_set_determinism(NegDetism, CondInfo0, NegCondInfo0),
             goal_info_set_instmap_delta(NegInstMapDelta,
                 NegCondInfo0, NegCondInfo),
-            Cond = negation(Cond0) - NegCondInfo
+            Cond = hlds_goal(negation(Cond0), NegCondInfo)
         ),
         goal_to_conj_list(Else0, ElseList),
         List = [Cond | ElseList],
-        simplify_goal(conj(plain_conj, List) - GoalInfo0, Goal - GoalInfo,
-            !Info, !IO),
+        simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
+            hlds_goal(Goal, GoalInfo), !Info, !IO),
         simplify_info_get_inside_duplicated_for_switch(!.Info,
             InsideDuplForSwitch),
         (
@@ -1256,20 +1257,19 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         ),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
-    ; Else0 = disj([]) - _ ->
+    ; Else0 = hlds_goal(disj([]), _) ->
         % (A -> C ; fail) is equivalent to (A, C)
         goal_to_conj_list(Cond0, CondList),
         goal_to_conj_list(Then0, ThenList),
         list.append(CondList, ThenList, List),
-        simplify_goal(conj(plain_conj, List) - GoalInfo0, Goal - GoalInfo,
-            !Info, !IO),
+        simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
+            hlds_goal(Goal, GoalInfo), !Info, !IO),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
     ;
-        %
-        % recursively simplify the sub-goals,
-        % and rebuild the resulting if-then-else
-        %
+        % Recursively simplify the sub-goals,
+        % and rebuild the resulting if-then-else.
+
         Info0 = !.Info,
         simplify_info_get_instmap(!.Info, InstMap0),
         simplify_goal(Cond0, Cond, !Info, !IO),
@@ -1278,13 +1278,13 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         simplify_info_post_branch_update(Info0, !Info),
         simplify_goal(Else0, Else, !Info, !IO),
         simplify_info_post_branch_update(Info0, !Info),
-        Cond = _ - CondInfo,
+        Cond = hlds_goal(_, CondInfo),
         goal_info_get_instmap_delta(CondInfo, CondDelta),
-        Then = _ - ThenInfo,
+        Then = hlds_goal(_, ThenInfo),
         goal_info_get_instmap_delta(ThenInfo, ThenDelta),
         instmap_delta_apply_instmap_delta(CondDelta, ThenDelta,
             test_size, CondThenDelta),
-        Else = _ - ElseInfo,
+        Else = hlds_goal(_, ElseInfo),
         goal_info_get_instmap_delta(ElseInfo, ElseDelta),
                 goal_info_get_nonlocals(GoalInfo0, NonLocals),
         simplify_info_get_module_info(!.Info, ModuleInfo0),
@@ -1309,7 +1309,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             % invariants that the MLDS back-end depends on)
             ( CondCanFail = cannot_fail
             ; CondSolns = at_most_zero
-            ; Else = disj([]) - _
+            ; Else = hlds_goal(disj([]), _)
             )
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
@@ -1331,7 +1331,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
                     IfThenElseCanFail, at_most_many),
                 goal_info_set_determinism(InnerDetism, GoalInfo1, InnerInfo),
                 Goal = scope(commit(dont_force_pruning),
-                    IfThenElse - InnerInfo)
+                    hlds_goal(IfThenElse, InnerInfo))
             ;
                 Goal = IfThenElse
             ),
@@ -1345,7 +1345,7 @@ simplify_goal_2(negation(Goal0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     simplify_info_get_common_info(!.Info, Common),
     simplify_goal(Goal0, Goal1, !Info, !IO),
     simplify_info_set_common_info(Common, !Info),
-    Goal1 = _ - GoalInfo1,
+    Goal1 = hlds_goal(_, GoalInfo1),
     goal_info_get_determinism(GoalInfo1, Detism),
     determinism_components(Detism, CanFail, MaxSoln),
     goal_info_get_context(GoalInfo0, Context),
@@ -1372,17 +1372,17 @@ simplify_goal_2(negation(Goal0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     ),
     (
         % replace `not true' with `fail'
-        Goal1 = conj(plain_conj, []) - _GoalInfo
+        Goal1 = hlds_goal(conj(plain_conj, []), _)
     ->
-        Goal - GoalInfo = fail_goal_with_context(Context)
+        hlds_goal(Goal, GoalInfo) = fail_goal_with_context(Context)
     ;
         % replace `not fail' with `true'
-        Goal1 = disj([]) - _GoalInfo2
+        Goal1 = hlds_goal(disj([]), _)
     ->
-        Goal - GoalInfo = true_goal_with_context(Context)
+        hlds_goal(Goal, GoalInfo) = true_goal_with_context(Context)
     ;
         % remove double negation
-        Goal1 = negation(SubGoal - SubGoalInfo) - _,
+        Goal1 = hlds_goal(negation(hlds_goal(SubGoal, SubGoalInfo)), _),
         % XXX BUG! This optimization is only safe if it preserves
         % mode correctness, which means in particular that the
         % the negated goal must not clobber any variables.
@@ -1400,7 +1400,7 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
     simplify_info_get_common_info(!.Info, Common),
     simplify_goal(SubGoal0, SubGoal, !Info, !IO),
     nested_scopes(Reason0, SubGoal, ScopeGoalInfo, Goal1),
-    Goal1 = GoalExpr1 - GoalInfo1,
+    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     ( GoalExpr1 = scope(FinalReason, FinalSubGoal) ->
         (
             FinalReason = promise_purity(_, _),
@@ -1478,7 +1478,7 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
                     PrivateBuiltin = mercury_private_builtin_module,
                     EvalPredName = "trace_evaluate_runtime_condition",
                     some [!EvalAttributes] (
-                        ( 
+                        (
                             Target = target_c,
                             !:EvalAttributes = default_attributes(lang_c)
                         ;
@@ -1514,8 +1514,9 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
                         EvalAttributes, [], [], yes(RuntimeExpr), EvalCode,
                         EvalFeatures, EvalInstMapDeltaSrc, ModuleInfo,
                         Context, CondGoal),
-                    Goal = if_then_else([], CondGoal, FinalSubGoal, true_goal)
-                        - GoalInfo1
+                    Goal = hlds_goal(
+                        if_then_else([], CondGoal, FinalSubGoal, true_goal),
+                        GoalInfo1)
                 )
             ;
                 Goal = Goal1
@@ -1540,7 +1541,7 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
     ;
         Goal = Goal1
     ),
-    Goal = GoalExpr - GoalInfo.
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 simplify_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !Info, !IO) :-
     GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
@@ -1680,10 +1681,10 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     goal_util.generate_simple_call(BuiltinModule, "compare", predicate,
         mode_no(ModeNo), detism_det, purity_pure, Args, [], ArgInsts,
         ModuleInfo, Context, CmpGoal0),
-    CmpGoal0 = CmpExpr - CmpInfo0,
+    CmpGoal0 = hlds_goal(CmpExpr, CmpInfo0),
     goal_info_get_nonlocals(CmpInfo0, CmpNonLocals0),
     goal_info_set_nonlocals(CmpNonLocals0 `insert` R, CmpInfo0, CmpInfo),
-    CmpGoal  = CmpExpr - CmpInfo,
+    CmpGoal  = hlds_goal(CmpExpr, CmpInfo),
 
     % Construct the unification R = Inequality.
     ConsId   = cons(qualified(BuiltinModule, Inequality), 0),
@@ -1696,14 +1697,15 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     UfyExpr  = unify(R, RHS, UMode, UKind, UContext),
     goal_info_get_nonlocals(GoalInfo, UfyNonLocals0),
     goal_info_set_nonlocals(UfyNonLocals0 `insert` R, GoalInfo, UfyInfo),
-    UfyGoal  = UfyExpr - UfyInfo,
+    UfyGoal  = hlds_goal(UfyExpr, UfyInfo),
 
     (
         Invert   = no,
         GoalExpr = conj(plain_conj, [CmpGoal, UfyGoal])
     ;
         Invert   = yes,
-        GoalExpr = conj(plain_conj, [CmpGoal, negation(UfyGoal) - UfyInfo])
+        GoalExpr = conj(plain_conj,
+            [CmpGoal, hlds_goal(negation(UfyGoal), UfyInfo)])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1961,7 +1963,7 @@ simplify_library_call("int", PredName, _ModeNum, CrossCompiling, Args,
     instmap_delta_from_assoc_list([ConstVar - ground_inst], InstMapDelta),
     goal_info_init(ConstNonLocals, InstMapDelta,
         detism_det, purity_pure, ConstGoalInfo),
-    ConstGoal = ConstGoalExpr - ConstGoalInfo,
+    ConstGoal = hlds_goal(ConstGoalExpr, ConstGoalInfo),
 
     IntModuleSymName = mercury_std_lib_module_name(unqualified("int")),
     OpSymName = qualified(IntModuleSymName, Op),
@@ -1981,7 +1983,7 @@ simplify_library_call("int", PredName, _ModeNum, CrossCompiling, Args,
     goal_info_get_nonlocals(OpGoalInfo0, OpNonLocals0),
     set.insert(OpNonLocals0, ConstVar, OpNonLocals),
     goal_info_set_nonlocals(OpNonLocals, OpGoalInfo0, OpGoalInfo),
-    OpGoal = OpGoalExpr - OpGoalInfo,
+    OpGoal = hlds_goal(OpGoalExpr, OpGoalInfo),
 
     GoalExpr = conj(plain_conj, [ConstGoal, OpGoal]).
 
@@ -2023,9 +2025,9 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         generate_simple_call(mercury_private_builtin_module,
             "builtin_unify_pred", predicate, mode_no(0), detism_semi,
             purity_pure, [XVar, YVar], [], [], ModuleInfo, GContext,
-            Call0 - _),
+            hlds_goal(Call0, _)),
         simplify_goal_2(Call0, Call1, GoalInfo0, GoalInfo, !Info, !IO),
-        Call = Call1 - GoalInfo,
+        Call = hlds_goal(Call1, GoalInfo),
         ExtraGoals = []
     ;
         ( type_to_ctor_and_args(Type, TypeCtorPrime, TypeArgsPrime) ->
@@ -2072,7 +2074,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
                 ModuleInfo, Context, GoalInfo0, Call0, CallGoalInfo0),
             simplify_goal_2(Call0, Call1, CallGoalInfo0, CallGoalInfo1, !Info,
                 !IO),
-            Call = Call1 - CallGoalInfo1
+            Call = hlds_goal(Call1, CallGoalInfo1)
         )
     ),
     list.append(ExtraGoals, [Call], ConjList),
@@ -2233,7 +2235,7 @@ input_args_are_equiv([Arg | Args], [HeadVar | HeadVars], [Mode | Modes],
 
 nested_scopes(Reason0, InnerGoal0, OuterGoalInfo, Goal) :-
     nested_scopes_2(Reason0, Reason, InnerGoal0, InnerGoal),
-    InnerGoal = _ - GoalInfo,
+    InnerGoal = hlds_goal(_, GoalInfo),
     (
         Reason = exist_quant(_),
         goal_info_get_determinism(GoalInfo, Detism),
@@ -2242,7 +2244,7 @@ nested_scopes(Reason0, InnerGoal0, OuterGoalInfo, Goal) :-
         % If the inner and outer detisms match the `some' scope is unnecessary.
         Goal = InnerGoal
     ;
-        Goal = scope(Reason, InnerGoal) - OuterGoalInfo
+        Goal = hlds_goal(scope(Reason, InnerGoal), OuterGoalInfo)
     ).
 
 :- pred nested_scopes_2(scope_reason::in, scope_reason::out,
@@ -2250,7 +2252,7 @@ nested_scopes(Reason0, InnerGoal0, OuterGoalInfo, Goal) :-
 
 nested_scopes_2(Reason0, Reason, Goal0, Goal) :-
     (
-        Goal0 = scope(Reason1, Goal1) - _GoalInfo0,
+        Goal0 = hlds_goal(scope(Reason1, Goal1), _),
         (
             Reason0 = exist_quant(Vars0),
             Reason1 = exist_quant(Vars1)
@@ -2321,7 +2323,8 @@ maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo, Goal1, Goal, GoalInfo, !Info) :-
         Goal = Goal1,
         GoalInfo = InnerGoalInfo
     ;
-        Goal = scope(commit(dont_force_pruning), Goal1 - InnerGoalInfo),
+        Goal = scope(commit(dont_force_pruning),
+            hlds_goal(Goal1, InnerGoalInfo)),
         GoalInfo = OuterGoalInfo,
         simplify_info_set_rerun_det(!Info)
     ).
@@ -2337,14 +2340,14 @@ simplify_conj([], RevGoals, Goals, _, !Info, !IO) :-
 simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
     Info0 = !.Info,
     % Flatten conjunctions.
-    ( Goal0 = conj(plain_conj, SubGoals) - _ ->
+    ( Goal0 = hlds_goal(conj(plain_conj, SubGoals), _) ->
         list.append(SubGoals, Goals0, Goals1),
         simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info, !IO)
     ;
         simplify_goal(Goal0, Goal1, !Info, !IO),
         (
             % Flatten conjunctions.
-            Goal1 = conj(plain_conj, SubGoals1) - _
+            Goal1 = hlds_goal(conj(plain_conj, SubGoals1), _)
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
             list.append(SubGoals1, Goals0, Goals1),
@@ -2355,14 +2358,14 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
                 simplify_info_get_instmap(!.Info, InstMap1),
                 instmap.is_unreachable(InstMap1)
             ;
-                Goal1 = _ - GoalInfo1,
+                Goal1 = hlds_goal(_, GoalInfo1),
                 goal_info_get_determinism(GoalInfo1, Detism1),
                 determinism_components(Detism1, _, at_most_zero)
             )
         ->
             conjoin_goal_and_rev_goal_list(Goal1, !RevGoals),
             (
-                ( Goal1 = disj([]) - _
+                ( Goal1 = hlds_goal(disj([]), _)
                 ; Goals0 = []
                 )
             ->
@@ -2376,7 +2379,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
                 % analysis is rerun, since according to the language
                 % specification, mode analysis does not use inferred
                 % determinism information when deciding what can never succeed.
-                Goal0 = _ - GoalInfo0,
+                Goal0 = hlds_goal(_, GoalInfo0),
                 goal_info_get_context(GoalInfo0, Context),
                 FailGoal = fail_goal_with_context(Context),
                 conjoin_goal_and_rev_goal_list(FailGoal, !RevGoals)
@@ -2393,7 +2396,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
     hlds_goals::in, hlds_goals::out) is det.
 
 conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
-    ( Goal = conj(plain_conj, Goals) - _ ->
+    ( Goal = hlds_goal(conj(plain_conj, Goals), _) ->
         list.reverse(Goals, Goals1),
         list.append(Goals1, RevGoals0, RevGoals)
     ;
@@ -2480,7 +2483,7 @@ find_excess_assigns_in_conj(Trace, TraceOptimized, VarSet, ConjNonLocals,
 
 goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
         !Subn) :-
-    Goal0 = unify(_, _, _, Unif, _) - _,
+    Goal0 = hlds_goal(unify(_, _, _, Unif, _), _),
     Unif = assign(LeftVar0, RightVar0),
 
     % Check if we've already substituted one or both of the variables.
@@ -2572,20 +2575,19 @@ simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
     simplify_goal(Goal0, Goal, !Info, !IO),
 
         % Remove failing branches.
-    ( Goal = disj([]) - _ ->
+    ( Goal = hlds_goal(disj([]), _) ->
         RevCases = RevCases0,
         !:CanFail = can_fail
     ;
         Case = case(ConsId, Goal),
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
 
-        %
         % Make sure the switched on variable appears in the instmap delta.
         % This avoids an abort in merge_instmap_delta if another branch
         % further instantiates the switched-on variable. If the switched on
         % variable does not appear in this branch's instmap_delta, the inst
         % before the goal would be used, resulting in a mode error.
-        %
+
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta0),
         simplify_info_get_module_info(!.Info, ModuleInfo2),
         instmap_delta_bind_var_to_functor(Var, Type, ConsId,
@@ -2607,8 +2609,8 @@ simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
 :- pred create_test_unification(prog_var::in, cons_id::in, int::in,
     hlds_goal::out, simplify_info::in, simplify_info::out) is det.
 
-create_test_unification(Var, ConsId, ConsArity, ExtraGoal - ExtraGoalInfo,
-        !Info) :-
+create_test_unification(Var, ConsId, ConsArity,
+        hlds_goal(ExtraGoal, ExtraGoalInfo), !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     varset.new_vars(VarSet0, ConsArity, ArgVars, VarSet),
@@ -2660,7 +2662,7 @@ simplify_disj([], RevGoals, Goals, !PostBranchInstMaps, _, !Info, !IO) :-
 simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
         Info0, !Info, !IO) :-
     simplify_goal(Goal0, Goal, !Info, !IO),
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_purity(GoalInfo, Purity),
 
     (
@@ -2675,7 +2677,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
             % Don't warn where the initial goal was fail, since that can result
             % from mode analysis pruning away cases in a switch which cannot
             % succeed due to sub-typing in the modes.
-            Goal0 \= disj([]) - _
+            Goal0 \= hlds_goal(disj([]), _)
         ->
             goal_info_get_context(GoalInfo, Context),
             Pieces = [words("Warning: this disjunct"),
@@ -2694,7 +2696,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
         % Prune away non-succeeding disjuncts where possible.
         (
             (
-                Goal0 = disj([]) - _
+                Goal0 = hlds_goal(disj([]), _)
             ;
                 % Only remove disjuncts that might loop
                 % or call error/1 if --no-fully-strict.
@@ -2753,7 +2755,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
 fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, Goal, !Info, !IO) :-
     det_disj_to_ite(Disjuncts, GoalInfo, IfThenElse),
     simplify_goal(IfThenElse, Simplified, !Info, !IO),
-    Simplified = Goal - _.
+    Simplified = hlds_goal(Goal, _).
 
     % det_disj_to_ite is used to transform disjunctions that occur
     % in prunable contexts into if-then-elses.
@@ -2784,12 +2786,12 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
     ;
         Disjuncts = [_ | _],
         Cond = Disjunct,
-        Cond = _CondGoal - CondGoalInfo,
+        Cond = hlds_goal(_CondGoal, CondGoalInfo),
 
         Then = true_goal,
 
         det_disj_to_ite(Disjuncts, GoalInfo, Rest),
-        Rest = _RestGoal - RestGoalInfo,
+        Rest = hlds_goal(_RestGoal, RestGoalInfo),
 
         goal_info_get_nonlocals(CondGoalInfo, CondNonLocals),
         goal_info_get_nonlocals(RestGoalInfo, RestNonLocals),
@@ -2814,7 +2816,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
         determinism_components(Detism, CanFail, MaxSoln),
         goal_info_set_determinism(Detism, NewGoalInfo1, NewGoalInfo),
 
-        Goal = if_then_else([], Cond, Then, Rest) - NewGoalInfo
+        Goal = hlds_goal(if_then_else([], Cond, Then, Rest), NewGoalInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2822,7 +2824,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 :- pred contains_multisoln_goal(list(hlds_goal)::in) is semidet.
 
 contains_multisoln_goal(Goals) :-
-    list.member(_Goal - GoalInfo, Goals),
+    list.member(hlds_goal(_GoalExpr, GoalInfo), Goals),
     goal_info_get_determinism(GoalInfo, Detism),
     determinism_components(Detism, _, at_most_many).
 
@@ -2831,8 +2833,8 @@ contains_multisoln_goal(Goals) :-
 :- pred goal_contains_trace(hlds_goal::in, hlds_goal::out,
     contains_trace_goal::out) is det.
 
-goal_contains_trace(GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo,
-        ContainsTrace) :-
+goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo), ContainsTrace) :-
     (
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
@@ -3204,7 +3206,7 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, !Info) :-
     (
         simplify_do_common_struct(!.Info),
         \+ simplify_do_extra_common_struct(!.Info),
-        Goal = GoalExpr - _,
+        Goal = hlds_goal(GoalExpr, _),
         will_flush(GoalExpr, BeforeAfter) = yes
     ->
         simplify_info_get_common_info(!.Info, CommonInfo0),

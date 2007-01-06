@@ -1,21 +1,21 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: modecheck_unify.m.
 % Main author: fjh.
-% 
+%
 % This module contains the code to modecheck a unification.
 %
 % Check that the unification doesn't attempt to unify two free variables
 % (or in general two free sub-terms) unless one of them is dead. (Also we
 % ought to split unifications up if necessary to avoid complicated
 % sub-unifications.)
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.modecheck_unify.
@@ -120,7 +120,7 @@ modecheck_unification(X, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
 modecheck_unification_2(X, rhs_var(Y), Unification0, UnifyContext,
-        UnifyGoalInfo0, Unify, !ModeInfo, !IO) :-
+        UnifyGoalInfo0, UnifyGoalExpr, !ModeInfo, !IO) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -180,17 +180,17 @@ modecheck_unification_2(X, rhs_var(Y), Unification0, UnifyContext,
         ModeOfX = (InstOfX -> Inst),
         ModeOfY = (InstOfY -> Inst),
         categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y,
-            Det, UnifyContext, UnifyGoalInfo0, VarTypes, Unification0, Unify0,
-            !ModeInfo),
+            Det, UnifyContext, UnifyGoalInfo0, VarTypes, Unification0,
+            UnifyGoalExpr0, !ModeInfo),
         (
             MaybeInitX = no,
-            Unify = Unify0
+            UnifyGoalExpr = UnifyGoalExpr0
         ;
-            MaybeInitX = yes(InitGoal - InitGoalInfo),
-            compute_goal_instmap_delta(InstMap, Unify0,
+            MaybeInitX = yes(InitGoal),
+            compute_goal_instmap_delta(InstMap, UnifyGoalExpr0,
                 UnifyGoalInfo0, UnifyGoalInfo, !ModeInfo),
-            Unify = conj(plain_conj,
-                [InitGoal - InitGoalInfo, Unify0 - UnifyGoalInfo])
+            UnifySubGoal = hlds_goal(UnifyGoalExpr0, UnifyGoalInfo),
+            UnifyGoalExpr = conj(plain_conj, [InitGoal, UnifySubGoal])
         )
     ;
         set.list_to_set([X, Y], WaitingVars),
@@ -207,7 +207,7 @@ modecheck_unification_2(X, rhs_var(Y), Unification0, UnifyContext,
         ModeOfX = (InstOfX -> Inst),
         ModeOfY = (InstOfY -> Inst),
         Modes = ModeOfX - ModeOfY,
-        Unify = unify(X, rhs_var(Y), Modes, Unification, UnifyContext)
+        UnifyGoalExpr = unify(X, rhs_var(Y), Modes, Unification, UnifyContext)
     ).
 
 modecheck_unification_2(X0,
@@ -329,7 +329,7 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
     % Lock the non-locals. (A lambda goal is not allowed to bind any of the
     % non-local variables, since it could get called more than once, or
     % from inside a negation.)
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     goal_info_get_nonlocals(GoalInfo0, NonLocals0),
     set.delete_list(NonLocals0, Vars, NonLocals),
     set.to_sorted_list(NonLocals, NonLocalsList),
@@ -374,7 +374,7 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         % call unique_modes.check_goal rather than modecheck_goal.
         (
             HowToCheckGoal = check_unique_modes,
-            unique_modes.check_goal(Goal0, Goal1, !ModeInfo, !IO)
+            unique_modes_check_goal(Goal0, Goal1, !ModeInfo, !IO)
         ;
             HowToCheckGoal = check_modes,
             modecheck_goal(Goal0, Goal1, !ModeInfo, !IO)
@@ -844,29 +844,28 @@ make_complicated_sub_unify(Var0, Var, ExtraGoals0, !ModeInfo) :-
     % Insert the new unification at the start of the extra goals.
     ExtraGoals0 = extra_goals([], [ExtraGoal]).
 
-create_var_var_unification(Var0, Var, Type, ModeInfo, Goal - GoalInfo) :-
+create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_mode_context(ModeInfo, ModeContext),
     mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext),
     UnifyContext = unify_context(MainContext, SubContexts),
 
     create_pure_atomic_complicated_unification(Var0, rhs_var(Var), Context,
-        MainContext, SubContexts, Goal0 - GoalInfo0),
+        MainContext, SubContexts, hlds_goal(GoalExpr0, GoalInfo0)),
 
-    %
     % Compute the goal_info nonlocal vars for the newly created goal
     % (excluding the type_info vars -- they are added below).
     % N.B. This may overestimate the set of non-locals,
     % but that shouldn't cause any problems.
-    %
+
     set.list_to_set([Var0, Var], NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
     goal_info_set_context(Context, GoalInfo1, GoalInfo2),
 
-    %
     % Look up the map(tvar, type_info_locn) in the proc_info,
     % since it is needed by polymorphism.unification_typeinfos.
-    %
+
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_predid(ModeInfo, PredId),
     mode_info_get_procid(ModeInfo, ProcId),
@@ -874,15 +873,14 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal - GoalInfo) :-
         _PredInfo, ProcInfo),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
 
-    %
     % Call polymorphism.unification_typeinfos to add the appropriate
     % type-info and type-class-info variables to the nonlocals
     % and to the unification.
-    %
-    ( Goal0 = unify(X, Y, Mode, Unification0, FinalUnifyContext) ->
+
+    ( GoalExpr0 = unify(X, Y, Mode, Unification0, FinalUnifyContext) ->
         unification_typeinfos_rtti_varmaps(Type, RttiVarMaps,
             Unification0, Unification, GoalInfo2, GoalInfo),
-        Goal = unify(X, Y, Mode, Unification, FinalUnifyContext)
+        GoalExpr = unify(X, Y, Mode, Unification, FinalUnifyContext)
     ;
         unexpected(this_file, "modecheck_unify.create_var_var_unification")
     ).
@@ -1188,7 +1186,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
                 unshroud_pred_proc_id(ShroudedPredProcId),
             (
                 RHS0 = rhs_lambda_goal(_, _, EvalMethod, _, _, _, _, Goal),
-                Goal = plain_call(PredId, ProcId, _, _, _, _) - _
+                Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
             ->
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 PredModule = pred_info_module(PredInfo),

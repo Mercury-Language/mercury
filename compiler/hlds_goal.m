@@ -39,7 +39,14 @@
 
 :- type hlds_goals  == list(hlds_goal).
 
-:- type hlds_goal   == pair(hlds_goal_expr, hlds_goal_info).
+:- type hlds_goal
+    --->    hlds_goal(
+                hlds_goal_expr      :: hlds_goal_expr,
+                hlds_goal_info      :: hlds_goal_info
+            ).
+
+:- func get_hlds_goal_expr(hlds_goal) = hlds_goal_expr.
+:- func get_hlds_goal_info(hlds_goal) = hlds_goal_info.
 
 :- type hlds_goal_expr
 
@@ -1455,6 +1462,9 @@
 
 %-----------------------------------------------------------------------------%
 
+get_hlds_goal_expr(Goal) = Goal ^ hlds_goal_expr.
+get_hlds_goal_info(Goal) = Goal ^ hlds_goal_info.
+
 foreign_arg_var(Arg) = Arg ^ arg_var.
 foreign_arg_maybe_name_mode(Arg) = Arg ^ arg_name_mode.
 foreign_arg_type(Arg) = Arg ^ arg_type.
@@ -1811,13 +1821,15 @@ worst_contains_trace(contains_no_trace_goal, contains_trace_goal) =
 worst_contains_trace(contains_no_trace_goal, contains_no_trace_goal) =
     contains_no_trace_goal.
 
-goal_get_purity(_GoalExpr - GoalInfo, Purity) :-
+goal_get_purity(hlds_goal(_GoalExpr, GoalInfo), Purity) :-
     goal_info_get_purity(GoalInfo, Purity).
 
-goal_set_purity(Purity, GoalExpr - GoalInfo0, GoalExpr - GoalInfo) :-
+goal_set_purity(Purity, hlds_goal(GoalExpr, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo)) :-
     goal_info_set_purity(Purity, GoalInfo0, GoalInfo).
 
-goal_get_goal_purity(_GoalExpr - GoalInfo, Purity, ContainsTraceGoal) :-
+goal_get_goal_purity(hlds_goal(_GoalExpr, GoalInfo),
+        Purity, ContainsTraceGoal) :-
     goal_info_get_goal_purity(GoalInfo, Purity, ContainsTraceGoal).
 
 goal_info_get_goal_purity(GoalInfo, Purity, ContainsTraceGoal) :-
@@ -1844,19 +1856,22 @@ goal_info_has_feature(GoalInfo, Feature) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
+goal_get_nonlocals(hlds_goal(_GoalExpr, GoalInfo), NonLocals) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals).
 
-goal_set_context(Context, Goal - GoalInfo0, Goal - GoalInfo) :-
+goal_set_context(Context, hlds_goal(GoalExpr, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo)) :-
     goal_info_set_context(Context, GoalInfo0, GoalInfo).
 
-goal_add_feature(Feature, Goal - GoalInfo0, Goal - GoalInfo) :-
+goal_add_feature(Feature, hlds_goal(GoalExpr, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo)) :-
     goal_info_add_feature(Feature, GoalInfo0, GoalInfo).
 
-goal_remove_feature(Feature, Goal - GoalInfo0, Goal - GoalInfo) :-
+goal_remove_feature(Feature, hlds_goal(GoalExpr, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo)) :-
     goal_info_remove_feature(Feature, GoalInfo0, GoalInfo).
 
-goal_has_feature(_Goal - GoalInfo, Feature) :-
+goal_has_feature(hlds_goal(_GoalExpr, GoalInfo), Feature) :-
     goal_info_has_feature(GoalInfo, Feature).
 
 %-----------------------------------------------------------------------------%
@@ -1903,21 +1918,21 @@ goal_path_step_to_string(later, "l;").
 %
 
 goal_to_conj_list(Goal, ConjList) :-
-    ( Goal = (conj(plain_conj, List) - _) ->
+    ( Goal = hlds_goal(conj(plain_conj, List), _) ->
         ConjList = List
     ;
         ConjList = [Goal]
     ).
 
 goal_to_par_conj_list(Goal, ConjList) :-
-    ( Goal = conj(parallel_conj, List) - _ ->
+    ( Goal = hlds_goal(conj(parallel_conj, List), _) ->
         ConjList = List
     ;
         ConjList = [Goal]
     ).
 
 goal_to_disj_list(Goal, DisjList) :-
-    ( Goal = disj(List) - _ ->
+    ( Goal = hlds_goal(disj(List), _) ->
         DisjList = List
     ;
         DisjList = [Goal]
@@ -1927,35 +1942,35 @@ conj_list_to_goal(ConjList, GoalInfo, Goal) :-
     ( ConjList = [Goal0] ->
         Goal = Goal0
     ;
-        Goal = conj(plain_conj, ConjList) - GoalInfo
+        Goal = hlds_goal(conj(plain_conj, ConjList), GoalInfo)
     ).
 
 par_conj_list_to_goal(ConjList, GoalInfo, Goal) :-
     ( ConjList = [Goal0] ->
         Goal = Goal0
     ;
-        Goal = conj(parallel_conj, ConjList) - GoalInfo
+        Goal = hlds_goal(conj(parallel_conj, ConjList), GoalInfo)
     ).
 
 disj_list_to_goal(DisjList, GoalInfo, Goal) :-
     ( DisjList = [Goal0] ->
         Goal = Goal0
     ;
-        Goal = disj(DisjList) - GoalInfo
+        Goal = hlds_goal(disj(DisjList), GoalInfo)
     ).
 
 conjoin_goal_and_goal_list(Goal0, Goals, Goal) :-
-    Goal0 = GoalExpr0 - GoalInfo0,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( GoalExpr0 = conj(plain_conj, GoalList0) ->
         list.append(GoalList0, Goals, GoalList),
         GoalExpr = conj(plain_conj, GoalList)
     ;
         GoalExpr = conj(plain_conj, [Goal0 | Goals])
     ),
-    Goal = GoalExpr - GoalInfo0.
+    Goal = hlds_goal(GoalExpr, GoalInfo0).
 
 conjoin_goals(Goal1, Goal2, Goal) :-
-    ( Goal2 = conj(plain_conj, Goals2) - _ ->
+    ( Goal2 = hlds_goal(conj(plain_conj, Goals2), _) ->
         GoalList = Goals2
     ;
         GoalList = [Goal2]
@@ -1965,25 +1980,25 @@ conjoin_goals(Goal1, Goal2, Goal) :-
 negate_goal(Goal, GoalInfo, NegatedGoal) :-
     (
         % Eliminate double negations.
-        Goal = negation(Goal1) - _
+        Goal = hlds_goal(negation(Goal1), _)
     ->
         NegatedGoal = Goal1
     ;
         % Convert negated conjunctions of negations into disjunctions.
-        Goal = conj(plain_conj, NegatedGoals) - _,
+        Goal = hlds_goal(conj(plain_conj, NegatedGoals), _),
         all_negated(NegatedGoals, UnnegatedGoals)
     ->
-        NegatedGoal = disj(UnnegatedGoals) - GoalInfo
+        NegatedGoal = hlds_goal(disj(UnnegatedGoals), GoalInfo)
     ;
-        NegatedGoal = negation(Goal) - GoalInfo
+        NegatedGoal = hlds_goal(negation(Goal), GoalInfo)
     ).
 
 :- pred all_negated(list(hlds_goal)::in, list(hlds_goal)::out) is semidet.
 
 all_negated([], []).
-all_negated([negation(Goal) - _ | NegatedGoals], [Goal | Goals]) :-
+all_negated([hlds_goal(negation(Goal), _) | NegatedGoals], [Goal | Goals]) :-
     all_negated(NegatedGoals, Goals).
-all_negated([conj(plain_conj, NegatedConj) - _GoalInfo | NegatedGoals],
+all_negated([hlds_goal(conj(plain_conj, NegatedConj), _) | NegatedGoals],
         Goals) :-
     all_negated(NegatedConj, Goals1),
     all_negated(NegatedGoals, Goals2),
@@ -1995,7 +2010,7 @@ all_negated([conj(plain_conj, NegatedConj) - _GoalInfo | NegatedGoals],
     % any foreign code.
     %
 goal_has_foreign(Goal) = HasForeign :-
-    Goal = GoalExpr - _,
+    Goal = hlds_goal(GoalExpr, _),
     (
         GoalExpr = conj(_, Goals),
         HasForeign = goal_list_has_foreign(Goals)
@@ -2084,32 +2099,32 @@ goal_is_atomic(shorthand(_)) = no.
 
 %-----------------------------------------------------------------------------%
 
-true_goal = true_goal_expr - GoalInfo :-
+true_goal = hlds_goal(true_goal_expr, GoalInfo) :-
     instmap_delta_init_reachable(InstMapDelta),
     goal_info_init(set.init, InstMapDelta, detism_det, purity_pure, GoalInfo).
 
 true_goal_expr = conj(plain_conj, []).
 
-true_goal_with_context(Context) = Goal - GoalInfo :-
-    Goal - GoalInfo0 = true_goal,
+true_goal_with_context(Context) = hlds_goal(GoalExpr, GoalInfo) :-
+    hlds_goal(GoalExpr, GoalInfo0) = true_goal,
     goal_info_set_context(Context, GoalInfo0, GoalInfo).
 
-fail_goal = fail_goal_expr - GoalInfo :-
+fail_goal = hlds_goal(fail_goal_expr, GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
     goal_info_init(set.init, InstMapDelta, detism_failure, purity_pure,
         GoalInfo).
 
 fail_goal_expr = disj([]).
 
-fail_goal_with_context(Context) = Goal - GoalInfo :-
-    Goal - GoalInfo0 = fail_goal,
+fail_goal_with_context(Context) = hlds_goal(GoalExpr, GoalInfo) :-
+    hlds_goal(GoalExpr, GoalInfo0) = fail_goal,
     goal_info_set_context(Context, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
 goal_list_nonlocals(Goals, NonLocals) :-
     UnionNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_nonlocals(GoalInfo, Vars1),
         set.union(Vars0, Vars1, Vars)
     ),
@@ -2118,7 +2133,7 @@ goal_list_nonlocals(Goals, NonLocals) :-
 
 goal_list_instmap_delta(Goals, InstMapDelta) :-
     ApplyDelta = (pred(Goal::in, Delta0::in, Delta::out) is det :-
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_instmap_delta(GoalInfo, Delta1),
         instmap_delta_apply_instmap_delta(Delta0, Delta1, test_size, Delta)
     ),
@@ -2127,14 +2142,15 @@ goal_list_instmap_delta(Goals, InstMapDelta) :-
 
 goal_list_determinism(Goals, Determinism) :-
     ComputeDeterminism = (pred(Goal::in, Det0::in, Det::out) is det :-
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_determinism(GoalInfo, Det1),
         det_conjunction_detism(Det0, Det1, Det)
     ),
     list.foldl(ComputeDeterminism, Goals, detism_det, Determinism).
 
 goal_list_purity(Goals, Purity) :-
-    ComputePurity = (func(_ - GoalInfo, Purity0) = Purity1 :-
+    ComputePurity = (func(Goal, Purity0) = Purity1 :-
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_purity(GoalInfo, GoalPurity),
         worst_purity(GoalPurity, Purity0) = Purity1
     ),
@@ -2142,9 +2158,10 @@ goal_list_purity(Goals, Purity) :-
 
 %-----------------------------------------------------------------------------%
 
-set_goal_contexts(Context, Goal0 - GoalInfo0, Goal - GoalInfo) :-
+set_goal_contexts(Context, hlds_goal(GoalExpr0, GoalInfo0),
+        hlds_goal(GoalExpr, GoalInfo)) :-
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
-    set_goal_contexts_2(Context, Goal0, Goal).
+    set_goal_contexts_2(Context, GoalExpr0, GoalExpr).
 
 :- pred set_goal_contexts_2(prog_context::in, hlds_goal_expr::in,
     hlds_goal_expr::out) is det.
@@ -2203,7 +2220,8 @@ create_atomic_complicated_unification(LHS, RHS, Context,
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(Context, GoalInfo0),
     goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
-    Goal = unify(LHS, RHS, Mode, Unification, UnifyContext) - GoalInfo.
+    GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2215,7 +2233,8 @@ make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     instmap_delta_init_reachable(InstMapDelta),
     goal_info_init(list_to_set([X, Y]), InstMapDelta, detism_semi, purity_pure,
         GoalInfo),
-    Goal = unify(X, rhs_var(Y), Mode, Unification, UnifyContext) - GoalInfo.
+    GoalExpr = unify(X, rhs_var(Y), Mode, Unification, UnifyContext),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2287,14 +2306,14 @@ make_char_const_construction(Var, Char, Goal) :-
     string.char_to_string(Char, String),
     make_const_construction(Var, cons(unqualified(String), 0), Goal).
 
-make_const_construction(Var, ConsId, Goal - GoalInfo) :-
+make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
     RHS = rhs_functor(ConsId, no, []),
     Inst = bound(unique, [bound_functor(ConsId, [])]),
     Mode = (free -> Inst) - (Inst -> Inst),
     Unification = construct(Var, ConsId, [], [],
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     Context = unify_context(umc_explicit, []),
-    Goal = unify(Var, RHS, Mode, Unification, Context),
+    GoalExpr = unify(Var, RHS, Mode, Unification, Context),
     set.singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert(Var, Inst, InstMapDelta0, InstMapDelta),
@@ -2313,7 +2332,7 @@ construct_functor(Var, ConsId, Args, Goal) :-
     set.list_to_set([Var | Args], NonLocals),
     instmap_delta_from_assoc_list([Var - ground_inst], InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
-    Goal = Unify - GoalInfo.
+    Goal = hlds_goal(Unify, GoalInfo).
 
 deconstruct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
@@ -2330,7 +2349,7 @@ deconstruct_functor(Var, ConsId, Args, Goal) :-
     assoc_list.from_corresponding_lists(Args, DeltaValues, DeltaAL),
     instmap_delta_from_assoc_list(DeltaAL, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
-    Goal = Unify - GoalInfo.
+    Goal = hlds_goal(Unify, GoalInfo).
 
 construct_tuple(Tuple, Args, Goal) :-
     list.length(Args, Arity),

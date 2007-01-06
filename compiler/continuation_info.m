@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -440,8 +440,8 @@ process_proc_llds(PredProcId, Instructions, WantReturnInfo, !GlobalData) :-
     global_data_get_proc_layout(!.GlobalData, PredProcId, ProcLayoutInfo0),
     Internals0 = ProcLayoutInfo0^internal_map,
     GetCallInfo = (pred(Instr::in, Call::out) is semidet :-
-        Instr = llcall(Target, code_label(ReturnLabel), LiveInfo, Context,
-            GoalPath, _) - _Comment,
+        Instr = llds_instr(llcall(Target, code_label(ReturnLabel), LiveInfo,
+            Context, GoalPath, _), _Comment),
         Call = call_info(ReturnLabel, Target, LiveInfo, Context, GoalPath)
     ),
     list.filter_map(GetCallInfo, Instructions, Calls),
@@ -617,7 +617,7 @@ generate_temp_live_lvalues([Temp | Temps], [Live | Lives]) :-
     Temp = Slot - Contents,
     live_value_type(Contents, LiveLvalueType),
     map.init(Empty),
-    Live = live_lvalue(direct(Slot), LiveLvalueType, Empty),
+    Live = live_lvalue(locn_direct(Slot), LiveLvalueType, Empty),
     generate_temp_live_lvalues(Temps, Lives).
 
 :- pred generate_var_live_lvalues(assoc_list(prog_var, lval)::in, instmap::in,
@@ -632,11 +632,11 @@ generate_var_live_lvalues([Var - Lval | VarLvals], InstMap, VarLocs, ProcInfo,
         generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo,
             LiveValueType, TypeVars),
         find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeParams),
-        Live = live_lvalue(direct(Lval), LiveValueType, TypeParams)
+        Live = live_lvalue(locn_direct(Lval), LiveValueType, TypeParams)
     ;
         WantReturnVarLayout = no,
         map.init(Empty),
-        Live = live_lvalue(direct(Lval), live_value_unwanted, Empty)
+        Live = live_lvalue(locn_direct(Lval), live_value_unwanted, Empty)
     ),
     generate_var_live_lvalues(VarLvals, InstMap, VarLocs, ProcInfo,
         ModuleInfo, WantReturnVarLayout, Lives).
@@ -703,7 +703,7 @@ generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
     ),
     generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
         TypeVars),
-    VarInfo = layout_var_info(direct(Lval), LiveValueType,
+    VarInfo = layout_var_info(locn_direct(Lval), LiveValueType,
         "generate_result_layout_for_var").
 
 :- pred generate_temp_var_infos(assoc_list(lval, slot_contents)::in,
@@ -713,7 +713,7 @@ generate_temp_var_infos([], []).
 generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
     Temp = Slot - Contents,
     live_value_type(Contents, LiveLvalueType),
-    Live = layout_var_info(direct(Slot), LiveLvalueType,
+    Live = layout_var_info(locn_direct(Slot), LiveLvalueType,
         "generate_temp_var_infos"),
     generate_temp_var_infos(Temps, Lives).
 
@@ -797,10 +797,10 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
                 set.member(Lval, TypeInfoLvalSet),
                 (
                     TypeInfoLocn = typeclass_info(_, FieldNum),
-                    Locn = indirect(Lval, FieldNum)
+                    Locn = locn_indirect(Lval, FieldNum)
                 ;
                     TypeInfoLocn = type_info(_),
-                    Locn = direct(Lval)
+                    Locn = locn_direct(Lval)
                 )
             ),
             solutions.solutions_set(ConvertLval, Locns)
@@ -858,11 +858,11 @@ find_typeinfos_for_tvars_table(TypeVars, NumberedVars, ProcInfo,
             (
                 TypeInfoLocn = typeclass_info(TypeInfoVar, FieldNum),
                 assoc_list.search(NumberedVars, TypeInfoVar, Slot),
-                LocnPrime = indirect(Slot, FieldNum)
+                LocnPrime = table_locn_indirect(Slot, FieldNum)
             ;
                 TypeInfoLocn = type_info(TypeInfoVar),
                 assoc_list.search(NumberedVars, TypeInfoVar, Slot),
-                LocnPrime = direct(Slot)
+                LocnPrime = table_locn_direct(Slot)
             )
         ->
             Locn = LocnPrime

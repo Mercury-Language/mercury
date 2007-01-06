@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -583,10 +583,10 @@ add_clause_transform(Subst, HeadVars, Args0, ParseBody, Context, PredOrFunc,
 
 %-----------------------------------------------------------------------------%
 
-transform_goal(Goal0 - Context, Subst, Goal - GoalInfo, NumAdded, !VarSet,
-        !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    transform_goal_2(Goal0, Context, Subst, Goal - GoalInfo1, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+transform_goal(Goal0 - Context, Subst, hlds_goal(GoalExpr, GoalInfo),
+        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
+    transform_goal_2(Goal0, Context, Subst, hlds_goal(GoalExpr, GoalInfo1),
+        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
     goal_info_set_context(Context, GoalInfo1, GoalInfo).
 
 :- pred transform_goal_2(goal_expr::in, prog_context::in,
@@ -596,11 +596,11 @@ transform_goal(Goal0 - Context, Subst, Goal - GoalInfo, NumAdded, !VarSet,
     svar_info::in, svar_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_goal_2(fail_expr, _, _, disj([]) - GoalInfo, 0,
+transform_goal_2(fail_expr, _, _, hlds_goal(disj([]), GoalInfo), 0,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     goal_info_init(GoalInfo),
     prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
-transform_goal_2(true_expr, _, _, conj(plain_conj, []) - GoalInfo, 0,
+transform_goal_2(true_expr, _, _, hlds_goal(conj(plain_conj, []), GoalInfo), 0,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     goal_info_init(GoalInfo),
     prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
@@ -619,14 +619,14 @@ transform_goal_2(all_state_vars_expr(StateVars, Goal0), Context, Subst,
         Context, Subst, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !Specs).
 transform_goal_2(some_expr(Vars0, Goal0), _, Subst,
-        scope(exist_quant(Vars), Goal) - GoalInfo, NumAdded,
+        hlds_goal(scope(exist_quant(Vars), Goal), GoalInfo), NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     substitute_vars(Vars0, Subst, Vars),
     transform_goal(Goal0, Subst, Goal, NumAdded, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !Specs),
     goal_info_init(GoalInfo).
 transform_goal_2(some_state_vars_expr(StateVars0, Goal0), _, Subst,
-        scope(exist_quant(Vars), Goal) - GoalInfo, NumAdded,
+        hlds_goal(scope(exist_quant(Vars), Goal), GoalInfo), NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     BeforeSInfo = !.SInfo,
     substitute_vars(StateVars0, Subst, StateVars),
@@ -636,8 +636,10 @@ transform_goal_2(some_state_vars_expr(StateVars0, Goal0), _, Subst,
     finish_local_state_vars(StateVars, Vars, BeforeSInfo, !SInfo),
     goal_info_init(GoalInfo).
 transform_goal_2(promise_purity_expr(Implicit, Purity, Goal0), _, Subst,
-        scope(promise_purity(Implicit, Purity), Goal) - GoalInfo, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
+        hlds_goal(
+            scope(promise_purity(Implicit, Purity), Goal),
+            GoalInfo),
+        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     transform_goal(Goal0, Subst, Goal, NumAdded, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !Specs),
     goal_info_init(GoalInfo).
@@ -645,7 +647,9 @@ transform_goal_2(
         promise_equivalent_solutions_expr(Vars0, DotSVars0, ColonSVars0,
             Goal0),
         Context, Subst,
-        scope(promise_solutions(Vars, equivalent_solutions), Goal) - GoalInfo,
+        hlds_goal(
+            scope(promise_solutions(Vars, equivalent_solutions), Goal),
+            GoalInfo),
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0, Subst, Context,
         Vars, Goal0, Goal, GoalInfo, NumAdded, !VarSet, !ModuleInfo,
@@ -654,8 +658,9 @@ transform_goal_2(
         promise_equivalent_solution_sets_expr(Vars0, DotSVars0, ColonSVars0,
             Goal0),
         Context, Subst,
-        scope(promise_solutions(Vars, equivalent_solution_sets), Goal)
-            - GoalInfo,
+        hlds_goal(
+            scope(promise_solutions(Vars, equivalent_solution_sets), Goal),
+            GoalInfo),
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0, Subst, Context,
         Vars, Goal0, Goal, GoalInfo, NumAdded, !VarSet, !ModuleInfo,
@@ -664,15 +669,17 @@ transform_goal_2(
         promise_equivalent_solution_arbitrary_expr(Vars0,
             DotSVars0, ColonSVars0, Goal0),
         Context, Subst,
-        scope(promise_solutions(Vars, equivalent_solution_sets_arbitrary),
-            Goal) - GoalInfo,
+        hlds_goal(
+            scope(promise_solutions(Vars, equivalent_solution_sets_arbitrary),
+                Goal),
+            GoalInfo),
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0, Subst, Context,
         Vars, Goal0, Goal, GoalInfo, NumAdded, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !Specs).
 transform_goal_2(
         trace_expr(MaybeCompileTime, MaybeRunTime, MaybeIO, Mutables, Goal0),
-        Context, Subst, scope(Reason, Goal) - GoalInfo, NumAdded,
+        Context, Subst, hlds_goal(scope(Reason, Goal), GoalInfo), NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     list.map4(extract_trace_mutable_var(Context, !.VarSet), Mutables,
         MutableHLDSs, MutableStateVars, MutableGetGoals, MutableSetGoals),
@@ -703,7 +710,8 @@ transform_goal_2(
         MutableHLDSs, Vars),
     goal_info_init(GoalInfo).
 transform_goal_2(if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
-        Context, Subst, if_then_else(Vars, Cond, Then, Else) - GoalInfo,
+        Context, Subst,
+        hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo),
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     BeforeSInfo = !.SInfo,
     substitute_vars(Vars0, Subst, Vars),
@@ -723,7 +731,8 @@ transform_goal_2(if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
     goal_info_init(Context, GoalInfo),
     finish_if_then_else(Context, Then1, Then, Else1, Else,
         BeforeSInfo, AfterCondSInfo, AfterThenSInfo, !SInfo, !VarSet).
-transform_goal_2(not_expr(SubGoal0), _, Subst, negation(SubGoal) - GoalInfo,
+transform_goal_2(not_expr(SubGoal0), _, Subst,
+        hlds_goal(negation(SubGoal), GoalInfo),
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     BeforeSInfo = !.SInfo,
     transform_goal(SubGoal0, Subst, SubGoal, NumAdded, !VarSet, !ModuleInfo,
@@ -765,13 +774,12 @@ transform_goal_2(implies_expr(P, Q), Context, Subst, Goal, NumAdded, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !Specs).
 transform_goal_2(equivalent_expr(P0, Q0), _, Subst, Goal, NumAdded, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    %
     % `P <=> Q' is defined as `(P => Q), (Q => P)',
     % but that transformation must not be done until
     % after quantification analysis, lest the duplication of
     % the goals concerned affect the implicit quantification
     % of the variables inside them.
-    %
+
     BeforeSInfo = !.SInfo,
     goal_info_init(GoalInfo),
     transform_goal(P0, Subst, P, NumAddedP, !VarSet, !ModuleInfo, !QualInfo,
@@ -779,7 +787,7 @@ transform_goal_2(equivalent_expr(P0, Q0), _, Subst, Goal, NumAdded, !VarSet,
     transform_goal(Q0, Subst, Q, NumAddedQ, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !Specs),
     NumAdded = NumAddedP + NumAddedQ,
-    Goal = shorthand(bi_implication(P, Q)) - GoalInfo,
+    Goal = hlds_goal(shorthand(bi_implication(P, Q)), GoalInfo),
     finish_equivalence(BeforeSInfo, !SInfo).
 transform_goal_2(event_expr(EventName, Args0), Context, Subst, Goal,
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
@@ -791,7 +799,8 @@ transform_goal_2(event_expr(EventName, Args0), Context, Subst, Goal,
     list.duplicate(Arity, in_mode, Modes),
     goal_info_init(Context, GoalInfo),
     Details = event_call(EventName),
-    Goal0 = generic_call(Details, HeadVars, Modes, detism_det) - GoalInfo,
+    GoalExpr0 = generic_call(Details, HeadVars, Modes, detism_det),
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     CallId = generic_call_id(gcid_event_call(EventName)),
     insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
         Goal0, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
@@ -857,7 +866,7 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal,
         ),
         goal_info_init(Context, GoalInfo0),
         goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
-        Goal0 = Call - GoalInfo,
+        Goal0 = hlds_goal(Call, GoalInfo),
 
         record_called_pred_or_func(predicate, Name, Arity, !QualInfo),
         insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
@@ -1062,8 +1071,9 @@ report_dcg_field_error(Context, AccessType, VarSet, Error, !Specs) :-
 invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet, !SInfo, !Specs) :-
     make_fresh_arg_vars(Args0, HeadVars, !VarSet, !SInfo, !Specs),
     MaybeUnifyContext = no,
-    Goal = plain_call(invalid_pred_id, invalid_proc_id, HeadVars, not_builtin,
-        MaybeUnifyContext, unqualified(UpdateStr)) - GoalInfo.
+    GoalExpr = plain_call(invalid_pred_id, invalid_proc_id, HeadVars,
+        not_builtin, MaybeUnifyContext, unqualified(UpdateStr)),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred transform_dcg_record_syntax_2(field_access_type::in, field_list::in,
     list(prog_term)::in, prog_context::in, hlds_goal::out,

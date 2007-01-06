@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001,2003-2006 The University of Melbourne.
+% Copyright (C) 1998-2001,2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -115,8 +115,8 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
     PredName = "ACCURATE_GC_END_LABEL",
     ProcLabel = ordinary_proc_label(ModuleName, predicate, ModuleName,
         PredName, Arity, proc_id_to_int(ProcId)),
-    Instrs = [label(entry_label(entry_label_local, ProcLabel)) -
-        "label to indicate end of previous procedure"],
+    Instrs = [llds_instr(label(entry_label(entry_label_local, ProcLabel)),
+        "label to indicate end of previous procedure")],
     DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId), model_det,
         Instrs, ProcLabel, counter.init(0), must_not_alter_rtti, set.init),
     EndLabelModule = comp_gen_c_module(LastModule ++ "_END", [DummyProc]).
@@ -171,7 +171,7 @@ transform_instructions([], [], !C, _, _).
 transform_instructions([Instr0 | Instrs0], Instrs, !C, ProcLabel, MaxSize) :-
     transform_instructions(Instrs0, InstrsTail, !C, ProcLabel, MaxSize),
     (
-        Instr0 = computed_goto(Rval, Labels) - Comment,
+        Instr0 = llds_instr(computed_goto(Rval, Labels), Comment),
         list.length(Labels, NumLabels),
         NumLabels > MaxSize
     ->
@@ -195,7 +195,7 @@ transform_instructions([Instr0 | Instrs0], Instrs, !C, ProcLabel, MaxSize) :-
 split_computed_goto(Rval, Labels, Comment, Instrs, !C, MaxSize, NumLabels,
         ProcLabel) :-
     ( NumLabels =< MaxSize ->
-        Instrs = [computed_goto(Rval, Labels) - Comment]
+        Instrs = [llds_instr(computed_goto(Rval, Labels), Comment)]
     ;
         counter.allocate(LabelNum, !C),
         Mid = NumLabels // 2,
@@ -209,8 +209,8 @@ split_computed_goto(Rval, Labels, Comment, Instrs, !C, MaxSize, NumLabels,
         Index     = binop(int_sub, Rval, const(llconst_int(Mid))),
         Test      = binop(int_ge,  Rval, const(llconst_int(Mid))),
         ElseAddr  = code_label(internal_label(LabelNum, ProcLabel)),
-        IfInstr   = if_val(Test, ElseAddr) - "binary search",
-        ElseInstr = label(internal_label(LabelNum, ProcLabel)) - "",
+        IfInstr   = llds_instr(if_val(Test, ElseAddr), "binary search"),
+        ElseInstr = llds_instr(label(internal_label(LabelNum, ProcLabel)), ""),
 
         split_computed_goto(Rval, Start, Comment ++ " then",
             ThenInstrs, !C, MaxSize, Mid, ProcLabel),

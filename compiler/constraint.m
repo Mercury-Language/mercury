@@ -1,19 +1,19 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: constraint.m.
 % Main author: stayl.
-% 
+%
 % The constraint propagation transformation attempts to improve the efficiency
 % of a generate-and-test style program by statically scheduling constraints as
 % early as possible, where a "constraint" is any pure goal which has no
 % outputs, can fail, cannot loop and cannot throw an exception.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.constraint.
@@ -85,7 +85,7 @@ propagate_constraints_in_goal(Goal0, Goal, !Info, !IO) :-
 propagate_goal(Goal0, Constraints, Goal, !Info, !IO) :-
     % We need to treat all single goals as conjunctions so that propagate_conj
     % can move the constraints to the left of the goal if that is allowed.
-    Goal0 = _ - GoalInfo0,
+    Goal0 = hlds_goal(_, GoalInfo0),
     goal_info_get_features(GoalInfo0, Features0),
     goal_info_get_context(GoalInfo0, Context),
     goal_to_conj_list(Goal0, Goals0),
@@ -105,7 +105,7 @@ propagate_goal(Goal0, Constraints, Goal, !Info, !IO) :-
     constraint_info::in, constraint_info::out, io::di, io::uo) is det.
 
 propagate_conj_sub_goal(Goal0, Constraints, Goals, !Info, !IO) :-
-    Goal0 = GoalExpr0 - _,
+    Goal0 = hlds_goal(GoalExpr0, _),
     ( goal_is_atomic(GoalExpr0) ->
         true
     ;
@@ -122,14 +122,14 @@ propagate_conj_sub_goal(Goal0, Constraints, Goals, !Info, !IO) :-
     list(hlds_goal)::out, constraint_info::in, constraint_info::out,
     io::di, io::uo) is det.
 
-propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
-        !IO) :-
+propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
+        FinalGoals, !Info, !IO) :-
     (
         GoalExpr = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
             propagate_conj(Goals0, Constraints, Goals, !Info, !IO),
-            FinalGoals = [conj(ConjType, Goals) - GoalInfo]
+            FinalGoals = [hlds_goal(conj(ConjType, Goals), GoalInfo)]
         ;
             ConjType = parallel_conj,
             % We can't propagate constraints into parallel conjunctions because
@@ -137,16 +137,17 @@ propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
             % propagate constraints *within* the goals of the conjunction.
             flatten_constraints(Constraints, MoreGoals),
             propagate_in_independent_goals(Goals0, [], Goals, !Info, !IO),
-            FinalGoals = [conj(ConjType, Goals) - GoalInfo | MoreGoals]
+            FinalGoals = [hlds_goal(conj(ConjType, Goals), GoalInfo) |
+                MoreGoals]
         )
     ;
         GoalExpr = disj(Goals0),
         propagate_in_independent_goals(Goals0, Constraints, Goals, !Info, !IO),
-        FinalGoals = [disj(Goals) - GoalInfo]
+        FinalGoals = [hlds_goal(disj(Goals), GoalInfo)]
     ;
         GoalExpr = switch(Var, CanFail, Cases0),
         propagate_cases(Var, Constraints, Cases0, Cases, !Info, !IO),
-        FinalGoals = [switch(Var, CanFail, Cases) - GoalInfo]
+        FinalGoals = [hlds_goal(switch(Var, CanFail, Cases), GoalInfo)]
     ;
         GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),
         InstMap0 = !.Info ^ instmap,
@@ -158,7 +159,8 @@ propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
         propagate_goal(Then0, Constraints, Then, !Info, !IO),
         !:Info = !.Info ^ instmap := InstMap0,
         propagate_goal(Else0, Constraints, Else, !Info, !IO),
-        FinalGoals = [if_then_else(Vars, Cond, Then, Else) - GoalInfo]
+        FinalGoals =
+            [hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo)]
     ;
         GoalExpr = scope(Reason, SubGoal0),
         (
@@ -166,7 +168,7 @@ propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
             ; Reason = from_ground_term(_)
             ),
             propagate_goal(SubGoal0, Constraints, SubGoal, !Info, !IO),
-            FinalGoals = [scope(Reason, SubGoal) - GoalInfo]
+            FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo)]
         ;
             ( Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_, _)
@@ -178,7 +180,8 @@ propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
             % However, we can propagate constraints inside the scope goal.
             propagate_goal(SubGoal0, [], SubGoal, !Info, !IO),
             flatten_constraints(Constraints, ConstraintGoals),
-            FinalGoals = [scope(Reason, SubGoal) - GoalInfo | ConstraintGoals]
+            FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo) |
+                ConstraintGoals]
         )
     ;
         GoalExpr = negation(NegGoal0),
@@ -186,7 +189,7 @@ propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
         % because that would change the answers computed by the procedure.
         propagate_goal(NegGoal0, [], NegGoal, !Info, !IO),
         flatten_constraints(Constraints, ConstraintGoals),
-        FinalGoals = [negation(NegGoal) - GoalInfo | ConstraintGoals]
+        FinalGoals = [hlds_goal(negation(NegGoal), GoalInfo) | ConstraintGoals]
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
         ; GoalExpr = generic_call(_, _, _, _)
@@ -196,7 +199,7 @@ propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
         % Propagate_conj will move the constraints to the left of the call
         % or unification if that is possible, so nothing needs to be done here.
         flatten_constraints(Constraints, ConstraintGoals),
-        FinalGoals = [GoalExpr - GoalInfo | ConstraintGoals]
+        FinalGoals = [hlds_goal(GoalExpr, GoalInfo) | ConstraintGoals]
     ;
         GoalExpr = shorthand(_),
         unexpected(this_file, "propagate_conj_sub_goal_2: shorthand")
@@ -281,7 +284,7 @@ propagate_conj(Goals0, Constraints, Goals, !Info, !IO) :-
 annotate_conj_output_vars([], _, _, _, !RevGoals).
 annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
         !RevGoals) :-
-    Goal = _ - GoalInfo,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -400,7 +403,7 @@ annotate_conj_constraints(ModuleInfo,
         Constraints0, Goals0, Goals, !Info, !IO) :-
     Conjunct = annotated_conjunct(Goal, ChangedVars, OutputVars,
         IncompatibleInstVars),
-    Goal = GoalExpr - GoalInfo,
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     CI_ModuleInfo0 = !.Info ^ module_info,
     goal_can_loop_or_throw(Goal, GoalCanLoopOrThrow,
@@ -429,7 +432,7 @@ annotate_conj_constraints(ModuleInfo,
         % It's a constraint, add it to the list of constraints
         % to be attached to goals earlier in the conjunction.
         Goals1 = Goals0,
-        Constraint = constraint(GoalExpr - GoalInfo, ChangedVars,
+        Constraint = constraint(hlds_goal(GoalExpr, GoalInfo), ChangedVars,
             IncompatibleInstVars, []),
         Constraints1 = [Constraint | Constraints0]
     ;
@@ -442,7 +445,7 @@ annotate_conj_constraints(ModuleInfo,
         % Make a renamed copy of the goal, renaming within the constraint
         % as well, so that a copy of the constant doesn't need to be kept
         % on the stack.
-        Goal = unify(_, _, _, Unify, _) - _,
+        Goal = hlds_goal(unify(_, _, _, Unify, _), _),
         Unify = construct(ConstructVar, _, [], _, _, _, _)
     ->
         Goals1 = [Goal - [] | Goals0],
@@ -463,7 +466,7 @@ annotate_conj_constraints(ModuleInfo,
         Goals1 = [Goal - [] | Goals0]
     ;
         % Don't propagate constraints into or past impure goals.
-        Goal = _ - GoalInfo,
+        Goal = hlds_goal(_, GoalInfo),
         goal_info_get_purity(GoalInfo, purity_impure)
     ->
         Constraints1 = [],
@@ -506,7 +509,7 @@ add_empty_constraints(Goal, Goal - []).
     pair(hlds_goal, list(constraint)).
 
 attach_constraints(Goal, Constraints0) = Goal - Constraints :-
-    ( Goal = plain_call(_, _, _, _, _, _) - _ ->
+    ( Goal = hlds_goal(plain_call(_, _, _, _, _, _), _) ->
         Constraints = list.map(
             (func(constraint(Goal0, B, C, Constructs0)) =
                 constraint(add_constraint_feature(Goal0), B, C,
@@ -518,7 +521,8 @@ attach_constraints(Goal, Constraints0) = Goal - Constraints :-
 
 :- func add_constraint_feature(hlds_goal) = hlds_goal.
 
-add_constraint_feature(Goal - GoalInfo0) = Goal - GoalInfo :-
+add_constraint_feature(hlds_goal(GoalExpr, GoalInfo0)) =
+        hlds_goal(GoalExpr, GoalInfo) :-
     goal_info_add_feature(feature_constraint, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
@@ -533,7 +537,7 @@ add_constant_construction(ConstructVar, Construct0,
     Constraint0 = constraint(ConstraintGoal0, ChangedVars,
         IncompatibleInstVars, Constructs0),
     (
-        ConstraintGoal0 = _ - ConstraintInfo,
+        ConstraintGoal0 = hlds_goal(_, ConstraintInfo),
         goal_info_get_nonlocals(ConstraintInfo, ConstraintNonLocals),
         set.member(ConstructVar, ConstraintNonLocals)
     ->
@@ -589,7 +593,7 @@ filter_dependent_constraints_2(_NonLocals, _OutputVars, [],
 filter_dependent_constraints_2(NonLocals, GoalOutputVars,
         [Constraint | Constraints], !RevDependent, !RevIndependent) :-
     Constraint = constraint(ConstraintGoal, _, IncompatibleInstVars, _),
-    ConstraintGoal = _ - ConstraintGoalInfo,
+    ConstraintGoal = hlds_goal(_, ConstraintGoalInfo),
     goal_info_get_nonlocals(ConstraintGoalInfo, ConstraintNonLocals),
 
     (
@@ -631,7 +635,7 @@ filter_dependent_constraints_2(NonLocals, GoalOutputVars,
 can_reorder_constraints(EarlierConstraint, Constraint) :-
     EarlierConstraint = constraint(_, EarlierChangedVars, _, _),
     Constraint = constraint(ConstraintGoal, _, _, _),
-    ConstraintGoal = _ - ConstraintGoalInfo,
+    ConstraintGoal = hlds_goal(_, ConstraintGoalInfo),
     goal_info_get_nonlocals(ConstraintGoalInfo, ConstraintNonLocals),
     set.intersect(EarlierChangedVars, ConstraintNonLocals,
         EarlierConstraintIntersection),
@@ -702,7 +706,7 @@ filter_complex_constraints_2([Constraint | Constraints],
 :- pred goal_is_simple(hlds_goal::in) is semidet.
 
 goal_is_simple(Goal) :-
-    Goal = GoalExpr - _,
+    Goal = hlds_goal(GoalExpr, _),
     (
         goal_is_atomic(GoalExpr)
     ;
@@ -734,7 +738,7 @@ constraint_info_deconstruct(ConstraintInfo, ModuleInfo,
 :- pred constraint_info_update_goal(hlds_goal::in,
     constraint_info::in, constraint_info::out) is det.
 
-constraint_info_update_goal(_ - GoalInfo, !Info) :-
+constraint_info_update_goal(hlds_goal(_, GoalInfo), !Info) :-
     InstMap0 = !.Info ^ instmap,
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -775,8 +779,8 @@ constraint_info_update_changed(Constraints, !Info) :-
     %
 :- func strip_constraint_markers(hlds_goal) = hlds_goal.
 
-strip_constraint_markers(Goal - GoalInfo0) =
-        strip_constraint_markers_expr(Goal) - GoalInfo :-
+strip_constraint_markers(hlds_goal(GoalExpr, GoalInfo0)) =
+        hlds_goal(strip_constraint_markers_expr(GoalExpr), GoalInfo) :-
     ( goal_info_has_feature(GoalInfo0, feature_constraint) ->
         goal_info_remove_feature(feature_constraint, GoalInfo0, GoalInfo)
     ;

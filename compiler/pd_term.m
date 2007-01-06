@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -154,13 +154,14 @@ global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         _InstMap, Versions, !Info, Result) :-
     !.Info = global_term_info(SingleGoalCover0, MultipleGoalCover0),
     (
-        EarlierGoal = plain_call(PredId1, ProcId1, _, _, _, _) - _,
+        EarlierGoal = hlds_goal(plain_call(PredId1, ProcId1, _, _, _, _), _),
         Hd = (pred(List::in, Head::out) is semidet :-
             List = [Head | _]
         ),
         expand_calls(Hd, Versions, proc(PredId1, ProcId1), FirstPredProcId),
         (
-            MaybeLaterGoal = yes(plain_call(PredId2, ProcId2, _, _, _, _) - _),
+            MaybeLaterGoal = yes(
+                hlds_goal(plain_call(PredId2, ProcId2, _, _, _, _), _)),
             expand_calls(list.last, Versions, proc(PredId2, ProcId2),
                 LastPredProcId),
             MaybeLastPredProcId = yes(LastPredProcId)
@@ -235,7 +236,7 @@ expand_calls(GetEnd, Versions, PredProcId0, PredProcId) :-
 %-----------------------------------------------------------------------------%
 
 local_check(ModuleInfo, Goal1, InstMap, !Cover) :-
-    Goal1 = plain_call(PredId, ProcId, Args, _, _, _) - _,
+    Goal1 = hlds_goal(plain_call(PredId, ProcId, Args, _, _, _), _),
     ( map.search(!.Cover, proc(PredId, ProcId), CoveringInstSizes0) ->
         do_local_check(ModuleInfo, InstMap, Args,
             CoveringInstSizes0, CoveringInstSizes),

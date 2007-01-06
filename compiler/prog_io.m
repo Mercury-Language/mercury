@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -488,20 +488,22 @@ drop_one_qualifier_2(ParentQual, ChildName) =  PartialQual :-
 :- pred get_end_module(module_name::in, item_list::in, item_list::out,
     module_end::out) is det.
 
-get_end_module(ModuleName, RevItems0, RevItems, EndModule) :-
+get_end_module(ModuleName, RevItemAndContexts0, RevItemAndContexts,
+        EndModule) :-
     (
         % Note: if the module name in the end_module declaration does not match
         % what we expect, given the source file name, then we assume that it is
         % for a nested module, and so we leave it alone. If it is not for a
         % nested module, the error will be caught by make_hlds.
 
-        RevItems0 = [Item - Context | RevItemsPrime],
+        RevItemAndContexts0 = [item_and_context(Item, Context) |
+            RevItemAndContextsPrime],
         Item = item_module_defn(_VarSet, md_end_module(ModuleName))
     ->
-        RevItems = RevItemsPrime,
+        RevItemAndContexts = RevItemAndContextsPrime,
         EndModule = module_end_yes(ModuleName, Context)
     ;
-        RevItems = RevItems0,
+        RevItemAndContexts = RevItemAndContexts0,
         EndModule = module_end_no
     ).
 
@@ -514,12 +516,13 @@ get_end_module(ModuleName, RevItems0, RevItems, EndModule) :-
 :- pred check_end_module(module_end::in, message_list::in, message_list::out,
     item_list::in, item_list::out, module_error::in, module_error::out) is det.
 
-check_end_module(EndModule, !Messages, !Items, !Error) :-
+check_end_module(EndModule, !Messages, !ItemAndContexts, !Error) :-
     % Double-check that the first item is a `:- module ModuleName' declaration,
     % and remove it from the front of the item list.
     (
-        !.Items = [Item | !:Items],
-        Item = item_module_defn(_VarSet, md_module(ModuleName1)) - _Context1
+        !.ItemAndContexts = [ItemAndContext | !:ItemAndContexts],
+        ItemAndContext = item_and_context(Item, _Context1),
+        Item = item_module_defn(_VarSet, md_module(ModuleName1))
     ->
         % Check that the end module declaration (if any) matches
         % the begin module declaration.
@@ -674,14 +677,14 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
     (
         % Apply and then skip `pragma source_file' decls, by calling ourselves
         % recursively with the new source file name.
-        MaybeFirstItem = ok(FirstItem, _),
+        MaybeFirstItem = read_item_ok(FirstItem, _),
         FirstItem = item_pragma(_, pragma_source_file(NewSourceFileName))
     ->
         read_first_item(DefaultModuleName, NewSourceFileName,
             ModuleName, Messages, Items, MaybeSecondTerm, Error, !IO)
     ;
         % Check if the first term was a `:- module' decl.
-        MaybeFirstItem = ok(FirstItem, FirstContext),
+        MaybeFirstItem = read_item_ok(FirstItem, FirstContext),
         FirstItem = item_module_defn(_VarSet, ModuleDefn),
         ModuleDefn = md_module(StartModuleName)
     ->
@@ -713,7 +716,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
         % If the first term was not a `:- module' decl, then issue a warning
         % (if warning enabled), and insert an implicit `:- module ModuleName'
         % decl.
-        ( MaybeFirstItem = ok(_FirstItem, FirstContext0) ->
+        ( MaybeFirstItem = read_item_ok(_FirstItem, FirstContext0) ->
             FirstContext = FirstContext0
         ;
             term.context_init(SourceFileName, 1, FirstContext)
@@ -741,7 +744,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 :- pred make_module_decl(module_name::in, term.context::in,
     item_and_context::out) is det.
 
-make_module_decl(ModuleName, Context, Item - Context) :-
+make_module_decl(ModuleName, Context, item_and_context(Item, Context)) :-
     varset.init(EmptyVarSet),
     ModuleDefn = md_module(ModuleName),
     Item = item_module_defn(EmptyVarSet, ModuleDefn).
@@ -780,18 +783,18 @@ read_items_loop(ModuleName, SourceFileName, !Msgs, !Items, !Error, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_items_loop_2(maybe_item_or_eof::in, module_name::in,
+:- pred read_items_loop_2(read_item_result::in, module_name::in,
     file_name::in, message_list::in, message_list::out,
     item_list::in, item_list::out, module_error::in, module_error::out,
     io.state::di, io.state::uo) is det.
 
 read_items_loop_2(MaybeItemOrEOF, !.ModuleName, !.SourceFileName, !Msgs,
-        !Items, !Error, !IO) :-
+        !ItemAndContexts, !Error, !IO) :-
     (
-        MaybeItemOrEOF = eof
+        MaybeItemOrEOF = read_item_eof
         % If the next item was end-of-file, then we're done.
     ;
-        MaybeItemOrEOF = syntax_error(ErrorMsg, LineNumber),
+        MaybeItemOrEOF = read_item_syntax_error(ErrorMsg, LineNumber),
         % If the next item was a syntax error, then insert it in the list
         % of messages and continue looping.
         term.context_init(!.SourceFileName, LineNumber, Context),
@@ -799,22 +802,22 @@ read_items_loop_2(MaybeItemOrEOF, !.ModuleName, !.SourceFileName, !Msgs,
         ThisError = ErrorMsg - Term,
         !:Msgs = [ThisError | !.Msgs],
         !:Error = some_module_errors,
-        read_items_loop(!.ModuleName, !.SourceFileName, !Msgs, !Items,
-            !Error, !IO)
+        read_items_loop(!.ModuleName, !.SourceFileName, !Msgs,
+            !ItemAndContexts, !Error, !IO)
     ;
-        MaybeItemOrEOF = errors(Errors),
+        MaybeItemOrEOF = read_item_errors(Errors),
         % If the next item was a semantic error, then insert it in the list
         % of messages and continue looping.
         list.foldl(add_error, Errors, !Msgs),
         !:Error = some_module_errors,
-        read_items_loop(!.ModuleName, !.SourceFileName, !Msgs, !Items,
-            !Error, !IO)
+        read_items_loop(!.ModuleName, !.SourceFileName, !Msgs,
+            !ItemAndContexts, !Error, !IO)
     ;
-        MaybeItemOrEOF = ok(Item, Context),
+        MaybeItemOrEOF = read_item_ok(Item, Context),
         read_items_loop_ok(Item, Context, !ModuleName, !SourceFileName,
-            !Msgs, !Items, !Error, !IO),
-        read_items_loop(!.ModuleName, !.SourceFileName, !Msgs, !Items,
-            !Error, !IO)
+            !Msgs, !ItemAndContexts, !Error, !IO),
+        read_items_loop(!.ModuleName, !.SourceFileName, !Msgs,
+            !ItemAndContexts, !Error, !IO)
     ).
 
 :- pred read_items_loop_ok(item::in, term.context::in,
@@ -823,8 +826,8 @@ read_items_loop_2(MaybeItemOrEOF, !.ModuleName, !.SourceFileName, !Msgs,
     item_list::in, item_list::out, module_error::in, module_error::out,
     io.state::di, io.state::uo) is det.
 
-read_items_loop_ok(Item0, Context, !ModuleName, !SourceFileName, !Msgs, !Items,
-        !Error, !IO) :-
+read_items_loop_ok(Item0, Context, !ModuleName, !SourceFileName, !Msgs,
+        !ItemAndContexts, !Error, !IO) :-
     ( Item0 = item_nothing(yes(Warning)) ->
         Warning = item_warning(MaybeOption, Msg, Term),
         (
@@ -864,60 +867,68 @@ read_items_loop_ok(Item0, Context, !ModuleName, !SourceFileName, !Msgs, !Items,
         !:SourceFileName = NewSourceFileName
     ; Item = item_module_defn(_VarSet, md_module(NestedModuleName)) ->
         !:ModuleName = NestedModuleName,
-        !:Items = [Item - Context | !.Items]
+        !:ItemAndContexts = [item_and_context(Item, Context) |
+            !.ItemAndContexts]
     ; Item = item_module_defn(_VarSet, md_end_module(NestedModuleName)) ->
         root_module_name(RootModuleName),
         sym_name_get_module_name(NestedModuleName, RootModuleName,
             ParentModuleName),
         !:ModuleName = ParentModuleName,
-        !:Items = [Item - Context | !.Items]
+        !:ItemAndContexts = [item_and_context(Item, Context) |
+            !.ItemAndContexts]
     ; Item = item_module_defn(VarSet, md_import(list_module(Modules))) ->
         ImportItems = list.map(make_pseudo_import_module_decl(VarSet, Context),
             Modules),
-        list.append(ImportItems, !Items)
+        list.append(ImportItems, !ItemAndContexts)
     ; Item = item_module_defn(VarSet, md_use(list_module(Modules))) ->
         UseItems = list.map(make_pseudo_use_module_decl(VarSet, Context),
             Modules),
-        list.append(UseItems, !Items)
+        list.append(UseItems, !ItemAndContexts)
     ; Item = item_module_defn(VarSet, md_include_module(Modules)) ->
         IncludeItems = list.map(
             make_pseudo_include_module_decl(VarSet, Context),
             Modules),
-        list.append(IncludeItems, !Items)
+        list.append(IncludeItems, !ItemAndContexts)
     ;
-        !:Items = [Item - Context | !.Items]
+        !:ItemAndContexts = [item_and_context(Item, Context) |
+            !.ItemAndContexts]
     ).
 
 :- func make_pseudo_import_module_decl(prog_varset, prog_context,
     module_specifier) = item_and_context.
 
 make_pseudo_import_module_decl(Varset, Context, ModuleSpecifier) =
-    item_module_defn(Varset, md_import(list_module([ModuleSpecifier])))
-        - Context.
+    item_and_context(
+        item_module_defn(Varset, md_import(list_module([ModuleSpecifier]))),
+        Context).
 
 :- func make_pseudo_use_module_decl(prog_varset, prog_context,
     module_specifier) = item_and_context.
 
 make_pseudo_use_module_decl(Varset, Context, ModuleSpecifier) =
-    item_module_defn(Varset, md_use(list_module([ModuleSpecifier]))) - Context.
+    item_and_context(
+        item_module_defn(Varset, md_use(list_module([ModuleSpecifier]))),
+        Context).
 
-:- func make_pseudo_include_module_decl(prog_varset, prog_context,
-    module_name) = item_and_context.
+:- func make_pseudo_include_module_decl(prog_varset, prog_context, module_name)
+    = item_and_context.
 
 make_pseudo_include_module_decl(Varset, Context, ModuleSpecifier) =
-    item_module_defn(Varset, md_include_module([ModuleSpecifier])) - Context.
+    item_and_context(
+        item_module_defn(Varset, md_include_module([ModuleSpecifier])),
+        Context).
 
 %-----------------------------------------------------------------------------%
 
-:- type maybe_item_or_eof
-    --->    eof
-    ;       syntax_error(file_name, int)
-    ;       errors(assoc_list(string, term))
-    ;       ok(item, term.context).
+:- type read_item_result
+    --->    read_item_eof
+    ;       read_item_syntax_error(file_name, int)
+    ;       read_item_errors(assoc_list(string, term))
+    ;       read_item_ok(item, term.context).
 
     % Read_item/1 reads a single item, and if it is a valid term parses it.
     %
-:- pred read_item(module_name::in, file_name::in, maybe_item_or_eof::out,
+:- pred read_item(module_name::in, file_name::in, read_item_result::out,
     io::di, io::uo) is det.
 
 read_item(ModuleName, SourceFileName, MaybeItem, !IO) :-
@@ -925,20 +936,19 @@ read_item(ModuleName, SourceFileName, MaybeItem, !IO) :-
     process_read_term(ModuleName, MaybeTerm, MaybeItem).
 
 :- pred process_read_term(module_name::in, read_term::in,
-    maybe_item_or_eof::out) is det.
+    read_item_result::out) is det.
 
-process_read_term(_ModuleName, eof, eof).
+process_read_term(_ModuleName, eof, read_item_eof).
 process_read_term(_ModuleName, error(ErrorMsg, LineNumber),
-        syntax_error(ErrorMsg, LineNumber)).
+        read_item_syntax_error(ErrorMsg, LineNumber)).
 process_read_term(ModuleName, term(VarSet, Term), MaybeItemOrEof) :-
     parse_item(ModuleName, VarSet, Term, MaybeItem),
     convert_item(MaybeItem, MaybeItemOrEof).
 
-:- pred convert_item(maybe_item_and_context::in, maybe_item_or_eof::out)
-    is det.
+:- pred convert_item(maybe_item_and_context::in, read_item_result::out) is det.
 
-convert_item(ok2(Item, Context), ok(Item, Context)).
-convert_item(error2(Errors), errors(Errors)).
+convert_item(ok2(Item, Context), read_item_ok(Item, Context)).
+convert_item(error2(Errors), read_item_errors(Errors)).
 
 parse_item(ModuleName, VarSet, Term, Result) :-
     ( Term = term.functor(term.atom(":-"), [Decl], _DeclContext) ->
@@ -1020,21 +1030,21 @@ process_func_clause(error2(Errors0), _, _, _, error1(Errors)) :-
 %-----------------------------------------------------------------------------%
 
 :- type decl_attribute
-    --->    purity(purity)
-    ;       quantifier(quantifier_type, list(var))
-    ;       constraints(quantifier_type, term)
+    --->    decl_attr_purity(purity)
+    ;       decl_attr_quantifier(quantifier_type, list(var))
+    ;       decl_attr_constraints(quantifier_type, term)
             % the term here is the (not yet parsed) list of constraints
-    ;       solver_type.
+    ;       decl_attr_solver_type.
 
 :- type quantifier_type
-    --->    exist
-    ;       univ.
+    --->    quant_type_exist
+    ;       quant_type_univ.
 
     % The term associated with each decl_attribute is the term containing
     % both the attribute and the declaration that that attribute modifies;
     % this term is used when printing out error messages for cases when
     % attributes are used on declarations where they are not allowed.
-:- type decl_attrs == list(pair(decl_attribute, term)).
+:- type decl_attrs == assoc_list(decl_attribute, term).
 
 parse_decl(ModuleName, VarSet, F, Result) :-
     parse_decl_2(ModuleName, VarSet, F, [], Result).
@@ -1371,19 +1381,21 @@ process_decl(ModuleName, VarSet, "mutable", Args, Attributes, Result) :-
 :- pred parse_decl_attribute(string::in, list(term)::in, decl_attribute::out,
     term::out) is semidet.
 
-parse_decl_attribute("impure", [Decl], purity(purity_impure), Decl).
-parse_decl_attribute("semipure", [Decl], purity(purity_semipure), Decl).
+parse_decl_attribute("impure", [Decl],
+        decl_attr_purity(purity_impure), Decl).
+parse_decl_attribute("semipure", [Decl],
+        decl_attr_purity(purity_semipure), Decl).
 parse_decl_attribute("<=", [Decl, Constraints],
-        constraints(univ, Constraints), Decl).
+        decl_attr_constraints(quant_type_univ, Constraints), Decl).
 parse_decl_attribute("=>", [Decl, Constraints],
-        constraints(exist, Constraints), Decl).
+        decl_attr_constraints(quant_type_exist, Constraints), Decl).
 parse_decl_attribute("some", [TVars, Decl],
-        quantifier(exist, TVarsList), Decl) :-
+        decl_attr_quantifier(quant_type_exist, TVarsList), Decl) :-
     parse_list_of_vars(TVars, TVarsList).
 parse_decl_attribute("all", [TVars, Decl],
-        quantifier(univ, TVarsList), Decl) :-
+        decl_attr_quantifier(quant_type_univ, TVarsList), Decl) :-
     parse_list_of_vars(TVars, TVarsList).
-parse_decl_attribute("solver", [Decl], solver_type, Decl).
+parse_decl_attribute("solver", [Decl], decl_attr_solver_type, Decl).
 
 :- pred check_no_attributes(maybe1(T)::in, decl_attrs::in, maybe1(T)::out)
     is det.
@@ -1393,22 +1405,24 @@ check_no_attributes(Result0, Attributes, Result) :-
         Result0 = ok1(_),
         Attributes = [Attr - Term | _]
     ->
-        attribute_description(Attr, AttrDescr),
-        Message = AttrDescr ++ " not allowed here",
+        Message = attribute_description(Attr) ++ " not allowed here",
         Result = error1([Message - Term])
     ;
         Result = Result0
     ).
 
-:- pred attribute_description(decl_attribute::in, string::out) is det.
+:- func attribute_description(decl_attribute) = string.
 
-attribute_description(purity(_), "purity specifier").
-attribute_description(quantifier(univ, _), "universal quantifier (`all')").
-attribute_description(quantifier(exist, _), "existential quantifier (`some')").
-attribute_description(constraints(univ, _), "type class constraint (`<=')").
-attribute_description(constraints(exist, _),
-    "existentially quantified type class constraint (`=>')").
-attribute_description(solver_type, "solver type specifier").
+attribute_description(decl_attr_purity(_)) = "purity specifier".
+attribute_description(decl_attr_quantifier(quant_type_univ, _)) =
+    "universal quantifier (`all')".
+attribute_description(decl_attr_quantifier(quant_type_exist, _)) =
+    "existential quantifier (`some')".
+attribute_description(decl_attr_constraints(quant_type_univ, _)) =
+    "type class constraint (`<=')".
+attribute_description(decl_attr_constraints(quant_type_exist, _)) =
+    "existentially quantified type class constraint (`=>')".
+attribute_description(decl_attr_solver_type) = "solver type specifier".
 
 %-----------------------------------------------------------------------------%
 
@@ -1435,7 +1449,8 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
             ; PromiseType = promise_type_exhaustive
             ; PromiseType = promise_type_exclusive_exhaustive
             ),
-            get_quant_vars(univ, ModuleName, Attributes, _, [], UnivVars0),
+            get_quant_vars(quant_type_univ, ModuleName, Attributes, _,
+                [], UnivVars0),
             list.map(term.coerce_var, UnivVars0, UnivVars),
             Goal0 = Goal
         ),
@@ -1483,7 +1498,7 @@ make_external(VarSet0, MaybeBackend, SymSpec,
     decl_attrs::in, decl_attrs::out) is det.
 
 get_is_solver_type(IsSolverType, !Attributes) :-
-    ( !.Attributes = [solver_type - _ | !:Attributes] ->
+    ( !.Attributes = [decl_attr_solver_type - _ | !:Attributes] ->
         IsSolverType = solver_type
     ;
         IsSolverType = non_solver_type
@@ -2874,7 +2889,7 @@ process_pred_or_func_2(PredOrFunc, ok2(F, As0), PredType, VarSet0,
 :- pred get_purity(purity::out, decl_attrs::in, decl_attrs::out) is det.
 
 get_purity(Purity, !Attributes) :-
-    ( !.Attributes = [purity(Purity0) - _ | !:Attributes] ->
+    ( !.Attributes = [decl_attr_purity(Purity0) - _ | !:Attributes] ->
         Purity = Purity0
     ;
         Purity = purity_pure
@@ -2941,14 +2956,14 @@ get_class_context_and_inst_constraints(ModuleName, RevAttributes0,
     % error message.)
 
     list.reverse(RevAttributes0, Attributes0),
-    get_quant_vars(univ, ModuleName, Attributes0, Attributes1,
+    get_quant_vars(quant_type_univ, ModuleName, Attributes0, Attributes1,
         [], _UnivQVars),
-    get_quant_vars(exist, ModuleName, Attributes1, Attributes2,
+    get_quant_vars(quant_type_exist, ModuleName, Attributes1, Attributes2,
         [], ExistQVars0),
     list.map(term.coerce_var, ExistQVars0, ExistQVars),
-    get_constraints(univ, ModuleName, Attributes2,
+    get_constraints(quant_type_univ, ModuleName, Attributes2,
         Attributes3, MaybeUnivConstraints),
-    get_constraints(exist, ModuleName, Attributes3,
+    get_constraints(quant_type_exist, ModuleName, Attributes3,
         Attributes, MaybeExistConstraints),
     list.reverse(Attributes, RevAttributes),
 
@@ -2973,7 +2988,8 @@ combine_quantifier_results(ok2(UnivConstraints, InstConstraints0),
 
 get_quant_vars(QuantType, ModuleName, !Attributes, !Vars) :-
     (
-        !.Attributes = [quantifier(QuantType, QuantVars) - _ | !:Attributes]
+        !.Attributes = [decl_attr_quantifier(QuantType, QuantVars) - _
+            | !:Attributes]
     ->
         list.append(!.Vars, QuantVars, !:Vars),
         get_quant_vars(QuantType, ModuleName, !Attributes, !Vars)
@@ -2986,15 +3002,15 @@ get_quant_vars(QuantType, ModuleName, !Attributes, !Vars) :-
 
 get_constraints(QuantType, ModuleName, !Attributes, MaybeConstraints) :-
     (
-        !.Attributes = [constraints(QuantType, ConstraintsTerm) - _Term
+        !.Attributes = [
+            decl_attr_constraints(QuantType, ConstraintsTerm) - _Term
             | !:Attributes]
     ->
         parse_class_and_inst_constraints(ModuleName, ConstraintsTerm,
             MaybeConstraints0),
         % there may be more constraints of the same type --
         % collect them all and combine them
-        get_constraints(QuantType, ModuleName, !Attributes,
-            MaybeConstraints1),
+        get_constraints(QuantType, ModuleName, !Attributes, MaybeConstraints1),
         combine_constraint_list_results(MaybeConstraints1,
             MaybeConstraints0, MaybeConstraints)
     ;

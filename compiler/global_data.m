@@ -898,8 +898,8 @@ remap_static_cell_references(Remap, Procedure0, Procedure) :-
 
 :- func remap_instruction(static_cell_remap_info, instruction) = instruction.
 
-remap_instruction(Remap, Instr0 - Comment)
-    = remap_instr(Remap, Instr0) - Comment.
+remap_instruction(Remap, llds_instr(Instr0, Comment))
+    = llds_instr(remap_instr(Remap, Instr0), Comment).
 
 :- func remap_instr(static_cell_remap_info, instr) = instr.
 
