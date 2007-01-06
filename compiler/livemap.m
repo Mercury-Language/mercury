@@ -324,7 +324,7 @@ build_livemap_foreign_proc_components([Component | Components],
                 !:ContainsBadUserCode = yes
             )
         ;
-            AffectsLiveness = doesnt_affect_liveness
+            AffectsLiveness = does_not_affect_liveness
         )
     ;
         Component = foreign_proc_raw_code(_Context, AffectsLiveness,
@@ -357,7 +357,7 @@ build_live_lval_info(AffectsLiveness, LiveLvalInfo, Code,
             !:ContainsBadUserCode = yes
         )
     ;
-        AffectsLiveness = doesnt_affect_liveness,
+        AffectsLiveness = does_not_affect_liveness,
         (
             LiveLvalInfo = no_live_lvals_info,
             !:ContainsBadUserCode = yes

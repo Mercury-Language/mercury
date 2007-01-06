@@ -624,7 +624,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         TraceStmt1 = FillSlotsUptoTrail
     ),
     TraceComponents1 = [foreign_proc_raw_code(cannot_branch_away,
-        doesnt_affect_liveness, live_lvals_info(set.init), TraceStmt1)],
+        does_not_affect_liveness, live_lvals_info(set.init), TraceStmt1)],
     TraceCode1 = node([
         llds_instr(foreign_proc_code([], TraceComponents1,
             proc_will_not_call_mercury, no, no, MaybeLayoutLabel, no, yes, no),
@@ -644,7 +644,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         stackref_to_string(CallTableLval, CallTableLvalStr),
         TraceStmt3 = "\t\t" ++ CallTableLvalStr ++ " = 0;\n",
         TraceComponents3 = [foreign_proc_raw_code(cannot_branch_away,
-            doesnt_affect_liveness, live_lvals_info(set.init), TraceStmt3)],
+            does_not_affect_liveness, live_lvals_info(set.init), TraceStmt3)],
         TraceCode3 = node([
             llds_instr(foreign_proc_code([], TraceComponents3,
                 proc_will_not_call_mercury, no, no, no, no, yes, no), "")
@@ -672,7 +672,7 @@ trace_prepare_for_call(CI, TraceCode) :-
         ),
         ResetStmt = MacroStr ++ "(" ++ CallDepthStr ++ ");\n",
         TraceCode = node([
-            llds_instr(arbitrary_c_code(doesnt_affect_liveness,
+            llds_instr(arbitrary_c_code(does_not_affect_liveness,
                 live_lvals_info(set.init), ResetStmt), "")
         ])
     ;
@@ -921,7 +921,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         true
     ),
     TraceComponents = [foreign_proc_raw_code(cannot_branch_away,
-        doesnt_affect_liveness, live_lvals_info(LiveLvalSet), TraceStmt)],
+        does_not_affect_liveness, live_lvals_info(LiveLvalSet), TraceStmt)],
     TraceCode =
         node([
             llds_instr(label(Label),

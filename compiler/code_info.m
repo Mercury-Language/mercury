@@ -1915,7 +1915,7 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
                     affects_liveness, live_lvals_info(set.init),
                     "\t\tMR_save_transient_registers();\n"),
                 foreign_proc_raw_code(cannot_branch_away,
-                    doesnt_affect_liveness, live_lvals_info(set.init),
+                    does_not_affect_liveness, live_lvals_info(set.init),
                     "\t\tMR_commit_mark();\n"),
                 foreign_proc_raw_code(cannot_branch_away,
                     affects_liveness, live_lvals_info(set.init),
@@ -1994,7 +1994,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
             % See the comment in prepare_for_semi_commit above.
             Components = [
                 foreign_proc_raw_code(cannot_branch_away,
-                    doesnt_affect_liveness, live_lvals_info(set.init),
+                    does_not_affect_liveness, live_lvals_info(set.init),
                     "\t\tMR_commit_cut();\n")
             ],
             CutCode = node([

@@ -6379,16 +6379,36 @@ the @samp{will_not_call_mercury} attribute.  The default for foreign
 procedures that @samp{may_call_mercury}, in case none is specified, is
 @samp{may_call_mm_tabled}.
 
-@item @samp{affects_liveness/doesnt_affect_liveness}
+@item @samp{affects_liveness/does_not_affect_liveness}
 This attribute declares whether or not a foreign procedure
 uses and/or modifies any part of the Mercury virtual machine
 (registers, stack slots)
 through means other than its arguments.
 The @samp{affects_liveness} attribute says that it does;
-The @samp{doesnt_affect_liveness} attribute says that it does not.
+The @samp{does_not_affect_liveness} attribute says that it does not.
 In the absence of either attribute,
 the compiler assumes @samp{affects_liveness},
 unless the code of the foreign_proc in question is empty.
+
+@c @item
+@c @samp{does_not_allocate_memory/allocates_bounded_memory/allocates_unbounded_memory}
+@c This attribute declares whether a foreign procedure
+@c allocates any memory on the Mercury heap,
+@c and if it does, whether the amount allocated
+@c is guaranteed to be smaller than the bound given
+@c by the reserve space of the native garbage collector.
+
+@c @item
+@c @samp{registers_roots/does_not_register_roots/does_not_have_roots}
+@c This attribute declares whether a foreign procedure
+@c registers with the native garbage collector
+@c all the root pointers it accesses.
+@c This must always include
+@c all global variables maintained by the foreign procedure.
+@c If the foreign procedure may call Mercury,
+@c it must also include any storage location in which
+@c the foreign procedure stores roots before any call to Mercury
+@c (since a gc may take place during such a call).
 
 @c @item @samp{no_sharing/unknown_sharing/sharing(MaybeTypes, SharingList)}
 @c This attribute declares whether or not a foreign procedure creates any

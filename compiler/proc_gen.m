@@ -913,7 +913,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
             string.format("#define\tMR_ORDINARY_SLOTS\t%d\n",
                 [i(TotalSlots)], DefineStr),
             DefineComponents = [foreign_proc_raw_code(cannot_branch_away,
-                doesnt_affect_liveness, live_lvals_info(set.init), DefineStr)],
+                does_not_affect_liveness, live_lvals_info(set.init), DefineStr)],
             NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, yes(Struct)),
             AllocCode = node([
                 llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
@@ -1007,7 +1007,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         NondetPragma = yes,
         UndefStr = "#undef\tMR_ORDINARY_SLOTS\n",
         UndefComponents = [foreign_proc_raw_code(cannot_branch_away,
-            doesnt_affect_liveness, live_lvals_info(set.init), UndefStr)],
+            does_not_affect_liveness, live_lvals_info(set.init), UndefStr)],
         UndefCode = node([
             llds_instr(foreign_proc_code([], UndefComponents,
                 proc_will_not_call_mercury, no, no, no, no, no, no), "")
@@ -1169,7 +1169,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 ReturnMacroName = "MR_tbl_mmos_return_answer",
                 ReturnCodeStr = "\t" ++ ReturnMacroName ++ "(" ++
                     DebugStr ++ ", " ++ GeneratorLocnStr ++ ");\n",
-                Component = foreign_proc_user_code(no, doesnt_affect_liveness,
+                Component = foreign_proc_user_code(no, does_not_affect_liveness,
                     ReturnCodeStr),
                 SuccessCode = node([
                     llds_instr(livevals(LiveLvals), ""),
@@ -1268,13 +1268,13 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
         ], BytecodeCall),
 
     BytecodeInstructionsComponents = [
-        foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+        foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
             live_lvals_info(set.init), "\t{\n"),
-        foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+        foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
             live_lvals_info(set.init), CallStruct),
-        foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+        foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
             no_live_lvals_info, BytecodeCall),
-        foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+        foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
             live_lvals_info(set.init), "\t}\n")
     ],
 

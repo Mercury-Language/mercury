@@ -444,17 +444,17 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         ),
 
         PNegCondComponents = [
-            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+            foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
                 live_lvals_info(set.init),
                 wrap_transient("\t\tMR_pneg_enter_cond();\n"))
         ],
         PNegThenComponents = [
-            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+            foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
                 live_lvals_info(set.init),
                 wrap_transient("\t\tMR_pneg_enter_then();\n"))
         ],
         PNegElseComponents = [
-            foreign_proc_raw_code(cannot_branch_away, doesnt_affect_liveness,
+            foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
                 live_lvals_info(set.init),
                 wrap_transient("\t\tMR_pneg_enter_else(" ++ CtxtStr ++ ");\n"))
         ],

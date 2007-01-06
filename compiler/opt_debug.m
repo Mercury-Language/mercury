@@ -865,7 +865,7 @@ dump_component(_, foreign_proc_noop) = "".
 :- func dump_affects_liveness(affects_liveness) = string.
 
 dump_affects_liveness(affects_liveness) = "affects_liveness".
-dump_affects_liveness(doesnt_affect_liveness) = "doesnt_affect_liveness".
+dump_affects_liveness(does_not_affect_liveness) = "does_not_affect_liveness".
 dump_affects_liveness(default_affects_liveness) = "default_affects_liveness".
 
 :- func dump_input_components(maybe(proc_label), list(foreign_proc_input))

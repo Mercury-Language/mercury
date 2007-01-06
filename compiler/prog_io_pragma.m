@@ -1495,7 +1495,9 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       coll_may_modify_trail(proc_may_modify_trail)
     ;       coll_may_call_mm_tabled(may_call_mm_tabled)
     ;       coll_box_policy(box_policy)
-    ;       coll_affects_liveness(affects_liveness).
+    ;       coll_affects_liveness(affects_liveness)
+    ;       coll_allocates_memory(allocates_memory)
+    ;       coll_registers_roots(registers_roots).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
     string::in, varset::in, term::in,
@@ -1542,16 +1544,30 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Varset,
             coll_may_call_mm_tabled(may_call_mm_tabled),
         coll_box_policy(native_if_possible) - coll_box_policy(always_boxed),
         coll_affects_liveness(affects_liveness) -
-            coll_affects_liveness(doesnt_affect_liveness)
+            coll_affects_liveness(does_not_affect_liveness),
+        coll_allocates_memory(does_not_allocate_memory) -
+            coll_allocates_memory(allocates_bounded_memory),
+        coll_allocates_memory(does_not_allocate_memory) -
+            coll_allocates_memory(allocates_unbounded_memory),
+        coll_allocates_memory(allocates_bounded_memory) -
+            coll_allocates_memory(allocates_unbounded_memory),
+        coll_registers_roots(does_not_register_roots) -
+            coll_registers_roots(registers_roots),
+        coll_registers_roots(does_not_register_roots) -
+            coll_registers_roots(does_not_have_roots),
+        coll_registers_roots(registers_roots) -
+            coll_registers_roots(does_not_have_roots)
     ],
-    (
-        parse_pragma_foreign_proc_attributes_term0(Varset, Term, AttrList)
-    ->
+    ( parse_pragma_foreign_proc_attributes_term0(Varset, Term, AttrList) ->
         (
-            list.member(Conflict1 - Conflict2, ConflictingAttributes),
-            list.member(Conflict1, AttrList),
-            list.member(Conflict2, AttrList)
+            some [Conflict1, Conflict2] (
+                list.member(Conflict1 - Conflict2, ConflictingAttributes),
+                list.member(Conflict1, AttrList),
+                list.member(Conflict2, AttrList)
+            )
         ->
+            % We could include Conflict1 and Conflict2 in the message,
+            % but the conflict is usually very obvious even without this.
             Msg = "conflicting attributes in attribute list",
             MaybeAttributes = error1([Msg - Term])
         ;
@@ -1599,6 +1615,10 @@ process_attribute(coll_box_policy(BoxPolicy), !Attrs) :-
     set_box_policy(BoxPolicy, !Attrs).
 process_attribute(coll_affects_liveness(AffectsLiveness), !Attrs) :-
     set_affects_liveness(AffectsLiveness, !Attrs).
+process_attribute(coll_allocates_memory(AllocatesMemory), !Attrs) :-
+    set_allocates_memory(AllocatesMemory, !Attrs).
+process_attribute(coll_registers_roots(RegistersRoots), !Attrs) :-
+    set_registers_roots(RegistersRoots, !Attrs).
 
     % Check whether all the required attributes have been set for
     % a particular language
@@ -1675,6 +1695,10 @@ parse_single_pragma_foreign_proc_attribute(Varset, Term, Flag) :-
         Flag = coll_box_policy(BoxPolicy)
     ; parse_affects_liveness(Term, AffectsLiveness) ->
         Flag = coll_affects_liveness(AffectsLiveness)
+    ; parse_allocates_memory(Term, AllocatesMemory) ->
+        Flag = coll_allocates_memory(AllocatesMemory)
+    ; parse_registers_roots(Term, RegistersRoots) ->
+        Flag = coll_registers_roots(RegistersRoots)
     ;
         fail
     ).
@@ -1730,8 +1754,46 @@ parse_affects_liveness(Term, AffectsLiveness) :-
         Functor = "affects_liveness",
         AffectsLiveness = affects_liveness
     ;
-        Functor = "doesnt_affect_liveness",
-        AffectsLiveness = doesnt_affect_liveness
+        ( Functor = "doesnt_affect_liveness"
+        ; Functor = "does_not_affect_liveness"
+        ),
+        AffectsLiveness = does_not_affect_liveness
+    ).
+
+:- pred parse_allocates_memory(term::in, allocates_memory::out) is semidet.
+
+parse_allocates_memory(Term, AllocatesMemory) :-
+    Term = term.functor(term.atom(Functor), [], _),
+    (
+        ( Functor = "doesnt_allocate_memory"
+        ; Functor = "does_not_allocate_memory"
+        ),
+        AllocatesMemory = does_not_allocate_memory
+    ;
+        Functor = "allocates_bounded_memory",
+        AllocatesMemory = allocates_bounded_memory
+    ;
+        Functor = "allocates_unbounded_memory",
+        AllocatesMemory = allocates_unbounded_memory
+    ).
+
+:- pred parse_registers_roots(term::in, registers_roots::out) is semidet.
+
+parse_registers_roots(Term, RegistersRoots) :-
+    Term = term.functor(term.atom(Functor), [], _),
+    (
+        Functor = "registers_roots",
+        RegistersRoots = registers_roots
+    ;
+        ( Functor = "doesnt_register_roots"
+        ; Functor = "does_not_register_roots"
+        ),
+        RegistersRoots = does_not_register_roots
+    ;
+        ( Functor = "doesnt_have_roots"
+        ; Functor = "does_not_have_roots"
+        ),
+        RegistersRoots = does_not_have_roots
     ).
 
 :- pred parse_tabled_for_io(term::in, proc_tabled_for_io::out) is semidet.
