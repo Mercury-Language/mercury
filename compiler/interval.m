@@ -35,6 +35,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 

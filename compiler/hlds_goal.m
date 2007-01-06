@@ -21,6 +21,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -1071,47 +1072,6 @@
             % This goal contains a scope goal whose scope_reason is
             % trace_goal(...).
 
-    % We can think of the goal that defines a procedure to be a tree,
-    % whose leaves are primitive goals and whose interior nodes are
-    % compound goals. These two types describe the position of a goal
-    % in this tree. A goal_path_step type says which branch to take at an
-    % interior node; the integer counts start at one. (For switches,
-    % the second int gives the total number of function symbols in the type
-    % of the switched-on var; for builtin types such as integer and string,
-    % for which this number is effectively infinite, we store a negative
-    % number.) The goal_path type gives the sequence of steps from the root
-    % to the given goal *in reverse order*, so that the step closest to
-    % the root is last. (Keeping the list in reverse order makes the
-    % common operations constant-time instead of linear in the length
-    % of the list.)
-    %
-    % If any of the following three types is changed, then the
-    % corresponding types in mdbcomp/program_representation.m must be
-    % updated.
-    %
-:- type goal_path == list(goal_path_step).
-
-:- type goal_path_step
-    --->    conj(int)
-    ;       disj(int)
-    ;       switch(int, int)
-    ;       ite_cond
-    ;       ite_then
-    ;       ite_else
-    ;       neg
-    ;       scope(maybe_cut)
-    ;       first
-    ;       later.
-
-:- type maybe_cut
-    --->    cut
-    ;       no_cut.
-
-    % Convert a goal path to a string, using the format documented
-    % in the Mercury user's guide.
-    %
-:- func goal_path_to_string(goal_path) = string.
-
 %-----------------------------------------------------------------------------%
 %
 % Get/set predicates for the extra_goal_info structure
@@ -1875,46 +1835,8 @@ goal_has_feature(hlds_goal(_GoalExpr, GoalInfo), Feature) :-
     goal_info_has_feature(GoalInfo, Feature).
 
 %-----------------------------------------------------------------------------%
-
-goal_path_to_string(Path) = PathStr :-
-    goal_path_steps_to_strings(Path, StepStrs),
-    list.reverse(StepStrs, RevStepStrs),
-    string.append_list(RevStepStrs, PathStr).
-
-:- pred goal_path_steps_to_strings(goal_path::in, list(string)::out) is det.
-
-goal_path_steps_to_strings([], []).
-goal_path_steps_to_strings([Step | Steps], [StepStr | StepStrs]) :-
-    goal_path_step_to_string(Step, StepStr),
-    goal_path_steps_to_strings(Steps, StepStrs).
-
-    % The inverse of this procedure is implemented in
-    % mdbcomp/program_representation.m, and must be updated if this
-    % is changed.
-    %
-:- pred goal_path_step_to_string(goal_path_step::in, string::out) is det.
-
-goal_path_step_to_string(conj(N), Str) :-
-    string.int_to_string(N, NStr),
-    string.append_list(["c", NStr, ";"], Str).
-goal_path_step_to_string(disj(N), Str) :-
-    string.int_to_string(N, NStr),
-    string.append_list(["d", NStr, ";"], Str).
-goal_path_step_to_string(switch(N, _), Str) :-
-    string.int_to_string(N, NStr),
-    string.append_list(["s", NStr, ";"], Str).
-goal_path_step_to_string(ite_cond, "?;").
-goal_path_step_to_string(ite_then, "t;").
-goal_path_step_to_string(ite_else, "e;").
-goal_path_step_to_string(neg, "~;").
-goal_path_step_to_string(scope(cut), "q!;").
-goal_path_step_to_string(scope(no_cut), "q;").
-goal_path_step_to_string(first, "f;").
-goal_path_step_to_string(later, "l;").
-
-%-----------------------------------------------------------------------------%
 %
-% Miscellaneous utility procedures for dealing with HLDS goals
+% Miscellaneous utility procedures for dealing with HLDS goals.
 %
 
 goal_to_conj_list(Goal, ConjList) :-

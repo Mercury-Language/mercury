@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1212,7 +1212,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             Primitives0)
     ;
         Goal = scope_rep(InnerGoal, MaybeCut),
-        InnerPath = list.append(Path, [scope(MaybeCut)]),
+        InnerPath = list.append(Path, [step_scope(MaybeCut)]),
         InnerAndPath = goal_and_path(InnerGoal, InnerPath),
         MaybePrims = make_primitive_list(Store, [InnerAndPath | GoalPaths],
             Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1245,7 +1245,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             DisjPathStr = get_goal_path_from_label_layout(Label),
             path_from_string_det(DisjPathStr, DisjPath),
             list.append(Path, PathTail, DisjPath),
-            PathTail = [disj(N)]
+            PathTail = [step_disj(N)]
         ->
             list.index1_det(Disjs, N, Disj),
             DisjAndPath = goal_and_path(Disj, DisjPath),
@@ -1264,7 +1264,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             ArmPathStr = get_goal_path_from_label_layout(Label),
             path_from_string_det(ArmPathStr, ArmPath),
             list.append(Path, PathTail, ArmPath),
-            PathTail = [switch(N)]
+            PathTail = [step_switch(N, _)]
         ->
             list.index1_det(Arms, N, Arm),
             ArmAndPath = goal_and_path(Arm, ArmPath),
@@ -1283,9 +1283,9 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             CondPathStr = get_goal_path_from_label_layout(Label),
             path_from_string_det(CondPathStr, CondPath),
             list.append(Path, PathTail, CondPath),
-            PathTail = [ite_cond]
+            PathTail = [step_ite_cond]
         ->
-            ThenPath = list.append(Path, [ite_then]),
+            ThenPath = list.append(Path, [step_ite_then]),
             CondAndPath = goal_and_path(Cond, CondPath),
             ThenAndPath = goal_and_path(Then, ThenPath),
             MaybePrims = make_primitive_list(Store,
@@ -1299,9 +1299,9 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             CondPathStr = get_goal_path_from_label_layout(Label),
             path_from_string_det(CondPathStr, CondPath),
             list.append(Path, PathTail, CondPath),
-            PathTail = [ite_cond]
+            PathTail = [step_ite_cond]
         ->
-            ElsePath = list.append(Path, [ite_else]),
+            ElsePath = list.append(Path, [step_ite_else]),
             ElseAndPath = goal_and_path(Else, ElsePath),
             MaybePrims = make_primitive_list(Store, [ElseAndPath | GoalPaths],
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1325,7 +1325,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
         ->
             % The end of the primitive list is somewhere inside
             % NegGoal.
-            NegPath = list.append(Path, [neg]),
+            NegPath = list.append(Path, [step_neg]),
             NegAndPath = goal_and_path(NegGoal, NegPath),
             MaybePrims = make_primitive_list(Store, [NegAndPath], ContourTail,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0)
@@ -1739,7 +1739,7 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 add_paths_to_conjuncts([], _, _, []).
 add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
         [goal_and_path(Goal, Path) | GoalAndPaths]) :-
-    Path = ParentPath ++ [conj(N)],
+    Path = ParentPath ++ [step_conj(N)],
     add_paths_to_conjuncts(Goals, ParentPath, N + 1, GoalAndPaths).
 
 %-----------------------------------------------------------------------------%

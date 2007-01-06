@@ -103,6 +103,7 @@
 :- import_module ll_backend.live_vars.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.store_alloc.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.

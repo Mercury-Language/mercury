@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -338,12 +338,10 @@ write_path_port_for_user(port_only(Port), !IO) :-
     string_to_trace_port(PortStr, Port),
     io.write_string(PortStr, !IO).
 write_path_port_for_user(path_only(Path), !IO) :-
-    string_from_path(Path, PathStr),
-    io.write_strings(["<", PathStr, ">"], !IO).
+    io.write_strings(["<", string_from_path(Path), ">"], !IO).
 write_path_port_for_user(port_and_path(Port, Path), !IO) :-
     string_to_trace_port(PortStr, Port),
-    string_from_path(Path, PathStr),
-    io.write_strings([PortStr, " <", PathStr, ">"], !IO).
+    io.write_strings([PortStr, " <", string_from_path(Path), ">"], !IO).
 
 %-----------------------------------------------------------------------------%
 

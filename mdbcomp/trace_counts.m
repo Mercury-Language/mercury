@@ -899,18 +899,16 @@ write_path_port_count(port_only(Port),
         int_to_string(NumTests), "\n"], !IO).
 write_path_port_count(path_only(Path),
         line_no_and_count(LineNo, ExecCount, NumTests), !IO) :-
-    string_from_path(Path, PathStr),
     io.write_strings([
-        "<", PathStr, "> ",
+        "<", string_from_path(Path), "> ",
         int_to_string(LineNo), " ",
         int_to_string(ExecCount), " ",
         int_to_string(NumTests), "\n"], !IO).
 write_path_port_count(port_and_path(Port, Path),
         line_no_and_count(LineNo, ExecCount, NumTests), !IO) :-
     string_to_trace_port(PortStr, Port),
-    string_from_path(Path, PathStr),
     io.write_strings([
-        PortStr, " <", PathStr, "> ",
+        PortStr, " <", string_from_path(Path), "> ",
         int_to_string(LineNo), " ",
         int_to_string(ExecCount), " ",
         int_to_string(NumTests), "\n"], !IO).

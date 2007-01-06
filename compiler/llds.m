@@ -22,12 +22,12 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
 :- import_module libs.tree.
 :- import_module ll_backend.layout.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 

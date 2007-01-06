@@ -67,6 +67,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module mode_robdd.
 % :- import_module mode_robdd.check.
 % :- import_module mode_robdd.tfeir.

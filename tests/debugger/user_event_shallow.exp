@@ -19,7 +19,7 @@ browser> quit
 mdb> user_event_context proc
 User events will get only procedure contexts printed.
 mdb> user
-      E3:     C3 USER <nodiag_fail> pred user_event_shallow.nodiag/3-0 (semidet) s2;c4;t;c2;
+      E3:     C3 USER <nodiag_fail> pred user_event_shallow.nodiag/3-0 (semidet) s2-2;c4;t;c2;
 mdb> user_event_context none
 User events will get no contexts printed.
 mdb> current
@@ -29,7 +29,7 @@ User events get no contexts printed.
 mdb> user_event_context full
 User events will get full contexts printed.
 mdb> current
-      E3:     C3 USER <nodiag_fail> pred user_event_shallow.nodiag/3-0 (semidet) s2;c4;t;c2; user_event_shallow.m:64
+      E3:     C3 USER <nodiag_fail> pred user_event_shallow.nodiag/3-0 (semidet) s2-2;c4;t;c2; user_event_shallow.m:64
 mdb> user_event_context file
 User events will get only file contexts printed.
 mdb> current

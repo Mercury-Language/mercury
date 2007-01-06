@@ -34,7 +34,7 @@ mdb> print_optionals off
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
-      E6:     C4 SWTC pred queens.qperm/2-0 (nondet) s2; queens.m:37
+      E6:     C4 SWTC pred queens.qperm/2-0 (nondet) s2-2; queens.m:37
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
@@ -135,7 +135,7 @@ mdb> print *
        HeadVar__1             	[2, 3, 4, 5]
 mdb> 
      E11:     C6 SWTC queens.m:37
-                         pred queens.qperm/2-0 (nondet) s2;
+                         pred queens.qperm/2-0 (nondet) s2-2;
 mdb> print *
        HeadVar__1             	[2, 3, 4, 5]
 mdb> 
@@ -160,7 +160,7 @@ mdb>
                          pred queens.qperm/2-0 (nondet)
 mdb> goto -a 21
      E16:     C8 SWTC queens.m:37
-                         pred queens.qperm/2-0 (nondet) s2;
+                         pred queens.qperm/2-0 (nondet) s2-2;
      E17:     C9 CALL queens.m:45 (from queens.m:38)
                          pred queens.qdelete/3-0 (nondet)
      E18:     C9 DISJ queens.m:45
@@ -175,9 +175,9 @@ mdb> stack
    5       pred queens.main/2-0 (cc_multi) (queens.m:15)
 mdb> stack -d
    0     E20     C10    6 pred queens.qperm/2-0 (nondet) (queens.m:36) (empty)
-   1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:40) s2;c3;
-   2     E10      C6    4 pred queens.qperm/2-0 (nondet) (queens.m:40) s2;c3;
-   3      E5      C4    3 pred queens.qperm/2-0 (nondet) (queens.m:40) s2;c3;
+   1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:40) s2-2;c3;
+   2     E10      C6    4 pred queens.qperm/2-0 (nondet) (queens.m:40) s2-2;c3;
+   3      E5      C4    3 pred queens.qperm/2-0 (nondet) (queens.m:40) s2-2;c3;
    4      E4      C3    2 pred queens.queen/2-0 (nondet) (queens.m:30) c2;
    5      E1      C1    1 pred queens.main/2-0 (cc_multi) (queens.m:15) ?;c2;q!;
 mdb> stack 3
@@ -186,14 +186,14 @@ mdb> stack 3
    5       pred queens.main/2-0 (cc_multi) (queens.m:15)
 mdb> stack -d 3
    0     E20     C10    6 pred queens.qperm/2-0 (nondet) (queens.m:36) (empty)
-   1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:40) s2;c3;
-   2     E10      C6    4 pred queens.qperm/2-0 (nondet) (queens.m:40) s2;c3;
+   1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:40) s2-2;c3;
+   2     E10      C6    4 pred queens.qperm/2-0 (nondet) (queens.m:40) s2-2;c3;
 <more stack frames snipped>
 mdb> print *
        HeadVar__1             	[4, 5]
 mdb> 
      E21:    C10 SWTC queens.m:37
-                         pred queens.qperm/2-0 (nondet) s2;
+                         pred queens.qperm/2-0 (nondet) s2-2;
 mdb> retry
      E20:    C10 CALL queens.m:36 (from queens.m:40)
                          pred queens.qperm/2-0 (nondet)
@@ -201,7 +201,7 @@ mdb> print *
        HeadVar__1             	[4, 5]
 mdb> finish -a
      E21:    C10 SWTC queens.m:37
-                         pred queens.qperm/2-0 (nondet) s2;
+                         pred queens.qperm/2-0 (nondet) s2-2;
      E22:    C11 CALL queens.m:45 (from queens.m:38)
                          pred queens.qdelete/3-0 (nondet)
      E23:    C11 DISJ queens.m:45
@@ -211,7 +211,7 @@ mdb> finish -a
      E25:    C12 CALL queens.m:36 (from queens.m:40)
                          pred queens.qperm/2-0 (nondet)
      E26:    C12 SWTC queens.m:37
-                         pred queens.qperm/2-0 (nondet) s2;
+                         pred queens.qperm/2-0 (nondet) s2-2;
      E27:    C13 CALL queens.m:45 (from queens.m:38)
                          pred queens.qdelete/3-0 (nondet)
      E28:    C13 DISJ queens.m:45
@@ -221,7 +221,7 @@ mdb> finish -a
      E30:    C14 CALL queens.m:36 (from queens.m:40)
                          pred queens.qperm/2-0 (nondet)
      E31:    C14 SWTC queens.m:36
-                         pred queens.qperm/2-0 (nondet) s1;
+                         pred queens.qperm/2-0 (nondet) s1-2;
      E32:    C14 EXIT queens.m:36 (from queens.m:40)
                          pred queens.qperm/2-0 (nondet)
      E33:    C12 EXIT queens.m:36 (from queens.m:40)
@@ -243,15 +243,15 @@ mdb> continue -a
      E38:    C15 CALL queens.m:52 (from queens.m:31)
                          pred queens.safe/1-0 (semidet)
      E39:    C15 SWTC queens.m:53
-                         pred queens.safe/1-0 (semidet) s2;
+                         pred queens.safe/1-0 (semidet) s2-2;
      E40:    C16 CALL queens.m:60 (from queens.m:54)
                          pred queens.nodiag/3-0 (semidet)
      E41:    C16 SWTC queens.m:61
-                         pred queens.nodiag/3-0 (semidet) s2;
+                         pred queens.nodiag/3-0 (semidet) s2-2;
      E42:    C16 COND queens.m:64
-                         pred queens.nodiag/3-0 (semidet) s2;c6;?;
+                         pred queens.nodiag/3-0 (semidet) s2-2;c6;?;
      E43:    C16 THEN queens.m:65
-                         pred queens.nodiag/3-0 (semidet) s2;c6;t;
+                         pred queens.nodiag/3-0 (semidet) s2-2;c6;t;
      E44:    C16 FAIL queens.m:60 (from queens.m:54)
                          pred queens.nodiag/3-0 (semidet)
      E45:    C15 FAIL queens.m:52 (from queens.m:31)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -559,7 +559,7 @@ format_slice_label_counts(LabelCounts, TotalTests,
         OtherTests = [_ | _],
         TestsStrs = list.map(bracket_int, Tests),
         TotalTestsStr = "(" ++ int_to_string_thousands(TotalTests) ++ ")",
-        Columns = AlwaysColumns ++ 
+        Columns = AlwaysColumns ++
             [right([TotalTestsStr     | TestsStrs]) - no]
     ),
     Str = string.format_table_max(Columns, " ") ++ "\n".
@@ -906,9 +906,7 @@ format_proc_label(ProcLabel) = Str :-
 
 format_path_port(port_only(Port)) = Str :-
     mdbcomp.trace_counts.string_to_trace_port(Str, Port).
-format_path_port(path_only(Path)) = Str :-
-    mdbcomp.program_representation.string_from_path(Path, PathStr),
-    Str = "<" ++ PathStr ++ ">".
+format_path_port(path_only(Path)) = "<" ++ string_from_path(Path) ++ ">".
 format_path_port(port_and_path(Port, Path)) =
     format_path_port(port_only(Port)) ++ " " ++
         format_path_port(path_only(Path)).

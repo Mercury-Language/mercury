@@ -64,6 +64,7 @@
 :- import_module ll_backend.layout.
 :- import_module ll_backend.stack_layout.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 

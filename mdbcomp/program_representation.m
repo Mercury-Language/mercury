@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -205,26 +205,35 @@
 
 %-----------------------------------------------------------------------------%
 
-    % The following three types are derived from compiler/hlds_goal.m.
+% We can think of the goal that defines a procedure to be a tree,
+% whose leaves are primitive goals and whose interior nodes are
+% compound goals. These two types describe the position of a goal
+% in this tree. A goal_path_step type says which branch to take at an
+% interior node; the integer counts start at one. (For switches,
+% the second int gives the total number of function symbols in the type
+% of the switched-on var; for builtin types such as integer and string,
+% for which this number is effectively infinite, we store a negative
+% number.) The goal_path type gives the sequence of steps from the root
+% to the given goal *in reverse order*, so that the step closest to
+% the root is last. (Keeping the list in reverse order makes the
+% common operations constant-time instead of linear in the length
+% of the list.)
 
 :- type goal_path == list(goal_path_step).
-
-% This is similar to the type goal_path defined in the module
-% compiler/hlds_goal.m.
 
 :- type goal_path_string == string.
 
 :- type goal_path_step 
-    --->    conj(int)
-    ;       disj(int)
-    ;       switch(int)
-    ;       ite_cond
-    ;       ite_then
-    ;       ite_else
-    ;       neg
-    ;       scope(maybe_cut)
-    ;       first
-    ;       later.
+    --->    step_conj(int)
+    ;       step_disj(int)
+    ;       step_switch(int, int)
+    ;       step_ite_cond
+    ;       step_ite_then
+    ;       step_ite_else
+    ;       step_neg
+    ;       step_scope(maybe_cut)
+    ;       step_first
+    ;       step_later.
 
     % Does the scope goal have a different determinism inside than outside?
 :- type maybe_cut
@@ -233,7 +242,15 @@
 
 :- pred path_from_string_det(string::in, goal_path::out) is det.
 
-:- pred string_from_path(goal_path::in, string::out) is det.
+    % This leaves the reverses the steps before converting them to a string.
+    %
+:- func goal_path_to_string(goal_path) = string.
+
+    % This leaves the steps in the order in which they appear in goal_path;
+    % if the steps are reversed in the goal_path (as usual), the end result
+    % will be reversed too.
+    %
+:- func string_from_path(goal_path) = string.
 
 :- pred path_from_string(string::in, goal_path::out) is semidet.
 
@@ -453,40 +470,46 @@ path_step_from_string(String, Step) :-
 :- pred path_step_from_string_2(char::in, string::in, goal_path_step::out)
     is semidet.
 
-path_step_from_string_2('c', NStr, conj(N)) :-
+path_step_from_string_2('c', NStr, step_conj(N)) :-
     string.to_int(NStr, N).
-path_step_from_string_2('d', NStr, disj(N)) :-
+path_step_from_string_2('d', NStr, step_disj(N)) :-
     string.to_int(NStr, N).
-path_step_from_string_2('s', NStr, switch(N)) :-
-    string.to_int(NStr, N).
-path_step_from_string_2('?', "", ite_cond).
-path_step_from_string_2('t', "", ite_then).
-path_step_from_string_2('e', "", ite_else).
-path_step_from_string_2('~', "", neg).
-path_step_from_string_2('q', "!", scope(cut)).
-path_step_from_string_2('q', "", scope(no_cut)).
-path_step_from_string_2('f', "", first).
-path_step_from_string_2('l', "", later).
+path_step_from_string_2('s', Str, step_switch(N, M)) :-
+    string.words_separator(unify('-'), Str) = [NStr, MStr],
+    string.to_int(NStr, N),
+    string.to_int(MStr, M).
+path_step_from_string_2('?', "", step_ite_cond).
+path_step_from_string_2('t', "", step_ite_then).
+path_step_from_string_2('e', "", step_ite_else).
+path_step_from_string_2('~', "", step_neg).
+path_step_from_string_2('q', "!", step_scope(cut)).
+path_step_from_string_2('q', "", step_scope(no_cut)).
+path_step_from_string_2('f', "", step_first).
+path_step_from_string_2('l', "", step_later).
 
 is_path_separator(';').
 
-string_from_path(GoalPath, GoalPathStr) :-
-    list.map(string_from_path_step, GoalPath, GoalPathSteps),
-    GoalPathStr = string.join_list(";", GoalPathSteps) ++ ";".
+goal_path_to_string(GoalPath) =
+    string.append_list(list.map(goal_path_step_to_string,
+        list.reverse(GoalPath))).
 
-:- pred string_from_path_step(goal_path_step::in, string::out) is det.
+string_from_path(GoalPath) =
+    string.append_list(list.map(goal_path_step_to_string, GoalPath)).
 
-string_from_path_step(conj(N), "c" ++ int_to_string(N)).
-string_from_path_step(disj(N), "d" ++ int_to_string(N)).
-string_from_path_step(switch(N), "s" ++ int_to_string(N)).
-string_from_path_step(ite_cond, "?").
-string_from_path_step(ite_then, "t").
-string_from_path_step(ite_else, "e").
-string_from_path_step(neg, "~").
-string_from_path_step(scope(cut), "q!").
-string_from_path_step(scope(no_cut), "q").
-string_from_path_step(first, "f").
-string_from_path_step(later, "l").
+:- func goal_path_step_to_string(goal_path_step) = string.
+
+goal_path_step_to_string(step_conj(N)) = "c" ++ int_to_string(N) ++ ";".
+goal_path_step_to_string(step_disj(N)) = "d" ++ int_to_string(N) ++ ";".
+goal_path_step_to_string(step_switch(N, M)) = "s" ++ int_to_string(N)
+    ++ "-" ++ int_to_string(M) ++ ";".
+goal_path_step_to_string(step_ite_cond) = "?;".
+goal_path_step_to_string(step_ite_then) = "t;".
+goal_path_step_to_string(step_ite_else) = "e;".
+goal_path_step_to_string(step_neg) = "~;".
+goal_path_step_to_string(step_scope(cut)) = "q!;".
+goal_path_step_to_string(step_scope(no_cut)) = "q;".
+goal_path_step_to_string(step_first) = "f;".
+goal_path_step_to_string(step_later) = "l;".
 
 %-----------------------------------------------------------------------------%
 

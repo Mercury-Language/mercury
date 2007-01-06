@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,6 +47,7 @@
 :- import_module hlds.passes_aux.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
@@ -251,28 +252,28 @@ dump_program_point(pp(Context, GoalPath), !IO):-
 
 :- pred dump_goal_path_step(goal_path_step::in, io::di, io::uo) is det.
 
-dump_goal_path_step(conj(N)) -->
+dump_goal_path_step(step_conj(N)) -->
     io.write_char('c'),
     io.write_int(N).
-dump_goal_path_step(disj(N)) -->
+dump_goal_path_step(step_disj(N)) -->
     io.write_char('d'),
     io.write_int(N).
-dump_goal_path_step(switch(N, _)) -->
+dump_goal_path_step(step_switch(N, _)) -->
     io.write_char('s'),
     io.write_int(N).
-dump_goal_path_step(ite_cond) -->
+dump_goal_path_step(step_ite_cond) -->
     io.write_char('c').
-dump_goal_path_step(ite_then) -->
+dump_goal_path_step(step_ite_then) -->
     io.write_char('t').
-dump_goal_path_step(ite_else) -->
+dump_goal_path_step(step_ite_else) -->
     io.write_char('e').
-dump_goal_path_step(neg) -->
+dump_goal_path_step(step_neg) -->
     io.write_char('n').
-dump_goal_path_step(scope(_)) -->
+dump_goal_path_step(step_scope(_)) -->
     io.write_char('q').
-dump_goal_path_step(first) -->
+dump_goal_path_step(step_first) -->
     io.write_char('f').
-dump_goal_path_step(later) -->
+dump_goal_path_step(step_later) -->
     io.write_char('l').
 
 dead_cell_table_init = map.init.

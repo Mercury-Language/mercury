@@ -108,6 +108,8 @@
 :- import_module hlds.hlds_goal.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
@@ -581,7 +583,7 @@ produced_at_path(VarMap, Bindings, RepVar) :-
     %
 :- pred get_position_in_conj(mc_rep_var::in, conjunct_id::out) is semidet.
 
-get_position_in_conj(_ProgVar `in` _PredId `at` [conj(N) | _], N).
+get_position_in_conj(_ProgVar `in` _PredId `at` [step_conj(N) | _], N).
 
 %-----------------------------------------------------------------------------%
 
@@ -757,8 +759,7 @@ dump_proc_goal_paths(ProcTable, ProcId, !IO) :-
 
 dump_goal_goal_paths(Indent, hlds_goal(GoalExpr, GoalInfo), !IO) :-
     goal_info_get_goal_path(GoalInfo, GoalPath),
-    GoalPathString = goal_path_to_string(GoalPath),
-    GoalPathFormat = [words(GoalPathString), nl],
+    GoalPathFormat = [words(goal_path_to_string(GoalPath)), nl],
     write_error_pieces_maybe_with_context(no, Indent, GoalPathFormat, !IO),
     dump_goal_expr_goal_paths(Indent+1, GoalExpr, !IO).
 

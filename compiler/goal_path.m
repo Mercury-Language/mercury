@@ -63,6 +63,8 @@
 :- import_module hlds.hlds_goal.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
 :- import_module int.
@@ -99,7 +101,7 @@ fill_goal_path_slots_in_clauses(ModuleInfo, OmitModeEquivPrefix, !PredInfo) :-
 
 fill_slots_in_clause(SlotInfo, Clause0, Clause, ClauseNum, ClauseNum + 1) :-
     Clause0 = clause(ProcIds, Goal0, Lang, Context),
-    fill_goal_slots([disj(ClauseNum)], SlotInfo, Goal0, Goal),
+    fill_goal_slots([step_disj(ClauseNum)], SlotInfo, Goal0, Goal),
     Clause = clause(ProcIds, Goal, Lang, Context).
 
 fill_goal_path_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal) :-
@@ -125,10 +127,10 @@ fill_goal_slots(Path0, SlotInfo,
 :- pred mode_equiv_step(goal_path_step::in) is semidet.
 
 mode_equiv_step(Step) :-
-    ( Step = disj(_)
-    ; Step = neg
-    ; Step = scope(_)
-    ; Step = ite_else
+    ( Step = step_disj(_)
+    ; Step = step_neg
+    ; Step = step_scope(_)
+    ; Step = step_ite_else
     ).
 
 :- pred fill_expr_slots(hlds_goal_info::in, goal_path::in, slot_info::in,
@@ -157,7 +159,7 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         Goal = switch(Var, CanFail, Cases)
     ;
         Goal0 = negation(SubGoal0),
-        fill_goal_slots([neg | Path0], SlotInfo, SubGoal0, SubGoal),
+        fill_goal_slots([step_neg | Path0], SlotInfo, SubGoal0, SubGoal),
         Goal = negation(SubGoal)
     ;
         Goal0 = scope(Reason, SubGoal0),
@@ -169,14 +171,14 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         ;
             MaybeCut = cut
         ),
-        fill_goal_slots([scope(MaybeCut) | Path0], SlotInfo,
+        fill_goal_slots([step_scope(MaybeCut) | Path0], SlotInfo,
             SubGoal0, SubGoal),
         Goal = scope(Reason, SubGoal)
     ;
         Goal0 = if_then_else(A, Cond0, Then0, Else0),
-        fill_goal_slots([ite_cond | Path0], SlotInfo, Cond0, Cond),
-        fill_goal_slots([ite_then | Path0], SlotInfo, Then0, Then),
-        fill_goal_slots([ite_else | Path0], SlotInfo, Else0, Else),
+        fill_goal_slots([step_ite_cond | Path0], SlotInfo, Cond0, Cond),
+        fill_goal_slots([step_ite_then | Path0], SlotInfo, Then0, Then),
+        fill_goal_slots([step_ite_else | Path0], SlotInfo, Else0, Else),
         Goal = if_then_else(A, Cond, Then, Else)
     ;
         Goal0 = unify(LHS, RHS0, Mode, Kind, Context),
@@ -208,7 +210,7 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
 fill_conj_slots(_, _, _, [], []).
 fill_conj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
     N1 = N0 + 1,
-    fill_goal_slots([conj(N1) | Path0], SlotInfo, Goal0, Goal),
+    fill_goal_slots([step_conj(N1) | Path0], SlotInfo, Goal0, Goal),
     fill_conj_slots(Path0, N1, SlotInfo, Goals0, Goals).
 
 :- pred fill_disj_slots(goal_path::in, int::in, slot_info::in,
@@ -217,7 +219,7 @@ fill_conj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
 fill_disj_slots(_, _, _, [], []).
 fill_disj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
     N1 = N0 + 1,
-    fill_goal_slots([disj(N1) | Path0], SlotInfo, Goal0, Goal),
+    fill_goal_slots([step_disj(N1) | Path0], SlotInfo, Goal0, Goal),
     fill_disj_slots(Path0, N1, SlotInfo, Goals0, Goals).
 
 :- pred fill_switch_slots(goal_path::in, int::in, int::in, slot_info::in,
@@ -227,7 +229,8 @@ fill_switch_slots(_, _, _, _, [], []).
 fill_switch_slots(Path0, N0, NumCases, SlotInfo,
         [case(A, Goal0) | Cases0], [case(A, Goal) | Cases]) :-
     N1 = N0 + 1,
-    fill_goal_slots([switch(N1, NumCases) | Path0], SlotInfo, Goal0, Goal),
+    fill_goal_slots([step_switch(N1, NumCases) | Path0], SlotInfo,
+        Goal0, Goal),
     fill_switch_slots(Path0, N1, NumCases, SlotInfo, Cases0, Cases).
 
 %-----------------------------------------------------------------------------%

@@ -475,9 +475,8 @@ update_label_table_2(ProcLabel, LabelNum, LabelVars, Context,
     ).
 
 :- pred find_valid_return_context(
-    assoc_list(code_addr, pair(prog_context, hlds_goal.goal_path))::in,
-    code_addr::out, prog_context::out, hlds_goal.goal_path::out)
-    is semidet.
+    assoc_list(code_addr, pair(prog_context, goal_path))::in,
+    code_addr::out, prog_context::out, goal_path::out) is semidet.
 
 find_valid_return_context([TargetContext | TargetContexts],
         ValidTarget, ValidContext, ValidGoalPath) :-

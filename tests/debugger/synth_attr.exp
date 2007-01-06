@@ -17,7 +17,7 @@ browser> p
 2
 browser> quit
 mdb> user
-      E3:     C3 USER <nodiag_fail> pred synth_attr.nodiag/3-0 (semidet) s2;c6;t;c4; synth_attr.m:75
+      E3:     C3 USER <nodiag_fail> pred synth_attr.nodiag/3-0 (semidet) s2-2;c6;t;c4; synth_attr.m:75
 mdb> vars
         1 test_failed (attr 0)
         2 arg_b (attr 1, B)

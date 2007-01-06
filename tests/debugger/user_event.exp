@@ -15,7 +15,7 @@ browser> p
 2
 browser> quit
 mdb> user
-      E3:     C3 USER <nodiag_fail> pred user_event.nodiag/3-0 (semidet) s2;c6;t;c2; user_event.m:64
+      E3:     C3 USER <nodiag_fail> pred user_event.nodiag/3-0 (semidet) s2-2;c6;t;c2; user_event.m:64
 mdb> vars
         1 test_failed (attr 0)
         2 arg_b (attr 1, B)

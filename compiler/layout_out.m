@@ -110,6 +110,7 @@
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.trace_params.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
@@ -2102,8 +2103,7 @@ output_call_site_static(CallSiteStatic, Index, Index + 1, !IO) :-
     io.write_string(""", ", !IO),
     io.write_int(LineNumber, !IO),
     io.write_string(", """, !IO),
-    GoalPathStr = goal_path_to_string(GoalPath),
-    io.write_string(GoalPathStr, !IO),
+    io.write_string(goal_path_to_string(GoalPath), !IO),
     io.write_string(""" },\n", !IO).
 
 :- pred output_call_site_static_decl(call_site_static_data::in,

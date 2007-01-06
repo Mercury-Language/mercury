@@ -86,6 +86,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -621,7 +622,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
             Cases0 = [case(_, hlds_goal(_, FirstCaseGoalInfo)) | _],
             goal_info_get_goal_path(FirstCaseGoalInfo, FirstCaseGoalPath),
             FirstCaseGoalPath = [SwitchStep | _],
-            SwitchStep = switch(_, NumCases)
+            SwitchStep = step_switch(_, NumCases)
         ->
             NumAlt = NumCases
         ;
@@ -1101,17 +1102,17 @@ where_needed_branches_upper_bound_2(CurrentPath, [First | Rest],
 
 get_parent_branch_point([First | Rest], Parent, ParentStep,
         BranchAlt, BranchNum) :-
-    ( First = switch(Arm, NumAlts) ->
+    ( First = step_switch(Arm, NumAlts) ->
         Parent = Rest,
         ParentStep = First,
         BranchAlt = alt_switch(NumAlts),
         BranchNum = Arm
-    ; First = ite_then ->
+    ; First = step_ite_then ->
         Parent = Rest,
         ParentStep = First,
         BranchAlt = alt_ite,
         BranchNum = 1
-    ; First = ite_else ->
+    ; First = step_ite_else ->
         Parent = Rest,
         ParentStep = First,
         BranchAlt = alt_ite,
@@ -1120,8 +1121,7 @@ get_parent_branch_point([First | Rest], Parent, ParentStep,
         get_parent_branch_point(Rest, Parent, ParentStep, BranchAlt, BranchNum)
     ).
 
-:- pred branch_point_is_complete(branch_alts::in, set(int)::in)
-    is semidet.
+:- pred branch_point_is_complete(branch_alts::in, set(int)::in) is semidet.
 
 branch_point_is_complete(alt_ite, Alts) :-
     set.count(Alts, NumAlts),

@@ -261,6 +261,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_io_util.
@@ -1185,10 +1186,9 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
         goal_info_get_goal_path(GoalInfo, Path),
         (
             Path = [_ | _],
-            PathStr = goal_path_to_string(Path),
             write_indent(Indent, !IO),
             io.write_string("% goal path: ", !IO),
-            io.write_string(PathStr, !IO),
+            io.write_string(goal_path_to_string(Path), !IO),
             io.write_string("\n", !IO)
         ;
             Path = []
@@ -3978,8 +3978,7 @@ write_constraint_id(ConstraintId, !IO) :-
         ConstraintType = unproven,
         io.write_string("(A, ", !IO)
     ),
-    GoalPathStr = goal_path_to_string(GoalPath),
-    io.write_strings(["""", GoalPathStr, """, "], !IO),
+    io.write_strings(["""", goal_path_to_string(GoalPath), """, "], !IO),
     io.write_int(N, !IO),
     io.write_char(')', !IO).
 

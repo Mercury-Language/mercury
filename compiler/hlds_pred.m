@@ -32,6 +32,7 @@
 :- import_module hlds.special_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_util.

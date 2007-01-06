@@ -252,6 +252,7 @@
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
@@ -689,22 +690,22 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
         (
             Path = [LastStep | _],
             (
-                LastStep = switch(_, _),
+                LastStep = step_switch(_, _),
                 PortPrime = port_switch
             ;
-                LastStep = disj(_),
+                LastStep = step_disj(_),
                 PortPrime = port_disj
             ;
-                LastStep = ite_cond,
+                LastStep = step_ite_cond,
                 PortPrime = port_ite_cond
             ;
-                LastStep = ite_then,
+                LastStep = step_ite_then,
                 PortPrime = port_ite_then
             ;
-                LastStep = ite_else,
+                LastStep = step_ite_else,
                 PortPrime = port_ite_else
             ;
-                LastStep = neg,
+                LastStep = step_neg,
                 PortPrime = port_neg_enter
             )
         ->
@@ -848,9 +849,9 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         PortInfo = port_info_nondet_foreign_proc,
         LiveVars = [],
         ( Port = port_nondet_foreign_proc_first ->
-            Path = [first]
+            Path = [step_first]
         ; Port = port_nondet_foreign_proc_later ->
-            Path = [later]
+            Path = [step_later]
         ;
             unexpected(this_file,
                 "generate_event_code: bad nondet foreign_proc port")

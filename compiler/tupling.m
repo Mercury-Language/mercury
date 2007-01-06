@@ -117,12 +117,12 @@
 :- import_module ll_backend.live_vars.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.trace_counts.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.dependency_graph.
-:- use_module mdbcomp.program_representation.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1858,11 +1858,6 @@ extract_tupled_args_from_list_2([H | T], Num, Indices, NotSelected) :-
 % Trace count summaries.
 %
 
-:- type mdbcomp_goal_path_step
-    == mdbcomp.program_representation.goal_path_step.
-:- type mdbcomp_goal_path
-    == mdbcomp.program_representation.goal_path.
-
 :- pred get_proc_counts(trace_counts::in, proc_label_in_context::in,
     maybe(proc_trace_counts)::out) is det.
 
@@ -1879,8 +1874,8 @@ get_proc_calls(ProcCounts, Count) :-
     map.lookup(ProcCounts, port_only(port_call), ContextCount),
     Count = ContextCount ^ exec_count.
 
-:- pred get_path_only_count(proc_trace_counts::in, mdbcomp_goal_path::in,
-    int::out) is det.
+:- pred get_path_only_count(proc_trace_counts::in, goal_path::in, int::out)
+    is det.
 
 get_path_only_count(ProcCounts, GoalPath, Count) :-
     PathPort = path_only(GoalPath),
@@ -1895,10 +1890,8 @@ get_path_only_count(ProcCounts, GoalPath, Count) :-
 
 get_ite_relative_frequencies(ProcCounts, ThenGoalPath, ElseGoalPath,
         ThenRelFreq, ElseRelFreq) :-
-    goal_path_to_mdbcomp_goal_path(ThenGoalPath, MdbThenGoalPath),
-    goal_path_to_mdbcomp_goal_path(ElseGoalPath, MdbElseGoalPath),
-    get_path_only_count(ProcCounts, MdbThenGoalPath, ThenCounts),
-    get_path_only_count(ProcCounts, MdbElseGoalPath, ElseCounts),
+    get_path_only_count(ProcCounts, ThenGoalPath, ThenCounts),
+    get_path_only_count(ProcCounts, ElseGoalPath, ElseCounts),
     Total = ThenCounts + ElseCounts,
     ( Total > 0 ->
         ThenRelFreq = float(ThenCounts) / float(Total),
@@ -1912,14 +1905,11 @@ get_ite_relative_frequencies(ProcCounts, ThenGoalPath, ElseGoalPath,
     float::out) is det.
 
 get_disjunct_relative_frequency(ProcCounts, GoalPath, RelFreq) :-
-    ( GoalPath  = [disj(Num) | GoalPathRest] ->
-        goal_path_to_mdbcomp_goal_path(GoalPathRest, MdbGoalPathRest),
+    ( GoalPath  = [step_disj(Num) | GoalPathRest] ->
         get_path_only_count(ProcCounts,
-            [mdbcomp.program_representation.disj(Num) |
-                MdbGoalPathRest], DisjCount),
+            [step_disj(Num) | GoalPathRest], DisjCount),
         get_path_only_count(ProcCounts,
-            [mdbcomp.program_representation.disj(1) |
-                MdbGoalPathRest], FirstDisjCount),
+            [step_disj(1) | GoalPathRest], FirstDisjCount),
         ( FirstDisjCount = 0 ->
             RelFreq = 0.0
         ;
@@ -1935,22 +1925,21 @@ get_disjunct_relative_frequency(ProcCounts, GoalPath, RelFreq) :-
     float::out) is det.
 
 get_case_relative_frequency(ProcCounts, GoalPath, RelFreq) :-
-    goal_path_to_mdbcomp_goal_path(GoalPath, MdbGoalPath),
-    get_path_only_count(ProcCounts, MdbGoalPath, CaseTotal),
-    get_switch_total_count(ProcCounts, MdbGoalPath, SwitchTotal),
+    get_path_only_count(ProcCounts, GoalPath, CaseTotal),
+    get_switch_total_count(ProcCounts, GoalPath, SwitchTotal),
     ( SwitchTotal = 0 ->
         RelFreq = 0.0
     ;
         RelFreq = float(CaseTotal) / float(SwitchTotal)
     ).
 
-:- pred get_switch_total_count(proc_trace_counts::in, mdbcomp_goal_path::in,
+:- pred get_switch_total_count(proc_trace_counts::in, goal_path::in,
     int::out) is det.
 
-get_switch_total_count(ProcCounts, MdbGoalPath, Total) :-
-    map.foldl(get_switch_total_count_2(MdbGoalPath), ProcCounts, 0, Total).
+get_switch_total_count(ProcCounts, GoalPath, Total) :-
+    map.foldl(get_switch_total_count_2(GoalPath), ProcCounts, 0, Total).
 
-:- pred get_switch_total_count_2(mdbcomp_goal_path::in, path_port::in,
+:- pred get_switch_total_count_2(goal_path::in, path_port::in,
     line_no_and_count::in, int::in, int::out) is det.
 
 get_switch_total_count_2(SwitchGoalPath, PathPort, LineNoAndCount,
@@ -1961,50 +1950,10 @@ get_switch_total_count_2(SwitchGoalPath, PathPort, LineNoAndCount,
         true
     ).
 
-:- pred case_in_switch(mdbcomp_goal_path::in, path_port::in) is semidet.
+:- pred case_in_switch(goal_path::in, path_port::in) is semidet.
 
-case_in_switch([mdbcomp.program_representation.switch(_) | Prefix],
-    path_only([mdbcomp.program_representation.switch(_) | Prefix])).
-
-%-----------------------------------------------------------------------------%
-
-% XXX: This would not be necessary if there were not two definitions of
-% goal_paths.  The only difference between them is that the mdbcomp version
-% has switch/1 instead of switch/2.
-
-:- pred goal_path_to_mdbcomp_goal_path(goal_path::in, mdbcomp_goal_path::out)
-    is det.
-
-goal_path_to_mdbcomp_goal_path(GoalPath, MdbGoalPath) :-
-    list.map(goal_path_step_to_mdbcomp_goal_path_step, GoalPath, MdbGoalPath).
-
-:- pred goal_path_step_to_mdbcomp_goal_path_step(goal_path_step::in,
-    mdbcomp_goal_path_step::out) is det.
-
-goal_path_step_to_mdbcomp_goal_path_step(
-    conj(N), mdbcomp.program_representation.conj(N)).
-goal_path_step_to_mdbcomp_goal_path_step(
-    disj(N), mdbcomp.program_representation.disj(N)).
-goal_path_step_to_mdbcomp_goal_path_step(
-    switch(N, _), mdbcomp.program_representation.switch(N)).
-goal_path_step_to_mdbcomp_goal_path_step(
-    ite_cond, mdbcomp.program_representation.ite_cond).
-goal_path_step_to_mdbcomp_goal_path_step(
-    ite_then, mdbcomp.program_representation.ite_then).
-goal_path_step_to_mdbcomp_goal_path_step(
-    ite_else, mdbcomp.program_representation.ite_else).
-goal_path_step_to_mdbcomp_goal_path_step(
-    neg, mdbcomp.program_representation.neg).
-goal_path_step_to_mdbcomp_goal_path_step(
-    scope(cut), mdbcomp.program_representation.scope(
-            mdbcomp.program_representation.cut)).
-goal_path_step_to_mdbcomp_goal_path_step(
-    scope(no_cut), mdbcomp.program_representation.scope(
-            mdbcomp.program_representation.no_cut)).
-goal_path_step_to_mdbcomp_goal_path_step(
-    first, mdbcomp.program_representation.first).
-goal_path_step_to_mdbcomp_goal_path_step(
-    later, mdbcomp.program_representation.later).
+case_in_switch([step_switch(_, _) | Prefix],
+    path_only([step_switch(_, _) | Prefix])).
 
 %-----------------------------------------------------------------------------%
 

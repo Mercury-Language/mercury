@@ -57,6 +57,8 @@
 :- import_module mode_robdd.tfeirn.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -412,7 +414,7 @@ mode_order_conj(Goals0, Goals) :-
         (
             G = hlds_goal(_, GI),
             goal_info_get_goal_path(GI, GP),
-            GP = [conj(Index0) | _]
+            GP = [step_conj(Index0) | _]
         ->
             Index = Index0
         ;

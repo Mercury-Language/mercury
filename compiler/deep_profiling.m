@@ -41,6 +41,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.
@@ -972,18 +973,18 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = negation(SubGoal0),
-        deep_prof_transform_goal([neg | Path], SubGoal0, SubGoal,
+        deep_prof_transform_goal([step_neg | Path], SubGoal0, SubGoal,
             AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = if_then_else(IVars, Cond0, Then0, Else0),
-        deep_prof_transform_goal([ite_cond | Path], Cond0, Cond,
+        deep_prof_transform_goal([step_ite_cond | Path], Cond0, Cond,
             AddedImpurityC, !DeepInfo),
-        deep_prof_transform_goal([ite_then | Path], Then0, Then,
+        deep_prof_transform_goal([step_ite_then | Path], Then0, Then,
             AddedImpurityT, !DeepInfo),
-        deep_prof_transform_goal([ite_else | Path], Else0, Else,
+        deep_prof_transform_goal([step_ite_else | Path], Else0, Else,
             AddedImpurityE, !DeepInfo),
         (
             ( AddedImpurityC = yes
@@ -1025,8 +1026,8 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
                 AddForceCommit = yes
             )
         ),
-        deep_prof_transform_goal([scope(MaybeCut) | Path], SubGoal0, SubGoal,
-            AddedImpurity, !DeepInfo),
+        deep_prof_transform_goal([step_scope(MaybeCut) | Path],
+            SubGoal0, SubGoal, AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         (
             AddForceCommit = no,
@@ -1050,8 +1051,8 @@ deep_prof_transform_conj(_, _, [], [], no, !DeepInfo).
 deep_prof_transform_conj(N, Path, [Goal0 | Goals0], [Goal | Goals],
         AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    deep_prof_transform_goal([conj(N1) | Path], Goal0, Goal, AddedImpurityFirst,
-        !DeepInfo),
+    deep_prof_transform_goal([step_conj(N1) | Path], Goal0, Goal,
+        AddedImpurityFirst, !DeepInfo),
     deep_prof_transform_conj(N1, Path, Goals0, Goals, AddedImpurityLater,
         !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
@@ -1064,8 +1065,8 @@ deep_prof_transform_disj(_, _, [], [], no, !DeepInfo).
 deep_prof_transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals],
         AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    deep_prof_transform_goal([disj(N1) | Path], Goal0, Goal, AddedImpurityFirst,
-        !DeepInfo),
+    deep_prof_transform_goal([step_disj(N1) | Path], Goal0, Goal,
+        AddedImpurityFirst, !DeepInfo),
     deep_prof_transform_disj(N1, Path, Goals0, Goals, AddedImpurityLater,
         !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
@@ -1078,7 +1079,7 @@ deep_prof_transform_switch(_, _, _, [], [], no, !DeepInfo).
 deep_prof_transform_switch(NumCases, N, Path, [case(Id, Goal0) | Goals0],
         [case(Id, Goal) | Goals], AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    deep_prof_transform_goal([switch(NumCases, N1) | Path], Goal0, Goal,
+    deep_prof_transform_goal([step_switch(NumCases, N1) | Path], Goal0, Goal,
         AddedImpurityFirst, !DeepInfo),
     deep_prof_transform_switch(NumCases, N1, Path, Goals0, Goals,
         AddedImpurityLater, !DeepInfo),
