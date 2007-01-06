@@ -76,29 +76,24 @@
     io::di, io::uo) is det.
 :- func pred_proc_id_pair_to_string(module_info, pred_id, proc_id) = string.
 
-:- pred write_call_id(call_id::in, io::di, io::uo) is det.
 :- func call_id_to_string(call_id) = string.
 
-    % Write "argument %i of call to pred_or_func `foo/n'". The pred_markers
-    % argument is used to tell if the calling predicate is a type class method
-    % implementation; if so, we omit the "call to" part, since the user didn't
-    % write any explicit call.
+    % Generate a message of the form "argument %i of call to pred_or_func
+    % `foo/n'". The pred_markers argument is used to tell if the calling
+    % predicate is a type class method implementation; if so, we omit the
+    % "call to" part, since the user didn't write any explicit call.
     %
-:- pred write_call_arg_id(call_id::in, int::in, pred_markers::in,
-    io::di, io::uo) is det.
 :- func call_arg_id_to_string(call_id, int, pred_markers) = string.
 
-    % write_unify_context/5 writes out a message such as
+    % unify_context_to_pieces generates a message such as
     %   foo.m:123:   in argument 3 of functor `foo/5':
     %   foo.m:123:   in unification of `X' and `blah':
     % based on the unify_context and prog_context.
     %
-:- pred write_unify_context(unify_context::in, prog_context::in,
-    io::di, io::uo) is det.
 :- pred unify_context_to_pieces(unify_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-    % write_unify_context_first/6 is the same as above, except that
+    % unify_context_first_to_pieces is the same as above, except that
     % it also takes and returns a bool which specifies whether this is the
     % start of a sentence. If the first argument is `yes', then it means
     % this is the first line of an error message, so the message starts with
@@ -106,22 +101,17 @@
     %   foo.m:123:   In argument 3 of functor `foo/5':
     %   foo.m:123:   in unification of `X' and `blah':
     % The bool returned as the second argument will be `no' unless nothing
-    % was printed out, in which case it will be the same as the first arg.
+    % was generated, in which case it will be the same as the first arg.
     %
-:- pred write_unify_context_first(bool::in, bool::out, unify_context::in,
-    prog_context::in, io::di, io::uo) is det.
 :- pred unify_context_first_to_pieces(bool::in, bool::out, unify_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-:- pred write_determinism(determinism::in, io::di, io::uo) is det.
 :- func determinism_to_string(determinism) = string.
 
-:- pred write_can_fail(can_fail::in, io::di, io::uo) is det.
 :- func can_fail_to_string(can_fail) = string.
 
 :- pred write_eval_method(eval_method::in, io::di, io::uo) is det.
 
-:- pred write_import_status(import_status::in, io::di, io::uo) is det.
 :- func import_status_to_string(import_status) = string.
 
 %-----------------------------------------------------------------------------%
@@ -412,20 +402,10 @@ pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId) = Str :-
     Str = pred_id_to_string(ModuleInfo, PredId)
         ++ " mode " ++ int_to_string(ModeNum).
 
-write_call_id(CallId, !IO) :-
-    Str = call_id_to_string(CallId),
-    io.write_string(Str, !IO).
-
 call_id_to_string(plain_call_id(PredCallId)) =
     simple_call_id_to_string(PredCallId).
 call_id_to_string(generic_call_id(GenericCallId)) =
     generic_call_id_to_string(GenericCallId).
-
-:- pred write_generic_call_id(generic_call_id::in, io::di, io::uo) is det.
-
-write_generic_call_id(GenericCallId, !IO) :-
-    Str = generic_call_id_to_string(GenericCallId),
-    io.write_string(Str, !IO).
 
 :- func generic_call_id_to_string(generic_call_id) = string.
 
@@ -445,10 +425,6 @@ cast_type_to_string(unsafe_type_cast) = "unsafe_type_cast".
 cast_type_to_string(unsafe_type_inst_cast) = "unsafe_type_inst_cast".
 cast_type_to_string(equiv_type_cast) = "equiv_type_cast".
 cast_type_to_string(exists_cast) = "exists_cast".
-
-write_call_arg_id(CallId, ArgNum, PredMarkers, !IO) :-
-    Str = call_arg_id_to_string(CallId, ArgNum, PredMarkers),
-    io.write_string(Str, !IO).
 
 call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
     ( ArgNum =< 0 ->
@@ -534,17 +510,8 @@ arg_number_to_string(generic_call_id(gcid_cast(_)), ArgNum) =
 
 %-----------------------------------------------------------------------------%
 
-write_unify_context(UnifyContext, Context, !IO) :-
-    write_unify_context_first(no, _, UnifyContext, Context, !IO).
-
 unify_context_to_pieces(UnifyContext, !Pieces) :-
     unify_context_first_to_pieces(no, _, UnifyContext, !Pieces).
-
-write_unify_context_first(!First, UnifyContext, Context, !IO) :-
-    UnifyContext = unify_context(MainContext, RevSubContexts),
-    list.reverse(RevSubContexts, SubContexts),
-    write_unify_main_context(!First, MainContext, Context, !IO),
-    write_unify_sub_contexts(!First, SubContexts, Context, !IO).
 
 unify_context_first_to_pieces(!First, UnifyContext, !Pieces) :-
     UnifyContext = unify_context(MainContext, RevSubContexts),
@@ -552,44 +519,17 @@ unify_context_first_to_pieces(!First, UnifyContext, !Pieces) :-
     unify_main_context_to_pieces(!First, MainContext, !Pieces),
     unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces).
 
-:- pred write_unify_main_context(bool::in, bool::out,
-    unify_main_context::in, prog_context::in, io::di, io::uo) is det.
-
-write_unify_main_context(!First, umc_explicit, _, !IO).
-write_unify_main_context(!First, umc_head(ArgNum), Context, !IO) :-
-    write_in_argument(!.First, ArgNum, Context, !IO),
-    !:First = no,
-    io.write_string(" of clause head:\n", !IO).
-write_unify_main_context(!First, umc_head_result, Context, !IO) :-
-    start_in_message(!.First, Context, !IO),
-    !:First = no,
-    io.write_string("function result term of clause head:\n", !IO).
-write_unify_main_context(!First, umc_call(CallId, ArgNum), Context, !IO) :-
-    start_in_message(!.First, Context, !IO),
-    !:First = no,
-    % The markers argument below is used only for type class method
-    % implementations defined using the named syntax rather than
-    % the clause syntax, and the bodies of such procedures should
-    % only contain a single call, so we shouldn't get unifications
-    % nested inside calls.  Hence we can safely initialize the
-    % markers to empty here.  (Anyway the worst possible consequence
-    % is slightly sub-optimal text for an error message.)
-    init_markers(Markers),
-    write_call_arg_id(CallId, ArgNum, Markers, !IO),
-    io.write_string(":\n", !IO).
-write_unify_main_context(!First, umc_implicit(Source), Context, !IO) :-
-    start_in_message(!.First, Context, !IO),
-    io.format("implicit %s unification:\n", [s(Source)], !IO).
-
 :- pred unify_main_context_to_pieces(bool::in, bool::out,
     unify_main_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 unify_main_context_to_pieces(!First, umc_explicit, !Pieces).
 unify_main_context_to_pieces(!First, umc_head(ArgNum), !Pieces) :-
-    in_argument_to_pieces(!.First, ArgNum, !Pieces),
+    start_in_message_to_pieces(!.First, !Pieces),
     !:First = no,
-    !:Pieces = !.Pieces ++ [words("of clause head:"), nl].
+    ArgNumStr = int_to_string(ArgNum),
+    !:Pieces = !.Pieces ++
+        [words("argument"), fixed(ArgNumStr), words("of clause head:"), nl].
 unify_main_context_to_pieces(!First, umc_head_result, !Pieces) :-
     start_in_message_to_pieces(!.First, !Pieces),
     !:First = no,
@@ -607,66 +547,73 @@ unify_main_context_to_pieces(!First, umc_call(CallId, ArgNum),
     % is slightly sub-optimal text for an error message.)
     init_markers(Markers),
     ArgIdStr = call_arg_id_to_string(CallId, ArgNum, Markers),
-    !:Pieces = !.Pieces ++ [words(ArgIdStr ++ ":"), nl].
+    !:Pieces = !.Pieces ++ [words(ArgIdStr), suffix(":"), nl].
 unify_main_context_to_pieces(!First, umc_implicit(Source), !Pieces) :-
     start_in_message_to_pieces(!.First, !Pieces),
     string.format("implicit %s unification:\n", [s(Source)], Msg),
     !:Pieces = !.Pieces ++ [words(Msg), nl].
-
-:- pred write_unify_sub_contexts(bool::in, bool::out,
-    unify_sub_contexts::in, prog_context::in, io::di, io::uo) is det.
-
-write_unify_sub_contexts(!First, [], _, !IO).
-write_unify_sub_contexts(!First, [ConsId - ArgNum | SubContexts], Context,
-        !IO) :-
-    write_in_argument(!.First, ArgNum, Context, !IO),
-    !:First = no,
-    io.write_string(" of functor `", !IO),
-    write_cons_id(ConsId, !IO),
-    io.write_string("':\n", !IO),
-    write_unify_sub_contexts(!First, SubContexts, Context, !IO).
 
 :- pred unify_sub_contexts_to_pieces(bool::in, bool::out,
     unify_sub_contexts::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 unify_sub_contexts_to_pieces(!First, [], !Pieces).
-unify_sub_contexts_to_pieces(!First, [ConsId - ArgNum | SubContexts],
-        !Pieces) :-
-    in_argument_to_pieces(!.First, ArgNum, !Pieces),
-    !:First = no,
-    NewPieces = [words("of functor"),
-        fixed("`" ++ cons_id_to_string(ConsId) ++ "':"), nl],
-    !:Pieces = !.Pieces ++ NewPieces,
-    unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces).
+unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts], !Pieces) :-
+    (
+        contexts_describe_list_element([SubContext | SubContexts],
+            0, ElementNum, AfterContexts)
+    ->
+        in_element_to_pieces(!.First, ElementNum, !Pieces),
+        !:First = no,
+        unify_sub_contexts_to_pieces(!First, AfterContexts, !Pieces)
+    ;
+        in_argument_to_pieces(!.First, SubContext, !Pieces),
+        !:First = no,
+        unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces)
+    ).
 
-:- pred write_in_argument(bool::in, int::in, prog_context::in,
-    io::di, io::uo) is det.
+:- pred contexts_describe_list_element(unify_sub_contexts::in,
+    int::in, int::out, unify_sub_contexts::out) is semidet.
 
-write_in_argument(First, ArgNum, Context, !IO) :-
-    start_in_message(First, Context, !IO),
-    io.write_string("argument ", !IO),
-    io.write_int(ArgNum, !IO).
+contexts_describe_list_element([SubContext | SubContexts],
+        NumElementsBefore, ElementNum, AfterContexts) :-
+    SubContext = ConsId - ArgNum,
+    ConsId = cons(Functor, 2),
+    (
+        Functor = unqualified("[|]")
+    ;
+        Functor = qualified(ModuleSymName, "[|]"),
+        is_std_lib_module_name(ModuleSymName, "list")
+    ),
+    (
+        ArgNum = 1,
+        ElementNum = NumElementsBefore,
+        AfterContexts = SubContexts
+    ;
+        ArgNum = 2,
+        contexts_describe_list_element(SubContexts,
+            NumElementsBefore + 1, ElementNum, AfterContexts)
+    ).
 
-:- pred in_argument_to_pieces(bool::in, int::in,
+:- pred in_argument_to_pieces(bool::in, pair(cons_id, int)::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-in_argument_to_pieces(First, ArgNum, !Pieces) :-
+in_argument_to_pieces(First, SubContext, !Pieces) :-
     start_in_message_to_pieces(First, !Pieces),
+    SubContext = ConsId - ArgNum,
     ArgNumStr = int_to_string(ArgNum),
-    !:Pieces = !.Pieces ++ [words("argument"), words(ArgNumStr)].
+    !:Pieces = !.Pieces ++ [words("argument"), fixed(ArgNumStr),
+        words("of functor"),
+        prefix("`"), fixed(cons_id_to_string(ConsId)), suffix("':"), nl].
 
-:- pred start_in_message(bool::in, prog_context::in, io::di, io::uo) is det.
+:- pred in_element_to_pieces(bool::in, int::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
-start_in_message(First, Context, !IO) :-
-    prog_out.write_context(Context, !IO),
-    (
-        First = yes,
-        io.write_string("  In ", !IO)
-    ;
-        First = no,
-        io.write_string("  in ", !IO)
-    ).
+in_element_to_pieces(First, ElementNum, !Pieces) :-
+    start_in_message_to_pieces(First, !Pieces),
+    ElementNumStr = int_to_string(ElementNum),
+    !:Pieces = !.Pieces ++ [words("list element"),
+        prefix("#"), fixed(ElementNumStr), suffix(":"), nl].
 
 :- pred start_in_message_to_pieces(bool::in,
     list(format_component)::in, list(format_component)::out) is det.
@@ -854,7 +801,7 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
         io.write_string(", category: ", !IO),
         write_pred_or_func(PredOrFunc, !IO),
         io.write_string(", status: ", !IO),
-        write_import_status(ImportStatus, !IO),
+        io.write_string(import_status_to_string(ImportStatus), !IO),
         io.write_string("\n", !IO),
         io.write_string("% goal_type: ", !IO),
         pred_info_get_goal_type(PredInfo, GoalType),
@@ -1345,7 +1292,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
         write_indent(Indent, !IO),
         io.write_string("% determinism: ", !IO),
         goal_info_get_determinism(GoalInfo, Determinism),
-        write_determinism(Determinism, !IO),
+        io.write_string(determinism_to_string(Determinism), !IO),
         io.write_string("\n", !IO)
     ;
         true
@@ -1484,7 +1431,7 @@ write_goal_2(switch(Var, CanFail, CasesList), ModuleInfo, VarSet,
         AppendVarNums, Indent, Follow, TypeQual, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("( % ", !IO),
-    write_can_fail(CanFail, !IO),
+    io.write_string(can_fail_to_string(CanFail), !IO),
     io.write_string(" switch on `", !IO),
     mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string("'\n", !IO),
@@ -2928,9 +2875,6 @@ write_instmap_delta_vars(InstMapDelta, VarSet, AppendVarNums, !IO) :-
         write_vars(VarSet, AppendVarNums, Vars, !IO)
     ).
 
-write_import_status(Status, !IO) :-
-    io.write_string(import_status_to_string(Status), !IO).
-
 import_status_to_string(status_local) =
     "local".
 import_status_to_string(status_exported) =
@@ -3180,7 +3124,7 @@ write_types_2(Indent, [TypeCtor - TypeDefn | Types], !IO) :-
             io.write_string("', line ", !IO),
             io.write_int(LineNumber, !IO),
             io.write_string(", status ", !IO),
-            write_import_status(Status, !IO),
+            io.write_string(import_status_to_string(Status), !IO),
             io.write_char('\n', !IO)
         ;
             true
@@ -3612,7 +3556,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     io.write_string(" of ", !IO),
     write_pred_id(ModuleInfo, PredId, !IO),
     io.write_string(" (", !IO),
-    write_determinism(InferredDeterminism, !IO),
+    io.write_string(determinism_to_string(InferredDeterminism), !IO),
     io.write_string("):\n", !IO),
 
     globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
@@ -3806,9 +3750,6 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
             !IO)
     ).
 
-write_determinism(Detism, !IO) :-
-    io.write_string(determinism_to_string(Detism), !IO).
-
 determinism_to_string(detism_det) = "det".
 determinism_to_string(detism_semi) = "semidet".
 determinism_to_string(detism_non) = "nondet".
@@ -3817,9 +3758,6 @@ determinism_to_string(detism_cc_non) = "cc_nondet".
 determinism_to_string(detism_cc_multi) = "cc_multi".
 determinism_to_string(detism_erroneous) = "erroneous".
 determinism_to_string(detism_failure) = "failure".
-
-write_can_fail(CanFail, !IO) :-
-    io.write_string(can_fail_to_string(CanFail), !IO).
 
 can_fail_to_string(can_fail) = "can_fail".
 can_fail_to_string(cannot_fail) = "cannot_fail".
@@ -4329,6 +4267,7 @@ mercury_expanded_inst_to_string(Inst, VarSet, ModuleInfo) = String :-
 :- pred write_short_reuse_description(short_reuse_description::in, 
     prog_varset::in, bool::in, 
     io::di, io::uo) is det.
+
 write_short_reuse_description(ShortDescription, VarSet, AppendVarnums, !IO):- 
     (
         ShortDescription = cell_died, 
@@ -4346,6 +4285,7 @@ write_short_reuse_description(ShortDescription, VarSet, AppendVarnums, !IO):-
     ).
 
 :- pred write_is_conditional(is_conditional::in, io::di, io::uo) is det.
+
 write_is_conditional(IsConditional, !IO) :- 
     (
         IsConditional = conditional_reuse,

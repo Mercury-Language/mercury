@@ -1,0 +1,15 @@
+error_in_list.m:011: In clause for function `f'/0:
+error_in_list.m:011:   in function result term of clause head:
+error_in_list.m:011:   in list element #4:
+error_in_list.m:011:   type error in unification of argument
+error_in_list.m:011:   and constant `"five"'.
+error_in_list.m:011:   argument has type `int',
+error_in_list.m:011:   constant `"five"' has type `string'.
+error_in_list.m:011: In clause for function `f'/0:
+error_in_list.m:011:   in function result term of clause head:
+error_in_list.m:011:   in list element #6:
+error_in_list.m:011:   type error in unification of argument
+error_in_list.m:011:   and constant `7.00000000000000'.
+error_in_list.m:011:   argument has type `int',
+error_in_list.m:011:   constant `7.00000000000000' has type `float'.
+For more information, recompile with `-E'.

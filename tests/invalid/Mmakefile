@@ -71,6 +71,7 @@ SINGLEMODULE= \
 	duplicate_modes \
 	duplicate_module_test \
 	erroneous_throw_promise \
+	error_in_list \
 	errors \
 	errors1 \
 	errors2 \
