@@ -120,7 +120,7 @@ mdb> break_print -p -n 1 HeadVar__1 HeadVar__2
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
             HeadVar__1 (pretty, nowarn), HeadVar__2 (pretty, nowarn)
 mdb> continue
-      E4:     C3 SWTC pred breakpoints.qperm/2-0 (nondet) s2; breakpoints.m:65
+      E4:     C3 SWTC pred breakpoints.qperm/2-0 (nondet) s2-2; breakpoints.m:65
 mdb> finish -N
       E5:     C4 CALL pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
        HeadVar__1             	
