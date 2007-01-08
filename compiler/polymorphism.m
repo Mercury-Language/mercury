@@ -3092,7 +3092,7 @@ expand_class_method_bodies(!ModuleInfo) :-
         ClassIds = ClassIds0
     ),
     map.apply_to_list(ClassIds, Classes, ClassDefns),
-    list.foldl(expand_bodies, ClassDefns, !ModuleInfo).
+    list.foldl(expand_class_method_bodies_2, ClassDefns, !ModuleInfo).
 
 :- pred class_id_is_from_given_module(module_name::in, class_id::in)
     is semidet.
@@ -3100,17 +3100,18 @@ expand_class_method_bodies(!ModuleInfo) :-
 class_id_is_from_given_module(ModuleName, ClassId) :-
     ClassId = class_id(qualified(ModuleName, _), _).
 
-:- pred expand_bodies(hlds_class_defn::in, module_info::in, module_info::out)
-    is det.
-
-expand_bodies(HLDSClassDefn, !ModuleInfo) :-
-    Interface = HLDSClassDefn ^ class_hlds_interface,
-    list.foldl2(expand_one_body, Interface, 1, _, !ModuleInfo).
-
-:- pred expand_one_body(hlds_class_proc::in, int::in, int::out,
+:- pred expand_class_method_bodies_2(hlds_class_defn::in,
     module_info::in, module_info::out) is det.
 
-expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
+expand_class_method_bodies_2(ClassDefn, !ModuleInfo) :-
+    Interface = ClassDefn ^ class_hlds_interface,
+    list.foldl2(expand_class_method_body, Interface, 1, _, !ModuleInfo).
+
+:- pred expand_class_method_body(hlds_class_proc::in, int::in, int::out,
+    module_info::in, module_info::out) is det.
+
+expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
+        !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
@@ -3158,7 +3159,8 @@ expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
         HeadVars = HeadVarsPrime,
         Modes = ModesPrime
     ;
-        unexpected(this_file, "expand_one_body: typeclass_info var not found")
+        unexpected(this_file, "expand_class_method_body: " ++
+            "typeclass_info var not found")
     ),
 
     InstanceConstraint = constraint(ClassName, InstanceArgs),
