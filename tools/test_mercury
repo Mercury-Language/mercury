@@ -711,15 +711,6 @@ case $status in 0)
     		set_status "install_main"
     mmake install_grades MMAKEFLAGS=$PARALLEL || \
     		set_status "install_grades"
-    case "$INSTALL_GRADE" in
-	hl*)
-	    	# --split-c-files is not supported for the hl* grades
-	    	;;
-	*)	mmake install_split_library \
-			LIBGRADES=$INSTALL_GRADE MMAKEFLAGS=$PARALLEL || \
-    			set_status "install_split_library"
-		;;
-    esac
 
     case $install_anyway_stage1 in
         false)	cd ../.. || set_status "cd ../.." ;;

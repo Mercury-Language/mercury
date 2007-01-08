@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2006 The University of Melbourne.
+# Copyright (C) 1997-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -559,11 +559,6 @@ endif  #ifneq (,$(findstring java,$(GRADE)))
 
 endif  #ifneq (,$(findstring il,$(GRADE)))
 
-# $(STD_LIB_NAME).split.$A is a version of lib$(STD_LIB_NAME).$A
-# that has been compiled with `--split-c-files'.
-.PHONY: install_split_library
-install_split_library: lib$(STD_LIB_NAME).install_split_library
-
 else	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 # Prevent `mmc --make' from installing the default set of grades for
@@ -612,11 +607,6 @@ install_init:
 
 .PHONY: install_library
 install_library:
-	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
-	exit 1
-
-.PHONY: install_split_library
-install_split_library:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
 	exit 1
 
