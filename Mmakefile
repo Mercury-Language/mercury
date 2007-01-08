@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2006 The University of Melbourne.
+# Copyright (C) 1995-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -613,40 +613,6 @@ install_grades: all
 	    fi;								\
 	done
 	if test ! -f .leave_tmp_dir; then rm -fr tmp_dir; fi
-
-.PHONY: install_split_library
-install_split_library: scripts dep_library
-	#
-	# Use the newly installed compiler to build the libraries
-	# in various different grades.  We need to override MC=mmc
-	# so that we use the mmc from the scripts directory, which
-	# runs the newly installed compiler, rather than using the
-	# bootstrap compiler.
-	#
-	+cd library && \
-	rm -rf tmp_dir && \
-	mkdir tmp_dir && \
-	for ext in $(GRADE_SUBDIR_EXTS); do \
-		mv -f *.$$ext Mercury/$${ext}s/*.$$ext tmp_dir; \
-	done || true && \
-	{ mv -f $(deps_subdir)*.dep $(deps_subdir)*.dv *.$O Mercury/os/*.$O \
-		*.$A *.so tmp_dir || true; } && \
-	for grade in x $(LIBGRADES); do \
-	    if [ "$$grade" != "x" ]; then \
-	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
-	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
-			{ scripts/mercury_cleanup_install; exit 1; }; \
-		for ext in $(GRADE_SUBDIR_EXTS); do \
-			rm -f *.$$ext Mercury/$${ext}s/*.$$ext; \
-		done; \
-		rm -f *.$O Mercury/os/*.$O *.$A *.so; \
-	    fi; \
-	done && \
-	{ for ext in $(GRADE_SUBDIR_EXTS); do \
-	    [ -d Mercury/$${ext}s ] && mv tmp_dir/*.$$ext Mercury/$${ext}s; \
-	done; \
-	mv tmp_dir/*.dep tmp_dir/*.dv $(deps_subdir).; \
-	mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
 #-----------------------------------------------------------------------------#
 #
