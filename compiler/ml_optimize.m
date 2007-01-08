@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -455,6 +455,8 @@ target_supports_break_and_continue_2(target_asm) = no.
 target_supports_break_and_continue_2(target_il) = no.
 target_supports_break_and_continue_2(target_java) = yes.
 % target_supports_break_and_continue_2(target_c_sharp) = yes.
+target_supports_break_and_continue_2(target_x86_64) = _ :-
+    unexpected(this_file, "target x86_64 with --high-level-code").
 
 %-----------------------------------------------------------------------------%
 

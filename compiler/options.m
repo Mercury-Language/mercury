@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -253,6 +253,9 @@
     ;       compile_to_c        % target c + target_code_only
     ;       java                % target java
     ;       java_only           % target java + target_code_only
+    % XXX The following options need to be documented.
+    ;       x86_64              % target x86_64
+    ;       x86_64_only         % target x86_64 + target_code_only
 
     % Compilation model options for optional features:
 
@@ -1024,6 +1027,8 @@ option_defaults_2(compilation_model_option, [
     compile_to_c                        -   special,
     java                                -   special,
     java_only                           -   special,
+    x86_64                              -   special,
+    x86_64_only                         -   special,
 
     % Optional feature compilation model options:
     % (a) Debuggging
@@ -1764,6 +1769,10 @@ long_option("java",                 java).
 long_option("Java",                 java).
 long_option("java-only",            java_only).
 long_option("Java-only",            java_only).
+long_option("x86_64",               x86_64).
+long_option("x86-64",               x86_64).
+long_option("x86_64-only",          x86_64_only).
+long_option("x86-64-only",          x86_64_only).
 % Optional features compilation model options:
 % (a) debugging
 long_option("debug",                exec_trace).
@@ -2335,6 +2344,11 @@ special_handler(java, none, OptionTable0, ok(OptionTable)) :-
     map.set(OptionTable0, target, string("java"), OptionTable).
 special_handler(java_only, none, OptionTable0, ok(OptionTable)) :-
     map.set(OptionTable0, target, string("java"), OptionTable1),
+    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
+special_handler(x86_64, none, OptionTable0, ok(OptionTable)) :-
+    map.set(OptionTable0, target, string("x86_64"), OptionTable).
+special_handler(x86_64_only, none, OptionTable0, ok(OptionTable)) :-
+    map.set(OptionTable0, target, string("x86_64"), OptionTable1),
     map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
 special_handler(profiling, bool(Value), OptionTable0, ok(OptionTable)) :-
     map.set(OptionTable0, profile_time, bool(Value), OptionTable1),

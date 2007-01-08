@@ -154,6 +154,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
             ( Target = target_il
             ; Target = target_java
             ; Target = target_asm
+            ; Target = target_x86_64
             ),
             % This should have caught by mercury_compile.m.
             unexpected(this_file, "runtime_granularity_test_in_goal: " ++

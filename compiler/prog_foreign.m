@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -326,6 +326,15 @@ prefer_foreign_language(_Globals, target_il, Lang1, Lang2) = Comp :-
 prefer_foreign_language(_Globals, target_java, _Lang1, _Lang2) = no.
     % Nothing useful to do here, but when we add Java as a foreign language,
     % we should add it here.
+
+prefer_foreign_language(_Globals, target_x86_64, Lang1, Lang2) =
+    % When compiling to x86_64 assembler, C is always preferred over any
+    % other language.
+    ( Lang2 = lang_c, not Lang1 = lang_c ->
+        yes
+    ;
+        no
+    ).
 
 %-----------------------------------------------------------------------------%
 

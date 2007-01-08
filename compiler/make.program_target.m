@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -141,6 +141,9 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
             IntermediateTargetType = module_target_java_code,
             % XXX Whoever finishes the Java backend can fill this in.
             ObjectTargetType = module_target_object_code(non_pic)
+        ;
+            CompilationTarget = target_x86_64,
+            sorry(this_file, "mmc --make and target x86_64")
         ),
 
         get_target_modules(IntermediateTargetType,
@@ -272,6 +275,7 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
     ;
         ( CompilationTarget = target_java
         ; CompilationTarget = target_il
+        ; CompilationTarget = target_x86_64
         ),
         ObjectTargets = ForeignObjectTargets
     ).
@@ -430,7 +434,9 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         % after all the object files on the linker command line.
         AllObjects = InitObjects ++ ObjList ++ ForeignObjects ++ LinkObjects,
         (
-            CompilationTarget = target_c,
+            ( CompilationTarget = target_c
+            ; CompilationTarget = target_asm
+            ),
             % Run the link in a separate process so it can be killed
             % if an interrupt is received.
             call_in_forked_process(
@@ -438,13 +444,8 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
                     FileType, MainModuleName, AllObjects),
                 Succeeded, !IO)
         ;
-            CompilationTarget = target_asm,
-            % Run the link in a separate process so it can
-            % be killed if an interrupt is received.
-            call_in_forked_process(
-                compile_target_code.link(ErrorStream,
-                    FileType, MainModuleName, AllObjects),
-                Succeeded, !IO)
+            CompilationTarget = target_x86_64,
+            sorry(this_file, "mmc --make and target x86_64")
         ;
             CompilationTarget = target_il,
             Succeeded = yes

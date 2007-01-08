@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -273,12 +273,16 @@ target_supports_int_switch_2(target_asm) = yes.
 target_supports_int_switch_2(target_il) = no.
 target_supports_int_switch_2(target_java) = yes.
 % target_supports_int_switch_2(c_sharp) = yes.
+target_supports_int_switch_2(target_x86_64) =
+    unexpected(this_file, "target x86_64 with --high-level code").
 
 target_supports_string_switch_2(target_c) = no.
 target_supports_string_switch_2(target_asm) = no.
 target_supports_string_switch_2(target_il) = no.
 target_supports_string_switch_2(target_java) = no.
 % target_supports_string_switch_2(c_sharp) = yes.
+target_supports_string_switch_2(target_x86_64) =
+    unexpected(this_file, "target x86_64 with --high-level code").
 
 target_supports_computed_goto_2(target_c) = yes.
 target_supports_computed_goto_2(target_asm) = no.
@@ -287,12 +291,16 @@ target_supports_computed_goto_2(target_asm) = no.
 target_supports_computed_goto_2(target_il) = yes.
 target_supports_computed_goto_2(target_java) = no.
 % target_supports_computed_goto_2(c_sharp) = no.
+target_supports_computed_goto_2(target_x86_64) =
+    unexpected(this_file, "target x86_64 with --high-level code").
 
 target_supports_goto_2(target_c) = yes.
 target_supports_goto_2(target_asm) = yes.
 target_supports_goto_2(target_il) = yes.
 target_supports_goto_2(target_java) = no.
 % target_supports_goto_2(c_sharp) = yes.
+target_supports_goto_2(target_x86_64) =
+    unexpected(this_file, "target x86_64 with --high-level code").
 
 %-----------------------------------------------------------------------------%
 

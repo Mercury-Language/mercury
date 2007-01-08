@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,6 +215,7 @@ mlds_output_src_imports(Indent, Imports, !IO) :-
     ;
         ( Target = target_java
         ; Target = target_il
+        ; Target = target_x86_64
         ),
         unexpected(this_file, "expected target asm or target c")
     ).
@@ -378,6 +379,7 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
         ( Target = target_il
         ; Target = target_java
         ; Target = target_asm
+        ; Target = target_x86_64
         )
     ),
     mlds_indent(Indent, !IO),
@@ -487,6 +489,7 @@ mlds_output_hdr_end(Indent, ModuleName, !IO) :-
         ( Target = target_il
         ; Target = target_java
         ; Target = target_asm
+        ; Target = target_x86_64
         )
     ),
     mlds_indent(Indent, !IO),

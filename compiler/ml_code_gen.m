@@ -902,6 +902,8 @@ foreign_type_required_imports(target_il, TypeDefn) = Imports :-
     ).
 foreign_type_required_imports(target_java, _) = [].
 foreign_type_required_imports(target_asm, _) = [].
+foreign_type_required_imports(target_x86_64, _) = _ :-
+    unexpected(this_file, "target x86_64 and --high-level-code").
 
 :- pred ml_gen_defns(module_info::in, mlds_defns::out, io::di, io::uo) is det.
 
@@ -2414,6 +2416,10 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
             ; Target = target_asm
             ),
             ml_gen_call_current_success_cont(Context, CallCont, !Info)
+        ;
+            Target = target_x86_64,
+            unexpected(this_file,
+                "target x86_64 with --high-level-code")
         )
     ;
         unexpected(this_file,

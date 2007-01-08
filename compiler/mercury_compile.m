@@ -434,6 +434,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
                     ( Target = target_c
                     ; Target = target_il
                     ; Target = target_asm
+                    ; Target = target_x86_64
                     ),
                     compile_with_module_options(MainModuleName,
                         OptionVariables, OptionArgs,
@@ -1321,6 +1322,7 @@ find_smart_recompilation_target_files(TopLevelModuleName,
     ; CompilationTarget = target_il, TargetSuffix = ".il"
     ; CompilationTarget = target_java, TargetSuffix = ".java"
     ; CompilationTarget = target_asm, TargetSuffix = ".s"
+    ; CompilationTarget = target_x86_64, TargetSuffix = ".s"
     ),
     FindTargetFiles = usual_find_target_files(CompilationTarget,
         TargetSuffix, TopLevelModuleName).
@@ -1362,6 +1364,9 @@ find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
     ;
         CompilationTarget = target_asm,
         TimestampSuffix = (Pic = yes -> ".pic_s_date" ; ".s_date")
+    ;
+        CompilationTarget = target_x86_64,
+        TimestampSuffix = ".s_date"
     ),
     FindTimestampFiles = find_timestamp_files_2(CompilationTarget,
         TimestampSuffix, TopLevelModuleName).
@@ -1533,6 +1538,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         (
             ( Target = target_c
             ; Target = target_asm
+            ; Target = target_x86_64
             ),
             %
             % Produce the grade independent header file <module>.mh
@@ -1629,6 +1635,15 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
                     _CompileErrors, FactTableBaseFiles, !IO)
             )
+        ;
+            Target = target_x86_64,
+            backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO),
+            % XXX Eventually we will call the LLDS->x86_64 asm code
+            % generator here and then output the assembler.  At the moment
+            % we just output the LLDS as C code.
+            output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
+                _CompileErrors, _, !IO),
+            FactTableBaseFiles = []
         ),
         recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
             MaybeTimestamps, !IO),
@@ -3337,6 +3352,7 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
             ( Target = target_il
             ; Target = target_java
             ; Target = target_asm
+            ; Target = target_x86_64
             ),
             GenerateInline = no
         ),
@@ -3904,6 +3920,7 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
             ( Target = target_il
             ; Target = target_java
             ; Target = target_asm
+            ; Target = target_x86_64
             )
             % Leave the HLDS alone. We cannot implement parallelism,
             % so there is not point in controlling its granularity.

@@ -3475,6 +3475,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 Target = target_asm,
                 ForeignImportTargets = [ObjFileName, PicObjFileName],
                 ForeignImportExt = ".mh"
+            ;
+                % XXX These are just the C ones at the moment.  
+                Target = target_x86_64,
+                ForeignImportTargets = [ObjFileName, PicObjFileName],
+                ForeignImportExt = ".mh"
             ),
             WriteForeignImportTarget = (pred(ForeignImportTarget::in,
                     !.IO::di, !:IO::uo) is det :-
@@ -4288,6 +4293,7 @@ generate_dependencies_write_d_files([Dep | Deps],
         ; Target = target_asm, Lang = lang_c
         ; Target = target_java, Lang = lang_java
         ; Target = target_il, Lang = lang_il
+        ; Target = target_x86_64, Lang = lang_c
         ),
         % Assume we need the `.mh' files for all imported modules
         % (we will if they define foreign types).
@@ -4667,6 +4673,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         ( Target = target_c
         ; Target = target_java
         ; Target = target_asm
+        ; Target = target_x86_64
         ),
         ForeignModulesAndExts = []
     ),
@@ -5228,6 +5235,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         ;
             ( Target = target_c
             ; Target = target_asm
+            ; Target = target_x86_64    % XXX this is only provisional.
             ),
             Rules = MainRule
         )
@@ -5321,6 +5329,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         ;
             ( Target = target_c
             ; Target = target_asm
+            ; Target = target_x86_64    % XXX This is only provisional.
             ),
             LibRules = LibRule
         )

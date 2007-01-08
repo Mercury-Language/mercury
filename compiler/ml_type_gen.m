@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -725,6 +725,8 @@ target_uses_constructors(target_c) = no.
 target_uses_constructors(target_il) = yes.
 target_uses_constructors(target_java) = yes.
 target_uses_constructors(target_asm) = no.
+target_uses_constructors(target_x86_64) =
+    unexpected(this_file, "target_x86_64 and --high-level-code").
 
 :- func target_uses_empty_base_classes(compilation_target) = bool.
 
@@ -732,6 +734,8 @@ target_uses_empty_base_classes(target_c) = no.
 target_uses_empty_base_classes(target_il) = yes.
 target_uses_empty_base_classes(target_java) = yes.
 target_uses_empty_base_classes(target_asm) = no.
+target_uses_empty_base_classes(target_x86_64) = 
+    unexpected(this_file, "target_x86_64 and --high-level-code").
 
     % This should return yes if references to function parameters in
     % constructor functions must be qualified with the module name,
@@ -747,6 +751,8 @@ target_requires_module_qualified_params(target_c) = no.
 target_requires_module_qualified_params(target_il) = no.
 target_requires_module_qualified_params(target_java) = yes.
 target_requires_module_qualified_params(target_asm) = no.
+target_requires_module_qualified_params(target_x86_64) = 
+    unexpected(this_file, "target_x86_64 with --high-level-code").
 
 :- func gen_constructor_function(globals, mlds_class_id,
     mlds_type, mlds_module_name, mlds_class_id, maybe(int), mlds_defns,

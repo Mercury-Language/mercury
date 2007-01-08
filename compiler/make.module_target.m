@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -469,6 +469,9 @@ build_object_code(ModuleName, target_il, _, ErrorStream, Imports, Succeeded,
         !IO) :-
     compile_target_code.il_assemble(ErrorStream, ModuleName,
         Imports ^ has_main, Succeeded, !IO).
+build_object_code(_ModuleName, target_x86_64, _, _ErrorStream, _Imports,
+        _Succeeded, _, _) :-
+    sorry(this_file, "NYI mmc --make and target x86_64").
 
 :- pred compile_foreign_code_file(io.output_stream::in, pic::in,
     module_imports::in, foreign_code_file::in, bool::out,
@@ -557,6 +560,9 @@ get_object_extension(Globals, PIC) = Ext :-
     ;
         CompilationTarget = target_java,
         sorry(this_file, "object extension for java")
+    ;
+        CompilationTarget = target_x86_64,
+        sorry(this_file, "mmc --make NYI and target x86_64")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -827,6 +833,9 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
             ; CompilationTarget = target_java
             ),
             HeaderTargets0 = []
+        ;
+            CompilationTarget = target_x86_64,
+            sorry(this_file, "NYI mmc --make and target x86_64")
         ),
 
         (
@@ -952,6 +961,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
     ;
         ( CompilationTarget = target_java
         ; CompilationTarget = target_il
+        ; CompilationTarget = target_x86_64
         ),
         ForeignFiles = ForeignFiles0
     ).

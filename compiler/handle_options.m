@@ -217,6 +217,9 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ;
         Target = target_c,     % dummy
         add_error("Invalid target option " ++
+% XXX When the x86_64 backend is documented replace the line below with
+%     this one.
+%             "(must be `c', `asm', `il', `java', or `x86_64')", !Errors)
             "(must be `c', `asm', `il', or `java')", !Errors)
     ),
     map.lookup(!.OptionTable, gc, GC_Method0),
@@ -532,6 +535,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ( Target = target_c
             ; Target = target_java
             ; Target = target_asm
+            ; Target = target_x86_64
             )
         ),
 
@@ -620,6 +624,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ( Target = target_c
             ; Target = target_il
             ; Target = target_asm
+            ; Target = target_x86_64
             )
         ),
         % Generating assembler via the gcc back-end requires
@@ -631,6 +636,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ( Target = target_c
             ; Target = target_il
             ; Target = target_java
+            ; Target = target_x86_64
             )
         ),
 
@@ -1113,6 +1119,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                     ( Target = target_c
                     ; Target = target_java
                     ; Target = target_asm
+                    ; Target = target_x86_64
                     )
                 )
             ;
@@ -1782,6 +1789,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             Target = target_java,
             BackendForeignLanguages = ["java"],
             set_option(optimize_constructor_last_call, bool(no), !Globals)
+        ;
+            Target = target_x86_64,
+            BackendForeignLanguages = ["c"]
         ),
 
         % Only set the backend foreign languages if they are unset.

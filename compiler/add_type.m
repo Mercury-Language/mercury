@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -449,6 +449,7 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
             ; Target = target_il, LangStr = "IL"
             ; Target = target_java, LangStr = "Java"
             ; Target = target_asm, LangStr = "C"
+            ; Target = target_x86_64, LangStr = "C"
             ),
             MainPieces = [words("Error: no"), fixed(LangStr),
                 fixed("`pragma foreign_type'"), words("declaration for"),

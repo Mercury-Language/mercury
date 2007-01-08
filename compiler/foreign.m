@@ -527,6 +527,8 @@ have_foreign_type_for_backend(target_java, ForeignTypeBody,
         ( ForeignTypeBody ^ java = yes(_) -> yes ; no )).
 have_foreign_type_for_backend(target_asm, ForeignTypeBody, Result) :-
     have_foreign_type_for_backend(target_c, ForeignTypeBody, Result).
+have_foreign_type_for_backend(target_x86_64, ForeignTypeBody, Result) :-
+    have_foreign_type_for_backend(target_c, ForeignTypeBody, Result).
 
 :- type exported_type
     --->    foreign(sym_name, list(foreign_type_assertion))
@@ -601,6 +603,17 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         )
     ;
         Target = target_asm,
+        (
+            MaybeC = yes(Data),
+            Data = foreign_type_lang_data(c_type(NameStr), MaybeUserEqComp,
+                Assertions),
+            Name = unqualified(NameStr)
+        ;
+            MaybeC = no,
+            unexpected(this_file, "to_exported_type: no C type")
+        )
+    ;
+        Target = target_x86_64,
         (
             MaybeC = yes(Data),
             Data = foreign_type_lang_data(c_type(NameStr), MaybeUserEqComp,

@@ -1050,6 +1050,7 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
     (
         ( Target = target_c
         ; Target = target_asm
+        ; Target = target_x86_64
         ),
         resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
             MaybeC0, MaybeC, !Info)
@@ -1067,6 +1068,7 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ( Target = target_c
         ; Target = target_asm
         ; Target = target_java
+        ; Target = target_x86_64
         ),
         MaybeIL = MaybeIL0
     ),
@@ -1078,6 +1080,7 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ( Target = target_c
         ; Target = target_asm
         ; Target = target_il
+        ; Target = target_x86_64
         ),
         MaybeJava = MaybeJava0
     ).

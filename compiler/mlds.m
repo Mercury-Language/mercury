@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1832,6 +1832,9 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                 sorry(this_file,
                     "mercury_type_to_mlds_type: No C foreign type")
             )
+        ;
+            Target = target_x86_64,
+            unexpected(this_file, "target x86_64 with --high-level-code")
         ),
         MLDSType = mlds_foreign_type(ForeignType)
     ;

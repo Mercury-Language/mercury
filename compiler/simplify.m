@@ -1485,6 +1485,7 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
                             ( Target = target_il
                             ; Target = target_java
                             ; Target = target_asm
+                            ; Target = target_x86_64
                             ),
                             sorry(this_file, "NYI: runtime trace conditions "
                                 ++ "in languages other than C")
