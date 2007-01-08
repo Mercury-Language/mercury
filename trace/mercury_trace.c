@@ -779,7 +779,8 @@ MR_trace_retry(MR_EventInfo *event_info,
             if (i < MR_long_desc_var_count(call_label)) {
                 MR_LongLval     long_locn;
 
-                long_locn.MR_long_lval = MR_long_desc_var_locn(call_label, i);
+                long_locn.MR_long_lval =
+                    MR_long_desc_var_locn(call_label, i).MR_long_lval;
                 arg_num = MR_get_register_number_long(long_locn);
             } else {
                 MR_ShortLval    short_locn;
@@ -1328,7 +1329,7 @@ MR_trace_find_input_arg(const MR_LabelLayout *label_layout,
                 MR_LongLval     long_locn;
 
                 long_locn.MR_long_lval =
-                    MR_long_desc_var_locn(label_layout, i);
+                    MR_long_desc_var_locn(label_layout, i).MR_long_lval;
                 return MR_lookup_long_lval_base(long_locn,
                     saved_regs, base_sp, base_curfr, succeeded);
             } else {

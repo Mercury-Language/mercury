@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -844,7 +844,8 @@ MR_get_type_and_value_base(const MR_LabelLayout *label_layout, int i,
             printf("looking up long lval\n");
         }
 
-        long_locn.MR_long_lval = MR_long_desc_var_locn(label_layout, i);
+        long_locn.MR_long_lval =
+            MR_long_desc_var_locn(label_layout, i).MR_long_lval;
         *value = MR_lookup_long_lval_base(long_locn,
             saved_regs, base_sp, base_curfr, &succeeded);
     } else {

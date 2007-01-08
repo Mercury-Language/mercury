@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,7 +87,7 @@ typedef	MR_int_least16_t	MR_Determinism;
 */
 
 /*
-** MR_LongLval is a MR_uint_least32_t which describes an location.
+** MR_LongLval is a MR_Unsigned which describes an location.
 ** This includes lvals such as stack slots, general registers, and special
 ** registers such as succip, hp, etc, as well as locations whose address is
 ** given as a typeinfo inside the type class info structure pointed to by an
@@ -131,7 +131,7 @@ typedef	MR_int_least16_t	MR_Determinism;
 */
 
 struct MR_LongLval_Struct {
-	MR_uint_least32_t	MR_long_lval;
+	MR_Unsigned	MR_long_lval;
 };
 
 typedef enum {
@@ -518,11 +518,11 @@ typedef	struct MR_LabelLayoutNoVarInfo_Struct {
 #define	MR_end_of_var_ptis(sll)						\
 		(&MR_var_pti((sll), MR_all_desc_var_count(sll)))
 #define	MR_long_desc_var_locn(sll, i)					\
-		(((MR_uint_least32_t *) MR_end_of_var_ptis(sll))[(i)])
+		(((MR_LongLval *) MR_end_of_var_ptis(sll))[(i)])
 #define	MR_end_of_long_desc_var_locns(sll)				\
 		(&MR_long_desc_var_locn((sll), MR_long_desc_var_count(sll)))
 #define	MR_short_desc_var_locn(sll, i)					\
-		(((MR_uint_least8_t *)					\
+		(((MR_ShortLval *)					\
 			MR_end_of_long_desc_var_locns(sll))		\
 				[((i) - MR_long_desc_var_count(sll))])
 

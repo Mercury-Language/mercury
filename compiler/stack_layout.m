@@ -1031,7 +1031,7 @@ construct_user_data_array(VarNumMap, [MaybeAttr | MaybeAttrs],
         MaybeVarNum = yes(VarNum)
     ;
         MaybeAttr = no,
-        LocnRvalAndType = const(llconst_int(0)) - uint_least32,
+        LocnRvalAndType = const(llconst_int(0)) - unsigned,
         MaybeVarNum = no
     ),
     construct_user_data_array(VarNumMap, MaybeAttrs, LocnRvalAndTypes,
@@ -1075,7 +1075,7 @@ construct_tvar_rvals(TVarLocnMap, Vector) :-
     construct_type_param_locn_vector(TVarLocns, 1, TypeParamLocs),
     list.length(TypeParamLocs, TypeParamsLength),
     LengthRval = const(llconst_int(TypeParamsLength)),
-    Vector = [LengthRval - uint_least32 | TypeParamLocs].
+    Vector = [LengthRval - unsigned | TypeParamLocs].
 
 %---------------------------------------------------------------------------%
 
@@ -1169,12 +1169,12 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         ),
         represent_locn_as_int_rval(Locn, Rval),
         construct_type_param_locn_vector(TVarLocns, NextSlot, VectorTail),
-        Vector = [Rval - uint_least32 | VectorTail]
+        Vector = [Rval - unsigned | VectorTail]
     ; TVarNum > CurSlot ->
         construct_type_param_locn_vector([TVar - Locns | TVarLocns], NextSlot,
             VectorTail),
         % This slot will never be referred to.
-        Vector = [const(llconst_int(0)) - uint_least32 | VectorTail]
+        Vector = [const(llconst_int(0)) - unsigned | VectorTail]
     ;
         unexpected(this_file,
             "unsorted tvars in construct_type_param_locn_vector")
@@ -1186,7 +1186,7 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
     --->    live_array_info(
                 rval,       % Rval describing the location of a live value.
                             % Always of llds type uint_least8 if the cell
-                            % is in the byte array, and uint_least32 if it
+                            % is in the byte array, and unsigned if it
                             % is in the int array.
                 rval,       % Rval describing the type of a live value.
                 llds_type,  % The llds type of the rval describing the type.
@@ -1230,7 +1230,7 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
 
     list.map(SelectTypes, AllArrayInfo, AllTypeRvalsTypes),
     list.map(SelectLocns, IntArrayInfo, IntLocns),
-    list.map(associate_type(uint_least32), IntLocns, IntLocnsTypes),
+    list.map(associate_type(unsigned), IntLocns, IntLocnsTypes),
     list.map(SelectLocns, ByteArrayInfo, ByteLocns),
     list.map(associate_type(uint_least8), ByteLocns, ByteLocnsTypes),
     list.append(IntLocnsTypes, ByteLocnsTypes, AllLocnsTypes),
@@ -1497,7 +1497,7 @@ represent_locn_or_const_as_int_rval(LvalOrConst, Rval, Type, !Info) :-
     (
         LvalOrConst = lval(Lval),
         represent_locn_as_int_rval(locn_direct(Lval), Rval),
-        Type = uint_least32
+        Type = unsigned
     ;
         LvalOrConst = const(_Const),
         get_module_info(!.Info, ModuleInfo),
