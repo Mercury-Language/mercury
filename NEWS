@@ -19,10 +19,14 @@ Changes to the Mercury standard library:
 	list.map_corresponding/4
 	list.map2_foldl3/10
 	list.map_corresponding_foldl/6
+	list.map_corresponding_foldl2/8
+	list.map_corresponding_foldl3/10
 	list.map_corresponding3_foldl/7
+	list.foldl3_corresponding/9
 	list.foldl_corresponding3/6
 	list.foldl2_corresponding3/8
 	list.foldl3_corresponding3/10
+	list.foldl4_corresponding3/12
 
    We have also added versions of list.foldl/4 and list.foldr/4 that have
    determinism multi.
