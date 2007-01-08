@@ -819,7 +819,7 @@
     di, uo) is cc_multi,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
-    % list.foldl_corresponding(F, As, Bs, !Acc)
+    % list.foldl_corresponding(F, As, Bs, !Acc):
     % Does the same job as list.foldl, but works on two lists in
     % parallel.  An exception is raised if the list arguments differ
     % in length.
@@ -838,7 +838,7 @@
 :- mode list.foldl_corresponding(pred(in, in, di, uo) is cc_multi,
     in, in, di, uo) is cc_multi.
 
-    % list.foldl2_corresponding(F, As, Bs, !Acc1, !Acc2)
+    % list.foldl2_corresponding(F, As, Bs, !Acc1, !Acc2):
     % Does the same job as list.foldl_corresponding, but has two
     % accumulators.
     %
@@ -856,6 +856,19 @@
     in, in, in, out, di, uo) is det.
 :- mode list.foldl2_corresponding(pred(in, in, in, out, di, uo) is cc_multi,
     in, in, in, out, di, uo) is cc_multi.
+
+    % list.foldl3_corresponding(F, As, Bs, !Acc1, !Acc2, !Acc3):
+    % Does the same job as list.foldl_corresponding, but has three
+    % accumulators.
+    %
+:- pred list.foldl3_corresponding(pred(A, B, C, C, D, D, E, E),
+    list(A), list(B), C, C, D, D, E, E).
+:- mode list.foldl3_corresponding(
+    pred(in, in, in, out, in, out, in, out) is det, in, in, in, out, in, out,
+    in, out) is det.
+:- mode list.foldl3_corresponding(
+    pred(in, in, in, out, in, out, di, uo) is det, in, in, in, out, in, out,
+    di, uo) is det.
 
     % list.foldl_corresponding3(P, As, Bs, Cs, !Acc):
     % Like list.foldl_corresponding but folds over three corresponding
@@ -2045,6 +2058,15 @@ list.foldl2_corresponding(_, [_ | _], [], _, _, _, _) :-
 list.foldl2_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2) :-
     P(A, B, !Acc1, !Acc2),
     list.foldl2_corresponding(P, As, Bs, !Acc1, !Acc2).
+
+list.foldl3_corresponding(_, [], [], !Acc1, !Acc2, !Acc3).
+list.foldl3_corresponding(_, [], [_ | _], _, _, _, _, _, _) :-
+    error("list.foldl3_corresponding/9: mismatched list arguments").
+list.foldl3_corresponding(_, [_ | _], [], _, _, _, _, _, _) :-
+    error("list.foldl3_corresponding/9: mismatched list arguments").
+list.foldl3_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2, !Acc3) :-
+    P(A, B, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding(P, As, Bs, !Acc1, !Acc2, !Acc3).
 
 list.foldl_corresponding3(_, [], [], [], !Acc).
 list.foldl_corresponding3(_, [_ | _], [], [], _, _) :-
