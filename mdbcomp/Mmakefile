@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2005-2006 The University of Melbourne.
+# Copyright (C) 2005-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -233,7 +233,6 @@ realclean_local:
 .PHONY: install
 install: install_library
 
-# XXX Trace goal fix
 .PHONY: install_dirs
 install_dirs:
 	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
@@ -253,16 +252,13 @@ install_library:
 
 else 
 
-# XXX Trace goal fix.
 .PHONY: install_init
 install_init: $(MDBCOMP_LIB_NAME).init install_dirs
-	cp `vpath_find $(MDBCOMP_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 	cp `vpath_find $(MDBCOMP_LIB_NAME).init` $(INSTALL_GRADE_MODULE_DIR)
 
 .PHONY: install_library
-install_library: install_init \
-		lib$(MDBCOMP_LIB_NAME).$A \
-		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
+install_library: lib$(MDBCOMP_LIB_NAME) \
+		install_init \
 		all-ints install_dirs
 	cp `vpath_find lib$(MDBCOMP_LIB_NAME).$A \
 		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \

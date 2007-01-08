@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2006 The University of Melbourne.
+# Copyright (C) 1998-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -293,9 +293,8 @@ install_init: $(BROWSER_LIB_NAME).init install_dirs
 	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_GRADE_MODULE_DIR)
 
 .PHONY: install_library
-install_library: install_init \
-		lib$(BROWSER_LIB_NAME).$A \
-		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
+install_library: lib$(BROWSER_LIB_NAME) \
+		install_init \
 		install_dirs
 	cp `vpath_find lib$(BROWSER_LIB_NAME).$A \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \

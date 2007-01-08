@@ -474,23 +474,13 @@ install_all: install_mercury
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 .PHONY: install_mercury
-install_mercury: install_ints install_hdrs install_init install_library
+install_mercury: install_ints install_hdrs install_library
 
 .PHONY: install_ints
 install_ints: lib$(STD_LIB_NAME).install_ints
 
 .PHONY: install_hdrs
 install_hdrs: lib$(STD_LIB_NAME).install_hdrs
-
-.PHONY: install_init
-install_init: $(STD_LIB_NAME).init install_lib_dirs
-	cp `vpath_find $(STD_LIB_NAME).init` $(INSTALL_MODULE_DIR)
-	# "$(STD_LIB_NAME).init" used to be called "library.init" or
-	# "libmercury.init". If there is still a version with an old name
-	# lying around, then delete it; otherwise the initialization
-	# would get done twice.
-	rm -f $(INSTALL_MODULE_DIR)/library.init \
-		$(INSTALL_MODULE_DIR)/libmercury.init
 
 ifneq (,$(findstring il,$(GRADE)))
 
@@ -597,11 +587,6 @@ install_ints:
 
 .PHONY: install_hdrs
 install_hdrs:
-	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
-	exit 1
-
-.PHONY: install_init
-install_init:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
 	exit 1
 
