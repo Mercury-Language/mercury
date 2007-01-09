@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2006 The University of Melbourne.
+# Copyright (C) 1995-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -604,7 +604,7 @@ case "$HOSTNAMECMD" in
 		# XXX We should probably check that the user isn't
 		# using GNU's hostname on OS X instead.
 		case "$host" in
-			powerpc*apple*darwin*)
+			*apple*darwin*)
 				HOSTNAMECMD="$HOSTNAMECMD" ;;
 			*)
 				HOSTNAMECMD="$HOSTNAMECMD -f" ;;
@@ -822,7 +822,7 @@ else
 	# don't get found during linking.  Whose !@#$ing idea was it to make
 	# that brain-damaged and non-standard-conforming mode the default?
 
-	case "$host" in *-apple-darwin*)
+	case "$host" in *apple*darwin*)
 		RANLIBFLAGS="-c"
 		;;
 	esac
@@ -2432,7 +2432,7 @@ case "$host" in i*86-*-*)
 esac
 
 case "$host" in
-    powerpc*apple*darwin*)
+    *apple*darwin*)
         mercury_cv_default_cgi_dir=/Library/WebServer/CGI-Executables
         ;;
     *)
@@ -2565,12 +2565,7 @@ case "$host" in
 		esac
 		;;
 
-	# Theoretically we should change this check to *apple*darwin*)
-	# as darwin should be the same whether or not we are on a powerpc or
-	# an i386, but since we don't have access to an i386 with darwin
-	# installed to test this, we currently restrict ourselves to the
-	# powerpc architecture.
-	*powerpc*apple*darwin*)
+	*apple*darwin*)
 		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_DARWIN_THREADS"
 		THREAD_LIBS=""
 		;;
@@ -3570,7 +3565,7 @@ case "$host" in
 		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		DEFAULT_LINKAGE=static
 		;;
-	*powerpc*apple*darwin*)
+	*apple*darwin*)
 		# If the compiler is gcc then use darwin style dynamic linking.
 		# Otherwise use static linking.
 		if test "$GCC_PROG" != ""; then
