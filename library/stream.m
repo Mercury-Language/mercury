@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -297,6 +297,7 @@
     % put_list(Stream, Write, Sep, List, !State).
     %
     % Write all the elements List to Stream separated by Sep.
+    %
 :- pred put_list(Stream, pred(Stream, T, State, State),
     pred(Stream, State, State), list(T), State, State)
     <= stream.output(Stream, State).

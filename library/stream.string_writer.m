@@ -10,17 +10,21 @@
 % Authors: trd, fjh, stayl
 %
 % Predicates to write to streams that accept strings.
+%
 %-----------------------------------------------------------------------------%
-:- module stream.string_writer.
+%-----------------------------------------------------------------------------%
 
+:- module stream.string_writer.
 :- interface.
 
-:- import_module deconstruct.
-:- import_module univ.
 :- import_module char.
+:- import_module deconstruct.
+:- import_module io.
 :- import_module list.
 :- import_module string.
-:- import_module io.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 :- pred put_int(Stream::in, int::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
@@ -120,6 +124,8 @@
     stream.writer(Stream, char, State)).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- interface.
@@ -167,17 +173,15 @@
 :- pragma type_spec(put_char/4, (Stream = io.output_stream, State = io.state)).
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module array.
 :- import_module int.
-:- import_module io.
 :- import_module require.
 :- import_module rtti_implementation.
-:- import_module string.
 :- import_module term_io.
 :- import_module type_desc.
-:- import_module univ.
 
 put_int(Stream, Int, !State) :-
     (
