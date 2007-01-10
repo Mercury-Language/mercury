@@ -213,8 +213,7 @@ do
             echo "stage2.$dir/$subdir seems to have its object files"
         else
             echo "reconstructing object files in stage2.$dir/$subdir"
-            cd stage2.$dir/$subdir
-            mmake
+            ( cd stage2.$dir/$subdir; mmake )
         fi
     done
 done
@@ -288,6 +287,7 @@ fi
 ln -s $root/boehm_gc .
 ln -s $root/browser .
 ln -s $root/trace .
+ln -s $root/robdd .
 ln -s $root/doc .
 ln -s $root/scripts .
 ln -s $root/util .
