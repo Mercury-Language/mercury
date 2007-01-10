@@ -63,7 +63,12 @@
 % dependencies.  This doesn't necessarily catch all cases of inconsistent
 % instances, however, since in general that cannot be done until link time.
 % We try to catch as many cases as possible here, though, since we can give
-% better error messages.
+% better error messages.  Note that we only check concrete instance definitions
+% for mutual consistency, since otherwise the abstract instance definitions
+% would conflict with their corresponding concrete definitions.  If in
+% future we allow stub instances, where the concrete definition is compiler
+% generated, we should add the concrete definitions before this pass to
+% ensure that they get checked.
 %
 % Last, in check_typeclass_constraints/4, we check typeclass constraints on
 % predicate and function declarations and on existentially typed data
@@ -1102,8 +1107,17 @@ check_fundeps_class(ClassId, !ModuleInfo, !Specs) :-
     map.lookup(InstanceTable, ClassId, InstanceDefns),
     FunDeps = ClassDefn ^ class_fundeps,
     check_coverage(ClassId, InstanceDefns, FunDeps, !ModuleInfo, !Specs),
-    check_consistency(ClassId, ClassDefn, InstanceDefns, FunDeps,
+    % Concrete definitions will always overlap with abstract ones; we only
+    % need to check the former.
+    list.filter(is_concrete_instance_defn, InstanceDefns,
+        ConcreteInstanceDefns),
+    check_consistency(ClassId, ClassDefn, ConcreteInstanceDefns, FunDeps,
         !ModuleInfo, !Specs).
+
+:- pred is_concrete_instance_defn(hlds_instance_defn::in) is semidet.
+
+is_concrete_instance_defn(InstanceDefn) :-
+    InstanceDefn ^ instance_body = instance_body_concrete(_).
 
 :- pred check_coverage(class_id::in, list(hlds_instance_defn)::in,
     hlds_class_fundeps::in, module_info::in, module_info::out,

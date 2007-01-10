@@ -32,6 +32,7 @@ TYPECLASS_PROGS= \
 	fundeps_poly_instance \
 	instance_superclass \
 	instance_unconstrained_tvar \
+	logged_stream \
 	mpj2 \
 	mpj5 \
 	mpj6 \
