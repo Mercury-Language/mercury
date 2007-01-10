@@ -3651,7 +3651,7 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, untuple, Tuple),
+    globals.lookup_bool_option(Globals, tuple, Tuple),
     (
         Tuple = yes,
         maybe_write_string(Verbose, "% Tupling...\n", !IO),
