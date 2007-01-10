@@ -654,6 +654,19 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
+        % Generating x86_64 assembler implies '--no-use-local-vars'
+        (
+            Target = target_x86_64,
+            globals.set_option(use_local_vars, bool(no), !Globals)
+
+        ;
+            ( Target = target_asm
+            ; Target = target_c
+            ; Target = target_il
+            ; Target = target_java
+            )
+        ),
+
         %
         % Set up options for position independent code.
         %
