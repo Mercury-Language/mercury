@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1033,7 +1033,7 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
                     fprintf(fp, "%s/%d ",
                         functors[i].MR_functor_name,
                         functors[i].MR_functor_arity);
-                    fprintf(fp, "%s.%s/%" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                    fprintf(fp, "%s.%s/%d\n",
                         functors[i].MR_functor_type_module,
                         functors[i].MR_functor_type_name,
                         functors[i].MR_functor_type_arity);
