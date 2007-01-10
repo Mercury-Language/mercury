@@ -87,7 +87,7 @@ typedef	MR_int_least16_t	MR_Determinism;
 */
 
 /*
-** MR_LongLval is a MR_Unsigned which describes an location.
+** MR_LongLval is a MR_Unsigned which describes a location.
 ** This includes lvals such as stack slots, general registers, and special
 ** registers such as succip, hp, etc, as well as locations whose address is
 ** given as a typeinfo inside the type class info structure pointed to by an
