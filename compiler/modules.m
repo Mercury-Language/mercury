@@ -3726,11 +3726,11 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
         io.write_strings(DepStream, [
             ForeignFileName, " : ", IlFileName, "\n\n"], !IO),
 
-        ( ForeignLang = lang_csharp ->
-            % Store in the variable
-            % CSHARP_ASSEMBLY_REFS-foreign_code_name
-            % the command line argument to reference all the
-            % dlls the foreign code module references.
+        ( 
+            ForeignLang = lang_csharp,
+            % Store in the variable CSHARP_ASSEMBLY_REFS-foreign_code_name
+            % the command line argument to reference all the dlls the
+            % foreign code module references.
             io.write_strings(DepStream,
                 ["CSHARP_ASSEMBLY_REFS-", ForeignModuleNameString, "="], !IO),
             (
@@ -3749,7 +3749,11 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
                 Prefix, DepStream, !IO),
             io.nl(DepStream, !IO)
         ;
-            true
+            ( ForeignLang = lang_c
+            ; ForeignLang = lang_managed_cplusplus
+            ; ForeignLang = lang_java
+            ; ForeignLang = lang_il
+            )
         )
     ;
         % This foreign language doesn't generate an external file
@@ -4665,6 +4669,17 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     write_dependencies_list(Modules, "", DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
+    % The modules for which we need to generate .int0 files.
+    ModulesWithSubModules = list.filter(
+      (pred(Module::in) is semidet :-
+          map.lookup(DepsMap, Module, deps(_, ModuleImports)),
+          ModuleImports ^ children = [_ | _]
+      ), Modules),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".parent_mods =", !IO),
+    write_dependencies_list(ModulesWithSubModules, "", DepStream, !IO),
+    io.write_string(DepStream, "\n", !IO),
+
     globals.io_get_target(Target, !IO),
     ( 
         Target = target_il,
@@ -4690,11 +4705,15 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         Basis = yes(ModsVarName - ""),
 
         string.append(MakeVarName, ".foreign", ForeignVarName),
-        ForeignBasis = yes(ForeignVarName - "")
+        ForeignBasis = yes(ForeignVarName - ""),
+    
+        string.append(MakeVarName, ".parent_mods", ParentModsVarName),
+        ParentBasis = yes(ParentModsVarName - "")
     ;
         Gmake = no,
         Basis = no,
-        ForeignBasis = no
+        ForeignBasis = no,
+        ParentBasis = no
     ),
 
     get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs),
@@ -4707,14 +4726,14 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     list.map_foldl(MakeFileName, ForeignModulesAndExts, ForeignFileNames,
         !IO),
 
-        % .foreign_cs are the source files which have had
-        % foreign code placed in them.
+    % .foreign_cs are the source files which have had foreign code placed
+    % in them.
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".foreign_cs = ", !IO),
     write_file_dependencies_list(ForeignFileNames, "", DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
-        % The dlls which contain the foreign_code.
+    % The dlls that contain the foreign_code.
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".foreign_dlls = ", !IO),
     write_compact_dependencies_list(ForeignModules, "$(dlls_subdir)",
@@ -4985,23 +5004,28 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
     (
         HighLevelCode = yes,
-        ( ( Target = target_c ; Target = target_asm ) ->
-            % For the `--target c' MLDS back-end, we
-            % generate `.mih' files for every module.
-            % Likewise for the `--target asm' back-end.
-            % (For the `--target asm' back-end,
-            % we previously used to do that only for modules
-            % that contain C code, but this caused trouble
-            % when trying to interoperate between compiled
-            % with `--target c' and code compiled with
-            % `--target asm', so now we generate them
-            % unconditionally.)
+        ( 
+            ( Target = target_c
+            ; Target = target_asm
+            ), 
+            % For the `--target c' MLDS back-end, we generate `.mih' files
+            % for every module.  Likewise for the `--target asm' back-end.
+            % (For the `--target asm' back-end, we previously used to do
+            % that only for modules that contain C code, but this caused
+            % trouble when trying to interoperate between compiled with
+            % `--target c' and code compiled with `--target asm', so now we
+            % generate them unconditionally.)
             write_compact_dependencies_list(Modules,
                 "$(mihs_subdir)", ".mih", Basis, DepStream, !IO)
         ;
             % For the IL and Java targets, currently we don't generate
             % `.mih' files at all; although perhaps we should...
-            true
+            ( Target = target_il
+            ; Target = target_java
+            )
+        ;
+            Target= target_x86_64,
+            unexpected(this_file, "--highlevel-code with --target x86_64")
         )
     ;
         % For the LLDS back-end, we don't use `.mih' files at all
@@ -5011,11 +5035,17 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".mhs = ", !IO),
-    ( ( Target = target_c ; Target = target_asm ) ->
-        write_compact_dependencies_list(Modules, "", ".mh",
-            Basis, DepStream, !IO)
+    (
+        ( Target = target_c
+        ; Target = target_asm 
+        ; Target = target_x86_64
+        ),
+        write_compact_dependencies_list(Modules, "", ".mh", Basis,
+            DepStream, !IO)
     ;
-        true
+        ( Target = target_il
+        ; Target = target_java
+        )
     ),
     io.write_string(DepStream, "\n", !IO),
 
@@ -5049,33 +5079,27 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io.write_string(DepStream, "\n", !IO),
 
     % `.int0' files are only generated for modules with sub-modules.
+    % XXX ... or at least they should be.  Currently we end up generating
+    % .int0 files for nested submodules that don't have any children.
+    % (We do the correct thing for separate sub-modules.)
     %
-    % XXX The dependencies for nested submodules are wrong - we
-    % currently end up generating .int0 files for nested submodules that
-    % don't have any children (the correct thing is done for separate
-    % submodules).  The following commented out code generates the
-    % correct rules for .int0 files; it and the line below can be
-    % uncommented when the dependency problem is fixed.
-    %
-    % ModulesWithSubModules = list.filter(
-    %   (pred(Module::in) is semidet :-
-    %       map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    %       ModuleImports ^ children = [_ | _]
-    %   ), Modules),
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".int0s = ", !IO),
+    write_compact_dependencies_list(ModulesWithSubModules, "$(int0s_subdir)",
+         ".int0", ParentBasis, DepStream, !IO),
+    io.write_string(DepStream, "\n", !IO),
+
+    % XXX The `<module>.all_int0s' variables is like `<module>.int0s' except
+    % that it contains .int0 files for all modules, regardless of whether
+    % they should have been created or not.  It is used by the rule for
+    % `mmake realclean' to ensure that we clean up all the .int0 files,
+    % including the ones that were accidently created by the bug described
+    % above.
     %
-    % These next two lines are a workaround for the bug described above.
-    %
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".all_int0s = ", !IO),
     write_compact_dependencies_list(Modules, "$(int0s_subdir)", ".int0",
         Basis, DepStream, !IO),
-    write_compact_dependencies_separator(Basis, DepStream, !IO),
-    %
-    % End of workaround - it can be deleted when the bug described above
-    % is fixed.  When that happens the following line needs to be
-    % uncommented.
-    %
-    %write_dependencies_list(ModulesWithSubModules, ".int0", DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
@@ -5688,7 +5712,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         "\t-echo $(", MakeVarName, ".optdates) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".trans_opt_dates) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".ints) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".int0s) | xargs rm -f\n",
+        % XXX This should acutally be .int0s but we need to make sure that
+        % we delete any spurious .int0 files created for nested sub-modules.
+        % For further details see the XXX comments above.
+        "\t-echo $(", MakeVarName, ".all_int0s) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".int3s) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".opts) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".trans_opts) | xargs rm -f\n",
