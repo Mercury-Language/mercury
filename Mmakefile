@@ -423,6 +423,7 @@ tar: $(GENERATED_DOCS)
 	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
 	-rm -f Mmake.common
 	-rm -f extras/Mmake.params
+	-rm -rf autom4te.cache
 	chmod -R a+r *
 	# Package up the mercury directory with some subdirectories
 	# excluded, into a gzipped tar archive that will unpack into
