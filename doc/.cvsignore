@@ -2,6 +2,7 @@
 *.text
 *.info *.info-*
 *.html
+*.pdf
 *.texi_pp
 *.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr *.ps *.dvi *.dvi_log
 *.cps *.fns *.kys *.pgs *.tps *.vrs
