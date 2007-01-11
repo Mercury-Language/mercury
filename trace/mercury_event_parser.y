@@ -3,7 +3,7 @@
 ** vim: ts=4 sw=4 et
 */
 /*
-** Copyright (C) 2006 The University of Melbourne.
+** Copyright (C) 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -22,7 +22,10 @@
 
 #include "mercury_event_spec.h"             /* for MR_EventSpecs etc */
 #include "mercury_event_spec_missing.h"     /* for mercury_event_text etc */
-#include "mercury_event_parser.h"
+/* #include "mercury_event_parser.h"           the content of this header is
+                                               in bison's .c output anyway;
+                                               including it again chokes GCC
+                                               in some configurations. */
 #include "mercury_event_scanner.h"          /* for mercury_event_lex etc */
 
 MR_EventSet         mercury_event_parsetree;
