@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,8 +103,8 @@
     % 
 :- pred apply_renaming_to_proc_arg_vector(map(T, T)::in,
     proc_arg_vector(T)::in, proc_arg_vector(T)::out) is det.
-
-    % partition_arg_vector_by_origin(Vec, PolyArgs, NonPolyArgs):
+    
+    % proc_arg_vector_partition_poly_args(Vec, PolyArgs, NonPolyArgs):
     %
     % Partition the argument vector into two lists depending on whether
     % something was introduced by the polymorphism transformation or not.
@@ -124,6 +124,43 @@
     %
 :- pred proc_arg_vector_to_func_args(proc_arg_vector(T)::in,
     list(T)::out, T::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff related to the polymorphism pass
+%
+    
+    % This type represents those arguments of a predicate or function
+    % symbol that are introduced by the polymorphism transformation.
+    % The arguments may be variables, types, modes, etc, depending on the
+    % context.
+    %
+    % Values of this type are used to pass around intermediate values
+    % during the polymorphism transformation.
+    % 
+:- type poly_arg_vector(T).
+
+:- func poly_arg_vector_init = poly_arg_vector(T).
+
+:- pred poly_arg_vector_set_instance_type_infos(list(T)::in,
+    poly_arg_vector(T)::in, poly_arg_vector(T)::out) is det.
+:- pred poly_arg_vector_set_instance_typeclass_infos(list(T)::in,
+    poly_arg_vector(T)::in, poly_arg_vector(T)::out) is det.
+:- pred poly_arg_vector_set_univ_type_infos(list(T)::in,
+    poly_arg_vector(T)::in, poly_arg_vector(T)::out) is det.
+:- pred poly_arg_vector_set_exist_type_infos(list(T)::in,
+    poly_arg_vector(T)::in, poly_arg_vector(T)::out) is det.
+:- pred poly_arg_vector_set_univ_typeclass_infos(list(T)::in,
+    poly_arg_vector(T)::in, poly_arg_vector(T)::out) is det.
+:- pred poly_arg_vector_set_exist_typeclass_infos(list(T)::in,
+    poly_arg_vector(T)::in, poly_arg_vector(T)::out) is det.
+
+    % Convert a poly_arg_vector into a list.
+    % XXX ARGVEC - this is only temporary until the proc_info structure use
+    % proc_arg_vectors.  We should then provide a predicate that merges a
+    % poly_arg_vector with a proc_arg_vector.
+    % 
+:- func poly_arg_vector_to_list(poly_arg_vector(T)) = list(T).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -319,6 +356,38 @@ proc_arg_vector_to_func_args(Vector, FuncArgs, FuncRetVal) :-
         unexpected(this_file, "Call to arg_vector_to_func_args/3 " ++
             "with predicate.")
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff related to the polymorphism transformation
+%
+
+    % Internally we represent a poly_arg_vector as a proc_arg_vector.
+    % This ensures that poly_arg_vectors obey the same calling convention
+    % w.r.t introduced type_info and typeclass_info arguments that 
+    % proc_arg_vectors do.  For the proc_arg_vectors that are
+    % used to represent poly_arg_vectors we insist that the the last
+    % two fields are the empty list and `no' respectively.
+    %
+:- type poly_arg_vector(T) == proc_arg_vector(T).
+
+poly_arg_vector_init = proc_arg_vector_init(predicate, []).
+
+poly_arg_vector_set_instance_type_infos(ITI, !A) :-
+    proc_arg_vector_set_instance_type_infos(ITI, !A).
+poly_arg_vector_set_instance_typeclass_infos(ITCI, !A) :-
+    proc_arg_vector_set_instance_typeclass_infos(ITCI, !A).
+poly_arg_vector_set_univ_type_infos(UTI, !A) :-
+    proc_arg_vector_set_univ_type_infos(UTI, !A).
+poly_arg_vector_set_exist_type_infos(ETI, !A) :-
+    proc_arg_vector_set_exist_type_infos(ETI, !A).
+poly_arg_vector_set_univ_typeclass_infos(UTCI, !A) :-
+    proc_arg_vector_set_univ_typeclass_infos(UTCI, !A).
+poly_arg_vector_set_exist_typeclass_infos(ETCI, !A) :-
+    proc_arg_vector_set_exist_typeclass_infos(ETCI, !A).
+
+poly_arg_vector_to_list(V) =
+    proc_arg_vector_to_list(V).
 
 %-----------------------------------------------------------------------------%
 
