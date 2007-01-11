@@ -58,9 +58,7 @@ No (more) solutions.
 ?- qperm([1,2,"foo"], List).
 <stdin>:001: In clause for predicate `query'/1:
 <stdin>:001:   in argument 1 of call to predicate `qperm'/2:
-<stdin>:001:   in argument 2 of functor `[|]/2':
-<stdin>:001:   in argument 2 of functor `[|]/2':
-<stdin>:001:   in argument 1 of functor `[|]/2':
+<stdin>:001:   in list element #2:
 <stdin>:001:   type error in unification of argument
 <stdin>:001:   and constant `"foo"'.
 <stdin>:001:   argument has type `int',
