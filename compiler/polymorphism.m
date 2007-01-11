@@ -565,7 +565,7 @@ polymorphism_process_clause_info(PredInfo0, ModuleInfo0, !ClausesInfo, !:Info,
     clauses_info_get_headvars(!.ClausesInfo, HeadVars0),
 
     setup_headvars(PredInfo0, HeadVars0, HeadVars,
-        ExtraArgModes, _HeadTypeVars, UnconstrainedTVars,
+        ExtraArgModes, UnconstrainedTVars,
         ExtraTypeInfoHeadVars, ExistTypeClassInfoHeadVars, !Info),
 
     clauses_info_clauses_only(!.ClausesInfo, Clauses0),
@@ -672,20 +672,19 @@ polymorphism_process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
     %
 :- pred setup_headvars(pred_info::in, proc_arg_vector(prog_var)::in,
     proc_arg_vector(prog_var)::out, poly_arg_vector(mer_mode)::out,
-    list(tvar)::out, list(tvar)::out,
-    list(prog_var)::out, list(prog_var)::out,
+    list(tvar)::out, list(prog_var)::out, list(prog_var)::out,
     poly_info::in, poly_info::out) is det.
 
 setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
-        HeadTypeVars, UnconstrainedTVars, ExtraHeadTypeInfoVars,
+        UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !Info) :-
     pred_info_get_origin(PredInfo, Origin),
     ExtraArgModes0 = poly_arg_vector_init : poly_arg_vector(mer_mode), 
     ( Origin = origin_instance_method(InstanceMethodConstraints) ->
         setup_headvars_instance_method(PredInfo,
             InstanceMethodConstraints, !HeadVars,
-            HeadTypeVars, UnconstrainedTVars,
-            ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
+            UnconstrainedTVars, ExtraHeadTypeInfoVars,
+            ExistHeadTypeClassInfoVars,
             ExtraArgModes0, ExtraArgModes, !Info)
     ;
         pred_info_get_class_context(PredInfo, ClassContext),
@@ -694,7 +693,7 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
         InstanceUnconstrainedTypeInfoVars = [],
         setup_headvars_2(PredInfo, ClassContext, InstanceTVars,
             InstanceUnconstrainedTVars, InstanceUnconstrainedTypeInfoVars,
-            !HeadVars, HeadTypeVars, UnconstrainedTVars,
+            !HeadVars, UnconstrainedTVars,
             ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
             ExtraArgModes0, ExtraArgModes, !Info)
     ).
@@ -706,14 +705,13 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
 :- pred setup_headvars_instance_method(pred_info::in,
     instance_method_constraints::in,
     proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::out,
-    list(tvar)::out, list(tvar)::out,
-    list(prog_var)::out, list(prog_var)::out,
+    list(tvar)::out, list(prog_var)::out, list(prog_var)::out,
     poly_arg_vector(mer_mode)::in, poly_arg_vector(mer_mode)::out,
     poly_info::in, poly_info::out) is det.
 
 setup_headvars_instance_method(PredInfo,
         InstanceMethodConstraints, !HeadVars, 
-        HeadTypeVars, UnconstrainedTVars, ExtraHeadTypeInfoVars,
+        UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !ExtraArgModes, !Info) :-
 
     InstanceMethodConstraints = instance_method_constraints(_,
@@ -751,22 +749,21 @@ setup_headvars_instance_method(PredInfo,
     setup_headvars_2(PredInfo, ClassContext,
         InstanceTVars,
         UnconstrainedInstanceTVars, UnconstrainedInstanceTypeInfoVars,
-        !HeadVars, HeadTypeVars,
+        !HeadVars,
         UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !ExtraArgModes, !Info).
 
 :- pred setup_headvars_2(pred_info::in, prog_constraints::in,
     list(tvar)::in, list(tvar)::in, list(prog_var)::in,
     proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::out,
-    list(tvar)::out, list(tvar)::out,
-    list(prog_var)::out, list(prog_var)::out,
+    list(tvar)::out, list(prog_var)::out, list(prog_var)::out,
     poly_arg_vector(mer_mode)::in, poly_arg_vector(mer_mode)::out,
     poly_info::in, poly_info::out) is det.
 
 setup_headvars_2(PredInfo, ClassContext,
         InstanceTVars, UnconstrainedInstanceTVars,
         UnconstrainedInstanceTypeInfoVars, HeadVars0,
-        HeadVars, HeadTypeVars, AllUnconstrainedTVars,
+        HeadVars, AllUnconstrainedTVars,
         AllExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
         !ExtraArgModes, !Info) :-
 
