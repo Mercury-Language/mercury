@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2006 The University of Melbourne.
+** Copyright (C) 1999-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -380,6 +380,9 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
     MR_Word *base_sp, MR_Word *base_curfr, int ancestor_level,
     MR_bool print_optionals)
 {
+#ifdef  MR_HIGHLEVEL_CODE
+    return "high level code is enabled";
+#else
     const MR_ProcLayout     *entry;
     const MR_UserEvent      *user;
     MR_UserEventSpec        *user_spec;
@@ -750,6 +753,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
 
     MR_point.MR_point_var_count = slot_max;
     return NULL;
+#endif
 }
 
 /*
