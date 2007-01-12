@@ -584,13 +584,17 @@ mercury_runtime_init(int argc, char **argv)
     MR_ticket_high_water = 1;
   #endif
 #else
-    /* start up the Mercury engine */
-  #ifndef MR_THREAD_SAFE
+    /* 
+    ** Start up the Mercury engine.  We don't yet know how many slots will be
+    ** needed for thread-local mutable values so allocate the maximum number.
+    */
     MR_init_thread(MR_use_now);
-  #else
+    MR_SET_THREAD_LOCAL_MUTABLES(
+        MR_create_thread_local_mutables(MR_MAX_THREAD_LOCAL_MUTABLES));
+
+  #ifdef MR_THREAD_SAFE
     {
         int i;
-        MR_init_thread(MR_use_now);
         MR_exit_now = MR_FALSE;
         for (i = 1 ; i < MR_num_threads ; i++) {
             MR_create_thread(NULL);
@@ -600,7 +604,7 @@ mercury_runtime_init(int argc, char **argv)
         }
     }
   #endif /* ! MR_THREAD_SAFE */
-#endif /* ! MR_HIGHLEVEL_CODE */
+#endif /* ! 0 */
 
     if (MR_memdebug) {
         MR_debug_memory(stderr);

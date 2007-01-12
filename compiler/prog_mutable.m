@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,12 +51,12 @@
 %   :- impure pred initialise_mutable_<varname> is det.
 %
 %   initialise_mutable_<varname> :-
-%       impure initialise_mutex_for_mutable_<varname>,
+%       impure pre_initialise_mutable_<varname>,
 %       impure set_<varname>(<initval>).
 % 
-%   :- impure pred initialise_mutex_for_mutable_<varname> is det.
+%   :- impure pred pre_initialise_mutable_<varname> is det.
 %   :- pragma foreign_proc("C",
-%       initialise_mutex_for_mutable_<varname>,
+%       pre_initialise_mutable_<varname>,
 %       [will_not_call_mercury],
 %   "
 %       #ifdef MR_THREAD_SAFE
@@ -78,8 +78,8 @@
 %
 %   :- semipure pred unsafe_get_<varname>(<vartype>::out(<varinst>)) is det.
 %   :- pragma foreign_proc("C",
-%       unsafe_get_varname(X::in(<varinst>)),
-%       [promise_semipure, will_not_all_mercury, thread_safe],
+%       unsafe_get_varname(X::out(<varinst>)),
+%       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
 %        X = mutable_<varname>;
 %   ").   
@@ -124,6 +124,51 @@
 %
 % etc.
 % 
+% For thread-local mutables the transformation is as above, with the following
+% differences:
+%
+%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [thread_local]).
+%
+% ===>
+%
+%   :- pragma foreign_decl("C", "extern MR_Unsigned mutable_<varname>;").
+%   :- pragma foreign_code("C", "MR_Unsigned mutable_<varname>;").
+%
+%   :- pragma foreign_proc("C",
+%       pre_initialise_mutable_<varname>,
+%       [will_not_call_mercury],
+%   "
+%       mutable_<varname> = MR_new_thread_local_mutable_index();
+%   ").
+%
+%   :- pragma foreign_proc("C",
+%       unsafe_set_<varname)(X::in(<varinst>)),
+%       [will_not_call_mercury, thread_safe],
+%   "
+%       MR_set_thread_local_mutable(<type>, X, mutable_<varname>);
+%   ").
+%
+%   :- pragma foreign_proc("C",
+%       unsafe_get_varname(X::out(<varinst>)),
+%       [promise_semipure, will_not_call_mercury, thread_safe],
+%   "
+%        MR_get_thread_local_mutable(<type>, X, mutable_<varname>);
+%   ").   
+%
+%   :- pramga foreign_proc("C",
+%       lock_<varname>,
+%       [will_not_call_mercury, promise_pure],
+%   "
+%       /* blank */
+%   ").
+%
+%   :- pramga foreign_proc("C",
+%       unlock_<varname>,
+%       [will_not_call_mercury, promise_pure],
+%   "
+%       /* blank */
+%   ").
+%
 % For constant mutables the transformation is:
 %
 %   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [constant]).
@@ -214,10 +259,12 @@
     %
 :- func mutable_init_pred_decl(module_name, string) = item.
 
-    % Create a predmode declaration for the mutable mutex initialisation
-    % predicate.
+    % Create a predmode declaration for the mutable pre-initialisation
+    % predicate.  For normal mutables this initialises the mutex protecting
+    % the mutable.  For thread-local mutables this allocates an index
+    % into an array of thread-local mutable values.
     %
-:- func mutable_init_mutex_pred_decl(module_name, string) = item.
+:- func mutable_pre_init_pred_decl(module_name, string) = item.
 
     % Names of the primtive operations.
     %
@@ -248,7 +295,7 @@
 
 :- func mutable_init_pred_sym_name(module_name, string) = sym_name.
 
-:- func mutable_init_mutex_pred_sym_name(module_name, string) = sym_name.
+:- func mutable_pre_init_pred_sym_name(module_name, string) = sym_name.
 
 :- func mutable_c_var_name(module_name, string) = string.
 
@@ -431,7 +478,7 @@ mutable_init_pred_decl(ModuleName, Name) = InitPredDecl :-
         WithType, WithInst, yes(detism_det), Condition,
         purity_impure, Constraints).
 
-mutable_init_mutex_pred_decl(ModuleName, Name) = InitMutexPredDecl :-
+mutable_pre_init_pred_decl(ModuleName, Name) = PreInitPredDecl :-
     VarSet = varset.init,
     InstVarSet = varset.init,
     ExistQVars = [],
@@ -441,9 +488,9 @@ mutable_init_mutex_pred_decl(ModuleName, Name) = InitMutexPredDecl :-
     WithInst = no,
     Condition = cond_true,
     Origin = compiler(mutable_decl),
-    InitMutexPredDecl = item_pred_or_func(Origin, VarSet, InstVarSet,
+    PreInitPredDecl = item_pred_or_func(Origin, VarSet, InstVarSet,
         ExistQVars, predicate,
-        mutable_init_mutex_pred_sym_name(ModuleName, Name),
+        mutable_pre_init_pred_sym_name(ModuleName, Name),
         ArgDecls, WithType, WithInst, yes(detism_det), Condition,
         purity_impure, Constraints).
 
@@ -473,8 +520,8 @@ mutable_secret_set_pred_sym_name(ModuleName, Name) =
 mutable_init_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "initialise_mutable_" ++ Name).
 
-mutable_init_mutex_pred_sym_name(ModuleName, Name) = 
-    qualified(ModuleName, "initialise_mutex_for_mutable_" ++ Name).
+mutable_pre_init_pred_sym_name(ModuleName, Name) = 
+    qualified(ModuleName, "pre_initialise_mutable_" ++ Name).
 
 mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
     RawCVarName       = "mutable_variable_" ++ Name,

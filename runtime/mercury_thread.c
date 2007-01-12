@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2001, 2003, 2005-2006 The University of Melbourne.
+** Copyright (C) 1997-2001, 2003, 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -31,6 +31,8 @@
 
 MR_bool             MR_exit_now;
 MR_bool             MR_debug_threads = MR_FALSE;
+
+MR_Unsigned         MR_num_thread_local_mutables = 0;
 
 #ifdef MR_THREAD_SAFE
 
@@ -212,4 +214,44 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
     assert(err == 0);
 }
 
+#endif  /* MR_THREAD_SAFE */
+
+MR_Unsigned
+MR_new_thread_local_mutable_index(void)
+{
+    if (MR_num_thread_local_mutables >= MR_MAX_THREAD_LOCAL_MUTABLES-1) {
+        MR_fatal_error("too many thread-local mutables");
+    }
+    return MR_num_thread_local_mutables++;
+}
+
+MR_ThreadLocalMuts *
+MR_create_thread_local_mutables(MR_Unsigned numslots)
+{
+    MR_ThreadLocalMuts  *muts;
+
+    muts = MR_GC_NEW(MR_ThreadLocalMuts);
+#ifdef MR_THREAD_SAFE
+    pthread_mutex_init(&muts->MR_tlm_lock, MR_MUTEX_ATTR);
 #endif
+    muts->MR_tlm_values = MR_NEW_ARRAY(MR_Word, numslots);
+
+    return muts;
+}
+
+MR_ThreadLocalMuts *
+MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts)
+{
+    MR_ThreadLocalMuts  *new_muts;
+    MR_Unsigned         i;
+
+    new_muts = MR_create_thread_local_mutables(MR_num_thread_local_mutables);
+
+    MR_LOCK(&new_muts->MR_tlm_lock, "MR_clone_thread_local_mutables");
+    for (i = 0; i < MR_num_thread_local_mutables; i++) {
+        new_muts->MR_tlm_values[i] = old_muts->MR_tlm_values[i];
+    }
+    MR_UNLOCK(&new_muts->MR_tlm_lock, "MR_clone_thread_local_mutables");
+
+    return new_muts;
+}

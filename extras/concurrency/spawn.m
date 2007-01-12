@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003-2004, 2006 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004, 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -66,6 +66,8 @@
         /* Store the closure on the top of the new context's stack. */
     *(ctxt->MR_ctxt_sp) = Goal;
     ctxt->MR_ctxt_next = NULL;
+    ctxt->MR_ctxt_thread_local_mutables =
+        MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
     MR_schedule_context(ctxt);
     if (0) {
 spawn_call_back_to_mercury_cc_multi:
@@ -77,7 +79,7 @@ spawn_call_back_to_mercury_cc_multi:
         MR_runnext();
     }
 #else
-    ME_create_thread(ME_thread_wrapper, (void *) Goal);
+    ME_create_thread(Goal);
 #endif
     IO = IO0;
 ").
@@ -127,18 +129,35 @@ call_back_to_mercury(Goal, !IO) :-
 #ifdef MR_HIGHLEVEL_CODE
   #include  <pthread.h>
 
-  int ME_create_thread(void *(*func)(void *), void *arg);
+  int ME_create_thread(MR_Word goal);
   void *ME_thread_wrapper(void *arg);
+
+  typedef struct ME_ThreadWrapperArgs ME_ThreadWrapperArgs;
+  struct ME_ThreadWrapperArgs {
+        MR_Word     goal;
+        MR_Word     *thread_local_mutables;
+  };
 #endif
 ").
 
 :- pragma foreign_code("C", "
 #ifdef MR_HIGHLEVEL_CODE
-  int ME_create_thread(void *(*func)(void *), void *arg)
+  int ME_create_thread(MR_Word goal)
   {
-    pthread_t   thread;
+    ME_ThreadWrapperArgs    *args;
+    pthread_t               thread;
 
-    if (pthread_create(&thread, MR_THREAD_ATTR, func, arg)) {
+    /*
+    ** We can't allocate `args' on the stack because this function may return
+    ** before the child thread has got all the information it needs out of the
+    ** structure.
+    */
+    args = MR_malloc(sizeof(ME_ThreadWrapperArgs));
+    args->goal = goal;
+    args->thread_local_mutables =
+        MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
+
+    if (pthread_create(&thread, MR_THREAD_ATTR, ME_thread_wrapper, args)) {
         MR_fatal_error(""Unable to create thread."");
     }
 
@@ -152,7 +171,20 @@ call_back_to_mercury(Goal, !IO) :-
 
   void *ME_thread_wrapper(void *arg)
   {
-    call_back_to_mercury_cc_multi((MR_Word) arg);
+    ME_ThreadWrapperArgs    *args = arg;
+    MR_Word                 goal;
+
+    if (MR_init_thread(MR_use_now) == MR_FALSE) {
+        MR_fatal_error(""Unable to init thread."");
+    }
+
+    assert(MR_THREAD_LOCAL_MUTABLES == NULL);
+    MR_SET_THREAD_LOCAL_MUTABLES(args->thread_local_mutables);
+
+    goal = args->goal;
+    MR_free(args);
+
+    call_back_to_mercury_cc_multi(goal);
 
     return NULL;
   }

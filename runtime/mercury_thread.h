@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998, 2000, 2003, 2005-2006 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000, 2003, 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -199,4 +199,71 @@ extern	MR_bool	MR_init_thread(MR_when_to_use);
 
 extern	void    MR_finalize_thread_engine(void);
 
-#endif
+/*
+** The values of thread-local mutables are stored in an array per Mercury
+** thread.  This makes it easy for a newly spawned thread to inherit (copy)
+** all the thread-local mutables of its parent thread.
+** Accesses to the array are protected by a mutex, in case a parallel
+** conjunctions tries to read a thread-local value while another parallel
+** conjunction (in the same Mercury thread) is writing to it.
+**
+** Each thread-local mutable has an associated index into the array, which is
+** allocated to it during initialisation.  For ease of implementation there is
+** an arbitrary limit to the number of thread-local mutables that are allowed.
+*/
+typedef struct MR_ThreadLocalMuts MR_ThreadLocalMuts;
+
+struct MR_ThreadLocalMuts {
+  #ifdef MR_THREAD_SAFE
+    MercuryLock     MR_tlm_lock;
+  #endif
+    MR_Word         *MR_tlm_values;
+};
+
+#define MR_MAX_THREAD_LOCAL_MUTABLES    128
+extern MR_Unsigned  MR_num_thread_local_mutables;
+
+/*
+** Allocate an index into the thread-local mutable array for a mutable.
+*/
+extern MR_Unsigned  MR_new_thread_local_mutable_index(void);
+
+/*
+** Allocate a thread-local mutable array.
+*/
+extern MR_ThreadLocalMuts *
+MR_create_thread_local_mutables(MR_Unsigned numslots);
+
+/*
+** Make a copy of a thread-local mutable array.
+*/
+extern MR_ThreadLocalMuts *
+MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts);
+
+#define MR_THREAD_LOCAL_MUTABLES                                         \
+    (MR_ENGINE(MR_eng_this_context)->MR_ctxt_thread_local_mutables)
+
+#define MR_SET_THREAD_LOCAL_MUTABLES(tlm)                                \
+    (MR_THREAD_LOCAL_MUTABLES = tlm)
+
+#define MR_get_thread_local_mutable(type, var, mut_index)                \
+    do {                                                                 \
+        MR_ThreadLocalMuts  *tlm;                                        \
+                                                                         \
+        tlm = MR_THREAD_LOCAL_MUTABLES;                                  \
+        MR_LOCK(&tlm->MR_tlm_lock, "MR_get_thread_local_mutable");       \
+        var = *((type *) &tlm->MR_tlm_values[mut_index]);                \
+        MR_UNLOCK(&tlm->MR_tlm_lock, "MR_get_thread_local_mutable");     \
+    } while (0)
+
+#define MR_set_thread_local_mutable(type, var, mut_index)                \
+    do {                                                                 \
+        MR_ThreadLocalMuts  *tlm;                                        \
+                                                                         \
+        tlm = MR_THREAD_LOCAL_MUTABLES;                                  \
+        MR_LOCK(&tlm->MR_tlm_lock, "MR_set_thread_local_mutable");       \
+        *((type *) &tlm->MR_tlm_values[mut_index]) = var;                \
+        MR_UNLOCK(&tlm->MR_tlm_lock, "MR_set_thread_local_mutable");     \
+    } while (0)
+
+#endif	/* MERCURY_THREAD_H */

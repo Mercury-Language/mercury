@@ -4839,7 +4839,7 @@ attribute.
 
 @end table
 
-The Melbourne Mercury compiler also supports the following attribute.
+The Melbourne Mercury compiler also supports the following attributes:
 
 @table @asis
 
@@ -4862,6 +4862,15 @@ corresponding C types will be @code{MR_Integer}, @code{MR_Float},
 type the corresponding C type will be @code{MR_Word}.
 
 This attribute is not currently implemented for the non-C backends.
+
+@item @samp{thread_local}
+This attribute allows a mutable to take on different values in each
+thread.  When a child thread is spawned, it inherits all the values of
+thread-local mutables of the parent thread.  Changing the value of a
+thread-local mutable does not affect its value in any other threads.
+
+The @samp{thread_local} attribute cannot be specified together with
+either of the @samp{trailed} or @samp{constant} attributes.
 
 @end table
 

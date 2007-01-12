@@ -10,6 +10,8 @@ Changes to the Mercury language:
 * Mutables can now be marked as constant, which is useful when working with
   constant data structures that cannot be conveniently represented as constant
   terms.
+* Mutables can now be marked as thread-local, which can take on different
+  values for each thread.
 * Unicode characters can now be encoded in string literals using an
   escape sequence.
 

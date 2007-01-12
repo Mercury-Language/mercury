@@ -127,6 +127,9 @@
 ** min_hp_rec       This pointer marks the minimum value of MR_hp to which
 **                  we can truncate the heap on backtracking. See comments
 **                  before the macro MR_set_min_heap_reclamation_point below.
+**
+** thread_local_mutables
+**                  The array of thread-local mutable values for this context.
 */
 
 typedef struct MR_Context_Struct        MR_Context;
@@ -201,6 +204,8 @@ struct MR_Context_Struct {
     MR_Unsigned         MR_ctxt_call_depth;
     MR_Unsigned         MR_ctxt_event_number;
 #endif
+
+    MR_ThreadLocalMuts  *MR_ctxt_thread_local_mutables;
 };
 
 /*
@@ -224,6 +229,7 @@ struct MR_Spark_Struct {
     MR_Spark            *MR_spark_next;
     MR_Code             *MR_spark_resume;
     MR_Word             *MR_spark_parent_sp;
+    MR_ThreadLocalMuts  *MR_spark_thread_local_mutables;
 };
 #endif
 
@@ -318,6 +324,7 @@ extern  void        MR_init_context(MR_Context *context, const char *id,
 /*
 ** Allocates and initializes a new context structure, and gives it the given
 ** id. If gen is non-NULL, the context is for the given generator.
+** The `MR_ctxt_thread_local_mutables' member must be initialised separately.
 */
 extern  MR_Context  *MR_create_context(const char *id,
                         MR_ContextSize ctxt_size, MR_Generator *gen);
@@ -388,6 +395,7 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
         fnc_spark = MR_GC_NEW(MR_Spark);                        \
         fnc_spark->MR_spark_resume = (child);                   \
         fnc_spark->MR_spark_parent_sp = MR_parent_sp;           \
+        fnc_spark->MR_spark_thread_local_mutables = MR_THREAD_LOCAL_MUTABLES; \
         if (MR_fork_globally_criteria) {                        \
             MR_schedule_spark_globally(fnc_spark);              \
         } else {                                                \

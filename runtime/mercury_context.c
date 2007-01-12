@@ -263,6 +263,9 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     c->MR_ctxt_call_depth = 0;
     c->MR_ctxt_event_number = 0;
 #endif
+
+    /* The caller is responsible for initialising this field. */
+    c->MR_ctxt_thread_local_mutables = NULL;
 }
 
 MR_Context *
@@ -585,6 +588,7 @@ MR_define_entry(MR_do_runnext);
         MR_load_context(MR_ENGINE(MR_eng_this_context));
     }
     MR_parent_sp = spark->MR_spark_parent_sp;
+    MR_SET_THREAD_LOCAL_MUTABLES(spark->MR_spark_thread_local_mutables);
     MR_GOTO(spark->MR_spark_resume);
 }
 #else /* !MR_THREAD_SAFE */

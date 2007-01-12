@@ -474,10 +474,10 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !Specs) :-
         (
             IsConstant = no,
 
-            % Create the mutex initialisation predicate.  This is called
+            % Create the pre-initialisation predicate.  This is called
             % by the mutable initialisation predicate.
-            InitMutexPredDecl = mutable_init_mutex_pred_decl(ModuleName, Name),
-            add_item_decl_pass_1(InitMutexPredDecl, Context, !Status,
+            PreInitPredDecl = mutable_pre_init_pred_decl(ModuleName, Name),
+            add_item_decl_pass_1(PreInitPredDecl, Context, !Status,
                 !ModuleInfo, _, !Specs),
 
             % Create the primitive access and locking predicates.
@@ -1306,6 +1306,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
         DefinedThisModule = yes,
         module_info_get_name(!.ModuleInfo, ModuleName),
         IsConstant = mutable_var_constant(MutAttrs),
+        IsThreadLocal = mutable_var_thread_local(MutAttrs),
 
         % Work out what name to give the global in the target language.
         decide_mutable_target_var_name(!.ModuleInfo, MutAttrs, ModuleName,
@@ -1315,7 +1316,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
         % global variable used to implement the mutable.  If the mutable is
         % not constant then add a mutex to synchronize access to it as well.
         add_mutable_defn_and_decl(TargetMutableName, Type, IsConstant,
-            Context, !QualInfo, !ModuleInfo, !Specs),
+            IsThreadLocal, Context, !QualInfo, !ModuleInfo, !Specs),
 
         % Set up the default attributes for the foreign_procs used for the
         % access predicates.
@@ -1344,15 +1345,17 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
             IsConstant = no,
             InitSetPredName = mutable_set_pred_sym_name(ModuleName,
                 MercuryMutableName),
+            TypeName = global_foreign_type_name(AlwaysBoxed, lang_c,
+                !.ModuleInfo, Type),
             add_mutable_primitive_preds(TargetMutableName, ModuleName,
-                MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy, Context,
-                !Status, !QualInfo, !ModuleInfo, !Specs),
+                MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy, TypeName,
+                Context, !Status, !QualInfo, !ModuleInfo, !Specs),
             add_mutable_user_access_preds(ModuleName, MercuryMutableName,
                 MutAttrs, Context, !Status, !QualInfo, !ModuleInfo, !Specs)
         ),
-        add_mutable_initialisation(IsConstant, TargetMutableName, ModuleName,
-            MercuryMutableName, MutVarset, InitSetPredName, InitTerm, Attrs,
-            !Status, Context, !ModuleInfo, !QualInfo, !Specs)
+        add_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
+            ModuleName, MercuryMutableName, MutVarset, InitSetPredName, InitTerm,
+            Attrs, !Status, Context, !ModuleInfo, !QualInfo, !Specs)
     ;
         DefinedThisModule = no
     ).
@@ -1382,12 +1385,12 @@ decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, Name, Context,
     % the global variable used to hold the mutable.
     %
 :- pred add_mutable_defn_and_decl(string::in, mer_type::in, bool::in,
-    prog_context::in, qual_info::in, qual_info::out,
+    mutable_thread_local::in, prog_context::in, qual_info::in, qual_info::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, Context,
-        !QualInfo, !ModuleInfo, !Specs) :-
+add_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, IsThreadLocal,
+        Context, !QualInfo, !ModuleInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, CompilationTarget),
 
@@ -1397,7 +1400,8 @@ add_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, Context,
     (
         CompilationTarget = target_c,
         get_mutable_global_foreign_decl_defn(!.ModuleInfo, Type,
-            TargetMutableName, IsConstant, ForeignDecl, ForeignDefn),
+            TargetMutableName, IsConstant, IsThreadLocal,
+            ForeignDecl, ForeignDefn),
         ItemStatus0 = item_status(status_local, may_be_unqualified),
         add_item_decl_pass_2(ForeignDecl, Context, ItemStatus0, _,
             !ModuleInfo, !Specs),
@@ -1463,14 +1467,15 @@ add_constant_mutable_access_preds(TargetMutableName, ModuleName, Name,
     %
 :- pred add_mutable_primitive_preds(string::in, module_name::in, string::in,
     mutable_var_attributes::in, pragma_foreign_proc_attributes::in,
-    mer_inst::in, box_policy::in, prog_context::in,
+    mer_inst::in, box_policy::in, string::in, prog_context::in,
     import_status::in, import_status::out, qual_info::in, qual_info::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
-        MutAttrs, Attrs, Inst, BoxPolicy, Context, !Status, !QualInfo,
-        !ModuleInfo, !Specs) :-
+        MutAttrs, Attrs, Inst, BoxPolicy, TypeName, Context,
+        !Status, !QualInfo, !ModuleInfo, !Specs) :-
+    IsThreadLocal = mutable_var_thread_local(MutAttrs),
     set_thread_safe(proc_thread_safe, Attrs, LockAndUnlockAttrs),
 
     % Construct the lock predicate.
@@ -1478,12 +1483,18 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
     MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
     % XXX the second argument should be the name of the mercury predicate,
     % with chars escaped as appropriate.
-    LockForeignProcBody = string.append_list([
-        "#ifdef MR_THREAD_SAFE\n",
-        "  MR_LOCK(&" ++ MutableMutexVarName ++ ",
-            \"" ++ MutableMutexVarName ++ "\");\n" ++
-        "#endif\n"
-    ]),
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        LockForeignProcBody = string.append_list([
+            "#ifdef MR_THREAD_SAFE\n",
+            "  MR_LOCK(&" ++ MutableMutexVarName ++ ",
+                \"" ++ MutableMutexVarName ++ "\");\n" ++
+            "#endif\n"
+        ])
+    ;
+        IsThreadLocal = mutable_thread_local,
+        LockForeignProcBody = ""
+    ),
     LockForeignProc = pragma_foreign_proc(LockAndUnlockAttrs,
         mutable_lock_pred_sym_name(ModuleName, Name),
         predicate,
@@ -1499,12 +1510,18 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
     % Construct the unlock predicate.
     % XXX as above regarding the second argument to MR_UNLOCK.
 
-    UnlockForeignProcBody = string.append_list([
-        "#ifdef MR_THREAD_SAFE\n",
-        "  MR_UNLOCK(&" ++ MutableMutexVarName ++ ",
-            \"" ++ MutableMutexVarName ++ "\");\n" ++
-        "#endif\n"
-    ]),
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        UnlockForeignProcBody = string.append_list([
+            "#ifdef MR_THREAD_SAFE\n",
+            "  MR_UNLOCK(&" ++ MutableMutexVarName ++ ",
+                \"" ++ MutableMutexVarName ++ "\");\n" ++
+            "#endif\n"
+        ])
+    ;
+        IsThreadLocal = mutable_thread_local,
+        UnlockForeignProcBody = ""
+    ),
     UnlockForeignProc = pragma_foreign_proc(LockAndUnlockAttrs,
         mutable_unlock_pred_sym_name(ModuleName, Name),
         predicate,
@@ -1522,13 +1539,21 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
     set_purity(purity_semipure, Attrs, UnsafeGetAttrs0),
     set_thread_safe(proc_thread_safe, UnsafeGetAttrs0, UnsafeGetAttrs), 
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        UnsafeGetCode = "X = " ++ TargetMutableName ++ ";"
+    ;
+        IsThreadLocal = mutable_thread_local,
+        UnsafeGetCode = "MR_get_thread_local_mutable(" ++
+            TypeName ++ ", X, " ++ TargetMutableName ++ ");"
+    ),
     UnsafeGetForeignProc = pragma_foreign_proc(UnsafeGetAttrs,
         mutable_unsafe_get_pred_sym_name(ModuleName, Name),
         predicate,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
         varset.init, % Inst varset.
-        fc_impl_ordinary("X = " ++ TargetMutableName ++ ";", yes(Context))
+        fc_impl_ordinary(UnsafeGetCode, yes(Context))
     ),
     UnsafeGetClause = item_pragma(compiler(mutable_decl),
         UnsafeGetForeignProc),
@@ -1565,14 +1590,21 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
             TrailCode = ""
         )
     ),
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        SetCode = TargetMutableName ++ "= X;"
+    ;
+        IsThreadLocal = mutable_thread_local,
+        SetCode = "MR_set_thread_local_mutable(" ++
+            TypeName ++ ", X, " ++ TargetMutableName ++ ");"
+    ),
     UnsafeSetForeignProc = pragma_foreign_proc(UnsafeSetAttrs,
         mutable_unsafe_set_pred_sym_name(ModuleName, Name),
         predicate,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
         varset.init, % Inst varset.
-        fc_impl_ordinary(TrailCode ++ TargetMutableName ++ "= X;",
-            yes(Context))
+        fc_impl_ordinary(TrailCode ++ SetCode, yes(Context))
     ),
     UnsafeSetClause = item_pragma(compiler(mutable_decl),
         UnsafeSetForeignProc),
@@ -1693,16 +1725,17 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
 
     % Add the code required to initialise a mutable.
     %
-:- pred add_mutable_initialisation(bool::in, string::in, module_name::in,
-    string::in, prog_varset::in, sym_name::in, prog_term::in,
+:- pred add_mutable_initialisation(bool::in, mutable_thread_local::in,
+    string::in, module_name::in, string::in,
+    prog_varset::in, sym_name::in, prog_term::in,
     pragma_foreign_proc_attributes::in, import_status::in, import_status::out,
     prog_context::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mutable_initialisation(IsConstant, TargetMutableName, ModuleName, Name,
-    MutVarset, InitSetPredName, InitTerm, Attrs, !Status, Context,
-    !ModuleInfo, !QualInfo, !Specs) :-
+add_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
+    ModuleName, Name, MutVarset, InitSetPredName, InitTerm, Attrs, !Status,
+    Context, !ModuleInfo, !QualInfo, !Specs) :-
     %
     % Add the `:- initialise' declaration and clause for the
     % mutable initialise predicate.
@@ -1724,35 +1757,43 @@ add_mutable_initialisation(IsConstant, TargetMutableName, ModuleName, Name,
                 - Context)
     ;
         IsConstant = no,
-        % Construct the clause for the mutex initialisation predicate.
-        InitMutexCode = string.append_list([
-            "#ifdef MR_THREAD_SAFE\n",
-            "   pthread_mutex_init(&",
-                    mutable_mutex_var_name(TargetMutableName),
-                    ", MR_MUTEX_ATTR);\n",
-            "#endif\n"
-        ]),
-        InitMutexPredName = mutable_init_mutex_pred_sym_name(ModuleName,
-            Name),
-        InitMutexForeignProc = pragma_foreign_proc(Attrs,
-            InitMutexPredName,
+        (
+            IsThreadLocal = mutable_not_thread_local,
+            % Construct the clause for the mutex initialisation predicate.
+            PreInitCode = string.append_list([
+                "#ifdef MR_THREAD_SAFE\n",
+                "   pthread_mutex_init(&",
+                        mutable_mutex_var_name(TargetMutableName),
+                        ", MR_MUTEX_ATTR);\n",
+                "#endif\n"
+            ])
+        ;
+            IsThreadLocal = mutable_thread_local,
+            PreInitCode = string.append_list([
+                TargetMutableName,
+                " = MR_new_thread_local_mutable_index();\n"
+            ])
+        ),
+        PreInitPredName = mutable_pre_init_pred_sym_name(ModuleName, Name),
+        PreInitForeignProc = pragma_foreign_proc(Attrs,
+            PreInitPredName,
             predicate,
             [],
             varset.init,    % ProgVarSet
             varset.init,    % InstVarSet
-            fc_impl_ordinary(InitMutexCode, yes(Context))
+            fc_impl_ordinary(PreInitCode, yes(Context))
         ),
-        InitMutexClause = item_pragma(compiler(mutable_decl),
-            InitMutexForeignProc),
-        add_item_clause(InitMutexClause, !Status, Context, !ModuleInfo,
+        PreInitClause = item_pragma(compiler(mutable_decl),
+            PreInitForeignProc),
+        add_item_clause(PreInitClause, !Status, Context, !ModuleInfo,
             !QualInfo, !Specs),
       
-        CallInitMutexExpr =
-            call_expr(InitMutexPredName, [], purity_impure) - Context,
+        CallPreInitExpr =
+            call_expr(PreInitPredName, [], purity_impure) - Context,
         CallSetPredExpr = 
             call_expr(InitSetPredName, [InitTerm], purity_impure)
                 - Context,
-        InitClauseExpr = conj_expr(CallInitMutexExpr, CallSetPredExpr)
+        InitClauseExpr = conj_expr(CallPreInitExpr, CallSetPredExpr)
             - Context,
         %
         % See the comments for prog_io.parse_mutable_decl for the reason
@@ -1774,43 +1815,46 @@ add_mutable_initialisation(IsConstant, TargetMutableName, ModuleName, Name,
     % or not.
     %
 :- pred get_mutable_global_foreign_decl_defn(module_info::in, mer_type::in,
-    string::in, bool::in, item::out, item::out) is det.
+    string::in, bool::in, mutable_thread_local::in, item::out, item::out)
+    is det.
 
 get_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
-        IsConstant, Decl, Defn) :-
+        IsConstant, IsThreadLocal, Decl, Defn) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
     globals.get_target(Globals, Backend),
     (
         Backend = target_c,
-        TypeName = global_foreign_type_name(AlwaysBoxed, lang_c, ModuleInfo,
-            Type),
+        (
+            IsThreadLocal = mutable_not_thread_local,
+            TypeName = global_foreign_type_name(AlwaysBoxed, lang_c,
+                ModuleInfo, Type)
+        ;
+            IsThreadLocal = mutable_thread_local,
+            %
+            % For thread-local mutables, the variable holds an index into an
+            % array.
+            %
+            TypeName = "MR_Unsigned"
+        ),
         %
         % Constant mutables do not require mutexes as their values are never
-        % updated.
+        % updated.  Thread-local mutables do not require mutexes either.
         %
-        ( 
-            IsConstant = yes,
-            LockDecl = []
+        (
+            ( IsConstant = yes
+            ; IsThreadLocal = mutable_thread_local
+            )
+        ->
+            LockDecl = [],
+            LockDefn = []
         ;
-            IsConstant = no,
             LockDecl = [
                 "#ifdef MR_THREAD_SAFE\n",
                 "    extern MercuryLock ",
                 mutable_mutex_var_name(TargetMutableName), ";\n",
                 "#endif\n"
-            ]
-        ),
-        DeclBody = string.append_list([
-            "extern ", TypeName, " ", TargetMutableName, ";\n" | LockDecl]),
-        Decl = item_pragma(compiler(mutable_decl),
-            pragma_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody)),
-        
-        (
-            IsConstant = yes,
-            LockDefn = []
-        ;
-            IsConstant = no,
+            ],
             LockDefn = [
                 "#ifdef MR_THREAD_SAFE\n",
                 "    MercuryLock ",
@@ -1818,6 +1862,12 @@ get_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
                 "#endif\n"
             ]
         ),
+
+        DeclBody = string.append_list([
+            "extern ", TypeName, " ", TargetMutableName, ";\n" | LockDecl]),
+        Decl = item_pragma(compiler(mutable_decl),
+            pragma_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody)),
+        
         DefnBody = string.append_list([
             TypeName, " ", TargetMutableName, ";\n" | LockDefn]),
         Defn = item_pragma(compiler(mutable_decl),

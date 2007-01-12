@@ -1878,7 +1878,8 @@ parse_mutable_inst(InstTerm, InstResult) :-
     --->    mutable_attr_trailed(mutable_trailed)
     ;       mutable_attr_foreign_name(foreign_name)
     ;       mutable_attr_attach_to_io_state(bool)
-    ;       mutable_attr_constant(bool).
+    ;       mutable_attr_constant(bool)
+    ;       mutable_attr_thread_local(mutable_thread_local).
 
 :- pred parse_mutable_attrs(term::in,
     maybe1(mutable_var_attributes)::out) is det.
@@ -1888,17 +1889,22 @@ parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
     ConflictingAttributes = [
         mutable_attr_trailed(mutable_trailed) -
             mutable_attr_trailed(mutable_untrailed),
+        mutable_attr_trailed(mutable_trailed) -
+            mutable_attr_thread_local(mutable_thread_local),
         mutable_attr_constant(yes) - mutable_attr_trailed(mutable_trailed),
-        mutable_attr_constant(yes) - mutable_attr_attach_to_io_state(yes)
+        mutable_attr_constant(yes) - mutable_attr_attach_to_io_state(yes),
+        mutable_attr_constant(yes) -
+            mutable_attr_thread_local(mutable_thread_local)
     ],
     (
         list_term_to_term_list(MutAttrsTerm, MutAttrTerms),
         map_parser(parse_mutable_attr, MutAttrTerms, MaybeAttrList),
         MaybeAttrList = ok1(CollectedMutAttrs)
     ->
-        % We check for trailed/untrailed, constant/trailed and
-        % constant/attach_to_io_state conflicts here and deal with
-        % conflicting foreign_name attributes in make_hlds_passes.m.
+        % We check for trailed/untrailed, constant/trailed,
+        % trailed/thread_local, constant/attach_to_io_state,
+        % constant/thread_local conflicts here and deal with conflicting
+        % foreign_name attributes in make_hlds_passes.m.
         %
         (
             list.member(Conflict1 - Conflict2, ConflictingAttributes),
@@ -1937,6 +1943,8 @@ process_mutable_attribute(mutable_attr_constant(Constant), !Attributes) :-
     ;
         Constant = no
     ).
+process_mutable_attribute(mutable_attr_thread_local(ThrLocal), !Attributes) :-
+    set_mutable_var_thread_local(ThrLocal, !Attributes).
 
 :- pred parse_mutable_attr(term::in,
     maybe1(collected_mutable_attribute)::out) is det.
@@ -1956,6 +1964,9 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
         ;
             String = "constant",
             MutAttr = mutable_attr_constant(yes)
+        ;
+            String = "thread_local",
+            MutAttr = mutable_attr_thread_local(mutable_thread_local)
         )
     ->
         MutAttrResult = ok1(MutAttr)
