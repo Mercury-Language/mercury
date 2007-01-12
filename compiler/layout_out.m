@@ -1414,7 +1414,7 @@ subst_to_name(TVar - Type) =
     %
 :- func layout_version_number = int.
 
-layout_version_number = 1.
+layout_version_number = 3.
 
 :- pred output_module_layout_data_defn(module_name::in, int::in,
     string_with_0s::in, list(layout_name)::in, list(file_layout_data)::in,
@@ -1729,7 +1729,7 @@ output_event_set_desc_defn(ModuleName, EventSetDesc, !DeclSet, !IO) :-
     output_layout_name_storage_type_name(LayoutName, yes, !IO),
     io.write_string(" = {", !IO),
     string.length(EventSetDesc, EventSetDescSize),
-    output_module_string_table_chars_driver(0, EventSetDescSize - 1,
+    output_module_string_table_chars_driver(0, EventSetDescSize,
         string_with_0s(EventSetDesc), !IO),
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).

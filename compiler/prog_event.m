@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -717,8 +717,9 @@ derive_event_set_data(EventSet) = EventSetData :-
     EventSet = event_set(EventSetName, EventSpecMap),
     map.values(EventSpecMap, EventSpecList),
     list.sort(compare_event_specs_by_num, EventSpecList, SortedEventSpecList),
-    DescStrings = list.map(describe_event_spec, SortedEventSpecList),
-    string.append_list(DescStrings, Desc),
+    EventDescStrings = list.map(describe_event_spec, SortedEventSpecList),
+    string.append_list(EventDescStrings, EventDescs),
+    Desc = "event set " ++ EventSetName ++ "\n" ++ EventDescs,
     list.foldl(update_max_num_attr, EventSpecList, -1, MaxNumAttr),
     EventSetData = event_set_data(EventSetName, Desc, SortedEventSpecList,
         MaxNumAttr).
@@ -742,7 +743,7 @@ describe_event_spec(Spec) = Desc :-
     Spec = event_spec(_EventNumber, EventName, _EventLineNumber,
         Attrs, _SynthAttrNumOrder),
     AttrDescs = string.join_list(",\n", list.map(describe_event_attr, Attrs)),
-    Desc = "event " ++ EventName ++ "(" ++ AttrDescs ++ ")".
+    Desc = "event " ++ EventName ++ "(" ++ AttrDescs ++ ")\n".
 
 :- func describe_event_attr(event_attribute) = string.
 
@@ -757,7 +758,7 @@ describe_event_attr(Attr) = Desc :-
         SynthCall = event_attr_synth_call(FuncAttrNameNum, ArgAttrNameNums,
             _Order),
         ArgAttrDesc = string.join_list(", ", assoc_list.keys(ArgAttrNameNums)),
-        SynthCallDesc = "synthesized by " ++
+        SynthCallDesc = " synthesized by " ++
             fst(FuncAttrNameNum) ++ "(" ++ ArgAttrDesc ++ ")"
     ),
     Desc = Name ++ ": " ++ TypeDesc ++ SynthCallDesc.
