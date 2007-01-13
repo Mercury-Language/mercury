@@ -597,6 +597,10 @@
 :- pred pred_info_set_name(string::in,
     pred_info::in, pred_info::out) is det.
 
+:- pred pred_info_set_orig_arity(arity::in, 
+    pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_is_pred_or_func(pred_or_func::in,
+    pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_origin(pred_origin::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_import_status(import_status::in,
@@ -1187,6 +1191,8 @@ pred_info_clauses_info(PI, PI ^ clauses_info).
 pred_info_get_procedures(PI, PI ^ procedures).
 
 pred_info_set_name(X, PI, PI ^ name := X).
+pred_info_set_orig_arity(X, PI, PI ^ orig_arity := X).
+pred_info_set_is_pred_or_func(X, PI, PI ^ is_pred_or_func := X).
 pred_info_set_origin(X, PI, PI ^ pred_origin := X).
 pred_info_set_import_status(X, PI, PI ^ import_status := X).
 pred_info_set_goal_type(X, PI, PI ^ goal_type := X).

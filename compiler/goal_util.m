@@ -260,6 +260,16 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Flatten a list of goals of a conjunction.
+    %
+:- pred flatten_conj(hlds_goals::in, hlds_goals::out) is det.
+
+    % Create a conjunction of the specified type using the specified two goals.
+    % This fills in the hlds_goal_info.
+    %
+:- pred create_conj(hlds_goal::in, hlds_goal::in, conj_type::in, 
+    hlds_goal::out) is det.
+
     % can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
     %   InstmapBeforeGoal1, Goal1, InstmapBeforeGoal2, Goal2).
     %
@@ -1583,6 +1593,31 @@ compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
         CombinedDetism, CombinedPurity, CombinedInfo).
 
 %-----------------------------------------------------------------------------%
+
+flatten_conj([], []).
+flatten_conj([Goal | Goals0], Goals) :-
+    flatten_conj(Goals0, Goals1),
+    ( Goal ^ hlds_goal_expr = conj(plain_conj, SubGoals) ->
+        list.append(SubGoals, Goals1, Goals)
+    ;
+        Goals = [Goal | Goals1]
+    ).
+
+%-----------------------------------------------------------------------------%
+
+create_conj(GoalA, GoalB, Type, ConjGoal) :-
+    GoalsInConj = [ GoalA, GoalB ],
+    ConjGoalExpr = conj(Type, GoalsInConj),
+    goal_list_nonlocals(GoalsInConj, NonLocals),
+    goal_list_instmap_delta(GoalsInConj, InstMapDelta),
+    goal_list_determinism(GoalsInConj, Detism),
+    goal_list_purity(GoalsInConj, Purity),
+    GoalAInfo = GoalA ^ hlds_goal_info,
+    goal_info_get_context(GoalAInfo, Context),
+    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, 
+        ConjGoalInfo),
+    ConjGoal = hlds_goal(ConjGoalExpr, ConjGoalInfo).
+
 %-----------------------------------------------------------------------------%
 
 can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,

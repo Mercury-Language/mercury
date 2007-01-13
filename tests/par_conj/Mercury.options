@@ -5,3 +5,6 @@ MCFLAGS-dep_par_11d = --intermod-opt
 # tracing.
 MCFLAGS-par_ddeath = --trace deep
 MCFLAGS-par_ddeath_2 = --trace deep
+
+MCFLAGS-dg_fib = --parallel --distance-granularity 10
+MCFLAGS-dg_fib_func = --parallel --distance-granularity 10

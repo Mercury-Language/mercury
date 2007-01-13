@@ -149,7 +149,8 @@
     --->    newpred_counter(int, int)                   % Line number, Counter
     ;       newpred_type_subst(tvarset, type_subst)
     ;       newpred_unused_args(list(int))
-    ;       newpred_parallel_args(list(int)).
+    ;       newpred_parallel_args(list(int))
+    ;       newpred_distance_granularity(int).          % Distance       
 
 %-----------------------------------------------------------------------------%
 
@@ -599,11 +600,14 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
     ;
         NewPredId = newpred_parallel_args(Args),
         list_to_string(int_to_string, Args, PredIdStr)
+    ;
+        NewPredId = newpred_distance_granularity(Distance),
+        int_to_string(Distance, PredIdStr)
     ),
 
     string.format("%s__%s__%s__%s",
         [s(Prefix), s(PFS), s(PredName), s(PredIdStr)], Name),
-        SymName = qualified(ModuleName, Name).
+    SymName = qualified(ModuleName, Name).
 
 :- pred list_to_string(pred(T, string)::in(pred(in, out) is det),
     list(T)::in, string::out) is det.

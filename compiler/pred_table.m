@@ -299,6 +299,8 @@
     string::in, pred_or_func::in, arity::in, mode_no::in,
     pred_id::out, proc_id::out) is det.
 
+:-pred get_next_pred_id(predicate_table::in, pred_id::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1168,6 +1170,9 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
                     [i(N), s(ProcName), i(Arity)]))
         )
     ).
+
+get_next_pred_id(PredTable, NextPredId) :-
+    NextPredId = PredTable ^ next_pred_id.
 
 %-----------------------------------------------------------------------------%
 

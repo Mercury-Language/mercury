@@ -64,14 +64,22 @@
 :- module transform_hlds.dep_par_conj.
 :- interface.
 
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module hlds.instmap.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
 :- pred dependent_par_conj(module_info::in, module_info::out, io::di, io::uo)
     is det.
+
+    % Exported for use by the implicit_parallelism pass.
+:- func find_shared_variables(module_info, instmap, hlds_goals)
+    = set(prog_var).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -82,16 +90,13 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
@@ -102,7 +107,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
@@ -679,9 +683,6 @@ transform_conjunct(SharedVars, FutureMap, Goal0, Goal, !InstMap,
     % XXX this code is probably too complicated.  I think Thomas already had a
     % more elegant way to find the shared variables somewhere, using multisets.
     %
-:- func find_shared_variables(module_info, instmap, hlds_goals)
-    = set(prog_var).
-
 find_shared_variables(ModuleInfo, InstMap, Goals) = SharedVars :-
     list.map2(get_nonlocals_and_instmaps, Goals, Nonlocals, InstMapDeltas),
     find_shared_variables_2(ModuleInfo, 0, Nonlocals, InstMap, InstMapDeltas,

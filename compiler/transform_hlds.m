@@ -83,8 +83,10 @@
 :- include_module size_prof.
 :- include_module tupling.
 :- include_module untupling.
+:- include_module distance_granularity.
 :- include_module granularity.
 :- include_module dep_par_conj.
+:- include_module implicit_parallelism.
 
 :- include_module mmc_analysis.
 

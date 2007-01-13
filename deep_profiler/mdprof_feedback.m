@@ -64,17 +64,22 @@ main(!IO) :-
             write_help_message(ProgName, !IO)
         ; 
             ( Args = [Input, Output] ->
-                lookup_string_option(Options, distribution, Distribution),
-                ( construct_distribution(Distribution, DistributionType) ->
+                lookup_string_option(Options, measure, Measure),
+                ( construct_measure(Measure, MeasureType) ->
                     lookup_int_option(Options, threshold, Threshold),
                     lookup_bool_option(Options, verbose, Verbose),
-                    read_deep_file(Input, Verbose, MaybeProfile, !IO),
+                    lookup_accumulating_option(Options, dump_stages,
+                        DumpStages),
+                    lookup_accumulating_option(Options, dump_options,
+                        DumpOptions),
+                    read_deep_file(Input, Verbose, DumpStages, DumpOptions,
+                        MaybeProfile, !IO),
                     (
                         MaybeProfile = ok(Deep),
                         compute_css_list_above_threshold(0, Deep, Threshold, 
-                            DistributionType, [], CSSListAboveThreshold),
+                            MeasureType, [], CSSListAboveThreshold),
                         generate_feedback_file(CSSListAboveThreshold, Deep, 
-                            DistributionType, Threshold, Output, !IO)
+                            MeasureType, Threshold, Output, !IO)
                     ;
                         MaybeProfile = error(Error),
                         io.stderr_stream(Stderr, !IO),
@@ -111,7 +116,7 @@ write_help_message(ProgName) -->
     io.format("--verbose   Generate progress messages.\n", []),
     io.format("--threshold <value>\n", []),
     io.format("            Set the threshold to <value>.\n",[]),
-    io.format("--distrib average|median\n",[]),
+    io.format("--measure average|median\n",[]),
     io.format("            average : Write to <output> the call sites\n",[]),
     io.format("            static whose call sites dynamic's average\n",[]),
     io.format("            call sequence counts exceed the given\n",[]),  
@@ -135,10 +140,11 @@ write_version_message(ProgName, !IO) :-
 
     % Read a deep profiling data file.
     % 
-:- pred read_deep_file(string::in, bool::in, maybe_error(deep)::out,
-    io::di, io::uo) is det.
+:- pred read_deep_file(string::in, bool::in,
+    list(string)::in, list(string)::in,
+    maybe_error(deep)::out, io::di, io::uo) is det.
 
-read_deep_file(Input, Verbose, MaybeProfile, !IO) :-
+read_deep_file(Input, Verbose, DumpStages, DumpOptions, MaybeProfile, !IO) :-
     server_name(Machine, !IO),
     (
         Verbose = yes,
@@ -148,17 +154,17 @@ read_deep_file(Input, Verbose, MaybeProfile, !IO) :-
         Verbose = no,
         MaybeOutput = no
     ),
-    read_and_startup(Machine, [Input], no, MaybeOutput, [], [], MaybeProfile, 
-        !IO).
+    read_and_startup(Machine, [Input], no, MaybeOutput,
+        DumpStages, DumpOptions, MaybeProfile, !IO).
 
     % Determine those CSSs whose CSDs' average/median call sequence counts 
     % exceed the given threshold.
     % 
 :- pred compute_css_list_above_threshold(int::in, deep::in, int::in, 
-    distribution_type::in, list(call_site_static)::in, 
+    measure_type::in, list(call_site_static)::in, 
     list(call_site_static)::out) is det.
 
-compute_css_list_above_threshold(Index, Deep, Threshold, Distribution,
+compute_css_list_above_threshold(Index, Deep, Threshold, Measure,
         !CSSAcc) :-
     array.size(Deep ^ call_site_statics, Size),
     ( Index = Size ->
@@ -173,13 +179,13 @@ compute_css_list_above_threshold(Index, Deep, Threshold, Distribution,
             Callseqs = 0
         ;
             ( 
-                Distribution = average,
+                Measure = average,
                 list.foldr(sum_callseqs_csd_ptr(Deep), CSDList,
                     0, SumCallseqs),
                 % NOTE: we have checked that NumCSD is not zero above.
                 Callseqs = SumCallseqs // NumCSD
             ;
-                Distribution = median,
+                Measure = median,
                 list.sort(compare_csd_ptr(Deep), CSDList, CSDListSorted),
                 IndexMedian = NumCSD // 2,
                 list.index0_det(CSDListSorted, IndexMedian, MedianPtr),
@@ -188,12 +194,12 @@ compute_css_list_above_threshold(Index, Deep, Threshold, Distribution,
         ),
         ( Callseqs >= Threshold ->
             CSS = array.lookup(Deep ^ call_site_statics, Index),
-            !:CSSAcc = [ CSS | !.CSSAcc ],
+            list.append(!.CSSAcc, [CSS], !:CSSAcc),
             compute_css_list_above_threshold(Index + 1, Deep, Threshold, 
-                Distribution, !CSSAcc)
+                Measure, !CSSAcc)
         ;
             compute_css_list_above_threshold(Index + 1, Deep, Threshold, 
-                Distribution, !CSSAcc)
+                Measure, !CSSAcc)
         ) 
     ).
 
@@ -223,9 +229,9 @@ compare_csd_ptr(Deep, CSDPtrA, CSDPtrB, Result) :-
     % threshold. 
     % 
 :- pred generate_feedback_file(list(call_site_static)::in, deep::in, 
-    distribution_type::in, int::in, string::in, io::di, io::uo) is det.
+    measure_type::in, int::in, string::in, io::di, io::uo) is det.
     
-generate_feedback_file(CSSList, Deep, Distribution, Threshold, Output, !IO) :-
+generate_feedback_file(CSSList, Deep, Measure, Threshold, Output, !IO) :-
     io.open_output(Output, Result, !IO),
     (
         Result = io.error(Err),
@@ -236,11 +242,11 @@ generate_feedback_file(CSSList, Deep, Distribution, Threshold, Output, !IO) :-
         io.write_string(Stream, "Profiling feedback file\n", !IO),
         io.write_string(Stream, "Version = 1.0\n", !IO),
         (
-            Distribution = average,
-            io.write_string(Stream, "Distribution = average\n", !IO)
+            Measure = average,
+            io.write_string(Stream, "Measure = average\n", !IO)
         ;
-            Distribution = median,
-            io.write_string(Stream, "Distribution = median\n", !IO)
+            Measure = median,
+            io.write_string(Stream, "Measure = median\n", !IO)
         ),
         io.format(Stream, "Threshold = %i\n", [i(Threshold)], !IO),
         write_css_list(CSSList, Deep, Stream, !IO),
@@ -290,9 +296,11 @@ write_css_list([ CSS | CSSList0 ], Deep, OutStrm, !IO) :-
     ;       help
     ;       verbose
     ;       version
-    ;       distribution.
+    ;       measure
+    ;       dump_stages
+    ;       dump_options.
 
-:- type distribution_type
+:- type measure_type
     --->    average
     ;       median.
 
@@ -304,7 +312,9 @@ short('V',  verbose).
 short('t',  threshold).
 short('h',  help).
 short('v',  version).
-short('d',  distribution).
+short('m',  measure).
+short('d',  dump_stages).
+short('D',  dump_options).
 
 
 :- pred long(string::in, option::out) is semidet.
@@ -313,8 +323,9 @@ long("threshold",           threshold).
 long("help",                help).
 long("verbose",             verbose).
 long("version",             version).
-long("distrib",             distribution).
-long("distribution",        distribution).
+long("measure",             measure).
+long("dump-stages",         dump_stages).
+long("dump-options",        dump_options).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
@@ -322,12 +333,14 @@ defaults(threshold,         int(100000)).
 defaults(help,              bool(no)).
 defaults(verbose,           bool(no)).
 defaults(version,           bool(no)).
-defaults(distribution,      string("average")).
+defaults(measure,           string("average")).
+defaults(dump_stages,       accumulating([])).
+defaults(dump_options,      accumulating([])).
 
-:- pred construct_distribution(string::in, distribution_type::out) is semidet.
+:- pred construct_measure(string::in, measure_type::out) is semidet.
 
-construct_distribution("average",    average).
-construct_distribution("median",     median).
+construct_measure("average",    average).
+construct_measure("median",     median).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdprof_feedback.

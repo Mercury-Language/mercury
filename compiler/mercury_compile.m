@@ -79,6 +79,7 @@
 :- import_module transform_hlds.trailing_analysis.
 :- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.higher_order.
+:- import_module transform_hlds.implicit_parallelism.
 :- import_module transform_hlds.accumulator.
 :- import_module transform_hlds.tupling.
 :- import_module transform_hlds.untupling.
@@ -90,6 +91,7 @@
 :- import_module transform_hlds.unused_args.
 :- import_module transform_hlds.unneeded_code.
 :- import_module transform_hlds.lco.
+:- import_module transform_hlds.distance_granularity.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
@@ -2458,7 +2460,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-
+    
     maybe_read_experimental_complexity_file(!HLDS, !IO),
 
     tabling(Verbose, Stats, !HLDS, !IO),
@@ -2525,6 +2527,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_higher_order(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 135, "higher_order", !DumpInfo, !IO),
 
+    maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 139, "implicit_parallelism", !DumpInfo, !IO),
+
     maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 140, "accum", !DumpInfo, !IO),
 
@@ -2569,6 +2574,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_control_granularity(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 200, "granularity", !DumpInfo, !IO),
+
+    maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 201, "distance_granularity", !DumpInfo, !IO),
 
     maybe_dependent_par_conj(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 205, "dependent_par_conj", !DumpInfo, !IO),
@@ -3886,6 +3894,56 @@ maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
         Sharing = no
     ).
 
+:- pred maybe_implicit_parallelism(bool::in, bool::in, 
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, implicit_parallelism, 
+        ImplicitParallelism),
+    globals.lookup_string_option(Globals, feedback_file, 
+        FeedbackFile),
+    ( FeedbackFile = "" ->
+        % No feedback file has been specified.
+        true
+    ;
+        ( 
+            % If this is false, no implicit parallelism is to be introduced.
+            Parallel = yes, 
+            
+            % If this is false, then the user hasn't asked for implicit 
+            % parallelism.
+            ImplicitParallelism = yes, 
+            
+            % Our mechanism for implicit parallelism only works for the low 
+            % level backend.
+            HighLevelCode = no 
+        ->
+            globals.get_target(Globals, Target),
+            (
+                Target = target_c,
+                maybe_write_string(Verbose, "% Applying implicit parallelism...\n"
+                    , !IO), 
+                maybe_flush_output(Verbose, !IO), 
+                apply_implicit_parallelism_transformation(!HLDS, 
+                    FeedbackFile, !IO),
+                maybe_write_string(Verbose, "% done.\n", !IO),
+                maybe_report_stats(Stats, !IO)
+            ;
+                ( Target = target_il
+                ; Target = target_java
+                ; Target = target_asm
+                ; Target = target_x86_64
+                )
+                % Leave the HLDS alone. We cannot implement parallelism.
+            )
+        ;
+            true
+        )
+    ).
+
 :- pred maybe_control_granularity(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -3914,6 +3972,50 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
                 "% Granularity control transformation...\n", !IO),
             maybe_flush_output(Verbose, !IO),
             control_granularity(!HLDS),
+            maybe_write_string(Verbose, "% done.\n", !IO),
+            maybe_report_stats(Stats, !IO)
+        ;
+            ( Target = target_il
+            ; Target = target_java
+            ; Target = target_asm
+            ; Target = target_x86_64
+            )
+            % Leave the HLDS alone. We cannot implement parallelism,
+            % so there is not point in controlling its granularity.
+        )
+    ;
+        true
+    ).
+
+:- pred maybe_control_distance_granularity(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_int_option(Globals, distance_granularity, Distance),
+    module_info_get_contains_par_conj(!.HLDS, ContainsParConj),
+    (
+        % If either of these is false, there is no parallelism to control.
+        Parallel = yes,
+        ContainsParConj = yes,
+
+        % Our mechanism for granularity control only works for the low level
+        % backend.
+        HighLevelCode = no,
+
+        % Distance must be greater than 0 to apply the distance granularity
+        % transformation.
+        Distance > 0
+    ->
+        globals.get_target(Globals, Target),
+        (
+            Target = target_c,
+            maybe_write_string(Verbose,
+                "% Distance granularity transformation...\n", !IO),
+            maybe_flush_output(Verbose, !IO),
+            control_distance_granularity(!HLDS, Distance),
             maybe_write_string(Verbose, "% done.\n", !IO),
             maybe_report_stats(Stats, !IO)
         ;

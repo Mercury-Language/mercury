@@ -743,6 +743,7 @@ dump_own_and_desc(Prefix, Cur, Own, Desc, !IO) :-
 
 should_dump(DumpOptions, What) :-
     ( list.member(What, DumpOptions)
+    ; list.member("all", DumpOptions)
     ; DumpOptions = []
     ).
 

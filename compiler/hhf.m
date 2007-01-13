@@ -42,6 +42,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
@@ -372,17 +373,6 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
     ;
         V = A,
         Goals = Goals0
-    ).
-
-:- pred flatten_conj(hlds_goals::in, hlds_goals::out) is det.
-
-flatten_conj([], []).
-flatten_conj([Goal | Goals0], Goals) :-
-    flatten_conj(Goals0, Goals1),
-    ( Goal = hlds_goal(conj(plain_conj, SubGoals), _) ->
-        list.append(SubGoals, Goals1, Goals)
-    ;
-        Goals = [Goal | Goals1]
     ).
 
 :- pred complete_inst_graph(module_info::in, hhf_info::in, hhf_info::out)
