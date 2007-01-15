@@ -1,3 +1,5 @@
 Initial value of global = 561
 Final value of global = 562
 Value of const = 562
+Initial value of thrlocal = 563
+Final value of thrlocal = 564

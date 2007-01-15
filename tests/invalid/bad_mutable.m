@@ -20,3 +20,8 @@
 
 :- mutable(multiple_foreign, int, 0, ground,
 	[untrailed, foreign_name("C", "one"), foreign_name("C", "two")]).
+
+:- mutable(conflicting_thr_local1, int, 0, ground, [thread_local, trailed]).
+
+:- mutable(conflicting_thr_local2, int, 0, ground, [thread_local, constant]).
+

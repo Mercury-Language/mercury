@@ -31,6 +31,8 @@
 
 :- mutable(y, int, 0, ground, [untrailed]).
 
+:- mutable(z, int, 0, ground, [untrailed, thread_local]).
+
 main(!IO) :-
     semipure get_x(X0), impure set_x(X0 + 1),
     semipure get_x(X1), impure set_x(X1 + 1),
@@ -43,13 +45,15 @@ main(!IO) :-
       else true
     ),
     semipure get_x(X), io.write_int(X, !IO), io.nl(!IO),
-    semipure get_y(Y), io.write_int(Y, !IO), io.nl(!IO).
+    semipure get_y(Y), io.write_int(Y, !IO), io.nl(!IO),
+    semipure get_z(Z), io.write_int(Z, !IO), io.nl(!IO).
 
 :- impure pred my_member(int::in, list(int)::in) is nondet.
 
 my_member(A, [B | Bs]) :-
     semipure get_x(X), impure set_x(X + 1),
     semipure get_y(Y), impure set_y(Y + 1),
+    semipure get_z(Z), impure set_z(Z + 1),
     (
         A = B
     ;
