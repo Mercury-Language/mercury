@@ -913,13 +913,15 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
             string.format("#define\tMR_ORDINARY_SLOTS\t%d\n",
                 [i(TotalSlots)], DefineStr),
             DefineComponents = [foreign_proc_raw_code(cannot_branch_away,
-                does_not_affect_liveness, live_lvals_info(set.init), DefineStr)],
+                proc_does_not_affect_liveness, live_lvals_info(set.init),
+                DefineStr)],
             NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, yes(Struct)),
+            MD = proc_may_not_duplicate,
             AllocCode = node([
                 llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
                     "Allocate stack frame"),
                 llds_instr(foreign_proc_code([], DefineComponents,
-                    proc_will_not_call_mercury, no, no, no, no, no, no), "")
+                    proc_will_not_call_mercury, no, no, no, no, no, MD), "")
             ]),
             NondetPragma = yes
         ;
@@ -1007,10 +1009,12 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         NondetPragma = yes,
         UndefStr = "#undef\tMR_ORDINARY_SLOTS\n",
         UndefComponents = [foreign_proc_raw_code(cannot_branch_away,
-            does_not_affect_liveness, live_lvals_info(set.init), UndefStr)],
+            proc_does_not_affect_liveness, live_lvals_info(set.init),
+            UndefStr)],
+        MD = proc_may_not_duplicate,
         UndefCode = node([
             llds_instr(foreign_proc_code([], UndefComponents,
-                proc_will_not_call_mercury, no, no, no, no, no, no), "")
+                proc_will_not_call_mercury, no, no, no, no, no, MD), "")
         ]),
         RestoreDeallocCode = empty, % always empty for nondet code
         ExitCode = tree_list([StartComment, UndefCode, EndComment])
@@ -1169,12 +1173,13 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 ReturnMacroName = "MR_tbl_mmos_return_answer",
                 ReturnCodeStr = "\t" ++ ReturnMacroName ++ "(" ++
                     DebugStr ++ ", " ++ GeneratorLocnStr ++ ");\n",
-                Component = foreign_proc_user_code(no, does_not_affect_liveness,
-                    ReturnCodeStr),
+                Component = foreign_proc_user_code(no,
+                    proc_does_not_affect_liveness, ReturnCodeStr),
+                MD = proc_may_not_duplicate,
                 SuccessCode = node([
                     llds_instr(livevals(LiveLvals), ""),
                     llds_instr(foreign_proc_code([], [Component],
-                        proc_may_call_mercury, no, no, no, no, no, no), "")
+                        proc_may_call_mercury, no, no, no, no, no, MD), "")
                 ])
             ;
                 MaybeSpecialReturn = no,
@@ -1268,20 +1273,22 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
         ], BytecodeCall),
 
     BytecodeInstructionsComponents = [
-        foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
-            live_lvals_info(set.init), "\t{\n"),
-        foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
-            live_lvals_info(set.init), CallStruct),
-        foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
-            no_live_lvals_info, BytecodeCall),
-        foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
-            live_lvals_info(set.init), "\t}\n")
+        foreign_proc_raw_code(cannot_branch_away,
+            proc_does_not_affect_liveness, live_lvals_info(set.init), "\t{\n"),
+        foreign_proc_raw_code(cannot_branch_away,
+            proc_does_not_affect_liveness, live_lvals_info(set.init),
+            CallStruct),
+        foreign_proc_raw_code(cannot_branch_away,
+            proc_does_not_affect_liveness, no_live_lvals_info, BytecodeCall),
+        foreign_proc_raw_code(cannot_branch_away,
+            proc_does_not_affect_liveness, live_lvals_info(set.init), "\t}\n")
     ],
 
+    MD = proc_may_not_duplicate,
     BytecodeInstructions = [
         llds_instr(label(EntryLabel), "Procedure entry point"),
         llds_instr(foreign_proc_code([], BytecodeInstructionsComponents,
-            proc_may_call_mercury, no, no, no, no, no, no), "Entry stub")
+            proc_may_call_mercury, no, no, no, no, no, MD), "Entry stub")
     ].
 
 %---------------------------------------------------------------------------%

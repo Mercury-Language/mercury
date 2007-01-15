@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -458,13 +458,15 @@ get_one_solution(CCPred) = OutVal :-
 
 :- pragma foreign_proc("C",
     cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Y = X;
 ").
 :- pragma foreign_proc("C",
     cc_cast(X :: (pred(out) is cc_nondet)) = (Y :: out(pred(out) is semidet)),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Y = X;
 ").
@@ -509,7 +511,8 @@ get_one_solution_io(Pred, X, !IO) :-
 :- pragma foreign_proc("C",
     cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
         (Y :: out(pred(out, di, uo) is det)),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Y = X;
 ").
@@ -778,7 +781,8 @@ deep_copy(java.lang.Object original) {
 
 :- pragma foreign_proc("C",
     copy(Value::ui, Copy::uo),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     MR_save_transient_registers();
     Copy = MR_deep_copy(Value, (MR_TypeInfo) TypeInfo_for_T, NULL, NULL);
@@ -787,7 +791,8 @@ deep_copy(java.lang.Object original) {
 
 :- pragma foreign_proc("C",
     copy(Value::in, Copy::uo),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     MR_save_transient_registers();
     Copy = MR_deep_copy(Value, (MR_TypeInfo) TypeInfo_for_T, NULL, NULL);
@@ -1005,13 +1010,13 @@ namespace mercury.builtin {
 
 :- pragma foreign_proc("C",
     semidet_succeed,
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = MR_TRUE;
 ").
 :- pragma foreign_proc("C",
     semidet_fail,
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = MR_FALSE;
 ").
@@ -1056,13 +1061,13 @@ semidet_false :- semidet_fail.
 
 :- pragma foreign_proc("C",
     cc_multi_equal(X::in, Y::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness],
 "
     Y = X;
 ").
 :- pragma foreign_proc("C",
     cc_multi_equal(X::di, Y::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness],
 "
     Y = X;
 ").

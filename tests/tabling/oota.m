@@ -1,3 +1,5 @@
+% vim: ts=4 sw=4 et ft=mercury
+%
 % Test taken from the XSB testsuite.
 %
 % Under local evaluation it results in:
@@ -10,7 +12,6 @@
 %
 % If d/4 is declared nondet, the program compiles without warnings,
 % but produces no answer when it executes.
-%
 
 :- module oota.
 
@@ -18,55 +19,85 @@
 
 :- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
-:- import_module std_util, int, list.
+:- import_module benchmarking.
+:- import_module int.
+:- import_module list.
+:- import_module maybe.
+:- import_module std_util.
+:- import_module string.
+:- import_module unit.
 
 main(!IO) :-
-	( d(Out) ->
-		io__write_string("D = ", !IO),
-		io__write_int(Out, !IO),
-		io__write_string("\n", !IO)
-	;
-		io__write_string("failed\n", !IO)
-	).
+    io.command_line_arguments(Args, !IO),
+    (
+        Args = [Arg],
+        string.to_int(Arg, NumRepeatsPrime)
+    ->
+        NumRepeats = NumRepeatsPrime
+    ;
+        NumRepeats = 1
+    ),
+    benchmark_det(benchmark_d, unit, MaybeD, NumRepeats, Time),
+    trace [compiletime(flag("benchmark_oota")), io(!S)] (
+        io.format("time taken: %d ms\n", [i(Time)], !S)
+    ),
+    (
+        MaybeD = yes(D),
+        io.write_string("D = ", !IO),
+        io.write_int(D, !IO),
+        io.write_string("\n", !IO)
+    ;
+        MaybeD = no,
+        io.write_string("failed\n", !IO)
+    ).
+
+:- pred benchmark_d(unit::in, maybe(int)::out) is det.
+
+benchmark_d(unit, MaybeD) :-
+    ( d(D) ->
+        MaybeD = yes(D)
+    ;
+        MaybeD = no
+    ).
 
 :- pred d(int::out) is semidet.
 
 d(D) :-
-	GC = 10, I = 11, J = 9,
-	d(GC, I, J, D).
+    GC = 10, I = 11, J = 9,
+    d(GC, I, J, D).
 
 :- pred d(int::in, int::in, int::in, int::out) is semidet.
 :- pragma memo(d/4).
 
 d(GC, I, J, D) :-
-	( I = 0, J = 0 ->
-		D = 0
-	; I = 0 ->
-		J1 = J - 1,
-		d(GC, 0, J1, D1),
-		D = D1 + GC
-	; J = 0 ->
-		I1 = I - 1,
-		d(GC, I1, 0, D1),
-		D = D1 + GC
-	;
-		I1 = I - 1,
-		J1 = J - 1,
-		ms(I, J, MS),
-		d(GC, I1,J1, D1), D_MS = D1 + MS,
-		d(GC, I1, J, D2), D_G1 = D2 + GC,
-		d(GC, I, J1, D3), D_G2 = D3 + GC,
-		min([D_MS, D_G1, D_G2], D)
-	).
+    ( I = 0, J = 0 ->
+        D = 0
+    ; I = 0 ->
+        J1 = J - 1,
+        d(GC, 0, J1, D1),
+        D = D1 + GC
+    ; J = 0 ->
+        I1 = I - 1,
+        d(GC, I1, 0, D1),
+        D = D1 + GC
+    ;
+        I1 = I - 1,
+        J1 = J - 1,
+        ms(I, J, MS),
+        d(GC, I1,J1, D1), D_MS = D1 + MS,
+        d(GC, I1, J, D2), D_G1 = D2 + GC,
+        d(GC, I, J1, D3), D_G2 = D3 + GC,
+        min([D_MS, D_G1, D_G2], D)
+    ).
 
 :- pred min(list(int)::in, int::out) is semidet.
 
 min(S, M) :-
-	list__sort(S, [M|_]).
+    list.sort(S, [M|_]).
 
 :- pred ms(int::in, int::in, int::out) is semidet.
 

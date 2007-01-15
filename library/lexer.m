@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2006 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1172,7 +1172,8 @@ unicode_encoding_int_to_encoding(1, utf16).
 
 :- pragma foreign_proc("C",
     backend_unicode_encoding_int = (EncodingInt::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     EncodingInt = 0;
 ").

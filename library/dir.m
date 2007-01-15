@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995,1997,1999-2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1994-1995,1997,1999-2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -907,7 +907,8 @@ can_implement_make_directory :- semidet_fail.
 
 :- pragma foreign_proc("C",
     can_implement_make_directory,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 #if defined(MR_WIN32)
     SUCCESS_INDICATOR = MR_TRUE;
@@ -942,7 +943,7 @@ dir.make_single_directory(DirName, Result, !IO) :-
     dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
         Result::out, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates, will_not_modify_trail],
+        terminates, will_not_modify_trail, does_not_affect_liveness],
 "{
 #if defined(MR_WIN32)
     if (CreateDirectory(DirName, NULL)) {
@@ -1315,7 +1316,8 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 can_implement_dir_foldl :- semidet_fail.
 :- pragma foreign_proc("C",
     can_implement_dir_foldl,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 #if defined(MR_HAVE_OPENDIR) && defined(MR_HAVE_READDIR) && \\
         defined(MR_HAVE_CLOSEDIR)
@@ -1352,7 +1354,7 @@ dir.open(DirName, Res, !IO) :-
 :- pragma foreign_proc("C",
     dir.open_2(DirName::in, Result::out, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates, will_not_modify_trail],
+        terminates, will_not_modify_trail, does_not_affect_liveness],
 "{
 #if defined(MR_WIN32)
     WIN32_FIND_DATA file_data;
@@ -1521,7 +1523,7 @@ copy_c_string(_) = _ :-
 :- pragma foreign_proc("C",
     copy_c_string(Ptr::in) = (Str::out),
     [will_not_call_mercury, promise_pure, thread_safe,
-        will_not_modify_trail],
+        will_not_modify_trail, does_not_affect_liveness],
 "
     MR_make_aligned_string_copy(Str, (char *) Ptr);
 ").
@@ -1558,7 +1560,7 @@ dir.close(Dir, Res, !IO) :-
 :- pragma foreign_proc("C",
     dir.close_2(Dir::in, Status::out, Error::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        will_not_modify_trail],
+        will_not_modify_trail, does_not_affect_liveness],
 "{
     IO = IO0;
 #if defined(MR_WIN32)
@@ -1625,7 +1627,7 @@ dir.read_entry(Dir, Res, !IO) :-
     dir.read_entry_2(Dir::in, Status::out, Error::out, FileName::out,
         IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        will_not_modify_trail],
+        will_not_modify_trail, does_not_affect_liveness],
 "{
 #if defined(MR_WIN32)
     WIN32_FIND_DATA file_data;

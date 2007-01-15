@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -173,7 +173,8 @@ builtin_compare_string(R, S1, S2) :-
 
 :- pragma foreign_proc("C",
     builtin_strcmp(Res::out, S1::in, S2::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Res = strcmp(S1, S2);
 ").
@@ -552,7 +553,8 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C",
     type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
         TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
 ").
@@ -560,7 +562,8 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C",
     unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
         Index::in, TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
 ").
@@ -568,7 +571,8 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C",
     superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
         TypeClassInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     TypeClassInfo =
         MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
@@ -577,7 +581,8 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C",
     instance_constraint_from_typeclass_info(TypeClassInfo0::in,
         Index::in, TypeClassInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     TypeClassInfo =
         MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
@@ -701,7 +706,7 @@ special__Compare____base_typeclass_info_1_0(
 
 :- pragma foreign_proc("C",
     reset_ticket_undo(Ticket::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
     MR_reset_ticket(Ticket, MR_undo);
@@ -710,7 +715,7 @@ special__Compare____base_typeclass_info_1_0(
 
 :- pragma foreign_proc("C",
     reset_ticket_commit(Ticket::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
     MR_reset_ticket(Ticket, MR_commit);
@@ -719,7 +724,7 @@ special__Compare____base_typeclass_info_1_0(
 
 :- pragma foreign_proc("C",
     reset_ticket_solve(Ticket::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
     MR_reset_ticket(Ticket, MR_solve);
@@ -728,7 +733,7 @@ special__Compare____base_typeclass_info_1_0(
 
 :- pragma foreign_proc("C",
     discard_ticket,
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
     MR_discard_ticket();
@@ -737,7 +742,7 @@ special__Compare____base_typeclass_info_1_0(
 
 :- pragma foreign_proc("C",
     prune_ticket,
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
     MR_prune_ticket();
@@ -746,7 +751,7 @@ special__Compare____base_typeclass_info_1_0(
 
 :- pragma foreign_proc("C",
     mark_ticket_stack(TicketCounter::out),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
     MR_mark_ticket_stack(TicketCounter);
@@ -757,7 +762,7 @@ special__Compare____base_typeclass_info_1_0(
 
 :- pragma foreign_proc("C",
     prune_tickets_to(TicketCounter::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, does_not_affect_liveness],
 "
 #ifdef MR_USE_TRAIL
     MR_prune_tickets_to(TicketCounter);
@@ -993,7 +998,7 @@ trailed_nondet_pragma_foreign_code :-
     [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
 #ifdef MR_NATIVE_GC
-    *(MR_Word *)Pointer =
+    * (MR_Word *) Pointer =
         MR_agc_deep_copy(* (MR_Word *) Pointer, (MR_TypeInfo) TypeInfo_for_T,
             MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
             MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
@@ -1012,7 +1017,8 @@ trailed_nondet_pragma_foreign_code :-
 
 :- pragma foreign_proc("C",
     mark_hp(SavedHeapPointer::out),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 #ifndef MR_CONSERVATIVE_GC
     MR_mark_hp(SavedHeapPointer);
@@ -1024,7 +1030,8 @@ trailed_nondet_pragma_foreign_code :-
 
 :- pragma foreign_proc("C",
     restore_hp(SavedHeapPointer::in),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 #ifndef MR_CONSERVATIVE_GC
     MR_restore_hp(SavedHeapPointer);
@@ -1550,7 +1557,8 @@ no_clauses(PredName) :-
 
 :- pragma foreign_proc("C",
     trace_evaluate_runtime_condition,
-    [will_not_call_mercury, thread_safe, promise_semipure],
+    [will_not_call_mercury, thread_safe, promise_semipure,
+        does_not_affect_liveness],
 "
     /* All uses of this predicate should override the body. */
     MR_fatal_error(""trace_evaluate_runtime_condition called"");

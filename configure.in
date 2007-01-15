@@ -279,7 +279,8 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		:- pragma foreign_proc("C", return_rtti_version(Version::out),
 			[[may_call_mercury, promise_pure, terminates,
-			  ordinary_despite_detism, will_not_modify_trail]], "
+			  does_not_affect_liveness, will_not_modify_trail]],
+		"
 			Version = MR_RTTI_VERSION;
 		").
 
@@ -2186,12 +2187,13 @@ fi
 
 AC_CACHE_VAL(mercury_cv_gcc_labels,
 	AC_TRY_RUN([
-	extern void exit(int);
-	void *entry_foo_1;
-	void *entry_bar_1;
-	void *succip;
-	int global;
-	void *dummy_identity_function(void *);
+	extern void 	exit(int);
+	void 		*entry_foo_1;
+	void 		*entry_bar_1;
+	void 		*succip;
+	int 		global;
+	void 		*dummy_identity_function(void *);
+
 	foo() {
 		entry_foo_1 = && foo_1;
 		goto *dummy_identity_function(&&return_label);

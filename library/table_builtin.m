@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2006 The University of Melbourne.
+% Copyright (C) 1998-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -241,7 +241,7 @@ get_tabling_stats(Info, Statistics, !IO) :-
         AnswerTableLookups::out, AnswerTableNotDupl::out,
         PrevAnswerTableLookups::out, PrevAnswerTableNotDupl::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, does_not_affect_liveness],
 "
     AnswerTable = ( Info->MR_pt_has_answer_table ? 1 : 0 );
     Inputs = Info->MR_pt_num_inputs;
@@ -333,7 +333,7 @@ get_all_output_step_stats(Info, CurSlot, !CurStepStats, !PrevStepStats, !IO) :-
         PrevNumInsertProbes::out, PrevNumLookupProbes::out,
         PrevNumResizes::out, PrevNumResizesOld::out, PrevNumResizesNew::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, does_not_affect_liveness],
 "
     MR_TableStepStats   *cur;
     MR_TableStepStats   *prev;
@@ -379,7 +379,7 @@ get_all_output_step_stats(Info, CurSlot, !CurStepStats, !PrevStepStats, !IO) :-
         PrevNumInsertProbes::out, PrevNumLookupProbes::out,
         PrevNumResizes::out, PrevNumResizesOld::out, PrevNumResizesNew::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, does_not_affect_liveness],
 "
     MR_TableStepStats   *cur;
     MR_TableStepStats   *prev;
@@ -413,7 +413,7 @@ get_all_output_step_stats(Info, CurSlot, !CurStepStats, !PrevStepStats, !IO) :-
 
 :- pragma foreign_proc("C",
     copy_current_stats_to_prev(Info::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, does_not_affect_liveness],
 "
     int i;
     MR_TableStepStats   *cur;
@@ -483,35 +483,35 @@ get_all_output_step_stats(Info, CurSlot, !CurStepStats, !PrevStepStats, !IO) :-
 
 :- pragma foreign_proc("C",
     table_loop_setup(T::in, Status::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_loop_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_loop_setup_shortcut(T0::in, T::out, Status::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_loop_setup_shortcut(T0, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_loop_mark_as_inactive(T::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_loop_mark_as_inactive(MR_TABLE_DEBUG_BOOL, T);
 ").
 
 :- pragma foreign_proc("C",
     table_loop_mark_as_inactive_and_fail(T::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_loop_mark_as_inactive_and_fail(MR_TABLE_DEBUG_BOOL, T);
 ").
 
 :- pragma foreign_proc("C",
     table_loop_mark_as_active_and_fail(T::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_loop_mark_as_active_and_fail(MR_TABLE_DEBUG_BOOL, T);
 ").
@@ -676,77 +676,77 @@ table_loop_mark_as_active_and_fail(_) :-
 
 :- pragma foreign_proc("C",
     table_memo_det_setup(T::in, Status::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_det_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_det_setup_shortcut(T0::in, T::out, Status::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_det_setup_shortcut(T0, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_semi_setup(T::in, Status::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_semi_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_semi_setup_shortcut(T0::in, T::out, Status::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_semi_setup_shortcut(T0, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_non_setup(T0::in, Record::out, Status::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_non_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, Record, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_failed(T::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_mark_as_failed(MR_TABLE_DEBUG_BOOL, T);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_succeeded(T::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_mark_as_succeeded(MR_TABLE_DEBUG_BOOL, T);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_incomplete(R::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_mark_as_incomplete(MR_TABLE_DEBUG_BOOL, R);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_active_and_fail(R::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_mark_as_active_and_fail(MR_TABLE_DEBUG_BOOL, R);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_complete_and_fail(R::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_mark_as_complete_and_fail(MR_TABLE_DEBUG_BOOL, R);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_create_answer_block(T::in, Size::in, AnswerBlock::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_create_answer_block(MR_TABLE_DEBUG_BOOL,
         T, Size, AnswerBlock);
@@ -754,35 +754,35 @@ table_loop_mark_as_active_and_fail(_) :-
 
 :- pragma foreign_proc("C",
     table_memo_fill_answer_block_shortcut(T::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_fill_answer_block_shortcut(T);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_get_answer_block(T::in, AnswerBlock::out),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_memo_get_answer_block(MR_TABLE_DEBUG_BOOL, T, AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_get_answer_block_shortcut(T::in),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_memo_get_answer_block_shortcut(T);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_non_get_answer_table(R::in, AT::out),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_memo_non_get_answer_table(MR_TABLE_DEBUG_BOOL, R, AT);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_non_answer_is_not_duplicate(T::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_non_answer_is_not_duplicate(MR_TABLE_DEBUG_BOOL,
         T, SUCCESS_INDICATOR);
@@ -790,7 +790,7 @@ table_loop_mark_as_active_and_fail(_) :-
 
 :- pragma foreign_proc("C",
     table_memo_non_answer_is_not_duplicate_shortcut(R::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_non_answer_is_not_duplicate_shortcut(R,
         SUCCESS_INDICATOR);
@@ -798,14 +798,14 @@ table_loop_mark_as_active_and_fail(_) :-
 
 :- pragma foreign_proc("C",
     table_memo_non_create_answer_block_shortcut(R::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_non_create_answer_block_shortcut(R::in);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_non_return_all_shortcut(R::in),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_memo_non_return_all_shortcut(R);
 ").
@@ -1032,7 +1032,7 @@ table_memo_non_create_answer_block_shortcut(_) :-
 
 :- pragma foreign_proc("C",
     table_io_in_range(T::out, Counter::out, Start::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_io_in_range(MR_TABLE_DEBUG_BOOL, T, Counter, Start,
         SUCCESS_INDICATOR);
@@ -1040,7 +1040,7 @@ table_memo_non_create_answer_block_shortcut(_) :-
 
 :- pragma foreign_proc("C",
     table_io_has_occurred(T::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_io_has_occurred(MR_TABLE_DEBUG_BOOL, T, SUCCESS_INDICATOR);
 ").
@@ -1049,14 +1049,14 @@ table_io_copy_io_state(IO, IO).
 
 :- pragma foreign_proc("C",
     table_io_left_bracket_unitized_goal(TraceEnabled::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_io_left_bracket_unitized_goal(TraceEnabled);
 ").
 
 :- pragma foreign_proc("C",
     table_io_right_bracket_unitized_goal(TraceEnabled::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_io_right_bracket_unitized_goal(TraceEnabled);
 ").
@@ -1182,7 +1182,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 
 :- pragma foreign_proc("C",
     table_mm_setup(T::in, Subgoal::out, Status::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_mm_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Subgoal, Status);
 ").
@@ -1197,21 +1197,21 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 
 :- pragma foreign_proc("C",
     table_mm_return_all_shortcut(AnswerBlock::in),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_mm_return_all_shortcut(AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
     table_mm_get_answer_table(Subgoal::in, AnswerTable::out),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_mm_get_answer_table(MR_TABLE_DEBUG_BOOL, Subgoal, AnswerTable);
 ").
 
 :- pragma foreign_proc("C",
     table_mm_answer_is_not_duplicate(TrieNode::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_mm_answer_is_not_duplicate(MR_TABLE_DEBUG_BOOL, TrieNode,
         SUCCESS_INDICATOR);
@@ -1219,7 +1219,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 
 :- pragma foreign_proc("C",
     table_mm_answer_is_not_duplicate_shortcut(Subgoal::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     /*
     ** The body of this predicate doesn't matter, because it will never be
@@ -1232,7 +1232,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 
 :- pragma foreign_proc("C",
     table_mm_create_answer_block(Subgoal::in, Size::in, AnswerBlock::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_mm_create_answer_block(MR_TABLE_DEBUG_BOOL,
         Subgoal, Size, AnswerBlock);
@@ -1240,7 +1240,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 
 :- pragma foreign_proc("C",
     table_mm_fill_answer_block_shortcut(Subgoal::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_mm_fill_answer_block_shortcut(Subgoal);
 ").
@@ -1351,12 +1351,6 @@ table_mm_fill_answer_block_shortcut(_) :-
 :- impure pred table_mmos_create_answer_block(ml_generator::in,
     int::in, ml_answer_block::out) is det.
 
-    % Return the base of the answer table trie for the subgoal of the
-    % given generator.
-    %
-:- semipure pred table_mmos_get_answer_table(ml_generator::in,
-    ml_trie_node::out) is det.
-
     % Return the given answer to the consumer(s) that requested it.
     %
 :- impure pred table_mmos_return_answer(ml_generator::in, ml_answer_block::in)
@@ -1389,7 +1383,7 @@ table_mm_fill_answer_block_shortcut(_) :-
 
 :- pragma foreign_proc("C",
     table_mmos_save_inputs,
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     /*
     ** The body of this predicate doesn't matter, because it will never be
@@ -1401,7 +1395,7 @@ table_mm_fill_answer_block_shortcut(_) :-
 
 :- pragma foreign_proc("C",
     table_mmos_setup_consumer(T::in, GeneratorPred::in, Consumer::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     /*
     ** The body of this predicate doesn't matter, because it will never be
@@ -1414,7 +1408,7 @@ table_mm_fill_answer_block_shortcut(_) :-
 
 :- pragma foreign_proc("C",
     table_mmos_answer_is_not_duplicate(T::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     /*
     ** The body of this predicate doesn't matter, because it will never be
@@ -1427,7 +1421,7 @@ table_mm_fill_answer_block_shortcut(_) :-
 
 :- pragma foreign_proc("C",
     table_mmos_answer_is_not_duplicate_shortcut(G::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     /*
     ** The body of this predicate doesn't matter, because it will never be
@@ -1443,7 +1437,7 @@ table_mm_fill_answer_block_shortcut(_) :-
 
 :- pragma foreign_proc("C",
     table_mmos_restore_answers(AnswerBlock::in),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     /*
     ** The body of this predicate doesn't matter, because it will never be
@@ -1455,17 +1449,8 @@ table_mm_fill_answer_block_shortcut(_) :-
 ").
 
 :- pragma foreign_proc("C",
-    table_mmos_get_answer_table(Generator::in, TrieNode::out),
-    [will_not_call_mercury, promise_semipure],
-"
-    /*
-    MR_tbl_mmos_get_answer_table(Generator, TrieNode);
-    */
-").
-
-:- pragma foreign_proc("C",
     table_mmos_pickup_inputs(Generator::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     /*
     ** The body of this predicate doesn't matter, because it will never be
@@ -1479,7 +1464,7 @@ table_mm_fill_answer_block_shortcut(_) :-
 :- pragma foreign_proc("C",
     table_mmos_create_answer_block(Generator::in, BlockSize::in,
         AnswerBlock::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     /*
     MR_tbl_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
@@ -1488,7 +1473,7 @@ table_mm_fill_answer_block_shortcut(_) :-
 
 :- pragma foreign_proc("C",
     table_mmos_return_answer(Generator::in, AnswerBlock::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     /*
     MR_tbl_mmos_return_answer(Generator, AnswerBlock);
@@ -1497,7 +1482,7 @@ table_mm_fill_answer_block_shortcut(_) :-
 
 :- pragma foreign_proc("C",
     table_mmos_completion(Generator::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     /*
     MR_tbl_mmos_completion(Generator);
@@ -1511,11 +1496,6 @@ table_mmos_setup_consumer(_, _, Consumer) :-
     impure private_builtin.imp,
     % Required only to avoid warnings; never executed.
     pretend_to_generate_value(Consumer).
-
-table_mmos_get_answer_table(_, TrieNode) :-
-    semipure private_builtin.semip,
-    % Required only to avoid warnings; never executed.
-    pretend_to_generate_value(TrieNode).
 
 table_mmos_create_answer_block(_, _, AnswerBlock) :-
     impure private_builtin.imp,
@@ -1714,14 +1694,14 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 :- pragma foreign_proc("C",
     table_lookup_insert_int(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_int(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_start_int(T0::in, S::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_start_int(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE,
         T0, S, V, T);
@@ -1729,28 +1709,28 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 :- pragma foreign_proc("C",
     table_lookup_insert_char(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_char(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_string(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_string(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_float(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_float(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_enum(T0::in, R::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_enum(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         R, V, T);
@@ -1758,7 +1738,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 :- pragma foreign_proc("C",
     table_lookup_insert_user(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_user(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         TypeInfo_for_T, V, T);
@@ -1766,7 +1746,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 :- pragma foreign_proc("C",
     table_lookup_insert_user_fast_loose(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_user_addr(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         TypeInfo_for_T, V, T);
@@ -1774,7 +1754,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 :- pragma foreign_proc("C",
     table_lookup_insert_poly(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_poly(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         TypeInfo_for_T, V, T);
@@ -1782,7 +1762,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 :- pragma foreign_proc("C",
     table_lookup_insert_poly_fast_loose(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_poly_addr(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         TypeInfo_for_T, V, T);
@@ -1790,14 +1770,14 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 :- pragma foreign_proc("C",
     table_lookup_insert_typeinfo(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_typeinfo(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_typeclassinfo(T0::in, V::in, T::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_typeclassinfo(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE,
         T0, V, T);
@@ -1807,42 +1787,42 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 :- pragma foreign_proc("C",
     table_save_int_answer(AB::in, Offset::in, V::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_int_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_char_answer(AB::in, Offset::in, V::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_char_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_string_answer(AB::in, Offset::in, V::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_string_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_float_answer(AB::in, Offset::in, V::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_float_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_io_state_answer(AB::in, Offset::in, V::ui),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_io_state_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_any_answer(AB::in, Offset::in, V::in),
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_any_answer(MR_TABLE_DEBUG_BOOL, AB, Offset,
         TypeInfo_for_T, V);
@@ -1850,42 +1830,42 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 :- pragma foreign_proc("C",
     table_restore_int_answer(AB::in, Offset::in, V::out),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_int_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_char_answer(AB::in, Offset::in, V::out),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_char_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_string_answer(AB::in, Offset::in, V::out),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_string_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_float_answer(AB::in, Offset::in, V::out),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_float_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_io_state_answer(AB::in, Offset::in, V::uo),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_io_state_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_any_answer(AB::in, Offset::in, V::out),
-    [will_not_call_mercury, promise_semipure],
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_any_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
@@ -1895,7 +1875,7 @@ table_error(Message) :-
 
 :- pragma foreign_proc("C",
     table_report_statistics,
-    [will_not_call_mercury],
+    [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_table_report_statistics(stderr);
 ").

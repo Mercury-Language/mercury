@@ -386,7 +386,7 @@ simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo, !IO)  :-
 turn_off_common_struct_threshold = 1000.
 
 simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
-        !ProcInfo, ErrorSpecs, !IO) :-
+        !ProcInfo, !:ErrorSpecs, !IO) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     NumVars = map.count(VarTypes0),
     ( NumVars > turn_off_common_struct_threshold ->
@@ -436,7 +436,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     proc_info_set_has_user_event(HasUserEvent, !ProcInfo),
 
     simplify_info_get_module_info(Info, !:ModuleInfo),
-    simplify_info_get_error_specs(Info, ErrorSpecs0),
+    simplify_info_get_error_specs(Info, !:ErrorSpecs),
     (
         Info ^ format_calls = yes,
         (
@@ -450,12 +450,56 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         % build the format strings or values, which means that the new version
         % in Goal may not contain the information find_format_call_errors needs
         % to avoid spurious messages about unknown format strings or values.
-        find_format_call_errors(!.ModuleInfo, Goal0, ErrorSpecs0, ErrorSpecs1)
+        find_format_call_errors(!.ModuleInfo, Goal0, !ErrorSpecs)
     ;
         % Either there are no calls to check or we would ignore the added
         % messages anyway.
-        ErrorSpecs1 = ErrorSpecs0
+        true
     ),
+
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    (
+        GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
+        MaybeMayDuplicate = get_may_duplicate(Attributes),
+        MaybeMayDuplicate = yes(MayDuplicate)
+    ->
+        (
+            MayDuplicate = proc_may_duplicate,
+            ( check_marker(Markers, marker_user_marked_no_inline) ->
+                goal_info_get_context(GoalInfo, Context),
+                Pieces = [words("Error: the `may_duplicate' attribute"),
+                    words("on the foreign_proc"),
+                    words("contradicts the `no_inline' pragma"),
+                    words("on the predicate.")],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Severity = severity_error,
+                Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
+                    [Msg]),
+                !:ErrorSpecs = [Spec | !.ErrorSpecs]
+            ;
+                true
+            )
+        ;
+            MayDuplicate = proc_may_not_duplicate,
+            ( check_marker(Markers, marker_user_marked_inline) ->
+                goal_info_get_context(GoalInfo, Context),
+                Pieces = [words("Error: the `may_not_duplicate' attribute"),
+                    words("on the foreign_proc"),
+                    words("contradicts the `inline' pragma"),
+                    words("on the predicate.")],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Severity = severity_error,
+                Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
+                    [Msg]),
+                !:ErrorSpecs = [Spec | !.ErrorSpecs]
+            ;
+                true
+            )
+        )
+    ;
+        true
+    ),
+
     pred_info_get_import_status(PredInfo, Status),
     IsDefinedHere = status_defined_in_this_module(Status),
     (
@@ -463,10 +507,9 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         % Don't generate any warnings or even errors if the predicate isn't
         % defined here; any such messages will be generated when we compile
         % the module the predicate comes from.
-        ErrorSpecs = []
+        !:ErrorSpecs = []
     ;
-        IsDefinedHere = yes,
-        ErrorSpecs = ErrorSpecs1
+        IsDefinedHere = yes
     ).
 
 simplify_process_clause_body_goal(Goal0, Goal, !Info, !IO) :-

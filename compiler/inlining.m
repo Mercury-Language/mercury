@@ -937,8 +937,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     % whole procedures not code fragments.
     proc_info_get_eval_method(ProcInfo, eval_normal),
 
-    % Don't inline anything we have been specifically requested
-    % not to inline.
+    % Don't inline anything we have been specifically requested not to inline.
     \+ pred_info_requested_no_inlining(PredInfo),
 
     % Don't inline any procedure whose complexity we are trying to determine,
@@ -965,18 +964,33 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         ( Detism = detism_non ; Detism = detism_multi )
     ),
 
-    % Only inline foreign_code if it is appropriate for
-    % the target language.
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
+        CalledGoal = hlds_goal(call_foreign_proc(ForeignAttributes,
+            _, _, _, _, _, _), _)
+    ->
+        % Only inline foreign_code if it is appropriate for the target
+        % language.
         (
-            CalledGoal = hlds_goal(call_foreign_proc(ForeignAttributes,
-                _, _, _, _, _, _), _),
             ForeignLanguage = get_foreign_language(ForeignAttributes)
+        =>
+            ok_to_inline_language(ForeignLanguage, Target)
+        ),
+
+        % Don't inline foreign_code if it is has been marked with the attribute
+        % that requests the code not be duplicated.
+        (
+            MaybeMayDuplicate = get_may_duplicate(ForeignAttributes)
+        =>
+            (
+                MaybeMayDuplicate = no
+            ;
+                MaybeMayDuplicate = yes(proc_may_duplicate)
+            )
         )
-    =>
-        ok_to_inline_language(ForeignLanguage, Target)
+    ;
+        true
     ),
 
     (

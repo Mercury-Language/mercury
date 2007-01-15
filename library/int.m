@@ -1,15 +1,15 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: int.m.
 % Main authors: conway, fjh.
 % Stability: medium.
-% 
+%
 % Predicates and functions for dealing with machine-size integer numbers.
 %
 % The behaviour of a computation for which overflow occurs is undefined.
@@ -17,7 +17,7 @@
 % module do not check for overflow, and the results you get are those
 % delivered by the C compiler.  However, future implementations
 % might check for overflow.)
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -433,7 +433,8 @@ X rem Y = Rem :-
 
 :- pragma foreign_proc("C",
     int_domain_checks,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
     SUCCESS_INDICATOR = MR_FALSE;
@@ -611,7 +612,8 @@ is(X, X).
 
 :- pragma foreign_proc("C",
     int.max_int(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     if (sizeof(MR_Integer) == sizeof(int)) {
         Max = INT_MAX;
@@ -624,7 +626,8 @@ is(X, X).
 
 :- pragma foreign_proc("C",
     int.min_int(Min::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     if (sizeof(MR_Integer) == sizeof(int)) {
         Min = INT_MIN;
@@ -637,28 +640,32 @@ is(X, X).
 
 :- pragma foreign_proc("C",
     int.bits_per_int(Bits::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Bits = ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C",
     int.quot_bits_per_int(Int::in) = (Div::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Div = Int / ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C",
     int.times_bits_per_int(Int::in) = (Result::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Result = Int * ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C",
     int.rem_bits_per_int(Int::in) = (Rem::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Rem = Int % ML_BITS_PER_INT;
 ").

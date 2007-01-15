@@ -686,8 +686,6 @@
 :- func default_attributes(foreign_language) = pragma_foreign_proc_attributes.
 :- func get_may_call_mercury(pragma_foreign_proc_attributes) =
     proc_may_call_mercury.
-:- func get_affects_liveness(pragma_foreign_proc_attributes) =
-    affects_liveness.
 :- func get_thread_safe(pragma_foreign_proc_attributes) = proc_thread_safe.
 :- func get_purity(pragma_foreign_proc_attributes) = purity.
 :- func get_terminates(pragma_foreign_proc_attributes) = proc_terminates.
@@ -705,19 +703,19 @@
     proc_may_modify_trail.
 :- func get_may_call_mm_tabled(pragma_foreign_proc_attributes) =
     may_call_mm_tabled.
-:- func get_allocates_memory(pragma_foreign_proc_attributes) =
-    allocates_memory.
-:- func get_registers_roots(pragma_foreign_proc_attributes) =
-    registers_roots.
 :- func get_box_policy(pragma_foreign_proc_attributes) = box_policy.
+:- func get_affects_liveness(pragma_foreign_proc_attributes) =
+    proc_affects_liveness.
+:- func get_allocates_memory(pragma_foreign_proc_attributes) =
+    proc_allocates_memory.
+:- func get_registers_roots(pragma_foreign_proc_attributes) =
+    proc_registers_roots.
+:- func get_may_duplicate(pragma_foreign_proc_attributes) =
+    maybe(proc_may_duplicate).
 :- func get_extra_attributes(pragma_foreign_proc_attributes)
     = pragma_foreign_proc_extra_attributes.
 
 :- pred set_may_call_mercury(proc_may_call_mercury::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-
-:- pred set_affects_liveness(affects_liveness::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -765,15 +763,23 @@
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-:- pred set_allocates_memory(allocates_memory::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-
-:- pred set_registers_roots(registers_roots::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-
 :- pred set_box_policy(box_policy::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_affects_liveness(proc_affects_liveness::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_allocates_memory(proc_allocates_memory::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_registers_roots(proc_registers_roots::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_may_duplicate(maybe(proc_may_duplicate)::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -834,22 +840,26 @@
     --->    native_if_possible
     ;       always_boxed.
 
-:- type affects_liveness
-    --->    affects_liveness
-    ;       does_not_affect_liveness
-    ;       default_affects_liveness.
+:- type proc_affects_liveness
+    --->    proc_affects_liveness
+    ;       proc_does_not_affect_liveness
+    ;       proc_default_affects_liveness.
 
-:- type allocates_memory
-    --->    does_not_allocate_memory
-    ;       allocates_bounded_memory
-    ;       allocates_unbounded_memory
-    ;       default_allocates_memory.
+:- type proc_allocates_memory
+    --->    proc_does_not_allocate_memory
+    ;       proc_allocates_bounded_memory
+    ;       proc_allocates_unbounded_memory
+    ;       proc_default_allocates_memory.
 
-:- type registers_roots
-    --->    registers_roots
-    ;       does_not_register_roots
-    ;       does_not_have_roots
-    ;       default_registers_roots.
+:- type proc_registers_roots
+    --->    proc_registers_roots
+    ;       proc_does_not_register_roots
+    ;       proc_does_not_have_roots
+    ;       proc_default_registers_roots.
+
+:- type proc_may_duplicate
+    --->    proc_may_duplicate
+    ;       proc_may_not_duplicate.
 
     % This type specifies the termination property of a procedure
     % defined using pragma c_code or pragma foreign_proc.
@@ -1704,9 +1714,10 @@ default_memo_table_attributes =
                 attr_may_modify_trail           :: proc_may_modify_trail,
                 attr_may_call_mm_tabled         :: may_call_mm_tabled,
                 attr_box_policy                 :: box_policy,
-                attr_affects_liveness           :: affects_liveness,
-                attr_allocates_memory           :: allocates_memory,
-                attr_registers_roots            :: registers_roots,
+                attr_affects_liveness           :: proc_affects_liveness,
+                attr_allocates_memory           :: proc_allocates_memory,
+                attr_registers_roots            :: proc_registers_roots,
+                attr_may_duplicate              :: maybe(proc_may_duplicate),
                 attr_extra_attributes ::
                     list(pragma_foreign_proc_extra_attribute)
             ).
@@ -1716,8 +1727,9 @@ default_attributes(Language) =
         proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
         no_user_annotated_sharing, default_exception_behaviour,
         no, no, proc_may_modify_trail, default_calls_mm_tabled,
-        native_if_possible, default_affects_liveness,
-        default_allocates_memory, default_registers_roots, []).
+        native_if_possible, proc_default_affects_liveness,
+        proc_default_allocates_memory, proc_default_registers_roots,
+        no, []).
 
 get_may_call_mercury(Attrs) = Attrs ^ attr_may_call_mercury.
 get_thread_safe(Attrs) = Attrs ^ attr_thread_safe.
@@ -1735,6 +1747,7 @@ get_box_policy(Attrs) = Attrs ^ attr_box_policy.
 get_affects_liveness(Attrs) = Attrs ^ attr_affects_liveness.
 get_allocates_memory(Attrs) = Attrs ^ attr_allocates_memory.
 get_registers_roots(Attrs) = Attrs ^ attr_registers_roots.
+get_may_duplicate(Attrs) = Attrs ^ attr_may_duplicate.
 get_extra_attributes(Attrs) = Attrs ^ attr_extra_attributes.
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
@@ -1769,6 +1782,8 @@ set_allocates_memory(AllocatesMemory, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ attr_allocates_memory := AllocatesMemory.
 set_registers_roots(RegistersRoots, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ attr_registers_roots := RegistersRoots.
+set_may_duplicate(MayDuplicate, Attrs0, Attrs) :-
+    Attrs = Attrs0 ^ attr_may_duplicate := MayDuplicate.
 
 attributes_to_strings(Attrs) = StringList :-
     % We ignore Lang because it isn't an attribute that you can put
@@ -1778,7 +1793,7 @@ attributes_to_strings(Attrs) = StringList :-
         Purity, Terminates, _UserSharing, Exceptions, _LegacyBehaviour,
         OrdinaryDespiteDetism, MayModifyTrail, MayCallMM_Tabled,
         BoxPolicy, AffectsLiveness, AllocatesMemory, RegistersRoots,
-        ExtraAttributes),
+        MaybeMayDuplicate, ExtraAttributes),
     (
         MayCallMercury = proc_may_call_mercury,
         MayCallMercuryStr = "may_call_mercury"
@@ -1868,47 +1883,60 @@ attributes_to_strings(Attrs) = StringList :-
         BoxPolicyStrList = ["always_boxed"]
     ),
     (
-        AffectsLiveness = affects_liveness,
+        AffectsLiveness = proc_affects_liveness,
         AffectsLivenessStrList = ["affects_liveness"]
     ;
-        AffectsLiveness = does_not_affect_liveness,
+        AffectsLiveness = proc_does_not_affect_liveness,
         AffectsLivenessStrList = ["doesnt_affect_liveness"]
     ;
-        AffectsLiveness = default_affects_liveness,
+        AffectsLiveness = proc_default_affects_liveness,
         AffectsLivenessStrList = []
     ),
     (
-        AllocatesMemory = does_not_allocate_memory,
+        AllocatesMemory = proc_does_not_allocate_memory,
         AllocatesMemoryStrList =["doesnt_allocate_memory"]
     ;
-        AllocatesMemory = allocates_bounded_memory,
+        AllocatesMemory = proc_allocates_bounded_memory,
         AllocatesMemoryStrList = ["allocates_bounded_memory"]
     ;
-        AllocatesMemory = allocates_unbounded_memory,
+        AllocatesMemory = proc_allocates_unbounded_memory,
         AllocatesMemoryStrList = ["allocates_unbounded_memory"]
     ;
-        AllocatesMemory = default_allocates_memory,
+        AllocatesMemory = proc_default_allocates_memory,
         AllocatesMemoryStrList = []
     ),
     (
-        RegistersRoots = registers_roots,
+        RegistersRoots = proc_registers_roots,
         RegistersRootsStrList = ["registers_roots"]
     ;
-        RegistersRoots = does_not_register_roots,
+        RegistersRoots = proc_does_not_register_roots,
         RegistersRootsStrList =["doesnt_register_roots"]
     ;
-        RegistersRoots = does_not_have_roots,
+        RegistersRoots = proc_does_not_have_roots,
         RegistersRootsStrList = ["doesnt_have_roots"]
     ;
-        RegistersRoots = default_registers_roots,
+        RegistersRoots = proc_default_registers_roots,
         RegistersRootsStrList = []
+    ),
+    (
+        MaybeMayDuplicate = yes(MayDuplicate),
+        (
+            MayDuplicate = proc_may_duplicate,
+            MayDuplicateStrList = ["may_duplicate"]
+        ;
+            MayDuplicate = proc_may_not_duplicate,
+            MayDuplicateStrList = ["may_not_duplicate"]
+        )
+    ;
+        MaybeMayDuplicate = no,
+        MayDuplicateStrList = []
     ),
     StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
         PurityStrList] ++ TerminatesStrList ++ ExceptionsStrList ++
         OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
         MayCallMM_TabledStrList ++ BoxPolicyStrList ++
-        AffectsLivenessStrList ++
-        AllocatesMemoryStrList ++ RegistersRootsStrList ++
+        AffectsLivenessStrList ++ AllocatesMemoryStrList ++
+        RegistersRootsStrList ++ MayDuplicateStrList ++
         list.map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(NewAttribute, Attributes0,

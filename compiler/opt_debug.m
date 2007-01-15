@@ -605,14 +605,14 @@ dump_proclabel(ProcLabel) = Str :-
             PredModuleName = sym_name_mangle(PredModule),
             ExtraModule = PredModuleName ++ "_"
         ),
-        Str = ExtraModule ++ sym_name_mangle(Module) ++ "_" ++ PredName ++ "_"
-            ++ int_to_string(Arity) ++ "_" ++ int_to_string(Mode)
+        Str = ExtraModule ++ sym_name_mangle(Module) ++ "__" ++ PredName
+            ++ "_" ++ int_to_string(Arity) ++ "_" ++ int_to_string(Mode)
 
     ;
         ProcLabel = special_proc_label(Module, SpecialPredId, TypeModule,
             TypeName, TypeArity, Mode),
         TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
-        Str = sym_name_mangle(Module) ++ "_"
+        Str = sym_name_mangle(Module) ++ "__"
             ++ special_pred_name(SpecialPredId, TypeCtor) ++ "_"
             ++ qualify_name(sym_name_mangle(TypeModule), TypeName) ++ "_"
             ++ int_to_string(TypeArity) ++ "_" ++ int_to_string(Mode)
@@ -802,7 +802,7 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             ++ dump_maybe_label("fix onlylayout:", MaybeProcLabel, MFOL)
             ++ dump_maybe_label("nofix:", MaybeProcLabel, MNF)
             ++ dump_bool_msg("stack slot ref:", SSR)
-            ++ dump_bool_msg("may duplicate:", MD)
+            ++ dump_may_duplicate(MD) ++ "\n"
             ++ ")"
     ).
 
@@ -821,6 +821,11 @@ dump_maybe_label(Msg, MaybeProcLabel, yes(Label)) =
 
 dump_bool_msg(Msg, no)  = Msg ++ " no\n".
 dump_bool_msg(Msg, yes) = Msg ++ " yes\n".
+
+:- func dump_may_duplicate(proc_may_duplicate) = string.
+
+dump_may_duplicate(proc_may_duplicate) = "may_duplicate".
+dump_may_duplicate(proc_may_not_duplicate) = "may_not_duplicate".
 
 :- func dump_may_use_atomic(may_use_atomic_alloc) = string.
 
@@ -855,18 +860,28 @@ dump_component(MaybeProcLabel, foreign_proc_inputs(Inputs)) =
 dump_component(MaybeProcLabel, foreign_proc_outputs(Outputs)) =
     dump_output_components(MaybeProcLabel, Outputs).
 dump_component(_, foreign_proc_user_code(_, AL, Code)) =
-    dump_affects_liveness(AL) ++ "\n" ++ Code ++ "\n".
+    ( Code = "" ->
+        "empty user_code: " ++ dump_affects_liveness(AL) ++ "\n"
+    ;
+        "user_code: " ++ dump_affects_liveness(AL) ++ "\n" ++ Code ++ "\n"
+    ).
 dump_component(_, foreign_proc_raw_code(_, AL, _, Code)) =
-    dump_affects_liveness(AL) ++ "\n" ++ Code ++ "\n".
+    ( Code = "" ->
+        "empty raw_code: " ++ dump_affects_liveness(AL) ++ "\n"
+    ;
+        "raw_code:\n" ++ dump_affects_liveness(AL) ++ "\n" ++ Code ++ "\n"
+    ).
 dump_component(MaybeProcLabel, foreign_proc_fail_to(Label)) =
     "fail to " ++ dump_label(MaybeProcLabel, Label) ++ "\n".
 dump_component(_, foreign_proc_noop) = "".
 
-:- func dump_affects_liveness(affects_liveness) = string.
+:- func dump_affects_liveness(proc_affects_liveness) = string.
 
-dump_affects_liveness(affects_liveness) = "affects_liveness".
-dump_affects_liveness(does_not_affect_liveness) = "does_not_affect_liveness".
-dump_affects_liveness(default_affects_liveness) = "default_affects_liveness".
+dump_affects_liveness(proc_affects_liveness) = "affects_liveness".
+dump_affects_liveness(proc_does_not_affect_liveness) =  
+    "does_not_affect_liveness".
+dump_affects_liveness(proc_default_affects_liveness) =
+    "default_affects_liveness".
 
 :- func dump_input_components(maybe(proc_label), list(foreign_proc_input))
     = string.

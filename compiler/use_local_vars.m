@@ -89,6 +89,7 @@
 :- import_module ll_backend.livemap.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.opt_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module int.
 :- import_module map.
@@ -151,7 +152,7 @@ use_local_vars_block(MaybeLiveMap, NumRealRRegs, AccessThreshold, Label,
 
 use_local_vars_instrs(!RestInstrs, !TempCounter,
         NumRealRRegs, AccessThreshold, MaybeLiveMap, MaybeFallThrough) :-
-    opt_assign(!RestInstrs, !TempCounter, NumRealRRegs, MaybeLiveMap,
+    opt_assign(!RestInstrs, !TempCounter, NumRealRRegs, [], MaybeLiveMap,
         MaybeFallThrough),
     ( AccessThreshold >= 1 ->
         opt_access(!RestInstrs, !TempCounter, NumRealRRegs,
@@ -163,18 +164,30 @@ use_local_vars_instrs(!RestInstrs, !TempCounter,
 %-----------------------------------------------------------------------------%
 
 :- pred opt_assign(list(instruction)::in, list(instruction)::out,
-    counter::in, counter::out, int::in, maybe(livemap)::in, maybe(label)::in)
-    is det.
+    counter::in, counter::out, int::in, list(lval)::in,
+    maybe(livemap)::in, maybe(label)::in) is det.
 
-opt_assign([], [], !TempCounter, _, _, _).
+opt_assign([], [], !TempCounter, _, _, _, _).
 opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
-        MaybeLiveMap, MaybeFallThrough) :-
+        !.AvoidLvals, MaybeLiveMap, MaybeFallThrough) :-
     Instr0 = llds_instr(Uinstr0, _Comment0),
     (
-        ( Uinstr0 = assign(ToLval, _FromRval)
-        ; Uinstr0 = incr_hp(ToLval, _MaybeTag, _SizeRval, _MO, _Type, _Atomic)
-        ),
-        base_lval_worth_replacing(NumRealRRegs, ToLval)
+        (
+            (
+                Uinstr0 = assign(ToLval, _FromRval)
+            ;
+                Uinstr0 = incr_hp(ToLval, _MaybeTag, _SizeRval, _MO, _Type,
+                    _Atomic)
+            ),
+            base_lval_worth_replacing(NumRealRRegs, ToLval),
+            MaybeMore = no
+        ;
+            Uinstr0 = foreign_proc_code(_D, Comps, _MCM, _FNL, _FL, _FOL, _NF,
+                _S, _MD),
+            opt_assign_find_output_in_components(Comps, NumRealRRegs,
+                !.AvoidLvals, ToLval),
+            MaybeMore = yes
+        )
     ->
         (
             ToLval = reg(_, _),
@@ -189,9 +202,18 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             list.map_foldl(
                 exprn_aux.substitute_lval_in_instr(ToLval, NewLval),
                 TailInstrs0, TailInstrs1, 0, _),
-            opt_assign(TailInstrs1, TailInstrs, !TempCounter, NumRealRRegs,
-                MaybeLiveMap, MaybeFallThrough),
-            Instrs = [Instr | TailInstrs]
+            (
+                MaybeMore = no,
+                opt_assign(TailInstrs1, TailInstrs, !TempCounter, NumRealRRegs,
+                    [], MaybeLiveMap, MaybeFallThrough),
+                Instrs = [Instr | TailInstrs]
+            ;
+                MaybeMore = yes,
+                !:AvoidLvals = [ToLval | !.AvoidLvals],
+                Instrs1 = [Instr | TailInstrs1],
+                opt_assign(Instrs1, Instrs, !TempCounter, NumRealRRegs,
+                    !.AvoidLvals, MaybeLiveMap, MaybeFallThrough)
+            )
         ;
             counter.allocate(TempNum, !TempCounter),
             NewLval = temp(reg_r, TempNum),
@@ -201,18 +223,69 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
         ->
             substitute_lval_in_defn(ToLval, NewLval, Instr0, Instr),
             CopyInstr = llds_instr(assign(ToLval, lval(NewLval)), ""),
-            opt_assign(TailInstrs1, TailInstrs, !TempCounter, NumRealRRegs,
-                MaybeLiveMap, MaybeFallThrough),
-            Instrs = [Instr, CopyInstr | TailInstrs]
+            (
+                MaybeMore = no,
+                opt_assign(TailInstrs1, TailInstrs, !TempCounter, NumRealRRegs,
+                    [], MaybeLiveMap, MaybeFallThrough),
+                Instrs = [Instr, CopyInstr | TailInstrs]
+            ;
+                MaybeMore = yes,
+                !:AvoidLvals = [ToLval | !.AvoidLvals],
+                Instrs1 = [Instr, CopyInstr | TailInstrs1],
+                opt_assign(Instrs1, Instrs, !TempCounter, NumRealRRegs,
+                    !.AvoidLvals, MaybeLiveMap, MaybeFallThrough)
+            )
         ;
-            opt_assign(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
-                MaybeLiveMap, MaybeFallThrough),
-            Instrs = [Instr0 | TailInstrs]
+            (
+                MaybeMore = no,
+                opt_assign(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
+                    [], MaybeLiveMap, MaybeFallThrough),
+                Instrs = [Instr0 | TailInstrs]
+            ;
+                MaybeMore = yes,
+                !:AvoidLvals = [ToLval | !.AvoidLvals],
+                Instrs1 = [Instr0 | TailInstrs0],
+                opt_assign(Instrs1, Instrs, !TempCounter, NumRealRRegs,
+                    !.AvoidLvals, MaybeLiveMap, MaybeFallThrough)
+            )
         )
     ;
         opt_assign(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
-            MaybeLiveMap, MaybeFallThrough),
+            [], MaybeLiveMap, MaybeFallThrough),
         Instrs = [Instr0 | TailInstrs]
+    ).
+
+:- pred opt_assign_find_output_in_components(list(foreign_proc_component)::in,
+    int::in, list(lval)::in, lval::out) is semidet.
+
+opt_assign_find_output_in_components([Comp | Comps], NumRealRRegs, AvoidLvals,
+        ToLval) :-
+    (
+        Comp = foreign_proc_outputs(Outputs),
+        opt_assign_find_output_in_outputs(Outputs, NumRealRRegs, AvoidLvals,
+            ToLvalPrime)
+    ->
+        ToLval = ToLvalPrime
+    ;
+        opt_assign_find_output_in_components(Comps, NumRealRRegs, AvoidLvals,
+            ToLval)
+    ).
+
+:- pred opt_assign_find_output_in_outputs(list(foreign_proc_output)::in,
+    int::in, list(lval)::in, lval::out) is semidet.
+
+opt_assign_find_output_in_outputs([Output | Outputs], NumRealRRegs, AvoidLvals,
+        ToLval) :-
+    Output = foreign_proc_output(Dest, _Type, _IsDummy, _VarName,
+        _OrigType, _MaybeForeignType, _BoxPolicy),
+    (
+        base_lval_worth_replacing(NumRealRRegs, Dest),
+        not list.member(Dest, AvoidLvals)
+    ->
+        ToLval = Dest
+    ;
+        opt_assign_find_output_in_outputs(Outputs, NumRealRRegs, AvoidLvals,
+            ToLval)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -409,11 +482,54 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
         expect(unify(ToLval, OldLval),
             this_file, "substitute_lval_in_defn: mismatch in incr_hp"),
         Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, MO, Type, MayUseAtomic)
+    ; Uinstr0 = foreign_proc_code(D, Comps0, MCM, FNL, FL, FOL, NF, S, MD) ->
+        substitute_lval_in_defn_components(OldLval, NewLval, Comps0, Comps,
+            0, NumSubsts),
+        expect(unify(NumSubsts, 1),
+            this_file,
+            "substitute_lval_in_defn: mismatch in foreign_proc_code"),
+        Uinstr = foreign_proc_code(D, Comps, MCM, FNL, FL, FOL, NF, S, MD)
     ;
         unexpected(this_file,
             "substitute_lval_in_defn: unexpected instruction")
     ),
     Instr = llds_instr(Uinstr, Comment).
+
+:- pred substitute_lval_in_defn_components(lval::in, lval::in,
+    list(foreign_proc_component)::in, list(foreign_proc_component)::out,
+    int::in, int::out) is det.
+
+substitute_lval_in_defn_components(_OldLval, _NewLval, [], [], !NumSubsts).
+substitute_lval_in_defn_components(OldLval, NewLval,
+        [Comp0 | Comps0], [Comp | Comps], !NumSubsts) :-
+    ( Comp0 = foreign_proc_outputs(Outputs0) ->
+        substitute_lval_in_defn_outputs(OldLval, NewLval,
+            Outputs0, Outputs, !NumSubsts),
+        Comp = foreign_proc_outputs(Outputs)
+    ;
+        Comp = Comp0
+    ),
+    substitute_lval_in_defn_components(OldLval, NewLval, Comps0, Comps,
+        !NumSubsts).
+
+:- pred substitute_lval_in_defn_outputs(lval::in, lval::in,
+    list(foreign_proc_output)::in, list(foreign_proc_output)::out,
+    int::in, int::out) is det.
+
+substitute_lval_in_defn_outputs(_OldLval, _NewLval, [], [], !NumSubsts).
+substitute_lval_in_defn_outputs(OldLval, NewLval,
+        [Output0 | Outputs0], [Output | Outputs], !NumSubsts) :-
+    Output0 = foreign_proc_output(Dest0, Type, IsDummy, VarName,
+        OrigType, MaybeForeignType, BoxPolicy),
+    ( Dest0 = OldLval ->
+        Output = foreign_proc_output(NewLval, Type, IsDummy, VarName,
+            OrigType, MaybeForeignType, BoxPolicy),
+        !:NumSubsts = !.NumSubsts + 1
+    ;
+        Output = Output0
+    ),
+    substitute_lval_in_defn_outputs(OldLval, NewLval, Outputs0, Outputs,
+        !NumSubsts).
 
     % Substitute NewLval for OldLval in an instruction sequence
     % until we come an instruction that may define OldLval.
@@ -457,88 +573,171 @@ substitute_lval_in_instr_until_defn(OldLval, NewLval,
 substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     !.Instr = llds_instr(Uinstr0, _),
     (
-        Uinstr0 = comment(_),
-        substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
-    ;
-        Uinstr0 = livevals(_)
-    ;
         Uinstr0 = block(_, _, _),
         unexpected(this_file,
             "substitute_lval_in_instr_until_defn: found block")
     ;
         Uinstr0 = assign(Lval, _),
-        ( Lval = OldLval ->
+        ( assignment_updates_oldlval(Lval, OldLval) = yes ->
+            % XXX we should still substitute on the rhs
             % If we alter any lval that occurs in OldLval, we must stop
-            % the substitutions. At the moment, the only lval OldLval
-            % contains is itself.
+            % the substitutions.
             true
         ;
             exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
             substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
         )
     ;
-        Uinstr0 = llcall(_, _, _, _, _, _)
+        Uinstr0 = incr_hp(Lval, _, _, _, _, _),
+        ( assignment_updates_oldlval(Lval, OldLval) = yes ->
+            % If we alter any lval that occurs in OldLval, we must stop
+            % the substitutions.
+            true
+        ;
+            exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
+            substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
+        )
     ;
-        Uinstr0 = mkframe(_, _)
+        Uinstr0 = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
+        AffectsLiveness = components_affect_liveness(Components),
+        (
+            AffectsLiveness = no,
+            ( components_update_oldlval(Components, OldLval) = yes ->
+                % If we alter any lval that occurs in OldLval, we must stop
+                % the substitutions.
+                true
+            ;
+                exprn_aux.substitute_lval_in_instr(OldLval, NewLval,
+                    !Instr, !N),
+                substitute_lval_in_instr_until_defn(OldLval, NewLval,
+                    !Instrs, !N)
+            )
+        ;
+            AffectsLiveness = yes
+        )
     ;
-        Uinstr0 = label(_)
+        Uinstr0 = comment(_),
+        substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
     ;
-        Uinstr0 = goto(_)
+        Uinstr0 = if_val(_, _),
+        exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
+        substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
     ;
         Uinstr0 = computed_goto(_, _),
         exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N)
     ;
-        Uinstr0 = if_val(_, _),
-        exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N)
+        ( Uinstr0 = label(_)
+        ; Uinstr0 = livevals(_)
+        ; Uinstr0 = llcall(_, _, _, _, _, _)
+        ; Uinstr0 = mkframe(_, _)
+        ; Uinstr0 = goto(_)
+        ; Uinstr0 = save_maxfr(_)
+        ; Uinstr0 = restore_maxfr(_)
+        ; Uinstr0 = mark_hp(_)
+        ; Uinstr0 = restore_hp(_)
+        ; Uinstr0 = free_heap(_)
+        ; Uinstr0 = store_ticket(_)
+        ; Uinstr0 = reset_ticket(_, _)
+        ; Uinstr0 = discard_ticket
+        ; Uinstr0 = prune_ticket
+        ; Uinstr0 = mark_ticket_stack(_)
+        ; Uinstr0 = prune_tickets_to(_)
+        ; Uinstr0 = incr_sp(_, _, _)
+        ; Uinstr0 = decr_sp(_)
+        ; Uinstr0 = decr_sp_and_return(_)
+        ; Uinstr0 = init_sync_term(_, _)
+        ; Uinstr0 = fork(_)
+        ; Uinstr0 = join_and_continue(_, _)
+        ; Uinstr0 = arbitrary_c_code(_, _, _)
+        )
+    ).
+
+:- func assignment_updates_oldlval(lval, lval) = bool.
+
+assignment_updates_oldlval(Lval, OldLval) =
+    ( Lval = OldLval ->
+        % If we alter any lval that occurs in OldLval, we must stop the
+        % substitutions. At the moment, the only lval OldLval can contain
+        % is itself.
+        yes
     ;
-        Uinstr0 = save_maxfr(_)
+        no
+    ).
+
+:- func components_update_oldlval(list(foreign_proc_component), lval) = bool.
+
+components_update_oldlval([], _Lval) = no.
+components_update_oldlval([Component | Components], Lval) =
+    ( component_updates_oldlval(Component, Lval) = yes ->
+        yes
     ;
-        Uinstr0 = restore_maxfr(_)
-    ;
-        Uinstr0 = incr_hp(Lval, _, _, _, _, _),
-        ( Lval = OldLval ->
-            % If we alter any lval that occurs in OldLval, we must stop
-            % the substitutions. At the moment, the only lval OldLval
-            % contains is itself.
-            true
+        components_update_oldlval(Components, Lval)
+    ).
+
+:- func component_updates_oldlval(foreign_proc_component, lval) = bool.
+
+component_updates_oldlval(Component, Lval) = Updates :-
+    (
+        Component = foreign_proc_outputs(Outputs),
+        (
+            some [Output] (
+                list.member(Output, Outputs),
+                Output ^ out_arg_dest = Lval
+            )
+        ->
+            Updates = yes
         ;
-            exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
-            substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
+            Updates = no
         )
     ;
-        Uinstr0 = mark_hp(_)
+        ( Component = foreign_proc_inputs(_)
+        ; Component = foreign_proc_fail_to(_)
+        ; Component = foreign_proc_noop
+        ; Component = foreign_proc_user_code(_, _, _)
+        ; Component = foreign_proc_raw_code(_, _, _, _)
+        ),
+        Updates = no
+    ).
+
+:- func components_affect_liveness(list(foreign_proc_component))
+    = bool.
+
+components_affect_liveness([]) = no.
+components_affect_liveness([Component | Components]) =
+    ( component_affects_liveness(Component) = yes ->
+        yes
     ;
-        Uinstr0 = restore_hp(_)
+        components_affect_liveness(Components)
+    ).
+
+:- func component_affects_liveness(foreign_proc_component) = bool.
+
+component_affects_liveness(Component) = Affects :-
+    (
+        ( Component = foreign_proc_inputs(_)
+        ; Component = foreign_proc_outputs(_)
+        ; Component = foreign_proc_fail_to(_)
+        ; Component = foreign_proc_noop
+        ),
+        Affects = no
     ;
-        Uinstr0 = free_heap(_)
-    ;
-        Uinstr0 = store_ticket(_)
-    ;
-        Uinstr0 = reset_ticket(_, _)
-    ;
-        Uinstr0 = discard_ticket
-    ;
-        Uinstr0 = prune_ticket
-    ;
-        Uinstr0 = mark_ticket_stack(_)
-    ;
-        Uinstr0 = prune_tickets_to(_)
-    ;
-        Uinstr0 = incr_sp(_, _, _)
-    ;
-        Uinstr0 = decr_sp(_)
-    ;
-        Uinstr0 = decr_sp_and_return(_)
-    ;
-        Uinstr0 = init_sync_term(_, _)
-    ;
-        Uinstr0 = fork(_)
-    ;
-        Uinstr0 = join_and_continue(_, _)
-    ;
-        Uinstr0 = arbitrary_c_code(_, _, _)
-    ;
-        Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _)
+        ( Component = foreign_proc_user_code(_, AffectsLiveness, Code)
+        ; Component = foreign_proc_raw_code(_, AffectsLiveness, _, Code)
+        ),
+        (
+            AffectsLiveness = proc_affects_liveness,
+            Affects = yes
+        ;
+            AffectsLiveness = proc_does_not_affect_liveness,
+            Affects = no
+        ;
+            AffectsLiveness = proc_default_affects_liveness,
+            ( Code = "" ->
+                Affects = no
+            ;
+                Affects = yes
+            )
+        )
     ).
 
 %-----------------------------------------------------------------------------%

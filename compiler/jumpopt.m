@@ -67,6 +67,7 @@
 :- import_module libs.compiler_util.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module map.
 :- import_module maybe.
@@ -873,7 +874,7 @@ instr_may_be_duplicated(Instr) = InstrMayBeDuplicated :-
         % When debugging is enabled, size is in any case more important
         % than the last bit of speed.
         InstrMayBeDuplicated = no
-    ; Instr ^ fproc_maybe_dupl = no ->
+    ; Instr ^ fproc_maybe_dupl = proc_may_not_duplicate ->
         InstrMayBeDuplicated = no
     ;
         InstrMayBeDuplicated = yes

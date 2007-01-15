@@ -664,15 +664,15 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         "(" ++ DebugArgStr ++ ", " ++ cur_table_node_name ++ ");\n",
 
     table_generate_foreign_proc(MarkInactivePredName, detism_det,
-        tabling_c_attributes, [TableTipArg], [],
+        tabling_c_attributes_dupl, [TableTipArg], [],
         MarkInactiveCode, purity_impure, [],
         ModuleInfo, Context, MarkInactiveGoal),
     table_generate_foreign_proc(MarkInactiveFailPredName, detism_failure,
-        tabling_c_attributes, [TableTipArg], [],
+        tabling_c_attributes_dupl, [TableTipArg], [],
         MarkInactiveFailCode, purity_impure, [],
         ModuleInfo, Context, MarkInactiveFailGoal),
     table_generate_foreign_proc(MarkActiveFailPredName, detism_failure,
-        tabling_c_attributes, [TableTipArg], [],
+        tabling_c_attributes_dupl, [TableTipArg], [],
         MarkActiveFailCode, purity_impure, [],
         ModuleInfo, Context, MarkActiveFailGoal),
 
@@ -947,7 +947,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         MarkAsFailedCode = MarkAsFailedMacroName ++
             "(" ++ DebugArgStr ++ ", " ++ cur_table_node_name ++ ");",
         table_generate_foreign_proc(MarkAsFailedPredName, detism_failure,
-            tabling_c_attributes, [TableTipArg], [],
+            tabling_c_attributes_dupl, [TableTipArg], [],
             MarkAsFailedCode, purity_impure, [],
             ModuleInfo, Context, ElseGoal),
         InactiveGoalExpr = if_then_else([], RenamedOrigGoal,
@@ -1038,15 +1038,15 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         "(" ++ DebugArgStr ++ ", " ++ RecordVarName ++ ");\n",
 
     table_generate_foreign_proc(MarkIncompletePredName, detism_det,
-        tabling_c_attributes, [RecordArg], [],
+        tabling_c_attributes_dupl, [RecordArg], [],
         MarkIncompleteCode, purity_impure, [],
         ModuleInfo, Context, MarkIncompleteGoal),
     table_generate_foreign_proc(MarkActivePredName, detism_failure,
-        tabling_c_attributes, [RecordArg], [],
+        tabling_c_attributes_dupl, [RecordArg], [],
         MarkActiveCode, purity_impure, [],
         ModuleInfo, Context, MarkActiveGoal),
     table_generate_foreign_proc(MarkCompletePredName, detism_failure,
-        tabling_c_attributes, [RecordArg], [],
+        tabling_c_attributes_dupl, [RecordArg], [],
         MarkCompleteCode, purity_impure, [],
         ModuleInfo, Context, MarkCompleteGoal),
 
@@ -1665,9 +1665,9 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         native_if_possible),
     RestoreAllPredName = "table_mmos_restore_answers",
     table_generate_foreign_proc(RestoreAllPredName, detism_det,
-        tabling_c_attributes, [AnswerBlockArg], RestoreArgs, RestoreCodeStr,
-        purity_semipure, RestoreInstMapDeltaSrc, ModuleInfo, Context,
-        RestoreGoal),
+        tabling_c_attributes_no_dupl, [AnswerBlockArg],
+        RestoreArgs, RestoreCodeStr, purity_semipure, RestoreInstMapDeltaSrc,
+        ModuleInfo, Context, RestoreGoal),
 
     GoalExpr = conj(plain_conj,
         LookupSetupGoals ++ [GetNextAnswerGoal, RestoreGoal]),
@@ -1742,7 +1742,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     PickupGeneratorArg = foreign_arg(GeneratorVar,
         yes(generator_name - out_mode), generator_type, native_if_possible),
     table_generate_foreign_proc("table_mmos_pickup_inputs", detism_det,
-        tabling_c_attributes, [PickupGeneratorArg], PickupForeignArgs,
+        tabling_c_attributes_no_dupl, [PickupGeneratorArg], PickupForeignArgs,
         PickupGeneratorCode ++ PickupVarCode, purity_impure,
         PickupInstMapDeltaSrc, ModuleInfo0, Context, PickupGoal),
 
@@ -1768,7 +1768,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     CompletionArg = foreign_arg(GeneratorVar,
         yes(generator_name - in_mode), generator_type, native_if_possible),
     table_generate_foreign_proc("table_mmos_completion", detism_failure,
-        tabling_c_attributes, [CompletionArg], [],
+        tabling_c_attributes_no_dupl, [CompletionArg], [],
         CompletionCode, purity_impure,
         [], ModuleInfo0, Context, CompletionGoal),
 
@@ -1997,7 +1997,8 @@ generate_simple_call_table_lookup_goal(StatusType, PredName,
         LookupCodeStr ++
         CallTableTipAssignStr ++
         MainPredCodeStr,
-    table_generate_foreign_proc(PredName, detism_det, tabling_c_attributes,
+    table_generate_foreign_proc(PredName, detism_det,
+        tabling_c_attributes_no_dupl,
         Args, LookupForeignArgs, CodeStr, purity_impure,
         ground_vars(BoundVars), ModuleInfo, Context, SetupGoal0),
     attach_call_table_tip(SetupGoal0, SetupGoal),
@@ -2054,7 +2055,7 @@ generate_memo_non_call_table_lookup_goal(NumberedVars, PredId, ProcId,
         cur_table_node_name ++ ", " ++ RecordVarName ++ ", " ++
         StatusVarName ++ ");\n",
     table_generate_foreign_proc(SetupPredName, detism_det,
-        tabling_c_attributes, Args, LookupForeignArgs,
+        tabling_c_attributes_no_dupl, Args, LookupForeignArgs,
         LookupDeclCodeStr ++ PredCodeStr, purity_impure,
         ground_vars(BoundVars), ModuleInfo, Context, SetupGoal0),
     attach_call_table_tip(SetupGoal0, SetupGoal),
@@ -2110,8 +2111,9 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
     CodeStr = LookupDeclStr ++ LookupCodeStr ++ SetupCodeStr,
     ModuleInfo = !.TableInfo ^ table_module_info,
     table_generate_foreign_proc(SetupPredName, detism_det,
-        tabling_c_attributes, Args, LookupForeignArgs, CodeStr, purity_impure,
-        ground_vars(BoundVars), ModuleInfo, Context, SetupGoal0),
+        tabling_c_attributes_no_dupl, Args, LookupForeignArgs, CodeStr,
+        purity_impure, ground_vars(BoundVars), ModuleInfo, Context,
+        SetupGoal0),
     attach_call_table_tip(SetupGoal0, SetupGoal),
     LookupSetupGoals = LookupPrefixGoals ++ [SetupGoal],
 
@@ -2421,7 +2423,7 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
             BlockSize, CreateMacroName, Context, !VarSet, !VarTypes,
             !TableInfo, SaveArgs, SavePrefixGoals, SaveDeclCode, SaveCode),
         table_generate_foreign_proc(CreatePredName, detism_det,
-            tabling_c_attributes, [TableArg], SaveArgs,
+            tabling_c_attributes_dupl, [TableArg], SaveArgs,
             SaveDeclCode ++ SaveCode, purity_impure, [],
             ModuleInfo, Context, SaveGoal),
         Goals = SavePrefixGoals ++ [SaveGoal]
@@ -2432,7 +2434,7 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
         MarkAsSucceededCode = MarkAsSucceededMacroName ++
             "(" ++ DebugArgStr ++ ", " ++ cur_table_node_name ++ ");",
         table_generate_foreign_proc(MarkAsSucceededPredName, detism_det,
-            tabling_c_attributes, [TableArg], [],
+            tabling_c_attributes_dupl, [TableArg], [],
             MarkAsSucceededCode, purity_impure, [],
             ModuleInfo, Context, SaveGoal),
         Goals = [SaveGoal]
@@ -2490,7 +2492,7 @@ generate_memo_non_save_goals(NumberedSaveVars, PredId, ProcId,
         "\tif (" ++ SuccName ++ ") {\n" ++ CreateSaveCode ++ "\t}\n" ++
         AssignSuccessCodeStr,
     table_generate_foreign_proc(DuplCheckPredName, detism_semi,
-        tabling_c_attributes, [RecordArg], LookupForeignArgs, CodeStr,
+        tabling_c_attributes_dupl, [RecordArg], LookupForeignArgs, CodeStr,
         purity_impure, [], ModuleInfo, Context, DuplicateCheckSaveGoal),
     Goals = LookupPrefixGoals ++ [DuplicateCheckSaveGoal].
 
@@ -2545,7 +2547,7 @@ generate_mm_save_goals(NumberedSaveVars, SubgoalVar, PredId, ProcId, BlockSize,
         GetCodeStr ++ LookupCodeStr ++ DuplCheckCodeStr ++
         CondSaveStr ++ AssignSuccessCodeStr,
     table_generate_foreign_proc(DuplCheckPredName, detism_semi,
-        tabling_c_attributes, Args, LookupForeignArgs,
+        tabling_c_attributes_dupl, Args, LookupForeignArgs,
         CodeStr, purity_impure, [],
         ModuleInfo, Context, DuplicateCheckSaveGoal),
     Goals = LookupPrefixGoals ++ [DuplicateCheckSaveGoal].
@@ -2630,7 +2632,7 @@ generate_own_stack_save_return_goal(NumberedOutputVars, GeneratorVar,
         DuplCheckCodeStr ++ CondSaveCodeStr ++ AssignSuccessCodeStr,
     ModuleInfo = !.TableInfo ^ table_module_info,
     table_generate_foreign_proc(DuplCheckPredName, detism_semi,
-        tabling_c_attributes, Args, LookupForeignArgs,
+        tabling_c_attributes_dupl, Args, LookupForeignArgs,
         CodeStr, purity_impure, [],
         ModuleInfo, Context, DuplicateCheckSaveGoal),
     Goals = LookupPrefixGoals ++ SavePrefixGoals ++
@@ -2729,7 +2731,7 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
             answer_block_name ++ ");\n" ++
             RestoreCodeStr,
         table_generate_foreign_proc(GetPredName, detism_det,
-            tabling_c_attributes, Args, RestoreArgs,
+            tabling_c_attributes_dupl, Args, RestoreArgs,
             DeclCodeStr ++ GetRestoreCodeStr, purity_semipure,
             RestoreInstMapDeltaSrc, ModuleInfo, Context, ShortcutGoal),
         Goal = ShortcutGoal
@@ -2770,9 +2772,10 @@ generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
         answer_block_type, native_if_possible),
     Args = [Arg],
     PredName = "table_memo_non_return_all_shortcut",
-    table_generate_foreign_proc(PredName, detism_det, tabling_c_attributes,
-        Args, RestoreArgs, RestoreCodeStr, purity_semipure,
-        RestoreInstMapDeltaSrc, ModuleInfo, Context, ShortcutGoal),
+    table_generate_foreign_proc(PredName, detism_det,
+        tabling_c_attributes_no_dupl, Args, RestoreArgs, RestoreCodeStr,
+        purity_semipure, RestoreInstMapDeltaSrc, ModuleInfo, Context,
+        ShortcutGoal),
 
     GoalExpr = conj(plain_conj, [ReturnAnswerBlocksGoal, ShortcutGoal]),
     set.list_to_set([RecordVar | OutputVars], NonLocals),
@@ -2844,7 +2847,7 @@ generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
     Args = [Arg],
     ReturnAllPredName = "table_mm_return_all_shortcut",
     table_generate_foreign_proc(ReturnAllPredName, detism_det,
-        tabling_c_attributes, Args, RestoreArgs, RestoreCodeStr,
+        tabling_c_attributes_no_dupl, Args, RestoreArgs, RestoreCodeStr,
         purity_semipure, RestoreInstMapDeltaSrc, ModuleInfo, Context,
         ReturnAllGoal),
     GoalExpr = conj(plain_conj, [ReturnAnswerBlocksGoal, ReturnAllGoal]),
@@ -3524,11 +3527,20 @@ var_is_io_state(VarTypes, Var) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func tabling_c_attributes = pragma_foreign_proc_attributes.
+:- func tabling_c_attributes_dupl = pragma_foreign_proc_attributes.
 
-tabling_c_attributes = Attrs :-
+tabling_c_attributes_dupl = Attrs :-
     Attrs0 = default_attributes(lang_c),
-    set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs).
+    set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs1),
+    set_affects_liveness(proc_does_not_affect_liveness, Attrs1, Attrs2),
+    set_may_duplicate(yes(proc_may_duplicate), Attrs2, Attrs).
+
+:- func tabling_c_attributes_no_dupl = pragma_foreign_proc_attributes.
+
+tabling_c_attributes_no_dupl = Attrs :-
+    Attrs0 = default_attributes(lang_c),
+    set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs1),
+    set_affects_liveness(proc_does_not_affect_liveness, Attrs1, Attrs).
 
 :- func make_generator_c_attributes = pragma_foreign_proc_attributes.
 

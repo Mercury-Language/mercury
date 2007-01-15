@@ -303,7 +303,7 @@
             % (rval+1)th label in the list. e.g. computed_goto(2, [A, B, C, D])
             % will branch to label C.
 
-    ;       arbitrary_c_code(affects_liveness, c_code_live_lvals, string)
+    ;       arbitrary_c_code(proc_affects_liveness, c_code_live_lvals, string)
             % Do whatever is specified by the string, which can be any piece
             % of C code that does not have any non-local flow of control.
 
@@ -435,7 +435,7 @@
                 fproc_fix_onlylayout    :: maybe(label),
                 fproc_nofix             :: maybe(label),
                 fproc_stack_slot_ref    :: bool,
-                fproc_maybe_dupl        :: bool
+                fproc_maybe_dupl        :: proc_may_duplicate
             )
             % The first argument says what local variable declarations
             % are required for the following components, which in turn
@@ -583,9 +583,9 @@
 :- type foreign_proc_component
     --->    foreign_proc_inputs(list(foreign_proc_input))
     ;       foreign_proc_outputs(list(foreign_proc_output))
-    ;       foreign_proc_user_code(maybe(prog_context), affects_liveness,
+    ;       foreign_proc_user_code(maybe(prog_context), proc_affects_liveness,
                 string)
-    ;       foreign_proc_raw_code(can_branch_away, affects_liveness,
+    ;       foreign_proc_raw_code(can_branch_away, proc_affects_liveness,
                 c_code_live_lvals, string)
     ;       foreign_proc_fail_to(label)
     ;       foreign_proc_noop.

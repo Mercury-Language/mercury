@@ -1495,9 +1495,10 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       coll_may_modify_trail(proc_may_modify_trail)
     ;       coll_may_call_mm_tabled(may_call_mm_tabled)
     ;       coll_box_policy(box_policy)
-    ;       coll_affects_liveness(affects_liveness)
-    ;       coll_allocates_memory(allocates_memory)
-    ;       coll_registers_roots(registers_roots).
+    ;       coll_affects_liveness(proc_affects_liveness)
+    ;       coll_allocates_memory(proc_allocates_memory)
+    ;       coll_registers_roots(proc_registers_roots)
+    ;       coll_may_duplicate(proc_may_duplicate).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
     string::in, varset::in, term::in,
@@ -1543,20 +1544,22 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Varset,
         coll_may_call_mercury(proc_will_not_call_mercury) -
             coll_may_call_mm_tabled(may_call_mm_tabled),
         coll_box_policy(native_if_possible) - coll_box_policy(always_boxed),
-        coll_affects_liveness(affects_liveness) -
-            coll_affects_liveness(does_not_affect_liveness),
-        coll_allocates_memory(does_not_allocate_memory) -
-            coll_allocates_memory(allocates_bounded_memory),
-        coll_allocates_memory(does_not_allocate_memory) -
-            coll_allocates_memory(allocates_unbounded_memory),
-        coll_allocates_memory(allocates_bounded_memory) -
-            coll_allocates_memory(allocates_unbounded_memory),
-        coll_registers_roots(does_not_register_roots) -
-            coll_registers_roots(registers_roots),
-        coll_registers_roots(does_not_register_roots) -
-            coll_registers_roots(does_not_have_roots),
-        coll_registers_roots(registers_roots) -
-            coll_registers_roots(does_not_have_roots)
+        coll_affects_liveness(proc_affects_liveness) -
+            coll_affects_liveness(proc_does_not_affect_liveness),
+        coll_allocates_memory(proc_does_not_allocate_memory) -
+            coll_allocates_memory(proc_allocates_bounded_memory),
+        coll_allocates_memory(proc_does_not_allocate_memory) -
+            coll_allocates_memory(proc_allocates_unbounded_memory),
+        coll_allocates_memory(proc_allocates_bounded_memory) -
+            coll_allocates_memory(proc_allocates_unbounded_memory),
+        coll_registers_roots(proc_does_not_register_roots) -
+            coll_registers_roots(proc_registers_roots),
+        coll_registers_roots(proc_does_not_register_roots) -
+            coll_registers_roots(proc_does_not_have_roots),
+        coll_registers_roots(proc_registers_roots) -
+            coll_registers_roots(proc_does_not_have_roots),
+        coll_may_duplicate(proc_may_duplicate) -
+            coll_may_duplicate(proc_may_not_duplicate)
     ],
     ( parse_pragma_foreign_proc_attributes_term0(Varset, Term, AttrList) ->
         (
@@ -1619,6 +1622,8 @@ process_attribute(coll_allocates_memory(AllocatesMemory), !Attrs) :-
     set_allocates_memory(AllocatesMemory, !Attrs).
 process_attribute(coll_registers_roots(RegistersRoots), !Attrs) :-
     set_registers_roots(RegistersRoots, !Attrs).
+process_attribute(coll_may_duplicate(MayDuplicate), !Attrs) :-
+    set_may_duplicate(yes(MayDuplicate), !Attrs).
 
     % Check whether all the required attributes have been set for
     % a particular language
@@ -1699,6 +1704,8 @@ parse_single_pragma_foreign_proc_attribute(Varset, Term, Flag) :-
         Flag = coll_allocates_memory(AllocatesMemory)
     ; parse_registers_roots(Term, RegistersRoots) ->
         Flag = coll_registers_roots(RegistersRoots)
+    ; parse_may_duplicate(Term, MayDuplicate) ->
+        Flag = coll_may_duplicate(MayDuplicate)
     ;
         fail
     ).
@@ -1746,21 +1753,21 @@ parse_box_policy(term.functor(term.atom("native_if_possible"), [], _),
 parse_box_policy(term.functor(term.atom("always_boxed"), [], _),
     always_boxed).
 
-:- pred parse_affects_liveness(term::in, affects_liveness::out) is semidet.
+:- pred parse_affects_liveness(term::in, proc_affects_liveness::out) is semidet.
 
 parse_affects_liveness(Term, AffectsLiveness) :-
     Term = term.functor(term.atom(Functor), [], _),
     (
         Functor = "affects_liveness",
-        AffectsLiveness = affects_liveness
+        AffectsLiveness = proc_affects_liveness
     ;
         ( Functor = "doesnt_affect_liveness"
         ; Functor = "does_not_affect_liveness"
         ),
-        AffectsLiveness = does_not_affect_liveness
+        AffectsLiveness = proc_does_not_affect_liveness
     ).
 
-:- pred parse_allocates_memory(term::in, allocates_memory::out) is semidet.
+:- pred parse_allocates_memory(term::in, proc_allocates_memory::out) is semidet.
 
 parse_allocates_memory(Term, AllocatesMemory) :-
     Term = term.functor(term.atom(Functor), [], _),
@@ -1768,32 +1775,44 @@ parse_allocates_memory(Term, AllocatesMemory) :-
         ( Functor = "doesnt_allocate_memory"
         ; Functor = "does_not_allocate_memory"
         ),
-        AllocatesMemory = does_not_allocate_memory
+        AllocatesMemory = proc_does_not_allocate_memory
     ;
         Functor = "allocates_bounded_memory",
-        AllocatesMemory = allocates_bounded_memory
+        AllocatesMemory = proc_allocates_bounded_memory
     ;
         Functor = "allocates_unbounded_memory",
-        AllocatesMemory = allocates_unbounded_memory
+        AllocatesMemory = proc_allocates_unbounded_memory
     ).
 
-:- pred parse_registers_roots(term::in, registers_roots::out) is semidet.
+:- pred parse_registers_roots(term::in, proc_registers_roots::out) is semidet.
 
 parse_registers_roots(Term, RegistersRoots) :-
     Term = term.functor(term.atom(Functor), [], _),
     (
         Functor = "registers_roots",
-        RegistersRoots = registers_roots
+        RegistersRoots = proc_registers_roots
     ;
         ( Functor = "doesnt_register_roots"
         ; Functor = "does_not_register_roots"
         ),
-        RegistersRoots = does_not_register_roots
+        RegistersRoots = proc_does_not_register_roots
     ;
         ( Functor = "doesnt_have_roots"
         ; Functor = "does_not_have_roots"
         ),
-        RegistersRoots = does_not_have_roots
+        RegistersRoots = proc_does_not_have_roots
+    ).
+
+:- pred parse_may_duplicate(term::in, proc_may_duplicate::out) is semidet.
+
+parse_may_duplicate(Term, RegistersRoots) :-
+    Term = term.functor(term.atom(Functor), [], _),
+    (
+        Functor = "may_duplicate",
+        RegistersRoots = proc_may_duplicate
+    ;
+        Functor = "may_not_duplicate",
+        RegistersRoots = proc_may_not_duplicate
     ).
 
 :- pred parse_tabled_for_io(term::in, proc_tabled_for_io::out) is semidet.

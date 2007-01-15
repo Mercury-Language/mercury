@@ -312,10 +312,10 @@ build_livemap_foreign_proc_components([Component | Components],
     ;
         Component = foreign_proc_user_code(_, AffectsLiveness, Code),
         (
-            AffectsLiveness = affects_liveness,
+            AffectsLiveness = proc_affects_liveness,
             !:ContainsBadUserCode = yes
         ;
-            AffectsLiveness = default_affects_liveness,
+            AffectsLiveness = proc_default_affects_liveness,
             ( Code = "" ->
                 true
             ;
@@ -324,7 +324,7 @@ build_livemap_foreign_proc_components([Component | Components],
                 !:ContainsBadUserCode = yes
             )
         ;
-            AffectsLiveness = does_not_affect_liveness
+            AffectsLiveness = proc_does_not_affect_liveness
         )
     ;
         Component = foreign_proc_raw_code(_Context, AffectsLiveness,
@@ -339,16 +339,16 @@ build_livemap_foreign_proc_components([Component | Components],
     build_livemap_foreign_proc_components(Components,
         !Livevals, !ContainsBadUserCode).
 
-:- pred build_live_lval_info(affects_liveness::in, c_code_live_lvals::in,
+:- pred build_live_lval_info(proc_affects_liveness::in, c_code_live_lvals::in,
     string::in, lvalset::in, lvalset::out, bool::in, bool::out) is det.
 
 build_live_lval_info(AffectsLiveness, LiveLvalInfo, Code,
         !Livevals, !ContainsBadUserCode) :-
     (
-        AffectsLiveness = affects_liveness,
+        AffectsLiveness = proc_affects_liveness,
         !:ContainsBadUserCode = yes
     ;
-        AffectsLiveness = default_affects_liveness,
+        AffectsLiveness = proc_default_affects_liveness,
         ( Code = "" ->
             true
         ;
@@ -357,7 +357,7 @@ build_live_lval_info(AffectsLiveness, LiveLvalInfo, Code,
             !:ContainsBadUserCode = yes
         )
     ;
-        AffectsLiveness = does_not_affect_liveness,
+        AffectsLiveness = proc_does_not_affect_liveness,
         (
             LiveLvalInfo = no_live_lvals_info,
             !:ContainsBadUserCode = yes

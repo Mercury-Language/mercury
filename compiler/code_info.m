@@ -1913,18 +1913,19 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
             % inside MR_commit_{mark,cut}.
             Components = [
                 foreign_proc_raw_code(cannot_branch_away,
-                    affects_liveness, live_lvals_info(set.init),
+                    proc_affects_liveness, live_lvals_info(set.init),
                     "\t\tMR_save_transient_registers();\n"),
                 foreign_proc_raw_code(cannot_branch_away,
-                    does_not_affect_liveness, live_lvals_info(set.init),
+                    proc_does_not_affect_liveness, live_lvals_info(set.init),
                     "\t\tMR_commit_mark();\n"),
                 foreign_proc_raw_code(cannot_branch_away,
-                    affects_liveness, live_lvals_info(set.init),
+                    proc_affects_liveness, live_lvals_info(set.init),
                     "\t\tMR_restore_transient_registers();\n")
             ],
+            MD = proc_may_duplicate,
             MarkCode = node([
                 llds_instr(foreign_proc_code([], Components,
-                    proc_will_not_call_mercury, no, no, no, no, no, yes), "")
+                    proc_will_not_call_mercury, no, no, no, no, no, MD), "")
             ])
         ;
             UseMinimalModelStackCopyCut = no,
@@ -1995,12 +1996,13 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
             % See the comment in prepare_for_semi_commit above.
             Components = [
                 foreign_proc_raw_code(cannot_branch_away,
-                    does_not_affect_liveness, live_lvals_info(set.init),
+                    proc_does_not_affect_liveness, live_lvals_info(set.init),
                     "\t\tMR_commit_cut();\n")
             ],
+            MD = proc_may_duplicate,
             CutCode = node([
                 llds_instr(foreign_proc_code([], Components,
-                    proc_will_not_call_mercury, no, no, no, no, no, yes),
+                    proc_will_not_call_mercury, no, no, no, no, no, MD),
                     "commit for temp frame hijack")
             ])
         ;

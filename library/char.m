@@ -1,24 +1,24 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: char.m.
 % Main author: fjh.
 % Stability: high.
-% 
+%
 % This module defines some predicates that manipulate characters.
-% 
+%
 % The set of characters which are supported and the mapping from
 % characters to integer values are both implementation-dependent.
-% 
+%
 % Originally we used `character' rather than `char' for the type name
 % because `char' was used by NU-Prolog to mean something different.
 % But now we use `char' and the use of `character' is discouraged.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -450,21 +450,24 @@ char.det_from_int(Int) = Char :-
 
 :- pragma foreign_proc("C",
     char.to_int(Character::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Int = (MR_UnsignedChar) Character;
 ").
 
 :- pragma foreign_proc("C",
     char.to_int(Character::in, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
 ").
 
 :- pragma foreign_proc("C",
     char.to_int(Character::out, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
 "
     /*
     ** If the integer doesn't fit into a char, then the assignment
@@ -527,7 +530,8 @@ char.min_char_value(0).
 
 :- pragma foreign_proc("C",
     char.max_char_value(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
 "
     Max = UCHAR_MAX;
 ").

@@ -1476,7 +1476,56 @@ count_temps_instr(init_sync_term(Lval, _), !R, !F) :-
 count_temps_instr(fork(_), !R, !F).
 count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
-count_temps_instr(foreign_proc_code(_, _, _, _, _, _, _, _, _), !R, !F).
+count_temps_instr(foreign_proc_code(_, Comps, _, _, _, _, _, _, _), !R, !F) :-
+    count_temps_components(Comps, !R, !F).
+
+:- pred count_temps_components(list(foreign_proc_component)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+count_temps_components([], !R, !F).
+count_temps_components([Comp | Comps], !R, !F) :-
+    count_temps_component(Comp, !R, !F),
+    count_temps_components(Comps, !R, !F).
+
+:- pred count_temps_component(foreign_proc_component::in,
+    int::in, int::out, int::in, int::out) is det.
+
+count_temps_component(Comp, !R, !F) :-
+    (
+        Comp = foreign_proc_inputs(Inputs),
+        count_temps_inputs(Inputs, !R, !F)
+    ;
+        Comp = foreign_proc_outputs(Outputs),
+        count_temps_outputs(Outputs, !R, !F)
+    ;
+        Comp = foreign_proc_user_code(_, _, _)
+    ;
+        Comp = foreign_proc_raw_code(_, _, _, _)
+    ;
+        Comp = foreign_proc_fail_to(_)
+    ;
+        Comp = foreign_proc_noop
+    ).
+
+:- pred count_temps_inputs(list(foreign_proc_input)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+count_temps_inputs([], !R, !F).
+count_temps_inputs([Input | Inputs], !R, !F) :-
+    Input = foreign_proc_input(_VarName, _VarType, _IsDummy, _OrigType,
+        ArgRval, _MaybeForeignType, _BoxPolicy),
+    count_temps_rval(ArgRval, !R, !F),
+    count_temps_inputs(Inputs, !R, !F).
+
+:- pred count_temps_outputs(list(foreign_proc_output)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+count_temps_outputs([], !R, !F).
+count_temps_outputs([Output | Outputs], !R, !F) :-
+    Output = foreign_proc_output(DestLval, _VarType, _IsDummy, _OrigType,
+        _VarName, _MaybeForeignType, _BoxPolicy),
+    count_temps_lval(DestLval, !R, !F),
+    count_temps_outputs(Outputs, !R, !F).
 
 :- pred count_temps_lval(lval::in, int::in, int::out, int::in, int::out)
     is det.

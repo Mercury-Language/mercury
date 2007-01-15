@@ -444,31 +444,32 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         ),
 
         PNegCondComponents = [
-            foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
-                live_lvals_info(set.init),
+            foreign_proc_raw_code(cannot_branch_away,
+                proc_does_not_affect_liveness, live_lvals_info(set.init),
                 wrap_transient("\t\tMR_pneg_enter_cond();\n"))
         ],
         PNegThenComponents = [
-            foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
-                live_lvals_info(set.init),
+            foreign_proc_raw_code(cannot_branch_away,
+                proc_does_not_affect_liveness, live_lvals_info(set.init),
                 wrap_transient("\t\tMR_pneg_enter_then();\n"))
         ],
         PNegElseComponents = [
-            foreign_proc_raw_code(cannot_branch_away, does_not_affect_liveness,
-                live_lvals_info(set.init),
+            foreign_proc_raw_code(cannot_branch_away,
+                proc_does_not_affect_liveness, live_lvals_info(set.init),
                 wrap_transient("\t\tMR_pneg_enter_else(" ++ CtxtStr ++ ");\n"))
         ],
+        MD = proc_may_duplicate,
         PNegCondCode = node([
             llds_instr(foreign_proc_code([], PNegCondComponents,
-                proc_will_not_call_mercury, no, no, no, no, yes, yes), "")
+                proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
         ]),
         PNegThenCode = node([
             llds_instr(foreign_proc_code([], PNegThenComponents,
-                proc_will_not_call_mercury, no, no, no, no, yes, yes), "")
+                proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
         ]),
         PNegElseCode = node([
             llds_instr(foreign_proc_code([], PNegElseComponents,
-                proc_will_not_call_mercury, no, no, no, no, yes, yes), "")
+                proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
         ])
     ;
         PNegCondCode = empty,

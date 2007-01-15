@@ -625,10 +625,11 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         TraceStmt1 = FillSlotsUptoTrail
     ),
     TraceComponents1 = [foreign_proc_raw_code(cannot_branch_away,
-        does_not_affect_liveness, live_lvals_info(set.init), TraceStmt1)],
+        proc_does_not_affect_liveness, live_lvals_info(set.init), TraceStmt1)],
+    MD = proc_may_not_duplicate,
     TraceCode1 = node([
         llds_instr(foreign_proc_code([], TraceComponents1,
-            proc_will_not_call_mercury, no, no, MaybeLayoutLabel, no, yes, no),
+            proc_will_not_call_mercury, no, no, MaybeLayoutLabel, no, yes, MD),
             "")
     ]),
     (
@@ -645,10 +646,11 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         stackref_to_string(CallTableLval, CallTableLvalStr),
         TraceStmt3 = "\t\t" ++ CallTableLvalStr ++ " = 0;\n",
         TraceComponents3 = [foreign_proc_raw_code(cannot_branch_away,
-            does_not_affect_liveness, live_lvals_info(set.init), TraceStmt3)],
+            proc_does_not_affect_liveness, live_lvals_info(set.init),
+            TraceStmt3)],
         TraceCode3 = node([
             llds_instr(foreign_proc_code([], TraceComponents3,
-                proc_will_not_call_mercury, no, no, no, no, yes, no), "")
+                proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
         ])
     ;
         MaybeCallTableLval = no,
@@ -673,7 +675,7 @@ trace_prepare_for_call(CI, TraceCode) :-
         ),
         ResetStmt = MacroStr ++ "(" ++ CallDepthStr ++ ");\n",
         TraceCode = node([
-            llds_instr(arbitrary_c_code(does_not_affect_liveness,
+            llds_instr(arbitrary_c_code(proc_does_not_affect_liveness,
                 live_lvals_info(set.init), ResetStmt), "")
         ])
     ;
@@ -922,7 +924,9 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         true
     ),
     TraceComponents = [foreign_proc_raw_code(cannot_branch_away,
-        does_not_affect_liveness, live_lvals_info(LiveLvalSet), TraceStmt)],
+        proc_does_not_affect_liveness, live_lvals_info(LiveLvalSet),
+        TraceStmt)],
+    MD = proc_may_not_duplicate,
     TraceCode =
         node([
             llds_instr(label(Label),
@@ -933,7 +937,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
                 % pair is preceded by another label, and this way we can
                 % eliminate this other label.
             llds_instr(foreign_proc_code([], TraceComponents,
-                proc_may_call_mercury, no, no, yes(Label), no, yes, no), "")
+                proc_may_call_mercury, no, no, yes(Label), no, yes, MD), "")
         ]),
     Code = tree(ProduceCode, TraceCode).
 

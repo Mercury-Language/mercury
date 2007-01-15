@@ -168,6 +168,7 @@ SINGLEMODULE= \
 	string_format_unknown \
 	tc_err1 \
 	tc_err2 \
+	test_may_duplicate \
 	tricky_assert1 \
 	type_inf_loop \
 	type_loop \

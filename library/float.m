@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2006 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -256,7 +256,8 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float_domain_checks,
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
 	SUCCESS_INDICATOR = MR_FALSE;
@@ -293,7 +294,8 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float(IntVal::in) = (FloatVal::out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	FloatVal = IntVal;
 ").
@@ -314,7 +316,8 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float.ceiling_to_int(X :: in) = (Ceil :: out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
 "
 	Ceil = (MR_Integer) ceil(X);
 ").
@@ -340,7 +343,8 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float.floor_to_int(X :: in) = (Floor :: out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	Floor = (MR_Integer) floor(X);
 ").
@@ -366,7 +370,8 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float.round_to_int(X :: in) = (Round :: out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	Round = (MR_Integer) floor(X + 0.5);
 ").
@@ -392,7 +397,8 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float.truncate_to_int(X :: in) = (Trunc :: out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	Trunc = (MR_Integer) X;
 ").
@@ -499,7 +505,8 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
 	% non-negative, as this condition is not guaranteed by either API.
 :- pragma foreign_proc("C",
 	float.hash(F::in) = (H::out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	H = MR_hash_float(F);
 ").
@@ -535,7 +542,8 @@ is_nan_or_inf(Float) :-
 
 :- pragma foreign_proc("C",
 	is_nan(Flt::in),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	SUCCESS_INDICATOR = MR_is_nan(Flt);
 ").
@@ -556,7 +564,8 @@ is_nan_or_inf(Float) :-
 
 :- pragma foreign_proc("C",
 	is_inf(Flt::in),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	SUCCESS_INDICATOR = MR_is_inf(Flt);
 ").
@@ -615,7 +624,8 @@ is_nan_or_inf(Float) :-
 
 :- pragma foreign_proc("C",
 	float.max = (Max::out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	Max = ML_FLOAT_MAX;
 ").
@@ -634,7 +644,8 @@ is_nan_or_inf(Float) :-
 
 :- pragma foreign_proc("C",
 	float.min = (Min::out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	Min = ML_FLOAT_MIN;
 ").
@@ -655,7 +666,8 @@ float.min = 2.2250738585072014e-308.
 
 :- pragma foreign_proc("C",
 	float.epsilon = (Eps::out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	Eps = ML_FLOAT_EPSILON;
 ").
@@ -677,7 +689,8 @@ float.epsilon = 2.2204460492503131e-16.
 
 :- pragma foreign_proc("C",
 	float.radix = (Radix::out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	Radix = ML_FLOAT_RADIX;
 ").
@@ -695,7 +708,8 @@ float.radix = 2.
 
 :- pragma foreign_proc("C",
 	float.mantissa_digits = (MantDig::out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	MantDig = ML_FLOAT_MANT_DIG;
 ").
@@ -711,7 +725,8 @@ float.mantissa_digits = 53.
 
 :- pragma foreign_proc("C",
 	float.min_exponent = (MinExp::out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	MinExp = ML_FLOAT_MIN_EXP;
 ").
@@ -727,7 +742,8 @@ float.min_exponent = -1021.
 
 :- pragma foreign_proc("C",
 	float.max_exponent = (MaxExp::out),
-	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 	MaxExp = ML_FLOAT_MAX_EXP;
 ").

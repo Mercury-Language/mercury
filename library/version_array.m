@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -282,7 +282,8 @@ cmp_version_array_2(I, VAa, VAb, R) :-
 
 :- pragma foreign_proc("C",
     version_array.empty = (VA::out),
-    [will_not_call_mercury, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     VA = MR_GC_NEW(struct ML_va);
 
@@ -294,7 +295,8 @@ cmp_version_array_2(I, VAa, VAb, R) :-
 
 :- pragma foreign_proc("C",
     version_array.new(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     MR_Integer  i;
     
@@ -311,7 +313,8 @@ cmp_version_array_2(I, VAa, VAb, R) :-
 
 :- pragma foreign_proc("C",
     resize(VA0::in, N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     MR_Integer  i;
     MR_Integer  size_VA0;
@@ -337,8 +340,10 @@ cmp_version_array_2(I, VAa, VAb, R) :-
 
 resize(N, X, VA, resize(VA, N, X)).
 
-:- pragma foreign_proc("C", size(VA::in) = (N::out),
-    [will_not_call_mercury, promise_pure, will_not_modify_trail],
+:- pragma foreign_proc("C",
+    size(VA::in) = (N::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     N = ML_va_size(VA);
 ").
@@ -347,7 +352,8 @@ resize(N, X, VA, resize(VA, N, X)).
 
 :- pragma foreign_proc("C",
     get_if_in_range(VA::in, I::in, X::out),
-    [will_not_call_mercury, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = ML_va_get(VA, I, &X);
 ").
@@ -357,14 +363,16 @@ resize(N, X, VA, resize(VA, N, X)).
 
 :- pragma foreign_proc("C",
     set_if_in_range(VA0::in, I::in, X::in, VA::out),
-    [will_not_call_mercury, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = ML_va_set(VA0, I, X, &VA);
 ").
 
 :- pragma foreign_proc("C",
     unsafe_rewind(VA0::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     VA = ML_va_rewind(VA0);
 ").

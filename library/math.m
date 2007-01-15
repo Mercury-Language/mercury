@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: math.m.
 % Main author: bromage.
 % Stability: high.
-% 
+%
 % Higher mathematical operations.  (The basics are in float.m.)
 %
 % By default, domain errors are currently handled by throwing an exception.
@@ -36,7 +36,7 @@
 % predicate the error occurred, as well as giving you a stack trace if
 % that is enabled; with the checks disabled you only have the information
 % that the floating-point exception signal handler gives you.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -262,7 +262,8 @@
 
 :- pragma foreign_proc("C",
     math_domain_checks,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
     SUCCESS_INDICATOR = MR_FALSE;
@@ -295,7 +296,8 @@
     % Pythagoras' number
 :- pragma foreign_proc("C",
     math.pi = (Pi::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Pi = ML_FLOAT_PI;
 ").
@@ -321,7 +323,8 @@ math.pi = 3.1415926535897932384626433832795029.
     % Base of natural logarithms
 :- pragma foreign_proc("C",
     math.e = (E::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     E = ML_FLOAT_E;
 ").
@@ -346,7 +349,8 @@ math.e = 2.7182818284590452353602874713526625.
 
 :- pragma foreign_proc("C",
     math.ceiling(Num::in) = (Ceil::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Ceil = ceil(Num);
 ").
@@ -365,7 +369,8 @@ math.e = 2.7182818284590452353602874713526625.
 
 :- pragma foreign_proc("C",
     math.floor(Num::in) = (Floor::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Floor = floor(Num);
 ").
@@ -384,7 +389,8 @@ math.e = 2.7182818284590452353602874713526625.
 
 :- pragma foreign_proc("C",
     math.round(Num::in) = (Rounded::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Rounded = floor(Num+0.5);
 ").
@@ -417,7 +423,8 @@ math.sqrt(X) = SquareRoot :-
 
 :- pragma foreign_proc("C",
     math.sqrt_2(X::in) = (SquareRoot::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     SquareRoot = sqrt(X);
 ").
@@ -488,7 +495,8 @@ math.pow(X, Y) = Res :-
 
 :- pragma foreign_proc("C",
     math.pow_2(X::in, Y::in) = (Res::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Res = pow(X, Y);
 ").
@@ -509,7 +517,8 @@ math.pow(X, Y) = Res :-
 
 :- pragma foreign_proc("C",
     math.exp(X::in) = (Exp::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Exp = exp(X);
 ").
@@ -537,7 +546,8 @@ math.ln(X) = Log :-
 
 :- pragma foreign_proc("C",
     math.ln_2(X::in) = (Log::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Log = log(X);
 ").
@@ -565,7 +575,8 @@ math.log10(X) = Log :-
 
 :- pragma foreign_proc("C",
     math.log10_2(X::in) = (Log10::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Log10 = log10(X);
 ").
@@ -589,7 +600,8 @@ math.log2(X) = Log :-
 
 :- pragma foreign_proc("C",
     math.log2_2(X::in) = (Log2::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Log2 = log(X) / ML_FLOAT_LN2;
 ").
@@ -624,7 +636,8 @@ math.log(B, X) = Log :-
 
 :- pragma foreign_proc("C",
     math.log_2(B::in, X::in) = (Log::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Log = log(X) / log(B);
 ").
@@ -639,7 +652,8 @@ math.log_2(B, X) = math.ln_2(X) / math.ln_2(B).
 
 :- pragma foreign_proc("C",
     math.sin(X::in) = (Sin::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Sin = sin(X);
 ").
@@ -658,7 +672,8 @@ math.log_2(B, X) = math.ln_2(X) / math.ln_2(B).
 
 :- pragma foreign_proc("C",
     math.cos(X::in) = (Cos::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Cos = cos(X);
 ").
@@ -677,7 +692,8 @@ math.log_2(B, X) = math.ln_2(X) / math.ln_2(B).
 
 :- pragma foreign_proc("C",
     math.tan(X::in) = (Tan::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Tan = tan(X);
 ").
@@ -710,7 +726,8 @@ math.asin(X) = ASin :-
 
 :- pragma foreign_proc("C",
     math.asin_2(X::in) = (ASin::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     ASin = asin(X);
 ").
@@ -743,7 +760,8 @@ math.acos(X) = ACos :-
 
 :- pragma foreign_proc("C",
     math.acos_2(X::in) = (ACos::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     ACos = acos(X);
 ").
@@ -763,7 +781,8 @@ math.acos(X) = ACos :-
 
 :- pragma foreign_proc("C",
     math.atan(X::in) = (ATan::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     ATan = atan(X);
 ").
@@ -782,7 +801,8 @@ math.acos(X) = ACos :-
 
 :- pragma foreign_proc("C",
     math.atan2(Y::in, X::in) = (ATan2::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     ATan2 = atan2(Y, X);
 ").
@@ -801,7 +821,8 @@ math.acos(X) = ACos :-
 
 :- pragma foreign_proc("C",
     math.sinh(X::in) = (Sinh::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Sinh = sinh(X);
 ").
@@ -817,7 +838,8 @@ math.sinh(X) = Sinh :-
 
 :- pragma foreign_proc("C",
     math.cosh(X::in) = (Cosh::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Cosh = cosh(X);
 ").
@@ -833,7 +855,8 @@ math.cosh(X) = Cosh :-
 
 :- pragma foreign_proc("C",
     math.tanh(X::in) = (Tanh::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
 "
     Tanh = tanh(X);
 ").

@@ -315,17 +315,17 @@
                         % The user requests that this be predicate should
                         % be inlined, even if it exceeds the usual size limits.
                         % Used for pragma(inline).
-                        % Mutually exclusive with user_marked_no_inline.
+                        % Mutually exclusive with marker_user_marked_no_inline.
 
     ;       marker_user_marked_no_inline
                         % The user requests that this be predicate should
                         % not be inlined. Used for pragma(no_inline).
-                        % Mutually exclusive with user_marked_inline.
+                        % Mutually exclusive with marker_user_marked_inline.
 
     ;       marker_heuristic_inline
                         % The compiler (meaning probably inlining.m) requests
                         % that this predicate be inlined. Does not override
-                        % user_marked_no_inline.
+                        % marker_user_marked_no_inline.
 
     ;       marker_class_method
                         % Requests that this predicate be transformed into
