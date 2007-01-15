@@ -372,6 +372,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                     llds_instr(livevals(Livevals), ""),
                     llds_instr(goto(Proc), redirect_comment(Comment0)),
                     llds_instr(label(NewLabel), "non tail call"),
+                    llds_instr(livevals(Livevals), ""),
                     Instr0
                 ],
                 NewRemain = specified(NewInstrs, Instrs0),

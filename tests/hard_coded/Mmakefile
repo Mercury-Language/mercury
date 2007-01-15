@@ -20,6 +20,7 @@ ORDINARY_PROGS=	\
 	cc_multi_bug \
 	cc_nondet_disj \
 	checked_nondet_tailcall \
+	checked_nondet_tailcall_noinline \
 	closure_extension \
 	common_type_cast \
 	compare_spec \
