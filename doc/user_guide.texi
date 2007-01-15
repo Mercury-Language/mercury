@@ -700,6 +700,7 @@ This variable only has an effect with @samp{mmc --make}.
 Options to pass to the ml and c2init scripts.
 (Note that compilation model options should be
 specified in @code{GRADEFLAGS}, not in @code{MLFLAGS}.)
+These variables have no effect with @samp{mmc --make}.
 
 @item LDFLAGS and EXTRA_LDFLAGS
 @vindex LDFLAGS

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -901,7 +901,7 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
 options_variable_types =
     [grade_flags, linkage, mercury_linkage, lib_grades, lib_linkages,
     stdlib_dir, config_dir, mmc_flags, c_flags, java_flags, ilasm_flags,
-    csharp_flags, mcpp_flags, ml_objs, lib_dirs, ld_flags,
+    csharp_flags, mcpp_flags, ml_objs, lib_dirs, ld_flags, ld_libflags,
     libraries, ml_libs, c2init_args, install_prefix].
 
 :- func options_variable_name(options_variable_type) = string.
