@@ -50,6 +50,7 @@ syn keyword mercuryPragma       promise_equivalent_clauses
 syn keyword mercuryCInterface   c_header_code c_code
 syn keyword mercuryCInterface   foreign_proc foreign_decl foreign_code
 syn keyword mercuryCInterface   foreign_type foreign_import_module
+syn keyword mercuryCInterface   foreign_export
 syn keyword mercuryCInterface   may_call_mercury will_not_call_mercury
 syn keyword mercuryCInterface   thread_safe not_thread_safe maybe_thread_safe
 syn keyword mercuryCInterface   promise_pure promise_semipure
