@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002,2003-2006 The University of Melbourne.
+% Copyright (C) 2002,2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,6 +91,10 @@
 :- include_module llds_out.
 :- include_module layout_out.
 :- include_module rtti_out.
+
+% The LLDS->x86_64 asm phase.
+:- include_module x86_64_instrs.
+:- include_module x86_64_out.
 
 :- implementation.
 
