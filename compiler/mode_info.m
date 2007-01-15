@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -646,16 +646,16 @@ mode_info_var_list_is_live(ModeInfo, [Var | Vars], [Live | Lives]) :-
 
 mode_info_var_is_live(ModeInfo, Var, Result) :-
     ( bag.contains(ModeInfo ^ live_vars, Var) ->
-        Result = live
+        Result = is_live
     ;
-        Result = dead
+        Result = is_dead
     ).
 
 mode_info_var_is_nondet_live(ModeInfo, Var, Result) :-
     ( bag.contains(ModeInfo ^ nondet_live_vars, Var) ->
-        Result = live
+        Result = is_live
     ;
-        Result = dead
+        Result = is_dead
     ).
 
 mode_info_get_liveness(ModeInfo, LiveVars) :-

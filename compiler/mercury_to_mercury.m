@@ -1293,10 +1293,10 @@ mercury_format_inst(not_reached, _, !U) :-
 
 mercury_format_is_live_comma(IsLive, !U) :-
     (
-        IsLive = live,
+        IsLive = is_live,
         add_string("live, ", !U)
     ;
-        IsLive = dead,
+        IsLive = is_dead,
         add_string("dead, ", !U)
     ).
 

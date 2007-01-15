@@ -371,14 +371,15 @@
 :- import_module int.
 :- import_module pair.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
 %----------------------------------------------------------------------------%
 
 :- type dead_or_alive
-    --->    dead
-    ;       alive.
+    --->    doa_dead
+    ;       doa_alive.
 
     % The state of a variable can be one of three kinds: const, cached
     % and general.
@@ -546,8 +547,8 @@ init_var_locn_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap,
         ;
             set.singleton_set(NewLocs, Lval),
             set.init(Using),
-            State = var_state(NewLocs, no, no, Using, alive),
-            map.det_insert(!.VarStateMap, Var, State, !:VarStateMap)
+            State = var_state(NewLocs, no, no, Using, doa_alive),
+            svmap.det_insert(Var, State, !VarStateMap)
         ),
         make_var_depend_on_lval_roots(Var, Lval, !LocVarMap)
     ),
@@ -565,7 +566,7 @@ var_locn_get_var_locations(VLI, VarLocations) :-
     pair(prog_var, set(lval))::out) is semidet.
 
 convert_live_to_lval_set(Var - State, Var - Lvals) :-
-    State = var_state(Lvals, _, _, _, alive).
+    State = var_state(Lvals, _, _, _, doa_alive).
 
 %----------------------------------------------------------------------------%
 
@@ -649,7 +650,7 @@ try_clobber_lval_in_var_state_map(Lval, OkToDeleteVars, OkToDeleteAny, Var,
     ;
         OkToDeleteAny = yes
     ;
-        DeadOrAlive = dead,
+        DeadOrAlive = doa_dead,
         set.to_sorted_list(Using, UsingVars),
         recursive_using_vars_dead_and_ok_to_delete(UsingVars,
             !.VarStateMap, OkToDeleteVars)
@@ -667,7 +668,7 @@ recursive_using_vars_dead_and_ok_to_delete([Var | Vars], VarStateMap,
     ;
         map.lookup(VarStateMap, Var, State),
         State = var_state(_, _, _, Using, DeadOrAlive),
-        DeadOrAlive = dead,
+        DeadOrAlive = doa_dead,
         set.to_sorted_list(Using, UsingVars),
         recursive_using_vars_dead_and_ok_to_delete(UsingVars,
             VarStateMap, OkToDeleteVars)
@@ -686,7 +687,7 @@ var_locn_assign_var_to_var(Var, OldVar, !VLI) :-
     (
         MaybeExprRval = yes(_),
         State = var_state(Lvals, MaybeConstRval, yes(var(OldVar)), set.init,
-            alive),
+            doa_alive),
         set.insert(Using0, Var, Using),
         OldState = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
             DeadOrAlive),
@@ -694,7 +695,7 @@ var_locn_assign_var_to_var(Var, OldVar, !VLI) :-
     ;
         MaybeExprRval = no,
         set.init(Empty),
-        State = var_state(Lvals, MaybeConstRval, no, Empty, alive),
+        State = var_state(Lvals, MaybeConstRval, no, Empty, doa_alive),
         VarStateMap1 = VarStateMap0
     ),
     map.det_insert(VarStateMap1, Var, State, VarStateMap),
@@ -728,7 +729,7 @@ var_locn_assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code,
             Lvals = set.map(add_field_offset(yes(Ptag),
                 const(llconst_int(Offset))), BaseVarLvals),
             set.init(Using),
-            State = var_state(Lvals, MaybeConstRval, no, Using, alive),
+            State = var_state(Lvals, MaybeConstRval, no, Using, doa_alive),
             map.det_insert(VarStateMap0, Var, State, VarStateMap),
             var_locn_set_var_state_map(VarStateMap, !VLI),
 
@@ -739,7 +740,7 @@ var_locn_assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code,
             set.init(Lvals),
             Expr = lval(Lval0),
             set.init(Using),
-            State = var_state(Lvals, no, yes(Expr), Using, alive),
+            State = var_state(Lvals, no, yes(Expr), Using, doa_alive),
             map.det_insert(VarStateMap0, Var, State, VarStateMap1),
             add_use_ref(BaseVar, Var, VarStateMap1, VarStateMap),
             var_locn_set_var_state_map(VarStateMap, !VLI)
@@ -750,7 +751,7 @@ var_locn_assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code,
 
         var_locn_get_var_state_map(!.VLI, VarStateMap0),
         set.singleton_set(LvalSet, Lval),
-        State = var_state(LvalSet, no, no, set.init, alive),
+        State = var_state(LvalSet, no, no, set.init, doa_alive),
         map.det_insert(VarStateMap0, Var, State, VarStateMap),
         var_locn_set_var_state_map(VarStateMap, !VLI),
 
@@ -772,7 +773,7 @@ var_locn_assign_const_to_var(Var, ConstRval0, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     var_locn_get_exprn_opts(!.VLI, ExprnOpts),
     ( expr_is_constant(VarStateMap0, ExprnOpts, ConstRval0, ConstRval) ->
-        State = var_state(set.init, yes(ConstRval), no, set.init, alive),
+        State = var_state(set.init, yes(ConstRval), no, set.init, doa_alive),
         map.det_insert(VarStateMap0, Var, State, VarStateMap),
         var_locn_set_var_state_map(VarStateMap, !VLI)
     ;
@@ -786,7 +787,7 @@ var_locn_assign_expr_to_var(Var, Rval, empty, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
-    State = var_state(set.init, no, yes(Rval), set.init, alive),
+    State = var_state(set.init, no, yes(Rval), set.init, doa_alive),
     map.det_insert(VarStateMap0, Var, State, VarStateMap1),
 
     exprn_aux.vars_in_rval(Rval, ContainedVars0),
@@ -999,7 +1000,7 @@ remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
     var_locn_set_var_state_map(VarStateMap, !VLI),
     (
         set.empty(Using),
-        DeadOrAlive = dead
+        DeadOrAlive = doa_dead
     ->
         var_locn_var_becomes_dead(ContainedVar, no, !VLI)
     ;
@@ -1023,7 +1024,7 @@ var_locn_set_magic_var_location(Var, Lval, !VLI) :-
 
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     set.singleton_set(LvalSet, Lval),
-    State = var_state(LvalSet, no, no, set.init, alive),
+    State = var_state(LvalSet, no, no, set.init, doa_alive),
     map.det_insert(VarStateMap0, Var, State, VarStateMap),
     var_locn_set_var_state_map(VarStateMap, !VLI).
 
@@ -1522,11 +1523,11 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
         State0 = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
             DeadOrAlive0),
         (
-            DeadOrAlive0 = dead,
+            DeadOrAlive0 = doa_dead,
             expect(unify(FirstTime, no), this_file,
                 "var_becomes_dead: already dead")
         ;
-            DeadOrAlive0 = alive
+            DeadOrAlive0 = doa_alive
         ),
         ( set.empty(Using) ->
             map.det_remove(VarStateMap0, Var, _, VarStateMap),
@@ -1541,7 +1542,7 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
             remove_use_refs(MaybeExprRval, Var, !VLI)
         ;
             State = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
-                dead),
+                doa_dead),
             map.det_update(VarStateMap0, Var, State, VarStateMap),
             var_locn_set_var_state_map(VarStateMap, !VLI)
         )

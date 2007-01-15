@@ -1135,9 +1135,11 @@ maybe_clobber_insts([_ | _], [], _) :-
     unexpected(this_file, "maybe_clobber_insts: length mismatch").
 maybe_clobber_insts([], [], []).
 maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
-    ( IsLive = dead ->
+    (
+        IsLive = is_dead,
         Inst = ground(clobbered, none)
     ;
+        IsLive = is_live,
         Inst = Inst0
     ),
     maybe_clobber_insts(Insts0, IsLives, Insts).
@@ -2806,8 +2808,8 @@ modecheck_var_list_is_live_no_exact_match([Var | Vars], [IsLive | IsLives],
 modecheck_var_is_live_no_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
     mode_info_var_is_live(!.ModeInfo, VarId, VarIsLive),
     (
-        ExpectedIsLive = dead,
-        VarIsLive = live
+        ExpectedIsLive = is_dead,
+        VarIsLive = is_live
     ->
         set.singleton_set(WaitingVars, VarId),
         mode_info_error(WaitingVars, mode_error_var_is_live(VarId), !ModeInfo)
@@ -2994,7 +2996,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
         instmap.lookup_var(InstMap0, Var0, Inst0),
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
         (
-            abstractly_unify_inst(dead, Inst0, FinalInst,
+            abstractly_unify_inst(is_dead, Inst0, FinalInst,
                 fake_unify, UnifyInst, _Det, ModuleInfo0, ModuleInfo1)
         ->
             ModuleInfo = ModuleInfo1,
@@ -3445,10 +3447,10 @@ get_live_vars([], [_ | _], _) :-
     unexpected(this_file, "get_live_vars: length mismatch").
 get_live_vars([Var | Vars], [IsLive | IsLives], LiveVars) :-
     (
-        IsLive = live,
+        IsLive = is_live,
         LiveVars = [Var | LiveVars0]
     ;
-        IsLive = dead,
+        IsLive = is_dead,
         LiveVars = LiveVars0
     ),
     get_live_vars(Vars, IsLives, LiveVars0).

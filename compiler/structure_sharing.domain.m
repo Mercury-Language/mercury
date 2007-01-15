@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -891,16 +891,16 @@ bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) :-
     Test = (pred(Pair::in) is semidet :-
         Pair = Mode - Type,
 
-        % mode is not unique nor clobbered.
+        % Mode is not unique nor clobbered.
         mode_get_insts(ModuleInfo, Mode, _LeftInst, RightInst),
         \+ inst_is_unique(ModuleInfo, RightInst),
         \+ inst_is_clobbered(ModuleInfo, RightInst),
 
-        % mode is output.
+        % Mode is output.
         mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
         ArgMode = top_out,
 
-        % type is not primitive
+        % Type is not primitive.
         \+ type_is_atomic(ModuleInfo, Type)
     ),
     list.filter(Test, ModeTypePairs, TrueModeTypePairs),

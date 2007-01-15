@@ -4097,21 +4097,21 @@ inst_name_to_term(mostly_uniq_inst(InstName), Context) = Term :-
         Context, Term).
 inst_name_to_term(unify_inst(Liveness, InstA, InstB, Real), Context) = Term :-
     construct_qualified_term(unqualified("$unify"),
-        [make_atom((Liveness = live -> "live" ; "dead"), Context)] ++
+        [make_atom((Liveness = is_live -> "live" ; "dead"), Context)] ++
         list.map(map_inst_to_term(Context), [InstA, InstB]) ++
         [make_atom((Real = real_unify -> "real" ; "fake"), Context)],
         Context, Term).
 inst_name_to_term(ground_inst(InstName, IsLive, Uniq, Real), Context) = Term :-
     construct_qualified_term(unqualified("$ground"),
         [inst_name_to_term(InstName, Context),
-        make_atom((IsLive = live -> "live" ; "dead"), Context),
+        make_atom((IsLive = is_live -> "live" ; "dead"), Context),
         make_atom(inst_uniqueness(Uniq, "shared"), Context),
         make_atom((Real = real_unify -> "real" ; "fake"), Context)],
         Context, Term).
 inst_name_to_term(any_inst(InstName, IsLive, Uniq, Real), Context) = Term :-
     construct_qualified_term(unqualified("$any"),
         [inst_name_to_term(InstName, Context),
-        make_atom((IsLive = live -> "live" ; "dead"), Context),
+        make_atom((IsLive = is_live -> "live" ; "dead"), Context),
         make_atom(inst_uniqueness(Uniq, "shared"), Context),
         make_atom((Real = real_unify -> "real" ; "fake"), Context)],
         Context, Term).

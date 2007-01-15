@@ -1300,7 +1300,7 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
         instmap.lookup_var(InstMap, Arg, ArgInst0),
         mode_get_insts(!.ModuleInfo, Mode0, _, FinalInst),
         (
-            abstractly_unify_inst(dead, ArgInst0, FinalInst,
+            abstractly_unify_inst(is_dead, ArgInst0, FinalInst,
                 fake_unify, UnifyInst, _, !ModuleInfo)
         ->
             Mode = (ArgInst0 -> UnifyInst)
@@ -1367,9 +1367,9 @@ get_arg_lives(_, [], []).
 get_arg_lives(ModuleInfo, [Mode | Modes], [IsLive | IsLives]) :-
     mode_get_insts(ModuleInfo, Mode, _InitialInst, FinalInst),
     ( inst_is_clobbered(ModuleInfo, FinalInst) ->
-        IsLive = dead
+        IsLive = is_dead
     ;
-        IsLive = live
+        IsLive = is_live
     ),
     get_arg_lives(ModuleInfo, Modes, IsLives).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2000-2006 The University of Melbourne.
+% Copyright (C) 1995-1998, 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -517,9 +517,9 @@ handle_inst_var_subs_2(Recurse, Continue, InstA, InstB, Type, !Info) :-
 
         % Call abstractly_unify_inst to calculate the uniqueness of the
         % inst represented by the constrained_inst_var.
-        % We pass `Live = dead' because we want
+        % We pass `Live = is_dead' because we want
         % abstractly_unify(unique, unique) = unique, not shared.
-        Live = dead,
+        Live = is_dead,
         abstractly_unify_inst(Live, InstA, InstB1, fake_unify,
             Inst, _Det, ModuleInfo0, ModuleInfo),
         !:Info = !.Info ^ module_info := ModuleInfo,
@@ -1811,20 +1811,22 @@ inst_list_is_free([Inst | Insts], ModuleInfo) :-
 
 inst_list_is_ground_or_dead([], [], _).
 inst_list_is_ground_or_dead([Inst | Insts], [Live | Lives], ModuleInfo) :-
-    ( Live = live ->
+    (
+        Live = is_live,
         inst_is_ground(ModuleInfo, Inst)
     ;
-        true
+        Live = is_dead
     ),
     inst_list_is_ground_or_dead(Insts, Lives, ModuleInfo).
 
 inst_list_is_ground_or_any_or_dead([], [], _).
 inst_list_is_ground_or_any_or_dead([Inst | Insts], [Live | Lives],
         ModuleInfo) :-
-    ( Live = live ->
+    (
+        Live = is_live,
         inst_is_ground_or_any(ModuleInfo, Inst)
     ;
-        true
+        Live = is_dead 
     ),
     inst_list_is_ground_or_any_or_dead(Insts, Lives, ModuleInfo).
 

@@ -127,6 +127,58 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Higher-order operations on proc_arg_vectors
+%
+
+%
+% NOTE: these higher-order operations all work in a similar fashion
+%       to their counterparts in library/list.m.
+
+:- func proc_arg_vector_map(func(T) = U, proc_arg_vector(T)) =
+    proc_arg_vector(U).
+
+:- pred proc_arg_vector_map(pred(T, U)::in(pred(in, out) is det),
+    proc_arg_vector(T)::in, proc_arg_vector(U)::out) is det.
+
+:- pred proc_arg_vector_map_corresponding(
+    pred(T, U, V)::in(pred(in, in, out) is det),
+    proc_arg_vector(T)::in, proc_arg_vector(U)::in, proc_arg_vector(V)::out)
+    is det.
+
+:- pred proc_arg_vector_all_true(pred(T)::in(pred(in) is semidet),
+    proc_arg_vector(T)::in) is semidet.
+
+:- pred proc_arg_vector_map_corresponding_foldl2(
+    pred(A, B, C, D, D, E, E)::in(pred(in, in, out, in, out, in, out) is det),
+    proc_arg_vector(A)::in, proc_arg_vector(B)::in, proc_arg_vector(C)::out,
+    D::in, D::out, E::in, E::out) is det.
+
+:- pred proc_arg_vector_foldl3_corresponding(
+    pred(A, B, C, C, D, D, E, E)
+    ::in(pred(in, in, in, out, in, out, in, out) is det),
+    proc_arg_vector(A)::in, proc_arg_vector(B)::in,
+    C::in, C::out, D::in, D::out, E::in, E::out) is det.
+
+:- pred proc_arg_vector_foldl2_corresponding3(
+    pred(A, B, C, D, D, E, E)
+    ::in(pred(in, in, in, in, out, in, out) is det),
+    proc_arg_vector(A)::in, proc_arg_vector(B)::in, proc_arg_vector(C)::in,
+    D::in, D::out, E::in, E::out) is det.
+
+:- pred proc_arg_vector_foldl3_corresponding3(
+    pred(A, B, C, D, D, E, E, F, F)
+    ::in(pred(in, in, in, in, out, in, out, in, out) is det),
+    proc_arg_vector(A)::in, proc_arg_vector(B)::in, proc_arg_vector(C)::in,
+    D::in, D::out, E::in, E::out, F::in, F::out) is det.
+
+:- pred proc_arg_vector_foldl4_corresponding3(
+    pred(A, B, C, D, D, E, E, F, F, G, G)
+    ::in(pred(in, in, in, in, out, in, out, in, out, in, out) is det),
+    proc_arg_vector(A)::in, proc_arg_vector(B)::in, proc_arg_vector(C)::in,
+    D::in, D::out, E::in, E::out, F::in, F::out, G::in, G::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
 % Stuff related to the polymorphism pass
 %
     
@@ -355,6 +407,254 @@ proc_arg_vector_to_func_args(Vector, FuncArgs, FuncRetVal) :-
         MaybeRetValue = no,
         unexpected(this_file, "Call to arg_vector_to_func_args/3 " ++
             "with predicate.")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+proc_arg_vector_map(Func, V0) = V :-
+    V0 = proc_arg_vector(ITI0, ITCI0, UTI0, ETI0, UTCI0, ETCI0, Args0,
+        MaybeRetVal0),
+    ITI  = list.map(Func, ITI0),
+    ITCI = list.map(Func, ITCI0),
+    UTI  = list.map(Func, UTI0),
+    ETI  = list.map(Func, ETI0),
+    UTCI = list.map(Func, UTCI0),
+    ETCI = list.map(Func, ETCI0),
+    Args = list.map(Func, Args0),
+    (
+        MaybeRetVal0 = yes(RetVal0),
+        RetVal = Func(RetVal0),
+        MaybeRetVal = yes(RetVal)
+    ;
+        MaybeRetVal0 = no,
+        MaybeRetVal  = no
+    ),
+    V = proc_arg_vector(ITI, ITCI, UTI, ETI, UTCI, ETCI, Args,
+        MaybeRetVal).
+
+proc_arg_vector_map(Pred, V0, V) :-
+    V0 = proc_arg_vector(ITI0, ITCI0, UTI0, ETI0, UTCI0, ETCI0, Args0,
+        MaybeRetVal0),
+    list.map(Pred, ITI0,  ITI),
+    list.map(Pred, ITCI0, ITCI),
+    list.map(Pred, UTI0,  UTI),
+    list.map(Pred, ETI0,  ETI),
+    list.map(Pred, UTCI0, UTCI),
+    list.map(Pred, ETCI0, ETCI),
+    list.map(Pred, Args0, Args),
+    (
+        MaybeRetVal0 = yes(RetVal0),
+        Pred(RetVal0, RetVal),
+        MaybeRetVal = yes(RetVal)
+    ;
+        MaybeRetVal0 = no,
+        MaybeRetVal  = no
+    ),
+    V = proc_arg_vector(ITI, ITCI, UTI, ETI, UTCI, ETCI, Args,
+        MaybeRetVal).
+
+proc_arg_vector_map_corresponding(P, A, B, C) :-
+    A = proc_arg_vector(ITIA, ITCIA, UTIA, ETIA, UTCIA, ETCIA, ArgsA,
+        MaybeRetValA),
+    B = proc_arg_vector(ITIB, ITCIB, UTIB, ETIB, UTCIB, ETCIB, ArgsB,
+        MaybeRetValB),
+    list.map_corresponding(P, ITIA, ITIB, ITIC),
+    list.map_corresponding(P, ITCIA, ITCIB, ITCIC),
+    list.map_corresponding(P, UTIA, UTIB, UTIC),
+    list.map_corresponding(P, ETIA, ETIB, ETIC),
+    list.map_corresponding(P, UTCIA, UTCIB, UTCIC),
+    list.map_corresponding(P, ETCIA, ETCIB, ETCIC),
+    list.map_corresponding(P, ArgsA, ArgsB, ArgsC),
+    (
+        MaybeRetValA = yes(RetValA),
+        MaybeRetValB = yes(RetValB)
+    ->
+        P(RetValA, RetValB, RetValC),
+        MaybeRetValC = yes(RetValC)
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = no
+    ->
+        MaybeRetValC = no 
+    ;
+        unexpected(this_file, "proc_arg_vector_map_corresponding/4: " ++ 
+            "mismatched proc_arg_vectors")
+    ),
+    C = proc_arg_vector(ITIC, ITCIC, UTIC, ETIC, UTCIC, ETCIC, ArgsC,
+        MaybeRetValC).
+
+proc_arg_vector_all_true(P, V) :-
+    V = proc_arg_vector(ITI, ITCI, UTI, ETI, UTCI, ETCI, Args, MaybeRetVal),
+    list.all_true(P, ITI),
+    list.all_true(P, ITCI),
+    list.all_true(P, UTI),
+    list.all_true(P, ETI),
+    list.all_true(P, UTCI),
+    list.all_true(P, ETCI),
+    list.all_true(P, Args),
+    (
+        MaybeRetVal = yes(RetVal),
+        P(RetVal)
+    ;
+        MaybeRetVal = no
+    ).
+
+proc_arg_vector_map_corresponding_foldl2(P, A, B, C, !Acc1, !Acc2) :-
+    A = proc_arg_vector(ITIA, ITCIA, UTIA, ETIA, UTCIA, ETCIA, ArgsA,
+        MaybeRetValA),
+    B = proc_arg_vector(ITIB, ITCIB, UTIB, ETIB, UTCIB, ETCIB, ArgsB,
+        MaybeRetValB),
+    list.map_corresponding_foldl2(P, ITIA,  ITIB,  ITIC,  !Acc1, !Acc2),
+    list.map_corresponding_foldl2(P, ITCIA, ITCIB, ITCIC, !Acc1, !Acc2),
+    list.map_corresponding_foldl2(P, UTIA,  UTIB,  UTIC,  !Acc1, !Acc2),
+    list.map_corresponding_foldl2(P, ETIA,  ETIB,  ETIC,  !Acc1, !Acc2),
+    list.map_corresponding_foldl2(P, UTCIA, UTCIB, UTCIC, !Acc1, !Acc2),
+    list.map_corresponding_foldl2(P, ETCIA, ETCIB, ETCIC, !Acc1, !Acc2),
+    list.map_corresponding_foldl2(P, ArgsA, ArgsB, ArgsC, !Acc1, !Acc2),
+    (
+        MaybeRetValA = yes(RetValA),
+        MaybeRetValB = yes(RetValB)
+    ->
+        P(RetValA, RetValB, RetValC, !Acc1, !Acc2),
+        MaybeRetValC = yes(RetValC)
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = no
+    -> 
+        MaybeRetValC = no
+    ;
+        unexpected(this_file, "proc_arg_vector_map_corresponding_foldl2/8: "
+            ++ "mismatched proc_arg_vectors")
+    ),
+    C = proc_arg_vector(ITIC, ITCIC, UTIC, ETIC, UTCIC, ETCIC, ArgsC,
+        MaybeRetValC).
+
+proc_arg_vector_foldl3_corresponding(P, A, B, !Acc1, !Acc2, !Acc3) :-
+    A = proc_arg_vector(ITIA, ITCIA, UTIA, ETIA, UTCIA, ETCIA, ArgsA,
+        MaybeRetValA),
+    B = proc_arg_vector(ITIB, ITCIB, UTIB, ETIB, UTCIB, ETCIB, ArgsB,
+        MaybeRetValB),
+    list.foldl3_corresponding(P, ITIA,  ITIB,  !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding(P, ITCIA, ITCIB, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding(P, UTIA,  UTIB,  !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding(P, ETIA,  ETIB,  !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding(P, UTCIA, UTCIB, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding(P, ETCIA, ETCIB, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding(P, ArgsA, ArgsB, !Acc1, !Acc2, !Acc3),
+    (
+        MaybeRetValA = yes(RetValA),
+        MaybeRetValB = yes(RetValB)
+    ->
+        P(RetValA, RetValB, !Acc1, !Acc2, !Acc3)
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = no
+    -> 
+        true
+    ;
+        unexpected(this_file, "proc_arg_vector_fold3_corresponding/9: "
+            ++ "mismatched proc_arg_vectors")
+    ).
+
+proc_arg_vector_foldl2_corresponding3(P, A, B, C, !Acc1, !Acc2) :-
+    A = proc_arg_vector(ITIA, ITCIA, UTIA, ETIA, UTCIA, ETCIA, ArgsA,
+        MaybeRetValA),
+    B = proc_arg_vector(ITIB, ITCIB, UTIB, ETIB, UTCIB, ETCIB, ArgsB,
+        MaybeRetValB),
+    C = proc_arg_vector(ITIC, ITCIC, UTIC, ETIC, UTCIC, ETCIC, ArgsC,
+        MaybeRetValC),
+    list.foldl2_corresponding3(P, ITIA,  ITIB,  ITIC,  !Acc1, !Acc2),
+    list.foldl2_corresponding3(P, ITCIA, ITCIB, ITCIC, !Acc1, !Acc2),
+    list.foldl2_corresponding3(P, UTIA,  UTIB,  UTIC,  !Acc1, !Acc2),
+    list.foldl2_corresponding3(P, ETIA,  ETIB,  ETIC,  !Acc1, !Acc2),
+    list.foldl2_corresponding3(P, UTCIA, UTCIB, UTCIC, !Acc1, !Acc2),
+    list.foldl2_corresponding3(P, ETCIA, ETCIB, ETCIC, !Acc1, !Acc2),
+    list.foldl2_corresponding3(P, ArgsA, ArgsB, ArgsC, !Acc1, !Acc2),
+    (
+        MaybeRetValA = yes(RetValA),
+        MaybeRetValB = yes(RetValB),
+        MaybeRetValC = yes(RetValC)
+    ->
+        P(RetValA, RetValB, RetValC, !Acc1, !Acc2)
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = no,
+        MaybeRetValC = no
+    -> 
+        true
+    ;
+        unexpected(this_file, "proc_arg_vector_foldl2_corresponding3/8 "
+            ++ "mismatched proc_arg_vectors")
+    ).
+
+proc_arg_vector_foldl3_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3) :-
+    A = proc_arg_vector(ITIA, ITCIA, UTIA, ETIA, UTCIA, ETCIA, ArgsA,
+        MaybeRetValA),
+    B = proc_arg_vector(ITIB, ITCIB, UTIB, ETIB, UTCIB, ETCIB, ArgsB,
+        MaybeRetValB),
+    C = proc_arg_vector(ITIC, ITCIC, UTIC, ETIC, UTCIC, ETCIC, ArgsC,
+        MaybeRetValC),
+    list.foldl3_corresponding3(P, ITIA,  ITIB,  ITIC,  !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding3(P, ITCIA, ITCIB, ITCIC, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding3(P, UTIA,  UTIB,  UTIC,  !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding3(P, ETIA,  ETIB,  ETIC,  !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding3(P, UTCIA, UTCIB, UTCIC, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding3(P, ETCIA, ETCIB, ETCIC, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding3(P, ArgsA, ArgsB, ArgsC, !Acc1, !Acc2, !Acc3),
+    (
+        MaybeRetValA = yes(RetValA),
+        MaybeRetValB = yes(RetValB),
+        MaybeRetValC = yes(RetValC)
+    ->
+        P(RetValA, RetValB, RetValC, !Acc1, !Acc2, !Acc3)
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = no,
+        MaybeRetValC = no
+    -> 
+        true
+    ;
+        unexpected(this_file, "proc_arg_vector_foldl3_corresponding3/10 "
+            ++ "mismatched proc_arg_vectors")
+    ).
+
+proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
+        !Acc4) :-
+    A = proc_arg_vector(ITIA, ITCIA, UTIA, ETIA, UTCIA, ETCIA, ArgsA,
+        MaybeRetValA),
+    B = proc_arg_vector(ITIB, ITCIB, UTIB, ETIB, UTCIB, ETCIB, ArgsB,
+        MaybeRetValB),
+    C = proc_arg_vector(ITIC, ITCIC, UTIC, ETIC, UTCIC, ETCIC, ArgsC,
+        MaybeRetValC),
+    list.foldl4_corresponding3(P, ITIA,  ITIB,  ITIC,  !Acc1, !Acc2, !Acc3,
+        !Acc4),
+    list.foldl4_corresponding3(P, ITCIA, ITCIB, ITCIC, !Acc1, !Acc2, !Acc3,
+        !Acc4),
+    list.foldl4_corresponding3(P, UTIA,  UTIB,  UTIC,  !Acc1, !Acc2, !Acc3,
+        !Acc4),
+    list.foldl4_corresponding3(P, ETIA,  ETIB,  ETIC,  !Acc1, !Acc2, !Acc3,
+        !Acc4),
+    list.foldl4_corresponding3(P, UTCIA, UTCIB, UTCIC, !Acc1, !Acc2, !Acc3,
+        !Acc4),
+    list.foldl4_corresponding3(P, ETCIA, ETCIB, ETCIC, !Acc1, !Acc2, !Acc3,
+        !Acc4),
+    list.foldl4_corresponding3(P, ArgsA, ArgsB, ArgsC, !Acc1, !Acc2, !Acc3,
+        !Acc4),
+    (
+        MaybeRetValA = yes(RetValA),
+        MaybeRetValB = yes(RetValB),
+        MaybeRetValC = yes(RetValC)
+    ->
+        P(RetValA, RetValB, RetValC, !Acc1, !Acc2, !Acc3, !Acc4)
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = no,
+        MaybeRetValC = no
+    -> 
+        true
+    ;
+        unexpected(this_file, "proc_arg_vector_foldl4_corresponding3/12 "
+            ++ "mismatched proc_arg_vectors")
     ).
 
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -542,10 +542,10 @@ bind_var_to_functor(Var, Type, ConsId, !InstMap, !ModuleInfo) :-
 
 bind_inst_to_functor(Type, ConsId, !Inst, !ModuleInfo) :-
     Arity = cons_id_adjusted_arity(!.ModuleInfo, Type, ConsId),
-    list.duplicate(Arity, dead, ArgLives),
+    list.duplicate(Arity, is_dead, ArgLives),
     list.duplicate(Arity, free, ArgInsts),
     (
-        abstractly_unify_inst_functor(dead, !.Inst, ConsId, ArgInsts,
+        abstractly_unify_inst_functor(is_dead, !.Inst, ConsId, ArgInsts,
             ArgLives, real_unify, Type, !:Inst, _Det, !ModuleInfo)
     ->
         true
@@ -959,7 +959,7 @@ unify_var([InstMap - Nonlocals| Rest], Var, !InstList, !Inst,
             % We can ignore the determinism of the unification:
             % if it isn't det, then there will be a mode error
             % or a determinism error in one of the parallel conjuncts.
-            abstractly_unify_inst(live, !.Inst, VarInst,
+            abstractly_unify_inst(is_live, !.Inst, VarInst,
                 fake_unify, !:Inst, _Det, !ModuleInfo)
         ->
             true
@@ -1147,7 +1147,7 @@ unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
                 % isn't det, then there will be a mode error or a determinism
                 % error in one of the parallel conjuncts.
 
-                abstractly_unify_inst(live, InstA, InstB,
+                abstractly_unify_inst(is_live, InstA, InstB,
                     fake_unify, Inst, _Det, !ModuleInfo)
             ->
                 svmap.det_insert(Var, Inst, !InstMapping)

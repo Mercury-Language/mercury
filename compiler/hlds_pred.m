@@ -13,7 +13,6 @@
 % and procedures.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_pred.
 :- interface.
@@ -157,20 +156,16 @@
     ;       goal_type_promise(promise_type)
     ;       goal_type_none.
 
-    % Note: `liveness' and `liveness_info' record liveness in the sense
-    % used by code generation.  This is *not* the same thing as the notion
-    % of liveness used by mode analysis!  See compiler/notes/glossary.html.
-
-:- type liveness_info   ==  set(prog_var).  % The live variables
-
-:- type liveness
-    --->    live
-    ;       dead.
+    % NOTE: `liveness_info' records liveness in the sense used by code
+    % generation.  This is *not* the same thing as the notion of liveness
+    % used by mode analysis!  See compiler/notes/glossary.html.
+    %
+:- type liveness_info == set(prog_var).  % The live variables.
 
 :- type arg_info
     --->    arg_info(
-                arg_loc,    % stored location
-                arg_mode    % mode of top functor
+                arg_loc,    % Stored location.
+                arg_mode    % Mode of top functor.
             ).
 
     % The `arg_mode' specifies the mode of the top-level functor

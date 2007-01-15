@@ -173,7 +173,7 @@ make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
 
 select_live_vars([], _, []).
 select_live_vars([Var|Vars], ModeInfo, LiveVars) :-
-    ( mode_info_var_is_live(ModeInfo, Var, live) ->
+    ( mode_info_var_is_live(ModeInfo, Var, is_live) ->
         select_live_vars(Vars, ModeInfo, LiveVars1),
         LiveVars = [Var | LiveVars1]
     ;
@@ -185,7 +185,7 @@ select_live_vars([Var|Vars], ModeInfo, LiveVars) :-
 
 select_nondet_live_vars([], _, []).
 select_nondet_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
-    ( mode_info_var_is_nondet_live(ModeInfo, Var, live) ->
+    ( mode_info_var_is_nondet_live(ModeInfo, Var, is_live) ->
         select_nondet_live_vars(Vars, ModeInfo, NondetLiveVars1),
         NondetLiveVars = [Var | NondetLiveVars1]
     ;

@@ -732,9 +732,13 @@ generate_pred_args(_, _, [_ | _], [], _, !MayUseAtomic) :-
 generate_pred_args(ModuleInfo, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
         [Rval | Rvals], !MayUseAtomic) :-
     ArgInfo = arg_info(_, ArgMode),
-    ( ArgMode = top_in ->
+    (
+        ArgMode = top_in,
         Rval = yes(var(Var))
     ;
+        ( ArgMode = top_out
+        ; ArgMode = top_unused
+        ),
         Rval = no
     ),
     map.lookup(VarTypes, Var, Type),
@@ -787,9 +791,13 @@ generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
     ;
         UniMode = ((_LI - RI) -> (_LF - RF)),
         mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, ArgMode),
-        ( ArgMode = top_in ->
+        (
+            ArgMode = top_in,
             Rval = yes(var(Var))
         ;
+            ( ArgMode = top_out
+            ; ArgMode = top_unused
+            ),
             Rval = no
         ),
         generate_cons_args_2(Vars, Types, UniModes, FirstOffset, CurArgNum + 1,

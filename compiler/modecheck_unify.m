@@ -151,10 +151,10 @@ modecheck_unification_2(X, rhs_var(Y), Unification0, UnifyContext,
     mode_info_var_is_live(!.ModeInfo, X, LiveX),
     mode_info_var_is_live(!.ModeInfo, Y, LiveY),
     (
-        ( LiveX = live, LiveY = live ->
-            BothLive = live
+        ( LiveX = is_live, LiveY = is_live ->
+            BothLive = is_live
         ;
-            BothLive = dead
+            BothLive = is_dead
         ),
         abstractly_unify_inst(BothLive, InstOfX, InstOfY, real_unify,
             UnifyInst, Det1, ModuleInfo0, ModuleInfo1),
@@ -437,7 +437,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
     InstOfY = ground(unique, higher_order(LambdaPredInfo)),
     LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes, LambdaDet),
     (
-        abstractly_unify_inst(dead, InstOfX, InstOfY, real_unify,
+        abstractly_unify_inst(is_dead, InstOfX, InstOfY, real_unify,
             UnifyInst, _Det, ModuleInfo0, ModuleInfo1)
     ->
         Inst = UnifyInst,
@@ -502,7 +502,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         %   X = Z.
 
         InstOfX = free,
-        LiveX = live,
+        LiveX = is_live,
         make_complicated_sub_unify(X0, X, ExtraGoals0, !ModeInfo)
     ;
         InstOfX = InstOfX0,
@@ -670,7 +670,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     %
     (
         Unification = construct(_, _, _, _, _, _, _),
-        LiveX = dead
+        LiveX = is_dead
     ->
         Goal = conj(plain_conj, [])
     ;
@@ -915,9 +915,9 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         % For free-free unifications, we pretend for a moment that they are
         % an assignment to the dead variable - they will then be optimized
         % away.
-        ( LiveX = dead ->
+        ( LiveX = is_dead ->
             Unification = assign(X, Y)
-        ; LiveY = dead ->
+        ; LiveY = is_dead ->
             Unification = assign(Y, X)
         ;
             unexpected(this_file, "categorize_unify_var_var: free-free unify!")
@@ -959,7 +959,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
     % `fail'.
     (
         Unification = assign(AssignTarget, AssignSource),
-        mode_info_var_is_live(!.ModeInfo, AssignTarget, dead)
+        mode_info_var_is_live(!.ModeInfo, AssignTarget, is_dead)
     ->
         Unify = conj(plain_conj, []),
         record_optimize_away(GoalInfo, AssignTarget, AssignSource, !ModeInfo)

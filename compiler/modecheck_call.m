@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -487,10 +487,10 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
 
     mode_info_var_is_live(ModeInfo, Var, IsLive0),
     (
-        IsLive0 = live,
-        IsLive = live
+        IsLive0 = is_live,
+        IsLive = is_live
     ;
-        IsLive0 = dead,
+        IsLive0 = is_dead,
         % To reduce the potentially exponential explosion in the number of
         % modes, we only set IsLive to `dead' - meaning that the procedure
         % requires its argument to be dead, so that it can do destructive
@@ -500,9 +500,9 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
             inst_is_ground(ModuleInfo, Inst),
             inst_is_mostly_unique(ModuleInfo, Inst)
         ->
-            IsLive = dead
+            IsLive = is_dead
         ;
-            IsLive = live
+            IsLive = is_live
         )
     ),
 
@@ -781,10 +781,10 @@ compare_liveness_list([LiveA | LiveAs], [LiveB | LiveBs], Result) :-
     %
 :- pred compare_liveness(is_live::in, is_live::in, match::out) is det.
 
-compare_liveness(dead, dead, same).
-compare_liveness(dead, live, better).
-compare_liveness(live, dead, worse).
-compare_liveness(live, live, same).
+compare_liveness(is_dead, is_dead, same).
+compare_liveness(is_dead, is_live, better).
+compare_liveness(is_live, is_dead, worse).
+compare_liveness(is_live, is_live, same).
 
     % Combine two results, giving priority to the first one.
     %

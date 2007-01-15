@@ -1052,6 +1052,7 @@
     % Describe how a lambda expression is to be evaluated.
     %
     % `normal' is the top-down Mercury execution algorithm.
+    %
 :- type lambda_eval_method
     --->    lambda_normal.
 
@@ -1443,8 +1444,8 @@
     % used by code generation.  See compiler/notes/glossary.html.
     %
 :- type is_live
-    --->    live
-    ;       dead.
+    --->    is_live
+    ;       is_dead.
 
     % Unifications of insts fall into two categories, "real" and "fake".
     % The "real" inst unifications correspond to real unifications,
