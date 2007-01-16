@@ -234,7 +234,7 @@ MR_create_thread_local_mutables(MR_Unsigned numslots)
 #ifdef MR_THREAD_SAFE
     pthread_mutex_init(&muts->MR_tlm_lock, MR_MUTEX_ATTR);
 #endif
-    muts->MR_tlm_values = MR_NEW_ARRAY(MR_Word, numslots);
+    muts->MR_tlm_values = MR_GC_NEW_ARRAY(MR_Word, numslots);
 
     return muts;
 }
