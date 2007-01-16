@@ -2076,13 +2076,13 @@ mlds_output_type_prefix(mlds_mercury_array_type(_ElemType), !IO) :-
         io.write_string("MR_ArrayPtr", !IO)
     ).
 mlds_output_type_prefix(mlds_native_int_type, !IO) :-
-    io.write_string("int", !IO).
+    io.write_string("MR_Integer", !IO).
 mlds_output_type_prefix(mlds_native_float_type, !IO) :-
-    io.write_string("float", !IO).
+    io.write_string("MR_Float", !IO).
 mlds_output_type_prefix(mlds_native_bool_type, !IO) :-
     io.write_string("MR_bool", !IO).
 mlds_output_type_prefix(mlds_native_char_type, !IO) :-
-    io.write_string("char", !IO).
+    io.write_string("MR_Char", !IO).
 mlds_output_type_prefix(mlds_foreign_type(_ForeignType), !IO) :-
     % For binary compatibility with the --target asm back-end,
     % we need to output these as a generic type, rather than making
