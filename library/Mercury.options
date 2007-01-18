@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002, 2004-2006 The University of Melbourne.
+# Copyright (C) 2002, 2004-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -57,3 +57,12 @@ MCFLAGS-construct += --no-warn-unused-imports
 MCFLAGS-deconstruct += --no-warn-unused-imports
 MCFLAGS-library += --no-warn-unused-imports
 MCFLAGS-mer_std += --no-warn-unused-imports
+
+# In parallel, low level C grades that don't reserve a machine register for
+# the engine base (i.e. don't use gcc global registers) don't generate code
+# that assumes we cache the engine base address into a local variable
+# MR_local_thread_engine_base.  This module contains handwritten code
+# that jumps about a bit and maintaining MR_local_thread_engine_base in all
+# the right places is tricky (i.e. I gave up).
+#
+MCFLAGS-thread += --no-local-thread-engine-base

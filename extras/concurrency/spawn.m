@@ -30,6 +30,10 @@
     % and those contained in IO - the list of transactions performed by
     % the continuation of spawn.
     %
+    % NOTE: this predicate is obsolete.  New code should use the 
+    % standard library's version: thread.spawn/3.
+    %
+:- pragma obsolete(spawn.spawn/3).
 :- pred spawn(pred(io, io), io, io).
 :- mode spawn(pred(di, uo) is cc_multi, di, uo) is cc_multi.
 
@@ -39,6 +43,10 @@
     %
     % NOTE: this is not yet implemented in the hlc.par.gc grade.
     % 
+    % NOTE: this predicate is obsolete.  New code should use the 
+    % standard library's version: thread.yield/2.
+    % 
+:- pragma obsolete(spawn.yield/2).
 :- pred yield(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -46,166 +54,19 @@
 
 :- implementation.
 
+:- import_module thread.
+
 :- pragma foreign_decl("C", "
 #if defined(MR_HIGHLEVEL_CODE) && !defined(MR_THREAD_SAFE)
   #error The spawn module requires either hlc.par.gc grade or a non-hlc grade.
 #endif
-
-    #include <stdio.h>
 ").
 
-:- pragma no_inline(spawn/3).
-:- pragma foreign_proc("C",
-    spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-#ifndef MR_HIGHLEVEL_CODE
-    MR_Context  *ctxt;
-    ctxt = MR_create_context(""spawn"", MR_CONTEXT_SIZE_REGULAR, NULL);
-    ctxt->MR_ctxt_resume = &&spawn_call_back_to_mercury_cc_multi;
-        /* Store the closure on the top of the new context's stack. */
-    *(ctxt->MR_ctxt_sp) = Goal;
-    ctxt->MR_ctxt_next = NULL;
-    ctxt->MR_ctxt_thread_local_mutables =
-        MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
-    MR_schedule_context(ctxt);
-    if (0) {
-spawn_call_back_to_mercury_cc_multi:
-        MR_save_registers();
-            /* Get the closure from the top of the stack */
-        call_back_to_mercury_cc_multi(*((MR_Word *)MR_sp));
-        MR_destroy_context(MR_ENGINE(MR_eng_this_context));
-        MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_runnext();
-    }
-#else
-    ME_create_thread(Goal);
-#endif
-    IO = IO0;
-").
+spawn.spawn(Goal, !IO) :-
+    thread.spawn(Goal !IO).
 
-:- pragma foreign_proc("C#",
-    spawn(Goal::(pred(di, uo) is cc_multi), _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"{
-    System.Threading.Thread t;
-    MercuryThread mt = new MercuryThread(Goal);
-    
-    t = new System.Threading.Thread(
-            new System.Threading.ThreadStart(mt.execute_goal));
-    t.Start();
-}").
-
-:- pragma no_inline(yield/2).
-:- pragma foreign_proc("C",
-    yield(IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe], "{
-        /* yield() */
-#ifndef MR_HIGHLEVEL_CODE
-    MR_save_context(MR_ENGINE(MR_eng_this_context));
-    MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-        &&yield_skip_to_the_end;
-    MR_schedule_context(MR_ENGINE(MR_eng_this_context));
-    MR_ENGINE(MR_eng_this_context) = NULL;
-    MR_runnext();
-yield_skip_to_the_end:
-#endif
-    IO = IO0;
-
-}").
-
-yield(!IO).
-
-:- pred call_back_to_mercury(pred(io, io), io, io).
-:- mode call_back_to_mercury(pred(di, uo) is cc_multi, di, uo) is cc_multi.
-:- pragma foreign_export("C",
-    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
-    "call_back_to_mercury_cc_multi").
-
-call_back_to_mercury(Goal, !IO) :-
-    Goal(!IO).
-
-:- pragma foreign_decl("C", "
-#ifdef MR_HIGHLEVEL_CODE
-  #include  <pthread.h>
-
-  int ME_create_thread(MR_Word goal);
-  void *ME_thread_wrapper(void *arg);
-
-  typedef struct ME_ThreadWrapperArgs ME_ThreadWrapperArgs;
-  struct ME_ThreadWrapperArgs {
-        MR_Word     goal;
-        MR_Word     *thread_local_mutables;
-  };
-#endif
-").
-
-:- pragma foreign_code("C", "
-#ifdef MR_HIGHLEVEL_CODE
-  int ME_create_thread(MR_Word goal)
-  {
-    ME_ThreadWrapperArgs    *args;
-    pthread_t               thread;
-
-    /*
-    ** We can't allocate `args' on the stack because this function may return
-    ** before the child thread has got all the information it needs out of the
-    ** structure.
-    */
-    args = MR_malloc(sizeof(ME_ThreadWrapperArgs));
-    args->goal = goal;
-    args->thread_local_mutables =
-        MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
-
-    if (pthread_create(&thread, MR_THREAD_ATTR, ME_thread_wrapper, args)) {
-        MR_fatal_error(""Unable to create thread."");
-    }
-
-    /*
-    ** XXX How do we ensure that the parent thread doesn't terminate until
-    ** the child thread has finished it's processing?
-    ** By the use of mutvars, or leave it up to user?
-    */
-    return MR_TRUE;
-  }
-
-  void *ME_thread_wrapper(void *arg)
-  {
-    ME_ThreadWrapperArgs    *args = arg;
-    MR_Word                 goal;
-
-    if (MR_init_thread(MR_use_now) == MR_FALSE) {
-        MR_fatal_error(""Unable to init thread."");
-    }
-
-    assert(MR_THREAD_LOCAL_MUTABLES == NULL);
-    MR_SET_THREAD_LOCAL_MUTABLES(args->thread_local_mutables);
-
-    goal = args->goal;
-    MR_free(args);
-
-    call_back_to_mercury_cc_multi(goal);
-
-    return NULL;
-  }
-#endif
-").
-
-:- pragma foreign_code("C#", "
-public class MercuryThread {
-    object[] Goal;
-
-    public MercuryThread(object[] g)
-    {
-        Goal = g;
-    }
-
-    public void execute_goal()
-    {
-        spawn.mercury_code.call_back_to_mercury_cc_multi(Goal);
-    }
-}
-").
+spawn.yield(!IO) :-
+    thread.yield(!IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

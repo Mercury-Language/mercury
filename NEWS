@@ -17,6 +17,9 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We have moved some of the concurrency primitives out of the extras
+  distribution and into a new standard library module called `thread'.
+
 * The following predicates have been added to the list module:
 	list.map_corresponding/4
 	list.map2_foldl3/10

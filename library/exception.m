@@ -10,7 +10,7 @@
 % Main author: fjh.
 % Stability: medium.
 % 
-% This file defines the Mercury interface for exception handling.
+% This module defines the Mercury interface for exception handling.
 % 
 % Note that throwing an exception across the C interface won't work.
 % That is, if a Mercury procedure that is exported to C using
