@@ -454,9 +454,12 @@ priv_builtin_bug.out: priv_builtin_bug priv_builtin_bug.inp
 		priv_builtin_bug.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
 track_through_catch.out: track_through_catch track_through_catch.inp
-	$(MDB_STD) ./track_through_catch < track_through_catch.inp > \
-		track_through_catch.out 2>&1 \
+	$(MDB_STD) ./track_through_catch < track_through_catch.inp 2>&1 | \
+		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		> track_through_catch.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 typed_unify.out: typed_unify typed_unify.inp

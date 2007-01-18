@@ -17,9 +17,9 @@ Which do you want to put a breakpoint on (0-3 or *)? *
  2: + stop  interface pred exception.try/2-1 (cc_multi)
  3: + stop  interface pred exception.try/2-0 (cc_multi)
 mdb> c
-      E2:     C2 CALL pred exception.try/2-0 (cc_multi) exception.m:446 (track_through_catch.m:15)
+      E2:     C2 CALL pred exception.try/2-0 (cc_multi) exception.m:NNNN (track_through_catch.m:15)
 mdb> f
-      E3:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:446 (track_through_catch.m:15)
+      E3:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:NNNN (track_through_catch.m:15)
 mdb> dd
 try(q(2), succeeded(2))
 Valid? b 2
@@ -35,5 +35,5 @@ the unification inside the predicate track_through_catch.p/1
 (track_through_catch.m:21). The path to the subterm in the atom is 1.
 dd> quit
 Diagnosis aborted.
-      E3:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:446 (track_through_catch.m:15)
+      E3:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:NNNN (track_through_catch.m:15)
 mdb> quit -y
