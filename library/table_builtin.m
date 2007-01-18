@@ -199,6 +199,8 @@
     io::di, io::uo) is det.
 :- pragma foreign_export("C", get_tabling_stats(in, out, di, uo),
     "MR_get_tabling_stats").
+:- pragma foreign_export("IL", get_tabling_stats(in, out, di, uo),
+    "MR_get_tabling_stats").
 
 get_tabling_stats(Info, Statistics, !IO) :-
     get_direct_fields(Info, AnswerTable, NumInputs, NumOutputs,

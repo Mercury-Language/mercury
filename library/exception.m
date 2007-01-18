@@ -1392,7 +1392,11 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 
 :- pragma foreign_export("C", call_goal(pred(out) is det, out),
     "ML_call_goal_det").
+:- pragma foreign_export("IL", call_goal(pred(out) is det, out),
+    "ML_call_goal_det").
 :- pragma foreign_export("C", call_goal(pred(out) is semidet, out),
+    "ML_call_goal_semidet").
+:- pragma foreign_export("IL", call_goal(pred(out) is semidet, out),
     "ML_call_goal_semidet").
 
 % This causes problems because the LLDS back-end
@@ -1407,6 +1411,8 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 % :- pragma export(call_goal(pred(out) is nondet,  out), "ML_call_goal_nondet").
 
 :- pragma foreign_export("C", call_handler(pred(in, out) is det, in, out),
+    "ML_call_handler_det").
+:- pragma foreign_export("IL", call_handler(pred(in, out) is det, in, out),
     "ML_call_handler_det").
 
 :- pragma foreign_proc("Java",
@@ -2484,6 +2490,8 @@ mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp)
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_export("C", report_uncaught_exception(in, di, uo),
+    "ML_report_uncaught_exception").
+:- pragma foreign_export("IL", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
 
 :- pred report_uncaught_exception(univ::in, io::di, io::uo) is cc_multi.

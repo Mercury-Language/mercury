@@ -2262,6 +2262,8 @@ io.make_err_msg(Msg0, Msg, !IO) :-
 
 :- pragma foreign_export("C", make_err_msg(in, in, out, di, uo),
     "ML_make_err_msg").
+:- pragma foreign_export("IL", make_err_msg(in, in, out, di, uo),
+    "ML_make_err_msg").
 
 :- pragma foreign_proc("C",
     make_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
@@ -2329,6 +2331,8 @@ have_dotnet :-
 ").
 
 :- pragma foreign_export("C", make_win32_err_msg(in, in, out, di, uo),
+    "ML_make_win32_err_msg").
+:- pragma foreign_export("IL", make_win32_err_msg(in, in, out, di, uo),
     "ML_make_win32_err_msg").
 
 make_win32_err_msg(_, _, "", !IO) :-
@@ -2754,25 +2758,47 @@ file_type_unknown = unknown.
 
 :- pragma foreign_export("C", file_type_character_device = out,
     "ML_file_type_character_device").
+:- pragma foreign_export("IL", file_type_character_device = out,
+    "ML_file_type_character_device").
 :- pragma foreign_export("C", file_type_block_device = out,
+    "ML_file_type_block_device").
+:- pragma foreign_export("IL", file_type_block_device = out,
     "ML_file_type_block_device").
 :- pragma foreign_export("C", file_type_fifo = out,
     "ML_file_type_fifo").
+:- pragma foreign_export("IL", file_type_fifo = out,
+    "ML_file_type_fifo").
 :- pragma foreign_export("C", file_type_directory = out,
+    "ML_file_type_directory").
+:- pragma foreign_export("IL", file_type_directory = out,
     "ML_file_type_directory").
 :- pragma foreign_export("C", file_type_socket = out,
     "ML_file_type_socket").
+:- pragma foreign_export("IL", file_type_socket = out,
+    "ML_file_type_socket").
 :- pragma foreign_export("C", file_type_symbolic_link = out,
+    "ML_file_type_symbolic_link").
+:- pragma foreign_export("IL", file_type_symbolic_link = out,
     "ML_file_type_symbolic_link").
 :- pragma foreign_export("C", file_type_regular = out,
     "ML_file_type_regular").
+:- pragma foreign_export("IL", file_type_regular = out,
+    "ML_file_type_regular").
 :- pragma foreign_export("C", file_type_message_queue = out,
+    "ML_file_type_message_queue").
+:- pragma foreign_export("IL", file_type_message_queue = out,
     "ML_file_type_message_queue").
 :- pragma foreign_export("C", file_type_semaphore = out,
     "ML_file_type_semaphore").
+:- pragma foreign_export("IL", file_type_semaphore = out,
+    "ML_file_type_semaphore").
 :- pragma foreign_export("C", file_type_shared_memory = out,
     "ML_file_type_shared_memory").
+:- pragma foreign_export("IL", file_type_shared_memory = out,
+    "ML_file_type_shared_memory").
 :- pragma foreign_export("C", file_type_unknown = out,
+    "ML_file_type_unknown").
+:- pragma foreign_export("IL", file_type_unknown = out,
     "ML_file_type_unknown").
 
 %-----------------------------------------------------------------------------%
@@ -3031,12 +3057,16 @@ check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
 :- pred access_types_includes_read(list(access_type)::in) is semidet.
 :- pragma foreign_export("C", access_types_includes_read(in),
     "ML_access_types_includes_read").
+:- pragma foreign_export("IL", access_types_includes_read(in),
+    "ML_access_types_includes_read").
 
 access_types_includes_read(Access) :-
     list.member(read, Access).
 
 :- pred access_types_includes_write(list(access_type)::in) is semidet.
 :- pragma foreign_export("C", access_types_includes_write(in),
+    "ML_access_types_includes_write").
+:- pragma foreign_export("IL", access_types_includes_write(in),
     "ML_access_types_includes_write").
 
 access_types_includes_write(Access) :-
@@ -3045,12 +3075,16 @@ access_types_includes_write(Access) :-
 :- pred access_types_includes_execute(list(access_type)::in) is semidet.
 :- pragma foreign_export("C", access_types_includes_execute(in),
     "ML_access_types_includes_execute").
+:- pragma foreign_export("IL", access_types_includes_execute(in),
+    "ML_access_types_includes_execute").
 
 access_types_includes_execute(Access) :-
     list.member(execute, Access).
 
 :- func make_io_res_0_ok = io.res.
 :- pragma foreign_export("C", (make_io_res_0_ok = out),
+    "ML_make_io_res_0_ok").
+:- pragma foreign_export("IL", (make_io_res_0_ok = out),
     "ML_make_io_res_0_ok").
 
 make_io_res_0_ok = ok.
@@ -3059,6 +3093,8 @@ make_io_res_0_ok = ok.
     io::di, io::uo) is det.
 :- pragma foreign_export("C", make_io_res_0_error(in, in, out, di, uo),
     "ML_make_io_res_0_error").
+:- pragma foreign_export("IL", make_io_res_0_error(in, in, out, di, uo),
+    "ML_make_io_res_0_error").
 
 make_io_res_0_error(Error, Msg0, error(make_io_error(Msg)), !IO) :-
     io.make_err_msg(Error, Msg0, Msg, !IO).
@@ -3066,11 +3102,15 @@ make_io_res_0_error(Error, Msg0, error(make_io_error(Msg)), !IO) :-
 :- func make_io_res_0_error_msg(string) = io.res.
 :- pragma foreign_export("C", (make_io_res_0_error_msg(in) = out),
     "ML_make_io_res_0_error_msg").
+:- pragma foreign_export("IL", (make_io_res_0_error_msg(in) = out),
+    "ML_make_io_res_0_error_msg").
 
 make_io_res_0_error_msg(Msg) = error(make_io_error(Msg)).
 
 :- func make_io_res_1_ok_file_type(file_type) = io.res(file_type).
 :- pragma foreign_export("C", (make_io_res_1_ok_file_type(in) = out),
+    "ML_make_io_res_1_ok_file_type").
+:- pragma foreign_export("IL", (make_io_res_1_ok_file_type(in) = out),
     "ML_make_io_res_1_ok_file_type").
 
 make_io_res_1_ok_file_type(FileType) = ok(FileType).
@@ -3078,6 +3118,9 @@ make_io_res_1_ok_file_type(FileType) = ok(FileType).
 :- pred make_io_res_1_error_file_type(io.system_error::in,
     string::in, io.res(file_type)::out, io::di, io::uo) is det.
 :- pragma foreign_export("C",
+    make_io_res_1_error_file_type(in, in, out, di, uo),
+    "ML_make_io_res_1_error_file_type").
+:- pragma foreign_export("IL",
     make_io_res_1_error_file_type(in, in, out, di, uo),
     "ML_make_io_res_1_error_file_type").
 
@@ -3860,6 +3903,8 @@ io.write_many(Stream, [f(F) | Rest], !IO) :-
 
 :- pragma foreign_export("C", io.print(in, di, uo),
     "ML_io_print_to_cur_stream").
+:- pragma foreign_export("IL", io.print(in, di, uo),
+    "ML_io_print_to_cur_stream").
 
 io.print(Term, !IO) :-
     io.output_stream(Stream, !IO),
@@ -3878,6 +3923,8 @@ io.print_cc(Term, !IO) :-
 :- pred io.print_to_stream(io.stream::in, T::in, io::di, io::uo) is det.
 
 :- pragma foreign_export("C", io.print_to_stream(in, in, di, uo),
+    "ML_io_print_to_stream").
+:- pragma foreign_export("IL", io.print_to_stream(in, in, di, uo),
     "ML_io_print_to_stream").
 
 io.print_to_stream(Stream, Term, !IO) :-
@@ -4592,6 +4639,7 @@ io.report_stats(Selector, !IO) :-
     % For use by the Mercury runtime.
     %
 :- pragma foreign_export("C", io.init_state(di, uo), "ML_io_init_state").
+:- pragma foreign_export("IL", io.init_state(di, uo), "ML_io_init_state").
 
 io.init_state(!IO) :-
     io.gc_init(type_of(StreamDb), type_of(Globals), !IO),
@@ -4607,6 +4655,7 @@ io.init_state(!IO) :-
     % For use by the Mercury runtime.
     %
 :- pragma foreign_export("C", io.finalize_state(di, uo), "ML_io_finalize_state").
+:- pragma foreign_export("IL", io.finalize_state(di, uo), "ML_io_finalize_state").
 
     % Currently no finalization needed...
     % (Perhaps we should close all open Mercury files?
@@ -4694,6 +4743,8 @@ io.set_op_table(_OpTable, !IO).
 
 :- pragma foreign_export("C", io.get_io_input_stream_type(out, di, uo),
     "ML_io_input_stream_type").
+:- pragma foreign_export("IL", io.get_io_input_stream_type(out, di, uo),
+    "ML_io_input_stream_type").
 
 io.get_io_input_stream_type(Type, !IO) :-
     io.stdin_stream(Stream, !IO),
@@ -4702,6 +4753,8 @@ io.get_io_input_stream_type(Type, !IO) :-
 :- pred io.get_io_output_stream_type(type_desc::out, io::di, io::uo) is det.
 
 :- pragma foreign_export("C", io.get_io_output_stream_type(out, di, uo),
+    "ML_io_output_stream_type").
+:- pragma foreign_export("IL", io.get_io_output_stream_type(out, di, uo),
     "ML_io_output_stream_type").
 
 io.get_io_output_stream_type(Type, !IO) :-
@@ -5587,6 +5640,7 @@ static MR_MercuryFileStruct mercury_open(string filename, string openmode,
 
 :- pred throw_io_error(string::in) is erroneous.
 :- pragma foreign_export("C", throw_io_error(in), "ML_throw_io_error").
+:- pragma foreign_export("IL", throw_io_error(in), "ML_throw_io_error").
 
 throw_io_error(Message) :-
     throw(io_error(Message)).
@@ -6803,9 +6857,15 @@ io.write_float_2(Stream, Float, !IO) :-
 
 :- pragma foreign_export("C", io.stdin_stream_2(out, di, uo),
     "ML_io_stdin_stream").
+:- pragma foreign_export("IL", io.stdin_stream_2(out, di, uo),
+    "ML_io_stdin_stream").
 :- pragma foreign_export("C", io.stdout_stream_2(out, di, uo),
     "ML_io_stdout_stream").
+:- pragma foreign_export("IL", io.stdout_stream_2(out, di, uo),
+    "ML_io_stdout_stream").
 :- pragma foreign_export("C", io.stderr_stream_2(out, di, uo),
+    "ML_io_stderr_stream").
+:- pragma foreign_export("IL", io.stderr_stream_2(out, di, uo),
     "ML_io_stderr_stream").
 
 io.stdin_stream = input_stream(io.stdin_stream_2).

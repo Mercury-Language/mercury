@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -222,6 +222,8 @@
     % dependencies right it's easiest to do it from Mercury.
 
 :- pragma foreign_export("C", call_rtti_compare_type_infos(out, in, in),
+    "ML_call_rtti_compare_type_infos").
+:- pragma foreign_export("IL", call_rtti_compare_type_infos(out, in, in),
     "ML_call_rtti_compare_type_infos").
 
 :- pred call_rtti_compare_type_infos(comparison_result::out,
@@ -447,6 +449,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
 
 % Export this function in order to use it in runtime/mercury_trace_external.c
 :- pragma foreign_export("C", type_name(in) = out, "ML_type_name").
+:- pragma foreign_export("IL", type_name(in) = out, "ML_type_name").
 
 type_name(Type) = TypeName :-
     type_ctor_and_args(Type, TypeCtor, ArgTypes),
@@ -782,6 +785,8 @@ type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
 :- func get_type_info_for_type_info = type_desc.
 
 :- pragma foreign_export("C", get_type_info_for_type_info = out,
+    "ML_get_type_info_for_type_info").
+:- pragma foreign_export("IL", get_type_info_for_type_info = out,
     "ML_get_type_info_for_type_info").
 
 get_type_info_for_type_info = TypeDesc :-

@@ -3108,6 +3108,7 @@ string.det_to_float(FloatString) =
     ).
 
 :- pragma foreign_export("C", string.to_float(in, out), "ML_string_to_float").
+:- pragma foreign_export("IL", string.to_float(in, out), "ML_string_to_float").
 
 :- pragma foreign_proc("C",
     string.to_float(FloatString::in, FloatVal::out),

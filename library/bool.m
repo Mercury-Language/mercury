@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,2000,2002-2006 The University of Melbourne.
+% Copyright (C) 1996-1997,2000,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -118,7 +118,9 @@ bool.not(yes, no).
 :- func bool.return_no = bool.
 :- func bool.return_yes = bool.
 :- pragma foreign_export("C", bool.return_no = out, "ML_bool_return_no").
+:- pragma foreign_export("IL", bool.return_no = out, "ML_bool_return_no").
 :- pragma foreign_export("C", bool.return_yes = out, "ML_bool_return_yes").
+:- pragma foreign_export("IL", bool.return_yes = out, "ML_bool_return_yes").
 
 bool.return_no = no.
 bool.return_yes = yes.

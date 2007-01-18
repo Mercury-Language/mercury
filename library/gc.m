@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999,2001-2006 The University of Melbourne.
+% Copyright (C) 1999,2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -44,6 +44,7 @@ garbage_collect(!IO) :-
 :- pragma no_inline(garbage_collect/0).
 
 :- pragma foreign_export("C", garbage_collect, "ML_garbage_collect").
+:- pragma foreign_export("IL", garbage_collect, "ML_garbage_collect").
 
 :- pragma foreign_proc("C",
 	garbage_collect,

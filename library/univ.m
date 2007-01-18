@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,12 +127,14 @@ univ_type(Univ) = type_of(univ_value(Univ)).
 
 :- pred construct_univ(T::in, univ::out) is det.
 :- pragma foreign_export("C", construct_univ(in, out), "ML_construct_univ").
+:- pragma foreign_export("IL", construct_univ(in, out), "ML_construct_univ").
 
 construct_univ(X, Univ) :-
     Univ = univ(X).
 
 :- some [T] pred unravel_univ(univ::in, T::out) is det.
 :- pragma foreign_export("C", unravel_univ(in, out), "ML_unravel_univ").
+:- pragma foreign_export("IL", unravel_univ(in, out), "ML_unravel_univ").
 
 unravel_univ(Univ, X) :-
     univ_value(Univ) = X.

@@ -247,6 +247,8 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		:- type t    ---> a ; b ; c(int).
 
+		:- pragma foreign_export("IL", p(out), "IL_EXPORT").
+
 		:- pred p(t::out) is det.
 
 		p(b).

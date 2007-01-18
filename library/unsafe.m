@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 2004-2006 The University of Melbourne.
+% Copyright (C) 1997, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -80,7 +80,11 @@
 
 :- pragma foreign_export("C", call_io_pred(pred(di, uo) is det, di, uo),
     "call_io_pred_det").
+:- pragma foreign_export("IL", call_io_pred(pred(di, uo) is det, di, uo),
+    "call_io_pred_det").
 :- pragma foreign_export("C", call_io_pred(pred(di, uo) is cc_multi, di, uo),
+    "call_io_pred_cc_multi").
+:- pragma foreign_export("IL", call_io_pred(pred(di, uo) is cc_multi, di, uo),
     "call_io_pred_cc_multi").
 
 call_io_pred(P, !IO) :-

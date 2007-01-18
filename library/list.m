@@ -2372,11 +2372,13 @@ list.merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
 % managed languages on the il backend.
 
 :- func empty_list = list(T).
-:- pragma export(empty_list = out, "ML_empty_list").
+:- pragma foreign_export("C", empty_list = out, "ML_empty_list").
+:- pragma foreign_export("IL", empty_list = out, "ML_empty_list").
 
 empty_list = [].
 
-:- pragma export((list.cons(in, in) = (out)), "ML_cons").
+:- pragma foreign_export("C", (list.cons(in, in) = (out)), "ML_cons").
+:- pragma foreign_export("IL", (list.cons(in, in) = (out)), "ML_cons").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
