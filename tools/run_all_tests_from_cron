@@ -49,7 +49,14 @@ CVSROOT=/home/mercury1/repository
 if [ -d $CVSROOT/. ]; then
 	:
 else
-	CVSROOT=:pserver:guest@cvs.mercury.cs.mu.oz.au:$CVSROOT
+	case "$HOST" in
+	neptune|pluto)
+	    CVSROOT=":ext:mercury@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
+	    ;;
+	*)
+	    CVSROOT=":pserver:guest@cvs.mercury.csse.unimelb.edu.au:$CVSROOT"
+	    ;;
+	esac
 fi
 export CVSROOT
 
@@ -105,7 +112,7 @@ case "$BRANCH" in
 	   uranus|swordfish)
 		BRANCH=latest
 		;;
-	   saturn)
+	   saturn|neptune|pluto)
  	       	BRANCH=latest
 		#case $DAY in
 		#	*[02468]) BRANCH=$release_branch ;;
