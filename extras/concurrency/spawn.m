@@ -63,7 +63,7 @@
 ").
 
 spawn.spawn(Goal, !IO) :-
-    thread.spawn(Goal !IO).
+    thread.spawn(Goal, !IO).
 
 spawn.yield(!IO) :-
     thread.yield(!IO).
