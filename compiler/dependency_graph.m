@@ -54,13 +54,13 @@
 
     % Build the dependency graph of procedures.
     %
-:- pred build_pred_dependency_graph(module_info::in, include_imported::in,
-    dependency_info(pred_id)::out) is det.
+:- pred build_pred_dependency_graph(module_info::in, list(pred_id)::in,
+    include_imported::in, dependency_info(pred_id)::out) is det.
 
     % Build the dependency graph of predicates.
     %
-:- pred build_proc_dependency_graph(module_info::in, include_imported::in,
-    dependency_info(pred_proc_id)::out) is det.
+:- pred build_proc_dependency_graph(module_info::in, list(pred_id)::in,
+    include_imported::in, dependency_info(pred_proc_id)::out) is det.
 
     % Output a form of the static call graph to a file, in a format suitable
     % for use in .dependency_info files. After the heading, the format of
@@ -141,28 +141,32 @@ module_info_ensure_dependency_info(!ModuleInfo) :-
         MaybeDepInfo = yes(_)
     ;
         MaybeDepInfo = no,
-        build_dependency_graph(!.ModuleInfo, do_not_include_imported, DepInfo),
+        module_info_predids(PredIds, !ModuleInfo),
+        build_dependency_graph(!.ModuleInfo, PredIds, do_not_include_imported,
+            DepInfo),
         module_info_set_dependency_info(DepInfo, !ModuleInfo)
     ).
 
 module_info_rebuild_dependency_info(!ModuleInfo, DepInfo) :-
-    build_dependency_graph(!.ModuleInfo, do_not_include_imported, DepInfo),
+    module_info_predids(PredIds, !ModuleInfo),
+    build_dependency_graph(!.ModuleInfo, PredIds, do_not_include_imported,
+        DepInfo),
     module_info_set_dependency_info(DepInfo, !ModuleInfo).
 
-build_proc_dependency_graph(ModuleInfo, Imported, DepInfo) :-
-    build_dependency_graph(ModuleInfo, Imported, DepInfo).
+build_proc_dependency_graph(ModuleInfo, PredIds, Imported, DepInfo) :-
+    build_dependency_graph(ModuleInfo, PredIds, Imported, DepInfo).
 
-build_pred_dependency_graph(ModuleInfo, Imported, DepInfo) :-
-    build_dependency_graph(ModuleInfo, Imported, DepInfo).
+build_pred_dependency_graph(ModuleInfo, PredIds, Imported, DepInfo) :-
+    build_dependency_graph(ModuleInfo, PredIds, Imported, DepInfo).
 
     % Traverse the module structure, calling `add_dependency_arcs'
     % for each procedure body.
     %
-:- pred build_dependency_graph(module_info::in, include_imported::in,
-    dependency_info(T)::out) is det <= dependency_node(T).
+:- pred build_dependency_graph(module_info::in, list(pred_id)::in,
+    include_imported::in, dependency_info(T)::out) is det
+    <= dependency_node(T).
 
-build_dependency_graph(ModuleInfo, Imported, !:DepInfo) :-
-    module_info_predids(ModuleInfo, PredIds),
+build_dependency_graph(ModuleInfo, PredIds, Imported, !:DepInfo) :-
     relation.init(DepGraph0),
     add_dependency_nodes(PredIds, ModuleInfo, Imported, DepGraph0, DepGraph1),
     add_dependency_arcs(PredIds, ModuleInfo, Imported, DepGraph1, DepGraph),

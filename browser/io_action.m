@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2002, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -74,10 +74,10 @@ get_maybe_io_action(IoActionNum, MaybeTabledIoAction, !IO) :-
 io_action_to_browser_term(IoAction) = Term :-
     IoAction = io_action(ProcName, PredFunc, Args),
     (
-        PredFunc = predicate,
+        PredFunc = pf_predicate,
         IsFunc = no
     ;
-        PredFunc = function,
+        PredFunc = pf_function,
         IsFunc = yes
     ),
     Term = synthetic_term_to_browser_term(ProcName, Args, IsFunc).
@@ -124,9 +124,9 @@ make_no_io_action = no.
     "MR_IO_ACTION_make_yes_io_action").
     
 make_yes_io_action(ProcName, yes, Args) = 
-    yes(io_action(ProcName, function, Args)).
+    yes(io_action(ProcName, pf_function, Args)).
 make_yes_io_action(ProcName, no, Args) = 
-    yes(io_action(ProcName, predicate, Args)).
+    yes(io_action(ProcName, pf_predicate, Args)).
 
 pickup_io_action(_, _, _, _) :-
     private_builtin.sorry("pickup_io_action").

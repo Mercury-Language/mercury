@@ -997,7 +997,8 @@ replace_type_ctor(Location, EqvMap, TypeCtorsAlreadyExpanded, Type0,
         map.apply_to_list(Args0, Renaming, Args),
         apply_variable_renaming_to_type(Renaming, Body0, Body1),
         TypeCtorItem = type_ctor_to_item_name(TypeCtor),
-        record_expanded_item(item_id(type_item, TypeCtorItem), !EquivTypeInfo),
+        record_expanded_item(item_id(type_abstract_item, TypeCtorItem),
+            !EquivTypeInfo),
         map.from_corresponding_lists(Args, TArgs, Subst),
         apply_subst_to_type(Subst, Body1, Body),
         replace_in_type_location_2(Location, EqvMap,
@@ -1204,7 +1205,7 @@ replace_in_pred_mode(Location, PredName, OrigArity, Context, DeclType,
             ExtraModes = ExtraModes0,
             (
                 MaybePredOrFunc0 = no,
-                RecordedPredOrFunc = predicate
+                RecordedPredOrFunc = pf_predicate
             ;
                 MaybePredOrFunc0 = yes(RecordedPredOrFunc)
             ),

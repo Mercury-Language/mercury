@@ -108,7 +108,7 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         !:Info = higher_order_global_info(Requests0, NewPreds0, VersionInfo0,
             !.ModuleInfo, GoalSizes0, Params, counter.init(1)),
 
-        module_info_predids(!.ModuleInfo, PredIds0),
+        module_info_predids(PredIds0, !ModuleInfo),
         module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, UserSpecPreds, _, _),
         %
@@ -1084,7 +1084,8 @@ get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
 get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
         Args, Index, Goals, Vars, !ProcInfo) :-
     lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
-        PredName, predicate, 3, only_mode, ExtractArgPredId, ExtractArgProcId),
+        PredName, pf_predicate, 3, only_mode, ExtractArgPredId,
+        ExtractArgProcId),
     get_typeclass_info_args_2(TypeClassInfoVar,
         ExtractArgPredId, ExtractArgProcId,
         qualified(mercury_private_builtin_module, PredName),
@@ -2626,7 +2627,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     % This isn't looked at after here, and just clutters up HLDS dumps
     % if it's filled in.
     set_clause_list([], ClausesRep),
-    EmptyHeadVars = proc_arg_vector_init(predicate, []),
+    EmptyHeadVars = proc_arg_vector_init(pf_predicate, []),
     ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
         EmptyTVarNameMap, EmptyVarTypes, EmptyHeadVars, ClausesRep,
         EmptyRttiVarMaps, no),

@@ -314,7 +314,7 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
         ),
         TypeCtorItem = item_name(Name, list.length(Args)),
         GatheredItems0 = !.Info ^ gathered_items,
-        add_gathered_item(NameItem, item_id(type_item, TypeCtorItem),
+        add_gathered_item(NameItem, item_id(type_abstract_item, TypeCtorItem),
             ItemContext, !.Section, yes, GatheredItems0, GatheredItems1),
         add_gathered_item(BodyItem, item_id(type_body_item, TypeCtorItem),
             ItemContext, !.Section, yes, GatheredItems1, GatheredItems),
@@ -509,7 +509,7 @@ item_to_item_id(Item, ItemId) :-
 
 item_to_item_id_2(item_clause(_, _, _, _, _, _), no).
 item_to_item_id_2(item_type_defn(_, Name, Params, _, _),
-        yes(item_id(type_item, item_name(Name, Arity)))) :-
+        yes(item_id(type_abstract_item, item_name(Name, Arity)))) :-
     list.length(Params, Arity).
 item_to_item_id_2(item_inst_defn(_, Name, Params, _, _),
         yes(item_id(inst_item, item_name(Name, Arity)))) :-
@@ -751,10 +751,10 @@ item_is_unchanged(Item1, Item2) = Result :-
         % added later by make_hlds.m, so they won't have been
         % split into a separate declaration here.
         (
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             Det1 = Det2
         ;
-            PredOrFunc = predicate
+            PredOrFunc = pf_predicate
         ),
 
         pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
@@ -768,7 +768,7 @@ item_is_unchanged(Item1, Item2) = Result :-
 
 item_is_unchanged(Item1, Item2) = Result :-
     Item1 = item_pred_or_func_mode(InstVarSet1, PredOrFunc, Name, Modes1,
-            WithInst1, Det, Cond),
+        WithInst1, Det, Cond),
     (
         Item2 = item_pred_or_func_mode(InstVarSet2, PredOrFunc,
             Name, Modes2, WithInst2, Det, Cond),
@@ -1004,7 +1004,7 @@ write_version_numbers(AllVersionNumbers, !IO) :-
             ItemVersions = extract_ids(VersionNumbers, ItemType),
             \+ map.is_empty(ItemVersions)
         ),
-        [type_item, type_body_item, mode_item, inst_item,
+        [type_abstract_item, type_body_item, mode_item, inst_item,
             predicate_item, function_item, typeclass_item]),
     io.write_string("{\n\t", !IO),
     io.write_list(VersionNumbersList, ",\n\t",

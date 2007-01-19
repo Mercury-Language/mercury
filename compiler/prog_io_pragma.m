@@ -439,10 +439,10 @@ parse_pragma_type(ModuleName, "unused_args", PragmaTerms, ErrorTerm, _VarSet,
         ],
         (
             PredOrFuncTerm = term.functor(term.atom("predicate"), [], _),
-            PredOrFunc = predicate
+            PredOrFunc = pf_predicate
         ;
             PredOrFuncTerm = term.functor(term.atom("function"), [], _),
-            PredOrFunc = function
+            PredOrFunc = pf_function
         ),
         parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
             "`:- pragma unused_args' declaration", PredNameResult),
@@ -770,10 +770,10 @@ parse_pragma_type(ModuleName, "exceptions", PragmaTerms, ErrorTerm, _VarSet,
         ],
         (
             PredOrFuncTerm = term.functor(term.atom("predicate"), [], _),
-            PredOrFunc = predicate
+            PredOrFunc = pf_predicate
         ;
             PredOrFuncTerm = term.functor(term.atom("function"), [], _),
-            PredOrFunc = function
+            PredOrFunc = pf_function
         ),
         parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
             "`:- pragma exceptions' declaration", PredNameResult),
@@ -817,10 +817,10 @@ parse_pragma_type(ModuleName, "trailing_info", PragmaTerms, ErrorTerm,
         ],
         (
             PredOrFuncTerm = term.functor(term.atom("predicate"), [], _),
-            PredOrFunc = predicate
+            PredOrFunc = pf_predicate
         ;
             PredOrFuncTerm = term.functor(term.atom("function"), [], _),
-            PredOrFunc = function
+            PredOrFunc = pf_function
         ),
         parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
             "`:- pragma trailing_info' declaration", PredNameResult),
@@ -857,10 +857,10 @@ parse_pragma_type(ModuleName, "mm_tabling_info", PragmaTerms, ErrorTerm,
         ],
         (
             PredOrFuncTerm = term.functor(term.atom("predicate"), [], _),
-            PredOrFunc = predicate
+            PredOrFunc = pf_predicate
         ;
             PredOrFuncTerm = term.functor(term.atom("function"), [], _),
-            PredOrFunc = function
+            PredOrFunc = pf_function
         ),
         parse_implicitly_qualified_term(ModuleName, PredNameTerm,
             ErrorTerm, "`:- pragma mm_tabling_info' declaration",
@@ -1889,10 +1889,10 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
             % Is this a function or a predicate?
             MaybeRetTerm = yes(FuncResultTerm0)
         ->
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             list.append(VarList0, [FuncResultTerm0], VarList)
         ;
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             VarList = VarList0
         ),
         parse_pragma_c_code_varlist(VarSet0, VarList, PragmaVars, Error),
@@ -2191,7 +2191,7 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
         (
             PredAndModesResult = ok2(PredName - PredOrFunc, Modes),
             list.length(Modes, Arity0),
-            ( PredOrFunc = function ->
+            ( PredOrFunc = pf_function ->
                 Arity = Arity0 - 1
             ;
                 Arity = Arity0
@@ -2228,14 +2228,14 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
                 ->
                     list.append(ArgModes0, [RetMode], ArgModes1),
                     list.map(constrain_inst_vars_in_mode, ArgModes1, ArgModes),
-                    Result = ok2(PredName - function, ArgModes)
+                    Result = ok2(PredName - pf_function, ArgModes)
                 ;
                     ErrorMsg = "error in return mode in " ++ Msg,
                     Result = error2([ErrorMsg - ErrorTerm])
                 )
             ;
                 MaybeRetModeTerm = no,
-                Result = ok2(PredName - predicate, ArgModes0)
+                Result = ok2(PredName - pf_predicate, ArgModes0)
             )
         ;
             ErrorMsg = "error in argument modes in " ++ Msg,

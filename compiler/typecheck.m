@@ -148,13 +148,13 @@
 %-----------------------------------------------------------------------------%
 
 typecheck_module(!ModuleInfo, Specs, ExceededIterationLimit) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, type_inference_iteration_limit,
         MaxIterations),
     typecheck_to_fixpoint(1, MaxIterations, PredIds, !ModuleInfo,
         CheckSpecs, ExceededIterationLimit),
-    construct_type_inference_messages(PredIds, !.ModuleInfo, [], InferSpecs),
+    construct_type_inference_messages(PredIds, !ModuleInfo, [], InferSpecs),
     Specs = InferSpecs ++ CheckSpecs.
 
     % Repeatedly typecheck the code for a group of predicates
@@ -180,7 +180,7 @@ typecheck_to_fixpoint(Iteration, NumIterations, PredIds, !ModuleInfo,
         globals.lookup_bool_option(Globals, debug_types, DebugTypes),
         (
             DebugTypes = yes,
-            construct_type_inference_messages(PredIds, !.ModuleInfo,
+            construct_type_inference_messages(PredIds, !ModuleInfo,
                 [], ProgressSpecs),
             trace [io(!IO)] (
                 write_error_specs(ProgressSpecs, Globals, 0, _, 0, _, !IO)
@@ -200,16 +200,17 @@ typecheck_to_fixpoint(Iteration, NumIterations, PredIds, !ModuleInfo,
     % Write out the inferred `pred' or `func' declarations for a list of
     % predicates.  Don't write out the inferred types for assertions.
     %
-:- pred construct_type_inference_messages(list(pred_id)::in, module_info::in,
+:- pred construct_type_inference_messages(list(pred_id)::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-construct_type_inference_messages([], _, !Specs).
-construct_type_inference_messages([PredId | PredIds], ModuleInfo, !Specs) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+construct_type_inference_messages([], !ModuleInfo, !Specs).
+construct_type_inference_messages([PredId | PredIds], !ModuleInfo, !Specs) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     (
         check_marker(Markers, marker_infer_type),
-        module_info_predids(ModuleInfo, ValidPredIds),
+        module_info_predids(ValidPredIds, !ModuleInfo),
         list.member(PredId, ValidPredIds),
         \+ pred_info_get_goal_type(PredInfo, goal_type_promise(_))
     ->
@@ -218,7 +219,7 @@ construct_type_inference_messages([PredId | PredIds], ModuleInfo, !Specs) :-
     ;
         true
     ),
-    construct_type_inference_messages(PredIds, ModuleInfo, !Specs).
+    construct_type_inference_messages(PredIds, !ModuleInfo, !Specs).
 
     % Construct a message containing the inferred `pred' or `func' declaration
     % for a single predicate.
@@ -237,11 +238,11 @@ construct_type_inference_message(PredInfo) = Spec :-
     MaybeDet = no,
     AppendVarNums = no,
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         TypeStr = mercury_pred_type_to_string(VarSet, ExistQVars, Name, Types,
             MaybeDet, Purity, ClassContext, Context, AppendVarNums)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(Types, ArgTypes, RetType),
         TypeStr = mercury_func_type_to_string(VarSet, ExistQVars, Name,
             ArgTypes, RetType, MaybeDet, Purity, ClassContext, Context,
@@ -678,7 +679,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     ),
     pred_info_context(!.PredInfo, Context),
     generate_simple_call(mercury_private_builtin_module, CalleeName,
-        predicate, only_mode, detism_det, purity_pure, [PredNameVar], [], [],
+        pf_predicate, only_mode, detism_det, purity_pure, [PredNameVar], [], [],
         ModuleInfo, Context, CallGoal),
 
     % Combine the unification and call into a conjunction.
@@ -889,7 +890,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         FuncModule = pred_info_module(!.PredInfo),
         FuncName = pred_info_name(!.PredInfo),
         PredArity = pred_info_orig_arity(!.PredInfo),
-        adjust_func_arity(function, FuncArity, PredArity),
+        adjust_func_arity(pf_function, FuncArity, PredArity),
         FuncSymName = qualified(FuncModule, FuncName),
         create_pure_atomic_complicated_unification(FuncRetVal,
             rhs_functor(cons(FuncSymName, FuncArity), no, FuncArgs),
@@ -1344,7 +1345,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             type_checkpoint("call", !.Info, !IO)
         ),
         list.length(Args, Arity),
-        CurCall = simple_call_id(predicate, Name, Arity),
+        CurCall = simple_call_id(pf_predicate, Name, Arity),
         typecheck_info_set_called_predid(plain_call_id(CurCall), !Info),
         goal_info_get_goal_path(GoalInfo, GoalPath),
         typecheck_call_pred(CurCall, Args, GoalPath, PredId, !Info),
@@ -1488,7 +1489,7 @@ higher_order_pred_type(Purity, Arity, EvalMethod, TypeVarSet, PredType,
     varset.new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet),
     % Argument types always have kind `star'.
     prog_type.var_list_to_type_list(map.init, ArgTypeVars, ArgTypes),
-    construct_higher_order_type(Purity, predicate, EvalMethod, ArgTypes,
+    construct_higher_order_type(Purity, pf_predicate, EvalMethod, ArgTypes,
         PredType).
 
 :- pred higher_order_func_type(purity::in, int::in, lambda_eval_method::in,
@@ -2479,7 +2480,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
         CompleteArgTypes),
     pred_info_get_purity(PredInfo, Purity),
     (
-        IsPredOrFunc = predicate,
+        IsPredOrFunc = pf_predicate,
         PredArity >= FuncArity,
         % We don't support first-class polymorphism, so you can't take the
         % address of an existentially quantified predicate.
@@ -2500,7 +2501,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
             unexpected(this_file, "make_pred_cons_info: split_list failed")
         )
     ;
-        IsPredOrFunc = function,
+        IsPredOrFunc = pf_function,
         PredAsFuncArity = PredArity - 1,
         PredAsFuncArity >= FuncArity,
         % We don't support first-class polymorphism, so you can't take

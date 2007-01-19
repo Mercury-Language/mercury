@@ -99,7 +99,7 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
     add_new_pred(TypeVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
         Markers, Context, Status, NeedQual, PredOrFunc, !ModuleInfo, !Specs),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         MaybeModes0 = yes(Modes0),
 
         % For predicates with no arguments, if the determinism is not declared
@@ -112,12 +112,12 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
     ;
         % Assume that a function with no modes but with a determinism
         % declared has the default modes.
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         MaybeModes0 = no,
         MaybeDet = yes(_)
     ->
         list.length(Types, Arity),
-        adjust_func_arity(function, FuncArity, Arity),
+        adjust_func_arity(pf_function, FuncArity, Arity),
         in_mode(InMode),
         list.duplicate(FuncArity, InMode, InModes),
         out_mode(OutMode),
@@ -422,12 +422,12 @@ preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
     maybe_undefined_pred_error(Globals, PredName, Arity, PredOrFunc,
         Status, IsClassMethod, Context, Description, !Specs),
     (
-        PredOrFunc = function,
-        adjust_func_arity(function, FuncArity, Arity),
+        PredOrFunc = pf_function,
+        adjust_func_arity(pf_function, FuncArity, Arity),
         maybe_check_field_access_function(PredName, FuncArity, Status, Context,
             !.ModuleInfo, !Specs)
     ;
-        PredOrFunc = predicate
+        PredOrFunc = pf_predicate
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     preds_add_implicit(!.ModuleInfo, ModuleName, PredName, Arity, Status,

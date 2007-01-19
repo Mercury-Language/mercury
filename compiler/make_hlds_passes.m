@@ -202,10 +202,6 @@ do_parse_tree_to_hlds(unit_module(Name, Items), MQInfo0, EqvMap, UsedModules,
         mq_info_get_mode_error_flag(MQInfo, InvalidModes1),
         InvalidModes = InvalidModes0 `or` InvalidModes1,
 
-        % The predid list is constructed in reverse order, for efficiency,
-        % so we return it to the correct order here.
-        module_info_reverse_predids(!ModuleInfo),
-
         sort_error_specs(!.Specs, SortedSpecs),
         module_info_get_globals(!.ModuleInfo, CurGlobals),
         write_error_specs(SortedSpecs, CurGlobals, 0, _NumWarnings,
@@ -603,11 +599,11 @@ add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !Specs) :-
     % Add default modes for function declarations, if necessary.
     %
     (
-        PredOrFunc = predicate
+        PredOrFunc = pf_predicate
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         list.length(TypesAndModes, Arity),
-        adjust_func_arity(function, FuncArity, Arity),
+        adjust_func_arity(pf_function, FuncArity, Arity),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         (
             predicate_table_search_func_sym_arity(PredTable0,
@@ -914,11 +910,11 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
     Item = item_pred_or_func(_, _, _, _, PredOrFunc, SymName, TypesAndModes,
         _WithType, _WithInst, _, _, _, _),
     (
-        PredOrFunc = predicate
+        PredOrFunc = pf_predicate
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         list.length(TypesAndModes, PredArity),
-        adjust_func_arity(function, FuncArity, PredArity),
+        adjust_func_arity(pf_function, FuncArity, PredArity),
         maybe_check_field_access_function(SymName, FuncArity, !.Status,
             Context, !.ModuleInfo, !Specs)
     ).
@@ -1116,8 +1112,8 @@ add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
                 module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
                     item_pragma(compiler(initialise_decl),
-                        pragma_foreign_export(ExportLang, SymName, predicate,
-                            [di_mode, uo_mode], CName)),
+                        pragma_foreign_export(ExportLang, SymName,
+                            pf_predicate, [di_mode, uo_mode], CName)),
                 add_item_clause(PragmaExportItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !Specs)
             ;
@@ -1135,8 +1131,8 @@ add_item_clause(item_initialise(user, SymName, Arity), !Status, Context,
                 module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
                 PragmaExportedItem =
                     item_pragma(compiler(initialise_decl),
-                        pragma_foreign_export(ExportLang, SymName, predicate,
-                            [], CName)),
+                        pragma_foreign_export(ExportLang, SymName,
+                            pf_predicate, [], CName)),
                 add_item_clause(PragmaExportedItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !Specs)
             ;
@@ -1178,7 +1174,7 @@ add_item_clause(item_initialise(compiler(Details), SymName, _Arity),
         ExportLang = lang_c,    % XXX Implement for other backends.
         PragmaExportItem =
             item_pragma(compiler(mutable_decl),
-                pragma_foreign_export(ExportLang, SymName, predicate, [],
+                pragma_foreign_export(ExportLang, SymName, pf_predicate, [],
                     CName)),
         add_item_clause(PragmaExportItem, !Status, Context,
             !ModuleInfo, !QualInfo, !Specs)
@@ -1236,8 +1232,8 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
                 module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
                     item_pragma(compiler(finalise_decl),
-                        pragma_foreign_export(ExportLang, SymName, predicate,
-                            [di_mode, uo_mode], CName)),
+                        pragma_foreign_export(ExportLang, SymName,
+                            pf_predicate, [di_mode, uo_mode], CName)),
                 add_item_clause(PragmaExportItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !Specs)
             ;
@@ -1255,8 +1251,8 @@ add_item_clause(item_finalise(Origin, SymName, Arity),
                 module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
                     item_pragma(compiler(finalise_decl),
-                        pragma_foreign_export(ExportLang, SymName, predicate,
-                            [], CName)),
+                        pragma_foreign_export(ExportLang, SymName,
+                            pf_predicate, [], CName)),
                 add_item_clause(PragmaExportItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !Specs)
             ;
@@ -1435,7 +1431,7 @@ add_constant_mutable_access_preds(TargetMutableName, ModuleName, Name,
     ConstantGetForeignProc = pragma_foreign_proc(
         ConstantGetAttrs,
         mutable_get_pred_sym_name(ModuleName, Name),
-        predicate,
+        pf_predicate,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
         InstVarSet,
@@ -1451,7 +1447,7 @@ add_constant_mutable_access_preds(TargetMutableName, ModuleName, Name,
 
     ConstantSetForeignProc = pragma_foreign_proc(Attrs,
         mutable_secret_set_pred_sym_name(ModuleName, Name),
-        predicate,
+        pf_predicate,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
         InstVarSet,
@@ -1497,7 +1493,7 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
     ),
     LockForeignProc = pragma_foreign_proc(LockAndUnlockAttrs,
         mutable_lock_pred_sym_name(ModuleName, Name),
-        predicate,
+        pf_predicate,
         [],
         varset.init,    % Prog varset.
         varset.init,    % Inst varset.
@@ -1524,7 +1520,7 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
     ),
     UnlockForeignProc = pragma_foreign_proc(LockAndUnlockAttrs,
         mutable_unlock_pred_sym_name(ModuleName, Name),
-        predicate,
+        pf_predicate,
         [],
         varset.init,    % Prog varset.
         varset.init,    % Inst varset.
@@ -1549,7 +1545,7 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
     ),
     UnsafeGetForeignProc = pragma_foreign_proc(UnsafeGetAttrs,
         mutable_unsafe_get_pred_sym_name(ModuleName, Name),
-        predicate,
+        pf_predicate,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
         varset.init, % Inst varset.
@@ -1600,7 +1596,7 @@ add_mutable_primitive_preds(TargetMutableName, ModuleName, Name,
     ),
     UnsafeSetForeignProc = pragma_foreign_proc(UnsafeSetAttrs,
         mutable_unsafe_set_pred_sym_name(ModuleName, Name),
-        predicate,
+        pf_predicate,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
         varset.init, % Inst varset.
@@ -1646,7 +1642,7 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
     StdGetClause = item_clause(
         compiler(mutable_decl),
         ProgVarSet0,
-        predicate,
+        pf_predicate,
         GetPredName,
         [variable(X, context_init)],
         StdGetBody
@@ -1668,7 +1664,7 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
     StdSetClause = item_clause(
         compiler(mutable_decl),
         ProgVarSet0,
-        predicate,
+        pf_predicate,
         SetPredName,
         [variable(X, context_init)],
         StdSetBody
@@ -1691,7 +1687,7 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
         IOGetClause = item_clause(
             compiler(mutable_decl),
             ProgVarSet,
-            predicate,
+            pf_predicate,
             GetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
             IOGetBody
@@ -1711,7 +1707,7 @@ add_mutable_user_access_preds(ModuleName, Name, MutAttrs, Context,
         IOSetClause = item_clause(
             compiler(mutable_decl),
             ProgVarSet,
-            predicate,
+            pf_predicate,
             SetPredName,
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
             IOSetBody
@@ -1751,7 +1747,7 @@ add_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
         %
         InitClause = item_clause(compiler(mutable_decl),
             MutVarset,
-            predicate,
+            pf_predicate,
             mutable_init_pred_sym_name(ModuleName, Name), [],
             call_expr(InitSetPredName, [InitTerm], purity_impure) 
                 - Context)
@@ -1777,7 +1773,7 @@ add_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
         PreInitPredName = mutable_pre_init_pred_sym_name(ModuleName, Name),
         PreInitForeignProc = pragma_foreign_proc(Attrs,
             PreInitPredName,
-            predicate,
+            pf_predicate,
             [],
             varset.init,    % ProgVarSet
             varset.init,    % InstVarSet
@@ -1801,7 +1797,7 @@ add_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
         %
         InitClause = item_clause(compiler(mutable_decl),
             MutVarset,
-            predicate,
+            pf_predicate,
             mutable_init_pred_sym_name(ModuleName, Name),
             [],
             InitClauseExpr
@@ -1950,8 +1946,8 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
     %   ( R = A + B <=> R = B + A ).
     %
     module_info_get_name(!.ModuleInfo, ModuleName),
-    module_add_clause(VarSet, predicate, qualified(ModuleName, Name), HeadVars,
-        Goal, Status, Context, goal_type_promise(PromiseType),
+    module_add_clause(VarSet, pf_predicate, qualified(ModuleName, Name),
+        HeadVars, Goal, Status, Context, goal_type_promise(PromiseType),
         !ModuleInfo, !QualInfo, !Specs).
 
 add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !Specs) :-
@@ -2135,8 +2131,8 @@ maybe_check_field_access_function(FuncName, FuncArity, Status, Context,
 
 check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
         FuncStatus, Context, ModuleInfo, !Specs) :-
-    adjust_func_arity(function, FuncArity, PredArity),
-    FuncCallId = simple_call_id(function, FuncName, PredArity),
+    adjust_func_arity(pf_function, FuncArity, PredArity),
+    FuncCallId = simple_call_id(pf_function, FuncName, PredArity),
 
     % Check that a function applied to an exported type is also exported.
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),

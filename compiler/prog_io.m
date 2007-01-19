@@ -1012,7 +1012,7 @@ process_clause(ModuleName, Term, Head, Body0, TheContext, ProgVarSet0,
     maybe1(item)::out) is det.
 
 process_pred_clause(ok2(Name, Args0), VarSet, Body,
-        ok1(item_clause(user, VarSet, predicate, Name, Args, Body))) :-
+        ok1(item_clause(user, VarSet, pf_predicate, Name, Args, Body))) :-
     list.map(term.coerce, Args0, Args).
 process_pred_clause(error2(Errors0), _, _, error1(Errors)) :-
     Errors = assoc_list.map_values_only(term.coerce, Errors0).
@@ -1021,7 +1021,7 @@ process_pred_clause(error2(Errors0), _, _, error1(Errors)) :-
     goal::in, maybe1(item)::out) is det.
 
 process_func_clause(ok2(Name, Args0), Result0, VarSet, Body,
-        ok1(item_clause(user, VarSet, function, Name, Args, Body))) :-
+        ok1(item_clause(user, VarSet, pf_function, Name, Args, Body))) :-
     list.append(Args0, [Result0], Args1),
     list.map(term.coerce, Args1, Args).
 process_func_clause(error2(Errors0), _, _, _, error1(Errors)) :-
@@ -1628,7 +1628,7 @@ parse_type_decl_pred(ModuleName, VarSet, Pred, Attributes, Result) :-
     get_with_inst(Body2, Body3, WithInst),
     get_with_type(Body3, Body4, WithTypeResult),
     ( WithTypeResult = ok1(WithType),
-        process_type_decl_pred_or_func(predicate, ModuleName, WithType,
+        process_type_decl_pred_or_func(pf_predicate, ModuleName, WithType,
             WithInst, MaybeDeterminism, VarSet, Body4, Condition, Attributes,
             Result)
     ;
@@ -1657,7 +1657,7 @@ process_type_decl_pred_or_func(PredOrFunc, ModuleName, WithType, WithInst0,
                 (
                     % Function declarations with `with_type` annotations
                     % have the same form as predicate declarations.
-                    PredOrFunc = function,
+                    PredOrFunc = pf_function,
                     WithType = no
                 ->
                     process_func(ModuleName, VarSet, Body, Condition,
@@ -1693,7 +1693,7 @@ parse_type_decl_func(ModuleName, VarSet, Func, Attributes, Result) :-
     get_with_type(Body3, Body4, WithTypeResult),
     (
         WithTypeResult = ok1(WithType),
-        process_type_decl_pred_or_func(function, ModuleName,
+        process_type_decl_pred_or_func(pf_function, ModuleName,
             WithType, WithInst, MaybeDeterminism, VarSet, Body4,
             Condition, Attributes, Result)
     ;
@@ -2908,8 +2908,8 @@ get_purity(Purity, !Attributes) :-
 
 :- func pred_or_func_decl_string(pred_or_func) = string.
 
-pred_or_func_decl_string(function) = "`:- func' declaration".
-pred_or_func_decl_string(predicate) = "`:- pred' declaration".
+pred_or_func_decl_string(pf_function) = "`:- func' declaration".
+pred_or_func_decl_string(pf_predicate) = "`:- pred' declaration".
 
 %-----------------------------------------------------------------------------%
 
@@ -3158,8 +3158,8 @@ process_func_3(ok2(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,
                 ->
                     Origin = user,
                     Result0 = ok1(item_pred_or_func(Origin, TVarSet, IVarSet,
-                        ExistQVars, function, F, Args, no, no, MaybeDet, Cond,
-                        Purity, ClassContext)),
+                        ExistQVars, pf_function, F, Args, no, no, MaybeDet,
+                        Cond, Purity, ClassContext)),
                     check_no_attributes(Result0, Attributes, Result)
                 ;
                     Msg = "inconsistent constraints on inst variables " ++
@@ -3245,7 +3245,7 @@ process_pred_or_func_mode(ok2(F, As0), ModuleName, PredMode, VarSet0, WithInst,
             ( inst_var_constraints_are_consistent_in_modes(As) ->
                 (
                     WithInst = no,
-                    PredOrFunc = yes(predicate)
+                    PredOrFunc = yes(pf_predicate)
                 ;
                     WithInst = yes(_),
                     % We don't know whether it's a predicate or a function
@@ -3291,8 +3291,8 @@ process_func_mode(ok2(F, As0), ModuleName, FuncMode, RetMode0, FullTerm,
                 varset.coerce(VarSet0, VarSet),
                 list.append(As, [RetMode], ArgModes),
                 ( inst_var_constraints_are_consistent_in_modes(ArgModes) ->
-                    Result0 = ok1(item_pred_or_func_mode(VarSet, yes(function),
-                        F, ArgModes, no, MaybeDet, Cond))
+                    Result0 = ok1(item_pred_or_func_mode(VarSet,
+                        yes(pf_function), F, ArgModes, no, MaybeDet, Cond))
                 ;
                     Msg = "inconsistent constraints on inst variables " ++
                         "in function mode declaration",

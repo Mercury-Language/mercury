@@ -410,7 +410,7 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
     (
         CodeModel = model_det,
         (
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(!Args, RetArg),
             RetArg = pragma_var(_, RetArgName, RetMode, _) - RetType,
             mode_to_arg_mode(!.ModuleInfo, RetMode, RetType, RetArgMode),

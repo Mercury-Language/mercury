@@ -2245,7 +2245,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
     % We extract the superclass typeclass_info by inserting a call
     % to superclass_from_typeclass_info in private_builtin.
     goal_util.generate_simple_call(mercury_private_builtin_module,
-        "superclass_from_typeclass_info", predicate, only_mode,
+        "superclass_from_typeclass_info", pf_predicate, only_mode,
         detism_det, purity_pure, [SubClassVar, IndexVar, Var], [], [],
         ModuleInfo, term.context_init, SuperClassGoal),
     !:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals].
@@ -2653,7 +2653,7 @@ get_special_proc(Type, SpecialPredId, ModuleInfo, PredName, PredId, ProcId) :-
         special_pred_name_arity(SpecialPredId, SpecialName, _, Arity),
         Name = "builtin_" ++ SpecialName ++ "_" ++ CategoryName,
         lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
-            Name, predicate, Arity, only_mode, PredId, ProcId),
+            Name, pf_predicate, Arity, only_mode, PredId, ProcId),
         PredName = qualified(mercury_private_builtin_module, Name)
     ).
 
@@ -2871,7 +2871,7 @@ gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
     new_type_info_var_raw(Type, type_info, TypeInfoVar,
         !VarSet, !VarTypes, !RttiVarMaps),
     goal_util.generate_simple_call(mercury_private_builtin_module,
-        "type_info_from_typeclass_info", predicate, only_mode,
+        "type_info_from_typeclass_info", pf_predicate, only_mode,
         detism_det, purity_pure, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
         [TypeInfoVar - ground(shared, none)], ModuleInfo,
         term.context_init, CallGoal),

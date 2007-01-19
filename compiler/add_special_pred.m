@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -363,7 +363,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     % XXX we probably shouldn't hardcode this as predicate but since
     % all current special_preds are predicates at the moment it doesn't
     % matter.
-    clauses_info_init(predicate, Arity, ClausesInfo0),
+    clauses_info_init(pf_predicate, Arity, ClausesInfo0),
     Origin = origin_special_pred(SpecialPredId - TypeCtor),
     adjust_special_pred_status(SpecialPredId, Status0, Status),
     map.init(Proofs),
@@ -373,7 +373,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         % XXX this context might not be empty
     ClassContext = constraints([], []),
     ExistQVars = [],
-    pred_info_init(ModuleName, PredName, Arity, predicate, Context,
+    pred_info_init(ModuleName, PredName, Arity, pf_predicate, Context,
         Origin, Status, goal_type_none, Markers, ArgTypes, TVarSet, ExistQVars,
         ClassContext, Proofs, ConstraintMap, ClausesInfo0, PredInfo0),
     ArgLives = no,

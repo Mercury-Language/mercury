@@ -416,17 +416,15 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             Var, Args, Modes, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
     ;
         ConsTag = unshared_tag(Ptag),
-        code_info.get_module_info(!.CI, ModuleInfo),
         var_types(!.CI, Args, ArgTypes),
-        generate_cons_args(Args, ArgTypes, Modes, 0, 1, TakeAddr, ModuleInfo,
+        generate_cons_args(Args, ArgTypes, Modes, 0, 1, TakeAddr, !.CI,
             MaybeRvals, FieldAddrs, MayUseAtomic),
         construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs,
             MayUseAtomic, Code, !CI)
     ;
         ConsTag = shared_remote_tag(Ptag, Sectag),
-        code_info.get_module_info(!.CI, ModuleInfo),
         var_types(!.CI, Args, ArgTypes),
-        generate_cons_args(Args, ArgTypes, Modes, 1, 1, TakeAddr, ModuleInfo,
+        generate_cons_args(Args, ArgTypes, Modes, 1, 1, TakeAddr, !.CI,
             MaybeRvals0, FieldAddrs, MayUseAtomic),
         % The first field holds the secondary tag.
         MaybeRvals = [yes(const(llconst_int(Sectag))) | MaybeRvals0],
@@ -700,7 +698,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             yes(const(llconst_int(NumArgs)))
             | PredArgs
         ],
-        code_info.assign_cell_to_var(Var, no, 0, Vector, no, "closure",
+        code_info.assign_cell_to_var(Var, no, 0, Vector, no, [], "closure",
             MayUseAtomic, Code, !CI)
     ).
 
@@ -747,16 +745,17 @@ generate_pred_args(ModuleInfo, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
         !MayUseAtomic).
 
 :- pred generate_cons_args(list(prog_var)::in, list(mer_type)::in,
-    list(uni_mode)::in, int::in, int::in, list(int)::in, module_info::in,
+    list(uni_mode)::in, int::in, int::in, list(int)::in, code_info::in,
     list(maybe(rval))::out, assoc_list(int, prog_var)::out,
     may_use_atomic_alloc::out) is det.
 
 generate_cons_args(Vars, Types, Modes, FirstOffset, FirstArgNum, TakeAddr,
-        ModuleInfo, !:Args, !:FieldAddrs, !:MayUseAtomic) :-
+        CI, !:Args, !:FieldAddrs, !:MayUseAtomic) :-
+    code_info.get_module_info(CI, ModuleInfo),
     !:MayUseAtomic = initial_may_use_atomic(ModuleInfo),
     (
         generate_cons_args_2(Vars, Types, Modes, FirstOffset, FirstArgNum,
-            TakeAddr, ModuleInfo, !:Args, !:FieldAddrs, !MayUseAtomic)
+            TakeAddr, CI, !:Args, !:FieldAddrs, !MayUseAtomic)
     ->
         true
     ;
@@ -769,20 +768,28 @@ generate_cons_args(Vars, Types, Modes, FirstOffset, FirstArgNum, TakeAddr,
     % we just produce `no', meaning don't generate an assignment to that field.
     %
 :- pred generate_cons_args_2(list(prog_var)::in, list(mer_type)::in,
-    list(uni_mode)::in, int::in, int::in, list(int)::in, module_info::in,
+    list(uni_mode)::in, int::in, int::in, list(int)::in, code_info::in,
     list(maybe(rval))::out, assoc_list(int, prog_var)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
 
 generate_cons_args_2([], [], [], _, _, [], _, [], [], !MayUseAtomic).
 generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
-        FirstOffset, CurArgNum, !.TakeAddr, ModuleInfo, [Rval | Rvals],
+        FirstOffset, CurArgNum, !.TakeAddr, CI, [MaybeRval | MaybeRvals],
         FieldAddrs, !MayUseAtomic) :-
+    code_info.get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
     ( !.TakeAddr = [CurArgNum | !:TakeAddr] ->
-        Rval = no,
+        code_info.get_lcmc_null(CI, LCMCNull),
+        (
+            LCMCNull = no,
+            MaybeRval = no
+        ;
+            LCMCNull = yes,
+            MaybeRval = yes(const(llconst_int(0)))
+        ),
         !:MayUseAtomic = may_not_use_atomic_alloc,
         generate_cons_args_2(Vars, Types, UniModes, FirstOffset, CurArgNum + 1,
-            !.TakeAddr, ModuleInfo, Rvals, FieldAddrs1, !MayUseAtomic),
+            !.TakeAddr, CI, MaybeRvals, FieldAddrs1, !MayUseAtomic),
         % Whereas CurArgNum starts numbering the arguments from 1, offsets
         % into fields start from zero. However, if FirstOffset = 1, then the
         % first word in the cell is the secondary tag.
@@ -793,15 +800,15 @@ generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
         mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, ArgMode),
         (
             ArgMode = top_in,
-            Rval = yes(var(Var))
+            MaybeRval = yes(var(Var))
         ;
             ( ArgMode = top_out
             ; ArgMode = top_unused
             ),
-            Rval = no
+            MaybeRval = no
         ),
         generate_cons_args_2(Vars, Types, UniModes, FirstOffset, CurArgNum + 1,
-            !.TakeAddr, ModuleInfo, Rvals, FieldAddrs, !MayUseAtomic)
+            !.TakeAddr, CI, MaybeRvals, FieldAddrs, !MayUseAtomic)
     ).
 
 :- func initial_may_use_atomic(module_info) = may_use_atomic_alloc.
@@ -842,8 +849,9 @@ construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, MayUseAtomic,
     ;
         ReserveWordAtStart = no
     ),
+    FieldNums = list.map(fst, FieldAddrs),
     code_info.assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
-        MaybeSize, VarTypeMsg, MayUseAtomic, CellCode, !CI),
+        MaybeSize, FieldNums, VarTypeMsg, MayUseAtomic, CellCode, !CI),
     (
         FieldAddrs = [],
         % Optimize common case.

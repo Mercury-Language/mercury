@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 1998-2002, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -60,11 +60,11 @@
 
 :- import_module require.
 
-is_predicate(predicate) = yes.
-is_predicate(function) = no.
+is_predicate(pf_predicate) = yes.
+is_predicate(pf_function) = no.
 
-is_function(predicate) = no.
-is_function(function) = yes.
+is_function(pf_predicate) = no.
+is_function(pf_function) = yes.
 
 trace_getline(Prompt, Result, !IO) :-
     io.input_stream(MdbIn, !IO),

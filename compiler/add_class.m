@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -422,7 +422,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
         ->
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
             (
-                PorF = function,
+                PorF = pf_function,
                 maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProc),
                 (
                     MaybeProc = no
@@ -433,7 +433,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
                     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
                 )
             ;
-                PorF = predicate,
+                PorF = pf_predicate,
                 pred_info_get_procedures(PredInfo0, Procs),
                 ( map.is_empty(Procs) ->
                     pred_method_with_no_modes_error(PredInfo0, !Specs)

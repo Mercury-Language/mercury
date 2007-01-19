@@ -1092,7 +1092,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         % output mode, make the result into the MLDS return type.
         (
             RetTypes0 = [],
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(HeadModes, _, ResultMode),
             ResultMode = top_out,
             pred_args_to_func_args(HeadTypes, _, ResultType),
@@ -1238,7 +1238,7 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg, !MaybeInfo) :-
 
 ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
-    pred_info_is_pred_or_func(PredInfo) = function,
+    pred_info_is_pred_or_func(PredInfo) = pf_function,
     proc_info_interface_code_model(ProcInfo, model_det),
 
     proc_info_get_argmodes(ProcInfo, Modes),
@@ -1379,7 +1379,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             MaybeDeclaringModule = no
         ),
         (
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             \+ ml_is_output_det_function(ModuleInfo, PredId, ProcId, _)
         ->
             NonOutputFunc = yes
@@ -2107,7 +2107,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     % Generate the address of `private_builtin.gc_trace/1#0'.
     PredName = "gc_trace",
     PredOrigArity = 1,
-    PredLabel = mlds_user_pred_label((predicate), no, PredName, PredOrigArity,
+    PredLabel = mlds_user_pred_label(pf_predicate, no, PredName, PredOrigArity,
         model_det, no),
     ProcId = hlds_pred.initial_proc_id,
     PredModule = mercury_private_builtin_module,

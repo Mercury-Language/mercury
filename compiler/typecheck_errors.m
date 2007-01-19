@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -135,8 +135,8 @@ report_pred_call_error(Info, PredCallId) = Spec :-
     ;
         UndefMsg = report_error_undef_pred(Info, PredCallId),
         (
-            ( PredOrFunc0 = predicate, PredOrFunc = function
-            ; PredOrFunc0 = function, PredOrFunc = predicate
+            ( PredOrFunc0 = pf_predicate, PredOrFunc = pf_function
+            ; PredOrFunc0 = pf_function, PredOrFunc = pf_predicate
             ),
             predicate_table_search_pf_sym(PredicateTable,
                 calls_are_fully_qualified(Info ^ pred_markers),
@@ -179,13 +179,13 @@ report_error_pred_num_args(Info, SimpleCallId, Arities) = Spec :-
 
 report_error_func_instead_of_pred(Info, PredOrFunc) = Msg :-
     (
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         Pieces = [words("(There is a"),
             prefix("*"), p_or_f(PredOrFunc), suffix("*"),
             words("with that name, however."), nl,
             words("Perhaps you forgot to add"), fixed("` = ...'?)"), nl]
     ;
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Pieces = [words("(There is a"),
             prefix("*"), p_or_f(PredOrFunc), suffix("*"),
             words("with that name, however.)"), nl]
@@ -525,12 +525,12 @@ report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
     Pieces1 = [words("type error in unification of")] ++
         argument_name_to_pieces(VarSet, Var) ++ [nl],
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Pieces2 = [words("and"), prefix("pred("),
             words(mercury_vars_to_string(VarSet, no, ArgVars)),
             suffix(")"), words(":- ...':"), nl]
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ArgVars, FuncArgs, RetVar),
         Pieces2 = [words("and"), prefix("func("),
             words(mercury_vars_to_string(VarSet, no, FuncArgs)),
@@ -545,7 +545,7 @@ report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
     LambdaExprStr = "lambda expression has type",
     Pieces4a = [words(LambdaExprStr), prefix("`")],
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         (
             ArgVars = [],
             Pieces4b = [words("pred")]
@@ -557,7 +557,7 @@ report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
             Pieces4b = [words("pred(_" ++ JoinedString ++ ")")]
         )
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ArgVars, FuncArgVars, _),
         (
             FuncArgVars = [],
@@ -1639,11 +1639,11 @@ in_clause_for_pieces(Info) = Pieces :-
 
 error_num_args_to_pieces(MaybePredOrFunc, Arity0, Arities0) = Pieces :-
     % Adjust arities for functions.
-    ( MaybePredOrFunc = yes(function) ->
-        adjust_func_arity(function, Arity, Arity0),
+    ( MaybePredOrFunc = yes(pf_function) ->
+        adjust_func_arity(pf_function, Arity, Arity0),
         ReverseAdjust =
             ( pred(OtherArity0::in, OtherArity::out) is det :-
-                adjust_func_arity(function, OtherArity, OtherArity0)
+                adjust_func_arity(pf_function, OtherArity, OtherArity0)
             ),
         list.map(ReverseAdjust, Arities0, Arities)
     ;

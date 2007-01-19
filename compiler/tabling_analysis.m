@@ -792,7 +792,7 @@ make_opt_int(ModuleInfo, !IO) :-
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
         module_info_get_mm_tabling_info(ModuleInfo, TablingInfo), 
-        module_info_predids(ModuleInfo, PredIds),   
+        module_info_predids(PredIds, ModuleInfo, _ModuleInfo),   
         list.foldl(write_pragma_mm_tabling_info(ModuleInfo, TablingInfo),
             PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),

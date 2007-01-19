@@ -1439,7 +1439,7 @@ update_recompilation_info(Pred, !Info) :-
 
 :- func convert_simple_item_type(id_type) = item_type.
 
-convert_simple_item_type(type_id) = type_item.
+convert_simple_item_type(type_id) = type_abstract_item.
 convert_simple_item_type(mode_id) = mode_item.
 convert_simple_item_type(inst_id) = inst_item.
 convert_simple_item_type(class_id) = typeclass_item.

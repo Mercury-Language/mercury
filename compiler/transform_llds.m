@@ -113,7 +113,7 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
     ProcId = hlds_pred.initial_proc_id,
     PredId = hlds_pred.initial_pred_id,
     PredName = "ACCURATE_GC_END_LABEL",
-    ProcLabel = ordinary_proc_label(ModuleName, predicate, ModuleName,
+    ProcLabel = ordinary_proc_label(ModuleName, pf_predicate, ModuleName,
         PredName, Arity, proc_id_to_int(ProcId)),
     Instrs = [llds_instr(label(entry_label(entry_label_local, ProcLabel)),
         "label to indicate end of previous procedure")],

@@ -80,7 +80,7 @@ replace_in_hlds(!ModuleInfo) :-
     replace_in_inst_table(EqvMap, Insts0, Insts, InstCache0, InstCache1),
     module_info_set_inst_table(Insts, !ModuleInfo),
 
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     list.foldl2(replace_in_pred(EqvMap), PredIds, !ModuleInfo, InstCache1, _).
 
 :- pred add_type_to_eqv_map(type_ctor::in, hlds_type_defn::in,

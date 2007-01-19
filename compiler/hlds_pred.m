@@ -1132,7 +1132,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
 
     set.init(Assertions),
 
-    pred_info_create(ModuleName, SymName, predicate, Context, Origin,
+    pred_info_create(ModuleName, SymName, pf_predicate, Context, Origin,
         ExportStatus, Markers, ArgTypes, TVarSet, ExistQVars,
         ClassContext, Assertions, ProcInfo, ProcId, PredInfo),
 
@@ -2774,11 +2774,11 @@ is_field_access_function_name(ModuleInfo, FuncName, Arity,
     map.contains(CtorFieldTable, FieldName).
 
 pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
-    pred_info_is_pred_or_func(PredInfo) = function,
+    pred_info_is_pred_or_func(PredInfo) = pf_function,
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
-    adjust_func_arity(function, FuncArity, PredArity),
+    adjust_func_arity(pf_function, FuncArity, PredArity),
     is_field_access_function_name(ModuleInfo, qualified(Module, Name),
         FuncArity, _, _).
 

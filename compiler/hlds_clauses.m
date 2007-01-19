@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -211,7 +211,7 @@ clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     map.init(TVarNameMap),
     % Procedures introduced for assertions are always predicates, never
     % functions.
-    HeadVarVec = proc_arg_vector_init(predicate, HeadVars),
+    HeadVarVec = proc_arg_vector_init(pf_predicate, HeadVars),
     set_clause_list([], ClausesRep),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,

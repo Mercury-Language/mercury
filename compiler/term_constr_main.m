@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2006 The University of Melbourne.
+% Copyright (C) 1997,2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -476,10 +476,12 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
 maybe_make_optimization_interface(ModuleInfo, !IO) :-
     globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt, 
         !IO),
-    module_info_predids(ModuleInfo, PredIds),
-    ( if    MakeOptInt = yes
-      then  make_opt_int(PredIds, ModuleInfo, !IO)
-      else  true
+    (
+        MakeOptInt = yes,
+        module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
+        make_opt_int(PredIds, ModuleInfo, !IO)
+    ;
+        MakeOptInt = no
     ).
 
 :- pred make_opt_int(list(pred_id)::in, module_info::in, io::di, io::uo) is det.
@@ -582,11 +584,11 @@ output_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         HeadVars, !IO) :- 
     io.write_string(":- pragma termination2_info(", !IO),
     ( 
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_output_pred_mode_subdecl(varset.init, SymName, 
             ModeList, no, Context, !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, FuncModeList, RetMode),
         mercury_output_func_mode_subdecl(varset.init, SymName, 
             FuncModeList, RetMode, no, Context, !IO)

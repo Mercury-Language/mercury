@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -850,11 +850,11 @@ list_to_set_3([H | T], Offset, !Bits, !Rest) :-
 :- func insert_bitset_elem(bitset_elem, bitset_impl) = bitset_impl.
 
 insert_bitset_elem(Data, []) = [Data].
-insert_bitset_elem(Data0, [Data1 | Rest]) = List :-
-    ( Data0 ^ offset < Data1 ^ offset ->
-        List = [Data0, Data1 | Rest]
+insert_bitset_elem(Data, [Head | Tail]) = List :-
+    ( Data ^ offset < Head ^ offset ->
+        List = [Data, Head | Tail]
     ;
-        List = [Data1 | insert_bitset_elem(Data0, Rest)]
+        List = [Head | insert_bitset_elem(Data, Tail)]
     ).
 
 %-----------------------------------------------------------------------------%

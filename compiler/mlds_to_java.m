@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2006 The University of Melbourne.
+% Copyright (C) 2000-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1005,11 +1005,11 @@ make_pred_name_string(PredLabel, ProcId, MaybeSeqNum) = NameStr :-
 pred_label_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
         PredArity, _CodeModel, _NonOutputFunc)) = PredLabelStr :-
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Suffix = "p",
         OrigArity = PredArity
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         Suffix = "f",
         OrigArity = PredArity - 1
     ),
@@ -1746,11 +1746,11 @@ output_name(entity_export(Name), !IO) :-
 output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
         PredArity, _, _), !IO) :-
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Suffix = "p",
         OrigArity = PredArity
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         Suffix = "f",
         OrigArity = PredArity - 1
     ),

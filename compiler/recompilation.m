@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 University of Melbourne.
+% Copyright (C) 2001-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -66,25 +66,25 @@
     --->    item_name(sym_name, arity).
 
 :- type item_type
-    --->    type_item       % Just the name of the type, not its body.
-                            % It is common for a value of a type to
-                            % be passed through a predicate without
-                            % inspecting the value -- such predicates
-                            % do not need to be recompiled if the
-                            % body of the type changes (except for
-                            % equivalence types).
+    --->    type_abstract_item  % Just the name of the type, not its body.
+                                % It is common for a value of a type to
+                                % be passed through a predicate without
+                                % inspecting the value -- such predicates
+                                % do not need to be recompiled if the
+                                % body of the type changes (except for
+                                % equivalence types).
     ;       type_body_item
     ;       mode_item
     ;       inst_item
     ;       typeclass_item
-    ;       functor_item     % The RHS of a var-functor unification.
+    ;       functor_item        % The RHS of a var-functor unification.
     ;       predicate_item
     ;       function_item
     ;       mutable_item
     ;       foreign_proc_item.
 
 :- inst simple_item
-    --->    type_item
+    --->    type_abstract_item
     ;       type_body_item
     ;       mode_item
     ;       inst_item
@@ -288,10 +288,10 @@ write_version_number(VersionNumber, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-pred_or_func_to_item_type(predicate) = predicate_item.
-pred_or_func_to_item_type(function) = function_item.
+pred_or_func_to_item_type(pf_predicate) = predicate_item.
+pred_or_func_to_item_type(pf_function) = function_item.
 
-is_simple_item_type(type_item).
+is_simple_item_type(type_abstract_item).
 is_simple_item_type(type_body_item).
 is_simple_item_type(inst_item).
 is_simple_item_type(mode_item).
@@ -300,7 +300,7 @@ is_simple_item_type(typeclass_item).
 is_pred_or_func_item_type(predicate_item).
 is_pred_or_func_item_type(function_item).
 
-string_to_item_type("type", type_item).
+string_to_item_type("type", type_abstract_item).
 string_to_item_type("type_body", type_body_item).
 string_to_item_type("inst", inst_item).
 string_to_item_type("mode", mode_item).
@@ -331,13 +331,14 @@ init_item_id_set(Simple, PorF, Cons) =
 init_used_items = item_id_set(map.init, map.init, map.init, map.init,
     map.init, map.init, map.init, map.init, map.init, map.init).
 
-extract_simple_item_set(Items, type_item) = Items ^ types.
+extract_simple_item_set(Items, type_abstract_item) = Items ^ types.
 extract_simple_item_set(Items, type_body_item) = Items ^ type_bodies.
 extract_simple_item_set(Items, mode_item) = Items ^ modes.
 extract_simple_item_set(Items, inst_item) = Items ^ insts.
 extract_simple_item_set(Items, typeclass_item) = Items ^ typeclasses.
 
-update_simple_item_set(Items, type_item, IdMap) = Items ^ types := IdMap.
+update_simple_item_set(Items, type_abstract_item, IdMap) =
+    Items ^ types := IdMap.
 update_simple_item_set(Items, type_body_item, IdMap) =
     Items ^ type_bodies := IdMap.
 update_simple_item_set(Items, mode_item, IdMap) = Items ^ modes := IdMap.
@@ -353,7 +354,7 @@ update_pred_or_func_set(Items, predicate_item, Set) =
 update_pred_or_func_set(Items, function_item, Set) =
     Items ^ functions := Set.
 
-extract_ids(Items, type_item) = Items ^ types.
+extract_ids(Items, type_abstract_item) = Items ^ types.
 extract_ids(Items, type_body_item) = Items ^ type_bodies.
 extract_ids(Items, mode_item) = Items ^ modes.
 extract_ids(Items, inst_item) = Items ^ insts.
@@ -364,7 +365,7 @@ extract_ids(Items, function_item) = Items ^ functions.
 extract_ids(Items, mutable_item) = Items ^ mutables.
 extract_ids(Items, foreign_proc_item) = Items ^ foreign_procs.
 
-update_ids(Items, type_item, IdMap) = Items ^ types := IdMap.
+update_ids(Items, type_abstract_item, IdMap) = Items ^ types := IdMap.
 update_ids(Items, type_body_item, IdMap) = Items ^ type_bodies := IdMap.
 update_ids(Items, mode_item, IdMap) = Items ^ modes := IdMap.
 update_ids(Items, inst_item, IdMap) = Items ^ insts := IdMap.
@@ -382,8 +383,8 @@ map_ids(Func, Items0, Init) = Items :-
             update_ids(NewItems0, ItemType,
                 Func(ItemType, extract_ids(Items0, ItemType)))
         ),
-        [type_item, type_body_item, mode_item, inst_item, typeclass_item,
-            functor_item, predicate_item, function_item],
+        [type_abstract_item, type_body_item, mode_item, inst_item,
+            typeclass_item, functor_item, predicate_item, function_item],
         Items1).
 
 %-----------------------------------------------------------------------------%

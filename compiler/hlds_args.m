@@ -280,11 +280,11 @@
 
 proc_arg_vector_init(PredOrFunc, Args0) = ArgVec :-
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Args = Args0,
         MaybeRetVal = no
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         list.det_split_last(Args0, Args, RetVal),
         MaybeRetVal = yes(RetVal)
     ),
@@ -671,7 +671,7 @@ proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
     %
 :- type poly_arg_vector(T) == proc_arg_vector(T).
 
-poly_arg_vector_init = proc_arg_vector_init(predicate, []).
+poly_arg_vector_init = proc_arg_vector_init(pf_predicate, []).
 
 poly_arg_vector_set_instance_type_infos(ITI, !A) :-
     proc_arg_vector_set_instance_type_infos(ITI, !A).

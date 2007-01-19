@@ -1520,8 +1520,8 @@ type_info_list_to_string(TypeInfoList) =
 
 %-----------------------------------------------------------------------------%
 
-pred_or_func_to_string(predicate, "MR_PREDICATE").
-pred_or_func_to_string(function,  "MR_FUNCTION").
+pred_or_func_to_string(pf_predicate, "MR_PREDICATE").
+pred_or_func_to_string(pf_function,  "MR_FUNCTION").
 
 sectag_locn_to_string(sectag_none,   "MR_SECTAG_NONE").
 sectag_locn_to_string(sectag_local,  "MR_SECTAG_LOCAL").

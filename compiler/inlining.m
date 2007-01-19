@@ -230,7 +230,7 @@ inlining(!ModuleInfo) :-
         ; CompoundThreshold > 0
         )
     ->
-        dead_proc_analyze(!.ModuleInfo, NeededMap)
+        dead_proc_analyze(!ModuleInfo, NeededMap)
     ;
         map.init(NeededMap)
     ),

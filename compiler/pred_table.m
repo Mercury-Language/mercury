@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -88,8 +88,11 @@
 
     % Get a list of all the valid predids in the predicate_table.
     %
-:- pred predicate_table_get_predids(predicate_table::in, list(pred_id)::out)
-    is det.
+    % This operation does not logically change the predicate table,
+    % but does update it physically.
+    %
+:- pred predicate_table_get_predids(list(pred_id)::out,
+    predicate_table::in, predicate_table::out) is det.
 
     % Remove a pred_id from the valid list.
     %
@@ -97,11 +100,6 @@
     predicate_table::in, predicate_table::out) is det.
 :- pred predicate_table_remove_predicate(pred_id::in,
     predicate_table::in, predicate_table::out) is det.
-
-    % Reverse the order of pred_ids stored in the predicate_table.
-    %
-:- pred predicate_table_reverse_predids(predicate_table::in,
-    predicate_table::out) is det.
 
     % Search the table for (a) predicates or functions (b) predicates only
     % or (c) functions only matching this (possibly module-qualified) sym_name.
@@ -313,9 +311,14 @@
                 next_pred_id        :: pred_id,
                                     % The next available pred_id.
 
-                pred_ids            :: list(pred_id),
+                old_pred_ids        :: list(pred_id),
+                new_rev_pred_ids    :: list(pred_id),
                                     % The keys of the pred_table - cached
-                                    % here for efficiency.
+                                    % here for efficiency. The old pred_ids
+                                    % are listed in order; the new pred_iss
+                                    % are listed in reverse order. You can get
+                                    % the full list with old_pred_ids ++
+                                    % reverse(new_rev_pred_ids).
 
                 accessibility_table :: accessibility_table,
                                     % How is the predicate accessible?
@@ -369,23 +372,24 @@
     map(pair(module_name, string), map(arity, list(pred_id))).
 
 predicate_table_init(PredicateTable) :-
-    PredicateTable = predicate_table(Preds, NextPredId, PredIds,
-        AccessibilityTable,
-        Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
-        Func_N_Index, Func_NA_Index, Func_MNA_Index),
     map.init(Preds),
     NextPredId = hlds_pred.initial_pred_id,
-    PredIds = [],
+    OldPredIds = [],
+    NewRevPredIds = [],
     map.init(AccessibilityTable),
     map.init(Pred_N_Index),
     map.init(Pred_NA_Index),
     map.init(Pred_MNA_Index),
     map.init(Func_N_Index),
     map.init(Func_NA_Index),
-    map.init(Func_MNA_Index).
+    map.init(Func_MNA_Index),
+    PredicateTable = predicate_table(Preds, NextPredId,
+        OldPredIds, NewRevPredIds, AccessibilityTable,
+        Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
+        Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
 predicate_table_optimize(PredicateTable0, PredicateTable) :-
-    PredicateTable0 = predicate_table(A, B, C, D,
+    PredicateTable0 = predicate_table(A, B, C, D, E,
         Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
         Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
     map.optimize(Pred_N_Index0, Pred_N_Index),
@@ -394,7 +398,7 @@ predicate_table_optimize(PredicateTable0, PredicateTable) :-
     map.optimize(Func_N_Index0, Func_N_Index),
     map.optimize(Func_NA_Index0, Func_NA_Index),
     map.optimize(Func_MNA_Index0, Func_MNA_Index),
-    PredicateTable = predicate_table(A, B, C, D,
+    PredicateTable = predicate_table(A, B, C, D, E,
         Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
         Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
@@ -403,17 +407,33 @@ predicate_table_get_preds(PredicateTable, PredicateTable ^ preds).
 predicate_table_set_preds(Preds, PredicateTable,
     PredicateTable ^ preds := Preds).
 
-predicate_table_get_predids(PredicateTable, PredicateTable ^ pred_ids).
+predicate_table_get_predids(PredIds, !PredicateTable) :-
+    OldPredIds = !.PredicateTable ^ old_pred_ids,
+    NewRevPredIds = !.PredicateTable ^ new_rev_pred_ids,
+    (
+        NewRevPredIds = [],
+        PredIds = OldPredIds
+    ;
+        NewRevPredIds = [_ | _],
+        PredIds = OldPredIds ++ list.reverse(NewRevPredIds)
+    ),
+    !:PredicateTable = !.PredicateTable ^ old_pred_ids := PredIds,
+    !:PredicateTable = !.PredicateTable ^ new_rev_pred_ids := [].
 
-predicate_table_remove_predid(PredId, PredicateTable0, PredicateTable) :-
-    list.delete_all(PredicateTable0 ^ pred_ids, PredId, PredIds),
-    PredicateTable = PredicateTable0 ^ pred_ids := PredIds.
+predicate_table_remove_predid(PredId, !PredicateTable) :-
+    OldPredIds0 = !.PredicateTable ^ old_pred_ids,
+    NewRevPredIds0 = !.PredicateTable ^ new_rev_pred_ids,
+    list.delete_all(OldPredIds0, PredId, OldPredIds),
+    list.delete_all(NewRevPredIds0, PredId, NewRevPredIds),
+    !:PredicateTable = !.PredicateTable ^ old_pred_ids := OldPredIds,
+    !:PredicateTable = !.PredicateTable ^ new_rev_pred_ids := NewRevPredIds.
 
 predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
-    PredicateTable0 = predicate_table(Preds0, NextPredId, PredIds0,
-        AccessibilityTable0,
+    PredicateTable0 = predicate_table(Preds0, NextPredId,
+        OldPredIds0, NewRevPredIds0, AccessibilityTable0,
         PredN0, PredNA0, PredMNA0, FuncN0, FuncNA0, FuncMNA0),
-    list.delete_all(PredIds0, PredId, PredIds),
+    list.delete_all(OldPredIds0, PredId, OldPredIds),
+    list.delete_all(NewRevPredIds0, PredId, NewRevPredIds),
     map.det_remove(Preds0, PredId, PredInfo, Preds),
     map.det_remove(AccessibilityTable0, PredId, _, AccessibilityTable),
     Module = pred_info_module(PredInfo),
@@ -421,20 +441,20 @@ predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
     Arity = pred_info_orig_arity(PredInfo),
     IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
     (
-        IsPredOrFunc = predicate,
+        IsPredOrFunc = pf_predicate,
         predicate_table_remove_from_index(Module, Name, Arity, PredId,
             PredN0, PredN, PredNA0, PredNA, PredMNA0, PredMNA),
-        PredicateTable = predicate_table(Preds, NextPredId, PredIds,
-            AccessibilityTable,
+        PredicateTable = predicate_table(Preds, NextPredId,
+            OldPredIds, NewRevPredIds, AccessibilityTable,
             PredN, PredNA, PredMNA, FuncN0, FuncNA0, FuncMNA0)
     ;
-        IsPredOrFunc = function,
+        IsPredOrFunc = pf_function,
         FuncArity = Arity - 1,
         predicate_table_remove_from_index(Module, Name, FuncArity,
             PredId, FuncN0, FuncN, FuncNA0, FuncNA,
             FuncMNA0, FuncMNA),
-        PredicateTable = predicate_table(Preds, NextPredId, PredIds,
-            AccessibilityTable,
+        PredicateTable = predicate_table(Preds, NextPredId,
+            OldPredIds, NewRevPredIds, AccessibilityTable,
             PredN0, PredNA0, PredMNA0, FuncN, FuncNA, FuncMNA)
     ).
 
@@ -487,12 +507,6 @@ do_remove_from_m_n_a_index(Module, Name, Arity, PredId, MNA0, MNA) :-
         map.det_update(Arities0, Arity, PredIds, Arities),
         map.det_update(MNA0, Module - Name, Arities, MNA)
     ).
-
-%-----------------------------------------------------------------------------%
-
-predicate_table_reverse_predids(PredicateTable0, PredicateTable) :-
-    list.reverse(PredicateTable0 ^ pred_ids, PredIds),
-    PredicateTable = PredicateTable0 ^ pred_ids := PredIds.
 
 %-----------------------------------------------------------------------------%
 
@@ -720,20 +734,20 @@ pred_id_matches_module(Preds, ModuleName, PredId) :-
 %-----------------------------------------------------------------------------%
 
 predicate_table_search_pf_m_n_a(PredicateTable, IsFullyQualified,
-        predicate, Module, Name, Arity, PredIds) :-
+        pf_predicate, Module, Name, Arity, PredIds) :-
     predicate_table_search_pred_m_n_a(PredicateTable, IsFullyQualified,
         Module, Name, Arity, PredIds).
 predicate_table_search_pf_m_n_a(PredicateTable, IsFullyQualified,
-        function, Module, Name, Arity, PredIds) :-
+        pf_function, Module, Name, Arity, PredIds) :-
     FuncArity = Arity - 1,
     predicate_table_search_func_m_n_a(PredicateTable, IsFullyQualified,
         Module, Name, FuncArity, PredIds).
 
-predicate_table_search_pf_name_arity(PredicateTable, predicate, Name, Arity,
+predicate_table_search_pf_name_arity(PredicateTable, pf_predicate, Name, Arity,
         PredIds) :-
     predicate_table_search_pred_name_arity(PredicateTable, Name, Arity,
         PredIds).
-predicate_table_search_pf_name_arity(PredicateTable, function, Name, Arity,
+predicate_table_search_pf_name_arity(PredicateTable, pf_function, Name, Arity,
         PredIds) :-
     FuncArity = Arity - 1,
     predicate_table_search_func_name_arity(PredicateTable, Name, FuncArity,
@@ -748,29 +762,29 @@ predicate_table_search_pf_sym_arity(PredicateTable, may_be_partially_qualified,
     predicate_table_search_pf_name_arity(PredicateTable, PredOrFunc,
         Name, Arity, PredIdList).
 
-predicate_table_search_pf_sym(PredicateTable, IsFullyQualified, predicate,
+predicate_table_search_pf_sym(PredicateTable, IsFullyQualified, pf_predicate,
         SymName, PredIdList) :-
     predicate_table_search_pred_sym(PredicateTable, IsFullyQualified,
         SymName, PredIdList).
-predicate_table_search_pf_sym(PredicateTable, IsFullyQualified,
-        function, SymName, PredIdList) :-
+predicate_table_search_pf_sym(PredicateTable, IsFullyQualified, pf_function,
+        SymName, PredIdList) :-
     predicate_table_search_func_sym(PredicateTable, IsFullyQualified,
         SymName, PredIdList).
 
 %-----------------------------------------------------------------------------%
 
 predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
-        PredicateTable) :-
-    predicate_table_reset(OrigPredicateTable, PredicateTable0),
+        !:PredicateTable) :-
+    predicate_table_reset(OrigPredicateTable, !:PredicateTable),
     predicate_table_get_preds(OrigPredicateTable, Preds),
     AccessibilityTable = OrigPredicateTable ^ accessibility_table,
-
-    % Note that we use foldr here rather than foldl, so that the PredIds list
-    % in the predicate table is the same as the PredIds list argument here
-    % (if we used foldl, it would get reversed, since each new predicate
-    % inserted into the table gets its pred_id added at the start of the list).
-    list.foldr(reinsert_for_restrict(PartialQualInfo, Preds,
-        AccessibilityTable), PredIds, PredicateTable0, PredicateTable).
+    list.foldl(
+        reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable),
+        PredIds, !PredicateTable),
+    predicate_table_get_predids(NewPredIds, !PredicateTable),
+    list.sort(NewPredIds, SortedNewPredIds),
+    !:PredicateTable = !.PredicateTable ^ old_pred_ids := SortedNewPredIds,
+    !:PredicateTable = !.PredicateTable ^ new_rev_pred_ids := [].
 
 :- pred reinsert_for_restrict(partial_qualifier_info::in, pred_table::in,
     accessibility_table::in, pred_id::in,
@@ -803,7 +817,7 @@ reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable, PredId,
 
 predicate_table_reset(PredicateTable0, PredicateTable) :-
     NextPredId = PredicateTable0 ^ next_pred_id,
-    PredicateTable = predicate_table(map.init, NextPredId, [], map.init,
+    PredicateTable = predicate_table(map.init, NextPredId, [], [], map.init,
         map.init, map.init, map.init, map.init, map.init, map.init).
 
 %-----------------------------------------------------------------------------%
@@ -823,8 +837,8 @@ predicate_table_insert_qual(PredInfo, NeedQual, QualInfo, PredId,
 
 do_predicate_table_insert(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
         PredId, !PredicateTable) :-
-    !.PredicateTable = predicate_table(Preds0, NextPredId0, PredIds0,
-        AccessibilityTable0,
+    !.PredicateTable = predicate_table(Preds0, NextPredId0,
+        OldPredIds0, NewRevPredIds0, AccessibilityTable0,
         Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
         Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
     Module = pred_info_module(PredInfo),
@@ -843,7 +857,7 @@ do_predicate_table_insert(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
     % as appropriate.
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         predicate_table_do_insert(Module, Name, Arity,
             NeedQual, MaybeQualInfo, PredId,
             AccessibilityTable0, AccessibilityTable,
@@ -855,7 +869,7 @@ do_predicate_table_insert(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
         Func_NA_Index = Func_NA_Index0,
         Func_MNA_Index = Func_MNA_Index0
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         FuncArity = Arity - 1,
         predicate_table_do_insert(Module, Name, FuncArity,
             NeedQual, MaybeQualInfo, PredId,
@@ -869,14 +883,14 @@ do_predicate_table_insert(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
         Pred_MNA_Index = Pred_MNA_Index0
     ),
 
-    % Insert the pred_id into the pred_id list.
-    PredIds = [PredId | PredIds0],
+    % Insert the pred_id into the new pred_id list.
+    NewRevPredIds = [PredId | NewRevPredIds0],
 
     % Save the pred_info for this pred_id.
     map.det_insert(Preds0, PredId, PredInfo, Preds),
 
-    !:PredicateTable = predicate_table(Preds, NextPredId, PredIds,
-        AccessibilityTable,
+    !:PredicateTable = predicate_table(Preds, NextPredId,
+        OldPredIds0, NewRevPredIds, AccessibilityTable,
         Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
         Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
@@ -909,10 +923,8 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
         % Insert partially module-qualified versions of the name into the
         % module.name/arity index.
         get_partial_qualifiers(Module, QualInfo, PartialQuals),
-        list.foldl((pred(AncModule::in, MNAs0::in, MNAs::out) is det :-
-                insert_into_mna_index(AncModule, Name, Arity, PredId,
-                    MNAs0, MNAs)
-            ), PartialQuals, !MNA_Index),
+        list.foldl(insert_into_mna_index(Name, Arity, PredId), PartialQuals,
+            !MNA_Index),
 
         AccessibleByPartiallyQualifiedNames = yes
     ;
@@ -920,16 +932,16 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
         AccessibleByPartiallyQualifiedNames = no
     ),
     % Insert the fully-qualified name into the module.name/arity index.
-    insert_into_mna_index(Module, Name, Arity, PredId, !MNA_Index),
+    insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index),
     Access = access(AccessibleByUnqualifiedName,
         AccessibleByPartiallyQualifiedNames),
     svmap.set(PredId, Access, !AccessibilityTable).
 
-:- pred insert_into_mna_index(module_name::in, string::in, arity::in,
-    pred_id::in, module_name_arity_index::in,
-    module_name_arity_index::out) is det.
+:- pred insert_into_mna_index(string::in, arity::in, pred_id::in,
+    module_name::in, module_name_arity_index::in, module_name_arity_index::out)
+    is det.
 
-insert_into_mna_index(Module, Name, Arity, PredId, !MNA_Index) :-
+insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index) :-
     ( map.search(!.MNA_Index, Module - Name, MN_Arities0) ->
         multi_map.set(MN_Arities0, Arity, PredId, MN_Arities),
         svmap.det_update(Module - Name, MN_Arities, !MNA_Index)
@@ -1115,11 +1127,11 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
     module_info_get_predicate_table(Module, PredTable),
     (
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             predicate_table_search_pred_m_n_a(PredTable, is_fully_qualified,
                 ModuleName, ProcName, Arity, [PredId0])
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             predicate_table_search_func_m_n_a(PredTable, is_fully_qualified,
                 ModuleName, ProcName, Arity, [PredId0])
         )
@@ -1133,11 +1145,11 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         % typeclass_infos, as this code here does, is error-prone as well as
         % inefficient.
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             predicate_table_search_pred_m_n_a(PredTable, is_fully_qualified,
                 ModuleName, ProcName, Arity - 1, [PredId0])
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             predicate_table_search_func_m_n_a(PredTable, is_fully_qualified,
                 ModuleName, ProcName, Arity - 1, [PredId0])
         )

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -129,21 +129,44 @@ make_internal_label_for_proc_label(ProcLabel, LabelNum)
 
 init_opt_debug_info(Name, Arity, PredProcId, ProcLabel, Instrs0, Counter,
         OptDebugInfo, !IO) :-
-    globals.io_lookup_bool_option(debug_opt, DebugOpt, !IO),
-    globals.io_lookup_int_option(debug_opt_pred_id, DebugOptPredId, !IO),
-    globals.io_lookup_string_option(debug_opt_pred_name, DebugOptPredName,
-        !IO),
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, debug_opt, DebugOpt),
+    globals.lookup_accumulating_option(Globals, debug_opt_pred_id,
+        DebugOptPredIdStrs),
+    globals.lookup_accumulating_option(Globals, debug_opt_pred_name,
+        DebugOptPredNames),
     PredProcId = proc(PredId, ProcId),
     pred_id_to_int(PredId, PredIdInt),
     proc_id_to_int(ProcId, ProcIdInt),
     (
         DebugOpt = yes,
-        ( DebugOptPredId >= 0 ->
-            DebugOptPredId = PredIdInt
-        ; DebugOptPredName \= "" ->
-            DebugOptPredName = Name
+        (
+            DebugOptPredIdStrs = [_ | _],
+            DebugOptPredNames = [_ | _],
+            (
+                some [DebugOptPredIdStr, DebugOptPredId] (
+                    list.member(DebugOptPredIdStr, DebugOptPredIdStrs),
+                    string.to_int(DebugOptPredIdStr, DebugOptPredId),
+                    DebugOptPredId = PredIdInt
+                )
+            ;
+                list.member(Name, DebugOptPredNames)
+            )
         ;
-            true
+            DebugOptPredIdStrs = [_ | _],
+            DebugOptPredNames = [],
+            some [DebugOptPredIdStr, DebugOptPredId] (
+                list.member(DebugOptPredIdStr, DebugOptPredIdStrs),
+                string.to_int(DebugOptPredIdStr, DebugOptPredId),
+                DebugOptPredId = PredIdInt
+            )
+        ;
+            DebugOptPredIdStrs = [],
+            DebugOptPredNames = [_ | _],
+            list.member(Name, DebugOptPredNames)
+        ;
+            DebugOptPredIdStrs = [],
+            DebugOptPredNames = []
         )
     ->
         BaseName = opt_subdir_name ++ "/"

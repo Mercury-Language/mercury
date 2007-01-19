@@ -1466,8 +1466,8 @@ generic_call_id(cast(CastType), generic_call_id(gcid_cast(CastType))).
 generic_call_pred_or_func(higher_order(_, _, PredOrFunc, _)) = PredOrFunc.
 generic_call_pred_or_func(class_method(_, _, _, CallId)) =
     simple_call_id_pred_or_func(CallId).
-generic_call_pred_or_func(event_call(_)) = predicate.
-generic_call_pred_or_func(cast(_)) = predicate.
+generic_call_pred_or_func(event_call(_)) = pf_predicate.
+generic_call_pred_or_func(cast(_)) = pf_predicate.
 
 :- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.
 

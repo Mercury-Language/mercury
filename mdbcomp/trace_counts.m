@@ -548,7 +548,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                     token_cons(integer(Arity), _,
                     token_cons(integer(Mode), _,
                     token_nil))),
-                ProcLabel = ordinary_proc_label(CurModuleNameSym, predicate,
+                ProcLabel = ordinary_proc_label(CurModuleNameSym, pf_predicate,
                     CurModuleNameSym, Name, Arity, Mode)
             ;
                 TokenName = "fproc",
@@ -557,7 +557,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                     token_cons(integer(Arity), _,
                     token_cons(integer(Mode), _,
                     token_nil))),
-                ProcLabel = ordinary_proc_label(CurModuleNameSym, function,
+                ProcLabel = ordinary_proc_label(CurModuleNameSym, pf_function,
                     CurModuleNameSym, Name, Arity, Mode)
             ;
                 TokenName = "pprocdecl",
@@ -568,7 +568,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                     token_cons(integer(Mode), _,
                     token_nil)))),
                 DeclModuleNameSym = string_to_sym_name(DeclModuleName),
-                ProcLabel = ordinary_proc_label(CurModuleNameSym, predicate,
+                ProcLabel = ordinary_proc_label(CurModuleNameSym, pf_predicate,
                     DeclModuleNameSym, Name, Arity, Mode)
             ;
                 TokenName = "fprocdecl",
@@ -579,7 +579,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                     token_cons(integer(Mode), _,
                     token_nil)))),
                 DeclModuleNameSym = string_to_sym_name(DeclModuleName),
-                ProcLabel = ordinary_proc_label(CurModuleNameSym, function,
+                ProcLabel = ordinary_proc_label(CurModuleNameSym, pf_function,
                     DeclModuleNameSym, Name, Arity, Mode)
             )
         ->
@@ -854,7 +854,7 @@ write_proc_label(ProcLabel, !IO) :-
         ProcLabel = ordinary_proc_label(DefModuleSym, PredOrFunc,
             DeclModuleSym, Name, Arity, Mode),
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             ( DeclModuleSym = DefModuleSym ->
                 io.write_string("pproc ", !IO)
             ;
@@ -864,7 +864,7 @@ write_proc_label(ProcLabel, !IO) :-
                 io.write_string(" ", !IO)
             )
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             ( DeclModuleSym = DefModuleSym ->
                 io.write_string("fproc ", !IO)
             ;

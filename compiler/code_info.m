@@ -216,6 +216,8 @@
 
 :- pred get_auto_comments(code_info::in, bool::out) is det.
 
+:- pred get_lcmc_null(code_info::in, bool::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -348,8 +350,12 @@
                                     % Should we try to avoid emiting trail
                                     % operations?
 
-                auto_comments       :: bool
+                auto_comments       :: bool,
                                     % The setting of --auto-comments.
+
+                lcmc_null           :: bool
+                                    % The setting of --optimize-constructor-
+                                    % last-call-null.
             ).
 
 :- type code_info_loc_dep
@@ -517,6 +523,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     ),
     globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailOps),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
+    globals.lookup_bool_option(Globals, optimize_constructor_last_call_null,
+        LCMCNull),
     CodeInfo0 = code_info(
         code_info_static(
             Globals,
@@ -531,7 +539,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             OptNoReturnCalls,
             EmitTrailOps,
             OptTrailOps,
-            AutoComments
+            AutoComments,
+            LCMCNull
         ),
         code_info_loc_dep(
             Liveness,
@@ -595,6 +604,7 @@ get_opt_no_return_calls(CI, CI ^ code_info_static ^ opt_no_resume_calls).
 get_emit_trail_ops(CI, CI ^ code_info_static ^ emit_trail_ops).
 get_opt_trail_ops(CI, CI ^ code_info_static ^ opt_trail_ops).
 get_auto_comments(CI, CI ^ code_info_static ^ auto_comments).
+get_lcmc_null(CI, CI ^ code_info_static ^ lcmc_null).
 get_forward_live_vars(CI, CI ^ code_info_loc_dep ^ forward_live_vars).
 get_instmap(CI, CI ^ code_info_loc_dep ^ instmap).
 get_zombies(CI, CI ^ code_info_loc_dep ^ zombies).
@@ -3150,12 +3160,12 @@ should_add_trail_ops(CodeInfo, _GoalInfo) = AddTrailOps :-
 :- pred assign_expr_to_var(prog_var::in, rval::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-    % assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
-    %   MaybeSize, TypeMsg, MayUseAtomic, Where, Code, !CI).
+    % assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, MaybeSize,
+    %   FieldAddrs, TypeMsg, MayUseAtomic, Where, Code, !CI).
     %
 :- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
-    list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
-    may_use_atomic_alloc::in, code_tree::out,
+    list(maybe(rval))::in, maybe(term_size_value)::in, list(int)::in,
+    string::in, may_use_atomic_alloc::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
 :- pred place_var(prog_var::in, lval::in, code_tree::out,
@@ -3293,13 +3303,13 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
     ),
     set_var_locn_info(VarLocnInfo, !CI).
 
-assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeSize,
-        TypeMsg, MayUseAtomic, Code, !CI) :-
+assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, MaybeSize,
+        FieldAddrs, TypeMsg, MayUseAtomic, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
     var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        Vector, MaybeSize, TypeMsg, MayUseAtomic, Code,
+        MaybeRvals, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Code,
         StaticCellInfo0, StaticCellInfo, VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
     set_var_locn_info(VarLocnInfo, !CI).

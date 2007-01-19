@@ -126,6 +126,8 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
@@ -153,7 +155,8 @@
     --->    variant_id(
                 list(int),      % Positions of output arguments returned in
                                 % memory.
-                pred_proc_id    % The id of the variant.
+                pred_proc_id,   % The id of the variant.
+                string          % The name of the variant predicate.
             ).
 
 :- type variant_map == map(pred_proc_id, variant_id).
@@ -222,19 +225,19 @@ lco_scc(SCC, !VariantMap, !ModuleInfo) :-
 process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
 
-    module_info_preds(!.ModuleInfo, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
+    module_info_preds(!.ModuleInfo, PredTable0),
+    map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, Procs0),
     map.det_update(Procs0, ProcId, NewProcInfo, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo),
-    map.det_update(Preds0, PredId, PredInfo, Preds),
-    module_info_set_preds(Preds, !ModuleInfo).
+    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    module_info_set_preds(PredTable, !ModuleInfo).
 
 :- pred process_proc_variant(pair(pred_proc_id, variant_id)::in,
     module_info::in, module_info::out) is det.
 
 process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
-    VariantId = variant_id(AddrOutArgPosns, VariantPredProcId),
+    VariantId = variant_id(AddrOutArgPosns, VariantPredProcId, VariantName),
     VariantPredProcId = proc(VariantPredId, VariantProcId),
     PredProcId = proc(PredId, ProcId),
 
@@ -243,33 +246,23 @@ process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
     transform_variant_proc(!.ModuleInfo, AddrOutArgPosns,
         ProcInfo, VariantProcInfo),
 
-    some [!VariantPredInfo] (
-        module_info_preds(!.ModuleInfo, Preds0),
-        map.lookup(Preds0, VariantPredId, !:VariantPredInfo),
-        Name0 = pred_info_name(!.VariantPredInfo),
+    some [!VariantPredInfo, !PredTable] (
+        module_info_preds(!.ModuleInfo, !:PredTable),
+        map.lookup(!.PredTable, VariantPredId, !:VariantPredInfo),
+        pred_info_set_name(VariantName, !VariantPredInfo),
+        pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
         pred_info_get_origin(!.VariantPredInfo, Origin0),
-        create_variant_name(AddrOutArgPosns, Name0, Name),
         Transform = transform_return_via_ptr(ProcId, AddrOutArgPosns),
         Origin = origin_transformed(Transform, Origin0, PredId),
-        pred_info_set_name(Name, !VariantPredInfo),
         pred_info_set_origin(Origin, !VariantPredInfo),
 
         % We throw away any other procs in the variant predicate, because
         % we create a separate predicate for each variant.
-        map.det_insert(map.init, VariantProcId, VariantProcInfo,
-            VariantProcs),
+        map.det_insert(map.init, VariantProcId, VariantProcInfo, VariantProcs),
         pred_info_set_procedures(VariantProcs, !VariantPredInfo),
-        map.det_update(Preds0, VariantPredId, !.VariantPredInfo, Preds),
-        module_info_set_preds(Preds, !ModuleInfo)
+        svmap.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
+        module_info_set_preds(!.PredTable, !ModuleInfo)
     ).
-
-:- pred create_variant_name(list(int)::in, string::in, string::out) is det.
-
-create_variant_name([], !Name) :-
-    !:Name = "LCMC_" ++ !.Name.
-create_variant_name([ArgPos | ArgPoss], !Name) :-
-    !:Name = !.Name ++ "_" ++ int_to_string(ArgPos),
-    create_variant_name(ArgPoss, !Name).
 
 %-----------------------------------------------------------------------------%
 
@@ -477,8 +470,8 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         map.lookup(VarTypes, ConstructedVar, ConstructedType),
         ConsTag = cons_id_to_tag(ConsId, ConstructedType, ModuleInfo),
         % The code generator can't handle the other tags. For example, it
-        % doesn't make sense to the address of the field of a function symbol
-        % of a `notag' type.
+        % doesn't make sense to take the address of the field of a function
+        % symbol of a `notag' type.
         (
             ConsTag = unshared_tag(_)
         ;
@@ -520,7 +513,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         % memory.
         all_true(occurs_once(!.UnifyInputVars), MismatchedCallArgs),
         ensure_variant_exists(PredId, ProcId, assoc_list.keys(Mismatches),
-            VariantPredProcId, !Info)
+            VariantPredProcId, SymName, VariantSymName, !Info)
     ->
         list.map(update_construct(Subst), !.Unifies, UpdatedUnifies),
         proc_info_get_argmodes(CalleeProcInfo, CalleeModes),
@@ -528,7 +521,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
             UpdatedCallOutArgs, UpdatedArgs),
         VariantPredProcId = proc(VariantPredId, VariantProcId),
         UpdatedGoalExpr = plain_call(VariantPredId, VariantProcId, UpdatedArgs,
-            Builtin, UnifyContext, SymName),
+            Builtin, UnifyContext, VariantSymName),
         UpdatedGoalInfo = RevGoalInfo,
         UpdatedGoal = hlds_goal(UpdatedGoalExpr, UpdatedGoalInfo),
         Goals = list.reverse(RevGoals) ++ UpdatedUnifies ++ [UpdatedGoal],
@@ -648,32 +641,68 @@ make_ref_type(FieldType) = PtrType :-
 %-----------------------------------------------------------------------------%
 
 :- pred ensure_variant_exists(pred_id::in, proc_id::in, list(int)::in,
-    pred_proc_id::out, lco_info::in, lco_info::out) is semidet.
+    pred_proc_id::out, sym_name::in, sym_name::out,
+    lco_info::in, lco_info::out) is semidet.
 
-ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId, !Info) :-
+ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
+        SymName, VariantSymName, !Info) :-
     CurSCCVariants0 = !.Info ^ cur_scc_variants,
     ( map.search(CurSCCVariants0, proc(PredId, ProcId), ExistingVariant) ->
-        ExistingVariant = variant_id(ExistingAddrArgNums, VariantPredProcId),
+        ExistingVariant = variant_id(ExistingAddrArgNums, VariantPredProcId,
+            VariantName),
+        (
+            SymName = unqualified(_Name),
+            VariantSymName = unqualified(VariantName)
+        ;
+            SymName = qualified(ModuleName, _Name),
+            VariantSymName = qualified(ModuleName, VariantName)
+        ),
         AddrArgNums = ExistingAddrArgNums
     ;
         ModuleInfo0 = !.Info ^ module_info,
-        clone_pred_proc(PredId, ClonePredId, ModuleInfo0, ModuleInfo),
+        clone_pred_proc(PredId, ClonePredId, PredOrFunc,
+            ModuleInfo0, ModuleInfo),
         VariantPredProcId = proc(ClonePredId, ProcId),
         !:Info = !.Info ^ module_info := ModuleInfo,
-        NewVariant = variant_id(AddrArgNums, VariantPredProcId),
+        (
+            SymName = unqualified(Name),
+            create_variant_name(PredOrFunc, AddrArgNums, Name, VariantName),
+            VariantSymName = unqualified(VariantName)
+        ;
+            SymName = qualified(ModuleName, Name),
+            create_variant_name(PredOrFunc, AddrArgNums, Name, VariantName),
+            VariantSymName = qualified(ModuleName, VariantName)
+        ),
+        NewVariant = variant_id(AddrArgNums, VariantPredProcId,
+            VariantName),
         map.det_insert(CurSCCVariants0, proc(PredId, ProcId), NewVariant,
             CurSCCVariants),
         !:Info = !.Info ^ cur_scc_variants := CurSCCVariants
     ).
 
-:- pred clone_pred_proc(pred_id::in, pred_id::out,
+:- pred clone_pred_proc(pred_id::in, pred_id::out, pred_or_func::out,
     module_info::in, module_info::out) is det.
 
-clone_pred_proc(PredId, ClonePredId, !ModuleInfo) :-
+clone_pred_proc(PredId, ClonePredId, PredOrFunc, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_insert(PredInfo, ClonePredId, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
+
+:- pred create_variant_name(pred_or_func::in, list(int)::in, string::in,
+    string::out) is det.
+
+create_variant_name(PredOrFunc, ArgPoss, OrigName, VariantName) :-
+    list.map(int_to_string, ArgPoss, ArgPosStrs),
+    ArgPosDesc = string.join_list("_", ArgPosStrs),
+    (
+        PredOrFunc = pf_function,
+        VariantName = "LCMCfn_" ++ OrigName ++ "_" ++ ArgPosDesc
+    ;
+        PredOrFunc = pf_predicate,
+        VariantName = "LCMCpr_" ++ OrigName ++ "_" ++ ArgPosDesc
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -975,7 +1004,7 @@ is_grounding(ModuleInfo, InstMap0, InstMap, Var - _AddrVar) :-
 
 make_store_goal(ModuleInfo, Var - AddrVar, Goal) :-
     generate_simple_call(mercury_private_builtin_module, "store_at_ref",
-        predicate, only_mode, detism_det, purity_pure, [AddrVar, Var],
+        pf_predicate, only_mode, detism_det, purity_pure, [AddrVar, Var],
         [], [], ModuleInfo, term.context_init, Goal0),
     %
     % XXX the following hack is used to stop simplify from trying to

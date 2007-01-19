@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -396,12 +396,12 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
     ( Const = term.atom(TopLevel) ->
         (
             (
-                PredOrFunc = predicate,
+                PredOrFunc = pf_predicate,
                 TopLevel = PredString,
                 Terms = Terms0,
                 Arity = Arity0
             ;
-                PredOrFunc = function,
+                PredOrFunc = pf_function,
                 TopLevel = "=",
                 Terms0 = [FuncHeadTerm, FuncResultTerm],
                 FuncHeadTerm = term.functor(term.atom(PredString), Terms1, _),
@@ -538,7 +538,7 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
 report_type_error(Context, ArgNum, RemainingTerms, PredOrFunc, !Errors) :-
     (
         % Report a different error message for the return value of a function.
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         RemainingTerms = []
     ->
         Msg = "Type error in return value of function."

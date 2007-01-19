@@ -74,7 +74,7 @@ apply_deep_profiling_transformation(!ModuleInfo) :-
     ;
         TailRecursion = no
     ),
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_get_preds(PredTable0, PredMap0),
     list.foldl(transform_predicate(!.ModuleInfo), PredIds, PredMap0, PredMap),
@@ -1453,21 +1453,21 @@ classify_call(ModuleInfo, Expr) = Class :-
         (
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module, "unify",
-                predicate, 2, mode_no(0), PredId, _),
+                pf_predicate, 2, mode_no(0), PredId, _),
             Args = [TypeInfoVar | _]
         ->
             Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         ;
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module, "compare",
-                predicate, 3, mode_no(0), PredId, _),
+                pf_predicate, 3, mode_no(0), PredId, _),
             Args = [TypeInfoVar | _]
         ->
             Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         ;
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module,
-                "compare_representation", predicate, 3,
+                "compare_representation", pf_predicate, 3,
                 mode_no(0), PredId, _),
             Args = [TypeInfoVar | _]
         ->

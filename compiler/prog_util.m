@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -288,6 +288,7 @@
 
 :- import_module libs.compiler_util.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_out.
 
 :- import_module bool.
 :- import_module int.
@@ -337,8 +338,8 @@ strip_outermost_qualifier(qualified(Module @ qualified(_, _), Name),
 
 %-----------------------------------------------------------------------------%
 
-adjust_func_arity(predicate, Arity, Arity).
-adjust_func_arity(function, Arity - 1, Arity).
+adjust_func_arity(pf_predicate, Arity, Arity).
+adjust_func_arity(pf_function, Arity - 1, Arity).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -571,13 +572,7 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
         NewPredId, SymName) :-
     (
         MaybePredOrFunc = yes(PredOrFunc),
-        (
-            PredOrFunc = predicate,
-            PFS = "pred"
-        ;
-            PredOrFunc = function,
-            PFS = "func"
-        )
+        PFS = pred_or_func_to_str(PredOrFunc)
     ;
         MaybePredOrFunc = no,
         PFS = "pred_or_func"

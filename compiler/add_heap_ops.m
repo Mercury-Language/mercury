@@ -348,7 +348,7 @@ new_var(Name, Type, Var, !Info) :-
 generate_call(PredName, Detism, Purity, Args, InstMap, ModuleInfo, Context,
         CallGoal) :-
     BuiltinModule = mercury_private_builtin_module,
-    goal_util.generate_simple_call(BuiltinModule, PredName, predicate,
+    goal_util.generate_simple_call(BuiltinModule, PredName, pf_predicate,
         only_mode, Detism, Purity, Args, [], InstMap, ModuleInfo,
         Context, CallGoal).
 

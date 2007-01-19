@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1226,7 +1226,7 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_typeclass_constraints(!ModuleInfo, !Specs) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     list.foldl2(check_pred_constraints, PredIds, !ModuleInfo, !Specs),
     module_info_get_type_table(!.ModuleInfo, TypeTable),
     map.keys(TypeTable, TypeCtors),
@@ -1730,10 +1730,10 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
         words(choose_number(Vars, "is", "are")),
         words("not determined by the")],
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Pieces = Pieces0 ++ [words("predicate's argument types."), nl]
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         Pieces = Pieces0 ++ [words("function's argument or result types."), nl]
     ),
     Msg = simple_msg(Context,

@@ -935,13 +935,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
-        globals.lookup_int_option(!.Globals, debug_opt_pred_id,
-            DebugOptPredId),
-        globals.lookup_string_option(!.Globals, debug_opt_pred_name,
-            DebugOptPredName),
+        globals.lookup_accumulating_option(!.Globals, debug_opt_pred_id,
+            DebugOptPredIdStrs),
+        globals.lookup_accumulating_option(!.Globals, debug_opt_pred_name,
+            DebugOptPredNames),
         (
-            ( DebugOptPredId > 0
-            ; DebugOptPredName \= ""
+            ( DebugOptPredIdStrs = [_ | _]
+            ; DebugOptPredNames = [_ | _]
             )
         ->
             globals.set_option(debug_opt, bool(yes), !Globals)
@@ -953,9 +953,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             DebugIntermoduleAnalysis),
         analysis.enable_debug_messages(DebugIntermoduleAnalysis, !IO),
 
-        globals.lookup_int_option(!.Globals, dump_hlds_pred_id,
-            DumpHLDSPredId),
-        ( DumpHLDSPredId >= 0 ->
+        globals.lookup_accumulating_option(!.Globals, dump_hlds_pred_id,
+            DumpHLDSPredIds),
+        (
+            DumpHLDSPredIds = [_ | _],
             globals.lookup_string_option(!.Globals, dump_hlds_options,
                 DumpOptions2),
             % Prevent the dumping of the mode and type tables.
@@ -964,7 +965,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(dump_hlds_options, string(DumpOptions),
                 !Globals)
         ;
-            true
+            DumpHLDSPredIds = []
         ),
 
         option_implies(debug_mode_constraints, prop_mode_constraints,
@@ -2494,11 +2495,11 @@ char_is_not(A, B) :-
 
 :- pred convert_dump_alias(string::in, string::out) is semidet.
 
-convert_dump_alias("ALL", "abcdfgilmnprstuvBCDIMPRSTU").
-convert_dump_alias("allD", "abcdfgilmnprstuvBCDMPT").
-convert_dump_alias("all", "abcdfgilmnprstuvBCMPST").
-convert_dump_alias("most", "bcdfgilmnprstuvP").
-convert_dump_alias("trans", "bcdglmnstuv").
+convert_dump_alias("ALL", "abcdfgilmnprstuvzBCDIMPRSTU").
+convert_dump_alias("allD", "abcdfgilmnprstuvzBCDMPT").
+convert_dump_alias("all", "abcdfgilmnprstuvzBCMPST").
+convert_dump_alias("most", "bcdfgilmnprstuvzP").
+convert_dump_alias("trans", "bcdglmnstuvz").
 convert_dump_alias("codegen", "dfnprsu").
 convert_dump_alias("vanessa", "ltuCIU").
 convert_dump_alias("min", "ilv").

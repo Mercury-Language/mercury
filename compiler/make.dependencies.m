@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -937,9 +937,20 @@ check_dependencies_debug_unbuilt(TargetFileName, UnbuiltDependencies, !IO) :-
         (pred((DepTarget - DepStatus)::in, !.IO::di, !:IO::uo) is det :-
             write_dependency_file(DepTarget, !IO),
             io.write_string(" - ", !IO),
-            io.write(DepStatus, !IO)
+            write_dependency_status(DepStatus, !IO)
         ), !IO),
     io.nl(!IO).
+
+:- pred write_dependency_status(dependency_status::in, io::di, io::uo) is det.
+
+write_dependency_status(deps_status_not_considered, !IO) :-
+    io.write_string("deps_status_not_considered", !IO).
+write_dependency_status(deps_status_being_built, !IO) :-
+    io.write_string("deps_status_being_built", !IO).
+write_dependency_status(deps_status_up_to_date, !IO) :-
+    io.write_string("deps_status_up_to_date", !IO).
+write_dependency_status(deps_status_error, !IO) :-
+    io.write_string("deps_status_error", !IO).
 
 check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         DepFiles, DepsResult, !Info, !IO) :-

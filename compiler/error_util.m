@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1259,8 +1259,8 @@ describe_sym_name_and_arity(SymName / Arity) =
 describe_sym_name(SymName) =
     string.append_list(["`", sym_name_to_string(SymName), "'"]).
 
-pred_or_func_to_string(predicate) = "predicate".
-pred_or_func_to_string(function) = "function".
+pred_or_func_to_string(pf_predicate) = "predicate".
+pred_or_func_to_string(pf_function) = "function".
 
 add_quotes(Str) = "`" ++ Str ++ "'".
 

@@ -453,8 +453,8 @@ trace_context(wrap(Store), dynamic(Ref), FileName - LineNo,
 
 missing_answer_special_case(Atom) :-
     ProcLabel = get_proc_label_from_layout(Atom ^ proc_layout),
-    ProcLabel = ordinary_proc_label(StdUtilModule1, predicate, StdUtilModule2,
-        "builtin_aggregate", 4, _),
+    ProcLabel = ordinary_proc_label(StdUtilModule1, pf_predicate,
+        StdUtilModule2, "builtin_aggregate", 4, _),
     possible_sym_library_module_name("solutions", StdUtilModule1),
     possible_sym_library_module_name("solutions", StdUtilModule2).
 

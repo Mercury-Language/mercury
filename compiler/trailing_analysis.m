@@ -576,8 +576,10 @@ pred_info_has_known_status(PredInfo, Status) :-
 :- pred known_procedure(pred_or_func::in, string::in, string::in, int::in,
     trailing_status::out) is semidet.
 
-known_procedure(predicate, "require", "error", 1, trail_will_not_modify).
-known_procedure(function,  "require", "func_error", 1, trail_will_not_modify).
+known_procedure(pf_predicate, "require", "error", 1,
+    trail_will_not_modify).
+known_procedure(pf_function,  "require", "func_error", 1,
+    trail_will_not_modify).
 known_procedure(_, "exception", "throw", 1, trail_will_not_modify).
 known_procedure(_, "exception", "rethrow", 1, trail_will_not_modify).
 
@@ -1018,7 +1020,7 @@ make_opt_int(ModuleInfo, !IO) :-
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
         module_info_get_trailing_info(ModuleInfo, TrailingInfo),
-        module_info_predids(ModuleInfo, PredIds),
+        module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
         list.foldl(write_pragma_trailing_info(ModuleInfo, TrailingInfo),
             PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),

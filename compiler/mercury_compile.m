@@ -1874,7 +1874,7 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
     ->
         maybe_write_string(Verbose, "% Reading .opt files...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        intermod.grab_optfiles(Imports0, Imports1, Error1, !IO),
+        grab_opt_files(Imports0, Imports1, Error1, !IO),
         maybe_write_string(Verbose, "% Done.\n", !IO)
     ;
         Imports1 = Imports0,
@@ -1885,8 +1885,7 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
             MaybeTransOptDeps = yes(TransOptDeps),
             % When creating the trans_opt file, only import the
             % trans_opt files which are lower in the ordering.
-            trans_opt.grab_optfiles(TransOptDeps, Imports1, Imports, Error2,
-                !IO)
+            grab_trans_opt_files(TransOptDeps, Imports1, Imports, Error2, !IO)
         ;
             MaybeTransOptDeps = no,
             Imports = Imports1,
@@ -1923,7 +1922,7 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
             % imported (or used), and for all ancestor modules.
             list.condense([Imports0 ^ parent_deps,
                 Imports0 ^ int_deps, Imports0 ^ impl_deps], TransOptFiles),
-            trans_opt.grab_optfiles(TransOptFiles, Imports1, Imports, Error2,
+            grab_trans_opt_files(TransOptFiles, Imports1, Imports, Error2,
                 !IO)
         ;
             TransOpt = no,
@@ -2000,8 +1999,7 @@ frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
     ;
         FoundUndefTypeError = no,
         maybe_write_string(Verbose, "% Checking typeclasses...\n", !IO),
-        check_typeclass.check_typeclasses(!HLDS, QualInfo0, QualInfo,
-            [], Specs),
+        check_typeclasses(!HLDS, QualInfo0, QualInfo, [], Specs),
         maybe_dump_hlds(!.HLDS, 5, "typeclass", !DumpInfo, !IO),
         set_module_recomp_info(QualInfo, !HLDS),
 
@@ -2180,7 +2178,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         TablingAnalysis),
     (
         MakeOptInt = yes,
-        intermod.write_optfile(!HLDS, !IO),
+        write_opt_file(!HLDS, !IO),
 
         % If intermod_unused_args is being performed, run polymorphism,
         % mode analysis and determinism analysis, then run unused_args
@@ -2305,13 +2303,13 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
     io::di, io::uo) is det.
 
 output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
-    globals.io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
-    %
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
+
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
-    %
     (
         ClosureAnalysis = yes,
         process_lambdas(Verbose, Stats, !HLDS, !IO)
@@ -2335,19 +2333,19 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 210, "structure_sharing", !DumpInfo, !IO),
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 212, "structure_reuse", !DumpInfo, !IO),
-    trans_opt.write_optfile(!.HLDS, !IO).
+    write_trans_opt_file(!.HLDS, !IO).
 
 :- pred output_analysis_file(module_name::in, module_info::in,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
-    globals.io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
-    %
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
+
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
-    %
     (
         ClosureAnalysis = yes,
         process_lambdas(Verbose, Stats, !HLDS, !IO)
@@ -2371,8 +2369,7 @@ output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
     module_info_get_analysis_info(!.HLDS, AnalysisInfo),
     module_info_get_all_deps(!.HLDS, ImportedModules),
     ModuleId = module_name_to_module_id(ModuleName),
-    ImportedModuleIds = set.map(module_name_to_module_id,
-        ImportedModules),
+    ImportedModuleIds = set.map(module_name_to_module_id, ImportedModules),
     analysis.write_analysis_files(mmc, ModuleId, ImportedModuleIds,
         AnalysisInfo, _AnalysisInfo, !IO).
 
@@ -2697,7 +2694,7 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     io::di, io::uo) is det.
 
 backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
-    module_info_predids(!.HLDS, PredIds),
+    module_info_predids(PredIds, !HLDS),
     globals.io_lookup_bool_option(optimize_proc_dups, ProcDups, !IO),
     (
         ProcDups = no,
@@ -2705,7 +2702,7 @@ backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
         MaybeDupProcMap = no
     ;
         ProcDups = yes,
-        dependency_graph.build_pred_dependency_graph(!.HLDS,
+        dependency_graph.build_pred_dependency_graph(!.HLDS, PredIds,
             do_not_include_imported, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, PredSCCs),
         list.condense(PredSCCs, OrderedPredIds),
@@ -2822,15 +2819,11 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         SavedVarsCell = no
     ),
     globals.lookup_bool_option(Globals, follow_code, FollowCode),
-    globals.lookup_bool_option(Globals, prev_code, PrevCode),
     (
-        ( FollowCode = yes
-        ; PrevCode = yes
-        )
-    ->
+        FollowCode = yes,
         move_follow_code_in_proc(PredId, ProcId, PredInfo, !ProcInfo, !HLDS)
     ;
-        true
+        FollowCode = no
     ),
     find_simplifications(no, Globals, Simplifications0),
     SimpList0 = simplifications_to_list(Simplifications0),
@@ -2846,12 +2839,12 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         %
         % NOTE: Any changes here may also need to be made to
         % mercury_compile.simplify.
-        %
+
         ProfTrans = yes,
         SimpList1 = list.delete_all(SimpList0, simp_constant_prop)
     ;
         ProfTrans = no,
-        SimpList1 = SimpList0
+        list.cons(simp_constant_prop, SimpList0, SimpList1)
     ),
 
     SimpList = [simp_do_once, simp_elim_removable_scopes | SimpList1],
@@ -3289,7 +3282,8 @@ simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
                     IsProfPass = yes,
                     list.delete_all(!.SimpList, simp_constant_prop, !:SimpList)
                 ;
-                    IsProfPass = no
+                    IsProfPass = no,
+                    list.cons(simp_constant_prop, !SimpList)
                 ),
                 list.cons(simp_do_once, !SimpList),
                 list.cons(simp_elim_removable_scopes, !SimpList)
@@ -3611,7 +3605,7 @@ maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !DumpInfo, !IO) :-
         maybe_dump_hlds(HLDS1, 505, "bytecode_args_to_regs", !DumpInfo, !IO),
         maybe_write_string(Verbose, "% Generating bytecodes...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        bytecode_gen.gen_module(HLDS1, Bytecode, !IO),
+        bytecode_gen.gen_module(HLDS1, _HLDS2, Bytecode, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         module_name_to_file_name(ModuleName, ".bytedebug", yes, BytedebugFile,
@@ -4288,12 +4282,8 @@ maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
 maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, follow_code, FollowCode),
-    globals.lookup_bool_option(Globals, prev_code, PrevCode),
     (
-        ( FollowCode = yes
-        ; PrevCode = yes
-        )
-    ->
+        FollowCode = yes,
         maybe_write_string(Verbose, "% Migrating branch code...", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(update_module(move_follow_code_in_proc),
@@ -4301,7 +4291,7 @@ maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        true
+        FollowCode = no
     ).
 
 :- pred compute_liveness(bool::in, bool::in,
@@ -4371,7 +4361,7 @@ maybe_goal_paths(Verbose, Stats, !HLDS, !IO) :-
 generate_code_for_module(HLDS, Verbose, Stats, !GlobalData, LLDS, !IO) :-
     maybe_write_string(Verbose, "% Generating code...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    generate_module_code(HLDS, !GlobalData, LLDS, !IO),
+    generate_module_code(HLDS, _HLDS, !GlobalData, LLDS, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

@@ -1273,13 +1273,16 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
     ( 
         Lang = lang_c,
         globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
+        globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
         (
             PrintComments = yes,
+            LineNumbers =  yes
+        ->
             io.write_string("/* ", !IO),
             prog_out.write_context(Context, !IO),
             io.write_string(" pragma foreign_code */\n", !IO)
         ;
-            PrintComments = no
+            true
         ),
         output_set_line_num(Context, !IO),
         io.write_string(Foreign_Code, !IO),
@@ -1313,15 +1316,18 @@ output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
         ;
             set.insert(!.AlreadyDone, Code, !:AlreadyDone),
             globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
+            globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
             (
                 PrintComments = yes,
+                LineNumbers = yes
+            ->
                 io.write_string("/* ", !IO),
                 prog_out.write_context(Context, !IO),
                 io.write_string(" pragma foreign_decl_code(", !IO),
                 io.write(Lang, !IO),
                 io.write_string(") */\n", !IO)
             ;
-                PrintComments = no
+                true
             ),
             output_set_line_num(Context, !IO),
             io.write_string(Code, !IO),
@@ -2138,7 +2144,7 @@ output_debug_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
-    ProcLabel = ordinary_proc_label(DummyModule, predicate, DummyModule,
+    ProcLabel = ordinary_proc_label(DummyModule, pf_predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
     ProfInfo = entry_label(entry_label_local, ProcLabel) - ContLabelSet,
     output_instruction_and_comment(Instr, Comment, PrintComments,
@@ -2152,7 +2158,7 @@ output_debug_instruction(Instr, !IO) :-
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
-    ProcLabel = ordinary_proc_label(DummyModule, predicate, DummyModule,
+    ProcLabel = ordinary_proc_label(DummyModule, pf_predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
     ProfInfo = entry_label(entry_label_local, ProcLabel) - ContLabelSet,
     output_instruction(Instr, ProfInfo, !IO).

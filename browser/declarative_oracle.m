@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -348,15 +348,15 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
             Name, Arity, _)
     ;
         ProcLabel = special_proc_label(ModuleName, _, _, Name, Arity, _),
-        PredOrFunc = predicate
+        PredOrFunc = pf_predicate
     ),
     (
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             bimap.insert(!.Oracle ^ trusted,
                 trusted_predicate(ModuleName, Name, Arity), Id, Trusted)
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             bimap.insert(!.Oracle ^ trusted,
                 trusted_function(ModuleName, Name, Arity), Id, Trusted)
         )
@@ -539,10 +539,10 @@ trusted(ProcLayout, Oracle) :-
         ;
             bimap.search(Trusted, trusted_module(Module), _)
         ;
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             bimap.search(Trusted, trusted_predicate(Module, Name, Arity), _)
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             bimap.search(Trusted, trusted_function(Module, Name, Arity), _)
         )
     ;

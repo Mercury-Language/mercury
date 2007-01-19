@@ -1639,8 +1639,8 @@ get_func_name(FunctionName, FuncName, AsmFuncName) :-
 
 get_pred_label_name(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
 		Arity, _CodeMode, _NonOutputFunc), LabelName) :-
-	( PredOrFunc = predicate, Suffix = "p"
-	; PredOrFunc = function, Suffix = "f"
+	( PredOrFunc = pf_predicate, Suffix = "p"
+	; PredOrFunc = pf_function, Suffix = "f"
 	),
 	MangledName = name_mangle(Name),
 	string__format("%s_%d_%s", [s(MangledName), i(Arity), s(Suffix)],
@@ -2560,7 +2560,7 @@ maybe_add_module_qualifier(QualifiedName, AsmName0, AsmName) :-
 			% don't module-qualify main/2
 			%
 			Name = entity_function(PredLabel, _, _, _),
-			PredLabel = mlds_user_pred_label(predicate, no,
+			PredLabel = mlds_user_pred_label(pf_predicate, no,
 				"main", 2, model_det, no)
 		;
 			Name = entity_data(mlds_rtti(RttiId)),

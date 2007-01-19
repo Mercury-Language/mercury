@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -536,15 +536,11 @@
     % get removed from this list, so that later passes can rely
     % on the predicates in this list being type-correct, etc.)
     %
-:- pred module_info_predids(module_info::in, list(pred_id)::out) is det.
-
-    % Reverse the list of pred_ids.
-    % (The list is built up by inserting values at the front,
-    % for efficiency; once we've done so, we reverse the list
-    % so that progress messages and error messages come out
-    % in the expected order.)
+    % This operation does not logically change the module_info,
+    % but does update it physically.
     %
-:- pred module_info_reverse_predids(module_info::in, module_info::out) is det.
+:- pred module_info_predids(list(pred_id)::out,
+    module_info::in, module_info::out) is det.
 
     % Remove a predicate from the list of pred_ids, to prevent
     % further processing of this predicate after an error is encountered.
@@ -1079,13 +1075,9 @@ module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo) :-
 module_info_pred_proc_info(MI, proc(PredId, ProcId), PredInfo, ProcInfo) :-
     module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo).
 
-module_info_predids(MI, PredIds) :-
-    module_info_get_predicate_table(MI, PredTable),
-    predicate_table_get_predids(PredTable, PredIds).
-
-module_info_reverse_predids(!MI) :-
+module_info_predids(PredIds, !MI) :-
     module_info_get_predicate_table(!.MI, PredTable0),
-    predicate_table_reverse_predids(PredTable0, PredTable),
+    predicate_table_get_predids(PredIds, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !MI).
 
 module_info_remove_predid(PredId, !MI) :-
@@ -1227,8 +1219,8 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
 module_add_foreign_decl(Lang, IsLocal, ForeignDecl, Context, !Module) :-
     module_info_get_foreign_decl(!.Module, ForeignDeclIndex0),
     % Store the decls in reverse order and reverse them later for efficiency.
-    ForeignDeclIndex = [foreign_decl_code(Lang, IsLocal, ForeignDecl,
-        Context) | ForeignDeclIndex0],
+    ForeignDeclIndex = [foreign_decl_code(Lang, IsLocal, ForeignDecl, Context)
+        | ForeignDeclIndex0],
     module_info_set_foreign_decl(ForeignDeclIndex, !Module).
 
 module_add_foreign_body_code(Lang, Foreign_Body_Code, Context, !Module) :-

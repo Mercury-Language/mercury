@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -398,7 +398,7 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
     (
         CodeModel = model_det,
         (
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
                 arg_info(RetArgLoc, RetArgMode) - RetType),
             RetArgMode = top_out,

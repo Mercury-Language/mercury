@@ -6279,7 +6279,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
     (
         list.member(ItemAndContext, ItemAndContexts),
         ItemAndContext = item_and_context(Item, _),
-        Item = item_pred_or_func(_, _, _, _, predicate, Name, [_, _],
+        Item = item_pred_or_func(_, _, _, _, pf_predicate, Name, [_, _],
             WithType, _, _, _, _, _),
         unqualify_name(Name) = "main",
 

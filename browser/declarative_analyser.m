@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1208,10 +1208,10 @@ reason_to_string(ques_reason_binding_node(PrimOpType, FileName, LineNo,
     LineNoStr = int_to_string(LineNo),
     get_pred_attributes(ProcLabel, SymModule, Name, Arity, PredOrFunc),
     (
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         PredOrFuncStr = "function"
     ;
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         PredOrFuncStr = "predicate"
     ),
     Module = sym_name_to_string(SymModule),

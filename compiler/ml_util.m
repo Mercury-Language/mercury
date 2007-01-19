@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -210,7 +210,7 @@ defns_contain_main(Defns) :-
     list.member(Defn, Defns),
     Defn = mlds_defn(Name, _, _, _),
     Name = entity_function(FuncName, _, _, _),
-    FuncName = mlds_user_pred_label(predicate, _, "main", 2, _, _).
+    FuncName = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _).
 
 can_optimize_tailcall(Name, Call) :-
     Call = mlcall(_Signature, FuncRval, MaybeObject, _CallArgs,

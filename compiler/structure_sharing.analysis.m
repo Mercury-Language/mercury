@@ -111,7 +111,7 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
 :- pred process_imported_sharing(module_info::in, module_info::out) is det.
 
 process_imported_sharing(!ModuleInfo):-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     list.foldl(process_imported_sharing_in_pred, PredIds, !ModuleInfo).
 
 :- pred process_imported_sharing_in_pred(pred_id::in, module_info::in,
@@ -603,7 +603,7 @@ make_opt_int(ModuleInfo, !IO) :-
     (
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_predids(ModuleInfo, PredIds),
+        module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
         list.foldl(write_pred_sharing_info(ModuleInfo), PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(OptFile, !IO),

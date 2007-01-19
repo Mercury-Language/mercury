@@ -319,7 +319,7 @@ process_module(!ModuleInfo, !Specs, !IO) :-
 init_var_usage(VarUsage, PredProcList, ProcCallInfo, !ModuleInfo, !IO) :-
     map.init(ProcCallInfo0),
     map.init(VarUsage0),
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     setup_local_var_usage(PredIds, VarUsage0, VarUsage, [], PredProcList,
         ProcCallInfo0, ProcCallInfo, !ModuleInfo, !IO).
 

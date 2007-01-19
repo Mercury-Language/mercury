@@ -475,7 +475,7 @@ write_arg_number(CallId, ArgNum, !IO) :-
 arg_number_to_string(plain_call_id(simple_call_id(PredOrFunc, _, Arity)),
         ArgNum) =
     (
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         Arity = ArgNum
     ->
         "the return value"
@@ -485,7 +485,7 @@ arg_number_to_string(plain_call_id(simple_call_id(PredOrFunc, _, Arity)),
 arg_number_to_string(generic_call_id(
         gcid_higher_order(_Purity, PredOrFunc, Arity)), ArgNum) = Str :-
     (
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         ArgNum = Arity
     ->
         Str = "the return value"
@@ -710,48 +710,59 @@ write_preds(Indent, ModuleInfo, PredTable, !IO) :-
     pred_id::in, io::di, io::uo) is det.
 
 maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    globals.io_lookup_int_option(dump_hlds_pred_id, DumpPredId, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_string_option(Globals, dump_hlds_options, Verbose),
+    globals.lookup_accumulating_option(Globals, dump_hlds_pred_id,
+        DumpPredIdStrs),
     pred_id_to_int(PredId, PredIdInt),
     map.lookup(PredTable, PredId, PredInfo),
     (
-        % If the user requested one predicate/function to be dumped,
-        % we dump it even if the condition of the nested if-then-else
+        % If the user requested one or more predicates/functions to be dumped,
+        % we dump them even if the condition of the nested if-then-else
         % says it shouldn't be dumped, and we don't dump anything else.
-        DumpPredId >= 0
-    ->
-        ( PredIdInt = DumpPredId ->
+        DumpPredIdStrs = [_ | _],
+        (
+            some [DumpPredIdStr, DumpPredId] (
+                list.member(DumpPredIdStr, DumpPredIdStrs),
+                string.to_int(DumpPredIdStr, DumpPredId),
+                PredIdInt = DumpPredId
+            )
+        ->
             write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO)
         ;
             true
         )
     ;
+        DumpPredIdStrs = [],
         (
-            \+ string.contains_char(Verbose, 'I'),
-            pred_info_is_imported(PredInfo)
+            (
+                \+ string.contains_char(Verbose, 'I'),
+                pred_info_is_imported(PredInfo)
+            ;
+                % For pseudo-imported predicates (i.e. unification preds),
+                % only print them if we are using a local mode for them.
+                \+ string.contains_char(Verbose, 'I'),
+                pred_info_is_pseudo_imported(PredInfo),
+                ProcIds = pred_info_procids(PredInfo),
+                hlds_pred.in_in_unification_proc_id(ProcId),
+                ProcIds = [ProcId]
+            ;
+                % We dump unification and other compiler-generated special
+                % predicates if suboption 'U' is on. We don't need that
+                % information to understand how the program has been
+                % transformed.
+                \+ string.contains_char(Verbose, 'U'),
+                is_unify_or_compare_pred(PredInfo)
+            )
+        ->
+            true
         ;
-            % For pseudo-imported predicates (i.e. unification preds),
-            % only print them if we are using a local mode for them.
-            \+ string.contains_char(Verbose, 'I'),
-            pred_info_is_pseudo_imported(PredInfo),
-            ProcIds = pred_info_procids(PredInfo),
-            hlds_pred.in_in_unification_proc_id(ProcId),
-            ProcIds = [ProcId]
-        ;
-            % We dump unification and other compiler-generated special
-            % predicates if suboption 'U' is on. We don't need that information
-            % to understand how the program has been transformed.
-            \+ string.contains_char(Verbose, 'U'),
-            is_unify_or_compare_pred(PredInfo)
+            write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO)
         )
-    ->
-        true
-    ;
-        write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO)
     ).
 
-:- pred write_pred(int::in, module_info::in, pred_id::in, pred_info::in,
-    io::di, io::uo) is det.
+    :- pred write_pred(int::in, module_info::in, pred_id::in, pred_info::in,
+        io::di, io::uo) is det.
 
 write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     Module = pred_info_module(PredInfo),
@@ -778,12 +789,12 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     ( string.contains_char(Verbose, 'C') ->
         % Information about predicates is dumped if 'C' suboption is on.
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             mercury_output_pred_type(TVarSet, ExistQVars,
                 qualified(Module, PredName), ArgTypes, no, Purity,
                 ClassContext, Context, AppendVarNums, !IO)
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
             mercury_output_func_type(TVarSet, ExistQVars,
                 qualified(Module, PredName), FuncArgTypes, FuncRetType, no,
@@ -1138,7 +1149,7 @@ write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
     PredName = predicate_name(ModuleInfo, PredId),
     ModuleName = predicate_module(ModuleInfo, PredId),
     (
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(HeadTerms, FuncArgs, RetVal),
         write_qualified_functor_with_term_args(ModuleName,
             term.atom(PredName), FuncArgs, VarSet, AppendVarNums, !IO),
@@ -1146,7 +1157,7 @@ write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
         mercury_output_term_nq(VarSet, AppendVarNums, next_to_graphic_token,
             RetVal, !IO)
     ;
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         write_qualified_functor_with_term_args(ModuleName,
             term.atom(PredName), HeadTerms, VarSet, AppendVarNums, !IO)
     ).
@@ -1294,6 +1305,22 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
         goal_info_get_determinism(GoalInfo, Determinism),
         io.write_string(determinism_to_string(Determinism), !IO),
         io.write_string("\n", !IO)
+    ;
+        true
+    ),
+    ( string.contains_char(Verbose, 'z') ->
+        goal_info_get_purity(GoalInfo, Purity),
+        (
+            Purity = purity_pure
+        ;
+            Purity = purity_semipure,
+            write_indent(Indent, !IO),
+            io.write_string("% semipure\n ", !IO)
+        ;
+            Purity = purity_impure,
+            write_indent(Indent, !IO),
+            io.write_string("% impure\n ", !IO)
+        )
     ;
         true
     ),
@@ -1674,7 +1701,7 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
         GenericCall = higher_order(PredVar, Purity, PredOrFunc, _),
         globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             ( string.contains_char(Verbose, 'l') ->
                 write_indent(Indent, !IO),
                 io.write_string("% higher-order predicate call\n", !IO)
@@ -1686,7 +1713,7 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
             write_functor(term.atom("call"), [PredVar | ArgVars], VarSet,
                 AppendVarNums, !IO)
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             ( string.contains_char(Verbose, 'l') ->
                 write_indent(Indent, !IO),
                 io.write_string("% higher-order function application\n", !IO)
@@ -1789,7 +1816,7 @@ write_goal_2(plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
     write_indent(Indent, !IO),
     ( PredId = invalid_pred_id ->
         % If we don't know then the call must be treated as a predicate.
-        PredOrFunc = predicate
+        PredOrFunc = pf_predicate
     ;
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_purity(PredInfo, Purity),
@@ -1797,10 +1824,10 @@ write_goal_2(plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
         write_purity_prefix(Purity, !IO)
     ),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         NewArgVars = ArgVars
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ArgVars, NewArgVars, LHSVar),
         mercury_output_var(VarSet, AppendVarNums, LHSVar, !IO),
         io.write_string(" = ", !IO)
@@ -2470,7 +2497,7 @@ write_unify_rhs_3(rhs_lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
     Indent1 = Indent + 1,
     write_purity_prefix(Purity, !IO),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         io.write_string("(", !IO),
         (
             Vars = [],
@@ -2490,7 +2517,7 @@ write_unify_rhs_3(rhs_lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
         write_indent(Indent, !IO),
         io.write_string(")", !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, ArgModes, RetMode),
         pred_args_to_func_args(Vars, ArgVars, RetVar),
         io.write_string("(", !IO),
@@ -2925,7 +2952,7 @@ write_var_types(Indent, VarSet, AppendVarNums, VarTypes, TVarSet, !IO) :-
     map.count(VarTypes, NumVarTypes),
     write_indent(Indent, !IO),
     io.write_string("% variable types map ", !IO),
-    io.format("(%d entries): ", [i(NumVarTypes)], !IO),
+    io.format("(%d entries):\n", [i(NumVarTypes)], !IO),
     map.keys(VarTypes, Vars),
     write_var_types_2(Vars, Indent, VarSet, AppendVarNums, VarTypes, TVarSet,
         !IO).
@@ -3700,11 +3727,11 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     varset.init(ModeVarSet),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName),
             HeadModes, DeclaredDeterminism, ModeContext, !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(HeadModes, FuncHeadModes, RetHeadMode),
         mercury_output_func_mode_decl(ModeVarSet, unqualified(PredName),
             FuncHeadModes, RetHeadMode, DeclaredDeterminism, ModeContext, !IO)
@@ -3885,7 +3912,7 @@ write_indent(Indent, !IO) :-
     ( Indent = 0 ->
         true
     ;
-        io.write_char('\t', !IO),
+        io.write_string("  ", !IO),
         write_indent(Indent - 1, !IO)
     ).
 
@@ -4043,12 +4070,12 @@ inst_to_term_with_context(ground(Uniq, GroundInstInfo), Context) = Term :-
         GroundInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, Det)),
         % XXX we ignore Uniq
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             construct_qualified_term(unqualified("pred"),
                 list.map(mode_to_term_with_context(Context), Modes),
                 Context, ModesTerm)
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(Modes, ArgModes, RetMode),
             construct_qualified_term(unqualified("func"),
                 list.map(mode_to_term_with_context(Context), ArgModes),

@@ -631,7 +631,7 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     module_info_get_name(ModuleInfo0, ModuleName),
     make_pred_name_with_context(ModuleName, "DeforestationIn",
-        predicate, PredName, Line, Count, SymName),
+        pf_predicate, PredName, Line, Count, SymName),
     Name = unqualify_name(SymName),
 
     pd_info_get_proc_info(!.PDInfo, ProcInfo),

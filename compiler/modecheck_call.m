@@ -230,7 +230,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
             GroundInstInfo = none,
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             map.lookup(VarTypes, PredVar, Type),
-            type_is_higher_order_details(Type, _Purity, function, _, ArgTypes),
+            type_is_higher_order_details(Type, _, pf_function, _, ArgTypes),
             PredInstInfo = pred_inst_info_standard_func_mode(
                 list.length(ArgTypes))
         ),

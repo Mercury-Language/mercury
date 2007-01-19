@@ -513,6 +513,7 @@
     ;       user_guided_type_specialization
     ;       introduce_accumulators
     ;       optimize_constructor_last_call_accumulator
+    ;       optimize_constructor_last_call_null
     ;       optimize_constructor_last_call
     ;       optimize_duplicate_calls
     ;       constant_propagation
@@ -535,7 +536,6 @@
     ;       loop_invariants
     ;       delay_construct
     ;       follow_code
-    ;       prev_code
     ;       optimize_dead_procs
     ;       deforestation
     ;       deforestation_depth_limit
@@ -924,8 +924,8 @@ option_defaults_2(verbosity_option, [
     debug_det                           -   bool(no),
     debug_term                          -   bool(no),
     debug_opt                           -   bool(no),
-    debug_opt_pred_id                   -   int(-1),
-    debug_opt_pred_name                 -   string(""),
+    debug_opt_pred_id                   -   accumulating([]),
+    debug_opt_pred_name                 -   accumulating([]),
     debug_pd                            -   bool(no),
     debug_il_asm                        -   bool(no),
     debug_liveness                      -   int(-1),
@@ -989,7 +989,7 @@ option_defaults_2(aux_output_option, [
     show_dependency_graph               -   bool(no),
     dump_trace_counts                   -   accumulating([]),
     dump_hlds                           -   accumulating([]),
-    dump_hlds_pred_id                   -   int(-1),
+    dump_hlds_pred_id                   -   accumulating([]),
     dump_hlds_alias                     -   string(""),
     dump_hlds_options                   -   string(""),
     dump_mlds                           -   accumulating([]),
@@ -1280,7 +1280,6 @@ option_defaults_2(optimization_option, [
     optimize_saved_vars_cell_include_all_candidates - bool(yes),
     optimize_saved_vars                 -   bool_special,
     delay_construct                     -   bool(no),
-    prev_code                           -   bool(no),
     follow_code                         -   bool(no),
     optimize_unused_args                -   bool(no),
     intermod_unused_args                -   bool(no),
@@ -1293,6 +1292,7 @@ option_defaults_2(optimization_option, [
     user_guided_type_specialization     -   bool(no),
     introduce_accumulators              -   bool(no),
     optimize_constructor_last_call_accumulator -    bool(no),
+    optimize_constructor_last_call_null -   bool(no),
     optimize_constructor_last_call      -   bool(no),
     optimize_dead_procs                 -   bool(no),
     deforestation                       -   bool(no),
@@ -1978,7 +1978,6 @@ long_option("osv-all-cand",
                             optimize_saved_vars_cell_include_all_candidates).
 long_option("delay-construct",      delay_construct).
 long_option("delay-constructs",     delay_construct).
-long_option("prev-code",            prev_code).
 long_option("follow-code",          follow_code).
 long_option("constraint-propagation",   constraint_propagation).
 long_option("local-constraint-propagation", local_constraint_propagation).
@@ -2007,6 +2006,10 @@ long_option("optimise-constructor-last-call-accumulator",
                     optimize_constructor_last_call_accumulator).
 long_option("optimize-constructor-last-call-accumulator",
                     optimize_constructor_last_call_accumulator).
+long_option("optimise-constructor-last-call-null",
+                    optimize_constructor_last_call_null).
+long_option("optimize-constructor-last-call-null",
+                    optimize_constructor_last_call_null).
 long_option("optimise-constructor-last-call",
                     optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",
@@ -2737,9 +2740,6 @@ opt_level(6, _, [
 %       I think this is deliberate, because the transformation
 %       might make code run slower?
 %
-%   prev_code:
-%       Not useful?
-%
 %   unneeded_code:
 %       Because it can cause slowdowns at high optimization levels;
 %       cause unknown
@@ -2751,7 +2751,7 @@ opt_level(6, _, [
 %       is resolved.
 %
 %   optimize_constructor_last_call:
-%       Not implemented yet.
+%       Not a speedup in general.
 
 %-----------------------------------------------------------------------------%
 
@@ -4168,6 +4168,10 @@ options_help_hlds_hlds_optimization -->
 %       "--optimize-constructor-last-call-accumulator",
 %       "\tEnable the optimization via accumulators of ""last"" calls",
 %       "\tthat are followed by constructor application.",
+%       "--optimize-constructor-last-call-null",
+%       "\tWhen --optimize-constructor-last-call is enabled, put NULL in"
+%       "\tuninitialized fields (to prevent the garbage collector from",
+%       "\tlooking at and following a random bit pattern).",
         "--optimize-constructor-last-call",
         "\tEnable the optimization of ""last"" calls that are followed by",
         "\tconstructor application.",

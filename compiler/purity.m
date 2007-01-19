@@ -218,7 +218,7 @@ puritycheck(FoundTypeError, PostTypecheckError, !ModuleInfo, !Specs) :-
 
 finish_typecheck_and_check_preds_purity(FoundTypeError, PostTypecheckError,
         !ModuleInfo, !Specs) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
 
     % Only report error messages for unbound type variables if we didn't get
     % any type errors already; this avoids a lot of spurious diagnostics.
@@ -1073,11 +1073,11 @@ error_missing_body_impurity_decl(ModuleInfo, PredId, Context) = Spec :-
     Pieces1 = [words("In call to "), fixed(PurityName)] ++
         PredPieces ++ [suffix(":"), nl],
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Pieces2 = [words("purity error: call must be preceded by"),
             quote(PurityName), words("indicator."), nl]
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         Pieces2 = [words("purity error: call must be in"),
             words("an explicit unification which is preceded by"),
             quote(PurityName), words("indicator."), nl]

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2006 The University of Melbourne.
+% Copyright (C) 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -131,9 +131,11 @@ proc_label_to_c_string(ProcLabel, AddPrefix) = ProcLabelString :-
             PredName, Arity, ModeInt),
         LabelName = make_pred_or_func_name(DefiningModule, PredOrFunc,
             PredModule, PredName, Arity, AddPrefix),
-        ( PredOrFunc = function ->
+        (
+            PredOrFunc = pf_function,
             OrigArity = Arity - 1
         ;
+            PredOrFunc = pf_predicate,
             OrigArity = Arity
         ),
         string.int_to_string(OrigArity, ArityString),
@@ -150,7 +152,7 @@ proc_label_to_c_string(ProcLabel, AddPrefix) = ProcLabelString :-
         DummyArity = -1,    % not used by make_pred_or_func_name.
         TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
         PredName = special_pred_name(SpecialPredId, TypeCtor),
-        LabelName = make_pred_or_func_name(unqualified(""), predicate,
+        LabelName = make_pred_or_func_name(unqualified(""), pf_predicate,
             unqualified(""), PredName, DummyArity, AddPrefix),
 
         % Figure out the ModeNumString.
@@ -207,10 +209,10 @@ make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
     ),
     LabelName2 = name_mangle(LabelName1),
     (
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         LabelName3 = "fn__" ++ LabelName2
     ;
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         LabelName3 = LabelName2
     ),
     (

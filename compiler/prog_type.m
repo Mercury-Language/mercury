@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -433,11 +433,11 @@ type_is_higher_order_details(Type, Purity, PredOrFunc, EvalMethod,
         higher_order_type(ArgTypes, MaybeRetType, Purity, EvalMethod),
     (
         MaybeRetType = yes(RetType),
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         PredArgTypes = list.append(ArgTypes, [RetType])
     ;
         MaybeRetType = no,
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         PredArgTypes = ArgTypes
     ).
 
@@ -537,10 +537,10 @@ type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
     get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr),
     (
         PorFStr = "pred",
-        PredOrFunc = predicate
+        PredOrFunc = pf_predicate
     ;
         PorFStr = "func",
-        PredOrFunc = function
+        PredOrFunc = pf_function
     ).
 
 :- pred get_purity_and_eval_method(sym_name::in, purity::out,
@@ -660,10 +660,10 @@ construct_type(TypeCtor, Args, Type) :-
 
 construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes, Type) :-
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, Type)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
         construct_higher_order_func_type(Purity, EvalMethod, FuncArgTypes,
             FuncRetType, Type)

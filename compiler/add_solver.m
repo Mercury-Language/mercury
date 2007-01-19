@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -104,7 +104,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     ToGroundRepnArgTypes =
         [type_and_mode(SolverType, in_mode      ),
          type_and_mode(RepnType,   OutGroundMode)],
-    module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
+    module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, pf_function,
         ToGroundRepnSymName, ToGroundRepnArgTypes, yes(detism_det),
         purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
         !ModuleInfo, !Specs),
@@ -117,7 +117,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     ToAnyRepnArgTypes    =
         [type_and_mode(SolverType, in_any_mode ),
          type_and_mode(RepnType,   OutAnyMode)],
-    module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
+    module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, pf_function,
         ToAnyRepnSymName, ToAnyRepnArgTypes, yes(detism_det),
         purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
         !ModuleInfo, !Specs),
@@ -130,7 +130,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     FromGroundRepnArgTypes =
         [type_and_mode(RepnType,   InGroundMode   ),
          type_and_mode(SolverType, out_mode       )],
-    module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
+    module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, pf_function,
         FromGroundRepnSymName, FromGroundRepnArgTypes, yes(detism_det),
         purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
         !ModuleInfo, !Specs),
@@ -143,7 +143,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     FromAnyRepnArgTypes =
         [type_and_mode(RepnType,   InAnyMode   ),
          type_and_mode(SolverType, out_any_mode)],
-    module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
+    module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, pf_function,
         FromAnyRepnSymName, FromAnyRepnArgTypes, yes(detism_det),
         purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
         !ModuleInfo, !Specs).
@@ -220,7 +220,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         pragma_foreign_proc(
             Attrs,
             ToGroundRepnSymName,
-            function,
+            pf_function,
             ToGroundRepnArgs,
             ProgVarSet,
             InstVarSet, 
@@ -241,7 +241,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         pragma_foreign_proc(
             Attrs,
             ToAnyRepnSymName,
-            function,
+            pf_function,
             ToAnyRepnArgs,
             ProgVarSet,
             InstVarSet,
@@ -261,7 +261,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         pragma_foreign_proc(
             Attrs,
             FromGroundRepnSymName,
-            function,
+            pf_function,
             FromGroundRepnArgs,
             ProgVarSet,
             InstVarSet,
@@ -282,7 +282,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         pragma_foreign_proc(
             Attrs,
             FromAnyRepnSymName,
-            function,
+            pf_function,
             FromAnyRepnArgs,
             ProgVarSet,
             InstVarSet,

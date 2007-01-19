@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006 The University of Melbourne.
+% Copyright (C) 1993-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -368,11 +368,11 @@ write_promise_type(PromiseType, !IO) :-
 write_pred_or_func(PorF, !IO) :-
     io.write_string(pred_or_func_to_full_str(PorF), !IO).
 
-pred_or_func_to_full_str(predicate) = "predicate".
-pred_or_func_to_full_str(function) = "function".
+pred_or_func_to_full_str(pf_predicate) = "predicate".
+pred_or_func_to_full_str(pf_function) = "function".
 
-pred_or_func_to_str(predicate) = "pred".
-pred_or_func_to_str(function) = "func".
+pred_or_func_to_str(pf_predicate) = "pred".
+pred_or_func_to_str(pf_function) = "func".
 
 write_purity_prefix(Purity, !IO) :-
     ( Purity = purity_pure ->

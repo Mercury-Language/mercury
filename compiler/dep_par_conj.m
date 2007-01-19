@@ -181,7 +181,7 @@ dependent_par_conj(!ModuleInfo, !IO) :-
     ModuleInfo0 = !.ModuleInfo,
 
     % First process all parallel conjunctions in user-defined procedures.
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     ParProcs0 = par_procs(map.init, []),
     list.foldl3(process_pred_for_dep_par_conj, PredIds,
         !ModuleInfo, ParProcs0, ParProcs, !IO),
@@ -1588,7 +1588,7 @@ make_future(ModuleInfo, SharedVarType, SharedVar, !VarTypes, !VarSet,
     Features = [],
     InstMapSrc = [FutureVar - ground(shared, none)],
     Context = term.context_init,
-    goal_util.generate_simple_call(ModuleName, PredName, predicate,
+    goal_util.generate_simple_call(ModuleName, PredName, pf_predicate,
         only_mode, detism_det, purity_pure, Args, Features, InstMapSrc,
         ModuleInfo, Context, AllocGoal).
 
@@ -1629,7 +1629,7 @@ make_wait_or_get(ModuleInfo, FutureVar, WaitVar, PredName, WaitGoal) :-
     Features = [],
     InstMapSrc = [WaitVar - ground(shared, none)],
     Context = term.context_init,
-    goal_util.generate_simple_call(ModuleName, PredName, predicate,
+    goal_util.generate_simple_call(ModuleName, PredName, pf_predicate,
         only_mode, detism_det, purity_pure, Args, Features, InstMapSrc,
         ModuleInfo, Context, WaitGoal).
 
@@ -1644,7 +1644,7 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, SignalGoal) :-
     Features = [],
     InstMapSrc = [],
     Context = term.context_init,
-    goal_util.generate_simple_call(ModuleName, PredName, predicate,
+    goal_util.generate_simple_call(ModuleName, PredName, pf_predicate,
         only_mode, detism_det, purity_impure, Args, Features, InstMapSrc,
         ModuleInfo, Context, SignalGoal).
 

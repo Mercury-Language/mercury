@@ -1030,7 +1030,7 @@ substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-illegal_state_var_func_result(function, Args, StateVar) :-
+illegal_state_var_func_result(pf_function, Args, StateVar) :-
     list.last(Args, functor(atom("!"), [variable(StateVar, _)], _Ctxt)).
 
 %-----------------------------------------------------------------------------%

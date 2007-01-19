@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -106,7 +106,7 @@
 % cases the constraints should that |HeadVar__1| = |HeadVar__2|.
 
 preprocess_module(!ModuleInfo, !IO) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     process_builtin_preds(PredIds, !ModuleInfo, !IO),
     process_imported_preds(PredIds, !ModuleInfo).
 

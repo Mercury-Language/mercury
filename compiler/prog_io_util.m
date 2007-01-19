@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2006 The University of Melbourne.
+% Copyright (C) 1996-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -226,8 +226,8 @@ parse_name_and_arity(PredAndArityTerm, SymName, Arity) :-
 parse_pred_or_func_name_and_arity(ModuleName, PorFPredAndArityTerm,
         PredOrFunc, SymName, Arity) :-
     PorFPredAndArityTerm = term.functor(term.atom(PredOrFuncStr), Args, _),
-    ( PredOrFuncStr = "pred", PredOrFunc = predicate
-    ; PredOrFuncStr = "func", PredOrFunc = function
+    ( PredOrFuncStr = "pred", PredOrFunc = pf_predicate
+    ; PredOrFuncStr = "func", PredOrFunc = pf_function
     ),
     Args = [Arg],
     parse_name_and_arity(ModuleName, Arg, SymName, Arity).
@@ -242,11 +242,11 @@ parse_pred_or_func_and_args(Term, PredOrFunc, SymName, ArgTerms) :-
         ok2(SymName, ArgTerms0 - MaybeRetTerm)),
     (
         MaybeRetTerm = yes(RetTerm),
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         list.append(ArgTerms0, [RetTerm], ArgTerms)
     ;
         MaybeRetTerm = no,
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         ArgTerms = ArgTerms0
     ).
 
@@ -482,7 +482,7 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         DetTerm = term.functor(term.atom(DetString), [], _),
         standard_det(DetString, Detism),
         convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes),
-        PredInstInfo = pred_inst_info(predicate, ArgModes, Detism),
+        PredInstInfo = pred_inst_info(pf_predicate, ArgModes, Detism),
         Inst = ground(shared, higher_order(PredInstInfo)),
         Mode = (Inst -> Inst)
     ;
@@ -503,7 +503,7 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes0),
         convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
         list.append(ArgModes0, [RetMode], ArgModes),
-        FuncInstInfo = pred_inst_info(function, ArgModes, Detism),
+        FuncInstInfo = pred_inst_info(pf_function, ArgModes, Detism),
         Inst = ground(shared, higher_order(FuncInstInfo)),
         Mode = (Inst -> Inst)
     ;
@@ -540,7 +540,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         DetTerm = term.functor(term.atom(DetString), [], _),
         standard_det(DetString, Detism),
         convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes),
-        PredInst = pred_inst_info(predicate, ArgModes, Detism),
+        PredInst = pred_inst_info(pf_predicate, ArgModes, Detism),
         Result = ground(shared, higher_order(PredInst))
     ;
         % The syntax for a higher-order func inst is
@@ -559,7 +559,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes0),
         convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
         list.append(ArgModes0, [RetMode], ArgModes),
-        FuncInst = pred_inst_info(function, ArgModes, Detism),
+        FuncInst = pred_inst_info(pf_function, ArgModes, Detism),
         Result = ground(shared, higher_order(FuncInst))
 
     ; Name = "bound", Args0 = [Disj] ->

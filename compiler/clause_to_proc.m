@@ -108,7 +108,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         %
         % Is this a function with no modes?
         %
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         map.is_empty(Procs0)
     ->
         %

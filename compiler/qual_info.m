@@ -287,13 +287,13 @@ construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args, GoalInfo, Goal,
 do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         GoalInfo, Goal) :-
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Goal = hlds_goal(
             plain_call(PredId, invalid_proc_id, Args, not_builtin, no,
                 SymName),
             GoalInfo)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(Args, FuncArgs, RetArg),
         list.length(FuncArgs, Arity),
         ConsId = cons(SymName, Arity),

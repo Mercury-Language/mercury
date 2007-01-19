@@ -133,7 +133,7 @@
 %
 
 lambda_process_module(!ModuleInfo) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     list.foldl(lambda_process_pred, PredIds, !ModuleInfo),
     % Need update the dependency graph to include the lambda predicates.
     module_info_clobber_dependency_info(!ModuleInfo).

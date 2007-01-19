@@ -2973,7 +2973,7 @@ table_generate_call(PredName, Detism, Args, Purity, InstMapSrc, ModuleInfo,
     ;
         Features = Features0
     ),
-    goal_util.generate_simple_call(BuiltinModule, PredName, predicate,
+    goal_util.generate_simple_call(BuiltinModule, PredName, pf_predicate,
         only_mode, Detism, Purity, Args, Features, InstMapSrc, ModuleInfo,
         Context, Goal).
 
@@ -2997,7 +2997,7 @@ table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
     ),
     BuiltinModule = mercury_table_builtin_module,
     MaybeTraceRuntimCond = no,
-    goal_util.generate_foreign_proc(BuiltinModule, PredName, predicate,
+    goal_util.generate_foreign_proc(BuiltinModule, PredName, pf_predicate,
         only_mode, Detism, Purity, Attributes, Args, ExtraArgs,
         MaybeTraceRuntimCond, Code, Features, InstMapSrc, ModuleInfo,
         Context, Goal).

@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: recompilation_check.m.
 % Main author: stayl.
-% 
+%
 % Check whether a module should be recompiled.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module recompilation.check.
@@ -63,7 +63,7 @@
 
 :- import_module hlds.hlds_data.   % for type field_access_type
 :- import_module hlds.hlds_pred.   % for field_access_function_name,
-                                    % type pred_id.
+                                   % type pred_id.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -158,8 +158,8 @@ should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
         ;
             ModulesToRecompile = some_modules(_),
             !:Info = !.Info ^ is_inline_sub_module := yes,
-            list.foldl2(should_recompile_2(yes,
-                    FindTargetFiles, FindTimestampFiles),
+            list.foldl2(
+                should_recompile_2(yes, FindTargetFiles, FindTimestampFiles),
                 !.Info ^ sub_modules, !Info, !IO)
         )
     ;
@@ -528,8 +528,8 @@ parse_resolved_functor(Info, Term, Ctor) :-
     (
         Term = term.functor(term.atom(PredOrFuncStr),
             [ModuleTerm, ArityTerm], _),
-        ( PredOrFuncStr = "predicate", PredOrFunc = predicate
-        ; PredOrFuncStr = "function", PredOrFunc = function
+        ( PredOrFuncStr = "predicate", PredOrFunc = pf_predicate
+        ; PredOrFuncStr = "function", PredOrFunc = pf_function
         ),
         sym_name_and_args(ModuleTerm, ModuleName, []),
         ArityTerm = term.functor(term.integer(Arity), [], _)
@@ -748,10 +748,11 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
         NewInstanceVersionNumbers),
 
     % Check whether any of the items which were used have changed.
-    list.foldl(check_item_version_numbers(ModuleName, UsedItemVersionNumbers,
+    list.foldl(
+        check_item_version_numbers(ModuleName, UsedItemVersionNumbers,
             NewItemVersionNumbers),
-        [type_item, type_body_item, inst_item, mode_item, typeclass_item,
-            predicate_item, function_item], !Info),
+        [type_abstract_item, type_body_item, inst_item, mode_item,
+            typeclass_item, predicate_item, function_item], !Info),
 
     % Check whether added or modified items could cause name resolution
     % ambiguities with items which were used.
@@ -866,7 +867,8 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         Item = item_type_defn(_, Name, Params, Body, _),
         Arity = list.length(Params),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-            VersionNumbers, type_item, Name, Arity, NeedsCheck, !Info),
+            VersionNumbers, type_abstract_item, Name, Arity, NeedsCheck,
+            !Info),
         (
             NeedsCheck = yes,
             check_type_defn_ambiguity_with_functor(NeedQualifier,
@@ -1039,7 +1041,8 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
         ),
 
         PredId = invalid_pred_id,
-        ( SymName = qualified(ModuleName, _) ->
+        (
+            SymName = qualified(ModuleName, _),
             (
                 WithType = yes(_),
                 % We don't know the actual arity.
@@ -1053,6 +1056,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
             check_functor_ambiguities_by_name(NeedQualifier, SymName,
                 AritiesToMatch, ResolvedFunctor, !Info)
         ;
+            SymName = unqualified(_),
             unexpected(this_file,
                 "check_for_pred_or_func_item_ambiguity: " ++
                 "unqualified predicate name")
@@ -1459,7 +1463,7 @@ describe_item(item_id(ItemType0, item_name(SymName, Arity))) = Pieces :-
 
 :- pred body_item(item_type::in, item_type::out) is semidet.
 
-body_item(type_body_item, type_item).
+body_item(type_body_item, type_abstract_item).
 
 :- func describe_functor(sym_name, arity, resolved_functor) =
     list(format_component).

@@ -342,7 +342,7 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo, ModuleInfo,
     % allowed.)
     (
         % If it is a mode for a function...
-        pred_info_is_pred_or_func(PredInfo) = function,
+        pred_info_is_pred_or_func(PredInfo) = pf_function,
         % ... that can succeed more than once ...
         determinism_components(InferredDetism, _CanFail, NumSolns),
         NumSolns \= at_most_zero,

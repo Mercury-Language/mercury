@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -483,7 +483,7 @@ get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
         ProcId = ordinary_proc_label(Module, PredOrFunc, _, Name, Arity, _)
     ;
         ProcId = special_proc_label(Module, SpecialId, _, _, _, _),
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Arity = get_special_pred_id_arity(SpecialId),
         Name = get_special_pred_id_target_name(SpecialId)
     ).

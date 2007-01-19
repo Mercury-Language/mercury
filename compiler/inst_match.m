@@ -784,7 +784,7 @@ ground_inst_info_matches_initial(GroundInstInfoA, none, _, _, !Info) :-
         GroundInstInfoA).
 ground_inst_info_matches_initial(none, higher_order(PredInstB), _, Type,
         !Info) :-
-    PredInstB = pred_inst_info(function, ArgModes, _Det),
+    PredInstB = pred_inst_info(pf_function, ArgModes, _Det),
     Arity = list.length(ArgModes),
     PredInstA = pred_inst_info_standard_func_mode(Arity),
     pred_inst_matches_2(PredInstA, PredInstB, Type, !Info).
@@ -1087,7 +1087,7 @@ ground_inst_info_matches_final(GroundInstInfoA, none, _, !Info) :-
     \+ ground_inst_info_is_nonstandard_func_mode(!.Info ^ module_info,
         GroundInstInfoA).
 ground_inst_info_matches_final(none, higher_order(PredInstB), Type, !Info) :-
-    PredInstB = pred_inst_info(function, ArgModes, _Det),
+    PredInstB = pred_inst_info(pf_function, ArgModes, _Det),
     Arity = list.length(ArgModes),
     PredInstA = pred_inst_info_standard_func_mode(Arity),
     pred_inst_matches_2(PredInstA, PredInstB, Type, !Info).
@@ -1231,7 +1231,7 @@ inst_matches_binding_3(not_reached, _, _, !Info).
 ground_inst_info_matches_binding(_, none, _, _).
 ground_inst_info_matches_binding(none, higher_order(PredInstB), MaybeType,
         ModuleInfo) :-
-    PredInstB = pred_inst_info(function, ArgModes, _Det),
+    PredInstB = pred_inst_info(pf_function, ArgModes, _Det),
     Arity = list.length(ArgModes),
     PredInstA = pred_inst_info_standard_func_mode(Arity),
     pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo).

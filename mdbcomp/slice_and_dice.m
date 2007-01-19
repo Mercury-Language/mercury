@@ -883,11 +883,11 @@ format_proc_label(ProcLabel) = Str :-
             ModeNo),
         Module = sym_name_to_string(SymModule),
         (
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             ArityStr = int_to_string(Arity - 1),
             PredOrFuncStr = "func"
         ;
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             ArityStr = int_to_string(Arity),
             PredOrFuncStr = "pred"
         ),

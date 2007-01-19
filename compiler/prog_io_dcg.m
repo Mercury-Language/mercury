@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -683,7 +683,7 @@ term_list_append_term(List0, Term, List) :-
     prog_var::in, goal::in, prog_context::in, maybe1(item)::out) is det.
 
 process_dcg_clause(ok2(Name, Args0), VarSet, Var0, Var, Body, Context,
-        ok1(item_clause(user, VarSet, predicate, Name, Args, Body))) :-
+        ok1(item_clause(user, VarSet, pf_predicate, Name, Args, Body))) :-
     list.map(term.coerce, Args0, Args1),
     Args = Args1 ++ [variable(Var0, Context), variable(Var, Context)].
 process_dcg_clause(error2(Errors), _, _, _, _, _, error1(Errors)).

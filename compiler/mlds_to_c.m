@@ -1878,7 +1878,7 @@ mlds_output_fully_qualified_name(QualifiedName, !IO) :-
         (
             % Don't module-qualify main/2.
             Name = entity_function(PredLabel, _, _, _),
-            PredLabel = mlds_user_pred_label(predicate, no, "main", 2,
+            PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
                 model_det, no)
         ;
             Name = entity_data(mlds_rtti(RttiId)),
@@ -1901,7 +1901,7 @@ mlds_output_fully_qualified_proc_label(QualifiedName, !IO) :-
         % Don't module-qualify main/2.
         QualifiedName = qual(_ModuleName, _QualKind, Name),
         Name = mlds_proc_label(PredLabel, _ProcId),
-        PredLabel = mlds_user_pred_label(predicate, no, "main", 2,
+        PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
             model_det, no)
     ->
         mlds_output_proc_label(Name, !IO)
@@ -1957,8 +1957,8 @@ mlds_output_name(entity_export(Name), !IO) :-
 
 mlds_output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
         Name, Arity, _CodeModel, _NonOutputFunc), !IO) :-
-    ( PredOrFunc = predicate, Suffix = "p"
-    ; PredOrFunc = function, Suffix = "f"
+    ( PredOrFunc = pf_predicate, Suffix = "p"
+    ; PredOrFunc = pf_function, Suffix = "f"
     ),
     MangledName = name_mangle(Name),
     io.format("%s_%d_%s", [s(MangledName), i(Arity), s(Suffix)], !IO),
@@ -1993,8 +1993,8 @@ mlds_output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule,
 
 mlds_pred_label_to_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
         Name, Arity, _CodeModel, _NonOutputFunc)) = Str :-
-    ( PredOrFunc = predicate, Suffix = "p"
-    ; PredOrFunc = function, Suffix = "f"
+    ( PredOrFunc = pf_predicate, Suffix = "p"
+    ; PredOrFunc = pf_function, Suffix = "f"
     ),
     MangledName = name_mangle(Name),
     MainStr = string.format("%s_%d_%s", [s(MangledName), i(Arity), s(Suffix)]),

@@ -416,7 +416,7 @@ modecheck(!Module, UnsafeToContinue, !IO) :-
 
 check_pred_modes(WhatToCheck, MayChangeCalledProc,
         !ModuleInfo, UnsafeToContinue, !IO) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     globals.io_lookup_int_option(mode_inference_iteration_limit,
         MaxIterations, !IO),
     modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck,
@@ -3223,7 +3223,7 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
 
     % Get the pred_info and proc_info for the procedure we are calling.
     SymName = qualified(CalleeModuleName, CalleePredName),
-    get_pred_id_and_proc_id(is_fully_qualified, SymName, predicate, TVarSet,
+    get_pred_id_and_proc_id(is_fully_qualified, SymName, pf_predicate, TVarSet,
         ArgTypes, ModuleInfo0, CalleePredId, CalleeProcId),
     module_info_pred_proc_info(ModuleInfo0, CalleePredId, CalleeProcId,
         CalleePredInfo, CalleeProcInfo),
@@ -3284,7 +3284,7 @@ mode_context_to_unify_context(_, mode_context_uninitialized, _) :-
     io::di, io::uo) is det.
 
 check_eval_methods(!ModuleInfo, !IO) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     pred_check_eval_methods(PredIds, !ModuleInfo, !IO).
 
 :- pred pred_check_eval_methods(list(pred_id)::in,

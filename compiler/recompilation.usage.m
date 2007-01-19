@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 University of Melbourne.
+% Copyright (C) 2001-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -148,8 +148,8 @@ write_usage_file(ModuleInfo, NestedSubModules,
     list(module_name)::in, recompilation_info::in,
     module_timestamps::in, io::di, io::uo) is det.
 
-write_usage_file_2(ModuleInfo, NestedSubModules,
-        RecompInfo, Timestamps, !IO) :-
+write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, Timestamps,
+        !IO) :-
     io.write_int(usage_file_version_number, !IO),
     io.write_string(",", !IO),
     io.write_int(version_numbers_version_number, !IO),
@@ -186,7 +186,7 @@ write_usage_file_2(ModuleInfo, NestedSubModules,
         io.write_string("used_items(\n\t", !IO),
         some [!WriteComma] (
             !:WriteComma = no,
-            write_simple_item_matches(type_item, ResolvedUsedItems,
+            write_simple_item_matches(type_abstract_item, ResolvedUsedItems,
                 !WriteComma, !IO),
             write_simple_item_matches(type_body_item, ResolvedUsedItems,
                 !WriteComma, !IO),
@@ -450,7 +450,7 @@ write_resolved_functor(ResolvedFunctor, !IO) :-
     (
         ResolvedFunctor = resolved_functor_pred_or_func(_, ModuleName,
             PredOrFunc, Arity),
-        io.write(PredOrFunc, !IO),
+        write_pred_or_func(PredOrFunc, !IO),
         io.write_string("(", !IO),
         mercury_output_bracketed_sym_name(ModuleName, !IO),
         io.write_string(", ", !IO),
@@ -589,16 +589,16 @@ find_all_used_imported_items_2(UsedItems, !Info) :-
     map.foldl(find_items_used_by_instances, Instances, !Info),
 
     Predicates = UsedItems ^ predicates,
-    find_items_used_by_preds(predicate, Predicates, !Info),
+    find_items_used_by_preds(pf_predicate, Predicates, !Info),
 
     Functions = UsedItems ^ functions,
-    find_items_used_by_preds(function, Functions, !Info),
+    find_items_used_by_preds(pf_function, Functions, !Info),
 
     Constructors = UsedItems ^ functors,
     find_items_used_by_functors(Constructors, !Info),
 
     Types = UsedItems ^ types,
-    find_items_used_by_simple_item_set(type_item, Types, !Info),
+    find_items_used_by_simple_item_set(type_abstract_item, Types, !Info),
 
     TypeBodies = UsedItems ^ type_bodies,
     find_items_used_by_simple_item_set(type_body_item, TypeBodies, !Info),
@@ -796,13 +796,13 @@ get_pred_or_func_ctors(ModuleInfo, _SymName, Arity, PredId) = ResolvedCtor :-
     pred_info_get_exist_quant_tvars(PredInfo, PredExistQVars),
     adjust_func_arity(PredOrFunc, OrigArity, PredArity),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         OrigArity >= Arity,
         % We don't support first-class polymorphism, so you can't take
         % the address of an existentially quantified predicate.
         PredExistQVars = []
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         OrigArity >= Arity,
         % We don't support first-class polymorphism, so you can't take
         % the address of an existentially quantified function. You can however
@@ -914,7 +914,7 @@ record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
 :- pred find_items_used_by_item(item_type::in, item_name::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_item(type_item, TypeCtorItem, !Info) :-
+find_items_used_by_item(type_abstract_item, TypeCtorItem, !Info) :-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_type_table(ModuleInfo, Types),
     TypeCtor = item_name_to_type_ctor(TypeCtorItem),
@@ -972,9 +972,9 @@ find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
         true
     ).
 find_items_used_by_item(predicate_item, ItemId, !Info) :-
-    record_used_pred_or_func(predicate, ItemId, !Info).
+    record_used_pred_or_func(pf_predicate, ItemId, !Info).
 find_items_used_by_item(function_item, ItemId, !Info) :-
-    record_used_pred_or_func(function, ItemId, !Info).
+    record_used_pred_or_func(pf_function, ItemId, !Info).
 find_items_used_by_item(functor_item, _, !Info) :-
     unexpected(this_file, "find_items_used_by_item: functor").
 find_items_used_by_item(mutable_item, _MutableItemId, !Info).
@@ -1280,7 +1280,8 @@ find_items_used_by_type(Type, !Info) :-
             \+ type_ctor_is_higher_order(TypeCtor, _, _, _)
         ->
             TypeCtorItem = type_ctor_to_item_name(TypeCtor),
-            maybe_record_item_to_process(type_item, TypeCtorItem, !Info)
+            maybe_record_item_to_process(type_abstract_item, TypeCtorItem,
+                !Info)
         ;
             true
         ),

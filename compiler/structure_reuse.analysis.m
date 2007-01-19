@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -160,7 +160,7 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
 :- pred process_imported_reuse(module_info::in, module_info::out) is det.
 
 process_imported_reuse(!ModuleInfo):-
-    module_info_predids(!.ModuleInfo, PredIds), 
+    module_info_predids(PredIds, !ModuleInfo), 
     list.foldl(process_imported_reuse_in_pred, PredIds, !ModuleInfo).
 
 :- pred process_imported_reuse_in_pred(pred_id::in, module_info::in,
@@ -258,10 +258,10 @@ annotate_in_use_information(_PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 % Code for writing out optimization interfaces
 %
 
-:- pred make_opt_int(module_info::in, io::di, io::uo) is det.
+:- pred make_opt_int(module_info::in, module_info::out, io::di, io::uo) is det.
 
-make_opt_int(ModuleInfo, !IO) :-
-    module_info_get_name(ModuleInfo, ModuleName),
+make_opt_int(!ModuleInfo, !IO) :-
+    module_info_get_name(!.ModuleInfo, ModuleName),
     module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Appending structure_reuse pragmas to ",
@@ -273,8 +273,8 @@ make_opt_int(ModuleInfo, !IO) :-
     (
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_predids(ModuleInfo, PredIds),   
-        list.foldl(write_pred_reuse_info(ModuleInfo), PredIds, !IO),
+        module_info_predids(PredIds, !ModuleInfo),   
+        list.foldl(write_pred_reuse_info(!.ModuleInfo), PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(OptFile, !IO),
         maybe_write_string(Verbose, " done.\n", !IO)

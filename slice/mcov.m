@@ -315,10 +315,10 @@ write_proc_label_for_user(ProcLabel, !IO) :-
         ProcLabel = ordinary_proc_label(_DefModuleSym, PredOrFunc,
             _DeclModuleSym, Name, Arity, Mode),
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             io.write_string("pred ", !IO)
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             io.write_string("func ", !IO)
         ),
         term_io.quote_atom(Name, !IO),

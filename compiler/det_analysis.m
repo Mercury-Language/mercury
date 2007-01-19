@@ -136,8 +136,9 @@
 %-----------------------------------------------------------------------------%
 
 determinism_pass(!ModuleInfo, Specs) :-
-    determinism_declarations(!.ModuleInfo, DeclaredProcs, UndeclaredProcs,
-        NoInferProcs),
+    module_info_predids(PredIds, !ModuleInfo),
+    determinism_declarations(!.ModuleInfo, PredIds,
+        DeclaredProcs, UndeclaredProcs, NoInferProcs),
     list.foldl(set_non_inferred_proc_determinism, NoInferProcs, !ModuleInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -1710,35 +1711,35 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
     % - NoInferProcs holds the procedures whose determinism is already
     %   known, and which should not be processed further.
     %
-:- pred determinism_declarations(module_info::in, pred_proc_list::out,
-    pred_proc_list::out, pred_proc_list::out) is det.
+:- pred determinism_declarations(module_info::in, list(pred_id)::in,
+    pred_proc_list::out, pred_proc_list::out, pred_proc_list::out) is det.
 
-determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs,
-        NoInferProcs) :-
-    get_all_pred_procs(ModuleInfo, PredProcs),
-    segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs,
-        NoInferProcs).
+determinism_declarations(ModuleInfo, PredIds,
+        DeclaredProcs, UndeclaredProcs, NoInferProcs) :-
+    get_all_pred_procs(ModuleInfo, PredIds, PredProcs),
+    segregate_procs(ModuleInfo, PredProcs,
+        DeclaredProcs, UndeclaredProcs, NoInferProcs).
 
-    % Get_all_pred_procs takes a module_info and returns a list of all
-    % the procedure ids for that module (except class methods, which
-    % do not need to be checked since we generate the code ourselves).
+    % Get_all_pred_procs returns a list of all the procedure ids for that
+    % module (except class methods, which do not need to be checked since
+    % we generate the code ourselves).
     %
-:- pred get_all_pred_procs(module_info::in, pred_proc_list::out) is det.
+:- pred get_all_pred_procs(module_info::in, list(pred_id)::in,
+    pred_proc_list::out) is det.
 
-get_all_pred_procs(ModuleInfo, PredProcs) :-
-    module_info_predids(ModuleInfo, PredIds),
-    module_info_preds(ModuleInfo, Preds),
-    get_all_pred_procs_2(Preds, PredIds, [], PredProcs).
+get_all_pred_procs(ModuleInfo, PredIds, PredProcs) :-
+    module_info_preds(ModuleInfo, PredTable),
+    get_all_pred_procs_2(PredTable, PredIds, [], PredProcs).
 
 :- pred get_all_pred_procs_2(pred_table::in, list(pred_id)::in,
     pred_proc_list::in, pred_proc_list::out) is det.
 
-get_all_pred_procs_2(_Preds, [], !PredProcs).
-get_all_pred_procs_2(Preds, [PredId | PredIds], !PredProcs) :-
-    map.lookup(Preds, PredId, Pred),
+get_all_pred_procs_2(_PredTable, [], !PredProcs).
+get_all_pred_procs_2(PredTable, [PredId | PredIds], !PredProcs) :-
+    map.lookup(PredTable, PredId, Pred),
     ProcIds = pred_info_procids(Pred),
     fold_pred_modes(PredId, ProcIds, !PredProcs),
-    get_all_pred_procs_2(Preds, PredIds, !PredProcs).
+    get_all_pred_procs_2(PredTable, PredIds, !PredProcs).
 
 :- pred fold_pred_modes(pred_id::in, list(proc_id)::in, pred_proc_list::in,
     pred_proc_list::out) is det.

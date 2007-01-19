@@ -73,7 +73,7 @@
 detect_cse(!ModuleInfo, !IO) :-
     % Traverse the module structure, calling `detect_cse_in_goal'
     % for each procedure body.
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     detect_cse_in_preds(PredIds, !ModuleInfo, !IO).
 
 :- pred detect_cse_in_preds(list(pred_id)::in,

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%  
+%
 % File: dead_proc_elim.m.
 % Main author: zs.
-% 
+%
 % The job of this module is to delete dead predicates, procedures and
 % type_ctor_gen_info structures from the HLDS.
 %
@@ -16,7 +16,7 @@
 % `--inline-single-use' option.
 %
 % It also issues warnings about unused procedures.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.dead_proc_elim.
@@ -49,7 +49,8 @@
     % needed, record how many times they are referenced (this information
     % is used by our inlining heuristics).
     %
-:- pred dead_proc_analyze(module_info::in, needed_map::out) is det.
+:- pred dead_proc_analyze(module_info::in, module_info::out, needed_map::out)
+    is det.
 
     % Optimize away any dead predicates. This is performed immediately after
     % building the HLDS to avoid doing semantic checking and optimization
@@ -122,35 +123,35 @@
 :- type examined_set    ==  set(entity).
 
 dead_proc_elim(Pass, !ModuleInfo, Specs) :-
-    dead_proc_analyze(!.ModuleInfo, Needed),
+    dead_proc_analyze(!ModuleInfo, Needed),
     dead_proc_eliminate(Pass, Needed, !ModuleInfo, Specs).
 
 %-----------------------------------------------------------------------------%
 
-dead_proc_analyze(ModuleInfo0, !:Needed) :-
+dead_proc_analyze(!ModuleInfo, !:Needed) :-
     set.init(Examined0),
-    dead_proc_initialize(ModuleInfo0, Queue0, !:Needed),
-    dead_proc_examine(Queue0, Examined0, ModuleInfo0, !Needed).
+    dead_proc_initialize(!ModuleInfo, Queue0, !:Needed),
+    dead_proc_examine(Queue0, Examined0, !.ModuleInfo, !Needed).
 
     % Add all exported entities to the queue and map.
     % NOTE: changes here are likely to require changes to dead_pred_elim
     % as well.
     %
-:- pred dead_proc_initialize(module_info::in,
+:- pred dead_proc_initialize(module_info::in,module_info::out,
     entity_queue::out, needed_map::out) is det.
 
-dead_proc_initialize(ModuleInfo, !:Queue, !:Needed) :-
+dead_proc_initialize(!ModuleInfo, !:Queue, !:Needed) :-
     !:Queue = queue.init,
     !:Needed = map.init,
-    module_info_predids(ModuleInfo, PredIds),
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_predids(PredIds, !ModuleInfo),
+    module_info_preds(!.ModuleInfo, PredTable),
     dead_proc_initialize_preds(PredIds, PredTable, !Queue, !Needed),
-    module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
+    module_info_get_pragma_exported_procs(!.ModuleInfo, PragmaExports),
     dead_proc_initialize_pragma_exports(PragmaExports, !Queue, !Needed),
-    module_info_get_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
+    module_info_get_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos),
     dead_proc_initialize_base_gen_infos(TypeCtorGenInfos, !Queue, !Needed),
-    module_info_get_class_table(ModuleInfo, Classes),
-    module_info_get_instance_table(ModuleInfo, Instances),
+    module_info_get_class_table(!.ModuleInfo, Classes),
+    module_info_get_instance_table(!.ModuleInfo, Instances),
     dead_proc_initialize_class_methods(Classes, Instances, !Queue, !Needed).
 
     % Add all normally exported procedures within the listed predicates
@@ -494,7 +495,7 @@ dead_proc_examine_expr(shorthand(_), _, !Queue, !Needed) :-
     module_info::in, module_info::out, list(error_spec)::out) is det.
 
 dead_proc_eliminate(Pass, !.Needed, !ModuleInfo, Specs) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     module_info_preds(!.ModuleInfo, PredTable0),
 
     Changed0 = no,
@@ -731,12 +732,12 @@ dead_pred_elim(!ModuleInfo) :-
     list.foldl2(dead_pred_elim_add_entity, Entities, Queue1, Queue,
         NeededPreds0, NeededPreds1),
 
+    module_info_predids(PredIds, !ModuleInfo),
+
     set.init(Preds0),
     set.init(Names0),
     DeadInfo0 = pred_elim_info(!.ModuleInfo, Queue, Preds0, NeededPreds1,
         Names0),
-
-    module_info_predids(!.ModuleInfo, PredIds),
     list.foldl(dead_pred_elim_initialize, PredIds, DeadInfo0, DeadInfo1),
     dead_pred_elim_analyze(DeadInfo1, DeadInfo),
     DeadInfo = pred_elim_info(!:ModuleInfo, _, _, NeededPreds2, _),

@@ -591,7 +591,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         )
     ;
         Inst0 = ground(Uniq, none),
-        ( type_is_higher_order_details(Type, _Purity, function, _, ArgTypes) ->
+        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
             default_higher_order_func_inst(ModuleInfo, ArgTypes,
                 HigherOrderInstInfo),
             Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
@@ -667,7 +667,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
     ;
         Inst0 = ground(Uniq, none),
         apply_type_subst(Type0, Subst, Type),
-        ( type_is_higher_order_details(Type, _, function, _, ArgTypes) ->
+        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
             default_higher_order_func_inst(ModuleInfo, ArgTypes,
                 HigherOrderInstInfo),
             Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
@@ -747,7 +747,7 @@ default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
     list.append(FuncArgModes, [FuncRetMode], PredArgModes0),
     propagate_types_into_mode_list(ModuleInfo, PredArgTypes,
         PredArgModes0, PredArgModes),
-    PredInstInfo = pred_inst_info(function, PredArgModes, detism_det).
+    PredInstInfo = pred_inst_info(pf_function, PredArgModes, detism_det).
 
 constructors_to_bound_insts(ModuleInfo, Uniq, Constructors, BoundInsts) :-
     constructors_to_bound_insts_2(ModuleInfo, Uniq,

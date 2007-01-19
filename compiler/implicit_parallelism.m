@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -110,9 +110,9 @@ apply_implicit_parallelism_transformation(!ModuleInfo, FeedbackFile, !IO) :-
         io.write_string(Stderr, Error ++ "\n", !IO)
     ;
         MaybeCandidateCallSites = ok(CandidateCallSites),
-        module_info_predids(!.ModuleInfo, PredIds),
-        process_preds_for_implicit_parallelism(PredIds,
-            CandidateCallSites, !ModuleInfo)
+        module_info_predids(PredIds, !ModuleInfo),
+        process_preds_for_implicit_parallelism(PredIds, CandidateCallSites,
+            !ModuleInfo)
     ).
 
     % Process predicates for implicit parallelism.
@@ -421,7 +421,7 @@ pred_proc_id_to_raw_id(PredInfo, ProcId, RawId) :-
     ProcIdInt = proc_id_to_int(ProcId),
     RawId = string.append_list([ ModuleString, ".", Name, "/", 
         string.int_to_string(OrigArity), 
-        ( IsPredOrFunc = function -> "+1" ; ""), "-", 
+        ( IsPredOrFunc = pf_function -> "+1" ; ""), "-", 
         string.from_int(ProcIdInt) ]).
 
     % Succeeds if the caller, slot number and callee correspond to a 

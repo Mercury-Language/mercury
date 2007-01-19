@@ -1748,7 +1748,7 @@ var_inst_contains_any(ModuleInfo, Instmap, Var) :-
 %-----------------------------------------------------------------------------%
 
 pred_inst_info_is_nonstandard_func_mode(ModuleInfo, PredInstInfo) :-
-    PredInstInfo = pred_inst_info(function, ArgModes, _),
+    PredInstInfo = pred_inst_info(pf_function, ArgModes, _),
     Arity = list.length(ArgModes),
     \+ pred_inst_matches(PredInstInfo,
         pred_inst_info_standard_func_mode(Arity), ModuleInfo).
@@ -1758,7 +1758,7 @@ ground_inst_info_is_nonstandard_func_mode(ModuleInfo, GroundInstInfo) :-
     pred_inst_info_is_nonstandard_func_mode(ModuleInfo, PredInstInfo).
 
 pred_inst_info_standard_func_mode(Arity) =
-        pred_inst_info(function, ArgModes, detism_det) :-
+        pred_inst_info(pf_function, ArgModes, detism_det) :-
     in_mode(InMode),
     out_mode(OutMode),
     ArgModes = list.duplicate(Arity - 1, InMode) ++ [OutMode].

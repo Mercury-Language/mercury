@@ -1054,10 +1054,10 @@ report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars,
         !Specs) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Decl = "`:- pred'"
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         Decl = "`:- func'"
     ),
     Pieces = pragma_type_spec_to_pieces(PredInfo) ++
@@ -1693,7 +1693,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
             module_info_get_name(!.ModuleInfo, ModuleName),
             string.format("`:- pragma %s' declaration", [s(EvalMethodStr)],
                 Message1),
-            preds_add_implicit_report_error(ModuleName, predicate, PredName,
+            preds_add_implicit_report_error(ModuleName, pf_predicate, PredName,
                 Arity, !.Status, no, Context, origin_user(PredName), Message1,
                 PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
@@ -2045,7 +2045,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     Condition = cond_true,
     Origin = compiler(pragma_memo_attribute),
     StatsPredDecl = item_pred_or_func(Origin, VarSet0, InstVarSet, ExistQVars,
-        predicate, StatsPredSymName, ArgDecls, WithType, WithInst,
+        pf_predicate, StatsPredSymName, ArgDecls, WithType, WithInst,
         yes(detism_det), Condition, purity_pure, Constraints),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
     add_item_decl_pass_1(StatsPredDecl, Context, ItemStatus0, _,
@@ -2070,7 +2070,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         Global = table_info_global_var_name(!.ModuleInfo, SimpleCallId,
             ProcId),
         StatsPredClause = item_pragma(compiler(pragma_memo_attribute),
-            pragma_foreign_proc(!.Attrs, StatsPredSymName, predicate,
+            pragma_foreign_proc(!.Attrs, StatsPredSymName, pf_predicate,
                 [Arg1, Arg2, Arg3], !.VarSet, InstVarSet,
                 fc_impl_ordinary(
                     "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
@@ -2102,7 +2102,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
     Condition = cond_true,
     Origin = compiler(pragma_memo_attribute),
     ResetPredDecl = item_pred_or_func(Origin, VarSet0, InstVarSet, ExistQVars,
-        predicate, ResetPredSymName, ArgDecls, WithType, WithInst,
+        pf_predicate, ResetPredSymName, ArgDecls, WithType, WithInst,
         yes(detism_det), Condition, purity_pure, Constraints),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
     add_item_decl_pass_1(ResetPredDecl, Context, ItemStatus0, _,
@@ -2122,7 +2122,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         Global = table_info_global_var_name(!.ModuleInfo, SimpleCallId,
             ProcId),
         ResetPredClause = item_pragma(compiler(pragma_memo_attribute),
-            pragma_foreign_proc(!.Attrs, ResetPredSymName, predicate,
+            pragma_foreign_proc(!.Attrs, ResetPredSymName, pf_predicate,
                 [Arg1, Arg2], !.VarSet, InstVarSet,
                 fc_impl_ordinary(
                     Global ++ ".MR_pt_tablenode.MR_integer = 0;",
@@ -2147,10 +2147,10 @@ tabling_reset_pred_name(SimpleCallId, ProcId, SingleProc) =
 tabling_pred_name(Prefix, SimpleCallId, ProcId, SingleProc) = NewSymName :-
     SimpleCallId = simple_call_id(PorF, SymName, Arity0),
     (
-        PorF = predicate,
+        PorF = pf_predicate,
         Arity = Arity0
     ;
-        PorF = function,
+        PorF = pf_function,
         Arity = Arity0 - 1
     ),
     (

@@ -44,7 +44,7 @@
 
     % Translate a HLDS module to LLDS.
     %
-:- pred generate_module_code(module_info::in,
+:- pred generate_module_code(module_info::in, module_info::out,
     global_data::in, global_data::out,
     list(c_procedure)::out, io::di, io::uo) is det.
 
@@ -109,11 +109,11 @@
 
 %---------------------------------------------------------------------------%
 
-generate_module_code(ModuleInfo0, !GlobalData, Procedures, !IO) :-
+generate_module_code(!ModuleInfo, !GlobalData, Procedures, !IO) :-
     % Get a list of all the predicate ids for which we will generate code.
-    module_info_predids(ModuleInfo0, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     % Check if we want to use parallel code generation.
-    module_info_get_globals(ModuleInfo0, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, parallel_code_gen, ParallelCodeGen),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
@@ -123,10 +123,10 @@ generate_module_code(ModuleInfo0, !GlobalData, Procedures, !IO) :-
         VeryVerbose = no,
         Statistics = no
     ->
-        generate_code_parallel(ModuleInfo0, PredIds, !GlobalData,
+        generate_code_parallel(!.ModuleInfo, PredIds, !GlobalData,
             Procedures)
     ;
-        generate_code_sequential(ModuleInfo0, PredIds, !GlobalData,
+        generate_code_sequential(!.ModuleInfo, PredIds, !GlobalData,
             Procedures, !IO)
     ).
 
@@ -1260,7 +1260,7 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
         "\t\t\t""", PredName, """,\n",
         "\t\t\t", ProcStr, ",\n",
         "\t\t\t", ArityStr, ",\n",
-        "\t\t\t", (PredOrFunc = function -> "MR_TRUE" ; "MR_FALSE"), "\n",
+        "\t\t\t", (PredOrFunc = pf_function -> "MR_TRUE" ; "MR_FALSE"), "\n",
         "\t\t};\n"
         ], CallStruct),
 

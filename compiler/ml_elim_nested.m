@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1286,8 +1286,8 @@ env_name_base(hoist_nested_funcs) = "env".
 
 ml_pred_label_name(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
         Name, Arity, _CodeModel, _NonOutputFunc)) = LabelName :-
-    ( PredOrFunc = predicate, Suffix = "p"
-    ; PredOrFunc = function, Suffix = "f"
+    ( PredOrFunc = pf_predicate, Suffix = "p"
+    ; PredOrFunc = pf_function, Suffix = "f"
     ),
     (
         MaybeDefiningModule = yes(DefiningModule),

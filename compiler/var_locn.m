@@ -167,24 +167,24 @@
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-    %   Vector, SizeInfo, TypeMsg, MayUseAtomic, Code, !StaticCellInfo,
-    %   !VarLocnInfo):
+    %   MaybeRvals, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Code,
+    %   !StaticCellInfo, !VarLocnInfo):
     %
     % Generates code to assign to Var a pointer, tagged by Ptag, to the cell
     % whose contents are given by the other arguments, and updates the state
     % of !VarLocnInfo accordingly. If ReserveWordAtStart is yes, and the cell
     % is allocated on the heap (rather than statically), then reserve an extra
     % word immediately before the allocated object, for the garbage collector
-    % to use to hold a forwarding pointer. If SizeInfo is yes(SizeVal), then
+    % to use to hold a forwarding pointer. If MaybeSize is yes(SizeVal), then
     % reserve an extra word immediately before the allocated object (regardless
     % of whether it is allocated statically or dynamically), and initialize
     % this word with the value determined by SizeVal. (NOTE: ReserveWordAtStart
-    % and SizeInfo should not be yes / yes(_), because that will cause an
+    % and MaybeSize should not be yes / yes(_), because that will cause an
     % obvious conflict.)
     %
 :- pred var_locn_assign_cell_to_var(module_info::in, prog_var::in, bool::in,
-    tag::in, list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
-    may_use_atomic_alloc::in, code_tree::out,
+    tag::in, list(maybe(rval))::in, maybe(term_size_value)::in, list(int)::in,
+    string::in, may_use_atomic_alloc::in, code_tree::out,
     static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
 
@@ -818,10 +818,10 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 %----------------------------------------------------------------------------%
 
 var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        MaybeRvals0, SizeInfo, TypeMsg, MayUseAtomic, Code, !StaticCellInfo,
-        !VLI) :-
+        MaybeRvals0, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Code,
+        !StaticCellInfo, !VLI) :-
     (
-        SizeInfo = yes(SizeSource),
+        MaybeSize = yes(SizeSource),
         (
             SizeSource = known_size(Size),
             SizeRval = const(llconst_int(Size))
@@ -832,13 +832,18 @@ var_locn_assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         MaybeRvals = [yes(SizeRval) | MaybeRvals0],
         MaybeOffset = yes(1)
     ;
-        SizeInfo = no,
+        MaybeSize = no,
         MaybeRvals = MaybeRvals0,
         MaybeOffset = no
     ),
     var_locn_get_var_state_map(!.VLI, VarStateMap),
     var_locn_get_exprn_opts(!.VLI, ExprnOpts),
-    ( cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes) ->
+    % We can make the cell a constant only if all its fields are filled in,
+    % and they are all constants.
+    (
+        FieldAddrs = [],
+        cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes)
+    ->
         add_scalar_static_cell(RvalsTypes, DataAddr, !StaticCellInfo),
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         CellPtrRval = mkword(Ptag, CellPtrConst),

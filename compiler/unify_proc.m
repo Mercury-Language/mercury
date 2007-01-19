@@ -389,7 +389,7 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
         % XXX inefficient! This is O(N*M).
         %
         PredProcId = proc(PredId, _ProcId),
-        module_info_predids(!.ModuleInfo, ValidPredIds),
+        module_info_predids(ValidPredIds, !ModuleInfo),
         ( list.member(PredId, ValidPredIds) ->
             queued_proc_progress_message(PredProcId, HowToCheckGoal,
                 !.ModuleInfo, !IO),
@@ -672,7 +672,7 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
         info_extract(!.Info, VarSet, Types)
     ),
     map.init(TVarNameMap),
-    ArgVec = proc_arg_vector_init(predicate, Args),
+    ArgVec = proc_arg_vector_init(pf_predicate, Args),
     set_clause_list(Clauses, ClausesRep),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = yes,
@@ -1857,9 +1857,9 @@ build_call(Name, ArgVars, Context, Goal, !Info) :-
     ;
         MercuryBuiltin = mercury_private_builtin_module
     ),
-    goal_util.generate_simple_call(MercuryBuiltin, Name, predicate, mode_no(0),
-        detism_erroneous, purity_pure, ArgVars, [], [], ModuleInfo, Context,
-        Goal).
+    goal_util.generate_simple_call(MercuryBuiltin, Name, pf_predicate,
+        mode_no(0), detism_erroneous, purity_pure, ArgVars, [], [],
+        ModuleInfo, Context, Goal).
 
 :- pred build_specific_call(mer_type::in, special_pred_id::in,
     list(prog_var)::in, instmap_delta::in, determinism::in,

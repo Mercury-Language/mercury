@@ -2156,10 +2156,10 @@ output_table_io_decl(RttiProcLabel, ProcLayoutKind, NumPTIs,
 
 output_pred_or_func(PredOrFunc, !IO) :-
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         io.write_string("MR_PREDICATE", !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         io.write_string("MR_FUNCTION", !IO)
     ).
 

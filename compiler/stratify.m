@@ -92,7 +92,7 @@ check_stratification(!ModuleInfo, !IO) :-
     % is disabled because it is currently unable to detect cases where a
     % higher order proc is hidden in some complex data structure
     %
-    % gen_conservative_graph(Module2, DepGraph0, DepGraph, HOInfo),
+    % gen_conservative_graph(!ModuleInfo, DepGraph0, DepGraph, HOInfo),
     % relation.atsort(DepGraph, HOSCCs1),
     % dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs),
     % higher_order_check_sccs(HOSCCs, HOInfo, !ModuleInfo, !IO).
@@ -443,11 +443,11 @@ higher_order_check_case_list([Case | Goals], Negated, WholeScc, ThisPredProcId,
     % a new dependency graph with all possible higher order calls added.
     % It also returns a map of all the higher order info it collects.
     %
-:- pred gen_conservative_graph(module_info::in,
+:- pred gen_conservative_graph(module_info::in, module_info::out,
     dependency_graph::in, dependency_graph::out, ho_map::out) is det.
 
-gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
-    get_call_info(ModuleInfo, ProcCalls, HOInfo0, CallsHO),
+gen_conservative_graph(!ModuleInfo, !DepGraph, HOInfo) :-
+    get_call_info(!ModuleInfo, ProcCalls, HOInfo0, CallsHO),
     map.keys(ProcCalls, Callers),
     iterate_solution(Callers, ProcCalls, CallsHO, HOInfo0, HOInfo),
     map.to_assoc_list(HOInfo, HOInfoL),
@@ -458,15 +458,15 @@ gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
     % This pred also returns a set of all non imported procedures that
     % make a higher order call.
     %
-:- pred get_call_info(module_info::in, call_map::out, ho_map::out,
-    set(pred_proc_id)::out) is det.
+:- pred get_call_info(module_info::in, module_info::out, call_map::out,
+    ho_map::out, set(pred_proc_id)::out) is det.
 
-get_call_info(ModuleInfo, !:ProcCalls, !:HOInfo, !:CallsHO) :-
+get_call_info(!ModuleInfo, !:ProcCalls, !:HOInfo, !:CallsHO) :-
     map.init(!:ProcCalls),
     map.init(!:HOInfo),
     set.init(!:CallsHO),
-    module_info_predids(ModuleInfo, PredIds),
-    expand_predids(PredIds, ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
+    module_info_predids(PredIds, !ModuleInfo),
+    expand_predids(PredIds, !.ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
 
     % Finds the transitive closure of a given list of procedures.
     % This pred is used to see how face(???) a higher order address

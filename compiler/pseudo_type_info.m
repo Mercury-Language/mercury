@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -243,10 +243,10 @@ generate_plain_args(TypeArgs, PseudoArgs) :-
 type_is_var_arity(Type, VarArityCtorId) :-
     ( type_is_higher_order_details(Type, _Purity, PredOrFunc, _, _) ->
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             VarArityCtorId = pred_type_info
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             VarArityCtorId = func_type_info
         )
     ; type_is_tuple(Type, _) ->

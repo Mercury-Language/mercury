@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2006 The University of Melbourne.
+% Copyright (C) 1995-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -256,7 +256,7 @@ process_all_nonimported_procs_update(!Task, !ModuleInfo, !IO) :-
 
 process_matching_nonimported_procs_errors(Task, Filter, !ModuleInfo,
         !Specs, !IO) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     ( Task = update_pred_error(Pred) ->
         list.foldl3(process_nonimported_pred(Pred, Filter), PredIds,
             !ModuleInfo, !Specs, !IO)
@@ -273,7 +273,7 @@ process_matching_nonimported_procs(Task, Filter, !ModuleInfo, !IO) :-
 
 process_matching_nonimported_procs_update_errors(Task0, Task, Filter,
         !ModuleInfo, !Specs, !IO) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     process_nonimported_procs_in_preds(PredIds, Task0, Task, Filter,
         !ModuleInfo, !IO).
 
@@ -678,7 +678,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
     report_pred_name_mode(PredOrFunc, PredName, ArgModes, !IO),
     io.write_string("':\n", !IO).
 
-report_pred_name_mode(predicate, PredName, ArgModes, !IO) :-
+report_pred_name_mode(pf_predicate, PredName, ArgModes, !IO) :-
     io.write_string(PredName, !IO),
     (
         ArgModes = [_ | _],
@@ -691,7 +691,7 @@ report_pred_name_mode(predicate, PredName, ArgModes, !IO) :-
         ArgModes = []
     ).
 
-report_pred_name_mode(function, FuncName, ArgModes, !IO) :-
+report_pred_name_mode(pf_function, FuncName, ArgModes, !IO) :-
     varset.init(InstVarSet),   % XXX inst var names
     strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
     pred_args_to_func_args(StrippedArgModes, FuncArgModes, FuncRetMode),

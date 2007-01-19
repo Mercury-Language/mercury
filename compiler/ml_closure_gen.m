@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1011,7 +1011,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
                 ;
                     % For model_det functions, output mode function results
                     % are mapped to MLDS return values.
-                    PredOrFunc = function,
+                    PredOrFunc = pf_function,
                     CodeModel = model_det,
                     ArgMode = top_out,
                     Types1 = [],

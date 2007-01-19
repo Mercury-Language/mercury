@@ -1143,7 +1143,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     % in the cctor of this module.
     (
         Name = entity_function(PredLabel, _ProcId, MaybeSeqNum, _PredId),
-        PredLabel = mlds_user_pred_label(predicate, no, "main", 2,
+        PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
             model_det, no),
         MaybeSeqNum = no
     ->
@@ -3302,14 +3302,14 @@ predlabel_to_id(mlds_user_pred_label(PredOrFunc, MaybeModuleName, Name, Arity,
         MaybeModuleStr = ""
     ),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         ( CodeModel = model_semi ->
             PredOrFuncStr = "_p"
         ;
             PredOrFuncStr = ""
         )
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         PredOrFuncStr = "_f"
     ),
     proc_id_to_int(ProcId, ProcIdInt),

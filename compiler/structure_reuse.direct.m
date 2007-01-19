@@ -103,7 +103,7 @@ direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, !IO):-
     get_strategy(Strategy, !ModuleInfo, !IO), 
 
     % Gather the pred-ids of the preds that need to be analysed.
-    module_info_predids(!.ModuleInfo, AllPredIds), 
+    module_info_predids(AllPredIds, !ModuleInfo), 
     list.filter(pred_requires_analysis(!.ModuleInfo), AllPredIds, 
         ToBeAnalysedPredIds), 
 

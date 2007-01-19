@@ -87,7 +87,7 @@
 detect_switches(!ModuleInfo, !IO) :-
     % Traverse the module structure, calling `detect_switches_in_goal'
     % for each procedure body.
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     detect_switches_in_preds(PredIds, !ModuleInfo, !IO).
 
 :- pred detect_switches_in_preds(list(pred_id)::in,

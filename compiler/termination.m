@@ -99,7 +99,7 @@ analyse_termination_in_module(!ModuleInfo, !IO) :-
     % Process builtin and compiler-generated predicates, and user-supplied
     % pragmas.
     %
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     check_preds(PredIds, !ModuleInfo, !IO),
     %
     % Process all the SCCs of the call graph in a bottom-up order.

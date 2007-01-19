@@ -6142,12 +6142,14 @@ Output detailed debugging traces of the optimization process.
 @findex --debug-opt-pred-id
 Output detailed debugging traces of the optimization process
 only for the predicate/function with the specified pred id.
+May be given more than once.
 
 @sp 1
 @item --debug-opt-pred-name @var{name}
 @findex --debug-opt-pred-name
 Output detailed debugging traces of the optimization process
 only for the predicate/function with the specified name.
+May be given more than once.
 
 @sp 1
 @item --debug-pd
@@ -6518,6 +6520,7 @@ s - store maps of goals,
 t - results of termination analysis,
 u - unification categories and other implementation details of unifications,
 v - variable numbers in variable names,
+z - purity annotations on impure and semipure goals
 A - argument passing information,
 B - mode constraint information,
 C - clause information,
@@ -6534,6 +6537,7 @@ U - unify and compare predicates.
 @findex --dump-hlds-pred-id
 With @samp{--dump-hlds}, restrict the output
 to the HLDS of the predicate or function with the specified pred id.
+May be given more than once.
 
 @sp 1
 @item --dump-mlds @var{stage}
@@ -7815,6 +7819,13 @@ procedures, so as to make the procedure tail recursive.
 @cindex Last call optimization
 Enable the optimization of ``last'' calls that are followed by
 constructor application.
+
+@c @sp 1
+@c @item --optimize-constructor-last-call-null
+@c @findex --optimize-constructor-last-call-null
+@c When --optimize-constructor-last-call is enabled,
+@c put NULL in uninitialized fields (to prevent the garbage collector
+@c from looking at and following a random bit pattern).
 
 @sp 1
 @item --optimize-dead-procs

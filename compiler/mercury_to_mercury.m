@@ -517,7 +517,7 @@ mercury_output_item(UnqualifiedItemNames,
         % Function declarations using `with_type` have the same
         % format as predicate declarations, but with `func' instead
         % of `pred'.
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         WithType = no
     ->
         pred_args_to_func_args(TypesAndModes, FuncTypesAndModes,
@@ -539,7 +539,7 @@ mercury_output_item(UnqualifiedItemNames,
     (
         % Function mode declarations using `with_type` have
         % the same format as predicate mode declarations.
-        PredOrFunc = yes(function),
+        PredOrFunc = yes(pf_function),
         WithInst = no
     ->
         pred_args_to_func_args(Modes, FuncModes, RetMode),
@@ -558,10 +558,10 @@ mercury_output_item(UnqualifiedItemNames,
     maybe_unqualify_sym_name(UnqualifiedItemNames, PredName0, PredName),
     maybe_output_line_number(Context, !IO),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_output_pred_clause(VarSet, PredName, Args, Body, Context, !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(Args, FuncArgs, Result),
         mercury_output_func_clause(VarSet, PredName, FuncArgs, Result, Body,
             Context, !IO)
@@ -600,7 +600,8 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
             ExportName, !IO)
     ;
         Pragma = pragma_obsolete(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "obsolete", no, !IO)
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate, "obsolete", no,
+            !IO)
     ;
         Pragma = pragma_tabled(Type, Pred, Arity, _PredOrFunc, _Mode,
             MaybeAttributes),
@@ -655,7 +656,7 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
             MaybeAttributes = no,
             MaybeAfter = no
         ),
-        mercury_output_pragma_decl(Pred, Arity, predicate, PragmaName,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate, PragmaName,
             MaybeAfter, !IO)
     ;
         Pragma = pragma_type_spec(_, _, _, _, _, _, _, _),
@@ -663,10 +664,11 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
         mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO)
     ;
         Pragma = pragma_inline(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "inline", no, !IO)
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate, "inline", no,
+            !IO)
     ;
         Pragma = pragma_no_inline(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "no_inline", no,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate, "no_inline", no,
             !IO)
     ;
         Pragma = pragma_unused_args(PredOrFunc, PredName, Arity, ModeNum,
@@ -701,15 +703,15 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
         add_string(").\n", !IO)
     ;
         Pragma = pragma_promise_pure(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "promise_pure", no,
-            !IO)
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "promise_pure", no, !IO)
     ;
         Pragma = pragma_promise_semipure(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "promise_semipure",
-            no, !IO)
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "promise_semipure", no, !IO)
     ;
         Pragma = pragma_promise_equivalent_clauses(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "promise_equivalent_clauses", no, !IO)
     ;
         Pragma = pragma_termination_info(PredOrFunc, PredName, ModeList,
@@ -724,15 +726,15 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
             MaybeTermination, Context, !IO)
     ;
         Pragma = pragma_terminates(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "terminates", no,
-            !IO)
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "terminates", no, !IO)
     ;
         Pragma = pragma_does_not_terminate(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "does_not_terminate", no, !IO)
     ;
         Pragma = pragma_check_termination(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "check_termination", no, !IO)
     ;
         Pragma = pragma_structure_sharing(PredOrFunc, PredName, ModesList,
@@ -746,7 +748,7 @@ mercury_output_item(_UnqualifiedItemNames, item_pragma(_, Pragma), Context,
             Context, HeadVars, no, Types, no, MaybeStructureReuseDomain, !IO)
     ;
         Pragma = pragma_mode_check_clauses(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "mode_check_clauses", no, !IO)
     ).
 
@@ -890,7 +892,7 @@ output_class_method(Method, !IO) :-
             % Function declarations using `with_type` have the
             % same format as predicate declarations, but with
             % `func' instead of `pred'.
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             WithType = no
         ->
             pred_args_to_func_args(TypesAndModes,
@@ -914,7 +916,7 @@ output_class_method(Method, !IO) :-
         (
             % Function mode declarations using `with_type` have
             % the same format as predicate mode declarations.
-            PredOrFunc = yes(function),
+            PredOrFunc = yes(pf_function),
             WithInst = no
         ->
             pred_args_to_func_args(Modes, FuncModes, RetMode),
@@ -937,10 +939,10 @@ output_instance_method(Method, !IO) :-
         Defn = instance_proc_def_name(Name2),
         io.write_char('\t', !IO),
         (
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             io.write_string("func(", !IO)
         ;
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             io.write_string("pred(", !IO)
         ),
         mercury_output_bracketed_sym_name(Name1, next_to_graphic_token, !IO),
@@ -963,11 +965,11 @@ output_instance_method(Method, !IO) :-
 output_instance_method_clause(Name1, Context, Item, !IO) :-
     ( Item = item_clause(_, VarSet, PredOrFunc, _PredName, HeadTerms, Body) ->
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             mercury_output_pred_clause(VarSet, Name1, HeadTerms, Body, Context,
                 !IO)
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(HeadTerms, ArgTerms, ResultTerm),
             mercury_output_func_clause(VarSet, Name1, ArgTerms, ResultTerm,
                 Body, Context, !IO)
@@ -1151,7 +1153,7 @@ mercury_format_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet,
             add_string(" */", !U)
         ),
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             (
                 Modes = [],
                 add_string("((pred) is ", !U),
@@ -1166,7 +1168,7 @@ mercury_format_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet,
                 add_string(")\n", !U)
             )
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(Modes, ArgModes, RetMode),
             (
                 Modes = [],
@@ -1241,7 +1243,7 @@ mercury_format_inst(ground(Uniq, GroundInstInfo), InstInfo, !U) :-
             add_string(" */", !U)
         ),
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             (
                 Modes = [],
                 add_string("((pred) is ", !U),
@@ -1256,7 +1258,7 @@ mercury_format_inst(ground(Uniq, GroundInstInfo), InstInfo, !U) :-
                 add_string(")", !U)
             )
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(Modes, ArgModes, RetMode),
             (
                 ArgModes = [],
@@ -2062,7 +2064,7 @@ mercury_pred_type_to_string(VarSet, ExistQVars, PredName, Types, MaybeDet,
 
 mercury_format_pred_type(VarSet, ExistQVars, PredName, Types, WithType,
         MaybeDet, Purity, ClassContext, Context, AppendVarnums, !U) :-
-    mercury_format_pred_or_func_type_2(predicate, VarSet, ExistQVars,
+    mercury_format_pred_or_func_type_2(pf_predicate, VarSet, ExistQVars,
         PredName, Types, WithType, MaybeDet, Purity, ClassContext,
         Context, AppendVarnums, ":- ", ".\n", !U).
 
@@ -2120,7 +2122,7 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
         % get_determinism/3.  The alternative is more `nice', but less
         % efficient.
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         MaybeDet = no,
         unqualify_name(PredName) = "is",
         list.length(Types, 2)
@@ -2399,11 +2401,11 @@ mercury_mode_subdecl_to_string(PredOrFunc, InstVarSet, Name, Modes, MaybeDet,
 mercury_format_mode_subdecl(PredOrFunc, InstVarSet, Name, Modes,
         MaybeDet, Context, !U) :-
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_format_pred_or_func_mode_subdecl(InstVarSet, Name,
             Modes, no, MaybeDet, Context, !U)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, ArgModes, RetMode),
         mercury_format_func_mode_subdecl(InstVarSet, Name, ArgModes,
             RetMode, MaybeDet, Context, !U)
@@ -3256,11 +3258,11 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
     add_string(", ", !U),
     mercury_format_sym_name(PredName, !U),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Vars = Vars0,
         ResultVars = []
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(Vars0, Vars, ResultVar),
         ResultVars = [ResultVar]
     ),
@@ -3274,9 +3276,9 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
         add_string(")", !U)
     ),
     (
-        PredOrFunc = predicate
+        PredOrFunc = pf_predicate
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         add_string(" = (", !U),
         mercury_format_pragma_foreign_code_vars(ResultVars, ProgVarset,
             InstVarset, !U),
@@ -3367,7 +3369,7 @@ mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO) :-
             unexpected(this_file, "pragma type_spec: no pred_or_func")
         ),
         (
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(Modes, FuncModes, RetMode),
             mercury_output_sym_name(PredName, !IO),
             io.write_string("(", !IO),
@@ -3376,7 +3378,7 @@ mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO) :-
             io.write_string(") = ", !IO),
             mercury_output_mode(RetMode, InstVarSet, !IO)
         ;
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             mercury_output_sym_name(PredName, !IO),
             io.write_string("(", !IO),
             varset.init(InstVarSet),
@@ -3539,10 +3541,10 @@ mercury_pragma_decl_to_string(PredName, Arity, PredOrFunc, PragmaName,
 mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, MaybeAfter,
         !U) :-
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         DeclaredArity = Arity
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         DeclaredArity = Arity - 1
     ),
     add_string(":- pragma ", !U),
@@ -3573,14 +3575,14 @@ mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
     add_string(":- pragma import(", !U),
     mercury_format_sym_name(Name, !U),
     (
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, ArgModes, RetMode),
         add_string("(", !U),
         mercury_format_mode_list(ArgModes, InstInfo, !U),
         add_string(") = ", !U),
         mercury_format_mode(RetMode, InstInfo, !U)
     ;
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         add_string("(", !U),
         mercury_format_mode_list(ModeList, InstInfo, !U),
         add_string(")", !U)
@@ -3604,14 +3606,14 @@ mercury_format_pragma_foreign_export(Lang, Name, PredOrFunc, ModeList,
     add_string(", ", !U),
     mercury_format_sym_name(Name, !U),
     (
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, ArgModes, RetMode),
         add_string("(", !U),
         mercury_format_mode_list(ArgModes, InstInfo, !U),
         add_string(") = ", !U),
         mercury_format_mode(RetMode, InstInfo, !U)
     ;
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         add_string("(", !U),
         mercury_format_mode_list(ModeList, InstInfo, !U),
         add_string(")", !U)
@@ -4155,9 +4157,9 @@ maybe_unqualify_sym_name(yes, SymName, unqualified(unqualify_name(SymName))).
     pred(add_quoted_atom/3) is term_io.quote_atom,
     pred(add_quoted_string/3) is term_io.quote_string,
     pred(add_constant/3) is term_io.write_constant,
-    pred(add_class_id/3) is io.write,
-    pred(add_eval_method/3) is io.write,
-    pred(add_lambda_eval_method/3) is io.write,
+    pred(add_class_id/3) is write_class_id,
+    pred(add_eval_method/3) is write_eval_method,
+    pred(add_lambda_eval_method/3) is write_lambda_eval_method,
     pred(add_escaped_string/3) is term_io.write_escaped_string,
     pred(add_format/4) is io.format,
     pred(add_list/5) is io.write_list
@@ -4180,6 +4182,25 @@ maybe_unqualify_sym_name(yes, SymName, unqualified(unqualify_name(SymName))).
     pred(add_format/4) is output_format,
     pred(add_list/5) is output_list
 ].
+
+:- pred write_class_id(class_id::in, io::di, io::uo) is det.
+
+write_class_id(ClassId, !IO) :-
+    output_class_id(ClassId, "", ClassIdStr),
+    io.write_string(ClassIdStr, !IO).
+
+:- pred write_eval_method(eval_method::in, io::di, io::uo) is det.
+
+write_eval_method(EvalMethod, !IO) :-
+    output_eval_method(EvalMethod, "", EvalMethodStr),
+    io.write_string(EvalMethodStr, !IO).
+
+:- pred write_lambda_eval_method(lambda_eval_method::in, io::di, io::uo)
+    is det.
+
+write_lambda_eval_method(LambdaEvalMethod, !IO) :-
+    output_lambda_eval_method(LambdaEvalMethod, "", LambdaEvalMethodStr),
+    io.write_string(LambdaEvalMethodStr, !IO).
 
 :- pred output_string(string::in, string::di, string::uo) is det.
 
@@ -4306,11 +4327,11 @@ write_pragma_termination_info(PredOrFunc, SymName, ModeList, Context,
     io.write_string(":- pragma termination_info(", !IO),
     varset.init(InitVarSet),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_output_pred_mode_subdecl(InitVarSet, SymName,
             ModeList, no, Context, !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, FuncModeList, RetMode),
         mercury_output_func_mode_subdecl(InitVarSet, SymName,
             FuncModeList, RetMode, no, Context, !IO)
@@ -4351,7 +4372,7 @@ write_used_args([], !IO) :-
     io.write_string("[]", !IO).
 write_used_args([UsedArg | UsedArgs], !IO) :-
     io.write_string("[", !IO),
-    io.write(UsedArg, !IO),
+    write_bool(UsedArg, !IO),
     write_used_args_2(UsedArgs, !IO),
     io.write_string("]", !IO).
 
@@ -4360,8 +4381,19 @@ write_used_args([UsedArg | UsedArgs], !IO) :-
 write_used_args_2([], !IO).
 write_used_args_2([ UsedArg | UsedArgs ], !IO) :-
     io.write_string(", ", !IO),
-    io.write(UsedArg, !IO),
+    write_bool(UsedArg, !IO),
     write_used_args_2(UsedArgs, !IO).
+
+:- pred write_bool(bool::in, io::di, io::uo) is det.
+
+write_bool(Bool, !IO) :-
+    (
+        Bool = no,
+        io.write_string("no", !IO)
+    ;
+        Bool = yes,
+        io.write_string("yes", !IO)
+    ).
 
 write_maybe_termination_info(MaybeTerminationInfo, Verbose, !IO) :-
     (
@@ -4398,11 +4430,11 @@ write_pragma_termination2_info(PredOrFunc, PredName, ModeList,
         !IO) :-
     io.write_string(":- pragma termination2_info(", !IO),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_output_pred_mode_subdecl(varset.init, PredName,
             ModeList, no, Context, !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, FuncModeList, RetMode),
         mercury_output_func_mode_subdecl(varset.init, PredName,
             FuncModeList, RetMode, no, Context, !IO)
@@ -4488,11 +4520,11 @@ write_pragma_structure_sharing_info(PredOrFunc, SymName, Modes, Context,
     ),
 
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_output_pred_mode_subdecl(InitVarSet, SymName,
             Modes, no, Context, !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, FuncModeList, RetMode),
         mercury_output_func_mode_subdecl(InitVarSet, SymName,
             FuncModeList, RetMode, no, Context, !IO)
@@ -4525,11 +4557,11 @@ write_pragma_structure_reuse_info(PredOrFunc, SymName, Modes, Context,
     ),
 
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_output_pred_mode_subdecl(InitVarSet, SymName,
             Modes, no, Context, !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, FuncModeList, RetMode),
         mercury_output_func_mode_subdecl(InitVarSet, SymName,
             FuncModeList, RetMode, no, Context, !IO)

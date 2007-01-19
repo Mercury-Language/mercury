@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -461,10 +461,10 @@ predicate_documentation(C, PredInfo) = Xml :-
     pred_info_get_class_context(PredInfo, Constraints),
     pred_info_context(PredInfo, Context),
     (
-        IsPredOrFunc = predicate,
+        IsPredOrFunc = pf_predicate,
         Tag = "predicate"
     ;
-        IsPredOrFunc = function,
+        IsPredOrFunc = pf_function,
         Tag = "function"
     ),
     Id = sym_name_and_arity_to_id(Tag, PredName, Arity),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 University of Melbourne.
+% Copyright (C) 1997-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -754,7 +754,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
                 parse_qualified_term(InstanceMethod, InstanceMethod,
                     "instance method", ok2(InstanceMethodName, []))
             ->
-                Result = ok1(instance_method(predicate, ClassMethodName,
+                Result = ok1(instance_method(pf_predicate, ClassMethodName,
                     instance_proc_def_name(InstanceMethodName), ArityInt,
                     TermContext))
             ;
@@ -772,7 +772,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
                 parse_qualified_term(InstanceMethod, InstanceMethod,
                     "instance method", ok2(InstanceMethodName, []))
             ->
-                Result = ok1(instance_method(function, ClassMethodName,
+                Result = ok1(instance_method(pf_function, ClassMethodName,
                     instance_proc_def_name(InstanceMethodName), ArityInt,
                     TermContext))
             ;

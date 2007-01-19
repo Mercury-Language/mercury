@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -377,7 +377,8 @@
 typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
         TypeVarSet, VarSet, VarTypes, HeadTypeParams,
         Constraints, Status, Markers, Errors, Info) :-
-    CallPredId = plain_call_id(simple_call_id(predicate, unqualified(""), 0)),
+    CallPredId =
+        plain_call_id(simple_call_id(pf_predicate, unqualified(""), 0)),
     term.context_init(Context),
     map.init(TypeBindings),
     map.init(Proofs),

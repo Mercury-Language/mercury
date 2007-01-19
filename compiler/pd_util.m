@@ -629,14 +629,6 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
 
     % We have extra information about a switched-on variable
     % at the end of each branch.
-/* ### In clause for predicate `get_branch_vars'/7: */
-/* ###   type error in unification of variable `Goal' */
-/* ###   and functor `-/2'. */
-/* ###   variable `Goal' has type `((hlds.hlds_goal).hlds_goal)', */
-/* ###   functor `-/2' has overloaded type */
-/* ###     { (T1 - T2): (pair.pair(T1, T2)), */
-/* ###     (int - int): int */
-/* ###   }. */
     ( Goal = hlds_goal(switch(SwitchVar, _, _), _) ->
         ( map.search(!.ExtraVars, SwitchVar, SwitchVarSet0) ->
             set.insert(SwitchVarSet0, BranchNo, SwitchVarSet)

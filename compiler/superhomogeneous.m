@@ -555,14 +555,14 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         term.coerce(HeadTerm0, HeadTerm1),
         parse_purity_annotation(HeadTerm1, LambdaPurity, HeadTerm),
         ( parse_pred_expression(HeadTerm, EvalMethod0, Vars0, Modes0, Det0) ->
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             EvalMethod = EvalMethod0,
             Vars1 = Vars0,
             Modes1 = Modes0,
             Det1 = Det0
         ;
             parse_func_expression(HeadTerm, EvalMethod, Vars1, Modes1, Det1),
-            PredOrFunc = function
+            PredOrFunc = pf_function
         )
     ->
         qualify_lambda_mode_list_if_not_opt_imported(Modes1, Modes, Context,
@@ -602,7 +602,7 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             MaybeParsedGoal = ok1(ParsedGoal),
             Vars1 = Vars0 ++
                 [term.variable(DCG0, Context), term.variable(DCGn, Context)],
-            build_lambda_expression(X, Purity, DCGLambdaPurity, predicate,
+            build_lambda_expression(X, Purity, DCGLambdaPurity, pf_predicate,
                 EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
                 SubContext, Goal0, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
                 !.SInfo, !Specs),
@@ -933,10 +933,10 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
         % Figure out which variables we need to explicitly existentially
         % quantify.
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             QuantifiedArgs = Args
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(Args, QuantifiedArgs, _ReturnValTerm)
         ),
         term.vars_list(QuantifiedArgs, QuantifiedVars0),
@@ -1023,7 +1023,7 @@ ground_terms([Term | Terms]) :-
 
 arg_context_to_unify_context(ac_head(PredOrFunc, Arity), ArgNum,
         ArgContext, []) :-
-    ( PredOrFunc = function, ArgNum = Arity ->
+    ( PredOrFunc = pf_function, ArgNum = Arity ->
         % It's the function result term in the head.
         ArgContext = umc_head_result
     ;

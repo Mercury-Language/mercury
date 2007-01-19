@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,6 +22,8 @@
 %   [ ] Add any missing functionality from the assembler grammar
 %       (events, properties, etc).
 %   [ ] Fix up all the XXXs.
+%   [ ] Replace all reference to io.write with predicates that do not depend
+%       on the compiler's internal data representations.
 % 
 %-----------------------------------------------------------------------------%
 

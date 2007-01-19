@@ -54,13 +54,13 @@
     % they must be called after unused_args.m appends its information
     % to the .opt.tmp file.
     %
-:- pred write_optfile(module_info::in, module_info::out, io::di, io::uo)
+:- pred write_opt_file(module_info::in, module_info::out, io::di, io::uo)
     is det.
 
     % Add the items from the .opt files of imported modules to
     % the items for this module.
     %
-:- pred grab_optfiles(module_imports::in, module_imports::out, bool::out,
+:- pred grab_opt_files(module_imports::in, module_imports::out, bool::out,
     io::di, io::uo) is det.
 
     % Make sure that local preds which have been exported in the .opt
@@ -70,8 +70,8 @@
     io::di, io::uo) is det.
 
 :- type opt_file_type
-    --->    opt
-    ;       trans_opt.
+    --->    opt_file
+    ;       trans_opt_file.
 
     % update_error_status(OptFileType, FileName, Error, Messages, !Status):
     %
@@ -134,7 +134,7 @@
 
 %-----------------------------------------------------------------------------%
 
-write_optfile(!ModuleInfo, !IO) :-
+write_opt_file(!ModuleInfo, !IO) :-
     % We don't want to output line numbers in the .opt files,
     % since that causes spurious changes to the .opt files
     % when you make trivial changes (e.g. add comments) to the source files.
@@ -152,7 +152,7 @@ write_optfile(!ModuleInfo, !IO) :-
     ;
         Result = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
-        module_info_predids(!.ModuleInfo, RealPredIds),
+        module_info_predids(RealPredIds, !ModuleInfo),
         module_info_get_assertion_table(!.ModuleInfo, AssertionTable),
         assertion_table_pred_ids(AssertionTable, AssertPredIds),
         list.append(AssertPredIds, RealPredIds, PredIds),
@@ -193,17 +193,16 @@ gather_preds(AllPredIds, CollectTypes, InlineThreshold, HigherOrderSizeLimit,
     ProcessLocalPreds = no,
     gather_pred_list(AllPredIds, ProcessLocalPreds, CollectTypes,
         InlineThreshold, HigherOrderSizeLimit, Deforestation, !Info),
-    %
+
     % Then gather preds used by exported preds (recursively).
-    %
     set.init(ExtraExportedPreds0),
-    gather_preds_2(ExtraExportedPreds0, CollectTypes, InlineThreshold,
+    gather_preds_fixpoint(ExtraExportedPreds0, CollectTypes, InlineThreshold,
         HigherOrderSizeLimit, Deforestation, !Info).
 
-:- pred gather_preds_2(set(pred_id)::in, bool::in, int::in, int::in, bool::in,
-    intermod_info::in, intermod_info::out) is det.
+:- pred gather_preds_fixpoint(set(pred_id)::in, bool::in, int::in, int::in,
+    bool::in, intermod_info::in, intermod_info::out) is det.
 
-gather_preds_2(ExtraExportedPreds0, CollectTypes, InlineThreshold,
+gather_preds_fixpoint(ExtraExportedPreds0, CollectTypes, InlineThreshold,
         HigherOrderSizeLimit, Deforestation, !Info) :-
     intermod_info_get_pred_decls(!.Info, ExtraExportedPreds),
     NewlyExportedPreds = set.to_sorted_list(
@@ -215,8 +214,8 @@ gather_preds_2(ExtraExportedPreds0, CollectTypes, InlineThreshold,
         ProcessLocalPreds = yes,
         gather_pred_list(NewlyExportedPreds, ProcessLocalPreds, CollectTypes,
             InlineThreshold, HigherOrderSizeLimit, Deforestation, !Info),
-        gather_preds_2(ExtraExportedPreds, CollectTypes, InlineThreshold,
-            HigherOrderSizeLimit, Deforestation, !Info)
+        gather_preds_fixpoint(ExtraExportedPreds, CollectTypes,
+            InlineThreshold, HigherOrderSizeLimit, Deforestation, !Info)
     ).
 
 :- pred gather_pred_list(list(pred_id)::in, bool::in, bool::in,
@@ -847,7 +846,7 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         InstanceMethodDefn0, MethodArity, MethodContext),
     (
         InstanceMethodDefn0 = instance_proc_def_name(InstanceMethodName0),
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         (
             find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
                 MethodArity, MethodCallTVarSet, MethodCallArgTypes,
@@ -871,7 +870,7 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         )
     ;
         InstanceMethodDefn0 = instance_proc_def_name(InstanceMethodName0),
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         init_markers(Markers),
         resolve_pred_overloading(ModuleInfo, Markers,
             MethodCallArgTypes, MethodCallTVarSet,
@@ -1142,7 +1141,7 @@ should_write_type(ModuleName, TypeCtor, TypeDefn) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Output module imports, types, modes, insts and predicates
+    % Output module imports, types, modes, insts and predicates.
     %
 :- pred write_intermod_info(intermod_info::in, io::di, io::uo) is det.
 
@@ -1157,10 +1156,9 @@ write_intermod_info(IntermodInfo, !IO) :-
     intermod_info_get_pred_decls(IntermodInfo, PredDecls),
     intermod_info_get_instances(IntermodInfo, Instances),
     (
-        %
-        % If none of these item types need writing, nothing
-        % else needs to be written.
-        %
+        % If none of these item types need writing, nothing else
+        % needs to be written.
+
         set.empty(Preds),
         set.empty(PredDecls),
         Instances = [],
@@ -1175,13 +1173,13 @@ write_intermod_info(IntermodInfo, !IO) :-
     ->
         true
     ;
-        write_intermod_info_2(IntermodInfo, !IO)
+        write_intermod_info_body(IntermodInfo, !IO)
     ).
 
-:- pred write_intermod_info_2(intermod_info::in, io::di, io::uo) is det.
+:- pred write_intermod_info_body(intermod_info::in, io::di, io::uo) is det.
 
-write_intermod_info_2(IntermodInfo, !IO) :-
-    IntermodInfo = info(_, Preds0, PredDecls0, Instances, Types,
+write_intermod_info_body(IntermodInfo, !IO) :-
+    IntermodInfo = intermod_info(_, Preds0, PredDecls0, Instances, Types,
         ModuleInfo, WriteHeader, _, _),
     set.to_sorted_list(Preds0, Preds),
     set.to_sorted_list(PredDecls0, PredDecls),
@@ -1190,8 +1188,8 @@ write_intermod_info_2(IntermodInfo, !IO) :-
     set.to_sorted_list(Modules0, Modules),
     (
         Modules = [_ | _],
-        % XXX this could be reduced to the set that is actually needed
-        % by the items being written.
+        % XXX Modules could and should be reduced to the set of modules
+        % that are actually needed by the items being written.
         io.write_string(":- use_module ", !IO),
         write_modules(Modules, !IO)
     ;
@@ -1489,11 +1487,11 @@ write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
         AppendVarNums = yes
     ),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_output_pred_type(TVarSet, ExistQVars, qualified(Module, Name),
             ArgTypes, no, Purity, ClassContext, Context, AppendVarNums, !IO)
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
         mercury_output_func_type(TVarSet, ExistQVars, qualified(Module, Name),
             FuncArgTypes, FuncRetType, no, Purity, ClassContext, Context,
@@ -1538,12 +1536,12 @@ write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds], !IO) :-
     proc_info_get_context(ProcInfo, Context),
     varset.init(Varset),
     (
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         pred_args_to_func_args(ArgModes, FuncArgModes, FuncRetMode),
         mercury_output_func_mode_decl(Varset, SymName,
             FuncArgModes, FuncRetMode, yes(Detism), Context, !IO)
     ;
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         mercury_output_pred_mode_decl(Varset, SymName, ArgModes,
             yes(Detism), Context, !IO)
     ),
@@ -1855,31 +1853,33 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
     % A collection of stuff to go in the .opt file.
     %
 :- type intermod_info
-    --->    info(
-                im_modules :: set(module_name),
+    --->    intermod_info(
                 % Modules to import.              
+                im_modules              :: set(module_name),
 
-                im_preds :: set(pred_id),
                 % Preds to output clauses for.
+                im_preds                :: set(pred_id),
 
-                im_pred_decls :: set(pred_id),
                 % Preds to output decls for.
+                im_pred_decls           :: set(pred_id),
 
-                im_instances :: assoc_list(class_id, hlds_instance_defn),
                 % Instances declarations to write.
+                im_instances            :: assoc_list(class_id,
+                                            hlds_instance_defn),
 
-                im_types :: assoc_list(type_ctor, hlds_type_defn),
                 % Type declarations to write.
+                im_types                :: assoc_list(type_ctor,
+                                            hlds_type_defn),
 
-                im_module_info :: module_info,
+                im_module_info          :: module_info,
 
-                im_write_foreign_header :: bool,
                 % Do the pragma foreign_decls for the module need writing,
                 % yes if there are pragma foreign_procs being exported.
+                im_write_foreign_header :: bool,
 
-                im_var_types :: vartypes,
-                im_tvarset :: tvarset
                 % Vartypes and tvarset for the current pred.
+                im_var_types            :: vartypes,
+                im_tvarset              :: tvarset
             ).
 
 :- pred init_intermod_info(module_info::in, intermod_info::out) is det.
@@ -1892,7 +1892,7 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
     varset.init(TVarSet),
     Instances = [],
     Types = [],
-    IntermodInfo = info(Modules, Procs, ProcDecls, Instances, Types,
+    IntermodInfo = intermod_info(Modules, Procs, ProcDecls, Instances, Types,
         ModuleInfo, no, VarTypes, TVarSet).
 
 :- pred intermod_info_get_modules(intermod_info::in, set(module_name)::out)
@@ -1961,25 +1961,25 @@ intermod_info_set_tvarset(TVarSet, Info, Info ^ im_tvarset := TVarSet).
     % the .opt file are exported, and inhibit dead proc elimination
     % on those preds.
     %
-adjust_pred_import_status(!Module, !IO) :-
+adjust_pred_import_status(!ModuleInfo, !IO) :-
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     maybe_write_string(VeryVerbose,
         "% Adjusting import status of predicates in the `.opt' file...", !IO),
 
-    module_info_predids(!.Module, PredIds),
-    module_info_get_globals(!.Module, Globals),
+    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, intermod_inline_simple_threshold,
         Threshold),
     globals.lookup_bool_option(Globals, deforestation, Deforestation),
     globals.lookup_int_option(Globals, higher_order_size_limit,
         HigherOrderSizeLimit),
     some [!Info] (
-        init_intermod_info(!.Module, !:Info),
+        init_intermod_info(!.ModuleInfo, !:Info),
         gather_preds(PredIds, yes, Threshold, HigherOrderSizeLimit,
             Deforestation, !Info),
         gather_instances(!Info),
         gather_types(!Info),
-        do_adjust_pred_import_status(!.Info, !Module)
+        do_adjust_pred_import_status(!.Info, !ModuleInfo)
     ),
     maybe_write_string(VeryVerbose, " done\n", !IO).
 
@@ -2167,7 +2167,7 @@ import_status_to_write(status_external(Status)) =
 
     % Read in and process the optimization interfaces.
     %
-grab_optfiles(!Module, FoundError, !IO) :-
+grab_opt_files(!Module, FoundError, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
     ModuleName = !.Module ^ module_name,
     Ancestors0 = !.Module ^ parent_deps,
@@ -2278,7 +2278,8 @@ read_optimization_interfaces(Transitive, ModuleName,
     module_name_to_search_file_name(ModuleToRead, ".opt", FileName, !IO),
     prog_io.read_opt_file(FileName, ModuleToRead,
         ModuleError, Messages, OptItems, !IO),
-    update_error_status(opt, FileName, ModuleError, Messages, !Error, !IO),
+    update_error_status(opt_file, FileName, ModuleError, Messages, !Error,
+        !IO),
     !:Items = !.Items ++ OptItems,
     maybe_write_string(VeryVerbose, "% done.\n", !IO),
 
@@ -2311,10 +2312,10 @@ update_error_status(FileType, FileName, ModuleError, Messages,
     ;
         ModuleError = fatal_module_errors,
         (
-            FileType = opt,
+            FileType = opt_file,
             WarningOption = warn_missing_opt_files
         ;
-            FileType = trans_opt,
+            FileType = trans_opt_file,
             WarningOption = warn_missing_trans_opt_files
         ),
         globals.io_lookup_bool_option(WarningOption, DoWarn, !IO),

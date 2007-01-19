@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -179,7 +179,7 @@
    
 
 control_distance_granularity(!ModuleInfo, Distance) :-
-    module_info_predids(!.ModuleInfo, PredIds),
+    module_info_predids(PredIds, !ModuleInfo),
     apply_dg_to_preds(PredIds, Distance, !ModuleInfo).
 
     % Apply the distance granularity transformation to each predicate in the 
@@ -200,7 +200,7 @@ apply_dg_to_preds([PredId | PredIdList], Distance, !ModuleInfo) :-
     % Create the new sym_name for the recursive plain calls.
     ModuleName = pred_info_module(PredInfo),
     Prefix = granularity_prefix,
-    MaybePredOrFunc = yes(predicate),
+    MaybePredOrFunc = yes(pf_predicate),
     NewPredIdGranularity = newpred_distance_granularity(Distance),
     PredName0 = pred_info_name(PredInfo),
     make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName0, 
@@ -220,7 +220,7 @@ apply_dg_to_preds([PredId | PredIdList], Distance, !ModuleInfo) :-
         
         % If the original predicate was a function then the specialized version 
         % is a predicate.
-        pred_info_set_is_pred_or_func(predicate, PredInfoClone1, 
+        pred_info_set_is_pred_or_func(pf_predicate, PredInfoClone1, 
             PredInfoClone2),
         
         % The arity and the argument types of the specialized predicate must be 
@@ -682,7 +682,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     
                     % Decrement GranularityVar before the call.
                     lookup_builtin_pred_proc_id(ModuleInfo, 
-                        unqualified("int"), "minus", function, 2, only_mode, 
+                        unqualified("int"), "minus", pf_function, 2, only_mode, 
                         MinusPredId, MinusProcId),
                     MinusCallArgs = [GranularityVar, Var, VarResult],
                     MinusCallBuiltin = inline_builtin,

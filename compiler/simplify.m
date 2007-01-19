@@ -1554,7 +1554,7 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
                     EvalInstMapDeltaSrc = [],
                     goal_info_get_context(ScopeGoalInfo, Context),
                     generate_foreign_proc(PrivateBuiltin, EvalPredName,
-                        predicate, only_mode, detism_semi, purity_semipure,
+                        pf_predicate, only_mode, detism_semi, purity_semipure,
                         EvalAttributes, [], [], yes(RuntimeExpr), EvalCode,
                         EvalFeatures, EvalInstMapDeltaSrc, ModuleInfo,
                         Context, CondGoal),
@@ -1722,7 +1722,7 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     Unique   = ground(unique, none),
     ArgInsts = [R - Unique],
     BuiltinModule = mercury_public_builtin_module,
-    goal_util.generate_simple_call(BuiltinModule, "compare", predicate,
+    goal_util.generate_simple_call(BuiltinModule, "compare", pf_predicate,
         mode_no(ModeNo), detism_det, purity_pure, Args, [], ArgInsts,
         ModuleInfo, Context, CmpGoal0),
     CmpGoal0 = hlds_goal(CmpExpr, CmpInfo0),
@@ -1964,28 +1964,47 @@ call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo, !Info) :-
 
 simplify_library_call("int", PredName, _ModeNum, CrossCompiling, Args,
         GoalExpr, !GoalInfo, !Info) :-
+    CrossCompiling = no,
     (
         PredName = "quot_bits_per_int",
         Args = [X, Y],
-        CrossCompiling = no,
         % There is no point in checking whether bits_per_int is 0; it isn't.
         Op = "unchecked_quotient",
-        IsBuiltin = inline_builtin
+        simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info)
     ;
         PredName = "times_bits_per_int",
         Args = [X, Y],
-        CrossCompiling = no,
         Op = "*",
-        IsBuiltin = inline_builtin
+        simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info)
     ;
         PredName = "rem_bits_per_int",
         Args = [X, Y],
-        CrossCompiling = no,
         % There is no point in checking whether bits_per_int is 0; it isn't.
         Op = "unchecked_rem",
-        IsBuiltin = inline_builtin
-    ),
+        simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info)
+    ;
+        PredName = "bits_per_int",
+        Args = [X],
+        ConstConsId = int_const(int.bits_per_int),
+        RHS = rhs_functor(ConstConsId, no, []),
+        ModeOfX = out_mode,
+        ModeOfConstConsId = in_mode,
+        UnifyMode = ModeOfX - ModeOfConstConsId,
+        How = construct_dynamically,
+        IsUnique = cell_is_shared,
+        Sub = no_construct_sub_info,
+        Unification = construct(X, ConstConsId, [], [], How, IsUnique, Sub),
+        UnifyMainContext = umc_implicit("simplify_library_call"),
+        UnifyContext = unify_context(UnifyMainContext, []),
+        GoalExpr = unify(X, RHS, UnifyMode, Unification, UnifyContext)
+    ).
 
+:- pred simplify_library_call_int_arity2(string::in,
+    prog_var::in, prog_var::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out) is semidet.
+
+simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     varset.new_var(VarSet0, ConstVar, VarSet),
@@ -2020,6 +2039,7 @@ simplify_library_call("int", PredName, _ModeNum, CrossCompiling, Args,
     proc_id_to_int(OpProcId, OpProcIdInt),
     OpArgs = [X, ConstVar, Y],
     MaybeUnifyContext = no,
+    IsBuiltin = inline_builtin,
     OpGoalExpr = plain_call(OpPredId, OpProcId, OpArgs, IsBuiltin,
         MaybeUnifyContext, OpSymName),
 
@@ -2067,7 +2087,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         % builtin_unify_pred (which calls error/1).
         goal_info_get_context(GoalInfo0, GContext),
         generate_simple_call(mercury_private_builtin_module,
-            "builtin_unify_pred", predicate, mode_no(0), detism_semi,
+            "builtin_unify_pred", pf_predicate, mode_no(0), detism_semi,
             purity_pure, [XVar, YVar], [], [], ModuleInfo, GContext,
             hlds_goal(Call0, _)),
         simplify_goal_2(Call0, Call1, GoalInfo0, GoalInfo, !Info, !IO),
@@ -2133,7 +2153,7 @@ call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, _, _, GoalInfo,
     ArgVars = [TypeInfoVar, XVar, YVar],
     goal_info_get_context(GoalInfo, Context),
     goal_util.generate_simple_call(mercury_public_builtin_module,
-        "unify", predicate, mode_no(0), detism_semi, purity_pure, ArgVars,
+        "unify", pf_predicate, mode_no(0), detism_semi, purity_pure, ArgVars,
         [], [], ModuleInfo, Context, Call).
 
 :- pred call_specific_unify(type_ctor::in, list(prog_var)::in,

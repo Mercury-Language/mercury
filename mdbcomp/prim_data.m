@@ -22,8 +22,8 @@
     % in runtime/mercury_stack_layout.h, and in the same order, since the
     % code (in browser) assumes the representation is the same.
 :- type pred_or_func
-    --->    predicate
-    ;       function.
+    --->    pf_predicate
+    ;       pf_function.
 
     % The kinds of events with which MR_trace may be called, either
     % by compiler-generated code, or by code in the standard library

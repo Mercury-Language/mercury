@@ -762,11 +762,11 @@ mode_error_higher_order_pred_var_to_spec(ModeInfo, PredOrFunc, Var, VarInst,
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     (
-        PredOrFunc = predicate,
+        PredOrFunc = pf_predicate,
         Expecting = "expecting higher-order pred inst (of arity " ++
             int_to_string(Arity) ++ ")."
     ;
-        PredOrFunc = function,
+        PredOrFunc = pf_function,
         Expecting = "expecting higher-order func inst (of arity " ++
             int_to_string(Arity - 1) ++ ")."
     ),
@@ -1304,11 +1304,11 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
         ),
         strip_builtin_qualifiers_from_mode_list(!ArgModes),
         (
-            PredOrFunc = predicate,
+            PredOrFunc = pf_predicate,
             Detail = mercury_pred_mode_decl_to_string(VarSet, Name,
                 !.ArgModes, !.MaybeDet, Context)
         ;
-            PredOrFunc = function,
+            PredOrFunc = pf_function,
             pred_args_to_func_args(!.ArgModes, FuncArgModes, RetMode),
             Detail = mercury_func_mode_decl_to_string(VarSet, Name,
                 FuncArgModes, RetMode, !.MaybeDet, Context)

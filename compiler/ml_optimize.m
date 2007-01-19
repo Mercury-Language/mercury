@@ -258,7 +258,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
             code_addr_proc(qual(ModName, module_qual, ProcLabel),
                 _FuncSignature))),
         ProcLabel = mlds_proc_label(PredLabel, _ProcId),
-        PredLabel = mlds_user_pred_label(predicate, _DefnModName, PredName,
+        PredLabel = mlds_user_pred_label(pf_predicate, _DefnModName, PredName,
             _Arity, _CodeModel, _NonOutputFunc),
         (
             PredName = "mark_hp",

@@ -26,7 +26,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred gen_module(module_info::in, list(byte_code)::out,
+:- pred gen_module(module_info::in, module_info::out, list(byte_code)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -82,9 +82,9 @@
 
 %---------------------------------------------------------------------------%
 
-gen_module(ModuleInfo, Code, !IO) :-
-    module_info_predids(ModuleInfo, PredIds),
-    gen_preds(PredIds, ModuleInfo, CodeTree, !IO),
+gen_module(!ModuleInfo, Code, !IO) :-
+    module_info_predids(PredIds, !ModuleInfo),
+    gen_preds(PredIds, !.ModuleInfo, CodeTree, !IO),
     tree.flatten(CodeTree, CodeList),
     list.condense(CodeList, Code).
 
@@ -901,9 +901,12 @@ get_counts(ByteInfo0, Label, Temp) :-
 :- pred get_is_func(pred_info::in, byte_is_func::out) is det.
 
 get_is_func(PredInfo, IsFunc) :-
-    ( pred_info_is_pred_or_func(PredInfo) = predicate ->
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    (
+        PredOrFunc = pf_predicate,
         IsFunc = 0
     ;
+        PredOrFunc = pf_function,
         IsFunc = 1
     ).
 

@@ -938,9 +938,9 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         list.append(FuncArgVars, [X0], ArgVars),
         Modes = [],
         Det = detism_erroneous,
-        adjust_func_arity(function, Arity, FullArity),
+        adjust_func_arity(pf_function, Arity, FullArity),
         HOCall = generic_call(
-            higher_order(FuncVar, Purity, function, FullArity),
+            higher_order(FuncVar, Purity, pf_function, FullArity),
             ArgVars, Modes, Det),
         Goal = hlds_goal(HOCall, GoalInfo0)
     ;

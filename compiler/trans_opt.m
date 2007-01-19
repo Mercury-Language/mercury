@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,14 +67,14 @@
     % Open the file "<module-name>.trans_opt.tmp", and write out the
     % declarations.
     %
-:- pred write_optfile(module_info::in, io::di, io::uo) is det.
+:- pred write_trans_opt_file(module_info::in, io::di, io::uo) is det.
 
     % grab_optfiles(ModuleList, !ModuleImports, Error, !IO):
     %
     % Add the items from each of the modules in ModuleList.trans_opt to
     % the items in ModuleImports.
     %
-:- pred grab_optfiles(list(module_name)::in,
+:- pred grab_trans_opt_files(list(module_name)::in,
     module_imports::in, module_imports::out, bool::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -110,7 +110,7 @@
 
 %-----------------------------------------------------------------------------%
 
-write_optfile(Module, !IO) :-
+write_trans_opt_file(Module, !IO) :-
     module_info_get_name(Module, ModuleName),
     module_name_to_file_name(ModuleName, ".trans_opt.tmp", yes, TmpOptName,
         !IO),
@@ -120,8 +120,7 @@ write_optfile(Module, !IO) :-
         io.error_message(Error, Msg),
         io.progname_base("trans_opt.m", ProgName, !IO),
         io.write_string(ProgName, !IO),
-        io.write_string(
-            ": cannot open transitive optimisation file `", !IO),
+        io.write_string(": cannot open transitive optimisation file `", !IO),
         io.write_string(TmpOptName, !IO),
         io.write_string("' \n", !IO),
         io.write_string(ProgName, !IO),
@@ -143,7 +142,7 @@ write_optfile(Module, !IO) :-
         % Select all the predicates for which something should be writting
         % into the .trans_opt file. 
         %
-        module_info_predids(Module, PredIds),
+        module_info_predids(PredIds, Module, _Module),
         module_info_get_structure_reuse_map(Module, ReuseMap), 
         map.values(ReuseMap, ReuseResults), 
         list.map(fst, ReuseResults, ReusePredProcIds), 
@@ -192,7 +191,7 @@ get_pred_id(proc(PredId, _ProcId), PredId).
 % Read and process the transitive optimization interfaces.
 %
 
-grab_optfiles(TransOptDeps, !Module, FoundError, !IO) :-
+grab_trans_opt_files(TransOptDeps, !Module, FoundError, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Reading .trans_opt files..\n", !IO),
     maybe_flush_output(Verbose, !IO),
@@ -227,7 +226,7 @@ read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-
 
     maybe_write_string(VeryVerbose, " done.\n", !IO),
 
-    intermod.update_error_status(trans_opt, FileName, ModuleError,
+    intermod.update_error_status(trans_opt_file, FileName, ModuleError,
         Messages, !Error, !IO),
     list.append(!.Items, NewItems, !:Items),
     read_trans_opt_files(Imports, !Items, !Error, !IO).

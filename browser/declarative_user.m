@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -688,7 +688,7 @@ browse_atom(InitAtom, FinalAtom, MaybeTrack, !User, !IO) :-
     ProcLabel = get_proc_label_from_layout(ProcLayout),
     get_user_arg_values(Args, ArgValues),
     get_pred_attributes(ProcLabel, Module, Name, _, PredOrFunc),
-    IsFunction = pred_to_bool(unify(PredOrFunc, function)),
+    IsFunction = pred_to_bool(unify(PredOrFunc, pf_function)),
     ModuleStr = sym_name_to_string(Module),
     BrowserTerm = synthetic_term_to_browser_term(ModuleStr ++ "." ++ Name,
         ArgValues, IsFunction),
@@ -707,7 +707,7 @@ browse_xml_atom(Atom, User, !IO) :-
     ProcLabel = get_proc_label_from_layout(ProcLayout),
     get_user_arg_values(Args, ArgValues),
     get_pred_attributes(ProcLabel, Module, Name, _, PredOrFunc),
-    IsFunction = pred_to_bool(unify(PredOrFunc, function)),
+    IsFunction = pred_to_bool(unify(PredOrFunc, pf_function)),
     ModuleStr = sym_name_to_string(Module),
     BrowserTerm = synthetic_term_to_browser_term(ModuleStr ++ "." ++ Name,
         ArgValues, IsFunction),
