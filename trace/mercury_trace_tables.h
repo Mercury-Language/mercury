@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -67,7 +67,7 @@ typedef struct {
     MR_bool                 MR_tes_is_consistent;
     MR_EventSet             MR_tes_event_set;
     int                     MR_tes_num_specs;
-    MR_UserEventSpec        *MR_tes_specs;
+    const MR_UserEventSpec  *MR_tes_specs;
 } MR_TraceEventSet;
 
 extern  MR_TraceEventSet    *MR_trace_event_sets;

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2006 The University of Melbourne.
+** Copyright (C) 1999-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,6 +87,12 @@ typedef struct {
 
 extern  void        MR_convert_arg_to_var_spec(const char *word_spec,
                         MR_VarSpec *var_spec);
+
+/*
+** Print the given MR_VarSpec.
+*/
+
+extern  void        MR_print_var_spec(FILE *fp, MR_VarSpec *var_spec);
 
 /*
 ** These functions are documented near the top of this file.
@@ -241,6 +247,13 @@ extern  const char  *MR_trace_browse_one(FILE *out, MR_bool print_var_name,
                         MR_BrowseCallerType caller, MR_BrowseFormat format,
                         MR_bool must_be_unique);
 
+
+extern  const char  *MR_trace_browse_one_path(FILE *out,
+                        MR_bool print_var_name, MR_VarSpec var_spec,
+                        char *path, MR_Browser browser,
+                        MR_BrowseCallerType caller, MR_BrowseFormat format,
+                        MR_bool must_be_unique);
+
 /*
 ** Print the list of the names and values of all variables live at the current
 ** point. The variables names are printed directly to the given file, but
@@ -293,9 +306,23 @@ extern  char        *MR_select_specified_subterm(char *path,
 
 /*
 ** Given an invalid path specification, return an error message for that error.
+**
+** The returned string is valid only until the next call to MR_trace_bad_path
+** or MR_trace_bad_path_in_var.
 */
 
 extern  const char  *MR_trace_bad_path(const char *path);
+
+/*
+** Given a path specification that does not exist within the specified
+** variable, return an error message for that error.
+**
+** The returned string is valid only until the next call to MR_trace_bad_path
+** or MR_trace_bad_path_in_var.
+*/
+
+extern  const char  *MR_trace_bad_path_in_var(MR_VarSpec *var_spec,
+                        const char *path);
 
 /*
 ** Print the size of the specified variable(s) to the specified file.

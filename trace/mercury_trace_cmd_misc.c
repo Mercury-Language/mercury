@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -164,6 +164,8 @@ MR_trace_cmd_save(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
             case MR_SPY_LINENO:
             case MR_SPY_SPECIFIC:
+            case MR_SPY_USER_EVENT:
+            case MR_SPY_USER_EVENT_SET:
                 MR_fatal_error("save cmd: invalid default scope");
         }
 

@@ -233,6 +233,9 @@ mdb> break print_list
  0: + stop  interface pred queens.print_list/3-0 (det)
 mdb> break qdelete
  1: + stop  interface pred queens.qdelete/3-0 (nondet)
+mdb> break_print HeadVar__2^2
+ 1: + stop  interface pred queens.qdelete/3-0 (nondet)
+            HeadVar__2^2 (flat)
 mdb> continue -a
      E35:     C8 EXIT queens.m:36 (from queens.m:40)
                          pred queens.qperm/2-0 (nondet)
@@ -272,9 +275,11 @@ mdb> continue -a
                          pred queens.qperm/2-0 (nondet)
      E53:    C13 REDO queens.m:45 (from queens.m:38)
                          pred queens.qdelete/3-0 (nondet)
+       HeadVar__2^2           	[]
 mdb> break info
  0: + stop  interface pred queens.print_list/3-0 (det)
  1: + stop  interface pred queens.qdelete/3-0 (nondet)
+            HeadVar__2^2 (flat)
 mdb> enable *
  0: + stop  interface pred queens.print_list/3-0 (det)
  1: + stop  interface pred queens.qdelete/3-0 (nondet)
@@ -283,10 +288,13 @@ mdb> step -aS 5
                          pred queens.qdelete/3-0 (nondet) c2;d2;
      E55:    C17 CALL queens.m:45 (from queens.m:47)
                          pred queens.qdelete/3-0 (nondet)
+mdb: the path 2 does not exist in variable HeadVar__2.
      E56:    C17 FAIL queens.m:45 (from queens.m:47)
                          pred queens.qdelete/3-0 (nondet)
+mdb: the path 2 does not exist in variable HeadVar__2.
      E57:    C13 FAIL queens.m:45 (from queens.m:38)
                          pred queens.qdelete/3-0 (nondet)
+       HeadVar__2^2           	[]
      E58:    C12 FAIL queens.m:36 (from queens.m:40)
                          pred queens.qperm/2-0 (nondet)
 mdb> disable 1

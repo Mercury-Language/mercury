@@ -90,7 +90,7 @@ mdb> disable 3
  3: - stop      entry pred breakpoints.qperm/2-0 (nondet)
 mdb> break nodiag
  0: + stop  interface pred breakpoints.nodiag/3-0 (semidet)
-mdb> break_print -v -n 1 HeadVar__1 HeadVar__2
+mdb> break_print -v -n -b1 HeadVar__1 HeadVar__2
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
             HeadVar__1 (verbose, nowarn), HeadVar__2 (verbose, nowarn)
 mdb> continue
@@ -104,11 +104,11 @@ mdb> continue
     1-3
     2-[|]/2
 
-mdb> break_print 1 none
+mdb> break_print -b1 none
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
 mdb> format_param -p depth 10
 mdb> format_param -p size 20
-mdb> break_print -p -n 1 HeadVar__1 HeadVar__2
+mdb> break_print -p -n -b1 HeadVar__1 HeadVar__2
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
             HeadVar__1 (pretty, nowarn), HeadVar__2 (pretty, nowarn)
 mdb> continue
@@ -123,12 +123,12 @@ mdb> finish -n
 [2, 3, 4, 5]
        HeadVar__2             	
 [2, 3, 4, 5]
-mdb> break_print 1 none
+mdb> break_print -b1 none
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
-mdb> break_print -f -n 1 HeadVar__1
+mdb> break_print -f -n -b1 HeadVar__1
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
             HeadVar__1 (flat, nowarn)
-mdb> break_print -f -e -n 1 HeadVar__2
+mdb> break_print -f -e -n -b1 HeadVar__2
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
             HeadVar__1 (flat, nowarn), HeadVar__2 (flat, nowarn)
 mdb> continue
@@ -240,9 +240,9 @@ mdb> continue
 [1, 3, 5, 2, 4]
      E14:     C9 CALL func breakpoints.a.testmod.test_in_a/0-0 (det) breakpoints.a.testmod.m:10 (breakpoints.m:27)
 test_in_a = '_'
-mdb> break_print 0 none
+mdb> break_print -b0 none
  0: + stop  interface func breakpoints.a.testmod.test_in_a/0-0 (det)
-mdb> break_print 0 *
+mdb> break_print -b0 *
  0: + stop  interface func breakpoints.a.testmod.test_in_a/0-0 (det)
             all (flat)
 mdb> continue

@@ -76,6 +76,7 @@ finish -a
 register --quiet
 break print_list
 break qdelete
+break_print HeadVar__2^2
 continue -a
 break info
 enable *

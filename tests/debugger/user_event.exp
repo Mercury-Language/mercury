@@ -2,6 +2,15 @@
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
+mdb> break user_event nonexistent_event_name
+There is no user event named `nonexistent_event_name'.
+mdb> break user_event nonexistent_set_name nodiag_fail
+There is no user event set named `nonexistent_set_name'.
+mdb> break user_event nodiag_fail
+ 0: + stop  user_event nodiag_fail
+mdb> break_print -b0 !arg_b
+ 0: + stop  user_event nodiag_fail
+            !arg_b (flat)
 mdb> user
       E2:     C2 USER <safe_test> pred user_event.queen/2-0 (nondet) c3; user_event.m:32
 mdb> print *
@@ -16,6 +25,7 @@ browser> p
 browser> quit
 mdb> user
       E3:     C3 USER <nodiag_fail> pred user_event.nodiag/3-0 (semidet) s2-2;c6;t;c2; user_event.m:64
+       arg_b (attr 1, B)      	1
 mdb> vars
         1 test_failed (attr 0)
         2 arg_b (attr 1, B)
@@ -48,5 +58,12 @@ mdb> user
 mdb> print *
        test_list (attr 0, Out)	[1, 2, 3, 5, 4]
        Data (arg 1)           	[1, 2, 3, 4, 5]
+mdb> condition -b0 !arg_b = 1
+ 0: + stop  user_event nodiag_fail
+            !arg_b = 1
+            !arg_b (flat)
 mdb> continue
+      E5:     C4 USER <nodiag_fail> pred user_event.nodiag/3-0 (semidet) s2-2;c6;t;c2; user_event.m:64
+       arg_b (attr 1, B)      	1
+mdb> continue -S
 [1, 3, 5, 2, 4]

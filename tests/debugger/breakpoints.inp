@@ -27,18 +27,18 @@ delete 0
 break info
 disable 3
 break nodiag
-break_print -v -n 1 HeadVar__1 HeadVar__2
+break_print -v -n -b1 HeadVar__1 HeadVar__2
 continue
-break_print 1 none
+break_print -b1 none
 format_param -p depth 10
 format_param -p size 20
-break_print -p -n 1 HeadVar__1 HeadVar__2
+break_print -p -n -b1 HeadVar__1 HeadVar__2
 continue
 finish -N
 finish -n
-break_print 1 none
-break_print -f -n 1 HeadVar__1
-break_print -f -e -n 1 HeadVar__2
+break_print -b1 none
+break_print -f -n -b1 HeadVar__1
+break_print -f -e -n -b1 HeadVar__2
 continue
 continue
 finish
@@ -73,7 +73,7 @@ break -O -p goal test_in_a
 break -O -P -p HeadVar__1 test_in_b
 break info
 continue
-break_print 0 none
-break_print 0 *
+break_print -b0 none
+break_print -b0 *
 continue
 continue

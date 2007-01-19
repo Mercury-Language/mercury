@@ -173,52 +173,69 @@ MR_register_module_layout_real(const MR_ModuleLayout *module)
     if (MR_search_module_info_by_name(module->MR_ml_name) == NULL) {
         MR_insert_module_info(module);
 
-        if (module->MR_ml_version_number >= MR_LAYOUT_VERSION__EVENTSETNAME) {
-            if (module->MR_ml_user_event_set_desc != NULL) {
-                int                 i;
-                MR_bool             found;
-                const char          *event_set_name;
-                MR_TraceEventSet    *trace_event_set;
-                
-                event_set_name = module->MR_ml_user_event_set_name;
+        if (module->MR_ml_user_event_set_desc != NULL) {
+            int                 i;
+            MR_bool             found;
+            const char          *event_set_name;
+            MR_TraceEventSet    *trace_event_set;
+            
+            event_set_name = module->MR_ml_user_event_set_name;
 
-                for (i = 0; i < MR_trace_event_set_next; i++) {
-                    if (MR_streq(MR_trace_event_sets[i].MR_tes_name,
-                        event_set_name))
+            found = MR_FALSE;
+            for (i = 0; i < MR_trace_event_set_next; i++) {
+                if (MR_streq(MR_trace_event_sets[i].MR_tes_name,
+                    event_set_name))
+                {
+                    trace_event_set = &MR_trace_event_sets[i];
+                    if (MR_strdiff(trace_event_set->MR_tes_desc,
+                        module->MR_ml_user_event_set_desc))
                     {
-                        trace_event_set = &MR_trace_event_sets[i];
-                        if (MR_strdiff(trace_event_set->MR_tes_desc,
-                            module->MR_ml_user_event_set_desc))
-                        {
-                            trace_event_set->MR_tes_is_consistent = MR_FALSE;
-                        }
-
-                        found = MR_TRUE;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    MR_ensure_room_for_next(MR_trace_event_set,
-                        MR_TraceEventSet, MR_INIT_EVENT_SET_TABLE_SIZE);
-                    trace_event_set =
-                        &MR_trace_event_sets[MR_trace_event_set_next];
-                    trace_event_set->MR_tes_name = event_set_name;
-                    trace_event_set->MR_tes_desc =
-                            module->MR_ml_user_event_set_desc;
-                    trace_event_set->MR_tes_is_consistent = MR_TRUE;
-                    trace_event_set->MR_tes_specs =
-                            module->MR_ml_user_event_specs;
-                    MR_trace_event_set_next++;
-
-                    if (MR_trace_event_sets_max_num_attr <
-                        module->MR_ml_user_event_max_num_attr)
-                    {
-                        MR_trace_event_sets_max_num_attr =
-                            module->MR_ml_user_event_max_num_attr;
+                        trace_event_set->MR_tes_is_consistent = MR_FALSE;
+                        fprintf(MR_mdb_out,
+                            "The executable's modules were compiled with "
+                            "inconsistent definitions of "
+                            "user event set `%s'.\n",
+                            event_set_name);
                     }
 
+                    found = MR_TRUE;
+                    break;
                 }
+            }
+
+            if (!found) {
+                MR_ensure_room_for_next(MR_trace_event_set,
+                    MR_TraceEventSet, MR_INIT_EVENT_SET_TABLE_SIZE);
+                trace_event_set =
+                    &MR_trace_event_sets[MR_trace_event_set_next];
+                MR_trace_event_set_next++;
+
+                trace_event_set->MR_tes_name = event_set_name;
+                trace_event_set->MR_tes_desc =
+                    module->MR_ml_user_event_set_desc;
+                trace_event_set->MR_tes_is_consistent = MR_TRUE;
+                trace_event_set->MR_tes_num_specs =
+                    module->MR_ml_num_user_event_specs;
+                trace_event_set->MR_tes_specs =
+                    module->MR_ml_user_event_specs;
+                trace_event_set->MR_tes_event_set = 
+                    MR_read_event_set("no input file",
+                        trace_event_set->MR_tes_desc);
+
+                if (trace_event_set->MR_tes_event_set == NULL) {
+                    fprintf(MR_mdb_out,
+                        "Internal error: could not parse "
+                        "the specification of event set `%s'.\n",
+                        event_set_name);
+                }
+
+                if (MR_trace_event_sets_max_num_attr <
+                    module->MR_ml_user_event_max_num_attr)
+                {
+                    MR_trace_event_sets_max_num_attr =
+                        module->MR_ml_user_event_max_num_attr;
+                }
+
             }
         }
     }

@@ -559,6 +559,7 @@ MR_trace_event(MR_TraceCmdInfo *cmd, MR_bool interactive,
                 MR_SpyAction        action;         /* ignored */
                 MR_SpyPrintList     print_list;
 
+                print_list = NULL;
                 (void) MR_event_matches_spy_point(layout, port, &action,
                     &print_list);
                 jumpaddr = MR_trace_event_internal(cmd, interactive,

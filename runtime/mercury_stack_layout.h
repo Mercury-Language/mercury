@@ -344,6 +344,10 @@ struct MR_UserEventSpec_Struct {
 	MR_ml_user_event_specs[label_layout->MR_sll_user_event->	\
 		MR_ue_event_number]
 
+#define	MR_user_event_set_name(label_layout)	\
+	label_layout->MR_sll_entry->MR_sle_module_layout->		\
+	MR_ml_user_event_set_name
+
 /*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_LabelLayout

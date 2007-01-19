@@ -13,27 +13,27 @@ mdb> p 5
 mdb> p 5^1x
 mdb: bad component selector.
 mdb> p 5^1^x
-mdb: the path x does not exist.
+mdb: the path x does not exist in variable 5.
 mdb> p 5^x
-mdb: the path x does not exist.
+mdb: the path x does not exist in variable 5.
 mdb> p 5^1
-       HeadVar__5             	41
+       HeadVar__5^1           	41
 mdb> p 5^2
-       HeadVar__5             	42
+       HeadVar__5^2           	42
 mdb> p 5^3
-       HeadVar__5             	43
+       HeadVar__5^3           	43
 mdb> p 5^4
-       HeadVar__5             	44
+       HeadVar__5^4           	44
 mdb> p 5^t1a
-       HeadVar__5             	41
+       HeadVar__5^t1a         	41
 mdb> p 5^t1b
-       HeadVar__5             	42
+       HeadVar__5^t1b         	42
 mdb> p 5^t1c
-mdb: the path t1c does not exist.
+mdb: the path t1c does not exist in variable 5.
 mdb> p 5^t1d
-       HeadVar__5             	44
+       HeadVar__5^t1d         	44
 mdb> p 5^t1e
-mdb: the path t1e does not exist.
+mdb: the path t1e does not exist in variable 5.
 mdb> browse 5
 browser> ^1x
 error: in subdir 1: there is no subterm x
@@ -71,19 +71,19 @@ mdb> finish
 mdb> p 4
        HeadVar__4             	t1f2(51, 52, 53)
 mdb> p 4^1
-       HeadVar__4             	51
+       HeadVar__4^1           	51
 mdb> p 4^2
-       HeadVar__4             	52
+       HeadVar__4^2           	52
 mdb> p 4^3
-       HeadVar__4             	53
+       HeadVar__4^3           	53
 mdb> p 4^t1a
-mdb: the path t1a does not exist.
+mdb: the path t1a does not exist in variable 4.
 mdb> p 4^t1e
-       HeadVar__4             	51
+       HeadVar__4^t1e         	51
 mdb> p 4^t1f
-mdb: the path t1f does not exist.
+mdb: the path t1f does not exist in variable 4.
 mdb> p 4^t1g
-       HeadVar__4             	53
+       HeadVar__4^t1g         	53
 mdb> browse 4
 browser> ^t1a
 error: there is no subterm t1a
@@ -103,55 +103,55 @@ mdb> finish
 mdb> p 5
        HeadVar__5             	t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 mdb> p 5^1
-       HeadVar__5             	0.600000000000000
+       HeadVar__5^1           	0.600000000000000
 mdb> p 5^2
-       HeadVar__5             	61
+       HeadVar__5^2           	61
 mdb> p 5^3
-       HeadVar__5             	t1f1(41, 42, 43, 44)
+       HeadVar__5^3           	t1f1(41, 42, 43, 44)
 mdb> p 5^3^t1a
-       HeadVar__5             	41
+       HeadVar__5^3^t1a       	41
 mdb> p 5^3^t1b
-       HeadVar__5             	42
+       HeadVar__5^3^t1b       	42
 mdb> p 5^3^t1c
-mdb: the path t1c does not exist.
+mdb: the path t1c does not exist in variable 5.
 mdb> p 5^3^t1d
-       HeadVar__5             	44
+       HeadVar__5^3^t1d       	44
 mdb> p 5^3^t1e
-mdb: the path t1e does not exist.
+mdb: the path t1e does not exist in variable 5.
 mdb> p 5^4
-       HeadVar__5             	t1f2(51, 52, 53)
+       HeadVar__5^4           	t1f2(51, 52, 53)
 mdb> p 5^4^t1a
-mdb: the path t1a does not exist.
+mdb: the path t1a does not exist in variable 5.
 mdb> p 5^4^t1e
-       HeadVar__5             	51
+       HeadVar__5^4^t1e       	51
 mdb> p 5^4^t1f
-mdb: the path t1f does not exist.
+mdb: the path t1f does not exist in variable 5.
 mdb> p 5^4^t1g
-       HeadVar__5             	53
+       HeadVar__5^4^t1g       	53
 mdb> p 5^t2a
-       HeadVar__5             	0.600000000000000
+       HeadVar__5^t2a         	0.600000000000000
 mdb> p 5^t2b
-       HeadVar__5             	t1f1(41, 42, 43, 44)
+       HeadVar__5^t2b         	t1f1(41, 42, 43, 44)
 mdb> p 5^t2b^t1a
-       HeadVar__5             	41
+       HeadVar__5^t2b^t1a     	41
 mdb> p 5^t2b^t1b
-       HeadVar__5             	42
+       HeadVar__5^t2b^t1b     	42
 mdb> p 5^t2b^t1c
-mdb: the path t1c does not exist.
+mdb: the path t1c does not exist in variable 5.
 mdb> p 5^t2b^t1d
-       HeadVar__5             	44
+       HeadVar__5^t2b^t1d     	44
 mdb> p 5^t2b^t1e
-mdb: the path t1e does not exist.
+mdb: the path t1e does not exist in variable 5.
 mdb> p 5^t2c
-       HeadVar__5             	t1f2(51, 52, 53)
+       HeadVar__5^t2c         	t1f2(51, 52, 53)
 mdb> p 5^t2c^t1a
-mdb: the path t1a does not exist.
+mdb: the path t1a does not exist in variable 5.
 mdb> p 5^t2c^t1e
-       HeadVar__5             	51
+       HeadVar__5^t2c^t1e     	51
 mdb> p 5^t2c^t1f
-mdb: the path t1f does not exist.
+mdb: the path t1f does not exist in variable 5.
 mdb> p 5^t2c^t1g
-       HeadVar__5             	53
+       HeadVar__5^t2c^t1g     	53
 mdb> browse 5
 browser> ^3^t1a
 browser> p
@@ -178,63 +178,63 @@ mdb> finish
 mdb> p 4
        HeadVar__4             	t3f(t1f2(51, 52, 53), 72, "xyzzy", t1f1(41, 42, 43, 44))
 mdb> p 4^1
-       HeadVar__4             	t1f2(51, 52, 53)
+       HeadVar__4^1           	t1f2(51, 52, 53)
 mdb> p 4^1^1
-       HeadVar__4             	51
+       HeadVar__4^1^1         	51
 mdb> p 4^1^t1a
-mdb: the path t1a does not exist.
+mdb: the path t1a does not exist in variable 4.
 mdb> p 4^1^t1e
-       HeadVar__4             	51
+       HeadVar__4^1^t1e       	51
 mdb> p 4^1^t1g
-       HeadVar__4             	53
+       HeadVar__4^1^t1g       	53
 mdb> p 4^2
-       HeadVar__4             	72
+       HeadVar__4^2           	72
 mdb> p 4^3
-       HeadVar__4             	"xyzzy"
+       HeadVar__4^3           	"xyzzy"
 mdb> p 4^3^1
-mdb: the path 1 does not exist.
+mdb: the path 1 does not exist in variable 4.
 mdb> p 4^3^t1a
-mdb: the path t1a does not exist.
+mdb: the path t1a does not exist in variable 4.
 mdb> p 4^4
-       HeadVar__4             	t1f1(41, 42, 43, 44)
+       HeadVar__4^4           	t1f1(41, 42, 43, 44)
 mdb> p 4^4^t1a
-       HeadVar__4             	41
+       HeadVar__4^4^t1a       	41
 mdb> p 4^4^t1b
-       HeadVar__4             	42
+       HeadVar__4^4^t1b       	42
 mdb> p 4^4^t1c
-mdb: the path t1c does not exist.
+mdb: the path t1c does not exist in variable 4.
 mdb> p 4^4^t1d
-       HeadVar__4             	44
+       HeadVar__4^4^t1d       	44
 mdb> p 4^4^t1e
-mdb: the path t1e does not exist.
+mdb: the path t1e does not exist in variable 4.
 mdb> p 4^t3a
-       HeadVar__4             	t1f2(51, 52, 53)
+       HeadVar__4^t3a         	t1f2(51, 52, 53)
 mdb> p 4^t3a^1
-       HeadVar__4             	51
+       HeadVar__4^t3a^1       	51
 mdb> p 4^t3a^t1a
-mdb: the path t1a does not exist.
+mdb: the path t1a does not exist in variable 4.
 mdb> p 4^t3a^t1e
-       HeadVar__4             	51
+       HeadVar__4^t3a^t1e     	51
 mdb> p 4^t3a^t1g
-       HeadVar__4             	53
+       HeadVar__4^t3a^t1g     	53
 mdb> p 4^t3b
-       HeadVar__4             	72
+       HeadVar__4^t3b         	72
 mdb> p 4^t3c
-       HeadVar__4             	"xyzzy"
+       HeadVar__4^t3c         	"xyzzy"
 mdb> p 4^t3d
-       HeadVar__4             	t1f1(41, 42, 43, 44)
+       HeadVar__4^t3d         	t1f1(41, 42, 43, 44)
 mdb> p 4^t3d^t1a
-       HeadVar__4             	41
+       HeadVar__4^t3d^t1a     	41
 mdb> p 4^t3d^t1b
-       HeadVar__4             	42
+       HeadVar__4^t3d^t1b     	42
 mdb> p 4^t3d^t1c
-mdb: the path t1c does not exist.
+mdb: the path t1c does not exist in variable 4.
 mdb> p 4^t3d^t1d
-       HeadVar__4             	44
+       HeadVar__4^t3d^t1d     	44
 mdb> p 4^t3d^t1e
-mdb: the path t1e does not exist.
+mdb: the path t1e does not exist in variable 4.
 mdb> p 4^t3e^t1a
-mdb: the path t3e^t1a does not exist.
+mdb: the path t3e^t1a does not exist in variable 4.
 mdb> step
       10:      6  2 CALL pred field_names.make_t4/2-0 (det)
 mdb> finish
@@ -242,53 +242,53 @@ mdb> finish
 mdb> p 2
        A(1) (arg 2)           	t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 mdb> p 2^1
-       A(1) (arg 2)           	0.600000000000000
+       A(1) (arg 2)^1         	0.600000000000000
 mdb> p 2^2
-       A(1) (arg 2)           	61
+       A(1) (arg 2)^2         	61
 mdb> p 2^3^t1a
-       A(1) (arg 2)           	41
+       A(1) (arg 2)^3^t1a     	41
 mdb> p 2^3^t1b
-       A(1) (arg 2)           	42
+       A(1) (arg 2)^3^t1b     	42
 mdb> p 2^3^t1c
-mdb: the path t1c does not exist.
+mdb: the path t1c does not exist in variable 2.
 mdb> p 2^3^t1d
-       A(1) (arg 2)           	44
+       A(1) (arg 2)^3^t1d     	44
 mdb> p 2^3^t1e
-mdb: the path t1e does not exist.
+mdb: the path t1e does not exist in variable 2.
 mdb> p 2^4
-       A(1) (arg 2)           	t1f2(51, 52, 53)
+       A(1) (arg 2)^4         	t1f2(51, 52, 53)
 mdb> p 2^4^t1a
-mdb: the path t1a does not exist.
+mdb: the path t1a does not exist in variable 2.
 mdb> p 2^4^t1e
-       A(1) (arg 2)           	51
+       A(1) (arg 2)^4^t1e     	51
 mdb> p 2^4^t1f
-mdb: the path t1f does not exist.
+mdb: the path t1f does not exist in variable 2.
 mdb> p 2^4^t1g
-       A(1) (arg 2)           	53
+       A(1) (arg 2)^4^t1g     	53
 mdb> p 2^t2a
-       A(1) (arg 2)           	0.600000000000000
+       A(1) (arg 2)^t2a       	0.600000000000000
 mdb> p 2^t2b
-       A(1) (arg 2)           	t1f1(41, 42, 43, 44)
+       A(1) (arg 2)^t2b       	t1f1(41, 42, 43, 44)
 mdb> p 2^t2b^t1a
-       A(1) (arg 2)           	41
+       A(1) (arg 2)^t2b^t1a   	41
 mdb> p 2^t2b^t1b
-       A(1) (arg 2)           	42
+       A(1) (arg 2)^t2b^t1b   	42
 mdb> p 2^t2b^t1c
-mdb: the path t1c does not exist.
+mdb: the path t1c does not exist in variable 2.
 mdb> p 2^t2b^t1d
-       A(1) (arg 2)           	44
+       A(1) (arg 2)^t2b^t1d   	44
 mdb> p 2^t2b^t1e
-mdb: the path t1e does not exist.
+mdb: the path t1e does not exist in variable 2.
 mdb> p 2^t2c
-       A(1) (arg 2)           	t1f2(51, 52, 53)
+       A(1) (arg 2)^t2c       	t1f2(51, 52, 53)
 mdb> p 2^t2c^t1a
-mdb: the path t1a does not exist.
+mdb: the path t1a does not exist in variable 2.
 mdb> p 2^t2c^t1e
-       A(1) (arg 2)           	51
+       A(1) (arg 2)^t2c^t1e   	51
 mdb> p 2^t2c^t1f
-mdb: the path t1f does not exist.
+mdb: the path t1f does not exist in variable 2.
 mdb> p 2^t2c^t1g
-       A(1) (arg 2)           	53
+       A(1) (arg 2)^t2c^t1g   	53
 mdb> step
       12:      7  2 CALL pred field_names.make_t5/2-0 (det)
 mdb> finish
@@ -296,19 +296,19 @@ mdb> finish
 mdb> p 2
        HeadVar__2             	t5f(t1f1(41, 42, 43, 44))
 mdb> p 2/1
-       HeadVar__2             	t1f1(41, 42, 43, 44)
+       HeadVar__2^1           	t1f1(41, 42, 43, 44)
 mdb> p 2/1/1
-       HeadVar__2             	41
+       HeadVar__2/1/1         	41
 mdb> p 2/1/t1a
-       HeadVar__2             	41
+       HeadVar__2/1/t1a       	41
 mdb> p 2/t5a
-       HeadVar__2             	t1f1(41, 42, 43, 44)
+       HeadVar__2^t5a         	t1f1(41, 42, 43, 44)
 mdb> p 2/t5a/1
-       HeadVar__2             	41
+       HeadVar__2/t5a/1       	41
 mdb> p 2/t5a/t1a
-       HeadVar__2             	41
+       HeadVar__2/t5a/t1a     	41
 mdb> p 2/t6a
-mdb: the path t6a does not exist.
+mdb: the path t6a does not exist in variable 2.
 mdb> step
       14:      8  2 CALL pred field_names.make_t6/2-0 (det)
 mdb> finish
@@ -316,11 +316,11 @@ mdb> finish
 mdb> p 2
        HeadVar__2             	t6f(0.900000000000000)
 mdb> p 2/1
-       HeadVar__2             	0.900000000000000
+       HeadVar__2^1           	0.900000000000000
 mdb> p 2/t5a
-mdb: the path t5a does not exist.
+mdb: the path t5a does not exist in variable 2.
 mdb> p 2/t6a
-mdb: the path t6a does not exist.
+mdb: the path t6a does not exist in variable 2.
 mdb> browse 2
 browser> p
 t6f(0.900000000000000)

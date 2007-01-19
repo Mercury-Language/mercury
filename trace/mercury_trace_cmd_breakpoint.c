@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2006 The University of Melbourne.
+** Copyright (C) 1998-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,9 +37,11 @@ typedef enum {
         MR_MULTIMATCH_ASK, MR_MULTIMATCH_ALL, MR_MULTIMATCH_ONE
 } MR_MultiMatch;
 
+static  const char  *MR_parse_spy_print(MR_BrowseFormat format, MR_bool warn,
+                        char *word, MR_SpyPrint *sp_ptr);
 static  MR_SpyPrintList
-                    MR_add_to_print_list_end(MR_BrowseFormat format,
-                        char *word, MR_bool warn, MR_SpyPrintList print_list);
+                    MR_add_to_print_list_end(MR_SpyPrint sp,
+                        MR_SpyPrintList print_list);
 static  void        MR_maybe_print_spy_point(int slot, const char *problem);
 static  MR_bool     MR_parse_source_locn(char *word, const char **file,
                         int *line);
@@ -55,9 +57,9 @@ static  MR_bool     MR_trace_options_condition(int *break_num,
 static  MR_bool     MR_trace_options_ignore_count(
                         MR_SpyIgnore_When *ignore_when,
                         int *ignore_count, char ***words, int *word_count);
-static  MR_bool     MR_trace_options_break_print(MR_BrowseFormat *format,
-                        MR_bool *at_start, MR_bool *warn, char ***words,
-                        int *word_count);
+static  MR_bool     MR_trace_options_break_print(int *break_num,
+                        MR_BrowseFormat *format, MR_bool *at_start,
+                        MR_bool *warn, char ***words, int *word_count);
 static  MR_bool     MR_trace_options_register(MR_bool *verbose, char ***words,
                         int *word_count);
 
@@ -68,7 +70,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     const MR_LabelLayout    *layout;
-    MR_ProcSpec             spec;
+    MR_ProcSpec             proc_spec;
     MR_SpyWhen              when;
     MR_SpyAction            action;
     MR_MultiMatch           multi_match;
@@ -88,7 +90,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         count = 0;
         for (i = 0; i < MR_spy_point_next; i++) {
-            if (MR_spy_points[i]->spy_exists) {
+            if (MR_spy_points[i]->MR_spy_exists) {
                 MR_print_spy_point(MR_mdb_out, i, MR_TRUE);
                 count++;
             }
@@ -116,6 +118,160 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
         &words, &word_count))
     {
         ; /* the usage message has already been printed */
+    } else if (word_count >= 2 && MR_streq(words[1], "user_event")) {
+        const MR_UserEventSpec  *user_event_spec;
+        const char              *user_event_set;
+        const char              *user_event_name;
+        int                     slot;
+        int                     set;
+        int                     spec;
+        MR_bool                 found_event_set;
+        MR_bool                 found_event_name;
+
+        if (word_count == 2) {
+            user_event_set = NULL;
+            user_event_name = NULL;
+        } else if (word_count == 3) {
+            user_event_set = NULL;
+            user_event_name = words[2];
+        } else if (word_count == 4) {
+            user_event_set = words[2];
+            user_event_name = words[3];
+        } else {
+            MR_trace_usage_cur_cmd();
+            return KEEP_INTERACTING;
+        }
+
+        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
+
+        if (user_event_name != NULL) {
+            found_event_set = MR_FALSE;
+            found_event_name = MR_FALSE;
+            for (set = 0; set < MR_trace_event_set_next; set++) {
+                if (user_event_set == NULL ||
+                    MR_streq(user_event_set,
+                        MR_trace_event_sets[set].MR_tes_name))
+                {
+                    if (user_event_set != NULL) {
+                        found_event_set = MR_TRUE;
+                    }
+
+                    for (spec = 0;
+                        spec < MR_trace_event_sets[set].MR_tes_num_specs;
+                        spec++)
+                    {
+                        if (MR_trace_event_sets[set].MR_tes_specs == NULL) {
+                            /*
+                            ** We couldn't parse the event set specification
+                            ** in the module. The error message has already
+                            ** been printed, so just ignore the event set.
+                            */
+                            continue;
+                        }
+
+                        user_event_spec =
+                            &MR_trace_event_sets[set].MR_tes_specs[spec];
+                        if (MR_streq(user_event_name,
+                            user_event_spec->MR_ues_event_name))
+                        {
+                            found_event_name = MR_TRUE;
+                        }
+                    }
+                }
+            }
+
+            if (user_event_set != NULL && ! found_event_set) {
+                fprintf(MR_mdb_out,
+                    "There is no user event set named `%s'.\n",
+                    user_event_set);
+                return KEEP_INTERACTING;
+            }
+
+            if (! found_event_name) {
+                if (user_event_set == NULL) {
+                    fprintf(MR_mdb_out,
+                        "There is no user event named `%s'.\n",
+                        user_event_name);
+                } else {
+                    fprintf(MR_mdb_out,
+                        "There is no user event named `%s' "
+                        "in event set `%s'.\n",
+                        user_event_set, user_event_name);
+                }
+
+                return KEEP_INTERACTING;
+            }
+        }
+
+        if (ignore_count > 0 && ignore_when == MR_SPY_IGNORE_ENTRY) {
+            fprintf(MR_mdb_out, "That breakpoint "
+                "would never become enabled.\n");
+            return KEEP_INTERACTING;
+        } else if (ignore_count > 0 &&
+            ignore_when == MR_SPY_IGNORE_INTERFACE)
+        {
+            fprintf(MR_mdb_out, "That breakpoint "
+                "would never become enabled.\n");
+            return KEEP_INTERACTING;
+        }
+
+        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
+        slot = MR_add_user_event_spy_point(action, ignore_when, ignore_count,
+            user_event_set, user_event_name, print_list, &problem);
+        MR_maybe_print_spy_point(slot, problem);
+    } else if (word_count >= 2 && MR_streq(words[1], "user_event_set")) {
+        const MR_UserEventSpec  *user_event_spec;
+        const char              *user_event_set;
+        int                     slot;
+        int                     set;
+        int                     spec;
+        MR_bool                 found_event_set;
+
+        if (word_count == 2) {
+            user_event_set = NULL;
+        } else if (word_count == 3) {
+            user_event_set = words[2];
+        } else {
+            MR_trace_usage_cur_cmd();
+            return KEEP_INTERACTING;
+        }
+
+        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
+
+        if (user_event_set != NULL) {
+            found_event_set = MR_FALSE;
+            for (set = 0; set < MR_trace_event_set_next; set++) {
+                if (MR_streq(user_event_set,
+                    MR_trace_event_sets[set].MR_tes_name))
+                {
+                    found_event_set = MR_TRUE;
+                }
+            }
+
+            if (! found_event_set) {
+                fprintf(MR_mdb_out,
+                    "There is no user event set named `%s'.\n",
+                    user_event_set);
+                return KEEP_INTERACTING;
+            }
+        }
+
+        if (ignore_count > 0 && ignore_when == MR_SPY_IGNORE_ENTRY) {
+            fprintf(MR_mdb_out, "That breakpoint "
+                "would never become enabled.\n");
+            return KEEP_INTERACTING;
+        } else if (ignore_count > 0 &&
+            ignore_when == MR_SPY_IGNORE_INTERFACE)
+        {
+            fprintf(MR_mdb_out, "That breakpoint "
+                "would never become enabled.\n");
+            return KEEP_INTERACTING;
+        }
+
+        MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
+        slot = MR_add_user_event_spy_point(action, ignore_when, ignore_count,
+            user_event_set, NULL, print_list, &problem);
+        MR_maybe_print_spy_point(slot, problem);
     } else if (word_count == 2 && MR_streq(words[1], "here")) {
         int             slot;
         MR_TracePort    port;
@@ -140,27 +296,27 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
         slot = MR_add_proc_spy_point(MR_SPY_SPECIFIC, action, ignore_when,
             ignore_count, layout->MR_sll_entry, layout, print_list, &problem);
         MR_maybe_print_spy_point(slot, problem);
-    } else if (word_count == 2 && MR_parse_proc_spec(words[1], &spec)) {
+    } else if (word_count == 2 && MR_parse_proc_spec(words[1], &proc_spec)) {
         MR_MatchesInfo  matches;
         int             slot;
 
         MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
-        matches = MR_search_for_matching_procedures(&spec);
+        matches = MR_search_for_matching_procedures(&proc_spec);
         if (matches.match_proc_next == 0) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: there is no such procedure.\n");
         } else if (matches.match_proc_next == 1) {
             slot = MR_add_proc_spy_point(when, action, ignore_when,
-                ignore_count, matches.match_procs[0], NULL, print_list,
-                &problem);
+                ignore_count, matches.match_procs[0], NULL,
+                print_list, &problem);
             MR_maybe_print_spy_point(slot, problem);
         } else if (multi_match == MR_MULTIMATCH_ALL) {
             int i;
 
             for (i = 0; i < matches.match_proc_next; i++) {
                 slot = MR_add_proc_spy_point(when, action, ignore_when,
-                    ignore_count, matches.match_procs[i], NULL, print_list,
-                    &problem);
+                    ignore_count, matches.match_procs[i], NULL,
+                    print_list, &problem);
                 MR_maybe_print_spy_point(slot, problem);
             }
         } else {
@@ -191,8 +347,8 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             } else if (MR_streq(line2, "*")) {
                 for (i = 0; i < matches.match_proc_next; i++) {
                     slot = MR_add_proc_spy_point(when, action, ignore_when,
-                        ignore_count, matches.match_procs[i], NULL, print_list,
-                        &problem);
+                        ignore_count, matches.match_procs[i], NULL,
+                        print_list, &problem);
                     MR_maybe_print_spy_point(slot, problem);
                 }
 
@@ -200,8 +356,8 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             } else if (MR_trace_is_natural_number(line2, &i)) {
                 if (0 <= i && i < matches.match_proc_next) {
                     slot = MR_add_proc_spy_point(when, action, ignore_when,
-                        ignore_count, matches.match_procs[i], NULL, print_list,
-                        &problem);
+                        ignore_count, matches.match_procs[i], NULL,
+                        print_list, &problem);
                     MR_maybe_print_spy_point(slot, problem);
                 } else {
                     fprintf(MR_mdb_out, "no such match\n");
@@ -281,12 +437,10 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
         return KEEP_INTERACTING;
     }
 
-    if (! MR_spy_points[break_num]->spy_exists) {
+    if (! MR_spy_points[break_num]->MR_spy_exists) {
         fprintf(MR_mdb_err, "Breakpoint %d has been deleted.\n", break_num);
         return KEEP_INTERACTING;
     }
-
-    cond = MR_malloc(sizeof(MR_SpyCond));
 
     what_str = MR_malloc(strlen(words[1]) + 1);
     strcpy(what_str, words[1]);
@@ -329,23 +483,34 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
         return KEEP_INTERACTING;
     }
 
-    if (MR_spy_points[break_num]->spy_cond != NULL) {
-        MR_delete_cterm(MR_spy_points[break_num]->spy_cond->cond_term);
-        MR_free(MR_spy_points[break_num]->spy_cond->cond_what_string);
-        MR_free(MR_spy_points[break_num]->spy_cond->cond_term_string);
-        MR_free(MR_spy_points[break_num]->spy_cond);
+    if (MR_spy_points[break_num]->MR_spy_cond != NULL) {
+        MR_delete_cterm(MR_spy_points[break_num]->MR_spy_cond->MR_cond_term);
+        MR_free(MR_spy_points[break_num]->MR_spy_cond->MR_cond_what_string);
+        MR_free(MR_spy_points[break_num]->MR_spy_cond->MR_cond_term_string);
+        MR_free(MR_spy_points[break_num]->MR_spy_cond);
     }
 
-    cond->cond_var_spec = var_spec;
-    cond->cond_path = path;
-    cond->cond_test = test;
-    cond->cond_term = term;
-    cond->cond_term_string = term_str;
-    cond->cond_what_string = what_str;
-    cond->cond_require_var = require_var;
-    cond->cond_require_path = require_path;
+    if (MR_spy_points[break_num]->MR_spy_when == MR_SPY_USER_EVENT_SET) {
+        /*
+        ** If the breakpoint is matched by all events in an event set (or
+        ** possibly all events in all event sets), then it doesn't make sense
+        ** to insist on any given variable name existing at the matching event.
+        */
+        require_var = MR_FALSE;
+        require_path = MR_FALSE;
+    }
 
-    MR_spy_points[break_num]->spy_cond = cond;
+    cond = MR_malloc(sizeof(MR_SpyCond));
+    cond->MR_cond_var_spec = var_spec;
+    cond->MR_cond_path = path;
+    cond->MR_cond_test = test;
+    cond->MR_cond_term = term;
+    cond->MR_cond_term_string = term_str;
+    cond->MR_cond_what_string = what_str;
+    cond->MR_cond_require_var = require_var;
+    cond->MR_cond_require_path = require_path;
+
+    MR_spy_points[break_num]->MR_spy_cond = cond;
 
     MR_print_spy_point(MR_mdb_out, break_num, MR_TRUE);
     return KEEP_INTERACTING;
@@ -367,7 +532,9 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_TraceCmdInfo *cmd,
     {
         ; /* the usage message has already been printed */
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
-        if (0 <= n && n < MR_spy_point_next && MR_spy_points[n]->spy_exists) {
+        if (0 <= n && n < MR_spy_point_next &&
+            MR_spy_points[n]->MR_spy_exists)
+        {
             problem = MR_ignore_spy_point(n, ignore_when, ignore_count);
             MR_maybe_print_spy_point(n, problem);
         } else {
@@ -380,7 +547,7 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         count = 0;
         for (i = 0; i < MR_spy_point_next; i++) {
-            if (MR_spy_points[i]->spy_exists) {
+            if (MR_spy_points[i]->MR_spy_exists) {
                 problem = MR_ignore_spy_point(n, ignore_when, ignore_count);
                 MR_maybe_print_spy_point(n, problem);
                 count++;
@@ -393,7 +560,7 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_TraceCmdInfo *cmd,
     } else if (word_count == 1) {
         if (0 <= MR_most_recent_spy_point
             && MR_most_recent_spy_point < MR_spy_point_next
-            && MR_spy_points[MR_most_recent_spy_point]->spy_exists)
+            && MR_spy_points[MR_most_recent_spy_point]->MR_spy_exists)
         {
             n = MR_most_recent_spy_point;
             problem = MR_ignore_spy_point(n, ignore_when, ignore_count);
@@ -413,40 +580,62 @@ MR_Next
 MR_trace_cmd_break_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int                 n;
+    int                 break_num;
     int                 i;
     MR_BrowseFormat     format;
     MR_bool             at_start;
     MR_bool             warn;
     MR_SpyPrintList     print_list;
+    MR_SpyPrint         sp;
+    const char          *problem;
+    MR_bool             any_problem;
 
-    if (! MR_trace_options_break_print(&format, &at_start, &warn,
+    if (! MR_trace_options_break_print(&break_num, &format, &at_start, &warn,
         &words, &word_count))
     {
         ; /* the usage message has already been printed */
-    } else if (word_count > 2 && MR_trace_is_natural_number(words[1], &n)) {
-        if (word_count == 3 && MR_streq(words[2], "none")) {
-            MR_clear_spy_point_print_list(n);
-            MR_print_spy_point(MR_mdb_out, n, MR_TRUE);
-        } else if (0 <= n && n < MR_spy_point_next
-            && MR_spy_points[n]->spy_exists)
-        {
-            print_list = NULL;
-            for (i = 2; i < word_count; i++) {
-                print_list = MR_add_to_print_list_end(format, words[i], warn,
-                    print_list);
-            }
-
-            if (at_start) {
-                MR_add_spy_point_print_list_start(n, print_list);
-            } else {
-                MR_add_spy_point_print_list_end(n, print_list);
-            }
-
-            MR_print_spy_point(MR_mdb_out, n, MR_TRUE);
-        } else {
+    } else if (word_count > 1) {
+        if (break_num < 0) {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: break point #%d does not exist.\n", n);
+            fprintf(MR_mdb_err, "mdb: no break point exists.\n");
+        } else if (! (0 <= break_num && break_num < MR_spy_point_next
+            && MR_spy_points[break_num]->MR_spy_exists))
+        {
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err, "mdb: break point #%d does not exist.\n",
+                break_num);
+        } else {
+            if (word_count == 2 && MR_streq(words[1], "none")) {
+                MR_clear_spy_point_print_list(break_num);
+                MR_print_spy_point(MR_mdb_out, break_num, MR_TRUE);
+            } else {
+                print_list = NULL;
+                any_problem = MR_FALSE;
+                for (i = 1; i < word_count; i++) {
+                    problem = MR_parse_spy_print(format, warn, words[i], &sp);
+                    if (problem != NULL) {
+                        fflush(MR_mdb_out);
+                        fprintf(MR_mdb_err, "mdb: cannot parse `%s'\n",
+                            words[i]);
+                        any_problem = MR_TRUE;
+                    } else {
+                        print_list =
+                            MR_add_to_print_list_end(sp, print_list);
+                    }
+                }
+
+                if (! any_problem) {
+                    if (at_start) {
+                        MR_add_spy_point_print_list_start(break_num,
+                            print_list);
+                    } else {
+                        MR_add_spy_point_print_list_end(break_num,
+                            print_list);
+                    }
+
+                    MR_print_spy_point(MR_mdb_out, break_num, MR_TRUE);
+                }
+            }
         }
     } else {
         MR_trace_usage_cur_cmd();
@@ -462,8 +651,10 @@ MR_trace_cmd_enable(char **words, int word_count, MR_TraceCmdInfo *cmd,
     int n;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
-        if (0 <= n && n < MR_spy_point_next && MR_spy_points[n]->spy_exists) {
-            MR_spy_points[n]->spy_enabled = MR_TRUE;
+        if (0 <= n && n < MR_spy_point_next &&
+            MR_spy_points[n]->MR_spy_exists)
+        {
+            MR_spy_points[n]->MR_spy_enabled = MR_TRUE;
             MR_print_spy_point(MR_mdb_out, n, MR_FALSE);
         } else {
             fflush(MR_mdb_out);
@@ -475,8 +666,8 @@ MR_trace_cmd_enable(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         count = 0;
         for (i = 0; i < MR_spy_point_next; i++) {
-            if (MR_spy_points[i]->spy_exists) {
-                MR_spy_points[i]->spy_enabled = MR_TRUE;
+            if (MR_spy_points[i]->MR_spy_exists) {
+                MR_spy_points[i]->MR_spy_enabled = MR_TRUE;
                 MR_print_spy_point(MR_mdb_out, i, MR_FALSE);
                 count++;
             }
@@ -488,9 +679,9 @@ MR_trace_cmd_enable(char **words, int word_count, MR_TraceCmdInfo *cmd,
     } else if (word_count == 1) {
         if (0 <= MR_most_recent_spy_point
             && MR_most_recent_spy_point < MR_spy_point_next
-            && MR_spy_points[MR_most_recent_spy_point]->spy_exists)
+            && MR_spy_points[MR_most_recent_spy_point]->MR_spy_exists)
         {
-            MR_spy_points[MR_most_recent_spy_point]->spy_enabled = MR_TRUE;
+            MR_spy_points[MR_most_recent_spy_point]->MR_spy_enabled = MR_TRUE;
             MR_print_spy_point(MR_mdb_out, MR_most_recent_spy_point, MR_FALSE);
         } else {
             fflush(MR_mdb_out);
@@ -510,8 +701,10 @@ MR_trace_cmd_disable(char **words, int word_count, MR_TraceCmdInfo *cmd,
     int n;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
-        if (0 <= n && n < MR_spy_point_next && MR_spy_points[n]->spy_exists) {
-            MR_spy_points[n]->spy_enabled = MR_FALSE;
+        if (0 <= n && n < MR_spy_point_next &&
+            MR_spy_points[n]->MR_spy_exists)
+        {
+            MR_spy_points[n]->MR_spy_enabled = MR_FALSE;
             MR_print_spy_point(MR_mdb_out, n, MR_FALSE);
         } else {
             fflush(MR_mdb_out);
@@ -523,8 +716,8 @@ MR_trace_cmd_disable(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         count = 0;
         for (i = 0; i < MR_spy_point_next; i++) {
-            if (MR_spy_points[i]->spy_exists) {
-                MR_spy_points[i]->spy_enabled = MR_FALSE;
+            if (MR_spy_points[i]->MR_spy_exists) {
+                MR_spy_points[i]->MR_spy_enabled = MR_FALSE;
                 MR_print_spy_point(MR_mdb_out, i, MR_FALSE);
                 count++;
             }
@@ -537,9 +730,9 @@ MR_trace_cmd_disable(char **words, int word_count, MR_TraceCmdInfo *cmd,
     } else if (word_count == 1) {
         if (0 <= MR_most_recent_spy_point
             && MR_most_recent_spy_point < MR_spy_point_next
-            && MR_spy_points[MR_most_recent_spy_point]->spy_exists)
+            && MR_spy_points[MR_most_recent_spy_point]->MR_spy_exists)
         {
-            MR_spy_points[MR_most_recent_spy_point]->spy_enabled = MR_FALSE;
+            MR_spy_points[MR_most_recent_spy_point]->MR_spy_enabled = MR_FALSE;
             MR_print_spy_point(MR_mdb_out, MR_most_recent_spy_point, MR_FALSE);
         } else {
             fflush(MR_mdb_out);
@@ -559,10 +752,12 @@ MR_trace_cmd_delete(char **words, int word_count, MR_TraceCmdInfo *cmd,
     int n;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
-        if (0 <= n && n < MR_spy_point_next && MR_spy_points[n]->spy_exists) {
-            MR_spy_points[n]->spy_exists = MR_FALSE;
+        if (0 <= n && n < MR_spy_point_next &&
+            MR_spy_points[n]->MR_spy_exists)
+        {
+            MR_spy_points[n]->MR_spy_exists = MR_FALSE;
             MR_print_spy_point(MR_mdb_out, n, MR_FALSE);
-            MR_spy_points[n]->spy_exists = MR_TRUE;
+            MR_spy_points[n]->MR_spy_exists = MR_TRUE;
             MR_delete_spy_point(n);
         } else {
             fflush(MR_mdb_out);
@@ -574,10 +769,10 @@ MR_trace_cmd_delete(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         count = 0;
         for (i = 0; i < MR_spy_point_next; i++) {
-            if (MR_spy_points[i]->spy_exists) {
-                MR_spy_points[i]->spy_exists = MR_FALSE;
+            if (MR_spy_points[i]->MR_spy_exists) {
+                MR_spy_points[i]->MR_spy_exists = MR_FALSE;
                 MR_print_spy_point(MR_mdb_out, i, MR_FALSE);
-                MR_spy_points[i]->spy_exists = MR_TRUE;
+                MR_spy_points[i]->MR_spy_exists = MR_TRUE;
                 MR_delete_spy_point(i);
                 count++;
             }
@@ -590,14 +785,14 @@ MR_trace_cmd_delete(char **words, int word_count, MR_TraceCmdInfo *cmd,
     } else if (word_count == 1) {
         if (0 <= MR_most_recent_spy_point
             && MR_most_recent_spy_point < MR_spy_point_next
-            && MR_spy_points[MR_most_recent_spy_point]->spy_exists)
+            && MR_spy_points[MR_most_recent_spy_point]->MR_spy_exists)
         {
             int slot;
 
             slot = MR_most_recent_spy_point;
-            MR_spy_points[slot]->spy_exists = MR_FALSE;
+            MR_spy_points[slot]->MR_spy_exists = MR_FALSE;
             MR_print_spy_point(MR_mdb_out, slot, MR_FALSE);
-            MR_spy_points[slot]->spy_exists = MR_TRUE;
+            MR_spy_points[slot]->MR_spy_exists = MR_TRUE;
             MR_delete_spy_point(slot);
         } else {
             fflush(MR_mdb_out);
@@ -659,42 +854,70 @@ MR_trace_cmd_procedures(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
 /****************************************************************************/
 
+static const char *
+MR_parse_spy_print(MR_BrowseFormat format, MR_bool warn, char *word,
+    MR_SpyPrint *sp_ptr)
+{
+    MR_SpyPrint sp;
+    const char  *problem;
+
+    word = MR_copy_string(word);
+
+    problem = NULL;
+    sp = MR_malloc(sizeof(struct MR_SpyPrint_Struct));
+    sp->MR_p_format = format;
+    sp->MR_p_warn = warn;
+    sp->MR_p_word_copy = word;
+
+    if (MR_streq(word, "*")) {
+        sp->MR_p_what = MR_SPY_PRINT_ALL;
+        /* The other fields are initialized to dummies. */
+        sp->MR_p_var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
+        sp->MR_p_var_spec.MR_var_spec_number = -1;
+        sp->MR_p_var_spec.MR_var_spec_name = NULL;
+        sp->MR_p_path = NULL;
+    } else if (MR_streq(word, "goal")) {
+        sp->MR_p_what = MR_SPY_PRINT_GOAL;
+        /* The other fields are initialized to dummies. */
+        sp->MR_p_var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
+        sp->MR_p_var_spec.MR_var_spec_number = -1;
+        sp->MR_p_var_spec.MR_var_spec_name = NULL;
+        sp->MR_p_path = NULL;
+    } else {
+        sp->MR_p_what = MR_SPY_PRINT_ONE;
+        problem = MR_trace_parse_var_path(word,
+            &sp->MR_p_var_spec, &sp->MR_p_path);
+    }
+
+    if (problem == NULL) {
+        *sp_ptr = sp;
+    } else {
+        *sp_ptr = NULL;
+    }
+
+    return problem;
+}
+
 static MR_SpyPrintList
-MR_add_to_print_list_end(MR_BrowseFormat format, char *word, MR_bool warn,
-    MR_SpyPrintList print_list)
+MR_add_to_print_list_end(MR_SpyPrint sp, MR_SpyPrintList print_list)
 {
     MR_SpyPrintList     list;
     MR_SpyPrintList     new_list;
-    MR_SpyPrint         new_node;
-
-    new_node = MR_malloc(sizeof(struct MR_SpyPrint_Struct));
-    new_node->p_format = format;
-    new_node->p_warn = warn;
-    if (MR_streq(word, "*")) {
-        new_node->p_what = MR_SPY_PRINT_ALL;
-        new_node->p_name = NULL;
-    } else if (MR_streq(word, "goal")) {
-        new_node->p_what = MR_SPY_PRINT_GOAL;
-        new_node->p_name = NULL;
-    } else {
-        new_node->p_what = MR_SPY_PRINT_ONE;
-        new_node->p_name = MR_copy_string(word);
-    }
 
     new_list = MR_malloc(sizeof(struct MR_SpyPrintList_Struct));
-    new_list->pl_cur = new_node;
-    new_list->pl_next = NULL;
+    new_list->MR_pl_cur = sp;
+    new_list->MR_pl_next = NULL;
 
     list = print_list;
     if (list == NULL) {
         return new_list;
     }
 
-    while (list->pl_next != NULL) {
-        list = list->pl_next;
+    while (list->MR_pl_next != NULL) {
+        list = list->MR_pl_next;
     }
 
-    list->pl_next = new_list;
+    list->MR_pl_next = new_list;
     return print_list;
 }
 
@@ -737,7 +960,7 @@ const char *const    MR_trace_break_cmd_args[] =
     { "-A", "-E", "-I", "-O", "-P", "-S", "-a", "-e", "-i",
     "--all", "--entry", "--ignore-entry", "--ignore-interface",
     "--interface", "--print", "--select-all", "--select-one",
-    "--stop", "here", "info", NULL };
+    "--stop", "here", "info", "user_event", NULL };
 
 const char *const    MR_trace_ignore_cmd_args[] =
     { "-E", "-I", "--ignore-entry", "--ignore-interface", NULL };
@@ -749,6 +972,7 @@ static struct MR_option MR_trace_when_action_multi_ignore_opts[] =
     { "all",                MR_no_argument,         NULL,   'a' },
     { "entry",              MR_no_argument,         NULL,   'e' },
     { "interface",          MR_no_argument,         NULL,   'i' },
+    { "ignore",             MR_required_argument,   NULL,   'X' },
     { "ignore-entry",       MR_required_argument,   NULL,   'E' },
     { "ignore-interface",   MR_required_argument,   NULL,   'I' },
     { "print-list",         MR_required_argument,   NULL,   'p' },
@@ -766,14 +990,15 @@ MR_trace_options_when_action_multi_ignore(MR_SpyWhen *when,
     MR_SpyIgnore_When *ignore_when, int *ignore_count,
     MR_SpyPrintList *print_list, char ***words, int *word_count)
 {
-    int                 c;
-    MR_SpyPrint         node;
-    MR_SpyPrintList     list;
-    MR_bool             warn;
+    int             c;
+    MR_SpyPrint     sp;
+    MR_SpyPrintList list;
+    MR_bool         warn;
+    const char      *problem;
 
     warn = MR_TRUE;
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "AE:I:OPSaeinp:",
+    while ((c = MR_getopt_long(*word_count, *words, "AE:I:OPSX:aeinp:",
         MR_trace_when_action_multi_ignore_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -795,8 +1020,15 @@ MR_trace_options_when_action_multi_ignore(MR_SpyWhen *when,
                 break;
 
             case 'p':
-                *print_list = MR_add_to_print_list_end(MR_BROWSE_FORMAT_FLAT,
-                    MR_optarg, warn, *print_list);
+                problem = MR_parse_spy_print(MR_BROWSE_FORMAT_FLAT, warn,
+                    MR_optarg, &sp);
+                if (problem != NULL) {
+                    fflush(MR_mdb_out);
+                    fprintf(MR_mdb_err, "mdb: cannot parse `%s'\n", MR_optarg);
+                    return MR_FALSE;
+                }
+
+                *print_list = MR_add_to_print_list_end(sp, *print_list);
                 break;
 
             case 'E':
@@ -813,6 +1045,14 @@ MR_trace_options_when_action_multi_ignore(MR_SpyWhen *when,
                     return MR_FALSE;
                 }
                 *ignore_when = MR_SPY_IGNORE_INTERFACE;
+                break;
+
+            case 'X':
+                if (! MR_trace_is_natural_number(MR_optarg, ignore_count)) {
+                    MR_trace_usage_cur_cmd();
+                    return MR_FALSE;
+                }
+                *ignore_when = MR_SPY_IGNORE_ALL;
                 break;
 
             case 'A':
@@ -844,7 +1084,7 @@ MR_trace_options_when_action_multi_ignore(MR_SpyWhen *when,
 
 static struct MR_option MR_trace_condition_opts[] =
 {
-    { "break-num",          MR_required_argument,   NULL,   'n' },
+    { "break-num",          MR_required_argument,   NULL,   'b' },
     { "dont-require-var",   MR_no_argument,         NULL,   'v' },
     { "dont-require-path",  MR_no_argument,         NULL,   'p' },
     { NULL,                 MR_no_argument,         NULL,   0 }
@@ -858,12 +1098,12 @@ MR_trace_options_condition(int *break_num, MR_bool *require_var,
     int n;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "n:vp",
+    while ((c = MR_getopt_long(*word_count, *words, "b:vp",
         MR_trace_condition_opts, NULL)) != EOF)
     {
         switch (c) {
 
-            case 'n':
+            case 'b':
                 if (! MR_trace_is_natural_number(MR_optarg, &n)) {
                     MR_trace_usage_cur_cmd();
                     return MR_FALSE;
@@ -898,6 +1138,7 @@ MR_trace_options_condition(int *break_num, MR_bool *require_var,
 
 static struct MR_option MR_trace_ignore_count_opts[] =
 {
+    { "ignore",             MR_required_argument,   NULL,   'X' },
     { "ignore-entry",       MR_required_argument,   NULL,   'E' },
     { "ignore-interface",   MR_required_argument,   NULL,   'I' },
     { NULL,                 MR_no_argument,         NULL,   0 }
@@ -910,7 +1151,7 @@ MR_trace_options_ignore_count(MR_SpyIgnore_When *ignore_when,
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "E:I:",
+    while ((c = MR_getopt_long(*word_count, *words, "E:I:X:",
         MR_trace_ignore_count_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -931,6 +1172,14 @@ MR_trace_options_ignore_count(MR_SpyIgnore_When *ignore_when,
                 *ignore_when = MR_SPY_IGNORE_INTERFACE;
                 break;
 
+            case 'X':
+                if (! MR_trace_is_natural_number(MR_optarg, ignore_count)) {
+                    MR_trace_usage_cur_cmd();
+                    return MR_FALSE;
+                }
+                *ignore_when = MR_SPY_IGNORE_ALL;
+                break;
+
             default:
                 MR_trace_usage_cur_cmd();
                 return MR_FALSE;
@@ -944,29 +1193,40 @@ MR_trace_options_ignore_count(MR_SpyIgnore_When *ignore_when,
 
 static struct MR_option MR_trace_break_print_opts[] =
 {
-    { "end",        MR_no_argument, NULL,   'e' },
-    { "no-warn",    MR_no_argument, NULL,   'n' },
-    { "flat",       MR_no_argument, NULL,   'f' },
-    { "raw-pretty", MR_no_argument, NULL,   'r' },
-    { "verbose",    MR_no_argument, NULL,   'v' },
-    { "pretty",     MR_no_argument, NULL,   'p' },
-    { NULL,         MR_no_argument, NULL,   0 }
+    { "break-num",  MR_required_argument, NULL,   'b' },
+    { "end",        MR_no_argument,       NULL,   'e' },
+    { "no-warn",    MR_no_argument,       NULL,   'n' },
+    { "flat",       MR_no_argument,       NULL,   'f' },
+    { "raw-pretty", MR_no_argument,       NULL,   'r' },
+    { "verbose",    MR_no_argument,       NULL,   'v' },
+    { "pretty",     MR_no_argument,       NULL,   'p' },
+    { NULL,         MR_no_argument,       NULL,   0 }
 };
 
 static MR_bool
-MR_trace_options_break_print(MR_BrowseFormat *format, MR_bool *at_start,
-    MR_bool *warn, char ***words, int *word_count)
+MR_trace_options_break_print(int *break_num, MR_BrowseFormat *format,
+    MR_bool *at_start, MR_bool *warn, char ***words, int *word_count)
 {
     int c;
+    int n;
 
+    *break_num = MR_most_recent_spy_point;
     *format = MR_BROWSE_FORMAT_FLAT;
     *at_start = MR_TRUE;
     *warn = MR_TRUE;
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "enfrvp",
+    while ((c = MR_getopt_long(*word_count, *words, "b:enfrvp",
         MR_trace_break_print_opts, NULL)) != EOF)
     {
         switch (c) {
+
+            case 'b':
+                if (! MR_trace_is_natural_number(MR_optarg, &n)) {
+                    MR_trace_usage_cur_cmd();
+                    return MR_FALSE;
+                }
+                *break_num = n;
+                break;
 
             case 'e':
                 *at_start = MR_FALSE;

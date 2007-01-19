@@ -3186,13 +3186,69 @@ which of course won't be present at call events.
 By default, the action of the break point is @samp{stop},
 the ignore count is zero, and the print list is empty.
 @sp 1
+@item break [-PS] [-X@var{ignore-count}] [-n] [-p@var{print-spec}]* user_event [@var{user-event-set}] @var{user-event-name}
+Puts a break point on all user events named @var{user-event-name},
+or, if @var{user-event-set} is specified as well,
+on the user event named @var{user-event-name} in that event set.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point.
+@sp 1
+The options @samp{-X@var{ignore-count}}
+and @samp{--ignore @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of an event
+that matches the breakpoint.
+@sp 1
+Each occurrence of the options
+@samp{-p@var{printspec}} and @samp{--print-list @var{printspec}}
+tells the debugger to include the specified entity
+in the breakpoint's print list.
+@sp 1
+Normally, if a variable with the given name or number doesn't exist
+when execution reaches the breakpoint, mdb will issue a warning.
+The option @samp{-n} or @samp{--no-warn}, if present, suppresses this warning.
+This can be useful if e.g. the name is the name of an output variable,
+which of course won't be present at call events.
+@sp 1
+By default, the action of the break point is @samp{stop},
+the ignore count is zero, and the print list is empty.
+@sp 1
+@item break [-PS] [-X@var{ignore-count}] [-n] [-p@var{print-spec}]* user_event_set [@var{user-event-set}]
+Puts a break point either on all user events in all event sets,
+or, if @var{user-event-set} is specified,
+on all user events in the event set of the given name.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point.
+@sp 1
+The options @samp{-X@var{ignore-count}}
+and @samp{--ignore @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of an event
+that matches the breakpoint.
+@sp 1
+Each occurrence of the options
+@samp{-p@var{printspec}} and @samp{--print-list @var{printspec}}
+tells the debugger to include the specified entity
+in the breakpoint's print list.
+@sp 1
+Normally, if a variable with the given name or number doesn't exist
+when execution reaches the breakpoint, mdb will issue a warning.
+The option @samp{-n} or @samp{--no-warn}, if present, suppresses this warning.
+This can be useful if e.g. the name is the name of an output variable,
+which of course won't be present at call events.
+@sp 1
+By default, the action of the break point is @samp{stop},
+the ignore count is zero, and the print list is empty.
+@sp 1
 @item break info
 Lists the details, status and print lists of all break points.
 @sp 1
-@item condition [-n@var{break-num}] [-p] [-v] @var{varname}[@var{pathspec}] @var{op} @var{term}
+@item condition [-b@var{break-num}] [-p] [-v] @var{varname}[@var{pathspec}] @var{op} @var{term}
 @kindex condition (mdb command)
 Attaches a condition to the most recent breakpoint,
-or, if the @samp{-n} or @samp{--break-num} is given,
+or, if the @samp{-b} or @samp{--break-num} is given,
 to the breakpoint whose number is given as the argument.
 Execution won't stop at the breakpoint if the condition is false.
 @sp 1
@@ -3227,6 +3283,8 @@ the specified part of the specified variable doesn't exist.
 If the @samp{-v} or @samp{--dont-require-var} option is given,
 execution won't stop at breakpoints at which
 the specified variable itself doesn't exist.
+The @samp{-v} or @samp{--dont-require-var} option is implicitly assumed
+if the specified breakpoint is on all user events.
 @sp 1
 @item ignore [-E@var{ignore-count}] [-I@var{ignore-count}] @var{num}
 @kindex ignore (mdb command)
@@ -3261,10 +3319,12 @@ the default is to ignore one call event
 that matches the most recently added breakpoint.
 Reports an error if the most recently added breakpoint has since been deleted.
 @sp 1
-@item break_print [-fpv] [-e] [-n] @var{num} @var{print-spec}*
+@item break_print [-fpv] [-e] [-n] [-b @var{num}] @var{print-spec}*
 @kindex break_print (mdb command)
 Adds the specified print list elements (there may be more than one)
-to the print list of the breakpoint numbered @var{num}.
+to the print list of the breakpoint numbered @var{num}
+(if the @samp{-b} or @samp{--break-num} option is given),
+or to the print list of the most recent breakpoint (if it is not given).
 @sp 1
 Normally, if a variable with the given name or number doesn't exist
 when execution reaches the breakpoint, mdb will issue a warning.
@@ -3281,6 +3341,12 @@ By default, the specified elements will be printed with format "flat".
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose}, if given,
 explicitly specify the format to use.
+@sp 1
+@item break_print [-b @var{num}] none
+@kindex break_print (mdb command)
+Clears the print list of the breakpoint numbered @var{num}
+(if the @samp{-b} or @samp{--break-num} option is given),
+or the print list of the most recent breakpoint (if it is not given).
 @sp 1
 @item disable @var{num}
 @kindex disable (mdb command)

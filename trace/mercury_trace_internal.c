@@ -358,25 +358,6 @@ MR_trace_internal_ensure_init(void)
         MR_io_tabling_start = MR_IO_ACTION_MAX;
         MR_io_tabling_end = MR_IO_ACTION_MAX;
 
-        for (i = 0; i < MR_trace_event_set_next; i++) {
-            if (! MR_trace_event_sets[i].MR_tes_is_consistent) {
-                fprintf(MR_mdb_out,
-                    "The executable's modules were compiled with "
-                    "inconsistent definitions of user event set %s.\n",
-                    MR_trace_event_sets[i].MR_tes_name);
-            } else {
-                MR_trace_event_sets[i].MR_tes_event_set =
-                    MR_read_event_set("no input file",
-                        MR_trace_event_sets[i].MR_tes_desc);
-                if (MR_trace_event_sets[i].MR_tes_event_set == NULL) {
-                    fprintf(MR_mdb_out,
-                        "Internal error: could not parse "
-                        "the specification of event set %s.\n",
-                        MR_trace_event_sets[i].MR_tes_name);
-                }
-            }
-        }
-
         MR_trace_internal_initialized = MR_TRUE;
     }
 }
@@ -806,39 +787,40 @@ MR_mdb_print_proc_id_and_nl(void *data, const MR_ProcLayout *entry_layout)
 static int
 MR_trace_var_print_list(MR_SpyPrintList print_list)
 {
-    MR_SpyPrint    node;
+    MR_SpyPrint     node;
     const char      *problem;
-    char            *after_problem;
+    MR_VarSpec      *after_var_spec;
     int             count;
 
     count = 0;
-    for (; print_list != NULL; print_list = print_list->pl_next) {
+    for (; print_list != NULL; print_list = print_list->MR_pl_next) {
         count++;
-        node = print_list->pl_cur;
-        after_problem = NULL;
+        node = print_list->MR_pl_cur;
+        after_var_spec = NULL;
 
-        switch (node->p_what) {
+        switch (node->MR_p_what) {
             case MR_SPY_PRINT_ALL:
                 problem = MR_trace_browse_all(MR_mdb_out,
-                    MR_trace_browse_internal, node->p_format);
+                    MR_trace_browse_internal, node->MR_p_format);
                 break;
 
             case MR_SPY_PRINT_GOAL:
                 problem = MR_trace_browse_one_goal(MR_mdb_out,
                     MR_trace_browse_goal_internal, MR_BROWSE_CALLER_PRINT,
-                    node->p_format);
+                    node->MR_p_format);
                 break;
 
             case MR_SPY_PRINT_ONE:
-                problem = MR_trace_parse_browse_one(MR_mdb_out, MR_TRUE,
-                    node->p_name, MR_trace_browse_internal,
-                    MR_BROWSE_CALLER_PRINT, node->p_format, MR_FALSE);
+                problem = MR_trace_browse_one_path(MR_mdb_out, MR_TRUE,
+                    node->MR_p_var_spec, node->MR_p_path,
+                    MR_trace_browse_internal, MR_BROWSE_CALLER_PRINT,
+                    node->MR_p_format, MR_FALSE);
                 if (problem != NULL &&
                     MR_streq(problem, "there is no such variable"))
                 {
-                    if (node->p_warn) {
+                    if (node->MR_p_warn) {
                         problem = "there is no variable named";
-                        after_problem = node->p_name;
+                        after_var_spec = &node->MR_p_var_spec;
                     } else {
                         problem = NULL;
                     }
@@ -847,15 +829,16 @@ MR_trace_var_print_list(MR_SpyPrintList print_list)
                 break;
 
             default:
-                MR_fatal_error("invalid node->p_what");
+                MR_fatal_error("invalid node->MR_p_what");
                 break;
         }
 
         if (problem != NULL) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: %s", problem);
-            if (after_problem != NULL) {
-                fprintf(MR_mdb_err, " %s", after_problem);
+            if (after_var_spec != NULL) {
+                fprintf(MR_mdb_err, " ");
+                MR_print_var_spec(MR_mdb_err, after_var_spec);
             }
             fprintf(MR_mdb_err, ".\n");
         }
@@ -1388,7 +1371,7 @@ MR_trace_event_internal_report(MR_TraceCmdInfo *cmd,
 
     list = print_list;
     len = 0;
-    for (; list != NULL; list = list->pl_next) {
+    for (; list != NULL; list = list->MR_pl_next) {
         len++;
     }
 

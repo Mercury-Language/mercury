@@ -184,11 +184,6 @@ static  int             MR_trace_compare_var_details(
                             const MR_ProgVarDetails *var2);
 static  int             MR_compare_slots_on_headvar_num(const void *p1,
                             const void *p2);
-static  const char      *MR_trace_browse_one_path(FILE *out,
-                            MR_bool print_var_name, MR_VarSpec var_spec,
-                            char *path, MR_Browser browser,
-                            MR_BrowseCallerType caller,
-                            MR_BrowseFormat format, MR_bool must_be_unique);
 static  char            *MR_trace_browse_var(FILE *out, MR_bool print_var_name,
                             MR_TypeInfo type_info, MR_Word value,
                             const char *name, char *path,
@@ -1123,6 +1118,28 @@ MR_convert_arg_to_var_spec(const char *word_spec, MR_VarSpec *var_spec)
     }
 }
 
+void
+MR_print_var_spec(FILE *fp, MR_VarSpec *var_spec)
+{
+    switch (var_spec->MR_var_spec_kind) {
+        case MR_VAR_SPEC_NUMBER:
+            fprintf(fp, "%d", var_spec->MR_var_spec_number);
+            break;
+
+        case MR_VAR_SPEC_NAME:
+            fprintf(fp, "%s", var_spec->MR_var_spec_name);
+            break;
+
+        case MR_VAR_SPEC_HELD_NAME:
+            fprintf(fp, "$%s", var_spec->MR_var_spec_name);
+            break;
+
+        case MR_VAR_SPEC_ATTRIBUTE:
+            fprintf(fp, "!%s", var_spec->MR_var_spec_name);
+            break;
+    }
+}
+
 static int
 MR_compare_slots_on_headvar_num(const void *p1, const void *p2)
 {
@@ -1408,7 +1425,7 @@ MR_lookup_unambiguous_var_spec(MR_VarSpec var_spec,
     return NULL;
 }
 
-static const char *
+const char *
 MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
     MR_VarSpec var_spec, char *path, MR_Browser browser,
     MR_BrowseCallerType caller, MR_BrowseFormat format,
@@ -1432,7 +1449,7 @@ MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
         bad_path = MR_trace_browse_var(out, print_var_name, type_info, value,
             name, path, browser, caller, format);
         if (bad_path != NULL) {
-            return MR_trace_bad_path(bad_path);
+            return MR_trace_bad_path_in_var(&var_spec, bad_path);
         }
     } else {
         int success_count;
@@ -1540,19 +1557,86 @@ MR_trace_print_size_all(FILE *out)
 #define BAD_PATH_MSG_PREFIX     "the path "
 #define BAD_PATH_MSG_SUFFIX     " does not exist"
 
+static  char    MR_trace_bad_path_buffer[BAD_PATH_BUFFER_SIZE];
+
 const char *
 MR_trace_bad_path(const char *path)
 {
-    static  char    buffer[BAD_PATH_BUFFER_SIZE];
-
     if (strlen(BAD_PATH_MSG_PREFIX) + strlen(path) +
         strlen(BAD_PATH_MSG_SUFFIX) < BAD_PATH_BUFFER_SIZE)
     {
-        sprintf(buffer, "%s%s%s", BAD_PATH_MSG_PREFIX, path,
+        sprintf(MR_trace_bad_path_buffer, "%s%s%s", BAD_PATH_MSG_PREFIX, path,
             BAD_PATH_MSG_SUFFIX);
-        return buffer;
+        return MR_trace_bad_path_buffer;
     } else {
         return "the given path does not exist";
+    }
+}
+
+#define BAD_VAR_PATH_BUFFER_SIZE    128
+#define BAD_VAR_PATH_MSG_MIDDLE     " in variable "
+
+static char MR_trace_bad_path_in_var_buffer[BAD_VAR_PATH_BUFFER_SIZE];
+
+const char *
+MR_trace_bad_path_in_var(MR_VarSpec *var_spec, const char *path)
+{
+    const char  *path_msg;
+    int         suffix_len;
+
+    path_msg = MR_trace_bad_path(path);
+    suffix_len = 0;
+    switch (var_spec->MR_var_spec_kind) {
+        case MR_VAR_SPEC_NUMBER:
+            /* This should be ample. */
+            suffix_len = 20;
+            break;
+
+        case MR_VAR_SPEC_NAME:
+            suffix_len = strlen(var_spec->MR_var_spec_name);
+            break;
+
+        case MR_VAR_SPEC_HELD_NAME:
+            suffix_len = strlen(var_spec->MR_var_spec_name) + 1;
+            break;
+
+        case MR_VAR_SPEC_ATTRIBUTE:
+            suffix_len = strlen(var_spec->MR_var_spec_name) + 1;
+            break;
+    }
+
+    if (strlen(path_msg) + strlen(BAD_VAR_PATH_MSG_MIDDLE) + suffix_len
+        < BAD_PATH_BUFFER_SIZE)
+    {
+        switch (var_spec->MR_var_spec_kind) {
+            case MR_VAR_SPEC_NUMBER:
+                sprintf(MR_trace_bad_path_in_var_buffer, "%s%s%d",
+                    path_msg, BAD_VAR_PATH_MSG_MIDDLE,
+                    var_spec->MR_var_spec_number);
+                break;
+
+            case MR_VAR_SPEC_NAME:
+                sprintf(MR_trace_bad_path_in_var_buffer, "%s%s%s",
+                    path_msg, BAD_VAR_PATH_MSG_MIDDLE,
+                    var_spec->MR_var_spec_name);
+                break;
+
+            case MR_VAR_SPEC_HELD_NAME:
+                sprintf(MR_trace_bad_path_in_var_buffer, "%s%s$%s",
+                    path_msg, BAD_VAR_PATH_MSG_MIDDLE,
+                    var_spec->MR_var_spec_name);
+                break;
+
+            case MR_VAR_SPEC_ATTRIBUTE:
+                sprintf(MR_trace_bad_path_in_var_buffer, "%s%s!%s",
+                    path_msg, BAD_VAR_PATH_MSG_MIDDLE,
+                    var_spec->MR_var_spec_name);
+                break;
+        }
+
+        return MR_trace_bad_path_in_var_buffer;
+    } else {
+        return path_msg;
     }
 }
 
@@ -1741,6 +1825,21 @@ MR_trace_browse_var(FILE *out, MR_bool print_var_name,
         fprintf(out, "%7s", "");
         fprintf(out, "%s", name);
         len = strlen(name);
+
+        if (path != NULL) {
+            char    sep;
+
+            /* Try to conform to the separator used in the path. */
+            if (strchr(path, '/') != NULL && strchr(path, '^') == NULL) {
+                sep = '/';
+            } else {
+                sep = '^';
+            }
+
+            fprintf(out, "%c%s", sep, path);
+            len += 1 + strlen(path);
+        }
+
         while (len < MR_TRACE_PADDED_VAR_NAME_LENGTH) {
             fputc(' ', out);
             len++;
