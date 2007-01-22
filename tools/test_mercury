@@ -222,6 +222,8 @@ case $HOST in
 			;;
 	earth)		OPTIMIZE="-O2" ;;
 	saturn)		OPTIMIZE="-O5 --intermodule-optimization" ;;
+	neptune)	OPTIMIZE="-O4" ;;
+	pluto)		OPTIMIZE="-O2 --intermodule-optimization" ;;
 	$G12_ROTD_HOST|swordfish)
 		case $BRANCH in
 			g12) OPTIMIZE="-O3" ;;
@@ -296,12 +298,10 @@ PATH="$INSTALL_DIR/bin:$PATH"
 
 # $PARALLEL: flag to pass to GNU make for parallel make
 #
-# XXX we should be able to do parallel builds on saturn
-# but support for parallel builds seems to be broken 
-# at the moment.
 PARALLEL=
 case $HOST in
-	*)		PARALLEL= ;;
+	saturn|pluto)	PARALLEL="-j2" ;;
+	*)			PARALLEL= ;;
 esac
 
 # Version of the mercury compiler to use for bootstrapping
@@ -394,14 +394,42 @@ case $HOST in
 					asm_fast.gc.prof	\
 					asm_fast.gc.tr		\
 					asm_fast.gc.tr.debug	\
-					asm_fast.gc.mm		\
-					asm_fast.gc.profdeep	\
 					asm_fast.gc.tr.profdeep	\
 					hlc.gc			\
 					hlc.gc.tr		\
 					hlc.par.gc		\
 					asm_fast.par.gc"
-		;;					
+		;;
+	neptune)
+		CONFIG_OPTS=""
+		INSTALL_LIBGRADES="
+			asm_fast.gc			\
+			asm_fast.gc.tr			\
+			asm_fast.gc.tr.debug		\
+			hlc.gc				\
+			hlc.gc.tr			\
+			hlc.gc.tr.ll_debug		\
+			asm_fast.gc.tr.prof		\
+			asm_fast.gc.tr.memprof		\
+			asm_fast.gc.tr.profdeep"	
+		;;	
+	pluto)
+		DEFAULT_GRADE="hlc.gc"
+		export DEFAULT_GRADE
+		INSTALL_GRADE="hlc.gc"
+		CONFIG_OPTS=""
+		INSTALL_LIBGRADES="
+			hlc.gc				\
+			hlc.gc.tr			\
+			hlc.par.gc			\
+			asm_fast.gc			\
+			asm_fast.par.gc			\
+			asm_fast.gc.tr			\
+			asm_fast.gc.tr.debug		\
+			asm_fast.gc.profdeep		\
+			reg.gc.tr"			
+		;;
+			
 	jupiter)
 		# Ensure that the nogc grades get installed and tested
 		# on at least one host
@@ -935,7 +963,13 @@ case $HOST in
 		fullname=i686-pc-linux-libc2.3-gnu-O3
 		;;
 	saturn)
-		fullname=x86_64-unknown-linux-gnu-libc2.3
+		fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O5-intermod
+		;;
+	neptune)
+		fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O4
+		;;
+	pluto)
+		fullname=x86_64-unknown-linux-gnu-libc2.3-gnu-O2-intermod-hlc
 		;;
 	*)
 		fullname=$fullarch
