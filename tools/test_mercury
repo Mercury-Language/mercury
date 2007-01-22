@@ -427,6 +427,7 @@ case $HOST in
 			asm_fast.gc.tr			\
 			asm_fast.gc.tr.debug		\
 			asm_fast.gc.profdeep		\
+			asm_fast.gc.stseg		\
 			reg.gc.tr"			
 		;;
 			
