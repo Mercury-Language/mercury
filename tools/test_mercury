@@ -402,8 +402,7 @@ case $HOST in
 		;;
 	neptune)
 		CONFIG_OPTS=""
-		INSTALL_LIBGRADES="
-			asm_fast.gc			\
+		INSTALL_LIBGRADES="asm_fast.gc		\
 			asm_fast.gc.tr			\
 			asm_fast.gc.tr.debug		\
 			hlc.gc				\
@@ -418,8 +417,7 @@ case $HOST in
 		export DEFAULT_GRADE
 		INSTALL_GRADE="hlc.gc"
 		CONFIG_OPTS=""
-		INSTALL_LIBGRADES="
-			hlc.gc				\
+		INSTALL_LIBGRADES="hlc.gc		\
 			hlc.gc.tr			\
 			hlc.par.gc			\
 			asm_fast.gc			\
