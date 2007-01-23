@@ -624,21 +624,27 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 */
 
 #define MR_TRACE_CALL_MERCURY(STATEMENTS) do {				\
+		MR_bool		saved_debug_enabled;			\
 		MR_bool		saved_io_enabled;			\
 		MR_Unsigned     saved_trace_call_seqno;			\
 		MR_Unsigned     saved_trace_call_depth;			\
 		MR_Unsigned     saved_trace_event_number;		\
 									\
+		saved_debug_enabled = MR_debug_enabled;			\
 		saved_io_enabled = MR_io_tabling_enabled;		\
 		saved_trace_call_seqno = MR_trace_call_seqno;		\
 		saved_trace_call_depth = MR_trace_call_depth;		\
 		saved_trace_event_number = MR_trace_event_number;	\
+		MR_debug_enabled = MR_FALSE;				\
+		MR_update_trace_func_enabled();				\
 		MR_io_tabling_enabled = MR_FALSE;			\
 		MR_restore_transient_registers();			\
 		MR_save_registers();					\
 		STATEMENTS;						\
 		MR_restore_registers();					\
 		MR_save_transient_registers();				\
+		MR_debug_enabled = saved_debug_enabled;			\
+		MR_update_trace_func_enabled();				\
 		MR_io_tabling_enabled = saved_io_enabled;		\
 		MR_trace_call_seqno = saved_trace_call_seqno;		\
 		MR_trace_call_depth = saved_trace_call_depth;		\

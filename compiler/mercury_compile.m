@@ -2828,23 +2828,25 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     find_simplifications(no, Globals, Simplifications0),
     SimpList0 = simplifications_to_list(Simplifications0),
 
+    globals.lookup_bool_option(Globals, constant_propagation, ConstProp),
     globals.lookup_bool_option(Globals, profile_deep, DeepProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
-
     ProfTrans = bool.or_list([DeepProf, TSWProf, TSCProf]),
-    (
-        % Don't run constant propagation if any of the profiling
-        % transformations has been applied.
-        %
-        % NOTE: Any changes here may also need to be made to
-        % mercury_compile.simplify.
 
-        ProfTrans = yes,
-        SimpList1 = list.delete_all(SimpList0, simp_constant_prop)
-    ;
-        ProfTrans = no,
+    % Don't run constant propagation if any of the profiling
+    % transformations has been applied.
+    %
+    % NOTE: Any changes here may also need to be made to
+    % mercury_compile.simplify.
+
+    (
+        ConstProp = yes,
+        ProfTrans = no
+    ->
         list.cons(simp_constant_prop, SimpList0, SimpList1)
+    ;
+        SimpList1 = list.delete_all(SimpList0, simp_constant_prop)
     ),
 
     SimpList = [simp_do_once, simp_elim_removable_scopes | SimpList1],
@@ -3237,6 +3239,7 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
 
 simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, constant_propagation, ConstProp),
     globals.lookup_bool_option(Globals, profile_deep, DeepProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
@@ -3271,19 +3274,21 @@ simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, Specs, !IO) :-
                 SimplifyPass = ml_backend,
                 list.cons(simp_do_once, !SimpList)
             ;
+                SimplifyPass = ll_backend,
                 % Don't perform constant propagation if one of the
                 % profiling transformations has been applied.
                 %
                 % NOTE: Any changes made here may also need to be made
                 % to the relevant parts of backend_pass_by_preds_4/12.
-                %
-                SimplifyPass = ll_backend,
+
                 (
-                    IsProfPass = yes,
-                    list.delete_all(!.SimpList, simp_constant_prop, !:SimpList)
-                ;
-                    IsProfPass = no,
+                    ConstProp = yes,
+                    IsProfPass = no
+                ->
                     list.cons(simp_constant_prop, !SimpList)
+                ;
+                    !:SimpList = list.delete_all(!.SimpList,
+                        simp_constant_prop)
                 ),
                 list.cons(simp_do_once, !SimpList),
                 list.cons(simp_elim_removable_scopes, !SimpList)
