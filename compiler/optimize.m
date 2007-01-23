@@ -380,7 +380,7 @@ optimize_repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
             VeryVerbose = no
         ),
         globals.io_get_gc_method(GC_Method, !IO),
-        peephole.optimize(GC_Method, !Instrs, Mod2),
+        peephole_optimize(GC_Method, !Instrs, Mod2),
         maybe_opt_debug(!.Instrs, !.C, "peep", "after peephole",
             ProcLabel, !OptDebugInfo, !IO)
     ;
@@ -516,7 +516,7 @@ optimize_middle(Final, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti, !C,
                 VeryVerbose = no
             ),
             globals.io_get_gc_method(GC_Method, !IO),
-            peephole.optimize(GC_Method, !Instrs, _Mod),
+            peephole_optimize(GC_Method, !Instrs, _Mod),
             maybe_opt_debug(!.Instrs, !.C, "peep", "after peephole",
                 ProcLabel, !OptDebugInfo, !IO)
         ;

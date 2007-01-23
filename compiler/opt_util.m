@@ -150,6 +150,16 @@
 :- pred no_stack_straight_line(list(instruction)::in,
     list(instruction)::out, list(instruction)::out) is det.
 
+    % Check whether the given instruction sequence consist of an initial
+    % sequence of instructions that do not refer to stackvars and do not
+    % contain any entry points or unconditional branches away, until a
+    % goto(do_succeed(yes)) instruction. If yes, return that initial sequence,
+    % the comment on the goto(do_succeed(yes)) instruction, and the
+    % instructions after it.
+    %
+:- pred may_replace_succeed_with_succeed_discard(list(instruction)::in,
+    list(instruction)::out, string::out, list(instruction)::out) is semidet.
+
     % Remove the labels from a block of code for jumpopt.
     %
 :- pred filter_out_labels(list(instruction)::in, list(instruction)::out)
@@ -644,6 +654,54 @@ no_stack_straight_line_2([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
         no_stack_straight_line_2(Instrs0, !RevStraightLine, Instrs)
     ;
         Instrs = [Instr0 | Instrs0]
+    ).
+
+may_replace_succeed_with_succeed_discard(Instrs0, UntilSucceed, SucceedComment,
+        Remain) :-
+    may_replace_succeed_with_succeed_discard_2(Instrs0, [], RevUntilSucceed,
+        SucceedComment, Remain),
+    list.reverse(RevUntilSucceed, UntilSucceed).
+
+:- pred may_replace_succeed_with_succeed_discard_2(list(instruction)::in,
+    list(instruction)::in, list(instruction)::out, string::out,
+    list(instruction)::out) is semidet.
+
+may_replace_succeed_with_succeed_discard_2([Instr0 | Instrs0],
+        !RevUntilSucceed, SucceedComment, Remain) :-
+    Instr0 = llds_instr(Uinstr, Comment),
+    (
+        Uinstr = goto(do_succeed(yes))
+    ->
+        SucceedComment = Comment,
+        Remain = Instrs0
+    ;
+        (
+            Uinstr = assign(Lval, Rval),
+            lval_refers_stackvars(Lval) = no,
+            rval_refers_stackvars(Rval) = no
+        ;
+            ( Uinstr = comment(_)
+            ; Uinstr = livevals(_)
+            ; Uinstr = if_val(_, _)
+            ; Uinstr = incr_hp(_, _, _, _, _, _)
+            ; Uinstr = mark_hp(_)
+            ; Uinstr = restore_hp(_)
+            ; Uinstr = free_heap(_)
+            ; Uinstr = store_ticket(_)
+            ; Uinstr = store_ticket(_)
+            ; Uinstr = reset_ticket(_, _)
+            ; Uinstr = prune_ticket
+            ; Uinstr = discard_ticket
+            ; Uinstr = mark_ticket_stack(_)
+            ; Uinstr = prune_tickets_to(_)
+            )
+        )
+    ->
+        !:RevUntilSucceed = [Instr0 | !.RevUntilSucceed],
+        may_replace_succeed_with_succeed_discard_2(Instrs0, !RevUntilSucceed,
+            SucceedComment, Remain)
+    ;
+        fail
     ).
 
 lval_refers_stackvars(reg(_, _)) = no.
