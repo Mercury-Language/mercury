@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -75,6 +75,10 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+% This module import is required by the Mercury clause for measure_size/2.
+%
+:- import_module require.
 
 %---------------------------------------------------------------------------%
 

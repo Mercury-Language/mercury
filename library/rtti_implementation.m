@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,7 +84,7 @@
 %
 % Implementations for use from construct.
 
-:- func num_functors(type_desc.type_desc) = int.
+:- func num_functors(type_desc.type_desc) = int is semidet.
 
 :- pred get_functor(type_desc.type_desc::in, int::in, string::out, int::out,
     list(type_desc.type_desc)::out) is semidet.
@@ -240,7 +240,7 @@ num_functors(TypeDesc) = NumFunctors :-
         ; TypeCtorRep = tcr_stable_foreign
         ; TypeCtorRep = tcr_reference
         ),
-        NumFunctors = -1
+        fail
     ;
         TypeCtorRep = tcr_unknown,
         error("num_functors: unknown type_ctor_rep")
