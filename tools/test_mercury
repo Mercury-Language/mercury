@@ -401,7 +401,7 @@ case $HOST in
 					asm_fast.par.gc"
 		;;
 	neptune)
-		CONFIG_OPTS=""
+		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
 		INSTALL_LIBGRADES="asm_fast.gc		\
 			asm_fast.gc.tr			\
 			asm_fast.gc.tr.debug		\
@@ -416,7 +416,7 @@ case $HOST in
 		DEFAULT_GRADE="hlc.gc"
 		export DEFAULT_GRADE
 		INSTALL_GRADE="hlc.gc"
-		CONFIG_OPTS=""
+		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
 		INSTALL_LIBGRADES="hlc.gc		\
 			hlc.gc.tr			\
 			hlc.par.gc			\
