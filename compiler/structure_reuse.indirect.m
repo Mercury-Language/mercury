@@ -56,6 +56,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.livedata.
@@ -196,17 +197,16 @@ indirect_reuse_analyse_pred_proc(SharingTable, ReuseTable, PPId,
 
 ir_background_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable,
         ReuseTable) = BG :-
-    PredOrigArity = pred_info_orig_arity(PredInfo),
-    proc_info_get_headvars(ProcInfo, HeadVars),
-    PredArity = list.length(HeadVars),
-    Diff = PredArity - PredOrigArity,
     % We don't need to keep track of any information regarding inserted
     % type-info arguments and alike, so we remove them from the list
     % of headvariables:
-    list.det_split_list(Diff, HeadVars, _AddedHeadVars, OrigHeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_vartypes(ProcInfo, Vartypes), 
+    HeadVarsOfInterest = 
+        remove_typeinfo_vars(Vartypes, HeadVars), 
 
     BG = ir_background_info(ModuleInfo, PredInfo, ProcInfo,
-        SharingTable, ReuseTable, OrigHeadVars).
+        SharingTable, ReuseTable, HeadVarsOfInterest).
 
 :- func analysis_info_init(pred_proc_id, sr_fixpoint_table) = ir_analysis_info.
 
