@@ -1325,13 +1325,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %      GC occurs. A better method would be to just allocate a
         %      word of heap space at each choice point.
         %
-        % XXX for the MLDS back-end,
-        % accurate GC currently also requires disabling the higher-order
-        % specialization pass, since that pass creates procedures
-        % which don't respect left-to-right scoping of type_info parameters,
-        % i.e. in which a parameter X may have a type whose type_info var
-        % (in the type_info_varmap) occurs to the right of X in the
-        % procedure's parameter list.
+        % XXX we also need to disable optimize-constructor-last-call
+        % as currently the collector (and tracing code generator) knows
+        % neither about the pre-constructed data structures nor the
+        % references into them that this optimisation uses.
         %
         % XXX we also disable type specialization.
         % This is needed because type specialization may create
@@ -1351,10 +1348,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 reclaim_heap_on_semidet_failure, bool(no), !Globals),
             globals.set_option(
                 reclaim_heap_on_nondet_failure, bool(no), !Globals),
-
-            option_implies(highlevel_code, optimize_higher_order,
+            globals.set_option(optimize_constructor_last_call,
                 bool(no), !Globals),
-
             globals.set_option(type_specialization, bool(no), !Globals),
             globals.set_option(user_guided_type_specialization,
                 bool(no), !Globals)
