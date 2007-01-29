@@ -4723,7 +4723,7 @@ cat >>$CONFIG_STATUS <<_ACEOF
 
 AMDEP_TRUE="$AMDEP_TRUE" ac_aux_dir="$ac_aux_dir"
 PICFLAG=${PICFLAG}
-CC=${CC}
+CC="${CC}"
 DEFS=${DEFS}
 
 _ACEOF
