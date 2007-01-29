@@ -1666,6 +1666,8 @@ mlds_output_initializer_body(Indent, init_struct(_Type, FieldInits), !IO) :-
     io.write_string("{\n", !IO),
     io.write_list(FieldInits, ",\n", mlds_output_initializer_body(Indent + 1),
         !IO),
+    io.write_string("\n", !IO),
+    mlds_indent(Indent, !IO),
     io.write_string("}", !IO).
 mlds_output_initializer_body(Indent, init_array(ElementInits), !IO) :-
     % Standard ANSI/ISO C does not allow empty arrays. But the MLDS does.
@@ -1678,14 +1680,16 @@ mlds_output_initializer_body(Indent, init_array(ElementInits), !IO) :-
     io.write_string("{\n", !IO),
     (
         ElementInits = [],
-        mlds_indent(Indent, !IO),
+        mlds_indent(Indent + 1, !IO),
         io.write_string("0", !IO)
     ;
         ElementInits = [_ | _],
         io.write_list(ElementInits, ",\n",
             mlds_output_initializer_body(Indent + 1), !IO)
     ),
-    io.write_string(" }", !IO).
+    io.write_string("\n", !IO),
+    mlds_indent(Indent, !IO),
+    io.write_string("}", !IO).
 
 %-----------------------------------------------------------------------------%
 %
