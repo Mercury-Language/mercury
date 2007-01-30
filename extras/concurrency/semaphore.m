@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003-2004, 2006 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004, 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -208,8 +208,8 @@ signal_skip_to_the_end_2: ;
     }
 #else
     sem->count++;
-    MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
     MR_SIGNAL(&(sem->cond));
+    MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
 #endif
     IO = IO0;
 ").
@@ -262,7 +262,13 @@ wait_skip_to_the_end: ;
     }
 #else
     while (sem->count <= 0) {
-        MR_WAIT(&(sem->cond), &(sem->lock));
+        /*
+        ** Although it goes against the spec, pthread_cond_wait() can
+        ** return prematurely with the error code EINTR in glibc 2.3.2
+        ** if the thread is sent a signal.
+        */
+        while (MR_WAIT(&(sem->cond), &(sem->lock)) != 0) {
+        }
     }
 
     sem->count--;
