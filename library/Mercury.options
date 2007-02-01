@@ -67,3 +67,4 @@ MCFLAGS-term_size_prof_builtin += --no-warn-unused-imports
 # the right places is tricky (i.e. I gave up).
 #
 MCFLAGS-thread += --no-local-thread-engine-base
+MCFLAGS-thread.semaphore += --no-local-thread-engine-base

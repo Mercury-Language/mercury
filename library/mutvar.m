@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,6 +33,11 @@
 :-        mode new_mutvar(in, out) is det.
 :-        mode new_mutvar(di, uo) is det.
 
+    % Create a new mutvar with undefined initial value.
+    %
+:- impure pred new_mutvar0(mutvar(T)).
+:-        mode new_mutvar0(uo) is det.
+
     % Get the value currently referred to by a reference.
     %
 :- impure pred get_mutvar(mutvar(T), T) is det.
@@ -58,8 +63,16 @@ XXX `ui' modes don't work yet
 :- implementation.
 
 :- pragma inline(new_mutvar/2).
+:- pragma inline(new_mutvar0/1).
 :- pragma inline(get_mutvar/2).
 :- pragma inline(set_mutvar/2).
+
+%-----------------------------------------------------------------------------%
+
+new_mutvar(X, Ref) :-
+    impure new_mutvar0(Ref0),
+    impure set_mutvar(Ref0, X),
+    Ref = unsafe_promise_unique(Ref0).
 
 %-----------------------------------------------------------------------------%
 %
@@ -72,22 +85,12 @@ XXX `ui' modes don't work yet
     --->    mutvar(private_builtin.ref(T)).
 
 :- pragma foreign_proc("C",
-    new_mutvar(X::in, Ref::out),
+    new_mutvar0(Ref::uo),
     [will_not_call_mercury, thread_safe],
 "
     MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
         MR_PROC_LABEL, ""mutvar.mutvar/1"");
     MR_define_size_slot(0, Ref, 1);
-    * (MR_Word *) Ref = X;
-").
-:- pragma foreign_proc("C",
-    new_mutvar(X::di, Ref::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_PROC_LABEL, ""mutvar.mutvar/1"");
-    MR_define_size_slot(0, Ref, 1);
-    * (MR_Word *) Ref = X;
 ").
 
 :- pragma foreign_proc("C",
@@ -110,18 +113,10 @@ XXX `ui' modes don't work yet
 %
 
 :- pragma foreign_proc("C#",
-    new_mutvar(X::in, Ref::out),
+    new_mutvar0(Ref::uo),
     [will_not_call_mercury, thread_safe],
 "
     Ref = new object[1];
-    Ref[0] = X;
-").
-:- pragma foreign_proc("C#",
-    new_mutvar(X::di, Ref::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    Ref = new object[1];
-    Ref[0] = X;
 ").
 
 :- pragma foreign_proc("C#",
@@ -147,26 +142,16 @@ XXX `ui' modes don't work yet
 "
     public static class Mutvar {
         public Object object;
-
-        public Mutvar(Object init) {
-            object = init;
-        }
     }
 ").
 
 :- pragma foreign_type("Java", mutvar(T), "mercury.mutvar.Mutvar").
 
 :- pragma foreign_proc("Java",
-    new_mutvar(X::in, Ref::out),
+    new_mutvar0(Ref::uo),
     [will_not_call_mercury, thread_safe],
 "
-    Ref = new mercury.mutvar.Mutvar(X);
-").
-:- pragma foreign_proc("Java",
-    new_mutvar(X::di, Ref::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    Ref = new mercury.mutvar.Mutvar(X);
+    Ref = new mercury.mutvar.Mutvar();
 ").
 
 :- pragma foreign_proc("Java",

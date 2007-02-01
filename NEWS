@@ -18,7 +18,8 @@ Changes to the Mercury language:
 Changes to the Mercury standard library:
 
 * We have moved some of the concurrency primitives out of the extras
-  distribution and into a new standard library module called `thread'.
+  distribution and into a new standard library module called `thread',
+  and its submodules `thread.channel', `thread.mvar', and `thread.semaphore'.
 
 * The following predicates have been added to the list module:
 	list.map_corresponding/4

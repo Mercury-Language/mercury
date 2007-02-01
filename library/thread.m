@@ -24,6 +24,10 @@
 
 :- import_module io.
 
+:- include_module channel.
+:- include_module mvar.
+:- include_module semaphore.
+
 %-----------------------------------------------------------------------------%
 
     % spawn(Closure, IO0, IO) is true iff `IO0' denotes a list of I/O
@@ -142,8 +146,8 @@ call_back_to_mercury(Goal, !IO) :-
 
   typedef struct ML_ThreadWrapperArgs ML_ThreadWrapperArgs;
   struct ML_ThreadWrapperArgs {
-        MR_Word     goal;
-        MR_Word     *thread_local_mutables;
+        MR_Word             goal;
+        MR_ThreadLocalMuts  *thread_local_mutables;
   };
 #endif /* MR_HIGHLEVEL_CODE && MR_THREAD_SAFE */
 ").
@@ -160,7 +164,7 @@ call_back_to_mercury(Goal, !IO) :-
     ** before the child thread has got all the information it needs out of the
     ** structure.
     */
-    args = MR_malloc(sizeof(ML_ThreadWrapperArgs));
+    args = MR_GC_NEW_UNCOLLECTABLE(ML_ThreadWrapperArgs);
     args->goal = goal;
     args->thread_local_mutables =
         MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
@@ -190,7 +194,7 @@ call_back_to_mercury(Goal, !IO) :-
     MR_SET_THREAD_LOCAL_MUTABLES(args->thread_local_mutables);
 
     goal = args->goal;
-    MR_free(args);
+    MR_GC_free(args);
 
     ML_call_back_to_mercury_cc_multi(goal);
 

@@ -277,6 +277,9 @@ mercury_std_library_module("term_size_prof_builtin").
 mercury_std_library_module("term_to_xml").
 mercury_std_library_module("time").
 mercury_std_library_module("thread").
+mercury_std_library_module("thread.channel").
+mercury_std_library_module("thread.mvar").
+mercury_std_library_module("thread.semaphore").
 mercury_std_library_module("tree234").
 mercury_std_library_module("tree_bitset").
 mercury_std_library_module("type_desc").

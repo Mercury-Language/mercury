@@ -6,8 +6,8 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: semaphore.m.
-% Main author: conway
+% File: thread.semaphore.m.
+% Main author: conway.
 % Stability: medium.
 %
 % This module implements a simple semaphore data type for allowing
@@ -18,7 +18,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module semaphore.
+:- module thread.semaphore.
 :- interface.
 
 :- import_module bool.
@@ -64,7 +64,7 @@
     #include ""mercury_context.h""
     #include ""mercury_thread.h""
 
-    typedef struct ME_SEMAPHORE_STRUCT {
+    typedef struct ML_SEMAPHORE_STRUCT {
         int     count;
 #ifndef MR_HIGHLEVEL_CODE
         MR_Context  *suspended;
@@ -76,22 +76,22 @@
 #ifdef MR_THREAD_SAFE
         MercuryLock lock;
 #endif
-    } ME_Semaphore;
+    } ML_Semaphore;
 ").
 
 :- pragma foreign_decl("C#", "
-public class ME_Semaphore {
+public class ML_Semaphore {
     public int count;
 }
 ").
 
-:- pragma foreign_type(c,  semaphore, "ME_Semaphore *").
+:- pragma foreign_type(c,  semaphore, "ML_Semaphore *").
 :- pragma foreign_type(il, semaphore,
-        "class [semaphore__csharp_code]ME_Semaphore").
+        "class [semaphore__csharp_code]ML_Semaphore").
 
 :- pragma foreign_decl("C", "
 #ifdef MR_CONSERVATIVE_GC
-  void ME_finalize_semaphore(void *obj, void *cd);
+  void ML_finalize_semaphore(void *obj, void *cd);
 #endif
 ").
 
@@ -102,11 +102,11 @@ public class ME_Semaphore {
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     MR_Word sem_mem;
-    ME_Semaphore    *sem;
+    ML_Semaphore    *sem;
 
     MR_incr_hp(sem_mem,
-        MR_round_up(sizeof(ME_Semaphore), sizeof(MR_Word)));
-    sem = (ME_Semaphore *) sem_mem;
+        MR_round_up(sizeof(ML_Semaphore), sizeof(MR_Word)));
+    sem = (ML_Semaphore *) sem_mem;
     sem->count = 0;
 #ifndef MR_HIGHLEVEL_CODE
     sem->suspended = NULL;
@@ -124,7 +124,7 @@ public class ME_Semaphore {
     ** when the semaphore is garbage collected.
     */
 #ifdef MR_CONSERVATIVE_GC
-    GC_REGISTER_FINALIZER(sem, ME_finalize_semaphore, NULL, NULL, NULL);
+    GC_REGISTER_FINALIZER(sem, ML_finalize_semaphore, NULL, NULL, NULL);
 #endif
 
     Semaphore = sem;
@@ -135,18 +135,18 @@ public class ME_Semaphore {
     new(Semaphore::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    Semaphore = new ME_Semaphore();
+    Semaphore = new ML_Semaphore();
     Semaphore.count = 0;
 ").
 
 :- pragma foreign_code("C", "
 #ifdef MR_CONSERVATIVE_GC
   void
-  ME_finalize_semaphore(void *obj, void *cd)
+  ML_finalize_semaphore(void *obj, void *cd)
   {
-    ME_Semaphore    *sem;
+    ML_Semaphore    *sem;
 
-    sem = (ME_Semaphore *) obj;
+    sem = (ML_Semaphore *) obj;
 
   #ifdef MR_THREAD_SAFE
     #ifdef MR_HIGHLEVEL_CODE
@@ -171,12 +171,12 @@ public class ME_Semaphore {
     signal(Semaphore::in, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    ME_Semaphore    *sem;
+    ML_Semaphore    *sem;
 #ifndef MR_HIGHLEVEL_CODE
     MR_Context  *ctxt;
 #endif
 
-    sem = (ME_Semaphore *) Semaphore;
+    sem = (ML_Semaphore *) Semaphore;
 
     MR_LOCK(&(sem->lock), ""semaphore__signal"");
 
@@ -236,12 +236,12 @@ signal_skip_to_the_end_2: ;
     wait(Semaphore::in, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    ME_Semaphore    *sem;
+    ML_Semaphore    *sem;
 #ifndef MR_HIGHLEVEL_CODE
     MR_Context  *ctxt;
 #endif
 
-    sem = (ME_Semaphore *) Semaphore;
+    sem = (ML_Semaphore *) Semaphore;
 
     MR_LOCK(&(sem->lock), ""semaphore__wait"");
 
@@ -303,9 +303,9 @@ semaphore.try_wait(Sem, Res, !IO) :-
     try_wait_2(Semaphore::in, Res::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    ME_Semaphore    *sem;
+    ML_Semaphore    *sem;
 
-    sem = (ME_Semaphore *) Semaphore;
+    sem = (ML_Semaphore *) Semaphore;
 
     MR_LOCK(&(sem->lock), ""semaphore.try_wait"");
     if (sem->count > 0) {
@@ -320,8 +320,8 @@ semaphore.try_wait(Sem, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-        try_wait_2(Semaphore::in, Res::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe],
+    try_wait_2(Semaphore::in, Res::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
 "
     if (System.Threading.Monitor.TryEnter(Semaphore)) {
         if (Semaphore.count > 0) {

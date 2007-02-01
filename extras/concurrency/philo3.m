@@ -28,8 +28,8 @@
 
 :- implementation.
 
-:- import_module semaphore.
-:- import_module spawn.
+:- import_module thread.
+:- import_module thread.semaphore.
 
 :- import_module list.
 :- import_module string.
