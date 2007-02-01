@@ -402,7 +402,7 @@
 % mlds_to_c.m, mlds_to_il.m, or mlds_to_java.m for mlds.mercury_array_type.
 %
 
-    % MR_ArrayPtr is defined in runtime/mercury_library_types.h.
+    % MR_ArrayPtr is defined in runtime/mercury_types.h.
 :- pragma foreign_type("C", array(T), "MR_ArrayPtr")
     where equality is array.array_equal,
     comparison is array.array_compare.
