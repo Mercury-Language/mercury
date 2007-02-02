@@ -37,6 +37,12 @@ Changes to the Mercury standard library:
    We have also added versions of list.foldl/4 and list.foldr/4 that have
    determinism multi.
 
+* The following functions have been added to the string module:
+        string.split_at_separator/2
+        string.split_at_char/2
+        string.split_at_string/2
+	string.remove_suffix_if_present/2
+
 * We have changed the interface of the ops module to make lookups of operators
   more efficient.
 

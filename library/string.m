@@ -67,6 +67,11 @@
     %
 :- pred string.remove_suffix(string::in, string::in, string::out) is semidet.
 
+    % string.remove_suffix_if_present(Suffix, String) returns `String' minus
+    % `Suffix' if `String' ends with `Suffix', `String' otherwise
+    %
+:- func string.remove_suffix_if_present(string, string) = string.
+
     % string.prefix(String, Prefix) is true iff Prefix is a prefix of String.
     % Same as string.append(Prefix, _, String).
     %
@@ -555,6 +560,8 @@
     % string.words_separator(char.is_whitespace, " the cat  sat on the  mat") =
     %   ["the", "cat", "sat", "on", "the", "mat"]
     %
+    % Note the difference to string.split_at_separator.
+    %
 :- func string.words_separator(pred(char), string) = list(string).
 :- mode string.words_separator(pred(in) is semidet, in) = out is det.
 
@@ -562,6 +569,33 @@
     %   string.words_separator(char.is_whitespace, String).
     %
 :- func string.words(string) = list(string).
+
+    % string.split_at_separator(SepP, String) returns the list of
+    % substrings of String (in first to last order) that are delimited
+    % by chars matched by SepP. For example,
+    %
+    % string.split_at_separator(char.is_whitespace, " a cat  sat on the  mat")
+    %   = ["", "a", "cat", "", "sat", "on", "the", "", "mat"]
+    %
+    % Note the difference to string.words_separator.
+    %
+:- func string.split_at_separator(pred(char), string) = list(string).
+:- mode string.split_at_separator(pred(in) is semidet, in) = out is det.
+
+    % string.split_at_char(Char, String) =
+    %     string.split_at_separator(unify(Char), String)
+    %
+:- func string.split_at_char(char, string) = list(string).
+
+    % string.split_at_string(Separator, String) returns the list of substrings
+    % of String that are delimited by Separator. For example,
+    %
+    % string.split_at_string("|||", "|||fld2|||fld3") = ["", "fld2", [fld3"]
+    % 
+    % Always the first match of Separator is used to break the String, for
+    % example: string.split_at_string("aa", "xaaayaaaz") = ["x", "ay", "az"] 
+    %
+:- func string.split_at_string(string, string) = list(string).
 
     % string.split(String, Count, LeftSubstring, RightSubstring):
     % `LeftSubstring' is the left-most `Count' characters of `String',
@@ -968,6 +1002,16 @@ string.remove_suffix(A, B, C) :-
     string.to_char_list(B, LB),
     string.to_char_list(C, LC),
     char_list_remove_suffix(LA, LB, LC).
+
+string.remove_suffix_if_present(Suffix, String) = Out :-
+    LeftCount = length(String) - length(Suffix),
+    string.split(String, LeftCount, LeftString, RightString),
+    ( RightString = Suffix ->
+        Out = LeftString
+    ;
+        Out = String
+    ).
+
 
 :- pragma promise_equivalent_clauses(string.prefix/2).
 
@@ -4105,6 +4149,56 @@ words_2(SepP, String, WordEnd, Words0) = Words :-
 %------------------------------------------------------------------------------%
 
 string.words(String) = string.words_separator(char.is_whitespace, String).
+
+%------------------------------------------------------------------------------%
+
+string.split_at_separator(DelimPred, InStr) = OutStrs :-
+    Count = string.length(InStr),
+    split_at_separator2(DelimPred, InStr, Count, Count, [], OutStrs).
+
+:- pred split_at_separator2(pred(char)::in(pred(in) is semidet), string::in,
+    int::in, int::in, list(string)::in, list(string)::out) is det.
+split_at_separator2(DelimPred, Str, I, ThisSegEnd, ITail, OTail) :-
+    % Walk Str backwards extending accumulated list of chunks as chars
+    % matching DelimPred are found.
+    ( I < 0 -> % We're at the beginning.
+        ( ThisSegEnd<0 ->
+            OTail = ["" | ITail]
+        ;
+            ThisSeg = string.unsafe_substring(Str, 0, ThisSegEnd+1),
+            OTail = [ThisSeg | ITail]
+        )
+    ;
+        C = string.unsafe_index(Str, I),
+        ( DelimPred(C) -> % Chop here.
+            ThisSeg = string.unsafe_substring(Str, I+1, ThisSegEnd-I),
+            TTail = [ ThisSeg | ITail ],
+            split_at_separator2(DelimPred, Str, I-1, I-1, TTail, OTail)
+        ; % Extend current segment.
+            split_at_separator2(DelimPred, Str, I-1, ThisSegEnd, ITail, OTail)
+        )
+    ).
+
+%------------------------------------------------------------------------------%
+
+string.split_at_char(C, String) =
+    string.split_at_separator(unify(C), String).
+
+%------------------------------------------------------------------------------%
+
+split_at_string(Needle, Total) =
+    split_at_string(0, length(Needle), Needle, Total).
+
+:- func split_at_string(int, int, string, string) = list(string).
+split_at_string(StartAt, NeedleLen, Needle, Total) = Out :-
+    ( sub_string_search_start(Total, Needle, StartAt, NeedlePos) ->
+        BeforeNeedle = substring(Total, StartAt, NeedlePos-StartAt),
+        Tail = split_at_string(NeedlePos+NeedleLen, NeedleLen, Needle, Total),
+        Out = [BeforeNeedle | Tail]
+    ;
+        string__split(Total, StartAt, _skip, Last),
+        Out = [Last]
+    ).
 
 %------------------------------------------------------------------------------%
 
