@@ -194,9 +194,11 @@ ORDINARY_PROGS=	\
 	string_alignment \
 	string_alignment_bug \
 	string_loop \
+	string_split \
 	string_string \
 	string_strip \
 	string_suffix_bug \
+	string_various \
 	sv_nested_closures \
 	switch_detect \
 	system_sort \
