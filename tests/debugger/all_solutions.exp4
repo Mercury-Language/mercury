@@ -7,7 +7,7 @@ mdb> register --quiet
 mdb> break hello
  0: + stop  interface pred all_solutions.hello/1-0 (multi)
 mdb> continue
-      12:      8  5 CALL pred all_solutions.hello/1-0 (multi)
+      16:     10  5 CALL pred all_solutions.hello/1-0 (multi)
 mdb> stack
    0       pred all_solutions.hello/1-0 (multi)
    1       pred solutions.builtin_aggregate/4-0 (det)

@@ -13,7 +13,7 @@ mdb> break p
 mdb> continue
        2:      2  2 CALL pred solns.p/2-0 (det)
 mdb> finish
-     233:      2  2 EXIT pred solns.p/2-0 (det)
+     237:      2  2 EXIT pred solns.p/2-0 (det)
 mdb> dd -d 3 -n 7
 p(1, [1, 2, 3])
 Valid? no
@@ -35,5 +35,5 @@ Found incorrect contour:
 solutions(q(1), [1, 2, 3])
 p(1, [1, 2, 3])
 Is this a bug? yes
-     233:      2  2 EXIT pred solns.p/2-0 (det)
+     237:      2  2 EXIT pred solns.p/2-0 (det)
 mdb> quit -y
