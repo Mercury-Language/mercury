@@ -1,7 +1,7 @@
 promise_equivalent_solutions_test_2.m:020: Error: the
 promise_equivalent_solutions_test_2.m:020:   `promise_equivalent_solutions'
-promise_equivalent_solutions_test_2.m:020:   goal may bind a variable that is
-promise_equivalent_solutions_test_2.m:020:   not listed: Y.
+promise_equivalent_solutions_test_2.m:020:   goal may constrain a variable that
+promise_equivalent_solutions_test_2.m:020:   is not listed: Y.
 promise_equivalent_solutions_test_2.m:027: Error: the
 promise_equivalent_solutions_test_2.m:027:   `promise_equivalent_solutions'
 promise_equivalent_solutions_test_2.m:027:   goal binds a variable that is not
