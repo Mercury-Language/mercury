@@ -93,6 +93,8 @@
 :- include_module rtti_out.
 
 % The LLDS->x86_64 asm phase.
+:- include_module llds_to_x86_64.
+:- include_module llds_to_x86_64_out.
 :- include_module x86_64_instrs.
 :- include_module x86_64_out.
 

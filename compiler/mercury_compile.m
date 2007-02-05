@@ -122,6 +122,12 @@
 :- import_module bytecode_backend.bytecode_gen.
 :- import_module bytecode_backend.bytecode.
 
+    % The x86_64 asm back-end.
+    %
+:- import_module ll_backend.llds_to_x86_64.
+:- import_module ll_backend.llds_to_x86_64_out.
+:- import_module ll_backend.x86_64_instrs.
+
     % the MLDS back-end
 :- import_module ml_backend.add_trail_ops.         % HLDS -> HLDS
 :- import_module ml_backend.add_heap_ops.          % HLDS -> HLDS
@@ -1639,12 +1645,16 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             )
         ;
             Target = target_x86_64,
-            backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO),
+%             backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO),
+            backend_pass(!HLDS, _, LLDS, !DumpInfo, !IO),
             % XXX Eventually we will call the LLDS->x86_64 asm code
             % generator here and then output the assembler.  At the moment
             % we just output the LLDS as C code.
-            output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
-                _CompileErrors, _, !IO),
+            llds_to_x86_64_asm(!.HLDS, LLDS, X86_64_Asm),
+            output_x86_64_asm(X86_64_Asm, !IO),
+            % need to output x86_64_Asm
+            %output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
+            %    _CompileErrors, _, !IO),
             FactTableBaseFiles = []
         ),
         recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,

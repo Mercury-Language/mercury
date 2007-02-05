@@ -22,11 +22,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_x86_64_instrs(x86_64_instr::in, io::di, io::uo) is det.
+:- pred output_x86_64_instruction(x86_64_instruction::in, 
+    io::di, io::uo) is det.
 
-    % XXX This is just for testing purposes.
-    %
-% :- pred pretend_main(io::di, io::uo) is det.
+:- pred operand_type(operand::in, string::out) is det. 
 
 %-----------------------------------------------------------------------------%
 
@@ -43,105 +42,6 @@
 :- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
-
-    % XXX This is just for testing purposes.
-    %
-% pretend_main(!IO) :-
-%     Comment1 = comment("This is a comment"),
-%     Label1 = label(".L1"),
-%     PseudoOps1 = [
-%         abort,
-%         align(6, no, yes(2)),
-%         align(7, yes(12), no),
-%         align(8, no, no),
-%         ascii([".LI", ".L2"]),
-%         comm(".L3", 8, no),
-%         section(".data", no, no, no)
-%         ],
-%     Instrs1 = [
-%         x86_64_instr(adc(operand_reg(rax), 
-%                      rmro_reg(rbx) 
-%                     ), ""),
-%         x86_64_instr(add(operand_imm(imm8(int8(0x178))), 
-%                      rmro_mem_ref(mem_abs(base_reg(0, r8)))
-%                     ), ""),
-%         x86_64_instr(and(operand_reg(rdx), 
-%                      rmro_mem_ref(mem_abs(base_reg(2, rdx)))
-%                     ), ""),
-%         x86_64_instr(bsf(rmro_reg(r8), r15), ""),
-%         x86_64_instr(bsr(rmro_reg(rcx), rax), ""),
-%         x86_64_instr(bswap(r10), ""),
-%         x86_64_instr(bt(rmro_mem_ref(mem_rip(rip_expr(".L1"))), 
-%             rio_reg(rsi)), ""),
-%         x86_64_instr(btc(rmro_reg(rdi), rio_imm(imm16(int16(0x1822)))), ""),
-%         x86_64_instr(btr(rmro_reg(rbp), 
-%             rio_imm(imm32(int32(0x182199)))), ""),
-%         x86_64_instr(call(rmrol_rel_offset(ro8(int8(127)))), "comment"),
-%         x86_64_instr(cmovo(rmro_mem_ref(mem_rip(rip_constant(int32(2)))), 
-%             r11), ""),
-%         x86_64_instr(mov(operand_imm(imm32(int32(10))), rmro_reg(rbx)), ""),
-%         x86_64_instr(or(operand_mem_ref(mem_rip(rip_constant(int32(2)))), 
-%            rmro_reg(rcx)), ""), 
-%         x86_64_instr(push(operand_mem_ref(mem_abs(base_expr(".L2")))), ""),
-%          x86_64_instr(rol(crio_reg_cl(rcx), rmro_reg(rax)), ""),
-%         x86_64_instr(ror(crio_imm8(int8(20)), rmro_mem_ref(mem_rip(
-%             rip_expr(".L2")) )), ""),
-%         x86_64_instr(sbb(operand_mem_ref(mem_rip(rip_expr(".L1"))), 
-%             rmro_reg(r11)), "")
-%         ],
-%     
-%     Label2 = label(".L2"),
-%     PseudoOps2 = [
-%         section(".rodata", yes("aMS"), yes("@progbits"), yes(1)),
-%         p2align(1,no,yes(7)),
-%         type_("Type", "@function")
-%         ],
-%     Instrs2 = [ 
-%         x86_64_instr(loop(ro8(int8(19))), "another comment"),
-%         x86_64_instr(xor(operand_imm(imm32(int32(19))), 
-%                      rmro_mem_ref(mem_rip(rip_expr(".L4")))
-%                     ), "comment"),
-%         x86_64_instr(jo(ro8(int8(22))), "comment again"),
-%         x86_64_instr(div(rmro_reg(rdx)), "comment div"),
-%         x86_64_instr(jmp(rmrol_label(".L2")), "comment jmp"),
-%         x86_64_instr(mov(operand_mem_ref(mem_abs(base_expr(".L3"))), 
-%             rmro_reg(rbx)), "")
-%         ],
-% 
-%     Instructions = [
-%         comment(""), label(""), directives([file("x86_64_out.m")]), 
-%           instrs([]),
-%         Comment1, Label1, directives(PseudoOps1), instrs(Instrs1), 
-%         comment("Comment"), Label2, directives(PseudoOps2), 
-%           instrs(Instrs2) 
-%         ],
-%     list.foldl(output_x86_64_instrs, Instructions, !IO).
-
-%-----------------------------------------------------------------------------%
-
-    % Output x86_64 instructions including comments, labels and pseudo-ops. 
-    %
-output_x86_64_instrs(comment(Comment), !IO) :-
-    ( string.length(Comment) > 0 ->
-        io.write_string("# " ++ Comment ++ "\n", !IO)
-    ;
-        true
-    ).
-output_x86_64_instrs(label(LabelName), !IO) :-
-    ( string.length(LabelName) > 0 ->
-        io.write_string(LabelName ++ ":\n", !IO)
-    ;
-        true
-    ).
-output_x86_64_instrs(directives(PseudoOps), !IO) :-
-    list.foldl(output_x86_64_pseudo_op, PseudoOps, !IO).
-output_x86_64_instrs(instrs(Instrs), !IO) :-
-    ( list.length(Instrs) > 0 ->
-        output_x86_64_instr_and_comment(Instrs, !IO)
-    ;   
-        true
-    ).
-
 %-----------------------------------------------------------------------------%
 %
 % Output x86_64 pseudo-op.
@@ -191,7 +91,7 @@ output_x86_64_pseudo_op(double(NumList), !IO) :-
     output_pseudo_op_float_args(".double", NumList, !IO).
 output_x86_64_pseudo_op(eject, !IO) :-
     io.write_string("\t.eject\n", !IO).
-output_x86_64_pseudo_op(else_, !IO) :-
+output_x86_64_pseudo_op(x86_64_pseudo_else, !IO) :-
     io.write_string("\t.else\n", !IO).
 output_x86_64_pseudo_op(elseif, !IO) :-
     io.write_string("\t.elseif\n", !IO).
@@ -235,7 +135,7 @@ output_x86_64_pseudo_op(hword(ExprList), !IO) :-
     output_pseudo_op_str_args(".hword", ExprList, !IO).
 output_x86_64_pseudo_op(ident, !IO) :-
     io.write_string("\t.ident\n", !IO).
-output_x86_64_pseudo_op(if_(Expr), !IO) :-
+output_x86_64_pseudo_op(x86_64_pseudo_if(Expr), !IO) :-
     io.write_string("\t.if\t" ++ Expr ++ "\n", !IO).
 output_x86_64_pseudo_op(ifdef(Symbol), !IO) :-
     io.write_string("\t.ifdef\t" ++ Symbol ++ "\n", !IO).
@@ -324,12 +224,12 @@ output_x86_64_pseudo_op(section(Name, Flags0, Type0, EntSize0), !IO) :-
             ( check_pseudo_section_type(Type1) ->
                 io.write_string("," ++ Type1, !IO)
             ;
-                unexpected(this_file, "output_x86_64_pseudo_op: section: 
-                    check_section_type unexpected")
+                unexpected(this_file, "output_x86_64_pseudo_op: section:" 
+                    ++ " check_section_type unexpected")
             )
         ;
-            unexpected(this_file, "output_x86_64_pseudo_op: section: 
-                check_section_flags_and_type unexpected")
+            unexpected(this_file, "output_x86_64_pseudo_op: section:" 
+                ++ " check_section_flags_and_type unexpected")
         )
      ;
         Flags0 = no
@@ -377,11 +277,12 @@ output_x86_64_pseudo_op(text(Subsection0), !IO) :-
     io.write_string("\n", !IO).
 output_x86_64_pseudo_op(title(Heading), !IO) :-
     io.write_string("\t.title\t" ++ Heading ++ "\n", !IO).
-output_x86_64_pseudo_op(type_(Name, Desc), !IO) :-
+output_x86_64_pseudo_op(x86_64_pseudo_type(Name, Desc), !IO) :-
     ( check_pseudo_type_desc(Desc) ->
         io.write_string("\t.type\t" ++ Name ++ "," ++ Desc ++ "\n", !IO)
     ;
-       unexpected(this_file, "output_x86_64_pseudo_op: type_ unexpected") 
+       unexpected(this_file, "output_x86_64_pseudo_op: x86_64_pseudo_type:"
+            ++ " unexpected: check_pseudo_type_desc failed") 
     ).
 output_x86_64_pseudo_op(uleb128(ExprList), !IO) :-
     output_pseudo_op_str_args(".uleb128", ExprList, !IO).
@@ -463,7 +364,7 @@ output_pseudo_op_str_args(OpName, StrArgs, !IO) :-
 
 pseudo_op_str_args_while([], !IO).
 pseudo_op_str_args_while([Arg | Args], !IO) :-
-    io.write_string(Arg, !IO),
+    io.write_string(string.word_wrap("\"" ++ Arg ++ "\"", comment_length), !IO),
     ( 
         Args = [],
         pseudo_op_str_args_while(Args, !IO)
@@ -472,7 +373,7 @@ pseudo_op_str_args_while([Arg | Args], !IO) :-
         io.write_string(",", !IO),
         pseudo_op_str_args_while(Args, !IO)
     ).
- 
+
     % Check if FLAGS and TYPE argument of '.section' pseudo-op is valid
     %
 :- pred check_section_flags_and_type(string::in, maybe(string)::in, 
@@ -486,8 +387,8 @@ check_section_flags_and_type(Flags, Type0, Result) :-
         ->
             true
         ;
-            unexpected(this_file, "check_section_flags_and_type: 
-               flag unexpected")
+            unexpected(this_file, "check_section_flags_and_type:" 
+               ++ " unexpected: flag")
         )
     ;
         true
@@ -544,139 +445,184 @@ check_pseudo_section_type("@nobits").
 check_pseudo_type_desc("@function").
 check_pseudo_type_desc("@function").
 
+:- func comment_length = int.
+
+comment_length = 68.
+
 %-----------------------------------------------------------------------------%
 %
 % Output x86_64 instructions.
 %
 
-:- pred output_x86_64_instr_and_comment(list(x86_64_instruction)::in, io::di, 
-    io::uo) is det.
-
-output_x86_64_instr_and_comment([], !IO).
-output_x86_64_instr_and_comment([Instr | Instrs], !IO) :-
-    Instr = x86_64_instr(InstrName, Comment),
-    output_x86_64_instr(InstrName, !IO),
-    output_comment(Comment, !IO),
-    output_x86_64_instr_and_comment(Instrs, !IO).
-
-    % Output x86_64 instruction and its operands (if any). 
+    % Output x86_64 instruction and x86_64_comment. 
     %
-:- pred output_x86_64_instr(x86_64_op::in, io::di, io::uo) is det.
+output_x86_64_instruction(x86_64_instr(Instr, Comment), !IO) :-
+    output_x86_64_comment(Comment, !IO),
+    output_x86_64_instr_list(Instr, !IO),
+    io.write_string("\n", !IO).
 
-output_x86_64_instr(adc(Src, Dest), !IO) :-
-    instr_with_op_and_rmro("adc", Src, Dest, !IO). 
-output_x86_64_instr(add(Src, Dest), !IO) :-
-    instr_with_op_and_rmro("add", Src, Dest, !IO). 
-output_x86_64_instr(and(Src, Dest), !IO) :-
-    instr_with_op_and_rmro("and", Src, Dest, !IO). 
-output_x86_64_instr(bsf(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("bsf", Src, Dest, !IO).
-output_x86_64_instr(bsr(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("bsr", Src, Dest, !IO).
-output_x86_64_instr(bswap(Reg), !IO) :-
-    io.write_string("\tbswap\t", !IO),
-    reg_type(Reg, RegType),
-    io.write_string(RegType ++ "\t", !IO).
-output_x86_64_instr(bt(Src, Idx), !IO) :-
-    instr_with_rmro_and_rio("bt", Src, Idx, !IO).
-output_x86_64_instr(btc(Src, Idx), !IO) :-
-    instr_with_rmro_and_rio("btc", Src, Idx, !IO).
-output_x86_64_instr(btr(Src, Idx), !IO) :-
-    instr_with_rmro_and_rio("btr", Src, Idx, !IO).
-output_x86_64_instr(bts(Src, Idx), !IO) :-
-    instr_with_rmro_and_rio("bts", Src, Idx, !IO).
-output_x86_64_instr(call(TargetLocation), !IO) :-
-    instr_with_rmrol("call", TargetLocation, !IO).
-output_x86_64_instr(cbw, !IO) :-
+:- pred output_x86_64_instr_list(list(x86_64_instr)::in, io::di, io::uo) is det.
+
+output_x86_64_instr_list(Instrs, !IO) :-
+    list.foldl(output_x86_64_instr, Instrs, !IO).
+
+:- pred output_x86_64_instr(x86_64_instr::in, io::di, io::uo) is det.
+
+output_x86_64_instr(x86_64_comment(Comment), !IO) :-
+    ( string.length(Comment) > 0 ->
+        io.write_string("\t# ", !IO),
+        ( string.length(Comment) > comment_length ->
+            string.split(Comment, comment_length, Comment1, Comment2),
+            io.write_string(string.word_wrap(Comment1, comment_length), !IO),
+            io.write_string("\n", !IO),
+            output_x86_64_instr(x86_64_comment(Comment2), !IO)
+        ;   
+            io.write_string(string.word_wrap(Comment, comment_length), !IO)
+        )
+    ;
+        true
+    ).
+output_x86_64_instr(x86_64_label(LabelName), !IO) :-
+    ( string.length(LabelName) > 0 ->
+        io.write_string("\n" ++ LabelName ++ ":", !IO)
+    ;
+        true
+    ).
+output_x86_64_instr(x86_64_directive(PseudoOp), !IO) :-
+    output_x86_64_pseudo_op(PseudoOp, !IO).
+output_x86_64_instr(x86_64_instr(Instr), !IO) :-
+    output_x86_64_inst(Instr, !IO),
+    io.write_string("\n", !IO).
+
+
+    % Output a single x86_64 instruction and its operands (if any). 
+    %
+:- pred output_x86_64_inst(x86_64_inst::in, io::di, io::uo) is det.
+
+output_x86_64_inst(adc(Src, Dest), !IO) :-
+    output_instr_not_imm_dest("adc", Src, yes(Dest), !IO).
+output_x86_64_inst(add(Src, Dest), !IO) :-
+    output_instr_not_imm_dest("add", Src, yes(Dest), !IO).
+output_x86_64_inst(and(Src, Dest), !IO) :-
+    output_instr_not_imm_dest("and", Src, yes(Dest), !IO).
+output_x86_64_inst(bs(Src, Dest, Cond), !IO) :-
+    check_operand_not_immediate(Src, Result1),
+    (
+        Result1 = yes,
+        operand_type(Src, SrcType),
+        check_operand_register(Dest, DestRes),
+        (
+            DestRes = yes,
+            ( Cond = f ->
+                Instr = "bsf"
+            ;
+                Cond = r ->
+                Instr = "bsr"
+            ;
+                unexpected(this_file, "output_x86_64_inst: bs: unexpected:" 
+                    ++ " invalid condition third operand")
+            ),
+            io.write_string("\t" ++ Instr ++ "\t", !IO),
+            operand_type(Dest, DestType),
+            io.write_string(SrcType ++ ", " ++ DestType ++ "\t", !IO)
+        ;
+            DestRes = no,
+            unexpected(this_file, "output_x86_64_instr: bs: unexpected:"
+                ++ " second operand is not a register")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: bsf: unexpected: first"
+            ++ " operand is an immediate value")
+    ).
+output_x86_64_inst(bswap(Op), !IO) :-
+    check_operand_register(Op, Result),
+    (
+        Result = yes,
+        operand_type(Op, RegType), 
+        io.write_string("\tbswap\t" ++ RegType ++ "\t\t", !IO)
+    ;
+        Result = no,
+        unexpected(this_file, "output_x86_64_instr: bswap: unexpected: operand"
+            ++ " is not a register")
+    ). 
+output_x86_64_inst(bt(Src, Idx), !IO) :-
+    output_bit_test_instr("bt", Src, Idx, !IO).
+output_x86_64_inst(btc(Src, Idx), !IO) :-
+    output_bit_test_instr("btc", Src, Idx, !IO).
+output_x86_64_inst(btr(Src, Idx), !IO) :-
+    output_bit_test_instr("btr", Src, Idx, !IO).
+output_x86_64_inst(bts(Src, Idx), !IO) :-
+    output_bit_test_instr("bts", Src, Idx, !IO).
+output_x86_64_inst(call(Target), !IO) :-
+    check_operand_not_immediate(Target, Result),
+    (
+        Result = yes,
+        operand_type(Target, TargetType),
+        io.write_string("\tcall\t" ++ TargetType ++ "\t\t", !IO)
+    ;
+        Result = no,
+        unexpected(this_file, "output_x86_64_instr: call: unexpected:" 
+            ++ " invalid target operand")
+    ).
+output_x86_64_inst(cbw, !IO) :-
     io.write_string("\tcbw\t", !IO).
-output_x86_64_instr(cwde, !IO) :-
+output_x86_64_inst(cwde, !IO) :-
     io.write_string("\tcwde\t", !IO).
-output_x86_64_instr(cdqe, !IO) :-
+output_x86_64_inst(cdqe, !IO) :-
     io.write_string("\tcdqe\t", !IO).
-output_x86_64_instr(cwd, !IO) :-
+output_x86_64_inst(cwd, !IO) :-
     io.write_string("\tcwd\t", !IO).
-output_x86_64_instr(cdq, !IO) :-
+output_x86_64_inst(cdq, !IO) :-
     io.write_string("\tcdq\t", !IO).
-output_x86_64_instr(cqo, !IO) :-
+output_x86_64_inst(cqo, !IO) :-
     io.write_string("\tcqo\t", !IO).
-output_x86_64_instr(clc, !IO) :-
+output_x86_64_inst(clc, !IO) :-
     io.write_string("\tclc\t", !IO).
-output_x86_64_instr(cld, !IO) :-
+output_x86_64_inst(cld, !IO) :-
     io.write_string("\tcld\t", !IO).
-output_x86_64_instr(cmc, !IO) :-
+output_x86_64_inst(cmc, !IO) :-
     io.write_string("\tcmc\t", !IO).
-output_x86_64_instr(cmovo(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovo", Src, Dest, !IO).
-output_x86_64_instr(cmovno(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovno", Src, Dest, !IO).
-output_x86_64_instr(cmovb(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovb", Src, Dest, !IO).
-output_x86_64_instr(cmovc(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovc", Src, Dest, !IO).
-output_x86_64_instr(cmovnae(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovnae", Src, Dest, !IO).
-output_x86_64_instr(cmovnb(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovnb", Src, Dest, !IO).
-output_x86_64_instr(cmovnc(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovnc", Src, Dest, !IO).
-output_x86_64_instr(cmovae(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovae", Src, Dest, !IO).
-output_x86_64_instr(cmovz(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovz", Src, Dest, !IO).
-output_x86_64_instr(cmove(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmove", Src, Dest, !IO).
-output_x86_64_instr(cmovnz(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovnz", Src, Dest, !IO).
-output_x86_64_instr(cmovne(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovne", Src, Dest, !IO).
-output_x86_64_instr(cmovbe(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovbe", Src, Dest, !IO).
-output_x86_64_instr(cmovna(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovna", Src, Dest, !IO).
-output_x86_64_instr(cmovnbe(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovnbe", Src, Dest, !IO).
-output_x86_64_instr(cmova(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmova", Src, Dest, !IO).
-output_x86_64_instr(cmovs(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovs", Src, Dest, !IO).
-output_x86_64_instr(cmovns(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovns", Src, Dest, !IO).
-output_x86_64_instr(cmovp(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovp", Src, Dest, !IO).
-output_x86_64_instr(cmovpe(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovpe", Src, Dest, !IO).
-output_x86_64_instr(cmovnp(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovnp", Src, Dest, !IO).
-output_x86_64_instr(cmovpo(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovpo", Src, Dest, !IO).
-output_x86_64_instr(cmovl(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovl", Src, Dest, !IO).
-output_x86_64_instr(cmovnge(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovnge", Src, Dest, !IO).
-output_x86_64_instr(cmovnl(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovnl", Src, Dest, !IO).
-output_x86_64_instr(cmovge(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovge", Src, Dest, !IO).
-output_x86_64_instr(cmovle(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovle", Src, Dest, !IO).
-output_x86_64_instr(cmovng(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovng", Src, Dest, !IO).
-output_x86_64_instr(cmovnle(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovnle", Src, Dest, !IO).
-output_x86_64_instr(cmovg(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("cmovg", Src, Dest, !IO).
-output_x86_64_instr(cmp(Src, Dest), !IO) :-
-    instr_with_op_and_rmro("cmp", Src, Dest, !IO).
-output_x86_64_instr(cmpxchg(Cmp, Xchg), !IO) :-
-    instr_with_rmro_and_reg("cmpxchg", Cmp, Xchg, !IO). 
-output_x86_64_instr(cmpxchg8b(MemRef), !IO) :-
-    mem_ref_type(MemRef, MemRefType), 
-    io.write_string("\tcmpxchg8b" ++ MemRefType, !IO).
-output_x86_64_instr(dec(RegOrMemRef), !IO) :-
-    instr_with_rmro("dec", RegOrMemRef, !IO).
-output_x86_64_instr(div(RegOrMemRef), !IO) :-
-    instr_with_rmro("div", RegOrMemRef, !IO).
-output_x86_64_instr(enter(StackSize, NestingLevel), !IO) :-
+output_x86_64_inst(cmov(Src, Dest, Cond), !IO) :-
+    output_instr_with_condition("cmov", Src, yes(Dest), Cond, !IO).
+output_x86_64_inst(cmp(Src, Dest), !IO) :-
+    output_instr_not_imm_dest("cmp", Src, yes(Dest), !IO).
+output_x86_64_inst(cmpxchg(Src, Dest), !IO) :-
+    check_operand_not_immediate(Src, Result1),
+    (
+        Result1 = yes,
+        check_operand_register(Dest, Result2),
+        (
+            Result2 = yes,
+            operand_type(Src, Op1),
+            operand_type(Dest, Op2),
+            io.write_string("\tcmp\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: xmpxchg: unexpected:"
+                ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: xmpxchg: unexpected:"
+            ++ " invalid first operand")
+    ).
+output_x86_64_inst(cmpxchg8b(Op), !IO) :-
+    check_operand_not_mem_ref(Op, Result),
+    (
+        Result = no,
+        operand_type(Op, OpType),
+        io.write_string("\tcmpxchg8b" ++ OpType, !IO)
+    ;
+        Result = yes,
+        unexpected(this_file, "output_x86_64_instr: cmpxchg8b: unexpected:"
+            ++ "invalid operand")
+    ).
+output_x86_64_inst(dec(Operand), !IO) :-
+    output_instr_not_imm_dest("dec", Operand, no, !IO).
+output_x86_64_inst(div(Operand), !IO) :-
+    output_instr_not_imm_dest("div", Operand, no, !IO).
+output_x86_64_inst(enter(StackSize, NestingLevel), !IO) :-
     StackSize = uint16(Size),
     NestingLevel = uint8(Level),
     check_unsigned_int_size(16, Size, Result0),
@@ -691,238 +637,392 @@ output_x86_64_instr(enter(StackSize, NestingLevel), !IO) :-
         io.write_int(Level, !IO),
         io.write_string("\t", !IO)
     ;
-        unexpected(this_file, "output_x86_64_instr: enter unexpected")
+        unexpected(this_file, "output_x86_64_instr: enter: unexpected:"
+            ++ " check_unsigned_int_size failed")
     ).
-output_x86_64_instr(idiv(RegOrMemRef), !IO) :-
-    instr_with_rmro("idiv", RegOrMemRef, !IO).
-output_x86_64_instr(imul(RegOrMemRef), !IO) :-
-    instr_with_rmro("idiv", RegOrMemRef, !IO).
-output_x86_64_instr(imul(Src, Dest), !IO) :-
-    instr_with_rmro_and_reg("imul", Src, Dest, !IO).
-output_x86_64_instr(imul(RegOrMemRefOp, Imm, Reg), !IO) :-
-    io.write_string("\timul\t", !IO),
-    rmro_type(RegOrMemRefOp, Type),
-    io.write_string(Type ++ ", ", !IO),
-    imm_op_type(Imm, ImmVal),
-    io.write_string(ImmVal ++ ", ", !IO),
-    reg_type(Reg, RegType),
-    io.write_string(RegType ++ "\t", !IO).
-output_x86_64_instr(inc(RegOrMemRef), !IO) :-
-    instr_with_rmro("inc", RegOrMemRef, !IO).
-output_x86_64_instr(jo(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jo", RelOffset, !IO).
-output_x86_64_instr(jno(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jno", RelOffset, !IO).
-output_x86_64_instr(jb(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jb", RelOffset, !IO).
-output_x86_64_instr(jc(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jc", RelOffset, !IO).
-output_x86_64_instr(jnae(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jnae", RelOffset, !IO).
-output_x86_64_instr(jnb(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jnb", RelOffset, !IO).
-output_x86_64_instr(jnc(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jnc", RelOffset, !IO).
-output_x86_64_instr(jae(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jae", RelOffset, !IO).
-output_x86_64_instr(jz(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jz", RelOffset, !IO).
-output_x86_64_instr(je(RelOffset), !IO) :-
-    instr_with_rel_offset_op("je", RelOffset, !IO).
-output_x86_64_instr(jnz(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jnz", RelOffset, !IO).
-output_x86_64_instr(jne(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jne", RelOffset, !IO).
-output_x86_64_instr(jbe(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jbe", RelOffset, !IO).
-output_x86_64_instr(jna(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jna", RelOffset, !IO).
-output_x86_64_instr(jnbe(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jnbe", RelOffset, !IO).
-output_x86_64_instr(ja(RelOffset), !IO) :-
-    instr_with_rel_offset_op("ja", RelOffset, !IO).
-output_x86_64_instr(js(RelOffset), !IO) :-
-    instr_with_rel_offset_op("js", RelOffset, !IO).
-output_x86_64_instr(jns(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jns", RelOffset, !IO).
-output_x86_64_instr(jp(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jp", RelOffset, !IO).
-output_x86_64_instr(jpe(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jpe", RelOffset, !IO).
-output_x86_64_instr(jnp(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jnp", RelOffset, !IO).
-output_x86_64_instr(jpo(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jpo", RelOffset, !IO).
-output_x86_64_instr(jl(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jl", RelOffset, !IO).
-output_x86_64_instr(jnge(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jnge", RelOffset, !IO).
-output_x86_64_instr(jnl(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jnl", RelOffset, !IO).
-output_x86_64_instr(jge(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jge", RelOffset, !IO).
-output_x86_64_instr(jle(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jle", RelOffset, !IO).
-output_x86_64_instr(jng(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jng", RelOffset, !IO).
-output_x86_64_instr(jnle(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jnle", RelOffset, !IO).
-output_x86_64_instr(jg(RelOffset), !IO) :-
-    instr_with_rel_offset_op("jg", RelOffset, !IO).
-output_x86_64_instr(jrcxz(RelOffset), !IO) :-
-    instr_with_8bit_rel_offset_op("jrcxz", RelOffset, !IO).
-output_x86_64_instr(jmp(Target), !IO) :-
-    instr_with_rmrol("jmp", Target, !IO).
-output_x86_64_instr(lea(Src, Dest), !IO) :-
-    instr_with_mem_ref_and_reg_op("lea", Src, Dest, !IO).
-output_x86_64_instr(leave, !IO) :-
+output_x86_64_inst(idiv(Operand), !IO) :-
+    output_instr_not_imm_dest("idiv", Operand, no, !IO).
+output_x86_64_inst(imul(Src, Dest, Mult), !IO) :-
+    operand_type(Src, SrcType),
+    io.write_string("\timul\t" ++ SrcType, !IO),
+    (
+        Dest = yes(DestRes),
+        check_operand_register(DestRes, Result1),
+        (
+            Result1 = yes,
+            operand_type(DestRes, DestType)
+        ;
+            Result1 = no,
+            TempReg = operand_reg(gp_reg(13)),
+            operand_type(TempReg, DestType)
+        ),
+        io.write_string(", " ++ DestType, !IO),
+        (
+            Mult = yes(MultRes),
+            operand_type(MultRes, Op3),
+            io.write_string(", " ++ Op3 ++ " ", !IO)
+        ;
+            Mult = no,
+            io.write_string("\t", !IO)
+        )
+    ;
+        Dest = no,
+        io.write_string("\t\t", !IO)
+   ).
+output_x86_64_inst(inc(Operand), !IO) :-
+    output_instr_not_imm_dest("inc", Operand, no, !IO).
+output_x86_64_inst(j(Offset, Cond), !IO) :-
+    output_instr_with_condition("j", Offset, no, Cond, !IO).
+output_x86_64_inst(jrcxz(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset("jrcxz", RelOffset, !IO).
+output_x86_64_inst(jmp(Target), !IO) :-
+    operand_type(Target, Op),
+    io.write_string("\tjmp\t" ++ Op ++ "\t\t", !IO). 
+output_x86_64_inst(lea(Src, Dest), !IO) :-
+    check_operand_not_mem_ref(Src, Result1),
+    (
+        Result1 = no,
+        check_operand_register(Dest, Result2),
+        (
+            Result2 = yes,
+            operand_type(Src, Op1),
+            operand_type(Dest, Op2),
+            io.write_string("\tlea\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_inst: lea: unexpected:"
+                ++ " invalid second operand")
+        )
+    ;
+        Result1 = yes,
+        unexpected(this_file, "output_x86_64_inst: lea: unexpected:"
+            ++ " invalid first operand")
+    ).
+output_x86_64_inst(leave, !IO) :-
     io.write_string("\tleave\t", !IO).
-output_x86_64_instr(loop(RelOffset), !IO) :-
-    instr_with_8bit_rel_offset_op("loop", RelOffset, !IO).
-output_x86_64_instr(loope(RelOffset), !IO) :-
-    instr_with_8bit_rel_offset_op("loope", RelOffset, !IO).
-output_x86_64_instr(loopne(RelOffset), !IO) :-
-    instr_with_8bit_rel_offset_op("loopne", RelOffset, !IO).
-output_x86_64_instr(loopnz(RelOffset), !IO) :-
-    instr_with_8bit_rel_offset_op("loopnz", RelOffset, !IO).
-output_x86_64_instr(loopz(RelOffset), !IO) :-
-    instr_with_8bit_rel_offset_op("loopz", RelOffset, !IO).
-output_x86_64_instr(mov(Source, Dest), !IO) :-
-    instr_with_op_and_rmro("mov", Source, Dest, !IO). 
-output_x86_64_instr(mul(RegOrMemRef), !IO) :-
-    instr_with_rmro("mul", RegOrMemRef, !IO).
-output_x86_64_instr(neg(RegOrMemRef), !IO) :-
-    instr_with_rmro("neg", RegOrMemRef, !IO).
-output_x86_64_instr(nop, !IO) :-
+output_x86_64_inst(loop(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset("loop", RelOffset, !IO).
+output_x86_64_inst(loope(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset("loope", RelOffset, !IO).
+output_x86_64_inst(loopne(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset("loopne", RelOffset, !IO).
+output_x86_64_inst(loopnz(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset("loopnz", RelOffset, !IO).
+output_x86_64_inst(loopz(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset("loopz", RelOffset, !IO).
+output_x86_64_inst(mov(Src, Dest), !IO) :-
+    output_instr_not_imm_dest("mov", Src, yes(Dest), !IO).
+output_x86_64_inst(mul(Operand), !IO) :-
+    output_instr_not_imm_dest("mul", Operand, no, !IO).
+output_x86_64_inst(neg(Operand), !IO) :-
+    output_instr_not_imm_dest("neg", Operand, no, !IO).
+output_x86_64_inst(nop, !IO) :-
     io.write_string("nop", !IO).
-output_x86_64_instr(not_(RegOrMemRef), !IO) :-
-    instr_with_rmro("not", RegOrMemRef, !IO).
-output_x86_64_instr(or(Src, Dest), !IO) :-
-    instr_with_op_and_rmro("or", Src, Dest, !IO).
-output_x86_64_instr(pop(RegOrMemRefOp), !IO) :-
-    instr_with_rmro("pop", RegOrMemRefOp, !IO).
-output_x86_64_instr(popfq, !IO) :-
+output_x86_64_inst(x86_64_instr_not(Operand), !IO) :-
+    output_instr_not_imm_dest("not", Operand, no, !IO).
+output_x86_64_inst(or(Src, Dest), !IO) :-
+    output_instr_not_imm_dest("or", Src, yes(Dest), !IO).
+output_x86_64_inst(pop(Operand), !IO) :-
+    output_instr_not_imm_dest("pop", Operand, no, !IO).
+output_x86_64_inst(popfq, !IO) :-
     io.write_string("\tpopfq\t", !IO).
-output_x86_64_instr(push(Operand), !IO) :-
+output_x86_64_inst(push(Operand), !IO) :-
     io.write_string("\tpush\t", !IO),
     operand_type(Operand, OperandType),
     io.write_string(OperandType ++ "\t", !IO).
-output_x86_64_instr(pushfq, !IO) :-
+output_x86_64_inst(pushfq, !IO) :-
     io.write_string("\tpushfq\t", !IO).
-output_x86_64_instr(rcl(ClRegOrImm, RegOrMemRef), !IO) :-
-    instr_with_crio_and_rmro("rcl", ClRegOrImm, RegOrMemRef, !IO).
-output_x86_64_instr(rcr(ClRegOrImm, RegOrMemRef), !IO) :-
-    instr_with_crio_and_rmro("rcr", ClRegOrImm, RegOrMemRef, !IO).
-output_x86_64_instr(ret, !IO) :-
-    io.write_string("\tret\t", !IO).
-output_x86_64_instr(ret(uint16(NumBytes)), !IO) :-
-    check_unsigned_int_size(16, NumBytes, Result),
+output_x86_64_inst(rc(Amnt, Dest, Cond), !IO) :-
+    check_rc_first_operand(Amnt, Result1),
     ( 
+        Result1 = yes,
+        check_operand_not_immediate(Dest, Result2),
+        (
+            Result2 = yes,
+            operand_type(Amnt, Op1),
+            operand_type(Dest, Op2),
+            io.write_string("\trc\t" ++ Cond, !IO),
+            io.write_string(Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: rc: unexpected"
+               ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: rc: unexpected"
+            ++ " invalid first operand")
+    ).
+output_x86_64_inst(ret(Op), !IO) :-
+    ( 
+        Op = yes(OpRes),
+        OpRes = uint16(NumBytes)
+    ->
+        check_unsigned_int_size(16, NumBytes, Result),
+        ( 
+            Result = yes,
+            io.write_string("\tret\t", !IO),
+            io.write_int(NumBytes, !IO),
+            io.write_string("\t", !IO)
+        ;
+            Result = no,
+            unexpected(this_file, "output_x86_64_instr: ret: unexpected:"
+                ++ "check_unsigned_int_size failed")
+        )
+    ;
+        Op = no
+    ->
+        io.write_string("\tret\t\t", !IO)
+    ;
+        unexpected(this_file, "output_x86_64_instr: ret: unexpected" 
+            ++ " invalid operand")
+    ).
+output_x86_64_inst(ro(Amnt, Dest, Dir), !IO) :-
+    check_operand_not_mem_ref(Amnt, Result1),
+    ( 
+        Result1 = yes,
+        check_operand_not_immediate(Dest, Result2),
+        (
+            Result2 = yes,
+            operand_type(Amnt, Op1),
+            operand_type(Dest, Op2),
+            io.write_string("\tro" ++ Dir ++ "\t", !IO),
+            io.write_string(Op1 ++ ", " ++ Op2 ++ "\t\t", !IO)
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: ro: unexpected:"
+                ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: ro: unexpected" 
+            ++ " invalid first operand")
+    ).
+output_x86_64_inst(sal(Amnt, Dest), !IO) :-
+    check_operand_unsigned_imm_or_reg(Amnt, Result1),
+    (
+        Result1 = yes,
+        check_operand_not_immediate(Dest, Result2),
+        (
+            Result2 = yes,
+            operand_type(Amnt, Op1),
+            operand_type(Dest, Op2),
+            io.write_string("\tsal\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: sal: unexpected:" 
+                ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: sal: unexpected:"
+            ++ "invalid first operand")
+    ).
+output_x86_64_inst(shl(Amnt, Dest), !IO) :-
+    check_operand_unsigned_imm_or_reg(Amnt, Result1),
+    (
+        Result1 = yes,
+        check_operand_not_immediate(Dest, Result2),
+        (
+            Result2 = yes,
+            operand_type(Amnt, Op1),
+            operand_type(Dest, Op2),
+            io.write_string("\tshl\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: shl: unexpected:"
+                ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: shl: unexpected:" 
+            ++ " invalid first operand")
+    ).
+output_x86_64_inst(sar(Amnt, Dest), !IO) :-
+    check_operand_unsigned_imm_or_reg(Amnt, Result1),
+    (
+        Result1 = yes,
+        check_operand_not_immediate(Dest, Result2),
+        (
+            Result2 = yes,
+            operand_type(Amnt, Op1),
+            operand_type(Dest, Op2),
+            io.write_string("\tsar\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: sar: unexpected:" 
+                ++ "invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: sar: unexpected:"
+            ++ " invalid first operand")
+    ).
+output_x86_64_inst(sbb(Src, Dest), !IO) :-
+    output_instr_not_imm_dest("sbb", Src, yes(Dest), !IO).
+output_x86_64_inst(set(Operand, Cond), !IO) :-
+    check_operand_not_immediate(Operand, Result),
+    (
         Result = yes,
-        io.write_string("\tret\t", !IO),
-        io.write_int(NumBytes, !IO),
-        io.write_string("\t", !IO)
+        output_instr_with_condition("set", Operand, no, Cond, !IO)
     ;
         Result = no,
-        unexpected(this_file, "output_x86_64_instr: ret unexpected")
+        unexpected(this_file, "output_x86_64_instr: set: unexpected" 
+            ++ " invalid first operand")
     ).
-output_x86_64_instr(rol(ClRegOrImm, RegOrMemRef), !IO) :-
-    instr_with_crio_and_rmro("rol", ClRegOrImm, RegOrMemRef, !IO).
-output_x86_64_instr(ror(ClRegOrImm, RegOrMemRef), !IO) :-
-    instr_with_crio_and_rmro("ror", ClRegOrImm, RegOrMemRef, !IO).
-output_x86_64_instr(sal(ClRegOrImm, RegOrMemRef), !IO) :-
-    instr_with_crio_and_rmro("sal", ClRegOrImm, RegOrMemRef, !IO).
-output_x86_64_instr(shl(ClRegOrImm, RegOrMemRef), !IO) :-
-    instr_with_crio_and_rmro("shl", ClRegOrImm, RegOrMemRef, !IO).
-output_x86_64_instr(sar(ClRegOrImm, RegOrMemRef), !IO) :-
-    instr_with_crio_and_rmro("sar", ClRegOrImm, RegOrMemRef, !IO).
-output_x86_64_instr(sbb(Src, Dest), !IO) :-
-    instr_with_op_and_rmro("sbb", Src, Dest, !IO).
-output_x86_64_instr(seto(RegOrMemRef), !IO) :-
-    instr_with_rmro("seto", RegOrMemRef, !IO).
-output_x86_64_instr(setno(RegOrMemRef), !IO) :-
-    instr_with_rmro("setno", RegOrMemRef, !IO).
-output_x86_64_instr(setb(RegOrMemRef), !IO) :-
-    instr_with_rmro("setb", RegOrMemRef, !IO).
-output_x86_64_instr(setc(RegOrMemRef), !IO) :-
-    instr_with_rmro("setc", RegOrMemRef, !IO).
-output_x86_64_instr(setnae(RegOrMemRef), !IO) :-
-    instr_with_rmro("setnae", RegOrMemRef, !IO).
-output_x86_64_instr(setnb(RegOrMemRef), !IO) :-
-    instr_with_rmro("setnb", RegOrMemRef, !IO).
-output_x86_64_instr(setnc(RegOrMemRef), !IO) :-
-    instr_with_rmro("setnc", RegOrMemRef, !IO).
-output_x86_64_instr(setae(RegOrMemRef), !IO) :-
-    instr_with_rmro("setae", RegOrMemRef, !IO).
-output_x86_64_instr(setz(RegOrMemRef), !IO) :-
-    instr_with_rmro("setz", RegOrMemRef, !IO).
-output_x86_64_instr(sete(RegOrMemRef), !IO) :-
-    instr_with_rmro("sete", RegOrMemRef, !IO).
-output_x86_64_instr(setnz(RegOrMemRef), !IO) :-
-    instr_with_rmro("setnz", RegOrMemRef, !IO).
-output_x86_64_instr(setne(RegOrMemRef), !IO) :-
-    instr_with_rmro("setne", RegOrMemRef, !IO).
-output_x86_64_instr(setbe(RegOrMemRef), !IO) :-
-    instr_with_rmro("setbe", RegOrMemRef, !IO).
-output_x86_64_instr(setna(RegOrMemRef), !IO) :-
-    instr_with_rmro("setna", RegOrMemRef, !IO).
-output_x86_64_instr(setnbe(RegOrMemRef), !IO) :-
-    instr_with_rmro("setnbe", RegOrMemRef, !IO).
-output_x86_64_instr(seta(RegOrMemRef), !IO) :-
-    instr_with_rmro("seta", RegOrMemRef, !IO).
-output_x86_64_instr(sets(RegOrMemRef), !IO) :-
-    instr_with_rmro("sets", RegOrMemRef, !IO).
-output_x86_64_instr(setns(RegOrMemRef), !IO) :-
-    instr_with_rmro("setns", RegOrMemRef, !IO).
-output_x86_64_instr(setp(RegOrMemRef), !IO) :-
-    instr_with_rmro("setp", RegOrMemRef, !IO).
-output_x86_64_instr(setpe(RegOrMemRef), !IO) :-
-    instr_with_rmro("setpe", RegOrMemRef, !IO).
-output_x86_64_instr(setnp(RegOrMemRef), !IO) :-
-    instr_with_rmro("setnp", RegOrMemRef, !IO).
-output_x86_64_instr(setpo(RegOrMemRef), !IO) :-
-    instr_with_rmro("setpo", RegOrMemRef, !IO).
-output_x86_64_instr(setl(RegOrMemRef), !IO) :-
-    instr_with_rmro("sel", RegOrMemRef, !IO).
-output_x86_64_instr(setnge(RegOrMemRef), !IO) :-
-    instr_with_rmro("setnge", RegOrMemRef, !IO).
-output_x86_64_instr(setnl(RegOrMemRef), !IO) :-
-    instr_with_rmro("setnl", RegOrMemRef, !IO).
-output_x86_64_instr(setge(RegOrMemRef), !IO) :-
-    instr_with_rmro("setge", RegOrMemRef, !IO).
-output_x86_64_instr(setle(RegOrMemRef), !IO) :-
-    instr_with_rmro("setle", RegOrMemRef, !IO).
-output_x86_64_instr(setng(RegOrMemRef), !IO) :-
-    instr_with_rmro("setng", RegOrMemRef, !IO).
-output_x86_64_instr(setnle(RegOrMemRef), !IO) :-
-    instr_with_rmro("setnle", RegOrMemRef, !IO).
-output_x86_64_instr(setg(RegOrMemRef), !IO) :-
-    instr_with_rmro("setg", RegOrMemRef, !IO).
-output_x86_64_instr(shld(ClRegOrImm, RegOrMemRef, Reg), !IO) :-
-    instr_with_crio_rmro_and_reg("shld", ClRegOrImm, RegOrMemRef, Reg, !IO).
-output_x86_64_instr(shr(ClRegOrImm, RegOrMemRef), !IO) :-
-    instr_with_crio_and_rmro("shr", ClRegOrImm, RegOrMemRef, !IO).
-output_x86_64_instr(shrd(ClRegOrImm, RegOrMemRef, Reg), !IO) :-
-    instr_with_crio_rmro_and_reg("shrd", ClRegOrImm, RegOrMemRef, Reg, !IO).
-output_x86_64_instr(stc, !IO) :-
+output_x86_64_inst(shld(Amnt, Dest1, Reg), !IO) :-
+    check_operand_unsigned_imm_or_reg(Amnt, Result1),
+    (
+        Result1 = yes,
+        check_operand_not_immediate(Dest1, Result2),
+        ( 
+            Result2 = yes,
+            check_operand_register(Reg, Result3),
+            ( 
+                Result3 = yes,
+                operand_type(Amnt, Op1),
+                operand_type(Amnt, Op2),
+                operand_type(Amnt, Op3),
+                io.write_string("\tshld\t" ++ Op1 ++ ", ", !IO),
+                io.write_string(Op2 ++ ", " ++ Op3 ++ "\t", !IO)
+            ;
+                Result3 = no,
+                unexpected(this_file, "output_x86_64_instr: shld: unexpected:"
+                    ++ "invalid third operand")
+            )
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: shld: unexpected:"
+                ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: shld: unexpected"
+            ++ " invalid first operand")
+    ).
+output_x86_64_inst(shr(Amnt, Dest), !IO) :-
+    check_operand_unsigned_imm_or_reg(Amnt, Result1),
+    ( 
+        Result1 = yes,
+        check_operand_not_immediate(Dest, Result2),
+        ( 
+            Result2 = yes,
+            operand_type(Amnt, Op1),
+            operand_type(Dest, Op2),
+            io.write_string("\tshr\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: shr: unexpected"
+               ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: shr: unexpected" 
+            ++ " invalid first operand")
+    ).
+output_x86_64_inst(shrd(Amnt, Dest1, Reg), !IO) :-
+    check_operand_unsigned_imm_or_reg(Amnt, Result1),
+    (
+        Result1 = yes,
+        check_operand_not_immediate(Dest1, Result2),
+        ( 
+            Result2 = yes,
+            check_operand_register(Reg, Result3),
+            ( 
+                Result3 = yes,
+                operand_type(Amnt, Op1),
+                operand_type(Amnt, Op2),
+                operand_type(Amnt, Op3),
+                io.write_string("\tshrd\t" ++ Op1 ++ ", ", !IO),
+                io.write_string(Op2 ++ ", " ++ Op3 ++ "\t", !IO)
+            ;
+                Result3 = no,
+                unexpected(this_file, "output_x86_64_instr: shrd: unexpected"
+                    ++ " invalid third operand")
+            )
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: shrd: unexpected"
+                ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: shrd: unexpected:" 
+          ++ " invalid first operand")
+    ).
+output_x86_64_inst(stc, !IO) :-
     io.write_string("\tstc\t", !IO).
-output_x86_64_instr(std, !IO) :-
+output_x86_64_inst(std, !IO) :-
     io.write_string("\tstd\t", !IO).
-output_x86_64_instr(sub(Src, Dest), !IO) :-
-    instr_with_op_and_rmro("sub", Src, Dest, !IO).
-output_x86_64_instr(test(Src1, Src2), !IO) :-
-    instr_with_rmro_and_rio("test", Src1, Src2, !IO).
-output_x86_64_instr(xadd(Src, Dest), !IO) :-
-    instr_with_reg_and_rmro("xadd", Src, Dest, !IO).
-output_x86_64_instr(xchg(Src1, Src2), !IO) :-
-    instr_with_rmro_and_rmro("xchg", Src1, Src2, !IO).
-output_x86_64_instr(xor(Src, Dest), !IO) :-
-    instr_with_op_and_rmro("xor", Src, Dest, !IO).
+output_x86_64_inst(sub(Src, Dest), !IO) :-
+    output_instr_not_imm_dest("sub", Src, yes(Dest), !IO).
+output_x86_64_inst(test(Src1, Src2), !IO) :-
+    check_operand_not_mem_ref(Src1, Result1),
+    (
+        Result1 = yes,
+        check_operand_not_immediate(Src2, Result2),
+        (
+            Result2 = yes,
+            operand_type(Src1, Op1),
+            operand_type(Src2, Op2),
+            io.write_string("\ttest\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: test: unexpected" 
+                ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: test: unexpected"
+            ++ " invalid first operand")
+    ).
+output_x86_64_inst(xadd(Src, Dest), !IO) :-
+    check_operand_register(Src, Result1),
+    ( 
+        Result1 = yes,
+        check_operand_not_immediate(Dest, Result2),
+        (
+            Result2 = yes,
+            operand_type(Src, Op1),
+            operand_type(Dest, Op2),
+            io.write_string("\txadd\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: unexpected
+                xadd second operand is an immediate value")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: unexpected
+            xadd first operand is not a register")
+    ).
+output_x86_64_inst(xchg(Src1, Src2), !IO) :-
+    check_operand_reg_or_mem(Src1, Result1),
+    (
+        Result1 = yes,
+        check_operand_reg_or_mem(Src2, Result2),
+        (
+            Result2 = yes,
+            operand_type(Src1, Op1),
+            operand_type(Src2, Op2),
+            io.write_string("\txchg\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_x86_64_instr: xchg: unexpected"
+                ++ " invalid second operand")
+        )
+    ;
+        Result1 = no,
+        unexpected(this_file, "output_x86_64_instr: xchg: unexpected" 
+             ++ " invalid second operand")
+    ).
+output_x86_64_inst(xor(Src, Dest), !IO) :-
+    output_instr_not_imm_dest("xor", Src, yes(Dest), !IO).
 
 
-:- pred output_comment(string::in, io::di, io::uo) is det.
+:- pred output_x86_64_comment(string::in, io::di, io::uo) is det.
 
-output_comment(Comment, !IO) :-
+output_x86_64_comment(Comment, !IO) :-
     ( string.length(Comment) > 0 ->
         io.write_string("\t# ", !IO),
         io.write_string(Comment, !IO)
@@ -947,30 +1047,14 @@ imm_op_type(imm16(int16(Val)), ImmVal) :-
 imm_op_type(imm32(int32(Val)), ImmVal) :-
     ImmVal = "$" ++ string.int_to_string(Val).
 
-    % Output a string representation of a general-purpose register. 
-    %
-:- pred reg_type(gp_reg::in, string::out) is det. 
 
-reg_type(rax, "%rax").
-reg_type(rbx, "%rbx").
-reg_type(rcx, "%rcx").
-reg_type(rdx, "%rdx").
-reg_type(rbp, "%rbp").
-reg_type(rsi, "%rsi").
-reg_type(rdi, "%rdi").
-reg_type(rsp, "%rsp").
-reg_type(r8, "%r8").
-reg_type(r9, "%r9").
-reg_type(r10, "%r10").
-reg_type(r11, "%r11").
-reg_type(r12, "%r12").
-reg_type(r13, "%r13").
-reg_type(r14, "%r14").
-reg_type(r15, "%r15").
+:- func reg_type(gp_reg) = string. 
+
+reg_type(gp_reg(RegNum)) = "%r" ++ string.int_to_string(RegNum).
 
     % Output a string representation of a memory reference.
     %
-:- pred mem_ref_type(mem_ref::in, string::out) is det. 
+:- pred mem_ref_type(x86_64_mem_ref::in, string::out) is det. 
 
 mem_ref_type(mem_abs(DirectMemRef), MemRefVal) :-
     base_address_type(DirectMemRef, MemRefVal).
@@ -982,11 +1066,10 @@ mem_ref_type(mem_rip(InstrPtr), MemRefVal) :-
 :- pred base_address_type(base_address::in, string::out) is det.
 
 base_address_type(base_reg(Offset, Reg), BaseAddress) :-
-    reg_type(Reg, RegType),
     ( Offset = 0 ->
-        BaseAddress = "(" ++ RegType ++ ")"
+        BaseAddress = "(" ++ reg_type(Reg) ++ ")"
     ;
-        BaseAddress = string.int_to_string(Offset) ++ "(" ++ RegType ++ ")" 
+        BaseAddress = string.int_to_string(Offset) ++ "(" ++ reg_type(Reg) ++ ")"
     ).
 base_address_type(base_expr(Expr), DispType) :-
     DispType = "$" ++ Expr.
@@ -1002,7 +1085,8 @@ instr_ptr_type(rip_constant(int32(Constant)), InstrPtrType) :-
         InstrPtrType = string.int_to_string(Constant) ++ "(%rip)"
     ;
         Result = no,
-        unexpected(this_file, "instr_ptr_type: int32 unexpected")
+        unexpected(this_file, "instr_ptr_type: rip_constant: unexpected"
+            ++ " check_signed_int_size failed")
     ).
 instr_ptr_type(rip_expr(Symbol), InstrPtrType) :-
     InstrPtrType = Symbol ++ "(%rip)".
@@ -1022,7 +1106,8 @@ rel_offset_type(ro8(int8(Val)), RelOffsetVal) :-
         )
     ;
         Result = no,
-        unexpected(this_file, "rel_offset_type: ro8 unexpected")
+        unexpected(this_file, "rel_offset_type: ro8(int8): unexpected:"
+            ++ " check_signed_int_size failed")
     ).
 rel_offset_type(ro16(int16(Val)), RelOffsetVal) :-
     check_signed_int_size(16, Val, Result),
@@ -1035,7 +1120,8 @@ rel_offset_type(ro16(int16(Val)), RelOffsetVal) :-
         )
     ;
         Result = no,
-        unexpected(this_file, "rel_offset_type: ro16 unexpected")
+        unexpected(this_file, "rel_offset_type: ro16(int16): unexpected"
+            ++ " check_signed_int_size failed")
     ).
 rel_offset_type(ro32(int32(Val)), RelOffsetVal) :-
     check_signed_int_size(32, Val, Result),
@@ -1048,252 +1134,322 @@ rel_offset_type(ro32(int32(Val)), RelOffsetVal) :-
         )
     ;
         Result = no,
-        unexpected(this_file, "rel_offset_type: ro32 unexpected")
+        unexpected(this_file, "rel_offset_type: ro32(int32): unexpected"
+            ++ " check_signed_int_size failed")
     ).
 
-    % Output a string representation of a general operand type. 
-    %
-:- pred operand_type(operand::in, string::out) is det. 
 
 operand_type(operand_reg(Reg), RegType) :-
-    reg_type(Reg, RegType).
+    RegType = reg_type(Reg).
 operand_type(operand_imm(Imm), ImmVal) :-
     imm_op_type(Imm, ImmVal).
 operand_type(operand_mem_ref(MemRef), MemRefVal) :-
     mem_ref_type(MemRef, MemRefVal).
-
-    % Output a string representation of an operand whose type is a register/
-    % memory reference. 
-    %
-:- pred rmro_type(reg_or_mem_ref_op::in, string::out) is det. 
-
-rmro_type(rmro_reg(Reg), RegType) :-
-    reg_type(Reg, RegType).
-rmro_type(rmro_mem_ref(MemRef), MemRefVal) :-
-    mem_ref_type(MemRef, MemRefVal).
-
-    % Output a string representation of an operand whose type is a register
-    % or an immediate value. 
-    %
-:- pred rio_type(reg_or_imm_op::in, string::out) is det. 
-
-rio_type(rio_reg(Reg), RegType) :-
-    reg_type(Reg, RegType).
-rio_type(rio_imm(Imm), ImmVal) :-
-    imm_op_type(Imm, ImmVal).
-
-    % Output a string representation of an operand whose type is a cl register
-    % or an unsigned immediate value. 
-    %
-:- pred crio_type(cl_reg_or_imm_op::in, string::out) is det. 
-
-crio_type(crio_reg_cl(Reg), RegType) :-
-    ( Reg = rcx ->
-        RegType = "%cl"
-    ;
-        unexpected(this_file, "crio_type: crio_reg_cl unexpected")
-    ).
-crio_type(crio_imm8(int8(Val)), ImmVal) :-
-    check_unsigned_int_size(8, Val, Result),
-    ( 
-        Result = yes,
-        ImmVal = "$" ++ string.int_to_string(Val)
-    ;
-        Result = no,
-        unexpected(this_file, "crio_type: crio_imm8 unexpected")
-    ).
-
-    % Output a string representation of an operand whose type is either
-    % a register, memory reference, signed relative offset or a label.
-    %
-:- pred rmrol_type(rmrol::in, string::out) is det. 
-
-rmrol_type(rmrol_reg(Reg), RegType) :-
-    reg_type(Reg, RegType).
-rmrol_type(rmrol_mem_ref(MemRef), MemRefVal) :-
-    mem_ref_type(MemRef, MemRefVal).
-rmrol_type(rmrol_rel_offset(RelOffset), RelOffsetVal) :-
-    rel_offset_type(RelOffset, RelOffsetVal).
-rmrol_type(rmrol_label(LabelName), LabelOut) :-
-    LabelOut = LabelName. 
+operand_type(operand_rel_offset(RelOffset), RelOffsetType) :-
+    rel_offset_type(RelOffset, RelOffsetType).
+operand_type(operand_label(Label), (Label)).
 
 %-----------------------------------------------------------------------------%
 %
 % Subsection of "Output of x86_64 instructions".
 %
 
-    % Output an instruction with a register/memory reference as an operand.
+    % Output an instruction with either one or two operand(s). If the second
+    % operand is present, it cannot be an immediate operand. 
     %
-:- pred instr_with_rmro(string::in, reg_or_mem_ref_op::in, 
+:- pred output_instr_not_imm_dest(string::in, operand::in, maybe(operand)::in,
     io::di, io::uo) is det. 
 
-instr_with_rmro(InstrName, RegOrMemRef, !IO) :-
-    io.write_string("\t" ++ InstrName ++ "\t", !IO),
-    rmro_type(RegOrMemRef, RegOrMemRefType),
-    io.write_string(RegOrMemRefType ++ "\t\t", !IO).
+output_instr_not_imm_dest(Instr, Op1, Op2, !IO) :-
+    operand_type(Op1, Op1Type),
+    ( 
+        Op2 = yes(Op2Result),
+        check_not_both_memory_ops(Op1, Op2Result, Result1),
+        ( 
+            Result1 = yes,
+            operand_type(Op2Result, Op2Type),
+            check_operand_not_immediate(Op2Result, Result2),
+            (
+                Result2 = yes,
+                io.write_string("\t" ++ Instr ++ "\t", !IO),
+                io.write_string(Op1Type ++ ", " ++ Op2Type ++ "\t", !IO)
+            ;
+                Result2 = no,
+                io.write_string("\tmov\t" ++ Op2Type ++ ", %r13\t", !IO),
+                io.write_string("# move immediate to temp reg\n", !IO),
+                io.write_string("\t" ++ Instr ++ "\t", !IO),
+                io.write_string(Op1Type ++ ", " ++ "%r13\t", !IO)
+            )
+        ;
+            Result1 = no,
+            unexpected(this_file, "output_instr_not_imm_dest: unexpected:"
+                ++ " invalid operands - two memory references are not allowed")
+        )
+    ;
+        Op2 = no,
+        io.write_string(Op1Type ++ "\t\t", !IO)
+    ).
 
     % Output an instruction with a signed offset relative to the instruction 
     % pointer as an operand. 
-    %
-:- pred instr_with_rel_offset_op(string::in, rel_offset::in, 
-    io::di, io::uo) is det. 
-
-instr_with_rel_offset_op(InstrName, RelOffset, !IO) :-
-    io.write_string("\t" ++ InstrName ++ "\t", !IO),
-    rel_offset_type(RelOffset, RelOffsetType),
-    io.write_string(RelOffsetType ++ "\t\t", !IO).
-
     % Output an instruction with a signed 8-bit offset relative to the 
     % instruction pointer as an operand. 
     %
-:- pred instr_with_8bit_rel_offset_op(string::in, rel_offset::in, 
+:- pred output_instr_8bit_rel_offset(string::in, operand::in, 
     io::di, io::uo) is det. 
 
-instr_with_8bit_rel_offset_op(InstrName, RelOffset, !IO) :-
+output_instr_8bit_rel_offset(InstrName, RelOffset, !IO) :-
+   check_operand_rel_offset(RelOffset, Result1),
    ( 
-        RelOffset = ro8(int8(Val)),
-        check_signed_int_size(8, Val, Result),
-        Result = yes 
-   ->
-        io.write_string("\t" ++ InstrName ++ "\t", !IO),
-        io.write_int(Val, !IO),
-        io.write_string("\t\t", !IO)
+        Result1 = yes,
+        operand_type(RelOffset, RelOffsetType),
+        ( string.to_int(RelOffsetType, Val) ->
+            check_signed_int_size(8, Val, Result2),
+            (
+                Result2 = yes,
+                io.write_string("\t" ++ InstrName ++ "\t", !IO),
+                io.write_int(Val, !IO),
+                io.write_string("\t\t", !IO)
+            ;
+                Result2 = no,
+                unexpected(this_file, "output_instr_8bit_rel_offset:" 
+                    ++ " unexpected: check_signed_int_size failed")
+            )
+        ;
+            unexpected(this_file, "output_instr_8bit_rel_offset: unexpected:"
+                ++ " string.to_int failed")
+        )
    ;
-        unexpected(this_file, "instr_with_8bit_rel_offset_op: unexpected")
+        Result1 = no,
+        unexpected(this_file, "output_instr_8bit_rel_offset: unexpected:"
+            ++ " invalid operand - operand is not a relative offset")
    ).
 
-    % Output an instruction with either a register, memory reference,
-    % relative offset or a label as its operand.
-    %
-:- pred instr_with_rmrol(string::in, rmrol::in, io::di, io::uo) is det. 
+:- pred output_bit_test_instr(string::in, operand::in, operand::in, io::di, 
+    io::uo) is det. 
 
-instr_with_rmrol(InstrName, Target, !IO) :-
-    io.write_string("\t" ++ InstrName ++ "\t", !IO),
-    rmrol_type(Target, TargetType), 
-    io.write_string(TargetType ++ "\t\t", !IO).
-
-    % Output an instruction with a general operand and a register/memory 
-    % reference as the first and second operand respectively. 
-    %
-:- pred instr_with_op_and_rmro(string::in, operand::in, reg_or_mem_ref_op::in, 
-    io::di, io::uo) is det. 
-
-instr_with_op_and_rmro(InstrName, SrcOperand, DestRegOrMemRefOp, !IO) :-
-    ( 
-        SrcOperand = operand_mem_ref(_),
-        DestRegOrMemRefOp = rmro_mem_ref(_)
-    ->
-        % Both operands cannot be of type memory reference.
-        unexpected(this_file, "instr_with_op_and_rmro: unexpected")
+output_bit_test_instr(Instr, Src, Idx, !IO) :-
+    check_operand_not_immediate(Src, Result1),
+    (
+        Result1 = yes,
+        operand_type(Src, Op1),
+        check_operand_not_mem_ref(Idx, Result2),
+        (
+            Result2 = yes,
+            operand_type(Idx, Op2),
+            ( string.to_int(Op2, IdxInt) ->
+                check_signed_int_size(8, IdxInt, Result3),
+                ( 
+                    Result3 = yes,
+                    io.write_string("\t" ++ Instr ++ "\t", !IO),
+                    io.write_string(Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+                ;
+                    Result3 = no,
+                    unexpected(this_file, "output_bit_test_instr: bt:"
+                        ++ " unexpected: invalid second operand")
+                )
+            ;
+                unexpected(this_file, "output_bit_test_instr: unexpected:"
+                    ++ " string.to_int failed")
+            )
+        ;
+            Result2 = no,
+            unexpected(this_file, "output_bit_test_instr: bt: unexpected:" 
+                ++ " invalid second operand - memory reference is not allowed")
+        )
     ;
-        io.write_string("\t" ++ InstrName ++ "\t", !IO),
-        operand_type(SrcOperand, OperandType), 
-        io.write_string(OperandType ++ ", ", !IO),
-        rmro_type(DestRegOrMemRefOp, DestType), 
-        io.write_string(DestType ++ "\t", !IO)
+        Result1 = no,
+        unexpected(this_file, "output_bit_test_instr: bt: unexpected:"
+            ++ " invalid first operand - immediate value is not allowed")
     ).
 
-    % Output an instruction with a register/memory reference and a register as
-    % the first and second operand respectively. 
-    %
-:- pred instr_with_rmro_and_reg(string::in, reg_or_mem_ref_op::in, gp_reg::in, 
-    io::di, io::uo) is det. 
+:- pred output_instr_with_condition(string::in, operand::in, maybe(operand)::in,
+    condition::in, io::di, io::uo) is det. 
 
-instr_with_rmro_and_reg(InstrName, SrcRegOrMemRefOp, DestReg, !IO) :-
-    io.write_string("\t" ++ InstrName ++ "\t", !IO),
-    rmro_type(SrcRegOrMemRefOp, SrcType), 
-    io.write_string(SrcType ++ ", ", !IO),
-    reg_type(DestReg, RegType), 
-    io.write_string(RegType ++ "\t", !IO).
-
-    % Output an instruction with a register/memory reference and a register/
-    % immediate value as the first and second operand respectively.
-    %
-:- pred instr_with_rmro_and_rio(string::in, reg_or_mem_ref_op::in, 
-    reg_or_imm_op::in, io::di, io::uo) is det. 
-
-instr_with_rmro_and_rio(InstrName, SrcRegOrMemRefOp, DestRegOrImmOp, !IO) :-
-    io.write_string("\t" ++ InstrName ++ "\t", !IO),
-    rmro_type(SrcRegOrMemRefOp, SrcType), 
-    io.write_string(SrcType ++ ",", !IO),
-    rio_type(DestRegOrImmOp, DestType), 
-    io.write_string(DestType ++ "\t", !IO).
-
-    % Output an instruction with a register/memory reference as the first and
-    % second operand respectively.
-    %
-:- pred instr_with_rmro_and_rmro(string::in, reg_or_mem_ref_op::in, 
-    reg_or_mem_ref_op::in, io::di, io::uo) is det. 
-
-instr_with_rmro_and_rmro(InstrName, RegOrMemRefOp0, RegOrMemRefOp1, !IO) :-
-    ( 
-        RegOrMemRefOp0 = rmro_mem_ref(_),
-        RegOrMemRefOp1 = rmro_mem_ref(_)
-    ->
-        unexpected(this_file, "instr_with_rmro_and_rmro: unexpected")
-    ;
-        io.write_string("\t" ++ InstrName ++ "\t", !IO),
-        rmro_type(RegOrMemRefOp0, Type0), 
-        io.write_string(Type0 ++ ", ", !IO),
-        rmro_type(RegOrMemRefOp1, Type1), 
-        io.write_string(Type1 ++ "\t", !IO)
-    ).
-
-    % Output an instruction with a register and a register/memory reference as
-    % the first and second operand respectively. 
-    %
-:- pred instr_with_reg_and_rmro(string::in, gp_reg::in, reg_or_mem_ref_op::in,  
-    io::di, io::uo) is det. 
-
-instr_with_reg_and_rmro(InstrName, SrcReg, DestRegOrMemRefOp, !IO) :-
-    io.write_string("\t" ++ InstrName ++ "\t", !IO),
-    reg_type(SrcReg, RegType), 
-    io.write_string(RegType ++ ", ", !IO),
-    rmro_type(DestRegOrMemRefOp, DestType), 
-    io.write_string(DestType ++ "\t", !IO).
-
-    % Output an instruction with a cl register/immediate value and a register/
-    % memory reference as the first and second operand respectively. 
-    %
-:- pred instr_with_crio_and_rmro(string::in, cl_reg_or_imm_op::in,  
-    reg_or_mem_ref_op::in, io::di, io::uo) is det. 
-
-instr_with_crio_and_rmro(InstrName, ClRegOrImm, RegOrMemRef, !IO) :-
-    io.write_string("\t" ++ InstrName ++ "\t", !IO),
-    crio_type(ClRegOrImm, ClRegOrImmType),
-    io.write_string(ClRegOrImmType ++ ", ", !IO),
-    rmro_type(RegOrMemRef, RegOrMemRefType),
-    io.write_string(RegOrMemRefType ++ "\t", !IO).
-
-    % Output an instruction with a cl register/immediate value, a register/
-    % memory reference and a register as the first, second and third operand 
-    % respectively. 
-    %
-:- pred instr_with_crio_rmro_and_reg(string::in, cl_reg_or_imm_op::in,  
-    reg_or_mem_ref_op::in, gp_reg::in, io::di, io::uo) is det. 
-
-instr_with_crio_rmro_and_reg(InstrName, ClRegOrImm, RegOrMemRef, Reg, !IO) :-
-    io.write_string("\t" ++ InstrName ++ "\t", !IO),
-    crio_type(ClRegOrImm, ClRegOrImmType),
-    io.write_string(ClRegOrImmType ++ "\t", !IO),
-    rmro_type(RegOrMemRef, RegOrMemRefType),
-    io.write_string(RegOrMemRefType ++ ", ", !IO),
-    reg_type(Reg, RegType),
-    io.write_string(RegType ++ "\t", !IO).
-
-    % Output an instruction with a memory reference and a register as the first
-    % and second operand respectively.
-    %
-:- pred instr_with_mem_ref_and_reg_op(string::in, mem_ref::in, 
-    gp_reg::in, io::di, io::uo) is det. 
-
-instr_with_mem_ref_and_reg_op(InstrName, SrcMemRef, DestReg, !IO) :-
-    mem_ref_type(SrcMemRef, MemRefType),
-    io.write_string("\t" ++ InstrName ++ "\t" ++ MemRefType, !IO),
-    reg_type(DestReg, DestRegType),
-    io.write_string(", " ++ DestRegType ++ "\t", !IO).
+output_instr_with_condition(Instr, Op1, Op2, Cond, !IO) :-
+    check_operand_not_immediate(Op1, Result1),
+    (
+        Result1 = yes,
+        instr_condition(Cond, CondRes),
+        io.write_string("\t" ++ Instr, !IO),
+        io.write_string(CondRes ++ "\t", !IO),
+        operand_type(Op1, Op1Type),
+        io.write_string(Op1Type, !IO),
+        (
+            Op2 = yes(Op2Res),
+            check_operand_register(Op2Res, Result3),
+            (
+                Result3 = yes,
+                operand_type(Op2Res, Op2Type),
+                io.write_string(", " ++ Op2Type, !IO)
+            ;
+                Result3 = no,
+                    unexpected(this_file, "output_instr_with_condition:"
+                        ++ " invalid second operand")
+            )
+       ;
+            Op2 = no,
+            io.write_string("\t\t", !IO)
+       )
+    ;            
+        Result1 = no,
+        unexpected(this_file, "output_instr_with_condition: unexpected:" 
+            ++ "invalid first operand - immediate value is not allowed")
+   ).
 
 %-----------------------------------------------------------------------------%
+
+:- pred check_rc_first_operand(operand::in, bool::out) is det. 
+
+check_rc_first_operand(Op, Result) :-
+    ( Op = operand_imm(_) ->
+        operand_type(Op, OpType),
+        ( string.to_int(OpType, OpInt) ->
+            check_unsigned_int_size(8, OpInt, Result1),
+            ( 
+                Result1 = yes,
+                Result = yes
+            ;
+                Result1 = no,
+                Result = no
+            )
+        ;
+            unexpected(this_file, "check_rc_first_operand: unexpected:" 
+                ++ " string.to_int")
+        )
+    ;
+        Op = operand_reg(_) ->
+        check_operand_register(Op, Result2),
+        (   
+            Result2 = yes,
+            Result = yes
+       ;
+            Result2 = no,
+            Result = no
+        )
+    ;
+        unexpected(this_file, "check_rc_first_operand: unexpected:" 
+            ++ " invalid operand")
+    ). 
+
+:- pred check_not_both_memory_ops(operand::in, operand::in, bool::out) is det. 
+
+check_not_both_memory_ops(Op1, Op2, Result) :-
+    (
+        Op1 = operand_mem_ref(_),
+        Op2 = operand_mem_ref(_)
+    ->
+        Result = no
+    ;
+        Result = yes    
+    ).
+
+:- pred check_operand_not_immediate(operand::in, bool::out) is det. 
+
+check_operand_not_immediate(Operand, Result) :-
+    ( Operand = operand_imm(_) ->
+        Result = no
+    ;
+        Result = yes
+    ).
+
+:- pred check_operand_reg_or_mem(operand::in, bool::out) is det. 
+
+check_operand_reg_or_mem(Operand, Result) :-
+    ( Operand = operand_reg(_) ->
+        Result = yes
+    ;
+        Operand = operand_mem_ref(_) ->
+        Result = yes
+    ;
+        Result = no
+    ).
+
+:- pred check_operand_unsigned_imm_or_reg(operand::in, bool::out) is det. 
+
+check_operand_unsigned_imm_or_reg(Operand, Result) :-
+    ( Operand = operand_imm(Imm) ->
+        imm_op_type(Imm, ImmType), 
+        ( string.to_int(ImmType, ImmInt) ->
+            ( 
+                check_unsigned_int_size(32, ImmInt, Result1),
+                (
+                    Result1 = yes,
+                    Result = yes
+                ;
+                    Result1 = no,
+                    Result = no
+                )
+            )
+        ;
+            unexpected(this_file, "check_operand_unsigned_imm_or_reg:"
+                ++ " unexpected: string.to_int failed")
+        )
+    ;
+        Result = no
+    ).
+
+:- pred check_operand_register(operand::in, bool::out) is det. 
+
+check_operand_register(Operand, Result) :-
+    ( Operand = operand_reg(_) ->
+        Result = yes
+    ;
+        Result =  no
+    ).
+
+:- pred check_operand_not_mem_ref(operand::in, bool::out) is det. 
+
+check_operand_not_mem_ref(Operand, Result) :-
+    ( Operand = operand_mem_ref(_) ->
+        Result = no
+    ;
+        Result = yes
+    ).
+
+:- pred check_operand_rel_offset(operand::in, bool::out) is det. 
+
+check_operand_rel_offset(Operand, Result) :-
+    ( Operand = operand_rel_offset(_) ->
+        Result = yes 
+    ;
+        Result = no
+    ).
+
+    % Check if the argument for a conditional instruction is valid. 
+    %
+:- pred instr_condition(condition::in, string::out) is det. 
+
+instr_condition(o, "o").
+instr_condition(no, "no").
+instr_condition(b, "b").
+instr_condition(c, "c").
+instr_condition(nae, "nae").
+instr_condition(nb, "nb").
+instr_condition(nc, "nc").
+instr_condition(ae, "ae").
+instr_condition(z, "z").
+instr_condition(e, "e").
+instr_condition(nz, "nz").
+instr_condition(ne, "ne").
+instr_condition(be, "be").
+instr_condition(na, "na").
+instr_condition(nbe, "nbe").
+instr_condition(a, "a").
+instr_condition(s, "s").
+instr_condition(ns, "ns").
+instr_condition(p, "p").
+instr_condition(pe, "pe").
+instr_condition(np, "np").
+instr_condition(po, "po").
+instr_condition(l, "l").
+instr_condition(nge, "nge").
+instr_condition(nl, "nl").
+instr_condition(ge, "ge").
+instr_condition(le, "le").
+instr_condition(ng, "ng").
+instr_condition(nle, "nle").
+instr_condition(g, "g").
 
     % Check whether an unsigned int (Val) with n bits (BitSize) is within the 
     % range of 0 and (2^n)-1.  

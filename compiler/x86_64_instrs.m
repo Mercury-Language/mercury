@@ -16,24 +16,79 @@
 :- module ll_backend.x86_64_instrs.
 :- interface.
 
+:- import_module hlds.hlds_pred.
+:- import_module hlds.code_model.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
+
+:- import_module counter.
 :- import_module list.
 :- import_module maybe.
+:- import_module set.
+
+%-----------------------------------------------------------------------------%
+
+    % We turn a llds.c_file into this.
+    %
+:- type x86_64_module
+    --->    x86_64_module(
+                x86_64_modulename :: module_name,
+                                  % The name of this x86_64 module.
+                x86_64_procs      :: list(list(x86_64_procedure))
+                                  % The code.
+            ).
+
+:- func init_x86_64_module(module_name) = x86_64_module.
+
+:- func init_x86_64_proc(c_procedure) =  x86_64_procedure.
+
+:- func init_x86_64_instruction =  x86_64_instruction.
+
+%-----------------------------------------------------------------------------%
+
+    % We turn an llds.c_procedure into one of these.
+    % XXX Do we really need to replicate all these fields from the llds?
+    %
+:- type x86_64_procedure
+    --->    x86_64_procedure(
+                x86_64_name             :: string,
+                                        % Predicate name.
+                x86_64_arity            :: int,
+                                        % Original arity. 
+                x86_64_id               :: pred_proc_id, 
+                                        % The pred_proc_id of this code.
+                x86_64_code_model       :: code_model,
+                                        % The code model of the procedure.
+                x86_64_code             :: list(x86_64_instruction),
+                                        % The code for this procedure.
+                x86_64_proc_label       :: proc_label,
+                                        % Proc_label of this procedure.
+                x86_64_label_nums       :: counter,
+                x86_64_may_alter_rtti   :: may_alter_rtti,
+                                        % The compiler is allowed to perform
+                                        % optimizations on this procedure
+                                        % that could alter RTTI information
+                                        % (e.g. the set of variables live at
+                                        % a label) only if this field is set
+                                        % to `may_alter_rtti'.
+                x86_64_c_global_vars    :: set(string)
+    ).
 
 %-----------------------------------------------------------------------------%
 
 :- type x86_64_instruction
     --->    x86_64_instr(
-                x86_64_instr_name   :: x86_64_op,
-                x86_64_comment      :: string
+                x86_64_inst         :: list(x86_64_instr),
+                x86_64_inst_comment :: string
             ).
 
 :- type label_name == string.
 
 :- type x86_64_instr
-    --->    comment(string)
-    ;       label(label_name)
-    ;       directives(list(pseudo_op))
-    ;       instrs(list(x86_64_instruction)).
+    --->    x86_64_comment(string)
+    ;       x86_64_label(label_name)
+    ;       x86_64_directive(pseudo_op)
+    ;       x86_64_instr(x86_64_inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -49,6 +104,47 @@
 :- type uint16 ---> uint16(int).    % In bottom 16 bits.
 :- type uint32 ---> uint32(int).    % In bottom 32 bits.
 
+%-----------------------------------------------------------------------------%
+
+    % Conditional direction.
+    %
+:- type direction 
+    --->    f                       % Forward.
+    ;       r.                      % Reverse. 
+
+    % Condition of flags register. 
+    %
+:- type condition
+    --->    o                       % Overflow (OF = 1).
+    ;       no                      % Not Overflow (OF = 0).
+    ;       b                       % Below (CF = 1).
+    ;       c                       % Carry (CF = 1).
+    ;       nae                     % Not Above or Equal (CF = 1).
+    ;       nb                      % Not Below (CF = 0).
+    ;       nc                      % Not Carry (CF = 0).
+    ;       ae                      % Above or Equal (CF = 0).
+    ;       z                       % Zero (ZF = 1).
+    ;       e                       % Equal (ZF = 1).
+    ;       nz                      % Not Zero (ZF = 0).
+    ;       ne                      % Not Equal (ZF = 0).
+    ;       be                      % Below or Equal (CF = 1 or ZF = 1).
+    ;       na                      % Not Above (CF = 1 or ZF = 1).
+    ;       nbe                     % Not Below or Equal (CF = 0 or ZF = 0).
+    ;       a                       % Above (CF = 0 or ZF = 0).
+    ;       s                       % Sign (SF = 1).
+    ;       ns                      % Not Sign (SF = 0).
+    ;       p                       % Parity (PF = 1).
+    ;       pe                      % Parity even (PF = 1).
+    ;       np                      % Not parity (PF = 0).
+    ;       po                      % Parity odd (PF = 0).
+    ;       l                       % Less (SF <> OF).
+    ;       nge                     % Not Greater or Equal (SF <> OF).
+    ;       nl                      % Not Less (SF = OF).
+    ;       ge                      % Greater or Equal (SF = OF).
+    ;       le                      % Less or Equal (ZF = 1 or SF <> OF).
+    ;       ng                      % Not Greater (ZF = 1 or SF <> OF).
+    ;       nle                     % Not Less or Equal (ZF = 0 and SF = OF).
+    ;       g.                      % Greater (ZF = 0 and SF = OF).
 
 %-----------------------------------------------------------------------------%
 %
@@ -136,7 +232,7 @@
     ;       eject
             % Force a page break.
 
-    ;       else_
+    ;       x86_64_pseudo_else
             % As in 'if-then-else' conditional expression. 
 
     ;       elseif
@@ -239,7 +335,7 @@
     ;       ident
             % To place tags in object files.
 
-    ;       if_(
+    ;       x86_64_pseudo_if(
                 if_expr             :: string
             )
             % Mark the beginning of a conditional section.
@@ -520,7 +616,7 @@
             )
             % Use 'title_heading' as the title when generating assembly listing.
 
-    ;       type_(
+    ;       x86_64_pseudo_type(
                 type_name           :: string,
                 type_desc           :: string
             )
@@ -571,22 +667,7 @@
     % Details on amd64-prog-man-vol1 manual p27.
     %
 :- type gp_reg
-    --->    rax
-    ;       rbx
-    ;       rcx
-    ;       rdx
-    ;       rbp
-    ;       rsi
-    ;       rdi
-    ;       rsp
-    ;       r8
-    ;       r9
-    ;       r10
-    ;       r11
-    ;       r12
-    ;       r13
-    ;       r14
-    ;       r15.
+    ---> gp_reg(int).  
 
     % 64-bit instruction pointer register on the x86_64. Instruction pointer
     % RIP is used as a base register for relative addressing. x86_64
@@ -622,7 +703,7 @@
     % or an instruction-relative address. 
     % Details on amd64-prog-man-vol1 p19.  
     %
-:- type mem_ref
+:- type x86_64_mem_ref
     --->    mem_abs(
                 mem_abs_address         :: base_address
             )
@@ -650,35 +731,14 @@
 :- type operand
     --->    operand_reg(gp_reg)
     ;       operand_imm(imm_operand)
-    ;       operand_mem_ref(mem_ref).
-
+    ;       operand_mem_ref(x86_64_mem_ref)
+    ;       operand_rel_offset(rel_offset)
+    ;       operand_label(string).
 
 %
 % Subtypes of the operand type.
 % XXX maybe we should use inst-subtyping for these?
 %
-
-    % x86_64_instruction's operand is either the content a general-purpose
-    % register or the content of a memory reference. 
-    %   
-:- type reg_or_mem_ref_op
-    --->    rmro_reg(gp_reg)
-    ;       rmro_mem_ref(mem_ref).
-    
-    % x86_64_instruction's operand is either the contents of a general-purpose
-    % register or the value of an immediate operand. 
-    %   
-:- type reg_or_imm_op
-    --->    rio_reg(gp_reg)
-    ;       rio_imm(imm_operand).
-
-    % x86_64_instruction's operand is either the content of CL register (the 
-    % bottom 16 bits of RCX register) or an 8-bit immediate value. 
-    %   
-:- type cl_reg_or_imm_op
-    --->    crio_reg_cl(gp_reg)
-    ;       crio_imm8(int8).
-
     % x86_64 instruction's operand is an offset relative to the instruction 
     % pointer. 
     %
@@ -692,7 +752,7 @@
     %
 :- type rmrol
     --->    rmrol_reg(gp_reg)
-    ;       rmrol_mem_ref(mem_ref)
+    ;       rmrol_mem_ref(x86_64_mem_ref)
     ;       rmrol_rel_offset(rel_offset)
     ;       rmrol_label(
                 rmrol_label_name    :: string
@@ -706,83 +766,101 @@
     % We use At&T style instructions where the source comes before the
     % destination.
     % 
-:- type x86_64_op
+:- type x86_64_inst
     --->    adc(
                 adc_src     :: operand,
-                adc_dst     :: reg_or_mem_ref_op 
+                            % immediate, register or memory location
+                adc_dst     :: operand
+                            % register or memory location
             )
             % Add with carry. Add 'adc_src' to 'adc_dst' + carry flag (CF).
+            % Cannot add two memory operands. 
             % Details on amd64-prog-man-vol3 manual p65.
 
     ;       add(
                 add_src     :: operand,
-                add_dst     :: reg_or_mem_ref_op 
+                            % immediate, register or memory location
+                add_dst     :: operand
+                            % register or memory location
             )
             % Signed or unsigned add. Add 'adc_src' to 'adc_dst'.
+            % Cannot add two memory operands. 
             % Details on amd64-prog-man-vol3 manual p67.
 
     ;       and(
                 and_src     :: operand,
-                and_dst     :: reg_or_mem_ref_op 
+                            % immediate, register or memory location
+                and_dst     :: operand
+                            % register or memory location
             )
             % Performs a bitwise AND operation on both operands.
+            % Cannot and two memory operands. 
             % Details on amd64-prog-man-vol3 manual p69.
 
-    ;       bsf(
-                bsf_src     :: reg_or_mem_ref_op,
-                bsf_dst     :: gp_reg
+    ;       bs(
+                bs_src      :: operand,
+                            % register or memory location
+                bs_dst      :: operand,
+                            % register
+                bs_cond     :: direction
+                            % "F" for forward, "R" for reverse"
             )
-            % Bit scan forward. Searches the value in 'bsf_src' for the least
-            % significant set bit. 
-            % Details on amd64-prog-man-vol3 manual p74.
+            % Bit scan. Searches the value in 'bs_src' for the least
+            % significant set bit  if 'bs_cond' is "F". Searches
+            % for the most significant set bit if 'bs_cond' is "R". 
+            % Details on amd64-prog-man-vol3 manual p(74-75).
 
-    ;        bsr(
-                bsr_src     :: reg_or_mem_ref_op,
-                bsr_dst     :: gp_reg
+    ;       bswap(
+                bswap_reg   :: operand
             )
-            % Bit scan reverse. Searches the value in 'bsf_src' for the most
-            % significant set bit. 
-            % Details on amd64-prog-man-vol3 manual p75.
-
-    ;       bswap(gp_reg)
-            % Byte swap. Reverses the byte order of the specified 'gp_reg'.
+            % Byte swap. Reverses the byte order of the specified 'operand'.
             % Details on amd64-prog-man-vol3 manual p76.
 
     ;       bt(
-                bt_src      :: reg_or_mem_ref_op,
-                bt_idx      :: reg_or_imm_op
+                bt_src      :: operand,
+                            % register or memory reference
+                bt_idx      :: operand
+                            % register or 8-bit immediate value
             )
             % Bit test. Copies a bit specified by 'bt_idx' from a bit string in
             % 'bt_src' to the carry flag (CF) or RFLAGS register.
             % Details on amd64-prog-man-vol3 manual p77.
 
     ;       btc(
-                btc_src     :: reg_or_mem_ref_op,
-                btc_idx     :: reg_or_imm_op
+                btc_src     :: operand,
+                            % register or memory reference
+                btc_idx     :: operand
+                            % register or 8-bit immediate value
             )
             % Bit test and complement. Complements 'btc_src' after performing 
             % 'bt' operation.
             % Details on amd64-prog-man-vol3 manual p79.
 
     ;       btr(
-                btr_src     :: reg_or_mem_ref_op,
-                btr_idx     :: reg_or_imm_op
+                btr_src     :: operand,
+                            % register or memory reference
+                btr_idx     :: operand
+                            % register or 8-bit immediate value
             )
             % Bit test and reverse. Clears 'btr_src' to 0 after performing 'bt'
             % operation.
             % Details on amd64-prog-man-vol3 manual p81.
 
     ;       bts(
-                bts_src     :: reg_or_mem_ref_op,
-                bts_idx     :: reg_or_imm_op
+                bts_src     :: operand,
+                            % register or memory reference
+                bts_idx     :: operand
+                            % register or 8-bit immediate value
             )
             % Bit test and set. Sets 'bts_src' to 1 after performing 'bt'
             % operation.
             % Details on amd64-prog-man-vol3 manual p83.
 
-    ;       call(rmrol)
-            % Call with target specified by 'rmrol': register, memory location,
-            % relative offset or a label.
+    ;       call(
+                call_target :: operand
+                            % label, register, memory reference or rel offset
+            )
+            % Call with target specified by call_target
             % Details on amd64-prog-man-vol3 manual p85.
 
     ;       cbw
@@ -821,241 +899,54 @@
             % Complements the carry flag bit (CF) bit in the rFLAGS register.
             % Details on amd64-prog-man-vol3 manual p100.
 
-    ;       cmovo(
-                cmovo_src       :: reg_or_mem_ref_op,
-                cmovo_dest      :: gp_reg
+    ;       cmov(
+                cmov_src        :: operand,
+                                % memory or register
+                cmov_dest       :: operand,
+                                % register
+                cmov_cmp_op     :: condition
             )
-            % Moves if overflow (OF = 1).
-            % Details on amd64-prog-man-vol3 manual p101.
-
-    ;       cmovno(
-                cmovno_src      :: reg_or_mem_ref_op,
-                cmovno_dest     :: gp_reg
-            )
-            % Moves if not overflow (OF = 0).
-            % Details on amd64-prog-man-vol3 manual p101.
-
-    ;       cmovb(
-                cmovb_src       :: reg_or_mem_ref_op,
-                cmovb_dest      :: gp_reg
-            )
-            % Moves if below (CF = 1).
-            % Details on amd64-prog-man-vol3 manual p101.
-
-    ;       cmovc(
-                cmovc_src       :: reg_or_mem_ref_op,
-                cmovc_dest      :: gp_reg
-            )
-            % Moves if carry (CF = 1).
-            % Details on amd64-prog-man-vol3 manual p101.
-
-    ;       cmovnae(
-                cmovnae_src     :: reg_or_mem_ref_op,
-                cmovnae_dest    :: gp_reg
-            )
-            % Moves if not above or equal (CF = 1).
-            % Details on amd64-prog-man-vol3 manual p101.
-
-    ;       cmovnb(
-                cmovnb_src      :: reg_or_mem_ref_op,
-                cmovnb_dest     :: gp_reg
-            )
-            % Moves if not below (CF = 0).
-            % Details on amd64-prog-man-vol3 manual p101.
-
-    ;       cmovnc(
-                cmovnc_src      :: reg_or_mem_ref_op,
-                cmovnc_dest     :: gp_reg
-            )
-            % Moves if not carry (CF = 0).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-     ;      cmovae(
-                cmovae_src      :: reg_or_mem_ref_op,
-                cmovae_dest     :: gp_reg
-            )
-            % Moves if above or equal (CF = 0).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-     ;      cmovz(
-                cmovz_src       :: reg_or_mem_ref_op,
-                cmovz_dest      :: gp_reg
-            )
-            % Moves if zero (ZF = 1).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-     ;      cmove(
-                cmove_src       :: reg_or_mem_ref_op,
-                cmove_dest      :: gp_reg
-            )
-            % Moves if equal (ZF = 1).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-     ;      cmovnz(
-                cmovnz_src      :: reg_or_mem_ref_op,
-                cmovnz_dest     :: gp_reg
-            )
-            % Moves if not zero (ZF = 0).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-    ;      cmovne(
-                cmovne_src      :: reg_or_mem_ref_op,
-                cmovne_dest     :: gp_reg
-            )
-            % Moves if not equal (ZF = 0).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-    ;      cmovbe(
-                cmovbe_src      :: reg_or_mem_ref_op,
-                cmovbe_dest     :: gp_reg
-            )
-            % Moves if below or equal (CF = 1 or ZF = 1).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-    ;       cmovna(
-                cmovna_src      :: reg_or_mem_ref_op,
-                cmovna_dest     :: gp_reg
-            )
-            % Moves if not above (CF = 1 or ZF = 1).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-    ;       cmovnbe(
-                cmovnbe_src     :: reg_or_mem_ref_op,
-                cmovnbe_dest    :: gp_reg
-            )
-            % Moves if not below or equal (CF = 0 or ZF = 0).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-    ;       cmova(
-                cmova_src       :: reg_or_mem_ref_op,
-                cmova_dest      :: gp_reg
-            )
-            % Moves if above (CF = 1 or ZF = 0).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-    ;       cmovs(
-                cmovs_src       :: reg_or_mem_ref_op,
-                cmovs_dest      :: gp_reg
-            )
-            % Moves if sign (SF = 1).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-    ;       cmovns(
-                cmovns_src      :: reg_or_mem_ref_op,
-                cmovns_dest     :: gp_reg
-            )
-            % Moves if not sign (SF = 0).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-    ;       cmovp(
-                cmovp_src       :: reg_or_mem_ref_op,
-                cmovp_dest      :: gp_reg
-            )
-            % Moves if parity (PF = 1).
-            % Details on amd64-prog-man-vol3 manual p102.
-
-    ;       cmovpe(
-                cmovpe_src      :: reg_or_mem_ref_op,
-                cmovpe_dest     :: gp_reg
-            )
-            % Moves if parity even (PF = 1).
-            % Details on amd64-prog-man-vol3 manual p103.
-
-    ;       cmovnp(
-                cmovnp_src      :: reg_or_mem_ref_op,
-                cmovnp_dest     :: gp_reg
-            )
-            % Moves if not parity (PF = 0).
-            % Details on amd64-prog-man-vol3 manual p103.
-            
-    ;       cmovpo(
-                cmovpo_src      :: reg_or_mem_ref_op,
-                cmovpo_dest     :: gp_reg
-            )
-            % Moves if parity odd (PF = 0).
-            % Details on amd64-prog-man-vol3 manual p103.
-
-    ;       cmovl(
-                cmovl_src       :: reg_or_mem_ref_op,
-                cmovl_dest      :: gp_reg
-            )
-            % Moves if less (SF <> OF).
-            % Details on amd64-prog-man-vol3 manual p103.
-
-    ;       cmovnge(
-                cmovnge_src     :: reg_or_mem_ref_op,
-                cmovnge_dest    :: gp_reg
-            )
-            % Moves if not greater or equal (SF <> OF).
-            % Details on amd64-prog-man-vol3 manual p103.
-
-    ;       cmovnl(
-                cmovnl_src      :: reg_or_mem_ref_op,
-                cmovnl_dest     :: gp_reg
-            )
-            % Moves if not less (SF = OF).
-            % Details on amd64-prog-man-vol3 manual p103.
-
-    ;       cmovge(
-                cmovge_src      :: reg_or_mem_ref_op,
-                cmovge_dest     :: gp_reg
-            )
-            % Moves if greater or equal (SF = OF).
-            % Details on amd64-prog-man-vol3 manual p103.
-
-    ;       cmovle(
-                cmovle_src      :: reg_or_mem_ref_op,
-                cmovle_dest     :: gp_reg
-            )
-            % Moves if less or equal (ZF = 1 or SF <> OF).
-            % Details on amd64-prog-man-vol3 manual p103.
-
-    ;       cmovng(
-                cmovng_src      :: reg_or_mem_ref_op,
-                cmovng_dest     :: gp_reg
-            )
-            % Moves if not greater (ZF = 1 or SF <> OF).
-            % Details on amd64-prog-man-vol3 manual p103.
-
-    ;       cmovnle(
-                cmovnle_src     :: reg_or_mem_ref_op,
-                cmovnle_dest    :: gp_reg
-            )
-            % Moves if not less or equal (ZF = 0 or SF = OF).
-            % Details on amd64-prog-man-vol3 manual p103.
-
-    ;       cmovg(
-                cmovg_src       :: reg_or_mem_ref_op,
-                cmovg_dest      :: gp_reg
-            )
-            % Moves if greater (ZF = 0 or SF = OF).
-            % Details on amd64-prog-man-vol3 manual p103.
+            % Moves with comparison operation defined in 'cmov_cmp_op'.
+            % Details on amd64-prog-man-vol3 manual p(101-103).
 
     ;       cmp(
                 cmp_src         :: operand,
-                cmp_dest        :: reg_or_mem_ref_op 
+                                % register, memory location or immediate value
+                cmp_dest        :: operand
+                                % register or memory location
             )
             % Compares 'cmp_src' with 'cmp_dest'. 
             % Details on amd64-prog-man-vol3 manual p105.
 
     ;       cmpxchg(
-                cmpxchg_cmp     :: reg_or_mem_ref_op,
-                cmpxchg_xchg    :: gp_reg
+                cmpxchg_src     :: operand,
+                                % register or memory location
+                cmpxchg_dest    :: operand
+                                % register
             )
-            % Compares the value in RAX with the value in 'cmpxchg_cmp'.
-            % If equal, copies the value in 'cmpxchg_xchg' to 'cmpxchg_cmp'.
+            % Compares the value in RAX with the value in 'cmpxchg_dest'.
+            % If equal, copies the value in 'cmpxchg_src' to 'cmpxchg_dest'.
             % Details on amd64-prog-man-vol3 manual p111.
 
-    ;       cmpxchg8b(mem_ref)
+    ;       cmpxchg8b(
+                cmpxchg8b_mem   :: operand
+                                % memory reference
+            )
             % Compares the value in EDX:EAX with the value in 'mem_ref'.
             % Details on amd64-prog-man-vol3 manual p113.
 
-    ;       dec(reg_or_mem_ref_op)
-            % Decrements the contents of 'reg_or_mem_ref_op'.
+    ;       dec(
+                dec_op          :: operand
+                                % register or memory reference
+            )
+            % Decrements the contents of 'dec_op'.
             % Details on amd64-prog-man-vol3 manual p120.
 
-    ;       div(reg_or_mem_ref_op)
-            % Unsigned divide RDX:RAX by the value in 'reg_or_mem_ref_op'. 
+    ;       div(
+                div_op          :: operand
+                                % register or memory reference
+            )
+            % Unsigned divide RDX:RAX by the value in 'div_op'. 
             % Details on amd64-prog-man-vol3 manual p122.
 
     ;       enter(
@@ -1067,166 +958,57 @@
             % 'enter_nesting_level'(0 to 31).
             % Details on amd64-prog-man-vol3 manual p124.
 
-    ;       idiv(reg_or_mem_ref_op)
-            % Signed divide RDX:RAX by the value in 'reg_or_mem_ref_op'. 
+    ;       idiv(
+                idiv_op             :: operand
+                                    % register or memory reference
+            )
+            % Signed divide RDX:RAX by the value in 'operand'. 
             % Details on amd64-prog-man-vol3 manual p126.
 
-    ;       imul(reg_or_mem_ref_op)
-            % Signed multiply RAX by the value in 'reg_or_mem_ref_op'. 
-            % Details on amd64-prog-man-vol3 manual p128.
-
     ;       imul(
-                imul1_src           :: reg_or_mem_ref_op,
-                imul1_dest          :: gp_reg
+                imul_src            :: operand,
+                                    % register, memory location, immediate value
+                imul_dest           :: maybe(operand),
+                                    % register
+                imul_multiplicand   :: maybe(operand)
             )
-            % Signed multiply 'imul1_src' by 'imul1_dest'. 
-            % Details on amd64-prog-man-vol3 manual p129.
+            % Signed multiply 'imul_src' by 'imul_dest' (if specified).
+            % Otherwise multiply 'imul_src' by the value in RAX register.
+            % Details on amd64-prog-man-vol3 manual p(128-129).
 
-    ;       imul(
-                imul2_src           :: reg_or_mem_ref_op,
-                imul2_multiplicand  :: imm_operand, 
-                imul2_dest          :: gp_reg
+    ;       inc(
+                inc_op              :: operand
+                                    % register or memory location
             )
-            % Signed multiply 'imul2_src' by 'imul2_multiplicand'.
-            % Details on amd64-prog-man-vol3 manual p129.
-
-    ;       inc(reg_or_mem_ref_op)
-            % Increments the contents of 'reg_or_mem_ref_op'.
+            % Increments the contents of 'inc_op'.
             % Details on amd64-prog-man-vol3 manual p133.
 
-    ;       jo(rel_offset)
-            % Jumps if overflow (OF = 1).
-            % Details on amd64-prog-man-vol3 manual p147.
+    ;       j(
+                j_target            :: operand,
+                                    % relative offset
+                j_condition         :: condition
+            )
+            % Conditional jump. 
+            % Details on amd64-prog-man-vol3 manual p(147-149).
 
-    ;       jno(rel_offset)
-            % Jumps if not overflow (OF = 0).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jb(rel_offset)
-            % Jumps if below (CF = 1).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jc(rel_offset)
-            % Jumps if carry (CF = 1).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jnae(rel_offset)
-            % Jumps if not above or equal (CF = 1).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jnb(rel_offset)
-            % Jumps if not below (CF = 0).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jnc(rel_offset)
-            % Jumps if not carry (CF = 0).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jae(rel_offset)
-            % Jumps if above or equal (CF = 0).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jz(rel_offset)
-            % Jumps if zero (ZF = 1).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       je(rel_offset)
-            % Jumps if equal (ZF = 1).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jnz(rel_offset)
-            % Jumps if not zero (ZF = 0).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jne(rel_offset)
-            % Jumps if not equal (ZF = 0).
-            % Details on amd64-prog-man-vol3 manual p147.
-
-    ;       jbe(rel_offset)
-            % Jumps if below or equal (CF = 1 or ZF = 1).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jna(rel_offset)
-            % Jumps if not above (CF = 1 or ZF = 1).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jnbe(rel_offset)
-            % Jumps if not below or equal (CF = 0 or ZF = 0).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       ja(rel_offset)
-            % Jumps if above (CF = 0 or ZF = 0).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       js(rel_offset)
-            % Jumps if sign (SF = 1).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jns(rel_offset)
-            % Jumps if not sign (SF = 0).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jp(rel_offset)
-            % Jumps if parity (PF = 1).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jpe(rel_offset)
-            % Jumps if parity even (PF = 1).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jnp(rel_offset)
-            % Jumps if not parity (PF = 0).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jpo(rel_offset)
-            % Jumps if parity odd (PF = 0).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jl(rel_offset)
-            % Jumps if less (SF <> OF).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jnge(rel_offset)
-            % Jumps if not greater or equal (SF <> OF).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jnl(rel_offset)
-            % Jumps if not less (SF = OF).
-            % Details on amd64-prog-man-vol3 manual p148.
-
-    ;       jge(rel_offset)
-            % Jumps if greater or equal (SF = OF).
-            % Details on amd64-prog-man-vol3 manual p149.
-
-    ;       jle(rel_offset)
-            % Jumps if less or equal (ZF = 1 or SF <> OF).
-            % Details on amd64-prog-man-vol3 manual p149.
-
-    ;       jng(rel_offset)
-            % Jumps if not greater (ZF = 1 or SF <> OF).
-            % Details on amd64-prog-man-vol3 manual p149.
-
-    ;       jnle(rel_offset)
-            % Jumps if not less or equal (ZF = 0 and SF = OF).
-            % Details on amd64-prog-man-vol3 manual p149.
-
-    ;       jg(rel_offset)
-            % Jumps if greater (ZF = 0 and SF = OF).
-            % Details on amd64-prog-man-vol3 manual p149.
-
-    ;       jrcxz(rel_offset)
-            % Jumps to the target instruction located at the specified 8-bit
-            % relative offset if RCX is zero. 
+    ;       jrcxz(
+                jrcxz_8bit_off  :: operand
+            )
+            % Jumps to the target instruction located at 'jrcxz_8bit_off'
+            % if RCX is zero. 
             % Details on amd64-prog-man-vol3 manual p150.
 
-    ;       jmp(rmrol)
-            % Jumps with target specified in 'rmrol': register, memory location,
-            % relative offset or label.
+    ;       jmp(
+                jmp_op          :: operand
+            )
+            % Jumps with target specified in 'jmp_op'
             % Details on amd64-prog-man-vol3 manual p152.
 
     ;       lea(
-                lea_src         :: mem_ref,
-                lea_dest        :: gp_reg
+                lea_src         :: operand,
+                                % memory location
+                lea_dest        :: operand
+                                % register
             )
             % Stores effective address 'lea_src' into 'lea_dest'.
             % Details on amd64-prog-man-vol3 manual p163.
@@ -1236,74 +1018,93 @@
             % Details on amd64-prog-man-vol3 manual p164.
 
     ;       loop(
-                loop_rel_8bit   :: rel_offset
+                loop_rel_8bit   :: operand
             )
             % Decrements RCX then jump if RCX is not zero
             % Details on amd64-prog-man-vol3 manual p169.
 
     ;       loope(
-                loope_rel_8bit  :: rel_offset
+                loope_rel_8bit  :: operand
             )
             % Decrements RCX then jump if RCX is not zero and ZF = 1.
             % Details on amd64-prog-man-vol3 manual p169.
 
     ;       loopne(
-                loopne_rel_8bit :: rel_offset
+                loopne_rel_8bit :: operand
             )
             % Decrements RCX then jump if RCX is not zero and ZF = 0.
             % Details on amd64-prog-man-vol3 manual p169.
 
     ;       loopnz(
-                loopnz_rel_8bit :: rel_offset
+                loopnz_rel_8bit :: operand
             )
             % Decrements RCX then jump if RCX is not zero and ZF = 0.
             % Details on amd64-prog-man-vol3 manual p170.
 
     ;       loopz(
-                loopz_rel_8bit  :: rel_offset
+                loopz_rel_8bit  :: operand
             )
             % Decrements RCX then jump if RCX is not zero and ZF = 1.
             % Details on amd64-prog-man-vol3 manual p170.
 
     ;       mov(
                 mov_src          :: operand,
-                mov_dest         :: reg_or_mem_ref_op
+                                 % register, memory location or immediate value 
+                mov_dest         :: operand
+                                 % register or memory location
             )
-            % Copies 'mov_src' to 'mov_dest'.
+            % Copies 'mov_src' to 'mov_dest'. 'mov_dest' cannot be immediate op.
             % Details on amd64-prog-man-vol3 manual p173.
 
-    ;       mul(reg_or_mem_ref_op)
-            % Unsigned multiply 'reg_or_mem_ref_op' by RAX.
+    ;       mul(
+                mul_op          :: operand
+                                % register or memory location
+            )
+            % Unsigned multiply 'mul_op' by RAX.
             % Details on amd64-prog-man-vol3 manual p190.
 
-    ;       neg(reg_or_mem_ref_op)
-            % Performs a two's complement negation of 'reg_or_mem_ref_op'.
+    ;       neg(
+                neg_op          :: operand
+                                % register or memory location
+            )
+            % Performs a two's complement negation of 'operand'.
             % Details on amd64-prog-man-vol3 manual p192.
 
     ;       nop
             % Increments RIP to point to next instruction.
             % Details on amd64-prog-man-vol3 manual p194.
 
-    ;       not_(reg_or_mem_ref_op)
-            % Performs one's complement negation (NOT) of 'reg_or_mem_ref_op'.
+    ;       x86_64_instr_not(
+                not_op          :: operand
+                                % register or memory location
+            )
+            % Performs one's complement negation (NOT) of 'operand'.
             % Details on amd64-prog-man-vol3 manual p195.
 
     ;       or(
                 or_src           :: operand,
-                or_dest          :: reg_or_mem_ref_op
+                                % register, memory location or immediate value
+                or_dest          :: operand
+                                % register or memory location
             )
             % Performs a logical OR on the bits in 'or_src' and 'or_dest'.
             % Details on amd64-prog-man-vol3 manual p196.
 
-    ;       pop(reg_or_mem_ref_op)
-            % Pops the stack into 'reg_or_mem_ref_op'.
+    ;       pop(
+                pop_op           :: operand
+                                % register or memory location. 
+            )
+            % Pops the stack into 'operand'.
             % Details on amd64-prog-man-vol3 manual p204.
 
     ;       popfq
             % Pops a quadword from the stack to the RFLAGS register. 
             % Details on amd64-prog-man-vol3 manual p208.
 
-    ;       push(operand)
+    ;       push(
+                push_op           :: operand
+                                  % register, memory location or immediate value
+            )
             % Pushes the content of operand onto the stack. 
             % Details on amd64-prog-man-vol3 manual p215.
 
@@ -1311,273 +1112,112 @@
             % Pushes the RFLAGS quadword onto the stack. 
             % Details on amd64-prog-man-vol3 manual p218.
 
-    ;       ret
-            % Near return to the calling procedure. 
-            % Details on amd64-prog-man-vol3 manual p224.
-
-    ;       rcl(
-                rcl_amount       :: cl_reg_or_imm_op,
-                rcl_dest         :: reg_or_mem_ref_op
+    ;       rc(
+                rc_amount        :: operand,
+                                % unsigned immediate value or register
+                rc_dest          :: operand,
+                                % register or memory location
+                rc_cond          :: string
+                                % "R" for right, "L" for left
             )
-            % Rotate bits in 'rcl_dest' to the left and through the carry flag
-            % by the number of bit positions as specified in 'rcl_amount'. 
-            % Details on amd64-prog-man-vol3 manual p220.
+            % Rotate bits in 'rc_dest' according to 'rc_cond' direction 
+            % and through the carry flag by the number of bit positions as 
+            % specified in 'rc_amount'. 
+            % Details on amd64-prog-man-vol3 manual p(220-222).
 
-    ;       rcr(
-                rcr_amount      :: cl_reg_or_imm_op,
-                rcr_dest        :: reg_or_mem_ref_op
+    ;       ret(
+                ret_op          :: maybe(uint16)
             )
-            % Rotate bits in 'rcr_dest' to the right and through the carry flag 
-            % by the number of bit positions as specified in 'rcr_amount'. 
-            % Details on amd64-prog-man-vol3 manual p222.
-
-    ;       ret(uint16)
             % Near return to the calling procedure, then pop the specified 
-            % number of bytes from stack. 
+            % number of bytes from stack (if specified). 
             % Details on amd64-prog-man-vol3 manual p224.
 
-    ;       rol(
-                rol_amount      :: cl_reg_or_imm_op,
-                rol_dest        :: reg_or_mem_ref_op
+    ;       ro(
+                ro_amount       :: operand,
+                                % unsigned immediate value or a register
+                ro_dest         :: operand,
+                                % register or memory location
+                ro_dir          :: string
+                                % "L" for left, "R" for right
             )
-            % Rotates the bits of 'rol_dest' left by 'rol_amount' bits. 
-            % Details on amd64-prog-man-vol3 manual p230.
-
-    ;       ror(
-                ror_amount      :: cl_reg_or_imm_op,
-                ror_dest        :: reg_or_mem_ref_op
-            )
-            % Rotates the bits of 'ror_dest' right by 'ror_amount bits'. 
-            % Details on amd64-prog-man-vol3 manual p232.
+            % Rotates the bits of 'rol_dest' to the 'ro_dir' direction by 
+            % 'rol_amount' bits. 
+            % Details on amd64-prog-man-vol3 manual p(230-232).
 
     ;       sal(
-                sal_amount      :: cl_reg_or_imm_op,
-                sal_dest        :: reg_or_mem_ref_op
+                sal_amount      :: operand,
+                                % unsigned immediate value or register
+                sal_dest        :: operand 
+                                % register or memory location
             )
             % Shift 'sal_dest' left by 'sal_amount'. 
             % Details on amd64-prog-man-vol3 manual p235.
 
     ;       shl(
-                shl_amount      :: cl_reg_or_imm_op,
-                shl_dest        :: reg_or_mem_ref_op
+                shl_amount      :: operand,
+                                % unsigned immediate value or register
+                shl_dest        :: operand 
+                                % register or memory location
             )
-            % Shift 'shl_dest' left by 'shl_amount'. 
+            % Alias to 'sal'.
             % Details on amd64-prog-man-vol3 manual p235.
 
     ;       sar(
-                sar_amount      :: cl_reg_or_imm_op,
-                sar_dest        :: reg_or_mem_ref_op
+                sar_amount      :: operand,
+                                % unsigned immediate value or register
+                sar_dest        :: operand 
+                                % register or memory location
             )
             % Shift 'sar_dest' right by 'sar_amount'. 
             % Details on amd64-prog-man-vol3 manual p238.
 
     ;       sbb(
                 sbb_src         :: operand,
-                sbb_dest        :: reg_or_mem_ref_op
+                                % immediate value, register or memory location
+                sbb_dest        :: operand 
+                                % register or memory location
             )
             % Subtracts 'sbb_src' from 'sbb_dest' with borrow.
             % Details on amd64-prog-man-vol3 manual p241.
 
-    ;       seto(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If overflow 
-            % (OF = 1), set the value in the specified register or an 8-bit 
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setno(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not overflow 
-            % (OF = 0), set the value in the specified register or an 8-bit 
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setb(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If flag is below
-            % (CF = 1), set the value in the specified register or an 8-bit 
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setc(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If flag is carry 
-            % (CF = 1), set the value in the specified register or an 8-bit 
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setnae(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If flag is not above
-            % or equal (CF = 1), set the value in the specified register or an 
-            % 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setnb(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If flag is not below
-            % (CF = 0), set the value in the specified register or an 8-bit 
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setnc(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If flag is not carry
-            % (CF = 0), set the value in the specified register or an 8-bit 
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setae(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If flag is above or 
-            % equal (CF = 0), set the value in the specified register or an 
-            % 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setz(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If zero (ZF = 1),
-            % set the value in the specified register or an 8-bit memory 
-            % reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       sete(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If equal (ZF = 1),
-            % set the value in the specified register or an 8-bit memory 
-            % reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setnz(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not zero 
-            % (ZF = 0), set the value in the specified register or an 8-bit 
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setne(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not equal 
-            % (ZF = 0), set the value in the specified register or an 8-bit 
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p246.
-
-    ;       setbe(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If below or equal 
-            % (CF = 1 or ZF = 1), set the value in the specified register or 
-            % an 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setna(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not above
-            % (CF = 1 or ZF = 1), set the value in the specified register or 
-            % an 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setnbe(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not below or 
-            % equal (CF = 0 and ZF = 0), set the value in the specified
-            % register or an 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       seta(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If above
-            % (CF = 0 and ZF = 0), set the value in the specified
-            % register or an 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       sets(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If flag is sign,
-            % (SF = 1), set the value in the specified register or an 8-bit
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setns(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If flag is not sign,
-            % (SF = 0), set the value in the specified register or an 8-bit
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setp(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If flag is parity
-            % (PF = 1), set the value in the specified register or an 8-bit
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setpe(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If parity even,
-            % (PF = 1), set the value in the specified register or an 8-bit
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setnp(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not parity,
-            % (PF = 0), set the value in the specified register or an 8-bit
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setpo(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If parity odd,
-            % (PF = 0), set the value in the specified register or an 8-bit
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setl(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If less (SF <> OF),
-            % set the value in the specified register or an 8-bit memory 
-            % reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setnge(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not greater or 
-            % equal (SF <> OF), set the value in the specified register or an 
-            % 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setnl(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not less 
-            % (SF = OF), set the value in the specified register or an 8-bit
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setge(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If greater or equal
-            % (SF = OF), set the value in the specified register or an 8-bit
-            % memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setle(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If less or equal
-            % (ZF = 1 or SF <> OF), set the value in the specified register or
-            % an 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setng(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not greater
-            % (ZF = 1 or SF <> OF), set the value in the specified register or
-            % an 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setnle(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If not less or equal
-            % (ZF = 0 and SF = OF), set the value in the specified register or
-            % an 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
-
-    ;       setg(reg_or_mem_ref_op)
-            % Check the status flag in the RFLAGS register. If greater
-            % (ZF = 0 and SF = OF), set the value in the specified register or
-            % an 8-bit memory reference to 1.
-            % Details on amd64-prog-man-vol3 manual p247.
+    ;       set(
+                set_dest        :: operand,
+                                % register or memory location
+                set_cond        :: condition
+            )
+            % Check the status flag in the RFLAGS register. Set the value in 
+            % the specified register/8-bit memory reference in 'set_dest' to 1
+            % according to the 'set_cond'. 
+            % Details on amd64-prog-man-vol3 manual p(246-247).
 
     ;       shld(
-                shld_amount         :: cl_reg_or_imm_op,
-                shld_dest1          :: reg_or_mem_ref_op,
-                shld_dest2          :: gp_reg
+                shld_amount         :: operand,
+                                    % register or immediate value
+                shld_dest1          :: operand,
+                                    % register or memory location
+                shld_dest2          :: operand  
+                                    % register
             )
             % Shift 'shld_dest1' to the left by 'shld_amount' and shift in a bit
             % pattern in 'shld_dest2' from the right. 
             % Details on amd64-prog-man-vol3 manual p251.
 
     ;       shr(
-                shr_amount          :: cl_reg_or_imm_op,
-                shr_dest            :: reg_or_mem_ref_op
+                shr_amount          :: operand,
+                                    % register or immediate value
+                shr_dest            :: operand 
+                                    % register or memory location
             )
             % Shift 'shr_dest' right by 'shr_amount'. 
             % Details on amd64-prog-man-vol3 manual p253.
 
     ;       shrd(
-                shrd_amount         :: cl_reg_or_imm_op,
-                shrd_dest1          :: reg_or_mem_ref_op,
-                shrd_dest2          :: gp_reg
+                shrd_amount         :: operand,
+                                    % register or immediate value
+                shrd_dest1          :: operand,
+                                    % register or memory location
+                shrd_dest2          :: operand 
+                                    % register
             )
             % Shift 'shrd_dest1' to the right by 'shrd_amount' and shift in
             % a bit pattern in 'shrd_dest2' from the left. 
@@ -1593,39 +1233,62 @@
 
     ;       sub(
                 sub_src             :: operand,
-                sub_dest            :: reg_or_mem_ref_op
+                                    % imm value, register or memory location
+                sub_dest            :: operand 
+                                    % register or memory location
             )
             % Subtracts 'sub_src' from 'sub_dest'. 
             % Details on amd64-prog-man-vol3 manual p261.
 
     ;       test(
-                test_src1           :: reg_or_mem_ref_op,
-                test_src2           :: reg_or_imm_op
+                test_src1           :: operand,
+                                    % imm value or register
+                test_src2           :: operand
+                                    % register or memory location
             )
             % Performs a bitwise AND on 'test_src1' and 'test_src2'.
             % Details on amd64-prog-man-vol3 manual p264.
 
     ;       xadd(
-                xadd_src            :: gp_reg,
-                xadd_dest           :: reg_or_mem_ref_op
+                xadd_src            :: operand,
+                                    % register
+                xadd_dest           :: operand
+                                    % register or memory location 
             )
             % Exchanges the contents of 'xadd_src' with 'xadd_dest', load 
             % their sum into 'xadd_dest'. 
             % Details on amd64-prog-man-vol3 manual p266.
 
     ;       xchg(
-                xchg_src1           :: reg_or_mem_ref_op,
-                xchg_src2           :: reg_or_mem_ref_op
+                xchg_src1           :: operand,
+                                    % register or memory location
+                xchg_src2           :: operand
+                                    % register or memory location
             )
             % Exchanges the contents of 'xchg_src1' and 'xchg_src2'.
             % Details on amd64-prog-man-vol3 manual p268.
         
     ;       xor(
                 xor_src :: operand,
-                xor_dest :: reg_or_mem_ref_op
+                xor_dest :: operand 
             ).
             % Performs a bitwise XOR on 'xor_src' with 'xor_dest' and stores
             % the result in xor_dest.  
             % Details on amd64-prog-man-vol3 manual p272.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+init_x86_64_module(CModule) = x86_64_module(CModule, []).  
+
+init_x86_64_proc(CProc) = 
+    x86_64_procedure(CProc ^ cproc_name,  CProc ^ cproc_orig_arity,
+        CProc ^ cproc_id, CProc ^ cproc_code_model, [], 
+        CProc ^ cproc_proc_label, CProc ^ cproc_label_nums,
+        CProc ^ cproc_may_alter_rtti, CProc ^ cproc_c_global_vars).
+
+init_x86_64_instruction = x86_64_instr([], ""). 
 
 %-----------------------------------------------------------------------------%
