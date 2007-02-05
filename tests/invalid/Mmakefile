@@ -150,6 +150,7 @@ SINGLEMODULE= \
 	prog_io_erroneous \
 	promise_equivalent_clauses \
 	promise_equivalent_solutions_test \
+	promise_equivalent_solutions_test_2 \
 	qual_basic_test2 \
 	qualified_cons_id2 \
 	quant_constraint_1 \

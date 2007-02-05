@@ -1398,8 +1398,14 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
         instmap_delta_changed_vars(InstmapDelta, ChangedVars),
         det_info_get_module_info(DetInfo, ModuleInfo),
+        % BoundVars must include both vars whose inst has changed and vars
+        % with inst any which may have been further constrained by the goal.
         set.divide(var_is_ground_in_instmap(ModuleInfo, InstMap0),
-            ChangedVars, _GroundAtStartVars, BoundVars),
+            ChangedVars, _GroundAtStartVars, GroundBoundVars),
+        goal_info_get_nonlocals(GoalInfo, NonLocalVars),
+        AnyBoundVars = set.filter(var_is_any_in_instmap(ModuleInfo, InstMap0),
+            NonLocalVars),
+        BoundVars = set.union(GroundBoundVars, AnyBoundVars),
 
         % Which vars were bound inside the scope but not listed
         % in the promise_equivalent_solution{s,_sets} or arbitrary scope?
@@ -1421,8 +1427,16 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 MissingVarNames = [_, _ | _],
                 MissingListStr = "some variables that are not listed:"
             ),
+            (
+                set.member(MissingVar, MissingVars),
+                set.member(MissingVar, AnyBoundVars)
+            ->
+                BindsWords = "goal may constrain"
+            ;
+                BindsWords = "goal binds"
+            ),
             MissingPieces = [words("Error: the"), quote(MissingKindStr),
-                words("goal binds"), words(MissingListStr)]
+                words(BindsWords), words(MissingListStr)]
                 ++ list_to_pieces(MissingVarNames) ++ [suffix(".")],
             MissingSpec = error_spec(severity_error, phase_detism_check,
                 [simple_msg(Context, [always(MissingPieces)])]),

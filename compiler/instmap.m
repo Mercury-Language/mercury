@@ -304,6 +304,9 @@
 :- pred var_is_ground_in_instmap(module_info::in, instmap::in, prog_var::in)
     is semidet.
 
+:- pred var_is_any_in_instmap(module_info::in, instmap::in, prog_var::in)
+    is semidet.
+
     % var_is_bound_in_instmap_delta(ModuleInfo, InstMap,
     %   InstMapDelta, Var)
     %
@@ -1219,6 +1222,10 @@ instmap_delta_to_assoc_list(reachable(InstMapping), AL) :-
 var_is_ground_in_instmap(ModuleInfo, InstMap, Var) :-
     lookup_var(InstMap, Var, Inst),
     inst_is_ground(ModuleInfo, Inst).
+
+var_is_any_in_instmap(ModuleInfo, InstMap, Var) :-
+    lookup_var(InstMap, Var, Inst),
+    inst_is_any(ModuleInfo, Inst).
 
 var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta, Var) :-
     instmap.lookup_var(InstMap, Var, OldVarInst),

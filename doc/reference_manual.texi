@@ -789,7 +789,9 @@ all of these solutions are equivalent
 with respect to the equality theories of the variables in @var{Vars}.
 It is an error for @var{Vars} to include a variable not bound by @var{Goal}
 or for @var{Goal} to bind a non-local variable
-that is not listed in @var{Vars}.
+that is not listed in @var{Vars}
+(non-local variables with inst @var{any} are assumed to be further constrained
+by @var{Goal} and must also be included in @var{Vars}).
 If @var{Goal} has determinism @samp{multi} or @samp{cc_multi} then
 @code{promise_equivalent_solutions @var{Vars} @var{Goal}}
 has determinism @samp{det}.

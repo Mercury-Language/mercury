@@ -14,6 +14,8 @@ Changes to the Mercury language:
   values for each thread.
 * Unicode characters can now be encoded in string literals using an
   escape sequence.
+* promise_equivalent_solutions scopes (et al.) must now also list variables
+  with inst any that may be constrained by the goal.
 
 Changes to the Mercury standard library:
 
