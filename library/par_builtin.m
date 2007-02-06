@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sw=4 sts=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -198,7 +198,7 @@
 :- pragma foreign_decl("C",
 "
 /*
-INIT mercury_par_builtin_wait_resume
+INIT mercury_sys_init_par_builtin_modules
 */
 
 #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
@@ -210,9 +210,10 @@ INIT mercury_par_builtin_wait_resume
 "
 #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
 
-    MR_BEGIN_MODULE(wait_resume_module)
+    MR_BEGIN_MODULE(par_builtin_module)
         MR_init_entry_ai(mercury__par_builtin__wait_resume);
     MR_BEGIN_CODE
+
     MR_define_entry(mercury__par_builtin__wait_resume);
     {
         MR_Future *Future;
@@ -232,26 +233,26 @@ INIT mercury_par_builtin_wait_resume
 #endif
 
     /* forward decls to suppress gcc warnings */
-    void mercury_par_builtin_wait_resume_init(void);
-    void mercury_par_builtin_wait_resume_init_type_tables(void);
+    void mercury_sys_init_par_builtin_modules_init(void);
+    void mercury_sys_init_par_builtin_modules_init_type_tables(void);
     #ifdef  MR_DEEP_PROFILING
-    void mercury_par_builtin_wait_resume_write_out_proc_statics(FILE *fp);
+    void mercury_sys_init_par_builtin_modules_write_out_proc_statics(FILE *fp);
     #endif
 
-    void mercury_par_builtin_wait_resume_init(void)
+    void mercury_sys_init_par_builtin_modules_init(void)
     {
     #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
-        wait_resume_module();
+        par_builtin_module();
     #endif
     }
 
-    void mercury_par_builtin_wait_resume_init_type_tables(void)
+    void mercury_sys_init_par_builtin_modules_init_type_tables(void)
     {
         /* no types to register */
     }
 
     #ifdef  MR_DEEP_PROFILING
-    void mercury_par_builtin_wait_resume_write_out_proc_statics(FILE *fp)
+    void mercury_sys_init_par_builtin_modules_write_out_proc_statics(FILE *fp)
     {
         /* no proc_statics to write out */
     }

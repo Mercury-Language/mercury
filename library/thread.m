@@ -64,7 +64,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma no_inline(spawn/3).
 :- pragma foreign_proc("C",
     spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
@@ -72,7 +71,8 @@
 #if !defined(MR_HIGHLEVEL_CODE)
     MR_Context  *ctxt;
     ctxt = MR_create_context(""spawn"", MR_CONTEXT_SIZE_REGULAR, NULL);
-    ctxt->MR_ctxt_resume = &&spawn_call_back_to_mercury_cc_multi;
+    ctxt->MR_ctxt_resume =
+        MR_ENTRY(mercury__thread__spawn_call_back_to_mercury_cc_multi);
     
     /*
     ** Store the closure on the top of the new context's stack.
@@ -83,17 +83,7 @@
     ctxt->MR_ctxt_thread_local_mutables =
         MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
     MR_schedule_context(ctxt);
-    if (0) {
-spawn_call_back_to_mercury_cc_multi:
-        MR_save_registers();
-        /*
-        ** Get the closure from the top of the stack
-        */
-        ML_call_back_to_mercury_cc_multi(*((MR_Word *)MR_sp));
-        MR_destroy_context(MR_ENGINE(MR_eng_this_context));
-        MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_runnext();
-    }
+
 #else /* MR_HIGHLEVEL_CODE */
 
 #if defined(MR_THREAD_SAFE)
@@ -126,17 +116,86 @@ spawn_call_back_to_mercury_cc_multi:
 #ifndef MR_HIGHLEVEL_CODE
     MR_save_context(MR_ENGINE(MR_eng_this_context));
     MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-        &&yield_skip_to_the_end;
+        MR_ENTRY(mercury__thread__yield_resume);
     MR_schedule_context(MR_ENGINE(MR_eng_this_context));
     MR_ENGINE(MR_eng_this_context) = NULL;
     MR_runnext();
-yield_skip_to_the_end:
 #endif
     IO = IO0;
-
 ").
 
 yield(!IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C",
+"
+/*
+INIT mercury_sys_init_thread_modules
+*/
+
+#ifndef MR_HIGHLEVEL_CODE
+    MR_define_extern_entry(
+        mercury__thread__spawn_call_back_to_mercury_cc_multi);
+    MR_define_extern_entry(mercury__thread__yield_resume);
+#endif
+").
+
+:- pragma foreign_code("C",
+"
+#ifndef MR_HIGHLEVEL_CODE
+
+    MR_BEGIN_MODULE(thread_module)
+        MR_init_entry_ai(mercury__thread__spawn_call_back_to_mercury_cc_multi);
+        MR_init_entry_ai(mercury__thread__yield_resume);
+    MR_BEGIN_CODE
+
+    MR_define_entry(mercury__thread__spawn_call_back_to_mercury_cc_multi);
+    {
+        MR_save_registers();
+        /*
+        ** Get the closure from the top of the stack.
+        */
+        ML_call_back_to_mercury_cc_multi(*((MR_Word *)MR_sp));
+        MR_destroy_context(MR_ENGINE(MR_eng_this_context));
+        MR_ENGINE(MR_eng_this_context) = NULL;
+        MR_runnext();
+    }
+
+    MR_define_entry(mercury__thread__yield_resume);
+    {
+        MR_proceed();
+    }
+    MR_END_MODULE
+
+#endif
+
+    /* forward decls to suppress gcc warnings */
+    void mercury_sys_init_thread_modules_init(void);
+    void mercury_sys_init_thread_modules_init_type_tables(void);
+    #ifdef  MR_DEEP_PROFILING
+    void mercury_sys_init_thread_modules_write_out_proc_statics(FILE *fp);
+    #endif
+
+    void mercury_sys_init_thread_modules_init(void)
+    {
+    #ifndef MR_HIGHLEVEL_CODE
+        thread_module();
+    #endif
+    }
+
+    void mercury_sys_init_thread_modules_init_type_tables(void)
+    {
+        /* no types to register */
+    }
+
+    #ifdef  MR_DEEP_PROFILING
+    void mercury_sys_init_thread_modules_write_out_proc_statics(FILE *fp)
+    {
+        /* no proc_statics to write out */
+    }
+    #endif
+").
 
 :- pred call_back_to_mercury(pred(io, io), io, io).
 :- mode call_back_to_mercury(pred(di, uo) is cc_multi, di, uo) is cc_multi.
@@ -146,6 +205,8 @@ yield(!IO).
 
 call_back_to_mercury(Goal, !IO) :-
     Goal(!IO).
+
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
 #if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
@@ -212,6 +273,8 @@ call_back_to_mercury(Goal, !IO) :-
   }
 #endif /* MR_HIGHLEVEL_CODE && MR_THREAD_SAFE */
 ").
+
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("C#", "
 public class MercuryThread {

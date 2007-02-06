@@ -160,10 +160,10 @@ public class ML_Semaphore {
 #endif
 ").
 
-    % Because semaphore.signal has a local label, we may get
-    % C compilation errors if inlining leads to multiple copies
-    % of this code.
-    % 
+    % semaphore.signal causes the calling context to resume in semaphore.nop,
+    % which simply jumps to the succip. That will return control to the caller
+    % of semaphore.signal as intended, but not if this procedure is inlined.
+    %
     % XXX get rid of this limitation at some stage.
     %
 :- pragma no_inline(semaphore.signal/3).
@@ -189,22 +189,20 @@ public class ML_Semaphore {
             /* yield() */
         MR_save_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-            &&signal_skip_to_the_end_1;
+            MR_ENTRY(mercury__thread__semaphore__nop);
         MR_schedule_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
-signal_skip_to_the_end_1: ;
     } else {
         sem->count++;
         MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
             /* yield() */
         MR_save_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-            &&signal_skip_to_the_end_2;
+            MR_ENTRY(mercury__thread__semaphore__nop);
         MR_schedule_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
-signal_skip_to_the_end_2: ;
     }
 #else
     sem->count++;
@@ -225,13 +223,13 @@ signal_skip_to_the_end_2: ;
     System.Threading.Monitor.Exit(Semaphore);
 ").
 
-    % Because semaphore__wait has a local label, we may get
-    % C compilation errors if inlining leads to multiple copies
-    % of this code.
-    % 
+    % semaphore.wait causes the calling context to resume in semaphore.nop,
+    % which simply jumps to the succip. That will return control to the caller
+    % of semaphore.wait as intended, but not if this procedure is inlined.
+    %
     % XXX get rid of this limitation at some stage.
     %
-:- pragma no_inline(semaphore__wait/3).
+:- pragma no_inline(semaphore.wait/3).
 :- pragma foreign_proc("C",
     wait(Semaphore::in, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
@@ -252,13 +250,12 @@ signal_skip_to_the_end_2: ;
     } else {
         MR_save_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-            &&wait_skip_to_the_end;
+            MR_ENTRY(mercury__thread__semaphore__nop);
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_next = sem->suspended;
         sem->suspended = MR_ENGINE(MR_eng_this_context);
         MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
-wait_skip_to_the_end: ;
     }
 #else
     while (sem->count <= 0) {
@@ -335,6 +332,62 @@ semaphore.try_wait(Sem, Res, !IO) :-
     } else {
         Res = 1;
     }
+").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C",
+"
+/*
+INIT mercury_sys_init_semaphore_modules
+*/
+
+#if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
+    MR_define_extern_entry(mercury__thread__semaphore__nop);
+#endif
+").
+
+:- pragma foreign_code("C",
+"
+#if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
+
+    MR_BEGIN_MODULE(semaphores_module)
+        MR_init_entry_ai(mercury__thread__semaphore__nop);
+    MR_BEGIN_CODE
+
+    MR_define_entry(mercury__thread__semaphore__nop);
+    {
+        MR_proceed();
+    }
+    MR_END_MODULE
+
+#endif
+
+    /* forward decls to suppress gcc warnings */
+    void mercury_sys_init_semaphore_modules_init(void);
+    void mercury_sys_init_semaphore_modules_init_type_tables(void);
+    #ifdef  MR_DEEP_PROFILING
+    void mercury_sys_init_semaphore_modules_write_out_proc_statics(FILE *fp);
+    #endif
+
+    void mercury_sys_init_semaphore_modules_init(void)
+    {
+    #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
+        semaphores_module();
+    #endif
+    }
+
+    void mercury_sys_init_semaphore_modules_init_type_tables(void)
+    {
+        /* no types to register */
+    }
+
+    #ifdef  MR_DEEP_PROFILING
+    void mercury_sys_init_semaphore_modules_write_out_proc_statics(FILE *fp)
+    {
+        /* no proc_statics to write out */
+    }
+    #endif
 ").
 
 %-----------------------------------------------------------------------------%
