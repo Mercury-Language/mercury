@@ -862,19 +862,16 @@ map.intersect(CommonPred, Map1, Map2, Common) :-
 :- mode map.intersect_2(in, in, pred(in, in, out) is det, in, out)
     is det.
 
-map.intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
+map.intersect_2(AssocList1, AssocList2, CommonPred, !Common) :-
     (
         AssocList1 = [],
-        AssocList2 = [],
-        Common = Common0
+        AssocList2 = []
     ;
         AssocList1 = [_ | _],
-        AssocList2 = [],
-        Common = Common0
+        AssocList2 = []
     ;
         AssocList1 = [],
-        AssocList2 = [_ | _],
-        Common = Common0
+        AssocList2 = [_ | _]
     ;
         AssocList1 = [Key1 - Value1 | AssocTail1],
         AssocList2 = [Key2 - Value2 | AssocTail2],
@@ -882,17 +879,14 @@ map.intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
         (
             R = (=),
             CommonPred(Value1, Value2, Value),
-            map.det_insert(Common0, Key1, Value, Common1),
-            map.intersect_2(AssocTail1, AssocTail2, CommonPred,
-                Common1, Common)
+            map.det_insert(!.Common, Key1, Value, !:Common),
+            map.intersect_2(AssocTail1, AssocTail2, CommonPred, !Common)
         ;
             R = (<),
-            map.intersect_2(AssocTail1, AssocList2, CommonPred,
-                Common0, Common)
+            map.intersect_2(AssocTail1, AssocList2, CommonPred, !Common)
         ;
             R = (>),
-            map.intersect_2(AssocList1, AssocTail2, CommonPred,
-                Common0, Common)
+            map.intersect_2(AssocList1, AssocTail2, CommonPred, !Common)
         )
     ).
 
@@ -966,19 +960,18 @@ map.union(CommonPred, Map1, Map2, Common) :-
 :- mode map.union_2(in, in, pred(in, in, out) is det, in, out)
     is det.
 
-map.union_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
+map.union_2(AssocList1, AssocList2, CommonPred, !Common) :-
     (
         AssocList1 = [],
-        AssocList2 = [],
-        Common = Common0
+        AssocList2 = []
     ;
         AssocList1 = [_ | _],
         AssocList2 = [],
-        map.det_insert_from_assoc_list(Common0, AssocList1, Common)
+        map.det_insert_from_assoc_list(!.Common, AssocList1, !:Common)
     ;
         AssocList1 = [],
         AssocList2 = [_ | _],
-        map.det_insert_from_assoc_list(Common0, AssocList2, Common)
+        map.det_insert_from_assoc_list(!.Common, AssocList2, !:Common)
     ;
         AssocList1 = [Key1 - Value1 | AssocTail1],
         AssocList2 = [Key2 - Value2 | AssocTail2],
@@ -986,16 +979,16 @@ map.union_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
         (
             R = (=),
             CommonPred(Value1, Value2, Value),
-            map.det_insert(Common0, Key1, Value, Common1),
-            map.union_2(AssocTail1, AssocTail2, CommonPred, Common1, Common)
+            map.det_insert(!.Common, Key1, Value, !:Common),
+            map.union_2(AssocTail1, AssocTail2, CommonPred, !Common)
         ;
             R = (<),
-            map.det_insert(Common0, Key1, Value1, Common1),
-            map.union_2(AssocTail1, AssocList2, CommonPred, Common1, Common)
+            map.det_insert(!.Common, Key1, Value1, !:Common),
+            map.union_2(AssocTail1, AssocList2, CommonPred, !Common)
         ;
             R = (>),
-            map.det_insert(Common0, Key2, Value2, Common1),
-            map.union_2(AssocList1, AssocTail2, CommonPred, Common1, Common)
+            map.det_insert(!.Common, Key2, Value2, !:Common),
+            map.union_2(AssocList1, AssocTail2, CommonPred, !Common)
         )
     ).
 
@@ -1102,27 +1095,27 @@ map.optimize(M1) = M2 :-
     map.optimize(M1, M2).
 
 map.foldl(F, M, A) = B :-
-    P = ( pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
+    P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
     map.foldl(P, M, A, B).
 
 map.map_values(F, M1) = M2 :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     map.map_values(P, M1, M2).
 
 map.intersect(F, M1, M2) = M3 :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     map.intersect(P, M1, M2, M3).
 
 map.det_intersect(PF, M1, M2) = M3 :-
-    P = ( pred(X::in, Y::in, Z::out) is semidet :- Z = PF(X, Y) ),
+    P = (pred(X::in, Y::in, Z::out) is semidet :- Z = PF(X, Y) ),
     map.det_intersect(P, M1, M2, M3).
 
 map.union(F, M1, M2) = M3 :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     map.union(P, M1, M2, M3).
 
 map.det_union(F, M1, M2) = M3 :-
-    P = ( pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
+    P = (pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
     map.det_union(P, M1, M2, M3).
 
 map.reverse_map(Map) = RevMap :-
