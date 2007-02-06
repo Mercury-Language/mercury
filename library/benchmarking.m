@@ -1043,20 +1043,6 @@ turn_on_heap_profiling(!IO) :-
 #endif
 ").
 
-:- pragma foreign_proc(c, turn_off_time_profiling,
-        [will_not_call_mercury, thread_safe, tabled_for_io], "
-#ifdef MR_MPROF_PROFILE_TIME
-    MR_prof_turn_off_time_profiling();
-#endif
-").
-
-:- pragma foreign_proc(c, turn_on_time_profiling,
-        [will_not_call_mercury, thread_safe, tabled_for_io], "
-#ifdef MR_MPROF_PROFILE_TIME
-    MR_prof_turn_on_time_profiling();
-#endif
-").
-
 :- pragma foreign_proc(c, turn_off_heap_profiling,
         [will_not_call_mercury, thread_safe, tabled_for_io], "
     MR_prof_turn_off_heap_profiling();
