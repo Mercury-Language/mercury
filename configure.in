@@ -363,10 +363,15 @@ EOF
 	rm -f conftest*
 fi
 #-----------------------------------------------------------------------------#
+#
 # Let the user specify which C compiler to use.
+#
+
 AC_ARG_WITH(cc,
-[  --with-cc=<program>     Specify which C compiler to use.],
-mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
+    AC_HELP_STRING([--with-cc=<program>],
+                   [Specify which C compiler to use.]),
+    mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
+
 case "$mercury_cv_with_cc" in
 	yes)	AC_MSG_ERROR(missing argument to --with-cc=... option)
 		exit 1
@@ -380,16 +385,19 @@ case "$mercury_cv_with_cc" in
 		CC="$mercury_cv_with_cc"
 		;;
 esac
+
 #-----------------------------------------------------------------------------#
 #
 # Determine whether to define LARGE_CONFIG when compiling boehm_gc.
 #
+
 AC_ARG_ENABLE(gc-large-config,
-[  --disable-gc-large-config
-                          disable large heaps when using conservative GC],
-enable_gc_large_config="$enableval",enable_gc_large_config=yes)
+    AC_HELP_STRING([--disable-gc-large-config],
+                   [disable large heaps when using conservative GC]),
+    enable_gc_large_config="$enableval",enable_gc_large_config=yes)
+
 AC_MSG_CHECKING(whether to enable large heaps when using conservative GC)
-case $enable_gc_large_config in
+case "$enable_gc_large_config" in
 	yes)
 		AC_MSG_RESULT(yes)
 		ENABLE_BOEHM_LARGE_CONFIG=-DLARGE_CONFIG
@@ -411,12 +419,15 @@ AC_SUBST(ENABLE_BOEHM_LARGE_CONFIG)
 # Find the GCC source code
 # and determine whether or not to enable the GCC back-end interface.
 #
+
 AC_ARG_ENABLE(gcc-back-end,
-[  --enable-gcc-back-end   enable the Mercury compiler's GCC back-end interface],
-enable_gcc_back_end="$enableval",enable_gcc_back_end=default)
+   AC_HELP_STRING([--enable-gcc-back-end],
+                  [enable the Mercury compiler's GCC back-end interface]),
+   enable_gcc_back_end="$enableval",enable_gcc_back_end=default)
+
 AC_MSG_CHECKING(for GCC source directory)
 gcc_src_dir=not_found
-case $enable_gcc_back_end in
+case "$enable_gcc_back_end" in
 	yes|no|default)
 		# Search for the gcc source code;
 		# first try in a subdirectory of this directory,
@@ -446,7 +457,7 @@ case $enable_gcc_back_end in
 esac
 AC_MSG_RESULT($gcc_src_dir)
 AC_MSG_CHECKING(whether to enable the GCC back-end interface)
-case $enable_gcc_back_end in
+case "$enable_gcc_back_end" in
 	yes|default)
 		if test "$gcc_src_dir" = not_found; then
 			case $enable_gcc_back_end in
@@ -488,6 +499,7 @@ AC_SUBST(ENABLE_GCC_BACK_END)
 AC_SUBST(GCC_SRC_DIR)
 
 #-----------------------------------------------------------------------------#
+
 MERCURY_MSG("looking for GNU Make...")
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
 if test "$GNU_MAKE" != ""; then
@@ -505,7 +517,9 @@ else
 	MERCURY_MSG("found GNU Make: $GNU_MAKE")
 fi
 AC_SUBST(GNU_MAKE)
+
 #-----------------------------------------------------------------------------#
+
 MERCURY_MSG("looking for a way to create named pipes...")
 
 save_PATH="$PATH"
@@ -549,6 +563,7 @@ AC_SUBST(MKNOD)
 
 PATH="$save_PATH"
 #-----------------------------------------------------------------------------#
+
 MERCURY_MSG("looking for a way to create temporary files...")
 
 AC_PATH_PROG(MKTEMP,mktemp)
@@ -565,6 +580,7 @@ if test "$MKTEMP" = ""; then
 	MKTEMP=""
 fi
 AC_SUBST(MKTEMP)
+
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(INSTALL_INFO,install-info)
 AC_SUBST(INSTALL_INFO)
@@ -858,18 +874,22 @@ AC_SUBST(CYGPATH)
 AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
 
 #-----------------------------------------------------------------------------#
+#
+# Check whether to use symbolic links
+#
+
 enable_symlinks_opt=no
 AC_ARG_ENABLE(symlinks,
-[  --enable-symlinks       enable symbolic links.  This is the default on all
-			  systems except Windows.  On Windows you can force
-			  symbolic links to be used by giving this option.
-			  Note that symbolic links will only work on Windows if
-			  you are using the Cygwin version of GCC.],
-[ enable_symlinks_opt=yes ])
+   AC_HELP_STRING([--enable-symlinks],
+                  [enable symbolic links.  This is the default on all
+                   systems except Windows.  On Windows you can force
+                   symbolic links to be used by giving this option.
+                   Note that symbolic links will only work on Windows if
+                   you are using the Cygwin version of GCC.]),
+   [ enable_symlinks_opt=yes ])
 
-# If we're compiling the compiler on Windows,
-# don't use symlinks when installing unless the --enable-symlinks option
-# is given.
+# If we're compiling the compiler on Windows, don't use symlinks when
+# installing unless the --enable-symlinks option is given.
 #
 # When cross-compiling from Cygwin to Mingw (and perhaps also on
 # native Mingw?), `-lm' exists, but it is not needed and in fact we must
@@ -900,11 +920,13 @@ AC_SUBST(MATH_LIB)
 #-----------------------------------------------------------------------------#
 # Microsoft.NET configuration
 #
+
 MERCURY_CHECK_DOTNET
 
 #-----------------------------------------------------------------------------#
 # Java configuration
 #
+
 MERCURY_CHECK_JAVA
 
 #-----------------------------------------------------------------------------#
@@ -958,10 +980,12 @@ AC_SUBST(GETOPT_H_AVAILABLE)
 if test "$MR_HAVE_UCONTEXT_H" != 1; then
 	MERCURY_CHECK_FOR_HEADERS(sys/ucontext.h)
 fi
+
 #-----------------------------------------------------------------------------#
 #
-# check the basics of sigaction
+# Check the basics of sigaction
 #
+
 if test "$ac_cv_func_sigaction" = yes; then
 	AC_MSG_CHECKING(for \`sigaction' field name)
 	AC_CACHE_VAL(mercury_cv_sigaction_field,
@@ -1003,13 +1027,16 @@ if test "$ac_cv_func_sigaction" = yes; then
 	[mercury_cv_sigaction_field=sa_handler]))
 	AC_MSG_RESULT($mercury_cv_sigaction_field)
 	AC_DEFINE_UNQUOTED(MR_SIGACTION_FIELD,$mercury_cv_sigaction_field)
-	if test $mercury_cv_sigaction_field = sa_sigaction; then
+	if test "$mercury_cv_sigaction_field" = sa_sigaction; then
 		AC_DEFINE(MR_HAVE_SIGINFO)
 	fi
 fi
+
+#-----------------------------------------------------------------------------#
 #
-# check the basics of sigcontext_struct
+# Check the basics of sigcontext_struct
 #
+
 AC_MSG_CHECKING(for working \`sigcontext_struct' in second arg)
 AC_CACHE_VAL(mercury_cv_sigcontext_struct_2arg,
 mercury_cv_sigcontext_struct_2arg=no
@@ -1054,9 +1081,9 @@ void handler(int signum, struct sigcontext_struct context) {
 }], [mercury_cv_sigcontext_struct_2arg=yes], [true], [true]))
 AC_MSG_RESULT($mercury_cv_sigcontext_struct_2arg)
 
-if test $mercury_cv_sigcontext_struct_2arg = no; then
+if test "$mercury_cv_sigcontext_struct_2arg" = no; then
 	#
-	# check for a sigcontext_struct in the third argument of
+	# Check for a sigcontext_struct in the third argument of
 	# the signal handler (Linux-68k has this).
 	#
 	AC_MSG_CHECKING(for working \`sigcontext_struct' in third arg)
@@ -1110,17 +1137,17 @@ fi
 
 mercury_cv_sigcontext_struct=no
 
-if test $mercury_cv_sigcontext_struct_2arg = yes; then
+if test "$mercury_cv_sigcontext_struct_2arg" = yes; then
 	mercury_cv_sigcontext_struct=yes
 	AC_DEFINE(MR_HAVE_SIGCONTEXT_STRUCT_2ARG)
 fi
 
-if test $mercury_cv_sigcontext_struct_3arg = yes; then
+if test "$mercury_cv_sigcontext_struct_3arg" = yes; then
 	mercury_cv_sigcontext_struct=yes
 	AC_DEFINE(MR_HAVE_SIGCONTEXT_STRUCT_3ARG)
 fi
 
-if test $mercury_cv_sigcontext_struct = yes; then
+if test "$mercury_cv_sigcontext_struct" = yes; then
 	AC_DEFINE(MR_HAVE_SIGCONTEXT_STRUCT)
 	AC_DEFINE(MR_HAVE_SIGINFO)
 
@@ -1181,7 +1208,7 @@ if test $mercury_cv_sigcontext_struct = yes; then
 		}
 	}], [mercury_cv_pc_access=eip], [true], [true]))
 	AC_MSG_RESULT($mercury_cv_pc_access)
-	if test $mercury_cv_pc_access != no; then
+	if test "$mercury_cv_pc_access" != no; then
 		AC_DEFINE_UNQUOTED(MR_PC_ACCESS,$mercury_cv_pc_access)
 	fi
 else
@@ -1226,7 +1253,7 @@ else
 		save_cause = info->si_code;
 	}], [mercury_cv_siginfo_t=yes], [true], [true]))
 	AC_MSG_RESULT($mercury_cv_siginfo_t)
-	if test $mercury_cv_siginfo_t = yes; then
+	if test "$mercury_cv_siginfo_t" = yes; then
 		AC_DEFINE(MR_HAVE_SIGINFO_T)
 		AC_DEFINE(MR_HAVE_SIGINFO)
 
@@ -1338,9 +1365,9 @@ else
 			[true], [true])
 		)
 		AC_MSG_RESULT($mercury_cv_pc_access)
-		if test $mercury_cv_pc_access != no; then
+		if test "$mercury_cv_pc_access" != no; then
 			AC_DEFINE_UNQUOTED(MR_PC_ACCESS,$mercury_cv_pc_access)
-			if test $mercury_cv_pc_access_greg != no; then
+			if test "$mercury_cv_pc_access_greg" != no; then
 				AC_DEFINE(MR_PC_ACCESS_GREG)
 			fi
 		fi
@@ -1996,7 +2023,7 @@ AC_CACHE_VAL(mercury_cv_bzero_needs_strings_header, [
 
 	save_CC="$CC"
 
-	case $CC in
+	case "$CC" in
 		*gcc*) CC="$CC -Wall -Werror" ;;
 	esac
 
@@ -2087,7 +2114,7 @@ AC_SUBST(MR_DARWIN_SETJMP_WORKAROUND)
 CFLAGS_FOR_REGS=
 CFLAGS_FOR_GOTOS=
 LIBRARY_PATH_FOR_GOTOS=
-case $ac_cv_prog_gcc in yes)
+case "$ac_cv_prog_gcc" in yes)
     case "`$CC --version < /dev/null`" in
 	2.8*) CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse" ;;
 	*)    CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse -fno-gcse" ;;
@@ -2241,7 +2268,7 @@ if test "$mercury_cv_gcc_labels" = yes; then
 	AC_DEFINE(MR_HAVE_GCC_LABELS)
 fi
 
-if test $mercury_cv_gcc_labels = yes; then
+if test "$mercury_cv_gcc_labels" = yes; then
 	AC_MSG_CHECKING(whether we can use asm labels)
 
 	AC_CACHE_VAL(mercury_cv_asm_labels,
@@ -2396,14 +2423,17 @@ case "`$CC --version < /dev/null 2>&1`" in
 	;;
 esac
 AC_MSG_RESULT($mercury_cv_egcs)
+
 #-----------------------------------------------------------------------------#
 #
-# Add an option that disables the deep profiler.
+# Add an option that disables the deep profiler
 #
+
 AC_ARG_ENABLE(deep-profiler,
-[  --enable-deep-profiler=<directory>
-                          install deep profiler CGI script in <directory>],
-enable_deep_profiler="$enableval",enable_deep_profiler=default)
+   AC_HELP_STRING([--enable-deep-profiler=<directory>]
+                  [install deep profiler CGI script in <directory>]),
+   enable_deep_profiler="$enableval",enable_deep_profiler=default)
+
 AC_MSG_CHECKING(whether to enable the deep profiler)
 
 # We test for all the features needed by the deep profiler.
@@ -2425,7 +2455,7 @@ else
     mercury_cv_can_enable_deep_profiler=no
 fi
 
-# on x86, gcc version egcs-1.1.2 has a bug which causes it to get
+# On x86, gcc version egcs-1.1.2 has a bug which causes it to get
 # an internal compiler error when compiling library/random.c
 # (when that file was build with mmc --intermodule-optimization -O4)
 # So if we're using an egcs version of gcc, disable deep profiling.
@@ -2444,7 +2474,7 @@ case "$host" in
         ;;
 esac
 
-case $enable_deep_profiler in
+case "$enable_deep_profiler" in
 	default)
 		if test -d $mercury_cv_default_cgi_dir; then
 			mercury_cv_enable_deep_profiler=$mercury_cv_can_enable_deep_profiler
@@ -2492,7 +2522,7 @@ AC_SUBST(CGIDIR)
 
 # Figure out which flavour of pthreads to use, since none of the
 # implementations seem to be exactly the same
-case $host in
+case "$host" in
 	alpha*-dec-osf*)
 		mercury_cv_use_digital_unix_threads=yes ;;
 
@@ -2715,9 +2745,8 @@ MERCURY_MSG("using grade \`$DEFAULT_GRADE' as the default grade for applications
 AC_SUBST(DEFAULT_GRADE)
 
 #-----------------------------------------------------------------------------#
-
 #
-# Choose which grade to use for the compiler.
+# Choose which grade to use for the compiler
 #
 
 # BEST_GRADE_FOR_COMPILER is the best grade for compiling
@@ -2788,83 +2817,91 @@ fi
 AC_SUBST(GRADE)
 
 #-----------------------------------------------------------------------------#
-
 #
 # Define options for selecting which grades of the library to install
 #
 
 AC_ARG_ENABLE(inefficient-grades,
-[  --enable-inefficient-grades
-                          install inefficient versions of the library],
-enable_inefficient_grades="$enableval",enable_inefficient_grades=no)
+    AC_HELP_STRING([--enable-inefficient-grades],
+                   [install inefficient versions of the library]),
+    enable_inefficient_grades="$enableval",enable_inefficient_grades=no)
 
 AC_ARG_ENABLE(most-grades,
-[  --disable-most-grades   install only the essential versions of the library],
-enable_most_grades="$enableval",enable_most_grades=yes)
+    AC_HELP_STRING([--disable-most-grades],
+                   [install only the essential versions of the library]),
+    enable_most_grades="$enableval",enable_most_grades=yes)
 
 AC_ARG_ENABLE(nogc-grades,
-[  --enable-nogc-grades    install no-gc versions of the library],
-enable_nogc_grades="$enableval",enable_nogc_grades=no)
+    AC_HELP_STRING([--enable-nogc-grades],
+                   [install no-gc versions of the library]),
+    enable_nogc_grades="$enableval",enable_nogc_grades=no)
 
 AC_ARG_ENABLE(agc-grades,
-[  --enable-agc-grades     install accurate GC versions of the library],
-enable_agc_grades="$enableval",enable_agc_grades=no)
+    AC_HELP_STRING([--enable-agc-grades],
+                   [install accurate GC versions of the library]),
+    enable_agc_grades="$enableval",enable_agc_grades=no)
 
 AC_ARG_ENABLE(debug-grades,
-[  --disable-debug-grades  do not install the debugging versions of the library],
-enable_debug_grades="$enableval",enable_debug_grades=yes)
+    AC_HELP_STRING([--disable-debug-grades],
+                   [do not install the debugging versions of the library]),
+    enable_debug_grades="$enableval",enable_debug_grades=yes)
 
 AC_ARG_ENABLE(decl-debug-grades,
-[  --disable-decl-debug-grades
-                          do not install the declarative debugging versions
-                          of the library],
-enable_decl_debug_grades="$enableval",enable_decl_debug_grades=yes)
+    AC_HELP_STRING([--disable-decl-debug-grades],
+                   [do not install the declarative debugging versions
+                    of the library]),
+    enable_decl_debug_grades="$enableval",enable_decl_debug_grades=yes)
 
 AC_ARG_ENABLE(prof-grades,
-[  --disable-prof-grades   do not install profiling versions of the library],
-enable_prof_grades="$enableval",enable_prof_grades=yes)
+    AC_HELP_STRING([--disable-prof-grades],
+                   [do not install profiling versions of the library]),
+    enable_prof_grades="$enableval",enable_prof_grades=yes)
 
 AC_ARG_ENABLE(trail-grades,
-[  --disable-trail-grades  do not install trailing versions of the library],
-enable_trail_grades="$enableval",enable_trail_grades=yes)
+    AC_HELP_STRING([--disable-trail-grades],
+                   [do not install trailing versions of the library]),
+    enable_trail_grades="$enableval",enable_trail_grades=yes)
 
 AC_ARG_ENABLE(par-grades,
-[  --disable-par-grades    do not install thread-safe versions of the library],
-enable_par_grades="$enableval",enable_par_grades=yes)
+    AC_HELP_STRING([--disable-par-grades],
+                   [do not install thread-safe versions of the library]),
+    enable_par_grades="$enableval",enable_par_grades=yes)
 
 AC_ARG_ENABLE(mm-grades,
-[  --enable-mm-grades      install minimal model versions of the library],
-enable_mm_grades="$enableval",enable_mm_grades=no)
+    AC_HELP_STRING([--enable-mm-grades],
+                   [install minimal model versions of the library]),
+    enable_mm_grades="$enableval",enable_mm_grades=no)
 
 AC_ARG_ENABLE(dmm-grades,
-[  --enable-dmm-grades      install minimal model debug versions of the library],
-enable_dmm_grades="$enableval",enable_dmm_grades=no)
+   AC_HELP_STRING([--enable-dmm-grades],
+                  [install minimal model debug versions of the library]),
+    enable_dmm_grades="$enableval",enable_dmm_grades=no)
 
 AC_ARG_ENABLE(hlc-prof-grades,
-[  --enable-hlc-prof-grades
-                          install profiling versions of the high level C grade],
-enable_hlc_prof_grades="$enableval",enable_hlc_prof_grades=no)
+   AC_HELP_STRING([--enable-hlc-prof-grades],
+                  [install profiling versions of the high level C grade]),
+   enable_hlc_prof_grades="$enableval",enable_hlc_prof_grades=no)
 
 # We don't enable the .NET grades by default because that may lead to
 # installation process breaking on Linux systems that have DotGNU or Mono
 # installed.
 #
 AC_ARG_ENABLE(dotnet-grades,
-[  --enable-dotnet-grades  install the .NET grades],
-enable_dotnet_grades="$enableval",enable_dotnet_grades=no)
+    AC_HELP_STRING([--enable-dotnet-grades], [install the .NET grades]),
+    enable_dotnet_grades="$enableval",enable_dotnet_grades=no)
 
 # XXX The java backend is currently broken, so we don't
 # enable the java grade by default.
 AC_ARG_ENABLE(java-grade,
-[  --enable-java-grade     install the Java grade],
-enable_java_grade="$enableval",enable_java_grade=no)
+   AC_HELP_STRING([--enable-java-grade], [install the Java grade]),
+   enable_java_grade="$enableval",enable_java_grade=no)
 
 AC_ARG_ENABLE(libgrades,
-[  --enable-libgrades=...
-                          install exactly the given versions of the library.
-			  The versions are specified using a comma-separated
-			  list.],
-enable_libgrades_given=yes;enable_libgrades="$enableval",enable_libgrades_given=no)
+    AC_HELP_STRING([--enable-libgrades=...],
+                   [install exactly the given versions of the library.
+		    The versions are specified using a comma-separated
+		    list.]),
+    enable_libgrades_given=yes;enable_libgrades="$enableval",enable_libgrades_given=no)
 
 if test "$enable_most_grades" = no; then
 	enable_inefficient_grades=no
@@ -2881,7 +2918,6 @@ if test "$enable_most_grades" = no; then
 fi
 
 #-----------------------------------------------------------------------------#
-
 #
 # Choose which grades of the library to install
 #
@@ -3280,8 +3316,8 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # We ought to use $target here rather than $host - but we don't
 # support cross-compilation at the moment anyhow.
 
-# set up some default values that should work on most systems
-# see Mmake.common.in for documentation on the meaning of these variables
+# Set up some default values that should work on most systems.
+# See Mmake.common.in for documentation on the meaning of these variables.
 LINK_EXE=$CC
 LINK_SHARED_OBJ="$CC -shared"
 LINK_SHARED_OBJ_SH="$CC -shared"
@@ -3578,13 +3614,13 @@ case "$host" in
 		    # namespaces be used.
 		    darwin_flat_namespaces=no
 		    AC_ARG_ENABLE(darwin-flat-namespace,
-  			  [  --enable-darwin-flat-namespace
-			  enable flat namespaces on Darwin.  This is the
+ 		      AC_HELP_STRING([--enable-darwin-flat-namespace],
+			  [enable flat namespaces on Darwin.  This is the
 			  default for Darwin versions less than 7 (Mac OS
 			  10.3).  On versions greater than or equal to 7
 			  two-level namespaces are used by default.  This
 			  option therefore only affects Darwin versions
-			  greater than or equal to 7.],
+			  greater than or equal to 7.]),
 		    [ darwin_flat_namespaces=yes ])
 		    SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
 		    SHLIB_INSTALL_NAME_FLAG="-install_name "
@@ -3718,23 +3754,26 @@ AC_SUBST(CFLAGS_FOR_DEBUG)
 AC_SUBST(MCFLAGS_FOR_CC)
 
 #-----------------------------------------------------------------------------#
-# Work out how to link statically.
+#
+# Work out how to link statically
+#
+
 # Note that changes here may require changes in scripts/ml.in.
 
 LD_STATIC_FLAGS=
-case $COMPILER in gcc|lcc)
+case "$COMPILER" in gcc|lcc)
 	LD_STATIC_FLAGS=-static
 	;;
 esac
-case $FULLARCH in
+case "$FULLARCH" in
 	*-linux*)
 		# On Linux, if we're linking statically, we need to
 		# pass `-defsym _DYNAMIC=0' to the linker, to avoid
 		# undefined references to _DYNAMIC in
 		# boehm_gc/dyn_load.c.
 		# (We might eventually need similar treatment
-		# for other OSs too)
-		case $COMPILER in
+		# for other OSs too.)
+		case "$COMPILER" in
 		gcc)
 			LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
 			;;
@@ -3762,19 +3801,20 @@ case $FULLARCH in
 		esac
 		;;
 	alpha*-dec-osf*)
-		case $COMPILER in cc)
+		case "$COMPILER" in cc)
 			LD_STATIC_FLAGS=-non_shared
 			;;
 		esac
 		;;
 	*-sun-solaris*)
-		case $COMPILER in cc)
+		case "$COMPILER" in cc)
 			LD_STATIC_FLAGS="-B static"
 			;;
 		esac
 		;;
 esac
-# we can't put the call to MSG_CHECKING at the start of the case statement
+
+# We can't put the call to MSG_CHECKING at the start of the case statement
 # above, because of the nested check in the lcc case.  So we just put it
 # here immediately before the MSG_RESULT call.
 AC_MSG_CHECKING(options for static linking)
@@ -3823,7 +3863,7 @@ AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(SHARED_LIBS_SH)
 AC_SUBST(DEFAULT_LINKAGE)
-if test $USE_DLLS = "yes"; then
+if test "$USE_DLLS" = "yes"; then
 	AC_DEFINE(MR_USE_DLLS)
 fi
 #-----------------------------------------------------------------------------#
@@ -3911,6 +3951,7 @@ fi
 #
 # Check for the WIN32 Sleep function
 #
+
 AC_MSG_CHECKING(for Sleep function)
 AC_CACHE_VAL(mercury_cv_have_capital_s_sleep,
 AC_TRY_LINK([
@@ -3930,6 +3971,7 @@ fi
 #
 # Check for the various IEEE predicates
 #
+
 MERCURY_CHECK_FOR_IEEE_FUNC(isnan)
 MERCURY_CHECK_FOR_IEEE_FUNC(isnanf)
 MERCURY_CHECK_FOR_IEEE_FUNC(isinf)
@@ -4137,9 +4179,10 @@ LIBS="$save_LIBS"
 # problems later on when we try to link things statically).
 #
 AC_ARG_ENABLE(extern-debug,
-[  --disable-extern-debug  disable the external (separate process) debugger],
-mercury_cv_enable_extern_debug="$enableval",
-mercury_cv_enable_extern_debug="$mercury_cv_sockets_work")
+    AC_HELP_STRING([--disable-extern-debug],
+                   [disable the external (separate process) debugger]),
+    mercury_cv_enable_extern_debug="$enableval",
+    mercury_cv_enable_extern_debug="$mercury_cv_sockets_work")
 
 AC_MSG_CHECKING(whether to enable the external debugger)
 if test "$mercury_cv_enable_extern_debug" = "yes"; then
@@ -4153,27 +4196,31 @@ if test "$mercury_cv_enable_extern_debug" = "yes"; then
 else
 	AC_MSG_RESULT(no)
 
-	# don't link with the socket library if we're not going to use it
+	# Don't link with the socket library if we're not going to use it.
 	SOCKET_LIBRARY=
 	NSL_LIBRARY=
 fi
 
 AC_SUBST(SOCKET_LIBRARY)
 AC_SUBST(NSL_LIBRARY)
+
 #-----------------------------------------------------------------------------#
 #
 # Check for dynamic linking, unless the --disable-dynamic-link option
 # was specified.
 #
+
 AC_ARG_ENABLE(dynamic-link,
-[  --disable-dynamic-link  disable the use of dynamic linking],
+    AC_HELP_STRING([--disable-dynamic-link],
+                   [disable the use of dynamic linking]),
 mercury_cv_enable_dynamic_link="$enableval",mercury_cv_enable_dynamic_link=yes)
+
 if test "$mercury_cv_enable_dynamic_link" = "yes"; then
 	MERCURY_CHECK_FOR_HEADERS(dlfcn.h)
 	AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
 	AC_SUBST(DL_LIBRARY)
 
-	# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
+	# Temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
 	save_LIBS="$LIBS"
 	LIBS="$LIBS $DL_LIBRARY"
 
@@ -4185,13 +4232,17 @@ fi
 
 TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY"
 AC_SUBST(TRACE_LIBS_SYSTEM)
+
 #-----------------------------------------------------------------------------#
+#
+# Check whether to use the MercuryFile struct
+#
 
 AC_MSG_CHECKING(whether to enable the new MercuryFile struct)
 AC_ARG_ENABLE(new-mercuryfile-struct,
-[  --enable-new-mercuryfile-struct
-                          enable new MercuryFile struct.],
-ac_new_mercuryfile_struct=yes,ac_new_mercuryfile_struct=no)
+    AC_HELP_STRING([--enable-new-mercuryfile-struct],
+                   [enable new MercuryFile struct.]),
+    ac_new_mercuryfile_struct=yes,ac_new_mercuryfile_struct=no)
 
 if test "$ac_new_mercuryfile_struct" = "yes"; then
 	AC_MSG_RESULT(yes)
@@ -4203,9 +4254,9 @@ fi
 #-----------------------------------------------------------------------------#
 
 AC_ARG_WITH(msvcrt,
-[  --with-msvcrt
-                          use the MS Visual C runtime if using MS C compiler.],
-mercury_cv_msvcrt=yes,mercury_cv_msvcrt=no)
+    AC_HELP_STRING([--with-msvcrt],
+                   [use the MS Visual C runtime if using MS C compiler.]),  
+    mercury_cv_msvcrt=yes,mercury_cv_msvcrt=no)
 
 AC_MSG_CHECKING(whether to use the MS Visual C Runtime)
 if test "$mercury_cv_msvcrt" = "yes"; then
@@ -4223,8 +4274,16 @@ fi
 AC_SUBST(USE_MSVCRT)
 
 #-----------------------------------------------------------------------------#
+#
+# Check for readline
+#
+
 MERCURY_CHECK_READLINE
+
 #-----------------------------------------------------------------------------#
+#
+# Check for flex and bison
+#
 
 AC_PROG_LEX
 if test "`basename $LEX`" != "flex"
@@ -4242,7 +4301,7 @@ then
 fi
 
 #-----------------------------------------------------------------------------#
-# Check for a XUL browser and xslrproc and if we find both then set the
+# Check for a XUL browser and xsltproc and if we find both then set the
 # default xml_browser_command and xml_tmp_filename mdb options.
 #
 
