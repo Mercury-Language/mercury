@@ -342,14 +342,14 @@ semaphore.try_wait(Sem, Res, !IO) :-
 INIT mercury_sys_init_semaphore_modules
 */
 
-#if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
+#ifndef MR_HIGHLEVEL_CODE
     MR_define_extern_entry(mercury__thread__semaphore__nop);
 #endif
 ").
 
 :- pragma foreign_code("C",
 "
-#if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
+#ifndef MR_HIGHLEVEL_CODE
 
     MR_BEGIN_MODULE(semaphores_module)
         MR_init_entry_ai(mercury__thread__semaphore__nop);
