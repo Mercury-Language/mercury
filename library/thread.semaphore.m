@@ -372,7 +372,7 @@ INIT mercury_sys_init_semaphore_modules
 
     void mercury_sys_init_semaphore_modules_init(void)
     {
-    #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
+    #ifndef MR_HIGHLEVEL_CODE
         semaphores_module();
     #endif
     }
