@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2006 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -221,6 +221,7 @@
 :- func set.difference(set(T), set(T)) = set(T).
 
     % `set.count(Set, Count)' is true iff `Set' has `Count' elements.
+    % i.e. `Count' is the cardinality (size) of the set. 
     %
 :- pred set.count(set(T)::in, int::out) is det.
 :- func set.count(set(T)) = int.
