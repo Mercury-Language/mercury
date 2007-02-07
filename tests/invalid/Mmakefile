@@ -86,6 +86,7 @@ SINGLEMODULE= \
 	foreign_singleton \
 	foreign_type_2 \
 	foreign_type_visibility \
+	fp_dup_bug \
 	freefree \
 	func_errors \
 	funcs_as_preds \

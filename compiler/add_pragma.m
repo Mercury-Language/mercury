@@ -2515,8 +2515,10 @@ clauses_info_do_add_pragma_foreign_proc(Origin, Purity, Attributes0,
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     NewLang = get_foreign_language(Attributes0),
-    list.foldl2(decide_action(Globals, Target, NewLang, ProcId), ClauseList,
-        add, FinalAction, 1, _),
+    list.foldl3(
+        decide_action(PredName, Arity, PredOrFunc, Context, Globals,
+            Target, NewLang, ProcId),
+        ClauseList, add, FinalAction, 1, _, !Specs),
 
     globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
     pragma_get_vars(PVars, Args0),
@@ -2715,20 +2717,22 @@ lookup_current_backend(Globals) = CurrentBackend :-
     ;       split_add(int, clause)
     ;       replace(int).
 
-:- pred decide_action(globals::in, compilation_target::in,
+:- pred decide_action(sym_name::in, arity::in, pred_or_func::in,
+    prog_context::in, globals::in, compilation_target::in,
     foreign_language::in, proc_id::in, clause::in,
     foreign_proc_action::in, foreign_proc_action::out,
-    int::in, int::out) is det.
+    int::in, int::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
-    Clause = clause(ProcIds, Body, ClauseLang, Context),
+decide_action(PredName, Arity, PredOrFunc, NewContext, Globals,
+        Target, NewLang, ProcId, Clause, !Action, !ClauseNum, !Specs) :-
+    Clause = clause(ProcIds, Body, ClauseLang, ClauseContext),
     (
         ClauseLang = impl_lang_mercury,
         ( ProcIds = [ProcId] ->
             !:Action = replace(!.ClauseNum)
         ; list.delete_first(ProcIds, ProcId, MercuryProcIds) ->
             NewMercuryClause = clause(MercuryProcIds, Body, ClauseLang,
-                Context),
+                ClauseContext),
             !:Action = split_add(!.ClauseNum, NewMercuryClause)
         ;
             true
@@ -2744,8 +2748,32 @@ decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
                 % language, so we should replace it
                 !:Action = replace(!.ClauseNum)
             ;
-                % Just ignore it.
-                !:Action = ignore
+                % Just ignore the clause - if they are both for the same
+                % language then we emit an error message as well.
+                % XXX This won't detect multiple clauses in languages
+                %     that are not supported by this backend. 
+                !:Action = ignore,
+                ( OldLang = NewLang ->
+                    PiecesA = [
+                        words("Error: multiple clauses for"),
+                        p_or_f(PredOrFunc),
+                        sym_name_and_arity(PredName / Arity),
+                        words("in language"),
+                        words(foreign_language_string(OldLang)),
+                        suffix("."), nl
+                    ],
+                    PiecesB = [
+                        words("The first occurrence was here.")
+                    ],
+                    MsgA = simple_msg(NewContext, [always(PiecesA)]),
+                    MsgB = error_msg(yes(ClauseContext), yes, 0,
+                        [always(PiecesB)]),
+                    Spec = error_spec(severity_error,
+                        phase_parse_tree_to_hlds, [MsgA, MsgB]),
+                    !:Specs = [Spec | !.Specs]
+                ;
+                    true
+                )
             )
         ;
             true
