@@ -4722,11 +4722,18 @@ following signatures:
 @var{Det} must be either @samp{det} or @samp{cc_multi}.
 
 The effect of the @samp{initialise} declaration is to ensure that
-@samp{initpredname/arity} is invoked before the program's @samp{main}
+@samp{initpredname/arity} is invoked before the program's @samp{main/2}
 predicate.  Initialisation predicates within a module are executed in the
 order in which they are specified, although no order may be assumed between
 different modules or sub-modules.  Initialisation predicates are only invoked
 after any initialisation required by the Mercury standard library.
+
+If @samp{initpredname/arity} terminates with an uncaught exception then
+the program will immediately abort execution.  
+In this circumstance those predicates specified by other @samp{initialise}
+directives that have not yet been executed will not be executed,
+@samp{main/2} will not be executed and no predicate specified in a
+@samp{finalise} directive will be executed.
 
 @samp{initialize} is also allowed as a synonym for @samp{initialise}.
 
@@ -4876,7 +4883,7 @@ either of the @samp{trailed} or @samp{constant} attributes.
 
 @end table
 
-Note that it is an error for a @samp{mutable} directive to appear in the
+It is an error for a @samp{mutable} directive to appear in the
 interface section of a module.  The usual visibility rules for sub-modules
 apply to the mutable variable access predicates.
 

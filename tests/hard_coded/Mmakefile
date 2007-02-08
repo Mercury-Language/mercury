@@ -431,6 +431,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		allow_stubs \
 		backend_external \
 		dir_test \
+		init_excp \
 		map_merge_test \
 		io_globals_deadlock \
 		test_array2d \
@@ -611,6 +612,16 @@ no_fully_strict.out: no_fully_strict
 			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
+	fi
+
+# init_excp.out is expected to fail (it calls throw/1).
+#
+init_excp.out: init_excp
+	if ./init_excp > $@.tmp 2>&1; then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
 	fi
 
 # For the constant_prop_1 test case, we test that constant propagation
