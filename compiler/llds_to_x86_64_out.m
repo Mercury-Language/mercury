@@ -24,7 +24,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_x86_64_asm(list(x86_64_procedure)::in, io::di, io::uo) is det. 
+:- pred output_x86_64_asm(io.output_stream::in, list(x86_64_procedure)::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -34,24 +35,26 @@
 :- import_module ll_backend.llds_to_x86_64.
 :- import_module ll_backend.x86_64_out.
 
-output_x86_64_asm(AsmProcs, !IO) :-
-	output_asm_proc_list(AsmProcs, !IO).
+%-----------------------------------------------------------------------------%
 
+output_x86_64_asm(Stream, AsmProcs, !IO) :-
+    output_asm_proc_list(Stream, AsmProcs, !IO).
 
-:- pred output_asm_proc_list(list(x86_64_procedure)::in, io::di, io::uo) is det.
+:- pred output_asm_proc_list(io.output_stream::in,
+    list(x86_64_procedure)::in, io::di, io::uo) is det.
 
-output_asm_proc_list([], !IO). 
-output_asm_proc_list([AsmProc | AsmProcs], !IO) :- 
-	output_asm_instr_list(AsmProc ^ x86_64_code, !IO),
-	output_asm_proc_list(AsmProcs, !IO).
+output_asm_proc_list(_, [], !IO). 
+output_asm_proc_list(Stream, [AsmProc | AsmProcs], !IO) :- 
+    output_asm_instr_list(Stream, AsmProc ^ x86_64_code, !IO),
+    output_asm_proc_list(Stream, AsmProcs, !IO).
 
-:- pred output_asm_instr_list(list(x86_64_instruction)::in, io::di, io::uo) 
-	is det.
+:- pred output_asm_instr_list(io.output_stream::in,
+    list(x86_64_instruction)::in, io::di, io::uo) is det.
 
-output_asm_instr_list([], !IO).
-output_asm_instr_list([AsmInstr | AsmInstrs], !IO) :-
-	output_x86_64_instruction(AsmInstr, !IO), 	
-	output_asm_instr_list(AsmInstrs, !IO).
+output_asm_instr_list(_, [], !IO).
+output_asm_instr_list(Stream, [AsmInstr | AsmInstrs], !IO) :-
+    output_x86_64_instruction(Stream, AsmInstr, !IO),   
+    output_asm_instr_list(Stream, AsmInstrs, !IO).
 
 %----------------------------------------------------------------------------%
 :- end_module llds_to_x86_64_out.

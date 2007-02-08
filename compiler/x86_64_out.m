@@ -9,7 +9,10 @@
 % File: x86_64_out.m.
 % Main author: fhandoko.
 %
-% This module defines the routines for printing out x86_64 instructions. 
+% This module defines routines for writing x86_64 assembler instructions
+% to string writer streams that are attached to the I/O state. 
+% (There's no particularly good reason for this latter restriction so 
+% it can safely be dropped if necessary.)
 %
 %-----------------------------------------------------------------------------%
 
@@ -19,14 +22,20 @@
 :- import_module ll_backend.x86_64_instrs.
 
 :- import_module io.
+:- import_module stream.
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_x86_64_instruction(x86_64_instruction::in, 
-    io::di, io::uo) is det.
+    % Output an x86_64_instruction to the given stream.
+    %
+:- pred output_x86_64_instruction(Stream::in, x86_64_instruction::in, 
+    io::di, io::uo) is det <= stream.writer(Stream, string, io). 
 
+    % XXX this is misnamed: it should be operand_to_string.
+    %
 :- pred operand_type(operand::in, string::out) is det. 
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -38,181 +47,185 @@
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
+:- import_module stream.string_writer.
 :- import_module string.
 :- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 %
-% Output x86_64 pseudo-op.
+% Output x86_64 pseudo-op for GNU as
 %
 
-:- pred output_x86_64_pseudo_op(pseudo_op::in, io::di, io::uo) is det.
+:- pred output_x86_64_pseudo_op(Stream::in, pseudo_op::in, io::di, io::uo)
+    is det <= stream.writer(Stream, string, io).
 
-output_x86_64_pseudo_op(abort, !IO) :-
-    io.write_string("\t.abort\n", !IO).
-output_x86_64_pseudo_op(align(Bytes, FillVal, SkipBytes), !IO) :-
-    output_pseudo_op_with_int_args(".align", Bytes, FillVal, SkipBytes, !IO).
-output_x86_64_pseudo_op(ascii(Literals), !IO) :-
-    output_pseudo_op_str_args(".ascii", Literals, !IO).
-output_x86_64_pseudo_op(asciiz(Literals), !IO) :-
-    output_pseudo_op_str_args(".asciiz", Literals, !IO).
-output_x86_64_pseudo_op(balign(Bytes, FillVal, SkipBytes), !IO) :-
-    output_pseudo_op_with_int_args(".balign", Bytes, FillVal, SkipBytes, !IO).
-output_x86_64_pseudo_op(byte(ExprList), !IO) :-
-    output_pseudo_op_str_args(".byte", ExprList, !IO).
-output_x86_64_pseudo_op(comm(Symbol, Length, Align0), !IO) :-
-    io.write_string("\t.comm\t" ++ Symbol ++ ",", !IO),
-    io.write_int(Length, !IO),
+output_x86_64_pseudo_op(Stream, abort, !IO) :-
+    put(Stream, "\t.abort\n", !IO).
+output_x86_64_pseudo_op(Stream, align(Bytes, FillVal, SkipBytes), !IO) :-
+    output_pseudo_op_with_int_args(Stream, ".align", Bytes, FillVal,
+        SkipBytes, !IO).
+output_x86_64_pseudo_op(Stream, ascii(Literals), !IO) :-
+    output_pseudo_op_str_args(Stream, ".ascii", Literals, !IO).
+output_x86_64_pseudo_op(Stream, asciiz(Literals), !IO) :-
+    output_pseudo_op_str_args(Stream, ".asciiz", Literals, !IO).
+output_x86_64_pseudo_op(Stream, balign(Bytes, FillVal, SkipBytes), !IO) :-
+    output_pseudo_op_with_int_args(Stream, ".balign", Bytes, FillVal,
+        SkipBytes, !IO).
+output_x86_64_pseudo_op(Stream, byte(ExprList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".byte", ExprList, !IO).
+output_x86_64_pseudo_op(Stream, comm(Symbol, Length, Align0), !IO) :-
+    put(Stream, "\t.comm\t" ++ Symbol ++ ",", !IO),
+    put_int(Stream, Length, !IO),
     ( 
         Align0 = yes(Align1),
-        io.write_string(",", !IO),
-        io.write_int(Align1, !IO)
+        put(Stream, ",", !IO),
+        put_int(Stream, Align1, !IO)
     ;
         Align0 = no
     ),
-    io.write_string("\n", !IO).
-output_x86_64_pseudo_op(data(Subsection0), !IO) :-
-    io.write_string("\t.data\t", !IO),
+    put(Stream, "\n", !IO).
+output_x86_64_pseudo_op(Stream, data(Subsection0), !IO) :-
+    put(Stream, "\t.data\t", !IO),
     ( 
         Subsection0 = yes(Subsection1),
-        io.write_int(Subsection1, !IO)
+        put_int(Stream, Subsection1, !IO)
     ;
         Subsection0 = no
     ),
-    io.write_string("\n", !IO).
-output_x86_64_pseudo_op(desc(Symbol, AbsExpr), !IO) :-
-    io.write_string("\t.desc\t" ++ Symbol ++ "," ++ AbsExpr ++ "\n", !IO).
-output_x86_64_pseudo_op(def(Name), !IO) :-
-    io.write_string("\t.def\t" ++ Name ++ "\n", !IO).
-output_x86_64_pseudo_op(dim, !IO) :-
-    io.write_string("\t.dim\n", !IO).
-output_x86_64_pseudo_op(double(NumList), !IO) :-
-    output_pseudo_op_float_args(".double", NumList, !IO).
-output_x86_64_pseudo_op(eject, !IO) :-
-    io.write_string("\t.eject\n", !IO).
-output_x86_64_pseudo_op(x86_64_pseudo_else, !IO) :-
-    io.write_string("\t.else\n", !IO).
-output_x86_64_pseudo_op(elseif, !IO) :-
-    io.write_string("\t.elseif\n", !IO).
-output_x86_64_pseudo_op(end, !IO) :-
-    io.write_string("\t.end\n", !IO).
-output_x86_64_pseudo_op(endef, !IO) :-
-    io.write_string("\t.endef\n", !IO).
-output_x86_64_pseudo_op(endfunc, !IO) :-
-    io.write_string("\t.endfunc\n", !IO).
-output_x86_64_pseudo_op(endif, !IO) :-
-    io.write_string("\t.endif\n", !IO).
-output_x86_64_pseudo_op(endm, !IO) :-
-    io.write_string("\t.endm\n", !IO).
-output_x86_64_pseudo_op(equ(Symbol, Expr), !IO) :-
-    io.write_string("\t.equ\t" ++ Symbol ++ "," ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(equiv(Symbol, Expr), !IO) :-
-    io.write_string("\t.equiv\t" ++ Symbol ++ "," ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(err, !IO) :-
-    io.write_string("\t.err\n", !IO).
-output_x86_64_pseudo_op(exitm, !IO) :-
-    io.write_string("\t.exitm\n", !IO).
-output_x86_64_pseudo_op(extern, !IO) :-
-    io.write_string("\t.extern\n", !IO).
-output_x86_64_pseudo_op(fail_(Expr), !IO) :-
-    io.write_string("\t.fail\t" ++ Expr++ "\n", !IO).
-output_x86_64_pseudo_op(file(Name), !IO) :-
-    io.write_string("\t.file\t\"" ++ Name ++ "\"\n", !IO).
-output_x86_64_pseudo_op(fill(Repeat, Size, Val), !IO) :-
-    output_pseudo_op_with_int_args(".repeat", Repeat, Size, Val, !IO).
-output_x86_64_pseudo_op(float(NumList), !IO) :-
-    output_pseudo_op_float_args(".float", NumList, !IO).
-output_x86_64_pseudo_op(func_(Name, Label), !IO) :-
-    io.write_string("\t.func\t" ++ Name ++ "," ++ Label ++ "\n", !IO).
-output_x86_64_pseudo_op(global(Symbol), !IO) :-
-    io.write_string("\t.global\t" ++ Symbol ++ "\n", !IO).
-output_x86_64_pseudo_op(globl(Symbol), !IO) :-
-    io.write_string("\t.globl\t" ++ Symbol ++ "\n", !IO).
-output_x86_64_pseudo_op(hidden(Name), !IO) :-
-    io.write_string("\t.hidden\t" ++ Name ++ "\n", !IO).
-output_x86_64_pseudo_op(hword(ExprList), !IO) :-
-    output_pseudo_op_str_args(".hword", ExprList, !IO).
-output_x86_64_pseudo_op(ident, !IO) :-
-    io.write_string("\t.ident\n", !IO).
-output_x86_64_pseudo_op(x86_64_pseudo_if(Expr), !IO) :-
-    io.write_string("\t.if\t" ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(ifdef(Symbol), !IO) :-
-    io.write_string("\t.ifdef\t" ++ Symbol ++ "\n", !IO).
-output_x86_64_pseudo_op(ifc(Str1, Str2), !IO) :-
-    io.write_string("\t.ifc\t" ++ Str1 ++ "," ++ Str2 ++ "\n", !IO).
-output_x86_64_pseudo_op(ifeq(Expr), !IO) :-
-    io.write_string("\t.ifeq\t" ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(ifge(Expr), !IO) :-
-    io.write_string("\t.ifge\t" ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(ifgt(Expr), !IO) :-
-    io.write_string("\t.ifgt\t" ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(ifle(Expr), !IO) :-
-    io.write_string("\t.ifle\t" ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(iflt(Expr), !IO) :-
-    io.write_string("\t.iflt\t" ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(ifnc(Str1, Str2), !IO) :-
-    io.write_string("\t.ifnc\t" ++ Str1 ++ "," ++ Str2 ++ "\n", !IO).
-output_x86_64_pseudo_op(ifndef(Symbol), !IO) :-
-    io.write_string("\t.ifndef\t" ++ Symbol ++ "\n", !IO).
-output_x86_64_pseudo_op(ifnotdef(Symbol), !IO) :-
-    io.write_string("\t.ifnotdef\t" ++ Symbol ++ "\n", !IO).
-output_x86_64_pseudo_op(ifne(Expr), !IO) :-
-    io.write_string("\t.ifne\t" ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(ifnes(Str1, Str2), !IO) :-
-    io.write_string("\t.ifnes\t" ++ Str1 ++ "," ++ Str2 ++ "\n", !IO).
-output_x86_64_pseudo_op(include(File), !IO) :-
-    io.write_string("\t.include\t" ++ "\"" ++ File ++ "\"\n", !IO).
-output_x86_64_pseudo_op(int(ExprList), !IO) :-
-    output_pseudo_op_str_args(".int", ExprList, !IO).
-output_x86_64_pseudo_op(internal(Name), !IO) :-
-    io.write_string("\t.internal\t" ++ Name ++ "\n", !IO).
-output_x86_64_pseudo_op(lcomm(Symbol, Length), !IO) :-
-    io.write_string("\tlcomm\t" ++ Symbol, !IO),
-    io.write_int(Length, !IO),
-    io.write_string("\n", !IO).
-output_x86_64_pseudo_op(line(LineNum), !IO) :-
-    io.write_string("\t.line\t", !IO),
-    io.write_int(LineNum, !IO),
-    io.write_string("\n", !IO).
-output_x86_64_pseudo_op(list, !IO) :-
-    io.write_string("\t.list\n", !IO).
-output_x86_64_pseudo_op(long(ExprList), !IO) :-
-    output_pseudo_op_str_args(".long", ExprList, !IO).
-output_x86_64_pseudo_op(macro, !IO) :-
-    io.write_string("\t.macro\n", !IO).
-output_x86_64_pseudo_op(nolist, !IO) :-
-    io.write_string("\t.nolist\n", !IO).
-output_x86_64_pseudo_op(p2align(PowBit, FillVal, SkipBytes), !IO) :-
-    output_pseudo_op_with_int_args(".p2align", PowBit, FillVal, SkipBytes, !IO).
-output_x86_64_pseudo_op(popsection, !IO) :-
-    io.write_string("\t.popsection\n", !IO).
-output_x86_64_pseudo_op(previous, !IO) :-
-    io.write_string("\t.previous\n", !IO).
-output_x86_64_pseudo_op(print(Str), !IO) :-
-    io.write_string("\t.print\t" ++ Str ++ "\n", !IO).
-output_x86_64_pseudo_op(protected(Name), !IO) :-
-    io.write_string("\t.protected\t" ++ Name ++ "\n", !IO).
-output_x86_64_pseudo_op(psize(Lines, Cols), !IO) :-
-    output_pseudo_op_with_int_args(".psize", Lines, Cols, no, !IO).
-output_x86_64_pseudo_op(purgem(Name), !IO) :-
-    io.write_string("\t.purgem\t" ++ Name ++ "\n", !IO).
-output_x86_64_pseudo_op(pushsection(Name, Subsection), !IO) :-
-    io.write_string("\t.pushsection\t" ++ Name, !IO),
-    io.write_int(Subsection, !IO),
-    io.write_string("\n", !IO).
-output_x86_64_pseudo_op(quad(BigNumList), !IO) :-
-    output_pseudo_op_str_args("\t.quad\t", BigNumList, !IO).
-output_x86_64_pseudo_op(rept(Count), !IO) :-
-    io.write_string("\t.rept\t", !IO),
-    io.write_int(Count, !IO),
-    io.write_string("\n", !IO).
-output_x86_64_pseudo_op(sbttl(SubHeading), !IO) :-
-    io.write_string("\t.sbttl\t" ++ "\"" ++ SubHeading ++ "\"\n", !IO).
-output_x86_64_pseudo_op(scl(Class), !IO) :-
-    io.write_string("\t.scl\t" ++ Class ++ "\n", !IO).
-output_x86_64_pseudo_op(section(Name, Flags0, Type0, EntSize0), !IO) :-
-    io.write_string("\t.section\t" ++ Name, !IO),
+    put(Stream, "\n", !IO).
+output_x86_64_pseudo_op(Stream, desc(Symbol, AbsExpr), !IO) :-
+    put(Stream, "\t.desc\t" ++ Symbol ++ "," ++ AbsExpr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, def(Name), !IO) :-
+    put(Stream, "\t.def\t" ++ Name ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, dim, !IO) :-
+    put(Stream, "\t.dim\n", !IO).
+output_x86_64_pseudo_op(Stream, double(NumList), !IO) :-
+    output_pseudo_op_float_args(Stream, ".double", NumList, !IO).
+output_x86_64_pseudo_op(Stream, eject, !IO) :-
+    put(Stream, "\t.eject\n", !IO).
+output_x86_64_pseudo_op(Stream, x86_64_pseudo_else, !IO) :-
+    put(Stream, "\t.else\n", !IO).
+output_x86_64_pseudo_op(Stream, elseif, !IO) :-
+    put(Stream, "\t.elseif\n", !IO).
+output_x86_64_pseudo_op(Stream, end, !IO) :-
+    put(Stream, "\t.end\n", !IO).
+output_x86_64_pseudo_op(Stream, endef, !IO) :-
+    put(Stream, "\t.endef\n", !IO).
+output_x86_64_pseudo_op(Stream, endfunc, !IO) :-
+    put(Stream, "\t.endfunc\n", !IO).
+output_x86_64_pseudo_op(Stream, endif, !IO) :-
+    put(Stream, "\t.endif\n", !IO).
+output_x86_64_pseudo_op(Stream, endm, !IO) :-
+    put(Stream, "\t.endm\n", !IO).
+output_x86_64_pseudo_op(Stream, equ(Symbol, Expr), !IO) :-
+    put(Stream, "\t.equ\t" ++ Symbol ++ "," ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, equiv(Symbol, Expr), !IO) :-
+    put(Stream, "\t.equiv\t" ++ Symbol ++ "," ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, err, !IO) :-
+    put(Stream, "\t.err\n", !IO).
+output_x86_64_pseudo_op(Stream, exitm, !IO) :-
+    put(Stream, "\t.exitm\n", !IO).
+output_x86_64_pseudo_op(Stream, extern, !IO) :-
+    put(Stream, "\t.extern\n", !IO).
+output_x86_64_pseudo_op(Stream, fail_(Expr), !IO) :-
+    put(Stream, "\t.fail\t" ++ Expr++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, file(Name), !IO) :-
+    put(Stream, "\t.file\t\"" ++ Name ++ "\"\n", !IO).
+output_x86_64_pseudo_op(Stream, fill(Repeat, Size, Val), !IO) :-
+    output_pseudo_op_with_int_args(Stream, ".repeat", Repeat, Size, Val, !IO).
+output_x86_64_pseudo_op(Stream, float(NumList), !IO) :-
+    output_pseudo_op_float_args(Stream, ".float", NumList, !IO).
+output_x86_64_pseudo_op(Stream, func_(Name, Label), !IO) :-
+    put(Stream, "\t.func\t" ++ Name ++ "," ++ Label ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, global(Symbol), !IO) :-
+    put(Stream, "\t.global\t" ++ Symbol ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, globl(Symbol), !IO) :-
+    put(Stream, "\t.globl\t" ++ Symbol ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, hidden(Name), !IO) :-
+    put(Stream, "\t.hidden\t" ++ Name ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, hword(ExprList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".hword", ExprList, !IO).
+output_x86_64_pseudo_op(Stream, ident, !IO) :-
+    put(Stream, "\t.ident\n", !IO).
+output_x86_64_pseudo_op(Stream, x86_64_pseudo_if(Expr), !IO) :-
+    put(Stream, "\t.if\t" ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifdef(Symbol), !IO) :-
+    put(Stream, "\t.ifdef\t" ++ Symbol ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifc(Str1, Str2), !IO) :-
+    put(Stream, "\t.ifc\t" ++ Str1 ++ "," ++ Str2 ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifeq(Expr), !IO) :-
+    put(Stream, "\t.ifeq\t" ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifge(Expr), !IO) :-
+    put(Stream, "\t.ifge\t" ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifgt(Expr), !IO) :-
+    put(Stream, "\t.ifgt\t" ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifle(Expr), !IO) :-
+    put(Stream, "\t.ifle\t" ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, iflt(Expr), !IO) :-
+    put(Stream, "\t.iflt\t" ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifnc(Str1, Str2), !IO) :-
+    put(Stream, "\t.ifnc\t" ++ Str1 ++ "," ++ Str2 ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifndef(Symbol), !IO) :-
+    put(Stream, "\t.ifndef\t" ++ Symbol ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifnotdef(Symbol), !IO) :-
+    put(Stream, "\t.ifnotdef\t" ++ Symbol ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifne(Expr), !IO) :-
+    put(Stream, "\t.ifne\t" ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, ifnes(Str1, Str2), !IO) :-
+    put(Stream, "\t.ifnes\t" ++ Str1 ++ "," ++ Str2 ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, include(File), !IO) :-
+    put(Stream, "\t.include\t" ++ "\"" ++ File ++ "\"\n", !IO).
+output_x86_64_pseudo_op(Stream, int(ExprList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".int", ExprList, !IO).
+output_x86_64_pseudo_op(Stream, internal(Name), !IO) :-
+    put(Stream, "\t.internal\t" ++ Name ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, lcomm(Symbol, Length), !IO) :-
+    put(Stream, "\tlcomm\t" ++ Symbol, !IO),
+    put_int(Stream, Length, !IO),
+    put(Stream, "\n", !IO).
+output_x86_64_pseudo_op(Stream, line(LineNum), !IO) :-
+    put(Stream, "\t.line\t", !IO),
+    put_int(Stream, LineNum, !IO),
+    put(Stream, "\n", !IO).
+output_x86_64_pseudo_op(Stream, list, !IO) :-
+    put(Stream, "\t.list\n", !IO).
+output_x86_64_pseudo_op(Stream, long(ExprList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".long", ExprList, !IO).
+output_x86_64_pseudo_op(Stream, macro, !IO) :-
+    put(Stream, "\t.macro\n", !IO).
+output_x86_64_pseudo_op(Stream, nolist, !IO) :-
+    put(Stream, "\t.nolist\n", !IO).
+output_x86_64_pseudo_op(Stream, p2align(PowBit, FillVal, SkipBytes), !IO) :-
+    output_pseudo_op_with_int_args(Stream, ".p2align", PowBit, FillVal,
+        SkipBytes, !IO).
+output_x86_64_pseudo_op(Stream, popsection, !IO) :-
+    put(Stream, "\t.popsection\n", !IO).
+output_x86_64_pseudo_op(Stream, previous, !IO) :-
+    put(Stream, "\t.previous\n", !IO).
+output_x86_64_pseudo_op(Stream, print(Str), !IO) :-
+    put(Stream, "\t.print\t" ++ Str ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, protected(Name), !IO) :-
+    put(Stream, "\t.protected\t" ++ Name ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, psize(Lines, Cols), !IO) :-
+    output_pseudo_op_with_int_args(Stream, ".psize", Lines, Cols, no, !IO).
+output_x86_64_pseudo_op(Stream, purgem(Name), !IO) :-
+    put(Stream, "\t.purgem\t" ++ Name ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, pushsection(Name, Subsection), !IO) :-
+    put(Stream, "\t.pushsection\t" ++ Name, !IO),
+    put_int(Stream, Subsection, !IO),
+    put(Stream, "\n", !IO).
+output_x86_64_pseudo_op(Stream, quad(BigNumList), !IO) :-
+    output_pseudo_op_str_args(Stream, "\t.quad\t", BigNumList, !IO).
+output_x86_64_pseudo_op(Stream, rept(Count), !IO) :-
+    put(Stream, "\t.rept\t", !IO),
+    put_int(Stream, Count, !IO),
+    put(Stream, "\n", !IO).
+output_x86_64_pseudo_op(Stream, sbttl(SubHeading), !IO) :-
+    put(Stream, "\t.sbttl\t" ++ "\"" ++ SubHeading ++ "\"\n", !IO).
+output_x86_64_pseudo_op(Stream, scl(Class), !IO) :-
+    put(Stream, "\t.scl\t" ++ Class ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, section(Name, Flags0, Type0, EntSize0), !IO) :-
+    put(Stream, "\t.section\t" ++ Name, !IO),
     ( 
         Flags0 = yes(Flags1),
         check_section_flags_and_type(Flags1, Type0, Result0),
@@ -220,9 +233,9 @@ output_x86_64_pseudo_op(section(Name, Flags0, Type0, EntSize0), !IO) :-
             Result0 = yes,
             Type0 = yes(Type1)
         ->
-            io.write_string(",\"" ++ Flags1 ++ "\"", !IO),
+            put(Stream, ",\"" ++ Flags1 ++ "\"", !IO),
             ( check_pseudo_section_type(Type1) ->
-                io.write_string("," ++ Type1, !IO)
+                put(Stream, "," ++ Type1, !IO)
             ;
                 unexpected(this_file, "output_x86_64_pseudo_op: section:" 
                     ++ " check_section_type unexpected")
@@ -236,77 +249,78 @@ output_x86_64_pseudo_op(section(Name, Flags0, Type0, EntSize0), !IO) :-
      ),
      ( 
         EntSize0 = yes(EntSize1),
-        io.write_string(",", !IO),
-        io.write_int(EntSize1, !IO)
+        put(Stream, ",", !IO),
+        put_int(Stream, EntSize1, !IO)
      ;
         EntSize0 = no
      ),
-     io.write_string("\n", !IO).
-output_x86_64_pseudo_op(set(Symbol, Expr), !IO) :-
-    io.write_string("\t.set\t" ++ Symbol ++ "," ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(short(ExprList), !IO) :-
-    output_pseudo_op_str_args(".short", ExprList, !IO).
-output_x86_64_pseudo_op(single(FloatList), !IO) :-
-    output_pseudo_op_float_args(".single", FloatList, !IO).
-output_x86_64_pseudo_op(size(Name, Expr), !IO) :-
-    io.write_string("\t.size\t" ++ Name ++ "," ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(skip(Size, Val), !IO) :-
-    output_pseudo_op_with_int_args(".skip", Size, Val, no, !IO).
-output_x86_64_pseudo_op(sleb128(ExprList), !IO) :-
-    output_pseudo_op_str_args(".sleb128\t", ExprList, !IO).
-output_x86_64_pseudo_op(space(Size, Fill), !IO) :-
-    output_pseudo_op_with_int_args(".space", Size, Fill, no, !IO).
-output_x86_64_pseudo_op(string(StrList), !IO) :-
-    output_pseudo_op_str_args(".string", StrList, !IO).
-output_x86_64_pseudo_op(struct(Expr), !IO) :-
-    io.write_string("\t.struct\t" ++ Expr ++ "\n", !IO).
-output_x86_64_pseudo_op(subsection(Name), !IO) :-
-    io.write_string("\t.subsection\t" ++ Name ++ "\n", !IO).
-output_x86_64_pseudo_op(symver(Name, Alias), !IO) :-
-    io.write_string("\t.symver\t" ++ Name ++ "," ++ Alias ++ "\n", !IO).
-output_x86_64_pseudo_op(tag(Name), !IO) :-
-    io.write_string("\t.tag\t" ++ Name ++ "\n", !IO).
-output_x86_64_pseudo_op(text(Subsection0), !IO) :-
-    io.write_string("\ttext\t", !IO),
+     put(Stream, "\n", !IO).
+output_x86_64_pseudo_op(Stream, set(Symbol, Expr), !IO) :-
+    put(Stream, "\t.set\t" ++ Symbol ++ "," ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, short(ExprList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".short", ExprList, !IO).
+output_x86_64_pseudo_op(Stream, single(FloatList), !IO) :-
+    output_pseudo_op_float_args(Stream, ".single", FloatList, !IO).
+output_x86_64_pseudo_op(Stream, size(Name, Expr), !IO) :-
+    put(Stream, "\t.size\t" ++ Name ++ "," ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, skip(Size, Val), !IO) :-
+    output_pseudo_op_with_int_args(Stream, ".skip", Size, Val, no, !IO).
+output_x86_64_pseudo_op(Stream, sleb128(ExprList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".sleb128\t", ExprList, !IO).
+output_x86_64_pseudo_op(Stream, space(Size, Fill), !IO) :-
+    output_pseudo_op_with_int_args(Stream, ".space", Size, Fill, no, !IO).
+output_x86_64_pseudo_op(Stream, string(StrList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".string", StrList, !IO).
+output_x86_64_pseudo_op(Stream, struct(Expr), !IO) :-
+    put(Stream, "\t.struct\t" ++ Expr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, subsection(Name), !IO) :-
+    put(Stream, "\t.subsection\t" ++ Name ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, symver(Name, Alias), !IO) :-
+    put(Stream, "\t.symver\t" ++ Name ++ "," ++ Alias ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, tag(Name), !IO) :-
+    put(Stream, "\t.tag\t" ++ Name ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, text(Subsection0), !IO) :-
+    put(Stream, "\ttext\t", !IO),
     ( 
         Subsection0 = yes(Subsection1),
-        io.write_int(Subsection1, !IO)
+        put_int(Stream, Subsection1, !IO)
     ;
         Subsection0 = no
     ),
-    io.write_string("\n", !IO).
-output_x86_64_pseudo_op(title(Heading), !IO) :-
-    io.write_string("\t.title\t" ++ Heading ++ "\n", !IO).
-output_x86_64_pseudo_op(x86_64_pseudo_type(Name, Desc), !IO) :-
+    put(Stream, "\n", !IO).
+output_x86_64_pseudo_op(Stream, title(Heading), !IO) :-
+    put(Stream, "\t.title\t" ++ Heading ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, x86_64_pseudo_type(Name, Desc), !IO) :-
     ( check_pseudo_type_desc(Desc) ->
-        io.write_string("\t.type\t" ++ Name ++ "," ++ Desc ++ "\n", !IO)
+        put(Stream, "\t.type\t" ++ Name ++ "," ++ Desc ++ "\n", !IO)
     ;
        unexpected(this_file, "output_x86_64_pseudo_op: x86_64_pseudo_type:"
             ++ " unexpected: check_pseudo_type_desc failed") 
     ).
-output_x86_64_pseudo_op(uleb128(ExprList), !IO) :-
-    output_pseudo_op_str_args(".uleb128", ExprList, !IO).
-output_x86_64_pseudo_op(val(Addr), !IO) :-
-    io.write_string("\t.val\t" ++ Addr ++ "\n", !IO).
-output_x86_64_pseudo_op(version(Note), !IO) :-
-    io.write_string("\t.version\t" ++ Note ++ "\n", !IO).
-output_x86_64_pseudo_op(weak(NameList), !IO) :-
-    output_pseudo_op_str_args(".weak", NameList, !IO).
-output_x86_64_pseudo_op(word(ExprList), !IO) :-
-    output_pseudo_op_str_args(".word", ExprList, !IO).
+output_x86_64_pseudo_op(Stream, uleb128(ExprList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".uleb128", ExprList, !IO).
+output_x86_64_pseudo_op(Stream, val(Addr), !IO) :-
+    put(Stream, "\t.val\t" ++ Addr ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, version(Note), !IO) :-
+    put(Stream, "\t.version\t" ++ Note ++ "\n", !IO).
+output_x86_64_pseudo_op(Stream, weak(NameList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".weak", NameList, !IO).
+output_x86_64_pseudo_op(Stream, word(ExprList), !IO) :-
+    output_pseudo_op_str_args(Stream, ".word", ExprList, !IO).
 
     % Output pseudo-op name with 1, 2 or 3 integer arguments. 
     %
-:- pred output_pseudo_op_with_int_args(string::in, int::in, maybe(int)::in, 
-    maybe(int)::in, io::di, io::uo) is det.
+:- pred output_pseudo_op_with_int_args(Stream::in, string::in, int::in,
+    maybe(int)::in, maybe(int)::in, io::di, io::uo)
+    is det <= stream.writer(Stream, string, io).
 
-output_pseudo_op_with_int_args(OpName, Arg1, Arg2, Arg3, !IO) :-
-    io.write_string("\t" ++ OpName ++ "\t", !IO),
-    io.write_int(Arg1, !IO),
+output_pseudo_op_with_int_args(Stream, OpName, Arg1, Arg2, Arg3, !IO) :-
+    put(Stream, "\t" ++ OpName ++ "\t", !IO),
+    put_int(Stream, Arg1, !IO),
     ( 
         Arg2 = yes(Arg2Out),
-        io.write_string(",", !IO),
-        io.write_int(Arg2Out, !IO)
+        put(Stream, ",", !IO),
+        put_int(Stream, Arg2Out, !IO)
     ;
         Arg2 = no
     ),
@@ -314,67 +328,71 @@ output_pseudo_op_with_int_args(OpName, Arg1, Arg2, Arg3, !IO) :-
         Arg3 = yes(Arg3Out),
         ( 
             Arg2 = no,
-            io.write_string(",,", !IO),
-            io.write_int(Arg3Out, !IO)
+            put(Stream, ",,", !IO),
+            put_int(Stream, Arg3Out, !IO)
         ;
             Arg2 = yes(_),
-            io.write_string(",", !IO),
-            io.write_int(Arg3Out, !IO)
+            put(Stream, ",", !IO),
+            put_int(Stream, Arg3Out, !IO)
         )
     ;
         Arg3 = no
     ),
-    io.write_string("\n", !IO).
+    put(Stream, "\n", !IO).
 
     % Output pseudo-op having list of float as its argument.
     %
-:- pred output_pseudo_op_float_args(string::in, list(float)::in, 
-    io::di, io::uo) is det.
+:- pred output_pseudo_op_float_args(Stream::in, string::in, list(float)::in, 
+    io::di, io::uo) is det <= stream.writer(Stream, string, io).
 
-output_pseudo_op_float_args(OpName, FloatArgs, !IO) :-
-    io.write_string("\t" ++ OpName ++ "\t", !IO),
-    pseudo_op_float_args_while(FloatArgs, !IO),
-    io.write_string("\n", !IO).
+output_pseudo_op_float_args(Stream, OpName, FloatArgs, !IO) :-
+    put(Stream, "\t" ++ OpName ++ "\t", !IO),
+    pseudo_op_float_args_while(Stream, FloatArgs, !IO),
+    put(Stream, "\n", !IO).
  
-:- pred pseudo_op_float_args_while(list(float)::in, io::di, io::uo) is det.
+:- pred pseudo_op_float_args_while(Stream::in, list(float)::in,
+    io::di, io::uo) is det <= stream.writer(Stream, string, io).
 
-pseudo_op_float_args_while([], !IO).
-pseudo_op_float_args_while([Arg | Args], !IO) :-
-    io.write_float(Arg, !IO),
+pseudo_op_float_args_while(_, [], !IO).
+pseudo_op_float_args_while(Stream, [Arg | Args], !IO) :-
+    put_float(Stream, Arg, !IO),
     ( 
         Args = [],
-        pseudo_op_float_args_while(Args, !IO)
+        pseudo_op_float_args_while(Stream, Args, !IO)
     ;
-        Args = [_|_],
-        io.write_string(",", !IO),
-        pseudo_op_float_args_while(Args, !IO)
+        Args = [_ | _],
+        put(Stream, ",", !IO),
+        pseudo_op_float_args_while(Stream, Args, !IO)
     ).
 
-    % Output pseudo-op having list of string as its argument.
+    % Output a pseudo-op that has a list of string as it's
+    % argument.
     %
-:- pred output_pseudo_op_str_args(string::in, list(string)::in, 
-    io::di, io::uo) is det.
+:- pred output_pseudo_op_str_args(Stream::in, string::in, list(string)::in, 
+    io::di, io::uo) is det <= stream.writer(Stream, string, io).
 
-output_pseudo_op_str_args(OpName, StrArgs, !IO) :-
-    io.write_string("\t" ++ OpName ++ "\t", !IO),
-    pseudo_op_str_args_while(StrArgs, !IO),
-    io.write_string("\n", !IO).
+output_pseudo_op_str_args(Stream, OpName, StrArgs, !IO) :-
+    put(Stream, "\t" ++ OpName ++ "\t", !IO),
+    pseudo_op_str_args_while(Stream, StrArgs, !IO),
+    put(Stream, "\n", !IO).
  
-:- pred pseudo_op_str_args_while(list(string)::in, io::di, io::uo) is det.
+:- pred pseudo_op_str_args_while(Stream::in, list(string)::in,
+    io::di, io::uo) is det <= stream.writer(Stream, string, io).
 
-pseudo_op_str_args_while([], !IO).
-pseudo_op_str_args_while([Arg | Args], !IO) :-
-    io.write_string(string.word_wrap("\"" ++ Arg ++ "\"", comment_length), !IO),
+pseudo_op_str_args_while(_, [], !IO).
+pseudo_op_str_args_while(Stream, [Arg | Args], !IO) :-
+    put(Stream, string.word_wrap("\"" ++ Arg ++ "\"", comment_length), !IO),
     ( 
         Args = [],
-        pseudo_op_str_args_while(Args, !IO)
+        pseudo_op_str_args_while(Stream, Args, !IO)
     ;
-        Args = [_|_],
-        io.write_string(",", !IO),
-        pseudo_op_str_args_while(Args, !IO)
+        Args = [_ | _],
+        put(Stream, ",", !IO),
+        pseudo_op_str_args_while(Stream, Args, !IO)
     ).
 
-    % Check if FLAGS and TYPE argument of '.section' pseudo-op is valid
+    % Check if the FLAGS and TYPE argumentis of '.section' pseudo-op
+    % are valid.
     %
 :- pred check_section_flags_and_type(string::in, maybe(string)::in, 
     bool::out) is det.
@@ -403,7 +421,7 @@ check_section_flags_and_type(Flags, Type0, Result) :-
         Result = no
     ).
 
-    % Check FLAGS argument of '.section' pseudo-op
+    % Check if the FLAGS argument of '.section' pseudo-op is valid.
     %
 :- pred check_pseudo_section_flags(list(char)::in, bool::out) is det. 
 
@@ -451,61 +469,66 @@ comment_length = 68.
 
 %-----------------------------------------------------------------------------%
 %
-% Output x86_64 instructions.
+% Output x86_64 instructions
 %
 
     % Output x86_64 instruction and x86_64_comment. 
-    %
-output_x86_64_instruction(x86_64_instr(Instr, Comment), !IO) :-
-    output_x86_64_comment(Comment, !IO),
-    output_x86_64_instr_list(Instr, !IO),
-    io.write_string("\n", !IO).
+    % 
+    % XXX There should be a way of turning of comments since we don't
+    % really want to output them in __asm__ blocks.
+    % 
+output_x86_64_instruction(Stream, x86_64_instr(Instr, Comment), !IO) :-
+    output_x86_64_comment(Stream, Comment, !IO),
+    output_x86_64_instr_list(Stream, Instr, !IO),
+    put(Stream, "\n", !IO).
 
-:- pred output_x86_64_instr_list(list(x86_64_instr)::in, io::di, io::uo) is det.
+:- pred output_x86_64_instr_list(Stream::in, list(x86_64_instr)::in,
+    io::di, io::uo) is det <= stream.writer(Stream, string, io).
 
-output_x86_64_instr_list(Instrs, !IO) :-
-    list.foldl(output_x86_64_instr, Instrs, !IO).
+output_x86_64_instr_list(Stream, Instrs, !IO) :-
+    list.foldl(output_x86_64_instr(Stream), Instrs, !IO).
 
-:- pred output_x86_64_instr(x86_64_instr::in, io::di, io::uo) is det.
+:- pred output_x86_64_instr(Stream::in, x86_64_instr::in,
+    io::di, io::uo) is det <= stream.writer(Stream, string, io).
 
-output_x86_64_instr(x86_64_comment(Comment), !IO) :-
+output_x86_64_instr(Stream, x86_64_comment(Comment), !IO) :-
     ( string.length(Comment) > 0 ->
-        io.write_string("\t# ", !IO),
+        put(Stream, "\t# ", !IO),
         ( string.length(Comment) > comment_length ->
             string.split(Comment, comment_length, Comment1, Comment2),
-            io.write_string(string.word_wrap(Comment1, comment_length), !IO),
-            io.write_string("\n", !IO),
-            output_x86_64_instr(x86_64_comment(Comment2), !IO)
+            put(Stream, string.word_wrap(Comment1, comment_length), !IO),
+            put(Stream, "\n", !IO),
+            output_x86_64_instr(Stream, x86_64_comment(Comment2), !IO)
         ;   
-            io.write_string(string.word_wrap(Comment, comment_length), !IO)
+            put(Stream, string.word_wrap(Comment, comment_length), !IO)
         )
     ;
         true
     ).
-output_x86_64_instr(x86_64_label(LabelName), !IO) :-
+output_x86_64_instr(Stream, x86_64_label(LabelName), !IO) :-
     ( string.length(LabelName) > 0 ->
-        io.write_string("\n" ++ LabelName ++ ":", !IO)
+        put(Stream, "\n" ++ LabelName ++ ":", !IO)
     ;
         true
     ).
-output_x86_64_instr(x86_64_directive(PseudoOp), !IO) :-
-    output_x86_64_pseudo_op(PseudoOp, !IO).
-output_x86_64_instr(x86_64_instr(Instr), !IO) :-
-    output_x86_64_inst(Instr, !IO),
-    io.write_string("\n", !IO).
-
+output_x86_64_instr(Stream, x86_64_directive(PseudoOp), !IO) :-
+    output_x86_64_pseudo_op(Stream, PseudoOp, !IO).
+output_x86_64_instr(Stream, x86_64_instr(Instr), !IO) :-
+    output_x86_64_inst(Stream, Instr, !IO),
+    put(Stream, "\n", !IO).
 
     % Output a single x86_64 instruction and its operands (if any). 
     %
-:- pred output_x86_64_inst(x86_64_inst::in, io::di, io::uo) is det.
+:- pred output_x86_64_inst(Stream::in, x86_64_inst::in, io::di, io::uo)
+    is det <= stream.writer(Stream, string, io).
 
-output_x86_64_inst(adc(Src, Dest), !IO) :-
-    output_instr_not_imm_dest("adc", Src, yes(Dest), !IO).
-output_x86_64_inst(add(Src, Dest), !IO) :-
-    output_instr_not_imm_dest("add", Src, yes(Dest), !IO).
-output_x86_64_inst(and(Src, Dest), !IO) :-
-    output_instr_not_imm_dest("and", Src, yes(Dest), !IO).
-output_x86_64_inst(bs(Src, Dest, Cond), !IO) :-
+output_x86_64_inst(Stream, adc(Src, Dest), !IO) :-
+    output_instr_not_imm_dest(Stream, "adc", Src, yes(Dest), !IO).
+output_x86_64_inst(Stream, add(Src, Dest), !IO) :-
+    output_instr_not_imm_dest(Stream, "add", Src, yes(Dest), !IO).
+output_x86_64_inst(Stream, and(Src, Dest), !IO) :-
+    output_instr_not_imm_dest(Stream, "and", Src, yes(Dest), !IO).
+output_x86_64_inst(Stream, bs(Src, Dest, Cond), !IO) :-
     check_operand_not_immediate(Src, Result1),
     (
         Result1 = yes,
@@ -522,9 +545,9 @@ output_x86_64_inst(bs(Src, Dest, Cond), !IO) :-
                 unexpected(this_file, "output_x86_64_inst: bs: unexpected:" 
                     ++ " invalid condition third operand")
             ),
-            io.write_string("\t" ++ Instr ++ "\t", !IO),
+            put(Stream, "\t" ++ Instr ++ "\t", !IO),
             operand_type(Dest, DestType),
-            io.write_string(SrcType ++ ", " ++ DestType ++ "\t", !IO)
+            put(Stream, SrcType ++ ", " ++ DestType ++ "\t", !IO)
         ;
             DestRes = no,
             unexpected(this_file, "output_x86_64_instr: bs: unexpected:"
@@ -535,59 +558,59 @@ output_x86_64_inst(bs(Src, Dest, Cond), !IO) :-
         unexpected(this_file, "output_x86_64_instr: bsf: unexpected: first"
             ++ " operand is an immediate value")
     ).
-output_x86_64_inst(bswap(Op), !IO) :-
+output_x86_64_inst(Stream, bswap(Op), !IO) :-
     check_operand_register(Op, Result),
     (
         Result = yes,
         operand_type(Op, RegType), 
-        io.write_string("\tbswap\t" ++ RegType ++ "\t\t", !IO)
+        put(Stream, "\tbswap\t" ++ RegType ++ "\t\t", !IO)
     ;
         Result = no,
         unexpected(this_file, "output_x86_64_instr: bswap: unexpected: operand"
             ++ " is not a register")
     ). 
-output_x86_64_inst(bt(Src, Idx), !IO) :-
-    output_bit_test_instr("bt", Src, Idx, !IO).
-output_x86_64_inst(btc(Src, Idx), !IO) :-
-    output_bit_test_instr("btc", Src, Idx, !IO).
-output_x86_64_inst(btr(Src, Idx), !IO) :-
-    output_bit_test_instr("btr", Src, Idx, !IO).
-output_x86_64_inst(bts(Src, Idx), !IO) :-
-    output_bit_test_instr("bts", Src, Idx, !IO).
-output_x86_64_inst(call(Target), !IO) :-
+output_x86_64_inst(Stream, bt(Src, Idx), !IO) :-
+    output_bit_test_instr(Stream, "bt", Src, Idx, !IO).
+output_x86_64_inst(Stream, btc(Src, Idx), !IO) :-
+    output_bit_test_instr(Stream, "btc", Src, Idx, !IO).
+output_x86_64_inst(Stream, btr(Src, Idx), !IO) :-
+    output_bit_test_instr(Stream, "btr", Src, Idx, !IO).
+output_x86_64_inst(Stream, bts(Src, Idx), !IO) :-
+    output_bit_test_instr(Stream, "bts", Src, Idx, !IO).
+output_x86_64_inst(Stream, call(Target), !IO) :-
     check_operand_not_immediate(Target, Result),
     (
         Result = yes,
         operand_type(Target, TargetType),
-        io.write_string("\tcall\t" ++ TargetType ++ "\t\t", !IO)
+        put(Stream, "\tcall\t" ++ TargetType ++ "\t\t", !IO)
     ;
         Result = no,
         unexpected(this_file, "output_x86_64_instr: call: unexpected:" 
             ++ " invalid target operand")
     ).
-output_x86_64_inst(cbw, !IO) :-
-    io.write_string("\tcbw\t", !IO).
-output_x86_64_inst(cwde, !IO) :-
-    io.write_string("\tcwde\t", !IO).
-output_x86_64_inst(cdqe, !IO) :-
-    io.write_string("\tcdqe\t", !IO).
-output_x86_64_inst(cwd, !IO) :-
-    io.write_string("\tcwd\t", !IO).
-output_x86_64_inst(cdq, !IO) :-
-    io.write_string("\tcdq\t", !IO).
-output_x86_64_inst(cqo, !IO) :-
-    io.write_string("\tcqo\t", !IO).
-output_x86_64_inst(clc, !IO) :-
-    io.write_string("\tclc\t", !IO).
-output_x86_64_inst(cld, !IO) :-
-    io.write_string("\tcld\t", !IO).
-output_x86_64_inst(cmc, !IO) :-
-    io.write_string("\tcmc\t", !IO).
-output_x86_64_inst(cmov(Src, Dest, Cond), !IO) :-
-    output_instr_with_condition("cmov", Src, yes(Dest), Cond, !IO).
-output_x86_64_inst(cmp(Src, Dest), !IO) :-
-    output_instr_not_imm_dest("cmp", Src, yes(Dest), !IO).
-output_x86_64_inst(cmpxchg(Src, Dest), !IO) :-
+output_x86_64_inst(Stream, cbw, !IO) :-
+    put(Stream, "\tcbw\t", !IO).
+output_x86_64_inst(Stream, cwde, !IO) :-
+    put(Stream, "\tcwde\t", !IO).
+output_x86_64_inst(Stream, cdqe, !IO) :-
+    put(Stream, "\tcdqe\t", !IO).
+output_x86_64_inst(Stream, cwd, !IO) :-
+    put(Stream, "\tcwd\t", !IO).
+output_x86_64_inst(Stream, cdq, !IO) :-
+    put(Stream, "\tcdq\t", !IO).
+output_x86_64_inst(Stream, cqo, !IO) :-
+    put(Stream, "\tcqo\t", !IO).
+output_x86_64_inst(Stream, clc, !IO) :-
+    put(Stream, "\tclc\t", !IO).
+output_x86_64_inst(Stream, cld, !IO) :-
+    put(Stream, "\tcld\t", !IO).
+output_x86_64_inst(Stream, cmc, !IO) :-
+    put(Stream, "\tcmc\t", !IO).
+output_x86_64_inst(Stream, cmov(Src, Dest, Cond), !IO) :-
+    output_instr_with_condition(Stream, "cmov", Src, yes(Dest), Cond, !IO).
+output_x86_64_inst(Stream, cmp(Src, Dest), !IO) :-
+    output_instr_not_imm_dest(Stream, "cmp", Src, yes(Dest), !IO).
+output_x86_64_inst(Stream, cmpxchg(Src, Dest), !IO) :-
     check_operand_not_immediate(Src, Result1),
     (
         Result1 = yes,
@@ -596,7 +619,7 @@ output_x86_64_inst(cmpxchg(Src, Dest), !IO) :-
             Result2 = yes,
             operand_type(Src, Op1),
             operand_type(Dest, Op2),
-            io.write_string("\tcmp\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
+            put(Stream, "\tcmp\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: xmpxchg: unexpected:"
@@ -607,22 +630,22 @@ output_x86_64_inst(cmpxchg(Src, Dest), !IO) :-
         unexpected(this_file, "output_x86_64_instr: xmpxchg: unexpected:"
             ++ " invalid first operand")
     ).
-output_x86_64_inst(cmpxchg8b(Op), !IO) :-
+output_x86_64_inst(Stream, cmpxchg8b(Op), !IO) :-
     check_operand_not_mem_ref(Op, Result),
     (
         Result = no,
         operand_type(Op, OpType),
-        io.write_string("\tcmpxchg8b" ++ OpType, !IO)
+        put(Stream, "\tcmpxchg8b" ++ OpType, !IO)
     ;
         Result = yes,
         unexpected(this_file, "output_x86_64_instr: cmpxchg8b: unexpected:"
             ++ "invalid operand")
     ).
-output_x86_64_inst(dec(Operand), !IO) :-
-    output_instr_not_imm_dest("dec", Operand, no, !IO).
-output_x86_64_inst(div(Operand), !IO) :-
-    output_instr_not_imm_dest("div", Operand, no, !IO).
-output_x86_64_inst(enter(StackSize, NestingLevel), !IO) :-
+output_x86_64_inst(Stream, dec(Operand), !IO) :-
+    output_instr_not_imm_dest(Stream, "dec", Operand, no, !IO).
+output_x86_64_inst(Stream, div(Operand), !IO) :-
+    output_instr_not_imm_dest(Stream, "div", Operand, no, !IO).
+output_x86_64_inst(Stream, enter(StackSize, NestingLevel), !IO) :-
     StackSize = uint16(Size),
     NestingLevel = uint8(Level),
     check_unsigned_int_size(16, Size, Result0),
@@ -631,20 +654,20 @@ output_x86_64_inst(enter(StackSize, NestingLevel), !IO) :-
         Result0 = yes,
         Result1 = yes 
     ->
-        io.write_string("\tenter\t", !IO),
-        io.write_int(Size, !IO),
-        io.write_string(",", !IO),
-        io.write_int(Level, !IO),
-        io.write_string("\t", !IO)
+        put(Stream, "\tenter\t", !IO),
+        put_int(Stream, Size, !IO),
+        put(Stream, ",", !IO),
+        put_int(Stream, Level, !IO),
+        put(Stream, "\t", !IO)
     ;
         unexpected(this_file, "output_x86_64_instr: enter: unexpected:"
             ++ " check_unsigned_int_size failed")
     ).
-output_x86_64_inst(idiv(Operand), !IO) :-
-    output_instr_not_imm_dest("idiv", Operand, no, !IO).
-output_x86_64_inst(imul(Src, Dest, Mult), !IO) :-
+output_x86_64_inst(Stream, idiv(Operand), !IO) :-
+    output_instr_not_imm_dest(Stream, "idiv", Operand, no, !IO).
+output_x86_64_inst(Stream, imul(Src, Dest, Mult), !IO) :-
     operand_type(Src, SrcType),
-    io.write_string("\timul\t" ++ SrcType, !IO),
+    put(Stream, "\timul\t" ++ SrcType, !IO),
     (
         Dest = yes(DestRes),
         check_operand_register(DestRes, Result1),
@@ -656,29 +679,29 @@ output_x86_64_inst(imul(Src, Dest, Mult), !IO) :-
             TempReg = operand_reg(gp_reg(13)),
             operand_type(TempReg, DestType)
         ),
-        io.write_string(", " ++ DestType, !IO),
+        put(Stream, ", " ++ DestType, !IO),
         (
             Mult = yes(MultRes),
             operand_type(MultRes, Op3),
-            io.write_string(", " ++ Op3 ++ " ", !IO)
+            put(Stream, ", " ++ Op3 ++ " ", !IO)
         ;
             Mult = no,
-            io.write_string("\t", !IO)
+            put(Stream, "\t", !IO)
         )
     ;
         Dest = no,
-        io.write_string("\t\t", !IO)
+        put(Stream, "\t\t", !IO)
    ).
-output_x86_64_inst(inc(Operand), !IO) :-
-    output_instr_not_imm_dest("inc", Operand, no, !IO).
-output_x86_64_inst(j(Offset, Cond), !IO) :-
-    output_instr_with_condition("j", Offset, no, Cond, !IO).
-output_x86_64_inst(jrcxz(RelOffset), !IO) :-
-    output_instr_8bit_rel_offset("jrcxz", RelOffset, !IO).
-output_x86_64_inst(jmp(Target), !IO) :-
+output_x86_64_inst(Stream, inc(Operand), !IO) :-
+    output_instr_not_imm_dest(Stream, "inc", Operand, no, !IO).
+output_x86_64_inst(Stream, j(Offset, Cond), !IO) :-
+    output_instr_with_condition(Stream, "j", Offset, no, Cond, !IO).
+output_x86_64_inst(Stream, jrcxz(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset(Stream, "jrcxz", RelOffset, !IO).
+output_x86_64_inst(Stream, jmp(Target), !IO) :-
     operand_type(Target, Op),
-    io.write_string("\tjmp\t" ++ Op ++ "\t\t", !IO). 
-output_x86_64_inst(lea(Src, Dest), !IO) :-
+    put(Stream, "\tjmp\t" ++ Op ++ "\t\t", !IO). 
+output_x86_64_inst(Stream, lea(Src, Dest), !IO) :-
     check_operand_not_mem_ref(Src, Result1),
     (
         Result1 = no,
@@ -687,7 +710,7 @@ output_x86_64_inst(lea(Src, Dest), !IO) :-
             Result2 = yes,
             operand_type(Src, Op1),
             operand_type(Dest, Op2),
-            io.write_string("\tlea\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+            put(Stream, "\tlea\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_inst: lea: unexpected:"
@@ -698,41 +721,41 @@ output_x86_64_inst(lea(Src, Dest), !IO) :-
         unexpected(this_file, "output_x86_64_inst: lea: unexpected:"
             ++ " invalid first operand")
     ).
-output_x86_64_inst(leave, !IO) :-
-    io.write_string("\tleave\t", !IO).
-output_x86_64_inst(loop(RelOffset), !IO) :-
-    output_instr_8bit_rel_offset("loop", RelOffset, !IO).
-output_x86_64_inst(loope(RelOffset), !IO) :-
-    output_instr_8bit_rel_offset("loope", RelOffset, !IO).
-output_x86_64_inst(loopne(RelOffset), !IO) :-
-    output_instr_8bit_rel_offset("loopne", RelOffset, !IO).
-output_x86_64_inst(loopnz(RelOffset), !IO) :-
-    output_instr_8bit_rel_offset("loopnz", RelOffset, !IO).
-output_x86_64_inst(loopz(RelOffset), !IO) :-
-    output_instr_8bit_rel_offset("loopz", RelOffset, !IO).
-output_x86_64_inst(mov(Src, Dest), !IO) :-
-    output_instr_not_imm_dest("mov", Src, yes(Dest), !IO).
-output_x86_64_inst(mul(Operand), !IO) :-
-    output_instr_not_imm_dest("mul", Operand, no, !IO).
-output_x86_64_inst(neg(Operand), !IO) :-
-    output_instr_not_imm_dest("neg", Operand, no, !IO).
-output_x86_64_inst(nop, !IO) :-
-    io.write_string("nop", !IO).
-output_x86_64_inst(x86_64_instr_not(Operand), !IO) :-
-    output_instr_not_imm_dest("not", Operand, no, !IO).
-output_x86_64_inst(or(Src, Dest), !IO) :-
-    output_instr_not_imm_dest("or", Src, yes(Dest), !IO).
-output_x86_64_inst(pop(Operand), !IO) :-
-    output_instr_not_imm_dest("pop", Operand, no, !IO).
-output_x86_64_inst(popfq, !IO) :-
-    io.write_string("\tpopfq\t", !IO).
-output_x86_64_inst(push(Operand), !IO) :-
-    io.write_string("\tpush\t", !IO),
+output_x86_64_inst(Stream, leave, !IO) :-
+    put(Stream, "\tleave\t", !IO).
+output_x86_64_inst(Stream, loop(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset(Stream, "loop", RelOffset, !IO).
+output_x86_64_inst(Stream, loope(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset(Stream, "loope", RelOffset, !IO).
+output_x86_64_inst(Stream, loopne(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset(Stream, "loopne", RelOffset, !IO).
+output_x86_64_inst(Stream, loopnz(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset(Stream, "loopnz", RelOffset, !IO).
+output_x86_64_inst(Stream, loopz(RelOffset), !IO) :-
+    output_instr_8bit_rel_offset(Stream, "loopz", RelOffset, !IO).
+output_x86_64_inst(Stream, mov(Src, Dest), !IO) :-
+    output_instr_not_imm_dest(Stream, "mov", Src, yes(Dest), !IO).
+output_x86_64_inst(Stream, mul(Operand), !IO) :-
+    output_instr_not_imm_dest(Stream, "mul", Operand, no, !IO).
+output_x86_64_inst(Stream, neg(Operand), !IO) :-
+    output_instr_not_imm_dest(Stream, "neg", Operand, no, !IO).
+output_x86_64_inst(Stream, nop, !IO) :-
+    put(Stream, "nop", !IO).
+output_x86_64_inst(Stream, x86_64_instr_not(Operand), !IO) :-
+    output_instr_not_imm_dest(Stream, "not", Operand, no, !IO).
+output_x86_64_inst(Stream, or(Src, Dest), !IO) :-
+    output_instr_not_imm_dest(Stream, "or", Src, yes(Dest), !IO).
+output_x86_64_inst(Stream, pop(Operand), !IO) :-
+    output_instr_not_imm_dest(Stream, "pop", Operand, no, !IO).
+output_x86_64_inst(Stream, popfq, !IO) :-
+    put(Stream, "\tpopfq\t", !IO).
+output_x86_64_inst(Stream, push(Operand), !IO) :-
+    put(Stream, "\tpush\t", !IO),
     operand_type(Operand, OperandType),
-    io.write_string(OperandType ++ "\t", !IO).
-output_x86_64_inst(pushfq, !IO) :-
-    io.write_string("\tpushfq\t", !IO).
-output_x86_64_inst(rc(Amnt, Dest, Cond), !IO) :-
+    put(Stream, OperandType ++ "\t", !IO).
+output_x86_64_inst(Stream, pushfq, !IO) :-
+    put(Stream, "\tpushfq\t", !IO).
+output_x86_64_inst(Stream, rc(Amnt, Dest, Cond), !IO) :-
     check_rc_first_operand(Amnt, Result1),
     ( 
         Result1 = yes,
@@ -741,8 +764,8 @@ output_x86_64_inst(rc(Amnt, Dest, Cond), !IO) :-
             Result2 = yes,
             operand_type(Amnt, Op1),
             operand_type(Dest, Op2),
-            io.write_string("\trc\t" ++ Cond, !IO),
-            io.write_string(Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+            put(Stream, "\trc\t" ++ Cond, !IO),
+            put(Stream, Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: rc: unexpected"
@@ -753,7 +776,7 @@ output_x86_64_inst(rc(Amnt, Dest, Cond), !IO) :-
         unexpected(this_file, "output_x86_64_instr: rc: unexpected"
             ++ " invalid first operand")
     ).
-output_x86_64_inst(ret(Op), !IO) :-
+output_x86_64_inst(Stream, ret(Op), !IO) :-
     ( 
         Op = yes(OpRes),
         OpRes = uint16(NumBytes)
@@ -761,9 +784,9 @@ output_x86_64_inst(ret(Op), !IO) :-
         check_unsigned_int_size(16, NumBytes, Result),
         ( 
             Result = yes,
-            io.write_string("\tret\t", !IO),
-            io.write_int(NumBytes, !IO),
-            io.write_string("\t", !IO)
+            put(Stream, "\tret\t", !IO),
+            put_int(Stream, NumBytes, !IO),
+            put(Stream, "\t", !IO)
         ;
             Result = no,
             unexpected(this_file, "output_x86_64_instr: ret: unexpected:"
@@ -772,12 +795,12 @@ output_x86_64_inst(ret(Op), !IO) :-
     ;
         Op = no
     ->
-        io.write_string("\tret\t\t", !IO)
+        put(Stream, "\tret\t\t", !IO)
     ;
         unexpected(this_file, "output_x86_64_instr: ret: unexpected" 
             ++ " invalid operand")
     ).
-output_x86_64_inst(ro(Amnt, Dest, Dir), !IO) :-
+output_x86_64_inst(Stream, ro(Amnt, Dest, Dir), !IO) :-
     check_operand_not_mem_ref(Amnt, Result1),
     ( 
         Result1 = yes,
@@ -786,8 +809,8 @@ output_x86_64_inst(ro(Amnt, Dest, Dir), !IO) :-
             Result2 = yes,
             operand_type(Amnt, Op1),
             operand_type(Dest, Op2),
-            io.write_string("\tro" ++ Dir ++ "\t", !IO),
-            io.write_string(Op1 ++ ", " ++ Op2 ++ "\t\t", !IO)
+            put(Stream, "\tro" ++ Dir ++ "\t", !IO),
+            put(Stream, Op1 ++ ", " ++ Op2 ++ "\t\t", !IO)
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: ro: unexpected:"
@@ -798,7 +821,7 @@ output_x86_64_inst(ro(Amnt, Dest, Dir), !IO) :-
         unexpected(this_file, "output_x86_64_instr: ro: unexpected" 
             ++ " invalid first operand")
     ).
-output_x86_64_inst(sal(Amnt, Dest), !IO) :-
+output_x86_64_inst(Stream, sal(Amnt, Dest), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
     (
         Result1 = yes,
@@ -807,7 +830,7 @@ output_x86_64_inst(sal(Amnt, Dest), !IO) :-
             Result2 = yes,
             operand_type(Amnt, Op1),
             operand_type(Dest, Op2),
-            io.write_string("\tsal\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
+            put(Stream, "\tsal\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: sal: unexpected:" 
@@ -818,7 +841,7 @@ output_x86_64_inst(sal(Amnt, Dest), !IO) :-
         unexpected(this_file, "output_x86_64_instr: sal: unexpected:"
             ++ "invalid first operand")
     ).
-output_x86_64_inst(shl(Amnt, Dest), !IO) :-
+output_x86_64_inst(Stream, shl(Amnt, Dest), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
     (
         Result1 = yes,
@@ -827,7 +850,7 @@ output_x86_64_inst(shl(Amnt, Dest), !IO) :-
             Result2 = yes,
             operand_type(Amnt, Op1),
             operand_type(Dest, Op2),
-            io.write_string("\tshl\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
+            put(Stream, "\tshl\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: shl: unexpected:"
@@ -838,7 +861,7 @@ output_x86_64_inst(shl(Amnt, Dest), !IO) :-
         unexpected(this_file, "output_x86_64_instr: shl: unexpected:" 
             ++ " invalid first operand")
     ).
-output_x86_64_inst(sar(Amnt, Dest), !IO) :-
+output_x86_64_inst(Stream, sar(Amnt, Dest), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
     (
         Result1 = yes,
@@ -847,7 +870,7 @@ output_x86_64_inst(sar(Amnt, Dest), !IO) :-
             Result2 = yes,
             operand_type(Amnt, Op1),
             operand_type(Dest, Op2),
-            io.write_string("\tsar\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
+            put(Stream, "\tsar\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: sar: unexpected:" 
@@ -858,19 +881,19 @@ output_x86_64_inst(sar(Amnt, Dest), !IO) :-
         unexpected(this_file, "output_x86_64_instr: sar: unexpected:"
             ++ " invalid first operand")
     ).
-output_x86_64_inst(sbb(Src, Dest), !IO) :-
-    output_instr_not_imm_dest("sbb", Src, yes(Dest), !IO).
-output_x86_64_inst(set(Operand, Cond), !IO) :-
+output_x86_64_inst(Stream, sbb(Src, Dest), !IO) :-
+    output_instr_not_imm_dest(Stream, "sbb", Src, yes(Dest), !IO).
+output_x86_64_inst(Stream, set(Operand, Cond), !IO) :-
     check_operand_not_immediate(Operand, Result),
     (
         Result = yes,
-        output_instr_with_condition("set", Operand, no, Cond, !IO)
+        output_instr_with_condition(Stream, "set", Operand, no, Cond, !IO)
     ;
         Result = no,
         unexpected(this_file, "output_x86_64_instr: set: unexpected" 
             ++ " invalid first operand")
     ).
-output_x86_64_inst(shld(Amnt, Dest1, Reg), !IO) :-
+output_x86_64_inst(Stream, shld(Amnt, Dest1, Reg), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
     (
         Result1 = yes,
@@ -883,8 +906,8 @@ output_x86_64_inst(shld(Amnt, Dest1, Reg), !IO) :-
                 operand_type(Amnt, Op1),
                 operand_type(Amnt, Op2),
                 operand_type(Amnt, Op3),
-                io.write_string("\tshld\t" ++ Op1 ++ ", ", !IO),
-                io.write_string(Op2 ++ ", " ++ Op3 ++ "\t", !IO)
+                put(Stream, "\tshld\t" ++ Op1 ++ ", ", !IO),
+                put(Stream, Op2 ++ ", " ++ Op3 ++ "\t", !IO)
             ;
                 Result3 = no,
                 unexpected(this_file, "output_x86_64_instr: shld: unexpected:"
@@ -900,7 +923,7 @@ output_x86_64_inst(shld(Amnt, Dest1, Reg), !IO) :-
         unexpected(this_file, "output_x86_64_instr: shld: unexpected"
             ++ " invalid first operand")
     ).
-output_x86_64_inst(shr(Amnt, Dest), !IO) :-
+output_x86_64_inst(Stream, shr(Amnt, Dest), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
     ( 
         Result1 = yes,
@@ -909,7 +932,7 @@ output_x86_64_inst(shr(Amnt, Dest), !IO) :-
             Result2 = yes,
             operand_type(Amnt, Op1),
             operand_type(Dest, Op2),
-            io.write_string("\tshr\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+            put(Stream, "\tshr\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: shr: unexpected"
@@ -920,7 +943,7 @@ output_x86_64_inst(shr(Amnt, Dest), !IO) :-
         unexpected(this_file, "output_x86_64_instr: shr: unexpected" 
             ++ " invalid first operand")
     ).
-output_x86_64_inst(shrd(Amnt, Dest1, Reg), !IO) :-
+output_x86_64_inst(Stream, shrd(Amnt, Dest1, Reg), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
     (
         Result1 = yes,
@@ -933,8 +956,8 @@ output_x86_64_inst(shrd(Amnt, Dest1, Reg), !IO) :-
                 operand_type(Amnt, Op1),
                 operand_type(Amnt, Op2),
                 operand_type(Amnt, Op3),
-                io.write_string("\tshrd\t" ++ Op1 ++ ", ", !IO),
-                io.write_string(Op2 ++ ", " ++ Op3 ++ "\t", !IO)
+                put(Stream, "\tshrd\t" ++ Op1 ++ ", ", !IO),
+                put(Stream, Op2 ++ ", " ++ Op3 ++ "\t", !IO)
             ;
                 Result3 = no,
                 unexpected(this_file, "output_x86_64_instr: shrd: unexpected"
@@ -950,13 +973,13 @@ output_x86_64_inst(shrd(Amnt, Dest1, Reg), !IO) :-
         unexpected(this_file, "output_x86_64_instr: shrd: unexpected:" 
           ++ " invalid first operand")
     ).
-output_x86_64_inst(stc, !IO) :-
-    io.write_string("\tstc\t", !IO).
-output_x86_64_inst(std, !IO) :-
-    io.write_string("\tstd\t", !IO).
-output_x86_64_inst(sub(Src, Dest), !IO) :-
-    output_instr_not_imm_dest("sub", Src, yes(Dest), !IO).
-output_x86_64_inst(test(Src1, Src2), !IO) :-
+output_x86_64_inst(Stream, stc, !IO) :-
+    put(Stream, "\tstc\t", !IO).
+output_x86_64_inst(Stream, std, !IO) :-
+    put(Stream, "\tstd\t", !IO).
+output_x86_64_inst(Stream, sub(Src, Dest), !IO) :-
+    output_instr_not_imm_dest(Stream, "sub", Src, yes(Dest), !IO).
+output_x86_64_inst(Stream, test(Src1, Src2), !IO) :-
     check_operand_not_mem_ref(Src1, Result1),
     (
         Result1 = yes,
@@ -965,7 +988,7 @@ output_x86_64_inst(test(Src1, Src2), !IO) :-
             Result2 = yes,
             operand_type(Src1, Op1),
             operand_type(Src2, Op2),
-            io.write_string("\ttest\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+            put(Stream, "\ttest\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: test: unexpected" 
@@ -976,7 +999,7 @@ output_x86_64_inst(test(Src1, Src2), !IO) :-
         unexpected(this_file, "output_x86_64_instr: test: unexpected"
             ++ " invalid first operand")
     ).
-output_x86_64_inst(xadd(Src, Dest), !IO) :-
+output_x86_64_inst(Stream, xadd(Src, Dest), !IO) :-
     check_operand_register(Src, Result1),
     ( 
         Result1 = yes,
@@ -985,7 +1008,7 @@ output_x86_64_inst(xadd(Src, Dest), !IO) :-
             Result2 = yes,
             operand_type(Src, Op1),
             operand_type(Dest, Op2),
-            io.write_string("\txadd\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+            put(Stream, "\txadd\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: unexpected
@@ -996,7 +1019,7 @@ output_x86_64_inst(xadd(Src, Dest), !IO) :-
         unexpected(this_file, "output_x86_64_instr: unexpected
             xadd first operand is not a register")
     ).
-output_x86_64_inst(xchg(Src1, Src2), !IO) :-
+output_x86_64_inst(Stream, xchg(Src1, Src2), !IO) :-
     check_operand_reg_or_mem(Src1, Result1),
     (
         Result1 = yes,
@@ -1005,7 +1028,7 @@ output_x86_64_inst(xchg(Src1, Src2), !IO) :-
             Result2 = yes,
             operand_type(Src1, Op1),
             operand_type(Src2, Op2),
-            io.write_string("\txchg\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+            put(Stream, "\txchg\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
             unexpected(this_file, "output_x86_64_instr: xchg: unexpected"
@@ -1016,24 +1039,25 @@ output_x86_64_inst(xchg(Src1, Src2), !IO) :-
         unexpected(this_file, "output_x86_64_instr: xchg: unexpected" 
              ++ " invalid second operand")
     ).
-output_x86_64_inst(xor(Src, Dest), !IO) :-
-    output_instr_not_imm_dest("xor", Src, yes(Dest), !IO).
+output_x86_64_inst(Stream, xor(Src, Dest), !IO) :-
+    output_instr_not_imm_dest(Stream, "xor", Src, yes(Dest), !IO).
 
 
-:- pred output_x86_64_comment(string::in, io::di, io::uo) is det.
+:- pred output_x86_64_comment(Stream::in, string::in, io::di, io::uo)
+    is det <= stream.writer(Stream, string, io).
 
-output_x86_64_comment(Comment, !IO) :-
+output_x86_64_comment(Stream, Comment, !IO) :-
     ( string.length(Comment) > 0 ->
-        io.write_string("\t# ", !IO),
-        io.write_string(Comment, !IO)
+        put(Stream, "\t# ", !IO),
+        put(Stream, Comment, !IO)
     ;   
         true
     ),
-    io.write_string("\n", !IO).
+    put(Stream, "\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Output of x86_64 operands.
+% Conversion x86_64 operands to strings
 %
 
     % Output a string representation of an immediate value. 
@@ -1046,7 +1070,6 @@ imm_op_type(imm16(int16(Val)), ImmVal) :-
     ImmVal = "$" ++ string.int_to_string(Val).
 imm_op_type(imm32(int32(Val)), ImmVal) :-
     ImmVal = "$" ++ string.int_to_string(Val).
-
 
 :- func reg_type(gp_reg) = string. 
 
@@ -1069,7 +1092,8 @@ base_address_type(base_reg(Offset, Reg), BaseAddress) :-
     ( Offset = 0 ->
         BaseAddress = "(" ++ reg_type(Reg) ++ ")"
     ;
-        BaseAddress = string.int_to_string(Offset) ++ "(" ++ reg_type(Reg) ++ ")"
+        BaseAddress = string.int_to_string(Offset) ++
+            "(" ++ reg_type(Reg) ++ ")"
     ).
 base_address_type(base_expr(Expr), DispType) :-
     DispType = "$" ++ Expr.
@@ -1151,16 +1175,17 @@ operand_type(operand_label(Label), (Label)).
 
 %-----------------------------------------------------------------------------%
 %
-% Subsection of "Output of x86_64 instructions".
+% Auxiliary predicates for outputting x86_64 instructions
 %
 
-    % Output an instruction with either one or two operand(s). If the second
-    % operand is present, it cannot be an immediate operand. 
+    % Output an instruction with either one or two operand(s).
+    % If the second operand is present, it must not be immediate operand. 
     %
-:- pred output_instr_not_imm_dest(string::in, operand::in, maybe(operand)::in,
-    io::di, io::uo) is det. 
+:- pred output_instr_not_imm_dest(Stream::in, string::in, operand::in,
+    maybe(operand)::in, io::di, io::uo)
+    is det <= stream.writer(Stream, string, io).
 
-output_instr_not_imm_dest(Instr, Op1, Op2, !IO) :-
+output_instr_not_imm_dest(Stream, Instr, Op1, Op2, !IO) :-
     operand_type(Op1, Op1Type),
     ( 
         Op2 = yes(Op2Result),
@@ -1171,14 +1196,14 @@ output_instr_not_imm_dest(Instr, Op1, Op2, !IO) :-
             check_operand_not_immediate(Op2Result, Result2),
             (
                 Result2 = yes,
-                io.write_string("\t" ++ Instr ++ "\t", !IO),
-                io.write_string(Op1Type ++ ", " ++ Op2Type ++ "\t", !IO)
+                put(Stream, "\t" ++ Instr ++ "\t", !IO),
+                put(Stream, Op1Type ++ ", " ++ Op2Type ++ "\t", !IO)
             ;
                 Result2 = no,
-                io.write_string("\tmov\t" ++ Op2Type ++ ", %r13\t", !IO),
-                io.write_string("# move immediate to temp reg\n", !IO),
-                io.write_string("\t" ++ Instr ++ "\t", !IO),
-                io.write_string(Op1Type ++ ", " ++ "%r13\t", !IO)
+                put(Stream, "\tmov\t" ++ Op2Type ++ ", %r13\t", !IO),
+                put(Stream, "# move immediate to temp reg\n", !IO),
+                put(Stream, "\t" ++ Instr ++ "\t", !IO),
+                put(Stream, Op1Type ++ ", " ++ "%r13\t", !IO)
             )
         ;
             Result1 = no,
@@ -1187,18 +1212,16 @@ output_instr_not_imm_dest(Instr, Op1, Op2, !IO) :-
         )
     ;
         Op2 = no,
-        io.write_string(Op1Type ++ "\t\t", !IO)
+        put(Stream, Op1Type ++ "\t\t", !IO)
     ).
 
-    % Output an instruction with a signed offset relative to the instruction 
-    % pointer as an operand. 
     % Output an instruction with a signed 8-bit offset relative to the 
     % instruction pointer as an operand. 
     %
-:- pred output_instr_8bit_rel_offset(string::in, operand::in, 
-    io::di, io::uo) is det. 
+:- pred output_instr_8bit_rel_offset(Stream::in, string::in, operand::in, 
+    io::di, io::uo) is det <= stream.writer(Stream, string, io).
 
-output_instr_8bit_rel_offset(InstrName, RelOffset, !IO) :-
+output_instr_8bit_rel_offset(Stream, InstrName, RelOffset, !IO) :-
    check_operand_rel_offset(RelOffset, Result1),
    ( 
         Result1 = yes,
@@ -1207,9 +1230,9 @@ output_instr_8bit_rel_offset(InstrName, RelOffset, !IO) :-
             check_signed_int_size(8, Val, Result2),
             (
                 Result2 = yes,
-                io.write_string("\t" ++ InstrName ++ "\t", !IO),
-                io.write_int(Val, !IO),
-                io.write_string("\t\t", !IO)
+                put(Stream, "\t" ++ InstrName ++ "\t", !IO),
+                put_int(Stream, Val, !IO),
+                put(Stream, "\t\t", !IO)
             ;
                 Result2 = no,
                 unexpected(this_file, "output_instr_8bit_rel_offset:" 
@@ -1225,10 +1248,10 @@ output_instr_8bit_rel_offset(InstrName, RelOffset, !IO) :-
             ++ " invalid operand - operand is not a relative offset")
    ).
 
-:- pred output_bit_test_instr(string::in, operand::in, operand::in, io::di, 
-    io::uo) is det. 
+:- pred output_bit_test_instr(Stream::in, string::in, operand::in,
+    operand::in, io::di, io::uo) is det <= stream.writer(Stream, string, io).
 
-output_bit_test_instr(Instr, Src, Idx, !IO) :-
+output_bit_test_instr(Stream, Instr, Src, Idx, !IO) :-
     check_operand_not_immediate(Src, Result1),
     (
         Result1 = yes,
@@ -1241,8 +1264,8 @@ output_bit_test_instr(Instr, Src, Idx, !IO) :-
                 check_signed_int_size(8, IdxInt, Result3),
                 ( 
                     Result3 = yes,
-                    io.write_string("\t" ++ Instr ++ "\t", !IO),
-                    io.write_string(Op1 ++ ", " ++ Op2 ++ "\t", !IO)
+                    put(Stream, "\t" ++ Instr ++ "\t", !IO),
+                    put(Stream, Op1 ++ ", " ++ Op2 ++ "\t", !IO)
                 ;
                     Result3 = no,
                     unexpected(this_file, "output_bit_test_instr: bt:"
@@ -1263,25 +1286,26 @@ output_bit_test_instr(Instr, Src, Idx, !IO) :-
             ++ " invalid first operand - immediate value is not allowed")
     ).
 
-:- pred output_instr_with_condition(string::in, operand::in, maybe(operand)::in,
-    condition::in, io::di, io::uo) is det. 
+:- pred output_instr_with_condition(Stream::in, string::in, operand::in,
+    maybe(operand)::in, condition::in, io::di, io::uo)
+    is det <= stream.writer(Stream, string, io).
 
-output_instr_with_condition(Instr, Op1, Op2, Cond, !IO) :-
+output_instr_with_condition(Stream, Instr, Op1, Op2, Cond, !IO) :-
     check_operand_not_immediate(Op1, Result1),
     (
         Result1 = yes,
         instr_condition(Cond, CondRes),
-        io.write_string("\t" ++ Instr, !IO),
-        io.write_string(CondRes ++ "\t", !IO),
+        put(Stream, "\t" ++ Instr, !IO),
+        put(Stream, CondRes ++ "\t", !IO),
         operand_type(Op1, Op1Type),
-        io.write_string(Op1Type, !IO),
+        put(Stream, Op1Type, !IO),
         (
             Op2 = yes(Op2Res),
             check_operand_register(Op2Res, Result3),
             (
                 Result3 = yes,
                 operand_type(Op2Res, Op2Type),
-                io.write_string(", " ++ Op2Type, !IO)
+                put(Stream, ", " ++ Op2Type, !IO)
             ;
                 Result3 = no,
                     unexpected(this_file, "output_instr_with_condition:"
@@ -1289,7 +1313,7 @@ output_instr_with_condition(Instr, Op1, Op2, Cond, !IO) :-
             )
        ;
             Op2 = no,
-            io.write_string("\t\t", !IO)
+            put(Stream, "\t\t", !IO)
        )
     ;            
         Result1 = no,
@@ -1490,5 +1514,6 @@ check_signed_int_size(BitSize, Val, Result) :-
 
 this_file = "x86_64_out.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module x86_64_out.
 %-----------------------------------------------------------------------------%
