@@ -2632,3 +2632,28 @@ mercury_sys_init_wrapper_write_out_proc_statics(FILE *fp)
     /* no proc_statics to write out */
 }
 #endif
+
+/*---------------------------------------------------------------------------*/
+
+#ifndef MR_HIGHLEVEL_CODE
+
+MR_define_extern_entry(MR_dummy_main);
+
+MR_BEGIN_MODULE(dummy_main_module)
+        MR_init_entry_an(MR_dummy_main);
+MR_BEGIN_CODE
+
+MR_define_entry(MR_dummy_main);
+        MR_fatal_error("invalid attempt to call through Mercury entry point.");
+
+MR_END_MODULE
+
+#else   /* MR_HIGHLEVEL_CODE */
+
+void
+MR_dummy_main(void)
+{
+    MR_fatal_error("invalid attempt to call through Mercury entry point.");
+}
+
+#endif /* MR_HIGHLEVEL_CODE */

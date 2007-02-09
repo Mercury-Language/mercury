@@ -167,6 +167,14 @@
     is det.
 
 %-----------------------------------------------------------------------------%
+   
+    % make_standalone_interface(Basename, !IO):
+    %
+    % Create a standalone interface in the current directory.
+    % 
+:- pred make_standalone_interface(string::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -514,7 +522,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     (
         RecordTermSizesAsWords = yes,
         RecordTermSizesAsCells = yes,
-        % this should have been caught in handle_options
+        % This should have been caught in handle_options.
         unexpected(this_file,
             "compile_c_file: inconsistent record term size options")
     ;
@@ -1051,6 +1059,7 @@ make_init_obj_file(ErrorStream, ModuleName, ModuleNames, Result, !IO) :-
 
 % WARNING: The code here duplicates the functionality of scripts/c2init.in.
 % Any changes there may also require changes here, and vice versa.
+% The code of make_standalone_interface/3 may also require updating.
 
 :- pred make_init_obj_file(io.output_stream::in, bool::in,
     module_name::in, list(module_name)::in, maybe(file_name)::out,
@@ -1882,7 +1891,7 @@ standard_library_directory_option(Opt, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % join_string_list(Strings, Prefix, Suffix, Serarator, Result):
+    % join_string_list(Strings, Prefix, Suffix, Separator, Result):
     %
     % Appends the strings in the list `Strings' together into the string
     % Result. Each string is prefixed by Prefix, suffixed by Suffix and
@@ -1983,6 +1992,149 @@ maybe_pic_object_file_extension(Globals::in, PIC::out, Ext::in) :-
 maybe_pic_object_file_extension(PIC, ObjExt, !IO) :-
     globals.io_get_globals(Globals, !IO),
     maybe_pic_object_file_extension(Globals, PIC, ObjExt).
+
+%-----------------------------------------------------------------------------%
+%
+% Standalone interfaces
+%
+
+% NOTE: the following code is similar to that of make_init_obj/7.  Any
+% changes here may need to be reflected there.
+
+make_standalone_interface(Basename, !IO) :-
+    make_standalone_int_header(Basename, HdrSucceeded, !IO),
+    (
+        HdrSucceeded = yes,
+        make_standalone_int_body(Basename, !IO)
+    ;
+        HdrSucceeded = no
+    ).
+
+:- pred make_standalone_int_header(string::in, bool::out,
+    io::di, io::uo) is det.
+
+make_standalone_int_header(Basename, Succeeded, !IO) :-
+    HdrFileName = Basename ++ ".h", 
+    io.open_output(HdrFileName, OpenResult, !IO),
+    (
+        OpenResult = ok(HdrFileStream),
+        io.write_strings(HdrFileStream, [
+            "#ifndef ", to_upper(Basename), "_H\n",
+            "#define ", to_upper(Basename), "_H\n",
+            "\n",
+            "#ifdef __cplusplus\n",
+            "extern \"C\" {\n",
+            "#endif\n",
+            "\n",
+            "extern void\n",
+            "mercury_init(int argc, char **argv, void *stackbottom);\n",
+            "\n",
+            "extern int\n",
+            "mercury_terminate(void);\n",
+            "\n",
+            "#ifdef __cplusplus\n",
+            "}\n",
+            "#endif\n",
+            "\n",
+            "#endif /* ", to_upper(Basename), "_H */\n"],
+            !IO),
+        io.close_output(HdrFileStream, !IO),
+        Succeeded = yes
+    ;
+        OpenResult = error(Error),
+        unable_to_open_file(HdrFileName, Error, !IO),
+        Succeeded = no
+    ).
+
+:- pred make_standalone_int_body(string::in, io::di, io::uo) is det.
+
+make_standalone_int_body(Basename, !IO) :-
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_accumulating_option(Globals, init_files, InitFiles0),
+    globals.lookup_accumulating_option(Globals, trace_init_files,
+        TraceInitFiles0),
+    globals.lookup_maybe_string_option(Globals,
+        mercury_standard_library_directory, MaybeStdLibDir),
+    grade_directory_component(Globals, GradeDir),
+    (
+        MaybeStdLibDir = yes(StdLibDir),
+        InitFiles1 = [
+            StdLibDir / "modules" / GradeDir / "mer_rt.init",
+            StdLibDir / "modules" / GradeDir / "mer_std.init" |
+            InitFiles0
+        ],
+        TraceInitFiles = [
+            StdLibDir / "modules" / GradeDir / "mer_browser.init",
+            StdLibDir / "modules" / GradeDir / "mer_mdbcomp.init" |
+            TraceInitFiles0
+        ]
+    ;
+        % Supporting `--no-mercury-standard-library-directory' is necessary
+        % in order to use `--generate-standalone-interface' with the
+        % the lmc script.
+        MaybeStdLibDir = no,
+        InitFiles1 = InitFiles0,
+        TraceInitFiles = TraceInitFiles0
+    ),
+    globals.get_trace_level(Globals, TraceLevel),
+    ( given_trace_level_is_none(TraceLevel) = no ->
+        TraceOpt = "-t",
+        InitFiles = InitFiles1 ++ TraceInitFiles
+    ;
+        TraceOpt = "",
+        InitFiles = InitFiles1
+    ),
+    join_string_list(InitFiles, "", "", " ", InitFilesList),
+    globals.lookup_accumulating_option(Globals, runtime_flags,
+        RuntimeFlagsList),
+    join_quoted_string_list(RuntimeFlagsList, "-r ", "", " ", RuntimeFlags),
+    globals.lookup_string_option(Globals, experimental_complexity,
+        ExperimentalComplexity),
+    ( ExperimentalComplexity = "" ->
+        ExperimentalComplexityOpt = ""
+    ;
+        ExperimentalComplexityOpt = "-X " ++ ExperimentalComplexity
+    ),
+    compute_grade(Globals, Grade),
+    globals.lookup_string_option(Globals, mkinit_command, MkInit),
+    CFileName = Basename ++ ".c",
+    io.output_stream(ErrorStream, !IO),
+    MkInitCmd = string.append_list(
+        [   MkInit,
+            " -g ", Grade,
+            " ", TraceOpt,
+            " ", ExperimentalComplexityOpt,
+            " ", RuntimeFlags,
+            " -o ", quote_arg(CFileName),
+            " -s ", InitFilesList
+        ]),
+    invoke_system_command(ErrorStream, cmd_verbose, MkInitCmd, MkInitCmdOk,
+        !IO),
+    (
+        MkInitCmdOk = yes,
+        get_object_code_type(executable, PIC, !IO),
+        maybe_pic_object_file_extension(PIC, ObjExt, !IO),
+        ObjFileName = Basename ++ ObjExt,
+        compile_c_file(ErrorStream, PIC, CFileName, ObjFileName,
+            CompileOk, !IO),
+        (
+            CompileOk = yes
+        ;
+            CompileOk = no,
+            io.set_exit_status(1, !IO),
+            io.write_string("mercury_compile: error while compiling ", !IO),
+            io.write_string("standalone interface in `", !IO),
+            io.write_string(CFileName, !IO),
+            io.write_string("'\n", !IO)
+        )
+    ;
+        MkInitCmdOk = no,
+        io.set_exit_status(1, !IO),
+        io.write_string("mercury_compile: error while creating ", !IO),
+        io.write_string("standalone interface in `", !IO),
+        io.write_string(CFileName, !IO),
+        io.write_string("'\n", !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 

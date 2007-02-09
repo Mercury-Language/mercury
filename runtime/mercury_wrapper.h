@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2006 The University of Melbourne.
+** Copyright (C) 1994-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -69,6 +69,10 @@ extern	void MR_CALL	(*MR_program_entry_point)(void);
 #else
 extern	MR_Code 	*MR_program_entry_point;
 			/* normally mercury__main_2_0; */
+#endif
+
+#ifdef MR_HIGHLEVEL_CODE
+extern void MR_dummy_main(void);
 #endif
 
 extern const char	*MR_runtime_flags;

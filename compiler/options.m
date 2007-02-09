@@ -169,6 +169,7 @@
     ;       generate_dependency_file
     ;       generate_dependencies
     ;       generate_module_order
+    ;       generate_standalone_interface
     ;       convert_to_mercury
     ;       typecheck_only
     ;       errorcheck_only
@@ -943,6 +944,7 @@ option_defaults_2(output_option, [
     generate_dependency_file            -   bool(no),
     generate_dependencies               -   bool(no),
     generate_module_order               -   bool(no),
+    generate_standalone_interface       -   maybe_string(no),
     make_short_interface                -   bool(no),
     make_interface                      -   bool(no),
     make_private_interface              -   bool(no),
@@ -1671,6 +1673,7 @@ long_option("generate-source-file-mapping", generate_source_file_mapping).
 long_option("generate-dependency-file", generate_dependency_file).
 long_option("generate-dependencies",    generate_dependencies).
 long_option("generate-module-order",    generate_module_order).
+long_option("generate-standalone-interface", generate_standalone_interface).
 long_option("make-short-interface", make_short_interface).
 long_option("make-short-int",       make_short_interface).
 long_option("make-interface",       make_interface).
@@ -3078,6 +3081,12 @@ options_help_output -->
         "\tOutput the strongly connected components of the module",
         "\tdependency graph in top-down order to `<module>.order'.",
         "\tImplies --generate-dependencies.",
+        % XXX This documentation is commented out until the user's
+        % guide is updated.
+        %"--generate-standalone-interface <name>",
+        %"\tOutput an object file that can be used to embed the Mercury",
+        %"\truntime in an application written in a foreign language.",
+        %"\tSee Users's guide for more details.",
         "-i, --make-int, --make-interface",
         "\tWrite the module interface to `<module>.int',",
         "\tand write the short interface to `<module>.int2'",

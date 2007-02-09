@@ -380,6 +380,8 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
     globals.lookup_bool_option(Globals, output_libgrades,
         OutputLibGrades),
     globals.lookup_bool_option(Globals, make, Make),
+    globals.lookup_maybe_string_option(Globals, generate_standalone_interface,
+        GenerateStandaloneInt),
     ( Version = yes ->
         io.stdout_stream(Stdout, !IO),
         io.set_output_stream(Stdout, OldOutputStream, !IO),
@@ -416,6 +418,28 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO)
     ; GenerateMapping = yes ->
         source_file_map.write_source_file_map(Args, !IO)
+    ; GenerateStandaloneInt = yes(StandaloneIntBasename) ->
+        globals.io_get_target(Target, !IO),
+        (
+            ( Target = target_il
+            ; Target = target_java
+            ),
+            NYIMsg = [
+                words("Sorry,"),
+                quote("--generate-standalone-interface"), 
+                words("is not yet supported with target language"),
+                words(compilation_target_string(Target)),
+                suffix(".")
+            ],
+            write_error_pieces_plain(NYIMsg, !IO),
+            io.set_exit_status(1, !IO)
+        ; 
+            ( Target = target_c
+            ; Target = target_asm
+            ; Target = target_x86_64
+            ),
+            make_standalone_interface(StandaloneIntBasename, !IO) 
+        )
     ; Make = yes ->
         make_process_args(OptionVariables, OptionArgs, Args, !IO)
     ; Args = [], FileNamesFromStdin = no ->
@@ -3932,8 +3956,8 @@ maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
             globals.get_target(Globals, Target),
             (
                 Target = target_c,
-                maybe_write_string(Verbose, "% Applying implicit parallelism...\n"
-                    , !IO), 
+                maybe_write_string(Verbose, "% Applying implicit " ++
+                    "parallelism...\n", !IO), 
                 maybe_flush_output(Verbose, !IO), 
                 apply_implicit_parallelism_transformation(!HLDS, 
                     FeedbackFile, !IO),

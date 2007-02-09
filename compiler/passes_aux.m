@@ -513,7 +513,7 @@ invoke_system_command_maybe_filter_output(ErrorStream, Verbosity, Command,
                     ProcessedTmpFile, " 2>&1"])
         ),
         io.call_system_return_signal(ProcessOutputRedirected,
-                ProcessOutputResult, !IO),
+            ProcessOutputResult, !IO),
         io.remove_file(TmpFile, _, !IO),
         (
             ProcessOutputResult = ok(exited(ProcessOutputStatus)),

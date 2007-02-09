@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2006 The University of Melbourne.
+** Copyright (C) 1995-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -19,6 +19,18 @@
 ** Alternatively, if invoked with the -k option, this program produces a
 ** list of intialization directives on stdout.  This mode of operation is
 ** is used when building .init files for libraries.
+**
+** If invoked with the -s option, this program produces a standalone 
+** runtime interface on stdout.  This mode of operation is used when
+** using Mercury libraries from applications written in foreign languages.
+**
+** NOTE: any changes to this program may need to be reflected in the
+** following places:
+**
+**      - scripts/c2init.in
+**      - compiler/compile_target_code.m
+**          in particular the predicates make_init_obj/7 and 
+**          make_standalone_interface/3.
 **
 */
 
@@ -76,6 +88,13 @@ static const char if_need_term_size[] =
 static const char if_need_deep_prof[] =
     "#if defined(MR_DEEP_PROFILING)\n";
 
+typedef enum
+{
+    TASK_OUTPUT_INIT_PROG = 0,
+    TASK_OUTPUT_LIB_INIT  = 1,
+    TASK_OUTPUT_STANDALONE_INIT = 2
+} Task;
+    
 typedef enum
 {
     PURPOSE_INIT = 0,
@@ -278,7 +297,7 @@ static char         **files;
 static MR_bool      output_main_func = MR_TRUE;
 static MR_bool      need_initialization_code = MR_FALSE;
 static MR_bool      need_tracing = MR_FALSE;
-static MR_bool      output_lib_init = MR_FALSE;
+static Task         output_task = TASK_OUTPUT_INIT_PROG;
 static const char   *experimental_complexity = NULL;
 
 static int          num_experimental_complexity_procs = 0;
@@ -478,18 +497,27 @@ static const char mercury_funcs4[] =
     "   return;\n"
     "}\n"
     "\n"
+    ;
+    
+static const char mercury_call_main_func[] =  
     "void\n"
     "mercury_call_main(void)\n"
     "{\n"
     "   mercury_runtime_main();\n"
     "}\n"
     "\n"
+    ;
+    
+static const char mercury_terminate_func[] =    
     "int\n"
     "mercury_terminate(void)\n"
     "{\n"
     "   return mercury_runtime_terminate();\n"
     "}\n"
     "\n"
+    ;
+
+static const char mercury_main_func[] = 
     "int\n"
     "mercury_main(int argc, char **argv)\n"
     "{\n"
@@ -505,8 +533,12 @@ static const char mercury_funcs4[] =
     "   return mercury_terminate();\n"
     "}\n"
     "\n"
+    ;
+
+static const char mercury_grade_var[] =
     "/* ensure that everything gets compiled in the same grade */\n"
     "static const void *const MR_grade = &MR_GRADE_VAR;\n"
+    "\n"
     ;
 
 static const char main_func[] =
@@ -596,12 +628,26 @@ main(int argc, char **argv)
 
     set_output_file();
 
-    if (output_lib_init) {
-        exit_status = output_lib_init_file();  /* Output a .init file. */
-    } else {
-        exit_status = output_init_program();   /* Output a _init.c file. */
+    switch (output_task) {
+        case TASK_OUTPUT_LIB_INIT:
+            /* Output a .init file */
+            exit_status = output_lib_init_file();
+            break;
+        
+        case TASK_OUTPUT_STANDALONE_INIT:
+        case TASK_OUTPUT_INIT_PROG:
+            /*
+            ** Output a _init.c file or a standalone initialisation 
+            ** interface.
+            */
+            exit_status = output_init_program();
+            break;
+        
+        default:
+            fprintf(stderr, "mkinit: unknown task\n");
+            exit(EXIT_FAILURE);
     }
-
+    
     return exit_status;
 }
 
@@ -738,7 +784,7 @@ parse_options(int argc, char *argv[])
     int         i;
     String_List *tmp_slist;
 
-    while ((c = getopt(argc, argv, "A:c:g:iI:lo:r:tw:xX:k")) != EOF) {
+    while ((c = getopt(argc, argv, "A:c:g:iI:lo:r:tw:xX:ks")) != EOF) {
         switch (c) {
         case 'A':
             /*
@@ -829,7 +875,12 @@ parse_options(int argc, char *argv[])
             break;
 
         case 'k':
-            output_lib_init = MR_TRUE;
+            output_task = TASK_OUTPUT_LIB_INIT;
+            break;
+
+        case 's':
+            output_task = TASK_OUTPUT_STANDALONE_INIT;
+            output_main_func = MR_FALSE; /* -s implies -l */
             break;
 
         default:
@@ -860,6 +911,7 @@ usage(void)
     fputs("  -w entry:\tset the entry point to the given label\n", stderr);
     fputs("  -I dir:\tadd dir to the search path for init files\n", stderr);
     fputs("  -k:\t\tgenerate the .init for a library\n", stderr);
+    fputs("  -s:\t\tgenerate a standalone runtime interface\n", stderr);
     exit(EXIT_FAILURE);
 }
 
@@ -1159,6 +1211,17 @@ output_main(void)
         printf("};\n");
     }
 
+    /*
+    ** If we are building a standalone interface then we set the entry
+    ** point as MR_dummy_main.  This is defined in the
+    ** runtime/mercury_wrapper.c and aborts execution if called.  In
+    ** standalone mode we are not expecting Mercury to be called through the
+    ** standard entry point.
+    */
+    if (output_task == TASK_OUTPUT_STANDALONE_INIT) {
+        hl_entry_point = entry_point = "MR_dummy_main";
+    }
+    
     printf(mercury_funcs1, hl_entry_point, entry_point);
     printf(mercury_funcs2, num_experimental_complexity_procs,
         hl_entry_point, entry_point);
@@ -1200,7 +1263,19 @@ output_main(void)
     }
 
     fputs(mercury_funcs4, stdout);
-
+    
+    if (output_task == TASK_OUTPUT_INIT_PROG) {
+        fputs(mercury_call_main_func, stdout);
+    }
+        
+    fputs(mercury_terminate_func, stdout);
+    
+    if (output_task == TASK_OUTPUT_INIT_PROG) {
+        fputs(mercury_main_func, stdout);
+    } 
+        
+    fputs(mercury_grade_var, stdout);
+    
     if (output_main_func) {
         fputs(main_func, stdout);
     }

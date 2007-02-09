@@ -771,6 +771,21 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(use_symlinks, bool(no), !Globals)
         ),
 
+        globals.lookup_maybe_string_option(!.Globals,
+            generate_standalone_interface, MaybeStandaloneInt),
+        globals.lookup_bool_option(!.Globals,
+            extra_initialization_functions, ExtraInitFunctions),
+        (
+            MaybeStandaloneInt = yes(_),
+            ExtraInitFunctions = yes
+        ->
+            add_error("`--generate-standalone-interface' is" ++
+                " incompatible with `--extra-initialization-functions'.",
+                !Errors)
+        ;
+            true
+        ),
+
         option_implies(structure_reuse_analysis, structure_sharing_analysis,
             bool(yes), !Globals),
         option_implies(verbose_check_termination, termination_check, bool(yes),
