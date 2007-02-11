@@ -46,7 +46,7 @@ main(!IO) :-
 update_pred_1(unit, !IO) :-
     io.update_globals(update_1, !IO).
 
-:- pred update_1(univ::di, univ::uo) is det.
+:- pred update_1(univ::in, univ::out) is det.
 
 update_1(!Univ) :-
     ( univ_to_type(!.Univ, N) ->

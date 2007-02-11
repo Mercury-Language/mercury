@@ -233,7 +233,7 @@
 
 :- pred io_get_globals(globals::out, io::di, io::uo) is det.
 
-:- pred io_set_globals(globals::di, io::di, io::uo) is det.
+:- pred io_set_globals(globals::in, io::di, io::uo) is det.
 
 :- pred io_set_option(option::in, option_data::in, io::di, io::uo) is det.
 
@@ -591,34 +591,22 @@ io_set_option(Option, OptionData, !IO) :-
     io_get_globals(Globals0, !IO),
     get_options(Globals0, OptionTable0),
     map.set(OptionTable0, Option, OptionData, OptionTable),
-    set_options(OptionTable, Globals0, Globals1),
-        % XXX there is a bit of a design flaw with regard to
-        % uniqueness and io.set_globals
-    unsafe_promise_unique(Globals1, Globals),
+    set_options(OptionTable, Globals0, Globals),
     io_set_globals(Globals, !IO).
 
 io_set_gc_method(GC_Method, !IO) :-
     io_get_globals(Globals0, !IO),
-    set_gc_method(GC_Method, Globals0, Globals1),
-    unsafe_promise_unique(Globals1, Globals),
-        % XXX there is a bit of a design flaw with regard to
-        % uniqueness and io.set_globals
+    set_gc_method(GC_Method, Globals0, Globals),
     io_set_globals(Globals, !IO).
 
 io_set_tags_method(Tags_Method, !IO) :-
     io_get_globals(Globals0, !IO),
-    set_tags_method(Tags_Method, Globals0, Globals1),
-    unsafe_promise_unique(Globals1, Globals),
-        % XXX there is a bit of a design flaw with regard to
-        % uniqueness and io.set_globals
+    set_tags_method(Tags_Method, Globals0, Globals),
     io_set_globals(Globals, !IO).
 
 io_set_trace_level(TraceLevel, !IO) :-
     io_get_globals(Globals0, !IO),
-    set_trace_level(TraceLevel, Globals0, Globals1),
-    unsafe_promise_unique(Globals1, Globals),
-        % XXX there is a bit of a design flaw with regard to
-        % uniqueness and io.set_globals
+    set_trace_level(TraceLevel, Globals0, Globals),
     io_set_globals(Globals, !IO).
 
 io_set_extra_error_info(ExtraErrorInfo, !IO) :-
@@ -669,10 +657,7 @@ io_lookup_accumulating_option(Option, Value, !IO) :-
 io_printing_usage(AlreadyPrinted, !IO) :-
     io_get_globals(Globals0, !IO),
     AlreadyPrinted = Globals0 ^ have_printed_usage,
-    Globals1 = Globals0 ^ have_printed_usage := yes,
-    unsafe_promise_unique(Globals1, Globals),
-        % XXX there is a bit of a design flaw with regard to
-        % uniqueness and io.set_globals
+    Globals = Globals0 ^ have_printed_usage := yes,
     io_set_globals(Globals, !IO).
 
 %-----------------------------------------------------------------------------%

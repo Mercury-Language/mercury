@@ -62,8 +62,7 @@ globals.set(Name, Value, !IO) :-
 	  then
 	  	type_to_univ(Value, UValue),
 		map.set(Map0, Name, UValue, Map),
-		type_to_univ(Map, UMap1),
-		unsafe_promise_unique(UMap1, UMap),
+		type_to_univ(Map, UMap),
 		io.set_globals(UMap, !IO)
 	  else
 	  	error("globals.set/4: global store corrupt.")

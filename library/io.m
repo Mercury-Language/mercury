@@ -1130,8 +1130,8 @@
     %
     % Does not modify the I/O state.
     %
-:- pred io.get_globals(univ::uo, io::di, io::uo) is det.
-:- pred io.set_globals(univ::di, io::di, io::uo) is det.
+:- pred io.get_globals(univ::out, io::di, io::uo) is det.
+:- pred io.set_globals(univ::in, io::di, io::uo) is det.
 
     % io.update_globals(UpdatePred, !IO).
     % Update the `globals' field in the I/O state based upon its current
@@ -1145,7 +1145,7 @@
     % If `UpdatePred' throws an exception then the `globals' field is
     % left unchanged.
     %
-:- pred io.update_globals(pred(univ, univ)::in(pred(di, uo) is det),
+:- pred io.update_globals(pred(univ, univ)::in(pred(in, out) is det),
     io::di, io::uo) is det.
 
     % The following predicates provide an interface to the environment list.
@@ -4413,12 +4413,11 @@ io.update_globals(UpdatePred, !IO) :-
     io.unsafe_get_globals(Globals0, !IO),
     promise_equivalent_solutions [!:IO] (
         Update = (pred(G::out) is det :-
-            UpdatePred(unsafe_promise_unique(Globals0), G)
+            UpdatePred(Globals0, G)
         ),
         try(Update, UpdateResult),
         (
-            UpdateResult = succeeded(Globals1),
-            Globals = unsafe_promise_unique(Globals1),
+            UpdateResult = succeeded(Globals),
             io.unsafe_set_globals(Globals, !IO),
             io.unlock_globals(!IO)
         ;
@@ -4484,9 +4483,9 @@ io.unlock_globals :-
     % predicates should be surrounded by calls to io.{lock, unlock}_globals/2
     % this is safe.
     %
-:- pred io.unsafe_get_globals(univ::uo, io::di, io::uo) is det.
+:- pred io.unsafe_get_globals(univ::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.unsafe_get_globals(Globals::uo, IO0::di, IO::uo),
+    io.unsafe_get_globals(Globals::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
@@ -4494,9 +4493,9 @@ io.unlock_globals :-
     MR_update_io(IO0, IO);
 ").
 
-:- pred io.unsafe_set_globals(univ::di, io::di, io::uo) is det.
+:- pred io.unsafe_set_globals(univ::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.unsafe_set_globals(Globals::di, IO0::di, IO::uo),
+    io.unsafe_set_globals(Globals::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
@@ -4506,28 +4505,28 @@ io.unlock_globals :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.unsafe_get_globals(Globals::uo, _IOState0::di, _IOState::uo),
+    io.unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Globals = ML_io_user_globals;
 ").
 
 :- pragma foreign_proc("C#",
-    io.unsafe_set_globals(Globals::di, _IOState0::di, _IOState::uo),
+    io.unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ML_io_user_globals = Globals;
 ").
 
 :- pragma foreign_proc("Java",
-    io.unsafe_get_globals(Globals::uo, _IOState0::di, _IOState::uo),
+    io.unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Globals = ML_io_user_globals;
 ").
 
 :- pragma foreign_proc("Java",
-    io.unsafe_set_globals(Globals::di, _IOState0::di, _IOState::uo),
+    io.unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ML_io_user_globals = Globals;
