@@ -4771,6 +4771,11 @@ different modules or sub-modules.  Any finalisation required by the Mercury
 standard library will always occur after any finalisation predicates have been
 invoked.
 
+If @samp{finalpredname/arity} terminates with an uncaught exception then
+the program will immediately abort execution.  No predicates specified
+by other @samp{finalise} directives that have not yet been executed will
+be executed.
+
 @samp{finalize} is also allowed as a synonym for @samp{finalise}.
 
 Note: @samp{finalise} declarations are currently only supported on
@@ -4808,7 +4813,7 @@ It is also not allowed to be equivalent to, or contain components that
 are equivalent to, the builtin insts @samp{free}, @samp{unique},
 @samp{mostly_unique}, @samp{dead} or @samp{mostly_dead}.
 
-The initial value of a mutable, @samp{inital_value}, may be any Mercury
+The initial value of a mutable, @samp{initial_value}, may be any Mercury
 expression with type @samp{vartype} and inst @samp{varinst} subject to
 the above restrictions.
 
@@ -4886,6 +4891,23 @@ either of the @samp{trailed} or @samp{constant} attributes.
 It is an error for a @samp{mutable} directive to appear in the
 interface section of a module.  The usual visibility rules for sub-modules
 apply to the mutable variable access predicates.
+
+For the purposes of determining when mutables are assigned their initial
+values, the expression @samp{initial_value} behaves as though it were
+a predicate specified in an @samp{initialise} directive.
+
+@example
+        :- initialise foo/2.
+        :- mutable(bar, int, 561, ground, [untrailed]).
+        :- initialise baz/2.
+@end example
+
+In the above example @samp{foo/2} is invoked first, then @samp{bar}
+is set with an initial value of 561 and the @samp{baz/2} is invoked.
+
+The effect of a mutable initial value expression terminating with
+an uncaught exception is also the same as though it were a predicate
+specified in a @samp{initialise} directive.
 
 Note: @samp{mutable} declarations are currently only supported on
 the C backends.

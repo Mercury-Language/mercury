@@ -1,0 +1,3 @@
+init_foo: X = 40
+Uncaught Mercury exception:
+magic_number_exception

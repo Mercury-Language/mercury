@@ -130,6 +130,7 @@ ORDINARY_PROGS=	\
 	mode_choice \
 	multi_map_test \
 	multimode \
+	mutable_init_order \
 	myset_test \
 	name_mangling \
 	no_fully_strict \
@@ -431,8 +432,10 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		allow_stubs \
 		backend_external \
 		dir_test \
+		final_excp \
 		init_excp \
 		map_merge_test \
+		mutable_excp \
 		io_globals_deadlock \
 		test_array2d \
 		test_injection \
@@ -614,10 +617,30 @@ no_fully_strict.out: no_fully_strict
 		rm -f $@.tmp; \
 	fi
 
+# final_excp.out is expected to fail (it calls throw/1).
+#
+final_excp.out: final_excp
+	if ./final_excp > $@.tmp 2>&1; then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
 # init_excp.out is expected to fail (it calls throw/1).
 #
 init_excp.out: init_excp
 	if ./init_excp > $@.tmp 2>&1; then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
+# mutable_excp.out is expected to fail (it calls throw/1).
+#
+mutable_excp.out: mutable_excp
+	if ./mutable_excp > $@.tmp 2>&1; then \
 		grep  . $@.tmp; \
 		exit 1; \
 	else \
