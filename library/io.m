@@ -539,7 +539,7 @@
     % io.see(File, Result, !IO).
     % Attempts to open a file for input, and if successful,
     % sets the current input stream to the newly opened stream.
-    % Result is either 'ok' or 'error'.
+    % Result is either 'ok' or 'error(ErrorCode)'.
     %
 :- pred io.see(string::in, io.res::out, io::di, io::uo) is det.
 
@@ -975,7 +975,7 @@
 
     % Attempts to open a file for binary input, and if successful sets
     % the current binary input stream to the newly opened stream.
-    % Result is either 'ok' or 'error'.
+    % Result is either 'ok' or 'error(ErrorCode)'.
     %
 :- pred io.see_binary(string::in, io.res::out, io::di, io::uo) is det.
 
