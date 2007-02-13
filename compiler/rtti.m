@@ -1616,6 +1616,9 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
             % We should allow users to provide tracing functions for
             % foreign types.
             RepStr = "MR_TYPECTOR_REP_ARRAY"
+        ; type_ctor_is_bitmap(TypeCtor) ->
+            % bitmaps are handled much like strings.
+            RepStr = "MR_TYPECTOR_REP_BITMAP"
         ;
             (
                 IsStable = is_stable,

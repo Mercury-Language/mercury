@@ -263,21 +263,27 @@ eq_version_array_2(I, VAa, VAb) :-
     version_array(T)::in, version_array(T)::in) is det.
 
 cmp_version_array(R, VAa, VAb) :-
-    N = min(max(VAa), max(VAb)),
-    cmp_version_array_2(N, VAa, VAb, R).
+    SizeA = VAa ^ size,
+    SizeB = VAb ^ size,
+    compare(SizeResult, SizeA, SizeB),
+    ( SizeResult = (=) ->
+        cmp_version_array_2(0, SizeA, VAa, VAb, R)
+    ;
+        R = SizeResult
+    ).
 
-:- pred cmp_version_array_2(int::in, version_array(T)::in,
+:- pred cmp_version_array_2(int::in, int::in, version_array(T)::in,
     version_array(T)::in, comparison_result::uo) is det.
 
-cmp_version_array_2(I, VAa, VAb, R) :-
-    ( if I >= 0 then
+cmp_version_array_2(I, Size, VAa, VAb, R) :-
+    ( if I >= Size then
+        R = (=)
+      else
         compare(R0, VAa ^ elem(I), VAb ^ elem(I)),
         ( if   R0 = (=)
-          then cmp_version_array_2(I - 1, VAa, VAb, R)
+          then cmp_version_array_2(I + 1, Size, VAa, VAb, R)
           else R  = R0
         )
-      else
-        R = (=)
     ).
 
 :- pragma foreign_proc("C",

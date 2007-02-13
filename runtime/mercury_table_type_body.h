@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2006 The University of Melbourne.
+** Copyright (C) 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -287,6 +287,12 @@
         case MR_TYPECTOR_REP_STRING:
             MR_TABLE_STRING(STATS, DEBUG, BACK, table_next, table,
                 (MR_String) data);
+            table = table_next;
+            return table;
+
+        case MR_TYPECTOR_REP_BITMAP:
+             MR_TABLE_BITMAP(STATS, DEBUG, BACK, table_next, table,
+                (MR_ConstBitmapPtr) data);
             table = table_next;
             return table;
 

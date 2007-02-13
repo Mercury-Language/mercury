@@ -28,6 +28,7 @@ HDRS		=	\
 			mercury_bootstrap.h	\
 			mercury_builtin_types.h	\
 			mercury_builtin_types_proc_layouts.h	\
+			mercury_bitmap.h	\
 			mercury_calls.h		\
 			mercury_complexity.h	\
 			mercury_conf_bootstrap.h \
@@ -150,6 +151,7 @@ CFILES		= 	\
 			mercury_agc_debug.c	\
 			mercury_bootstrap.c	\
 			mercury_builtin_types.c	\
+			mercury_bitmap.c	\
 			mercury_construct.c	\
 			mercury_context.c	\
 			mercury_debug.c		\

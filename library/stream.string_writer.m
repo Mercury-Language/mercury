@@ -177,6 +177,7 @@
 :- implementation.
 
 :- import_module array.
+:- import_module bitmap.
 :- import_module int.
 :- import_module require.
 :- import_module rtti_implementation.
@@ -353,6 +354,11 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
         put_int(Stream, Int, !State)
     ; univ_to_type(Univ, Float) ->
         put_float(Stream, Float, !State)
+    ; univ_to_type(Univ, Bitmap) ->
+        % Bitmaps are converted to strings of hex digits.
+        put_char(Stream, '"', !State),
+        put(Stream, bitmap.to_string(Bitmap), !State),
+        put_char(Stream, '"', !State)
     ; univ_to_type(Univ, TypeDesc) ->
         write_type_desc(Stream, TypeDesc, !State)
     ; univ_to_type(Univ, TypeCtorDesc) ->

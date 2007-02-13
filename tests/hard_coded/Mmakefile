@@ -12,6 +12,7 @@ ORDINARY_PROGS=	\
 	any_free_unify \
 	backquoted_qualified_ops \
 	bidirectional \
+	bitmap_test \
 	boyer \
 	brace \
 	builtin_inst_rename \
@@ -728,6 +729,7 @@ endif
 
 clean_local:
 	rm -f target_mlobjs_c.o
+	rm -f bitmap_test_output bitmap_test_output2
 
 realclean_local:
 	rm -f Mercury.modules

@@ -1,3 +1,7 @@
+ordering(A1, A0) = '>'
+ordering(A0, A1) = '<'
+ordering(A1, A2) = '<'
+ordering(A2, A1) = '>'
  (size 0)
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 (size 10)
 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 (size 10)

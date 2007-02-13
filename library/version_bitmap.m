@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne
+% Copyright (C) 2004-2007 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -59,9 +59,13 @@
 :- pred is_set(version_bitmap::in, int::in) is semidet.
 :- pred is_clear(version_bitmap::in, int::in) is semidet.
 
-    % get(BM, I) returns `yes' if is_set(BM, I) and `no' otherwise.
+    % Get the given bit.
     %
-:- func get(version_bitmap, int) = bool.
+:- func version_bitmap ^ bit(int) = bool.
+
+    % Set the given bit.
+    %
+:- func (version_bitmap ^ bit(int) := bool) = version_bitmap.
 
     % Create a new copy of a version_bitmap.
     %
@@ -76,6 +80,8 @@
 :- func intersect(version_bitmap, version_bitmap) = version_bitmap.
 
 :- func difference(version_bitmap, version_bitmap) = version_bitmap.
+
+:- func xor(version_bitmap, version_bitmap) = version_bitmap.
 
     % resize(BM, N, B) resizes version_bitmap BM to have N bits; if N is
     % smaller than the current number of bits in BM then the excess
@@ -104,6 +110,15 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- interface.
+
+    % get(BM, I) returns `yes' if is_set(BM, I) and `no' otherwise.
+    % Replaced by `BM ^ bit(I)'.
+:- func get(version_bitmap, int) = bool.
+:- pragma obsolete(get/2).
 
 :- implementation.
 
@@ -192,6 +207,13 @@ in_range(BM, I) :- 0 =< I, I < num_bits(BM).
 
 %-----------------------------------------------------------------------------%
 
+BM ^ bit(I) = ( if is_set(BM, I) then yes else no ).
+
+(BM ^ bit(I) := yes) = set(BM, I).
+(BM ^ bit(I) := no) = clear(BM, I).
+
+%-----------------------------------------------------------------------------%
+
 set(BM, I) =
     ( if   in_range(BM, I)
       then BM ^ elem(int_offset(I)) :=
@@ -259,31 +281,42 @@ complement_2(WordI, BM) =
 %-----------------------------------------------------------------------------%
 
 union(BMa, BMb) =
-    ( if num_bits(BMa) > num_bits(BMb) then
-        zip(int_offset(num_bits(BMb) - 1), (\/), BMb, version_bitmap.copy(BMa))
+    ( if num_bits(BMa) = num_bits(BMb) then
+        zip(int_offset(num_bits(BMb) - 1), (\/), BMa, BMb)
       else
-        zip(int_offset(num_bits(BMa) - 1), (\/), BMa, BMb)
+        throw(software_error(
+            "version_bitmap.union: version_bitmaps not the same size"))
     ).
 
 %-----------------------------------------------------------------------------%
 
 intersect(BMa, BMb) =
-    ( if num_bits(BMa) > num_bits(BMb) then
-        zip(int_offset(num_bits(BMb) - 1), (/\), BMb, version_bitmap.copy(BMa))
+    ( if num_bits(BMa) = num_bits(BMb) then
+        zip(int_offset(num_bits(BMb) - 1), (/\), BMa, BMb)
       else
-        zip(int_offset(num_bits(BMa) - 1), (/\), BMa, BMb)
+        throw(software_error(
+            "version_bitmap.intersect: version_bitmaps not the same size"))
     ).
 
 %-----------------------------------------------------------------------------%
 
 difference(BMa, BMb) =
-    ( if num_bits(BMa) > num_bits(BMb) then
-        zip(int_offset(num_bits(BMb) - 1), Xor, BMb, version_bitmap.copy(BMa))
+    ( if num_bits(BMa) = num_bits(BMb) then
+        zip(int_offset(num_bits(BMb) - 1), (func(X, Y) = X /\ \Y), BMa, BMb)
       else
-        zip(int_offset(num_bits(BMa) - 1), Xor, BMa, BMb)
-    )
- :-
-    Xor = ( func(X, Y) = (X `xor` Y) ).
+        throw(software_error(
+            "version_bitmap.difference: version_bitmaps not the same size"))
+    ).
+
+%-----------------------------------------------------------------------------%
+
+xor(BMa, BMb) =
+    ( if num_bits(BMa) = num_bits(BMb) then
+        zip(int_offset(num_bits(BMb) - 1), (func(X, Y) = X `xor` Y), BMa, BMb)
+      else
+        throw(software_error(
+            "version_bitmap.xor: version_bitmaps not the same size"))
+    ).
 
 %-----------------------------------------------------------------------------%
 

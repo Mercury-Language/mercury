@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2005 The University of Melbourne.
+** Copyright (C) 1997-2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -546,6 +546,29 @@ try_again:
                         MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                         (const MR_PseudoTypeInfo) 1, lower_limit, upper_limit);
                 }
+                leave_forwarding_pointer(data, 0, new_data);
+            }
+        }
+        return new_data;
+
+    case MR_TYPECTOR_REP_BITMAP:
+        {
+            MR_Word *data_value;
+            int     i;
+
+            assert(MR_tag(data) == 0);
+            data_value = (MR_Word *) MR_body(data, MR_mktag(0));
+
+            RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
+
+            {
+                MR_BitmapPtr new_array;
+                MR_BitmapPtr old_array;
+
+                old_array = (MR_BitmapPtr) data_value;
+                MR_allocate_bitmap_saved_hp(new_array, old_array->num_bits);
+                MR_copy_bitmap(new_array, old_array);
+                new_data = (MR_Word) new_array;
                 leave_forwarding_pointer(data, 0, new_data);
             }
         }

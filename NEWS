@@ -60,6 +60,43 @@ Changes to the Mercury standard library:
 * We have added string.c_pointer_to_string/{1,2} and string.from_c_pointer/1
   to convert c_pointers to a human readable form.
 
+* The bitmap module has been modified and extended to make it more suitable
+  for use as a general container for binary data.  See runtime/mercury_types.h
+  for the new definition of the bitmap type for interoperability with C code.
+
+* Bitmaps now have fields `bit', `bits' and `byte' for getting and
+  setting a single bit, a group of bits (up to machine word size),
+  and an aligned eight bit byte respectively.
+
+  bitmap.get/2 has been deprecated; use bitmap.bit/2 instead.
+
+* Version bitmaps now have a field `bit' for getting and setting a single bit.
+
+  version_bitmap.get/2 has been deprecated; use version_bitmap.bit/2 instead.
+
+* There are new functions in the bitmap module to move data around in bulk:
+	copy_bits/5
+	copy_bits_in_bitmap/4
+	copy_bytes/5
+	copy_bytes_in_bitmap/4
+
+* The io module now contains predicates io.read_bitmap/{4,5,6,7} and
+  io.write_bitmap{3,4,5,6}.
+
+* The operations in bitmap.m and version_bitmap.m which treat bitmaps
+  as sets have been modified to throw an exception when the input
+  bitmaps are not the same size.  Before this change bitmap.intersect/2
+  computed the wrong answer when the input bitmaps were of different sizes.
+
+* bitmap.difference/2 and version_bitmap.difference/2 now compute difference,
+  not xor.
+
+* bitmap.xor/2 and version_bitmap.xor/2 have been added.
+
+* Comparison of version_arrays is now the same as for arrays.
+
+* We have added predicates char.is_hex_digit/2 and char.int_to_hex_char/2.
+
 * We have changed term.variable so that it records the context where
   the variable was used.  This required the backward mode of
   term.var_list_to_term_list to be removed.  The backwards mode is

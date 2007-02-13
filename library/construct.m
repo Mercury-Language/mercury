@@ -394,6 +394,7 @@ get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
         case MR_TYPECTOR_REP_FLOAT:
         case MR_TYPECTOR_REP_CHAR:
         case MR_TYPECTOR_REP_STRING:
+        case MR_TYPECTOR_REP_BITMAP:
         case MR_TYPECTOR_REP_SUBGOAL:
         case MR_TYPECTOR_REP_VOID:
         case MR_TYPECTOR_REP_C_POINTER:
@@ -449,7 +450,7 @@ get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     if (Ordinal < 0 || Ordinal >= num_functors
             || type_ctor_info->MR_type_ctor_version
-                != MR_RTTI_VERSION__FUNCTOR_NUMBERS
+                < MR_RTTI_VERSION__FUNCTOR_NUMBERS
             || !type_ctor_info->MR_type_ctor_functor_number_map)
     {
         SUCCESS_INDICATOR = MR_FALSE; 
@@ -719,6 +720,12 @@ get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
             /* strings don't have functor ordinals. */
             MR_fatal_error(
                 ""cannot construct strings with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_BITMAP:
+            /* bitmaps don't have functor ordinals. */
+            MR_fatal_error(
+                ""cannot construct bitmaps with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_EQUIV:

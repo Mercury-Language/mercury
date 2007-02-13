@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2006 The University of Melbourne.
+** Copyright (C) 2002-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -271,6 +271,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_FLOAT:
         case MR_TYPECTOR_REP_CHAR:
         case MR_TYPECTOR_REP_STRING:
+        case MR_TYPECTOR_REP_BITMAP:
         case MR_TYPECTOR_REP_FUNC:
         case MR_TYPECTOR_REP_PRED:
         case MR_TYPECTOR_REP_SUBGOAL:

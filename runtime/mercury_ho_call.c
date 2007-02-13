@@ -6,7 +6,7 @@ INIT mercury_sys_init_call
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2006 The University of Melbourne.
+** Copyright (C) 1995-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -36,6 +36,8 @@ ENDINIT
 #include "mercury_builtin_types.h"
 #include "mercury_builtin_types_proc_layouts.h"
          /* for unify/compare of pred/func and for proc_layout structures */
+#include "mercury_types.h"
+#include "mercury_bitmap.h"
 
 #ifdef  MR_DEEP_PROFILING
   #ifdef MR_DEEP_PROFILING_STATISTICS

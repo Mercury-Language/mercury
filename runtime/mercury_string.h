@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -164,6 +164,18 @@
 	  	MR_offset_incr_hp_atomic_msg(make_aligned_string_tmp, 0,\
 	    	    ((len) + sizeof(MR_Word)) / sizeof(MR_Word),	\
 		    proclabel, "string:string/0");			\
+	    	make_aligned_string_ptr =				\
+		    (char *) make_aligned_string_tmp;			\
+	    	(ptr) = make_aligned_string_ptr;			\
+	} while(0)
+
+#define MR_allocate_aligned_string_saved_hp(ptr, len)			\
+	do {								\
+		MR_Word	make_aligned_string_tmp;			\
+		char	*make_aligned_string_ptr;			\
+									\
+	  	MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp, 0,\
+	    	    ((len) + sizeof(MR_Word)) / sizeof(MR_Word));	\
 	    	make_aligned_string_ptr =				\
 		    (char *) make_aligned_string_tmp;			\
 	    	(ptr) = make_aligned_string_ptr;			\

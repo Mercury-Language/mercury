@@ -99,6 +99,7 @@
 :- implementation.
 
 :- import_module array.
+:- import_module bitmap.
 :- import_module bool.
 :- import_module int.
 :- import_module maybe.
@@ -155,6 +156,7 @@
     ;       tcr_stable_foreign
     ;       tcr_pseudo_type_desc
     ;       tcr_dummy
+    ;       tcr_bitmap
     ;       tcr_unknown.
 
     % We keep all the other types abstract.
@@ -215,6 +217,7 @@ num_functors(TypeDesc) = NumFunctors :-
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string
+        ; TypeCtorRep = tcr_bitmap
         ; TypeCtorRep = tcr_func
         ; TypeCtorRep = tcr_pred
         ; TypeCtorRep = tcr_void
@@ -310,6 +313,7 @@ get_functor_impl(TypeDesc, FunctorNumber,
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string
+        ; TypeCtorRep = tcr_bitmap
         ; TypeCtorRep = tcr_func
         ; TypeCtorRep = tcr_pred
         ; TypeCtorRep = tcr_void
@@ -1064,6 +1068,13 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         det_dynamic_cast(Term, String),
 
         % XXX should escape characters in the string correctly
+        Functor = "\"" ++ String ++ "\"",
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = tcr_bitmap,
+        det_dynamic_cast(Term, Bitmap),
+        String = bitmap.to_string(Bitmap),
         Functor = "\"" ++ String ++ "\"",
         Arity = 0,
         Arguments = []

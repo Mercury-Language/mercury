@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000-2005 The University of Melbourne.
+** Copyright (C) 2000-2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -607,6 +607,30 @@ start_label:
                 }
 #else
                 return_unify_answer(builtin, string, 0, result == 0);
+#endif
+            }
+
+        case MR_TYPECTOR_REP_BITMAP:
+            {
+                int result;
+                MR_BitmapPtr bx = (MR_BitmapPtr) x;
+                MR_BitmapPtr by = (MR_BitmapPtr) y;
+
+                result = MR_bitmap_cmp(bx, by);
+
+#ifdef  select_compare_code
+                if (result == 0) {
+                    return_compare_answer(bitmap, bitmap, 0,
+                        MR_COMPARE_EQUAL);
+                } else if (result < 0) {
+                    return_compare_answer(bitmap, bitmap, 0,
+                        MR_COMPARE_LESS);
+                } else {
+                    return_compare_answer(bitmap, bitmap, 0,
+                        MR_COMPARE_GREATER);
+                }
+#else
+                return_unify_answer(bitmap, bitmap, 0, result == 0);
 #endif
             }
 

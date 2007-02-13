@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000,2002-2006 The University of Melbourne.
+** Copyright (C) 1997-2000,2002-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,6 +16,7 @@
 #define	MERCURY_TABLING_H
 
 #include "mercury_types.h"
+#include "mercury_bitmap.h"
 #include "mercury_type_info.h"
 #include "mercury_float.h"
 #include "mercury_reg_workarounds.h"
@@ -360,6 +361,11 @@ extern	MR_TrieNode	MR_string_hash_lookup_or_add(MR_TrieNode table,
 extern	MR_TrieNode	MR_string_hash_lookup_or_add_stats(
 				MR_TableStepStats *stats, MR_TrieNode table,
 				MR_ConstString key);
+extern	MR_TrieNode	MR_bitmap_hash_lookup_or_add(MR_TrieNode table,
+				MR_ConstBitmapPtr key);
+extern	MR_TrieNode	MR_bitmap_hash_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_ConstBitmapPtr key);
 extern	MR_TrieNode	MR_word_hash_lookup_or_add(MR_TrieNode table,
 				MR_Word key);
 extern	MR_TrieNode	MR_word_hash_lookup_or_add_stats(
@@ -451,6 +457,8 @@ extern	MR_TrieNode	MR_float_hash_lookup(MR_TrieNode table,
 				MR_Float key);
 extern	MR_TrieNode	MR_string_hash_lookup(MR_TrieNode table,
 				MR_ConstString key);
+extern	MR_TrieNode	MR_bitmap_hash_lookup(MR_TrieNode table,
+				MR_ConstBitmapPtr key);
 extern	MR_TrieNode	MR_word_hash_lookup(MR_TrieNode table,
 				MR_Word data_value);
 
@@ -466,6 +474,9 @@ extern	MR_bool		MR_get_float_hash_table_contents(MR_TrieNode t,
 				MR_Float **values_ptr, int *value_next_ptr);
 extern	MR_bool		MR_get_string_hash_table_contents(MR_TrieNode t,
 				MR_ConstString **values_ptr,
+				int *value_next_ptr);
+extern	MR_bool		MR_get_bitmap_hash_table_contents(MR_TrieNode t,
+				MR_ConstBitmapPtr **values_ptr,
 				int *value_next_ptr);
 
 /*

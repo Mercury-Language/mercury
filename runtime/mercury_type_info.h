@@ -75,7 +75,7 @@
 ** compiler/type_ctor_info.m and with MR_RTTI_VERSION in mercury_mcpp.h.
 */
 
-#define MR_RTTI_VERSION                 MR_RTTI_VERSION__FUNCTOR_NUMBERS
+#define MR_RTTI_VERSION                 MR_RTTI_VERSION__BITMAP
 #define MR_RTTI_VERSION__INITIAL        2
 #define MR_RTTI_VERSION__USEREQ         3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT   4
@@ -87,6 +87,7 @@
 #define MR_RTTI_VERSION__TYPE_INFO_ZERO 10
 #define MR_RTTI_VERSION__DUMMY          11
 #define MR_RTTI_VERSION__FUNCTOR_NUMBERS 12
+#define MR_RTTI_VERSION__BITMAP         13
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -665,6 +666,7 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STABLE_FOREIGN),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_PSEUDOTYPEDESC),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_DUMMY),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_BITMAP),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -735,6 +737,7 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "STABLE_FOREIGN",                           \
     "PSEUDO_TYPE_DESC",                         \
     "DUMMY",                                    \
+    "BITMAP",                                   \
     "UNKNOWN"
 
 extern  MR_ConstString  MR_ctor_rep_name[];

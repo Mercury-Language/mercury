@@ -457,6 +457,7 @@
 :- implementation.
 
 :- import_module array.
+:- import_module bitmap.
 :- import_module construct.
 :- import_module deconstruct.
 :- import_module int.
@@ -557,6 +558,11 @@ term_to_univ_special_case("builtin", "string", [],
 term_to_univ_special_case("builtin", "float", [], Term, _, _, ok(Univ)) :-
     Term = functor(float(Float), [], _),
     type_to_univ(Float, Univ).
+term_to_univ_special_case("bitmap", "bitmap", [],
+        Term, _Type, _PrevContext, ok(Univ)) :-
+    % Bitmaps are represented as hex strings.
+    Term = functor(string(String), [], _),
+    type_to_univ(bitmap.from_string(String), Univ).
 term_to_univ_special_case("array", "array", [ElemType],
         Term, _Type, PrevContext, Result) :-
     %
@@ -733,6 +739,10 @@ univ_to_term_special_case("univ", "univ", [], Univ, Context, Term) :-
     type_info_to_term(Context, univ_type(NestedUniv), TypeTerm),
     NestedUnivValue = univ_value(NestedUniv),
     type_to_term(NestedUnivValue, ValueTerm).
+univ_to_term_special_case("bitmap", "bitmap", [], Univ, Context,
+        functor(string(BitmapStr), [], Context)) :-
+    det_univ_to_type(Univ, Bitmap),
+    BitmapStr = bitmap.to_string(Bitmap).
 
 univ_to_term_special_case("array", "array", [ElemType], Univ, Context, Term) :-
     Term = functor(atom("array"), [ArgsTerm], Context),

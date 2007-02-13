@@ -474,7 +474,7 @@ make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
     %
 :- func type_ctor_info_rtti_version = int.
 
-type_ctor_info_rtti_version = 12.
+type_ctor_info_rtti_version = 13.
 
     % Construct an rtti_data for a pseudo_type_info, and also construct
     % rtti_data definitions for all of the pseudo_type_infos that it references

@@ -33,6 +33,7 @@
 :- module io.
 :- interface.
 
+:- import_module bitmap.
 :- import_module bool.
 :- import_module char.
 :- import_module deconstruct.
@@ -91,6 +92,10 @@
 :- type io.maybe_partial_res(T)
     --->    ok(T)
     ;       error(T, io.error).
+
+:- inst io.maybe_partial_res(T)
+    --->    ok(T)
+    ;       error(T, ground).
 
 :- type io.result
     --->    ok
@@ -756,6 +761,42 @@
 :- pred io.read_byte(io.binary_input_stream::in, io.result(int)::out,
     io::di, io::uo) is det.
 
+    % XXX The bitmap returned is actually unique.
+:- inst read_bitmap == io.maybe_partial_res(bound({bitmap, ground})).
+
+    % Fill a bitmap from the current binary input stream.
+    % Returns the number of bytes read.
+    %
+:- pred io.read_bitmap(bitmap::bitmap_di,
+    io.maybe_partial_res({bitmap, int})::out(read_bitmap),
+    io::di, io::uo) is det.
+
+    % Fill a bitmap from the specified binary input stream.
+    % Returns the number of bytes read.
+    %
+:- pred io.read_bitmap(io.binary_input_stream::in,
+    bitmap::bitmap_di, io.maybe_partial_res({bitmap, int})::out(read_bitmap),
+    io::di, io::uo) is det.
+
+    % io.read_bitmap(Bitmap, StartByte, NumBytes, ok({Bitmap, BytesRead}), !IO)
+    % Read NumBytes bytes into a bitmap starting at StartByte
+    % from the current binary input stream.
+    % Returns the number of bytes read.
+    %
+:- pred io.read_bitmap(bitmap::bitmap_di, int::in, int::in,
+    io.maybe_partial_res({bitmap, int})::out(read_bitmap),
+    io::di, io::uo) is det.
+
+    % io.read_bitmap(Stream, Bitmap, StartByte, NumBytes,
+    %       ok({Bitmap, BytesRead}), !IO)
+    % Read NumBytes bytes into a bitmap starting at StartByte
+    % from the specified binary input stream.
+    % Returns the number of bytes read.
+    %
+:- pred io.read_bitmap(io.binary_input_stream::in, bitmap::bitmap_di,
+    int::in, int::in, io.maybe_partial_res({bitmap, int})::out(read_bitmap),
+    io::di, io::uo) is det.
+
     % Reads all the bytes from the current binary input stream
     % until eof or error.
     %
@@ -907,12 +948,42 @@
     % The bytes are taken from a string.
     %
 :- pred io.write_bytes(string::in, io::di, io::uo) is det.
+    % A string is not a suitable structure to hold a sequence of bytes.
 
     % Writes several bytes to the specified binary output stream.
     % The bytes are taken from a string.
     %
 :- pred io.write_bytes(io.binary_output_stream::in, string::in,
     io::di, io::uo) is det.
+    % A string is not a suitable structure to hold a sequence of bytes.
+
+    % Write a bitmap to the current binary output stream.
+    % The bitmap must not contain a partial final byte.
+    %
+:- pred io.write_bitmap(bitmap, io, io).
+%:- mode io.write_bitmap(bitmap_ui, di, uo) is det.
+:- mode io.write_bitmap(in, di, uo) is det.
+
+    % io.write_bitmap(BM, StartByte, NumBytes, !IO).
+    % Write part of a bitmap to the current binary output stream.
+    %
+:- pred io.write_bitmap(bitmap, int, int, io, io).
+%:- mode io.write_bitmap(bitmap_ui, in, in, di, uo) is det.
+:- mode io.write_bitmap(in, in, in, di, uo) is det.
+
+    % Write a bitmap to the specified binary output stream.
+    % The bitmap must not contain a partial final byte.
+    %
+:- pred io.write_bitmap(io.binary_output_stream, bitmap, io, io).
+%:- mode io.write_bitmap(in, bitmap_ui, di, uo) is det.
+:- mode io.write_bitmap(in, in, di, uo) is det.
+
+    % io.write_bitmap(Stream, BM, StartByte, NumBytes, !IO).
+    % Write part of a bitmap to the specified binary output stream.
+    %
+:- pred io.write_bitmap(io.binary_output_stream, bitmap, int, int, io, io).
+%:- mode io.write_bitmap(in, bitmap_ui, in, in, di, uo) is det.
+:- mode io.write_bitmap(in, in, in, in, di, uo) is det.
 
     % Flush the output buffer of the current binary output stream.
     %
@@ -1780,6 +1851,76 @@ io.read_byte(binary_input_stream(Stream), Result, !IO) :-
         io.make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
+
+io.read_bitmap(Bitmap, Result, !IO) :-
+    io.binary_input_stream(Stream, !IO),
+    io.read_bitmap(Stream, Bitmap, Result, !IO).
+
+io.read_bitmap(Bitmap, StartByte, NumBytes, Result, !IO) :-
+    io.binary_input_stream(Stream, !IO),
+    io.read_bitmap(Stream, Bitmap, StartByte, NumBytes, Result, !IO).
+
+io.read_bitmap(Stream, Bitmap, Result, !IO) :-
+    ( NumBytes = Bitmap ^ num_bytes ->
+        io.read_bitmap(Stream, Bitmap, 0, NumBytes, Result, !IO)
+    ;
+        error("io.read_bitmap: bitmap contains partial final byte")
+    ).
+
+io.read_bitmap(binary_input_stream(Stream), Bitmap0, Start, NumBytes,
+        Result, !IO) :-
+    (
+        byte_in_range(Bitmap0, Start),
+        byte_in_range(Bitmap0, Start + NumBytes - 1)
+    ->
+        io.do_read_bitmap(Stream, Start, NumBytes,
+            Bitmap0, Bitmap, 0, BytesRead, !IO),
+        io.ferror(Stream, ErrInt, ErrMsg, !IO),
+        ( ErrInt = 0 ->
+            Result = ok({Bitmap, BytesRead})
+        ;
+            Result = error({Bitmap, BytesRead}, io_error(ErrMsg))
+        ) 
+    ;
+        error("io.read_bitmap: bitmap index out of range")
+    ).
+
+:- pred io.do_read_bitmap(io.stream::in, int::in, int::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo, int::in, int::out,
+    io::di, io::uo) is det.
+:- pragma promise_pure(io.do_read_bitmap/9).
+
+    % Default implementation for C# and Java.
+io.do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
+    ( NumBytes > 0 ->
+        io.read_byte(binary_input_stream(Stream), ByteResult, !IO),
+        (
+            ByteResult = ok(Byte),
+            !:Bitmap = !.Bitmap ^ unsafe_byte(Start) := Byte,
+            !:BytesRead = !.BytesRead + 1,
+            io.do_read_bitmap(Stream, Start + 1, NumBytes - 1,
+                !Bitmap, !BytesRead, !IO)
+        ;
+            ByteResult = eof
+        ;
+            ByteResult = error(_)
+        )
+    ;
+        true
+    ).
+:- pragma foreign_proc("C",
+    io.do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
+        Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
+        IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    MR_update_io(IO0, IO);
+    Bitmap = Bitmap0,
+    BytesRead = BytesRead0 +
+                    MR_READ(*Stream, Bitmap->elements + StartByte, NumBytes);
+").
+
+%-----------------------------------------------------------------------------%
 
 io.read_word(Result, !IO) :-
     io.input_stream(Stream, !IO),
@@ -4909,7 +5050,7 @@ namespace mercury {
 
         public System.IO.Stream     stream; // The stream itself
         public System.IO.TextReader reader; // The stream reader for it
-        public System.IO.TextWriter writer; // The stream write for it
+        public System.IO.TextWriter writer; // The stream writer for it
         public int                  putback;
                                     // the next character or byte to read,
                                     // or -1 if no putback char/byte is stored
@@ -6474,6 +6615,15 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     MR_update_io(IO0, IO);
 }").
 
+
+io.write_bitmap(Bitmap, !IO) :-
+    io.binary_output_stream(Stream, !IO),
+    io.write_bitmap(Stream, Bitmap, !IO).
+ 
+io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
+    io.binary_output_stream(Stream, !IO),
+    io.write_bitmap(Stream, Bitmap, Start, NumBytes, !IO).
+
 :- pragma foreign_proc("C",
     io.flush_output(IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
@@ -6804,6 +6954,48 @@ io.write_bytes(binary_output_stream(Stream), Message, !IO) :-
     mercury_print_binary_string(Stream, Message);
     MR_update_io(IO0, IO);
 ").
+   
+io.write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
+    ( NumBytes = Bitmap ^ num_bytes ->
+        io.do_write_bitmap(Stream, Bitmap, 0, NumBytes, !IO)
+    ;
+        error("io.write_bitmap: bitmap contains partial final byte")
+    ).
+
+io.write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
+    (
+        byte_in_range(Bitmap, Start),
+        byte_in_range(Bitmap, Start + NumBytes - 1)
+    ->
+        io.do_write_bitmap(Stream, Bitmap, Start, NumBytes, !IO)
+    ;
+        error("io.write_bitmap: out of range")
+    ).
+
+:- pred io.do_write_bitmap(io.stream, bitmap, int, int, io, io).
+%:- mode io.do_write_bitmap(in, bitmap_ui, in, in, di, uo) is det.
+:- mode io.do_write_bitmap(in, in, in, in, di, uo) is det.
+:- pragma promise_pure(io.do_write_bitmap/6).
+
+    % Default implementation for C# and Java.
+io.do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
+    ( Length > 0 ->
+        io.write_byte(binary_output_stream(Stream),
+            Bitmap ^ unsafe_byte(Start), !IO),
+        io.do_write_bitmap(Stream, Bitmap, Start + 1, Length - 1, !IO)
+    ;
+        true
+    ).
+
+:- pragma foreign_proc("C",
+    io.do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in,
+            IO0::di, IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+"{
+    MR_WRITE(*Stream, Bitmap->elements + Start, Length);
+    MR_update_io(IO0, IO);
+}").
+
 
 io.flush_output(output_stream(Stream), !IO) :-
     io.flush_output_2(Stream, !IO).

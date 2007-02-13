@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2006 The University of Melbourne.
+** Copyright (C) 1997-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,6 +37,7 @@
 typedef struct MR_IntHashTableSlot_Struct       MR_IntHashTableSlot;
 typedef struct MR_FloatHashTableSlot_Struct     MR_FloatHashTableSlot;
 typedef struct MR_StringHashTableSlot_Struct    MR_StringHashTableSlot;
+typedef struct MR_BitmapHashTableSlot_Struct MR_BitmapHashTableSlot;
 typedef struct MR_WordHashTableSlot_Struct      MR_WordHashTableSlot;
 
 typedef struct MR_AllocRecord_Struct            MR_AllocRecord;
@@ -59,6 +60,12 @@ struct MR_StringHashTableSlot_Struct {
     MR_ConstString          key;
 };
 
+struct MR_BitmapHashTableSlot_Struct {
+    MR_BitmapHashTableSlot *next;
+    MR_TableNode            data;
+    MR_ConstBitmapPtr    key;
+};
+
 struct MR_WordHashTableSlot_Struct {
     MR_WordHashTableSlot    *next;
     MR_TableNode            data;
@@ -69,6 +76,7 @@ typedef union {
     MR_IntHashTableSlot     *int_slot_ptr;
     MR_FloatHashTableSlot   *float_slot_ptr;
     MR_StringHashTableSlot  *string_slot_ptr;
+    MR_BitmapHashTableSlot  *bitmap_slot_ptr;
     MR_WordHashTableSlot    *word_slot_ptr;
 } MR_HashTableSlotPtr;
 
@@ -508,6 +516,73 @@ MR_string_hash_lookup(MR_TrieNode t, MR_ConstString key)
 }
 
 MR_TrieNode
+MR_bitmap_hash_lookup_or_add(MR_TrieNode t, MR_ConstBitmapPtr key)
+{
+#define key_format              "%d"
+#define key_cast                void *
+#define table_type              MR_BitmapHashTableSlot
+#define table_field             bitmap_slot_ptr
+#define hash(key)               (MR_hash_bitmap(key))
+#define equal_keys(k1, k2)      (MR_bitmap_cmp((k1), (k2)) == 0)
+#define lookup_only             MR_FALSE
+#include "mercury_tabling_stats_nodefs.h"
+#include "mercury_hash_lookup_or_add_body.h"
+#include "mercury_tabling_stats_undefs.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_bitmap_hash_lookup_or_add_stats(MR_TableStepStats *stats,
+    MR_TrieNode t, MR_ConstBitmapPtr key)
+{
+#define key_format              "%d"
+#define key_cast                MR_Word
+#define table_type              MR_BitmapHashTableSlot
+#define table_field             bitmap_slot_ptr
+#define hash(key)               (MR_hash_bitmap(key))
+#define equal_keys(k1, k2)      (MR_bitmap_cmp((k1), (k2)) == 0)
+#define lookup_only             MR_FALSE
+#include "mercury_tabling_stats_defs.h"
+#include "mercury_hash_lookup_or_add_body.h"
+#include "mercury_tabling_stats_undefs.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_bitmap_hash_lookup(MR_TrieNode t, MR_ConstBitmapPtr key)
+{
+#define key_format              "%d"
+#define key_cast                MR_Word
+#define table_type              MR_BitmapHashTableSlot
+#define table_field             bitmap_slot_ptr
+#define hash(key)               (MR_hash_bitmap(key))
+#define equal_keys(k1, k2)      (MR_bitmap_cmp((k1), (k2)) == 0)
+#define lookup_only             MR_FALSE
+#include "mercury_tabling_stats_nodefs.h"
+#include "mercury_hash_lookup_or_add_body.h"
+#include "mercury_tabling_stats_undefs.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
 MR_word_hash_lookup_or_add(MR_TrieNode t, MR_Word key)
 {
 #define key_format              "%d"
@@ -613,6 +688,15 @@ MR_cmp_strings(const void *p1, const void *p2)
     return strcmp(s1, s2);
 }
 
+static int
+MR_cmp_bitmaps(const void *p1, const void *p2)
+{
+    MR_ConstBitmapPtr  s1 = * (MR_ConstBitmapPtr *) p1;
+    MR_ConstBitmapPtr  s2 = * (MR_ConstBitmapPtr *) p2;
+
+    return MR_bitmap_cmp(s1, s2);
+}
+
 /*
 ** The MR_HASH_CONTENTS_FUNC_BODY macro implements the bodies of the
 ** following functions:
@@ -691,6 +775,18 @@ MR_HASH_CONTENTS_FUNC_BODY
 #define table_type   MR_StringHashTableSlot
 #define table_field  string_slot_ptr
 #define comp_func    MR_cmp_strings
+MR_HASH_CONTENTS_FUNC_BODY
+#undef func_name
+#undef type_name
+#undef table_type
+#undef table_field
+#undef comp_func
+
+#define func_name    MR_get_bitmap_hash_table_contents
+#define type_name    MR_ConstBitmapPtr
+#define table_type   MR_BitmapHashTableSlot
+#define table_field  bitmap_slot_ptr
+#define comp_func    MR_cmp_bitmaps
 MR_HASH_CONTENTS_FUNC_BODY
 #undef func_name
 #undef type_name

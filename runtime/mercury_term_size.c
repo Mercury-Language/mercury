@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003-2005 The University of Melbourne.
+** Copyright (C) 2003-2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -207,6 +207,14 @@ try_again:
 #ifdef MR_DEBUG_TERM_SIZES
             if (MR_heapdebug && MR_lld_print_enabled) {
                 printf("MR_term_size: array %p\n", (void *) term);
+            }
+#endif
+            return 0;
+
+        case MR_TYPECTOR_REP_BITMAP:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf("MR_term_size: bitmap %p\n", (void *) term);
             }
 #endif
             return 0;

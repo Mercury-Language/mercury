@@ -133,6 +133,14 @@
     %
 :- pred char.is_hex_digit(char::in) is semidet.
 
+:- pred char.is_hex_digit(char, int).
+:- mode char.is_hex_digit(in, out) is semidet.
+
+    % Convert an integer 0-15 to a hexadecimal digit 0-9, A-F.
+    %
+:- pred char.int_to_hex_char(int, char).
+:- mode char.int_to_hex_char(in, out) is semidet.
+
     % Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
     % Returns the character's value as a digit (0-9 or 10-35).
     %
@@ -328,28 +336,47 @@ char.is_digit('7').
 char.is_digit('8').
 char.is_digit('9').
 
-char.is_hex_digit('0').
-char.is_hex_digit('1').
-char.is_hex_digit('2').
-char.is_hex_digit('3').
-char.is_hex_digit('4').
-char.is_hex_digit('5').
-char.is_hex_digit('6').
-char.is_hex_digit('7').
-char.is_hex_digit('8').
-char.is_hex_digit('9').
-char.is_hex_digit('a').
-char.is_hex_digit('b').
-char.is_hex_digit('c').
-char.is_hex_digit('d').
-char.is_hex_digit('e').
-char.is_hex_digit('f').
-char.is_hex_digit('A').
-char.is_hex_digit('B').
-char.is_hex_digit('C').
-char.is_hex_digit('D').
-char.is_hex_digit('E').
-char.is_hex_digit('F').
+char.is_hex_digit(X) :- char.is_hex_digit(X, _).
+
+char.is_hex_digit('0', 0).
+char.is_hex_digit('1', 1).
+char.is_hex_digit('2', 2).
+char.is_hex_digit('3', 3).
+char.is_hex_digit('4', 4).
+char.is_hex_digit('5', 5).
+char.is_hex_digit('6', 6).
+char.is_hex_digit('7', 7).
+char.is_hex_digit('8', 8).
+char.is_hex_digit('9', 9).
+char.is_hex_digit('a', 10).
+char.is_hex_digit('b', 11).
+char.is_hex_digit('c', 12).
+char.is_hex_digit('d', 13).
+char.is_hex_digit('e', 14).
+char.is_hex_digit('f', 15).
+char.is_hex_digit('A', 10).
+char.is_hex_digit('B', 11).
+char.is_hex_digit('C', 12).
+char.is_hex_digit('D', 13).
+char.is_hex_digit('E', 14).
+char.is_hex_digit('F', 15).
+
+char.int_to_hex_char(0, '0').
+char.int_to_hex_char(1, '1').
+char.int_to_hex_char(2, '2').
+char.int_to_hex_char(3, '3').
+char.int_to_hex_char(4, '4').
+char.int_to_hex_char(5, '5').
+char.int_to_hex_char(6, '6').
+char.int_to_hex_char(7, '7').
+char.int_to_hex_char(8, '8').
+char.int_to_hex_char(9, '9').
+char.int_to_hex_char(10, 'A').
+char.int_to_hex_char(11, 'B').
+char.int_to_hex_char(12, 'C').
+char.int_to_hex_char(13, 'D').
+char.int_to_hex_char(14, 'E').
+char.int_to_hex_char(15, 'F').
 
 %-----------------------------------------------------------------------------%
 

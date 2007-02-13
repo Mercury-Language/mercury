@@ -48,6 +48,7 @@ MCFLAGS-mer_std = --no-warn-nothing-exported
 # insts for foreign types.
 #
 MCFLAGS-array += --no-warn-insts-without-matching-type
+MCFLAGS-bitmap += --no-warn-insts-without-matching-type
 MCFLAGS-io += --no-warn-insts-without-matching-type
 
 # Avoid warnings about unused imports.

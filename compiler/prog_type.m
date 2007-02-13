@@ -215,6 +215,8 @@
 
 :- pred type_ctor_is_array(type_ctor::in) is semidet.
 
+:- pred type_ctor_is_bitmap(type_ctor::in) is semidet.
+
     % A test for type_info-related types that are introduced by
     % polymorphism.m.  These need to be handled specially in certain
     % places.  For example, mode inference never infers unique modes
@@ -760,6 +762,9 @@ type_is_io_state(Type) :-
     TypeCtor = type_ctor(qualified(ModuleName, "state"), 0).
 
 type_ctor_is_array(type_ctor(qualified(unqualified("array"), "array"), 1)).
+
+type_ctor_is_bitmap(
+        type_ctor(qualified(unqualified("bitmap"), "bitmap"), 0)).
 
 is_introduced_type_info_type(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, _),

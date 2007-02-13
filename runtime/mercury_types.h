@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2006 The University of Melbourne.
+** Copyright (C) 1995-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -146,6 +146,14 @@ typedef struct {
 
 typedef MR_ArrayType		*MR_ArrayPtr;
 typedef const MR_ArrayType	*MR_ConstArrayPtr;
+
+typedef struct {
+	MR_Integer num_bits;
+	MR_uint_least8_t elements[MR_VARIABLE_SIZED];
+} MR_BitmapType;
+
+typedef MR_BitmapType		*MR_BitmapPtr;
+typedef const MR_BitmapType	*MR_ConstBitmapPtr;
 
 #ifndef MR_HIGHLEVEL_CODE
   /*

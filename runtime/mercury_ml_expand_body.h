@@ -755,6 +755,22 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_zero_arity_args();
             return;
 
+        case MR_TYPECTOR_REP_BITMAP:
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                MR_String str;
+
+                data_word = *data_word_ptr;
+                str = MR_bitmap_to_quoted_string_saved_hp(
+                            (MR_ConstBitmapPtr) data_word);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  /* EXPAND_FUNCTOR_FIELD */
+
+            handle_zero_arity_args();
+            return;
+
         case MR_TYPECTOR_REP_FUNC:
             if (noncanon == MR_NONCANON_ABORT) {
                 /* XXX should throw an exception */

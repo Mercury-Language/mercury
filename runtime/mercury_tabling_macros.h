@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4
 */
 /*
-** Copyright (C) 1997-2000,2002-2006 The University of Melbourne.
+** Copyright (C) 1997-2000,2002-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,6 +87,12 @@
 
 #define MR_RAW_TABLE_STRING_STATS(stats, table, value)                      \
     MR_string_hash_lookup_or_add_stats((stats), (table), (value));
+
+#define MR_RAW_TABLE_BITMAP(table, value)                                   \
+    MR_bitmap_hash_lookup_or_add((table), (value));
+
+#define MR_RAW_TABLE_BITMAP_STATS(stats, table, value)                  	\
+    MR_bitmap_hash_lookup_or_add_stats((stats), (table), (value));
 
 #define MR_RAW_TABLE_TYPEINFO(table, type_info)                             \
     MR_type_info_lookup_or_add((table), (type_info))
@@ -232,6 +238,20 @@
         if (debug && MR_tabledebug) {                                       \
             printf("TABLE %p: string `%s' => %p\n",                         \
                 (t0), (char *) (value), (t));                               \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_BITMAP(stats, debug, back, t, t0, value)                   \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_BITMAP_STATS((stats), (t0), (value));        \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_BITMAP((t0), (value));                       \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+			/* XXX print value */											\
+            printf("TABLE %p: bitmap => %p\n",                     		    \
+                (t0), (t));                               					\
         }                                                                   \
     } while (0)
 
