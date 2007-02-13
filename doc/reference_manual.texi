@@ -9142,35 +9142,48 @@ implemented using impure code.  Note that this code is not reentrant,
 and so is not useful as is.  It is meant only as an example.
 
 @example
-:- pragma c_header_code("#include <limits.h>").
-:- pragma c_header_code("MR_Integer max;").
+:- pragma foreign_decl("C", "#include <limits.h>").
+:- pragma foreign_decl("C", "extern MR_Integer max;").
+
+:- pragma foreign_code("C", "MR_Integer max;").
 
 :- impure pred init_max is det.
-:- pragma c_code(init_max,
-        [will_not_call_mercury],
-        "max = INT_MIN;").
+:- pragma foreign_proc("C",
+    init_max,
+    [will_not_call_mercury],
+"
+    max = INT_MIN;
+").
 
 :- impure pred set_max(int::in) is det.
-:- pragma c_code(set_max(X::in),
-        [will_not_call_mercury],
-        "if (X > max) max = X;").
+:- pragma foreign_proc("C",
+   set_max(X::in),
+   [will_not_call_mercury],
+"
+    if (X > max) max = X;
+").
 
 :- semipure func get_max = (int::out) is det.
-:- pragma c_code(get_max = (X::out),
-        [will_not_call_mercury],
-        "X = max;").
+:- pragma foreign_proc("C",
+    get_max = (X::out),
+    [promise_semipure, will_not_call_mercury],
+"
+    X = max;
+").
 
 :- pragma promise_pure(max_solution/2).
 :- pred max_solution(pred(int), int).
 :- mode max_solution(pred(out) is multi, out) is det.
 
 max_solution(Generator, Max) :-
-        impure init_max,
-        (   Generator(X),
-            impure set_max(X),
-            fail
-        ;   semipure Max = get_max
-        ).
+    impure init_max,
+    (
+        Generator(X),
+        impure set_max(X),
+        fail
+    ;
+        semipure Max = get_max
+    ).
 @end example
 
 @node Higher-order impurity
