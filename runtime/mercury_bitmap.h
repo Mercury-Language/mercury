@@ -53,7 +53,7 @@
     } while (0)
 
 
-int MR_bitmap_cmp(MR_ConstBitmapPtr, MR_ConstBitmapPtr);
+MR_Integer MR_bitmap_cmp(MR_ConstBitmapPtr, MR_ConstBitmapPtr);
 
 #ifdef __GNUC__
 #define MR_bitmap_cmp(b1, b2)                                           \
