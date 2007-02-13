@@ -766,6 +766,7 @@
     ;       make
     ;       keep_going
     ;       rebuild
+    ;       jobs
     ;       invoked_by_mmc_make
     ;       extra_init_command
     ;       pre_link_command
@@ -1515,6 +1516,7 @@ option_defaults_2(build_system_option, [
     make                                -   bool(no),
     keep_going                          -   bool(no),
     rebuild                             -   bool(no),
+    jobs                                -   int(1),
     invoked_by_mmc_make                 -   bool(no),
     pre_link_command                    -   maybe_string(no),
     extra_init_command                  -   maybe_string(no),
@@ -1565,6 +1567,7 @@ short_option('f', generate_source_file_mapping).
 short_option('h', help).
 short_option('H', highlevel_code).
 short_option('i', make_interface).
+short_option('j', jobs).
 short_option('I', search_directories).
 short_option('k', keep_going).
 short_option('l', link_libraries).
@@ -2296,6 +2299,7 @@ long_option("shlib-linker-install-name-path", shlib_linker_install_name_path).
 long_option("make",                 make).
 long_option("keep-going",           keep_going).
 long_option("rebuild",              rebuild).
+long_option("jobs",                 jobs).
 long_option("invoked-by-mmc-make",  invoked_by_mmc_make).
 long_option("pre-link-command",     pre_link_command).
 long_option("extra-init-command",   extra_init_command).
@@ -4671,6 +4675,9 @@ options_help_build_system -->
         "-k, --keep-going",
         "\tWith `--make', keep going as far as",
         "\tpossible even if an error is detected.",
+        "-j <n>, --jobs <n>",
+        "\tWith `--make', attempt to perform up to <n> jobs",
+        "\tconcurrently for some tasks.",
         "--pre-link-command <command>",
         "\tSpecify a command to run before linking with `mmc --make'.",
         "\tThis can be used to compile C source files which rely on",

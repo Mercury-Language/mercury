@@ -222,7 +222,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 			int,
 			561,
 			ground,
-			[[untrailed, attach_to_io_state]]
+			[[untrailed, attach_to_io_state, thread_local]]
 		).
 
 		main(!IO) :-

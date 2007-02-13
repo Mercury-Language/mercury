@@ -156,10 +156,26 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
             ObjModules, ForeignObjTargetsList, !Info, !IO),
         ForeignObjTargets = list.condense(ForeignObjTargetsList),
 
-        foldl2_maybe_stop_at_error(KeepGoing,
-            foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
-            [IntermediateTargets, ObjTargets, ForeignObjTargets],
-            BuildDepsSucceeded, !Info, !IO),
+        foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
+            IntermediateTargets, BuildDepsSucceeded0, !Info, !IO),
+        (
+            BuildDepsSucceeded0 = yes,
+            foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                make_module_target, ObjTargets,
+                BuildDepsSucceeded1, !Info, !IO)
+        ;
+            BuildDepsSucceeded0 = no,
+            BuildDepsSucceeded1 = no
+        ),
+        (
+            BuildDepsSucceeded1 = yes,
+            foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
+                ForeignObjTargets,
+                BuildDepsSucceeded, !Info, !IO)
+        ;
+            BuildDepsSucceeded1 = no,
+            BuildDepsSucceeded = no
+        ),
 
         linked_target_file_name(MainModuleName, FileType, OutputFileName, !IO),
         get_file_timestamp([dir.this_directory], OutputFileName,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 University of Melbourne.
+% Copyright (C) 2002-2007 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,6 +50,22 @@
     foldl3_pred_with_status(T, Acc, Info, IO)::in(foldl3_pred_with_status),
     list(T)::in, bool::out, Acc::in, Acc::out, Info::in, Info::out,
     IO::di, IO::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, P, List, Succeeded,
+    %   !Info, !IO).
+    %
+    % Like foldl2_maybe_stop_at_error, but if parallel make is enabled, it
+    % tries to perform a first pass that overlaps execution of P(elem) in
+    % separate threads.  Updates to !Info in the first pass are ignored.  If
+    % the first pass succeeds, a second sequential pass is made in which
+    % updates !Info are kept.  Hence it must be safe to execute P(elem)
+    % concurrently, in any order, and multiple times.
+    %
+:- pred foldl2_maybe_stop_at_error_maybe_parallel(bool::in,
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    list(T)::in, bool::out, Info::in, Info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -280,6 +296,18 @@
 
 :- import_module char.
 :- import_module dir.
+:- import_module exception.
+:- import_module thread.
+:- import_module thread.channel.
+:- import_module univ.
+:- import_module unit.
+
+:- type child_exit
+    --->    child_succeeded
+    ;       child_failed
+    ;       child_exception(univ).
+
+:- type child_exits == channel(child_exit).
 
 %-----------------------------------------------------------------------------%
 
@@ -330,6 +358,123 @@ foldl3_maybe_stop_at_error_2(KeepGoing, P, [T | Ts],
             !Info, !IO)
     ;
         !:Success = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
+foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Targets,
+        Success, !Info, !IO) :-
+    globals.io_lookup_int_option(jobs, Jobs, !IO),
+    ( 
+        thread.can_spawn,
+        Jobs > 1
+    ->
+        foldl2_maybe_stop_at_error_parallel(KeepGoing, Jobs,
+            MakeTarget, Targets, Success0, !.Info, !IO)
+    ;
+        Success0 = yes
+    ),
+    (
+        Success0 = yes,
+        foldl2_maybe_stop_at_error(KeepGoing, MakeTarget, Targets, Success,
+            !Info, !IO)
+    ;
+        Success0 = no,
+        Success = no
+    ).
+
+:- pred foldl2_maybe_stop_at_error_parallel(bool::in, int::in,
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    list(T)::in, bool::out, Info::in, io::di, io::uo) is det.
+
+foldl2_maybe_stop_at_error_parallel(KeepGoing, Jobs, MakeTarget, Targets,
+        Success, Info, !IO) :-
+    channel.init(ChildExits, !IO),
+    list.split_upto(Jobs, Targets, InitialTargets, LaterTargets),
+    list.foldl(run_in_child(ChildExits, MakeTarget, Info), InitialTargets,
+        !IO),
+    parent_loop(ChildExits, KeepGoing, MakeTarget, Info,
+        length(Targets), LaterTargets, yes, Success, no, MaybeExcp, !IO),
+    %
+    % Rethrow the first of any exceptions which terminated a child thread.
+    %
+    (
+        MaybeExcp = yes(Excp),
+        rethrow(exception(Excp) : exception_result(unit))
+    ;
+        MaybeExcp = no
+    ).
+
+:- pred parent_loop(child_exits::in, bool::in, 
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    Info::in, int::in, list(T)::in, bool::in, bool::out,
+    maybe(univ)::in, maybe(univ)::out, io::di, io::uo) is det.
+
+parent_loop(ChildExits, KeepGoing, MakeTarget, Info, ChildrenLeft, Targets,
+        !Success, !MaybeExcp, !IO) :-
+    ( ChildrenLeft = 0 ->
+        true
+    ;
+        % Wait for a running child to indicate that it is finished.
+        channel.take(ChildExits, Exit, !IO),
+        (
+            Exit = child_succeeded,
+            NewSuccess = yes
+        ;
+            Exit = child_failed,
+            NewSuccess = no
+        ;
+            Exit = child_exception(Excp),
+            (
+                !.MaybeExcp = no,
+                !:MaybeExcp = yes(Excp)
+            ;
+                !.MaybeExcp = yes(_)
+            ),
+            NewSuccess = no
+        ),
+        (
+            ( NewSuccess = yes
+            ; KeepGoing = yes
+            )
+        ->
+            !:Success = !.Success `and` NewSuccess,
+            (
+                Targets = [],
+                MoreTargets = []
+            ;
+                Targets = [NextTarget | MoreTargets],
+                run_in_child(ChildExits, MakeTarget, Info, NextTarget, !IO)
+            ),
+            parent_loop(ChildExits, KeepGoing, MakeTarget, Info,
+                ChildrenLeft-1, MoreTargets, !Success, !MaybeExcp, !IO)
+        ;
+            !:Success = no
+        )
+    ).
+
+:- pred run_in_child(child_exits::in,
+    foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
+    Info::in, T::in, io::di, io::uo) is det.
+
+run_in_child(ChildExits, P, Info, T, !IO) :-
+    promise_equivalent_solutions [!:IO] (
+        spawn((pred(!.IO::di, !:IO::uo) is cc_multi :-
+            try_io((pred(Succ::out, !.IO::di, !:IO::uo) is det :-
+                P(T, Succ, Info, _Info, !IO)
+            ), Result, !IO),
+            (
+                Result = succeeded(yes),
+                Exit = child_succeeded
+            ;
+                Result = succeeded(no),
+                Exit = child_failed
+            ;
+                Result = exception(Excp),
+                Exit = child_exception(Excp)
+            ),
+            channel.put(ChildExits, Exit, !IO)
+        ), !IO)
     ).
 
 %-----------------------------------------------------------------------------%

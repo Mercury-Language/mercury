@@ -22,6 +22,11 @@
 % Attempting any operation on a stream which has already been closed results
 % in undefined behaviour.
 %
+% In multithreaded programs, each thread in the program has its own set of
+% "current" input and output streams. At the time it is created, a child
+% thread inherits the current streams from its parent. Predicates which
+% change which stream is current affect only the calling thread.
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1527,7 +1532,7 @@
     % about those streams.
     %
 :- pred io.get_stream_db(io.stream_db::out, io::di, io::uo) is det.
-:- impure pred io.get_stream_db(io.stream_db::out) is det.
+:- impure pred io.get_stream_db_with_locking(io.stream_db::out) is det.
 
     % Returns the information associated with the specified input
     % stream in the given stream database.
@@ -1603,13 +1608,15 @@
     extern MR_Word      ML_io_stream_db;
     extern MR_Word      ML_io_user_globals;
 
-    #ifdef MR_THREAD_SAFE
-        extern MercuryLock ML_io_user_globals_lock;
-    #endif
-
     extern int          ML_next_stream_id;
     #if 0
       extern MR_Word    ML_io_ops_table;
+    #endif
+
+    #ifdef MR_THREAD_SAFE
+        extern MercuryLock ML_io_stream_db_lock;
+        extern MercuryLock ML_io_user_globals_lock;
+        extern MercuryLock ML_io_next_stream_id_lock;
     #endif
 ").
 
@@ -1617,14 +1624,16 @@
     MR_Word         ML_io_stream_db;
     MR_Word         ML_io_user_globals;
 
-    #ifdef MR_THREAD_SAFE
-        MercuryLock ML_io_user_globals_lock;
-    #endif
-
     /* a counter used to generate unique stream ids */
     int             ML_next_stream_id;
     #if 0
       MR_Word       ML_io_ops_table;
+    #endif
+
+    #ifdef MR_THREAD_SAFE
+        MercuryLock ML_io_stream_db_lock;
+        MercuryLock ML_io_user_globals_lock;
+        MercuryLock ML_io_next_stream_id_lock;
     #endif
 ").
 
@@ -2242,6 +2251,12 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "{
+    /*
+    ** XXX If the Mercury context that called the failing C function is now
+    ** running on a different OS thread, this errno won't be the one
+    ** we are looking for.  Or, if a different Mercury context was run on
+    ** the same thread in the meantime, the errno could have been clobbered.
+    */
     Error = errno;
     MR_update_io(IO0, IO);
 }").
@@ -4211,7 +4226,9 @@ io.stream_name(Stream, Name, !IO) :-
     io::di, io::uo) is det.
 
 io.stream_info(Stream, MaybeInfo, !IO) :-
+    io.lock_stream_db(!IO),
     io.get_stream_db(StreamDb, !IO),
+    io.unlock_stream_db(!IO),
     ( map.search(StreamDb, get_stream_id(Stream), Info) ->
         MaybeInfo = yes(Info)
     ;
@@ -4276,35 +4293,67 @@ source_name(stdin) = "<standard input>".
 source_name(stdout) = "<standard output>".
 source_name(stderr) = "<standard error>".
 
+    % Caller must NOT hold the stream_db lock.
+    %
 :- pragma foreign_proc("C",
-    io.get_stream_db(StreamDb::out),
-    [will_not_call_mercury, tabled_for_io],
+    io.get_stream_db_with_locking(StreamDb::out),
+    [will_not_call_mercury, thread_safe, tabled_for_io],
 "
+    MR_LOCK(&ML_io_stream_db_lock, ""io.get_stream_db/1"");
     StreamDb = ML_io_stream_db;
+    MR_UNLOCK(&ML_io_stream_db_lock, ""io.get_stream_db/1"");
 ").
 
+    % Caller must hold the stream_db lock.
+    %
 :- pragma foreign_proc("C",
     io.get_stream_db(StreamDb::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness],
 "
     StreamDb = ML_io_stream_db;
     MR_update_io(IO0, IO);
 ").
 
+    % Caller must hold the stream_db lock.
+    %
 :- pred io.set_stream_db(io.stream_db::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     io.set_stream_db(StreamDb::in, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness],
 "
     ML_io_stream_db = StreamDb;
     MR_update_io(IO0, IO);
 ").
 
+:- pred io.lock_stream_db(io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    io.lock_stream_db(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    MR_LOCK(&ML_io_stream_db_lock, MR_PROC_LABEL);
+    IO = IO0;
+").
+
+io.lock_stream_db(!IO).
+
+:- pred io.unlock_stream_db(io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    io.unlock_stream_db(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    MR_UNLOCK(&ML_io_stream_db_lock, MR_PROC_LABEL);
+    IO = IO0;
+").
+
+io.unlock_stream_db(!IO).
+
 :- pragma foreign_proc("C#",
-    io.get_stream_db(StreamDb::out),
+    io.get_stream_db_with_locking(StreamDb::out),
     [will_not_call_mercury, tabled_for_io],
 "
     StreamDb = ML_io_stream_db;
@@ -4325,7 +4374,7 @@ source_name(stderr) = "<standard error>".
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_stream_db(StreamDb::out),
+    io.get_stream_db_with_locking(StreamDb::out),
     [will_not_call_mercury, tabled_for_io],
 "
     StreamDb = ML_io_stream_db;
@@ -4351,18 +4400,22 @@ source_name(stderr) = "<standard error>".
     io::di, io::uo) is det.
 
 io.insert_stream_info(Stream, Name, !IO) :-
+    io.lock_stream_db(!IO),
     io.get_stream_db(StreamDb0, !IO),
     map.set(StreamDb0, get_stream_id(Stream), Name, StreamDb),
-    io.set_stream_db(StreamDb, !IO).
+    io.set_stream_db(StreamDb, !IO),
+    io.unlock_stream_db(!IO).
 
 :- pred io.maybe_delete_stream_info(io.stream::in, io::di, io::uo) is det.
 
 io.maybe_delete_stream_info(Stream, !IO) :-
     io.may_delete_stream_info(MayDeleteStreamInfo, !IO),
     ( MayDeleteStreamInfo \= 0 ->
+        io.lock_stream_db(!IO),
         io.get_stream_db(StreamDb0, !IO),
         map.delete(StreamDb0, get_stream_id(Stream), StreamDb),
-        io.set_stream_db(StreamDb, !IO)
+        io.set_stream_db(StreamDb, !IO),
+        io.unlock_stream_db(!IO)
     ;
         true
     ).
@@ -4641,6 +4694,17 @@ io.report_stats(Selector, !IO) :-
 :- pragma foreign_export("IL", io.init_state(di, uo), "ML_io_init_state").
 
 io.init_state(!IO) :-
+    % 
+    % In C grades the "current" streams are thread-local values, so can only be
+    % set after the MR_Context has been initialised for the initial thread.
+    %
+    io.set_input_stream(io.stdin_stream, _, !IO),
+    io.set_output_stream(io.stdout_stream, _, !IO),
+    io.stdin_binary_stream(StdinBinary, !IO),
+    io.stdout_binary_stream(StdoutBinary, !IO),
+    io.set_binary_input_stream(StdinBinary, _, !IO),
+    io.set_binary_output_stream(StdoutBinary, _, !IO),
+
     io.gc_init(type_of(StreamDb), type_of(Globals), !IO),
     map.init(StreamDb),
     type_to_univ("<globals>", Globals),
@@ -4791,10 +4855,10 @@ extern MercuryFile mercury_stdout;
 extern MercuryFile mercury_stderr;
 extern MercuryFile mercury_stdin_binary;
 extern MercuryFile mercury_stdout_binary;
-extern MercuryFile *mercury_current_text_input;
-extern MercuryFile *mercury_current_text_output;
-extern MercuryFile *mercury_current_binary_input;
-extern MercuryFile *mercury_current_binary_output;
+extern MR_Unsigned mercury_current_text_input_index;
+extern MR_Unsigned mercury_current_text_output_index;
+extern MR_Unsigned mercury_current_binary_input_index;
+extern MR_Unsigned mercury_current_binary_output_index;
 
 #define MR_initial_io_state()       0   /* some random number */
 #define MR_final_io_state(r)        ((void)0)
@@ -4802,6 +4866,11 @@ extern MercuryFile *mercury_current_binary_output;
 #define MR_update_io(r_src, r_dest) ((r_dest) = (r_src))
 
 void            mercury_init_io(void);
+MercuryFilePtr  mercury_current_text_input(void);
+MercuryFilePtr  mercury_current_text_output(void);
+MercuryFilePtr  mercury_current_binary_input(void);
+MercuryFilePtr  mercury_current_binary_output(void);
+int             mercury_next_stream_id(void);
 MercuryFilePtr  mercury_open(const char *filename, const char *openmode);
 void            mercury_io_error(MercuryFilePtr mf, const char *format, ...);
 void            mercury_output_error(MercuryFilePtr mf);
@@ -5434,11 +5503,11 @@ MercuryFile mercury_stderr;
 MercuryFile mercury_stdin_binary;
 MercuryFile mercury_stdout_binary;
 
-MercuryFilePtr mercury_current_text_input = &mercury_stdin;
-MercuryFilePtr mercury_current_text_output = &mercury_stdout;
-MercuryFilePtr mercury_current_binary_input = &mercury_stdin_binary;
-MercuryFilePtr mercury_current_binary_output = &mercury_stdout_binary;
-
+MR_Unsigned mercury_current_text_input_index;
+MR_Unsigned mercury_current_text_output_index;
+MR_Unsigned mercury_current_binary_input_index;
+MR_Unsigned mercury_current_binary_output_index;
+  
 void
 mercury_init_io(void)
 {
@@ -5448,6 +5517,11 @@ mercury_init_io(void)
 
     MR_mercuryfile_init(NULL, 1, &mercury_stdin_binary);
     MR_mercuryfile_init(NULL, 1, &mercury_stdout_binary);
+
+    mercury_current_text_input_index = MR_new_thread_local_mutable_index();
+    mercury_current_text_output_index = MR_new_thread_local_mutable_index();
+    mercury_current_binary_input_index = MR_new_thread_local_mutable_index();
+    mercury_current_binary_output_index = MR_new_thread_local_mutable_index();
 
 #if defined(MR_HAVE_FDOPEN) && (defined(MR_HAVE_FILENO) || defined(fileno)) && \
         defined(MR_HAVE_DUP)
@@ -5473,10 +5547,57 @@ mercury_init_io(void)
 #endif
 
 #ifdef MR_THREAD_SAFE
+    pthread_mutex_init(&ML_io_stream_db_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&ML_io_user_globals_lock, MR_MUTEX_ATTR);
+    pthread_mutex_init(&ML_io_next_stream_id_lock, MR_MUTEX_ATTR);
 #endif
 }
 
+MercuryFilePtr
+mercury_current_text_input(void)
+{
+    MercuryFilePtr stream;
+    MR_get_thread_local_mutable(MercuryFilePtr, stream,
+        mercury_current_text_input_index);
+    return stream;
+}
+
+MercuryFilePtr
+mercury_current_text_output(void)
+{
+    MercuryFilePtr stream;
+    MR_get_thread_local_mutable(MercuryFilePtr, stream,
+        mercury_current_text_output_index);
+    return stream;
+}
+
+MercuryFilePtr
+mercury_current_binary_input(void)
+{
+    MercuryFilePtr stream;
+    MR_get_thread_local_mutable(MercuryFilePtr, stream,
+        mercury_current_binary_input_index);
+    return stream;
+}
+
+MercuryFilePtr
+mercury_current_binary_output(void)
+{
+    MercuryFilePtr stream;
+    MR_get_thread_local_mutable(MercuryFilePtr, stream,
+        mercury_current_binary_output_index);
+    return stream;
+}
+
+int
+mercury_next_stream_id(void)
+{
+    int id;
+    MR_LOCK(&ML_io_next_stream_id_lock, ""io.do_open_text"");
+    id = ML_next_stream_id++;
+    MR_UNLOCK(&ML_io_next_stream_id_lock, ""io.do_open_text"");
+    return id;
+}
 ").
 
 :- pragma foreign_code("C#", "
@@ -5520,6 +5641,7 @@ static MR_MercuryFileStruct mercury_stdout_binary =
     mercury_file_init(System.Console.OpenStandardOutput(),
         null, System.Console.Out, ML_file_encoding_kind.ML_raw_binary);
 
+// Note: these are set again in io.init_state.
 static MR_MercuryFileStruct mercury_current_text_input =
     mercury_stdin;
 static MR_MercuryFileStruct mercury_current_text_output =
@@ -5547,6 +5669,7 @@ static MR_MercuryFileStruct mercury_stdin_binary =
 static MR_MercuryFileStruct mercury_stdout_binary =
     new MR_MercuryFileStruct(java.lang.System.out, true);
 
+// Note: these are set again in io.init_state.
 static MR_MercuryFileStruct mercury_current_text_input =
     mercury_stdin;
 static MR_MercuryFileStruct mercury_current_text_output =
@@ -6281,7 +6404,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness],
 "
-    mercury_print_string(mercury_current_text_output, Message);
+    mercury_print_string(mercury_current_text_output(), Message);
     MR_update_io(IO0, IO);
 ").
 
@@ -6290,11 +6413,12 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness],
 "
-    if (MR_PUTCH(*mercury_current_text_output, Character) < 0) {
-        mercury_output_error(mercury_current_text_output);
+    MercuryFilePtr out = mercury_current_text_output();
+    if (MR_PUTCH(*out, Character) < 0) {
+        mercury_output_error(out);
     }
     if (Character == '\\n') {
-        MR_line_number(*mercury_current_text_output)++;
+        MR_line_number(*out)++;
     }
     MR_update_io(IO0, IO);
 ").
@@ -6304,8 +6428,9 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness],
 "
-    if (ML_fprintf(mercury_current_text_output, ""%ld"", (long) Val) < 0) {
-        mercury_output_error(mercury_current_text_output);
+    MercuryFilePtr out = mercury_current_text_output();
+    if (ML_fprintf(out, ""%ld"", (long) Val) < 0) {
+        mercury_output_error(out);
     }
     MR_update_io(IO0, IO);
 ").
@@ -6316,9 +6441,12 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
         does_not_affect_liveness],
 "
     char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
+    MercuryFilePtr out;
+
     MR_sprintf_float(buf, Val);
-    if (ML_fprintf(mercury_current_text_output, ""%s"", buf) < 0) {
-        mercury_output_error(mercury_current_text_output);
+    out = mercury_current_text_output();
+    if (ML_fprintf(out, ""%s"", buf) < 0) {
+        mercury_output_error(out);
     }
     MR_update_io(IO0, IO);
 ").
@@ -6329,10 +6457,10 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
         does_not_affect_liveness],
 "
     /* call putc with a strictly non-negative byte-sized integer */
-    if (MR_PUTCH(*mercury_current_binary_output,
+    if (MR_PUTCH(*mercury_current_binary_output(),
         (int) ((unsigned char) Byte)) < 0)
     {
-        mercury_output_error(mercury_current_text_output);
+        mercury_output_error(mercury_current_text_output());
     }
     MR_update_io(IO0, IO);
 ").
@@ -6342,7 +6470,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness],
 "{
-    mercury_print_binary_string(mercury_current_binary_output, Message);
+    mercury_print_binary_string(mercury_current_binary_output(), Message);
     MR_update_io(IO0, IO);
 }").
 
@@ -6351,8 +6479,9 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness],
 "
-    if (MR_FLUSH(*mercury_current_text_output) < 0) {
-        mercury_output_error(mercury_current_text_output);
+    MercuryFilePtr out = mercury_current_text_output();
+    if (MR_FLUSH(*out) < 0) {
+        mercury_output_error(out);
     }
     MR_update_io(IO0, IO);
 ").
@@ -6362,8 +6491,9 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness],
 "
-    if (MR_FLUSH(*mercury_current_binary_output) < 0) {
-        mercury_output_error(mercury_current_binary_output);
+    MercuryFilePtr out = mercury_current_binary_output();
+    if (MR_FLUSH(*out) < 0) {
+        mercury_output_error(out);
     }
     MR_update_io(IO0, IO);
 ").
@@ -6970,7 +7100,7 @@ io.input_stream(input_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    Stream = mercury_current_text_input;
+    Stream = mercury_current_text_input();
     MR_update_io(IO0, IO);
 ").
 
@@ -6983,7 +7113,7 @@ io.output_stream(output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    Stream = mercury_current_text_output;
+    Stream = mercury_current_text_output();
     MR_update_io(IO0, IO);
 ").
 
@@ -6996,7 +7126,7 @@ io.binary_input_stream(binary_input_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    Stream = mercury_current_binary_input;
+    Stream = mercury_current_binary_input();
     MR_update_io(IO0, IO);
 ").
 
@@ -7009,7 +7139,7 @@ io.binary_output_stream(binary_output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    Stream = mercury_current_binary_output;
+    Stream = mercury_current_binary_output();
     MR_update_io(IO0, IO);
 ").
 
@@ -7018,7 +7148,7 @@ io.binary_output_stream(binary_output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    LineNum = MR_line_number(*mercury_current_text_input);
+    LineNum = MR_line_number(*mercury_current_text_input());
     MR_update_io(IO0, IO);
 ").
 
@@ -7041,7 +7171,7 @@ io.get_line_number(input_stream(Stream), LineNum, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    MR_line_number(*mercury_current_text_input) = LineNum;
+    MR_line_number(*mercury_current_text_input()) = LineNum;
     MR_update_io(IO0, IO);
 ").
 
@@ -7065,7 +7195,7 @@ io.set_line_number(input_stream(Stream), LineNum, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    LineNum = MR_line_number(*mercury_current_text_output);
+    LineNum = MR_line_number(*mercury_current_text_output());
     MR_update_io(IO0, IO);
 ").
 
@@ -7089,7 +7219,7 @@ io.get_output_line_number(output_stream(Stream), LineNum, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    MR_line_number(*mercury_current_text_output) = LineNum;
+    MR_line_number(*mercury_current_text_output()) = LineNum;
     MR_update_io(IO0, IO);
 ").
 
@@ -7117,8 +7247,9 @@ io.set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    OutStream = mercury_current_text_input;
-    mercury_current_text_input = NewStream;
+    OutStream = mercury_current_text_input();
+    MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
+        mercury_current_text_input_index);
     MR_update_io(IO0, IO);
 ").
 
@@ -7134,8 +7265,9 @@ io.set_output_stream(output_stream(NewStream), output_stream(OutStream),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    OutStream = mercury_current_text_output;
-    mercury_current_text_output = NewStream;
+    OutStream = mercury_current_text_output();
+    MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
+        mercury_current_text_output_index);
     MR_update_io(IO0, IO);
 ").
 
@@ -7151,8 +7283,9 @@ io.set_binary_input_stream(binary_input_stream(NewStream),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    OutStream = mercury_current_binary_input;
-    mercury_current_binary_input = NewStream;
+    OutStream = mercury_current_binary_input();
+    MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
+        mercury_current_binary_input_index);
     MR_update_io(IO0, IO);
 ").
 
@@ -7168,8 +7301,9 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    OutStream = mercury_current_binary_output;
-    mercury_current_binary_output = NewStream;
+    OutStream = mercury_current_binary_output();
+    MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
+        mercury_current_binary_output_index);
     MR_update_io(IO0, IO);
 ").
 
@@ -7507,8 +7641,13 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
         does_not_affect_liveness],
 "
     Stream = mercury_open(FileName, Mode);
-    ResultCode = (Stream != NULL ? 0 : -1);
-    StreamId = (Stream != NULL ? ML_next_stream_id++ : -1);
+    if (Stream != NULL) {
+        ResultCode = 0;
+        StreamId = mercury_next_stream_id();
+    } else {
+        ResultCode = -1;
+        StreamId = -1;
+    }
     MR_update_io(IO0, IO);
 ").
 
@@ -7519,8 +7658,13 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
         does_not_affect_liveness],
 "
     Stream = mercury_open(FileName, Mode);
-    ResultCode = (Stream != NULL ? 0 : -1);
-    StreamId = (Stream != NULL ? ML_next_stream_id++ : -1);
+    if (Stream != NULL) {
+        ResultCode = 0;
+        StreamId = mercury_next_stream_id();
+    } else {
+        ResultCode = -1;
+        StreamId = -1;
+    }
     MR_update_io(IO0, IO);
 ").
 
@@ -7698,7 +7842,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("C",
     io.call_system_code(Command::in, Status::out, Msg::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
     Status = system(Command);

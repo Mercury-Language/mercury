@@ -189,7 +189,7 @@
     % list.split_list(Len, List, Start, End):
     %
     % splits `List' into a prefix `Start' of length `Len', and a remainder
-    % `End'. See also: list.take, list.drop.
+    % `End'. See also: list.take, list.drop and list.split_upto.
     %
 :- pred list.split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
     is semidet.
@@ -200,6 +200,14 @@
     % of failing if Len > list.length(List).
     %
 :- pred list.det_split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
+    is det.
+
+    % list.split_upto(Len, List, Start, End):
+    %
+    % splits `List' into a prefix `Start' of length `min(Len, length(List))',
+    % and a remainder `End'. See also: list.split_list, list.take, list.drop.
+    %
+:- pred list.split_upto(int::in, list(T)::in, list(T)::out, list(T)::out)
     is det.
 
     % list.take(Len, List, Start):
@@ -1708,6 +1716,18 @@ list.det_split_list(N, List, Start, End) :-
         End = End0
     else
         error("list.det_split_list: index out of range")
+    ).
+
+list.split_upto(N, List, Start, End) :-
+    (
+        N > 0,
+        List = [Head | List1]
+    ->
+        split_upto(N - 1, List1, Start1, End),
+        Start = [Head | Start1]
+    ;
+        Start = [],
+        End = List
     ).
 
 list.take(N, As, Bs) :-

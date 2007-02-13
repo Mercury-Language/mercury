@@ -360,7 +360,7 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     ; univ_to_type(Univ, C_Pointer) ->
         write_c_pointer(Stream, C_Pointer, !State)
     ;
-        impure io.get_stream_db(StreamDB),
+        impure io.get_stream_db_with_locking(StreamDB),
         StreamInfo = get_io_stream_info(StreamDB, univ_value(Univ))
     ->
         type_to_univ(StreamInfo, StreamInfoUniv),

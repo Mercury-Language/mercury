@@ -30,6 +30,10 @@
 
 %-----------------------------------------------------------------------------%
 
+    % can_spawn succeeds if spawn/3 is supported in the current grade.
+    %
+:- pred can_spawn is semidet.
+
     % spawn(Closure, IO0, IO) is true iff `IO0' denotes a list of I/O
     % transactions that is an interleaving of those performed by `Closure'
     % and those contained in `IO' - the list of transactions performed by
@@ -63,6 +67,21 @@
 :- pragma foreign_decl("C", "void ML_call_back_to_mercury_cc_multi(MR_Word);").
 
 %-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    can_spawn,
+    [will_not_call_mercury, promise_pure],
+"
+#if !defined(MR_HIGHLEVEL_CODE)
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    #if defined(MR_THREAD_SAFE)
+        SUCCESS_INDICATOR = MR_TRUE;
+    #else
+        SUCCESS_INDICATOR = MR_FALSE;
+    #endif
+#endif
+").
 
 :- pragma foreign_proc("C",
     spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),

@@ -362,11 +362,14 @@ gc_is_conservative(gc_automatic) = no.
                 may_be_thread_safe      :: bool
             ).
 
+:- mutable(globals, univ, univ(0), ground,
+    [untrailed, attach_to_io_state, thread_local]).
+
     % Is there extra information about errors available that could be printed
     % out if `-E' were enabled.
     %
 :- mutable(extra_error_info, bool, no, ground,
-    [untrailed, attach_to_io_state]).
+    [untrailed, attach_to_io_state, thread_local]).
 
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
@@ -569,7 +572,7 @@ io_get_extra_error_info(ExtraErrorInfo, !IO) :-
     get_extra_error_info(ExtraErrorInfo, !IO).
 
 io_get_globals(Globals, !IO) :-
-    io.get_globals(UnivGlobals, !IO),
+    globals.get_globals(UnivGlobals, !IO),
     ( univ_to_type(UnivGlobals, Globals0) ->
         Globals = Globals0
     ;
@@ -578,7 +581,7 @@ io_get_globals(Globals, !IO) :-
 
 io_set_globals(Globals, !IO) :-
     type_to_univ(Globals, UnivGlobals),
-    io.set_globals(UnivGlobals, !IO).
+    globals.set_globals(UnivGlobals, !IO).
 
 %-----------------------------------------------------------------------------%
 

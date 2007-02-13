@@ -843,7 +843,6 @@ significant part of the functionality of Mmake, using mmc's
 
 The advantages of the @samp{mmc --make} over Mmake are that there
 is no @samp{mmake depend} step and the dependencies are more accurate.
-Parallel builds are not yet supported.
 
 Note that @samp{--use-subdirs} is automatically enabled if you specify
 @samp{mmc --make}.
@@ -8308,6 +8307,18 @@ With @samp{--make} keep going as far as
 possible even if an error is detected.
 
 @sp 1
+@item -j <n>
+@item --jobs <n>
+@findex -j <n>
+@findex --jobs
+With @samp{--make}, attempt to perform up to @samp{<n>} jobs
+concurrently for some tasks.
+For the option to take effect, the compiler must be built in a parallel
+grade.  In low-level C grades the number of threads is also limited by
+the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment variable
+(see @ref{Environment}).
+
+@sp 1
 @item --install-prefix @var{dir}
 @findex --install-prefix
 Specify the directory under which to install Mercury libraries.
@@ -8432,6 +8443,7 @@ Executables and libraries will be symlinked or copied into the
 current directory.
 @samp{--use-grade-subdirs} does not work with Mmake (it does
 work with @samp{mmc --make}).
+
 @end table
 
 @node Miscellaneous options
