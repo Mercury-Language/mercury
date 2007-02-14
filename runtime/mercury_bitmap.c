@@ -103,7 +103,7 @@ MR_do_bitmap_to_string(MR_ConstBitmapPtr b,
     if (use_saved_hp) {
         MR_allocate_aligned_string_saved_hp(result, len);
     } else {
-        MR_allocate_aligned_string_msg(result, len, NULL);
+        MR_allocate_aligned_string_msg(result, len, "MR_do_bitmap_to_string");
     }
 
     if (quote) {
@@ -146,7 +146,8 @@ MR_string_to_bitmap(MR_ConstString s)
     if (res != 1) {
         return NULL;
     }
-    MR_allocate_bitmap_msg(result, (MR_Integer) result_bits, NULL);
+    MR_allocate_bitmap_msg(result, (MR_Integer) result_bits,
+        "MR_string_to_bitmap");
     result->num_bits = result_bits;
     for (i = 0; i < MR_bitmap_length_in_bytes(result_bits); i++) {
         int h1, h2;
