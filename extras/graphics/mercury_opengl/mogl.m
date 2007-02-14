@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 2003-2006 The University of Melbourne.
+% Copyright (C) 1997, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,6 @@
 %   - various state queries
 %   - stuff from later versions of OpenGL
 %   - break this module up into submodules
-%   - bitmaps
 %   - after the next release the foreign code
 %     attributes will need to be updated (terminates/does_not_terminate)
 %   - document all this ;)
@@ -34,6 +33,7 @@
 
 :- include_module mogl.type_tables.
 
+:- import_module bitmap.
 :- import_module bool.
 :- import_module float.
 :- import_module int.
@@ -393,11 +393,8 @@
 % Bitmaps
 %
 
-/*
-:- pred bitmap(int, int, float, float, float, float, list(int),
-        io.state, io.state).
-:- mode bitmap(in, in, in, in, in, in, in, di, uo) is det.
-*/
+:- pred mogl.bitmap(int::in, int::in, float::in, float::in,
+    float::in, float::in, bitmap::bitmap_ui, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -2606,11 +2603,27 @@ read_buffer_to_int_and_offset(aux(I), 10, I).
 % Bitmaps
 %
 
-/*
-:- pred bitmap(int, int, float, float, float, float, list(int),
-        io.state, io.state).
-:- mode bitmap(in, in, in, in, in, in, in, di, uo) is det.
-*/
+mogl.bitmap(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO) :-
+    ( num_bits(Bitmap) < Width * Height ->
+        throw(software_error("mogl.bitmap/9: bitmap is to small."))
+    ;
+        bitmap_2(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO)
+    ).
+
+:- pred bitmap_2(int::in, int::in, float::in, float::in, float::in, float::in,
+    bitmap::bitmap_ui, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    bitmap_2(Width::in, Height::in, XOrig::in, YOrig::in,
+        XMove::in, YMove::in, Bitmap::bitmap_ui, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+
+    glBitmap((GLsizei) Width, (GLsizei) Height, (GLfloat) XOrig,
+        (GLfloat) YOrig, (GLfloat) XMove, (GLfloat) YMove,
+        (GLubyte *)  Bitmap->elements);
+    IO = IO0; 
+").
 
 %------------------------------------------------------------------------------%
 %
