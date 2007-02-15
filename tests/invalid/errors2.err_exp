@@ -45,9 +45,9 @@ errors2.m:043:     Y_2: string
 errors2.m:052: In clause for predicate `type_error_4'/0:
 errors2.m:052:   in argument 3 of functor `foo_functor/3':
 errors2.m:052:   type error in unification of argument
-errors2.m:052:   and constant `1.00000000000000'.
+errors2.m:052:   and constant `1.0'.
 errors2.m:052:   argument has type `string',
-errors2.m:052:   constant `1.00000000000000' has type `float'.
+errors2.m:052:   constant `1.0' has type `float'.
 errors2.m:052:   The partial type assignment was:
 errors2.m:052:     Y_1: int
 errors2.m:052:     X_2: (errors2.foo_type)
@@ -56,9 +56,9 @@ errors2.m:052:     V_4: string
 errors2.m:059: In clause for predicate `type_error_5'/0:
 errors2.m:059:   in argument 3 of functor `foo_functor/3':
 errors2.m:059:   type error in unification of argument
-errors2.m:059:   and constant `1.00000000000000'.
+errors2.m:059:   and constant `1.0'.
 errors2.m:059:   argument has type `string',
-errors2.m:059:   constant `1.00000000000000' has type `float'.
+errors2.m:059:   constant `1.0' has type `float'.
 errors2.m:059:   The partial type assignment was:
 errors2.m:059:     Y_1: character
 errors2.m:059:     X_2: (errors2.foo_type)
@@ -67,9 +67,9 @@ errors2.m:059:     V_4: string
 errors2.m:065: In clause for predicate `type_error_6'/0:
 errors2.m:065:   in argument 3 of functor `bar_functor/3':
 errors2.m:065:   type error in unification of argument
-errors2.m:065:   and constant `1.00000000000000'.
+errors2.m:065:   and constant `1.0'.
 errors2.m:065:   argument has type `string',
-errors2.m:065:   constant `1.00000000000000' has type `float'.
+errors2.m:065:   constant `1.0' has type `float'.
 errors2.m:065:   The partial type assignment was:
 errors2.m:065:     Y_1: character
 errors2.m:065:     X_2: (errors2.bar_1_type)

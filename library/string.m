@@ -3069,7 +3069,7 @@ string.float_to_string(Float, unsafe_promise_unique(String)) :-
     % XXX The unsafe_promise_unique is needed because in
     % string.float_to_string_2 the call to string.to_float doesn't
     % have a (ui, out) mode hence the output string cannot be unique.
-    String = string.float_to_string_2(min_precision, Float).
+    String = trim_float_string(string.float_to_string_2(min_precision, Float)).
 
 :- func string.float_to_string_2(int, float) = (string) is det.
 
@@ -3239,6 +3239,35 @@ string.det_to_float(FloatString) =
         }
     }
 ").
+
+    % Trim redundant trailing zeroes from the fractional part of the
+    % string representation of a float.
+    %
+:- func trim_float_string(string) = string.
+
+trim_float_string(FloatStr0) = FloatStr :-
+    L = string.length(FloatStr0),
+    N = count_extra_trailing_zeroes(FloatStr0, L - 1, 0),
+    FloatStr = string.left(FloatStr0, L - N).
+
+
+:- func count_extra_trailing_zeroes(string, int, int) = int.
+
+count_extra_trailing_zeroes(FloatStr, I, N0) = N :-
+    ( if I < 0 then
+        N = N0
+      else
+        C = FloatStr ^ elem(I),
+        ( if C = ('0') then
+            N = count_extra_trailing_zeroes(FloatStr, I - 1, N0 + 1)
+          else if C = ('.') then
+            N = int.max(N0 - 1, 0)
+          else if char.is_digit(C) then
+            N = N0
+          else
+            N = 0
+        )
+    ).
 
 /*-----------------------------------------------------------------------*/
 

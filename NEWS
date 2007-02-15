@@ -19,6 +19,10 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* string.float_to_string now trims redundant trailing zeroes (although
+  at least one fractional digit is always present).  This change affects the
+  output from the debugger and io.print etc.
+
 * The globals field in the I/O state is no longer unique.  The modes of
   the access predicates, io.set_globals/3 and io.get_globals/3 have been
   changed accordingly.

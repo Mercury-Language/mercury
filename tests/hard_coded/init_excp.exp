@@ -2,3 +2,4 @@ This is init_pred_a/2
 EXCEPTION
 Uncaught Mercury exception:
 magic_number_exception
+Stack dump not available in this grade.

@@ -31,7 +31,7 @@ u1/1 ambiguity.t2/0
 Total: 2 names used 5 times, maximum 3, average: 2.50
 
 mdb> continue
-2.50000000000000
+2.5
 t1
 u2(42)
 1

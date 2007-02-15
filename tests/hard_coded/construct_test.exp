@@ -202,11 +202,11 @@ Constructed: wombat
 About to construct zoom/1
 Constructed: zoom(1)
 About to construct zap/2
-Constructed: zap(1, 2.10000000000000)
+Constructed: zap(1, 2.1)
 About to construct zip/2
 Constructed: zip(1, 1)
 About to construct zop/2
-Constructed: zop(2.10000000000000, 2.10000000000000)
+Constructed: zop(2.1, 2.1)
 About to construct qwerty/1
 Constructed: qwerty(1)
 About to construct poly_one/1
@@ -218,4 +218,4 @@ Constructed: poly_four(1, "goodbye")
 About to construct {}/3
 Constructed: {4, "five", '6'}
 About to call construct_tuple
-Constructed tuple: univ_cons({[1, 2, 3], [one, two, three], 1, 2.10000000000000})
+Constructed tuple: univ_cons({[1, 2, 3], [one, two, three], 1, 2.1})

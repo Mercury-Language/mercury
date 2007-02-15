@@ -101,9 +101,9 @@ mdb> step
 mdb> finish
        7:      4  2 EXIT pred field_names.make_t2/5-0 (det)
 mdb> p 5
-       HeadVar__5             	t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
+       HeadVar__5             	t2f(0.6, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 mdb> p 5^1
-       HeadVar__5^1           	0.600000000000000
+       HeadVar__5^1           	0.6
 mdb> p 5^2
        HeadVar__5^2           	61
 mdb> p 5^3
@@ -129,7 +129,7 @@ mdb: the path t1f does not exist in variable 5.
 mdb> p 5^4^t1g
        HeadVar__5^4^t1g       	53
 mdb> p 5^t2a
-       HeadVar__5^t2a         	0.600000000000000
+       HeadVar__5^t2a         	0.6
 mdb> p 5^t2b
        HeadVar__5^t2b         	t1f1(41, 42, 43, 44)
 mdb> p 5^t2b^t1a
@@ -240,9 +240,9 @@ mdb> step
 mdb> finish
       11:      6  2 EXIT pred field_names.make_t4/2-0 (det)
 mdb> p 2
-       A(1) (arg 2)           	t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
+       A(1) (arg 2)           	t2f(0.6, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 mdb> p 2^1
-       A(1) (arg 2)^1         	0.600000000000000
+       A(1) (arg 2)^1         	0.6
 mdb> p 2^2
        A(1) (arg 2)^2         	61
 mdb> p 2^3^t1a
@@ -266,7 +266,7 @@ mdb: the path t1f does not exist in variable 2.
 mdb> p 2^4^t1g
        A(1) (arg 2)^4^t1g     	53
 mdb> p 2^t2a
-       A(1) (arg 2)^t2a       	0.600000000000000
+       A(1) (arg 2)^t2a       	0.6
 mdb> p 2^t2b
        A(1) (arg 2)^t2b       	t1f1(41, 42, 43, 44)
 mdb> p 2^t2b^t1a
@@ -314,16 +314,16 @@ mdb> step
 mdb> finish
       15:      8  2 EXIT pred field_names.make_t6/2-0 (det)
 mdb> p 2
-       HeadVar__2             	t6f(0.900000000000000)
+       HeadVar__2             	t6f(0.9)
 mdb> p 2/1
-       HeadVar__2^1           	0.900000000000000
+       HeadVar__2^1           	0.9
 mdb> p 2/t5a
 mdb: the path t5a does not exist in variable 2.
 mdb> p 2/t6a
 mdb: the path t6a does not exist in variable 2.
 mdb> browse 2
 browser> p
-t6f(0.900000000000000)
+t6f(0.9)
 browser> ^badname
 error: there is no subterm badname
 browser> quit
@@ -333,7 +333,7 @@ mdb> finish
       17:      9  2 EXIT pred field_names.make_t7/3-0 (det)
 mdb> browse 3
 browser> p
-t7f(0.900000000000000, 77)
+t7f(0.9, 77)
 browser> ^badname
 error: there is no subterm badname
 browser> quit
@@ -358,11 +358,11 @@ mdb: there are no live variables.
 mdb> continue -S
 t1f1(41, 42, 43, 44)
 t1f2(51, 52, 53)
-t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
+t2f(0.6, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 t3f(t1f2(51, 52, 53), 72, "xyzzy", t1f1(41, 42, 43, 44))
-t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
+t2f(0.6, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 t5f(t1f1(41, 42, 43, 44))
-t6f(0.900000000000000)
-t7f(0.900000000000000, 77)
+t6f(0.9)
+t7f(0.9, 77)
 t8a
 dummy

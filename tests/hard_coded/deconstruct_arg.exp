@@ -17,22 +17,22 @@ deconstruct limited deconstruct 3 of apple([9, 5, 1])
 functor apple arity 1 [[9, 5, 1]]
 
 deconstruct functor: zop/2
-deconstruct argument 0 of zop(3.30000000000000, 2.03000000000000) is 3.30000000000000
-deconstruct argument 1 of zop(3.30000000000000, 2.03000000000000) is 2.03000000000000
-deconstruct argument 2 of zop(3.30000000000000, 2.03000000000000) doesn't exist
+deconstruct argument 0 of zop(3.3, 2.03) is 3.3
+deconstruct argument 1 of zop(3.3, 2.03) is 2.03
+deconstruct argument 2 of zop(3.3, 2.03) doesn't exist
 deconstruct deconstruct: functor zop arity 2
-[3.30000000000000, 2.03000000000000]
-deconstruct limited deconstruct 3 of zop(3.30000000000000, 2.03000000000000)
-functor zop arity 2 [3.30000000000000, 2.03000000000000]
+[3.3, 2.03]
+deconstruct limited deconstruct 3 of zop(3.3, 2.03)
+functor zop arity 2 [3.3, 2.03]
 
 deconstruct functor: zap/3
-deconstruct argument 0 of zap(50, 51.0000000000000, 52) is 50
-deconstruct argument 1 of zap(50, 51.0000000000000, 52) is 51.0000000000000
-deconstruct argument 2 of zap(50, 51.0000000000000, 52) is 52
+deconstruct argument 0 of zap(50, 51.0, 52) is 50
+deconstruct argument 1 of zap(50, 51.0, 52) is 51.0
+deconstruct argument 2 of zap(50, 51.0, 52) is 52
 deconstruct deconstruct: functor zap arity 3
-[50, 51.0000000000000, 52]
-deconstruct limited deconstruct 3 of zap(50, 51.0000000000000, 52)
-functor zap arity 3 [50, 51.0000000000000, 52]
+[50, 51.0, 52]
+deconstruct limited deconstruct 3 of zap(50, 51.0, 52)
+functor zap arity 3 [50, 51.0, 52]
 
 deconstruct functor: zip/4
 deconstruct argument 0 of zip(50, 51, 52, 53) is 50

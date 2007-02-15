@@ -40,14 +40,14 @@ ok... test passed:
 banana([three, one, two])
 banana([three, one, two])
 ok... test passed:
-zop(3.30000000000000, 2.03000000000000)
-zop(3.30000000000000, 2.03000000000000)
+zop(3.3, 2.03)
+zop(3.3, 2.03)
 ok... test passed:
 zip(3, 2)
 zip(3, 2)
 ok... test passed:
-zap(3, -2.11100000000000)
-zap(3, -2.11100000000000)
+zap(3, -2.111)
+zap(3, -2.111)
 ok... test passed:
 wombat
 wombat
@@ -56,14 +56,14 @@ foo
 foo
 TESTING POLYMORPHISM
 ok... test passed:
-poly_one([2399.30000000000])
-poly_one([2399.30000000000])
+poly_one([2399.3])
+poly_one([2399.3])
 ok... test passed:
 poly_two(3)
 poly_two(3)
 ok... test passed:
-poly_three(3.33000000000000, 4, poly_one(9.11000000000000))
-poly_three(3.33000000000000, 4, poly_one(9.11000000000000))
+poly_three(3.33, 4, poly_one(9.11))
+poly_three(3.33, 4, poly_one(9.11))
 TESTING BUILTINS
 ok... test passed:
 
@@ -112,8 +112,8 @@ ok... test passed:
 /
 /
 ok... test passed:
-3.14159000000000
-3.14159000000000
+3.14159
+3.14159
 ok... test passed:
 1.12832498300000e-21
 1.12832498300000e-21
