@@ -803,7 +803,7 @@ MR_UNIFY_COMPARE_REP_DEFNS(type_desc, type_desc, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, user_by_rtti, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, dummy, 0)
 
-  #ifdef MR_DEEP_PROFILING
+#ifdef MR_DEEP_PROFILING
 
 /*
 ** The generic unify, compare and compare_rep predicates do different things
@@ -878,8 +878,9 @@ MR_DEFINE_PROC_STATIC_LAYOUTS(type_desc, pseudo_type_desc, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(type_desc, type_desc, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, user_by_rtti, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, dummy, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(bitmap, bitmap, 0);
 
-#endif
+#endif /* MR_DEEP_PROFILING */
 
 MR_BEGIN_MODULE(mercury_builtin_types)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, int, 0)
@@ -1727,7 +1728,8 @@ mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *fp)
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, type_desc, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, user_by_rtti, 0); 
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, dummy, 0); 
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, bitmap, bitmap, 0);
 }
-#endif
+#endif /* MR_DEEP_PROFILING */
 
 /*---------------------------------------------------------------------------*/

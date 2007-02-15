@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2004-2005 The University of Melbourne.
+** Copyright (C) 2004-2005, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -66,6 +66,7 @@ MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(type_desc, pseudo_type_desc, 0);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(type_desc, type_desc, 0);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(builtin, user_by_rtti, 0);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(builtin, dummy, 0);
+MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(bitmap, bitmap, 0);
 
 #endif
 
