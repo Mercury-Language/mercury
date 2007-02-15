@@ -63,3 +63,6 @@ rot13			This directory contains a few implementations of
 
 muz			This directory contains a syntax checker / type checker
 			for the specification language Z.
+
+solver_types		This directory contains an example solver type
+			implementation and some sample applications.

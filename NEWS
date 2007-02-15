@@ -133,6 +133,11 @@ Changes to the Mercury deep profiler:
   clock interrupts, this can yield useful profiles for shorter-running
   programs.
 
+Changes to the samples directory:
+
+* The samples directory now includes an example of how to implement a
+  solver type.
+
 DETAILED LISTING
 ================
 

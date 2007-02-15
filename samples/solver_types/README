@@ -1,0 +1,15 @@
+eqneq.m:
+	An implementation of a solver type admitting equality and
+	disequality constraints for variables ranging over ground
+	values.  This provides some of the functionality of Prolog
+	variables.
+
+sudoku.m:
+	A naive sudoku solver.
+
+sudoku_puzzle.easy:
+sudoku_puzzle.hard:
+	Sample input for the sudoku solver.
+
+test_eqneq.m:
+	A test case.
