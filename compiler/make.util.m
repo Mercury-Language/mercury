@@ -394,7 +394,8 @@ foldl2_maybe_stop_at_error_parallel(KeepGoing, Jobs, MakeTarget, Targets,
     list.foldl(run_in_child(ChildExits, MakeTarget, Info), InitialTargets,
         !IO),
     parent_loop(ChildExits, KeepGoing, MakeTarget, Info,
-        length(Targets), LaterTargets, yes, Success, no, MaybeExcp, !IO),
+        length(InitialTargets), LaterTargets, yes, Success, no, MaybeExcp,
+        !IO),
     %
     % Rethrow the first of any exceptions which terminated a child thread.
     %
@@ -410,9 +411,14 @@ foldl2_maybe_stop_at_error_parallel(KeepGoing, Jobs, MakeTarget, Targets,
     Info::in, int::in, list(T)::in, bool::in, bool::out,
     maybe(univ)::in, maybe(univ)::out, io::di, io::uo) is det.
 
-parent_loop(ChildExits, KeepGoing, MakeTarget, Info, ChildrenLeft, Targets,
+parent_loop(ChildExits, KeepGoing, MakeTarget, Info, ChildrenRunning0, Targets,
         !Success, !MaybeExcp, !IO) :-
-    ( ChildrenLeft = 0 ->
+    (
+        % We are done once all running children have terminated and there are
+        % no more targets to make.
+        ChildrenRunning0 = 0,
+        Targets = []
+    ->
         true
     ;
         % Wait for a running child to indicate that it is finished.
@@ -441,15 +447,20 @@ parent_loop(ChildExits, KeepGoing, MakeTarget, Info, ChildrenLeft, Targets,
             !:Success = !.Success `and` NewSuccess,
             (
                 Targets = [],
-                MoreTargets = []
+                MoreTargets = [],
+                ChildrenRunning = ChildrenRunning0 - 1
             ;
                 Targets = [NextTarget | MoreTargets],
-                run_in_child(ChildExits, MakeTarget, Info, NextTarget, !IO)
+                run_in_child(ChildExits, MakeTarget, Info, NextTarget, !IO),
+                ChildrenRunning = ChildrenRunning0
             ),
             parent_loop(ChildExits, KeepGoing, MakeTarget, Info,
-                ChildrenLeft-1, MoreTargets, !Success, !MaybeExcp, !IO)
+                ChildrenRunning, MoreTargets, !Success, !MaybeExcp, !IO)
         ;
-            !:Success = no
+            % Wait for the other running children to terminate before
+            % returning.
+            !:Success = no,
+            wait_for_running_children(ChildExits, ChildrenRunning0 - 1, !IO)
         )
     ).
 
@@ -475,6 +486,17 @@ run_in_child(ChildExits, P, Info, T, !IO) :-
             ),
             channel.put(ChildExits, Exit, !IO)
         ), !IO)
+    ).
+
+:- pred wait_for_running_children(child_exits::in, int::in, io::di, io::uo)
+    is det.
+
+wait_for_running_children(ChildExits, Num, !IO) :-
+    ( Num > 0 ->
+        channel.take(ChildExits, _Exit, !IO),
+        wait_for_running_children(ChildExits, Num-1, !IO)
+    ;
+        true
     ).
 
 %-----------------------------------------------------------------------------%
