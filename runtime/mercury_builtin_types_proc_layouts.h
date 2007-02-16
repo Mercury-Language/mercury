@@ -66,8 +66,7 @@ MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(type_desc, pseudo_type_desc, 0);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(type_desc, type_desc, 0);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(builtin, user_by_rtti, 0);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(builtin, dummy, 0);
-MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(bitmap, bitmap, 0);
 
-#endif
+#endif /* MR_DEEP_PROFILING */
 
 #endif	/* MERCURY_BUILTIN_TYPES_PROC_LAYOUTS_H */
