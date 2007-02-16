@@ -149,6 +149,12 @@ start_label:
   #endif
 
   #ifdef include_compare_rep_code
+        case MR_TYPECTOR_REP_BITMAP:
+            MR_fatal_error("sorry, not implemented: "
+                "compare_representation for bitmaps");
+  #endif
+
+  #ifdef include_compare_rep_code
         case MR_TYPECTOR_REP_FOREIGN:
             MR_fatal_error("sorry, not implemented: "
                 "compare_representation for foreign types");
@@ -424,6 +430,7 @@ start_label:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
         case MR_TYPECTOR_REP_ARRAY:
+        case MR_TYPECTOR_REP_BITMAP:
         case MR_TYPECTOR_REP_FOREIGN:
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
 
@@ -607,30 +614,6 @@ start_label:
                 }
 #else
                 return_unify_answer(builtin, string, 0, result == 0);
-#endif
-            }
-
-        case MR_TYPECTOR_REP_BITMAP:
-            {
-                int result;
-                MR_BitmapPtr bx = (MR_BitmapPtr) x;
-                MR_BitmapPtr by = (MR_BitmapPtr) y;
-
-                result = MR_bitmap_cmp(bx, by);
-
-#ifdef  select_compare_code
-                if (result == 0) {
-                    return_compare_answer(bitmap, bitmap, 0,
-                        MR_COMPARE_EQUAL);
-                } else if (result < 0) {
-                    return_compare_answer(bitmap, bitmap, 0,
-                        MR_COMPARE_LESS);
-                } else {
-                    return_compare_answer(bitmap, bitmap, 0,
-                        MR_COMPARE_GREATER);
-                }
-#else
-                return_unify_answer(bitmap, bitmap, 0, result == 0);
 #endif
             }
 
