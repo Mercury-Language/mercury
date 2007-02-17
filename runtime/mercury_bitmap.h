@@ -47,7 +47,7 @@
         } else if (cmp_size1 > cmp_size2) {                             \
             (res) = 1;                                                  \
         } else {                                                        \
-            (res) = memcmp(cmp_b1, cmp_b2,                              \
+            (res) = memcmp(cmp_b1->elements, cmp_b2->elements,          \
                         MR_bitmap_length_in_bytes(cmp_size1));          \
         }                                                               \
     } while (0)
@@ -114,7 +114,7 @@ MR_Integer    MR_hash_bitmap(MR_ConstBitmapPtr);
 #ifdef __GNUC__
 #define MR_hash_bitmap(b)                                               \
     ({                                                                  \
-         MR_Integer hash_bitmap_result;                                 \
+        MR_Integer hash_bitmap_result;                                  \
         MR_CHECK_EXPR_TYPE(b, MR_ConstBitmapPtr);                       \
         MR_do_hash_bitmap(hash_bitmap_result, (b));                     \
         hash_bitmap_result;                                             \
