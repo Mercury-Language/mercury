@@ -174,7 +174,7 @@
     %
     % BM ^ byte(ByteNumber)
     % Get or set the given numbered byte (multiply ByteNumber by
-    % bits_per_int to get the bit index of the start of the byte).
+    % bits_per_byte to get the bit index of the start of the byte).
     %
     % The bits are stored in or taken from the least significant bits
     % of the integer.
