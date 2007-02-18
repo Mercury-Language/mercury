@@ -203,7 +203,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
                     SpecsFileName);
                 MR_make_aligned_string_copy(Problem, buf);
             } else {
-                ssize_t num_bytes_read;
+                size_t num_bytes_read;
 
                 num_bytes_read = read(spec_fd, spec_buf, stat_buf.st_size);
                 if (num_bytes_read != stat_buf.st_size) {

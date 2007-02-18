@@ -34,6 +34,8 @@
 #ifdef _WIN64
 	typedef ULONG_PTR ULONG_ADDR;
 #else
+		/* the following line is needed for MSVC 6 */
+	typedef int       ULONG_PTR;
 	typedef ULONG     ULONG_ADDR;
 #endif
 

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2001-2004 University of Melbourne. 
+# Copyright (C) 2001-2004,2007 University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -38,7 +38,7 @@ GENFILES=$(COMMONOS) $(TESTOS)
 # Unix options
 LINKSW=-o
 DEF=-D
-MSGS=-Wall
+MSGS=
 RM=rm -f
 MV=mv
 MKDIR=mkdir

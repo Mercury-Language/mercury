@@ -82,6 +82,7 @@
     };
 #else /* !MR_THREAD_SAFE */
     struct MR_Future {
+        char dummy; /* ANSI C doesn't allow empty structs */
     };
 #endif /* !MR_THREAD_SAFE */
 ").

@@ -18,7 +18,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdlib.h>
-#include <unistd.h>
+#ifdef MR_HAVE_UNISTD_H
+  #include <unistd.h>
+#endif
 #include <string.h>
 
 #ifdef MR_RECORD_TERM_SIZES

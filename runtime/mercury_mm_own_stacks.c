@@ -19,7 +19,9 @@
 #include "mercury_dlist.h"
 
 #include <stdio.h>
-#include <unistd.h>                         /* for sleep() */
+#ifdef MR_HAVE_UNISTD_H
+  #include <unistd.h>                         /* for sleep() */
+#endif
 
 #ifdef  MR_MINIMAL_MODEL_DEBUG
   /*

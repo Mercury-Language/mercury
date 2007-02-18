@@ -16,7 +16,7 @@ all: gctest.exe cord\de.exe test_cpp.exe
 .cpp.obj:
 	$(cc) $(cdebug) $(cflags) $(cvars) -Iinclude -DALL_INTERIOR_POINTERS -DGC_NOT_DLL -DGC_BUILD $*.CPP /Fo$*.obj
 
-$(OBJS) tests\test.obj: include\private\gc_priv.h include\private\gc_hdrs.h include\gc.h include\private\gcconfig.h include\private\gc_locks.h include\private\gc_pmark.h include\gc_mark.h include\msvc_dbg.h
+$(OBJS) tests\test.obj: include\private\gc_priv.h include\private\gc_hdrs.h include\gc.h include\private\gcconfig.h include\private\gc_locks.h include\private\gc_pmark.h include\gc_mark.h include\private\msvc_dbg.h
 
 gc.lib: $(OBJS)
 	lib /MACHINE:i386 /out:gc.lib $(OBJS)

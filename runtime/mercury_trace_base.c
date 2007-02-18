@@ -43,6 +43,10 @@ ENDINIT
   #include <sys/wait.h>     /* for the wait system call */
 #endif
 
+#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
+  #define snprintf	_snprintf
+#endif
+
 #define MR_TRACE_COUNT_SUMMARY_MAX_DEFAULT  20
 
 void                (*MR_trace_shutdown)(void) = NULL;
@@ -274,7 +278,15 @@ MR_PathPort         MR_named_count_port[MR_PORT_NONE + 1];
 #define MERCURY_TRACE_COUNTS_PREFIX     "mercury_trace_counts"
 #define TEMP_SUFFIX                     ".tmp"
 
-#define MR_FILE_EXISTS(filename)        (access(filename, F_OK) == 0)
+#if defined(F_OK)
+    /* unistd.h version */
+  #define MR_PERMISSIONS    F_OK
+#else
+    /* win32 version */
+  #define MR_PERMISSIONS    0
+#endif
+
+#define MR_FILE_EXISTS(filename)        (access(filename, MR_PERMISSIONS) == 0)
 
 void
 MR_trace_record_label_exec_counts(void *dummy)
