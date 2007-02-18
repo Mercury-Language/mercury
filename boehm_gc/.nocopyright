@@ -75,6 +75,7 @@ mips_ultrix_mach_dep.s
 misc.c
 missing
 mkinstalldirs
+msvc_debug.c
 new_hblk.c
 nursery.c
 nursery.h
