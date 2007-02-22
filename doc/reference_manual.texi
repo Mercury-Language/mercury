@@ -5391,12 +5391,11 @@ as in the following example:
 :- pred portray_list(list(T), io.state, io.state) <= portrayable(T).
 :- mode portray_list(in, di, uo) is det.
 
-portray_list([]) --> 
-        [].
-portray_list([X|Xs]) --> 
-	portray(X),
-	io.write_char(' '),
-	portray_list(Xs).
+portray_list([], !IO).
+portray_list([X | Xs], !IO) :-
+	portray(X, !IO),
+	io.write_char(' ', !IO),
+	portray_list(Xs, !IO).
 @end example
 
 For abstract instance declarations, the type class constraints on an
