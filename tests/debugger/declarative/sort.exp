@@ -14,11 +14,13 @@ mdb> format pretty
 mdb> format_param depth 1
 mdb> dd
 main(...)
-16 tabled IO actions:
+18 tabled IO actions:
 command_line_arguments(...)
 do_open_text(...)
+lock_stream_db
 get_stream_db(...)
 set_stream_db(...)
+unlock_stream_db
 read_line_as_string_2(...)
 read_line_as_string_2(...)
 read_line_as_string_2(...)
@@ -33,14 +35,17 @@ write_string(...)
 write_string(...)
 Valid? depth io 10
 dd> print io 9
-read_line_as_string_2(<<foreign>>, yes, -1, "")
+read_line_as_string_2(<<foreign>>, yes, 0, "rafe
+")
 dd> depth io 1
 dd> no
 open_stream(...)
-3 tabled IO actions:
+5 tabled IO actions:
 do_open_text(...)
+lock_stream_db
 get_stream_db(...)
 set_stream_db(...)
+unlock_stream_db
 Valid? yes
 read_lines(...)
 5 tabled IO actions:
