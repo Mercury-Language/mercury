@@ -16,7 +16,7 @@ unsupported_dtd_type(pred(int))
 is a &lt;string&gt;&amp;</String>
 		<Int type="int" field="Field&lt;2&gt;">-123</Int>
 		<Char type="character">&lt;</Char>
-		<Float type="float" field="another field">1.12300000000000</Float>
+		<Float type="float" field="another field">1.123</Float>
 		<yes--0--bool-46bool functor="yes" type="bool.bool" arity="0" />
 	</hello--5--write_xml-46mytype>
 	<a_tuple--1--write_xml-46mytype functor="a_tuple" type="write_xml.mytype" arity="1">
@@ -394,7 +394,7 @@ ok
 is a &lt;string&gt;&amp;</String>
 				<Int type="int" field="Field&lt;2&gt;">-123</Int>
 				<Char type="character">&lt;</Char>
-				<Float type="float" field="another field">1.12300000000000</Float>
+				<Float type="float" field="another field">1.123</Float>
 				<yes functor="yes" type="bool.bool" arity="0" />
 			</hello>
 			<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
