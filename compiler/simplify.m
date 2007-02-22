@@ -1675,6 +1675,8 @@ evaluate_compile_time_condition(trace_base(Base), Info) = Result :-
             Result = at_least_at_deep(EffTraceLevel)
         )
     ).
+evaluate_compile_time_condition(trace_not(ExprA), Info) =
+    not(evaluate_compile_time_condition(ExprA, Info)).
 evaluate_compile_time_condition(trace_op(Op, ExprA, ExprB), Info) = Result :-
     ResultA = evaluate_compile_time_condition(ExprA, Info),
     ResultB = evaluate_compile_time_condition(ExprB, Info),

@@ -916,6 +916,7 @@
 
 :- type trace_expr(Base)
     --->    trace_base(Base)
+    ;       trace_not(trace_expr(Base))
     ;       trace_op(trace_op, trace_expr(Base), trace_expr(Base)).
 
 :- type trace_op

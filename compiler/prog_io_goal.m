@@ -818,6 +818,18 @@ parse_trace_tree(BaseParser, Term, MaybeTree) :-
             MaybeTree = error1(LErrors ++ RErrors)
         )
     ;
+        Term = term.functor(term.atom("not"), [SubTerm], _)
+    ->
+        parse_trace_tree(BaseParser, SubTerm, MaybeSubExpr),
+        (
+            MaybeSubExpr = ok1(SubExpr)
+        ->
+            MaybeTree = ok1(trace_not(SubExpr))
+        ;
+            SubErrors = get_any_errors1(MaybeSubExpr),
+            MaybeTree = error1(SubErrors)
+        )
+    ;
         BaseParser(Term, MaybeBase),
         (
             MaybeBase = ok1(Base),

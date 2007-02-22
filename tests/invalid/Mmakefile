@@ -233,7 +233,8 @@ TRAILED_MODULES = \
 
 # The following require that the back-end support the C interface
 C_INTERFACE_MODULES = \
-	foreign_decl_line_number
+	foreign_decl_line_number \
+	trace_goal_env
 
 # The following require that the compiler not ignore `pragma type_spec'
 # declarations

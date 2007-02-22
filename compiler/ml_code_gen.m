@@ -2476,6 +2476,10 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
         ZeroRval = const(mlconst_int(0)),
         CondRval = binop(ne, EnvVarRval, ZeroRval)
     ;
+        Expr = trace_not(ExprA),
+        ml_generate_runtime_cond_code(ExprA, RvalA, !Info),
+        CondRval = unop(std_unop(logical_not), RvalA)
+    ;
         Expr = trace_op(TraceOp, ExprA, ExprB),
         ml_generate_runtime_cond_code(ExprA, RvalA, !Info),
         ml_generate_runtime_cond_code(ExprB, RvalB, !Info),

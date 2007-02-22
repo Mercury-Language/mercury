@@ -9340,9 +9340,9 @@ with the option @samp{--trace-flag=do_logging},
 or it has to be compiled in a debugging grade.
 
 In general, the single argument of the @samp{compile_time} function symbol
-is a boolean expression that may use the @samp{and} and @samp{or} operators
-to connect one or more primitive compile-time conditions.
-There are three kinds of conditions.
+is a boolean expression of primitive compile-time conditions. Valid boolean
+operators in these expressions are @samp{and}, @samp{or} and @samp{not}.
+There are three kinds of primitive compile-time conditions.
 The first has the form @samp{flag(@var{FlagName})},
 where @var{FlagName} is an arbitrary name picked by the programmer;
 this condition is true
@@ -9362,9 +9362,9 @@ when the program starts execution.
 (It doesn't matter what value it is set to.)
 
 In general, the single argument of the @samp{run_time} function symbol
-is a boolean expression that may use the @samp{and} and @samp{or} operators
-to connect one or more primitive compile-time conditions.
-There is just one condition.
+is a boolean expression of primitive run-time conditions. Valid boolean
+operators in these expressions are @samp{and}, @samp{or} and @samp{not}.
+There is just one primitive run-time condition.
 It has the form @samp{env(@var{EnvVarName})},
 this condition is true
 if the environment variable @var{EnvVarName}

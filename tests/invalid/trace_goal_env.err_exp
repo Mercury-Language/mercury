@@ -1,0 +1,3 @@
+trace_goal_env.m:023: Error: runtime takes exactly one argument, which should be a boolean expression of run-time tests: runtime(env("TRACE_ABC"), not env("TRACE_NEITHER_AB") or env("TRACE_NOR_BC")).
+trace_goal_env.m:030: Error: invalid trace goal paramater: not runtime(env("TRACE_ABC")).
+trace_goal_env.m:020: Error: no clauses for predicate `p'/2.

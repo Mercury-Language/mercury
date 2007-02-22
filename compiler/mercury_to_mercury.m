@@ -2942,6 +2942,11 @@ mercury_output_trace_expr(PrintBase, TraceExpr, !IO) :-
         TraceExpr = trace_base(Base),
         PrintBase(Base, !IO)
     ;
+        TraceExpr = trace_not(TraceExprA),
+        io.write_string("not(", !IO),
+        mercury_output_trace_expr(PrintBase, TraceExprA, !IO),
+        io.write_string(")", !IO)
+    ;
         TraceExpr = trace_op(trace_or, TraceExprA, TraceExprB),
         io.write_string("(", !IO),
         mercury_output_trace_expr(PrintBase, TraceExprA, !IO),

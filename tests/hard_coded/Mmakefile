@@ -330,6 +330,7 @@ ifeq "$(filter il% java%,$(GRADE))" ""
 		foreign_type_assertion \
 		lookup_disj \
 		trace_goal_env_1 \
+		trace_goal_env_2 \
 		trace_goal_env_2
 else
 	C_ONLY_PROGS=

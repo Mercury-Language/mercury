@@ -432,6 +432,10 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
         ZeroRval = const(llconst_int(0)),
         CondRval = binop(ne, EnvVarRval, ZeroRval)
     ;
+        Expr = trace_not(ExprA),
+        generate_runtime_cond_code(ExprA, RvalA, !CI),
+        CondRval = unop(logical_not, RvalA)
+    ;
         Expr = trace_op(TraceOp, ExprA, ExprB),
         generate_runtime_cond_code(ExprA, RvalA, !CI),
         generate_runtime_cond_code(ExprB, RvalB, !CI),
