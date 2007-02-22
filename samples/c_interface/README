@@ -24,3 +24,7 @@ simpler_c_calls_mercury         A simpler example of C code calling Mercury.
 simpler_cplusplus_calls_mercury A simpler example of C++ code calling
                                 Mercury.
 
+standalone_c			Another example of C code calling Mercury
+				code this time use the compiler's 
+				`--generate-standalone-interface' option.
+

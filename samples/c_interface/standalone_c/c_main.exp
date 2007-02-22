@@ -1,0 +1,5 @@
+mercury_lib: the initialiser has now been invoked.
+Hello World
+The current value of global is 561.
+The new value of global is 42.
+mercury_lib: the finaliser has now been invoked.
