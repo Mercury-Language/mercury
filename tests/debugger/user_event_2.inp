@@ -1,0 +1,5 @@
+echo on
+register --quiet
+user
+print *
+continue

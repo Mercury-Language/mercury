@@ -53,7 +53,8 @@ NONRETRY_PROGS = \
 	synth_attr			\
 	type_desc_test			\
 	uci_index			\
-	user_event
+	user_event			\
+	user_event_2
 
 # We currently don't pass this test.
 #	deeply_nested_typeinfo
@@ -534,6 +535,10 @@ synth_attr.out: synth_attr synth_attr.inp synth_attr_spec
 
 user_event.out: user_event user_event.inp user_event_spec
 	$(MDB_STD) ./user_event < user_event.inp 2>&1 > user_event.out 2>&1
+
+user_event_2.out: user_event_2 user_event_2.inp user_event_spec_2
+	$(MDB_STD) ./user_event_2 < user_event_2.inp 2>&1 \
+		> user_event_2.out 2>&1
 
 user_event_shallow.out: user_event_shallow user_event_shallow.inp \
 		user_event_spec

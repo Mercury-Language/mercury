@@ -770,9 +770,16 @@ describe_attr_type(Type) = Desc :-
         Type = defined_type(SymName, ArgTypes, Kind),
         expect(unify(Kind, kind_star), this_file,
             "describe_attr_type: not kind_star"),
-        ArgTypeDescs = string.join_list(", ",
-            list.map(describe_attr_type, ArgTypes)),
-        Desc = sym_name_to_string(SymName) ++ "(" ++ ArgTypeDescs ++ ")"
+        (
+            ArgTypes = [],
+            ArgTypeDescs = ""
+        ;
+            ArgTypes = [_ | _],
+            ArgTypeDescs = "(" ++
+                string.join_list(", ", list.map(describe_attr_type, ArgTypes))
+                ++ ")"
+        ),
+        Desc = sym_name_to_string(SymName) ++ ArgTypeDescs
     ;
         Type = builtin_type(BuiltinType),
         builtin_type_to_string(BuiltinType, Desc)

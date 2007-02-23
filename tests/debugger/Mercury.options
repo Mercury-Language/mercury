@@ -45,6 +45,8 @@ MCFLAGS-user_event = --event-set-file-name user_event_spec
 
 MCFLAGS-user_event_shallow = --event-set-file-name user_event_spec --trace shallow
 
+MCFLAGS-user_event_2 = --event-set-file-name user_event_spec_2
+
 MCFLAGS-synth_attr = --event-set-file-name synth_attr_spec
 
 # The solver_test test case exercises the printing of a procedure name, and
