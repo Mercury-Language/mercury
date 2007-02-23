@@ -66,6 +66,8 @@
 :- import_module make.program_target.
 :- import_module make.util.
 
+:- import_module parse_tree.error_util.
+
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -73,6 +75,7 @@
 :- import_module top_level.mercury_compile. % XXX unwanted dependency
 
 :- import_module bool.
+:- import_module dir.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -234,22 +237,42 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
             MaybeMAIN_TARGET = yes(Targets),
             (
                 Targets = [_ | _],
-                Continue = yes
+                Continue0 = yes
             ;
                 Targets = [],
-                Continue = no,
+                Continue0 = no,
                 io.write_string("** Error: no targets specified " ++
                     "and `MAIN_TARGET' not defined.\n", !IO)
             )
         ;
             MaybeMAIN_TARGET = no,
             Targets = [],
-            Continue = no
+            Continue0 = no
         )
     ;
         Targets0 = [_ | _],
-        Continue = yes,
+        Continue0 = yes,
         Targets = Targets0
+    ),
+    %
+    % Ensure none of the targets contains the directory_separator. This is not
+    % supported by the rest of the code.
+    %
+    list.filter(
+        (pred(Target::in) is semidet :-
+            string.contains_char(Target, dir.directory_separator)
+        ), Targets, AbsTargets),
+    (
+        AbsTargets = [],
+        Continue = Continue0
+    ;
+        AbsTargets = [_ | _],
+        Continue = no,
+        list.foldl(
+            (pred(Target::in, !.I::di, !:I::uo) is det :-
+                error_util.write_error_plain_with_progname(Target,
+                  "Make target must not contain any directory component.", !I)
+            ), AbsTargets, !IO)
     ),
     (
         Continue = no,
