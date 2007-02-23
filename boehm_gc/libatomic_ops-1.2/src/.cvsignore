@@ -1,4 +1,5 @@
 .deps
 Makefile
+Makefile.in
 config.h
 stamp-h1
