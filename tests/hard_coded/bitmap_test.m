@@ -230,8 +230,15 @@ test_binary_op(OpStr, Op, !IO) :-
     (pred(in, di, uo) is det), di, uo) is det.
 
 test_binary_op(OpStr, Op, Writer, !IO) :-
-    BMLength = 64,
+    test_binary_op(8, OpStr, Op, Writer, !IO),
+    test_binary_op(64, OpStr, Op, Writer, !IO). 
 
+:- pred test_binary_op(int, string, (func(tbitmap, tbitmap) = T),
+    pred(T, io, io), io, io).
+:- mode test_binary_op(in, in, (func(tbitmap_ui, tbitmap_di) = out is det),
+    (pred(in, di, uo) is det), di, uo) is det.
+
+test_binary_op(BMLength, OpStr, Op, Writer, !IO) :-
     ZeroedBM = bitmap_tester.new(BMLength, no),
     OnesBM = bitmap_tester.new(BMLength, yes),
     

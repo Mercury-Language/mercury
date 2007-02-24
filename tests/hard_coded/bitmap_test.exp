@@ -125,6 +125,13 @@ Copy to alternating bitmap
 11011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.0011100
 Copy to same bitmap
 11011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.01011100.10100011.0011100
+union(zeroes, pattern) = 10111001
+union(ones, pattern) = 11111111
+union(pattern, ones) = 11111111
+union(pattern, zeroes) = 10111001
+union(pattern, alternating) = 10111011
+union(pattern, pattern) = 10111001
+union(alternating, alternating) = 10101010
 union(zeroes, pattern) = 10111001.01000110.10111001.01000110.10111001.01000110.10111001.01000110
 union(ones, pattern) = 11111111.11111111.11111111.11111111.11111111.11111111.11111111.11111111
 union(pattern, ones) = 11111111.11111111.11111111.11111111.11111111.11111111.11111111.11111111
@@ -132,6 +139,13 @@ union(pattern, zeroes) = 10111001.01000110.10111001.01000110.10111001.01000110.1
 union(pattern, alternating) = 10111011.01010111.10111011.01010111.10111011.01010111.10111011.01010111
 union(pattern, pattern) = 10111001.01000110.10111001.01000110.10111001.01000110.10111001.01000110
 union(alternating, alternating) = 10101010.01010101.10101010.01010101.10101010.01010101.10101010.01010101
+intersect(zeroes, pattern) = 00000000
+intersect(ones, pattern) = 10111001
+intersect(pattern, ones) = 10111001
+intersect(pattern, zeroes) = 00000000
+intersect(pattern, alternating) = 10101000
+intersect(pattern, pattern) = 10111001
+intersect(alternating, alternating) = 10101010
 intersect(zeroes, pattern) = 00000000.00000000.00000000.00000000.00000000.00000000.00000000.00000000
 intersect(ones, pattern) = 10111001.01000110.10111001.01000110.10111001.01000110.10111001.01000110
 intersect(pattern, ones) = 10111001.01000110.10111001.01000110.10111001.01000110.10111001.01000110
@@ -139,6 +153,13 @@ intersect(pattern, zeroes) = 00000000.00000000.00000000.00000000.00000000.000000
 intersect(pattern, alternating) = 10101000.01000100.10101000.01000100.10101000.01000100.10101000.01000100
 intersect(pattern, pattern) = 10111001.01000110.10111001.01000110.10111001.01000110.10111001.01000110
 intersect(alternating, alternating) = 10101010.01010101.10101010.01010101.10101010.01010101.10101010.01010101
+difference(zeroes, pattern) = 00000000
+difference(ones, pattern) = 01000110
+difference(pattern, ones) = 00000000
+difference(pattern, zeroes) = 10111001
+difference(pattern, alternating) = 00010001
+difference(pattern, pattern) = 00000000
+difference(alternating, alternating) = 00000000
 difference(zeroes, pattern) = 00000000.00000000.00000000.00000000.00000000.00000000.00000000.00000000
 difference(ones, pattern) = 01000110.10111001.01000110.10111001.01000110.10111001.01000110.10111001
 difference(pattern, ones) = 00000000.00000000.00000000.00000000.00000000.00000000.00000000.00000000
@@ -146,6 +167,13 @@ difference(pattern, zeroes) = 10111001.01000110.10111001.01000110.10111001.01000
 difference(pattern, alternating) = 00010001.00000010.00010001.00000010.00010001.00000010.00010001.00000010
 difference(pattern, pattern) = 00000000.00000000.00000000.00000000.00000000.00000000.00000000.00000000
 difference(alternating, alternating) = 00000000.00000000.00000000.00000000.00000000.00000000.00000000.00000000
+xor(zeroes, pattern) = 10111001
+xor(ones, pattern) = 01000110
+xor(pattern, ones) = 01000110
+xor(pattern, zeroes) = 10111001
+xor(pattern, alternating) = 00010011
+xor(pattern, pattern) = 00000000
+xor(alternating, alternating) = 00000000
 xor(zeroes, pattern) = 10111001.01000110.10111001.01000110.10111001.01000110.10111001.01000110
 xor(ones, pattern) = 01000110.10111001.01000110.10111001.01000110.10111001.01000110.10111001
 xor(pattern, ones) = 01000110.10111001.01000110.10111001.01000110.10111001.01000110.10111001
@@ -160,6 +188,20 @@ ordering(pattern, zeroes) = '>'
 ordering(pattern, alternating) = '>'
 ordering(pattern, pattern) = '='
 ordering(alternating, alternating) = '='
+ordering(zeroes, pattern) = '<'
+ordering(ones, pattern) = '>'
+ordering(pattern, ones) = '<'
+ordering(pattern, zeroes) = '>'
+ordering(pattern, alternating) = '>'
+ordering(pattern, pattern) = '='
+ordering(alternating, alternating) = '='
+test_unify(zeroes, pattern) = no
+test_unify(ones, pattern) = no
+test_unify(pattern, ones) = no
+test_unify(pattern, zeroes) = no
+test_unify(pattern, alternating) = no
+test_unify(pattern, pattern) = yes
+test_unify(alternating, alternating) = yes
 test_unify(zeroes, pattern) = no
 test_unify(ones, pattern) = no
 test_unify(pattern, ones) = no
