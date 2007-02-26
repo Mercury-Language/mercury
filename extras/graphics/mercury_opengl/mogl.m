@@ -272,7 +272,7 @@
 % Polygons
 %
 
-:- type polygon_stipple == int.     % use bottom 32 bits of each int.
+:- type polygon_stipple == bitmap.
 
 :- type polygon_mode
     --->    point
@@ -281,7 +281,7 @@
 
 :- pred cull_face(face_side::in, io::di, io::uo) is det.
 
-:- pred polygon_stipple(polygon_stipple::in, io::di, io::uo) is det.
+:- pred polygon_stipple(polygon_stipple::bitmap_ui, io::di, io::uo) is det.
 
 :- pred polygon_mode(face_side::in, polygon_mode::in, io::di, io::uo) is det.
 
@@ -2438,11 +2438,14 @@ cull_face(Face, !IO) :-
     IO = IO0;
 ").
 
-%:- pred polygon_stipple(polygon_stipple, io, io).
-%:- mode polygon_stipple(in, di, uo) is det.
-
-polygon_stipple(_, _, _) :-
-    error("sorry, polygon_stipple unimplemented").  
+:- pragma foreign_proc("C",
+    polygon_stipple(Mask::bitmap_ui, IO0::di, IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure,
+        does_not_affect_liveness],
+"
+    glPolygonStipple((GLubyte *) Mask->elements);
+    IO = IO0;
+").
 
 polygon_mode(Face, Mode, !IO) :-
     polygon_mode2(face_side_to_int(Face), polygon_mode_to_int(Mode), !IO).
