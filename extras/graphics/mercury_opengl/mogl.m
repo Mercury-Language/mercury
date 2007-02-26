@@ -534,23 +534,23 @@
 
 :- inst border ---> 0 ; 1.
 
-:- type pixel_data.
+:- type pixel_data == bitmap.
 
 :- pred tex_image_1d(texture_target::in(texture_1d), int::in,
     texture_format::in, int::in, int::in(border),
     pixel_format::in(pixel_format_non_stencil_or_depth),
-    pixel_type::in, pixel_data::in, io::di, io::uo) is det.
+    pixel_type::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
 
 :- pred tex_image_2d(texture_target::in(texture_2d), int::in,
     texture_format::in, int::in, int::in, int::in(border),
     pixel_format::in(pixel_format_non_stencil_or_depth),
-    pixel_type::in, pixel_data::in, io::di, io::uo) is det.
+    pixel_type::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
 
 % Requires OpenGL 1.2
 % :- pred tex_image_3d(texture_target::in(texture_3d), int::in,
 %     texture_format::in, int::in, int::in, int::in, int::in(border),
 %     pixel_format::in(pixel_format_non_stencil_or_depth),
-%     pixel_type::in, pixel_data::in, io::di, io::uo) is det.
+%     pixel_type::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
 
 :- pred copy_tex_image_1d(texture_target::in(bound(texture_1d)), int::in,
     texture_format::in, int::in, int::in, int::in, int::in(border),
@@ -1192,14 +1192,6 @@
     is det.
 
 :- pred pop_client_attrib(io::di, io::uo) is det.
-
-%------------------------------------------------------------------------------%
-
-% A less public interface.
-
-:- interface.
-
-:- pragma foreign_type("C", pixel_data, "const GLvoid *").
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -2561,11 +2553,11 @@ copy_type_to_int(depth)   = 2.
 ").
 
 :- type pixels
-    ---> pixels(
-        pixel_format :: int,
-        pixel_type   :: int,
-        pixel_data   :: pixel_data
-    ).
+    --->    pixels(
+                pixel_format :: int,
+                pixel_type   :: int,
+                pixel_data   :: pixel_data
+            ).
 
 read_buffer(Buffer, !IO) :-
     read_buffer_to_int_and_offset(Buffer, BufferFlag, Offset),
@@ -3056,16 +3048,16 @@ tex_image_1d(Target, Level, InternalFormat, Width, Border,
         pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels, !IO).
 
 :- pred tex_image_1d_2(int::in, int::in, int::in, int::in, int::in, int::in,
-    int::in, pixel_data::in, io::di, io::uo) is det.
+    int::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     tex_image_1d_2(Target::in, Level::in, InternalFormat::in,
         Width::in, Border::in, Format::in, Type::in,
-        Pixels::in, IO0::di, IO::uo),
+        Pixels::bitmap_ui, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glTexImage1D(texture_target_flags[Target], Level,
         texture_format_flags[InternalFormat], Width, Border,
-        pixel_format_flags[Format], pixel_type_flags[Type], Pixels);
+        pixel_format_flags[Format], pixel_type_flags[Type], Pixels->elements);
     IO = IO0;
 ").
 
@@ -3077,16 +3069,16 @@ tex_image_2d(Target, Level, InternalFormat, Width, Height, Border,
         pixel_format_to_int(Format), pixel_type_to_int(Type), Pixels, !IO).
 
 :- pred tex_image_2d_2(int::in, int::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, pixel_data::in, io::di, io::uo) is det.
+    int::in, int::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
     tex_image_2d_2(Target::in, Level::in, InternalFormat::in,
-        Width::in, Height::in, Border::in, Format::in, Type::in, Pixels::in,
-        IO0::di, IO::uo),
+        Width::in, Height::in, Border::in, Format::in, Type::in,
+        Pixels::bitmap_ui, IO0::di, IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glTexImage2D(texture_target_flags[Target], Level,
         texture_format_flags[InternalFormat], Width, Height, Border,
-        pixel_format_flags[Format], pixel_type_flags[Type], Pixels);
+        pixel_format_flags[Format], pixel_type_flags[Type], Pixels->elements);
     IO = IO0;
 ").
 
@@ -3100,7 +3092,7 @@ tex_image_2d(Target, Level, InternalFormat, Width, Height, Border,
 %         !IO).
 % 
 % :- pred tex_image_3d_2(int::in, int::in, int::in, int::in, int::in, int::in,
-%     int::in, int::in, int::in, pixel_data::in, io::di, io::uo) is det.
+%     int::in, int::in, int::in, pixel_data::bitmap_ui, io::di, io::uo) is det.
 % :- pragma foreign_proc("C", 
 %     tex_image_3d_2(Target::in, Level::in, InternalFormat::in,
 %         Width::in, Height::in, Depth::in, Border::in, Format::in, Type::in,

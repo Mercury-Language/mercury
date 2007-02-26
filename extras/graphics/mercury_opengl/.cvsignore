@@ -2,6 +2,7 @@ mogl.c
 mglu.c
 mtogl.c
 mercury_opengl.c
+mogl.type_tables.c
 *.c_date
 *.d
 *.int*
