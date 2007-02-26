@@ -8803,6 +8803,16 @@ hand-coded C code with @samp{INIT} comments, rather than
 containing only C code that was automatically generated
 by the Mercury compiler.)
 
+@sp 1
+@item --link-executable-command @var{command}
+@findex --link-executable-command
+Specify the command used to invoke the linker when linking an executable.
+
+@sp 1
+@item --link-shared-lib-command @var{command}
+@findex --link-shared-lib-command
+Specify the command used to invoke the linker when linking a shared library.
+
 @end table
 
 @c ----------------------------------------------------------------------------

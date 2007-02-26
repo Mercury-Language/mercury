@@ -4628,13 +4628,20 @@ options_help_link -->
         "\t(This may be necessary if the C files contain",
         "\thand-coded C code with `INIT' comments, rather than",
         "\tcontaining only C code that was automatically generated",
-        "\tby the Mercury compiler.)"
+        "\tby the Mercury compiler.)",
+        
+        "--link-executable-command <command>",
+        "\tSpecify the command used to invoke the linker when linking",
+        "\tan executable.",
+        "--link-shared-lib-command <command>",
+        "\tSpecify the command used to invoke the linker when linking",
+        "\ta shared library."
 
         % The --shared-library-extension,
         % --library-extension, --executable-file-extension
         % --create-archive-command, --create-archive-command-flags
         % --create-archive-command-output-flag, --ranlib-command,
-        % --ranlib-flags, --link-executable-command, --link-shared-lib-command,
+        % --ranlib-flags,
         % --mkinit-command, --demangle-command, --trace-libs,
         % --thread-libs, --shared-libs, --math-lib, --readline-libs,
         % --linker-opt-separator,
