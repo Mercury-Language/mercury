@@ -55,6 +55,12 @@ MMAKEFLAGS=
 
 ifeq ("$(USING_MICROSOFT_CL_COMPILER)", "yes")
 
+ifeq ("$(GC_GRADE)", "gc_debug")
+  CDEBUG=/Z7 -DGC_DEBUG -DKEEP_BACK_PTRS
+else
+  CDEBUG=
+endif
+
 ifeq ("$(GC_GRADE)", "par_gc")
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
@@ -63,13 +69,13 @@ submake: force
 else
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
-	nmake -f NT_MAKEFILE nodebug=1 gc.lib; \
-	cp gc.lib libgc.lib 
+	nmake -f NT_MAKEFILE cdebug="$(CDEBUG)" nodebug=1 gc.lib; \
+	cp gc.lib lib$(GC_GRADE).lib
 endif
 
 clean_local:
 	rm -rf Release/ Debug/
-	rm -f *.obj gc.lib libgc.lib libpar_gc.lib libpar_gc.dll
+	rm -f *.obj gc.lib libgc.lib libpar_gc.lib libpar_gc.dll libgc_debug.lib
 	cd libatomic_ops-1.2 && $(MAKE) clean
 	rm -f libatomic_ops-1.2/Makefile libatomic_ops-1.2/tests/Makefile
 	rm -f libatomic_ops-1.2/src/Makefile
