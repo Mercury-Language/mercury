@@ -13,6 +13,11 @@
 % to string writer streams that are attached to the I/O state. 
 % (There's no particularly good reason for this latter restriction so 
 % it can safely be dropped if necessary.)
+% 
+% NOTE:
+% 	The module calls unexpected/2 if there is an instruction which expects
+% 	a different type of operand (For example: an instruction expecting a 
+% 	register operand but supplied with an immediate operand type).
 %
 %-----------------------------------------------------------------------------%
 
@@ -31,9 +36,7 @@
 :- pred output_x86_64_instruction(Stream::in, x86_64_instruction::in, 
     io::di, io::uo) is det <= stream.writer(Stream, string, io). 
 
-    % XXX this is misnamed: it should be operand_to_string.
-    %
-:- pred operand_type(operand::in, string::out) is det. 
+:- pred operand_to_string(operand::in, string::out) is det. 
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -41,6 +44,7 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
+:- import_module ll_backend.x86_64_regs.
 
 :- import_module bool.
 :- import_module char.
@@ -233,13 +237,10 @@ output_x86_64_pseudo_op(Stream, section(Name, Flags0, Type0, EntSize0), !IO) :-
             Result0 = yes,
             Type0 = yes(Type1)
         ->
-            put(Stream, ",\"" ++ Flags1 ++ "\"", !IO),
-            ( check_pseudo_section_type(Type1) ->
-                put(Stream, "," ++ Type1, !IO)
-            ;
-                unexpected(this_file, "output_x86_64_pseudo_op: section:" 
-                    ++ " check_section_type unexpected")
-            )
+            pseudo_section_flags_to_string(Flags1, "", FlagsStr),
+            put(Stream, ",\"" ++ FlagsStr ++ "\"", !IO),
+            check_pseudo_section_type(Type1, Type1Str),
+            put(Stream, "," ++ Type1Str, !IO)
         ;
             unexpected(this_file, "output_x86_64_pseudo_op: section:" 
                 ++ " check_section_flags_and_type unexpected")
@@ -291,12 +292,8 @@ output_x86_64_pseudo_op(Stream, text(Subsection0), !IO) :-
 output_x86_64_pseudo_op(Stream, title(Heading), !IO) :-
     put(Stream, "\t.title\t" ++ Heading ++ "\n", !IO).
 output_x86_64_pseudo_op(Stream, x86_64_pseudo_type(Name, Desc), !IO) :-
-    ( check_pseudo_type_desc(Desc) ->
-        put(Stream, "\t.type\t" ++ Name ++ "," ++ Desc ++ "\n", !IO)
-    ;
-       unexpected(this_file, "output_x86_64_pseudo_op: x86_64_pseudo_type:"
-            ++ " unexpected: check_pseudo_type_desc failed") 
-    ).
+    check_pseudo_type_desc(Desc, DescType),
+    put(Stream, "\t.type\t" ++ Name ++ "," ++ DescType ++ "\n", !IO).
 output_x86_64_pseudo_op(Stream, uleb128(ExprList), !IO) :-
     output_pseudo_op_str_args(Stream, ".uleb128", ExprList, !IO).
 output_x86_64_pseudo_op(Stream, val(Addr), !IO) :-
@@ -394,74 +391,96 @@ pseudo_op_str_args_while(Stream, [Arg | Args], !IO) :-
     % Check if the FLAGS and TYPE argumentis of '.section' pseudo-op
     % are valid.
     %
-:- pred check_section_flags_and_type(string::in, maybe(string)::in, 
-    bool::out) is det.
+:- pred check_section_flags_and_type(list(pseudo_section_flag)::in, 
+    maybe(pseudo_section_type)::in, bool::out) is det.
 
 check_section_flags_and_type(Flags, Type0, Result) :-
-    (  string.contains_char(Flags, 'M') ->
+    check_pseudo_section_m_flag(Flags, Result0),
+    (
+        Result0 = yes,
         (
             Type0 = yes(Type1),
-            string.length(Type1) > 0
+            check_pseudo_section_type(Type1, _)
         ->
             true
         ;
             unexpected(this_file, "check_section_flags_and_type:" 
-               ++ " unexpected: flag")
+               ++ " unexpected: flag 'm' has to have 'type' arguments")
         )
     ;
+        Result0 = no,
         true
     ),
-    string.to_char_list(Flags, CharList),
-    check_pseudo_section_flags(CharList, Result0),
+    check_pseudo_section_flags(Flags, Result1),
     ( 
-        Result0 = yes,
+        Result1 = yes,
         Result = yes
     ;
-        Result0 = no,
+        Result1 = no,
         Result = no
     ).
 
     % Check if the FLAGS argument of '.section' pseudo-op is valid.
     %
-:- pred check_pseudo_section_flags(list(char)::in, bool::out) is det. 
+:- pred check_pseudo_section_flags(list(pseudo_section_flag)::in, bool::out) 
+    is det. 
 
 check_pseudo_section_flags([], yes).
-check_pseudo_section_flags([Char | Chars], Result) :-
-    ( string.contains_char(section_pseudo_op_flags, Char) ->
-        check_pseudo_section_flags(Chars, Result)
+check_pseudo_section_flags([Flag | Flags], Result) :-
+    pseudo_section_flag(Flag, _),
+    check_pseudo_section_flags(Flags, Result).
+
+    % Returns a string representation of optional flag arguments of 
+    % .section pseudo instruction. 
+    %
+:- pred pseudo_section_flags_to_string(list(pseudo_section_flag)::in, 
+    string::in, string::out) is det. 
+
+pseudo_section_flags_to_string([], Result, Result).
+pseudo_section_flags_to_string([Flag | Flags], Result0, Result) :-
+    pseudo_section_flag(Flag, FlagString),
+    pseudo_section_flags_to_string(Flags, FlagString ++ Result0, Result).
+
+    % Returns a string representation of a .section pseudo-instruction flag.
+    %
+:- pred pseudo_section_flag(pseudo_section_flag::in, string::out) is det. 
+
+pseudo_section_flag(a, "a").
+pseudo_section_flag(w, "w").
+pseudo_section_flag(x, "x").
+pseudo_section_flag(m, "m").
+pseudo_section_flag(s, "s").
+
+    % If a .section pseudo-instruction has 'm' flag, there has to be 
+    % 'type' argument as its second argument. 
+    %
+:- pred check_pseudo_section_m_flag(list(pseudo_section_flag)::in, 
+    bool::out) is det.
+
+check_pseudo_section_m_flag([], no).
+check_pseudo_section_m_flag([Flag | Flags], Result) :-
+    pseudo_section_flag(Flag, FlagType),
+    ( FlagType = "m" ->
+        Result = yes
     ;
-        Result = no
+        check_pseudo_section_m_flag(Flags, Result)
     ).
 
-    % The optional FLAGS argument of '.section' pseudo-op contains any 
-    % combination of:
-    % 'a'   - section is allocatable
-    % 'w'   - section is writable 
-    % 'x'   - section is executable 
-    % 'M'   - section is mergeable 
-    % 'S'   - section contains zero terminated string
+    % Checks if .type argument of .section pseudo-instruction is valid. 
     %
-:- func section_pseudo_op_flags = string.
+:- pred check_pseudo_section_type(pseudo_section_type::in, string::out) 
+    is det.
 
-section_pseudo_op_flags = "awxMS".
+check_pseudo_section_type(progbits, "@progbits").
+check_pseudo_section_type(nobits, "@nobits").
 
-    % The optional type of '.section' pseudo-op may contain:
-    % @progbits     - section contains data
-    % @nobits       - section does not contain data
+    % Checks if type_desc argument of .section pseudo-instruction is valid. 
     %
-:- pred check_pseudo_section_type(string::in) is semidet.
+:- pred check_pseudo_type_desc(pseudo_section_type_desc::in, string::out) 
+    is det.
 
-check_pseudo_section_type("@progbits").
-check_pseudo_section_type("@nobits").
-
-    % Two valid values of 'type_desc' field in pseudo-op '.type':
-    %   @function
-    %   @object
-    %
-:- pred check_pseudo_type_desc(string::in) is semidet.
-
-check_pseudo_type_desc("@function").
-check_pseudo_type_desc("@function").
+check_pseudo_type_desc(function, "@function").
+check_pseudo_type_desc(object, "@object").
 
 :- func comment_length = int.
 
@@ -532,7 +551,7 @@ output_x86_64_inst(Stream, bs(Src, Dest, Cond), !IO) :-
     check_operand_not_immediate(Src, Result1),
     (
         Result1 = yes,
-        operand_type(Src, SrcType),
+        operand_to_string(Src, SrcType),
         check_operand_register(Dest, DestRes),
         (
             DestRes = yes,
@@ -546,7 +565,7 @@ output_x86_64_inst(Stream, bs(Src, Dest, Cond), !IO) :-
                     ++ " invalid condition third operand")
             ),
             put(Stream, "\t" ++ Instr ++ "\t", !IO),
-            operand_type(Dest, DestType),
+            operand_to_string(Dest, DestType),
             put(Stream, SrcType ++ ", " ++ DestType ++ "\t", !IO)
         ;
             DestRes = no,
@@ -562,7 +581,7 @@ output_x86_64_inst(Stream, bswap(Op), !IO) :-
     check_operand_register(Op, Result),
     (
         Result = yes,
-        operand_type(Op, RegType), 
+        operand_to_string(Op, RegType), 
         put(Stream, "\tbswap\t" ++ RegType ++ "\t\t", !IO)
     ;
         Result = no,
@@ -581,7 +600,7 @@ output_x86_64_inst(Stream, call(Target), !IO) :-
     check_operand_not_immediate(Target, Result),
     (
         Result = yes,
-        operand_type(Target, TargetType),
+        operand_to_string(Target, TargetType),
         put(Stream, "\tcall\t" ++ TargetType ++ "\t\t", !IO)
     ;
         Result = no,
@@ -617,8 +636,8 @@ output_x86_64_inst(Stream, cmpxchg(Src, Dest), !IO) :-
         check_operand_register(Dest, Result2),
         (
             Result2 = yes,
-            operand_type(Src, Op1),
-            operand_type(Dest, Op2),
+            operand_to_string(Src, Op1),
+            operand_to_string(Dest, Op2),
             put(Stream, "\tcmp\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
@@ -634,7 +653,7 @@ output_x86_64_inst(Stream, cmpxchg8b(Op), !IO) :-
     check_operand_not_mem_ref(Op, Result),
     (
         Result = no,
-        operand_type(Op, OpType),
+        operand_to_string(Op, OpType),
         put(Stream, "\tcmpxchg8b" ++ OpType, !IO)
     ;
         Result = yes,
@@ -666,23 +685,23 @@ output_x86_64_inst(Stream, enter(StackSize, NestingLevel), !IO) :-
 output_x86_64_inst(Stream, idiv(Operand), !IO) :-
     output_instr_not_imm_dest(Stream, "idiv", Operand, no, !IO).
 output_x86_64_inst(Stream, imul(Src, Dest, Mult), !IO) :-
-    operand_type(Src, SrcType),
+    operand_to_string(Src, SrcType),
     put(Stream, "\timul\t" ++ SrcType, !IO),
     (
         Dest = yes(DestRes),
         check_operand_register(DestRes, Result1),
         (
             Result1 = yes,
-            operand_type(DestRes, DestType)
+            operand_to_string(DestRes, DestType)
         ;
             Result1 = no,
-            TempReg = operand_reg(gp_reg(13)),
-            operand_type(TempReg, DestType)
+            TempReg = operand_reg(get_scratch_reg),
+            operand_to_string(TempReg, DestType)
         ),
         put(Stream, ", " ++ DestType, !IO),
         (
             Mult = yes(MultRes),
-            operand_type(MultRes, Op3),
+            operand_to_string(MultRes, Op3),
             put(Stream, ", " ++ Op3 ++ " ", !IO)
         ;
             Mult = no,
@@ -699,7 +718,7 @@ output_x86_64_inst(Stream, j(Offset, Cond), !IO) :-
 output_x86_64_inst(Stream, jrcxz(RelOffset), !IO) :-
     output_instr_8bit_rel_offset(Stream, "jrcxz", RelOffset, !IO).
 output_x86_64_inst(Stream, jmp(Target), !IO) :-
-    operand_type(Target, Op),
+    operand_to_string(Target, Op),
     put(Stream, "\tjmp\t" ++ Op ++ "\t\t", !IO). 
 output_x86_64_inst(Stream, lea(Src, Dest), !IO) :-
     check_operand_not_mem_ref(Src, Result1),
@@ -708,8 +727,8 @@ output_x86_64_inst(Stream, lea(Src, Dest), !IO) :-
         check_operand_register(Dest, Result2),
         (
             Result2 = yes,
-            operand_type(Src, Op1),
-            operand_type(Dest, Op2),
+            operand_to_string(Src, Op1),
+            operand_to_string(Dest, Op2),
             put(Stream, "\tlea\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
@@ -751,7 +770,7 @@ output_x86_64_inst(Stream, popfq, !IO) :-
     put(Stream, "\tpopfq\t", !IO).
 output_x86_64_inst(Stream, push(Operand), !IO) :-
     put(Stream, "\tpush\t", !IO),
-    operand_type(Operand, OperandType),
+    operand_to_string(Operand, OperandType),
     put(Stream, OperandType ++ "\t", !IO).
 output_x86_64_inst(Stream, pushfq, !IO) :-
     put(Stream, "\tpushfq\t", !IO).
@@ -762,8 +781,8 @@ output_x86_64_inst(Stream, rc(Amnt, Dest, Cond), !IO) :-
         check_operand_not_immediate(Dest, Result2),
         (
             Result2 = yes,
-            operand_type(Amnt, Op1),
-            operand_type(Dest, Op2),
+            operand_to_string(Amnt, Op1),
+            operand_to_string(Dest, Op2),
             put(Stream, "\trc\t" ++ Cond, !IO),
             put(Stream, Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
@@ -807,8 +826,8 @@ output_x86_64_inst(Stream, ro(Amnt, Dest, Dir), !IO) :-
         check_operand_not_immediate(Dest, Result2),
         (
             Result2 = yes,
-            operand_type(Amnt, Op1),
-            operand_type(Dest, Op2),
+            operand_to_string(Amnt, Op1),
+            operand_to_string(Dest, Op2),
             put(Stream, "\tro" ++ Dir ++ "\t", !IO),
             put(Stream, Op1 ++ ", " ++ Op2 ++ "\t\t", !IO)
         ;
@@ -828,8 +847,8 @@ output_x86_64_inst(Stream, sal(Amnt, Dest), !IO) :-
         check_operand_not_immediate(Dest, Result2),
         (
             Result2 = yes,
-            operand_type(Amnt, Op1),
-            operand_type(Dest, Op2),
+            operand_to_string(Amnt, Op1),
+            operand_to_string(Dest, Op2),
             put(Stream, "\tsal\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
@@ -848,8 +867,8 @@ output_x86_64_inst(Stream, shl(Amnt, Dest), !IO) :-
         check_operand_not_immediate(Dest, Result2),
         (
             Result2 = yes,
-            operand_type(Amnt, Op1),
-            operand_type(Dest, Op2),
+            operand_to_string(Amnt, Op1),
+            operand_to_string(Dest, Op2),
             put(Stream, "\tshl\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
@@ -868,8 +887,8 @@ output_x86_64_inst(Stream, sar(Amnt, Dest), !IO) :-
         check_operand_not_immediate(Dest, Result2),
         (
             Result2 = yes,
-            operand_type(Amnt, Op1),
-            operand_type(Dest, Op2),
+            operand_to_string(Amnt, Op1),
+            operand_to_string(Dest, Op2),
             put(Stream, "\tsar\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
@@ -903,9 +922,9 @@ output_x86_64_inst(Stream, shld(Amnt, Dest1, Reg), !IO) :-
             check_operand_register(Reg, Result3),
             ( 
                 Result3 = yes,
-                operand_type(Amnt, Op1),
-                operand_type(Amnt, Op2),
-                operand_type(Amnt, Op3),
+                operand_to_string(Amnt, Op1),
+                operand_to_string(Amnt, Op2),
+                operand_to_string(Amnt, Op3),
                 put(Stream, "\tshld\t" ++ Op1 ++ ", ", !IO),
                 put(Stream, Op2 ++ ", " ++ Op3 ++ "\t", !IO)
             ;
@@ -930,8 +949,8 @@ output_x86_64_inst(Stream, shr(Amnt, Dest), !IO) :-
         check_operand_not_immediate(Dest, Result2),
         ( 
             Result2 = yes,
-            operand_type(Amnt, Op1),
-            operand_type(Dest, Op2),
+            operand_to_string(Amnt, Op1),
+            operand_to_string(Dest, Op2),
             put(Stream, "\tshr\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
@@ -953,9 +972,9 @@ output_x86_64_inst(Stream, shrd(Amnt, Dest1, Reg), !IO) :-
             check_operand_register(Reg, Result3),
             ( 
                 Result3 = yes,
-                operand_type(Amnt, Op1),
-                operand_type(Amnt, Op2),
-                operand_type(Amnt, Op3),
+                operand_to_string(Amnt, Op1),
+                operand_to_string(Amnt, Op2),
+                operand_to_string(Amnt, Op3),
                 put(Stream, "\tshrd\t" ++ Op1 ++ ", ", !IO),
                 put(Stream, Op2 ++ ", " ++ Op3 ++ "\t", !IO)
             ;
@@ -986,8 +1005,8 @@ output_x86_64_inst(Stream, test(Src1, Src2), !IO) :-
         check_operand_not_immediate(Src2, Result2),
         (
             Result2 = yes,
-            operand_type(Src1, Op1),
-            operand_type(Src2, Op2),
+            operand_to_string(Src1, Op1),
+            operand_to_string(Src2, Op2),
             put(Stream, "\ttest\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
@@ -1006,8 +1025,8 @@ output_x86_64_inst(Stream, xadd(Src, Dest), !IO) :-
         check_operand_not_immediate(Dest, Result2),
         (
             Result2 = yes,
-            operand_type(Src, Op1),
-            operand_type(Dest, Op2),
+            operand_to_string(Src, Op1),
+            operand_to_string(Dest, Op2),
             put(Stream, "\txadd\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
@@ -1026,8 +1045,8 @@ output_x86_64_inst(Stream, xchg(Src1, Src2), !IO) :-
         check_operand_reg_or_mem(Src2, Result2),
         (
             Result2 = yes,
-            operand_type(Src1, Op1),
-            operand_type(Src2, Op2),
+            operand_to_string(Src1, Op1),
+            operand_to_string(Src2, Op2),
             put(Stream, "\txchg\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
@@ -1062,26 +1081,41 @@ output_x86_64_comment(Stream, Comment, !IO) :-
 
     % Output a string representation of an immediate value. 
     %
-:- pred imm_op_type(imm_operand::in, string::out) is det. 
+:- pred imm_op_to_string(imm_operand::in, string::out) is det. 
 
-imm_op_type(imm8(int8(Val)), ImmVal) :-
+imm_op_to_string(imm8(int8(Val)), ImmVal) :-
     ImmVal = "$" ++ string.int_to_string(Val).
-imm_op_type(imm16(int16(Val)), ImmVal) :-
+imm_op_to_string(imm16(int16(Val)), ImmVal) :-
     ImmVal = "$" ++ string.int_to_string(Val).
-imm_op_type(imm32(int32(Val)), ImmVal) :-
+imm_op_to_string(imm32(int32(Val)), ImmVal) :-
     ImmVal = "$" ++ string.int_to_string(Val).
 
-:- func reg_type(gp_reg) = string. 
+:- pred reg_to_string(x86_64_reg::in, string::out) is det. 
 
-reg_type(gp_reg(RegNum)) = "%r" ++ string.int_to_string(RegNum).
+reg_to_string(rax, "%rax").
+reg_to_string(rbx, "%rbx").
+reg_to_string(rcx, "%rcx").
+reg_to_string(rdx, "%rdx").
+reg_to_string(rbp, "%rbp").
+reg_to_string(rsi, "%rsi").
+reg_to_string(rdi, "%rdi").
+reg_to_string(rsp, "%rsp").
+reg_to_string(r8, "%r8").
+reg_to_string(r9, "%r9").
+reg_to_string(r10, "%r10").
+reg_to_string(r11, "%r11").
+reg_to_string(r12, "%r12").
+reg_to_string(r13, "%r13").
+reg_to_string(r14, "%r14").
+reg_to_string(r15, "%r15").
 
     % Output a string representation of a memory reference.
     %
-:- pred mem_ref_type(x86_64_mem_ref::in, string::out) is det. 
+:- pred mem_ref_to_string(x86_64_mem_ref::in, string::out) is det. 
 
-mem_ref_type(mem_abs(DirectMemRef), MemRefVal) :-
+mem_ref_to_string(mem_abs(DirectMemRef), MemRefVal) :-
     base_address_type(DirectMemRef, MemRefVal).
-mem_ref_type(mem_rip(InstrPtr), MemRefVal) :-
+mem_ref_to_string(mem_rip(InstrPtr), MemRefVal) :-
     instr_ptr_type(InstrPtr, MemRefVal).
 
     % Output a string representation of a base address in a memory reference. 
@@ -1089,11 +1123,12 @@ mem_ref_type(mem_rip(InstrPtr), MemRefVal) :-
 :- pred base_address_type(base_address::in, string::out) is det.
 
 base_address_type(base_reg(Offset, Reg), BaseAddress) :-
+    reg_to_string(Reg, RegStr),
     ( Offset = 0 ->
-        BaseAddress = "(" ++ reg_type(Reg) ++ ")"
+        BaseAddress = "(" ++ RegStr ++ ")"
     ;
         BaseAddress = string.int_to_string(Offset) ++
-            "(" ++ reg_type(Reg) ++ ")"
+            "(" ++ RegStr ++ ")"
     ).
 base_address_type(base_expr(Expr), DispType) :-
     DispType = "$" ++ Expr.
@@ -1117,9 +1152,9 @@ instr_ptr_type(rip_expr(Symbol), InstrPtrType) :-
 
     % Output a string representation of a relative offset.
     %
-:- pred rel_offset_type(rel_offset::in, string::out) is det. 
+:- pred rel_offset_to_string(rel_offset::in, string::out) is det. 
 
-rel_offset_type(ro8(int8(Val)), RelOffsetVal) :-
+rel_offset_to_string(ro8(int8(Val)), RelOffsetVal) :-
     check_signed_int_size(8, Val, Result),
     ( 
         Result = yes,
@@ -1130,10 +1165,10 @@ rel_offset_type(ro8(int8(Val)), RelOffsetVal) :-
         )
     ;
         Result = no,
-        unexpected(this_file, "rel_offset_type: ro8(int8): unexpected:"
+        unexpected(this_file, "rel_offset_to_string: ro8(int8): unexpected:"
             ++ " check_signed_int_size failed")
     ).
-rel_offset_type(ro16(int16(Val)), RelOffsetVal) :-
+rel_offset_to_string(ro16(int16(Val)), RelOffsetVal) :-
     check_signed_int_size(16, Val, Result),
     ( 
         Result = yes,
@@ -1144,10 +1179,10 @@ rel_offset_type(ro16(int16(Val)), RelOffsetVal) :-
         )
     ;
         Result = no,
-        unexpected(this_file, "rel_offset_type: ro16(int16): unexpected"
+        unexpected(this_file, "rel_offset_to_string: ro16(int16): unexpected"
             ++ " check_signed_int_size failed")
     ).
-rel_offset_type(ro32(int32(Val)), RelOffsetVal) :-
+rel_offset_to_string(ro32(int32(Val)), RelOffsetVal) :-
     check_signed_int_size(32, Val, Result),
     ( 
         Result = yes,
@@ -1158,20 +1193,20 @@ rel_offset_type(ro32(int32(Val)), RelOffsetVal) :-
         )
     ;
         Result = no,
-        unexpected(this_file, "rel_offset_type: ro32(int32): unexpected"
+        unexpected(this_file, "rel_offset_to_string: ro32(int32): unexpected"
             ++ " check_signed_int_size failed")
     ).
 
 
-operand_type(operand_reg(Reg), RegType) :-
-    RegType = reg_type(Reg).
-operand_type(operand_imm(Imm), ImmVal) :-
-    imm_op_type(Imm, ImmVal).
-operand_type(operand_mem_ref(MemRef), MemRefVal) :-
-    mem_ref_type(MemRef, MemRefVal).
-operand_type(operand_rel_offset(RelOffset), RelOffsetType) :-
-    rel_offset_type(RelOffset, RelOffsetType).
-operand_type(operand_label(Label), (Label)).
+operand_to_string(operand_reg(Reg), RegType) :-
+    reg_to_string(Reg, RegType).
+operand_to_string(operand_imm(Imm), ImmVal) :-
+    imm_op_to_string(Imm, ImmVal).
+operand_to_string(operand_mem_ref(MemRef), MemRefVal) :-
+    mem_ref_to_string(MemRef, MemRefVal).
+operand_to_string(operand_rel_offset(RelOffset), RelOffsetType) :-
+    rel_offset_to_string(RelOffset, RelOffsetType).
+operand_to_string(operand_label(Label), (Label)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1186,13 +1221,13 @@ operand_type(operand_label(Label), (Label)).
     is det <= stream.writer(Stream, string, io).
 
 output_instr_not_imm_dest(Stream, Instr, Op1, Op2, !IO) :-
-    operand_type(Op1, Op1Type),
+    operand_to_string(Op1, Op1Type),
     ( 
         Op2 = yes(Op2Result),
         check_not_both_memory_ops(Op1, Op2Result, Result1),
         ( 
             Result1 = yes,
-            operand_type(Op2Result, Op2Type),
+            operand_to_string(Op2Result, Op2Type),
             check_operand_not_immediate(Op2Result, Result2),
             (
                 Result2 = yes,
@@ -1225,7 +1260,7 @@ output_instr_8bit_rel_offset(Stream, InstrName, RelOffset, !IO) :-
    check_operand_rel_offset(RelOffset, Result1),
    ( 
         Result1 = yes,
-        operand_type(RelOffset, RelOffsetType),
+        operand_to_string(RelOffset, RelOffsetType),
         ( string.to_int(RelOffsetType, Val) ->
             check_signed_int_size(8, Val, Result2),
             (
@@ -1255,11 +1290,11 @@ output_bit_test_instr(Stream, Instr, Src, Idx, !IO) :-
     check_operand_not_immediate(Src, Result1),
     (
         Result1 = yes,
-        operand_type(Src, Op1),
+        operand_to_string(Src, Op1),
         check_operand_not_mem_ref(Idx, Result2),
         (
             Result2 = yes,
-            operand_type(Idx, Op2),
+            operand_to_string(Idx, Op2),
             ( string.to_int(Op2, IdxInt) ->
                 check_signed_int_size(8, IdxInt, Result3),
                 ( 
@@ -1297,14 +1332,14 @@ output_instr_with_condition(Stream, Instr, Op1, Op2, Cond, !IO) :-
         instr_condition(Cond, CondRes),
         put(Stream, "\t" ++ Instr, !IO),
         put(Stream, CondRes ++ "\t", !IO),
-        operand_type(Op1, Op1Type),
+        operand_to_string(Op1, Op1Type),
         put(Stream, Op1Type, !IO),
         (
             Op2 = yes(Op2Res),
             check_operand_register(Op2Res, Result3),
             (
                 Result3 = yes,
-                operand_type(Op2Res, Op2Type),
+                operand_to_string(Op2Res, Op2Type),
                 put(Stream, ", " ++ Op2Type, !IO)
             ;
                 Result3 = no,
@@ -1327,7 +1362,7 @@ output_instr_with_condition(Stream, Instr, Op1, Op2, Cond, !IO) :-
 
 check_rc_first_operand(Op, Result) :-
     ( Op = operand_imm(_) ->
-        operand_type(Op, OpType),
+        operand_to_string(Op, OpType),
         ( string.to_int(OpType, OpInt) ->
             check_unsigned_int_size(8, OpInt, Result1),
             ( 
@@ -1393,7 +1428,7 @@ check_operand_reg_or_mem(Operand, Result) :-
 
 check_operand_unsigned_imm_or_reg(Operand, Result) :-
     ( Operand = operand_imm(Imm) ->
-        imm_op_type(Imm, ImmType), 
+        imm_op_to_string(Imm, ImmType), 
         ( string.to_int(ImmType, ImmInt) ->
             ( 
                 check_unsigned_int_size(32, ImmInt, Result1),

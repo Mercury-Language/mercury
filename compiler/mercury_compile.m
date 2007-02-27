@@ -127,6 +127,8 @@
 :- import_module ll_backend.llds_to_x86_64.
 :- import_module ll_backend.llds_to_x86_64_out.
 :- import_module ll_backend.x86_64_instrs.
+:- import_module ll_backend.x86_64_out.
+:- import_module ll_backend.x86_64_regs.
 
     % the MLDS back-end
 :- import_module ml_backend.add_trail_ops.         % HLDS -> HLDS

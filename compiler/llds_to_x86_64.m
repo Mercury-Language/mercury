@@ -10,7 +10,21 @@
 % Main author: fhandoko.
 %
 % This module implements the LLDS->x86_64 asm code generator.
+% 
+% NOTE:
+% 	There are a number of placeholders. It appears as a string like this:
+% 	<<placeholder>>. The code generator places them as either x86_64_comment
+% 	or operand_label type. For example:
+% 		x86_64_comment("<<placeholder>>") or
+% 		operand_label("<<placeholder>>").
 %
+% TODO:
+% 		- calls to arbitrary C code
+% 		- foregin procs
+% 		- nondet stack frames
+% 		- trailing ops
+% 		- heap ops
+% 		- parallelism
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.llds_to_x86_64.
@@ -37,6 +51,7 @@
 :- import_module libs.compiler_util.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.x86_64_out.
+:- import_module ll_backend.x86_64_regs.
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
@@ -72,15 +87,17 @@
 %
 
 llds_to_x86_64_asm(_, CProcs, AsmProcs) :-
-    transform_c_proc_list(CProcs, AsmProcs).
+    ll_backend.x86_64_regs.default_x86_64_reg_mapping(RegLocnList),
+    RegMap = ll_backend.x86_64_regs.reg_map_init(RegLocnList),
+    transform_c_proc_list(RegMap, CProcs, AsmProcs).
 
     % Transform a list of c procedures into a list of x86_64 procedures. 
     %
-:- pred transform_c_proc_list(list(c_procedure)::in, 
+:- pred transform_c_proc_list(reg_map::in, list(c_procedure)::in, 
     list(x86_64_procedure)::out) is det.
 
-transform_c_proc_list([], []).
-transform_c_proc_list([CProc | CProcs], [AsmProc | AsmProcs]) :-
+transform_c_proc_list(_, [], []).
+transform_c_proc_list(RegMap, [CProc | CProcs], [AsmProc | AsmProcs]) :-
     AsmProc0 = ll_backend.x86_64_instrs.init_x86_64_proc(CProc),
     ProcInstr0 = ll_backend.x86_64_instrs.init_x86_64_instruction,
     % 
@@ -89,65 +106,64 @@ transform_c_proc_list([CProc | CProcs], [AsmProc | AsmProcs]) :-
     % 
     ProcStr = backend_libs.name_mangle.proc_label_to_c_string(
         AsmProc0 ^ x86_64_proc_label, no),
-    ProcName = x86_64_directive(x86_64_pseudo_type(ProcStr, "@function")),
+    ProcName = x86_64_directive(x86_64_pseudo_type(ProcStr, function)),
     ProcInstr = ProcInstr0 ^ x86_64_inst := [ProcName],
-    transform_c_instr_list(CProc ^ cproc_code, AsmInstr0),
+    transform_c_instr_list(RegMap, CProc ^ cproc_code, AsmInstr0),
     list.append([ProcInstr], AsmInstr0, AsmInstr),
     AsmProc = AsmProc0 ^ x86_64_code := AsmInstr,
-    transform_c_proc_list(CProcs, AsmProcs).
+    transform_c_proc_list(RegMap, CProcs, AsmProcs).
 
     % Transform a list of c instructions into a list of x86_64 instructions. 
     % 
-:- pred transform_c_instr_list(list(instruction)::in, 
+:- pred transform_c_instr_list(reg_map::in, list(instruction)::in, 
     list(x86_64_instruction)::out) is det.
 
-transform_c_instr_list([], []).
-transform_c_instr_list([CInstr0 | CInstr0s], [AsmInstr | AsmInstrs]) :-
+transform_c_instr_list(_, [], []).
+transform_c_instr_list(RegMap, [CInstr0 | CInstr0s], [AsmInstr | AsmInstrs]) :-
     CInstr0 = llds_instr(CInstr1, Comment),
-    instr_to_x86_64(CInstr1, AsmInstrList),
+    instr_to_x86_64(RegMap, CInstr1, RegMap1, AsmInstrList),
+    ll_backend.x86_64_regs.reg_map_reset_scratch_reg_info(RegMap1, RegMap2),
     AsmInstr0 = ll_backend.x86_64_instrs.init_x86_64_instruction,
     AsmInstr1 = AsmInstr0 ^ x86_64_inst := AsmInstrList,
     AsmInstr = AsmInstr1 ^ x86_64_inst_comment := Comment,
-    transform_c_instr_list(CInstr0s, AsmInstrs).
+    transform_c_instr_list(RegMap2, CInstr0s, AsmInstrs).
 
     % Transform a block instruction of an llds instruction into a list of 
     % x86_64 instructions.
     %
-:- pred transform_block_instr(list(instruction)::in, list(x86_64_instr)::out) 
-    is det. 
+:- pred transform_block_instr(reg_map::in, list(instruction)::in, 
+    list(x86_64_instr)::out) is det. 
 
-transform_block_instr(CInstrs, Instrs) :-
-    transform_block_instr_list(CInstrs, ListInstrs),
+transform_block_instr(RegMap, CInstrs, Instrs) :-
+    transform_block_instr_list(RegMap, CInstrs, ListInstrs),
     list.condense(ListInstrs, Instrs).
 
-:- pred transform_block_instr_list(list(instruction)::in, 
+:- pred transform_block_instr_list(reg_map::in, list(instruction)::in, 
     list(list(x86_64_instr))::out) is det. 
 
-transform_block_instr_list([], []).
-transform_block_instr_list([CInstr0 | CInstr0s], [Instr0 | Instr0s]) :-
+transform_block_instr_list(_, [], []).
+transform_block_instr_list(RegMap, [CInstr0 | CInstr0s], [Instr0 | Instr0s]) :-
     CInstr0 = llds_instr(CInstr, _),
-    instr_to_x86_64(CInstr, Instr0),
-    transform_block_instr_list(CInstr0s, Instr0s).
+    instr_to_x86_64(RegMap, CInstr, RegMap1, Instr0),
+    ll_backend.x86_64_regs.reg_map_reset_scratch_reg_info(RegMap1, RegMap2),
+    transform_block_instr_list(RegMap2, CInstr0s, Instr0s).
 
     % Transform livevals of llds instruction into a list of x86_64 instructions.
     %
-:- pred transform_livevals(list(lval)::in, list(x86_64_instr)::out) is det.
+:- pred transform_livevals(reg_map::in, list(lval)::in, list(x86_64_instr)::out)
+    is det.
 
-transform_livevals([], []). 
-transform_livevals([Lval | Lvals], [Instr | Instrs]) :-
-    transform_lval(Lval, Res0, Res1),
+transform_livevals(_, [], []). 
+transform_livevals(RegMap, [Lval | Lvals], [Instr | Instrs]) :-
+    transform_lval(RegMap, Lval, RegMap1, Res0, Res1),
     (
-        Res0 = yes(LvalOp),
-        Instr = x86_64_instr(mov(operand_label("<<livevals>>"), LvalOp)),
-        transform_livevals(Lvals, Instrs)
+        Res0 = yes(LvalOp)
     ;
         Res0 = no,
         ( 
             Res1 = yes(LvalInstrs),
             ( get_last_instr_opand(LvalInstrs, LastOp) ->
-                Instr = x86_64_instr(mov(operand_label("<<livevals>>"), 
-                    LastOp)),
-                transform_livevals(Lvals, Instrs)
+                LvalOp = LastOp
             ;
                 unexpected(this_file, "transform_livevals: unexpected:"
                     ++ " get_last_instr_opand failed")
@@ -157,22 +173,25 @@ transform_livevals([Lval | Lvals], [Instr | Instrs]) :-
             unexpected(this_file, "transform_livevals: unexpected:"
                 ++ " get_last_instr_opand failed")
         )
-    ).
+    ),
+    Instr = x86_64_instr(mov(operand_label("<<liveval>>"), LvalOp)),
+    transform_livevals(RegMap1, Lvals, Instrs).
 
     % Given an llds instruction, transform it into equivalent x86_64 
     % instructions. 
     %
-:- pred instr_to_x86_64(instr::in, list(x86_64_instr)::out) is det.
+:- pred instr_to_x86_64(reg_map::in, instr::in, reg_map::out, 
+    list(x86_64_instr)::out) is det.
 
-instr_to_x86_64(comment(Comment), [x86_64_comment(Comment)]).
-instr_to_x86_64(livevals(RegsAndStackLocs), Instrs) :-
+instr_to_x86_64(RegMap, comment(Comment), RegMap, [x86_64_comment(Comment)]).
+instr_to_x86_64(RegMap, livevals(RegsAndStackLocs), RegMap, Instrs) :-
     set.to_sorted_list(RegsAndStackLocs, List),
-    transform_livevals(List, Instrs).
-instr_to_x86_64(block(_, _, CInstrs), Instrs) :-
-    transform_block_instr(CInstrs, Instrs).
-instr_to_x86_64(assign(Lval, Rval), Instrs) :-
-    transform_lval(Lval, Res0, Res1),
-    transform_rval(Rval, Res2, Res3),
+    transform_livevals(RegMap, List, Instrs).
+instr_to_x86_64(RegMap, block(_, _, CInstrs), RegMap, Instrs) :-
+    transform_block_instr(RegMap, CInstrs, Instrs).
+instr_to_x86_64(RegMap0, assign(Lval, Rval), RegMap, Instrs) :-
+    transform_lval(RegMap0, Lval, RegMap1, Res0, Res1),
+    transform_rval(RegMap1, Rval, RegMap, Res2, Res3),
     (
         Res0 = yes(LvalOp),
         ( 
@@ -184,7 +203,7 @@ instr_to_x86_64(assign(Lval, Rval), Instrs) :-
                 Res3 = yes(RvalInstrs),
                 ( get_last_instr_opand(RvalInstrs, LastOp) ->
                     LastInstr = x86_64_instr(mov(LastOp, LvalOp)),
-                    list.append(RvalInstrs, [LastInstr], Instrs)
+                    Instrs = RvalInstrs ++ [LastInstr]
                 ;
                     unexpected(this_file, "instr_to_x86_64: assign: unexpected:"
                         ++ " get_last_instr_opand failed")
@@ -202,16 +221,15 @@ instr_to_x86_64(assign(Lval, Rval), Instrs) :-
             ( get_last_instr_opand(LvalInstrs, LvalLastOp) ->
                 (
                     Res2 = yes(RvalOp),
-                    Instr0 = x86_64_instr(mov(RvalOp, LvalLastOp)),
-                    list.append(LvalInstrs, [Instr0], Instrs)
-                    
+                    Instr1 = x86_64_instr(mov(RvalOp, LvalLastOp)),
+                    Instrs = LvalInstrs ++ [Instr1]
                 ;
                     Res2 = no,
                     ( 
                         Res3 = yes(RvalInstrs),
                         ( get_last_instr_opand(RvalInstrs, RvalLastOp) ->
-                            Instr0 = x86_64_instr(mov(RvalLastOp, LvalLastOp)),
-                            Instrs = LvalInstrs ++ [Instr0] ++ RvalInstrs
+                            Instr1 = x86_64_instr(mov(RvalLastOp, LvalLastOp)),
+                            Instrs = LvalInstrs ++ RvalInstrs ++ [Instr1]
                         ;
                             unexpected(this_file, "instr_to_x86_64: assign:" 
                                 ++ " unexpected:get_last_instr_opand failed")
@@ -232,22 +250,42 @@ instr_to_x86_64(assign(Lval, Rval), Instrs) :-
                 ++ "Lval")
         )
     ).
-instr_to_x86_64(llcall(Target0, Continuation0, _, _, _, _), Instrs) :-
+instr_to_x86_64(RegMap0, llcall(Target0, Continuation0, _, _, _, _), RegMap, 
+        Instrs) :-
     code_addr_type(Target0, Target1),
     code_addr_type(Continuation0, Continuation1),
-    Instr1 = x86_64_instr(mov(operand_label(Continuation1), 
-        operand_label("<<succip>>"))), 
+    lval_reg_locn(RegMap0, succip, Op0, Instr0),
+    ll_backend.x86_64_regs.reg_map_remove_scratch_reg(RegMap0, RegMap),
+    (
+        Op0 = yes(Op)
+    ;
+        Op0 = no,
+        ( 
+            Instr0 = yes(Instr),
+            ( get_last_instr_opand(Instr, LastOpand) ->
+                Op = LastOpand
+            ;
+                unexpected(this_file, "instr_to_x86_64: llcall: unexpected:"
+                    ++ " get_last_instr_opand failed")
+            )
+        ;
+            Instr0 = no,
+            unexpected(this_file, "instr_to_x86_64: llcall: unexpected:" ++
+               " lval_reg_locn failed")
+        )
+    ),
+    Instr1 = x86_64_instr(mov(operand_label(Continuation1), Op)),
     Instr2 = x86_64_instr(jmp(operand_label(Target1))),
     Instrs = [Instr1, Instr2].
-instr_to_x86_64(mkframe(_, _), [x86_64_comment("<<mkframe>>")]).
-instr_to_x86_64(label(Label), Instrs) :-
+instr_to_x86_64(RegMap, mkframe(_, _), RegMap, [x86_64_comment("<<mkframe>>")]).
+instr_to_x86_64(RegMap, label(Label), RegMap, Instrs) :-
     LabelStr = ll_backend.llds_out.label_to_c_string(Label, no),
     Instrs = [x86_64_label(LabelStr)]. 
-instr_to_x86_64(goto(CodeAddr), Instrs) :-
+instr_to_x86_64(RegMap, goto(CodeAddr), RegMap, Instrs) :-
     code_addr_type(CodeAddr, Label),
     Instrs = [x86_64_instr(jmp(operand_label(Label)))].
-instr_to_x86_64(computed_goto(Rval, Labels), Instrs) :-
-    transform_rval(Rval, Res0, Res1),
+instr_to_x86_64(RegMap0, computed_goto(Rval, Labels), RegMap, Instrs) :-
+    transform_rval(RegMap0, Rval, RegMap1, Res0, Res1),
     (
         Res0 = yes(RvalOp),
         RvalInstrs = []
@@ -268,17 +306,19 @@ instr_to_x86_64(computed_goto(Rval, Labels), Instrs) :-
         )
     ),
     labels_to_string(Labels, "", LabelStr),
-    TempReg = operand_reg(gp_reg(13)),
+    ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap1),
+    ll_backend.x86_64_regs.reg_map_remove_scratch_reg(RegMap1, RegMap),
+    TempReg = operand_reg(ScratchReg),
     Instr0 = x86_64_instr(mov(operand_mem_ref(mem_abs(base_expr(LabelStr))), 
         TempReg)),
     Instr1 = x86_64_instr(add(RvalOp, TempReg)),
     Instr2 = x86_64_instr(jmp(TempReg)),
     Instrs = RvalInstrs ++ [Instr0] ++ [Instr1] ++ [Instr2].
-instr_to_x86_64(arbitrary_c_code(_, _, _), Instrs) :-
+instr_to_x86_64(RegMap, arbitrary_c_code(_, _, _), RegMap, Instrs) :-
     Instrs = [x86_64_comment("<<arbitrary_c_code>>")].
-instr_to_x86_64(if_val(Rval, CodeAddr), Instrs) :-
+instr_to_x86_64(RegMap0, if_val(Rval, CodeAddr), RegMap, Instrs) :-
     code_addr_type(CodeAddr, Target),
-    transform_rval(Rval, Res0, Res1),
+    transform_rval(RegMap0, Rval, RegMap, Res0, Res1),
     (
         Res0 = yes(RvalOp)
     ;
@@ -297,14 +337,17 @@ instr_to_x86_64(if_val(Rval, CodeAddr), Instrs) :-
                 ++ " Rval")
         )
     ),
-    ll_backend.x86_64_out.operand_type(RvalOp, RvalStr),
+    ll_backend.x86_64_out.operand_to_string(RvalOp, RvalStr),
     Instrs = [x86_64_directive(x86_64_pseudo_if(RvalStr)), x86_64_instr(j(
         operand_label(Target), e)), x86_64_directive(endif)].
-instr_to_x86_64(save_maxfr(_), [x86_64_comment("<<save_maxfr>>")]).
-instr_to_x86_64(restore_maxfr(_), [x86_64_comment("<<restore_maxfr>>")]).
-instr_to_x86_64(incr_hp(Lval, Tag0, Words0, Rval, _, _), Instrs) :-
-    transform_rval(Rval, Res0, Res1),
-    transform_lval(Lval, Res2, Res3),
+instr_to_x86_64(RegMap, save_maxfr(_), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<save_maxfr>>")].
+instr_to_x86_64(RegMap, restore_maxfr(_), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<restore_maxfr>>")].
+instr_to_x86_64(RegMap0, incr_hp(Lval, Tag0, Words0, Rval, _, _), RegMap, 
+        Instrs) :-
+    transform_rval(RegMap0, Rval, RegMap1, Res0, Res1),
+    transform_lval(RegMap1, Lval, RegMap2, Res2, Res3),
     (
         Res0 = yes(RvalOp)
     ;
@@ -344,14 +387,17 @@ instr_to_x86_64(incr_hp(Lval, Tag0, Words0, Rval, _, _), Instrs) :-
     (
         Words0 = yes(Words),
         IncrVal = operand_imm(imm32(int32(Words))),
-        TempReg = operand_reg(gp_reg(13)),
-        ll_backend.x86_64_out.operand_type(RvalOp, RvalStr),
+        ScratchReg0 = ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap2),
+        reg_map_remove_scratch_reg(RegMap2, RegMap3),
+        TempReg1 = operand_reg(ScratchReg0),
+        ll_backend.x86_64_out.operand_to_string(RvalOp, RvalStr),
         MemRef = operand_mem_ref(mem_abs(base_expr(RvalStr))),
-        LoadAddr = x86_64_instr(lea(MemRef, TempReg)),
-        IncrAddInstr = x86_64_instr(add(IncrVal, TempReg)),
+        LoadAddr = x86_64_instr(lea(MemRef, TempReg1)),
+        IncrAddInstr = x86_64_instr(add(IncrVal, TempReg1)),
         list.append([LoadAddr], [IncrAddInstr], IncrAddrInstrs)
     ;
         Words0 = no,
+        RegMap3 = RegMap2,
         IncrAddrInstrs = []
     ),
     ( 
@@ -360,86 +406,141 @@ instr_to_x86_64(incr_hp(Lval, Tag0, Words0, Rval, _, _), Instrs) :-
         Tag0 = no,
         Tag = 0
     ),
-    TempReg = operand_reg(gp_reg(13)),
-    ImmToReg = x86_64_instr(mov(RvalOp, TempReg)),
-    SetTag = x86_64_instr(or(operand_imm(imm32(int32(Tag))), TempReg)),
-    Instr0 = x86_64_instr(mov(TempReg, LvalOp)),
-    Instrs = IncrAddrInstrs ++ [ImmToReg] ++ [SetTag] ++ [Instr0]. 
-instr_to_x86_64(mark_hp(_), [x86_64_comment("<<mark_hp>>")]).
-instr_to_x86_64(restore_hp(_), [x86_64_comment("<<restore_hp>>")]).
-instr_to_x86_64(free_heap(_), [x86_64_comment("<<free_heap>>")]).
-instr_to_x86_64(store_ticket(_), [x86_64_comment("<<store_ticket>>")]).
-instr_to_x86_64(reset_ticket(_, _), [x86_64_comment("<<reset_ticket>>")]).
-instr_to_x86_64(prune_ticket, [x86_64_comment("<<prune_ticket>>")]).
-instr_to_x86_64(discard_ticket, [x86_64_comment("<<discard_ticket>>")]).
-instr_to_x86_64(mark_ticket_stack(_), [x86_64_comment("<<mark_ticket_stack>>")]).
-instr_to_x86_64(prune_tickets_to(_), [x86_64_comment("<<prune_tickets_to>>")]).
-instr_to_x86_64(incr_sp(NumSlots, ProcName, _), Instrs) :-
+    ScratchReg1 = ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap3),
+    reg_map_remove_scratch_reg(RegMap3, RegMap),
+    TempReg2 = operand_reg(ScratchReg1),
+    ImmToReg = x86_64_instr(mov(RvalOp, TempReg2)),
+    SetTag = x86_64_instr(or(operand_imm(imm32(int32(Tag))), TempReg2)),
+    Instr1 = x86_64_instr(mov(TempReg2, LvalOp)),
+    Instrs = IncrAddrInstrs ++ [ImmToReg] ++ [SetTag] ++ [Instr1]. 
+instr_to_x86_64(RegMap, mark_hp(_), RegMap, [x86_64_comment("<<mark_hp>>")]).
+instr_to_x86_64(RegMap, restore_hp(_), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<restore_hp>>")].
+instr_to_x86_64(RegMap, free_heap(_), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<free_heap>>")].
+instr_to_x86_64(RegMap, store_ticket(_), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<store_ticket>>")].
+instr_to_x86_64(RegMap, reset_ticket(_, _), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<reset_ticket>>")].
+instr_to_x86_64(RegMap, prune_ticket, RegMap, Instr) :-
+    Instr = [x86_64_comment("<<prune_ticket>>")].
+instr_to_x86_64(RegMap, discard_ticket, RegMap, Instr) :-
+    Instr = [x86_64_comment("<<discard_ticket>>")].
+instr_to_x86_64(RegMap, mark_ticket_stack(_), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<mark_ticket_stack>>")].
+instr_to_x86_64(RegMap, prune_tickets_to(_), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<prune_tickets_to>>")].
+instr_to_x86_64(RegMap, incr_sp(NumSlots, ProcName, _), RegMap, Instrs) :-
     Instr1 = x86_64_comment("<<incr_sp>> " ++ ProcName),
     Instr2 = x86_64_instr(enter(uint16(NumSlots), uint8(0))),
     Instrs = [Instr1, Instr2].
-instr_to_x86_64(decr_sp(NumSlots), Instrs) :-
+instr_to_x86_64(RegMap0, decr_sp(NumSlots), RegMap, Instrs) :-
     DecrOp = operand_imm(imm32(int32(NumSlots))),
-    Instr = x86_64_instr(sub(DecrOp, operand_reg(gp_reg(13)))), 
+    ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap0),
+    ll_backend.x86_64_regs.reg_map_remove_scratch_reg(RegMap0, RegMap),
+    Instr = x86_64_instr(sub(DecrOp, operand_reg(ScratchReg))),
     list.append([x86_64_comment("<<decr_sp>> ")], [Instr], Instrs).
-instr_to_x86_64(decr_sp_and_return(NumSlots), Instrs) :-
+instr_to_x86_64(RegMap, decr_sp_and_return(NumSlots), RegMap, Instrs) :-
     Instrs = [x86_64_comment("<<decr_sp_and_return>> " ++ 
         string.int_to_string(NumSlots))].
-instr_to_x86_64(foreign_proc_code(_, _, _, _, _, _, _, _, _), 
-    [x86_64_comment("<<foreign_proc_code>>")]).
-instr_to_x86_64(init_sync_term(_, _), [x86_64_comment("<<init_sync_term>>")]).
-instr_to_x86_64(fork(_), [x86_64_comment("<<fork>>")]).
-instr_to_x86_64(join_and_continue(_, _), [x86_64_comment("<<join_and_continue>>")]).
-
+instr_to_x86_64(RegMap, foreign_proc_code(_, _, _, _, _, _, _, _, _), RegMap, 
+        Instr) :-
+    Instr = [x86_64_comment("<<foreign_proc_code>>")].
+instr_to_x86_64(RegMap, init_sync_term(_, _), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<init_sync_term>>")].
+instr_to_x86_64(RegMap, fork(_), RegMap, [x86_64_comment("<<fork>>")]).
+instr_to_x86_64(RegMap, join_and_continue(_, _), RegMap, Instr) :-
+    Instr = [x86_64_comment("<<join_and_continue>>")].
 
     % Transform lval into either an x86_64 operand or x86_64 instructions.
     %
-:- pred transform_lval(lval::in, maybe(operand)::out, 
+:- pred transform_lval(reg_map::in, lval::in, reg_map::out, maybe(operand)::out,
     maybe(list(x86_64_instr))::out) is det. 
 
-transform_lval(reg(CReg, CRegNum), Op, no) :-
-    ( 
+transform_lval(RegMap0, reg(CReg, CRegNum), RegMap, Op, Instr) :-
+    (
         CReg = reg_r,
-        Op = yes(operand_reg(gp_reg(CRegNum)))
+        lval_reg_locn(RegMap, reg(CReg, CRegNum), Op, Instr),
+        reg_map_remove_scratch_reg(RegMap0, RegMap)
     ;
         CReg = reg_f,
-        Op = no
+        unexpected(this_file, "transform_lval: unexpected: llds reg_f")
     ).
-transform_lval(succip, yes(operand_label("<<succip>>")), no).
-transform_lval(maxfr, yes(operand_label("<<maxfr>>")), no).
-transform_lval(curfr, yes(operand_label("<<curfr>>")), no).
-transform_lval(hp, yes(operand_label("<<hp>>")), no).
-transform_lval(sp, yes(operand_label("<<sp>>")), no).
-transform_lval(parent_sp, yes(operand_label("<<parent_sp>>")), no).
-transform_lval(temp(CReg, CRegNum), Op, no) :-
-    ( 
-        CReg = reg_r,
-        Op = yes(operand_reg(gp_reg(CRegNum)))
+transform_lval(RegMap0, succip, RegMap, Op, Instr) :-
+    lval_reg_locn(RegMap0, succip, Op, Instr),
+    reg_map_remove_scratch_reg(RegMap0, RegMap).
+transform_lval(RegMap0, maxfr, RegMap, Op, Instr) :-
+    lval_reg_locn(RegMap0, maxfr, Op, Instr),
+    reg_map_remove_scratch_reg(RegMap0, RegMap).
+transform_lval(RegMap0, curfr, RegMap, Op, Instr) :-
+    lval_reg_locn(RegMap0, curfr, Op, Instr),
+    reg_map_remove_scratch_reg(RegMap0, RegMap).
+transform_lval(RegMap0, hp, RegMap, Op, Instr) :-
+    lval_reg_locn(RegMap0, hp, Op, Instr),
+    reg_map_remove_scratch_reg(RegMap0, RegMap).
+transform_lval(RegMap0, sp, RegMap, Op, Instr) :-
+    lval_reg_locn(RegMap0, sp, Op, Instr),
+    reg_map_remove_scratch_reg(RegMap0, RegMap).
+transform_lval(RegMap, parent_sp, RegMap, _, _) :-
+    sorry(this_file, "parallelism is not supported").
+transform_lval(RegMap, temp(CReg, CRegNum), RegMap1, Op, Instr) :-
+    transform_lval(RegMap, reg(CReg, CRegNum), RegMap1, Op, Instr).
+transform_lval(RegMap0, stackvar(Offset), RegMap, Op, Instr) :-
+    RegLocn = reg_map_lookup_reg_locn(RegMap, sp),
+    ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap0),
+    reg_map_remove_scratch_reg(RegMap0, RegMap),
+    (
+        RegLocn = actual(Reg),
+        Op = no, 
+        Instr = yes([x86_64_instr(mov(operand_mem_ref(
+            mem_abs(base_reg(Offset, Reg))), operand_reg(ScratchReg) ))])
     ;
-        CReg = reg_f,
-        Op = no
+        RegLocn = virtual(SlotNum),
+        Op = no,
+        FakeRegVal = "$" ++ "virtual_reg(" ++ string.int_to_string(SlotNum) 
+            ++ ") + " ++ string.int_to_string(Offset),
+        Instr = yes([x86_64_instr(mov(
+            operand_label(FakeRegVal), operand_reg(ScratchReg)))])
     ).
-transform_lval(stackvar(Offset), Op, no) :-
-    Op = yes(operand_label(string.int_to_string(Offset) ++ "(<<stackvar>>)")).
-transform_lval(parent_stackvar(_), yes(operand_label("<<parent_stackvar>>")), no).
-transform_lval(framevar(_), yes(operand_label("<<framevar>>")), no).
-transform_lval(succip_slot(Rval), Op, no) :-
-    transform_rval(Rval, Op, _).
-transform_lval(redoip_slot(Rval), Op, no) :-
-    transform_rval(Rval, Op, _).
-transform_lval(redofr_slot(Rval), Op, no) :-
-    transform_rval(Rval, Op, _).
-transform_lval(succfr_slot(Rval), Op, no) :-
-    transform_rval(Rval, Op, _).
-transform_lval(prevfr_slot(Rval), Op, no) :-
-    transform_rval(Rval, Op, _).
-transform_lval(mem_ref(Rval), Op, no) :-
-    transform_rval(Rval, Op, _).
-transform_lval(global_var_ref(env_var_ref(Name)), yes(operand_label(Name)), no).
-transform_lval(lvar(_), yes(operand_label("<<lvar>>")), no).
-transform_lval(field(Tag0, Rval1, Rval2), no, Instrs) :-
-    transform_rval(Rval1, Res0, Res1),
-    transform_rval(Rval2, Res2, Res3),
+transform_lval(RegMap, parent_stackvar(_), RegMap, _, _) :-
+    sorry(this_file, "parallelism is not supported").
+transform_lval(RegMap0, framevar(Offset), RegMap, Op, Instr) :-
+    ScratchReg= ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap),
+    reg_map_remove_scratch_reg(RegMap0, RegMap),
+    RegLocn = reg_map_lookup_reg_locn(RegMap, curfr),
+    % framevar(Int) refers to an offset Int relative to the current value of 
+    % 'curfr'
+    (
+        RegLocn = actual(Reg),
+        Op = no, 
+        Instr = yes([x86_64_instr(mov(operand_mem_ref(
+            mem_abs(base_reg(Offset, Reg))), operand_reg(ScratchReg) ))])
+    ;
+        RegLocn = virtual(SlotNum),
+        Op = no,
+        FakeRegVal = "$" ++ "virtual_reg(" ++ string.int_to_string(SlotNum) 
+            ++ ") + " ++ string.int_to_string(Offset),
+        Instr = yes([x86_64_instr(mov(
+            operand_label(FakeRegVal), operand_reg(ScratchReg)))])
+    ).
+transform_lval(RegMap0, succip_slot(Rval), RegMap, Op, Instr) :-
+    transform_rval(RegMap0, Rval, RegMap, Op, Instr).
+transform_lval(RegMap0, redoip_slot(Rval), RegMap, Op, Instr) :-
+    transform_rval(RegMap0, Rval, RegMap, Op, Instr).
+transform_lval(RegMap0, redofr_slot(Rval), RegMap, Op, Instr) :-
+    transform_rval(RegMap0, Rval, RegMap, Op, Instr).
+transform_lval(RegMap0, succfr_slot(Rval), RegMap, Op, Instr) :-
+    transform_rval(RegMap0, Rval, RegMap, Op, Instr).
+transform_lval(RegMap0, prevfr_slot(Rval), RegMap, Op, Instr) :-
+    transform_rval(RegMap0, Rval, RegMap, Op, Instr).
+transform_lval(RegMap0, mem_ref(Rval), RegMap, Op, Instr) :-
+    transform_rval(RegMap0, Rval, RegMap, Op, Instr).
+transform_lval(RegMap, global_var_ref(env_var_ref(Name)), RegMap, Op, no) :-
+    Op = yes(operand_label(Name)).
+transform_lval(RegMap, lvar(_), RegMap, yes(operand_label("<<lvar>>")), no).
+transform_lval(RegMap0, field(Tag0, Rval1, Rval2), RegMap, no, Instrs) :-
+    transform_rval(RegMap0, Rval1, RegMap1, Res0, Res1),
+    transform_rval(RegMap1, Rval2, RegMap2, Res2, Res3),
     (
         Res0 = yes(RvalOp1),
         Instrs1 = []
@@ -478,8 +579,10 @@ transform_lval(field(Tag0, Rval1, Rval2), no, Instrs) :-
             unexpected(this_file, "lval_instrs: field: unexpected: Rval2")
         )
     ),
-    TempReg1 = operand_reg(gp_reg(13)),
-    ll_backend.x86_64_out.operand_type(RvalOp1, RvalStr1),
+    ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap2),
+    reg_map_remove_scratch_reg(RegMap2, RegMap),
+    TempReg1 = operand_reg(ScratchReg),
+    ll_backend.x86_64_out.operand_to_string(RvalOp1, RvalStr1),
     MemRef = operand_mem_ref(mem_abs(base_expr(RvalStr1))),
     LoadAddr = x86_64_instr(lea(MemRef, TempReg1)),
     FieldNum = x86_64_instr(add(RvalOp2, TempReg1)),
@@ -495,14 +598,14 @@ transform_lval(field(Tag0, Rval1, Rval2), no, Instrs) :-
 
     % Translates rval into its corresponding x86_64 operand. 
     %
-:- pred transform_rval(rval::in, maybe(operand)::out, maybe(list(x86_64_instr))
-    ::out) is det. 
+:- pred transform_rval(reg_map::in, rval::in, reg_map::out, maybe(operand)::out,
+    maybe(list(x86_64_instr)) ::out) is det. 
 
-transform_rval(lval(Lval0), Op, Instrs) :-
-    transform_lval(Lval0, Op, Instrs).
-transform_rval(var(_), yes(operand_label("<<var>>")), no).
-transform_rval(mkword(Tag, Rval), no, Instrs) :-
-    transform_rval(Rval, Res0, Res1),
+transform_rval(RegMap0, lval(Lval0), RegMap, Op, Instrs) :-
+    transform_lval(RegMap0, Lval0, RegMap, Op, Instrs).
+transform_rval(RegMap, var(_), RegMap, yes(operand_label("<<var>>")), no).
+transform_rval(RegMap0, mkword(Tag, Rval), RegMap, no, Instrs) :-
+    transform_rval(RegMap0, Rval, RegMap1, Res0, Res1),
     (
         Res0 = yes(RvalOp),
         list.append([x86_64_comment("<<mkword>>")], [], Instr0)
@@ -522,27 +625,33 @@ transform_rval(mkword(Tag, Rval), no, Instrs) :-
             unexpected(this_file, "transform_rval: mkword unexpected: Rval")
         )
     ),
-    TempReg = operand_reg(gp_reg(13)),
-    ll_backend.x86_64_out.operand_type(RvalOp, RvalStr),
+    ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap1),
+    reg_map_remove_scratch_reg(RegMap1, RegMap),
+    TempReg = operand_reg(ScratchReg),
+    ll_backend.x86_64_out.operand_to_string(RvalOp, RvalStr),
     MemRef = operand_mem_ref(mem_abs(base_expr(RvalStr))),
     LoadAddr = x86_64_instr(lea(MemRef, TempReg)),
     SetTag = x86_64_instr(add(operand_imm(imm32(int32(Tag))), TempReg)),
     Instrs = yes(Instr0 ++ [LoadAddr] ++ [SetTag]).
-transform_rval(const(llconst_true), yes(operand_label("<<llconst_true>>")), no).
-transform_rval(const(llconst_false), yes(operand_label("<<llconst_false>>")), no).
-transform_rval(const(llconst_int(Val)), yes(operand_imm(imm32(int32(Val)))), no).
-transform_rval(const(llconst_float(_)), yes(operand_label("<<llconst_float>>")), no).
-transform_rval(const(llconst_string(String)), no, yes(Op)) :-
+transform_rval(RegMap, const(llconst_true), RegMap, Op, no) :-
+    Op = yes(operand_label("<<llconst_true>>")).
+transform_rval(RegMap, const(llconst_false), RegMap, Op, no) :-
+    Op = yes(operand_label("<<llconst_false>>")).
+transform_rval(RegMap, const(llconst_int(Val)), RegMap, Op, no) :-
+    Op = yes(operand_imm(imm32(int32(Val)))).
+transform_rval(RegMap, const(llconst_float(_)), RegMap, Op, no) :-
+    Op = yes(operand_label("<<llconst_float>>")).
+transform_rval(RegMap, const(llconst_string(String)), RegMap, no, yes(Op)) :-
     Op = [x86_64_directive(string([String]))].
-transform_rval(const(llconst_multi_string(_, _)), Op, no) :-
+transform_rval(RegMap, const(llconst_multi_string(_, _)), RegMap, Op, no) :-
     Op = yes(operand_label("<<llconst_multi_string>>")).
-transform_rval(const(llconst_code_addr(CodeAddr)), Op, no) :-
+transform_rval(RegMap, const(llconst_code_addr(CodeAddr)), RegMap, Op, no) :-
     code_addr_type(CodeAddr, CodeAddrType),
-    Op = yes(operand_label("<<llconst_code_addr>>" ++ CodeAddrType)).
-transform_rval(const(llconst_data_addr(_, _)), Op, no) :-
+    Op = yes(operand_label(CodeAddrType)).
+transform_rval(RegMap, const(llconst_data_addr(_, _)), RegMap, Op, no) :-
     Op = yes(operand_label("<<llconst_data_addr>>")).
-transform_rval(unop(Op, Rval), no, Instrs) :-
-    transform_rval(Rval, Res0, Res1),
+transform_rval(RegMap0, unop(Op, Rval), RegMap, no, Instrs) :-
+    transform_rval(RegMap0, Rval, RegMap, Res0, Res1),
     (
         Res0 = yes(_),
         unop_instrs(Op, Res0, no, Instrs0),
@@ -558,9 +667,9 @@ transform_rval(unop(Op, Rval), no, Instrs) :-
             unexpected(this_file, "transform_rval: unop: unexpected: Rval")
         )
     ).
-transform_rval(binop(Op, Rval1, Rval2), no, Instrs) :-
-    transform_rval(Rval1, Res1, Res2),
-    transform_rval(Rval2, Res3, Res4),
+transform_rval(RegMap0, binop(Op, Rval1, Rval2), RegMap, no, Instrs) :-
+    transform_rval(RegMap0, Rval1, RegMap1, Res1, Res2),
+    transform_rval(RegMap1, Rval2, RegMap, Res3, Res4),
     (
         Res1 = yes(Val1),
         (
@@ -606,13 +715,14 @@ transform_rval(binop(Op, Rval1, Rval2), no, Instrs) :-
             unexpected(this_file, "rval_instrs: binop: unexpected: Rval1")
         )
     ).
-transform_rval(mem_addr(stackvar_ref(Rval)), Op, no) :-
-    transform_rval(Rval, Op, _). 
-transform_rval(mem_addr(framevar_ref(Rval)), Op, no) :-
-    transform_rval(Rval, Op, _). 
-transform_rval(mem_addr(heap_ref(Rval1, Tag, Rval2)), no, Instrs) :-
-    transform_rval(Rval1, Res0, Res1),
-    transform_rval(Rval2, Res2, Res3),
+transform_rval(RegMap0, mem_addr(stackvar_ref(Rval)), RegMap, Op, no) :-
+    transform_rval(RegMap0, Rval, RegMap, Op, _). 
+transform_rval(RegMap0, mem_addr(framevar_ref(Rval)), RegMap, Op, no) :-
+    transform_rval(RegMap0, Rval, RegMap, Op, _). 
+transform_rval(RegMap0, mem_addr(heap_ref(Rval1, Tag, Rval2)), RegMap, 
+        no, Instrs) :-
+    transform_rval(RegMap0, Rval1, RegMap1, Res0, Res1),
+    transform_rval(RegMap1, Rval2, RegMap2, Res2, Res3),
     (
         Res0 = yes(Rval1Op),
         (
@@ -672,13 +782,41 @@ transform_rval(mem_addr(heap_ref(Rval1, Tag, Rval2)), no, Instrs) :-
                 ++ " unexpected: Rval1")
        )
     ),
-    TempReg = operand_reg(gp_reg(13)),
-    ll_backend.x86_64_out.operand_type(Rval1Op, Rval1Str),
+    ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap2),
+    reg_map_remove_scratch_reg(RegMap2, RegMap),
+    TempReg = operand_reg(ScratchReg),
+    ll_backend.x86_64_out.operand_to_string(Rval1Op, Rval1Str),
     MemRef = operand_mem_ref(mem_abs(base_expr(Rval1Str))),
     LoadAddr = x86_64_instr(lea(MemRef, TempReg)),
     Instr0 = x86_64_instr(sub(Rval2Op, TempReg)),
     Instr1 = x86_64_instr(add(operand_imm(imm32(int32(Tag))), TempReg)),
     Instrs = yes(Instrs0 ++ [LoadAddr] ++ [Instr0] ++ [Instr1]).
+
+
+    % Given an llds-lval, returns either an operand or instructions (actually, 
+    % it only a single move instruction. It returns a list so that the calling
+    % predicate won't have to do any rearrangements for the return value). If 
+    % lval is located in an actual register, returns the actual register which 
+    % corresponds to that lval. Otherwise, move lval from the fake-reg array
+    % to a temporary register. 
+    %
+:- pred lval_reg_locn(reg_map::in, lval::in, maybe(operand)::out, 
+    maybe(list(x86_64_instr))::out) is det. 
+
+lval_reg_locn(RegMap, Lval, Op, Instr) :-
+    RegLocn = reg_map_lookup_reg_locn(RegMap, Lval),
+    (
+        RegLocn = actual(Reg),
+        Op = yes(operand_reg(Reg)),
+        Instr = no
+    ;
+        RegLocn = virtual(SlotNum),
+        Op = no,
+        FakeRegVal = "fake_reg(" ++ string.int_to_string(SlotNum) ++ ")",
+        ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(RegMap),
+        Instr = yes([x86_64_instr(mov(operand_mem_ref(mem_abs(
+                base_expr(FakeRegVal))), operand_reg(ScratchReg)))])
+    ).
 
     % x86_64 instructions for binary operation with either an operand or an 
     % expression (given as a list of x86_64 instructions) or a combination of 

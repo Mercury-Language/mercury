@@ -97,6 +97,7 @@
 :- include_module llds_to_x86_64_out.
 :- include_module x86_64_instrs.
 :- include_module x86_64_out.
+:- include_module x86_64_regs.
 
 :- implementation.
 

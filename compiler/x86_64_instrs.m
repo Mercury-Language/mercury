@@ -11,6 +11,9 @@
 %
 % This module contains the representations of the x86_64 instructions. 
 %
+% NOTE:
+% 	Instructions that make use of segment registers and string operations
+% 	(such as compare_strings) have not been implemented. 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.x86_64_instrs.
@@ -145,6 +148,27 @@
     ;       ng                      % Not Greater (ZF = 1 or SF <> OF).
     ;       nle                     % Not Less or Equal (ZF = 0 and SF = OF).
     ;       g.                      % Greater (ZF = 0 and SF = OF).
+
+    % Optional flags argument of .section pseudo_op.
+    %
+:- type pseudo_section_flag
+    --->    a                       % section is allocatable.
+    ;       w                       % section is writable.
+    ;       x                       % section is executable.
+    ;       m                       % section is mergeable.
+    ;       s.                      % section contains zero terminated string.
+
+    % An optional type of '.section' pseudo-op.
+    %
+:- type pseudo_section_type
+    --->    progbits                % section contains data.
+    ;       nobits.                 % section does not contain data.
+
+    % type_desc field of .section pseudo-op. 
+    %
+:- type pseudo_section_type_desc
+    --->    function
+    ;       object. 
 
 %-----------------------------------------------------------------------------%
 %
@@ -530,8 +554,8 @@
 
     ;       section(
                 section_name        :: string,
-                section_flags       :: maybe(string),
-                section_type        :: maybe(string),
+                section_flags       :: maybe(list(pseudo_section_flag)),
+                section_type        :: maybe(pseudo_section_type),
                 section_entsize     :: maybe(int)
             )
             % ELF section stack manipulation directive. 
@@ -618,7 +642,7 @@
 
     ;       x86_64_pseudo_type(
                 type_name           :: string,
-                type_desc           :: string
+                type_desc           :: pseudo_section_type_desc
             )
             % Set the type of symbol'type_name' to be either a function or an
             % object symbol.
@@ -666,8 +690,26 @@
     % General purpose registers on the x86_64.
     % Details on amd64-prog-man-vol1 manual p27.
     %
-:- type gp_reg
-    ---> gp_reg(int).  
+
+:- type offset == int.
+
+:- type x86_64_reg
+    --->    rax
+    ;       rbx
+    ;       rcx
+    ;       rdx
+    ;       rbp
+    ;       rsi
+    ;       rdi
+    ;       rsp
+    ;       r8
+    ;       r9
+    ;       r10
+    ;       r11
+    ;       r12
+    ;       r13
+    ;       r14
+    ;       r15.
 
     % 64-bit instruction pointer register on the x86_64. Instruction pointer
     % RIP is used as a base register for relative addressing. x86_64
@@ -719,7 +761,7 @@
 :- type base_address
     --->    base_reg(
                 base_offset             :: int,
-                base_reg                :: gp_reg
+                base_reg                :: x86_64_reg 
             )
 
     ;       base_expr(
@@ -729,7 +771,7 @@
     % All operands for the x86_64 instructions. 
     %
 :- type operand
-    --->    operand_reg(gp_reg)
+    --->    operand_reg(x86_64_reg)
     ;       operand_imm(imm_operand)
     ;       operand_mem_ref(x86_64_mem_ref)
     ;       operand_rel_offset(rel_offset)
@@ -751,7 +793,7 @@
     % signed relative offset or a label. 
     %
 :- type rmrol
-    --->    rmrol_reg(gp_reg)
+    --->    rmrol_reg(x86_64_reg)
     ;       rmrol_mem_ref(x86_64_mem_ref)
     ;       rmrol_rel_offset(rel_offset)
     ;       rmrol_label(
@@ -1277,6 +1319,12 @@
             % Details on amd64-prog-man-vol3 manual p272.
 
 %-----------------------------------------------------------------------------%
+
+    % Returns the number of x86_64 general-purpose registers. 
+    %
+:- func num_x86_64_regs = int.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1291,4 +1339,8 @@ init_x86_64_proc(CProc) =
 
 init_x86_64_instruction = x86_64_instr([], ""). 
 
+num_x86_64_regs = 16. 
+
 %-----------------------------------------------------------------------------%
+:- end_module ll_backend.x86_64_instrs.
+%----------------------------------------------------------------------------%
