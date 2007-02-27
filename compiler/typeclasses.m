@@ -443,7 +443,11 @@ do_instance_improvement_fundep(Constraint, InstanceTypes0, HeadTypeParams,
         % since we have partitioned them already.
         subsumes_on_elements(Domain, InstanceTypes0, ConstraintTypes, Subst),
         apply_rec_subst_to_type_list(Subst, InstanceTypes0, InstanceTypes),
-        \+ lists_match_on_elements(Range, InstanceTypes, ConstraintTypes),
+
+        % Improvement occurs iff the instance range types are not more
+        % general than the constraint range types.  If they *are* more
+        % general, we stop here.
+        \+ subsumes_on_elements(Range, InstanceTypes, ConstraintTypes, _),
 
         % The unification can fail if type parameters in the declaration
         % would be bound by the improvement rule. This means that the
