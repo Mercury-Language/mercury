@@ -10,6 +10,7 @@ ORDINARY_PROGS=	\
 	agg \
 	any_call_hoist_bug \
 	any_free_unify \
+	array_test \
 	backquoted_qualified_ops \
 	bidirectional \
 	bitmap_test \

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2003, 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -65,14 +65,14 @@
     % An exception is thrown unless 0 =< I < M, 0 =< J < N.
     %
 :- func array2d(T) ^ elem(int, int) = T.
-:- mode array2d_ui ^ elem(in,  in ) = out is det.
+%:- mode array2d_ui ^ elem(in,  in ) = out is det.
 :- mode in       ^ elem(in,  in ) = out is det.
 
     % T ^ unsafe_elem(I, J) is the same as T ^ elem(I, J) except that
     % behaviour is undefined if not in_bounds(T, I, J).
     %
 :- func array2d(T) ^ unsafe_elem(int, int) = T.
-:- mode array2d_ui ^ unsafe_elem(in,  in ) = out is det.
+%:- mode array2d_ui ^ unsafe_elem(in,  in ) = out is det.
 :- mode in       ^ unsafe_elem(in,  in ) = out is det.
 
     % ( T0 ^ elem(I, J) := X ) = T
@@ -103,21 +103,21 @@
     % bounds(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), M, N)
     %
 :- pred bounds(array2d(T), int, int).
-:- mode bounds(array2d_ui, out, out) is det.
+%:- mode bounds(array2d_ui, out, out) is det.
 :- mode bounds(in,       out, out) is det.
 
     % in_bounds(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), I, J)
     % succeeds iff 0 =< I < M, 0 =< J < N.
     %
 :- pred in_bounds(array2d(T), int, int).
-:- mode in_bounds(array2d_ui, in,  in ) is semidet.
+%:- mode in_bounds(array2d_ui, in,  in ) is semidet.
 :- mode in_bounds(in,       in,  in ) is semidet.
 
     % lists(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN])) =
     %     [[X11, ..., X1N], ..., [XM1, ..., XMN]]
     %
 :- func lists(array2d(T)) = list(list(T)).
-:- mode lists(array2d_ui) = out is det.
+%:- mode lists(array2d_ui) = out is det.
 :- mode lists(in        ) = out is det.
 
 %-----------------------------------------------------------------------------%
@@ -201,7 +201,7 @@ lists(array2d(M, N, A)) = lists_2((M * N) - 1, N - 1, N, A, [], []).
 
 :- func lists_2(int, int, int, array(T), list(T), list(list(T))) =
             list(list(T)).
-:- mode lists_2(in,  in,  in,  array_ui, in,      in           ) = out is det.
+%:- mode lists_2(in,  in,  in,  array_ui, in,      in           ) = out is det.
 :- mode lists_2(in,  in,  in,  in,       in,      in           ) = out is det.
 
 lists_2(IJ, J, N, A, Xs, Xss) =

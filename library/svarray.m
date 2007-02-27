@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,7 +42,7 @@
     % It is an error if the index is out of bounds.
     %
 :- pred svarray.slow_set(int, T, array(T), array(T)).
-:- mode svarray.slow_set(in, in, array_ui, array_uo) is det.
+%:- mode svarray.slow_set(in, in, array_ui, array_uo) is det.
 :- mode svarray.slow_set(in, in, in, array_uo) is det.
 
     % svarray.semidet_slow_set sets the nth element of an array,
@@ -52,7 +52,7 @@
     % It fails if the index is out of bounds.
     %
 :- pred svarray.semidet_slow_set(int, T, array(T), array(T)).
-:- mode svarray.semidet_slow_set(in, in, array_ui, array_uo) is semidet.
+%:- mode svarray.semidet_slow_set(in, in, array_ui, array_uo) is semidet.
 :- mode svarray.semidet_slow_set(in, in, in, array_uo) is semidet.
 
     % svarray.resize(Size, Init, Array0, Array):
