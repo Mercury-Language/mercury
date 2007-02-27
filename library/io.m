@@ -5668,15 +5668,24 @@ mercury_init_io(void)
         defined(MR_HAVE_DUP)
     MR_file(mercury_stdin_binary) = fdopen(dup(fileno(stdin)), ""rb"");
     if (MR_file(mercury_stdin_binary) == NULL) {
-        MR_fatal_error(""error opening standard input stream in ""
-            ""binary mode:\\n\\tfdopen() failed: %s"",
-            strerror(errno));
+        /*
+        ** The call to fdopen() may fail if stdin is not available.
+        ** We don't abort since we still want Mercury programs to be runnable
+        ** in such a circumstance (aside from those that use stdin).
+        ** For the same reason we treat binary stdout identically below.
+        **
+        ** NOTE: some versions of nohup may also cause the above call to
+        **       fdopen() to fail because they redirect stdin to /dev/null
+        **       in *write* mode.  Setting binary stdin to stdin in such
+        **       a case also ensures that we work with those versions of
+        **       nohup.
+        */
+        MR_file(mercury_stdin_binary) = stdin;
     }
+    
     MR_file(mercury_stdout_binary) = fdopen(dup(fileno(stdout)), ""wb"");
     if (MR_file(mercury_stdout_binary) == NULL) {
-        MR_fatal_error(""error opening standard output stream in ""
-            ""binary mode:\\n\\tfdopen() failed: %s"",
-            strerror(errno));
+        MR_file(mercury_stdout_binary) = stdout;
     }
 #else
     /*
@@ -8003,7 +8012,9 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 "{
     int i;
 
-    /* convert mercury_argv from a vector to a list */
+    /*
+    ** Convert mercury_argv from a vector to a list.
+    */
     i = mercury_argc;
     Args = MR_list_empty_msg(MR_PROC_LABEL);
     while (--i >= 0) {
@@ -8076,10 +8087,10 @@ io.handle_system_command_exit_status(Code0) = Status :-
 io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
     % This is a fall-back for back-ends that don't support the C interface.
     ( (Status0 /\ 0xff) \= 0 ->
-        /* the process was killed by a signal */
+        % The process was killed by a signal.
         Status = -(Status0 /\ 0xff)
     ;
-        /* the process terminated normally */
+        % The process terminated normally.
         Status = (Status0 /\ 0xff00) >> 8
     ).
 
