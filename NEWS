@@ -85,7 +85,8 @@ Changes to the Mercury standard library:
 	copy_bytes_in_bitmap/4
 
 * The io module now contains predicates io.read_bitmap/{4,5,6,7} and
-  io.write_bitmap{3,4,5,6}.
+  io.write_bitmap{3,4,5,6}.  io.write_bytes/{3,4} are now marked as
+  obsolete.
 
 * The operations in bitmap.m and version_bitmap.m which treat bitmaps
   as sets have been modified to throw an exception when the input

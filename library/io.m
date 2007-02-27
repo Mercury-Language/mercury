@@ -946,16 +946,20 @@
 
     % Writes several bytes to the current binary output stream.
     % The bytes are taken from a string.
+    % A string is poor choice of data structure to hold raw bytes.
+    % Use io.write_bitmap/3 instead.
     %
 :- pred io.write_bytes(string::in, io::di, io::uo) is det.
-    % A string is not a suitable structure to hold a sequence of bytes.
+:- pragma obsolete(io.write_bytes/3).
 
     % Writes several bytes to the specified binary output stream.
     % The bytes are taken from a string.
+    % A string is poor choice of data structure to hold raw bytes.
+    % Use io.write_bitmap/4 instead.
     %
 :- pred io.write_bytes(io.binary_output_stream::in, string::in,
     io::di, io::uo) is det.
-    % A string is not a suitable structure to hold a sequence of bytes.
+:- pragma obsolete(io.write_bytes/4).
 
     % Write a bitmap to the current binary output stream.
     % The bitmap must not contain a partial final byte.
@@ -1458,7 +1462,6 @@
 :- instance stream.stream(io.binary_output_stream, io).
 :- instance stream.output(io.binary_output_stream, io).
 :- instance stream.writer(io.binary_output_stream, int, io).
-:- instance stream.writer(io.binary_output_stream, string, io).
 :- instance stream.seekable(io.binary_output_stream, io).
 
 :- instance stream.stream(io.binary_input_stream,  io).
@@ -9169,12 +9172,6 @@ stream_whence_to_io_whence(end) = end.
     where
 [
     pred(put/4) is io.write_byte
-].
-
-:- instance stream.writer(io.binary_output_stream, string, io)
-    where
-[
-    pred(put/4) is io.write_bytes
 ].
 
 :- instance stream.seekable(io.binary_output_stream, io)

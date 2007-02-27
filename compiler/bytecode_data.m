@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2000, 2003-2006 The University of Melbourne.
+% Copyright (C) 1999-2000, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -72,13 +72,8 @@
 %-----------------------------------------------------------------------------%
 
 output_string(Val, !IO) :-
-    % XXX this assumes strings contain 8-bit characters
-    %     Using write_bytes here is wrong; the output will depend
-    %     on the Mercury implementation's representation of chars,
-    %     so it may be different for different Mercury implementations.
-    %     In particular, it will do the wrong thing for Mercury
-    %     implementations which represent characters in Unicode.
-    io.write_bytes(Val, !IO),
+    string_to_byte_list(Val, List),
+    list.foldl(io.write_byte, List, !IO),
     io.write_byte(0, !IO).
 
 string_to_byte_list(Val, List) :-
