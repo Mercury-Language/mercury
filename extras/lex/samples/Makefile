@@ -1,10 +1,9 @@
-# Copyright (C) 2001-2002 The University of Melbourne
+# Copyright (C) 2001-2007 The University of Melbourne
 # Ralph Becket <rafe@cs.mu.oz.au>
 #
 # To build do:
 #
-# $ mmake depend
-# $ mmake
+# $ make
 #
 # The targets are called lex_demo and regex_demo.
 #
@@ -12,15 +11,18 @@
 # Change the following line as appropriate if you installed them
 # elsewhere:
 #
-#EXTRA_LIB_DIRS := $(INSTALL_PREFIX)/extras/lib/mercury
-EXTRA_LIB_DIRS := ../lib/mercury
+#EXTRA_LIB_DIR := $(INSTALL_PREFIX)/lib/mercury
+EXTRA_LIB_DIR := ../lib/mercury
 
 EXTRA_LIBRARIES = lex regex
-
-.PHONY: all
+EXTRA_LIBRARIES_FLAGS = $(EXTRA_LIBRARIES:%= --ml %)
 
 MAIN_TARGET = all
 
+.PHONY: all check
+
 all: lex_demo regex_demo
 
-depend: lex_demo.depend regex_demo.depend
+%: %.m
+	mmc --make --mld $(EXTRA_LIB_DIR) $(EXTRA_LIBRARIES_FLAGS) $@
+
