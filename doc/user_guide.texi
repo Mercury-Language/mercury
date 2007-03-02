@@ -6834,6 +6834,7 @@ The set of aspects and their alternatives are:
 @cindex .mps (grade modifier)
 @cindex .agc (grade modifier)
 @cindex .rt (grade modifier)
+@cindex .spf (grade modifier)
 @cindex .debug (grade modifier)
 @cindex .decldebug (grade modifier)
 @cindex .par (grade modifier)
@@ -6844,6 +6845,7 @@ The set of aspects and their alternatives are:
 @cindex gc (grade modifier)
 @cindex agc (grade modifier)
 @cindex rt (grade modifier)
+@cindex spf (grade modifier)
 @cindex debug (grade modifier)
 @cindex decldebug (grade modifier)
 @cindex par (grade modifier)
@@ -6867,6 +6869,9 @@ The set of aspects and their alternatives are:
 
 @item Whether or not to reserve a tag in the data representation of the generated code:
 @samp{rt} (the default is no reserved tag)
+
+@item Whether to use single-precision representation of floating point values:
+@samp{spf} (the default is to use double-precision floats)
 
 @item What debugging features to enable:
 @samp{debug} and @samp{decldebug} (the default is no debugging features).
@@ -6985,6 +6990,9 @@ and grade modifier; they are followed by descriptions of those options.
 
 @item @samp{.rt}
 @code{--reserve-tag}.
+
+@item @samp{.spf}
+@code{--single-prec-float}
 
 @item @samp{.debug}
 @code{--debug}.
@@ -7263,6 +7271,15 @@ attribute.  @samp{yes} means that a foreign procedure with the
 @samp{thread_safe} attribute.  @samp{no} means that the foreign
 procedure is treated as though it has a @samp{not_thread_safe}
 attribute.  The default is @samp{no}.
+
+@sp 1
+@item @code{--single-prec-float} (grades: any grade containing @samp{.spf})
+@findex --single-prec-float
+@cindex Data representation
+Use single precision floats so that, on 32-bit machines
+floating point values don't need to be boxed.  Double
+precision floats are used by default.
+This option is not yet supported for the IL or Java back-ends.
 
 @end table
 

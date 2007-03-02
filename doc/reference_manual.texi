@@ -6573,7 +6573,7 @@ and @code{MR_String} respectively.
 In the current implementation, @samp{MR_Integer} is a typedef for an
 integral type whose size is the same size as a pointer; @samp{MR_Float} is
 a typedef for @samp{double} (unless the program and the Mercury library
-was compiled with @samp{-DUSE_SINGLE_PREC_FLOAT}, in which case it is
+was compiled with @samp{--single-prec-float}, in which case it is
 a typedef for @samp{float}); @samp{MR_Char} is a typedef for @samp{char};
 and @samp{MR_String} is a typedef for @samp{MR_Char *}.
 

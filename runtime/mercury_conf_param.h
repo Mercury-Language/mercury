@@ -56,6 +56,7 @@
 ** MR_USE_MINIMAL_MODEL_STACK_COPY
 ** MR_USE_MINIMAL_MODEL_OWN_STACKS
 ** MR_MINIMAL_MODEL_DEBUG
+** MR_USE_SINGLE_PREC_FLOAT
 ** MR_EXTEND_STACKS_WHEN_NEEDED
 ** MR_STACK_SEGMENTS
 ** MR_INLINE_ALLOC
@@ -77,6 +78,7 @@
 **		--reserve-tag
 **		--use-minimal-model
 **		--minimal-model-debug
+**		--single-prec-float
 **		--extend-stacks-when-needed
 **		--stack-segments
 **		--inline-alloc
@@ -88,10 +90,6 @@
 ** MR_PIC
 **	The generated object code must be position independent.
 **	See runtime/mercury_goto.h.
-**
-** MR_USE_SINGLE_PREC_FLOAT:
-**	Use C's `float' rather than C's `double' for the
-**	Mercury floating point type (`MR_Float').
 **
 ** MR_USE_REGPARM:
 **	For the MLDS back-end (i.e. MR_HIGHLEVEL_CODE),

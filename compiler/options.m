@@ -298,6 +298,7 @@
     ;       use_minimal_model_stack_copy
     ;       use_minimal_model_own_stacks
     ;       minimal_model_debug
+    ;       single_prec_float
     ;       type_layout
     ;       maybe_thread_safe_opt
     ;       extend_stacks_when_needed
@@ -1065,6 +1066,7 @@ option_defaults_2(compilation_model_option, [
     use_minimal_model_stack_copy        -   bool(no),
     use_minimal_model_own_stacks        -   bool(no),
     minimal_model_debug                 -   bool(no),
+    single_prec_float                   -   bool(no),
     type_layout                         -   bool(yes),
 
     % Data representation compilation model options
@@ -1821,6 +1823,8 @@ long_option("reserve-tag",          reserve_tag).
 long_option("use-minimal-model-stack_copy", use_minimal_model_stack_copy).
 long_option("use-minimal-model-own-stacks", use_minimal_model_own_stacks).
 long_option("minimal-model-debug",  minimal_model_debug).
+long_option("single-prec-float",    single_prec_float).
+long_option("single-precision-float",   single_prec_float).
 long_option("pic",                  pic).
 long_option("pic-reg",              pic_reg).
 long_option("tags",                 tags).
@@ -3485,7 +3489,7 @@ options_help_compilation_model -->
 % it has been superceded by the il grade.
         "\tor one of those with one or more of the grade modifiers",
         "\t`.gc', `.mps', `.prof', `.memprof', `.profdeep', `.tr',",
-        "\t`rt', `.debug', `.par' and/or `.pic_reg' appended.",
+        "\t`.rt', `.spf', `.debug', `.par' and/or `.pic_reg' appended.",
         "\tDepending on your particular installation, only a subset",
         "\tof these possible grades will have been installed.",
         "\tAttempting to use a grade which has not been installed",
@@ -3639,6 +3643,10 @@ options_help_compilation_model -->
         "\t`thread_safe' attribute.  `no' means that the foreign",
         "\tprocedure is treated as though it has a `not_thread_safe'",
         "\tattribute.  The default is no.",
+        "--single-prec-float\t\t(grade modifier: `.spf')",
+        "\tUse single precision floats so that, on 32-bit machines,",
+        "\tfloating point values don't need to be boxed.  Double",
+        "\tprecision floats are used by default.",
         "--extend-stacks-when-needed",
         "\tSpecify that code that increments a stack pointer must",
         "\textend the stack when this is needed.",
@@ -3793,7 +3801,7 @@ options_help_compilation_model -->
         "\tcode. This tag is intended to be used to give an explicit",
         "\trepresentation to free variables.",
         "\tThis is necessary for a seamless Herbrand constraint solver -",
-        "\tfor use with HAL.",
+        "\tfor use with HAL."
 
         % The --conf-low-tag-bits option is reserved for use
         % by the `mmc' script; it is deliberately not documented.
@@ -3804,14 +3812,15 @@ options_help_compilation_model -->
         % The --bytes-per-word option is intended for use
         % by the `mmc' script; it is deliberately not documented.
 
-        "--unboxed-float",
-        "(This option is not for general use.)",
-        "\tDon't box floating point numbers.",
-        "\tThis assumes that a Mercury float will fit in a word.",
-        "\tThe C code needs to be compiled with `-UBOXED_FLOAT'.",
-        "\tIt may also need to be compiled with",
-        "\t`-DUSE_SINGLE_PREC_FLOAT', if double precision",
-        "\tfloats don't fit into a word."
+        % This is a developer only option.
+%       "--unboxed-float",
+%       "(This option is not for general use.)",
+%       "\tDon't box floating point numbers.",
+%       "\tThis assumes that a Mercury float will fit in a word.",
+%       "\tThe C code needs to be compiled with `-UBOXED_FLOAT'.",
+%       "\tIt may also need to be compiled with",
+%       "\t`-DUSE_SINGLE_PREC_FLOAT', if double precision",
+%       "\tfloats don't fit into a word."
 
         % This is a developer only option.
 %       "--no-unboxed-enums",

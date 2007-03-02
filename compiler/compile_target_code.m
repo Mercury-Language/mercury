@@ -679,6 +679,14 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         MinimalModelDebug = no,
         MinimalModelOpt = MinimalModelBaseOpt
     ),
+    globals.io_lookup_bool_option(single_prec_float, SinglePrecFloat, !IO),
+    (
+        SinglePrecFloat = yes,
+        SinglePrecFloatOpt = "-DMR_USE_SINGLE_PREC_FLOAT "
+    ;
+        SinglePrecFloat = no,
+        SinglePrecFloatOpt = ""
+    ),
     globals.io_lookup_bool_option(type_layout, TypeLayoutOption, !IO),
     (
         TypeLayoutOption = no,
@@ -765,6 +773,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         UseTrailOpt, 
         ReserveTagOpt, 
         MinimalModelOpt, 
+        SinglePrecFloatOpt,
         TypeLayoutOpt,
         InlineAllocOpt, " ", 
         AnsiOpt, " ", 

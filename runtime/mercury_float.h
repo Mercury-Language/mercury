@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997, 1999-2002 The University of Melbourne.
+** Copyright (C) 1995-1997, 1999-2002, 2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,6 +17,8 @@
   typedef float MR_Float;
   #define MR_FLT_MIN_PRECISION	7
   #define MR_FLT_FMT		"%f"
+  /* We assume that sizeof(float) <= sizeof(MR_Word). */
+  #undef MR_BOXED_FLOAT
 #else
   typedef double MR_Float;
   #define MR_FLT_MIN_PRECISION	15

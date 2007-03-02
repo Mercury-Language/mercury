@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2006 The University of Melbourne.
+** Copyright (C) 1997-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -321,8 +321,10 @@
 ** Parts 10-11 (i.e. tag bits, and (un)boxed float) are documented as
 ** "not for general use", and can't be set via the `--grade' option;
 ** we therefore can't make them part of the grade option string.
+** Single-precision floats, do form part of the grade option string
+** and implies unboxed floats.
 **
-** Likewise part 12 (i.e. MR_NEW_MERCURYFILE_STRUCT) can't be set
+** Part 12 (i.e. MR_NEW_MERCURYFILE_STRUCT) can't be set
 ** by the `--grade' option; it is intended to be set by the configure script
 ** at configuration time. So we don't include it in the grade option string.
 */
@@ -338,7 +340,12 @@
 #endif
 #define MR_GRADE_OPT_PART_10	MR_GRADE_OPT_PART_9
 
-#ifdef MR_BOXED_FLOAT
+#if defined(MR_USE_SINGLE_PREC_FLOAT)
+  #if defined(MR_BOXED_FLOAT)
+    #error "single-precision floats implies unboxed floats"
+  #endif
+  #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _spf)
+#elif defined(MR_BOXED_FLOAT)
   #define MR_GRADE_PART_11	MR_GRADE_PART_10
 #else				/* "ubf" stands for "unboxed float" */
   #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _ubf)

@@ -131,6 +131,9 @@ Changes to the Mercury compiler:
 * We have introduced some support for simultaneous execution of jobs
   with `mmc --make'.
 
+* We have made it easier to use single-precision floats, which do not need
+  to be boxed on 32-bit machines.
+
 Changes to the Mercury deep profiler:
 
 * The deep profiler now supports measuring a proxy for time: a counter that
@@ -214,6 +217,10 @@ Changes to the Mercury compiler:
 
 * Simultaneous execution of jobs with `mmc --make' can be enabled with
   the `--jobs <n>' option.
+
+* Single-precision floats can now be selected for the C backends by using the
+  `.spf' grade component, or passing the `--single-prec-float' option to the
+  compiler.
 
 Changes to the Mercury standard library:
 

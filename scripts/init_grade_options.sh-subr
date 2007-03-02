@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2006 The University of Melbourne.
+# Copyright (C) 1997-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -43,6 +43,7 @@ Grade options:
 	--use-minimal-model-stack-copy
 	--use-minimal-model-own-stacks
 	--minimal-model-debug
+	--single-prec-float
 	--pic-reg
 	--no-stack-trace
 	--debug
@@ -78,6 +79,7 @@ reserve_tag=false
 use_minimal_model_stack_copy=false
 use_minimal_model_own_stacks=false
 minimal_model_debug=false
+single_prec_float=false
 pic_reg=false
 debug=false
 decl_debug=false

@@ -1025,6 +1025,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
+        % We assume that single-precision floats do not need to be boxed.
+        option_implies(single_prec_float, unboxed_float, bool(yes),
+            !Globals),
+
         option_implies(highlevel_code, mutable_always_boxed, bool(no),
             !Globals),
 
@@ -2104,6 +2108,9 @@ long_usage(!IO) :-
     ;       comp_trail          % whether or not to use trailing
     ;       comp_tag            % whether or not to reserve a tag
     ;       comp_minimal_model  % whether we set up for minimal model tabling
+    ;       comp_single_prec_float
+                                % whether or not to use single precision
+                                % floating point values
     ;       comp_pic            % Do we need to reserve a register for
                                 % PIC (position independent code)?
     ;       comp_lowlevel       % what to do to target code
@@ -2411,6 +2418,10 @@ grade_component_table("dmmos", comp_minimal_model,
     [use_minimal_model_stack_copy - bool(no),
     use_minimal_model_own_stacks - bool(yes),
     minimal_model_debug - bool(yes)], no, yes).
+
+grade_component_table("spf", comp_single_prec_float, 
+    [single_prec_float - bool(yes),
+    unboxed_float - bool(yes)], no, yes).
 
     % Pic reg components.
 grade_component_table("picreg", comp_pic, [pic_reg - bool(yes)], no, yes).

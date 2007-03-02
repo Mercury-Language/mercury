@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 et
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2006 The University of Melbourne.
+# Copyright (C) 1995-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -374,6 +374,11 @@ case $use_minimal_model,$minimal_model_debug in
     *)              MINIMAL_MODEL_OPTS="" ;;
 esac
 
+case $single_prec_float in
+    true)           SINGLE_PREC_FLOAT_OPTS="-DMR_USE_SINGLE_PREC_FLOAT" ;;
+    false)          SINGLE_PREC_FLOAT_OPTS="" ;;
+esac
+
 case $pic_reg in
     true)           PICREG_OPTS="-DMR_PIC_REG" ;;
     false)          PICREG_OPTS="" ;;
@@ -601,6 +606,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $RECORD_TERM_SIZE_OPTS\
     $RESERVE_TAG_OPTS\
     $MINIMAL_MODEL_OPTS\
+    $SINGLE_PREC_FLOAT_OPTS\
     $SPLIT_OPTS\
     $THREAD_OPTS\
     $PICREG_OPTS\

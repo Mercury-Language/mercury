@@ -1,7 +1,7 @@
 #---------------------------------------------------------------------------#
 # vim: ts=4 sw=4 expandtab
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2006 The University of Melbourne.
+# Copyright (C) 1997-2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -165,6 +165,11 @@
     --no-minimal-model-debug)
         minimal_model_debug=false ;;
 
+    --single-prec-float)
+        single_prec_float=true ;;
+    --no-single-prec-float)
+        single_prec_float=false ;;
+
     --pic-reg)
         pic_reg=true ;;
     --no-pic-reg)
@@ -225,6 +230,7 @@
         use_minimal_model_stack_copy=false
         use_minimal_model_own_stacks=false
         minimal_model_debug=false
+        single_prec_float=false
         pic_reg=false
         debug=false
         decl_debug=false
@@ -453,6 +459,10 @@
                 dmmos)
                     use_minimal_model_own_stacks=true
                     minimal_model_debug=true
+                    ;;
+
+                spf)
+                    single_prec_float=true
                     ;;
 
                 picreg)
