@@ -273,12 +273,17 @@ Unlike traditional Unix compilers, however,
 @samp{mmc} will put the executable into a file called @file{@var{filename}},
 not @file{a.out}.
 
-For programs that consist of more than one source file, we @emph{strongly}
-recommend that you use Mmake (@pxref{Using Mmake}).  Mmake will perform
-all the steps listed below, using automatic dependency analysis
-to ensure that things are done in the right order, and that
-steps are not repeated unnecessarily.
-If you use Mmake, then you don't need to understand the details
+For programs that consist of more than one source file, you can use Mmake
+(@pxref{Using Mmake}) or the @samp{--make} option to @samp{mmc}. Currently, the
+use of @samp{mmc --make} is recommended:
+
+@example
+mmc --make @var{filename}
+@end example
+
+@noindent
+If you use Mmake or @samp{mmc --make}, then you don't need to understand the
+details
 of how the Mercury implementation goes about building programs.
 Thus you may wish to skip the rest of this chapter.
 
@@ -445,8 +450,18 @@ but this can be overridden with the @samp{--heap-size} option.
 @cindex Recompiling
 
 Mmake, short for ``Mercury Make'',
-is a tool for building Mercury programs
-that is built on top of ordinary or GNU Make @footnote{
+is a tool for building Mercury programs.
+The same functionality is now provided in @samp{mmc} directly by using the
+@samp{--make} option:
+
+@example
+mmc --make @var{main-module}
+@end example
+
+@noindent
+The usage of Mmake is discouraged.
+
+Mmake is built on top of ordinary or GNU Make @footnote{
 We might eventually add support for ordinary ``Make'' programs,
 but currently only GNU Make is supported.}.
 With Mmake, building even a complicated Mercury program
@@ -552,9 +567,6 @@ necessary interface files. The variable @code{INSTALL} specifies
 the name of the command to use to install each file, by default
 @samp{cp}. The variable @code{INSTALL_MKDIR} specifies the command to use
 to create directories, by default @samp{mkdir -p}.
-For @samp{mmc --make} whether to install libraries for static or shared
-linking can be specified with the @code{LIB_LINKAGES} variable.
-For more information, see @ref{Installing libraries}.
 @vindex LIBGRADES
 @vindex LIB_LINKAGES
 @vindex INSTALL
@@ -693,6 +705,7 @@ Can be set to either @samp{shared} to link with shared Mercury libraries,
 or @samp{static} to always link with the static versions of Mercury libraries.
 The default is system dependent.
 This variable only has an effect with @samp{mmc --make}.
+@xref{Using installed libraries with mmc --make}.
 
 @item MLFLAGS and EXTRA_MLFLAGS
 @vindex MLFLAGS
@@ -721,7 +734,8 @@ or the system linker, depending on the platform).
 @vindex MLLIBS
 @vindex EXTRA_MLLIBS
 A list of @samp{-l} options specifying libraries used by the program
-(or library) that you are building.  @xref{Using libraries}.
+(or library) that you are building.  @xref{Using libraries with Mmake}.
+@xref{Using installed libraries with mmc --make}.
 
 @item MLOBJS and EXTRA_MLOBJS
 @vindex MLOBJS
@@ -756,12 +770,14 @@ Libraries should be specified using their base name; that is, without any
 @samp{lib} prefix or extension.
 For example the library including the files @file{libfoo.a} and
 @file{foo.init} would be referred to as just @samp{foo}.
-@xref{Using libraries}.
+@xref{Using libraries with Mmake}.
+@xref{Using installed libraries with mmc --make}.
 
 @item EXTRA_LIB_DIRS
 @vindex EXTRA_LIB_DIRS
 A list of extra Mercury library directory hierarchies to search when
-looking for extra libraries.  @xref{Using libraries}.
+looking for extra libraries.  @xref{Using libraries with Mmake}.
+@xref{Using installed libraries with mmc --make}.
 
 @item INSTALL_PREFIX
 @vindex INSTALL_PREFIX
@@ -837,7 +853,7 @@ In particular, GNU Make has support for running jobs in parallel, which
 is very useful if you have a machine with more than one CPU.
 
 As an alternative to Mmake, the Mercury compiler now contains a
-significant part of the functionality of Mmake, using mmc's
+significant part of the functionality of Mmake, using @samp{mmc}'s
 @samp{--make} option.
 @findex --make
 
@@ -899,9 +915,8 @@ and, on many platforms, it supports shared object libraries.
 
 @menu
 * Writing libraries::
-* Building libraries::
-* Installing libraries::
-* Using libraries::
+* Building with mmc --make::
+* Building with Mmake::
 * Libraries and the Java grade::
 @end menu
 
@@ -943,8 +958,141 @@ of a single module which encapsulates its sub-modules,
 as in the first example, rather than just a group of
 unrelated modules, as in the second example.
 
-@node Building libraries
-@section Building libraries
+@node Building with mmc --make
+@section Building with mmc --make
+
+@menu
+* Building and installing libraries with mmc --make::
+* Using installed libraries with mmc --make::
+* Using non-installed libraries with mmc --make::
+@end menu
+
+
+@node Building and installing libraries with mmc --make
+@subsection Building and installing libraries with mmc --make
+
+To build a library from the source @samp{mypackage.m} (and other included
+modules), run @samp{mmc} with the following arguments:
+
+@example
+mmc --make libmypackage
+@end example
+
+@noindent
+@samp{mmc} will create static (non-shared) object libraries
+and, on most platforms, shared object libraries;
+however, we do not yet support the creation of dynamic link
+libraries (DLLs) on Windows.
+Use the @samp{mmc} option @samp{--lib-linkage} to specify which versions of the
+library should be created: @samp{shared} or @samp{static}. The
+@samp{--lib-linkage} option can be specified multiple times.
+In our example, the files @samp{libmypackage.a} and @samp{libmypackage.so}
+should appear in the current directory.
+
+The library is most easily used in other programs if you install it to a
+directory. To install the library, issue the following command:
+
+@example
+mmc --make --install-prefix <dir> libmypackage.install
+@end example
+
+@noindent
+@samp{mmc} will create the directory @samp{<dir>/lib/mercury} and install the
+library compiled in all valid grades and with all interface files. Because
+several grades are usually compiled, installing the library can be a lengthy
+process. You can specify the set of installed grades using the option
+@samp{--no-libgrade} followed by @samp{--libgrade <grade>} for all grades you
+wish to install.
+
+If no @samp{--install-prefix <dir>} is specified, the library will be installed
+in standard location, next to the Mercury standard library.
+
+
+@node Using installed libraries with mmc --make
+@subsection Using installed libraries with mmc --make
+@cindex Libraries, linking with
+@findex --mld
+@findex --mercury-library-directory
+@findex --ml
+@findex --mercury-library
+
+Once a library is installed, it can be used by running @samp{mmc} with the
+following options:
+
+@example
+mmc ... --ml mypackage ... --ml myotherlib ... --ml my_yet_another_lib ...
+@end example
+
+@noindent
+If a library was installed in a different place (using @samp{--install-prefix
+<dir>}), you will also need to add this option:
+
+@example
+mmc ... --mld <dir>/lib/mercury ...
+@end example
+
+@noindent
+Note that @samp{/lib/mercury} has to be added to the searched path. The
+@samp{--mld} option can be used several times to add more directories to the
+library search path.
+
+You can also specify whether to link executables with the shared or static
+versions of Mercury libraries using @samp{--mercury-linkage shared} or
+@samp{--mercury-linkage static}.
+
+@node Using non-installed libraries with mmc --make
+@subsection Using non-installed libraries with mmc --make
+@cindex Libraries, linking with
+@findex --search-lib-files-dir
+@findex --init-file
+@findex --link-object
+
+Suppose the user wants to link against library @samp{mypackage} without
+installing the library. The source of the library is stored in the directory
+@samp{<dir>} and that the library has been properly built using @samp{mmc
+--make libmypackage}. To link against the library, the following options have
+to be added to @samp{mmc}:
+
+@example
+mmc ... --search-lib-files-dir <dir> \\
+        --init-file <dir>/mypackage.init \\
+        --link-object <dir>/libmypackage.a \\
+    ...
+@end example
+
+@noindent
+Note that the option @samp{--ml} is not used.
+
+You need to make sure the library @samp{libmypackage.a} and the main program
+were compiled in the same grade.
+
+If you need to experiment with more grades, be sure to build the library in all
+the grades (building several times using @samp{mmc --grade <grade> --make
+libmypackage}) and use the @samp{libmypackage.a} that is compatible with your
+main program's grade:
+
+@example
+mmc ... --use-grade-subdirs \\
+        --grade <grade> \\
+        --search-lib-files-dir <dir> \\
+        --init-file <dir>/mypackage.init \\
+        --link-object <dir>/Mercury/<grade>/*/Mercury/lib/libmypackage.a \\
+    ...
+@end example
+
+
+@node Building with Mmake
+@section Building with Mmake
+
+@menu
+* Building libraries with Mmake::
+* Installing libraries with Mmake::
+* Using libraries with Mmake::
+@end menu
+
+
+@node Building libraries with Mmake
+@subsection Building libraries with Mmake
 @cindex Shared objects
 @cindex Shared libraries
 @cindex Static libraries
@@ -1052,8 +1200,8 @@ so @samp{$(mypackage.pic_os)} will just be the same as @samp{$(mypackage.os)},
 which contains a list of the @file{.o} files for that module,
 and @samp{$(MLPICOBJS)} will be the same as @samp{$(MLOBJS)}.
 
-@node Installing libraries
-@section Installing libraries
+@node Installing libraries with Mmake
+@subsection Installing libraries with Mmake
 
 @samp{mmake} has support for alternative library directory hierarchies.
 These have the same structure as the @file{@var{prefix}/lib/mercury} tree,
@@ -1100,8 +1248,8 @@ If @samp{INSTALL_MKDIR} is not specified, @samp{mkdir -p} will be used.
 Note that currently it is not possible to set the installation prefix
 on a library-by-library basis.
 
-@node Using libraries
-@section Using libraries
+@node Using libraries with Mmake
+@subsection Using libraries with Mmake
 @cindex Libraries, linking with
 
 Once a library is installed, using it is easy.
@@ -1128,17 +1276,6 @@ used by the library's C code.
 Mmake will ensure that the appropriate directories are searched for
 the relevant interface files, module initialisation files, compiled
 libraries, etc.
-
-@findex --mld
-@findex --mercury-library-directory
-@findex --ml
-@findex --mercury-library
-To use a library when invoking @samp{mmc} directly, use the @samp{--mld}
-and @samp{--ml} options (@pxref{Link options}).  You can also specify
-whether to link executables with the shared or static versions of Mercury
-libraries using @samp{--mercury-linkage shared} or
-@samp{--mercury-linkage static} (shared libraries are always linked with
-the shared versions of libraries).
 
 Beware that the directory name that you must use in @samp{EXTRA_LIB_DIRS}
 or as the argument of the @samp{--mld} option is not quite the same as
@@ -6197,7 +6334,7 @@ an executable.
 @itemx --generate-source-file-mapping
 @findex --generate-source-file-mapping
 Output the module name to file name mapping for the list
-of source files given as non-option arguments to mmc
+of source files given as non-option arguments to @samp{mmc}
 to @file{Mercury.modules}. This must be done before
 @samp{mmc --generate-dependencies} if there are any modules
 for which the file name does not match the module name.
@@ -8394,7 +8531,7 @@ See @ref{Using Mmake} for a description of the syntax of options files.
 @cindex Options files
 Read the Mercury compiler's configuration information from @var{file}.
 If the @samp{--config-file} option is not set, a default configuration
-will be used, unless @samp{--no-mercury-stdlib-dir} is passed to mmc.
+will be used, unless @samp{--no-mercury-stdlib-dir} is passed to @samp{mmc}.
 The configuration file is just an options file (@pxref{Using Mmake}).
 
 @sp 1
@@ -8635,7 +8772,7 @@ This option is ignored by @samp{mmc --make}.
 @findex --ld-flags
 @findex --ld-flag
 Specify options to be passed to the command
-invoked by mmc to link an executable.
+invoked by @samp{mmc} to link an executable.
 Use @code{mmc --output-link-command} to find out
 which command is used.
 @samp{--ld-flag} should be used for single words which need
@@ -8647,7 +8784,7 @@ to be quoted when passed to the shell.
 @findex --ld-libflags
 @findex --ld-libflag
 Specify options to be passed to the command
-invoked by mmc to link a shared library.
+invoked by @samp{mmc} to link a shared library.
 Use @code{mmc --output-shared-lib-link-command}
 to find out which command is used.
 @samp{--ld-libflag} should be used for single words which need
@@ -8720,7 +8857,7 @@ Append @var{directory} to the list of directories to
 be searched for Mercury libraries.
 This will add @samp{--search-directory}, @samp{--library-directory},
 @samp{--init-file-directory} and @samp{--c-include-directory}
-options as needed.  @xref{Using libraries}.
+options as needed.  @xref{Using installed libraries with mmc --make}.
 
 @sp 1
 @item --ml @var{library}
@@ -8728,7 +8865,8 @@ options as needed.  @xref{Using libraries}.
 @findex --ml
 @findex --mercury-library
 @cindex Libraries, linking with
-Link with the specified Mercury library.  @xref{Using libraries}.
+Link with the specified Mercury library.
+  @xref{Using installed libraries with mmc --make}.
 
 @sp 1
 @item --mercury-standard-library-directory @var{directory}
