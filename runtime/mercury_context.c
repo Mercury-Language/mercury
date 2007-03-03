@@ -115,7 +115,9 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     c->MR_ctxt_next = NULL;
     c->MR_ctxt_resume = NULL;
 #ifdef  MR_THREAD_SAFE
-    c->MR_ctxt_owner_thread = (MercuryThread) NULL;
+    c->MR_ctxt_resume_owner_thread = (MercuryThread) NULL;
+    c->MR_ctxt_resume_c_depth = 0;
+    c->MR_ctxt_saved_owners = NULL;
 #endif
 
 #ifndef MR_HIGHLEVEL_CODE
@@ -456,7 +458,7 @@ MR_schedule_context(MR_Context *ctxt)
     ** possibility that a woken thread might not accept this context then
     ** we wake up all the waiting threads.
     */
-    if (ctxt->MR_ctxt_owner_thread == (MercuryThread) NULL) {
+    if (ctxt->MR_ctxt_resume_owner_thread == (MercuryThread) NULL) {
         MR_SIGNAL(&MR_runqueue_cond);
     } else {
         MR_BROADCAST(&MR_runqueue_cond);
@@ -531,12 +533,20 @@ MR_define_entry(MR_do_runnext);
         /* XXX check pending io */
         prev = NULL;
         while (tmp != NULL) {
-            if ((depth > 0 && tmp->MR_ctxt_owner_thread == thd) ||
-                (tmp->MR_ctxt_owner_thread == (MercuryThread) NULL))
+            if (tmp->MR_ctxt_resume_owner_thread == thd && 
+                tmp->MR_ctxt_resume_c_depth == depth)
             {
+                tmp->MR_ctxt_resume_owner_thread = (MercuryThread) NULL;
+                tmp->MR_ctxt_resume_c_depth = 0;
                 MR_num_idle_engines--;
                 goto ReadyContext;
             }
+
+            if (tmp->MR_ctxt_resume_owner_thread == (MercuryThread) NULL) {
+                MR_num_idle_engines--;
+                goto ReadyContext;
+            }
+
             prev = tmp;
             tmp = tmp->MR_ctxt_next;
         }
@@ -550,7 +560,8 @@ MR_define_entry(MR_do_runnext);
         }
 
         /* Nothing to do, go back to sleep. */
-        MR_WAIT(&MR_runqueue_cond, &MR_runqueue_lock);
+        while (MR_WAIT(&MR_runqueue_cond, &MR_runqueue_lock) != 0) {
+        }
     }
 
   ReadyContext:

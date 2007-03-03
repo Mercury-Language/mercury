@@ -2362,7 +2362,7 @@ io.check_err(Stream, Res, !IO) :-
     }
 
     ML_maybe_make_err_msg(RetVal != 0, errno, ""read failed: "",
-        MR_PROC_LABEL, RetStr);
+        MR_PROC_LABEL, MR_TRUE, RetStr);
     MR_update_io(IO0, IO);
 ").
 
@@ -2429,7 +2429,7 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
-    ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, Msg);
+    ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, MR_FALSE, Msg);
     MR_update_io(IO0, IO);
 ").
 
@@ -2615,7 +2615,7 @@ io.file_modification_time(File, Result, !IO) :-
         Status = 1;
     } else {
         ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            MR_PROC_LABEL, Msg);
+            MR_PROC_LABEL, MR_TRUE, Msg);
         Status = 0;
     }
 #else
@@ -3400,7 +3400,7 @@ io.file_id(FileName, Result, !IO) :-
         Status = 1;
     } else {
         ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            MR_PROC_LABEL, Msg);
+            MR_PROC_LABEL, MR_TRUE, Msg);
         Status = 0;
     }
     MR_update_io(IO0, IO);
@@ -8060,7 +8060,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         */
         Status = 127;
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error invoking system command: "", MR_PROC_LABEL, Msg);
+            ""error invoking system command: "", MR_PROC_LABEL, MR_TRUE, Msg);
     } else {
         Msg = MR_make_string_const("""");
     }
@@ -8492,12 +8492,14 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         num_tries < ML_MAX_TEMPNAME_TRIES);
     if (fd == -1) {
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error opening temporary file: "", MR_PROC_LABEL, ErrorMessage);
+            ""error opening temporary file: "", MR_PROC_LABEL, MR_TRUE,
+            ErrorMessage);
         Error = -1;
     }  else {
         err = close(fd);
         ML_maybe_make_err_msg(err, errno,
-            ""error closing temporary file: "", MR_PROC_LABEL, ErrorMessage);
+            ""error closing temporary file: "", MR_PROC_LABEL, MR_TRUE,
+            ErrorMessage);
         Error = err;
     }
     MR_update_io(IO0, IO);
@@ -8618,9 +8620,11 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 #include <errno.h>
 
 /*
-** ML_maybe_make_err_msg(was_error, errno, msg, procname, error_msg):
+** ML_maybe_make_err_msg(was_error, errno, msg, procname, req_lock, error_msg):
 ** if `was_error' is true, then append `msg' and `strerror(errno)'
 ** to give `error_msg'; otherwise, set `error_msg' to "".
+** `req_lock' must be true iff the caller is marked `thread_safe' as the
+** underlying strerror() function is not thread-safe.
 **
 ** WARNING: this must only be called when the `hp' register is valid.
 ** That means it must only be called from procedures declared
@@ -8633,13 +8637,17 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 ** stringizes the procname argument.
 */
 
-#define ML_maybe_make_err_msg(was_error, error, msg, procname, error_msg)   \\
+#define ML_maybe_make_err_msg(was_error, error, msg, procname, req_lock,    \\
+            error_msg)                                                      \\
     do {                                                                    \\
         char    *errno_msg;                                                 \\
         size_t  total_len;                                                  \\
         MR_Word tmp;                                                        \\
                                                                             \\
         if (was_error) {                                                    \\
+            if (req_lock) {                                                 \\
+                MR_OBTAIN_GLOBAL_LOCK(procname);                            \\
+            }                                                               \\
             errno_msg = strerror(error);                                    \\
             total_len = strlen(msg) + strlen(errno_msg);                    \\
             MR_offset_incr_hp_atomic_msg(tmp, 0,                            \\
@@ -8648,6 +8656,9 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
             (error_msg) = (char *) tmp;                                     \\
             strcpy((error_msg), msg);                                       \\
             strcat((error_msg), errno_msg);                                 \\
+            if (req_lock) {                                                 \\
+                MR_RELEASE_GLOBAL_LOCK(procname);                           \\
+            }                                                               \\
         } else {                                                            \\
             /*                                                              \\
             ** We can't just return NULL here, because otherwise mdb        \\
@@ -8747,7 +8758,7 @@ io.remove_file(FileName, Result, !IO) :-
 "{
     RetVal = remove(FileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""remove failed: "",
-        MR_PROC_LABEL, RetStr);
+        MR_PROC_LABEL, MR_TRUE, RetStr);
     MR_update_io(IO0, IO);
 }").
 
@@ -8812,7 +8823,7 @@ io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 "{
     RetVal = rename(OldFileName, NewFileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""rename failed: "",
-        MR_PROC_LABEL, RetStr);
+        MR_PROC_LABEL, MR_TRUE, RetStr);
     MR_update_io(IO0, IO);
 }").
 

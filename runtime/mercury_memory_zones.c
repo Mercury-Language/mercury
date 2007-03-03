@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2000, 2002-2006 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -489,8 +489,10 @@ MR_next_offset(void)
 {
     size_t offset;
 
+    MR_OBTAIN_GLOBAL_LOCK("MR_next_offset");
     offset = offset_vector[offset_counter];
-    offset_counter = (offset_counter + 1) % CACHE_SLICES;
+    offset_counter = (offset_counter + 1) % (CACHE_SLICES - 1);
+    MR_RELEASE_GLOBAL_LOCK("MR_next_offset");
     return offset;
 }
 

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1994-2006 The University of Melbourne.
+** Copyright (C) 1994-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -263,13 +263,6 @@ typedef struct {
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef  MR_THREAD_SAFE
-typedef struct MR_mercury_thread_list_struct {
-    MercuryThread                           thread;
-    struct MR_mercury_thread_list_struct    *next;
-} MercuryThreadList;
-#endif
-
 /*
 ** The Mercury engine structure. Normally there is one of these for each
 ** Posix thread. It contains the following fields.
@@ -311,21 +304,19 @@ typedef struct MR_mercury_thread_list_struct {
 **
 ** owner_thread
 ** c_depth
-** saved_owners
-**              These three fields are used to ensure that when a thread
+**              These fields are used to ensure that when a thread
 **              executing C code calls the Mercury engine associated with that
 **              thread, the Mercury code will finish in the same engine and
 **              return appropriately. Each time C calls Mercury in a thread,
-**              the c_depth is incremented, and the owner_thread field of the
-**              current context is set to the id of the thread. While the
-**              owner_thread is set, the context will not be scheduled for
-**              execution by any other thread. When the call to the Mercury
-**              engine finishes, c_depth is decremented and the owner_thread
-**              field of the current context is restored to its previous value.
-**              The list `saved_owners' is used in call_engine_inner to store
-**              the owner of a context across calls into Mercury. At the moment
-**              this is only used for sanity checking - that execution never
-**              returns into C in the wrong thread.
+**              the c_depth is incremented, and the owner_thread and c_depth
+**              values of the current engine are pushed onto the "saved_owners"
+**              stack of the current context. When a context is about to return
+**              from Mercury code back into C code, we pop the top entry off the
+**              context's saved_owners stack and check that the context is
+**              running on the right engine. If not, we reschedule the context
+**              such that it can only be picked up by the correct engine when
+**              that engine is available. When the call into the Mercury code
+**              finishes, c_depth is decremented.
 **
 ** jmp_buf      The jump buffer used by library/exception.m to return to the
 **              runtime system on otherwise unhandled exceptions.
@@ -372,8 +363,7 @@ typedef struct MR_mercury_engine_struct {
 #endif
 #ifdef  MR_THREAD_SAFE
     MercuryThread       MR_eng_owner_thread;
-    unsigned            MR_eng_c_depth;
-    MercuryThreadList   *MR_eng_saved_owners;
+    MR_Unsigned         MR_eng_c_depth;
 #endif
     jmp_buf             *MR_eng_jmp_buf;
     MR_Word             *MR_eng_exception;

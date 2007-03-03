@@ -6,7 +6,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2001, 2003-2006 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,6 +37,7 @@ ENDINIT
 
   #ifndef MR_USE_GCC_NONLOCAL_GOTOS
     static MR_Code  *engine_done(void);
+    static MR_Code  *engine_done_2(void);
     static MR_Code  *engine_init_registers(void);
   #endif
 
@@ -138,7 +139,6 @@ MR_init_engine(MercuryEngine *eng)
 #ifdef  MR_THREAD_SAFE
     eng->MR_eng_owner_thread = pthread_self();
     eng->MR_eng_c_depth = 0;
-    eng->MR_eng_saved_owners = NULL;
 #endif
 
     /*
@@ -415,6 +415,7 @@ call_engine_inner(MR_Code *entry_point)
 
     if (!initialized) {
         MR_make_label("engine_done", MR_LABEL(engine_done), engine_done);
+        MR_make_label("engine_done_2", MR_LABEL(engine_done_2), engine_done_2);
         initialized = MR_TRUE;
     }
 }
@@ -458,21 +459,20 @@ dummy_label:
 
     /*
     ** Increment the number of times we've entered this engine from C,
-    ** and mark the current context as being owned by this thread.
+    ** and push the current engine onto the context's stack of saved owners.
     */
 #ifdef  MR_THREAD_SAFE
     MR_ENGINE(MR_eng_c_depth)++;
+
     if (MR_ENGINE(MR_eng_this_context)) {
-        MercuryThreadList *new_element;
+        MR_SavedOwner *owner;
 
-        new_element = MR_GC_NEW(MercuryThreadList);
-        new_element->thread =
-            MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread;
-        new_element->next = MR_ENGINE(MR_eng_saved_owners);
-        MR_ENGINE(MR_eng_saved_owners) = new_element;
-
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread =
-            MR_ENGINE(MR_eng_owner_thread);
+        owner = MR_GC_NEW(MR_SavedOwner);
+        owner->MR_saved_owner_thread = MR_ENGINE(MR_eng_owner_thread);
+        owner->MR_saved_owner_c_depth = MR_ENGINE(MR_eng_c_depth);
+        owner->MR_saved_owner_next =
+            MR_ENGINE(MR_eng_this_context)->MR_ctxt_saved_owners;
+        MR_ENGINE(MR_eng_this_context)->MR_ctxt_saved_owners = owner;
     }
 #endif
 
@@ -484,29 +484,54 @@ dummy_label:
 
 MR_define_label(engine_done);
 
+    assert(MR_ENGINE(MR_eng_this_context));
+
     /*
-    ** Decrement the number of times we've entered this engine from C
-    ** and restore the owning thread in the current context.
+    ** Check that we're reentering C in the correct engine.
+    ** If not, reschedule the context so that it will be picked up by
+    ** the correct engine when it is available.
     */
 #ifdef  MR_THREAD_SAFE
-    if (MR_ENGINE(MR_eng_this_context)) {
-        MercuryThreadList *tmp;
-        MercuryThread val;
+    {
+        MR_Context      *this_ctxt;
+        MR_SavedOwner   *owner;
 
-        assert(MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread
-            == MR_ENGINE(MR_eng_owner_thread));
-        MR_ENGINE(MR_eng_c_depth)--;
+        this_ctxt = MR_ENGINE(MR_eng_this_context);
+        owner = this_ctxt->MR_ctxt_saved_owners;
+        this_ctxt->MR_ctxt_saved_owners = owner->MR_saved_owner_next;
 
-        tmp = MR_ENGINE(MR_eng_saved_owners);
-        if (tmp != NULL) {
-            val = tmp->thread;
-            MR_ENGINE(MR_eng_saved_owners) = tmp->next;
-            MR_GC_free(tmp);
-        } else {
-            val = 0;
+        if (owner->MR_saved_owner_thread == MR_ENGINE(MR_eng_owner_thread) &&
+            owner->MR_saved_owner_c_depth == MR_ENGINE(MR_eng_c_depth))
+        {
+            MR_GC_free(owner);
+            MR_GOTO_LABEL(engine_done_2);
         }
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_thread = val;
+
+        MR_save_context(this_ctxt);
+        this_ctxt->MR_ctxt_resume = MR_LABEL(engine_done_2);
+        this_ctxt->MR_ctxt_resume_owner_thread = owner->MR_saved_owner_thread;
+        this_ctxt->MR_ctxt_resume_c_depth = owner->MR_saved_owner_c_depth;
+        MR_GC_free(owner);
+        MR_schedule_context(this_ctxt);
+
+        MR_ENGINE(MR_eng_this_context) = NULL;
+        MR_runnext();
     }
+#endif
+
+    /*
+    ** engine_done can be entered while the context is running on the wrong
+    ** engine (thread).  If it turns out to be the case, then we suspend the
+    ** context and reschedule it so that it will resume in engine_done_2 and be
+    ** run on the correct engine.  So engine_done_2 will always be run on the
+    ** engine which started the C->Mercury call, and engine_done ensures that
+    ** is the case.
+    */
+MR_define_label(engine_done_2);
+
+#ifdef MR_THREAD_SAFE
+    /* Decrement the number of times we've entered this engine from C. */
+    MR_ENGINE(MR_eng_c_depth)--;
 #endif
 
     MR_debugmsg1("in label `engine_done', locals at %p\n", locals);
@@ -575,6 +600,11 @@ MR_dump_prev_locations(void)
 ** engine_init_registers() rather than directly from call_engine_inner()
 ** because otherwise their value would get mucked up because of the function
 ** call from call_engine_inner().
+**
+** XXX The portable version does not yet prevent Mercury code returning back
+** into C code on the wrong Mercury engine (see the code involving
+** MR_eng_owner_thread and MR_eng_c_depth in the gcc version).  Therefore
+** low-level .par grades without gcc non-local gotos are unsafe.
 */
 
 static MR_Code *

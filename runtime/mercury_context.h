@@ -88,9 +88,21 @@
 ** resume           A pointer to the code at which execution should resume
 **                  when this context is next scheduled.
 **
-** owner_thread     The owner_thread field is used to ensure that when we
-**                  enter a Mercury engine from C, we return to the same
-**                  engine. See the coments in mercury_engine.h.
+** resume_owner_thread
+** resume_c_depth
+**                  These fields are used to ensure that when we enter a
+**                  Mercury engine from C, we return to the same engine. If
+**                  resume_owner_thread is NULL then this context can be
+**                  executed by any engine. Otherwise the resume_owner_thread
+**                  and resume_c_depth must match the engine's owner_thread
+**                  and c_depth. See the comments in mercury_engine.h.
+**
+** saved_owners
+**                  A stack used to record the Mercury engines on which this
+**                  context executed some C calls that called back into
+**                  Mercury. We must execute this context in the correct
+**                  engine when returning to those C calls.  See the comments
+**                  in mercury_engine.h.
 **
 ** succip           The succip for this context.
 **
@@ -140,6 +152,16 @@ typedef enum {
     MR_CONTEXT_SIZE_SMALL
 } MR_ContextSize;
 
+#ifdef MR_THREAD_SAFE
+typedef struct MR_SavedOwner_Struct     MR_SavedOwner;
+
+struct MR_SavedOwner_Struct {
+    MercuryThread       MR_saved_owner_thread;
+    MR_Unsigned         MR_saved_owner_c_depth;
+    MR_SavedOwner       *MR_saved_owner_next;
+};
+#endif
+
 typedef struct MR_MemoryZones_Struct    MR_MemoryZones;
 
 struct MR_MemoryZones_Struct {
@@ -153,7 +175,9 @@ struct MR_Context_Struct {
     MR_Context          *MR_ctxt_next;
     MR_Code             *MR_ctxt_resume;
 #ifdef  MR_THREAD_SAFE
-    MercuryThread       MR_ctxt_owner_thread;
+    MercuryThread       MR_ctxt_resume_owner_thread;
+    MR_Unsigned         MR_ctxt_resume_c_depth;
+    MR_SavedOwner       *MR_ctxt_saved_owners;
 #endif
 
 #ifndef MR_HIGHLEVEL_CODE

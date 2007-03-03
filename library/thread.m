@@ -248,6 +248,7 @@ call_back_to_mercury(Goal, !IO) :-
   {
     ML_ThreadWrapperArgs    *args;
     pthread_t               thread;
+    pthread_attr_t          attrs;
 
     /*
     ** We can't allocate `args' on the stack because this function may return
@@ -259,9 +260,12 @@ call_back_to_mercury(Goal, !IO) :-
     args->thread_local_mutables =
         MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
 
+    pthread_attr_init(&attrs);
+    pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
     if (pthread_create(&thread, MR_THREAD_ATTR, ML_thread_wrapper, args)) {
         MR_fatal_error(""Unable to create thread."");
     }
+    pthread_attr_destroy(&attrs);
 
     /*
     ** XXX How do we ensure that the parent thread doesn't terminate until

@@ -67,7 +67,8 @@
     typedef struct ML_SEMAPHORE_STRUCT {
         int     count;
 #ifndef MR_HIGHLEVEL_CODE
-        MR_Context  *suspended;
+        MR_Context  *suspended_head;
+        MR_Context  *suspended_tail;
 #else
   #ifdef MR_THREAD_SAFE
         MercuryCond cond;
@@ -109,7 +110,8 @@ public class ML_Semaphore {
     sem = (ML_Semaphore *) sem_mem;
     sem->count = 0;
 #ifndef MR_HIGHLEVEL_CODE
-    sem->suspended = NULL;
+    sem->suspended_head = NULL;
+    sem->suspended_tail = NULL;
 #else
   #ifdef MR_THREAD_SAFE
     pthread_cond_init(&(sem->cond), MR_COND_ATTR);
@@ -181,26 +183,35 @@ public class ML_Semaphore {
     MR_LOCK(&(sem->lock), ""semaphore__signal"");
 
 #ifndef MR_HIGHLEVEL_CODE
-    if (sem->count >= 0 && sem->suspended != NULL) {
-        ctxt = sem->suspended;
-        sem->suspended = ctxt->MR_ctxt_next;
+    if (sem->count >= 0 && sem->suspended_head != NULL) {
+        /* Reschedule the context at the start of the queue. */
+        ctxt = sem->suspended_head;
+        sem->suspended_head = ctxt->MR_ctxt_next;
+        if (sem->suspended_tail == ctxt) {
+            sem->suspended_tail = ctxt->MR_ctxt_next;
+            assert(sem->suspended_tail == NULL);
+        }
         MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
         MR_schedule_context(ctxt);
-            /* yield() */
+
+        /* yield() */
         MR_save_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
             MR_ENTRY(mercury__thread__semaphore__nop);
         MR_schedule_context(MR_ENGINE(MR_eng_this_context));
+
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
     } else {
         sem->count++;
         MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
-            /* yield() */
+
+        /* yield() */
         MR_save_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
             MR_ENTRY(mercury__thread__semaphore__nop);
         MR_schedule_context(MR_ENGINE(MR_eng_this_context));
+
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
     }
@@ -249,11 +260,21 @@ public class ML_Semaphore {
         MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
     } else {
         MR_save_context(MR_ENGINE(MR_eng_this_context));
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
-            MR_ENTRY(mercury__thread__semaphore__nop);
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_next = sem->suspended;
-        sem->suspended = MR_ENGINE(MR_eng_this_context);
+
+        /* Put the current context at the end of the queue. */
+        ctxt = MR_ENGINE(MR_eng_this_context);
+        ctxt->MR_ctxt_resume = MR_ENTRY(mercury__thread__semaphore__nop);
+        ctxt->MR_ctxt_next = NULL;
+        if (sem->suspended_tail) {
+            sem->suspended_tail->MR_ctxt_next = ctxt;
+            sem->suspended_tail = ctxt;
+        } else {
+            sem->suspended_head = ctxt;
+            sem->suspended_tail = ctxt;
+        }
         MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
+
+        /* Make the current engine do something else. */
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
     }

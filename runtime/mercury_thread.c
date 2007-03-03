@@ -47,9 +47,16 @@ MR_create_thread(MR_ThreadGoal *goal)
 
     assert(MR_primordial_thread != (MercuryThread) 0);
 
+    /*
+    ** Create threads in the detached state so that resources will be
+    ** automatically freed when threads terminate (we don't call
+    ** pthread_join() anywhere).
+    */
     thread = MR_GC_NEW(MercuryThread);
     pthread_attr_init(&attrs);
+    pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
     err = pthread_create(thread, &attrs, MR_create_thread_2, (void *) goal);
+    pthread_attr_destroy(&attrs);
 
 #if 0
     fprintf(stderr, "pthread_create returned %d (errno = %d)\n", err, errno);
