@@ -237,90 +237,94 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% The `module_imports' structure
+%
 
     % The `module_imports' structure holds information about
     % a module and the modules that it imports.
-
-    % Note that we build this structure up as we go along.
-    % When generating the dependencies (for `--generate-dependencies'),
-    % the two fields that hold the direct imports do not include
-    % the imports via ancestors when the module is first read in;
-    % the ancestor imports are added later, once all the modules
-    % have been read in.  Similarly the indirect imports field is
-    % initially set to the empty list and filled in later.
     %
-    % When compiling or when making interface files, the same
-    % sort of thing applies: initially all the list(module_name) fields
-    % except the public children field are set to empty lists,
-    % and then we add ancestor modules and imported modules
-    % to their respective lists as we process the interface files
-    % for those imported or ancestor modules.
+    % Note that we build this structure up as we go along.
+    % When generating the dependencies (for `--generate-dependencies'), the
+    % two fields that hold the direct imports do not include the imports via
+    % ancestors when the module is first read in; the ancestor imports are
+    % added later, once all the modules have been read in.  Similarly the
+    % indirect imports field is initially set to the empty list and filled
+    % in later.
+    %
+    % When compiling or when making interface files, the same sort of thing
+    % applies: initially all the list(module_name) fields except the public
+    % children field are set to empty lists, and then we add ancestor
+    % modules and imported modules to their respective lists as we process
+    % the interface files for those imported or ancestor modules.
+    %
+:- type module_imports
+    --->    module_imports(
+                % The source file.
+                source_file_name            :: file_name,
 
-:- type module_imports --->
-        module_imports(
-            % The source file.
-            source_file_name            :: file_name,
+                % The name of the top-level module in the source file
+                % containing the module that we are compiling.
+                source_file_module_name     :: module_name,
 
-            % The name of the top-level module in the source file
-            % containing the module that we are compiling.
-            source_file_module_name     :: module_name,
+                % The module (or sub-module) that we are compiling.
+                module_name                 :: module_name,
 
-            % The module (or sub-module) that we are compiling.
-            module_name                 :: module_name,
+                % The list of ancestor modules it inherits.
+                parent_deps                 :: list(module_name),
 
-            % The list of ancestor modules it inherits.
-            parent_deps                 :: list(module_name),
+                % The list of modules it directly imports in the interface
+                % (imports via ancestors count as direct).
+                int_deps                    :: list(module_name),
 
-            % The list of modules it directly imports in the interface
-            % (imports via ancestors count as direct).
-            int_deps                    :: list(module_name),
+                % The list of modules it directly imports in the
+                % implementation.
+                impl_deps                   :: list(module_name),
 
-            % The list of modules it directly imports in the implementation.
-            impl_deps                   :: list(module_name),
+                % The list of modules it indirectly imports.
+                indirect_deps               :: list(module_name),
 
-            % The list of modules it indirectly imports.
-            indirect_deps               :: list(module_name),
+                children                    :: list(module_name),
 
-            children                    :: list(module_name),
+                % The list of its public children, i.e. child modules that
+                % it includes in the interface section.
+                public_children             :: list(module_name),
 
-            % The list of its public children, i.e. child modules that
-            % it includes in the interface section.
-            public_children             :: list(module_name),
+                % The modules included in the same source file. This field
+                % is only set for the top-level module in each file.
+                nested_children             :: list(module_name),
 
-            % The modules included in the same source file. This field
-            % is only set for the top-level module in each file.
-            nested_children             :: list(module_name),
+                % The list of filenames for fact tables in this module.
+                fact_table_deps             :: list(string),
 
-            % The list of filenames for fact tables in this module.
-            fact_table_deps             :: list(string),
+                % Whether or not the module contains foreign code, and if yes,
+                % which languages they use.
+                has_foreign_code            :: contains_foreign_code,
 
-            % Whether or not the module contains foreign code, and if yes,
-            % which languages they use.
-            has_foreign_code            :: contains_foreign_code,
+                % The `:- pragma foreign_import_module' declarations.
+                foreign_import_modules      :: foreign_import_module_info_list,
 
-            % The `:- pragma foreign_import_module' declarations.
-            foreign_import_modules      :: foreign_import_module_info_list,
+                % Does the module contain any `:- pragma foreign_export'
+                % declarations?
+                contains_foreign_export     :: contains_foreign_export,
 
-            % Does the module contain any `:- pragma export' declarations?
-            contains_foreign_export     :: contains_foreign_export,
+                % The contents of the module and its imports.
+                items                       :: item_list,
 
-            % The contents of the module and its imports.
-            items                       :: item_list,
+                % Whether an error has been encountered when reading in
+                % this module.
+                error                       :: module_error,
 
-            % Whether an error has been encountered when reading in
-            % this module.
-            error                       :: module_error,
+                % If we are doing smart recompilation, we need to keep
+                % the timestamps of the modules read in.
+                maybe_timestamps            :: maybe(module_timestamps),
 
-            % If we are doing smart recompilation, we need to keep
-            % the timestamps of the modules read in.
-            maybe_timestamps            :: maybe(module_timestamps),
+                % Does this module contain main/2?
+                has_main                    :: has_main,
 
-            % Does this module contain main/2?
-            has_main                    :: has_main,
-
-            % The directory containing the module source.
-            module_dir                  :: dir_name
-        ).
+                % The directory containing the module source.
+                module_dir                  :: dir_name
+            ).
 
 :- type contains_foreign_code
     --->    contains_foreign_code(set(foreign_language))
@@ -335,9 +339,9 @@
     --->    has_main
     ;       no_main.
 
-    % When doing smart recompilation record for each module
-    % the suffix of the file that was read and the modification
-    % time of the file.
+    % When doing smart recompilation record for each module the suffix of
+    % the file that was read and the modification time of the file.
+    %
 :- type module_timestamps == map(module_name, module_timestamp).
 :- type module_timestamp
     --->    module_timestamp(
@@ -346,9 +350,9 @@
                 need_qualifier  :: need_qualifier
             ).
 
-    % recompilation_check.m records each file read to avoid
-    % reading it again. The string is the suffix of the file
-    % name.
+    % recompilation_check.m records each file read to avoid reading it
+    % again. The string is the suffix of the file name.
+    %
 :- type read_modules == map(pair(module_name, string), read_module).
 
 :- type read_module
@@ -368,7 +372,10 @@
     bool::in, item_list::out, maybe(timestamp)::out, module_error::out,
     file_name::out) is semidet.
 
-    % Some access predicates for the module_imports structure.
+%-----------------------------------------------------------------------------%
+%
+% Access predicates for the module_imports structure
+%
 
 :- pred module_imports_get_source_file_name(module_imports::in, file_name::out)
     is det.
@@ -398,6 +405,8 @@
     %
 :- pred module_imports_set_indirect_deps(list(module_name)::in,
     module_imports::in, module_imports::out) is det.
+
+%-----------------------------------------------------------------------------%
 
     % Make an item_and_context for a module declaration or pseudo-declaration
     % such as `:- imported' (which is inserted by the compiler, but can't be
@@ -6265,7 +6274,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         ContainsForeignCode = contains_foreign_code(LangSet)
     ),
 
-    % If this module contains `:- pragma export' or
+    % If this module contains `:- pragma foreign_export' or
     % `:- pragma foreign_type' declarations, importing modules
     % may need to import its `.mh' file.
     get_foreign_self_imports(ItemAndContexts, SelfImportLangs),

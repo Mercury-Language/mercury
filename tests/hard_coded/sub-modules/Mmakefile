@@ -29,6 +29,7 @@ SUB_MODULE_PROGS= \
 	non_word_mutable \
 	parent \
 	parent2 \
+	sm_exp_bug \
 	ts \
 	use_submodule
 

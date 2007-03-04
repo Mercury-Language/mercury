@@ -20,7 +20,6 @@
 % There is a separate interface section for each of these.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_module.
 :- interface.
@@ -688,8 +687,8 @@
 
                 num_errors                  :: int,
 
-                % List of the procs for which there is a pragma export(...)
-                % declaration.
+                % List of the procs for which there is a
+                % pragma foreign_export(...) declaration.
                 pragma_exported_procs       :: list(pragma_exported_proc),
 
                 type_ctor_gen_infos         :: list(type_ctor_gen_info),

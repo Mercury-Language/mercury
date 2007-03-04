@@ -89,7 +89,7 @@
                 term.context        % source code location
             ).
 
-    % The code for `pragma export' is generated directly as strings
+    % The code for `pragma foreign_export' is generated directly as strings
     % by export.m.
     %
 :- type foreign_export  ==  string.

@@ -914,8 +914,8 @@ ml_gen_defns(ModuleInfo, Defns, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% For each pragma export declaration we associate with it the information
-% used to generate the function prototype for the MLDS entity.
+% For each pragma foreign_export declaration we associate with it the
+% information used to generate the function prototype for the MLDS entity.
 
 :- pred ml_gen_pragma_export_proc(module_info::in, pragma_exported_proc::in,
     mlds_pragma_export::out) is det.

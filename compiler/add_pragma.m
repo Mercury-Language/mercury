@@ -74,7 +74,7 @@
     % for that predicate containing an appropriate HLDS `foreign_proc' goal.
     %
     % NB. Any changes here might also require similar changes to the
-    % handling of `pragma export' declarations, in export.m.
+    % handling of `pragma foreign_export' declarations, in export.m.
     %
 :- pred module_add_pragma_import(sym_name::in, pred_or_func::in,
     list(mer_mode)::in, pragma_foreign_proc_attributes::in, string::in,

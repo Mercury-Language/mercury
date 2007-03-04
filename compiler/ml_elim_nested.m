@@ -202,7 +202,7 @@
 %   all parameters and locals that point to the heap on the GC's shadow stack),
 %   and MR_deep_copy() needs to call MR_GC_check() before each heap allocation.
 %
-% - XXX We need to handle `pragma export'.
+% - XXX We need to handle `pragma foreign_export'.
 %
 %  The C interface in general is a bit problematic for GC. But for code which
 %   does not call back to Mercury, the way we currently handle it is fairly
@@ -216,14 +216,14 @@
 %   and the loop contains no intervening calls to Mercury code that allocates
 %   heap space (and hence calls MR_GC_check()).
 %
-%   But if Mercury code calls C code which calls back to Mercury code,
-%   and the C code uses pointers to the Mercury heap, then there could be
-%   serious problems (i.e. dangling pointers). Even if you just use
-%   `pragma export' to export a procedure and `pragma import' to import it back
-%   again, there may be trouble. The code generated for the exported functions
-%   can include calls to MR_MAYBE_BOX_FOREIGN_TYPE, which may allocate heap;
-%   we ought to register the frame and call MR_GC_check() before each call
-%   to MR_MAYBE_BOX_FOREIGN_TYPE, but currently we don't.
+%   But if Mercury code calls C code which calls back to Mercury code, and
+%   the C code uses pointers to the Mercury heap, then there could be
+%   serious problems (i.e. dangling pointers). Even if you just use `pragma
+%   foreign_export' to export a procedure and `pragma import' to import it
+%   back again, there may be trouble. The code generated for the exported
+%   functions can include calls to MR_MAYBE_BOX_FOREIGN_TYPE, which may
+%   allocate heap; we ought to register the frame and call MR_GC_check()
+%   before each call to MR_MAYBE_BOX_FOREIGN_TYPE, but currently we don't.
 %
 %   Even if that was solved, there is still the issue of what to do about
 %   any heap pointers held by user-written C code; we need to provide an API

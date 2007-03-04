@@ -282,8 +282,8 @@ add_item_list_decls_pass_2([ItemAndContext | ItemAndContexts], !.Status,
     %
     % Check that predicates listed in `:- initialise' and `:- finalise'
     % declarations exist and have the correct signature, introduce
-    % pragma export declarations for them and record their exported name in
-    % the module_info so that we can tell the code generator to call it at
+    % pragma foreign_export declarations for them and record their exported
+    % name in the module_info so that we can generate code to call it at
     % initialisation/finalisation time.
     %
 :- pred add_item_list_clauses(item_list::in, import_status::in,

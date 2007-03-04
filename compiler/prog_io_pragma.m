@@ -12,7 +12,6 @@
 % This module handles the parsing of pragma directives.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_pragma.
 :- interface.

@@ -406,7 +406,8 @@ do_call_in_forked_process(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 :- pred call_child_process_io_pred(io_pred::in(io_pred), int::out,
     io::di, io::uo) is det.
 
-:- pragma export(call_child_process_io_pred(in(io_pred), out, di, uo),
+:- pragma foreign_export("C",
+    call_child_process_io_pred(in(io_pred), out, di, uo),
     "MC_call_child_process_io_pred").
 
 call_child_process_io_pred(P, Status, !IO) :-

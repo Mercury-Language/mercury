@@ -43,6 +43,8 @@
 :- import_module maybe.
 :- import_module term.
 
+%-----------------------------------------------------------------------------%
+
 :- type make_hlds_qual_info.
 
     % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, UsedModules,

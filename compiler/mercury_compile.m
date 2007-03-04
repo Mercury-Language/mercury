@@ -16,7 +16,6 @@
 % compiler/notes/compiler_design.html.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module top_level.mercury_compile.
 :- interface.
@@ -1460,10 +1459,14 @@ compile(SourceFileName, SourceFileModuleName, NestedSubModules0,
     grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
         NestedSubModules, ReadModules, MaybeTimestamp, Items, Module, Error2,
         !IO),
-    ( Error2 \= fatal_module_errors ->
+    ( 
+        ( Error2 = no_module_errors
+        ; Error2 = some_module_errors
+        ),
         mercury_compile(Module, NestedSubModules, FindTimestampFiles,
             FactTableObjFiles, no_prev_dump, _, !IO)
     ;
+        Error2 = fatal_module_errors,
         FactTableObjFiles = []
     ).
 
@@ -4443,7 +4446,7 @@ maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
     % This stuff mostly just gets passed directly to the LLDS unchanged, but
     % we do do a bit of code generation -- for example, we call
     % export.get_foreign_export_{decls,defns} here, which do the generation
-    % of C code for `pragma export' declarations.
+    % of C code for `pragma foreign_export' declarations.
     %
 :- pred get_c_interface_info(module_info::in, foreign_language::in,
     foreign_interface_info::out) is det.
@@ -4451,7 +4454,20 @@ maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
 get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
     module_info_get_name(HLDS, ModuleName),
     module_info_get_foreign_decl(HLDS, ForeignDecls),
-    module_info_get_foreign_import_module(HLDS, ForeignImports),
+    module_info_get_foreign_import_module(HLDS, ForeignImports0),
+    %
+    % Always include the module we are compiling amongst the foreign import
+    % modules so that pragma foreign_exported procedures are visible to
+    % foreign code in this module.
+    %
+    % XXX The frontend should really handle this but it is quite
+    % inconsistent in its treatement of self-imports.  Both this backend
+    % (the LLDS) and the MLDS backend currently handle self foreign imports
+    % directly.
+    %
+    ForeignSelfImport = foreign_import_module_info(UseForeignLanguage, 
+        ModuleName, term.context_init),
+    ForeignImports = [ ForeignSelfImport | ForeignImports0 ],
     module_info_get_foreign_body_code(HLDS, ForeignBodyCode),
     foreign.filter_decls(UseForeignLanguage, ForeignDecls,
         WantedForeignDecls, _OtherDecls),

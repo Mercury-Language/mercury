@@ -893,7 +893,7 @@ mlds_output_pragma_export_func_name(ModuleName, Indent, Export, !IO) :-
     expect(unify(Lang, lang_c), this_file, "export to language other than C."),
     Name = qual(ModuleName, module_qual, entity_export(ExportName)),
     mlds_indent(Context, Indent, !IO),
-    % For functions exported using `pragma export',
+    % For functions exported using `pragma foreign_export',
     % we use the default C calling convention.
     CallingConvention = "",
     mlds_output_func_decl_ho(Indent, Name, Context,
@@ -970,7 +970,7 @@ mlds_output_pragma_export_type(prefix, mlds_tabling_type(_), !IO) :-
 mlds_output_pragma_export_type(prefix, mlds_unknown_type, !IO) :-
     unexpected(this_file, "mlds_output_pragma_export_type: unknown_type").
 
-    % Output the definition body for a pragma export.
+    % Output the definition body for a pragma foreign_export.
     %
 :- pred mlds_output_pragma_export_defn_body(mlds_module_name::in,
     mlds_qualified_entity_name::in, mlds_func_params::in, io::di, io::uo)
@@ -1888,7 +1888,7 @@ mlds_output_fully_qualified_name(QualifiedName, !IO) :-
             Name = entity_data(mlds_rtti(RttiId)),
             module_qualify_name_of_rtti_id(RttiId) = no
         ;
-            % We don't module qualify pragma export names.
+            % We don't module qualify pragma foreign_export names.
             Name = entity_export(_)
         )
     ->

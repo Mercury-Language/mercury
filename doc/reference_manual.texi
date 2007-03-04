@@ -6892,10 +6892,14 @@ you can use the following variant of the declaration:
 Note: currently only the C backends support this variant
 of the @samp{pragma foreign_decl} declaration.
 
-To make the declarations for Mercury predicates or functions
-exported to a foreign language using a @samp{pragma export}
-declaration visible to foreign code in a @samp{pragma foreign_code}
-or @samp{pragma foreign_proc} declaration, use a declaration of the form
+The declarations for Mercury predicates or functions exported to a 
+foreign language using a @samp{pragma foreign_export} declaration
+are visible to foreign code in a @samp{pragma foreign_code} or
+@samp{pragma foreign_proc} declaration of the same module and also in those
+of any sub-modules.
+They are not visible to the foreign code in @samp{pragma foreign_code} or
+@samp{pragma foreign_proc} declarations in any other module.
+They can be made visible using a declaration of the form:
 
 @example
 :- pragma foreign_import_module("@var{Lang}", @var{ImportedModule}).
@@ -6903,7 +6907,7 @@ or @samp{pragma foreign_proc} declaration, use a declaration of the form
 
 @noindent
 where @var{ImportedModule} is the name of the module containing
-the @samp{pragma export} declarations.
+the @samp{pragma foreign_export} declarations.
 
 If @var{Lang} is @code{"C"} this is equivalent to
 

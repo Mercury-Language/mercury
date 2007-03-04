@@ -346,7 +346,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !:Specs) :-
                 PragmaContext)
         ->
             ExportPieces = [words("Error: "),
-                fixed("`:- pragma export' declaration"),
+                fixed("`:- pragma foreign_export' declaration"),
                 words("for a procedure that has a determinism of"),
                 fixed(hlds_out.determinism_to_string(NewDetism) ++ ".")],
             ExportSpec = error_spec(severity_error, phase_detism_check,
@@ -354,7 +354,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !:Specs) :-
             !:Specs = [ExportSpec | !.Specs]
         ;
             unexpected(this_file,
-                "Cannot find proc in table of pragma exported procs")
+                "Cannot find proc in table of pragma foreign_exported procs")
         )
     ;
         true
