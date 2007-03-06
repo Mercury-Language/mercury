@@ -98,7 +98,7 @@
 
     % A reader stream is a subclass of specific input stream that can be
     % used to read data of a specific type from that input stream.  
-    % A single input streams can support multiple reader subclasses.
+    % A single input stream can support multiple reader subclasses.
     % 
 :- typeclass stream.reader(Stream, Unit, State, Error)
     <= stream.input(Stream, State, Error) where
