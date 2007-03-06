@@ -51,6 +51,7 @@
 :- module float.
 :- interface.
 
+%---------------------------------------------------------------------------%
 %
 % Arithmetic functions
 %
@@ -87,6 +88,7 @@
 	%
 :- func - (float::in) = (float::uo) is det.
 
+%---------------------------------------------------------------------------%
 %
 % Comparison predicates
 %
@@ -98,6 +100,7 @@
 :- pred (float::in) >= (float::in) is semidet.
 :- pred (float::in) >  (float::in) is semidet.
 
+%---------------------------------------------------------------------------%
 %
 % Conversion functions
 %
@@ -124,6 +127,7 @@
 	%
 :- func truncate_to_int(float) = int.
 
+%---------------------------------------------------------------------------%
 %
 % Miscellaneous functions
 %
@@ -163,6 +167,7 @@
 	%
 :- pred is_inf(float::in) is semidet.
 
+%---------------------------------------------------------------------------%
 %
 % System constants
 %
