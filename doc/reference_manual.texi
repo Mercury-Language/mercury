@@ -242,14 +242,16 @@ number.  Similarly, a backslash followed by an octal digit is the
 beginning of an octal escape; as with hexadecimal escapes, the sequence
 of octal digits must be terminated with a closing backslash.
 
-The sequence @samp{\u} or @samp{\U} can be used to escape Unicode characters.
-@samp{\u} must be followed by the Unicode character code expressed as four
-hexadecimal digits.
-@samp{\U} must be followed by the Unicode character code expressed as eight
-hexadecimal digits.
-The encoding used for Unicode characters is implementation dependent.
-For the Melbourne Mercury compiler, it is UTF-8 for the C backends and UTF-16
-for the Java and IL backends.
+@c XXX The following feature is undocumented until we have more complete
+@c support for unicode.
+@c The sequence @samp{\u} or @samp{\U} can be used to escape Unicode characters.
+@c @samp{\u} must be followed by the Unicode character code expressed as four
+@c hexadecimal digits.
+@c @samp{\U} must be followed by the Unicode character code expressed as eight
+@c hexadecimal digits.
+@c The encoding used for Unicode characters is implementation dependent.
+@c For the Melbourne Mercury compiler, it is UTF-8 for the C backends and UTF-16
+@c for the Java and IL backends.
 
 A backslash followed immediately by a newline is deleted; thus an
 escaped newline can be used to continue a string over more than one

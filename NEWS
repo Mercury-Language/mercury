@@ -12,8 +12,6 @@ Changes to the Mercury language:
   terms.
 * Mutables can now be marked as thread-local, which can take on different
   values for each thread.
-* Unicode characters can now be encoded in string literals using an
-  escape sequence.
 * promise_equivalent_solutions scopes (et al.) must now also list variables
   with inst any that may be constrained by the goal.
 
@@ -199,13 +197,6 @@ Changes to the Mercury language:
 		),
 		...
 		% perform the actual task
-
-* Unicode characters can now be encoded in string literals using an
-  escape sequence.  The escape sequence \uXXXX (or \UXXXXXXXX), where XXXX
-  (or XXXXXXXX) is a Unicode character code in hexadecimal, is replaced with
-  the corresponding Unicode character.  The encoding used to represent the
-  Unicode character is implementation dependent.  For the Melbourne Mercury
-  compiler, Unicode characters are represented using UTF-8 for the C backends.
 
 Changes to the Mercury compiler:
 
