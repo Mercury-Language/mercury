@@ -24,6 +24,8 @@
 :- import_module io.
 :- import_module maybe.
 
+%-----------------------------------------------------------------------------%
+
     % The `clock_t' type represents times measured in clock ticks.
     % NOTE: the unit used for a value of this type depends on whether it was
     % returned by `time.clock' or `time.times'.  See the comments on these
@@ -254,10 +256,10 @@ time.clock(Result, !IO) :-
 :- pragma foreign_proc("C",
     time.c_clock(Ret::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
+"
     Ret = (MR_Integer) clock();
     MR_update_io(IO0, IO);
-}").
+").
 /* XXX need to add System.dll to the references list.
 :- pragma foreign_proc("C#",
     time.c_clock(Ret::out, _IO0::di, _IO::uo),
@@ -289,9 +291,9 @@ time.clock(Result, !IO) :-
 :- pragma foreign_proc("C",
     time.clocks_per_sec = (Ret::out),
     [will_not_call_mercury, promise_pure],
-"{
+"
     Ret = (MR_Integer) CLOCKS_PER_SEC;
-}").
+").
 :- pragma foreign_proc("C#",
     time.clocks_per_sec = (Ret::out),
     [will_not_call_mercury, promise_pure],
@@ -388,13 +390,13 @@ time.clk_tck = Ret :-
 :- pragma foreign_proc("C",
     time.c_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure],
-"{
+"
 #if defined(MR_CLOCK_TICKS_PER_SECOND)
     Ret = MR_CLOCK_TICKS_PER_SECOND;
 #else
     Ret = -1;
 #endif
-}").
+").
 time.c_clk_tck = -1.   % default is to throw an exception.
 
 :- pragma foreign_proc("C#",
@@ -433,10 +435,10 @@ time.time(Result, !IO) :-
 :- pragma foreign_proc("C",
     time.c_time(Ret::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
+"
     Ret = time(NULL);
     MR_update_io(IO0, IO);
-}").
+").
 :- pragma foreign_proc("C#",
     time.c_time(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -454,19 +456,19 @@ time.time(Result, !IO) :-
 
 :- pragma foreign_proc("C",
     time.time_t_is_invalid(Val::in),
-    [will_not_call_mercury, promise_pure],
-"{
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
     SUCCESS_INDICATOR = (Val == -1);
-}").
+").
 :- pragma foreign_proc("C#",
     time.time_t_is_invalid(_Val::in),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "{
     SUCCESS_INDICATOR = false;
 }").
 :- pragma foreign_proc("Java",
     time.time_t_is_invalid(_Val::in),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     succeeded = false;
 ").
@@ -483,9 +485,9 @@ time.difftime(time_t(T1), time_t(T0)) = Diff :-
 :- pragma foreign_proc("C",
     time.c_difftime(T1::in, T0::in, Diff::out),
     [will_not_call_mercury, promise_pure],
-"{
+"
     Diff = (MR_Float) difftime(T1, T0);
-}").
+").
 :- pragma foreign_proc("C#",
     time.c_difftime(T1::in, T0::in, Diff::out),
     [will_not_call_mercury, promise_pure],
@@ -514,7 +516,7 @@ time.localtime(time_t(Time)) = TM :-
     time.c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
     [will_not_call_mercury, promise_pure],
-"{
+"
     struct tm   *p;
     time_t      t;
 
@@ -533,7 +535,7 @@ time.localtime(time_t(Time)) = TM :-
     MD = (MR_Integer) p->tm_mday;
     YD = (MR_Integer) p->tm_yday;
     N = (MR_Integer) p->tm_isdst;
-}").
+").
 :- pragma foreign_proc("C#",
     time.c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),

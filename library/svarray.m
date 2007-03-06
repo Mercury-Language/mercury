@@ -21,6 +21,8 @@
 
 :- import_module array.
 
+%-----------------------------------------------------------------------------%
+
     % svarray.set sets the nth element of an array, and returns the
     % resulting array (good opportunity for destructive update ;-).
     % Throws an exception if the index is out of bounds.

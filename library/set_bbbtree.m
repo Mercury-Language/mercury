@@ -21,6 +21,8 @@
 :- import_module bool.
 :- import_module list.
 
+%------------------------------------------------------------------------------%
+
 :- type set_bbbtree(T).
 
     % `set_bbbtree.init(Set)' returns an initialized empty set.
@@ -28,7 +30,7 @@
 :- pred set_bbbtree.init(set_bbbtree(T)::uo) is det.
 :- func set_bbbtree.init = set_bbbtree(T).
 
-        % `set_bbbtree.empty(Set) is true iff `Set' is contains no elements.
+    % `set_bbbtree.empty(Set) is true iff `Set' is contains no elements.
     %
 :- pred set_bbbtree.empty(set_bbbtree(T)::in) is semidet.
 
@@ -342,7 +344,6 @@ set_bbbtree.size(tree(_V, N, _L, _R), N).
 %------------------------------------------------------------------------------%
 
 % set_bbbtree.member(X, empty) :- fail.
-
 set_bbbtree.member(X, tree(V, _N, L, R)) :-
     compare(Result, X, V),
     (

@@ -23,6 +23,8 @@
 :- import_module bool.
 :- import_module list.
 
+%--------------------------------------------------------------------------%
+
 :- type set(T).
 
     % `set.init(Set)' is true iff `Set' is an empty set.

@@ -23,6 +23,8 @@
 :- import_module list.
 :- import_module set.
 
+%---------------------------------------------------------------------------%
+
     % Insert a particular value in a bag.
     %
 :- pred svbag.insert(T::in, bag(T)::in, bag(T)::out) is det.

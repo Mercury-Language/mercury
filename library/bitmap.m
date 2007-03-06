@@ -23,7 +23,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module bitmap.
-
 :- interface.
 
 :- import_module bool.
@@ -49,8 +48,9 @@
 :- mode bitmap_ui == in(uniq_bitmap).
 
     % The exception thrown for any error.
+    %
 :- type bitmap_error
-    ---> bitmap_error(string).
+    --->    bitmap_error(string).
 
 %-----------------------------------------------------------------------------%
 
@@ -60,9 +60,11 @@
 :- type num_bytes == int.
   
     % 8 bits stored in the least significant bits of the integer.
+    %
 :- type byte == int.
 
     % An integer interpreted as a vector of int.bits_per_int bits.
+    %
 :- type word == int.
 
 %-----------------------------------------------------------------------------%
@@ -366,6 +368,7 @@
 :- mode flip(in, bitmap_di, bitmap_uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 :- interface.
@@ -388,13 +391,13 @@
 :- pragma obsolete(unsafe_get/2).
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module char.
 :- import_module exception.
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -801,8 +804,7 @@ copy_bits(SameBM, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
         unsafe_copy_bits(SameBM, SrcBM, SrcStartBit,
             DestBM, DestStartBit, NumBits)
       else
-        throw_bitmap_error(
-          "bitmap.copy_bits_in_bitmap: out of range")
+        throw_bitmap_error("bitmap.copy_bits_in_bitmap: out of range")
     ).
 
 :- func unsafe_copy_bits(int, bitmap, bit_index,
@@ -970,7 +972,7 @@ copy_bytes(SameBM, SrcBM, SrcStartByte, DestBM, DestStartByte, NumBytes) =
         memmove(DestBM->elements + DestFirstByteIndex,
             SrcBM->elements + SrcFirstByteIndex, NumBytes);
     } else {
-        memcpy(DestBM->elements + DestFirstByteIndex,
+        MR_memcpy(DestBM->elements + DestFirstByteIndex,
             SrcBM->elements + SrcFirstByteIndex, NumBytes);
     }
 
@@ -1234,7 +1236,7 @@ to_string_chars(Index, BM, !Chars) :-
             !:Chars = [HighChar, LowChar | !.Chars],
             to_string_chars(Index - 1, BM, !Chars)
           else
-            error("bitmap.to_string: internal error")
+            throw(software_error("bitmap.to_string: internal error"))
         )
     ).
 
@@ -1258,7 +1260,7 @@ from_string(Str) = BM :-
     ).
     
 :- pred hex_chars_to_bitmap(string::in, int::in, int::in, byte_index::in,
-            bitmap::bitmap_di, bitmap::bitmap_uo) is semidet.
+    bitmap::bitmap_di, bitmap::bitmap_uo) is semidet.
 
 hex_chars_to_bitmap(Str, Index, End, ByteIndex, !BM) :-
     ( if Index = End then
@@ -1406,9 +1408,9 @@ namespace mercury {
 :- pragma foreign_proc("C",
     bitmap_equal(BM1::in, BM2::in),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
-"{
+"
     SUCCESS_INDICATOR = MR_bitmap_eq(BM1, BM2);
-}").
+").
 
 bitmap_equal(BM1, BM2) :-
     BM1 ^ num_bits = (BM2 ^ num_bits) @ NumBits,
@@ -1431,13 +1433,13 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
 :- pragma foreign_proc("C",
     bitmap_compare(Result::uo, BM1::in, BM2::in),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
-"{
+"
     int res;
     res = MR_bitmap_cmp(BM1, BM2);
     Result = ((res < 0) ? MR_COMPARE_LESS
                 : (res == 0) ? MR_COMPARE_EQUAL
                 : MR_COMPARE_GREATER);
-}").
+").
 
 bitmap_compare(Result, BM1, BM2) :-
     compare(Result0, BM1 ^ num_bits, (BM2 ^ num_bits) @ NumBits),
@@ -1729,6 +1731,7 @@ n_bit_mask(N) = BitsMask :-
     % Return an integer whose NumBits least significant bits contain
     % bits FirstBit, FirstBit + 1, ... FirstBit + NumBits - 1,
     % in order from most significant to least significant.
+    %
 :- func extract_bits_from_byte(byte, bit_index_in_byte, num_bits) = byte.
 
 extract_bits_from_byte(Byte, FirstBit, NumBits) = Bits :-
@@ -1743,6 +1746,7 @@ extract_bits_from_byte(Byte, FirstBit, NumBits) = Bits :-
     % Replace bits FirstBit, FirstBit + 1, ... FirstBit + NumBits - 1,
     % with the NumBits least significant bits of Bits, replacing FirstBit
     % with the most significant of those bits.
+    %
 :- func set_bits_in_byte(byte, bit_index_in_byte, num_bits, byte) = byte.
 
 set_bits_in_byte(Byte0, FirstBit, NumBits, Bits) = Byte :-
@@ -1762,7 +1766,8 @@ throw_bitmap_error(Msg) = _ :-
 
 :- pred throw_bitmap_error(string::in) is erroneous.
 
-throw_bitmap_error(Msg) :- throw(bitmap_error(Msg)).
+throw_bitmap_error(Msg) :-
+    throw(bitmap_error(Msg)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

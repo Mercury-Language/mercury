@@ -29,6 +29,8 @@
 
 :- import_module list.
 
+%---------------------------------------------------------------------------%
+
     % Cords that contain the same members in the same order will not
     % necessarily have the same representation and will, therefore,
     % not necessarily either unify or compare as equal.

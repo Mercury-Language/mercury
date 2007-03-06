@@ -60,14 +60,13 @@
 :- pred generic_compare(comparison_result::out, T::in, T::in) is det.
 
 :- pred compare_type_infos(comparison_result::out,
-        type_info::in, type_info::in) is det.
+    type_info::in, type_info::in) is det.
 
-:- pred type_ctor_and_args(type_info::in,
-        type_ctor_info::out,
-        list(type_info)::out) is det.
+:- pred type_ctor_and_args(type_info::in, type_ctor_info::out,
+    list(type_info)::out) is det.
 
 :- pred type_ctor_name_and_arity(type_ctor_info::in,
-        string::out, string::out, int::out) is det.
+    string::out, string::out, int::out) is det.
 
 :- pred deconstruct(T, noncanon_handling, string, int, list(univ)).
 :- mode deconstruct(in, in(do_not_allow), out, out, out) is det.

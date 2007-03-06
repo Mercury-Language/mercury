@@ -18,7 +18,10 @@
 
 :- module gc.
 :- interface.
+
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
 	% Force a garbage collection.
 	%

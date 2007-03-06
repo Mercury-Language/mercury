@@ -23,6 +23,8 @@
 
 :- import_module eqvclass.
 
+%-----------------------------------------------------------------------------%
+
     % Make an element known to the equivalence class.
     % The element may already be known to the class;
     % if it isn't, it is created without any equivalence relationships.
