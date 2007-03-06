@@ -57,7 +57,7 @@ MR_Debug_Flag_Info  MR_debug_flag_info[MR_MAXFLAG] = {
     { "sreg",           MR_SREGFLAG },
     { "trace",          MR_TRACEFLAG },
     { "table",          MR_TABLEFLAG },
-    { "hash",           MR_TABLEHASHFLAG },
+    { "tablehash",      MR_TABLEHASHFLAG },
     { "tablestack",     MR_TABLESTACKFLAG },
     { "unbuf",          MR_UNBUFFLAG },
     { "agc",            MR_AGC_FLAG },
@@ -68,6 +68,7 @@ MR_Debug_Flag_Info  MR_debug_flag_info[MR_MAXFLAG] = {
     { "notnearest",     MR_NOT_NEAREST_FLAG },
     { "debugslots",     MR_DEBUG_SLOTS_FLAG },
     { "deepdebugfile",  MR_DEEP_PROF_DEBUG_FILE_FLAG },
+    { "stackextend",    MR_STACK_EXTEND_FLAG },
     { "detail",         MR_DETAILFLAG }
 };
 
