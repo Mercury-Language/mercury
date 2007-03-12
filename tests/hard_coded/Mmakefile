@@ -12,6 +12,7 @@ ORDINARY_PROGS=	\
 	any_free_unify \
 	array_test \
 	backquoted_qualified_ops \
+	bag_various \
 	bidirectional \
 	bitmap_test \
 	boyer \

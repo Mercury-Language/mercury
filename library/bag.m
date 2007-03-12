@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003-2006 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -31,6 +31,15 @@
 :- pred bag.init(bag(T)::out) is det.
 :- func bag.init = bag(T).
 
+    % Return the number of values in a bag (including duplicate values).
+    %
+:- func bag.count(bag(T)) = int.
+
+    % Return the number of unique values in a bag, duplicate values are counted
+    % only once.
+    %
+:- func bag.count_unique(bag(T)) = int.
+
     % Insert a particular value in a bag.
     %
 :- pred bag.insert(bag(T)::in, T::in, bag(T)::out) is det.
@@ -45,6 +54,18 @@
     %
 :- pred bag.insert_set(bag(T)::in, set(T)::in, bag(T)::out) is det.
 :- func bag.insert_set(bag(T), set(T)) = bag(T).
+
+    % bag.member(Val, Bag) :
+    %   True iff `Bag' contains at least one occurrence of `Val'.
+    %
+:- pred bag.member(T::in, bag(T)::in) is semidet.
+
+    % bag.member(Val, Bag, Remainder) :
+    %   Nondeterministically returns all values from Bag and the
+    %   corresponding bag after the value has been removed. Duplicate values
+    %   are returned as many times as they occur in the Bag.
+    %
+:- pred bag.member(T::out, bag(T)::in, bag(T)::out) is nondet.
 
     % Make a bag from a list.
     %
@@ -237,6 +258,14 @@ bag.init(Bag) :-
 
 %---------------------------------------------------------------------------%
 
+bag.count(Bag) = list.foldl(int.plus, map.values(Bag), 0).
+
+%---------------------------------------------------------------------------%
+
+bag.count_unique(Bag) = map.count(Bag).
+
+%---------------------------------------------------------------------------%
+
 bag.insert(Bag0, Item, Bag) :-
     ( map.search(Bag0, Item, Count0) ->
         Count = Count0 + 1
@@ -256,6 +285,14 @@ bag.insert_set(Bag0, Set, Bag) :-
     set.to_sorted_list(Set, List),
     % XXX We should exploit the sortedness of List.
     bag.insert_list(Bag0, List, Bag).
+
+bag.member(M, Bag) :-
+    map.search(Bag, M, _Occurrences).
+
+bag.member(OutVal, InBag, OutBag) :-
+    Vals = bag.to_list(InBag),
+    list.member(OutVal, Vals),
+    OutBag = bag.det_remove(InBag, OutVal).
 
 bag.from_list(List, Bag) :-
     bag.init(Bag0),
