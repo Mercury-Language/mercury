@@ -4,3 +4,4 @@ config.status
 configure
 Makefile
 Makefile.in
+autom4te.cache

@@ -145,12 +145,6 @@
 :- import_module table_builtin.
 :- import_module term_size_prof_builtin.
 
-% If you need access to unsafe predicates, then in your own workspace,
-% temporarily uncomment this import and the line for unsafe in the definition
-% of mercury_std_library_module.
-
-% :- import_module unsafe.
-
 % library.version must be implemented using pragma foreign_proc,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
 % parameters.  We can't just generate library.m from library.m.in
