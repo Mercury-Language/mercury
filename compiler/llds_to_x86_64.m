@@ -643,7 +643,7 @@ transform_rval(RegMap, const(llconst_float(_)), RegMap, Op, no) :-
     Op = yes(operand_label("<<llconst_float>>")).
 transform_rval(RegMap, const(llconst_string(String)), RegMap, no, yes(Op)) :-
     Op = [x86_64_directive(string([String]))].
-transform_rval(RegMap, const(llconst_multi_string(_, _)), RegMap, Op, no) :-
+transform_rval(RegMap, const(llconst_multi_string(_)), RegMap, Op, no) :-
     Op = yes(operand_label("<<llconst_multi_string>>")).
 transform_rval(RegMap, const(llconst_code_addr(CodeAddr)), RegMap, Op, no) :-
     code_addr_type(CodeAddr, CodeAddrType),

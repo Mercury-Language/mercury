@@ -3285,9 +3285,9 @@ output_rval_const(mlconst_string(String), !IO) :-
     c_util.output_quoted_string(String, !IO),
     io.write_string("""", !IO).
 
-output_rval_const(mlconst_multi_string(Length, String), !IO) :-
+output_rval_const(mlconst_multi_string(String), !IO) :-
     io.write_string("""", !IO),
-    c_util.output_quoted_multi_string(Length, String, !IO),
+    c_util.output_quoted_multi_string(String, !IO),
     io.write_string("""", !IO).
 
 output_rval_const(mlconst_code_addr(CodeAddr), !IO) :-

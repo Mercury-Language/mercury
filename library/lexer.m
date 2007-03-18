@@ -348,7 +348,7 @@ get_token(Token, Context, !IO) :-
             skip_to_eol(Token, Context, !IO)
         ; ( Char = '"' ; Char = '''' ) ->
             get_context(Context, !IO),
-            get_quoted_name(Char, [], Token, !IO)
+            start_quoted_name(Char, [], Token, !IO)
         ; Char = ('/') ->
             get_slash(Token, Context, !IO)
         ; Char = ('#') ->
@@ -393,7 +393,7 @@ string_get_token(String, Len, Token, Context, !Posn) :-
         ; Char = ('%') ->
             string_skip_to_eol(String, Len, Token, Context, !Posn)
         ; ( Char = '"' ; Char = '''' ) ->
-            string_get_quoted_name(String, Len, Char, [], Posn0, Token,
+            string_start_quoted_name(String, Len, Char, [], Posn0, Token,
                 Context, !Posn)
         ; Char = ('/') ->
             string_get_slash(String, Len, Posn0, Token, Context, !Posn)
@@ -458,7 +458,7 @@ get_token_2(Token, Context, !IO) :-
             skip_to_eol(Token, Context, !IO)
         ; ( Char = '"' ; Char = '''' ) ->
             get_context(Context, !IO),
-            get_quoted_name(Char, [], Token, !IO)
+            start_quoted_name(Char, [], Token, !IO)
         ; Char = ('/') ->
             get_slash(Token, Context, !IO)
         ; Char = ('#') ->
@@ -499,7 +499,7 @@ string_get_token_2(String, Len, Token, Context, !Posn) :-
         ; Char = ('%') ->
             string_skip_to_eol(String, Len, Token, Context, !Posn)
         ; ( Char = '"' ; Char = '''' ) ->
-            string_get_quoted_name(String, Len, Char, [], Posn0, Token,
+            string_start_quoted_name(String, Len, Char, [], Posn0, Token,
                 Context, !Posn)
         ; Char = ('/') ->
             string_get_slash(String, Len, Posn0, Token, Context, !Posn)
@@ -775,6 +775,40 @@ string_get_comment_2(String, Len, Posn0, Token, Context, !Posn) :-
 %
 % Quoted names and quoted strings.
 
+:- pred start_quoted_name(char::in, list(char)::in, token::out,
+    io::di, io::uo) is det.
+
+start_quoted_name(QuoteChar, Chars, Token, !IO) :-
+    get_quoted_name(QuoteChar, Chars, Token0, !IO),
+    ( Token0 = error(_) ->
+        % Skip to the end of the string or name.
+        start_quoted_name(QuoteChar, Chars, _, !IO),
+        Token = Token0
+    ; Token0 = eof ->
+        Token = error("unterminated quote")
+    ;
+        Token = Token0
+    ).
+
+:- pred string_start_quoted_name(string::in, int::in, char::in,
+    list(char)::in, posn::in, token::out, string_token_context::out,
+    posn::in, posn::out) is det.
+
+string_start_quoted_name(String, Len, QuoteChar, Chars, Posn0,
+        Token, Context, !Posn) :-
+    string_get_quoted_name(String, Len, QuoteChar, Chars, Posn0,
+        Token0, Context, !Posn),
+    ( Token0 = error(_) ->
+        % Skip to the end of the string or name.
+        string_start_quoted_name(String, Len, QuoteChar, Chars,
+            Posn0, _, _, !Posn),
+        Token = Token0
+    ; Token0 = eof ->
+        Token = error("unterminated quote")
+    ;
+        Token = Token0
+    ).
+
 :- pred get_quoted_name(char::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
@@ -785,7 +819,7 @@ get_quoted_name(QuoteChar, Chars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated quote")
+        Token = eof
     ;
         Result = ok(Char),
         ( Char = QuoteChar ->
@@ -816,7 +850,7 @@ string_get_quoted_name(String, Len, QuoteChar, Chars, Posn0, Token, Context,
         )
     ;
         string_get_context(Posn0, Context, !Posn),
-        Token = error("unterminated quote")
+        Token = eof
     ).
 
 :- pred get_quoted_name_quote(char::in, list(char)::in, token::out,
@@ -863,13 +897,16 @@ string_get_quoted_name_quote(String, Len, QuoteChar, Chars, Posn0,
 :- pred finish_quoted_name(char::in, list(char)::in, token::out) is det.
 
 finish_quoted_name(QuoteChar, Chars, Token) :-
-    rev_char_list_to_string(Chars, String),
-    ( QuoteChar = '''' ->
-        Token = name(String)
-    ; QuoteChar = '"' ->
-        Token = string(String)
+    ( rev_char_list_to_string(Chars, String) ->
+        ( QuoteChar = '''' ->
+            Token = name(String)
+        ; QuoteChar = '"' ->
+            Token = string(String)
+        ;
+            error("lexer.m: unknown quote character")
+        )
     ;
-        error("lexer.m: unknown quote character")
+        Token = error("invalid character in quoted name")
     ).
 
 :- pred get_quoted_name_escape(char::in, list(char)::in, token::out,
@@ -882,7 +919,7 @@ get_quoted_name_escape(QuoteChar, Chars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated quoted name")
+        Token = eof
     ;
         Result = ok(Char),
         ( Char = '\n' ->
@@ -942,7 +979,7 @@ string_get_quoted_name_escape(String, Len, QuoteChar, Chars, Posn0,
         )
     ;
         string_get_context(Posn0, Context, !Posn),
-        Token = error("unterminated quoted name")
+        Token = eof
     ).
 
 :- pred escape_char(char::in, char::out) is semidet.
@@ -959,40 +996,22 @@ escape_char('''', '''').
 escape_char('"', '"').
 escape_char('`', '`').
 
-:- pred get_hex_escape(char::in, list(char)::in, list(char)::in,
-    token::out, io::di, io::uo) is det.
-
-get_hex_escape(QuoteChar, Chars, HexChars, Token, !IO) :-
-    io.read_char(Result, !IO),
-    (
-        Result = error(Error),
-        Token = io_error(Error)
-    ;
-        Result = eof,
-        Token = error("unterminated quote")
-    ;
-        Result = ok(Char),
-        ( char.is_hex_digit(Char) ->
-            get_hex_escape(QuoteChar, Chars, [Char | HexChars], Token, !IO)
-        ; Char = ('\\') ->
-            finish_hex_escape(QuoteChar, Chars, HexChars, Token, !IO)
-        ;
-            Token = error("unterminated hex escape")
-        )
-    ).
-
 :- pred get_unicode_escape(int::in, char::in, list(char)::in, list(char)::in,
     token::out, io::di, io::uo) is det.
 
 get_unicode_escape(NumHexChars, QuoteChar, Chars, HexChars, Token, !IO) :-
     ( if NumHexChars = list.length(HexChars) then
-        rev_char_list_to_string(HexChars, HexString),
         ( if
+            rev_char_list_to_string(HexChars, HexString),
             string.base_string_to_int(16, HexString, UnicodeCharCode),
             convert_unicode_char_to_target_chars(UnicodeCharCode, UTFChars)
         then
-            get_quoted_name(QuoteChar, list.reverse(UTFChars) ++ Chars,
-                Token, !IO)
+            ( if UnicodeCharCode = 0 then
+                Token = null_character_error
+            else
+                get_quoted_name(QuoteChar, list.reverse(UTFChars) ++ Chars,
+                    Token, !IO)
+            )
         else
             Token = error("invalid Unicode character code")
         )
@@ -1003,7 +1022,7 @@ get_unicode_escape(NumHexChars, QuoteChar, Chars, HexChars, Token, !IO) :-
             Token = io_error(Error)
         ;
             Result = eof,
-            Token = error("unterminated quote")
+            Token = eof
         ;
             Result = ok(Char),
             ( if char.is_hex_digit(Char) then
@@ -1022,14 +1041,19 @@ get_unicode_escape(NumHexChars, QuoteChar, Chars, HexChars, Token, !IO) :-
 string_get_unicode_escape(NumHexChars, String, Len, QuoteChar, Chars,
         HexChars, Posn0, Token, Context, !Posn) :-
     ( if NumHexChars = list.length(HexChars) then
-        rev_char_list_to_string(HexChars, HexString),
         ( if
+            rev_char_list_to_string(HexChars, HexString),
             string.base_string_to_int(16, HexString, UnicodeCharCode),
             convert_unicode_char_to_target_chars(UnicodeCharCode, UTFChars)
         then
             RevCharsWithUnicode = list.reverse(UTFChars) ++ Chars,
-            string_get_quoted_name(String, Len, QuoteChar, RevCharsWithUnicode,
-                Posn0, Token, Context, !Posn)
+            ( if UnicodeCharCode = 0 then
+                string_get_context(Posn0, Context, !Posn),
+                Token = null_character_error
+            else
+                string_get_quoted_name(String, Len, QuoteChar,
+                    RevCharsWithUnicode, Posn0, Token, Context, !Posn)
+            )
         else
             string_get_context(Posn0, Context, !Posn),
             Token = error("invalid Unicode character code")
@@ -1045,7 +1069,7 @@ string_get_unicode_escape(NumHexChars, String, Len, QuoteChar, Chars,
             )
         else
             string_get_context(Posn0, Context, !Posn),
-            Token = error("unterminated quote")
+            Token = eof
         )
     ).
 
@@ -1192,6 +1216,28 @@ unicode_encoding_int_to_encoding(1, utf16).
     EncodingInt = 1;
 ").
 
+:- pred get_hex_escape(char::in, list(char)::in, list(char)::in,
+    token::out, io::di, io::uo) is det.
+
+get_hex_escape(QuoteChar, Chars, HexChars, Token, !IO) :-
+    io.read_char(Result, !IO),
+    (
+        Result = error(Error),
+        Token = io_error(Error)
+    ;
+        Result = eof,
+        Token = eof
+    ;
+        Result = ok(Char),
+        ( char.is_hex_digit(Char) ->
+            get_hex_escape(QuoteChar, Chars, [Char | HexChars], Token, !IO)
+        ; Char = ('\\') ->
+            finish_hex_escape(QuoteChar, Chars, HexChars, Token, !IO)
+        ;
+            Token = error("unterminated hex escape")
+        )
+    ).
+
 :- pred string_get_hex_escape(string::in, int::in, char::in,
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
@@ -1211,7 +1257,7 @@ string_get_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
         )
     ;
         string_get_context(Posn0, Context, !Posn),
-        Token = error("unterminated quote")
+        Token = eof
     ).
 
 :- pred finish_hex_escape(char::in, list(char)::in, list(char)::in,
@@ -1223,12 +1269,16 @@ finish_hex_escape(QuoteChar, Chars, HexChars, Token, !IO) :-
         Token = error("empty hex escape")
     ;
         HexChars = [_ | _],
-        rev_char_list_to_string(HexChars, HexString),
         (
+            rev_char_list_to_string(HexChars, HexString),
             string.base_string_to_int(16, HexString, Int),
             char.to_int(Char, Int)
         ->
-            get_quoted_name(QuoteChar, [Char|Chars], Token, !IO)
+            ( Int = 0 ->
+                Token = null_character_error
+            ;
+                get_quoted_name(QuoteChar, [Char|Chars], Token, !IO)
+            )
         ;
             Token = error("invalid hex escape")
         )
@@ -1246,13 +1296,18 @@ string_finish_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
         Token = error("empty hex escape")
     ;
         HexChars = [_ | _],
-        rev_char_list_to_string(HexChars, HexString),
         (
+            rev_char_list_to_string(HexChars, HexString),
             string.base_string_to_int(16, HexString, Int),
             char.to_int(Char, Int)
         ->
-            string_get_quoted_name(String, Len, QuoteChar, [Char | Chars],
-                Posn0, Token, Context, !Posn)
+            ( Int = 0 ->
+                Token = null_character_error,
+                string_get_context(Posn0, Context, !Posn)
+            ;
+                string_get_quoted_name(String, Len, QuoteChar, [Char | Chars],
+                    Posn0, Token, Context, !Posn)
+            )
         ;
             string_get_context(Posn0, Context, !Posn),
             Token = error("invalid hex escape")
@@ -1269,7 +1324,7 @@ get_octal_escape(QuoteChar, Chars, OctalChars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated quote")
+        Token = eof
     ;
         Result = ok(Char),
         ( char.is_octal_digit(Char) ->
@@ -1308,7 +1363,7 @@ string_get_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
                 OctalChars, Posn0, Token, Context, !Posn)
         )
     ;
-        Token = error("unterminated quote"),
+        Token = eof,
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -1321,12 +1376,16 @@ finish_octal_escape(QuoteChar, Chars, OctalChars, Token, !IO) :-
         Token = error("empty octal escape")
     ;
         OctalChars = [_ | _],
-        rev_char_list_to_string(OctalChars, OctalString),
         (
+            rev_char_list_to_string(OctalChars, OctalString),
             string.base_string_to_int(8, OctalString, Int),
             char.to_int(Char, Int)
         ->
-            get_quoted_name(QuoteChar, [Char | Chars], Token, !IO)
+            ( Int = 0 ->
+                Token = null_character_error
+            ;
+                get_quoted_name(QuoteChar, [Char | Chars], Token, !IO)
+            )
         ;
             Token = error("invalid octal escape")
         )
@@ -1344,13 +1403,18 @@ string_finish_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
         string_get_context(Posn0, Context, !Posn)
     ;
         OctalChars = [_ | _],
-        rev_char_list_to_string(OctalChars, OctalString),
         (
+            rev_char_list_to_string(OctalChars, OctalString),
             string.base_string_to_int(8, OctalString, Int),
             char.to_int(Char, Int)
         ->
-            string_get_quoted_name(String, Len, QuoteChar, [Char | Chars],
-                Posn0, Token, Context, !Posn)
+            ( Int = 0 ->
+                Token = null_character_error,
+                string_get_context(Posn0, Context, !Posn)
+            ;
+                string_get_quoted_name(String, Len, QuoteChar, [Char | Chars],
+                    Posn0, Token, Context, !Posn)
+            )
         ;
             Token = error("invalid octal escape"),
             string_get_context(Posn0, Context, !Posn)
@@ -1370,16 +1434,22 @@ get_name(Chars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_string(Chars, Name),
-        Token = name(Name)
+        ( rev_char_list_to_string(Chars, Name) ->
+            Token = name(Name)
+        ;
+            Token = error("invalid character in name")
+        )
     ;
         Result = ok(Char),
         ( char.is_alnum_or_underscore(Char) ->
             get_name([Char | Chars], Token, !IO)
         ;
             io.putback_char(Char, !IO),
-            rev_char_list_to_string(Chars, Name),
-            Token = name(Name)
+            ( rev_char_list_to_string(Chars, Name) ->
+                Token = name(Name)
+            ;
+                Token = error("invalid character in name")
+            ) 
         )
     ).
 
@@ -1429,22 +1499,32 @@ get_source_line_number(Chars, Token, Context, !IO) :-
         ( char.is_digit(Char) ->
             get_source_line_number([Char | Chars], Token, Context, !IO)
         ; Char = '\n' ->
-            rev_char_list_to_string(Chars, String),
             (
-                string.base_string_to_int(10, String, Int),
-                Int > 0
+                rev_char_list_to_string(Chars, String)
             ->
-                io.set_line_number(Int, !IO),
-                get_token(Token, Context, !IO)
+                (
+                    string.base_string_to_int(10, String, Int),
+                    Int > 0
+                ->
+                    io.set_line_number(Int, !IO),
+                    get_token(Token, Context, !IO)
+                ;
+                    get_context(Context, !IO),
+                    string.append_list(["invalid line number `", String,
+                        "' in `#' line number directive"], Message),
+                    Token = error(Message)
+                )
             ;
                 get_context(Context, !IO),
-                string.append_list(["invalid line number `", String,
-                    "' in `#' line number directive"], Message),
-                Token = error(Message)
+                Token = error("invalid character in `#' line number directive")
             )
         ;
             get_context(Context, !IO),
-            string.from_char_list([Char], String),
+            ( char.to_int(Char, 0) ->
+                String = "NUL"
+            ;
+                string.from_char_list([Char], String)
+            ),
             string.append_list(["invalid character `", String,
                 "' in `#' line number directive"], Message),
             Token = error(Message)
@@ -1475,7 +1555,11 @@ string_get_source_line_number(String, Len, Posn1, Token, Context, !Posn) :-
             )
         ;
             string_get_context(Posn1, Context, !Posn),
-            string.from_char_list([Char], DirectiveString),
+            ( char.to_int(Char, 0) ->
+                DirectiveString = "NUL"
+            ;
+                string.from_char_list([Char], DirectiveString)
+            ),
             string.append_list(["invalid character `", DirectiveString,
                 "' in `#' line number directive"], Message),
             Token = error(Message)
@@ -1494,16 +1578,22 @@ get_graphic(Chars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_string(Chars, Name),
-        Token = name(Name)
+        ( rev_char_list_to_string(Chars, Name) ->
+            Token = name(Name)
+        ;
+            Token = error("invalid character in graphic token")
+        )
     ;
         Result = ok(Char),
         ( graphic_token_char(Char) ->
             get_graphic([Char | Chars], Token, !IO)
         ;
             io.putback_char(Char, !IO),
-            rev_char_list_to_string(Chars, Name),
-            Token = name(Name)
+            ( rev_char_list_to_string(Chars, Name) ->
+                Token = name(Name)
+            ;
+                Token = error("invalid character in graphic token")
+            )
         )
     ).
 
@@ -1535,16 +1625,22 @@ get_variable(Chars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_string(Chars, VariableName),
-        Token = variable(VariableName)
+        ( rev_char_list_to_string(Chars, VariableName) ->
+            Token = variable(VariableName)
+        ;
+            Token = error("invalid character in variable")
+        )
     ;
         Result = ok(Char),
         ( char.is_alnum_or_underscore(Char) ->
             get_variable([Char | Chars], Token, !IO)
         ;
             io.putback_char(Char, !IO),
-            rev_char_list_to_string(Chars, VariableName),
-            Token = variable(VariableName)
+            ( rev_char_list_to_string(Chars, VariableName) ->
+                Token = variable(VariableName)
+            ;
+                Token = error("invalid character in variable")
+            )
         )
     ).
 
@@ -2184,8 +2280,11 @@ string_get_float_exponent_3(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred rev_char_list_to_int(list(char)::in, int::in, token::out) is det.
 
 rev_char_list_to_int(RevChars, Base, Token) :-
-    rev_char_list_to_string(RevChars, String),
-    conv_string_to_int(String, Base, Token).
+    ( rev_char_list_to_string(RevChars, String) ->
+        conv_string_to_int(String, Base, Token)
+    ;
+        Token = error("invalid character in int")
+    ).
 
 :- pred conv_string_to_int(string::in, int::in, token::out) is det.
 
@@ -2199,8 +2298,11 @@ conv_string_to_int(String, Base, Token) :-
 :- pred rev_char_list_to_float(list(char)::in, token::out) is det.
 
 rev_char_list_to_float(RevChars, Token) :-
-    rev_char_list_to_string(RevChars, String),
-    conv_to_float(String, Token).
+    ( rev_char_list_to_string(RevChars, String) ->
+        conv_to_float(String, Token)
+    ;
+        Token = error("invalid character in int")
+    ).
 
 :- pred conv_to_float(string::in, token::out) is det.
 
@@ -2211,9 +2313,14 @@ conv_to_float(String, Token) :-
         Token = error("invalid float token")
     ).
 
-:- pred rev_char_list_to_string(list(char)::in, string::out) is det.
+:- pred rev_char_list_to_string(list(char)::in, string::out) is semidet.
 
 rev_char_list_to_string(RevChars, String) :-
-   string.from_rev_char_list(RevChars, String).
+   string.semidet_from_rev_char_list(RevChars, String).
+
+:- func null_character_error = token.
+
+null_character_error =
+    error("null character is illegal in strings and names").
 
 %-----------------------------------------------------------------------------%

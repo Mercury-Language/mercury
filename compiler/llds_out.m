@@ -4955,10 +4955,13 @@ output_rval_const(llconst_string(String), !IO) :-
     io.write_string(""", ", !IO),
     io.write_int(StringLength, !IO),
     io.write_string(")", !IO).
-output_rval_const(llconst_multi_string(Length, String), !IO) :-
+output_rval_const(llconst_multi_string(String), !IO) :-
     io.write_string("MR_string_const(""", !IO),
-    c_util.output_quoted_multi_string(Length, String, !IO),
+    c_util.output_quoted_multi_string(String, !IO),
     io.write_string(""", ", !IO),
+
+    % The "+1" is for the NULL character.
+    Length = list.foldl((func(S, L0) = L0 + length(S) + 1), String, 0),
     io.write_int(Length, !IO),
     io.write_string(")", !IO).
 output_rval_const(llconst_code_addr(CodeAddress), !IO) :-

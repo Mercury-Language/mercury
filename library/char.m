@@ -43,6 +43,11 @@
     % represent characters using Unicode, but store files in an 8-bit national
     % character set.
     %
+    % Note that '\0' is not accepted as a Mercury null character constant.
+    % Instead, a null character can be created using `char.det_from_int(0)'.
+    % Null characters aren't very useful in Mercury because they aren't
+    % allowed in strings.
+    %
 :- func char.to_int(char) = int.
 :- pred char.to_int(char, int).
 :- mode char.to_int(in, out) is det.
@@ -71,18 +76,21 @@
 :- pred char.min_char_value(int::out) is det.
 
     % Convert a character to uppercase.
+    % Note that this only converts unaccented Latin letters.
     %
 :- func char.to_upper(char) = char.
 :- pred char.to_upper(char::in, char::out) is det.
 
     % Convert a character to lowercase.
+    % Note that this only converts unaccented Latin letters.
     %
 :- func char.to_lower(char) = char.
 :- pred char.to_lower(char::in, char::out) is det.
 
     % char.lower_upper(Lower, Upper) is true iff
     % Lower is a lower-case letter and Upper is the corresponding
-    % upper-case letter.
+    % upper-case letter, and both Lower and Upper are unaccented
+    % Latin letters.
     %
 :- pred char.lower_upper(char, char).
 :- mode char.lower_upper(in, out) is semidet.

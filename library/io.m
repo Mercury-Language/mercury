@@ -162,6 +162,9 @@
     % eof or error. Returns the result as a string rather than
     % as a list of char.
     %
+    % Returns an error if the file contains a null character, because
+    % null characters are not allowed in Mercury strings.
+    %
 :- pred io.read_file_as_string(io.maybe_partial_res(string)::out,
     io::di, io::uo) is det.
 
@@ -247,6 +250,9 @@
 
     % Reads all the characters from the given input stream until eof or error.
     % Returns the result as a string rather than as a list of char.
+    %
+    % Returns an error if the file contains a null character, because
+    % null characters are not allowed in Mercury strings.
     %
 :- pred io.read_file_as_string(io.input_stream::in,
     io.maybe_partial_res(string)::out, io::di, io::uo) is det.
@@ -2020,6 +2026,8 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
     ( Res < 0 ->
         ( Res = -1 ->
             Result = eof
+        ; Res = -2 ->
+            Result = error(io_error("null character in input"))
         ;
             io.make_err_msg("read failed: ", Msg, !IO),
             Result = error(io_error(Msg))
@@ -2056,8 +2064,12 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
             }
             break;
         }
+        if (char_code == 0) {
+            Res = -2; 
+            break;
+        }
         if (char_code != (MR_UnsignedChar) char_code) {
-            Res = -2;
+            Res = -3;
             break;
         }
         read_buffer[i++] = char_code;
@@ -2105,6 +2117,9 @@ io.read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
         ( Char = '\n' ->
             Res = 0,
             String = "\n"
+        ; char.to_int(Char, 0) ->
+            Res = -2,
+            String = ""
         ;
             io.read_line_as_string_2(Stream, no, Res, String0, !IO),
             string.first_char(String, Char, String0)
@@ -2123,7 +2138,7 @@ io.read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
     ;
         Result = error(_),
         String = "",
-        Res = -2
+        Res = -3
     ).
 
 io.read_file(Result, !IO) :-
@@ -2174,14 +2189,17 @@ io.read_file_as_string(Stream, Result, !IO) :-
     io.read_file_as_string_2(Stream, Buffer0, Buffer, Pos0, Pos,
         BufferSize0, BufferSize, !IO),
     require(Pos < BufferSize, "io.read_file_as_string: overflow"),
-    io.buffer_to_string(Buffer, Pos, String),
-    io.input_check_err(Stream, Result0, !IO),
-    (
-        Result0 = ok,
-        Result = ok(String)
-    ;
-        Result0 = error(Error),
-        Result = error(String, Error)
+    ( io.buffer_to_string(Buffer, Pos, String) ->
+        io.input_check_err(Stream, Result0, !IO),
+        (
+            Result0 = ok,
+            Result = ok(String)
+        ;
+            Result0 = error(Error),
+            Result = error(String, Error)
+        )
+    ;   
+        Result = error("", io_error("null character in input"))
     ).
 
 :- pred io.read_file_as_string_2(io.input_stream::in, buffer::buffer_di,
@@ -3471,8 +3489,8 @@ have_file_ids :- semidet_fail.
 }").
 
 io.alloc_buffer(Size, buffer(Array)) :-
-    % XXX '0' is used as Mercury doesn't recognise '\0' as a char constant.
-    array.init(Size, '0', Array).
+    char.det_from_int(0, NullChar),
+    array.init(Size, NullChar, Array).
 
 :- pred io.resize_buffer(int::in, int::in,
     buffer::buffer_di, buffer::buffer_uo) is det.
@@ -3515,21 +3533,30 @@ io.alloc_buffer(Size, buffer(Array)) :-
 }").
 
 io.resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
-    % XXX '0' is used as Mercury doesn't recognise '\0' as a char constant.
-    array.resize(Array0, NewSize, '0', Array).
+    char.det_from_int(0, Char),
+    array.resize(Array0, NewSize, Char, Array).
 
-:- pred io.buffer_to_string(buffer::buffer_di, int::in, string::uo) is det.
+:- pred io.buffer_to_string(buffer::buffer_di, int::in, string::uo) is semidet.
 
 :- pragma foreign_proc("C",
     io.buffer_to_string(Buffer::buffer_di, Len::in, Str::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "{
+    int i;
+
     Str = Buffer;
     Str[Len] = '\\0';
+
+    /* Check that the string doesn't contain null characters. */
+    if (strlen(Str) != Len) {
+        SUCCESS_INDICATOR= MR_FALSE;
+    } else {
+        SUCCESS_INDICATOR = MR_TRUE;
+    }
 }").
 
-io.buffer_to_string(buffer(Array), Len, from_char_list(List)) :-
+io.buffer_to_string(buffer(Array), Len, from_char_list_semidet(List)) :-
     array.fetch_items(Array, min(Array), min(Array) + Len - 1, List).
 
 :- pred io.read_into_buffer(stream::in, buffer::buffer_di, buffer::buffer_uo,

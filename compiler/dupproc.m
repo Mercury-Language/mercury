@@ -448,7 +448,7 @@ standardize_rval_const(Const, StdConst, DupProcMap) :-
         Const = llconst_string(_),
         StdConst = Const
     ;
-        Const = llconst_multi_string(_, _),
+        Const = llconst_multi_string(_),
         StdConst = Const
     ;
         Const = llconst_code_addr(CodeAddr),

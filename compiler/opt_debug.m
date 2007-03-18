@@ -311,8 +311,8 @@ dump_const(_, llconst_float(F)) =
     float_to_string(F).
 dump_const(_, llconst_string(S)) =
     """" ++ S ++ """".
-dump_const(_, llconst_multi_string(L, _S)) =
-    "multi_string(" ++ int_to_string(L) ++ ")".
+dump_const(_, llconst_multi_string(_S)) =
+    "multi_string(...)".
 dump_const(MaybeProcLabel, llconst_code_addr(CodeAddr)) =
     "code_addr_const(" ++ dump_code_addr(MaybeProcLabel, CodeAddr) ++ ")".
 dump_const(_, llconst_data_addr(DataAddr, MaybeOffset)) = Str :-

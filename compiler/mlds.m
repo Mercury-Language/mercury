@@ -1572,10 +1572,9 @@
     ;       mlconst_int(int)
     ;       mlconst_float(float)
     ;       mlconst_string(string)
-    ;       mlconst_multi_string(int, string)
-            % A multi_string_const is a string containing embedded NULs,
-            % whose real length is given by the integer, and not the location
-            % of the first null character.
+    ;       mlconst_multi_string(list(string))
+            % A multi_string_const is a string containing embedded NULs
+            % between each substring in the list.
 
     ;       mlconst_code_addr(mlds_code_addr)
     ;       mlconst_data_addr(mlds_data_addr)

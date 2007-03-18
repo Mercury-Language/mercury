@@ -2205,8 +2205,7 @@ replace_labels_rval_const(llconst_false, _, llconst_false).
 replace_labels_rval_const(llconst_int(N), _, llconst_int(N)).
 replace_labels_rval_const(llconst_float(N), _, llconst_float(N)).
 replace_labels_rval_const(llconst_string(S), _, llconst_string(S)).
-replace_labels_rval_const(llconst_multi_string(L, S), _,
-        llconst_multi_string(L, S)).
+replace_labels_rval_const(llconst_multi_string(S), _, llconst_multi_string(S)).
 replace_labels_rval_const(llconst_code_addr(Addr0), ReplMap,
         llconst_code_addr(Addr)) :-
     replace_labels_code_addr(Addr0, ReplMap, Addr).

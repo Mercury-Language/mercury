@@ -140,6 +140,7 @@ SINGLEMODULE= \
 	no_exports \
 	not_a_switch \
 	not_in_interface \
+	null_char \
 	nullary_ho_func_error \
 	occurs \
 	one_member \

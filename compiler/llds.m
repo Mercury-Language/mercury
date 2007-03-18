@@ -911,9 +911,10 @@
     ;       llconst_int(int)
     ;       llconst_float(float)
     ;       llconst_string(string)
-    ;       llconst_multi_string(int, string)
-            % A string containing embedded NULLs, whose real length is given
-            % by the integer, and not the location of the first NULL.
+    ;       llconst_multi_string(list(string))
+            % A string containing an embedded NULL between each substring
+            % in the list.
+
     ;       llconst_code_addr(code_addr)
     ;       llconst_data_addr(data_addr, maybe(int)).
             % If the second arg is yes(Offset), then increment the address
@@ -1218,7 +1219,7 @@ const_type(llconst_false, bool).
 const_type(llconst_int(_), integer).
 const_type(llconst_float(_), float).
 const_type(llconst_string(_), string).
-const_type(llconst_multi_string(_, _), string).
+const_type(llconst_multi_string(_), string).
 const_type(llconst_code_addr(_), code_ptr).
 const_type(llconst_data_addr(_, _), data_ptr).
 

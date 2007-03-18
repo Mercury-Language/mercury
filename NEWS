@@ -17,6 +17,15 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* Predicates and functions which create strings from lists of characters
+  now fail, throw an exception or return an error value if a null character
+  is found.  Unexpected null characters in strings are a potential source of
+  security vulnerabilities.
+
+  Predicates string.semidet_from_char_list/2 and
+  string.semidet_from_rev_char_list/2 have been added.  These fail rather
+  than throwing an exception if a null character is found.
+
 * string.float_to_string now trims redundant trailing zeroes (although
   at least one fractional digit is always present).  This change affects the
   output from the debugger and io.print etc.

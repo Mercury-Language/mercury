@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,8 +50,10 @@
 %-----------------------------------------------------------------------------%
 
     % This type is for strings which may contain embedded null characters.
+    % When a string_with_0s is written, a null character will be written
+    % in between each string in the list.
 :- type string_with_0s
-    --->    string_with_0s(string).
+    --->    string_with_0s(list(string)).
 
 :- type event_set_layout_data
     --->    event_set_layout_data(

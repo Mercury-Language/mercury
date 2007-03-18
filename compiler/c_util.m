@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006 The University of Melbourne.
+% Copyright (C) 1999-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,9 +22,9 @@
 
 :- import_module backend_libs.builtin_ops.
 
-
 :- import_module char.
 :- import_module io.
+:- import_module list.
 %-----------------------------------------------------------------------------%
 %
 % Line numbering.
@@ -53,13 +53,12 @@
     %
 :- pred output_quoted_string(string::in, io::di, io::uo) is det.
 
-    % Output_quoted_multi_string is like output_quoted_string except that
-    % the string may contain embedded NUL characters (i.e. '\0').
-    % The int specifies the length of the string.
+    % output_quoted_multi_string is like list.foldl(output_quoted_string)
+    % except that a null character will be written between each string
+    % in the list.
     %
-:- type multi_string == string.
-:- pred output_quoted_multi_string(int::in, multi_string::in,
-    io::di, io::uo) is det.
+:- type multi_string == list(string).
+:- pred output_quoted_multi_string(multi_string::in, io::di, io::uo) is det.
 
     % Print out a char suitably escaped for use as a C char literal.
     % This doesn't actually print out the enclosing single quotes --
@@ -207,16 +206,19 @@ reset_line_num(!IO) :-
 %
 % String and character handling.
 
-output_quoted_string(S0, !IO) :-
-    output_quoted_multi_string(string.length(S0), S0, !IO).
+output_quoted_string(S, !IO) :-
+    output_quoted_string(0, length(S), S, !IO).
 
-output_quoted_multi_string(Len, S, !IO) :-
-    output_quoted_multi_string_2(0, Len, S, !IO).
+output_quoted_multi_string([], !IO).
+output_quoted_multi_string([S | Ss], !IO) :-
+    output_quoted_string(S, !IO),
+    output_quoted_char(char.det_from_int(0), !IO),
+    output_quoted_multi_string(Ss, !IO).
 
-:- pred output_quoted_multi_string_2(int::in, int::in, string::in,
+:- pred output_quoted_string(int::in, int::in, string::in,
     io::di, io::uo) is det.
 
-output_quoted_multi_string_2(Cur, Len, S, !IO) :-
+output_quoted_string(Cur, Len, S, !IO) :-
     ( Cur < Len ->
         % Avoid a limitation in the MSVC compiler where string literals
         % can be no longer then 2048 chars. However if you output the string
@@ -231,8 +233,6 @@ output_quoted_multi_string_2(Cur, Len, S, !IO) :-
             true
         ),
 
-        % We must use unsafe index, because we want to be able to access chars
-        % beyond the first NUL.
         string.unsafe_index(S, Cur, Char),
         output_quoted_char(Char, !IO),
         
@@ -256,7 +256,7 @@ output_quoted_multi_string_2(Cur, Len, S, !IO) :-
             true
         ),
 
-        output_quoted_multi_string_2(Cur + 1, Len, S, !IO)
+        output_quoted_string(Cur + 1, Len, S, !IO)
     ;
         true
     ).

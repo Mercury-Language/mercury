@@ -151,7 +151,7 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
     StaticCellInfo1 = LayoutInfo ^ static_cell_info,
     StringTable = string_table(_, RevStringList, StringOffset),
     list.reverse(RevStringList, StringList),
-    concat_string_list(StringList, StringOffset, ConcatStrings),
+    ConcatStrings = string_with_0s(StringList),
 
     list.condense([TableIoDecls, ProcLayouts, InternalLayouts], Layouts0),
     (
@@ -232,76 +232,6 @@ build_event_arg_type_info(Attr, TypeRvalAndType, !StaticCellInfo) :-
     ll_pseudo_type_info.construct_typed_llds_pseudo_type_info(Type,
         NumUnivQTvars, ExistQTvars, !StaticCellInfo, TypeRval, TypeRvalType),
     TypeRvalAndType = TypeRval - TypeRvalType.
-
-%---------------------------------------------------------------------------%
-
-    % concat_string_list appends a list of strings together,
-    % appending a null character after each string.
-    % The resulting string will contain embedded null characters,
-    %
-:- pred concat_string_list(list(string)::in, int::in,
-    string_with_0s::out) is det.
-
-concat_string_list(Strings, Len, string_with_0s(Result)) :-
-    concat_string_list_2(Strings, Len, Result).
-
-:- pred concat_string_list_2(list(string)::in, int::in, string::out) is det.
-
-:- pragma foreign_decl("C", "
-    #include ""mercury_tags.h"" /* for MR_list_*() */
-    #include ""mercury_heap.h"" /* for MR_offset_incr_hp_atomic*() */
-    #include ""mercury_misc.h"" /* for MR_fatal_error() */
-").
-
-:- pragma foreign_proc("C",
-    concat_string_list_2(StringList::in, ArenaSize::in, Arena::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    MR_Word     cur_node;
-    MR_Integer  cur_offset;
-    MR_Word     tmp;
-
-    MR_offset_incr_hp_atomic(tmp, 0,
-        (ArenaSize + sizeof(MR_Word)) / sizeof(MR_Word));
-    Arena = (char *) tmp;
-
-    cur_offset = 0;
-    cur_node = StringList;
-
-    while (! MR_list_is_empty(cur_node)) {
-        (void) strcpy(&Arena[cur_offset], (char *) MR_list_head(cur_node));
-        cur_offset += strlen((char *) MR_list_head(cur_node)) + 1;
-        cur_node = MR_list_tail(cur_node);
-    }
-
-    if (cur_offset != ArenaSize) {
-        char    msg[256];
-
-        sprintf(msg, ""internal error in creating string table;\\n""
-            ""cur_offset = %ld, ArenaSize = %ld\\n"",
-            (long) cur_offset, (long) ArenaSize);
-        MR_fatal_error(msg);
-    }
-}").
-
-% This version is only used if there is no matching foreign_proc version.
-% Note that this version only works if the Mercury implementation's
-% string representation allows strings to contain embedded null characters.
-% So we check that.
-concat_string_list_2(StringsList, _Len, StringWithNulls) :-
-    (
-        char.to_int(NullChar, 0),
-        NullCharString = string.char_to_string(NullChar),
-        string.length(NullCharString, 1)
-    ->
-        StringsWithNullsList = list.map(func(S) = S ++ NullCharString,
-            StringsList),
-        StringWithNulls = string.append_list(StringsWithNullsList)
-    ;
-        % the Mercury implementation's string representation
-        % doesn't support strings containing null characters
-        private_builtin.sorry("stack_layout.concat_string_list")
-    ).
 
 %---------------------------------------------------------------------------%
 

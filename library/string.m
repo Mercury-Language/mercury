@@ -12,10 +12,18 @@
 %
 % This modules provides basic string handling facilities.
 %
-% Note that in the current implementation, strings are represented as in C,
-% using a null character as the string terminator. Future implementations,
-% however, might allow null characters in strings. Programmers should
-% avoid creating strings that might contain null characters.
+% Unexpected null characters embedded in the middle of strings can be a source
+% of security vulnerabilities, so the Mercury library predicates and functions
+% which create strings from (lists of) characters throw an exception if a null
+% character is detected.  Programmers must not create strings that might
+% contain null characters using the foreign language interface.
+%
+% The representation of strings is implementation dependent and subject to
+% change. In the current implementation, when Mercury is compiled to C, strings
+% are represented as in C, using a null character as the string terminator.
+% When Mercury is compiled to Java, strings are represented as Java `String's.
+% When Mercury is compiled to .NET IL code, strings are represented as .NET
+% `System.String's.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -123,7 +131,7 @@
 :- mode string.char_to_string(in, uo) is det.
 :- mode string.char_to_string(out, in) is semidet.
 
-    % A synonym for string.int_to_char/1.
+    % A synonym for string.char_to_string/1.
     %
 :- func string.from_char(char::in) = (string::uo) is det.
 
@@ -217,6 +225,7 @@
     is det.
 
     % Converts a string to lowercase.
+    % Note that this only converts unaccented Latin letters.
     %
 :- func string.to_lower(string::in) = (string::uo) is det.
 :- pred string.to_lower(string, string).
@@ -224,6 +233,7 @@
 :- mode string.to_lower(in, in) is semidet.        % implied
 
     % Converts a string to uppercase.
+    % Note that this only converts unaccented Latin letters.
     %
 :- func string.to_upper(string::in) = (string::uo) is det.
 :- pred string.to_upper(string, string).
@@ -231,16 +241,19 @@
 :- mode string.to_upper(in, in) is semidet.        % implied
 
     % Convert the first character (if any) of a string to uppercase.
+    % Note that this only converts unaccented Latin letters.
     %
 :- func string.capitalize_first(string) = string.
 :- pred string.capitalize_first(string::in, string::out) is det.
 
     % Convert the first character (if any) of a string to lowercase.
+    % Note that this only converts unaccented Latin letters.
     %
 :- func string.uncapitalize_first(string) = string.
 :- pred string.uncapitalize_first(string::in, string::out) is det.
 
     % Convert the string to a list of characters.
+    % Throws an exception if the list of characters contains a null character.
     %
 :- func string.to_char_list(string) = list(char).
 :- pred string.to_char_list(string, list(char)).
@@ -248,17 +261,28 @@
 :- mode string.to_char_list(uo, in) is det.
 
     % Convert a list of characters to a string.
+    % Throws an exception if the list of characters contains a null character.
     %
 :- func string.from_char_list(list(char)::in) = (string::uo) is det.
 :- pred string.from_char_list(list(char), string).
 :- mode string.from_char_list(in, uo) is det.
 :- mode string.from_char_list(out, in) is det.
 
+    % As above, but fail instead of throwing an exception if the
+    % list contains a null character.
+:- pred string.semidet_from_char_list(list(char)::in, string::uo) is semidet.
+
     % Same as string.from_char_list, except that it reverses the order
     % of the characters.
+    % Throws an exception if the list of characters contains a null character.
     %
 :- func string.from_rev_char_list(list(char)::in) = (string::uo) is det.
 :- pred string.from_rev_char_list(list(char)::in, string::uo) is det.
+
+    % As above, but fail instead of throwing an exception if the
+    % list contains a null character.
+:- pred string.semidet_from_rev_char_list(list(char)::in, string::uo)
+    is semidet.
 
     % Converts a signed base 10 string to an int; throws an exception
     % if the string argument does not match the regexp [+-]?[0-9]+
@@ -1134,9 +1158,6 @@ string.c_pointer_to_string(C_Pointer, Str) :-
     private_builtin.unsafe_type_cast(C_Pointer, Int),
     Str = "c_pointer(0x" ++ string.int_to_base_string(Int, 16) ++ ")".
 
-string.from_char_list(CharList, Str) :-
-    string.to_char_list(Str, CharList).
-
 string.int_to_string_thousands(N) =
     string.int_to_base_string_group(N, 10, 3, ",").
 
@@ -1208,9 +1229,18 @@ string.int_to_base_string_group_2(NegN, Base, Curr, Period, Sep, Str) :-
 % :- pred string.to_char_list(string, list(char)).
 % :- mode string.to_char_list(in, uo) is det.
 % :- mode string.to_char_list(uo, in) is det.
+:- pragma promise_pure(string.to_char_list/2).
+
+string.to_char_list(Str::in, CharList::out) :-
+    string.to_char_list_2(Str, CharList).
+string.to_char_list(Str::uo, CharList::in) :-
+    string.from_char_list(CharList, Str).
+
+:- pred string.to_char_list_2(string, list(char)).
+:- mode string.to_char_list_2(in, out) is det.
 
 :- pragma foreign_proc("C",
-    string.to_char_list(Str::in, CharList::out),
+    string.to_char_list_2(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "{
@@ -1223,8 +1253,34 @@ string.int_to_base_string_group_2(NegN, Base, Curr, Period, Sep, Str) :-
     }
 }").
 
+string.to_char_list_2(Str, CharList) :-
+    string.to_char_list_3(Str, 0, CharList).
+
+:- pred string.to_char_list_3(string::in, int::in, list(char)::uo) is det.
+
+string.to_char_list_3(Str, Index, CharList) :-
+    ( string.index(Str, Index, Char) ->
+        string.to_char_list_3(Str, Index + 1, CharList0),
+        CharList = [Char | CharList0]
+    ;
+        CharList = []
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma promise_pure(string.from_char_list/2).
+
+string.from_char_list(Chars::out, Str::in) :-
+    string.to_char_list(Str, Chars).
+string.from_char_list(Chars::in, Str::uo) :-
+    ( string.semidet_from_char_list(Chars, Str0) ->
+        Str = Str0
+    ;
+        error("string.from_char_list: null character in list")
+    ).
+
 :- pragma foreign_proc("C",
-    string.to_char_list(Str::uo, CharList::in),
+    string.semidet_from_char_list(CharList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "{
@@ -1236,7 +1292,7 @@ string.int_to_base_string_group_2(NegN, Base, Curr, Period, Sep, Str) :-
     ** Loop to calculate list length + sizeof(MR_Word) in `size'
     ** using list in `char_list_ptr'.
     */
-    size = sizeof(MR_Word);
+    size = 0;
     char_list_ptr = CharList;
     while (! MR_list_is_empty(char_list_ptr)) {
         size++;
@@ -1244,46 +1300,45 @@ string.int_to_base_string_group_2(NegN, Base, Curr, Period, Sep, Str) :-
     }
 
     /*
-    ** Allocate (length + 1) bytes of heap space for string
-    ** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words.
+    ** Allocate heap space for string
     */
     MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
 
     /*
     ** Loop to copy the characters from the char_list to the string.
     */
+    SUCCESS_INDICATOR = MR_TRUE;
     size = 0;
     char_list_ptr = CharList;
     while (! MR_list_is_empty(char_list_ptr)) {
-        Str[size++] = MR_list_head(char_list_ptr);
+        MR_Char c;
+        c = (MR_Char) MR_list_head(char_list_ptr);
+        /*
+        ** It is an error to put a null character in a string
+        ** (see the comments at the top of this file).
+        */
+        if (c == '\\0') {
+            SUCCESS_INDICATOR = MR_FALSE;
+            break;
+        }
+        Str[size++] = c;
         char_list_ptr = MR_list_tail(char_list_ptr);
     }
 
     Str[size] = '\\0';
 }").
 
-:- pragma promise_equivalent_clauses(string.to_char_list/2).
+:- pragma promise_equivalent_clauses(string.semidet_from_char_list/2).
 
-string.to_char_list(Str::in, CharList::out) :-
-    string.to_char_list_2(Str, 0, CharList).
-string.to_char_list(Str::uo, CharList::in) :-
+string.semidet_from_char_list(CharList::in, Str::uo) :-
     (
         CharList = [],
         Str = ""
     ;
         CharList = [C | Cs],
-        string.to_char_list(Str0, Cs),
+        \+ char_to_int(C, 0),
+        string.semidet_from_char_list(Cs, Str0),
         string.first_char(Str, C, Str0)
-    ).
-
-:- pred string.to_char_list_2(string::in, int::in, list(char)::uo) is det.
-
-string.to_char_list_2(Str, Index, CharList) :-
-    ( string.index(Str, Index, Char) ->
-        string.to_char_list_2(Str, Index + 1, CharList0),
-        CharList = [Char | CharList0]
-    ;
-        CharList = []
     ).
 
 %---------------------------------------------------------------------------%
@@ -1292,30 +1347,33 @@ string.to_char_list_2(Str, Index, CharList) :-
 % but the optimized implementation in C below is there for efficiency since
 % it improves the overall speed of parsing by about 7%.
 
+string.from_rev_char_list(Chars, Str) :-
+    ( string.semidet_from_rev_char_list(Chars, Str0) ->
+        Str = Str0
+    ;
+        error("string.from_rev_char_list: null character in list")
+    ).
+
 :- pragma foreign_proc("C",
-    string.from_rev_char_list(Chars::in, Str::uo),
+    string.semidet_from_rev_char_list(Chars::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "{
     MR_Word list_ptr;
-    MR_Word size, len;
+    MR_Word size;
 
     /*
-    ** Loop to calculate list length + sizeof(MR_Word) in `size'
-    ** using list in `list_ptr' and separately count the length of the string.
+    ** Loop to calculate list length in `size' using list in `list_ptr'
     */
-    size = sizeof(MR_Word);
-    len = 1;
+    size = 0;
     list_ptr = Chars;
     while (!MR_list_is_empty(list_ptr)) {
         size++;
-        len++;
         list_ptr = MR_list_tail(list_ptr);
     }
 
     /*
-    ** Allocate (length + 1) bytes of heap space for string
-    ** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words.
+    ** Allocate heap space for string
     */
     MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
 
@@ -1323,21 +1381,30 @@ string.to_char_list_2(Str, Index, CharList) :-
     ** Set size to be the offset of the end of the string
     ** (ie the \\0) and null terminate the string.
     */
-    Str[--len] = '\\0';
+    Str[size] = '\\0';
 
     /*
     ** Loop to copy the characters from the list_ptr to the string
     ** in reverse order.
     */
     list_ptr = Chars;
+    SUCCESS_INDICATOR = MR_TRUE;
     while (!MR_list_is_empty(list_ptr)) {
-        Str[--len] = (MR_Char) MR_list_head(list_ptr);
+        MR_Char c;
+        c = (MR_Char) MR_list_head(list_ptr);
+        if (c == '\\0') {
+            SUCCESS_INDICATOR = MR_FALSE;
+            break;
+        }
+        Str[--size] = c;
         list_ptr = MR_list_tail(list_ptr);
     }
 }").
 
-string.from_rev_char_list(Chars::in, Str::uo) :-
-    Str = string.from_char_list(list.reverse(Chars)).
+string.semidet_from_rev_char_list(Chars::in, Str::uo) :-
+    string.semidet_from_char_list(list.reverse(Chars), Str).
+
+%---------------------------------------------------------------------------%
 
 string.to_upper(StrIn, StrOut) :-
     string.to_char_list(StrIn, List),
@@ -3411,8 +3478,21 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 #endif
 ").
 
+string.set_char(Char, Index, !Str) :-
+    ( char.to_int(Char, 0) ->
+        error("string.set_char: null character")
+    ;
+        string.set_char_2(Char, Index, !Str)
+    ).
+
+:- pred string.set_char_2(char, int, string, string).
+:- mode string.set_char_2(in, in, in, out) is semidet.
+% XXX This mode is disabled because the compiler puts constant
+% strings into static data even when they might be updated.
+%:- mode string.set_char_2(in, in, di, uo) is semidet.
+
 :- pragma foreign_proc("C",
-    string.set_char(Ch::in, Index::in, Str0::in, Str::out),
+    string.set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -3427,7 +3507,7 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
     }
 ").
 :- pragma foreign_proc("C#",
-    string.set_char(Ch::in, Index::in, Str0::in, Str::out),
+    string.set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Index >= Str0.Length) {
@@ -3439,13 +3519,13 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
         SUCCESS_INDICATOR = true;
     }
 ").
-string.set_char(Ch, Index, Str0, Str) :-
+string.set_char_2(Ch, Index, Str0, Str) :-
     string.to_char_list(Str0, List0),
     list.replace_nth(List0, Index + 1, Ch, List),
     string.to_char_list(Str, List).
 
 % :- pragma foreign_proc("C",
-%   string.set_char(Ch::in, Index::in, Str0::di, Str::uo),
+%   string.set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
 %   [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
 % "
 %   if ((MR_Unsigned) Index >= strlen(Str0)) {
@@ -3458,7 +3538,7 @@ string.set_char(Ch, Index, Str0, Str) :-
 % ").
 %
 % :- pragma foreign_proc("C#",
-%   string.set_char(Ch::in, Index::in, Str0::di, Str::uo),
+%   string.set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
 %   [will_not_call_mercury, promise_pure, thread_safe],
 % "
 %   if (Index >= Str0.Length) {
@@ -3473,8 +3553,21 @@ string.set_char(Ch, Index, Str0, Str) :-
 
 /*-----------------------------------------------------------------------*/
 
+string.unsafe_set_char(Char, Index, !Str) :-
+    ( char.to_int(Char, 0) ->
+        error("string.unsafe_set_char: null character")
+    ;
+        string.unsafe_set_char_2(Char, Index, !Str)
+    ).
+
+:- pred string.unsafe_set_char_2(char, int, string, string).
+:- mode string.unsafe_set_char_2(in, in, in, out) is det.
+% XXX This mode is disabled because the compiler puts constant
+% strings into static data even when they might be updated.
+%:- mode string.unsafe_set_char_2(in, in, di, uo) is det.
+
 :- pragma foreign_proc("C",
-    string.unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
+    string.unsafe_set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -3484,7 +3577,7 @@ string.set_char(Ch, Index, Str0, Str) :-
     MR_set_char(Str, Index, Ch);
 ").
 :- pragma foreign_proc("C#",
-    string.unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
+    string.unsafe_set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Str = System.String.Concat(Str0.Substring(0, Index),
@@ -3492,21 +3585,21 @@ string.set_char(Ch, Index, Str0, Str) :-
         Str0.Substring(Index + 1));
 ").
 :- pragma foreign_proc("Java",
-    string.unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
+    string.unsafe_set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);
 ").
 
 % :- pragma foreign_proc("C",
-%   string.unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+%   string.unsafe_set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
 %   [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
 % "
 %   Str = Str0;
 %   MR_set_char(Str, Index, Ch);
 % ").
 % :- pragma foreign_proc("C#",
-%   string.unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+%   string.unsafe_set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
 %   [will_not_call_mercury, promise_pure, thread_safe],
 % "
 %   Str = System.String.Concat(Str0.Substring(0, Index),
@@ -3514,7 +3607,7 @@ string.set_char(Ch, Index, Str0, Str) :-
 %       Str0.Substring(Index + 1));
 % ").
 % :- pragma foreign_proc("Java",
-%   string.unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+%   string.unsafe_set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
 %   [will_not_call_mercury, promise_pure, thread_safe],
 % "
 %   Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);

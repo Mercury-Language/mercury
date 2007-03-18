@@ -56,8 +56,8 @@ make_char_list(Length, !List, !RS) :-
 	( Length = 0 ->
 		true
 	;
-		random__random(char__min_char_value,
-			(char__max_char_value - char__min_char_value + 1),
+		random__random(char__min_char_value + 1,
+			(char__max_char_value - char__min_char_value),
 			Int, !RS),
 		( char__to_int(Char, Int) ->
 			!:List = [Char | !.List]

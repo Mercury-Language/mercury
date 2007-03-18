@@ -3664,8 +3664,10 @@ build_rval_const(mlconst_float(FloatVal), _, Expr) -->
 	gcc__build_float(FloatVal, Expr).
 build_rval_const(mlconst_string(String), _, Expr) -->
 	gcc__build_string(String, Expr).
-build_rval_const(mlconst_multi_string(Length, String), _, Expr) -->
-	gcc__build_string(Length, String, Expr).
+build_rval_const(mlconst_multi_string(_Strings), _, _Expr) -->
+	% multi-strings are only used for the debugger.
+	{ sorry(this_file,
+		"debugging not yet supported with `--target asm'") }.
 build_rval_const(mlconst_code_addr(CodeAddr), GlobalInfo, Expr) -->
 	build_code_addr(CodeAddr, GlobalInfo, Expr).
 build_rval_const(mlconst_data_addr(DataAddr), _, Expr) -->

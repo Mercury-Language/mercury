@@ -116,6 +116,7 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module assoc_list.
+:- import_module char.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -1728,71 +1729,62 @@ output_event_set_desc_defn(ModuleName, EventSetDesc, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(LayoutName, yes, !IO),
     io.write_string(" = {", !IO),
-    string.length(EventSetDesc, EventSetDescSize),
-    output_module_string_table_chars_driver(0, EventSetDescSize,
-        string_with_0s(EventSetDesc), !IO),
+    output_module_string_table_strings(EventSetDesc, [], !IO),
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
 
-    % The string table cannot be zero size; it must contain at least an
-    % empty string.
-    %
 :- pred output_module_string_table(module_name::in,
     int::in, string_with_0s::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
-output_module_string_table(ModuleName, StringTableSize, StringTable,
-        !DeclSet, !IO) :-
+output_module_string_table(ModuleName, _StringTableSize,
+        string_with_0s(StringTable0), !DeclSet, !IO) :-
     TableName = module_layout_string_table(ModuleName),
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(TableName, yes, !IO),
     io.write_string(" = {", !IO),
-    output_module_string_table_chars_driver(0, StringTableSize - 1,
-        StringTable, !IO),
+
+    %
+    % The string table cannot be zero size; it must contain at least an
+    % empty string.
+    %
+    ( StringTable0 = [], FirstString = "", Rest = []
+    ; StringTable0 = [FirstString | Rest]
+    ),
+    output_module_string_table_strings(FirstString, Rest, !IO),
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(TableName)), !DeclSet).
 
-    % The job of this predicate is to minimize stack space consumption in
-    % grades that do not allow output_module_string_table_chars to be tail
-    % recursive. The maximum observed size of the module string so far has
-    % been just short of 64 kilobytes; writing that out in 256 batches of
-    % 256 characters minimizes maximum total stack requirements.
-    %
-:- pred output_module_string_table_chars_driver(int::in, int::in,
-    string_with_0s::in, io::di, io::uo) is det.
-
-output_module_string_table_chars_driver(CurIndex, MaxIndex, StringWithNulls,
-        !IO) :-
-    ( CurIndex < MaxIndex ->
-        SubMaxIndex = int.min(MaxIndex, CurIndex + 255),
-        output_module_string_table_chars(CurIndex, SubMaxIndex,
-            StringWithNulls, !IO),
-        output_module_string_table_chars_driver(SubMaxIndex + 1, MaxIndex,
-            StringWithNulls, !IO)
-    ;
-        true
-    ).
-
-:- pred output_module_string_table_chars(int::in, int::in, string_with_0s::in,
+:- pred output_module_string_table_strings(string::in, list(string)::in,
     io::di, io::uo) is det.
 
-output_module_string_table_chars(CurIndex, MaxIndex, StringWithNulls, !IO) :-
-    ( CurIndex mod 10 = 0 ->
-        io.write_string("\n", !IO)
+output_module_string_table_strings(String, [], !IO) :-
+    output_module_string_table_chars(0, length(String) - 1, String, !IO).
+output_module_string_table_strings(String, [Next | Rest], !IO) :-
+    output_module_string_table_chars(0, length(String) - 1, String, !IO),
+    io.write_string(",\n", !IO),
+    output_module_string_table_strings(Next, Rest, !IO).
+
+:- pred output_module_string_table_chars(int::in, int::in, string::in,
+    io::di, io::uo) is det.
+
+output_module_string_table_chars(CurIndex, MaxIndex, String, !IO) :-
+    ( CurIndex =< MaxIndex ->
+        ( CurIndex mod 10 = 0 ->
+            io.nl(!IO)
+        ;
+            true
+        ),
+        string.unsafe_index(String, CurIndex, Char),
+        io.write_char('''', !IO),
+        c_util.output_quoted_char(Char, !IO),
+        io.write_char('''', !IO),
+        io.write_string(", ", !IO),
+        output_module_string_table_chars(CurIndex + 1, MaxIndex, String, !IO)
     ;
-        true
-    ),
-    StringWithNulls = string_with_0s(String),
-    string.unsafe_index(String, CurIndex, Char),
-    io.write_char('''', !IO),
-    c_util.output_quoted_char(Char, !IO),
-    io.write_char('''', !IO),
-    io.write_string(", ", !IO),
-    ( CurIndex < MaxIndex ->
-        output_module_string_table_chars(CurIndex + 1, MaxIndex,
-            StringWithNulls, !IO)
-    ;
-        true
+        io.write_char('''', !IO),
+        c_util.output_quoted_char(char.det_from_int(0), !IO),
+        io.write_char('''', !IO)
     ).
 
 %-----------------------------------------------------------------------------%

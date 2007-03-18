@@ -1024,8 +1024,8 @@ jumpopt.short_labels_const(_, llconst_false, llconst_false).
 jumpopt.short_labels_const(_, llconst_int(I), llconst_int(I)).
 jumpopt.short_labels_const(_, llconst_float(F), llconst_float(F)).
 jumpopt.short_labels_const(_, llconst_string(S), llconst_string(S)).
-jumpopt.short_labels_const(_, llconst_multi_string(L, S),
-        llconst_multi_string(L, S)).
+jumpopt.short_labels_const(_, llconst_multi_string(S),
+        llconst_multi_string(S)).
 jumpopt.short_labels_const(Instrmap, llconst_code_addr(CodeAddr0),
         llconst_code_addr(CodeAddr)) :-
     ( CodeAddr0 = code_label(Label0) ->

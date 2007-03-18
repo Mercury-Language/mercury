@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -618,9 +618,9 @@ write_rval_const(_Lang, mlconst_string(S), !IO) :-
     io.write_string("""", !IO),
     c_util.output_quoted_string(S, !IO),
     io.write_string("""", !IO).
-write_rval_const(_Lang, mlconst_multi_string(L, S), !IO) :-
+write_rval_const(_Lang, mlconst_multi_string(S), !IO) :-
     io.write_string("""", !IO),
-    c_util.output_quoted_multi_string(L, S, !IO),
+    c_util.output_quoted_multi_string(S, !IO),
     io.write_string("""", !IO).
 write_rval_const(Lang, mlconst_code_addr(CodeAddrConst), !IO) :-
     (

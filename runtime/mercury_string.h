@@ -19,6 +19,8 @@
 ** But BEWARE: when stored in an MR_Integer, the value must be
 ** first cast to `MR_UnsignedChar'.
 ** Mercury strings are stored as pointers to '\0'-terminated arrays of MR_Char.
+** Mercury strings must not contain null characters. Unexpected null characters
+** are a source of security vulnerabilities.
 **
 ** We may eventually move to using wchar_t for Mercury characters and strings,
 ** so it is important to use these typedefs.

@@ -162,7 +162,7 @@ const_is_constant(llconst_float(_), ExprnOpts, IsConst) :-
         IsConst = StaticGroundTerms
     ).
 const_is_constant(llconst_string(_), _, yes).
-const_is_constant(llconst_multi_string(_, _), _, yes).
+const_is_constant(llconst_multi_string(_), _, yes).
 const_is_constant(llconst_code_addr(CodeAddr), ExprnOpts, IsConst) :-
     addr_is_constant(CodeAddr, ExprnOpts, IsConst).
 const_is_constant(llconst_data_addr(_, _), _, yes).
