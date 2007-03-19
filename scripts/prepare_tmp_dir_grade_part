@@ -16,9 +16,13 @@ mkdir tmp_dir/boehm_gc/Mac_files
 mkdir tmp_dir/boehm_gc/cord
 mkdir tmp_dir/boehm_gc/include
 mkdir tmp_dir/boehm_gc/include/private
+cp boehm_gc/NT_MAKEFILE tmp_dir/boehm_gc
+cp boehm_gc/gc.mak tmp_dir/boehm_gc
 cp boehm_gc/Makefile* tmp_dir/boehm_gc
 cp boehm_gc/Mmake* tmp_dir/boehm_gc
 cp boehm_gc/ac* tmp_dir/boehm_gc
+cp boehm_gc/*.cc tmp_dir/boehm_gc
+cp boehm_gc/*.cpp tmp_dir/boehm_gc
 cp boehm_gc/*.[chsS] tmp_dir/boehm_gc
 cp boehm_gc/Mac_files/*.[ch] tmp_dir/boehm_gc/Mac_files
 cp boehm_gc/cord/*.[ch] tmp_dir/boehm_gc/cord
