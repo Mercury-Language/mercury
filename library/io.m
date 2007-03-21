@@ -24,7 +24,7 @@
 %
 % In multithreaded programs, each thread in the program has its own set of
 % "current" input and output streams. At the time it is created, a child
-% thread inherits the current streams from its parent. Predicates which
+% thread inherits the current streams from its parent. Predicates that
 % change which stream is current affect only the calling thread.
 %
 %-----------------------------------------------------------------------------%

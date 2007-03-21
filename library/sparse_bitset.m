@@ -379,7 +379,6 @@
 :- implementation.
 
 :- import_module int.
-:- import_module list.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
@@ -387,7 +386,7 @@
     % The number of variables for most procedures
     % should fit into one or two words.
 :- type sparse_bitset(T)    % <= enum(T)
-    ---> sparse_bitset(bitset_impl).
+    --->    sparse_bitset(bitset_impl).
 
     % The list of elements, sorted on offset.
     % No two elements have the same offset.

@@ -641,7 +641,7 @@ strip_leading_win32_unc_root_directory([Sep, Sep | !.FileName], !:FileName) :-
         (
             !.FileName = []
         ;
-            !.FileName = [_|_],
+            !.FileName = [_ | _],
             list.takewhile(isnt(dir.is_directory_separator_semidet),
                 !.FileName, Share, !:FileName),
             Share = [_ | _],

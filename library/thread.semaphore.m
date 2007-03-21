@@ -13,7 +13,7 @@
 % This module implements a simple semaphore data type for allowing
 % coroutines to synchronise with one another.
 %
-% The operations in this module are no-ops in the hlc grades which don't
+% The operations in this module are no-ops in the hlc grades that do not
 % contain a .par component.
 %
 %-----------------------------------------------------------------------------%
@@ -86,8 +86,8 @@ public class ML_Semaphore {
 }
 ").
 
-:- pragma foreign_type(c,  semaphore, "ML_Semaphore *").
-:- pragma foreign_type(il, semaphore,
+:- pragma foreign_type("C",  semaphore, "ML_Semaphore *").
+:- pragma foreign_type("IL", semaphore,
         "class [semaphore__csharp_code]ML_Semaphore").
 
 :- pragma foreign_decl("C", "

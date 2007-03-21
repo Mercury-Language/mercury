@@ -58,16 +58,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % XXX The following is necessary in order to avoid compilation errors in
-    % lowlevel grades.  For some reason parent modules are not #including
-    % their own .mh files.  Without this declaration the code for spawn/3
-    % will not compile.  This can be removed once the problem with the .mh
-    % files is fixed.
-    %
-:- pragma foreign_decl("C", "void ML_call_back_to_mercury_cc_multi(MR_Word);").
-
-%-----------------------------------------------------------------------------%
-
 :- pragma foreign_proc("C",
     can_spawn,
     [will_not_call_mercury, promise_pure],

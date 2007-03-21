@@ -272,7 +272,6 @@
 
 :- implementation.
 
-:- import_module construct.
 :- import_module int.
 :- import_module require.
 :- import_module type_desc.

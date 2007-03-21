@@ -281,6 +281,7 @@
     list(string).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -289,6 +290,8 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module svset.
+
+%-----------------------------------------------------------------------------%
 
 % Please keep the differences between this module and getopt_io.m to the
 % minimum. Most changes should done in both modules.
