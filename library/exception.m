@@ -281,13 +281,17 @@
 :- mode get_determinism_2(pred(out, di, uo) is cc_multi,
     out(bound(exp_detism_cc_multi))) is cc_multi.
 
-% The calls to error/1 here are needed to ensure that the
-% declarative semantics of each clause is equivalent,
-% but operationally they are unreachable;
-% since each mode has determinism cc_multi,
-% it will pick the first disjunct and discard the call to error/1.
+% The calls to throw/1 here are needed to ensure that the declarative
+% semantics of each clause is equivalent, but operationally they are
+% unreachable; since each mode has determinism cc_multi, it will pick the
+% first disjunct and discard the call to error/1.
 % This relies on --no-reorder-disj.
+%
+% NOTE: since there is no guarantee that modules that opt import these
+% predicates will be compiled with `--no-reorder-disj' we need to make
+% sure they are not inlined in other modules.
 
+:- pragma no_inline(get_determinism/2).
 :- pragma promise_equivalent_clauses(get_determinism/2).
 
 get_determinism(_Pred::(pred(out) is det),
@@ -321,6 +325,7 @@ get_determinism(_Pred::(pred(out) is nondet),
     ; throw(software_error("get_determinism"))
     ).
 
+:- pragma no_inline(get_determinism_2/2).
 :- pragma promise_equivalent_clauses(get_determinism_2/2).
 
 get_determinism_2(_Pred::pred(out, di, uo) is det,
