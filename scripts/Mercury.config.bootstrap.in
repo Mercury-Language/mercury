@@ -16,7 +16,8 @@
 #
 # Environment variables: MERCURY_STDLIB_DIR, MERCURY_C_COMPILER,
 # MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL,
-# MERCURY_JAVA_COMPILER, MERCURY_JAVA_INTERPRETER.
+# MERCURY_JAVA_COMPILER, MERCURY_JAVA_INTERPRETER,
+# MERCURY_CSHARP_COMPILER.
 
 # These settings won't override settings in the environment.
 MERCURY_STDLIB_DIR=@LIBDIR@
@@ -26,6 +27,7 @@ MERCURY_C_COMPILER=@CC@
 MERCURY_MATH_LIB=@MATH_LIB@
 MERCURY_JAVA_COMPILER=@JAVAC@
 MERCURY_JAVA_INTERPRETER=@JAVA_INTERPRETER@
+MERCURY_CSHARP_COMPILER=@MS_CSC@
 # $(MATH_LIB) needs to be defined because it may
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
@@ -42,14 +44,13 @@ DEFAULT_MERCURY_LINKAGE=@DEFAULT_LINKAGE@
 
 # The default optimization level should be after
 # all the options that describe the machine configuration.
-#
-# Insert this when the --java-interpreter option has been around for a while:
-#		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
 DEFAULT_MCFLAGS=\
 		@ALL_LOCAL_C_INCL_DIR_MMC_OPTS@ \
 		@ALL_LOCAL_C_LIB_DIR_MMC_OPTS@ \
 		--cc "$(MERCURY_C_COMPILER)" \
 		--java-compiler "$(MERCURY_JAVA_COMPILER)" \
+		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
+		--csharp-compiler "$(MERCURY_CSHARP_COMPILER)" \
 		--grade "$(MERCURY_DEFAULT_GRADE)" \
 		--cflags-for-ansi "@CFLAGS_FOR_ANSI@" \
 		--cflags-for-optimization "@CFLAGS_FOR_OPT@" \
@@ -80,6 +81,7 @@ DEFAULT_MCFLAGS=\
 		--shared-libs "@SHARED_LIBS@" \
 		--math-lib "@MATH_LIB@" \
 		--readline-libs "@READLINE_LIBRARIES@" \
+		--linker-opt-separator "@LINK_OPT_SEP@" \
 		--linker-thread-flags "@LDFLAGS_FOR_THREADS@" \
 		--shlib-linker-thread-flags "@LD_LIBFLAGS_FOR_THREADS@" \
 		--linker-trace-flags "@LDFLAGS_FOR_TRACE@" \
@@ -88,6 +90,11 @@ DEFAULT_MCFLAGS=\
 		--linker-strip-flag "@LD_STRIP_FLAG@" \
 		--linker-debug-flags "@LDFLAGS_FOR_DEBUG@" \
 		--shlib-linker-debug-flags "@LD_LIBFLAGS_FOR_DEBUG@" \
+		--linker-link-lib-flag "@LINK_LIB@" \
+		--linker-link-lib-suffix "@LINK_LIB_SUFFIX@" \
+		--shlib-linker-link-lib-flag "@LINK_LIB@" \
+		--shlib-linker-link-lib-suffix "@LINK_LIB_SUFFIX@" \
+		--linker-path-flag "@LIB_LIBPATH@" \
 		--linker-rpath-flag "@EXE_RPATH_OPT@" \
 		--linker-rpath-separator "@EXE_RPATH_SEP@" \
 		--shlib-linker-rpath-flag "@SHLIB_RPATH_OPT@" \
@@ -103,10 +110,12 @@ DEFAULT_MCFLAGS=\
 		--conf-low-tag-bits "@LOW_TAG_BITS@" \
 		--bits-per-word "@BITS_PER_WORD@" \
 		--bytes-per-word "@BYTES_PER_WORD@" \
+		--sync-term-size "@SYNC_TERM_SIZE@" \
 		--dotnet-library-version "@MS_DOTNET_LIBRARY_VERSION@" \
 		@HAVE_DELAY_SLOT@ \
 		@HAVE_BOXED_FLOATS@ \
 		@MCFLAGS_FOR_CC@ \
 		$(MERCURY_DEFAULT_OPT_LEVEL) \
+		@MMC_USE_SYMLINKS_OPT@ \
 		@LIBGRADE_OPTS@ 
 
