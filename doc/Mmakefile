@@ -257,8 +257,6 @@ library-menu.texi_pp: $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/robdd.m)				\
 				;;					\
-			$(LIBRARY_DIR)/unsafe.m)			\
-				;;					\
 			$(LIBRARY_DIR)/term_size_prof_builtin.m)	\
 				;;					\
 			$(LIBRARY_DIR)/mutvar.m)			\
@@ -286,8 +284,6 @@ library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
 			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
 			$(LIBRARY_DIR)/robdd.m)				\
-				;;					\
-			$(LIBRARY_DIR)/unsafe.m)			\
 				;;					\
 			$(LIBRARY_DIR)/term_size_prof_builtin.m)	\
 				;;					\
