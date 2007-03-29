@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,4 +84,4 @@ init(string_builder_stream, string_builder_state([])).
 
 string_builder_state_to_string(State) = String :-
     State = string_builder_state(StringList),
-    String = string.join_list("", list.reverse(StringList)).
+    String = string.append_list(list.reverse(StringList)).
