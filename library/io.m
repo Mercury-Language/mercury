@@ -9073,15 +9073,6 @@ io.read_symlink(FileName, Result, !IO) :-
     )
 ].
 
-:- instance stream.reader(io.input_stream, string, io, io.error) 
-    where
-[
-    ( get(Stream, Result, !IO) :-
-        io.read_line_as_string(Stream, Result0, !IO),
-        Result = io.result_to_stream_result(Result0)
-    )
-].
-    
 :- instance stream.putback(io.input_stream, char, io, io.error) where
 [
     pred(unget/4) is io.putback_char
