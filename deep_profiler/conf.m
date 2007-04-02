@@ -25,9 +25,15 @@
     %
 :- func make_pipe_cmd(string) = string.
 
-    % The name of the server on which mdprof is being run.
+    % The name of the server and, optionally, the port on which mdprof is
+    % being run.
     %
-:- pred server_name(string::out, io::di, io::uo) is det.
+:- pred server_name_port(string::out, io::di, io::uo) is det.
+
+    % The virtual path under which this program is being executed, used for
+    % self-referencing URLs.
+    %
+:- pred script_name(string::out, io::di, io::uo) is det.
 
 :- func getpid = int.
 
@@ -37,6 +43,7 @@
 :- implementation.
 
 :- import_module list.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 
@@ -50,7 +57,31 @@ make_pipe_cmd(PipeName) = Cmd :-
         string.format("%s %s", [s(CmdName), s(PipeName)], Cmd)
     ).
 
+server_name_port(Machine, !IO) :-
+    server_name(ServerName, !IO),
+    maybe_server_port(MaybeServerPort, !IO),
+    (
+        MaybeServerPort = yes(Port),
+        Machine = ServerName ++ ":" ++ Port
+    ;
+        MaybeServerPort = no,
+        Machine = ServerName
+    ).
+
+:- pred server_name(string::out, io::di, io::uo) is det.
+
 server_name(ServerName, !IO) :-
+    io.get_environment_var("SERVER_NAME", MaybeServerName, !IO),
+    (
+        MaybeServerName = yes(ServerName)
+    ;
+        MaybeServerName = no,
+        server_name_2(ServerName, !IO)
+    ).
+
+:- pred server_name_2(string::out, io::di, io::uo) is det.
+
+server_name_2(ServerName, !IO) :-
     io.make_temp(TmpFile, !IO),
     hostname_cmd(HostnameCmd),
     ServerRedirectCmd =
@@ -78,6 +109,20 @@ server_name(ServerName, !IO) :-
         io.remove_file(TmpFile, _, !IO)
     ;
         error("cannot execute cmd to find the server's name")
+    ).
+
+:- pred maybe_server_port(maybe(string)::out, io::di, io::uo) is det.
+
+maybe_server_port(MaybeServerPort, !IO) :-
+    io.get_environment_var("SERVER_PORT", MaybeServerPort, !IO).
+
+script_name(ScriptName, !IO) :-
+    io.get_environment_var("SCRIPT_NAME", MaybeScriptName, !IO),
+    (
+        MaybeScriptName = yes(ScriptName)
+    ;
+        MaybeScriptName = no,
+        error("SCRIPT_NAME environment variable not present")
     ).
 
 :- pred mkfifo_cmd(string::out) is det.
