@@ -137,6 +137,12 @@
     %
 :- func escape_html_string(string) = string.
 
+    % Like escape_html_string, but additionally inserts zero-width space
+    % characters to suggest where long strings can be broken over multiple
+    % lines.
+    %
+:- func escape_break_html_string(string) = string.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -229,6 +235,7 @@ banner_style(Pref) = HTML :-
                 [s(select_colgroup_background(Pref, !.GroupNum))])
         )
     ),
+    ButtonStyle = "  A.button { margin: 5px; text-decoration: none; }\n",
     HTML =
         "<STYLE TYPE=""text/css"">\n" ++
         IdStyle ++
@@ -237,6 +244,7 @@ banner_style(Pref) = HTML :-
         CallSeqsStyle ++
         AllocStyle ++
         MemoryStyle ++
+        ButtonStyle ++
         "</STYLE>\n".
 
 :- func select_colgroup_background(preferences, int) = string.
@@ -282,11 +290,11 @@ page_footer(Cmd, Pref, Deep) =
     "<p>\n" ++
     footer_pref_toggles(Cmd, Pref, Deep) ++
     "<br>\n" ++
-    string.format("<A HREF=""%s"">Menu</A>\n",
+    string.format("<A CLASS=""button"" HREF=""%s"">[Menu]</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, deep_cmd_menu))]) ++
-    string.format("<A HREF=""%s"">Restart</A>\n",
+    string.format("<A CLASS=""button"" HREF=""%s"">[Restart]</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, deep_cmd_restart))]) ++
-    string.format("<A HREF=""%s"">Quit</A>\n",
+    string.format("<A CLASS=""button"" HREF=""%s"">[Quit]</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, deep_cmd_quit))]) ++
     "</BODY>\n" ++
     "</HTML>\n".
@@ -416,8 +424,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Port1Fields = Fields ^ port_fields := no_port,
         Port1Pref = Pref ^ pref_fields := Port1Fields,
-        Port1Msg = "No port counts",
-        Port1Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Port1Msg = "[No port counts]",
+        Port1Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Port1Pref, Deep, Cmd)), s(Port1Msg)])
     ),
     ( Fields ^ port_fields = port ->
@@ -425,8 +433,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Port2Fields = Fields ^ port_fields := port,
         Port2Pref = Pref ^ pref_fields := Port2Fields,
-        Port2Msg = "Port counts",
-        Port2Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Port2Msg = "[Port counts]",
+        Port2Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Port2Pref, Deep, Cmd)), s(Port2Msg)])
     ),
     ( Fields ^ time_fields = no_time ->
@@ -434,8 +442,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Time1Fields = Fields ^ time_fields := no_time,
         Time1Pref = Pref ^ pref_fields := Time1Fields,
-        Time1Msg = "No time info",
-        Time1Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Time1Msg = "[No time info]",
+        Time1Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time1Pref, Deep, Cmd)), s(Time1Msg)])
     ),
     ( Fields ^ time_fields = ticks ->
@@ -443,8 +451,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Time2Fields = Fields ^ time_fields := ticks,
         Time2Pref = Pref ^ pref_fields := Time2Fields,
-        Time2Msg = "Ticks",
-        Time2Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Time2Msg = "[Ticks]",
+        Time2Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time2Pref, Deep, Cmd)), s(Time2Msg)])
     ),
     ( Fields ^ time_fields = time ->
@@ -452,8 +460,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Time3Fields = Fields ^ time_fields := time,
         Time3Pref = Pref ^ pref_fields := Time3Fields,
-        Time3Msg = "Times",
-        Time3Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Time3Msg = "[Times]",
+        Time3Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time3Pref, Deep, Cmd)), s(Time3Msg)])
     ),
     ( Fields ^ time_fields = ticks_and_time->
@@ -461,8 +469,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Time4Fields = Fields ^ time_fields := ticks_and_time,
         Time4Pref = Pref ^ pref_fields := Time4Fields,
-        Time4Msg = "Ticks and times",
-        Time4Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Time4Msg = "[Ticks and times]",
+        Time4Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time4Pref, Deep, Cmd)), s(Time4Msg)])
     ),
     ( Fields ^ time_fields = time_and_percall ->
@@ -470,8 +478,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Time5Fields = Fields ^ time_fields := time_and_percall,
         Time5Pref = Pref ^ pref_fields := Time5Fields,
-        Time5Msg = "Times and per-call times",
-        Time5Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Time5Msg = "[Times and per-call times]",
+        Time5Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time5Pref, Deep, Cmd)), s(Time5Msg)])
     ),
     ( Fields ^ time_fields = ticks_and_time_and_percall ->
@@ -479,8 +487,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Time6Fields = Fields ^ time_fields := ticks_and_time_and_percall,
         Time6Pref = Pref ^ pref_fields := Time6Fields,
-        Time6Msg = "Ticks and times and per-call times",
-        Time6Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Time6Msg = "[Ticks and times and per-call times]",
+        Time6Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time6Pref, Deep, Cmd)), s(Time6Msg)])
     ),
     ( Fields ^ callseqs_fields = no_callseqs ->
@@ -488,8 +496,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         CallSeqs1Fields = Fields ^ callseqs_fields := no_callseqs,
         CallSeqs1Pref = Pref ^ pref_fields := CallSeqs1Fields,
-        CallSeqs1Msg = "No call sequence number info",
-        CallSeqs1Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        CallSeqs1Msg = "[No call sequence number info]",
+        CallSeqs1Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(CallSeqs1Pref, Deep, Cmd)),
                 s(CallSeqs1Msg)])
     ),
@@ -498,8 +506,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         CallSeqs2Fields = Fields ^ callseqs_fields := callseqs,
         CallSeqs2Pref = Pref ^ pref_fields := CallSeqs2Fields,
-        CallSeqs2Msg = "Call sequence numbers",
-        CallSeqs2Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        CallSeqs2Msg = "[Call sequence numbers]",
+        CallSeqs2Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(CallSeqs2Pref, Deep, Cmd)),
                 s(CallSeqs2Msg)])
     ),
@@ -508,8 +516,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         CallSeqs3Fields = Fields ^ callseqs_fields := callseqs_and_percall,
         CallSeqs3Pref = Pref ^ pref_fields := CallSeqs3Fields,
-        CallSeqs3Msg = "Call sequence numbers including per-call",
-        CallSeqs3Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        CallSeqs3Msg = "[Call sequence numbers including per-call]",
+        CallSeqs3Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(CallSeqs3Pref, Deep, Cmd)),
                 s(CallSeqs3Msg)])
     ),
@@ -518,8 +526,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Alloc1Fields = Fields ^ alloc_fields := no_alloc,
         Alloc1Pref = Pref ^ pref_fields := Alloc1Fields,
-        Alloc1Msg = "No allocations",
-        Alloc1Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Alloc1Msg = "[No allocations]",
+        Alloc1Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Alloc1Pref, Deep, Cmd)), s(Alloc1Msg)])
     ),
     ( Fields ^ alloc_fields = alloc ->
@@ -527,8 +535,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Alloc2Fields = Fields ^ alloc_fields := alloc,
         Alloc2Pref = Pref ^ pref_fields := Alloc2Fields,
-        Alloc2Msg = "Allocations",
-        Alloc2Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Alloc2Msg = "[Allocations]",
+        Alloc2Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Alloc2Pref, Deep, Cmd)), s(Alloc2Msg)])
     ),
     ( Fields ^ alloc_fields = alloc_and_percall ->
@@ -536,8 +544,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Alloc3Fields = Fields ^ alloc_fields := alloc_and_percall,
         Alloc3Pref = Pref ^ pref_fields := Alloc3Fields,
-        Alloc3Msg = "Allocations and per-call allocations",
-        Alloc3Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Alloc3Msg = "[Allocations and per-call allocations]",
+        Alloc3Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Alloc3Pref, Deep, Cmd)), s(Alloc3Msg)])
     ),
     ( Fields ^ memory_fields = no_memory ->
@@ -545,8 +553,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Memory1Fields = Fields ^ memory_fields := no_memory,
         Memory1Pref = Pref ^ pref_fields := Memory1Fields,
-        Memory1Msg = "No memory info",
-        Memory1Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Memory1Msg = "[No memory info]",
+        Memory1Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory1Pref, Deep, Cmd)), s(Memory1Msg)])
     ),
     ( Fields ^ memory_fields = memory(units_words) ->
@@ -554,8 +562,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Memory2Fields = Fields ^ memory_fields := memory(units_words),
         Memory2Pref = Pref ^ pref_fields := Memory2Fields,
-        Memory2Msg = "Words",
-        Memory2Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Memory2Msg = "[Words]",
+        Memory2Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory2Pref, Deep, Cmd)), s(Memory2Msg)])
     ),
     ( Fields ^ memory_fields = memory(units_bytes) ->
@@ -563,8 +571,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
     ;
         Memory3Fields = Fields ^ memory_fields := memory(units_bytes),
         Memory3Pref = Pref ^ pref_fields := Memory3Fields,
-        Memory3Msg = "Bytes",
-        Memory3Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Memory3Msg = "[Bytes]",
+        Memory3Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory3Pref, Deep, Cmd)), s(Memory3Msg)])
     ),
     ( Fields ^ memory_fields = memory_and_percall(units_words) ->
@@ -573,8 +581,8 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Memory4Fields = Fields ^ memory_fields :=
             memory_and_percall(units_words),
         Memory4Pref = Pref ^ pref_fields := Memory4Fields,
-        Memory4Msg = "Words and per-call words",
-        Memory4Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Memory4Msg = "[Words and per-call words]",
+        Memory4Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory4Pref, Deep, Cmd)), s(Memory4Msg)])
     ),
     ( Fields ^ memory_fields = memory_and_percall(units_bytes) ->
@@ -583,21 +591,22 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Memory5Fields = Fields ^ memory_fields :=
             memory_and_percall(units_bytes),
         Memory5Pref = Pref ^ pref_fields := Memory5Fields,
-        Memory5Msg = "Bytes and per-call bytes",
-        Memory5Toggle = string.format("<A HREF=""%s"">%s</A>\n",
+        Memory5Msg = "[Bytes and per-call bytes]",
+        Memory5Toggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory5Pref, Deep, Cmd)), s(Memory5Msg)])
     ),
     ( Fields = default_fields(Deep) ->
         DefaultToggle = ""
     ;
-        DefaultMsg  = "Restore defaults",
+        DefaultMsg  = "[Restore defaults]",
         DefaultPref = Pref ^ pref_fields := default_fields(Deep),
-        DefaultToggle = string.format("<A HREF=""%s"">%s</A>\n",
+        DefaultToggle = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(DefaultPref, Deep, Cmd)), s(DefaultMsg)])
     ),
     HTML =
-        "Toggle fields:\n" ++
+        "<strong>Toggle fields:</strong>\n" ++
         DefaultToggle ++
+        "<br>\n" ++
         Port1Toggle ++ Port2Toggle ++
         "<br>\n" ++
         Time1Toggle ++ Time2Toggle ++ Time3Toggle ++
@@ -618,15 +627,15 @@ footer_ancestor_toggle(Cmd, Pref, Deep) = HTML :-
         Pref ^ pref_anc = no,
         Display1 = yes,
         Display2 = yes,
-        Msg1 = "One ancestor",
+        Msg1 = "[One ancestor]",
         Pref1 = Pref ^ pref_anc := yes(1),
-        Msg2 = "Two ancestors",
+        Msg2 = "[Two ancestors]",
         Pref2 = Pref ^ pref_anc := yes(2),
-        Msg3 = "Three ancestors",
+        Msg3 = "[Three ancestors]",
         Pref3 = Pref ^ pref_anc := yes(3),
-        Msg4 = "Five ancestors",
+        Msg4 = "[Five ancestors]",
         Pref4 = Pref ^ pref_anc := yes(5),
-        Msg5 = "Ten ancestors",
+        Msg5 = "[Ten ancestors]",
         Pref5 = Pref ^ pref_anc := yes(10)
     ;
         Pref ^ pref_anc = yes(OldAncestorLimit),
@@ -640,26 +649,26 @@ footer_ancestor_toggle(Cmd, Pref, Deep) = HTML :-
         ;
             Display2 = no
         ),
-        Msg1 = "Halve ancestors",
+        Msg1 = "[Halve ancestors]",
         Pref1 = Pref ^ pref_anc := yes(OldAncestorLimit // 2),
-        Msg2 = "Remove an ancestor",
+        Msg2 = "[Remove an ancestor]",
         Pref2 = Pref ^ pref_anc := yes(OldAncestorLimit - 1),
-        Msg3 = "Add an ancestor",
+        Msg3 = "[Add an ancestor]",
         Pref3 = Pref ^ pref_anc := yes(OldAncestorLimit + 1),
-        Msg4 = "Double ancestors",
+        Msg4 = "[Double ancestors]",
         Pref4 = Pref ^ pref_anc := yes(OldAncestorLimit * 2),
-        Msg5 = "Unlimited ancestors",
+        Msg5 = "[Unlimited ancestors]",
         Pref5 = Pref ^ pref_anc := no
     ),
-    Toggle1 = string.format("<A HREF=""%s"">%s</A>\n",
+    Toggle1 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]),
-    Toggle2 = string.format("<A HREF=""%s"">%s</A>\n",
+    Toggle2 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref2, Deep, Cmd)), s(Msg2)]),
-    Toggle3 = string.format("<A HREF=""%s"">%s</A>\n",
+    Toggle3 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref3, Deep, Cmd)), s(Msg3)]),
-    Toggle4 = string.format("<A HREF=""%s"">%s</A>\n",
+    Toggle4 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref4, Deep, Cmd)), s(Msg4)]),
-    Toggle5 = string.format("<A HREF=""%s"">%s</A>\n",
+    Toggle5 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref5, Deep, Cmd)), s(Msg5)]),
     (
         Display1 = yes,
@@ -676,7 +685,7 @@ footer_ancestor_toggle(Cmd, Pref, Deep) = HTML :-
         MaybeToggle2 = ""
     ),
     HTML =
-        "Toggle ancestors:\n" ++
+        "<strong>Toggle ancestors:</strong><br />\n" ++
         MaybeToggle1 ++ MaybeToggle2 ++ Toggle3 ++ Toggle4 ++ Toggle5.
 
 :- func footer_box_toggle(cmd, preferences, deep) = string.
@@ -685,13 +694,13 @@ footer_box_toggle(Cmd, Pref, Deep) = HTML :-
     (
         Pref ^ pref_box = nobox,
         Pref1 = Pref ^ pref_box := box,
-        Msg1 = "Box"
+        Msg1 = "[Box]"
     ;
         Pref ^ pref_box = box,
         Pref1 = Pref ^ pref_box := nobox,
-        Msg1 = "Unbox"
+        Msg1 = "[Unbox]"
     ),
-    HTML = string.format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]).
 
 :- func footer_colour_toggle(cmd, preferences, deep) = string.
@@ -700,13 +709,13 @@ footer_colour_toggle(Cmd, Pref, Deep) = HTML :-
     (
         Pref ^ pref_colour = colour_none,
         Pref1 = Pref ^ pref_colour := colour_column_groups,
-        Msg1 = "Colour column groups"
+        Msg1 = "[Colour column groups]"
     ;
         Pref ^ pref_colour = colour_column_groups,
         Pref1 = Pref ^ pref_colour := colour_none,
-        Msg1 = "Fade column groups"
+        Msg1 = "[Fade column groups]"
     ),
-    HTML = string.format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]).
 
 :- func footer_summarize_toggle(cmd, preferences, deep) = string.
@@ -715,13 +724,13 @@ footer_summarize_toggle(Cmd, Pref, Deep) = HTML :-
     (
         Pref ^ pref_summarize = summarize,
         Pref1 = Pref ^ pref_summarize := dont_summarize,
-        Msg1 = "Expand higher order calls"
+        Msg1 = "[Expand higher order calls]"
     ;
         Pref ^ pref_summarize = dont_summarize,
         Pref1 = Pref ^ pref_summarize := summarize,
-        Msg1 = "Summarize higher order calls"
+        Msg1 = "[Summarize higher order calls]"
     ),
-    HTML = string.format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]).
 
 :- func footer_contour_toggle(cmd, preferences, deep) = string.
@@ -730,13 +739,13 @@ footer_contour_toggle(Cmd, Pref, Deep) = HTML :-
     (
         Pref ^ pref_contour = no_contour,
         Pref1 = Pref ^ pref_contour := apply_contour,
-        Msg1 = "Apply contour exclusion"
+        Msg1 = "[Apply contour exclusion]"
     ;
         Pref ^ pref_contour = apply_contour,
         Pref1 = Pref ^ pref_contour := no_contour,
-        Msg1 = "Don't apply contour exclusion"
+        Msg1 = "[Don't apply contour exclusion]"
     ),
-    HTML = string.format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]).
 
 :- func footer_time_format_toggle(cmd, preferences, deep) = string.
@@ -764,26 +773,26 @@ footer_time_format_toggle(Cmd, Pref, Deep) = HTML :-
         (
             Pref ^ pref_time = no_scale,
             Pref1 = Pref ^ pref_time := scale_by_millions,
-            Msg1  = "Time in s, us",
+            Msg1  = "[Time in s, us]",
             Pref2 = Pref ^ pref_time := scale_by_thousands,
-            Msg2  = "Time in s, ms, us, ns"
+            Msg2  = "[Time in s, ms, us, ns]"
         ;
             Pref ^ pref_time = scale_by_millions,
             Pref1 = Pref ^ pref_time := no_scale,
-            Msg1  = "Time in s",
+            Msg1  = "[Time in s]",
             Pref2 = Pref ^ pref_time := scale_by_thousands,
-            Msg2  = "Time in s, ms, us, ns"
+            Msg2  = "[Time in s, ms, us, ns]"
         ;
             Pref ^ pref_time = scale_by_thousands,
             Pref1 = Pref ^ pref_time := no_scale,
-            Msg1  = "Time in s",
+            Msg1  = "[Time in s]",
             Pref2 = Pref ^ pref_time := scale_by_millions,
-            Msg2  = "Time in s, us"
+            Msg2  = "[Time in s, us]"
         ),
         HTML =
-            string.format("<A HREF=""%s"">%s</A>\n",
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
                 [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]) ++
-            string.format("<A HREF=""%s"">%s</A>\n",
+            string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
                 [s(deep_cmd_pref_to_url(Pref2, Deep, Cmd)), s(Msg2)])
     ).
 
@@ -815,27 +824,27 @@ toggle_criteria(Criteria, UpdateCriteria, UpdateCostCriteria) = HTML :-
     (
         Criteria = by_context,
         Criteria1 = by_name,
-        Msg1 = "Sort by name",
+        Msg1 = "[Sort by name]",
         Criteria2 =
             by_cost(default_cost_kind, default_incl_desc, default_scope),
-        Msg2 = "Sort by cost"
+        Msg2 = "[Sort by cost]"
     ;
         Criteria = by_name,
         Criteria1 = by_context,
-        Msg1 = "Sort by context",
+        Msg1 = "[Sort by context]",
         Criteria2 =
             by_cost(default_cost_kind, default_incl_desc, default_scope),
-        Msg2 = "Sort by cost"
+        Msg2 = "[Sort by cost]"
     ;
         Criteria = by_cost(_, _, _),
         Criteria1 = by_context,
-        Msg1 = "Sort by context",
+        Msg1 = "[Sort by context]",
         Criteria2 = by_name,
-        Msg2 = "Sort by name"
+        Msg2 = "[Sort by name]"
     ),
-    Toggle1 = string.format("<A HREF=""%s"">%s</A>\n",
+    Toggle1 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(UpdateCriteria(Criteria1)), s(Msg1)]),
-    Toggle2 = string.format("<A HREF=""%s"">%s</A>\n",
+    Toggle2 = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(UpdateCriteria(Criteria2)), s(Msg2)]),
     (
         Criteria = by_cost(CostKind, InclDesc, Scope),
@@ -847,7 +856,8 @@ toggle_criteria(Criteria, UpdateCriteria, UpdateCostCriteria) = HTML :-
         ),
         ToggleRest = ""
     ),
-    HTML = "Toggle ordering criteria:\n" ++ Toggle1 ++ Toggle2 ++ ToggleRest.
+    HTML = "<strong>Toggle ordering criteria:</strong><br />\n" ++
+        Toggle1 ++ Toggle2 ++ ToggleRest.
 
 :- func toggle_cost_criteria(cost_kind, include_descendants, measurement_scope,
     update_cost_criteria_func) = string.
@@ -860,8 +870,8 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
         ; CostKind = cost_allocs
         ; CostKind = cost_words
         ),
-        MsgCalls = "Sort by calls",
-        ToggleCalls = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgCalls = "[Sort by calls]",
+        ToggleCalls = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(cost_calls, InclDesc, Scope)), s(MsgCalls)])
     ;
         CostKind = cost_calls,
@@ -874,8 +884,8 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
         ; CostKind = cost_allocs
         ; CostKind = cost_words
         ),
-        MsgRedos = "Sort by redos",
-        ToggleRedos = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgRedos = "[Sort by redos]",
+        ToggleRedos = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(cost_redos, InclDesc, Scope)), s(MsgRedos)])
     ;
         CostKind = cost_redos,
@@ -888,8 +898,8 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
         ; CostKind = cost_allocs
         ; CostKind = cost_words
         ),
-        MsgTime = "Sort by time",
-        ToggleTime = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgTime = "[Sort by time]",
+        ToggleTime = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(cost_time, InclDesc, Scope)), s(MsgTime)])
     ;
         CostKind = cost_time,
@@ -902,8 +912,8 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
         ; CostKind = cost_allocs
         ; CostKind = cost_words
         ),
-        MsgCallSeqs = "Sort by call sequence numbers",
-        ToggleCallSeqs = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgCallSeqs = "[Sort by call sequence numbers]",
+        ToggleCallSeqs = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(cost_callseqs, InclDesc, Scope)),
                 s(MsgCallSeqs)])
     ;
@@ -917,8 +927,8 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
         ; CostKind = cost_callseqs
         ; CostKind = cost_words
         ),
-        MsgAllocs = "Sort by allocations",
-        ToggleAllocs = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgAllocs = "[Sort by allocations]",
+        ToggleAllocs = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(cost_allocs, InclDesc, Scope)), s(MsgAllocs)])
     ;
         CostKind = cost_allocs,
@@ -931,8 +941,8 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
         ; CostKind = cost_callseqs
         ; CostKind = cost_allocs
         ),
-        MsgWords = "Sort by words",
-        ToggleWords = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgWords = "[Sort by words]",
+        ToggleWords = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(cost_words, InclDesc, Scope)), s(MsgWords)])
     ;
         CostKind = cost_words,
@@ -940,24 +950,24 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
     ),
     (
         InclDesc = self,
-        MsgDesc = "Include descendants",
-        ToggleDesc = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgDesc = "[Include descendants]",
+        ToggleDesc = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(CostKind, self_and_desc, Scope)), s(MsgDesc)])
     ;
         InclDesc = self_and_desc,
-        MsgDesc = "Exclude descendants",
-        ToggleDesc = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgDesc = "[Exclude descendants]",
+        ToggleDesc = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(CostKind, self, Scope)), s(MsgDesc)])
     ),
     (
         Scope = per_call,
-        MsgScope = "Count overall cost",
-        ToggleScope = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgScope = "[Count overall cost]",
+        ToggleScope = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(CostKind, InclDesc, overall)), s(MsgScope)])
     ;
         Scope = overall,
-        MsgScope = "Count per-call cost",
-        ToggleScope = string.format("<A HREF=""%s"">%s</A>\n",
+        MsgScope = "[Count per-call cost]",
+        ToggleScope = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(CostKind, InclDesc, per_call)), s(MsgScope)])
     ),
     Toggles = ToggleCalls ++ ToggleRedos ++ ToggleTime ++ ToggleCallSeqs ++
@@ -975,14 +985,14 @@ footer_inactive_modules_toggle(Cmd, Pref0, Deep) = HTML :-
     Pref0 ^ pref_inactive = inactive_items(Procs, Modules),
     (
         Modules = inactive_show,
-        Msg  = "Hide inactive modules",
+        Msg  = "[Hide inactive modules]",
         Pref = Pref0 ^ pref_inactive := inactive_items(Procs, inactive_hide)
     ;
         Modules = inactive_hide,
-        Msg  = "Show inactive modules",
+        Msg  = "[Show inactive modules]",
         Pref = Pref0 ^ pref_inactive := inactive_items(Procs, inactive_show)
     ),
-    HTML = string.format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, Cmd)), s(Msg)]).
 
 :- func footer_inactive_procs_toggle(cmd, preferences, deep) = string.
@@ -991,14 +1001,14 @@ footer_inactive_procs_toggle(Cmd, Pref0, Deep) = HTML :-
     Pref0 ^ pref_inactive = inactive_items(Procs, Modules),
     (
         Procs = inactive_show,
-        Msg = "Hide inactive procedures",
+        Msg = "[Hide inactive procedures]",
         Pref = Pref0 ^ pref_inactive := inactive_items(inactive_hide, Modules)
     ;
         Procs = inactive_hide,
-        Msg = "Show inactive procedures",
+        Msg = "[Show inactive procedures]",
         Pref = Pref0 ^ pref_inactive := inactive_items(inactive_show, Modules)
     ),
-    HTML = string.format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A CLASS=""button"" HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, Cmd)), s(Msg)]).
 
 %-----------------------------------------------------------------------------%
@@ -1550,7 +1560,8 @@ table_width(Pref, IdFields, TotalsDisp) = Width :-
 add_context(Context, LineGroup0) = LineGroup :-
     LineGroup0 =
         line_group(FileName, LineNumber, Name, Own, Desc, HTML0, LaterLines),
-    HTML = string.format("<TD CLASS=id>%s</TD>%s", [s(Context), s(HTML0)]),
+    HTML = string.format("<TD CLASS=id>%s</TD>%s",
+        [s(Context), s(HTML0)]),
     LineGroup =
         line_group(FileName, LineNumber, Name, Own, Desc, HTML, LaterLines).
 
@@ -2231,18 +2242,18 @@ proc_static_to_html_ref(Pref, Deep, PSPtr) = HTML :-
     deep_lookup_proc_statics(Deep, PSPtr, PS),
     ProcName = PS ^ ps_refined_id,
     HTML = string.format("<A HREF=""%s"">%s</A>",
-        [s(URL), s(escape_html_string(ProcName))]).
+        [s(URL), s(escape_break_html_string(ProcName))]).
 
 module_name_to_html_ref(Pref, Deep, ModuleName) = HTML :-
     URL = deep_cmd_pref_to_url(Pref, Deep, deep_cmd_module(ModuleName)),
     HTML = string.format("<A HREF=""%s"">%s</A>",
-        [s(URL), s(escape_html_string(ModuleName))]).
+        [s(URL), s(escape_break_html_string(ModuleName))]).
 
 clique_ptr_to_html_ref(Pref, Deep, ProcName, CliquePtr) = HTML :-
     CliquePtr = clique_ptr(CliqueNum),
     URL = deep_cmd_pref_to_url(Pref, Deep, deep_cmd_clique(CliqueNum)),
     HTML = string.format("<A HREF=""%s"">%s</A>",
-        [s(URL), s(escape_html_string(ProcName))]).
+        [s(URL), s(escape_break_html_string(ProcName))]).
 
 deep_cmd_pref_to_url(Pref, Deep, Cmd) =
     machine_datafile_cmd_pref_to_url(Deep ^ server_name_port,
@@ -2259,39 +2270,28 @@ plural(N) = Plural :-
 
 %-----------------------------------------------------------------------------%
 
-% This code was pretty much taken directly from extras/cgi/html.m.
+escape_html_string(String) =
+    replace_special_chars(special_html_char, String).
 
-escape_html_string(String) = EscapedString :-
-    string.to_char_list(String, Chars),
-    escape_html_chars(Chars, [], EscapedChars),
-    string.from_char_list(EscapedChars, EscapedString).
+escape_break_html_string(String) =
+    replace_special_chars(special_html_char_or_break, String).
 
-    % escape_html_chars(Chars, !EscChars):
-    %
-    % Put an escaped form of all the characters in Chars in front of
-    % !.EscChars, yielding !:EscChars.
-    %
-:- pred escape_html_chars(list(char)::in, list(char)::in, list(char)::out)
-    is det.
+:- func replace_special_chars(pred(char, string)::in(pred(in, out) is semidet),
+    string::in) = (string::out).
 
-escape_html_chars([], !EscChars).
-escape_html_chars([Char | Chars], !EscChars) :-
-    escape_html_chars(Chars, !EscChars),
-    escape_html_char(Char, !EscChars).
+replace_special_chars(SpecialCharTable, String0) = String :-
+    string.foldr(replace_special_char_2(SpecialCharTable), String0, [], Chars),
+    string.from_char_list(Chars, String).
 
-    % escape_html_char(Char, !EscChars):
-    %
-    % Put an escaped form of the character Char in front of !.EscChars,
-    % yielding !:EscChars.
-    %
-:- pred escape_html_char(char::in, list(char)::in, list(char)::out) is det.
+:- pred replace_special_char_2(pred(char, string)::in(pred(in, out) is semidet),
+    char::in, list(char)::in, list(char)::out) is det.
 
-escape_html_char(Char, !EscChars) :-
-    ( special_html_char(Char, String) ->
+replace_special_char_2(SpecialCharTable, Char, !Acc) :-
+    ( SpecialCharTable(Char, String) ->
         string.to_char_list(String, Chars),
-        list.append(Chars, !EscChars)
+        list.append(Chars, !Acc)
     ;
-        !:EscChars = [Char | !.EscChars]
+        list.cons(Char, !Acc)
     ).
 
 :- pred special_html_char(char::in, string::out) is semidet.
@@ -2299,6 +2299,36 @@ escape_html_char(Char, !EscChars) :-
 special_html_char('&', "&amp;").
 special_html_char('<', "&lt;").
 special_html_char('>', "&gt;").
+special_html_char('''', "&apos;").
+special_html_char('"', "&quot;").
+
+    % In addition to escaping special HTML characters, insert zero-width space
+    % characters to suggest where the browser may split up long sequences of
+    % characters over multiple lines.
+    %
+:- pred special_html_char_or_break(char::in, string::out) is semidet.
+
+special_html_char_or_break('&', "&amp;").
+special_html_char_or_break('<', "&lt;").
+special_html_char_or_break('>', "&gt;").
+special_html_char_or_break('''', "&apos;").
+special_html_char_or_break('"', "&quot;").
+special_html_char_or_break('.', "." ++ zero_width_space).
+special_html_char_or_break('_', "_" ++ zero_width_space).
+special_html_char_or_break('/', "/" ++ zero_width_space).
+special_html_char_or_break(':', ":" ++ zero_width_space).
+
+    % U+8203 is the Unicode 'ZERO WIDTH SPACE' character.  It is supported
+    % by modern browsers, but tends to break search as the invisible character
+    % is not ignored when searching.
+    %
+    % The <WBR> tag is non-standard but doesn't break search in Firefox (at
+    % least).
+    %
+:- func zero_width_space = string.
+
+% zero_width_space = "&#8203;".
+zero_width_space = "<wbr />".
 
 %-----------------------------------------------------------------------------%
 :- end_module html_format.
