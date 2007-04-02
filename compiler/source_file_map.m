@@ -177,7 +177,8 @@ write_source_file_map(FileNames, !IO) :-
     io.open_output(ModulesFileName, OpenRes, !IO),
     (
         OpenRes = ok(Stream),
-        list.foldl(write_source_file_map_2(Stream), FileNames, !IO),
+        list.foldl2(write_source_file_map_2(Stream), FileNames,
+            map.init, _, !IO),
         io.close_output(Stream, !IO)
     ;
         OpenRes = error(Error),
@@ -189,12 +190,26 @@ write_source_file_map(FileNames, !IO) :-
     ).
 
 :- pred write_source_file_map_2(io.output_stream::in, file_name::in,
+    map(module_name, file_name)::in, map(module_name, file_name)::out,
     io::di, io::uo) is det.
 
-write_source_file_map_2(MapStream, FileName, !IO) :-
+write_source_file_map_2(MapStream, FileName, SeenModules0, SeenModules, !IO) :-
     find_module_name(FileName, MaybeModuleName, !IO),
     (
         MaybeModuleName = yes(ModuleName),
+        ( map.search(SeenModules0, ModuleName, PrevFileName) ->
+            io.write_string("mercury_compile: module `", !IO),
+            io.write_string(sym_name_to_string(ModuleName), !IO),
+            io.write_string("' defined in multiple files: ", !IO),
+            io.write_string(PrevFileName, !IO),
+            io.write_string(", ", !IO),
+            io.write_string(FileName, !IO),
+            io.write_string(".\n", !IO),
+            io.set_exit_status(1, !IO),
+            SeenModules = SeenModules0
+        ;
+            map.det_insert(SeenModules0, ModuleName, FileName, SeenModules)
+        ),
         ( string.remove_suffix(FileName, ".m", PartialFileName0) ->
             PartialFileName = PartialFileName0
         ;
@@ -218,7 +233,8 @@ write_source_file_map_2(MapStream, FileName, !IO) :-
             io.set_output_stream(OldStream, _, !IO)
         )
     ;
-        MaybeModuleName = no
+        MaybeModuleName = no,
+        SeenModules = SeenModules0
     ).
 
 :- func modules_file_name = string.
