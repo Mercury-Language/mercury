@@ -122,7 +122,9 @@ script_name(ScriptName, !IO) :-
         MaybeScriptName = yes(ScriptName)
     ;
         MaybeScriptName = no,
-        error("SCRIPT_NAME environment variable not present")
+        % Should not happen if this predicate is called as a CGI program,
+        % but this predicate is also called by other tools.
+        ScriptName = "/cgi-bin/mdprof_cgi"
     ).
 
 :- pred mkfifo_cmd(string::out) is det.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,8 +28,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_and_startup(string::in, list(string)::in, bool::in,
-    maybe(io.output_stream)::in, list(string)::in, list(string)::in,
+:- pred read_and_startup(string::in, string::in, list(string)::in,
+    bool::in, maybe(io.output_stream)::in, list(string)::in, list(string)::in,
     maybe_error(deep)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -55,8 +55,8 @@
 
 %-----------------------------------------------------------------------------%
 
-read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream,
-        DumpStages, DumpOptions, Res, !IO) :-
+read_and_startup(Machine, ScriptName, DataFileNames, Canonical,
+        MaybeOutputStream, DumpStages, DumpOptions, Res, !IO) :-
     (
         DataFileNames = [],
         % This should have been caught and reported by main.
@@ -72,8 +72,9 @@ read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream,
         maybe_report_stats(MaybeOutputStream, !IO),
         (
             Res0 = ok(InitDeep),
-            startup(Machine, DataFileName, Canonical, MaybeOutputStream,
-                DumpStages, DumpOptions, InitDeep, Deep, !IO),
+            startup(Machine, ScriptName, DataFileName, Canonical,
+                MaybeOutputStream, DumpStages, DumpOptions, InitDeep, Deep,
+                !IO),
             Res = ok(Deep)
         ;
             Res0 = error(Error),
@@ -84,11 +85,11 @@ read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream,
         error("mdprof_server: merging of data files is not yet implemented")
     ).
 
-:- pred startup(string::in, string::in, bool::in, maybe(io.output_stream)::in,
-    list(string)::in, list(string)::in, initial_deep::in, deep::out,
-    io::di, io::uo) is det.
+:- pred startup(string::in, string::in, string::in, bool::in,
+    maybe(io.output_stream)::in, list(string)::in, list(string)::in,
+    initial_deep::in, deep::out, io::di, io::uo) is det.
 
-startup(Machine, DataFileName, Canonical, MaybeOutputStream,
+startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
         DumpStages, DumpOptions, InitDeep0, Deep, !IO) :-
     InitDeep0 = initial_deep(InitStats, Root,
         CallSiteDynamics0, ProcDynamics, CallSiteStatics0, ProcStatics0),
@@ -218,7 +219,7 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream,
     array.init(NCSDs, map.init, CSDCompTable0),
 
     ModuleData = map.map_values(initialize_module_data, ModuleProcs),
-    Deep0 = deep(InitStats, Machine, DataFileName, Root,
+    Deep0 = deep(InitStats, Machine, ScriptName, DataFileName, Root,
         CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics,
         CliqueIndex, Cliques, CliqueParents, CliqueMaybeChildren,
         ProcCallers, CallSiteStaticMap, CallSiteCalls,

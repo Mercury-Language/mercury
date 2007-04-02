@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -145,7 +145,8 @@ write_version_message(ProgName, !IO) :-
     maybe_error(deep)::out, io::di, io::uo) is det.
 
 read_deep_file(Input, Verbose, DumpStages, DumpOptions, MaybeProfile, !IO) :-
-    server_name(Machine, !IO),
+    server_name_port(Machine, !IO),
+    script_name(ScriptName, !IO),
     (
         Verbose = yes,
         io.stdout_stream(Stdout, !IO),
@@ -154,7 +155,7 @@ read_deep_file(Input, Verbose, DumpStages, DumpOptions, MaybeProfile, !IO) :-
         Verbose = no,
         MaybeOutput = no
     ),
-    read_and_startup(Machine, [Input], no, MaybeOutput,
+    read_and_startup(Machine, ScriptName, [Input], no, MaybeOutput,
         DumpStages, DumpOptions, MaybeProfile, !IO).
 
     % Determine those CSSs whose CSDs' average/median call sequence counts 

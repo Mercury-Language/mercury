@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -308,11 +308,12 @@ handle_query_from_new_server(Cmd, PrefInd, FileName,
     lookup_bool_option(Options, localhost, LocalHost),
     (
         LocalHost = no,
-        server_name(Machine, !IO)
+        server_name_port(Machine, !IO)
     ;
         LocalHost = yes,
         Machine = "localhost"
     ),
+    script_name(ScriptName, !IO),
     lookup_bool_option(Options, canonical_clique, Canonical),
     lookup_bool_option(Options, server_process, ServerProcess),
     lookup_bool_option(Options, debug, Debug),
@@ -332,8 +333,8 @@ handle_query_from_new_server(Cmd, PrefInd, FileName,
         RecordStartup = no,
         MaybeStartupStream = no
     ),
-    read_and_startup(Machine, [FileName], Canonical, MaybeStartupStream,
-        [], [], Res, !IO),
+    read_and_startup(Machine, ScriptName, [FileName], Canonical,
+        MaybeStartupStream, [], [], Res, !IO),
     (
         Res = ok(Deep),
         Pref = solidify_preference(Deep, PrefInd),
@@ -487,11 +488,11 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         MaybeStartupStream = no
     ),
     CmdPref0 = cmd_pref(Cmd0, PrefInd0),
-    Pref0 = solidify_preference(Deep, PrefInd0),
 
     ( Cmd0 = deep_cmd_restart ->
-        read_and_startup(Deep0 ^ server_name, [Deep0 ^ data_file_name],
-            Canonical, MaybeStartupStream, [], [], MaybeDeep, !IO),
+        read_and_startup(Deep0 ^ server_name_port, Deep0 ^ script_name,
+            [Deep0 ^ data_file_name], Canonical, MaybeStartupStream, [], [],
+            MaybeDeep, !IO),
         (
             MaybeDeep = ok(Deep),
             MaybeMsg = no,
@@ -507,6 +508,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         MaybeMsg = no,
         Cmd = Cmd0
     ),
+    Pref0 = solidify_preference(Deep, PrefInd0),
     (
         MaybeMsg = yes(HTML)
     ;

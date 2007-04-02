@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,7 +103,8 @@ main2(ProgName, Args, Options, !IO) :-
         lookup_bool_option(Options, verbose, Verbose),
         lookup_accumulating_option(Options, dump, DumpStages),
         lookup_accumulating_option(Options, dump_options, DumpOptions),
-        server_name(Machine, !IO),
+        server_name_port(Machine, !IO),
+        script_name(ScriptName, !IO),
         (
             Verbose = no,
             MaybeOutput = no
@@ -112,8 +113,8 @@ main2(ProgName, Args, Options, !IO) :-
             io.stdout_stream(Stdout, !IO),
             MaybeOutput = yes(Stdout)
         ),
-        read_and_startup(Machine, [FileName], Canonical, MaybeOutput,
-            DumpStages, DumpOptions, Res, !IO),
+        read_and_startup(Machine, ScriptName, [FileName], Canonical,
+            MaybeOutput, DumpStages, DumpOptions, Res, !IO),
         (
             Res = ok(Deep),
             lookup_bool_option(Options, test, Test),
@@ -165,7 +166,9 @@ verify_profile(ProgName, Args0, Options, !IO) :-
 verify_profile_2(ProgName, Options, FileName, !IO) :-
     lookup_bool_option(Options, canonical_clique, Canonical),
     Machine = "dummy_server",      % For verification this doesn't matter.
-    read_and_startup(Machine, [FileName], Canonical, no, [], [], Res, !IO),
+    script_name(ScriptName, !IO),
+    read_and_startup(Machine, ScriptName, [FileName], Canonical, no,
+        [], [], Res, !IO),
     (
         Res = ok(_Deep)
     ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,7 +62,8 @@
 :- type deep
     --->    deep(
                 profile_stats           :: profile_stats,
-                server_name             :: string,
+                server_name_port        :: string,
+                script_name             :: string,
                 data_file_name          :: string,
 
                 root                    :: proc_dynamic_ptr,

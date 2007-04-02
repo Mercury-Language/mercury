@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2245,8 +2245,8 @@ clique_ptr_to_html_ref(Pref, Deep, ProcName, CliquePtr) = HTML :-
         [s(URL), s(escape_html_string(ProcName))]).
 
 deep_cmd_pref_to_url(Pref, Deep, Cmd) =
-    machine_datafile_cmd_pref_to_url(Deep ^ server_name,
-        Deep ^ data_file_name, Cmd, Pref).
+    machine_datafile_cmd_pref_to_url(Deep ^ server_name_port,
+        Deep ^ script_name, Deep ^ data_file_name, Cmd, Pref).
 
 %-----------------------------------------------------------------------------%
 

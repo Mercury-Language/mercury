@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -316,8 +316,8 @@
 :- func default_inactive_items = inactive_items.
 
 :- func query_separator_char = char.
-:- func machine_datafile_cmd_pref_to_url(string, string, cmd, preferences)
-    = string.
+:- func machine_datafile_cmd_pref_to_url(string, string, string, cmd,
+    preferences) = string.
 :- func url_component_to_cmd(string, cmd) = cmd.
 :- func url_component_to_maybe_cmd(string) = maybe(cmd).
 :- func url_component_to_maybe_pref(string) = maybe(preferences).
@@ -573,10 +573,11 @@ criteria_separator_char = ('-').
 field_separator_char = ('-').
 limit_separator_char = ('-').
 
-machine_datafile_cmd_pref_to_url(Machine, DataFileName, Cmd, Preferences) =
+machine_datafile_cmd_pref_to_url(Machine, ScriptName, DataFileName, Cmd,
+        Preferences) =
     "http://" ++
     Machine ++
-    "/cgi-bin/mdprof_cgi?" ++
+    ScriptName ++ "?" ++
     cmd_to_string(Cmd) ++
     string.char_to_string(query_separator_char) ++
     preferences_to_string(Preferences) ++
