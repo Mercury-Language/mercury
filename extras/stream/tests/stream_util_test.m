@@ -14,6 +14,7 @@
 :- import_module list.
 :- import_module pprint.
 :- import_module stream.
+:- import_module stream.string_writer.
 :- import_module stream_util.
 :- import_module stream_util.string_builder.
 :- import_module string.
@@ -32,8 +33,7 @@ main(!IO) :-
         pprint.write(Stream, 0, to_doc([4, 5, 6]),
             !State),
         put(Stream, "\n", !State),
-        stream.format(Stream, "%.2f", [f(3.14)],
-            !State),
+        string_writer.format(Stream, "%.2f", [f(3.14)], !State),
         put(Stream, "\n", !State),
         String = string_builder_state_to_string(!.State),
         io.write_string(String, !IO)
