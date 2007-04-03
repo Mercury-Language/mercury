@@ -2277,7 +2277,7 @@ escape_break_html_string(String) =
     replace_special_chars(special_html_char_or_break, String).
 
 :- func replace_special_chars(pred(char, string)::in(pred(in, out) is semidet),
-    string::in) = (string::out).
+    string::in) = (string::out) is det.
 
 replace_special_chars(SpecialCharTable, String0) = String :-
     string.foldr(replace_special_char_2(SpecialCharTable), String0, [], Chars),
