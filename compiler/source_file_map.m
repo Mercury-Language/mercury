@@ -197,7 +197,10 @@ write_source_file_map_2(MapStream, FileName, SeenModules0, SeenModules, !IO) :-
     find_module_name(FileName, MaybeModuleName, !IO),
     (
         MaybeModuleName = yes(ModuleName),
-        ( map.search(SeenModules0, ModuleName, PrevFileName) ->
+        (
+            map.search(SeenModules0, ModuleName, PrevFileName),
+            PrevFileName \= FileName
+        ->
             io.write_string("mercury_compile: module `", !IO),
             io.write_string(sym_name_to_string(ModuleName), !IO),
             io.write_string("' defined in multiple files: ", !IO),
@@ -208,7 +211,7 @@ write_source_file_map_2(MapStream, FileName, SeenModules0, SeenModules, !IO) :-
             io.set_exit_status(1, !IO),
             SeenModules = SeenModules0
         ;
-            map.det_insert(SeenModules0, ModuleName, FileName, SeenModules)
+            map.set(SeenModules0, ModuleName, FileName, SeenModules)
         ),
         ( string.remove_suffix(FileName, ".m", PartialFileName0) ->
             PartialFileName = PartialFileName0
