@@ -7070,13 +7070,14 @@ to their Mercury types, as determined by the rules specified in
 
 The C code fragment may declare local variables,
 up to a total size of 10kB for the procedure.
+@c The relevant parameter is LOCALS_SIZE, defined in runtime/mercury_engine.c.
 If a procedure requires more than this for its local variables,
 the code can be moved into a separate function
 (defined in a @samp{pragma foreign_code} declaration, for example).
 
 The C code fragment should not declare any labels or static variables
-unless there is also a Mercury @samp{pragma no_inline} declaration
-for the procedure.
+unless there is also a @samp{pragma no_inline} declaration
+or a @samp{may_not_duplicate} foreign code attribute for the procedure.
 The reason for this is that otherwise the Mercury implementation may
 inline the procedure by duplicating the C code fragment for each call.
 If the C code fragment declared a static variable, inlining it in this
