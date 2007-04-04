@@ -154,6 +154,13 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
 "
 #include ""mercury_event_spec.h""
 #include <stdio.h>
+
+MR_String   read_specs_file_2(MR_Code *proc_label, MR_String specs_file_name,
+    MR_String term_file_name);
+MR_String   read_specs_file_3(MR_Code *proc_label, MR_String specs_file_name,
+    MR_String term_file_name, int spec_fd);
+MR_String   read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
+    MR_String term_file_name, int spec_fd, size_t size, char *spec_buf);
 ").
 
 :- pragma foreign_proc("C",
@@ -161,95 +168,109 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    int     spec_fd;
-    FILE    *term_fp;
+    /*
+    ** We need to save/restore MR_hp so that we can allocate the return
+    ** value on Mercury's heap if necessary.
+    */
+    MR_save_transient_hp();
+    Problem = read_specs_file_2(MR_PROC_LABEL, SpecsFileName, TermFileName);
+    MR_restore_transient_hp();
+").
+
+:- pragma foreign_code("C", "
+
+MR_String
+read_specs_file_2(MR_Code *proc_label, MR_String specs_file_name,
+    MR_String term_file_name)
+{
+    int         spec_fd;
+    MR_String   problem;
 
     /*
-    ** Using snprint instead of sprintf below would be very slightly safer,
-    ** but unfortunately enabling the declaration of snprintf in the system's
-    ** header files requires finding the right #defines, and this set of
-    ** #defines is very system-dependent. Even having MR_HAVE_SNPRINTF set
-    ** is no guarantee that calling snprintf won't lead to a warning from
-    ** the C compiler.
-    **
     ** There are race conditions between opening the file, stat'ing the file
     ** and reading the contents of the file, but the Unix API doesn't really
     ** allow these race conditions to be resolved.
     */
 
-    spec_fd = open(SpecsFileName, O_RDONLY);
+    spec_fd = open(specs_file_name, O_RDONLY);
     if (spec_fd < 0) {
-        char    buf[4096];
-
-        sprintf(buf, ""could not open %s: %s"",
-            SpecsFileName, strerror(errno));
-        MR_make_aligned_string_copy(Problem, buf);
+        problem = MR_make_string(proc_label, ""could not open %s: %s"",
+            specs_file_name, strerror(errno));
     } else {
-        struct stat stat_buf;
-
-        if (fstat(spec_fd, &stat_buf) != 0) {
-            char    buf[4096];
-
-            sprintf(buf, ""could not stat %s"", SpecsFileName);
-            MR_make_aligned_string_copy(Problem, buf);
-        } else {
-            char        *spec_buf;
-
-            spec_buf = malloc(stat_buf.st_size + 1);
-            if (spec_buf == NULL) {
-                char    buf[4096];
-
-                sprintf(buf, ""could not allocate memory for a copy of %s"",
-                    SpecsFileName);
-                MR_make_aligned_string_copy(Problem, buf);
-            } else {
-                size_t num_bytes_read;
-
-                num_bytes_read = read(spec_fd, spec_buf, stat_buf.st_size);
-                if (num_bytes_read != stat_buf.st_size) {
-                    char    buf[4096];
-
-                    sprintf(buf, ""could not read in %s"", SpecsFileName);
-                    MR_make_aligned_string_copy(Problem, buf);
-                } else {
-                    MR_EventSet event_set;
-
-                    /* NULL terminate the string we have read in. */
-                    spec_buf[num_bytes_read] = '\\0';
-                    event_set = MR_read_event_set(SpecsFileName, spec_buf);
-                    if (event_set == NULL) {
-                        char    buf[4096];
-
-                        sprintf(buf, ""could not parse %s"", SpecsFileName);
-                        MR_make_aligned_string_copy(Problem, buf);
-                    } else {
-                        term_fp = fopen(TermFileName, ""w"");
-                        if (term_fp == NULL) {
-                            char    buf[4096];
-
-                            sprintf(buf, ""could not open %s: %s"",
-                                TermFileName, strerror(errno));
-                            MR_make_aligned_string_copy(Problem, buf);
-                        } else {
-                            MR_print_event_set(term_fp, event_set);
-                            fclose(term_fp);
-
-                            /*
-                            ** Our caller tests Problem against the
-                            ** empty string, not NULL.
-                            */
-
-                            MR_make_aligned_string_copy(Problem, """");
-                        }
-                    }
-                }
-
-                free(spec_buf);
-            }
-        }
-
+        problem = read_specs_file_3(proc_label, specs_file_name,
+            term_file_name, spec_fd);
         (void) close(spec_fd);
     }
+    return problem;
+}
+
+MR_String
+read_specs_file_3(MR_Code *proc_label, MR_String specs_file_name,
+    MR_String term_file_name, int spec_fd)
+{
+    struct stat stat_buf;
+    MR_String   problem;
+
+    if (fstat(spec_fd, &stat_buf) != 0) {
+        problem = MR_make_string(proc_label, ""could not stat %s"",
+            specs_file_name);
+    } else {
+        char        *spec_buf;
+
+        spec_buf = malloc(stat_buf.st_size + 1);
+        if (spec_buf == NULL) {
+            problem = MR_make_string(proc_label,
+                ""could not allocate memory for a copy of %s"",
+                specs_file_name);
+        } else {
+            problem = read_specs_file_4(proc_label, specs_file_name,
+                term_file_name, spec_fd, stat_buf.st_size, spec_buf);
+            free(spec_buf);
+        }
+    }
+    return problem;
+}
+
+MR_String
+read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
+    MR_String term_file_name, int spec_fd, size_t size, char *spec_buf)
+{
+    size_t      num_bytes_read;
+    MR_String   problem;
+
+    num_bytes_read = read(spec_fd, spec_buf, size);
+    if (num_bytes_read != size) {
+        problem = MR_make_string(proc_label, ""could not read in %s"",
+            specs_file_name);
+    } else {
+        MR_EventSet event_set;
+
+        /* NULL terminate the string we have read in. */
+        spec_buf[num_bytes_read] = '\\0';
+        event_set = MR_read_event_set(specs_file_name, spec_buf);
+        if (event_set == NULL) {
+            problem = MR_make_string(proc_label, ""could not parse %s"",
+                specs_file_name);
+        } else {
+            FILE *term_fp;
+
+            term_fp = fopen(term_file_name, ""w"");
+            if (term_fp == NULL) {
+                problem = MR_make_string(proc_label, ""could not open %s: %s"",
+                    term_file_name, strerror(errno));
+            } else {
+                MR_print_event_set(term_fp, event_set);
+                fclose(term_fp);
+
+                /*
+                ** Our caller tests Problem against the empty string, not NULL.
+                */
+                problem = MR_make_string(proc_label, """");
+            }
+        }
+    }
+    return problem;
+}
 ").
 
 %-----------------------------------------------------------------------------%

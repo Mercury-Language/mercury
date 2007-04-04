@@ -27,7 +27,12 @@ ENDINIT
 
   #ifdef MR_USE_GCC_NONLOCAL_GOTOS
 
-    #define LOCALS_SIZE     10024   /* space to reserve for local vars */
+    /*
+    ** Space to reserve for local vars.  If this parameter is modified
+    ** then the reference manual will also need to be updated.
+    */
+    #define LOCALS_SIZE     10240
+
     #define MAGIC_MARKER    187     /* a random character */
     #define MAGIC_MARKER_2  142     /* another random character */
 
