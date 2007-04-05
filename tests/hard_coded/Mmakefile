@@ -143,7 +143,6 @@ ORDINARY_PROGS=	\
 	nonascii \
 	nondet_copy_out \
 	nondet_ctrl_vn \
-	null_char \
 	nullary_ho_func \
 	one_member \
 	opt_dup_bug \
@@ -440,6 +439,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		init_excp \
 		map_merge_test \
 		mutable_excp \
+		null_char \
 		io_globals_deadlock \
 		test_array2d \
 		test_injection \

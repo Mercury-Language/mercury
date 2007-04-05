@@ -3,6 +3,10 @@
 % When compiled in a deep profiling grade at -O2 or below it aborts with a 
 % segmentation fault.
 %
+% The problem was caused by short circuit in the code for
+% builtin.{unify, compare} that is enabled by MR_CHECK_DU_EQ causing execution
+% to avoid calling the exit port code for builtin.{unify, compare}.
+%
 :- module profdeep_seg_fault.
 :- interface.
 

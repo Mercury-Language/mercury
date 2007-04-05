@@ -20,3 +20,13 @@ MCFLAGS-intermod_type2 = --intermodule-optimization
 # tracking it down.
 MLFLAGS-string_test = --no-strip
 
+# If the compiler is build in a .profdeep grade then attempting to compile
+# these tests with `--warn-known-bad-format-call' will abort since the
+# code that implements that check catches an exception.  The deep profiler
+# cannot currently handle code that catches exceptions.
+# Also, it's not worth doing the check for these test cases anyway since
+# the entire point of them is to check that string.format is aborts when
+# passed an invalid format string.
+#
+MCFLAGS-string_format_test_2 = --no-warn-known-bad-format-calls
+MCFLAGS-string_format_test_3 = --no-warn-known-bad-format-calls

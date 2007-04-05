@@ -186,7 +186,13 @@ start_label:
                 int                     cur_slot;
                 int                     arity;
                 int                     i;
-
+  /*
+  ** XXX MR_CHECK_DU_EQ doesn't not currently work in deep profiling grades
+  **     since the resulting short circuit means that the exit port call
+  **     for the unification or comparison predicate is never made.
+  **     This results in the data structures used by the deep profiler
+  **     becoming corrupted.
+  */
   #ifdef MR_CHECK_DU_EQ
     #ifdef  select_compare_code
                 if (x == y) {

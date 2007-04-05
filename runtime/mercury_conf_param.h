@@ -586,7 +586,11 @@
   #undef  MR_DEEP_PROFILING_MEMORY
 #endif
 
-#ifndef	MR_DISABLE_CHECK_DU_EQ
+/*
+** XXX MR_CHECK_DU_EQ is currently not compatible with deep profiling.
+** See the comment in mercury_unify_compare_body.h for an explanation.
+*/
+#if !defined(MR_DISABLE_CHECK_DU_EQ) && !defined(MR_DEEP_PROFILING)
   #define MR_CHECK_DU_EQ
 #endif
 
