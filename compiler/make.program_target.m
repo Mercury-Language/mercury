@@ -398,18 +398,23 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         Succeeded = no
     ;
         DepsResult = deps_up_to_date,
+        MsgTarget = MainModuleName - linked_target(FileType),
         globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs,
             !IO),
         (
             UseGradeSubdirs = yes,
-            maybe_symlink_or_copy_linked_target_message(
-                MainModuleName - linked_target(FileType), !IO),
-            compile_target_code.post_link_make_symlink_or_copy(ErrorStream,
-                FileType, MainModuleName, Succeeded, !IO)
+            post_link_make_symlink_or_copy(ErrorStream,
+                FileType, MainModuleName, Succeeded, MadeSymlinkOrCopy, !IO),
+            (
+                MadeSymlinkOrCopy = yes,
+                maybe_symlink_or_copy_linked_target_message(MsgTarget, !IO)
+            ;
+                MadeSymlinkOrCopy = no,
+                maybe_warn_up_to_date_target(MsgTarget, !Info, !IO)
+            )
         ;
             UseGradeSubdirs = no,
-            maybe_warn_up_to_date_target(
-                MainModuleName - linked_target(FileType), !Info, !IO),
+            maybe_warn_up_to_date_target(MsgTarget, !Info, !IO),
             Succeeded = yes
         )
     ;

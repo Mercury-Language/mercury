@@ -104,13 +104,16 @@
 :- pred link(io.output_stream::in, linked_target_type::in, module_name::in,
     list(string)::in, bool::out, io::di, io::uo) is det.
 
-    % post_link_make_symlink_or_copy(TargetType, MainModuleName, Succeeded)
+    % post_link_make_symlink_or_copy(TargetType, MainModuleName, Succeeded,
+    %   MadeSymlinkOrCopy)
     %
     % If `--use-grade-subdirs' is enabled, link or copy the executable or
-    % library into the user's directory after having successfully built it.
+    % library into the user's directory after having successfully built it,
+    % if the target does not exist or is not up-to-date.
     %
 :- pred post_link_make_symlink_or_copy(io.output_stream::in,
-    linked_target_type::in, module_name::in, bool::out, io::di, io::uo) is det.
+    linked_target_type::in, module_name::in, bool::out, bool::out,
+    io::di, io::uo) is det.
 
     % link_module_list(ModulesToLink, FactTableObjFiles, Succeeded):
     %
@@ -186,6 +189,7 @@
 :- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.options.
+:- import_module libs.timestamp.
 :- import_module libs.trace_params.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_foreign.
@@ -1460,7 +1464,7 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
     (
         LinkSucceeded = yes,
         post_link_make_symlink_or_copy(ErrorStream, LinkTargetType,
-            ModuleName, Succeeded, !IO)
+            ModuleName, Succeeded, _MadeSymlinkOrCopy, !IO)
     ;
         LinkSucceeded = no,
         Succeeded = no
@@ -1677,7 +1681,7 @@ use_thread_libs(UseThreadLibs, !IO) :-
     UseThreadLibs = ( ( Parallel = yes ; GCMethod = gc_mps ) -> yes ; no ).
 
 post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
-        Succeeded, !IO) :-
+        Succeeded, MadeSymlinkOrCopy, !IO) :-
     globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
     (
         UseGradeSubdirs = yes,
@@ -1700,15 +1704,41 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         globals.io_set_option(use_subdirs, bool(yes), !IO),
         globals.io_set_option(use_grade_subdirs, bool(yes), !IO),
 
-        io.set_output_stream(ErrorStream, OutputStream, !IO),
-        % Remove the target of the symlink/copy in case it already exists.
-        io.remove_file(UserDirFileName, _, !IO),
-        make_symlink_or_copy_file(OutputFileName, UserDirFileName, Succeeded,
-            !IO),
-        io.set_output_stream(OutputStream, _, !IO)
+        same_timestamp(OutputFileName, UserDirFileName, SameTimestamp, !IO),
+        (
+            SameTimestamp = yes,
+            Succeeded = yes,
+            MadeSymlinkOrCopy = no
+        ;
+            SameTimestamp = no,
+            io.set_output_stream(ErrorStream, OutputStream, !IO),
+            % Remove the target of the symlink/copy in case it already exists.
+            io.remove_file(UserDirFileName, _, !IO),
+            make_symlink_or_copy_file(OutputFileName, UserDirFileName,
+                Succeeded, !IO),
+            io.set_output_stream(OutputStream, _, !IO),
+            MadeSymlinkOrCopy = yes
+        )
     ;
         UseGradeSubdirs = no,
-        Succeeded = yes
+        Succeeded = yes,
+        MadeSymlinkOrCopy = no
+    ).
+
+:- pred same_timestamp(string::in, string::in, bool::out, io::di, io::uo)
+    is det.
+
+same_timestamp(FileNameA, FileNameB, SameTimestamp, !IO) :-
+    io.file_modification_time(FileNameA, TimestampResultA, !IO),
+    io.file_modification_time(FileNameB, TimestampResultB, !IO),
+    (
+        TimestampResultA = ok(TimestampA),
+        TimestampResultB = ok(TimestampB),
+        time_t_to_timestamp(TimestampA) = time_t_to_timestamp(TimestampB)
+    ->
+        SameTimestamp = yes
+    ;
+        SameTimestamp = no
     ).
 
 shared_libraries_supported(Supported, !IO) :-

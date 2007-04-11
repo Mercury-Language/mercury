@@ -276,7 +276,7 @@
 :- pred maybe_warn_up_to_date_target(pair(module_name, target_type)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % Write a message "Making symlink/copy of <filename>" if
+    % Write a message "Made symlink/copy of <filename>" if
     % `--verbose-message' is set.
     %
 :- pred maybe_symlink_or_copy_linked_target_message(
@@ -1269,7 +1269,7 @@ maybe_warn_up_to_date_target(Target, !Info, !IO) :-
 maybe_symlink_or_copy_linked_target_message(Target, !IO) :-
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Making symlink/copy of ", !IO),
+            io.write_string("Made symlink/copy of ", !IO),
             write_module_or_linked_target(Target, !IO),
             io.write_string("\n", !IO)
         ), !IO).
