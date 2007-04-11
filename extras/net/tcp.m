@@ -52,16 +52,30 @@
 
 :- type error.
 
+:- type line ---> line(string).
+
 :- instance stream(tcp, io.state).
 :- instance error(tcp.error).
 
 :- instance input(tcp, io.state, tcp.error).
 :- instance reader(tcp, character, io.state, tcp.error).
+:- instance reader(tcp, line, io.state, tcp.error).
 
 :- instance output(tcp, io.state).
 :- instance writer(tcp, character, io.state).
 :- instance writer(tcp, string, io.state).
 
+	% Sending data to a broken pipe will cause the SIGPIPE signal to be
+	% sent to the process.  If SIGPIPE is ignored or blocked then send()
+	% fails with EPIPE.  This predicate causes SIGPIPE signals to be
+	% ignored.
+	%
+:- pred tcp__ignore_sigpipe(io::di, io::uo) is det.
+
+	% Restores the SIGPIPE signal handler before the last
+	% tcp__ignore_sigpipe() call.
+	%
+:- pred tcp__unignore_sigpipe(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -70,6 +84,7 @@
 
 :- import_module bool.
 :- import_module char.
+:- import_module list.
 :- import_module require.
 :- import_module string.
 
@@ -125,7 +140,7 @@ tcp__shutdown(tcp(_, Handle)) -->
 
 :- pragma foreign_proc(c,
 	handle_shutdown(TCP::in, IO0::di, IO::uo),
-	[will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
+	[may_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "{
 
 	struct linger sockets_linger = { MR_TRUE, 2 };
@@ -175,10 +190,14 @@ tcp__shutdown(tcp(_, Handle)) -->
 #define BACKLOG	16
 #define FULL	2
 
+#define TCP_BUFSIZE		1024
+
 typedef struct {
 	int	socket;
 	int	error;
-	MR_bool	eof;
+	size_t	buf_len;
+	off_t 	buf_pos;
+	char	buf[TCP_BUFSIZE];
 } ML_tcp;
 
 void ML_tcp_init(void);
@@ -234,11 +253,12 @@ void ML_tcp_init(void)
 
 	ML_tcp_init();
 
-	sock = MR_NEW(ML_tcp);
+	sock = MR_GC_NEW(ML_tcp);
 
 	sock->socket = socket(PF_INET, SOCK_STREAM, 0);
 	sock->error = 0;
-	sock->eof = MR_FALSE;
+	sock->buf_len = 0;
+	sock->buf_pos = 0;
 
 	if (sock->socket == INVALID_SOCKET) {
 		sock->error = ML_error();
@@ -247,7 +267,7 @@ void ML_tcp_init(void)
 		if (host == NULL) {
 			sock->error = ML_error();
 		} else {
-			addr = MR_NEW(struct sockaddr_in);
+			addr = MR_GC_NEW(struct sockaddr_in);
 			memset(addr,0,sizeof(struct sockaddr_in));
 			memcpy(&(addr->sin_addr), host->h_addr, host->h_length);
 			addr->sin_family = host->h_addrtype;
@@ -305,7 +325,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 		if (host == NULL) {
 			Errno = ML_error();
 		} else {
-			addr = MR_NEW(struct sockaddr_in);
+			addr = MR_GC_NEW(struct sockaddr_in);
 			memset(addr,0,sizeof(struct sockaddr_in));
 			memcpy(&(addr->sin_addr), host->h_addr, host->h_length);
 			addr->sin_family = host->h_addrtype;
@@ -342,12 +362,13 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 	struct sockaddr *addr;
 	int size = sizeof(struct sockaddr_in);
 
-	sock = MR_NEW(ML_tcp);
+	sock = MR_GC_NEW(ML_tcp);
 	addr = (struct sockaddr *) Addr;
 
 	sock->socket = accept(Socket, addr, &size);
 	sock->error = 0;
-	sock->eof = MR_FALSE;
+	sock->buf_len = 0;
+	sock->buf_pos = 0;
 
 	if (sock->socket == INVALID_SOCKET) {
 		sock->error = ML_error();
@@ -376,18 +397,27 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 :- instance input(tcp, io.state, tcp.error) where [].
 :- instance reader(tcp, character, io.state, tcp.error) where [
 	(get(T, Result, !IO) :-
-		tcp.read_char(T ^ handle, C, B, !IO),
-		( B = yes,
-			Result = ok(C)
-		; B = no,
-			is_eof(T ^ handle, IsEof, !IO),
-			( IsEof = yes ->
-				Result = eof
-			;
-				get_errno(T ^ handle, Errno, !IO),
-				Result = error(Errno)
-			)
-			
+		tcp__read_char(T ^ handle, Char, !IO),
+		( Char = -1 ->
+			Result = eof
+		; Char = -2 ->
+			get_errno(T ^ handle, Errno, !IO),
+			Result = error(Errno)
+		;
+			Result = ok(char.det_from_int(Char))
+		)
+	)
+].
+:- instance reader(tcp, line, io.state, tcp.error) where [
+	(get(T, Result, !IO) :-
+		tcp__read_line_as_string_2(T ^ handle, ErrCode, String, !IO),
+		( ErrCode = -1 ->
+			Result = eof
+		; ErrCode = -2 ->
+			get_errno(T ^ handle, Errno, !IO),
+			Result = error(Errno)
+		;
+			Result = ok(line(String))
 		)
 	)
 ].
@@ -425,31 +455,115 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred read_char(tcp_handle::in, char::out, bool::out, io::di, io::uo)
-	is det.
+:- pragma foreign_decl("C", "
+	/* Note: some Mercury code uses the -1 and -2 constants directly. */
+	#define TCP_EOF	    -1
+	#define TCP_ERROR   -2
+
+	int TCP_get_char(ML_tcp *sock);
+").
+
+:- pragma foreign_code("C", "
+	int TCP_get_char(ML_tcp *sock)
+	{
+		if (sock->buf_pos >= sock->buf_len) {
+			/* Refill buffer. */
+			int nchars = recv(sock->socket,
+				sock->buf, sizeof(sock->buf), 0);
+			if (nchars == SOCKET_ERROR) {
+				sock->error = ML_error();
+				return TCP_ERROR;
+			} else if (nchars == 0) {
+				return TCP_EOF;
+			} else {
+				sock->buf_pos = 1;
+				sock->buf_len = nchars;
+				return sock->buf[0];
+			}
+		} else {
+			return sock->buf[sock->buf_pos++];
+		}
+	}
+").
+
+:- pred tcp__read_char(tcp_handle::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc(c,
-	read_char(Socket::in, Chr::out, Success::out, _IO0::di, _IO::uo),
+	tcp__read_char(Socket::in, Chr::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "{
-
 	ML_tcp *sock = (ML_tcp *) Socket;
-	int nchars;
 
-	nchars = recv(sock->socket, &Chr, 1, 0);
-	if (nchars == SOCKET_ERROR) {
-		sock->error = ML_error();
-		Success = MR_FALSE;
-		Chr = 0;
-	} else if (nchars == 0) {
-		sock->eof = MR_TRUE;
-		Success = MR_FALSE;
-		Chr = 0;
-	} else {
-		Success = MR_TRUE;
-	}
+	Chr = TCP_get_char(sock);
 }").
 
+    % This implementation is based on io.read_line_as_string_2.
+    %
+:- pred tcp__read_line_as_string_2(tcp_handle::in, int::out, string::out,
+	io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	tcp__read_line_as_string_2(TCP::in, Res::out, RetString::out,
+		IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+#define TCP_IO_READ_LINE_GROW(n) ((n) * 3 / 2)
+#define TCP_IO_BYTES_TO_WORDS(n) (((n) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
+#define TCP_IO_READ_LINE_START   1024
 
+    ML_tcp *sock = (ML_tcp *) TCP;
+    MR_Char initial_read_buffer[TCP_IO_READ_LINE_START];
+    MR_Char *read_buffer = initial_read_buffer;
+    size_t read_buf_size = TCP_IO_READ_LINE_START;
+    size_t i;
+    int char_code = '\\0';
+
+    Res = 0;
+    for (i = 0; char_code != '\\n'; ) {
+        char_code = TCP_get_char(sock);
+        if (char_code == TCP_EOF) {
+            if (i == 0) {
+                Res = -1;
+            }
+            break;
+        }
+        if (char_code == TCP_ERROR) {
+            Res = -2;
+            break;
+        }
+        read_buffer[i++] = char_code;
+        MR_assert(i <= read_buf_size);
+        if (i == read_buf_size) {
+            /* Grow the read buffer */
+            read_buf_size = TCP_IO_READ_LINE_GROW(read_buf_size);
+            if (read_buffer == initial_read_buffer) {
+                read_buffer = MR_NEW_ARRAY(MR_Char, read_buf_size);
+                MR_memcpy(read_buffer, initial_read_buffer,
+                    TCP_IO_READ_LINE_START);
+            } else {
+                read_buffer = MR_RESIZE_ARRAY(read_buffer, MR_Char,
+                    read_buf_size);
+            }
+        }
+    }
+    if (Res == 0) {
+        MR_Word ret_string_word;
+        MR_offset_incr_hp_atomic_msg(ret_string_word,
+            0, TCP_IO_BYTES_TO_WORDS((i + 1) * sizeof(MR_Char)),
+            MR_PROC_LABEL, ""string.string/0"");
+        RetString = (MR_String) ret_string_word;
+        MR_memcpy(RetString, read_buffer, i * sizeof(MR_Char));
+        RetString[i] = '\\0';
+    } else {
+        /*
+        ** We can't just return NULL here, because  otherwise mdb will break
+        ** when it tries to print the string.
+        */
+        RetString = MR_make_string_const("""");
+    }
+    if (read_buffer != initial_read_buffer) {
+        MR_free(read_buffer);
+    }
+    MR_update_io(IO0, IO);
+").
 
 :- pred tcp__write_char(tcp_handle::in, char::in, bool::out,
 	io::di, io::uo) is det.
@@ -504,17 +618,6 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 	MR_save_transient_hp();
 	MR_make_aligned_string_copy(Msg, strerror(Errno));
 	MR_restore_transient_hp();
-}").
-
-
-:- pred tcp__is_eof(tcp_handle::in, bool::out, io::di, io::uo) is det.
-:- pragma foreign_proc(c,
-	tcp__is_eof(Socket::in, Success::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
-"{
-	ML_tcp *sock = (ML_tcp *) Socket;
-
-	Success = sock->eof;
 }").
 
 %-----------------------------------------------------------------------------%
@@ -576,6 +679,35 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 
 throw_tcp_excption(S) :-
 	error(S).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C", "
+    #include <signal.h>
+
+    extern void *TCP__prev_sigpipe_handler;
+").
+
+:- pragma foreign_code("C", "
+    void *TCP__prev_sigpipe_handler = SIG_DFL;
+").
+
+:- pragma foreign_proc("C",
+    tcp__ignore_sigpipe(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TCP__prev_sigpipe_handler = signal(SIGPIPE, SIG_IGN);
+    IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+    tcp__unignore_sigpipe(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    signal(SIGPIPE, TCP__prev_sigpipe_handler);
+    IO = IO0;
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
