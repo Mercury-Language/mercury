@@ -1,5 +1,9 @@
 
 MCFLAGS-abstract_instance = --infer-all
+
+MCFLAGS-complicated_constraint = --no-inlining \
+	--user-guided-type-specialization
+
 MCFLAGS-existential_type_classes = --infer-all
 MCFLAGS-extra_typeinfo = --optimize-higher-order --no-type-specialization \
 				--body-typeinfo-liveness
