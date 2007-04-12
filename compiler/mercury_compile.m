@@ -4962,12 +4962,15 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
     globals.lookup_accumulating_option(Globals, dump_hlds, DumpHLDSStages),
     globals.lookup_accumulating_option(Globals, dump_trace_counts,
         DumpTraceStages),
+    globals.lookup_string_option(Globals, dump_hlds_file_suffix,
+        UserFileSuffix),
     StageNumStr = stage_num_str(StageNum),
     ( should_dump_stage(StageNum, StageNumStr, StageName, DumpHLDSStages) ->
         module_info_get_name(HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".hlds_dump", yes, BaseFileName,
             !IO),
-        DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName,
+        DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName
+            ++ UserFileSuffix,
         (
             !.DumpInfo = prev_dumped_hlds(PrevDumpFileName, PrevHLDS),
             HLDS = PrevHLDS
@@ -4995,7 +4998,8 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
         module_info_get_name(HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".trace_counts", yes,
             BaseFileName, !IO),
-        DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName,
+        DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName
+            ++ UserFileSuffix,
         write_out_trace_counts(DumpFileName, MaybeTraceCountsError, !IO),
         (
             MaybeTraceCountsError = no,
