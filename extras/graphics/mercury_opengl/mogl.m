@@ -1219,30 +1219,6 @@
 
 :- pragma foreign_import_module("C", mogl.type_tables).
 
-
-    % XXX Workaround for a bug with pragma foreign_export and
-    % sub-modules in the low-level C backend.
-    %
-:- pragma foreign_decl("C", "
-
-MR_Word
-MOGL_get_string_yes(MR_String);
-
-MR_Word
-MOGL_get_string_no(void);
-
-void
-MOGL_deconstruct_double(MR_Word, MR_Float *, MR_Float *);
-
-void
-MOGL_deconstruct_triple(MR_Word, MR_Float *, MR_Float *, MR_Float *);
-
-void
-MOGL_deconstruct_quadruple(MR_Word, MR_Float *, MR_Float *, MR_Float *,
-    MR_Float *);
-
-").
-
 %------------------------------------------------------------------------------%
 %
 % GL errors
