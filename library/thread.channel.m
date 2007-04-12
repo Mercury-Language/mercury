@@ -24,6 +24,7 @@
 :- interface.
 
 :- import_module io.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -41,6 +42,11 @@
     % nothing in the channel.
     %
 :- pred channel.take(channel(T)::in, T::out, io::di, io::uo) is det.
+
+    % Take an item from the start of the channel.
+    % Returns immediately with no if the channel was empty.
+    %
+:- pred channel.try_take(channel(T)::in, maybe(T)::out, io::di, io::uo) is det.
 
     % Duplicate a channel.  The new channel sees all (and only) the
     % data written to the channel after the channel.duplicate call.
@@ -91,6 +97,19 @@ channel.put(channel(_Read, Write), Val, !IO) :-
 channel.take(channel(Read, _Write), Val, !IO) :-
     mvar.take(Read, Head, !IO),
     mvar.take(Head, item(Val, NewHead), !IO),
+    mvar.put(Read, NewHead, !IO).
+
+channel.try_take(channel(Read, _Write), MaybeVal, !IO) :-
+    mvar.take(Read, Head, !IO),
+    mvar.try_take(Head, MaybeItem, !IO),
+    (
+        MaybeItem = yes(item(Val, NewHead)),
+        MaybeVal = yes(Val)
+    ;
+        MaybeItem = no,
+        MaybeVal = no,
+        NewHead = Head
+    ),
     mvar.put(Read, NewHead, !IO).
 
 channel.duplicate(channel(_Read, Write), channel(NewRead, Write), !IO) :-

@@ -24,6 +24,7 @@
 :- interface.
 
 :- import_module io.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -38,6 +39,12 @@
     %
 :- pred mvar.take(mvar(T)::in, T::out, io::di, io::uo) is det.
 
+    % Take the contents of the mvar out leaving the mvar empty.
+    % Returns immediately with no if the mvar was empty, or yes(X) if
+    % the mvar contained X.
+    %
+:- pred mvar.try_take(mvar(T)::in, maybe(T)::out, io::di, io::uo) is det.
+
     % Place the value of type T into an empty mvar.
     % If the mvar is full block until it becomes empty.
     %
@@ -48,6 +55,7 @@
 
 :- implementation.
 
+:- import_module bool.
 :- import_module mutvar.
 :- import_module thread.semaphore.
 
@@ -72,6 +80,19 @@ mvar.take(mvar(Full, Empty, Ref), Data, !IO) :-
     semaphore.wait(Full, !IO),
     impure get_mutvar(Ref, Data),
     semaphore.signal(Empty, !IO).
+
+:- pragma promise_pure(mvar.try_take/4).
+mvar.try_take(mvar(Full, Empty, Ref), MaybeData, !IO) :-
+    semaphore.try_wait(Full, Success, !IO),
+    (
+        Success = yes,
+        impure get_mutvar(Ref, Data),
+        semaphore.signal(Empty, !IO),
+        MaybeData = yes(Data)
+    ;
+        Success = no,
+        MaybeData = no
+    ).
 
 :- pragma promise_pure(mvar.put/4).
 mvar.put(mvar(Full, Empty, Ref), Data, !IO) :-

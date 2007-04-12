@@ -37,7 +37,8 @@ Changes to the Mercury standard library:
 * We have moved some of the concurrency primitives out of the extras
   distribution and into a new standard library module called `thread',
   and its submodules `thread.channel', `thread.mvar', and `thread.semaphore'.
-  The predicate `thread.can_spawn' has also been added.
+  The predicates `thread.can_spawn', `thread.channel.try_take'
+  and `thread.mvar.try_take' have also been added.
 
 * The following predicates have been added to the list module:
 	list.map_corresponding/4
