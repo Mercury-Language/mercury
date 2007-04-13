@@ -1157,7 +1157,8 @@ typedef union {
 ** Map from ordinal (declaration order) functor numbers to lexicographic
 ** functor numbers which can be passed to construct.construct.
 */
-typedef const MR_Integer * MR_FunctorNumberMap;
+
+typedef const MR_Integer        *MR_FunctorNumberMap;
 
 /*---------------------------------------------------------------------------*/
 

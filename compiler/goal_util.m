@@ -388,6 +388,10 @@
     is semidet.
 
 %-----------------------------------------------------------------------------%
+
+:- func maybe_strip_equality_pretest(hlds_goal) = hlds_goal.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1906,6 +1910,67 @@ foreign_code_uses_variable(Impl, VarName) :-
         ; string.sub_string_search(FB4, VarName, _)
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+maybe_strip_equality_pretest(Goal0) = Goal :-
+    % The if_then_else constructed by unify_proc is sometimes wrapped up
+    % in conjunctions.
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
+        ( GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        Goal = Goal0
+    ;
+        GoalExpr0 = conj(ConjType, Goals0),
+        Goals = list.map(maybe_strip_equality_pretest, Goals0),
+        GoalExpr = conj(ConjType, Goals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = disj(SubGoals0),
+        SubGoals = list.map(maybe_strip_equality_pretest, SubGoals0),
+        GoalExpr = disj(SubGoals),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        Cases = list.map(maybe_strip_equality_pretest_case, Cases0),
+        GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        SubGoal = maybe_strip_equality_pretest(SubGoal0),
+        GoalExpr = scope(Reason, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        SubGoal = maybe_strip_equality_pretest(SubGoal0),
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        ( goal_info_has_feature(GoalInfo0, feature_pretest_equality) ->
+            Goal = Else0
+        ;
+            Cond = maybe_strip_equality_pretest(Cond0),
+            Then = maybe_strip_equality_pretest(Then0),
+            Else = maybe_strip_equality_pretest(Else0),
+            GoalExpr = if_then_else(Vars, Cond, Then, Else),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
+    ;
+        GoalExpr0 = shorthand(_),
+        unexpected(this_file, "maybe_strip_equality_pretest: shorthand")
+    ).
+
+:- func maybe_strip_equality_pretest_case(case) = case.
+
+maybe_strip_equality_pretest_case(Case0) = Case :-
+    Case0 = case(ConsId, Goal0),
+    Goal = maybe_strip_equality_pretest(Goal0),
+    Case = case(ConsId, Goal).
 
 %-----------------------------------------------------------------------------%
 

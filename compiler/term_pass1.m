@@ -55,6 +55,7 @@
 
 :- implementation.
 
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module libs.compiler_util.
 :- import_module libs.lp.
@@ -221,7 +222,12 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
     proc_info_get_headvars(ProcInfo, Args),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    proc_info_get_goal(ProcInfo, Goal),
+    proc_info_get_goal(ProcInfo, Goal0),
+    % The pretest code we add for compiler-generated unification and comparison
+    % predicates uses type casts. It uses them in a way that is guaranteed
+    % to terminate, but our analysis is not (yet) able to find this out for
+    % itself. We therefore analyse only the non-pretest parts of such goals.
+    Goal = maybe_strip_equality_pretest(Goal0),
     map.init(EmptyMap),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
     init_traversal_params(FunctorInfo, PPId, Context, VarTypes,

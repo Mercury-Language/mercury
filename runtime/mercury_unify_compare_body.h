@@ -44,6 +44,7 @@
 ** types: they support unifications but not comparisons. Since we cannot do
 ** it for such types, it is simplest not to do it for any types.
 */
+
 #ifdef  select_compare_code
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
     #ifdef include_compare_rep_code
@@ -165,6 +166,12 @@ start_label:
             /* fall through */
   #endif
         case MR_TYPECTOR_REP_DU:
+            /*
+            ** When deep profiling is enabled, we use the call, exit and (for
+            ** unifications) fail ports of dummy unify, compare and compare_rep
+            ** predicates for the dummy type_ctor builtin.user_by_rtti/0.
+            */
+
             {
                 const MR_DuFunctorDesc  *functor_desc;
   #ifdef  select_compare_code
@@ -186,13 +193,7 @@ start_label:
                 int                     cur_slot;
                 int                     arity;
                 int                     i;
-  /*
-  ** XXX MR_CHECK_DU_EQ doesn't not currently work in deep profiling grades
-  **     since the resulting short circuit means that the exit port call
-  **     for the unification or comparison predicate is never made.
-  **     This results in the data structures used by the deep profiler
-  **     becoming corrupted.
-  */
+
   #ifdef MR_CHECK_DU_EQ
     #ifdef  select_compare_code
                 if (x == y) {
@@ -303,7 +304,8 @@ start_label:
                         break;
 
                     case MR_SECTAG_VARIABLE:
-                        MR_fatal_error("find_du_functor_desc(): attempt get functor desc of variable");
+                        MR_fatal_error("find_du_functor_desc():"
+                            "attempt get functor desc of variable");
                 }
 
                 functor_desc = ptaglayout->MR_sectag_alternatives[x_sectag];
@@ -415,7 +417,7 @@ start_label:
   #endif
             }
 
-            MR_fatal_error(MR_STRINGIFY(start_label) ": expected fall thru");
+            MR_fatal_error(MR_STRINGIFY(start_label) ": unexpected fall thru");
 
 #endif  /* defined(MR_COMPARE_BY_RTTI) || defined(include_compare_rep_code) */
 
@@ -440,18 +442,47 @@ start_label:
         case MR_TYPECTOR_REP_FOREIGN:
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
 
+            /*
+            ** In deep profiling grades, the caller of builtin.unify or
+            ** builtin.compare (the predicates this piece of code implements)
+            ** has prepared for a normal call, which must be followed by
+            ** the execution of the call port code and then of either the exit
+            ** or the fail port code.
+            **
+            ** That is a problem. First, at the moment there is no fast way
+            ** to get from the type_ctor_info (which we have) to the proc
+            ** layout structures of the type's unify or compare predicates
+            ** (which port codes need). Second, even if we put the addresses
+            ** of those proc layout structures into the type_ctor_info,
+            ** incrementing just the call and exit/fail port counts would
+            ** leave the called predicate's counts inconsistent in cases where
+            ** the body of that predicate did not have any paths through it
+            ** without making calls (since those calls are being
+            ** short-circuited here).
+            **
+            ** Our solution is two fold. First, in deep-profiling grades,
+            ** we don't check x == y here; instead, we make sure that the
+            ** compiler-generated unify and compare predicates start off
+            ** with that check. Second, since this solution increases both
+            ** code size and execution time, in non-deep-profiling grades
+            ** we do the x == y check here, and not in the compiler-generated
+            ** unify or compare predicates.
+            **
+            */
+
+#ifndef MR_DEEP_PROFILING
   #ifdef MR_CHECK_DU_EQ
     #ifdef  select_compare_code
             if (x == y) {
-                return_compare_answer(builtin, user_by_rtti, 0,
-                    MR_COMPARE_EQUAL);
+                raw_return_answer(MR_COMPARE_EQUAL);
             }
     #else
             if (x == y) {
-                return_unify_answer(builtin, user_by_rtti, 0, MR_TRUE);
+                raw_return_answer(MR_TRUE);
             }
     #endif
   #endif
+#endif
 
             /*
             ** We call the type-specific compare routine as

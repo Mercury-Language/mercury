@@ -1068,9 +1068,17 @@
             % minimal model tabling. It is safe for the code generator to omit
             % the pneg context wrappers when generating code for this goal.
 
-    ;       feature_contains_trace.
+    ;       feature_contains_trace
             % This goal contains a scope goal whose scope_reason is
             % trace_goal(...).
+
+    ;       feature_pretest_equality.
+            % This goal is an if-then-else in a compiler-generated
+            % type-constructor-specific unify or compare predicate
+            % whose condition is a test of whether the two input arguments
+            % are equal or not. The goal feature exists because in some
+            % circumstances we need to strip off this pretest, and replace
+            % the if-then-else with just its else branch.
 
 %-----------------------------------------------------------------------------%
 %

@@ -465,6 +465,7 @@
     ;       max_specialized_do_call_closure
     ;       max_specialized_do_call_class_method
     ;       compare_specialization
+    ;       should_pretest_equality
     ;       fact_table_max_array_size
             % Maximum number of elements in a single fact table data array.
 
@@ -1188,6 +1189,7 @@ option_defaults_2(code_gen_option, [
                                         % -1 asks handle_options.m to give
                                         % the value, which may be grade
                                         % dependent.
+    should_pretest_equality             -   bool(no),
     fact_table_max_array_size           -   int(1024),
     fact_table_hash_percent_full        -   int(90),
     gcc_local_labels                    -   bool(no),
@@ -1913,6 +1915,7 @@ long_option("max-jump-table-size",  max_jump_table_size).
 % long_option("max-spec-do-call-class-method",
 %                   max_specialized_do_call_class_method).
 long_option("compare-specialization",   compare_specialization).
+long_option("should-pretest-equality",  should_pretest_equality).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
                     fact_table_hash_percent_full).
@@ -3951,11 +3954,23 @@ options_help_code_generation -->
         "--no-reclaim-heap-on-failure",
         "\tCombines the effect of the two options above.",
 
-        "--max-jump-table-size",
+        "--max-jump-table-size=<n>",
         "\tThe maximum number of entries a jump table can have.",
         "\tThe special value 0 indicates the table size is unlimited.",
         "\tThis option can be useful to avoid exceeding fixed limits",
         "\timposed by some C compilers.",
+
+        % This is a developer only option.
+%       "--compare-specialization=<n>",
+%       "\tGenerate quadratic instead of linear compare predicates for",
+%       "\ttypes with up to n function symbols. Higher values of n lead to",
+%       "\tfaster but also bigger compare predicates.",
+
+        % This is a developer only option.
+%       "--should-pretest-equality",
+%       "\tIf specified, add a test for the two values being equal as words",
+%       "\tto the starts of potentially expensive unify and compare",
+%       "\tpredicates."
 
         "--fact-table-max-array-size <n>",
         "\tSpecify the maximum number of elements in a single",

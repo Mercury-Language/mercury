@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -35,6 +35,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
 :- import_module hlds.goal_form.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
@@ -144,19 +145,23 @@ warn_non_term_user_special_pred(ModuleInfo, TypeTable,
 
 process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor,
         PredId, TypeDefn, !IO) :-
-    (
-        special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
-    ->
+    ( special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) ->
         % Compiler generated special preds are always mode 0.
         proc_id_to_int(ProcId, 0),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-        proc_info_get_goal(ProcInfo, BodyGoal),
-        %
+        proc_info_get_goal(ProcInfo, BodyGoal0),
+        % The pretest code we add for compiler-generated unification
+        % and comparison predicates uses type casts. It uses them in a way
+        % that is guaranteed to terminate, but our analysis is not (yet) able
+        % to find this out for itself. We therefore analyse only the
+        % non-pretest parts of such goals.
+        BodyGoal = maybe_strip_equality_pretest(BodyGoal0),
+
         % We cannot just look up the the termination_info because the
         % termination status of compiler generated wrapper predicates for
         % special preds is always set to terminates.  Instead, we check if the
         % body of the generated wrapper predicate terminates.
-        %
+
         ( not goal_cannot_loop(ModuleInfo, BodyGoal) ->
             get_type_defn_context(TypeDefn, Context),
             emit_non_term_user_special_warning(Context, SpecialPredId,

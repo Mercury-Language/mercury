@@ -178,9 +178,3 @@ higher-order specialisation for any affected files.  This can be done
 by using the option `--no-higher-order'.
 
 -----------------------------------------------------------------------------
-
-Subject: segmentation fault in deep profiler
-Date: unknown
-
-The deep profiler may cause a segmentation fault when profiling large
-programs.  There is currently no known workaround for this problem.

@@ -1,11 +1,16 @@
 % vim: ft=mercury ts=4 sw=4 et
-% The following program exposes a bug in the deep profiler.
-% When compiled in a deep profiling grade at -O2 or below it aborts with a 
-% segmentation fault.
+% The following program used to expose a bug in the runtime's handling
+% of deep profiled code. When compiled in a deep profiling grade at -O2
+% or below it used to abort with a segmentation fault.
 %
-% The problem was caused by short circuit in the code for
-% builtin.{unify, compare} that is enabled by MR_CHECK_DU_EQ causing execution
-% to avoid calling the exit port code for builtin.{unify, compare}.
+% The problem was caused by the code in builtin.{unify,compare} for du types
+% having inappropriate references to the proc layout structures of the dummy
+% unify and compare predicates for the dummy type builtin.user_by_rtti. If the
+% first call to builtin.{unify,compare} at a given call site had the equality
+% pretest of the two arguments succeed, this used to fill in the call site
+% dynamic structure with a pointer to the proc dynamic structure of this dummy
+% predicate, leading later calls through that call site to refer to the wrong
+% data structure.
 %
 :- module profdeep_seg_fault.
 :- interface.
@@ -16,7 +21,7 @@
 
 :- implementation.
 
-:- type list(T) ---> [] ; [ T | list(T) ].
+:- type list(T) ---> [] ; [T | list(T)].
 
 :- type t_type
     --->    t_bool
@@ -46,7 +51,8 @@ main(!IO) :-
     ],
     AllBuiltinSigs = [A, B],   
     add_sigs_to_sym(AllBuiltinSigs, [], S),
-    io.write(S, !IO).
+    io.write(S, !IO),
+    io.nl(!IO).
 
 :- pred add_sigs_to_sym(list(list(ti_sig))::in,
     list(t_sig)::in, list(t_sig)::out) is det.
@@ -87,18 +93,18 @@ type_insts_to_t_types([X | Xs], [Y | Ys]) :-
     ),
     type_insts_to_t_types(Xs, Ys).
 
-:- pred append_type_sigs(list(t_sig)::in,
-    list(t_sig)::in, list(t_sig)::out) is det.
+:- pred append_type_sigs(list(t_sig)::in, list(t_sig)::in,
+    list(t_sig)::out) is det.
 
 append_type_sigs([], Zs, Zs).
-append_type_sigs([ X | Xs ], Ys, [X | Zs]) :-
+append_type_sigs([X | Xs], Ys, [X | Zs]) :-
     append_type_sigs(Xs, Ys, Zs).
 
 :- pred insertion_sort(list(t_sig)::in, list(t_sig)::in, list(t_sig)::out)
     is det.
 
 insertion_sort([], Zs, Zs).
-insertion_sort([ X | Xs], Ys0, Zs) :-
+insertion_sort([X | Xs], Ys0, Zs) :-
     insert(X, Ys0, Ys),
     insertion_sort(Xs, Ys, Zs).
 
@@ -111,7 +117,7 @@ insert(X, [Y | Ys], Zs) :-
         Res = (>)
     ->
         insert(X, Ys, Zs0),
-        Zs = [ Y | Zs0 ]
+        Zs = [Y | Zs0]
     ;
-        Zs = [ X, Y | Ys]
+        Zs = [X, Y | Ys]
     ).

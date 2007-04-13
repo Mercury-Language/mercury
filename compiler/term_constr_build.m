@@ -60,6 +60,7 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util. 
+:- import_module hlds.goal_util. 
 :- import_module hlds.hlds_goal. 
 :- import_module hlds.quantification. 
 :- import_module libs.compiler_util.
@@ -195,8 +196,14 @@ build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
     pred_info_context(PredInfo, Context),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_headvars(ProcInfo, HeadProgVars),
-    proc_info_get_goal(ProcInfo, Goal),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
+    proc_info_get_goal(ProcInfo, Goal0),
+    % The pretest code we add for compiler-generated unification and comparison
+    % predicates uses type casts. It uses them in a way that is guaranteed
+    % to terminate, but our analysis is not (yet) able to find this out for
+    % itself. We therefore analyse only the non-pretest parts of such goals.
+    Goal = maybe_strip_equality_pretest(Goal0),
+
     %
     % Allocate one size_var for each real var. in the procedure.
     % Work out which variables have zero size.

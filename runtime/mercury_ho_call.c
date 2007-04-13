@@ -41,9 +41,9 @@ ENDINIT
 
 #ifdef  MR_DEEP_PROFILING
   #ifdef MR_DEEP_PROFILING_STATISTICS
-    #define maybe_incr_prof_call_builtin_new()                                \
+    #define maybe_incr_prof_call_builtin_new()                              \
             do { MR_deep_prof_call_builtin_new++; } while (0)
-    #define maybe_incr_prof_call_builtin_old()                                \
+    #define maybe_incr_prof_call_builtin_old()                              \
             do { MR_deep_prof_call_builtin_old++; } while (0)
   #else
     #define maybe_incr_prof_call_builtin_new()      ((void) 0)
@@ -51,40 +51,40 @@ ENDINIT
   #endif
 
   #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
-    #define maybe_incr_call_count(csd)                                        \
+    #define maybe_incr_call_count(csd)                                      \
             do { csd->MR_csd_own.MR_own_calls++; } while (0)
   #else
     #define maybe_incr_call_count(csd)              ((void) 0)
   #endif
 
-  #define   special_pred_call_leave_code(pl, field)                           \
-    do {                                                                      \
-        MR_CallSiteDynamic  *csd;                                             \
-        MR_ProcDynamic      *pd;                                              \
-                                                                              \
-        csd = MR_next_call_site_dynamic;                                      \
-        pd = csd->MR_csd_callee_ptr;                                          \
-        if (pd == NULL) {                                                     \
-            MR_new_proc_dynamic(pd, (MR_ProcLayout *) &pl);                  \
-            csd->MR_csd_callee_ptr = pd;                                      \
-            maybe_incr_prof_call_builtin_new();                               \
-        } else {                                                              \
-            maybe_incr_prof_call_builtin_old();                               \
-        }                                                                     \
-        maybe_incr_call_count(csd);                                           \
-        csd->MR_csd_own.field++;                                              \
+  #define   special_pred_call_leave_code(pl, field)                         \
+    do {                                                                    \
+        MR_CallSiteDynamic  *csd;                                           \
+        MR_ProcDynamic      *pd;                                            \
+                                                                            \
+        csd = MR_next_call_site_dynamic;                                    \
+        pd = csd->MR_csd_callee_ptr;                                        \
+        if (pd == NULL) {                                                   \
+            MR_new_proc_dynamic(pd, (MR_ProcLayout *) &pl);                 \
+            csd->MR_csd_callee_ptr = pd;                                    \
+            maybe_incr_prof_call_builtin_new();                             \
+        } else {                                                            \
+            maybe_incr_prof_call_builtin_old();                             \
+        }                                                                   \
+        maybe_incr_call_count(csd);                                         \
+        csd->MR_csd_own.field++;                                            \
     } while (0)
 
-  #define   unify_call_exit_code(mod, pred, type, a)                          \
-    special_pred_call_leave_code(                                             \
+  #define   unify_call_exit_code(mod, pred, type, a)                        \
+    special_pred_call_leave_code(                                           \
         MR_proc_layout_uci_name(mod, pred, type, a, 0), MR_own_exits)
 
-  #define   unify_call_fail_code(mod, pred, type, a)                          \
-    special_pred_call_leave_code(                                             \
+  #define   unify_call_fail_code(mod, pred, type, a)                        \
+    special_pred_call_leave_code(                                           \
         MR_proc_layout_uci_name(mod, pred, type, a, 0), MR_own_fails)
 
-  #define   compare_call_exit_code(mod, pred, type, a)                        \
-    special_pred_call_leave_code(                                             \
+  #define   compare_call_exit_code(mod, pred, type, a)                      \
+    special_pred_call_leave_code(                                           \
         MR_proc_layout_uci_name(mod, pred, type, a, 0), MR_own_exits)
 
 #endif
@@ -366,24 +366,24 @@ static unsigned int    MR_explicit_method_arg_histogram[MR_MAX_STATS_ARG];
 static unsigned int    MR_hidden_closure_arg_histogram[MR_MAX_STATS_ARG];
 static unsigned int    MR_hidden_method_arg_histogram[MR_MAX_STATS_ARG];
 
-#define MR_maybe_record_closure_histogram(exp, hid)                           \
-    do {                                                                      \
-        if (exp < MR_MAX_STATS_ARG) {                                         \
-            MR_explicit_closure_arg_histogram[exp]++;                         \
-        }                                                                     \
-        if (hid < MR_MAX_STATS_ARG) {                                         \
-            MR_hidden_closure_arg_histogram[hid]++;                           \
-        }                                                                     \
+#define MR_maybe_record_closure_histogram(exp, hid)                         \
+    do {                                                                    \
+        if (exp < MR_MAX_STATS_ARG) {                                       \
+            MR_explicit_closure_arg_histogram[exp]++;                       \
+        }                                                                   \
+        if (hid < MR_MAX_STATS_ARG) {                                       \
+            MR_hidden_closure_arg_histogram[hid]++;                         \
+        }                                                                   \
     } while (0)
 
-#define MR_maybe_record_method_histogram(exp, hid)                            \
-    do {                                                                      \
-        if (exp < MR_MAX_STATS_ARG) {                                         \
-            MR_explicit_method_arg_histogram[exp]++;                          \
-        }                                                                     \
-        if (hid < MR_MAX_STATS_ARG) {                                         \
-            MR_hidden_method_arg_histogram[hid]++;                            \
-        }                                                                     \
+#define MR_maybe_record_method_histogram(exp, hid)                          \
+    do {                                                                    \
+        if (exp < MR_MAX_STATS_ARG) {                                       \
+            MR_explicit_method_arg_histogram[exp]++;                        \
+        }                                                                   \
+        if (hid < MR_MAX_STATS_ARG) {                                       \
+            MR_hidden_method_arg_histogram[hid]++;                          \
+        }                                                                   \
     } while (0)
 
 void
@@ -489,29 +489,29 @@ MR_BEGIN_CODE
 MR_define_entry(mercury__builtin__unify_2_0);
 {
 
-#define DECLARE_LOCALS                                                        \
-    MR_TypeCtorInfo type_ctor_info;                                           \
-    MR_TypeInfo     type_info;                                                \
-    MR_Word         x, y;                                                     \
+#define DECLARE_LOCALS                                                      \
+    MR_TypeCtorInfo type_ctor_info;                                         \
+    MR_TypeInfo     type_info;                                              \
+    MR_Word         x, y;                                                   \
     MR_Word         saved_succip_word;
 
-#define initialize()                                                          \
-    do {                                                                      \
-        type_info = (MR_TypeInfo) MR_r1;                                      \
-        x = MR_r2;                                                            \
-        y = MR_r3;                                                            \
-        saved_succip_word = MR_succip_word;                                   \
+#define initialize()                                                        \
+    do {                                                                    \
+        type_info = (MR_TypeInfo) MR_r1;                                    \
+        x = MR_r2;                                                          \
+        y = MR_r3;                                                          \
+        saved_succip_word = MR_succip_word;                                 \
     } while(0)
 
-#define raw_return_answer(answer)                                             \
-    do {                                                                      \
-        MR_r1 = (answer);                                                     \
-        MR_succip_word = saved_succip_word;                                   \
-        MR_proceed();                                                         \
+#define raw_return_answer(answer)                                           \
+    do {                                                                    \
+        MR_r1 = (answer);                                                   \
+        MR_succip_word = saved_succip_word;                                 \
+        MR_proceed();                                                       \
     } while(0)
 
-#define tailcall_user_pred()                                                  \
-    MR_tailcall(type_ctor_info->MR_type_ctor_unify_pred,                      \
+#define tailcall_user_pred()                                                \
+    MR_tailcall(type_ctor_info->MR_type_ctor_unify_pred,                    \
         MR_LABEL(mercury__builtin__unify_2_0))
 
 #define start_label                 unify_start
@@ -565,29 +565,29 @@ MR_define_entry(mercury__builtin__compare_3_2);
 MR_define_entry(mercury__builtin__compare_3_3);
 {
 
-#define DECLARE_LOCALS                                                        \
-    MR_TypeCtorInfo type_ctor_info;                                           \
-    MR_TypeInfo     type_info;                                                \
-    MR_Word         x, y;                                                     \
+#define DECLARE_LOCALS                                                      \
+    MR_TypeCtorInfo type_ctor_info;                                         \
+    MR_TypeInfo     type_info;                                              \
+    MR_Word         x, y;                                                   \
     MR_Word         saved_succip_word;
 
-#define initialize()                                                          \
-    do {                                                                      \
-        type_info = (MR_TypeInfo) MR_r1;                                      \
-        x = MR_r2;                                                            \
-        y = MR_r3;                                                            \
-        saved_succip_word = MR_succip_word;                                   \
+#define initialize()                                                        \
+    do {                                                                    \
+        type_info = (MR_TypeInfo) MR_r1;                                    \
+        x = MR_r2;                                                          \
+        y = MR_r3;                                                          \
+        saved_succip_word = MR_succip_word;                                 \
     } while(0)
 
-#define raw_return_answer(answer)                                             \
-    do {                                                                      \
-        MR_r1 = (answer);                                                     \
-        MR_succip_word = saved_succip_word;                                   \
-        MR_proceed();                                                         \
+#define raw_return_answer(answer)                                           \
+    do {                                                                    \
+        MR_r1 = (answer);                                                   \
+        MR_succip_word = saved_succip_word;                                 \
+        MR_proceed();                                                       \
     } while(0)
 
-#define tailcall_user_pred()                                                  \
-    MR_tailcall(type_ctor_info->MR_type_ctor_compare_pred,                    \
+#define tailcall_user_pred()                                                \
+    MR_tailcall(type_ctor_info->MR_type_ctor_compare_pred,                  \
         MR_LABEL(mercury__builtin__compare_3_3))
 
 #define start_label                 compare_start
@@ -621,25 +621,25 @@ MR_define_entry(mercury__builtin__compare_3_3);
 MR_define_entry(mercury__builtin__compare_representation_3_0);
 {
 
-#define DECLARE_LOCALS                                                        \
-    MR_TypeCtorInfo type_ctor_info;                                           \
-    MR_TypeInfo     type_info;                                                \
-    MR_Word         x, y;                                                     \
+#define DECLARE_LOCALS                                                      \
+    MR_TypeCtorInfo type_ctor_info;                                         \
+    MR_TypeInfo     type_info;                                              \
+    MR_Word         x, y;                                                   \
     MR_Word         saved_succip_word;
 
-#define initialize()                                                          \
-    do {                                                                      \
-        type_info = (MR_TypeInfo) MR_r1;                                      \
-        x = MR_r2;                                                            \
-        y = MR_r3;                                                            \
-        saved_succip_word = MR_succip_word;                                   \
+#define initialize()                                                        \
+    do {                                                                    \
+        type_info = (MR_TypeInfo) MR_r1;                                    \
+        x = MR_r2;                                                          \
+        y = MR_r3;                                                          \
+        saved_succip_word = MR_succip_word;                                 \
     } while(0)
 
-#define raw_return_answer(answer)                                             \
-    do {                                                                      \
-        MR_r1 = (answer);                                                     \
-        MR_succip_word = saved_succip_word;                                   \
-        MR_proceed();                                                         \
+#define raw_return_answer(answer)                                           \
+    do {                                                                    \
+        MR_r1 = (answer);                                                   \
+        MR_succip_word = saved_succip_word;                                 \
+        MR_proceed();                                                       \
     } while(0)
 
 #define start_label                 compare_rep_start
@@ -714,27 +714,27 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 static MR_Word
 MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 {
-#define DECLARE_LOCALS                                                        \
+#define DECLARE_LOCALS                                                      \
     MR_TypeCtorInfo type_ctor_info;
 
-#define initialize()                                                          \
-    do {                                                                      \
-        MR_restore_transient_registers();                                     \
+#define initialize()                                                        \
+    do {                                                                    \
+        MR_restore_transient_registers();                                   \
     } while (0)
 
-#define raw_return_answer(answer)                                             \
-    do {                                                                      \
-        MR_save_transient_registers();                                        \
-        return (answer);                                                      \
+#define raw_return_answer(answer)                                           \
+    do {                                                                    \
+        MR_save_transient_registers();                                      \
+        return (answer);                                                    \
     } while (0)
 
-#define tailcall_user_pred()                                                  \
-    do {                                                                      \
-        MR_save_transient_registers();                                        \
-        (void) MR_call_engine(type_ctor_info->MR_type_ctor_compare_pred,      \
-            MR_FALSE);                                                        \
-        MR_restore_transient_registers();                                     \
-        return (MR_r1);                                                       \
+#define tailcall_user_pred()                                                \
+    do {                                                                    \
+        MR_save_transient_registers();                                      \
+        (void) MR_call_engine(type_ctor_info->MR_type_ctor_compare_pred,    \
+            MR_FALSE);                                                      \
+        MR_restore_transient_registers();                                   \
+        return (MR_r1);                                                     \
     } while (0)
 
 #define start_label             compare_func_start
@@ -759,18 +759,18 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 static MR_Word
 MR_generic_compare_representation(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 {
-#define DECLARE_LOCALS                                                        \
+#define DECLARE_LOCALS                                                      \
     MR_TypeCtorInfo type_ctor_info;
 
-#define initialize()                                                          \
-    do {                                                                      \
-        MR_restore_transient_registers();                                     \
+#define initialize()                                                        \
+    do {                                                                    \
+        MR_restore_transient_registers();                                   \
     } while (0)
 
-#define raw_return_answer(answer)                                             \
-    do {                                                                      \
-        MR_save_transient_registers();                                        \
-        return (answer);                                                      \
+#define raw_return_answer(answer)                                           \
+    do {                                                                    \
+        MR_save_transient_registers();                                      \
+        return (answer);                                                    \
     } while (0)
 
 #define start_label                 compare_rep_func_start

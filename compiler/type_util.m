@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -446,9 +446,7 @@ is_dummy_argument_type(ModuleInfo, Type) :-
         % Keep this in sync with is_dummy_argument_type_with_constructors
         % above.
         (
-            TypeCtor = type_ctor(CtorSymName, TypeArity),
-            CtorSymName = qualified(unqualified(ModuleName), TypeName),
-            is_builtin_dummy_argument_type(ModuleName, TypeName, TypeArity)
+            is_builtin_dummy_argument_type(TypeCtor)
         ;
             module_info_get_type_table(ModuleInfo, TypeTable),
             % This can fail for some builtin type constructors such as func,
@@ -527,8 +525,7 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
     ->
         TypeCategory = TypeCategoryPrime
     ;
-        TypeSymName = qualified(unqualified(ModuleName), TypeName),
-        is_builtin_dummy_argument_type(ModuleName, TypeName, Arity)
+        is_builtin_dummy_argument_type(TypeCtor)
     ->
         TypeCategory = type_cat_dummy
     ;

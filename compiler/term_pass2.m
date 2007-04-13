@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2006 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,6 +41,7 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
+:- import_module hlds.goal_util.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_errors.
@@ -377,7 +378,12 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
         !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo),
     pred_info_context(PredInfo, Context),
-    proc_info_get_goal(ProcInfo, Goal),
+    proc_info_get_goal(ProcInfo, Goal0),
+    % The pretest code we add for compiler-generated unification and comparison
+    % predicates uses type casts. It uses them in a way that is guaranteed
+    % to terminate, but our analysis is not (yet) able to find this out for
+    % itself. We therefore analyse only the non-pretest parts of such goals.
+    Goal = maybe_strip_equality_pretest(Goal0),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.init(EmptyMap),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),

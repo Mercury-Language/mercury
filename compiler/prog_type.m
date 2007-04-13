@@ -95,7 +95,8 @@
     %
 :- pred subst_type_is_nonground(mer_type::in, tsubst::in) is semidet.
 
-    % type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs)
+    % type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs):
+    %
     % Check if the principal type constructor of Type is of variable arity.
     % If yes, return the type constructor as TypeCtor and its args as
     % TypeArgs. If not, fail.
@@ -103,10 +104,22 @@
 :- pred type_has_variable_arity_ctor(mer_type::in, type_ctor::out,
     list(mer_type)::out) is semidet.
 
-    % Given a non-variable type, return its type-id and argument types.
+    % Given a non-variable type, return its type_ctor and argument types.
+    % Fail if the type is a variable.
     %
 :- pred type_to_ctor_and_args(mer_type::in, type_ctor::out,
     list(mer_type)::out) is semidet.
+
+    % Given a non-variable type, return its type_ctor and argument types.
+    % Fail if the type is a variable.
+    %
+:- pred type_to_ctor_and_args_det(mer_type::in, type_ctor::out,
+    list(mer_type)::out) is det.
+
+    % Given a non-variable type, return its type_ctor and argument types.
+    % Fail if the type is a variable.
+    %
+:- pred type_to_ctor_det(mer_type::in, type_ctor::out) is det.
 
     % type_ctor_is_higher_order(TypeCtor, PredOrFunc) succeeds iff
     % TypeCtor is a higher-order predicate or function type.
@@ -193,12 +206,12 @@
     %
 :- func builtin_type_ctors_with_no_hlds_type_defn = list(type_ctor).
 
-    % is_builtin_dummy_argument_type(ModuleName, TypeName, TypeArity):
+    % is_builtin_dummy_argument_type(type_ctor):
     %
-    % Is the given type a dummy type irrespective of its definition?
+    % Is the given type constructor a dummy type irrespective
+    % of its definition?
     %
-:- pred is_builtin_dummy_argument_type(string::in, string::in, arity::in)
-    is semidet.
+:- pred is_builtin_dummy_argument_type(type_ctor::in) is semidet.
 
     % Certain types, e.g. io.state and store.store(S), are just dummy types
     % used to ensure logical semantics; there is no need to actually pass them,
@@ -534,6 +547,18 @@ type_to_ctor_and_args(Type, TypeCtor, Args) :-
         type_to_ctor_and_args(SubType, TypeCtor, Args)
     ).
 
+type_to_ctor_and_args_det(Type, TypeCtor, Args) :-
+    ( type_to_ctor_and_args(Type, TypeCtorPrime, ArgsPrime) ->
+        TypeCtor = TypeCtorPrime,
+        Args = ArgsPrime
+    ;
+        unexpected(this_file,
+            "type_to_ctor_and_args_det: type_to_ctor_and_args failed")
+    ).
+
+type_to_ctor_det(Type, TypeCtor) :-
+    type_to_ctor_and_args_det(Type, TypeCtor, _Args).
+
 type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
     TypeCtor = type_ctor(SymName, _Arity),
     get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr),
@@ -750,8 +775,18 @@ builtin_type_ctors_with_no_hlds_type_defn =
       type_ctor(qualified(mercury_public_builtin_module, "tuple"), 0)
     ].
 
-is_builtin_dummy_argument_type("io", "state", 0).    % io.state/0
-is_builtin_dummy_argument_type("store", "store", 1). % store.store/1.
+is_builtin_dummy_argument_type(TypeCtor) :-
+    TypeCtor = type_ctor(CtorSymName, TypeArity),
+    CtorSymName = qualified(ModuleName, TypeName),
+    (
+        ModuleName = mercury_std_lib_module_name(unqualified("io")),
+        TypeName = "state",
+        TypeArity = 0
+    ;
+        ModuleName = mercury_std_lib_module_name(unqualified("store")),
+        TypeName = "store",
+        TypeArity = 1
+    ).
 
 constructor_list_represents_dummy_argument_type([Ctor], no) :-
     Ctor = ctor([], [], _, [], _).
@@ -1001,9 +1036,7 @@ type_with_constructors_should_be_no_tag(Globals, TypeCtor, ReserveTagPragma,
 is_dummy_argument_type_with_constructors(TypeCtor, Ctors, UserEqCmp) :-
     % Keep this in sync with is_dummy_argument_type below.
     (
-        TypeCtor = type_ctor(CtorSymName, TypeArity),
-        CtorSymName = qualified(unqualified(ModuleName), TypeName),
-        is_builtin_dummy_argument_type(ModuleName, TypeName, TypeArity)
+        is_builtin_dummy_argument_type(TypeCtor)
     ;
         constructor_list_represents_dummy_argument_type(Ctors, UserEqCmp)
     ).
