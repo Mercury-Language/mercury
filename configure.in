@@ -2872,6 +2872,11 @@ AC_ARG_ENABLE(mm-grades,
                    [install minimal model versions of the library]),
     enable_mm_grades="$enableval",enable_mm_grades=no)
 
+AC_ARG_ENABLE(mmos-grades,
+    AC_HELP_STRING([--enable-mmos-grades],
+                   [install experimental minimal model own stack versions of the library]),
+    enable_mmos_grades="$enableval",enable_mmos_grades=no)
+
 AC_ARG_ENABLE(dmm-grades,
    AC_HELP_STRING([--enable-dmm-grades],
                   [install minimal model debug versions of the library]),
@@ -2915,6 +2920,7 @@ if test "$enable_most_grades" = no; then
 	enable_prof_grades=no
 	enable_trail_grades=no
 	enable_mm_grades=no
+	enable_mmos_grades=no
 	enable_dmm_grades=no
 	enable_hlc_prof_grades=no
 	enable_hlc_ll_debug_grades=no
@@ -3057,11 +3063,25 @@ fi
 
 # add `.mm' (--minimal-model) grades
 if test "$enable_mm_grades" = yes; then
-	LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.mmsc \
+	LIBGRADES="$LIBGRADES \
+		$BEST_LLDS_BASE_GRADE.gc.mmsc \
 		$BEST_LLDS_BASE_GRADE.gc.mmsc.debug"
 	if test "$enable_dmm_grades" = yes; then
-		LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.dmmsc \
+		LIBGRADES="$LIBGRADES \
+			$BEST_LLDS_BASE_GRADE.gc.dmmsc \
 			$BEST_LLDS_BASE_GRADE.gc.dmmsc.debug"
+	fi
+fi
+
+# add `.mmos' grades
+if test "$enable_mmos_grades" = yes; then
+	LIBGRADES="$LIBGRADES \
+		$BEST_LLDS_BASE_GRADE.gc.mmos \
+		$BEST_LLDS_BASE_GRADE.gc.mmos.debug"
+	if test "$enable_dmm_grades" = yes; then
+		LIBGRADES="$LIBGRADES \
+			$BEST_LLDS_BASE_GRADE.gc.dmmos \
+			$BEST_LLDS_BASE_GRADE.gc.dmmos.debug"
 	fi
 fi
 
