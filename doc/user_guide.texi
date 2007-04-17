@@ -7600,9 +7600,10 @@ imposed by some C compilers.
 % but also bigger compare predicates.
 
 % @sp 1
-% @item --should-pretest-equality
+% @item --no-should-pretest-equality
+% @findex --no-should-pretest-equality
 % @findex --should-pretest-equality
-% If specified, add a test for the two values being equal as words
+% If specified, do not add a test for the two values being equal as words
 % to the starts of potentially expensive unify and compare predicates.
 
 @sp 1

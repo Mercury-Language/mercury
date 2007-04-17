@@ -1189,7 +1189,7 @@ option_defaults_2(code_gen_option, [
                                         % -1 asks handle_options.m to give
                                         % the value, which may be grade
                                         % dependent.
-    should_pretest_equality             -   bool(no),
+    should_pretest_equality             -   bool(yes),
     fact_table_max_array_size           -   int(1024),
     fact_table_hash_percent_full        -   int(90),
     gcc_local_labels                    -   bool(no),
@@ -3967,9 +3967,9 @@ options_help_code_generation -->
 %       "\tfaster but also bigger compare predicates.",
 
         % This is a developer only option.
-%       "--should-pretest-equality",
-%       "\tIf specified, add a test for the two values being equal as words",
-%       "\tto the starts of potentially expensive unify and compare",
+%       "--no-should-pretest-equality",
+%       "\tIf specified, do not add a test for the two values being equal",
+%       "\tas words to the starts of potentially expensive unify and compare",
 %       "\tpredicates."
 
         "--fact-table-max-array-size <n>",

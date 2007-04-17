@@ -449,7 +449,8 @@ start_label:
             ** the execution of the call port code and then of either the exit
             ** or the fail port code.
             **
-            ** That is a problem. First, at the moment there is no fast way
+            ** That would be a problem if you wanted to pretest x == y here.
+            ** First, at the moment there is no simple or fast way
             ** to get from the type_ctor_info (which we have) to the proc
             ** layout structures of the type's unify or compare predicates
             ** (which port codes need). Second, even if we put the addresses
@@ -460,18 +461,19 @@ start_label:
             ** without making calls (since those calls are being
             ** short-circuited here).
             **
-            ** Our solution is two fold. First, in deep-profiling grades,
-            ** we don't check x == y here; instead, we make sure that the
-            ** compiler-generated unify and compare predicates start off
-            ** with that check. Second, since this solution increases both
-            ** code size and execution time, in non-deep-profiling grades
-            ** we do the x == y check here, and not in the compiler-generated
-            ** unify or compare predicates.
-            **
+            ** Our solution is to check x == y not here, but at the starts of
+            ** compiler-generated unify and compare predicates. This delays
+            ** the check until after the extraction of any typeinfos
+            ** representing the arguments of the main type constructor,
+            ** but it also ensures that the check is performed not just on the
+            ** top function symbols of the terms being unified or compared,
+            ** but on all other function symbols too. Measurements show that
+            ** the overhead of these extra tests is less than the amount of
+            ** work that these extra pretests avoid.
             */
 
 #ifndef MR_DEEP_PROFILING
-  #ifdef MR_CHECK_DU_EQ
+  #if 0
     #ifdef  select_compare_code
             if (x == y) {
                 raw_return_answer(MR_COMPARE_EQUAL);
