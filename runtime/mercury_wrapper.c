@@ -595,10 +595,12 @@ mercury_runtime_init(int argc, char **argv)
   #ifdef MR_THREAD_SAFE
     {
         int i;
+
         MR_exit_now = MR_FALSE;
         for (i = 1 ; i < MR_num_threads ; i++) {
             MR_create_thread(NULL);
         }
+
         while (MR_num_idle_engines < MR_num_threads-1) {
             /* busy wait until the worker threads are ready */
         }
@@ -676,9 +678,7 @@ mercury_runtime_init(int argc, char **argv)
 #endif
 
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
-    MR_ENGINE(MR_eng_main_context) = MR_NEW(MR_Context);
-    MR_save_context(MR_ENGINE(MR_eng_main_context));
-    MR_ENGINE(MR_eng_this_context) = MR_ENGINE(MR_eng_main_context);
+    MR_ENGINE(MR_eng_main_context) = MR_ENGINE(MR_eng_this_context);
 #endif
 
     /*

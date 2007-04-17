@@ -275,19 +275,31 @@ typedef struct {
 **
 ** global_hp    The global heap pointer for this engine.
 **
-** this_context Points to the context currently executing on this engine.
-**
-** context      This field stores all the context information for the context
+** this_context Points to the "backing store" for the context currently
+**              executing on this engine.
+** context      Stores all the context information for the context currently
 **              executing in this engine.
 **
-**              MR_init_engine, invoked by mercury_runtime_init in
-**              mercury_wrapper.c through MR_init_thread and MR_create_engine,
-**              sets up the initial context for the engine, and puts the
-**              pointer to it in the this_context field. Later,
-**              mercury_runtime_init invokes MR_save_context to copy the info
-**              from there into the context field. Beyond this, the
-**              relationship between the this_context and context fields
-**              is not well documented XXX.
+**              Conceptually, we could access all information relating to the
+**              current context via the MR_eng_this_context field. However,
+**              that would require an extra indirection on most accesses,
+**              including all accesses to the stack, abstract machine registers
+**              etc. That would be too high a cost. We therefore bodily include
+**              a context into the engine (in the MR_eng_context) field, and
+**              load most of the things pointed to by the MR_eng_this_context
+**              field into MR_eng_context. "Most", not "all", because some
+**              fields are so rarely accessed that we don't expect the extra
+**              cost of context switching to be compensated for by reduced
+**              access costs between context switches. These fields are
+**              therefore accessed directly via MR_eng_this_context. The big
+**              comment in mercury_context.h documents, for each field of the
+**              context structure, whether it is accessed by MR_eng_context or
+**              via MR_eng_this_context.
+**
+**              MR_init_thread, invoked by mercury_runtime_init in
+**              mercury_wrapper.c, creates the initial MR_eng_this_context
+**              for the engine, and then invokes MR_load_context to copy the
+**              info from there into the MR_eng_context field.
 **
 ** main_context The context of the main computation. The owner_generator field
 **              of this context must be NULL.

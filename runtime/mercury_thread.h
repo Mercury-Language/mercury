@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab
+*/
+/*
 ** Copyright (C) 1997-1998, 2000, 2003, 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -8,25 +11,25 @@
 
 #include "mercury_std.h"
 
-#ifdef	MR_THREAD_SAFE
+#ifdef  MR_THREAD_SAFE
 
-  #include <signal.h>	/* for sigset_t on the SPARC */
+  #include <signal.h>   /* for sigset_t on the SPARC */
   #include <pthread.h>
 
   #if defined(MR_DIGITAL_UNIX_PTHREADS)
-    #define MR_MUTEX_ATTR		pthread_mutexattr_default
-    #define MR_COND_ATTR		pthread_condattr_default
-    #define MR_THREAD_ATTR		pthread_attr_default
+    #define MR_MUTEX_ATTR       pthread_mutexattr_default
+    #define MR_COND_ATTR        pthread_condattr_default
+    #define MR_THREAD_ATTR      pthread_attr_default
   #else
-    #define MR_MUTEX_ATTR		NULL
-    #define MR_COND_ATTR		NULL
-    #define MR_THREAD_ATTR		NULL
+    #define MR_MUTEX_ATTR       NULL
+    #define MR_COND_ATTR        NULL
+    #define MR_THREAD_ATTR      NULL
   #endif
 
-  typedef pthread_t		MercuryThread;
-  typedef pthread_key_t		MercuryThreadKey;
-  typedef pthread_mutex_t	MercuryLock;
-  typedef pthread_cond_t	MercuryCond;
+  typedef pthread_t         MercuryThread;
+  typedef pthread_key_t     MercuryThreadKey;
+  typedef pthread_mutex_t   MercuryLock;
+  typedef pthread_cond_t    MercuryCond;
 
   void MR_mutex_lock(MercuryLock *lock, const char *from);
   void MR_mutex_unlock(MercuryLock *lock, const char *from);
@@ -36,76 +39,76 @@
   extern MR_bool MR_debug_threads;
 
   #ifndef MR_DEBUG_THREADS
-	/*
-	** The following macros should be used once the
-	** use of locking in the generated code is considered
-	** stable, since the alternative versions do the
-	** same thing, but with debugging support.
-	*/
-    #define	MR_LOCK(lck, from)	pthread_mutex_lock((lck))
-    #define	MR_UNLOCK(lck, from)	pthread_mutex_unlock((lck))
+    /*
+    ** The following macros should be used once the
+    ** use of locking in the generated code is considered
+    ** stable, since the alternative versions do the
+    ** same thing, but with debugging support.
+    */
+    #define MR_LOCK(lck, from)  pthread_mutex_lock((lck))
+    #define MR_UNLOCK(lck, from)    pthread_mutex_unlock((lck))
 
-    #define	MR_SIGNAL(cnd)		pthread_cond_signal((cnd))
-    #define	MR_BROADCAST(cnd)	pthread_cond_broadcast((cnd))
-    #define	MR_WAIT(cnd, mtx)	pthread_cond_wait((cnd), (mtx))
+    #define MR_SIGNAL(cnd)      pthread_cond_signal((cnd))
+    #define MR_BROADCAST(cnd)   pthread_cond_broadcast((cnd))
+    #define MR_WAIT(cnd, mtx)   pthread_cond_wait((cnd), (mtx))
   #else
-    #define	MR_LOCK(lck, from)					\
-    				( MR_debug_threads ?			\
-					MR_mutex_lock((lck), (from))	\
-				:					\
-					pthread_mutex_lock((lck))	\
-				)
-    #define	MR_UNLOCK(lck, from)					\
-    				( MR_debug_threads ?			\
-    					MR_mutex_unlock((lck), (from))	\
-				:					\
-					pthread_mutex_unlock((lck))	\
-				)
+    #define MR_LOCK(lck, from)                  \
+                    ( MR_debug_threads ?            \
+                    MR_mutex_lock((lck), (from))    \
+                :                   \
+                    pthread_mutex_lock((lck))   \
+                )
+    #define MR_UNLOCK(lck, from)                    \
+                    ( MR_debug_threads ?            \
+                        MR_mutex_unlock((lck), (from))  \
+                :                   \
+                    pthread_mutex_unlock((lck)) \
+                )
 
-    #define	MR_SIGNAL(cnd)						\
-    				( MR_debug_threads ?			\
-					MR_cond_signal((cnd))		\
-				:					\
-					pthread_cond_signal((cnd))	\
-				)
-    #define	MR_BROADCAST(cnd)					\
-    				( MR_debug_threads ?			\
-					MR_cond_broadcast((cnd))	\
-				:					\
-					pthread_cond_broadcast((cnd))	\
-				)
-    #define	MR_WAIT(cnd, mtx)					\
-    				( MR_debug_threads ?			\
-					MR_cond_wait((cnd), (mtx))	\
-				:					\
-					pthread_cond_wait((cnd), (mtx))	\
-				)
+    #define MR_SIGNAL(cnd)                      \
+                    ( MR_debug_threads ?            \
+                    MR_cond_signal((cnd))       \
+                :                   \
+                    pthread_cond_signal((cnd))  \
+                )
+    #define MR_BROADCAST(cnd)                   \
+                    ( MR_debug_threads ?            \
+                    MR_cond_broadcast((cnd))    \
+                :                   \
+                    pthread_cond_broadcast((cnd))   \
+                )
+    #define MR_WAIT(cnd, mtx)                   \
+                    ( MR_debug_threads ?            \
+                    MR_cond_wait((cnd), (mtx))  \
+                :                   \
+                    pthread_cond_wait((cnd), (mtx)) \
+                )
 
   #endif
 
-    	/*
-	** The following two macros are used to protect pragma c_code
-	** predicates which are not thread-safe.
-	** See the comments below.
-	*/
-  #define MR_OBTAIN_GLOBAL_LOCK(where)	MR_LOCK(&MR_global_lock, (where))
-  #define MR_RELEASE_GLOBAL_LOCK(where)	MR_UNLOCK(&MR_global_lock, (where))
+        /*
+    ** The following two macros are used to protect pragma c_code
+    ** predicates which are not thread-safe.
+    ** See the comments below.
+    */
+  #define MR_OBTAIN_GLOBAL_LOCK(where)  MR_LOCK(&MR_global_lock, (where))
+  #define MR_RELEASE_GLOBAL_LOCK(where) MR_UNLOCK(&MR_global_lock, (where))
 
   #if defined(MR_DIGITAL_UNIX_PTHREADS)
-    #define MR_GETSPECIFIC(key) 	({		\
-		pthread_addr_t gstmp;			\
-		pthread_getspecific((key), &gstmp);	\
-		(void *) gstmp;				\
-	})
-    #define	MR_KEY_CREATE	pthread_keycreate
+    #define MR_GETSPECIFIC(key)     ({      \
+        pthread_addr_t gstmp;           \
+        pthread_getspecific((key), &gstmp); \
+        (void *) gstmp;             \
+    })
+    #define MR_KEY_CREATE   pthread_keycreate
   #else
-    #define 	MR_GETSPECIFIC(key)	pthread_getspecific((key))
-    #define	MR_KEY_CREATE		pthread_key_create
+    #define     MR_GETSPECIFIC(key) pthread_getspecific((key))
+    #define MR_KEY_CREATE       pthread_key_create
   #endif
 
   typedef struct {
-	  void	(*func)(void *);
-	  void	*arg;
+      void  (*func)(void *);
+      void  *arg;
   } MR_ThreadGoal;
 
   /*
@@ -117,9 +120,9 @@
   ** be called with the given argument in the new thread.
   */
 
-  MercuryThread		*MR_create_thread(MR_ThreadGoal *);
-  void			MR_destroy_thread(void *eng);
-  extern MR_bool	MR_exit_now;
+  MercuryThread     *MR_create_thread(MR_ThreadGoal *);
+  void          MR_destroy_thread(void *eng);
+  extern MR_bool    MR_exit_now;
 
   /*
   ** The primordial thread. Currently used for debugging.
@@ -149,15 +152,15 @@
 
 #else /* not MR_THREAD_SAFE */
 
-  #define MR_LOCK(nothing, from)	do { } while (0)
-  #define MR_UNLOCK(nothing, from)	do { } while (0)
+  #define MR_LOCK(nothing, from)    do { } while (0)
+  #define MR_UNLOCK(nothing, from)  do { } while (0)
 
-  #define MR_SIGNAL(nothing)		do { } while (0)
-  #define MR_BROADCAST(nothing)		do { } while (0)
-  #define MR_WAIT(no, thing)		(0)
+  #define MR_SIGNAL(nothing)        do { } while (0)
+  #define MR_BROADCAST(nothing)     do { } while (0)
+  #define MR_WAIT(no, thing)        (0)
 
-  #define MR_OBTAIN_GLOBAL_LOCK(where)	do { } while (0)
-  #define MR_RELEASE_GLOBAL_LOCK(where)	do { } while (0)
+  #define MR_OBTAIN_GLOBAL_LOCK(where)  do { } while (0)
+  #define MR_RELEASE_GLOBAL_LOCK(where) do { } while (0)
 
 #endif
 
@@ -188,7 +191,7 @@ typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
 ** finalize_thread_engine if it is true).
 */
 
-extern	MR_bool	MR_init_thread(MR_when_to_use);
+extern  MR_bool MR_init_thread(MR_when_to_use);
 
 /*
 ** Finalize the thread engine running in the current POSIX thread.
@@ -197,7 +200,7 @@ extern	MR_bool	MR_init_thread(MR_when_to_use);
 ** can be re-used by the next init_thread.
 */
 
-extern	void    MR_finalize_thread_engine(void);
+extern  void    MR_finalize_thread_engine(void);
 
 /*
 ** The values of thread-local mutables are stored in an array per Mercury
@@ -240,30 +243,32 @@ MR_create_thread_local_mutables(MR_Unsigned numslots);
 extern MR_ThreadLocalMuts *
 MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts);
 
-#define MR_THREAD_LOCAL_MUTABLES                                         \
+#define MR_THREAD_LOCAL_MUTABLES                                        \
     (MR_ENGINE(MR_eng_this_context)->MR_ctxt_thread_local_mutables)
 
-#define MR_SET_THREAD_LOCAL_MUTABLES(tlm)                                \
-    (MR_THREAD_LOCAL_MUTABLES = tlm)
-
-#define MR_get_thread_local_mutable(type, var, mut_index)                \
-    do {                                                                 \
-        MR_ThreadLocalMuts  *tlm;                                        \
-                                                                         \
-        tlm = MR_THREAD_LOCAL_MUTABLES;                                  \
-        MR_LOCK(&tlm->MR_tlm_lock, "MR_get_thread_local_mutable");       \
-        var = *((type *) &tlm->MR_tlm_values[mut_index]);                \
-        MR_UNLOCK(&tlm->MR_tlm_lock, "MR_get_thread_local_mutable");     \
+#define MR_SET_THREAD_LOCAL_MUTABLES(tlm)                               \
+    do {                                                                \
+        MR_THREAD_LOCAL_MUTABLES = (tlm);                               \
     } while (0)
 
-#define MR_set_thread_local_mutable(type, var, mut_index)                \
-    do {                                                                 \
-        MR_ThreadLocalMuts  *tlm;                                        \
-                                                                         \
-        tlm = MR_THREAD_LOCAL_MUTABLES;                                  \
-        MR_LOCK(&tlm->MR_tlm_lock, "MR_set_thread_local_mutable");       \
-        *((type *) &tlm->MR_tlm_values[mut_index]) = var;                \
-        MR_UNLOCK(&tlm->MR_tlm_lock, "MR_set_thread_local_mutable");     \
+#define MR_get_thread_local_mutable(type, var, mut_index)               \
+    do {                                                                \
+        MR_ThreadLocalMuts  *tlm;                                       \
+                                                                        \
+        tlm = MR_THREAD_LOCAL_MUTABLES;                                 \
+        MR_LOCK(&tlm->MR_tlm_lock, "MR_get_thread_local_mutable");      \
+        var = * ((type *) &tlm->MR_tlm_values[(mut_index)]);            \
+        MR_UNLOCK(&tlm->MR_tlm_lock, "MR_get_thread_local_mutable");    \
     } while (0)
 
-#endif	/* MERCURY_THREAD_H */
+#define MR_set_thread_local_mutable(type, var, mut_index)               \
+    do {                                                                \
+        MR_ThreadLocalMuts  *tlm;                                       \
+                                                                        \
+        tlm = MR_THREAD_LOCAL_MUTABLES;                                 \
+        MR_LOCK(&tlm->MR_tlm_lock, "MR_set_thread_local_mutable");      \
+        * ((type *) &tlm->MR_tlm_values[(mut_index)]) = (var);          \
+        MR_UNLOCK(&tlm->MR_tlm_lock, "MR_set_thread_local_mutable");    \
+    } while (0)
+
+#endif  /* MERCURY_THREAD_H */

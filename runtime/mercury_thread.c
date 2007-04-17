@@ -93,7 +93,7 @@ MR_init_thread(MR_when_to_use when_to_use)
     MercuryEngine   *eng;
 
 #ifdef MR_THREAD_SAFE
-    /* 
+    /*
     ** Check to see whether there is already an engine that is initialized
     ** in this thread.  If so we just return, there's nothing for us to do.
     */
@@ -131,6 +131,11 @@ MR_init_thread(MR_when_to_use when_to_use)
             return MR_FALSE;
 
         case MR_use_now :
+            /*
+            ** The following is documented in mercury_engine.h, so any
+            ** changes here may need changes there as well.
+            */
+
             if (MR_ENGINE(MR_eng_this_context) == NULL) {
                 MR_ENGINE(MR_eng_this_context) =
                     MR_create_context("init_thread",
@@ -139,15 +144,16 @@ MR_init_thread(MR_when_to_use when_to_use)
             MR_load_context(MR_ENGINE(MR_eng_this_context));
             MR_save_registers();
             return MR_TRUE;
-        
+
         default:
             MR_fatal_error("init_thread was passed a bad value");
     }
 }
 
-/* 
+/*
 ** Release resources associated with this thread.
 */
+
 void
 MR_finalize_thread_engine(void)
 {

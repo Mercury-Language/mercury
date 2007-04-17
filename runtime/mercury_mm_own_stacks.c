@@ -556,6 +556,9 @@ MR_get_context_for_gen(MR_GeneratorPtr generator)
         MR_next_gen_context++;
         ctxt = MR_create_context(strdup(buf), MR_CONTEXT_SIZE_SMALL,
             generator);
+        MR_copy_eng_this_context_fields(ctxt, MR_ENGINE(MR_eng_this_context));
+        ctxt->MR_ctxt_next = NULL;
+        ctxt->MR_ctxt_spark_stack = NULL;
     }
 
     ctxt->MR_ctxt_owner_generator = generator;

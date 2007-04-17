@@ -66,10 +66,32 @@
 #endif
 
 /*
-** MR_Context structures have the following fields:
+** Each engine has one MR_Context structure loaded into it (in the engine field
+** named MR_eng_context) from a context which is pointed to by the engine's
+** MR_eng_this_context field. Fields which can be expected to be accessed at
+** least several times between context switches are accessed via MR_eng_context
+** while the rest are accessed via MR_eng_this_context (which requires
+** following an extra pointer). Note that some fields are further cached
+** in abstract machine registers, and some in fact are only ever accessed
+** via these abstract machine registers. The saved copies of some these
+** abstract machine registers are kept not in the named fields below, but in
+** the engine's fake reg array.
+**
+** All fields accessed via MR_eng_context and via abstract machine registers
+** should be mentioned in the MR_save_context and MR_load_context macros.
+** All fields accessed via MR_eng_this_context should be mentioned in the
+** MR_copy_eng_this_context_fields macro. All fields accessed via direct
+** specification of the context need explicit code to set them in all places
+** where we create new contexts: in the mercury_thread module for parallelism,
+** and in the mercury_mm_own_stacks module for minimal model tabling.
+**
+** The context structure has the following fields. The documentation of each
+** field says how it is accessed, but please take this info with a pinch of
+** salt; I (zs) don't guarantee its accuracy.
 **
 ** id               A string to identify the context for humans who want to
 **                  debug the handling of contexts.
+**                  (Not accessed.)
 **
 ** size             Whether this context has regular-sized stacks or smaller
 **                  stacks. Some parallel programs can allocate many contexts
@@ -77,6 +99,7 @@
 **                  large stacks. We allocate contexts with "smaller" stacks
 **                  for parallel computations (although whether they are
 **                  actually smaller is up to the user).
+**                  (Accessed only when directly specifying the context.)
 **
 ** next             If this context is in the free-list `next' will point to
 **                  the next free context. If this context is suspended waiting
@@ -84,9 +107,11 @@
 **                  next waiting context. If this context is runnable but not
 **                  currently running then `next' points to the next runnable
 **                  context in the runqueue.
+**                  (Accessed only when directly specifying the context.)
 **
 ** resume           A pointer to the code at which execution should resume
 **                  when this context is next scheduled.
+**                  (Accessed via MR_eng_this_context.)
 **
 ** resume_owner_thread
 ** resume_c_depth
@@ -96,6 +121,7 @@
 **                  executed by any engine. Otherwise the resume_owner_thread
 **                  and resume_c_depth must match the engine's owner_thread
 **                  and c_depth. See the comments in mercury_engine.h.
+**                  (Both accessed only when directly specifying the context.)
 **
 ** saved_owners
 **                  A stack used to record the Mercury engines on which this
@@ -103,45 +129,65 @@
 **                  Mercury. We must execute this context in the correct
 **                  engine when returning to those C calls.  See the comments
 **                  in mercury_engine.h.
+**                  (Accessed via MR_eng_this_context.)
 **
 ** succip           The succip for this context.
+**                  (Accessed via abstract machine register.)
 **
 ** detstack_zone    The current detstack zone for this context.
 ** prev_detstack_zones
 **                  A list of any previous detstack zones for this context.
+**                  (Both accessed via MR_eng_context.)
 ** sp               The saved sp for this context.
+**                  (Accessed via abstract machine register.)
 **
 ** nondetstack_zone The current nondetstack zone for this context.
 ** prev_nondetstack_zones
 **                  A list of any previous nondetstack zones for this context.
+**                  (Both accessed via MR_eng_context.)
 ** curfr            The saved curfr for this context.
 ** maxfr            The saved maxfr for this context.
+**                  (Both accessed via abstract machine register.)
 **
 ** genstack_zone    The generator stack zone for this context.
+**                  (Accessed via MR_eng_context.)
 ** gen_next         The saved gen_next for this context.
+**                  (Accessed via abstract machine register.)
 **
 ** cutstack_zone    The cut stack zone for this context.
+**                  (Accessed via MR_eng_context.)
 ** cut_next         The saved cut_next for this context.
+**                  (Accessed via abstract machine register.)
 **
 ** pnegstack_zone   The possibly_negated_context stack zone for this context.
+**                  (Accessed via MR_eng_context.)
 ** pneg_next        The saved pneg_next for this context.
+**                  (Accessed via abstract machine register.)
 **
 ** parent_sp        The saved parent_sp for this context.
+**                  (Accessed via abstract machine register.)
+**
 ** spark_stack      The sparks generated by this context, in a stack.
+**                  (Accessed usually by explicitly specifying the context,
+**                  but also via MR_eng_this_context.)
 **
 ** trail_zone       The trail zone for this context.
 ** trail_ptr        The saved MR_trail_ptr for this context.
 ** ticket_counter   The saved MR_ticket_counter for this context.
 ** ticket_highwater The saved MR_ticket_high_water for this context.
+**                  (All accessed via abstract machine register.)
 **
 ** hp               The saved hp for this context.
+**                  (Accessed via abstract machine register.)
 **
 ** min_hp_rec       This pointer marks the minimum value of MR_hp to which
 **                  we can truncate the heap on backtracking. See comments
 **                  before the macro MR_set_min_heap_reclamation_point below.
+**                  (Accessed via abstract machine register.)
 **
 ** thread_local_mutables
 **                  The array of thread-local mutable values for this context.
+**                  (Accessed via MR_eng_this_context.)
 */
 
 typedef struct MR_Context_Struct        MR_Context;
@@ -646,6 +692,16 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
         )                                                                     \
         MR_save_hp_in_context(save_context_c);                                \
     } while (0)
+
+#define MR_copy_eng_this_context_fields(to_cptr, from_cptr)                   \
+    do {                                                                      \
+        /* it wouldn't be appropriate to copy the resume field */             \
+        to_cptr->MR_ctxt_thread_local_mutables =                              \
+            from_cptr->MR_ctxt_thread_local_mutables;                         \
+        /* it wouldn't be appropriate to copy the spark_stack field */        \
+        /* it wouldn't be appropriate to copy the saved_owners field */       \
+    } while (0)
+
 
 /*
 ** If you change MR_Sync_Term_Struct you need to update configure.in.

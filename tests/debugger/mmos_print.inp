@@ -1,0 +1,12 @@
+echo on
+register --quiet
+print *
+step
+print *
+step
+print *
+step
+print *
+step
+print *
+quit -y

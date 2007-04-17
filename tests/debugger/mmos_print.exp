@@ -1,0 +1,23 @@
+       1:      1  1 CALL pred mmos_print.main/2-0 (det) mmos_print.m:13
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> print *
+mdb: there are no live variables.
+mdb> step
+       2:      2  2 CALL pred mmos_print.tc/2-0 (nondet) mmos_print.m:21
+mdb> print *
+       A (arg 1)              	1
+mdb> step
+tc(1)        1:      1  1 CALL pred mmos_print.GeneratorFor_tc/1-0 (nondet) mmos_print.m:21
+mdb> print *
+mdb: there are no live variables.
+mdb> step
+tc(1)        2:      2  2 CALL pred mmos_print.edge/2-0 (nondet) mmos_print.m:31 (mmos_print.m:22)
+mdb> print *
+       HeadVar__1             	1
+mdb> step
+tc(1)        3:      2  2 SWTC pred mmos_print.edge/2-0 (nondet) s1-na; mmos_print.m:31
+mdb> print *
+       HeadVar__1             	1
+mdb> quit -y

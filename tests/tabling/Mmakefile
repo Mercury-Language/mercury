@@ -74,7 +74,7 @@ SIMPLE_LOOP_PROGS = \
 	tc_memo \
 	tc_memo2
 
-MINIMAL_NONLOOP_PROGS = \
+MAYBE_MINIMAL_NONLOOP_PROGS = \
 	combine \
 	completed_consumer_in_solutions \
 	consumer_in_commit \
@@ -98,6 +98,15 @@ MINIMAL_NONLOOP_PROGS = \
 	sg \
 	tc_minimal \
 	tc_minimal2
+
+# Minimal model tests don't yet work in own stack (mmos) grades.
+# Since in most cases the symptom of failure is an infinite loop,
+# we don't want to execute these tests in such grades.
+ifneq "$(findstring mmos,$(GRADE))" ""
+	MINIMAL_NONLOOP_PROGS =
+else
+	MINIMAL_NONLOOP_PROGS = $(MAYBE_MINIMAL_NONLOOP_PROGS)
+endif
 
 MINIMAL_LOOP_PROGS =
 

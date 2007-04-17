@@ -135,35 +135,42 @@ endif
 # wouldn't detect a regression which caused builtins not to
 # be traced with `--no-inline-builtins'.
 ifeq "$(findstring debug,$(GRADE))" "debug"
-	DEBUG_GRADE_PROGS = no_inline_builtins
+    DEBUG_GRADE_PROGS = no_inline_builtins
 else 
-	DEBUG_GRADE_PROGS =
+    DEBUG_GRADE_PROGS =
 endif
 
 # The uci test matches its expected output only if the grade supports
 # enumerated types. Reserved tag grades do not.
 ifeq "$(findstring .rt,$(GRADE))" ""
-	ENUM_PROGS = uci
+    ENUM_PROGS = uci
 else 
-	ENUM_PROGS =
+    ENUM_PROGS =
 endif
 
 # The tests term_size_words and term_size_cells are each meant to be used
 # in their respective grades only.
 ifneq "$(findstring .tsw,$(GRADE))" ""
-	TERM_SIZE_PROGS = term_size_words
+    TERM_SIZE_PROGS = term_size_words
 else 
     ifneq "$(findstring .tsc,$(GRADE))" ""
-	    TERM_SIZE_PROGS = term_size_cells
+	TERM_SIZE_PROGS = term_size_cells
     else 
-	    TERM_SIZE_PROGS =
+	TERM_SIZE_PROGS =
     endif
+endif
+
+# The mmos_print test is meant to be used in mmos grades only.
+ifneq "$(findstring mmos,$(GRADE))" ""
+    MMOS_PROGS = mmos_print
+else 
+    MMOS_PROGS =
 endif
 
 ALL_RETRY_PROGS = $(RETRY_PROGS) $(INTERACTIVE_PROGS)
 ALL_NONRETRY_PROGS = $(NONRETRY_PROGS) $(SENSITIVE_PROGS) \
 			$(SHALLOW_PROGS) $(DEBUG_GRADE_PROGS) $(ENUM_PROGS) \
-			$(TERM_SIZE_PROGS)
+			$(TERM_SIZE_PROGS) $(MMOS_PROGS)
 
 # Debugging doesn't yet don't work in MLDS grades (hl*, il*, and java),
 # and the retry command doesn't and will not work in deep profiling
@@ -431,6 +438,10 @@ multi_parameter.out: multi_parameter multi_parameter.inp
 no_inline_builtins.out: no_inline_builtins no_inline_builtins.inp
 	$(MDB) ./no_inline_builtins < no_inline_builtins.inp \
 		> no_inline_builtins.out 2>&1
+
+mmos_print.out: mmos_print mmos_print.inp
+	$(MDB) ./mmos_print < mmos_print.inp \
+		> mmos_print.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
