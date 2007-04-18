@@ -146,8 +146,9 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
             sorry(this_file, "mmc --make and target x86_64")
         ),
 
+        AllModulesList = set.to_sorted_list(AllModules),
         get_target_modules(IntermediateTargetType,
-            set.to_sorted_list(AllModules), ObjModules, !Info, !IO),
+            AllModulesList, ObjModules, !Info, !IO),
         IntermediateTargets = make_dependency_list(ObjModules,
             IntermediateTargetType),
         ObjTargets = make_dependency_list(ObjModules, ObjectTargetType),
@@ -156,25 +157,35 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
             ObjModules, ForeignObjTargetsList, !Info, !IO),
         ForeignObjTargets = list.condense(ForeignObjTargetsList),
 
-        foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
-            IntermediateTargets, BuildDepsSucceeded0, !Info, !IO),
-        (
-            BuildDepsSucceeded0 = yes,
-            foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
-                make_module_target, ObjTargets,
-                BuildDepsSucceeded1, !Info, !IO)
-        ;
-            BuildDepsSucceeded0 = no,
-            BuildDepsSucceeded1 = no
-        ),
-        (
-            BuildDepsSucceeded1 = yes,
-            foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
-                ForeignObjTargets,
-                BuildDepsSucceeded, !Info, !IO)
-        ;
-            BuildDepsSucceeded1 = no,
+        % Ensure all interface files are present before continuing.  This
+        % prevents a problem when two parallel branches try to generate the
+        % same missing interface file later.
+        %
+        make_all_interface_files(AllModulesList, IntsSucceeded, !Info, !IO),
+        ( IntsSucceeded = no, KeepGoing = no ->
             BuildDepsSucceeded = no
+        ;
+            foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                make_module_target, IntermediateTargets,
+                BuildDepsSucceeded0, !Info, !IO),
+            (
+                BuildDepsSucceeded0 = yes,
+                foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                    make_module_target, ObjTargets,
+                    BuildDepsSucceeded1, !Info, !IO)
+            ;
+                BuildDepsSucceeded0 = no,
+                BuildDepsSucceeded1 = no
+            ),
+            (
+                BuildDepsSucceeded1 = yes,
+                foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
+                    ForeignObjTargets,
+                    BuildDepsSucceeded, !Info, !IO)
+            ;
+                BuildDepsSucceeded1 = no,
+                BuildDepsSucceeded = no
+            )
         ),
 
         linked_target_file_name(MainModuleName, FileType, OutputFileName, !IO),
@@ -585,25 +596,7 @@ make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
             !Info, !IO)
     ;
         TargetType = misc_target_build_library,
-        ShortInts = make_dependency_list(AllModules,
-            module_target_unqualified_short_interface),
-        LongInts = make_dependency_list(AllModules,
-            module_target_long_interface),
-        globals.io_lookup_bool_option(intermodule_optimization,
-            Intermod, !IO),
-        (
-            Intermod = yes,
-            OptFiles = make_dependency_list(AllModules,
-                module_target_intermodule_interface)
-        ;
-            Intermod = no,
-            OptFiles = []
-        ),
-        globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
-        foldl2_maybe_stop_at_error(KeepGoing,
-            foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
-            [ShortInts, LongInts, OptFiles],
-            IntSucceeded, !Info, !IO),
+        make_all_interface_files(AllModules, IntSucceeded, !Info, !IO),
         (
             IntSucceeded = yes,
             make_linked_target(
@@ -668,33 +661,76 @@ make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
         )
     ).
 
+%-----------------------------------------------------------------------------%
+
+:- pred make_all_interface_files(list(module_name)::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+make_all_interface_files(AllModules, Succeeded, !Info, !IO) :-
+    ShortInts = make_dependency_list(AllModules,
+        module_target_unqualified_short_interface),
+    LongInts = make_dependency_list(AllModules,
+        module_target_long_interface),
+    globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
+    (
+        Intermod = yes,
+        OptFiles = make_dependency_list(AllModules,
+            module_target_intermodule_interface)
+    ;
+        Intermod = no,
+        OptFiles = []
+    ),
+    globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
+    foldl2_maybe_stop_at_error(KeepGoing,
+        foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
+        [ShortInts, LongInts, OptFiles],
+        Succeeded, !Info, !IO).
+
+%-----------------------------------------------------------------------------%
+
 :- pred build_analysis_files(module_name::in, list(module_name)::in,
     bool::in, bool::out, make_info::in, make_info::out, io::di, io::uo)
     is det.
 
 build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
         !Info, !IO) :-
-    get_target_modules(module_target_analysis_registry, AllModules,
-        TargetModules0, !Info, !IO),
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
     ( Succeeded0 = no, KeepGoing = no ->
         Succeeded = no
     ;
-        reverse_ordered_modules(!.Info ^ module_dependencies,
-            TargetModules0, TargetModules1),
-        % Filter out the non-local modules so we don't try to reanalyse them.
-        list.filter((pred(Mod::in) is semidet :- list.member(Mod, AllModules)),
-            TargetModules1, TargetModules),
-        make_local_module_id_options(MainModuleName, Succeeded1,
-            LocalModulesOpts, !Info, !IO),
-        (
-            Succeeded1 = yes,
-            build_analysis_files_2(MainModuleName, TargetModules, 
-                LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
-        ;
-            Succeeded1 = no,
+        % Ensure all interface files are present before continuing.  This
+        % prevents a problem when two parallel branches try to generate the
+        % same missing interface file later.
+        %
+        make_all_interface_files(AllModules, Succeeded1, !Info, !IO),
+        ( Succeeded1 = no, KeepGoing = no ->
             Succeeded = no
+        ;
+            build_analysis_files_1(MainModuleName, AllModules,
+                Succeeded, !Info, !IO)
         )
+    ).
+
+:- pred build_analysis_files_1(module_name::in, list(module_name)::in,
+    bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
+
+build_analysis_files_1(MainModuleName, AllModules, Succeeded, !Info, !IO) :-
+    get_target_modules(module_target_analysis_registry, AllModules,
+        TargetModules0, !Info, !IO),
+    reverse_ordered_modules(!.Info ^ module_dependencies,
+        TargetModules0, TargetModules1),
+    % Filter out the non-local modules so we don't try to reanalyse them.
+    list.filter((pred(Mod::in) is semidet :- list.member(Mod, AllModules)),
+        TargetModules1, TargetModules),
+    make_local_module_id_options(MainModuleName, Succeeded0,
+        LocalModulesOpts, !Info, !IO),
+    (
+        Succeeded0 = yes,
+        build_analysis_files_2(MainModuleName, TargetModules, 
+            LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
+    ;
+        Succeeded0 = no,
+        Succeeded = no
     ).
 
 :- pred build_analysis_files_2(module_name::in, list(module_name)::in,
@@ -704,7 +740,7 @@ build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
 build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
         Succeeded0, Succeeded, !Info, !IO) :-
     globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
-    foldl2_maybe_stop_at_error(KeepGoing,
+    foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
         make_module_target_extra_options(LocalModulesOpts),
         make_dependency_list(TargetModules, module_target_analysis_registry),
         Succeeded1, !Info, !IO),
