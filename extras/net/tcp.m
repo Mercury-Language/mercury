@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne
+% Copyright (C) 2000, 2007 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
@@ -674,10 +674,10 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 	MR_make_aligned_string_copy(Err, strerror(Errno));
 }").
 
-:- pred throw_tcp_excption(string::in) is erroneous.
-:- pragma export(throw_tcp_excption(in), "ML_throw_tcp_exception").
+:- pred throw_tcp_exception(string::in) is erroneous.
+:- pragma export(throw_tcp_exception(in), "ML_throw_tcp_exception").
 
-throw_tcp_excption(S) :-
+throw_tcp_exception(S) :-
 	error(S).
 
 %-----------------------------------------------------------------------------%
