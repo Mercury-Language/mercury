@@ -18,6 +18,8 @@
 
 :- interface.
 
+:- import_module list.
+
     % This enumeration must be EXACTLY the same as the MR_PredFunc enum
     % in runtime/mercury_stack_layout.h, and in the same order, since the
     % code (in browser) assumes the representation is the same.
@@ -170,6 +172,10 @@
     %
 :- func insert_module_qualifier(string, sym_name) = sym_name.
 
+    % Returns all the modules which are automatically imported.
+    %
+:- func all_builtin_modules = list(sym_name).
+
     % Returns the name of the module containing public builtins;
     % originally this was "mercury_builtin", but it later became
     % just "builtin", and it may eventually be renamed "std.builtin".
@@ -286,6 +292,14 @@ get_special_pred_id_target_name(Id) = Name :-
 
 get_special_pred_id_arity(Id) = Arity :-
         special_pred_name_arity(Id, _, _, Arity).
+
+all_builtin_modules = [
+        mercury_public_builtin_module,
+        mercury_private_builtin_module,
+        mercury_table_builtin_module,
+        mercury_profiling_builtin_module,
+        mercury_term_size_prof_builtin_module,
+        mercury_par_builtin_module].
 
 % We may eventually want to put the standard library into a package "std":
 % mercury_public_builtin_module = qualified(unqualified("std"), "builtin").

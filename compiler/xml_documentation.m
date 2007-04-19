@@ -287,6 +287,15 @@ get_comment_backwards(Comments, Line) = Comment :-
     (to_xml(module_info_xml_doc(Comments, ModuleComment, ModuleInfo)) = Xml :-
         CommentXml = elem("comment", [], [data(ModuleComment)]),
 
+        module_info_get_interface_module_specifiers(ModuleInfo,
+            InterfaceImports),
+        module_info_get_imported_module_specifiers(ModuleInfo,
+            ImportedModules0),
+        ImportedModules = ImportedModules0 `difference` set(all_builtin_modules),
+        set.fold(import_documentation(InterfaceImports),
+            ImportedModules, [], ImportsXml),
+        ImportXml = elem("imports", [], ImportsXml),
+
         module_info_get_type_table(ModuleInfo, TypeTable),
         map.foldl(type_documentation(Comments), TypeTable, [], TypeXmls),
         TypeXml = elem("types", [], TypeXmls),
@@ -300,10 +309,29 @@ get_comment_backwards(Comments, Line) = Comment :-
             [], ClassXmls),
         ClassXml = elem("typeclasses", [], ClassXmls),
 
-        Xml = elem("module", [], [CommentXml, TypeXml, PredXml, ClassXml])
+        Children = [CommentXml, ImportXml, TypeXml, PredXml, ClassXml],
+        Xml = elem("module", [], Children)
     )
 ].
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+    % Output the documentation for one import
+    %
+:- pred import_documentation(set(module_specifier)::in, module_specifier::in,
+    list(xml)::in, list(xml)::out) is det.
+
+import_documentation(InterfaceImportedModules, ImportedModule, !Xmls) :-
+    XmlName = name(ImportedModule),
+    ( ImportedModule `member` InterfaceImportedModules ->
+        XmlVisibility = visibility(status_exported)
+    ;
+        XmlVisibility = visibility(status_local)
+    ),
+    Xml = elem("import", [], [XmlName, XmlVisibility]),
+    !:Xmls = [Xml | !.Xmls].
+    
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -611,10 +639,10 @@ arity(Arity) = tagged_int("arity", Arity).
 :- func determinism(determinism) = xml.
 
 determinism(detism_det) = tagged_string("determinism", "det").
-determinism(detism_semi) = tagged_string("determinism", "semi").
+determinism(detism_semi) = tagged_string("determinism", "semidet").
 determinism(detism_multi) = tagged_string("determinism", "multi").
-determinism(detism_non) = tagged_string("determinism", "non").
-determinism(detism_cc_non) = tagged_string("determinism", "cc_non").
+determinism(detism_non) = tagged_string("determinism", "nondet").
+determinism(detism_cc_non) = tagged_string("determinism", "cc_nondet").
 determinism(detism_cc_multi) = tagged_string("determinism", "cc_multi").
 determinism(detism_erroneous) = tagged_string("determinism", "erroneous").
 determinism(detism_failure) = tagged_string("determinism", "failure").

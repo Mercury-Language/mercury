@@ -80,13 +80,7 @@ unused_imports(ModuleInfo, !:Specs, !IO) :-
     % We also consider the implicitly imported modules to be used as
     % the user cannot do anything about them.
 
-    ImplicitImports = [
-        mercury_public_builtin_module,
-        mercury_private_builtin_module,
-        mercury_table_builtin_module,
-        mercury_profiling_builtin_module,
-        mercury_term_size_prof_builtin_module,
-        mercury_par_builtin_module],
+    ImplicitImports = all_builtin_modules,
     module_info_get_used_modules(ModuleInfo, UsedModules0),
     list.foldl(add_all_modules(visibility_public), ImplicitImports,
         UsedModules0, UsedModules1),
