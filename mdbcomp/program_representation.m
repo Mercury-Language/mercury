@@ -205,19 +205,19 @@
 
 %-----------------------------------------------------------------------------%
 
-% We can think of the goal that defines a procedure to be a tree,
-% whose leaves are primitive goals and whose interior nodes are
-% compound goals. These two types describe the position of a goal
-% in this tree. A goal_path_step type says which branch to take at an
-% interior node; the integer counts start at one. (For switches,
-% the second int gives the total number of function symbols in the type
-% of the switched-on var; for builtin types such as integer and string,
-% for which this number is effectively infinite, we store a negative
-% number.) The goal_path type gives the sequence of steps from the root
-% to the given goal *in reverse order*, so that the step closest to
-% the root is last. (Keeping the list in reverse order makes the
-% common operations constant-time instead of linear in the length
-% of the list.)
+% We can think of the goal that defines a procedure to be a tree, whose leaves
+% are primitive goals and whose interior nodes are compound goals. These two
+% types describe the position of a goal in this tree. A goal_path_step type
+% says which branch to take at an interior node; the integer counts start
+% at one. (For switches, the second int, if present, gives the total number
+% of function symbols in the type of the switched-on var; for builtin types
+% such as integer and string, for which this number is effectively infinite,
+% the second number won't be present.)
+%
+% The goal_path type gives the sequence of steps from the root to the given
+% goal *in reverse order*, so that the step closest to the root is last.
+% (Keeping the list in reverse order makes the common operations constant-time
+% instead of linear in the length of the list.)
 
 :- type goal_path == list(goal_path_step).
 
@@ -226,7 +226,7 @@
 :- type goal_path_step 
     --->    step_conj(int)
     ;       step_disj(int)
-    ;       step_switch(int, int)
+    ;       step_switch(int, maybe(int))
     ;       step_ite_cond
     ;       step_ite_then
     ;       step_ite_else
@@ -237,8 +237,8 @@
 
     % Does the scope goal have a different determinism inside than outside?
 :- type maybe_cut
-    --->    cut
-    ;       no_cut.
+    --->    scope_is_cut
+    ;       scope_is_no_cut.
 
 :- pred path_from_string_det(string::in, goal_path::out) is det.
 
@@ -474,16 +474,22 @@ path_step_from_string_2('c', NStr, step_conj(N)) :-
     string.to_int(NStr, N).
 path_step_from_string_2('d', NStr, step_disj(N)) :-
     string.to_int(NStr, N).
-path_step_from_string_2('s', Str, step_switch(N, M)) :-
+path_step_from_string_2('s', Str, step_switch(N, MaybeM)) :-
     string.words_separator(unify('-'), Str) = [NStr, MStr],
     string.to_int(NStr, N),
-    string.to_int(MStr, M).
+    % short for "not applicable"
+    ( MStr = "na" ->
+        MaybeM = no
+    ;
+        string.to_int(MStr, M),
+        MaybeM = yes(M)
+    ).
 path_step_from_string_2('?', "", step_ite_cond).
 path_step_from_string_2('t', "", step_ite_then).
 path_step_from_string_2('e', "", step_ite_else).
 path_step_from_string_2('~', "", step_neg).
-path_step_from_string_2('q', "!", step_scope(cut)).
-path_step_from_string_2('q', "", step_scope(no_cut)).
+path_step_from_string_2('q', "!", step_scope(scope_is_cut)).
+path_step_from_string_2('q', "", step_scope(scope_is_no_cut)).
 path_step_from_string_2('f', "", step_first).
 path_step_from_string_2('l', "", step_later).
 
@@ -500,14 +506,16 @@ string_from_path(GoalPath) =
 
 goal_path_step_to_string(step_conj(N)) = "c" ++ int_to_string(N) ++ ";".
 goal_path_step_to_string(step_disj(N)) = "d" ++ int_to_string(N) ++ ";".
-goal_path_step_to_string(step_switch(N, M)) = "s" ++ int_to_string(N)
+goal_path_step_to_string(step_switch(N, yes(M))) = "s" ++ int_to_string(N)
     ++ "-" ++ int_to_string(M) ++ ";".
+goal_path_step_to_string(step_switch(N, no)) = "s" ++ int_to_string(N)
+    ++ "-na;".      % short for "not applicable"
 goal_path_step_to_string(step_ite_cond) = "?;".
 goal_path_step_to_string(step_ite_then) = "t;".
 goal_path_step_to_string(step_ite_else) = "e;".
 goal_path_step_to_string(step_neg) = "~;".
-goal_path_step_to_string(step_scope(cut)) = "q!;".
-goal_path_step_to_string(step_scope(no_cut)) = "q;".
+goal_path_step_to_string(step_scope(scope_is_cut)) = "q!;".
+goal_path_step_to_string(step_scope(scope_is_no_cut)) = "q;".
 goal_path_step_to_string(step_first) = "f;".
 goal_path_step_to_string(step_later) = "l;".
 

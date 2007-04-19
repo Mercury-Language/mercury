@@ -1,0 +1,15 @@
+echo on
+register --quiet
+break edge
+continue
+print *
+step
+print *
+delete *
+break edge_str
+continue
+print *
+step
+print *
+delete *
+continue

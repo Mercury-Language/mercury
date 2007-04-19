@@ -1636,9 +1636,9 @@ read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Goal) :-
             GoalType = goal_scope,
             read_byte(Bytecode, !Pos, MaybeCutByte),
             ( MaybeCutByte = 0 ->
-                MaybeCut = no_cut
+                MaybeCut = scope_is_no_cut
             ; MaybeCutByte = 1 ->
-                MaybeCut = cut
+                MaybeCut = scope_is_cut
             ;
                 error("read_goal: bad maybe_cut")
             ),

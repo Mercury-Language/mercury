@@ -70,6 +70,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
@@ -151,11 +152,11 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         ModuleInfo = SlotInfo ^ module_info,
         map.lookup(VarTypes, Var, Type),
         ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
-            NumCases = NumFunctors
+            MaybeNumFunctors = yes(NumFunctors)
         ;
-            NumCases = -1
+            MaybeNumFunctors = no
         ),
-        fill_switch_slots(Path0, 0, NumCases, SlotInfo, Cases0, Cases),
+        fill_switch_slots(Path0, 0, MaybeNumFunctors, SlotInfo, Cases0, Cases),
         Goal = switch(Var, CanFail, Cases)
     ;
         Goal0 = negation(SubGoal0),
@@ -167,9 +168,9 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         goal_info_get_determinism(GoalInfo, OuterDetism),
         goal_info_get_determinism(InnerInfo, InnerDetism),
         ( InnerDetism = OuterDetism ->
-            MaybeCut = no_cut
+            MaybeCut = scope_is_no_cut
         ;
-            MaybeCut = cut
+            MaybeCut = scope_is_cut
         ),
         fill_goal_slots([step_scope(MaybeCut) | Path0], SlotInfo,
             SubGoal0, SubGoal),
@@ -222,16 +223,16 @@ fill_disj_slots(Path0, N0, SlotInfo, [Goal0 | Goals0], [Goal | Goals]) :-
     fill_goal_slots([step_disj(N1) | Path0], SlotInfo, Goal0, Goal),
     fill_disj_slots(Path0, N1, SlotInfo, Goals0, Goals).
 
-:- pred fill_switch_slots(goal_path::in, int::in, int::in, slot_info::in,
-    list(case)::in, list(case)::out) is det.
+:- pred fill_switch_slots(goal_path::in, int::in, maybe(int)::in,
+    slot_info::in, list(case)::in, list(case)::out) is det.
 
 fill_switch_slots(_, _, _, _, [], []).
-fill_switch_slots(Path0, N0, NumCases, SlotInfo,
-        [case(A, Goal0) | Cases0], [case(A, Goal) | Cases]) :-
+fill_switch_slots(Path0, N0, MaybeNumFunctors, SlotInfo,
+        [case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases]) :-
     N1 = N0 + 1,
-    fill_goal_slots([step_switch(N1, NumCases) | Path0], SlotInfo,
+    fill_goal_slots([step_switch(N1, MaybeNumFunctors) | Path0], SlotInfo,
         Goal0, Goal),
-    fill_switch_slots(Path0, N1, NumCases, SlotInfo, Cases0, Cases).
+    fill_switch_slots(Path0, N1, MaybeNumFunctors, SlotInfo, Cases0, Cases).
 
 %-----------------------------------------------------------------------------%
 

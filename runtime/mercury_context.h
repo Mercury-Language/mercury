@@ -702,7 +702,6 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
         /* it wouldn't be appropriate to copy the saved_owners field */       \
     } while (0)
 
-
 /*
 ** If you change MR_Sync_Term_Struct you need to update configure.in.
 */

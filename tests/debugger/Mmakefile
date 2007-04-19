@@ -50,6 +50,7 @@ NONRETRY_PROGS = \
 	save				\
 	shell				\
 	solver_test			\
+	switch_on_unbounded		\
 	synth_attr			\
 	type_desc_test			\
 	uci_index			\
@@ -506,6 +507,10 @@ shell.out: shell shell.inp
 
 solver_test.out: solver_test solver_test.inp
 	$(MDB_STD) ./solver_test < solver_test.inp > solver_test.out 2>&1
+
+switch_on_unbounded.out: switch_on_unbounded switch_on_unbounded.inp
+	$(MDB_STD) ./switch_on_unbounded < switch_on_unbounded.inp \
+		> switch_on_unbounded.out 2>&1
 
 tabled_read.out: tabled_read tabled_read.inp tabled_read.data
 	$(MDB_STD) ./tabled_read < tabled_read.inp 2>&1 | \

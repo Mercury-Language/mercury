@@ -32,6 +32,7 @@
 
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -495,15 +496,15 @@ deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
 :- type deep_info
     --->    deep_info(
-                module_info         :: module_info,
-                pred_proc_id        :: pred_proc_id,
-                current_csd         :: prog_var,
-                site_num_counter    :: counter,
-                call_sites          :: list(call_site_static_data),
-                vars                :: prog_varset,
-                var_types           :: vartypes,
-                proc_filename       :: string,
-                maybe_rec_info      :: maybe(deep_recursion_info)
+                deep_module_info        :: module_info,
+                deep_pred_proc_id       :: pred_proc_id,
+                deep_current_csd        :: prog_var,
+                deep_site_num_counter   :: counter,
+                deep_call_sites         :: list(call_site_static_data),
+                deep_varset             :: prog_varset,
+                deep_var_types          :: vartypes,
+                deep_proc_filename      :: string,
+                deep_maybe_rec_info     :: maybe(deep_recursion_info)
             ).
 
 :- pred transform_det_proc(module_info::in, pred_proc_id::in,
@@ -548,9 +549,9 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     deep_prof_transform_goal([], Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
 
-    Vars = DeepInfo ^ vars,
-    VarTypes = DeepInfo ^ var_types,
-    CallSites = DeepInfo ^ call_sites,
+    Vars = DeepInfo ^ deep_varset,
+    VarTypes = DeepInfo ^ deep_var_types,
+    CallSites = DeepInfo ^ deep_call_sites,
 
     (
         MaybeRecInfo = yes(RecInfo),
@@ -644,9 +645,9 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     deep_prof_transform_goal([], Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
 
-    Vars = DeepInfo ^ vars,
-    VarTypes = DeepInfo ^ var_types,
-    CallSites = DeepInfo ^ call_sites,
+    Vars = DeepInfo ^ deep_varset,
+    VarTypes = DeepInfo ^ deep_var_types,
+    CallSites = DeepInfo ^ deep_call_sites,
 
     (
         MaybeRecInfo = yes(RecInfo),
@@ -758,9 +759,9 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     deep_prof_transform_goal([], Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
 
-    Vars = DeepInfo ^ vars,
-    VarTypes = DeepInfo ^ var_types,
-    CallSites = DeepInfo ^ call_sites,
+    Vars = DeepInfo ^ deep_varset,
+    VarTypes = DeepInfo ^ deep_var_types,
+    CallSites = DeepInfo ^ deep_call_sites,
 
     PredProcId = proc(PredId, ProcId),
     IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
@@ -883,8 +884,8 @@ transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     deep_prof_transform_goal([], Goal0, TransformedGoal, _,
         DeepInfo0, DeepInfo),
 
-    VarSet = DeepInfo ^ vars,
-    VarTypes = DeepInfo ^ var_types,
+    VarSet = DeepInfo ^ deep_varset,
+    VarTypes = DeepInfo ^ deep_var_types,
 
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
@@ -966,7 +967,15 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = switch(Var, CF, Cases0),
-        deep_prof_transform_switch(list.length(Cases0), 0, Path, Cases0, Cases,
+        ModuleInfo = !.DeepInfo ^ deep_module_info,
+        VarTypes = !.DeepInfo ^ deep_var_types,
+        map.lookup(VarTypes, Var, Type),
+        ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
+            MaybeNumFunctors = yes(NumFunctors)
+        ;
+            MaybeNumFunctors = no
+        ),
+        deep_prof_transform_switch(MaybeNumFunctors, 0, Path, Cases0, Cases,
             AddedImpurity, !DeepInfo),
         add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
         GoalExpr = switch(Var, CF, Cases),
@@ -1005,7 +1014,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         goal_info_get_determinism(GoalInfo0, OuterDetism),
         goal_info_get_determinism(InnerInfo, InnerDetism),
         ( InnerDetism = OuterDetism ->
-            MaybeCut = no_cut,
+            MaybeCut = scope_is_no_cut,
             Reason = Reason0,
             AddForceCommit = no
         ;
@@ -1017,7 +1026,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
             % and the deep profiling transformation will make it impure
             % as well.
 
-            MaybeCut = cut,
+            MaybeCut = scope_is_cut,
             ( Reason0 = commit(_) ->
                 Reason = commit(force_pruning),
                 AddForceCommit = no
@@ -1071,17 +1080,17 @@ deep_prof_transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals],
         !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 
-:- pred deep_prof_transform_switch(int::in, int::in, goal_path::in,
+:- pred deep_prof_transform_switch(maybe(int)::in, int::in, goal_path::in,
     list(case)::in, list(case)::out, bool::out,
     deep_info::in, deep_info::out) is det.
 
 deep_prof_transform_switch(_, _, _, [], [], no, !DeepInfo).
-deep_prof_transform_switch(NumCases, N, Path, [case(Id, Goal0) | Goals0],
+deep_prof_transform_switch(MaybeNumCases, N, Path, [case(Id, Goal0) | Goals0],
         [case(Id, Goal) | Goals], AddedImpurity, !DeepInfo) :-
     N1 = N + 1,
-    deep_prof_transform_goal([step_switch(NumCases, N1) | Path], Goal0, Goal,
-        AddedImpurityFirst, !DeepInfo),
-    deep_prof_transform_switch(NumCases, N1, Path, Goals0, Goals,
+    deep_prof_transform_goal([step_switch(N1, MaybeNumCases) | Path],
+        Goal0, Goal, AddedImpurityFirst, !DeepInfo),
+    deep_prof_transform_switch(MaybeNumCases, N1, Path, Goals0, Goals,
         AddedImpurityLater, !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 
@@ -1090,7 +1099,7 @@ deep_prof_transform_switch(NumCases, N, Path, [case(Id, Goal0) | Goals0],
 
 deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
         hlds_goal(GoalExpr, GoalInfo), !DeepInfo) :-
-    ModuleInfo = !.DeepInfo ^ module_info,
+    ModuleInfo = !.DeepInfo ^ deep_module_info,
     goal_info_get_features(GoalInfo0, GoalFeatures),
     goal_info_remove_feature(feature_tailcall, GoalInfo0, GoalInfo1),
     make_impure(GoalInfo1, GoalInfo),
@@ -1105,15 +1114,16 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
     % call port code).
     Goal1 = hlds_goal(GoalExpr0, GoalInfo),
 
-    SiteNumCounter0 = !.DeepInfo ^ site_num_counter,
+    SiteNumCounter0 = !.DeepInfo ^ deep_site_num_counter,
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
-    varset.new_named_var(!.DeepInfo ^ vars, "SiteNum", SiteNumVar, VarSet1),
+    varset.new_named_var(!.DeepInfo ^ deep_varset, "SiteNum", SiteNumVar,
+        VarSet1),
     IntType = int_type,
-    map.set(!.DeepInfo ^ var_types, SiteNumVar, IntType, VarTypes1),
+    map.set(!.DeepInfo ^ deep_var_types, SiteNumVar, IntType, VarTypes1),
     generate_unify(int_const(SiteNum), SiteNumVar, SiteNumVarGoal),
-    !:DeepInfo = !.DeepInfo ^ vars := VarSet1,
-    !:DeepInfo = !.DeepInfo ^ var_types := VarTypes1,
-    !:DeepInfo = !.DeepInfo ^ site_num_counter := SiteNumCounter,
+    !:DeepInfo = !.DeepInfo ^ deep_varset := VarSet1,
+    !:DeepInfo = !.DeepInfo ^ deep_var_types := VarTypes1,
+    !:DeepInfo = !.DeepInfo ^ deep_site_num_counter := SiteNumCounter,
 
     goal_info_get_context(GoalInfo0, Context),
     FileName0 = term.context_file(Context),
@@ -1131,11 +1141,11 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
         ),
         PredProcId = proc(PredId, ProcId),
         TypeSubst = compute_type_subst(GoalExpr0, !.DeepInfo),
-        MaybeRecInfo = !.DeepInfo ^ maybe_rec_info,
+        MaybeRecInfo = !.DeepInfo ^ deep_maybe_rec_info,
         (
             MaybeRecInfo = yes(RecInfo1),
             RecInfo1 ^ role = inner_proc(OuterPredProcId),
-            PredProcId = !.DeepInfo ^ pred_proc_id
+            PredProcId = !.DeepInfo ^ deep_pred_proc_id
         ->
             OuterPredProcId = proc(OuterPredId, OuterProcId),
             RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo,
@@ -1145,7 +1155,7 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
             RecInfo2 ^ role = outer_proc(InnerPredProcId),
             PredProcId = InnerPredProcId
         ->
-            OuterPredProcId = !.DeepInfo ^ pred_proc_id,
+            OuterPredProcId = !.DeepInfo ^ deep_pred_proc_id,
             OuterPredProcId = proc(OuterPredId, OuterProcId),
             RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo,
                 OuterPredId, OuterProcId)
@@ -1171,13 +1181,14 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
             CallSite = higher_order_call(FileName, LineNumber, GoalPath)
         ;
             Generic = class_method(TypeClassInfoVar, MethodNum, _, _),
-            varset.new_named_var(!.DeepInfo ^ vars, "MethodNum",
+            varset.new_named_var(!.DeepInfo ^ deep_varset, "MethodNum",
                 MethodNumVar, VarSet2),
-            map.set(!.DeepInfo ^ var_types, MethodNumVar, IntType, VarTypes2),
+            map.set(!.DeepInfo ^ deep_var_types, MethodNumVar, IntType,
+                VarTypes2),
             generate_unify(int_const(MethodNum), MethodNumVar,
                 MethodNumVarGoal),
-            !:DeepInfo = !.DeepInfo ^ vars := VarSet2,
-            !:DeepInfo = !.DeepInfo ^ var_types := VarTypes2,
+            !:DeepInfo = !.DeepInfo ^ deep_varset := VarSet2,
+            !:DeepInfo = !.DeepInfo ^ deep_var_types := VarTypes2,
             generate_deep_det_call(ModuleInfo, "prepare_for_method_call", 3,
                 [SiteNumVar, TypeClassInfoVar, MethodNumVar],
                 [], PrepareCallGoal),
@@ -1207,15 +1218,15 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
         )
     ),
 
-    !:DeepInfo = !.DeepInfo ^ call_sites :=
-        (!.DeepInfo ^ call_sites ++ [CallSite]),
+    !:DeepInfo = !.DeepInfo ^ deep_call_sites :=
+        (!.DeepInfo ^ deep_call_sites ++ [CallSite]),
     (
         set.member(feature_tailcall, GoalFeatures),
-        !.DeepInfo ^ maybe_rec_info = yes(RecInfo),
+        !.DeepInfo ^ deep_maybe_rec_info = yes(RecInfo),
         RecInfo ^ role = outer_proc(_)
     ->
         VisSCC = RecInfo ^ visible_scc,
-        MiddleCSD = !.DeepInfo ^ current_csd,
+        MiddleCSD = !.DeepInfo ^ deep_current_csd,
         (
             VisSCC = [],
             CallGoals = [],
@@ -1280,8 +1291,8 @@ deep_prof_wrap_call(GoalPath, hlds_goal(GoalExpr0, GoalInfo0),
 
 deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
         !DeepInfo) :-
-    VarSet0 = !.DeepInfo ^ vars,
-    VarTypes0 = !.DeepInfo ^ var_types,
+    VarSet0 = !.DeepInfo ^ deep_varset,
+    VarTypes0 = !.DeepInfo ^ deep_var_types,
 
     CPointerType = c_pointer_type,
     varset.new_named_var(VarSet0, "SavedPtr", SavedPtrVar, VarSet1),
@@ -1296,34 +1307,34 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
         varset.new_named_var(VarSet1, "SavedCounter", SavedCountVar, VarSet),
         map.set(VarTypes1, SavedCountVar, IntType, VarTypes),
 
-        !:DeepInfo = !.DeepInfo ^ vars := VarSet,
-        !:DeepInfo = !.DeepInfo ^ var_types := VarTypes,
+        !:DeepInfo = !.DeepInfo ^ deep_varset := VarSet,
+        !:DeepInfo = !.DeepInfo ^ deep_var_types := VarTypes,
         ExtraNonLocals = set.list_to_set([SavedCountVar, SavedPtrVar]),
 
-        generate_deep_det_call(!.DeepInfo ^ module_info,
+        generate_deep_det_call(!.DeepInfo ^ deep_module_info,
             "save_and_zero_activation_info_ac", 2,
             [SavedCountVar, SavedPtrVar],
             [SavedCountVar, SavedPtrVar], SaveStuff),
-        generate_deep_det_call(!.DeepInfo ^ module_info,
+        generate_deep_det_call(!.DeepInfo ^ deep_module_info,
             "reset_activation_info_ac", 2,
             [SavedCountVar, SavedPtrVar], [], RestoreStuff),
-        generate_deep_det_call(!.DeepInfo ^ module_info,
+        generate_deep_det_call(!.DeepInfo ^ deep_module_info,
             "rezero_activation_info_ac", 0,
             [], [], ReZeroStuff)
     ;
         UseActivationCounts = no,
 
-        !:DeepInfo = !.DeepInfo ^ vars := VarSet1,
-        !:DeepInfo = !.DeepInfo ^ var_types := VarTypes1,
+        !:DeepInfo = !.DeepInfo ^ deep_varset := VarSet1,
+        !:DeepInfo = !.DeepInfo ^ deep_var_types := VarTypes1,
         ExtraNonLocals = set.list_to_set([SavedPtrVar]),
 
-        generate_deep_det_call(!.DeepInfo ^ module_info,
+        generate_deep_det_call(!.DeepInfo ^ deep_module_info,
             "save_and_zero_activation_info_sr", 1,
             [SavedPtrVar], [SavedPtrVar], SaveStuff),
-        generate_deep_det_call(!.DeepInfo ^ module_info,
+        generate_deep_det_call(!.DeepInfo ^ deep_module_info,
             "reset_activation_info_sr", 1,
             [SavedPtrVar], [], RestoreStuff),
-        generate_deep_det_call(!.DeepInfo ^ module_info,
+        generate_deep_det_call(!.DeepInfo ^ deep_module_info,
             "rezero_activation_info_sr", 0,
             [], [], ReZeroStuff)
     ),
@@ -1400,12 +1411,13 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
 
 deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
     Goal0 = hlds_goal(_, GoalInfo0),
-    ModuleInfo = !.DeepInfo ^ module_info,
+    ModuleInfo = !.DeepInfo ^ deep_module_info,
 
-    SiteNumCounter0 = !.DeepInfo ^ site_num_counter,
+    SiteNumCounter0 = !.DeepInfo ^ deep_site_num_counter,
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
-    varset.new_named_var(!.DeepInfo ^ vars, "SiteNum", SiteNumVar, VarSet),
-    map.set(!.DeepInfo ^ var_types, SiteNumVar, int_type, VarTypes),
+    varset.new_named_var(!.DeepInfo ^ deep_varset, "SiteNum", SiteNumVar,
+        VarSet),
+    map.set(!.DeepInfo ^ deep_var_types, SiteNumVar, int_type, VarTypes),
     generate_unify(int_const(SiteNum), SiteNumVar, SiteNumVarGoal),
 
     generate_deep_det_call(ModuleInfo, "prepare_for_callback", 1,
@@ -1420,16 +1432,16 @@ deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
     make_impure(GoalInfo0, GoalInfo),
     Goal = hlds_goal(conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal0]),
         GoalInfo),
-    !:DeepInfo = !.DeepInfo ^ site_num_counter := SiteNumCounter,
-    !:DeepInfo = !.DeepInfo ^ vars := VarSet,
-    !:DeepInfo = !.DeepInfo ^ var_types := VarTypes,
-    !:DeepInfo = !.DeepInfo ^ call_sites :=
-        !.DeepInfo ^ call_sites ++ [CallSite].
+    !:DeepInfo = !.DeepInfo ^ deep_site_num_counter := SiteNumCounter,
+    !:DeepInfo = !.DeepInfo ^ deep_varset := VarSet,
+    !:DeepInfo = !.DeepInfo ^ deep_var_types := VarTypes,
+    !:DeepInfo = !.DeepInfo ^ deep_call_sites :=
+        !.DeepInfo ^ deep_call_sites ++ [CallSite].
 
 :- pred compress_filename(deep_info::in, string::in, string::out) is det.
 
 compress_filename(Deep, FileName0, FileName) :-
-    ( FileName0 = Deep ^ proc_filename ->
+    ( FileName0 = Deep ^ deep_proc_filename ->
         FileName = ""
     ;
         FileName = FileName0
@@ -1534,7 +1546,7 @@ generate_recursion_counter_saves_and_restores_2([Chunk | Chunks], CSDVar,
         [i(Length)]),
     FailPredName = string.format("restore_recursion_depth_fail_%d",
         [i(Length)]),
-    ModuleInfo = !.DeepInfo ^ module_info,
+    ModuleInfo = !.DeepInfo ^ deep_module_info,
     generate_deep_det_call(ModuleInfo, CallPredName, Length + 2,
         [CSDVar, CallCellVar | DepthVars], DepthVars, CallCellGoal),
     generate_deep_det_call(ModuleInfo, ExitPredName, Length + 2,
@@ -1554,14 +1566,14 @@ generate_recursion_counter_saves_and_restores_2([Chunk | Chunks], CSDVar,
     deep_info::in, deep_info::out) is det.
 
 generate_depth_var(CSN, DepthVar, !DeepInfo) :-
-    VarSet0 = !.DeepInfo ^ vars,
-    VarTypes0 = !.DeepInfo ^ var_types,
+    VarSet0 = !.DeepInfo ^ deep_varset,
+    VarTypes0 = !.DeepInfo ^ deep_var_types,
     IntType = int_type,
     VarName = string.format("Depth%d", [i(CSN)]),
     varset.new_named_var(VarSet0, VarName, DepthVar, VarSet),
     map.set(VarTypes0, DepthVar, IntType, VarTypes),
-    !:DeepInfo = !.DeepInfo ^ vars := VarSet,
-    !:DeepInfo = !.DeepInfo ^ var_types := VarTypes.
+    !:DeepInfo = !.DeepInfo ^ deep_varset := VarSet,
+    !:DeepInfo = !.DeepInfo ^ deep_var_types := VarTypes.
 
 :- pred generate_csn_vector(int::in, list(int)::in, list(prog_var)::out,
     list(hlds_goal)::out, prog_var::out,
@@ -1590,16 +1602,16 @@ generate_csn_vector(Length, CSNs, CSNVars, UnifyGoals, CellVar, !DeepInfo) :-
     prog_var::out, hlds_goal::out, deep_info::in, deep_info::out) is det.
 
 generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
-    VarSet0 = !.DeepInfo ^ vars,
-    VarTypes0 = !.DeepInfo ^ var_types,
+    VarSet0 = !.DeepInfo ^ deep_varset,
+    VarTypes0 = !.DeepInfo ^ deep_var_types,
     varset.new_named_var(VarSet0, "CSNCell", CellVar, VarSet),
     ProfilingBuiltin = mercury_profiling_builtin_module,
     CellTypeName = string.format("call_site_nums_%d", [i(Length)]),
     CellTypeId = type_ctor(qualified(ProfilingBuiltin, CellTypeName), Length),
     construct_type(CellTypeId, [], CellType),
     map.set(VarTypes0, CellVar, CellType, VarTypes),
-    !:DeepInfo = !.DeepInfo ^ vars := VarSet,
-    !:DeepInfo = !.DeepInfo ^ var_types := VarTypes,
+    !:DeepInfo = !.DeepInfo ^ deep_varset := VarSet,
+    !:DeepInfo = !.DeepInfo ^ deep_var_types := VarTypes,
     ConsId = cons(qualified(ProfilingBuiltin, CellTypeName), Length),
     generate_cell_unify(Length, ConsId, CSNVars, CellVar, CellGoal).
 
@@ -1607,13 +1619,13 @@ generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
     pair(prog_var, hlds_goal)::out, deep_info::in, deep_info::out) is det.
 
 generate_single_csn_unify(CSN, CSNVar - UnifyGoal, !DeepInfo) :-
-    VarSet0 = !.DeepInfo ^ vars,
-    VarTypes0 = !.DeepInfo ^ var_types,
+    VarSet0 = !.DeepInfo ^ deep_varset,
+    VarTypes0 = !.DeepInfo ^ deep_var_types,
     VarName = string.format("CSN%d", [i(CSN)]),
     varset.new_named_var(VarSet0, VarName, CSNVar, VarSet),
     map.set(VarTypes0, CSNVar, int_type, VarTypes),
-    !:DeepInfo = !.DeepInfo ^ vars := VarSet,
-    !:DeepInfo = !.DeepInfo ^ var_types := VarTypes,
+    !:DeepInfo = !.DeepInfo ^ deep_varset := VarSet,
+    !:DeepInfo = !.DeepInfo ^ deep_var_types := VarTypes,
     generate_unify(int_const(CSN), CSNVar, UnifyGoal).
 
 :- pred generate_deep_det_call(module_info::in, string::in, int::in,

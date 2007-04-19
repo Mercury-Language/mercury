@@ -94,6 +94,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module svmap.
@@ -119,14 +120,17 @@
                             % the then branch (numbered 1) and the else branch
                             % (numbered 2).
 
-    ;       alt_switch(int).
+    ;       alt_switch(maybe(int)).
                             % The number of alternatives in a switch is equal
                             % to the number of function symbols in the type of
-                            % the switched-on variable; this number is given by
-                            % the argument. If the switch cannot_fail, then
-                            % this will be equal to the number of cases; if
-                            % the switch can_fail, there will be strictly
-                            % fewer cases than this.
+                            % the switched-on variable. This number is given by
+                            % the argument integer, if present; if the argument
+                            % is "no", then the number of function symbols in
+                            % the type is effectively infinite (this can happen
+                            % for builtin types such as "int"). If the switch
+                            % cannot_fail, then this will be equal to the
+                            % number of cases; if the switch can_fail, there
+                            % will be strictly fewer cases than this.
 
     % The location type identifies one arm of a branched control structure.
     % The branched control structure id is a branch_point instead of a
@@ -622,14 +626,14 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
             Cases0 = [case(_, hlds_goal(_, FirstCaseGoalInfo)) | _],
             goal_info_get_goal_path(FirstCaseGoalInfo, FirstCaseGoalPath),
             FirstCaseGoalPath = [SwitchStep | _],
-            SwitchStep = step_switch(_, NumCases)
+            SwitchStep = step_switch(_, MaybeNumAltPrime)
         ->
-            NumAlt = NumCases
+            MaybeNumAlt = MaybeNumAltPrime
         ;
             unexpected(this_file, "process_goal_internal: switch count")
         ),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
-        BranchPoint = branch_point(GoalPath, alt_switch(NumAlt)),
+        BranchPoint = branch_point(GoalPath, alt_switch(MaybeNumAlt)),
         map.map_values(demand_var_everywhere, !WhereNeededMap),
         map.init(BranchNeededMap0),
         process_cases(Cases0, Cases, BranchPoint, 1, InitInstMap, FinalInstMap,
@@ -1102,10 +1106,10 @@ where_needed_branches_upper_bound_2(CurrentPath, [First | Rest],
 
 get_parent_branch_point([First | Rest], Parent, ParentStep,
         BranchAlt, BranchNum) :-
-    ( First = step_switch(Arm, NumAlts) ->
+    ( First = step_switch(Arm, MaybeNumAlts) ->
         Parent = Rest,
         ParentStep = First,
-        BranchAlt = alt_switch(NumAlts),
+        BranchAlt = alt_switch(MaybeNumAlts),
         BranchNum = Arm
     ; First = step_ite_then ->
         Parent = Rest,
@@ -1126,7 +1130,7 @@ get_parent_branch_point([First | Rest], Parent, ParentStep,
 branch_point_is_complete(alt_ite, Alts) :-
     set.count(Alts, NumAlts),
     NumAlts = 2.
-branch_point_is_complete(alt_switch(NumFunctors), Alts) :-
+branch_point_is_complete(alt_switch(yes(NumFunctors)), Alts) :-
     set.count(Alts, NumAlts),
     NumAlts = NumFunctors.
 
