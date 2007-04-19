@@ -8480,7 +8480,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 :- pragma foreign_proc("C",
     io.do_make_temp(Dir::in, Prefix::in, Sep::in, FileName::out,
         Error::out, ErrorMessage::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+    [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "{
     /*
