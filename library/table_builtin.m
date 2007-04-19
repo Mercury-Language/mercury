@@ -1363,7 +1363,7 @@ table_mm_fill_answer_block_shortcut(_) :-
     % a fixed point, at which all depended suspended subgoals have had
     % all available answers returned to them.
     %
-:- impure pred table_mmos_completion(ml_generator::in) is det.
+:- impure pred table_mmos_completion(ml_generator::in) is failure.
 
 :- implementation.
 
