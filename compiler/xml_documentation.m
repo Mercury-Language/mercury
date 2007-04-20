@@ -324,7 +324,7 @@ get_comment_backwards(Comments, Line) = Comment :-
 
 import_documentation(InterfaceImportedModules, ImportedModule, !Xmls) :-
     XmlName = name(ImportedModule),
-    ( ImportedModule `member` InterfaceImportedModules ->
+    ( ImportedModule `set.member` InterfaceImportedModules ->
         XmlVisibility = visibility(status_exported)
     ;
         XmlVisibility = visibility(status_local)
