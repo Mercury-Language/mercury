@@ -254,6 +254,7 @@ mercury_std_library_module("store").
 mercury_std_library_module("stream").
 mercury_std_library_module("stream.string_writer").
 mercury_std_library_module("string").
+mercury_std_library_module("string.builder").
 mercury_std_library_module("svarray").
 mercury_std_library_module("svbag").
 mercury_std_library_module("svbimap").

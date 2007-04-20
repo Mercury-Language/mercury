@@ -137,6 +137,10 @@ Changes to the Mercury standard library:
 * We have added a function construct.get_functor_lex/2 which converts
   an ordinal functor number into a lexicographic functor number.
 
+* A new module string.builder has been added to the standard library.
+  The new module provides instances of the stream typeclasses that can
+  be used to build up a string using char and string writers.
+
 * We have added the types `string.line' and `string.text_file' and made
   input streams instances of stream.reader/4 with those unit types.
   This means stream.get/4 can be used to efficiently read lines

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-:- module stream_util_test.
+:- module string_builder_test.
 
 :- interface.
 
@@ -15,14 +15,14 @@
 :- import_module pprint.
 :- import_module stream.
 :- import_module stream.string_writer.
-:- import_module stream_util.
-:- import_module stream_util.string_builder.
 :- import_module string.
+:- import_module string.builder.
 :- import_module term_to_xml.
 
 main(!IO) :-
     some [!State] (
-        string_builder.init(Stream, !:State),
+        !:State = string.builder.init,
+        Stream = string.builder.handle,
         put(Stream, "Hello", !State),
         put(Stream, ',', !State),
         put(Stream, " world!", !State),
@@ -35,6 +35,6 @@ main(!IO) :-
         put(Stream, "\n", !State),
         string_writer.format(Stream, "%.2f", [f(3.14)], !State),
         put(Stream, "\n", !State),
-        String = string_builder_state_to_string(!.State),
+        String = string.builder.to_string(!.State),
         io.write_string(String, !IO)
     ).

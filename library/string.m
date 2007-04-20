@@ -31,6 +31,8 @@
 :- module string.
 :- interface.
 
+:- include_module builder.
+
 :- import_module assoc_list.
 :- import_module char.
 :- import_module deconstruct.
