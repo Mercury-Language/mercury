@@ -841,7 +841,7 @@ do_write_error_pieces(IsFirst, MaybeContext, FixedIndent, Components, !IO) :-
 
 indent_increment = 2.
 
-:- pred write_lines(list(line)::in, maybe(prog_context)::in, int::in,
+:- pred write_lines(list(error_line)::in, maybe(prog_context)::in, int::in,
     io::di, io::uo) is det.
 
 write_lines([], _, _, !IO).
@@ -852,7 +852,7 @@ write_lines([Line | Lines], MaybeContext, FixedIndent, !IO) :-
     ;
         MaybeContext = no
     ),
-    Line = line(LineIndent, LineWords),
+    Line = error_line(LineIndent, LineWords),
     Indent = FixedIndent + LineIndent * indent_increment,
     string.pad_left("", ' ', Indent, IndentStr),
     io.write_string(IndentStr, !IO),
@@ -1158,8 +1158,8 @@ find_word_end(String, Cur, WordEnd) :-
 
 %----------------------------------------------------------------------------%
 
-:- type line
-    --->    line(
+:- type error_line
+    --->    error_line(
                 int,            % Indent level; multiply by indent_increment
                                 % to get number of spaces of indentation.
                 list(string)    % The words on the line.
@@ -1171,7 +1171,7 @@ find_word_end(String, Cur, WordEnd) :-
     % at least one line.
     %
 :- pred group_words(bool::in, int::in, list(paragraph)::in, int::in,
-    list(line)::out) is det.
+    list(error_line)::out) is det.
 
 group_words(IsFirst, CurIndent, Paras, Max, Lines) :-
     (
@@ -1189,7 +1189,7 @@ group_words(IsFirst, CurIndent, Paras, Max, Lines) :-
         ),
         NextIndent = RestIndent + FirstIndentDelta,
 
-        BlankLine = line(CurIndent, []),
+        BlankLine = error_line(CurIndent, []),
         list.duplicate(NumBlankLines, BlankLine, BlankLines),
         (
             FirstParaWords = [],
@@ -1199,7 +1199,7 @@ group_words(IsFirst, CurIndent, Paras, Max, Lines) :-
             FirstParaWords = [FirstWord | LaterWords],
             get_line_of_words(FirstWord, LaterWords, CurIndent, Max,
                 LineWords, RestWords),
-            CurLine = line(CurIndent, LineWords),
+            CurLine = error_line(CurIndent, LineWords),
 
             group_nonfirst_line_words(RestWords, RestIndent, Max,
                 ParaRestLines),
@@ -1211,7 +1211,7 @@ group_words(IsFirst, CurIndent, Paras, Max, Lines) :-
     ).
 
 :- pred group_nonfirst_line_words(list(string)::in, int::in, int::in,
-    list(line)::out) is det.
+    list(error_line)::out) is det.
 
 group_nonfirst_line_words(Words, Indent, Max, Lines) :-
     (
@@ -1221,7 +1221,7 @@ group_nonfirst_line_words(Words, Indent, Max, Lines) :-
         Words = [FirstWord | LaterWords],
         get_line_of_words(FirstWord, LaterWords, Indent, Max,
             LineWords, RestWords),
-        Line = line(Indent, LineWords),
+        Line = error_line(Indent, LineWords),
         group_nonfirst_line_words(RestWords, Indent, Max, RestLines),
         Lines = [Line | RestLines]
     ).

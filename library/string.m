@@ -40,6 +40,24 @@
 
 %-----------------------------------------------------------------------------%
 
+    % This type is used for defining stream typeclass instances where the raw
+    % string type would be ambiguous. A line is:
+    %
+    % - a possibly empty sequence of non-newline characters terminated by a
+    %   newline character; or
+    % - a non-empty sequence of non-newline characters terminated by the end
+    %   of the file.
+    %
+:- type line
+    --->    line(string).
+
+    % This type is used for defining stream typeclass instances where the raw
+    % string type would be ambiguous. A text file is a possibly empty sequence
+    % of characters terminated by the end of file.
+    %
+:- type text_file
+    --->    text_file(string).
+
     % Determine the length of a string.
     % An empty string has length zero.
     %

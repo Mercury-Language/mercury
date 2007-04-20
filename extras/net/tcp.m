@@ -17,6 +17,7 @@
 :- interface.
 :- import_module io.
 :- import_module stream.
+:- import_module string.
 
 :- type tcp.
 :- type bound_tcp.
@@ -52,8 +53,6 @@
 
 :- type error.
 
-:- type line ---> line(string).
-
 :- instance stream(tcp, io.state).
 :- instance error(tcp.error).
 
@@ -86,7 +85,6 @@
 :- import_module char.
 :- import_module list.
 :- import_module require.
-:- import_module string.
 
 :- type tcp
 	--->	tcp(

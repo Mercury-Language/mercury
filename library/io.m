@@ -148,7 +148,8 @@
 :- pred io.read_line(io.result(list(char))::out, io::di, io::uo) is det.
 
     % Reads a line from the current input stream, returns the result
-    % as a string.
+    % as a string. See the documentation for `string.line' for the
+    % definition of a line.
     %
 :- pred io.read_line_as_string(io.result(string)::out, io::di, io::uo) is det.
 
@@ -237,7 +238,8 @@
     io::di, io::uo) is det.
 
     % Reads a line from specified stream, returning the
-    % result as a string.
+    % result as a string. See the documentation for `string.line' for
+    % the definition of a line.
     %
 :- pred io.read_line_as_string(io.input_stream::in, io.result(string)::out,
     io::di, io::uo) is det.
@@ -1461,6 +1463,8 @@
 :- instance stream.stream(io.input_stream, io).
 :- instance stream.input(io.input_stream, io, io.error).
 :- instance stream.reader(io.input_stream, char, io, io.error).
+:- instance stream.reader(io.input_stream, line, io, io.error).
+:- instance stream.reader(io.input_stream, text_file, io, io.error).
 
 :- instance stream.line_oriented(io.input_stream, io).
 :- instance stream.putback(io.input_stream, char, io, io.error).
@@ -9070,6 +9074,39 @@ io.read_symlink(FileName, Result, !IO) :-
     ( get(Stream, Result, !IO) :-
         io.read_char(Stream, Result0, !IO),
         Result = io.result_to_stream_result(Result0)
+    )
+].
+
+:- instance stream.reader(io.input_stream, line, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        io.read_line_as_string(Stream, Result0, !IO),
+        (
+            Result0 = ok(String),
+            Result = ok(line(String))
+        ;
+            Result0 = eof,
+            Result = eof
+        ;
+            Result0 = error(Error),
+            Result = error(Error)
+        )
+    )
+].
+
+:- instance stream.reader(io.input_stream, text_file, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        io.read_file_as_string(Stream, Result0, !IO),
+        (
+            Result0 = ok(String),
+            Result = ok(text_file(String))
+        ;
+            Result0 = error(_PartialString, Error),
+            Result = error(Error)
+        )
     )
 ].
 
