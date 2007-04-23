@@ -1,72 +1,75 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
-% module: posix__dup.m
-% main author: Michael Day <miked@lendtech.com.au>
+% Module: posix.dup.m
+% Main author: Michael Day <miked@lendtech.com.au>
 %
-%------------------------------------------------------------------------------%
-:- module posix__dup.
+%-----------------------------------------------------------------------------%
 
+:- module posix.dup.
 :- interface.
 
-:- pred dup(fd, posix__result(fd), io__state, io__state).
-:- mode dup(in, out, di, uo) is det.
+:- pred dup(fd::in, posix.result(fd)::out, io::di, io::uo) is det.
 
-:- pred dup2(fd, fd, posix__result(fd), io__state, io__state).
-:- mode dup2(in, in, out, di, uo) is det.
+:- pred dup2(fd::in, fd::in, posix.result(fd)::out, io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
 
-:- pragma c_header_code("
-	#include <unistd.h>
+:- pragma foreign_decl("C", "
+    #include <unistd.h>
 ").
 
 %------------------------------------------------------------------------------%
 
-dup(Fd, Result) -->
-	dup0(Fd, fd(NewFd)),
-	( if { NewFd < 0 } then
-		errno(Err),
-		{ Result = error(Err) }
-	else
-		{ Result = ok(fd(NewFd)) }
-	).
+dup(Fd, Result, !IO) :-
+    dup0(Fd, fd(NewFd), !IO),
+    ( if NewFd < 0  then
+        errno(Err, !IO),
+        Result = error(Err)
+    else
+        Result = ok(fd(NewFd))
+    ).
 
-:- pred dup0(fd, fd, io__state, io__state).
-:- mode dup0(in, out, di, uo) is det.
+:- pred dup0(fd::in, fd::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    dup0(OldFd::in, NewFd::out, IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    NewFd = dup(OldFd);
+    IO = IO0;
+").
 
-:- pragma c_code(dup0(OldFd::in, NewFd::out, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
-	NewFd = dup(OldFd);
-	IO = IO0;
-}").
+%-----------------------------------------------------------------------------%
 
-%------------------------------------------------------------------------------%
+dup2(OldFd, NewFd, Result, !IO) :-
+    dup2_2(OldFd, NewFd, fd(Ret), !IO),
+    ( if Ret < 0 then
+        errno(Err, !IO),
+        Result = error(Err)
+    else
+        Result = ok(fd(Ret))
+    ).
 
-dup2(OldFd, NewFd, Result) -->
-	dup2_2(OldFd, NewFd, fd(Ret)),
-	( if { Ret < 0 } then
-		errno(Err),
-		{ Result = error(Err) }
-	else
-		{ Result = ok(fd(Ret)) }
-	).
+:- pred dup2_2(fd::in, fd::in, fd::out, io::di, io::uo) is det.
 
-:- pred dup2_2(fd, fd, fd, io__state, io__state).
-:- mode dup2_2(in, in, out, di, uo) is det.
+:- pragma foreign_proc("C",
+    dup2_2(OldFd::in, NewFd::in, Ret::out, IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    Ret = dup2(OldFd, NewFd);
+    IO = IO0;
+").
 
-:- pragma c_code(dup2_2(OldFd::in, NewFd::in, Ret::out, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
-	Ret = dup2(OldFd, NewFd);
-	IO = IO0;
-}").
-
-%------------------------------------------------------------------------------%
-
+%-----------------------------------------------------------------------------%
+:- end_module posix.dup.
+%-----------------------------------------------------------------------------%

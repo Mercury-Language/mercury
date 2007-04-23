@@ -1,49 +1,53 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
-% module: posix__opendir.m
-% main author: Michael Day <miked@lendtech.com.au>
+% Module: posix.opendir.m
+% Main author: Michael Day <miked@lendtech.com.au>
 %
-%------------------------------------------------------------------------------%
-:- module posix__opendir.
+%-----------------------------------------------------------------------------%
 
+:- module posix.opendir.
 :- interface.
 
-:- import_module io, string.
+:- import_module io.
+:- import_module string.
 
-:- pred opendir(string, posix__result(dir), io__state, io__state).
-:- mode opendir(in, out, di, uo) is det.
+:- pred opendir(string::in, posix.result(dir)::out, io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 #include <sys/types.h>
 #include <dirent.h>
 ").
 
-opendir(Path, Result) -->
-	opendir0(Path, Dir, Res),
-	( if { Res = 0 } then
-		{ Result = ok(Dir) }
-	else
-		errno(Err),
-		{ Result = error(Err) }
-	).				    
+opendir(Path, Result, !IO) :-
+    opendir0(Path, Dir, Res, !IO),
+    ( if Res = 0 then
+        Result = ok(Dir)
+    else
+        errno(Err, !IO),
+        Result = error(Err)
+    ).                  
 
-:- pred opendir0(string, dir, int, io__state, io__state).
-:- mode opendir0(in, out, out, di, uo) is det.
-
-:- pragma c_code(opendir0(Path::in, Dir::out, Res::out, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "
-	Dir = (MR_Word) opendir(Path);
-	Res = (Dir == 0);
-	IO = IO0;
+:- pred opendir0(string::in, dir::out, int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    opendir0(Path::in, Dir::out, Res::out, IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    Dir = opendir(Path);
+    Res = (Dir == NULL);
+    IO = IO0;
 ").
 
-%------------------------------------------------------------------------------%
-
+%-----------------------------------------------------------------------------%
+:- end_module posix.opendir.
+%-----------------------------------------------------------------------------%
