@@ -125,8 +125,9 @@ socket(Dom, Typ, protocol(Prot), Result, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type sockaddr_ptr
-    --->    sockaddr_ptr(c_pointer).
+:- type sockaddr_ptr.
+:- pragma foreign_type("C", sockaddr_ptr, "struct sockaddr *",
+    [can_pass_as_mercury_type]).
 
 bind(Fd, SockAddr, Result, !IO) :-
     mksockaddr_struct(SockAddr, Ptr, Len),
@@ -144,7 +145,7 @@ bind(Fd, SockAddr, Result, !IO) :-
     bind0(Fd::in, Addr::in, Len::in, Res::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    Res = bind(Fd, (struct sockaddr *) Addr, Len);
+    Res = bind(Fd, Addr, Len);
     IO = IO0;
 ").
 
@@ -160,9 +161,11 @@ mksockaddr_struct(inet(Port, Addr), Ptr, Len) :-
     mkinet_addr(A::in, P::in, Ptr::out, Len::out), 
     [promise_pure, will_not_call_mercury, thread_safe],
 "
+    MR_Word Ptr0;
     struct sockaddr_in *ptr;
 
-    MR_incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
+    MR_incr_hp(Ptr0, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
+    Ptr = (struct sockaddr *) Ptr0;      
     ptr = (struct sockaddr_in *) Ptr;
 
     MR_memset(ptr, 0, sizeof(struct sockaddr_in));
@@ -191,7 +194,7 @@ connect(Fd, SockAddr, Result, !IO) :-
     connect0(Fd::in, Addr::in, Len::in, Res::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    Res = connect(Fd, (struct sockaddr *) Addr, Len);
+    Res = connect(Fd, Addr, Len);
     IO = IO0;
 ").
 
@@ -235,12 +238,13 @@ accept(Fd, Result, !IO) :-
     accept0(Fd::in, Ptr::out, NewFd::out, IO0::di, IO::uo), 
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
+    MR_Word Ptr0;
     struct sockaddr_in *ptr;
     int len = sizeof(struct sockaddr_in);
 
-    MR_incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
+    MR_incr_hp(Ptr0, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
+    Ptr = (struct sockaddr *) Ptr0;
     ptr = (struct sockaddr_in *) Ptr;
-
     NewFd = accept(Fd, ptr, &len);
     IO = IO0;
 ").

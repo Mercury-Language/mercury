@@ -65,7 +65,7 @@
 
     % Directory streams.
     %
-:- type dir ---> dir(c_pointer).
+:- type dir.
 
     % Devices.
     %
