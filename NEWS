@@ -169,6 +169,11 @@ Changes to the samples directory:
 * The samples directory now includes an example of how to implement a
   solver type.
 
+Changes to the extras distribution:
+
+* The extras distribution now includes a binding to the Allegro and
+  AllegroGL game programming libraries.
+
 DETAILED LISTING
 ================
 
