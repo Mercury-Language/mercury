@@ -37,7 +37,8 @@ fixed		An implementation of fixed-point arithmetic with
 graphics	Some packages for doing graphics programming
 		and GUIs in Mercury: a Mercury interface to Tcl/Tk,
 		a Mercury binding to OpenGL, a Mercury binding to
-		GLUT and simplified binding to Xlib.
+		GLUT, a simplified binding to Xlib and a binding
+		to Allegro/AllegroGL.
 
 lazy_evaluation
 		A library module `lazy' containing support for optional

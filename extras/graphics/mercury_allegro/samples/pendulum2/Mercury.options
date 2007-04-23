@@ -1,0 +1,6 @@
+TOP = ../..
+include $(TOP)/Mercury.options
+
+MAIN_TARGET = pendulum2
+MCFLAGS += --search-lib-files-dir $(TOP) -R $(TOP)
+EXTRA_LIBRARIES = mercury_allegro

@@ -1,0 +1,19 @@
+#
+# Common options which will be used by subdirectories.
+#
+LINKAGE = shared
+MERCURY_LINKAGE = shared
+MCFLAGS = --use-grade-subdirs
+MCFLAGS += --warn-unused-imports
+
+# XXX LDFLAGS doesn't work so we use this hack.
+MCFLAGS += --ld-flags "`allegro-config --libs`"
+
+#
+# These lines are specific to this directory.
+#
+MAIN_TARGET = libmercury_allegro
+MCFLAGS-allegro.util = --no-warn-nothing-exported
+MCFLAGS-allegrogl = --allow-stubs
+MCFLAGS-mercury_allegro = --no-warn-nothing-exported --no-warn-unused-imports
+MCFLAGS-mercury_allegrogl = --no-warn-nothing-exported --no-warn-unused-imports

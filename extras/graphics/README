@@ -9,6 +9,10 @@ and we'll see about incorporating enhancements in the main distribution.
 				simple interactive graphical
 				applications.
 
+	mercury_allegro/	A Mercury binding to the Allegro
+				and AllegroGL game programming
+				libraries.
+
 	mercury_tcltk/		A Mercury binding to Tcl/Tk.
 
 	mercury_opengl/		A Mercury binding to OpenGL.  This 
