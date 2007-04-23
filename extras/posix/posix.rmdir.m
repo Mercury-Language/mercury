@@ -1,51 +1,52 @@
-%------------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2001, 2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
-% module: posix__rmdir.m
-% main author: Michael Day <miked@lendtech.com.au>
+% Module: posix.rmdir.
+% Main author: Michael Day <miked@lendtech.com.au>
 %
 %------------------------------------------------------------------------------%
-:- module posix__rmdir.
 
+:- module posix.rmdir.
 :- interface.
 
 :- import_module string.
 
-:- pred rmdir(string, posix__result, io__state, io__state).
-:- mode rmdir(in, out, di, uo) is det.
+:- pred rmdir(string::in, posix.result::out, io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module int.
-
-:- pragma c_header_code("
-	#include <unistd.h>
+:- pragma foreign_decl("C", "
+    #include <unistd.h>
 ").
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-rmdir(Path, Result) -->
-	rmdir0(Path, Res),
-	( if { Res = 0 } then
-	    { Result = ok }
-	else
-	    errno(Err),
-	    { Result = error(Err) }
-	).				    
+rmdir(Path, Result, !IO) :-
+    rmdir0(Path, Res, !IO),
+    ( if Res = 0 then
+        Result = ok
+    else
+        errno(Err, !IO),
+        Result = error(Err)
+    ).                  
 
-:- pred rmdir0(string, int, io__state, io__state).
-:- mode rmdir0(in, out, di, uo) is det.
-
-:- pragma c_code(rmdir0(Path::in, Res::out, IO0::di, IO::uo),
-	    [will_not_call_mercury, thread_safe], "
-	Res = rmdir(Path);
-	IO = IO0;
+:- pred rmdir0(string::in, int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    rmdir0(Path::in, Res::out, IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+" 
+    Res = rmdir(Path);
+    IO = IO0;
 ").
-		
-%------------------------------------------------------------------------------%
-
+        
+%-----------------------------------------------------------------------------%
+:- end_module posix.rmdir.
+%-----------------------------------------------------------------------------%

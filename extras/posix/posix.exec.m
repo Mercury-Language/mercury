@@ -1,27 +1,34 @@
-%------------------------------------------------------------------------------%
-% Copyright (C) 2001, 2006 The University of Melbourne.
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2001, 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
-% module: posix__exec.m
-% main author: Michael Day <miked@lendtech.com.au>
+% Module: posix.exec.m.
+% Main author: Michael Day <miked@lendtech.com.au>
 %
-%------------------------------------------------------------------------------%
-:- module posix__exec.
+%-----------------------------------------------------------------------------%
 
+:- module posix.exec.
 :- interface.
 
-:- import_module string, list, map.
+:- import_module list.
+:- import_module map.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type argv == list(string).
 
 :- type env == map(string, string).
 
-:- pred exec(string, argv, env, posix__result, io__state, io__state).
-:- mode exec(in, in, in, out, di, uo) is det.
+:- pred exec(string::in, argv::in, env::in, posix.result::out,
+    io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -30,35 +37,42 @@
 
 :- pragma foreign_decl("C", "#include <unistd.h>").
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-exec(Command, Args, Env, Result) -->
-	exec0(Command,
-	    array(Args ++ [null]),
-	    array(list__map(variable, map__to_assoc_list(Env)) ++ [null])
-	),
-	errno(Err),
-	{ Result = error(Err) }.
+exec(Command, Args, Env, Result, !IO) :-
+    exec0(Command,
+        array(Args ++ [null]),
+        array(list.map(variable, map.to_assoc_list(Env)) ++ [null]),
+        !IO
+    ),
+    errno(Err, !IO),
+    Result = error(Err).
 
 :- func variable(pair(string)) = string.
 
 variable(Name - Value) = Name ++ "=" ++ Value.
 
 :- func null = string.
+:- pragma foreign_proc("C",
+    null = (Null::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Null = NULL;
+").
 
-:- pragma c_code(null = (Null::out), [will_not_call_mercury, thread_safe],
-    "Null = NULL; ").
+:- pred exec0(string::in,
+    array(string)::array_ui, array(string)::array_ui,
+    io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    exec0(Command::in, Args::array_ui, Env::array_ui, IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    execve(Command,
+        ((MR_ArrayType *)Args)->elements, 
+        ((MR_ArrayType *)Env)->elements);
+    IO = IO0;
+").
 
-:- pred exec0(string, array(string), array(string), io__state, io__state).
-:- mode exec0(in, array_ui, array_ui, di, uo) is det.
-
-:- pragma c_code(exec0(Command::in, Args::array_ui, Env::array_ui,
-		IO0::di, IO::uo), [will_not_call_mercury], "{
-	execve(Command,
-	    ((MR_ArrayType *)Args)->elements, 
-	    ((MR_ArrayType *)Env)->elements);
-	IO = IO0;
-}").
-
-%------------------------------------------------------------------------------%
-
+%-----------------------------------------------------------------------------%
+:- end_module posix.exec.
+%-----------------------------------------------------------------------------%

@@ -1,59 +1,61 @@
-%------------------------------------------------------------------------------%
-% Copyright (C) 1999-2000, 2004 The University of Melbourne.
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1999-2000, 2004, 2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
-% module posix__socket.
-% main author: conway@cs.mu.oz.au
+% Module posix.socket.
+% Main author: conway@cs.mu.oz.au
 %
-%------------------------------------------------------------------------------%
-:- module posix__socket.
+%-----------------------------------------------------------------------------%
 
+:- module posix.socket.
 :- interface.
 
-:- type posix__socket__domain
-	--->	unix
-	;	inet
-	.
+%-----------------------------------------------------------------------------%
 
-:- type posix__socket__type
-	--->	stream
-	;	dgram
-	;	raw
-	;	seqpacket
-	;	rdm
-	.
+:- type posix.socket.domain
+    --->    unix
+    ;       inet.
+
+    % OBSOLETE: this was the old name for socket_type/0.
+    %
+:- type posix.socket.(type) == socket_type.
+
+:- type socket_type
+    --->    stream
+    ;       dgram
+    ;       raw
+    ;       seqpacket
+    ;       rdm.
 
 :- type protocol
-	--->	protocol(int)
-	.
+    --->    protocol(int).
 
 :- type sockaddr
-	--->	inet(port, inet_addr)
-	.
+    --->    inet(port, inet_addr).
 
 :- type port
-	--->	port(int).
+    --->    port(int).
 
 :- type inet_addr
-	--->	inet_addr(int).
+    --->    inet_addr(int).
 
-:- pred socket(domain, (type), protocol, posix__result(fd),
-		io__state, io__state).
-:- mode socket(in, in, in, out, di, uo) is det.
+%-----------------------------------------------------------------------------%
 
-:- pred accept(fd, posix__result(fd), io__state, io__state).
-:- mode accept(in, out, di, uo) is det.
+:- pred socket(domain::in, socket_type::in, protocol::in,
+    posix.result(fd)::out, io::di, io::uo) is det.
 
-:- pred bind(fd, sockaddr, posix__result, io__state, io__state).
-:- mode bind(in, in, out, di, uo) is det.
+:- pred accept(fd::in, posix.result(fd)::out, io::di, io::uo) is det.
 
-:- pred connect(fd, sockaddr, posix__result, io__state, io__state).
-:- mode connect(in, in, out, di, uo) is det.
+:- pred bind(fd::in, sockaddr::in, posix.result::out, io::di, io::uo) is det.
 
-:- pred listen(fd, int, posix__result, io__state, io__state).
-:- mode listen(in, in, out, di, uo) is det.
+:- pred connect(fd::in, sockaddr::in, posix.result::out, io::di, io::uo)
+    is det.
+
+:- pred listen(fd::in, int::in, posix.result::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -62,190 +64,205 @@
 
 :- import_module int.
 
-:- pragma c_header_code("
-	#include <string.h>
-	#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <netinet/in.h>
-	#include <arpa/inet.h>
+:- pragma foreign_decl("C", "
+    #include <string.h>
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
 ").
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-socket(Dom, Typ, protocol(Prot), Result) -->
-	socket0(domain(Dom), type(Typ), Prot, FdNo),
-	( { FdNo < 0 } ->
-		errno(Err),
-		{ Result = error(Err) }
-	;
-		{ Result = ok(fd(FdNo)) }
-	).
+socket(Dom, Typ, protocol(Prot), Result, !IO) :-
+    socket0(domain(Dom), socket_type(Typ), Prot, FdNo, !IO),
+    ( FdNo < 0 ->
+        errno(Err, !IO),
+        Result = error(Err)
+    ;
+        Result = ok(fd(FdNo))
+    ).
 
-:- pred socket0(int, int, int, int, io__state, io__state).
-:- mode socket0(in, in, in, out, di, uo) is det.
+:- pred socket0(int::in, int::in, int::in, int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    socket0(Dom::in, Typ::in, Prot::in, Fd::out, IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    Fd = socket(Dom, Typ, Prot);
+    IO = IO0;
+").
 
-:- pragma c_code(socket0(Dom::in, Typ::in, Prot::in, Fd::out, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
-	Fd = socket(Dom, Typ, Prot);
-	IO = IO0;
-}").
-
+:- pragma no_inline(domain/1).
 :- func domain(domain) = int.
-:- mode (domain(in) = out) is det.
+:- pragma foreign_proc("C",
+    domain(D::in) = (V::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    static const int domain_values[] = {
+        AF_UNIX,
+        AF_INET
+    };
 
-:- pragma c_code(domain(D::in) = (V::out),
-		[will_not_call_mercury, thread_safe], "{
-	static const int domain_values[] = {
-		AF_UNIX, AF_INET
-	};
+    V = domain_values[D];
+").
 
-	V = domain_values[D];
-}").
+:- pragma no_inline(socket_type/1).
+:- func socket_type(socket_type) = int.
+:- pragma foreign_proc("C",
+    socket_type(T::in) = (V::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    static const int type_values[] = {
+        SOCK_STREAM,
+        SOCK_DGRAM,
+        SOCK_RAW,
+        SOCK_SEQPACKET,
+        SOCK_RDM
+    };
 
-:- func type(type) = int.
-:- mode (type(in) = out) is det.
+    V = type_values[T];
+").
 
-:- pragma c_code(type(T::in) = (V::out),
-		[will_not_call_mercury, thread_safe], "{
-	static const int type_values[] = {
-		SOCK_STREAM, SOCK_DGRAM, SOCK_RAW, SOCK_SEQPACKET, SOCK_RDM
-	};
-
-	V = type_values[T];
-}").
-
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type sockaddr_ptr
-	--->	sockaddr_ptr(c_pointer).
+    --->    sockaddr_ptr(c_pointer).
 
-bind(Fd, SockAddr, Result) -->
-	{ mksockaddr_struct(SockAddr, Ptr, Len) },
-	bind0(Fd, Ptr, Len, Res0),
-	( { Res0 = 0 } ->
-		{ Result = ok }
-	;
-		errno(Errno),
-		{ Result = error(Errno) }
-	).
+bind(Fd, SockAddr, Result, !IO) :-
+    mksockaddr_struct(SockAddr, Ptr, Len),
+    bind0(Fd, Ptr, Len, Res0, !IO),
+    ( Res0 = 0 ->
+        Result = ok
+    ;
+        errno(Errno, !IO),
+        Result = error(Errno)
+    ).
 
-:- pred bind0(fd, sockaddr_ptr, int, int, io__state, io__state).
-:- mode bind0(in, in, in, out, di, uo) is det.
+:- pred bind0(fd::in, sockaddr_ptr::in, int::in, int::out,
+    io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    bind0(Fd::in, Addr::in, Len::in, Res::out, IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    Res = bind(Fd, (struct sockaddr *) Addr, Len);
+    IO = IO0;
+").
 
-:- pragma c_code(bind0(Fd::in, Addr::in, Len::in, Res::out, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
-	Res = bind(Fd, (struct sockaddr *) Addr, Len);
-	IO = IO0;
-}").
-
-:- pred mksockaddr_struct(sockaddr, sockaddr_ptr, int).
-:- mode mksockaddr_struct(in, out, out) is det.
+:- pred mksockaddr_struct(sockaddr::in, sockaddr_ptr::out, int::out) is det.
 
 mksockaddr_struct(inet(Port, Addr), Ptr, Len) :-
-	mkinet_addr(Addr, Port, Ptr, Len).
+    mkinet_addr(Addr, Port, Ptr, Len).
 
-:- pred mkinet_addr(inet_addr, port, sockaddr_ptr, int).
-:- mode mkinet_addr(in, in, out, out) is det.
+:- pred mkinet_addr(inet_addr::in, port::in, sockaddr_ptr::out, int::out)
+    is det.
 
-:- pragma c_code(mkinet_addr(A::in, P::in, Ptr::out, Len::out), 
-		[will_not_call_mercury, thread_safe], "{
-	struct sockaddr_in *ptr;
+:- pragma foreign_proc("C",
+    mkinet_addr(A::in, P::in, Ptr::out, Len::out), 
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    struct sockaddr_in *ptr;
 
-	MR_incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
-	ptr = (struct sockaddr_in *) Ptr;
+    MR_incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
+    ptr = (struct sockaddr_in *) Ptr;
 
-	memset(ptr, 0, sizeof(struct sockaddr_in));
-	ptr->sin_family = AF_INET;
-	ptr->sin_addr.s_addr = A;
-	ptr->sin_port = htons(P);
+    MR_memset(ptr, 0, sizeof(struct sockaddr_in));
+    ptr->sin_family = AF_INET;
+    ptr->sin_addr.s_addr = A;
+    ptr->sin_port = htons(P);
 
-	Len = sizeof(struct sockaddr_in);
-}").
+    Len = sizeof(struct sockaddr_in);
+").
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-connect(Fd, SockAddr, Result) -->
-	{ mksockaddr_struct(SockAddr, Ptr, Len) },
-	connect0(Fd, Ptr, Len, Res),
-	( { Res = 0 } ->
-		{ Result = ok }
-	;
-		errno(Err),
-		{ Result = error(Err) }
-	).
+connect(Fd, SockAddr, Result, !IO) :-
+    mksockaddr_struct(SockAddr, Ptr, Len),
+    connect0(Fd, Ptr, Len, Res, !IO),
+    ( Res = 0 ->
+        Result = ok
+    ;
+        errno(Err, !IO),
+        Result = error(Err)
+    ).
 
-:- pred connect0(fd, sockaddr_ptr, int, int, io__state, io__state).
-:- mode connect0(in, in, in, out, di, uo) is det.
+:- pred connect0(fd::in, sockaddr_ptr::in, int::in, int::out,
+    io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    connect0(Fd::in, Addr::in, Len::in, Res::out, IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    Res = connect(Fd, (struct sockaddr *) Addr, Len);
+    IO = IO0;
+").
 
-:- pragma c_code(connect0(Fd::in, Addr::in, Len::in, Res::out, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
-	Res = connect(Fd, (struct sockaddr *) Addr, Len);
-	IO = IO0;
-}").
+%-----------------------------------------------------------------------------%
 
-%------------------------------------------------------------------------------%
+listen(Fd, N, Result, !IO) :-
+    listen0(Fd, N, Res0, !IO),
+    ( Res0 = 0 ->
+        Result = ok
+    ;
+        errno(Errno, !IO),
+        Result = error(Errno)
+    ).
 
-listen(Fd, N, Result) -->
-	listen0(Fd, N, Res0),
-	( { Res0 = 0 } ->
-		{ Result = ok }
-	;
-		errno(Errno),
-		{ Result = error(Errno) }
-	).
+:- pred listen0(fd::in, int::in, int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    listen0(Fd::in, N::in, Res::out, IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    Res = listen(Fd, N);
+    IO = IO0;
+").
 
-:- pred listen0(fd, int, int, io__state, io__state).
-:- mode listen0(in, in, out, di, uo) is det.
+%-----------------------------------------------------------------------------%
 
-:- pragma c_code(listen0(Fd::in, N::in, Res::out, IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
-	Res = listen(Fd, N);
-	IO = IO0;
-}").
+accept(Fd, Result, !IO) :-
+    accept0(Fd, _Ptr, NewFd, !IO),
+    ( NewFd < 0 ->
+        errno(Errno, !IO),
+        Result = error(Errno)
+    ;
+        % cons_sockaddr(Ptr, SockAddr),
+        % Result = ok(SockAddr - fd(NewFd))
+        Result = ok(fd(NewFd))
+    ).
 
-%------------------------------------------------------------------------------%
+:- pred accept0(fd::in, sockaddr_ptr::out, int::out, io::di, io::uo)
+    is det.
 
-accept(Fd, Result) -->
-	accept0(Fd, Ptr, NewFd),
-	( { NewFd < 0 } ->
-		errno(Errno),
-		{ Result = error(Errno) }
-	;
-		% { cons_sockaddr(Ptr, SockAddr) },
-		% { Result = ok(SockAddr - fd(NewFd)) }
-		{ Result = ok(fd(NewFd)) }
-	).
+:- pragma foreign_proc("C",
+    accept0(Fd::in, Ptr::out, NewFd::out, IO0::di, IO::uo), 
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    struct sockaddr_in *ptr;
+    int len = sizeof(struct sockaddr_in);
 
-:- pred accept0(fd, sockaddr_ptr, int, io__state, io__state).
-:- mode accept0(in, out, out, di, uo) is det.
+    MR_incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
+    ptr = (struct sockaddr_in *) Ptr;
 
-:- pragma c_code(accept0(Fd::in, Ptr::out, NewFd::out, IO0::di, IO::uo), 
-		[will_not_call_mercury, thread_safe], "{
-	struct sockaddr_in *ptr;
-	int	len = sizeof(struct sockaddr_in);
+    NewFd = accept(Fd, ptr, &len);
+    IO = IO0;
+").
 
-	MR_incr_hp(Ptr, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
-	ptr = (struct sockaddr_in *) Ptr;
+:- pred cons_sockaddr(sockaddr_ptr::in, sockaddr::out) is det.
+:- pragma foreign_proc("C",
+    cons_sockaddr(Ptr::in, Sok::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    struct sockaddr_in *ptr;
 
-	NewFd = accept(Fd, ptr, &len);
-	IO = IO0;
-}").
+    ptr = (struct sockaddr_in *) Ptr;
 
-:- pred cons_sockaddr(sockaddr_ptr, sockaddr).
-:- mode cons_sockaddr(in, out) is det.
+    if (ptr->sin_family == AF_INET) {
+        MR_incr_hp(Ptr, 2);
+        MR_field(MR_mktag(0), Ptr, 0) = ntohs(ptr->sin_port);
+        MR_field(MR_mktag(0), Ptr, 1) = ptr->sin_addr.s_addr;
+    } else {
+        MR_fatal_error(""cons_sockaddr: unknown type"");
+    }
+").
 
-:- pragma c_code(cons_sockaddr(Ptr::in, Sok::out),
-		[will_not_call_mercury, thread_safe], "{
-	struct sockaddr_in *ptr;
-
-	ptr = (struct sockaddr_in *) Ptr;
-
-	if (ptr->sin_family == AF_INET) {
-		MR_incr_hp(Ptr, 2);
-		field(MR_mktag(0), Ptr, 0) = ntohs(ptr->sin_port);
-		field(MR_mktag(0), Ptr, 1) = ptr->sin_addr.s_addr;
-	} else {
-		MR_fatal_error(""cons_sockaddr: unknown type"");
-	}
-}").
-
+%-----------------------------------------------------------------------------%
+:- end_module posix.socket.
+%-----------------------------------------------------------------------------%
