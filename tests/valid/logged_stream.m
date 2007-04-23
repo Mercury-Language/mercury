@@ -24,7 +24,7 @@
 :- instance error(logged_error(E)) <= error(E).
 
 % Comment the following line out and this code compiles fine.
-:- instance input(logged_stream(S, L), io, logged_error(E)) <= (input(S, io, E), output(L, io)).
+:- instance input(logged_stream(S, L), io) <= (input(S, io), output(L, io)).
 
 :- implementation.
 
@@ -38,4 +38,4 @@
     error_message(error(E)) = error_message(E)
 ].
 
-:- instance input(logged_stream(S, L), io, logged_error(E)) <= (input(S, io, E), output(L, io)) where [].
+:- instance input(logged_stream(S, L), io) <= (input(S, io), output(L, io)) where [].

@@ -92,16 +92,15 @@
 
     % An input stream is a source of data.
     %
-:- typeclass stream.input(Stream, State, Error)
-    <= ( stream(Stream, State), stream.error(Error), (Stream -> Error) )
-    where [].
+:- typeclass stream.input(Stream, State) <= stream(Stream, State) where [].
 
     % A reader stream is a subclass of specific input stream that can be
     % used to read data of a specific type from that input stream.  
     % A single input stream can support multiple reader subclasses.
     % 
 :- typeclass stream.reader(Stream, Unit, State, Error)
-    <= stream.input(Stream, State, Error) where
+    <= (stream.input(Stream, State), stream.error(Error),
+        (Stream, Unit -> Error)) where
 [
     % Get the next unit from the given stream.
     % The get operation should block until the next unit is available.
@@ -151,8 +150,8 @@
     % and destination of data, i.e. it is a both an input and
     % an output stream.
     %
-:- typeclass stream.duplex(Stream, State, Error)
-    <= ( stream.input(Stream, State, Error), stream.output(Stream, State))
+:- typeclass stream.duplex(Stream, State)
+    <= (stream.input(Stream, State), stream.output(Stream, State))
         where [].
 
 %----------------------------------------------------------------------------%

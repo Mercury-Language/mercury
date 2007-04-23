@@ -56,7 +56,7 @@
 :- instance stream(tcp, io.state).
 :- instance error(tcp.error).
 
-:- instance input(tcp, io.state, tcp.error).
+:- instance input(tcp, io.state).
 :- instance reader(tcp, character, io.state, tcp.error).
 :- instance reader(tcp, line, io.state, tcp.error).
 
@@ -392,7 +392,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 		get_error(E, S)
 	)
 ].
-:- instance input(tcp, io.state, tcp.error) where [].
+:- instance input(tcp, io.state) where [].
 :- instance reader(tcp, character, io.state, tcp.error) where [
 	(get(T, Result, !IO) :-
 		tcp__read_char(T ^ handle, Char, !IO),

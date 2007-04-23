@@ -1461,7 +1461,7 @@
 :- instance stream.line_oriented(io.output_stream, io).
 
 :- instance stream.stream(io.input_stream, io).
-:- instance stream.input(io.input_stream, io, io.error).
+:- instance stream.input(io.input_stream, io).
 :- instance stream.reader(io.input_stream, char, io, io.error).
 :- instance stream.reader(io.input_stream, line, io, io.error).
 :- instance stream.reader(io.input_stream, text_file, io, io.error).
@@ -1475,7 +1475,7 @@
 :- instance stream.seekable(io.binary_output_stream, io).
 
 :- instance stream.stream(io.binary_input_stream,  io).
-:- instance stream.input(io.binary_input_stream,  io, io.error).
+:- instance stream.input(io.binary_input_stream, io).
 :- instance stream.reader(io.binary_input_stream, int, io, io.error).
 :- instance stream.putback(io.binary_input_stream, int, io, io.error).
 :- instance stream.seekable(io.binary_input_stream, io).
@@ -9066,7 +9066,7 @@ io.read_symlink(FileName, Result, !IO) :-
     pred(name/4) is io.input_stream_name
 ].
 
-:- instance stream.input(io.input_stream, io, io.error) where [].
+:- instance stream.input(io.input_stream, io) where [].
 
 :- instance stream.reader(io.input_stream, char, io, io.error)
     where
@@ -9188,7 +9188,7 @@ io.result_to_stream_result(error(Error)) = error(Error).
     pred(name/4) is io.binary_input_stream_name
 ].
 
-:- instance stream.input(io.binary_input_stream, io, io.error)
+:- instance stream.input(io.binary_input_stream, io)
     where [].
 
 :- instance stream.reader(io.binary_input_stream, int, io, io.error)
