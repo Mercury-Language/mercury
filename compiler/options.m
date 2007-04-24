@@ -4819,8 +4819,8 @@ options_help_misc -->
 
         % The `--local-module-id' option is used by `mmc --make'.
         "--feedback-file",
-        "\tUse the specified profiling feedback file which may currently only",
-        "\tbe processed for implicit parallelism."
+        "\tUse the specified profiling feedback file which may currently",
+        "\tonly be processed for implicit parallelism."
     ]).
 
 :- pred write_tabbed_lines(list(string)::in, io::di, io::uo) is det.
