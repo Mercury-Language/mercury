@@ -655,10 +655,10 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
         (
             simplify_do_warn_simple_code(!.Info),
             \+ (
-                    goal_contains_goal(Goal0, SubGoal),
-                    ( SubGoal = hlds_goal(disj([]), _)
-                    ; goal_is_call_to_builtin_false(SubGoal)
-                    )
+                goal_contains_goal(Goal0, SubGoal),
+                ( SubGoal = hlds_goal(disj([]), _)
+                ; goal_is_call_to_builtin_false(SubGoal)
+                )
             )
         ->
             MainPieces = [words("Warning: this goal cannot succeed.")],
@@ -759,10 +759,9 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
         Goal1 = Goal0
     ),
 
-    %
     % Remove unnecessary explicit quantifications before working
     % out whether the goal can cause a stack flush.
-    %
+
     ( Goal1 = hlds_goal(scope(Reason1, SomeGoal1), GoalInfo1) ->
         nested_scopes(Reason1, SomeGoal1, GoalInfo1, Goal2)
     ;
@@ -785,15 +784,16 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info, !IO) :-
     simplify_info_maybe_clear_structs(after, hlds_goal(GoalExpr, GoalInfo4),
         !Info),
     simplify_info_set_inside_duplicated_for_switch(InsideDuplForSwitch, !Info),
-    enforce_invariant(GoalInfo4, GoalInfo, !Info).
+    enforce_unreachability_invariant(GoalInfo4, GoalInfo, !Info).
 
     % Ensure that the mode information and the determinism
     % information say consistent things about unreachability.
     %
-:- pred enforce_invariant(hlds_goal_info::in, hlds_goal_info::out,
+:- pred enforce_unreachability_invariant(
+    hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-enforce_invariant(GoalInfo0, GoalInfo, !Info) :-
+enforce_unreachability_invariant(GoalInfo0, GoalInfo, !Info) :-
     goal_info_get_determinism(GoalInfo0, Determinism0),
     goal_info_get_instmap_delta(GoalInfo0, DeltaInstmap0),
     determinism_components(Determinism0, CanFail0, NumSolns0),

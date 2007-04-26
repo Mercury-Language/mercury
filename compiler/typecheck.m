@@ -141,6 +141,7 @@
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
+:- import_module svset.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -960,23 +961,13 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
     ;
         % If a headvar is assigned to a variable with the same name
         % (or no name) in every clause, rename it to have that name.
-        list.foldl2(find_headvar_names_in_clause(VarSet0, HeadVars0),
-            Clauses0, map.init, HeadVarNames, yes, _),
-        map.foldl(maybe_update_headvar_name, HeadVarNames, VarSet0, VarSet),
+        list.map2(find_headvar_names_in_clause(VarSet0, HeadVars0), Clauses0,
+            VarNameInfoMaps, VarsInMapSets),
+        ConsensusMap = find_consensus_headvar_names(VarsInMapSets,
+            VarNameInfoMaps),
+        map.foldl(svvarset.name_var, ConsensusMap, VarSet0, VarSet),
         clauses_info_set_varset(VarSet, ClausesInfo0, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo)
-    ).
-
-:- pred maybe_update_headvar_name(prog_var::in, maybe(string)::in,
-    prog_varset::in, prog_varset::out) is det.
-
-maybe_update_headvar_name(HeadVar, MaybeHeadVarName, VarSet0, VarSet) :-
-    (
-        MaybeHeadVarName = yes(HeadVarName),
-        varset.name_var(VarSet0, HeadVar, HeadVarName, VarSet)
-    ;
-        MaybeHeadVarName = no,
-        VarSet = VarSet0
     ).
 
 :- pred improve_single_clause_headvars(list(hlds_goal)::in,
@@ -988,7 +979,7 @@ maybe_update_headvar_name(HeadVar, MaybeHeadVarName, VarSet0, VarSet) :-
 improve_single_clause_headvars([], _, _, !VarSet, !Subst, !RevConj).
 improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
         !VarSet, !Subst, !RevConj) :-
-    ( goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) ->
+    ( goal_is_headvar_unification(HeadVars, Goal, HeadVar, yes(OtherVar)) ->
         % If the headvar doesn't appear elsewhere the unification
         % can be removed.
         (
@@ -1039,88 +1030,201 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
     improve_single_clause_headvars(Conj0, HeadVars, SeenVars, !VarSet,
         !Subst, !RevConj).
 
+:- type var_name_info_map == map(prog_var, var_name_info).
+:- type var_name_info
+    --->    var_name_info(
+                % Is the head variable unified with a functor?
+                vni_unified_with_functor    :: bool,
+
+                % What are the names of the named variables it is unified with?
+                vni_unified_with_vars       :: set(string)
+            ).
+
     % Head variables that have the same name in each clause
     % will have an entry of `yes(Name)' in the result map.
     %
 :- pred find_headvar_names_in_clause(prog_varset::in,
     proc_arg_vector(prog_var)::in, clause::in,
-    map(prog_var, maybe(string))::in, map(prog_var, maybe(string))::out,
-    bool::in, bool::out) is det.
+    var_name_info_map::out, set(prog_var)::out) is det.
 
-find_headvar_names_in_clause(VarSet, HeadVars, Clause,
-        HeadVarMap0, HeadVarMap, IsFirstClause, no) :-
+find_headvar_names_in_clause(VarSet, HeadVars, Clause, VarNameInfoMap,
+        VarsInMap) :-
     Goal = Clause ^ clause_body,
     goal_to_conj_list(Goal, Conj),
-    ClauseHeadVarMap = list.foldl(
-        find_headvar_names_in_goal(VarSet, HeadVars), Conj, map.init),
-    (
-        IsFirstClause = yes,
-        HeadVarMap = ClauseHeadVarMap
-    ;
-        IsFirstClause = no,
-        % Check that the variables in this clause match
-        % the names in previous clauses.
-        HeadVarMap1 = map.foldl(
-            (func(HeadVar, MaybeHeadVarName, Map) =
-                (
-                    map.search(Map, HeadVar, MaybeClauseHeadVarName),
-                    MaybeHeadVarName = MaybeClauseHeadVarName
-                ->
-                    Map
-                ;
-                    map.set(Map, HeadVar, no)
-                )
-            ), HeadVarMap0, ClauseHeadVarMap),
+    list.foldl2(find_headvar_names_in_goal(VarSet, HeadVars), Conj,
+        map.init, VarNameInfoMap, set.init, VarsInMap).
 
-        % Check for variables which weren't named in previous
-        % clauses. It would be confusing to refer to variable
-        % `A' in the second clause below.
-        %   p(A, _).
-        %   p([_ | _], _).
-        HeadVarMap = map.foldl(
-            (func(HeadVar, _, Map) =
-                ( map.contains(HeadVarMap0, HeadVar) ->
-                    Map
-                ;
-                    map.set(Map, HeadVar, no)
-                )
-            ), HeadVarMap1, HeadVarMap1)
-    ).
+:- pred find_headvar_names_in_goal(prog_varset::in,
+    proc_arg_vector(prog_var)::in, hlds_goal::in,
+    var_name_info_map::in, var_name_info_map::out,
+    set(prog_var)::in, set(prog_var)::out) is det.
 
-:- func find_headvar_names_in_goal(prog_varset, proc_arg_vector(prog_var),
-    hlds_goal, map(prog_var, maybe(string))) = map(prog_var, maybe(string)).
-
-find_headvar_names_in_goal(VarSet, HeadVars, Goal, HeadVarMap0)
-        = HeadVarMap :-
-    ( goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) ->
-        maybe_pred(varset.search_name(VarSet), OtherVar, MaybeOtherVarName),
-        ( map.search(HeadVarMap0, HeadVar, MaybeHeadVarName) ->
-            ( MaybeOtherVarName = MaybeHeadVarName ->
-                HeadVarMap = HeadVarMap0
+find_headvar_names_in_goal(VarSet, HeadVars, Goal, !VarNameInfoMap,
+        !VarsInMap) :-
+    ( goal_is_headvar_unification(HeadVars, Goal, HeadVar, MaybeOtherVar) ->
+        svset.insert(HeadVar, !VarsInMap),
+        (
+            MaybeOtherVar = no,
+            ( map.search(!.VarNameInfoMap, HeadVar, VarNameInfo0) ->
+                VarNameInfo0 = var_name_info(_UnifiedFunctor, VarNames),
+                VarNameInfo = var_name_info(yes, VarNames),
+                svmap.det_update(HeadVar, VarNameInfo, !VarNameInfoMap)
             ;
-                HeadVarMap = map.det_update(HeadVarMap0, HeadVar, no)
+                VarNameInfo = var_name_info(yes, set.init),
+                svmap.det_insert(HeadVar, VarNameInfo, !VarNameInfoMap)
             )
         ;
-            HeadVarMap = map.set(HeadVarMap0, HeadVar, MaybeOtherVarName)
+            MaybeOtherVar = yes(OtherVar),
+            ( varset.search_name(VarSet, OtherVar, OtherVarName) ->
+                ( map.search(!.VarNameInfoMap, HeadVar, VarNameInfo0) ->
+                    VarNameInfo0 = var_name_info(UnifiedFunctor, VarNames0),
+                    set.insert(VarNames0, OtherVarName, VarNames),
+                    VarNameInfo = var_name_info(UnifiedFunctor, VarNames),
+                    svmap.det_update(HeadVar, VarNameInfo, !VarNameInfoMap)
+                ;
+                    VarNames = set.make_singleton_set(OtherVarName),
+                    VarNameInfo = var_name_info(no, VarNames),
+                    svmap.det_insert(HeadVar, VarNameInfo, !VarNameInfoMap)
+                )
+            ;
+                true
+            )
         )
     ;
-        HeadVarMap = HeadVarMap0
+        true
     ).
 
 :- pred goal_is_headvar_unification(proc_arg_vector(prog_var)::in,
-    hlds_goal::in, prog_var::out, prog_var::out) is semidet.
+    hlds_goal::in, prog_var::out, maybe(prog_var)::out) is semidet.
 
-goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) :-
-    Goal = hlds_goal(unify(LVar, rhs_var(RVar), _, _, _), _),
-    ( proc_arg_vector_member(HeadVars, LVar) ->
-        HeadVar = LVar,
-        OtherVar = RVar
-    ; proc_arg_vector_member(HeadVars, RVar) ->
-        HeadVar = RVar,
-        OtherVar = LVar
+goal_is_headvar_unification(HeadVars, Goal, HeadVar, MaybeOtherVar) :-
+    Goal = hlds_goal(GoalExpr, _),
+    GoalExpr = unify(LVar, RHS, _, _, _),
+    (
+        RHS = rhs_var(RVar),
+        ( proc_arg_vector_member(HeadVars, LVar) ->
+            HeadVar = LVar,
+            MaybeOtherVar = yes(RVar)
+        ; proc_arg_vector_member(HeadVars, RVar) ->
+            HeadVar = RVar,
+            MaybeOtherVar = yes(LVar)
+        ;
+            fail
+        )
     ;
-        fail
+        RHS = rhs_functor(_, _, _),
+        ( proc_arg_vector_member(HeadVars, LVar) ->
+            HeadVar = LVar,
+            MaybeOtherVar = no
+        ;
+            fail
+        )
     ).
+
+:- func find_consensus_headvar_names(list(set(prog_var)),
+    list(var_name_info_map)) = map(prog_var, string).
+
+find_consensus_headvar_names(VarsInMapSets, VarNameInfoMaps) = ConsensusMap :-
+    VarsInMapSet = set.union_list(VarsInMapSets),
+    set.to_sorted_list(VarsInMapSet, VarsInMaps),
+    list.foldl(update_consensus_map_for_headvar(VarNameInfoMaps), VarsInMaps,
+        map.init, ConsensusMap).
+
+:- pred update_consensus_map_for_headvar(list(var_name_info_map)::in,
+    prog_var::in,
+    map(prog_var, string)::in, map(prog_var, string)::out) is det.
+
+update_consensus_map_for_headvar(VarNameInfos, HeadVar, !ConsensusMap) :-
+    MaybeName = find_consensus_name_for_headvar(VarNameInfos, HeadVar),
+    (
+        MaybeName = no
+    ;
+        MaybeName = yes(Name),
+        svmap.det_insert(HeadVar, Name, !ConsensusMap)
+    ).
+
+:- func find_consensus_name_for_headvar(list(var_name_info_map), prog_var)
+    = maybe(string).
+
+find_consensus_name_for_headvar(VarNameInfoMaps, HeadVar)
+        = MaybeConsensusName :-
+    group_var_infos(VarNameInfoMaps, HeadVar,
+        [], Inconsistents, [], Consistents, [], FunctorOnlys),
+    (
+        Inconsistents = [_ | _],
+        % Some clauses give two or more different names to HeadVar.
+        % If even a single clause cannot agree what HeadVar's name should be,
+        % the procedure as a whole cannot agree either.
+        MaybeConsensusName = no
+    ;
+        Inconsistents = [],
+        (
+            Consistents = [],
+            % There is no name we *can* give.
+            MaybeConsensusName = no
+        ;
+            Consistents = [_ | _],
+            (
+                FunctorOnlys = [],
+                list.sort_and_remove_dups(Consistents, SortedConsistents),
+                ( SortedConsistents = [ConsensusName] ->
+                    MaybeConsensusName = yes(ConsensusName)
+                ;
+                    MaybeConsensusName = no
+                )
+            ;
+                FunctorOnlys = [_ | _],
+                % There is no consensus as to whether the variable *should*
+                % have a name. Given a predicate definition like this:
+                %
+                %   p(A, _) :- ...
+                %   p([_ | _], _) :- ...
+                %
+                % referring to the first head variable in the second clause
+                % by the name "A" would be confusing.
+                MaybeConsensusName = no
+            )
+        )
+    ).
+
+:- pred group_var_infos(list(var_name_info_map)::in, prog_var::in,
+    list(var_name_info)::in, list(var_name_info)::out,
+    list(string)::in, list(string)::out,
+    list(var_name_info)::in, list(var_name_info)::out) is det.
+
+group_var_infos([], _, !Inconsistents, !Consistents, !FunctorOnlys).
+group_var_infos([VarNameInfoMap | VarNameInfoMaps], HeadVar,
+        !Inconsistents, !Consistents, !FunctorOnlys) :-
+    ( map.search(VarNameInfoMap, HeadVar, VarInfo) ->
+        VarInfo = var_name_info(UnifiedFunctor, VarNameSet),
+        set.count(VarNameSet, NameCount),
+        ( NameCount = 0 ->
+            (
+                UnifiedFunctor = yes,
+                !:FunctorOnlys = [VarInfo | !.FunctorOnlys]
+            ;
+                UnifiedFunctor = no
+                % The variable was unified only with anonymous variables.
+            )
+        ; NameCount = 1 ->
+            % If the clause gave the variable a name, we don't care that
+            % it also unified the variable with a functor.
+            set.to_sorted_list(VarNameSet, VarNameList),
+            ( VarNameList = [VarName] ->
+                !:Consistents = [VarName | !.Consistents]
+            ;
+                unexpected(this_file, "group_var_infos: bad singleton set")
+            )
+        ;
+            % NameCount > 1, so this *single clause* calls HeadVar
+            % by more than one name.
+            !:Inconsistents = [VarInfo | !.Inconsistents]
+        )
+    ;
+        true
+    ),
+    group_var_infos(VarNameInfoMaps, HeadVar,
+        !Inconsistents, !Consistents, !FunctorOnlys).
 
 %-----------------------------------------------------------------------------%
 

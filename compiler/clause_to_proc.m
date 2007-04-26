@@ -105,20 +105,17 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
     pred_info_get_procedures(PredInfo0, Procs0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     (
-        %
         % Is this a function with no modes?
-        %
         PredOrFunc = pf_function,
         map.is_empty(Procs0)
     ->
-        %
         % If so, add a default mode of
         %
         %   :- mode foo(in, in, ..., in) = out is det.
         %
-        % for this function.  (N.B. functions which can
-        % fail must be explicitly declared as semidet.)
-        %
+        % for this function.  (N.B. functions which can fail must be
+        % explicitly declared as semidet.)
+
         PredArity = pred_info_orig_arity(PredInfo0),
         FuncArity = PredArity - 1,
         in_mode(InMode),
@@ -205,7 +202,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
                 MaybeTraceRuntimeCond, _)
         ->
             % Use the original variable names for the headvars of foreign_proc
-            % clauses, not the introduced `HeadVar.n' names.
+            % clauses, not the introduced `HeadVar__n' names.
             VarSet = list.foldl(set_arg_names, Args, VarSet0),
             expect(unify(ExtraArgs, []), this_file,
                 "copy_clauses_to_proc: extra_args"),

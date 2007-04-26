@@ -260,9 +260,9 @@ mdb> continue -a
      E45:    C18 EXIT int.m:NNNN (from queens.m:63)
                          func int.-/2-0 (det)
      E46:    C16 COND queens.m:64
-                         pred queens.nodiag/3-0 (semidet) s2-2;c6;?;
+                         pred queens.nodiag/3-0 (semidet) s2-2;c4;?;
      E47:    C16 THEN queens.m:65
-                         pred queens.nodiag/3-0 (semidet) s2-2;c6;t;
+                         pred queens.nodiag/3-0 (semidet) s2-2;c4;t;
      E48:    C16 FAIL queens.m:60 (from queens.m:54)
                          pred queens.nodiag/3-0 (semidet)
      E49:    C15 FAIL queens.m:52 (from queens.m:31)
@@ -379,5 +379,16 @@ Retry across I/O operations is not always safe.
 Are you sure you want to do it? yes
       E1:     C1 CALL queens.m:14
                          pred queens.main/2-0 (cc_multi)
+mdb> break nodiag
+ 1: + stop  interface pred queens.nodiag/3-0 (semidet)
+mdb> continue
+     E40:    C16 CALL queens.m:60 (from queens.m:54)
+                         pred queens.nodiag/3-0 (semidet)
+mdb> print *
+       B (arg 1)              	1
+       D (arg 2)              	1
+       HeadVar__3             	[2, 3, 4, 5]
+mdb> delete 0
+ 0: E stop  interface pred queens.main/2-0 (cc_multi)
 mdb> continue -n -S
 [1, 3, 5, 2, 4]

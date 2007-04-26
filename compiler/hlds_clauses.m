@@ -237,11 +237,11 @@ clauses_info_set_clauses_rep(X, CI, CI ^ clauses_rep := X).
 clauses_info_set_rtti_varmaps(X, CI, CI ^ clauses_rtti_varmaps := X).
 
     % In each of the alternatives below, the num field gives the number of
-    % clauses. in the forw_list and both_forw fields, the clauses are in
+    % clauses. In the forw_list and both_forw fields, the clauses are in
     % program order. In the rev_list and both_rev fields, the clauses are in
     % reverse program order. It is an invariant that
     %
-    %   list.reverse(Rep ^ both_rev, Rep & both_forw)
+    %   list.reverse(Rep ^ both_rev, Rep ^ both_forw)
     %
     % holds.
 :- type clauses_rep

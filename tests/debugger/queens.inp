@@ -101,4 +101,8 @@ break main
 continue -n
 retry
 yes
+break nodiag
+continue
+print *
+delete 0
 continue -n -S
