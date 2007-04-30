@@ -206,8 +206,10 @@ build_live_sets_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
         % or nonlocal to the parallel conjunction. Nonlocal variables that are
         % currently free, but are bound inside one of the conjuncts need a
         % stackslot because they are passed out by reference to that stackslot.
+        % Variables needed on backtracking must be available in a stackslot
+        % past the parallel conjunction as well.
         goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals),
-        set.union(NonLocals, !.Liveness, LiveSet),
+        LiveSet = set.union_list([NonLocals, !.Liveness, ResumeVars0]),
 
         InnerNonLocals = LiveSet `set.union` OuterNonLocals,
         InnerParStackVars0 = parallel_stackvars(InnerNonLocals, [], set.init),
