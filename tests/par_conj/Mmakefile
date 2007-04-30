@@ -67,12 +67,24 @@ else
 	PROGS0 =
 endif
 
+ifneq "$(findstring par,$(GRADE))" ""
+	# These tests are to do with explicit threads rather than parallel
+	# conjunction, but the tests require multiple engines to be enabled,
+	# which was already set up in this directory.
+	#
+	THREAD_PROGS = \
+		spawn_many
+else
+	THREAD_PROGS =
+endif
+
 ifneq "$(findstring decldebug,$(GRADE))" ""
 	OBJ_PROGS =
 	PROGS =
 else
 	OBJ_PROGS =
-	PROGS = $(PROGS0) $(DEP_PAR_CONJ_PROGS) $(INDEP_PAR_CONJ_PROGS)
+	PROGS = $(PROGS0) $(DEP_PAR_CONJ_PROGS) $(INDEP_PAR_CONJ_PROGS) \
+		$(THREAD_PROGS)
 endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.
@@ -122,14 +134,22 @@ endif
 	{ [ -f $*.inp ] && cat $*.inp; } | $(ENGINES) ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
 
+ifeq "$(filter hl% java% il%,$(GRADE))" ""
+
 # Run threads_hang with multiple OS threads in lowlevel parallel grades.
 # Repeat the test a few times in increase the chances of getting a deadlock.
-ifeq "$(filter hl% java% il%,$(GRADE))" ""
 threads_hang.out: threads_hang
 	for i in 1 2 3 4 5 6 7 8 9 10 ; do \
 		MERCURY_OPTIONS=-P10 ./threads_hang 2>&1 > threads_hang.out ||\
 			{ echo 'failed' > threads_hang.out; break; } \
 	done
+
+# Run spawn_many with smallish C stacks, so we don't need to spawn so many
+# threads to see the bug.
+spawn_many.out: spawn_many
+	ulimit -s 256 && $(ENGINES) ./spawn_many 2>&1 > spawn_many.out || \
+		{ grep . $@ /dev/null; exit 1; }
+
 endif
 
 #-----------------------------------------------------------------------------#

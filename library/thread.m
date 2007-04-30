@@ -80,8 +80,7 @@
 #if !defined(MR_HIGHLEVEL_CODE)
     MR_Context  *ctxt;
     ctxt = MR_create_context(""spawn"", MR_CONTEXT_SIZE_REGULAR, NULL);
-    ctxt->MR_ctxt_resume =
-        MR_ENTRY(mercury__thread__spawn_call_back_to_mercury_cc_multi);
+    ctxt->MR_ctxt_resume = MR_ENTRY(mercury__thread__spawn_begin_thread);
     
     /*
     ** Store the closure on the top of the new context's stack.
@@ -144,8 +143,8 @@ INIT mercury_sys_init_thread_modules
 */
 
 #ifndef MR_HIGHLEVEL_CODE
-    MR_define_extern_entry(
-        mercury__thread__spawn_call_back_to_mercury_cc_multi);
+    MR_define_extern_entry(mercury__thread__spawn_begin_thread);
+    MR_declare_label(mercury__thread__spawn_end_thread);
     MR_define_extern_entry(mercury__thread__yield_resume);
 #endif
 ").
@@ -154,18 +153,23 @@ INIT mercury_sys_init_thread_modules
 "
 #ifndef MR_HIGHLEVEL_CODE
 
+    MR_declare_entry(mercury__do_call_closure_1);
+
     MR_BEGIN_MODULE(thread_module)
-        MR_init_entry_ai(mercury__thread__spawn_call_back_to_mercury_cc_multi);
+        MR_init_entry_ai(mercury__thread__spawn_begin_thread);
+        MR_init_label(mercury__thread__spawn_end_thread);
         MR_init_entry_ai(mercury__thread__yield_resume);
     MR_BEGIN_CODE
 
-    MR_define_entry(mercury__thread__spawn_call_back_to_mercury_cc_multi);
+    MR_define_entry(mercury__thread__spawn_begin_thread);
     {
-        MR_save_registers();
-        /*
-        ** Get the closure from the top of the stack.
-        */
-        ML_call_back_to_mercury_cc_multi(*((MR_Word *)MR_sp));
+        /* Call the closure placed the top of the stack. */
+        MR_r1 = *MR_sp;
+        MR_noprof_call(MR_ENTRY(mercury__do_call_closure_1),
+            MR_LABEL(mercury__thread__spawn_end_thread));
+    }
+    MR_define_label(mercury__thread__spawn_end_thread);
+    {
         MR_destroy_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
@@ -257,11 +261,6 @@ call_back_to_mercury(Goal, !IO) :-
     }
     pthread_attr_destroy(&attrs);
 
-    /*
-    ** XXX How do we ensure that the parent thread doesn't terminate until
-    ** the child thread has finished it's processing?
-    ** By the use of mutvars, or leave it up to user?
-    */
     return MR_TRUE;
   }
 
