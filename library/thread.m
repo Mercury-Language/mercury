@@ -73,12 +73,19 @@
 #endif
 ").
 
+%-----------------------------------------------------------------------------%
+
 :- pragma foreign_proc("C",
     spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
 #if !defined(MR_HIGHLEVEL_CODE)
     MR_Context  *ctxt;
+
+    MR_LOCK(&MR_thread_barrier_lock, ""thread.spawn"");
+    MR_thread_barrier_count++;
+    MR_UNLOCK(&MR_thread_barrier_lock, ""thread.spawn"");
+
     ctxt = MR_create_context(""spawn"", MR_CONTEXT_SIZE_REGULAR, NULL);
     ctxt->MR_ctxt_resume = MR_ENTRY(mercury__thread__spawn_begin_thread);
     
@@ -135,6 +142,9 @@
 yield(!IO).
 
 %-----------------------------------------------------------------------------%
+%
+% Low-level C implementation
+%
 
 :- pragma foreign_decl("C",
 "
@@ -170,6 +180,21 @@ INIT mercury_sys_init_thread_modules
     }
     MR_define_label(mercury__thread__spawn_end_thread);
     {
+        MR_LOCK(&MR_thread_barrier_lock, ""thread__spawn_end_thread"");
+        MR_thread_barrier_count--;
+        if (MR_thread_barrier_count == 0) {
+            /*
+            ** If this is the last spawned context to terminate and the
+            ** main context was just waiting on us in order to terminate
+            ** then reschedule the main context.
+            */
+            if (MR_thread_barrier_context) {
+                MR_schedule_context(MR_thread_barrier_context);
+                MR_thread_barrier_context = NULL;
+            }
+        }
+        MR_UNLOCK(&MR_thread_barrier_lock, ""thread__spawn_end_thread"");
+
         MR_destroy_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_runnext();
@@ -210,16 +235,10 @@ INIT mercury_sys_init_thread_modules
     #endif
 ").
 
-:- pred call_back_to_mercury(pred(io, io), io, io).
-:- mode call_back_to_mercury(pred(di, uo) is cc_multi, di, uo) is cc_multi.
-:- pragma foreign_export("C",
-    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
-    "ML_call_back_to_mercury_cc_multi").
-
-call_back_to_mercury(Goal, !IO) :-
-    Goal(!IO).
-
 %-----------------------------------------------------------------------------%
+%
+% High-level C implementation
+%
 
 :- pragma foreign_decl("C", "
 #if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
@@ -254,6 +273,10 @@ call_back_to_mercury(Goal, !IO) :-
     args->thread_local_mutables =
         MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
 
+    MR_LOCK(&MR_thread_barrier_lock, ""thread.spawn"");
+    MR_thread_barrier_count++;
+    MR_UNLOCK(&MR_thread_barrier_lock, ""thread.spawn"");
+
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
     if (pthread_create(&thread, MR_THREAD_ATTR, ML_thread_wrapper, args)) {
@@ -281,10 +304,26 @@ call_back_to_mercury(Goal, !IO) :-
 
     ML_call_back_to_mercury_cc_multi(goal);
 
+    MR_LOCK(&MR_thread_barrier_lock, ""ML_thread_wrapper"");
+    MR_thread_barrier_count--;
+    if (MR_thread_barrier_count == 0) {
+        MR_SIGNAL(&MR_thread_barrier_cond);
+    }
+    MR_UNLOCK(&MR_thread_barrier_lock, ""ML_thread_wrapper"");
+
     return NULL;
   }
 #endif /* MR_HIGHLEVEL_CODE && MR_THREAD_SAFE */
 ").
+
+:- pred call_back_to_mercury(pred(io, io), io, io).
+:- mode call_back_to_mercury(pred(di, uo) is cc_multi, di, uo) is cc_multi.
+:- pragma foreign_export("C",
+    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
+    "ML_call_back_to_mercury_cc_multi").
+
+call_back_to_mercury(Goal, !IO) :-
+    Goal(!IO).
 
 %-----------------------------------------------------------------------------%
 

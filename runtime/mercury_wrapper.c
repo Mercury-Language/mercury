@@ -2358,6 +2358,16 @@ MR_do_interpreter(void)
         }
     }
 
+  #if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
+    assert(pthread_self() == MR_primordial_thread);
+    MR_LOCK(&MR_thread_barrier_lock, "MR_do_interpreter");
+    while (MR_thread_barrier_count > 0) {
+        while (MR_WAIT(&MR_thread_barrier_cond, &MR_thread_barrier_lock) != 0) {
+        }
+    }
+    MR_UNLOCK(&MR_thread_barrier_lock, "MR_do_interpreter");
+  #endif
+
   #ifdef  MR_MPROF_PROFILE_TIME
     if (MR_profiling)  {
         MR_prof_turn_off_time_profiling();
@@ -2373,6 +2383,7 @@ MR_do_interpreter(void)
 
 MR_define_extern_entry(MR_do_interpreter);
 MR_declare_label(global_success);
+MR_declare_label(global_success_2);
 MR_declare_label(global_fail);
 MR_declare_label(all_done);
 MR_declare_label(wrapper_not_reached);
@@ -2380,6 +2391,7 @@ MR_declare_label(wrapper_not_reached);
 MR_BEGIN_MODULE(interpreter_module)
     MR_init_entry_an(MR_do_interpreter);
     MR_init_label_an(global_success);
+    MR_init_label_an(global_success_2);
     MR_init_label_an(global_fail);
     MR_init_label_an(all_done);
     MR_init_label_an(wrapper_not_reached);
@@ -2422,6 +2434,28 @@ MR_define_entry(MR_do_interpreter);
     MR_noprof_call(MR_program_entry_point, MR_LABEL(global_success));
 
 MR_define_label(global_success);
+    /*
+    ** Don't let the original Mercury thread continue onto MR_global_success_2
+    ** until all other threads have terminated.
+    */
+    MR_LOCK(&MR_thread_barrier_lock, "global_success");
+    if (MR_thread_barrier_count == 0) {
+        MR_UNLOCK(&MR_thread_barrier_lock, "global_success");
+        MR_GOTO_LABEL(global_success_2);
+    } else {
+        MR_Context *this_ctxt;
+
+        this_ctxt = MR_ENGINE(MR_eng_this_context);
+        MR_save_context(this_ctxt);
+        this_ctxt->MR_ctxt_resume = MR_LABEL(global_success_2);
+        MR_thread_barrier_context = this_ctxt;
+        MR_UNLOCK(&MR_thread_barrier_lock, "global_success");
+
+        MR_ENGINE(MR_eng_this_context) = NULL;
+        MR_runnext();
+    }
+
+MR_define_label(global_success_2);
 #ifdef  MR_LOWLEVEL_DEBUG
     if (MR_finaldebug) {
         MR_save_transient_registers();
@@ -2451,6 +2485,10 @@ MR_define_label(global_fail);
 #endif
 
 MR_define_label(all_done);
+    assert(MR_runqueue_head == NULL);
+#ifndef MR_HIGHLEVEL_CODE
+    assert(MR_spark_queue_head == NULL);
+#endif
 
 #ifdef  MR_MPROF_PROFILE_TIME
     if (MR_profiling) {

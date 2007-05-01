@@ -73,7 +73,8 @@ ifneq "$(findstring par,$(GRADE))" ""
 	# which was already set up in this directory.
 	#
 	THREAD_PROGS = \
-		spawn_many
+		spawn_many \
+		thread_barrier
 else
 	THREAD_PROGS =
 endif

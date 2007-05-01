@@ -40,6 +40,9 @@ Changes to the Mercury standard library:
   The predicates `thread.can_spawn', `thread.channel.try_take'
   and `thread.mvar.try_take' have also been added.
 
+* Processes no longer terminate until all threads have finished.  Previously
+  a process would terminate as soon as the original thread finished.
+
 * The following predicates have been added to the list module:
 	list.map_corresponding/4
 	list.map2_foldl3/10

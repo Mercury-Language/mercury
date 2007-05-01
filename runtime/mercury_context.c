@@ -89,6 +89,12 @@ MR_init_thread_stuff(void)
   #endif
     MR_KEY_CREATE(&MR_exception_handler_key, NULL);
 
+    /* These are actually in mercury_thread.c. */
+    pthread_mutex_init(&MR_thread_barrier_lock, MR_MUTEX_ATTR);
+  #ifdef MR_HIGHLEVEL_CODE
+    pthread_cond_init(&MR_thread_barrier_cond, MR_COND_ATTR);
+  #endif
+
 #endif
 }
 
@@ -317,6 +323,9 @@ MR_destroy_context(MR_Context *c)
 {
     MR_assert(c);
 
+#ifdef MR_THREAD_SAFE
+    MR_assert(c->MR_ctxt_saved_owners == NULL);
+#endif
 #ifndef MR_HIGHLEVEL_CODE
     MR_assert(c->MR_ctxt_spark_stack == NULL);
 #endif

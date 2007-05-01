@@ -34,6 +34,17 @@ MR_bool             MR_debug_threads = MR_FALSE;
 
 MR_Unsigned         MR_num_thread_local_mutables = 0;
 
+MR_Integer          MR_thread_barrier_count;
+#ifdef MR_THREAD_SAFE
+  MercuryLock       MR_thread_barrier_lock;
+  #ifdef MR_HIGHLEVEL_CODE
+    MercuryCond     MR_thread_barrier_cond;
+  #endif
+#endif
+#ifndef MR_HIGHLEVEL_CODE
+  MR_Context        *MR_thread_barrier_context;
+#endif
+
 #ifdef MR_THREAD_SAFE
 
 static void         *MR_create_thread_2(void *goal);

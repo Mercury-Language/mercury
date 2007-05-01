@@ -165,6 +165,21 @@
 #endif
 
 /*
+** These are used to prevent the process terminating as soon as the original
+** Mercury thread terminates.
+*/
+extern MR_Integer MR_thread_barrier_count;
+#ifdef MR_THREAD_SAFE
+  extern MercuryLock MR_thread_barrier_lock;
+  #ifdef MR_HIGHLEVEL_CODE
+    extern MercuryCond MR_thread_barrier_cond;
+  #endif
+#endif
+#ifndef MR_HIGHLEVEL_CODE
+  extern struct MR_Context_Struct *MR_thread_barrier_context;
+#endif
+
+/*
 ** The following enum is used as the argument to init_thread.
 ** MR_use_now should be passed to init_thread to indicate that
 ** it has been called in a context in which it should initialize
