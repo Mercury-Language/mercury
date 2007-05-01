@@ -3,7 +3,7 @@
 ** vim: ts=4 sw=4 et
 */
 /*
-** Copyright (C) 2006 The University of Melbourne.
+** Copyright (C) 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -99,6 +99,7 @@ comment {sc}{inside}*{ec}
                         return TOKEN_EVENT;
                     }
 "set"               { return TOKEN_SET;                 }
+"impure"            { return TOKEN_IMPURE;              }
 "function"          { return TOKEN_FUNCTION;            }
 "synthesized"       { return TOKEN_SYNTHESIZED;         }
 "by"                { return TOKEN_BY;                  }

@@ -302,6 +302,10 @@ read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
                 arg_attr_names  :: list(string)
             ).
 
+:- type event_attr_function_kind
+    --->    event_attr_pure_function
+    ;       event_attr_impure_function.
+
 :- type event_attr_type
     --->    event_attr_type_ordinary(
                 event_attr_type_term
@@ -310,7 +314,9 @@ read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
                 event_attr_type_term,
                 event_attr_synth_call_term
             )
-    ;       event_attr_type_function.
+    ;       event_attr_type_function(
+                event_attr_function_kind
+            ).
 
 :- type event_attr_type_term
     --->    event_attr_type_term(
@@ -405,7 +411,7 @@ keep_only_synth_attr_nums(AttrMap, [AttrName | AttrNames], SynthAttrNums) :-
     map.lookup(AttrMap, AttrName, attr_info(AttrNum, _, _, AttrType)),
     (
         ( AttrType = event_attr_type_ordinary(_)
-        ; AttrType = event_attr_type_function
+        ; AttrType = event_attr_type_function(_)
         ),
         SynthAttrNums = SynthAttrNumsTail
     ;
@@ -482,7 +488,7 @@ build_plain_type_map(EventName, FileName, EventLineNumber,
             svmap.det_insert(AttrName, Type, !AttrTypeMap)
         )
     ;
-        AttrTypeTerm = event_attr_type_function
+        AttrTypeTerm = event_attr_type_function(_)
     ),
     build_plain_type_map(EventName, FileName, EventLineNumber, AttrTerms,
         AttrNum + 1, !AttrNumMap, !AttrNameMap, !AttrTypeMap, !KeyMap, !DepRel,
@@ -516,12 +522,20 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
             AttrErrorSpecs = [],
             ( map.search(!.AttrTypeMap, AttrName, AttrType) ->
                 ArgTypes = list.map(map.lookup(!.AttrTypeMap), ArgAttrNames),
-                FuncAttrType = higher_order_type(ArgTypes, yes(AttrType),
-                    purity_pure, lambda_normal),
                 (
-                    map.search(AttrNameMap, FuncAttrName, AttrInfo),
-                    AttrInfo ^ attr_info_type = event_attr_type_function
+                    map.search(AttrNameMap, FuncAttrName, FuncAttrInfo),
+                    FuncAttrInfo ^ attr_info_type =
+                        event_attr_type_function(FuncAttrPurity)
                 ->
+                    (
+                        FuncAttrPurity = event_attr_pure_function,
+                        FuncPurity = purity_pure
+                    ;
+                        FuncAttrPurity = event_attr_impure_function,
+                        FuncPurity = purity_impure
+                    ),
+                    FuncAttrType = higher_order_type(ArgTypes, yes(AttrType),
+                        FuncPurity, lambda_normal),
                     (
                         map.search(!.AttrTypeMap, FuncAttrName,
                             OldFuncAttrType)
@@ -530,16 +544,8 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                             % AttrTypeMap already contains the correct info.
                             true
                         ;
-                            (
-                                map.search(AttrNameMap, FuncAttrName,
-                                    FuncAttrInfo)
-                            ->
-                                FuncAttrLineNumber =
-                                    FuncAttrInfo ^ attr_info_linenumber
-                            ;
-                                % This is the best line number we can give,
-                                FuncAttrLineNumber = AttrLineNumber
-                            ),
+                            FuncAttrLineNumber =
+                                FuncAttrInfo ^ attr_info_linenumber,
                             % XXX Maybe we should give the types themselves.
                             Pieces = [words("Attribute"), quote(FuncAttrName),
                                 words("is assigned inconsistent types"),
@@ -574,7 +580,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
     ;
         AttrTypeTerm = event_attr_type_ordinary(_TypeTerm)
     ;
-        AttrTypeTerm = event_attr_type_function
+        AttrTypeTerm = event_attr_type_function(_)
     ),
     build_dep_map(EventName, FileName, AttrNameMap, KeyMap, AttrTerms,
         !AttrTypeMap, !DepRel, !ErrorSpecs).
@@ -645,7 +651,7 @@ convert_terms_to_attrs(EventName, FileName, AttrNameMap,
             true
         )
     ;
-        AttrTypeTerm = event_attr_type_function,
+        AttrTypeTerm = event_attr_type_function(_),
         ( map.search(AttrTypeMap, AttrName, AttrType) ->
             EventAttr = event_attribute(AttrNum, AttrName, AttrType, in_mode,
                 no),
@@ -694,7 +700,7 @@ compute_prev_synth_attr_order(AttrNameMap, AttrName, Ancestors,
             AttrTerm = AttrInfo ^ attr_info_type,
             (
                 ( AttrTerm = event_attr_type_ordinary(_)
-                ; AttrTerm = event_attr_type_function
+                ; AttrTerm = event_attr_type_function(_)
                 ),
                 PrevSynthOrder = []
             ;

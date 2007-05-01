@@ -1,6 +1,15 @@
-% vim: ts=4 sw=4 et
+% vim: ts=4 sw=4 et ft=mercury
+%
+% This test case tests the handling of impure functions as attributes of user
+% events.
+%
+% In this test case, the impure function, safe_counter, records the number of
+% "safe" tests so far. Unfortunately, we cannot make safe_counter a zero arity
+% function, since any mention of such a function is automatically converted by
+% the compiler into an *invocation* of that function. This made sense when all
+% functions were pure, but doesn't make sense anymore.
 
-:- module synth_attr.
+:- module synth_attr_impure.
 
 :- interface.
 
@@ -32,8 +41,27 @@ data([1,2,3,4,5]).
 
 queen(Data, Out) :-
     qperm(Data, Out),
-    event safe_test(Out, testlen(10)),
+    event safe_test(Out, testlen(10), safe_counter),
     safe(Out).
+
+:- pragma foreign_decl("C",
+"
+extern  int safe_counter;
+").
+
+:- pragma foreign_code("C",
+"
+int         safe_counter = 0;
+").
+
+:- impure func safe_counter(list(int)) = int.
+
+:- pragma foreign_proc("C",
+    safe_counter(_Out::in) = (Seq::out),
+    [will_not_call_mercury],
+"
+    Seq = safe_counter++;
+").
 
 :- func testlen(int, list(int)) = int.
 

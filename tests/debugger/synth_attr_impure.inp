@@ -1,0 +1,16 @@
+echo on
+register --quiet
+user
+print *
+browse !test_list
+p
+^2^1
+p
+quit
+user
+vars
+print *
+print !arg_b
+user
+print *
+continue

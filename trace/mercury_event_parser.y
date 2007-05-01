@@ -53,6 +53,7 @@ static  void        mercury_event_error(const char *s);
 
 %token  <Uline>     TOKEN_EVENT
 %token              TOKEN_SET
+%token              TOKEN_IMPURE
 %token              TOKEN_FUNCTION
 %token              TOKEN_SYNTHESIZED
 %token              TOKEN_BY
@@ -158,7 +159,14 @@ type        :   term
             |   TOKEN_FUNCTION
                 {
                     $$ = MR_NEW(struct MR_EventAttrType_Struct);
-                    $$->MR_type_kind = MR_EVENT_ATTR_FUNCTION;
+                    $$->MR_type_kind = MR_EVENT_ATTR_PURE_FUNCTION;
+                    $$->MR_type_term = NULL;
+                    $$->MR_type_synth_call = NULL;
+                }
+            |   TOKEN_IMPURE TOKEN_FUNCTION
+                {
+                    $$ = MR_NEW(struct MR_EventAttrType_Struct);
+                    $$->MR_type_kind = MR_EVENT_ATTR_IMPURE_FUNCTION;
                     $$->MR_type_term = NULL;
                     $$->MR_type_synth_call = NULL;
                 }

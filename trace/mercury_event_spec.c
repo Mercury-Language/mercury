@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002, 2005-2006 The University of Melbourne.
+** Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -182,8 +182,14 @@ MR_print_event_set(FILE *fp, MR_EventSet event_set)
                     fprintf(fp, ")");
                     break;
 
-                case MR_EVENT_ATTR_FUNCTION:
-                    fprintf(fp, "event_attr_type_function");
+                case MR_EVENT_ATTR_PURE_FUNCTION:
+                    fprintf(fp,
+                        "event_attr_type_function(event_attr_pure_function)");
+                    break;
+
+                case MR_EVENT_ATTR_IMPURE_FUNCTION:
+                    fprintf(fp,
+                        "event_attr_type_function(event_attr_impure_function)");
                     break;
 
                 case MR_EVENT_ATTR_SYNTHESIZED:

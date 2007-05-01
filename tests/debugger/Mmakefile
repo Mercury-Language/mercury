@@ -52,6 +52,7 @@ NONRETRY_PROGS = \
 	solver_test			\
 	switch_on_unbounded		\
 	synth_attr			\
+	synth_attr_impure		\
 	type_desc_test			\
 	uci_index			\
 	user_event			\
@@ -541,24 +542,29 @@ type_desc_test.out: type_desc_test type_desc_test.inp
 		> type_desc_test.out 2>&1
 
 uci.out: uci uci.inp
-	$(MDB) ./uci < uci.inp 2>&1 > uci.out 2>&1
+	$(MDB) ./uci < uci.inp > uci.out 2>&1
 
 uci_index.out: uci_index uci_index.inp
-	$(MDB_STD) ./uci_index < uci_index.inp 2>&1 > uci_index.out 2>&1
+	$(MDB_STD) ./uci_index < uci_index.inp > uci_index.out 2>&1
 
 synth_attr.out: synth_attr synth_attr.inp synth_attr_spec
-	$(MDB_STD) ./synth_attr < synth_attr.inp 2>&1 > synth_attr.out 2>&1
+	$(MDB_STD) ./synth_attr < synth_attr.inp > synth_attr.out 2>&1
+
+synth_attr_impure.out: synth_attr_impure synth_attr_impure.inp \
+		synth_attr_impure_spec
+	$(MDB_STD) ./synth_attr_impure < synth_attr_impure.inp \
+		> synth_attr_impure.out 2>&1
 
 user_event.out: user_event user_event.inp user_event_spec
 	$(MDB_STD) ./user_event < user_event.inp 2>&1 > user_event.out 2>&1
 
 user_event_2.out: user_event_2 user_event_2.inp user_event_spec_2
-	$(MDB_STD) ./user_event_2 < user_event_2.inp 2>&1 \
+	$(MDB_STD) ./user_event_2 < user_event_2.inp \
 		> user_event_2.out 2>&1
 
 user_event_shallow.out: user_event_shallow user_event_shallow.inp \
 		user_event_spec
-	$(MDB_STD) ./user_event_shallow < user_event_shallow.inp 2>&1 \
+	$(MDB_STD) ./user_event_shallow < user_event_shallow.inp \
 		> user_event_shallow.out 2>&1
 
 # When WORKSPACE is set, use $(WORKSPACE)/tools/lmc to compile the query.

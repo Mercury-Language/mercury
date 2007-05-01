@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2006 The University of Melbourne.
+** Copyright (C) 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -68,7 +68,8 @@ struct MR_EventAttr_Struct {
 
 typedef enum {
     MR_EVENT_ATTR_ORDINARY,
-    MR_EVENT_ATTR_FUNCTION,
+    MR_EVENT_ATTR_PURE_FUNCTION,
+    MR_EVENT_ATTR_IMPURE_FUNCTION,
     MR_EVENT_ATTR_SYNTHESIZED
 } MR_EventAttrKind;
 
