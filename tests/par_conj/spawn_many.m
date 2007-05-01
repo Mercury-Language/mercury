@@ -11,28 +11,25 @@
 
 :- import_module io.
 
-:- pred main(io::di, io::uo) is cc_multi.
+:- impure pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
 :- import_module int.
-:- import_module list.
-:- import_module maybe.
-:- import_module string.
 :- import_module thread.
 :- import_module thread.channel.
 :- import_module unit.
 
 main(!IO) :-
+    % Set a signal to go off if the program is taking too long.
+    % The default SIGALRM handler will abort the program.
+    impure alarm(10),
+
     NumSpawn = 5000,
     channel.init(Channel, !IO),
     loop(Channel, NumSpawn, !IO),
-    count(Channel, 0, NumExit, !IO),
-    (if NumSpawn = NumExit then
-        io.write_string("ok\n", !IO)
-    else
-        io.format("not ok: %d != %d\n", [i(NumSpawn), i(NumExit)], !IO)
-    ).
+    wait(Channel, NumSpawn, !IO),
+    io.write_string("ok\n", !IO).
 
 :- pred loop(channel(unit)::in, int::in, io::di, io::uo) is cc_multi.
 
@@ -41,24 +38,27 @@ loop(Channel, N, !IO) :-
         true
     else
         thread.spawn((pred(!.IO::di, !:IO::uo) is cc_multi :-
-            foo(Channel, !IO)
+            channel.put(Channel, unit, !IO)
         ), !IO),
         loop(Channel, N-1, !IO)
     ).
 
-:- pred foo(channel(unit)::in, io::di, io::uo) is det.
+:- pred wait(channel(unit)::in, int::in, io::di, io::uo) is det.
 
-foo(Channel, !IO) :-
-    channel.put(Channel, unit, !IO).
-
-:- pred count(channel(unit)::in, int::in, int::out, io::di, io::uo) is det.
-
-count(Channel, Num0, Num, !IO) :-
-    channel.try_take(Channel, MaybeUnit, !IO),
-    (
-        MaybeUnit = yes(_),
-        count(Channel, Num0 + 1, Num, !IO)
-    ;
-        MaybeUnit = no,
-        Num = Num0
+wait(Channel, Num, !IO) :-
+    (if Num = 0 then
+        true
+    else
+        channel.take(Channel, _Unit, !IO),
+        wait(Channel, Num - 1, !IO)
     ).
+
+:- pragma foreign_decl("C", "#include <unistd.h>").
+:- impure pred alarm(int::in) is det.
+
+:- pragma foreign_proc("C",
+    alarm(Seconds::in),
+    [will_not_call_mercury],
+"
+    alarm(Seconds);
+").

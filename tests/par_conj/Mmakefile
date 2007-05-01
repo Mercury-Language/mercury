@@ -147,7 +147,10 @@ threads_hang.out: threads_hang
 # Run spawn_many with smallish C stacks, so we don't need to spawn so many
 # threads to see the bug.
 spawn_many.out: spawn_many
-	ulimit -s 256 && $(ENGINES) ./spawn_many 2>&1 > spawn_many.out || \
+	ulimit -s 256 && \
+		MERCURY_OPTIONS='-P2 --detstack-size 32 --small-detstack-size 32 \
+			--nondetstack-size 16 --small-nondetstack-size 16' \
+		./spawn_many 2>&1 > spawn_many.out || \
 		{ grep . $@ /dev/null; exit 1; }
 
 endif
