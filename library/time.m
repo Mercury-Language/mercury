@@ -255,7 +255,7 @@ time.clock(Result, !IO) :-
 
 :- pragma foreign_proc("C",
     time.c_clock(Ret::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Ret = (MR_Integer) clock();
     MR_update_io(IO0, IO);
@@ -290,20 +290,20 @@ time.clock(Result, !IO) :-
 
 :- pragma foreign_proc("C",
     time.clocks_per_sec = (Ret::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ret = (MR_Integer) CLOCKS_PER_SEC;
 ").
 :- pragma foreign_proc("C#",
     time.clocks_per_sec = (Ret::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "{
     // TicksPerSecond is guaranteed to be 10,000,000
     Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
 :- pragma foreign_proc("Java",
     time.clocks_per_sec = (Ret::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (mercury.runtime.Native.isAvailable()) {
         Ret = mercury.runtime.Native.clocks_per_sec();
@@ -332,7 +332,7 @@ time.times(Tms, Result, !IO) :-
 :- pragma foreign_proc("C",
     time.c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
 #ifdef MR_HAVE_POSIX_TIMES
     struct tms t;
@@ -389,7 +389,7 @@ time.clk_tck = Ret :-
 
 :- pragma foreign_proc("C",
     time.c_clk_tck = (Ret::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
 #if defined(MR_CLOCK_TICKS_PER_SECOND)
     Ret = MR_CLOCK_TICKS_PER_SECOND;
@@ -401,14 +401,14 @@ time.c_clk_tck = -1.   % default is to throw an exception.
 
 :- pragma foreign_proc("C#",
     time.clk_tck = (Ret::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "{
     // TicksPerSecond is guaranteed to be 10,000,000
     Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
 :- pragma foreign_proc("Java",
     time.c_clk_tck = (Ret::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (mercury.runtime.Native.isAvailable()) {
         Ret = mercury.runtime.Native.clk_tck();
@@ -434,7 +434,7 @@ time.time(Result, !IO) :-
 
 :- pragma foreign_proc("C",
     time.c_time(Ret::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Ret = time(NULL);
     MR_update_io(IO0, IO);
@@ -484,13 +484,13 @@ time.difftime(time_t(T1), time_t(T0)) = Diff :-
 
 :- pragma foreign_proc("C",
     time.c_difftime(T1::in, T0::in, Diff::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Diff = (MR_Float) difftime(T1, T0);
 ").
 :- pragma foreign_proc("C#",
     time.c_difftime(T1::in, T0::in, Diff::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "{
     System.TimeSpan span;
     span = T1 - T0;
@@ -498,7 +498,7 @@ time.difftime(time_t(T1), time_t(T0)) = Diff :-
 }").
 :- pragma foreign_proc("Java",
     time.c_difftime(T1::in, T0::in, Diff::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Diff = (double) (T1.getTime() - T0.getTime()) / 1000;
 ").
