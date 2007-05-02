@@ -45,6 +45,7 @@
 :- import_module libs.handle_options.
 :- import_module libs.process_util.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_out.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
@@ -526,14 +527,14 @@ join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
 
 linked_target_cleanup(MainModuleName, FileType, OutputFileName,
         CompilationTarget, !Info, !IO) :-
-    make_remove_file(OutputFileName, !Info, !IO),
+    make_remove_file(verbose_make, OutputFileName, !Info, !IO),
     (
         FileType = executable,
         ( CompilationTarget = target_c
         ; CompilationTarget = target_asm
         )
     ->
-        remove_init_files(MainModuleName, !Info, !IO)
+        remove_init_files(verbose_make, MainModuleName, !Info, !IO)
     ;
         true
     ).
@@ -570,7 +571,7 @@ make_misc_target_builder(MainModuleName - TargetType, _, Succeeded,
         TargetType = misc_target_clean,
         Succeeded = yes,
         list.foldl2(make_module_clean, AllModules, !Info, !IO),
-        remove_init_files(MainModuleName, !Info, !IO)
+        remove_init_files(very_verbose, MainModuleName, !Info, !IO)
     ;
         TargetType = misc_target_realclean,
         Succeeded = yes,
@@ -1378,6 +1379,18 @@ maybe_make_grade_clean(Clean, ModuleName, AllModules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_grade_clean(ModuleName, AllModules, !Info, !IO) :-
+    verbose_msg(
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.write_string("Cleaning up grade-dependent files for `",
+                !IO),
+            write_sym_name(ModuleName, !IO),
+            io.write_string("'in grade ", !IO),
+            globals.io_get_globals(Globals, !IO),
+            grade_directory_component(Globals, Grade),
+            io.write_string(Grade, !IO),
+            io.write_string(".\n", !IO)
+        ), !IO),
+
     make_main_module_realclean(ModuleName, !Info, !IO),
     list.foldl2(make_module_clean, AllModules, !Info, !IO).
 
@@ -1385,6 +1398,13 @@ make_grade_clean(ModuleName, AllModules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_main_module_realclean(ModuleName, !Info, !IO) :-
+    verbose_msg(
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.write_string("Removing executable and library files for `",
+                !IO),
+            write_sym_name(ModuleName, !IO),
+            io.write_string("'.\n", !IO)
+        ), !IO),
     linked_target_file_name(ModuleName, executable, ExeFileName, !IO),
     linked_target_file_name(ModuleName, static_library, LibFileName, !IO),
     linked_target_file_name(ModuleName, shared_library, SharedLibFileName,
@@ -1402,37 +1422,46 @@ make_main_module_realclean(ModuleName, !Info, !IO) :-
     linked_target_file_name(ModuleName, java_archive, ThisDirJarFileName, !IO),
     globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
 
-    list.foldl2(make_remove_file,
+    list.foldl2(make_remove_file(very_verbose),
         [ExeFileName, LibFileName, SharedLibFileName, JarFileName,
         ThisDirExeFileName, ThisDirLibFileName,
         ThisDirSharedLibFileName, ThisDirJarFileName],
         !Info, !IO),
-    make_remove_file(ModuleName, ".init", !Info, !IO),
-    remove_init_files(ModuleName, !Info, !IO).
+    make_remove_file(very_verbose, ModuleName, ".init", !Info, !IO),
+    remove_init_files(very_verbose, ModuleName, !Info, !IO).
 
-:- pred remove_init_files(module_name::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred remove_init_files(option::in, module_name::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-remove_init_files(ModuleName, !Info, !IO) :-
+remove_init_files(Verbose, ModuleName, !Info, !IO) :-
     globals.io_lookup_string_option(object_file_extension, ObjExt, !IO),
     globals.io_lookup_string_option(pic_object_file_extension, PicObjExt,
         !IO),
     globals.io_lookup_string_option(link_with_pic_object_file_extension,
         LinkWithPicObjExt, !IO),
-    list.foldl2(make_remove_file(ModuleName), ["_init.c", "_init" ++ ObjExt,
-        "_init" ++ PicObjExt, "_init" ++ LinkWithPicObjExt],
+    list.foldl2(make_remove_file(Verbose, ModuleName),
+        ["_init.c", "_init" ++ ObjExt,
+            "_init" ++ PicObjExt, "_init" ++ LinkWithPicObjExt],
         !Info, !IO).
 
 :- pred make_module_clean(module_name::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 make_module_clean(ModuleName, !Info, !IO) :-
-    list.foldl2(make_remove_target_file(ModuleName),
+    verbose_msg(verbose_make,
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.write_string("Cleaning up target files for module `", !IO),
+            write_sym_name(ModuleName, !IO),
+            io.write_string("'.\n", !IO)
+        ), !IO),
+
+    list.foldl2(make_remove_target_file(very_verbose, ModuleName),
         [module_target_errors, module_target_c_code,
         module_target_c_header(header_mih), module_target_il_code,
         module_target_java_code], !Info, !IO),
 
-    list.foldl2(make_remove_file(ModuleName), [".used", ".prof"], !Info, !IO),
+    list.foldl2(make_remove_file(very_verbose, ModuleName),
+        [".used", ".prof"], !Info, !IO),
 
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
@@ -1447,25 +1476,27 @@ make_module_clean(ModuleName, !Info, !IO) :-
         (pred(FactTableFile::in, !.Info::in, !:Info::out, di, uo) is det -->
             fact_table_file_name(ModuleName, FactTableFile,
                 ".c", no, FactTableCFile),
-            make_remove_file(FactTableCFile, !Info)
+            make_remove_file(very_verbose, FactTableCFile, !Info)
         ), FactTableFiles, !Info, !IO),
 
     CCodeModule = foreign_language_module_name(ModuleName, lang_c),
-    make_remove_target_file(CCodeModule, module_target_c_code, !Info, !IO),
+    make_remove_target_file(very_verbose, CCodeModule, module_target_c_code,
+        !Info, !IO),
 
     % Remove object and assembler files.
     list.foldl2(
         (pred(PIC::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo) is det :-
-        make_remove_target_file(ModuleName, module_target_object_code(PIC),
+        make_remove_target_file(very_verbose, ModuleName,
+            module_target_object_code(PIC),
             !Info, !IO),
-        make_remove_target_file(ModuleName, module_target_asm_code(PIC),
-            !Info, !IO),
-        make_remove_target_file(ModuleName,
+        make_remove_target_file(very_verbose, ModuleName,
+            module_target_asm_code(PIC), !Info, !IO),
+        make_remove_target_file(very_verbose, ModuleName,
             module_target_foreign_object(PIC, lang_c), !Info, !IO),
         list.foldl2(
             (pred(FactTableFile::in, !.Info::in, !:Info::out,
                     !.IO::di, !:IO::uo) is det :-
-                make_remove_target_file(ModuleName,
+                make_remove_target_file(very_verbose, ModuleName,
                     module_target_fact_table_object(PIC, FactTableFile),
                     !Info, !IO)
             ), FactTableFiles, !Info, !IO)
@@ -1474,17 +1505,17 @@ make_module_clean(ModuleName, !Info, !IO) :-
 
     % Remove IL foreign code files.
     CSharpModule = foreign_language_module_name(ModuleName, lang_csharp),
-    make_remove_file(CSharpModule,
+    make_remove_file(very_verbose, CSharpModule,
         foreign_language_file_extension(lang_csharp), !Info, !IO),
-    make_remove_target_file(CSharpModule,
+    make_remove_target_file(very_verbose, CSharpModule,
         module_target_foreign_il_asm(lang_csharp), !Info, !IO),
 
     McppModule = foreign_language_module_name(ModuleName,
         lang_managed_cplusplus),
-    make_remove_file(McppModule,
+    make_remove_file(very_verbose, McppModule,
         foreign_language_file_extension(lang_managed_cplusplus),
         !Info, !IO),
-    make_remove_target_file(McppModule,
+    make_remove_target_file(very_verbose, McppModule,
         module_target_foreign_il_asm(lang_managed_cplusplus), !Info, !IO).
 
 :- pred make_module_realclean(module_name::in, make_info::in, make_info::out,
@@ -1492,7 +1523,14 @@ make_module_clean(ModuleName, !Info, !IO) :-
 
 make_module_realclean(ModuleName, !Info, !IO) :-
     make_module_clean(ModuleName, !Info, !IO),
-    list.foldl2(make_remove_target_file(ModuleName),
+
+    verbose_msg(verbose_make,
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io.write_string("Cleaning up interface files for module `", !IO),
+            write_sym_name(ModuleName, !IO),
+            io.write_string("'.\n", !IO)
+        ), !IO),
+    list.foldl2(make_remove_target_file(very_verbose, ModuleName),
         [
             module_target_private_interface, 
             module_target_long_interface, 
@@ -1503,9 +1541,10 @@ make_module_realclean(ModuleName, !Info, !IO) :-
             module_target_c_header(header_mh)
         ],
         !Info, !IO),
-    make_remove_file(ModuleName, make_module_dep_file_extension, !Info, !IO),
-    make_remove_file(ModuleName, ".imdg", !Info, !IO),
-    make_remove_file(ModuleName, ".request", !Info, !IO).
+    make_remove_file(very_verbose, ModuleName, make_module_dep_file_extension,
+        !Info, !IO),
+    make_remove_file(very_verbose, ModuleName, ".imdg", !Info, !IO),
+    make_remove_file(very_verbose, ModuleName, ".request", !Info, !IO).
 
 %-----------------------------------------------------------------------------%
 

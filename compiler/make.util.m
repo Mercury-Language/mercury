@@ -180,25 +180,30 @@
 %-----------------------------------------------------------------------------%
 %
 % Remove file a file, deleting the cached timestamp
+% The removal is reported to the user if the given boolean option is set.
+% In general the option given should be `--very-verbose' when making a
+% `.clean' or `.realclean target', and `--verbose-make' when cleaning
+% after an interrupted build.
 %
 
     % Remove the target file and the corresponding timestamp file.
     %
-:- pred make_remove_target_file(target_file::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred make_remove_target_file(option::in, target_file::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Remove the target file and the corresponding timestamp file.
     %
-:- pred make_remove_target_file(module_name::in, module_target_type::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-    % make_remove_file(ModuleName, Extension, !Info).
-    %
-:- pred make_remove_file(module_name::in, string::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-:- pred make_remove_file(file_name::in, make_info::in, make_info::out,
+:- pred make_remove_target_file(option::in, module_name::in,
+    module_target_type::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
+
+    % make_remove_file(VerboseOption, ModuleName, Extension, !Info).
+    %
+:- pred make_remove_file(option::in, module_name::in, string::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+:- pred make_remove_file(option::in, file_name::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -236,6 +241,11 @@
     % Apply the given predicate if `--verbose-make' is set.
     %
 :- pred verbose_msg(pred(io, io)::(pred(di, uo) is det),
+    io::di, io::uo) is det.
+
+    % Apply the given predicate if the given boolean option is set to `yes'.
+    %
+:- pred verbose_msg(option::in, pred(io, io)::(pred(di, uo) is det),
     io::di, io::uo) is det.
 
     % Write a debugging message relating to a given target file.
@@ -277,7 +287,7 @@
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Write a message "Made symlink/copy of <filename>" if
-    % `--verbose-message' is set.
+    % `--verbose-make' is set.
     %
 :- pred maybe_symlink_or_copy_linked_target_message(
     pair(module_name, target_type)::in, io::di, io::uo) is det.
@@ -935,25 +945,26 @@ find_oldest_timestamp(ok(Timestamp1), ok(Timestamp2)) = ok(Timestamp) :-
 
 %-----------------------------------------------------------------------------%
 
-make_remove_target_file(target_file(ModuleName, FileType), !Info, !IO) :-
-    make_remove_target_file(ModuleName, FileType, !Info, !IO).
+make_remove_target_file(VerboseOption, target_file(ModuleName, FileType),
+        !Info, !IO) :-
+    make_remove_target_file(VerboseOption, ModuleName, FileType, !Info, !IO).
 
-make_remove_target_file(ModuleName, FileType, !Info, !IO) :-
+make_remove_target_file(VerboseOption, ModuleName, FileType, !Info, !IO) :-
     globals.io_get_globals(Globals, !IO),
     module_target_to_file_name(ModuleName, FileType, no, FileName, !IO),
-    make_remove_file(FileName, !Info, !IO),
+    make_remove_file(VerboseOption, FileName, !Info, !IO),
     ( TimestampExt = timestamp_extension(Globals, FileType) ->
-        make_remove_file(ModuleName, TimestampExt, !Info, !IO)
+        make_remove_file(VerboseOption, ModuleName, TimestampExt, !Info, !IO)
     ;
         true
     ).
 
-make_remove_file(ModuleName, Ext, !Info, !IO) :-
+make_remove_file(VerboseOption, ModuleName, Ext, !Info, !IO) :-
     module_name_to_file_name(ModuleName, Ext, no, FileName, !IO),
-    make_remove_file(FileName, !Info, !IO).
+    make_remove_file(VerboseOption, FileName, !Info, !IO).
 
-make_remove_file(FileName, !Info, !IO) :-
-    verbose_msg(report_remove_file(FileName), !IO),
+make_remove_file(VerboseOption, FileName, !Info, !IO) :-
+    verbose_msg(VerboseOption, report_remove_file(FileName), !IO),
     io.remove_file(FileName, _, !IO),
     !:Info = !.Info ^ file_timestamps :=
         map.delete(!.Info ^ file_timestamps, FileName).
@@ -1170,23 +1181,19 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
 %-----------------------------------------------------------------------------%
 
 debug_msg(P, !IO) :-
-    globals.io_lookup_bool_option(debug_make, Debug, !IO),
-    (
-        Debug = yes,
-        P(!IO),
-        io.flush_output(!IO)
-    ;
-        Debug = no
-    ).
+    verbose_msg(debug_make, P, !IO).
 
 verbose_msg(P, !IO) :-
-    globals.io_lookup_bool_option(verbose_make, Verbose, !IO),
+    verbose_msg(verbose_make, P, !IO).
+
+verbose_msg(Option, P, !IO) :-
+    globals.io_lookup_bool_option(Option, OptionValue, !IO),
     (
-        Verbose = yes,
+        OptionValue = yes,
         P(!IO),
         io.flush_output(!IO)
     ;
-        Verbose = no
+        OptionValue = no
     ).
 
 debug_file_msg(TargetFile, Msg, !IO) :-

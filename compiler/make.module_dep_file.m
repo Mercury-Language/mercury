@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -641,7 +641,7 @@ cleanup_short_interfaces(SubModuleNames, !Info, !IO) :-
     list.foldl2(
         (pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
                 is det :-
-            make_remove_target_file(SubModuleName,
+            make_remove_target_file(verbose_make, SubModuleName,
                 module_target_unqualified_short_interface, !Info, !IO)
         ), SubModuleNames, !Info, !IO).
 
@@ -652,8 +652,8 @@ cleanup_module_dep_files(SubModuleNames, !Info, !IO) :-
     list.foldl2(
         (pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
                 is det :-
-            make_remove_file(SubModuleName, make_module_dep_file_extension,
-                !Info, !IO)
+            make_remove_file(verbose_make, SubModuleName,
+                make_module_dep_file_extension, !Info, !IO)
         ), SubModuleNames, !Info, !IO).
 
 :- pred maybe_write_importing_module(module_name::in, maybe(module_name)::in,
