@@ -697,7 +697,8 @@ string_to_trace_port("ELSE", port_ite_else).
 string_to_trace_port("NEGE", port_neg_enter).
 string_to_trace_port("NEGS", port_neg_success).
 string_to_trace_port("NEGF", port_neg_failure).
-string_to_trace_port("DISJ", port_disj).
+string_to_trace_port("DSJF", port_disj_first).
+string_to_trace_port("DSJL", port_disj_later).
 string_to_trace_port("SWTC", port_switch).
 string_to_trace_port("FRST", port_nondet_foreign_proc_first).
 string_to_trace_port("LATR", port_nondet_foreign_proc_later).
@@ -729,7 +730,8 @@ make_path_port(GoalPath, port_neg_success) =
     port_and_path(port_neg_success, GoalPath).
 make_path_port(GoalPath, port_neg_failure) =
     port_and_path(port_neg_failure, GoalPath).
-make_path_port(GoalPath, port_disj) = path_only(GoalPath).
+make_path_port(GoalPath, port_disj_first) = path_only(GoalPath).
+make_path_port(GoalPath, port_disj_later) = path_only(GoalPath).
 make_path_port(GoalPath, port_switch) = path_only(GoalPath).
 make_path_port(GoalPath, port_nondet_foreign_proc_first) = path_only(GoalPath).
 make_path_port(GoalPath, port_nondet_foreign_proc_later) = path_only(GoalPath).

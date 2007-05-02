@@ -353,7 +353,9 @@ static    MR_TraceNode      MR_trace_decl_excp(MR_EventInfo *event_info,
                                 MR_TraceNode prev);
 static    MR_TraceNode      MR_trace_decl_switch(MR_EventInfo *event_info,
                                 MR_TraceNode prev);
-static    MR_TraceNode      MR_trace_decl_disj(MR_EventInfo *event_info,
+static    MR_TraceNode      MR_trace_decl_disj_first(MR_EventInfo *event_info,
+                                MR_TraceNode prev);
+static    MR_TraceNode      MR_trace_decl_disj_later(MR_EventInfo *event_info,
                                 MR_TraceNode prev);
 static    MR_TraceNode      MR_trace_decl_cond(MR_EventInfo *event_info,
                                 MR_TraceNode prev);
@@ -695,8 +697,12 @@ MR_trace_construct_node(MR_EventInfo *event_info)
             trace = MR_trace_decl_fail(event_info, trace);
             break;
 
-        case MR_PORT_DISJ:
-            trace = MR_trace_decl_disj(event_info, trace);
+        case MR_PORT_DISJ_FIRST:
+            trace = MR_trace_decl_disj_first(event_info, trace);
+            break;
+
+        case MR_PORT_DISJ_LATER:
+            trace = MR_trace_decl_disj_later(event_info, trace);
             break;
 
         case MR_PORT_SWITCH:
@@ -1158,44 +1164,51 @@ MR_trace_decl_switch(MR_EventInfo *event_info, MR_TraceNode prev)
 }
 
 static MR_TraceNode
-MR_trace_decl_disj(MR_EventInfo *event_info, MR_TraceNode prev)
+MR_trace_decl_disj_first(MR_EventInfo *event_info, MR_TraceNode prev)
 {
     MR_TraceNode    node;
-    const char      *path = event_info->MR_event_path;
 
-    if (MR_trace_first_disjunct(event_info)) {
-        MR_TRACE_CALL_MERCURY(
-            node = (MR_TraceNode) MR_DD_construct_first_disj_node(
-                (MR_Word) prev, event_info->MR_event_sll);
-        );
-    } else {
-        MR_TraceNode    next;
-        MR_TraceNode    first;
+    MR_TRACE_CALL_MERCURY(
+        node = (MR_TraceNode) MR_DD_construct_first_disj_node(
+            (MR_Word) prev, event_info->MR_event_sll);
+    );
 
-        /*
-        ** Search through previous nodes for a matching DISJ event.
-        */
-        next = MR_trace_find_prev_contour(prev);
-        while (!MR_trace_matching_disj(path, next)) {
-            next = MR_trace_step_left_in_contour(next);
-        }
+    return node;
+}
 
-        MR_decl_checkpoint_match(next);
+static MR_TraceNode
+MR_trace_decl_disj_later(MR_EventInfo *event_info, MR_TraceNode prev)
+{
+    MR_TraceNode    node;
+    const char      *path;
+    MR_TraceNode    next;
+    MR_TraceNode    first;
+    
+    path = event_info->MR_event_path;
 
-        /*
-        ** Find the first disj event of this disjunction.
-        */
-        first = MR_trace_node_first_disj(next);
-        if (first == (MR_TraceNode) NULL) {
-            first = next;
-        }
-
-        MR_TRACE_CALL_MERCURY(
-            node = (MR_TraceNode) MR_DD_construct_later_disj_node(
-                MR_trace_node_store, (MR_Word) prev, event_info->MR_event_sll,
-                (MR_Word) first);
-        );
+    /*
+    ** Search through previous nodes for a matching DISJ event.
+    */
+    next = MR_trace_find_prev_contour(prev);
+    while (!MR_trace_matching_disj(path, next)) {
+        next = MR_trace_step_left_in_contour(next);
     }
+
+    MR_decl_checkpoint_match(next);
+
+    /*
+    ** Find the first disj event of this disjunction.
+    */
+    first = MR_trace_node_first_disj(next);
+    if (first == (MR_TraceNode) NULL) {
+        first = next;
+    }
+
+    MR_TRACE_CALL_MERCURY(
+        node = (MR_TraceNode) MR_DD_construct_later_disj_node(
+            MR_trace_node_store, (MR_Word) prev, event_info->MR_event_sll,
+            (MR_Word) first);
+    );
 
     return node;
 }
@@ -1283,7 +1296,7 @@ MR_trace_matching_disj(const char *path, MR_TraceNode node)
         port = (MR_TracePort) MR_DD_trace_node_port(node);
     );
 
-    if (port == MR_PORT_DISJ) {
+    if (port == MR_PORT_DISJ_FIRST || port == MR_PORT_DISJ_LATER) {
         node_path = MR_trace_node_path(node);
         return MR_trace_same_construct(path, node_path);
     } else {

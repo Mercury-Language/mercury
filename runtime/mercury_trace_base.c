@@ -106,26 +106,8 @@ MR_bool             MR_io_tabling_debug = MR_FALSE;
 
 #endif
 
-const char  *MR_port_names[] =
-{
-    "CALL",
-    "EXIT",
-    "REDO",
-    "FAIL",
-    "EXCP",
-    "COND",
-    "THEN",
-    "ELSE",
-    "NEGE",
-    "NEGS",
-    "NEGF",
-    "DISJ",
-    "SWTC",
-    "FRST",
-    "LATR",
-    "USER",
-    "NONE",
-};
+const char  *MR_actual_port_names[] = { MR_TRACE_PORT_ACTUAL_NAMES };
+const char  *MR_simplified_port_names[] = { MR_TRACE_PORT_SIMPLIFIED_NAMES };
 
 static  const void  *MR_get_orig_number(const void *record);
 static  int         MR_hash_orig_number(const void *orig_number);
@@ -575,7 +557,7 @@ MR_trace_write_label_exec_counts_for_file(FILE *fp,
             switch (path_port) {
 
                 case PORT_ONLY:
-                    fputs(MR_port_names[port], fp);
+                    fputs(MR_actual_port_names[port], fp);
                     break;
 
                 case PATH_ONLY:
@@ -585,7 +567,7 @@ MR_trace_write_label_exec_counts_for_file(FILE *fp,
                     break;
 
                 case PORT_AND_PATH:
-                    fputs(MR_port_names[port], fp);
+                    fputs(MR_actual_port_names[port], fp);
                     putc(' ', fp);
                     putc('<', fp);
                     fputs(MR_label_goal_path(label), fp);

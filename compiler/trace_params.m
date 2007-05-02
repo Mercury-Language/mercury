@@ -459,7 +459,8 @@ convert_port_name("negf") = port_neg_failure.
 convert_port_name("neg_failure") = port_neg_failure.
 convert_port_name("swtc") = port_switch.
 convert_port_name("switch") = port_switch.
-convert_port_name("disj") = port_disj.
+convert_port_name("disj_first") = port_disj_first.
+convert_port_name("disj_later") = port_disj_later.
 convert_port_name("frst") = port_nondet_foreign_proc_first.
 convert_port_name("nondet_foreign_proc_first") =
     port_nondet_foreign_proc_first.
@@ -473,7 +474,8 @@ convert_port_name("user") = port_user.
 convert_port_class_name("interface") =
     [port_call, port_exit, port_redo, port_fail, port_exception].
 convert_port_class_name("internal") =
-    [port_ite_then, port_ite_else, port_switch, port_disj].
+    [port_ite_then, port_ite_else, port_switch,
+    port_disj_first, port_disj_later].
 convert_port_class_name("context") =
     [port_ite_cond, port_neg_enter, port_neg_success, port_neg_failure].
 
@@ -546,7 +548,8 @@ trace_port_category(port_neg_enter)           = port_cat_context.
 trace_port_category(port_neg_success)         = port_cat_context.
 trace_port_category(port_neg_failure)         = port_cat_context.
 trace_port_category(port_switch)              = port_cat_internal.
-trace_port_category(port_disj)                = port_cat_internal.
+trace_port_category(port_disj_first)          = port_cat_internal.
+trace_port_category(port_disj_later)          = port_cat_internal.
 trace_port_category(port_nondet_foreign_proc_first) = port_cat_internal.
 trace_port_category(port_nondet_foreign_proc_later) = port_cat_internal.
 trace_port_category(port_user)                = port_cat_user.
@@ -602,18 +605,19 @@ maybe_add_suppressed_event(SuppressItem, SuppressedEventsInt0,
 
 :- func port_number(trace_port) = int.
 
-port_number(port_call) = 1.
-port_number(port_exit) = 2.
-port_number(port_redo) = 3.
-port_number(port_fail) = 4.
-port_number(port_exception) = 5.
-port_number(port_ite_cond) = 6.
-port_number(port_ite_then) = 7.
-port_number(port_ite_else) = 8.
-port_number(port_neg_enter) = 9.
-port_number(port_neg_success) = 10.
-port_number(port_neg_failure) = 11.
-port_number(port_disj) = 12.
+port_number(port_call) = 0.
+port_number(port_exit) = 1.
+port_number(port_redo) = 2.
+port_number(port_fail) = 3.
+port_number(port_exception) = 4.
+port_number(port_ite_cond) = 5.
+port_number(port_ite_then) = 6.
+port_number(port_ite_else) = 7.
+port_number(port_neg_enter) = 8.
+port_number(port_neg_success) = 9.
+port_number(port_neg_failure) = 10.
+port_number(port_disj_first) = 11.
+port_number(port_disj_later) = 12.
 port_number(port_switch) = 13.
 port_number(port_nondet_foreign_proc_first) = 14.
 port_number(port_nondet_foreign_proc_later) = 15.

@@ -46,7 +46,8 @@
     ;       port_neg_enter
     ;       port_neg_success
     ;       port_neg_failure
-    ;       port_disj
+    ;       port_disj_first
+    ;       port_disj_later
     ;       port_switch
     ;       port_nondet_foreign_proc_first
     ;       port_nondet_foreign_proc_later

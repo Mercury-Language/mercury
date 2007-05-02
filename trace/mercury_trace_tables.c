@@ -1878,7 +1878,7 @@ MR_label_layout_stats(FILE *fp)
     }
 
     for (port = 0; port < MR_PORT_NUM_PORTS; port++) {
-        fprintf(fp, "%4s %10d (%5.2f%%)\n", MR_port_names[port],
+        fprintf(fp, "%4s %10d (%5.2f%%)\n", MR_actual_port_names[port],
             histogram[port], ((float) 100 * histogram[port]) / total);
     }
     fprintf(fp, "%s %10d\n", "all ", total);

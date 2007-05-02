@@ -23,11 +23,12 @@
 #include <stdio.h>		/* for FILE; should be after mercury headers */
 
 /*
-** This enum should EXACTLY match the definition of the `trace_port_type'
-** type in mdbcomp/prim_data.m, the definition of the predicate
-** `layout_out.trace_port_to_string' and the function
-** `stack_layout.port_number', and the port names list
-** in the C source file of this module (mercury_trace_base.c),
+** This enum should EXACTLY match
+** - the macro `MR_TRACE_PORT_ACTUAL_NAMES' below,
+** - the macro `MR_TRACE_PORT_SIMPLIFIED_NAMES' below,
+** - the type `trace_port' in mdbcomp/prim_data.m,
+** - the predicate `trace_port_to_string' in compiler/layout_out.m, and
+** - the function `port_number' in compiler/trace_params.m.
 */
 
 typedef	enum {
@@ -42,13 +43,59 @@ typedef	enum {
 	MR_PORT_NEG_ENTER,
 	MR_PORT_NEG_SUCCESS,	/* negated goal failed; negation succeeds */
 	MR_PORT_NEG_FAILURE,	/* negated goal succeeded; negation fails */
-	MR_PORT_DISJ,
+	MR_PORT_DISJ_FIRST,
+	MR_PORT_DISJ_LATER,
 	MR_PORT_SWITCH,
 	MR_PORT_FOREIGN_PROC_FIRST,
 	MR_PORT_FOREIGN_PROC_LATER,
 	MR_PORT_USER,
 	MR_PORT_NONE
 } MR_TracePort;
+
+#define	MR_PORT_NUM_PORTS		((int) MR_PORT_NONE + 1)
+
+#define	MR_TRACE_PORT_ACTUAL_NAMES \
+	"CALL",	\
+	"EXIT", \
+	"REDO", \
+	"FAIL", \
+	"EXCP", \
+	"COND", \
+	"THEN", \
+	"ELSE", \
+	"NEGE", \
+	"NEGS", \
+	"NEGF", \
+	"DSJF", \
+	"DSJL", \
+	"SWTC", \
+	"FRST", \
+	"LATR", \
+	"USER", \
+	"NONE"
+
+#define	MR_TRACE_PORT_SIMPLIFIED_NAMES \
+	"CALL",	\
+	"EXIT", \
+	"REDO", \
+	"FAIL", \
+	"EXCP", \
+	"COND", \
+	"THEN", \
+	"ELSE", \
+	"NEGE", \
+	"NEGS", \
+	"NEGF", \
+	"DISJ", \
+	"DISJ", \
+	"SWTC", \
+	"FRST", \
+	"LATR", \
+	"USER", \
+	"NONE"
+
+extern	const char 	*MR_actual_port_names[];
+extern	const char 	*MR_simplified_port_names[];
 
 /*
 ** The following array says if a label inside a procedure is
@@ -60,13 +107,9 @@ typedef enum {
     PATH_ONLY, PORT_ONLY, PORT_AND_PATH
 } MR_PathPort;
 
-extern	MR_PathPort     MR_named_count_port[MR_PORT_NONE + 1];
+extern	MR_PathPort     MR_named_count_port[MR_PORT_NUM_PORTS];
 
 extern	void		MR_trace_name_count_port_ensure_init(void);
-
-#define	MR_PORT_NUM_PORTS		((int) MR_PORT_NONE + 1)
-
-extern	const char 			*MR_port_names[];
 
 #define MR_trace_incr_seq()		((MR_Word) ++MR_trace_call_seqno)
 #define MR_trace_incr_depth()		((MR_Word) ++MR_trace_call_depth)

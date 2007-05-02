@@ -695,8 +695,12 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
                 LastStep = step_switch(_, _),
                 PortPrime = port_switch
             ;
-                LastStep = step_disj(_),
-                PortPrime = port_disj
+                LastStep = step_disj(DisjunctNum),
+                ( DisjunctNum = 1 ->
+                    PortPrime = port_disj_first
+                ;
+                    PortPrime = port_disj_later
+                )
             ;
                 LastStep = step_ite_cond,
                 PortPrime = port_ite_cond

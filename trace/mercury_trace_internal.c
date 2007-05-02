@@ -1473,7 +1473,8 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
         fprintf(MR_mdb_out, "%8s: ", buf);
         snprintf(buf, 64, "C%ld", (long) call_num);
         fprintf(MR_mdb_out, "%6s ", buf);
-        fprintf(MR_mdb_out, "%s", MR_port_names[event_info->MR_trace_port]);
+        fprintf(MR_mdb_out, "%s",
+            MR_simplified_port_names[event_info->MR_trace_port]);
     } else {
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
         MR_Generator    *generator;
@@ -1489,7 +1490,7 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
             (long) event_info->MR_event_number,
             (long) event_info->MR_call_seqno,
             (long) event_info->MR_call_depth,
-            MR_port_names[event_info->MR_trace_port]);
+            MR_simplified_port_names[event_info->MR_trace_port]);
     }
 
     /* The printf printed 24 characters. */
