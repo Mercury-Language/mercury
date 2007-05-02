@@ -202,6 +202,7 @@
 
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module term.
@@ -1322,6 +1323,9 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         InstMap, InstMapDelta, RI) :-
     % Deconstructions are the only types of unifications that can require
     % updating of the instmap_delta after simplify.m has been run.
+    % Type specialization may require constructions of type-infos, 
+    % typeclass-infos or predicate constants to be added to the
+    % instmap_delta.
     ModuleInfo = RI ^ module_info,
     (
         Uni = deconstruct(Var, _ConsId, Vars, UniModes, _, _CanCGC)
@@ -1354,9 +1358,61 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
             ModuleInfo, InstMapDelta),
         UniMode = UniMode0
     ;
+        Uni = construct(Var, ConsId, Args, _, _, _, _),
+        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        set.member(Var, NonLocals),
+        goal_info_get_instmap_delta(GoalInfo, OldInstMapDelta),
+        \+ instmap_delta_search_var(OldInstMapDelta, Var, _),
+        MaybeInst = cons_id_to_shared_inst(ModuleInfo, ConsId, length(Args)),
+        MaybeInst = yes(Inst)
+    ->
+        UniMode = UniMode0,
+        instmap_delta_init_reachable(InstMapDelta0),
+        instmap_delta_set(Var, Inst, InstMapDelta0, InstMapDelta)
+    ;
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
         UniMode = UniMode0
     ).
+
+    % For a builtin constructor, return the inst of the constructed term.
+    % Handling user-defined constructors properly would require running
+    % mode analysis again.
+    %
+:- func cons_id_to_shared_inst(module_info, cons_id, int) = maybe(mer_inst).
+
+cons_id_to_shared_inst(_, cons(_, _), _) = no.
+cons_id_to_shared_inst(_, ConsId @ int_const(_), _) =
+            yes(bound(shared, [bound_functor(ConsId, [])])).
+cons_id_to_shared_inst(_, ConsId @ float_const(_), _) =
+            yes(bound(shared, [bound_functor(ConsId, [])])).
+cons_id_to_shared_inst(_, ConsId @ string_const(_), _) =
+            yes(bound(shared, [bound_functor(ConsId, [])])).
+cons_id_to_shared_inst(ModuleInfo, pred_const(PredProcId, _), NumArgs) =
+        yes(ground(shared, higher_order(pred_inst_info(PorF, Modes, Det)))) :-
+    module_info_pred_proc_info(ModuleInfo, unshroud_pred_proc_id(PredProcId),
+        PredInfo, ProcInfo),
+    PorF = pred_info_is_pred_or_func(PredInfo),
+    proc_info_interface_determinism(ProcInfo, Det),
+    proc_info_get_argmodes(ProcInfo, ProcArgModes),
+    ( list.drop(NumArgs, ProcArgModes, Modes0) ->
+        Modes = Modes0
+    ;
+        unexpected(this_file, "list.drop failed in cons_id_to_shared_inst")
+    ).
+cons_id_to_shared_inst(_, type_ctor_info_const(_, _, _), _) =
+            yes(ground(shared, none)).
+cons_id_to_shared_inst(_, base_typeclass_info_const(_, _, _, _), _) =
+            yes(ground(shared, none)).
+cons_id_to_shared_inst(_, type_info_cell_constructor(_), _) =
+            yes(ground(shared, none)).
+cons_id_to_shared_inst(_, typeclass_info_cell_constructor, _) =
+            yes(ground(shared, none)).
+cons_id_to_shared_inst(_, tabling_info_const(_), _) =
+            yes(ground(shared, none)).
+cons_id_to_shared_inst(_, deep_profiling_proc_layout(_), _) =
+            yes(ground(shared, none)).
+cons_id_to_shared_inst(_, table_io_decl(_), _) =
+            yes(ground(shared, none)).
 
 %-----------------------------------------------------------------------------%
 
