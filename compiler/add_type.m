@@ -405,7 +405,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
         check_foreign_type(TypeCtor, ForeignTypeBody, Context,
             NewFoundError, !ModuleInfo, !Specs)
     ),
-    !:FoundError = !.FoundError `and` NewFoundError,
+    !:FoundError = !.FoundError `or` NewFoundError,
     (
         !.FoundError = yes
     ->
@@ -442,57 +442,25 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
     ( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
         FoundError = no
     ;
-        GeneratingCode = generating_code(Globals),
-        (
-            GeneratingCode = yes,
-            ( Target = target_c, LangStr = "C"
-            ; Target = target_il, LangStr = "IL"
-            ; Target = target_java, LangStr = "Java"
-            ; Target = target_asm, LangStr = "C"
-            ; Target = target_x86_64, LangStr = "C"
-            ),
-            MainPieces = [words("Error: no"), fixed(LangStr),
-                fixed("`pragma foreign_type'"), words("declaration for"),
-                sym_name_and_arity(Name/Arity), nl],
-            VerbosePieces = [words("There are representations for this type"),
-                words("on other back-ends, but none for this back-end."), nl],
-            Msg = simple_msg(Context,
-                [always(MainPieces), 
-                option_is_set(very_verbose, yes, [always(VerbosePieces)])]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
-            !:Specs = [Spec | !.Specs]
-        ;
-            GeneratingCode = no
-            % If we're not generating code the error may only have occurred
-            % because the grade options weren't passed.
+        ( Target = target_c, LangStr = "C"
+        ; Target = target_il, LangStr = "IL"
+        ; Target = target_java, LangStr = "Java"
+        ; Target = target_asm, LangStr = "C"
+        ; Target = target_x86_64, LangStr = "C"
         ),
+        MainPieces = [words("Error: no"), fixed(LangStr),
+            fixed("`pragma foreign_type'"), words("declaration for"),
+            sym_name_and_arity(Name/Arity), nl],
+        VerbosePieces = [words("There are representations for this type"),
+            words("on other back-ends, but none for this back-end."), nl],
+        Msg = simple_msg(Context,
+            [always(MainPieces), 
+            option_is_set(very_verbose, yes, [always(VerbosePieces)])]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [Msg]),
+        !:Specs = [Spec | !.Specs],
         FoundError = yes
     ).
-
-    % Do the options imply that we will generate code for a specific back-end?
-    %
-:- func generating_code(globals) = bool.
-
-generating_code(Globals) = bool.not(NotGeneratingCode) :-
-    lookup_bool_option(Globals, make_short_interface, MakeShortInterface),
-    lookup_bool_option(Globals, make_interface, MakeInterface),
-    lookup_bool_option(Globals, make_private_interface, MakePrivateInterface),
-    lookup_bool_option(Globals, make_transitive_opt_interface,
-        MakeTransOptInterface),
-    lookup_bool_option(Globals, generate_source_file_mapping,
-        GenSrcFileMapping),
-    lookup_bool_option(Globals, generate_dependencies, GenDepends),
-    lookup_bool_option(Globals, generate_dependency_file, GenDependFile),
-    lookup_bool_option(Globals, convert_to_mercury, ConvertToMercury),
-    lookup_bool_option(Globals, typecheck_only, TypeCheckOnly),
-    lookup_bool_option(Globals, errorcheck_only, ErrorCheckOnly),
-    lookup_bool_option(Globals, output_grade_string, OutputGradeString),
-    bool.or_list([MakeShortInterface, MakeInterface,
-        MakePrivateInterface, MakeTransOptInterface,
-        GenSrcFileMapping, GenDepends, GenDependFile, ConvertToMercury,
-        TypeCheckOnly, ErrorCheckOnly, OutputGradeString],
-        NotGeneratingCode).
 
 :- pred merge_foreign_type_bodies(compilation_target::in, bool::in,
     hlds_type_body::in, hlds_type_body::in, hlds_type_body::out)

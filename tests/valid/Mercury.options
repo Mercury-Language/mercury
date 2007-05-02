@@ -20,7 +20,7 @@ GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
 GRADEFLAGS-csharp_hello		=  --grade il
 GRADEFLAGS-foreign_type_spec	=  --grade il
-GRADEFLAGS-foreign_type_spec.foreign = --grade il
+GRADEFLAGS-foreign_type_spec.foreign_type = --grade il
 
 MCFLAGS-builtin_false		= --intermodule-optimization
 MCFLAGS-compl_unify_bug		= -O3

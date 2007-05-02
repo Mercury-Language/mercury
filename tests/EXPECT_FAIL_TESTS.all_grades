@@ -2,4 +2,3 @@ debugger/declarative/condition_bug
 hard_coded/typeclasses/complicated_constraint
 valid/constraint_prop_bug
 valid/csharp_hello
-valid/foreign_type_spec

@@ -1396,11 +1396,9 @@ namespace mercury {
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("Java", bitmap, "mercury.bitmap.MercuryBitmap") 
     where equality is bitmap_equal, comparison is bitmap_compare.
-/* XXX UNTESTED
 :- pragma foreign_type("IL", bitmap,
     "class [mercury]mercury.bitmap__csharp_code.MercuryBitmap") 
     where equality is bitmap_equal, comparison is bitmap_compare.
-*/
 
 :- pred bitmap_equal(bitmap, bitmap).
 :- mode bitmap_equal(in, in) is semidet.

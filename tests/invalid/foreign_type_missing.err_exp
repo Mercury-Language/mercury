@@ -1,0 +1,2 @@
+foreign_type_missing.m:009: Error: no IL `pragma foreign_type' declaration for
+foreign_type_missing.m:009:   `foreign_type_missing.foreign'/0
