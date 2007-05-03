@@ -92,7 +92,7 @@ MR_do_bitmap_to_string(MR_ConstBitmapPtr b,
     int start;
     char num_bits_str[100];
 
-    sprintf(num_bits_str, "%d", b->num_bits);
+    sprintf(num_bits_str, "%" MR_INTEGER_LENGTH_MODIFIER "d", b->num_bits);
     num_bits_len = strlen(num_bits_str);
     num_bytes = MR_bitmap_length_in_bytes(b->num_bits);
     len = 1 + num_bits_len + 1 + num_bytes * 2 + 1;
