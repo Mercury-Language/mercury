@@ -86,7 +86,7 @@
 
   #endif
 
-        /*
+    /*
     ** The following two macros are used to protect pragma c_code
     ** predicates which are not thread-safe.
     ** See the comments below.
@@ -102,7 +102,7 @@
     })
     #define MR_KEY_CREATE   pthread_keycreate
   #else
-    #define     MR_GETSPECIFIC(key) pthread_getspecific((key))
+    #define MR_GETSPECIFIC(key) pthread_getspecific((key))
     #define MR_KEY_CREATE       pthread_key_create
   #endif
 
@@ -121,7 +121,7 @@
   */
 
   MercuryThread     *MR_create_thread(MR_ThreadGoal *);
-  void          MR_destroy_thread(void *eng);
+  void              MR_destroy_thread(void *eng);
   extern MR_bool    MR_exit_now;
 
   /*
