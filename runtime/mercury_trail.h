@@ -335,7 +335,7 @@ extern MR_MemoryZone *MR_trail_zone;
 
 /* Pointer to the current top of the Mercury trail */
 /*
-** N.B. Use `MR_trail_ptr', defined in mercury_regorder.h,
+** N.B. Use `MR_trail_ptr', defined in mercury_regs.h,
 ** not `MR_trail_ptr_var'.
 */
 
@@ -347,7 +347,7 @@ extern MR_TrailEntry *MR_trail_ptr_var;
 ** semidet choice points, e.g. in an if-then-else) and it is reset whenever
 ** a choice point is backtracked over or pruned away.
 **
-** N.B.  Use `MR_ticket_counter', defined in mercury_regorder.h,
+** N.B.  Use `MR_ticket_counter', defined in mercury_regs.h,
 ** not `MR_ticket_counter_var'.
 */
 
@@ -360,7 +360,7 @@ extern MR_Unsigned MR_ticket_counter_var;
 ** but which is _not_ decremented or reset when a choice point is
 ** pruned away with a commit.
 **
-** N.B.  Use `MR_ticket_high_water', defined in mercury_regorder.h,
+** N.B.  Use `MR_ticket_high_water', defined in mercury_regs.h,
 ** not `MR_ticket_high_water_var'.
 */
 
