@@ -1225,7 +1225,7 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
     % introduces calls to store_at_ref. Any other use is will cause bad things
     % to happen.
 :- type store_at_ref_type(T)
-    ---> store_at_ref_type(int).
+    --->    store_at_ref_type(int).
 
     % unused/0 should never be called.
     % The compiler sometimes generates references to this procedure,
@@ -1265,10 +1265,9 @@ nyi_foreign_type_compare(Result, _, _) :-
 
 :- interface.
 
-    % var/1 is intended to make it possible to write code that effectively
-    % has different implementations for different modes (see type_to_univ
-    % in univ.m as an example). It has to be impure to ensure that
-    % reordering doesn't cause the wrong mode to be selected.
+    % var/1 is intended to make it possible to write code that effectively has
+    % different implementations for different modes.  It has to be impure to
+    % ensure that reordering doesn't cause the wrong mode to be selected.
     %
 :- impure pred var(T).
 :-    mode var(ui) is failure.

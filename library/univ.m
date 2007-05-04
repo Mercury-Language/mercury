@@ -117,8 +117,7 @@ type_to_univ(T::di, Univ::uo) :-
     Univ0 = 'new univ_cons'(T),
     unsafe_promise_unique(Univ0, Univ).
 type_to_univ(T::in, Univ::out) :-
-    Univ0 = 'new univ_cons'(T),
-    unsafe_promise_unique(Univ0, Univ).
+    Univ = 'new univ_cons'(T).
 type_to_univ(T::out, Univ::in) :-
     Univ = univ_cons(T0),
     private_builtin.typed_unify(T0, T).
