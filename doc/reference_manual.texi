@@ -8616,7 +8616,7 @@ typedef enum @{
 @} MR_untrail_reason;
 
 void MR_trail_function(
-        void (*@var{untrail_func})(MR_Word, MR_untrail_reason),
+        void (*@var{untrail_func})(void *, MR_untrail_reason),
         void *@var{value}
 );
 @end example
