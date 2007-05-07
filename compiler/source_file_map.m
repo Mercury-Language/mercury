@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -108,8 +108,7 @@ get_source_file_map(SourceFileMap, !IO) :-
             SourceFileMap = map.init
         ),
         globals.io_get_globals(Globals1, !IO),
-        globals.set_source_file_map(yes(SourceFileMap), Globals1, Globals2),
-        unsafe_promise_unique(Globals2, Globals),
+        globals.set_source_file_map(yes(SourceFileMap), Globals1, Globals),
         globals.io_set_globals(Globals, !IO)
     ).
 

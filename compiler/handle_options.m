@@ -152,8 +152,7 @@ handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
             % XXX Currently smart recompilation doesn't check that all the
             % files needed to link are present and up-to-date, so disable it.
             globals.io_get_globals(Globals0, !IO),
-            disable_smart_recompilation("linking", Globals0, Globals1, !IO),
-            unsafe_promise_unique(Globals1, Globals),
+            disable_smart_recompilation("linking", Globals0, Globals, !IO),
             globals.io_set_globals(Globals, !IO)
         ;
             true
@@ -362,8 +361,7 @@ add_error(Error, Errors0, Errors) :-
 postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
         !Errors, !IO) :-
-    unsafe_promise_unique(OptionTable0, OptionTable1), % XXX
-    globals_io_init(OptionTable1, Target, GC_Method, TagsMethod0,
+    globals_io_init(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe, !IO),
 
     some [!Globals] (
@@ -1917,8 +1915,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ;
             HighLevel = yes
         ),
-
-        unsafe_promise_unique(!Globals),
         globals.io_set_globals(!.Globals, !IO)
     ).
 

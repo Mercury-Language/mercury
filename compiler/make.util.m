@@ -608,7 +608,7 @@ build_with_module_options_args_invoked(InvokedByMmcMake, ModuleName,
             OptionsErrors = [],
             Build(AllOptionArgs, Succeeded, Info0, Info, !IO),
             MaybeInfo = yes(Info),
-            globals.io_set_globals(unsafe_promise_unique(Globals), !IO)
+            globals.io_set_globals(Globals, !IO)
         )
     ).
 

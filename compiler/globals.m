@@ -140,10 +140,10 @@
 % Access predicates for the `globals' structure
 %
 
-:- pred globals_init(option_table::di, compilation_target::di, gc_method::di,
+:- pred globals_init(option_table::in, compilation_target::di, gc_method::di,
     tags_method::di, termination_norm::di, termination_norm::di,
     trace_level::di, trace_suppress_items::di,
-    may_be_thread_safe::di, globals::uo) is det.
+    may_be_thread_safe::di, globals::out) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
@@ -207,7 +207,7 @@
 % using io.set_globals and io.get_globals.
 %
 
-:- pred globals_io_init(option_table::di, compilation_target::in,
+:- pred globals_io_init(option_table::in, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
     termination_norm::in, trace_level::in, trace_suppress_items::in,
     may_be_thread_safe::in, io::di, io::uo) is det.

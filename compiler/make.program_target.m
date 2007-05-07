@@ -1034,7 +1034,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Grade, Succeeded,
                     ), GradeSuccess, !IO)
             ), Cleanup, Succeeded, Info1, Info, !IO)
     ),
-    globals.io_set_globals(unsafe_promise_unique(OrigGlobals), !IO).
+    globals.io_set_globals(OrigGlobals, !IO).
 
 :- pred install_library_grade_2(bool::in, module_name::in,
     list(module_name)::in, make_info::in, bool::in, bool::out,
