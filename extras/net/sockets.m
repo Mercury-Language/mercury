@@ -71,7 +71,9 @@
   #include <winsock.h>
 
   #define  error()      WSAGetLastError
-#else
+
+#else /* !MR_WIN32 */
+
   #include <errno.h>
   #include <netdb.h>
 
@@ -83,19 +85,18 @@
   #define  error()      errno
 
   #define  INVALID_SOCKET   -1
-#endif
+#endif /* !MR_WIN32 */
+  
   #include \"mercury_string.h\"
 
+  /*
+  ** Save the errno into this variable if a function fails.
+  */
   extern int socket_errno;
 
 ").
 
-:- pragma foreign_decl("C", "
-    
-    /*
-    ** Save the errno into this variable if a function fails.
-    */
-
+:- pragma foreign_code("C", "
     int socket_errno;
 ").
 
@@ -119,19 +120,17 @@
         err = WSAStartup(wVersionRequested, &wsaData);
 
         if ( err != 0 ) {
-            MR_fatal_error(""Unable to find a ""
-                    ""usable winsock.dll\\n"");
+            MR_fatal_error(""Unable to find a usable winsock.dll\\n"");
         }
 
         if ( LOBYTE( wsaData.wVersion ) != 2 ||
                 HIBYTE( wsaData.wVersion ) != 2 ) {
             WSACleanup();
-            MR_fatal_error(""Unable to find a ""
-                    ""usable winsock.dll\\n"");
+            MR_fatal_error(""Unable to find a usable winsock.dll\\n"");
         }
         initialiased = MR_TRUE;
     }
-#endif
+#endif /* MR_WIN32 */
 ").
 
     % XXX thread safe?
@@ -151,12 +150,11 @@
 "
     struct servent *service;
     service = getservbyname(Name, Protocol);
-        if (service != NULL) {
-           Port = (MR_Integer) ntohs(service->s_port);
-        } else {
-           Port = -1;
-        };
-
+    if (service != NULL) {
+        Port = (MR_Integer) ntohs(service->s_port);
+    } else {
+        Port = -1;
+    }
 ").
 
     % XXX thread safe?
@@ -220,11 +218,9 @@
             Success = MR_NO;
         } else {
             addr = MR_GC_NEW(struct sockaddr_in);
-
-            memcpy(&(addr->sin_addr), host->h_addr, host->h_length);
+            MR_memcpy(&(addr->sin_addr), host->h_addr, host->h_length);
             addr->sin_family = host->h_addrtype;
             addr->sin_port = service->s_port;
-
             SA = (MR_Word) addr;
             Success = MR_YES;
         }
