@@ -474,6 +474,7 @@ output_java_decl(Indent, DeclCode, !IO) :-
         ; Lang = lang_csharp
         ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
+        ; Lang = lang_erlang
         ),
         sorry(this_file, "foreign decl other than Java")
     ).
@@ -493,6 +494,7 @@ output_java_body_code(Indent, user_foreign_code(Lang, Code, Context), !IO) :-
         ; Lang = lang_csharp
         ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
+        ; Lang = lang_erlang
         ),
         sorry(this_file, "foreign code other than Java")
     ).
@@ -1859,6 +1861,9 @@ output_type(mlds_foreign_type(ForeignType), !IO) :-
     ;
         ForeignType = il(_),
         unexpected(this_file, "output_type: il foreign_type")
+    ;
+        ForeignType = erlang(_),
+        unexpected(this_file, "output_type: erlang foreign_type")
     ).
 output_type(mlds_class_type(Name, Arity, _ClassKind), !IO) :-
     % We used to treat enumerations specially here, outputting

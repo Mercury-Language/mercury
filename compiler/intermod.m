@@ -1033,8 +1033,9 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
     intermod_info::in, intermod_info::out) is det.
 
 resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
-        foreign_type_body(MaybeIL0, MaybeC0, MaybeJava0),
-        foreign_type_body(MaybeIL, MaybeC, MaybeJava), !Info) :-
+        foreign_type_body(MaybeIL0, MaybeC0, MaybeJava0, MaybeErlang0),
+        foreign_type_body(MaybeIL, MaybeC, MaybeJava, MaybeErlang),
+        !Info) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
 
@@ -1050,6 +1051,7 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ( Target = target_c
         ; Target = target_asm
         ; Target = target_x86_64
+        ; Target = target_erlang
         ),
         resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
             MaybeC0, MaybeC, !Info)
@@ -1068,6 +1070,7 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ; Target = target_asm
         ; Target = target_java
         ; Target = target_x86_64
+        ; Target = target_erlang
         ),
         MaybeIL = MaybeIL0
     ),
@@ -1080,8 +1083,22 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ; Target = target_asm
         ; Target = target_il
         ; Target = target_x86_64
+        ; Target = target_erlang
         ),
         MaybeJava = MaybeJava0
+    ),
+    (
+        Target = target_erlang,
+        resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
+            MaybeErlang0, MaybeErlang, !Info)
+    ;
+        ( Target = target_c
+        ; Target = target_asm
+        ; Target = target_il
+        ; Target = target_x86_64
+        ; Target = target_java
+        ),
+        MaybeErlang = MaybeErlang0
     ).
 
 :- pred resolve_foreign_type_body_overloading_2(module_info::in, type_ctor::in,
@@ -1274,7 +1291,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         ( Body = hlds_foreign_type(ForeignTypeBody)
         ; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
         ),
-        ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava)
+        ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
+            MaybeErlang)
     ->
         (
             MaybeIL = yes(DataIL),
@@ -1314,6 +1332,19 @@ write_type(TypeCtor - TypeDefn, !IO) :-
                 Context, !IO)
         ;
             MaybeJava = no
+        ),
+        (
+            MaybeErlang = yes(DataErlang),
+            DataErlang = foreign_type_lang_data(ErlangForeignType,
+                ErlangMaybeUserEqComp, AssertionsErlang),
+            mercury_output_item(
+                item_type_defn(VarSet, Name, Args,
+                    parse_tree_foreign_type(erlang(ErlangForeignType),
+                        ErlangMaybeUserEqComp, AssertionsErlang),
+                    cond_true),
+                Context, !IO)
+        ;
+            MaybeErlang = no
         )
     ;
         true

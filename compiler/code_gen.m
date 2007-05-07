@@ -258,6 +258,7 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
             ; Lang = lang_csharp
             ; Lang = lang_managed_cplusplus
             ; Lang = lang_il
+            ; Lang = lang_erlang
             ),
             unexpected(this_file,
                 "generate_goal_2: foreign code other than C unexpected")

@@ -457,6 +457,8 @@ target_supports_break_and_continue_2(target_java) = yes.
 % target_supports_break_and_continue_2(target_c_sharp) = yes.
 target_supports_break_and_continue_2(target_x86_64) = _ :-
     unexpected(this_file, "target x86_64 with --high-level-code").
+target_supports_break_and_continue_2(target_erlang) = _ :-
+    unexpected(this_file, "target erlang").
 
 %-----------------------------------------------------------------------------%
 

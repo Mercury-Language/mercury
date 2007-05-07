@@ -1435,7 +1435,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
         map.search(Types, TypeId, Defn),
         hlds_data.get_type_defn_body(Defn, Body),
         Body = hlds_foreign_type(
-            foreign_type_body(_MaybeIL, MaybeC, _MaybeJava))
+            foreign_type_body(_MaybeIL, MaybeC, _MaybeJava, _MaybeErlang))
     ->
         (
             MaybeC = yes(Data),

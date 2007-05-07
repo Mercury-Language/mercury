@@ -529,6 +529,8 @@ target_supports_inheritence(target_java) = yes.
 target_supports_inheritence(target_asm) = no.
 target_supports_inheritence(target_x86_64) =
     unexpected(this_file, "target_x86_64 and --high-level-code").
+target_supports_inheritence(target_erlang) =
+    unexpected(this_file, "target erlang").
 
 %-----------------------------------------------------------------------------%
 

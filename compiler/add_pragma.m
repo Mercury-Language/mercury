@@ -406,6 +406,7 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
                     ( Lang = lang_java
                     ; Lang = lang_csharp
                     ; Lang = lang_managed_cplusplus
+                    ; Lang = lang_erlang
                     ),
                     Pieces = [words("Warning:"),
                         fixed("`:- pragma foreign_export' declarations"),

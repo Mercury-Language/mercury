@@ -1778,7 +1778,8 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
         module_info_get_type_table(ModuleInfo, Types),
         map.search(Types, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, Body),
-        Body = hlds_foreign_type(foreign_type_body(MaybeIL, MaybeC, MaybeJava))
+        Body = hlds_foreign_type(foreign_type_body(MaybeIL, MaybeC, MaybeJava,
+            _MaybeErlang))
     ->
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
@@ -1834,6 +1835,9 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
         ;
             Target = target_x86_64,
             unexpected(this_file, "target x86_64 with --high-level-code")
+        ;
+            Target = target_erlang,
+            unexpected(this_file, "mercury_type_to_mlds_type: target erlang")
         ),
         MLDSType = mlds_foreign_type(ForeignType)
     ;

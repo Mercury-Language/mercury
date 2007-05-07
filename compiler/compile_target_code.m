@@ -80,6 +80,11 @@
 :- pred compile_csharp_file(io.output_stream::in, module_imports::in,
     file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
 
+    % compile_erlang_file(ErrorStream, ErlangFile, BeamFile, Succeeded)
+    %
+:- pred compile_erlang_file(io.output_stream::in,
+    file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
+
     % make_init_file(ErrorStream, MainModuleName, ModuleNames, Succeeded):
     %
     % Make the `.init' file for a library containing the given modules.
@@ -900,6 +905,11 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+compile_erlang_file(_ErrorStream, _ErlangFile, _BeamFile, _Succeeded, !IO) :-
+    sorry(this_file, "compile_erlang_file").
+
+%-----------------------------------------------------------------------------%
+
 make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
     module_name_to_file_name(MainModuleName, ".init.tmp", yes, TmpInitFileName,
         !IO),
@@ -1029,6 +1039,7 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
         ; Target = target_java
         ; Target = target_il
         ; Target = target_x86_64
+        ; Target = target_erlang
         ),
         join_module_list(Modules, Obj, ObjectsList, !IO)
     ),

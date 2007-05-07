@@ -191,7 +191,8 @@
     --->    foreign_type_body(
                 il      :: foreign_type_lang_body(il_foreign_type),
                 c       :: foreign_type_lang_body(c_foreign_type),
-                java    :: foreign_type_lang_body(java_foreign_type)
+                java    :: foreign_type_lang_body(java_foreign_type),
+                erlang  :: foreign_type_lang_body(erlang_foreign_type)
             ).
 
 :- type foreign_type_lang_body(T) == maybe(foreign_type_lang_data(T)).

@@ -1771,6 +1771,9 @@ mercury_output_type_defn(TVarSet, Name, TParams,
     ;
         ForeignType = java(_),
         io.write_string("java, ", !IO)
+    ;
+        ForeignType = erlang(_),
+        io.write_string("erlang, ", !IO)
     ),
     Args = list.map((func(V) = term.variable(V, context_init)), TParams),
     construct_qualified_term(Name, Args, MercuryType),
@@ -1791,6 +1794,9 @@ mercury_output_type_defn(TVarSet, Name, TParams,
         ForeignType = c(c_type(ForeignTypeStr))
     ;
         ForeignType = java(java_type(ForeignTypeStr))
+    ;
+        ForeignType = erlang(erlang_type),
+        ForeignTypeStr = ""
     ),
     io.write_string(ForeignTypeStr, !IO),
     io.write_string("\"", !IO),

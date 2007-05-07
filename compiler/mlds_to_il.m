@@ -3133,6 +3133,9 @@ mlds_type_to_ilds_type(_, mlds_foreign_type(ForeignType))
     ;
         ForeignType = java(_),
         unexpected(this_file, "java foreign type")
+    ;
+        ForeignType = erlang(_),
+        unexpected(this_file, "erlang foreign type")
     ).
 
 mlds_type_to_ilds_type(ILDataRep, mlds_ptr_type(MLDSType)) =

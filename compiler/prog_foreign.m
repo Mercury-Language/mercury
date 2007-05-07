@@ -209,6 +209,9 @@ foreign_import_module_name(ImportModule) = ModuleName :-
         Lang = lang_java,
         ModuleName = ForeignImportModule
     ;
+        Lang = lang_erlang,
+        ModuleName = ForeignImportModule
+    ;
         Lang = lang_managed_cplusplus,
         ModuleName = foreign_language_module_name(ForeignImportModule, Lang)
     ;
@@ -238,6 +241,10 @@ foreign_import_module_name_from_module(ModuleForeignImported, CurrentModule) =
             ImportedForeignCodeModuleName1)
     ;
         Lang = lang_java,
+        ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
+            ImportedForeignCodeModuleName1)
+    ;
+        Lang = lang_erlang,
         ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
             ImportedForeignCodeModuleName1)
     ).
@@ -336,6 +343,10 @@ prefer_foreign_language(_Globals, target_x86_64, Lang1, Lang2) =
         no
     ).
 
+prefer_foreign_language(_Globals, target_erlang, _Lang1, _Lang2) = no.
+    % Nothing useful to do here, but when we add Erlang as a foreign language,
+    % we should add it here.
+
 %-----------------------------------------------------------------------------%
 
 foreign_language(lang_c).
@@ -343,12 +354,14 @@ foreign_language(lang_java).
 foreign_language(lang_csharp).
 foreign_language(lang_managed_cplusplus).
 foreign_language(lang_il).
+foreign_language(lang_erlang).
 
 %-----------------------------------------------------------------------------%
 
 foreign_type_language(il(_)) = lang_il.
 foreign_type_language(c(_)) = lang_c.
 foreign_type_language(java(_)) = lang_java.
+foreign_type_language(erlang(_)) = lang_erlang.
 
 %-----------------------------------------------------------------------------%
 

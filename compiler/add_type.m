@@ -447,6 +447,7 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         ; Target = target_java, LangStr = "Java"
         ; Target = target_asm, LangStr = "C"
         ; Target = target_x86_64, LangStr = "C"
+        ; Target = target_erlang, LangStr = "Erlang"
         ),
         MainPieces = [words("Error: no"), fixed(LangStr),
             fixed("`pragma foreign_type'"), words("declaration for"),
@@ -479,7 +480,7 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
         MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
     ;
         MaybeForeignTypeBody1 = no,
-        ForeignTypeBody1 = foreign_type_body(no, no, no)
+        ForeignTypeBody1 = foreign_type_body(no, no, no, no)
     ),
     merge_foreign_type_bodies_2(ForeignTypeBody0, ForeignTypeBody1,
         ForeignTypeBody),
@@ -502,12 +503,14 @@ merge_foreign_type_bodies(_, _, hlds_foreign_type(Body0),
 :- pred merge_foreign_type_bodies_2(foreign_type_body::in,
     foreign_type_body::in, foreign_type_body::out) is semidet.
 
-merge_foreign_type_bodies_2(foreign_type_body(MaybeILA, MaybeCA, MaybeJavaA),
-        foreign_type_body(MaybeILB, MaybeCB, MaybeJavaB),
-        foreign_type_body(MaybeIL, MaybeC, MaybeJava)) :-
+merge_foreign_type_bodies_2(
+        foreign_type_body(MaybeILA, MaybeCA, MaybeJavaA, MaybeErlangA),
+        foreign_type_body(MaybeILB, MaybeCB, MaybeJavaB, MaybeErlangB),
+        foreign_type_body(MaybeIL, MaybeC, MaybeJava, MaybeErlang)) :-
     merge_maybe(MaybeILA, MaybeILB, MaybeIL),
     merge_maybe(MaybeCA, MaybeCB, MaybeC),
-    merge_maybe(MaybeJavaA, MaybeJavaB, MaybeJava).
+    merge_maybe(MaybeJavaA, MaybeJavaB, MaybeJava),
+    merge_maybe(MaybeErlangA, MaybeErlangB, MaybeErlang).
 
 :- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
 
@@ -623,17 +626,22 @@ convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
         ForeignType = il(ILForeignType),
         Data = foreign_type_lang_data(ILForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(yes(Data), no, no)
+        Body = foreign_type_body(yes(Data), no, no, no)
     ;
         ForeignType = c(CForeignType),
         Data = foreign_type_lang_data(CForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(no, yes(Data), no)
+        Body = foreign_type_body(no, yes(Data), no, no)
     ;
         ForeignType = java(JavaForeignType),
         Data = foreign_type_lang_data(JavaForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(no, no, yes(Data))
+        Body = foreign_type_body(no, no, yes(Data), no)
+    ;
+        ForeignType = erlang(ErlangForeignType),
+        Data = foreign_type_lang_data(ErlangForeignType, MaybeUserEqComp,
+            Assertions),
+        Body = foreign_type_body(no, no, no, yes(Data))
     ).
 
 :- pred ctors_add(list(constructor)::in, type_ctor::in, tvarset::in,

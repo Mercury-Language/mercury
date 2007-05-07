@@ -424,6 +424,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         (
             ( Target = target_il
             ; Target = target_java
+            ; Target = target_erlang
             ),
             NYIMsg = [
                 words("Sorry,"),
@@ -468,6 +469,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
                     ; Target = target_il
                     ; Target = target_asm
                     ; Target = target_x86_64
+                    ; Target = target_erlang
                     ),
                     compile_with_module_options(MainModuleName,
                         OptionVariables, OptionArgs,
@@ -1356,6 +1358,7 @@ find_smart_recompilation_target_files(TopLevelModuleName,
     ; CompilationTarget = target_java, TargetSuffix = ".java"
     ; CompilationTarget = target_asm, TargetSuffix = ".s"
     ; CompilationTarget = target_x86_64, TargetSuffix = ".s"
+    ; CompilationTarget = target_erlang, TargetSuffix = ".erl"
     ),
     FindTargetFiles = usual_find_target_files(CompilationTarget,
         TargetSuffix, TopLevelModuleName).
@@ -1400,6 +1403,9 @@ find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
     ;
         CompilationTarget = target_x86_64,
         TimestampSuffix = ".s_date"
+    ;
+        CompilationTarget = target_erlang,
+        TimestampSuffix = ".erl_date"
     ),
     FindTimestampFiles = find_timestamp_files_2(CompilationTarget,
         TimestampSuffix, TopLevelModuleName).
@@ -1587,6 +1593,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         ;
             ( Target = target_java
             ; Target = target_il
+            ; Target = target_erlang
             )
         ),
         (
@@ -1684,6 +1691,9 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             io.stdout_stream(Stdout, !IO),
             output_x86_64_asm(Stdout, X86_64_Asm, !IO),
             FactTableBaseFiles = []
+        ;
+            Target = target_erlang,
+            sorry(this_file, "mercury_compile_after_front_end: target erlang")
         ),
         recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
             MaybeTimestamps, !IO),
@@ -3398,6 +3408,7 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
             ; Target = target_java
             ; Target = target_asm
             ; Target = target_x86_64
+            ; Target = target_erlang
             ),
             GenerateInline = no
         ),
@@ -3973,6 +3984,7 @@ maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
                 ; Target = target_java
                 ; Target = target_asm
                 ; Target = target_x86_64
+                ; Target = target_erlang
                 )
                 % Leave the HLDS alone. We cannot implement parallelism.
             )
@@ -4016,6 +4028,7 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
             ; Target = target_java
             ; Target = target_asm
             ; Target = target_x86_64
+            ; Target = target_erlang
             )
             % Leave the HLDS alone. We cannot implement parallelism,
             % so there is not point in controlling its granularity.
@@ -4060,6 +4073,7 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
             ; Target = target_java
             ; Target = target_asm
             ; Target = target_x86_64
+            ; Target = target_erlang
             )
             % Leave the HLDS alone. We cannot implement parallelism,
             % so there is not point in controlling its granularity.
@@ -4645,6 +4659,10 @@ make_foreign_import_header_code(ForeignImportModule, Include, !IO) :-
         Lang = lang_java,
         sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Java")
+    ;
+        Lang = lang_erlang,
+        sorry(this_file, ":- import_module not yet implemented: " ++
+            "`:- pragma foreign_import_module' for Erlang")
     ).
 
 :- pred get_c_body_code(foreign_body_info::in, list(user_foreign_code)::out)

@@ -940,6 +940,14 @@ parse_foreign_language_type(InputTerm, Language, Result) :-
             Result = error1(["invalid backend specification term" - InputTerm])
         )
     ;
+        Language = lang_erlang,
+        ( InputTerm = term.functor(term.string(_ErlangTypeName), [], _) ->
+            % XXX should we check if the type is blank?
+            Result = ok1(erlang(erlang_type))
+        ;
+            Result = error1(["invalid backend specification term" - InputTerm])
+        )
+    ;
         ( Language = lang_managed_cplusplus
         ; Language = lang_csharp
         ),
@@ -1647,6 +1655,7 @@ check_required_attributes(lang_il, Attrs, Term) = Res :-
         Res = ok1(Attrs)
     ).
 check_required_attributes(lang_java, Attrs, _Term) = ok1(Attrs).
+check_required_attributes(lang_erlang, Attrs, _Term) = ok1(Attrs).
 
 :- pred parse_pragma_foreign_proc_attributes_term0(varset::in, term::in,
     list(collected_pragma_foreign_proc_attribute)::out) is semidet.

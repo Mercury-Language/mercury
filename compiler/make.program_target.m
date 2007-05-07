@@ -145,6 +145,9 @@ make_linked_target_2(LinkedTargetFile, _, Succeeded, !Info, !IO) :-
         ;
             CompilationTarget = target_x86_64,
             sorry(this_file, "mmc --make and target x86_64")
+        ;
+            CompilationTarget = target_erlang,
+            sorry(this_file, "mmc --make and target erlang")
         ),
 
         AllModulesList = set.to_sorted_list(AllModules),
@@ -304,6 +307,7 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
         ( CompilationTarget = target_java
         ; CompilationTarget = target_il
         ; CompilationTarget = target_x86_64
+        ; CompilationTarget = target_erlang
         ),
         ObjectTargets = ForeignObjectTargets
     ).
@@ -479,6 +483,9 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         ;
             CompilationTarget = target_x86_64,
             sorry(this_file, "mmc --make and target x86_64")
+        ;
+            CompilationTarget = target_erlang,
+            sorry(this_file, "mmc --make and target erlang")
         ;
             CompilationTarget = target_il,
             Succeeded = yes

@@ -101,6 +101,8 @@ handle_foreign_lang(lang_il, _) :-
     sorry(this_file, "language IL foreign code not supported").
 handle_foreign_lang(lang_java, _) :-
     sorry(this_file, "language Java foreign code not supported").
+handle_foreign_lang(lang_erlang, _) :-
+    sorry(this_file, "language Erlang foreign code not supported").
 
     % Generate the `.il' file.
     % Returns the set of foreign language

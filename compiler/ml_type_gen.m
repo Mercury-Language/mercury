@@ -727,6 +727,8 @@ target_uses_constructors(target_java) = yes.
 target_uses_constructors(target_asm) = no.
 target_uses_constructors(target_x86_64) =
     unexpected(this_file, "target_x86_64 and --high-level-code").
+target_uses_constructors(target_erlang) =
+    unexpected(this_file, "target erlang").
 
 :- func target_uses_empty_base_classes(compilation_target) = bool.
 
@@ -736,6 +738,8 @@ target_uses_empty_base_classes(target_java) = yes.
 target_uses_empty_base_classes(target_asm) = no.
 target_uses_empty_base_classes(target_x86_64) = 
     unexpected(this_file, "target_x86_64 and --high-level-code").
+target_uses_empty_base_classes(target_erlang) = 
+    unexpected(this_file, "target erlang").
 
     % This should return yes if references to function parameters in
     % constructor functions must be qualified with the module name,
@@ -753,6 +757,8 @@ target_requires_module_qualified_params(target_java) = yes.
 target_requires_module_qualified_params(target_asm) = no.
 target_requires_module_qualified_params(target_x86_64) = 
     unexpected(this_file, "target_x86_64 with --high-level-code").
+target_requires_module_qualified_params(target_erlang) =
+    unexpected(this_file, "target erlang").
 
 :- func gen_constructor_function(globals, mlds_class_id,
     mlds_type, mlds_module_name, mlds_class_id, maybe(int), mlds_defns,

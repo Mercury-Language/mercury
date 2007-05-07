@@ -146,6 +146,7 @@ get_foreign_export_decls_2(Preds, [E | ExportedProcs], Globals,
         ; Lang = lang_managed_cplusplus
         ; Lang = lang_java
         ; Lang = lang_il
+        ; Lang = lang_erlang
         ),
         sorry(this_file,  ":- pragma foreign_export for non-C backends.")
     ),
@@ -722,6 +723,7 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
         ; Lang = lang_java
         ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
+        ; Lang = lang_erlang
         ),
         sorry(this_file, "foreign languages other than C unimplemented")
     ),

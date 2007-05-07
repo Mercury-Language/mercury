@@ -217,9 +217,8 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ;
         Target = target_c,     % dummy
         add_error("Invalid target option " ++
-% XXX When the x86_64 backend is documented replace the line below with
-%     this one.
-%             "(must be `c', `asm', `il', `java', or `x86_64')", !Errors)
+% XXX When the x86_64 backend is documented modify the line below.
+% XXX When the erlang backend is documented modify the line below.
             "(must be `c', `asm', `il', or `java')", !Errors)
     ),
     map.lookup(!.OptionTable, gc, GC_Method0),
@@ -536,6 +535,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ; Target = target_java
             ; Target = target_asm
             ; Target = target_x86_64
+            ; Target = target_erlang
             )
         ),
 
@@ -625,8 +625,32 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ; Target = target_il
             ; Target = target_asm
             ; Target = target_x86_64
+            ; Target = target_erlang
             )
         ),
+
+        % Generating Erlang implies
+        %   - gc_method `automatic' and no heap reclamation on failure
+        %     because GC is handled automatically by the Erlang
+        %     implementation.
+
+        ( 
+            Target = target_erlang,
+            globals.set_gc_method(gc_automatic, !Globals),
+            globals.set_option(gc, string("automatic"), !Globals),
+            globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
+                !Globals),
+            globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+                !Globals)
+        ;
+            ( Target = target_c
+            ; Target = target_il
+            ; Target = target_asm
+            ; Target = target_x86_64
+            ; Target = target_java
+            )
+        ),
+
         % Generating assembler via the gcc back-end requires
         % using high-level code.
         ( 
@@ -637,6 +661,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ; Target = target_il
             ; Target = target_java
             ; Target = target_x86_64
+            ; Target = target_erlang
             )
         ),
 
@@ -664,6 +689,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ; Target = target_c
             ; Target = target_il
             ; Target = target_java
+            ; Target = target_erlang
             )
         ),
 
@@ -1160,6 +1186,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                     ; Target = target_java
                     ; Target = target_asm
                     ; Target = target_x86_64
+                    ; Target = target_erlang
                     )
                 )
             ;
@@ -1827,6 +1854,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ;
             Target = target_x86_64,
             BackendForeignLanguages = ["c"]
+        ;
+            Target = target_erlang,
+            BackendForeignLanguages = ["erlang"],
+            set_option(optimize_constructor_last_call, bool(no), !Globals)
         ),
 
         % Only set the backend foreign languages if they are unset.
@@ -2353,6 +2384,14 @@ grade_component_table("java", comp_gcc_ext, [
         highlevel_code          - bool(yes),
         highlevel_data          - bool(yes)],
         yes([string("java")]), yes).
+grade_component_table("erlang", comp_gcc_ext, [
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
+        gcc_global_registers    - bool(no),
+        gcc_nested_functions    - bool(no),
+        highlevel_code          - bool(no),
+        highlevel_data          - bool(no)],
+        yes([string("erlang")]), yes).
 
     % Parallelism/multithreading components.
 grade_component_table("par", comp_par, [parallel - bool(yes)], no, yes).

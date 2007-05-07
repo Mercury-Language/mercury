@@ -46,8 +46,10 @@
                             % back-end. Do not go via C, instead generate GCC's
                             % internal `tree' data structure.
                             % (Work in progress.)
-    ;       target_x86_64.  % Compile directly to x86_64 assembler.
+    ;       target_x86_64   % Compile directly to x86_64 assembler.
                             % (Work in progress.)
+    ;       target_erlang.  % Generate Erlang.
+                            % (Work in progress)
 
 :- type foreign_language
     --->    lang_c
@@ -55,7 +57,8 @@
     ;       lang_csharp
     ;       lang_managed_cplusplus
     ;       lang_java
-    ;       lang_il.
+    ;       lang_il
+    ;       lang_erlang.
 
     % A string representation of the compilation target suitable
     % for use in human-readable error messages.
@@ -282,6 +285,7 @@ convert_target_2("asm", target_asm).
 convert_target_2("il", target_il).
 convert_target_2("c", target_c).
 convert_target_2("x86_64", target_x86_64).
+convert_target_2("erlang", target_erlang).
 
 convert_foreign_language(String, ForeignLanguage) :-
     convert_foreign_language_2(string.to_lower(String), ForeignLanguage).
@@ -298,6 +302,7 @@ convert_foreign_language_2("csharp", lang_csharp).
 convert_foreign_language_2("c sharp", lang_csharp).
 convert_foreign_language_2("il", lang_il).
 convert_foreign_language_2("java", lang_java).
+convert_foreign_language_2("erlang", lang_erlang).
 
 convert_gc_method("none", gc_none).
 convert_gc_method("conservative", gc_boehm).
@@ -324,12 +329,14 @@ compilation_target_string(target_il)   = "IL".
 compilation_target_string(target_java) = "Java".
 compilation_target_string(target_asm)  = "asm".
 compilation_target_string(target_x86_64) = "x86_64".
+compilation_target_string(target_erlang) = "Erlang".
 
 foreign_language_string(lang_c) = "C".
 foreign_language_string(lang_managed_cplusplus) = "Managed C++".
 foreign_language_string(lang_csharp) = "C#".
 foreign_language_string(lang_il) = "IL".
 foreign_language_string(lang_java) = "Java".
+foreign_language_string(lang_erlang) = "Erlang".
 
 simple_foreign_language_string(lang_c) = "c".
 simple_foreign_language_string(lang_managed_cplusplus) = "cpp".
@@ -337,6 +344,7 @@ simple_foreign_language_string(lang_managed_cplusplus) = "cpp".
 simple_foreign_language_string(lang_csharp) = "csharp".
 simple_foreign_language_string(lang_il) = "il".
 simple_foreign_language_string(lang_java) = "java".
+simple_foreign_language_string(lang_erlang) = "erlang".
 
 gc_is_conservative(gc_boehm) = yes.
 gc_is_conservative(gc_boehm_debug) = yes.

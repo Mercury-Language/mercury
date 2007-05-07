@@ -473,6 +473,9 @@ build_object_code(ModuleName, target_il, _, ErrorStream, Imports, Succeeded,
 build_object_code(_ModuleName, target_x86_64, _, _ErrorStream, _Imports,
         _Succeeded, _, _) :-
     sorry(this_file, "NYI mmc --make and target x86_64").
+build_object_code(_ModuleName, target_erlang, _, _ErrorStream, _Imports,
+        _Succeeded, _, _) :-
+    sorry(this_file, "NYI mmc --make and target erlang").
 
 :- pred compile_foreign_code_file(io.output_stream::in, pic::in,
     module_imports::in, foreign_code_file::in, bool::out,
@@ -500,6 +503,10 @@ compile_foreign_code_file(ErrorStream, _, Imports,
         Succeeded, !IO) :-
     compile_target_code.compile_csharp_file(ErrorStream, Imports,
         CSharpFile, DLLFile, Succeeded, !IO).
+compile_foreign_code_file(ErrorStream, _, _Imports,
+        foreign_code_file(lang_erlang, ErlFile, BeamFile), Succeeded, !IO) :-
+    compile_target_code.compile_erlang_file(ErrorStream, ErlFile, BeamFile,
+        Succeeded, !IO).
 
 :- func forkable_module_compilation_task_type(module_compilation_task_type)
     = bool.
@@ -564,6 +571,9 @@ get_object_extension(Globals, PIC) = Ext :-
     ;
         CompilationTarget = target_x86_64,
         sorry(this_file, "mmc --make NYI and target x86_64")
+    ;
+        CompilationTarget = target_erlang,
+        sorry(this_file, "mmc --make NYI and target erlang")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -837,6 +847,9 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         ;
             CompilationTarget = target_x86_64,
             sorry(this_file, "NYI mmc --make and target x86_64")
+        ;
+            CompilationTarget = target_erlang,
+            sorry(this_file, "NYI mmc --make and target erlang")
         ),
 
         (
@@ -963,6 +976,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
         ( CompilationTarget = target_java
         ; CompilationTarget = target_il
         ; CompilationTarget = target_x86_64
+        ; CompilationTarget = target_erlang
         ),
         ForeignFiles = ForeignFiles0
     ).

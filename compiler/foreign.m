@@ -263,6 +263,7 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ; ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_java
+            ; ForeignLanguage = lang_erlang
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
         )
@@ -278,6 +279,7 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ( ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_java
+            ; ForeignLanguage = lang_erlang
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
         )
@@ -290,6 +292,7 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ; ForeignLanguage = lang_managed_cplusplus
             ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_java
+            ; ForeignLanguage = lang_erlang
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
         )
@@ -302,6 +305,7 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ; ForeignLanguage = lang_managed_cplusplus
             ; ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_java
+            ; ForeignLanguage = lang_erlang
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
         )
@@ -314,6 +318,20 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ; ForeignLanguage = lang_managed_cplusplus
             ; ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_il
+            ; ForeignLanguage = lang_erlang
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ;
+        TargetLanguage = lang_erlang,
+        (
+            ForeignLanguage = lang_erlang
+        ;
+            ( ForeignLanguage = lang_c
+            ; ForeignLanguage = lang_managed_cplusplus
+            ; ForeignLanguage = lang_csharp
+            ; ForeignLanguage = lang_il
+            ; ForeignLanguage = lang_java
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
         )
@@ -345,6 +363,7 @@ make_pred_name_rest(lang_managed_cplusplus, unqualified(Name)) = Name.
 make_pred_name_rest(lang_csharp, _SymName) = "some_csharp_name".
 make_pred_name_rest(lang_il, _SymName) = "some_il_name".
 make_pred_name_rest(lang_java, _SymName) = "some_java_name".
+make_pred_name_rest(lang_erlang, _SymName) = "some_erlang_name".
 
 make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
         PragmaVars, ArgTypes, Arity, PredOrFunc, !ModuleInfo, !Specs) :-
@@ -525,6 +544,8 @@ have_foreign_type_for_backend(target_il, ForeignTypeBody,
         ( ForeignTypeBody ^ il = yes(_) -> yes ; no )).
 have_foreign_type_for_backend(target_java, ForeignTypeBody,
         ( ForeignTypeBody ^ java = yes(_) -> yes ; no )).
+have_foreign_type_for_backend(target_erlang, ForeignTypeBody,
+        ( ForeignTypeBody ^ erlang = yes(_) -> yes ; no )).
 have_foreign_type_for_backend(target_asm, ForeignTypeBody, Result) :-
     have_foreign_type_for_backend(target_c, ForeignTypeBody, Result).
 have_foreign_type_for_backend(target_x86_64, ForeignTypeBody, Result) :-
@@ -566,7 +587,8 @@ foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body) =
 
 foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         MaybeUserEqComp, Assertions) :-
-    ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava),
+    ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
+        MaybeErlang),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
@@ -600,6 +622,17 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         ;
             MaybeJava = no,
             unexpected(this_file, "to_exported_type: no Java type")
+        )
+    ;
+        Target = target_erlang,
+        (
+            MaybeErlang = yes(Data),
+            Data = foreign_type_lang_data(erlang_type, MaybeUserEqComp,
+                Assertions),
+            Name = unqualified("")
+        ;
+            MaybeErlang = no,
+            unexpected(this_file, "to_exported_type: no Erlang type")
         )
     ;
         Target = target_asm,
@@ -644,6 +677,8 @@ to_type_string(lang_managed_cplusplus, foreign(ForeignType, _)) =
 to_type_string(lang_il, foreign(ForeignType, _)) =
         sym_name_to_string(ForeignType).
 to_type_string(lang_java, foreign(ForeignType, _)) =
+        sym_name_to_string(ForeignType).
+to_type_string(lang_erlang, foreign(ForeignType, _)) =
         sym_name_to_string(ForeignType).
 
     % XXX does this do the right thing for high level data?
@@ -693,6 +728,8 @@ to_type_string(lang_java, mercury(Type)) = Result :-
     ;
         Result = "java.lang.Object"
     ).
+to_type_string(lang_erlang, mercury(_Type)) = _ :-
+    sorry(this_file, "to_type_string for erlang").
 
 %-----------------------------------------------------------------------------%
 

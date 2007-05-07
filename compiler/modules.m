@@ -3413,6 +3413,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
 
         module_name_to_file_name(ModuleName, ".dll", no, DllFileName, !IO),
         module_name_to_file_name(ModuleName, ".class", no, ClassFileName, !IO),
+        module_name_to_file_name(ModuleName, ".beam", no, BeamFileName, !IO),
         SubModules = submodules(ModuleName, AllDeps),
         (
             Target = target_il,
@@ -3472,6 +3473,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 Target = target_java,
                 ForeignImportTargets = [ClassFileName],
                 ForeignImportExt = ".java"
+            ;
+                Target = target_erlang,
+                ForeignImportTargets = [BeamFileName],
+                % XXX not sure about this
+                ForeignImportExt = ".erl"
             ;
                 Target = target_c,
                 % NOTE: for C (and asm) the possible targets might be a .o
@@ -3762,6 +3768,7 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
             ; ForeignLang = lang_managed_cplusplus
             ; ForeignLang = lang_java
             ; ForeignLang = lang_il
+            ; ForeignLang = lang_erlang
             )
         )
     ;
@@ -4307,6 +4314,7 @@ generate_dependencies_write_d_files([Dep | Deps],
         ; Target = target_java, Lang = lang_java
         ; Target = target_il, Lang = lang_il
         ; Target = target_x86_64, Lang = lang_c
+        ; Target = target_erlang, Lang = lang_erlang
         ),
         % Assume we need the `.mh' files for all imported modules
         % (we will if they define foreign types).
@@ -4698,6 +4706,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         ; Target = target_java
         ; Target = target_asm
         ; Target = target_x86_64
+        ; Target = target_erlang
         ),
         ForeignModulesAndExts = []
     ),
@@ -5031,9 +5040,10 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
             % `.mih' files at all; although perhaps we should...
             ( Target = target_il
             ; Target = target_java
+            ; Target = target_erlang
             )
         ;
-            Target= target_x86_64,
+            Target = target_x86_64,
             unexpected(this_file, "--highlevel-code with --target x86_64")
         )
     ;
@@ -5054,6 +5064,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     ;
         ( Target = target_il
         ; Target = target_java
+        ; Target = target_erlang
         )
     ),
     io.write_string(DepStream, "\n", !IO),
@@ -5266,6 +5277,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
             Target = target_java,
             Rules = JavaMainRule
         ;
+            Target = target_erlang,
+            % XXX not yet
+            Rules = []
+        ;
             ( Target = target_c
             ; Target = target_asm
             ; Target = target_x86_64    % XXX this is only provisional.
@@ -5359,6 +5374,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         ;
             Target = target_java,
             LibRules = JavaLibRule
+        ;
+            Target = target_erlang,
+            % XXX not done yet
+            LibRules = []
         ;
             ( Target = target_c
             ; Target = target_asm

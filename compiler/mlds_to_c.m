@@ -216,6 +216,7 @@ mlds_output_src_imports(Indent, Imports, !IO) :-
         ( Target = target_java
         ; Target = target_il
         ; Target = target_x86_64
+        ; Target = target_erlang
         ),
         unexpected(this_file, "expected target asm or target c")
     ).
@@ -380,6 +381,7 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
         ; Target = target_java
         ; Target = target_asm
         ; Target = target_x86_64
+        ; Target = target_erlang
         )
     ),
     mlds_indent(Indent, !IO),
@@ -490,6 +492,7 @@ mlds_output_hdr_end(Indent, ModuleName, !IO) :-
         ; Target = target_java
         ; Target = target_asm
         ; Target = target_x86_64
+        ; Target = target_erlang
         )
     ),
     mlds_indent(Indent, !IO),
@@ -805,6 +808,7 @@ mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
         ; Lang = lang_csharp
         ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
+        ; Lang = lang_erlang
         ),
         sorry(this_file, "foreign code other than C")
     ).
@@ -848,6 +852,7 @@ mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
         ; Lang = lang_csharp
         ; Lang = lang_managed_cplusplus
         ; Lang = lang_java
+        ; Lang = lang_erlang
         ),
         sorry(this_file, "foreign code other than C")
     ).
@@ -866,6 +871,8 @@ mlds_output_c_defn(_Indent, user_foreign_code(lang_csharp, _, _), !IO) :-
 mlds_output_c_defn(_Indent, user_foreign_code(lang_il, _, _), !IO) :-
     sorry(this_file, "foreign code other than C").
 mlds_output_c_defn(_Indent, user_foreign_code(lang_java, _, _), !IO) :-
+    sorry(this_file, "foreign code other than C").
+mlds_output_c_defn(_Indent, user_foreign_code(lang_erlang, _, _), !IO) :-
     sorry(this_file, "foreign code other than C").
 
 :- pred mlds_output_pragma_export_defn(mlds_module_name::in, indent::in,
@@ -943,6 +950,9 @@ mlds_output_pragma_export_type(prefix, mlds_foreign_type(ForeignType), !IO) :-
     ;
         ForeignType = java(_),
         unexpected(this_file, "mlds_output_type_prefix: java foreign_type")
+    ;
+        ForeignType = erlang(_),
+        unexpected(this_file, "mlds_output_type_prefix: erlang foreign_type")
     ).
 mlds_output_pragma_export_type(prefix, mlds_class_type(_, _, _), !IO) :-
     io.write_string("MR_Word", !IO).

@@ -1293,6 +1293,7 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
         ; Lang = lang_csharp
         ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
+        ; Lang = lang_erlang
         ),
         unexpected(this_file, "output_user_foreign_code: unimplemented: " ++
             "foreign code other than C")
@@ -1339,6 +1340,7 @@ output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
         ; Lang = lang_csharp
         ; Lang = lang_managed_cplusplus
         ; Lang = lang_il
+        ; Lang = lang_erlang
         ),
         unexpected(this_file, "output_user_foreign_code: unexpected: " ++
             "foreign decl code other than C")

@@ -275,6 +275,8 @@ target_supports_int_switch_2(target_java) = yes.
 % target_supports_int_switch_2(c_sharp) = yes.
 target_supports_int_switch_2(target_x86_64) =
     unexpected(this_file, "target x86_64 with --high-level code").
+target_supports_int_switch_2(target_erlang) =
+    unexpected(this_file, "target erlang").
 
 target_supports_string_switch_2(target_c) = no.
 target_supports_string_switch_2(target_asm) = no.
@@ -283,6 +285,8 @@ target_supports_string_switch_2(target_java) = no.
 % target_supports_string_switch_2(c_sharp) = yes.
 target_supports_string_switch_2(target_x86_64) =
     unexpected(this_file, "target x86_64 with --high-level code").
+target_supports_string_switch_2(target_erlang) =
+    unexpected(this_file, "target erlang").
 
 target_supports_computed_goto_2(target_c) = yes.
 target_supports_computed_goto_2(target_asm) = no.
@@ -293,6 +297,8 @@ target_supports_computed_goto_2(target_java) = no.
 % target_supports_computed_goto_2(c_sharp) = no.
 target_supports_computed_goto_2(target_x86_64) =
     unexpected(this_file, "target x86_64 with --high-level code").
+target_supports_computed_goto_2(target_erlang) =
+    unexpected(this_file, "target erlang").
 
 target_supports_goto_2(target_c) = yes.
 target_supports_goto_2(target_asm) = yes.
@@ -301,6 +307,8 @@ target_supports_goto_2(target_java) = no.
 % target_supports_goto_2(c_sharp) = yes.
 target_supports_goto_2(target_x86_64) =
     unexpected(this_file, "target x86_64 with --high-level code").
+target_supports_goto_2(target_erlang) =
+    unexpected(this_file, "target erlang").
 
 %-----------------------------------------------------------------------------%
 

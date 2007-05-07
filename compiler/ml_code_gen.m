@@ -885,7 +885,7 @@ foreign_type_required_imports(target_il, TypeDefn) = Imports :-
     hlds_data.get_type_defn_body(TypeDefn, Body),
     (
         Body = hlds_foreign_type(
-            foreign_type_body(MaybeIL, _MaybeC, _MaybeJava))
+            foreign_type_body(MaybeIL, _MaybeC, _MaybeJava, _MaybeErlang))
     ->
         (
             MaybeIL = yes(Data),
@@ -904,6 +904,8 @@ foreign_type_required_imports(target_java, _) = [].
 foreign_type_required_imports(target_asm, _) = [].
 foreign_type_required_imports(target_x86_64, _) = _ :-
     unexpected(this_file, "target x86_64 and --high-level-code").
+foreign_type_required_imports(target_erlang, _) = _ :-
+    unexpected(this_file, "foreign_type_required_imports: target erlang").
 
 :- pred ml_gen_defns(module_info::in, mlds_defns::out, io::di, io::uo) is det.
 
@@ -2420,10 +2422,14 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
             Target = target_x86_64,
             unexpected(this_file,
                 "target x86_64 with --high-level-code")
+        ;
+            Target = target_erlang,
+            unexpected(this_file,
+                "ml_gen_nondet_pragma_foreign_proc: target erlang")
         )
     ;
         unexpected(this_file,
-            "ml_gen_nondet_pragma_c_code: unexpected code model")
+            "ml_gen_nondet_pragma_foreign_proc: unexpected code model")
     ),
     Ending_C_Code = [
         raw_target_code("\t\t}\n", []),
@@ -2556,6 +2562,10 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         ml_gen_ordinary_pragma_java_proc(CodeModel, Attributes,
             PredId, ProcId, Args, ExtraArgs,
             Foreign_Code, Context, Decls, Statements, !Info)
+    ;
+        Lang = lang_erlang,
+        unexpected(this_file,
+            "ml_gen_ordinary_pragma_foreign_proc: unexpected language Erlang")
     ).
 
 :- pred ml_gen_ordinary_pragma_java_proc(code_model::in,

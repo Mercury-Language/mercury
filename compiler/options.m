@@ -257,6 +257,8 @@
     % XXX The following options need to be documented.
     ;       x86_64              % target x86_64
     ;       x86_64_only         % target x86_64 + target_code_only
+    ;       erlang              % target erlang
+    ;       erlang_only         % target erlang + target_code_only
 
     % Compilation model options for optional features:
 
@@ -689,6 +691,11 @@
     ;       csharp_flags
     ;       quoted_csharp_flag
 
+    % Erlang
+    ;       erlang_compiler
+    ;       erlang_flags
+    ;       quoted_erlang_flag
+
     % Link options
     ;       output_file_name
     ;       ld_flags
@@ -1038,6 +1045,8 @@ option_defaults_2(compilation_model_option, [
     java_only                           -   special,
     x86_64                              -   special,
     x86_64_only                         -   special,
+    erlang                              -   special,
+    erlang_only                         -   special,
 
     % Optional feature compilation model options:
     % (a) Debuggging
@@ -1431,7 +1440,12 @@ option_defaults_2(target_code_compilation_option, [
     % C#
     csharp_compiler                     -   string("csc"),
     csharp_flags                        -   accumulating([]),
-    quoted_csharp_flag                  -   string_special
+    quoted_csharp_flag                  -   string_special,
+
+    % Erlang
+    erlang_compiler                     -   string("erlc"),
+    erlang_flags                        -   accumulating([]),
+    quoted_erlang_flag                  -   string_special
 ]).
 option_defaults_2(link_option, [
     % Link Options
@@ -1791,6 +1805,10 @@ long_option("x86_64",               x86_64).
 long_option("x86-64",               x86_64).
 long_option("x86_64-only",          x86_64_only).
 long_option("x86-64-only",          x86_64_only).
+long_option("erlang",               erlang).
+long_option("Erlang",               erlang).
+long_option("erlang-only",          erlang_only).
+long_option("Erlang-only",          erlang_only).
 % Optional features compilation model options:
 % (a) debugging
 long_option("debug",                exec_trace).
@@ -2226,6 +2244,10 @@ long_option("csharp-compiler",      csharp_compiler).
 long_option("csharp-flags",         csharp_flags).
 long_option("csharp-flag",          quoted_csharp_flag).
 
+long_option("erlang-compiler",      erlang_compiler).
+long_option("erlang-flags",         erlang_flags).
+long_option("erlang-flag",          quoted_erlang_flag).
+
 % link options
 long_option("output-file",          output_file_name).
 long_option("ld-flags",             ld_flags).
@@ -2378,6 +2400,11 @@ special_handler(x86_64, none, OptionTable0, ok(OptionTable)) :-
 special_handler(x86_64_only, none, OptionTable0, ok(OptionTable)) :-
     map.set(OptionTable0, target, string("x86_64"), OptionTable1),
     map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
+special_handler(erlang, none, OptionTable0, ok(OptionTable)) :-
+    map.set(OptionTable0, target, string("erlang"), OptionTable).
+special_handler(erlang_only, none, OptionTable0, ok(OptionTable)) :-
+    map.set(OptionTable0, target, string("erlang"), OptionTable1),
+    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
 special_handler(profiling, bool(Value), OptionTable0, ok(OptionTable)) :-
     map.set(OptionTable0, profile_time, bool(Value), OptionTable1),
     map.set(OptionTable1, profile_calls, bool(Value), OptionTable2),
@@ -2518,6 +2545,9 @@ special_handler(quoted_mcpp_flag, string(Flag),
 special_handler(quoted_csharp_flag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
     handle_quoted_flag(csharp_flags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_erlang_flag, string(Flag),
+        OptionTable0, ok(OptionTable)) :-
+    handle_quoted_flag(erlang_flags, Flag, OptionTable0, OptionTable).
 special_handler(quoted_ld_flag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
     handle_quoted_flag(ld_flags, Flag, OptionTable0, OptionTable).

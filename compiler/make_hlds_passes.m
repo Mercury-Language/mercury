@@ -748,6 +748,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !Specs) :-
             ; CompilationTarget = target_java
             ; CompilationTarget = target_asm
             ; CompilationTarget = target_x86_64
+            ; CompilationTarget = target_erlang
             ),
             Pieces = [words("Error: foreign_name mutable attribute not yet"),
                 words("implemented for the"),
@@ -990,6 +991,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
             ; Target = target_il
             ; Target = target_asm
             ; Target = target_x86_64
+            ; Target = target_erlang
             ),
             add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo,
                 !Specs)
@@ -1409,6 +1411,7 @@ add_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, IsThreadLocal,
         ; CompilationTarget = target_java
         ; CompilationTarget = target_asm
         ; CompilationTarget = target_x86_64
+        ; CompilationTarget = target_erlang
         ),
         true
     ).
@@ -1873,6 +1876,7 @@ get_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
         ; Backend = target_java
         ; Backend = target_asm
         ; Backend = target_x86_64
+        ; Backend = target_erlang
         ),
         sorry(this_file, "we don't yet support mutables for non-C backends")
     ).

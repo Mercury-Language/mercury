@@ -168,7 +168,8 @@
 :- type foreign_language_type
     --->    il(il_foreign_type)
     ;       c(c_foreign_type)
-    ;       java(java_foreign_type).
+    ;       java(java_foreign_type)
+    ;       erlang(erlang_foreign_type).
 
 :- type il_foreign_type
     --->    il_type(
@@ -187,6 +188,9 @@
     --->    java_type(
                 string      % The Java type name
             ).
+
+:- type erlang_foreign_type
+    --->    erlang_type.    % Erlang is untyped.
 
 :- type ref_or_val
     --->    reference
