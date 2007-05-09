@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -383,14 +383,14 @@ ssl_accept(SSL, !IO) :-
 ].
 
 
-:- instance input(ssl, io, ssl_error).
+:- instance input(ssl, io).
 :- instance reader(ssl, character, io, ssl_error).
 
 :- instance output(ssl, io).
 :- instance writer(ssl, character, io).
 :- instance writer(ssl, string, io).
 
-:- instance input(ssl, io, ssl_error) where [].
+:- instance input(ssl, io) where [].
 :- instance reader(ssl, character, io, ssl_error) where [
     (get(S, Result, !IO) :-
         mopenssl.read_char(S ^ handle, C, IsCharRead, !IO),
