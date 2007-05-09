@@ -47,7 +47,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", font, "FONT *").
+:- pragma foreign_type("C", font, "FONT *", [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     font(Fnt::out, IO0::di, IO::uo),

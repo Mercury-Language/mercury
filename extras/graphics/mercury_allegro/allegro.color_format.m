@@ -38,7 +38,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", rgb_map, "RGB_MAP *").
+:- pragma foreign_type("C", rgb_map, "RGB_MAP *", [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     bestfit_color(Palette::in, R::in, G::in, B::in, Index::out,

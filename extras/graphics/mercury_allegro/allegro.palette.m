@@ -77,7 +77,7 @@
     #undef key
 ").
 
-:- pragma foreign_type("C", palette, "RGB *").
+:- pragma foreign_type("C", palette, "RGB *", [can_pass_as_mercury_type]).
 
 %-----------------------------------------------------------------------------%
 
@@ -248,7 +248,7 @@
 %     ).
 
 :- type rsvd.
-:- pragma foreign_type("C", rsvd, "char *").
+:- pragma foreign_type("C", rsvd, "char *", [can_pass_as_mercury_type]).
 
 :- impure pred spec_to_rsvd(list(optimize_palette_spec)::in, palette::out,
     rsvd::out) is det.

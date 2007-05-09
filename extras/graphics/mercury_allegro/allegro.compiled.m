@@ -37,7 +37,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", compiled_sprite, "COMPILED_SPRITE *").
+:- pragma foreign_type("C", compiled_sprite, "COMPILED_SPRITE *",
+    [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     get_compiled_sprite(Sprite::in, Planar::in, MaybeCompiled::out,
@@ -74,12 +75,12 @@
 
 :- func make_maybe_compiled_sprite_yes(compiled_sprite) =
     maybe(compiled_sprite).
-:- pragma export(make_maybe_compiled_sprite_yes(in) = out,
+:- pragma foreign_export("C", make_maybe_compiled_sprite_yes(in) = out,
     "_mal_make_maybe_compiled_sprite_yes").
 make_maybe_compiled_sprite_yes(Compiled) = yes(Compiled).
 
 :- func make_maybe_compiled_sprite_no = maybe(compiled_sprite).
-:- pragma export(make_maybe_compiled_sprite_no = out,
+:- pragma foreign_export("C", make_maybe_compiled_sprite_no = out,
     "_mal_make_maybe_compiled_sprite_no").
 make_maybe_compiled_sprite_no = no.
 

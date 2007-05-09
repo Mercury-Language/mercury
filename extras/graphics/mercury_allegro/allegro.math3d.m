@@ -72,7 +72,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", matrix_f, "MATRIX_f *").
+:- pragma foreign_type("C", matrix_f, "MATRIX_f *", [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     identity_matrix_f = (Matrix::out),

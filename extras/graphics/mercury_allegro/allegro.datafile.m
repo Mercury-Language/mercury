@@ -105,8 +105,10 @@
 :- type datafile_cptr.
 :- type datafile_object_cptr.
 
-:- pragma foreign_type("C", datafile_cptr, "DATAFILE *").
-:- pragma foreign_type("C", datafile_object_cptr, "DATAFILE *").
+:- pragma foreign_type("C", datafile_cptr, "DATAFILE *",
+    [can_pass_as_mercury_type]).
+:- pragma foreign_type("C", datafile_object_cptr, "DATAFILE *",
+    [can_pass_as_mercury_type]).
 :- pragma foreign_type("C", dat_id, "int").
 
 :- type outer_datafile
@@ -438,7 +440,8 @@ dat_palette(DO, Result) :-
 
 :- func make_inner_datafile(datafile_cptr) = inner_datafile.
 
-:- pragma export(make_inner_datafile(in) = out, "_mal_make_inner_datafile").
+:- pragma foreign_export("C", make_inner_datafile(in) = out,
+    "_mal_make_inner_datafile").
 
 make_inner_datafile(X) = inner_datafile(X).
 
@@ -447,9 +450,9 @@ make_inner_datafile(X) = inner_datafile(X).
 :- func make_yes_outer_datafile(datafile_cptr) = maybe(outer_datafile).
 :- func make_no_outer_datafile = maybe(outer_datafile).
 
-:- pragma export(make_yes_outer_datafile(in) = out,
+:- pragma foreign_export("C", make_yes_outer_datafile(in) = out,
     "_mal_make_yes_outer_datafile").
-:- pragma export(make_no_outer_datafile = out,
+:- pragma foreign_export("C", make_no_outer_datafile = out,
     "_mal_make_no_outer_datafile").
 
 make_yes_outer_datafile(X) = yes(outer_datafile(X)).
@@ -460,9 +463,9 @@ make_no_outer_datafile = no.
 :- func make_yes_inner_datafile(datafile_cptr) = maybe(inner_datafile).
 :- func make_no_inner_datafile = maybe(inner_datafile).
 
-:- pragma export(make_yes_inner_datafile(in) = out,
+:- pragma foreign_export("C", make_yes_inner_datafile(in) = out,
     "_mal_make_yes_inner_datafile").
-:- pragma export(make_no_inner_datafile = out,
+:- pragma foreign_export("C", make_no_inner_datafile = out,
     "_mal_make_no_inner_datafile").
 
 make_yes_inner_datafile(X) = yes(inner_datafile(X)).
@@ -473,7 +476,7 @@ make_no_inner_datafile = no.
 :- func make_normal_datafile_object(datafile_object_cptr) =
     normal_datafile_object.
 
-:- pragma export(make_normal_datafile_object(in) = out,
+:- pragma foreign_export("C", make_normal_datafile_object(in) = out,
     "_mal_make_normal_datafile_object").
 
 make_normal_datafile_object(X) = normal_datafile_object(X).
@@ -485,9 +488,9 @@ make_normal_datafile_object(X) = normal_datafile_object(X).
 :- func make_no_normal_datafile_object =
     maybe(normal_datafile_object).
 
-:- pragma export(make_yes_normal_datafile_object(in) = out,
+:- pragma foreign_export("C", make_yes_normal_datafile_object(in) = out,
     "_mal_make_yes_normal_datafile_object").
-:- pragma export(make_no_normal_datafile_object = out,
+:- pragma foreign_export("C", make_no_normal_datafile_object = out,
     "_mal_make_no_normal_datafile_object").
 
 make_yes_normal_datafile_object(X) = yes(normal_datafile_object(X)).
@@ -500,9 +503,9 @@ make_no_normal_datafile_object = no.
 :- func make_no_loose_datafile_object =
     maybe(loose_datafile_object).
 
-:- pragma export(make_yes_loose_datafile_object(in) = out,
+:- pragma foreign_export("C", make_yes_loose_datafile_object(in) = out,
     "_mal_make_yes_loose_datafile_object").
-:- pragma export(make_no_loose_datafile_object = out,
+:- pragma foreign_export("C", make_no_loose_datafile_object = out,
     "_mal_make_no_loose_datafile_object").
 
 make_yes_loose_datafile_object(X) = yes(loose_datafile_object(X)).

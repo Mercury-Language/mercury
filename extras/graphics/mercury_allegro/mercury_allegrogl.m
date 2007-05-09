@@ -3,7 +3,8 @@
 % Copyright (C) 2007 The University of Melbourne.
 %-----------------------------------------------------------------------------%
 %
-% This file is used create libmercury_allegrogl.a instead of liballegrogl.a.
+% This file is used to create libmercury_allegrogl.a instead of
+% liballegrogl.a.
 %
 
 :- module mercury_allegrogl.

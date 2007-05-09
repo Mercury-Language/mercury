@@ -57,7 +57,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", memory_fli, "void *").
+:- pragma foreign_type("C", memory_fli, "void *", [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     play_fli(Filename::in, Bitmap::in, Status::out, IO0::di, IO::uo),
@@ -202,13 +202,13 @@
 :- func make_fli_status_not_open = fli_status.
 :- func make_fli_status_error = fli_status.
 
-:- pragma export(make_fli_status_ok = out,
+:- pragma foreign_export("C", make_fli_status_ok = out,
     "_mal_make_fli_status_ok").
-:- pragma export(make_fli_status_eof = out,
+:- pragma foreign_export("C", make_fli_status_eof = out,
     "_mal_make_fli_status_eof").
-:- pragma export(make_fli_status_not_open = out,
+:- pragma foreign_export("C", make_fli_status_not_open = out,
     "_mal_make_fli_status_not_open").
-:- pragma export(make_fli_status_error = out,
+:- pragma foreign_export("C", make_fli_status_error = out,
     "_mal_make_fli_status_error").
 
 make_fli_status_ok = ok.

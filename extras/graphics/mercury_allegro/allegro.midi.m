@@ -57,7 +57,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", midi, "MIDI *").
+:- pragma foreign_type("C", midi, "MIDI *", [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     load_midi(Filename::in, MaybeMidi::out, IO0::di, IO::uo),
@@ -202,8 +202,8 @@
 :- func make_yes_midi(midi) = maybe(midi).
 :- func make_no_midi = maybe(midi).
 
-:- pragma export(make_yes_midi(in) = out, "_mal_make_yes_midi").
-:- pragma export(make_no_midi = out, "_mal_make_no_midi").
+:- pragma foreign_export("C", make_yes_midi(in) = out, "_mal_make_yes_midi").
+:- pragma foreign_export("C", make_no_midi = out, "_mal_make_no_midi").
 
 make_yes_midi(X) = yes(X).
 make_no_midi = no.

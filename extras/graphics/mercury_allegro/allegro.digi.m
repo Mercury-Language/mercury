@@ -113,7 +113,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", sample, "SAMPLE *").
+:- pragma foreign_type("C", sample, "SAMPLE *", [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     load_sample(Filename::in, MaybeSample::out, IO0::di, IO::uo),
@@ -597,8 +597,9 @@ Sample ^ len = Len :-
 :- func make_yes_sample(sample) = maybe(sample).
 :- func make_no_sample = maybe(sample).
 
-:- pragma export(make_yes_sample(in) = out, "_mal_make_yes_sample").
-:- pragma export(make_no_sample = out, "_mal_make_no_sample").
+:- pragma foreign_export("C", make_yes_sample(in) = out,
+    "_mal_make_yes_sample").
+:- pragma foreign_export("C", make_no_sample = out, "_mal_make_no_sample").
 
 make_yes_sample(X) = yes(X).
 make_no_sample = no.

@@ -26,8 +26,8 @@
 :- func make_yes_int(int) = maybe(int).
 :- func make_no_int = maybe(int).
 
-:- pragma export(make_yes_int(in) = out, "_mal_make_yes_int").
-:- pragma export(make_no_int = out, "_mal_make_no_int").
+:- pragma foreign_export("C", make_yes_int(in) = out, "_mal_make_yes_int").
+:- pragma foreign_export("C", make_no_int = out, "_mal_make_no_int").
 
 make_yes_int(X) = yes(X).
 make_no_int = no.
@@ -37,8 +37,9 @@ make_no_int = no.
 :- func make_yes_int_int(int, int) = maybe({int, int}).
 :- func make_no_int_int = maybe({int, int}).
 
-:- pragma export(make_yes_int_int(in, in) = out, "_mal_make_yes_int_int").
-:- pragma export(make_no_int_int = out, "_mal_make_no_int_int").
+:- pragma foreign_export("C", make_yes_int_int(in, in) = out,
+    "_mal_make_yes_int_int").
+:- pragma foreign_export("C", make_no_int_int = out, "_mal_make_no_int_int").
 
 make_yes_int_int(X, Y) = yes({X, Y}).
 make_no_int_int = no.
@@ -48,8 +49,9 @@ make_no_int_int = no.
 :- func make_yes_string(string) = maybe(string).
 :- func make_no_string = maybe(string).
 
-:- pragma export(make_yes_string(in) = out, "_mal_make_yes_string").
-:- pragma export(make_no_string = out, "_mal_make_no_string").
+:- pragma foreign_export("C", make_yes_string(in) = out,
+    "_mal_make_yes_string").
+:- pragma foreign_export("C", make_no_string = out, "_mal_make_no_string").
 
 make_yes_string(X) = yes(X).
 make_no_string = no.

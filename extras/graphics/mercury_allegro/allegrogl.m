@@ -319,7 +319,8 @@ make_texture_ex(TextureFlags, Bitmap, TextureFormat, MaybeTextureName, !IO) :-
 % Text drawing and font conversion
 %
 
-:- pragma foreign_type("C", agl_font, "FONT *").
+:- pragma foreign_type("C", agl_font, "FONT *",
+        [can_pass_as_mercury_type]).
 
 :- func font_type_to_int(font_type) = int.
 

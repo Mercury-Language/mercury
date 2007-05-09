@@ -67,8 +67,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", stick_info, "JOYSTICK_STICK_INFO *").
-:- pragma foreign_type("C", axis_info, "JOYSTICK_AXIS_INFO *").
+:- pragma foreign_type("C", stick_info, "JOYSTICK_STICK_INFO *",
+    [can_pass_as_mercury_type]).
+:- pragma foreign_type("C", axis_info, "JOYSTICK_AXIS_INFO *",
+    [can_pass_as_mercury_type]).
 
 install_joystick(_Type, Success, !IO) :-
     install_joystick_2(Success, !IO).

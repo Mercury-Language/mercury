@@ -79,7 +79,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", bitmap, "BITMAP *").
+:- pragma foreign_type("C", bitmap, "BITMAP *", [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     screen(Result::out, IO0::di, IO::uo),
@@ -391,7 +391,8 @@ det_create_bitmap(W, H, Bitmap, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- func c_pointer_to_bitmap(c_pointer) = bitmap.
-:- pragma export(c_pointer_to_bitmap(in) = out, "_mal_c_pointer_to_bitmap").
+:- pragma foreign_export("C", c_pointer_to_bitmap(in) = out,
+    "_mal_c_pointer_to_bitmap").
 
 :- pragma foreign_proc("C",
     c_pointer_to_bitmap(CPtr::in) = (Bitmap::out),
@@ -405,8 +406,9 @@ det_create_bitmap(W, H, Bitmap, !IO) :-
 :- func make_yes_bitmap(bitmap) = maybe(bitmap).
 :- func make_no_bitmap = maybe(bitmap).
 
-:- pragma export(make_yes_bitmap(in) = out, "_mal_make_yes_bitmap").
-:- pragma export(make_no_bitmap = out, "_mal_make_no_bitmap").
+:- pragma foreign_export("C", make_yes_bitmap(in) = out,
+    "_mal_make_yes_bitmap").
+:- pragma foreign_export("C", make_no_bitmap = out, "_mal_make_no_bitmap").
 
 make_yes_bitmap(X) = yes(X).
 make_no_bitmap = no.

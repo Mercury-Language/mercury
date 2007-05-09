@@ -313,13 +313,13 @@
 %-----------------------------------------------------------------------------%
 
 :- func make_load_bitmap_result_ok(bitmap, palette) = load_bitmap_result.
-:- pragma export(make_load_bitmap_result_ok(in, in) = out,
+:- pragma foreign_export("C", make_load_bitmap_result_ok(in, in) = out,
     "_mal_make_load_bitmap_result_ok").
 
 make_load_bitmap_result_ok(Bmp, Pal) = ok(Bmp, Pal).
 
 :- func make_load_bitmap_result_error = load_bitmap_result.
-:- pragma export(make_load_bitmap_result_error = out,
+:- pragma foreign_export("C", make_load_bitmap_result_error = out,
     "_mal_make_load_bitmap_result_error").
 
 make_load_bitmap_result_error = error.

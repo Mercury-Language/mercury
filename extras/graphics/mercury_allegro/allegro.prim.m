@@ -234,7 +234,7 @@ polygon(Bitmap, Vertices, Color, !IO) :-
     polygon_2(Bitmap, NumVerts, Array, Color, !IO).
 
 :- type vertex_array.
-:- pragma foreign_type("C", vertex_array, "int *").
+:- pragma foreign_type("C", vertex_array, "int *", [can_pass_as_mercury_type]).
 
 :- pred allocate_vertex_array(vertex_array::uo) is det.
 :- pragma foreign_proc("C",
@@ -383,8 +383,9 @@ polygon_fill_vertex_array([X,Y | Verts], Index, NumVerts, !Array) :-
 :- func mal_cons_int_int(int, int, list({int, int})) = list({int, int}).
 :- func mal_nil_int_int = list({int, int}).
 
-:- pragma export(mal_cons_int_int(in, in, in) = out, "_mal_cons_int_int").
-:- pragma export(mal_nil_int_int = out, "_mal_nil_int_int").
+:- pragma foreign_export("C", mal_cons_int_int(in, in, in) = out,
+    "_mal_cons_int_int").
+:- pragma foreign_export("C", mal_nil_int_int = out, "_mal_nil_int_int").
 
 mal_cons_int_int(X, Y, List) = [{X, Y} | List].
 mal_nil_int_int = [].

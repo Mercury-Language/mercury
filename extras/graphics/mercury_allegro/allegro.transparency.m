@@ -70,7 +70,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", color_map, "COLOR_MAP *").
+:- pragma foreign_type("C", color_map, "COLOR_MAP *",
+    [can_pass_as_mercury_type]).
 
 drawing_mode(solid, !IO) :-
     solid_mode(!IO).

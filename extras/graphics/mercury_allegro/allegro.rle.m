@@ -46,7 +46,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", rle_sprite, "RLE_SPRITE *").
+:- pragma foreign_type("C", rle_sprite, "RLE_SPRITE *",
+    [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
     get_rle_sprite(Sprite::in, MaybeRLE::out, IO0::di, IO::uo),
@@ -130,9 +131,9 @@
 :- func make_maybe_rle_sprite_yes(rle_sprite) = maybe(rle_sprite).
 :- func make_maybe_rle_sprite_no = maybe(rle_sprite).
 
-:- pragma export(make_maybe_rle_sprite_yes(in) = out,
+:- pragma foreign_export("C", make_maybe_rle_sprite_yes(in) = out,
     "_mal_make_maybe_rle_sprite_yes").
-:- pragma export(make_maybe_rle_sprite_no = out,
+:- pragma foreign_export("C", make_maybe_rle_sprite_no = out,
     "_mal_make_maybe_rle_sprite_no").
 
 make_maybe_rle_sprite_yes(RLE) = yes(RLE).
