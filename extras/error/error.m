@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2000,2003, 2006 The University of Melbourne.
+% Copyright (C) 2000,2003, 2006-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -69,11 +69,11 @@
 
 :- import_module bool, char, int, list, map, maybe, pair, string.
 
-:- type errors	== map(file, map(line, list(message))).
+:- type errors	== map(file, map(line_number, list(message))).
 
 :- type file	== string.
 
-:- type line	== int.
+:- type line_number == int.
 
 :- type message	== string.
 
@@ -155,7 +155,7 @@ read_errors(Errors0, MErrors) -->
 		read_errors(Errors1, MErrors)
 	).
 
-:- pred insert_error(errors, file, line, message, errors).
+:- pred insert_error(errors, file, line_number, message, errors).
 :- mode insert_error(in, in, in, in, out) is det.
 
 insert_error(Errs0, File, Line, Message, Errs) :-
@@ -171,7 +171,7 @@ insert_error(Errs0, File, Line, Message, Errs) :-
 	),
 	set(Errs0, File, FileErrs, Errs).
 
-:- pred parse_error(list(char), file, line, message).
+:- pred parse_error(list(char), file, line_number, message).
 :- mode parse_error(in, out, out, out) is semidet.
 
 parse_error(Chars, File, Line, Message) :-
@@ -198,7 +198,7 @@ process_errors(Errors) -->
 	{ map__to_assoc_list(Errors, FileErrorList) },
 	process_2(FileErrorList).
 
-:- pred process_2(list(pair(file, map(line, list(message)))),
+:- pred process_2(list(pair(file, map(line_number, list(message)))),
 		io__state, io__state).
 :- mode process_2(in, di, uo) is det.
 
@@ -243,7 +243,8 @@ process_2([File - FileErrors|Rest]) -->
 	),
 	process_2(Rest).
 
-:- pred merge_file(list(pair(line, list(message))), int, io__state, io__state).
+:- pred merge_file(list(pair(line_number, list(message))), int,
+	io__state, io__state).
 :- mode merge_file(in, in, di, uo) is det.
 
 merge_file([], _) -->
@@ -293,7 +294,7 @@ copy_rest -->
 		copy_rest
 	).
 
-:- pred error_rest(list(pair(line, list(message))), io__state, io__state).
+:- pred error_rest(list(pair(line_number, list(message))), io__state, io__state).
 :- mode error_rest(in, di, uo) is det.
 
 error_rest([]) --> [].
