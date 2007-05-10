@@ -148,14 +148,24 @@
     % not `unique', then the behaviour is undefined.  (If you lie to the
     % compiler, the compiler will get its revenge!)
     %
-:- pred unsafe_promise_unique(T::in, T::uo) is det.
-
 :- func unsafe_promise_unique(T::in) = (T::uo) is det.
+:- pred unsafe_promise_unique(T::in, T::uo) is det.
 
     % A synonym for fail/0; this name is more in keeping with Mercury's
     % declarative style rather than its Prolog heritage.
     %
 :- pred false is failure.
+
+%-----------------------------------------------------------------------------%
+
+    % This function is useful for converting polymorphic non-solver type
+    % values with inst any to inst ground (the compiler recognises that inst
+    % any is equivalent to ground for non-polymorphic non-solver type values.)
+    %
+    % Do not call this on solver type values unless you are absolutely sure
+    % they are semantically ground.
+    %
+:- func unsafe_cast_any_to_ground(T::ia) = (T::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1109,6 +1119,29 @@ impure_true :-
 
 semipure_true :-
     semipure private_builtin.semip.
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    unsafe_cast_any_to_ground(X::ia) = (Y::out),
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
+"
+    Y = X;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_cast_any_to_ground(X::ia) = (Y::out),
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
+"
+    Y = X;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_cast_any_to_ground(X::ia) = (Y::out),
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
+"
+    Y = X;
+").
 
 %-----------------------------------------------------------------------------%
 :- end_module builtin.

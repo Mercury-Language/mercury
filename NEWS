@@ -17,6 +17,9 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We have added a new builtin predicate, unsafe_cast_any_to_ground/1, that
+  can be useful when manipulating polymorphic values that have inst any.
+
 * Predicates and functions which create strings from lists of characters
   now fail, throw an exception or return an error value if a null character
   is found.  Unexpected null characters in strings are a potential source of
