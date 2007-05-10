@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003-2006 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,6 +41,18 @@
 :- func integer.from_string(string::in) = (integer::out) is semidet.
 
 :- func integer.det_from_string(string) = integer.
+
+    % Convert a string in the specified base (2-36) to an integer.
+    % The string must contain one or more digits in the specified base,
+    % optionally preceded by a plus or minus sign.  For bases > 10, digits
+    % 10 to 35 are represented by the letters A-Z or a-z.  If the string
+    % does not match this syntax then the function fails.
+    %
+:- func integer.from_base_string(int, string) = integer is semidet.
+
+    % As above but throws an exception rather than failing.
+    %
+:- func integer.det_from_base_string(int, string) = integer.
 
 :- func '+'(integer) = integer.
 
@@ -1195,6 +1207,44 @@ printbase_pos_mul_list([], Carry, _Y) = Carry.
 printbase_pos_mul_list([X|Xs], Carry, Y) =
     printbase_pos_mul_list(Xs, printbase_pos_plus(mul_base(Carry),
         printbase_mul_by_digit(X, Y)), Y).
+
+%-----------------------------------------------------------------------------%
+
+integer.from_base_string(Base0, String) = Integer :-
+    string.index(String, 0, Char),
+    Base = integer(Base0),
+    Len = string.length(String),
+    ( Char = ('-') ->
+        Len > 1,
+        string.foldl_substring(accumulate_integer(Base), String, 1, Len - 1,
+            integer.zero, N),
+        Integer = -N
+    ; Char = ('+') ->
+        Len > 1,
+        string.foldl_substring(accumulate_integer(Base), String, 1, Len - 1,
+            integer.zero, N),
+        Integer = N
+    ;
+        string.foldl_substring(accumulate_integer(Base), String, 0, Len,
+            integer.zero, N),
+        Integer = N
+    ).
+
+:- pred accumulate_integer(integer::in, char::in, integer::in, integer::out)
+    is semidet.
+
+accumulate_integer(Base, Char, !N) :-
+    char.digit_to_int(Char, Digit0),
+    Digit = integer(Digit0),
+    Digit < Base,
+    !:N = (Base * !.N) + Digit.
+
+integer.det_from_base_string(Base, String) = Integer :-
+    ( Integer0 = integer.from_base_string(Base, String) ->
+        Integer = Integer0
+    ;
+        error("integer.det_from_base_string")
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -13,3 +13,4 @@ common_type_cast
 mode_inf
 intermod_type
 CLEAN
+base_string_to_integer

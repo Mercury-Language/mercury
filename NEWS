@@ -17,6 +17,10 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* The following functions have been added to the integer module:
+	integer.from_base_string/2
+	integer.det_from_base_string/2
+
 * We have added a new builtin predicate, unsafe_cast_any_to_ground/1, that
   can be useful when manipulating polymorphic values that have inst any.
 
