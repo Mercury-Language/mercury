@@ -154,6 +154,8 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury compiler:
 
+* In parallel grades we now support thread-local trailing.
+
 * The compiler now issues a warning when an inst declaration is not
   consistent with any of the types in scope.
 

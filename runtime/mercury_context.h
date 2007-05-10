@@ -61,8 +61,10 @@
 
 #ifdef  MR_THREAD_SAFE
   #define MR_IF_THREAD_SAFE(x)  x
+  #define MR_IF_NOT_THREAD_SAFE(x) 
 #else
   #define MR_IF_THREAD_SAFE(x)
+  #define MR_IF_NOT_THREAD_SAFE(x) x
 #endif
 
 /*
@@ -172,6 +174,8 @@
 **                  but also via MR_eng_this_context.)
 **
 ** trail_zone       The trail zone for this context.
+**                  (Accessed via MR_eng_context.)
+**
 ** trail_ptr        The saved MR_trail_ptr for this context.
 ** ticket_counter   The saved MR_ticket_counter for this context.
 ** ticket_highwater The saved MR_ticket_high_water for this context.
@@ -593,7 +597,13 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
             )                                                                 \
         )                                                                     \
         MR_IF_USE_TRAIL(                                                      \
-            MR_trail_zone = load_context_c->MR_ctxt_trail_zone;               \
+            MR_IF_NOT_THREAD_SAFE(                                            \
+                MR_trail_zone = load_context_c->MR_ctxt_trail_zone;           \
+            )                                                                 \
+            MR_IF_THREAD_SAFE(                                                \
+                MR_ENGINE(MR_eng_context).MR_ctxt_trail_zone =                \
+                    load_context_c->MR_ctxt_trail_zone;                       \
+            )                                                                 \
             MR_trail_ptr = load_context_c->MR_ctxt_trail_ptr;                 \
             MR_ticket_counter = load_context_c->MR_ctxt_ticket_counter;       \
             MR_ticket_high_water = load_context_c->MR_ctxt_ticket_high_water; \
@@ -653,7 +663,13 @@ extern  void        MR_schedule_spark_globally(MR_Spark *spark);
             )                                                                 \
         )                                                                     \
         MR_IF_USE_TRAIL(                                                      \
-            save_context_c->MR_ctxt_trail_zone = MR_trail_zone;               \
+            MR_IF_NOT_THREAD_SAFE(                                            \
+                save_context_c->MR_ctxt_trail_zone = MR_trail_zone;           \
+            )                                                                 \
+            MR_IF_THREAD_SAFE(                                                \
+                save_context_c->MR_ctxt_trail_zone =                          \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_trail_zone;             \
+            )                                                                 \
             save_context_c->MR_ctxt_trail_ptr = MR_trail_ptr;                 \
             save_context_c->MR_ctxt_ticket_counter = MR_ticket_counter;       \
             save_context_c->MR_ctxt_ticket_high_water = MR_ticket_high_water; \

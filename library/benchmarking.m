@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -286,10 +286,18 @@ ML_report_stats(void)
 #endif
 
 #ifdef MR_USE_TRAIL
-    fprintf(stderr, "" Trail: %.3fk,"",
-        ((char *) MR_trail_ptr - (char *) MR_trail_zone->MR_zone_min) / 1024.0
-    );
-#endif
+    #ifdef MR_THREAD_SAFE
+        fprintf(stderr, "", Trail: %.3fk,"",
+            ((char *) MR_trail_ptr - 
+            (char *) MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min) / 1024.0
+        );
+    #else
+        fprintf(stderr, "" Trail: %.3fk,"",
+            ((char *) MR_trail_ptr - 
+            (char *) MR_trail_zone->MR_zone_min) / 1024.0
+        );
+   #endif /* !MR_THREAD_SAFE */     
+#endif /* !MR_USE_TRAIL */
 
     /*
     ** Print heap usage information.

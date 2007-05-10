@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2006 The University of Melbourne.
+** Copyright (C) 1993-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -468,7 +468,7 @@
 	36, \
 }
 
-#endif
+#endif /* !MR_THREAD_SAFE or MR_NUM_REAL_REGS == 0 */
 
 /*
 ** The *_SLOT macros define the mapping from special registers and from
@@ -541,6 +541,15 @@
 					MR_min_sol_hp_rec_var)
 #define MR_global_hp		MR_count_usage(MR_GLOBAL_HP_SLOT,	\
 					MR_global_hp_var)
+#if defined(MR_THREAD_SAFE)
+
+#define MR_trail_ptr		MR_count_usage(MR_TRAIL_PTR_SLOT,	\
+					MR_ENGINE(MR_eng_trail_ptr))
+#define MR_ticket_counter	MR_count_usage(MR_TICKET_COUNTER_SLOT,	\
+					MR_ENGINE(MR_eng_ticket_counter))
+#define MR_ticket_high_water	MR_count_usage(MR_TICKET_HIGH_WATER_SLOT, \
+					MR_ENGINE(MR_eng_ticket_high_water))
+#else /* ! MR_THREAD_SAFE */
 
 #define MR_trail_ptr		MR_count_usage(MR_TRAIL_PTR_SLOT,	\
 					MR_trail_ptr_var)
@@ -548,6 +557,7 @@
 					MR_ticket_counter_var)
 #define MR_ticket_high_water	MR_count_usage(MR_TICKET_HIGH_WATER_SLOT,\
 					MR_ticket_high_water_var)
+#endif /* ! MR_THREAD_SAFE */
 
 #define MR_gen_next		MR_count_usage(MR_GEN_NEXT_SLOT,	\
 					MR_gen_next_var)
@@ -696,9 +706,9 @@
 	} while (0)
   #define MR_restore_trail_registers()					\
 	do {								\
-		MR_trail_ptr_var = MR_virtual_trail_ptr;		\
-		MR_ticket_counter_var = MR_virtual_ticket_counter;	\
-		MR_ticket_high_water_var = MR_virtual_ticket_high_water;\
+		MR_trail_ptr = MR_virtual_trail_ptr;			\
+		MR_ticket_counter = MR_virtual_ticket_counter;		\
+		MR_ticket_high_water = MR_virtual_ticket_high_water;	\
 	} while (0)
 #else
   #define MR_save_trail_registers()	((void) 0)

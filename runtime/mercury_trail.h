@@ -330,41 +330,60 @@ struct MR_TrailEntry_Struct {
 
 /*---------------------------------------------------------------------------*/
 
-/* The Mercury trail */
-extern MR_MemoryZone *MR_trail_zone;
-
-/* Pointer to the current top of the Mercury trail */
 /*
-** N.B. Use `MR_trail_ptr', defined in mercury_regs.h,
-** not `MR_trail_ptr_var'.
+** This section defines the global state needed to implement the trail.
+** The trail state is actually part of the MR_Context structure
+** (see mercury_context.h).  In grades that do not support parallelism we
+** copy the relevant fields from the context into the following global
+** variables when we load the context.  In grades that support parallelism
+** we do not use the global variables; instead each engine contains fields
+** for holding the trail state and we load the fields from the context
+** into the engine that is running it.
+** 
+** XXX the implementation for the high-level C backend is a bit of a mess.
+** It's currently all tied up with that of the low-level backend.
+** In high-level C grades each POSIX thread has a dummy engine and context
+** with associated with it.  These are used to store thread local data.
+** We store the trail state in the relevant fields of those structures.
+** These dependencies should be removed (see the commented out code
+** in mercury_wrapper.c).
 */
+#if !defined(MR_THREAD_SAFE)
 
-extern MR_TrailEntry *MR_trail_ptr_var;
+    /* The Mercury trail */
+    extern MR_MemoryZone *MR_trail_zone;
 
-/*
-** An integer variable that holds the current choice point identifier;
-** it is allocated a new value whenever we create a choice point (including
-** semidet choice points, e.g. in an if-then-else) and it is reset whenever
-** a choice point is backtracked over or pruned away.
-**
-** N.B.  Use `MR_ticket_counter', defined in mercury_regs.h,
-** not `MR_ticket_counter_var'.
-*/
+    /* 
+    ** A pointer to the current top of the Mercury trail.
+    ** N.B. Use `MR_trail_ptr', defined in mercury_regs.h, 
+    ** not `MR_trail_ptr_var'.
+    */
+    extern MR_TrailEntry *MR_trail_ptr_var;
 
-extern MR_Unsigned MR_ticket_counter_var;
+    /*
+    ** An integer variable that holds the current choice point identifier;
+    ** it is allocated a new value whenever we create a choice point 
+    ** (including semidet choice points, e.g. in an if-then-else) and it is
+    ** reset whenever a choice point is backtracked over or pruned away.
+    **
+    ** N.B.  Use `MR_ticket_counter', defined in mercury_regs.h,
+    ** not `MR_ticket_counter_var'.
+    */
+    extern MR_Unsigned MR_ticket_counter_var;
 
-/*
-** An integer variable that is incremented whenever we create a choice
-** point (including semidet choice points, e.g. in an if-then-else)
-** and decremented or reset whenever we backtrack over one,
-** but which is _not_ decremented or reset when a choice point is
-** pruned away with a commit.
-**
-** N.B.  Use `MR_ticket_high_water', defined in mercury_regs.h,
-** not `MR_ticket_high_water_var'.
-*/
+    /*
+    ** An integer variable that is incremented whenever we create a choice
+    ** point (including semidet choice points, e.g. in an if-then-else)
+    ** and decremented or reset whenever we backtrack over one,
+    ** but which is _not_ decremented or reset when a choice point is
+    ** pruned away with a commit.
+    **
+    ** N.B.  Use `MR_ticket_high_water', defined in mercury_regs.h,
+    ** not `MR_ticket_high_water_var'.
+    */
+    extern MR_Unsigned MR_ticket_high_water_var;
 
-extern MR_Unsigned MR_ticket_high_water_var;
+#endif /* !defined(MR_THREAD_SAFE) */
 
 /*---------------------------------------------------------------------------*/
 /*

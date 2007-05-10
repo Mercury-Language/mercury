@@ -301,6 +301,16 @@ typedef struct {
 **              for the engine, and then invokes MR_load_context to copy the
 **              info from there into the MR_eng_context field.
 **
+** trail_ptr 
+** ticket_counter
+** ticket_high_water
+**              These fields correspond to the similarly named global
+**              variables declared in mercury_trail.h.  They represent
+**              the state of the trail for the context that this engine
+**              is executing.  These fields only exist in parallel trailing
+**              grades; in other trailing grades we use the aforementioned
+**              globals to store the trail state.
+**
 ** main_context The context of the main computation. The owner_generator field
 **              of this context must be NULL.
 **
@@ -368,6 +378,11 @@ typedef struct MR_mercury_engine_struct {
 #endif
     MR_Context          *MR_eng_this_context;
     MR_Context          MR_eng_context;
+#if defined(MR_THREAD_SAFE) && defined(MR_USE_TRAIL)
+    MR_TrailEntry       *MR_eng_trail_ptr;
+    MR_Unsigned         MR_eng_ticket_counter;
+    MR_Unsigned         MR_eng_ticket_high_water;
+#endif
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
     MR_Context          *MR_eng_main_context;
     MR_Dlist            *MR_eng_gen_contexts;   /* elements are MR_Context */

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2000, 2006 The University of Melbourne.
+** Copyright (C) 1997-2000, 2006-2007 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -22,10 +22,12 @@
 
 #ifdef MR_USE_TRAIL
 
+#if !defined(MR_THREAD_SAFE)
 MR_MemoryZone   *MR_trail_zone;
 MR_TrailEntry   *MR_trail_ptr_var;
 MR_Unsigned     MR_ticket_counter_var = 1;
 MR_Unsigned     MR_ticket_high_water_var = 1;
+#endif
 
 void
 MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
@@ -79,6 +81,6 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
     }
 }
 
-#endif
+#endif /* MR_USE_TRAIL */
 
 /*---------------------------------------------------------------------------*/
