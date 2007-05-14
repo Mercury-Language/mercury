@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,6 +47,7 @@
 :- include_module code_model.
 :- include_module goal_form.
 :- include_module goal_util.
+:- include_module headvar_names.
 :- include_module hlds_code_util.
 :- include_module hlds_error_util.
 :- include_module passes_aux.

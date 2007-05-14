@@ -615,6 +615,14 @@ so that the compiler does the right thing for options such as
 	consistent with any types in scope.
 	<p>
 
+<dt> improving the names of head variables
+	<dd>
+	headvar_names.m tries to replace names of the form HeadVar__n
+	with actual names given by the programmer.
+	<p>
+	For efficiency, this phase not a standalone pass,
+	but is instead invoked by the typechecker.
+
 <dt> type checking
 
 	<dd>
@@ -1725,6 +1733,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2007-01-11 03:36:01 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2007-05-14 10:58:26 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
