@@ -53,6 +53,8 @@
 
 :- func report_warning_too_much_overloading(typecheck_info) = error_spec.
 
+:- func report_error_too_much_overloading(typecheck_info) = error_spec.
+
 :- func report_error_unif_var_var(typecheck_info, prog_var, prog_var,
     type_assign_set) = error_spec.
 
@@ -121,11 +123,12 @@
 
 report_pred_call_error(Info, PredCallId) = Spec :-
     PredCallId = simple_call_id(PredOrFunc0, SymName, _Arity),
-    typecheck_info_get_module_info(Info, ModuleInfo),
+    ModuleInfo = Info ^ tc_info_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
+    typecheck_info_get_pred_markers(Info, PredMarkers),
     (
         predicate_table_search_pf_sym(PredicateTable,
-            calls_are_fully_qualified(Info ^ pred_markers),
+            calls_are_fully_qualified(PredMarkers),
             PredOrFunc0, SymName, OtherIds),
         predicate_table_get_preds(PredicateTable, Preds),
         OtherIds = [_ | _]
@@ -139,7 +142,7 @@ report_pred_call_error(Info, PredCallId) = Spec :-
             ; PredOrFunc0 = pf_function, PredOrFunc = pf_predicate
             ),
             predicate_table_search_pf_sym(PredicateTable,
-                calls_are_fully_qualified(Info ^ pred_markers),
+                calls_are_fully_qualified(PredMarkers),
                 PredOrFunc, SymName, OtherIds),
             OtherIds = [_ | _]
         ->
@@ -170,7 +173,7 @@ report_error_pred_num_args(Info, SimpleCallId, Arities) = Spec :-
         error_num_args_to_pieces(yes(PredOrFunc), Arity, Arities) ++ [nl] ++
         [words("in call to"), p_or_f(PredOrFunc), sym_name(SymName),
         suffix("."), nl],
-    typecheck_info_get_context(Info, Context),
+    Context = Info ^ tc_info_context,
     Spec = error_spec(severity_error, phase_type_check,
         [simple_msg(Context, [always(Pieces)])]).
 
@@ -190,14 +193,14 @@ report_error_func_instead_of_pred(Info, PredOrFunc) = Msg :-
             prefix("*"), p_or_f(PredOrFunc), suffix("*"),
             words("with that name, however.)"), nl]
     ),
-    typecheck_info_get_context(Info, Context),
+    Context = Info ^ tc_info_context,
     Msg = simple_msg(Context, [always(Pieces)]).
 
 :- func report_error_undef_pred(typecheck_info, simple_call_id) = error_msg.
 
 report_error_undef_pred(Info, SimpleCallId) = Msg :-
     SimpleCallId = simple_call_id(_PredOrFunc, PredName, Arity),
-    typecheck_info_get_context(Info, Context),
+    Context = Info ^ tc_info_context,
     InClauseForPieces = in_clause_for_pieces(Info),
     InClauseForComponent = always(InClauseForPieces),
     (
@@ -293,14 +296,14 @@ report_apply_instead_of_pred = Components :-
 %-----------------------------------------------------------------------------%
 
 report_unknown_event_call_error(Info, EventName) = Spec :-
-    typecheck_info_get_context(Info, Context),
+    Context = Info ^ tc_info_context,
     Pieces = [words("Error: there is no event named"),
         quote(EventName), suffix(".")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 report_event_args_mismatch(Info, EventName, EventArgTypes, Args) = Spec :-
-    typecheck_info_get_context(Info, Context),
+    Context = Info ^ tc_info_context,
     Pieces = 
         [words("Error:")] ++
         error_num_args_to_pieces(no, length(Args), [length(EventArgTypes)]) ++
@@ -346,24 +349,40 @@ report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Spec :-
 %-----------------------------------------------------------------------------%
 
 report_warning_too_much_overloading(Info) = Spec :-
-    Msgs = warning_too_much_overloading_to_msgs(Info),
+    Msgs = too_much_overloading_to_msgs(Info, no),
     Spec = error_spec(severity_warning, phase_type_check, Msgs).
 
-:- func warning_too_much_overloading_to_msgs(typecheck_info) = list(error_msg).
+report_error_too_much_overloading(Info) = Spec :-
+    Msgs = too_much_overloading_to_msgs(Info, yes),
+    Spec = error_spec(severity_error, phase_type_check, Msgs).
 
-warning_too_much_overloading_to_msgs(Info) = Msgs :-
-    typecheck_info_get_context(Info, Context),
-    InitWarningPieces = in_clause_for_pieces(Info) ++
-        [words("warning: highly ambiguous overloading."), nl],
-    InitWarningComponent = always(InitWarningPieces),
+:- func too_much_overloading_to_msgs(typecheck_info, bool) = list(error_msg).
 
-    VerboseWarningPieces =
-        [words("This may cause type-checking to be very slow."),
-        words("It may also make your code difficult to understand."), nl],
-    VerboseWarningComponent = verbose_only(VerboseWarningPieces),
+too_much_overloading_to_msgs(Info, IsError) = Msgs :-
+    Context = Info ^ tc_info_context,
+    (
+        IsError = no,
+        InitPieces = in_clause_for_pieces(Info) ++
+            [words("warning: highly ambiguous overloading."), nl],
+        InitComponent = always(InitPieces),
 
-    FirstMsg = simple_msg(Context,
-        [InitWarningComponent, VerboseWarningComponent]),
+        VerbosePieces =
+            [words("This may cause type-checking to be very slow."),
+            words("It may also make your code difficult to understand."), nl],
+        VerboseComponent = verbose_only(VerbosePieces)
+    ;
+        IsError = yes,
+        InitPieces = in_clause_for_pieces(Info) ++
+            [words("error: excessively ambiguous overloading."), nl],
+        InitComponent = always(InitPieces),
+
+        VerbosePieces =
+            [words("This caused the type checker to exceed its limits."),
+            words("It may also make your code difficult to understand."), nl],
+        VerboseComponent = verbose_only(VerbosePieces)
+    ),
+
+    FirstMsg = simple_msg(Context, [InitComponent, VerboseComponent]),
 
     typecheck_info_get_overloaded_symbols(Info, OverloadedSymbolSet),
     map.to_assoc_list(OverloadedSymbolSet, OverloadedSymbols),
@@ -397,7 +416,7 @@ warning_too_much_overloading_to_msgs(Info) = Msgs :-
                 words("in the following contexts."), nl]
         ),
         SecondMsg = simple_msg(Context, [always(SecondPieces)]),
-        typecheck_info_get_module_info(Info, ModuleInfo),
+        ModuleInfo = Info ^ tc_info_module_info,
         DetailMsgsList = list.map(describe_overloaded_symbol(ModuleInfo),
             OverloadedSymbolsSortedContexts),
         list.condense(DetailMsgsList, DetailMsgs),
@@ -490,9 +509,9 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
 %-----------------------------------------------------------------------------%
 
 report_error_unif_var_var(Info, X, Y, TypeAssignSet) = Spec :-
-    typecheck_info_get_context(Info, Context),
+    Context = Info ^ tc_info_context,
+    UnifyContext = Info ^ tc_info_unify_context,
     typecheck_info_get_varset(Info, VarSet),
-    typecheck_info_get_unify_context(Info, UnifyContext),
 
     InClauseForPieces = in_clause_for_pieces(Info),
     unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
@@ -515,9 +534,9 @@ report_error_unif_var_var(Info, X, Y, TypeAssignSet) = Spec :-
 
 report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
         TypeAssignSet) = Spec :-
-    typecheck_info_get_context(Info, Context),
+    Context = Info ^ tc_info_context,
+    UnifyContext = Info ^ tc_info_unify_context,
     typecheck_info_get_varset(Info, VarSet),
-    typecheck_info_get_unify_context(Info, UnifyContext),
 
     InClauseForPieces = in_clause_for_pieces(Info),
     unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
@@ -584,9 +603,9 @@ report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
 
 report_error_functor_type(Info, Var, ConsDefnList, Functor, Arity,
         TypeAssignSet) = Spec :-
-    typecheck_info_get_context(Info, Context),
     typecheck_info_get_varset(Info, VarSet),
-    typecheck_info_get_unify_context(Info, UnifyContext),
+    Context = Info ^ tc_info_context,
+    UnifyContext = Info ^ tc_info_unify_context,
 
     InClauseForPieces = in_clause_for_pieces(Info),
     % XXX We could append UnifyContextPieces after InClauseForPieces
@@ -615,10 +634,10 @@ report_error_functor_type(Info, Var, ConsDefnList, Functor, Arity,
 
 report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
         ArgsTypeAssignSet) = Spec :-
-    typecheck_info_get_context(Info, Context),
     typecheck_info_get_varset(Info, VarSet),
-    typecheck_info_get_unify_context(Info, UnifyContext),
-    typecheck_info_get_module_info(Info, ModuleInfo),
+    Context = Info ^ tc_info_context,
+    UnifyContext = Info ^ tc_info_unify_context,
+    ModuleInfo = Info ^ tc_info_module_info,
     list.length(Args, Arity),
 
     InClauseForPieces = in_clause_for_pieces(Info),
@@ -824,9 +843,9 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
 report_error_var(Info, Var, Type, TypeAssignSet0) = Spec :-
     typecheck_info_get_pred_markers(Info, PredMarkers),
     typecheck_info_get_called_predid(Info, CalledPredId),
-    typecheck_info_get_arg_num(Info, ArgNum),
-    typecheck_info_get_context(Info, Context),
-    typecheck_info_get_unify_context(Info, UnifyContext),
+    ArgNum = Info ^ tc_info_arg_num,
+    Context = Info ^ tc_info_context,
+    UnifyContext = Info ^ tc_info_unify_context,
     get_type_stuff(TypeAssignSet0, Var, TypeStuffList),
     typecheck_info_get_varset(Info, VarSet),
 
@@ -868,9 +887,9 @@ report_error_var(Info, Var, Type, TypeAssignSet0) = Spec :-
 report_error_arg_var(Info, Var, ArgTypeAssignSet0) = Spec :-
     typecheck_info_get_pred_markers(Info, PredMarkers),
     typecheck_info_get_called_predid(Info, CalledPredId),
-    typecheck_info_get_arg_num(Info, ArgNum),
-    typecheck_info_get_context(Info, Context),
-    typecheck_info_get_unify_context(Info, UnifyContext),
+    ArgNum = Info ^ tc_info_arg_num,
+    Context = Info ^ tc_info_context,
+    UnifyContext = Info ^ tc_info_unify_context,
     get_arg_type_stuff(ArgTypeAssignSet0, Var, ArgTypeStuffList),
     typecheck_info_get_varset(Info, VarSet),
 
@@ -913,9 +932,9 @@ report_error_arg_var(Info, Var, ArgTypeAssignSet0) = Spec :-
 report_error_undef_cons(Info, ConsErrors, Functor, Arity) = Spec :-
     typecheck_info_get_pred_markers(Info, PredMarkers),
     typecheck_info_get_called_predid(Info, CalledPredId),
-    typecheck_info_get_arg_num(Info, ArgNum),
-    typecheck_info_get_context(Info, Context),
-    typecheck_info_get_unify_context(Info, UnifyContext),
+    ArgNum = Info ^ tc_info_arg_num,
+    Context = Info ^ tc_info_context,
+    UnifyContext = Info ^ tc_info_unify_context,
     InClauseForPieces = in_clause_for_pieces(Info),
     CallContextPieces = call_context_to_pieces(PredMarkers, CalledPredId,
         ArgNum, UnifyContext),
@@ -1173,7 +1192,7 @@ report_ambiguity_error(Info, TypeAssign1, TypeAssign2) = Spec :-
         AmbiguityPieces = [],
         Pieces2 = [],
         VerboseComponents = [],
-        WarningMsgs = warning_too_much_overloading_to_msgs(Info)
+        WarningMsgs = too_much_overloading_to_msgs(Info, no)
     ;
         AmbiguityPieces = [_ | _],
         Pieces2 = [words("Possible type assignments include:"), nl
@@ -1182,7 +1201,7 @@ report_ambiguity_error(Info, TypeAssign1, TypeAssign2) = Spec :-
         WarningMsgs = []
     ),
 
-    typecheck_info_get_context(Info, Context),
+    Context = Info ^ tc_info_context,
     MainMsg = simple_msg(Context,
         [always(InClauseForPieces ++ Pieces1 ++ Pieces2) | VerboseComponents]),
     Spec = error_spec(severity_error, phase_type_check,
@@ -1246,7 +1265,7 @@ report_unsatisfiable_constraints(Info, TypeAssignSet) = Spec :-
     Pieces2 = component_list_to_line_pieces(ConstraintPieceLists,
         [suffix(".")]),
 
-    typecheck_info_get_context(Info, Context),
+    Context = Info ^ tc_info_context,
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ Pieces1 ++ Pieces2)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
@@ -1281,8 +1300,8 @@ wrap_quote(Str) = quote(Str).
 %-----------------------------------------------------------------------------%
 
 report_missing_tvar_in_foreign_code(Info, VarName) = Spec :-
-    typecheck_info_get_module_info(Info, ModuleInfo),
-    typecheck_info_get_context(Info, Context),
+    ModuleInfo = Info ^ tc_info_module_info,
+    Context = Info ^ tc_info_context,
     typecheck_info_get_predid(Info, PredId),
     Pieces = [words("The foreign language code for") |
         describe_one_pred_name(ModuleInfo, should_module_qualify,
@@ -1549,7 +1568,7 @@ bound_type_to_pieces(Type0, TypeVarSet, TypeBindings, HeadTypeParams)
 
 maybe_report_missing_import_addendum(Info, ModuleQualifier) = Pieces :-
     % First check if this module wasn't imported.
-    typecheck_info_get_module_info(Info, ModuleInfo),
+    ModuleInfo = Info ^ tc_info_module_info,
     (
         % If the module qualifier couldn't match any of the visible modules,
         % then we report that the module has not been imported.
@@ -1621,7 +1640,7 @@ call_context_to_pieces(PredMarkers, CallId, ArgNum, UnifyContext) = Pieces :-
 :- func in_clause_for_pieces(typecheck_info) = list(format_component).
 
 in_clause_for_pieces(Info) = Pieces :-
-    typecheck_info_get_module_info(Info, ModuleInfo),
+    ModuleInfo = Info ^ tc_info_module_info,
     typecheck_info_get_predid(Info, PredId),
     PredIdPieces = describe_one_pred_name(ModuleInfo,
         should_not_module_qualify, PredId),

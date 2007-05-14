@@ -8651,6 +8651,20 @@ or user to interactively compile several modules without the overhead of
 process creation for each one.)
 
 @sp 1
+@item --typecheck-ambiguity-warn-limit @var{n}
+@findex typecheck-ambiguity-warn-limit
+Set the number of type assignments required to generate a warning
+about highly ambiguous overloading to @var{n}.
+
+@sp 1
+@item --typecheck-ambiguity-error-limit @var{n}
+@findex typecheck-ambiguity-error-limit
+Set the number of type assignments required to generate an error
+excessively ambiguous overloading to @var{n}.
+If this limit is reached,
+the typechecker will not process the predicate or function any further.
+
+@sp 1
 @item --feedback-file
 @findex --feedback-file
 Use the specified profiling feedback file which may currently only be processed

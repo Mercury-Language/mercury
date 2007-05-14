@@ -40,60 +40,67 @@
 % The typecheck_info data structure.
 %
 
+:- type typecheck_sub_info
+    --->    typecheck_sub_info(
+                % The id of the pred we're checking.
+                tc_sub_info_pred_id                 :: pred_id,
+
+                % Import status of the pred being checked.
+                tc_sub_info_pred_import_status      :: import_status,
+
+                % Markers of the pred being checked.
+                tc_sub_info_pred_markers            :: pred_markers,
+
+                % Is the pred we're checking a field access function? If so,
+                % there should only be a field access function application
+                % in the body, not predicate or function calls or constructor
+                % applications.
+                tc_sub_info_is_field_access_function :: bool,
+
+                % Variable names in the predicate being checked.
+                tc_sub_info_varset                  :: prog_varset,
+
+                % The list of errors found so far (if any), with one exception:
+                % any errors about overloading are in the overload_error field.
+                tc_sub_info_non_overload_errors     :: list(error_spec),
+
+                % Have we already generated a warning or error message about
+                % highly ambiguous overloading? If yes, this has the message.
+                tc_sub_info_overload_error          :: maybe(error_spec),
+
+                % The symbols used by the current predicate that have
+                % more than one accessible definition, mapped to the unsorted
+                % list of the locations that refer to them.
+                tc_sub_info_overloaded_symbols      :: overloaded_symbol_map,
+
+                % The value of the option --typecheck-ambiguity-error-limit.
+                tc_sub_info_ambiguity_error_limit   :: int
+            ).
+
 :- type typecheck_info
     --->    typecheck_info(
-                module_info     :: module_info,
+                tc_info_sub_info                    :: typecheck_sub_info,
 
-                call_id         :: call_id,
-                                % The call_id of the pred being called (if
-                                % any).
+                tc_info_module_info                 :: module_info,
 
-                arg_num         :: int,
-                                % The argument number within a pred call.
+                % The call_id of the pred being called (if any).
+                tc_info_call_id                     :: call_id,
 
-                pred_id         :: pred_id,
-                                % The pred we're checking.
+                % The argument number within that pred call.
+                tc_info_arg_num                     :: int,
 
-                import_status   :: import_status,
-                                % Import status of the pred being checked.
+                % The context of the goal we're checking.
+                tc_info_context                     :: prog_context,
 
-                pred_markers    :: pred_markers,
-                                % Markers of the pred being checked
+                % The original source of the unification we're checking.
+                tc_info_unify_context               :: unify_context,
 
-                is_field_access_function :: bool,
-                                % Is the pred we're checking a field access
-                                % function? If so, there should only be
-                                % a field access function application
-                                % in the body, not predicate or function calls
-                                % or constructor applications.
+                % This is the main piece of information that we are computing
+                % and which gets updated as we go along.
+                tc_info_type_assign_set             :: type_assign_set,
 
-                context         :: prog_context,
-                                % The context of the goal we're checking.
-
-                unify_context   :: unify_context,
-                                % The original source of the unification
-                                % we're checking.
-
-                varset          :: prog_varset,
-                                % Variable names
-
-                type_assign_set :: type_assign_set,
-                                % This is the main piece of information
-                                % that we are computing and which gets updated
-                                % as we go along.
-
-                found_errors    :: list(error_spec),
-                                % The list of errors found so far (if any).
-
-                overloaded_symbols :: overloaded_symbol_map,
-                                % The symbols used by the current predicate
-                                % that have more than one accessible
-                                % definition, mapped to the unsorted list of
-                                % the locations that refer to them.
-
-                warned_about_overloading :: bool
-                                % Have we already warned about highly
-                                % ambiguous overloading?
+                % The value of the option --typecheck-ambiguity-warn-limit.
+                tc_info_ambiguity_warn_limit        :: int
             ).
 
 :- type overloaded_symbol_map == map(overloaded_symbol, list(prog_context)).
@@ -113,10 +120,10 @@
 % typecheck_info initialisation and finalisation.
 %
 
-:- pred typecheck_info_init(module_info::in, pred_id::in,
-    bool::in, tvarset::in, prog_varset::in, vartypes::in,
-    head_type_params::in, hlds_constraints::in, import_status::in,
-    pred_markers::in, list(error_spec)::in, typecheck_info::out) is det.
+:- pred typecheck_info_init(module_info::in, pred_id::in, bool::in,
+    tvarset::in, prog_varset::in, vartypes::in, head_type_params::in,
+    hlds_constraints::in, import_status::in, pred_markers::in,
+    list(error_spec)::in, typecheck_info::out) is det.
 
     % typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
     %   OldExplicitVarTypes, NewTypeVarSet, New* ..., TypeRenaming,
@@ -148,43 +155,44 @@
 % Basic access predicates for typecheck_info.
 %
 
-:- pred typecheck_info_get_module_info(typecheck_info::in, module_info::out)
-    is det.
-:- pred typecheck_info_get_called_predid(typecheck_info::in, call_id::out)
-    is det.
-:- pred typecheck_info_get_arg_num(typecheck_info::in, int::out) is det.
+% :- func tc_info_module_info(typecheck_info) = module_info.
+% :- func tc_info_arg_num(typecheck_info) = int.
+% :- func tc_info_context(typecheck_info) = prog_context.
+% :- func tc_info_unify_context(typecheck_info) = unify_context.
+% :- func tc_info_type_assign_set(typecheck_info) = type_assign_set.
+
+% :- func 'tc_info_arg_num :='(typecheck_info, int) = typecheck_info.
+% :- func 'tc_info_context :='(typecheck_info, prog_context) = typecheck_info.
+% :- func 'tc_info_unify_context :='(typecheck_info, unify_context)
+%     = typecheck_info.
+% :- func 'tc_info_type_assign_set :='(typecheck_info, type_assign_set)
+%     = typecheck_info.
+
 :- pred typecheck_info_get_predid(typecheck_info::in, pred_id::out) is det.
-:- pred typecheck_info_get_context(typecheck_info::in,
-    prog_context::out) is det.
-:- pred typecheck_info_get_unify_context(typecheck_info::in,
-    unify_context::out) is det.
-:- pred typecheck_info_get_varset(typecheck_info::in, prog_varset::out) is det.
-:- pred typecheck_info_get_type_assign_set(typecheck_info::in,
-    type_assign_set::out) is det.
-:- pred typecheck_info_get_errors(typecheck_info::in, list(error_spec)::out)
-    is det.
-:- pred typecheck_info_get_warned_about_overloading(typecheck_info::in,
-    bool::out) is det.
-:- pred typecheck_info_get_overloaded_symbols(typecheck_info::in,
-    overloaded_symbol_map::out) is det.
 :- pred typecheck_info_get_pred_import_status(typecheck_info::in,
     import_status::out) is det.
+:- pred typecheck_info_get_pred_markers(typecheck_info::in, pred_markers::out)
+    is det.
+:- pred typecheck_info_get_is_field_access_function(typecheck_info::in,
+    bool::out) is det.
+:- pred typecheck_info_get_called_predid(typecheck_info::in, call_id::out)
+    is det.
+
+:- pred typecheck_info_get_varset(typecheck_info::in, prog_varset::out) is det.
+:- pred typecheck_info_get_overload_error(typecheck_info::in,
+    maybe(error_spec)::out) is det.
+:- pred typecheck_info_get_overloaded_symbols(typecheck_info::in,
+    overloaded_symbol_map::out) is det.
+:- pred typecheck_info_get_ambiguity_warn_limit(typecheck_info::in,
+    int::out) is det.
+:- pred typecheck_info_get_ambiguity_error_limit(typecheck_info::in,
+    int::out) is det.
 
 :- pred typecheck_info_set_called_predid(call_id::in,
     typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_arg_num(int::in,
-    typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_context(prog_context::in,
-    typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_unify_context(unify_context::in,
-    typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_type_assign_set(type_assign_set::in,
-    typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_warned_about_overloading(bool::in,
+:- pred typecheck_info_set_overload_error(maybe(error_spec)::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_overloaded_symbols(overloaded_symbol_map::in,
-    typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_pred_import_status(import_status::in,
     typecheck_info::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -198,14 +206,15 @@
     is det.
 :- pred typecheck_info_get_types(typecheck_info::in, type_table::out) is det.
 :- pred typecheck_info_get_ctors(typecheck_info::in, cons_table::out) is det.
-:- pred typecheck_info_get_pred_markers(typecheck_info::in, pred_markers::out)
-    is det.
 
 :- pred typecheck_info_add_overloaded_symbol(overloaded_symbol::in,
     prog_context::in, typecheck_info::in, typecheck_info::out) is det.
 
 :- pred typecheck_info_add_error(error_spec::in,
     typecheck_info::in, typecheck_info::out) is det.
+
+:- pred typecheck_info_get_all_errors(typecheck_info::in,
+    list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -367,6 +376,7 @@
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module int.
+:- import_module pair.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
@@ -375,29 +385,36 @@
 %-----------------------------------------------------------------------------%
 
 typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
-        TypeVarSet, VarSet, VarTypes, HeadTypeParams,
-        Constraints, Status, Markers, Errors, Info) :-
+        TypeVarSet, VarSet, VarTypes, HeadTypeParams, Constraints,
+        Status, PredMarkers, NonOverloadErrors, Info) :-
     CallPredId =
         plain_call_id(simple_call_id(pf_predicate, unqualified(""), 0)),
     term.context_init(Context),
     map.init(TypeBindings),
     map.init(Proofs),
     map.init(ConstraintMap),
-    WarnedAboutOverloading = no,
+    OverloadErrors = no,
     map.init(OverloadedSymbols),
-    Info = typecheck_info(ModuleInfo, CallPredId, 0, PredId, Status, Markers,
-        IsFieldAccessFunction, Context,
-        unify_context(umc_explicit, []), VarSet,
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_int_option(Globals, typecheck_ambiguity_warn_limit,
+        WarnLimit),
+    globals.lookup_int_option(Globals, typecheck_ambiguity_error_limit,
+        ErrorLimit),
+    SubInfo = typecheck_sub_info(PredId, Status,
+        PredMarkers, IsFieldAccessFunction, VarSet,
+        NonOverloadErrors, OverloadErrors, OverloadedSymbols, ErrorLimit),
+    Info = typecheck_info(SubInfo, ModuleInfo, CallPredId, 0,
+        Context, unify_context(umc_explicit, []),
         [type_assign(VarTypes, TypeVarSet, HeadTypeParams,
             TypeBindings, Constraints, Proofs, ConstraintMap)],
-        Errors, OverloadedSymbols, WarnedAboutOverloading
+        WarnLimit
     ).
 
 typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         OldExplicitVarTypes, NewTypeVarSet, NewHeadTypeParams,
         NewVarTypes, NewTypeConstraints, NewConstraintProofs,
         NewConstraintMap, TSubst, ExistTypeRenaming) :-
-    typecheck_info_get_type_assign_set(Info, TypeAssignSet),
+    TypeAssignSet = tc_info_type_assign_set(Info),
     (
         TypeAssignSet = [TypeAssign | _],
         type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
@@ -559,55 +576,66 @@ tvar_maps_to_tvar(TypeBindings, TVar0, TVar) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_info_set_errors(list(error_spec)::in,
+:- pred typecheck_info_get_non_overload_errors(typecheck_info::in,
+    list(error_spec)::out) is det.
+:- pred typecheck_info_set_non_overload_errors(list(error_spec)::in,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_info_get_module_info(Info, Info ^ module_info).
-typecheck_info_get_called_predid(Info, Info ^ call_id).
-typecheck_info_get_arg_num(Info, Info ^ arg_num).
-typecheck_info_get_predid(Info, Info ^ pred_id).
-typecheck_info_get_context(Info, Info ^ context).
-typecheck_info_get_unify_context(Info, Info ^ unify_context).
-typecheck_info_get_varset(Info, Info ^ varset).
-typecheck_info_get_type_assign_set(Info, Info ^ type_assign_set).
-typecheck_info_get_errors(Info, Info ^ found_errors).
-typecheck_info_get_warned_about_overloading(Info,
-        Info ^ warned_about_overloading).
-typecheck_info_get_overloaded_symbols(Info, Info ^ overloaded_symbols).
-typecheck_info_get_pred_import_status(Info, Info ^ import_status).
+% These get and set functions are defined automatically.
+
+% get_tc_info_module_info(Info) = Info ^ tc_info_module_info.
+% get_tc_info_arg_num(Info) = Info ^ tc_info_arg_num.
+% get_tc_info_context(Info) = Info ^ tc_info_context.
+% get_tc_info_unify_context(Info) = Info ^ unify_context.
+% get_tc_info_type_assign_set(Info) = Info ^ type_assign_set.
+
+% set_tc_info_arg_num(ArgNum, Info, Info ^ tc_info_arg_num := ArgNum).
+% set_tc_info_context(Context, Info, Info ^ tc_info_context := Context).
+% set_tc_info_unify_context(UnifyContext, Info,
+%        Info ^ tc_info_unify_context := UnifyContext).
+% set_tc_info_type_assign_set(TypeAssignSet, Info,
+%        Info ^ tc_info_type_assign_set := TypeAssignSet).
+
+typecheck_info_get_predid(Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_pred_id).
+typecheck_info_get_pred_markers(Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_pred_markers).
+typecheck_info_get_pred_import_status(Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_pred_import_status).
+typecheck_info_get_is_field_access_function(Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_is_field_access_function).
+typecheck_info_get_called_predid(Info, Info ^ tc_info_call_id).
+typecheck_info_get_varset(Info, Info ^ tc_info_sub_info ^ tc_sub_info_varset).
+typecheck_info_get_non_overload_errors(Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_non_overload_errors).
+typecheck_info_get_overload_error(Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_overload_error).
+typecheck_info_get_overloaded_symbols(Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_overloaded_symbols).
+typecheck_info_get_ambiguity_error_limit(Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_ambiguity_error_limit).
+typecheck_info_get_ambiguity_warn_limit(Info,
+        Info ^ tc_info_ambiguity_warn_limit).
 
 typecheck_info_set_called_predid(PredCallId, Info,
-        Info ^ call_id := PredCallId).
-typecheck_info_set_arg_num(ArgNum, Info, Info ^ arg_num := ArgNum).
-typecheck_info_set_context(Context, Info, Info ^ context := Context).
-typecheck_info_set_unify_context(UnifyContext, Info,
-        Info ^ unify_context := UnifyContext).
-typecheck_info_set_type_assign_set(TypeAssignSet, Info,
-        Info ^ type_assign_set := TypeAssignSet).
-typecheck_info_set_errors(Errors, Info, Info ^ found_errors := Errors).
-typecheck_info_set_warned_about_overloading(Warned, Info,
-        Info ^ warned_about_overloading := Warned).
+        Info ^ tc_info_call_id := PredCallId).
+typecheck_info_set_non_overload_errors(Specs, Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_non_overload_errors := Specs).
+typecheck_info_set_overload_error(OverloadSpec, Info,
+        Info ^ tc_info_sub_info ^ tc_sub_info_overload_error := OverloadSpec).
 typecheck_info_set_overloaded_symbols(Symbols, Info,
-        Info ^ overloaded_symbols := Symbols).
-typecheck_info_set_pred_import_status(Status, Info,
-        Info ^ import_status := Status).
+        Info ^ tc_info_sub_info ^ tc_sub_info_overloaded_symbols := Symbols).
 
 %-----------------------------------------------------------------------------%
 
 typecheck_info_get_module_name(Info, Name) :-
-    module_info_get_name(Info ^ module_info, Name).
+    module_info_get_name(Info ^ tc_info_module_info, Name).
 typecheck_info_get_preds(Info, Preds) :-
-    module_info_get_predicate_table(Info ^ module_info, Preds).
+    module_info_get_predicate_table(Info ^ tc_info_module_info, Preds).
 typecheck_info_get_types(Info, Types) :-
-    module_info_get_type_table(Info ^ module_info, Types).
+    module_info_get_type_table(Info ^ tc_info_module_info, Types).
 typecheck_info_get_ctors(Info, Ctors) :-
-    module_info_get_cons_table(Info ^ module_info, Ctors).
-
-typecheck_info_get_pred_markers(Info, PredMarkers) :-
-    typecheck_info_get_module_info(Info, ModuleInfo),
-    typecheck_info_get_predid(Info, PredId),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_markers(PredInfo, PredMarkers).
+    module_info_get_cons_table(Info ^ tc_info_module_info, Ctors).
 
 typecheck_info_add_overloaded_symbol(Symbol, Context, !Info) :-
     typecheck_info_get_overloaded_symbols(!.Info, SymbolMap0),
@@ -621,9 +649,20 @@ typecheck_info_add_overloaded_symbol(Symbol, Context, !Info) :-
     typecheck_info_set_overloaded_symbols(SymbolMap, !Info).
 
 typecheck_info_add_error(Error, !Info) :-
-    typecheck_info_get_errors(!.Info, Errors0),
+    typecheck_info_get_non_overload_errors(!.Info, Errors0),
     Errors = [Error | Errors0],
-    typecheck_info_set_errors(Errors, !Info).
+    typecheck_info_set_non_overload_errors(Errors, !Info).
+
+typecheck_info_get_all_errors(Info, Errors) :-
+    typecheck_info_get_non_overload_errors(Info, Errors0),
+    typecheck_info_get_overload_error(Info, MaybeOverloadError),
+    (
+        MaybeOverloadError = no,
+        Errors = Errors0
+    ;
+        MaybeOverloadError = yes(OverloadError),
+        Errors = [OverloadError | Errors0]
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -776,7 +815,7 @@ type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) = Pieces :-
         HeadPieces = []
     ;
         HeadTypeParams = [_ | _],
-        VarsStr = mercury_vars_to_string(TypeVarSet, varnums, HeadTypeParams), 
+        VarsStr = mercury_vars_to_string(TypeVarSet, varnums, HeadTypeParams),
         HeadPieces = [words("some [" ++ VarsStr ++ "]"), nl]
     ),
     TypePieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
@@ -930,7 +969,7 @@ type_with_bindings_to_string(Type0, TypeVarSet, TypeBindings) = Str :-
 %-----------------------------------------------------------------------------%
 
 type_checkpoint(Msg, Info, !IO) :-
-    typecheck_info_get_module_info(Info, ModuleInfo),
+    ModuleInfo = tc_info_module_info(Info),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_types, DoCheckPoint),
     (
@@ -943,14 +982,14 @@ type_checkpoint(Msg, Info, !IO) :-
 :- pred do_type_checkpoint(string::in, typecheck_info::in, io::di, io::uo)
     is det.
 
-do_type_checkpoint(Msg, T0, !IO) :-
+do_type_checkpoint(Msg, Info, !IO) :-
     io.write_string("At ", !IO),
     io.write_string(Msg, !IO),
     io.write_string(": ", !IO),
     globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
     maybe_report_stats(Statistics, !IO),
     io.write_string("\n", !IO),
-    typecheck_info_get_type_assign_set(T0, TypeAssignSet),
+    TypeAssignSet = tc_info_type_assign_set(Info),
     (
         Statistics = yes,
         TypeAssignSet = [TypeAssign | _]
@@ -962,7 +1001,7 @@ do_type_checkpoint(Msg, T0, !IO) :-
     ;
         true
     ),
-    typecheck_info_get_varset(T0, VarSet),
+    typecheck_info_get_varset(Info, VarSet),
     write_type_assign_set(TypeAssignSet, VarSet, !IO).
 
 :- pred checkpoint_tree_stats(string::in, map(_K, _V)::in, io::di, io::uo)

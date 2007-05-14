@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,10 +111,10 @@ perform_context_reduction(OrigTypeAssignSet, !Info) :-
     trace [io(!IO)] (
         type_checkpoint("before context reduction", !.Info, !IO)
     ),
-    typecheck_info_get_module_info(!.Info, ModuleInfo),
+    TypeAssignSet0 = tc_info_type_assign_set(!.Info),
+    ModuleInfo = tc_info_module_info(!.Info),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    typecheck_info_get_type_assign_set(!.Info, TypeAssignSet0),
     list.filter_map(
         reduce_type_assign_context(ClassTable, InstanceTable),
         TypeAssignSet0, TypeAssignSet),
@@ -137,9 +137,9 @@ perform_context_reduction(OrigTypeAssignSet, !Info) :-
             type_assign_set_typeclass_constraints(Constraints, TA0, TA)
         ),
         list.map(DeleteConstraints, OrigTypeAssignSet, NewTypeAssignSet),
-        typecheck_info_set_type_assign_set(NewTypeAssignSet, !Info)
+        !:Info = !.Info ^ tc_info_type_assign_set := NewTypeAssignSet
     ;
-        typecheck_info_set_type_assign_set(TypeAssignSet, !Info)
+        !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet
     ).
 
 :- pred reduce_type_assign_context(class_table::in, instance_table::in,

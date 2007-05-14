@@ -30,6 +30,7 @@ SINGLEMODULE= \
 	after_end_module \
 	ambiguous_method \
 	ambiguous_method_2 \
+	ambiguous_overloading_error \
 	any_mode \
 	any_passed_as_ground \
 	any_should_not_match_bound \
@@ -84,8 +85,8 @@ SINGLEMODULE= \
 	field_syntax_error \
 	foreign_purity_mismatch \
 	foreign_singleton \
-	foreign_type_missing \
 	foreign_type_2 \
+	foreign_type_missing \
 	foreign_type_visibility \
 	fp_dup_bug \
 	freefree \

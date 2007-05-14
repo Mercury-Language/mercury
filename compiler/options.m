@@ -792,12 +792,14 @@
     ;       options_search_directories
     ;       use_subdirs
     ;       use_grade_subdirs
-
-    % Miscellaneous Options
     ;       search_directories
     ;       intermod_directories
     ;       use_search_directories_for_intermod
+
+    % Miscellaneous Options
     ;       filenames_from_stdin
+    ;       typecheck_ambiguity_warn_limit
+    ;       typecheck_ambiguity_error_limit
     ;       help
     ;       version
     ;       fullarch
@@ -1565,6 +1567,8 @@ option_defaults_2(build_system_option, [
 option_defaults_2(miscellaneous_option, [
     % Miscellaneous Options
     filenames_from_stdin                -   bool(no),
+    typecheck_ambiguity_warn_limit      -   int(50),
+    typecheck_ambiguity_error_limit     -   int(3000),
     help                                -   bool(no),
     version                             -   bool(no),
     fullarch                            -   string(""),
@@ -2358,6 +2362,10 @@ long_option("use-search-directories-for-intermod",
                     use_search_directories_for_intermod).
 
 % misc options
+long_option("typecheck-ambiguity-warn-limit",
+                                    typecheck_ambiguity_warn_limit).
+long_option("typecheck-ambiguity-error-limit",
+                                    typecheck_ambiguity_error_limit).
 long_option("help",                 help).
 long_option("version",              version).
 long_option("filenames-from-stdin", filenames_from_stdin).
@@ -4837,6 +4845,14 @@ options_help_misc -->
         "\tis reached. (This allows a program or user to interactively",
         "\tcompile several modules without the overhead of process",
         "\tcreation for each one.)",
+        "--typecheck-ambiguity-warn-limit <n>",
+        "\tSet the number of type assignments required to generate a warning",
+        "\tabout highly ambiguous overloading to <n>.",
+        "--typecheck-ambiguity-error-limit <n>",
+        "\tSet the number of type assignments required to generate an error",
+        "\tabout excessively ambiguous overloading to <n>. If this limit is",
+        "\treached, the typechecker will not process the predicate or",
+        "\tfunction any further.",
         "--version",
         "\tDisplay the compiler version.",
 
