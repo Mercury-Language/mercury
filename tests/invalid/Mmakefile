@@ -309,7 +309,7 @@ SINGLEMODULE_PROGS = $(SINGLEMODULE) \
 	$(C_INTERFACE_PROGS) \
 	$(RESERVE_TAG_PROGS) \
 	$(TRAILED_PROGS) \
-	$(TYPE_SPEC_PROGS)
+	$(TYPE_SPEC_PROGS) \
 	$(NON_PROFDEEP_PROGS)
 
 #-----------------------------------------------------------------------------#

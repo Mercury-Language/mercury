@@ -1576,6 +1576,7 @@ then
 
         cd $root/${tests_prefix}tests
         > FAILED_TESTS_SUMMARY
+        > NOMAKE_DIRS
 
         /bin/rm -fr PASSED_TC_DIR FAILED_TC_DIR > /dev/null 2>&1
         mkdir -p PASSED_TC_DIR FAILED_TC_DIR
@@ -1776,6 +1777,13 @@ fi
 if test "$check_namespace_status" != 0
 then
     echo "error exit: some namespace isn't clean"
+    exitstatus=1
+fi
+
+if test -s $tests_dir/NOMAKE_DIRS
+then
+    echo "error exit: some test directories were left out"
+    cat NOMAKE_DIRS
     exitstatus=1
 fi
 

@@ -380,7 +380,12 @@ runtests_subdirs: $(RUNTESTS_IN_SUBDIRS)
 
 .PHONY: $(RUNTESTS_IN_SUBDIRS)
 $(RUNTESTS_IN_SUBDIRS): runtests_in_%:
-	+cd $* && mmake runtests
+	+if (cd $* && mmake runtests) ; then \
+		true ; \
+	else \
+		echo Could not run tests in directory $* ; \
+		echo Could not run tests in directory $* >> NOMAKE_DIRS ; \
+	fi
 
 realclean_subdirs:
 	+succeeded=true; \
