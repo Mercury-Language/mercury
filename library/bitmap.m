@@ -1399,6 +1399,8 @@ namespace mercury {
 :- pragma foreign_type("IL", bitmap,
     "class [mercury]mercury.bitmap__csharp_code.MercuryBitmap") 
     where equality is bitmap_equal, comparison is bitmap_compare.
+:- pragma foreign_type("Erlang", bitmap, "")
+    where equality is bitmap_equal, comparison is bitmap_compare.
 
 :- pred bitmap_equal(bitmap, bitmap).
 :- mode bitmap_equal(in, in) is semidet.

@@ -1503,6 +1503,7 @@
 :- pragma foreign_type(il, io.system_error,
     "class [mscorlib]System.Exception").
 :- pragma foreign_type(java, io.system_error, "java.lang.Exception").
+:- pragma foreign_type(erlang, io.system_error, "").
 
     % io.make_err_msg(Error, MessagePrefix, Message):
     % `Message' is an error message obtained by looking up the

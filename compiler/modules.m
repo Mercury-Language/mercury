@@ -81,6 +81,13 @@
 :- pred module_name_to_file_name(module_name::in, string::in, bool::in,
     file_name::out, io::di, io::uo) is det.
 
+    % module_name_to_file_name_sep(Module, Sep, Extension, Mkdir, FileName):
+    %
+    % As above but module qualifiers are separated by Sep instead of ".".
+    %
+:- pred module_name_to_file_name_sep(module_name::in, string::in, string::in,
+    bool::in, file_name::out, io::di, io::uo) is det.
+
     % module_name_to_search_file_name(Module, Extension, FileName):
     %
     % As above, but for a file which might be in an installed library,
@@ -837,20 +844,26 @@ mercury_std_library_module_name(qualified(Module, Name)) :-
     mercury_std_library_module(ModuleNameStr).
 
 module_name_to_search_file_name(ModuleName, Ext, FileName, !IO) :-
-    module_name_to_file_name(ModuleName, Ext, yes, no, FileName, !IO).
+    module_name_to_file_name_sep(ModuleName, ".", Ext, yes, no, FileName, !IO).
 
 module_name_to_file_name(ModuleName, Ext, MkDir, FileName, !IO) :-
-    module_name_to_file_name(ModuleName, Ext, no, MkDir, FileName, !IO).
+    module_name_to_file_name_sep(ModuleName, ".", Ext, no, MkDir, FileName,
+        !IO).
 
-:- pred module_name_to_file_name(module_name::in, string::in, bool::in,
-    bool::in, file_name::out, io::di, io::uo) is det.
+module_name_to_file_name_sep(ModuleName, Sep, Ext, MkDir, FileName, !IO) :-
+    module_name_to_file_name_sep(ModuleName, Sep, Ext, no, MkDir, FileName,
+        !IO).
 
-module_name_to_file_name(ModuleName, Ext, Search, MkDir, FileName, !IO) :-
+:- pred module_name_to_file_name_sep(module_name::in, string::in, string::in,
+    bool::in, bool::in, file_name::out, io::di, io::uo) is det.
+
+module_name_to_file_name_sep(ModuleName, Sep, Ext, Search, MkDir, FileName,
+        !IO) :-
     ( Ext = ".m" ->
         % Look up the module in the module->file mapping.
         source_file_map.lookup_module_source_file(ModuleName, FileName, !IO)
     ;
-        string.append(sym_name_to_string(ModuleName), Ext, BaseName),
+        string.append(sym_name_to_string_sep(ModuleName, Sep), Ext, BaseName),
         choose_file_name(ModuleName, BaseName, Ext, Search, MkDir, FileName,
             !IO)
     ).

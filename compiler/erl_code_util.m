@@ -1,0 +1,415 @@
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2007 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+% 
+% File: erl_code_util.m.
+% Main author: wangp.
+% 
+% This module is part of the Erlang code generator.
+% 
+%-----------------------------------------------------------------------------%
+
+:- module erl_backend.erl_code_util.
+:- interface.
+
+:- import_module erl_backend.elds.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module parse_tree.prog_data.
+
+:- import_module list.
+:- import_module set.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% The `erl_gen_info' ADT.
+%
+
+    % The `erl_gen_info' type holds information used during
+    % ELDS code generation for a given procedure.
+    %
+:- type erl_gen_info.
+
+    % Initialize the erl_gen_info, so that it is ready for generating code
+    % for the given procedure.
+    %
+:- func erl_gen_info_init(module_info, pred_id, proc_id) = erl_gen_info.
+
+:- pred erl_gen_info_get_module_info(erl_gen_info::in, module_info::out)
+    is det.
+:- pred erl_gen_info_get_varset(erl_gen_info::in, prog_varset::out) is det.
+:- pred erl_gen_info_get_var_types(erl_gen_info::in, vartypes::out) is det.
+:- pred erl_gen_info_get_input_vars(erl_gen_info::in, prog_vars::out) is det.
+:- pred erl_gen_info_get_output_vars(erl_gen_info::in, prog_vars::out) is det.
+
+    % Create a new variable.
+    %
+:- pred erl_gen_info_new_var(prog_var::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+    % Create multiple new variables.
+    %
+:- pred erl_gen_info_new_vars(int::in, prog_vars::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+    % Create multiple new variables, which have names beginning with
+    % underscores.
+    %
+:- pred erl_gen_info_new_anonymous_vars(int::in, prog_vars::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+    % Lookup the types of a list of variables.
+    %
+:- pred erl_variable_types(erl_gen_info::in, prog_vars::in,
+    list(mer_type)::out) is det.
+
+    % Lookup the type of a variable.
+    %
+:- pred erl_variable_type(erl_gen_info::in, prog_var::in, mer_type::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Various utility routines used for ELDS code generation
+%
+
+    % Separate procedure call arguments into inputs and output variables.
+    % Dummy types are ignored.
+    %
+:- pred erl_gen_arg_list(module_info::in, list(T)::in,
+    list(mer_type)::in, list(mer_mode)::in,
+    list(T)::out, list(T)::out) is det.
+
+    % Return the set of variables non-local to a goal which are bound
+    % by that goal.
+    %
+:- pred erl_bound_nonlocals_in_goal(module_info::in, instmap::in,
+    hlds_goal::in, set(prog_var)::out) is det.
+
+    % erl_bind_unbound_vars(ModuleInfo, VarsToBind, Goal, InstMap,
+    %   !Statement)
+    %
+    % For any variables in VarsToBind which are not bound in Goal, add
+    % assignment expressions to !Statement.  This is necessary to ensure that
+    % all branches of ELDS code bind the same variables, to avoid warnings from
+    % the Erlang compiler when one branch doesn't bind all the variables
+    % because it has determinism `erroneous'.  The values given to the
+    % variables do not matter since this is only done to appease the
+    % Erlang compiler.
+    %
+:- pred erl_bind_unbound_vars(module_info::in, set(prog_var)::in,
+    hlds_goal::in, instmap::in, elds_expr::in, elds_expr::out) is det.
+
+    % erl_create_renaming(Vars, Subst, !Info):
+    %
+    % Create a substitution for each variable in Vars to a fresh variable.
+    %
+:- pred erl_create_renaming(prog_vars::in, prog_var_renaming::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+    % erl_rename_vars_in_expr(Subn, Expr0, Expr):
+    %
+    % Substitute every occurrence of any variable for a substitute that appears
+    % in the mapping Subn.  Variables which do not appear in Subn are left
+    % unsubstituted.
+    %
+:- pred erl_rename_vars_in_expr(prog_var_renaming::in,
+    elds_expr::in, elds_expr::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module libs.compiler_util.
+
+:- import_module map.
+:- import_module set.
+:- import_module term.
+:- import_module varset.
+
+%-----------------------------------------------------------------------------%
+%
+% The definition of the `erl_gen_info' ADT.
+%
+
+% The `erl_gen_info' type holds information used during Erlang code generation
+% for a given procedure.
+
+:- type erl_gen_info
+    --->    erl_gen_info(
+                % These fields remain constant for each procedure,
+                % except for the varset which can be added to as variables
+                % are introduced.
+
+                module_info         :: module_info,
+                pred_id             :: pred_id,
+                proc_id             :: proc_id,
+                varset              :: prog_varset,
+                var_types           :: vartypes,
+
+                % input_vars and output_vars do not include variables of dummy
+                % types.
+                input_vars          :: prog_vars,
+                output_vars         :: prog_vars
+            ).
+
+erl_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_argmodes(ProcInfo, HeadModes),
+    pred_info_get_arg_types(PredInfo, HeadTypes),
+    erl_gen_arg_list(ModuleInfo, HeadVars, HeadTypes, HeadModes,
+        InputVars, OutputVars),
+    Info = erl_gen_info(
+        ModuleInfo,
+        PredId,
+        ProcId,
+        VarSet,
+        VarTypes,
+        InputVars,
+        OutputVars
+    ).
+
+erl_gen_info_get_module_info(Info, Info ^ module_info).
+erl_gen_info_get_varset(Info, Info ^ varset).
+erl_gen_info_get_var_types(Info, Info ^ var_types).
+erl_gen_info_get_input_vars(Info, Info ^ input_vars).
+erl_gen_info_get_output_vars(Info, Info ^ output_vars).
+
+:- pred erl_gen_info_set_varset(prog_varset::in,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+erl_gen_info_set_varset(VarSet, Info, Info ^ varset := VarSet).
+
+erl_gen_info_new_var(NewVar, !Info) :-
+    erl_gen_info_get_varset(!.Info, VarSet0),
+    varset.new_var(VarSet0, NewVar, VarSet),
+    erl_gen_info_set_varset(VarSet, !Info).
+
+erl_gen_info_new_vars(Num, NewVars, !Info) :-
+    erl_gen_info_get_varset(!.Info, VarSet0),
+    varset.new_vars(VarSet0, Num, NewVars, VarSet),
+    erl_gen_info_set_varset(VarSet, !Info).
+
+erl_gen_info_new_anonymous_vars(Num, NewVars, !Info) :-
+    erl_gen_info_get_varset(!.Info, VarSet0),
+    list.map_foldl(erl_gen_info_new_anonymous_var, 1 .. Num, NewVars,
+        VarSet0, VarSet),
+    erl_gen_info_set_varset(VarSet, !Info).
+
+:- pred erl_gen_info_new_anonymous_var(int::in, prog_var::out,
+    prog_varset::in, prog_varset::out) is det.
+
+erl_gen_info_new_anonymous_var(_Num, NewVar, VarSet0, VarSet) :-
+    varset.new_named_var(VarSet0, "_", NewVar, VarSet).
+
+erl_variable_types(Info, Vars, Types) :-
+    list.map(erl_variable_type(Info), Vars, Types).
+
+erl_variable_type(Info, Var, Type) :-
+    erl_gen_info_get_var_types(Info, VarTypes),
+    map.lookup(VarTypes, Var, Type).
+
+%-----------------------------------------------------------------------------%
+%
+% Various utility routines used for ELDS code generation
+%
+
+    % XXX arg_info.partition_* does a similar thing but returns sets instead
+    % of lists
+    %
+erl_gen_arg_list(ModuleInfo, VarNames, ArgTypes, Modes, Inputs, Outputs) :-
+    (
+        VarNames = [],
+        ArgTypes = [],
+        Modes = []
+    ->
+        Inputs = [],
+        Outputs = []
+    ;
+        VarNames = [VarName | VarNames1],
+        ArgTypes = [ArgType | ArgTypes1],
+        Modes = [Mode | Modes1]
+    ->
+        erl_gen_arg_list(ModuleInfo, VarNames1, ArgTypes1,
+            Modes1, Inputs1, Outputs1),
+        mode_to_arg_mode(ModuleInfo, Mode, ArgType, ArgMode),
+        (
+            ( is_dummy_argument_type(ModuleInfo, ArgType)
+            ; ArgMode = top_unused
+            )
+        ->
+            % Exclude arguments of type io.state etc.
+            % Also exclude those with arg_mode `top_unused'.
+            Inputs = Inputs1,
+            Outputs = Outputs1
+        ;
+            ArgMode = top_in
+        ->
+            % It's an input argument.
+            Inputs = [VarName | Inputs1],
+            Outputs = Outputs1
+        ;
+            % It's an output argument.
+            Inputs = Inputs1,
+            Outputs = [VarName | Outputs1]
+        )
+    ;
+        unexpected(this_file, "erl_gen_arg_list: length mismatch")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
+    Goal = hlds_goal(_, GoalInfo),
+    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+    IsBound = var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstmapDelta),
+    BoundNonLocals = set.filter(IsBound, NonLocals).
+
+erl_bind_unbound_vars(ModuleInfo, VarsToBind, Goal, InstMap,
+        Statement0, Statement) :-
+    erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, Bound),
+    NotBound = set.difference(VarsToBind, Bound),
+    (if set.empty(NotBound) then
+        Statement = Statement0
+    else
+        % We arbitrarily assign all the variables to the atom `false'.
+        Assigments = list.map(assign_false, set.to_sorted_list(NotBound)),
+        Statement = join_exprs(elds_block(Assigments), Statement0)
+    ).
+
+:- func assign_false(prog_var) = elds_expr.
+
+assign_false(Var) = elds_eq(expr_from_var(Var), elds_term(elds_false)).
+
+%-----------------------------------------------------------------------------%
+
+erl_create_renaming(Vars, Subst, !Info) :-
+    erl_gen_info_new_vars(list.length(Vars), NewVars, !Info),
+    map.from_corresponding_lists(Vars, NewVars, Subst).
+
+:- pred erl_rename_vars_in_exprs(prog_var_renaming::in,
+    list(elds_expr)::in, list(elds_expr)::out) is det.
+
+erl_rename_vars_in_exprs(Subn, Exprs0, Exprs) :-
+    list.map(erl_rename_vars_in_expr(Subn), Exprs0, Exprs).
+
+erl_rename_vars_in_expr(Subn, Expr0, Expr) :-
+    (
+        Expr0 = elds_block(Exprs0),
+        erl_rename_vars_in_exprs(Subn, Exprs0, Exprs),
+        Expr = elds_block(Exprs)
+    ;
+        Expr0 = elds_term(Term0),
+        erl_rename_vars_in_term(Subn, Term0, Term),
+        Expr = elds_term(Term)
+    ;
+        Expr0 = elds_eq(ExprA0, ExprB0),
+        erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
+        erl_rename_vars_in_expr(Subn, ExprB0, ExprB),
+        Expr = elds_eq(ExprA, ExprB)
+    ;
+        Expr0 = elds_unop(Op, ExprA0),
+        erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
+        Expr = elds_unop(Op, ExprA)
+    ;
+        Expr0 = elds_binop(Op, ExprA0, ExprB0),
+        erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
+        erl_rename_vars_in_expr(Subn, ExprB0, ExprB),
+        Expr = elds_binop(Op, ExprA, ExprB)
+    ;
+        Expr0 = elds_call(PredProcId, Exprs0),
+        erl_rename_vars_in_exprs(Subn, Exprs0, Exprs),
+        Expr = elds_call(PredProcId, Exprs)
+    ;
+        Expr0 = elds_call_ho(ExprA0, ExprsB0),
+        erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
+        erl_rename_vars_in_exprs(Subn, ExprsB0, ExprsB),
+        Expr = elds_call_ho(ExprA, ExprsB)
+    ;
+        Expr0 = elds_fun(Clause0),
+        erl_rename_vars_in_clause(Subn, Clause0, Clause),
+        Expr = elds_fun(Clause)
+    ;
+        Expr0 = elds_case_expr(ExprA0, Cases0),
+        erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
+        erl_rename_vars_in_cases(Subn, Cases0, Cases),
+        Expr = elds_case_expr(ExprA, Cases)
+    ).
+
+:- pred erl_rename_vars_in_terms(prog_var_renaming::in,
+    list(elds_term)::in, list(elds_term)::out) is det.
+
+erl_rename_vars_in_terms(Subn, Terms0, Terms) :-
+    list.map(erl_rename_vars_in_term(Subn), Terms0, Terms).
+
+:- pred erl_rename_vars_in_term(prog_var_renaming::in,
+    elds_term::in, elds_term::out) is det.
+
+erl_rename_vars_in_term(Subn, Term0, Term) :-
+    (
+        ( Term0 = elds_int(_)
+        ; Term0 = elds_float(_)
+        ; Term0 = elds_string(_)
+        ; Term0 = elds_char(_)
+        ; Term0 = elds_atom_raw(_)
+        ; Term0 = elds_atom(_)
+        ; Term0 = elds_anon_var
+        ),
+        Term = Term0
+    ;
+        Term0 = elds_tuple(Exprs0),
+        erl_rename_vars_in_exprs(Subn, Exprs0, Exprs),
+        Term = elds_tuple(Exprs)
+    ;
+        Term0 = elds_var(Var0),
+        Var = (if map.search(Subn, Var0, Var1) then Var1 else Var0),
+        Term = elds_var(Var)
+    ).
+
+:- pred erl_rename_vars_in_clause(prog_var_renaming::in,
+    elds_clause::in, elds_clause::out) is det.
+
+erl_rename_vars_in_clause(Subn, Clause0, Clause) :-
+    Clause0 = elds_clause(Pattern0, Expr0),
+    erl_rename_vars_in_terms(Subn, Pattern0, Pattern),
+    erl_rename_vars_in_expr(Subn, Expr0, Expr),
+    Clause = elds_clause(Pattern, Expr).
+
+:- pred erl_rename_vars_in_cases(prog_var_renaming::in,
+    list(elds_case)::in, list(elds_case)::out) is det.
+
+erl_rename_vars_in_cases(Subn, Cases0, Cases) :-
+    list.map(erl_rename_vars_in_case(Subn), Cases0, Cases).
+
+:- pred erl_rename_vars_in_case(prog_var_renaming::in,
+    elds_case::in, elds_case::out) is det.
+
+erl_rename_vars_in_case(Subn, Case0, Case) :-
+    Case0 = elds_case(Pattern0, Expr0),
+    erl_rename_vars_in_term(Subn, Pattern0, Pattern),
+    erl_rename_vars_in_expr(Subn, Expr0, Expr),
+    Case = elds_case(Pattern, Expr).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "erl_code_util.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module erl_code_util.
+%-----------------------------------------------------------------------------%

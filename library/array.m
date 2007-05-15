@@ -416,6 +416,10 @@
     where equality is array.array_equal,
     comparison is array.array_compare.
 
+:- pragma foreign_type("Erlang", array(T), "")
+    where equality is array.array_equal,
+    comparison is array.array_compare.
+
     % unify/2 for arrays
     %
 :- pred array_equal(array(T)::in, array(T)::in) is semidet.

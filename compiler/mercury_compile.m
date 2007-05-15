@@ -145,6 +145,11 @@
 :- import_module ml_backend.maybe_mlds_to_gcc.     % MLDS -> GCC back-end
 :- import_module ml_backend.ml_util.               % MLDS utility predicates
 
+    % the Erlang back-end
+:- import_module erl_backend.elds.
+:- import_module erl_backend.elds_to_erlang.
+:- import_module erl_backend.erl_code_gen.
+
     % miscellaneous compiler modules
 :- import_module check_hlds.goal_path.
 :- import_module check_hlds.inst_check.
@@ -1693,7 +1698,9 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             FactTableBaseFiles = []
         ;
             Target = target_erlang,
-            sorry(this_file, "mercury_compile_after_front_end: target erlang")
+            erlang_backend(!HLDS, ELDS, !DumpInfo, !IO),
+            elds_to_erlang(!.HLDS, ELDS, !IO),
+            FactTableBaseFiles = []
         ),
         recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
             MaybeTimestamps, !IO),
@@ -5155,6 +5162,30 @@ dump_mlds(DumpFile, MLDS, !IO) :-
             ErrorMessage),
         report_error(ErrorMessage, !IO)
     ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% Erlang backend
+%
+
+:- pred erlang_backend(module_info::in, module_info::out, elds::out,
+    dump_info::in, dump_info::out, io::di, io::uo) is det.
+
+erlang_backend(!HLDS, ELDS, !DumpInfo, !IO) :-
+    erl_code_gen(!.HLDS, ELDS, !IO).
+
+:- pred elds_to_erlang(module_info::in, elds::in, io::di, io::uo) is det.
+
+elds_to_erlang(ModuleInfo, ELDS, !IO) :-
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
+
+    maybe_write_string(Verbose, "% Converting ELDS to Erlang...\n", !IO),
+    elds_to_erlang.output_elds(ModuleInfo, ELDS, !IO),
+    maybe_write_string(Verbose, "% Finished converting ELDS to Erlang.\n",
+        !IO),
+    maybe_report_stats(Stats, !IO).
 
 %-----------------------------------------------------------------------------%
 

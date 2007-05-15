@@ -121,6 +121,13 @@ Taking all this into account, the structure looks like this:
                <ul type=disc>
                <li> 4c. code generation (annotated HLDS -&gt; bytecode)
                </ul>
+          <li> d. Erlang back-end
+               <br> Package: erl_backend.m
+               <ul type=disc>
+               <li> 4d. code generation (annotated HLDS -&gt; ELDS)
+               <li> 6d. output code
+     	       (ELDS -&gt; Erlang)
+               </ul>
           <li> There's also a package backend_libs.m which contains
 	       modules which are shared between several different back-ends.
           </ul>
@@ -1551,7 +1558,7 @@ is invoked to turn the .java file into a .class file containing Java bytecodes.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-<h3> d. BYTECODE BACK-END </h3>
+<h3> c. BYTECODE BACK-END </h3>
 
 <p>
 This is the bytecode_backend.m package.
@@ -1573,6 +1580,41 @@ bytecode interpreter has not yet been written.
 
 <li> bytecode_data.m contains the predicates that translate ints, strings
   and floats into bytecode.
+</ul>
+
+<hr>
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+
+<h3> d. ERLANG BACK-END </h3>
+
+<p>
+This is the erl_backend.m package.
+
+<p>
+
+The Mercury compiler can translate Mercury programs into Erlang.
+The intent of this is to take advantage of the features of the
+Erlang implementation (concurrency, fault tolerance, etc.)
+However, the backend is still incomplete.
+This back-end uses the Erlang Data Structure (elds.m) as its
+intermediate representation.
+
+<h4> 4d. ELDS code generation </h4>
+<ul>
+<li> erl_code_gen.m converts HLDS code to ELDS.
+	  The following sub-modules are used to handle different constructs:
+		<ul>
+		<li> erl_unify_gen.m
+		<li> erl_call_gen.m
+		</ul>
+	  The module erl_code_util.m provides utility routines for
+	  ELDS code generation.
+</ul>
+
+<h4> 6d. ELDS output </h4>
+
+<ul>
+<li>elds_to_erlang.m converts ELDS to Erlang code.
 </ul>
 
 <hr>
@@ -1733,6 +1775,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2007-05-14 10:58:26 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2007-05-15 02:38:22 $ by $Author: wangp $@cs.mu.oz.au. <br>
 </body>
 </html>
