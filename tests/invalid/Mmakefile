@@ -201,6 +201,7 @@ SINGLEMODULE= \
 	typeclass_test_8 \
 	typeclass_test_9 \
 	types	\
+	types2	\
 	unbound_type_vars \
 	undeclared_mode \
 	undef_inst \
