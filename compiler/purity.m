@@ -290,7 +290,7 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
     pred_info_get_purity(!.PredInfo, DeclPurity) ,
     pred_info_get_promised_purity(!.PredInfo, PromisedPurity),
     some [!ClausesInfo] (
-        pred_info_clauses_info(!.PredInfo, !:ClausesInfo),
+        pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_clauses(Clauses0, !ClausesInfo),
         clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
         clauses_info_get_varset(!.ClausesInfo, VarSet0),
@@ -974,7 +974,7 @@ pred_context(ModuleInfo, _PredInfo, PredId) = Pieces :-
     = error_spec.
 
 error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
     purity_name(Purity, PurityName),
@@ -995,7 +995,7 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
 
 warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
         DeclPurity, ActualPurity) = Spec :-
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
     purity_name(DeclPurity, DeclPurityName),
     purity_name(ActualPurity, ActualPurityName),
@@ -1010,7 +1010,7 @@ warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
 
 warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity)
         = Spec :-
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
     (
         PromisedPurity = purity_pure,
@@ -1040,7 +1040,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity)
     = error_spec.
 
 error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
     PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),

@@ -124,7 +124,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         FuncRetMode = OutMode,
         list.append(FuncArgModes, [FuncRetMode], PredArgModes),
         Determinism = detism_det,
-        pred_info_context(PredInfo0, Context),
+        pred_info_get_context(PredInfo0, Context),
         MaybePredArgLives = no,
         varset.init(InstVarSet),
             % No inst_vars in default func mode.
@@ -174,7 +174,7 @@ do_copy_clauses_to_procs(PredInfo) :-
 
 copy_clauses_to_procs(!PredInfo) :-
     pred_info_get_procedures(!.PredInfo, Procs0),
-    pred_info_clauses_info(!.PredInfo, ClausesInfo),
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
     ProcIds = pred_info_all_non_imported_procids(!.PredInfo),
     copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
     pred_info_set_procedures(Procs, !PredInfo).

@@ -236,7 +236,7 @@ check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
         NumErrors = 0
     ),
 
-    pred_info_clauses_info(!.PredInfo, ClausesInfo0),
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
     clauses_info_get_varset(ClausesInfo0, VarSet),
     clauses_info_get_vartypes(ClausesInfo0, VarTypesMap0),
@@ -343,7 +343,7 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !Proofs,
 report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         !Specs) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
 
     PredIdPieces = describe_one_pred_name(ModuleInfo,
         should_not_module_qualify, PredId),
@@ -376,7 +376,7 @@ constraint_to_error_piece(TVarset, Constraint) =
 report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarSet, Errs,
         !Specs) :-
     pred_info_get_typevarset(PredInfo, TypeVarSet),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
 
     PredIdPieces =
         describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId),
@@ -425,7 +425,7 @@ finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
         % have the specified name and arity.
         pred_info_get_typevarset(CallerPredInfo, TVarSet),
         pred_info_get_markers(CallerPredInfo, Markers),
-        pred_info_clauses_info(CallerPredInfo, ClausesInfo),
+        pred_info_get_clauses_info(CallerPredInfo, ClausesInfo),
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
         map.apply_to_list(Args0, VarTypes, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, ArgTypes, TVarSet,
@@ -481,7 +481,7 @@ post_typecheck_finish_imported_pred_no_io(ModuleInfo, ErrorProcIds,
     ( pred_info_is_pseudo_imported(!.PredInfo) ->
         true
     ;
-        pred_info_clauses_info(!.PredInfo, ClausesInfo0),
+        pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
         pred_info_get_arg_types(!.PredInfo, ArgTypes),
         map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
@@ -555,7 +555,7 @@ store_promise(PromiseType, PromiseId, !ModuleInfo, Goal) :-
 
 promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
     module_info_pred_info(ModuleInfo, ExclusiveDeclPredId, PredInfo),
-    pred_info_clauses_info(PredInfo, ClausesInfo),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_clauses_only(ClausesInfo, Clauses),
     ( Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)] ->
         assertion.normalise_goal(Goal0, Goal)
@@ -660,7 +660,7 @@ in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
         RHS = rhs_var(_)
     ;
         RHS = rhs_functor(ConsId, _, _),
-        pred_info_clauses_info(PredInfo, ClausesInfo),
+        pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
         map.lookup(VarTypes, Var, Type),
         ( type_to_ctor_and_args(Type, TypeCtor, _) ->
@@ -736,7 +736,7 @@ check_type_of_main(PredInfo, !Specs) :-
         ->
             true
         ;
-            pred_info_context(PredInfo, Context),
+            pred_info_get_context(PredInfo, Context),
             Pieces = [words("Error: arguments of main/2"),
                 words("must have type `io.state'."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),

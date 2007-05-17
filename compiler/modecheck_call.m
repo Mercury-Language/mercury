@@ -452,7 +452,7 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     module_info_preds(ModuleInfo0, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
-    pred_info_context(PredInfo0, Context),
+    pred_info_get_context(PredInfo0, Context),
     list.length(ArgVars, Arity),
     list.duplicate(Arity, not_reached, FinalInsts),
     inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes),

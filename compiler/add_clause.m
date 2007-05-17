@@ -154,7 +154,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
             (
                 VeryVerbose = yes,
-                pred_info_clauses_info(!.PredInfo, MsgClauses),
+                pred_info_get_clauses_info(!.PredInfo, MsgClauses),
                 NumClauses =
                     num_clauses_in_clauses_rep(MsgClauses ^ clauses_rep),
                 io.format("%% Processing clause %d for ", [i(NumClauses + 1)],
@@ -223,7 +223,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
-            pred_info_clauses_info(!.PredInfo, Clauses0),
+            pred_info_get_clauses_info(!.PredInfo, Clauses0),
             pred_info_get_typevarset(!.PredInfo, TVarSet0),
             maybe_add_default_func_mode(!PredInfo, _),
             select_applicable_modes(Args, ClauseVarSet, Status, Context,

@@ -265,7 +265,7 @@ add_mc_vars_for_scc_heads(ModuleInfo, PredIds, !VarInfo) :-
 
 add_mc_vars_for_pred_head(ModuleInfo, PredId, !VarInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_clauses_info(PredInfo, ClausesInfo),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_headvar_list(ClausesInfo, HeadVars),
     clauses_info_get_varset(ClausesInfo, ProgVarset),
     list.foldl(add_mc_var_for_pred_head(ProgVarset, PredId), HeadVars,
@@ -339,7 +339,7 @@ add_mc_vars_for_goal(PredId, ProgVarset, hlds_goal(GoalExpr, GoalInfo),
 
 add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         !Constraints) :-
-    pred_info_clauses_info(PredInfo, ClausesInfo),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_headvars(ClausesInfo, HeadVars),
     clauses_info_clauses_only(ClausesInfo, Clauses),
     clauses_info_get_varset(ClausesInfo, ProgVarset),
@@ -442,7 +442,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, CallerPredId, GoalExpr,
 
     ( pred_info_infer_modes(CalleePredInfo) ->
         % No modes declared so just constrain the hearvars
-        pred_info_clauses_info(CalleePredInfo, CalleeClausesInfo),
+        pred_info_get_clauses_info(CalleePredInfo, CalleeClausesInfo),
         clauses_info_get_headvar_list(CalleeClausesInfo, CalleeHeadVars),
         add_mode_infer_callee(CalleePredId, !Constraints),
         add_call_headvar_constraints(ProgVarset, Context, GoalPath,

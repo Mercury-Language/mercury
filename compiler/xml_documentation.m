@@ -487,7 +487,7 @@ predicate_documentation(C, PredInfo) = Xml :-
 
     Types = get_orig_arg_types(PredInfo),
     pred_info_get_class_context(PredInfo, Constraints),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     (
         IsPredOrFunc = pf_predicate,
         Tag = "predicate"

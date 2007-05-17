@@ -229,7 +229,7 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
     map.lookup(PredTable0, PredId, PredInfo0),
     module_info_get_type_spec_info(ModuleInfo0, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-    pred_info_clauses_info(PredInfo0, ClausesInfo0),
+    pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     (
         clauses_info_get_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
         map.is_empty(ExplicitVarTypes),
@@ -301,7 +301,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         pred_info_get_import_status(PredInfo, status_local)
     ),
     (
-        pred_info_clauses_info(PredInfo, ClauseInfo),
+        pred_info_get_clauses_info(PredInfo, ClauseInfo),
         clauses_info_clauses_only(ClauseInfo, Clauses),
 
         [ProcId | _ProcIds] = pred_info_procids(PredInfo),
@@ -1491,7 +1491,7 @@ write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
     Name = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_arg_types(PredInfo, TVarSet, ExistQVars, ArgTypes),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     pred_info_get_purity(PredInfo, Purity),
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_goal_type(PredInfo, GoalType),
@@ -1592,7 +1592,7 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
     % The type specialization pragmas for exported preds should
     % already be in the interface file.
 
-    pred_info_clauses_info(PredInfo, ClausesInfo),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_varset(ClausesInfo, VarSet),
     clauses_info_get_headvar_list(ClausesInfo, HeadVars),
     clauses_info_clauses_only(ClausesInfo, Clauses),

@@ -721,7 +721,7 @@ dump_pred_goal_paths(ModuleInfo, PredId, !IO) :-
 
     (
         ProcIds = [],
-        pred_info_clauses_info(PredInfo, ClausesInfo),
+        pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_clauses_only(ClausesInfo, Clauses),
         Goals = list.map(func(Clause) = clause_body(Clause), Clauses),
         Indent = 0,

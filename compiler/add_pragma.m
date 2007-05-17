@@ -816,10 +816,11 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             SubstDesc = list.map(subst_desc, Subst),
             Origin = origin_transformed(
                 transform_type_specialization(SubstDesc), OrigOrigin, PredId),
+            pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
             pred_info_init(ModuleName, SpecName, PredArity, PredOrFunc,
                 Context, Origin, Status, goal_type_none, Markers,
                 Types, TVarSet, ExistQVars, ClassContext, Proofs,
-                ConstraintMap, Clauses, NewPredInfo0),
+                ConstraintMap, Clauses, VarNameRemap, NewPredInfo0),
             pred_info_set_procedures(Procs, NewPredInfo0, NewPredInfo),
             module_info_get_predicate_table(!.ModuleInfo, PredTable0),
             predicate_table_insert(NewPredInfo, NewPredId,
@@ -1467,7 +1468,7 @@ pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
     % Lookup some information we need from the pred_info and proc_info.
     PredName = pred_info_name(!.PredInfo),
     PredModule = pred_info_module(!.PredInfo),
-    pred_info_clauses_info(!.PredInfo, Clauses0),
+    pred_info_get_clauses_info(!.PredInfo, Clauses0),
     pred_info_get_purity(!.PredInfo, Purity),
     pred_info_get_markers(!.PredInfo, Markers),
 
@@ -1563,7 +1564,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
             % into mode-specific clauses.
             pred_info_clause_goal_type(!.PredInfo)
         ->
-            pred_info_clauses_info(!.PredInfo, CInfo0),
+            pred_info_get_clauses_info(!.PredInfo, CInfo0),
             clauses_info_clauses_only(CInfo0, ClauseList0),
             ClauseList = list.map(
                 (func(C) = Res :-
@@ -1625,7 +1626,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 get_procedure_matching_declmodes_with_renaming(ExistingProcs,
                     Modes, !.ModuleInfo, ProcId)
             ->
-                pred_info_clauses_info(!.PredInfo, Clauses0),
+                pred_info_get_clauses_info(!.PredInfo, Clauses0),
                 pred_info_get_arg_types(!.PredInfo, ArgTypes),
                 pred_info_get_purity(!.PredInfo, Purity),
                 pred_info_get_markers(!.PredInfo, Markers),

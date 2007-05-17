@@ -324,7 +324,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         OutsideResumePoint, TraceSlotInfo, CodeInfo0),
 
     % Find out the approriate context for the predicate's interface events.
-    pred_info_clauses_info(PredInfo, ClausesInfo),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
     get_clause_list(ClausesInfo ^ clauses_rep, Clauses),
     (
         Clauses = [],

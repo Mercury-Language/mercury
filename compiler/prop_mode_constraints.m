@@ -236,7 +236,7 @@ process_mode_declared_proc(ModuleInfo, PredId, ProcId, ProcInfo, !VarInfo,
 
 ensure_unique_arguments(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    pred_info_clauses_info(PredInfo0, ClausesInfo0),
+    pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_clauses_only(ClausesInfo0, Clauses0),
     clauses_info_get_varset(ClausesInfo0, Varset0),
     clauses_info_get_vartypes(ClausesInfo0, Vartypes0),

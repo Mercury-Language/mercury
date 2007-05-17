@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2006 The University of Melbourne.
+% Copyright (C) 1997-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -352,7 +352,7 @@ get_context_from_scc(SCC, ModuleInfo, Context) :-
     (
         SCC = [proc(PredId, _) | _],
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_context(PredInfo, Context)
+        pred_info_get_context(PredInfo, Context)
     ;
         SCC = [],
         unexpected(this_file, "get_context_from_scc/3: empty SCC.")

@@ -1172,11 +1172,12 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
     Arity = pred_info_orig_arity(!.PredInfo),
     pred_info_get_typevarset(!.PredInfo, TypeVars),
     remove_listof_elements(1, UnusedArgs, ArgTypes0, ArgTypes),
-    pred_info_context(!.PredInfo, Context),
-    pred_info_clauses_info(!.PredInfo, ClausesInfo),
+    pred_info_get_context(!.PredInfo, Context),
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
     pred_info_get_markers(!.PredInfo, Markers),
     pred_info_get_goal_type(!.PredInfo, GoalType),
     pred_info_get_class_context(!.PredInfo, ClassContext),
+    pred_info_get_var_name_remap(!.PredInfo, VarNameRemap),
 
     % Since this pred_info isn't built until after the polymorphism
     % transformation is complete, we just use dummy maps for the class
@@ -1188,7 +1189,7 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
     pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
         Status, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
         ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,
-        !:PredInfo),
+        VarNameRemap, !:PredInfo),
     pred_info_set_typevarset(TypeVars, !PredInfo).
 
     % Replace the goal in the procedure with one to call the given
@@ -1835,7 +1836,7 @@ adjust_unused_args(NumToDrop, [UnusedArgNo | UnusedArgNos0], AdjUnusedArgs) :-
 
 report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
     list.length(UnusedArgs, NumArgs),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),

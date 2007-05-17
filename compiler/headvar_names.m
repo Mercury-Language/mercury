@@ -7,9 +7,11 @@
 %-----------------------------------------------------------------------------%
 %
 % File: headvar_names.m.
-% Main author: fjh.
+% Main author: zs.
 %
-% This file contains code for improving the names of head variables.
+% This file contains code for improving the names of head variables,
+% replacing HeadVar__n with user-given names whereever the clauses
+% agree on the names.
 
 :- module hlds.headvar_names.
 
@@ -49,10 +51,7 @@
 :- import_module svvarset.
 
 maybe_improve_headvar_names(Globals, !PredInfo) :-
-    pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_clauses_only(ClausesInfo0, Clauses0),
-    clauses_info_get_headvars(ClausesInfo0, HeadVars0),
-    clauses_info_get_varset(ClausesInfo0, VarSet0),
+    globals.lookup_bool_option(Globals, make_optimization_interface, MakeOpt),
     (
         % Don't do this when making a `.opt' file.
         % intermod.m needs to perform a similar transformation
@@ -60,42 +59,75 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
         % places the original argument terms, not just the argument
         % variables in the clause head, and this pass would make it
         % difficult to work out what were the original arguments).
-        globals.lookup_bool_option(Globals, make_optimization_interface, yes)
-    ->
-        true
+        MakeOpt = yes
     ;
-        Clauses0 = [SingleClause0]
-    ->
-        SingleClause0 = clause(ApplicableProcs, Goal0, Language, Context),
+        MakeOpt = no,
+        pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+        clauses_info_clauses_only(ClausesInfo0, Clauses0),
+        clauses_info_get_headvars(ClausesInfo0, HeadVars0),
+        clauses_info_get_varset(ClausesInfo0, VarSet0),
+        (
+            Clauses0 = []
+        ;
+            Clauses0 = [SingleClause0],
+            SingleClause0 = clause(ApplicableProcs, Goal0, Language, Context),
 
-        Goal0 = hlds_goal(_, GoalInfo0),
-        goal_to_conj_list(Goal0, Conj0),
-        improve_single_clause_headvars(Conj0, HeadVars0, [],
-            VarSet0, VarSet, map.init, Subst, [], RevConj),
+            Goal0 = hlds_goal(_, GoalInfo0),
+            goal_to_conj_list(Goal0, Conj0),
+            improve_single_clause_headvars(Conj0, HeadVars0, [],
+                VarSet0, VarSet, map.init, Subst, [], RevConj),
 
-        goal_info_get_nonlocals(GoalInfo0, NonLocals0),
-        goal_util.rename_vars_in_var_set(no, Subst, NonLocals0, NonLocals),
-        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-        conj_list_to_goal(list.reverse(RevConj), GoalInfo, Goal),
+            goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+            goal_util.rename_vars_in_var_set(no, Subst, NonLocals0, NonLocals),
+            goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
+            conj_list_to_goal(list.reverse(RevConj), GoalInfo, Goal),
 
-        apply_renaming_to_proc_arg_vector(Subst, HeadVars0, HeadVars),
-        clauses_info_set_headvars(HeadVars, ClausesInfo0, ClausesInfo1),
+            apply_renaming_to_proc_arg_vector(Subst, HeadVars0, HeadVars),
+            clauses_info_set_headvars(HeadVars, ClausesInfo0, ClausesInfo1),
 
-        SingleClause = clause(ApplicableProcs, Goal, Language, Context),
-        clauses_info_set_clauses([SingleClause], ClausesInfo1, ClausesInfo2),
-        clauses_info_set_varset(VarSet, ClausesInfo2, ClausesInfo),
-        pred_info_set_clauses_info(ClausesInfo, !PredInfo)
-    ;
-        % If a headvar is assigned to a variable with the same name
-        % (or no name) in every clause, rename it to have that name.
-        list.map2(find_headvar_names_in_clause(VarSet0, HeadVars0), Clauses0,
-            VarNameInfoMaps, VarsInMapSets),
-        ConsensusMap = find_consensus_headvar_names(VarsInMapSets,
-            VarNameInfoMaps),
-        map.foldl(svvarset.name_var, ConsensusMap, VarSet0, VarSet),
-        clauses_info_set_varset(VarSet, ClausesInfo0, ClausesInfo),
-        pred_info_set_clauses_info(ClausesInfo, !PredInfo)
+            SingleClause = clause(ApplicableProcs, Goal, Language, Context),
+            clauses_info_set_clauses([SingleClause],
+                ClausesInfo1, ClausesInfo2),
+            clauses_info_set_varset(VarSet, ClausesInfo2, ClausesInfo),
+            pred_info_set_clauses_info(ClausesInfo, !PredInfo)
+        ;
+            Clauses0 = [_, _ | _],
+            % If a headvar is assigned to a variable with the same name
+            % (or no name) in every clause, rename it to have that name.
+            list.map2(find_headvar_names_in_clause(VarSet0, HeadVars0),
+                Clauses0, VarNameInfoMaps, VarsInMapSets),
+            ConsensusMap = find_consensus_headvar_names(VarsInMapSets,
+                VarNameInfoMaps),
+
+            % We don't apply the renaming right now, because that could lead to
+            % error messages about unifications of the form X = X instead of
+            % HeadVar__n = X, which would be confusing.
+            %
+            % Instead, we record the renaming, and apply it only when we
+            % generate the data structures that record variable names for
+            % the debugger.
+            %
+            % We put the renaming into both all the proc_infos of the predicate
+            % (which is where stack_layout.m gets them from), and into the
+            % pred_info (so that any later procedures and/or predicates created
+            % from this one will get the rename map as well).
+
+            pred_info_set_var_name_remap(ConsensusMap, !PredInfo),
+            ProcIds = pred_info_all_procids(!.PredInfo),
+            pred_info_get_procedures(!.PredInfo, ProcTable0),
+            list.foldl(set_var_name_remap_in_proc(ConsensusMap), ProcIds,
+                ProcTable0, ProcTable),
+            pred_info_set_procedures(ProcTable, !PredInfo)
+        )
     ).
+
+:- pred set_var_name_remap_in_proc(map(prog_var, string)::in, proc_id::in,
+    proc_table::in, proc_table::out) is det.
+
+set_var_name_remap_in_proc(ConsensusMap, ProcId, !ProcTable) :-
+    map.lookup(!.ProcTable, ProcId, ProcInfo0),
+    proc_info_set_var_name_remap(ConsensusMap, ProcInfo0, ProcInfo),
+    svmap.det_update(ProcId, ProcInfo, !ProcTable).
 
 :- pred improve_single_clause_headvars(list(hlds_goal)::in,
     proc_arg_vector(prog_var)::in, list(prog_var)::in,

@@ -536,7 +536,7 @@ output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
         ->
             PredName   = pred_info_name(PredInfo),
             pred_info_get_procedures(PredInfo, ProcTable),
-            pred_info_context(PredInfo, Context),
+            pred_info_get_context(PredInfo, Context),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),   
             ModuleName = pred_info_module(PredInfo),
             ProcIds    = pred_info_procids(PredInfo),   

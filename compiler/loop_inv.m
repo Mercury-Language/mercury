@@ -776,6 +776,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, OrigOrigin),
+    pred_info_get_var_name_remap(PredInfo, VarNameRemap),
 
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -812,6 +813,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         Markers,        % in    - Markers for the new aux proc.
         address_is_not_taken,
                         % in    - The address of the new aux proc is not taken.
+        VarNameRemap,   % in
         ModuleInfo0,
         ModuleInfo,
         AuxPredProcId   % out   - The pred_proc_id for the new aux proc.

@@ -282,6 +282,7 @@
 
 :- import_module check_hlds.delay_info.
 :- import_module check_hlds.mode_errors.
+:- import_module hlds.hlds_clauses.
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -471,9 +472,9 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
     NeedToRequantify = no,
     InNegatedContext = no,
 
-    ModeSubInfo = mode_sub_info(ProcId, VarSet, Unreachable, Changed,
-        CheckingExtraGoals, InstMapping0, WarningList, NeedToRequantify,
-        InNegatedContext, no, no),
+    ModeSubInfo = mode_sub_info(ProcId, VarSet, Unreachable,
+        Changed, CheckingExtraGoals, InstMapping0, WarningList,
+        NeedToRequantify, InNegatedContext, no, no),
 
     ModeInfo = mode_info(ModuleInfo, PredId, VarTypes, Debug,
         Context, ModeContext, InstMapping0, LockedVars, DelayInfo,

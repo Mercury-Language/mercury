@@ -338,7 +338,7 @@ pred_info_used_modules(_PredId, PredInfo, !UsedModules) :-
         pred_info_get_procedures(PredInfo, ProcTable),
         map.foldl(proc_info_used_modules(Visibility), ProcTable, !UsedModules),
 
-        pred_info_clauses_info(PredInfo, ClausesInfo),
+        pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_used_modules(ClausesInfo, !UsedModules)
     ;
         true

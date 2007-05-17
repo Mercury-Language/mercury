@@ -771,8 +771,8 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
     pred_info_get_typevarset(PredInfo, TVarSet),
-    pred_info_clauses_info(PredInfo, ClausesInfo),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
+    pred_info_get_context(PredInfo, Context),
     pred_info_get_import_status(PredInfo, ImportStatus),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_class_context(PredInfo, ClassContext),
@@ -780,6 +780,7 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     pred_info_get_purity(PredInfo, Purity),
     pred_info_get_head_type_params(PredInfo, HeadTypeParams),
+    pred_info_get_var_name_remap(PredInfo, VarNameRemap),
     globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
     ( string.contains_char(Verbose, 'v') ->
         AppendVarNums = yes
@@ -854,6 +855,18 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
             HeadTypeParams = []
         ),
         write_var_types(Indent, VarSet, AppendVarNums, VarTypes, TVarSet, !IO),
+
+        map.to_assoc_list(VarNameRemap, VarNameRemapList),
+        (
+            VarNameRemapList = []
+        ;
+            VarNameRemapList = [VarNameRemapHead | VarNameRemapTail],
+            write_indent(Indent, !IO),
+            io.write_string("% var name remap: ", !IO),
+            write_var_name_remap(VarNameRemapHead, VarNameRemapTail, VarSet,
+                !IO),
+            io.nl(!IO)
+        ),
 
         get_clause_list(ClausesRep, Clauses),
         (
@@ -3117,6 +3130,23 @@ write_untuple_info_2(VarSet, AppendVarNums, Indent, OldVar, NewVars, !IO) :-
     mercury_output_vars(VarSet, AppendVarNums, NewVars, !IO),
     io.nl(!IO).
 
+:- pred write_var_name_remap(pair(prog_var, string)::in,
+    list(pair(prog_var, string))::in, prog_varset::in, io::di, io::uo) is det.
+
+write_var_name_remap(Head, Tail, VarSet, !IO) :-
+    Head = Var - NewName,
+    AppendVarNums = yes,
+    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
+    io.write_string(" -> ", !IO),
+    io.write_string(NewName, !IO),
+    (
+        Tail = []
+    ;
+        Tail = [TailHead | TailTail],
+        io.write_string(", ", !IO),
+        write_var_name_remap(TailHead, TailTail, VarSet, !IO)
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- pred write_types(int::in, type_table::in, io::di, io::uo) is det.
@@ -3569,6 +3599,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     proc_info_get_call_table_tip(Proc, MaybeCallTableTip),
     proc_info_get_maybe_deep_profile_info(Proc, MaybeDeepProfileInfo),
     proc_info_get_maybe_untuple_info(Proc, MaybeUntupleInfo),
+    proc_info_get_var_name_remap(Proc, VarNameRemap),
     Indent1 = Indent + 1,
 
     write_indent(Indent1, !IO),
@@ -3720,6 +3751,17 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
             Indent, !IO)
     ;
         MaybeUntupleInfo = no
+    ),
+
+    map.to_assoc_list(VarNameRemap, VarNameRemapList),
+    (
+        VarNameRemapList = []
+    ;
+        VarNameRemapList = [VarNameRemapHead | VarNameRemapTail],
+        write_indent(Indent, !IO),
+        io.write_string("% var name remap: ", !IO),
+        write_var_name_remap(VarNameRemapHead, VarNameRemapTail, VarSet, !IO),
+        io.nl(!IO)
     ),
 
     write_indent(Indent, !IO),

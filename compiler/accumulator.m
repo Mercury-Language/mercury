@@ -257,7 +257,7 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         ->
             true
         ;
-            pred_info_context(PredInfo, Context),
+            pred_info_get_context(PredInfo, Context),
             PredPieces = describe_one_pred_name(!.ModuleInfo,
                 should_module_qualify, PredId),
             write_error_pieces(Context, 0, [words("In") | PredPieces], !IO),
@@ -1449,6 +1449,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
     proc_info_get_context(OrigProcInfo, Context),
     proc_info_get_rtti_varmaps(OrigProcInfo, RttiVarMaps),
     proc_info_get_is_address_taken(OrigProcInfo, IsAddressTaken),
+    proc_info_get_var_name_remap(OrigProcInfo, VarNameRemap),
 
     Substs = substs(AccVarSubst, _RecCallSubst, _AssocCallSubst,
         _UpdateSubst),
@@ -1471,7 +1472,8 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
     list.map(map.lookup(VarTypes), Accs, AccTypes),
 
     proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
-        HeadModes, Detism, Goal, RttiVarMaps, IsAddressTaken, AccProcInfo).
+        HeadModes, Detism, Goal, RttiVarMaps, IsAddressTaken, VarNameRemap,
+        AccProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1488,10 +1490,11 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     ModuleName = pred_info_module(OrigPredInfo),
     Name = pred_info_name(OrigPredInfo),
     PredOrFunc = pred_info_is_pred_or_func(OrigPredInfo),
-    pred_info_context(OrigPredInfo, PredContext),
+    pred_info_get_context(OrigPredInfo, PredContext),
     pred_info_get_markers(OrigPredInfo, Markers),
     pred_info_get_class_context(OrigPredInfo, ClassContext),
     pred_info_get_origin(OrigPredInfo, OldOrigin),
+    pred_info_get_var_name_remap(OrigPredInfo, VarNameRemap),
 
     set.init(Assertions),
 
@@ -1509,7 +1512,7 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
         OldOrigin, OrigPredId),
     pred_info_create(ModuleName, SymName, PredOrFunc, PredContext, Origin,
         status_local, Markers, Types, TypeVarSet, ExistQVars, ClassContext,
-        Assertions, NewProcInfo, NewProcId, NewPredInfo).
+        Assertions, VarNameRemap, NewProcInfo, NewProcId, NewPredInfo).
 
 %-----------------------------------------------------------------------------%
 

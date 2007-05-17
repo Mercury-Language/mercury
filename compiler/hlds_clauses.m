@@ -38,24 +38,25 @@
     %
 :- type clauses_info
     --->    clauses_info(
-                varset                  :: prog_varset,
+                clauses_varset          :: prog_varset,
+                                        % The varset describing the clauses.
 
-                explicit_vartypes       :: vartypes,
+                clauses_explicit_vartypes :: vartypes,
                                         % Variable types from explicit
                                         % qualifications.
 
-                tvar_name_map           :: tvar_name_map,
+                clauses_tvar_name_map   :: tvar_name_map,
                                         % Map from variable name to type
                                         % variable for the type variables
                                         % occurring in the argument types.
                                         % This is used to process explicit
                                         % type qualifications.
 
-                vartypes                :: vartypes,
+                clauses_vartypes        :: vartypes,
                                         % Variable types inferred by
                                         % typecheck.m.
 
-                headvars                :: proc_arg_vector(prog_var),
+                clauses_headvars        :: proc_arg_vector(prog_var),
                                         % The head variables.
 
                 clauses_rep             :: clauses_rep,
@@ -218,19 +219,19 @@ clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
         HeadVarVec, ClausesRep, RttiVarMaps, HasForeignClauses).
 
-clauses_info_get_varset(CI, CI ^ varset).
-clauses_info_get_explicit_vartypes(CI, CI ^ explicit_vartypes).
-clauses_info_get_vartypes(CI, CI ^ vartypes).
-clauses_info_get_headvars(CI, CI ^ headvars).
+clauses_info_get_varset(CI, CI ^ clauses_varset).
+clauses_info_get_explicit_vartypes(CI, CI ^ clauses_explicit_vartypes).
+clauses_info_get_vartypes(CI, CI ^ clauses_vartypes).
+clauses_info_get_headvars(CI, CI ^ clauses_headvars).
 clauses_info_get_headvar_list(CI, List) :-
-    List = proc_arg_vector_to_list(CI ^ headvars).
+    List = proc_arg_vector_to_list(CI ^ clauses_headvars).
 clauses_info_get_clauses_rep(CI, CI ^ clauses_rep).
 clauses_info_get_rtti_varmaps(CI, CI ^ clauses_rtti_varmaps).
 
-clauses_info_set_varset(X, CI, CI ^ varset := X).
-clauses_info_set_explicit_vartypes(X, CI, CI ^ explicit_vartypes := X).
-clauses_info_set_vartypes(X, CI, CI ^ vartypes := X).
-clauses_info_set_headvars(X, CI, CI ^ headvars := X).
+clauses_info_set_varset(X, CI, CI ^ clauses_varset := X).
+clauses_info_set_explicit_vartypes(X, CI, CI ^ clauses_explicit_vartypes := X).
+clauses_info_set_vartypes(X, CI, CI ^ clauses_vartypes := X).
+clauses_info_set_headvars(X, CI, CI ^ clauses_headvars := X).
 clauses_info_set_clauses(X, CI, CI ^ clauses_rep := Rep) :-
     set_clause_list(X, Rep).
 clauses_info_set_clauses_rep(X, CI, CI ^ clauses_rep := X).

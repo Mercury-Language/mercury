@@ -315,7 +315,7 @@ write_pred_reuse_info(ModuleInfo, PredId, !IO) :-
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         ModuleName = pred_info_module(PredInfo),
         pred_info_get_procedures(PredInfo, ProcTable),
-        pred_info_context(PredInfo, Context),
+        pred_info_get_context(PredInfo, Context),
         SymName = qualified(ModuleName, PredName),
         pred_info_get_typevarset(PredInfo, TypeVarSet),
         list.foldl(write_proc_reuse_info(ProcTable, PredOrFunc, SymName, 

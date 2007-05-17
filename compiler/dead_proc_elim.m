@@ -852,7 +852,7 @@ dead_pred_elim_analyze(!DeadInfo) :-
                 !:DeadInfo = pred_elim_info(ModuleInfo, !.Queue, !.Examined,
                     !.Needed, NeededNames),
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
-                pred_info_clauses_info(PredInfo, ClausesInfo),
+                pred_info_get_clauses_info(PredInfo, ClausesInfo),
                 clauses_info_get_clauses_rep(ClausesInfo, ClausesRep),
                 get_clause_list_any_order(ClausesRep, Clauses),
                 list.foldl(dead_pred_elim_process_clause, Clauses, !DeadInfo)

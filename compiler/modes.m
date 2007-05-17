@@ -773,7 +773,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
     % We use the context of the first clause, unless there weren't any clauses
     % at all, in which case we use the context of the mode declaration.
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    pred_info_clauses_info(PredInfo, ClausesInfo),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_clauses_only(ClausesInfo, ClauseList),
     (
         ClauseList = [FirstClause | _],
@@ -2609,7 +2609,7 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_predid(!.ModeInfo, PredId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_clauses_info(PredInfo, ClausesInfo),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_headvar_list(ClausesInfo, HeadVars),
     filter_headvar_unification_goals(HeadVars, DelayedGoals0,
         HeadVarUnificationGoals, NonHeadVarUnificationGoals0),

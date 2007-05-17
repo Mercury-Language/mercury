@@ -232,7 +232,7 @@ construct_type_inference_message(PredInfo) = Spec :-
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Name = unqualified(PredName),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     pred_info_get_arg_types(PredInfo, VarSet, ExistQVars, Types0),
     strip_builtin_qualifiers_from_type_list(Types0, Types),
     pred_info_get_class_context(PredInfo, ClassContext),
@@ -345,7 +345,7 @@ typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
             pred_info_is_builtin(!.PredInfo)
         )
     ->
-        pred_info_clauses_info(!.PredInfo, ClausesInfo0),
+        pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
         IsEmpty = clause_list_is_empty(ClausesRep0),
         (
@@ -382,7 +382,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
     pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
         ArgTypes0),
     some [!ClausesInfo, !Info, !HeadTypeParams] (
-        pred_info_clauses_info(!.PredInfo, !:ClausesInfo),
+        pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0),
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
         clauses_info_get_varset(!.ClausesInfo, VarSet0),
@@ -679,7 +679,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     ;
         CalleeName = "no_clauses"
     ),
-    pred_info_context(!.PredInfo, Context),
+    pred_info_get_context(!.PredInfo, Context),
     generate_simple_call(mercury_private_builtin_module, CalleeName,
         pf_predicate, only_mode, detism_det, purity_pure, [PredNameVar], [], [],
         ModuleInfo, Context, CallGoal),
@@ -879,7 +879,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 
 maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
     pred_info_get_import_status(!.PredInfo, ImportStatus),
-    pred_info_clauses_info(!.PredInfo, ClausesInfo0),
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
     (
         pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
@@ -888,7 +888,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
     ->
         clauses_info_get_headvars(ClausesInfo0, HeadVars),
         proc_arg_vector_to_func_args(HeadVars, FuncArgs, FuncRetVal),
-        pred_info_context(!.PredInfo, Context),
+        pred_info_get_context(!.PredInfo, Context),
         FuncModule = pred_info_module(!.PredInfo),
         FuncName = pred_info_name(!.PredInfo),
         PredArity = pred_info_orig_arity(!.PredInfo),

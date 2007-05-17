@@ -422,6 +422,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, OrigOrigin),
+    pred_info_get_var_name_remap(PredInfo, VarNameRemap),
 
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -441,7 +442,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     hlds_pred.define_new_pred(Origin, Goal, CallAux, AuxHeadVars, _ExtraArgs,
         InitialAuxInstMap, AuxPredName, TVarSet, VarTypes, ClassContext,
         RttiVarMaps, VarSet, InstVarSet, Markers, address_is_not_taken,
-        !ModuleInfo, proc(AuxPredId, AuxProcId)),
+        VarNameRemap, !ModuleInfo, proc(AuxPredId, AuxProcId)),
 
     module_info_pred_proc_info(!.ModuleInfo, AuxPredId, AuxProcId,
         AuxPredInfo, AuxProcInfo).

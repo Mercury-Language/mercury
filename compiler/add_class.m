@@ -601,7 +601,7 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 pred_method_with_no_modes_error(PredInfo, !Specs) :-
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),

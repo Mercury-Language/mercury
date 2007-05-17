@@ -130,7 +130,8 @@ mode_ordering.check_proc(Constraint0, ModeConstraintInfo, ModuleInfo,
     pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
     proc_info_head_modes_constraint(ProcInfo0, ModeDeclConstraint),
     Constraint = Constraint0 * ModeDeclConstraint,
-    InstGraph = !.PredInfo ^ inst_graph_info ^ implementation_inst_graph,
+    pred_info_get_inst_graph_info(!.PredInfo, InstGraphInfo),
+    InstGraph = InstGraphInfo ^ implementation_inst_graph,
     mode_ordering.proc(InstGraph, Constraint, ModeConstraintInfo,
         ModuleInfo, PredConstraintMap, ProcInfo0, ProcInfo),
     pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo).
@@ -505,7 +506,8 @@ find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
     lookup_pred_constraint(PredConstraintMap, PredId, _, MCInfo),
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    CalleeInstGraph = PredInfo^inst_graph_info^interface_inst_graph,
+    pred_info_get_inst_graph_info(PredInfo, CalleeInstGraphInfo),
+    CalleeInstGraph = CalleeInstGraphInfo ^ interface_inst_graph,
     pred_info_get_procedures(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcList),
     (

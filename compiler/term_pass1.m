@@ -218,7 +218,7 @@ find_arg_sizes_in_scc_pass([PPId | PPIds], PassInfo,
 find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
         TermErrors, !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     proc_info_get_headvars(ProcInfo, Args),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_get_vartypes(ProcInfo, VarTypes),

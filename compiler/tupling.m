@@ -747,6 +747,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, OrigOrigin),
+    pred_info_get_var_name_remap(PredInfo, VarNameRemap),
 
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -779,6 +780,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         InstVarSet,             % in
         Markers,                % in
         address_is_not_taken,   % in
+        VarNameRemap,           % in
         ModuleInfo0,
         ModuleInfo,
         AuxPredProcId
@@ -937,7 +939,7 @@ count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
         pred_info_name(PredInfo),
         pred_info_orig_arity(PredInfo),
         proc_id_to_int(ProcId)),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     Context = context(FileName, _),
     ProcLabelInContext = proc_label_in_context(pred_info_module(PredInfo),
         FileName, ProcLabel),

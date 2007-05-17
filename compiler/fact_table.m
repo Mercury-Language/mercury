@@ -574,7 +574,7 @@ create_fact_table_header(PredName, PredInfo, FactArgInfos,
     StructName = "mercury__" ++ Identifier ++ "_fact_table",
 
     % Define a struct for a fact table entry.
-    pred_info_context(PredInfo, Context),  % location of :- pred decl
+    pred_info_get_context(PredInfo, Context),  % location of :- pred decl
     create_fact_table_struct(FactArgInfos, 1, Context, StructContents,
         !Errors),
     ( StructContents = "" ->

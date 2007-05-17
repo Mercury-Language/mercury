@@ -481,9 +481,10 @@ lambda_process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
         % Now construct the proc_info and pred_info for the new single-mode
         % predicate, using the information computed above.
-        proc_info_create(LambdaContext, VarSet, VarTypes,
-            AllArgVars, InstVarSet, AllArgModes, Detism,
-            LambdaGoal, RttiVarMaps, address_is_taken, ProcInfo0),
+        map.init(VarNameRemap),
+        proc_info_create(LambdaContext, VarSet, VarTypes, AllArgVars,
+            InstVarSet, AllArgModes, Detism, LambdaGoal, RttiVarMaps,
+            address_is_taken, VarNameRemap, ProcInfo0),
 
         % The debugger ignores unnamed variables.
         ensure_all_headvars_are_named(ProcInfo0, ProcInfo1),
@@ -508,7 +509,7 @@ lambda_process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         pred_info_create(ModuleName, PredName, PredOrFunc, LambdaContext,
             origin_lambda(OrigFile, OrigLine, LambdaCount), status_local,
             LambdaMarkers, ArgTypes, TVarSet, ExistQVars, Constraints,
-            Assertions, ProcInfo, ProcId, PredInfo),
+            Assertions, VarNameRemap, ProcInfo, ProcId, PredInfo),
 
         % Save the new predicate in the predicate table.
         module_info_get_predicate_table(ModuleInfo1, PredicateTable0),

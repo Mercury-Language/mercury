@@ -167,6 +167,7 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+:- import_module svvarset.
 
 %-----------------------------------------------------------------------------%
 
@@ -421,7 +422,14 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
 
     simplify_process_clause_body_goal(Goal1, Goal, Info0, Info, !IO),
 
-    simplify_info_get_varset(Info, VarSet),
+    simplify_info_get_varset(Info, VarSet1),
+    ( simplify_do_after_front_end(Info) ->
+        proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
+        map.foldl(svvarset.name_var, VarNameRemap, VarSet1, VarSet),
+        proc_info_set_var_name_remap(map.init, !ProcInfo)
+    ;
+        VarSet = VarSet1
+    ),
     simplify_info_get_var_types(Info, VarTypes),
     simplify_info_get_rtti_varmaps(Info, RttiVarMaps),
     proc_info_set_varset(VarSet, !ProcInfo),

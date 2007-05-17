@@ -220,7 +220,7 @@ dump_abstract_constraints(ModuleInfo, ConstraintVarset, ModeConstraints,
 correct_nonlocals_in_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     some [!ClausesInfo, !Varset, !Vartypes, !Clauses, !Goals, !RttiVarMaps] (
-        pred_info_clauses_info(PredInfo0, !:ClausesInfo),
+        pred_info_get_clauses_info(PredInfo0, !:ClausesInfo),
         clauses_info_clauses_only(!.ClausesInfo, !:Clauses),
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
         clauses_info_get_varset(!.ClausesInfo, !:Varset),
@@ -369,9 +369,10 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
     fill_goal_path_slots_in_clauses(!.ModuleInfo, OmitModeEquivPrefix,
         PredInfo0, PredInfo1),
 
-    pred_info_clauses_info(PredInfo1, ClausesInfo0),
+    pred_info_get_clauses_info(PredInfo1, ClausesInfo0),
     clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
-    InstGraph = PredInfo1 ^ inst_graph_info ^ implementation_inst_graph,
+    pred_info_get_inst_graph_info(PredInfo1, InstGraphInfo),
+    InstGraph = InstGraphInfo ^ implementation_inst_graph,
     inst_graph.foldl_reachable_from_list(
         ( pred(V::in, S0::in, S::out) is det :-
             mode_constraint_var(in(V), _, S0, S1),
@@ -599,9 +600,10 @@ process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
         PredId, !.ModuleInfo, !IO),
     io.flush_output(!IO),
 
-    InstGraph = PredInfo0 ^ inst_graph_info ^ implementation_inst_graph,
+    pred_info_get_inst_graph_info(PredInfo0, InstGraphInfo),
+    InstGraph = InstGraphInfo ^ implementation_inst_graph,
     pred_info_get_procedures(PredInfo0, ProcTable0),
-    pred_info_clauses_info(PredInfo0, ClausesInfo0),
+    pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
 
     HOModes0 = map.init,
@@ -650,8 +652,9 @@ process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
         !ModuleInfo, !IO) :-
 
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    InstGraph = PredInfo0 ^ inst_graph_info ^ implementation_inst_graph,
-    pred_info_clauses_info(PredInfo0, ClausesInfo),
+    pred_info_get_inst_graph_info(PredInfo0, InstGraphInfo),
+    InstGraph = InstGraphInfo ^ implementation_inst_graph,
+    pred_info_get_clauses_info(PredInfo0, ClausesInfo),
     clauses_info_get_headvar_list(ClausesInfo, HeadVars),
 
     % DMO document this better
@@ -659,7 +662,7 @@ process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
     % as an ROBDD instead.
     solutions(arg_modes_map(HeadVars, InstGraph, ModeConstraint,
         ModeConstraintInfo0), Modes),
-    PredInfo = PredInfo0 ^ modes := Modes,
+    pred_info_set_arg_modes_maps(Modes, PredInfo0, PredInfo),
     % PredInfo = PredInfo0,
 
     % DEBUGGING CODE
@@ -1257,7 +1260,7 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
         % This is a recursive call.
         % XXX we currently assume that all recursive calls are to the
         % same mode of the predicate.
-        pred_info_clauses_info(PredInfo, ClausesInfo),
+        pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_get_headvar_list(ClausesInfo, HeadVars),
         call_constraints(GoalPath, PredId, HeadVars, Args,
             !Constraint, !GCInfo)
@@ -1279,12 +1282,12 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
                 CallConstraint, !GCInfo)
 
         ;
-            % The called predicate is from a lower (i.e. already
-            % mode-analysed) SCC, but does not have any mode
-            % declarations.
-            ArgModes = PredInfo ^ modes,
-            PredInstGraph = PredInfo ^ inst_graph_info ^ interface_inst_graph,
-            pred_info_clauses_info(PredInfo, PredClausesInfo),
+            % The called predicate is from a lower (i.e. already mode-analysed)
+            % SCC, but does not have any mode declarations.
+            pred_info_get_arg_modes_maps(PredInfo, ArgModes),
+            pred_info_get_inst_graph_info(PredInfo, InstGraphInfo),
+            PredInstGraph = InstGraphInfo ^ interface_inst_graph,
+            pred_info_get_clauses_info(PredInfo, PredClausesInfo),
             clauses_info_get_headvar_list(PredClausesInfo, PredHeadVars),
             solutions((pred((V - W)::out) is nondet :-
                 inst_graph.corresponding_nodes_from_lists(

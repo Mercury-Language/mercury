@@ -280,7 +280,7 @@ process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :-
 process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
     pred_info_get_import_status(!.PredInfo, ImportStatus),
     pred_info_get_markers(!.PredInfo, Markers),
-    pred_info_context(!.PredInfo, Context),
+    pred_info_get_context(!.PredInfo, Context),
     some [!ProcTable] (
         pred_info_get_procedures(!.PredInfo, !:ProcTable),
         ProcIds = pred_info_procids(!.PredInfo),

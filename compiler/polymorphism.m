@@ -462,7 +462,7 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
     %
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_clauses_info(PredInfo0, ClausesInfo0),
+    pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_vartypes(ClausesInfo0, VarTypes0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
@@ -535,7 +535,7 @@ polymorphism_process_pred(PredId, !ModuleInfo) :-
     % goals, varsets, types, etc., and computing some information in the
     % poly_info.
 
-    pred_info_clauses_info(PredInfo0, ClausesInfo0),
+    pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     polymorphism_process_clause_info(PredInfo0, !.ModuleInfo,
         ClausesInfo0, ClausesInfo, Info, ExtraArgModes),
     poly_info_get_module_info(Info, !:ModuleInfo),

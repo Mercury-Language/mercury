@@ -681,10 +681,11 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     % order.
     MethodConstraints = instance_method_constraints(ClassId,
         InstanceTypes, InstanceConstraints, ClassMethodClassContext),
+    map.init(VarNameRemap),
     pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
         Context, origin_instance_method(MethodConstraints), Status,
         goal_type_none, Markers, ArgTypes, TVarSet, ExistQVars, ClassContext,
-        Proofs, ConstraintMap, ClausesInfo, PredInfo0),
+        Proofs, ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
     pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
 
     % Add procs with the expected modes and determinisms
@@ -1709,7 +1710,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     = error_spec.
 
 report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     pred_info_get_arg_types(PredInfo, TVarSet, _, ArgTypes),
     PredName = pred_info_name(PredInfo),
     Module = pred_info_module(PredInfo),
@@ -1807,7 +1808,7 @@ report_unbound_tvars_explanation =
 
 report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
     pred_info_get_typevarset(PredInfo, TVarSet),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
 
     InDeclaration = [words("In declaration of")] ++
         describe_one_pred_info_name(should_module_qualify, PredInfo) ++

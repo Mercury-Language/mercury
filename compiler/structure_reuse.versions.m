@@ -144,7 +144,7 @@ create_fresh_pred_proc_info_copy_2(PredInfo, ProcInfo, ReusePredName,
         ReusePredInfo, ReuseProcId):-
     ModuleName = pred_info_module(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_context(PredInfo, ProgContext),
+    pred_info_get_context(PredInfo, ProgContext),
     pred_info_get_origin(PredInfo, PredOrigin),
     pred_info_get_import_status(PredInfo, ImportStatus),
     pred_info_get_markers(PredInfo, PredMarkers),
@@ -153,10 +153,11 @@ create_fresh_pred_proc_info_copy_2(PredInfo, ProcInfo, ReusePredName,
     pred_info_get_exist_quant_tvars(PredInfo, ExistQTVars),
     pred_info_get_class_context(PredInfo, ProgConstraints),
     pred_info_get_assertions(PredInfo, AssertIds),
+    pred_info_get_var_name_remap(PredInfo, VarNameRemap),
     pred_info_create(ModuleName, ReusePredName, PredOrFunc, ProgContext,
         PredOrigin, ImportStatus, PredMarkers, MerTypes, TVarset,
-        ExistQTVars, ProgConstraints, AssertIds, ProcInfo, ReuseProcId,
-        ReusePredInfo).
+        ExistQTVars, ProgConstraints, AssertIds, VarNameRemap,
+        ProcInfo, ReuseProcId, ReusePredInfo).
 
 %------------------------------------------------------------------------------%
 

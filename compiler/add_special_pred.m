@@ -373,9 +373,11 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         % XXX this context might not be empty
     ClassContext = constraints([], []),
     ExistQVars = [],
+    map.init(VarNameRemap),
     pred_info_init(ModuleName, PredName, Arity, pf_predicate, Context,
         Origin, Status, goal_type_none, Markers, ArgTypes, TVarSet, ExistQVars,
-        ClassContext, Proofs, ConstraintMap, ClausesInfo0, PredInfo0),
+        ClassContext, Proofs, ConstraintMap, ClausesInfo0, VarNameRemap,
+        PredInfo0),
     ArgLives = no,
     varset.init(InstVarSet),
         % Should not be any inst vars here so it's ok to use a

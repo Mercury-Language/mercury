@@ -317,7 +317,7 @@ report_no_clauses(ModuleInfo, PredId, PredInfo) = Spec :-
     PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
         PredId),
     Pieces = [words("Error: no clauses for") | PredPieces] ++ [suffix(".")],
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     % It is possible (and even likely) that the error that got the exit
     % status set was caused by a syntax error in a clause defining this
     % predicate or function. Reporting a missing clause could therefore
@@ -340,7 +340,7 @@ report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Spec :-
     PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
         PredId),
     Pieces = [words("Warning: no clauses for ") | PredPieces] ++ [suffix(".")],
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     Msg = simple_msg(Context,
         [option_is_set(warn_stubs, yes, [always(Pieces)])]),
     Severity = severity_conditional(warn_stubs, yes, severity_warning, no),

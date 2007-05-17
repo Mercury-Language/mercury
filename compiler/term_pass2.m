@@ -377,7 +377,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
         RecSupplierMap, NewRecSupplierMap0, CallInfo0, Result,
         !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     proc_info_get_goal(ProcInfo, Goal0),
     % The pretest code we add for compiler-generated unification and comparison
     % predicates uses type casts. It uses them in a way that is guaranteed
@@ -562,7 +562,7 @@ zero_or_positive_weight_cycles_from(PPId, CallWeights, Module, Cycles) :-
     map.to_assoc_list(NeighboursMap, NeighboursList),
     PPId = proc(PredId, _ProcId),
     module_info_pred_info(Module, PredId, PredInfo),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     zero_or_positive_weight_cycles_from_neighbours(NeighboursList,
         PPId, Context, 0, [], CallWeights, Cycles).
 

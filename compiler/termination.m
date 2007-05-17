@@ -591,7 +591,7 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_import_status(PredInfo0, ImportStatus),
-    pred_info_context(PredInfo0, Context),
+    pred_info_get_context(PredInfo0, Context),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     pred_info_get_markers(PredInfo0, Markers),
     ProcIds = pred_info_procids(PredInfo0),
@@ -764,7 +764,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
         term_util.make_bool_list(HeadVars, [], UsedArgs),
         ArgSizeInfo = yes(finite(0, UsedArgs))
     ;
-        pred_info_context(PredInfo, Context),
+        pred_info_get_context(PredInfo, Context),
         Error = is_builtin(PredId),
         ArgSizeInfo = yes(infinite([Context - Error]))
     ),
@@ -902,7 +902,7 @@ write_pred_termination_info(ModuleInfo, PredId, !IO) :-
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         ModuleName = pred_info_module(PredInfo),
         pred_info_get_procedures(PredInfo, ProcTable),
-        pred_info_context(PredInfo, Context),
+        pred_info_get_context(PredInfo, Context),
         SymName = qualified(ModuleName, PredName),
         write_proc_termination_info(PredId, ProcIds, ProcTable,
             PredOrFunc, SymName, Context, !IO)

@@ -404,14 +404,12 @@ mode_warning_to_spec(!.ModeInfo, Warning) = Spec :-
 
 mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
     mode_info_get_context(ModeInfo, Context),
-    mode_info_get_varset(ModeInfo, VarSet),
-
     (
         Errors = [],
         unexpected(this_file, "mode_error_conj_to_spec: no errors")
     ;
         Errors = [Error],
-        Msgs1 = mode_error_conjunct_to_msgs(VarSet, Context, ModeInfo, Error)
+        Msgs1 = mode_error_conjunct_to_msgs(Context, ModeInfo, Error)
     ;
         Errors = [_, _ | _],
         % If there's more than one error, we use the setting of
@@ -429,11 +427,11 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
             % In the absence of --verbose-errors, report only one error.
             % We prefer that this be an important error.
             ( ImportantErrors = [FirstImportantError | _] ->
-                ConjMsgs = mode_error_conjunct_to_msgs(VarSet, Context,
-                    ModeInfo, FirstImportantError)
+                ConjMsgs = mode_error_conjunct_to_msgs(Context, ModeInfo,
+                    FirstImportantError)
             ; OtherErrors = [FirstOtherError | _] ->
-                ConjMsgs = mode_error_conjunct_to_msgs(VarSet, Context,
-                    ModeInfo, FirstOtherError)
+                ConjMsgs = mode_error_conjunct_to_msgs(Context, ModeInfo,
+                    FirstOtherError)
             ;
                 unexpected(this_file,
                     "mode_error_conj_to_spec: no errors of any kind")
@@ -452,7 +450,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
             Msgs1Start = [simple_msg(Context,
                 [always(Preamble ++ ConjPieces)])],
             Msgs1Rest = list.map(
-                mode_error_conjunct_to_msgs(VarSet, Context, ModeInfo),
+                mode_error_conjunct_to_msgs(Context, ModeInfo),
                 ImportantErrors ++ OtherErrors),
             Msgs1 = Msgs1Start ++ list.condense(Msgs1Rest)
         )
@@ -502,12 +500,13 @@ is_error_important(Error) :-
         true
     ).
 
-:- func mode_error_conjunct_to_msgs(prog_varset, prog_context, mode_info,
-    delayed_goal) = list(error_msg).
+:- func mode_error_conjunct_to_msgs(prog_context, mode_info, delayed_goal)
+    = list(error_msg).
 
-mode_error_conjunct_to_msgs(VarSet, Context, !.ModeInfo, DelayedGoal) = Msgs :-
+mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     DelayedGoal = delayed_goal(Vars, Error, Goal),
     set.to_sorted_list(Vars, VarList),
+    mode_info_get_varset(!.ModeInfo, VarSet),
     Pieces1 = [words("Floundered goal, waiting on {"),
         words(mercury_vars_to_string(VarSet, no, VarList)),
         words("}:"), nl],
@@ -1176,7 +1175,7 @@ maybe_report_error_no_modes(PredId, PredInfo, !ModuleInfo, !IO) :-
         ;
             InferModesOpt = no,
             io.set_exit_status(1, !IO),
-            pred_info_context(PredInfo, Context),
+            pred_info_get_context(PredInfo, Context),
             MainPieces = [words("Error: no mode declaration for")] ++
                 describe_one_pred_name(!.ModuleInfo, should_not_module_qualify,
                     PredId) ++ [suffix("."), nl],
@@ -1192,7 +1191,7 @@ maybe_report_error_no_modes(PredId, PredInfo, !ModuleInfo, !IO) :-
         )
     ;
         io.set_exit_status(1, !IO),
-        pred_info_context(PredInfo, Context),
+        pred_info_get_context(PredInfo, Context),
         Pieces = [words("Error: no mode declaration for exported")] ++
             describe_one_pred_name(!.ModuleInfo, should_module_qualify, PredId)
             ++ [suffix("."), nl],
@@ -1260,7 +1259,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
         !IO) :-
     PredName = pred_info_name(PredInfo),
     Name = unqualified(PredName),
-    pred_info_context(PredInfo, Context),
+    pred_info_get_context(PredInfo, Context),
     PredArity = pred_info_orig_arity(PredInfo),
     some [!ArgModes, !MaybeDet] (
         proc_info_get_argmodes(ProcInfo, !:ArgModes),

@@ -67,28 +67,28 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
     ( pred_info_is_imported(PredInfo0) ->
         % AAA
         % PredInfo2 = PredInfo0
-        pred_info_clauses_info(PredInfo0, ClausesInfo),
+        pred_info_get_clauses_info(PredInfo0, ClausesInfo),
         clauses_info_get_headvar_list(ClausesInfo, HeadVars),
         clauses_info_get_varset(ClausesInfo, VarSet),
         some [!IG] (
-            !:IG = PredInfo0 ^ inst_graph_info,
+            pred_info_get_inst_graph_info(PredInfo0, !:IG),
             inst_graph.init(HeadVars, InstGraph),
             !:IG = !.IG ^ implementation_inst_graph := InstGraph,
             !:IG = !.IG ^ interface_inst_graph := InstGraph,
             !:IG = !.IG ^ interface_vars := HeadVars,
             !:IG = !.IG ^ interface_varset := VarSet,
-            PredInfo2 = PredInfo0 ^ inst_graph_info := !.IG
+            pred_info_set_inst_graph_info(!.IG, PredInfo0, PredInfo2)
         )
     ;
         write_pred_progress_message("% Calculating HHF and inst graph for ",
             PredId, !.ModuleInfo, !IO),
 
-        pred_info_clauses_info(PredInfo0, ClausesInfo0),
+        pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
         process_clauses_info(Simple, !.ModuleInfo, ClausesInfo0,
             ClausesInfo, ImplementationInstGraph),
         pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
         some [!IG] (
-            !:IG = PredInfo1 ^ inst_graph_info,
+            pred_info_get_inst_graph_info(PredInfo1, !:IG),
             !:IG = !.IG ^ implementation_inst_graph := ImplementationInstGraph,
 
             % AAA only for non-imported preds with no mode decls.
@@ -104,7 +104,7 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
             !:IG = !.IG ^ interface_vars := InterfaceVars,
             !:IG = !.IG ^ interface_varset := VarSet,
 
-            PredInfo2 = PredInfo1 ^ inst_graph_info := !.IG
+            pred_info_set_inst_graph_info(!.IG, PredInfo1, PredInfo2)
         )
     ),
 

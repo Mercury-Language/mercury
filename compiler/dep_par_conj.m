@@ -1376,11 +1376,12 @@ make_new_pred_info(FutureArgs, Status, proc(PredId, ProcId), !PredInfo) :-
 
     futurise_argtypes(1, FutureArgs, ArgTypes0, ArgTypes),
 
-    pred_info_context(!.PredInfo, Context),
-    pred_info_clauses_info(!.PredInfo, ClausesInfo),
+    pred_info_get_context(!.PredInfo, Context),
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
     pred_info_get_markers(!.PredInfo, Markers),
     pred_info_get_goal_type(!.PredInfo, GoalType),
     pred_info_get_class_context(!.PredInfo, ClassContext),
+    pred_info_get_var_name_remap(!.PredInfo, VarNameRemap),
 
     % Since this pred_info isn't built until after the polymorphism
     % transformation is complete, we just use dummy maps for the class
@@ -1392,7 +1393,7 @@ make_new_pred_info(FutureArgs, Status, proc(PredId, ProcId), !PredInfo) :-
     pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
         Status, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
         ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,
-        !:PredInfo),
+        VarNameRemap, !:PredInfo),
     pred_info_set_typevarset(TypeVars, !PredInfo).
 
 :- pred futurise_argtypes(arg_pos::in, list(arg_pos)::in, list(mer_type)::in,

@@ -433,7 +433,7 @@ assert_id_goal(Module, AssertId, Goal) :-
     module_info_get_assertion_table(Module, AssertTable),
     assertion_table_lookup(AssertTable, AssertId, PredId),
     module_info_pred_info(Module, PredId, PredInfo),
-    pred_info_clauses_info(PredInfo, ClausesInfo),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_clauses_only(ClausesInfo, Clauses),
     ( Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)] ->
         normalise_goal(Goal0, Goal)

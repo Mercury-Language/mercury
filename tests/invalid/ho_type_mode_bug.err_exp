@@ -29,15 +29,16 @@ ho_type_mode_bug.m:026:   `ho_type_mode_bug.my_foldl2'/6.
 ho_type_mode_bug.m:024:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:024:   in, in, out, in, out)':
 ho_type_mode_bug.m:024:   in argument 4 of clause head:
-ho_type_mode_bug.m:024:   mode error in unification of `FirstAcc' and
+ho_type_mode_bug.m:024:   mode error in unification of `HeadVar__4' and
 ho_type_mode_bug.m:024:   `FirstAcc'.
-ho_type_mode_bug.m:024:   Variable `FirstAcc' has instantiatedness `free',
+ho_type_mode_bug.m:024:   Variable `HeadVar__4' has instantiatedness `free',
 ho_type_mode_bug.m:024:   variable `FirstAcc' has instantiatedness `free'.
 ho_type_mode_bug.m:024:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:024:   in, in, out, in, out)':
 ho_type_mode_bug.m:024:   in argument 6 of clause head:
-ho_type_mode_bug.m:024:   mode error in unification of `SecAcc' and `SecAcc'.
-ho_type_mode_bug.m:024:   Variable `SecAcc' has instantiatedness `free',
+ho_type_mode_bug.m:024:   mode error in unification of `HeadVar__6' and
+ho_type_mode_bug.m:024:   `SecAcc'.
+ho_type_mode_bug.m:024:   Variable `HeadVar__6' has instantiatedness `free',
 ho_type_mode_bug.m:024:   variable `SecAcc' has instantiatedness `free'.
 ho_type_mode_bug.m:026: In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:026:   in, in, out, di, uo)':
@@ -70,13 +71,14 @@ ho_type_mode_bug.m:026:   `ho_type_mode_bug.my_foldl2'/6.
 ho_type_mode_bug.m:024:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:024:   in, in, out, di, uo)':
 ho_type_mode_bug.m:024:   in argument 4 of clause head:
-ho_type_mode_bug.m:024:   mode error in unification of `FirstAcc' and
+ho_type_mode_bug.m:024:   mode error in unification of `HeadVar__4' and
 ho_type_mode_bug.m:024:   `FirstAcc'.
-ho_type_mode_bug.m:024:   Variable `FirstAcc' has instantiatedness `free',
+ho_type_mode_bug.m:024:   Variable `HeadVar__4' has instantiatedness `free',
 ho_type_mode_bug.m:024:   variable `FirstAcc' has instantiatedness `free'.
 ho_type_mode_bug.m:024:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:024:   in, in, out, di, uo)':
 ho_type_mode_bug.m:024:   in argument 6 of clause head:
-ho_type_mode_bug.m:024:   mode error in unification of `SecAcc' and `SecAcc'.
-ho_type_mode_bug.m:024:   Variable `SecAcc' has instantiatedness `free',
+ho_type_mode_bug.m:024:   mode error in unification of `HeadVar__6' and
+ho_type_mode_bug.m:024:   `SecAcc'.
+ho_type_mode_bug.m:024:   Variable `HeadVar__6' has instantiatedness `free',
 ho_type_mode_bug.m:024:   variable `SecAcc' has instantiatedness `free'.
