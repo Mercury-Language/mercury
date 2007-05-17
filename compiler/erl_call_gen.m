@@ -88,17 +88,19 @@ erl_gen_call(PredId, ProcId, ArgVars, _ActualArgTypes,
 
     erl_gen_arg_list(ModuleInfo, ArgVars, CalleeTypes, ArgModes,
         InputVars, OutputVars),
-    CallExpr = elds_call(proc(PredId, ProcId), elds.exprs_from_vars(InputVars)),
-
+    PPId = proc(PredId, ProcId),
+    NormalCallExpr = elds_call(PPId, exprs_from_vars(InputVars)),
     (
         CodeModel = model_det,
-        make_det_call(CallExpr, OutputVars, MaybeSuccessExpr, Statement)
+        make_det_call(NormalCallExpr, OutputVars, MaybeSuccessExpr, Statement)
     ;
         CodeModel = model_semi,
-        make_semidet_call(CallExpr, OutputVars, MaybeSuccessExpr, Statement)
+        SuccessExpr = det_expr(MaybeSuccessExpr),
+        make_semidet_call(NormalCallExpr, OutputVars, SuccessExpr, Statement)
     ;
         CodeModel = model_non,
-        sorry(this_file, "model_non code in Erlang backend")
+        SuccessExpr = det_expr(MaybeSuccessExpr),
+        make_nondet_call(PPId, InputVars, OutputVars, SuccessExpr, Statement)
     ).
 
 :- pred make_det_call(elds_expr::in, prog_vars::in, maybe(elds_expr)::in,
@@ -131,33 +133,48 @@ make_det_call(Expr, OutputVars, MaybeSuccessExpr, Statement) :-
         )
     ).
 
-:- pred make_semidet_call(elds_expr::in, prog_vars::in, maybe(elds_expr)::in,
+:- pred make_semidet_call(elds_expr::in, prog_vars::in, elds_expr::in,
     elds_expr::out) is det.
 
-make_semidet_call(CallExpr, OutputVars, MaybeSuccessExpr, Statement) :-
-    (
-        MaybeSuccessExpr = yes(SuccessExpr),
-        UnpackTerm = elds_tuple(exprs_from_vars(OutputVars)),
-        (if
-            MaybeSuccessExpr = yes(elds_term(UnpackTerm))
-        then
-            % Avoid unnecessary unpacking.
-            Statement = CallExpr
-        else
-            % case CallExpr of
-            %   {OutputVars, ...} -> SuccessExpr ;
-            %   _ -> fail
-            % end
-            %
-            Statement = elds_case_expr(CallExpr, [TrueCase, FalseCase]),
-            TrueCase  = elds_case(UnpackTerm, SuccessExpr),
-            FalseCase = elds_case(elds_anon_var, elds_term(elds_fail))
-        )
-    ;
-        MaybeSuccessExpr = no,
-        unexpected(this_file,
-            "make_semidet_call: no success expression for semidet call")
+make_semidet_call(CallExpr, OutputVars, SuccessExpr, Statement) :-
+    UnpackTerm = elds_tuple(exprs_from_vars(OutputVars)),
+    (if
+        SuccessExpr = elds_term(UnpackTerm)
+    then
+        % Avoid unnecessary unpacking.
+        Statement = CallExpr
+    else
+        % case CallExpr of
+        %   {OutputVars, ...} -> SuccessExpr ;
+        %   _ -> fail
+        % end
+        %
+        Statement = elds_case_expr(CallExpr, [TrueCase, FalseCase]),
+        TrueCase  = elds_case(UnpackTerm, SuccessExpr),
+        FalseCase = elds_case(elds_anon_var, elds_term(elds_fail))
     ).
+
+:- pred make_nondet_call(pred_proc_id::in, prog_vars::in, prog_vars::in,
+    elds_expr::in, elds_expr::out) is det.
+
+make_nondet_call(PredProcId, InputVars, OutputVars, SuccessCont0, Statement) :-
+    %
+    % Proc(InputVars, ...,
+    %   fun(OutputVars, ...) ->
+    %       SuccessCont0
+    %   end)
+    %
+    (if
+        SuccessCont0 = elds_call_ho(SuccessCont1, exprs_from_vars(OutputVars))
+    then
+        % Avoid an unnecessary closure.
+        SuccessCont = SuccessCont1
+    else
+        SuccessCont = elds_fun(elds_clause(terms_from_vars(OutputVars),
+            SuccessCont0))
+    ),
+    Statement = elds_call(PredProcId,
+        exprs_from_vars(InputVars) ++ [SuccessCont]).
 
 %-----------------------------------------------------------------------------%
 %
@@ -172,19 +189,31 @@ erl_gen_higher_order_call(GenericCall, ArgVars, Modes, Detism,
     erl_variable_types(!.Info, ArgVars, ArgTypes),
     erl_gen_arg_list(ModuleInfo, ArgVars, ArgTypes, Modes,
         InputVars, OutputVars),
-    CallExpr = elds_call_ho(elds.expr_from_var(ClosureVar),
-        elds.exprs_from_vars(InputVars)),
+
+    ClosureVarExpr = expr_from_var(ClosureVar),
+    InputVarsExprs = exprs_from_vars(InputVars),
+    NormalCallExpr = elds_call_ho(ClosureVarExpr, InputVarsExprs),
 
     determinism_to_code_model(Detism, CallCodeModel),
     (
         CallCodeModel = model_det,
-        make_det_call(CallExpr, OutputVars, MaybeSuccessExpr, Statement)
+        make_det_call(NormalCallExpr, OutputVars, MaybeSuccessExpr, Statement)
     ;
         CallCodeModel = model_semi,
-        make_semidet_call(CallExpr, OutputVars, MaybeSuccessExpr, Statement)
+        SuccessExpr = det_expr(MaybeSuccessExpr),
+        make_semidet_call(NormalCallExpr, OutputVars, SuccessExpr, Statement)
     ;
         CallCodeModel = model_non,
-        sorry(this_file, "model_non code in Erlang backend")
+        %
+        % Proc(InputVars, ..., 
+        %   fun(OutputVars, ...) ->
+        %       SuccessCont0
+        %   end)
+        %
+        SuccessCont = elds_fun(elds_clause(terms_from_vars(OutputVars),
+            det_expr(MaybeSuccessExpr))),
+        Statement = elds_call_ho(ClosureVarExpr,
+            InputVarsExprs ++ [SuccessCont])
     ).
 
 erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-

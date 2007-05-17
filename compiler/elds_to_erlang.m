@@ -107,12 +107,14 @@ output_erl_file(ModuleInfo, elds(ModuleName, Defns), SourceFileName, !IO) :-
 
     list.foldl(output_defn(ModuleInfo), Defns, !IO).
 
+%-----------------------------------------------------------------------------%
+
 :- pred output_exports(module_info::in, list(elds_defn)::in, bool::in,
     io::di, io::uo) is det.
 
 output_exports(_ModuleInfo, [], _NeedComma, !IO).
 output_exports(ModuleInfo, [Defn | Defns], NeedComma, !IO) :-
-    Defn = elds_defn(PredProcId, Arity, _, _),
+    Defn = elds_defn(PredProcId, _, Clause),
     PredProcId = proc(PredId, _ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
@@ -128,15 +130,21 @@ output_exports(ModuleInfo, [Defn | Defns], NeedComma, !IO) :-
         nl_indent_line(1, !IO),
         output_pred_proc_id(ModuleInfo, PredProcId, !IO),
         io.write_char('/', !IO),
-        io.write_int(Arity, !IO),
+        io.write_int(elds_clause_arity(Clause), !IO),
         output_exports(ModuleInfo, Defns, yes, !IO)
     ;
         IsExported = no,
         output_exports(ModuleInfo, Defns, NeedComma, !IO)
     ).
 
+:- func elds_clause_arity(elds_clause) = arity.
+
+elds_clause_arity(elds_clause(Args, _Expr)) = list.length(Args).
+
+%-----------------------------------------------------------------------------%
+
 output_defn(ModuleInfo, Defn, !IO) :-
-    Defn = elds_defn(PredProcId, _Arity, VarSet, Clause),
+    Defn = elds_defn(PredProcId, VarSet, Clause),
     io.nl(!IO),
     output_pred_proc_id(ModuleInfo, PredProcId, !IO),
     Indent = 0,
@@ -152,7 +160,8 @@ output_clause(ModuleInfo, VarSet, Indent, Clause, !IO) :-
     io.write_list(Pattern, ", ",
         output_term(ModuleInfo, VarSet, Indent), !IO),
     io.write_string(") -> ", !IO),
-    output_expr(ModuleInfo, VarSet, Indent + 1, Expr, !IO).
+    nl_indent_line(Indent + 1, !IO),
+    output_block_expr(ModuleInfo, VarSet, Indent + 1, Expr, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -181,13 +190,22 @@ output_exprs(ModuleInfo, VarSet, Indent, Exprs, !IO) :-
     io.write_list(Exprs, ", ",
         output_expr(ModuleInfo, VarSet, Indent), !IO).
 
+:- pred output_block_expr(module_info::in, prog_varset::in, indent::in,
+    elds_expr::in, io::di, io::uo) is det.
+
+output_block_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
+    ( Expr = elds_block(Exprs) ->
+        output_exprs_with_nl(ModuleInfo, VarSet, Indent, Exprs, !IO)
+    ;
+        output_expr(ModuleInfo, VarSet, Indent, Expr, !IO)
+    ).
+
 :- pred output_expr(module_info::in, prog_varset::in, indent::in,
     elds_expr::in, io::di, io::uo) is det.
 
 output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
     (
         Expr = elds_block(Exprs),
-        nl_indent_line(Indent, !IO),
         io.write_string("(begin", !IO),
         nl_indent_line(Indent + 1, !IO),
         output_exprs_with_nl(ModuleInfo, VarSet, Indent + 1, Exprs, !IO),
@@ -211,33 +229,61 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
         output_elds_binop(Binop, !IO),
         output_expr(ModuleInfo, VarSet, Indent, ExprB, !IO)
     ;
-        Expr = elds_call(PredProcId, Args),
-        output_pred_proc_id(ModuleInfo, PredProcId, !IO),
+        (
+            Expr = elds_call(PredProcId, Args),
+            output_pred_proc_id(ModuleInfo, PredProcId, !IO)
+        ;
+            Expr = elds_call_ho(Closure, Args),
+            output_expr(ModuleInfo, VarSet, Indent, Closure, !IO)
+        ;
+            Expr = elds_call_builtin(FunName, Args),
+            output_atom(FunName, !IO)
+        ),
         io.write_string("(", !IO),
         output_exprs(ModuleInfo, VarSet, Indent, Args, !IO),
-        io.write_string(") ", !IO)
-    ;
-        Expr = elds_call_ho(Closure, Args),
-        output_expr(ModuleInfo, VarSet, Indent, Closure, !IO),
-        io.write_string("(", !IO),
-        output_exprs(ModuleInfo, VarSet, Indent, Args, !IO),
-        io.write_string(") ", !IO)
+        io.write_string(")", !IO)
     ;
         Expr = elds_fun(Clause),
-        io.write_string("fun", !IO),
+        io.write_string("(fun", !IO),
         output_clause(ModuleInfo, VarSet, Indent, Clause, !IO),
-        io.write_string("end ", !IO)
+        nl_indent_line(Indent, !IO),
+        io.write_string("end)", !IO)
     ;
         Expr = elds_case_expr(ExprA, Cases),
-        io.write_string("(case ", !IO),
+        io.write_string("(case", !IO),
         nl_indent_line(Indent + 1, !IO),
         output_expr(ModuleInfo, VarSet, Indent + 1, ExprA, !IO),
         nl_indent_line(Indent, !IO),
-        io.write_string("of ", !IO),
-        io.write_list(Cases, "; ",
+        io.write_string("of", !IO),
+        io.write_list(Cases, ";",
             output_case(ModuleInfo, VarSet, Indent + 1), !IO),
         nl_indent_line(Indent, !IO),
         io.write_string("end)", !IO)
+    ;
+        Expr = elds_try(ExprA, Cases, Catch),
+        io.write_string("(try", !IO),
+        nl_indent_line(Indent + 1, !IO),
+        output_block_expr(ModuleInfo, VarSet, Indent + 1, ExprA, !IO),
+        (
+            Cases = []
+        ;
+            Cases = [_ | _],
+            nl_indent_line(Indent, !IO),
+            io.write_string("of", !IO),
+            io.write_list(Cases, ";",
+                output_case(ModuleInfo, VarSet, Indent + 1), !IO)
+        ),
+        nl_indent_line(Indent, !IO),
+        io.write_string("catch", !IO),
+        nl_indent_line(Indent + 1, !IO),
+        output_catch(ModuleInfo, VarSet, Indent + 1, Catch, !IO),
+        nl_indent_line(Indent, !IO),
+        io.write_string("end)", !IO)
+    ;
+        Expr = elds_throw(ExprA),
+        io.write_string("throw(", !IO),
+        output_expr(ModuleInfo, VarSet, Indent, ExprA, !IO),
+        io.write_string(")", !IO)
     ).
 
 :- pred output_case(module_info::in, prog_varset::in, indent::in,
@@ -248,7 +294,19 @@ output_case(ModuleInfo, VarSet, Indent, elds_case(Pattern, Expr), !IO) :-
     output_term(ModuleInfo, VarSet, Indent, Pattern, !IO),
     io.write_string("->", !IO),
     nl_indent_line(Indent + 1, !IO),
-    output_expr(ModuleInfo, VarSet, Indent + 1, Expr, !IO).
+    output_block_expr(ModuleInfo, VarSet, Indent + 1, Expr, !IO).
+
+:- pred output_catch(module_info::in, prog_varset::in, indent::in,
+    elds_catch::in, io::di, io::uo) is det.
+
+output_catch(ModuleInfo, VarSet, Indent, Catch, !IO) :-
+    Catch = elds_catch(PatternA, PatternB, CatchExpr),
+    output_term(ModuleInfo, VarSet, Indent, PatternA, !IO),
+    io.write_char(':', !IO),
+    output_term(ModuleInfo, VarSet, Indent, PatternB, !IO),
+    io.write_string("->", !IO),
+    nl_indent_line(Indent + 1, !IO),
+    output_block_expr(ModuleInfo, VarSet, Indent + 1, CatchExpr, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -326,11 +384,11 @@ output_tuple(ModuleInfo, VarSet, Indent, Args, !IO) :-
     ->
         io.write_char('{', !IO),
         output_exprs(ModuleInfo, VarSet, Indent, Args1, !IO),
-        io.write_char('}', !IO)
+        io.write_string("} ", !IO)
     ;
         io.write_char('{', !IO),
         output_exprs(ModuleInfo, VarSet, Indent, Args, !IO),
-        io.write_char('}', !IO)
+        io.write_string("} ", !IO)
     ).
 
 :- func elds_tuple = elds_expr. 

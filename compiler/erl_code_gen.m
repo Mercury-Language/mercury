@@ -21,7 +21,6 @@
 % failure).
 %
 % TODO: (this is incomplete)
-% - nondet code
 % - contexts are ignored at the moment
 % - RTTI
 % - type classes
@@ -34,10 +33,7 @@
 :- interface.
 
 :- import_module erl_backend.elds.
-:- import_module erl_backend.erl_code_util.
-:- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
-:- import_module parse_tree.prog_data.
 
 :- import_module io.
 
@@ -48,25 +44,13 @@
     %
 :- pred erl_code_gen(module_info::in, elds::out, io::di, io::uo) is det.
 
-    % erl_gen_wrap_goal(OuterCodeModel, InnerCodeModel, Context,
-    %   Statement0, Statement):
-    %
-    % OuterCodeModel is the code model expected by the context in which a goal
-    % is called. InnerCodeModel is the code model which the goal actually has.
-    % This predicate converts the code generated for the goal using
-    % InnerCodeModel into code that uses the calling convention appropriate
-    % for OuterCodeModel.
-    %
-:- pred erl_gen_wrap_goal(code_model::in, code_model::in, prog_context::in,
-    elds_expr::in, elds_expr::out, erl_gen_info::in, erl_gen_info::out)
-    is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module erl_backend.erl_call_gen.
+:- import_module erl_backend.erl_code_util.
 :- import_module erl_backend.erl_unify_gen.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
@@ -76,7 +60,10 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
+:- import_module parse_tree.prog_data.
 
+:- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -175,17 +162,16 @@ erl_gen_procs([ProcId | ProcIds], ModuleInfo, PredId, PredInfo, ProcTable,
     proc_info::in, list(elds_defn)::in, list(elds_defn)::out) is det.
 
 erl_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, _ProcInfo, !Defns) :-
-    erl_gen_proc_defn(ModuleInfo, PredId, ProcId, Arity, ProcVarSet,
-        ProcClause),
-    ProcDefn = elds_defn(proc(PredId, ProcId), Arity, ProcVarSet, ProcClause),
+    erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcClause),
+    ProcDefn = elds_defn(proc(PredId, ProcId), ProcVarSet, ProcClause),
     !:Defns = [ProcDefn | !.Defns].
 
     % Generate an ELDS definition for the specified procedure.
     %
 :- pred erl_gen_proc_defn(module_info::in, pred_id::in, proc_id::in,
-    arity::out, prog_varset::out, elds_clause::out) is det.
+    prog_varset::out, elds_clause::out) is det.
 
-erl_gen_proc_defn(ModuleInfo, PredId, ProcId, Arity, ProcVarSet, ProcClause) :-
+erl_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcVarSet, ProcClause) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
     proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -218,9 +204,6 @@ erl_gen_proc_defn(ModuleInfo, PredId, ProcId, Arity, ProcVarSet, ProcClause) :-
                 !Info)
         ),
 
-        erl_gen_info_get_input_vars(!.Info, InputVars),
-        Arity = list.length(InputVars),
-
         erl_gen_info_get_varset(!.Info, ProcVarSet)
     ).
 
@@ -230,18 +213,30 @@ erl_gen_proc_defn(ModuleInfo, PredId, ProcId, Arity, ProcVarSet, ProcClause) :-
 erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
     erl_gen_info_get_input_vars(!.Info, InputVars),
     erl_gen_info_get_output_vars(!.Info, OutputVars),
+    OutputVarsExprs = exprs_from_vars(OutputVars),
     (
         ( CodeModel = model_det
         ; CodeModel = model_semi
         ),
-        SuccessExpr = elds_term(elds_tuple(exprs_from_vars(OutputVars)))
+        %
+        % On success, the procedure returns a tuple of its output variables.
+        %
+        InputVarsTerms = terms_from_vars(InputVars),
+        SuccessExpr = elds_term(elds_tuple(OutputVarsExprs))
     ;
         CodeModel = model_non,
-        sorry(this_file, "nondet code in Erlang backend")
+        %
+        % On success, the procedure calls a continuation, passing the values of
+        % its output variables as arguments.  The continuation is supplied as
+        % an extra argument to the current procedure.
+        %
+        erl_gen_info_new_named_var("SucceedHeadVar", SucceedVar, !Info),
+        InputVarsTerms = terms_from_vars(InputVars ++ [SucceedVar]),
+        SuccessExpr = elds_call_ho(expr_from_var(SucceedVar), OutputVarsExprs)
     ),
     erl_gen_goal(CodeModel, InstMap0, Goal, yes(SuccessExpr), Statement,
         !Info),
-    ProcClause = elds_clause(terms_from_vars(InputVars), Statement).
+    ProcClause = elds_clause(InputVarsTerms, Statement).
 
 %-----------------------------------------------------------------------------%
 %
@@ -256,57 +251,137 @@ erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
     %
     % If MaybeSuccessExpr is `yes(SuccessExpr)' then SuccessExpr is the
     % expression that the code generated for Goal must evaluate to, if the Goal
-    % succeeds.
+    % succeeds.  MaybeSuccessExpr can only be `no' for model_det code.
+    % On failure, model_semi code returns the atom `fail'.
+    % On failure, model_non code may return anything.
     %
 erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExpr, Code, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     goal_info_get_context(GoalInfo, Context),
-
-    % Generate code for the goal in its own code model.
     goal_info_get_code_model(GoalInfo, GoalCodeModel),
-    erl_gen_goal_expr(GoalExpr, GoalCodeModel, InstMap, Context,
-        MaybeSuccessExpr, GoalCode, !Info),
+    (
+        (
+            CodeModel = model_det,
+            GoalCodeModel = model_semi
+        ;
+            CodeModel = model_det,
+            GoalCodeModel = model_non
+        ;
+            CodeModel = model_semi,
+            GoalCodeModel = model_non
+        )
+    ->
+        unexpected(this_file, "erl_gen_goal: code model mismatch")
+    ;
+        erl_gen_goal_expr(GoalExpr, GoalCodeModel, InstMap, Context,
+            MaybeSuccessExpr, Code, !Info)
+    ).
 
-    % Add whatever wrapper is needed to convert the goal's code model
-    % to the desired code model.
-    erl_gen_wrap_goal(CodeModel, GoalCodeModel, Context,
-        GoalCode, Code, !Info).
+%-----------------------------------------------------------------------------%
 
-    % If the inner and outer code models are equal, we don't need to do
-    % anything special.
+    % Generate code for a commit.
+    %
+:- pred erl_gen_commit(hlds_goal::in, code_model::in, instmap::in,
+    prog_context::in, maybe(elds_expr)::in, elds_expr::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
 
-erl_gen_wrap_goal(model_det, model_det, _, !Code, !Info).
-erl_gen_wrap_goal(model_semi, model_semi, _, !Code, !Info).
-erl_gen_wrap_goal(model_non, model_non, _, !Code, !Info).
+erl_gen_commit(Goal, CodeModel, InstMap, Context, MaybeSuccessExpr,
+        Statement, !Info) :-
+    Goal = hlds_goal(_, GoalInfo),
+    goal_info_get_code_model(GoalInfo, GoalCodeModel),
+    goal_info_get_context(GoalInfo, _GoalContext),
 
-    % If the inner code model is more precise than the outer code model,
-    % then we need to append some statements to convert the calling convention
-    % for the inner code model to that of the outer code model.
+    (
+        GoalCodeModel = model_non,
+        CodeModel = model_semi
+    ->
+        %   model_non in semi context:
+        %       <succeeded = Goal>
+        %   ===>
+        %
+        %   let Throw = ``throw({'MERCURY_COMMIT', {NonLocals, ...})''
+        %   where NonLocals are variables bound by Goal.
+        %
+        %   try
+        %       <Goal && Throw()>
+        %   of
+        %       _ -> fail
+        %   catch
+        %       throw: {'MERCURY_COMMIT', {NonLocals, ...}} ->
+        %           SuccessExpr
+        %   end
 
-erl_gen_wrap_goal(model_semi, model_det, _Context, !Code, !Info).
-    % Currently nothing is required because det goals always
-    % return their results in a tuple, which is exactly the same as
-    % a successful return from a semidet goal.
+        erl_gen_commit_pieces(Goal, InstMap, Context, no,
+            GoalStatement, PackedNonLocals, !Info),
 
-erl_gen_wrap_goal(model_non, model_det, _Context, !Code, !Info) :-
-    sorry(this_file, "nondet code in Erlang backend").
+        Statement = elds_try(GoalStatement, [AnyCase], Catch),
+        AnyCase = elds_case(elds_anon_var, elds_term(elds_fail)),
+        Catch = elds_catch(elds_throw_atom,
+            elds_tuple([elds_commit_marker, PackedNonLocals]),
+            det_expr(MaybeSuccessExpr))
+    ;
+        GoalCodeModel = model_non,
+        CodeModel = model_det
+    ->
+        %   model_non in det context:
+        %       <do Goal>
+        %   ===>
+        %
+        %   let Throw = ``throw({'MERCURY_COMMIT', {NonLocals, ...}})''
+        %   where NonLocals are variables bound by Goal.
+        %
+        %   {NonLocals, ...} =
+        %       (try
+        %           <Goal && Throw()>
+        %       catch
+        %           throw: {'MERCURY_COMMIT', Results} -> Results
+        %       end)
 
-erl_gen_wrap_goal(model_non, model_semi, _Context, !Code, !Info) :-
-    sorry(this_file, "nondet code in Erlang backend").
+        erl_gen_commit_pieces(Goal, InstMap, Context, yes,
+            GoalStatement, PackedNonLocals, !Info),
 
-    % If the inner code model is less precise than the outer code model,
-    % then simplify.m is supposed to wrap the goal inside a `some'
-    % to indicate that a commit is needed.
+        erl_gen_info_new_named_var("Results", ResultsVar, !Info),
+        ResultsVarExpr = expr_from_var(ResultsVar),
 
-erl_gen_wrap_goal(model_det, model_semi, _, _, _, !Info) :-
-    unexpected(this_file,
-        "erl_gen_wrap_goal: code model mismatch -- semi in det").
-erl_gen_wrap_goal(model_det, model_non, _, _, _, !Info) :-
-    unexpected(this_file,
-        "erl_gen_wrap_goal: code model mismatch -- nondet in det").
-erl_gen_wrap_goal(model_semi, model_non, _, _, _, !Info) :-
-    unexpected(this_file,
-        "erl_gen_wrap_goal: code model mismatch -- nondet in semi").
+        Statement = elds_eq(PackedNonLocals, TryExpr),
+        TryExpr = elds_try(GoalStatement, [], Catch),
+        Catch = elds_catch(elds_throw_atom,
+            elds_tuple([elds_commit_marker, ResultsVarExpr]), ResultsVarExpr)
+    ;
+        % No commit required.
+        erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExpr, Statement,
+            !Info)
+    ).
+
+:- pred erl_gen_commit_pieces(hlds_goal::in, instmap::in, prog_context::in,
+    bool::in, elds_expr::out, elds_expr::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+erl_gen_commit_pieces(Goal, InstMap, _Context, DoRenaming,
+        GoalStatement, PackedNonLocals, !Info) :-
+    % Find the nonlocal variables bound by the goal.
+    erl_gen_info_get_module_info(!.Info, ModuleInfo),
+    erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, NonLocalsSet),
+    NonLocals = set.to_sorted_list(NonLocalsSet),
+
+    % Throw = ``throw({'MERCURY_COMMIT', {NonLocals, ...})''
+    Throw = elds_throw(elds_term(ThrowValue)),
+    ThrowValue = elds_tuple([elds_commit_marker, PackedNonLocals]),
+    PackedNonLocals = elds_term(elds_tuple(exprs_from_vars(NonLocals))),
+
+    % Generate the goal expression such that it throws the exception
+    % at the first solution.
+    erl_gen_goal(model_non, InstMap, Goal, yes(Throw), GoalStatement0, !Info),
+
+    % Rename the nonlocal variables in the generated expression if we have to.
+    (
+        DoRenaming = yes,
+        erl_create_renaming(NonLocals, Subn, !Info),
+        erl_rename_vars_in_expr(Subn, GoalStatement0, GoalStatement)
+    ;
+        DoRenaming = no,
+        GoalStatement = GoalStatement0
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -322,21 +397,24 @@ erl_gen_goal_expr(switch(Var, CanFail, CasesList), CodeModel, InstMap,
         Context, MaybeSuccessExpr, Statement, !Info).
 
 erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, InstMap, Context,
-        MaybeSuccessExpr, CodeExpr, !Info) :-
+        MaybeSuccessExpr, Statement, !Info) :-
     (
         ( ScopeReason = exist_quant(_)
         ; ScopeReason = promise_solutions(_, _)
         ; ScopeReason = promise_purity(_, _)
-        ; ScopeReason = commit(_)
         ; ScopeReason = barrier(_)
         ; ScopeReason = trace_goal(_, _, _, _, _)
         ),
         sorry(this_file, "exotic scope type in erlang code generator")
     ;
+        ScopeReason = commit(_),
+        erl_gen_commit(Goal, CodeModel, InstMap, Context,
+            MaybeSuccessExpr, Statement, !Info)
+    ;
         ScopeReason = from_ground_term(_),
         Goal = hlds_goal(GoalExpr, _),
         erl_gen_goal_expr(GoalExpr, CodeModel, InstMap, Context,
-            MaybeSuccessExpr, CodeExpr, !Info)
+            MaybeSuccessExpr, Statement, !Info)
     ).
 
 erl_gen_goal_expr(if_then_else(_Vars, Cond, Then, Else), CodeModel,
@@ -417,32 +495,76 @@ erl_gen_goal_expr(shorthand(_), _, _, _, _, _, !Info) :-
 % Code for switches
 %
 
-    % The generated code looks like:
-    %
-    % case Var of
-    %   Pattern1 -> Expr1  [[ MaybeSuccessExpr ]];
-    %   Pattern2 -> Expr2  [[ MaybeSuccessExpr ]];
-    %   ...
-    % end
-    %
-    % If the switch can fail, a default case is added:
-    %
-    %   _ -> fail
-    %
+:- func duplicate_expr_limit = int.
+
+duplicate_expr_limit = 10.  % XXX arbitrary
+
 :- pred erl_gen_switch(prog_var::in, can_fail::in, list(hlds_goal.case)::in,
     code_model::in, instmap::in, prog_context::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap, _Context,
-        MaybeSuccessExpr, Statement, !Info) :-
+        MaybeSuccessExpr0, Statement, !Info) :-
+    %
+    % If the success expression is not too big, then we generate code for
+    % a switch like this:
+    %
+    %   case Var of
+    %       Pattern1 -> Expr1  [[ SuccessExpr ]] ;
+    %       Pattern2 -> Expr2  [[ SuccessExpr ]] ;
+    %       ...
+    %   end
+    %
+    % Otherwise the success expression is put into a closure and the closure
+    % is called on success of each case:
+    %
+    %   SuccessClosure = fun(Vars, ...) ->
+    %       /* Vars are those variables bound by Expr<n> */
+    %       SuccessExpr
+    %   end,
+    %   case Var of
+    %       Pattern1 -> Expr1  [[ SuccessClosure() ]] ;
+    %       Pattern2 -> Expr2  [[ SuccessClosure() ]] ;
+    %       ...
+    %   end
+    %
+    % If the switch can fail, a default case is added:
+    %
+    %   _ -> fail
+    %
+
     % Get the union of all variables bound in all cases.
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     CasesGoals = list.map((func(case(_, Goal)) = Goal), CasesList),
     union_bound_nonlocals_in_goals(ModuleInfo, InstMap, CasesGoals,
-        MustBindNonLocals),
+        NonLocalsBoundInCases),
+
+    (if 
+        MaybeSuccessExpr0 = yes(SuccessExpr0),
+        erl_expr_size(SuccessExpr0) > duplicate_expr_limit
+    then
+        erl_gen_info_new_named_var("SuccessClosure", ClosureVar, !Info),
+        ClosureVarExpr = expr_from_var(ClosureVar),
+        ClosureArgs = set.to_sorted_list(NonLocalsBoundInCases),
+        ClosureArgsTerms = terms_from_vars(ClosureArgs),
+        ClosureArgsExprs = exprs_from_vars(ClosureArgs),
+
+        % ``SuccessClosure = fun(ClosureArgs, ...) -> SuccessExpr0 end''
+        MakeClosure = elds_eq(ClosureVarExpr, ClosureFun),
+        ClosureFun = elds_fun(elds_clause(ClosureArgsTerms, SuccessExpr0)),
+
+        % ``SuccessClosure(ClosureArgs, ...)''
+        CallClosure = elds_call_ho(ClosureVarExpr, ClosureArgsExprs),
+
+        MaybeMakeClosure = yes(MakeClosure),
+        MaybeSuccessExpr = yes(CallClosure)
+    else
+        MaybeMakeClosure = no,
+        MaybeSuccessExpr = MaybeSuccessExpr0
+    ),
 
     % Generate code for each case.
-    list.map_foldl(erl_gen_case(CodeModel, InstMap, MustBindNonLocals,
+    list.map_foldl(erl_gen_case(CodeModel, InstMap, NonLocalsBoundInCases,
         MaybeSuccessExpr), CasesList, ErlCases0, !Info),
     (
         CanFail = can_fail,
@@ -453,7 +575,16 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap, _Context,
         CanFail = cannot_fail,
         ErlCases = ErlCases0
     ),
-    Statement = elds_case_expr(expr_from_var(Var), ErlCases).
+
+    % Create the overall switch statement,.
+    CaseExpr = elds_case_expr(expr_from_var(Var), ErlCases),
+    (
+        MaybeMakeClosure = yes(MakeClosure1),
+        Statement = join_exprs(MakeClosure1, CaseExpr)
+    ;
+        MaybeMakeClosure = no,
+        Statement = CaseExpr
+    ).
 
 :- pred union_bound_nonlocals_in_goals(module_info::in, instmap::in,
     hlds_goals::in, set(prog_var)::out) is det.
@@ -573,7 +704,45 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr,
         FalseCase = elds_case(elds_anon_var, ElseStatement)
     ;
         CondCodeModel = model_non,
-        sorry(this_file, "nondet code in Erlang backend")
+        %
+        %   model_non cond:
+        %       <(Cond -> Then ; Else)>
+        %   ===>
+        %       let PutAndThen = ``put(Ref, true), <Then>''
+        %
+        %       Ref = make_ref(),       /* defaults to `undefined' */
+        %       <Cond && PutAndThen>
+        %       case get(Ref) of
+        %           true -> true ;
+        %           _    -> <Else>
+        %       end,
+        %       erase(Ref)
+        %
+
+        erl_gen_info_new_named_var("Ref", Ref, !Info),
+        RefExpr = expr_from_var(Ref),
+        MakeRef = elds_eq(RefExpr, elds_call_builtin("make_ref", [])),
+        PutRef = elds_call_builtin("put", [RefExpr, elds_term(elds_true)]),
+        GetRef = elds_call_builtin("get", [RefExpr]),
+        EraseRef = elds_call_builtin("erase", [RefExpr]),
+
+        update_instmap(Cond, InstMap0, InstMap1),
+        erl_gen_goal(CodeModel, InstMap1, Then, MaybeSuccessExpr,
+            ThenStatement, !Info),
+        PutAndThen = join_exprs(PutRef, ThenStatement),
+
+        erl_gen_goal(CondCodeModel, InstMap0, Cond, yes(PutAndThen),
+            CondThen, !Info),
+
+        erl_gen_goal(CodeModel, InstMap0, Else, MaybeSuccessExpr,
+            ElseStatement, !Info),
+
+        CaseElse = elds_case_expr(GetRef, [TrueCase, OtherCase]),
+        TrueCase = elds_case(elds_true, elds_term(elds_true)),
+        OtherCase = elds_case(elds_anon_var, ElseStatement),
+
+        Statement = list.foldr(join_exprs,
+            [MakeRef, CondThen, CaseElse], EraseRef)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -654,10 +823,15 @@ erl_gen_negation(Cond, CodeModel, InstMap, _Context, MaybeSuccessExpr,
 
 erl_gen_conj([], CodeModel, _InstMap0, _Context, MaybeSuccessExpr,
         Statement, !Info) :-
-    % XXX implement this for other code models
-    require(unify(CodeModel, model_det),
-        "erl_gen_conj: CodeModel != model_det"),
-    Statement = expr_or_void(MaybeSuccessExpr).
+    (
+        CodeModel = model_det,
+        Statement = expr_or_void(MaybeSuccessExpr)
+    ;
+        ( CodeModel = model_semi
+        ; CodeModel = model_non
+        ),
+        Statement = det_expr(MaybeSuccessExpr)
+    ).
 erl_gen_conj([SingleGoal], CodeModel, InstMap0, _Context, MaybeSuccessExpr,
         Statement, !Info) :-
     erl_gen_goal(CodeModel, InstMap0, SingleGoal, MaybeSuccessExpr,
@@ -676,6 +850,13 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
         update_instmap(First, InstMap0, InstMap1),
         (
             FirstCodeModel = model_det,
+            %
+            %   model_det Goal:
+            %       <Goal, Goals>
+            %   ===>
+            %       <do Goal>,
+            %       <Goals>
+            %
             erl_gen_goal(model_det, InstMap0, First, no,
                 FirstStatement, !Info),
             erl_gen_conj(Rest, CodeModel, InstMap1, Context, MaybeSuccessExpr,
@@ -683,13 +864,64 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
             Statement = join_exprs(FirstStatement, RestStatement)
         ;
             FirstCodeModel = model_semi,
+            %
+            %   model_semi Goal:
+            %       <Goal, Goals>
+            %   ===>
+            %       case <Goal> of
+            %           {Outputs, ...} ->
+            %               <Goals> ;
+            %           _ ->
+            %               fail
+            %       end
+            %
             erl_gen_conj(Rest, CodeModel, InstMap1, Context, MaybeSuccessExpr,
                 RestStatement, !Info),
             erl_gen_goal(model_semi, InstMap0, First, yes(RestStatement),
                 Statement, !Info)
         ;
             FirstCodeModel = model_non,
-            sorry(this_file, "nondet code in Erlang backend")
+            %
+            %   model_non Goal:
+            %       <Goal, Goals>
+            %   ===>
+            %       SUCCEED1 = fun(Outputs, ...) ->
+            %           <Goals && SUCCEED()>
+            %       end,
+            %       <Goal && SUCCEED1()>
+            % 
+
+            % Generate the code for Rest.
+            erl_gen_conj(Rest, CodeModel, InstMap1, Context, MaybeSuccessExpr,
+                RestStatement, !Info),
+
+            % Find the variables bound by First.
+            erl_gen_info_get_module_info(!.Info, ModuleInfo), 
+            erl_bound_nonlocals_in_goal(ModuleInfo, InstMap0, First,
+                NonLocalsSet),
+            NonLocals = set.to_sorted_list(NonLocalsSet),
+
+            % Make the success continuation.  Rename apart any variables bound
+            % by First to avoid warnings about the closure shadowing variables.
+            SucceedFunc0 = elds_fun(elds_clause(terms_from_vars(NonLocals),
+                RestStatement)),
+            erl_create_renaming(NonLocals, Subst, !Info),
+            erl_rename_vars_in_expr(Subst, SucceedFunc0, SucceedFunc),
+
+            % MakeSucceed == "SucceedConj = fun(...) -> ... end "
+            % CallSucceed == "SucceedConj(...)"
+            erl_gen_info_new_named_var("SucceedConj", SucceedVar, !Info),
+            SucceedVarExpr = expr_from_var(SucceedVar),
+            MakeSucceed = elds_eq(SucceedVarExpr, SucceedFunc),
+            CallSucceed = elds_call_ho(SucceedVarExpr, 
+                exprs_from_vars(NonLocals)),
+
+            % Generate the code for First, such that it calls the success
+            % continuation on success.
+            erl_gen_goal(model_non, InstMap0, First, yes(CallSucceed),
+                FirstStatement, !Info),
+
+            Statement = join_exprs(MakeSucceed, FirstStatement)
         )
     ).
 
@@ -704,6 +936,7 @@ erl_gen_conj([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
 
 erl_gen_disj([], CodeModel, _InstMap, _Context, _MaybeSuccessExpr,
         Statement, !Info) :-
+    % Handle empty disjunctions (a.ka. `fail').
     (
         CodeModel = model_det,
         unexpected(this_file, "erl_gen_disj: `fail' has determinism `det'")
@@ -723,14 +956,11 @@ erl_gen_disj([SingleGoal], CodeModel, InstMap, _Context, MaybeSuccessExpr,
 erl_gen_disj([First | Rest], CodeModel, InstMap, Context, MaybeSuccessExpr,
         Statement, !Info) :-
     Rest = [_ | _],
-    ( CodeModel = model_non ->
-        % model_non disj:
-        %
-        %       <(Goal ; Goals) && SUCCEED()>
-        %   ===>
+    (
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
 
-        sorry(this_file, "nondet code in Erlang backend")
-    ;
         % model_det/model_semi disj:
         %
         %   model_det goal:
@@ -742,9 +972,9 @@ erl_gen_disj([First | Rest], CodeModel, InstMap, Context, MaybeSuccessExpr,
         %   model_semi goal:
         %       <Goal ; Goals>
         %   ===>
-        %       case Goal of
-        %           fail -> Goals ;
-        %           Anything -> Anything
+        %       case <Goal> of
+        %           fail -> <Goals> ;
+        %           Any  -> Anything
         %       end
         %
         % TODO This can lead to contorted code when <Goal> itself is a `case'
@@ -757,10 +987,7 @@ erl_gen_disj([First | Rest], CodeModel, InstMap, Context, MaybeSuccessExpr,
         (
             FirstCodeModel = model_det,
             erl_gen_goal(model_det, InstMap, First, MaybeSuccessExpr,
-                GoalStatement, !Info),
-            % Is this necessary?
-            erl_gen_wrap_goal(CodeModel, model_det, Context,
-                GoalStatement, Statement, !Info)
+                Statement, !Info)
         ;
             FirstCodeModel = model_semi,
 
@@ -780,15 +1007,43 @@ erl_gen_disj([First | Rest], CodeModel, InstMap, Context, MaybeSuccessExpr,
             erl_create_renaming(FirstVars, Subn, !Info),
             erl_rename_vars_in_expr(Subn, FirstStatement0, FirstStatement),
 
-            erl_gen_info_new_var(Dummy, !Info),
+            erl_gen_info_new_named_var("Any", AnyVar, !Info),
             Statement = elds_case_expr(FirstStatement, [FailCase, OtherCase]),
             FailCase  = elds_case(elds_fail, RestStatement),
-            OtherCase = elds_case(term_from_var(Dummy), expr_from_var(Dummy))
+            OtherCase = elds_case(term_from_var(AnyVar), expr_from_var(AnyVar))
         ;
             FirstCodeModel = model_non,
             % simplify.m should get wrap commits around these.
             unexpected(this_file, "model_non disj in model_det disjunction")
         )
+    ;
+        CodeModel = model_non,
+
+        % model_non disj:
+        %
+        %       <(Goal ; Goals) && SUCCEED()>
+        %   ===>
+        %       <Goal && SUCCEED()>
+        %       <Goals && SUCCEED()>
+        %
+
+        % Generate the first disjunct, renaming apart variables bound by it.
+        % Otherwise the second and later disjuncts would try to bind the same
+        % variables to different values.
+        erl_gen_goal(model_non, InstMap, First, MaybeSuccessExpr,
+            FirstStatement0, !Info),
+
+        erl_gen_info_get_module_info(!.Info, ModuleInfo),
+        erl_bound_nonlocals_in_goal(ModuleInfo, InstMap, First, FirstVarsSet),
+        FirstVars = set.to_sorted_list(FirstVarsSet),
+        erl_create_renaming(FirstVars, Subst, !Info),
+        erl_rename_vars_in_expr(Subst, FirstStatement0, FirstStatement),
+
+        % Generate the rest of the disjunction.
+        erl_gen_disj(Rest, model_non, InstMap, Context, MaybeSuccessExpr,
+            RestStatements, !Info),
+
+        Statement = join_exprs(FirstStatement, RestStatements)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -52,7 +52,7 @@
 
     % Create a new variable.
     %
-:- pred erl_gen_info_new_var(prog_var::out,
+:- pred erl_gen_info_new_named_var(string::in, prog_var::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
     % Create multiple new variables.
@@ -123,6 +123,12 @@
 :- pred erl_rename_vars_in_expr(prog_var_renaming::in,
     elds_expr::in, elds_expr::out) is det.
 
+    % Return a rough indication of the "size" of an expression, where each
+    % simple constant has a value of 1.  This is used to decide if an
+    % expression is too big to duplicate.
+    %
+:- func erl_expr_size(elds_expr) = int.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -132,6 +138,7 @@
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
 
+:- import_module int.
 :- import_module map.
 :- import_module set.
 :- import_module term.
@@ -193,9 +200,9 @@ erl_gen_info_get_output_vars(Info, Info ^ output_vars).
 
 erl_gen_info_set_varset(VarSet, Info, Info ^ varset := VarSet).
 
-erl_gen_info_new_var(NewVar, !Info) :-
+erl_gen_info_new_named_var(Name, NewVar, !Info) :-
     erl_gen_info_get_varset(!.Info, VarSet0),
-    varset.new_var(VarSet0, NewVar, VarSet),
+    varset.new_named_var(VarSet0, Name, NewVar, VarSet),
     erl_gen_info_set_varset(VarSet, !Info).
 
 erl_gen_info_new_vars(Num, NewVars, !Info) :-
@@ -340,6 +347,10 @@ erl_rename_vars_in_expr(Subn, Expr0, Expr) :-
         erl_rename_vars_in_exprs(Subn, ExprsB0, ExprsB),
         Expr = elds_call_ho(ExprA, ExprsB)
     ;
+        Expr0 = elds_call_builtin(Atom, ExprsA0),
+        erl_rename_vars_in_exprs(Subn, ExprsA0, ExprsA),
+        Expr = elds_call_builtin(Atom, ExprsA)
+    ;
         Expr0 = elds_fun(Clause0),
         erl_rename_vars_in_clause(Subn, Clause0, Clause),
         Expr = elds_fun(Clause)
@@ -348,6 +359,16 @@ erl_rename_vars_in_expr(Subn, Expr0, Expr) :-
         erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
         erl_rename_vars_in_cases(Subn, Cases0, Cases),
         Expr = elds_case_expr(ExprA, Cases)
+    ;
+        Expr0 = elds_try(ExprA0, Cases0, Catch0),
+        erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
+        erl_rename_vars_in_cases(Subn, Cases0, Cases),
+        erl_rename_vars_in_catch(Subn, Catch0, Catch),
+        Expr = elds_try(ExprA, Cases, Catch)
+    ;
+        Expr0 = elds_throw(ExprA0),
+        erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
+        Expr = elds_throw(ExprA)
     ).
 
 :- pred erl_rename_vars_in_terms(prog_var_renaming::in,
@@ -403,6 +424,101 @@ erl_rename_vars_in_case(Subn, Case0, Case) :-
     erl_rename_vars_in_term(Subn, Pattern0, Pattern),
     erl_rename_vars_in_expr(Subn, Expr0, Expr),
     Case = elds_case(Pattern, Expr).
+
+:- pred erl_rename_vars_in_catch(prog_var_renaming::in,
+    elds_catch::in, elds_catch::out) is det.
+
+erl_rename_vars_in_catch(Subn, Catch0, Catch) :-
+    Catch0 = elds_catch(PatternA0, PatternB0, Expr0),
+    erl_rename_vars_in_term(Subn, PatternA0, PatternA),
+    erl_rename_vars_in_term(Subn, PatternB0, PatternB),
+    erl_rename_vars_in_expr(Subn, Expr0, Expr),
+    Catch = elds_catch(PatternA, PatternB, Expr).
+
+%-----------------------------------------------------------------------------%
+
+:- func erl_exprs_size(list(elds_expr)) = int.
+
+erl_exprs_size(Exprs) = sum(list.map(erl_expr_size, Exprs)).
+
+erl_expr_size(Expr) = Size :-
+    (
+        Expr = elds_block(Exprs),
+        Size = erl_exprs_size(Exprs)
+    ;
+        Expr = elds_term(Term),
+        Size = erl_term_size(Term)
+    ;
+        Expr = elds_eq(ExprA, ExprB),
+        Size = erl_expr_size(ExprA) + erl_expr_size(ExprB)
+    ;
+        Expr = elds_unop(_Op, ExprA),
+        Size = erl_expr_size(ExprA)
+    ;
+        Expr = elds_binop(_Op, ExprA, ExprB),
+        Size = erl_expr_size(ExprA) + erl_expr_size(ExprB)
+    ;
+        Expr = elds_call(_PredProcId, Exprs),
+        Size = 1 + erl_exprs_size(Exprs)
+    ;
+        Expr = elds_call_ho(ExprA, ExprsB),
+        Size = 1 + erl_expr_size(ExprA) + erl_exprs_size(ExprsB)
+    ;
+        Expr = elds_call_builtin(_Atom, ExprsA),
+        Size = 1 + erl_exprs_size(ExprsA)
+    ;
+        Expr = elds_fun(elds_clause(Terms, ExprA)),
+        Size = 1 + erl_terms_size(Terms) + erl_expr_size(ExprA)
+    ;
+        Expr = elds_case_expr(ExprA, Cases),
+        Size = 1 + erl_expr_size(ExprA) + erl_cases_size(Cases)
+    ;
+        Expr = elds_try(ExprA, Cases, Catch),
+        Catch = elds_catch(TermA, TermB, CatchExpr),
+        Size = 1 + erl_expr_size(ExprA) + erl_cases_size(Cases) +
+            erl_term_size(TermA) + erl_term_size(TermB) +
+            erl_expr_size(CatchExpr)
+    ;
+        Expr = elds_throw(ExprA),
+        Size = 1 + erl_expr_size(ExprA)
+    ).
+
+:- func erl_terms_size(list(elds_term)) = int.
+
+erl_terms_size(Terms) = sum(list.map(erl_term_size, Terms)).
+
+:- func erl_term_size(elds_term) = int.
+
+erl_term_size(Term) = Size :-
+    (
+        ( Term = elds_int(_)
+        ; Term = elds_float(_)
+        ; Term = elds_string(_)
+        ; Term = elds_char(_)
+        ; Term = elds_atom_raw(_)
+        ; Term = elds_atom(_)
+        ; Term = elds_var(_)
+        ; Term = elds_anon_var
+        ),
+        Size = 1
+    ;
+        Term = elds_tuple(Exprs),
+        Size = 1 + erl_exprs_size(Exprs)
+    ).
+
+:- func erl_cases_size(list(elds_case)) = int.
+
+erl_cases_size(Cases) = 1 + sum(list.map(erl_case_size, Cases)).
+
+:- func erl_case_size(elds_case) = int.
+
+erl_case_size(Case) = Size :-
+    Case = elds_case(Pattern, Expr),
+    Size = 1 + erl_term_size(Pattern) + erl_expr_size(Expr).
+
+:- func sum(list(int)) = int.
+
+sum(Xs) = list.foldl(int.plus, Xs, 0).
 
 %-----------------------------------------------------------------------------%
 

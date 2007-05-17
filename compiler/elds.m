@@ -50,7 +50,6 @@
 :- type elds_defn
     --->    elds_defn(
                 defn_proc_id    :: pred_proc_id,
-                defn_arity      :: int,
                 defn_varset     :: prog_varset,
                 defn_clause     :: elds_clause
             ).
@@ -61,16 +60,70 @@
                 clause_expr     :: elds_expr
             ).
 
+    % An Erlang expression.
+    %
 :- type elds_expr
+
+            % begin Expr1, Expr2, ... end
+            %
     --->    elds_block(list(elds_expr))
+
+            % A term.
+            %
     ;       elds_term(elds_term)
-    ;       elds_eq(elds_expr, elds_expr)               % `='
+
+            % Expr = Expr
+            %
+    ;       elds_eq(elds_expr, elds_expr)
+
+            % A unary or binary operator expression.
+            %
     ;       elds_unop(elds_unop, elds_expr)
     ;       elds_binop(elds_binop, elds_expr, elds_expr)
-    ;       elds_call(pred_proc_id, list(elds_expr))    % input args
-    ;       elds_call_ho(elds_expr, list(elds_expr))    % input args
+
+            % A normal call.
+            % proc(Expr, ...)
+            %
+    ;       elds_call(pred_proc_id, list(elds_expr))
+
+            % A higher order call.
+            % Proc(Expr, ...)
+            %
+    ;       elds_call_ho(elds_expr, list(elds_expr))
+
+            % A call to a Erlang builtin.
+            % builtin(Expr, ...)
+            %
+    ;       elds_call_builtin(string, list(elds_expr))
+            
+            % fun(Args, ...) -> Expr end
+            % (We only use single clause functions.)
+            %
     ;       elds_fun(elds_clause)
-    ;       elds_case_expr(elds_expr, list(elds_case)).
+
+            % case Expr of
+            %   Pattern -> Expr,
+            %   ...
+            % end
+            %
+    ;       elds_case_expr(elds_expr, list(elds_case))
+
+            % try Expr of
+            %   Pattern -> Expr,
+            %   ...
+            % catch
+            %   Pattern:Pattern -> Expr
+            % end
+            %
+    ;       elds_try(
+                try_expr    :: elds_expr,
+                try_cases   :: list(elds_case),
+                try_catch   :: elds_catch
+            )
+
+            % throw(Expr)
+            %
+    ;       elds_throw(elds_expr).
 
 :- type elds_term
     --->    elds_char(char)
@@ -95,6 +148,9 @@
 
 :- type elds_case
     --->    elds_case(elds_term, elds_expr).
+
+:- type elds_catch
+    --->    elds_catch(elds_term, elds_term, elds_expr). 
 
 :- type elds_unop
     --->    plus
@@ -138,7 +194,13 @@
 :- func elds_true = elds_term.
 :- func elds_false = elds_term.
 :- func elds_fail = elds_term.
+:- func elds_throw_atom = elds_term.
 :- func elds_empty_tuple = elds_term.
+
+    % We implement commits by throwing Erlang exceptions with this
+    % distinguishing atom as the first element of the tuple.
+    %
+:- func elds_commit_marker = elds_expr.
 
 :- func term_from_var(prog_var) = elds_term.
 :- func terms_from_vars(prog_vars) = list(elds_term).
@@ -169,6 +231,12 @@
     %
 :- func expr_or_void(maybe(elds_expr)) = elds_expr.
 
+    % det_expr(MaybeExpr)
+    %
+    % Return Expr if MaybeExpr is `yes(Expr)', otherwise abort.
+    %
+:- func det_expr(maybe(elds_expr)) = elds_expr.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -181,7 +249,10 @@
 elds_true = elds_atom_raw("true").
 elds_false = elds_atom_raw("false").
 elds_fail = elds_atom_raw("fail").
+elds_throw_atom = elds_atom_raw("throw").
 elds_empty_tuple = elds_tuple([]).
+
+elds_commit_marker = elds_term(elds_atom_raw("MERCURY_COMMIT")).
 
 term_from_var(Var) = elds_var(Var).
 terms_from_vars(Vars) = list.map(term_from_var, Vars).
@@ -219,6 +290,10 @@ maybe_join_exprs(Expr, no) = Expr.
 
 expr_or_void(yes(Expr)) = Expr.
 expr_or_void(no) = elds_term(elds_atom_raw("void")).
+
+det_expr(yes(Expr)) = Expr.
+det_expr(no) = _ :-
+    unexpected(this_file, "det_expr: no expression").
 
 %-----------------------------------------------------------------------------%
 

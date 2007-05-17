@@ -116,30 +116,20 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
     erl_gen_construct(Var, ConsId, Args, ArgModes, Context, Construct, !Info),
     Statement = maybe_join_exprs(Construct, MaybeSuccessExpr).
 
-erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
+erl_gen_unification(Unification, _CodeModel, Context, MaybeSuccessExpr,
         Statement, !Info) :-
     Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail, _CanCGC),
     (
         CanFail = can_fail,
-        ExpectedCodeModel = model_semi,
+        SuccessExpr = det_expr(MaybeSuccessExpr),
         erl_gen_semidet_deconstruct(Var, ConsId, Args, ArgModes, Context,
-            MaybeSuccessExpr, Statement1, !Info)
+            SuccessExpr, Statement, !Info)
     ;
         CanFail = cannot_fail,
-        ExpectedCodeModel = model_det,
         erl_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
             Statement0, !Info),
-        Statement1 = maybe_join_exprs(Statement0, MaybeSuccessExpr)
-    ),
-
-    % In ml_unify_gen.m it's written:
-    % We used to require that CodeModel = ExpectedCodeModel. But the
-    % delds_terminism field in the goal_info is allowed to be a conservative
-    % approximation, so we need to handle the case were CodeModel is less
-    % precise than ExpectedCodeModel.
-    %
-    erl_gen_wrap_goal(CodeModel, ExpectedCodeModel, Context,
-        Statement1, Statement, !Info).
+        Statement = maybe_join_exprs(Statement0, MaybeSuccessExpr)
+    ).
 
 erl_gen_unification(complicated_unify(_, _, _), _, _, _, _, !Info) :-
     % Simplify.m should have converted these into procedure calls.
@@ -167,17 +157,11 @@ erl_gen_det_deconstruct(Var, ConsId, Args, _Modes, _Context, Statement,
     Statement = elds_eq(LHS, expr_from_var(Var)).
 
 :- pred erl_gen_semidet_deconstruct(prog_var::in, cons_id::in, prog_vars::in,
-    list(uni_mode)::in, prog_context::in, maybe(elds_expr)::in, elds_expr::out,
+    list(uni_mode)::in, prog_context::in, elds_expr::in, elds_expr::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,
-        MaybeSuccessExpr, Statement, !Info) :-
-    (
-        MaybeSuccessExpr = yes(SuccessExpr)
-    ;
-        MaybeSuccessExpr = no,
-        unexpected(this_file, "erl_gen_semidet_deconstruct: no success value")
-    ),
+        SuccessExpr, Statement, !Info) :-
     ( cons_id_to_term(ConsId, Args, Pattern0, !Info) ->
         Pattern = Pattern0
     ;
@@ -247,7 +231,7 @@ cons_id_to_expr(ConsId, Args, Expr, !Info) :-
         ; ConsId = table_io_decl(_)
         ),
         sorry(this_file,
-            "tabling and deep profiling not support on Erlang backend")
+            "tabling and deep profiling not supported on Erlang backend")
     ).
 
 :- pred pred_const_to_closure(shrouded_pred_proc_id::in, prog_vars::in,
@@ -259,6 +243,7 @@ pred_const_to_closure(ShroudedPredProcId, Args, FunExpr, !Info) :-
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     pred_info_get_arg_types(PredInfo, CalleeTypes),
     proc_info_get_argmodes(ProcInfo, ArgModes),
+    proc_info_interface_code_model(ProcInfo, CodeModel),
 
     % Create extra variables needed to complete the call to the procedure.
     NumExtraVars = list.length(CalleeTypes) - list.length(Args),
@@ -269,11 +254,26 @@ pred_const_to_closure(ShroudedPredProcId, Args, FunExpr, !Info) :-
         ArgModes, AllInputVars, OutputVars),
     InputExtraVars = list.delete_elems(AllExtraVars, OutputVars),
 
-    % (elds_fun(InputExtraVars, ...) -> Proc(AllInputVars, ...) end)
-    % where InputExtraVars are part of AllInputVars.
+    (
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
+        InputTerms = terms_from_vars(InputExtraVars),
+        CallArgs = exprs_from_vars(AllInputVars)
+    ;
+        CodeModel = model_non,
+        % One more extra variable is needed for the success continuation for
+        % model_non procedures.
+        erl_gen_info_new_named_var("Succeed", SucceedVar, !Info),
+        InputTerms = terms_from_vars(InputExtraVars ++ [SucceedVar]),
+        CallArgs = exprs_from_vars(AllInputVars ++ [SucceedVar])
+    ),
+
+    % FunExpr = ``fun(InputTerms, ...) -> Proc(CallArgs, ...) end''
+    % where InputTerms are part of CallArgs.
     %
-    FunExpr = elds_fun(elds_clause(terms_from_vars(InputExtraVars), Call)),
-    Call = elds_call(PredProcId, exprs_from_vars(AllInputVars)).
+    FunExpr = elds_fun(elds_clause(InputTerms, Call)),
+    Call = elds_call(PredProcId, CallArgs).
 
 %-----------------------------------------------------------------------------%
 
