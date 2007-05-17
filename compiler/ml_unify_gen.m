@@ -1312,6 +1312,8 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
+        ; Tag = shared_local_tag(_Bits1, _Num1)
+        ; Tag = reserved_address_tag(_)
         ),
         Statements = []
     ;
@@ -1329,39 +1331,16 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
             unexpected(this_file, "ml_code_gen: no_tag: arity != 1")
         )
     ;
-        Tag = single_functor_tag,
+        ( Tag = single_functor_tag
+        ; Tag = unshared_tag(_UnsharedTag)
+        ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag)
+        ),
         ml_gen_var(!.Info, Var, VarLval),
         ml_variable_types(!.Info, Args, ArgTypes),
         ml_field_names_and_types(!.Info, Type, ConsId, ArgTypes, Fields),
         ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum),
         ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
             VarLval, OffSet, ArgNum, Tag, Context, Statements, !Info)
-    ;
-        Tag = unshared_tag(_UnsharedTag),
-        ml_gen_var(!.Info, Var, VarLval),
-        ml_variable_types(!.Info, Args, ArgTypes),
-        ml_field_names_and_types(!.Info, Type, ConsId, ArgTypes, Fields),
-        ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum),
-        ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
-            VarLval, OffSet, ArgNum, Tag, Context, Statements, !Info)
-    ;
-        Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag),
-        ml_gen_var(!.Info, Var, VarLval),
-        ml_variable_types(!.Info, Args, ArgTypes),
-        ml_field_names_and_types(!.Info, Type, ConsId, ArgTypes, Fields),
-        ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum),
-        ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
-            VarLval, OffSet, ArgNum, Tag, Context, Statements, !Info)
-    ;
-        % For constants, if the deconstruction is det, then we already
-        % know the value of the constant, so Statements = [].
-        Tag = shared_local_tag(_Bits1, _Num1),
-        Statements = []
-    ;
-        % For constants, if the deconstruction is det, then we already
-        % know the value of the constant, so Statements = [].
-        Tag = reserved_address_tag(_),
-        Statements = []
     ;
         % For shared_with_reserved_address, the sharing is only important
         % for tag tests, not for det deconstructions, so here we just recurse
