@@ -54,8 +54,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Find all modules in the current directory which are reachable (by import)
-    % from the given module.
+    % Find all modules in the current directory which are reachable
+    % (by import or include) from the given module.
     %
 :- pred find_reachable_local_modules(module_name::in, bool::out,
     set(module_name)::out, make_info::in, make_info::out,
@@ -341,7 +341,7 @@ imports = combine_deps_list([
         module_target_short_interface `of` indirect_imports
     ]).
 
-:- func module_target_type `of` find_module_deps(module_name) =
+:- func of(module_target_type, find_module_deps(module_name)) =
     find_module_deps(dependency_file).
 :- mode in `of` in(find_module_deps) = out(find_module_deps) is det.
 
@@ -495,19 +495,11 @@ non_intermod_direct_imports(ModuleName, Success, Modules, !Info, !IO) :-
         % Find the direct imports of this module (modules for which we will
         % read the `.int' files).
         %
-        % Note that we need to do this both for the interface imports of
-        % this module and for the *implementation* imports of its ancestors.
-        % This is because if this module is defined in the implementation
-        % section of its parent, then the interface of this module may depend
-        % on things imported only by its parent's implementation.
+        % Note that we need to do this both for the imports of
+        % this module and for the imports of its ancestors.
+        % This is because if this module is a submodule, then it
+        % may depend on things imported only by its ancestors.
         %
-        % If this module was actually defined in the interface section of
-        % one of its ancestors, then it should only depend on the interface
-        % imports of that ancestor, so the dependencies added here are in fact
-        % more conservative than they need to be in that case. However, that
-        % should not be a major problem. (This duplicates how this is handled
-        % by modules.m).
-
         Modules0 = set.union(set.list_to_set(Imports ^ impl_deps),
             set.list_to_set(Imports ^ int_deps)),
         (
@@ -791,7 +783,8 @@ fact_table_files(ModuleName, Success, Files, !Info, !IO) :-
 
 :- type transitive_dependencies_type
     --->    interface_imports
-    ;       all_dependencies.       % including parents and children
+    ;       all_imports            % every import_module and use_module
+    ;       all_dependencies.      % all_imports plus every include_module
 
 :- type module_locn
     --->    local_module    % The source file for the module is in
@@ -813,7 +806,7 @@ find_reachable_local_modules(ModuleName, Success, Modules, !Info, !IO) :-
 
 find_transitive_implementation_imports(ModuleName, Success, Modules,
         !Info, !IO) :-
-    find_transitive_module_dependencies(all_dependencies, any_module,
+    find_transitive_module_dependencies(all_imports, any_module,
         ModuleName, Success, Modules0, !Info, !IO),
     Modules = set.insert(Modules0, ModuleName).
 
@@ -887,6 +880,16 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
                         Imports ^ impl_deps,
                         Imports ^ parent_deps,
                         Imports ^ children,
+                        get_foreign_imported_modules(
+                            Imports ^ foreign_import_modules)
+                        ])
+                ;
+                    DependenciesType = all_imports,
+                    ImportsToCheck =
+                        list.condense([
+                        Imports ^ int_deps,
+                        Imports ^ impl_deps,
+                        Imports ^ parent_deps,
                         get_foreign_imported_modules(
                             Imports ^ foreign_import_modules)
                         ])
