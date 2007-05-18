@@ -59,7 +59,6 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
-:- import_module erl_backend.erl_code_gen.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.

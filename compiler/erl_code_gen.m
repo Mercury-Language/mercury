@@ -25,7 +25,7 @@
 % - RTTI
 % - type classes
 % - many scope types not yet supported
-% - foreign code
+% - trace runtime conditions
 %
 %-----------------------------------------------------------------------------%
 
@@ -49,6 +49,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.foreign.
 :- import_module erl_backend.erl_call_gen.
 :- import_module erl_backend.erl_code_util.
 :- import_module erl_backend.erl_unify_gen.
@@ -60,14 +61,15 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module require.
 :- import_module set.
 :- import_module varset.
 
@@ -76,8 +78,32 @@
 
 erl_code_gen(ModuleInfo, ELDS, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
-    erl_gen_preds(ModuleInfo, Defns, !IO),
-    ELDS = elds(ModuleName, Defns).
+    erl_gen_preds(ModuleInfo, ProcDefns, !IO),
+    filter_erlang_foreigns(ModuleInfo, ForeignBodies, PragmaExports, !IO),
+    erl_gen_foreign_exports(ProcDefns, PragmaExports, ForeignExportDefns),
+    ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns).
+
+:- pred filter_erlang_foreigns(module_info::in, list(foreign_body_code)::out,
+    list(pragma_exported_proc)::out, io::di, io::uo) is det.
+
+filter_erlang_foreigns(ModuleInfo, ForeignBodies, PragmaExports, !IO) :-
+    globals.io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
+    ( BackendForeignLanguages = [lang_erlang] ->
+        true
+    ;
+        unexpected(this_file,
+            "erl_gen_foreign_code: foreign language other than Erlang")
+    ),
+    module_info_get_foreign_body_code(ModuleInfo, AllForeignBodys),
+    module_info_get_pragma_exported_procs(ModuleInfo, AllPragmaExports),
+    foreign.filter_bodys(lang_erlang, AllForeignBodys, RevForeignBodies,
+        _OtherForeignBodys),
+    foreign.filter_exports(lang_erlang, AllPragmaExports, RevPragmaExports,
+        _OtherForeignExports),
+    ForeignBodies = list.reverse(RevForeignBodies),
+    PragmaExports = list.reverse(RevPragmaExports).
+
+%-----------------------------------------------------------------------------%
 
 :- pred erl_gen_preds(module_info::in, list(elds_defn)::out, io::di, io::uo)
     is det.
@@ -399,13 +425,20 @@ erl_gen_goal_expr(switch(Var, CanFail, CasesList), CodeModel, InstMap,
 erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, InstMap, Context,
         MaybeSuccessExpr, Statement, !Info) :-
     (
-        ( ScopeReason = exist_quant(_)
-        ; ScopeReason = promise_solutions(_, _)
-        ; ScopeReason = promise_purity(_, _)
-        ; ScopeReason = barrier(_)
-        ; ScopeReason = trace_goal(_, _, _, _, _)
-        ),
-        sorry(this_file, "exotic scope type in erlang code generator")
+        ScopeReason = exist_quant(_),
+        sorry(this_file, "exist_quant scope in erlang code generator")
+    ;
+        ScopeReason = promise_solutions(_, _),
+        sorry(this_file, "promise_solutions scope in erlang code generator")
+    ;
+        ScopeReason = promise_purity(_, _),
+        sorry(this_file, "promise_purity scope in erlang code generator")
+    ;
+        ScopeReason = barrier(_),
+        sorry(this_file, "barrier scope in erlang code generator")
+    ;
+        ScopeReason = trace_goal(_, _, _, _, _),
+        sorry(this_file, "trace_goal scope in erlang code generator")
     ;
         ScopeReason = commit(_),
         erl_gen_commit(Goal, CodeModel, InstMap, Context,
@@ -481,10 +514,11 @@ erl_gen_goal_expr(unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
         Statement, !Info).
 
 erl_gen_goal_expr(
-        call_foreign_proc(_Attributes, _PredId, _ProcId, _Args, _ExtraArgs,
-            _MaybeTraceRuntimeCond, _PragmaImpl), _CodeModel, _InstMap,
-        _OuterContext, _MaybeSuccessExpr, _Statement, !_Info) :-
-    sorry(this_file, "call_foreign_proc in erlang backend").
+        call_foreign_proc(_Attributes, _PredId, _ProcId, Args, _ExtraArgs,
+            MaybeTraceRuntimeCond, PragmaImpl), CodeModel, _InstMap,
+        OuterContext, MaybeSuccessExpr, Statement, !Info) :-
+    erl_gen_foreign_code_call(Args, MaybeTraceRuntimeCond, PragmaImpl,
+        CodeModel, OuterContext, MaybeSuccessExpr, Statement, !Info).
 
 erl_gen_goal_expr(shorthand(_), _, _, _, _, _, !Info) :-
     % these should have been expanded out by now
@@ -708,7 +742,8 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr,
         %   model_non cond:
         %       <(Cond -> Then ; Else)>
         %   ===>
-        %       let PutAndThen = ``put(Ref, true), <Then>''
+        %
+        %       let PutAndThen = ``put(Ref, true), <Then && SUCCEED()>''
         %
         %       Ref = make_ref(),       /* defaults to `undefined' */
         %       <Cond && PutAndThen>
@@ -717,6 +752,9 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr,
         %           _    -> <Else>
         %       end,
         %       erase(Ref)
+        %
+        %   XXX need to ensure the erase(Ref) is done even if an exception is
+        %   thrown (e.g. by commit) by wrapping this with `try'
         %
 
         erl_gen_info_new_named_var("Ref", Ref, !Info),
@@ -1044,6 +1082,51 @@ erl_gen_disj([First | Rest], CodeModel, InstMap, Context, MaybeSuccessExpr,
             RestStatements, !Info),
 
         Statement = join_exprs(FirstStatement, RestStatements)
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for generating foreign exported procedures
+%
+
+:- pred erl_gen_foreign_exports(list(elds_defn)::in,
+    list(pragma_exported_proc)::in, list(elds_foreign_export_defn)::out)
+    is det.
+
+erl_gen_foreign_exports(ProcDefns, PragmaExports, ForeignExportDefns) :-
+    list.map(erl_gen_foreign_export_defn(ProcDefns), PragmaExports,
+        ForeignExportDefns).
+
+:- pred erl_gen_foreign_export_defn(list(elds_defn)::in,
+    pragma_exported_proc::in, elds_foreign_export_defn::out) is det.
+
+erl_gen_foreign_export_defn(ProcDefns, PragmaExport, ForeignExportDefn) :-
+    PragmaExport = pragma_exported_proc(_Lang, PredId, ProcId, Name, _Context),
+    PredProcId = proc(PredId, ProcId),
+    ( 
+        search_elds_defn(ProcDefns, PredProcId, TargetProc)
+    ->
+        TargetProc = elds_defn(_TargetPPId, _TargetVarSet, TargetClause),
+        Arity = elds_clause_arity(TargetClause),
+
+        % ``Name(Vars, ...) -> PredProcId(Vars, ...)''
+        varset.new_vars(varset.init, Arity, Vars, VarSet),
+        Clause = elds_clause(terms_from_vars(Vars),
+            elds_call(PredProcId, exprs_from_vars(Vars))),
+        ForeignExportDefn = elds_foreign_export_defn(Name, VarSet, Clause)
+    ;
+        unexpected(this_file,
+            "missing definition of foreign exported procedure")
+    ).
+
+:- pred search_elds_defn(list(elds_defn)::in, pred_proc_id::in,
+    elds_defn::out) is semidet.
+
+search_elds_defn([Defn0 | Defns], PredProcId, Defn) :-
+    ( Defn0 = elds_defn(PredProcId, _, _) ->
+        Defn = Defn0
+    ;
+        search_elds_defn(Defns, PredProcId, Defn)
     ).
 
 %-----------------------------------------------------------------------------%

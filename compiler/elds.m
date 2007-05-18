@@ -26,6 +26,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
 
 :- import_module char.
 :- import_module list.
@@ -39,10 +40,16 @@
 :- type elds
     --->    elds(
                 % The original Mercury module name.
-                elds_name       :: module_name,
+                elds_name           :: module_name,
+
+                % Code defined in Erlang.
+                elds_foreign_bodies :: list(foreign_body_code),
 
                 % Definitions of functions in the module.
-                elds_funcs      :: list(elds_defn)
+                elds_funcs          :: list(elds_defn),
+
+                % Definitions of foreign exported functions.
+                elds_fe_funcs       :: list(elds_foreign_export_defn)
             ).
 
     % Function definition.
@@ -52,6 +59,15 @@
                 defn_proc_id    :: pred_proc_id,
                 defn_varset     :: prog_varset,
                 defn_clause     :: elds_clause
+            ).
+
+    % Foreign exported function definition.
+    %
+:- type elds_foreign_export_defn
+    --->    elds_foreign_export_defn(
+                fe_defn_name    :: string,
+                fe_defn_varset  :: prog_varset,
+                fe_defn_clause  :: elds_clause
             ).
 
 :- type elds_clause
@@ -123,7 +139,10 @@
 
             % throw(Expr)
             %
-    ;       elds_throw(elds_expr).
+    ;       elds_throw(elds_expr)
+
+            % A piece of code to be embedded directly in the generated code.
+    ;       elds_foreign_code(string).
 
 :- type elds_term
     --->    elds_char(char)
@@ -140,8 +159,18 @@
             % generator.
 
     ;       elds_tuple(list(elds_expr))
+
     ;       elds_var(prog_var)
-    ;       elds_anon_var.
+
+    ;       elds_anon_var
+            % elds_anon_var is a convenience for cases where we need a dummy
+            % variable to fill out a pattern.
+
+    ;       elds_fixed_name_var(string).
+            % elds_fixed_name_var is used for communicating values to and from
+            % code written in a foreign language.  In this case we have no
+            % choice but to use the variable names expected by the foreign code
+            % snippet.
 
 % XXX we should use insts (or some other method) to restrict expressions in
 % tuples to be terms, if the tuple is going to be used in a pattern.
@@ -204,8 +233,12 @@
 
 :- func term_from_var(prog_var) = elds_term.
 :- func terms_from_vars(prog_vars) = list(elds_term).
+
 :- func expr_from_var(prog_var) = elds_expr.
 :- func exprs_from_vars(prog_vars) = list(elds_expr).
+
+:- func terms_from_fixed_vars(list(string)) = list(elds_term).
+:- func exprs_from_fixed_vars(list(string)) = list(elds_expr).
 
     % Convert an expression to a term, aborting on failure.
     %
@@ -237,6 +270,8 @@
     %
 :- func det_expr(maybe(elds_expr)) = elds_expr.
 
+:- func elds_clause_arity(elds_clause) = arity.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -259,6 +294,11 @@ terms_from_vars(Vars) = list.map(term_from_var, Vars).
 
 expr_from_var(Var) = elds_term(elds_var(Var)).
 exprs_from_vars(Vars) = list.map(expr_from_var, Vars).
+
+terms_from_fixed_vars(Names) =
+    list.map(func(X) = elds_fixed_name_var(X), Names).
+exprs_from_fixed_vars(Names) =
+    list.map(func(X) = elds_term(elds_fixed_name_var(X)), Names).
 
 expr_to_term(Expr) = Term :-
     ( Expr = elds_term(Term0) ->
@@ -294,6 +334,8 @@ expr_or_void(no) = elds_term(elds_atom_raw("void")).
 det_expr(yes(Expr)) = Expr.
 det_expr(no) = _ :-
     unexpected(this_file, "det_expr: no expression").
+
+elds_clause_arity(elds_clause(Args, _Expr)) = list.length(Args).
 
 %-----------------------------------------------------------------------------%
 

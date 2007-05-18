@@ -369,6 +369,9 @@ erl_rename_vars_in_expr(Subn, Expr0, Expr) :-
         Expr0 = elds_throw(ExprA0),
         erl_rename_vars_in_expr(Subn, ExprA0, ExprA),
         Expr = elds_throw(ExprA)
+    ;
+        Expr0 = elds_foreign_code(_),
+        Expr = Expr0
     ).
 
 :- pred erl_rename_vars_in_terms(prog_var_renaming::in,
@@ -389,6 +392,7 @@ erl_rename_vars_in_term(Subn, Term0, Term) :-
         ; Term0 = elds_atom_raw(_)
         ; Term0 = elds_atom(_)
         ; Term0 = elds_anon_var
+        ; Term0 = elds_fixed_name_var(_)
         ),
         Term = Term0
     ;
@@ -481,6 +485,10 @@ erl_expr_size(Expr) = Size :-
     ;
         Expr = elds_throw(ExprA),
         Size = 1 + erl_expr_size(ExprA)
+    ;
+        Expr = elds_foreign_code(_),
+        % Arbitrary number.
+        Size = 10000
     ).
 
 :- func erl_terms_size(list(elds_term)) = int.
@@ -499,6 +507,7 @@ erl_term_size(Term) = Size :-
         ; Term = elds_atom(_)
         ; Term = elds_var(_)
         ; Term = elds_anon_var
+        ; Term = elds_fixed_name_var(_)
         ),
         Size = 1
     ;

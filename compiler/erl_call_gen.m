@@ -60,6 +60,13 @@
 :- pred erl_gen_cast(prog_context::in, prog_vars::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
+    % Generate ELDS code for a call to foreign code.
+    %
+:- pred erl_gen_foreign_code_call(list(foreign_arg)::in,
+    maybe(trace_expr(trace_runtime))::in, pragma_foreign_code_impl::in,
+    code_model::in, prog_context::in, maybe(elds_expr)::in,
+    elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -70,7 +77,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.compiler_util.
 
-:- import_module term.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 %
@@ -304,15 +311,20 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
 erl_gen_simple_expr(leaf(Var)) = elds.expr_from_var(Var).
 erl_gen_simple_expr(int_const(Int)) = elds_term(elds_int(Int)).
 erl_gen_simple_expr(float_const(Float)) = elds_term(elds_float(Float)).
-erl_gen_simple_expr(unary(_Op, _Expr)) = _ :-
-    sorry(this_file, "erl_gen_simple_expr: unary op").
+erl_gen_simple_expr(unary(StdOp, Expr0)) = Expr :-
+    ( std_unop_to_elds(StdOp, Op) ->
+        SimpleExpr = erl_gen_simple_expr(Expr0),
+        Expr = elds_unop(Op, SimpleExpr)
+    ;
+        sorry(this_file, "unary builtin not supported on erlang target")
+    ).
 erl_gen_simple_expr(binary(StdOp, Expr1, Expr2)) = Expr :-
     ( std_binop_to_elds(StdOp, Op) ->
         SimpleExpr1 = erl_gen_simple_expr(Expr1),
         SimpleExpr2 = erl_gen_simple_expr(Expr2),
         Expr = elds_binop(Op, SimpleExpr1, SimpleExpr2)
     ;
-        sorry(this_file, "builtin not supported on erlang target")
+        sorry(this_file, "binary builtin not supported on erlang target")
     ).
 
 :- pred std_unop_to_elds(unary_op::in, elds_unop::out) is semidet.
@@ -366,6 +378,149 @@ std_binop_to_elds(float_lt, elds.(<)).
 std_binop_to_elds(float_gt, elds.(>)).
 std_binop_to_elds(float_le, elds.(=<)).
 std_binop_to_elds(float_ge, elds.(>=)).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for foreign code calls
+%
+
+% Currently dummy arguments do not exist at all.  The writer of the foreign
+% proc must not reference dummy input variables and should not bind dummy
+% output variables (it causes unused variable warnings from the Erlang
+% compiler).  To avoid warnings from the Mercury compiler about arguments not
+% appearing in the foreign proc, they must be named with an underscore.
+%
+% Materialising dummy input variables would not be a good idea unless
+% unused variable warnings were switched off in the Erlang compiler.
+
+erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
+        PragmaImpl, CodeModel, _OuterContext, MaybeSuccessExpr, Statement,
+        !Info) :-
+    (
+        MaybeTraceRuntimeCond = yes(_),
+        sorry(this_file, "trace runtime conditions in Erlang backend")
+    ;
+        MaybeTraceRuntimeCond = no
+    ),
+    (
+        PragmaImpl = fc_impl_ordinary(ForeignCode, _Context),
+        %
+        % In the following, F<n> are input variables to the foreign code (with
+        % fixed names), and G<n> are output variables from the foreign code
+        % (also with fixed names).  The variables V<n> are input variables and
+        % have arbitrary names.  We introduce variables with fixed names using
+        % a lambda function rather than direct assignments in case a single
+        % procedure makes calls to two pieces of foreign code which use the
+        % same fixed names (this can happen due to inlining).
+        %
+        % We generate code for calls to model_det foreign code like this:
+        %
+        %   (fun(F1, F2, ...) ->
+        %       <foreign code>,
+        %       {G1, G2, ...}
+        %   )(V1, V2, ...).
+        %
+        % We generate code for calls to model_semi foreign code like this:
+        %
+        %   (fun(F1, F2, ...) ->
+        %       <foreign code>,
+        %       case SUCCESS_INDICATOR of
+        %           true ->
+        %               {G1, G2, ...};
+        %           false ->
+        %               fail
+        %       end
+        %   )(V1, V2, ...)
+        %
+        % where `SUCCESS_INDICATOR' is a variable that should be set in the
+        % foreign code snippet to `true' or `false'.
+        %
+
+        % Separate the foreign call arguments into inputs and outputs.
+        erl_gen_info_get_module_info(!.Info, ModuleInfo),
+        list.map2(foreign_arg_type_mode, ForeignArgs, ArgTypes, ArgModes),
+        erl_gen_arg_list(ModuleInfo, ForeignArgs, ArgTypes, ArgModes,
+            InputForeignArgs, OutputForeignArgs),
+
+        % Get the variables involved in the call and their fixed names.
+        InputVars = list.map(foreign_arg_var, InputForeignArgs),
+        OutputVars = list.map(foreign_arg_var, OutputForeignArgs),
+        InputVarsNames = list.map(foreign_arg_name, InputForeignArgs),
+        OutputVarsNames = list.map(foreign_arg_name, OutputForeignArgs),
+
+        ForeignCodeExpr = elds_foreign_code(ForeignCode),
+        OutputTuple = elds_term(elds_tuple(
+            exprs_from_fixed_vars(OutputVarsNames))),
+
+        % Create the inner lambda function.
+        (
+            CodeModel = model_det,
+            %
+            %   <ForeignCodeExpr>,
+            %   {Outputs, ...}
+            %
+            InnerFunStatement = join_exprs(ForeignCodeExpr, OutputTuple)
+        ;
+            CodeModel = model_semi,
+            %
+            %   <ForeignCodeExpr>,
+            %   case SUCCESS_INDICATOR of
+            %       true -> {Outputs, ...};
+            %       false -> fail
+            %   end
+            %
+            InnerFunStatement = join_exprs(ForeignCodeExpr, MaybePlaceOutputs),
+            MaybePlaceOutputs = elds_case_expr(SuccessInd, [OnTrue, OnFalse]),
+            SuccessInd = elds_term(elds_fixed_name_var("SUCCESS_INDICATOR")),
+            OnTrue = elds_case(elds_true, OutputTuple),
+            OnFalse = elds_case(elds_false, elds_term(elds_fail))
+        ;
+            CodeModel = model_non,
+            sorry(this_file, "model_non foreign_procs in Erlang backend")
+        ),
+        InnerFun = elds_fun(elds_clause(terms_from_fixed_vars(InputVarsNames),
+            InnerFunStatement)),
+
+        % Call the inner function with the input variables.
+        CallInner = elds_call_ho(InnerFun, exprs_from_vars(InputVars)),
+        (
+            CodeModel = model_det,
+            make_det_call(CallInner, OutputVars, MaybeSuccessExpr, Statement)
+        ;
+            CodeModel = model_semi,
+            SuccessExpr = det_expr(MaybeSuccessExpr),
+            make_semidet_call(CallInner, OutputVars, SuccessExpr, Statement)
+        )
+    ;
+        PragmaImpl = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
+        sorry(this_file, "erl_gen_goal_expr: fc_impl_model_non")
+    ;
+        PragmaImpl = fc_impl_import(_, _, _, _),
+        sorry(this_file, "erl_gen_goal_expr: fc_impl_import")
+    ).
+
+:- pred foreign_arg_type_mode(foreign_arg::in, mer_type::out, mer_mode::out)
+    is det.
+
+foreign_arg_type_mode(foreign_arg(_, MaybeNameMode, Type, _), Type, Mode) :-
+    (
+        MaybeNameMode = yes(_Name - Mode)
+    ;
+        MaybeNameMode = no,
+        % This argument is unused.
+        Mode = (free -> free)
+    ).
+
+:- func foreign_arg_name(foreign_arg) = string.
+
+foreign_arg_name(foreign_arg(_, MaybeNameMode, _, _)) = Name :-
+    (
+        MaybeNameMode = yes(Name - _)
+    ;
+        MaybeNameMode = no,
+        % This argument is unused.
+        Name = "_"
+    ).
 
 %-----------------------------------------------------------------------------%
 

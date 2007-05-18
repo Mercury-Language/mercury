@@ -401,12 +401,11 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
             ;
                 % Emit a warning about using pragma foreign_export with
                 % a foreign language that is not supported.
-                % XXX That's currently all of them except C and IL.
+                % XXX That's currently all of them except C, IL and Erlang.
                 (
                     ( Lang = lang_java
                     ; Lang = lang_csharp
                     ; Lang = lang_managed_cplusplus
-                    ; Lang = lang_erlang
                     ),
                     Pieces = [words("Warning:"),
                         fixed("`:- pragma foreign_export' declarations"),
@@ -419,6 +418,7 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
                 ;
                     ( Lang = lang_c
                     ; Lang = lang_il
+                    ; Lang = lang_erlang
                     )
                 ),
 

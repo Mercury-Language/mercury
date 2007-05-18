@@ -50,6 +50,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
@@ -67,7 +68,7 @@
 %-----------------------------------------------------------------------------%
 
 output_elds(ModuleInfo, ELDS, !IO) :-
-    ELDS = elds(ModuleName, _),
+    ELDS = elds(ModuleName, _, _, _),
     %
     % The Erlang interactive shell doesn't like "." in filenames so we use "__"
     % instead.
@@ -80,7 +81,9 @@ output_elds(ModuleInfo, ELDS, !IO) :-
 :- pred output_erl_file(module_info::in, elds::in, string::in,
     io::di, io::uo) is det.
 
-output_erl_file(ModuleInfo, elds(ModuleName, Defns), SourceFileName, !IO) :-
+output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
+    ELDS = elds(ModuleName, ForeignBodies, ProcDefns, ForeignExportDefns),
+
     % Output intro.
     library.version(Version),
     io.write_strings([
@@ -99,21 +102,28 @@ output_erl_file(ModuleInfo, elds(ModuleName, Defns), SourceFileName, !IO) :-
     io.write_string(").\n", !IO),
 
     io.write_string("-export([", !IO),
-    output_exports(ModuleInfo, Defns, no, !IO),
+    list.foldl2(output_export_ann(ModuleInfo), ProcDefns, no, NeedComma, !IO),
+    list.foldl2(output_foreign_export_ann, ForeignExportDefns, NeedComma, _,
+        !IO),
     io.write_string("]).\n", !IO),
 
     % Useful for debugging.
     io.write_string("% -compile(export_all).\n", !IO),
 
-    list.foldl(output_defn(ModuleInfo), Defns, !IO).
+    % Output foreign code written in Erlang.
+    list.foldl(output_foreign_body_code, ForeignBodies, !IO),
+
+    % Output function definitions.
+    list.foldl(output_defn(ModuleInfo), ProcDefns, !IO),
+    list.foldl(output_foreign_export_defn(ModuleInfo), ForeignExportDefns,
+        !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_exports(module_info::in, list(elds_defn)::in, bool::in,
-    io::di, io::uo) is det.
+:- pred output_export_ann(module_info::in, elds_defn::in,
+    bool::in, bool::out, io::di, io::uo) is det.
 
-output_exports(_ModuleInfo, [], _NeedComma, !IO).
-output_exports(ModuleInfo, [Defn | Defns], NeedComma, !IO) :-
+output_export_ann(ModuleInfo, Defn, !NeedComma, !IO) :-
     Defn = elds_defn(PredProcId, _, Clause),
     PredProcId = proc(PredId, _ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -121,25 +131,32 @@ output_exports(ModuleInfo, [Defn | Defns], NeedComma, !IO) :-
     IsExported = status_is_exported(ImportStatus),
     (
         IsExported = yes,
-        (
-            NeedComma = yes,
-            io.write_char(',', !IO)
-        ;
-            NeedComma = no
-        ),
+        maybe_write_comma(!.NeedComma, !IO),
         nl_indent_line(1, !IO),
         output_pred_proc_id(ModuleInfo, PredProcId, !IO),
         io.write_char('/', !IO),
         io.write_int(elds_clause_arity(Clause), !IO),
-        output_exports(ModuleInfo, Defns, yes, !IO)
+        !:NeedComma = yes
     ;
-        IsExported = no,
-        output_exports(ModuleInfo, Defns, NeedComma, !IO)
+        IsExported = no
     ).
 
-:- func elds_clause_arity(elds_clause) = arity.
+:- pred output_foreign_export_ann(elds_foreign_export_defn::in,
+    bool::in, bool::out, io::di, io::uo) is det.
 
-elds_clause_arity(elds_clause(Args, _Expr)) = list.length(Args).
+output_foreign_export_ann(ForeignExportDefn, NeedComma, yes, !IO) :-
+    ForeignExportDefn = elds_foreign_export_defn(ExportedName, _, Clause),
+    maybe_write_comma(NeedComma, !IO),
+    nl_indent_line(1, !IO),
+    output_atom(ExportedName, !IO),
+    io.write_char('/', !IO),
+    io.write_int(elds_clause_arity(Clause), !IO).
+
+:- pred output_foreign_body_code(foreign_body_code::in, io::di, io::uo) is det.
+
+output_foreign_body_code(foreign_body_code(_Lang, Code, _Context), !IO) :-
+    io.write_string(Code, !IO),
+    io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -147,6 +164,21 @@ output_defn(ModuleInfo, Defn, !IO) :-
     Defn = elds_defn(PredProcId, VarSet, Clause),
     io.nl(!IO),
     output_pred_proc_id(ModuleInfo, PredProcId, !IO),
+    output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO).
+
+:- pred output_foreign_export_defn(module_info::in,
+    elds_foreign_export_defn::in, io::di, io::uo) is det.
+
+output_foreign_export_defn(ModuleInfo, ForeignExportDefn, !IO) :-
+    ForeignExportDefn = elds_foreign_export_defn(Name, VarSet, Clause),
+    io.nl(!IO),
+    output_atom(Name, !IO),
+    output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO).
+
+:- pred output_toplevel_clause(module_info::in, prog_varset::in,
+    elds_clause::in, io::di, io::uo) is det.
+
+output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO) :-
     Indent = 0,
     output_clause(ModuleInfo, VarSet, Indent, Clause, !IO),
     io.write_string(".\n", !IO).
@@ -284,6 +316,11 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
         io.write_string("throw(", !IO),
         output_expr(ModuleInfo, VarSet, Indent, ExprA, !IO),
         io.write_string(")", !IO)
+    ;
+        Expr = elds_foreign_code(Code),
+        nl(!IO),
+        io.write_string(Code, !IO),
+        nl_indent_line(Indent, !IO)
     ).
 
 :- pred output_case(module_info::in, prog_varset::in, indent::in,
@@ -358,6 +395,9 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
     ;
         Term = elds_anon_var,
         io.write_string("_ ", !IO)
+    ;
+        Term = elds_fixed_name_var(Name),
+        output_var_string(Name, !IO)
     ).
 
 :- pred output_tuple(module_info::in, prog_varset::in, indent::in,
@@ -399,11 +439,14 @@ elds_tuple = elds_term(elds_atom(unqualified("{}"))).
 output_var(VarSet, Var, !IO) :-
     varset.lookup_name(VarSet, Var, VarName),
     term.var_to_int(Var, VarNumber),
+    output_var_string(VarName ++ "_" ++ string.from_int(VarNumber), !IO).
+
+:- pred output_var_string(string::in, io::di, io::uo) is det.
+
+output_var_string(String, !IO) :-
     % XXX this assumes all Mercury variable names are a subset of Erlang
     % variable names
-    io.write_string(VarName, !IO),
-    io.write_char('_', !IO),
-    io.write_int(VarNumber, !IO),
+    io.write_string(String, !IO),
     space(!IO).
 
 :- pred output_pred_proc_id(module_info::in, pred_proc_id::in,
@@ -723,6 +766,12 @@ indent_line(N, !IO) :-
 
 space(!IO) :-
     io.write_char(' ', !IO).
+
+:- pred maybe_write_comma(bool::in, io::di, io::uo) is det.
+
+maybe_write_comma(no, !IO).
+maybe_write_comma(yes, !IO) :-
+    io.write_char(',', !IO).
 
 %-----------------------------------------------------------------------------%
 
