@@ -12,7 +12,7 @@
 	  ].
 :-instance constrainable(date). 
 :-instance constrainable(code). 
-:-instance constrainable(field(T,T2)).
+:-instance constrainable(field(T,T2)) <= (constrainable(T),constrainable(T2)).
 
 :-pred get_date_date(int::out,int::out,int::out,date::in) is det.
 

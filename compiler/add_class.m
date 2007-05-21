@@ -108,7 +108,8 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
             ClassInterface = Interface
         ),
         (
-            \+ superclass_constraints_are_identical(OldVars, OldVarSet,
+            % Check that the superclass constraints are identical
+            \+ constraints_are_identical(OldVars, OldVarSet,
                 OldConstraints, Vars, VarSet, Constraints)
         ->
             % Always report the error, even in `.opt' files.
@@ -218,11 +219,11 @@ get_list_index([E | Es], N, X) =
         get_list_index(Es, N + 1, X)
     ).
 
-:- pred superclass_constraints_are_identical(list(tvar)::in, tvarset::in,
+:- pred constraints_are_identical(list(tvar)::in, tvarset::in,
     list(prog_constraint)::in, list(tvar)::in, tvarset::in,
     list(prog_constraint)::in) is semidet.
 
-superclass_constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
+constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
         Vars, VarSet, Constraints) :-
     tvarset_merge_renaming(VarSet, OldVarSet, _, Renaming),
     apply_variable_renaming_to_prog_constraint_list(Renaming, OldConstraints0,
@@ -461,8 +462,12 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
         NewInstanceDefn = hlds_instance_defn(InstanceModuleName, Status,
             Context, Constraints, Types, Body, no, VarSet, Empty),
         map.lookup(Instances0, ClassId, InstanceDefns),
+
         check_for_overlapping_instances(NewInstanceDefn, InstanceDefns,
             ClassId, !Specs),
+        check_instance_compatibility(NewInstanceDefn, InstanceDefns,
+            ClassId, !Specs),
+
         map.det_update(Instances0, ClassId,
             [NewInstanceDefn | InstanceDefns], Instances),
         module_info_set_instance_table(Instances, !ModuleInfo)
@@ -509,6 +514,93 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
+
+    %
+    % If two instance declarations are about the same type, then
+    % the declarations must be compatible.  This consists of checking
+    % that the constraints are identical.
+    % In other words, the abstract declaration must match the 
+    % concrete definition.
+    %
+:- pred check_instance_compatibility(hlds_instance_defn::in,
+    list(hlds_instance_defn)::in, class_id::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_instance_compatibility(InstanceDefn, InstanceDefns, ClassId, !Specs) :-
+    list.filter(same_type_hlds_instance_defn(InstanceDefn),
+        InstanceDefns, EquivInstanceDefns),
+    list.foldl(check_instance_constraints(InstanceDefn, ClassId),
+        EquivInstanceDefns, !Specs).
+
+:- pred check_instance_constraints(hlds_instance_defn::in,
+    class_id::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
+    type_vars_list(InstanceDefnA ^ instance_types, TVarsA),
+    TVarsetA = InstanceDefnA ^ instance_tvarset,
+    ConstraintsA = InstanceDefnA ^ instance_constraints,
+
+    type_vars_list(InstanceDefnB ^ instance_types, TVarsB),
+    TVarsetB = InstanceDefnB ^ instance_tvarset,
+    ConstraintsB = InstanceDefnB ^ instance_constraints,
+
+    (
+        constraints_are_identical(TVarsA, TVarsetA, ConstraintsA,
+            TVarsB, TVarsetB, ConstraintsB)
+    ->
+        true
+    ;
+        ClassId = class_id(Name, ClassArity),
+        ContextA = InstanceDefnA ^ instance_context, 
+        
+        TxtA = [words("In instance declaration for class "),
+            sym_name_and_arity(Name / ClassArity), nl,
+            words("instance constraints are incompatible with")],
+        MsgA = simple_msg(ContextA, [always(TxtA)]),
+
+        ContextB = InstanceDefnB ^ instance_context,
+        TxtB = [words("instance constraints here.")],
+        MsgB = simple_msg(ContextB, [always(TxtB)]),
+
+        Spec = error_spec(severity_error,
+            phase_parse_tree_to_hlds, [MsgA, MsgB]),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+    %
+    % Do two hlds_instance_defn refer to the same type?
+    % eg "instance tc(f(T))" compares equal to "instance tc(f(U))"
+    % 
+    % Note we don't check that the constraints of the declarations are the
+    % same.
+    %
+:- pred same_type_hlds_instance_defn(hlds_instance_defn::in,
+    hlds_instance_defn::in) is semidet.
+
+same_type_hlds_instance_defn(InstanceDefnA, InstanceDefnB) :-
+    TypesA = InstanceDefnA ^ instance_types,
+    TypesB0 = InstanceDefnB ^ instance_types,
+
+    VarSetA = InstanceDefnA ^ instance_tvarset,
+    VarSetB = InstanceDefnB ^ instance_tvarset,
+
+        % Rename the two lists of types apart.
+    tvarset_merge_renaming(VarSetA, VarSetB, _NewVarSet, RenameApart),
+    apply_variable_renaming_to_type_list(RenameApart, TypesB0, TypesB1),
+
+    type_vars_list(TypesA, TVarsA),
+    type_vars_list(TypesB1, TVarsB),
+
+        % If the lengths are different they can't be the same type.
+    list.length(TVarsA, L),
+    list.length(TVarsB, L),
+
+    map.from_corresponding_lists(TVarsB, TVarsA, Renaming),
+    apply_variable_renaming_to_type_list(Renaming, TypesB1, TypesB),
+
+    TypesA = TypesB.
+    
 do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         ArgTypes, Markers, Context, Status, ClausesInfo, !ModuleInfo,
         !QualInfo, !Specs) :-

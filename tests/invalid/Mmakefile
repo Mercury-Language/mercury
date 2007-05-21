@@ -102,6 +102,7 @@ SINGLEMODULE= \
 	ho_unique_error \
 	illtyped_compare \
 	impure_method_impl \
+	incompatible_instance_constraints \
 	inconsistent_instances \
 	inline_conflict \
 	inst_list_dup \

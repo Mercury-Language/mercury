@@ -58,7 +58,7 @@
 :- instance int_solver(cint).
 
 :- type list(T) ---> [] ; [T | list(T)].
-:- instance eq(list(T)).
+:- instance eq(list(T)) <= eq(T).
 
 :- type arc ---> arc(int, int).
 :- instance eq(arc).

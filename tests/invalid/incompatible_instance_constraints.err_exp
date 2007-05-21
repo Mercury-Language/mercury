@@ -1,0 +1,15 @@
+incompatible_instance_constraints.m:026: In instance declaration for class
+incompatible_instance_constraints.m:026:   `incompatible_instance_constraints.tc1'/1
+incompatible_instance_constraints.m:026:   instance constraints are
+incompatible_instance_constraints.m:026:   incompatible with
+incompatible_instance_constraints.m:014:   instance constraints here.
+incompatible_instance_constraints.m:027: In instance declaration for class
+incompatible_instance_constraints.m:027:   `incompatible_instance_constraints.tc1'/1
+incompatible_instance_constraints.m:027:   instance constraints are
+incompatible_instance_constraints.m:027:   incompatible with
+incompatible_instance_constraints.m:017:   instance constraints here.
+incompatible_instance_constraints.m:028: In instance declaration for class
+incompatible_instance_constraints.m:028:   `incompatible_instance_constraints.tc1'/1
+incompatible_instance_constraints.m:028:   instance constraints are
+incompatible_instance_constraints.m:028:   incompatible with
+incompatible_instance_constraints.m:018:   instance constraints here.
