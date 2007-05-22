@@ -1296,7 +1296,7 @@ classify_rtti_datas_to_decl([], !GroupMap).
 classify_rtti_datas_to_decl([RttiData | RttiDatas], !GroupMap) :-
     ( RttiData = rtti_data_pseudo_type_info(type_var(_)) ->
         % These just get represented as integers, so we don't need to declare
-        % them. Also rtti_data_to_name/3 does not handle this case.
+        % them. Also rtti_data_to_id/3 does not handle this case.
         true
     ;
         rtti_data_to_id(RttiData, RttiId),
@@ -1380,7 +1380,7 @@ output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
 output_rtti_data_decl(RttiData, !DeclSet, !IO) :-
     ( RttiData = rtti_data_pseudo_type_info(type_var(_)) ->
         % These just get represented as integers, so we don't need to declare
-        % them. Also rtti_data_to_name/3 does not handle this case.
+        % them. Also rtti_data_to_id/3 does not handle this case.
         true
     ;
         rtti_data_to_id(RttiData, RttiId),
@@ -1631,7 +1631,7 @@ output_rtti_data_decls(RttiData, FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
     ( RttiData = rtti_data_pseudo_type_info(type_var(_)) ->
         % These just get represented as integers, so we don't need to declare
-        % them. Also rtti_data_to_name/3 does not handle this case.
+        % them. Also rtti_data_to_id/3 does not handle this case.
         true
     ;
         rtti_data_to_id(RttiData, RttiId),
@@ -1698,7 +1698,7 @@ output_cast_addr_of_rtti_data(Cast, RttiData, !IO) :-
 
 output_addr_of_rtti_data(RttiData, !IO) :-
     ( RttiData = rtti_data_pseudo_type_info(type_var(VarNum)) ->
-        % rtti_data_to_name/3 does not handle this case
+        % rtti_data_to_id/3 does not handle this case
         io.write_int(VarNum, !IO)
     ;
         rtti_data_to_id(RttiData, RttiId),

@@ -106,7 +106,7 @@ mlds_defn_is_potentially_duplicated(MLDS_Defn) :-
 rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
     ( RttiData = rtti_data_pseudo_type_info(type_var(_)) ->
         % These just get represented as integers, so we don't need to define
-        % a structure for them; which is why rtti_data_to_name/3 does not
+        % a structure for them; which is why rtti_data_to_id/3 does not
         % handle this case.
         MLDS_Defns = []
     ;
@@ -1131,7 +1131,7 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
     (
         RttiData = rtti_data_pseudo_type_info(type_var(VarNum))
     ->
-        % rtti_data_to_name/3 does not handle this case
+        % rtti_data_to_id/3 does not handle this case
         SrcType = mlds_native_int_type,
         Initializer = init_obj(unop(gen_cast(SrcType, DestType),
             const(mlconst_int(VarNum))))
