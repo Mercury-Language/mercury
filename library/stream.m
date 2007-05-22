@@ -115,7 +115,7 @@
 %
    
     % An output stream is a destination for data.
-    % Note that unlike input streams, output stream do not include
+    % Note that unlike input streams, output streams do not include
     % an explicit error type.  They should handle errors by throwing
     % exceptions.
     %
