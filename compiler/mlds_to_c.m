@@ -1970,12 +1970,18 @@ mlds_output_name(entity_export(Name), !IO) :-
 :- pred mlds_output_pred_label(mlds_pred_label::in, io::di, io::uo) is det.
 
 mlds_output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-        Name, Arity, _CodeModel, _NonOutputFunc), !IO) :-
-    ( PredOrFunc = pf_predicate, Suffix = "p"
-    ; PredOrFunc = pf_function, Suffix = "f"
+        Name, PredArity, _CodeModel, _NonOutputFunc), !IO) :-
+    (
+        PredOrFunc = pf_predicate,
+        Suffix = "p",
+        OrigArity = PredArity 
+    ;
+        PredOrFunc = pf_function,
+        Suffix = "f",
+        OrigArity = PredArity - 1
     ),
     MangledName = name_mangle(Name),
-    io.format("%s_%d_%s", [s(MangledName), i(Arity), s(Suffix)], !IO),
+    io.format("%s_%d_%s", [s(MangledName), i(OrigArity), s(Suffix)], !IO),
     (
         MaybeDefiningModule = yes(DefiningModule),
         io.write_string("_in__", !IO),
@@ -2006,12 +2012,19 @@ mlds_output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule,
 :- func mlds_pred_label_to_string(mlds_pred_label) = string.
 
 mlds_pred_label_to_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-        Name, Arity, _CodeModel, _NonOutputFunc)) = Str :-
-    ( PredOrFunc = pf_predicate, Suffix = "p"
-    ; PredOrFunc = pf_function, Suffix = "f"
+        Name, PredArity, _CodeModel, _NonOutputFunc)) = Str :-
+    (
+        PredOrFunc = pf_predicate,
+        Suffix = "p",
+        OrigArity = PredArity
+    ;
+        PredOrFunc = pf_function,
+        Suffix = "f",
+        OrigArity = PredArity - 1
     ),
     MangledName = name_mangle(Name),
-    MainStr = string.format("%s_%d_%s", [s(MangledName), i(Arity), s(Suffix)]),
+    MainStr = string.format("%s_%d_%s",
+        [s(MangledName), i(OrigArity), s(Suffix)]),
     (
         MaybeDefiningModule = yes(DefiningModule),
         Str = MainStr ++ "_in__" ++ sym_name_mangle(DefiningModule)
