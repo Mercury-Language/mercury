@@ -218,7 +218,7 @@ case $HOST in
 	# test things at different optimization levels...
 
 	$ROTD_HOST|jupiter)
-			OPTIMIZE="-O5 --intermodule-optimization"
+			OPTIMIZE="-O2 --intermodule-optimization"
 			;;
 	earth)		OPTIMIZE="-O2" ;;
 	saturn)		OPTIMIZE="-O5 --intermodule-optimization" ;;
@@ -432,7 +432,7 @@ case $HOST in
 	jupiter)
 		# Ensure that the nogc grades get installed and tested
 		# on at least one host
-		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-java-grade --enable-nogc-grades"
+		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
 		;;
 	earth)
 		CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4 --disable-dotnet-grades"
