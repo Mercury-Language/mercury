@@ -1021,7 +1021,7 @@ pti_get_rtti_type_ctor(var_arity_pseudo_type_info(RttiVarArityId, _)) =
     var_arity_id_to_rtti_type_ctor(RttiVarArityId).
 pti_get_rtti_type_ctor(type_var(_)) = _ :-
     % there's no rtti_type_ctor associated with a type_var
-    unexpected(this_file, "rtti_data_to_name: type_var").
+    unexpected(this_file, "pti_get_rtti_type_ctor: type_var").
 
 var_arity_id_to_rtti_type_ctor(pred_type_info) = Ctor :-
     Builtin = mercury_public_builtin_module,
