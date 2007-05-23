@@ -101,6 +101,8 @@
 :- import_module transform_hlds.size_prof.
 :- import_module ll_backend.deep_profiling.
 
+:- import_module transform_hlds.rbmm.
+
     % the LLDS back-end
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.dupproc.
@@ -125,9 +127,7 @@
     %
 :- import_module ll_backend.llds_to_x86_64.
 :- import_module ll_backend.llds_to_x86_64_out.
-:- import_module ll_backend.x86_64_instrs.
-:- import_module ll_backend.x86_64_out.
-:- import_module ll_backend.x86_64_regs.
+%:- import_module ll_backend.x86_64_instrs.
 
     % the MLDS back-end
 :- import_module ml_backend.add_trail_ops.         % HLDS -> HLDS
@@ -2664,6 +2664,10 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 230, "complexity", !DumpInfo, !IO),
 
+    % XXX This may be moved to later.
+    maybe_region_analysis(!HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 240, "region_analysis", !DumpInfo, !IO),
+
     maybe_dump_hlds(!.HLDS, 299, "middle_pass", !DumpInfo, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -4230,6 +4234,19 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
+    ).
+
+:- pred maybe_region_analysis(module_info::in, module_info::out, io::di, 
+    io::uo) is det.
+
+maybe_region_analysis(!HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, region_analysis, Analysis),
+    (
+        Analysis = yes,
+        do_region_analysis(!HLDS)
+    ;
+        Analysis = no
     ).
 
 :- pred maybe_deep_profiling(bool::in, bool::in,

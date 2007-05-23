@@ -293,6 +293,7 @@
     ;       record_term_sizes_as_words
     ;       record_term_sizes_as_cells
     ;       experimental_complexity
+    ;       region_analysis
 
     % (c) Miscellaneous
     ;       gc
@@ -1070,6 +1071,7 @@ option_defaults_2(compilation_model_option, [
     record_term_sizes_as_words          -   bool(no),
     record_term_sizes_as_cells          -   bool(no),
     experimental_complexity             -   string(""),
+    region_analysis                     -   bool(no),
     % (c) Miscellaneous optional features
     gc                                  -   string("boehm"),
     parallel                            -   bool(no),
@@ -1836,6 +1838,7 @@ long_option("deep-profile-tail-recursion",
 long_option("record-term-sizes-as-words", record_term_sizes_as_words).
 long_option("record-term-sizes-as-cells", record_term_sizes_as_cells).
 long_option("experimental-complexity",  experimental_complexity).
+long_option("region-analysis",      region_analysis).
 % (c) miscellaneous optional features
 long_option("gc",                   gc).
 long_option("garbage-collection",   gc).
@@ -3656,6 +3659,8 @@ options_help_compilation_model -->
         "\tlisted in the given file.",
         "\tThis option is supported for the C back-end, with",
         "\t--no-highlevel-code."
+%       "--region-analysis",
+%       "\tEnable the analysis for region based memory management"
     ]),
 
     io.write_string("      Miscellaneous optional features\n"),
