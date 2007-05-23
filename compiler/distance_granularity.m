@@ -504,7 +504,7 @@ create_if_then_else_goal(GoalsInConj, ConjInfo, MaybeGranularityVar,
         % Create the condition.
         make_simple_test(GranularityVar, Var, 
             umc_implicit("distance_granularity"), [], Test),
-        create_conj(UnifyGoal, Test, plain_conj , Cond),
+        create_conj(UnifyGoal, Test, plain_conj, Cond),
                    
         % Create the then.
         Then0 = hlds_goal(conj(parallel_conj, GoalsInConj), ConjInfo),
@@ -687,7 +687,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     MinusCallArgs = [GranularityVar, Var, VarResult],
                     MinusCallBuiltin = inline_builtin,
                     MinusCallSymName = qualified(unqualified("int"),"-"),
-                    Rhs = rhs_functor(cons(MinusCallSymName, 2) , no, 
+                    Rhs = rhs_functor(cons(MinusCallSymName, 2), no, 
                         [GranularityVar, Var]),
                     MinusCallUnifyContext = yes(call_unify_context(VarResult, 
                         Rhs, unify_context(

@@ -361,15 +361,15 @@ lp_term(Var) = Var - one.
 constraint([], (=<), Const) = lte([], Const).
 constraint([], (=),  Const) = eq([], Const).
 constraint([], (>=), Const) = lte([], -Const).
-constraint(Terms0 @ [_|_], (=<), Const0) = Constraint :-
+constraint(Terms0 @ [_ | _], (=<), Const0) = Constraint :-
     Terms1 = sum_like_terms(Terms0),
     normalize_terms_and_const(yes, Terms1, Const0, Terms, Const),
     Constraint = lte(Terms, Const).
-constraint(Terms0 @ [_|_], (=) , Const0) = Constraint :-
+constraint(Terms0 @ [_ | _], (=), Const0) = Constraint :-
     Terms1 = sum_like_terms(Terms0),
     normalize_terms_and_const(no, Terms1, Const0, Terms, Const),
     Constraint = eq(Terms, Const).
-constraint(Terms0 @ [_|_], (>=), Const0) = Constraint :-
+constraint(Terms0 @ [_ | _], (>=), Const0) = Constraint :-
     Terms1 = sum_like_terms(Terms0),
     normalize_terms_and_const(yes, Terms1, Const0, Terms, Const),
     Constraint = lte(negate_lp_terms(Terms), -Const).
@@ -579,7 +579,7 @@ inconsistent(Vars, Constraints @ [Constraint | _]) :-
         (
             Constraint = lte([Term | _], _)
         ;
-            Constraint = eq([Term | _] ,  _)
+            Constraint = eq([Term | _],  _)
         ;
             Constraint = gte([Term | _], _)
         ),
@@ -974,7 +974,7 @@ insert_terms([Var - Const | Coeffs], Row, VarNums, !Tableau) :-
 optimize(ObjVars, Result, !Tableau) :- 
     simplex(Result0, !Tableau),
     (
-        Result0 = no ,
+        Result0 = no,
         Result  = unbounded 
     ;
         Result0 = yes,
@@ -2026,7 +2026,7 @@ init_cc_map(Vars) = list.foldl(InitMap, Vars, map.init) :-
 normalize_vector(Var, !.Terms, !.Constant, !:Terms, !:Constant) :-
     ( Coefficient = !.Terms ^ elem(Var) ->
         ( if    Coefficient = zero
-          then  unexpected(this_file ,
+          then  unexpected(this_file,
                     "normalize_vector/5: zero coefficient in vector.")
           else  true
         ),

@@ -1015,7 +1015,7 @@ output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
         _MaybeTrailSlot, _MaybeMaxfrSlot, _EvalMethod,
         _MaybeCallTableSlot, _EffTraceLevel, _Flags),
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
-    ModuleName = get_defining_module_name(ProcLabel) ,
+    ModuleName = get_defining_module_name(ProcLabel),
     (
         MaybeCallLabelLayout = yes(CallLabelDetails),
         CallLabelDetails = label_layout_details(CallProcLabel, LabelNum,

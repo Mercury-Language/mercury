@@ -3168,7 +3168,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             PicAsmDateFileName, " ",
             ILDateFileName, " ",
             JavaDateFileName
-        ] , !IO),
+        ], !IO),
         io.write_strings(DepStream, [" : ", SourceFileName], !IO),
         % If the module contains nested sub-modules then `.int0'
         % file must first be built.

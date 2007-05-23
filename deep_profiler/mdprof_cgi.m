@@ -133,7 +133,7 @@ mdprof_cgi_progname = "mdprof_cgi".
 :- pred write_version_message(string::in, io::di, io::uo) is det.
 
 write_version_message(ProgName, !IO) :-
-    library.version(Version) ,
+    library.version(Version),
     io.write_string(ProgName, !IO),
     io.write_string(": Mercury deep profiler", !IO),
     io.nl(!IO),

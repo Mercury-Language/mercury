@@ -566,7 +566,7 @@ mer_mode(IVarset, A -> B) = Xml :-
 mer_mode(IVarset, user_defined_mode(Name, Args)) = Xml :-
     Ref = attr("ref", sym_name_and_arity_to_id("mode", Name, length(Args))),
     XmlArgs = xml_list("mode_args", mer_inst(IVarset), Args),
-    Xml = elem("user_defined_mode" , [Ref], [name(Name), XmlArgs]).
+    Xml = elem("user_defined_mode", [Ref], [name(Name), XmlArgs]).
 
 :- func mer_inst(inst_varset, mer_inst) = xml.
 
@@ -578,7 +578,7 @@ mer_inst(IVarset, bound(U, BoundInsts)) = Xml :-
     XmlInsts = xml_list("bound_insts", bound_inst(IVarset), BoundInsts),
     Xml = elem("bound", [], [XmlUniq, XmlInsts]).
 mer_inst(_, ground(U, _)) = elem("ground", [], [uniqueness(U)]).
-mer_inst(_, not_reached) = elem("not_reached", [] , []).
+mer_inst(_, not_reached) = elem("not_reached", [], []).
 mer_inst(IVarset, inst_var(IVar)) = Xml :-
     IVarName = varset.lookup_name(IVarset, IVar),
     Xml = tagged_string("inst_var", IVarName).

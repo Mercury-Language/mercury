@@ -870,7 +870,7 @@ reset_analysis_registry_dependency_status(ModuleName, Info,
 install_library(MainModuleName, Succeeded, !Info, !IO) :-
     find_reachable_local_modules(MainModuleName, DepsSuccess, AllModules0,
         !Info, !IO),
-    AllModules = set.to_sorted_list(AllModules0) ,
+    AllModules = set.to_sorted_list(AllModules0),
     make_install_dirs(DirSucceeded, LinkSucceeded, !IO),
     (
         DepsSuccess = yes,

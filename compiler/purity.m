@@ -287,7 +287,7 @@ check_preds_purity([PredId | PredIds], !ModuleInfo, !Specs) :-
     module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
-    pred_info_get_purity(!.PredInfo, DeclPurity) ,
+    pred_info_get_purity(!.PredInfo, DeclPurity),
     pred_info_get_promised_purity(!.PredInfo, PromisedPurity),
     some [!ClausesInfo] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),

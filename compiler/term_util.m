@@ -125,7 +125,7 @@
 
     % Succeeds if one or more variables in the list are higher order.
     %
-:- pred horder_vars(list(prog_var)::in , vartypes::in) is semidet.
+:- pred horder_vars(list(prog_var)::in, vartypes::in) is semidet.
 
 :- pred get_context_from_scc(list(pred_proc_id)::in, module_info::in,
     prog_context::out) is det.

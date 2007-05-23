@@ -289,7 +289,7 @@ foldl_reachable2(P, InstGraph, Var, !Acc1, !Acc2) :-
 
 foldl_reachable_aux2(P, InstGraph, Var, Seen, !Acc1, !Acc2) :-
     P(Var, !Acc1, !Acc2),
-    map.lookup(InstGraph, Var, node(Functors, _)) ,
+    map.lookup(InstGraph, Var, node(Functors, _)),
     map.foldl2((pred(_ConsId::in, Args::in, MAcc10::in, MAcc1::out,
             MAcc20::in, MAcc2::out) is det :-
         list.foldl2((pred(Arg::in, LAccA0::in, LAccA::out,

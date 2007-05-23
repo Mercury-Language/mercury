@@ -637,7 +637,7 @@ dump_abstract_scc(SCC, Indent, Module, !IO) :-
         ), SCC, !IO).
 
 dump_abstract_proc(Proc, Indent, Module, !IO) :-
-    Proc = abstract_proc(AbstractPPId, _, _, _, HeadVars, _ ,_,
+    Proc = abstract_proc(AbstractPPId, _, _, _, HeadVars, _, _,
         Body, _, Varset, _, _),
     indent_line(Indent, !IO),
     AbstractPPId = real(PPId),

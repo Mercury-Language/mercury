@@ -941,7 +941,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         GoalExpr = scope(Reason, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = generic_call(GenericCall, _ , _, _),
+        GoalExpr0 = generic_call(GenericCall, _, _, _),
         % Casts are generated inline.
         ( GenericCall = cast(_) ->
             MustHaveMap = no

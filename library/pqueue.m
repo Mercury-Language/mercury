@@ -101,7 +101,7 @@ pqueue.insert(pqueue(D0, K0, V0, L0, R0), K, V, PQ) :-
         V1 = V0,
         pqueue.insert_2(K, V, L0, R0, L, R)
     ),
-    PQ = pqueue(D, K1 ,V1, L, R).
+    PQ = pqueue(D, K1, V1, L, R).
 
 :- pred pqueue.insert_2(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::in,
     pqueue(K, V)::out, pqueue(K, V)::out) is det.

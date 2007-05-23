@@ -226,9 +226,9 @@ output_formatted_prof_node(ProfNode, Index, IndexMap, !IO) :-
     string.int_to_string(Index, IndexStr0),
     string.append_list(["[", IndexStr0, "] "], IndexStr),
     string.format("%40d             %s [%d]\n",
-        [i(SelfCalls),s(FullName),i(Index)], SelfCallsString),
+        [i(SelfCalls), s(FullName), i(Index)], SelfCallsString),
     string.format("%-6s %5.1f %7.2f %11.2f %7d", [s(IndexStr),
-        f(Percentage) , f(Self), f(Descendant), i(TotalCalls)], InitMiddleStr),
+        f(Percentage), f(Self), f(Descendant), i(TotalCalls)], InitMiddleStr),
 
     ( SelfCalls \= 0 ->
         io.write_string(SelfCallsString, !IO)

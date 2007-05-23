@@ -489,7 +489,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, _,
     Goal = scope(_, ScopeGoal),
     check_goal_for_exceptions(SCC, VarTypes, ScopeGoal, !Result,
         !ModuleInfo, !IO).
-check_goal_for_exceptions_2(_, _, Goal, _, !Result, !ModuleInfo ,!IO) :-
+check_goal_for_exceptions_2(_, _, Goal, _, !Result, !ModuleInfo, !IO) :-
     Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     %    
     % NOTE: for --intermodule-analysis the results for for foreign_procs will

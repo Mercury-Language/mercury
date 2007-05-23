@@ -290,10 +290,12 @@ process_goal_for_implicit_parallelism(!Goal, ProcInfo, !ModuleInfo,
         process_goal_for_implicit_parallelism(Cond0, Cond, ProcInfo, 
             !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized, 
             !SiteNumCounter),
-        process_goal_for_implicit_parallelism(Then0, Then, ProcInfo, !ModuleInfo
-            , no, _, 0, _, !CalleeListToBeParallelized, !SiteNumCounter),
-        process_goal_for_implicit_parallelism(Else0, Else, ProcInfo, !ModuleInfo
-            , no, _, 0, _, !CalleeListToBeParallelized, !SiteNumCounter),
+        process_goal_for_implicit_parallelism(Then0, Then, ProcInfo,
+            !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized,
+            !SiteNumCounter),
+        process_goal_for_implicit_parallelism(Else0, Else, ProcInfo,
+            !ModuleInfo, no, _, 0, _, !CalleeListToBeParallelized,
+            !SiteNumCounter),
         GoalProcessed = hlds_goal(if_then_else(Vars, Cond, Then, Else),
             GoalInfo), 
         update_conj_and_index(!MaybeConj, GoalProcessed, !IndexInConj), 
@@ -324,8 +326,8 @@ increment_index_if_in_conj(MaybeConj, !IndexInConj) :-
     list(candidate_call_site)::in, list(candidate_call_site)::out, 
     counter::in, counter::out) is det.
     
-process_call_for_implicit_parallelism(Call, ProcInfo, !ModuleInfo, !IndexInConj
-    , !MaybeConj, !CalleeListToBeParallelized, !SiteNumCounter) :-
+process_call_for_implicit_parallelism(Call, ProcInfo, !ModuleInfo,
+    !IndexInConj, !MaybeConj, !CalleeListToBeParallelized, !SiteNumCounter) :-
     counter.allocate(SlotNumber, !SiteNumCounter),
     get_call_kind_and_callee(!.ModuleInfo, Call, Kind, CalleeRawId),
     (
