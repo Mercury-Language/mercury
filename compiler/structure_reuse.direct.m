@@ -53,6 +53,7 @@
 :- import_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- import_module transform_hlds.ctgc.util.
+:- import_module transform_hlds.smm_common.
 
 :- import_module bool.
 :- import_module list.
@@ -174,34 +175,15 @@ direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId,
     proc_info_set_goal(Goal, !ProcInfo), 
     maybe_write_string(VeryVerbose, "% reuse analysis done.\n", !IO).
 
-
 %-----------------------------------------------------------------------------%
 % We use the type dead_cell_table to collect all deconstructions that possibly
 % leave garbage behind.
 %
 %
-    % To record the place at which a data structure possible becomes garbage, 
-    % we use the notion of a program point. A program point is unique using
-    % its goal_path. The context of the goal is used for debugging traces.
-    %
-:- type program_point 
-    --->    pp(
-                pp_context  ::  term.context,
-                pp_path     ::  goal_path
-            ).
 
     % A dead_cell_table maps program points onto reuse conditions. 
     %
 :- type dead_cell_table == map(program_point, reuse_condition).
-    
-
-    % Compute the program point of a given goal. 
-    %
-:- func program_point_init(hlds_goal_info) = program_point.
-
-    % Dump the information contained in a program point.
-    %
-:- pred dump_program_point(program_point::in, io::di, io::uo) is det.
 
     % Initialise a dead_cell_table. 
     %
@@ -237,44 +219,6 @@ direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId,
     %
 :- pred dead_cell_table_maybe_dump(bool::in, dead_cell_table::in, 
     io::di, io::uo) is det.
-
-program_point_init(Info) = PP :- 
-    goal_info_get_context(Info, Context), 
-    goal_info_get_goal_path(Info, GoalPath), 
-    PP = pp(Context, GoalPath). 
-
-dump_program_point(pp(Context, GoalPath), !IO):- 
-    % context
-    prog_out.write_context(Context, !IO), 
-    io.write_string("--", !IO),
-    % goal path
-    list.foldl(dump_goal_path_step, GoalPath, !IO).
-
-:- pred dump_goal_path_step(goal_path_step::in, io::di, io::uo) is det.
-
-dump_goal_path_step(step_conj(N)) -->
-    io.write_char('c'),
-    io.write_int(N).
-dump_goal_path_step(step_disj(N)) -->
-    io.write_char('d'),
-    io.write_int(N).
-dump_goal_path_step(step_switch(N, _)) -->
-    io.write_char('s'),
-    io.write_int(N).
-dump_goal_path_step(step_ite_cond) -->
-    io.write_char('c').
-dump_goal_path_step(step_ite_then) -->
-    io.write_char('t').
-dump_goal_path_step(step_ite_else) -->
-    io.write_char('e').
-dump_goal_path_step(step_neg) -->
-    io.write_char('n').
-dump_goal_path_step(step_scope(_)) -->
-    io.write_char('q').
-dump_goal_path_step(step_first) -->
-    io.write_char('f').
-dump_goal_path_step(step_later) -->
-    io.write_char('l').
 
 dead_cell_table_init = map.init.
 

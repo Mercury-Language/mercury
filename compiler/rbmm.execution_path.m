@@ -46,7 +46,6 @@
 :- import_module list.
 :- import_module map.
 
-
 %-----------------------------------------------------------------------------%
 %
 % Execution path analysis
@@ -113,7 +112,7 @@ execution_paths_covered_goal(ProcInfo, Goal, !ExecPaths) :-
 			)
 		->
             % Retrieve the program point of this goal.
-			program_point_init(Info, ProgPoint),
+			ProgPoint = program_point_init(Info),
 			append_to_each_execution_path(!.ExecPaths, 
                 [[pair(ProgPoint, Goal)]], !:ExecPaths)
 		;
@@ -220,7 +219,7 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases],
         !ExecPaths) :-
 	Case = case(ConsId, CaseGoal),
 	Switch = hlds_goal(_SwitchExpr, Info),
-	program_point_init(Info, ProgPoint),
+	ProgPoint = program_point_init(Info),
     
     % Handle the unification on the switch var if it has been removed.
     % We add a dummy program point for this unification.

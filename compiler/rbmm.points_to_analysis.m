@@ -28,6 +28,7 @@
 % Currently the analysis ONLY collects the information, do NOT record it into 
 % the HLDS.
 % 
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.points_to_analysis.
 :- interface.
@@ -36,8 +37,10 @@
 :- import_module hlds.hlds_module.
 :- import_module transform_hlds.rbmm.points_to_info.
 
-:- pred region_points_to_analysis(rpta_info_table::out, module_info::in,
-    module_info::out) is det.
+%-----------------------------------------------------------------------------%
+
+:- pred region_points_to_analysis(rpta_info_table::out,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -55,17 +58,20 @@
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
-:- import_module transform_hlds.smm_fixpoint_table.
+:- import_module transform_hlds.ctgc.
+:- import_module transform_hlds.ctgc.fixpoint_table.
 
 :- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
 :- import_module string.
-:- import_module term.
 :- import_module svmap.
-:- import_module maybe.
+:- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 region_points_to_analysis(InfoTable, !ModuleInfo) :-
     rpta_info_table_init = InfoTable0,
@@ -77,8 +83,8 @@ region_points_to_analysis(InfoTable, !ModuleInfo) :-
 % Intraprocedural region points-to analysis.
 %
 
-:- pred intra_proc_rpta(module_info::in, rpta_info_table::in, 
-    rpta_info_table::out) is det.
+:- pred intra_proc_rpta(module_info::in,
+    rpta_info_table::in, rpta_info_table::out) is det.
 
 intra_proc_rpta(ModuleInfo, !InfoTable) :-
     module_info_predids(PredIds, ModuleInfo, _),
@@ -89,9 +95,8 @@ intra_proc_rpta(ModuleInfo, !InfoTable) :-
 
 intra_proc_rpta_pred(ModuleInfo, PredId, !InfoTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_non_imported_procids(PredInfo) = ProcIds,
-    list.foldl(intra_proc_rpta_proc(ModuleInfo, PredId), ProcIds, 
-        !InfoTable).
+    ProcIds = pred_info_non_imported_procids(PredInfo),
+    list.foldl(intra_proc_rpta_proc(ModuleInfo, PredId), ProcIds, !InfoTable).
 
 :- pred intra_proc_rpta_proc(module_info::in, pred_id::in, proc_id::in, 
     rpta_info_table::in, rpta_info_table::out) is det.
@@ -104,16 +109,14 @@ intra_proc_rpta_proc(ModuleInfo, PredId, ProcId, !InfoTable) :-
     rpta_info_table::in, rpta_info_table::out) is det.
 
 intra_analyse_pred_proc(ModuleInfo, PPId, !InfoTable) :-
-    ( if 
-        some_are_special_preds([PPId], ModuleInfo)
-      then
-        true
+    ( if    some_are_special_preds([PPId], ModuleInfo)
+      then  true
       else
-        module_info_proc_info(ModuleInfo, PPId, ProcInfo),
-        rpta_info_init(ProcInfo, RptaInfo0),
-        proc_info_get_goal(ProcInfo, Goal),
-        intra_analyse_goal(Goal, RptaInfo0, RptaInfo),
-        rpta_info_table_set_rpta_info(PPId, RptaInfo, !InfoTable)
+            module_info_proc_info(ModuleInfo, PPId, ProcInfo),
+            RptaInfo0 = rpta_info_init(ProcInfo),
+            proc_info_get_goal(ProcInfo, Goal),
+            intra_analyse_goal(Goal, RptaInfo0, RptaInfo),
+            rpta_info_table_set_rpta_info(PPId, RptaInfo, !InfoTable)
     ).
 
 :- pred intra_analyse_goal(hlds_goal::in,
@@ -134,7 +137,7 @@ intra_analyse_goal_expr(conj(_ConjType, Goals), !RptaInfo) :-
 intra_analyse_goal_expr(plain_call(_, _, _, _, _, _), !RptaInfo).
 
 intra_analyse_goal_expr(generic_call(_,_,_,_), !RptaInfo) :-
-    unexpected(this_file,
+    sorry(this_file,
         "intra_analyse_goal_expr: generic_call not handled").
 
 intra_analyse_goal_expr(switch(_, _, Cases), !RptaInfo) :- 
@@ -185,14 +188,14 @@ intra_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), !RptaInfo) :-
 
 intra_analyse_goal_expr(GoalExpr, !RptaInfo) :-
     GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-    unexpected(this_file, "intra_analyse_goal_expr: call_foreign_proc"
-        ++ " not handled").
+    unexpected(this_file,
+        "intra_analyse_goal_expr: call_foreign_proc not handled").
 
 intra_analyse_goal_expr(shorthand(_), !RptaInfo) :- 
     unexpected(this_file, "intra_analyse_goal_expr: shorthand not handled").
     
-:- pred process_unification(unification::in, rpta_info::in,
-    rpta_info::out) is det.
+:- pred process_unification(unification::in,
+    rpta_info::in, rpta_info::out) is det.
 
     % For construction and deconstruction, add edges from LVar to 
     % each of RVars.
@@ -236,7 +239,7 @@ process_cons_and_decons(LVar, ConsId, RVar, !Component, !RptaInfo) :-
     ),
     !:Component = !.Component + 1.
 
-    % Unification is an assigment: merge the corresponding nodes of ToVar 
+    % Unification is an assignment: merge the corresponding nodes of ToVar 
     % and FromVar.
     % 
 process_unification(assign(ToVar, FromVar), !RptaInfo) :-
@@ -409,7 +412,7 @@ inter_analyse_goal_expr(plain_call(PredId, ProcId, ActualParams, _,_, _PName),
         IsInit = bool.yes
     ;
         IsInit = bool.no,
-        program_point_init(GoalInfo, CallSite),
+        CallSite = program_point_init(GoalInfo),
         CalleeRptaInfo = rpta_info(CalleeGraph, _),
 
         % Collect alpha mapping at this call site.
@@ -1062,16 +1065,15 @@ rule_8(Arc, CallSite, CalleeRptaInfo, CallerNode, !CallerRptaInfo) :-
 % Fixpoint table used in region points-to analysis.
 %
 
-:- type rpta_info_fixpoint_table == 
-		fixpoint_table(pred_proc_id, rpta_info). 
+:- type rpta_info_fixpoint_table == fixpoint_table(pred_proc_id, rpta_info). 
 
-	% Initialise the fixpoint table for the given set of pred_proc_id's. 
+	% Initialise the fixpoint table for the given set of pred_proc_ids. 
     %
 :- pred rpta_info_fixpoint_table_init(list(pred_proc_id)::in, 
     rpta_info_table::in, rpta_info_fixpoint_table::out) is det.
 
 rpta_info_fixpoint_table_init(Keys, InfoTable, Table):-
-	fp_init(wrapped_init(InfoTable), Keys, Table).
+    Table = init_fixpoint_table(wrapped_init(InfoTable), Keys).
 
 	% Add the results of a new analysis pass to the already existing
 	% fixpoint table. 
@@ -1079,17 +1081,15 @@ rpta_info_fixpoint_table_init(Keys, InfoTable, Table):-
 :- pred rpta_info_fixpoint_table_new_run(rpta_info_fixpoint_table::in, 
     rpta_info_fixpoint_table::out) is det.
 
-rpta_info_fixpoint_table_new_run(Tin, Tout) :-
-	fp_new_run(Tin,Tout).
+rpta_info_fixpoint_table_new_run(!Table) :-
+	new_run(!Table).
 
 	% The fixpoint table keeps track of the number of analysis passes. This
 	% predicate returns this number.
     %
-:- pred rpta_info_fixpoint_table_which_run(rpta_info_fixpoint_table::in, 
-    int::out) is det.
+:- func rpta_info_fixpoint_table_which_run(rpta_info_fixpoint_table) = int.
 
-rpta_info_fixpoint_table_which_run(Tin, Run) :-
-	Run = fp_which_run(Tin).
+rpta_info_fixpoint_table_which_run(Table) = which_run(Table).
 
 	% A fixpoint is reached if all entries in the table are stable,
 	% i.e. haven't been modified by the last analysis pass. 
@@ -1098,7 +1098,7 @@ rpta_info_fixpoint_table_which_run(Tin, Run) :-
     is semidet.
 
 rpta_info_fixpoint_table_all_stable(Table) :-
-	fp_stable(Table).
+	fixpoint_reached(Table).
 
 	% Enter the newly computed region points-to information for a given 
     % procedure.
@@ -1107,17 +1107,15 @@ rpta_info_fixpoint_table_all_stable(Table) :-
 	% "unstable". 
 	% Aborts if the procedure is not already in the fixpoint table. 
     %
-:- pred rpta_info_fixpoint_table_new_rpta_info(pred_proc_id::in, 
-    rpta_info::in, rpta_info_fixpoint_table::in, 
-    rpta_info_fixpoint_table::out) is det.
+:- pred rpta_info_fixpoint_table_new_rpta_info(
+    pred_proc_id::in, rpta_info::in,
+    rpta_info_fixpoint_table::in, rpta_info_fixpoint_table::out) is det.
 
-rpta_info_fixpoint_table_new_rpta_info(PredProcId, RptaInfo, Tin, Tout) :-
-	fp_add(
-		pred(TabledElem::in, Elem::in) is semidet :-
-		(
-			rpta_info_equal(Elem, TabledElem)
-		), 
-		PredProcId, RptaInfo, Tin, Tout).
+rpta_info_fixpoint_table_new_rpta_info(PPId, RptaInfo, !Table) :-
+	EqualityTest = (pred(TabledElem::in, Elem::in) is semidet :-
+        rpta_info_equal(Elem, TabledElem)
+    ),
+    add_to_fixpoint_table(EqualityTest, PPId, RptaInfo, !Table).
 
 	% Retrieve the rpta_info of a given pred_proc_id. If this information 
     % is not available, this means that the set of pred_proc_id's to which
@@ -1125,12 +1123,12 @@ rpta_info_fixpoint_table_new_rpta_info(PredProcId, RptaInfo, Tin, Tout) :-
     % is characterised as recursive. 
 	% Fails if the procedure is not in the table. 
     %
-:- pred rpta_info_fixpoint_table_get_rpta_info(pred_proc_id::in, 
-    rpta_info::out, rpta_info_fixpoint_table::in, 
-    rpta_info_fixpoint_table::out) is semidet.
+:- pred rpta_info_fixpoint_table_get_rpta_info(
+    pred_proc_id::in, rpta_info::out,
+    rpta_info_fixpoint_table::in, rpta_info_fixpoint_table::out) is semidet.
 
-rpta_info_fixpoint_table_get_rpta_info(PredProcId, RptaInfo, Tin, Tout) :-
-	fp_get(PredProcId, RptaInfo, Tin, Tout).
+rpta_info_fixpoint_table_get_rpta_info(PPId, RptaInfo, !Table) :-
+    get_from_fixpoint_table(PPId, RptaInfo, !Table).	
 
 	% Retreive rpta_info, without changing the table. To be used after 
     % fixpoint has been reached. Aborts if the procedure is not in the table.
@@ -1138,21 +1136,18 @@ rpta_info_fixpoint_table_get_rpta_info(PredProcId, RptaInfo, Tin, Tout) :-
 :- pred rpta_info_fixpoint_table_get_final_rpta_info(pred_proc_id::in, 
     rpta_info::out, rpta_info_fixpoint_table::in) is det.
 
-rpta_info_fixpoint_table_get_final_rpta_info(PredProcId, RptaInfo, T):-
-	fp_get_final(PredProcId, RptaInfo, T).
+rpta_info_fixpoint_table_get_final_rpta_info(PPId, RptaInfo, Table):-
+	RptaInfo = get_from_fixpoint_table_final(PPId, Table).
 
-:- pred wrapped_init(rpta_info_table::in, pred_proc_id::in, rpta_info::out)
-    is det.
+:- func wrapped_init(rpta_info_table, pred_proc_id) = rpta_info.
     
-wrapped_init(InfoTable, PredProcId, E) :- 
-	( if 
-		rpta_info_table_search_rpta_info(PredProcId, InfoTable) = Entry
-	  then
-		E = Entry
+wrapped_init(InfoTable, PPId) = Entry :- 
+	( if    Entry0 = rpta_info_table_search_rpta_info(PPId, InfoTable)
+	  then  Entry = Entry0
 	  else
-        % The information we are looking for should be there after the
-        % intraprocedural analysis.
-		unexpected(this_file, "wrapper_init: rpta_info should exist.")
+            % The information we are looking for should be there after the
+            % intraprocedural analysis.
+		    unexpected(this_file, "wrapper_init: rpta_info should exist.")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1161,4 +1156,6 @@ wrapped_init(InfoTable, PredProcId, E) :-
 
 this_file = "rbmm.points_to_analysis.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module rbmm.points_to_analysis.
 %-----------------------------------------------------------------------------%

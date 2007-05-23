@@ -28,7 +28,13 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+
+%-----------------------------------------------------------------------------%
+
 :- pred do_region_analysis(module_info::in, module_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -38,6 +44,8 @@
 :- import_module transform_hlds.rbmm.live_variable_analysis.
 :- import_module transform_hlds.rbmm.points_to_analysis.
 :- import_module transform_hlds.rbmm.region_instruction.
+
+%-----------------------------------------------------------------------------%
 
 do_region_analysis(!ModuleInfo) :-
     region_points_to_analysis(RptaInfoTable, !ModuleInfo),
@@ -61,4 +69,6 @@ do_region_analysis(!ModuleInfo) :-
         LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
 	DeadRTable, LocalRTable, _AnnotationTable).
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.
+%-----------------------------------------------------------------------------%

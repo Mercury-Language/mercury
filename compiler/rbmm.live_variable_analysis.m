@@ -91,31 +91,28 @@ live_variable_analysis_pred(ModuleInfo, ExecPathTable, PredId,
         live_variable_analysis_proc(ModuleInfo, ExecPathTable, PredId),
 		ProcIds, !LVBeforeTable, !LVAfterTable, !VoidVarTable).
 
-:- pred live_variable_analysis_proc(module_info::in, execution_path_table::in, 
-    pred_id::in, proc_id::in, proc_pp_varset_table::in, 
-    proc_pp_varset_table::out, proc_pp_varset_table::in, 
-    proc_pp_varset_table::out, proc_pp_varset_table::in, 
-    proc_pp_varset_table::out) is det.
+:- pred live_variable_analysis_proc(module_info::in,
+    execution_path_table::in, pred_id::in, proc_id::in,
+    proc_pp_varset_table::in, proc_pp_varset_table::out,
+    proc_pp_varset_table::in, proc_pp_varset_table::out,
+    proc_pp_varset_table::in, proc_pp_varset_table::out) is det.
 
 live_variable_analysis_proc(ModuleInfo, ExecPathTable, PredId, ProcId, 
         !LVBeforeTable, !LVAfterTable, !VoidVarTable) :-	
 	PPId = proc(PredId, ProcId),
-	( if 
-		some_are_special_preds([PPId], ModuleInfo)
-	  then
-        true 
+	( if    some_are_special_preds([PPId], ModuleInfo)
+	  then  true 
 	  else
-		module_info_proc_info(ModuleInfo, PPId, ProcInfo),
-		find_input_output_args(ModuleInfo, ProcInfo, Inputs, Outputs),
-		map.lookup(ExecPathTable, PPId, ExecPaths),
-		live_variable_analysis_exec_paths(ExecPaths, Inputs, Outputs, 
-            ModuleInfo, ProcInfo, map.init, ProcLVBefore, 
-            map.init, ProcLVAfter,
-            map.init, ProcVoidVar),
-		
-		svmap.set(PPId, ProcLVBefore, !LVBeforeTable),
-		svmap.set(PPId, ProcLVAfter, !LVAfterTable),
-		svmap.set(PPId, ProcVoidVar, !VoidVarTable)
+		    module_info_proc_info(ModuleInfo, PPId, ProcInfo),
+		    find_input_output_args(ModuleInfo, ProcInfo, Inputs, Outputs),
+		    map.lookup(ExecPathTable, PPId, ExecPaths),
+		    live_variable_analysis_exec_paths(ExecPaths, Inputs, Outputs, 
+                ModuleInfo, ProcInfo, map.init, ProcLVBefore, 
+                map.init, ProcLVAfter, map.init, ProcVoidVar),
+		    
+            svmap.set(PPId, ProcLVBefore, !LVBeforeTable),
+		    svmap.set(PPId, ProcLVAfter, !LVAfterTable),
+		    svmap.set(PPId, ProcVoidVar, !VoidVarTable)
 	).
 
 :- pred live_variable_analysis_exec_paths(list(execution_path)::in, 
@@ -133,8 +130,7 @@ live_variable_analysis_exec_paths([], _, _, _, _, !ProcLVBefore,
 live_variable_analysis_exec_paths([ExecPath0 | ExecPaths], Inputs, Outputs, 
         ModuleInfo, ProcInfo, !ProcLVBefore, !ProcLVAfter, !ProcVoidVar) :-
 	list.reverse(ExecPath0, ExecPath),
-	( if
-        list.length(ExecPath) = 1
+	( if list.length(ExecPath) = 1
 	  then
         live_variable_analysis_singleton_exec_path(ExecPath, Inputs, Outputs, 
             ModuleInfo, ProcInfo, !ProcLVBefore, !ProcLVAfter, !ProcVoidVar)
@@ -150,8 +146,8 @@ live_variable_analysis_exec_paths([ExecPath0 | ExecPaths], Inputs, Outputs,
 :- pred live_variable_analysis_exec_path(execution_path::in, 
     list(prog_var)::in, list(prog_var)::in, module_info::in, proc_info::in, 
     bool::in, set(prog_var)::in, pp_varset_table::in, pp_varset_table::out, 
-    pp_varset_table::in, pp_varset_table::out, pp_varset_table::in, 
-    pp_varset_table::out) is det.
+    pp_varset_table::in, pp_varset_table::out,
+    pp_varset_table::in, pp_varset_table::out) is det.
 
 live_variable_analysis_exec_path([], _, _, _, _,_, _, !ProcLVBefore, 
         !ProcLVAfter, !ProcVoidVar).
@@ -162,13 +158,11 @@ live_variable_analysis_exec_path([], _, _, _, _,_, _, !ProcLVBefore,
 live_variable_analysis_exec_path([(LastProgPoint - Goal) | ProgPointGoals], 
         Inputs, Outputs, ModuleInfo, ProcInfo, yes, _LVBeforeNext, 
         !ProcLVBefore, !ProcLVAfter, !ProcVoidVar) :-
-	( if
-		map.search(!.ProcLVAfter, LastProgPoint, LVAfterLast0)
-	  then
-		LVAfterLast = LVAfterLast0
+	( if    map.search(!.ProcLVAfter, LastProgPoint, LVAfterLast0)
+	  then  LVAfterLast = LVAfterLast0
 	  else
-		LVAfterLast = set.list_to_set(Outputs),
-		svmap.set(LastProgPoint, LVAfterLast, !ProcLVAfter)
+		    LVAfterLast = set.list_to_set(Outputs),
+		    svmap.set(LastProgPoint, LVAfterLast, !ProcLVAfter)
 	),
 
     % Compute live variable before this last program point.
@@ -266,12 +260,9 @@ live_variable_analysis_singleton_exec_path([], _, _, _, _,
     pp_varset_table::in, pp_varset_table::out) is det.
 
 record_live_vars_at_prog_point(ProgPoint, LV, !ProcLV) :- 
-	( if
-		map.search(!.ProcLV, ProgPoint, ExistingLV)
-	  then
-		svmap.set(ProgPoint, set.union(ExistingLV, LV), !ProcLV)
-	  else
-		svmap.set(ProgPoint, LV, !ProcLV)
+	( if    map.search(!.ProcLV, ProgPoint, ExistingLV)
+	  then  svmap.set(ProgPoint, set.union(ExistingLV, LV), !ProcLV)
+	  else  svmap.set(ProgPoint, LV, !ProcLV)
 	).
 
     % Compute used and produced variables in an atomic goal, which
@@ -304,7 +295,9 @@ compute_useds_produceds(ModuleInfo, Goal, UsedSet, ProducedSet) :-
 			get_inputs_outputs_unification(Unification, Useds, 
                 Produceds)
 		;
-			(Expr = conj(_, []) ; Expr = disj([]))
+			( Expr = conj(_, [])
+            ; Expr = disj([])
+            )
 		->
 			Useds = [],
 			Produceds = []
@@ -393,6 +386,7 @@ get_inputs_outputs_proc_call_2([FormalArg | FormalArgs],
     %
 :- pred collect_void_vars(program_point::in, variable_set::in, proc_info::in,
     pp_varset_table::in, pp_varset_table::out) is det.
+
 collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
 	( if
 		map.search(!.ProcVoidVar, ProgPoint, _DeadVars)
@@ -407,17 +401,15 @@ collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
     % To be used with the fold above: if Var is a void variable, 
     % add it to VoidVars set.
     %
-:- pred void_var(prog_varset::in, prog_var::in, variable_set::in, 
-    variable_set::out) is det.
+:- pred void_var(prog_varset::in, prog_var::in,
+    variable_set::in, variable_set::out) is det.
+
 void_var(Varset, Var, !VoidVars) :-
 	mercury_var_to_string(Varset, no, Var) = VarName,
 	string.substring(VarName, 0, 1, FirstChar),
-	( if
-		FirstChar = "_"
-	  then
-		set.insert(!.VoidVars, Var, !:VoidVars)
-	  else
-        true 
+	( if    FirstChar = "_"
+	  then  set.insert(!.VoidVars, Var, !:VoidVars)
+	  else  true 
 	).
 
 %----------------------------------------------------------------------------%

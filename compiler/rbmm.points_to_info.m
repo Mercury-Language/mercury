@@ -12,6 +12,8 @@
 % This module defines the "rpta_info" and "rpta_info_table" types. 
 % rpta_info_table maps a procedure to its corresponding rpt information 
 % (i.e., the rpt graph and the alpha mappings (at the call sites in it)).
+%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.points_to_info.
 :- interface.
@@ -23,12 +25,15 @@
 
 :- import_module map.
 
+%-----------------------------------------------------------------------------%
+
 :- type rpta_info_table == map(pred_proc_id, rpta_info).
 
 :- func rpta_info_table_init = rpta_info_table.
 
 :- func rpta_info_table_search_rpta_info(pred_proc_id, rpta_info_table) 
     = rpta_info is semidet.
+
 :- pred rpta_info_table_set_rpta_info(pred_proc_id::in, rpta_info::in, 
     rpta_info_table::in, rpta_info_table::out) is det.
 
@@ -41,19 +46,13 @@
     % the alpha mapping is empty and the rpt graph contains all the nodes 
     % corresponding to all the variables appear in the procedure.
     %
-:- pred rpta_info_init(proc_info::in, rpta_info::out) is det.
 :- func rpta_info_init(proc_info) = rpta_info.
 
 :- pred rpta_info_equal(rpta_info::in, rpta_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
-:- type rpt_alpha_mapping ==
-    map(
-        program_point,
-        map(rptg_node, rptg_node)
-    ).
-
+:- type rpt_alpha_mapping == map(program_point, map(rptg_node, rptg_node)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -74,6 +73,8 @@
 :- import_module string.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
 rpta_info_table_init = map.init. 
 rpta_info_table_search_rpta_info(PredProcId, Table) = RptaInfo :- 
     Table^elem(PredProcId) = RptaInfo.
@@ -84,15 +85,13 @@ rpta_info_table_set_rpta_info(PredProcId, RptaInfo, Table0, Table) :-
     % the alpha mapping is empty and the rpt graph contains all the nodes 
     % corresponding to all the variables appear in the procedure.
     %
-rpta_info_init(ProcInfo, RptaInfo) :-
+rpta_info_init(ProcInfo) = RptaInfo :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.keys(VarTypes, Vars),
     list.foldl2(add_node_from_var(VarTypes), Vars, 1, _Reg,
         rpt_graph_init, Graph),
     map.init(AlphaMapping),
     RptaInfo = rpta_info(Graph, AlphaMapping).
-rpta_info_init(ProcInfo) = RptaInfo :- 
-    rpta_info_init(ProcInfo, RptaInfo).
 
 :- pred add_node_from_var(map(prog_var, mer_type)::in, prog_var::in, int::in,
     int::out, rpt_graph::in, rpt_graph::out) is det.
@@ -114,7 +113,7 @@ rpta_info_equal(RptaInfo1, RptaInfo2):-
 
 %-----------------------------------------------------------------------------%
 %
-% Alpha mapping at call sites.
+% Alpha mapping at call sites
 %
 
 :- pred rpt_alpha_mapping_equal(rpt_alpha_mapping::in, 
@@ -124,7 +123,6 @@ rpt_alpha_mapping_equal(AlphaMapping1, AlphaMapping2) :-
     map.count(AlphaMapping1, C1),
     map.count(AlphaMapping2, C2),
     C1 = C2,
-    
     map.keys(AlphaMapping1, CallSites1),
     rpt_alpha_mapping_equal_2(CallSites1, AlphaMapping1, AlphaMapping2).
 
@@ -135,7 +133,6 @@ rpt_alpha_mapping_equal_2([], _, _).
 rpt_alpha_mapping_equal_2([CallSite1 | CallSite1s],
         AlphaMapping1, AlphaMapping2) :-
     map.search(AlphaMapping2, CallSite1, AlphaMappingAtCallSite2),
-    
     map.lookup(AlphaMapping1, CallSite1, AlphaMappingAtCallSite1),
     rpt_alpha_mapping_at_call_site_equal(
         AlphaMappingAtCallSite1,AlphaMappingAtCallSite2),
@@ -148,7 +145,6 @@ rpt_alpha_mapping_at_call_site_equal(AMAtCallSite1, AMAtCallSite2) :-
     map.count(AMAtCallSite1, C1),
     map.count(AMAtCallSite2, C2),
     C1 = C2,
-
     map.keys(AMAtCallSite1, Nodes1),
     rpt_alpha_mapping_at_call_site_equal_2(Nodes1, AMAtCallSite1,
         AMAtCallSite2).
@@ -160,9 +156,10 @@ rpt_alpha_mapping_at_call_site_equal_2([], _, _).
 rpt_alpha_mapping_at_call_site_equal_2([N | Ns], AMAtCallSite1,
         AMAtCallSite2) :-
     map.search(AMAtCallSite2, N, NPrime2),
-
     map.lookup(AMAtCallSite1, N, NPrime1),
     NPrime1 = NPrime2,
     rpt_alpha_mapping_at_call_site_equal_2(Ns, AMAtCallSite1, AMAtCallSite2).
- 
 
+%-----------------------------------------------------------------------------%
+:- end_module rbmm.points_to_info.
+%-----------------------------------------------------------------------------%
