@@ -2665,7 +2665,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 230, "complexity", !DumpInfo, !IO),
 
     % XXX This may be moved to later.
-    maybe_region_analysis(!HLDS, !IO),
+    maybe_region_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 240, "region_analysis", !DumpInfo, !IO),
 
     maybe_dump_hlds(!.HLDS, 299, "middle_pass", !DumpInfo, !IO).
@@ -4236,15 +4236,19 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
         maybe_report_stats(Stats, !IO)
     ).
 
-:- pred maybe_region_analysis(module_info::in, module_info::out, io::di, 
-    io::uo) is det.
+:- pred maybe_region_analysis(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_region_analysis(!HLDS, !IO) :-
+maybe_region_analysis(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, region_analysis, Analysis),
     (
         Analysis = yes,
-        do_region_analysis(!HLDS)
+        maybe_write_string(Verbose, "% Analysing regions ...\n", !IO),
+        maybe_flush_output(Verbose, !IO),
+        do_region_analysis(!HLDS),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
     ;
         Analysis = no
     ).
