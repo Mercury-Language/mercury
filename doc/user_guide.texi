@@ -8975,9 +8975,9 @@ Don't generate a C main() function.  The user's code must
 provide a main() function.
 
 @sp 1
-@item --allow-undefined
-@findex --allow-undefined
-Allow undefined symbols in shared libraries.
+@item --no-allow-undefined
+@findex --no-allow-undefined
+Do not allow undefined symbols in shared libraries.
 
 @sp 1
 @item --no-use-readline
