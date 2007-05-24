@@ -132,34 +132,21 @@ intra_analyse_goal(Goal, !RptaInfo) :-
 intra_analyse_goal_expr(conj(_ConjType, Goals), !RptaInfo) :- 
     list.foldl(intra_analyse_goal, Goals, !RptaInfo). 
 
-    % Procedure calls are ignored in the intraprocedural analysis.
+    % Calls (of all types) are not considered during the intraprocedural
+    % analysis.
     %
 intra_analyse_goal_expr(plain_call(_, _, _, _, _, _), !RptaInfo).
-
-intra_analyse_goal_expr(generic_call(_,_,_,_), !RptaInfo) :-
-    sorry(this_file,
-        "intra_analyse_goal_expr: generic_call not handled").
+intra_analyse_goal_expr(generic_call(_, _, _, _), !RptaInfo).
+intra_analyse_goal_expr(call_foreign_proc(_, _, _, _, _, _, _), !RptaInfo).
 
 intra_analyse_goal_expr(switch(_, _, Cases), !RptaInfo) :- 
     list.foldl(intra_analyse_case, Cases, !RptaInfo).
-
-:- pred intra_analyse_case(case::in, rpta_info::in, rpta_info::out) is det.
-
-intra_analyse_case(Case, !RptaInfo) :-
-    Case = case(_, Goal),
-    intra_analyse_goal(Goal, !RptaInfo).
-
-    % Most of the processing in intraprocedural analysis happens to
-    % unifications.
-    %
-intra_analyse_goal_expr(unify(_, _, _, Unification, _), !RptaInfo) :- 
-    process_unification(Unification, !RptaInfo).
-
 intra_analyse_goal_expr(disj(Goals), !RptaInfo) :-
     list.foldl(intra_analyse_goal, Goals, !RptaInfo). 
-
 intra_analyse_goal_expr(negation(Goal), !RptaInfo) :- 
     intra_analyse_goal(Goal, !RptaInfo). 
+intra_analyse_goal_expr(unify(_, _, _, Unification, _), !RptaInfo) :- 
+    intra_analyse_unification(Unification, !RptaInfo).
 
     % scope 
     % XXX: only analyse the goal. May need to take into account the Reason. 
@@ -186,35 +173,63 @@ intra_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), !RptaInfo) :-
     intra_analyse_goal(Then, !RptaInfo),
     intra_analyse_goal(Else, !RptaInfo).
 
-intra_analyse_goal_expr(GoalExpr, !RptaInfo) :-
-    GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-    unexpected(this_file,
-        "intra_analyse_goal_expr: call_foreign_proc not handled").
-
-intra_analyse_goal_expr(shorthand(_), !RptaInfo) :- 
+intra_analyse_goal_expr(shorthand(_), _, _) :- 
     unexpected(this_file, "intra_analyse_goal_expr: shorthand not handled").
+
+:- pred intra_analyse_case(case::in, rpta_info::in, rpta_info::out) is det.
+
+intra_analyse_case(Case, !RptaInfo) :-
+    Case = case(_, Goal),
+    intra_analyse_goal(Goal, !RptaInfo).
     
-:- pred process_unification(unification::in,
+%-----------------------------------------------------------------------------%
+
+    % For construction and deconstruction unifications, add an edge from the
+    % variable on the LHS to each variable on the RHS.
+    %
+    % For assignment unifications we merge the nodes corresponding to 
+    % the variables on either side.
+    %
+    % For simple test unifications we do nothing.
+    %
+:- pred intra_analyse_unification(unification::in,
     rpta_info::in, rpta_info::out) is det.
 
     % For construction and deconstruction, add edges from LVar to 
     % each of RVars.
-process_unification(construct(LVar, ConsId, RVars, _, _, _, _), !RptaInfo) :-
-    list.foldl2(process_cons_and_decons(LVar, ConsId), RVars, 
-        1, _, !RptaInfo).
-	
-process_unification(deconstruct(LVar, ConsId, RVars, _, _, _), !RptaInfo) :-
-    list.foldl2(process_cons_and_decons(LVar, ConsId), RVars, 
-        1, _, !RptaInfo).
+intra_analyse_unification(Unification, !RptaInfo) :-
+    ( Unification = construct(LVar, ConsId, RVars, _, _, _, _)
+    ; Unification = deconstruct(LVar, ConsId, RVars, _, _, _)
+    ),
+    list.foldl2(process_cons_and_decons(LVar, ConsId), RVars, 1, _,
+        !RptaInfo).
+intra_analyse_unification(assign(ToVar, FromVar), !RptaInfo) :-
+    !.RptaInfo = rpta_info(Graph0, AlphaMapping),
+    get_node_by_variable(Graph0, ToVar, ToNode),
+    get_node_by_variable(Graph0, FromVar, FromNode),
+    ( if    ToNode = FromNode
+      then  true
+      else
+            unify_operator(ToNode, FromNode, Graph0, Graph),
+            !:RptaInfo = rpta_info(Graph, AlphaMapping),
+            % After merging the two nodes, apply rule P1 to restore the
+            % RPTG's invariants.
+            apply_rule_1(ToNode, !RptaInfo)
+    ).
+intra_analyse_unification(simple_test(_, _), !RptaInfo).
+intra_analyse_unification(complicated_unify(_, _, _), _, _) :-
+    unexpected(this_file,
+        "complicated_unify in region points-to analysis.").
 
 :- pred process_cons_and_decons(prog_var::in, cons_id::in, prog_var::in,
     int::in, int::out, rpta_info::in, rpta_info::out) is det.
+
 process_cons_and_decons(LVar, ConsId, RVar, !Component, !RptaInfo) :-
     !.RptaInfo = rpta_info(Graph0, AlphaMapping),
-    get_node_by_variable(Graph0, LVar, Node1),
-    get_node_by_variable(Graph0, RVar, Node2),
+    get_node_by_variable(Graph0, LVar, L_Node),
+    get_node_by_variable(Graph0, RVar, R_Node),
     Sel = [termsel(ConsId, !.Component)],
-    ArcContent = rptg_arc_content(Sel),
+    EdgeLabel = rptg_arc_content(Sel),
 
     % Only add the edge if it is not in the graph
     % It is more suitable to the edge_operator's semantics if we check 
@@ -222,49 +237,20 @@ process_cons_and_decons(LVar, ConsId, RVar, !Component, !RptaInfo) :-
     % is actually added or not so it is convenient to check the edge's 
     % existence outside edge_operator. Otherwise we can extend edge_operator
     % with one more argument to indicate that.
-    ( if
-        edge_in_graph(Node1, ArcContent, Node2, Graph0)
-      then
-        true
+    ( if    edge_in_graph(L_Node, EdgeLabel, R_Node, Graph0)
+      then  true
       else
-        edge_operator(Node1, Node2, ArcContent, Graph0, Graph1),
-        RptaInfo1 = rpta_info(Graph1, AlphaMapping), 
+            edge_operator(L_Node, R_Node, EdgeLabel, Graph0, Graph1),
+            !:RptaInfo = rpta_info(Graph1, AlphaMapping), 
 
-        % After an edge is added, rules P2 and P3 are applied to ensure 
-        % the invariants of the graph.
-        apply_rule_2(Node1, Node2, ConsId, !.Component, RptaInfo1, RptaInfo2),
-        RptaInfo2 = rpta_info(Graph2, _),	
-        get_node_by_variable(Graph2, RVar, RVarNode),
-        apply_rule_3(RVarNode, RptaInfo2, !:RptaInfo)
+            % After an edge is added, rules P2 and P3 are applied to ensure 
+            % the invariants of the graph.
+            apply_rule_2(L_Node, R_Node, ConsId, !.Component, !RptaInfo),
+            !.RptaInfo = rpta_info(Graph2, _),	
+            get_node_by_variable(Graph2, RVar, RVarNode),
+            apply_rule_3(RVarNode, !RptaInfo)
     ),
     !:Component = !.Component + 1.
-
-    % Unification is an assignment: merge the corresponding nodes of ToVar 
-    % and FromVar.
-    % 
-process_unification(assign(ToVar, FromVar), !RptaInfo) :-
-    !.RptaInfo = rpta_info(Graph0, AlphaMapping),
-    get_node_by_variable(Graph0, ToVar, ToNode),
-    get_node_by_variable(Graph0, FromVar, FromNode),
-    ( if
-        ToNode = FromNode
-      then
-        true
-      else
-        unify_operator(ToNode, FromNode, Graph0, Graph1),
-        RptaInfo1 = rpta_info(Graph1, AlphaMapping),
-        % After the merge of two nodes, apply rule P1 to ensure rptg's 
-        % invariants.
-        apply_rule_1(ToNode, RptaInfo1, !:RptaInfo)
-    ).
-
-    % Do nothing with the simple test.
-    %
-process_unification(simple_test(_, _), !RptaInfo).
-
-    % XXX: do not consider this for the time being.
-    %
-process_unification(complicated_unify(_, _, _), !RptaInfo).
 
 %-----------------------------------------------------------------------------%
 %
