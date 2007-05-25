@@ -9139,12 +9139,16 @@ using the @code{promise_pure} and @code{promise_semipure} pragmas:
 Programmers should be very careful about mixing code that is promised
 pure with impure predicates or functions that may manipulate the
 same hidden state (for example, the impure predicates used to implement 
-a predicate that is promised pure); the @samp{promise pure} declaration
+a predicate that is promised pure); the @samp{promise_pure} declaration
 is supposed to promise that impure code cannot change the declarative
 semantics of pure code.  The module system can be used to minimize the
 possibility of making errors with such code, by keeping impure
 predicates or functions behind the interface where code is promised
 pure.
+
+Note that the @samp{promise_pure}, @samp{promise_semipure}, and
+@samp{promise_impure} scopes described in @ref{Goals} may be used to
+promise purity at the finer level of goals within clauses.
 
 @node Impurity Example
 @section An example using impurity
