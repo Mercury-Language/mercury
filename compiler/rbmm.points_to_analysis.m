@@ -376,7 +376,7 @@ inter_analyse_goal_expr(conj(_ConjType, Goals), _, ModuleInfo,
     % one is of the currently-analysed procedure (caller) which we are going 
     % to update, the other is of the called procedure (callee).
     %
-    % The input RptaInfo0 is caller's, if the procedure calls itself then 
+    % The input RptaInfo is caller's, if the procedure calls itself then 
     % this is also that of the callee but we will retrieve it again from the 
     % InfoTable.
     %
@@ -482,7 +482,7 @@ inter_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), _, ModuleInfo,
 
 inter_analyse_goal_expr(GoalExpr, _, _, _, !FPTable, !RptaInfo) :- 
     GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-    unexpected(this_file,
+    sorry(this_file,
         "inter_analyse_goal_expr: foreign code not handled").
 
 inter_analyse_goal_expr(shorthand(_), _, _, _, !FPTable, !RptaInfo) :- 
@@ -852,7 +852,7 @@ alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
             % alpha(N_Xi) = N_Y, alpha(N_Xi) = N_Yi, N_Y != N_Yi.
             %
             ( if    N_Y \= N_Yi
-            then
+              then
                     % Apply rule P4.
                     unify_operator(N_Y, N_Yi, !CallerGraph),
 
@@ -860,7 +860,7 @@ alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
                     rptg_node_contents(!.CallerGraph, N_Y, Content),
                     N_Y_Vars = Content ^ varset,
                     rule_1(N_Y_Vars, !CallerGraph)
-            else
+              else
                     true
             )
     else
