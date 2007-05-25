@@ -12,6 +12,8 @@ MCFLAGS-assert_in_interface =	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization \
 				--verbose-error-messages
 
+MCFLAGS-actual_expected =       --no-intermodule-optimization \
+			        --no-automatic-intermodule-optimization	
 MCFLAGS-children =		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
