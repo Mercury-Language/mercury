@@ -145,14 +145,17 @@
 :- pred search_for_file_returning_dir(list(dir_name)::in, file_name::in,
     maybe_error(dir_name)::out, io::di, io::uo) is det.
 
-    % search_for_module_source(Dirs, ModuleName, FoundSourceFileName, !IO):
+    % search_for_module_source(Dirs, InterfaceDirs, ModuleName,
+    %   FoundSourceFileName, !IO):
     %
     % Look for the source for ModuleName in Dirs. This will also search for
-    % files matching partially qualified versions of ModuleName. For example,
-    % module foo.bar.baz can be found in foo.bar.m, bar.baz.m or bar.m.
+    % files matching partially qualified versions of ModuleName, but only if
+    % a more qualified `.m' or `.int' file doesn't exist in InterfaceDirs.
+    % in InterfaceDirs. For example, module foo.bar.baz can be found in
+    % foo.bar.m, bar.baz.m or bar.m.
     %
-:- pred search_for_module_source(list(dir_name)::in, module_name::in,
-    maybe_error(file_name)::out, io::di, io::uo) is det.
+:- pred search_for_module_source(list(dir_name)::in, list(dir_name)::in,
+    module_name::in, maybe_error(file_name)::out, io::di, io::uo) is det.
 
     % Read the first item from the given file to find the module name.
     %
@@ -432,14 +435,92 @@ search_for_file_returning_dir([Dir | Dirs], AllDirs, FileName, R, !IO) :-
         search_for_file_returning_dir(Dirs, AllDirs, FileName, R, !IO)
     ).
 
-search_for_module_source(Dirs, ModuleName, MaybeFileName, !IO) :-
-    search_for_module_source(Dirs, ModuleName, ModuleName, MaybeFileName, !IO).
+search_for_module_source(Dirs, InterfaceDirs,
+        ModuleName, MaybeFileName, !IO) :-
+    search_for_module_source_2(Dirs, ModuleName, ModuleName,
+        MaybeFileName0, !IO),
+    (
+        MaybeFileName0 = ok(SourceFileName),
+        ( 
+            string.remove_suffix(dir.basename(SourceFileName),
+                ".m", SourceFileBaseName),
+            file_name_to_module_name(SourceFileBaseName, SourceFileModuleName),
+            ModuleName \= SourceFileModuleName
+        ->
+            % The module name doesn't match the file name. Return an error
+            % if there is a more qualified matching `.m' or `.int' file in
+            % the interface search path. This avoids having a file `read.m'
+            % in the current directory prevent the compiler from finding
+            % `bit_buffer.read.int' in the standard library.
+            %
+            io.input_stream(SourceStream, !IO),
+            search_for_module_source_2(InterfaceDirs, ModuleName,
+                ModuleName, MaybeFileName2, !IO),
+            ( MaybeFileName2 = ok(_) ->
+                io.seen(!IO)
+            ;
+                true
+            ),
+            (
+                MaybeFileName2 = ok(SourceFileName2),
+                SourceFileName2 \= SourceFileName,
+                string.remove_suffix(dir.basename(SourceFileName2), ".m",
+                    SourceFileBaseName2),
+                file_name_to_module_name(SourceFileBaseName2,
+                    SourceFileModuleName2),
+                match_sym_name(SourceFileModuleName, SourceFileModuleName2)
+            ->
+                io.close_input(SourceStream, !IO),
+                MaybeFileName = error(find_source_error(ModuleName,
+                                    Dirs, yes(SourceFileName2)))
+            ;
+                module_name_to_file_name(ModuleName, ".int", no, IntFile, !IO),
+                search_for_file_returning_dir(InterfaceDirs, IntFile,
+                    MaybeIntDir, !IO),
+                ( MaybeIntDir = ok(_) ->
+                    io.seen(!IO)
+                ;
+                    true
+                ),
+                (
+                    MaybeIntDir = ok(IntDir),
+                    IntDir \= dir.this_directory
+                ->
+                    io.close_input(SourceStream, !IO),
+                    MaybeFileName = error(find_source_error(ModuleName,
+                                        Dirs, yes(IntDir/IntFile)))
+                ;
+                    io.set_input_stream(SourceStream, _, !IO),
+                    MaybeFileName = MaybeFileName0
+                )
+            )
+        ;
+            MaybeFileName = MaybeFileName0
+        )
+    ;
+        MaybeFileName0 = error(_),
+        MaybeFileName = MaybeFileName0
+    ).
 
-:- pred search_for_module_source(list(dir_name)::in,
-    module_name::in, module_name::in, maybe_error(file_name)::out,
-    io::di, io::uo) is det.
+:- func find_source_error(module_name, list(dir_name),
+            maybe(file_name)) = string.
 
-search_for_module_source(Dirs, ModuleName, PartialModuleName, Result, !IO) :-
+find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    Msg0 = "cannot find source for module `" ++ ModuleNameStr ++
+            "' in directories " ++ string.join_list(", ", Dirs),
+    (
+        MaybeBetterMatch = no, Msg = Msg0
+    ;
+        MaybeBetterMatch = yes(BetterMatchFile),
+        Msg = Msg0 ++ ", but found " ++ BetterMatchFile
+                    ++ " in interface search path"
+    ).
+
+:- pred search_for_module_source_2(list(dir_name)::in, module_name::in,
+    module_name::in, maybe_error(file_name)::out, io::di, io::uo) is det.
+
+search_for_module_source_2(Dirs, ModuleName, PartialModuleName, Result, !IO) :-
     module_name_to_file_name(PartialModuleName, ".m", no, FileName, !IO),
     search_for_file(Dirs, FileName, Result0, !IO),
     (
@@ -450,12 +531,10 @@ search_for_module_source(Dirs, ModuleName, PartialModuleName, Result, !IO) :-
         (
             PartialModuleName1 = drop_one_qualifier(PartialModuleName)
         ->
-            search_for_module_source(Dirs, ModuleName, PartialModuleName1,
+            search_for_module_source_2(Dirs, ModuleName, PartialModuleName1,
                 Result, !IO)
         ;
-            ModuleNameStr = sym_name_to_string(ModuleName),
-            Result = error("can't find source for module `" ++
-                ModuleNameStr ++ "'")
+            Result = error(find_source_error(ModuleName, Dirs, no))
         )
     ).
 

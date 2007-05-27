@@ -3932,7 +3932,8 @@ get_both_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs,
         !:OptDeps, !:TransOptDeps, !IO),
     (
         BuildOptFiles = yes,
-        search_for_module_source(IntermodDirs, Dep, Result1, !IO),
+        search_for_module_source(IntermodDirs, IntermodDirs,
+            Dep, Result1, !IO),
         (
             Result1 = ok(_),
             !:OptDeps = [Dep | !.OptDeps],
@@ -3986,7 +3987,8 @@ get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, !:OptDeps,
     get_opt_deps(BuildOptFiles, Deps, IntermodDirs, Suffix, !:OptDeps, !IO),
     (
         BuildOptFiles = yes,
-        search_for_module_source(IntermodDirs, Dep, Result1, !IO),
+        search_for_module_source(IntermodDirs, IntermodDirs,
+            Dep, Result1, !IO),
         (
             Result1 = ok(_),
             !:OptDeps = [Dep | !.OptDeps],
@@ -6408,18 +6410,23 @@ read_mod_2(IgnoreErrors, ModuleName, Extension, Descr, Search,
     maybe_write_string(VeryVerbose, "'... ", !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
+    globals.io_lookup_accumulating_option(search_directories,
+        InterfaceSearchDirs, !IO),
     (
         Search = yes,
-        globals.io_lookup_accumulating_option(search_directories, SearchDirs,
-            !IO)
+        SearchDirs = InterfaceSearchDirs
     ;
         Search = no,
         SearchDirs = [dir.this_directory]
     ),
     ( Extension = ".m" ->
         % For `.m' files we need to deal with the case where
-        % the module name does not match the file name.
-        OpenFile = search_for_module_source(SearchDirs, ModuleName)
+        % the module name does not match the file name, or where
+        % a partial match occurs in the current directory but the
+        % full match occurs in a search directory.
+        %
+        OpenFile = search_for_module_source(SearchDirs,
+                        InterfaceSearchDirs, ModuleName)
     ;
         OpenFile = search_for_file(SearchDirs, FileName0)
     ),
