@@ -1,0 +1,42 @@
+mdprof_cgid is a minimal server that accepts and passes through requests to
+the deep profiler CGI program, mdprof_cgi.  It's useful when you want to view
+deep profiling data without configuring and running a proper web server.
+
+Building
+--------
+
+After building the posix library in the parent directory,
+
+    mmake depend
+    mmake
+
+
+Starting
+--------
+
+    ./mdprof_cgid --host localhost --port 8081 --mdprof mdprof \
+	--script-name /cgi-bin/mdprof_cgi
+
+The default values for options are shown.
+
+The --mdprof option specifies the location of the `mdprof' executable.
+If it is in the path then the default setting should be fine.
+Since `mdprof' is just a wrapper script around `mdprof_cgi' you can also pass
+the location of `mdprof_cgi' directly instead.
+
+The --script-name option specifies the virtual path under which the deep
+profiler will be accessible.  This server ignores all requests except to that
+virtual path.
+
+
+Using
+-----
+
+Once the server is running, point the browser to your deep profiling data,
+e.g.
+
+    firefox http://localhost:8081/cgi-bin/mdprof_cgi?/path/to/Deep.data
+
+Note that running instances of mdprof_cgi won't be automatically killed when
+mdprof_cgid is terminated.
+
