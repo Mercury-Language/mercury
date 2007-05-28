@@ -78,7 +78,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:template match="String|Int|Float|Char" priority="50">
 	<xsl:param name="depth">0</xsl:param>
 	<xsl:param name="termpath" />
-	<xsl:param name="fieldtermpath" />
+	<xsl:variable name="fieldtermpath" select="''" />
 	<xsl:element name="treeitem">
 		<xsl:element name="treerow">
 			<xsl:element name="treecell">
@@ -238,7 +238,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 	</xsl:choose>
 </xsl:template>
 <xsl:template name="showfieldpath">
-	<xsl:param name="termpath" />
+	<xsl:param name="fieldtermpath" />
 	<xsl:choose>
 	<xsl:when test="ancestor::*">
 		<xsl:choose>
